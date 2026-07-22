@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-d7uj",
+  "title": "Resolve Rust RPL acceptance blockers",
+  "description": "Fix recoverable DAD1/DRX2 provisioning, jittered destination-aware DIS and DIO suppression, authenticated unicast DIO/DIS destination enforcement, managed prefix reappearance, and final regression gates without committing.",
+  "acceptance_criteria": "All four blockers have deterministic regression tests; fmt/direct tests/scoped strict Clippy/diff checks pass; no commit is created.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "epic",
+  "created_at": "2026-07-20T07:08:58.033951209Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-20T07:22:18.238053414Z",
+  "closed_at": "2026-07-20T07:22:18.238053414Z",
+  "close_reason": "All four acceptance blockers fixed: resumable DAD1-first root provisioning, jittered multicast DIS plus valid-consistent DIO suppression, exact authenticated DIO/DIS unicast destination enforcement, and Fresh managed-prefix revival after egress return. Full requested gates pass without commit.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-d7uj",
+      "depends_on_id": "project-LICHEN-2auf.44.7",
+      "type": "parent-child",
+      "created_at": "2026-07-20T07:08:58.117378498Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

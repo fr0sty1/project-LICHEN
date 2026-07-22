@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-8m8p",
+  "title": "Bound application chunks by full SCHC packet",
+  "description": "Transport spec applies the 1281-byte mandatory receiver capacity to application chunks, but the limit covers the complete SCHC packet including compressed headers and CoAP metadata. Specify payload budget after overhead.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-21T02:32:34.551668744Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-21T02:32:34.551668744Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-8m8p",
+      "depends_on_id": "project-LICHEN-7fqg.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-21T02:32:34.63751636Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

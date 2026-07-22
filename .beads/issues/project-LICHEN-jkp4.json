@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-jkp4",
+  "title": "Normalize oversized SCHC decode errors",
+  "description": "Python SCHC decompress builds an oversized reconstructed packet before size validation, allowing OverflowError or PacketError to escape instead of documented SchcError and doing unnecessary checksum work. Bound tails before profile.build and normalize malformed-input errors. Found reviewing convergence commit 4d8cd52.",
+  "status": "deferred",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-21T02:24:45.593062559Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-21T02:24:57.240182069Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-jkp4",
+      "depends_on_id": "project-LICHEN-7fqg.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-21T02:24:45.677723941Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

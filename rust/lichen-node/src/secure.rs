@@ -86,8 +86,8 @@ impl<R: Radio> SecureStack<R> {
     ///
     /// SECURITY: Uses minimum compliant epoch (128). For production, prefer
     /// constructing a Stack with a random epoch in [128, 255].
-    pub fn from_radio(radio: R, identity: lichen_link::identity::Identity) -> Self {
-        Self::new(Stack::new_default_epoch(radio, identity))
+    pub fn from_radio(radio: R, identity: lichen_link::identity::Identity, epoch: u8) -> Self {
+        Self::new(Stack::new(radio, identity, epoch, 0))
     }
 
     /// Add an OSCORE security context for a peer.
@@ -292,10 +292,10 @@ mod tests {
 
         let (radio_a, radio_b) = LoopbackRadio::pair();
 
-        let mut alice_stack = Stack::new_default_epoch(radio_a, alice_id);
+        let mut alice_stack = Stack::new(radio_a, alice_id, 128, 0);
         alice_stack.add_peer(bob_peer);
 
-        let mut bob_stack = Stack::new_default_epoch(radio_b, bob_id);
+        let mut bob_stack = Stack::new(radio_b, bob_id, 128, 0);
         bob_stack.add_peer(alice_peer);
 
         let mut alice = SecureStack::new(alice_stack);

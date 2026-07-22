@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-r2jc",
+  "title": "Correct SCHC receiver retry oracle",
+  "description": "schc_fragmentation.json requires Receiver-Abort instead of the fifth ACK when Attempts is 4, contradicting RFC 8724 Section 8.4.3.2 and the draft prose, which send ACK, increment, then abort when exceeding MAX_ACK_REQUESTS. Establish the correct independent oracle before any language migration. Blocks conditional SCHC profile/vector slice.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "created_at": "2026-07-21T02:32:33.759000397Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-21T02:32:33.759000397Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-r2jc",
+      "depends_on_id": "project-LICHEN-7fqg.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-21T02:32:33.844041744Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

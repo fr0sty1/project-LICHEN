@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-cbx4",
+  "title": "Refresh returning managed prefix egress",
+  "description": "When an expired RPL-managed prefix egress returns, restore the prefix to Fresh with its current rebuilt path while preserving absent fail-closed and static prefix behavior.",
+  "acceptance_criteria": "Disappear/reappear/reparent regression passes; absent managed prefix remains unusable; static prefixes are unchanged.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-20T07:09:20.894883241Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-20T07:21:08.57060848Z",
+  "started_at": "2026-07-20T07:20:05.336187407Z",
+  "closed_at": "2026-07-20T07:21:08.57060848Z",
+  "close_reason": "Tracked prefixes expired specifically by missing managed egress. While absent they remain expired/unusable; on egress return they rebuild Fresh on the current path. Explicit/static prefix behavior remains unchanged. Disappear/reappear/reparent test and full RPL suite pass.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-cbx4",
+      "depends_on_id": "project-LICHEN-d7uj",
+      "type": "parent-child",
+      "created_at": "2026-07-20T07:09:20.980079036Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

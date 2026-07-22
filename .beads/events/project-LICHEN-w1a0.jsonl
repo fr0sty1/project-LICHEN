@@ -1,0 +1,1 @@
+{"id":"019f879a-32f1-7ea5-b708-7619c5455a88","issue_id":"project-LICHEN-w1a0","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"Fixed LRU comparison in loadng route cache with wrap-safe signed diff and explicit init","created_at":"2026-07-22T02:14:17.585960419Z"}

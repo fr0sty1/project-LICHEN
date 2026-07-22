@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-v0tq",
+  "title": "Reject foreign unicast DIO and DIS",
+  "description": "After authenticated decompression and before mutation, accept DIO/DIS only for exact local RPL unicast or ff02::1a; preserve DAO DODAG destination handling.",
+  "acceptance_criteria": "Broadcast-wrapped foreign-unicast DIO/DIS cause no mutation and no response; local unicast and ff02::1a continue to work; DAO forwarding remains intact.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-20T07:09:20.746793095Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-20T07:20:05.058971573Z",
+  "started_at": "2026-07-20T07:18:48.295454598Z",
+  "closed_at": "2026-07-20T07:20:05.058971573Z",
+  "close_reason": "Added authenticated checksum-valid pre-mutation DIO/DIS destination gate requiring exact local RPL unicast or ff02::1a while leaving DAO DODAG/forwarding rules unchanged. Broadcast-wrapped foreign-unicast DIO/DIS no-mutation/no-response test and positive control tests pass.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-v0tq",
+      "depends_on_id": "project-LICHEN-d7uj",
+      "type": "parent-child",
+      "created_at": "2026-07-20T07:09:20.83256098Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

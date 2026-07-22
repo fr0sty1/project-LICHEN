@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-ahag",
+  "title": "Define cancellation-safe radio TX handoff",
+  "description": "Python LinkLayer retains a queued frame when Radio.transmit is cancelled, but SimRadio may already have sent TX_FRAME and be awaiting TX_DONE. Retrying can duplicate airtime and consume a stale simulator response. Define the Radio transmit cancellation/commit contract and make simulator and hardware adapters preserve protocol synchronization. Discovered reviewing convergence commit d422a03b; requires architecture beyond frozen conflict reconciliation.",
+  "status": "deferred",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-21T02:07:21.29259837Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-21T02:07:43.082655072Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ahag",
+      "depends_on_id": "project-LICHEN-7fqg.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-21T02:07:21.377637229Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

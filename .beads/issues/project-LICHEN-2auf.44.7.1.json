@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-2auf.44.7.1",
+  "title": "Close remaining Rust RPL security findings",
+  "description": "Complete the eight remaining in-scope Rust RPL production-owner findings: explicit root DAO-origin admission, multicast L2 addressing, exact DaoTxState scope binding, side-effect-free local Announce send, retry-safe Announce relay, link-local DAO relay rejection, automatic DAO send lifecycle with authoritative origin sequence, and regression preservation.",
+  "acceptance_criteria": "All eight child findings are implemented without compatibility persistence formats or destructive admission retirement; canonical external vectors and existing full-path tests remain; requested fmt, focused tests, strict scoped Clippy, and diff checks pass.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "epic",
+  "created_at": "2026-07-20T06:06:23.494923479Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-20T06:29:39.277715322Z",
+  "closed_at": "2026-07-20T06:29:39.277715322Z",
+  "close_reason": "Completed all eight requested Rust RPL security findings: explicit bounded DAO admission, multicast L2 broadcast, DTX2 exact scope, local Announce isolation, transactional relay retry, direct-only link-local DAO origins, automatic DAO send/retry lifecycle with 64-bit freshness, and full regression gates. No commit.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.7.1",
+      "depends_on_id": "project-LICHEN-2auf.44.7",
+      "type": "parent-child",
+      "created_at": "2026-07-20T06:06:23.576431842Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

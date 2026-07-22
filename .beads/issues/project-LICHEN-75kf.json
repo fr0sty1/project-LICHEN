@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-75kf",
+  "title": "Exclude TX airtime from queue latency",
+  "description": "TxQueue.confirm_transmitted samples latency after Radio.transmit completes, so max_latency_ms and avg_latency_ms include on-air transmit duration rather than only queue wait, contrary to appendix-bufferbloat metric semantics. Capture dequeue/handoff time separately while retaining confirmation-only transmitted counts. Discovered reviewing convergence commit d422a03b; outside frozen reconciliation.",
+  "status": "deferred",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-21T02:07:21.302212701Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-21T02:07:43.73865521Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-75kf",
+      "depends_on_id": "project-LICHEN-7fqg.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-21T02:07:21.38809472Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

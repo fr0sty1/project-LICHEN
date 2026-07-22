@@ -8,10 +8,14 @@ target_sources(app PRIVATE src/main.c src/puck_location.c)
 target_include_directories(app PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../../lib/native/include)
 
+zephyr_linker_sources(DATA_SECTIONS sections-ram.ld)
 if(CONFIG_LICHEN_COAP_LOCATION)
-  zephyr_linker_sources(DATA_SECTIONS sections-ram.ld)
   zephyr_iterable_section(
     NAME coap_resource_lichen_coap
     GROUP DATA_REGION ${XIP_ALIGN_WITH_INPUT}
     SUBALIGN CONFIG_LINKER_ITERABLE_SUBALIGN)
 endif()
+zephyr_iterable_section(
+  NAME coap_resource_lichen_coap_server
+  GROUP DATA_REGION ${XIP_ALIGN_WITH_INPUT}
+  SUBALIGN CONFIG_LINKER_ITERABLE_SUBALIGN)

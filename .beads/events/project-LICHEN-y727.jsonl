@@ -1,0 +1,1 @@
+{"id":"019f879a-3481-7c97-a37f-f7cced5a856b","issue_id":"project-LICHEN-y727","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"Updated RREQ reverse route to use hop_count=1 for correct path length tracking","created_at":"2026-07-22T02:14:17.985825669Z"}

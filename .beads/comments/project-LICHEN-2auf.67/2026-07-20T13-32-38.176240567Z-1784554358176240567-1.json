@@ -1,0 +1,7 @@
+{
+  "id": "1784554358176240567-1",
+  "issue_id": "project-LICHEN-2auf.67",
+  "author": "ec2-user",
+  "text": "Implemented narrow std feature gates for GradientTable/LOADng imports, geographic math helpers, GradientTable expiry, private RPL outcome helpers, and one std-only RPL test. Validation passed: no-default check; 29 no-default lib tests; 185 std unit + 2 integration tests + doctests; isolated strict Clippy in both modes; git diff --check; independent bare-metal checks for thumbv7em-none-eabihf and thumbv8m.main-none-eabihf. Three independent reviews found no issues. Unrelated pre-existing blockers: workspace fmt drift, dependency-inclusive Clippy warnings in lichen-schc, scheduler test dead-code warning, and std-only dao_origin integration test under full no-default cargo test.",
+  "created_at": "2026-07-20T13:32:38.176240567Z"
+}

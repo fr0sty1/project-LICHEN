@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-2auf.44.7.2.4",
+  "title": "Reconcile managed prefix route egress",
+  "description": "Track whether prefix-route egress is or was RPL-managed. Rebuild managed prefix paths on host-route reparent and fail closed when managed egress disappears, while preserving never-managed static prefixes.",
+  "acceptance_criteria": "Reparent and disappear tests pass; static-prefix preservation tests remain; no stale managed path survives.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-20T06:37:33.436376619Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-20T06:56:44.656812858Z",
+  "started_at": "2026-07-20T06:53:54.435366666Z",
+  "closed_at": "2026-07-20T06:56:44.656812858Z",
+  "close_reason": "Tracked RPL-managed host and prefix egress provenance internally, rebuilt managed prefix paths on host reparent, expired managed prefixes when egress disappeared, preserved never-managed static prefixes, and retained shared capacity accounting. Full RPL/node tests and strict scoped Clippy pass.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.7.2.4",
+      "depends_on_id": "project-LICHEN-2auf.44.7.2",
+      "type": "parent-child",
+      "created_at": "2026-07-20T06:37:33.519742531Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

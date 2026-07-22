@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-xx31",
+  "title": "Allow EDHOC same-kid credential retries",
+  "description": "EDHOC poisons a session after signature failure for one credential candidate with a matching kid, but RFC 9528 requires trying multiple keys associated with the same kid. Preserve pending state for candidate-specific failures and define exhaustion signaling. Found reviewing convergence EDHOC slice.",
+  "status": "deferred",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-21T02:14:38.832636378Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-21T02:14:54.570671428Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-xx31",
+      "depends_on_id": "project-LICHEN-7fqg.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-21T02:14:38.918676956Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

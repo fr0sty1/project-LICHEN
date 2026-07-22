@@ -1,0 +1,1 @@
+{"id":"019f879a-3160-7bd1-92c9-a9c0712fb9bc","issue_id":"project-LICHEN-v9eq","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"Fixed wraparound-unsafe timestamp comparison in find_oldest using signed diff","created_at":"2026-07-22T02:14:17.184774928Z"}

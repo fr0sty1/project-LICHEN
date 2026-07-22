@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-znj3",
+  "title": "Clarify TxQueue pop telemetry API",
+  "description": "Python TxQueue.pop remains public/exported but no longer updates transmitted/latency telemetry after d422a03b moved those updates to confirm_transmitted. Decide whether pop is removal-only or a compatibility transmission API, then document/migrate callers without silently changing metrics. Discovered during convergence review; outside frozen conflict reconciliation.",
+  "status": "deferred",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-21T02:07:21.307405489Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-21T02:07:44.065765614Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-znj3",
+      "depends_on_id": "project-LICHEN-7fqg.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-21T02:07:21.392209883Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
