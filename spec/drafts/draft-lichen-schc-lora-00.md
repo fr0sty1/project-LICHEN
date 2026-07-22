@@ -193,7 +193,7 @@ For traffic using ULA or GUA addresses.
 
 For diagnostic and reachability testing.
 
-**Rule Definition:** (aligned to appendix-schc.md)
+**Rule Definition:** (matches `ICMPV6_ECHO_RULE` in `rust/lichen-schc/src/rules.rs:462`; see appendix-schc.md)
 
 | Field | TV | MO | CDA |
 |-------|----|----|-----|
@@ -202,16 +202,16 @@ For diagnostic and reachability testing.
 | IPv6.FlowLabel | 0 | equal | not-sent |
 | IPv6.PayloadLength | - | ignore | compute |
 | IPv6.NextHeader | 58 | equal | not-sent |
-| IPv6.HopLimit | 64 | ignore | not-sent |
+| IPv6.HopLimit | - | ignore | value-sent |
 | IPv6.SrcPrefix | fe80::/64 | equal | not-sent |
-| IPv6.SrcIID | - | equal | not-sent (L2) |
+| IPv6.SrcIID | - | msb(64) | lsb(64) |
 | IPv6.DstPrefix | fe80::/64 | equal | not-sent |
-| IPv6.DstIID | - | equal | not-sent (L2) |
-| ICMPv6.Type | 128 or 129 | equal | not-sent |
+| IPv6.DstIID | - | msb(64) | lsb(64) |
+| ICMPv6.Type | - | ignore | value-sent |
 | ICMPv6.Code | 0 | equal | not-sent |
 | ICMPv6.Checksum | - | ignore | compute |
 
-**Compressed size:** 3 bytes
+**Compressed size:** ~20 bytes residue + data tail (optimized per rules.rs:237 and codec.rs:331; aligns with appendix-schc.md:14)
 
 ### 4.5. Rule 3: RPL DIO (link-local)
 
