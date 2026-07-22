@@ -65,13 +65,8 @@ def _decode_varint(data: bytes, offset: int = 0) -> tuple[int, int]:
 
 
 def _varint_to_int32(value: int) -> int:
-    """Convert unsigned varint value to signed int32.
-
-    Protobuf int32 fields encode negative values as 10-byte sign-extended
-    varints. After decoding, we need to reinterpret as signed 32-bit.
-    """
     value = value & 0xFFFFFFFF
-    if value & 0x80000000:
+    if value > 0x7FFFFFFF:
         value -= 0x100000000
     return value
 
