@@ -280,6 +280,11 @@ static uint8_t coap_tkl(const uint8_t *coap)
 	return coap[SCHC_COAP_VER_TYPE_TKL_OFFSET] & 0x0F;
 }
 
+static uint8_t coap_version(const uint8_t *coap)
+{
+	return coap[SCHC_COAP_VER_TYPE_TKL_OFFSET] >> 6;
+}
+
 static uint8_t coap_code(const uint8_t *coap)
 {
 	return coap[SCHC_COAP_CODE_OFFSET];

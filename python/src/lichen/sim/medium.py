@@ -181,11 +181,17 @@ class Medium:
 
             rssi = self.propagation.received_power(tx.tx_power_dbm, distance)
             snr = rssi - self.noise_floor_dbm
-            sensitivity = SENSITIVITY_LR_FHSS if tx.phy_mode == "lr_fhss" else SENSITIVITY_SF10
+            is_lr_fhss = tx.phy_mode == "lr_fhss"
+            sensitivity = SENSITIVITY_LR_FHSS if is_lr_fhss else SENSITIVITY_SF10
             if self.propagation.can_decode(
                 tx.tx_power_dbm, distance, sensitivity_dbm=sensitivity
             ):
-                candidates.append(RxCandidate(transmission=tx, rssi=rssi, snr=snr))
+                candidates.append(
+                    RxCandidate(
+                        transmission=tx, rssi=rssi, snr=snr, is_lr_fhss=is_lr_fhss
+                    )
+                )
+
 
         return candidates
 

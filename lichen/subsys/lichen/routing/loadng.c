@@ -8,6 +8,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/sys/util.h>
+#include <zephyr/sys/atomic.h>
 
 #ifndef CONFIG_LICHEN_LOADNG_ROUTE_CACHE_SIZE
 #define CONFIG_LICHEN_LOADNG_ROUTE_CACHE_SIZE LICHEN_LOADNG_ROUTE_CACHE_SIZE
@@ -34,9 +35,8 @@ static uint32_t access_counter;
 static K_MUTEX_DEFINE(seen_mutex);
 static struct lichen_loadng_seen_rreq seen_table[CONFIG_LICHEN_LOADNG_SEEN_TABLE_SIZE];
 
-/* Prune interval for seen table. */
 #define PRUNE_INTERVAL 16
-static int prune_countdown = PRUNE_INTERVAL;
+static atomic_t prune_countdown = ATOMIC_INIT(PRUNE_INTERVAL);
 
 /*
  * Message codec implementations.
