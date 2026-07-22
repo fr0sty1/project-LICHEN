@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-48s9",
+  "title": "[kimi-review] 57c611c: [SEVERITY: high] **Commit message does not match diff.** The",
+  "description": "Commit: 57c611c5d\nMessage: fix(slip): add stats_mutex synchronization\n\nFinding: [SEVERITY: high] **Commit message does not match diff.** The message claims \"add stats_mutex synchronization\" to `slip_transport.c`, but the commit contains zero code changes — it only modifies an issue-tracker JSON file. If the actual fix lives in commit `f09ccc550` (as the close_reason claims), it cannot be verified from this commit, and the bug is being closed without any demonstrable fix here. Anyone bisecting or auditing `git log` for the slip stats race will be misled.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:07:13.606474366Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:07:13.606474366Z"
+}
