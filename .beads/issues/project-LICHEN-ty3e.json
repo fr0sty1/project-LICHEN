@@ -2,6 +2,7 @@
   "id": "project-LICHEN-ty3e",
   "title": "[merge-conflict] worker8: propagation.py",
   "description": "Resolve merge conflict in python/src/lichen/sim/propagation.py between main and integration/worker8-20260722. Keep BOTH sets of changes.",
+  "notes": "Commit: fdece86a1",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:52:04.54403373Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T21:28:45.188993298Z",
+  "updated_at": "2026-07-22T21:30:34.311043373Z",
   "started_at": "2026-07-22T21:28:45.188993298Z",
   "lease_expires_at": "2026-07-22T21:33:45.188993298Z",
   "heartbeat_at": "2026-07-22T21:28:45.188993298Z"
