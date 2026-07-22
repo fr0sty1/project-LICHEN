@@ -5,11 +5,11 @@
   "status": "closed",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": "Mark Atwood",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:42:19.301041Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-13T04:38:05.492789Z",
-  "closed_at": "2026-07-13T04:38:05.492789Z",
-  "close_reason": "Closed"
+  "updated_at": "2026-07-22T20:16:40.000000000Z",
+  "closed_at": "2026-07-22T20:16:40.000000000Z",
+  "close_reason": "Added val.len <= 6 check (coap_config.c:419) + comment for sync_word hex parser. Prevents shift overflow/UB on long CBOR strings. Matches suggested validation. Correctness fixed. Commit recorded."
 }
