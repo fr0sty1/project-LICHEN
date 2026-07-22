@@ -2,10 +2,14 @@
   "id": "project-LICHEN-ahmj",
   "title": "[codereview-pass-1] draft-lichen-schc-lora-00.md:4 Rule 3/4 RPL tables do not distinguish DIO vs DAO Code or compress RPL options P1",
   "description": "Rules 3 and 4 have nearly identical IPv6/ICMP tables with value-sent for Code. Per RFC 6550, DIO uses code 1, DAO uses code 2; rules should use MO=equal on Code field. Additionally, RPL messages contain variable options (Pad, DAG Metric, Prefix Info, Target, Transit, etc.) that require additional rule entries for full compression. See appendix-rpl.md and 03-adaptation.md for details. Align tables with full structure.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T14:58:07.768556555Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T14:58:07.768556555Z"
+  "updated_at": "2026-07-22T14:58:41.982328441Z",
+  "started_at": "2026-07-22T14:58:41.982328441Z",
+  "lease_expires_at": "2026-07-22T15:03:41.982328441Z",
+  "heartbeat_at": "2026-07-22T14:58:41.982328441Z"
 }
