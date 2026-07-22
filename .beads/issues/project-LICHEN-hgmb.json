@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hgmb",
   "title": "BLE transport: Uses DLE length instead of ATT MTU for GATT notification chunking",
   "description": "File: lichen/subsys/lichen/transport/ble_ipsp_transport.c\nLines: 124, 519\n\nThe code at line 124 reads `info.le.data_len-\u003etx_max_len` (LE Data Length Extension PDU max) but uses it as if it were the ATT MTU:\n\n```c\ntransport_state.mtu = info.le.data_len-\u003etx_max_len;\n```\n\nThen at line 519, this value is used for chunking GATT notifications:\n\n```c\nuint16_t chunk_size = transport_state.mtu \u003e 3 ? transport_state.mtu - 3 : 20;\n```\n\nThe comment says 'ATT MTU includes 3-byte ATT header' but the value used is NOT ATT MTU - it is the Link Layer Data Length Extension maximum PDU size. These are different:\n- DLE tx_max_len: Link layer PDU payload (27-251 bytes, link layer optimization)\n- ATT MTU: Application layer max for single ATT operation (23-517 bytes)\n\nGATT notification max payload is ATT MTU - 3 (for opcode + handle). Using DLE length instead could:\n1. Result in oversized notifications being rejected by BLE stack\n2. Result in suboptimal chunking\n\nFix: Use `bt_gatt_get_mtu(conn)` to get the negotiated ATT MTU, not DLE length.\n\nNote: This is separate from project-LICHEN-tr8q which covers the NULL dereference issue on data_len.",
-  "notes": "Issue resolved in prior refactoring: mtu now dynamically fetched via bt_gatt_get_mtu(transport_state.conn) in lichen_ble_slip_send:538 (with proper \u003e3 check and comment). Static mtu from data_len-\u003etx_max_len and associated NULL risk removed from connected_cb (see also tr8q). Code matches the recommended fix. No functional change needed. Current main hash 6c9115b07",
+  "notes": "commit 7c3de7974: switched from info.le.data_len-\u003etx_max_len to bt_gatt_get_mtu(conn) in connected_cb; chunk_size now uses correct ATT MTU",
   "status": "closed",
   "priority": 2,
   "issue_type": "bug",
@@ -10,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T17:30:58.234449Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:08:43.971515752Z",
+  "updated_at": "2026-07-22T20:09:32.176290403Z",
   "started_at": "2026-07-22T20:07:44.900228203Z",
   "closed_at": "2026-07-22T20:08:19.27756736Z",
   "close_reason": "Fixed by replacing DLE tx_max_len with bt_gatt_get_mtu(conn) in ble_ipsp_transport.c. Verified in current codebase (commit 7962be0b9). Related NULL deref bead project-LICHEN-tr8q also resolved by same change."
