@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-0nxe",
+  "title": "codereview pass3: update write_signed_data to include current_channel after seq_num to fix signature",
+  "description": "rust/lichen-core/src/announce.rs:132 - signed_data_len and write_signed_data must incorporate current_channel per previous fix in project-LICHEN-3i18 and Python signed_data(). Otherwise signature mismatch persists. P0 security. codereview",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T17:17:18.725765513Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:17:18.725765513Z",
+  "labels": [
+    "codereview"
+  ]
+}
