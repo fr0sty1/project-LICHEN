@@ -171,7 +171,7 @@ def test_packet_rejects_oversized_payload() -> None:
     )
     pkt = IPv6Packet(
         header=IPv6Header("::1", "::2", NextHeader.UDP),
-        payload=b"x" * 65000,
+        payload=b"x" * 65530,
         extension_headers=[ext],
     )
     with pytest.raises(PacketError):

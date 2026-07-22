@@ -1949,7 +1949,6 @@ dependencies = [
  "log",
  "prost",
  "prost-build",
- "sha2 0.11.0",
 ]
 
 [[package]]

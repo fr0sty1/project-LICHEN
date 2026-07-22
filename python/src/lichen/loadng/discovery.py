@@ -115,13 +115,9 @@ class LoadngRouter:
         )
 
         if rreq.destination == self.node_address:
-<<<<<<< HEAD
             # We are the destination; reply with our own sequence number
             # (not the RREQ's seq_num, which belongs to the RREQ originator).
             self._own_seq = (self._own_seq + 1) & _SEQ_MAX
-=======
-            self._own_seq = (self._own_seq + 1) & 0xFFFF
->>>>>>> origin/integration/worker11-20260722
             rrep = RREP(
                 originator=self.node_address,
                 destination=rreq.originator,
@@ -130,13 +126,11 @@ class LoadngRouter:
             )
             return RreqResult(reply=rrep, reply_next_hop=from_neighbor)
 
-<<<<<<< HEAD
-<<<<<<< HEAD
         # Intermediate reply if we already hold a gradient to the destination.
-=======
->>>>>>> origin/integration/worker11-20260722
-=======
->>>>>>> origin/integration/worker8-20260722
+        # Set proxy flag (bit 0) so receivers can distinguish direct/authoritative
+        # RREPs (flags=0, from actual destination) from proxied ones (flags=0x01,
+        # from intermediate using cached gradient, potentially stale).
+        # Addresses bead project-LICHEN-ih8n.
         grad = self.gradient.lookup(rreq.destination, now)
         if grad is not None:
             rrep = RREP(
@@ -144,6 +138,7 @@ class LoadngRouter:
                 destination=rreq.originator,
                 seq_num=grad.seq_num,
                 hop_count=grad.hop_count,
+                flags=0x01,  # proxy/intermediate reply indicator
             )
             return RreqResult(reply=rrep, reply_next_hop=from_neighbor)
 

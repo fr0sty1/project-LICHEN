@@ -328,6 +328,16 @@ static void dispatch_frame(struct kiss_transport_ctx *ctx)
 				ctx->config.raw_rx_cb(ctx->rx_ctx.buf, ctx->rx_ctx.len,
 						      ctx->config.user_ctx);
 			}
+		} else if (port == KISS_PORT_LCI_IPV6) {
+			if (ctx->config.lci_ipv6_cb != NULL) {
+				ctx->config.lci_ipv6_cb(ctx->rx_ctx.buf, ctx->rx_ctx.len,
+							ctx->config.user_ctx);
+			}
+		} else if (port == KISS_PORT_LCI_CTRL) {
+			if (ctx->config.lci_ctrl_cb != NULL) {
+				ctx->config.lci_ctrl_cb(ctx->rx_ctx.buf, ctx->rx_ctx.len,
+							ctx->config.user_ctx);
+			}
 		} else {
 			LOG_WRN("KISS: data on unsupported port %u", port);
 		}
@@ -464,6 +474,10 @@ static int kiss_tx_frame(struct kiss_transport_ctx *ctx,
 			ctx->stats.tx_data_port0++;
 		} else if (port == KISS_PORT_LICHEN_RAW) {
 			ctx->stats.tx_data_port1++;
+		} else if (port == KISS_PORT_LCI_IPV6) {
+			ctx->stats.tx_data_lci_ipv6++;
+		} else if (port == KISS_PORT_LCI_CTRL) {
+			ctx->stats.tx_data_lci_ctrl++;
 		}
 		k_mutex_unlock(&ctx->stats_mutex);
 	} else {
