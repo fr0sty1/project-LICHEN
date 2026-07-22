@@ -3,7 +3,7 @@
   "title": "Support prefix DAO targets",
   "description": "Extend Rust Non-Storing DAO routing from host-only /128 targets to RFC 6550 prefix Targets. Route keys, source-route applicability, overlap/longest-prefix behavior, grouped Target/Transit processing, expiry/withdrawal, capacity accounting, node forwarding validation, and cross-implementation vectors must represent prefix length explicitly.",
   "acceptance_criteria": "Literal /0,/64,/127,/128 vectors parse and route correctly; senders emit canonical flags/length/bits while receivers ignore reserved and beyond-prefix bits per RFC 6550 and canonicalize internal keys; longest-prefix selection is deterministic; grouped prefixes support Target Descriptors, Path Sequence, lifetime, withdrawal, multiparent, replay and capacity bounds; Rust tests and three reviews pass; C/Python/spec/vector follow-ups are linked.",
-  "notes": "HUMAN: tunnel authorization design decision required before prefix DAO wire enablement per notes.",
+  "notes": "Reconciled prefix model from integration/rust-prefix-model into hardened routing.rs; RouteTarget canonicalization, longest-prefix lookup, grouped Target/Transit atomic snapshots, source-route egress paths, /0/64/127/128 vectors all pass in Rust. Wire prefix DAO remains disabled pending .9.9 tunnel auth design (human blocker). Updated tests, spec cross-refs in docs. 3 independent codereview passes found no P0-P2. cargo test/clippy clean for lichen-rpl and lichen-link. All related open issues fixed or linked as follow-ups.",
   "status": "open",
   "priority": 1,
   "issue_type": "feature",
@@ -11,7 +11,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-17T22:46:19.976924Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T05:12:09.463019921Z",
+  "updated_at": "2026-07-22T05:14:11.370577659Z",
   "started_at": "2026-07-18T20:11:04.032291Z",
   "dependencies": [
     {
