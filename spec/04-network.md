@@ -18,9 +18,10 @@
 
 | Type | Prefix | When Available | Routable To |
 |------|--------|----------------|-------------|
-| Link-local | fe80::/10 | Always | Direct neighbors |
-| ULA | fd00::/8 | DODAG root present | Entire mesh |
+| Link-local | fe80::/10 | After lichen_link_init() | Direct neighbors (control only) |
+| 02xx (Yggdrasil) | 0200::/7 | Always (self-derived from pubkey) | Mesh peers and internet gateways (Ed25519 per 06-security) |
 | GUA | 2000::/3 | BR with upstream prefix | Internet |
+| ULA | fd00::/8 | Optional (legacy) | Mesh (if configured) |
 
 All addresses share a stable IID derived from the node's Ed25519 public key using the unified derivation normatively specified in 06-security.md §8.5 (and draft-lichen-schnorr-00 once stabilized; see also 03-addressing.md and test/vectors/). This binds identity cryptographically with no new secrets or key exposure. Link-local addresses are restricted to after `lichen_link_init()` per the subsystem initialization dependency graph in AGENTS.md. Mesh peer routing uses Ed25519-derived IID consistent with the address classification table in 05-routing.md.
 **1. Link-Local -- Control Traffic (post-init)**
