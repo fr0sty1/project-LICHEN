@@ -960,7 +960,7 @@ mod tests {
 
         let data = [0xf9, 0x03, 0xff];
         let (val, _) = dec_f64(&data, 0).unwrap();
-        assert!((val - 6.091594696044922e-5).abs() < 1e-15);
+        assert!((val - 6.097555160522461e-5).abs() < 1e-15);
 
         let data = [0xf9, 0x80, 0x01];
         let (val, _) = dec_f64(&data, 0).unwrap();

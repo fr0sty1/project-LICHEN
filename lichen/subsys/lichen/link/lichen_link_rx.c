@@ -197,10 +197,13 @@ static int authenticate_inner_payload(struct lichen_link_rx_ctx *ctx,
 		struct tc_sha256_state_struct sha_state;
 		uint8_t hash[TC_SHA256_DIGEST_SIZE];
 
-		(void)tc_sha256_init(&sha_state);
-		(void)tc_sha256_update(&sha_state, ctx->peer_pubkey,
-				       SCHNORR48_PUBKEY_LEN);
-		(void)tc_sha256_final(hash, &sha_state);
+		if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS ||
+		    tc_sha256_update(&sha_state, ctx->peer_pubkey,
+				     SCHNORR48_PUBKEY_LEN) != TC_CRYPTO_SUCCESS ||
+		    tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
+			ret = -EIO;
+			goto cleanup;
+		}
 		memcpy(src_eui64, hash, LICHEN_EUI64_LEN);
 	} else {
 		ret = -LICHEN_EAUTH;

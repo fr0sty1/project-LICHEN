@@ -835,12 +835,18 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 		goto err_wipe;
 	}
 
-	uint8_t a_3[64];
+	/* A_3 = ["Encrypt0", h'', TH_3 || CRED_I] per RFC 9528 §4.4.2 / RFC 9052 §5.3
+	 * external_aad includes CRED for binding (matches Python reference impl)
+	 */
+	uint8_t ext_aad[64];
+	memcpy(ext_aad, ctx->th_3, 32);
+	memcpy(ext_aad + 32, ctx->ed_pubkey, 32);
+	uint8_t a_3[96];
 	ZCBOR_STATE_E(zse_a3, 0, a_3, sizeof(a_3), 0);
 	if (!zcbor_list_start_encode(zse_a3, 3) ||
 	    !zcbor_tstr_put_lit(zse_a3, "Encrypt0") ||
 	    !zcbor_bstr_encode_ptr(zse_a3, NULL, 0) ||
-	    !zcbor_bstr_encode_ptr(zse_a3, ctx->th_3, 32) ||
+	    !zcbor_bstr_encode_ptr(zse_a3, ext_aad, 64) ||
 	    !zcbor_list_end_encode(zse_a3, 3)) {
 		ret = -ENOMEM;
 		goto err_wipe;
@@ -1258,12 +1264,18 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 		goto err_wipe;
 	}
 
-	uint8_t a_3[64];
+	/* A_3 = ["Encrypt0", h'', TH_3 || CRED_I] per RFC 9528 §4.4.2 / RFC 9052 §5.3
+	 * external_aad includes CRED for binding (matches Python reference impl)
+	 */
+	uint8_t ext_aad[64];
+	memcpy(ext_aad, ctx->th_3, 32);
+	memcpy(ext_aad + 32, peer_pubkey, 32);
+	uint8_t a_3[96];
 	ZCBOR_STATE_E(zse_a3, 0, a_3, sizeof(a_3), 0);
 	if (!zcbor_list_start_encode(zse_a3, 3) ||
 	    !zcbor_tstr_put_lit(zse_a3, "Encrypt0") ||
 	    !zcbor_bstr_encode_ptr(zse_a3, NULL, 0) ||
-	    !zcbor_bstr_encode_ptr(zse_a3, ctx->th_3, 32) ||
+	    !zcbor_bstr_encode_ptr(zse_a3, ext_aad, 64) ||
 	    !zcbor_list_end_encode(zse_a3, 3)) {
 		ret = -ENOMEM;
 		goto err_wipe;

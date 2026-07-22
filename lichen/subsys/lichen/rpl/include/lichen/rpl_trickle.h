@@ -72,6 +72,8 @@ struct lichen_trickle {
 /**
  * @brief Initialize a Trickle timer.
  *
+ * @pre imin_ms > 0 (0 causes infinite busy-loop; see project-LICHEN-p00p)
+ *
  * @param t              Timer to initialize
  * @param imin_ms        Minimum interval in milliseconds
  * @param imax_doublings Number of times imin is doubled to reach max
