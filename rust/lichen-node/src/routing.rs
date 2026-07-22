@@ -101,13 +101,12 @@ impl NeighborTable {
             });
             return i;
         }
-        // Table full - evict oldest (wraparound-safe, tie-break by index for stability)
         let oldest = self
             .entries
             .iter()
             .enumerate()
             .filter_map(|(i, e)| e.as_ref().map(|n| (i, n.last_seen_ms)))
-            .max_by_key(|(i, t)| (now_ms.wrapping_sub(*t), *i))
+            .max_by_key(|(i, t)| (now_ms.wrapping_sub(*t), MAX_NEIGHBORS - *i))
             .map(|(i, _)| i)
             .unwrap_or(0);
         self.entries[oldest] = Some(Neighbor {
