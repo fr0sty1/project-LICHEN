@@ -2,6 +2,7 @@
   "id": "project-LICHEN-qc8e",
   "title": "[kimi-review] 2357144: [SEVERITY: low] The comment references `parse_data:794` — a ",
   "description": "Commit: 235714407\nMessage: docs(meshtastic): clarify has_portnum contract in adapter (l5ym)\n\nFinding: [SEVERITY: low] The comment references `parse_data:794` — a hard-coded line number in documentation is fragile and will silently become wrong as the referenced file evolves. It also omits the file path, so `parse_data` is ambiguous (which file? which module?). Prefer referencing the function by name only, or the file path plus function name.",
+  "notes": "Commit: ec808ac79",
   "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T21:57:59.535714583Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T22:26:14.25698054Z",
+  "updated_at": "2026-07-22T22:26:39.763069489Z",
   "started_at": "2026-07-22T22:26:14.25698054Z",
   "lease_expires_at": "2026-07-22T22:31:14.25698054Z",
   "heartbeat_at": "2026-07-22T22:26:14.25698054Z"
