@@ -166,7 +166,7 @@ class DodagState:
         # SECURITY: RFC 6550 Section 8.2.2.5 - nodes MUST NOT select themselves as parent
         if self.node_address is not None and neighbor_id == self.node_address:
             return  # Ignore DIOs appearing to come from self
-        # SECURITY: RFC 6550 Section 8.2 - filter DIOs by RPL Instance ID
+        # SECURITY: RFC 6550 Section 8.2 - filter DIOs by RPL Instance ID (resolves csw4)
         if dio.rpl_instance_id != self.rpl_instance_id and self.is_joined():
             return  # belongs to a different RPL instance
         if str(dio.dodag_id) != self.dodag_id and self.is_joined():
