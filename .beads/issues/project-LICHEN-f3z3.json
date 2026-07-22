@@ -11,5 +11,6 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-13T04:47:30.543812Z",
   "closed_at": "2026-07-13T04:47:30.543812Z",
-  "close_reason": "Closed"
+  "close_reason": "Closed",
+  "notes": "Fixed with stats_mutex synchronization in slip_transport.c (see commit 57c611c5d). Attribution and closure by Mark Atwood on 2026-07-13 preserved. Addresses kimi-review attribution rewrite finding (project-LICHEN-nsjv)."
 }
