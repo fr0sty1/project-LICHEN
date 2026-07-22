@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-1etk",
+  "title": "[kimi-review] 9090d61: [SEVERITY: high] Commit claims to fix timer wraparound handl",
+  "description": "Commit: 9090d61e9\nMessage: fix(rpl): handle timer wraparound in parent expiry\n\nFinding: [SEVERITY: high] Commit claims to fix timer wraparound handling in RPL parent expiry, but contains zero code changes. Either the actual changes were omitted from this review request, or the commit is empty and the fix does not exist.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:04:11.553942965Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:04:11.553942965Z"
+}
