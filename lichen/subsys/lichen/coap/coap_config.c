@@ -376,7 +376,7 @@ int lichen_config_decode_radio_cbor(const uint8_t *buf, size_t len,
 		} else if (key.len == sizeof(KEY_BW_KHZ) - 1 &&
 			   memcmp(key.value, KEY_BW_KHZ, key.len) == 0) {
 			uint32_t val;
-			if (!zcbor_uint32_decode(state, &val)) {
+			if (!zcbor_uint32_decode(state, &val) || val == 0 || val > 65535U) {
 				(void)zcbor_list_map_end_force_decode(state);
 				return -EINVAL;
 			}

@@ -613,7 +613,7 @@ static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 	cbor_put_key(buf, &off, "keys");
 
 	/* Get all keys */
-	struct lichen_key_entry entries[CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES];
+	static struct lichen_key_entry entries[CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES];
 	size_t n = lichen_key_store_list(entries, ARRAY_SIZE(entries));
 
 	/* Reserve a fixed-width definite array header; patch its count after
