@@ -1,0 +1,11 @@
+{
+  "id": "project-LICHEN-4emh",
+  "title": "[codereview-pass2] Security: CCP16 Kconfig select for SCHC",
+  "description": "lichen/subsys/lichen/link/Kconfig:117 - Good addition of select LICHEN_SCHC ensures compressed control messages for density metrics can't be disabled independently. No crypto bypass possible. Pass 2/3 correctness verified, no missing selects found in TDMA block. No fabrication.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:25:20.805729679Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:25:20.805729679Z"
+}
