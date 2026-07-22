@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-ail8.4",
+  "title": "Follow-up from worker13 merge of e6e3c12b9",
+  "description": "Any new issues discovered during 3 codereview passes on merged changes from worker13",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T20:04:06.26122602Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T20:04:06.26122602Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ail8.4",
+      "depends_on_id": "project-LICHEN-ail8",
+      "type": "parent-child",
+      "created_at": "2026-07-22T20:04:06.335303142Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
