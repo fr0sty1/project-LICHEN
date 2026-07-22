@@ -2,15 +2,15 @@
   "id": "project-LICHEN-5y5a",
   "title": "[merge-conflict] worktree-worker23: xiao_s3_wio_sx1262.overlay",
   "notes": "Commit: 3c58ff5",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:49:54.404510723Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:52:28.010535496Z",
+  "updated_at": "2026-07-22T23:52:49.007268836Z",
   "started_at": "2026-07-22T23:51:41.36619571Z",
-  "lease_expires_at": "2026-07-22T23:56:41.36619571Z",
-  "heartbeat_at": "2026-07-22T23:51:41.36619571Z"
+  "closed_at": "2026-07-22T23:52:49.007268836Z",
+  "close_reason": "Resolved merge conflict in xiao_s3_wio_sx1262.overlay by cleaning retired header to match canonical version in main. Updated worktree-worker23 branch with commit 3c58ff5 and pushed."
 }
