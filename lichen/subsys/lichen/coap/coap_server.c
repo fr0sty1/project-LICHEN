@@ -239,18 +239,18 @@ static int neighbors_get(struct coap_resource *resource,
 
 	if (s_handlers.neighbors == NULL) {
 		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
+					   COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
 	}
 
 	len = s_handlers.neighbors(payload, sizeof(payload));
 	if (len < 0) {
 		LOG_ERR("Neighbors callback failed: %d", len);
 		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
+					   COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
 	}
 
 	return lichen_coap_respond(resource, request, addr, addr_len,
-			      COAP_RESPONSE_CODE_CONTENT, payload, len);
+			      COAP_RESPONSE_CODE_CONTENT, 60, payload, len);
 }
 
 static const char * const neighbors_path[] = { "neighbors", NULL };
@@ -285,14 +285,14 @@ static int key_get(struct coap_resource *resource,
 
 	if (s_handlers.key == NULL) {
 		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
+					   COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
 	}
 
 	ret = s_handlers.key(pubkey);
 	if (ret < 0) {
 		LOG_ERR("Key callback failed: %d", ret);
 		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
+					   COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
 	}
 
 	/*
@@ -333,7 +333,7 @@ static int key_get(struct coap_resource *resource,
 	idx += 32;
 
 	return lichen_coap_respond(resource, request, addr, addr_len,
-			      COAP_RESPONSE_CODE_CONTENT, payload, idx);
+			      COAP_RESPONSE_CODE_CONTENT, 60, payload, idx);
 }
 
 static const char * const key_path[] = { "key", NULL };

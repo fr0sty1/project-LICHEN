@@ -1435,10 +1435,10 @@ static int lichen_l2_send_inner(struct net_if *iface, struct net_pkt *pkt)
 	LOG_DBG("lichen_l2: TX frame %zu bytes", frame_len);
 
 	/* Send via LoRa */
-	ret = lichen_lora_l2_tx(tx_frame_buf, frame_len);
+	ret = lichen_lora_l2_tx(tx_frame_buf, frame_len, 0U); /* CH0 control/fallback per CCP-9 */
 #else
 	/* No LICHEN link layer - send raw IPv6 (for testing) */
-	ret = lichen_lora_l2_tx(tx_ipv6_buf, pkt_len);
+	ret = lichen_lora_l2_tx(tx_ipv6_buf, pkt_len, 0U);
 #endif
 
 	k_mutex_unlock(&tx_mutex);

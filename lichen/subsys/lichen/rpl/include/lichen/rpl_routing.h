@@ -78,7 +78,13 @@ LICHEN_WARN_UNUSED_RESULT
 int lichen_rpl_srh_parse(struct lichen_rpl_srh *_Nonnull srh,
 			 const uint8_t *_Nonnull data, size_t len);
 
-uint8_t lichen_rpl_srh_hdr_ext_len(uint8_t num_addresses);
+/**
+ * @brief Hdr Ext Len for uncompressed RFC 6554 SRH (n*2).
+ */
+static inline uint8_t lichen_rpl_srh_hdr_ext_len(uint8_t num_addresses)
+{
+	return num_addresses * 2u;
+}
 
 /* ── Routing Table ─────────────────────────────────────────────────────────── */
 

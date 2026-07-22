@@ -22,15 +22,11 @@ static struct senml_pack s_senml_pack;
 static K_MUTEX_DEFINE(s_dtn_buf_mutex);
 static K_MUTEX_DEFINE(s_senml_pack_mutex);
 static struct k_work_delayable s_dtn_expire_work;
-<<<<<<< HEAD
 static uint32_t s_last_deaddrop[16] = {0};
-
-=======
-static uint32_t s_last_confessions;
->>>>>>> origin/worktree-worker1
-
+static uint32_t s_last_confessions = 0;
 
 static uint32_t dtn_get_unix_time(void) { return (uint32_t)(k_uptime_get() / 1000); }
+
 static void dtn_expire_work_handler(struct k_work *work) { ARG_UNUSED(work); k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER); lichen_dtn_expire_old(&s_dtn_buf, dtn_get_unix_time()); k_mutex_unlock(&s_dtn_buf_mutex); k_work_reschedule(&s_dtn_expire_work, K_SECONDS(30)); }
 int lichen_coap_deaddrop_register(const struct lichen_deaddrop_provider *provider) {
 	if (provider == NULL) return -EINVAL;

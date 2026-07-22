@@ -397,12 +397,8 @@ static void kiss_rx_thread_fn(void *p1, void *p2, void *p3)
 
 	while (atomic_get(&ctx->shutdown) == 0) {
 		k_sem_take(&ctx->rx_sem, K_FOREVER);
-<<<<<<< HEAD
 
 		if (atomic_get(&ctx->shutdown) != 0) {
-=======
-		if (ctx->shutdown) {
->>>>>>> origin/worktree-worker1
 			break;
 		}
 		while (!ctx->shutdown && (n = ring_buf_get(&ctx->rx_ring, buf, sizeof(buf))) > 0) {

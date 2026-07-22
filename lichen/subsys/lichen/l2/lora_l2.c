@@ -1130,7 +1130,7 @@ static int lora_perform_cca(const struct device *dev, uint32_t timeout_ms)
     return 0;
 }
 
-int lichen_lora_l2_tx(const uint8_t *data, size_t len)
+int lichen_lora_l2_tx(const uint8_t *data, size_t len, uint8_t channel)
 {
     if (data == NULL) {
         LOG_ERR("lora_l2: TX data pointer is NULL");
@@ -1145,6 +1145,18 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
     if (len > LICHEN_LORA_MAX_PHY_PAYLOAD) {
         LOG_ERR("lora_l2: packet too large (%zu > %d)", len, LICHEN_LORA_MAX_PHY_PAYLOAD);
         return -EMSGSIZE;
+    }
+
+    /* Multi-channel coordination/scheduler (da2q.2 / CCP-9/12). Use announce rx_channel
+     * or synchronized_hop for data channels; fallback to CH0 for unknown peers/control.
+     * Kconfig gates feature; channel param ignored if disabled. Stub scheduler for now.
+     */
+    uint8_t effective_channel = 0;
+    if (IS_ENABLED(CONFIG_LICHEN_MULTI_CHANNEL_ENABLED)) {
+        if (channel < CONFIG_LICHEN_N_CHANNELS) {
+            effective_channel = channel;
+        }
+        /* TODO: scheduler using announce.rx_channel and synchronized_hop_channel(hash_32(sfn, eui) % N) */
     }
 #if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
     if (!lichen_duty_cycle_can_transmit(&lora_data.duty, k_uptime_get(), 50)) return -EBUSY;
