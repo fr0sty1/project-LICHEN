@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-m5jm.2",
+  "title": "Create coap_dtn.h with resource handlers and init function following AGENTS.md lichen_coap/oscore/rpl init graph; update CMakeLists.txt",
+  "description": "Header in lichen/subsys/lichen/coap/include/lichen/coap_dtn.h. Declare lichen_ prefixed init and handlers. No comments. Match existing coap_* style but stripped per guidelines. Update CMake for include if needed. 3 codereview passes required before close.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:18:12.242942006Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:18:12.242942006Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-m5jm.2",
+      "depends_on_id": "project-LICHEN-m5jm",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:18:12.336678186Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
