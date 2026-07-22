@@ -141,6 +141,16 @@ class TestCoordsRoundTrip:
         assert abs(result[0] - 10.0) < 1e-4
         assert abs(result[1] - 20.0) < 1e-4
 
+    def test_decode_concatenated_tlv(self):
+        """Supports concatenated TLVs; finds field even if not first."""
+        coords = encode_coords(37.7749, -122.4194)
+        congestion = encode_congestion(5)
+        dtn = encode_dtn_expiry(1720000000)
+        concatenated = congestion + coords + dtn
+        assert decode_coords(concatenated) == (37.7749, -122.4194)
+        assert decode_congestion(concatenated) == 5
+        assert decode_dtn_expiry(concatenated) == 1720000000
+
 
 class TestCongestionEncoding:
     """Tests for congestion encoding (spec 11.4)."""

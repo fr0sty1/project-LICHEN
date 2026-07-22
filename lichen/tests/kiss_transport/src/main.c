@@ -40,6 +40,22 @@ static void raw_rx_cb(const uint8_t *data, size_t len, void *user_ctx)
 	}
 }
 
+/**
+ * @brief Get test configuration with all callbacks for consistency across rx_*, cmd_*, persistence, slottime tests.
+ *
+ * Explicitly sets hw_cmd_cb = NULL for complete LCI coverage. Replaces duplicated struct initializers.
+ */
+static struct kiss_transport_config get_test_config(void)
+{
+	struct kiss_transport_config config = {
+		.ax25_rx_cb = ax25_rx_cb,
+		.raw_rx_cb = raw_rx_cb,
+		.hw_cmd_cb = NULL,
+		.user_ctx = NULL,
+	};
+	return config;
+}
+
 static void reset_test_state(void *fixture)
 {
 	ARG_UNUSED(fixture);
@@ -244,7 +260,7 @@ ZTEST(kiss_transport, test_encode_cmd_byte_escaped)
 ZTEST(kiss_transport, test_decode_simple)
 {
 	struct kiss_decode_ctx ctx;
-	uint8_t frame[] = { KISS_FEND, 0x00, 0x01, 0x02, 0x03, KISS_FEND };
+	const uint8_t frame[] = { KISS_FEND, 0x00, 0x01, 0x02, 0x03, KISS_FEND };
 	int ret;
 
 	kiss_decode_init(&ctx);
@@ -271,8 +287,7 @@ ZTEST(kiss_transport, test_decode_simple)
 ZTEST(kiss_transport, test_decode_escape)
 {
 	struct kiss_decode_ctx ctx;
-	/* Frame with escaped bytes: FEND, CMD, (FESC TFEND)=0xC0, (FESC TFESC)=0xDB, FEND */
-	uint8_t frame[] = { KISS_FEND, 0x00, KISS_FESC, KISS_TFEND,
+	const uint8_t frame[] = { KISS_FEND, 0x00, KISS_FESC, KISS_TFEND,
 			    KISS_FESC, KISS_TFESC, KISS_FEND };
 	int ret;
 
@@ -297,8 +312,7 @@ ZTEST(kiss_transport, test_decode_escape)
 ZTEST(kiss_transport, test_decode_invalid_escape)
 {
 	struct kiss_decode_ctx ctx;
-	/* Invalid: FESC followed by something other than TFEND/TFESC */
-	uint8_t frame[] = { KISS_FEND, 0x00, KISS_FESC, 0x42, KISS_FEND };
+	const uint8_t frame[] = { KISS_FEND, 0x00, KISS_FESC, 0x42, KISS_FEND };
 	int ret;
 
 	kiss_decode_init(&ctx);
@@ -321,7 +335,7 @@ ZTEST(kiss_transport, test_decode_invalid_escape)
 ZTEST(kiss_transport, test_decode_empty)
 {
 	struct kiss_decode_ctx ctx;
-	uint8_t frame[] = { KISS_FEND, KISS_FEND };
+	const uint8_t frame[] = { KISS_FEND, KISS_FEND };
 	int ret;
 
 	kiss_decode_init(&ctx);
@@ -339,8 +353,7 @@ ZTEST(kiss_transport, test_decode_empty)
 ZTEST(kiss_transport, test_decode_cmd_only)
 {
 	struct kiss_decode_ctx ctx;
-	/* Frame with just command byte, no data */
-	uint8_t frame[] = { KISS_FEND, 0x01, KISS_FEND };  /* TxDelay cmd */
+	const uint8_t frame[] = { KISS_FEND, 0x01, KISS_FEND };  /* TxDelay cmd */
 	int ret;
 
 	kiss_decode_init(&ctx);
@@ -389,15 +402,9 @@ ZTEST(kiss_transport, test_set_params_null)
  */
 ZTEST(kiss_transport, test_rx_ax25)
 {
-	/* Initialize transport first */
-	struct kiss_transport_config config = {
-		.ax25_rx_cb = ax25_rx_cb,
-		.raw_rx_cb = raw_rx_cb,
-		.user_ctx = NULL,
-	};
+	struct kiss_transport_config config = get_test_config();
 	int ret = kiss_transport_init(&config);
-	/* May already be initialized */
-	zassert_true(ret == 0 || ret == -EALREADY, "Init should succeed or already be done");
+	zassert_ok(ret);
 
 	/* KISS frame: port 0, data command, payload "TEST" */
 	uint8_t frame[] = { KISS_FEND, 0x00, 'T', 'E', 'S', 'T', KISS_FEND };
@@ -415,14 +422,9 @@ ZTEST(kiss_transport, test_rx_ax25)
  */
 ZTEST(kiss_transport, test_rx_raw)
 {
-	/* Initialize transport first */
-	struct kiss_transport_config config = {
-		.ax25_rx_cb = ax25_rx_cb,
-		.raw_rx_cb = raw_rx_cb,
-		.user_ctx = NULL,
-	};
+	struct kiss_transport_config config = get_test_config();
 	int ret = kiss_transport_init(&config);
-	zassert_true(ret == 0 || ret == -EALREADY, "Init should succeed or already be done");
+	zassert_ok(ret);
 
 	/* KISS frame: port 1 (0x10), data command, payload */
 	uint8_t frame[] = { KISS_FEND, 0x10, 0xAA, 0xBB, 0xCC, KISS_FEND };
@@ -441,16 +443,11 @@ ZTEST(kiss_transport, test_rx_raw)
  */
 ZTEST(kiss_transport, test_cmd_txdelay)
 {
-	struct kiss_transport_config config = {
-		.ax25_rx_cb = ax25_rx_cb,
-		.raw_rx_cb = raw_rx_cb,
-		.user_ctx = NULL,
-	};
+	struct kiss_transport_config config = get_test_config();
 	int ret = kiss_transport_init(&config);
-	zassert_true(ret == 0 || ret == -EALREADY, "Init ok");
+	zassert_ok(ret);
 
-	/* TxDelay command: set to 100 (1000ms) */
-	uint8_t frame[] = { KISS_FEND, KISS_CMD_TXDELAY, 100, KISS_FEND };
+	const uint8_t frame[] = { KISS_FEND, KISS_CMD_TXDELAY, 100, KISS_FEND };
 
 	kiss_transport_test_inject_rx(frame, sizeof(frame));
 
@@ -465,16 +462,11 @@ ZTEST(kiss_transport, test_cmd_txdelay)
  */
 ZTEST(kiss_transport, test_cmd_persistence)
 {
-	struct kiss_transport_config config = {
-		.ax25_rx_cb = ax25_rx_cb,
-		.raw_rx_cb = raw_rx_cb,
-		.user_ctx = NULL,
-	};
+	struct kiss_transport_config config = get_test_config();
 	int ret = kiss_transport_init(&config);
-	zassert_true(ret == 0 || ret == -EALREADY, "Init ok");
+	zassert_ok(ret);
 
-	/* Persistence command: set to 128 (p=0.5) */
-	uint8_t frame[] = { KISS_FEND, KISS_CMD_PERSISTENCE, 128, KISS_FEND };
+	const uint8_t frame[] = { KISS_FEND, KISS_CMD_PERSISTENCE, 128, KISS_FEND };
 
 	kiss_transport_test_inject_rx(frame, sizeof(frame));
 
@@ -489,16 +481,11 @@ ZTEST(kiss_transport, test_cmd_persistence)
  */
 ZTEST(kiss_transport, test_cmd_slottime)
 {
-	struct kiss_transport_config config = {
-		.ax25_rx_cb = ax25_rx_cb,
-		.raw_rx_cb = raw_rx_cb,
-		.user_ctx = NULL,
-	};
+	struct kiss_transport_config config = get_test_config();
 	int ret = kiss_transport_init(&config);
-	zassert_true(ret == 0 || ret == -EALREADY, "Init ok");
+	zassert_ok(ret);
 
-	/* SlotTime command: set to 20 (200ms) */
-	uint8_t frame[] = { KISS_FEND, KISS_CMD_SLOTTIME, 20, KISS_FEND };
+	const uint8_t frame[] = { KISS_FEND, KISS_CMD_SLOTTIME, 20, KISS_FEND };
 
 	kiss_transport_test_inject_rx(frame, sizeof(frame));
 

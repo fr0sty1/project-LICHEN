@@ -31,21 +31,21 @@
 
 ### 8.3. Link-Layer Signatures
 
-Every originated frame carries a Schnorr signature for sender authentication.
+Every originated frame carries a Schnorr signature for sender authentication (full spec and test vectors in draft-lichen-schnorr-00.md; security considerations cross-checked in its §6).
 
 **Signature Scheme: Schnorr (e₁₂₈, s) -- 48 bytes**
 
 Standard Ed25519 signatures are 64 bytes, prohibitive for LoRa. We use a
-well-known Schnorr variant with truncated challenge, providing 128-bit security
-in 48 bytes.
+well-known Schnorr variant with 16-byte truncated challenge providing 128-bit
+security (EUF-CMA per draft §6.1). Deterministic nonce (RFC 6979) REQUIRED.
 
 **Signing (at origin):**
 ```
-r = random scalar (or deterministic: H(privkey || msg))
+r = H(privkey || msg) mod L         // deterministic per RFC6979
 R = r · B                           // B is curve basepoint
-e = H(R || pubkey || msg)           // full 256-bit hash
-s = r + e · privkey (mod L)         // L is curve order
-signature = e[0:16] || s            // 16 + 32 = 48 bytes
+e = H(R || pubkey || msg)           // full hash
+s = (r + e · privkey) mod L
+signature = e[0:16] || s[0:32]      // 16+32=48 bytes
 ```
 
 **Verification:**
@@ -57,7 +57,7 @@ e' = H(R' || pubkey || msg)
 valid = (e'[0:16] == e_received)
 ```
 
-**Hash function:** SHA-512, truncated per Ed25519 convention.
+**Hash function:** SHA-512 (see draft-lichen-schnorr-00.md:3.2,6 for truncation, security level, nonce, limitations vs Ed25519).
 
 ### 8.4. Signed vs Relay-Mutable Fields
 
@@ -131,38 +131,53 @@ high-security deployments, enable per-hop verification (costs CPU, not bytes).
 - Trust is per-peer, not per-network
 - Packet overhead must not increase for verified peers
 
+**Unified Ed25519 Identity Derivation (no-ULA model, zt3c.1/nqz6):**
+
+All node identities, addresses, and cryptographic material derive from **one Ed25519 keypair per node**. This is normative. No ULA (fd00::/8), no EUI-derived IIDs, no separate keys or prefixes. Matches 04-network.md simplified addressing (link-local + 02xx only). See test/vectors/unified-derivation.json (and schnorr48.json) for canonical test vectors; all impls (Rust, Zephyr, Python) MUST match exactly. Yggdrasil interop via compatible derivation at BRs.
+
+**Normative Derivation Steps:**
+
+1. Generate/load Ed25519 keypair from 32-byte seed (RFC8032 or hardware RNG; persistent across boots).
+2. pubkey = 32-byte compressed Ed25519 public key.
+3. hash = SHA-512(pubkey)  // 64 bytes
+4. IID = hash[0:8]; IID[0] &= 0xfd;  // clear U/L bit (bit 1)
+5. 02xx address: apply Yggdrasil derivation rules to hash[0:16] (set prefix 0x02, specific bit flips per Yggdrasil spec for valid 0200::/7 address; full address uses derived IID).
+6. Same keypair used for:
+   - Schnorr48 link signatures (pubkey for verification)
+   - OSCORE contexts (HKDF-SHA-256 from key material per RFC8613)
+   - TOFU pinning (full pubkey bound to 02xx address)
+   - BR Yggdrasil daemon (same private key for seamless backbone interop)
+
+**Properties (no-ULA model):**
+- Stable global 02xx address works for mesh routing, applications, and Yggdrasil bridging without prefix management.
+- Eliminates ULA/GUA selection logic, multiple address state, and PIO prefix distribution for ULA.
+- TOFU binds pubkey <-> 02xx address; mismatch or key change = MITM alert.
+- Privacy: stable IIDs (no rotation); see privacy analysis in section 8.7.
+
 **Bootstrap:**
 
 *Self-Provisioned (default):*
-1. Device generates Ed25519 keypair at first boot
-2. Public key bound to node identifier (EUI-64 -> IPv6 IID)
-3. Private key stored securely, never transmitted
+1. Device generates/persists Ed25519 keypair at first boot.
+2. Derives IID + 02xx address deterministically from pubkey.
+3. Private key never leaves device.
 
-*BR-Provisioned (optional):*
-1. Device boots in commissioning mode (no keypair)
-2. Border router provisions keypair via secure channel
-3. IID may be assigned by border router (not derived from EUI-64)
+*BR-Provisioned (optional):* BR provisions seed/keypair over encrypted channel (LCI, BLE, USB); node derives addresses identically.
 
-See "BR-Provisioned" section below for full provisioning flow.
+**Trust Establishment:**
 
-**Trust Establishment (Layered):**
-
-Implementations MUST support TOFU. Other methods are OPTIONAL.
+TOFU pins full pubkey to 02xx address (not IID). Key change for a given 02xx address is always treated as potential MITM.
 
 | Method | Infrastructure | Trust Level | Use Case |
 |--------|---------------|-------------|----------|
-| TOFU | None | Pinned | Default, works offline |
-| BR-Provisioned | Border Router | Delegated | Managed fleets, enterprise |
-| DANE | DNSSEC | Verified | Internet-connected nodes |
-| PKIX | CA | Verified | Enterprise deployments |
+| TOFU | None | Pinned (key<->02xx) | Default, offline meshes |
+| DANE | DNSSEC | Verified | Internet-reachable nodes |
+| PKIX/ACME | CA/out-of-band | Verified | Enterprise deployments |
 
-**1. TOFU (Trust On First Use) -- Baseline**
+**1. TOFU Baseline (updated for no-ULA unified identity)**
 
-- On first contact, accept peer's public key and pin it
-- Bind key to peer's IPv6 IID (derived from EUI-64)
-- On subsequent contacts, verify key matches pinned value
-- Key change -> reject and alert (potential MITM or hardware swap)
-- Works entirely offline, no external infrastructure
+- First contact: receive pubkey + signature, derive 02xx, verify binding, pin (pubkey, 02xx, IID).
+- Subsequent contacts: verify Schnorr signature and address-key binding.
+- Works with or without Yggdrasil gateway/BR.
 
 ```
 Key Store Entry:
@@ -458,7 +473,7 @@ Private keys MUST be stored in:
 
 Receivers track per-sender (epoch, seqnum) state with a 32-entry sliding
 window for out-of-order tolerance. Epoch persisted to flash; increments
-on wrap or reboot. See section 4.4 in Physical and Link Layers.
+on wrap or reboot. See 02-physical-link.md:4.4 (and draft-lichen-link-01.md:5.2).
 
 ### 15.4. Known Limitations
 
@@ -471,18 +486,14 @@ on wrap or reboot. See section 4.4 in Physical and Link Layers.
 
 LICHEN does not implement MAC/EUI-64 randomization or IPv6 privacy
 addressing (RFC 4941 temporary addresses, RFC 7217 opaque IIDs), and
-implementations MUST NOT add them. Addresses are stable and
-hardware-derived (section 6.2 in Network Layer).
+implementations MUST NOT add them. Addresses (IID and 02xx) are stable,
+derived from the Ed25519 keypair (unified derivation in 8.5; no-ULA model per 04-network.md:6.1).
 
 **It would break the protocol:**
 
-- Root election is deterministic on lowest EUI-64 (section 6.1 in Network
-  Layer). Rotating addresses destabilizes election.
-- Short-address assignment binds `hash_32(0, EUI-64)` (updated link-layer hash_32(sfn,key) per CCP-15.8.3 / 02a-coordinated-capacity.md:253) to a public key in a
-  mesh-wide table (section 4.5 in Physical and Link Layers). Rotation
-  forces continual DAD and table churn on an airtime-starved link.
-- Replay windows (15.3) and signature caching (8.6) are per-sender state
-  keyed on stable identity.
+- Root election is deterministic on lowest IID (from key; 04-network.md:6.1). Rotating addresses destabilizes election.
+- Short-address assignment binds hash_32(EUI-64,0) using SipHash-2-4(key=0x4c494348454e) (per 02-physical-link.md:202, 02a-coordinated-capacity.md; no CRC16; FNV retained per bo37/vfl0 current impls) to the public key-derived IID in mesh-wide coordinator table. Rotation forces continual DAD and table churn on airtime-starved link.
+- Replay windows, signature caching (8.5), and TOFU pinning are per-sender state keyed on stable pubkey/IID/02xx binding.
 
 **It would not provide privacy anyway:**
 

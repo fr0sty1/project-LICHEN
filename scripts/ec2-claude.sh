@@ -38,6 +38,12 @@ USE_INSTANCE_CONNECT="${EC2_CLAUDE_USE_INSTANCE_CONNECT:-true}"
 # Subnet in us-west-2c (same AZ as EBS volume) - discovered automatically if not set
 SUBNET_ID="${EC2_CLAUDE_SUBNET:-}"
 
+# Security group and run ID (reconciled with other ec2-*.sh scripts)
+CALLER_IP="${EC2_CALLER_IP:-$(curl -s -m 5 https://checkip.amazonaws.com || echo '0.0.0.0')}"
+RUN_ID="claude-$(date +%s)-$$"
+SG_ID=""
+KNOWN_HOSTS="/tmp/lichen-known-hosts-$$.tmp"
+
 # EBS mount configuration
 DEVICE_NAME="/dev/xvdf"
 MOUNT_POINT="/mnt/lichen-zephyr"
@@ -47,9 +53,9 @@ REPO_URL="${EC2_CLAUDE_REPO:-git@github.com:MarkAtwood/project-LICHEN.git}"
 REPO_BRANCH="${EC2_CLAUDE_BRANCH:-main}"
 WORKSPACE_DIR="/mnt/lichen-zephyr/workspace"
 
-# SSH options
+# SSH options (now strict with verified host key per fleet scripts)
 SSH_USER="ec2-user"
-SSH_OPTS="-o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR"
+SSH_OPTS="-o ConnectTimeout=10 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$KNOWN_HOSTS -o GlobalKnownHostsFile=/dev/null -o HostKeyAlgorithms=ssh-ed25519 -o LogLevel=ERROR"
 
 # Timeouts (seconds)
 INSTANCE_TIMEOUT=300
@@ -196,8 +202,25 @@ cleanup() {
         done
     fi
 
+    # Cleanup security group (reconciled with fleet scripts; uses tags for safety)
+    if [[ -n "$SG_ID" ]]; then
+        log_info "Cleaning up security group $SG_ID..."
+        # Verify tag before delete (per AWS guardrails)
+        local sg_tags
+        sg_tags=$(aws_cmd ec2 describe-tags --filters "Name=resource-id,Values=$SG_ID" --query 'Tags[?Key==`Project`].Value|[0]' --output text 2>/dev/null)
+        if [[ "$sg_tags" == "LICHEN" ]]; then
+            aws_cmd ec2 delete-security-group --group-id "$SG_ID" >/dev/null 2>&1 || true
+            log_ok "Security group $SG_ID deleted"
+        else
+            log_warn "Refusing to delete unverified SG $SG_ID (missing LICHEN tag)"
+        fi
+    fi
+
     # Delete SQS queue
     delete_sqs_queue
+
+    # Clean temp files
+    rm -f "$KNOWN_HOSTS" 2>/dev/null || true
 
     log_ok "Cleanup complete"
     exit $exit_code
@@ -299,6 +322,9 @@ wait_ssh_ready() {
         # Refresh instance connect key (valid for 60s)
         send_ssh_key 2>/dev/null || true
 
+        # Independently verify & cache host key for strict checking (repairs SSH readiness)
+        ssh-keyscan -t ed25519 "$host" >> "$KNOWN_HOSTS" 2>/dev/null || true
+
         if ssh $SSH_OPTS -i "$SSH_KEY_PATH" "${SSH_USER}@${host}" 'true' 2>/dev/null; then
             return 0
         fi
@@ -310,6 +336,39 @@ wait_ssh_ready() {
     echo >&2
     log_error "Timeout waiting for SSH (${timeout}s)"
     return 1
+}
+
+# === Helper: Create Security Group (reconciles with ec2-*.sh fleet scripts) ===
+create_security_group() {
+    if [[ -n "${EC2_CLAUDE_SG:-}" ]]; then
+        SG_ID="$EC2_CLAUDE_SG"
+        log_info "Using provided security group: $SG_ID"
+        return 0
+    fi
+
+    local sg_name="lichen-claude-${RUN_ID}"
+    log_info "Creating temporary security group for SSH access..."
+
+    if ! SG_ID=$(aws_cmd ec2 create-security-group \
+            --group-name "$sg_name" \
+            --description "LICHEN claude ephemeral ARM builder" \
+            --tag-specifications "ResourceType=security-group,Tags=[{Key=Project,Value=LICHEN},{Key=Purpose,Value=claude-builder},{Key=LaunchedBy,Value=ec2-claude-sh},{Key=RunId,Value=$RUN_ID}]" \
+            --query 'GroupId' --output text 2>/dev/null); then
+        SG_ID=$(aws_cmd ec2 describe-security-groups \
+            --filters "Name=group-name,Values=$sg_name" "Name=tag:RunId,Values=$RUN_ID" \
+                      "Name=tag:Project,Values=LICHEN" \
+            --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null)
+    fi
+
+    if [[ -z "$SG_ID" || "$SG_ID" == "None" ]]; then
+        log_error "Could not create or reconcile security group"
+        exit 1
+    fi
+
+    aws_cmd ec2 authorize-security-group-ingress \
+        --group-id "$SG_ID" --protocol tcp --port 22 --cidr "${CALLER_IP}/32" >/dev/null
+
+    log_ok "Security group $SG_ID ready (SSH from ${CALLER_IP}/32)"
 }
 
 # === Check prerequisites ===
@@ -339,6 +398,13 @@ check_prerequisites() {
 
     # Verify AWS credentials work
     check_aws_account
+
+    # Caller IP for security group (used for strict ingress)
+    if [[ "$CALLER_IP" == "0.0.0.0" ]]; then
+        log_warn "Could not detect public IP; using open ingress (less secure)"
+        CALLER_IP="0.0.0.0"
+    fi
+    log_info "Caller IP: $CALLER_IP (for SG ingress)"
 
     # Verify EBS volume exists and is available
     local vol_state
@@ -379,6 +445,7 @@ launch_instance() {
         --image-id "$AMI_ID"
         --instance-type "$INSTANCE_TYPE"
         --subnet-id "$SUBNET_ID"
+        --security-group-ids "$SG_ID"
         --placement "AvailabilityZone=$AVAILABILITY_ZONE"
         --associate-public-ip-address
         --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=claude-runner-ephemeral},{Key=Purpose,Value=claude-headless},{Key=Project,Value=LICHEN},{Key=LaunchedBy,Value=ec2-claude-sh}]"
@@ -953,11 +1020,11 @@ Options:
   -h, --help           Show this help message
 
 Environment Variables:
-  EC2_CLAUDE_AMI_ID    AMI ID for the instance (default: Amazon Linux 2023 ARM64)
-  EC2_CLAUDE_KEY_NAME  EC2 key pair name (default: claude-runner)
-  EC2_CLAUDE_SSH_KEY   Path to SSH private key (default: ~/.ssh/claude-runner.pem)
-  EC2_CLAUDE_SG        Security group ID (must allow SSH)
+  EC2_CLAUDE_AMI_ID    AMI ID (default: al2023 ARM64)
+  EC2_CLAUDE_SSH_KEY   SSH key path (default: ~/.ssh/id_ed25519; supports EC2 Instance Connect)
   EC2_CLAUDE_SUBNET    Subnet ID in us-west-2c
+  EC2_CALLER_IP        Override detected public IP for SG ingress
+  EC2_CLAUDE_SG        Optional pre-created SG ID (auto-created otherwise with Project=LICHEN tags)
 
 Examples:
   # Simple prompt
@@ -1091,6 +1158,9 @@ main() {
     # Run the workflow
     check_prerequisites
     create_sqs_queue
+
+    sqs_status "Creating security group"
+    create_security_group
 
     sqs_status "Launching instance"
     launch_instance

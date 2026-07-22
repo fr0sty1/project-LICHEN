@@ -30,11 +30,21 @@
 
 LOG_MODULE_REGISTER(ble_uart, LOG_LEVEL_INF);
 
-/* RFC 1055 SLIP byte values */
+/* RFC 1055 SLIP byte values (KISS uses identical escaping) */
 #define SLIP_END     0xC0u
 #define SLIP_ESC     0xDBu
 #define SLIP_ESC_END 0xDCu
 #define SLIP_ESC_ESC 0xDDu
+
+/* KISS framing per KA9Q spec and umb4 for LICHEN local CoAP/IPv6/control.
+ * CMD = (port << 4) | command. Port 0 data carries IPv6 for LCI compatibility.
+ * Uses same escaping as SLIP. */
+#define KISS_FEND     0xC0u
+#define KISS_FESC     0xDBu
+#define KISS_TFEND    0xDCu
+#define KISS_TFESC    0xDDu
+#define KISS_CMD_DATA 0x00u /* port 0 data = IPv6/CoAP for LCI */
+#define KISS_CMD_SETHW 0x60u /* SetHardware for control/config */
 
 /* Maximum IPv6 packet size (RFC 8200 §5) */
 #define SLIP_BUF_SIZE 1280u
@@ -71,6 +81,7 @@ LOG_MODULE_REGISTER(ble_uart, LOG_LEVEL_INF);
 
 #define BLE_LCI_VERSION_1 0x0001u
 #define BLE_LCI_CAP_SLIP_IPV6 BIT(0)
+#define BLE_LCI_CAP_KISS     BIT(1)  /* KISS for local CoAP/IPv6/control per umb4 */
 
 static struct bt_uuid_128 ble_uart_svc_uuid =
 	BT_UUID_INIT_128(BLE_UART_SERVICE_UUID_VAL);
@@ -88,10 +99,10 @@ static const uint8_t s_lci_version[] = {
 	(BLE_LCI_VERSION_1 >> 8) & 0xffu,
 };
 static const uint8_t s_lci_capabilities[] = {
-	BLE_LCI_CAP_SLIP_IPV6 & 0xffu,
-	(BLE_LCI_CAP_SLIP_IPV6 >> 8) & 0xffu,
-	(BLE_LCI_CAP_SLIP_IPV6 >> 16) & 0xffu,
-	(BLE_LCI_CAP_SLIP_IPV6 >> 24) & 0xffu,
+	(BLE_LCI_CAP_SLIP_IPV6 | BLE_LCI_CAP_KISS) & 0xffu,
+	((BLE_LCI_CAP_SLIP_IPV6 | BLE_LCI_CAP_KISS) >> 8) & 0xffu,
+	((BLE_LCI_CAP_SLIP_IPV6 | BLE_LCI_CAP_KISS) >> 16) & 0xffu,
+	((BLE_LCI_CAP_SLIP_IPV6 | BLE_LCI_CAP_KISS) >> 24) & 0xffu,
 };
 #endif
 
@@ -661,4 +672,50 @@ int ble_uart_test_copy_tx_state(struct ble_uart_test_tx_state *state)
 
 	return 0;
 }
+
+static int kiss_encode(const uint8_t *payload, size_t len, uint8_t cmd,
+		       uint8_t *buf, size_t buf_len)
+{
+	size_t pos = 0;
+
+	if (buf == NULL || buf_len < 4 || len > buf_len - 4) {
+		return -EMSGSIZE; /* error handling per umb4 */
+	}
+
+	buf[pos++] = KISS_FEND;
+	buf[pos++] = cmd;
+
+	for (size_t i = 0; i < len; i++) {
+		uint8_t b = payload[i];
+		if (b == KISS_FEND) {
+			if (pos + 2 > buf_len) return -EMSGSIZE;
+			buf[pos++] = KISS_FESC;
+			buf[pos++] = KISS_TFEND;
+		} else if (b == KISS_FESC) {
+			if (pos + 2 > buf_len) return -EMSGSIZE;
+			buf[pos++] = KISS_FESC;
+			buf[pos++] = KISS_TFESC;
+		} else {
+			if (pos >= buf_len) return -EMSGSIZE;
+			buf[pos++] = b;
+		}
+	}
+
+	buf[pos++] = KISS_FEND;
+
+	return (int)pos; /* returns encoded length */
+}
+
+static int kiss_decode(const uint8_t *frame, size_t len, uint8_t *cmd_out,
+		       uint8_t *payload_out, size_t *payload_len_out)
+{
+	/* Basic decoder stub; full state machine in handlers child. */
+	if (len < 4 || frame[0] != KISS_FEND || frame[len-1] != KISS_FEND) {
+		return -EINVAL; /* error for invalid frame */
+	}
+	*cmd_out = frame[1];
+	*payload_len_out = 0; /* TODO: unescape into payload_out */
+	return 0;
+}
+
 #endif

@@ -2,27 +2,36 @@
 
 use lichen_core::addr::NodeId;
 use lichen_core::constants::L2_DISPATCH_SCHC;
+use lichen_core::ipv6::{field, next_header, write_extension_header};
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
-use lichen_node::RplNode;
+use lichen_node::{routing::SourceRoutingHeader, RplNode};
 use lichen_schc::codec::{compress, decompress, SchcError};
 use tracing::{info, warn};
 
 /// Top-level border router state.
 #[derive(Debug)]
 pub struct Gateway {
-    pub rpl: RplNode,
-    routes: std::collections::HashMap<[u8; 16], NodeId>,
+    pub node: RplNode,
 }
 
 impl Gateway {
     pub fn new(node_id: NodeId) -> Self {
         info!(?node_id, "gateway initialising");
         Self {
-            rpl: RplNode::new_root(node_id),
-            routes: std::collections::HashMap::new(),
+            node: RplNode::new_root(node_id),
         }
+    }
+
+    /// Returns true if `dst` has a route in the DAO-based RoutingTable (non-storing RPL root).
+    pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
+        (dst[0] == 0xfe && (dst[1] & 0xc0) == 0x80) || dst[0] == 0xfd || self.node.router.lookup_route(dst).is_some()
+    }
+
+    /// Process incoming DAO to update DAO table / RoutingTable (replaces stale HashMap).
+    pub fn process_dao(&mut self, dao_bytes: &[u8]) -> bool {
+        self.node.router.process_dao(dao_bytes)
     }
 
     /// SCHC-decompress a frame received from the mesh via SLIP.
@@ -60,7 +69,8 @@ impl Gateway {
 
     /// SCHC-compress an IPv6 packet from the upstream TUN device for the mesh.
     ///
-    /// Returns the compressed frame to send via SLIP, or `None` on error.
+    /// For local-mesh destinations (per DAO table), inserts SRH for downward
+    /// non-storing RPL routing per spec/05-routing.md:8.5 and spec/17-lci.
     pub fn upstream_to_mesh(&mut self, ipv6_packet: &[u8]) -> Option<Vec<u8>> {
         if ipv6_packet.len() < 40 || ipv6_packet[0] >> 4 != 6 {
             warn!(
@@ -69,9 +79,55 @@ impl Gateway {
             );
             return None;
         }
-        let mut out = vec![0u8; ipv6_packet.len() + 3];
+
+        let dst_bytes = &ipv6_packet[field::DST_OFFSET..field::DST_OFFSET + 16];
+        let dst: [u8; 16] = dst_bytes.try_into().unwrap();
+        let mut packet_to_compress = ipv6_packet.to_vec();
+
+        if self.is_local_mesh(&dst) {
+            if let Some(path) = self.node.router.lookup_route(&dst) {
+                info!(
+                    path_len = path.len(),
+                    "downward to local mesh — SRH insertion"
+                );
+                if !path.is_empty() {
+                    let first_hop = path[0];
+                    packet_to_compress[field::DST_OFFSET..field::DST_OFFSET + 16]
+                        .copy_from_slice(&first_hop);
+                    if path.len() > 1 {
+                        let srh = SourceRoutingHeader {
+                            segments_left: (path.len() - 1) as u8,
+                            addresses: path[1..].to_vec(),
+                        };
+                        let original_nh = packet_to_compress[6];
+                        packet_to_compress[6] = next_header::ROUTING;
+                        let mut srh_inner = [0u8; 6 + 16 * 8];
+                        let srh_len = srh.write_to(&mut srh_inner).expect("SRH fits in buffer");
+                        let mut ext_buf = [0u8; 128];
+                        let ext_len = write_extension_header(
+                            next_header::ROUTING,
+                            original_nh,
+                            &srh_inner[0..srh_len],
+                            &mut ext_buf,
+                        )
+                        .expect("extension header fits");
+                        let original_payload = packet_to_compress[40..].to_vec();
+                        let new_len = 40 + ext_len + original_payload.len();
+                        packet_to_compress.resize(new_len, 0);
+                        packet_to_compress[40..40 + ext_len].copy_from_slice(&ext_buf[0..ext_len]);
+                        packet_to_compress[40 + ext_len..].copy_from_slice(&original_payload);
+                        info!(
+                            ?srh,
+                            ext_len, "full SRH extension header inserted (next_header=43)"
+                        );
+                    }
+                }
+            }
+        }
+
+        let mut out = vec![0u8; packet_to_compress.len() + 3];
         out[0] = L2_DISPATCH_SCHC;
-        match compress(ipv6_packet, &mut out[1..]) {
+        match compress(&packet_to_compress, &mut out[1..]) {
             Ok(n) => {
                 out.truncate(n + 1);
                 info!(compressed_len = n + 1, "upstream → mesh");
@@ -79,46 +135,6 @@ impl Gateway {
             }
             Err(e) => {
                 warn!("SCHC compress: {e:?}");
-                None
-            }
-        }
-    }
-
-    pub fn add_route(&mut self, addr: [u8; 16], node_id: NodeId) {
-        self.routes.insert(addr, node_id);
-    }
-
-    /// Returns true if destination is reachable via local RPL DODAG (root's DAO
-    /// routing table or cached routes).
-    pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
-        if dst[0] != 0x02 {
-            return false;
-        }
-        self.rpl.lookup_route(dst).is_some() || self.routes.contains_key(dst)
-    }
-
-    /// SCHC-compress an IPv6 packet destined for local mesh (re-forward via RPL).
-    ///
-    /// For now mirrors upstream_to_mesh but logs as local mesh path; future
-    /// will insert SourceRoutingHeader from lookup_route before compress.
-    pub fn mesh_to_mesh(&mut self, ipv6_packet: &[u8]) -> Option<Vec<u8>> {
-        if ipv6_packet.len() < 40 || ipv6_packet[0] >> 4 != 6 {
-            warn!(
-                len = ipv6_packet.len(),
-                "local-mesh packet is not IPv6 — dropping"
-            );
-            return None;
-        }
-        let mut out = vec![0u8; ipv6_packet.len() + 3];
-        out[0] = L2_DISPATCH_SCHC;
-        match compress(ipv6_packet, &mut out[1..]) {
-            Ok(n) => {
-                out.truncate(n + 1);
-                info!(compressed_len = n + 1, "local-mesh → mesh");
-                Some(out)
-            }
-            Err(e) => {
-                warn!("SCHC compress (mesh_to_mesh): {e:?}");
                 None
             }
         }

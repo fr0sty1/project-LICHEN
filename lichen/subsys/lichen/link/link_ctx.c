@@ -51,6 +51,22 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
 		return -EINVAL;
 	}
 
+	/* Entropy before any context mutation: failure leaves ctx untouched
+	 * (fail-closed). Callers must check return value and not mark
+	 * initialized on -EIO. See acceptance for 2auf.35.4.2. */
+	uint8_t rand_byte = 0;
+	int rng_ret;
+#ifdef __ZEPHYR__
+	rng_ret = sys_csrand_get(&rand_byte, 1);
+#elif defined(__linux__) || defined(__APPLE__)
+	rng_ret = getentropy(&rand_byte, 1);
+#else
+	rng_ret = 0; /* documented deterministic fallback (rand_byte=0) */
+#endif
+	if (rng_ret != 0) {
+		return -EIO;
+	}
+
 #ifdef __ZEPHYR__
 	k_mutex_init(&ctx->seq_lock);
 #else
@@ -71,15 +87,8 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
 	 * SECURITY: ESP32 HW RNG produces weak/predictable output before WiFi/BT radio
 	 * init. On ESP32 without epoch persistence, an attacker who knows the boot
 	 * timing may predict the epoch. Mitigation: persist epoch to flash, or defer
-	 * this call until after radio subsystem init. */
-	uint8_t rand_byte;
-#ifdef __ZEPHYR__
-	sys_csrand_get(&rand_byte, 1);
-#elif defined(__linux__) || defined(__APPLE__)
-	(void)getentropy(&rand_byte, 1);
-#else
-	rand_byte = 0; /* fallback: no CSPRNG available */
-#endif
+	 * this call until after radio subsystem init. On CSPRNG failure -EIO is
+	 * returned before mutation (no uninitialized data consumed). */
 	ctx->epoch = 128 + (rand_byte & 0x7F); /* [128, 255] */
 	ctx->tx_seq = 0;
 	ctx->has_key = false;
@@ -499,15 +508,17 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 	}
 }
 
-uint32_t lichen_hash_32(uint32_t sfn, uint64_t key) {
-	uint32_t h = 0x811c9dc5u;
-	for (int i = 0; i < 4; ++i) {
-		uint8_t b = (sfn >> (i * 8)) & 0xffu;
-		h ^= b; h *= 0x01000193u;
+#ifdef CONFIG_LICHEN_TDMA
+int lichen_tdma_init(struct lichen_link_ctx *link_ctx)
+{
+	if (link_ctx == NULL) {
+		return -EINVAL;
 	}
-	for (int i = 0; i < 8; ++i) {
-		uint8_t b = (key >> (i * 8)) & 0xffu;
-		h ^= b; h *= 0x01000193u;
-	}
-	return h;
+	/* TDMA initialization stub. Full implementation for CCP-16 load balancing
+	 * (slot scheduling, beacon sync, alignment with link epoch) to follow.
+	 * Called after lichen_link_load_key() per dependency graph.
+	 */
+	(void)link_ctx;
+	return 0;
 }
+#endif /* CONFIG_LICHEN_TDMA */

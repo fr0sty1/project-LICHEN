@@ -182,6 +182,7 @@ pub enum FrameError {
     SignedEncryptedUnsupported,
     TrailingBytes,
     FrameTooLarge,
+    BufferTooSmall,
 }
 
 impl core::fmt::Display for FrameError {
@@ -199,6 +200,7 @@ impl core::fmt::Display for FrameError {
             }
             Self::TrailingBytes => write!(f, "trailing bytes after frame"),
             Self::FrameTooLarge => write!(f, "frame too large"),
+            Self::BufferTooSmall => write!(f, "buffer too small"),
         }
     }
 }
@@ -263,7 +265,8 @@ impl<'a> LichenFrame<'a> {
 
     /// Serialize the frame into `buf`, returning the number of bytes written.
     ///
-    /// Returns `FrameError::FrameTooLarge` if the body exceeds 255 bytes.
+    /// Returns `FrameError::FrameTooLarge` if body > 254 bytes.
+    /// Returns `FrameError::BufferTooSmall` if the provided buffer is too small.
     pub fn write_to(&self, buf: &mut [u8]) -> Result<usize, FrameError> {
         if self.signature.is_present() && self.encryption.is_encrypted() {
             return Err(FrameError::SignedEncryptedUnsupported);
@@ -286,7 +289,7 @@ impl<'a> LichenFrame<'a> {
         }
         let total = 1 + body_len;
         if buf.len() < total {
-            return Err(FrameError::FrameTooLarge);
+            return Err(FrameError::BufferTooSmall);
         }
         buf[0] = body_len as u8;
         buf[1] = self.llsec_byte();
@@ -543,6 +546,37 @@ mod tests {
         assert_eq!(
             frame.write_to(&mut [0; 64]),
             Err(FrameError::SignatureMicMismatch)
+        );
+    }
+
+    #[test]
+    fn write_to_distinguishes_buffer_too_small_from_body_too_large() {
+        let frame = LichenFrame {
+            epoch: 0,
+            seqnum: LinkSeqNum::new(0),
+            dst_addr: &[],
+            payload: b"test",
+            mic: &[],
+            addr_mode: AddrMode::None,
+            mic_length: MicLength::Bits32,
+            signature: Signature::Absent,
+            encryption: Encryption::Plaintext,
+        };
+        let mut small_buf = [0u8; 5];
+        assert_eq!(
+            frame.write_to(&mut small_buf),
+            Err(FrameError::BufferTooSmall)
+        );
+
+        let large_payload = vec![0u8; 260];
+        let large_frame = LichenFrame {
+            payload: &large_payload,
+            ..frame
+        };
+        let mut buf = [0u8; 300];
+        assert_eq!(
+            large_frame.write_to(&mut buf),
+            Err(FrameError::FrameTooLarge)
         );
     }
 

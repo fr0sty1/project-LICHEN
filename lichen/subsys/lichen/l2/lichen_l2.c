@@ -654,23 +654,12 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 	 * start index (start = random % count, wrap around).
 	 */
 	int found_idx = -1;
-	int found_ret = -LICHEN_EAUTH;
-	size_t found_out_len = 0;
-	uint8_t found_ipv6[sizeof(rx_ipv6_buf)];
-	uint8_t found_src_eui64[LICHEN_EUI64_LEN];
 
 	for (size_t i = 0; i < CONFIG_LICHEN_LINK_MAX_NEIGHBORS; i++) {
 		if (!peer_table[i].active) {
 			continue;
 		}
 
-		/*
-		 * BY DESIGN (project-LICHEN-0li1.32): lichen_link_rx is called once per
-		 * peer to try signature verification with each pubkey. LICHEN frames omit
-		 * sender identity, so we must try all known peers. The redundant SCHC
-		 * decompression and MIC verification per iteration is acceptable given
-		 * LoRa's low packet rate and bounded peer count (CONFIG_LICHEN_LINK_MAX_NEIGHBORS).
-		 */
 		ctx->peer_pubkey = peer_table[i].pubkey;
 		ctx->peer_eui64 = peer_table[i].eui64;
 		*out_len = saved_out_len;
@@ -678,49 +667,14 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 		ret = lichen_link_rx(ctx, replay, frame, frame_len,
 				     out_ipv6, out_len, src_eui64);
 		if (ret == 0) {
-			/*
-			 * Signature verified - record it. In secure builds we keep
-			 * scanning all remaining peers for constant time (below).
-			 * Save output bytes and source address because later failed
-			 * attempts reuse the same caller-provided buffers.
-			 */
-			if (found_idx < 0) {
-				if (*out_len > sizeof(found_ipv6)) {
-					ctx->peer_pubkey = saved_peer_pubkey;
-					ctx->peer_eui64 = saved_peer_eui64;
-					*out_len = saved_out_len;
-					return -EOVERFLOW;
-				}
-				found_idx = (int)i;
-				found_ret = 0;
-				found_out_len = *out_len;
-				memcpy(found_ipv6, out_ipv6, found_out_len);
-				memcpy(found_src_eui64, src_eui64, sizeof(found_src_eui64));
-			}
+			found_idx = (int)i;
 #ifdef CONFIG_LICHEN_L2_DEV_PROVISIONING
-			/*
-			 * SECURITY: the constant-time all-peers scan defends peer
-			 * identity against a timing side-channel. Dev provisioning is
-			 * INSECURE by definition - its keys are publicly derivable
-			 * (lichen_l2_dev_provision) - so that defense protects nothing,
-			 * while each extra Schnorr-48 verify keeps the LoRa RX thread
-			 * from re-arming the radio. On a 64 MHz nRF52840 that made every
-			 * ambient frame cost N_peers verifies of deafness, dropping RX to
-			 * zero with a second pinned peer (bd shbh). The delivered result
-			 * is identical either way (first match always wins), so in dev
-			 * mode stop at the first match.
-			 */
 			break;
 #else
 			continue;
 #endif
 		}
 
-		/*
-		 * SECURITY: Abort on non-auth errors (malformed frame, replay).
-		 * These don't leak peer identity - the frame is rejected before
-		 * peer matching completes.
-		 */
 		if (ret != -LICHEN_EAUTH) {
 			ctx->peer_pubkey = saved_peer_pubkey;
 			ctx->peer_eui64 = saved_peer_eui64;
@@ -729,23 +683,25 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 		}
 	}
 
-	/* Return result after checking all peers */
 	if (found_idx >= 0) {
-		/* Update last_seen for LRU eviction (project-LICHEN-tvfm.98) */
-		peer_table[found_idx].last_seen = k_uptime_get();
-
-		/* Restore context and out_len to the matched peer's values */
 		ctx->peer_pubkey = peer_table[found_idx].pubkey;
 		ctx->peer_eui64 = peer_table[found_idx].eui64;
-		*out_len = found_out_len;
-		memcpy(out_ipv6, found_ipv6, found_out_len);
-		memcpy(src_eui64, found_src_eui64, sizeof(found_src_eui64));
+		*out_len = saved_out_len;
+		ret = lichen_link_rx(ctx, replay, frame, frame_len,
+				     out_ipv6, out_len, src_eui64);
+		if (ret < 0) {
+			ctx->peer_pubkey = saved_peer_pubkey;
+			ctx->peer_eui64 = saved_peer_eui64;
+			*out_len = saved_out_len;
+			return ret;
+		}
+
+		peer_table[found_idx].last_seen = k_uptime_get();
 		LOG_DBG("lichen_l2: RX auth ok (peer ..%02x:%02x)",
 			peer_table[found_idx].eui64[6], peer_table[found_idx].eui64[7]);
-		return found_ret;
+		return 0;
 	}
 
-	/* No peer's pubkey verified the signature */
 	ctx->peer_pubkey = saved_peer_pubkey;
 	ctx->peer_eui64 = saved_peer_eui64;
 	*out_len = saved_out_len;
@@ -1588,7 +1544,15 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 			/* SECURITY: Defensive zero of any stale key material before re-init
 			 * (project-LICHEN-725z.9) */
 			secure_zero(&link_ctx, sizeof(link_ctx));
-			lichen_link_init(&link_ctx, eui64_copy);
+			ret = lichen_link_init(&link_ctx, eui64_copy);
+			if (ret < 0) {
+				/* Entropy or mutex failure: do not mark initialized.
+				 * Unlock and propagate (2auf.35.4.2.2). Context remains
+				 * zeroed; next enable will retry. */
+				k_mutex_unlock(&rx_mutex);
+				k_mutex_unlock(&tx_mutex);
+				return ret;
+			}
 #ifdef CONFIG_LICHEN_LINK_EPOCH_PERSIST
 			/* Override the random boot epoch with the persisted,
 			 * monotonically-advancing one (lora_ipv6_mesh-3uhb).
@@ -2088,7 +2052,14 @@ void lichen_l2_iface_init(struct net_if *iface)
 	 * depend on replay_table, and no async access occurs before link_ctx_initialized
 	 * is set (after RX callback registration). (project-LICHEN-i1gk.81)
 	 */
-	lichen_link_init(&link_ctx, eui64);
+	int init_ret = lichen_link_init(&link_ctx, eui64);
+	if (init_ret < 0) {
+		/* Entropy failure or mutex failure: fail closed, do not mark
+		 * initialized or proceed with RX setup. (2auf.35.4.2) */
+		LOG_ERR("lichen_link_init failed (%d)", init_ret);
+		atomic_set(&iface_init_failed, 1);
+		return;
+	}
 #ifdef CONFIG_LICHEN_LINK_EPOCH_PERSIST
 	/* Override the random boot epoch with the persisted, monotonically-
 	 * advancing one so a rebooted node is never seen as a replay
@@ -2404,23 +2375,10 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 */
 	uint8_t src_eui64[8] = {0};
 	struct lichen_link_rx_ctx rx_ctx = {
-		.peer_pubkey = NULL,  /* Set by peer_try_all_pubkeys() */
-		/*
-		 * peer_eui64 is _Nonnull; point it at the zeroed src_eui64 buffer
-		 * as a valid placeholder until peer_try_all_pubkeys() overwrites it
-		 * with the matched peer's address. Never used for crypto in this
-		 * state (the pubkey trial sets it before any nonce is built).
-		 */
+		.peer_pubkey = NULL,
 		.peer_eui64 = src_eui64,
 		.link_key = rx_link_key_ptr,
-		/*
-		 * current_time: Reserved for time-based replay aging (not currently
-		 * used). The replay protection implementation uses a sliding window
-		 * with monotonic access_counter for LRU eviction, not wall-clock time.
-		 * Setting to 0 is safe because lichen_link_rx() does not read this
-		 * field. If future replay aging is added, use k_uptime_get() here.
-		 */
-		.current_time = 0,
+		.current_time = k_uptime_get_32(),
 	};
 
 	ipv6_len = sizeof(rx_ipv6_buf);

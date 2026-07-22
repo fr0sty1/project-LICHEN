@@ -13,8 +13,7 @@ This module provides:
 4. Replay detection using per-sender sliding windows
 5. MIC handling: unsigned frames have no MIC; signed frames carry Schnorr-48
 
-Threading model: All methods are async. A single LinkLayer instance should be
-used by one task at a time. For concurrent access, use external synchronization.
+Threading model: Concurrent send() via per-entry TxReservations; TX serialized by _tx_lock.
 """
 
 from __future__ import annotations
@@ -167,18 +166,22 @@ class LinkLayer:
     replay_protector: ReplayProtector = field(default_factory=ReplayProtector)
     # peer_lookup_all: For brute-force sender identification when no hint available.
     # NOTE: O(n) verification is unavoidable without sender IID in frame format.
-    # Protocol-level fix needed: add sender IID to frame header extension.
+    # Protocol-level fix needed: add sender IID to header extension.
     peer_lookup_all: Callable[[], list[PeerIdentity]] | None = field(
         default=None, repr=False
     )
     cad_enabled: bool = field(default=True)
     tx_queue: TxQueue = field(default_factory=TxQueue)
+    _tx_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
+    persist_path: str | None = field(default=None, repr=False)
     # ponytail: random epoch in [128,255] for reboot resilience without flash.
     # Half-space arithmetic treats upper-half counters as "ahead" of lower-half.
     # SECURITY: Use secrets module for cryptographically secure random epoch.
     _epoch: int = field(default_factory=lambda: secrets.randbelow(128) + 128, repr=False)
     _seqnum: int = field(default=0, repr=False)
+    _exhausted: bool = field(default=False, repr=False)
     _pinned_keys: dict[bytes, bytes] = field(default_factory=dict, repr=False)
+
 
     def __post_init__(self) -> None:
         # Why validate: Catch misconfiguration early
@@ -188,6 +191,8 @@ class LinkLayer:
             raise ValueError("radio is required")
         if self.peer_lookup is None:
             raise ValueError("peer_lookup callback is required")
+        if self.persist_path is not None:
+            self._load_persisted_state()
 
     def _next_seqnum(self) -> tuple[int, int]:
         """Get next (epoch, seqnum) pair and advance the counter.
@@ -198,6 +203,11 @@ class LinkLayer:
         Returns:
             (epoch, seqnum) for the next frame.
         """
+        if self._exhausted:
+            logger.error("tuple space exhausted; key rotation required before further TX")
+            # Fail closed per e220
+            raise RuntimeError("link tuple exhaustion")
+
         epoch, seqnum = self._epoch, self._seqnum
 
         # Advance for next call
@@ -208,7 +218,11 @@ class LinkLayer:
             self._seqnum = 0
             self._epoch = (self._epoch + 1) & 0xFF
             logger.debug("epoch wrapped to %d", self._epoch)
+            if self._epoch == 0:
+                self._exhausted = True
+                logger.warning("24-bit tuple space exhausted; will trigger rotation on next load")
 
+        self._save_persisted_state()
         return epoch, seqnum
 
     def _build_signable_data(
@@ -329,62 +343,69 @@ class LinkLayer:
             priority.name,
         )
 
-        # Queue the frame (may raise QueueFullError)
-        self.tx_queue.push(frame_bytes, priority=priority, deadline_ms=deadline_ms)
+        # Queue with per-entry reservation for concurrent safety and specific completion
+        reservation = self.tx_queue.push(
+            frame_bytes,
+            priority=priority,
+            deadline_ms=deadline_ms,
+            return_reservation=True,
+        )
+        assert reservation is not None, "push with reservation failed"
 
         # Push succeeded - now consume the sequence number
-        # Why call _next_seqnum(): It advances the counter for the next send.
-        # We ignore the return value since we already used epoch/seqnum above.
         self._next_seqnum()
 
-        # Drain the queue
-        return await self.drain_tx_queue()
+        # Drain (serialized via _tx_lock); our reservation will be completed when transmitted
+        await self.drain_tx_queue()
+
+        # Per-send completion result (avoids ambiguous return from drain)
+        return await reservation.wait()
 
     async def drain_tx_queue(self) -> bool:
         """Transmit packets from the TX queue until empty or channel busy.
 
-        Expires stale packets before attempting transmission. Transmits
-        in priority order (highest priority = lowest numeric value first).
+        Uses per-entry reservations for concurrent safety. In-flight entries
+        protected; stats updated only on confirmed success. Lock serializes
+        radio path.
 
         Returns:
             True if at least one packet was transmitted, False otherwise.
         """
-        transmitted_any = False
+        async with self._tx_lock:
+            transmitted_any = False
 
-        while True:
-            # Expire stale packets and check if queue has work
-            self.tx_queue.expire_stale()
-            if len(self.tx_queue) == 0:
-                break  # Queue empty
+            while True:
+                # Expire stale packets and check if queue has work
+                self.tx_queue.expire_stale()
+                if len(self.tx_queue) == 0:
+                    break  # Queue empty
 
-            # CAD before pop - on failure, packets remain safely queued.
-            # Why not pop first: Re-queuing after CAD failure can raise
-            # QueueFullError if queue is full of same-priority packets
-            # (e.g., ROUTING cannot preempt ROUTING), losing the packet.
-            if self.cad_enabled and not await self._wait_for_clear_channel():
-                logger.warning(
-                    "TX deferred: channel busy after %d backoff cycles, "
-                    "%d packets remain queued",
-                    CAD_MAX_CYCLES,
-                    len(self.tx_queue),
-                )
-                break
+                # CAD before pop_reservation - packets remain safely queued.
+                if self.cad_enabled and not await self._wait_for_clear_channel():
+                    logger.warning(
+                        "TX deferred: channel busy after %d backoff cycles, "
+                        "%d packets remain queued",
+                        CAD_MAX_CYCLES,
+                        len(self.tx_queue),
+                    )
+                    break
 
-            # Channel clear (or CAD disabled) - now safe to pop and transmit
-            frame_bytes = self.tx_queue.pop()
-            if frame_bytes is None:
-                break  # Packet expired during CAD (unlikely but possible)
+                reservation = self.tx_queue.pop_reservation()
+                if reservation is None:
+                    break
 
-            # Transmit
-            if await self.radio.transmit(frame_bytes):
-                transmitted_any = True
-                logger.debug(
-                    "TX success, %d packets remain queued",
-                    len(self.tx_queue),
-                )
-            else:
-                logger.warning("TX radio transmit failed")
-                break  # Radio failure - stop draining
+                # Transmit
+                success = await self.radio.transmit(reservation.data)
+                self.tx_queue.complete_reservation(reservation, success)
+                if success:
+                    transmitted_any = True
+                    logger.debug(
+                        "TX success, %d packets remain queued",
+                        len(self.tx_queue),
+                    )
+                else:
+                    logger.warning("TX radio transmit failed")
+                    break  # Radio failure - stop draining
 
         return transmitted_any
 

@@ -258,13 +258,15 @@ impl Addr {
         &self.0
     }
 
-    /// Extract the Interface Identifier (IID) - the low 64 bits (bytes 8-15).
+    /// Extract the Interface Identifier (IID) - the low 64 bits.
     ///
-    /// Per LICHEN spec and RFC 4291, node addresses use /64 prefixes with
-    /// modified EUI-64 in the IID. This is the canonical extraction used by
-    /// `NodeId::from_ipv6`. Assumption is validated by caller context (RPL,
-    /// link-local/ULA addresses).
+    /// Assumes link-local (fe80::/10), ULA (fc00::/7) or GUA (2000::/3)
+    /// with IID in bytes 8-15. Debug assert guards this; see is_link_local/is_ula.
     pub fn iid(&self) -> [u8; 8] {
+        debug_assert!(
+            self.is_link_local() || self.is_ula() || self.is_gua(),
+            "IID extraction from bytes 8-15 assumes structured address"
+        );
         let mut iid = [0u8; 8];
         iid.copy_from_slice(&self.0[8..16]);
         iid

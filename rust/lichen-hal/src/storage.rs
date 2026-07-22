@@ -189,9 +189,70 @@ pub mod mem {
     }
 }
 
+#[cfg(feature = "std")]
+pub mod fs {
+    extern crate std;
+    use crate::NonVolatile;
+    use std::fs;
+    use std::io;
+    use std::path::{Path, PathBuf};
+
+    #[derive(Debug)]
+    pub struct FileStorage {
+        dir: PathBuf,
+    }
+
+    impl FileStorage {
+        pub fn new<P: AsRef<Path>>(p: P) -> io::Result<Self> {
+            let d = p.as_ref().to_path_buf();
+            fs::create_dir_all(&d)?;
+            Ok(Self { dir: d })
+        }
+        fn key_path(&self, k: &str) -> PathBuf {
+            self.dir.join(k)
+        }
+        fn tmp_path(&self, k: &str) -> PathBuf {
+            self.dir.join(format!("{}.tmp", k))
+        }
+    }
+
+    impl NonVolatile for FileStorage {
+        type Error = io::Error;
+        fn read(&self, key: &str, buf: &mut [u8]) -> Option<usize> {
+            let p = self.key_path(key);
+            let data = match fs::read(&p) {
+                Ok(d) => d,
+                Err(_) => return None,
+            };
+            let n = data.len().min(buf.len());
+            buf[..n].copy_from_slice(&data[..n]);
+            Some(n)
+        }
+        fn write(&mut self, key: &str, data: &[u8]) -> Result<(), Self::Error> {
+            let t = self.tmp_path(key);
+            let f = self.key_path(key);
+            let mut file = fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(&t)?;
+            std::io::Write::write_all(&mut file, data)?;
+            file.sync_all()?;
+            fs::rename(t, f)?;
+            let _ = fs::File::open(&self.dir).and_then(|d| d.sync_all());
+            Ok(())
+        }
+        fn delete(&mut self, key: &str) -> bool {
+            let p = self.key_path(key);
+            fs::remove_file(p).is_ok()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use fs::FileStorage;
     use mem::MemStorage;
 
     #[test]
@@ -243,8 +304,23 @@ mod tests {
         let seed = Seed::new([0xDEu8; 32]);
         save_seed(&mut storage, &seed).unwrap();
 
-        // Simulate "reboot" - data persists
         storage.clear_volatile();
         assert_eq!(load_seed(&storage), Some(seed));
+    }
+
+    #[test]
+    fn file_storage_durable_and_preserves_on_failure() {
+        let d = std::path::Path::new("/tmp/lichen-nv-test");
+        let _ = std::fs::remove_dir_all(d);
+        std::fs::create_dir_all(d).unwrap();
+        let mut s = FileStorage::new(d).unwrap();
+        let seed = Seed::new([0x22u8; 32]);
+        save_seed(&mut s, &seed).unwrap();
+        assert_eq!(load_seed(&s), Some(seed.clone()));
+        let s2 = FileStorage::new(d).unwrap();
+        assert_eq!(load_seed(&s2), Some(seed));
+        save_epoch(&mut s, 42).unwrap();
+        assert_eq!(load_epoch(&s), Some(42));
+        let _ = std::fs::remove_dir_all(d);
     }
 }

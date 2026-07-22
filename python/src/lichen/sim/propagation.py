@@ -63,8 +63,9 @@ class PropagationModel:
     Attributes:
         pl0_dbm: Path loss at reference distance d₀ (dB). Default is 32.44 dB
             for 915 MHz free space at 1m plus typical implementation losses.
-        d0_m: Reference distance in meters. Default is 1.0m.
+        d0_m: Reference distance in meters. Default is 1.0m. Must be > 0.
         n: Path loss exponent. 2.0 for free space, 2.7 for urban, 3.5 for indoor.
+           Must be > 0.
         noise_floor_dbm: Receiver noise floor in dBm. Default is -120 dBm.
 
     Raises:
@@ -83,18 +84,15 @@ class PropagationModel:
     noise_floor_dbm: float = -120.0
 
     def __post_init__(self) -> None:
-        """Validate that n and d0_m are positive.
+        """Validate model parameters after dataclass initialization.
 
-        Raises:
-            ValueError: If n <= 0 or d0_m <= 0.
-
+        Ensures n > 0 and d0_m > 0 to prevent division by zero in
+        path_loss() and max_range().
         """
         if self.n <= 0:
-            msg = f"Path loss exponent n must be positive, got {self.n}"
-            raise ValueError(msg)
+            raise ValueError(f"Path loss exponent n must be positive, got {self.n}")
         if self.d0_m <= 0:
-            msg = f"Reference distance d0_m must be positive, got {self.d0_m}"
-            raise ValueError(msg)
+            raise ValueError(f"Reference distance d0_m must be positive, got {self.d0_m}")
 
     def path_loss(self, distance_m: float) -> float:
         """Calculate path loss at a given distance.
@@ -180,12 +178,7 @@ class PropagationModel:
         rx_power = self.received_power(tx_power_dbm, distance_m)
         return rx_power >= sensitivity_dbm
 
-    def max_range(
-        self,
-        tx_power_dbm: float,
-        *,
-        sensitivity_dbm: float = SENSITIVITY_SF10,
-    ) -> float:
+    def max_range(self, tx_power_dbm: float, *, sensitivity_dbm: float = SENSITIVITY_SF10) -> float:
         """Calculate the maximum communication range.
 
         Finds the distance at which received power equals the sensitivity

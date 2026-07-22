@@ -133,19 +133,29 @@ See spec/03-adaptation.md §5.5, spec/appendix-schc.md, and test/vectors/ for ca
 
 **Key Rules (per appendix-schc.md and rules.rs):**
 
-- **Rule 0:** Link-local IPv6 + UDP + CoAP (26B header / 33B test vector)
-- **Rule 1:** Global IPv6 + UDP + CoAP (42B header / 49B test vector)
-- **Rule 2:** ICMPv6 Echo Request/Reply (NextHeader=58, Type in {128,129}, Code=0) (23B header / 27B test vector)
-- **Rule 3:** RPL DIO (link-local, NextHeader=58, Type=155, Code=1) (40B header / 40B test vector)
-- **Rule 4:** RPL DAO (routable ULA source, multi-hop, NextHeader=58, Type=155, Code=2) (53B header)
-- **Rule 5:** OSCORE link-local IPv6 + UDP (26B header)
-- **Rule 6:** OSCORE global IPv6 + UDP (42B header)
-- **Rule 7:** MQTT-SN
-- **Rule 255:** No compression (1B rule ID + full packet)
+### 4.2. Rule 0: Link-Local IPv6 + UDP + CoAP
 
-**Rule selection specificity (fixes overlap risk):** Per RFC 8724 §7 (Rule matching algorithm), MO for IPv6.NextHeader, ICMPv6.Type and ICMPv6.Code are made specific (EQUAL on discriminators; IGNORE+Code=EQUAL=0 for echo rule 2 vs EQUAL Type=155/Code for RPL rules 3/4). This ensures mutually exclusive matching conditions. Rules evaluated in ascending ID order; first complete match selected. Updated per project-LICHEN-nhrc. See appendix-schc.md, rules.py:_icmpv6_*_fields, context.py:rule_matches.
+See appendix-schc.md:A.1 (Rule Set) and A.2 (CoAP Compression) for authoritative tables. Matches LINK_LOCAL_COAP_RULE in rust/lichen-schc/src/rules.rs:62 and python/src/lichen/schc/rules.py:244. Compressed size ~4-6 bytes (Rule ID + hop limit + 16B IIDs + CoAP residue). OSCORE rules 5/6 (RFC 8613) use analogous structure with OSCORE option (#9) in residue.
 
-See appendix-schc.md:A.1 for precise residue calculations, CoAP/OSCORE CDA tables, DAO source model, and test vectors. Rule Set Version 2 advertised in RPL DIO per 03-adaptation.md:5.7.
+### 4.3. Remaining Rules and CoAP/OSCORE Compression
+
+All rules (including global IPv6 rule 1, ICMPv6 rule 2, RPL rules 3/4, uncompressed rule 255, MQTT-SN, and OSCORE rules 5/6) are defined in appendix-schc.md:A.1-A.3 and implemented in rust/lichen-schc/src/rules.rs and python/src/lichen/schc/rules.py (RPL_DIO_RULE at rules.py:272). See also spec/03-adaptation.md and test/vectors/. No duplication; appendix is single source of truth.
+
+### 4.4. RPL Option Compression Proposal (Aligned)
+
+RPL DIO/DAO options (RFC6550 §6.7) use SCHC MATCH_MAPPING (rules.py:32 MO.MATCH_MAPPING, FieldDescriptor.mapping tuple, CDA.MAPPING_SENT, mapping_bits()=(len(mapping)-1).bit_length() at rules.py:81; RFC8724 §7.4). For PIO (type=3 per RFC6550 §6.7.1):
+
+**Mapping table (common RPL options per RFC6550):**
+- 0x01: Pad1
+- 0x02: PadN
+- 0x03: PIO
+- 0x04: Route Information
+- 0x05: DODAG Configuration
+- 0x07: RPL Target
+
+6 values → 3-bit index ( (6-1).bit_length() = 3 ). Type field: 8→3 bits reduction. Length for PIO=30 can be NOT_SENT or matched. Extends RPL_DIO_RULE without breaking base 8-byte size (options in residue only when present). Rust MatchMapping (rules.rs:15, context.rs:74) to be completed to match. Size calc verified against Python codec.
+
+See appendix-schc.md for updated tables.
 
 ## 5. Fragmentation Profile
 
@@ -154,9 +164,10 @@ See appendix-schc.md:A.1 for precise residue calculations, CoAP/OSCORE CDA table
 | Parameter | Value | Rationale |
 |-----------|-------|-----------|
 | Mode | ACK-on-Error | Minimize ACK overhead |
-| FCN size | 6 bits | 63 fragments per window |
-| DTAG size | 0 bits | Single packet in flight |
-| Window size | 1 bit | 2 windows max |
+| M (window bits) | 1 | W field size |
+| N (FCN bits) | 6 | 63 possible FCN values (All-1 = 0b111111) |
+| T (DTAG bits) | 0 | Single datagram in flight per context |
+| WINDOW_SIZE | 32 | Practical tiles per window (configurable) |
 | Tile size | L2 MTU - header | Maximize per-fragment payload |
 | Retransmission timer | 10 seconds | LoRa latency tolerance |
 | Max retries | 3 | Balance reliability/efficiency |

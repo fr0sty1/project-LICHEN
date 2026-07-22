@@ -16,3 +16,10 @@ add_executable(tx_queue_test
 target_compile_definitions(tx_queue_test PRIVATE CONFIG_TX_QUEUE_TEST_TIME)
 target_compile_options(tx_queue_test PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(tx_queue_test pthread)
+
+option(ENABLE_TSAN "Enable ThreadSanitizer" OFF)
+if(ENABLE_TSAN)
+  target_compile_options(tx_queue_test PRIVATE -fsanitize=thread -fno-omit-frame-pointer -g)
+  target_link_options(tx_queue_test PRIVATE -fsanitize=thread)
+  target_compile_definitions(tx_queue_test PRIVATE ENABLE_TSAN)
+endif()

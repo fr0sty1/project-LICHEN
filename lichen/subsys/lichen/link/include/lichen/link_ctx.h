@@ -81,12 +81,15 @@ struct lichen_link_ctx {
 /**
  * @brief Initialize link context with an EUI-64 address.
  *
- * Sets the node's EUI-64 identity and clears all cryptographic state.
- * After calling this, the context has no keypair loaded (has_key = false).
+ * Obtains CSPRNG entropy for initial epoch BEFORE any context or mutex
+ * mutation (fail-closed). On CSPRNG failure returns -EIO with ctx
+ * unmodified. Sets EUI-64, clears crypto state; has_key=false.
+ * Callers with persisted epoch MUST call lichen_link_set_epoch()
+ * after successful init.
  *
  * @param[out] ctx   Link context to initialize
  * @param[in]  eui64 8-byte EUI-64 address
- * @return 0 on success, -EINVAL if ctx or eui64 is NULL
+ * @return 0 on success, -EINVAL if ctx or eui64 is NULL, -EIO on CSPRNG failure
  */
 int lichen_link_init(struct lichen_link_ctx *_Nonnull ctx,
 		     const uint8_t *_Nonnull eui64);

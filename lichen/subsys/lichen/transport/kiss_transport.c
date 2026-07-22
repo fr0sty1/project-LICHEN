@@ -495,11 +495,12 @@ int kiss_transport_init(const struct kiss_transport_config *config)
 		return -EINVAL;
 	}
 
-	/* At least one RX callback required */
 	if (config->ax25_rx_cb == NULL && config->raw_rx_cb == NULL) {
 		LOG_ERR("KISS: at least one RX callback required");
 		return -EINVAL;
 	}
+
+	ctx->config = *config;
 
 	if (ctx->initialized) {
 		return -EALREADY;
@@ -525,9 +526,6 @@ int kiss_transport_init(const struct kiss_transport_config *config)
 
 	/* Reset statistics */
 	memset(&ctx->stats, 0, sizeof(ctx->stats));
-
-	/* Store configuration */
-	ctx->config = *config;
 
 	/* Get UART device */
 #if DT_HAS_CHOSEN(lichen_kiss_uart)

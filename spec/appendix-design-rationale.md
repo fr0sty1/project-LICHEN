@@ -253,7 +253,8 @@ LICHEN does not, and will not. Unlike 6.1-6.3, this is not a complexity
 trade-off — the feature is counterproductive here:
 
 - **It breaks the mesh.** Root election, short-address assignment, replay
-  windows, and signature caching all key on stable EUI-64 identity.
+  windows, and signature caching all key on stable key-derived IID identity
+  (from unified Ed25519 derivation, no-ULA model).
   Rotating addresses means election instability, constant re-DAD, and
   table churn on a link budget measured in bytes per second.
 - **It provides nothing.** Every LICHEN frame is signed by a long-term
@@ -378,6 +379,16 @@ Different design goals:
 The PHY parameters are incompatible--LICHEN and Meshtastic devices cannot hear
 each other even on the same frequency. This is intentional; mixing protocols
 on shared PHY would create interference without interoperability.
+
+## 7. CCP-16 Parameter Rationale (for 02a-coordinated-capacity.md)
+
+**BEACON_INTERVAL default 30s, T_Drift = 3×BEACON_INTERVAL**: The 3x multiplier (MUST respect 2.5-4× range) gives tolerance for 2 missed beacons due to fading/interference before declaring DRIFTING. Less than 2.5× risks false positives on transient noise (validated in ccp16-desync vectors); >4× delays recovery unacceptably in tactical use. Cross-ref to desync FSM in 02a:3 and RFC2119 justification: normative to prevent desync cascades (see §6.2 of 02a).
+
+**DRIFT_THRESHOLD_INTERVALS = 10**: SFN drift >10 intervals triggers ACQUIRING from DRIFTING. Balances cheap crystal oscillator drift (~50ppm = ~5s/hour) against mesh stability. 10 chosen over 5 (too aggressive) or 20 (allows excessive desync); pseudocode and vectors in 02a:5 and test/vectors/ enforce exact behavior. Independent of SFN modulo per stronger MUST in time-provider validation.
+
+**SFN_MODULUS = 65536**: Matches 2-byte beacon field (after SCHC Rule 0x20 compression). Provides ~23 days at default beacon rate before rollover (65536 × 30s / 86400 ≈ 22.7 days), sufficient for practical deployments without 4-byte bloat. 32-bit alternative rejected for airtime; boundary delta pseudocode in 02a:5 demonstrates correct unsigned wrap handling (0xFFFFFFFF → 0x00000000 yields delta=1). Full tradeoffs in test vectors.
+
+These parameters are no longer arbitrary; all MUST statements now cross-reference this appendix and test vectors, satisfying RFC2119 requirements for justification.
 
 ## 8. Summary
 

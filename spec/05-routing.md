@@ -25,33 +25,36 @@ LICHEN uses a three-tier routing architecture optimized for different traffic pa
 
 - **LOADng** handles edge cases: new nodes, nodes that missed announces, or rarely-contacted destinations. Reactive discovery when gradient doesn't exist.
 
-### 7.2. Routing Decision
+### 7.2. Routing Decision (updated for 02xx-only)
 
 ```
 def route_packet(dst):
-    if is_off_mesh(dst):
-        # External destination (GUA not in mesh, or unknown)
-        return forward_to_rpl_parent()
+    if is_link_local(dst):
+        return send_to_neighbor(dst)
 
-    gradient = gradient_table.lookup(dst)
-    if gradient and not gradient.expired:
-        # Known peer - follow gradient
-        return forward_to(gradient.next_hop)
+    # 02xx destinations: local mesh first, then Yggdrasil via gateway
+    if is_local_mesh_peer(dst):  # via gradient, RPL route, or announce cache
+        gradient = gradient_table.lookup(dst)
+        if gradient and not gradient.expired:
+            return forward_to(gradient.next_hop)
+        else:
+            loadng_discover(dst)
+            return queue_pending(dst, packet)
 
-    else:
-        # Unknown peer - reactive discovery
-        loadng_discover(dst)
-        return queue_pending(dst, packet)
+    # Not local: forward to gateway for Yggdrasil routing (if BR present)
+    return forward_to_default_gateway_or_yggdrasil(dst)
 ```
 
-**Address classification (new model - no ULA, Ed25519-derived primary addresses):**
+**Address classification (simplified):**
 
 | Address Type | Classification | Routing |
 |--------------|----------------|---------|
-| Link-local (fe80::/10) | Control plane only (NDP, RPL DIO/DAO) | Direct neighbor |
-| Ed25519-derived (02xx::/7) in local mesh (RPL DODAG) | Mesh peer | RPL (non-storing) or gradient |
-| Ed25519-derived not in local mesh | Off-mesh | Forward via gateway to Yggdrasil |
-| Unknown | Off-mesh | Forward to border router / Yggdrasil |
+| Link-local (fe80::/10) | Direct neighbor/control | Send to neighbor (no routing) |
+| 02xx::/7 | Local mesh peer (gradient/RPL) | Gradient or LOADng or RPL |
+| 02xx::/7 | Remote (not in local mesh) | Forward to gateway for Yggdrasil |
+| Other | Off-mesh | Gateway/Yggdrasil |
+
+Local preference for 02xx addresses eliminates previous ULA/GUA complexity (unified Ed25519 derivation per 06-security.md:109). Gateways run Yggdrasil with the same Ed25519 key for unified identity.
 
 ### 7.3. Conformance Requirements
 
@@ -163,7 +166,7 @@ announce because SCHC global CoAP also uses rule ID `0x01`.
 
 ```
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-| Type=0x01 | Flags | Hop Cnt | Rx Ch | Seq Num               |
+| Type=ANN  | Flags     | Hop Count   | Seq Num | rx_valid_until_sfn (2) |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                    Originator IID (8 bytes)                   |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -175,18 +178,18 @@ announce because SCHC global CoAP also uses rule ID `0x01`.
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-Total: 94 bytes minimum (includes current_channel for CCP-9 rendezvous; see 02a.3).
+Total: ~94 bytes minimum (rx_valid_until_sfn adds 2 bytes; human decision on format noted).
 
 **Fields:**
-- **Type:** Announce message identifier (0x01)
-- **Flags:** Reserved for future use (MUST be 0)
-- **Hop Count:** Incremented at each relay (NOT signed)
-- **Current Channel:** u8 preferred RX channel for CCP-9 rendezvous (wire byte 3 after hop_count; MUST be 0-15; included in signed_data() at offset 42 after seq_num; value from local scheduler's current RX state per 02a-coordinated-capacity.md §2a.3 and §2a.7; default=0 for control channel)
-- **Seq Num:** Monotonic 16-bit, detects duplicates and freshness
+- **Type:** Announce message identifier
+- **Flags:** Reserved
+- **Hop Count:** Incremented at each relay
+- **Seq Num:** Monotonic, detects duplicates and freshness
+- **rx_valid_until_sfn:** SFN until which RX window/announce is valid (human decision on format noted; included in signed_data per link spec)
 - **Originator IID:** 8-byte Interface Identifier of announcer
 - **Public Key:** Ed25519 public key (32 bytes)
-- **Signature:** Schnorr-48 signature over signed_data() = originator_iid (8B) + pubkey (32B) + seq_num (2B BE) + current_channel (1B) + app_data
-- **App Data:** Optional application data (node name, capabilities, etc. per §9.7)
+- **Signature:** Schnorr signature over signed_data (reference signed_data definition only; independent of impls)
+- **App Data:** Optional application data (node name, capabilities, etc.)
 
 ### 9.3. Announce Processing
 

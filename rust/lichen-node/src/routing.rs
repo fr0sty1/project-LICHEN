@@ -286,6 +286,11 @@ impl Router {
         self.dao_manager.routing_table.lookup(dst)
     }
 
+    /// Add a route using full DAO path from assemble_path/rebuild_routes (not 1-element nexthop).
+    pub fn add_route(&mut self, target: [u8; 16], path: &[[u8; 16]]) {
+        self.dao_manager.routing_table.add_route(target, path);
+    }
+
     /// Check trickle timer and return pending event.
     pub fn poll_trickle(&self) -> TrickleEvent {
         self.trickle.next_event()
@@ -361,6 +366,7 @@ impl Router {
     ///
     /// # Returns
     /// Next-hop address if forwarding is possible, None otherwise
+    #[cfg(feature = "std")]
     pub fn gpsr_forward(&self, dst_coords: GeoCoords) -> Option<[u8; 16]> {
         // Validate destination coordinates
         if !is_valid_coords(dst_coords) {
@@ -396,6 +402,7 @@ impl Router {
 }
 
 /// Haversine distance in meters between two (lat, lon) points.
+#[cfg(feature = "std")]
 fn haversine(c1: GeoCoords, c2: GeoCoords) -> f64 {
     const EARTH_RADIUS_M: f64 = 6_371_000.0;
 
@@ -417,6 +424,7 @@ fn haversine(c1: GeoCoords, c2: GeoCoords) -> f64 {
 
 /// Validate geographic coordinates.
 /// Returns false for NaN, inf, out-of-range, or null island (0,0).
+#[cfg(feature = "std")]
 fn is_valid_coords(coords: GeoCoords) -> bool {
     let (lat, lon) = coords;
 
@@ -465,7 +473,7 @@ pub struct DtnMessage {
 impl DtnMessage {
     /// Approximate size in bytes for buffer accounting.
     pub fn size(&self) -> usize {
-        self.packet.len() + 40
+        self.packet.len() + 48
     }
 }
 

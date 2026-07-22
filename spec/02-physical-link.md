@@ -41,7 +41,12 @@ Nodes SHOULD implement ADR to optimize SF/TX power based on link quality:
 3. If SNR < threshold: increase SF (more robust)
 4. Propagate via RPL DIO options
 
+### 3.5. Coordinated Capacity (CCP-16)
+
+See spec/02a-coordinated-capacity.md for full details on TDMA, multi-root beacon conflict resolution, desync recovery state machine (including RPL version/drift interactions, SFN reset, time-provider stratum), adaptive SF on SNR/density, multi-channel load balancing, and all robustness requirements per RFC 2119. Test vectors in test/vectors/ccp16-desync.json MUST be matched by all implementations.
+
 ---
+
 
 ## 4. Link Layer
 
@@ -99,7 +104,7 @@ the link signature and MIC because it is part of the frame payload.
 |------|------|-------------|
 | None (0) | 0B | Broadcast |
 | Short (1) | 2B | 16-bit short address (assigned by coordinator) |
-| Extended (2) | 8B | EUI-64 derived from hardware |
+| Extended (2) | 8B | Stable identifier (key-derived IID or hardware EUI-64) |
 | Elided (3) | 0B | Destination derived from context |
 
 ### 4.4. Epoch and Sequence Number
@@ -176,29 +181,29 @@ Assignment uses a hybrid approach depending on network topology.
 
 **When Coordinator is Present (Border Router or DODAG Root):**
 
-The coordinator assigns short addresses authoritatively:
+The coordinator assigns short addresses authoritatively (updated for unified no-ULA model):
 
-1. Node joins mesh, sends DAO with EUI-64
-2. Coordinator allocates unused 16-bit address
-3. Coordinator responds with assigned address in DAO-ACK
-4. Node begins using short address
+1. Node joins mesh, sends initial DAO with pubkey (unified Ed25519 derivation per 06-security.md)
+2. Coordinator derives IID and 02xx from pubkey, allocates unused 16-bit short address
+3. Coordinator responds with assigned short address in DAO-ACK (confirms binding)
+4. Node uses short address for 6LoWPAN compression; full 02xx/IID for identity/routing
 
-Coordinator maintains address table:
+Coordinator maintains address table (keyed on pubkey-derived identity):
 ```
 Short Address Table:
-  0x0001: EUI-64=00:11:22:33:44:55:66:77, PubKey=<32B>
-  0x0002: EUI-64=00:11:22:33:44:55:66:88, PubKey=<32B>
+  0x0001: IID=0201020304050607, PubKey=<32B>, 02xx=0201:0203:...
+  0x0002: IID=0201020304050608, PubKey=<32B>, 02xx=0201:0203:...
   ...
 ```
 
-Address 0x0000 is reserved (broadcast). Range 0xFFF0-0xFFFF reserved for future use.
+Address 0x0000 reserved (broadcast). Range 0xFFF0-0xFFFF reserved. Short addresses are mesh-local optimization only.
 
 **When No Coordinator (Isolated Mesh):**
 
-Nodes self-assign using hash-based allocation with DAD:
+Nodes self-assign using hash-based allocation with DAD (CCP-15.8.3: consistent hash_32 with LICHEN key per python/src/lichen/crypto/identity.py:hash_32 and 02a-coordinated-capacity.md, never CRC16):
 
-1. **Compute candidate:** `short_addr = (hash_32(0, EUI64_as_u64) & 0xFFFE) | 0x0001` (ensure non-zero; use updated link-layer hash_32(sfn, key) from CCP-15.8.3 / §2a.7.1 for consistency)
-2. **DAD probe:** Broadcast 3 DAD requests with random jitter (0-500ms between)
+1. **Compute candidate:** `short_addr = (hash_32(EUI-64, 0) & 0xFFFE) | 0x0001` (ensure non-zero; hash_32 = SipHash-2-4)
+2. **DAD probe:** Broadcast 5 DAD requests with exponential jitter (initial 0-500ms, double on retry)
    ```
    DAD Request:
      Type: DAD_PROBE
@@ -209,16 +214,19 @@ Nodes self-assign using hash-based allocation with DAD:
 3. **Wait:** Listen for 2 seconds for conflicts
 4. **Conflict response:** Node holding address replies with DAD_CONFLICT
    ```
-   DAD Conflict:
-     Type: DAD_CONFLICT
-     Address: <contested address>
-     EUI-64: <holder's EUI-64>
-     PubKey: <holder's public key>
+DAD Conflict:
+      Type: DAD_CONFLICT
+      Address: <contested address>
+      IID: <holder's IID>
+      PubKey: <holder's public key>
+
    ```
 5. **Resolution:**
-   - If conflict received: increment candidate, retry from step 2
-   - If no conflict after 3 probes: claim address
-   - After 5 failed attempts: fall back to EUI-64 only
+   - If conflict received: increment candidate (or re-hash with entropy), retry from step 2
+    - If no conflict after 5 probes: claim address
+    - After 7 failed attempts: fall back to full 02xx address (no short address compression)
+
+**DAD Retry Strategy Note:** hash_32(EUI-64,0) (per identity.py:hash_32 with LICHEN key) exhibits higher collision probability than prior CRC16 (especially with correlated manufacturer OUIs in EUI-64). Recommend 5+ probes, exponential backoff, and optional mixing with DODAGID or local 32-bit entropy (`hash_32(EUI-64 XOR DODAGID, local_entropy)`) per updated pseudocode. This reduces DAD airtime waste in dense meshes while maintaining robustness. Security implications discussed in 06-security.md:15.5.
 
 **Collision Detection (Safety Net):**
 

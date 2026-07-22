@@ -32,6 +32,7 @@ def test_remote_identity_and_uri() -> None:
     assert r == LichenRemote("node-b")
     assert r != LichenRemote("node-c")
     assert hash(r) == hash(LichenRemote("node-b"))
+    assert hash(r) == 3597868155
 
 
 @pytest.mark.asyncio

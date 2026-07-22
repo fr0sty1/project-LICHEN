@@ -79,7 +79,11 @@ impl From<KissError> for BridgeError {
 
 impl From<FrameError> for BridgeError {
     fn from(e: FrameError) -> Self {
-        Self::Frame(e)
+        match e {
+            FrameError::FrameTooLarge => Self::PayloadTooLarge,
+            FrameError::BufferTooSmall => Self::BufferTooSmall,
+            _ => Self::Frame(e),
+        }
     }
 }
 

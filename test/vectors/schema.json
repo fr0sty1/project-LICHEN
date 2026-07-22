@@ -1,24 +1,31 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LICHEN test vector file",
-  "description": "v2-only strict schemas. All files now use format_version=2 with per-family document defs. Mutually exclusive oneOf branches, minItems:1, additionalProperties:false enforce one vector family per file. ccp13, ccp15, ccp16 and ccp_load_balancing have dedicated strict defs. No v1 legacy support remains.",
-  "oneOf": [
-    {"$ref": "#/definitions/schc_document"},
-    {"$ref": "#/definitions/l2_payload_document"},
-    {"$ref": "#/definitions/link_frame_document"},
-    {"$ref": "#/definitions/announce_coords_document"},
-    {"$ref": "#/definitions/meshtastic_app_compat_document"},
-    {"$ref": "#/definitions/meshcore_app_compat_document"},
-    {"$ref": "#/definitions/oscore_document"},
-    {"$ref": "#/definitions/rpl_messages_document"},
-    {"$ref": "#/definitions/compact_cot_document"},
-    {"$ref": "#/definitions/schnorr48_document"},
-    {"$ref": "#/definitions/ccp_document"},
-    {"$ref": "#/definitions/ccp15_document"},
-    {"$ref": "#/definitions/ccp_load_balancing_document"},
-    {"$ref": "#/definitions/ccp13_document"}
-  ],
-
+  "description": "Supports both object envelope (with format_version) and v2 bare array root with ccp_vector items (for ccp16-desync.json and similar).",
+  "type": ["object", "array"],
+  "additionalProperties": true,
+  "items": {"$ref": "#/definitions/ccp_vector"},
+  "properties": {
+    "format_version": {"type": "integer", "enum": [1, 2]},
+    "description": {"type": "string"},
+    "$schema": {"type": "string"},
+    "vectors": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {"$ref": "#/definitions/schc_vector"},
+          {"$ref": "#/definitions/l2_payload_vector"},
+          {"$ref": "#/definitions/frame_vector"},
+          {"$ref": "#/definitions/announce_coords_vector"},
+          {"$ref": "#/definitions/meshtastic_app_compat_vector"},
+          {"$ref": "#/definitions/meshcore_app_compat_vector"},
+          {"$ref": "#/definitions/oscore_vector"},
+          {"$ref": "#/definitions/rpl_messages_vector"},
+          {"$ref": "#/definitions/ccp_vector"}
+        ]
+      }
+    }
+  },
   "definitions": {
     "document_base": {
       "type": "object",
@@ -653,6 +660,7 @@
     "rpl_messages_vector": {
       "type": "object",
       "required": ["name", "type", "encoded"],
+      "additionalProperties": false,
       "description": "RPL control message (RFC 6550) parse/generate vector.",
       "properties": {
         "name": {"type": "string"},
@@ -683,196 +691,36 @@
         }
       }
     },
-    "compact_cot_vector": {
-      "type": "object",
-      "required": ["name", "description", "binary_hex", "decoded_fields"],
-      "additionalProperties": false,
-      "properties": {
-        "name": {"type": "string"},
-        "description": {"type": "string"},
-        "binary_hex": {"$ref": "#/definitions/hex"},
-        "decoded_fields": {
-          "type": "object",
-          "additionalProperties": true,
-          "properties": {
-            "subtype": {"type": "integer"},
-            "subtype_name": {"type": "string"},
-            "latitude_microdegrees": {"type": "integer"},
-            "longitude_microdegrees": {"type": "integer"},
-            "altitude_decimeters": {"type": "integer"},
-            "course_centidegrees": {"type": "integer"},
-            "speed_cm_s": {"type": "integer"},
-            "team": {"type": "integer"},
-            "team_name": {"type": "string"},
-            "role": {"type": "integer"},
-            "expected_hash": {"type": "integer"}
-          }
-        }
-      }
-    },
-    "schnorr48_vector": {
-      "type": "object",
-      "required": ["description", "public_key", "message", "signature", "valid"],
-      "additionalProperties": false,
-      "properties": {
-        "description": {"type": "string"},
-        "seed": {"$ref": "#/definitions/hex"},
-        "private_key": {"$ref": "#/definitions/hex"},
-        "public_key": {"$ref": "#/definitions/hex"},
-        "message": {"$ref": "#/definitions/hex"},
-        "signature": {"$ref": "#/definitions/hex"},
-        "valid": {"type": "boolean"}
-      }
-    },
-    "ccp_document": {
-      "oneOf": [
-        {
-          "type": "array",
-          "minItems": 1,
-          "items": {"$ref": "#/definitions/ccp_vector"},
-          "description": "v2 array-root support for CCP variants (oneOf with enveloped form)"
-        },
-        {
-          "allOf": [
-            {"$ref": "#/definitions/document_base"},
-            {
-              "properties": {
-                "vectors": {
-                  "items": {"$ref": "#/definitions/ccp_vector"}
-                }
-              }
-            }
-          ]
-        }
-      ]
-    },
-    "ccp15_document": {
-      "allOf": [
-        {"$ref": "#/definitions/document_base"},
-        {
-          "properties": {
-            "vectors": {
-              "items": {"$ref": "#/definitions/ccp_vector"},
-              "minItems": 1
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
-    },
-    "ccp_load_balancing_document": {
-      "allOf": [
-        {"$ref": "#/definitions/document_base"},
-        {
-          "properties": {
-            "vectors": {
-              "items": {"$ref": "#/definitions/ccp_vector"},
-              "minItems": 1
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
-    },
-    "ccp13_document": {
-      "allOf": [
-        {"$ref": "#/definitions/document_base"},
-        {
-          "properties": {
-            "vectors": {
-              "items": {"$ref": "#/definitions/ccp_vector"},
-              "minItems": 1
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
-    },
-    "ccp16_document": {
-      "allOf": [
-        {"$ref": "#/definitions/document_base"},
-        {
-          "properties": {
-            "vectors": {
-              "items": {"$ref": "#/definitions/ccp_vector"},
-              "minItems": 1
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
-    },
     "ccp_vector": {
       "type": "object",
-      "required": ["name", "description"],
-      "additionalProperties": false,
+      "required": ["name", "snr_ema"],
+      "additionalProperties": true,
+      "description": "CCP vector for CCP-15/16 (load balancing, SF/TDMA selection, desync FSM). Tailored via oneOf in envelope and additionalProperties per JSON Schema best practices. Includes hash_32_example for standardized hash function (replaces prior fnv1a32 mentions).",
       "properties": {
         "name": {"type": "string"},
         "description": {"type": "string"},
-        "load_factor": {"type": "integer"},
-        "preferred_channel": {"type": "integer"},
-        "num_neighbors": {"type": "integer"},
-        "tdma_slot": {"type": "integer"},
-        "sf": {"type": "integer"},
+        "note": {"type": "string"},
         "density": {"type": "integer"},
-        "channels": {"type": "array"},
-        "superframe": {"type": "integer"},
-        "slot_duration_ms": {"type": "integer"},
-        "guard_ms": {"type": "integer"},
-        "assigned_slot": {"type": "integer"},
-        "density_factor": {"type": "integer"},
-        "density_nodes": {"type": "integer"},
-        "current_sf": {"type": "integer"},
-        "target_sf": {"type": "integer"},
-        "success_rate": {"type": "number"},
-        "snr_db": {"type": ["number", "array"]},
+        "density_estimate_high": {"type": "integer"},
+        "per_percent": {"type": "number"},
+        "expected_density": {"type": "integer"},
         "snr_ema": {"type": "number"},
-        "n_channels": {"type": "integer"},
-        "load_per_channel": {"type": "array"},
-        "rebalance_threshold": {"type": "integer"},
-        "assigned_channel": {"type": "integer"},
-        "channel": {"type": "integer"},
-        "slot": {"type": "integer"},
-        "per": {"type": ["number", "object", "array"]},
-        "channel_busy": {"type": "array"},
-        "now_ts": {"type": "integer"},
-        "expected": {"type": "object"},
-        "current_ch": {"type": "integer"},
-        "blacklist_until": {"type": "array"},
-        "last_used": {"type": "array"},
+        "load_factor": {"type": "number"},
+        "current_sfn": {"type": "integer"},
+        "assigned_slot": {"type": "integer"},
+        "expected_sf": {"type": "integer"},
         "expected_channel": {"type": "integer"},
-        "hysteresis": {"type": "boolean"},
-        "blacklist_trigger": {"type": "boolean"},
-        "last_switch_ts": {"type": "integer"},
-        "eui64": {"type": "string"},
-        "dodag_id": {"type": "string"},
-        "sfn": {"type": "integer"},
-        "num_data_slots": {"type": "integer"},
-        "expected_slot": {"type": "integer"},
-        "expected_hash": {"type": "integer"},
-        "rssi_samples": {"type": "array"},
-        "expected_avg": {"type": "integer"},
-        "duty_permille": {"type": "integer"},
-        "now_ms": {"type": "integer"},
-        "records": {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "items": {"type": "integer"}
-          }
-        },
-        "duration_ms": {"type": "integer"},
-        "expected_remaining_ms": {"type": "integer"},
-        "expected_usage_permille": {"type": "integer"},
-        "expected_next_ms": {"type": "integer"},
-        "can_transmit": {"type": "boolean"},
-        "preferred_duty": {"type": "integer"},
-        "stratum": {"type": "integer"},
-        "tx": {"type": "integer"},
-        "failures": {"type": "integer"},
-        "mechanism": {"type": "string"},
-        "last_announce_channel": {"type": "integer"},
-        "peer_eui64": {"type": "string"}
+        "expected_outcome": {"type": "string"},
+        "expected_cca_result": {"type": "boolean"},
+        "expected_backoff": {"type": "boolean"},
+        "hash_32_example": {"type": "string"},
+        "ts_now": {"type": "integer"},
+        "node_iid": {"type": "string"},
+        "rssi_dbm": {"type": "integer"},
+        "channel": {"type": "integer"},
+        "cca_duration_syms": {"type": "integer"},
+        "rssi_threshold": {"type": "integer"},
+        "slot_adjust_ticks": {"type": "integer"}
       }
     }
   }

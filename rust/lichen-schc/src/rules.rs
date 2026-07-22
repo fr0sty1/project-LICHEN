@@ -53,7 +53,14 @@ pub struct Rule {
     pub fields: &'static [FieldDescriptor],
 }
 
-const LINK_LOCAL_PREFIX_TV: u128 = 0xFE80_0000_0000_0000_0000_0000_0000_0000;
+// ---------------------------------------------------------------------------
+// Whole-packet rule registry populated from Python rules.py (LINK_LOCAL_COAP_RULE etc)
+// and codec.rs behavior. Matches appendix-schc.md and 03-adaptation.md tables.
+// DAO base fields (kd_flags + reserved + seq + dodagid) now fully synced with Python rules.py:280 and Rust codec (lines 148-166 updated).
+// ---------------------------------------------------------------------------
+
+const LINK_LOCAL_PREFIX: u128 = 0xfe80u128 << 112;
+
 pub const LINK_LOCAL_COAP_RULE: Rule = Rule {
     rule_id: RULE_LINK_LOCAL_COAP,
     fields: &[
@@ -64,7 +71,6 @@ pub const LINK_LOCAL_COAP_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 6,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.traffic_class",
@@ -73,7 +79,6 @@ pub const LINK_LOCAL_COAP_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.flow_label",
@@ -82,7 +87,6 @@ pub const LINK_LOCAL_COAP_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.payload_length",
@@ -91,7 +95,6 @@ pub const LINK_LOCAL_COAP_RULE: Rule = Rule {
             cda: Cda::Compute,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.next_header",
@@ -100,7 +103,6 @@ pub const LINK_LOCAL_COAP_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 17,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.hop_limit",
@@ -109,25 +111,22 @@ pub const LINK_LOCAL_COAP_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.src",
             length_bits: 128,
             mo: Mo::Msb,
             cda: Cda::Lsb,
-            target_value: LINK_LOCAL_PREFIX_TV,
+            target_value: LINK_LOCAL_PREFIX,
             mo_arg: Some(64),
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.dst",
             length_bits: 128,
             mo: Mo::Msb,
             cda: Cda::Lsb,
-            target_value: LINK_LOCAL_PREFIX_TV,
+            target_value: LINK_LOCAL_PREFIX,
             mo_arg: Some(64),
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "UDP.src_port",
@@ -136,7 +135,6 @@ pub const LINK_LOCAL_COAP_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "UDP.dst_port",
@@ -145,7 +143,6 @@ pub const LINK_LOCAL_COAP_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "UDP.length",
@@ -154,7 +151,6 @@ pub const LINK_LOCAL_COAP_RULE: Rule = Rule {
             cda: Cda::Compute,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "UDP.checksum",
@@ -163,7 +159,6 @@ pub const LINK_LOCAL_COAP_RULE: Rule = Rule {
             cda: Cda::Compute,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "CoAP.version",
@@ -172,7 +167,6 @@ pub const LINK_LOCAL_COAP_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 1,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "CoAP.type",
@@ -181,7 +175,6 @@ pub const LINK_LOCAL_COAP_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "CoAP.tkl",
@@ -190,7 +183,6 @@ pub const LINK_LOCAL_COAP_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "CoAP.code",
@@ -199,7 +191,6 @@ pub const LINK_LOCAL_COAP_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "CoAP.mid",
@@ -208,7 +199,6 @@ pub const LINK_LOCAL_COAP_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
     ],
 };
@@ -222,7 +212,6 @@ pub const GLOBAL_COAP_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 6,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.traffic_class",
@@ -231,7 +220,6 @@ pub const GLOBAL_COAP_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.flow_label",
@@ -240,7 +228,6 @@ pub const GLOBAL_COAP_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.payload_length",
@@ -249,7 +236,6 @@ pub const GLOBAL_COAP_RULE: Rule = Rule {
             cda: Cda::Compute,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.next_header",
@@ -258,7 +244,6 @@ pub const GLOBAL_COAP_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 17,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.hop_limit",
@@ -267,7 +252,6 @@ pub const GLOBAL_COAP_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.src",
@@ -276,7 +260,6 @@ pub const GLOBAL_COAP_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.dst",
@@ -285,7 +268,6 @@ pub const GLOBAL_COAP_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "UDP.src_port",
@@ -294,7 +276,6 @@ pub const GLOBAL_COAP_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "UDP.dst_port",
@@ -303,7 +284,6 @@ pub const GLOBAL_COAP_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "UDP.length",
@@ -312,7 +292,6 @@ pub const GLOBAL_COAP_RULE: Rule = Rule {
             cda: Cda::Compute,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "UDP.checksum",
@@ -321,7 +300,6 @@ pub const GLOBAL_COAP_RULE: Rule = Rule {
             cda: Cda::Compute,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "CoAP.version",
@@ -330,7 +308,6 @@ pub const GLOBAL_COAP_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 1,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "CoAP.type",
@@ -339,7 +316,6 @@ pub const GLOBAL_COAP_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "CoAP.tkl",
@@ -348,7 +324,6 @@ pub const GLOBAL_COAP_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "CoAP.code",
@@ -357,7 +332,6 @@ pub const GLOBAL_COAP_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "CoAP.mid",
@@ -366,7 +340,6 @@ pub const GLOBAL_COAP_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
     ],
 };
@@ -380,7 +353,6 @@ pub const ICMPV6_ECHO_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 6,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.traffic_class",
@@ -389,7 +361,6 @@ pub const ICMPV6_ECHO_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.flow_label",
@@ -398,7 +369,6 @@ pub const ICMPV6_ECHO_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.payload_length",
@@ -407,7 +377,6 @@ pub const ICMPV6_ECHO_RULE: Rule = Rule {
             cda: Cda::Compute,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.next_header",
@@ -416,7 +385,6 @@ pub const ICMPV6_ECHO_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 58,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.hop_limit",
@@ -425,25 +393,22 @@ pub const ICMPV6_ECHO_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.src",
             length_bits: 128,
             mo: Mo::Msb,
             cda: Cda::Lsb,
-            target_value: LINK_LOCAL_PREFIX_TV,
+            target_value: LINK_LOCAL_PREFIX,
             mo_arg: Some(64),
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.dst",
             length_bits: 128,
             mo: Mo::Msb,
             cda: Cda::Lsb,
-            target_value: LINK_LOCAL_PREFIX_TV,
+            target_value: LINK_LOCAL_PREFIX,
             mo_arg: Some(64),
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "ICMPv6.type",
@@ -452,7 +417,6 @@ pub const ICMPV6_ECHO_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "ICMPv6.code",
@@ -461,7 +425,6 @@ pub const ICMPV6_ECHO_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "ICMPv6.checksum",
@@ -470,7 +433,6 @@ pub const ICMPV6_ECHO_RULE: Rule = Rule {
             cda: Cda::Compute,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "ICMPv6.identifier",
@@ -479,7 +441,6 @@ pub const ICMPV6_ECHO_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "ICMPv6.sequence",
@@ -488,7 +449,6 @@ pub const ICMPV6_ECHO_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
     ],
 };
@@ -502,7 +462,6 @@ pub const RPL_DIO_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 6,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.traffic_class",
@@ -511,7 +470,6 @@ pub const RPL_DIO_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.flow_label",
@@ -520,7 +478,6 @@ pub const RPL_DIO_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.payload_length",
@@ -529,7 +486,6 @@ pub const RPL_DIO_RULE: Rule = Rule {
             cda: Cda::Compute,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.next_header",
@@ -538,7 +494,6 @@ pub const RPL_DIO_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 58,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.hop_limit",
@@ -547,25 +502,22 @@ pub const RPL_DIO_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.src",
             length_bits: 128,
             mo: Mo::Msb,
             cda: Cda::Lsb,
-            target_value: LINK_LOCAL_PREFIX_TV,
+            target_value: LINK_LOCAL_PREFIX,
             mo_arg: Some(64),
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.dst",
             length_bits: 128,
             mo: Mo::Msb,
             cda: Cda::Lsb,
-            target_value: LINK_LOCAL_PREFIX_TV,
+            target_value: LINK_LOCAL_PREFIX,
             mo_arg: Some(64),
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "ICMPv6.type",
@@ -574,7 +526,6 @@ pub const RPL_DIO_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 155,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "ICMPv6.code",
@@ -583,7 +534,6 @@ pub const RPL_DIO_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 1,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "ICMPv6.checksum",
@@ -592,7 +542,6 @@ pub const RPL_DIO_RULE: Rule = Rule {
             cda: Cda::Compute,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "RPL.instance",
@@ -601,7 +550,6 @@ pub const RPL_DIO_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "RPL.version",
@@ -610,7 +558,6 @@ pub const RPL_DIO_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "RPL.rank",
@@ -619,7 +566,6 @@ pub const RPL_DIO_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "RPL.gmop",
@@ -628,7 +574,6 @@ pub const RPL_DIO_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "RPL.dtsn",
@@ -637,7 +582,6 @@ pub const RPL_DIO_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "RPL.flags",
@@ -646,7 +590,6 @@ pub const RPL_DIO_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "RPL.reserved",
@@ -655,7 +598,6 @@ pub const RPL_DIO_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "RPL.dodagid",
@@ -664,7 +606,6 @@ pub const RPL_DIO_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
     ],
 };
@@ -678,7 +619,6 @@ pub const RPL_DAO_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 6,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.traffic_class",
@@ -687,7 +627,6 @@ pub const RPL_DAO_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.flow_label",
@@ -696,7 +635,6 @@ pub const RPL_DAO_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.payload_length",
@@ -705,7 +643,6 @@ pub const RPL_DAO_RULE: Rule = Rule {
             cda: Cda::Compute,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.next_header",
@@ -714,7 +651,6 @@ pub const RPL_DAO_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 58,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.hop_limit",
@@ -723,25 +659,22 @@ pub const RPL_DAO_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.src",
             length_bits: 128,
-            mo: Mo::Ignore,
-            cda: Cda::ValueSent,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
+            mo: Mo::Msb,
+            cda: Cda::Lsb,
+            target_value: LINK_LOCAL_PREFIX,
+            mo_arg: Some(64),
         },
         FieldDescriptor {
             field_id: "IPv6.dst",
             length_bits: 128,
-            mo: Mo::Ignore,
-            cda: Cda::ValueSent,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
+            mo: Mo::Msb,
+            cda: Cda::Lsb,
+            target_value: LINK_LOCAL_PREFIX,
+            mo_arg: Some(64),
         },
         FieldDescriptor {
             field_id: "ICMPv6.type",
@@ -750,7 +683,6 @@ pub const RPL_DAO_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 155,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "ICMPv6.code",
@@ -759,7 +691,6 @@ pub const RPL_DAO_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 2,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "ICMPv6.checksum",
@@ -768,7 +699,6 @@ pub const RPL_DAO_RULE: Rule = Rule {
             cda: Cda::Compute,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "RPL.instance",
@@ -777,7 +707,6 @@ pub const RPL_DAO_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "RPL.kd_flags",
@@ -786,7 +715,6 @@ pub const RPL_DAO_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "RPL.reserved",
@@ -795,7 +723,6 @@ pub const RPL_DAO_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "RPL.seq",
@@ -804,7 +731,6 @@ pub const RPL_DAO_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "RPL.dodagid",
@@ -813,327 +739,17 @@ pub const RPL_DAO_RULE: Rule = Rule {
             cda: Cda::ValueSent,
             target_value: 0,
             mo_arg: None,
-            mapping: None,
         },
     ],
 };
-/// Link-local IPv6 + UDP + OSCORE-protected CoAP (RFC 8613).
+
 pub const LINK_LOCAL_OSCORE_RULE: Rule = Rule {
     rule_id: RULE_LINK_LOCAL_OSCORE,
-    fields: &[
-        FieldDescriptor {
-            field_id: "IPv6.version",
-            length_bits: 4,
-            mo: Mo::Equal,
-            cda: Cda::NotSent,
-            target_value: 6,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "IPv6.traffic_class",
-            length_bits: 8,
-            mo: Mo::Equal,
-            cda: Cda::NotSent,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "IPv6.flow_label",
-            length_bits: 20,
-            mo: Mo::Equal,
-            cda: Cda::NotSent,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "IPv6.payload_length",
-            length_bits: 16,
-            mo: Mo::Ignore,
-            cda: Cda::Compute,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "IPv6.next_header",
-            length_bits: 8,
-            mo: Mo::Equal,
-            cda: Cda::NotSent,
-            target_value: 17,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "IPv6.hop_limit",
-            length_bits: 8,
-            mo: Mo::Ignore,
-            cda: Cda::ValueSent,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "IPv6.src",
-            length_bits: 128,
-            mo: Mo::Msb,
-            cda: Cda::Lsb,
-            target_value: LINK_LOCAL_PREFIX_TV,
-            mo_arg: Some(64),
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "IPv6.dst",
-            length_bits: 128,
-            mo: Mo::Msb,
-            cda: Cda::Lsb,
-            target_value: LINK_LOCAL_PREFIX_TV,
-            mo_arg: Some(64),
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "UDP.src_port",
-            length_bits: 16,
-            mo: Mo::Ignore,
-            cda: Cda::ValueSent,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "UDP.dst_port",
-            length_bits: 16,
-            mo: Mo::Ignore,
-            cda: Cda::ValueSent,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "UDP.length",
-            length_bits: 16,
-            mo: Mo::Ignore,
-            cda: Cda::Compute,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "UDP.checksum",
-            length_bits: 16,
-            mo: Mo::Ignore,
-            cda: Cda::Compute,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "CoAP.version",
-            length_bits: 2,
-            mo: Mo::Equal,
-            cda: Cda::NotSent,
-            target_value: 1,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "CoAP.type",
-            length_bits: 2,
-            mo: Mo::Ignore,
-            cda: Cda::ValueSent,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "CoAP.tkl",
-            length_bits: 4,
-            mo: Mo::Ignore,
-            cda: Cda::ValueSent,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "CoAP.code",
-            length_bits: 8,
-            mo: Mo::Ignore,
-            cda: Cda::ValueSent,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "CoAP.mid",
-            length_bits: 16,
-            mo: Mo::Ignore,
-            cda: Cda::ValueSent,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-    ],
+    fields: LINK_LOCAL_COAP_RULE.fields,
 };
-/// Global IPv6 + UDP + OSCORE-protected CoAP (RFC 8613).
 pub const GLOBAL_OSCORE_RULE: Rule = Rule {
     rule_id: RULE_GLOBAL_OSCORE,
-    fields: &[
-        FieldDescriptor {
-            field_id: "IPv6.version",
-            length_bits: 4,
-            mo: Mo::Equal,
-            cda: Cda::NotSent,
-            target_value: 6,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "IPv6.traffic_class",
-            length_bits: 8,
-            mo: Mo::Equal,
-            cda: Cda::NotSent,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "IPv6.flow_label",
-            length_bits: 20,
-            mo: Mo::Equal,
-            cda: Cda::NotSent,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "IPv6.payload_length",
-            length_bits: 16,
-            mo: Mo::Ignore,
-            cda: Cda::Compute,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "IPv6.next_header",
-            length_bits: 8,
-            mo: Mo::Equal,
-            cda: Cda::NotSent,
-            target_value: 17,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "IPv6.hop_limit",
-            length_bits: 8,
-            mo: Mo::Ignore,
-            cda: Cda::ValueSent,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "IPv6.src",
-            length_bits: 128,
-            mo: Mo::Ignore,
-            cda: Cda::ValueSent,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "IPv6.dst",
-            length_bits: 128,
-            mo: Mo::Ignore,
-            cda: Cda::ValueSent,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "UDP.src_port",
-            length_bits: 16,
-            mo: Mo::Ignore,
-            cda: Cda::ValueSent,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "UDP.dst_port",
-            length_bits: 16,
-            mo: Mo::Ignore,
-            cda: Cda::ValueSent,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "UDP.length",
-            length_bits: 16,
-            mo: Mo::Ignore,
-            cda: Cda::Compute,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "UDP.checksum",
-            length_bits: 16,
-            mo: Mo::Ignore,
-            cda: Cda::Compute,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "CoAP.version",
-            length_bits: 2,
-            mo: Mo::Equal,
-            cda: Cda::NotSent,
-            target_value: 1,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "CoAP.type",
-            length_bits: 2,
-            mo: Mo::Ignore,
-            cda: Cda::ValueSent,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "CoAP.tkl",
-            length_bits: 4,
-            mo: Mo::Ignore,
-            cda: Cda::ValueSent,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "CoAP.code",
-            length_bits: 8,
-            mo: Mo::Ignore,
-            cda: Cda::ValueSent,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "CoAP.mid",
-            length_bits: 16,
-            mo: Mo::Ignore,
-            cda: Cda::ValueSent,
-            target_value: 0,
-            mo_arg: None,
-            mapping: None,
-        },
-    ],
+    fields: GLOBAL_COAP_RULE.fields,
 };
 pub const MQTT_SN_RULE: Rule = Rule {
     rule_id: RULE_MQTT_SN,
@@ -1145,52 +761,30 @@ pub const MQTT_SN_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 6,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
-            field_id: "IPv6.hop_limit",
+            field_id: "IPv6.next_header",
             length_bits: 8,
-            mo: Mo::Ignore,
-            cda: Cda::ValueSent,
-            target_value: 0,
+            mo: Mo::Equal,
+            cda: Cda::NotSent,
+            target_value: 17,
             mo_arg: None,
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "IPv6.src",
-            length_bits: 128,
-            mo: Mo::Msb,
-            cda: Cda::Lsb,
-            target_value: LINK_LOCAL_PREFIX_TV,
-            mo_arg: Some(64),
-            mapping: None,
-        },
-        FieldDescriptor {
-            field_id: "IPv6.dst",
-            length_bits: 128,
-            mo: Mo::Msb,
-            cda: Cda::Lsb,
-            target_value: LINK_LOCAL_PREFIX_TV,
-            mo_arg: Some(64),
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "UDP.src_port",
             length_bits: 16,
-            mo: Mo::Ignore,
-            cda: Cda::ValueSent,
+            mo: Mo::Equal,
+            cda: Cda::NotSent,
             target_value: 10883,
             mo_arg: None,
-            mapping: None,
         },
         FieldDescriptor {
             field_id: "UDP.dst_port",
             length_bits: 16,
-            mo: Mo::Ignore,
-            cda: Cda::ValueSent,
+            mo: Mo::Equal,
+            cda: Cda::NotSent,
             target_value: 10883,
             mo_arg: None,
-            mapping: None,
         },
     ],
 };

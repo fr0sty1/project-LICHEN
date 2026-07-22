@@ -15,8 +15,9 @@
 /// Fixed-point scale factor (2^16 = 65536).
 const FP_SCALE: i32 = 1 << 16;
 
-/// EMA shift for fixed-point division (alpha = 1/4 = 2^-2).
-/// Chosen for faster response to changing interference conditions per CCP-15.
+/// EMA shift for alpha = 1/4 per CCP-15 (faster interference response).
+/// Used in both RssiStats and SnrStats to avoid magic numbers and ensure
+/// identical convergence behavior.
 const EMA_ALPHA_SHIFT: u32 = 2;
 
 /// RF health metrics aggregator.
@@ -144,10 +145,10 @@ impl RssiStats {
         if self.count == 0 {
             self.avg_fp = rssi_fp;
         } else {
-            // EMA: avg = avg + alpha * (sample - avg) with alpha=1/4 for fast interference response (CCP-15)
-            // In fixed-point: avg = avg + (sample - avg) >> EMA_ALPHA_SHIFT
+            // EMA: avg = avg + alpha * (sample - avg); alpha=1/4 via EMA_ALPHA_SHIFT
+            // per CCP-15 for faster response to interference (da2q.15.2.1)
             let diff = rssi_fp - self.avg_fp;
-            self.avg_fp = self.avg_fp.saturating_add(diff >> EMA_ALPHA_SHIFT);
+            self.avg_fp += diff >> EMA_ALPHA_SHIFT;
         }
         self.count = self.count.saturating_add(1);
     }
@@ -227,10 +228,10 @@ impl SnrStats {
         if self.count == 0 {
             self.avg_fp = snr_fp;
         } else {
-            // EMA: avg = avg + alpha * (sample - avg) with alpha=1/4 for fast interference response (CCP-15)
-            // In fixed-point: avg = avg + (sample - avg) >> EMA_ALPHA_SHIFT
+            // EMA: avg = avg + alpha * (sample - avg); alpha=1/4 via EMA_ALPHA_SHIFT
+            // per CCP-15 for faster response to interference (da2q.15.2.1)
             let diff = snr_fp - self.avg_fp;
-            self.avg_fp = self.avg_fp.saturating_add(diff >> EMA_ALPHA_SHIFT);
+            self.avg_fp += diff >> EMA_ALPHA_SHIFT;
         }
         self.count = self.count.saturating_add(1);
     }
@@ -409,14 +410,11 @@ mod tests {
     #[test]
     fn rssi_avg_multiple_samples() {
         let mut stats = RssiStats::new();
-        // First sample sets the average
         stats.update(-80);
         assert_eq!(stats.avg(), Some(-80));
 
-        // Second sample: EMA with alpha=1/4 (faster response for CCP-15 interference metrics)
-        // new_avg = -80 + (1/4) * 20 = -80 + 5 = -75
+        // Parametrized for alpha=1/4 (EMA_ALPHA_SHIFT=2): -80 + (20>>2) = -75
         stats.update(-60);
-        // The avg should move toward -60
         assert_eq!(stats.avg(), Some(-75));
     }
 

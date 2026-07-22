@@ -311,7 +311,7 @@ int lichen_rpl_transit_info_parse(struct lichen_rpl_transit_info *ti,
 		return LICHEN_RPL_ERR_TOO_SHORT;
 	}
 
-	/* data[0] = E flag, skipped */
+	/* data[0] = E flag (0x80 when parent present); skipped per contract */
 	ti->path_control = data[1];
 	ti->path_sequence = data[2];
 	ti->path_lifetime = data[3];
@@ -333,7 +333,7 @@ int lichen_rpl_transit_info_write(const struct lichen_rpl_transit_info *ti,
 
 	buf[0] = LICHEN_RPL_OPT_TRANSIT_INFO;
 	buf[1] = LICHEN_RPL_TRANSIT_INFO_DATA_LEN;
-	buf[2] = 0;  /* E flag = 0 for internal target */
+	buf[2] = 0x80;  /* E flag set (parent address present) */
 	buf[3] = ti->path_control;
 	buf[4] = ti->path_sequence;
 	buf[5] = ti->path_lifetime;

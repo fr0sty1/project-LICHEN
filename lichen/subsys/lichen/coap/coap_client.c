@@ -49,7 +49,10 @@ LOG_MODULE_REGISTER(lichen_coap_client, LOG_LEVEL_INF);
 /* Maximum number of URI path components (defense against unterminated arrays) */
 #define COAP_MAX_PATH_COMPONENTS LICHEN_COAP_MAX_PATH_COMPONENTS
 
-/* Fallback timeout is scheduled at 2x the request timeout. */
+/* Fallback timeout is scheduled at 2x the request timeout.
+ * Guard prevents *2 overflow; k_timeout_t ternary + K_FOREVER for large values
+ * avoids tick conversion overflow in K_MSEC(). Per s1zp.
+ */
 #define COAP_MAX_REQUEST_TIMEOUT_MS (UINT32_MAX / 2U)
 
 /* CoAP client socket - protected by s_mutex for thread safety */
@@ -101,13 +104,21 @@ int lichen_coap_client_init(void)
 }
 
 /*
- * Internal response handler that maps to user callback.
+ * request_ctx lifetime and timeout race (per h115, simplified+documented).
  *
- * The timeout_work ensures cleanup if the CoAP layer never calls back
- * (e.g., socket error before request is sent).
+ * Initial refs=2 (submitter path + callback path). Timeout work takes extra
+ * ref only if scheduled. completed flag arbitrates ownership: first to set it
+ * (callback or timeout_handler) performs cleanup and user callback. The
+ * post-schedule double-check cancels timeout if callback raced in.
  *
- * Race prevention: completed flag is set atomically. Whichever path
- * (callback or timeout) sets it first owns the ctx and frees it.
+ * Race window after coap_client_req succeeds is covered by atomic checks and
+ * ref counting; ctx cannot be freed while any path holds ref. Timeout ref is
+ * released in cancel or by timeout handler. Blockwise reschedules re-arm only
+ * if not completed.
+ *
+ * This pattern avoids UAF while allowing Zephyr CoAP callback or our fallback
+ * timeout to own completion. See request_timeout_handler, coap_response_handler,
+ * request_ctx_* helpers for details.
  */
 struct request_ctx {
 	lichen_coap_response_cb callback;
@@ -157,6 +168,22 @@ static void request_ctx_cancel_timeout_sync(struct request_ctx *ctx)
 
 static void request_ctx_cancel_coap_slot(struct request_ctx *ctx)
 {
+	/*
+	 * Direct access to Zephyr coap_client internals (struct coap_client
+	 * with send_mutex + requests[] array of coap_client_internal_request).
+	 * No public API exists for cancelling a *specific* request slot by
+	 * user_data without invoking user callback (coap_client_cancel_requests
+	 * cancels *all* and calls cb(-ECANCELED)). This is required to neuter
+	 * the callback pointer before freeing ctx to prevent use-after-free.
+	 *
+	 * Documented dependency: Zephyr v3.7.0 (pinned via west.yml and
+	 * lichen/.west/config). If Zephyr is upgraded, this function and the
+	 * related coap_response_handler/completed flag logic MUST be audited.
+	 * See Zephyr include/zephyr/net/coap_client.h:105 (internal structs)
+	 * and subsys/net/lib/coap/coap_client.c:428,853 for mutex/fields.
+	 *
+	 * Version check enforced by pinned manifest; update comment on change.
+	 */
 	k_mutex_lock(&s_client.send_mutex, K_FOREVER);
 	for (size_t i = 0; i < ARRAY_SIZE(s_client.requests); i++) {
 		if (s_client.requests[i].request_ongoing &&
@@ -285,8 +312,10 @@ static void coap_response_handler(int16_t code, size_t offset, const uint8_t *pa
 		 */
 		if (atomic_get(&ctx->completed) == 0 &&
 		    atomic_get(&ctx->timeout_ref_held) == 1) {
-			k_work_reschedule(&ctx->timeout_work,
-					  K_MSEC(ctx->timeout_ms * 2));
+			/* Safe timeout to avoid overflow in K_MSEC(tick calc) for large values */
+			k_timeout_t tmo = (ctx->timeout_ms > (UINT32_MAX / 4U))
+					  ? K_FOREVER : K_MSEC(ctx->timeout_ms * 2U);
+			k_work_reschedule(&ctx->timeout_work, tmo);
 		}
 		return;
 	}
@@ -539,11 +568,15 @@ int lichen_coap_request(const struct lichen_coap_request *req)
 	/*
 	 * Use 2x the request timeout to allow Zephyr's CoAP layer to handle
 	 * normal timeouts; this catches cases where the callback never fires.
+	 * Use safe k_timeout_t to prevent overflow (per s1zp). K_FOREVER for
+	 * very large values.
 	 */
 	if (atomic_get(&ctx->completed) == 0) {
 		request_ctx_get(ctx);
 		atomic_set(&ctx->timeout_ref_held, 1);
-		k_work_schedule(&ctx->timeout_work, K_MSEC(timeout_ms * 2));
+		k_timeout_t tmo = (timeout_ms > (UINT32_MAX / 4U))
+				  ? K_FOREVER : K_MSEC(timeout_ms * 2U);
+		k_work_schedule(&ctx->timeout_work, tmo);
 		if (atomic_get(&ctx->completed) != 0) {
 			request_ctx_cancel_timeout_sync(ctx);
 		}

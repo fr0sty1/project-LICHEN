@@ -278,7 +278,7 @@ RAM (64 KB available):
 |----------|---------|
 | draft-lichen-link | Link layer, LLSec, Ed25519 |
 | draft-lichen-schc | SCHC profile for LICHEN |
-| draft-lichen-addr | IPv6 addressing, ULA, isolated mesh |
+| draft-lichen-addr | IPv6 addressing (no-ULA, 02xx/Yggdrasil), isolated mesh |
 | draft-lichen-rpl | RPL configuration, MRHOF |
 | draft-lichen-security | TOFU, DANE, OSCORE profile |
 | draft-lichen-lci | Local Client Interface |

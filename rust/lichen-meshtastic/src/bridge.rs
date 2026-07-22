@@ -280,6 +280,14 @@ impl MeshtasticBridge {
         if ipv6_data.len() > MAX_TUNNEL_PAYLOAD {
             return Err(BridgeError::PayloadTooLarge);
         }
+        if ipv6_data.len() < 40 || (ipv6_data[0] >> 4) != 6 {
+            return Err(BridgeError::InvalidPacket);
+        }
+        let mut hdr_dst = [0u8; 16];
+        hdr_dst.copy_from_slice(&ipv6_data[24..40]);
+        if Ipv6Addr::from(hdr_dst) != dst {
+            return Err(BridgeError::InvalidPacket);
+        }
 
         // Resolve destination node ID
         let dst_node = self

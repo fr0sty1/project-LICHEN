@@ -289,7 +289,8 @@ int lichen_rpl_target_write(const struct lichen_rpl_target *_Nonnull target,
 /**
  * @brief Transit Information option (RFC 6550 section 6.7.8)
  *
- * Carries the parent address in a DAO. LICHEN always includes parent.
+ * E flag (bit 7 of first data byte = 0x80) signals parent address present.
+ * LICHEN always includes the parent address.
  */
 struct lichen_rpl_transit_info {
 	uint8_t path_control;

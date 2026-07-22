@@ -13,6 +13,7 @@
 #include <lichen/errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
 
 /* Disable nonnull warnings for tests that intentionally pass NULL */
 #if defined(__clang__)
@@ -415,6 +416,48 @@ static int test_pop_buffer_too_small(void)
 	return 1;
 }
 
+static void *tx_queue_reader(void *arg)
+{
+	struct tx_queue *q = arg;
+	for (int i = 0; i < 5000; i++) {
+		(void)tx_queue_count(q);
+		(void)tx_queue_empty(q);
+		struct tx_queue_stats st;
+		(void)tx_queue_stats_get(q, &st);
+	}
+	return NULL;
+}
+
+static int test_concurrent_thread_safety(void)
+{
+	struct tx_queue queue;
+	ASSERT_EQ(tx_queue_init(&queue), 0, "init succeeds");
+
+	uint8_t d[16] = {0};
+	for (int i = 0; i < 4; i++) {
+		tx_queue_push_default_deadline(&queue, d, sizeof(d), TX_PRIORITY_BULK);
+	}
+
+	pthread_t t;
+	int r = pthread_create(&t, NULL, tx_queue_reader, &queue);
+	ASSERT_EQ(r, 0, "pthread_create");
+
+	for (int i = 0; i < 1000; i++) {
+		uint16_t len = sizeof(d);
+		if (tx_queue_pop(&queue, d, &len, NULL) == 0) {
+			tx_queue_push_default_deadline(&queue, d, len, TX_PRIORITY_BULK);
+		}
+	}
+
+	void *res;
+	pthread_join(t, &res);
+
+	ASSERT_EQ(tx_queue_count(&queue), 4, "final count consistent");
+	ASSERT_EQ(tx_queue_destroy(&queue), 0, "destroy succeeds");
+
+	return 1;
+}
+
 #define RUN_TEST(fn) do { \
 	printf("  %s...", #fn); \
 	tests_run++; \
@@ -459,6 +502,9 @@ int main(void)
 	printf("\nStatistics and misc tests:\n");
 	RUN_TEST(test_stats_tracking);
 	RUN_TEST(test_clear);
+
+	printf("\nConcurrency/TSAN tests:\n");
+	RUN_TEST(test_concurrent_thread_safety);
 
 	printf("\n%d/%d tests passed\n", tests_passed, tests_run);
 

@@ -22,7 +22,7 @@ pub const ALL_1_FCN: u8 = 63;
 /// CRC32 MIC length in bytes.
 pub const MIC_LENGTH: usize = 4;
 /// Default window size (fragment count per window, excluding the All-1).
-pub const DEFAULT_WINDOW_SIZE: usize = 7;
+pub const DEFAULT_WINDOW_SIZE: usize = 32;
 /// Maximum window size (62 regular FCNs, since 63 = ALL_1).
 pub const MAX_WINDOW_SIZE: usize = 62;
 

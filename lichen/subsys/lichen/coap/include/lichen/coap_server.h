@@ -11,6 +11,7 @@
  * - /neighbors - Neighbor table (GET)
  * - /key - Public key (GET)
  * - /msg/inbox - Messages (GET/POST)
+ * - /deaddrop - Dead drop DTN (POST/GET with ?recipient query)
  * - /.well-known/core - Resource discovery (GET)
  *
  * Uses Zephyr's CoAP service APIs with static resource definitions.
@@ -140,6 +141,18 @@ typedef int (*lichen_coap_msg_get_cb)(uint8_t *_Nonnull buf, size_t buf_len);
 typedef int (*lichen_coap_msg_post_cb)(const uint8_t *_Nonnull payload,
 				       size_t payload_len,
 				       uint32_t *_Nonnull msg_id);
+typedef int (*lichen_coap_deaddrop_cb)(const uint8_t *_Nonnull payload, size_t payload_len);
+
+/**
+ * @brief Common helper for sending CoAP responses (avoids duplication in resource handlers).
+ *
+ * Constructs ACK/NON response matching the request's token and ID, appends content-format
+ * if payload present, and sends. Used by deaddrop_post and other resources.
+ */
+int lichen_coap_respond(struct coap_resource *resource,
+			struct coap_packet *request,
+			struct sockaddr *addr, socklen_t addr_len,
+			uint8_t resp_code, const uint8_t *payload, size_t payload_len);
 
 /**
  * @brief CoAP server callback configuration
@@ -155,6 +168,7 @@ struct lichen_coap_server_handlers {
 	lichen_coap_key_cb key;               /**< /key GET */
 	lichen_coap_msg_get_cb msg_get;       /**< /msg/inbox GET */
 	lichen_coap_msg_post_cb msg_post;     /**< /msg/inbox POST */
+	lichen_coap_deaddrop_cb deaddrop;
 };
 
 /**
@@ -191,6 +205,7 @@ int lichen_coap_server_stop(void);
  * @return 1 if running, 0 if stopped, negative on error
  */
 int lichen_coap_server_is_running(void);
+int lichen_coap_deaddrop_register(void);
 
 /**
  * @brief Register deaddrop DTN resources and handlers

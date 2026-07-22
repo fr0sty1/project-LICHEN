@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
+from __future__ import annotations
+
 """RPL non-storing routing table and source-routed forwarding (spec section 8.5).
 
 In non-storing mode only the root holds a routing table; it learns each node's
@@ -12,9 +14,6 @@ The SRH here is uncompressed (CmprI = CmprE = 0); on-air 6LoRH compression is a
 SCHC-layer concern.
 """
 
-from __future__ import annotations
-
-from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 from ipaddress import IPv6Address
 

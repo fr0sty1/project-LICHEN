@@ -32,9 +32,14 @@ pub const WINDOW_MS: u64 = 3_600_000;
 /// Default duty cycle limit in permille (1% = 10 permille).
 pub const DEFAULT_DUTY_PERMILLE: u16 = 10;
 
-/// Maximum TX time allowed per window at 1% duty cycle (36000ms).
-/// Calculated as: WINDOW_MS * DEFAULT_DUTY_PERMILLE / 1000
-pub const MAX_TX_MS: u32 = (WINDOW_MS as u32 / 1000) * (DEFAULT_DUTY_PERMILLE as u32); // 36000ms
+/// Compute MAX_TX_MS from given duty_permille (replaces hardcoded DEFAULT usage
+/// per codereview qsr0 after density constants added).
+pub const fn max_tx_ms_for(duty_permille: u16) -> u32 {
+    (WINDOW_MS as u32 / 1000) * (duty_permille as u32)
+}
+
+/// Maximum TX time allowed per window at default duty cycle.
+pub const MAX_TX_MS: u32 = max_tx_ms_for(DEFAULT_DUTY_PERMILLE);
 
 /// A transmission record: (timestamp_ms, duration_ms).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -151,14 +156,10 @@ impl<const N: usize> DutyCycleTracker<N> {
         total
     }
 
-    /// Calculate max TX time in milliseconds based on duty cycle.
-    ///
-    /// max_tx_ms = WINDOW_MS * duty_permille / 1000
+    /// Calculate max TX time in milliseconds based on current duty_permille.
     #[inline]
-    fn max_tx_ms(&self) -> u32 {
-        // WINDOW_MS / 1000 = 3600, then * duty_permille
-        // This avoids overflow: 3600 * 1000 = 3_600_000 fits in u32
-        (WINDOW_MS as u32 / 1000) * (self.duty_permille as u32)
+    pub fn max_tx_ms(&self) -> u32 {
+        max_tx_ms_for(self.duty_permille)
     }
 
     /// Returns remaining TX budget in milliseconds for the current window.

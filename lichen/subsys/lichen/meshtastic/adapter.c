@@ -529,19 +529,28 @@ static bool valid_position_e7(int32_t latitude_e7, int32_t longitude_e7)
 	       longitude_e7 >= -1800000000 && longitude_e7 <= 1800000000;
 }
 
+#define LICHEN_MESHTASTIC_POSITION_MAX_FUTURE_SKEW CONFIG_LICHEN_MESHTASTIC_POSITION_MAX_FUTURE_SKEW
+
 static void set_position_fix_time(
 	struct lichen_meshtastic_position_snapshot *position, uint32_t unix_time)
 {
 	position->effective_epoch_floor =
 		(uint32_t)CONFIG_LICHEN_MESHTASTIC_POSITION_EPOCH_FLOOR_UNIX;
+	position->fix_time_rejected_below_epoch_floor = false;
+	position->fix_time_rejected_future = false;
 	if (unix_time < position->effective_epoch_floor) {
 		position->fix_time_rejected_below_epoch_floor = true;
 		position->fix_time_unix_valid = false;
 		position->fix_time_unix = 0U;
 		return;
 	}
+	if (unix_time > position->effective_epoch_floor + LICHEN_MESHTASTIC_POSITION_MAX_FUTURE_SKEW) {
+		position->fix_time_rejected_future = true;
+		position->fix_time_unix_valid = false;
+		position->fix_time_unix = 0U;
+		return;
+	}
 
-	position->fix_time_rejected_below_epoch_floor = false;
 	position->fix_time_unix = unix_time;
 	position->fix_time_unix_valid = true;
 }
@@ -793,9 +802,9 @@ static int parse_data(const uint8_t *data, size_t len,
 					info->kind =
 						LICHEN_MESHTASTIC_ADAPTER_PACKET_POSITION_APP;
 				}
-			} else if (info->portnum == MESHTASTIC_PORTNUM_ADMIN_APP &&
-				   info->payload != NULL) {
-			if (!parse_admin_payload(info->payload, info->payload_len,
+			} else if (info->portnum == MESHTASTIC_PORTNUM_ADMIN_APP) {
+			if (info->payload == NULL ||
+			    !parse_admin_payload(info->payload, info->payload_len,
 						 &info->kind)) {
 				info->kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED;
 			}
@@ -1355,51 +1364,75 @@ static int enqueue_static_sync(struct lichen_meshtastic_adapter *adapter,
 {
 	uint8_t payload[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
 	int ret;
+	int enqueue_ret;
 
 	ret = lichen_meshtastic_encode_my_info_payload(info, payload,
 						       sizeof(payload));
-	if (ret < 0 || enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_MY_INFO,
-				       payload, (size_t)ret) < 0) {
-		return ret < 0 ? ret : -ENOMEM;
+	if (ret < 0) {
+		return ret;
+	}
+	enqueue_ret = enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_MY_INFO,
+				       payload, (size_t)ret);
+	if (enqueue_ret < 0) {
+		return enqueue_ret;
 	}
 
 	ret = lichen_meshtastic_encode_metadata_payload(info, payload,
 							sizeof(payload));
-	if (ret < 0 || enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_METADATA,
-				       payload, (size_t)ret) < 0) {
-		return ret < 0 ? ret : -ENOMEM;
+	if (ret < 0) {
+		return ret;
+	}
+	enqueue_ret = enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_METADATA,
+				       payload, (size_t)ret);
+	if (enqueue_ret < 0) {
+		return enqueue_ret;
 	}
 
 	ret = lichen_meshtastic_encode_region_presets_payload(info, payload,
 							      sizeof(payload));
-	if (ret < 0 || enqueue_payload(adapter,
+	if (ret < 0) {
+		return ret;
+	}
+	enqueue_ret = enqueue_payload(adapter,
 				       LICHEN_MESHTASTIC_FROM_RADIO_REGION_PRESETS,
-				       payload, (size_t)ret) < 0) {
-		return ret < 0 ? ret : -ENOMEM;
+				       payload, (size_t)ret);
+	if (enqueue_ret < 0) {
+		return enqueue_ret;
 	}
 
 	ret = lichen_meshtastic_encode_channel_payload(info, payload, sizeof(payload));
-	if (ret < 0 || enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_CHANNEL,
-				       payload, (size_t)ret) < 0) {
-		return ret < 0 ? ret : -ENOMEM;
+	if (ret < 0) {
+		return ret;
+	}
+	enqueue_ret = enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_CHANNEL,
+				       payload, (size_t)ret);
+	if (enqueue_ret < 0) {
+		return enqueue_ret;
 	}
 
 	for (size_t i = 0U; i < ARRAY_SIZE(s_config_sections); i++) {
 		ret = lichen_meshtastic_encode_config_section_payload(
 			s_config_sections[i], info, payload, sizeof(payload));
-		if (ret < 0 ||
-		    enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_CONFIG,
-				    payload, (size_t)ret) < 0) {
-			return ret < 0 ? ret : -ENOMEM;
+		if (ret < 0) {
+			return ret;
+		}
+		enqueue_ret = enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_CONFIG,
+				    payload, (size_t)ret);
+		if (enqueue_ret < 0) {
+			return enqueue_ret;
 		}
 	}
 
 	ret = lichen_meshtastic_encode_module_config_payload(info, payload,
 							     sizeof(payload));
-	if (ret < 0 || enqueue_payload(adapter,
+	if (ret < 0) {
+		return ret;
+	}
+	enqueue_ret = enqueue_payload(adapter,
 				       LICHEN_MESHTASTIC_FROM_RADIO_MODULE_CONFIG,
-				       payload, (size_t)ret) < 0) {
-		return ret < 0 ? ret : -ENOMEM;
+				       payload, (size_t)ret);
+	if (enqueue_ret < 0) {
+		return enqueue_ret;
 	}
 
 	return 0;

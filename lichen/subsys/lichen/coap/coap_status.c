@@ -3,11 +3,11 @@
 
 #include <stdio.h>
 #include <string.h>
-
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/net/coap.h>
 #include <zephyr/net/coap_service.h>
+#include <zephyr/net/net_ip.h>
 
 #include <lichen/coap_status.h>
 
@@ -45,43 +45,45 @@ static inline bool cbor_check_space(struct cbor_ctx *ctx, size_t n)
 	return true;
 }
 
-static void cbor_put_map_header(struct cbor_ctx *ctx, size_t count)
+static void cbor_put_map_header(struct cbor_ctx *ctx, uint16_t count)
 {
 	if (count > 0xff) {
 		ctx->overflow = true;
 		return;
 	}
-	if (count < 24U) {
+	uint8_t c = (uint8_t)count;
+	if (c < 24U) {
 		if (!cbor_check_space(ctx, 1)) {
 			return;
 		}
-		ctx->buf[ctx->off++] = 0xa0U | (uint8_t)count;
+		ctx->buf[ctx->off++] = 0xa0U | c;
 	} else {
 		if (!cbor_check_space(ctx, 2)) {
 			return;
 		}
 		ctx->buf[ctx->off++] = 0xb8;
-		ctx->buf[ctx->off++] = (uint8_t)count;
+		ctx->buf[ctx->off++] = c;
 	}
 }
 
-static void cbor_put_array_header(struct cbor_ctx *ctx, size_t count)
+static void cbor_put_array_header(struct cbor_ctx *ctx, uint16_t count)
 {
 	if (count > 0xff) {
 		ctx->overflow = true;
 		return;
 	}
-	if (count < 24U) {
+	uint8_t c = (uint8_t)count;
+	if (c < 24U) {
 		if (!cbor_check_space(ctx, 1)) {
 			return;
 		}
-		ctx->buf[ctx->off++] = 0x80U | (uint8_t)count;
+		ctx->buf[ctx->off++] = 0x80U | c;
 	} else {
 		if (!cbor_check_space(ctx, 2)) {
 			return;
 		}
 		ctx->buf[ctx->off++] = 0x98;
-		ctx->buf[ctx->off++] = (uint8_t)count;
+		ctx->buf[ctx->off++] = c;
 	}
 }
 
@@ -89,11 +91,6 @@ static void cbor_put_tstr(struct cbor_ctx *ctx, const char *value)
 {
 	size_t len = value ? strlen(value) : 0;
 	size_t header_len;
-
-	if (len > UINT32_MAX) {
-		ctx->overflow = true;
-		return;
-	}
 	if (len < 24U) {
 		header_len = 1;
 	} else if (len <= UINT8_MAX) {
@@ -103,11 +100,9 @@ static void cbor_put_tstr(struct cbor_ctx *ctx, const char *value)
 	} else {
 		header_len = 5;
 	}
-
 	if (!cbor_check_space(ctx, header_len + len)) {
 		return;
 	}
-
 	if (len < 24U) {
 		ctx->buf[ctx->off++] = 0x60U | (uint8_t)len;
 	} else if (len <= UINT8_MAX) {
@@ -122,6 +117,12 @@ static void cbor_put_tstr(struct cbor_ctx *ctx, const char *value)
 		ctx->buf[ctx->off++] = (uint8_t)((uint32_t)len >> 24);
 		ctx->buf[ctx->off++] = (uint8_t)((uint32_t)len >> 16);
 		ctx->buf[ctx->off++] = (uint8_t)((uint32_t)len >> 8);
+		ctx->buf[ctx->off++] = (uint8_t)(len & 0xffU);
+	} else {
+		ctx->buf[ctx->off++] = 0x7a;
+		ctx->buf[ctx->off++] = (uint8_t)(len >> 24);
+		ctx->buf[ctx->off++] = (uint8_t)(len >> 16);
+		ctx->buf[ctx->off++] = (uint8_t)(len >> 8);
 		ctx->buf[ctx->off++] = (uint8_t)(len & 0xffU);
 	}
 	if (len > 0) {
@@ -225,13 +226,12 @@ static void cbor_put_int(struct cbor_ctx *ctx, int32_t value)
 
 static int format_ipv6(const uint8_t addr[16], char *buf, size_t buf_size)
 {
-	return snprintf(buf, buf_size,
-			"%02x%02x:%02x%02x:%02x%02x:%02x%02x:"
-			"%02x%02x:%02x%02x:%02x%02x:%02x%02x",
-			addr[0], addr[1], addr[2], addr[3],
-			addr[4], addr[5], addr[6], addr[7],
-			addr[8], addr[9], addr[10], addr[11],
-			addr[12], addr[13], addr[14], addr[15]);
+	struct in6_addr in6;
+	memcpy(in6.s6_addr, addr, 16);
+	if (net_addr_ntop(AF_INET6, &in6, buf, buf_size) == NULL) {
+		return -EINVAL;
+	}
+	return 0;
 }
 
 static const char *trust_level_str(enum lichen_coap_trust_level trust)
@@ -252,120 +252,84 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 				      const struct lichen_coap_node_status *status)
 {
 	struct cbor_ctx ctx;
-	size_t map_count;
 	char ipv6_buf[40];
-
 	if (buf == NULL || status == NULL || buf_size == 0) {
 		return 0;
 	}
-
-	cbor_ctx_init(&ctx, buf, buf_size);
-
 	if (status->txq_used > status->txq_cap || status->fwd_used > status->fwd_cap) {
 		return 0;
 	}
-
-	map_count = 9;
-	if (status->battery_pct_valid) map_count++;
-	if (status->battery_mv_valid) map_count++;
+	cbor_ctx_init(&ctx, buf, buf_size);
+	uint16_t map_count = 9;
+	map_count += status->battery_pct_valid ? 1 : 0;
+	map_count += status->battery_mv_valid ? 1 : 0;
 	if (map_count > 0xff) {
 		ctx.overflow = true;
-		return 0;
 	}
 	cbor_put_map_header(&ctx, map_count);
-
 	cbor_put_key(&ctx, "uptime_s");
 	cbor_put_uint(&ctx, status->uptime_s);
-
 	if (status->battery_pct_valid) {
 		cbor_put_key(&ctx, "battery_pct");
 		cbor_put_uint(&ctx, status->battery_pct);
 	}
-
 	if (status->battery_mv_valid) {
 		cbor_put_key(&ctx, "battery_mv");
 		cbor_put_uint(&ctx, status->battery_mv);
 	}
-
 	cbor_put_key(&ctx, "mem_free_kb");
 	cbor_put_uint(&ctx, status->mem_free_kb);
-
 	cbor_put_key(&ctx, "time");
-	{
-		uint8_t time_fields = 1;
-		time_fields += status->time.wall_clock_valid ? 1 : 0;
-		time_fields += status->time.source_class ? 1 : 0;
-		time_fields += status->time.source_name ? 1 : 0;
-		time_fields += 1;
-
-		cbor_put_map_header(&ctx, time_fields);
-
-		cbor_put_key(&ctx, "wall_clock_valid");
-		cbor_put_bool(&ctx, status->time.wall_clock_valid);
-
-		if (status->time.wall_clock_valid) {
-			cbor_put_key(&ctx, "unix_time");
-			cbor_put_uint(&ctx, status->time.unix_time);
-		}
-
-		if (status->time.source_class) {
-			cbor_put_key(&ctx, "source_class");
-			cbor_put_tstr(&ctx, status->time.source_class);
-		}
-
-		if (status->time.source_name) {
-			cbor_put_key(&ctx, "source_name");
-			cbor_put_tstr(&ctx, status->time.source_name);
-		}
-
-		cbor_put_key(&ctx, "age_s");
-		cbor_put_uint(&ctx, status->time.age_s);
+	uint8_t time_count = 2;
+	if (status->time.wall_clock_valid) time_count += 1;
+	if (status->time.source_class) time_count += 1;
+	if (status->time.source_name) time_count += 1;
+	cbor_put_map_header(&ctx, time_count);
+	cbor_put_key(&ctx, "wall_clock_valid");
+	cbor_put_bool(&ctx, status->time.wall_clock_valid);
+	if (status->time.wall_clock_valid) {
+		cbor_put_key(&ctx, "unix_time");
+		cbor_put_uint(&ctx, status->time.unix_time);
 	}
-
+	if (status->time.source_class) {
+		cbor_put_key(&ctx, "source_class");
+		cbor_put_tstr(&ctx, status->time.source_class);
+	}
+	if (status->time.source_name) {
+		cbor_put_key(&ctx, "source_name");
+		cbor_put_tstr(&ctx, status->time.source_name);
+	}
+	cbor_put_key(&ctx, "age_s");
+	cbor_put_uint(&ctx, status->time.age_s);
 	cbor_put_key(&ctx, "dodag");
-	{
-		uint8_t dodag_fields = 2;
-		dodag_fields += status->dodag.has_parent ? 1 : 0;
-		dodag_fields += status->dodag.has_root ? 1 : 0;
-
-		cbor_put_map_header(&ctx, dodag_fields);
-
-		cbor_put_key(&ctx, "joined");
-		cbor_put_bool(&ctx, status->dodag.joined);
-
-		cbor_put_key(&ctx, "rank");
-		cbor_put_uint(&ctx, status->dodag.rank);
-
-		if (status->dodag.has_parent) {
-			cbor_put_key(&ctx, "parent");
-			format_ipv6(status->dodag.parent, ipv6_buf, sizeof(ipv6_buf));
-			cbor_put_tstr(&ctx, ipv6_buf);
-		}
-
-		if (status->dodag.has_root) {
-			cbor_put_key(&ctx, "root");
-			format_ipv6(status->dodag.root, ipv6_buf, sizeof(ipv6_buf));
-			cbor_put_tstr(&ctx, ipv6_buf);
-		}
+	uint8_t dodag_count = 2;
+	if (status->dodag.has_parent) dodag_count += 1;
+	if (status->dodag.has_root) dodag_count += 1;
+	cbor_put_map_header(&ctx, dodag_count);
+	cbor_put_key(&ctx, "joined");
+	cbor_put_bool(&ctx, status->dodag.joined);
+	cbor_put_key(&ctx, "rank");
+	cbor_put_uint(&ctx, status->dodag.rank);
+	if (status->dodag.has_parent) {
+		cbor_put_key(&ctx, "parent");
+		format_ipv6(status->dodag.parent, ipv6_buf, sizeof(ipv6_buf));
+		cbor_put_tstr(&ctx, ipv6_buf);
 	}
-
+	if (status->dodag.has_root) {
+		cbor_put_key(&ctx, "root");
+		format_ipv6(status->dodag.root, ipv6_buf, sizeof(ipv6_buf));
+		cbor_put_tstr(&ctx, ipv6_buf);
+	}
 	cbor_put_key(&ctx, "radio");
-	{
-		cbor_put_map_header(&ctx, 4);
-
-		cbor_put_key(&ctx, "rx_packets");
-		cbor_put_uint(&ctx, status->radio.rx_packets);
-
-		cbor_put_key(&ctx, "tx_packets");
-		cbor_put_uint(&ctx, status->radio.tx_packets);
-
-		cbor_put_key(&ctx, "rx_errors");
-		cbor_put_uint(&ctx, status->radio.rx_errors);
-
-		cbor_put_key(&ctx, "duty_cycle_pct");
-		cbor_put_uint(&ctx, status->radio.duty_cycle_pct_x10);
-	}
-
+	cbor_put_map_header(&ctx, 4);
+	cbor_put_key(&ctx, "rx_packets");
+	cbor_put_uint(&ctx, status->radio.rx_packets);
+	cbor_put_key(&ctx, "tx_packets");
+	cbor_put_uint(&ctx, status->radio.tx_packets);
+	cbor_put_key(&ctx, "rx_errors");
+	cbor_put_uint(&ctx, status->radio.rx_errors);
+	cbor_put_key(&ctx, "duty_cycle_pct");
+	cbor_put_uint(&ctx, status->radio.duty_cycle_pct_x10);
 	cbor_put_key(&ctx, "txq_cap");
 	cbor_put_uint(&ctx, status->txq_cap);
 	cbor_put_key(&ctx, "txq_used");
@@ -374,11 +338,9 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 	cbor_put_uint(&ctx, status->fwd_cap);
 	cbor_put_key(&ctx, "fwd_used");
 	cbor_put_uint(&ctx, status->fwd_used);
-
 	if (ctx.overflow) {
 		return 0;
 	}
-
 	return ctx.off;
 }
 
@@ -659,8 +621,7 @@ static int neighbors_get(struct coap_resource *resource,
 	}
 
 	count = s_config.neighbors_get(neighbors, ARRAY_SIZE(neighbors));
-	if (count < 0) {
-		LOG_WRN("neighbors_get callback failed: %d", count);
+	if (count < 0 || count > CONFIG_LICHEN_COAP_STATUS_MAX_NEIGHBORS) {
 		return coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
 	}

@@ -185,11 +185,13 @@ config LORA_LICHEN_GATEWAY_MESSAGE_QUEUE_DEPTH
 config LORA_LICHEN_GATEWAY_RPL_ROOT
 	bool "RPL root signalling"
 	depends on LICHEN_RPL
-	default y
+	default n
 	help
-	  Enable gateway DIO/DAO processing and root signalling as DODAG root.
-	  Uses shared lichen/subsys/lichen/rpl for DODAG, Trickle, DAO manager,
-	  routing table and prefix advertisement per spec/05-routing.md.
+	  Enable gateway DIO/DAO processing and root signalling.
+
+	  This option now has the packet I/O integration required for the
+	  caller-owned LICHEN RPL state machine. The gateway will act as DODAG
+	  root when enabled.
 
 config LICHEN_GATEWAY_RX1_DELAY_MS
 	int "RX1-style delay before answering a CoAP request (ms)"

@@ -192,7 +192,6 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     break;
 
                 case State.SetRx:
-                    // Collect 3 timeout bytes (24-bit big-endian from SX1262)
                     if (byteIndex < 3)
                     {
                         rxTimeoutBytes[byteIndex] = data;
@@ -205,9 +204,12 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     break;
 
                 case State.GetStatus:
-                    // Return status: bits [6:4]=mode, bits [3:1]=cmd_status
-                    // Mode: 0x2=STDBY_RC, 0x5=RX, 0x6=TX
-                    result = 0x22; // STDBY_RC, command OK
+                    byte mode = 0x2;
+                    lock (stateLock)
+                    {
+                        if (rxMode) mode = 0x5;
+                    }
+                    result = (byte)((mode << 4) | 0x2);
                     break;
 
                 case State.GetIrqStatus:

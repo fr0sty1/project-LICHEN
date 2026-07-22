@@ -25,8 +25,8 @@ Text messaging between nodes, supporting unicast, multicast, and broadcast.
 ```cbor
 {
   "id": 12345,                    ; unique message ID (uint)
-  "from": "fd12:...:1111",        ; sender IPv6 (string)
-  "to": "fd12:...:2222",          ; recipient or "ff02::1" for broadcast (string)
+  "from": "0201:...:1111",        ; sender IPv6 (string)
+  "to": "0201:...:2222",          ; recipient or "ff02::1" for broadcast (string)
   "ts": 1716742800,               ; Unix timestamp (uint)
   "body": "Hello from the mesh",  ; message text (tstr)
   "ack": true,                    ; request delivery receipt (bool, optional)
@@ -258,7 +258,7 @@ Content-Format: application/cbor
 {
   "positions": [
     {
-      "node": "fd12:...:1111",
+      "node": "0201:...:1111",
       "lat": 37.774929,
       "lon": -122.419416,
       "alt": 10.5,
@@ -368,7 +368,7 @@ In `private` mode:
 PUT coap://[node]/config/privacy/allowed
 Content-Format: application/cbor
 
-{"peers": ["fd12:...:1111", "fd12:...:2222"]}
+{"peers": ["0201:...:1111", "0201:...:2222"]}
 ```
 
 Only whitelisted peers' OSCORE-protected queries are answered.
@@ -415,7 +415,7 @@ Shareable points of interest with metadata.
   "color": "#FF0000",           ; color hint (tstr, optional)
   "notes": "Meet here at 1400", ; description (tstr, optional)
   "created": 1716742800,        ; creation time (uint)
-  "creator": "fd12:...:1111",   ; creator node (tstr)
+  "creator": "0201:...:1111",   ; creator node (tstr)
   "expires": 1716829200         ; expiration time (uint, optional)
 }
 ```
@@ -476,7 +476,7 @@ Content-Format: application/cbor
   "lat": 37.774929,
   "lon": -122.419416,
   "notes": "Meet here at 1400",
-  "creator": "fd12:...:1111"
+  "creator": "0201:...:1111"
 }
 
 Response: 2.01 Created
@@ -510,7 +510,7 @@ Ordered list of waypoints:
   "waypoints": ["wpt-001", "wpt-002", "wpt-003"],
   "distance_m": 2500,           ; total distance (uint, optional)
   "created": 1716742800,
-  "creator": "fd12:...:1111"
+  "creator": "0201:...:1111"
 }
 ```
 
@@ -582,7 +582,7 @@ Nodes SHOULD support operator commands to:
 ```cbor
 {
   "type": "sos",               ; "sos", "medical", "security", "cancel" (tstr)
-  "node": "fd12:...:1111",     ; originating node (tstr)
+  "node": "0201:...:1111",     ; originating node (tstr)
   "ts": 1716742800,            ; timestamp (uint)
   "lat": 37.774929,            ; position if available (float, optional)
   "lon": -122.419416,          ; (float, optional)
@@ -644,7 +644,7 @@ Content-Format: application/cbor
 {
   "active": [
     {
-      "node": "fd12:...:1111",
+      "node": "0201:...:1111",
       "type": "medical",
       "ts": 1716742800,
       "lat": 37.77,
@@ -755,8 +755,8 @@ Content-Format: application/cbor
 
 {
   "nodes": [
-    {"addr": "fd12:...:1111", "status": "available", "battery": 87, "age_s": 30},
-    {"addr": "fd12:...:2222", "status": "away", "battery": 45, "age_s": 120}
+    {"addr": "0201:...:1111", "status": "available", "battery": 87, "age_s": 30},
+    {"addr": "0201:...:2222", "status": "away", "battery": 45, "age_s": 120}
   ]
 }
 ```
@@ -790,7 +790,7 @@ POST coap://[leader]/checkin
 Content-Format: application/cbor
 
 {
-  "node": "fd12:...:1111",
+  "node": "0201:...:1111",
   "ts": 1716742800,
   "lat": 37.77,
   "lon": -122.42,
@@ -811,7 +811,7 @@ Content-Format: application/cbor
 
 {
   "id": "roll-001",
-  "from": "fd12:...:leader",
+  "from": "0201:...:leader",
   "ts": 1716742800,
   "timeout_s": 60
 }
@@ -832,11 +832,11 @@ Content-Format: application/cbor
   "started": 1716742800,
   "timeout_s": 60,
   "responded": [
-    {"node": "fd12:...:1111", "ts": 1716742810, "status": "ok"},
-    {"node": "fd12:...:2222", "ts": 1716742815, "status": "ok"}
+    {"node": "0201:...:1111", "ts": 1716742810, "status": "ok"},
+    {"node": "0201:...:2222", "ts": 1716742815, "status": "ok"}
   ],
   "missing": [
-    {"node": "fd12:...:3333", "last_seen": 1716740000}
+    {"node": "0201:...:3333", "last_seen": 1716740000}
   ]
 }
 ```
@@ -851,7 +851,7 @@ Content-Format: application/cbor
 
 {
   "enabled": true,
-  "target": "fd12:...:leader",
+  "target": "0201:...:leader",
   "interval_s": 900,           ; every 15 minutes
   "include_location": true
 }
@@ -872,7 +872,7 @@ Link quality diagnostics.
 Standard ICMPv6 Echo Request/Reply for reachability:
 
 ```
-ping6 fd12:3456:789a:1::1111
+ping6 0201:3456:789a:1::1111
 ```
 
 Returns: RTT, reachable/unreachable.
@@ -958,13 +958,13 @@ Groups provide:
 {
   "id": "team-alpha",
   "name": "Team Alpha",
-  "mcast": "ff35:40:fd12:3456:789a:1::1",  ; mesh-local multicast
-  "owner": "fd12:...:1111",                ; group creator
-  "admins": ["fd12:...:2222"],             ; delegated admins
+  "mcast": "ff35:40:0201:3456:789a:1::1",  ; mesh-local multicast
+  "owner": "0201:...:1111",                ; group creator
+  "admins": ["0201:...:2222"],             ; delegated admins
   "members": [
-    "fd12:...:1111",
-    "fd12:...:2222",
-    "fd12:...:3333"
+    "0201:...:1111",
+    "0201:...:2222",
+    "0201:...:3333"
   ],
   "key_id": "key-alpha-001",   ; OSCORE Group key reference (optional)
   "created": 1716742800,
@@ -1022,7 +1022,7 @@ Content-Format: application/cbor
   "group_id": "team-alpha",
   "group_name": "Team Alpha",
   "mcast": "ff35:0040:...",
-  "inviter": "fd12:...:1111",
+  "inviter": "0201:...:1111",
   "role": "member",            ; "member" or "admin"
   "expires": 1716829200,       ; invitation expiry
   "signature": "<inviter's signature over above fields>"
@@ -1045,7 +1045,7 @@ OSCORE: <secured with pairwise context>
 
 {
   "request": "join_key",
-  "node": "fd12:...:3333"
+  "node": "0201:...:3333"
 }
 
 Response: 2.05 Content
@@ -1084,7 +1084,7 @@ Content-Format: application/cbor
 
 {
   "group_id": "team-alpha",
-  "removed_by": "fd12:...:1111",
+  "removed_by": "0201:...:1111",
   "reason": "no longer on team",
   "signature": "<remover's signature>"
 }
@@ -1108,9 +1108,9 @@ OSCORE: <group context>
 
 Response: 2.05 Content
 {
-  "owner": "fd12:...:1111",
-  "admins": ["fd12:...:2222"],
-  "members": ["fd12:...:3333", "fd12:...:4444"]
+  "owner": "0201:...:1111",
+  "admins": ["0201:...:2222"],
+  "members": ["0201:...:3333", "0201:...:4444"]
 }
 ```
 
@@ -1134,7 +1134,7 @@ Content-Format: application/cbor
 
 {
   "action": "promote",
-  "node": "fd12:...:2222"
+  "node": "0201:...:2222"
 }
 
 Response: 2.04 Changed
@@ -1144,16 +1144,17 @@ Only owner can promote/demote admins.
 
 #### 18.8.3. Group Multicast Addressing
 
-Per RFC 7390 and RFC 3306 (unicast-prefix-based multicast):
+Per RFC 7390 and RFC 3306 (unicast-prefix-based multicast), adapted for no-ULA model (use 02xx-derived prefix):
 
 ```
-ff35:0040:<64-bit ULA prefix>::<16-bit group ID>
+ff35:0040:<64-bit from 02xx>::<16-bit group ID>
 ```
 
-Example: Group 1 on mesh `fd12:3456:789a:1::/64`:
+Example: Group 1 on mesh with primary prefix `0201:0203:0405:0600::/64` (from unified derivation):
 ```
-ff35:0040:fd12:3456:789a:0001::0001
+ff35:0040:0201:0203:0405:0600::0001
 ```
+(See 04-network.md and 06-security.md for 02xx derivation; ff03::fc preferred for simple mesh-local groups.)
 
 #### 18.8.4. Group Resources
 
@@ -1206,33 +1207,66 @@ Content-Format: application/cbor
 
 Key distribution is out-of-band or via secure unicast to each member.
 
-### 18.9. Resource Summary
+### 18.9. Dead Drop (DTN Store-Forward)
+
+**Resource:** `/deaddrop`
+
+- POST: Store encrypted message for recipient (OSCORE E2E protected ciphertext, recipient IID/EUI in clear for routing).
+- GET ?recipient=... : Pickup pending drops.
+- Observable for push when node joins range (RPL/neighbor triggered).
+- DTN: stored in gateway RAM with TTL (default 24h), deleted after.
+- SenML not applicable (binary ciphertext).
+- E-ink: notification "1 dead drop pending" on recipient node display.
+- Privacy: gateway cannot decrypt, no sender tracking.
+
+Example POST payload (CBOR, OSCORE outer):
+
+```cbor
+{
+  "r": "0201::abcd",  ; recipient
+  "c": h'0123...ef',  ; OSCORE ciphertext
+  "ttl": 86400
+}
+```
+
+Test vectors in test/vectors/deaddrop.json (cross Rust/C validation required).
+
+### 18.10. Confessions (Anonymous Board)
+
+**Resource:** `/confessions`
+
+- POST: Anonymous text (no source in payload for no-log).
+- GET: Retrieve recent feed (SenML pack for timestamped entries).
+- Rate limit: 1 POST per node per 30s (enforced at gateway using link signature without logging source).
+- No persistent logs; RAM only, expire after 10min.
+- UI: E-ink on nodes scrolls feed or shows notification; big screen aggregates.
+- SenML for feed: array of records with base "urn:dev:mac:..." + "t", "txt".
+
+Example:
+
+```cbor
+{
+  "txt": "tabs > spaces at #defcon",
+  "ts": 1721650000
+}
+```
+
+Rate limit table and full privacy in spec/06-security.md cross-ref.
+
+Test vectors in test/vectors/confessions.json.
+
+### 18.11. Resource Summary
 
 | Resource | Methods | Observable | Description |
 |----------|---------|------------|-------------|
 | /msg/inbox | GET, POST | Yes | Message inbox |
 | /msg/sent | GET | No | Sent messages |
-| /msg/ack | POST | No | Delivery receipts |
-| /msg/canned | GET, PUT | No | Preset messages |
-| /pos | PUT | No | Position broadcast (multicast) |
-| /pos/cache | GET | Yes | Cached peer positions |
-| /waypoints | GET, POST | Yes | Waypoint list |
-| /waypoints/{id} | GET, PUT, DELETE | No | Single waypoint |
-| /routes | GET, POST | No | Route list |
-| /routes/{id} | GET, PUT, DELETE | No | Single route |
-| /sos | GET, POST | Yes | Emergency alerts |
-| /sos/log | GET | No | Emergency history |
-| /presence | GET, PUT | Yes | Own presence status |
-| /presence/cache | GET | Yes | Peer presence cache |
-| /checkin | POST | No | Check-in submission |
-| /rollcall | POST | No | Initiate roll call |
-| /rollcall/{id} | GET | Yes | Roll call status |
-| /groups | GET, POST | No | Group list |
-| /groups/{id} | GET, PUT, DELETE | No | Single group |
+| /deaddrop | POST, GET | Yes | Encrypted store-forward DTN dead drop (OSCORE E2E, pickup/push, TTL, e-ink notification) |
+| /confessions | POST, GET | Yes | Anonymous confessions board (rate limit 1/30s per node, no-log RAM-only, SenML feed, e-ink UI) |
 | /diag/rangetest | GET, POST | Yes | Range testing |
 | /diag/traceroute | GET | No | Path discovery |
 
-### 18.10. Content-Format Summary
+### 18.12. Content-Format Summary
 
 | Content-Format | ID | Usage |
 |----------------|-----|-------|

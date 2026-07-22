@@ -352,11 +352,10 @@ impl LinkLayer {
     ///
     /// The 48-byte signature occupies the frame MIC field.
     ///
-    /// # Panics
-    ///
-    /// Returns an error if `out` is smaller than the serialised frame size.
-    /// Callers must provide a buffer of at least `inner_payload.len() + 48 + 5`
-    /// bytes (frame header + signature MIC).
+    /// Returns `FrameError::FrameTooLarge` if body > 254 bytes.
+    /// Returns `FrameError::BufferTooSmall` if `out` is too small.
+    /// Callers must provide a buffer of at least `inner_payload.len() + 53`
+    /// bytes.
     pub fn build_frame(
         &self,
         epoch: u8,
@@ -378,8 +377,9 @@ impl LinkLayer {
     /// destination passed to `build_frame` remains broadcast (`AddrMode::None`)
     /// for compatibility with existing callers.
     ///
-    /// Returns [`FrameError::AddrLenMismatch`] when `dst_addr` does not have
-    /// the length required by `addr_mode`.
+    /// Returns `FrameError::FrameTooLarge` if body > 254 bytes,
+    /// `FrameError::BufferTooSmall` if `out` too small, or
+    /// [`FrameError::AddrLenMismatch`] on bad `dst_addr`.
     pub fn build_frame_with_addr_mode(
         &self,
         epoch: u8,
