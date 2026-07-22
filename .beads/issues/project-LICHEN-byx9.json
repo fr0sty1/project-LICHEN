@@ -3,15 +3,15 @@
   "title": "lichend.rs: sim_task abort may leave transmissions incomplete",
   "description": "File: rust/lichen-gateway/src/bin/lichend.rs\nLine: 266\n\nWhen shutting down, the main loop aborts the sim_task immediately without draining pending transmissions. This could leave packets in the tx_send channel that never get transmitted.\n\nCurrent code:\n```rust\nloop {\n    tokio::select! {\n        // ... branches ...\n        _ = signal::ctrl_c() =\u003e {\n            info!(\"shutting down\");\n            break;\n        }\n    }\n}\n\nsim_task.abort();  // Immediate abort, no graceful shutdown\n```\n\nImpact: On shutdown, pending outbound packets are lost. This is likely acceptable for a daemon shutdown, but could cause issues if the application expects reliable delivery.\n\nConsider: For graceful shutdown, close the tx_send channel and wait for sim_task to finish transmitting, with a timeout:\n```rust\n_ = signal::ctrl_c() =\u003e {\n    info!(\"shutting down\");\n    drop(tx_send);  // Signal sim_task to finish\n    break;\n}\n// ...\n// After the loop:\ntokio::select! {\n    _ = sim_task =\u003e {}\n    _ = tokio::time::sleep(Duration::from_secs(5)) =\u003e {\n        warn!(\"sim_task did not finish in time, aborting\");\n        sim_task.abort();\n    }\n}\n```\n\nTags: concurrency, shutdown, gateway",
   "notes": "Commit: a5aef0410",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:32:00.486165Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:31:12.264938075Z",
+  "updated_at": "2026-07-22T23:31:14.539081765Z",
   "started_at": "2026-07-22T23:28:18.938624742Z",
-  "lease_expires_at": "2026-07-22T23:33:18.938624742Z",
-  "heartbeat_at": "2026-07-22T23:28:18.938624742Z"
+  "closed_at": "2026-07-22T23:31:14.539081765Z",
+  "close_reason": "Closed"
 }
