@@ -211,7 +211,25 @@ For diagnostic and reachability testing.
 
 **Compressed size:** 3 bytes
 
-### 4.5. Rule 3: RPL DIO (link-local)
+### 4.5. Rule 3: RPL DIO with PIO (link-local)
+
+For DODAG formation, maintenance, and prefix distribution via PIO (Prefix Information Option).
+
+**Rule Definition:** (aligned with appendix-schc.md and rules.py:272 RPL_DIO_RULE)
+
+Includes specific PIO compression using match-mapping for common types (0=Pad1, 3=PIO with LICHEN lifetimes per draft-rpl-lora).
+
+| Field | TV | MO | CDA |
+|-------|----|----|-----|
+| IPv6.Version | 6 | equal | not-sent |
+| IPv6.NextHeader | 58 | equal | not-sent |
+| ICMPv6.Type | 155 | equal | not-sent |
+| RPL.Base | - | ignore | value-sent |
+| PIO.Type | 3 | match-mapping | mapping-sent (2 bits) |
+| PIO.Lifetime | specific | equal | not-sent |
+| RPL.options | specific | MSB(8) | LSB(8) |
+
+**Compressed size:** 8 bytes (base + PIO residue)
 
 For DODAG formation and maintenance.
 

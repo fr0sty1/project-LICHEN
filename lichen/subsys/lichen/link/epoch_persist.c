@@ -3,7 +3,7 @@
 
 /**
  * @file epoch_persist.c
- * @brief Persist the link TX epoch across reboots (lora_ipv6_mesh-3uhb)
+ * @brief Persist the link TX epoch across reboots (lora_ipv6_mesh-3uhb, ado5)
  *
  * link_ctx.c picks a random epoch in [128,255] at boot "for reboot
  * resilience without flash". But a peer remembers this node's last
@@ -16,6 +16,10 @@
  * half-space (RFC 1982) arithmetic, so a +1 epoch is always "ahead" of
  * the peer's remembered counter — even across the 255->0 wrap — and a
  * rebooted node is never mistaken for a replay.
+ *
+ * For T1000-E: add SMP epoch handler (mcumgr settings group) or erase
+ * storage_partition before flash to clear stale Meshtastic NVS data
+ * that prevents settings_load_subtree() from succeeding (see ado5).
  */
 
 #include <errno.h>
