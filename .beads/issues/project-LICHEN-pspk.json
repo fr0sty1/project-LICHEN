@@ -2,12 +2,16 @@
   "id": "project-LICHEN-pspk",
   "title": "puck coap: inconsistent LOCATION conditional vs unconditional linker sections",
   "description": "In commit 98fdb500, lichen/apps/puck/CMakeLists.txt keeps the coap_resource_lichen_coap iterable_section inside if(CONFIG_LICHEN_COAP_LOCATION) but moved zephyr_linker_sources(DATA_SECTIONS sections-ram.ld) and the new coap_resource_lichen_coap_server section outside. This creates mismatch with sections-ram.ld:6 which always includes the location section, and differs from gateway/CMakeLists.txt and test patterns. May pull in unwanted resources or fail to register in some configs. Unverified on T-Echo hardware. P2 per 3 codereview passes.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T14:51:59.405752939Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T14:51:59.405752939Z",
+  "updated_at": "2026-07-22T14:54:04.810450373Z",
+  "started_at": "2026-07-22T14:54:04.810450373Z",
+  "lease_expires_at": "2026-07-22T14:59:04.810450373Z",
+  "heartbeat_at": "2026-07-22T14:54:04.810450373Z",
   "labels": [
     "codereview"
   ]
