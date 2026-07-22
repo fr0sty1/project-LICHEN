@@ -1,12 +1,16 @@
 {
   "id": "project-LICHEN-i59l",
   "title": "codereview-pass2-chunk1: coap_status.c no comments validation",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:13:27.941843585Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:13:27.941843585Z",
+  "updated_at": "2026-07-22T22:30:06.736750905Z",
+  "started_at": "2026-07-22T22:30:06.736750905Z",
+  "lease_expires_at": "2026-07-22T22:35:06.736750905Z",
+  "heartbeat_at": "2026-07-22T22:30:06.736750905Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-i59l",
