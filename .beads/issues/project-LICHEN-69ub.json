@@ -2,12 +2,16 @@
   "id": "project-LICHEN-69ub",
   "title": "[codereview-pass2] time-provider interaction now referenced in modulo but needs stronger MUST",
   "description": "spec/02a-coordinated-capacity.md:117 - Pass2: The ref to §2a.4.2 is added but robustness requires explicit 'MUST validate ts \u003e= epoch_floor independent of SFN modulo wrap per time-provider spec' in the SFN subsection. P2. Discovered-from:project-LICHEN-yne7",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T16:24:36.058265333Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:24:36.058265333Z",
+  "updated_at": "2026-07-22T16:26:49.484327069Z",
+  "started_at": "2026-07-22T16:26:49.484327069Z",
+  "lease_expires_at": "2026-07-22T16:31:49.484327069Z",
+  "heartbeat_at": "2026-07-22T16:26:49.484327069Z",
   "labels": [
     "codereview"
   ]
