@@ -2,12 +2,16 @@
   "id": "project-LICHEN-p5jb",
   "title": "codereview-pass1: sender_addr vs parsed Target in DAO event",
   "description": "In lichen-node/src/node.rs:323 sender_addr from IPv6 SRC used for DaoReceived.target while extract_edge in lichen-rpl/src/routing.rs:382 parses RPL_TARGET option. Fix by making process_dao return the parsed target. P2 correctness. part-of:project-LICHEN-2j8o",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T16:00:24.327215402Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:00:24.327215402Z",
+  "updated_at": "2026-07-22T16:04:08.053075916Z",
+  "started_at": "2026-07-22T16:04:08.053075916Z",
+  "lease_expires_at": "2026-07-22T16:09:08.053075916Z",
+  "heartbeat_at": "2026-07-22T16:04:08.053075916Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-p5jb",
