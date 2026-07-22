@@ -10,11 +10,9 @@
 #include <zephyr/drivers/charger.h>
 #endif
 #if DT_NODE_HAS_COMPAT(DT_ALIAS(battery0), sbs_sbs_gauge_new_api)
-/* Zephyr 3.7's fuel_gauge.h inline helpers loop a signed index against
- * a size_t bound, which trips LICHEN's -Werror=sign-compare.
- */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
+#include <zephyr/drivers/fuel_gauge.h>
 #include <zephyr/drivers/emul.h>
 #include <zephyr/drivers/emul_fuel_gauge.h>
 #pragma GCC diagnostic pop
