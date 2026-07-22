@@ -946,7 +946,6 @@ int oscore_ctx_persist_ssn(struct oscore_ctx *ctx)
 		return OSCORE_ERR_NVM_FAILED;
 	}
 
-	LOG_DBG("Persisted SSN %u to NVM", ssn);
 	return OSCORE_OK;
 }
 
