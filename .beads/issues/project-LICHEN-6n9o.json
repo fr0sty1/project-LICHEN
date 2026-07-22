@@ -2,10 +2,14 @@
   "id": "project-LICHEN-6n9o",
   "title": "[kimi-review] bc2213b: [SEVERITY: low] **Fragility of the suppression**: If",
   "description": "Commit: bc2213b8\nMessage: fix(hal): isolate upstream sign warning\n\nFinding: [SEVERITY: low] **Fragility of the suppression**: If",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T16:18:09.409094166Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:18:09.409094166Z"
+  "updated_at": "2026-07-22T16:20:10.212681758Z",
+  "started_at": "2026-07-22T16:20:10.212681758Z",
+  "lease_expires_at": "2026-07-22T16:25:10.212681758Z",
+  "heartbeat_at": "2026-07-22T16:20:10.212681758Z"
 }
