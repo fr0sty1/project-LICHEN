@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-3k6w.3",
+  "title": "[codereview-pass2] forward_mesh_to_upstream drops local-mesh packets instead of mesh_to_mesh path",
+  "description": "lichend.rs:354-356: if gw.is_local_mesh(\u0026dst) { return; } — packet silently dropped instead of forwarding downward via RPL. Violates spec/05-routing.md:7.2 'if is_local_mesh(dst)' use RPL source routing. No mesh_to_mesh implemented (see epic). P0. discovered-from:project-LICHEN-3k6w",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:32:05.505633628Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:32:05.505633628Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-3k6w.3",
+      "depends_on_id": "project-LICHEN-3k6w",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:32:05.606963511Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
