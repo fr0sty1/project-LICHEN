@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-7ou0",
+  "title": "[codereview-P3] schema update for expected_hash should document the hash_32 primitive used (FNV-1a or SipHash per spec/02a)",
+  "description": "Review pass 1: schema change added expected_hash but no link to exact primitive definition in CCP spec. Add reference in description. codereview tagged.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:47:07.917623018Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:47:07.917623018Z",
+  "labels": [
+    "codereview"
+  ]
+}
