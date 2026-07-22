@@ -21,6 +21,7 @@ LoRa Chirp Spread Spectrum (CSS) as implemented by Semtech SX126x and SX127x.
 | Coding Rate | CR | 4/5 | Minimal FEC overhead |
 | Preamble | - | 8 symbols | Standard LoRa |
 | Sync Word | SYNC | 0x34 | Distinct from Meshtastic (0x2B) |
+| Hop Sequence | - | SFN-seeded PRNG | CCP-12 synchronized hopping (see 02a-coordinated-capacity.md §2a.8); GPS optional |
 | CRC | - | Enabled | Hardware CRC |
 
 ### 3.3. Frequency Bands
@@ -50,7 +51,7 @@ Nodes SHOULD implement ADR to optimize SF/TX power based on link quality:
 +--------+--------+-------+--------+----------+---------+--------+
 | Length | LLSec  | Epoch | SeqNum | Dst Addr | Payload | MIC    |
 +--------+--------+-------+--------+----------+---------+--------+
-   1B       1B       1B      2B       2-8B      var      4-8B
+   1B       1B       1B      2B       0/2/8B    var      0/48B
 ```
 
 | Field | Size | Description |
@@ -59,9 +60,9 @@ Nodes SHOULD implement ADR to optimize SF/TX power based on link quality:
 | LLSec | 1 byte | Link-layer security flags |
 | Epoch | 1 byte | Epoch counter (see 4.4) |
 | SeqNum | 2 bytes | Sequence number (replay protection) |
-| Dst Addr | 2-8 bytes | Compressed destination address |
+| Dst Addr | 0/2/8 bytes | Destination address; 0 bytes for broadcast or elided mode |
 | Payload | Variable | Authenticated inner payload (dispatch byte + body) |
-| MIC | 4-8 bytes | Message Integrity Code |
+| MIC | 0 or 48 bytes | No bytes when unsigned; full Schnorr-48 signature when signed |
 
 The first byte of the authenticated inner payload is a dispatch value:
 
@@ -87,9 +88,9 @@ the link signature and MIC because it is part of the frame payload.
 | Field | Bits | Values |
 |-------|------|--------|
 | Addr Mode | 0-1 | 0=none, 1=16-bit, 2=64-bit, 3=elided |
-| MIC Length | 2-4 | 0=32-bit, 1=64-bit, 2=reserved |
-| Signature | 5 | 1=Ed25519 signature present |
-| Encrypted | 6 | 1=payload encrypted (AES-CCM) |
+| MIC Length | 2-4 | 0 or 1=compatibility selector; 2-7=reserved |
+| Signature | 5 | 1=48-byte Schnorr signature present; 0=no MIC |
+| Encrypted | 6 | 1=encrypted frame unsupported; receivers MUST reject |
 | Reserved | 7 | Must be 0 |
 
 ### 4.3. Addressing Modes
@@ -99,7 +100,7 @@ the link signature and MIC because it is part of the frame payload.
 | None (0) | 0B | Broadcast |
 | Short (1) | 2B | 16-bit short address (assigned by coordinator) |
 | Extended (2) | 8B | EUI-64 derived from hardware |
-| Elided (3) | 0B | Derived from IPv6 destination |
+| Elided (3) | 0B | Destination derived from context |
 
 ### 4.4. Epoch and Sequence Number
 
@@ -196,7 +197,7 @@ Address 0x0000 is reserved (broadcast). Range 0xFFF0-0xFFFF reserved for future 
 
 Nodes self-assign using hash-based allocation with DAD:
 
-1. **Compute candidate:** `short_addr = CRC16(EUI-64) | 0x0001` (ensure non-zero)
+1. **Compute candidate:** `short_addr = (hash_32(0, EUI64_as_u64) & 0xFFFE) | 0x0001` (ensure non-zero; use updated link-layer hash_32(sfn, key) from CCP-15.8.3 / §2a.7.1 for consistency)
 2. **DAD probe:** Broadcast 3 DAD requests with random jitter (0-500ms between)
    ```
    DAD Request:

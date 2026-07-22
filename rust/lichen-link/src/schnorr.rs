@@ -143,11 +143,13 @@ pub fn verify(pubkey: &PublicKey, msg: &[u8], sig: &[u8; 48]) -> bool {
 /// Length of a Schnorr48 signature in bytes.
 pub const SIGNATURE_LENGTH: usize = 48;
 
-/// Sign a link-layer frame. Append the returned 48 bytes to the inner payload.
+/// Sign a link-layer frame. The returned 48 bytes occupy the MIC field.
 ///
-/// Signed data layout: epoch(1B) || seqnum(2B, BE) || dst_addr || inner_payload.
-/// This matches the Python reference: `_build_signable_data`.
+/// Signed data layout: length || LLSec || epoch || seqnum || dst_addr || payload.
+#[allow(clippy::too_many_arguments)]
 pub fn sign_frame(
+    length: u8,
+    llsec: u8,
     epoch: u8,
     seqnum: LinkSeqNum,
     dst_addr: &[u8],
@@ -155,37 +157,44 @@ pub fn sign_frame(
     privkey: &PrivateKey,
     pubkey: &PublicKey,
 ) -> [u8; 48] {
-    let msg = build_signable(epoch, seqnum, dst_addr, inner_payload);
+    let msg = build_signable(length, llsec, epoch, seqnum, dst_addr, inner_payload);
     sign(privkey, pubkey, &msg)
 }
 
 /// Verify a signed link-layer frame.
 ///
-/// `payload_with_sig` is the full frame payload: inner_payload || sig(48B).
-/// Returns `false` if the payload is shorter than 48 bytes or the signature
-/// does not verify.
+/// `signature` is the 48-byte MIC and `payload` is the inner payload.
+#[allow(clippy::too_many_arguments)]
 pub fn verify_frame(
+    length: u8,
+    llsec: u8,
     epoch: u8,
     seqnum: LinkSeqNum,
     dst_addr: &[u8],
-    payload_with_sig: &[u8],
+    payload: &[u8],
+    signature: &[u8],
     sender_pubkey: &PublicKey,
 ) -> bool {
-    if payload_with_sig.len() < SIGNATURE_LENGTH {
+    if signature.len() != SIGNATURE_LENGTH {
         return false;
     }
-    let split = payload_with_sig.len() - SIGNATURE_LENGTH;
-    let inner_payload = &payload_with_sig[..split];
-    // SAFETY: length check above ensures payload_with_sig.len() >= 48,
-    // so [split..] is exactly SIGNATURE_LENGTH (48) bytes
-    let sig: [u8; 48] = payload_with_sig[split..].try_into().unwrap();
-    let msg = build_signable(epoch, seqnum, dst_addr, inner_payload);
+    let sig: [u8; 48] = signature.try_into().unwrap();
+    let msg = build_signable(length, llsec, epoch, seqnum, dst_addr, payload);
     verify(sender_pubkey, &msg, &sig)
 }
 
-// epoch(1) || seqnum(2, BE) || dst_addr || inner_payload
-fn build_signable(epoch: u8, seqnum: LinkSeqNum, dst_addr: &[u8], inner_payload: &[u8]) -> Vec<u8> {
-    let mut buf = Vec::with_capacity(3 + dst_addr.len() + inner_payload.len());
+// LENGTH || LLSec || epoch || seqnum || dst_addr || inner_payload
+fn build_signable(
+    length: u8,
+    llsec: u8,
+    epoch: u8,
+    seqnum: LinkSeqNum,
+    dst_addr: &[u8],
+    inner_payload: &[u8],
+) -> Vec<u8> {
+    let mut buf = Vec::with_capacity(5 + dst_addr.len() + inner_payload.len());
+    buf.push(length);
+    buf.push(llsec);
     buf.push(epoch);
     buf.extend_from_slice(&seqnum.to_be_bytes());
     buf.extend_from_slice(dst_addr);
@@ -458,19 +467,24 @@ mod tests {
         let dst_addr = [0x00u8, 0x01u8];
         let inner_payload = b"hello";
 
-        // Node A: sign and assemble payload = inner_payload || sig
-        let sig = sign_frame(epoch, seqnum, &dst_addr, inner_payload, &priv_a, &pub_a);
-        let mut signed_payload = [0u8; 53]; // 5 + 48
-        signed_payload[..5].copy_from_slice(inner_payload);
-        signed_payload[5..].copy_from_slice(&sig);
+        let sig = sign_frame(
+            59,
+            0x21,
+            epoch,
+            seqnum,
+            &dst_addr,
+            inner_payload,
+            &priv_a,
+            &pub_a,
+        );
 
         // Node A: serialise frame
         let frame = LichenFrame {
             epoch,
             seqnum,
             dst_addr: &dst_addr,
-            payload: &signed_payload,
-            mic: &[0u8; 4],
+            payload: inner_payload,
+            mic: &sig,
             addr_mode: AddrMode::Short,
             mic_length: MicLength::Bits32,
             signature: Signature::Present,
@@ -487,7 +501,16 @@ mod tests {
             "first delivery should pass replay window"
         );
         assert!(
-            verify_frame(rx.epoch, rx.seqnum, rx.dst_addr, rx.payload, &pub_a),
+            verify_frame(
+                59,
+                0x21,
+                rx.epoch,
+                rx.seqnum,
+                rx.dst_addr,
+                rx.payload,
+                rx.mic,
+                &pub_a
+            ),
             "valid frame should verify"
         );
 
@@ -495,23 +518,41 @@ mod tests {
         assert!(!replay.accept(rx.seqnum), "replay must be rejected");
 
         // Tampered inner payload: signature check fails
-        let mut tampered = signed_payload;
+        let mut tampered = *inner_payload;
         tampered[0] ^= 0xFF;
         assert!(
-            !verify_frame(epoch, seqnum, &dst_addr, &tampered, &pub_a),
+            !verify_frame(59, 0x21, epoch, seqnum, &dst_addr, &tampered, &sig, &pub_a),
             "tampered payload must not verify"
         );
 
         // Wrong public key: signature check fails
         assert!(
-            !verify_frame(epoch, seqnum, &dst_addr, &signed_payload, &pub_b),
+            !verify_frame(
+                59,
+                0x21,
+                epoch,
+                seqnum,
+                &dst_addr,
+                inner_payload,
+                &sig,
+                &pub_b
+            ),
             "wrong pubkey must not verify"
         );
 
-        // Payload too short to contain a signature
+        // Signature must be exactly 48 bytes.
         assert!(
-            !verify_frame(epoch, seqnum, &dst_addr, &signed_payload[..47], &pub_a),
-            "truncated payload must not verify"
+            !verify_frame(
+                59,
+                0x21,
+                epoch,
+                seqnum,
+                &dst_addr,
+                inner_payload,
+                &sig[..47],
+                &pub_a
+            ),
+            "truncated signature must not verify"
         );
     }
 }

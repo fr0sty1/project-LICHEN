@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-xcd6.2",
+  "title": "Validate LICHEN fleet AMI",
+  "description": "Launch a tagged instance from the new AMI and verify Renode, Rust, and Python runtimes without relying on the development EBS or baked credentials.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-15T20:59:29.404994Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-15T21:59:26.20769Z",
+  "closed_at": "2026-07-15T21:59:26.20769Z",
+  "close_reason": "Validated clean boot, serial console, Renode, Rust hetero-node, and Python runtime",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-xcd6.2",
+      "depends_on_id": "project-LICHEN-xcd6",
+      "type": "parent-child",
+      "created_at": "2026-07-15T20:59:29.405741Z"
+    }
+  ]
+}

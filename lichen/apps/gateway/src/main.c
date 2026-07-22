@@ -46,6 +46,10 @@
 #include "meshcore_adapter.h"
 #endif
 
+#if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
+#include "rpl_root.h"
+#endif
+
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 #include <lichen/native.h>
 #endif
@@ -261,8 +265,35 @@ static int status_get(struct coap_resource *resource,
 					LICHEN_GATEWAY_STATUS_ROLE,
 					LICHEN_GATEWAY_STATUS_RPL_CAPABLE);
 
-	return coap_respond_block2(resource, request, addr, addr_len,
-				   cbor_buf, len);
+	/*
+	 * RX1-style response delay (lora_ipv6_mesh-fe1z). The requesting puck is
+	 * a half-duplex node switching its radio from TX (the GET it just sent)
+	 * to RX. The gateway answers within <1 ms, so without a gap the reply
+	 * lands during the puck's TX->RX turnaround and is missed — confirmed on
+	 * the T1000-E (LR1110), which never received its own replies. Wait, like
+	 * LoRaWAN Class-A RX1, so the reply arrives after the puck is listening.
+	 * The T-Echo (SX1262) turns around fast enough not to need it, but the
+	 * delay is harmless for it.
+	 */
+	/* Compile-time guard: with the default 0, K_MSEC(0) -> MAX(0, 0) trips
+	 * bugprone-branch-clone, so drop the call entirely when disabled. */
+#if CONFIG_LICHEN_GATEWAY_RX1_DELAY_MS > 0
+	k_sleep(K_MSEC(CONFIG_LICHEN_GATEWAY_RX1_DELAY_MS));
+#endif
+
+	/* Diagnostic (lora_ipv6_mesh-fe1z): which peer's GET reached the server,
+	 * and did the response send succeed? IID last 2 bytes = EUI tail
+	 * (..2c:ab = T1000-E, ..2c:10 = T-Echo). */
+	int _rr = coap_respond_block2(resource, request, addr, addr_len,
+				      cbor_buf, len);
+	if (addr != NULL && addr->sa_family == AF_INET6) {
+		const struct sockaddr_in6 *_a6 = (const struct sockaddr_in6 *)addr;
+
+		LOG_INF("status GET from ..%02x:%02x -> respond %zu B ret=%d",
+			_a6->sin6_addr.s6_addr[14], _a6->sin6_addr.s6_addr[15],
+			len, _rr);
+	}
+	return _rr;
 }
 
 /*

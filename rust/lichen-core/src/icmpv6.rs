@@ -5,7 +5,7 @@
 
 use crate::addr::Ipv6Addr;
 use crate::checksum::upper_layer_checksum;
-use crate::ipv6::{next_header, IPV6_HEADER_LEN};
+use crate::ipv6::{field, next_header, IPV6_HEADER_LEN};
 
 /// ICMPv6 fixed header length (type, code, checksum, message body).
 pub const ICMPV6_HEADER_LEN: usize = 8;
@@ -88,8 +88,8 @@ fn build(
     out[4..6].copy_from_slice(&(icmpv6_len as u16).to_be_bytes());
     out[6] = next_header::ICMPV6;
     out[7] = 64; // hop limit
-    out[8..24].copy_from_slice(&src.0);
-    out[24..40].copy_from_slice(&dst.0);
+    out[field::SRC_OFFSET..field::DST_OFFSET].copy_from_slice(&src.0);
+    out[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&dst.0);
 
     // ICMPv6 header — checksum zero for now
     out[40] = icmp_type;
@@ -111,6 +111,7 @@ fn build(
 mod tests {
     use super::*;
     use crate::addr::Ipv6Addr;
+    use crate::ipv6::field;
 
     fn ll(iid: u8) -> Ipv6Addr {
         Ipv6Addr([0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0x02, 0, 0, 0, 0, 0, 0, iid])
@@ -124,8 +125,8 @@ mod tests {
         assert_eq!(buf[0] >> 4, 6); // version = 6
         assert_eq!(buf[6], 58); // NH = ICMPv6
         assert_eq!(buf[7], 64); // hop limit
-        assert_eq!(&buf[8..24], &ll(1).0); // src
-        assert_eq!(&buf[24..40], &ll(2).0); // dst
+        assert_eq!(&buf[field::SRC_OFFSET..field::DST_OFFSET], &ll(1).0); // src
+        assert_eq!(&buf[field::DST_OFFSET..IPV6_HEADER_LEN], &ll(2).0); // dst
         assert_eq!(buf[40], ECHO_REQUEST);
         assert_eq!(buf[41], 0); // code
         assert_eq!(&buf[44..46], &[0x12, 0x34]); // id

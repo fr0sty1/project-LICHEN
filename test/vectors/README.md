@@ -3,23 +3,25 @@
 
 # LICHEN Test Vectors
 
-Language-neutral conformance vectors for the LICHEN protocol. The **Python
-prototype is the source of truth**; the Rust and C implementations MUST validate
-against these files (issue `ajr`, gate `ijj`).
+Language-neutral conformance vectors for the LICHEN protocol using **format_version=2** strict schema. The **Python prototype is the source of truth**; Rust, C, and Zephyr implementations MUST validate against these files (issue ajr, gate ijj). Schema enforces one vector family per file with dedicated ccp15/ccp_load_balancing_document defs.
 
 ## Files
 
 | File | Covers |
 |------|--------|
-| `schema.json` | JSON Schema (draft-07) for the envelope and vector shapes |
+| `schema.json` | v2-only JSON Schema (draft-07); const format_version=2, per-family docs, no legacy envelope |
 | `schc_compression.json` | SCHC whole-packet compression (RFC 8724), rules 0–4 |
-| `l2_payload.json` | Authenticated L2 inner-payload dispatch wrapping SCHC and routing/control bodies |
+| `l2_payload.json` | Authenticated L2 inner-payload dispatch wrapping SCHC/routing |
 | `link_frame.json` | LICHEN link-layer frame encoding (spec section 4) |
 | `announce_coords.json` | Announce app_data Type=0x01 geographic coordinate encoding |
 | `meshtastic_app_compat.json` | Meshtastic BLE raw-protobuf app compatibility exchanges |
 | `meshcore_app_compat.json` | MeshCore byte-command app compatibility exchanges |
+| `ccp_load_balancing.json` | CCP-16 load balancing (da2q multi-channel, TDMA/SF adaptation) |
+| `ccp15.json` | CCP-15 RF health/EMA/CCA/CAD metrics and pseudocode |
+| `ccp13.json` | Additional CCP-13 vectors (regenerated) |
+| `ccp9-rendezvous.json` | CCP-9 Rendezvous Mechanisms from da2q context (hash-based f(SFN,peer_EUI), scheduled, announce-driven, fallback). Independent oracles only per test integrity rules. |
 
-All byte strings are lowercase hex (possibly empty).
+All byte strings are lowercase hex (possibly empty). Schema validation and independent oracles used in tests.
 
 ## How to validate (any implementation)
 
@@ -31,6 +33,8 @@ All byte strings are lowercase hex (possibly empty).
 **Link frames** (`link_frame.json`): for each vector,
 - encoding a frame built from `fields` MUST equal `hex_decode(encoded)`, and
 - decoding `hex_decode(encoded)` MUST reproduce `fields`.
+- A vector with `expect.error` is negative: decoding `encoded` MUST reject it,
+  and encoders MUST NOT emit it.
 
 `addr_mode`: 0=none/broadcast, 1=16-bit short, 2=EUI-64, 3=elided.
 `mic_length`: 0=32-bit, 1=64-bit.

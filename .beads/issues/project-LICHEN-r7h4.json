@@ -2,15 +2,16 @@
   "id": "project-LICHEN-r7h4",
   "title": "Renode emulation for nRF52840 Meshtastic boards",
   "description": "Add Renode board definitions for nRF52840-based Meshtastic boards (T-Echo, RAK4631). Enables full firmware testing without hardware. Requires nRF52840 platform + SX126x peripheral model or LichenSubGHz bridge. Software-only: Renode .repl files, C# peripherals, DTS overlays.",
-  "status": "in_progress",
+  "notes": "Commit: e3cb5843b - Enabled easyDMA:true on SPI1 in nrf52840_lichen.repl to fix nrfx_spim timeout and SX1262 RX (per validation memory). T-Echo Renode now has better radio support. Additional RX/CS fixes in r7h4.6 child.",
+  "status": "closed",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-03T05:48:03.232303Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:26:37.371305304Z",
+  "updated_at": "2026-07-22T20:27:02.604956442Z",
   "started_at": "2026-07-22T20:26:37.371305304Z",
-  "lease_expires_at": "2026-07-22T20:31:37.371305304Z",
-  "heartbeat_at": "2026-07-22T20:26:37.371305304Z"
+  "closed_at": "2026-07-22T20:27:02.604956442Z",
+  "close_reason": "easyDMA enabled for SX1262 SPI (commit e3cb5843b). Renode nRF52840 support improved."
 }

@@ -228,8 +228,10 @@ class DegradeRule(ChaosRule):
         rx_position: tuple[float, float, float] | None = None,
     ) -> RxCandidate:
         """Return new RxCandidate with reduced RSSI and SNR."""
-        return RxCandidate(
-            transmission=candidate.transmission,
+        from dataclasses import replace
+
+        return replace(
+            candidate,
             rssi=candidate.rssi - self.rssi_penalty_db,
             snr=candidate.snr - self.rssi_penalty_db,
         )

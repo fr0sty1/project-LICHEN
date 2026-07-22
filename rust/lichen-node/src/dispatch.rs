@@ -28,7 +28,7 @@
 //!
 //! The `DISPATCHER` is computed at compile time and placed in `.rodata`.
 
-#[cfg(feature = "defmt")]
+#[cfg(all(feature = "defmt", not(feature = "log")))]
 use defmt::warn;
 #[cfg(feature = "log")]
 use log::warn;

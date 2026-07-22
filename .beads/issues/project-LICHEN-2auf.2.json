@@ -1,0 +1,143 @@
+{
+  "id": "project-LICHEN-2auf.2",
+  "title": "Run heterogeneous EC2 fleet validation",
+  "description": "Scope: final heterogeneous EC2 acceptance and evidence aggregation only after all recovered link, non-link Zephyr, supported board/app, Rust bridge, and staged fleet gates are closed. Use AWS_PROFILE=personal and AWS_REGION=us-west-2 in account 210337117346; launch only Project=LICHEN/unique RunId/LaunchedBy/Name-tagged ARM64 instances from fleet AMI ami-0764d1b512e22671f. Fleet must never attach builder EBS vol-0a95eee8d1d8461eb. Provide and hash the exact accepted clean source base, final binary patch/commit set, lockfiles/toolchains, Zephyr ELF/model/platform files, scripts and analyzer because the AMI has no repository or credentials. Run the complete requested Python/Rust/Zephyr topology and produce the final pairwise reception matrix; do not repeat or waive prerequisite gates.",
+  "design": "Fail closed unless .56, .35.6, every .59 child, every .31 child, and the .28/.29/.34 -\u003e .30.1 -\u003e .30 fleet chain are complete with evidence. Before writes prove account, region, AMI architecture/ID, and ownership tags. Record exact provenance and all package/upload/launch/run/analyze/collect/cleanup commands, cwd/environment/tool versions, UTC timing, exits, requested/actual counts, instance IDs, RunId, source/patch/lock/artifact SHA-256 values, raw telemetry/log hashes and final report hash. Require every process/analyzer exit zero and packet-hash evidence for each required Python/Rust/Zephyr TX/RX and pairwise cross-reception. Any open prerequisite, skip, reduced count, aggregate-only evidence, stale/mismatched artifact, malformed/missing telemetry, timeout, hidden retry, ignored exit, log-copy/analyzer/cleanup failure fails. Copy/hash logs first; account/tag ownership-check and terminate only recorded instances, wait terminated, and prove no EBS attachment. If approved volume was attached unexpectedly, fail and require sync/unmount, detach, and wait-volume-available.",
+  "acceptance_criteria": "All direct prerequisite beads are closed and their source/patch/tool/command/log/artifact evidence is referenced. On ami-0764d1b512e22671f, the exact requested topology runs in account 210337117346/us-west-2 with strict telemetry proving per-node and per-implementation TX/RX plus every required cross-implementation packet-hash reception pair; all processes and analyzer exit zero. Retain exact commands/exits, RunId/tags/instance IDs, provenance hashes, raw logs and final report hash. No skipped prerequisite, matrix reduction, aggregate-only assertion, retry-hidden failure, or cleanup failure passes. Fleet never uses vol-0a95eee8d1d8461eb; ownership-checked termination/wait is mandatory, and any accidental attachment requires explicit unmount, detach, and wait-volume-available before failure cleanup is complete.",
+  "notes": "Preserved original objective: once source fixes and quality gates are green, run the Python/Rust/Zephyr heterogeneous fleet, collect telemetry, analyze the reception matrix, and file interop failures as Beads. This final bead must remain blocked until every prerequisite row and the full .30 scenario pass.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-15T04:40:23.024533Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-17T21:38:16.104983Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.2",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-15T04:40:23.025121Z"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.2",
+      "depends_on_id": "project-LICHEN-2auf.56",
+      "type": "blocks",
+      "created_at": "2026-07-17T21:38:24.99976Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.2",
+      "depends_on_id": "project-LICHEN-2auf.35.6",
+      "type": "blocks",
+      "created_at": "2026-07-17T21:38:29.129339Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.2",
+      "depends_on_id": "project-LICHEN-2auf.59",
+      "type": "blocks",
+      "created_at": "2026-07-17T21:38:37.747085Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.2",
+      "depends_on_id": "project-LICHEN-2auf.59.1",
+      "type": "blocks",
+      "created_at": "2026-07-17T21:38:41.806865Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.2",
+      "depends_on_id": "project-LICHEN-2auf.59.2",
+      "type": "blocks",
+      "created_at": "2026-07-17T21:38:46.738055Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.2",
+      "depends_on_id": "project-LICHEN-2auf.59.3",
+      "type": "blocks",
+      "created_at": "2026-07-17T21:38:54.046087Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.2",
+      "depends_on_id": "project-LICHEN-2auf.59.4",
+      "type": "blocks",
+      "created_at": "2026-07-17T21:38:58.070149Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.2",
+      "depends_on_id": "project-LICHEN-2auf.59.5",
+      "type": "blocks",
+      "created_at": "2026-07-17T21:39:02.170708Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.2",
+      "depends_on_id": "project-LICHEN-2auf.31",
+      "type": "blocks",
+      "created_at": "2026-07-17T21:39:09.361187Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.2",
+      "depends_on_id": "project-LICHEN-2auf.31.1",
+      "type": "blocks",
+      "created_at": "2026-07-17T21:39:13.705612Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.2",
+      "depends_on_id": "project-LICHEN-2auf.31.2",
+      "type": "blocks",
+      "created_at": "2026-07-17T21:39:18.636839Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.2",
+      "depends_on_id": "project-LICHEN-2auf.31.3",
+      "type": "blocks",
+      "created_at": "2026-07-17T21:39:23.067197Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.2",
+      "depends_on_id": "project-LICHEN-2auf.31.4",
+      "type": "blocks",
+      "created_at": "2026-07-17T21:39:28.047789Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.2",
+      "depends_on_id": "project-LICHEN-2auf.31.5",
+      "type": "blocks",
+      "created_at": "2026-07-17T21:39:33.81266Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.2",
+      "depends_on_id": "project-LICHEN-2auf.30",
+      "type": "blocks",
+      "created_at": "2026-07-17T21:39:40.206017Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

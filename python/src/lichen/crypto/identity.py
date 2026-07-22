@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     pass
 
 
-@dataclass(slots=True)
+@dataclass
 class Identity:
     """A node's cryptographic identity.
 
@@ -89,11 +89,17 @@ class Identity:
     def x25519_private(self) -> bytes:
         """Derive X25519 private key from Ed25519 seed.
 
-        Per spec section 8.8 (EDHOC key agreement):
+        Per spec section 8.8:
             x25519_private = SHA-512(ed25519_seed)[0:32]
 
-        This allows reusing the Ed25519 keypair for EDHOC key agreement
-        without storing additional keys.
+        This derives a static X25519 key from the Ed25519 seed for:
+        - EDHOC static-DH modes (STATIC_SIGN, STATIC_STATIC) where the
+          initiator or responder uses their long-term key for DH
+        - External ECDH-based key establishment protocols
+
+        Note: EDHOC SIGN_SIGN mode does NOT use this key. It generates
+        fresh ephemeral X25519 keys per-session and uses the Ed25519
+        identity only for signatures.
 
         Returns:
             32-byte X25519 private key suitable for ECDH operations.
@@ -106,8 +112,11 @@ class Identity:
     def x25519_public(self) -> bytes:
         """Derive X25519 public key from Ed25519 seed.
 
-        Per spec section 8.8 (EDHOC key agreement):
+        Per spec section 8.8:
             x25519_public = X25519(x25519_private, basepoint)
+
+        See x25519_private for usage notes. This is the static DH public
+        key corresponding to x25519_private, NOT used by EDHOC SIGN_SIGN.
 
         Returns:
             32-byte X25519 public key for ECDH key agreement.
@@ -130,7 +139,7 @@ def _pubkey_to_iid(pubkey: bytes) -> bytes:
     return bytes(iid)
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class PeerIdentity:
     """A remote peer's public identity (no secret material).
 

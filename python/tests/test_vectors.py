@@ -22,7 +22,7 @@ from lichen.crypto.identity import Identity
 from lichen.crypto.schnorr48 import sign as schnorr_sign
 from lichen.crypto.schnorr48 import verify as schnorr_verify
 from lichen.l2_payload import L2PayloadKind, classify_l2_payload, l2_payload_body
-from lichen.link.frame import AddrMode, LichenFrame, MicLength
+from lichen.link.frame import AddrMode, FrameError, LichenFrame, MicLength
 from lichen.rpl.dao import RplTarget, TransitInformation
 from lichen.rpl.messages import DAO, DIO, DIS, DAOAck, _parse_options
 from lichen.schc.headers import compress_packet, decompress_packet
@@ -32,6 +32,8 @@ VECTORS_DIR = Path(__file__).resolve().parents[2] / "test" / "vectors"
 sys.path.insert(0, str(VECTORS_DIR))
 from generate import (  # noqa: E402
     announce_coords_vectors,
+    ccp9_rendezvous_vectors,
+    ccp16_vectors,
     l2_payload_vectors,
     meshcore_app_compat_vectors,
     meshtastic_app_compat_vectors,
@@ -73,9 +75,19 @@ def test_vectors_directory_exists() -> None:
         "meshtastic_app_compat.json",
         "meshcore_app_compat.json",
         "rpl_messages.json",
+        "oscore.json",
+        "compact_cot.json",
+        "schnorr48.json",
+        "ccp_load_balancing.json",
+        "ccp15.json",
+        "ccp13.json",
+        "ccp16-desync.json",
+        "ccp9-rendezvous.json",
     ],
+
 )
 def test_vector_file_schema(filename: str) -> None:
+    # Updated for ccp13/15/16/9 from da2q CCP rendezvous vectors per mandatory codereview
     schema = _load("schema.json")
     doc = _load(filename)
     errors = sorted(Draft7Validator(schema).iter_errors(doc), key=lambda e: e.path)
@@ -84,37 +96,37 @@ def test_vector_file_schema(filename: str) -> None:
 
 def _schc_cases():
     doc = _load("schc_compression.json")
-    assert doc["format_version"] == 1
+    assert doc["format_version"] == 2
     return [(v["name"], v) for v in doc["vectors"]]
 
 
 def _frame_cases():
     doc = _load("link_frame.json")
-    assert doc["format_version"] == 1
+    assert doc["format_version"] == 2
     return [(v["name"], v) for v in doc["vectors"]]
 
 
 def _l2_payload_cases():
     doc = _load("l2_payload.json")
-    assert doc["format_version"] == 1
+    assert doc["format_version"] == 2
     return [(v["name"], v) for v in doc["vectors"]]
 
 
 def _meshtastic_cases():
     doc = _load("meshtastic_app_compat.json")
-    assert doc["format_version"] == 1
+    assert doc["format_version"] == 2
     return [(v["name"], v) for v in doc["vectors"]]
 
 
 def _announce_coords_cases():
     doc = _load("announce_coords.json")
-    assert doc["format_version"] == 1
+    assert doc["format_version"] == 2
     return [(v["name"], v) for v in doc["vectors"]]
 
 
 def _meshcore_cases():
     doc = _load("meshcore_app_compat.json")
-    assert doc["format_version"] == 1
+    assert doc["format_version"] == 2
     return [(v["name"], v) for v in doc["vectors"]]
 
 
@@ -157,6 +169,12 @@ def test_frame_vector(name: str, vector: dict) -> None:
         encrypted=f["encrypted"],
     )
     encoded = bytes.fromhex(vector["encoded"])
+    if vector.get("expect", {}).get("error"):
+        with pytest.raises(FrameError):
+            LichenFrame.from_bytes(encoded)
+        with pytest.raises(FrameError):
+            frame.to_bytes()
+        return
     assert frame.to_bytes() == encoded, f"encode drift: {name}"
 
     decoded = LichenFrame.from_bytes(encoded)
@@ -210,41 +228,14 @@ def test_meshcore_app_compat_vectors_match_generator() -> None:
     assert doc["vectors"] == meshcore_app_compat_vectors()
 
 
-def _hash_32(data: bytes) -> int:
-    h = 0x811c9dc5
-    for b in data:
-        h = ((h ^ b) * 0x01000193) & 0xffffffff
-    return h
+def test_ccp16_vectors_match_generator() -> None:
+    doc = _load("ccp_load_balancing.json")
+    assert doc["vectors"] == ccp16_vectors()
 
 
-def _ccp15_cases():
-    doc = _load("ccp15.json")
-    assert doc["format_version"] == 2
-    return [(v["name"], v) for v in doc["vectors"]]
-
-
-@pytest.mark.parametrize("name,vector", _ccp15_cases())
-def test_ccp15_sf_ema_load_factor_hash32_logic(name: str, vector: dict) -> None:
-    i = vector["input"]
-    o = vector["output"]
-    eui = bytes.fromhex(i["eui64"])
-    h = _hash_32(eui + i["epoch"].to_bytes(4, "little"))
-    assert h == o["hash_32"]
-    snr_ema = i.get("snr_ema", i["snr_db"])
-    load_factor = i.get("load_factor", 0.0)
-    if i["density"] > 8 or snr_ema < 0 or load_factor > 0.8:
-        sf = 11
-    elif i["density"] < 5 and snr_ema > 8.0:
-        sf = 9
-    elif i["density"] > 20 or snr_ema < -5.0:
-        sf = 12
-    else:
-        sf = 10
-    assert sf == o["sf"]
-    ch = 0 if i["density"] > 8 else ((h % 3) + 1)
-    assert ch == o["select_channel"]
-    assert ch == o["channel"]
-    assert i["now"] == o.get("now", i["now"])
+def test_ccp9_rendezvous_vectors_match_generator() -> None:
+    doc = _load("ccp9-rendezvous.json")
+    assert doc["vectors"] == ccp9_rendezvous_vectors()
 
 
 def _read_varint(data: bytes, offset: int) -> tuple[int, int]:
@@ -590,7 +581,7 @@ def test_schnorr_vector(desc: str, vector: dict) -> None:
 
 def _rpl_messages_cases():
     doc = _load("rpl_messages.json")
-    assert doc["format_version"] == 1
+    assert doc["format_version"] == 2
     return [(v["name"], v) for v in doc["vectors"]]
 
 
@@ -686,7 +677,12 @@ def test_rpl_messages_vector(name: str, vector: dict) -> None:
             assert ti.path_control == fields["path_control"], f"{name}: path_control"
             assert ti.path_sequence == fields["path_sequence"], f"{name}: path_sequence"
             assert ti.path_lifetime == fields["path_lifetime"], f"{name}: path_lifetime"
-            assert ti.parent_address == IPv6Address(fields["parent_address"]), f"{name}: parent"
+            expected_parent = (
+                IPv6Address(fields["parent_address"])
+                if fields["parent_address"] is not None
+                else None
+            )
+            assert ti.parent_address == expected_parent, f"{name}: parent"
             assert ti.to_option().to_bytes() == encoded, f"{name}: encode"
 
     elif msg_type == "dio_with_options":
@@ -712,3 +708,9 @@ def test_rpl_messages_vector(name: str, vector: dict) -> None:
         assert len(options) == len(expected), f"{name}: options count"
         for i, opt in enumerate(options):
             assert opt.type == expected[i]["type"], f"{name}: option {i} type"
+
+
+def test_schema_json_has_top_level_schema() -> None:
+    schema = _load("schema.json")
+    assert "$schema" in schema
+    assert "http://json-schema.org/draft-07" in schema["$schema"]

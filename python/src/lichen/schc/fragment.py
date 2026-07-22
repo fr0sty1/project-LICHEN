@@ -25,8 +25,8 @@ N_FCN_BITS = 6
 ALL_1 = (1 << N_FCN_BITS) - 1  # 63 — marks the last fragment of the datagram
 MAX_WINDOW_SIZE = ALL_1 - 1  # 62 regular FCNs (62..0) per full window
 DEFAULT_WINDOW_SIZE = 7
-MAX_BITMAP_SIZE = 64
-MIC_LENGTH = 4  # CRC32
+MIC_LENGTH = 4
+MAX_SCHC_PACKET = 1281
 
 _W_SHIFT = 6
 _FCN_MASK = 0x3F
@@ -127,8 +127,6 @@ class Ack:
         window = (data[1] >> _W_SHIFT) & 1
         complete = bool(data[1] & 0x01)
         n = data[2]
-        if n > MAX_WINDOW_SIZE:
-            raise FragmentError(f"bitmap size {n} exceeds maximum {MAX_WINDOW_SIZE}")
         body = data[3:]
         required_bytes = (n + 7) // 8
         if len(body) < required_bytes:
@@ -157,6 +155,8 @@ class FragmentSender:
             raise FragmentError("tile_size must be positive")
         if not 1 <= self.window_size <= MAX_WINDOW_SIZE:
             raise FragmentError(f"window_size must be 1..{MAX_WINDOW_SIZE}")
+        if len(self.payload) > MAX_SCHC_PACKET:
+            raise FragmentError(f"payload exceeds MAX_SCHC_PACKET={MAX_SCHC_PACKET}")
         self._fragments = self._build()
 
     def _build(self) -> list[Fragment]:

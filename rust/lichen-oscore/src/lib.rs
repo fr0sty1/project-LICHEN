@@ -299,14 +299,12 @@ impl Context {
         class_e_options: &[u8],
         payload: &[u8],
     ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, 16>), OscoreError> {
-        // Check for sequence number exhaustion before incrementing.
-        // Wraparound would cause nonce reuse, a critical security violation.
-        if self.sender_seq.get() == u32::MAX {
-            return Err(OscoreError::SeqExhausted);
-        }
-
-        // Get and increment sequence number
-        let seq = self.sender_seq.fetch_increment();
+        // Get and increment sequence number.
+        // SECURITY: Returns SeqExhausted if at u32::MAX to prevent nonce reuse.
+        let seq = self
+            .sender_seq
+            .fetch_increment()
+            .ok_or(OscoreError::SeqExhausted)?;
 
         // Encode PIV
         let mut piv = [0u8; PIV_MAX_LEN];
@@ -405,7 +403,7 @@ impl Context {
         let aad_len = build_aad_cbor(
             &opt.kid[..opt.kid_len as usize],
             &opt.piv[..opt.piv_len as usize],
-            &mut aad_buf
+            &mut aad_buf,
         )?;
 
         // Decrypt in place using detached API (works with plain slices, no Buffer trait needed)
@@ -435,10 +433,10 @@ impl Context {
         let code = plaintext[0];
         let rest = &plaintext[1..];
 
-        // Find payload marker
-        let marker_pos = rest.iter().position(|&b| b == 0xFF);
-
-        let (options_slice, payload_slice) = match marker_pos {
+        // Find payload marker using proper CoAP option parsing.
+        // SECURITY: Cannot just search for 0xFF - it may appear in option values.
+        // Must parse options with delta-length encoding to find the true marker.
+        let (options_slice, payload_slice) = match find_payload_marker(rest) {
             Some(pos) => (&rest[..pos], &rest[pos + 1..]),
             None => (rest, &[][..]),
         };
@@ -465,8 +463,8 @@ impl Context {
     /// - Use sender's sender_id for nonce computation
     ///
     /// Per RFC 8613 Section 5.2, when a response includes a PIV, the nonce uses
-    /// the responder's sender_id and the responder's PIV. When omitting PIV, the
-    /// nonce uses the responder's sender_id and the original request's PIV.
+    /// the responder's Sender ID and PIV. When omitting PIV, the response reuses
+    /// the exact nonce from the original request.
     ///
     /// Returns (ciphertext, oscore_option_value).
     ///
@@ -487,41 +485,50 @@ impl Context {
         include_piv: bool,
     ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, 16>), OscoreError> {
         // Determine PIV for nonce: own sequence if including, else request's PIV
-        let (nonce_piv, piv_len, piv_for_option): ([u8; PIV_MAX_LEN], usize, Option<usize>) = if include_piv {
-            // Generate own PIV
-            if self.sender_seq.get() == u32::MAX {
-                return Err(OscoreError::SeqExhausted);
-            }
-            let seq = self.sender_seq.fetch_increment();
-            let mut piv = [0u8; PIV_MAX_LEN];
-            let len = seq.encode_piv(&mut piv);
-            (piv, len, Some(len))
-        } else {
-            // Use request PIV for nonce (no new sequence generated)
-            if request_piv.is_empty() || request_piv.len() > PIV_MAX_LEN {
-                return Err(OscoreError::InvalidParam);
-            }
-            let mut piv = [0u8; PIV_MAX_LEN];
-            piv[..request_piv.len()].copy_from_slice(request_piv);
-            (piv, request_piv.len(), None)
-        };
+        let (nonce_piv, piv_len, piv_for_option): ([u8; PIV_MAX_LEN], usize, Option<usize>) =
+            if include_piv {
+                // Generate own PIV.
+                // SECURITY: Returns SeqExhausted if at u32::MAX to prevent nonce reuse.
+                let seq = self
+                    .sender_seq
+                    .fetch_increment()
+                    .ok_or(OscoreError::SeqExhausted)?;
+                let mut piv = [0u8; PIV_MAX_LEN];
+                let len = seq.encode_piv(&mut piv);
+                (piv, len, Some(len))
+            } else {
+                // Reuse the request nonce (no new sequence generated).
+                if request_piv.is_empty() || request_piv.len() > PIV_MAX_LEN {
+                    return Err(OscoreError::InvalidParam);
+                }
+                let mut piv = [0u8; PIV_MAX_LEN];
+                piv[..request_piv.len()].copy_from_slice(request_piv);
+                (piv, request_piv.len(), None)
+            };
 
-        // Compute nonce using responder's sender_id and the chosen PIV
-        let nonce = compute_nonce(
-            self.sender_id(),
-            &nonce_piv[..piv_len],
-            &self.common_iv,
-        );
+        let nonce_id = if include_piv {
+            self.sender_id()
+        } else {
+            request_kid
+        };
+        let nonce = compute_nonce(nonce_id, &nonce_piv[..piv_len], &self.common_iv);
 
         // Build plaintext: code || options || 0xFF || payload
         const CT_CAP: usize = 280;
         let mut ct_out = heapless::Vec::<u8, CT_CAP>::new();
-        let ct_required = 1 + class_e_options.len()
-            + if payload.is_empty() { 0 } else { 1 + payload.len() }
+        let ct_required = 1
+            + class_e_options.len()
+            + if payload.is_empty() {
+                0
+            } else {
+                1 + payload.len()
+            }
             + TAG_LEN;
         let ct_err = || BufferTooSmall::new(ct_required, CT_CAP);
         ct_out.push(code).map_err(|_| ct_err())?;
-        ct_out.extend_from_slice(class_e_options).map_err(|_| ct_err())?;
+        ct_out
+            .extend_from_slice(class_e_options)
+            .map_err(|_| ct_err())?;
         if !payload.is_empty() {
             ct_out.push(0xFF).map_err(|_| ct_err())?;
             ct_out.extend_from_slice(payload).map_err(|_| ct_err())?;
@@ -532,7 +539,8 @@ impl Context {
         let aad_len = build_aad_cbor(request_kid, request_piv, &mut aad_buf)?;
 
         // Encrypt
-        let cipher = AesCcm::new_from_slice(&self.sender_key).map_err(|_| OscoreError::KeyDerivation)?;
+        let cipher =
+            AesCcm::new_from_slice(&self.sender_key).map_err(|_| OscoreError::KeyDerivation)?;
         let tag = cipher
             .encrypt_in_place_detached((&nonce).into(), &aad_buf[..aad_len], &mut ct_out)
             .map_err(|_| OscoreError::EncryptFailed)?;
@@ -545,11 +553,10 @@ impl Context {
         if let Some(len) = piv_for_option {
             // Include PIV in option
             let flags = len as u8 & 0x07;
-            opt.push(flags).map_err(|_| BufferTooSmall::new(1 + len, OPT_CAP))?;
-            opt.extend_from_slice(&nonce_piv[..len]).map_err(|_| BufferTooSmall::new(1 + len, OPT_CAP))?;
-        } else {
-            // No PIV in option - recipient will use request_piv
-            opt.push(0x00).map_err(|_| BufferTooSmall::new(1, OPT_CAP))?;
+            opt.push(flags)
+                .map_err(|_| BufferTooSmall::new(1 + len, OPT_CAP))?;
+            opt.extend_from_slice(&nonce_piv[..len])
+                .map_err(|_| BufferTooSmall::new(1 + len, OPT_CAP))?;
         }
 
         Ok((ct_out, opt))
@@ -591,12 +598,12 @@ impl Context {
             request_piv
         };
 
-        // Compute nonce using responder's sender_id (= our recipient_id)
-        let nonce = compute_nonce(
-            self.recipient_id(),
-            piv,
-            &self.common_iv,
-        );
+        let nonce_id = if opt.piv_len > 0 {
+            self.recipient_id()
+        } else {
+            self.sender_id()
+        };
+        let nonce = compute_nonce(nonce_id, piv, &self.common_iv);
 
         // Build AAD per RFC 8613 Section 5.4 using ORIGINAL request's KID and PIV
         // We (the client) sent the request, so request_kid is our sender_id
@@ -607,7 +614,8 @@ impl Context {
         // SECURITY: No replay check for responses - they're correlated with requests
         let tag_start = ciphertext.len() - TAG_LEN;
         let tag = ccm::aead::Tag::<AesCcm>::from_slice(&ciphertext[tag_start..]);
-        let cipher = AesCcm::new_from_slice(&self.recipient_key).map_err(|_| OscoreError::KeyDerivation)?;
+        let cipher =
+            AesCcm::new_from_slice(&self.recipient_key).map_err(|_| OscoreError::KeyDerivation)?;
         const PT_CAP: usize = 256;
         let mut plaintext = heapless::Vec::<u8, PT_CAP>::new();
         plaintext
@@ -625,10 +633,10 @@ impl Context {
         let code = plaintext[0];
         let rest = &plaintext[1..];
 
-        // Find payload marker
-        let marker_pos = rest.iter().position(|&b| b == 0xFF);
-
-        let (options_slice, payload_slice) = match marker_pos {
+        // Find payload marker using proper CoAP option parsing.
+        // SECURITY: Cannot just search for 0xFF - it may appear in option values.
+        // Must parse options with delta-length encoding to find the true marker.
+        let (options_slice, payload_slice) = match find_payload_marker(rest) {
             Some(pos) => (&rest[..pos], &rest[pos + 1..]),
             None => (rest, &[][..]),
         };
@@ -1017,6 +1025,80 @@ fn build_aad_cbor(
     Ok(off)
 }
 
+/// Parse CoAP options to find the payload marker position.
+///
+/// CoAP options use delta-length encoding (RFC 7252 Section 3.1):
+/// - First byte: upper nibble = delta (0-12 direct, 13=+1 byte, 14=+2 bytes, 15=reserved)
+/// - First byte: lower nibble = length (same encoding)
+/// - 0xFF (delta=15, length=15) is the payload marker
+///
+/// Returns the byte index of the payload marker (0xFF) if present, or None if no payload.
+/// This correctly handles 0xFF appearing inside option VALUES (not as a delta-length byte).
+fn find_payload_marker(options_and_payload: &[u8]) -> Option<usize> {
+    let mut pos = 0;
+
+    while pos < options_and_payload.len() {
+        let first = options_and_payload[pos];
+
+        // 0xFF as a delta-length byte means payload marker
+        if first == 0xFF {
+            return Some(pos);
+        }
+
+        let delta_nibble = (first >> 4) & 0x0F;
+        let len_nibble = first & 0x0F;
+
+        // Skip past first byte
+        pos += 1;
+
+        // Skip extended delta bytes
+        match delta_nibble {
+            0..=12 => {}
+            13 => pos += 1, // 1 extended byte
+            14 => pos += 2, // 2 extended bytes
+            15 => {
+                // delta=15 with length!=15 is invalid in normal options
+                // (only 0xFF = delta=15,length=15 is valid, handled above)
+                return None;
+            }
+            _ => unreachable!(), // nibble masked to 0..=15
+        }
+
+        // Determine option length
+        let opt_len = match len_nibble {
+            0..=12 => len_nibble as usize,
+            13 => {
+                if pos >= options_and_payload.len() {
+                    return None;
+                }
+                let ext = options_and_payload[pos] as usize + 13;
+                pos += 1;
+                ext
+            }
+            14 => {
+                if pos + 1 >= options_and_payload.len() {
+                    return None;
+                }
+                let ext = ((options_and_payload[pos] as usize) << 8)
+                    | (options_and_payload[pos + 1] as usize);
+                pos += 2;
+                ext + 269
+            }
+            15 => {
+                // length=15 without delta=15 is invalid
+                return None;
+            }
+            _ => unreachable!(),
+        };
+
+        // Skip option value
+        pos += opt_len;
+    }
+
+    // No payload marker found
+    None
+}
+
 /// Compute nonce from Partial IV and Common IV per RFC 8613 Section 5.2.
 ///
 /// Nonce layout (NONCE_LEN = 13 bytes):
@@ -1029,13 +1111,13 @@ fn build_aad_cbor(
 ///   [0]      [1..NONCE_ID_END)  [NONCE_PIV_START..NONCE_LEN)
 /// ```
 ///
-/// S = sender_id_len XOR piv_len (RFC 8613 Section 5.2)
+/// S = sender_id_len (RFC 8613 Section 5.2)
 /// The entire nonce is XOR'd with Common IV before use.
 fn compute_nonce(sender_id: &[u8], piv: &[u8], common_iv: &[u8; NONCE_LEN]) -> [u8; NONCE_LEN] {
     let mut nonce = [0u8; NONCE_LEN];
 
-    // Byte 0: S = sender_id_len XOR piv_len
-    nonce[0] = (sender_id.len() as u8) ^ (piv.len() as u8);
+    // Byte 0: S is the sender ID length. The PIV length is not mixed into S.
+    nonce[0] = sender_id.len() as u8;
 
     // Bytes 1..NONCE_ID_END: left-padded sender ID (right-aligned, max NONCE_ID_LEN bytes)
     if sender_id.len() <= NONCE_ID_LEN {
@@ -1059,8 +1141,115 @@ fn compute_nonce(sender_id: &[u8], piv: &[u8], common_iv: &[u8; NONCE_LEN]) -> [
 
 #[cfg(test)]
 mod tests {
+    extern crate std;
+
     use super::*;
     use hex_literal::hex;
+    use serde_json::Value;
+
+    fn vector(name: &str) -> Value {
+        let vectors: Value =
+            serde_json::from_str(include_str!("../../../test/vectors/oscore.json")).unwrap();
+        vectors["vectors"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|v| v["name"] == name)
+            .unwrap()
+            .clone()
+    }
+
+    fn json_hex(value: &Value) -> std::vec::Vec<u8> {
+        let text = value.as_str().unwrap();
+        (0..text.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&text[i..i + 2], 16).unwrap())
+            .collect()
+    }
+
+    #[test]
+    fn rfc8613_key_iv_and_nonce_vectors() {
+        for name in [
+            "rfc8613_c1_key_derivation_client_with_salt",
+            "rfc8613_c1_key_derivation_server_with_salt",
+            "rfc8613_c2_key_derivation_client_no_salt",
+            "rfc8613_c2_key_derivation_server_no_salt",
+            "rfc8613_c3_key_derivation_client_with_id_context",
+            "rfc8613_c3_key_derivation_server_with_id_context",
+        ] {
+            let v = vector(name);
+            let secret: [u8; KEY_LEN] = json_hex(&v["master_secret"]).try_into().unwrap();
+            let salt = v["master_salt"]
+                .as_str()
+                .map(|_| json_hex(&v["master_salt"]));
+            let sender_id = json_hex(&v["sender_id"]);
+            let recipient_id = json_hex(&v["recipient_id"]);
+            let id_context = if v["id_context"].is_string() {
+                json_hex(&v["id_context"])
+            } else {
+                std::vec::Vec::new()
+            };
+            let salt = salt.as_deref().unwrap_or(&[]);
+
+            assert_eq!(
+                derive_key(&secret, salt, &sender_id, &id_context)
+                    .unwrap()
+                    .as_slice(),
+                json_hex(&v["expected"]["sender_key"])
+            );
+            assert_eq!(
+                derive_key(&secret, salt, &recipient_id, &id_context)
+                    .unwrap()
+                    .as_slice(),
+                json_hex(&v["expected"]["recipient_key"])
+            );
+            assert_eq!(
+                derive_iv(&secret, salt, &id_context).unwrap().as_slice(),
+                json_hex(&v["expected"]["common_iv"])
+            );
+        }
+
+        for name in [
+            "rfc8613_c4_request_protection",
+            "rfc8613_c5_request_protection_no_salt",
+            "rfc8613_c6_request_protection_with_id_context",
+            "rfc8613_c7_response_protection",
+            "rfc8613_c8_response_with_partial_iv",
+        ] {
+            let v = vector(name);
+            let expected = json_hex(&v["expected"]["nonce"]);
+            let sender_id = if v["type"] == "response_protection" && v["include_piv"] == false {
+                json_hex(&v["request_kid"])
+            } else {
+                json_hex(&v["sender_id"])
+            };
+            let piv = if v["type"] == "request_protection" {
+                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap() as u32)
+            } else if v["include_piv"] == false {
+                OscoreSeqNum::from_piv(&json_hex(&v["request_piv"]))
+            } else {
+                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap() as u32)
+            };
+            let secret: [u8; KEY_LEN] = json_hex(&v["master_secret"]).try_into().unwrap();
+            let salt = v["master_salt"]
+                .as_str()
+                .map(|_| json_hex(&v["master_salt"]));
+            let id_context = if v["id_context"].is_string() {
+                json_hex(&v["id_context"])
+            } else {
+                std::vec::Vec::new()
+            };
+            let derived_iv =
+                derive_iv(&secret, salt.as_deref().unwrap_or(&[]), &id_context).unwrap();
+            let mut piv_bytes = [0u8; PIV_MAX_LEN];
+            let piv_len = piv.encode_piv(&mut piv_bytes);
+
+            assert_eq!(
+                compute_nonce(&sender_id, &piv_bytes[..piv_len], &derived_iv),
+                expected.as_slice()
+            );
+        }
+    }
 
     #[test]
     fn test_piv_encode_decode() {
@@ -1169,9 +1358,7 @@ mod tests {
         let mut bob_ctx = Context::new(&master_secret, None, &[0x01], &[0x00]).unwrap();
 
         // Alice sends request, save request_kid and request_piv
-        let (_ciphertext, request_opt) = alice_ctx
-            .protect_request(0x01, &[], b"request")
-            .unwrap();
+        let (_ciphertext, request_opt) = alice_ctx.protect_request(0x01, &[], b"request").unwrap();
         let request_piv_len = (request_opt[0] & 0x07) as usize;
         let request_piv = &request_opt[1..1 + request_piv_len];
         // Request KID is Alice's sender_id
@@ -1180,7 +1367,14 @@ mod tests {
         // Bob sends response using protect_response (with proper AAD)
         let response_code = 0x45; // 2.05 Content
         let (response_ciphertext, response_opt) = bob_ctx
-            .protect_response(response_code, &[], b"response", request_kid, request_piv, true)
+            .protect_response(
+                response_code,
+                &[],
+                b"response",
+                request_kid,
+                request_piv,
+                true,
+            )
             .unwrap();
 
         // Alice decrypts response using unprotect_response
@@ -1200,9 +1394,7 @@ mod tests {
         let mut bob_ctx = Context::new(&master_secret, None, &[0x01], &[0x00]).unwrap();
 
         // Alice sends request, save request_kid and request_piv
-        let (_ciphertext, request_opt) = alice_ctx
-            .protect_request(0x01, &[], b"request")
-            .unwrap();
+        let (_ciphertext, request_opt) = alice_ctx.protect_request(0x01, &[], b"request").unwrap();
         let request_piv_len = (request_opt[0] & 0x07) as usize;
         let request_piv = request_opt[1..1 + request_piv_len].to_vec();
         let request_kid = alice_ctx.sender_id();
@@ -1211,11 +1403,18 @@ mod tests {
         let response_code = 0x45u8;
         let payload = b"response";
         let (response_ciphertext, response_opt) = bob_ctx
-            .protect_response(response_code, &[], payload, request_kid, &request_piv, false)
+            .protect_response(
+                response_code,
+                &[],
+                payload,
+                request_kid,
+                &request_piv,
+                false,
+            )
             .unwrap();
 
-        // Verify response option has no PIV (flags = 0x00)
-        assert_eq!(response_opt.as_slice(), &[0x00u8]);
+        // No PIV, KID, or KID Context encodes as an empty option value.
+        assert!(response_opt.is_empty());
 
         // Alice decrypts using unprotect_response with request_piv
         let (dec_code, _options, dec_payload) = alice_ctx
@@ -1223,6 +1422,91 @@ mod tests {
             .unwrap();
 
         assert_eq!(dec_code, response_code);
+        assert_eq!(dec_payload.as_slice(), payload);
+    }
+
+    #[test]
+    fn test_find_payload_marker_skips_0xff_in_option_value() {
+        // Test that find_payload_marker correctly parses options and doesn't
+        // mistake 0xFF in option values for the payload marker.
+        //
+        // CoAP option encoding (RFC 7252 Section 3.1):
+        //   byte 0: delta (upper nibble) | length (lower nibble)
+        //   bytes 1..1+len: option value
+        //
+        // Example: An option with delta=1, length=1, value=0xFF
+        // Wire format: [0x11, 0xFF] followed by [0xFF] payload marker
+
+        // Option: delta=1, length=1, value=0xFF, then payload marker, then payload "hi"
+        let data = [0x11, 0xFF, 0xFF, b'h', b'i'];
+
+        // The payload marker should be at index 2, NOT index 1
+        let marker_pos = find_payload_marker(&data);
+        assert_eq!(marker_pos, Some(2));
+
+        // Verify the slices would be correct
+        let options_slice = &data[..2]; // [0x11, 0xFF]
+        let payload_slice = &data[3..]; // "hi"
+        assert_eq!(options_slice, &[0x11, 0xFF]);
+        assert_eq!(payload_slice, b"hi");
+    }
+
+    #[test]
+    fn test_find_payload_marker_no_marker() {
+        // Options only, no payload marker
+        let data = [0x11, 0x42]; // delta=1, length=1, value=0x42
+        let marker_pos = find_payload_marker(&data);
+        assert_eq!(marker_pos, None);
+    }
+
+    #[test]
+    fn test_find_payload_marker_immediate_marker() {
+        // Payload marker at start (no options)
+        let data = [0xFF, b'p', b'a', b'y'];
+        let marker_pos = find_payload_marker(&data);
+        assert_eq!(marker_pos, Some(0));
+    }
+
+    #[test]
+    fn test_find_payload_marker_extended_length() {
+        // Option with extended length (13 + ext byte)
+        // delta=0, length=13 (0x0D), extended_len=0 => actual len=13
+        // Format: [0x0D, 0x00, <13 value bytes>, 0xFF, payload...]
+        let data: [u8; 23] = [
+            0x0D, 0x00, // delta=0, length=13, ext=0 (actual 13)
+            0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42,
+            0x42, // 13 value bytes
+            0xFF, // payload marker
+            b'p', b'a', b'y', b'l', b'o', b'a', b'd', // "payload"
+        ];
+
+        let marker_pos = find_payload_marker(&data);
+        assert_eq!(marker_pos, Some(15)); // 2 header bytes + 13 value bytes
+    }
+
+    #[test]
+    fn test_roundtrip_with_0xff_in_class_e_options() {
+        // End-to-end test: protect a request with 0xFF in options, verify decryption
+        let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
+        let mut sender_ctx = Context::new(&master_secret, None, &[0x00], &[0x01]).unwrap();
+        let mut recipient_ctx = Context::new(&master_secret, None, &[0x01], &[0x00]).unwrap();
+
+        let code = 0x01; // GET
+                         // Class E options with 0xFF embedded in a value:
+                         // Option delta=1, length=2, value=[0xFF, 0x42]
+        let class_e_options = [0x12, 0xFF, 0x42];
+        let payload = b"test payload";
+
+        let (ciphertext, oscore_opt) = sender_ctx
+            .protect_request(code, &class_e_options, payload)
+            .unwrap();
+
+        let (dec_code, dec_options, dec_payload) = recipient_ctx
+            .unprotect_request(&oscore_opt, &ciphertext)
+            .unwrap();
+
+        assert_eq!(dec_code, code);
+        assert_eq!(dec_options.as_slice(), &class_e_options);
         assert_eq!(dec_payload.as_slice(), payload);
     }
 }

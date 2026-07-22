@@ -54,6 +54,11 @@ from lichen.state_machine import StateMachine, requires_state
 logger = logging.getLogger(__name__)
 
 
+def _build_address(iid: bytes) -> IPv6Address:
+    prefix = bytes([0xfd, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+    return IPv6Address(prefix + iid)
+
+
 class MeshtasticAdapterProtocol(Protocol):
     """Lifecycle surface Node needs from an optional Meshtastic adapter."""
 
@@ -186,21 +191,14 @@ class Node:
             peer_lookup_all=lambda: list(self.peer_db.values()),
         )
 
-        # Why separate address builder: Router needs to build full IPv6 from IID.
-        # For now, use ULA prefix. In production, this comes from DIO.
-        def build_address(iid: bytes) -> IPv6Address:
-            # Why fd00::/64: Default ULA prefix for LICHEN mesh.
-            prefix = bytes([0xFD, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
-            return IPv6Address(prefix + iid)
-
         self.router = Router(
-            node_address=build_address(self.identity.iid),
+            node_address=_build_address(self.identity.iid),
             gradient_table=self.gradient_table,
         )
 
         self.announce_processor = AnnounceProcessor(
             gradient_table=self.gradient_table,
-            address_builder=build_address,
+            address_builder=_build_address,
         )
 
         # Why scheduler: Encapsulates announce timing, signing, sequence numbers.

@@ -94,6 +94,12 @@ const TX_QUEUE_CAPACITY: usize = 8;
 /// SECURITY: Prevents DoS via memory exhaustion from malicious/faulty senders.
 const RX_BUFFER_MAX: usize = 4096;
 
+/// Minimum buffer size for `try_get_tx()` to handle worst-case SLIP encoding.
+///
+/// SLIP worst-case: 2 FEND bytes + each data byte escaped (2x expansion).
+/// This must cover the largest packet that can be queued (TX_BUFFER_SIZE).
+pub const SLIP_TX_BUF_SIZE: usize = 2 + TX_BUFFER_SIZE * 2;
+
 /// Stateful SLIP framer with RX accumulation and TX queue.
 ///
 /// Feed incoming bytes with `feed()`, retrieve complete packets from the

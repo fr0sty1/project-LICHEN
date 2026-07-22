@@ -116,6 +116,8 @@ enum schc_fragment_mode {
 	SCHC_FRAGMENT_ACK_ON_ERROR,
 };
 
+#define SCHC_MAX_PACKET 1281
+
 struct schc_fragmenter_config {
 	uint8_t rule_id;
 	uint8_t dtag;

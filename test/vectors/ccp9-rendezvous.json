@@ -1,0 +1,42 @@
+{
+  "format_version": 2,
+  "description": "CCP-9 Rendezvous Mechanisms vectors from da2q context (updated per project-LICHEN-3i18.4). Includes scheduler current_channel (default 0/control, from select_channel(); wire byte 3, in signed_data after seq_num at signed offset 42). Hash-based, scheduled, announce-driven (last_announce.current_channel), fallback. Independent oracle; Python sim is source of truth. Matches updated 02a.3 and 05-routing.9.2.",
+  "vectors": [
+    {
+      "name": "hash_based_peer_rendezvous",
+      "description": "Hash-based rendezvous per 2a.3.2. channel = 1 + hash_32(sfn, peer_eui) % (n_ch-1). Independent expected from external FNV calc.",
+      "sfn": 12345,
+      "peer_eui64": "aabbccddeeff0011",
+      "n_channels": 8,
+      "expected_channel": 7,
+      "expected_slot": 42,
+      "mechanism": "hash_based"
+    },
+    {
+      "name": "scheduled_rendezvous",
+      "description": "Scheduled rendezvous from beacon/DIO assignment (CCP-9 primary mechanism).",
+      "assigned_channel": 2,
+      "assigned_slot": 5,
+      "sfn": 12345,
+      "expected": {
+        "mechanism": "scheduled",
+        "valid_until_sfn": 12350
+      }
+    },
+    {
+      "name": "announce_driven_rendezvous",
+      "description": "Announce-driven: use last_announce_rx_channel for peer. da2q context.",
+      "last_announce_channel": 5,
+      "peer_eui64": "1122334455667788",
+      "expected_channel": 5,
+      "mechanism": "announce_driven"
+    },
+    {
+      "name": "fallback_control_channel",
+      "description": "Fallback to control channel (CH0) + contention slot when other mechanisms fail.",
+      "expected_channel": 0,
+      "expected_slot": 0,
+      "mechanism": "fallback"
+    }
+  ]
+}

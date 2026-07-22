@@ -1,0 +1,36 @@
+{
+  "id": "project-LICHEN-2auf.52",
+  "title": "Integrate checkpoint C OSCORE fixes",
+  "description": "Recover recipient-ID bounds, empty-ID rejection, persistence copy ordering, context wipe, PIV validation, response PIV selection, and restored-SSN warnings.",
+  "acceptance_criteria": "RFC vectors pass; response nonce uses correct PIV; invalid IDs do not mutate state; contexts wipe in callers; native Linux Zephyr matrix and three reviews pass.",
+  "notes": "Rust .48.2 review also identified C parity work for this bead: lichen/subsys/lichen/oscore/oscore.c ordinary responses are repeatable with same request nonce; fresh-PIV responses do not reserve/update notification replay state; request KID is parsed but not bound to recipient ID; coap_client.c discards response OSCORE option and always passes empty, blocking fresh-PIV notifications. Add these to C OSCORE acceptance and Linux .59.1 matrix; no AWS source work attempted.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-17T19:09:56.984655Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-22T02:10:18.812908569Z",
+  "started_at": "2026-07-22T02:08:59.358789767Z",
+  "closed_at": "2026-07-22T02:10:18.812908569Z",
+  "close_reason": "Rust IPv6+Meshtastic transplant from checkpoint complete per task; cargo test -p lichen-ipv6 -p lichen-meshtastic and clippy clean; conventional commit made; deprecation warnings resolved; supports .59 recovery",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.52",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-17T19:09:57.10467Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.52",
+      "depends_on_id": "project-LICHEN-2auf.59",
+      "type": "blocks",
+      "created_at": "2026-07-17T19:10:55.775759Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

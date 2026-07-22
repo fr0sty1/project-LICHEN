@@ -14,10 +14,10 @@ use std::env;
 use std::fs;
 use std::process;
 
-use lichen_link::frame::{LichenFrame, Signature, Encryption};
+use lichen_link::frame::{Encryption, LichenFrame, Signature};
 
 fn hex_decode(s: &str) -> Result<Vec<u8>, String> {
-    if s.len() % 2 != 0 {
+    if !s.len().is_multiple_of(2) {
         return Err("Hex string must have even length".to_string());
     }
     (0..s.len())

@@ -158,6 +158,10 @@ fn is_global(addr: &[u8]) -> bool {
     addr.len() == 16 && (addr[0] >> 5) == 0b001
 }
 
+fn is_ula(addr: &[u8]) -> bool {
+    addr.len() == 16 && (addr[0] & 0xfe) == 0xfc
+}
+
 // ─── checksum helpers (no_std) ───────────────────────────────────────────────
 
 fn oc_add(a: u32, b: u32) -> u32 {
@@ -414,7 +418,7 @@ fn compress_rpl_dio(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     Ok(needed)
 }
 
-/// Rule 4: link-local IPv6 + ICMPv6 RPL DAO with DODAGID.
+/// Rule 4: RPL DAO with routable ULA source (multi-hop, preserves end-to-end source per security spec).
 fn compress_rpl_dao(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     // 40 (IPv6) + 4 (ICMPv6 header) + 20 (DAO base with D=1: instance + K/D/flags + reserved + seq + DODAGID)
     if packet.len() < 40 + 4 + 20 {
@@ -439,10 +443,10 @@ fn compress_rpl_dao(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     out[0] = RULE_RPL_DAO;
     let mut w = BitWriter::new(&mut out[1..]);
     w.write(hop_limit as u128, 8)?;
-    let src_iid = u64::from_be_bytes(src[8..16].try_into().unwrap());
-    let dst_iid = u64::from_be_bytes(dst[8..16].try_into().unwrap());
-    w.write(src_iid as u128, 64)?;
-    w.write(dst_iid as u128, 64)?;
+    let src_addr = u128::from_be_bytes(src.try_into().unwrap());
+    let dst_addr = u128::from_be_bytes(dst.try_into().unwrap());
+    w.write(src_addr, 128)?;
+    w.write(dst_addr, 128)?;
     w.write(instance as u128, 8)?;
     w.write(kd_flags as u128, 8)?;
     w.write(seq as u128, 8)?;
@@ -708,8 +712,8 @@ fn decompress_rpl_dao(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     let mut r = BitReader::new(&data[1..]);
 
     let hop_limit = r.read(8)? as u8;
-    let src_iid = r.read(64)?;
-    let dst_iid = r.read(64)?;
+    let src_addr = r.read(128)?;
+    let dst_addr = r.read(128)?;
     let instance = r.read(8)? as u8;
     let kd_flags = r.read(8)? as u8;
     let seq = r.read(8)? as u8;
@@ -717,8 +721,8 @@ fn decompress_rpl_dao(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
 
     let tail = &data[1 + r.residue_byte_end()..];
 
-    let src = (LINK_LOCAL_PREFIX | src_iid).to_be_bytes();
-    let dst = (LINK_LOCAL_PREFIX | dst_iid).to_be_bytes();
+    let src = src_addr.to_be_bytes();
+    let dst = dst_addr.to_be_bytes();
 
     let rpl_body_len = 20 + tail.len();
     let icmp_len = 4 + rpl_body_len;
@@ -865,14 +869,17 @@ pub fn compress(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
             if let Ok(n) = compress_icmpv6_echo(packet, out) {
                 return Ok(n);
             }
-        } else if icmp_type == 155 && is_link_local(src) && is_link_local(dst) {
+        } else if icmp_type == 155
+            && (is_link_local(src) || is_ula(src))
+            && (is_link_local(dst) || is_ula(dst))
+        {
             if icmp_code == 1 && packet.len() >= 40 + 4 + 24 {
                 // DIO
                 if let Ok(n) = compress_rpl_dio(packet, out) {
                     return Ok(n);
                 }
             } else if icmp_code == 2 && packet.len() >= 40 + 4 + 20 {
-                // DAO — only rule 4 if D flag set
+                // DAO (routable source for multi-hop) — only rule 4 if D flag set
                 // packet[45] = offset 40 (IPv6) + 4 (ICMPv6 header) + 1 (instance) = K/D/flags byte
                 let kd_flags = packet[45];
                 if kd_flags & 0x40 != 0 {
@@ -1009,11 +1016,11 @@ mod tests {
     #[test]
     fn vector_rpl_dao() {
         round_trip(
-            "6000000000183a40fe800000000000000000000000000001\
-             fe8000000000000000000000000000029b0268df00400005\
-             fe800000000000000000000000000001",
-            "044000000000000000010000000000000002004005\
-             fe800000000000000000000000000001",
+            "6000000000183a40fd000db8000000000000000000000001\
+             fd000db80000000000000000000000029b02443700400005\
+             fd000db8000000000000000000000001",
+            "0440fd000db8000000000000000000000001fd000db8000000000000000000000002004005\
+             fd000db8000000000000000000000001",
             4,
         );
     }

@@ -47,9 +47,6 @@ pub struct RssiDisplay {
     pub max: Option<i16>,
     /// Rolling average RSSI (dBm), None if no samples.
     pub avg: Option<i16>,
-    /// Number of samples recorded.
-    #[allow(dead_code)] // populated but not yet rendered
-    pub count: u32,
 }
 
 /// SNR statistics for display.
@@ -61,9 +58,6 @@ pub struct SnrDisplay {
     pub max: Option<i8>,
     /// Rolling average SNR (dB), None if no samples.
     pub avg: Option<i8>,
-    /// Number of samples recorded.
-    #[allow(dead_code)] // populated but not yet rendered
-    pub count: u32,
 }
 
 /// A neighbor entry for display.
@@ -104,13 +98,11 @@ impl RfHealthState {
                     min: Some(-115),
                     max: Some(-72),
                     avg: Some(-89),
-                    count: 5678,
                 },
                 snr: SnrDisplay {
                     min: Some(-5),
                     max: Some(12),
                     avg: Some(6),
-                    count: 5678,
                 },
                 loss_percent: 0,
                 loss_permille: 2, // 0.2%

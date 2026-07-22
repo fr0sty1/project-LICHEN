@@ -2,6 +2,7 @@
   "id": "project-LICHEN-avlh",
   "title": "announce: SchedulerConfig allows negative jitter_ms causing ValueError at runtime",
   "description": "File: python/src/lichen/announce/scheduler.py:257\n\nSchedulerConfig does not validate that jitter_ms \u003e= 0:\n\n```python\n@dataclass\nclass SchedulerConfig:\n    jitter_ms: int = DEFAULT_JITTER_MS  # No validation\n```\n\nIn _loop(), this causes a runtime error:\n\n```python\njitter = random.randint(0, self.config.jitter_ms)  # Line 257\n```\n\nIf jitter_ms is negative (e.g., -1), random.randint(0, -1) raises:\n  ValueError: empty range for randrange()\n\nWhile the catch-all exception handler prevents a crash, it logs an error and retries every second, spamming logs indefinitely.\n\nFix: Add validation in SchedulerConfig.__post_init__ or in AnnounceScheduler before using the config.",
+<<<<<<< HEAD
   "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
@@ -13,4 +14,16 @@
   "started_at": "2026-07-22T20:22:30.018858564Z",
   "lease_expires_at": "2026-07-22T20:27:30.018858564Z",
   "heartbeat_at": "2026-07-22T20:22:30.018858564Z"
+=======
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:18:25.812074Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-13T04:38:17.065779Z",
+  "closed_at": "2026-07-13T04:38:17.065779Z",
+  "close_reason": "Closed"
+>>>>>>> origin/integration/worker3-20260722
 }

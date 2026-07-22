@@ -30,7 +30,7 @@ from ipaddress import IPv6Address
 from lichen.ipv6.icmpv6 import icmpv6_checksum
 from lichen.ipv6.packet import HEADER_LENGTH, IPv6Header, NextHeader, PacketError
 from lichen.ipv6.udp import UDP_HEADER_LENGTH, UDP_NEXT_HEADER, UdpDatagram
-from lichen.schc.codec import compress, decompress, residue_byte_length
+from lichen.schc.codec import SchcError, compress, decompress, residue_byte_length
 from lichen.schc.rules import (
     GLOBAL_COAP_RULE,
     GLOBAL_OSCORE_RULE,
@@ -60,6 +60,14 @@ def _is_link_local(addr: int) -> bool:
 
 def _is_global(addr: int) -> bool:
     return addr >> 125 == 0b001  # 2000::/3
+
+
+def _is_ula(addr: int) -> bool:
+    return (addr >> 120) == 0xFD  # fd00::/8
+
+
+def _is_routable(addr: int) -> bool:
+    return _is_link_local(addr) or _is_ula(addr) or _is_global(addr)
 
 
 def _coap_has_oscore_option(coap: bytes) -> bool:
@@ -135,7 +143,9 @@ def _coap_has_oscore_option(coap: bytes) -> bool:
         if option_number > _COAP_OPTION_OSCORE:
             return False
 
-        # Skip option value
+        # Skip option value, checking bounds first
+        if offset + length > len(coap):
+            return False  # Malformed: declared length exceeds remaining bytes
         offset += length
 
     return False
@@ -158,13 +168,13 @@ def _ipv6_header(
     fields: dict[str, int | None], next_header: int, payload_length: int
 ) -> IPv6Header:
     return IPv6Header(
-        src_addr=IPv6Address(fields["IPv6.src"]),
-        dst_addr=IPv6Address(fields["IPv6.dst"]),
+        src_addr=IPv6Address(int(fields.get("IPv6.src") or 0)),
+        dst_addr=IPv6Address(int(fields.get("IPv6.dst") or 0)),
         next_header=next_header,
         payload_length=payload_length,
-        hop_limit=fields["IPv6.hop_limit"],
-        traffic_class=fields["IPv6.traffic_class"],
-        flow_label=fields["IPv6.flow_label"],
+        hop_limit=int(fields.get("IPv6.hop_limit") or 64),
+        traffic_class=int(fields.get("IPv6.traffic_class") or 0),
+        flow_label=int(fields.get("IPv6.flow_label") or 0),
     )
 
 
@@ -228,13 +238,19 @@ class _CoapUdpProfile(PacketProfile):
         return fields, tail
 
     def build(self, fields: dict[str, int | None], tail: bytes) -> bytes:
-        src = IPv6Address(fields["IPv6.src"])
-        dst = IPv6Address(fields["IPv6.dst"])
-        b0 = (1 << 6) | ((fields["CoAP.type"] & 0x3) << 4) | (fields["CoAP.tkl"] & 0x0F)
-        coap = bytes([b0, fields["CoAP.code"]]) + int(fields["CoAP.mid"]).to_bytes(2, "big") + tail
-        udp_bytes = UdpDatagram(fields["UDP.src_port"], fields["UDP.dst_port"], coap).to_bytes(
-            src, dst
-        )
+        src = IPv6Address(int(fields.get("IPv6.src") or 0))
+        dst = IPv6Address(int(fields.get("IPv6.dst") or 0))
+        coap_type = int(fields.get("CoAP.type") or 0)
+        coap_tkl = int(fields.get("CoAP.tkl") or 0)
+        coap_code = int(fields.get("CoAP.code") or 0)
+        coap_mid = int(fields.get("CoAP.mid") or 0)
+        b0 = (1 << 6) | ((coap_type & 0x3) << 4) | (coap_tkl & 0x0F)
+        coap = bytes([b0, coap_code]) + coap_mid.to_bytes(2, "big") + tail
+        udp_bytes = UdpDatagram(
+            int(fields.get("UDP.src_port") or 0),
+            int(fields.get("UDP.dst_port") or 0),
+            coap,
+        ).to_bytes(src, dst)
         return _ipv6_header(fields, UDP_NEXT_HEADER, len(udp_bytes)).to_bytes() + udp_bytes
 
 
@@ -293,7 +309,7 @@ class OscoreUdpGlobalProfile(_OscoreUdpProfile):
 
 
 class _RplProfile(PacketProfile):
-    """RPL control message over link-local ICMPv6 (type 155)."""
+    """RPL control message over routable IPv6 (link-local or ULA) for multi-hop DAO support (type 155)."""
 
     code: int
     base_length: int
@@ -312,7 +328,7 @@ class _RplProfile(PacketProfile):
             return False
         if header.payload_length < _ICMPV6_HEADER + self.base_length:
             return False
-        if not (_is_link_local(int(header.src_addr)) and _is_link_local(int(header.dst_addr))):
+        if not (_is_routable(int(header.src_addr)) and _is_routable(int(header.dst_addr))):
             return False
         icmpv6 = raw[HEADER_LENGTH:]
         return icmpv6[0] == _ICMPV6_RPL_TYPE and icmpv6[1] == self.code
@@ -333,8 +349,8 @@ class _RplProfile(PacketProfile):
         return fields, rpl[self.base_length :]
 
     def build(self, fields: dict[str, int | None], tail: bytes) -> bytes:
-        src = IPv6Address(fields["IPv6.src"])
-        dst = IPv6Address(fields["IPv6.dst"])
+        src = IPv6Address(int(fields.get("IPv6.src") or 0))
+        dst = IPv6Address(int(fields.get("IPv6.dst") or 0))
         body = self._build_base(fields) + tail
         zero = bytes([_ICMPV6_RPL_TYPE, self.code, 0, 0]) + body
         checksum = icmpv6_checksum(src, dst, zero)
@@ -370,22 +386,22 @@ class RplDioProfile(_RplProfile):
 
     def _build_base(self, fields: dict[str, int | None]) -> bytes:
         return (
-            bytes([fields["RPL.instance"], fields["RPL.version"]])
-            + int(fields["RPL.rank"]).to_bytes(2, "big")
+            bytes([int(fields.get("RPL.instance") or 0), int(fields.get("RPL.version") or 0)])
+            + int(fields.get("RPL.rank") or 0).to_bytes(2, "big")
             + bytes(
                 [
-                    fields["RPL.gmop"],
-                    fields["RPL.dtsn"],
-                    fields["RPL.flags"],
-                    fields["RPL.reserved"],
+                    int(fields.get("RPL.gmop") or 0),
+                    int(fields.get("RPL.dtsn") or 0),
+                    int(fields.get("RPL.flags") or 0),
+                    int(fields.get("RPL.reserved") or 0),
                 ]
             )
-            + int(fields["RPL.dodagid"]).to_bytes(16, "big")
+            + int(fields.get("RPL.dodagid") or 0).to_bytes(16, "big")
         )
 
 
 class RplDaoProfile(_RplProfile):
-    """RPL DAO with DODAGID over link-local ICMPv6 (SCHC rule 4)."""
+    """RPL DAO with DODAGID over routable IPv6 (SCHC rule 4, multi-hop source model)."""
 
     rule = RPL_DAO_RULE
     code = 2
@@ -411,12 +427,12 @@ class RplDaoProfile(_RplProfile):
     def _build_base(self, fields: dict[str, int | None]) -> bytes:
         return bytes(
             [
-                fields["RPL.instance"],
-                fields["RPL.kd_flags"],
-                fields["RPL.reserved"],
-                fields["RPL.seq"],
+                int(fields.get("RPL.instance") or 0),
+                int(fields.get("RPL.kd_flags") or 0),
+                int(fields.get("RPL.reserved") or 0),
+                int(fields.get("RPL.seq") or 0),
             ]
-        ) + int(fields["RPL.dodagid"]).to_bytes(16, "big")
+        ) + int(fields.get("RPL.dodagid") or 0).to_bytes(16, "big")
 
 
 class Icmpv6EchoProfile(PacketProfile):
@@ -459,15 +475,13 @@ class Icmpv6EchoProfile(PacketProfile):
         return fields, icmpv6[_ICMPV6_ECHO_BASE:]
 
     def build(self, fields: dict[str, int | None], tail: bytes) -> bytes:
-        src = IPv6Address(fields["IPv6.src"])
-        dst = IPv6Address(fields["IPv6.dst"])
-        body = (
-            int(fields["ICMPv6.identifier"]).to_bytes(2, "big")
-            + int(fields["ICMPv6.sequence"]).to_bytes(2, "big")
-            + tail
-        )
-        msg_type = fields["ICMPv6.type"]
-        code = fields["ICMPv6.code"]
+        src = IPv6Address(int(fields.get("IPv6.src") or 0))
+        dst = IPv6Address(int(fields.get("IPv6.dst") or 0))
+        ident = int(fields.get("ICMPv6.identifier") or 0)
+        seq = int(fields.get("ICMPv6.sequence") or 0)
+        msg_type = int(fields.get("ICMPv6.type") or 128)
+        code = int(fields.get("ICMPv6.code") or 0)
+        body = ident.to_bytes(2, "big") + seq.to_bytes(2, "big") + tail
         zero = bytes([msg_type, code, 0, 0]) + body
         checksum = icmpv6_checksum(src, dst, zero)
         icmpv6 = bytes([msg_type, code]) + checksum.to_bytes(2, "big") + body
@@ -519,8 +533,14 @@ def decompress_packet(data: bytes, profiles: tuple[PacketProfile, ...] = DEFAULT
     for profile in profiles:
         if profile.rule.rule_id == rule_id:
             residue_len = residue_byte_length(profile.rule)
-            residue = data[: 1 + residue_len]
-            tail = data[1 + residue_len :]
+            required_len = 1 + residue_len
+            if len(data) < required_len:
+                raise SchcError(
+                    f"packet too short: need {required_len} bytes for rule {rule_id}, "
+                    f"got {len(data)}"
+                )
+            residue = data[:required_len]
+            tail = data[required_len:]
             _, fields = decompress(residue, profile.rule)
             return profile.build(fields, tail)
     raise ValueError(f"no profile for rule ID {rule_id}")

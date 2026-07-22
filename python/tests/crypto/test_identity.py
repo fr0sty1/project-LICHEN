@@ -254,8 +254,13 @@ class TestX25519KeyDerivation:
         assert len(shared_alice) == 32
 
     def test_x25519_keys_differ_from_ed25519_keys(self):
-        """X25519 keys are different from Ed25519 keys (different curves)."""
-        ident = Identity.generate()
+        """X25519 keys are different from Ed25519 keys (different curves).
+
+        Uses a fixed seed: privkey is clamp(SHA-512(seed)[:32]) while
+        x25519_private is the unclamped hash, so for ~1/32 of random seeds
+        the two are identical and a Identity.generate() here would flake.
+        """
+        ident = Identity.from_seed(bytes(range(32)))
 
         # Private keys differ (different derivation)
         assert ident.x25519_private != ident.privkey

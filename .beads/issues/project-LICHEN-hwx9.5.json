@@ -1,0 +1,35 @@
+{
+  "id": "project-LICHEN-hwx9.5",
+  "title": "Migrate Python SCHC fragmentation",
+  "description": "Replace private Python fragmentation/ACK format and unlimited parity windows with the approved RFC profile and shared vectors. Preserve bounded manager behavior and add ACK-on-Error state tests.",
+  "acceptance_criteria": "Python passes shared vectors, focused tests, Ruff/mypy, full suite, and three independent reviews.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-19T16:01:34.719133Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-19T18:46:07.9707Z",
+  "started_at": "2026-07-19T17:47:25.938669Z",
+  "closed_at": "2026-07-19T18:46:07.9707Z",
+  "close_reason": "Completed in 251e43fb4: replaced legacy Python fragmentation with fixed RFC 8724 LICHEN profile, exact fragment/ACK/control wire codecs, bounded sender/receiver/manager state, retries/aborts, capacity and duplicate handling, RuleIDs 0x78/0x79, and production conformance against complete shared vectors. Validation: focused 203 passed; full Python 2851 passed, 26 skipped; Ruff/format/mypy clean on changed files; Rust fixture and strict generated C syntax passed after vector expansion; git diff --check clean; three final independent reviews found no issues.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-hwx9.5",
+      "depends_on_id": "project-LICHEN-hwx9",
+      "type": "parent-child",
+      "created_at": "2026-07-19T16:01:34.859546Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-hwx9.5",
+      "depends_on_id": "project-LICHEN-hwx9.1",
+      "type": "blocks",
+      "created_at": "2026-07-19T16:01:48.350215Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

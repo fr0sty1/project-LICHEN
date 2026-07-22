@@ -60,8 +60,10 @@ class RREQ:
     def to_bytes(self) -> bytes:
         if not 0 <= self.seq_num <= 0xFFFF:
             raise LoadngError(f"seq_num out of range: {self.seq_num}")
+        if not 0 <= self.hop_limit <= MAX_HOP_LIMIT:
+            raise LoadngError(f"hop_limit out of range: {self.hop_limit}")
         return (
-            bytes([self.flags & 0xFF, self.hop_limit & 0xFF])
+            bytes([self.flags & 0xFF, self.hop_limit])
             + self.seq_num.to_bytes(2, "big")
             + IPv6Address(self.originator).packed
             + IPv6Address(self.destination).packed
@@ -96,8 +98,10 @@ class RREP:
     def to_bytes(self) -> bytes:
         if not 0 <= self.seq_num <= 0xFFFF:
             raise LoadngError(f"seq_num out of range: {self.seq_num}")
+        if not 0 <= self.hop_count <= MAX_HOP_LIMIT:
+            raise LoadngError(f"hop_count out of range: {self.hop_count}")
         return (
-            bytes([self.flags & 0xFF, self.hop_count & 0xFF])
+            bytes([self.flags & 0xFF, self.hop_count])
             + self.seq_num.to_bytes(2, "big")
             + IPv6Address(self.originator).packed
             + IPv6Address(self.destination).packed

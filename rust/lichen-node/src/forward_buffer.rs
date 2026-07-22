@@ -160,11 +160,15 @@ impl ForwardBuffer {
             .min_by_key(|(_, e)| (e.priority, e.queued_at_ms))
             .map(|(i, _)| i)?;
 
-        Some(self.entries.swap_remove(best_idx))
+        Some(self.entries.remove(best_idx))
     }
 
     /// Dequeue the next packet for a specific source (oldest first).
-    pub fn dequeue_for_source(&mut self, source_iid: &[u8; 8], now_ms: u32) -> Option<ForwardEntry> {
+    pub fn dequeue_for_source(
+        &mut self,
+        source_iid: &[u8; 8],
+        now_ms: u32,
+    ) -> Option<ForwardEntry> {
         self.expire(now_ms);
 
         let idx = self
@@ -175,7 +179,7 @@ impl ForwardBuffer {
             .min_by_key(|(_, e)| e.queued_at_ms)
             .map(|(i, _)| i)?;
 
-        Some(self.entries.swap_remove(idx))
+        Some(self.entries.remove(idx))
     }
 
     /// Count packets queued for a specific source.
@@ -192,11 +196,10 @@ impl ForwardBuffer {
         let mut count = 0;
 
         for entry in &self.entries {
-            if !seen[..count].contains(&entry.source_iid)
-                && count < MAX_FORWARDING_SOURCES {
-                    seen[count] = entry.source_iid;
-                    count += 1;
-                }
+            if !seen[..count].contains(&entry.source_iid) && count < MAX_FORWARDING_SOURCES {
+                seen[count] = entry.source_iid;
+                count += 1;
+            }
         }
 
         count
@@ -258,7 +261,7 @@ impl ForwardBuffer {
             .map(|(i, _)| i)
             .unwrap_or(0);
 
-        self.entries.swap_remove(oldest_idx);
+        self.entries.remove(oldest_idx);
     }
 }
 
@@ -420,8 +423,7 @@ mod tests {
         let iid = make_iid(1);
 
         // Packet with deadline
-        buf.queue(make_packet(1), iid, 1000, Some(1500), 3)
-            .unwrap();
+        buf.queue(make_packet(1), iid, 1000, Some(1500), 3).unwrap();
 
         // Before deadline
         assert_eq!(buf.expire(1400), 0);

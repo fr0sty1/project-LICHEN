@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-2auf.36.1",
+  "title": "Run authoritative interop workflow on Ubuntu",
+  "description": "Execute the recovered interop workflow on GitHub-hosted Ubuntu 22.04 or an equivalent Linux runner after the one-file fail-closed change lands. No AWS is required.",
+  "acceptance_criteria": "frame-parser interop runs 2/2 without skips; multinode and announce jobs pass; vector regeneration is no-op; Rust shared_vectors runs two tests; Zephyr link_crypto runs on native_sim/native/64 without continue-on-error; deliberately failed dependency makes Interop Status fail; actionlint passes; retain workflow URL/logs.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-17T19:32:15.748942Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-17T19:32:15.748942Z",
+  "labels": [
+    "linux",
+    "validation"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.36.1",
+      "depends_on_id": "project-LICHEN-2auf.36",
+      "type": "parent-child",
+      "created_at": "2026-07-17T19:32:15.905384Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

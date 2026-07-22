@@ -193,10 +193,14 @@ static int64_t observed_uptime_from_age_seconds(uint32_t age_seconds)
 	const int64_t bounded_age_seconds =
 		(int64_t)MIN((uint64_t)age_seconds, (uint64_t)max_age_seconds);
 	const int64_t age_ms = bounded_age_seconds * 1000;
-	const int64_t result = now_ms - age_ms;
 
-	/* Clamp to zero: if age exceeds current uptime, return 0 instead of negative */
-	return (result < 0) ? 0 : result;
+	/*
+	 * May be negative when the sample is older than this node's uptime
+	 * (e.g. a mesh announce received right after boot). The HAL accepts
+	 * negative observed times and its age math handles them; clamping to
+	 * zero here would silently shrink the reported age to the uptime.
+	 */
+	return now_ms - age_ms;
 }
 
 int lichen_app_location_time_from_hal(
@@ -235,9 +239,9 @@ int lichen_app_location_time_from_hal(
 		.vertical_accuracy_mm_valid = hal->vertical_accuracy_mm_valid,
 		.vertical_accuracy_mm = hal->vertical_accuracy_mm,
 	};
-	strncpy(app->source_name, hal->source_name,
-		sizeof(app->source_name) - 1U);
-	app->source_name[sizeof(app->source_name) - 1U] = '\0';
+	size_t len = strnlen(hal->source_name, sizeof(app->source_name) - 1);
+	memcpy(app->source_name, hal->source_name, len);
+	app->source_name[len] = '\0';
 	return 0;
 }
 
@@ -274,12 +278,12 @@ int lichen_app_time_from_hal(struct lichen_app_time_snapshot *app,
 		.provision_epoch_valid = hal->provision_epoch_valid,
 		.provision_epoch = hal->provision_epoch,
 	};
-	strncpy(app->source_name, hal->source_name,
-		sizeof(app->source_name) - 1U);
-	app->source_name[sizeof(app->source_name) - 1U] = '\0';
-	strncpy(app->rejection_source_name, hal->rejection_source_name,
-		sizeof(app->rejection_source_name) - 1U);
-	app->rejection_source_name[sizeof(app->rejection_source_name) - 1U] = '\0';
+	size_t len = strnlen(hal->source_name, sizeof(app->source_name) - 1);
+	memcpy(app->source_name, hal->source_name, len);
+	app->source_name[len] = '\0';
+	len = strnlen(hal->rejection_source_name, sizeof(app->rejection_source_name) - 1);
+	memcpy(app->rejection_source_name, hal->rejection_source_name, len);
+	app->rejection_source_name[len] = '\0';
 	return 0;
 }
 

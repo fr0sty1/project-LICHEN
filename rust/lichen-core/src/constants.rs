@@ -13,7 +13,7 @@ pub const LORA_MAX_PAYLOAD: usize = 255;
 /// Sized to hold IPv6 header (40) + max UDP/ICMPv6 payload that fits in LoRa frame.
 /// Actual limit depends on SCHC rule compression ratio, but this conservative
 /// bound covers all current rules.
-pub const SCHC_MAX_DECOMPRESSED: usize = 256;
+pub const SCHC_MAX_DECOMPRESSED: usize = 1281;
 
 // Well-known UDP ports (spec Section 9.1)
 pub const PORT_COMPACT_COT: u16 = 5681;

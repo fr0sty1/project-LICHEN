@@ -37,6 +37,7 @@ dependencies = [
     "cryptography>=49.0,<49.1",
     "filelock>=3.29,<3.30",
     "defusedxml>=0.7.1,<0.8",
+    "intelhex>=2.3.0,<3.0",
 ]
 
 [project.optional-dependencies]
@@ -44,7 +45,9 @@ dev = [
     "pytest>=9.1,<10",
     "pytest-asyncio>=1.4,<2",
     "pytest-timeout>=2.4,<3",
+    "pytest-cov>=7,<8",
     "httpx>=0.28,<0.29",
+    "hypothesis>=6.100,<7",
     "jsonschema>=4.26,<5",
     "ruff>=0.15,<0.16",
     "mypy>=2.1,<3",
@@ -94,3 +97,23 @@ python_version = "3.11"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
+
+# Explicit mypy scope and handling per project-LICHEN-kpv0 acceptance:
+# - aiocoap, starlette lack py.typed/stubs: ignore_missing_imports (not error suppression).
+# - Core protocol modules fixed for clean pass; no broad ignores or untyped-def disables.
+# - TUI/dashboard/tests excluded from CI gate (prototype code).
+[[tool.mypy.overrides]]
+module = ["aiocoap.*", "starlette.*"]
+ignore_missing_imports = true
+
+# Targeted override for aiocoap integration modules (explicitly decided scope per kpv0).
+# Subclassing untyped aiocoap base classes triggers [misc]; disabled only for these files.
+# No per-line ignores or project-wide silencing.
+[[tool.mypy.overrides]]
+module = [
+    "lichen.coap.resources",
+    "lichen.coap.transport",
+    "lichen.crypto.oscore",
+    "lichen.coap.secure",
+]
+disable_error_code = ["misc"]

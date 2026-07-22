@@ -20,7 +20,6 @@ from lichen.announce.messages import (
 from lichen.announce.processor import (
     ANNOUNCE_INTERVAL_MS,
     ANNOUNCE_JITTER_MS,
-    GRADIENT_TIMEOUT_MS,
     AnnounceProcessor,
     AnnounceResult,
 )
@@ -31,6 +30,7 @@ from lichen.announce.scheduler import (
     AnnounceTransmitter,
     SchedulerConfig,
 )
+from lichen.gradient import GRADIENT_TIMEOUT_MS
 
 __all__ = [
     "ANNOUNCE_INTERVAL_MS",

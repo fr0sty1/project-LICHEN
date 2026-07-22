@@ -265,6 +265,12 @@ def decode_pli(data: bytes) -> tuple[CotSubtype, PliPayload]:
         PLI_PAYLOAD_FORMAT, data[1:PLI_TOTAL_SIZE]
     )
 
+    # Validate geographic coordinate ranges (microdegrees)
+    if not (-90_000_000 <= lat <= 90_000_000):
+        raise DecodeError(f"Latitude {lat} out of range [-90000000, 90000000]")
+    if not (-180_000_000 <= lon <= 180_000_000):
+        raise DecodeError(f"Longitude {lon} out of range [-180000000, 180000000]")
+
     return subtype, PliPayload(
         lat_microdeg=lat,
         lon_microdeg=lon,

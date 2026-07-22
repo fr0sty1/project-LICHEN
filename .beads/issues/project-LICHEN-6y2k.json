@@ -2,6 +2,7 @@
   "id": "project-LICHEN-6y2k",
   "title": "announce.c: register_app_data_observer can silently clear all observers",
   "description": "File: lichen/subsys/lichen/routing/announce.c\nLines: 371-381\n\nIn lichen_announce_register_app_data_observer() and _ex():\n\n    k_mutex_lock(\u0026observer_mutex, K_FOREVER);\n    if (cb == NULL) {\n        memset(announce_observers, 0, sizeof(announce_observers));\n        k_mutex_unlock(\u0026observer_mutex);\n        return 0;\n    }\n\nPassing NULL as the callback clears ALL observers. This is:\n1. Undocumented in the header\n2. Dangerous - a typo or uninitialized pointer could wipe all registrations\n3. Inconsistent - passing NULL user_data is fine, but NULL cb has special meaning\n\nThe header says:\n    lichen_announce_app_data_fn _Nonnull cb\n\nThe _Nonnull annotation suggests NULL is not allowed, but the implementation has special NULL handling.\n\nEither:\n1. Add explicit lichen_announce_unregister_all_observers() function\n2. Document the NULL behavior\n3. Return -EINVAL on NULL cb as the annotation suggests",
+<<<<<<< HEAD
   "notes": "Commit: 3b69ea2",
   "status": "closed",
   "priority": 2,
@@ -13,5 +14,16 @@
   "updated_at": "2026-07-22T20:14:10.688210194Z",
   "started_at": "2026-07-22T20:12:05.142979552Z",
   "closed_at": "2026-07-22T20:14:10.688210194Z",
+=======
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:52:32.305538Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-13T04:30:48.358351Z",
+  "closed_at": "2026-07-13T04:30:48.358351Z",
+>>>>>>> origin/integration/worker3-20260722
   "close_reason": "Closed"
 }

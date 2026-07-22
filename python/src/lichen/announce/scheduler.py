@@ -68,6 +68,13 @@ class SchedulerConfig:
     # ponytail: initial delay randomized to prevent thundering herd on mass power-on
     initial_delay_ms: int = 0  # Will be randomized at runtime if 0
 
+    def __post_init__(self) -> None:
+        """Validate configuration values."""
+        if self.interval_ms <= 0:
+            raise ValueError(f"interval_ms must be > 0, got {self.interval_ms}")
+        if self.jitter_ms < 0:
+            raise ValueError(f"jitter_ms must be >= 0, got {self.jitter_ms}")
+
 
 @dataclass
 class AnnounceScheduler:
@@ -94,7 +101,7 @@ class AnnounceScheduler:
     # Internal state
     _seq_num: int = field(default=0, init=False, repr=False)
     _running: bool = field(default=False, init=False, repr=False)
-    _task: asyncio.Task | None = field(default=None, init=False, repr=False)
+    _task: asyncio.Task[None] | None = field(default=None, init=False, repr=False)
 
     # Callbacks for persistence (optional)
     _on_seq_change: Callable[[int], None] | None = field(
@@ -165,7 +172,8 @@ class AnnounceScheduler:
             originator_iid=self.identity.iid,
             pubkey=self.identity.pubkey,
             seq_num=seq,
-            hop_count=0,  # We're the originator
+            hop_count=0,
+            rx_channel=0,
             app_data=self.app_data,
         )
 
@@ -182,6 +190,7 @@ class AnnounceScheduler:
             pubkey=msg.pubkey,
             seq_num=msg.seq_num,
             hop_count=msg.hop_count,
+            rx_channel=msg.rx_channel,
             signature=signature,
             app_data=msg.app_data,
         )

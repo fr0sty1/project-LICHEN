@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-70z3",
+  "title": "Set Meshtastic gateway payload to 200",
+  "description": "Boot failure discovered by project-LICHEN-m5m1.5. meshtastic_gateway_adapter fails on Native64 and QEMU because CONFIG_LICHEN_APP_INTERFACE_MAX_PAYLOAD resolves to the subsystem default 176 before the gateway conditional default 200, triggering the required static assertion. Make the test/feature configuration select 200 explicitly and remove or correct the misleading ineffective default without weakening the assertion.",
+  "acceptance_criteria": "1. Meshtastic adapter effective payload is 200 on native and QEMU tests. 2. The compile-time assertion remains. 3. Ineffective Kconfig default is corrected or no longer claims enforcement. 4. Both firmware scenarios boot and pass. 5. Three independent review passes complete.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-15T23:57:18.158214Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T00:46:20.155163Z",
+  "closed_at": "2026-07-16T00:46:20.155163Z",
+  "close_reason": "Configured 200-byte Meshtastic payload explicitly and removed the ineffective conditional default; gateway adapter passes Native64 and QEMU, BLE adapter passes 13 Native64 cases; review completed.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-70z3",
+      "depends_on_id": "project-LICHEN-m5m1.5",
+      "type": "discovered-from",
+      "created_at": "2026-07-15T23:57:18.284409Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

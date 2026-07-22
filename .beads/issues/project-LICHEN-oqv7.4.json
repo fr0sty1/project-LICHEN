@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-oqv7.4",
+  "title": "Add nRF52840DK gateway Renode backend",
+  "description": "Add a target-specific recipe for nrf52840dk/nrf52840 gateway firmware, reusing the stock core and completed BLE model. This target intentionally operates as a BLE/CoAP gateway shell without LoRa.",
+  "acceptance_criteria": "Canonical gateway ELF boots under the recipe, reaches gateway main, BLE readiness and CoAP AUTOSTART, and completes one harness-driven local-client or GATT effect; physical BLE-central behavior remains a separate validation.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "feature",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T19:40:35.380604Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T19:40:35.380604Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-oqv7.4",
+      "depends_on_id": "project-LICHEN-oqv7",
+      "type": "parent-child",
+      "created_at": "2026-07-16T19:40:35.499584Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-oqv7.4",
+      "depends_on_id": "project-LICHEN-oqv7.2",
+      "type": "blocks",
+      "created_at": "2026-07-16T19:44:13.09554Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

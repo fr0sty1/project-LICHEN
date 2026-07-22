@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-6uyi",
+  "title": "Compose public secure RPL stack",
+  "description": "After durable-state fail-closed changes, Stack is private but every public RplStack constructor requires Stack\u003cR\u003e, making RplStack externally unconstructible. Re-exporting Stack would reopen raw/plaintext CoAP paths through Stack and RplStack::send_ipv6_raw. Design one constructible production owner that combines RPL routing and SecureStack while preventing plaintext CoAP. This blocks claiming the converged public runtime API ready.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-21T02:14:39.625176096Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-21T04:05:38.589881142Z",
+  "started_at": "2026-07-21T02:38:17.974419059Z",
+  "closed_at": "2026-07-21T04:05:38.589881142Z",
+  "close_reason": "Composed public SecureStack-owned RplStack with fail-closed OSCORE CoAP routing, RFC 6554 exact-host source routes, routed response ACKs, durable sender preflight, monotonic route time, direct-neighbor link-local scope, and public compatibility coverage. Verified lichen-node 211 unit + integration/doc tests, lichen-oscore 51 unit + 10 vectors/doc test, no-default checks, Clippy -D warnings, and three independent review loops.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-6uyi",
+      "depends_on_id": "project-LICHEN-7fqg.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-21T02:14:39.711874274Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

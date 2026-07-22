@@ -37,13 +37,32 @@ ROOT_RANK = MIN_HOP_RANK_INCREASE
 # DODAGVersionNumber is an 8-bit lollipop counter (RFC 6550 Section 7.2)
 _VERSION_MODULUS = 256
 _VERSION_HALF = 128
+_LOLLIPOP_LINEAR_START = 128  # Values below this are in the linear region
 
 
 def version_is_newer(new_version: int, old_version: int) -> bool:
-    if (old_version < _VERSION_HALF) != (new_version < _VERSION_HALF):
-        return new_version < _VERSION_HALF
-    diff = (new_version - old_version) % _VERSION_MODULUS
-    return 0 < diff < _VERSION_HALF
+    """Check if new_version is newer than old_version using lollipop semantics.
+
+    RFC 6550 Section 7.2 defines DODAGVersionNumber as an 8-bit lollipop counter:
+    - Linear region (0-127): values increase linearly; always newer than circular
+    - Circular region (128-255): window-based modular comparison
+
+    The counter starts at 128, increments through 255, wraps to 0 (entering linear),
+    and continues to 127. Linear values represent a "later epoch" than any circular.
+    """
+    new_in_linear = new_version < _LOLLIPOP_LINEAR_START
+    old_in_linear = old_version < _LOLLIPOP_LINEAR_START
+
+    if new_in_linear and old_in_linear:
+        # Both in linear region: simple integer comparison
+        return new_version > old_version
+    elif not new_in_linear and not old_in_linear:
+        # Both in circular region: window-based modular comparison
+        diff = (new_version - old_version) % _VERSION_MODULUS
+        return 0 < diff < _VERSION_HALF
+    else:
+        # Cross-region: linear values are always newer than circular values
+        return new_in_linear
 
 
 class DodagRole(Enum):
@@ -77,6 +96,7 @@ class DodagState:
     rpl_instance_id: int
     dodag_id: str
     version: int
+    node_address: IPv6Address | None = None
     role: DodagRole = DodagRole.UNJOINED
     rank: int = INFINITE_RANK
     preferred_parent: IPv6Address | None = None
@@ -91,12 +111,20 @@ class DodagState:
         self.parents = dict(self.parents)
 
     @classmethod
-    def as_root(cls, rpl_instance_id: int, dodag_id: str, version: int) -> DodagState:
+    def as_root(
+        cls,
+        rpl_instance_id: int,
+        dodag_id: str,
+        version: int,
+        node_address: IPv6Address | str | None = None,
+    ) -> DodagState:
         """Create a DODAG root (rank = MinHopRankIncrease)."""
+        addr = to_ipv6(node_address) if node_address is not None else None
         return cls(
             rpl_instance_id=rpl_instance_id,
             dodag_id=dodag_id,
             version=version,
+            node_address=addr,
             role=DodagRole.ROOT,
             rank=ROOT_RANK,
             _lowest_rank=ROOT_RANK,
@@ -124,7 +152,10 @@ class DodagState:
 
         Raises:
             TypeError: If ``neighbor_id`` is not an IPv6Address or str.
+            ValueError: If ``link_etx`` is negative.
         """
+        if link_etx < 0:
+            raise ValueError("link_etx must be non-negative")
         if not isinstance(neighbor_id, (IPv6Address, str)):
             raise TypeError(
                 f"neighbor_id must be IPv6Address or str, got {type(neighbor_id).__name__}"
@@ -132,6 +163,12 @@ class DodagState:
         neighbor_id = to_ipv6(neighbor_id)
         if self.role is DodagRole.ROOT:
             return
+        # SECURITY: RFC 6550 Section 8.2.2.5 - nodes MUST NOT select themselves as parent
+        if self.node_address is not None and neighbor_id == self.node_address:
+            return  # Ignore DIOs appearing to come from self
+        # SECURITY: RFC 6550 Section 8.2 - filter DIOs by RPL Instance ID
+        if dio.rpl_instance_id != self.rpl_instance_id and self.is_joined():
+            return  # belongs to a different RPL instance
         if str(dio.dodag_id) != self.dodag_id and self.is_joined():
             return  # belongs to a different DODAG
 
@@ -145,6 +182,12 @@ class DodagState:
             # Poisoned route; drop this neighbour as a candidate.
             self.parents.pop(neighbor_id, None)
             self.select_parent()
+            return
+
+        # SECURITY: RFC 6550 Section 8.2.2.5 - reject parents with equal or
+        # higher rank to prevent routing loops. Only accept neighbors with
+        # strictly lower rank (unless we're unjoined with infinite rank).
+        if self.rank != INFINITE_RANK and dio.rank >= self.rank:
             return
 
         self.parents[neighbor_id] = ParentCandidate(neighbor_id, dio.rank, link_etx)
@@ -176,6 +219,9 @@ class DodagState:
                 self.role = DodagRole.UNJOINED
                 self.preferred_parent = None
                 self.rank = INFINITE_RANK
+                # Reset lowest_rank so node can rejoin at any rank after isolation
+                # (RFC 6550 Section 8.2.2.4 MaxRankIncrease bound restarts on rejoin)
+                self._lowest_rank = INFINITE_RANK
             return
 
         best = min(admissible, key=lambda c: c.path_cost(self.min_hop_rank_increase))

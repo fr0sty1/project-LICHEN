@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-v0ee",
+  "title": "Enforce exclusive OSCORE receiver ownership",
+  "description": "Repeated Context::load_existing calls can create concurrent receiver contexts with independent replay windows for the same durable record, so both may accept one authenticated packet. Enforce synchronized exclusive ownership or shared atomic recipient replay state. Found reviewing convergence OSCORE slice; outside frozen ledger.",
+  "status": "deferred",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-21T02:14:38.307494762Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-21T02:14:53.912383952Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-v0ee",
+      "depends_on_id": "project-LICHEN-7fqg.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-21T02:14:38.393004863Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

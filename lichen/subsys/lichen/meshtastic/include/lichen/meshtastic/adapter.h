@@ -258,6 +258,7 @@ struct lichen_meshtastic_adapter {
 	struct lichen_meshtastic_adapter_ops ops;
 	struct lichen_meshtastic_adapter_stats stats;
 	uint8_t stream_buf[LICHEN_MESHTASTIC_TO_RADIO_MAX];
+	uint8_t tx_buf[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
 	size_t stream_len;
 	size_t stream_expected;
 	uint8_t stream_header[LICHEN_MESHTASTIC_STREAM_HEADER_LEN];
@@ -269,7 +270,7 @@ struct lichen_meshtastic_adapter {
 
 void lichen_meshtastic_adapter_init(
 	struct lichen_meshtastic_adapter *_Nonnull adapter,
-	const struct lichen_meshtastic_adapter_ops *_Nonnull ops);
+	const struct lichen_meshtastic_adapter_ops *_Nullable ops);
 
 void lichen_meshtastic_adapter_reset(struct lichen_meshtastic_adapter *_Nonnull adapter);
 
@@ -296,6 +297,18 @@ lichen_meshtastic_adapter_get_stats(
 bool lichen_meshtastic_adapter_disconnected(
 	const struct lichen_meshtastic_adapter *_Nonnull adapter);
 
+/*
+ * Return the table of unsupported Meshtastic operations.
+ *
+ * Sets *operations to point to a static array of operation descriptors and
+ * returns the array size. If operations is NULL, just returns the count.
+ *
+ * Each entry describes an unsupported operation. For entries where has_portnum
+ * is true, the portnum field identifies the Meshtastic portnum that triggers
+ * this operation. Callers must check has_portnum before using portnum; when
+ * has_portnum is false, portnum is unset and the operation is not associated
+ * with a specific portnum (e.g., config writes that come via admin commands).
+ */
 size_t lichen_meshtastic_adapter_unsupported_operations(
 	const struct lichen_meshtastic_adapter_unsupported_operation *_Nullable *_Nonnull operations);
 

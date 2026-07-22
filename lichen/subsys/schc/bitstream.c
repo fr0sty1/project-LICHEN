@@ -27,7 +27,7 @@ int schc_bit_writer_write(struct schc_bit_writer *writer,
 	}
 
 	int remaining = nbits;
-	int bit_offset = writer->nbits % 8;
+	int bit_offset = (int)(writer->nbits % 8);
 
 	if (bit_offset != 0) {
 		int bits_to_align = 8 - bit_offset;
@@ -75,7 +75,7 @@ int schc_bit_writer_write128(struct schc_bit_writer *writer,
 
 	int remaining = nbits;
 	int src_bit = 0;
-	int bit_offset = writer->nbits % 8;
+	int bit_offset = (int)(writer->nbits % 8);
 
 	if (bit_offset != 0) {
 		int bits_to_align = 8 - bit_offset;
@@ -144,7 +144,7 @@ int schc_bit_reader_read(struct schc_bit_reader *reader,
 
 	uint64_t value = 0;
 	int remaining = nbits;
-	int bit_offset = reader->pos % 8;
+	int bit_offset = (int)(reader->pos % 8);
 
 	if (bit_offset != 0) {
 		int bits_to_align = 8 - bit_offset;

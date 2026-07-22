@@ -2,6 +2,7 @@
   "id": "project-LICHEN-m4h2",
   "title": "SecureDatagramChannel pending_requests race on concurrent response handling",
   "description": "File: python/src/lichen/coap/secure.py:346-347\n\nIn _unprotect(), the check-then-pop on pending_requests dict is not atomic:\n\n    if is_response and msg.token in peer_ctx.pending_requests:\n        request_id = peer_ctx.pending_requests.pop(msg.token)\n\nMultiple _process_incoming() tasks can run concurrently (line 289 creates a new task per datagram). If two responses with the same token arrive simultaneously:\n\n1. Task A: checks msg.token in pending_requests -\u003e True\n2. Task B: checks msg.token in pending_requests -\u003e True\n3. Task A: pop(msg.token) -\u003e succeeds\n4. Task B: pop(msg.token) -\u003e KeyError (key no longer exists)\n\nThe pending_requests dict is accessed without synchronization, and the context_store lock only protects getting the PeerContext reference, not subsequent access to its fields.\n\nThis could cause crashes when processing duplicate/retransmitted responses or during network congestion with multiple in-flight responses.\n\nFix: Use dict.pop(key, None) instead of the check-then-pop pattern, or add per-context synchronization for pending_requests access.",
+<<<<<<< HEAD
   "notes": "Commit: ac22ea1b2",
   "status": "closed",
   "priority": 2,
@@ -14,4 +15,16 @@
   "started_at": "2026-07-22T20:11:15.565259251Z",
   "closed_at": "2026-07-22T20:11:48.037571492Z",
   "close_reason": "Replaced check-then-pop with atomic .pop(token, None) in _unprotect and _send_protected; removed outdated comment. No more KeyError on concurrent responses. Verified in test_coap and secure channel tests."
+=======
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T16:56:44.890012Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-13T05:05:34.425705Z",
+  "closed_at": "2026-07-13T05:05:34.425705Z",
+  "close_reason": "Closed"
+>>>>>>> origin/integration/worker3-20260722
 }

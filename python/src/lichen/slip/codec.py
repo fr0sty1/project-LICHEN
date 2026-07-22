@@ -140,7 +140,11 @@ class StreamDecoder:
             if len(self._buf) >= self._max_size:
                 self._buf.clear()
                 self._escaped = False
-                self._overflow = True
+                # Only enter overflow mode if current byte is NOT END.
+                # If byte IS END, the oversized packet just ended - don't discard
+                # the next valid packet.
+                if byte != END:
+                    self._overflow = True
                 continue
 
             if self._escaped:

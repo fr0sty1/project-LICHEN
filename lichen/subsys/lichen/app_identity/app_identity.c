@@ -24,7 +24,6 @@ BUILD_ASSERT(LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN == LICHEN_PK_LEN,
 
 struct peer_slot {
 	struct lichen_app_identity_peer peer;
-	int64_t last_updated_ticks;  /* k_uptime_ticks() at last upsert, for LRU eviction */
 	bool used;
 };
 
@@ -92,26 +91,6 @@ static int find_free_peer_locked(void)
 	return -ENOMEM;
 }
 
-/*
- * Find the least-recently-updated peer slot for LRU eviction.
- * Returns slot index of the peer with the oldest last_updated_ticks.
- * Returns -ENOENT if no peers exist (should not happen when table is full).
- */
-static int find_lru_peer_locked(void)
-{
-	int lru_slot = -1;
-	int64_t oldest_ticks = INT64_MAX;
-
-	for (uint8_t i = 0U; i < ARRAY_SIZE(s_peers); i++) {
-		if (s_peers[i].used &&
-		    s_peers[i].last_updated_ticks < oldest_ticks) {
-			oldest_ticks = s_peers[i].last_updated_ticks;
-			lru_slot = i;
-		}
-	}
-	return (lru_slot >= 0) ? lru_slot : -ENOENT;
-}
-
 int lichen_app_identity_set_self(
 	const struct lichen_app_identity_self *identity)
 {
@@ -165,14 +144,17 @@ int lichen_app_identity_set_self_from_link_ctx(
 	if (ctx == NULL) {
 		return -EINVAL;
 	}
-	if (!ctx->has_key) {
-		return -ENOKEY;
-	}
 
+	/*
+	 * SECURITY: Use lichen_link_copy_identity() to atomically snapshot
+	 * the EUI-64 and public key under the context's lock. This prevents
+	 * a race with lichen_link_cleanup() that could yield a zeroed key.
+	 */
 	memset(&identity, 0, sizeof(identity));
-	memcpy(identity.eui64, ctx->eui64, sizeof(identity.eui64));
-	memcpy(identity.public_key, ctx->ed25519_pk,
-	       sizeof(identity.public_key));
+	ret = lichen_link_copy_identity(ctx, identity.eui64, identity.public_key, NULL);
+	if (ret < 0) {
+		return ret;
+	}
 	identity.has_public_key = true;
 	ret = copy_string(identity.display_name,
 			  sizeof(identity.display_name), display_name);
@@ -235,15 +217,15 @@ int lichen_app_identity_upsert_peer(
 			return -EEXIST;  /* TOFU violation: pubkey mismatch */
 		}
 	} else {
+		/*
+		 * SECURITY: a full table rejects new peers (-ENOMEM) rather
+		 * than evicting an LRU entry. TOFU pins (spec 8.6) must not
+		 * be silently discarded: an attacker who floods the table
+		 * with ephemeral peers could evict a victim's pinned key and
+		 * then be accepted as that victim's "first contact". Freeing
+		 * capacity requires explicit peer removal.
+		 */
 		slot = find_free_peer_locked();
-		if (slot < 0) {
-			/*
-			 * Table full: evict least-recently-updated peer (LRU).
-			 * This prevents the 'first N peers win' lockout scenario
-			 * where early peers permanently occupy all slots.
-			 */
-			slot = find_lru_peer_locked();
-		}
 	}
 	if (slot < 0) {
 		k_mutex_unlock(&s_mutex);
@@ -256,7 +238,6 @@ int lichen_app_identity_upsert_peer(
 			  sizeof(s_peers[slot].peer.display_name),
 			  peer->display_name);
 	eui64_to_iid(s_peers[slot].peer.eui64, s_peers[slot].peer.iid);
-	s_peers[slot].last_updated_ticks = k_uptime_ticks();
 	s_peers[slot].used = true;
 	k_mutex_unlock(&s_mutex);
 	return 0;
@@ -331,6 +312,26 @@ size_t lichen_app_identity_peer_count(void)
 	}
 	k_mutex_unlock(&s_mutex);
 	return count;
+}
+
+int lichen_app_identity_remove_peer(
+	const uint8_t eui64[LICHEN_APP_IDENTITY_EUI64_LEN])
+{
+	int slot;
+
+	if (eui64 == NULL) {
+		return -EINVAL;
+	}
+
+	k_mutex_lock(&s_mutex, K_FOREVER);
+	slot = find_peer_locked(eui64);
+	if (slot < 0) {
+		k_mutex_unlock(&s_mutex);
+		return -ENOENT;
+	}
+	memset(&s_peers[slot], 0, sizeof(s_peers[slot]));
+	k_mutex_unlock(&s_mutex);
+	return 0;
 }
 
 #ifdef CONFIG_LICHEN_APP_IDENTITY_TEST_HOOKS

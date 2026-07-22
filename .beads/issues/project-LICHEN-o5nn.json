@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-o5nn",
+  "title": "Expose prefix route lifecycle through Router",
+  "description": "RouteTarget is re-exported, but Router/RplNode expose no production API to install or remove prefix routes; current tests only manipulate RoutingTable directly. Add the minimal authorized Router integration after prefix-route authorization semantics are resolved.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-18T21:57:37.893496Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-18T21:57:37.893496Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-o5nn",
+      "depends_on_id": "project-LICHEN-2auf.44.9.12",
+      "type": "discovered-from",
+      "created_at": "2026-07-18T21:57:38.052754Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

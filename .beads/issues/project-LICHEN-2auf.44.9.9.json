@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-2auf.44.9.9",
+  "title": "Authorize downward source-route tunnels",
+  "description": "Define how an egress authenticates that a source-route tunnel was authorized by the active DODAG root. Bind root identity, outer route, inner source/destination, selected prefix, and replay state so any authenticated mesh node cannot use an egress as unauthorized transit.",
+  "acceptance_criteria": "Egress verifies authorized root tunnel provenance and delegated prefix before decapsulation; forged root, inner-source spoof, replay, route substitution, and unauthorized transit tests fail closed.",
+  "notes": "Blocked on protocol design. Existing spec 05-routing 8.9 and draft 7.4 define IPv6-in-IPv6/SRH and delegated-prefix checks, but no tunnel authentication wire field, signature transcript/domain, replay sequence representation/persistence, or active-root key provisioning/rotation at egress. Rust has only bare SourceRoutingHeader codec and no tunnel encapsulation/decapsulation implementation. Need approval of an authenticated root tunnel envelope before implementation; inventing one would create incompatible wire behavior.",
+  "status": "blocked",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-18T21:14:53.948929Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-20T13:33:13.014573508Z",
+  "started_at": "2026-07-20T00:48:32.479649Z",
+  "labels": [
+    "human"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.9.9",
+      "depends_on_id": "project-LICHEN-2auf.44.9",
+      "type": "parent-child",
+      "created_at": "2026-07-18T21:14:54.092138Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -161,11 +161,6 @@ config LORA_LICHEN_MESHTASTIC_BLE_QUEUE_DEPTH_MIN
 	int
 	default 20
 
-config LICHEN_APP_INTERFACE_MAX_PAYLOAD
-	int
-	default 200 if LORA_LICHEN_MESHTASTIC_BLE || \
-		       LICHEN_MESHTASTIC_GATEWAY_ADAPTER_TEST_SURFACE
-
 config LORA_LICHEN_MESHTASTIC_BLE_TO_RADIO_QUEUE_DEPTH
 	int "Meshtastic BLE ToRadio queue depth"
 	depends on LORA_LICHEN_MESHTASTIC_BLE
@@ -190,16 +185,22 @@ config LORA_LICHEN_GATEWAY_MESSAGE_QUEUE_DEPTH
 config LORA_LICHEN_GATEWAY_RPL_ROOT
 	bool "RPL root signalling"
 	depends on LICHEN_RPL
-	depends on BROKEN
-	default n
+	default y
 	help
-	  Enable gateway DIO/DAO processing and root signalling.
+	  Enable gateway DIO/DAO processing and root signalling as DODAG root.
+	  Uses shared lichen/subsys/lichen/rpl for DODAG, Trickle, DAO manager,
+	  routing table and prefix advertisement per spec/05-routing.md.
 
-	  This is intentionally unavailable until the gateway has an app-level
-	  packet I/O integration that drives the caller-owned LICHEN RPL state
-	  machine. With this option disabled, the gateway advertises itself as
-	  non-RPL-capable in /status so users do not mistake it for a complete
-	  mesh root.
+config LICHEN_GATEWAY_RX1_DELAY_MS
+	int "RX1-style delay before answering a CoAP request (ms)"
+	default 0
+	help
+	  Milliseconds to wait after receiving a CoAP request before sending
+	  the response, giving a half-duplex requesting node time to switch
+	  its radio from TX (the request it just sent) to RX. Without it, the
+	  reply can arrive during the requester's TX->RX turnaround and be
+	  missed (lora_ipv6_mesh-fe1z, observed on the T1000-E/LR1110). 0
+	  disables the delay. ~100 ms is a safe LoRa value.
 
 endmenu
 

@@ -151,6 +151,8 @@ int lichen_link_load_key(struct lichen_link_ctx *ctx,
 	memcpy(ctx->ed25519_pk, new_pk, LICHEN_PK_LEN);
 	secure_wipe(new_sk, sizeof(new_sk));
 	ctx->has_key = true;
+	ctx->tx_seq = 0;
+	ctx->nonce_exhausted = false;
 	return 0;
 }
 
@@ -183,6 +185,65 @@ int lichen_link_generate_key(struct lichen_link_ctx *ctx)
 	return ret;
 }
 
+int lichen_link_derive_seed(const uint8_t base_seed[LICHEN_SEED_LEN],
+			    const uint8_t eui64[LICHEN_EUI64_LEN],
+			    uint8_t out_seed[LICHEN_SEED_LEN])
+{
+	if (base_seed == NULL || eui64 == NULL || out_seed == NULL) {
+		return -EINVAL;
+	}
+
+#ifdef CONFIG_LICHEN_CRYPTO_MONOCYPHER
+	uint8_t hash[64];
+	crypto_sha512_ctx hash_ctx;
+
+	/* out = SHA-512(base_seed || eui64)[0:32] */
+	crypto_sha512_init(&hash_ctx);
+	crypto_sha512_update(&hash_ctx, base_seed, LICHEN_SEED_LEN);
+	crypto_sha512_update(&hash_ctx, eui64, LICHEN_EUI64_LEN);
+	crypto_sha512_final(&hash_ctx, hash);
+	memcpy(out_seed, hash, LICHEN_SEED_LEN);
+	crypto_wipe(hash, sizeof(hash));
+#else
+	/* Stub for builds without Monocypher - NOT FOR PRODUCTION.
+	 * XOR the EUI-64 into the seed so distinct nodes still get
+	 * distinct (but trivially related) seeds. */
+	memcpy(out_seed, base_seed, LICHEN_SEED_LEN);
+	for (size_t i = 0; i < LICHEN_EUI64_LEN; i++) {
+		out_seed[i] ^= eui64[i];
+	}
+#endif
+
+	return 0;
+}
+
+int lichen_link_derive_pubkey(const uint8_t seed[LICHEN_SEED_LEN],
+			      uint8_t out_pk[LICHEN_PK_LEN])
+{
+	if (seed == NULL || out_pk == NULL) {
+		return -EINVAL;
+	}
+
+#ifdef CONFIG_LICHEN_CRYPTO_MONOCYPHER
+	uint8_t hash[64];
+	uint8_t sk[LICHEN_SK_LEN];
+
+	/* Must match lichen_link_load_key(): pk = clamp(SHA-512(seed)[0:32]) * B */
+	crypto_sha512(hash, seed, LICHEN_SEED_LEN);
+	memcpy(sk, hash, sizeof(sk));
+	schnorr48_clamp_scalar(sk);
+	crypto_eddsa_scalarbase(out_pk, sk);
+	crypto_wipe(hash, sizeof(hash));
+	crypto_wipe(sk, sizeof(sk));
+#else
+	/* Stub matches the lichen_link_load_key() stub pubkey */
+	memset(out_pk, 0, LICHEN_PK_LEN);
+	out_pk[0] = 0x01;
+#endif
+
+	return 0;
+}
+
 int lichen_link_next_seq(struct lichen_link_ctx *ctx, uint16_t *seqnum)
 {
 	uint8_t epoch;
@@ -192,6 +253,8 @@ int lichen_link_next_seq(struct lichen_link_ctx *ctx, uint16_t *seqnum)
 
 int lichen_link_next_tx(struct lichen_link_ctx *ctx, uint8_t *epoch, uint16_t *seqnum)
 {
+	uint8_t allocated_epoch;
+	uint16_t allocated_seq;
 	if (ctx == NULL || seqnum == NULL) {
 		return -EINVAL;
 	}
@@ -213,8 +276,20 @@ int lichen_link_next_tx(struct lichen_link_ctx *ctx, uint8_t *epoch, uint16_t *s
 		return -EOVERFLOW;
 	}
 
-	*epoch = ctx->epoch;
-	*seqnum = ctx->tx_seq;
+	allocated_epoch = ctx->epoch;
+	allocated_seq = ctx->tx_seq;
+
+#ifdef CONFIG_LICHEN_LINK_EPOCH_PERSIST
+	/* Commit the next live epoch before returning the final tuple from this
+	 * epoch. A reset at any later instruction can only skip tuples, not reuse
+	 * an epoch with sequence zero. */
+	if (ctx->tx_seq == UINT16_MAX && ctx->epoch != UINT8_MAX &&
+	    lichen_link_epoch_persist((uint8_t)(ctx->epoch + 1U)) != 0) {
+		(void)seq_unlock(ctx);
+		return -EIO;
+	}
+#endif
+
 	ctx->tx_seq++;
 
 	/*
@@ -239,6 +314,8 @@ int lichen_link_next_tx(struct lichen_link_ctx *ctx, uint8_t *epoch, uint16_t *s
 		}
 	}
 
+	*epoch = allocated_epoch;
+	*seqnum = allocated_seq;
 	(void)seq_unlock(ctx);
 	return 0;
 }
@@ -316,6 +393,72 @@ static int seq_unlock(struct lichen_link_ctx *ctx)
 #endif
 }
 
+int lichen_link_copy_identity(const struct lichen_link_ctx *ctx,
+			      uint8_t eui64[LICHEN_EUI64_LEN],
+			      uint8_t pk[LICHEN_PK_LEN],
+			      bool *has_key)
+{
+	if (ctx == NULL) {
+		return -EINVAL;
+	}
+
+	/*
+	 * SECURITY: Acquire seq_lock to ensure atomic read of key material.
+	 * This prevents a race where has_key is true but cleanup zeros the
+	 * key between our check and copy. The cleanup function also holds
+	 * this lock when modifying key state.
+	 *
+	 * Cast away const for lock acquisition - the lock protects the data,
+	 * we are only reading, and mutex_lock requires non-const.
+	 */
+	struct lichen_link_ctx *mutable_ctx = (struct lichen_link_ctx *)ctx;
+
+	if (seq_lock(mutable_ctx) != 0) {
+		return -EIO;
+	}
+
+	bool key_loaded = ctx->has_key;
+
+	if (has_key != NULL) {
+		*has_key = key_loaded;
+	}
+
+	if (!key_loaded) {
+		(void)seq_unlock(mutable_ctx);
+		return -ENOKEY;
+	}
+
+	if (eui64 != NULL) {
+		memcpy(eui64, ctx->eui64, LICHEN_EUI64_LEN);
+	}
+	if (pk != NULL) {
+		memcpy(pk, ctx->ed25519_pk, LICHEN_PK_LEN);
+	}
+
+	(void)seq_unlock(mutable_ctx);
+	return 0;
+}
+
+int lichen_identity_ygg_addr_from_ed25519(const uint8_t pk[LICHEN_PK_LEN],
+					 uint8_t addr[16])
+{
+	if (pk == NULL || addr == NULL) {
+		return -EINVAL;
+	}
+
+#ifdef CONFIG_LICHEN_CRYPTO_MONOCYPHER
+	uint8_t hash[64];
+	crypto_sha512(hash, pk, LICHEN_PK_LEN);
+	memcpy(addr, hash, 16);
+	addr[0] = 0x02 | (addr[0] & 0x01);
+	crypto_wipe(hash, sizeof(hash));
+#else
+	memset(addr, 0, 16);
+	addr[0] = 0x02;
+#endif
+	return 0;
+}
+
 void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 {
 	if (ctx == NULL) {
@@ -324,7 +467,17 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 
 	int locked = (seq_lock(ctx) == 0);
 
-	/* SECURITY: Always wipe keys, even if lock fails */
+	/*
+	 * SECURITY: Always wipe keys, even if lock fails. This prioritizes
+	 * key erasure over correctness of concurrent operations.
+	 *
+	 * If the lock failed, another thread is using this context - this
+	 * indicates improper usage (cleanup was called without ensuring
+	 * exclusive access). Log a warning but proceed with the wipe.
+	 */
+	if (!locked) {
+		LOG_WRN("cleanup called while context is locked - potential race condition\n");
+	}
 	secure_wipe(ctx->ed25519_sk, LICHEN_SK_LEN);
 	secure_wipe(ctx->link_key, LICHEN_LINK_KEY_LEN);
 
@@ -341,10 +494,20 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 	if (locked) {
 		(void)seq_unlock(ctx);
 #ifndef __ZEPHYR__
-		/* Only destroy mutex if we successfully acquired and released it.
-		 * If lock failed, mutex may be held by another thread - destroying
-		 * would cause undefined behavior per POSIX. */
 		pthread_mutex_destroy(&ctx->seq_lock);
 #endif
 	}
+}
+
+uint32_t lichen_hash_32(uint32_t sfn, uint64_t key) {
+	uint32_t h = 0x811c9dc5u;
+	for (int i = 0; i < 4; ++i) {
+		uint8_t b = (sfn >> (i * 8)) & 0xffu;
+		h ^= b; h *= 0x01000193u;
+	}
+	for (int i = 0; i < 8; ++i) {
+		uint8_t b = (key >> (i * 8)) & 0xffu;
+		h ^= b; h *= 0x01000193u;
+	}
+	return h;
 }

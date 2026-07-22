@@ -1,0 +1,34 @@
+{
+  "id": "project-LICHEN-2auf.64",
+  "title": "Make Python EDHOC sessions single-use",
+  "description": "Recovery audit found stale completed exporter state survives object reuse and failed validation; session fields mutate before signature/message validation, permitting old or mixed OSCORE context export. Introduce explicit state/commit-after-validation semantics and malformed-message tests.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-19T02:40:20.10703Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-20T15:44:07.700264699Z",
+  "started_at": "2026-07-20T15:07:23.509716273Z",
+  "closed_at": "2026-07-20T15:44:07.700264699Z",
+  "close_reason": "Python EDHOC sessions are terminal, single-use, and commit state only after complete validation.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.64",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-19T02:40:20.238064Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.64",
+      "depends_on_id": "project-LICHEN-2auf.39",
+      "type": "discovered-from",
+      "created_at": "2026-07-19T02:40:20.36081Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

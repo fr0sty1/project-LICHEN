@@ -71,6 +71,11 @@ class FieldDescriptor:
         """Number of residue bits for an LSB action (length_bits - MSB length)."""
         if self.mo_arg is None:
             raise ValueError(f"{self.field_id}: LSB requires mo_arg (MSB length)")
+        if self.mo_arg > self.length_bits:
+            raise ValueError(
+                f"{self.field_id}: mo_arg ({self.mo_arg}) exceeds "
+                f"length_bits ({self.length_bits})"
+            )
         return self.length_bits - self.mo_arg
 
     def mapping_bits(self) -> int:
@@ -117,11 +122,11 @@ RULE_ID_UNCOMPRESSED = 255
 COAP_RULE = Rule(
     rule_id=64,
     fields=(
-        FieldDescriptor("CoAP.Version", 2, MO.EQUAL, CDA.NOT_SENT, target_value=1),
-        FieldDescriptor("CoAP.Type", 2, MO.IGNORE, CDA.VALUE_SENT),
-        FieldDescriptor("CoAP.TKL", 4, MO.IGNORE, CDA.VALUE_SENT),
-        FieldDescriptor("CoAP.Code", 8, MO.IGNORE, CDA.VALUE_SENT),
-        FieldDescriptor("CoAP.MID", 16, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("CoAP.version", 2, MO.EQUAL, CDA.NOT_SENT, target_value=1),
+        FieldDescriptor("CoAP.type", 2, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("CoAP.tkl", 4, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("CoAP.code", 8, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("CoAP.mid", 16, MO.IGNORE, CDA.VALUE_SENT),
     ),
 )
 
@@ -132,10 +137,10 @@ UDP_PORT_RULE = Rule(
     rule_id=65,
     fields=(
         FieldDescriptor(
-            "UDP.SrcPort", 16, MO.MSB, CDA.LSB, target_value=5683, mo_arg=12
+            "UDP.src_port", 16, MO.MSB, CDA.LSB, target_value=5683, mo_arg=12
         ),
         FieldDescriptor(
-            "UDP.DstPort", 16, MO.MSB, CDA.LSB, target_value=5683, mo_arg=12
+            "UDP.dst_port", 16, MO.MSB, CDA.LSB, target_value=5683, mo_arg=12
         ),
     ),
 )
@@ -149,11 +154,11 @@ UDP_PORT_RULE = Rule(
 ICMPV6_ECHO_RULE = Rule(
     rule_id=66,
     fields=(
-        FieldDescriptor("ICMPv6.Type", 8, MO.IGNORE, CDA.VALUE_SENT),
-        FieldDescriptor("ICMPv6.Code", 8, MO.EQUAL, CDA.NOT_SENT, target_value=0),
-        FieldDescriptor("ICMPv6.Checksum", 16, MO.IGNORE, CDA.COMPUTE),
-        FieldDescriptor("ICMPv6.Identifier", 16, MO.IGNORE, CDA.VALUE_SENT),
-        FieldDescriptor("ICMPv6.Sequence", 16, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("ICMPv6.type", 8, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("ICMPv6.code", 8, MO.EQUAL, CDA.NOT_SENT, target_value=0),
+        FieldDescriptor("ICMPv6.checksum", 16, MO.IGNORE, CDA.COMPUTE),
+        FieldDescriptor("ICMPv6.identifier", 16, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("ICMPv6.sequence", 16, MO.IGNORE, CDA.VALUE_SENT),
     ),
 )
 
@@ -271,7 +276,9 @@ RPL_DIO_RULE = Rule(
 )
 
 # Rule 4: RPL DAO base object (RFC 6550 6.4) with DODAGID (D flag set), the
-# common non-storing case. DAOs without a DODAGID fall back to uncompressed.
+# common non-storing case using routable ULA source for multi-hop forwarding.
+# DAOs without a DODAGID fall back to uncompressed. Preserves end-to-end source
+# per security spec.
 _DAO_BASE_FIELDS = (
     FieldDescriptor("RPL.instance", 8, MO.IGNORE, CDA.VALUE_SENT),
     FieldDescriptor("RPL.kd_flags", 8, MO.IGNORE, CDA.VALUE_SENT),
@@ -281,7 +288,7 @@ _DAO_BASE_FIELDS = (
 )
 RPL_DAO_RULE = Rule(
     rule_id=4,
-    fields=_ipv6_header_fields(58, link_local=True) + _icmpv6_rpl_fields(2)
+    fields=_ipv6_header_fields(58, link_local=False) + _icmpv6_rpl_fields(2)
     + _DAO_BASE_FIELDS,
 )
 

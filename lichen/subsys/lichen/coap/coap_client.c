@@ -69,7 +69,14 @@ int lichen_coap_client_init(void)
 		return 0;
 	}
 
-	/* Create UDP socket for CoAP */
+#ifdef CONFIG_LICHEN_COAP_CLIENT_OSCORE
+	ret = oscore_init();
+	if (ret < 0) {
+		k_mutex_unlock(&s_mutex);
+		return ret;
+	}
+#endif
+
 	s_sock = zsock_socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
 	if (s_sock < 0) {
 		LOG_ERR("Failed to create socket: %d", errno);
@@ -309,11 +316,10 @@ static void coap_response_handler(int16_t code, size_t offset, const uint8_t *pa
 				int ret;
 
 				/*
-				 * Parse OSCORE option from response.
-				 * For client responses, the OSCORE option is typically
-				 * empty (h=0, n=0) since the response uses the request PIV.
+				 * Response OSCORE option (typically empty per RFC 8613 8.4).
+				 * Uses request_piv for nonce/KID binding (checkpoint fixed in oscore.c).
 				 */
-				uint8_t oscore_opt[1] = {0};  /* Empty option for response */
+				uint8_t oscore_opt[1] = {0};
 				size_t oscore_opt_len = 0;
 
 				ret = oscore_unprotect_response(ctx->oscore_ctx,
@@ -346,7 +352,9 @@ static void coap_response_handler(int16_t code, size_t offset, const uint8_t *pa
 
 int lichen_coap_request(const struct lichen_coap_request *req)
 {
-	struct coap_client_request client_req = {0};
+	/* Designated initializer: method must start as a valid enum value
+	 * (0 is outside enum coap_method); it is overwritten below. */
+	struct coap_client_request client_req = { .method = COAP_METHOD_GET };
 	struct request_ctx *ctx;
 	int ret;
 	int sock;

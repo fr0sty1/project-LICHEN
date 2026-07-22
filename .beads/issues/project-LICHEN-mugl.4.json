@@ -1,0 +1,45 @@
+{
+  "id": "project-LICHEN-mugl.4",
+  "title": "Scale test: Multi-gateway capacity",
+  "description": "Validate that multi-gateway scales capacity linearly.\n\n## Test scenarios\n\n### Capacity scaling\n- 1 gateway: measure max nodes\n- 2 gateways: verify ~2x capacity\n- 4 gateways: verify ~4x capacity\n\n### Coordination overhead\n- Measure backbone traffic between gateways\n- Verify overhead is \u003c 5% of LoRa capacity\n\n### Node handoff\n- Simulate node movement between coverage areas\n- Measure handoff latency\n- Verify no packet loss during handoff\n\n### Failure recovery\n- Kill one gateway, verify nodes migrate\n- Restore gateway, verify rebalancing\n- Measure recovery time\n\n## Success criteria\n\n- Capacity scales linearly with gateway count (within 90%)\n- Handoff latency \u003c 5 seconds\n- Gateway failure recovery \u003c 30 seconds\n- Coordination overhead \u003c 5%",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T19:35:00.515782Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T19:35:00.515782Z",
+  "labels": [
+    "testing",
+    "validation",
+    "gateway",
+    "protocol",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-mugl.4",
+      "depends_on_id": "project-LICHEN-mugl",
+      "type": "parent-child",
+      "created_at": "2026-07-16T19:35:00.654533Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-mugl.4",
+      "depends_on_id": "project-LICHEN-mugl.2",
+      "type": "blocks",
+      "created_at": "2026-07-16T19:35:00.770246Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-mugl.4",
+      "depends_on_id": "project-LICHEN-mugl.3",
+      "type": "blocks",
+      "created_at": "2026-07-16T19:35:00.879292Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

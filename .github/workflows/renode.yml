@@ -138,7 +138,14 @@ jobs:
 
       - name: west init (manifest only, Zephyr from cache)
         if: steps.cache-zephyr.outputs.cache-hit == 'true'
-        run: west init -l lichen/
+        # The cache only stores zephyr/, not the sibling modules (hal_nordic,
+        # loramac-node, zcbor, mcumgr, ...). west update is still required to
+        # fetch them; without it HAS_NRFX/ZCBOR/MCUMGR resolve to n and the
+        # t_echo puck build aborts on Kconfig warnings. zephyr/ being cached
+        # keeps west update fast (its largest clone is already present).
+        run: |
+          west init -l lichen/
+          west update
 
       - name: Install Zephyr Python requirements
         run: pip install -r zephyr/scripts/requirements.txt
@@ -146,14 +153,19 @@ jobs:
       - name: west zephyr-export
         run: west zephyr-export
 
+      - name: Set SOURCE_DATE_EPOCH
+        # The build-epoch policy (lichen/cmake/lichen_build_epoch.cmake)
+        # requires an epoch in 1..2^31-1, so the previous literal "0" was
+        # rejected at configure time. Use the commit timestamp like ci.yml.
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+
       - name: Build t_echo puck firmware (Renode console)
-        env:
-          # Reproducible build timestamp
-          SOURCE_DATE_EPOCH: "0"
         run: |
           # Build with renode_console overlay for UART output in Renode.
           # Output dir matches test harness expectation: build/{board}_renode/
-          west build -b t_echo_nrf52840 lichen/apps/puck -d build/t_echo_renode -- \
+          # Hardware-model-v2 name; "t_echo_nrf52840" is not a valid board
+          # target in Zephyr 3.7 (t_echo has no hwmv1 compatibility alias).
+          west build -b t_echo/nrf52840 lichen/apps/puck -d build/t_echo_renode -- \
             -DEXTRA_DTC_OVERLAY_FILE=$GITHUB_WORKSPACE/lichen/boards/renode/nrf52840_lichen/support/renode_console.overlay \
             -DEXTRA_CONF_FILE=$GITHUB_WORKSPACE/lichen/boards/renode/nrf52840_lichen/support/renode_console.conf
 

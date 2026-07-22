@@ -132,3 +132,19 @@ def test_advance_without_srh_returns_none() -> None:
     )
     _, nxt = advance_source_route(packet)
     assert nxt is None
+
+
+def test_insert_source_route_validates_expected_destination() -> None:
+    packet = IPv6Packet(
+        header=IPv6Header(ROOT, DEST, NextHeader.UDP), payload=b"x"
+    )
+    # Path ends with DEST, matches expected_destination - should succeed
+    routed, first_hop = insert_source_route(
+        packet, [A, B, DEST], expected_destination=DEST
+    )
+    assert first_hop == A
+    assert routed.header.dst_addr == A
+
+    # Path does NOT end with expected_destination - should raise
+    with pytest.raises(RoutingError, match="does not end with expected destination"):
+        insert_source_route(packet, [A, B], expected_destination=DEST)

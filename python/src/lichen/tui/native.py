@@ -1624,6 +1624,8 @@ class NativeClientApp(App[None]):
             return None
         try:
             await connect()
+        except asyncio.CancelledError:
+            raise
         except Exception as exc:
             return str(exc)
         return None
@@ -1928,6 +1930,8 @@ class NativeClientApp(App[None]):
             return
         try:
             await self._disconnect_current_client()
+        except asyncio.CancelledError:
+            raise
         except Exception as exc:
             if next_client is not None and candidate_ready:
                 with suppress(Exception):
@@ -2007,6 +2011,8 @@ class NativeClientApp(App[None]):
                 self.client.get_identity(),
                 self.client.discover(),
             )
+        except asyncio.CancelledError:
+            raise
         except Exception as exc:
             self._set_dashboard_error(str(exc))
             return
@@ -2187,19 +2193,19 @@ class NativeClientApp(App[None]):
             radio_info = status.radio or {}
 
             # Extract duty cycle info from radio status if available
-            duty_usage = float(radio_info.get("duty_cycle_usage_pct", 0.0))
-            duty_remaining = int(radio_info.get("duty_cycle_remaining_ms", 36000))
-            duty_refill = int(radio_info.get("duty_cycle_refill_ms", 0))
+            duty_usage = float(radio_info.get("duty_cycle_usage_pct") or 0.0)
+            duty_remaining = int(radio_info.get("duty_cycle_remaining_ms") or 36000)
+            duty_refill = int(radio_info.get("duty_cycle_refill_ms") or 0)
 
             # Extract TX queue info if available
-            queue_info = radio_info.get("tx_queue", {})
+            queue_info = radio_info.get("tx_queue") or {}
             depth_by_priority = tuple(
-                (int(k), int(v))
+                (int(k or 0), int(v or 0))
                 for k, v in sorted(queue_info.get("depth_by_priority", {}).items())
             )
-            total_bytes = int(queue_info.get("total_bytes", 0))
-            drain_time = int(queue_info.get("drain_time_ms", 0))
-            oldest_age = int(queue_info.get("oldest_age_ms", 0))
+            total_bytes = int(queue_info.get("total_bytes") or 0)
+            drain_time = int(queue_info.get("drain_time_ms") or 0)
+            oldest_age = int(queue_info.get("oldest_age_ms") or 0)
 
             self._set_radio_state(
                 RadioTuiState(

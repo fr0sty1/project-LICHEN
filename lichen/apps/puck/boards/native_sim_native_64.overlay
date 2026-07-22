@@ -1,0 +1,10 @@
+/ {
+	chosen {
+		zephyr,lora = &lora_loopback;
+	};
+
+	lora_loopback: lora {
+		compatible = "lichen,lora-loopback";
+		status = "okay";
+	};
+};

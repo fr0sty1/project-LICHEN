@@ -86,8 +86,8 @@ impl<R: Radio> SecureStack<R> {
     ///
     /// SECURITY: Uses minimum compliant epoch (128). For production, prefer
     /// constructing a Stack with a random epoch in [128, 255].
-    pub fn from_radio(radio: R, identity: lichen_link::identity::Identity) -> Self {
-        Self::new(Stack::new_default_epoch(radio, identity))
+    pub fn from_radio(radio: R, identity: lichen_link::identity::Identity, epoch: u8) -> Self {
+        Self::new(Stack::new(radio, identity, epoch, 0))
     }
 
     /// Add an OSCORE security context for a peer.
@@ -95,12 +95,6 @@ impl<R: Radio> SecureStack<R> {
     /// The peer_iid is the 8-byte IID of the peer (from their pubkey hash).
     pub fn add_context(&mut self, peer_iid: [u8; 8], context: Context) {
         self.contexts.insert(peer_iid, context);
-    }
-
-    /// Get context for peer.
-    #[allow(dead_code)] // read-only counterpart of get_context_mut, unused so far
-    fn get_context(&self, peer_iid: &[u8; 8]) -> Option<&Context> {
-        self.contexts.get(peer_iid)
     }
 
     /// Get mutable context for peer.
@@ -190,6 +184,10 @@ impl<R: Radio> SecureStack<R> {
         // Extract PIV from OSCORE option for response decryption
         // Option format: flags(1) | piv(n) | kid(rest), where n = flags & 0x07
         let piv_len = (oscore_opt[0] & 0x07) as usize;
+        // SECURITY: Bounds check to prevent panic on malformed OSCORE option
+        if oscore_opt.len() < 1 + piv_len {
+            return Err(SecureError::CoapEncode);
+        }
         let request_piv = oscore_opt[1..1 + piv_len].to_vec();
 
         // Build outer CoAP with OSCORE option
@@ -288,10 +286,10 @@ mod tests {
 
         let (radio_a, radio_b) = LoopbackRadio::pair();
 
-        let mut alice_stack = Stack::new_default_epoch(radio_a, alice_id);
+        let mut alice_stack = Stack::new(radio_a, alice_id, 128, 0);
         alice_stack.add_peer(bob_peer);
 
-        let mut bob_stack = Stack::new_default_epoch(radio_b, bob_id);
+        let mut bob_stack = Stack::new(radio_b, bob_id, 128, 0);
         bob_stack.add_peer(alice_peer);
 
         let mut alice = SecureStack::new(alice_stack);

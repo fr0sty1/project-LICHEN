@@ -21,6 +21,7 @@ cpu PerformanceInMips 48
 
 macro reset
 """
+    rng IRQ Set false
     sysbus LoadELF $elf
 """
 runMacro $reset

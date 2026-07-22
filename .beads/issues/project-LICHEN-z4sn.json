@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-z4sn",
+  "title": "Track full state in SLIP TX ring",
+  "description": "Gateway SlipFramer can consume exactly the remaining ring span so tx_tail equals tx_head while packets are still queued. The next queue_send interprets that as free space and may overwrite the oldest packet. Add explicit used/full state or reserve one byte and test exact-fill/wrap cases. Found reviewing convergence commit fb7f8fa; outside frozen reconciliation.",
+  "status": "deferred",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-21T02:18:28.585250169Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-21T02:18:36.805215542Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-z4sn",
+      "depends_on_id": "project-LICHEN-7fqg.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-21T02:18:28.666100552Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

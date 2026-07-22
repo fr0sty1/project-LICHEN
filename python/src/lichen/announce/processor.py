@@ -215,10 +215,11 @@ class AnnounceProcessor:
                 reject_reason=AnnounceRejectReason.STALE_SEQNUM,
             )
 
-        # Step 5: Update gradient table first (preferred ordering).
-        # Why before _seen/_pinned: if address_builder or gradient.update fails,
-        # do not pollute seen cache (future same-seq announces would be rejected
-        # as STALE but no route installed). Matches bug report qndk.
+        # Step 5: Update gradient table BEFORE updating _seen/_pinned_keys.
+        # Why this order: If gradient_table.update() or address_builder() fails,
+        # we must NOT mark this announce as "seen" — otherwise future retransmissions
+        # will be rejected as STALE_SEQNUM but we have no route to the originator.
+        # By updating the gradient first, failure leaves state unchanged.
         destination = self.address_builder(iid)
         coords = decode_coords(announce.app_data)  # None if not present
         congestion = decode_congestion(announce.app_data)  # None if not present
@@ -233,7 +234,9 @@ class AnnounceProcessor:
         )
         self.gradient_table.update(entry, now=now_ms)
 
-        # Accept: pin pubkey (TOFU), update seen (LRU-bounded).
+        # Step 6: Pin pubkey (TOFU first-contact) and update seen cache.
+        # Only reached if gradient update succeeded.
+        # Use LRU eviction to bound memory: move to end, then evict oldest if over limit.
         self._pinned_keys[iid] = announce.pubkey
         self._pinned_keys.move_to_end(iid)
         while len(self._pinned_keys) > MAX_ENTRIES:
@@ -252,7 +255,7 @@ class AnnounceProcessor:
             from_neighbor,
         )
 
-        # Step 6: Decide relay
+        # Step 7: Decide relay
         # Why: Propagate announces through the mesh, up to hop limit.
         should_relay = announce.should_relay()
 

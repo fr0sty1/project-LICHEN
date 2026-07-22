@@ -18,7 +18,8 @@ from lichen.schc import (
     compress,
     decompress,
 )
-from lichen.schc.codec import BitReader, BitWriter
+from lichen.schc.codec import BitReader, BitWriter, _check_msb
+from lichen.schc.rules import CDA, MO, FieldDescriptor
 
 
 class TestBitWriter:
@@ -160,3 +161,19 @@ class TestDecompressRegistry:
     def test_registry_contains_rules(self) -> None:
         assert RULES[64] is COAP_RULE
         assert RULES[65] is UDP_PORT_RULE
+
+
+class TestCheckMsb:
+    def test_mo_arg_exceeds_length_bits_raises(self) -> None:
+        """mo_arg > length_bits is invalid and should raise a clear error."""
+        # 16-bit field with mo_arg=20 is invalid (would require negative shift)
+        fd = FieldDescriptor(
+            field_id="Test.Field",
+            length_bits=16,
+            mo=MO.MSB,
+            cda=CDA.LSB,
+            target_value=0x5000,
+            mo_arg=20,
+        )
+        with pytest.raises(SchcError, match="mo_arg.*exceeds.*length_bits"):
+            _check_msb(fd, 0x5678)

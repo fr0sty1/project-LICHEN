@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-0p44",
+  "title": "Distinguish Rust frame buffer exhaustion",
+  "description": "LichenFrame::write_to currently returns FrameTooLarge both for a protocol body over 254 bytes and for a caller-provided output buffer that is too small. Add a distinct non-breaking error path or planned API revision so callers can determine whether retrying with a larger buffer can succeed.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-18T23:39:22.838821Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-18T23:39:22.838821Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0p44",
+      "depends_on_id": "project-LICHEN-2auf.35.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-18T23:39:22.99614Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

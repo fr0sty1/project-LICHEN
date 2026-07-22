@@ -1,0 +1,24 @@
+{
+  "id": "lora_ipv6_mesh-yot8",
+  "title": "Renode Boot+TX: puck firmware produces 0 LoRa transmissions into lichen-sim (SX1262 model/bridge)",
+  "description": "renode.yml 'Renode nRF52840 Boot + TX' now builds and boots (test_mesh_boots PASSES) after the 3iwp board/build fix, but test_mesh_tx FAILS: 'No LoRa transmissions reached lichen-sim' (metrics.transmissions==0 after 10s).\n\nDIAGNOSIS: not a firmware-cadence issue. puck main.c:544 sets last_tx_ms=-BEACON_INTERVAL_MS so the first send_beacon()/lora_send() fires on the first main-loop iteration (~sub-second after boot), well inside the test's 10s window. So the firmware IS attempting to beacon; the TX is not propagating through the Renode SX1262 peripheral model / bridge into lichen-sim's medium. Alternatively the SX1262 driver may not reach 'ready' in Renode and the puck enters an error k_sleep loop (still shows as 'booted'/running, so test_mesh_boots passes).\n\nThe test docstring references beads project-LICHEN-r7h4.6 (SX1262.cs RX one-shot at SetRx) and r7h4.7 (bridge/time-model interaction unresolved) as the tracking issues, but neither exists in the current tracker.\n\nNEEDS: local Renode 1.16.1 + the mesh harness (lichen/boards/renode/nrf52840_lichen/test_mesh.py) to reproduce, then trace lora_send -\u003e SX1262.cs -\u003e bridge -\u003e lichen-sim medium. Determine whether TX ever propagates; if the SX1262 Renode model genuinely cannot emit TX into the medium, mark test_mesh_tx xfail with this bead ref (honest, not a test-weakening) rather than forcing green.\n\nWas masked until now: renode.yml boot+TX build always failed first (phantom nrf52840_lichen board + missing west update), so test_mesh_tx never ran in CI before b65e5078.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "mark.frost@gmail.com",
+  "created_at": "2026-07-18T23:54:28Z",
+  "created_by": "Mark Frost",
+  "updated_at": "2026-07-19T10:20:14Z",
+  "closed_at": "2026-07-19T10:20:14Z",
+  "close_reason": "FIXED and verified locally on Renode 1.16.1: pytest test_mesh.py --board=t_echo --nodes=2 -\u003e 2 passed reliably. Root cause was a 4-part chain: (1) firmware never booted (MCUboot slot-0 app, _vector_table at 0x32200 not 0x0) -\u003e seed VTOR/SP/PC via $vt monitor var (58532e3d/684cd1fc); (2) spun forever in nrf_usbd_common_enable (no USB host in Renode) -\u003e disable native USB+mcumgr for Renode builds (e95fc0b9); (3) test waited 10s but puck holds iface down for a 10s USB-settle -\u003e wait 20s (e95fc0b9); (4) SX1262.cs WaitForRxResponse blocked the SPI bus inside Transmit() while in RX, so a node could never leave RX to transmit (both nodes deadlocked) -\u003e made RX async via a background reader thread dispatching TX_DONE/RX_PACKET/RX_TIMEOUT to IRQ flags (08b9c4a5). The SX1262/r7h4 RX-model attribution in the old test comment was a symptom, not the cause; the real blockers were boot+USB+the blocking RX read.",
+  "dependencies": [
+    {
+      "issue_id": "lora_ipv6_mesh-yot8",
+      "depends_on_id": "lora_ipv6_mesh-3iwp",
+      "type": "blocks",
+      "created_at": "2026-07-18T18:54:48Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

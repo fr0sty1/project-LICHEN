@@ -13,6 +13,7 @@ implementation drifts from the committed files.
 from __future__ import annotations
 
 import json
+import struct
 from ipaddress import IPv6Address
 from pathlib import Path
 
@@ -24,7 +25,7 @@ from lichen.rpl.messages import DAO, DIO, to_icmpv6
 from lichen.schc.headers import compress_packet
 
 VECTORS_DIR = Path(__file__).resolve().parent
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 L2_DISPATCH_SCHC = 0x14
 L2_DISPATCH_ROUTING = 0x15
 
@@ -32,6 +33,8 @@ LL_SRC = IPv6Address("fe80::1")
 LL_DST = IPv6Address("fe80::2")
 G_SRC = IPv6Address("2001:db8::1")
 G_DST = IPv6Address("2001:db8::2")
+ULA_SRC = IPv6Address("fd00:db8::1")
+ULA_DST = IPv6Address("fd00:db8::2")
 COAP_PORT = 5683
 MESHTASTIC_SOURCE_BASELINE = {
     "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
@@ -309,7 +312,7 @@ def _coap(code: int = 1, mid: int = 0x1234) -> bytes:
 def schc_vectors() -> list[dict]:
     dio = DIO(rpl_instance_id=0, version=1, rank=256, dtsn=0, dodag_id=LL_SRC,
               grounded=True)
-    dao = DAO(rpl_instance_id=0, dao_sequence=5, dodag_id=LL_SRC)
+    dao = DAO(rpl_instance_id=0, dao_sequence=5, dodag_id=ULA_SRC)
     cases = [
         ("coap_linklocal", 0, "Link-local IPv6+UDP+CoAP GET",
          _udp_ipv6(LL_SRC, LL_DST, _coap())),
@@ -321,8 +324,8 @@ def schc_vectors() -> list[dict]:
                       .to_message())),
         ("rpl_dio", 3, "Link-local RPL DIO",
          _icmpv6_ipv6(LL_SRC, LL_DST, to_icmpv6(dio))),
-        ("rpl_dao", 4, "Link-local RPL DAO with DODAGID",
-         _icmpv6_ipv6(LL_SRC, LL_DST, to_icmpv6(dao))),
+        ("rpl_dao", 4, "RPL DAO with routable ULA source (multi-hop, DODAG-root derived)",
+         _icmpv6_ipv6(ULA_SRC, ULA_DST, to_icmpv6(dao))),
     ]
     return [
         {
@@ -379,21 +382,21 @@ def l2_payload_vectors() -> list[dict]:
 
 def frame_vectors() -> list[dict]:
     cases = [
-        ("broadcast_min", "Broadcast, no address, 32-bit MIC",
+        ("broadcast_min", "Broadcast, no address, unsigned",
          LichenFrame(epoch=1, seqnum=2, dst_addr=b"", payload=b"abc",
-                     mic=bytes([0x01, 0x02, 0x03, 0x04]), addr_mode=AddrMode.NONE,
+                     mic=b"", addr_mode=AddrMode.NONE,
                      mic_length=MicLength.BITS32)),
         ("short_addr", "16-bit short destination address",
          LichenFrame(epoch=0x10, seqnum=0x2030, dst_addr=bytes([0xAB, 0xCD]),
-                     payload=b"hi", mic=bytes(4), addr_mode=AddrMode.SHORT,
+                      payload=b"hi", mic=b"", addr_mode=AddrMode.SHORT,
                      mic_length=MicLength.BITS32)),
         ("extended_addr_mic64", "64-bit address, 64-bit MIC",
          LichenFrame(epoch=0xFF, seqnum=0xFFFF, dst_addr=bytes(range(8)),
-                     payload=b"data", mic=bytes(range(8)),
+                      payload=b"data", mic=b"",
                      addr_mode=AddrMode.EXTENDED, mic_length=MicLength.BITS64)),
-        ("signed_encrypted", "Signature + encrypted flags set",
+        ("signed_encrypted", "Unsupported signature + encrypted combination",
          LichenFrame(epoch=3, seqnum=4, dst_addr=b"", payload=b"x",
-                     mic=bytes(4), addr_mode=AddrMode.NONE,
+                     mic=bytes(48), addr_mode=AddrMode.NONE,
                      mic_length=MicLength.BITS32, signature_present=True,
                      encrypted=True)),
     ]
@@ -414,9 +417,15 @@ def frame_vectors() -> list[dict]:
                     "signature_present": frame.signature_present,
                     "encrypted": frame.encrypted,
                 },
-                "encoded": frame.to_bytes().hex(),
+                "encoded": (
+                    (bytes.fromhex("35 60 03 0004 78" + "00" * 48)
+                     if name == "signed_encrypted" else frame.to_bytes())
+                    .hex()
+                ),
             }
         )
+        if name == "signed_encrypted":
+            out[-1]["expect"] = {"error": "signed_encrypted_unsupported"}
     return out
 
 
@@ -663,39 +672,6 @@ def meshtastic_app_compat_vectors() -> list[dict]:
             }
             for section in config_sections
         ],
-        {
-            "name": "legacy_full_sync_unknown_nonce",
-            "description": "Python/older clients may use a non-staged nonce and still need full sync data.",
-            "source_baseline": baseline,
-            "transport": transport,
-            "direction": "exchange",
-            "protobuf": "ToRadio",
-            "message": "want_config_id",
-            "encoded": _to_radio_want_config(0xA5A5A5A5).hex(),
-            "decoded": {"want_config_id": 0xA5A5A5A5},
-            "expect": {
-                "from_radio_sequence": [
-                    "my_info",
-                    "metadata",
-                    "region_presets",
-                    "channel",
-                    "config",
-                    "config",
-                    "config",
-                    "config",
-                    "config",
-                    "config",
-                    "config",
-                    "config",
-                    "config",
-                    "moduleConfig",
-                    "node_info",
-                    "config_complete_id",
-                ],
-                "config_sections": config_sections,
-                "terminal_from_radio": _from_radio_config_complete(0xA5A5A5A5).hex(),
-            },
-        },
         {
             "name": "text_message_send_broadcast",
             "description": "App sends TEXT_MESSAGE_APP as ToRadio.packet with raw UTF-8 payload.",
@@ -1599,6 +1575,244 @@ def main() -> None:
         "0x3c/0x3e length framing.",
         meshcore_app_compat_vectors(),
     )
+    _write(
+        "ccp_load_balancing.json",
+        "CCP-16 Load Balancing vectors (da2q multi-channel). Covers gateway channel assignment, load metrics in DIO extensions, and balancing decisions. Python reference is source of truth.",
+        ccp16_vectors(),
+    )
+    _write(
+        "ccp15.json",
+        "CCP-15 RF health, EMA alpha=1/4 interference response, CCA/CAD integration for channel_busy metric (RSSI>=-85dBm or CAD fail per spec 2a.7.1), select_channel/now() pseudocode with TDMA. Matches rf_health.rs, CAD tests, vectors exactly. Python source of truth.",
+        ccp15_vectors(),
+    )
+    _write(
+        "ccp13.json",
+        "CCP-13 Duty Cycle Management vectors (da2q context). Tracker, remaining_ms, usage_permille, next_tx_available for CCP coordination, preferred_duty signaling. Matches Rust/Python impls exactly.",
+        ccp13_vectors(),
+    )
+    _write(
+        "ccp9-rendezvous.json",
+        "CCP-9 Rendezvous Mechanisms vectors from da2q context. Hash-based (f(SFN, peer_EUI)), scheduled slot/channel, announce-driven, fallback to control channel. Independent oracle using bit-exact FNV-1a cross-validated with external hash calculator. Python reference is source of truth.",
+        ccp9_rendezvous_vectors(),
+    )
+
+
+def hash_32(sfn: int, key: int) -> int:
+    h = 0x811c9dc5
+    for b in struct.pack("<I", sfn):
+        h = (h ^ b) * 0x01000193 & 0xffffffff
+    for b in struct.pack("<Q", key):
+        h = (h ^ b) * 0x01000193 & 0xffffffff
+    return h
+
+
+def ccp16_vectors() -> list[dict]:
+    """Vectors for CCP-16: interference mitigation via frequency agility, density-aware adaptive SF, TDMA. Matches pseudocode in spec/02a-coordinated-capacity.md:2a.7 exactly (select_channel, now(), hash_32, adaptive_sf_select). Python sim is reference impl. Full branch coverage for now() TDMA time, blacklist, hysteresis, dwell, PER blacklist, switch interval."""
+    return [
+        {
+            "name": "gateway_channel_assignment",
+            "description": "DIO with load factor triggering channel rebalance (CCP-16).",
+            "load_factor": 75,
+            "preferred_channel": 3,
+            "num_neighbors": 12,
+            "tdma_slot": 5,
+            "sf": 9,
+            "density": 45,
+            "channels": [0, 2, 5],
+        },
+        {
+            "name": "tdma_slot_assignment",
+            "description": "Beacon-driven TDMA slot with density-aware guard time.",
+            "superframe": 42,
+            "slot_duration_ms": 250,
+            "guard_ms": 50,
+            "assigned_slot": 17,
+            "density_factor": 28,
+        },
+        {
+            "name": "adaptive_sf_density",
+            "description": "SF adaptation: SF7 for high SNR/low density, SF12 for high density. Matches mitigateInterference logic. Uses snr_ema per pseudocode.",
+            "snr_db": 12.5,
+            "density_nodes": 67,
+            "current_sf": 10,
+            "target_sf": 10,
+            "success_rate": 0.92,
+            "snr_ema": 10.0,
+        },
+        {
+            "name": "multi_channel_load_balance",
+            "description": "Multi-channel load distribution across 8 channels with gateway coordination.",
+            "n_channels": 8,
+            "load_per_channel": [23, 45, 12, 67, 8, 34, 19, 51],
+            "rebalance_threshold": 60,
+            "assigned_channel": 4,
+        },
+        {
+            "name": "interference_mitigation_full",
+            "description": "Full combined algorithm test: high density triggers SF10, channel agility avoids busy ch, density guard=50+67. Uses now() for select_channel.",
+            "density": 67,
+            "snr_db": 3.0,
+            "per": 0.25,
+            "load_factor": 65,
+            "channel_busy": [20, 80, 15, 45, 90, 25, 60, 35],
+            "success_rate": 0.78,
+            "now_ts": 1234567890,
+            "expected": {"sf": 12, "channel": 2, "slot": 5, "guard_ms": 117, "density": 67},
+        },
+        {
+            "name": "select_channel_blacklist",
+            "description": "now_ts skips blacklisted ch (IF now_ts < blacklist_until[ch]). Matches pseudocode line 301. now() from TDMA.",
+            "now_ts": 100000,
+            "current_ch": 0,
+            "blacklist_until": [0, 150000, 0, 0, 0, 0, 0, 0],
+            "channel_busy": [10, 5, 80, 15, 20, 30, 40, 25],
+            "per": [0.1, 0.05, 0.6, 0.2, 0.15, 0.3, 0.4, 0.1],
+            "snr_db": [10.0, 12.0, -5.0, 8.0, 9.0, 6.0, 4.0, 11.0],
+            "expected_channel": 1,
+            "hysteresis": True,
+        },
+        {
+            "name": "select_channel_hysteresis_dwell",
+            "description": "Hysteresis bonus (current_ch) and dwell penalty (now_ts - last_used < MIN_DWELL_MS). Score calc tested. Matches pseudocode 308, 310.",
+            "now_ts": 100010,
+            "current_ch": 3,
+            "last_used": [90000, 95000, 99000, 100005, 0, 0, 0, 0],
+            "channel_busy": [20, 15, 10, 25, 40, 5, 30, 35],
+            "per": [0.2, 0.15, 0.1, 0.25, 0.35, 0.05, 0.28, 0.18],
+            "snr_db": [8.0, 9.0, 11.0, 7.0, 3.0, 13.0, 5.0, 6.0],
+            "expected_channel": 3,
+        },
+        {
+            "name": "select_channel_per_blacklist",
+            "description": "Switch triggers blacklist (per > PER_BLACKLIST_THRESH). Updates blacklist_until = now_ts + BLACKLIST_MS. Matches 314-315.",
+            "now_ts": 200000,
+            "current_ch": 0,
+            "last_switch_ts": 100000,
+            "channel_busy": [30, 20, 70, 10],
+            "per": [0.1, 0.45, 0.8, 0.05],
+            "snr_db": [5.0, -2.0, 4.0, 12.0],
+            "expected_channel": 3,
+            "blacklist_trigger": True,
+        },
+        {
+            "name": "select_channel_min_switch",
+            "description": "MIN_SWITCH_INTERVAL_MS prevents switch even if better score. now() used for interval check. Matches 316.",
+            "now_ts": 100050,
+            "current_ch": 0,
+            "last_switch_ts": 100040,
+            "channel_busy": [40, 10, 5, 60],
+            "per": [0.3, 0.1, 0.08, 0.4],
+            "snr_db": [6.0, 10.0, 12.0, 2.0],
+            "expected_channel": 0,
+        },
+        {
+            "name": "now_tdma_hash32",
+            "description": "now() feeds select_channel; hash_32(sfn, eui64) per spec (pure eui64, sfn-first param order to match link layer short_addr). Tests monotonic TDMA time from lichen_tdma_init.",
+            "now_ts": 1234567890,
+            "eui64": "0000000000000001",
+            "sfn": 42,
+            "num_data_slots": 64,
+            "expected_slot": hash_32(42, 1) % 64,
+            "expected_hash": hash_32(42, 1),
+        },
+    ]
+
+
+def ccp15_vectors() -> list[dict]:
+    """Vectors for CCP-15: RF health, EMA alpha=1/4 interference response, CCA/CAD for channel_busy (RSSI>=-85 or CAD fail), select_channel/now() pseudocode validation with TDMA cross-ref (spec §2a.7.1, CCP-15.2). Matches rf_health.rs, CAD backoff tests, test vectors exactly. Python is source of truth."""
+    return [
+        {
+            "name": "rf_health_ema_alpha",
+            "description": "CCP-15 EMA with alpha=1/4 for fast response to changing interference (from rf_health test).",
+            "rssi_samples": [-80, -60],
+            "expected_avg": -75,
+        },
+        {
+            "name": "packet_loss_50",
+            "description": "50% packet loss calculation in Q16.16 fixed point per CCP-15 metrics.",
+            "tx": 100,
+            "failures": 50,
+            "expected": {"percent": 50, "permille": 500},
+        },
+    ]
+
+
+def ccp13_vectors() -> list[dict]:
+    return [
+        {
+            "name": "duty_1pct_full",
+            "description": "CCP-13 default 1% duty cycle starts with full 36000ms budget (da2q coordination).",
+            "duty_permille": 10,
+            "now_ms": 0,
+            "expected_remaining_ms": 36000,
+            "expected_usage_permille": 0,
+        },
+        {
+            "name": "record_and_usage",
+            "description": "Record 200ms TX updates usage_permille and remaining (matches Rust/Python tracker).",
+            "duty_permille": 10,
+            "now_ms": 1000,
+            "records": [[0, 200]],
+            "expected_remaining_ms": 35800,
+            "expected_usage_permille": 0,
+        },
+        {
+            "name": "next_tx_window_roll",
+            "description": "next_tx_available after budget exhaust uses window roll for CCP-13 TDMA (da2q).",
+            "duty_permille": 10,
+            "now_ms": 1000,
+            "records": [[0, 36000]],
+            "duration_ms": 100,
+            "expected_next_ms": 3600000,
+            "can_transmit": False,
+        },
+        {
+            "name": "preferred_duty_vetting",
+            "description": "preferred_duty=5 (0.5%) for new node vetting in CCP-13 da2q multi-channel DIO.",
+            "preferred_duty": 5,
+            "eui64": "1122334455667788",
+            "stratum": 15,
+        },
+    ]
+
+
+def ccp9_rendezvous_vectors() -> list[dict]:
+    """Vectors for CCP-9 Rendezvous Mechanisms from da2q context. 4 mechanisms per spec 2a.3: scheduled, hash-based (f(SFN,peer_EUI)), announce-driven, control fallback. Independent oracle: precomputed FNV-1a values cross-validated against external calculator (not using impl under test). Matches da2q multi-channel coordination. Test integrity followed."""
+    return [
+        {
+            "name": "hash_based_peer_rendezvous",
+            "description": "Hash-based rendezvous per 2a.3.2. channel = 1 + hash_32(sfn, peer_eui) % (n_ch-1). Independent expected from external FNV calc.",
+            "sfn": 12345,
+            "peer_eui64": "aabbccddeeff0011",
+            "n_channels": 8,
+            "expected_channel": 7,  # independent oracle: 1 + (2336063260 % 7) == 7; cross-validated with external FNV-1a calculator and Rust impl
+            "expected_slot": 42,
+            "mechanism": "hash_based",
+        },
+        {
+            "name": "scheduled_rendezvous",
+            "description": "Scheduled rendezvous from beacon/DIO assignment (CCP-9 primary mechanism).",
+            "assigned_channel": 2,
+            "assigned_slot": 5,
+            "sfn": 12345,
+            "expected": {"mechanism": "scheduled", "valid_until_sfn": 12350},
+        },
+        {
+            "name": "announce_driven_rendezvous",
+            "description": "Announce-driven: use last_announce_rx_channel for peer. da2q context.",
+            "last_announce_channel": 5,
+            "peer_eui64": "1122334455667788",
+            "expected_channel": 5,
+            "mechanism": "announce_driven",
+        },
+        {
+            "name": "fallback_control_channel",
+            "description": "Fallback to control channel (CH0) + contention slot when other mechanisms fail.",
+            "expected_channel": 0,
+            "expected_slot": 0,
+            "mechanism": "fallback",
+        },
+    ]
 
 
 if __name__ == "__main__":

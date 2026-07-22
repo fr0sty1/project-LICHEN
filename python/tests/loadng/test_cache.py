@@ -83,3 +83,57 @@ def test_remove() -> None:
 def test_invalid_capacity() -> None:
     with pytest.raises(ValueError):
         RouteCache(max_entries=0)
+
+
+def test_add_rejects_stale_seq_num() -> None:
+    """Stale route update (older seq_num) should be rejected."""
+    cache = RouteCache()
+    cache.add(_entry(seq_num=100, metric=200))
+    cache.add(_entry(seq_num=50, metric=50))  # stale seq, even better metric
+    assert cache.lookup(DEST).seq_num == 100
+    assert cache.lookup(DEST).metric == 200
+
+
+def test_add_accepts_fresher_seq_num() -> None:
+    """Fresher route update (newer seq_num) should be accepted."""
+    cache = RouteCache()
+    cache.add(_entry(seq_num=50, metric=50))
+    cache.add(_entry(seq_num=100, metric=200))  # fresher seq, worse metric still accepted
+    assert cache.lookup(DEST).seq_num == 100
+    assert cache.lookup(DEST).metric == 200
+
+
+def test_add_same_seq_better_metric() -> None:
+    """Same seq_num: accept only if metric is strictly better."""
+    cache = RouteCache()
+    cache.add(_entry(seq_num=100, metric=200))
+    cache.add(_entry(seq_num=100, metric=150))  # same seq, better metric
+    assert cache.lookup(DEST).metric == 150
+
+
+def test_add_same_seq_worse_metric() -> None:
+    """Same seq_num: reject if metric is worse or equal."""
+    cache = RouteCache()
+    cache.add(_entry(seq_num=100, metric=100))
+    cache.add(_entry(seq_num=100, metric=200))  # same seq, worse metric
+    assert cache.lookup(DEST).metric == 100
+    cache.add(_entry(seq_num=100, metric=100))  # same seq, same metric
+    assert cache.lookup(DEST).metric == 100
+
+
+def test_seq_num_wraparound() -> None:
+    """Sequence number freshness handles 16-bit wraparound correctly.
+
+    Uses RFC 1982 serial number arithmetic: if diff = (new - old) mod 2^16
+    is in [1, 2^15), then new is fresher. Otherwise, old is fresher or equal.
+    """
+    cache = RouteCache()
+    # seq_num 65530 exists; seq_num 5 (wrapped) is 11 positions ahead → fresher
+    cache.add(_entry(seq_num=65530, metric=100))
+    cache.add(_entry(seq_num=5, metric=200))  # wrapped around, fresher
+    assert cache.lookup(DEST).seq_num == 5
+    # Reverse: seq_num 5 exists; seq_num 65530 is 65525 positions "ahead" (>32768) → stale
+    cache2 = RouteCache()
+    cache2.add(_entry(seq_num=5, metric=100))
+    cache2.add(_entry(seq_num=65530, metric=200))  # pre-wrap, stale relative to post-wrap 5
+    assert cache2.lookup(DEST).seq_num == 5  # original kept

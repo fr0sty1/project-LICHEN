@@ -1,18 +1,11 @@
-/*
- * SPDX-License-Identifier: GPL-3.0-or-later
- * SPDX-FileCopyrightText: The contributors to the LICHEN project
- *
- * Lilygo T-Deck — ESP32-S3R8 pin assignments.
- * Pin data sourced from Lilygo schematics and cross-checked against
- * the Meshtastic firmware (variants/t-deck/variant.h).
- */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 
 #include <zephyr/dt-bindings/pinctrl/esp-pinctrl-common.h>
 #include <dt-bindings/pinctrl/esp32s3-pinctrl.h>
 #include <zephyr/dt-bindings/pinctrl/esp32s3-gpio-sigmap.h>
 
 &pinctrl {
-	/* UART0: debug console — TX=GPIO43, RX=GPIO44 */
 	uart0_default: uart0_default {
 		group1 {
 			pinmux = <UART0_TX_GPIO43>;
@@ -24,12 +17,6 @@
 		};
 	};
 
-	/*
-	 * SPI3: shared by SX1262 LoRa, ST7789 display, and SD card.
-	 *   SCK=GPIO40  MOSI=GPIO41  MISO=GPIO38
-	 *   CS0 LoRa=GPIO9  CS1 TFT=GPIO12  CS2 SD=GPIO39
-	 *   RESET=GPIO17  BUSY=GPIO13  DIO1=GPIO45
-	 */
 	spim3_default: spim3_default {
 		group1 {
 			pinmux = <SPIM3_MISO_GPIO38>,
@@ -38,6 +25,14 @@
 		group2 {
 			pinmux = <SPIM3_MOSI_GPIO41>;
 			output-low;
+		};
+	};
+
+	i2c0_default: i2c0_default {
+		group1 {
+			pinmux = <I2C0_SDA_GPIO18>,
+				 <I2C0_SCL_GPIO8>;
+			bias-pull-up;
 		};
 	};
 };

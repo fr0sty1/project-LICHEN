@@ -21,10 +21,12 @@ def _node_info() -> StaticNodeInfo:
     )
 
 
-async def _client_server(node_info: StaticNodeInfo):
+async def _client_server(node_info: StaticNodeInfo, *, config_allow_writes: bool = False):
     net = InMemoryNetwork()
     server = await create_lichen_context(
-        net.channel("server"), "server", site=build_site(node_info)
+        net.channel("server"),
+        "server",
+        site=build_site(node_info, config_allow_writes=config_allow_writes),
     )
     client = await create_lichen_context(net.channel("client"), "client")
     return client, server
@@ -77,9 +79,29 @@ async def test_well_known_core_lists_resources() -> None:
 
 
 @pytest.mark.asyncio
+async def test_config_put_unauthorized_by_default() -> None:
+    """PUT /config returns 4.01 Unauthorized when writes are disabled (default)."""
+    info = _node_info()
+    client, server = await _client_server(info)  # config_allow_writes=False by default
+    try:
+        put = Message(
+            code=PUT,
+            uri="coap://server/config",
+            payload=cbor2.dumps({"tx_power_dbm": 20}),
+        )
+        resp = await client.request(put).response
+        assert resp.code == aiocoap.UNAUTHORIZED
+        # Config should remain unchanged
+        assert info.config["tx_power_dbm"] == 14
+    finally:
+        await client.shutdown()
+        await server.shutdown()
+
+
+@pytest.mark.asyncio
 async def test_config_get_and_put() -> None:
     info = _node_info()
-    client, server = await _client_server(info)
+    client, server = await _client_server(info, config_allow_writes=True)
     try:
         resp = await client.request(Message(code=GET, uri="coap://server/config")).response
         assert cbor2.loads(resp.payload)["region"] == "US915"
@@ -105,7 +127,7 @@ async def test_config_get_and_put() -> None:
 @pytest.mark.asyncio
 async def test_config_put_empty_payload_returns_bad_request() -> None:
     info = _node_info()
-    client, server = await _client_server(info)
+    client, server = await _client_server(info, config_allow_writes=True)
     try:
         put = Message(code=PUT, uri="coap://server/config", payload=b"")
         resp = await client.request(put).response
@@ -120,7 +142,7 @@ async def test_config_put_empty_payload_returns_bad_request() -> None:
 @pytest.mark.asyncio
 async def test_config_put_invalid_cbor_returns_bad_request() -> None:
     info = _node_info()
-    client, server = await _client_server(info)
+    client, server = await _client_server(info, config_allow_writes=True)
     try:
         put = Message(code=PUT, uri="coap://server/config", payload=b"\xff\xfe\xfd")
         resp = await client.request(put).response
@@ -135,7 +157,7 @@ async def test_config_put_invalid_cbor_returns_bad_request() -> None:
 @pytest.mark.asyncio
 async def test_config_put_non_dict_cbor_returns_bad_request() -> None:
     info = _node_info()
-    client, server = await _client_server(info)
+    client, server = await _client_server(info, config_allow_writes=True)
     try:
         # Send a CBOR list instead of a dict
         put = Message(

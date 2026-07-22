@@ -2,7 +2,10 @@
   "id": "project-LICHEN-w1a0",
   "title": "loadng.c: Incorrect LRU comparison in seen table uses uninitialized reference",
   "description": "File: lichen/subsys/lichen/routing/loadng.c\nLines: 415-425\n\nIn lichen_loadng_seen_check_and_mark(), the LRU slot selection has a bug:\n\n    size_t slot = 0;\n    uint32_t oldest_time = UINT32_MAX;\n    for (size_t i = 0; i \u003c ARRAY_SIZE(seen_table); i++) {\n        if (!seen_table[i].active) {\n            slot = i;\n            break;\n        }\n        if ((now_ms - seen_table[i].seen_at_ms) \u003e (now_ms - oldest_time)) {\n            oldest_time = seen_table[i].seen_at_ms;\n            slot = i;\n        }\n    }\n\nThe comparison '(now_ms - oldest_time)' where oldest_time=UINT32_MAX causes unsigned wraparound. The comparison doesn't find the oldest entry correctly.\n\nThe correct approach should directly compare seen_at_ms values, or track elapsed time correctly. With the current logic, slot 0 will always be selected if no free slots exist, defeating the LRU eviction intent.",
+<<<<<<< HEAD
   "notes": "Commit: db0120e99\nLRU now uses int32_t oldest_age=-1 with signed age comparison (largest age = oldest). Prefers free slots. SECURITY comment present. Matches prune_seen_locked(). Bug fixed; LRU eviction works across timer wrap.",
+=======
+>>>>>>> origin/integration/worker3-20260722
   "status": "closed",
   "priority": 2,
   "issue_type": "bug",
@@ -10,8 +13,14 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:49:29.029376Z",
   "created_by": "Mark Atwood",
+<<<<<<< HEAD
   "updated_at": "2026-07-22T20:14:36.226218061Z",
   "started_at": "2026-07-22T20:14:27.261074971Z",
   "closed_at": "2026-07-22T20:14:36.226218061Z",
   "close_reason": "LRU fixed with signed age comparison + free-slot priority; commit db0120e99"
+=======
+  "updated_at": "2026-07-22T02:14:17.581188728Z",
+  "closed_at": "2026-07-22T02:14:17.581188728Z",
+  "close_reason": "Fixed LRU comparison in loadng route cache with wrap-safe signed diff and explicit init"
+>>>>>>> origin/integration/worker3-20260722
 }

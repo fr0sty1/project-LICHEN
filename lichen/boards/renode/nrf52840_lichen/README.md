@@ -5,10 +5,8 @@ Renode platform definition for nRF52840-based LICHEN devices with external SX126
 ## Supported Boards
 
 - LilyGO T-Echo (`../t_echo/`) — validated (boot, SPI, L2 init, LoRa TX).
-- RAK4631 (`../rak4631/`) — **not yet functional in Renode.** The shared
-  platform wiring is T-Echo-specific (gpio0, easyDMA SPIM); the real RAK4631
-  wires the SX1262 on gpio1 and uses the legacy `nordic,nrf-spi` controller.
-  Tracked by bead `project-LICHEN-r7h4.9`.
+- RAK4631 (`../rak4631/`) — validated with its standalone GPIO1/legacy-SPI
+  platform (`project-LICHEN-r7h4.9`).
 
 ## Installing Renode
 
@@ -42,7 +40,7 @@ west build -b t_echo/nrf52840 lichen/apps/puck -d build/t_echo_renode -p always 
 ```
 
 `test_mesh.py` and `run_multi_node.py` look for `build/<board>_renode/zephyr/zephyr.elf`
-first, then `build/<board>/...`, then `build/zephyr/...`.
+first, then `build/<board>/...`. They do not substitute another board's image.
 
 ## Single Node Usage
 
@@ -61,6 +59,16 @@ python3 lichen/boards/renode/nrf52840_lichen/run_multi_node.py
 python3 lichen/boards/renode/nrf52840_lichen/run_multi_node.py 3
 
 # Mixed topology: T-Echo + RAK4631
+# Build both board-specific images first; run_multi_node.py will not substitute
+# one board's devicetree image for another.
+west build -b t_echo/nrf52840 lichen/samples/lora_ping -d build/t_echo_renode -- \
+  -DZEPHYR_EXTRA_MODULES="$PWD/lichen" \
+  -DEXTRA_DTC_OVERLAY_FILE="$PWD/lichen/boards/renode/nrf52840_lichen/support/renode_console.overlay" \
+  -DEXTRA_CONF_FILE="$PWD/lichen/boards/renode/nrf52840_lichen/support/renode_console.conf"
+west build -b rak4631/nrf52840 lichen/samples/lora_ping -d build/rak4631_renode -- \
+  -DZEPHYR_EXTRA_MODULES="$PWD/lichen" \
+  -DEXTRA_DTC_OVERLAY_FILE="$PWD/lichen/boards/renode/nrf52840_lichen/support/renode_console.overlay" \
+  -DEXTRA_CONF_FILE="$PWD/lichen/boards/renode/nrf52840_lichen/support/renode_console.conf"
 python3 lichen/boards/renode/nrf52840_lichen/run_multi_node.py t_echo rak4631
 ```
 
@@ -77,14 +85,13 @@ The platform extends Renode's stock `nrf52840.repl`:
 
 - **SPI1** at 0x40004000 — hosts the SX1262. Renode's stock platform models this
   address as `twi1` (I2C); the LICHEN platform replaces it with an SPI
-  controller because the T-Echo/RAK4631 firmware drives the radio on SPI1.
-- **easyDMA: true** on the SPI controller so the SPIM (EasyDMA) register set is
-  modeled — Zephyr's `nordic,nrf-spim` driver requires it.
+  controller because the T-Echo firmware drives the radio on SPI1.
+- **easyDMA: false** on the SPI controller, matching the Renode-only
+  `nordic,nrf-spi` override used because Renode 1.16.1 lacks SPIM STOP support.
 - **FICR DEVICEID** is tagged with a non-zero value so `hwinfo` returns a stable
   hardware ID (LICHEN L2 refuses to start otherwise).
 - **SX1262** — SPI peripheral that bridges TX/RX to lichen-sim over TCP. It
-  resets its opcode state machine on CS (cs-gpios) deassert, because Renode's
-  SPIM EasyDMA controller does not call `FinishTransmission` between transfers.
+  resets its opcode state machine on CS (cs-gpios) deassert.
 
 ## Validation Status (Renode 1.16.1, linux-arm64)
 

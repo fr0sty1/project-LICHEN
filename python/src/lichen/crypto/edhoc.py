@@ -17,7 +17,7 @@ import os
 from dataclasses import dataclass, field
 from enum import IntEnum
 from hashlib import sha256
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import cbor2
 from cryptography.hazmat.primitives import hashes
@@ -186,9 +186,9 @@ def _decode_connection_id(data: bytes | int) -> bytes:
     return data
 
 
-def _decode_cbor_sequence(data: bytes) -> list:
+def _decode_cbor_sequence(data: bytes) -> list[Any]:
     """Decode a CBOR sequence (concatenated CBOR items) into a list."""
-    items = []
+    items: list[Any] = []
     fp = io.BytesIO(data)
     while fp.tell() < len(data):
         try:
@@ -235,7 +235,13 @@ class EdhocInitiator:
     def create(
         cls, identity: Identity, c_i: bytes | None = None, method: Method = Method.SIGN_SIGN
     ) -> EdhocInitiator:
-        """Create an EDHOC initiator with fresh ephemeral keys."""
+        """Create an EDHOC initiator with fresh ephemeral keys.
+
+        Note: For SIGN_SIGN mode, we generate fresh ephemeral X25519 keys
+        per-session rather than using Identity.x25519_*. The identity's
+        Ed25519 keys are used only for signatures. Static-DH modes would
+        use Identity.x25519_private for the DH exchange.
+        """
         if c_i is None:
             c_i = os.urandom(1)
         eph_sk, eph_pk = _x25519_keypair()
@@ -324,7 +330,9 @@ class EdhocInitiator:
         keystream_2 = _edhoc_kdf(
             self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(ciphertext_2)
         )
-        plaintext_2 = bytes(a ^ b for a, b in zip(ciphertext_2, keystream_2, strict=True))
+        if len(ciphertext_2) != len(keystream_2):
+            raise ValueError("keystream length mismatch")
+        plaintext_2 = bytes(a ^ b for a, b in zip(ciphertext_2, keystream_2))
 
         # PLAINTEXT_2 = (ID_CRED_R, Signature_or_MAC_2, ?EAD_2)
         # For SIGN_SIGN, ID_CRED_R is bstr (pubkey), followed by Signature_2
@@ -403,8 +411,9 @@ class EdhocInitiator:
         k_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "K_3", b"", CCM_KEY_LEN)
         iv_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "IV_3", b"", CCM_NONCE_LEN)
 
-        # A_3 = Enc(ID_CRED_I) for AAD
-        a_3 = cbor2.dumps(["Encrypt0", b"", self._th_3])
+        # A_3 per RFC 9528 4.4.2: ["Encrypt0", h'', TH_3 || CRED_I]
+        ext_aad = self._th_3 + cred_i
+        a_3 = cbor2.dumps(["Encrypt0", b"", ext_aad])
 
         ciphertext_3 = _aead_encrypt(k_3, iv_3, a_3, plaintext_3)
 
@@ -490,7 +499,13 @@ class EdhocResponder:
     def create(
         cls, identity: Identity, c_r: bytes | None = None, method: Method = Method.SIGN_SIGN
     ) -> EdhocResponder:
-        """Create an EDHOC responder with fresh ephemeral keys."""
+        """Create an EDHOC responder with fresh ephemeral keys.
+
+        Note: For SIGN_SIGN mode, we generate fresh ephemeral X25519 keys
+        per-session rather than using Identity.x25519_*. The identity's
+        Ed25519 keys are used only for signatures. Static-DH modes would
+        use Identity.x25519_private for the DH exchange.
+        """
         if c_r is None:
             c_r = os.urandom(1)
         eph_sk, eph_pk = _x25519_keypair()
@@ -519,6 +534,16 @@ class EdhocResponder:
         if len(items) < 4:
             raise ValueError(
                 f"Malformed message_1: expected at least 4 CBOR items, got {len(items)}"
+            )
+
+        # Extract and validate METHOD from METHOD_CORR
+        # METHOD_CORR = method * 4 + corr (RFC 9528 Section 3.2)
+        method_corr = items[0]
+        received_method = method_corr // 4
+        if received_method != self.method:
+            raise ValueError(
+                f"Method mismatch: initiator sent method={received_method}, "
+                f"responder expects method={self.method}"
             )
 
         suites_i = items[1]
@@ -571,7 +596,9 @@ class EdhocResponder:
         keystream_2 = _edhoc_kdf(
             self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(plaintext_2)
         )
-        ciphertext_2 = bytes(a ^ b for a, b in zip(plaintext_2, keystream_2, strict=True))
+        if len(plaintext_2) != len(keystream_2):
+            raise ValueError("keystream length mismatch")
+        ciphertext_2 = bytes(a ^ b for a, b in zip(plaintext_2, keystream_2))
 
         # TH_3 = H(TH_2, CIPHERTEXT_2, ID_CRED_R)
         th_3_input = cbor2.dumps(self._th_2) + cbor2.dumps(ciphertext_2) + cbor2.dumps(id_cred_r)
@@ -599,8 +626,9 @@ class EdhocResponder:
         k_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "K_3", b"", CCM_KEY_LEN)
         iv_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "IV_3", b"", CCM_NONCE_LEN)
 
-        # A_3 = Enc(ID_CRED_I) for AAD
-        a_3 = cbor2.dumps(["Encrypt0", b"", self._th_3])
+        # A_3 per RFC 9528 4.4.2: ["Encrypt0", h'', TH_3 || CRED_I]
+        ext_aad = self._th_3 + peer_pubkey
+        a_3 = cbor2.dumps(["Encrypt0", b"", ext_aad])
 
         plaintext_3 = _aead_decrypt(k_3, iv_3, a_3, ciphertext_3)
 

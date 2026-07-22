@@ -1,0 +1,49 @@
+{
+  "id": "project-LICHEN-mvrx",
+  "title": "Add Nucleo Renode radio linkage",
+  "description": "Discovered by project-LICHEN-m5m1.8. Canonical gateway Nucleo WL55JC fails at link because lichen_hal_lora_device_get references missing Renode radio device __device_dts_ord_87. Canonical puck Nucleo additionally lacks CONFIG_LICHEN_COAP and required an ad hoc audit override before reaching the same radio-link failure. Correct the puck board/app configuration and align the Nucleo Renode overlay/device model with the LICHEN radio abstraction so both full apps build canonically and can be runtime-tested.",
+  "acceptance_criteria": "1. Canonical gateway and puck nucleo_wl55jc builds, without command-line config overrides, compile and link without missing CoAP headers or undefined device ordinals. 2. The puck CoAP dependency is enforced in Kconfig or board configuration. 3. Renode runs reach each app late runtime oracle and independent radio/protocol effect. 4. Exact commands, artifact hashes, and logs are retained. 5. Physical Nucleo behavior is not regressed.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T18:16:29.35248Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T22:42:41.367578Z",
+  "closed_at": "2026-07-16T22:42:41.367578Z",
+  "close_reason": "Nucleo puck CoAP configuration, Renode linkage, entropy model, runtime late markers, radio effects, and physical builds are validated through project-LICHEN-5ix1.3 and project-LICHEN-oqv7.3.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-mvrx",
+      "depends_on_id": "project-LICHEN-m5m1.8",
+      "type": "discovered-from",
+      "created_at": "2026-07-16T18:16:29.502192Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-mvrx",
+      "depends_on_id": "project-LICHEN-oqv7",
+      "type": "parent-child",
+      "created_at": "2026-07-16T19:39:49.146859Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-mvrx",
+      "depends_on_id": "project-LICHEN-5ix1.3",
+      "type": "blocks",
+      "created_at": "2026-07-16T19:41:45.958083Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-mvrx",
+      "depends_on_id": "project-LICHEN-oqv7.3",
+      "type": "blocks",
+      "created_at": "2026-07-16T19:41:46.60874Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

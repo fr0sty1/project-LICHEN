@@ -166,14 +166,39 @@ class NeighborsResource(_ReadResource):
 
 
 class ConfigResource(_ReadResource):
-    """``/config`` — node configuration (GET to read, PUT to update)."""
+    """``/config`` — node configuration (GET to read, PUT to update).
+
+    SECURITY: Config writes can reconfigure security features, routing
+    parameters, or redirect traffic. By default, PUT is rejected with
+    4.01 Unauthorized unless ``allow_writes=True``.
+
+    In production, use OSCORE-protected transport (spec section 8.7) and
+    set ``allow_writes=True`` only when the transport layer enforces
+    authentication. For testing without OSCORE, explicitly enable writes.
+    """
 
     rt = "lichen.config"
+
+    def __init__(self, node_info: NodeInfo, *, allow_writes: bool = False) -> None:
+        """Create a config resource.
+
+        Args:
+            node_info: Data source for configuration.
+            allow_writes: If True, allow PUT to modify configuration.
+                SECURITY: Only set True when transport-layer authentication
+                (OSCORE) is enforced. Defaults to False (read-only).
+        """
+        super().__init__(node_info)
+        self._allow_writes = allow_writes
 
     async def render_get(self, request: Message) -> Message:
         return _cbor_response(self.node_info.get_config())
 
     async def render_put(self, request: Message) -> Message:
+        # SECURITY: Reject unauthenticated writes. Config changes can disable
+        # security features, alter routing, or redirect traffic (spec 8).
+        if not self._allow_writes:
+            return Message(code=UNAUTHORIZED)
         if not request.payload:
             return Message(code=BAD_REQUEST)
         try:
@@ -457,6 +482,10 @@ class SosResource(resource.ObservableResource):
         # CBOR body could contain non-string types that would raise TypeError.
         if from_hex is not None and not isinstance(from_hex, str):
             return Message(code=aiocoap.BAD_REQUEST)
+        # SECURITY: Validate t is numeric; non-numeric values would violate
+        # the API contract (t: float) and cause type errors in consumers.
+        if t is not None and not isinstance(t, (int, float)):
+            return Message(code=aiocoap.BAD_REQUEST)
         try:
             eui64 = bytes.fromhex(from_hex) if from_hex else b"\x00" * 8
         except ValueError:
@@ -574,6 +603,11 @@ class MessagesResource(resource.ObservableResource):
         self._sent[msg_id] = copy.deepcopy(body)
         if msg_id not in self._sent_order:
             self._sent_order.append(msg_id)
+        if len(self._sent_order) > _MESSAGES_MAX:
+            oldest = self._sent_order[: len(self._sent_order) - _MESSAGES_MAX]
+            self._sent_order = self._sent_order[-_MESSAGES_MAX:]
+            for old_id in oldest:
+                self._sent.pop(old_id, None)
         if self._sent_detail_registrar is not None:
             self._sent_detail_registrar(msg_id, body)
         msg = Message(code=aiocoap.CREATED)
@@ -1008,6 +1042,7 @@ def build_site(
     sos_resource: SosResource | None = None,
     resource_directory: bool = False,
     edhoc_resource: EdhocResource | None = None,
+    config_allow_writes: bool = False,
 ) -> resource.Site:
     """Build an aiocoap Site exposing the LICHEN node resources.
 
@@ -1022,6 +1057,8 @@ def build_site(
     at ``/rd`` (RFC 9176).
     Pass ``edhoc_resource`` to expose ``/.well-known/edhoc`` for EDHOC key
     establishment (RFC 9528, spec section 8.8).
+    Pass ``config_allow_writes=True`` to allow PUT on ``/config``. SECURITY:
+    Only enable when transport-layer authentication (OSCORE) is enforced.
     """
     site = resource.Site()
     site.add_resource(
@@ -1030,7 +1067,7 @@ def build_site(
     )
     site.add_resource(["status"], StatusResource(node_info))
     site.add_resource(["neighbors"], NeighborsResource(node_info))
-    site.add_resource(["config"], ConfigResource(node_info))
+    site.add_resource(["config"], ConfigResource(node_info, allow_writes=config_allow_writes))
     if mesh_client is not None:
         site.add_resource(["proxy"], ProxyResource(mesh_client))
     if sensors_resource is not None:

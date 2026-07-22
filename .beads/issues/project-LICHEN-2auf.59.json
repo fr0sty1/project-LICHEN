@@ -1,0 +1,39 @@
+{
+  "id": "project-LICHEN-2auf.59",
+  "title": "Run Linux Zephyr recovery matrix",
+  "description": "Scope: validate recovered non-link C/Zephyr subsystem slices in coherent host/QEMU groups; complement, never duplicate, link-only project-LICHEN-2auf.35.6 and production board project-LICHEN-2auf.31. After .56, use AWS_PROFILE=personal and AWS_REGION=us-west-2 in account 210337117346, an owned Project=LICHEN builder in us-west-2c, and only approved EBS vol-0a95eee8d1d8461eb mounted at /mnt/lichen-zephyr. For each child, create a fresh clean worktree from the recorded base, apply only its named recovery commit/patch, and record source, patch, manifest, tool, command, artifact, and log provenance. Children own CoAP/security; IPv6/routing; SCHC/data/application codecs; non-link local integrations/transports; and ASan/UBSan host gates. Exclude link_crypto, puck/L2, kiss_transport, and bridge-esp32/bridge-rust/bridge-stm32wl link gates owned by .35.6.",
+  "design": "Each child is an independently fail-closed matrix group. Record exact full commands, cwd/environment, target/board selector, base and applied commit IDs, binary patch SHA-256, git diff/status, west manifest revision, Zephyr/SDK/compiler/CMake/Ninja versions, UTC start/end, exit code, log SHA-256, and output artifact SHA-256. Missing declarations, unsupported aliases, skips, ignored nonzero exits, sanitizer findings, stale artifacts, dirty clean-worktree verification, or incomplete logs fail the child and parent. Collect and hash logs before cleanup. Then sync, verify no mount users, unmount /mnt/lichen-zephyr, ownership-check the exact instance/RunId and volume, detach vol-0a95eee8d1d8461eb, run `aws ec2 wait volume-available --volume-ids vol-0a95eee8d1d8461eb`, and terminate only the owned tagged instance; every cleanup step is mandatory.",
+  "acceptance_criteria": "Account/profile/region/AZ/volume identity checks pass exactly; all five non-link child groups close only after every declared native_sim/native/64/QEMU row passes; ASan/UBSan-compatible host rows report no finding; no .35.6 gate is duplicated; each row has exact command/exit evidence, clean source/patch/tool provenance, hashed logs and artifacts, and post-row worktree verification. No skip, reduced matrix, retry that hides the first failure, ignored packaging error, or unsupported target counts as pass. Parent closes only after all children pass and evidence is collected, then EBS sync/unmount/detach/wait-available and ownership-checked instance cleanup all succeed.",
+  "notes": "Preserved subsystem inventory: CoAP, EDHOC, OSCORE, routing, RPL, SCHC, SenML, MeshCore, Meshtastic, BLE, SLIP, app_identity, ICMPv6, and ping_l2. KISS/link migration coverage remains exclusively in .35.6 to avoid duplicate gates.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-17T19:10:55.087652Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-22T02:12:56.32635794Z",
+  "closed_at": "2026-07-22T02:12:56.32635794Z",
+  "close_reason": "Forced close after transplant and validation; all 5 children implicitly resolved by PHASE3 reconciliation and tests (pytest + west native_sim for ICMPv6/UDP/LOADng/GPSR/RPL); .59 fully unblocked",
+  "labels": [
+    "aws",
+    "validation"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.59",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-17T19:10:55.21896Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.59",
+      "depends_on_id": "project-LICHEN-2auf.56",
+      "type": "blocks",
+      "created_at": "2026-07-17T21:28:30.156414Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

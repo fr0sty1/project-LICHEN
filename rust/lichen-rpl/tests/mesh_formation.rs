@@ -39,6 +39,13 @@ fn dio(rank: u16) -> Dio {
     }
 }
 
+fn dio_with_instance(rank: u16, rpl_instance_id: u8) -> Dio {
+    Dio {
+        rpl_instance_id,
+        ..dio(rank)
+    }
+}
+
 // ── Topology ──────────────────────────────────────────────────────────────────
 //
 //   root(1) [rank 256]
@@ -114,7 +121,7 @@ fn downward_routes_assembled_from_daos() {
 
     // n2 sends DAO: target=n2, parent=root
     let mut mgr2 = DaoManager::new(ll(2), 0, dodag_id());
-    assert!(root.process_dao(&mgr2.build_dao(root_addr)));
+    assert!(root.process_dao(&mgr2.build_dao(root_addr)).is_some());
     assert_eq!(
         root.routing_table.lookup(&ll(2)),
         Some(&[ll(2)] as &[[u8; 16]])
@@ -122,7 +129,7 @@ fn downward_routes_assembled_from_daos() {
 
     // n3 sends DAO: target=n3, parent=n2
     let mut mgr3 = DaoManager::new(ll(3), 0, dodag_id());
-    assert!(root.process_dao(&mgr3.build_dao(ll(2))));
+    assert!(root.process_dao(&mgr3.build_dao(ll(2))).is_some());
     assert_eq!(
         root.routing_table.lookup(&ll(3)),
         Some(&[ll(2), ll(3)] as &[[u8; 16]])
@@ -130,7 +137,7 @@ fn downward_routes_assembled_from_daos() {
 
     // n5 sends DAO: target=n5, parent=root (single hop)
     let mut mgr5 = DaoManager::new(ll(5), 0, dodag_id());
-    assert!(root.process_dao(&mgr5.build_dao(root_addr)));
+    assert!(root.process_dao(&mgr5.build_dao(root_addr)).is_some());
     assert_eq!(
         root.routing_table.lookup(&ll(5)),
         Some(&[ll(5)] as &[[u8; 16]])
@@ -138,7 +145,7 @@ fn downward_routes_assembled_from_daos() {
 
     // n4 sends DAO: target=n4, parent=n2 (two hops: root→n2→n4)
     let mut mgr4 = DaoManager::new(ll(4), 0, dodag_id());
-    assert!(root.process_dao(&mgr4.build_dao(ll(2))));
+    assert!(root.process_dao(&mgr4.build_dao(ll(2))).is_some());
     assert_eq!(
         root.routing_table.lookup(&ll(4)),
         Some(&[ll(2), ll(4)] as &[[u8; 16]])
@@ -155,7 +162,7 @@ fn parent_switch_on_link_failure() {
     // n4 sees both n2 (cost 768) and n3 (cost 1024). Prefers n2.
     let mut n4 = DodagState::new(0, dodag_id(), 0);
     n4.process_dio(&dio(512), ll(2), 1.0); // cost 768
-    n4.process_dio(&dio(768), ll(3), 1.0); // cost 1024
+    n4.process_dio(&dio(512), ll(3), 2.0); // cost 1024; rank 512 < n4's rank
     assert_eq!(n4.preferred_parent, Some(ll(2)));
     assert_eq!(n4.rank, 768);
 
@@ -182,9 +189,9 @@ fn route_updates_when_node_reparents() {
     let mut mgr3 = DaoManager::new(ll(3), 0, dodag_id());
     let mut mgr4 = DaoManager::new(ll(4), 0, dodag_id());
 
-    root.process_dao(&mgr2.build_dao(root_addr)); // n2 → root
-    root.process_dao(&mgr3.build_dao(ll(2))); // n3 → n2
-    root.process_dao(&mgr4.build_dao(ll(3))); // n4 → n3
+    let _ = root.process_dao(&mgr2.build_dao(root_addr)); // n2 → root
+    let _ = root.process_dao(&mgr3.build_dao(ll(2))); // n3 → n2
+    let _ = root.process_dao(&mgr4.build_dao(ll(3))); // n4 → n3
 
     assert_eq!(
         root.routing_table.lookup(&ll(4)),
@@ -192,10 +199,35 @@ fn route_updates_when_node_reparents() {
     );
 
     // n3 fails; n4 reparents to n2 and sends a new DAO
-    root.process_dao(&mgr4.build_dao(ll(2))); // n4 → n2 (shorter path)
+    let _ = root.process_dao(&mgr4.build_dao(ll(2))); // n4 → n2 (shorter path)
 
     assert_eq!(
         root.routing_table.lookup(&ll(4)),
         Some(&[ll(2), ll(4)] as &[[u8; 16]])
     );
+}
+
+#[test]
+fn mismatched_rpl_instance_dio_is_ignored() {
+    let mut node = DodagState::new(0, dodag_id(), 0);
+
+    node.process_dio(&dio_with_instance(ROOT_RANK, 1), ll(1), 1.0);
+
+    assert!(!node.is_joined());
+    assert_eq!(node.parent_count(), 0);
+    assert_eq!(node.rpl_instance_id, 0);
+}
+
+#[test]
+fn saturated_finite_candidate_is_removed() {
+    let mut node = DodagState::new(0, dodag_id(), 0);
+    node.process_dio(&dio(ROOT_RANK), ll(1), 1.0);
+    node.process_dio(&dio(450), ll(2), 1.0);
+    assert_eq!(node.parent_count(), 2);
+
+    node.process_dio(&dio(1), ll(1), 256.0);
+
+    assert_eq!(node.parent_count(), 1);
+    assert_eq!(node.preferred_parent, Some(ll(2)));
+    assert_eq!(node.rank, 706);
 }

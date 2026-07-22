@@ -159,7 +159,8 @@ def decode_dtn_expiry(app_data: bytes) -> int | None:
         return None
     if app_data[0] != APP_DATA_TYPE_DTN_EXPIRY:
         return None
-    return struct.unpack(">I", app_data[1:5])[0]
+    expiry: int = struct.unpack(">I", app_data[1:5])[0]
+    return expiry
 
 
 def encode_dtn_pending(iids: list[bytes]) -> bytes:

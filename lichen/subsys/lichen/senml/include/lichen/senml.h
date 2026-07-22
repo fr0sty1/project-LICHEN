@@ -114,9 +114,9 @@ int senml_pack_init(struct senml_pack *_Nonnull pack,
  * @param[in,out] pack  SenML pack
  * @param[in]     name  Record name (e.g., "temp")
  * @param[in]     unit  Unit string (e.g., "Cel") or NULL
- * @param[in]     value Float value
- * @return 0 on success, -ENOMEM if pack is full, -EMSGSIZE if name or unit is
- *         too long
+ * @param[in]     value Finite float value (NaN/Inf rejected)
+ * @return 0 on success, -EINVAL if non-finite, -ENOMEM if pack is full,
+ *         -EMSGSIZE if name or unit is too long
  */
 int senml_add_float(struct senml_pack *_Nonnull pack,
 		    const char *_Nonnull name,
@@ -129,10 +129,10 @@ int senml_add_float(struct senml_pack *_Nonnull pack,
  * @param[in,out] pack        SenML pack
  * @param[in]     name        Record name
  * @param[in]     unit        Unit string or NULL
- * @param[in]     value       Float value
+ * @param[in]     value       Finite float value (NaN/Inf rejected)
  * @param[in]     time_offset Seconds from base_time
- * @return 0 on success, -ENOMEM if pack is full, -EMSGSIZE if name or unit is
- *         too long
+ * @return 0 on success, -EINVAL if non-finite, -ENOMEM if pack is full,
+ *         -EMSGSIZE if name or unit is too long
  */
 int senml_add_float_t(struct senml_pack *_Nonnull pack,
 		      const char *_Nonnull name,
@@ -184,6 +184,7 @@ int senml_encode_cbor(const struct senml_pack *_Nonnull pack,
  * @param[in]  buflen     Buffer size
  * @return Bytes written, or negative error code
  */
+LICHEN_WARN_UNUSED_RESULT
 int senml_encode_location(const char *_Nullable base_name, uint64_t base_time,
 			  float lat, float lon, float alt,
 			  uint8_t *_Nonnull buf, size_t buflen);
@@ -200,6 +201,7 @@ int senml_encode_location(const char *_Nullable base_name, uint64_t base_time,
  * @param[in]  buflen     Buffer size
  * @return Bytes written, or negative error code
  */
+LICHEN_WARN_UNUSED_RESULT
 int senml_encode_battery(const char *_Nullable base_name, uint64_t base_time,
 			 uint8_t percent, uint16_t mv, bool charging,
 			 uint8_t *_Nonnull buf, size_t buflen);
@@ -214,9 +216,29 @@ int senml_encode_battery(const char *_Nullable base_name, uint64_t base_time,
  * @param[in]  buflen     Buffer size
  * @return Bytes written, or negative error code
  */
+LICHEN_WARN_UNUSED_RESULT
 int senml_encode_temperature(const char *_Nullable base_name, uint64_t base_time,
 			     float temp_c,
 			     uint8_t *_Nonnull buf, size_t buflen);
+
+/**
+ * @brief Encode deaddrop (DTN pending count) as SenML.
+ *
+ * Convenience wrapper used by /deaddrop GET handler. Matches
+ * senml_encode_temperature pattern exactly (base_name, base_time,
+ * value param, buf/buflen).
+ *
+ * @param[in]  base_name  Base name or NULL
+ * @param[in]  base_time  Unix timestamp or 0
+ * @param[in]  count      Pending message count (>= 0)
+ * @param[out] buf        Output buffer
+ * @param[in]  buflen     Buffer size
+ * @return Bytes written, or negative error code
+ */
+LICHEN_WARN_UNUSED_RESULT
+int senml_encode_deaddrop(const char *_Nullable base_name, uint64_t base_time,
+			  int32_t count,
+			  uint8_t *_Nonnull buf, size_t buflen);
 
 #ifdef __cplusplus
 }

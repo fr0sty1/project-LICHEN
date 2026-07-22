@@ -61,6 +61,10 @@ gpioPortB: GPIOPort.STM32_GPIOPort @ sysbus <0x48000400, +0x400>
 gpioPortC: GPIOPort.STM32_GPIOPort @ sysbus <0x48000800, +0x400>
     numberOfAFs: 16
 
+// Hardware random-number generator
+rng: Miscellaneous.STM32F4_RNG @ sysbus 0x58001000
+    -> nvic@52
+
 // Watchdog
 iwdg: Timers.STM32_IndependentWatchdog @ sysbus 0x40003000
     frequency: 32000

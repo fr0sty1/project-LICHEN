@@ -2,8 +2,7 @@
 // SPDX-FileCopyrightText: The contributors to the LICHEN project
 //
 // LilyGO T-Deck board for Renode
-// ESP32-S3 + SX1262 + ST7789 display + keyboard + trackball
-// ponytail: display/keyboard/trackball are stubs - LoRa is the focus
+// ESP32-S3 + SX1262 + peripherals stubbed. Full execution to app TX oracle.
 
 using "../../esp32s3_lichen/support/esp32s3_lichen.repl"
 
@@ -20,9 +19,6 @@ sysbus:
     init add:
         Tag <0x60025000 0x100> "SPI3_ST7789_STUB"
 
-// Keyboard controller (I2C0 addr 0x55)
-// lilygo_tdeck_keyboard driver talks to this
-// Stubbed - returns no keypresses
 sysbus:
     init add:
         Tag <0x60026055 1> "I2C0_KEYBOARD_STUB"

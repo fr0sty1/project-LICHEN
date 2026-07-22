@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-2auf.48.3",
+  "title": "Fix RFC 8613 nonce and option encoding",
+  "description": "Rust OSCORE nonce construction XORs Sender ID length with PIV length instead of encoding Sender ID length, no-PIV responses use responder identity instead of the request's complete nonce, empty response OSCORE options encode as 0x00 instead of empty, and parser accepts reserved bits/trailing bytes. Correct these RFC 8613 interoperability defects with independent published-vector or literal formula tests.",
+  "acceptance_criteria": "Nonce formula matches RFC 8613 Section 5.2 literals; no-PIV response reuses request nonce identity; empty option is zero bytes; reserved bits 5-7 and trailing bytes with k=0 reject; existing RFC vectors and roundtrips pass; no_std/release/all-feature tests, Clippy, and three reviews pass.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-17T23:20:57.243022Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-17T23:38:41.82323Z",
+  "started_at": "2026-07-17T23:21:10.944285Z",
+  "closed_at": "2026-07-17T23:38:41.82323Z",
+  "close_reason": "Implemented and validated with RFC-literal tests; debug/release/all-feature/no-default suites and library Clippy pass; three hash-bound reviews found no remaining in-scope P0-P2 defects. Context lifecycle remains .48.2.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.48.3",
+      "depends_on_id": "project-LICHEN-2auf.48",
+      "type": "parent-child",
+      "created_at": "2026-07-17T23:20:57.459214Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

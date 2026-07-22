@@ -1,0 +1,7 @@
+{
+  "id": "1784601497736356484-1",
+  "issue_id": "project-LICHEN-7fqg",
+  "author": "ec2-user",
+  "text": "User authorized scope expansion on 2026-07-21 to fix convergence blockers. New product/test changes are now permitted only where they directly resolve recorded blockers needed for .3 and fail-closed CI. Continue one blocker issue at a time with focused tests and three reviews.",
+  "created_at": "2026-07-21T02:38:17.736356484Z"
+}

@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-2auf.22",
+  "title": "Complete link vectors and stale interop tests",
+  "description": "Fix the signed frame vector’s incorrect declared fields, make cross-language vector tests compare complete bytes/fields, update the live Rust interop fixture for no-MIC unsigned frames, and add independent known signed-frame coverage where an authoritative vector is available.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-15T06:12:53.330178Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-15T06:49:29.281457Z",
+  "closed_at": "2026-07-15T06:49:29.281457Z",
+  "close_reason": "Corrected signed vector fields, strengthened Rust/Python/C byte and payload/MIC checks, updated unsigned live fixture, and added authoritative signed-frame coverage.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.22",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-15T06:12:53.334484Z"
+    }
+  ]
+}

@@ -10,7 +10,7 @@
 //! - 1  global IPv6 + UDP + CoAP
 //! - 2  ICMPv6 Echo (link-local)
 //! - 3  RPL DIO (link-local ICMPv6)
-//! - 4  RPL DAO (link-local ICMPv6)
+//! - 4  RPL DAO (routable ULA source for multi-hop)
 //! - 255 uncompressed passthrough
 
 #![no_std]
@@ -21,6 +21,7 @@ pub mod fragment;
 pub mod headers;
 pub mod rules;
 
+pub use codec::{compress, decompress, SchcError};
 pub use context::{rule_matches, FieldId, NoMatchingRuleError, SchcContext};
 pub use headers::{
     CoapUdpGlobalProfile, CoapUdpLinkLocalProfile, Icmpv6EchoProfile, PacketError, PacketProfile,

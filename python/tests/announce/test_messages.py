@@ -209,8 +209,6 @@ class TestSignedData:
         assert msg1.signed_data() == msg2.signed_data()
 
     def test_signed_data_is_deterministic(self):
-        """Same inputs produce same signed_data()."""
-        # Why test: Signature verification requires deterministic input.
         msg1 = AnnounceMessage(
             originator_iid=bytes([1] * 8),
             pubkey=bytes([2] * 32),
@@ -224,6 +222,16 @@ class TestSignedData:
             app_data=b"test",
         )
         assert msg1.signed_data() == msg2.signed_data()
+
+    def test_signed_data_includes_rx_channel(self):
+        msg = AnnounceMessage(
+            originator_iid=bytes(8),
+            pubkey=bytes(32),
+            seq_num=0,
+            rx_channel=5,
+        )
+        signed = msg.signed_data()
+        assert signed[42:43] == bytes([5])
 
 
 class TestSerialization:
@@ -291,39 +299,33 @@ class TestSerialization:
         assert wire[2] == 7
 
     def test_wire_format_seq_num_big_endian(self):
-        """seq_num is serialized big-endian at bytes 3-4."""
-        # Why test: Endianness must match spec.
         msg = AnnounceMessage(
             originator_iid=bytes(8),
             pubkey=bytes(32),
             seq_num=0xABCD,
             signature=bytes(SIGNATURE_LENGTH),
+            rx_channel=0,
         )
         wire = msg.to_bytes()
-        assert wire[3:5] == bytes([0xAB, 0xCD])
+        assert wire[4:6] == bytes([0xAB, 0xCD])
 
     def test_to_bytes_rejects_unsigned(self):
-        """Cannot serialize an unsigned message."""
-        # Why test: Transmitting unsigned announces is a security bug.
         msg = AnnounceMessage(
             originator_iid=bytes(8),
             pubkey=bytes(32),
             seq_num=0,
-            signature=b"",  # Unsigned
+            signature=b"",
+            rx_channel=0,
         )
         with pytest.raises(AnnounceError, match="cannot serialize unsigned"):
             msg.to_bytes()
 
     def test_from_bytes_rejects_truncated(self):
-        """Rejects data shorter than fixed portion."""
-        # Why test: Truncated messages are malformed.
         with pytest.raises(AnnounceError, match="too short"):
-            AnnounceMessage.from_bytes(bytes(50))  # Less than 93 bytes
+            AnnounceMessage.from_bytes(bytes(50))
 
     def test_from_bytes_rejects_wrong_type(self):
-        """Rejects messages with wrong type byte."""
-        # Why test: Type byte identifies announce vs other messages.
-        wire = bytes([0xFF]) + bytes(92)  # Wrong type
+        wire = bytes([0xFF]) + bytes(93)
         with pytest.raises(AnnounceError, match="wrong message type"):
             AnnounceMessage.from_bytes(wire)
 
@@ -405,8 +407,6 @@ class TestKnownVectors:
     """Test against known wire format for regression detection."""
 
     def test_known_wire_format(self):
-        """Verify exact wire format for a known message."""
-        # Why test: Catch accidental changes to wire format.
         msg = AnnounceMessage(
             originator_iid=bytes([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]),
             pubkey=bytes([0xAA] * 32),
@@ -415,23 +415,15 @@ class TestKnownVectors:
             flags=0,
             signature=bytes([0xBB] * SIGNATURE_LENGTH),
             app_data=b"",
+            rx_channel=7,
         )
         wire = msg.to_bytes()
-
-        # Check header
-        assert wire[0] == ANNOUNCE_TYPE  # type
-        assert wire[1] == 0  # flags
-        assert wire[2] == 3  # hop_count
-        assert wire[3:5] == bytes([0x12, 0x34])  # seq_num
-
-        # Check IID position
-        assert wire[5:13] == bytes([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08])
-
-        # Check pubkey position
-        assert wire[13:45] == bytes([0xAA] * 32)
-
-        # Check signature position
-        assert wire[45:93] == bytes([0xBB] * SIGNATURE_LENGTH)
-
-        # No app_data, so wire ends at 93 bytes
-        assert len(wire) == 93
+        assert wire[0] == ANNOUNCE_TYPE
+        assert wire[1] == 0
+        assert wire[2] == 3
+        assert wire[3] == 7
+        assert wire[4:6] == bytes([0x12, 0x34])
+        assert wire[6:14] == bytes([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08])
+        assert wire[14:46] == bytes([0xAA] * 32)
+        assert wire[46:94] == bytes([0xBB] * SIGNATURE_LENGTH)
+        assert len(wire) == 94

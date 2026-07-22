@@ -184,8 +184,7 @@ pub struct Router {
     pub trickle: TrickleTimer,
     pub dao_manager: DaoManager,
     pub neighbors: NeighborTable,
-    #[allow(dead_code)] // stored at construction; not yet consulted
-    node_addr: [u8; 16],
+    _node_addr: [u8; 16],
     dodag_id: [u8; 16],
     /// This node's geographic coordinates for GPSR (spec 9.7).
     /// None if GPS unavailable or privacy mode enabled.
@@ -201,7 +200,7 @@ impl Router {
             trickle: TrickleTimer::new(256, 8, 10), // Imin=256ms, doublings=8, k=10
             dao_manager: DaoManager::new(node_addr, RPL_INSTANCE_ID, dodag_id),
             neighbors: NeighborTable::new(),
-            node_addr,
+            _node_addr: node_addr,
             dodag_id,
             node_coords: None,
         }
@@ -215,7 +214,7 @@ impl Router {
             trickle: TrickleTimer::new(256, 8, 10),
             dao_manager: DaoManager::as_root(node_addr, RPL_INSTANCE_ID, dodag_id),
             neighbors: NeighborTable::new(),
-            node_addr,
+            _node_addr: node_addr,
             dodag_id,
             node_coords: None,
         }
@@ -245,10 +244,10 @@ impl Router {
 
     /// Process a received DAO message (root only).
     ///
-    /// Returns true if a route was updated.
-    pub fn process_dao(&mut self, dao_bytes: &[u8]) -> bool {
+    /// Returns the parsed target if a route was updated, None otherwise.
+    pub fn process_dao(&mut self, dao_bytes: &[u8]) -> Option<[u8; 16]> {
         if !self.dodag.is_root() {
-            return false;
+            return None;
         }
         self.dao_manager.process_dao(dao_bytes)
     }
@@ -408,8 +407,8 @@ fn haversine(c1: GeoCoords, c2: GeoCoords) -> f64 {
     let dlat = (lat2 - lat1).to_radians();
     let dlon = (lon2 - lon1).to_radians();
 
-    let a = (dlat / 2.0).sin().powi(2)
-        + lat1_rad.cos() * lat2_rad.cos() * (dlon / 2.0).sin().powi(2);
+    let a =
+        (dlat / 2.0).sin().powi(2) + lat1_rad.cos() * lat2_rad.cos() * (dlon / 2.0).sin().powi(2);
     // Clamp a to [0, 1] before sqrt to handle floating-point errors
     let c = 2.0 * a.min(1.0).sqrt().asin();
 
@@ -466,7 +465,7 @@ pub struct DtnMessage {
 impl DtnMessage {
     /// Approximate size in bytes for buffer accounting.
     pub fn size(&self) -> usize {
-        self.packet.len() + 100 // header overhead estimate
+        self.packet.len() + 40
     }
 }
 
@@ -796,12 +795,12 @@ mod tests {
 
     #[test]
     fn dtn_buffer_eviction_on_full() {
-        let mut buf = DtnBuffer::with_max_bytes(500);
+        let mut buf = DtnBuffer::with_max_bytes(350);
         let iid1 = make_iid(1);
         let iid2 = make_iid(2);
         let iid3 = make_iid(3);
 
-        // Each message is ~200 bytes (100 + 100 overhead)
+        // Each message is ~140 bytes (100 packet + 40 struct overhead)
         buf.buffer_message(vec![0u8; 100], iid1, 1000, 100, 10);
         buf.buffer_message(vec![0u8; 100], iid2, 1000, 100, 20);
         assert_eq!(buf.len(), 2);

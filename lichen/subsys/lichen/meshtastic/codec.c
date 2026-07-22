@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include <zephyr/sys/util.h>
 
 #include <lichen/meshtastic/codec.h>
 
@@ -447,6 +448,8 @@ static int pb_write_string_field(uint8_t *buf, size_t buflen, size_t *pos,
 static int copy_tmp_payload(const uint8_t *tmp, size_t len,
 			    uint8_t *buf, size_t buflen)
 {
+	BUILD_ASSERT(LICHEN_MESHTASTIC_FROM_RADIO_MAX <= INT_MAX,
+		     "LICHEN_MESHTASTIC_FROM_RADIO_MAX must fit in int");
 	if (buf == NULL) {
 		return -EINVAL;
 	}

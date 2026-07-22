@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-2auf.44.7.1.5",
+  "title": "Simplify DAO send lifecycle and freshness",
+  "description": "Remove manual confirm_dao/pending-only semantics with K=0 explicit. Each logical send allocates an update, while failed radio TX retains safe retry bytes. Make authenticated 64-bit origin sequence authoritative for signed route/path freshness so lollipop loss cannot strand updates; retain raw component lollipop checks.",
+  "acceptance_criteria": "Twenty lost sends followed by delivery applies at root; replay remains rejected; TX failure safely retries exact reserved bytes once or equivalent fail-closed behavior; no manual confirm API remains.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-20T06:06:49.594412766Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-20T06:16:38.880579183Z",
+  "started_at": "2026-07-20T06:11:43.394213226Z",
+  "closed_at": "2026-07-20T06:16:38.880579183Z",
+  "close_reason": "Removed manual confirm/retransmit APIs; send_dao now auto-clears successful K=0 updates and retains exact failed bytes. Authenticated 64-bit origin sequence now governs signed freshness while raw lollipop checks remain. Added 20-loss regression; full lichen-rpl and RplStack tests pass.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.7.1.5",
+      "depends_on_id": "project-LICHEN-2auf.44.7.1",
+      "type": "parent-child",
+      "created_at": "2026-07-20T06:06:49.681166044Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

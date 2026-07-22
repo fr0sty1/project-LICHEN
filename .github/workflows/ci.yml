@@ -36,6 +36,9 @@ jobs:
       - name: Lint (ruff)
         run: uv run ruff check src tests pyproject.toml
 
+      - name: Type check (mypy core)
+        run: uv run mypy src/lichen/coap src/lichen/crypto src/lichen/sim src/lichen/slip src/lichen/client
+
       - name: Tests with coverage
         # The full suite runs, including the integration tests (the BARRIER_SYNC
         # deadlock fgk and the half-duplex self-collision euj are both fixed).
@@ -116,15 +119,13 @@ jobs:
       - name: Install cppcheck
         run: sudo apt-get install -y --no-install-recommends cppcheck
 
-      - name: Run cppcheck (informational)
-        # Informational for now: cppcheck without the Zephyr preprocessor
-        # state reports syntax errors on macro-heavy files (BT_GATT_CCC,
-        # MODEM_CHAT_MATCHES_DEFINE) and flags vendored code (monocypher)
-        # that the safety policy exempts. Step-level continue-on-error keeps
-        # the output visible without gating until the finding set is triaged
-        # and suppressed deliberately.
-        continue-on-error: true
-        run: cppcheck --error-exitcode=1 --enable=warning,style,performance --suppress=missingIncludeSystem lichen/
+      - name: Run cppcheck
+        # Enforcing: the finding set was triaged (bead 2mla) and the accepted
+        # remainder is documented in lichen/.cppcheck-suppressions — vendored
+        # monocypher, Zephyr macro parse noise, and style classes queued for
+        # a later ratchet. Correctness classes (uninitvar, comparePointers,
+        # syntaxError in new files) gate the build.
+        run: cppcheck --error-exitcode=1 --enable=warning,style,performance --suppress=missingIncludeSystem --inline-suppr --suppressions-list=lichen/.cppcheck-suppressions lichen/
 
   zephyr-native-sim:
     name: Zephyr native_sim
@@ -181,15 +182,12 @@ jobs:
       - name: Build gateway (native_sim)
         run: west build -b native_sim lichen/apps/gateway -- -DZEPHYR_TOOLCHAIN_VARIANT=host
 
-      - name: C static analysis (clang-tidy, informational)
-        # Replaces the old standalone clang-tidy job, which ran without a
-        # compilation database and errored on every file. This uses the
-        # gateway build's compile_commands.json so includes and defines are
-        # real. Informational for now: the safety-policy check list reports
-        # ~1100 findings that are mostly Zephyr idiom (reserved identifiers
-        # from Zephyr macros, generated-header macro parentheses,
-        # misc-include-cleaner); gate once the list is curated.
-        continue-on-error: true
+      - name: C static analysis (clang-tidy)
+        # Uses the gateway build's compile_commands.json so includes and
+        # defines are real. Enforcing after the 2mla curation: the noisy
+        # check classes are disabled with rationale in lichen/.clang-tidy,
+        # vendored monocypher is excluded below (safety-policy exempt), and
+        # the remaining findings were fixed in the same change.
         run: |
           sudo apt-get install -y --no-install-recommends clang-tidy
           # Strip GCC-only flags clang rejects from the host-gcc compile DB
@@ -203,7 +201,9 @@ jobs:
               for f in drop:
                   e['command'] = e['command'].replace(' ' + f + ' ', ' ')
           json.dump(db, open('build/compile_commands.json', 'w'))
-          files = sorted({e['file'] for e in db if '/lichen/' in e['file']})
+          files = sorted({e['file'] for e in db
+                          if '/lichen/' in e['file']
+                          and '/crypto/monocypher' not in e['file']})
           open('tidy-files.txt', 'w').write('\n'.join(files))
           PYEOF
           xargs -a tidy-files.txt clang-tidy -p build --config-file=lichen/.clang-tidy --warnings-as-errors='*'
@@ -242,7 +242,7 @@ jobs:
         run: scripts/zephyr-meshtastic-negative-builds.sh
 
   zephyr-hardware:
-    name: Zephyr hardware targets
+    name: Zephyr ${{ matrix.app }} on ${{ matrix.board }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -264,6 +264,12 @@ jobs:
           - board: nucleo_wl55jc
             app: gateway
             extra-conf: ""
+           - board: nucleo_wl55jc
+             app: puck
+             extra-conf: ""
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.job }}-${{ matrix.board | replace('/', '-') }}-${{ matrix.app }}
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -299,7 +305,7 @@ jobs:
             modules
             bootloader
             tools
-          key: west-workspace-${{ hashFiles('lichen/west.yml') }}
+          key: west-workspace-${{ hashFiles('lichen/west.yml') }}-${{ matrix.board | replace('/', '-') }}-${{ matrix.app }}
 
       - name: west init + update
         if: steps.cache-zephyr.outputs.cache-hit != 'true'

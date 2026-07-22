@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-2auf.47",
+  "title": "Recover Rust IPv6 and Meshtastic bounds",
+  "description": "Recover UDP/ICMPv6 boundary validation, DAD behavior, coalesced Meshtastic GATT message preservation, and explicit RouteRequest handling.",
+  "acceptance_criteria": "Oversized UDP and malformed NS drop; packet-level DAD vectors pass; coalesced GATT bytes are preserved; route variants are deterministic; tests/clippy and three reviews pass.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-17T19:09:54.738094Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-17T19:09:54.738094Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.47",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-17T19:09:54.861899Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -219,13 +219,14 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
     pub fn build_announce(&self, out: &mut [u8]) -> Result<usize, SchedulerError> {
         let seq = self.increment_seq();
 
-        // Build signed data: IID + pubkey + seq_num + app_data
-        let signed_data_len = 8 + 32 + 2 + self.app_data.len();
+        // Build signed data: IID + pubkey + seq_num + rx_channel + app_data
+        let signed_data_len = 8 + 32 + 2 + 1 + self.app_data.len();
         let mut signed_data = vec![0u8; signed_data_len];
         signed_data[..8].copy_from_slice(&self.identity.iid);
         signed_data[8..40].copy_from_slice(self.identity.pubkey.as_bytes());
         signed_data[40..42].copy_from_slice(&seq.to_be_bytes());
-        signed_data[42..].copy_from_slice(&self.app_data);
+        signed_data[42] = 0; // rx_channel default for originator
+        signed_data[43..].copy_from_slice(&self.app_data);
 
         // Sign with our key: proves we own this IID/pubkey.
         let signature = sign(&self.identity.privkey, &self.identity.pubkey, &signed_data);
@@ -236,12 +237,15 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
             pubkey: self.identity.pubkey.as_bytes(),
             seq_num: seq,
             hop_count: 0, // We're the originator
+            rx_channel: 0,
             signature: &signature,
             app_data: &self.app_data,
             flags: 0,
         };
 
-        builder.write_to(out).map_err(|_| SchedulerError::BufferTooSmall)
+        builder
+            .write_to(out)
+            .map_err(|_| SchedulerError::BufferTooSmall)
     }
 
     /// Start the announce scheduler.
@@ -360,36 +364,59 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
 
 /// Generate a random u64 in the range [min, max].
 ///
-/// Uses a simple LCG seeded from the current time.
+/// Uses a simple LCG with state maintained between calls.
+/// Seeded once from time + process ID for per-node uniqueness.
 /// Good enough for jitter; not for cryptography.
 fn random_range(min: u64, max: u64) -> u64 {
+    use std::sync::atomic::{AtomicU64, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     if min >= max {
         return min;
     }
 
-    // Simple LCG seeded from time
-    let seed = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or(Duration::from_secs(0))
-        .as_nanos() as u64;
+    // Static state for LCG, persists between calls
+    static STATE: AtomicU64 = AtomicU64::new(0);
 
     // LCG parameters (Numerical Recipes)
     let a: u64 = 1664525;
     let c: u64 = 1013904223;
     let m: u64 = 1 << 32;
 
-    let random = (seed.wrapping_mul(a).wrapping_add(c)) % m;
-    min + (random % (max - min + 1))
+    loop {
+        let current = STATE.load(Ordering::Relaxed);
+        let state = if current == 0 {
+            // First call: seed from time + process ID for per-node uniqueness
+            let time_seed = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or(Duration::from_secs(0))
+                .as_nanos() as u64;
+            let pid = std::process::id() as u64;
+            time_seed.wrapping_add(pid.wrapping_mul(0x9E3779B97F4A7C15))
+        } else {
+            current
+        };
+
+        // Advance the LCG
+        let next_state = (state.wrapping_mul(a).wrapping_add(c)) % m;
+
+        // Atomically update state (handles concurrent calls)
+        if STATE
+            .compare_exchange(current, next_state, Ordering::Relaxed, Ordering::Relaxed)
+            .is_ok()
+        {
+            return min + (next_state % (max - min + 1));
+        }
+        // Another thread updated state, retry
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use lichen_link::Seed;
     use std::sync::atomic::AtomicUsize;
     use std::vec::Vec;
-    use lichen_link::Seed;
 
     /// Mock transmitter for testing.
     struct MockTransmitter {
@@ -407,10 +434,6 @@ mod tests {
 
         fn tx_count(&self) -> usize {
             self.tx_count.load(Ordering::SeqCst)
-        }
-
-        fn last_data(&self) -> Vec<u8> {
-            self.last_data.lock().unwrap().clone()
         }
     }
 
@@ -518,9 +541,7 @@ mod tests {
         // Start in background
         let scheduler = Arc::new(scheduler);
         let scheduler_clone = scheduler.clone();
-        let handle = tokio::spawn(async move {
-            scheduler_clone.start().await
-        });
+        let handle = tokio::spawn(async move { scheduler_clone.start().await });
 
         // Wait a bit for it to start and send some announces
         tokio::time::sleep(Duration::from_millis(120)).await;
@@ -545,5 +566,28 @@ mod tests {
 
         let result = scheduler.send_now().await;
         assert_eq!(result, Err(SchedulerError::NotRunning));
+    }
+
+    #[test]
+    fn random_range_produces_varied_output() {
+        // Consecutive calls must produce different values (within a large range).
+        // This catches the original bug where same-millisecond calls were identical.
+        let mut values = Vec::new();
+        for _ in 0..100 {
+            values.push(super::random_range(0, 1_000_000));
+        }
+
+        // Count unique values - should be high (near 100) for a working PRNG
+        let mut unique = values.clone();
+        unique.sort();
+        unique.dedup();
+
+        // With range 0..1M and 100 samples, collision is unlikely.
+        // Allow a few collisions but not many.
+        assert!(
+            unique.len() >= 90,
+            "PRNG produced too many duplicates: {} unique out of 100",
+            unique.len()
+        );
     }
 }

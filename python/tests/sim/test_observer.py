@@ -342,6 +342,7 @@ class TestSimulationObserver:
         # Check for collision while TXs are still in flight
         result = sim.get_rx_result("rx")
         assert result is None  # Collision
+        assert sim.get_rx_result("rx") is None  # Same collision on the next poll
 
         collision_events = [e for e in observer.events if e[0] == "collision"]
         assert len(collision_events) == 1

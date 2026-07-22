@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-2auf.44.9.10",
+  "title": "Forbid unsigned routing-state mutation",
+  "description": "The link draft permits unsigned permissive-mode routing frames while RPL security requires signed control traffic. Define bootstrap/permissive behavior so unsigned DIO/DAO/DIS cannot mutate routing state, and align examples and implementations.",
+  "acceptance_criteria": "Unsigned routing controls are rejected before state mutation outside an explicitly specified safe bootstrap flow; docs, vectors, and implementations agree.",
+  "status": "blocked",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-18T21:14:54.430073Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-20T21:26:56.819695061Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.9.10",
+      "depends_on_id": "project-LICHEN-2auf.44.9",
+      "type": "parent-child",
+      "created_at": "2026-07-18T21:14:54.557699Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

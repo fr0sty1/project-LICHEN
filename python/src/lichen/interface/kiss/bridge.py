@@ -86,6 +86,7 @@ class KissBridge:
     _peer_table: SimplePeerLookup = field(default_factory=SimplePeerLookup)
     _msg_tracker: AprsMessageTracker = field(default_factory=AprsMessageTracker)
     _rx_task: asyncio.Task | None = field(default=None, repr=False)
+    _background_tasks: set[asyncio.Task] = field(default_factory=set, repr=False)
     _running: bool = False
 
     def __post_init__(self) -> None:
@@ -93,6 +94,24 @@ class KissBridge:
         self.handler.on_tx_frame = self._on_kiss_tx
         # Add own identity to peer table
         self._peer_table.add(self.identity.iid)
+
+    def _create_background_task(self, coro) -> None:
+        """Create a background task with exception handling.
+
+        Stores task reference to prevent GC and logs exceptions via done_callback.
+        """
+        task = asyncio.create_task(coro)
+        self._background_tasks.add(task)
+        task.add_done_callback(self._on_task_done)
+
+    def _on_task_done(self, task: asyncio.Task) -> None:
+        """Handle background task completion."""
+        self._background_tasks.discard(task)
+        if task.cancelled():
+            return
+        exc = task.exception()
+        if exc is not None:
+            log.error("background task failed: %s", exc)
 
     @property
     def own_callsign(self) -> str:
@@ -157,7 +176,7 @@ class KissBridge:
             # No msg_id - send raw text (receiver won't auto-ack)
             payload = msg.text.encode("utf-8")
 
-        asyncio.create_task(self._send_frame(payload, dst_addr))
+        self._create_background_task(self._send_frame(payload, dst_addr))
         log.debug("APRS TX: %s -> %s: %s", src_call, msg.addressee, msg.text[:50])
 
     def _handle_aprs_ack_tx(self, ack: AprsAck) -> None:
@@ -169,7 +188,7 @@ class KissBridge:
 
         # Send ack as special payload (prefix with 0x06 ACK byte)
         ack_payload = b"\x06" + ack.msg_id.encode("utf-8")
-        asyncio.create_task(self._send_frame(ack_payload, dst_iid))
+        self._create_background_task(self._send_frame(ack_payload, dst_iid))
 
     def _handle_aprs_rej_tx(self, rej: AprsRej) -> None:
         """Handle outgoing APRS reject from app."""
@@ -179,7 +198,7 @@ class KissBridge:
 
         # Keep KISS reject control outside the authenticated L2 dispatch namespace.
         rej_payload = KISS_REJ_PREFIX + rej.msg_id.encode("utf-8")
-        asyncio.create_task(self._send_frame(rej_payload, dst_iid))
+        self._create_background_task(self._send_frame(rej_payload, dst_iid))
 
     def _handle_raw_ax25_tx(self, dst_call: str, payload: bytes) -> None:
         """Handle non-APRS AX.25 payload."""
@@ -192,13 +211,13 @@ class KissBridge:
                 return
             dst_addr = dst_iid
 
-        asyncio.create_task(self._send_frame(payload, dst_addr))
+        self._create_background_task(self._send_frame(payload, dst_addr))
 
     def _handle_raw_tx(self, payload: bytes) -> None:
         """Send raw LICHEN frame via LinkLayer."""
         # Raw frames go directly to LinkLayer
         # ponytail: no addressing, broadcast for now
-        asyncio.create_task(self._send_frame(payload, b""))
+        self._create_background_task(self._send_frame(payload, b""))
 
     async def _send_frame(self, payload: bytes, dst_addr: bytes) -> None:
         """Send frame via LinkLayer."""

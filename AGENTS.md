@@ -186,6 +186,10 @@ The LICHEN Zephyr subsystems in `lichen/subsys/lichen/` have **implicit initiali
          |                                |
          └─────────────┬──────────────────┘
                        v
+                 lichen_tdma_init() (after link_init, before oscore; see
+                 struct LICHEN_TDMA_Slot in link.h:50 and Kconfig help)
+                       |
+                       v
                  oscore_init()
                        |
                        v
@@ -201,6 +205,7 @@ The LICHEN Zephyr subsystems in `lichen/subsys/lichen/` have **implicit initiali
 |-----------|--------------|---------------|---------------|
 | **Link Layer** | `lichen_link_init(ctx, eui64)` | None | Per-context (no global state) |
 | **Link Keys** | `lichen_link_load_key(ctx, seed)` | `lichen_link_init()` | Per-context |
+| **TDMA** | `lichen_tdma_init()` | `lichen_link_init()` | After link, before oscore (see link.h:50 struct LICHEN_TDMA_Slot) |
 | **RPL DODAG** | `lichen_rpl_dodag_init(d, ...)` | None | Per-DODAG (caller must synchronize) |
 | **OSCORE** | `oscore_init()` | None | Thread-safe (internal mutex) |
 | **OSCORE Contexts** | `oscore_ctx_create(...)` | `oscore_init()` | Thread-safe |
@@ -236,7 +241,11 @@ int lichen_node_init(const uint8_t eui64[8], const uint8_t seed[32])
     ret = lichen_link_load_key(&link_ctx, seed);
     if (ret < 0) return ret;
 
-    /* 2. OSCORE subsystem (must init before creating contexts) */
+    /* 2. TDMA after link_init, before oscore (see Kconfig LICHEN_TDMA help
+     * and struct LICHEN_TDMA_Slot in link.h:50) */
+    /* lichen_tdma_init(); */
+
+    /* 3. OSCORE subsystem (must init before creating contexts) */
     ret = oscore_init();
     if (ret < 0) return ret;
 
@@ -328,7 +337,11 @@ When the user says "fix all issues," the correct response is to fix **every sing
 1. **Unit tests** - Each crate/module in isolation
 2. **Integration tests** - Multi-node scenarios in simulator
 3. **Interop tests** - Rust ↔ C produce identical output
-4. **Hardware tests** - Real LoRa radios on real MCUs
+4. **Hardware tests** - Real LoRa radios on real MCUs. Bench inventory,
+   port-safety rules, flash/OTA procedures, over-the-air verification, and
+   findings are in [`docs/bench-operations.md`](docs/bench-operations.md).
+   **Read the port-safety rules before opening any device port** — several
+   ports wedge the node or block forever on the wrong access.
 5. **Fuzz tests** - All parsing code (SCHC, CoAP, RPL messages)
 
 Test vectors live in `test/vectors/` as JSON. Both implementations read and verify against these.
@@ -339,23 +352,22 @@ If a Zephyr build or test is Linux-only and cannot run on the local host, use AW
 
 ### Authentication
 
-The AWS account is accessed via SSO. To authenticate:
+Use the personal AWS CLI profile:
 
 ```bash
 # Profile name (already configured in ~/.aws/config)
-export AWS_PROFILE=AdministratorAccess-921772462201
+export AWS_PROFILE=personal
 
 # Region for LICHEN resources
-export AWS_REGION=us-east-2
-
-# If SSO session expired, re-authenticate:
-aws sso login --profile AdministratorAccess-921772462201
+export AWS_REGION=us-west-2
 
 # Verify access:
 aws sts get-caller-identity
 ```
 
-The profile uses SSO session `claudsession` with account `921772462201`.
+The profile MUST resolve to personal account `210337117346`.
+EC2 Serial Console access is enabled for the account in `us-west-2`; callers
+still need `ec2-instance-connect:SendSerialConsoleSSHPublicKey` permission.
 
 ### CRITICAL: Resource Isolation
 
@@ -366,6 +378,9 @@ The profile uses SSO session `claudsession` with account `921772462201`.
 LICHEN resources are tagged:
 - `Project=LICHEN`
 - `LaunchedBy=ec2-claude-sh` (for instances launched by the script)
+
+The copied Zephyr builder EBS volume is the sole untagged exception. Identify it
+by the exact volume ID and `Name=lichen-zephyr-arm64` listed below.
 
 Before ANY destructive operation (terminate, delete, stop), verify the resource belongs to LICHEN:
 
@@ -385,10 +400,6 @@ aws ec2 describe-instances --filters "Name=tag:Project,Values=LICHEN" \
 
 The following are NOT LICHEN resources — do not terminate, stop, modify, or delete:
 
-- `ceph-fips-*` instances (Ceph FIPS testing)
-- `proxmox-fips-*` instances (Proxmox FIPS lab)
-- `wolfssl-*` instances (wolfSSL projects)
-- `fenrir-*` instances (Fenrir project)
 - Any instance without `Project=LICHEN` tag
 - Any EBS volume not explicitly listed in this document
 - Any security group, VPC, or subnet you didn't create
@@ -398,7 +409,7 @@ The following are NOT LICHEN resources — do not terminate, stop, modify, or de
 You MAY:
 - Launch new instances with `Project=LICHEN` and `LaunchedBy=<your-identifier>` tags
 - Terminate instances YOU launched in the current session (track instance IDs)
-- Attach/detach the LICHEN EBS volume (`vol-017cfe48bd75340d0`)
+- Attach/detach the LICHEN EBS volume (`vol-0a95eee8d1d8461eb`)
 - Create/delete temporary security groups tagged with `Project=LICHEN`
 
 You MUST NOT:
@@ -423,8 +434,8 @@ aws ec2 run-instances \
 
 Always use the persistent single-AZ EBS builder cache for EC2 Zephyr builds/tests:
 
-- Volume: `vol-017cfe48bd75340d0`
-- Region/AZ: `us-east-2` / `us-east-2a`
+- Volume: `vol-0a95eee8d1d8461eb`
+- Region/AZ: `us-west-2` / `us-west-2c`
 - Size/type: 400 GiB `gp3`
 - Name tag: `lichen-zephyr-arm64`
 - Filesystem label: `LICHEN_ZEPHYR`
@@ -432,13 +443,13 @@ Always use the persistent single-AZ EBS builder cache for EC2 Zephyr builds/test
 - Prepared contents: Zephyr SDK `0.16.8`, repo west workspace pinned to Zephyr `v3.7.0`, Zephyr Python venv, west modules, ccache, pip/uv cache directories, and helper scripts.
 - Validation: `west build -b native_sim ... lichen/tests/link_crypto` plus `west build -t run` passed with `link_crypto` 2/2.
 
-Workflow for a fresh EC2 instance in `us-east-2a`:
+Workflow for a fresh EC2 instance in `us-west-2c`:
 
 ```bash
-aws ec2 attach-volume --profile AdministratorAccess-921772462201 --region us-east-2 \
-  --volume-id vol-017cfe48bd75340d0 --instance-id <instance-id> --device /dev/sdf
+aws ec2 attach-volume --profile personal --region us-west-2 \
+  --volume-id vol-0a95eee8d1d8461eb --instance-id <instance-id> --device /dev/sdf
 
-sudo /mnt/lichen-zephyr/scripts/mount-volume.sh vol-017cfe48bd75340d0 /mnt/lichen-zephyr
+sudo /mnt/lichen-zephyr/scripts/mount-volume.sh vol-0a95eee8d1d8461eb /mnt/lichen-zephyr
 /mnt/lichen-zephyr/scripts/bootstrap-host.sh   # only if host packages are missing
 . /mnt/lichen-zephyr/env.sh
 cd /mnt/lichen-zephyr/work/project-LICHEN
@@ -458,6 +469,22 @@ tools/zephyr-clean-worktree.sh verify "$PWD" <build-dir>
 ```
 
 The volume is single-attach. Before terminating a builder, run `sync`, unmount `/mnt/lichen-zephyr`, detach the volume, and wait for it to return to `available` so the next builder can attach it.
+
+### AWS Fleet Runtime AMI
+
+Use the fleet AMI for parallel Renode, Rust, and Python simulation workers. Do
+not attach the single-use Zephyr builder EBS cache to fleet instances.
+
+- AMI: `ami-0764d1b512e22671f`
+- Region/architecture: `us-west-2` / ARM64
+- Root snapshot: `snap-084be3acfc62d508a` (30 GiB encrypted)
+- Contents: Renode `1.16.1`, Rust/Cargo `1.97.0`, Python `3.11.15`, `uv` `0.11.18`, and locked LICHEN Python runtime dependencies
+- Source policy: no repository checkout or credentials are baked into the image; provide current source and artifacts at launch
+- Validation: clean-boot SSH and Serial Console API, headless Renode, locked `hetero-node` build/invocation, and LICHEN Python package import passed
+
+The `ec2-renode-fleet.sh`, `ec2-renode-fleet-simple.sh`, and
+`ec2-hetero-fleet.sh` launchers default to this AMI. Override with `EC2_AMI_ID`
+only for an explicitly validated replacement image.
 
 ## IETF I-D Documents
 
@@ -660,3 +687,129 @@ bd prime                # Refresh Beads context
 
 **Architecture in one line:** issues live in a local Dolt DB; sync uses `refs/dolt/data` on your git remote; `.beads/issues.jsonl` is a passive export. See https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md for details and anti-patterns.
 <!-- END BEADS CODEX SETUP -->
+
+
+<!-- BEGIN BEADS INTEGRATION v:1 profile:full hash:d327e327 -->
+## Issue Tracking with bd (beads)
+
+**IMPORTANT**: This project uses **bd (beads)** for ALL issue tracking. Do NOT use markdown TODOs, task lists, or other tracking methods.
+
+### Why bd?
+
+- Dependency-aware: Track blockers and relationships between issues
+- Git-friendly: flat-file JSON storage tracked by git
+- Agent-optimized: JSON output, ready work detection, discovered-from links
+- Prevents duplicate tracking systems and confusion
+
+### Quick Start
+
+**Check for ready work:**
+
+```bash
+bd ready --json
+```
+
+**Create new issues:**
+
+```bash
+bd create "Issue title" --description="Detailed context" -t bug|feature|task -p 0-4 --json
+bd create "Issue title" --description="What this issue is about" -p 1 --deps discovered-from:bd-123 --json
+```
+
+**Claim and update:**
+
+```bash
+bd update <id> --claim --json
+bd update bd-42 --priority 1 --json
+```
+
+**Complete work:**
+
+```bash
+bd close bd-42 --reason "Completed" --json
+```
+
+### Issue Types
+
+- `bug` - Something broken
+- `feature` - New functionality
+- `task` - Work item (tests, docs, refactoring)
+- `epic` - Large feature with subtasks
+- `chore` - Maintenance (dependencies, tooling)
+
+### Priorities
+
+- `0` - Critical (security, data loss, broken builds)
+- `1` - High (major features, important bugs)
+- `2` - Medium (default, nice-to-have)
+- `3` - Low (polish, optimization)
+- `4` - Backlog (future ideas)
+
+### Workflow for AI Agents
+
+1. **Check ready work**: `bd ready` shows unblocked issues
+2. **Claim your task atomically**: `bd update <id> --claim`
+3. **Work on it**: Implement, test, document
+4. **Discover new work?** Create linked issue:
+   - `bd create "Found bug" --description="Details about what was found" -p 1 --deps discovered-from:<parent-id>`
+5. **Complete**: `bd close <id> --reason "Done"`
+
+### Quality
+- Use `--acceptance` and `--design` fields when creating issues
+- Use `--validate` to check description completeness
+
+### Lifecycle
+- `bd defer <id>` / `bd supersede <id>` for issue management
+- `bd stale` / `bd orphans` / `bd lint` for hygiene
+- `bd human <id>` to flag for human decisions
+- `bd formula list` / `bd mol pour <name>` for structured workflows
+
+### Storage
+
+Issues are stored as flat JSON files in `.beads/issues/`, tracked by git. Each write updates these files directly. Sync is via standard git operations (commit, push, pull).
+
+### Important Rules
+
+- ✅ Use bd for ALL task tracking
+- ✅ Always use `--json` flag for programmatic use
+- ✅ Link discovered work with `discovered-from` dependencies
+- ✅ Check `bd ready` before asking "what should I work on?"
+- ❌ Do NOT create markdown TODO lists
+- ❌ Do NOT use external issue trackers
+- ❌ Do NOT duplicate tracking systems
+
+For more details, see README.md and docs/QUICKSTART.md.
+
+## Agent Context Profiles
+
+The managed Beads block is task-tracking guidance, not permission to override repository, user, or orchestrator instructions.
+
+- **Conservative (default)**: Use `bd` for task tracking. Do not run git commits or git pushes unless explicitly asked. At handoff, report changed files, validation, and suggested next commands.
+- **Minimal**: Keep tool instruction files as pointers to `bd prime`; use the same conservative git policy unless active instructions say otherwise.
+- **Team-maintainer**: Only when the repository explicitly opts in, agents may close beads, run quality gates, commit, and push as part of session close. A current "do not commit" or "do not push" instruction still wins.
+
+## Session Completion
+
+This protocol applies when ending a Beads implementation workflow. It is subordinate to explicit user, repository, and orchestrator instructions.
+
+1. **File issues for remaining work** - Create beads for anything that needs follow-up
+2. **Run quality gates** (if code changed) - Tests, linters, builds
+3. **Update issue status** - Close finished work, update in-progress items
+4. **Handle git/sync by active profile**:
+   ```bash
+   # Conservative/minimal/default: report status and proposed commands; wait for approval.
+   git status
+
+   # Team-maintainer opt-in only, unless current instructions forbid it:
+   git pull --rebase
+   git push
+   git status
+   ```
+5. **Hand off** - Summarize changes, validation, issue status, and any blocked sync/commit/push step
+
+**Critical rules:**
+- Explicit user or orchestrator instructions override this Beads block.
+- Do not commit or push without clear authority from the active profile or the current user request.
+- If a required sync or push is blocked, stop and report the exact command and error.
+
+<!-- END BEADS INTEGRATION -->

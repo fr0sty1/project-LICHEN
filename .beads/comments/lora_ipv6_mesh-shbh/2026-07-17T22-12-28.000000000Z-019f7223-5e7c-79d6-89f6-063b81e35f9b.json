@@ -1,0 +1,7 @@
+{
+  "id": "019f7223-5e7c-79d6-89f6-063b81e35f9b",
+  "issue_id": "lora_ipv6_mesh-shbh",
+  "author": "Mark Frost",
+  "text": "2026-07-17 code fix implemented (option a): peer_try_all_pubkeys now breaks at the first verified peer when CONFIG_LICHEN_L2_DEV_PROVISIONING is set, instead of the constant-time all-peers scan. Safe because dev provisioning is INSECURE (publicly-derivable keys), so the timing-side-channel defense protects nothing, and the delivered result is identical either way (first match always wins). Secure (non-dev) builds keep constant-time. Validated: link_crypto + ping_l2 suites pass unchanged (non-dev path); dev-mode branch compiles+links clean on t_echo/nrf52840 with DEV_PROVISIONING=y. PENDING: hardware confirmation that a second pinned peer no longer zeroes nRF52840 RX — needs reflashing both boards + re-adding the 2nd peer to lichen/apps/*/boards confs, deferred until the 12h soak (in progress) completes. Keeping in_progress until that empirical check.",
+  "created_at": "2026-07-17T22:12:28Z"
+}

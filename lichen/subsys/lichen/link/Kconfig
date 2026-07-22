@@ -74,4 +74,79 @@ config LICHEN_LINK_INSECURE_CRC32_MIC
 	  When enabled, a compile-time warning is emitted to ensure the
 	  insecure configuration is visible in build logs.
 
+config LICHEN_LINK_EPOCH_PERSIST
+	bool "Persist the link TX epoch across reboots"
+	depends on SETTINGS
+	help
+	  Persist the link-layer TX epoch to the settings subsystem and
+	  advance it by one on every boot. This keeps a rebooted node's
+	  (epoch, seqnum) counter monotonically ahead of what its peers
+	  remember in their replay windows, so frames sent after a reboot
+	  are not rejected as replays.
+
+	  Without this, link_ctx picks a random epoch in [128,255] at boot,
+	  which is lower than the peer's remembered epoch ~50% of the time
+	  and causes one-way replay deafness until both nodes reset together
+	  (lora_ipv6_mesh-3uhb). Costs one small settings write per boot.
+
+config LICHEN_LINK_EPOCH_TEST_HOOKS
+	bool "Test hooks for epoch persistence"
+	depends on LICHEN_LINK_EPOCH_PERSIST
+	depends on ZTEST
+	help
+	  Expose lichen_link_epoch_test_reset() to clear the in-RAM
+	  boot-epoch cache so tests can simulate a reboot and exercise the
+	  persist-and-advance behavior. Testing only.
+
+config LICHEN_CCP_TIME_SYNC
+	bool "CCP-7 time synchronization for synchronized channel hopping"
+	depends on LICHEN_LINK
+	select LICHEN_GNSS if BOARD_T1000_E
+	help
+	  Enable time synchronization using GNSS/DIO Time Option for CCP-7
+	  coordinated channel profile. Required for time-based channel hopping
+	  sequence to keep all nodes on the same channel at the same time.
+	  Provides sub-second accuracy when GNSS locked.
+
+	config LICHEN_LINK_CCP16_LOAD_BALANCING
+	bool "CCP-16 TDMA adaptive SF multi-channel density-aware load balancing"
+	depends on LICHEN_LINK
+	depends on LICHEN_RPL
+	select LICHEN_CCP_TIME_SYNC
+	select LICHEN_TDMA
+	select LICHEN_SCHC
+	select LICHEN_HAS_LORA_CAD
+	help
+	  Enable CCP-16 coordinated capacity profile for load balancing.
+	  See DEFCON density notes (project-LICHEN-2h1i, project-LICHEN-2nnd)
+	  for 500-node scalability targets at hacker conferences. Implements
+	  TDMA slot scheduling, adaptive spreading factor selection based on
+	  SNR/density metrics from DIO extensions, multi-channel coordination
+	  (control vs data channels), and density-aware behaviors. Integrates
+	  with RPL DODAG for load metrics propagation.
+
+
+config LICHEN_TDMA
+	bool "LICHEN TDMA slot management"
+	depends on LICHEN_LINK
+	depends on LICHEN_RPL
+	select LICHEN_RPL
+	default y if LICHEN_LINK_CCP16_LOAD_BALANCING
+	help
+	  TDMA slot management for CCP-16. Uses struct LICHEN_TDMA_Slot
+	  in link.h:50 (16B: id+pad[3]+start_time_ms+owner_eui64[8];
+	  BUILD_ASSERT confirms size). lichen_tdma_init() AFTER
+	  lichen_link_init() + lichen_link_load_key() but BEFORE
+	  oscore_init() per AGENTS.md dependency graph (line 190) and
+	  lichen_node_init() example. Prevents use-before-init crashes
+	  or zeroed signatures. Required by CCP-16.
+
+config LICHEN_CCP5_COORD_NEGOTIATION
+	bool "CCP-5 coordination mechanism negotiation (da2q)"
+	depends on LICHEN_LINK
+	help
+	  Enable CCP-5 peer negotiation of coordination mechanisms
+	  (scheduled, hash_based, announce_driven, fallback) for multi-channel
+	  rendezvous per da2q context and ccp9-rendezvous vectors.
+
 endif # LICHEN_LINK

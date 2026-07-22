@@ -85,7 +85,11 @@ int senml_add_float(struct senml_pack *pack,
 		    const char *unit,
 		    float value)
 {
-	if (pack == NULL) {
+	if (pack == NULL || name == NULL) {
+		return -EINVAL;
+	}
+
+	if (isnan(value) || isinf(value)) {
 		return -EINVAL;
 	}
 
@@ -114,7 +118,11 @@ int senml_add_float_t(struct senml_pack *pack,
 		      float value,
 		      int32_t time_offset)
 {
-	if (pack == NULL) {
+	if (pack == NULL || name == NULL) {
+		return -EINVAL;
+	}
+
+	if (isnan(value) || isinf(value)) {
 		return -EINVAL;
 	}
 
@@ -141,7 +149,7 @@ int senml_add_bool(struct senml_pack *pack,
 		   const char *name,
 		   bool value)
 {
-	if (pack == NULL) {
+	if (pack == NULL || name == NULL) {
 		return -EINVAL;
 	}
 

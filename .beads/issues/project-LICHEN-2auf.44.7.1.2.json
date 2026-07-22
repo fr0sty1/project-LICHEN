@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-2auf.44.7.1.2",
+  "title": "Broadcast multicast RPL control at L2",
+  "description": "Use broadcast/elided L2 destination for any IPv6 multicast RPL destination while retaining IID-to-EUI mapping for unicast.",
+  "acceptance_criteria": "Parsed-wire DIO and DIS tests show multicast uses broadcast/elided addressing, unicast remains addressed, and receive behavior succeeds.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-20T06:06:49.534454323Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-20T06:26:40.884687044Z",
+  "started_at": "2026-07-20T06:25:13.286479939Z",
+  "closed_at": "2026-07-20T06:26:40.884687044Z",
+  "close_reason": "Centralized IPv6-to-L2 destination selection: multicast uses broadcast/no-destination and unicast derives EUI-64; receive filter accepts multicast. Added parsed DIO/DIS/unicast wire assertions and multicast DIO/DIS receive-response test.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.7.1.2",
+      "depends_on_id": "project-LICHEN-2auf.44.7.1",
+      "type": "parent-child",
+      "created_at": "2026-07-20T06:06:49.621418128Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

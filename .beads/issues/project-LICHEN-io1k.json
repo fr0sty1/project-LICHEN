@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-io1k",
+  "title": "Reconcile Zephyr target inventory",
+  "description": "Resolve stale board fragments/selectors and complete physical or infrastructure-dependent target validation exposed by the boot audit. Keep canonical HWMv2 target names and distinguish build support, faithful simulation, and physical proof.",
+  "acceptance_criteria": "Every declared target has a canonical Zephyr mapping or approved retirement; active commands use valid selectors; every hardware-only/native32 row has retained independent evidence and cleanup.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T19:39:22.955587Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T19:39:22.955587Z"
+}

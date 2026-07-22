@@ -1,0 +1,38 @@
+{
+  "id": "project-LICHEN-zrh2.2",
+  "title": "All impls: Per-neighbor SF tracking",
+  "description": "Implement per-neighbor SF tracking and adaptation.\n\n## Shared logic\n1. NeighborTable entry gains (sf, snr_avg, last_update) fields\n2. On RX: update SNR average, evaluate SF change\n3. On TX: lookup neighbor SF, use it\n4. Parse/emit SF field in announces\n\n## Data structure\nstruct NeighborSF {\n  current_sf: u8,       // SF7-SF12\n  snr_ewma: i8,         // exponential weighted moving average\n  upgrade_count: u8,    // consecutive samples above threshold\n  downgrade_count: u8,  // consecutive samples below threshold\n}\n\n## Python\n- Add to GradientEntry or separate NeighborTable\n- SF selection in TX path\n\n## Rust\n- Add SF tracking to neighbor state\n- Wire to radio TX\n\n## Zephyr\n- Add to gradient table struct\n- Kconfig: CONFIG_LICHEN_ADAPTIVE_SF_ENABLED\n- Default SF: CONFIG_LICHEN_DEFAULT_SF=10",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "feature",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T18:22:05.063528Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T18:22:05.063528Z",
+  "labels": [
+    "python",
+    "rust",
+    "zephyr",
+    "implementation",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zrh2.2",
+      "depends_on_id": "project-LICHEN-zrh2",
+      "type": "parent-child",
+      "created_at": "2026-07-16T18:22:05.211019Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-zrh2.2",
+      "depends_on_id": "project-LICHEN-zrh2.1",
+      "type": "blocks",
+      "created_at": "2026-07-16T18:22:05.341861Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

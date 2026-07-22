@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-2k1j",
+  "title": "Reset C tuple domain on key rotation",
+  "description": "C link TX latches nonce_exhausted after terminal tuple, but the documented signing-key rotation path does not reset the counter/exhaustion state. Define atomic key rotation with a fresh persisted/random next tuple and test that old-key tuples remain isolated while new-key TX resumes.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-19T00:37:25.495775Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-21T23:32:54.095117547Z",
+  "started_at": "2026-07-21T23:29:17.018958613Z",
+  "closed_at": "2026-07-21T23:32:54.095117547Z",
+  "close_reason": "Reset tx_seq and nonce_exhausted in lichen_link_load_key (link_ctx.c:154-155); atomic rotation now clears latch so new key TX resumes with fresh tuple while old-key tuples stay isolated via per-pubkey replay. Existing link_crypto and link_epoch tests pass; no regression to epoch persist.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2k1j",
+      "depends_on_id": "project-LICHEN-7wgt",
+      "type": "discovered-from",
+      "created_at": "2026-07-19T00:37:25.63026Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

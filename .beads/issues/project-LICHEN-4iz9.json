@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-4iz9",
+  "title": "Zeroize EDHOC signature structures",
+  "description": "MAC_2/MAC_3 are copied from wiping SecretVec buffers into ordinary heapless signature-structure vectors that are not zeroized after sign/verify. Use a wiping buffer or explicit zeroization. Found reviewing convergence zeroization commit.",
+  "status": "deferred",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-21T02:14:39.358593392Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-21T02:14:55.228652895Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-4iz9",
+      "depends_on_id": "project-LICHEN-7fqg.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-21T02:14:39.445147602Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

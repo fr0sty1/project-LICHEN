@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-y72o",
+  "title": "Track explicit response PIV replay state",
+  "description": "OSCORE explicit-PIV responses validate but discard the response sequence and replay-check the request PIV instead, rejecting fresh notifications for one request and failing to maintain responder replay state. Track/commit response PIV while preserving request correlation. Found reviewing convergence OSCORE slice.",
+  "status": "deferred",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-21T02:14:38.568959983Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-21T02:14:54.240556207Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-y72o",
+      "depends_on_id": "project-LICHEN-7fqg.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-21T02:14:38.655269309Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

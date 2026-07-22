@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-2auf.9",
+  "title": "Align Python link signing with protocol framing",
+  "description": "Independent review found Python link_layer.py signing/framing does not match the link draft or the Rust/C implementations: signable data omits length/LLSec fields and signatures are appended as payload with placeholder MIC framing. Confirm the normative wire format and implement cross-implementation-compatible signing with independent vectors/tests.",
+  "notes": "Compatibility decision: the normative contract is LENGTH || LLSec || EPO || SEQ || DST || PLD; S=1 places the full 48-byte Schnorr signature in MIC. MicLength remains 4/8-byte MIC selection only for S=0. Updated Python, Rust, C, draft, and vectors/tests. Verified: uv run pytest tests/link -q (145 passed, 4 skipped); cargo test -p lichen-link (32 tests passed including shared vectors); git diff --check passed. Zephyr C tests were not run locally: no configured CMake build directory; Linux/EC2 west build and link_crypto/schnorr48 Twister verification remain required.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-15T04:49:52.034129Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-15T05:41:51.931967Z",
+  "closed_at": "2026-07-15T05:41:51.931967Z",
+  "close_reason": "Implemented and locally verified cross-implementation framing/signing alignment; Zephyr verification documented as Linux/EC2-required.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.9",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-15T04:49:52.041767Z"
+    }
+  ]
+}

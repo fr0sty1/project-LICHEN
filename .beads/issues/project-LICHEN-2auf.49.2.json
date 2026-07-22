@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-2auf.49.2",
+  "title": "Poison failed EDHOC sessions",
+  "description": "EDHOC processing errors after DH retain PRKs and retryable state; create_message_1 can reuse invalid/zeroized ephemeral state; injected RNG constructors use infallible fill_bytes and may panic on hardware entropy failure. Make failures immediately zeroize and permanently poison the session, guard all lifecycle methods, and use fallible entropy APIs.",
+  "acceptance_criteria": "Every post-DH parser/authentication error zeroizes stored/transient secrets and prevents retry/export; create_message_1 rejects completed/failed/zeroized state; try_fill_bytes entropy failure returns an explicit error without panic or partial object; host/Cortex-M tests and three reviews pass.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-18T00:02:32.548164Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-18T00:15:40.343044Z",
+  "started_at": "2026-07-18T00:02:52.289289Z",
+  "closed_at": "2026-07-18T00:15:40.343044Z",
+  "close_reason": "Implemented fail-closed lifecycle poisoning, fallible injected entropy, immediate raw/stored secret wiping, and state guards; host and Cortex-M checks plus three exact reviews pass.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.49.2",
+      "depends_on_id": "project-LICHEN-2auf.49",
+      "type": "parent-child",
+      "created_at": "2026-07-18T00:02:32.678117Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

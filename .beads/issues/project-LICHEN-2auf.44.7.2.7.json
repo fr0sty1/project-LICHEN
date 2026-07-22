@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-2auf.44.7.2.7",
+  "title": "Run final RPL regression gates",
+  "description": "Run formatting, direct ipv6/link/rpl/node tests, strict scoped Clippy, integrity searches, and diff checks without unrelated edits or commit.",
+  "acceptance_criteria": "All requested commands pass with exact results recorded; prior canonical/full-path tests pass; git diff --check passes.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-20T06:37:34.462338436Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-20T07:03:45.374249112Z",
+  "started_at": "2026-07-20T07:02:18.075753937Z",
+  "closed_at": "2026-07-20T07:03:45.374249112Z",
+  "close_reason": "Changed-file rustfmt check passed with skip_children; direct tests passed: lichen-link 29 unit + 2 vectors + 1 doc, lichen-ipv6 13 unit, lichen-rpl 125 unit + 2 vectors + 5 mesh, lichen-node 179 unit + 2 vectors + docs. Strict library-scoped Clippy passed for all four crates. Scheduler unchanged, integrity searches passed, and git diff --check passed.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.7.2.7",
+      "depends_on_id": "project-LICHEN-2auf.44.7.2",
+      "type": "parent-child",
+      "created_at": "2026-07-20T06:37:34.545123525Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

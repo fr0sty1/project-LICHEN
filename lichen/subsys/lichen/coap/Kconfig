@@ -52,6 +52,21 @@ config LICHEN_COAP_SERVER
 	  Exposes LCI resources: /status, /config, /neighbors, /key, /msg/inbox,
 	  and /.well-known/core for resource discovery.
 
+config LICHEN_COAP_SERVER_STANDALONE
+	bool "Standalone subsystem-owned CoAP service (coap_server.c)"
+	depends on LICHEN_COAP_SERVER
+	default n
+	help
+	  Compile the subsystem-owned COAP_SERVICE (lichen_coap_server) from
+	  coap_server.c, which registers its own /status, /config, /neighbors,
+	  /key and /msg/inbox resources.
+
+	  Keep this off in applications that define their own CoAP service
+	  and use the per-resource handler modules (LICHEN_COAP_STATUS,
+	  LICHEN_COAP_CONFIG, LICHEN_COAP_KEYS, LICHEN_COAP_MSG) — the
+	  gateway app does this with its lichen_coap service — otherwise the
+	  same LCI paths are served twice on different sockets.
+
 config LICHEN_COAP_SERVER_LOG_LEVEL
 	int "CoAP server log level"
 	depends on LICHEN_COAP_SERVER
@@ -167,6 +182,12 @@ config LICHEN_COAP_MSG_LOG_LEVEL
 config LICHEN_COAP_KEYS
 	bool "LCI /keys resource handlers"
 	depends on LICHEN_COAP_SERVER
+	# coap_keys.c calls slip_transport_iface_get() and includes
+	# <lichen/transport/slip_transport.h> to scope admin (PUT/DELETE)
+	# access to the SLIP LCI interface. Without the SLIP transport the
+	# header is off the include path and the symbol is undefined at link,
+	# so this option genuinely requires it (bd a2a2).
+	depends on LICHEN_SLIP_TRANSPORT
 	select COAP_URI_WILDCARD
 	select TINYCRYPT_SHA256
 	help
@@ -207,5 +228,64 @@ config LICHEN_COAP_KEYS_TEST_HOOKS
 	depends on ZTEST
 	help
 	  Enable test hooks for resetting the key store. Only for testing.
+
+config LICHEN_COAP_LOCATION
+	bool "CoAP /sensors/location resource (SenML position)"
+	depends on !LICHEN_COAP_SERVER_STANDALONE
+	depends on LICHEN_SENML
+	depends on LICHEN_HAL
+	depends on LICHEN_LORA_L2
+	default n
+	help
+	  Serve GET /sensors/location as a SenML pack (application/senml+cbor,
+	  spec 12-apps.md section 18.2.2) describing the node's current position,
+	  or 4.04 when it has no valid fix. Requires the SenML encoder, the HAL
+	  location provider, and the LoRa L2 (for the node EUI-64 base name).
+
+config LICHEN_COAP_LOCATION_LOG_LEVEL
+	int "CoAP location log level"
+	depends on LICHEN_COAP_LOCATION
+	default 3
+	range 0 4
+	help
+	  Log level for the LICHEN CoAP location handler:
+	  0=off, 1=error, 2=warning, 3=info, 4=debug
+
+config LICHEN_COAP_DEADDROP
+	bool "LCI /deaddrop and /confessions DTN resources"
+	depends on LICHEN_COAP_SERVER
+	select ZCBOR
+	select LICHEN_OSCORE
+	select LICHEN_SENML
+	select LICHEN_DTN
+	help
+	  CoAP handlers for /deaddrop (encrypted store-forward) and
+	  /confessions (anonymous rate-limited broadcast). Uses OSCORE,
+	  rate limiting, and DTN storage.
+
+config LICHEN_COAP_DEADDROP_RATE_LIMIT_MS
+	int "Rate limit for confessions in ms"
+	depends on LICHEN_COAP_DEADDROP
+	default 30000
+	range 1000 300000
+	help
+	  Minimum interval between /confessions POSTs.
+
+config LICHEN_COAP_DEADDROP_MAX_STORAGE
+	int "Max deaddrop storage entries"
+	depends on LICHEN_COAP_DEADDROP
+	default 8
+	range 1 64
+	help
+	  Maximum messages in DTN deaddrop buffer.
+
+config LICHEN_COAP_DEADDROP_LOG_LEVEL
+	int "CoAP deaddrop log level"
+	depends on LICHEN_COAP_DEADDROP
+	default 3
+	range 0 4
+	help
+	  Log level for LICHEN CoAP deaddrop/confessions handlers:
+	  0=off, 1=error, 2=warning, 3=info, 4=debug
 
 endif # LICHEN_COAP

@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-t5j2",
+  "title": "Avoid LinkLayer TX priority inversion",
+  "description": "Python LinkLayer holds _tx_lock while enqueueing, running CAD retries, and draining. A later ROUTING/ACK send cannot enter the priority queue while an earlier BULK send waits, so bulk may transmit first and the higher-priority packet may expire before enqueue. Redesign serialization so radio operations remain single-flight while priority enqueue remains responsive. Discovered reviewing convergence commit d422a03b; outside frozen reconciliation.",
+  "status": "deferred",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-21T02:07:21.300296277Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-21T02:07:43.41056223Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t5j2",
+      "depends_on_id": "project-LICHEN-7fqg.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-21T02:07:21.386296333Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

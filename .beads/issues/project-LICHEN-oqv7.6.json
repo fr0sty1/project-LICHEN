@@ -1,0 +1,39 @@
+{
+  "id": "project-LICHEN-oqv7.6",
+  "title": "Add R1 Neo Renode model",
+  "description": "Compose an R1 Neo model using nRF52840, SX1262, USB/BLE model components, and board-specific SPIM/GPIO/power-hold wiring with stable identity.",
+  "acceptance_criteria": "Canonical R1 Neo gateway and puck firmware reach BLE/CoAP readiness and independently observed simulator TX; provisional reset, GNSS, bootloader, and power timing remain explicitly physical-validation items.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "feature",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T19:40:36.310939Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T19:40:36.310939Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-oqv7.6",
+      "depends_on_id": "project-LICHEN-oqv7",
+      "type": "parent-child",
+      "created_at": "2026-07-16T19:40:36.428655Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-oqv7.6",
+      "depends_on_id": "project-LICHEN-oqv7.1",
+      "type": "blocks",
+      "created_at": "2026-07-16T19:44:14.465187Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-oqv7.6",
+      "depends_on_id": "project-LICHEN-oqv7.2",
+      "type": "blocks",
+      "created_at": "2026-07-16T19:44:15.154149Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

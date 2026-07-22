@@ -274,6 +274,8 @@ To prevent DIS storms:
 | DAO refresh | Every 30 minutes (before lifetime expires) |
 | DAO on parent change | Immediate (with jitter 0-500ms) |
 
+**DAO Source Address Model:** DAO packets use routable ULA source (DODAG-root derived prefix) for multi-hop forwarding. Relays preserve the original IPv6 source end-to-end (see spec/04-network.md and SCHC Rule 4). This satisfies security requirements for source binding.
+
 ### 7.2. DAO Lifetime
 
 ```
@@ -325,8 +327,7 @@ security mechanism, not RPL's built-in security modes.
 
 ### 8.2. Link-Layer Signature Protection
 
-All RPL control messages (DIO, DAO, DIS) are link-layer frames
-carrying Schnorr signatures (draft-lichen-schnorr-00).
+All RPL control messages (DIO, DAO, DIS) are link-layer frames that MUST carry Schnorr signatures per draft-lichen-link-01:4.2 (unsigned RPL control frames MUST be rejected by receivers; permissive mode is test-only). See spec/06-security.md:8.9 for full requirements.
 
 This provides:
 - Sender authentication

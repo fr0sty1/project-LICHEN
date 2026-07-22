@@ -68,6 +68,25 @@ static void extract_iid(const uint8_t addr[16], uint8_t iid[8])
 	memcpy(iid, &addr[8], 8);
 }
 
+/**
+ * Check if address belongs to this node (exact match or matching IID for
+ * ULA/GUA support per codereview P3 for project-LICHEN-8ey9).
+ */
+static bool is_our_address(const struct lichen_router *router,
+			   const uint8_t addr[16])
+{
+	if (router == NULL || addr == NULL) {
+		return false;
+	}
+	if (memcmp(addr, router->node_address, 16) == 0) {
+		return true;
+	}
+	if (memcmp(&addr[8], router->node_iid, 8) == 0) {
+		return true;
+	}
+	return false;
+}
+
 int lichen_router_init(struct lichen_router *router,
 		       const uint8_t node_address[16])
 {
@@ -121,12 +140,12 @@ enum lichen_addr_class lichen_router_classify(const struct lichen_router *router
 		return LICHEN_ADDR_LINK_LOCAL;
 	}
 
-	/* Check ULA (LICHEN meshes typically use fd00::/8) */
 	if (is_ula(dst_addr)) {
 		return LICHEN_ADDR_MESH_LOCAL;
 	}
-
-	/* Check configured mesh prefixes (GUA from DIO/border router) */
+	if ((dst_addr[0] & 0xfe) == 0x02) {
+		return LICHEN_ADDR_MESH_LOCAL;
+	}
 	for (size_t i = 0; i < CONFIG_LICHEN_ROUTER_MAX_MESH_PREFIXES; i++) {
 		const struct lichen_mesh_prefix *p = &router->mesh_prefixes[i];
 		if (!p->valid) {
@@ -137,7 +156,6 @@ enum lichen_addr_class lichen_router_classify(const struct lichen_router *router
 		}
 	}
 
-	/* Everything else goes to the border router */
 	return LICHEN_ADDR_EXTERNAL;
 }
 
@@ -233,8 +251,8 @@ int lichen_router_route(struct lichen_router *router,
 
 	memset(result, 0, sizeof(*result));
 
-	/* Check if packet is for this node */
-	if (memcmp(dst_addr, router->node_address, 16) == 0) {
+	/* Check if packet is for this node (uses is_our_address for link-local + ULA/GUA) */
+	if (is_our_address(router, dst_addr)) {
 		result->decision = LICHEN_ROUTE_DELIVER_LOCAL;
 		return 0;
 	}
@@ -276,7 +294,6 @@ int lichen_router_queue_pending(struct lichen_router *router,
 	/* Count existing packets for this destination */
 	int dest_count = 0;
 	struct lichen_pending_packet *oldest_for_dest = NULL;
-	uint32_t oldest_time = 0xFFFFFFFF;
 
 	for (size_t i = 0; i < CONFIG_LICHEN_ROUTER_MAX_PENDING; i++) {
 		struct lichen_pending_packet *p = &router->pending[i];
@@ -288,7 +305,6 @@ int lichen_router_queue_pending(struct lichen_router *router,
 			if (oldest_for_dest == NULL ||
 			    (int32_t)(p->queued_at_ms - oldest_for_dest->queued_at_ms) < 0) {
 				oldest_for_dest = p;
-				oldest_time = p->queued_at_ms;
 			}
 		}
 	}
@@ -479,7 +495,6 @@ int lichen_router_on_route_discovered(struct lichen_router *router,
 
 	lichen_gradient_update(&router->gradient_table, &entry, now_ms);
 
-	/* Clear and return count of pending packets */
 	return lichen_router_clear_pending(router, dst_iid);
 }
 
@@ -548,25 +563,36 @@ static uint64_t distance_approx_m(int32_t lat1_e7, int32_t lon1_e7,
 	int64_t dlat_e7 = (int64_t)lat2_e7 - (int64_t)lat1_e7;
 	int64_t dlon_e7 = (int64_t)lon2_e7 - (int64_t)lon1_e7;
 
-	/* Convert to meters (1 degree ~= 111,111m, but we use 111,000 for simplicity)
-	 * meters = degrees * 111000 = (e7 / 1e7) * 111000 = e7 * 111000 / 10000000
-	 *        = e7 * 111 / 10000 (simplify) */
-	int64_t dlat_m_100 = dlat_e7 * 111;  /* *100 of meters for precision */
-	int64_t dlon_m_100 = dlon_e7 * 111;  /* needs cos(lat) correction */
+	/*
+	 * SECURITY: Scale down to e4 degrees to prevent integer overflow.
+	 * Without this, dlat_e7 * 111 can reach ~2e11, and squaring that
+	 * (~4e22) overflows both int64 and uint64, causing UB.
+	 *
+	 * Max dlat_e4 = 1.8e6, * 111 = ~2e8, squared = ~4e16, fits uint64.
+	 */
+	int64_t dlat_e4 = dlat_e7 / 1000;
+	int64_t dlon_e4 = dlon_e7 / 1000;
+
+	/* Convert to meters * 10 (1 degree ~= 111km, in e4: e4 * 111 / 10) */
+	int64_t dlat_m10 = dlat_e4 * 111;
+	int64_t dlon_m10 = dlon_e4 * 111;
 
 	/* Approximate cos(lat) as 1 - lat^2/2 for small lat, or use lookup.
 	 * For simplicity at mesh scales, just use cos(45deg) = 0.707 as average.
 	 * This gives ~30% error at equator/poles, but GPSR is best-effort anyway. */
-	dlon_m_100 = (dlon_m_100 * 707) / 1000;  /* cos(45 deg) approximation */
+	dlon_m10 = (dlon_m10 * 707) / 1000;  /* cos(45 deg) approximation */
 
-	/* Distance^2 in (meters*100)^2, then convert back to meters */
-	uint64_t dist_sq_100 = (uint64_t)((dlat_m_100 * dlat_m_100) +
-					  (dlon_m_100 * dlon_m_100));
+	/* SECURITY: Take absolute value and cast to uint64 BEFORE squaring
+	 * to avoid signed overflow undefined behavior. */
+	uint64_t dlat_abs = (dlat_m10 >= 0) ? (uint64_t)dlat_m10
+					    : (uint64_t)(-dlat_m10);
+	uint64_t dlon_abs = (dlon_m10 >= 0) ? (uint64_t)dlon_m10
+					    : (uint64_t)(-dlon_m10);
 
-	/* Divide by 10000^2 to get meters^2, then by 100 more for the *100 factor */
-	/* Actually: we computed in e7 * 111 = e7 * 111, so units are 1e7 * m
-	 * Let's simplify: just return the squared distance for comparison */
-	return dist_sq_100;
+	uint64_t dist_sq = (dlat_abs * dlat_abs) + (dlon_abs * dlon_abs);
+
+	/* Return squared distance for comparison (exact units don't matter) */
+	return dist_sq;
 }
 
 int lichen_router_gpsr_forward(struct lichen_router *router,
@@ -648,11 +674,11 @@ int lichen_router_dtn_buffer(struct lichen_router *router,
 	}
 
 	/* Find free slot or evict oldest */
-	struct lichen_dtn_message *slot = NULL;
-	struct lichen_dtn_message *oldest = NULL;
+	struct lichen_router_dtn_message *slot = NULL;
+	struct lichen_router_dtn_message *oldest = NULL;
 
 	for (size_t i = 0; i < CONFIG_LICHEN_ROUTER_DTN_MAX_MESSAGES; i++) {
-		struct lichen_dtn_message *m = &router->dtn_buffer[i];
+		struct lichen_router_dtn_message *m = &router->dtn_buffer[i];
 		if (!m->valid) {
 			slot = m;
 			break;
@@ -697,7 +723,7 @@ int lichen_router_dtn_get_pending_iids(struct lichen_router *router,
 
 	size_t count = 0;
 	for (size_t i = 0; i < CONFIG_LICHEN_ROUTER_DTN_MAX_MESSAGES && count < max_iids; i++) {
-		struct lichen_dtn_message *m = &router->dtn_buffer[i];
+		struct lichen_router_dtn_message *m = &router->dtn_buffer[i];
 		if (!m->valid) {
 			continue;
 		}
@@ -720,7 +746,7 @@ int lichen_router_dtn_get_pending_iids(struct lichen_router *router,
 
 int lichen_router_dtn_retrieve(struct lichen_router *router,
 			       const uint8_t dst_iid[8],
-			       struct lichen_dtn_message **out_messages,
+			       struct lichen_router_dtn_message **out_messages,
 			       size_t max_messages)
 {
 	if (router == NULL || dst_iid == NULL || out_messages == NULL) {
@@ -729,14 +755,25 @@ int lichen_router_dtn_retrieve(struct lichen_router *router,
 
 	int count = 0;
 	for (size_t i = 0; i < CONFIG_LICHEN_ROUTER_DTN_MAX_MESSAGES && count < (int)max_messages; i++) {
-		struct lichen_dtn_message *m = &router->dtn_buffer[i];
+		struct lichen_router_dtn_message *m = &router->dtn_buffer[i];
 		if (m->valid && memcmp(m->destination_iid, dst_iid, 8) == 0) {
 			out_messages[count++] = m;
-			router->dtn_buffer_bytes -= m->len;
-			m->valid = false;
+			/* Note: keep valid=true so the slot remains reserved while
+			 * the caller uses the returned pointer. Caller must call
+			 * lichen_router_dtn_release() when done. */
 		}
 	}
 	return count;
+}
+
+void lichen_router_dtn_release(struct lichen_router *router,
+			       struct lichen_router_dtn_message *msg)
+{
+	if (router == NULL || msg == NULL || !msg->valid) {
+		return;
+	}
+	router->dtn_buffer_bytes -= msg->len;
+	msg->valid = false;
 }
 
 int lichen_router_dtn_expire(struct lichen_router *router, uint32_t now_unix)
@@ -747,7 +784,7 @@ int lichen_router_dtn_expire(struct lichen_router *router, uint32_t now_unix)
 
 	int expired = 0;
 	for (size_t i = 0; i < CONFIG_LICHEN_ROUTER_DTN_MAX_MESSAGES; i++) {
-		struct lichen_dtn_message *m = &router->dtn_buffer[i];
+		struct lichen_router_dtn_message *m = &router->dtn_buffer[i];
 		if (!m->valid) {
 			continue;
 		}

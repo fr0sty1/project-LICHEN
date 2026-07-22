@@ -24,8 +24,10 @@ COMBINED_BIN="/tmp/t_echo_combined.bin"
 COMBINED_DFU="/tmp/t_echo_combined_dfu.zip"
 BY_ID="/dev/serial/by-id"
 
-export PYTHONPATH="/home/frosty/.local/lib/python3.10/site-packages:${PYTHONPATH:-}"
-export ZEPHYR_SDK_INSTALL_DIR=/home/frosty/.local/share/safe-agent/b9243483d7697056/zephyr-sdk-0.16.8
+# Production-ready: use lichen-zephyr workspace env (supports scale/CI)
+if [ -f /mnt/lichen-zephyr/env.sh ]; then
+	. /mnt/lichen-zephyr/env.sh
+fi
 
 # -----------------------------------------------------------------------
 # 1. Build

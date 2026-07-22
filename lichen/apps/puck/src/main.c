@@ -10,12 +10,13 @@
 #include <zephyr/kernel.h>
 #include <zephyr/pm/device.h>
 #include <zephyr/logging/log.h>
-#include <zephyr/sys/crc.h>
 #if IS_ENABLED(CONFIG_USB_DEVICE_STACK)
 #include <zephyr/usb/usb_device.h>
 #endif
 
 #include <lichen/hal.h>
+#include "../../../subsys/lichen/l2/lichen_util.h"
+#include "../../../subsys/lichen/l2/crash_info.h"
 
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 #include <lichen/native.h>
@@ -26,9 +27,20 @@
 #if IS_ENABLED(CONFIG_LICHEN_L2)
 #include <zephyr/net/net_if.h>
 #include <zephyr/net/socket.h>
+#include <zephyr/net/coap_service.h>
 #include <lichen/coap_client.h>
+#include <lichen/coap_server.h>
 #include "lichen_l2.h"
 #include "ipv6_addr.h"
+#endif
+
+#if IS_ENABLED(CONFIG_LICHEN_COAP_LOCATION)
+static uint16_t s_coap_server_port = 5683;
+
+/* Puck owns this app service; gateway defines its own service with the same
+ * resource section, while standalone builds use lichen_coap_server instead. */
+COAP_SERVICE_DEFINE(lichen_coap, NULL, &s_coap_server_port,
+		    COAP_SERVICE_AUTOSTART);
 #endif
 
 /* Stall-marker uses the nRF GPREGRET2 retention register (nRF boards only). */
@@ -39,26 +51,71 @@
 
 LOG_MODULE_REGISTER(lichen_puck, LOG_LEVEL_INF);
 
+#if IS_ENABLED(CONFIG_LICHEN_L2) && IS_ENABLED(CONFIG_STATS)
+#include <zephyr/stats/stats.h>
+
+/*
+ * CoAP round-trip counters, exported over SMP as the "coap" STATS group so
+ * the round trip can be confirmed on the console-less T1000-E via if02
+ * (qpc0 end-to-end validation): sent GETs vs successful 2.05 responses vs
+ * errors/timeouts.
+ */
+STATS_SECT_START(lichen_coap_stats)
+STATS_SECT_ENTRY32(sent)
+STATS_SECT_ENTRY32(ok)
+STATS_SECT_ENTRY32(err)
+STATS_SECT_END;
+
+STATS_NAME_START(lichen_coap_stats)
+STATS_NAME(lichen_coap_stats, sent)
+STATS_NAME(lichen_coap_stats, ok)
+STATS_NAME(lichen_coap_stats, err)
+STATS_NAME_END(lichen_coap_stats);
+
+STATS_SECT_DECL(lichen_coap_stats) lichen_coap_stats;
+#define COAP_STAT_INC(f) STATS_INC(lichen_coap_stats, f)
+#else
+#define COAP_STAT_INC(f) do { } while (0)
+#endif
+
 /* LoRa parameters per LICHEN spec: SF10 / 125 kHz / CR4-5 @ 915 MHz (US915). */
 #define LORA_FREQ_HZ       915000000U
 #define LORA_MAX_FRAME     255
 #define BEACON_INTERVAL_MS CONFIG_LICHEN_PUCK_BEACON_INTERVAL_MS
 
 /*
- * LICHEN announce frame with 32-bit CRC MIC.
- *   [0] length = 9   (total frame size)
- *   [1] llsec  = 0x00  (AddrMode=0, MIC32, no sig, no enc)
+ * Unsigned LICHEN neighbor beacon.
+ *   [0] length = 4   (body length; total frame size is 5)
+ *   [1] llsec  = 0x00  (AddrMode=0, no signature, no encryption)
  *   [2] epoch  = 0
  *   [3] seqhi  = 0
  *   [4] seqlo  = incremented on each TX
- *   [5-8] MIC  = CRC32 of bytes 1-4 (llsec through seqlo)
  */
 #define BEACON_HDR_LEN 5
-#define BEACON_MIC_LEN 4
-#define BEACON_TOTAL_LEN (BEACON_HDR_LEN + BEACON_MIC_LEN)
+#define BEACON_TOTAL_LEN BEACON_HDR_LEN
 static uint8_t s_beacon[BEACON_TOTAL_LEN];
 static uint8_t s_seqnum;
 static uint8_t s_epoch;
+
+static void telemetry_packet(const char *event, const uint8_t *payload, size_t len,
+				     uint8_t seq, int16_t rssi, int8_t snr)
+{
+	uint8_t digest[32];
+	char hash[17];
+
+	if (lichen_sha256(payload, len, digest) != 0) {
+		LOG_ERR("TELEMETRY hash_failed event=%s", event);
+		return;
+	}
+	for (size_t i = 0; i < 8; i++) {
+		snprintk(&hash[i * 2], 3, "%02x", digest[i]);
+	}
+	hash[16] = '\0';
+	LOG_INF("TELEMETRY {\"schema\":\"lichen.telemetry.v1\",\"event\":\"%s\",\"ts_us\":%llu,\"node_id\":\"zephyr-t_echo\",\"impl\":\"zephyr\",\"tx_id\":\"%s\",\"packet_hash\":\"%s\",\"direction\":\"%s\",\"peer_id\":null,\"payload_len\":%u,\"rssi_dbm\":%d,\"snr_db\":%d,\"seq\":%u,\"status\":\"ok\"}",
+		 event, (unsigned long long)k_uptime_get() * 1000ULL, hash, hash,
+		 strcmp(event, "tx") == 0 ? "tx" : "rx", (unsigned int)len,
+		 rssi, snr, seq);
+}
 
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 /* Placeholder IID — in production derive from nRF52840 FICR. */
@@ -153,21 +210,14 @@ static inline void set_phase(enum stall_phase ph)
 static void send_beacon(const struct device *dev)
 {
 	/* Build beacon header */
-	s_beacon[0] = BEACON_TOTAL_LEN;
-	s_beacon[1] = 0x00;  /* LLSec: AddrMode=0, MIC32, no sig, no enc */
+	s_beacon[0] = BEACON_TOTAL_LEN - 1U;
+	s_beacon[1] = 0x00;  /* LLSec: broadcast, unsigned, plaintext */
 	if (++s_seqnum == 0) {
 		s_epoch++;  /* Increment epoch on seqnum wrap */
 	}
 	s_beacon[2] = s_epoch;   /* epoch */
 	s_beacon[3] = 0x00;      /* seqhi */
 	s_beacon[4] = s_seqnum;  /* seqlo */
-
-	/* Compute CRC32 MIC over header (bytes 1-4, excluding length byte) */
-	uint32_t mic = crc32_ieee(&s_beacon[1], BEACON_HDR_LEN - 1);
-	s_beacon[5] = (uint8_t)(mic & 0xFF);
-	s_beacon[6] = (uint8_t)((mic >> 8) & 0xFF);
-	s_beacon[7] = (uint8_t)((mic >> 16) & 0xFF);
-	s_beacon[8] = (uint8_t)((mic >> 24) & 0xFF);
 
 	set_phase(PH_CFG_TX);
 	if (lora_set_mode(dev, true) < 0) {
@@ -179,7 +229,8 @@ static void send_beacon(const struct device *dev)
 	if (ret < 0) {
 		LOG_ERR("beacon TX failed: %d", ret);
 	} else {
-		LOG_INF("beacon seq=%u mic=0x%08x", s_seqnum, mic);
+		LOG_INF("beacon seq=%u", s_seqnum);
+		telemetry_packet("tx", s_beacon, sizeof(s_beacon), s_seqnum, 0, 0);
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 		s_radio_stats.tx_pkts++;
 #endif
@@ -197,8 +248,10 @@ static void on_coap_response(void *user_data, int status, uint8_t code,
 
 	if (status != LICHEN_COAP_OK) {
 		LOG_WRN("CoAP response error: %d", status);
+		COAP_STAT_INC(err);
 		return;
 	}
+	COAP_STAT_INC(ok);
 	LOG_INF("CoAP %u.%02u response, %u B payload",
 		code >> 5, code & 0x1F, (unsigned int)payload_len);
 	if (payload_len > 0) {
@@ -237,6 +290,12 @@ static void on_coap_response(void *user_data, int status, uint8_t code,
 #define WDT_STALL_MS     4000   /* feeder withholds the feed after no progress this long */
 #define WDT_FEED_MS      500    /* feeder cadence */
 #define RX_WINDOW_MS     2000   /* per-iteration RX listen window */
+#define WDT_PROGRESS_FRESH(now, last) \
+	((uint32_t)((uint32_t)(now) - (uint32_t)(last)) < WDT_STALL_MS)
+
+BUILD_ASSERT(WDT_PROGRESS_FRESH(0x00000010U, 0xfffffff0U));
+BUILD_ASSERT(WDT_PROGRESS_FRESH(0x00000f8fU, 0xfffffff0U));
+BUILD_ASSERT(!WDT_PROGRESS_FRESH(0x00000f90U, 0xfffffff0U));
 
 static const struct device *s_wdt;
 static int s_wdt_channel = -1;
@@ -246,16 +305,17 @@ static atomic_t s_last_progress_ms;
  * stub, so the driver's poll loops bump this heartbeat too. */
 void lichen_radio_progress(void)
 {
-	atomic_set(&s_last_progress_ms, (atomic_val_t)k_uptime_get());
+	atomic_set(&s_last_progress_ms, (atomic_val_t)k_uptime_get_32());
 }
 
 /* Runs in system-clock ISR context — feed only while progress is fresh. */
 static void wdt_feed_timer_fn(struct k_timer *t)
 {
 	ARG_UNUSED(t);
-	int64_t age = k_uptime_get() - (int64_t)atomic_get(&s_last_progress_ms);
+	uint32_t now = k_uptime_get_32();
+	uint32_t last = (uint32_t)atomic_get(&s_last_progress_ms);
 
-	if (s_wdt && age < WDT_STALL_MS) {
+	if (s_wdt && WDT_PROGRESS_FRESH(now, last)) {
 		wdt_feed(s_wdt, s_wdt_channel);
 	}
 	/* else: no forward progress → withhold feed → SoC resets */
@@ -292,10 +352,14 @@ static void wdt_init(void)
 		return;
 	}
 
-	if (wdt_setup(s_wdt, WDT_OPT_PAUSE_HALTED_BY_DBG) < 0) {
-		LOG_WRN("wdt_setup failed");
-		s_wdt = NULL;
-		return;
+	int ret = wdt_setup(s_wdt, WDT_OPT_PAUSE_HALTED_BY_DBG);
+	if (ret < 0) {
+		LOG_ERR("wdt_setup failed: %d", ret);
+		crash_info_store(CRASH_WDT_SETUP_FAILURE, __LINE__, (uint32_t)ret);
+		if (!IS_ENABLED(CONFIG_IWDG_STM32)) {
+			s_wdt = NULL;
+			return;
+		}
 	}
 
 	k_timer_start(&s_wdt_timer, K_MSEC(WDT_FEED_MS), K_MSEC(WDT_FEED_MS));
@@ -487,6 +551,15 @@ int main(void)
 		LOG_ERR("CoAP client init failed: %d", ret);
 	}
 
+	ret = lichen_coap_server_init(NULL);
+	if (ret != 0) {
+		LOG_ERR("CoAP server init failed: %d", ret);
+	}
+
+#if IS_ENABLED(CONFIG_STATS)
+	(void)STATS_INIT_AND_REG(lichen_coap_stats, STATS_SIZE_32, "coap");
+#endif
+
 	while (1) {
 		set_phase(PH_TX);
 		ret = lichen_coap_get(&peer_addr, req_path,
@@ -494,6 +567,7 @@ int main(void)
 		if (ret != 0) {
 			LOG_WRN("CoAP GET send failed: %d", ret);
 		} else {
+			COAP_STAT_INC(sent);
 			LOG_INF("CoAP GET /status sent");
 		}
 		set_phase(PH_RECV);
@@ -523,6 +597,7 @@ int main(void)
 			LOG_INF("RX %d B rssi=%d snr=%d [%02x %02x]",
 				len, rssi, snr,
 				buf[0], len > 1 ? buf[1] : 0u);
+			telemetry_packet("rx", buf, (size_t)len, 0, rssi, snr);
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 			s_radio_stats.rx_pkts++;
 			/* Forward to connected host.

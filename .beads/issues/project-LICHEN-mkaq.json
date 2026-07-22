@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-mkaq",
+  "title": "Reject partial TUN packet writes",
+  "description": "Gateway TUN send loop treats positive short writes as progress and writes the remainder as another packet. TUN is packet-oriented, so any n != packet length, including zero, must fail rather than split the IPv6 packet. Add syscall-level fault injection tests. Found reviewing convergence commit cdf32d6; outside frozen reconciliation.",
+  "status": "deferred",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-21T02:18:28.842278905Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-21T02:18:37.129818935Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-mkaq",
+      "depends_on_id": "project-LICHEN-7fqg.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-21T02:18:28.92414433Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

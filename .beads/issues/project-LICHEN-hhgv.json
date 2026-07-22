@@ -2,6 +2,7 @@
   "id": "project-LICHEN-hhgv",
   "title": "DAO parsing missing D-flag validation",
   "description": "File: rust/lichen-rpl/src/message.rs\nLines: 171-184\n\nThe Dao::from_bytes() function assumes DODAGID is always present (D-flag=1) but does not validate this. Per RFC 6550 Section 6.4, if D=0, the DAO base is only 4 bytes (no DODAGID field). The current code unconditionally reads bytes 4..20 as dodag_id regardless of the D-flag value.\n\nImpact: If a malformed or malicious DAO with D=0 is received, the parser will interpret option bytes as the DODAGID, leading to:\n1. Incorrect DODAGID value (garbage data)\n2. Option parsing starting at wrong offset\n3. Potential security issues with misrouted packets\n\nFix: Check if D-flag (bit 6 of data[1]) is set. If D=0, reject with RplError::InvalidOption or handle the 4-byte DAO format.\n\nCode:\n```rust\npub fn from_bytes(data: \u0026[u8]) -\u003e Result\u003cSelf, RplError\u003e {\n    if data.len() \u003c Self::BASE_LEN {\n        return Err(TooShort::new(Self::BASE_LEN, data.len()).into());\n    }\n    let kd = data[1];\n    // BUG: Missing validation - D-flag must be 1 for DODAGID to be present\n    // let d_flag = (kd \u003e\u003e 6) \u0026 1;\n    // if d_flag == 0 { return Err(RplError::InvalidOption); }\n    Ok(Self {\n        rpl_instance_id: data[0],\n        ack_requested: (kd \u003e\u003e 7) \u0026 1 == 1,\n        flags: kd \u0026 0x3F,\n        dao_sequence: data[3],\n        dodag_id: data[4..20].try_into().unwrap(),  // Wrong if D=0\n    })\n}\n```",
+<<<<<<< HEAD
   "notes": "Commit: ec7bb0f56",
   "status": "closed",
   "priority": 2,
@@ -14,4 +15,16 @@
   "started_at": "2026-07-22T20:17:41.080510679Z",
   "closed_at": "2026-07-22T20:17:57.482054984Z",
   "close_reason": "Added D-flag validation in Dao::from_bytes (rejects D=0 with InvalidOption per RFC 6550/SCHC). DODAGID always required. Matches current code. Commit d3c9b8b3a."
+=======
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:38:08.898793Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-13T04:52:16.822675Z",
+  "closed_at": "2026-07-13T04:52:16.822675Z",
+  "close_reason": "Closed"
+>>>>>>> origin/integration/worker3-20260722
 }

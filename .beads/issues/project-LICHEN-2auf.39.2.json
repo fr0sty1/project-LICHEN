@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-2auf.39.2",
+  "title": "Harden secure CoAP resources",
+  "description": "Make /config writes default-deny with explicit opt-in, strictly validate SOS CBOR/from/t fields before mutation, and cap sent-message records plus dynamically mounted detail resources.",
+  "acceptance_criteria": "Default config PUT is unauthorized and non-mutating; explicit opt-in allows valid writes; malformed SOS maps/identifiers/timestamps reject without activation; sent history and detail routes retain only the configured newest entries; focused tests, Ruff, mypy, and three reviews pass.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-19T02:39:59.496728Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-20T21:26:14.007232385Z",
+  "started_at": "2026-07-20T19:14:28.074493963Z",
+  "closed_at": "2026-07-20T21:26:14.007232385Z",
+  "close_reason": "Secure CoAP mutation resources now default deny, validate atomically, and retain bounded state.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.39.2",
+      "depends_on_id": "project-LICHEN-2auf.39",
+      "type": "parent-child",
+      "created_at": "2026-07-19T02:39:59.626366Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

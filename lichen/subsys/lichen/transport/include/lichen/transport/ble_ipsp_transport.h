@@ -19,7 +19,7 @@
  *   - Header compression via 6LoWPAN IPHC
  *
  * Security: BLE pairing (LE Secure Connections) is required for non-read-only
- * access. Raw diagnostic resources (/diag/raw/*) require LE Secure Connections.
+ * access. Raw diagnostic resources under /diag/raw/ require LE Secure Connections.
  */
 
 #ifndef LICHEN_TRANSPORT_BLE_IPSP_TRANSPORT_H_

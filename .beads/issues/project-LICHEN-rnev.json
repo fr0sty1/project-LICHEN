@@ -2,6 +2,7 @@
   "id": "project-LICHEN-rnev",
   "title": "TofuPeerResolver.pin_peer may raise during EDHOC",
   "description": "File: python/src/lichen/coap/secure.py:200-208\n\npin_peer raises ValueError if a peer's key changes:\n```python\nasync def pin_peer(self, host: str, pubkey: bytes) -\u003e None:\n    async with self._lock:\n        if host in self._pinned:\n            if self._pinned[host] != pubkey:\n                raise ValueError(\n                    f'TOFU violation: peer {host} key changed '\n                    f'(possible MITM or hardware swap)'\n                )\n```\n\nThis is called from SecureDatagramChannel._establish_context (line 482-483) after OSCORE context is already stored. If the peer legitimately replaced their hardware and has a new key, the exception:\n1. Leaves an invalid OSCORE context in the store\n2. Does not clean up _pending_edhoc\n3. Causes all future communications with the peer to fail\n\nFix: Check for key mismatch before storing the context, or provide a mechanism to reset/replace pinned keys.",
+<<<<<<< HEAD
   "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
@@ -13,4 +14,16 @@
   "started_at": "2026-07-22T20:22:28.729318604Z",
   "lease_expires_at": "2026-07-22T20:27:28.729318604Z",
   "heartbeat_at": "2026-07-22T20:22:28.729318604Z"
+=======
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:18:26.334899Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-13T05:16:05.638329Z",
+  "closed_at": "2026-07-13T05:16:05.638329Z",
+  "close_reason": "Closed"
+>>>>>>> origin/integration/worker3-20260722
 }

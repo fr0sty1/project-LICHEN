@@ -224,7 +224,9 @@ impl SimClient {
 
     async fn send_msg(&mut self, body: &[u8]) -> Result<(), SimError> {
         if self.poisoned {
-            return Err(SimError::Protocol("connection poisoned by prior protocol error"));
+            return Err(SimError::Protocol(
+                "connection poisoned by prior protocol error",
+            ));
         }
         self.writer
             .write_all(&(body.len() as u32).to_le_bytes())
@@ -235,7 +237,9 @@ impl SimClient {
 
     async fn recv_msg(&mut self) -> Result<Vec<u8>, SimError> {
         if self.poisoned {
-            return Err(SimError::Protocol("connection poisoned by prior protocol error"));
+            return Err(SimError::Protocol(
+                "connection poisoned by prior protocol error",
+            ));
         }
         let mut len_bytes = [0u8; 4];
         self.reader.read_exact(&mut len_bytes).await?;

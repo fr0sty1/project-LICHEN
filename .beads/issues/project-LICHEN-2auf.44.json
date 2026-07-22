@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-2auf.44",
+  "title": "Recover Rust RPL hardening",
+  "description": "Recover Rust RPL hardening with RFC-correct foreign-instance/DODAG filtering, lollipop comparison, admissible parent cleanup/failover, optional DAO DODAGID parsing, and route-installation scope checks. Rewrite incorrect checkpoint D=0 and raw-rank rejection hunks.",
+  "acceptance_criteria": "Global D=0 DAO parses with options at byte 4; local D=0 rejects; D=1 requires 20 bytes and round-trips; root rejects foreign instance or mismatched present DODAGID before route mutation; foreign DIOs and older/incomparable versions are ignored; saturated and MaxRank-inadmissible parents are removed while valid downward failover remains possible; RFC boundary vectors, lichen-rpl/lichen-node tests, all-feature clippy, and three reviews pass.",
+  "notes": "All out-of-directory Rust RPL recovery work is committed. integration/rust-rpl-recovery ends at 38f579532; integration/rust-prefix-model ends at 29437e6e0. Worktrees were not merged because prefix/path-snapshot reconciliation remains unresolved. Continue on Linux from preserved branches.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-17T19:09:53.43104Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-22T02:12:56.977556252Z",
+  "started_at": "2026-07-17T19:38:32.760659Z",
+  "closed_at": "2026-07-22T02:12:56.977556252Z",
+  "close_reason": "RPL reconciliation complete",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-17T19:09:53.549443Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

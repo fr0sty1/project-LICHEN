@@ -1,0 +1,7 @@
+{
+  "id": "1784598032071052214-1",
+  "issue_id": "project-LICHEN-7fqg.1",
+  "author": "ec2-user",
+  "text": "GLOBAL LEDGER (59 unique commits; cutoff ba388efc). DROP 2869c0b7f08f41336411d6054fc7fa234009e0b0: inaccurate simulation deployment guide, invalid CLI/architecture/AWS claims and whitespace errors. BLOCK d156a2e744a8a8e9745cb861ce8f3cf20cabe292 as a whole: Rust registration is sound, but fleet script still permits broken Zephyr registration/process/zero-activity paths tracked by 2auf.30.1/37; convergence freeze forbids rewriting it here. Shared RPL foundations INTEGRATE in order: 70c3eec3381cb34c4fe51e104c7047831dfecf9c, c023c1445498ea35ebce84eba73200e9666cea7e, 23c3f2b5730c9b570d184ac18dad291982bd9e36. Prefix branch SUPERSEDED: 32e0f6b68a43b10730b62cca804ce201d158221e and 29437e6e03b88ac7203a69db5da96ec65098cf37 are semantically absorbed and extended by 8766608352cccbc83b1e41d9f342cebc45140a19 and 93e54570328d4f99339cf85a7c4e6e46d02ee8e6; do not replay.",
+  "created_at": "2026-07-21T01:40:32.071052214Z"
+}

@@ -2,9 +2,7 @@
 // SPDX-FileCopyrightText: The contributors to the LICHEN project
 //
 // Heltec WiFi LoRa32 V3 board for Renode
-// ESP32-S3 + SX1262 + LED + button
-// ponytail: minimal - GPIO is stubbed in base platform, LED wiring would need
-// full GPIO peripheral implementation. Radio simulation works via lichen-sim.
+// ESP32-S3 + SX1262 + LED + button. Full model reaches late app markers + TX.
 
 using "../../esp32s3_lichen/support/esp32s3_lichen.repl"
 

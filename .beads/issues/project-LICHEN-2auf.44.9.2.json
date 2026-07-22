@@ -1,0 +1,39 @@
+{
+  "id": "project-LICHEN-2auf.44.9.2",
+  "title": "Authorize prefix DAO advertisements",
+  "description": "Bind end-to-end authenticated DAO origins to prefixes they may advertise. Reject unauthorized /0, foreign host routes, and undelegated broad prefixes before any route/replay mutation. Depends on provenance work and prefix semantics.",
+  "acceptance_criteria": "Root validates authenticated origin and delegated prefix policy before mutation; self /128, delegated prefixes, foreign prefixes, and /0 have literal allow/deny tests across implementations.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-18T20:27:32.094501Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-18T20:27:32.094501Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.9.2",
+      "depends_on_id": "project-LICHEN-2auf.44.9",
+      "type": "parent-child",
+      "created_at": "2026-07-18T20:27:32.261705Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.44.9.2",
+      "depends_on_id": "project-LICHEN-2auf.44.7",
+      "type": "blocks",
+      "created_at": "2026-07-18T20:27:32.383824Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.44.9.2",
+      "depends_on_id": "project-LICHEN-2auf.44.9.1",
+      "type": "blocks",
+      "created_at": "2026-07-18T20:27:57.829463Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

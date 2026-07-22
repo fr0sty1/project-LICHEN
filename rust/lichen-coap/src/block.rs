@@ -339,16 +339,17 @@ impl BlockReceiver {
         if block.num != self.expected_block {
             return Err(CoapError::BlockOutOfOrder);
         }
-        // Use receiver's block_size for offset, not incoming block's szx.
-        // Mid-transfer szx changes would cause gaps if we used block.offset().
-        let offset = self.expected_block as usize * self.block_size;
+        // Use cumulative data_len as offset, not block_num * block_size.
+        // This prevents corruption when the server sends blocks with sizes
+        // different from the receiver's expected block_size.
+        let offset = self.data_len;
         let needed = offset + data.len();
         if needed > Self::MAX_PAYLOAD {
             return Err(BufferTooSmall::new(needed, Self::MAX_PAYLOAD).into());
         }
 
         self.data[offset..offset + data.len()].copy_from_slice(data);
-        self.data_len = offset + data.len();
+        self.data_len = needed;
         self.expected_block = block.num + 1;
 
         if !block.more {
@@ -549,7 +550,7 @@ mod tests {
     #[test]
     fn receiver_handles_mid_transfer_szx_change() {
         // Bug fix: mid-transfer szx change should not cause gaps.
-        // Receiver uses its own block_size for offset calculation.
+        // Receiver tracks cumulative bytes, not block_num * block_size.
         let mut receiver = BlockReceiver::new(64); // szx=2
 
         // Block 0 arrives with szx=2 (64 bytes)
@@ -558,12 +559,55 @@ mod tests {
 
         // Block 1 arrives with szx=3 (128 bytes) - sender changed szx mid-transfer
         // Without fix: offset = 1 * 128 = 128, leaving 64-byte gap
-        // With fix: offset = 1 * 64 = 64, no gap
+        // With fix: offset = data_len = 64, no gap
         let block1 = BlockOption::new(1, false, 3).unwrap();
         assert!(receiver.receive_block(block1, &[2u8; 64]).unwrap());
 
         let payload = receiver.payload();
         assert_eq!(payload.len(), 128);
+        assert!(payload[..64].iter().all(|&b| b == 1));
+        assert!(payload[64..128].iter().all(|&b| b == 2));
+    }
+
+    #[test]
+    fn receiver_handles_larger_blocks_than_expected() {
+        // Server sends 128-byte blocks when receiver expects 64-byte blocks.
+        // Without fix: block 1 at offset 64 would overwrite block 0's data at 64..128.
+        let mut receiver = BlockReceiver::new(64); // expects 64-byte blocks
+
+        // Block 0: server sends 128 bytes
+        let block0 = BlockOption::new(0, true, 3).unwrap(); // szx=3 (128 bytes)
+        assert!(!receiver.receive_block(block0, &[1u8; 128]).unwrap());
+
+        // Block 1: server sends 128 bytes
+        let block1 = BlockOption::new(1, false, 3).unwrap();
+        assert!(receiver.receive_block(block1, &[2u8; 128]).unwrap());
+
+        let payload = receiver.payload();
+        assert_eq!(payload.len(), 256);
+        // All of block 0's data should be intact
+        assert!(payload[..128].iter().all(|&b| b == 1));
+        // All of block 1's data should be intact
+        assert!(payload[128..256].iter().all(|&b| b == 2));
+    }
+
+    #[test]
+    fn receiver_handles_smaller_blocks_than_expected() {
+        // Server sends 64-byte blocks when receiver expects 128-byte blocks.
+        // Without fix: block 1 at offset 128 would leave a gap at 64..128.
+        let mut receiver = BlockReceiver::new(128); // expects 128-byte blocks
+
+        // Block 0: server sends 64 bytes
+        let block0 = BlockOption::new(0, true, 2).unwrap(); // szx=2 (64 bytes)
+        assert!(!receiver.receive_block(block0, &[1u8; 64]).unwrap());
+
+        // Block 1: server sends 64 bytes
+        let block1 = BlockOption::new(1, false, 2).unwrap();
+        assert!(receiver.receive_block(block1, &[2u8; 64]).unwrap());
+
+        let payload = receiver.payload();
+        assert_eq!(payload.len(), 128);
+        // No gaps - data is contiguous
         assert!(payload[..64].iter().all(|&b| b == 1));
         assert!(payload[64..128].iter().all(|&b| b == 2));
     }

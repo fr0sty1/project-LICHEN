@@ -1,0 +1,7 @@
+{
+  "id": "1784560028170868286-1",
+  "issue_id": "project-LICHEN-2auf.65",
+  "author": "ec2-user",
+  "text": "Implemented aiocoap 0.4.17 lifecycle integration with exact dependency pin: directional OSCORE correlations; message-admission identities across NSTART backlog; exact CON ciphertext retransmission; matched ACK/RST and MAX_RETRANSMIT cleanup; terminal/failure atomicity; context-generation synchronization; task-draining shutdown; empty control passthrough; bounded Observe cancellation tombstones retaining request IDs for repeated CON/RST until EXCHANGE_LIFETIME. Added real aiocoap backlog/timeout tests and paired deterministic real-OSCORE equal-token tests. Validation: tests/coap 239 passed, packaging 6 passed, lifecycle 41 passed, Ruff clean, uv lock --check clean, git diff --check clean. Three independent final reviews found no P0-P2 findings. Residual protocol limitation: aiocoap 0.4.17 cannot proactively send Observe=1 cancellation; NON-only remote observations rely on server expiry while local state expires boundedly.",
+  "created_at": "2026-07-20T15:07:08.170868286Z"
+}

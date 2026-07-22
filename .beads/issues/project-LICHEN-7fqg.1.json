@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-7fqg.1",
+  "title": "Inventory recovery branch commits",
+  "description": "Enumerate every commit unique to c-tx-clock-hardening, interop-fail-closed, lost-recovery-2, node-feature-recovery, oscore-recovery, python-radio-failure, rust-prefix-model, and rust-rpl-recovery. Map commits to Beads, changed paths, dependencies, duplicate patch IDs, and conflicts; classify integrate, superseded, drop, or blocked with rationale.",
+  "acceptance_criteria": "A durable Beads note records every unique commit hash exactly once with branch, subject, disposition, rationale, dependency order, and conflict hotspots; no commit is silently omitted.",
+  "notes": "Completed five-way independent inventory. 59 unique commits recorded exactly once in branch-sized comments. Fixed dispositions: drop inaccurate 2869 docs; block unsound whole d156 fleet commit; supersede two prefix commits; integrate RPL baseline sequence and isolated hardening; conditionally gate signed-link, SCHC migrations, and fail-closed CI on independent validation; reconcile secure.rs/schema/lockfile conflicts explicitly.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-21T00:52:55.822139313Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-21T01:41:36.385516109Z",
+  "started_at": "2026-07-21T00:53:33.836067094Z",
+  "closed_at": "2026-07-21T01:41:36.385516109Z",
+  "close_reason": "All 59 unique branch commits inventoried with durable dispositions and conflict/gate rationale",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-7fqg.1",
+      "depends_on_id": "project-LICHEN-7fqg",
+      "type": "parent-child",
+      "created_at": "2026-07-21T00:52:55.904845393Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

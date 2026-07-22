@@ -168,7 +168,10 @@ impl KissBridge {
     /// Create a new bridge with default settings.
     ///
     /// DEPRECATED: Use [`KissBridge::with_epoch`] for spec-compliant initialization.
-    #[deprecated(since = "0.2.0", note = "use KissBridge::with_epoch for spec-compliant initialization")]
+    #[deprecated(
+        since = "0.2.0",
+        note = "use KissBridge::with_epoch for spec-compliant initialization"
+    )]
     pub const fn new() -> Self {
         Self {
             default_epoch: 128,
@@ -357,8 +360,8 @@ impl KissBridge {
             len => return Err(BridgeError::InvalidAddressLength(len)),
         };
 
-        // Placeholder MIC (4 bytes of zeros - real MIC computed by security layer)
-        let mic = [0u8; 4];
+        // Unsigned frames have no MIC; signed frames are built by the security layer.
+        let mic = [];
 
         let seqnum = self.seqnum.fetch_increment();
 
@@ -458,9 +461,8 @@ mod tests {
     fn test_handle_kiss_frame_raw_lichen() {
         let bridge = KissBridge::default();
 
-        // Create a minimal LICHEN frame: broadcast, epoch=1, seqnum=2, payload="abc", mic=4 zeros
-        // Wire format: Length(0x0b) | LLSec(0x00) | Epoch(0x01) | SeqNum(0x0002) | Payload("abc") | MIC(4 zeros)
-        let lichen_bytes: &[u8] = &[0x0b, 0x00, 0x01, 0x00, 0x02, b'a', b'b', b'c', 0, 0, 0, 0];
+        // Wire format: Length(0x07) | LLSec(0x00) | Epoch(0x01) | SeqNum(0x0002) | Payload("abc")
+        let lichen_bytes: &[u8] = &[0x07, 0x00, 0x01, 0x00, 0x02, b'a', b'b', b'c'];
 
         // Wrap in KISS frame on port 1 (raw)
         let mut kiss_buf = [0u8; 64];
@@ -483,7 +485,7 @@ mod tests {
     fn test_encode_link_frame() {
         let bridge = KissBridge::default();
 
-        let mic = [0u8; 4];
+        let mic = [];
         let frame = LichenFrame {
             epoch: 5,
             seqnum: LinkSeqNum::new(100),

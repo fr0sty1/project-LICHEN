@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-oqv7.5",
+  "title": "Add T1000-E Renode model",
+  "description": "Compose a faithful-enough T1000-E model from nRF52840, LR1110, board GPIO/SPIM wiring, deterministic AG3335 UART behavior, USB CDC/SMP endpoints, and stable FICR identity.",
+  "acceptance_criteria": "Canonical T1000-E gateway and puck firmware reach late app oracles and simulator-observed LR1110 TX; model boundaries explicitly exclude UF2 layout, GNSS RF, USB electrical behavior, and real LoRa RF proof.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "feature",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T19:40:35.850691Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T19:40:35.850691Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-oqv7.5",
+      "depends_on_id": "project-LICHEN-oqv7",
+      "type": "parent-child",
+      "created_at": "2026-07-16T19:40:35.981335Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-oqv7.5",
+      "depends_on_id": "project-LICHEN-oqv7.1",
+      "type": "blocks",
+      "created_at": "2026-07-16T19:44:13.767096Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

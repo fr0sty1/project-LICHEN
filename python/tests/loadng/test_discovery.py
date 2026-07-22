@@ -38,6 +38,14 @@ def test_destination_replies() -> None:
     assert result.reply.destination == ORIG
     assert result.reply.hop_count == 0
     assert result.reply_next_hop == M
+    # RREP uses the destination's own sequence number, not the RREQ's seq_num.
+    # RREQ had seq_num=1, but the RREP should use dest's own seq (1 after first increment).
+    assert result.reply.seq_num == 1
+    # Verify a second RREQ gets a different (incremented) seq_num in the RREP.
+    rreq2 = RREQ(originator=ORIG, destination=D, seq_num=99)
+    result2 = dest.process_rreq(rreq2, from_neighbor=M, now=200)
+    assert result2.reply is not None
+    assert result2.reply.seq_num == 2  # dest's own seq incremented, not RREQ's 99
     # Reverse route to the originator is installed.
     assert dest.cache.lookup(ORIG).next_hop == M
 
@@ -144,3 +152,33 @@ def test_three_node_discovery_round_trip() -> None:
     grad = o.gradient.lookup(D)
     assert grad.next_hop == M
     assert grad.hop_count == 2
+
+
+def test_seq_wrap_around_not_suppressed() -> None:
+    """After seq wraps from 0xFFFF to 0, new RREQ is not suppressed."""
+    r = _router(M)
+    # Receive RREQ with seq=0xFFFF (near wrap point).
+    rreq_old = RREQ(originator=ORIG, destination=D, seq_num=0xFFFF)
+    first = r.process_rreq(rreq_old, from_neighbor=ORIG, now=0)
+    assert first.forward is not None
+
+    # New RREQ with seq=0 (wrapped around) should NOT be suppressed,
+    # even though it's within the suppression window.
+    rreq_new = RREQ(originator=ORIG, destination=D, seq_num=0)
+    second = r.process_rreq(rreq_new, from_neighbor=ORIG, now=5_000)
+    assert second.suppressed is False
+    assert second.forward is not None
+
+
+def test_older_seq_still_suppressed() -> None:
+    """An RREQ with an older seq (even after wrap handling) is suppressed."""
+    r = _router(M)
+    # Receive RREQ with seq=100.
+    rreq_new = RREQ(originator=ORIG, destination=D, seq_num=100)
+    first = r.process_rreq(rreq_new, from_neighbor=ORIG, now=0)
+    assert first.forward is not None
+
+    # RREQ with seq=50 is older (not newer in wrap-aware sense), so suppressed.
+    rreq_old = RREQ(originator=ORIG, destination=D, seq_num=50)
+    second = r.process_rreq(rreq_old, from_neighbor=ORIG, now=5_000)
+    assert second.suppressed is True

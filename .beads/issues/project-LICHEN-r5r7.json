@@ -2,6 +2,7 @@
   "id": "project-LICHEN-r5r7",
   "title": "senml: decode buffer overflow check may reject valid input",
   "description": "File: rust/lichen-senml/src/cbor.rs\nLines: 440-442\n\nThe decode function checks:\n```rust\nif n_recs \u003e buf.len() {\n    return Err(CborError::InvalidInput);\n}\n```\n\nThis returns InvalidInput when the buffer is too small, but InvalidInput implies the CBOR data is malformed. The actual issue is that the caller provided an insufficient buffer.\n\nThis causes two problems:\n1. Wrong error type - should be BufferTooSmall to match the encoder's behavior\n2. Caller cannot distinguish 'bad CBOR' from 'need bigger buffer'\n\nImpact: Callers cannot handle buffer-too-small case correctly; error handling is inconsistent with encode().\n\nFix:\n```rust\nif n_recs \u003e buf.len() {\n    return Err(CborError::BufferTooSmall(\n        BufferTooSmall::new(n_recs, buf.len())\n    ));\n}\n```",
+<<<<<<< HEAD
   "notes": "Commit: 021be1669\ndecode() already returns CborError::BufferTooSmall(n_recs, buf.len()) when n_recs \u003e buf.len() (with From impl). Consistent with encoder. Distinguishes buffer size from invalid CBOR. P2 fixed.",
   "status": "closed",
   "priority": 2,
@@ -14,4 +15,16 @@
   "started_at": "2026-07-22T20:16:51.941444494Z",
   "closed_at": "2026-07-22T20:17:04.301716532Z",
   "close_reason": "BufferTooSmall error used for insufficient buf; commit 021be1669"
+=======
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:40:57.9911Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-13T05:14:32.865621Z",
+  "closed_at": "2026-07-13T05:14:32.865621Z",
+  "close_reason": "Closed"
+>>>>>>> origin/integration/worker3-20260722
 }

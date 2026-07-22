@@ -2,6 +2,7 @@
   "id": "project-LICHEN-7mdk",
   "title": "Reverse route hop_count always set to 0 in process_rreq",
   "description": "File: python/src/lichen/loadng/discovery.py\nLines: 106-116\n\nWhen adding a reverse route during RREQ processing, the `hop_count` and `metric` are hardcoded to 0:\n```python\nself.cache.add(\n    RouteEntry(\n        destination=rreq.originator,\n        next_hop=from_neighbor,\n        hop_count=0,  # Always 0\n        metric=0,     # Always 0\n        ...\n    )\n)\n```\n\nProblem: The RREQ travels with a decrementing `hop_limit` (starts at 4, decremented each hop). The actual hop count should be computed as:\n```python\nhop_count = INITIAL_HOP_LIMIT - rreq.hop_limit\n```\n\nImpact: All reverse routes appear equally good (metric=0) regardless of actual distance. This prevents optimal path selection and violates the LOADng spec requirement to track hop count for metric calculation.\n\nFix: Calculate hop_count from the hop_limit:\n```python\nactual_hops = INITIAL_HOP_LIMIT - rreq.hop_limit\nself.cache.add(\n    RouteEntry(\n        ...\n        hop_count=actual_hops,\n        metric=actual_hops,\n        ...\n    )\n)\n```",
+<<<<<<< HEAD
   "notes": "Commit: 4e86951d5",
   "status": "closed",
   "priority": 2,
@@ -14,4 +15,16 @@
   "started_at": "2026-07-22T20:21:34.105750986Z",
   "closed_at": "2026-07-22T20:22:15.786228432Z",
   "close_reason": "hop_count calculation from hop_limit already present (not hardcoded 0). Removed comment per no-comments rule. ruff passes. Commit 4e86951d5."
+=======
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:21:59.748698Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-13T04:31:03.673094Z",
+  "closed_at": "2026-07-13T04:31:03.673094Z",
+  "close_reason": "Closed"
+>>>>>>> origin/integration/worker3-20260722
 }

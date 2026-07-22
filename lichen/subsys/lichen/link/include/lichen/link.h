@@ -12,7 +12,7 @@
  *   +--------+--------+-------+--------+----------+---------+-------+
  *   | Length | LLSec  | Epoch | SeqNum | Dst Addr | Payload |  MIC  |
  *   +--------+--------+-------+--------+----------+---------+-------+
- *      1B       1B       1B      2B       0/2/8B     var      4/8B
+ *      1B       1B       1B      2B       0/2/8B     var       0/48B
  *
  * @note Portability: bool (from stdbool.h) is used for in-memory state only.
  *       Wire formats use explicit uint8_t fields and bit manipulation.
@@ -45,6 +45,10 @@ extern "C" {
 
 /** Maximum LICHEN frame payload size (LoRa SF10 255B - overhead) */
 #define LICHEN_MAX_PAYLOAD 200
+#define GUARD_TIME_MS 50
+#define SLOT_DURATION_MS 250
+struct LICHEN_TDMA_Slot { uint8_t id; uint8_t pad[3]; uint32_t start_time_ms; uint8_t owner_eui64[8]; };
+BUILD_ASSERT(sizeof(struct LICHEN_TDMA_Slot) == 16);
 
 /** Schnorr-48 signature length in bytes */
 #define LICHEN_SIG_LEN 48
@@ -63,17 +67,30 @@ enum lichen_addr_mode {
 };
 
 /**
- * @brief MIC length (LLSec bits 2-4)
+ * @brief MIC length compatibility selector (LLSec bits 2-4)
  */
 enum lichen_mic_len {
-	LICHEN_MIC_32 = 0,  /**< 32-bit MIC (4 bytes) */
-	LICHEN_MIC_64 = 1,  /**< 64-bit MIC (8 bytes) */
+	LICHEN_MIC_32 = 0,  /**< Compatibility value; unsigned frames have no MIC */
+	LICHEN_MIC_64 = 1,  /**< Compatibility value; unsigned frames have no MIC */
 };
 
-/** 32-bit MIC length in bytes */
+/**
+ * @brief Coordination mechanisms per CCP-5 (da2q context)
+ *
+ * Priority order for negotiation: scheduled > hash_based > announce_driven > fallback
+ * Matches ccp9-rendezvous.json test vectors.
+ */
+enum lichen_coordination_mechanism {
+	LICHEN_COORD_HASH_BASED = 0,
+	LICHEN_COORD_SCHEDULED = 1,
+	LICHEN_COORD_ANNOUNCE_DRIVEN = 2,
+	LICHEN_COORD_FALLBACK = 3,
+};
+
+/** Legacy MIC length constant; not a current wire MIC length */
 #define LICHEN_MIC_32_LEN 4
 
-/** 64-bit MIC length in bytes */
+/** Legacy MIC length constant; not a current wire MIC length */
 #define LICHEN_MIC_64_LEN 8
 
 /** Wire length of the frame length field */
@@ -105,17 +122,17 @@ struct lichen_frame {
 	uint16_t seqnum;         /**< Sequence number (replay protection) */
 	uint8_t dst_addr[8];     /**< Destination address (0-8 bytes) */
 	uint8_t dst_addr_len;    /**< Destination address length */
-	const uint8_t *_Nullable payload;  /**< Payload (may include signature) */
-	size_t payload_len;      /**< Total payload length (includes signature if present) */
-	size_t inner_payload_len; /**< Payload length excluding signature (equals payload_len when no signature) */
-	uint8_t mic[8];          /**< Message integrity code */
-	uint8_t mic_len;         /**< MIC length (4 or 8) */
+	const uint8_t *_Nullable payload;  /**< Inner payload */
+	size_t payload_len;      /**< Inner payload length */
+	size_t inner_payload_len; /**< Same as payload_len; signature is in MIC */
+	uint8_t mic[LICHEN_SIG_LEN]; /**< MIC or Schnorr-48 signature */
+	uint8_t mic_len;         /**< MIC length (0 or 48) */
 
 	/* LLSec flags */
 	enum lichen_addr_mode addr_mode;
 	enum lichen_mic_len mic_length;
-	bool signature_present;  /**< Schnorr-48 appended to payload */
-	bool encrypted;          /**< AES-CCM encrypted */
+	bool signature_present;  /**< Schnorr-48 occupies the MIC field */
+	bool encrypted;          /**< Encrypted frame flag; currently unsupported */
 };
 
 /**
@@ -163,8 +180,8 @@ struct lichen_link_ctx;
  * 1. Compress IPv6 with SCHC
  * 2. Build frame header: length, LLSec flags, epoch, seqnum, dst addr
  * 3. Append compressed payload
- * 4. If signing enabled, compute Schnorr-48 signature and append
- * 5. Compute MIC (CRC32 placeholder for AES-CCM)
+ * 4. If signing enabled, compute Schnorr-48 signature for the MIC field
+ * 5. Leave the MIC absent for unsigned frames; signed frames carry Schnorr-48
  *
  * @param[in]     ctx        Link context with keypair and sequence state
  * @param[in]     ipv6_pkt   IPv6 packet to transmit
@@ -176,6 +193,7 @@ struct lichen_link_ctx;
  *         -EINVAL: NULL parameter
  *         -ENOMEM: Output buffer too small
  *         -EMSGSIZE: Frame would exceed 255 bytes
+ *         -EPROTONOSUPPORT: Link-layer encryption requested
  */
 int lichen_link_tx(struct lichen_link_ctx *_Nonnull ctx,
 		   const uint8_t *_Nonnull ipv6_pkt, size_t ipv6_len,
@@ -194,7 +212,7 @@ int lichen_link_tx(struct lichen_link_ctx *_Nonnull ctx,
 struct lichen_link_rx_ctx {
 	const uint8_t *_Nullable peer_pubkey;  /**< 32-byte peer public key (NULL if unknown) */
 	const uint8_t *_Nonnull peer_eui64;    /**< 8-byte peer EUI-64 for MIC nonce */
-	const uint8_t *_Nullable link_key;     /**< 16-byte AES-128 key for MIC (NULL to skip) */
+	const uint8_t *_Nullable link_key;     /**< Retained legacy key (NULL to skip) */
 	uint32_t current_time;                 /**< Current timestamp for replay aging */
 };
 
@@ -203,8 +221,8 @@ struct lichen_link_rx_ctx {
  *
  * Filled by lichen_link_rx_payload() after frame parse, signature/MIC
  * verification, source identification, and replay commit. The payload bytes
- * returned by that API are the authenticated inner payload, excluding any
- * appended Schnorr-48 signature.
+ * returned by that API are the authenticated inner payload. A Schnorr-48
+ * signature is carried in the MIC field.
  */
 struct lichen_link_rx_payload_info {
 	uint8_t src_eui64[LICHEN_EUI64_LEN]; /**< Immediate sender EUI-64 */
@@ -214,7 +232,7 @@ struct lichen_link_rx_payload_info {
 	uint16_t seqnum;                     /**< Link sequence number */
 	enum lichen_addr_mode addr_mode;     /**< Destination address mode */
 	bool signature_present;              /**< Schnorr-48 signature verified */
-	bool encrypted;                      /**< Payload was AES-CCM encrypted */
+	bool encrypted;                      /**< Encrypted frame flag; unsupported */
 };
 
 /**
@@ -235,6 +253,7 @@ struct lichen_link_rx_payload_info {
  * @param[out]    info         Authenticated frame metadata
  * @return 0 on success, negative error code on failure
  *         -EINVAL: malformed frame
+ *         -EPROTONOSUPPORT: encrypted frame received
  *         -LICHEN_EAUTH: signature/MIC verification failed
  *         -EALREADY: replay detected
  *         -ENOMEM: output buffer too small
@@ -254,7 +273,7 @@ int lichen_link_rx_payload(struct lichen_link_rx_ctx *_Nonnull ctx,
  *
  * Steps:
  * 1. Parse frame header: length, LLSec, epoch, seqnum, dst addr
- * 2. Decrypt if needed and verify MIC
+ * 2. Reject unsupported encrypted frames; verify the 48-byte MIC if signed
  * 3. If signature present, verify Schnorr-48 using sender's public key
  * 4. Identify immediate sender
  * 5. Decompress accepted SCHC payload with SCHC
@@ -279,6 +298,8 @@ int lichen_link_rx(struct lichen_link_rx_ctx *_Nonnull ctx,
 		   const uint8_t *_Nonnull frame, size_t frame_len,
 		   uint8_t *_Nonnull out_ipv6, size_t *_Nonnull out_len,
 		   uint8_t *_Nonnull src_eui64);
+
+uint32_t lichen_hash_32(uint32_t sfn, uint64_t key);
 
 #ifdef __cplusplus
 }

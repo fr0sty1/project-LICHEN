@@ -28,16 +28,20 @@ static uint32_t message_size(const struct lichen_dtn_message *msg)
 static int find_oldest(const struct lichen_dtn_buffer *buf)
 {
 	int oldest_idx = -1;
-	uint32_t oldest_time = UINT32_MAX;
 
 	for (int i = 0; i < CONFIG_LICHEN_DTN_MAX_MESSAGES; i++) {
-		if (buf->messages[i].valid) {
-			/* Wraparound-safe: we just compare raw values.
-			 * Lower value = older (assuming monotonic clock) */
-			if (buf->messages[i].buffered_at_ms < oldest_time) {
-				oldest_time = buf->messages[i].buffered_at_ms;
-				oldest_idx = i;
-			}
+		if (!buf->messages[i].valid) {
+			continue;
+		}
+		if (oldest_idx == -1) {
+			oldest_idx = i;
+			continue;
+		}
+		/* Wraparound-safe signed diff (assumes <2^31ms span). Smaller = older. */
+		int32_t diff = (int32_t)(buf->messages[i].buffered_at_ms -
+					 buf->messages[oldest_idx].buffered_at_ms);
+		if (diff < 0) {
+			oldest_idx = i;
 		}
 	}
 
@@ -121,7 +125,10 @@ bool lichen_dtn_buffer_message(struct lichen_dtn_buffer *buf,
 
 	uint32_t msg_size = packet_len + MESSAGE_OVERHEAD;
 
-	/* Reject messages that exceed the maximum buffer size */
+	/* SECURITY: This check is essential - evict_if_needed() assumes
+	 * new_size <= max_bytes. Without this, a message larger than max_bytes
+	 * would cause evict_if_needed() to evict all messages and still fail
+	 * to make room, wasting buffer contents. */
 	if (msg_size > buf->max_bytes) {
 		return false;
 	}
@@ -259,14 +266,11 @@ uint16_t lichen_dtn_retrieve_for(struct lichen_dtn_buffer *buf,
 		}
 
 		/* Call callback if provided */
+		bool should_continue = true;
 		if (callback != NULL) {
-			bool should_continue = callback(msg->packet,
-							msg->packet_len,
-							user_data);
-			if (!should_continue) {
-				/* Callback requested stop, but we still
-				 * remove this message */
-			}
+			should_continue = callback(msg->packet,
+						   msg->packet_len,
+						   user_data);
 		}
 
 		/* Remove from buffer */
@@ -276,8 +280,8 @@ uint16_t lichen_dtn_retrieve_for(struct lichen_dtn_buffer *buf,
 		retrieved++;
 
 		/* If callback returned false, stop iterating */
-		if (callback != NULL) {
-			/* Note: we already processed the message above */
+		if (!should_continue) {
+			break;
 		}
 	}
 

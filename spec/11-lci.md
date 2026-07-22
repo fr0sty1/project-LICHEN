@@ -307,6 +307,11 @@ Content-Format: application/cbor
     "tx_packets": 567,
     "rx_errors": 12,
     "duty_cycle_pct": 2.3
+  },
+  "ccp": {
+    "current_channel": 5,
+    "scheduler_active": true,
+    "preferred_rx_valid_until_sfn": 12350
   }
 }
 ```

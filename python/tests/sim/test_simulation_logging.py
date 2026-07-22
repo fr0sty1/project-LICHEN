@@ -4,9 +4,31 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator
+
+import pytest
 import structlog
 
-from lichen.sim.simulation import Simulation
+from lichen.sim.simulation import (
+    Simulation,
+    disable_debug,
+    enable_debug,
+    is_debug_enabled,
+)
+
+
+@pytest.fixture(autouse=True)
+def reset_debug_state() -> Generator[None, None, None]:
+    """Keep the process-wide debug toggle isolated between tests."""
+    was_enabled = is_debug_enabled()
+    disable_debug()
+    try:
+        yield
+    finally:
+        if was_enabled:
+            enable_debug()
+        else:
+            disable_debug()
 
 
 def _events(logs: list[dict]) -> list[str]:
@@ -14,6 +36,7 @@ def _events(logs: list[dict]) -> list[str]:
 
 
 def test_logs_transmission_start_and_reception() -> None:
+    enable_debug()
     sim = Simulation("log-sim")
     sim.add_node("tx", 0.0, 0.0, 0.0)
     sim.add_node("rx", 100.0, 0.0, 0.0)
@@ -26,9 +49,13 @@ def test_logs_transmission_start_and_reception() -> None:
     events = _events(logs)
     assert "tx_start" in events
     assert "rx_success" in events
+    rx_log = next(entry for entry in logs if entry["event"] == "rx_success")
+    assert rx_log["from_node_id"] == "tx"
+    assert rx_log["payload_len"] == len(b"hello world")
 
 
 def test_logs_rx_start_and_timeout() -> None:
+    enable_debug()
     sim = Simulation("log-sim")
     sim.add_node("rx", 0.0, 0.0, 0.0)
 
@@ -42,6 +69,7 @@ def test_logs_rx_start_and_timeout() -> None:
 
 
 def test_logs_collision() -> None:
+    enable_debug()
     sim = Simulation("log-sim")
     # Equidistant transmitters -> capture fails -> collision.
     sim.add_node("tx1", 0.0, 100.0, 0.0)

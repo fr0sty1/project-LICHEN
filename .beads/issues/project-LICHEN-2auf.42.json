@@ -1,0 +1,36 @@
+{
+  "id": "project-LICHEN-2auf.42",
+  "title": "Recover Python SCHC and SenML bounds",
+  "description": "Recover SCHC descriptor/residue/option bounds, reassembly parity-window and All-1 bitmap fixes, and strict SenML CBOR field typing.",
+  "acceptance_criteria": "Malformed descriptors and truncation fail safely; multi-window vectors prove assignment and ACKs; SenML booleans cannot masquerade as numbers; vectors/tests and three reviews pass.",
+  "notes": "Safe commits: c0aae15d6 SenML and 4d8cd52b1 SCHC bounds. Fragmentation recovery is blocked on protocol scope: declared RFC profile M=1/N=6/T=0 implies max 2 windows and likely WINDOW_SIZE=63, but Python/Rust use private WINDOW_SIZE=7 with unlimited parity windows; C differs in M default, ACK format, bitmap order, MIC placement, and 64-tile capacity. No shared fragmentation vectors or allocated directional RuleIDs exist. Checkpoint heuristic must not be transplanted. Human decision required: synchronized RFC migration vs defer to dedicated protocol epic.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-17T19:09:52.537062Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-19T07:20:24.299382Z",
+  "started_at": "2026-07-19T06:07:05.315874Z",
+  "lease_expires_at": "2026-07-19T06:12:05.315874Z",
+  "heartbeat_at": "2026-07-19T06:07:05.315874Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.42",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-17T19:09:52.657846Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.42",
+      "depends_on_id": "project-LICHEN-hwx9",
+      "type": "blocks",
+      "created_at": "2026-07-19T16:01:52.521883Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

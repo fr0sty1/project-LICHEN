@@ -14,7 +14,7 @@
 | Eavesdropping | OSCORE encryption (CoAP), DTLS (MQTT-SN) |
 | Spoofing | Link-layer signatures (Ed25519) |
 | Replay | Sequence numbers, OSCORE replay window |
-| Routing attacks | RPL secure mode (optional), signed DIOs |
+| Routing attacks | Link-layer signatures REQUIRED on all RPL control frames (DIO/DAO/DIS); RPL secure mode optional |
 | DoS | Rate limiting, admission control |
 
 ### 8.2. Security Layers
@@ -78,13 +78,38 @@ routing headers without re-signing.
 |-------|-------|
 | Hop Limit / TTL | Decremented per hop |
 | 6LoRH source routing headers | Inserted/consumed by relays |
+
+### 8.5. Unified Ed25519 Identity Derivation (new model)
+
+All node identity derives from a single Ed25519 keypair. This unifies:
+
+- Link-layer signatures (Schnorr-48 over Ed25519 key)
+- OSCORE contexts (key derived from shared secret)
+- IPv6 address (primary unicast IID extracted from Ed25519 pubkey)
+- Yggdrasil global routing (same key yields compatible 02xx:: address)
+
+**Derivation (normative):**
+
+1. Generate Ed25519 keypair (32-byte priv, 32-byte pub)
+2. IPv6 IID = first 64 bits of SHA-256(pubkey) with u-bit set (per Yggdrasil mapping for interop; exact fn in reference impl and test vectors)
+3. Address = 0x02 || (appropriate bits) || IID  (full spec in Yggdrasil docs + test vectors/schnorr48.json)
+4. Link pubkey = the Ed25519 pubkey
+5. TOFU pins the (IID, PubKey) tuple
+
+This eliminates ULA entirely. The 02xx address is used for all routable traffic. Link-local fe80::/10 is reserved exclusively for control traffic (see 04-network.md). See test/vectors/ for canonical derivation examples. Reference implementation in python/src/lichen/crypto/ and rust/lichen-link/.
+
+**Benefits:**
+- No key/address mismatch attacks
+- Single key management
+- Seamless mesh <-> global via Yggdrasil without NAT
+- TOFU binds key to address cryptographically
 | Link-layer destination | Changes each hop |
 | Link-layer source | Relay's address |
 
 **Implication:** Relays forward packets without re-signing. The original
 signature remains valid because signed fields are unchanged.
 
-### 8.5. Signature Caching
+### 8.6. Signature Caching
 
 To reduce verification overhead:
 
@@ -98,7 +123,7 @@ Cache entries expire after 2× expected mesh traversal time (default: 30 seconds
 **Security note:** A compromised relay could inject unverified packets. In
 high-security deployments, enable per-hop verification (costs CPU, not bytes).
 
-### 8.6. Key Management
+### 8.7. Key Management
 
 **Design Principles:**
 - No pre-shared network keys (each node has its own keypair)
@@ -257,7 +282,7 @@ For high-security pairing without infrastructure:
 - Key change without signature -> reject, require re-verification
 - Revocation: remove from local key store; no global revocation list
 
-### 8.7. OSCORE (RFC 8613)
+### 8.8. OSCORE (RFC 8613)
 
 Object Security for Constrained RESTful Environments provides end-to-end
 security for CoAP:
@@ -271,7 +296,7 @@ security for CoAP:
 
 **OSCORE Overhead:** 8-13 bytes (Partial IV + Tag)
 
-### 8.8. EDHOC (RFC 9528)
+### 8.9. EDHOC (RFC 9528)
 
 Ephemeral Diffie-Hellman Over COSE provides lightweight authenticated key
 exchange for establishing OSCORE security contexts.
@@ -343,9 +368,9 @@ EDHOC is designed for constrained devices:
 - One-RTT for initiator-authenticated, two-RTT for mutual auth
 
 Nodes unable to run EDHOC MAY use pre-shared OSCORE contexts provisioned
-out-of-band (see 8.6 Key Management).
+out-of-band (see 8.7 Key Management).
 
-### 8.9. RPL Security
+### 8.10. RPL Security
 
 RPL control messages (DIO, DAO, DIS) are protected by **link-layer signatures**
 as the baseline. RPL's native secure modes are OPTIONAL for additional
@@ -353,14 +378,13 @@ defense-in-depth.
 
 **Baseline: Link-Layer Signatures (REQUIRED)**
 
-All RPL control messages are frames, and all frames carry Schnorr signatures.
-This provides:
+All RPL control messages (DIO, DAO, DIS) MUST carry valid Schnorr signatures per draft-lichen-link-01 section 4.2. Receivers MUST reject unsigned RPL frames; there is no normative permissive mode for production use (test-only). This provides:
 - **Sender authentication:** DIO originates from claimed node
 - **Integrity:** Message not modified in transit
 - **Replay protection:** Epoch + seqnum prevents replay
 
 This is sufficient for most deployments. Attackers cannot forge DIOs or
-inject fake routing information without a valid keypair.
+inject fake routing information without a valid keypair. See draft-lichen-link-01 for receiver normative behavior.
 
 **Limitation of link-layer signatures:**
 
@@ -454,10 +478,10 @@ hardware-derived (section 6.2 in Network Layer).
 
 - Root election is deterministic on lowest EUI-64 (section 6.1 in Network
   Layer). Rotating addresses destabilizes election.
-- Short-address assignment binds `CRC16(EUI-64)` to a public key in a
+- Short-address assignment binds `hash_32(0, EUI-64)` (updated link-layer hash_32(sfn,key) per CCP-15.8.3 / 02a-coordinated-capacity.md:253) to a public key in a
   mesh-wide table (section 4.5 in Physical and Link Layers). Rotation
   forces continual DAD and table churn on an airtime-starved link.
-- Replay windows (15.3) and signature caching (8.5) are per-sender state
+- Replay windows (15.3) and signature caching (8.6) are per-sender state
   keyed on stable identity.
 
 **It would not provide privacy anyway:**
@@ -478,7 +502,7 @@ analog here.
 
 The privacy controls that do work are specified where they work: position
 privacy (omit coords from announces, Routing; `/config/privacy` access
-control, Applications) and payload confidentiality (OSCORE, 8.7).
+control, Applications) and payload confidentiality (OSCORE, 8.8).
 Identity privacy is out of scope for a network whose security model binds
 every frame to a long-term key.
 

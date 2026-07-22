@@ -34,6 +34,17 @@ from lichen.loadng.messages import INITIAL_HOP_LIMIT, RREP, RREQ
 SUPPRESS_WINDOW_MS = 10_000  # duplicate-RREQ suppression window (spec B2.6)
 
 
+def _seq_is_newer(new_seq: int, old_seq: int) -> bool:
+    """Return True if new_seq is ahead of old_seq in wrap-around sense.
+
+    Uses half-space comparison for 16-bit sequence numbers: if the unsigned
+    difference (new - old) mod 65536 is in [1, 32767], new_seq is considered
+    newer. This handles wrap-around correctly: seq 0 is newer than seq 65535.
+    """
+    diff = (new_seq - old_seq) & 0xFFFF
+    return 0 < diff < 0x8000
+
+
 @dataclass
 class RreqResult:
     """Outcome of processing an RREQ."""
@@ -73,7 +84,9 @@ class LoadngRouter:
         self.cache = cache
         self.suppress_window_ms = suppress_window_ms
         self._own_seq = 0
-        self._seen: dict[tuple[IPv6Address, IPv6Address, int], int] = {}
+        # Maps (originator, destination) -> (highest_seq_num, timestamp).
+        # Uses wrap-aware comparison to handle 16-bit sequence number rollover.
+        self._seen: dict[tuple[IPv6Address, IPv6Address], tuple[int, int]] = {}
         self._prune_countdown = self._PRUNE_INTERVAL
 
     def originate_rreq(
@@ -104,33 +117,40 @@ class LoadngRouter:
         self._mark_seen(rreq, now)
 
         # Reverse route back toward the originator, used to return the RREP.
+        actual_hops = INITIAL_HOP_LIMIT - rreq.hop_limit
         self.cache.add(
             RouteEntry(
                 destination=rreq.originator,
                 next_hop=from_neighbor,
-                hop_count=0,
-                metric=0,
+                hop_count=actual_hops,
+                metric=actual_hops,
                 seq_num=rreq.seq_num,
                 valid_until=now + self.cache.route_timeout_ms,
             )
         )
 
         if rreq.destination == self.node_address:
+            # We are the destination; reply with our own sequence number
+            # (not the RREQ's seq_num, which belongs to the RREQ originator).
+            self._own_seq = (self._own_seq + 1) & 0xFFFF
             rrep = RREP(
                 originator=self.node_address,
                 destination=rreq.originator,
-                seq_num=rreq.seq_num,
+                seq_num=self._own_seq,
                 hop_count=0,
             )
             return RreqResult(reply=rrep, reply_next_hop=from_neighbor)
 
         # Intermediate reply if we already hold a gradient to the destination.
+        # SECURITY: This is a proxy reply on behalf of the destination. We use
+        # the gradient's seq_num (the destination's known sequence number) rather
+        # than the RREQ's seq_num (which belongs to the RREQ originator).
         grad = self.gradient.lookup(rreq.destination, now)
         if grad is not None:
             rrep = RREP(
                 originator=rreq.destination,
                 destination=rreq.originator,
-                seq_num=rreq.seq_num,
+                seq_num=grad.seq_num,
                 hop_count=grad.hop_count,
             )
             return RreqResult(reply=rrep, reply_next_hop=from_neighbor)
@@ -181,11 +201,16 @@ class LoadngRouter:
             forward_next_hop=reverse.next_hop,
         )
 
-    def _rreq_key(self, rreq: RREQ) -> tuple[IPv6Address, IPv6Address, int]:
-        return (to_ipv6(rreq.originator), to_ipv6(rreq.destination), rreq.seq_num)
+    def _rreq_key(self, rreq: RREQ) -> tuple[IPv6Address, IPv6Address]:
+        return (to_ipv6(rreq.originator), to_ipv6(rreq.destination))
 
     def _mark_seen(self, rreq: RREQ, now: int) -> None:
-        self._seen[self._rreq_key(rreq)] = now
+        key = self._rreq_key(rreq)
+        cached = self._seen.get(key)
+        # Update if no entry exists, or if the new seq is newer or equal.
+        # Equal seq updates the timestamp (same RREQ seen again).
+        if cached is None or rreq.seq_num == cached[0] or _seq_is_newer(rreq.seq_num, cached[0]):
+            self._seen[key] = (rreq.seq_num, now)
 
     def _is_suppressed(self, rreq: RREQ, now: int) -> bool:
         # Lazy prune: only prune every N checks to amortize O(n) cost.
@@ -194,10 +219,17 @@ class LoadngRouter:
         if self._prune_countdown <= 0:
             self._prune_seen(now)
             self._prune_countdown = self._PRUNE_INTERVAL
-        ts = self._seen.get(self._rreq_key(rreq))
-        return ts is not None and now - ts < self.suppress_window_ms
+        cached = self._seen.get(self._rreq_key(rreq))
+        if cached is None:
+            return False
+        cached_seq, cached_ts = cached
+        # Not suppressed if the incoming seq is newer (handles wrap-around).
+        if _seq_is_newer(rreq.seq_num, cached_seq):
+            return False
+        # Suppressed if equal or older seq and within the suppression window.
+        return now - cached_ts < self.suppress_window_ms
 
     def _prune_seen(self, now: int) -> None:
-        stale = [k for k, t in self._seen.items() if now - t >= self.suppress_window_ms]
+        stale = [k for k, (_, ts) in self._seen.items() if now - ts >= self.suppress_window_ms]
         for key in stale:
             del self._seen[key]

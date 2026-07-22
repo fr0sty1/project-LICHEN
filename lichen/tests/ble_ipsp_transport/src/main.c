@@ -39,8 +39,9 @@ static void test_conn_cb(enum lichen_ble_conn_state state, void *ctx)
 	test_state.last_conn_state = state;
 }
 
-static void reset_test_state(void)
+static void reset_test_state(void *fixture)
 {
+	ARG_UNUSED(fixture);
 	memset(&test_state, 0, sizeof(test_state));
 }
 
@@ -164,7 +165,7 @@ ZTEST(ble_ipsp_transport, test_send_null_data)
  */
 ZTEST(ble_ipsp_transport, test_send_oversized)
 {
-	uint8_t oversized[LICHEN_BLE_IPV6_MTU + 100];
+	uint8_t oversized[LICHEN_BLE_IPV6_MTU + 100] = {0};
 
 	int ret = lichen_ble_slip_send(oversized, sizeof(oversized));
 	zassert_equal(ret, -EMSGSIZE, "Oversized packet should be rejected");

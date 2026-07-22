@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-2auf.48.1",
+  "title": "Implement 40-bit OSCORE sequences",
+  "description": "Rust OSCORE stores sender/replay sequence state as u32 even though RFC 8613 permits 40-bit Partial IVs. Five-byte PIVs above u32::MAX saturate/collapse, breaking replay ordering and interoperability. Convert sequence representation and vector consumers to bounded u64 (0..2^40-1), reject overlong/out-of-range values, and preserve terminal exhaustion without mutation.",
+  "acceptance_criteria": "Literal boundaries 0xff,0x100,u32::MAX,u32::MAX+1,2^40-1 roundtrip; 2^40 and \u003e5-byte PIV reject; five-byte replay ordering and duplicates work; request/response terminal exhaustion never wraps; debug/release/no_std/all-feature tests, Clippy, and three reviews pass.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-17T22:58:23.329282Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-17T23:38:41.5932Z",
+  "started_at": "2026-07-17T22:58:40.466812Z",
+  "closed_at": "2026-07-17T23:38:41.5932Z",
+  "close_reason": "Implemented and validated with RFC-literal tests; debug/release/all-feature/no-default suites and library Clippy pass; three hash-bound reviews found no remaining in-scope P0-P2 defects. Context lifecycle remains .48.2.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.48.1",
+      "depends_on_id": "project-LICHEN-2auf.48",
+      "type": "parent-child",
+      "created_at": "2026-07-17T22:58:23.478629Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

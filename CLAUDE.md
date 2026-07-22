@@ -188,10 +188,13 @@ struct msg {
 
 **Authentication:**
 ```bash
-export AWS_PROFILE=AdministratorAccess-921772462201
-export AWS_REGION=us-east-2
-# If expired: aws sso login --profile AdministratorAccess-921772462201
+export AWS_PROFILE=personal
+export AWS_REGION=us-west-2
+aws sts get-caller-identity  # Account must be 210337117346
 ```
+
+EC2 Serial Console is enabled in `us-west-2`. Fleet simulations use private
+ARM64 AMI `ami-0764d1b512e22671f`; the development EBS is not attached to fleet instances.
 
 **CRITICAL: This AWS account has multiple projects. Only touch LICHEN resources.**
 
@@ -203,13 +206,12 @@ aws ec2 describe-tags --filters "Name=resource-id,Values=<id>" \
 ```
 
 **DO NOT TOUCH** (not LICHEN resources):
-- `ceph-fips-*`, `proxmox-fips-*`, `wolfssl-*`, `fenrir-*` instances
-- Any instance/volume/resource without `Project=LICHEN` tag
+- Any instance/volume/resource without `Project=LICHEN` tag, except the exact EBS volume listed below
 
 **Safe operations:**
 - Launch instances with `Project=LICHEN` tag (use `./scripts/ec2-claude.sh`)
 - Terminate instances YOU launched this session (track IDs from launch output)
-- Attach/detach LICHEN EBS volume `vol-017cfe48bd75340d0`
+- Attach/detach LICHEN EBS volume `vol-0a95eee8d1d8461eb` in `us-west-2c`
 
 **When in doubt, ask before terminating.** See `AGENTS.md` for full AWS details.
 

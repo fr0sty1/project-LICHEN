@@ -229,6 +229,9 @@ int schc_fragmenter_init(struct schc_fragmenter *fragmenter,
 	    config->tile_size == 0 || config->mtu == 0) {
 		return SCHC_ERR_INVALID_ARGUMENT;
 	}
+	if (packet_len > SCHC_MAX_PACKET) {
+		return SCHC_ERR_BUFFER_TOO_SMALL;
+	}
 
 	uint8_t window_bits = fragment_window_bits(config);
 	uint8_t fcn_bits = fragment_fcn_bits(config);

@@ -2,7 +2,10 @@
   "id": "project-LICHEN-y727",
   "title": "loadng.c: RREQ hop_count field not used for path length tracking",
   "description": "File: lichen/subsys/lichen/routing/loadng.c\n\nProtocol issue: RREQ uses hop_limit (decremented as message travels) but doesn't track accumulated hop_count. When the destination generates RREP, it starts with hop_count=0 (line 578).\n\nIn lichen_loadng_process_rreq() line 561-570:\n    struct lichen_loadng_route reverse = {\n        .hop_count = 0,  // \u003c-- Always 0, doesn't track how many hops RREQ traveled\n        ...\n    };\n\nWhen installing the reverse route, hop_count is always 0 regardless of how many hops the RREQ actually traversed. This means:\n1. All reverse routes appear to be 0 hops away\n2. Route comparison/selection cannot prefer shorter paths\n3. The metric field is also 0\n\nPer LOADng spec, RREQ should accumulate hop count as it forwards, and RREP should inherit this information for accurate path length tracking.",
+<<<<<<< HEAD
   "notes": "Commit: b1091d694",
+=======
+>>>>>>> origin/integration/worker3-20260722
   "status": "closed",
   "priority": 2,
   "issue_type": "bug",
@@ -10,8 +13,14 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:50:48.458769Z",
   "created_by": "Mark Atwood",
+<<<<<<< HEAD
   "updated_at": "2026-07-22T20:21:35.842930038Z",
   "started_at": "2026-07-22T20:13:29.700932285Z",
   "closed_at": "2026-07-22T20:21:35.842930038Z",
   "close_reason": "RREQ now accumulates hop_count from 0; reverse route uses rreq-\u003ehop_limit+1; forward increments; fixes path length for gradients/cache; commit b1091d694"
+=======
+  "updated_at": "2026-07-22T02:14:17.981652048Z",
+  "closed_at": "2026-07-22T02:14:17.981652048Z",
+  "close_reason": "Updated RREQ reverse route to use hop_count=1 for correct path length tracking"
+>>>>>>> origin/integration/worker3-20260722
 }

@@ -49,7 +49,7 @@ def _unused_tcp_port() -> int:
 )
 @pytest.mark.skipif(RUN_RENODE_INTEGRATION and not _has_renode(), reason="Renode not installed")
 @pytest.mark.asyncio
-async def test_renode_integration_tx(tmp_path: Path) -> None:
+async def test_renode_integration_tx(tmp_path: Path) -> None:  # now includes ESP32-S3 via updated repl
     """Test TX from Renode peripheral reaches lichen-sim."""
     sim = Simulation("renode-test")
     server, port = await start_renode_server(sim, "renode-node", port=0)

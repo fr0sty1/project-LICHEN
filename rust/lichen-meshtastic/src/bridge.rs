@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Bridge logic for translating between LICHEN IPv6 packets and Meshtastic MeshPackets.
 //!
-// Allow deprecated field usage for Meshtastic protocol compatibility
-#![allow(deprecated)]
-//!
 //! This module provides bidirectional translation:
 //! - Meshtastic MeshPacket -> LICHEN IPv6 (for incoming BLE/serial traffic)
 //! - LICHEN IPv6 -> Meshtastic MeshPacket (for outgoing to BLE/serial)
@@ -12,7 +9,7 @@
 //! TEXT_MESSAGE_APP for CoAP message tunneling where appropriate.
 
 use crate::address::{AddressMapper, MeshtasticNodeId};
-use crate::{Data, MeshPacket, PortNum, Routing, mesh_packet, routing};
+use crate::{mesh_packet, routing, Data, MeshPacket, PortNum, Routing};
 use heapless::Vec;
 use lichen_core::addr::Ipv6Addr;
 
@@ -241,6 +238,12 @@ impl MeshtasticBridge {
                                 error: None,
                             })
                         }
+                        Some(routing::Variant::RouteRequest(id)) => {
+                            Ok(IncomingResult::RoutingResponse {
+                                request_id: id,
+                                error: None,
+                            })
+                        }
                         _ => Ok(IncomingResult::RoutingResponse {
                             request_id: data.request_id,
                             error: None,
@@ -310,7 +313,6 @@ impl MeshtasticBridge {
             want_ack: true,
             priority: mesh_packet::Priority::Default as i32,
             rx_rssi: 0,
-            delayed: 0,
             via_mqtt: false,
             hop_start: 0,
             public_key: alloc::vec::Vec::new(),
@@ -318,6 +320,7 @@ impl MeshtasticBridge {
             next_hop: 0,
             relay_node: 0,
             payload_variant: Some(mesh_packet::PayloadVariant::Decoded(data)),
+            ..Default::default()
         })
     }
 
@@ -357,7 +360,6 @@ impl MeshtasticBridge {
             want_ack: false,
             priority: mesh_packet::Priority::Default as i32,
             rx_rssi: 0,
-            delayed: 0,
             via_mqtt: false,
             hop_start: 0,
             public_key: alloc::vec::Vec::new(),
@@ -365,6 +367,7 @@ impl MeshtasticBridge {
             next_hop: 0,
             relay_node: 0,
             payload_variant: Some(mesh_packet::PayloadVariant::Decoded(data)),
+            ..Default::default()
         })
     }
 
@@ -382,7 +385,10 @@ impl MeshtasticBridge {
         };
 
         let mut payload = alloc::vec::Vec::new();
-        routing.encode(&mut payload).ok();
+        // Encoding to a growable Vec cannot fail (no I/O, no size limits)
+        routing
+            .encode(&mut payload)
+            .expect("protobuf encode to Vec cannot fail");
 
         let packet_id = self.next_packet_id;
         self.next_packet_id = self.next_packet_id.wrapping_add(1);
@@ -410,7 +416,6 @@ impl MeshtasticBridge {
             want_ack: false,
             priority: mesh_packet::Priority::Ack as i32,
             rx_rssi: 0,
-            delayed: 0,
             via_mqtt: false,
             hop_start: 0,
             public_key: alloc::vec::Vec::new(),
@@ -418,6 +423,7 @@ impl MeshtasticBridge {
             next_hop: 0,
             relay_node: 0,
             payload_variant: Some(mesh_packet::PayloadVariant::Decoded(data)),
+            ..Default::default()
         }
     }
 
@@ -460,7 +466,7 @@ mod tests {
         // Create a minimal IPv6 packet (40 byte header)
         let mut ipv6_data = [0u8; 48];
         ipv6_data[0] = 0x60; // Version 6
-        // Set destination address to match mapper
+                             // Set destination address to match mapper
         let dst_addr = bridge.mapper().meshtastic_to_ipv6(dst_node);
         ipv6_data[24..40].copy_from_slice(&dst_addr.0);
 
@@ -526,7 +532,6 @@ mod tests {
             want_ack: false,
             priority: 0,
             rx_rssi: 0,
-            delayed: 0,
             via_mqtt: false,
             hop_start: 0,
             public_key: alloc::vec::Vec::new(),
@@ -544,6 +549,7 @@ mod tests {
                 emoji: 0,
                 bitfield: None,
             })),
+            ..Default::default()
         };
 
         let result = bridge.process_incoming(&packet);
@@ -610,7 +616,6 @@ mod tests {
             want_ack: false,
             priority: 0,
             rx_rssi: 0,
-            delayed: 0,
             via_mqtt: false,
             hop_start: 0,
             public_key: alloc::vec::Vec::new(),
@@ -618,6 +623,7 @@ mod tests {
             next_hop: 0,
             relay_node: 0,
             payload_variant: None,
+            ..Default::default()
         };
 
         let result = bridge.process_incoming(&packet);

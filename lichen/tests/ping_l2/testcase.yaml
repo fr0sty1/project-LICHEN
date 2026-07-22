@@ -14,3 +14,10 @@ tests:
     integration_platforms:
       - native_sim
       - native_sim/native/64
+    extra_configs:
+      # False positive with CONFIG_STACK_CANARIES on native_sim: Zephyr seeds
+      # __stack_chk_guard in z_cstart (on a Zephyr thread) after the host
+      # runner's boot shim already stored the old guard, and this suite idles
+      # mid-test, returning through nsif_cpu0_boot -> K_ERR_STACK_CHK_FAIL.
+      # Canaries stay enabled for hardware builds via prj.conf.
+      - CONFIG_STACK_CANARIES=n

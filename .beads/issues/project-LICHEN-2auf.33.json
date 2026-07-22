@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-2auf.33",
+  "title": "Close validation workflow and audit worktree",
+  "description": "Review generated artifacts and the large worktree, update/close completed workflow Beads, document residual blockers, and prepare a clean commit boundary without pushing.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-15T15:17:42.991946Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-15T15:17:42.992471Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.33",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-15T15:17:42.99247Z"
+    }
+  ]
+}

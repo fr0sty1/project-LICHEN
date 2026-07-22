@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-3ook",
+  "title": "Provision persistent Zephyr workstation",
+  "description": "Launch a tagged ARM64 EC2 workstation in us-west-2c, attach and validate the existing LICHEN Zephyr EBS cache, install the user's public SSH key and OpenCode tooling, update the repository checkout, and hand off an SSH command. Do not copy private keys or OpenCode/OpenAI credentials; user will authenticate interactively.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-20T03:30:05.519734Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-20T03:40:42.735261Z",
+  "closed_at": "2026-07-20T03:40:42.735261Z",
+  "close_reason": "Persistent c8g.4xlarge Zephyr/OpenCode workstation provisioned and validated; instance intentionally left running for SSH handoff."
+}

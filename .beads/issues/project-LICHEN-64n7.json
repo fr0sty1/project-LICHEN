@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-64n7",
+  "title": "Make root provisioning resumable",
+  "description": "Provision DAD1 before DRX2 and make root provisioning idempotently resume matching empty partial state without overwriting nonempty or mismatched records. Add deterministic failures at each write boundary and retry/open tests.",
+  "acceptance_criteria": "Every write-boundary failure is retryable; matching empty partial states resume; mismatched or nonempty partial states fail closed; open requires both records; no deletion API.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-20T07:09:07.149848546Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-20T07:13:14.634315732Z",
+  "started_at": "2026-07-20T07:09:50.497913641Z",
+  "closed_at": "2026-07-20T07:13:14.634315732Z",
+  "close_reason": "Added preflighted DAD1-first idempotent root coordinator. Matching empty partial records resume, both empty records reopen idempotently, nonempty or scope-mismatched partials fail closed, and open_root still requires both. Deterministic fail_after_writes(0/1), retry/open, mismatch, and authenticated high-water-only tests pass without deletion.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-64n7",
+      "depends_on_id": "project-LICHEN-d7uj",
+      "type": "parent-child",
+      "created_at": "2026-07-20T07:09:07.233799898Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

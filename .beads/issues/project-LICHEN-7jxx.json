@@ -2,6 +2,7 @@
   "id": "project-LICHEN-7jxx",
   "title": "Intermediate RREP uses destination address incorrectly",
   "description": "File: python/src/lichen/loadng/discovery.py\nLines: 130-136\n\nWhen an intermediate node has a gradient to the destination and sends an RREP on its behalf:\n```python\ngrad = self.gradient.lookup(rreq.destination, now)\nif grad is not None:\n    rrep = RREP(\n        originator=rreq.destination,  # The actual destination\n        destination=rreq.originator,  # RREQ originator\n        seq_num=rreq.seq_num,\n        hop_count=grad.hop_count,\n    )\n```\n\nProtocol issue: The intermediate node sets `originator=rreq.destination` (the node it has a gradient to), but:\n1. It's replying ON BEHALF of that destination, not AS that destination\n2. The seq_num used is from the RREQ, not the actual destination's sequence number\n3. The hop_count is the gradient's hop_count, but doesn't include the path from this node back to the originator\n\nThis creates a semantically incorrect RREP that claims to be from the destination node but carries the wrong sequence number and partial hop count.\n\nImpact: Route receivers may install routes with incorrect metrics and sequence numbers, leading to:\n- Suboptimal routing\n- Potential routing loops\n- Incorrect freshness comparisons\n\nFix: The intermediate reply should either:\n1. Not be allowed (safer - require actual destination to respond)\n2. Or clearly indicate it's a proxy reply with proper hop count calculation:\n```python\ntotal_hops = (INITIAL_HOP_LIMIT - rreq.hop_limit) + grad.hop_count\nrrep = RREP(\n    originator=rreq.destination,\n    destination=rreq.originator,\n    seq_num=grad.seq_num,  # Use the gradient's seq_num\n    hop_count=total_hops,\n)\n```",
+<<<<<<< HEAD
   "notes": "Commit: 37bf3fb8c",
   "status": "closed",
   "priority": 2,
@@ -14,4 +15,16 @@
   "started_at": "2026-07-22T20:21:05.326250866Z",
   "closed_at": "2026-07-22T20:21:38.602420572Z",
   "close_reason": "Intermediate RREP already uses grad.seq_num and grad.hop_count (proxy reply with destination's seq). Comment removed per style. LOADng tests pass."
+=======
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:22:44.278872Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-13T04:32:53.220179Z",
+  "closed_at": "2026-07-13T04:32:53.220179Z",
+  "close_reason": "Closed"
+>>>>>>> origin/integration/worker3-20260722
 }

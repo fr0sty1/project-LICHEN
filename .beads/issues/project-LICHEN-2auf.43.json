@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-2auf.43",
+  "title": "Harden recovered RenodeServer lifecycle",
+  "description": "Recover post-checkpoint listener-first shutdown, connection/task ownership, stale-callback isolation, RX cleanup, reconnect safety, and duplicate-push prevention.",
+  "acceptance_criteria": "Stop is idempotent; active clients receive EOF; no tasks remain; overlapping clients cannot replace owner; stale callbacks cannot reach reconnects; focused async tests and three reviews pass.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-17T19:09:52.971123Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-17T19:09:52.971123Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.43",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-17T19:09:53.089369Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.43",
+      "depends_on_id": "project-LICHEN-2auf.59",
+      "type": "blocks",
+      "created_at": "2026-07-17T19:10:55.439754Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

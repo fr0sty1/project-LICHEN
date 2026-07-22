@@ -227,13 +227,22 @@ def make_packet_too_big(invoking_packet: bytes, mtu: int) -> Icmpv6ErrorMessage:
     )
 
 
-def handle_icmpv6(packet: IPv6Packet) -> IPv6Packet | None:
+def handle_icmpv6(
+    packet: IPv6Packet, local_addr: IPv6Address | None = None
+) -> IPv6Packet | None:
     """Process an inbound ICMPv6 packet, returning a reply if one is due.
 
     Only Echo Requests produce a reply (an Echo Reply with the source and
     destination swapped). Replies and error messages are consumed without a
     response. Per RFC 4443 section 2.3, messages with invalid checksums are
     silently discarded.
+
+    Args:
+        packet: The inbound IPv6 packet carrying ICMPv6.
+        local_addr: A unicast address to use as the source when replying to
+            multicast Echo Requests. Per RFC 4443 section 4.2, replies to
+            multicast destinations MUST use a unicast source. If the destination
+            is multicast and no local_addr is provided, the packet is dropped.
     """
     if packet.header.next_header != ICMPV6_NEXT_HEADER:
         raise Icmpv6Error("packet does not carry ICMPv6")
@@ -249,11 +258,25 @@ def handle_icmpv6(packet: IPv6Packet) -> IPv6Packet | None:
     if msg.type != Icmpv6Type.ECHO_REQUEST:
         return None
 
+    # SECURITY: RFC 4443 section 2.4(e) - do not send ICMPv6 messages to
+    # the unspecified address or any multicast address.
+    if packet.header.src_addr.is_unspecified or packet.header.src_addr.is_multicast:
+        return None
+
     request = EchoRequest.from_message(msg)
     reply = EchoReply(request.identifier, request.sequence, request.data)
 
     # Reply from the pinged address back to the requester.
-    reply_src = packet.header.dst_addr
+    # RFC 4443 section 4.2: If the request was sent to a multicast address,
+    # the source of the reply MUST be a unicast address.
+    dst_addr = packet.header.dst_addr
+    if dst_addr.is_multicast:
+        if local_addr is None:
+            # Cannot reply to multicast without a unicast source address.
+            return None
+        reply_src = local_addr
+    else:
+        reply_src = dst_addr
     reply_dst = packet.header.src_addr
     reply_payload = reply.to_message().to_bytes(reply_src, reply_dst)
     reply_header = IPv6Header(

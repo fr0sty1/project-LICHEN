@@ -1,0 +1,242 @@
+{
+  "format_version": 2,
+  "description": "CCP-16 Load Balancing vectors (da2q multi-channel). Covers gateway channel assignment, load metrics in DIO extensions, and balancing decisions. Python reference is source of truth.",
+  "vectors": [
+    {
+      "name": "gateway_channel_assignment",
+      "description": "DIO with load factor triggering channel rebalance (CCP-16).",
+      "load_factor": 75,
+      "preferred_channel": 3,
+      "num_neighbors": 12,
+      "tdma_slot": 5,
+      "sf": 9,
+      "density": 45,
+      "channels": [
+        0,
+        2,
+        5
+      ]
+    },
+    {
+      "name": "tdma_slot_assignment",
+      "description": "Beacon-driven TDMA slot with density-aware guard time.",
+      "superframe": 42,
+      "slot_duration_ms": 250,
+      "guard_ms": 50,
+      "assigned_slot": 17,
+      "density_factor": 28
+    },
+    {
+      "name": "adaptive_sf_density",
+      "description": "SF adaptation: SF7 for high SNR/low density, SF12 for high density. Matches mitigateInterference logic. Uses snr_ema per pseudocode.",
+      "snr_db": 12.5,
+      "density_nodes": 67,
+      "current_sf": 10,
+      "target_sf": 10,
+      "success_rate": 0.92,
+      "snr_ema": 10.0
+    },
+    {
+      "name": "multi_channel_load_balance",
+      "description": "Multi-channel load distribution across 8 channels with gateway coordination.",
+      "n_channels": 8,
+      "load_per_channel": [
+        23,
+        45,
+        12,
+        67,
+        8,
+        34,
+        19,
+        51
+      ],
+      "rebalance_threshold": 60,
+      "assigned_channel": 4
+    },
+    {
+      "name": "interference_mitigation_full",
+      "description": "Full combined algorithm test: high density triggers SF10, channel agility avoids busy ch, density guard=50+67. Uses now() for select_channel.",
+      "density": 67,
+      "snr_db": 3.0,
+      "per": 0.25,
+      "load_factor": 65,
+      "channel_busy": [
+        20,
+        80,
+        15,
+        45,
+        90,
+        25,
+        60,
+        35
+      ],
+      "success_rate": 0.78,
+      "now_ts": 1234567890,
+      "expected": {
+        "sf": 12,
+        "channel": 2,
+        "slot": 5,
+        "guard_ms": 117,
+        "density": 67
+      }
+    },
+    {
+      "name": "select_channel_blacklist",
+      "description": "now_ts skips blacklisted ch (IF now_ts < blacklist_until[ch]). Matches pseudocode line 301. now() from TDMA.",
+      "now_ts": 100000,
+      "current_ch": 0,
+      "blacklist_until": [
+        0,
+        150000,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "channel_busy": [
+        10,
+        5,
+        80,
+        15,
+        20,
+        30,
+        40,
+        25
+      ],
+      "per": [
+        0.1,
+        0.05,
+        0.6,
+        0.2,
+        0.15,
+        0.3,
+        0.4,
+        0.1
+      ],
+      "snr_db": [
+        10.0,
+        12.0,
+        -5.0,
+        8.0,
+        9.0,
+        6.0,
+        4.0,
+        11.0
+      ],
+      "expected_channel": 1,
+      "hysteresis": true
+    },
+    {
+      "name": "select_channel_hysteresis_dwell",
+      "description": "Hysteresis bonus (current_ch) and dwell penalty (now_ts - last_used < MIN_DWELL_MS). Score calc tested. Matches pseudocode 308, 310.",
+      "now_ts": 100010,
+      "current_ch": 3,
+      "last_used": [
+        90000,
+        95000,
+        99000,
+        100005,
+        0,
+        0,
+        0,
+        0
+      ],
+      "channel_busy": [
+        20,
+        15,
+        10,
+        25,
+        40,
+        5,
+        30,
+        35
+      ],
+      "per": [
+        0.2,
+        0.15,
+        0.1,
+        0.25,
+        0.35,
+        0.05,
+        0.28,
+        0.18
+      ],
+      "snr_db": [
+        8.0,
+        9.0,
+        11.0,
+        7.0,
+        3.0,
+        13.0,
+        5.0,
+        6.0
+      ],
+      "expected_channel": 3
+    },
+    {
+      "name": "select_channel_per_blacklist",
+      "description": "Switch triggers blacklist (per > PER_BLACKLIST_THRESH). Updates blacklist_until = now_ts + BLACKLIST_MS. Matches 314-315.",
+      "now_ts": 200000,
+      "current_ch": 0,
+      "last_switch_ts": 100000,
+      "channel_busy": [
+        30,
+        20,
+        70,
+        10
+      ],
+      "per": [
+        0.1,
+        0.45,
+        0.8,
+        0.05
+      ],
+      "snr_db": [
+        5.0,
+        -2.0,
+        4.0,
+        12.0
+      ],
+      "expected_channel": 3,
+      "blacklist_trigger": true
+    },
+    {
+      "name": "select_channel_min_switch",
+      "description": "MIN_SWITCH_INTERVAL_MS prevents switch even if better score. now() used for interval check. Matches 316.",
+      "now_ts": 100050,
+      "current_ch": 0,
+      "last_switch_ts": 100040,
+      "channel_busy": [
+        40,
+        10,
+        5,
+        60
+      ],
+      "per": [
+        0.3,
+        0.1,
+        0.08,
+        0.4
+      ],
+      "snr_db": [
+        6.0,
+        10.0,
+        12.0,
+        2.0
+      ],
+      "expected_channel": 0
+    },
+    {
+      "name": "now_tdma_hash32",
+      "description": "now() feeds select_channel; hash_32(sfn, eui64) per spec (pure eui64, sfn-first param order to match link layer short_addr). Tests monotonic TDMA time from lichen_tdma_init.",
+      "now_ts": 1234567890,
+      "eui64": "0000000000000001",
+      "sfn": 42,
+      "num_data_slots": 64,
+      "expected_slot": 30,
+      "expected_hash": 971336606
+    }
+  ]
+}

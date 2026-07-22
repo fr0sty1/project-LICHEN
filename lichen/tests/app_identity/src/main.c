@@ -137,6 +137,7 @@ ZTEST(app_identity, test_peer_lookup_and_enumeration)
 	uint8_t key1[LICHEN_PK_LEN];
 	uint8_t key2[LICHEN_PK_LEN];
 	uint8_t key3[LICHEN_PK_LEN];
+	uint8_t replacement_key[LICHEN_PK_LEN];
 	struct lichen_app_identity_peer out;
 	struct lichen_app_identity_peer peers[2];
 	size_t copied;
@@ -159,8 +160,11 @@ ZTEST(app_identity, test_peer_lookup_and_enumeration)
 	zassert_equal(out.iid[0], peer1_eui64[0] ^ 0x02U);
 	zassert_true(out.has_public_key);
 
-	memset(key1, 0x44, sizeof(key1));
-	zassert_ok(lichen_app_identity_upsert_peer_key(peer1_eui64, key1));
+	/* TOFU key pinning rejects key replacement for a known peer. */
+	memset(replacement_key, 0x44, sizeof(replacement_key));
+	zassert_equal(lichen_app_identity_upsert_peer_key(peer1_eui64,
+						    replacement_key),
+		      -EEXIST);
 	zassert_ok(lichen_app_identity_copy_peer(peer1_eui64, &out));
 	zassert_mem_equal(out.public_key, key1, sizeof(key1));
 	zassert_equal(lichen_app_identity_peer_count(), 2U);

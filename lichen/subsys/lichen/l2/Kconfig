@@ -176,13 +176,15 @@ config LICHEN_L2_DEV_PROVISIONING
 	  production builds.
 
 config LICHEN_L2_DEV_PEER_EUI64
-	string "Dev peer EUI-64 (16 hex chars, ':' separators allowed)"
+	string "Dev peer EUI-64 list (comma-separated, ':' separators allowed)"
 	depends on LICHEN_L2_DEV_PROVISIONING
 	default ""
 	help
-	  EUI-64 of the single peer to accept signed frames from, e.g.
-	  "f4ce36001234abcd" or "f4:ce:36:00:12:34:ab:cd". Each node logs
-	  its own EUI-64 / link-local address at boot.
+	  Comma-separated EUI-64s of the peers to accept signed frames
+	  from, e.g. "f4ce36001234abcd" or
+	  "f4:ce:36:00:12:34:ab:cd,8a1a2c4b93812cab". Each node logs its
+	  own EUI-64 / link-local address at boot. Each peer's dev pubkey
+	  is derived from its EUI-64 (see lichen_link_derive_seed).
 
 config LICHEN_L2_TEST_HOOKS
 	bool "LICHEN L2 ztest-only test hooks"
@@ -192,3 +194,24 @@ config LICHEN_L2_TEST_HOOKS
 	help
 	  Expose deterministic key loading and packet counters for automated
 	  L2 path tests. This must stay disabled in production builds.
+
+config LICHEN_LORA_CCA_ENABLE
+	bool "Enable CCA before TX (CCP-15.2)"
+	depends on LICHEN_LORA_L2
+	default n
+	help
+	  Enable Clear Channel Assessment (using CAD where supported) before
+	  every transmission. Part of interference mitigation for CCP-15.
+	  When enabled, lora_l2_tx() and link layer TX path will perform CCA.
+	  Default n to avoid breaking sim/loopback drivers without CAD impl.
+	  See project-LICHEN-da2q.15.7 and related codereview beads.
+
+config LICHEN_LORA_CCA_TIMEOUT_MS
+	int "CCA/CAD timeout in ms"
+	depends on LICHEN_LORA_CCA_ENABLE
+	default 5
+	range 1 20
+	help
+	  Timeout for the CCA check before TX. LoRa CAD is typically very fast
+	  (few ms). This limits how long we wait for channel assessment. Used
+	  in both lora_l2 (Zephyr driver) and link layer.

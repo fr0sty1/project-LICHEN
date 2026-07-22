@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-2auf.68",
+  "title": "Repair invalid signed link-frame vector",
+  "description": "Discovered during project-LICHEN-2auf.44.7 validation: test/vectors/link_frame.json signed_encrypted vector marks a one-byte payload as signature-present even though a signature trailer requires 48 bytes; test/vectors/generate.py reproduces it. Python rejects the canonical vector while Rust defers rejection, leaving the full cross-language vector gate red. Repair from the link-wire specification and independent framing expectations without weakening parser tests.",
+  "acceptance_criteria": "Generator emits a structurally valid signed-frame vector; canonical regeneration is deterministic; Python/Rust/C framing expectations agree; full vector suites and three independent reviews pass.",
+  "status": "blocked",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-20T06:05:10.358115821Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-20T13:25:34.184837577Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.68",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-20T06:05:10.440722229Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.68",
+      "depends_on_id": "project-LICHEN-2auf.44.7",
+      "type": "discovered-from",
+      "created_at": "2026-07-20T06:05:10.519726486Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

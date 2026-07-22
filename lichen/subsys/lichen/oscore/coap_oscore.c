@@ -30,8 +30,6 @@ static inline int coap_err_to_oscore(int err)
 	switch (err) {
 	case -ENOMEM:
 		return OSCORE_ERR_BUFFER_TOO_SMALL;
-	case -EINVAL:
-		return OSCORE_ERR_INVALID_PARAM;
 	default:
 		return OSCORE_ERR_INVALID_PARAM;
 	}
@@ -91,6 +89,11 @@ int coap_oscore_unprotect_request(struct oscore_ctx *ctx,
 	uint16_t ciphertext_len;
 	struct oscore_option opt;
 	int ret;
+
+	/* Validate PIV output pointers (defensive check despite _Nonnull) */
+	if (request_piv == NULL || request_piv_len == NULL) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
 
 	/* Get OSCORE option */
 	ret = coap_oscore_get_option(request, oscore_opt, &oscore_opt_len);

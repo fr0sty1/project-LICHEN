@@ -64,70 +64,19 @@ Each rule specifies, for each header field:
 
 ### 5.5. Default Rules
 
-Rule IDs 0-127 are for compression rules. Rule ID 255 is reserved for
-uncompressed fallback (see 5.7).
+Full canonical rules (including CoAP fields, OSCORE variants, RPL control messages, exact CDA/MO/TV, residue calculations) are defined in `spec/appendix-schc.md` and implemented in `rust/lichen-schc/src/rules.rs` and `python/src/lichen/schc/rules.py`. Rule Set Version 2.
 
-**Rule 0: Link-local IPv6 + UDP (most common)**
+**Summary of key rules (see appendix for TV/MO/CDA tables):**
+- Rule 0: Link-local IPv6+UDP+CoAP (26B SCHC header)
+- Rule 1: Global IPv6+UDP+CoAP (42B)
+- Rule 2: ICMPv6 Echo
+- Rule 3: RPL DIO
+- Rule 4: RPL DAO (routable ULA source per security requirements)
+- Rules 5/6: OSCORE-protected CoAP variants
+- Rule 7: MQTT-SN
+- Rule 255: Uncompressed fallback (MUST implement)
 
-| Field | TV | MO | CDA |
-|-------|----|----|-----|
-| IPv6.Version | 6 | equal | not-sent |
-| IPv6.TrafficClass | 0 | equal | not-sent |
-| IPv6.FlowLabel | 0 | equal | not-sent |
-| IPv6.PayloadLength | - | ignore | compute |
-| IPv6.NextHeader | 17 (UDP) | equal | not-sent |
-| IPv6.HopLimit | 64 | ignore | not-sent |
-| IPv6.SrcPrefix | fe80::/64 | equal | not-sent |
-| IPv6.SrcIID | - | equal | not-sent (from L2) |
-| IPv6.DstPrefix | fe80::/64 | equal | not-sent |
-| IPv6.DstIID | - | equal | not-sent (from L2) |
-| UDP.SrcPort | 5683 | MSB(12) | LSB(4) |
-| UDP.DstPort | 5683 | MSB(12) | LSB(4) |
-| UDP.Length | - | ignore | compute |
-| UDP.Checksum | - | ignore | compute |
-
-**Compressed size: 2 bytes** (Rule ID + 2x 4-bit port residue)
-
-**Rule 1: Global IPv6 + UDP (internet-routable)**
-
-| Field | TV | MO | CDA |
-|-------|----|----|-----|
-| IPv6.SrcPrefix | mesh_prefix/64 | equal | not-sent |
-| IPv6.DstPrefix | 0 | ignore | value-sent (64 bits) |
-| (other fields as Rule 0) | | | |
-
-**Compressed size: 10 bytes** (includes full destination prefix)
-
-**Rule 2: Link-local IPv6 + UDP + MQTT-SN**
-
-MQTT-SN uses port 10883, which lies outside the 5680-5695 range compressed
-by Rules 0 and 1. Rule 2 provides equivalent compression for MQTT-SN traffic.
-
-| Field | TV | MO | CDA |
-|-------|----|----|-----|
-| IPv6.Version | 6 | equal | not-sent |
-| IPv6.TrafficClass | 0 | equal | not-sent |
-| IPv6.FlowLabel | 0 | equal | not-sent |
-| IPv6.PayloadLength | - | ignore | compute |
-| IPv6.NextHeader | 17 (UDP) | equal | not-sent |
-| IPv6.HopLimit | 64 | ignore | not-sent |
-| IPv6.SrcPrefix | fe80::/64 | equal | not-sent |
-| IPv6.SrcIID | - | equal | not-sent (from L2) |
-| IPv6.DstPrefix | fe80::/64 | equal | not-sent |
-| IPv6.DstIID | - | equal | not-sent (from L2) |
-| UDP.SrcPort | 10883 | equal | not-sent |
-| UDP.DstPort | 10883 | equal | not-sent |
-| UDP.Length | - | ignore | compute |
-| UDP.Checksum | - | ignore | compute |
-
-**Compressed size: 1 byte** (Rule ID only; both ports exactly match)
-
-**Port Compression Note:**
-
-Rules 0 and 1 use MSB(12)/LSB(4) matching on port 5683, compressing any port
-in the range 5680-5695 to a 4-bit residue. This range covers CoAP (5683),
-compact CoT (5681), SenML (5682), Cayenne LPP (5685), APRS-IS (5686), and
-NMEA (5687). See Section 9.1 for the complete port allocation.
+Port compression uses MSB(12)/LSB(4) for CoAP range 5680-5695 in Rules 0/1 (covers CoAP, SenML, etc.; see port allocation in 09-packets-timing.md or apps). Hop limit is value-sent; src/dst use 64-bit prefix MSB match + LSB IID. MQTT-SN (Rule 7, port 10883 exact) and full CDA tables in appendix-schc.md:A.1-A.3.
 
 ### 5.6. Fragmentation
 

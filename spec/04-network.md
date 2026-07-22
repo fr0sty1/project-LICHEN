@@ -7,31 +7,30 @@
 
 ## 6. Network Layer
 
-### 6.1. IPv6 Addressing
+### 6.1. IPv6 Addressing (updated for no-ULA model)
 
-**Design Principles:**
-- Isolated meshes (no border router) MUST work
-- Multiple border routers MUST be tolerated
-- No central address authority required
+**Design Principles (new model):**
+- Primary address derived from node's Ed25519 public key (Yggdrasil-compatible 02xx::/7)
+- Link-local (fe80::/10) **control-plane only** (NDP, RPL DIO/DAO, LCI)
+- No ULA; single primary unicast address works for both local mesh (via RPL) and global (via Yggdrasil gateways)
+- Isolated meshes work (self-elected root uses 02xx for DODAG)
+- Multiple BRs tolerated; Yggdrasil DHT handles global routing
+- Unified identity: same Ed25519 keypair for link signatures, OSCORE, and IPv6 address (see 06-security.md)
 
-**Address Types (Layered):**
+**Address Types:**
 
-| Type | Prefix | When Available | Routable To |
-|------|--------|----------------|-------------|
-| Link-local | fe80::/10 | Always | Direct neighbors |
-| ULA | fd00::/8 | DODAG root present | Entire mesh |
-| GUA | 2000::/3 | BR with upstream prefix | Internet |
+| Type | Prefix | Scope | Use |
+|------|--------|-------|-----|
+| Link-local | fe80::/10 | Link | Control plane only (NDP/RPL/LCI) |
+| Crypto (Ed25519) | 02xx::/7 | Global | Primary unicast - mesh + Yggdrasil |
 
-All addresses use the same IID, derived from EUI-64 (see 6.2).
+IID is derived directly from Ed25519 public key (see 06-security.md for exact mapping to ensure Yggdrasil interop). No EUI-64.
 
-**1. Link-Local -- Always Available**
+Link-local used exclusively for neighbor discovery and RPL control messages per AGENTS.md initialization order. Application and data traffic uses the primary Ed25519-derived address.
 
-Every node has a link-local address from boot:
-```
-fe80::<IID>
-```
-Works without any infrastructure. Sufficient for single-hop communication
-and mesh formation. RPL control messages use link-local.
+**Routable Multi-Hop DAO Source Model**
+
+To enable relays to forward DAO packets while preserving the original end-to-end IPv6 source address (as required by the security spec for OSCORE context and authentication), DAO messages SHALL use the sender's routable address (ULA derived from DODAG root prefix per section 2, or GUA if available) as the IPv6 source. Link-local source is only for single-hop cases. Relays forward without modifying the IP source (standard IPv6 behavior). This fixes the previous link-local limitation for multi-hop.
 
 **2. ULA -- Mesh-Routable (Default)**
 

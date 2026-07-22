@@ -209,25 +209,40 @@ impl<const MTU: usize> MeshtasticGattService<MTU> {
     ///
     /// Returns `Some(data)` when a complete message is ready.
     pub fn write_to_radio(&mut self, chunk: &[u8]) -> Result<Option<&[u8]>, GattError> {
-        if chunk.is_empty() {
-            return Ok(None);
-        }
-
         // If this is the start of a new message, parse the header
         if self.write_expected_len.is_none() {
             // Meshtastic uses a 4-byte little-endian length prefix
             // (first 2 bytes are length, last 2 are reserved/zero)
 
-            // Check if we have partial header bytes buffered from a previous chunk
+            // Check if we have bytes buffered (from previous chunk or preserved excess)
             let buffered = self.write_buffer.len();
-            if buffered > 0 {
+            if buffered >= 4 {
+                // Buffer already contains complete header (from preserved excess bytes)
+                // Parse header and shift payload bytes to start
+                let len = u16::from_le_bytes([self.write_buffer[0], self.write_buffer[1]]);
+                self.write_expected_len = Some(len);
+
+                // Shift payload bytes (bytes 4..) to start of buffer
+                let payload_len = buffered - 4;
+                self.write_buffer.copy_within(4.., 0);
+                self.write_buffer.truncate(payload_len);
+
+                // Append incoming chunk to payload
+                if !chunk.is_empty() {
+                    self.write_buffer
+                        .extend_from_slice(chunk)
+                        .map_err(|_| GattError::BufferOverflow)?;
+                }
+            } else if buffered > 0 {
                 // We have partial header bytes - accumulate until we have 4
                 let header_bytes_needed = 4 - buffered;
                 if chunk.len() < header_bytes_needed {
                     // Still not enough for complete header
-                    self.write_buffer
-                        .extend_from_slice(chunk)
-                        .map_err(|_| GattError::BufferOverflow)?;
+                    if !chunk.is_empty() {
+                        self.write_buffer
+                            .extend_from_slice(chunk)
+                            .map_err(|_| GattError::BufferOverflow)?;
+                    }
                     return Ok(None);
                 }
 
@@ -247,6 +262,9 @@ impl<const MTU: usize> MeshtasticGattService<MTU> {
                         .extend_from_slice(&chunk[header_bytes_needed..])
                         .map_err(|_| GattError::BufferOverflow)?;
                 }
+            } else if chunk.is_empty() {
+                // No buffered data and empty chunk - nothing to do
+                return Ok(None);
             } else if chunk.len() < 4 {
                 // Not enough data for header, accumulate
                 self.write_buffer
@@ -265,9 +283,11 @@ impl<const MTU: usize> MeshtasticGattService<MTU> {
             }
         } else {
             // Continue accumulating chunks
-            self.write_buffer
-                .extend_from_slice(chunk)
-                .map_err(|_| GattError::BufferOverflow)?;
+            if !chunk.is_empty() {
+                self.write_buffer
+                    .extend_from_slice(chunk)
+                    .map_err(|_| GattError::BufferOverflow)?;
+            }
         }
 
         // Check if we have a complete message
@@ -282,7 +302,22 @@ impl<const MTU: usize> MeshtasticGattService<MTU> {
     }
 
     /// Clear the write buffer after processing a complete message.
+    ///
+    /// If the buffer contains excess bytes beyond the completed message,
+    /// those bytes are preserved and shifted to the start of the buffer
+    /// for processing as the next message.
     pub fn clear_write_buffer(&mut self) {
+        if let Some(expected) = self.write_expected_len {
+            let expected_usize = expected as usize;
+            if self.write_buffer.len() > expected_usize {
+                // Preserve excess bytes for next message by shifting to start
+                let excess_len = self.write_buffer.len() - expected_usize;
+                self.write_buffer.copy_within(expected_usize.., 0);
+                self.write_buffer.truncate(excess_len);
+                self.write_expected_len = None;
+                return;
+            }
+        }
         self.write_buffer.clear();
         self.write_expected_len = None;
     }
@@ -686,7 +721,7 @@ mod tests {
         let msg3 = [3u8];
 
         // Queue with different deadlines
-        svc.queue_from_radio(&msg1, 5_000).unwrap();  // Expires at 5s
+        svc.queue_from_radio(&msg1, 5_000).unwrap(); // Expires at 5s
         svc.queue_from_radio(&msg2, 10_000).unwrap(); // Expires at 10s
         svc.queue_from_radio(&msg3, 15_000).unwrap(); // Expires at 15s
 
@@ -712,7 +747,8 @@ mod tests {
 
         // Queue several messages with short deadlines
         for i in 0..4 {
-            svc.queue_from_radio(&[i as u8], 1000 + i as u64 * 100).unwrap();
+            svc.queue_from_radio(&[i as u8], 1000 + i as u64 * 100)
+                .unwrap();
         }
         assert_eq!(svc.pending_count(), 4);
 
@@ -728,15 +764,113 @@ mod tests {
         let data: Vec<u8, MAX_MESSAGE_SIZE> = Vec::new();
         let entry = QueueEntry::new(data, 10_000);
 
-        assert!(!entry.is_expired(5_000));   // Before deadline
-        assert!(!entry.is_expired(9_999));   // Just before deadline
-        assert!(entry.is_expired(10_000));   // At deadline
-        assert!(entry.is_expired(10_001));   // After deadline
+        assert!(!entry.is_expired(5_000)); // Before deadline
+        assert!(!entry.is_expired(9_999)); // Just before deadline
+        assert!(entry.is_expired(10_000)); // At deadline
+        assert!(entry.is_expired(10_001)); // After deadline
     }
 
     #[test]
     fn test_default_deadline_constant() {
         // Verify the default deadline is 60 seconds as per spec
         assert_eq!(DEFAULT_DEADLINE_MS, 60_000);
+    }
+
+    #[test]
+    fn test_excess_bytes_preserved_across_messages() {
+        // Regression test: BLE sends chunk containing end of message1 + start of message2
+        let mut svc: MeshtasticGattService = MeshtasticGattService::new();
+
+        // Build two messages:
+        // Message 1: header [3, 0, 0, 0] + payload [0xAA, 0xBB, 0xCC]
+        // Message 2: header [2, 0, 0, 0] + payload [0xDD, 0xEE]
+        let msg1_header = [3u8, 0, 0, 0];
+        let msg1_payload = [0xAA, 0xBB, 0xCC];
+        let msg2_header = [2u8, 0, 0, 0];
+        let msg2_payload = [0xDD, 0xEE];
+
+        // First chunk: message1 header + partial payload
+        let mut chunk1 = [0u8; 6];
+        chunk1[..4].copy_from_slice(&msg1_header);
+        chunk1[4..6].copy_from_slice(&msg1_payload[..2]); // Only 2 bytes of payload
+        let result1 = svc.write_to_radio(&chunk1).unwrap();
+        assert!(result1.is_none()); // Not complete yet
+
+        // Second chunk: rest of message1 + all of message2
+        let mut chunk2 = [0u8; 7];
+        chunk2[0] = msg1_payload[2]; // Last byte of msg1 payload
+        chunk2[1..5].copy_from_slice(&msg2_header);
+        chunk2[5..7].copy_from_slice(&msg2_payload);
+
+        let result2 = svc.write_to_radio(&chunk2).unwrap();
+        assert!(result2.is_some());
+        assert_eq!(result2.unwrap(), &msg1_payload);
+
+        // Clear buffer - this should preserve the excess bytes (msg2 header + payload)
+        svc.clear_write_buffer();
+
+        // The excess bytes [2, 0, 0, 0, 0xDD, 0xEE] are now in the buffer.
+        // Call write_to_radio with empty chunk to trigger processing of buffered header.
+        // With buffered >= 4, the header will be parsed and message completed.
+        let result3 = svc.write_to_radio(&[]).unwrap();
+        assert!(result3.is_some());
+        assert_eq!(result3.unwrap(), &msg2_payload);
+
+        // Verify buffer is clean after clearing
+        svc.clear_write_buffer();
+    }
+
+    #[test]
+    fn test_excess_bytes_partial_header() {
+        // Case: excess bytes contain only partial header (< 4 bytes)
+        let mut svc: MeshtasticGattService = MeshtasticGattService::new();
+
+        // Message 1: header [2, 0, 0, 0] + payload [0xAA, 0xBB]
+        // Excess: [3, 0] (partial header of next message)
+        let msg1_payload = [0xAA, 0xBB];
+
+        // First chunk: complete message1 + partial header of message2
+        let chunk = [2u8, 0, 0, 0, 0xAA, 0xBB, 3, 0]; // msg1 + 2 bytes of msg2 header
+        let result1 = svc.write_to_radio(&chunk).unwrap();
+        assert!(result1.is_some());
+        assert_eq!(result1.unwrap(), &msg1_payload);
+
+        // Clear - preserves the 2 excess bytes [3, 0]
+        svc.clear_write_buffer();
+
+        // Empty write - not enough for header
+        let result2 = svc.write_to_radio(&[]).unwrap();
+        assert!(result2.is_none());
+
+        // Send remaining header bytes + payload
+        let chunk2 = [0u8, 0, 0x11, 0x22, 0x33]; // rest of header + 3 byte payload
+        let result3 = svc.write_to_radio(&chunk2).unwrap();
+        assert!(result3.is_some());
+        assert_eq!(result3.unwrap(), &[0x11, 0x22, 0x33]);
+    }
+
+    #[test]
+    fn test_excess_bytes_exact_header() {
+        // Case: excess bytes are exactly 4 (complete header, no payload yet)
+        let mut svc: MeshtasticGattService = MeshtasticGattService::new();
+
+        // Message 1: header [1, 0, 0, 0] + payload [0xFF]
+        // Excess: [5, 0, 0, 0] (exactly the header of next message)
+        let chunk = [1u8, 0, 0, 0, 0xFF, 5, 0, 0, 0]; // msg1 + exact msg2 header
+        let result1 = svc.write_to_radio(&chunk).unwrap();
+        assert!(result1.is_some());
+        assert_eq!(result1.unwrap(), &[0xFF]);
+
+        // Clear - preserves the 4 excess bytes [5, 0, 0, 0]
+        svc.clear_write_buffer();
+
+        // Empty write - header parsed but waiting for payload
+        let result2 = svc.write_to_radio(&[]).unwrap();
+        assert!(result2.is_none());
+
+        // Send payload
+        let result3 = svc.write_to_radio(&[1, 2, 3, 4, 5]).unwrap();
+        assert!(result3.is_some());
+        assert_eq!(result3.unwrap(), &[1, 2, 3, 4, 5]);
     }
 }

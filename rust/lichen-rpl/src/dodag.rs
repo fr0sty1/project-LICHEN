@@ -169,8 +169,12 @@ impl DodagState {
         if self.role == DodagRole::Root {
             return;
         }
-        // Only accept DIOs from the same DODAG once joined.
-        if self.is_joined() && dio.dodag_id != self.dodag_id {
+        if dio.rpl_instance_id != self.rpl_instance_id {
+            return;
+        }
+        // A same-version foreign DODAG cannot establish membership. A newer
+        // foreign version is handled below as an explicit DODAG adoption.
+        if dio.dodag_id != self.dodag_id && !version_is_newer(dio.version, self.version) {
             return;
         }
 
@@ -188,14 +192,25 @@ impl DodagState {
             return;
         }
 
-        self.parents.insert(
-            neighbor_addr,
-            ParentCandidate {
-                addr: neighbor_addr,
-                rank: dio.rank,
-                link_etx,
-            },
-        );
+        // SECURITY: RFC 6550 Section 8.2.2.5 - reject parents with equal or
+        // higher rank to prevent routing loops. Only accept neighbors with
+        // strictly lower rank (unless we're unjoined with infinite rank).
+        if self.rank != INFINITE_RANK && dio.rank >= self.rank {
+            self.parents.remove(&neighbor_addr);
+            self.select_parent();
+            return;
+        }
+
+        let candidate = ParentCandidate {
+            addr: neighbor_addr,
+            rank: dio.rank,
+            link_etx,
+        };
+        if candidate.path_cost(self.min_hop_rank_increase) == INFINITE_RANK {
+            self.parents.remove(&neighbor_addr);
+        } else {
+            self.parents.insert(neighbor_addr, candidate);
+        }
         self.select_parent();
     }
 
@@ -213,6 +228,9 @@ impl DodagState {
 
     fn admissible(&self, candidate: &ParentCandidate) -> bool {
         let cost = candidate.path_cost(self.min_hop_rank_increase);
+        if cost == INFINITE_RANK {
+            return false;
+        }
         if self.lowest_rank == INFINITE_RANK {
             return true;
         }
@@ -249,6 +267,7 @@ impl DodagState {
                 // Check if current parent still exists and improvement is below threshold.
                 self.parents
                     .get(&cur_addr)
+                    .filter(|cur| self.admissible(cur))
                     .map(|cur| cur.path_cost(mhri))
                     .filter(|&cur_cost| best_cost > cur_cost.saturating_sub(threshold))
                     .map_or((best_addr, best_cost), |cur_cost| (cur_addr, cur_cost))
@@ -337,6 +356,35 @@ mod tests {
     }
 
     #[test]
+    fn saturated_path_cost_cannot_join() {
+        let mut node = DodagState::new(0, dodag_id(), 0);
+
+        // The finite parent rank and link ETX produce a saturated path cost.
+        node.process_dio(&dio(1), ll(1), 256.0);
+
+        assert!(!node.is_joined());
+        assert_eq!(node.rank, INFINITE_RANK);
+    }
+
+    #[test]
+    fn same_version_foreign_dio_does_not_adopt_dodag() {
+        let mut node = DodagState::new(0, dodag_id(), 0);
+        let mut foreign_id = dodag_id();
+        foreign_id[15] = 2;
+        let foreign_dio = Dio {
+            dodag_id: foreign_id,
+            ..dio(ROOT_RANK)
+        };
+
+        node.process_dio(&foreign_dio, ll(1), 1.0);
+
+        assert_eq!(node.dodag_id, dodag_id());
+        assert_eq!(node.version, 0);
+        assert!(!node.is_joined());
+        assert_eq!(node.parent_count(), 0);
+    }
+
+    #[test]
     fn two_parents_selects_best() {
         let mut node = DodagState::new(0, dodag_id(), 0);
         // parent 1: root_rank + 1 hop = 512
@@ -363,6 +411,24 @@ mod tests {
     }
 
     #[test]
+    fn previously_accepted_parent_becoming_inadmissible_is_removed() {
+        let mut node = DodagState::new(0, dodag_id(), 0);
+        node.process_dio(&dio(ROOT_RANK), ll(1), 1.0); // cost 512
+
+        // Establish a valid but worse backup parent through the public API.
+        node.process_dio(&dio(450), ll(2), 1.0); // cost 706
+        assert_eq!(node.parent_count(), 2);
+
+        // The preferred parent now advertises a rank equal to this node's
+        // rank, making the cached candidate inadmissible.
+        node.process_dio(&dio(512), ll(1), 1.0);
+
+        assert_eq!(node.preferred_parent, Some(ll(2)));
+        assert_eq!(node.rank, 706);
+        assert_eq!(node.parent_count(), 1);
+    }
+
+    #[test]
     fn significant_improvement_triggers_switch() {
         let mut node = DodagState::new(0, dodag_id(), 0);
         // Parent 1 at rank 1024
@@ -379,14 +445,17 @@ mod tests {
     fn parent_failure_triggers_re_selection() {
         let mut node = DodagState::new(0, dodag_id(), 0);
         node.process_dio(&dio(ROOT_RANK), ll(1), 1.0); // cost 512
-        node.process_dio(&dio(512), ll(2), 1.0); // cost 768 — worse
+
+        // Backup parent must have rank < node's rank (512) to be admissible per RFC 6550.
+        // rank 450 < 512, cost = 450 + 256 = 706
+        node.process_dio(&dio(450), ll(2), 1.0); // cost 706 — worse, but valid backup
 
         assert_eq!(node.preferred_parent, Some(ll(1)));
 
         // Remove preferred parent → falls back to ll(2)
         node.remove_parent(&ll(1));
         assert_eq!(node.preferred_parent, Some(ll(2)));
-        assert_eq!(node.rank, 768);
+        assert_eq!(node.rank, 706);
     }
 
     #[test]

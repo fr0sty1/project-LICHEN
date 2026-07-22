@@ -1,0 +1,35 @@
+{
+  "id": "project-LICHEN-2auf.53",
+  "title": "Integrate C routing and timer repairs",
+  "description": "Recover DTN lifetime/accounting, gradient count, pending-forward ownership, GPSR overflow, wrap-safe LOADng timers, RPL admissibility, and ICMPv6 null checks.",
+  "acceptance_criteria": "UINT32 wrap vectors pass; pending packets survive until forwarding; DTN release is explicit; GPSR passes UBSan; focused routing/RPL tests and three reviews pass.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-17T19:09:57.414225Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-22T02:14:18.382449489Z",
+  "started_at": "2026-07-22T02:12:06.656409097Z",
+  "closed_at": "2026-07-22T02:14:18.382449489Z",
+  "close_reason": "Transplanted routing/timer changes from 8e02a7ae9; resolved DTN/gradient/LOADng/RPL/ICMPv6 with current code, LICHEN_ naming, statics, no recursion; native_sim builds pass for loadng/trickle/routing tests",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.53",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-17T19:09:57.530006Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.53",
+      "depends_on_id": "project-LICHEN-2auf.59",
+      "type": "blocks",
+      "created_at": "2026-07-17T19:10:55.886406Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

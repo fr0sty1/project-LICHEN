@@ -180,9 +180,10 @@ static struct lichen_loadng_route *find_route_locked(const uint8_t destination[1
 
 static size_t find_lru_slot_locked(void)
 {
-	size_t oldest_idx = 0;
-	uint32_t oldest_access = UINT32_MAX;
 	size_t free_idx = ARRAY_SIZE(route_cache);
+	size_t oldest_idx = 0;
+	bool have_active = false;
+	uint32_t oldest_access = 0;
 
 	for (size_t i = 0; i < ARRAY_SIZE(route_cache); i++) {
 		if (!route_cache[i].active) {
@@ -191,13 +192,20 @@ static size_t find_lru_slot_locked(void)
 			}
 			continue;
 		}
-		if (route_access_order[i] < oldest_access) {
+		if (!have_active) {
+			oldest_access = route_access_order[i];
+			oldest_idx = i;
+			have_active = true;
+			continue;
+		}
+		/* Wrap-safe LRU using signed diff on access stamp. */
+		if ((int32_t)(route_access_order[i] - oldest_access) < 0) {
 			oldest_access = route_access_order[i];
 			oldest_idx = i;
 		}
 	}
 
-	return (free_idx < ARRAY_SIZE(route_cache)) ? free_idx : oldest_idx;
+	return (free_idx < ARRAY_SIZE(route_cache)) ? free_idx : (have_active ? oldest_idx : 0);
 }
 
 int lichen_loadng_cache_add(const struct lichen_loadng_route *route)
@@ -241,7 +249,8 @@ int lichen_loadng_cache_lookup(const uint8_t destination[16], uint32_t now_ms,
 	}
 
 	/* Check expiry if timestamp provided. */
-	if (now_ms != 0 && found->valid_until_ms <= now_ms) {
+	/* SECURITY: signed comparison handles 32-bit timestamp wraparound safely */
+	if (now_ms != 0 && (int32_t)(found->valid_until_ms - now_ms) <= 0) {
 		k_mutex_unlock(&cache_mutex);
 		return -ENOENT;
 	}
@@ -325,8 +334,9 @@ int lichen_loadng_cache_expire(uint32_t now_ms)
 	k_mutex_lock(&cache_mutex, K_FOREVER);
 
 	for (size_t i = 0; i < ARRAY_SIZE(route_cache); i++) {
+		/* SECURITY: signed comparison handles 32-bit timestamp wraparound safely */
 		if (route_cache[i].active &&
-		    route_cache[i].valid_until_ms <= now_ms) {
+		    (int32_t)(route_cache[i].valid_until_ms - now_ms) <= 0) {
 			route_cache[i].active = false;
 			expired++;
 		}
@@ -376,9 +386,12 @@ static bool rreq_matches_seen(const struct lichen_loadng_rreq *rreq,
 static void prune_seen_locked(uint32_t now_ms)
 {
 	for (size_t i = 0; i < ARRAY_SIZE(seen_table); i++) {
-		if (seen_table[i].active &&
-		    (now_ms - seen_table[i].seen_at_ms) >= LICHEN_LOADNG_SUPPRESS_WINDOW_MS) {
-			seen_table[i].active = false;
+		if (seen_table[i].active) {
+			int32_t elapsed = (int32_t)(now_ms - seen_table[i].seen_at_ms);
+			/* SECURITY: signed comparison handles future timestamps safely */
+			if (elapsed >= (int32_t)LICHEN_LOADNG_SUPPRESS_WINDOW_MS) {
+				seen_table[i].active = false;
+			}
 		}
 	}
 }
@@ -402,8 +415,9 @@ bool lichen_loadng_seen_check_and_mark(const struct lichen_loadng_rreq *rreq,
 	/* Check if already seen. */
 	for (size_t i = 0; i < ARRAY_SIZE(seen_table); i++) {
 		if (rreq_matches_seen(rreq, &seen_table[i])) {
-			uint32_t elapsed = now_ms - seen_table[i].seen_at_ms;
-			if (elapsed < LICHEN_LOADNG_SUPPRESS_WINDOW_MS) {
+			/* SECURITY: signed comparison handles future timestamps safely */
+			int32_t elapsed = (int32_t)(now_ms - seen_table[i].seen_at_ms);
+			if (elapsed >= 0 && elapsed < (int32_t)LICHEN_LOADNG_SUPPRESS_WINDOW_MS) {
 				k_mutex_unlock(&seen_mutex);
 				return true; /* Suppress duplicate. */
 			}
@@ -412,14 +426,16 @@ bool lichen_loadng_seen_check_and_mark(const struct lichen_loadng_rreq *rreq,
 
 	/* Find a free or oldest slot. */
 	size_t slot = 0;
-	uint32_t oldest_time = UINT32_MAX;
+	int32_t oldest_age = -1; /* No entry found yet */
 	for (size_t i = 0; i < ARRAY_SIZE(seen_table); i++) {
 		if (!seen_table[i].active) {
 			slot = i;
 			break;
 		}
-		if ((now_ms - seen_table[i].seen_at_ms) > (now_ms - oldest_time)) {
-			oldest_time = seen_table[i].seen_at_ms;
+		/* SECURITY: signed comparison handles future timestamps safely */
+		int32_t age = (int32_t)(now_ms - seen_table[i].seen_at_ms);
+		if (age > oldest_age) {
+			oldest_age = age;
 			slot = i;
 		}
 	}
@@ -557,10 +573,10 @@ int lichen_loadng_process_rreq(const uint8_t our_addr[16],
 		return 0;
 	}
 
-	/* Install reverse route back to originator. */
+	/* Install reverse route back to originator (1 hop via neighbor). */
 	struct lichen_loadng_route reverse = {
-		.hop_count = 0,
-		.metric = 0,
+		.hop_count = 1,
+		.metric = 1,
 		.seq_num = rreq->seq_num,
 		.valid_until_ms = now_ms + LICHEN_LOADNG_ROUTE_TIMEOUT_MS,
 		.active = true,

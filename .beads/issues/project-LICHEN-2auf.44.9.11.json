@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-2auf.44.9.11",
+  "title": "Reconcile RPL profile defaults",
+  "description": "Align DIO SCHC rule assignment, DAO/DAO-ACK parent verification sequence, MRHOF formula/threshold/MAX_RANK_INCREASE, Trickle Imax encoding, and timing constants across core spec, appendix, draft, and implementations.",
+  "acceptance_criteria": "One canonical profile table drives DIO rule, parent verification, MRHOF, Trickle, DAO lifetime/refresh, C/Python/Rust constants, and literal tests.",
+  "status": "blocked",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-18T21:14:54.911994Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-20T21:26:56.336469542Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.9.11",
+      "depends_on_id": "project-LICHEN-2auf.44.9",
+      "type": "parent-child",
+      "created_at": "2026-07-18T21:14:55.040718Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

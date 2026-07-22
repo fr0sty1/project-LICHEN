@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-2auf.26",
+  "title": "Puck app missing CoAP resource linker section",
+  "description": "The Zephyr puck application links coap_server.c but does not add the coap_resource_lichen_coap_server iterable linker section, causing undefined _coap_resource_lichen_coap_server_list_start/end symbols on T-Echo firmware builds. Mirror the gateway sections-ram.ld integration and verify the puck firmware links.",
+  "notes": "Source recovery committed as 255ae15c2. Restored checkpoint linker fragment and added required Zephyr CMake linker-generator declaration. Static symbol/pattern checks and three final reviews clean. Final T-Echo/puck firmware link remains blocked: no local West workspace; AWS personal session expired and requires aws login. Keep open until .59/.31 validation.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-15T13:49:46.956346Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-22T02:01:09.301721306Z",
+  "started_at": "2026-07-19T04:44:23.823291Z",
+  "closed_at": "2026-07-22T02:01:09.301721306Z",
+  "close_reason": "Fixed puck CoAP linker section; resolved conflicts by mirroring gateway; native_sim build and _coap_resource verification passed; clean no-comment code; conventional commit done.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.26",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-15T13:49:46.957389Z"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.26",
+      "depends_on_id": "project-LICHEN-2auf.59",
+      "type": "blocks",
+      "created_at": "2026-07-17T19:10:55.32783Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

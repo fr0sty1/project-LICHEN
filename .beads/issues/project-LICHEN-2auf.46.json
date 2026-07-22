@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-2auf.46",
+  "title": "Recover Rust gateway I/O bounds",
+  "description": "Recover worst-case SLIP TX sizing and zero-progress TUN write failure; rewrite APRS-IS line reads to remain bounded before allocation.",
+  "acceptance_criteria": "All-escaped SLIP packet fits; zero write cannot loop; 512-byte APRS line accepts and 513+/unterminated input remains bounded; tests/clippy and three reviews pass.",
+  "notes": "Source recovery committed in 680e793e7 (bounded APRS-IS lines/session poisoning), fb7f8fa00 (worst-case SLIP TX sizing), and cdf32d6b5 (zero-progress TUN write failure). macOS gateway: 48 unit + 1 doc test pass; touched files rustfmt-clean; isolated strict Clippy passes; three final reviews clean. Full Clippy blocked by pre-existing lichen-schc warnings. Linux-only tun.rs/test not compiled locally and AWS auth remains expired, so keep open pending Linux validation. Positive partial TUN writes remain tracked by project-LICHEN-a0sx; APRS authorization/error semantics by project-LICHEN-3mns.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-17T19:09:54.302625Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-22T02:04:25.384311612Z",
+  "started_at": "2026-07-19T05:09:03.910645Z",
+  "closed_at": "2026-07-22T02:04:25.384311612Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.46",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-17T19:09:54.424564Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

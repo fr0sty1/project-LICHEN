@@ -7,8 +7,11 @@ Runs multiple Renode instances with actual Zephyr firmware, connected through
 lichen-sim for RF propagation simulation.
 
 Usage:
-    # Build firmware first:
-    west build -b nrf52840_lichen lichen/samples/lora_ping -d build/lora_ping
+    # Build firmware first (nrf52840_lichen is the Renode platform, not a
+    # Zephyr board; build for the real t_echo/nrf52840 board):
+    west build -b t_echo/nrf52840 lichen/samples/lora_ping -d build/lora_ping -- \
+        -DEXTRA_DTC_OVERLAY_FILE=$PWD/lichen/boards/renode/nrf52840_lichen/support/renode_console.overlay \
+        -DEXTRA_CONF_FILE=$PWD/lichen/boards/renode/nrf52840_lichen/support/renode_console.conf
 
     # Run 2-node test:
     python scripts/renode-multinode.py --nodes 2 --firmware build/lora_ping/zephyr/zephyr.elf
@@ -18,7 +21,8 @@ Usage:
 
 Requirements:
     - Renode installed and in PATH
-    - Zephyr firmware built for nrf52840_lichen board
+    - Zephyr firmware built for t_echo/nrf52840 (loaded into the nrf52840_lichen
+      Renode machine)
     - Python lichen package (pip install -e python/)
 """
 

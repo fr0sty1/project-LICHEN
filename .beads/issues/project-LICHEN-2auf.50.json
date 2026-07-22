@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-2auf.50",
+  "title": "Recover Rust SCHC and SenML validation",
+  "description": "Recover IPv6 payload-length checks before SCHC profile slicing and SenML value/length/capacity invariants.",
+  "acceptance_criteria": "No profile panics on truncated payloads; multiple/duplicate SenML values reject; overflow/capacity errors are exact; vectors/tests/clippy and three reviews pass.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-17T19:09:56.118014Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-22T02:05:19.234423062Z",
+  "started_at": "2026-07-22T02:05:17.349185713Z",
+  "closed_at": "2026-07-22T02:05:19.234423062Z",
+  "close_reason": "Transplanted 6-line IPv6 payload-length guard to headers.rs and ~80-line SenML CBOR invariants (MultipleValues, checked arithmetic, BufferTooSmall, RFC 8428 tests). Current HEAD passes cargo test --all-features and clippy with no panics on truncated payloads or duplicate values. no_std/heapless compliant.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.50",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-17T19:09:56.236114Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

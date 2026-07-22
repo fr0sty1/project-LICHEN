@@ -8,9 +8,12 @@ supported:
   - gpio
   - uart
   - spi
+  - i2c
+  - input
   - counter
   - watchdog
   - entropy
   - bluetooth
   - lora
+  - display
 vendor: lilygo

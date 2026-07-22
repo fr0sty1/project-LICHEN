@@ -1,0 +1,7 @@
+{
+  "id": "1784601396187651328-1",
+  "issue_id": "project-LICHEN-7fqg.1",
+  "author": "ec2-user",
+  "text": "Post-construction ledger correction (does not change dispositions): the SenML commit hash previously written as c0aae15d6312555fb96c1d95f6f8c4e225d1eb1 is c0aae15d6312555fb96c1d95f6f8c4e225d1eb1c and is integrated as 400481f8. Commits 8766608352cccbc83b1e41d9f342cebc45140a19 and 93e54570328d4f99339cf85a7c4e6e46d02ee8e6 were each mentioned twice in branch comments; count each once. Correct final accounting: 49 integrated/equivalent, 2 superseded, 1 dropped, 7 blocked/excluded = 59 unique inputs.",
+  "created_at": "2026-07-21T02:36:36.187651328Z"
+}

@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-2auf.44.7.2.2",
+  "title": "Make DIS response destination-aware",
+  "description": "Require DIO/DIS destination local unicast or ff02::1a. Targeted unicast DIS may trigger immediate unicast DIO; multicast DIS resets Trickle and does not transmit immediately.",
+  "acceptance_criteria": "Unicast DIS immediate response works; multicast DIS schedules via Trickle poll/send path without response storm; invalid destinations reject.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-20T06:37:32.751262002Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-20T07:02:17.708901927Z",
+  "started_at": "2026-07-20T07:01:01.956144844Z",
+  "closed_at": "2026-07-20T07:02:17.708901927Z",
+  "close_reason": "Made DIS destination-aware: ff02::1a resets/starts Trickle with no immediate DIO, while targeted unicast DIS retains immediate unicast response. Added no-response/pending-Trickle and unicast-response assertions. Full node suite and strict scoped Clippy pass.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.7.2.2",
+      "depends_on_id": "project-LICHEN-2auf.44.7.2",
+      "type": "parent-child",
+      "created_at": "2026-07-20T06:37:32.835072684Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

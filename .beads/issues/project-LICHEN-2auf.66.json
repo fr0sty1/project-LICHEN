@@ -1,0 +1,35 @@
+{
+  "id": "project-LICHEN-2auf.66",
+  "title": "Define transactional OSCORE context persistence",
+  "description": "Custom/persistent OscoreContextStore implementations need an atomic put contract and durable sequence reservation. A store that mutates context state then raises cannot be safely rolled back alongside TOFU pins; cancellation and crash behavior must be specified and tested with a transactional backend.",
+  "notes": "Implemented transactional OSCORE persistence with backward-compatible in-memory OscoreContextStore, structural TransactionalOscoreContextStore contract, durable SQLite backend, atomic peer/context generation CAS, permanent canonical COSE sender nonce ledgers, pre-use sequence block reservation, crash/fork-safe reopen, recipient replay CAS persisted before plaintext delivery, pin-preserving tombstones, store-backed TOFU migration, cancellation-definitive transactions, owner-only 0600 SQLite files and secure parent validation, opaque endpoint preservation, and async EDHOC responder publication. Final independent security/API reviews found no in-scope P0-P2 issues; correlation lifecycle finding remains tracked by 2auf.65 and was not expanded under current-work-only directive. Validation: uv frozen CoAP+crypto 265 passed; Ruff lint passed; git diff check passed; adjusted strict mypy passed in implementation review. Ruff format check flags pre-existing whole-file formatting in resources.py only; no broad unrelated reformat performed.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-19T03:13:17.604813Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-20T09:13:47.366739993Z",
+  "started_at": "2026-07-20T07:29:31.507422136Z",
+  "closed_at": "2026-07-20T09:13:47.366739993Z",
+  "close_reason": "Transactional context publication and durable nonce/replay persistence implemented, reviewed, and validated.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.66",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-19T03:13:17.752632Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.66",
+      "depends_on_id": "project-LICHEN-2auf.39.1",
+      "type": "discovered-from",
+      "created_at": "2026-07-19T03:13:17.889496Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

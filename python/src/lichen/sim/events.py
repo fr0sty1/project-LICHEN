@@ -334,7 +334,7 @@ class ObserverRegistry:
         """
         if observer not in self._observers:
             self._observers.append(observer)
-            logger.debug("observer_added", observer=type(observer).__name__)
+            logger.debug("observer_added", extra={"observer": type(observer).__name__})
 
     def remove(self, observer: SimulationObserver) -> None:
         """Unregister an observer.
@@ -344,7 +344,7 @@ class ObserverRegistry:
         """
         try:
             self._observers.remove(observer)
-            logger.debug("observer_removed", observer=type(observer).__name__)
+            logger.debug("observer_removed", extra={"observer": type(observer).__name__})
         except ValueError:
             pass  # Not in list, ignore silently
 

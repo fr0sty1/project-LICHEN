@@ -491,28 +491,31 @@ class TestGPSRGreedyForwarding:
 
 
 class TestGPSRFallback:
-    """Test GPSR as fallback when gradient is missing (python-sm2.3)."""
+    """Test GPSR security constraints with expired entries (python-sm2.3)."""
 
     @pytest.mark.asyncio
-    async def test_gpsr_fallback_when_gradient_missing(
+    async def test_gpsr_rejects_expired_coords(
         self, simulator_server: tuple[SimulatorServer, Simulation]
     ) -> None:
-        """Router uses GPSR when gradient table has no entry.
+        """Router rejects expired gradient entries for GPSR (security constraint).
 
         Scenario:
         - Node has coords and knows neighbor coords
-        - Gradient table is empty for destination
+        - Gradient table has an EXPIRED entry for destination
         - LOADng is not configured (loadng=None)
-        - But we have destination coords from an expired gradient entry
-        - Router should fall back to GPSR
+        - Router should DROP (not use stale coordinates)
 
-        PARANOID: Verify fallback path is taken.
+        SECURITY: Using stale coordinates could route packets to a node's old
+        location in mobile deployments, or allow an attacker to advertise false
+        coordinates and let the entry expire while routing continues.
+
+        PARANOID: Verify drop behavior for expired coords.
         """
         server, sim = simulator_server
 
         # Our node
         node_addr = IPv6Address("fe80::1111")
-        node_coords = (0.0, 0.0)
+        node_coords = (1.0, 1.0)  # Not null island
 
         # Destination (ULA address)
         dst_addr = IPv6Address("fd00::dead")
@@ -574,16 +577,14 @@ class TestGPSRFallback:
             payload=b"test data!",
         )
 
-        # Route should use GPSR fallback
+        # Route should DROP (not use expired coordinates)
         decision, next_hop = router.route(packet, now_ms=1000)
 
-        # PARANOID: Verify GPSR fallback was used
+        # SECURITY: Should drop rather than use stale coordinates
         from lichen.routing.router import RouteDecision
 
-        assert decision == RouteDecision.FORWARD, f"must FORWARD via GPSR, got {decision}"
-        assert next_hop == neighbor_addr, (
-            f"must forward to neighbor {neighbor_addr}, got {next_hop}"
-        )
+        assert decision == RouteDecision.DROP, f"must DROP expired coords, got {decision}"
+        assert next_hop is None, f"next_hop must be None for DROP, got {next_hop}"
 
 
 class TestGPSRSimulationIntegration:

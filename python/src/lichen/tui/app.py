@@ -22,9 +22,11 @@ from __future__ import annotations
 
 import asyncio
 import binascii
+import contextlib
 from datetime import datetime
 from typing import Any, ClassVar
 
+from rich.markup import escape
 from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -257,10 +259,12 @@ class SimNodeApp(App[None]):
         self._log_event("info", f"Target: {self._host}:{self._port}, sim: {self._sim_id}")
         self._log_event("info", "Press 'c' to connect, 'q' to quit")
 
-    def on_unmount(self) -> None:
+    async def on_unmount(self) -> None:
         """Called on shutdown - cleanup."""
         if self._receive_task is not None:
             self._receive_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError, asyncio.InvalidStateError):
+                await self._receive_task
         # Radio cleanup happens in action_quit
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -281,7 +285,11 @@ class SimNodeApp(App[None]):
         """Quit the application with cleanup."""
         if self._receive_task is not None:
             self._receive_task.cancel()
-        self._disconnect_sync()
+        # Properly close the radio connection before exiting
+        if self._radio is not None:
+            with contextlib.suppress(Exception):
+                await self._radio.close()
+            self._radio = None
         self.exit()
 
     def action_connect(self) -> None:
@@ -324,7 +332,7 @@ class SimNodeApp(App[None]):
         }
         color = colors.get(level, "white")
 
-        log.write(f"[{color}][{timestamp}] {message}[/{color}]")
+        log.write(f"[{color}][{timestamp}] {escape(message)}[/{color}]")
 
     @work(exclusive=True, group="connect")
     async def _connect_to_sim(self) -> None:
@@ -353,6 +361,8 @@ class SimNodeApp(App[None]):
         except SimRadioError as e:
             self._log_event("error", f"Connection failed: {e}")
             self._radio = None
+        except asyncio.CancelledError:
+            raise
         except Exception as e:
             self._log_event("error", f"Unexpected error: {e}")
             self._radio = None
@@ -371,6 +381,8 @@ class SimNodeApp(App[None]):
 
         try:
             await self._radio.close()
+        except asyncio.CancelledError:
+            raise
         except Exception as e:
             self._log_event("error", f"Error during disconnect: {e}")
         finally:
@@ -378,11 +390,6 @@ class SimNodeApp(App[None]):
             status = self.query_one(ConnectionStatus)
             status.set_disconnected()
             self._log_event("info", "Disconnected")
-
-    def _disconnect_sync(self) -> None:
-        """Synchronous disconnect for shutdown path."""
-        # Just drop the reference; the connection will close when the process exits
-        self._radio = None
 
     def _do_transmit(self) -> None:
         """Start a transmit operation."""

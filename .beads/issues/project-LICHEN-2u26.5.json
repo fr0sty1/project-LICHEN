@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-2u26.5",
+  "title": "Resolve LilyGO T-Beam bridge mapping",
+  "description": "The lilygo_tbeam bridge fragment has no canonical Zephyr target. Validate the intended board generation and radio/GNSS wiring or explicitly retire it.",
+  "acceptance_criteria": "Canonical target builds and reaches bridge runtime oracle, or approved retirement removes fragment and support claims.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T19:41:13.64468Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T19:41:13.64468Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2u26.5",
+      "depends_on_id": "project-LICHEN-2u26",
+      "type": "parent-child",
+      "created_at": "2026-07-16T19:41:13.771772Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

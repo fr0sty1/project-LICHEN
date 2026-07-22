@@ -21,11 +21,13 @@ BRIDGE_AUTO_MERGE_BOARD_FILES = (
     "t_deck_esp32s3_procpu",
     "t_echo_nrf52840",
     "rak4631_nrf52840",
+    "t1000_e_nrf52840",
 )
 BRIDGE_OBSOLETE_ALIAS_BOARD_FILES = (
     "heltec_lora32_v3",
     "lilygo_tdeck",
     "lilygo_techo",
+    "seeed_t1000e",
 )
 
 

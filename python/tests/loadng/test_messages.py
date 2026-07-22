@@ -80,6 +80,30 @@ def test_seq_num_range_validated() -> None:
         RREQ(originator=ORIG, destination=DEST, seq_num=0x10000).to_bytes()
 
 
+def test_rreq_hop_limit_range_validated() -> None:
+    # Negative hop_limit should raise
+    with pytest.raises(LoadngError):
+        RREQ(originator=ORIG, destination=DEST, seq_num=1, hop_limit=-1).to_bytes()
+    # hop_limit above MAX_HOP_LIMIT (15) should raise
+    with pytest.raises(LoadngError):
+        RREQ(originator=ORIG, destination=DEST, seq_num=1, hop_limit=16).to_bytes()
+    # Edge: 0 and 15 should be valid
+    RREQ(originator=ORIG, destination=DEST, seq_num=1, hop_limit=0).to_bytes()
+    RREQ(originator=ORIG, destination=DEST, seq_num=1, hop_limit=15).to_bytes()
+
+
+def test_rrep_hop_count_range_validated() -> None:
+    # Negative hop_count should raise
+    with pytest.raises(LoadngError):
+        RREP(originator=ORIG, destination=DEST, seq_num=1, hop_count=-1).to_bytes()
+    # hop_count above MAX_HOP_LIMIT (15) should raise
+    with pytest.raises(LoadngError):
+        RREP(originator=ORIG, destination=DEST, seq_num=1, hop_count=16).to_bytes()
+    # Edge: 0 and 15 should be valid
+    RREP(originator=ORIG, destination=DEST, seq_num=1, hop_count=0).to_bytes()
+    RREP(originator=ORIG, destination=DEST, seq_num=1, hop_count=15).to_bytes()
+
+
 def test_from_bytes_rejects_truncated() -> None:
     with pytest.raises(LoadngError):
         RREQ.from_bytes(bytes(10))

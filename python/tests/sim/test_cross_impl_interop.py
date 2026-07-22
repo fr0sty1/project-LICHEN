@@ -24,9 +24,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import shutil
 import subprocess
-import tempfile
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
@@ -35,7 +33,7 @@ import pytest
 from lichen.announce.messages import AnnounceMessage
 from lichen.announce.scheduler import AnnounceScheduler, SchedulerConfig
 from lichen.crypto.identity import Identity
-from lichen.link.frame import LichenFrame, AddrMode, MicLength
+from lichen.link.frame import AddrMode, LichenFrame, MicLength
 from lichen.radio.sim_client import SimRadio
 from lichen.sim.server import SimulatorServer
 from lichen.sim.simulation import Simulation, TimeMode
@@ -173,17 +171,57 @@ class TestPythonToRust:
                 capture_output=True,
                 timeout=5,
             )
-            assert result.returncode == 0, f"Vector '{vector['name']}' parse failed: {result.stderr.decode()}"
+            if vector.get("expect", {}).get("error"):
+                assert result.returncode != 0, f"Vector '{vector['name']}' should be rejected"
+                continue
+            assert result.returncode == 0, (
+                f"Vector '{vector['name']}' parse failed: {result.stderr.decode()}"
+            )
 
             parsed = json.loads(result.stdout)
             fields = vector["fields"]
+            name = vector["name"]
+
+            python_frame = LichenFrame(
+                epoch=fields["epoch"],
+                seqnum=fields["seqnum"],
+                dst_addr=bytes.fromhex(fields["dst_addr"]),
+                payload=bytes.fromhex(fields["payload"]),
+                mic=bytes.fromhex(fields["mic"]),
+                addr_mode=AddrMode(fields["addr_mode"]),
+                mic_length=MicLength(fields["mic_length"]),
+                signature_present=fields["signature_present"],
+                encrypted=fields["encrypted"],
+            )
+            assert python_frame.to_bytes() == bytes.fromhex(vector["encoded"]), (
+                f"Vector '{vector['name']}': Python encoding mismatch"
+            )
 
             # Verify fields match
-            assert parsed["epoch"] == fields["epoch"], f"Vector '{vector['name']}': epoch mismatch"
-            assert parsed["seqnum"] == fields["seqnum"], f"Vector '{vector['name']}': seqnum mismatch"
-            assert parsed["addr_mode"] == fields["addr_mode"], f"Vector '{vector['name']}': addr_mode mismatch"
-            assert parsed["signature_present"] == fields["signature_present"], f"Vector '{vector['name']}': signature_present mismatch"
-            assert parsed["encrypted"] == fields["encrypted"], f"Vector '{vector['name']}': encrypted mismatch"
+            assert parsed["epoch"] == fields["epoch"], f"Vector '{name}': epoch mismatch"
+            assert parsed["seqnum"] == fields["seqnum"], f"Vector '{name}': seqnum mismatch"
+            assert parsed["addr_mode"] == fields["addr_mode"], (
+                f"Vector '{name}': addr_mode mismatch"
+            )
+            assert parsed["signature_present"] == fields["signature_present"], (
+                f"Vector '{name}': signature_present mismatch"
+            )
+            assert parsed["encrypted"] == fields["encrypted"], (
+                f"Vector '{name}': encrypted mismatch"
+            )
+            assert parsed["mic_length"] == fields["mic_length"], (
+                f"Vector '{name}': mic_length mismatch"
+            )
+            assert parsed["dst_addr"] == fields["dst_addr"], (
+                f"Vector '{name}': dst_addr mismatch"
+            )
+            assert parsed["payload"] == fields["payload"], (
+                f"Vector '{name}': payload mismatch"
+            )
+            assert parsed["mic"] == fields["mic"], f"Vector '{name}': mic mismatch"
+            assert parsed["total_len"] == len(bytes.fromhex(vector["encoded"])), (
+                f"Vector '{name}': length mismatch"
+            )
 
     @pytest.mark.skipif(
         not RUN_CROSS_IMPL,
@@ -203,7 +241,7 @@ class TestPythonToRust:
             pytest.skip("Rust frame-parser binary not built")
 
         # Build frame using test vector data
-        frame_hex = "0b0001000261626301020304"  # broadcast_min
+        frame_hex = "0700010002616263"  # broadcast_min, unsigned with no MIC
 
         async with SimRadio(
             "127.0.0.1", node_port, "cross-impl-test", "tx-node", (0.0, 0.0, 0.0)

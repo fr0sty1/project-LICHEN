@@ -109,8 +109,10 @@ def kiss_encode(port: int, command: int, data: bytes = b"") -> bytes:
         raise ValueError(f"command must be 0-15, got {command}")
 
     cmd_byte = (port << 4) | command
-    escaped = kiss_escape(data)
-    return bytes([FEND, cmd_byte]) + escaped + bytes([FEND])
+    # Escape the command byte along with the payload: (port=12, command=0)
+    # makes cmd_byte == FEND (0xC0), which would corrupt the framing.
+    escaped = kiss_escape(bytes([cmd_byte]) + data)
+    return bytes([FEND]) + escaped + bytes([FEND])
 
 
 def kiss_decode(frame: bytes) -> KissFrame:
@@ -142,15 +144,17 @@ def kiss_decode(frame: bytes) -> KissFrame:
     if end < 2:
         raise KissError("empty frame")
 
-    cmd_byte = frame[1]
+    # Unescape the whole body first: the command byte is escaped on the
+    # wire when its value collides with FEND/FESC (e.g. port=12, command=0).
+    body = kiss_unescape(frame[1:end])
+    if len(body) < 1:
+        raise KissError("empty frame")
+
+    cmd_byte = body[0]
     port = (cmd_byte >> 4) & 0x0F
     command = cmd_byte & 0x0F
 
-    # Data is between CMD and final FEND
-    escaped_data = frame[2:end]
-    data = kiss_unescape(escaped_data)
-
-    return KissFrame(port=port, command=command, data=data)
+    return KissFrame(port=port, command=command, data=bytes(body[1:]))
 
 
 @dataclass
@@ -178,11 +182,18 @@ class KissReader:
 
         # Limit buffer size to prevent memory exhaustion
         if len(self.buffer) > self.max_frame_size * 2:
-            # Drop old data, keep from last FEND
-            last_fend = self.buffer.rfind(FEND)
-            if last_fend >= 0:
-                del self.buffer[:last_fend]
-            else:
+            # Find last frame start boundary: FEND followed by non-FEND (CMD byte).
+            # This preserves frame boundaries instead of corrupting partial frames.
+            # rfind(FEND) is wrong: it may find a closing FEND and discard the frame's
+            # CMD byte while keeping only its trailing FEND.
+            cut_point = -1
+            for i in range(len(self.buffer) - 1):
+                if self.buffer[i] == FEND and self.buffer[i + 1] != FEND:
+                    cut_point = i
+            if cut_point > 0:
+                del self.buffer[:cut_point]
+            elif cut_point == -1:
+                # No frame boundary found (all FENDs or no FENDs)
                 self.buffer.clear()
 
     def __iter__(self) -> Iterator[KissFrame]:

@@ -844,6 +844,7 @@ dependencies = [
  "ed25519",
  "sha2 0.10.9",
  "subtle",
+ "zeroize",
 ]
 
 [[package]]
@@ -1785,6 +1786,7 @@ dependencies = [
  "ciborium",
  "clap",
  "getrandom 0.2.17",
+ "lichen-client",
  "lichen-coap",
  "lichen-core",
  "percent-encoding",
@@ -1795,6 +1797,15 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "zeroize",
+]
+
+[[package]]
+name = "lichen-client"
+version = "0.1.0"
+dependencies = [
+ "ciborium",
+ "lichen-senml",
+ "serde",
 ]
 
 [[package]]
@@ -2016,9 +2027,10 @@ dependencies = [
 name = "lichen-tui"
 version = "0.1.0"
 dependencies = [
- "ciborium",
  "clap",
  "crossterm",
+ "lichen-client",
+ "lichen-coap",
  "lichen-core",
  "ratatui",
  "tokio",
@@ -3928,6 +3940,7 @@ checksum = "c7e468321c81fb07fa7f4c636c3972b9100f0346e5b6a9f2bd0603a52f7ed277"
 dependencies = [
  "curve25519-dalek",
  "rand_core",
+ "zeroize",
 ]
 
 [[package]]

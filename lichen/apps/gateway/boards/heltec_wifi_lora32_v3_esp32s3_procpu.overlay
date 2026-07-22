@@ -1,1 +1,16 @@
-/ { chosen { zephyr,lora = &lora0; }; };
+/ {
+	chosen {
+		zephyr,lora = &lora0;
+		/* Bench: non-destructive console on UART1 (GPIO21/22) to fix CP2102 reset (lora_ipv6_mesh-9ia2) */
+		zephyr,console = &uart1;
+		zephyr,shell-uart = &uart1;
+	};
+}; /* Renode support via esp32s3_lichen repl + updated overlays */
+
+/* UART1 for bench serial (dtr=False, rts=False, non-destructive, lora_ipv6_mesh-9ia2) */
+&uart1 {
+	status = "okay";
+	current-speed = <115200>;
+	pinctrl-0 = <&uart1_default>;
+	pinctrl-names = "default";
+};

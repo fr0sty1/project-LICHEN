@@ -1,7 +1,8 @@
 {
   "$schema": "./schema.json",
+  "format_version": 2,
   "name": "schnorr48",
-  "description": "LICHEN 48-byte Schnorr signatures per draft-lichen-schnorr-00. Curve25519/Ed25519, SHA-512, 16-byte truncated challenge + 32-byte response.",
+  "description": "LICHEN 48-byte Schnorr signatures per draft-lichen-schnorr-00. Used for cryptographically-verified L2 frames in density count (CCP-15.2 CCA/CAD metrics). Curve25519/Ed25519, SHA-512, 16-byte truncated challenge + 32-byte response.",
   "spec": "spec/drafts/draft-lichen-schnorr-00.md",
   "vectors": [
     {

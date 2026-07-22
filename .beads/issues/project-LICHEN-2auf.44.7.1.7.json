@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-2auf.44.7.1.7",
+  "title": "Make Announce relay retry-safe",
+  "description": "Do not irreversibly commit Announce acceptance before required relay transmission succeeds. On failure, clean transient bootstrap state so the same origin sequence can be retried, or use a bounded explicit pending relay.",
+  "acceptance_criteria": "Transmit failure followed by fresh L2 retry succeeds; no replay/pin leak blocks retry; peer/bootstrap/pending state remains bounded.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-20T06:07:13.096141078Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-20T06:24:57.734851552Z",
+  "started_at": "2026-07-20T06:23:26.164016384Z",
+  "closed_at": "2026-07-20T06:24:57.734851552Z",
+  "close_reason": "Staged bounded AnnounceProcessor updates and commit only after required relay TX succeeds; transient bootstrap peer is forgotten on failure. Added same-sequence fresh-frame retry and peer/bootstrap bound test; existing bound regression passes.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.7.1.7",
+      "depends_on_id": "project-LICHEN-2auf.44.7.1",
+      "type": "parent-child",
+      "created_at": "2026-07-20T06:07:13.179011639Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

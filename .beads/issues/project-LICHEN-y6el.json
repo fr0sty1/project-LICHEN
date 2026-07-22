@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-y6el",
+  "title": "Track prefix egress across route rebuilds",
+  "description": "Prefix route entries retain only a path, not their egress identity. DAO reparenting or finite host-route expiry can leave a prefix route using a stale source path. Retain enough egress metadata to recompute or invalidate prefix routes atomically during rebuild.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-18T21:57:37.893496Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-18T21:57:37.893496Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-y6el",
+      "depends_on_id": "project-LICHEN-2auf.44.9.12",
+      "type": "discovered-from",
+      "created_at": "2026-07-18T21:57:38.06409Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

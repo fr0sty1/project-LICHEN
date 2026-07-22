@@ -1,5 +1,5 @@
 {
-  "format_version": 1,
+  "format_version": 2,
   "description": "Compact CoT binary encoding test vectors per spec/07-transport-app.md Section 10.1.1. PLI encoding: subtype(1) + lat(4) + lon(4) + alt(2) + course(2) + speed(2) + team(1) + role(1) = 17 bytes. Chat encoding: subtype(1) + dest_type(1) + dest_id(0/1/8) + len(1) + text(N). All multi-byte integers are big-endian (network byte order). Note: spec states 18 bytes for PLI but field breakdown yields 17.",
   "vectors": [
     {

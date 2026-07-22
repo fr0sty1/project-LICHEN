@@ -17,13 +17,15 @@ Usage:
 
 from __future__ import annotations
 
+from typing import Any
+
 import aiocoap
 
 from lichen.coap.resources import build_site
 
 
 async def bind_coap_udp(
-    node,
+    node: Any,
     port: int = 5683,
     bind: str = "::1",
 ) -> aiocoap.Context:

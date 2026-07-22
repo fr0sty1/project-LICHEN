@@ -88,14 +88,12 @@ impl RadioState {
             now,
             &[0u8; 48],
         ); // RPL DIO
-        let _ = self.tx_queue.push(TxPriority::User, now + DEADLINE_USER_MS, now, &[0u8; 64]); // User message
-        let _ = self.tx_queue.push(TxPriority::Bulk, now + DEADLINE_BULK_MS, now, &[0u8; 200]); // Firmware chunk
-    }
-
-    /// Advance simulated time (call from main event loop).
-    #[allow(dead_code)] // not yet wired into the event loop
-    pub fn tick(&mut self, delta_ms: u64) {
-        self.now_ms = self.now_ms.wrapping_add(delta_ms);
+        let _ = self
+            .tx_queue
+            .push(TxPriority::User, now + DEADLINE_USER_MS, now, &[0u8; 64]); // User message
+        let _ = self
+            .tx_queue
+            .push(TxPriority::Bulk, now + DEADLINE_BULK_MS, now, &[0u8; 200]); // Firmware chunk
     }
 
     /// Get duty cycle usage as a fraction (0.0 to 1.0+).

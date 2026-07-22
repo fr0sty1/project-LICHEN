@@ -62,7 +62,7 @@ def test_process_rerr_invalidates_and_propagates() -> None:
     mgr, grad, cache = _populated()
     mgr.record_flow(DEST, SRC1)
     rerr = RERR(unreachable=DEST, error_code=2)
-    action = mgr.process_rerr(rerr, from_neighbor=NEXT)
+    action = mgr.process_rerr(rerr, from_neighbor=NEXT, now=5000)
     assert action is not None
     assert action.invalidated == [DEST]
     assert action.notify == [SRC1]
@@ -75,14 +75,14 @@ def test_process_rerr_ignored_if_route_via_other_neighbor() -> None:
     mgr, grad, cache = _populated()
     rerr = RERR(unreachable=DEST)
     # The route to DEST is via NEXT, not OTHER; an RERR from OTHER is irrelevant.
-    assert mgr.process_rerr(rerr, from_neighbor=OTHER) is None
+    assert mgr.process_rerr(rerr, from_neighbor=OTHER, now=5000) is None
     assert grad.lookup(DEST) is not None
     assert DEST in cache
 
 
 def test_process_rerr_ignored_if_no_route() -> None:
     mgr = RouteErrorManager(GradientTable(), RouteCache())
-    assert mgr.process_rerr(RERR(unreachable=DEST), from_neighbor=NEXT) is None
+    assert mgr.process_rerr(RERR(unreachable=DEST), from_neighbor=NEXT, now=5000) is None
 
 
 def test_remove_via_only_removes_matching_next_hop() -> None:

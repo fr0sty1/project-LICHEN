@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-xcd6.3",
+  "title": "Wire launchers to fleet AMI",
+  "description": "Update Renode and heterogeneous EC2 fleet scripts to default to validated AMI ami-0764d1b512e22671f and remove redundant runtime installation/download steps. Leave ec2-claude.sh on base AL2023 because it uses the development EBS.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-15T21:55:09.918485Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-15T21:59:25.849226Z",
+  "closed_at": "2026-07-15T21:59:25.849226Z",
+  "close_reason": "Fleet launchers and AWS docs now use validated AMI ami-0764d1b512e22671f",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-xcd6.3",
+      "depends_on_id": "project-LICHEN-xcd6",
+      "type": "parent-child",
+      "created_at": "2026-07-15T21:55:09.921279Z"
+    }
+  ]
+}

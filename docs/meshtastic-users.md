@@ -90,20 +90,25 @@ We built Meshtastic compatibility so you can use a familiar app while we develop
 
 If you want the full LICHEN experience, watch for native apps that expose all features.
 
-## Limitations Summary
+## R1 MVP Meshtastic App Compatibility Matrix
 
-| Feature | Status |
-|---------|--------|
-| Text messaging | Works |
-| Position sharing | Works |
-| Node discovery | Works |
-| Multiple channels | Not supported |
-| Channel encryption settings | Ignored |
-| Radio configuration | Ignored |
-| Store-and-forward | Not supported |
-| Remote admin | Not supported |
-| Range test | Not supported |
-| Traceroute | Not supported |
+For R1 MVP (nRF52840 targets like R1 Neo with `CONFIG_LORA_LICHEN_MESHTASTIC_BLE=y`):
+
+| Feature | Supported | Notes |
+|---------|-----------|-------|
+| BLE connection to `LICHEN-XXXX` | Yes | Uses Meshtastic GATT service; mutually exclusive with native LICHEN BLE |
+| Text messaging | Yes | Send/receive via primary synthetic channel; maps to LICHEN `/msg/inbox` |
+| Position sharing (local) | Yes | App-originated POSITION_APP as LOCAL_CLIENT; valid positions shown on map |
+| Node discovery/list | Yes | Synthetic NodeInfo from peer table + RPL DODAG |
+| Config/metadata sync | Yes | LICHEN-branded firmware_version, PRIVATE_HW=255, excluded_modules mask |
+| Channel configuration | Partial | Single "LICHEN" primary channel; writes ignored |
+| Radio/settings changes | No | Acknowledged but ignored; LICHEN HAL/RPL manages parameters |
+| Store-and-forward | No | LICHEN uses built-in DTN instead |
+| Remote admin/OTA via app | No | Use LICHEN SMP OTA or native tools |
+| Range test/traceroute | No | Unsupported in compatibility surface |
+| Multiple channels/custom PSK | No | OSCORE + Ed25519 link security model |
+
+Every gap has a follow-up Bead. See `docs/meshtastic-compat-dev.md` for implementation details.
 
 ## Not All LICHEN Nodes Support This
 

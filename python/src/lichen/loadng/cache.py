@@ -21,6 +21,20 @@ ROUTE_CACHE_SIZE = 32
 ROUTE_TIMEOUT_MS = 300_000  # 300 s route validity with no traffic
 ROUTE_REFRESH_MS = 60_000  # refresh if used within 60 s of activity
 
+# Sequence numbers are 16-bit with wrap-around.
+_SEQ_MAX = 0xFFFF
+_SEQ_HALF = 0x8000
+
+
+def _is_seq_fresher(old_seq: int, new_seq: int) -> bool:
+    """Return True if new_seq is fresher than old_seq (wrap-around aware).
+
+    Uses serial number arithmetic (RFC 1982 style) for 16-bit sequence numbers:
+    new_seq is fresher if (new_seq - old_seq) mod 2^16 is in [1, 2^15).
+    """
+    diff = (new_seq - old_seq) & _SEQ_MAX
+    return diff != 0 and diff < _SEQ_HALF
+
 
 @dataclass
 class RouteEntry:
@@ -59,7 +73,20 @@ class RouteCache:
         self._entries: OrderedDict[IPv6Address, RouteEntry] = OrderedDict()
 
     def add(self, entry: RouteEntry) -> None:
-        """Insert or replace the route to ``entry.destination`` (LRU on insert)."""
+        """Insert or replace the route to ``entry.destination`` (LRU on insert).
+
+        Per LOADng spec, only updates if the new entry is fresher:
+        1. If new seq_num is fresher than existing: update
+        2. If seq_nums equal and new metric is better: update
+        3. Otherwise: ignore (stale or worse route)
+        """
+        existing = self._entries.get(entry.destination)
+        if existing is not None:
+            # SECURITY: Reject stale routes to prevent replay/manipulation
+            if _is_seq_fresher(entry.seq_num, existing.seq_num):
+                return  # existing is fresher, reject new
+            if existing.seq_num == entry.seq_num and entry.metric >= existing.metric:
+                return  # same seq, new is not better
         self._entries[entry.destination] = entry
         self._entries.move_to_end(entry.destination)
         while len(self._entries) > self.max_entries:
@@ -111,4 +138,10 @@ class RouteCache:
         return len(self._entries)
 
     def __contains__(self, destination: IPv6Address | str) -> bool:
+        """Check if ``destination`` exists in cache (ignores expiry).
+
+        Note: This only checks key presence; it does NOT verify that the route
+        is still valid. To check validity, use ``lookup(dest, now=...)`` which
+        returns None for expired routes.
+        """
         return to_ipv6(destination) in self._entries

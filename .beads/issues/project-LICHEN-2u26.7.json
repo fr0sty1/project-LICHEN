@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-2u26.7",
+  "title": "Rename T1000-E bridge fragment canonically",
+  "description": "seeed_t1000e does not auto-merge for canonical target t1000_e/nrf52840. Rename or replace the fragment with the correct HWMv2 target-qualified stem and verify actual merge behavior.",
+  "acceptance_criteria": "Canonical t1000_e/nrf52840 bridge build demonstrably consumes the intended conf/overlay, static checks reject the stale alias, and runtime validation is linked.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T19:41:14.586214Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T19:41:14.586214Z",
+  "labels": [
+    "fix-now"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2u26.7",
+      "depends_on_id": "project-LICHEN-2u26",
+      "type": "parent-child",
+      "created_at": "2026-07-16T19:41:14.721658Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

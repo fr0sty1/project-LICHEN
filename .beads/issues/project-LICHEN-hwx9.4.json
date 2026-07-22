@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-hwx9.4",
+  "title": "Define LICHEN fragmentation profile",
+  "description": "Make the SCHC draft authoritative for RFC 8724 ACK-on-Error: allocate directional RuleIDs; confirm M=1,N=6,T=0; choose WINDOW_SIZE, L2 word/padding, tile size, final-tile strategy, RCS placement/input, ACK timing/C/bitmap compression, retry limits, abort behavior, and capacity consistent with constrained C state.",
+  "acceptance_criteria": "Normative spec has no implementation ambiguity; all selected values have RFC citations and explicit wire diagrams.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-19T16:01:34.205592Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-19T17:00:22.458387Z",
+  "started_at": "2026-07-19T16:01:52.99944Z",
+  "closed_at": "2026-07-19T17:00:22.458387Z",
+  "close_reason": "Defined authoritative RFC 8724 ACK-on-Error profile in commit 03a7261be: hop-by-hop signed-link operation; RuleIDs 0x78/0x79; T=0/M=1/N=6; WINDOW_SIZE=63; true bit packing; 187-byte tiles; CRC/RCS, ACK compression, retry/abort/duplicate semantics; 1281-byte minimum buffer; Rule Set Version 2; aligned link/security specs. git diff --check passed; three final independent reviews reported no in-scope findings. typos unavailable locally.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-hwx9.4",
+      "depends_on_id": "project-LICHEN-hwx9",
+      "type": "parent-child",
+      "created_at": "2026-07-19T16:01:34.351761Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

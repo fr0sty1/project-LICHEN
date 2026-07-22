@@ -117,6 +117,25 @@ def link_layer(
 class TestLinkLayerTx:
     """Tests for frame transmission."""
 
+    def test_signable_data_separates_destination_from_payload(
+        self, link_layer: LinkLayer, node_identity: Identity
+    ) -> None:
+        """Different address/payload partitions produce different signatures."""
+        address = bytes.fromhex("0102030405060708")
+        payload = bytes.fromhex("0a0b")
+
+        with_address = link_layer._build_signable_data(0, 0, address, payload, 62, 0x22)
+        without_address = link_layer._build_signable_data(
+            0, 0, b"", address + payload, 62, 0x20
+        )
+
+        assert with_address == b">\x22\x00\x00\x00" + address + payload
+        assert without_address == b">\x20\x00\x00\x00" + address + payload
+        assert with_address != without_address
+        assert sign(node_identity.privkey, node_identity.pubkey, with_address) != sign(
+            node_identity.privkey, node_identity.pubkey, without_address
+        )
+
     @pytest.mark.asyncio
     async def test_send_transmits_frame(self, link_layer: LinkLayer, mock_radio: MockRadio):
         """send() calls radio.transmit with a valid frame."""
@@ -138,14 +157,14 @@ class TestLinkLayerTx:
     async def test_send_frame_contains_signature_bytes(
         self, link_layer: LinkLayer, mock_radio: MockRadio
     ):
-        """Transmitted frame payload ends with 48-byte signature."""
+        """Transmitted frame MIC contains the 48-byte signature."""
         original_payload = b"test"
         await link_layer.send(original_payload)
 
         frame = LichenFrame.from_bytes(mock_radio.tx_history[0])
 
-        # Payload should be original + signature
-        assert len(frame.payload) == len(original_payload) + SIGNATURE_LENGTH
+        assert frame.payload == original_payload
+        assert len(frame.mic) == SIGNATURE_LENGTH
 
     @pytest.mark.asyncio
     async def test_send_increments_seqnum(self, link_layer: LinkLayer, mock_radio: MockRadio):
@@ -228,6 +247,24 @@ class TestLinkLayerRx:
         assert result is None
 
     @pytest.mark.asyncio
+    async def test_receive_rejects_truncated_signature(
+        self, link_layer: LinkLayer, mock_radio: MockRadio
+    ):
+        """receive rejects signed frames with a truncated MIC signature."""
+        frame = LichenFrame(
+            epoch=0,
+            seqnum=0,
+            dst_addr=b"",
+            payload=b"test",
+            mic=bytes(SIGNATURE_LENGTH),
+            signature_present=True,
+        )
+        mock_radio.queue_rx(frame.to_bytes()[:-1])
+
+        result = await link_layer.receive(timeout_ms=100)
+        assert result is None
+
+    @pytest.mark.asyncio
     async def test_receive_rejects_bad_signature(
         self,
         link_layer: LinkLayer,
@@ -238,14 +275,12 @@ class TestLinkLayerRx:
         payload = b"test"
         # Create frame with garbage signature
         bad_signature = bytes(SIGNATURE_LENGTH)
-        signed_payload = payload + bad_signature
-
         frame = LichenFrame(
             epoch=0,
             seqnum=0,
             dst_addr=b"",
-            payload=signed_payload,
-            mic=PLACEHOLDER_MIC,
+            payload=payload,
+            mic=bad_signature,
             signature_present=True,
         )
         mock_radio.queue_rx(frame.to_bytes())
@@ -265,20 +300,19 @@ class TestLinkLayerRx:
 
         # Build valid signed frame
         signable = (
-            bytes([0])  # epoch
+            bytes([0x38, 0x20, 0])
             + (0).to_bytes(2, "big")  # seqnum
             + b""  # dst_addr
             + payload
         )
         signature = sign(peer_identity.privkey, peer_identity.pubkey, signable)
-        signed_payload = payload + signature
 
         frame = LichenFrame(
             epoch=0,
             seqnum=0,
             dst_addr=b"",
-            payload=signed_payload,
-            mic=PLACEHOLDER_MIC,
+            payload=payload,
+            mic=signature,
             signature_present=True,
         )
         frame_bytes = frame.to_bytes()
@@ -529,6 +563,58 @@ class TestTxQueueIntegration:
         # Another ROUTING packet cannot preempt
         with pytest.raises(QueueFullError):
             await ll.send(b"overflow", priority=Priority.ROUTING)
+
+    @pytest.mark.asyncio
+    async def test_queue_full_does_not_consume_seqnum(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ):
+        """Sequence number not wasted when QueueFullError raised.
+
+        Regression test: send() used to consume the sequence number BEFORE
+        attempting to push to the queue. If push raised QueueFullError, the
+        sequence number was lost, creating gaps in the counter space.
+        """
+
+        def no_lookup(hint: bytes) -> PeerIdentity | None:
+            return None
+
+        # Make CAD always return busy so packets stay queued
+        mock_radio.cad_returns = True
+
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=no_lookup,
+            cad_enabled=True,
+        )
+        ll.set_sequence(0, 0)
+
+        # Fill the queue with ROUTING packets (4 sends = seqnum 0-3 consumed)
+        for i in range(4):
+            await ll.send(f"routing{i}".encode(), priority=Priority.ROUTING)
+
+        # After 4 successful sends, seqnum should be 4
+        assert ll.get_sequence() == (0, 4)
+
+        # Try to send another (queue is full, will raise)
+        with pytest.raises(QueueFullError):
+            await ll.send(b"overflow", priority=Priority.ROUTING)
+
+        # Seqnum should still be 4 (not consumed on failed push)
+        assert ll.get_sequence() == (0, 4)
+
+        # Next successful send should use seqnum 4 (not 5)
+        # First make room by clearing CAD and draining
+        mock_radio.cad_returns = False
+        await ll.drain_tx_queue()
+
+        # Now queue is empty, next send should work
+        mock_radio.cad_returns = True  # Keep new packet queued
+        await ll.send(b"after_failure", priority=Priority.BULK)
+
+        # Verify the frame used seqnum 4
+        assert ll.get_sequence() == (0, 5)
+        assert len(ll.tx_queue) == 1
 
     @pytest.mark.asyncio
     async def test_high_priority_preempts_low(

@@ -524,10 +524,24 @@ class TestGPSRFallback:
 
         assert router.gpsr_forward((0.0, 0.0)) is None
 
-    def test_mesh_local_uses_gpsr_when_no_loadng(
+    def test_gpsr_forward_near_null_island(self, router: Router):
+        """gpsr_forward rejects coords near null island (epsilon check)."""
+        router.node_coords = (1.0, 1.0)
+        router.neighbor_coords = {IPv6Address("fe80::a"): (0.5, 0.5)}
+
+        # Near-zero coords should also be rejected (GPS garbage)
+        assert router.gpsr_forward((0.0001, 0.0)) is None
+        assert router.gpsr_forward((0.0, 0.0001)) is None
+        assert router.gpsr_forward((1e-10, 1e-10)) is None
+        assert router.gpsr_forward((-0.0005, 0.0005)) is None
+
+        # Just outside epsilon (0.001) should be accepted
+        assert router.gpsr_forward((0.002, 0.002)) is not None
+
+    def test_mesh_local_rejects_expired_coords_for_gpsr(
         self, router: Router, gradient_table: GradientTable
     ):
-        """Mesh-local routing falls back to GPSR when LOADng not configured."""
+        """GPSR fallback rejects expired entries to avoid stale coordinates."""
         # Setup: expired gradient with coords, no LOADng
         router.loadng = None
         router.node_coords = (0.0, 0.0)
@@ -550,8 +564,9 @@ class TestGPSRFallback:
         packet = make_packet("fd00::100")
         decision, next_hop = router.route(packet, now_ms=1000)
 
-        assert decision == RouteDecision.FORWARD
-        assert next_hop == IPv6Address("fe80::a")
+        # SECURITY: Should drop rather than use stale coordinates
+        assert decision == RouteDecision.DROP
+        assert next_hop is None
 
     def test_update_neighbor_coords(self, router: Router):
         """update_neighbor_coords stores coords for neighbor."""

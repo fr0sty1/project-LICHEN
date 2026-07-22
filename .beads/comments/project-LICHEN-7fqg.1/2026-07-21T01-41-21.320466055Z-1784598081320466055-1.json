@@ -1,0 +1,7 @@
+{
+  "id": "1784598081320466055-1",
+  "issue_id": "project-LICHEN-7fqg.1",
+  "author": "ec2-user",
+  "text": "LOST-RECOVERY LEDGER B. INTEGRATE normative SCHC profile 03a7261bec4371993f27c4897d995941a17a67c3 then independently derived vectors d2ce3ff904be8a1ea89d42afdd4accaea15e2953. CONDITIONAL on independent fixture confirmation and language gates, then integrate in order: 251e43fb4b910a00de356b4c15853909646edd97 Python fragmentation; e54f5320a7a483587aad5e7e2d0198b8d4127ca1 Rust fragmentation; 159bf0dcf33d63bec7ecb27694bc082e0b9f1e71 Zephyr fragmentation. Conflict clusters: rust/lichen-node/src/secure.rs combines lost plaintext closure with OSCORE ownership/durable state; Python link queue applies lost signed-frame first then bcab/d422; test/vectors/schema.json must union SCHC and baseline DAO/RPL schemas; lockfiles regenerated, never choose-one-side. Validation gates are recorded in epic design: per-slice Rust/Python/Zephyr/vector checks, then c748 CI last.",
+  "created_at": "2026-07-21T01:41:21.320466055Z"
+}

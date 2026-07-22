@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-2auf.44.9.7.1",
+  "title": "Enforce atomic Rust Path Sequence snapshots",
+  "description": "In Rust DaoManager, retain canonical per-target candidate snapshots (parent, Path Control, Path Lifetime) through freshness tombstones. A newer Path Sequence atomically replaces the complete set; equal sequence accepts only semantic equality without refreshing deadlines or target freshness; changed/older/incomparable updates reject before DAOSequence mutation. Keep non-/128 wire rejection.",
+  "acceptance_criteria": "Exact equal-sequence copies accept unchanged with newer DAOSequence but do not refresh route deadlines; additions/removals/lifetime/Path Control/withdrawal changes reject atomically; newer grouped multiparent snapshots replace fully; expiry/withdrawal tombstones prevent revival; Rust tests, clippy, and three reviews pass.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-18T21:32:53.872085Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-18T21:57:46.296694Z",
+  "started_at": "2026-07-18T21:32:58.605858Z",
+  "closed_at": "2026-07-18T21:57:46.296694Z",
+  "close_reason": "Implemented and validated atomic complete-candidate Path Sequence snapshots in Rust, including exact-copy no-refresh semantics, bounded lifecycle state, expiry reporting, and node integration.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.9.7.1",
+      "depends_on_id": "project-LICHEN-2auf.44.9.7",
+      "type": "parent-child",
+      "created_at": "2026-07-18T21:32:54.003347Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

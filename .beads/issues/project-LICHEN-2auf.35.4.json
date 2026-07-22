@@ -1,0 +1,36 @@
+{
+  "id": "project-LICHEN-2auf.35.4",
+  "title": "Restore C signed link TX and atomic identity",
+  "description": "Review of 2auf.35 found lichen_link_tx returns EPROTONOSUPPORT whenever a legacy link key is loaded, disabling production TX, while rewritten C tests only assert that early failure. It also found lichen_link_copy_identity locks reads but lichen_link_load_key writes key state without that lock. Remove the false encryption inference, restore successful signed TX/RX/tamper/replay/buffer tests, and synchronize key publication/copying without holding locks during expensive derivation.",
+  "acceptance_criteria": "Loading retained legacy key state does not disable TX; signed C TX/RX succeeds; tamper/replay/buffer failure paths are independently tested; key publication and identity copy use the same lock with no torn identity; focused C and Zephyr tests plus three reviews pass.",
+  "notes": "Implementation committed in b4ebb84af. Host C frame, Schnorr-48, and replay suites pass. Direct authenticated RX now rejects unsigned frames and has a Zephyr regression. Closure remains blocked on project-LICHEN-2auf.35.6 Linux Zephyr gates; AWS profile personal requires interactive aws login.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T23:23:22.645371Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-19T01:11:51.318909Z",
+  "started_at": "2026-07-17T04:31:57.773232Z",
+  "lease_expires_at": "2026-07-19T00:50:16.909594Z",
+  "heartbeat_at": "2026-07-19T00:45:16.909594Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.35.4",
+      "depends_on_id": "project-LICHEN-2auf.35",
+      "type": "parent-child",
+      "created_at": "2026-07-16T23:23:22.783569Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.35.4",
+      "depends_on_id": "project-LICHEN-2auf.35.6",
+      "type": "blocks",
+      "created_at": "2026-07-17T17:04:28.945307Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

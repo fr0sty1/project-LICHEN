@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-2auf.35.3",
+  "title": "Add valid cross-language signed frame oracle",
+  "description": "Review of 2auf.35 found no canonical cryptographically valid signed frame. Existing signed examples use arbitrary or zero MIC bytes, and each implementation otherwise signs/verifies itself. Add a fixed frame-specific vector with seed/public key, exact signing preimage, deterministic Schnorr-48 signature, and complete wire bytes, cross-validated by independent C/Python/Rust implementations.",
+  "acceptance_criteria": "A fixed valid signed-frame vector records key material, exact preimage, signature, and wire bytes; C/Python/Rust independently reproduce or verify it byte-for-byte; tampered LENGTH, LLSec, destination, payload, and signature reject; vector provenance is documented; three reviews pass.",
+  "notes": "Added signed_plaintext_oracle with fixed seed/private/public key, exact LENGTH||LLSec||EPO||SEQ||DST||PLD preimage, deterministic Schnorr-48 signature, and complete wire bytes. Python, Rust, and C independently reproduce keys/signature/wire and reject mutations to length, LLSec, epoch, sequence, destination, payload, and signature. Schema enforces state/length constraints. CI runs Python vectors, Rust no-default/all-features, and fail-closed C frame/Schnorr CTest. Gates: Python 131; Rust 68 unit + 2 vector + 1 doc; C frame and Schnorr CTest 1/1 each. Final three reviews: no findings.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T23:23:13.667971Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-17T04:31:07.694502Z",
+  "started_at": "2026-07-17T02:19:03.364661Z",
+  "closed_at": "2026-07-17T04:31:07.694502Z",
+  "close_reason": "Valid signed-frame oracle independently reproduced and CI-gated",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.35.3",
+      "depends_on_id": "project-LICHEN-2auf.35",
+      "type": "parent-child",
+      "created_at": "2026-07-16T23:23:13.823689Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

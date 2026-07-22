@@ -2,6 +2,7 @@
   "id": "project-LICHEN-ak04",
   "title": "Silent protobuf encoding failure in create_routing_error",
   "description": "File: rust/lichen-meshtastic/src/bridge.rs:385\n\nThe create_routing_error function silently ignores protobuf encoding failures:\n\n```rust\nrouting.encode(\u0026mut payload).ok();\n```\n\nThe .ok() call converts the Result to Option and discards any error. If encoding fails, the function still returns a MeshPacket with an empty or corrupted payload, which could cause:\n\n1. Peer nodes to receive malformed routing error packets\n2. Silent routing failures with no diagnostic information\n3. Protocol violations since the packet claims to have routing data but the payload is empty\n\nFIX: Either propagate the error by making the function return Result, or use expect/unwrap since encoding to a growable Vec should never fail in practice (adding a comment explaining why).",
+<<<<<<< HEAD
   "notes": "Commit: 31a4abcd3",
   "status": "closed",
   "priority": 2,
@@ -14,4 +15,16 @@
   "started_at": "2026-07-22T20:18:15.328653567Z",
   "closed_at": "2026-07-22T20:18:37.477732957Z",
   "close_reason": "Encoding now uses .expect with explanatory comment; cannot fail for Vec"
+=======
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:34:33.114315Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-13T04:37:11.275878Z",
+  "closed_at": "2026-07-13T04:37:11.275878Z",
+  "close_reason": "Closed"
+>>>>>>> origin/integration/worker3-20260722
 }

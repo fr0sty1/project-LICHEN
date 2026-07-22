@@ -14,6 +14,7 @@
  */
 
 #include <errno.h>
+#include <stdio.h>
 #include <string.h>
 
 #include <zephyr/kernel.h>
@@ -59,16 +60,6 @@ static void cbor_put_map_header(uint8_t *buf, size_t *off, uint8_t count)
 	}
 }
 
-static void cbor_put_array_header(uint8_t *buf, size_t *off, uint8_t count)
-{
-	if (count < 24U) {
-		buf[(*off)++] = 0x80U | count;
-	} else {
-		buf[(*off)++] = 0x98;
-		buf[(*off)++] = count;
-	}
-}
-
 static void cbor_put_tstr(uint8_t *buf, size_t *off, const char *value)
 {
 	size_t len = strlen(value);
@@ -92,26 +83,6 @@ static void cbor_put_key(uint8_t *buf, size_t *off, const char *key)
 	cbor_put_tstr(buf, off, key);
 }
 
-static void cbor_put_uint(uint8_t *buf, size_t *off, uint32_t value)
-{
-	if (value < 24U) {
-		buf[(*off)++] = (uint8_t)value;
-	} else if (value <= UINT8_MAX) {
-		buf[(*off)++] = 0x18;
-		buf[(*off)++] = (uint8_t)value;
-	} else if (value <= UINT16_MAX) {
-		buf[(*off)++] = 0x19;
-		buf[(*off)++] = (uint8_t)(value >> 8);
-		buf[(*off)++] = (uint8_t)(value & 0xffU);
-	} else {
-		buf[(*off)++] = 0x1a;
-		buf[(*off)++] = (uint8_t)(value >> 24);
-		buf[(*off)++] = (uint8_t)(value >> 16);
-		buf[(*off)++] = (uint8_t)(value >> 8);
-		buf[(*off)++] = (uint8_t)(value & 0xffU);
-	}
-}
-
 /* --------------------------------------------------------------------------
  * IID and fingerprint formatting
  * -------------------------------------------------------------------------- */
@@ -128,7 +99,7 @@ int lichen_key_iid_to_str(const uint8_t iid[LICHEN_KEY_IID_LEN],
 	/* Format: xxxx:xxxx:xxxx:xxxx */
 	size_t pos = 0;
 
-	for (int i = 0; i < LICHEN_KEY_IID_LEN; i++) {
+	for (size_t i = 0; i < LICHEN_KEY_IID_LEN; i++) {
 		if (i > 0 && (i % 2) == 0) {
 			buf[pos++] = ':';
 		}
@@ -205,7 +176,7 @@ static size_t base64_encode(const uint8_t *data, size_t len, char *out, size_t o
 	size_t i;
 
 	for (i = 0; i + 2 < len; i += 3) {
-		if (out_idx + 4 >= out_len) {
+		if (out_idx + 4 > out_len) {
 			return 0;
 		}
 		out[out_idx++] = base64_chars[(data[i] >> 2) & 0x3f];
@@ -215,7 +186,7 @@ static size_t base64_encode(const uint8_t *data, size_t len, char *out, size_t o
 	}
 
 	if (i < len) {
-		if (out_idx + 4 >= out_len) {
+		if (out_idx + 4 > out_len) {
 			return 0;
 		}
 		out[out_idx++] = base64_chars[(data[i] >> 2) & 0x3f];
@@ -571,6 +542,7 @@ static enum lichen_key_trust str_to_trust(const char *str, size_t len)
 
 /* Max CBOR size for GET /keys/{iid} single key response */
 #define KEY_SINGLE_CBOR_MAX_SIZE 256
+#define KEY_LIST_ENTRY_CBOR_MAX_SIZE 192
 
 static size_t encode_iso8601_timestamp(uint32_t unix_time, char *buf, size_t buf_len)
 {
@@ -631,7 +603,7 @@ static size_t encode_iso8601_timestamp(uint32_t unix_time, char *buf, size_t buf
 static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 {
 	size_t off = 0;
-	size_t count = lichen_key_store_count();
+	size_t encoded = 0;
 
 	if (buf == NULL || buf_size < 32) {
 		return 0;
@@ -645,9 +617,14 @@ static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 	struct lichen_key_entry entries[CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES];
 	size_t n = lichen_key_store_list(entries, ARRAY_SIZE(entries));
 
-	cbor_put_array_header(buf, &off, (uint8_t)n);
+	/* Reserve a fixed-width definite array header; patch its count after
+	 * bounded entries are encoded so truncation always remains valid CBOR. */
+	buf[off++] = 0x98;
+	size_t count_offset = off++;
 
 	for (size_t i = 0; i < n; i++) {
+		uint8_t entry[KEY_LIST_ENTRY_CBOR_MAX_SIZE];
+		size_t entry_off = 0;
 		char iid_str[LICHEN_KEY_IID_STR_LEN];
 		char fp_str[LICHEN_KEY_FINGERPRINT_STR_LEN];
 		char first_str[24];
@@ -659,31 +636,41 @@ static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 		encode_iso8601_timestamp(entries[i].last_seen, last_str, sizeof(last_str));
 
 		/* Each key entry: 5 fields */
-		cbor_put_map_header(buf, &off, 5);
+		cbor_put_map_header(entry, &entry_off, 5);
 
-		cbor_put_key(buf, &off, "iid");
-		cbor_put_tstr(buf, &off, iid_str);
+		cbor_put_key(entry, &entry_off, "iid");
+		cbor_put_tstr(entry, &entry_off, iid_str);
 
-		cbor_put_key(buf, &off, "pubkey_fp");
-		cbor_put_tstr(buf, &off, fp_str);
+		cbor_put_key(entry, &entry_off, "pubkey_fp");
+		cbor_put_tstr(entry, &entry_off, fp_str);
 
-		cbor_put_key(buf, &off, "trust");
-		cbor_put_tstr(buf, &off, trust_to_str(entries[i].trust));
+		cbor_put_key(entry, &entry_off, "trust");
+		cbor_put_tstr(entry, &entry_off, trust_to_str(entries[i].trust));
 
-		cbor_put_key(buf, &off, "first_seen");
-		cbor_put_tstr(buf, &off, first_str);
+		cbor_put_key(entry, &entry_off, "first_seen");
+		cbor_put_tstr(entry, &entry_off, first_str);
 
-		cbor_put_key(buf, &off, "last_seen");
-		cbor_put_tstr(buf, &off, last_str);
+		cbor_put_key(entry, &entry_off, "last_seen");
+		cbor_put_tstr(entry, &entry_off, last_str);
 
-		if (off > buf_size - 100) {
-			/* Safety margin */
+		if (off + entry_off > buf_size) {
 			break;
 		}
+		memcpy(&buf[off], entry, entry_off);
+		off += entry_off;
+		encoded++;
 	}
 
+	buf[count_offset] = (uint8_t)encoded;
 	return off;
 }
+
+#ifdef CONFIG_LICHEN_COAP_KEYS_TEST_HOOKS
+size_t lichen_key_store_test_encode_list(uint8_t *buf, size_t buf_size)
+{
+	return encode_keys_list_cbor(buf, buf_size);
+}
+#endif
 
 static size_t encode_key_single_cbor(const struct lichen_key_entry *entry,
 				     uint8_t *buf, size_t buf_size)
@@ -741,24 +728,60 @@ static int decode_key_put_cbor(const uint8_t *payload, size_t payload_len,
 		return -EINVAL;
 	}
 
-	/* Check for map header */
-	uint8_t map_count;
+	/*
+	 * Parse CBOR map header (major type 5).
+	 * CBOR encoding for maps:
+	 *   0xa0-0xb7: Small map with 0-23 items (count in lower 5 bits)
+	 *   0xb8 NN:   Map with 1-byte length (up to 255 items)
+	 *   0xb9 NNNN: Map with 2-byte length (big-endian)
+	 *   0xba NNNNNNNN: Map with 4-byte length (big-endian)
+	 *   0xbf:      Indefinite-length map (not supported - requires break code)
+	 *
+	 * For key management, we limit map_count to 32 entries max.
+	 */
+	uint8_t first_byte = payload[0];
+	uint8_t major_type = first_byte >> 5;
+	uint8_t additional_info = first_byte & 0x1f;
+	size_t map_count;
+	size_t pos;
 
-	if ((payload[0] & 0xe0) == 0xa0) {
-		map_count = payload[0] & 0x1f;
-	} else if (payload[0] == 0xb8 && payload_len > 1) {
-		map_count = payload[1];
-	} else {
+	if (major_type != 5) {
+		/* Not a map */
 		return -EINVAL;
 	}
 
-	size_t pos = (payload[0] == 0xb8) ? 2 : 1;
+	if (additional_info < 24) {
+		/* Small map: count is in lower 5 bits */
+		map_count = additional_info;
+		pos = 1;
+	} else if (additional_info == 24 && payload_len > 1) {
+		/* 1-byte length */
+		map_count = payload[1];
+		pos = 2;
+	} else if (additional_info == 25 && payload_len > 2) {
+		/* 2-byte length (big-endian) */
+		map_count = ((size_t)payload[1] << 8) | payload[2];
+		pos = 3;
+	} else if (additional_info == 26 && payload_len > 4) {
+		/* 4-byte length (big-endian) */
+		map_count = ((size_t)payload[1] << 24) | ((size_t)payload[2] << 16) |
+			    ((size_t)payload[3] << 8) | payload[4];
+		pos = 5;
+	} else {
+		/* 8-byte length (27), indefinite-length (31), or reserved: not supported */
+		return -EINVAL;
+	}
+
+	/* Sanity check: key management payloads should not have huge maps */
+	if (map_count > 32) {
+		return -EINVAL;
+	}
 	bool has_pubkey = false;
 	bool has_trust = false;
 
 	*trust = LICHEN_KEY_TRUST_VERIFIED; /* default for manual add */
 
-	for (uint8_t i = 0; i < map_count && pos < payload_len; i++) {
+	for (size_t i = 0; i < map_count && pos < payload_len; i++) {
 		/* Read key (text string) */
 		uint8_t key_type = payload[pos];
 		size_t key_len;
@@ -779,6 +802,11 @@ static int decode_key_put_cbor(const uint8_t *payload, size_t payload_len,
 		}
 		key_str = (const char *)&payload[pos];
 		pos += key_len;
+
+		/* Bounds check before reading value type */
+		if (pos >= payload_len) {
+			return -EINVAL;
+		}
 
 		/* Read value */
 		uint8_t val_type = payload[pos];

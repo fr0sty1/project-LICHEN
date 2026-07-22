@@ -1106,3 +1106,59 @@ class TestEnterRxMode:
         delivered = sim.deliver_pending_packets()
 
         assert delivered == 0
+
+    def test_callback_reception_updates_metrics_and_observer(self) -> None:
+        """Callback RX records global metrics and emits the RX event."""
+        sim = Simulation("callback-telemetry")
+        sim.add_node("tx", 0.0, 0.0, 0.0)
+        sim.add_node("rx", 100.0, 0.0, 0.0)
+        events: list[dict[str, object]] = []
+
+        class Observer:
+            def on_rx_success(self, **kwargs: object) -> None:
+                events.append(kwargs)
+
+        sim.add_observer(Observer())
+        sim.start_transmission("tx", b"hello")
+        sim.advance_to(1000)
+        sim.enter_rx_mode("rx", 1_000_000, lambda *_: None, lambda: None)
+
+        assert sim.deliver_pending_packets() == 1
+        assert sim.metrics.receptions == 1
+        assert events == [
+            {
+                "sim_id": "callback-telemetry",
+                "node_id": "rx",
+                "tx_id": events[0]["tx_id"],
+                "from_node_id": "tx",
+                "payload_len": 5,
+                "rssi": events[0]["rssi"],
+                "snr": events[0]["snr"],
+                "time_us": 1000,
+            }
+        ]
+
+    def test_callback_collision_updates_metrics_and_observer(self) -> None:
+        """Callback RX reports collisions just like direct RX."""
+        sim = Simulation("callback-collision")
+        sim.add_node("tx1", 0.0, 100.0, 0.0)
+        sim.add_node("rx", 0.0, 0.0, 0.0)
+        sim.add_node("tx2", 0.0, -100.0, 0.0)
+        collisions: list[dict[str, object]] = []
+
+        class Observer:
+            def on_collision(self, **kwargs: object) -> None:
+                collisions.append(kwargs)
+
+        sim.add_observer(Observer())
+        sim.start_transmission("tx1", b"a")
+        sim.start_transmission("tx2", b"b")
+        sim.advance_to(1000)
+        sim.enter_rx_mode("rx", 1_000_000, lambda *_: None, lambda: None)
+
+        assert sim.deliver_pending_packets() == 0
+        assert sim.deliver_pending_packets() == 0
+        assert sim.metrics.collisions == 1
+        assert len(collisions) == 1
+        assert collisions[0]["node_id"] == "rx"
+        assert len(collisions[0]["tx_ids"]) == 2  # type: ignore[arg-type]

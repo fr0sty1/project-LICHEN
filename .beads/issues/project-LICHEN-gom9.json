@@ -2,6 +2,7 @@
   "id": "project-LICHEN-gom9",
   "title": "GPSR fallback uses expired gradient entries for coordinates",
   "description": "File: python/src/lichen/routing/router.py:480-484\n\nWhen LOADng is not configured, GPSR fallback looks up gradient entries WITHOUT the 'now' parameter:\n\n```python\ndst_entry = self.gradient_table.lookup(dst)  # may be expired but has coords\nif dst_entry is not None and dst_entry.coords is not None:\n    next_hop = self.gpsr_forward(dst_entry.coords)\n```\n\nThe comment acknowledges this returns potentially expired entries.\n\nWHY IT'S A BUG: Using coordinates from an expired entry means routing based on stale location data. In a mobile mesh, a node could have moved significantly since the entry expired. GPSR would forward toward the node's old position, causing packets to be routed to the wrong location.\n\nIMPACT: Misdirected packets in mobile deployments when GPSR fallback is used. Security concern: a compromised node could advertise false coordinates, then let the entry expire while GPSR continues routing based on those coordinates.\n\nFIX: Either reject expired coords entirely, or add a separate 'coord_expires' field that allows a grace period for location data distinct from route freshness.",
+<<<<<<< HEAD
   "notes": "Commit: 36c5e7ff5\nUpdated GPSR fallback in _route_mesh_local to explicitly pass now_ms to gradient_table.lookup (rejects expired coords). Enhanced comment with security note. Matches lookup behavior used for primary routing path.",
   "status": "closed",
   "priority": 2,
@@ -14,4 +15,16 @@
   "started_at": "2026-07-22T20:20:42.530568515Z",
   "closed_at": "2026-07-22T20:20:59.704463502Z",
   "close_reason": "GPSR fallback now passes now_ms to gradient_table.lookup() (rejects expired entries with stale coords). Updated comments. Matches primary routing path behavior and RFC intent for fresh location data."
+=======
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:23:11.595062Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-13T04:50:53.277223Z",
+  "closed_at": "2026-07-13T04:50:53.277223Z",
+  "close_reason": "Closed"
+>>>>>>> origin/integration/worker3-20260722
 }

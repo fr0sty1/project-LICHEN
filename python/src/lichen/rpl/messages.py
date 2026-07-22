@@ -287,8 +287,6 @@ class DAOAck:
         )
 
 
-RplMessage = DIS | DIO | DAO | DAOAck
-
 _CODE_BY_TYPE = {
     DIS: RplCode.DIS,
     DIO: RplCode.DIO,
@@ -303,13 +301,13 @@ _CLASS_BY_CODE = {
 }
 
 
-def to_icmpv6(message: RplMessage) -> Icmpv6Message:
+def to_icmpv6(message: DIS | DIO | DAO | DAOAck) -> Icmpv6Message:
     """Wrap an RPL message as an ICMPv6 type-155 message."""
     code = _CODE_BY_TYPE[type(message)]
     return Icmpv6Message(RPL_ICMPV6_TYPE, int(code), message.to_bytes())
 
 
-def from_icmpv6(msg: Icmpv6Message) -> RplMessage:
+def from_icmpv6(msg: Icmpv6Message) -> DIS | DIO | DAO | DAOAck:
     """Parse an ICMPv6 type-155 message into the matching RPL message."""
     if msg.type != RPL_ICMPV6_TYPE:
         raise RplError(f"not an RPL message: ICMPv6 type {msg.type}")

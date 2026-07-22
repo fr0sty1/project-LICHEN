@@ -64,6 +64,18 @@ def _decode_varint(data: bytes, offset: int = 0) -> tuple[int, int]:
     raise ProtoError("truncated varint")
 
 
+def _varint_to_int32(value: int) -> int:
+    """Convert unsigned varint value to signed int32.
+
+    Protobuf int32 fields encode negative values as 10-byte sign-extended
+    varints. After decoding, we need to reinterpret as signed 32-bit.
+    """
+    value = value & 0xFFFFFFFF
+    if value & 0x80000000:
+        value -= 0x100000000
+    return value
+
+
 def _encode_tag(field_num: int, wire_type: int) -> bytes:
     """Encode a protobuf field tag."""
     return _encode_varint((field_num << 3) | wire_type)
@@ -383,7 +395,8 @@ class MeshPacket:
                     # Unknown priority from newer Meshtastic version
                     pkt.priority = PacketPriority.DEFAULT
             elif field_num == 12 and wire_type == WIRE_VARINT:
-                pkt.rx_rssi, offset = _decode_varint(data, offset)
+                val, offset = _decode_varint(data, offset)
+                pkt.rx_rssi = _varint_to_int32(val)
             elif field_num == 14 and wire_type == WIRE_VARINT:
                 val, offset = _decode_varint(data, offset)
                 pkt.via_mqtt = val != 0

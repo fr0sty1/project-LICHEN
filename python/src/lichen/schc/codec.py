@@ -107,6 +107,10 @@ def _check_msb(fd: FieldDescriptor, value: int) -> None:
     """Verify the top `mo_arg` bits of value match the target value's."""
     if fd.mo_arg is None:
         raise ValueError(f"{fd.field_id}: MSB requires mo_arg")
+    if fd.mo_arg > fd.length_bits:
+        raise SchcError(
+            f"{fd.field_id}: mo_arg ({fd.mo_arg}) exceeds length_bits ({fd.length_bits})"
+        )
     shift = fd.length_bits - fd.mo_arg
     if (value >> shift) != (fd.target_value >> shift):
         raise SchcError(

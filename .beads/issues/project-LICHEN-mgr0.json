@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-mgr0",
+  "title": "Diagnose EC2 OpenCode state",
+  "description": "Inspect the persistent EC2 workstation's OpenCode process, tmux session, logs, configuration, and SQLite state; repair non-destructively and verify normal operation without exposing credentials or deleting sessions.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-20T03:52:04.382997Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-20T04:00:44.788603Z",
+  "started_at": "2026-07-20T03:52:38.675509Z",
+  "closed_at": "2026-07-20T04:00:44.788603Z",
+  "close_reason": "OpenCode DB integrity is healthy. Fixed confusion by fetching all origin branches into the single-branch EC2 clone, verified all six recovery commits, and replaced old bd with MarkAtwood/beads tag v1.1.0-flatfile.2 commit 92962e2e while preserving rollback binary. Active OpenCode session exited cleanly and remains resumable."
+}

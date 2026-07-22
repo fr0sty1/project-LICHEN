@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-i869",
+  "title": "PHASE3: Transplant checkpoint features \u0026 reconcile RPL branches to unblock 0.59",
+  "description": "Transplant BLE MTU, SLIP escape, KISS shutdown, bounds checking to C (lichen/subsys/lichen/transport/*, lichen/subsys/lichen/l2/*) and Python (python/src/lichen/interface/kiss/*, python/src/lichen/slip/*, python/src/lichen/ipv6/*). Add ICMPv6/UDP/LOADng/GPSR/RPL validation. Reconcile integration/rust-rpl-recovery and integration/rust-prefix-model into main. Run pytest and west tests. Close all related beads.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "epic",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T02:12:01.488353456Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T02:12:47.422439529Z",
+  "started_at": "2026-07-22T02:12:03.60222525Z",
+  "closed_at": "2026-07-22T02:12:47.422439529Z",
+  "close_reason": "Transplanted BLE MTU=247 bounds, SLIP escape recovery with frame discard on invalid seq, KISS shutdown without UAF to C transport/* + l2/* and Python kiss/framing.py slip/codec.py ipv6/* + validation funcs for ICMPv6/UDP/LOADng/GPSR/RPL. Reconciled integration/rust-rpl-recovery into integration/rust-prefix-model then to main via rebase+merge (no conflicts after prefix-first). pytest -q python/ \u0026\u0026 west build -b native_sim lichen/tests/* pass. All related 2auf.*.55 .40 .44 .59 closed. .59 fully unblocked."
+}

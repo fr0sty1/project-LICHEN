@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-2auf.44.7",
+  "title": "Authenticate multi-hop DAO origins",
+  "description": "Non-Storing DAO forwarding preserves the origin IPv6 source while each relay replaces the link-layer signature. Hop authentication therefore cannot prove DAO origin at the root; an authenticated relay can forge another source/target and Path Sequence. Design and implement cryptographically preserved end-to-end DAO provenance, bound to RPLInstanceID, DODAGID, DAOSequence, ordered Target/Transit options, and origin IPv6 identity, without breaking hop forwarding.",
+  "design": "Implement the approved terminal provisional DAO Origin Signature option using existing Schnorr48 and pinned Announce identities. The option is unique and final, carries a persistent 64-bit origin sequence plus 48-byte signature, and signs a domain-separated SHA-512 transcript binding origin IPv6, effective DODAGID, origin sequence, and exact unsigned DAO bytes. Relays preserve it unchanged. Roots verify key/IID, signature, and persistent sequence before parsing authorization-sensitive semantics or mutating replay/routes. Exact static prefix delegations are handled by .44.9.2 after provenance.",
+  "acceptance_criteria": "A documented wire format and trust model identify the origin key; root verifies provenance before DAO replay/path/route mutation; relays can forward without resigning origin content; replay, target substitution, option reordering, withdrawal forgery, and unknown-key tests fail closed; C/Python/Rust protocol/spec/vector implications are tracked; three security reviews pass.",
+  "notes": "Completed on integration/rust-rpl-complete. Reconciled prefix/path-snapshot model and added production RplStack ownership for radio, RPL, Announce trust, scope-bound DTX2/DRX2/DAD1 persistence, explicit bounded DAO admission, transactional multi-hop Announce relay, DIO/DIS/Trickle control, preferred-parent DAO forwarding, strict IPv6/ICMPv6 and L2 destination validation, durable replay ordering, prefix-egress repair, and exact failure/restart behavior. External 50-vector node test remains intact. Three final independent release reviews found no P0-P2 issues. Validation: Rust lichen-link 29+2+1, lichen-ipv6 13, lichen-rpl 125+2+5, lichen-node 185+2+docs pass; scoped strict Clippy passes except pre-existing scheduler test helper blocks all-target node Clippy; Python DAO vectors 54 pass; independent C/Monocypher oracle 50 pass; Zephyr native_sim/native/64 link_crypto 10/10 pass with explicit ZEPHYR_EXTRA_MODULES. Broader Zephyr tree: 40 configurations pass, 2 fail, 5 error from pre-existing unrelated app/transport/CoAP/L2 issues. Follow-ups filed: 2auf.67 no_std build and 2auf.68 invalid signed link vector.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-17T22:08:32.40085Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-20T07:28:37.940385307Z",
+  "started_at": "2026-07-19T23:39:11.491363Z",
+  "closed_at": "2026-07-20T07:28:37.940385307Z",
+  "close_reason": "Authenticated multi-hop DAO origins are fully integrated, reviewed, and validated across Rust, Python/C vectors, and relevant ARM64 Zephyr crypto tests.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.7",
+      "depends_on_id": "project-LICHEN-2auf.44",
+      "type": "parent-child",
+      "created_at": "2026-07-17T22:08:32.530045Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

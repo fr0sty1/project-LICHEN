@@ -13,7 +13,7 @@
 //!
 //! # Bridge Module
 //!
-//! The [`bridge`] module provides translation between LICHEN IPv6 packets and
+//! The `bridge` module (alloc feature) provides translation between LICHEN IPv6 packets and
 //! Meshtastic MeshPackets using IP_TUNNEL_APP (portnum 33).
 
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -33,17 +33,15 @@ pub mod gatt;
 pub use address::{AddressMapper, Ipv6AddrMeshtasticExt, MeshtasticNodeId};
 #[cfg(any(feature = "alloc", test))]
 pub use bridge::{
-    BridgeError, IncomingResult, MeshtasticBridge, RoutingErrorCode, BROADCAST_ADDR,
-    MAX_BRIDGE_QUEUE, MAX_TUNNEL_PAYLOAD, is_broadcast,
+    is_broadcast, BridgeError, IncomingResult, MeshtasticBridge, RoutingErrorCode, BROADCAST_ADDR,
+    MAX_BRIDGE_QUEUE, MAX_TUNNEL_PAYLOAD,
 };
 
 #[cfg(test)]
 mod tests {
     extern crate alloc;
-    use alloc::vec;
-    use alloc::vec::Vec;
-    #[allow(deprecated)]
     use super::*;
+    use alloc::vec;
 
     #[test]
     fn test_portnum_values() {
@@ -94,7 +92,6 @@ mod tests {
         // Test my_info variant
         let my_info = MyNodeInfo {
             my_node_num: 0x12345678,
-            has_gps: false,
             max_channels: 8,
             firmware_version: "2.3.0".into(),
             error_code: None,
@@ -104,7 +101,6 @@ mod tests {
             bitrate: None,
             message_timeout_msec: Some(5000),
             min_app_version: Some(30000),
-            max_app_data_size: 237,
             has_wifi: true,
             has_bluetooth: true,
             has_ethernet: false,
@@ -114,6 +110,7 @@ mod tests {
             has_position_flags: true,
             device_id: 12345,
             is_managed: false,
+            ..Default::default()
         };
 
         let from_radio = FromRadio {
@@ -158,13 +155,12 @@ mod tests {
     #[test]
     fn test_channel_settings() {
         let settings = ChannelSettings {
-            channel_num: 0,
             psk: vec![0x01; 32], // 32-byte PSK for AES-256
             name: "LongFast".into(),
-            id: 0,
             uplink_enabled: false,
             downlink_enabled: false,
             module_settings: None,
+            ..Default::default()
         };
 
         assert_eq!(settings.name, "LongFast");
@@ -254,7 +250,6 @@ mod tests {
             want_ack: false,
             priority: mesh_packet::Priority::Default as i32,
             rx_rssi: 0,
-            delayed: 0,
             via_mqtt: false,
             hop_start: 0,
             public_key: vec![],
@@ -262,6 +257,7 @@ mod tests {
             next_hop: 0,
             relay_node: 0,
             payload_variant: Some(mesh_packet::PayloadVariant::Decoded(data)),
+            ..Default::default()
         };
 
         let to_radio = ToRadio {

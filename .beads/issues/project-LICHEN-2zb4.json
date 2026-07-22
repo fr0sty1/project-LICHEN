@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-2zb4",
+  "title": "Run acceptance blocker gates",
+  "description": "Run changed-file fmt, focused link/ipv6/rpl/node tests, strict scoped Clippy, integrity searches, and diff check without committing.",
+  "acceptance_criteria": "All requested gates pass with exact results recorded and no commit created.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-20T07:09:21.053777077Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-20T07:22:17.772666642Z",
+  "started_at": "2026-07-20T07:21:08.855016535Z",
+  "closed_at": "2026-07-20T07:22:17.772666642Z",
+  "close_reason": "Changed-file rustfmt passed; direct tests passed: link 29 unit + 2 vectors + 1 doc, ipv6 13 unit, rpl 125 unit + 2 vectors + 5 mesh, node 185 unit + 2 vectors + docs. Strict library-scoped Clippy passed for all four crates; scheduler/integrity/diff checks passed; no commit created.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2zb4",
+      "depends_on_id": "project-LICHEN-d7uj",
+      "type": "parent-child",
+      "created_at": "2026-07-20T07:09:21.139770086Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

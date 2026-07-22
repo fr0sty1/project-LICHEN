@@ -18,6 +18,7 @@
  * All payloads use CBOR (content-format 60) for compact encoding.
  */
 
+#include <stdio.h>
 #include <string.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
@@ -27,6 +28,9 @@
 #include <zephyr/net/coap_link_format.h>
 
 #include <lichen/coap_server.h>
+#include <lichen/senml.h>
+#include <lichen/oscore.h>
+#include <lichen/coap_oscore.h>
 
 LOG_MODULE_REGISTER(lichen_coap_server, CONFIG_LICHEN_COAP_SERVER_LOG_LEVEL);
 
@@ -39,8 +43,8 @@ static uint16_t s_coap_port = 5683;
 /* Registered handlers */
 static struct lichen_coap_server_handlers s_handlers;
 
-/* Response buffer (shared, handlers are serialized by CoAP service) */
-static uint8_t s_response_buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+/* Response buffer size for stack allocation */
+#define COAP_RESPONSE_BUF_SIZE CONFIG_COAP_SERVER_MESSAGE_SIZE
 
 /*
  * Helper to build a CBOR response.
@@ -52,6 +56,7 @@ static int build_response(struct coap_resource *resource,
 			  const uint8_t *payload, size_t payload_len)
 {
 	struct coap_packet response;
+	uint8_t response_buf[COAP_RESPONSE_BUF_SIZE];
 	uint8_t token[COAP_TOKEN_MAX_LEN];
 	uint16_t id;
 	uint8_t tkl;
@@ -60,7 +65,7 @@ static int build_response(struct coap_resource *resource,
 	id = coap_header_get_id(request);
 	tkl = coap_header_get_token(request, token);
 
-	ret = coap_packet_init(&response, s_response_buf, sizeof(s_response_buf),
+	ret = coap_packet_init(&response, response_buf, sizeof(response_buf),
 			       COAP_VERSION_1, COAP_TYPE_ACK, tkl, token,
 			       code, id);
 	if (ret < 0) {
@@ -102,6 +107,7 @@ static int send_ack(struct coap_resource *resource,
 		    uint8_t code)
 {
 	struct coap_packet response;
+	uint8_t response_buf[COAP_RESPONSE_BUF_SIZE];
 	uint8_t token[COAP_TOKEN_MAX_LEN];
 	uint16_t id;
 	uint8_t tkl;
@@ -110,7 +116,7 @@ static int send_ack(struct coap_resource *resource,
 	id = coap_header_get_id(request);
 	tkl = coap_header_get_token(request, token);
 
-	ret = coap_packet_init(&response, s_response_buf, sizeof(s_response_buf),
+	ret = coap_packet_init(&response, response_buf, sizeof(response_buf),
 			       COAP_VERSION_1, COAP_TYPE_ACK, tkl, token,
 			       code, id);
 	if (ret < 0) {
@@ -120,29 +126,84 @@ static int send_ack(struct coap_resource *resource,
 	return coap_resource_send(resource, &response, addr, addr_len, NULL);
 }
 
-/*
- * /status resource - GET returns node status as CBOR
- */
-static int status_get(struct coap_resource *resource,
-		      struct coap_packet *request,
-		      struct sockaddr *addr, socklen_t addr_len)
-{
-	uint8_t payload[LICHEN_COAP_SERVER_MAX_PAYLOAD];
-	int len;
-
-	if (s_handlers.status == NULL) {
-		return COAP_RESPONSE_CODE_NOT_FOUND;
+int lichen_coap_senml_respond(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len, uint8_t resp_code, const uint8_t *payload, size_t payload_len) {
+	struct coap_packet resp;
+	uint8_t buf[COAP_RESPONSE_BUF_SIZE];
+	uint8_t token[COAP_TOKEN_MAX_LEN];
+	uint8_t tkl = coap_header_get_token(request, token);
+	uint8_t type = (coap_header_get_type(request) == COAP_TYPE_CON) ? COAP_TYPE_ACK : COAP_TYPE_NON_CON;
+	int r = coap_packet_init(&resp, buf, sizeof(buf), COAP_VERSION_1, type, tkl, token, resp_code, coap_header_get_id(request));
+	if (r < 0) {
+		LOG_ERR("coap_packet_init failed: %d", r);
+		return r;
 	}
-
-	len = s_handlers.status(payload, sizeof(payload));
-	if (len < 0) {
-		LOG_ERR("Status callback failed: %d", len);
-		return COAP_RESPONSE_CODE_INTERNAL_ERROR;
+	if (payload && payload_len) {
+		r = coap_append_option_int(&resp, COAP_OPTION_CONTENT_FORMAT, SENML_CBOR_CONTENT_FORMAT);
+		if (r < 0) {
+			LOG_ERR("coap_append_option_int failed: %d", r);
+			return r;
+		}
+		r = coap_packet_append_payload_marker(&resp);
+		if (r < 0) {
+			LOG_ERR("coap_packet_append_payload_marker failed: %d", r);
+			return r;
+		}
+		r = coap_packet_append_payload(&resp, payload, payload_len);
+		if (r < 0) {
+			LOG_ERR("coap_packet_append_payload failed: %d", r);
+			return r;
+		}
 	}
-
-	return build_response(resource, request, addr, addr_len,
-			      COAP_RESPONSE_CODE_CONTENT, payload, len);
+	r = coap_resource_send(resource, &resp, addr, addr_len, NULL);
+	if (r < 0) {
+		LOG_ERR("coap_resource_send failed: %d", r);
+	}
+	return r;
 }
+
+int lichen_coap_respond(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len, uint8_t resp_code, const uint8_t *payload, size_t payload_len, struct oscore_ctx *oscore_ctx, const uint8_t *request_piv, size_t request_piv_len)
+{
+	if (oscore_ctx != NULL) {
+		uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+		struct coap_packet resp;
+		int r = coap_oscore_protect_response(oscore_ctx, request_piv, request_piv_len, request, resp_code, payload, payload_len, &resp, buf, sizeof(buf));
+		if (r < 0) {
+			LOG_ERR("coap_oscore_protect_response failed: %d", r);
+			return r;
+		}
+		r = coap_resource_send(resource, &resp, addr, addr_len, NULL);
+		if (r < 0) {
+			LOG_ERR("coap_resource_send failed: %d", r);
+		}
+		return r;
+	}
+	return lichen_coap_senml_respond(resource, request, addr, addr_len, resp_code, payload, payload_len);
+}
+
+	/*
+	 * /status resource - GET returns node status as CBOR
+	 */
+	static int status_get(struct coap_resource *resource,
+			      struct coap_packet *request,
+			      struct sockaddr *addr, socklen_t addr_len)
+	{
+		uint8_t payload[LICHEN_COAP_SERVER_MAX_PAYLOAD];
+		int len;
+
+		if (s_handlers.status == NULL) {
+			return COAP_RESPONSE_CODE_NOT_FOUND;
+		}
+
+		len = s_handlers.status(payload, sizeof(payload));
+		if (len < 0) {
+			LOG_ERR("Status callback failed: %d", len);
+			return COAP_RESPONSE_CODE_INTERNAL_ERROR;
+		}
+
+		return build_response(resource, request, addr, addr_len,
+				      COAP_RESPONSE_CODE_CONTENT, payload, len);
+	}
+
 
 static const char * const status_path[] = { "status", NULL };
 static const char * const status_attrs[] = {
@@ -217,7 +278,8 @@ static const char * const config_attrs[] = {
 	NULL,
 };
 
-COAP_RESOURCE_DEFINE(lichen_config, lichen_coap_server, {
+/* coap_config.c already owns the global symbol lichen_config. */
+COAP_RESOURCE_DEFINE(lichen_server_config, lichen_coap_server, {
 	.get = config_get,
 	.put = config_put,
 	.path = config_path,
@@ -273,7 +335,10 @@ static int key_get(struct coap_resource *resource,
 		   struct sockaddr *addr, socklen_t addr_len)
 {
 	uint8_t pubkey[32];
-	uint8_t payload[64]; /* CBOR map with fingerprint and pubkey */
+	/* CBOR map with fingerprint and pubkey: 1 (map) + 12 + 17 (fingerprint)
+	 * + 7 + 34 (pubkey) = 71 bytes encoded below.
+	 */
+	uint8_t payload[72];
 	int ret;
 	size_t idx = 0;
 
@@ -372,6 +437,7 @@ static int msg_inbox_post(struct coap_resource *resource,
 			  struct sockaddr *addr, socklen_t addr_len)
 {
 	struct coap_packet response;
+	uint8_t response_buf[COAP_RESPONSE_BUF_SIZE];
 	uint8_t token[COAP_TOKEN_MAX_LEN];
 	uint16_t id;
 	uint8_t tkl;
@@ -399,7 +465,7 @@ static int msg_inbox_post(struct coap_resource *resource,
 	id = coap_header_get_id(request);
 	tkl = coap_header_get_token(request, token);
 
-	ret = coap_packet_init(&response, s_response_buf, sizeof(s_response_buf),
+	ret = coap_packet_init(&response, response_buf, sizeof(response_buf),
 			       COAP_VERSION_1, COAP_TYPE_ACK, tkl, token,
 			       COAP_RESPONSE_CODE_CREATED, id);
 	if (ret < 0) {
@@ -455,8 +521,7 @@ COAP_RESOURCE_DEFINE(lichen_msg_inbox, lichen_coap_server, {
  * CoAP server automatically handles /.well-known/core requests using
  * the resources registered with this service.
  */
-COAP_SERVICE_DEFINE(lichen_coap_server, NULL, &s_coap_port,
-		    COAP_SERVICE_AUTOSTART);
+COAP_SERVICE_DEFINE(lichen_coap_server, NULL, &s_coap_port, 0);
 
 int lichen_coap_server_init(const struct lichen_coap_server_handlers *handlers)
 {
@@ -467,7 +532,7 @@ int lichen_coap_server_init(const struct lichen_coap_server_handlers *handlers)
 	}
 
 	LOG_INF("CoAP server initialized on port %u", s_coap_port);
-	return 0;
+	return lichen_coap_server_start();
 }
 
 int lichen_coap_server_start(void)

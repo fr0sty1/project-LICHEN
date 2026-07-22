@@ -431,7 +431,7 @@ class SimulatorAPI:
         if direction not in ("tx", "rx", "both"):
             return _error_response(f"Invalid direction: {direction}. Must be 'tx', 'rx', or 'both'")
 
-        rule = DropRule(node_id=node_id, direction=direction)  # type: ignore[arg-type]
+        rule = DropRule(node_id=node_id, direction=direction)
         engine.add_rule(rule)
 
         return JSONResponse({"rule_id": rule.id, "type": "drop"})

@@ -1,0 +1,99 @@
+{
+  "id": "project-LICHEN-v9qz",
+  "title": "Runtime-prove remaining puck boards",
+  "description": "Obtain independent runtime evidence for lichen/apps/puck on rak4631/nrf52840, nucleo_wl55jc, r1_neo/nrf52840, t1000_e/nrf52840, heltec_wifi_lora32_v3/esp32s3/procpu, t_deck/esp32s3/procpu, and ttgo_lora32/esp32/procpu. Use physical hardware or faithful existing Renode models where available; compile-only evidence is insufficient.",
+  "acceptance_criteria": "Each listed board has a WIN/FAIL result with exact build/run command, backend/device identity, full artifact hash, retained logs, late puck marker, and independent radio/protocol effect.",
+  "notes": "AUDIT EXECUTION 2026-07-16 supersedes BLOCKED classification for two rows. Puck RAK4631 FAIL: ELF 4ae3322d17d4561106f273109e88133028126d1bbc2da3f9893ce85a3f0848d9 built, connected, and transmitted four frames, but stalled after LICHEN puck starting and never emitted CoAP GET /status sent. Puck Nucleo WL55JC FAIL: after supplying missing CONFIG_LICHEN_COAP for the build attempt, link still failed before ELF on missing Renode radio device __device_dts_ord_87. Five other hardware rows remain BLOCKED; native32 remains separately under o4yi. Evidence manifest SHA-256 8def11add29a6a5f43ed88d52712db88d53755170df7626e988b50bafbc66fd4.\nFINAL ESP32-S3 ATTEMPTS 2026-07-16: Puck Heltec V3 FAIL, ELF 8a8c09d4650c8ee605f5b601a4679fea2a7acf0bd2ccde06ba8d510ed984aa46; skeletal Renode model produced no beacon, TX telemetry, simulator connection, or protocol TX. Puck T-Deck FAIL at compile: canonical config enables L2/CoAP code without CONFIG_LICHEN_COAP, so lichen/coap_client.h is unavailable and no ELF exists. Four puck rows remain BLOCKED: native32 under o4yi plus R1 Neo, T1000-E, and TTGO hardware. Superseding evidence manifest has 104 verified entries, SHA-256 a49d5fd7b6a9d47f064f5d13fb6ffad902be5d2948f11d25274ee834ddb8c7ef; credential scan passed.\nConcrete remediation: RAK4631 nRF startup failure -\u003e project-LICHEN-ynxn; Nucleo radio linkage failure -\u003e project-LICHEN-mvrx; Heltec ESP32-S3 execution failure -\u003e project-LICHEN-cy6c; T-Deck missing CoAP configuration -\u003e project-LICHEN-57sn.\nTARGET-LEVEL CLASSIFICATION ERRATUM: the Heltec skeletal Renode attempt is emulator-backend FAIL evidence but cannot prove hardware-target FAIL. Final puck rows include RAK4631 FAIL, Nucleo FAIL, T-Deck compile FAIL, tbeam_supreme FAIL, Heltec BLOCKED; T1000-E, R1 Neo, TTGO, and native32 also BLOCKED. project-LICHEN-cy6c tracks faithful Heltec evidence; project-LICHEN-mvrx now explicitly includes canonical Nucleo CoAP configuration.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T15:26:14.045737Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T18:21:00.336033Z",
+  "labels": [
+    "evidence-needed"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-v9qz",
+      "depends_on_id": "project-LICHEN-m5m1.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-16T15:26:14.199484Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-v9qz",
+      "depends_on_id": "project-LICHEN-io1k",
+      "type": "parent-child",
+      "created_at": "2026-07-16T19:39:50.772302Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-v9qz",
+      "depends_on_id": "project-LICHEN-5ix1.2",
+      "type": "blocks",
+      "created_at": "2026-07-16T19:41:52.949278Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-v9qz",
+      "depends_on_id": "project-LICHEN-5ix1.3",
+      "type": "blocks",
+      "created_at": "2026-07-16T19:41:53.556748Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-v9qz",
+      "depends_on_id": "project-LICHEN-57sn",
+      "type": "blocks",
+      "created_at": "2026-07-16T19:41:54.181953Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-v9qz",
+      "depends_on_id": "project-LICHEN-oqv7.3",
+      "type": "blocks",
+      "created_at": "2026-07-16T19:41:54.792308Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-v9qz",
+      "depends_on_id": "project-LICHEN-cy6c.1",
+      "type": "blocks",
+      "created_at": "2026-07-16T19:41:55.401333Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-v9qz",
+      "depends_on_id": "project-LICHEN-oqv7.5",
+      "type": "blocks",
+      "created_at": "2026-07-16T19:41:56.013736Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-v9qz",
+      "depends_on_id": "project-LICHEN-oqv7.6",
+      "type": "blocks",
+      "created_at": "2026-07-16T19:41:56.620692Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-v9qz",
+      "depends_on_id": "project-LICHEN-oqv7.7",
+      "type": "blocks",
+      "created_at": "2026-07-16T19:41:57.265986Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

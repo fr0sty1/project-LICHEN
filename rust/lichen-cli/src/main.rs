@@ -17,7 +17,7 @@
 //!   lichen position show
 //!   lichen rd list
 //!   lichen rd register --ep my-node --lt 3600
-//!   lichen rd delete <id>
+//!   lichen rd delete &lt;id&gt;
 
 mod commands;
 mod output;

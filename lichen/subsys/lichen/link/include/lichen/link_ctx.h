@@ -52,7 +52,7 @@ extern "C" {
 /** Ed25519 public key length (compressed point) */
 #define LICHEN_PK_LEN 32
 
-/** AES-128 link-layer key length */
+/** Retained legacy link-key length; encrypted link frames are unsupported */
 #define LICHEN_LINK_KEY_LEN 16
 
 /**
@@ -65,7 +65,7 @@ struct lichen_link_ctx {
 	uint8_t eui64[LICHEN_EUI64_LEN]; /**< Node's EUI-64 address */
 	uint8_t ed25519_sk[LICHEN_SK_LEN]; /**< Ed25519 secret key (clamped) */
 	uint8_t ed25519_pk[LICHEN_PK_LEN]; /**< Ed25519 public key */
-	uint8_t link_key[LICHEN_LINK_KEY_LEN]; /**< AES-128 key for link MIC */
+	uint8_t link_key[LICHEN_LINK_KEY_LEN]; /**< Retained legacy link key */
 	uint8_t epoch;    /**< Current epoch (key rotation counter) */
 	uint16_t tx_seq;  /**< TX sequence counter */
 	bool has_key;     /**< Whether keypair is loaded */
@@ -119,17 +119,53 @@ int lichen_link_load_key(struct lichen_link_ctx *_Nonnull ctx,
 int lichen_link_generate_key(struct lichen_link_ctx *_Nonnull ctx);
 
 /**
+ * @brief Derive a per-node seed from a base seed and an EUI-64.
+ *
+ * out_seed = SHA-512(base_seed || eui64)[0:32]. Deterministic: any node
+ * that knows base_seed and a peer's EUI-64 can derive that peer's seed
+ * (and via lichen_link_derive_pubkey() its public key).
+ *
+ * SECURITY: This is a domain-separation helper, not a key-strengthening
+ * one. If base_seed is public (e.g. the INSECURE dev-provisioning seed),
+ * every derived key is public too. Its purpose is to give distinct nodes
+ * distinct keypairs so signature verification attributes frames to the
+ * correct peer (see project-LICHEN-wp4o for the shared-key replay-window
+ * collision this prevents).
+ *
+ * @param[in]  base_seed 32-byte base seed
+ * @param[in]  eui64     Node's EUI-64 address
+ * @param[out] out_seed  Derived 32-byte seed
+ * @return 0 on success, -EINVAL on NULL parameters
+ */
+int lichen_link_derive_seed(const uint8_t base_seed[_Nonnull LICHEN_SEED_LEN],
+			    const uint8_t eui64[_Nonnull LICHEN_EUI64_LEN],
+			    uint8_t out_seed[_Nonnull LICHEN_SEED_LEN]);
+
+/**
+ * @brief Compute the public key for a seed without loading it.
+ *
+ * Uses the same derivation as lichen_link_load_key() (SHA-512 + clamp +
+ * scalar-base multiply), so the result equals the ed25519_pk that
+ * lichen_link_load_key() would install for the same seed. Does not touch
+ * any link context or retain the secret key.
+ *
+ * @param[in]  seed   32-byte seed
+ * @param[out] out_pk Ed25519 public key
+ * @return 0 on success, -EINVAL on NULL parameters
+ */
+int lichen_link_derive_pubkey(const uint8_t seed[_Nonnull LICHEN_SEED_LEN],
+			      uint8_t out_pk[_Nonnull LICHEN_PK_LEN]);
+
+/**
  * @brief Increment and return the next TX sequence number.
  *
  * The sequence number wraps from 0xFFFF to 0x0000. When this happens,
  * the epoch is incremented. If the epoch wraps from 255 to 0, the nonce
  * space is exhausted and this function returns an error.
  *
- * SECURITY: After 256 * 65536 = 16M frames, the nonce space is exhausted.
- * The nonce for AES-CCM is (eui64, epoch, seqnum), so continuing to TX
- * after nonce exhaustion would cause catastrophic nonce reuse. This
- * function sets ctx->nonce_exhausted and returns -EOVERFLOW when this
- * occurs. TX is blocked until key rotation clears the flag.
+ * SECURITY: After 256 * 65536 = 16M frames, the epoch/sequence space is
+ * exhausted. This function sets ctx->nonce_exhausted and returns -EOVERFLOW
+ * when this occurs. TX is blocked until key rotation clears the flag.
  *
  * @param[in,out] ctx    Link context
  * @param[out]    seqnum Pointer to receive the sequence number (on success)
@@ -160,23 +196,54 @@ int lichen_link_next_tx(struct lichen_link_ctx *_Nonnull ctx,
 /**
  * @brief Set the current epoch.
  *
- * The epoch is typically incremented when the TX sequence wraps or
- * when a new symmetric key is derived for encryption.
+ * The epoch is typically incremented when the TX sequence wraps.
  *
  * @param[in,out] ctx   Link context
  * @param[in]     epoch New epoch value
  */
 void lichen_link_set_epoch(struct lichen_link_ctx *_Nonnull ctx, uint8_t epoch);
 
+#ifdef CONFIG_LICHEN_LINK_EPOCH_PERSIST
 /**
- * @brief Load a 128-bit AES key for link-layer MIC computation.
+ * @brief Compute and persist this boot's TX epoch.
  *
- * This key is used for AES-CCM-64 MIC computation/verification on
- * link-layer frames. It is typically derived from a shared secret
- * or pre-shared key.
+ * Loads the epoch saved by the previous boot from the settings subsystem,
+ * advances it by one (with 8-bit wrap), persists the new value, and
+ * returns it. Idempotent within a boot: repeated calls return the same
+ * value without advancing or re-writing. Install the result with
+ * lichen_link_set_epoch() after lichen_link_init().
+ *
+ * Advancing by one keeps the node's (epoch, seqnum) counter monotonically
+ * ahead of what peers remember in their replay windows, so frames after a
+ * reboot are not rejected as replays (lora_ipv6_mesh-3uhb).
+ *
+ * @return the TX epoch to use for this boot
+ */
+uint8_t lichen_link_epoch_advance_for_boot(void);
+
+/** Persist an epoch before it becomes live after a sequence wrap. */
+int lichen_link_epoch_persist(uint8_t epoch);
+
+#ifdef CONFIG_LICHEN_LINK_EPOCH_TEST_HOOKS
+/**
+ * @brief Test hook: clear the in-RAM boot-epoch cache (simulate a reboot).
+ *
+ * The persisted value in the settings backend is retained, so a following
+ * lichen_link_epoch_advance_for_boot() re-loads it and advances as if the
+ * node had rebooted. Testing only.
+ */
+void lichen_link_epoch_test_reset(void);
+#endif
+#endif /* CONFIG_LICHEN_LINK_EPOCH_PERSIST */
+
+/**
+ * @brief Load a retained legacy link key.
+ *
+ * Encrypted link frames are unsupported by the current wire profile; signed
+ * frames use the Schnorr-48 signature as their MIC.
  *
  * @param[in,out] ctx      Link context
- * @param[in]     link_key 16-byte AES-128 key
+ * @param[in]     link_key 16-byte retained legacy key
  * @return 0 on success, -EINVAL if ctx or link_key is NULL
  */
 int lichen_link_load_link_key(struct lichen_link_ctx *_Nonnull ctx,
@@ -191,6 +258,19 @@ int lichen_link_load_link_key(struct lichen_link_ctx *_Nonnull ctx,
  *
  * Call this before freeing a context or when keys are no longer needed.
  *
+ * @warning THREAD SAFETY: This function has single-owner semantics. The caller
+ *          MUST ensure no concurrent operations (TX, RX, key loading) are in
+ *          progress on this context before calling cleanup. Calling cleanup
+ *          while another thread holds the context lock will result in
+ *          undefined behavior: keys may be wiped mid-operation, corrupting
+ *          cryptographic output or causing information leakage.
+ *
+ *          Typical safe usage patterns:
+ *          1. Shutdown: Stop all TX/RX threads before calling cleanup
+ *          2. Key rotation: Use atomic key replacement (load_key) instead
+ *             of cleanup + load_key sequence
+ *          3. Single-threaded: No concern if context is thread-local
+ *
  * @note The eui64 field is intentionally NOT cleared. The EUI-64 is the
  *       node's network identity and is not secret material. Preserving it
  *       allows the context to be reused with new keys without re-initialization.
@@ -199,6 +279,39 @@ int lichen_link_load_link_key(struct lichen_link_ctx *_Nonnull ctx,
  * @param[in,out] ctx Link context to clean up (may be NULL, no-op)
  */
 void lichen_link_cleanup(struct lichen_link_ctx *_Nullable ctx);
+
+/**
+ * @brief Atomically copy public identity data from a link context.
+ *
+ * Copies the node's EUI-64 and public key under the context's internal lock,
+ * preventing races with lichen_link_cleanup() or lichen_link_load_key().
+ * Use this instead of directly reading ctx fields when thread safety is required.
+ *
+ * @param[in]  ctx      Link context to read from
+ * @param[out] eui64    Buffer to receive EUI-64 (LICHEN_EUI64_LEN bytes), or NULL to skip
+ * @param[out] pk       Buffer to receive public key (LICHEN_PK_LEN bytes), or NULL to skip
+ * @param[out] has_key  Pointer to receive key availability flag, or NULL to skip
+ *
+ * @return 0 on success, -EINVAL if ctx is NULL, -ENOKEY if no key is loaded
+ */
+int lichen_link_copy_identity(const struct lichen_link_ctx *_Nonnull ctx,
+			      uint8_t eui64[_Nullable LICHEN_EUI64_LEN],
+			      uint8_t pk[_Nullable LICHEN_PK_LEN],
+			      bool *_Nullable has_key);
+
+/**
+ * @brief Derive Yggdrasil IPv6 address (02xx::/7) from Ed25519 public key.
+ *
+ * Matches Rust implementation exactly (SHA-512 bit selection for prefix and IID).
+ * Used for primary unicast address per spec/04-network.md and 06-security.md.
+ * Output is 16-byte IPv6 address buffer. Test vectors in test/vectors/.
+ *
+ * @param[in]  pk   32-byte Ed25519 public key
+ * @param[out] addr 16-byte Yggdrasil IPv6 address
+ * @return 0 on success, -EINVAL on NULL args
+ */
+int lichen_identity_ygg_addr_from_ed25519(const uint8_t pk[_Nonnull LICHEN_PK_LEN],
+					 uint8_t addr[_Nonnull 16]);
 
 #ifdef __cplusplus
 }

@@ -64,13 +64,14 @@ def to_dot(
     """Render the topology as Graphviz DOT (child -> parent edges, root on top)."""
     lines = [f"digraph {name} {{", "  rankdir=BT;"]
     for node in sorted(parents):
-        label = node
+        esc = node.replace("\\\\", "\\\\\\\\").replace('"', '\\\\"')
+        label = esc
         if ranks is not None and node in ranks:
-            label = f"{node}\\nrank={ranks[node]}"
+            label = f"{esc}\\nrank={ranks[node]}"
         attrs = f'label="{label}"'
         if parents[node] is None:
             attrs += ", shape=doublecircle"
-        lines.append(f'  "{node}" [{attrs}];')
+        lines.append(f'  "{esc}" [{attrs}];')
     for node in sorted(parents):
         parent = parents[node]
         if parent is not None:

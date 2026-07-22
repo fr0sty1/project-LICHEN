@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-2auf.6",
+  "title": "Rust RPL: remove or update stale inadmissible parents",
+  "description": "Review found that dodag.rs returns on an inbound rank that is no longer admissible without removing or invalidating an existing parent entry, leaving stale lower rank data usable by hysteresis. Update parent state consistently and add an inbound rank regression test.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-15T04:49:36.669453Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-15T04:52:09.775214Z",
+  "closed_at": "2026-07-15T04:52:09.775214Z",
+  "close_reason": "Removed equal-or-higher-rank neighbor candidates before reselection and added an end-to-end regression for an accepted parent becoming inadmissible. Verified with cargo test -p lichen-rpl --features std and clippy -D warnings.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.6",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-15T04:49:36.683892Z"
+    }
+  ]
+}

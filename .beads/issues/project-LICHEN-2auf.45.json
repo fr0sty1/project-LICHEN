@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-2auf.45",
+  "title": "Repair Rust CoAP block and request IDs",
+  "description": "Implement RFC-aware Block2 offset validation and collision-resistant process-local MID/token generation. Do not transplant weak checkpoint wall-clock logic.",
+  "acceptance_criteria": "Legal SZX changes preserve offsets; gaps/overlaps reject; concurrent requests do not reuse MID/token pairs; clock failure cannot yield fixed IDs; tests/clippy and three reviews pass.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-17T19:09:53.867447Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-19T05:41:37.519976Z",
+  "started_at": "2026-07-19T05:27:53.368892Z",
+  "closed_at": "2026-07-19T05:41:37.519976Z",
+  "close_reason": "Implemented RFC-aware Block2 offset/SZX/state validation in 367e5da6b and randomized atomic process-local MID/token allocation in 1472cb78d. 23 default and 47 Tokio tests pass; strict all-feature Clippy passes; independent RFC/concurrency tests and three final reviews clean.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.45",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-17T19:09:53.988278Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

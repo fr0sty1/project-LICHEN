@@ -54,7 +54,7 @@ class RouteErrorManager:
         return [self._build_action(dest) for dest in sorted(dests, key=str)]
 
     def process_rerr(
-        self, rerr: RERR, from_neighbor: IPv6Address | str
+        self, rerr: RERR, from_neighbor: IPv6Address | str, now: int
     ) -> RerrAction | None:
         """Process a received RERR; return a propagated RERR action or None.
 
@@ -64,8 +64,8 @@ class RouteErrorManager:
         dest = to_ipv6(rerr.unreachable)
         from_neighbor = to_ipv6(from_neighbor)
 
-        grad = self.gradient.lookup(dest)
-        route = self.cache.lookup(dest)
+        grad = self.gradient.lookup(dest, now)
+        route = self.cache.lookup(dest, now)
         affected = (grad is not None and grad.next_hop == from_neighbor) or (
             route is not None and route.next_hop == from_neighbor
         )

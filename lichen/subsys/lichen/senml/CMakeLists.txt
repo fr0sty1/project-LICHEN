@@ -10,3 +10,6 @@ zephyr_library_sources(
 )
 
 zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+# senml.c uses the lichen/errno.h portability shim (under Zephyr it just
+# includes <errno.h>); it lives in the link subsystem's include tree.
+zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../link/include)

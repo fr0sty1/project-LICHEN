@@ -23,7 +23,6 @@ use ccm::{
 };
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use hkdf::Hkdf;
-use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest, Sha256};
 use x25519_dalek::{PublicKey, StaticSecret};
 use zeroize::{Zeroize, ZeroizeOnDrop};
@@ -127,9 +126,7 @@ fn edhoc_kdf(
         info.push_err(length as u8)?;
     }
 
-    if th.len() > 255 {
-        return Err(EdhocError::BufferTooSmall);
-    }
+    // TH as CBOR bstr
     if th.len() <= 23 {
         info.push_err(0x40 | th.len() as u8)?;
     } else {
@@ -138,10 +135,8 @@ fn edhoc_kdf(
     }
     info.extend_err(th)?;
 
+    // label as CBOR tstr
     let label_bytes = label.as_bytes();
-    if label_bytes.len() > 255 {
-        return Err(EdhocError::BufferTooSmall);
-    }
     if label_bytes.len() <= 23 {
         info.push_err(0x60 | label_bytes.len() as u8)?;
     } else {
@@ -178,19 +173,95 @@ fn compute_th(input: &[u8]) -> [u8; 32] {
     Sha256::digest(input).into()
 }
 
+/// Parse SUITES_I from CBOR per RFC 9528 Section 3.3.2.
+///
+/// SUITES_I can be either:
+/// - A single int (the selected suite)
+/// - An array of ints [selected_suite, ...other_supported_suites]
+///
+/// Returns (selected_suite, bytes_consumed).
+fn parse_suites_i(data: &[u8]) -> Result<(u8, usize), EdhocError> {
+    if data.is_empty() {
+        return Err(EdhocError::InvalidMessage);
+    }
+
+    let first = data[0];
+
+    // CBOR major type 0 (unsigned int): 0x00-0x17 (0-23), 0x18 (1-byte follow)
+    if first <= 0x17 {
+        // Direct int 0-23
+        return Ok((first, 1));
+    } else if first == 0x18 {
+        // 1-byte follow
+        if data.len() < 2 {
+            return Err(EdhocError::InvalidMessage);
+        }
+        return Ok((data[1], 2));
+    }
+
+    // CBOR major type 4 (array): 0x80-0x97 (array of 0-23 items), 0x98 (1-byte length)
+    if (0x80..=0x97).contains(&first) {
+        let arr_len = (first - 0x80) as usize;
+        if arr_len == 0 {
+            return Err(EdhocError::InvalidMessage); // Empty array not valid
+        }
+        // Parse first element (selected suite)
+        if data.len() < 2 {
+            return Err(EdhocError::InvalidMessage);
+        }
+        let elem = data[1];
+        if elem <= 0x17 {
+            // Count bytes: 1 (array header) + arr_len (each int 0-23 is 1 byte)
+            // We only support suite values 0-23 for simplicity
+            Ok((elem, 1 + arr_len))
+        } else if elem == 0x18 && data.len() >= 3 {
+            // First element is 1-byte int
+            // Remaining elements assumed to be 1-byte each
+            Ok((data[2], 1 + 1 + (arr_len - 1) + 1))
+        } else {
+            Err(EdhocError::InvalidMessage)
+        }
+    } else if first == 0x98 {
+        // Array with 1-byte length
+        if data.len() < 3 {
+            return Err(EdhocError::InvalidMessage);
+        }
+        let arr_len = data[1] as usize;
+        if arr_len == 0 {
+            return Err(EdhocError::InvalidMessage);
+        }
+        let elem = data[2];
+        if elem <= 0x17 {
+            // 1 (0x98) + 1 (length) + arr_len (elements)
+            Ok((elem, 2 + arr_len))
+        } else {
+            Err(EdhocError::InvalidMessage)
+        }
+    } else {
+        Err(EdhocError::InvalidMessage)
+    }
+}
+
 /// EDHOC Initiator (client role).
 ///
 /// Implements EDHOC method 0 (SIGN_SIGN) with Suite 0.
+// SECURITY: SigningKey and StaticSecret must be zeroized on drop.
+// SigningKey and StaticSecret implement ZeroizeOnDrop themselves.
+#[derive(Zeroize, ZeroizeOnDrop)]
 pub struct EdhocInitiator {
-    /// Our Ed25519 signing key.
+    /// Our Ed25519 signing key (implements ZeroizeOnDrop).
+    #[zeroize(skip)]
     signing_key: SigningKey,
     /// Our Ed25519 public key.
+    #[zeroize(skip)]
     pubkey: VerifyingKey,
     /// Our connection identifier.
     c_i: u8,
-    /// Ephemeral X25519 secret (consumed after use).
+    /// Ephemeral X25519 secret (implements ZeroizeOnDrop).
+    #[zeroize(skip)]
     eph_secret: Option<StaticSecret>,
     /// Ephemeral X25519 public key.
+    #[zeroize(skip)]
     eph_public: PublicKey,
     /// Protocol state.
     state: InitiatorState,
@@ -211,6 +282,8 @@ struct InitiatorState {
     th_2: [u8; 32],
     th_3: [u8; 32],
     th_4: [u8; 32],
+    /// True when handshake completed (process_message_2 succeeded).
+    completed: bool,
 }
 
 impl Default for InitiatorState {
@@ -225,6 +298,7 @@ impl Default for InitiatorState {
             th_2: [0; 32],
             th_3: [0; 32],
             th_4: [0; 32],
+            completed: false,
         }
     }
 }
@@ -232,23 +306,15 @@ impl Default for InitiatorState {
 impl EdhocInitiator {
     /// Create a new EDHOC initiator.
     ///
-    /// The ephemeral X25519 key is generated using the provided RNG for
-    /// forward secrecy. This design is idiomatic no_std: the caller supplies
-    /// a platform-appropriate CSPRNG (e.g. `&mut rand_core::OsRng` on std,
-    /// or a wrapper around `lichen_hal::Rng` / hardware TRNG on embedded).
-    ///
     /// # Arguments
-    /// * `seed` - Ed25519 seed (32 bytes) for long-term signing key
-    /// * `c_i` - Connection identifier (1 byte, typically 0-23)
-    /// * `rng` - &mut impl (RngCore + CryptoRng) for ephemeral X25519 key (no_std compatible CSPRNG ensuring forward secrecy)
-    pub fn new<R: RngCore + CryptoRng>(seed: [u8; 32], c_i: u8, rng: &mut R) -> Self {
+    /// * `seed` - Ed25519 seed (32 bytes)
+    /// * `c_i` - Connection identifier (1 byte)
+    pub fn new(seed: [u8; 32], c_i: u8) -> Self {
         let signing_key = SigningKey::from_bytes(&seed);
         let pubkey = signing_key.verifying_key();
 
-        // Generate ephemeral X25519 key pair using provided RNG.
-        // Matches hal::Rng fill_bytes pattern but uses rand_core::RngCore + CryptoRng
-        // for security (ephemeral keys must be unpredictable). Consumed after first use.
-        let eph_secret = StaticSecret::random_from_rng(rng);
+        // Generate ephemeral X25519 key pair
+        let eph_secret = StaticSecret::random_from_rng(rand_core::OsRng);
         let eph_public = PublicKey::from(&eph_secret);
 
         Self {
@@ -266,7 +332,7 @@ impl EdhocInitiator {
     /// message_1 = (METHOD_CORR, SUITES_I, G_X, C_I)
     pub fn create_message_1(&mut self) -> Result<heapless::Vec<u8, 64>, EdhocError> {
         // METHOD_CORR = method * 4 + corr (method=0, corr=1 for CoAP)
-        let method_corr: u8 = 0 * 4 + 1;
+        let method_corr: u8 = 1;
 
         // Build message_1 as CBOR sequence
         let mut msg1 = heapless::Vec::<u8, 64>::new();
@@ -537,15 +603,18 @@ impl EdhocInitiator {
             NONCE_LEN,
         )?;
 
-        // A_3 (AAD) - simplified Encrypt0 structure
-        let mut a_3 = heapless::Vec::<u8, 64>::new();
+        // A_3 per RFC 9528 4.4.2: external_aad = TH_3 || CRED_I (64 bytes)
+        let mut ext_aad = [0u8; 64];
+        ext_aad[0..32].copy_from_slice(&self.state.th_3);
+        ext_aad[32..64].copy_from_slice(self.pubkey.as_bytes());
+        let mut a_3 = heapless::Vec::<u8, 96>::new();
         a_3.push_err(0x83)?; // array of 3
         a_3.push_err(0x68)?; // tstr "Encrypt0"
         a_3.extend_err(b"Encrypt0")?;
         a_3.push_err(0x40)?; // empty bstr
-        a_3.push_err(0x58)?; // bstr TH_3
-        a_3.push_err(32)?;
-        a_3.extend_err(&self.state.th_3)?;
+        a_3.push_err(0x58)?; // bstr (64 bytes)
+        a_3.push_err(64)?;
+        a_3.extend_err(&ext_aad)?;
 
         // Encrypt in place (PLAINTEXT_3 -> CIPHERTEXT_3)
         let cipher = AesCcm::new_from_slice(&k_3).map_err(|_| EdhocError::InvalidState)?;
@@ -570,11 +639,24 @@ impl EdhocInitiator {
         th_4_input.extend_err(&ciphertext_3)?;
         self.state.th_4 = compute_th(&th_4_input);
 
+        // Mark handshake as completed - export_oscore now safe to call
+        self.state.completed = true;
+
         Ok(ciphertext_3)
     }
 
     /// Export OSCORE security context.
+    ///
+    /// # Errors
+    /// Returns `OscoreError::NoContext` if called before handshake completes
+    /// (i.e., before `process_message_2` succeeds).
     pub fn export_oscore(&self) -> Result<Context, OscoreError> {
+        // SECURITY: Reject export before handshake completes. Without this check,
+        // keys would be derived from zeroed PRK/TH state, producing deterministic
+        // but wrong keys that won't match the peer's keys.
+        if !self.state.completed {
+            return Err(OscoreError::NoContext);
+        }
         // OSCORE Master Secret = EDHOC-KDF(PRK_4e3m, TH_4, "OSCORE_Master_Secret", h'', 16)
         let master_secret_vec = edhoc_kdf(
             &self.state.prk_4e3m,
@@ -610,16 +692,23 @@ impl EdhocInitiator {
 }
 
 /// EDHOC Responder (server role).
+// SECURITY: SigningKey and StaticSecret must be zeroized on drop.
+// SigningKey and StaticSecret implement ZeroizeOnDrop themselves.
+#[derive(Zeroize, ZeroizeOnDrop)]
 pub struct EdhocResponder {
-    /// Our Ed25519 signing key.
+    /// Our Ed25519 signing key (implements ZeroizeOnDrop).
+    #[zeroize(skip)]
     signing_key: SigningKey,
     /// Our Ed25519 public key.
+    #[zeroize(skip)]
     pubkey: VerifyingKey,
     /// Our connection identifier.
     c_r: u8,
-    /// Ephemeral X25519 secret.
+    /// Ephemeral X25519 secret (implements ZeroizeOnDrop).
+    #[zeroize(skip)]
     eph_secret: Option<StaticSecret>,
     /// Ephemeral X25519 public key.
+    #[zeroize(skip)]
     eph_public: PublicKey,
     /// Protocol state.
     state: ResponderState,
@@ -640,6 +729,8 @@ struct ResponderState {
     th_2: [u8; 32],
     th_3: [u8; 32],
     th_4: [u8; 32],
+    /// True when handshake completed (process_message_3 succeeded).
+    completed: bool,
 }
 
 impl Default for ResponderState {
@@ -654,21 +745,18 @@ impl Default for ResponderState {
             th_2: [0; 32],
             th_3: [0; 32],
             th_4: [0; 32],
+            completed: false,
         }
     }
 }
 
 impl EdhocResponder {
     /// Create a new EDHOC responder.
-    ///
-    /// See `EdhocInitiator::new` for RNG parameter rationale (no_std
-    /// compatibility, fresh ephemerals per handshake, CSPRNG for security).
-    pub fn new<R: RngCore + CryptoRng>(seed: [u8; 32], c_r: u8, rng: &mut R) -> Self {
+    pub fn new(seed: [u8; 32], c_r: u8) -> Self {
         let signing_key = SigningKey::from_bytes(&seed);
         let pubkey = signing_key.verifying_key();
 
-        // Generate ephemeral X25519 key pair using provided RNG (no_std + test determinism).
-        let eph_secret = StaticSecret::random_from_rng(rng);
+        let eph_secret = StaticSecret::random_from_rng(rand_core::OsRng);
         let eph_public = PublicKey::from(&eph_secret);
 
         Self {
@@ -692,22 +780,31 @@ impl EdhocResponder {
             return Err(EdhocError::InvalidMessage);
         }
 
-        if msg1[0] != 1 {
-            return Err(EdhocError::InvalidMessage);
-        }
+        let _method_corr = msg1[0];
 
-        if suites_i != SUITE_0 {
+        // Parse SUITES_I per RFC 9528 Section 3.3.2:
+        // - Single int: the selected suite
+        // - Array of ints: [selected_suite, ...other_supported_suites]
+        let (selected_suite, suites_i_end) = parse_suites_i(&msg1[1..])?;
+
+        if selected_suite != SUITE_0 {
             return Err(EdhocError::UnsupportedSuite);
         }
 
-        // Parse G_X (32-byte bstr)
-        if msg1[2] != 0x58 || msg1[3] != 32 {
+        // Parse G_X (32-byte bstr) - starts after METHOD_CORR + SUITES_I
+        let g_x_start = 1 + suites_i_end;
+        if msg1.len() < g_x_start + 2 + 32 + 1 {
             return Err(EdhocError::InvalidMessage);
         }
-        self.state.g_x.copy_from_slice(&msg1[4..36]);
+        if msg1[g_x_start] != 0x58 || msg1[g_x_start + 1] != 32 {
+            return Err(EdhocError::InvalidMessage);
+        }
+        self.state
+            .g_x
+            .copy_from_slice(&msg1[g_x_start + 2..g_x_start + 2 + 32]);
 
         // Parse C_I
-        let rest = &msg1[36..];
+        let rest = &msg1[g_x_start + 2 + 32..];
         self.state.c_i = if !rest.is_empty() {
             if rest[0] <= 23 {
                 rest[0]
@@ -746,7 +843,7 @@ impl EdhocResponder {
         let mut context_2 = heapless::Vec::<u8, 128>::new();
         context_2.push_err(0x58)?;
         context_2.push_err(32)?;
-        context_2.extend_err(self.pubkey.as_bytes())?;  // ID_CRED_R
+        context_2.extend_err(self.pubkey.as_bytes())?; // ID_CRED_R
         context_2.push_err(0x58)?;
         context_2.push_err(32)?;
         context_2.extend_err(self.pubkey.as_bytes())?; // CRED_R
@@ -862,15 +959,18 @@ impl EdhocResponder {
             NONCE_LEN,
         )?;
 
-        // A_3 (AAD)
-        let mut a_3 = heapless::Vec::<u8, 64>::new();
+        // A_3 per RFC 9528 4.4.2: external_aad = TH_3 || CRED_I (64 bytes)
+        let mut ext_aad = [0u8; 64];
+        ext_aad[0..32].copy_from_slice(&self.state.th_3);
+        ext_aad[32..64].copy_from_slice(peer_pubkey);
+        let mut a_3 = heapless::Vec::<u8, 96>::new();
         a_3.push_err(0x83)?;
         a_3.push_err(0x68)?;
         a_3.extend_err(b"Encrypt0")?;
         a_3.push_err(0x40)?;
         a_3.push_err(0x58)?;
-        a_3.push_err(32)?;
-        a_3.extend_err(&self.state.th_3)?;
+        a_3.push_err(64)?;
+        a_3.extend_err(&ext_aad)?;
 
         // Decrypt CIPHERTEXT_3
         if ciphertext_3.len() < TAG_LEN {
@@ -956,11 +1056,25 @@ impl EdhocResponder {
         th_4_input.extend_err(ciphertext_3)?;
         self.state.th_4 = compute_th(&th_4_input);
 
+        // Mark handshake as completed - export_oscore now safe to call
+        self.state.completed = true;
+
         Ok(())
     }
 
     /// Export OSCORE security context.
+    ///
+    /// # Errors
+    /// Returns `OscoreError::NoContext` if called before handshake completes
+    /// (i.e., before `process_message_3` succeeds).
     pub fn export_oscore(&self) -> Result<Context, OscoreError> {
+        // SECURITY: Reject export before handshake completes. Without this check,
+        // keys would be derived from zeroed PRK/TH state, producing deterministic
+        // but wrong keys that won't match the peer's keys.
+        if !self.state.completed {
+            return Err(OscoreError::NoContext);
+        }
+
         let master_secret_vec = edhoc_kdf(
             &self.state.prk_4e3m,
             &self.state.th_4,
@@ -996,78 +1110,25 @@ impl EdhocResponder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand_core::{CryptoRng, Error, RngCore};
-
-    /// Deterministic test RNG reusing xorshift from lichen-embassy::mock::MockRng.
-    /// Implements RngCore for no_std test compatibility. Fixed seed ensures
-    /// reproducible test vectors (no dead code).
-    struct TestRng(u64);
-
-    impl TestRng {
-        fn new() -> Self {
-            Self(0xDEADBEEF)
-        }
-    }
-
-    impl RngCore for TestRng {
-        fn next_u32(&mut self) -> u32 {
-            let mut x = self.0;
-            x ^= x << 13;
-            x ^= x >> 7;
-            x ^= x << 17;
-            self.0 = x;
-            x as u32
-        }
-
-        fn next_u64(&mut self) -> u64 {
-            let mut x = self.0;
-            x ^= x << 13;
-            x ^= x >> 7;
-            x ^= x << 17;
-            self.0 = x;
-            x
-        }
-
-        fn fill_bytes(&mut self, dest: &mut [u8]) {
-            let mut seed = self.0;
-            for byte in dest.iter_mut() {
-                seed ^= seed << 13;
-                seed ^= seed >> 7;
-                seed ^= seed << 17;
-                *byte = seed as u8;
-            }
-            self.0 = seed;
-        }
-
-        fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
-            self.fill_bytes(dest);
-            Ok(())
-        }
-    }
-
-    impl CryptoRng for TestRng {}
 
     #[test]
     fn test_initiator_creation() {
         let seed = [0x01u8; 32];
-        let mut rng = TestRng::new();
-        let initiator = EdhocInitiator::new(seed, 0x00, &mut rng);
+        let initiator = EdhocInitiator::new(seed, 0x00);
         assert_eq!(initiator.c_i, 0x00);
     }
 
     #[test]
     fn test_responder_creation() {
         let seed = [0x01u8; 32];
-        let mut rng = TestRng::new();
-        let responder = EdhocResponder::new(seed, 0x01, &mut rng);
+        let responder = EdhocResponder::new(seed, 0x01);
         assert_eq!(responder.c_r, 0x01);
     }
 
     #[test]
     fn test_message_1_creation() {
         let seed = [0x01u8; 32];
-        let mut rng = TestRng::new();
-        let mut initiator = EdhocInitiator::new(seed, 0x05, &mut rng);
+        let mut initiator = EdhocInitiator::new(seed, 0x05);
         let msg1 = initiator.create_message_1().unwrap();
 
         // Check basic structure: METHOD_CORR, SUITE, G_X, C_I
@@ -1085,20 +1146,23 @@ mod tests {
         // Create initiator and responder with different seeds
         let initiator_seed = [0x11u8; 32];
         let responder_seed = [0x22u8; 32];
-        let mut rng = TestRng::new();
 
-        let mut initiator = EdhocInitiator::new(initiator_seed, 0x00, &mut rng);
-        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng);
+        let mut initiator = EdhocInitiator::new(initiator_seed, 0x00);
+        let mut responder = EdhocResponder::new(responder_seed, 0x01);
 
         // Get public keys for verification
         let initiator_pubkey = initiator.pubkey.to_bytes();
         let responder_pubkey = responder.pubkey.to_bytes();
 
         // Step 1: Initiator creates Message 1
-        let msg1 = initiator.create_message_1().expect("create_message_1 failed");
+        let msg1 = initiator
+            .create_message_1()
+            .expect("create_message_1 failed");
 
         // Step 2: Responder processes Message 1, creates Message 2
-        let msg2 = responder.process_message_1(&msg1).expect("process_message_1 failed");
+        let msg2 = responder
+            .process_message_1(&msg1)
+            .expect("process_message_1 failed");
 
         // Step 3: Initiator processes Message 2, creates Message 3
         let msg3 = initiator
@@ -1111,8 +1175,12 @@ mod tests {
             .expect("process_message_3 failed");
 
         // Step 5: Both export OSCORE contexts
-        let mut initiator_ctx = initiator.export_oscore().expect("initiator export_oscore failed");
-        let mut responder_ctx = responder.export_oscore().expect("responder export_oscore failed");
+        let mut initiator_ctx = initiator
+            .export_oscore()
+            .expect("initiator export_oscore failed");
+        let mut responder_ctx = responder
+            .export_oscore()
+            .expect("responder export_oscore failed");
 
         // Step 6: Verify contexts can communicate via functional roundtrip test.
         // This is more robust than comparing raw keys - it proves the derived
@@ -1146,7 +1214,14 @@ mod tests {
         let resp_payload: &[u8] = b"hello from responder";
 
         let (resp_ciphertext, resp_oscore_opt) = responder_ctx
-            .protect_response(resp_code, resp_options, resp_payload, request_kid, request_piv, false)
+            .protect_response(
+                resp_code,
+                resp_options,
+                resp_payload,
+                request_kid,
+                request_piv,
+                false,
+            )
             .expect("responder protect_response failed");
 
         let (recv_resp_code, recv_resp_options, recv_resp_payload) = initiator_ctx
@@ -1204,9 +1279,7 @@ mod tests {
     #[test]
     fn test_responder_accepts_suites_i_array() {
         let responder_seed = [0x22u8; 32];
-        let mut rng = TestRng::new();
-        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng);
-        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rand_core::OsRng);
+        let mut responder = EdhocResponder::new(responder_seed, 0x01);
 
         // Build a Message 1 with SUITES_I as array [0, 2]
         // Format: METHOD_CORR (1) | SUITES_I (array) | G_X (bstr 32) | C_I
@@ -1235,9 +1308,7 @@ mod tests {
     #[test]
     fn test_responder_rejects_unsupported_suite_in_array() {
         let responder_seed = [0x22u8; 32];
-        let mut rng = TestRng::new();
-        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng);
-        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rand_core::OsRng);
+        let mut responder = EdhocResponder::new(responder_seed, 0x01);
 
         // Build a Message 1 with SUITES_I as array [2, 0] - Suite 2 selected
         let mut msg1 = heapless::Vec::<u8, 64>::new();
@@ -1260,12 +1331,9 @@ mod tests {
     fn test_export_before_handshake_returns_error() {
         use crate::OscoreError;
 
-        let mut rng = TestRng::new();
-
         // Initiator: export_oscore before process_message_2
         let initiator_seed = [0x11u8; 32];
-        let mut initiator = EdhocInitiator::new(initiator_seed, 0x00, &mut rng);
-        let mut initiator = EdhocInitiator::new(initiator_seed, 0x00, &mut rand_core::OsRng);
+        let mut initiator = EdhocInitiator::new(initiator_seed, 0x00);
         let _msg1 = initiator.create_message_1().unwrap();
         // Handshake incomplete - should fail
         assert!(
@@ -1275,8 +1343,7 @@ mod tests {
 
         // Responder: export_oscore before process_message_3
         let responder_seed = [0x22u8; 32];
-        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng);
-        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rand_core::OsRng);
+        let mut responder = EdhocResponder::new(responder_seed, 0x01);
         // Even after process_message_1, handshake is incomplete
         let _msg2 = responder.process_message_1(&_msg1).unwrap();
         assert!(

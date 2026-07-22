@@ -1,6 +1,6 @@
 / {
 	chosen {
-		/* Standalone — linked directly to boot_partition (0x27000), no MCUboot */
+		/* Standalone - linked directly to boot_partition (0x1000), no MCUboot */
 		zephyr,code-partition = &boot_partition;
 	};
 };
