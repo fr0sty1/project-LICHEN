@@ -53,5 +53,8 @@ int lichen_rpl_root_set_prefix(struct lichen_rpl_root *root, const uint8_t *pref
 	if (root == NULL || prefix == NULL || len > 128) return -EINVAL;
 	memcpy(root->prefix, prefix, 16);
 	root->prefix_len = len;
+	if (len >= 64) {
+		memcpy(root->dodag.dodag_id, prefix, 8);
+	}
 	return 0;
 }

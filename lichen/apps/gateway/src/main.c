@@ -16,6 +16,7 @@
 #include <zephyr/net/coap_service.h>
 #include <zephyr/net/net_mgmt.h>
 #include <zephyr/net/net_if.h>
+#include <zephyr/net/net_event.h>
 #include <zephyr/net/wifi_mgmt.h>
 
 #include <lichen/hal.h>
@@ -55,7 +56,7 @@
 #include "meshcore_adapter.h"
 #endif
 
-#if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
+#if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT) || IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)
 #include "rpl_root.h"
 #endif
 
@@ -114,7 +115,7 @@ static struct lichen_gateway_manual_location_config s_manual_location;
 static bool s_has_manual_location;
 static uint16_t s_rank = LICHEN_GATEWAY_STATUS_RANK;
 
-static struct lichen_rpl_dodag s_dodag;
+static struct lichen_rpl_root s_root;
 
 static void gateway_rpl_init(void)
 {
@@ -122,22 +123,23 @@ static void gateway_rpl_init(void)
 		return;
 	}
 	uint8_t dodag_id[16] = {0};
+	uint8_t node_addr[16] = {0};
 #if IS_ENABLED(CONFIG_LICHEN_L2)
 	uint8_t eui64[8];
 	if (lichen_lora_l2_copy_eui64(eui64) == 0) {
-		/* Derive DODAG ID from EUI64 per spec 6.1/12 (link-local root addr; primary 02xx preferred per Rust but LL for control) */
 		dodag_id[0] = 0xfe;
 		dodag_id[1] = 0x80;
 		memcpy(&dodag_id[8], eui64, 8);
-		dodag_id[8] ^= 0x02; /* U/L flip for IID */
+		dodag_id[8] ^= 0x02;
+		memcpy(node_addr, dodag_id, 16);
 	} else 
 #endif
 	{
-		/* fallback fd00::1 per test vectors and isolated mesh */
 		dodag_id[0] = 0xfd;
 		dodag_id[15] = 0x01;
+		memcpy(node_addr, dodag_id, 16);
 	}
-	int ret = lichen_rpl_dodag_init_root(&s_dodag, 0, dodag_id, 0);
+	int ret = lichen_rpl_root_init(&s_root, dodag_id, node_addr);
 	if (ret < 0) {
 		LOG_ERR("RPL root init failed: %d", ret);
 	} else {
@@ -148,7 +150,7 @@ static void gateway_rpl_init(void)
 static void gateway_rpl_sync_status(void)
 {
 	if (IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)) {
-		s_rank = s_dodag.rank;
+		s_rank = s_root.dodag.rank;
 	}
 }
 
@@ -159,14 +161,19 @@ static void wifi_mgmt_event_handler(struct net_mgmt_event_callback *cb,
 				    uint32_t mgmt_event,
 				    struct net_if *iface)
 {
-	ARG_UNUSED(cb);
 	ARG_UNUSED(iface);
 
 	if (mgmt_event == NET_EVENT_WIFI_CONNECT_RESULT) {
 		LOG_INF("WiFi station connected for backhaul");
-	} else if (mgmt_event == NET_EVENT_IPV6_ROUTER) {
+	} else if (mgmt_event == NET_EVENT_IPV6_PREFIX_ADD && cb->info != NULL) {
+		const struct net_event_ipv6_prefix *info = cb->info;
 		LOG_INF("IPv6 prefix acquired via RA - integrating with LICHEN_GATEWAY_PREFIX_DELEGATION and RPL root");
-		/* TODO: extract prefix from iface RA and lichen_rpl_root_set_prefix(&s_dodag... */
+		int ret = lichen_rpl_root_set_prefix(&s_root, info->addr.s6_addr, info->len);
+		if (ret == 0) {
+			gateway_rpl_sync_status();
+		}
+	} else if (mgmt_event == NET_EVENT_IPV6_PREFIX_DEL) {
+		LOG_INF("IPv6 prefix removed from backhaul");
 	}
 }
 #endif
@@ -332,9 +339,9 @@ static int status_get(struct coap_resource *resource,
 	const char *role = LICHEN_GATEWAY_STATUS_ROLE;
 	bool rpl_capable = LICHEN_GATEWAY_STATUS_RPL_CAPABLE;
 	if (IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)) {
-		role = lichen_rpl_dodag_is_root(&s_dodag) ? "root" : "gateway";
-		rpl_capable = lichen_rpl_dodag_is_joined(&s_dodag);
-		rank = s_dodag.rank;
+		role = lichen_rpl_dodag_is_root(&s_root.dodag) ? "root" : "gateway";
+		rpl_capable = lichen_rpl_dodag_is_joined(&s_root.dodag);
+		rank = s_root.dodag.rank;
 	}
 	size_t len = encode_status_cbor(cbor_buf, sizeof(cbor_buf), rank, role, rpl_capable);
 
@@ -386,9 +393,9 @@ static void status_notify(struct coap_resource *resource,
 	const char *role = LICHEN_GATEWAY_STATUS_ROLE;
 	bool rpl_capable = LICHEN_GATEWAY_STATUS_RPL_CAPABLE;
 	if (IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)) {
-		role = lichen_rpl_dodag_is_root(&s_dodag) ? "root" : "gateway";
-		rpl_capable = lichen_rpl_dodag_is_joined(&s_dodag);
-		rank = s_dodag.rank;
+		role = lichen_rpl_dodag_is_root(&s_root.dodag) ? "root" : "gateway";
+		rpl_capable = lichen_rpl_dodag_is_joined(&s_root.dodag);
+		rank = s_root.dodag.rank;
 	}
 
 	cbor_len = encode_status_cbor(cbor_buf, sizeof(cbor_buf), rank, role, rpl_capable);
@@ -786,11 +793,10 @@ int main(void)
 #if IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)
 	net_mgmt_init_event_callback(&wifi_mgmt_cb, wifi_mgmt_event_handler,
 				     NET_EVENT_WIFI_CONNECT_RESULT |
-				     NET_EVENT_IPV6_ROUTER);
+				     NET_EVENT_IPV6_PREFIX_ADD |
+				     NET_EVENT_IPV6_PREFIX_DEL);
 	net_mgmt_add_event_callback(&wifi_mgmt_cb);
 	LOG_INF("WiFi station backhaul + net_mgmt prefix events registered for LICHEN_GATEWAY_PREFIX_DELEGATION");
-	/* WiFi STA connection via NET_CONFIG_SETTINGS or explicit wifi_mgmt_request;
-	 * RA prefix event triggers RPL root update for 6LBR. */
 #endif
 
 	LOG_INF("CoAP server on port %u (AUTOSTART)", coap_port);
