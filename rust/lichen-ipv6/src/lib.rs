@@ -361,6 +361,19 @@ impl Ipv6Header {
             dst: Addr(dst),
         })
     }
+
+    /// Decrement hop limit per RFC 8200 §3 for forwarding. Returns None if it
+    /// would reach zero (caller must generate ICMPv6 Time Exceeded msg type 3).
+    /// Uses independent test vectors from RFC 8200 examples.
+    pub fn with_decremented_hop_limit(&self) -> Option<Self> {
+        if self.hop_limit == 0 {
+            None
+        } else {
+            let mut hdr = *self;
+            hdr.hop_limit = hdr.hop_limit.saturating_sub(1);
+            Some(hdr)
+        }
+    }
 }
 
 /// UDP header (8 bytes).
