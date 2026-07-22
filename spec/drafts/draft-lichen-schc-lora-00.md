@@ -388,34 +388,11 @@ Future versions may request:
 - [RFC 7252] The Constrained Application Protocol (CoAP)
 - [LICHEN] LICHEN Protocol Specification
 
-## Appendix A. Complete Rule Set
+## Appendix A. SCHC Rule Set
 
-See `rust/lichen-schc/src/rules.rs`, `constants.toml:[schc.rule_id]`, `test/vectors/schc_compression.json`, and `spec/appendix-schc.md` for exact FieldDescriptors, test vectors (independent oracle), and interop validation. Rule IDs 0-7 defined; 255 fallback.
+Complete SCHC rules, Field Descriptors, constants, test vectors, and implementation details are in `spec/appendix-schc.md` (canonical reference), `constants.toml` [schc.rule_id], `rust/lichen-schc/src/rules.rs`, and `test/vectors/schc_compression.json`.
 
-| Rule ID | Use Case | Compressed Size | Notes |
-|---------|----------|-----------------|-------|
-| 0 | Link-local IPv6 + UDP + CoAP | 4-6 bytes | MSB(64) IIDs; ports MSB(12)/LSB(4) for CoAP/SenML range |
-| 1 | Global IPv6 + UDP + CoAP | 12-14 bytes | ULA/GUA source, full dst as needed |
-| 2 | ICMPv6 Echo | 3 bytes | Type 128/129, Code=0 not-sent |
-| 3 | RPL DIO (link-local) | 8 bytes | ICMPv6 type=155/code=0 + options |
-| 4 | RPL DAO (routable ULA) | 6 bytes | Multi-hop source preservation |
-| 5 | Link-local IPv6 + UDP + OSCORE | ~6 bytes residue | + OSCORE tail |
-| 6 | Global IPv6 + UDP + OSCORE | ~14 bytes residue | + OSCORE tail |
-| 7 | MQTT-SN (port 10883) | ~6 bytes | Exact port match |
-| 255 | No compression | Full headers | Version mismatch or unknown rule fallback |
-
-CoAP compression details (RFC 8824):
-
-| Field | TV | MO | CDA |
-|-------|----|----|-----|
-| Version | 1 | equal | not-sent |
-| Type | - | ignore | value-sent (2 bits) |
-| TKL | - | ignore | value-sent (4 bits) |
-| Code | - | ignore | value-sent (8 bits) |
-| MID | - | ignore | value-sent (16 bits) |
-| Token | - | ignore | value-sent (TKL bytes) |
-
-Rule versioning and interoperability (including DIO advertisement of rule set version) are defined in spec/03-adaptation.md section 5.7. This document avoids duplication.
+See appendix-schc.md for the full table (rules 0-7, 255) with Notes. CoAP details follow RFC 8824; OSCORE rules reuse base descriptors. Rule versioning via RPL DIO per spec/03-adaptation.md §5.7. This document avoids table duplication per I-D best practices.
 
 ## Appendix B. Compression Examples
 
