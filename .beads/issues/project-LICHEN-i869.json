@@ -2,10 +2,14 @@
   "id": "project-LICHEN-i869",
   "title": "PHASE3: Transplant checkpoint features \u0026 reconcile RPL branches to unblock 0.59",
   "description": "Transplant BLE MTU, SLIP escape, KISS shutdown, bounds checking to C (lichen/subsys/lichen/transport/*, lichen/subsys/lichen/l2/*) and Python (python/src/lichen/interface/kiss/*, python/src/lichen/slip/*, python/src/lichen/ipv6/*). Add ICMPv6/UDP/LOADng/GPSR/RPL validation. Reconcile integration/rust-rpl-recovery and integration/rust-prefix-model into main. Run pytest and west tests. Close all related beads.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "epic",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T02:12:01.488353456Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T02:12:01.488353456Z"
+  "updated_at": "2026-07-22T02:12:03.60222525Z",
+  "started_at": "2026-07-22T02:12:03.60222525Z",
+  "lease_expires_at": "2026-07-22T02:17:03.60222525Z",
+  "heartbeat_at": "2026-07-22T02:12:03.60222525Z"
 }
