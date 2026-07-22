@@ -2,15 +2,15 @@
   "id": "project-LICHEN-2zml",
   "title": "[merge-conflict] worktree-worker24: t_deck_esp32s3_procpu.conf",
   "notes": "Commit: c93c18f94",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:42:16.380078704Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:46:56.685689588Z",
+  "updated_at": "2026-07-22T23:46:58.745927651Z",
   "started_at": "2026-07-22T23:46:08.885704738Z",
-  "lease_expires_at": "2026-07-22T23:51:08.885704738Z",
-  "heartbeat_at": "2026-07-22T23:46:08.885704738Z"
+  "closed_at": "2026-07-22T23:46:58.745927651Z",
+  "close_reason": "Updated t_deck_esp32s3_procpu.conf in worker24 worktree to resolve config divergence from merge conflict. Synced to canonical gateway config with WiFi, stack sizes, comments, and security settings."
 }
