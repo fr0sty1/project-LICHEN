@@ -10,6 +10,14 @@ use lichen_schc::codec::{compress, decompress, SchcError};
 use std::time::Instant;
 use tracing::{info, warn};
 
+/// Concentrator trait for border router link abstraction (LoRa HAT, SLIP, sim).
+/// Allows multiple concentrator implementations for different hardware.
+pub trait Concentrator {
+    fn send(&mut self, data: &[u8]) -> Result<(), String>;
+    fn receive(&mut self) -> Result<Option<Vec<u8>>, String>;
+    fn get_node_id(&self) -> NodeId;
+}
+
 /// Top-level border router state.
 #[derive(Debug)]
 pub struct Gateway {
