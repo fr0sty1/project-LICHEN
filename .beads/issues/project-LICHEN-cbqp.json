@@ -3,15 +3,15 @@
   "title": "app_identity: copy_peers returns 0 for NULL violating _Nonnull contract",
   "description": "file: lichen/subsys/lichen/app_identity/app_identity.c:277\n\nlichen_app_identity_copy_peers() declares its 'out' parameter as _Nonnull (header line 88-89) but returns 0U when passed NULL instead of indicating error. All other _Nonnull functions in this module return -EINVAL for NULL input.\n\nProblem: The return type is size_t (unsigned), making it impossible to return negative error codes. Returning 0 for NULL is indistinguishable from 'no peers found', masking caller bugs.\n\nOptions:\n1. Add assert(out != NULL) to crash on contract violation\n2. Change signature to return int and output count via pointer\n3. Accept current defensive behavior but document it clearly\n\nRecommended: Option 1 (assert) since _Nonnull is a contract and other code in codebase uses asserts for contract violations.",
   "notes": "Commit: f4a7d9d6b",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T17:18:43.683473Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:27:15.369563992Z",
+  "updated_at": "2026-07-22T20:27:18.843335559Z",
   "started_at": "2026-07-22T20:26:35.048878536Z",
-  "lease_expires_at": "2026-07-22T20:31:35.048878536Z",
-  "heartbeat_at": "2026-07-22T20:26:35.048878536Z"
+  "closed_at": "2026-07-22T20:27:18.843335559Z",
+  "close_reason": "Added __ASSERT_NO_MSG(out != NULL) in lichen_app_identity_copy_peers after zero-length check. Enforces _Nonnull contract like other functions (returns 0 only for out_len==0). Fixes cbqp."
 }
