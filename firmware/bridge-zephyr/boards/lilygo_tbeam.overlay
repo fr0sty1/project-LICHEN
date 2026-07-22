@@ -1,14 +1,6 @@
 /*
- * LilyGo T-Beam v1.2 device tree overlay for LICHEN bridge — RETIRED/FAIL
- * (project-LICHEN-2u26.5)
+ * LilyGo T-Beam v1.2 device tree overlay for LICHEN bridge
  *
- * No canonical Zephyr board target for `lilygo_tbeam`. This fragment is
- * retired per project-LICHEN-2u26 (10 stale bridge fragments classified FAIL)
- * and project-LICHEN-io1k reconciliation. Pinout/wiring retained for
- * reference. T-Beam v1 falls under partner-owned long tail in the capability
- * matrix; do not use as active bridge target.
- *
- * Original note:
  * ESP32-WROVER + SX1262 LoRa
  *
  * SX1262 SPI pins:

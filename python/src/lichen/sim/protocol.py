@@ -9,19 +9,19 @@ Message types:
     REGISTER (0x01): Node registration with position
     OK (0x00): Generic success response
     ERR (0xFF): Error response with code and message
-    TX (0x10): Transmit request with payload
+    TX (0x10): Transmit with u8 channel after len
     TX_DONE (0x11): Transmit complete with airtime
     TX_FAIL (0x12): Transmit failed
     RX (0x20): Receive request with timeout (poll-based)
     RX_OK (0x21): Receive success with payload, RSSI, SNR (poll-based)
     RX_TIMEOUT (0x22): Receive timeout (poll-based)
-    RX_ENTER (0x24): Renode -> Sim: entering RX mode (push-based)
+    RX_ENTER (0x24): RX enter with timeout_us + u8 channel
     RX_EXIT (0x26): Renode -> Sim: leaving RX mode (push-based)
     RX_PACKET (0x27): Sim -> Renode: packet arrived, unsolicited (push-based)
     RX_TIMEOUT_PUSH (0x28): Sim -> Renode: RX timeout, unsolicited (push-based)
     TIME (0x30): Time query request
     TIME_OK (0x31): Time query response
-    CAD (0x40): Channel Activity Detection request with timeout
+    CAD (0x40): CAD with timeout_ms + u8 channel
     CAD_RESULT (0x41): CAD result (detected/not detected)
 """
 

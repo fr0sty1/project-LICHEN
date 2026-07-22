@@ -557,55 +557,19 @@ class Simulation:
         self.process_next_event()
         return True
 
-    def start_transmission(self, node_id: str, payload: bytes) -> str:
-        """Start a transmission from a node.
-
-        If jitter is enabled (jitter_max_us > 0), queues a TxStartDelayedEvent
-        and returns an empty string (tx_id will be assigned when the event fires).
-        Otherwise, starts the transmission immediately.
-
-        Args:
-            node_id: ID of the transmitting node.
-            payload: Raw bytes to transmit.
-
-        Returns:
-            The transmission ID (empty string if transmission is delayed).
-
-        Raises:
-            ValueError: If node doesn't exist or is not connected.
-        """
+    def start_transmission(self, node_id: str, payload: bytes, channel: int = 0) -> str:
         node = self._nodes.get(node_id)
         if node is None:
             raise ValueError(f"Node '{node_id}' does not exist")
         if not node.connected:
             raise ValueError(f"Node '{node_id}' is not connected")
-
         if self._jitter_max_us > 0:
             jitter = self.calculate_tx_jitter()
-            delayed_event = TxStartDelayedEvent(
-                time_us=self._current_time_us + jitter,
-                node_id=node_id,
-                payload=payload,
-                tx_power_dbm=node.tx_power_dbm,
-                position=node.position,
-                channel=node.current_channel,
-            )
+            delayed_event = TxStartDelayedEvent(time_us=self._current_time_us + jitter,node_id=node_id,payload=payload,tx_power_dbm=node.tx_power_dbm,position=node.position,channel=channel)
             self._event_queue.push(delayed_event)
-            self._debug_log(
-                "tx_delayed",
-                sim_id=self._id,
-                node_id=node_id,
-                jitter_us=jitter,
-                fire_at_us=delayed_event.time_us,
-            )
+            self._debug_log("tx_delayed",sim_id=self._id,node_id=node_id,jitter_us=jitter,fire_at_us=delayed_event.time_us)
             return ""
-
-        return self._do_start_transmission(
-            node_id=node_id,
-            payload=payload,
-            tx_power_dbm=node.tx_power_dbm,
-            position=node.position,
-        )
+        return self._do_start_transmission(node_id=node_id,payload=payload,tx_power_dbm=node.tx_power_dbm,position=node.position,channel=channel)
 
     def _do_start_transmission(
         self,

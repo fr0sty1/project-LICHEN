@@ -431,16 +431,17 @@ int lichen_link_next_tx(struct lichen_link_ctx *ctx, uint8_t *epoch, uint16_t *s
 	return 0;
 }
 
-void lichen_link_set_epoch(struct lichen_link_ctx *ctx, uint8_t epoch)
+int lichen_link_set_epoch(struct lichen_link_ctx *ctx, uint8_t epoch)
 {
 	if (ctx == NULL) {
-		return;
+		return -EINVAL;
 	}
 	if (seq_lock(ctx) != 0) {
-		return;
+		return -EIO;
 	}
 	ctx->epoch = epoch;
 	(void)seq_unlock(ctx);
+	return 0;
 }
 
 int lichen_link_load_link_key(struct lichen_link_ctx *ctx,

@@ -113,13 +113,13 @@ class LichenRemote(interfaces.EndpointAddress):
 
     @property
     def uri_base(self) -> str:
-        if ":" in self._host:
+        if ":" in self._host:  # IPv6
             return f"coap://[{self._host}]"
         return f"coap://{self._host}"
 
     @property
     def uri_base_local(self) -> str:
-        if ":" in self._host:
+        if ":" in self._host:  # IPv6
             return f"coap://[{self._host}]"
         return f"coap://{self._host}"
 

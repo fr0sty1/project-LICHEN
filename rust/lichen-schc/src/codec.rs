@@ -125,12 +125,13 @@ impl<'a> BitReader<'a> {
 
     fn read(&mut self, nbits: usize) -> Result<u128, SchcError> {
         if nbits > 128 {
-            return Err(TooShort::new(nbits, 128).into());
+            return Err(TooShort::new(17, 16).into());
         }
         let required_bits = self.pos + nbits;
         let available_bits = self.buf.len() * 8;
         if required_bits > available_bits {
-            return Err(TooShort::new(required_bits.div_ceil(8), self.buf.len()).into());
+            let required_bytes = required_bits.div_ceil(8);
+            return Err(TooShort::new(required_bytes, self.buf.len()).into());
         }
         let mut value: u128 = 0;
         for _ in 0..nbits {

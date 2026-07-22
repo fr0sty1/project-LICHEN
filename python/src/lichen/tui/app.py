@@ -363,7 +363,9 @@ class SimNodeApp(App[None]):
             self._radio = None
         except asyncio.CancelledError:
             raise
-        except Exception as e:
+        except BaseException as e:
+            if isinstance(e, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             self._log_event("error", f"Unexpected error: {e}")
             if self._radio is not None:
                 with contextlib.suppress(Exception):
@@ -385,7 +387,9 @@ class SimNodeApp(App[None]):
             await self._radio.close()
         except asyncio.CancelledError:
             raise
-        except Exception as e:
+        except BaseException as e:
+            if isinstance(e, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             self._log_event("error", f"Error during disconnect: {e}")
         finally:
             self._radio = None

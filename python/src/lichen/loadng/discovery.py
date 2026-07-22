@@ -116,6 +116,7 @@ class LoadngRouter:
             return RreqResult(suppressed=True)
         self._mark_seen(rreq, now)
 
+        # Reverse route back toward the originator, used to return the RREP.
         actual_hops = INITIAL_HOP_LIMIT - rreq.hop_limit
         self.cache.add(
             RouteEntry(

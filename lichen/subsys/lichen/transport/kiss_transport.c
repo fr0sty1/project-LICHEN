@@ -401,11 +401,11 @@ static void kiss_rx_thread_fn(void *p1, void *p2, void *p3)
 		if (atomic_get(&ctx->shutdown) != 0) {
 			break;
 		}
-		while (!ctx->shutdown && (n = ring_buf_get(&ctx->rx_ring, buf, sizeof(buf))) > 0) {
+		while (atomic_get(&ctx->shutdown) == 0 && (n = ring_buf_get(&ctx->rx_ring, buf, sizeof(buf))) > 0) {
 			k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 			ctx->stats.rx_bytes += n;
 			k_mutex_unlock(&ctx->stats_mutex);
-			for (uint32_t i = 0; !ctx->shutdown && i < n; i++) {
+			for (uint32_t i = 0; atomic_get(&ctx->shutdown) == 0 && i < n; i++) {
 				int ret = kiss_decode_byte(&ctx->rx_ctx, buf[i]);
 				if (ret == 1) {
 					dispatch_frame(ctx);
@@ -583,7 +583,7 @@ void kiss_transport_deinit(void)
 	ring_buf_reset(&ctx->rx_ring);
 	k_sem_reset(&ctx->rx_sem);
 	kiss_decode_init(&ctx->rx_ctx);
-	ctx->shutdown = false;
+	atomic_set(&ctx->shutdown, 0);
 
 	ctx->initialized = false;
 	LOG_INF("KISS transport deinitialized");
@@ -736,6 +736,7 @@ void kiss_transport_test_reset(void)
 
 	kiss_decode_init(&ctx->rx_ctx);
 	ring_buf_reset(&ctx->rx_ring);
+	atomic_set(&ctx->shutdown, 0);
 	kiss_transport_reset_stats();
 
 	k_mutex_lock(&ctx->params_mutex, K_FOREVER);

@@ -29,14 +29,8 @@ impl Gateway {
     /// Returns the raw IPv6 packet to inject into the upstream TUN device, or
     /// `None` if decompression fails or the result is not a valid IPv6 packet.
     pub fn mesh_to_upstream(&mut self, l2_payload: &[u8]) -> Option<Vec<u8>> {
-        let kind = classify_l2_payload(l2_payload);
-        if kind == L2PayloadKind::Unknown {
-            warn!("unknown L2 payload received on upstream gateway path");
-            return None;
-        }
-        if kind == L2PayloadKind::Routing {
-            // CCP multi-channel packet (announce/routing with rx_channel, capacity metrics)
-            // Integrated for CCP-14 Gateway Multi-RX and CCP-16 load balancing coordination
+        if classify_l2_payload(l2_payload) != L2PayloadKind::Schc {
+            warn!("non-SCHC L2 payload received on upstream gateway path");
             return None;
         }
 
