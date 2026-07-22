@@ -140,7 +140,7 @@ class RouteCache:
         """Check if ``destination`` exists in cache (ignores expiry).
 
         Note: This only checks key presence; it does NOT verify that the route
-        is still valid. To check validity, use ``lookup(dest, now=...)`` which
-        returns None for expired routes.
+        is still valid (project-LICHEN-6xyv). To check validity, use
+        ``lookup(dest, now=...)`` which returns None for expired routes.
         """
         return to_ipv6(destination) in self._entries
