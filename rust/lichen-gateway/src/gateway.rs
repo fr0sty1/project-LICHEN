@@ -1,7 +1,7 @@
 //! Gateway state and packet forwarding. Supports RAK2287 concentrator for multi-channel RX/TX.
 
 use lichen_core::addr::NodeId;
-use lichen_core::constants::L2_DISPATCH_SCHC;
+use lichen_core::constants::{L2_DISPATCH_SCHC, SCHC_MAX_DECOMPRESSED};
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
@@ -9,18 +9,6 @@ use lichen_node::{RplEvent, RplNode};
 use lichen_schc::codec::{compress, decompress, SchcError};
 use tracing::{info, warn};
 
-<<<<<<< HEAD
-=======
-/// Concentrator trait for border router link abstraction (LoRa HAT, SLIP, sim).
-/// Allows multiple concentrator implementations for different hardware.
-pub trait Concentrator {
-    fn send(&mut self, data: &[u8]) -> Result<(), String>;
-    fn receive(&mut self) -> Result<Option<Vec<u8>>, String>;
-    fn get_node_id(&self) -> NodeId;
-}
-
-/// Top-level border router state.
->>>>>>> origin/integration/worker4-20260722
 #[derive(Debug)]
 pub struct Gateway {
     pub rpl_node: RplNode,
@@ -46,7 +34,7 @@ impl Gateway {
             return None;
         }
 
-        let mut out = vec![0u8; 1280];
+        let mut out = vec![0u8; SCHC_MAX_DECOMPRESSED];
         match decompress(l2_payload_body(l2_payload), &mut out) {
             Ok(n) => {
                 out.truncate(n);
@@ -57,6 +45,10 @@ impl Gateway {
                 let payload_len = u16::from_be_bytes([out[4], out[5]]);
                 info!(payload_len, "mesh → upstream");
                 Some(out)
+            }
+            Err(SchcError::BufferTooSmall(e)) => {
+                warn!(required = e.required, provided = e.provided, "SCHC decompress buffer too small for jumbo packet");
+                None
             }
             Err(SchcError::UnknownRuleId(id)) => {
                 warn!(rule_id = id, "SCHC: unknown rule — dropping");
@@ -98,7 +90,6 @@ impl Gateway {
     pub fn add_route(&mut self, addr: [u8; 16], node_id: NodeId) {
         self.routes.insert(addr, node_id);
     }
-<<<<<<< HEAD
 
     pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
         self.routes.contains_key(dst) || (dst[0] == 0xfe && dst[1] == 0x80) || self.rpl_node.router.lookup_route(dst).is_some()
@@ -114,13 +105,6 @@ impl Gateway {
             None
         };
         (reply_opt, event)
-=======
-    pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
-        dst[0] == 0xfe && dst[1] == 0x80 || dst[0] == 0xfd
-    }
-    pub fn mesh_to_mesh(&self, ipv6: &[u8]) -> Option<Vec<u8>> {
-        Some(ipv6.to_vec())
->>>>>>> origin/integration/worker8-20260722
     }
 }
 
@@ -205,21 +189,11 @@ mod tests {
     }
 
     #[test]
-<<<<<<< HEAD
     fn yggdrasil_cross_mesh_routing() {
         let gw = test_gateway();
         let local = ll(1);
         let ygg_cross = [0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2];
         assert!(gw.is_local_mesh(&local.0));
         assert!(!gw.is_local_mesh(&ygg_cross));
-=======
-    fn local_mesh_packet_uses_mesh_to_mesh_path() {
-        let mut gw = test_gateway();
-        let dst = ll(2);
-        assert!(gw.is_local_mesh(&dst.0));
-        let packet = [0x60, 0, 0, 0, 40, 0, 58, 0, 0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
-        let result = gw.mesh_to_mesh(&packet);
-        assert!(result.is_some());
->>>>>>> origin/integration/worker8-20260722
     }
 }
