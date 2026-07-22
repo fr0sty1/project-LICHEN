@@ -14,8 +14,8 @@ from dataclasses import dataclass
 from lichen.sim.propagation import (
     CAPTURE_THRESHOLD_DB,
     SENSITIVITY_DEFAULT,
-    SENSITIVITY_SF10,
     SENSITIVITY_LR_FHSS,
+    SENSITIVITY_SF10,
     PropagationModel,
 )
 from lichen.sim.transmission import Transmission, airtime_us, lr_fhss_airtime_us

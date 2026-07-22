@@ -101,6 +101,7 @@ config LICHEN_LINK_EPOCH_TEST_HOOKS
 config LICHEN_LINK_CCP16_LOAD_BALANCING
 	bool "CCP16 density-aware load balancing"
 	depends on LICHEN_RPL
+	depends on LICHEN_LINK_EPOCH_PERSIST
 	select LICHEN_SCHC
 	select LICHEN_LINK_EPOCH_PERSIST
 	help

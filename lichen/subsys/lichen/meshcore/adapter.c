@@ -302,6 +302,11 @@ static void pending_pop(struct lichen_meshcore_adapter *adapter)
 
 static void pending_drop_tail(struct lichen_meshcore_adapter *adapter)
 {
+	/* Reentrancy requirement: Must not be called from interrupt context
+	 * (or must be protected by irq_lock/irq_unlock) because the
+	 * tail update + memset + count decrement sequence is not atomic.
+	 * pending_count == 0U guard prevents uint8_t underflow wrap.
+	 */
 	if (adapter->pending_count == 0U) {
 		return;
 	}
