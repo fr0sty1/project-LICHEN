@@ -1,0 +1,28 @@
+:name: TTGO-LoRa32
+:description: Run LICHEN firmware on TTGO LoRa32 in Renode
+
+$name?="TTGO-LoRa32"
+$simPort?=5555
+
+using sysbus
+
+# Load SX127x peripheral (mimic SX1262 style)
+include $ORIGIN/../../peripherals/SX127x.cs
+
+mach create $name
+machine LoadPlatformDescription $ORIGIN/ttgo_lora32.repl
+
+# Set SX127x sim port on SPI3
+spi3.sx1276 SimPort $simPort
+
+# UART0 console
+showAnalyzer uart0
+
+# 240 MHz
+cpu0 PerformanceInMips 240
+
+macro reset
+"""
+    sysbus LoadELF $elf
+"""
+runMacro $reset
