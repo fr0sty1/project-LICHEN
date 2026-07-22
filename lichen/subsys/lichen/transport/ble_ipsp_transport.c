@@ -147,6 +147,8 @@ static void connected_cb(struct bt_conn *conn, uint8_t err)
 
 static void disconnected_cb(struct bt_conn *conn, uint8_t reason)
 {
+	lichen_ble_conn_cb_t cb = NULL;
+	void *ctx = NULL;
 	k_mutex_lock(&transport_state.lock, K_FOREVER);
 
 	if (transport_state.conn == conn) {
@@ -154,13 +156,10 @@ static void disconnected_cb(struct bt_conn *conn, uint8_t reason)
 		transport_state.conn = NULL;
 		transport_state.state = LICHEN_BLE_DISCONNECTED;
 		transport_state.stats.disconnections++;
-	}
-
-	lichen_ble_conn_cb_t cb = NULL;
-	void *ctx = NULL;
-	if (transport_state.initialized) {
-		cb = transport_state.config.conn_cb;
-		ctx = transport_state.config.user_ctx;
+		if (transport_state.initialized) {
+			cb = transport_state.config.conn_cb;
+			ctx = transport_state.config.user_ctx;
+		}
 	}
 
 	k_mutex_unlock(&transport_state.lock);
@@ -181,6 +180,9 @@ static void security_changed_cb(struct bt_conn *conn, bt_security_t level,
 		return;
 	}
 
+	lichen_ble_conn_cb_t cb = NULL;
+	void *ctx = NULL;
+	enum lichen_ble_conn_state reported_state = LICHEN_BLE_DISCONNECTED;
 	k_mutex_lock(&transport_state.lock, K_FOREVER);
 
 	if (transport_state.conn == conn) {
@@ -192,21 +194,17 @@ static void security_changed_cb(struct bt_conn *conn, bt_security_t level,
 			transport_state.state = LICHEN_BLE_SECURE;
 			LOG_INF("BLE secure (LE Secure Connections)");
 		}
-	}
-
-	lichen_ble_conn_cb_t cb = NULL;
-	void *ctx = NULL;
-	enum lichen_ble_conn_state state = transport_state.state;
-	if (transport_state.initialized) {
-		cb = transport_state.config.conn_cb;
-		ctx = transport_state.config.user_ctx;
-		state = transport_state.state;
+		if (transport_state.initialized) {
+			cb = transport_state.config.conn_cb;
+			ctx = transport_state.config.user_ctx;
+			reported_state = transport_state.state;
+		}
 	}
 
 	k_mutex_unlock(&transport_state.lock);
 
 	if (cb) {
-		cb(state, ctx);
+		cb(reported_state, ctx);
 	}
 }
 #endif

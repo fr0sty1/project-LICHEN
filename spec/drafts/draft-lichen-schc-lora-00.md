@@ -396,7 +396,12 @@ See appendix-schc.md for the full table (rules 0-7, 255) with Notes. CoAP detail
 
 ## Appendix B. Compression Examples
 
-Canonical test vectors in `test/vectors/schc_compression.json` (rules 0-6) and `test/vectors/schc-fragment.json` (ACK-on-Error, single/multi-fragment, retransmit, MIC failure, OOO, per RFC 8724 §8) provide bit-exact oracles. All implementations (Rust `lichen-schc`, C Zephyr subsys, Python sim) MUST match these exactly for interop. See `test/vectors/README.md` and `generate.py`.
+For explicit interop validation, the complete set of canonical test vectors is provided by `test/vectors/schc*.json`:
+
+- `test/vectors/schc_compression.json`: whole-packet SCHC compression (rules 0-6; see Appendix A and `spec/appendix-schc.md`)
+- `test/vectors/schc_fragment.json`: fragmentation test vectors per RFC 8724 §8 (ACK-on-Error, single/multi-fragment, retransmit, MIC failure, out-of-order delivery)
+
+These provide bit-exact oracles. **All implementations (Rust `lichen-schc`, Zephyr C `lichen` subsys, Python simulator) MUST produce identical output to these vectors for interop.** See `test/vectors/README.md` (validation rules and oracles), `test/vectors/generate.py`, and `python/tests/test_vectors.py`.
 
 ## Authors' Address
 

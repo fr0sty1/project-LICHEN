@@ -37,14 +37,18 @@ const RPL_DIO_BASE_LEN: usize = 24;
 #[cfg(feature = "std")]
 const RPL_DAO_BASE_LEN: usize = 20;
 
-/// RPL event returned from handle_frame when RPL messages are processed.
+/// RPL control event from `handle_frame_rpl` / `Gateway::process_rpl`.
+/// `PartialEq`/`Eq`/`Debug`/etc. derived for testing and matching. Field
+/// names reflect return values from `Router::process_dio`/`process_dao`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RplEvent {
     /// No RPL event.
     None,
-    /// DIO received, trickle should be reset if inconsistent.
+    /// DIO received. `inconsistent = true` → trickle reset (version/rank
+    /// change detected).
     DioReceived { inconsistent: bool },
-    /// DAO received (root only).
+    /// DAO received (root only). `route_updated = true` → routing table
+    /// was modified.
     DaoReceived { route_updated: bool },
     /// DIS received, should send DIO.
     DisReceived,
@@ -587,5 +591,33 @@ mod tests {
 
         assert!(n.udp_ports(&ipv6[..ipv6_len]).is_none());
         assert!(n.udp_dst_port(&ipv6[..ipv6_len]).is_none());
+    }
+
+    #[test]
+    fn rpl_event_derives_partialeq_eq_debug_clone_copy() {
+        use super::RplEvent;
+        assert_eq!(RplEvent::None, RplEvent::None);
+        assert_eq!(RplEvent::DisReceived, RplEvent::DisReceived);
+
+        let dio_inc = RplEvent::DioReceived { inconsistent: true };
+        let dio_cons = RplEvent::DioReceived { inconsistent: false };
+        assert_eq!(dio_inc, dio_inc);
+        assert_ne!(dio_inc, dio_cons);
+        assert_ne!(dio_inc, RplEvent::None);
+
+        let dao_up = RplEvent::DaoReceived { route_updated: true };
+        let dao_no = RplEvent::DaoReceived { route_updated: false };
+        assert_eq!(dao_up, dao_up);
+        assert_ne!(dao_up, dao_no);
+
+        // Exercises Clone/Copy
+        let copied = dao_up; // Copy
+        assert_eq!(copied, dao_up);
+        let cloned = dao_up.clone();
+        assert_eq!(cloned, dao_up);
+
+        // Exercises Debug
+        let _ = format!("{:?}", dio_inc);
+        let _ = format!("{:?}", dao_up);
     }
 }
