@@ -283,7 +283,7 @@ impl KissBridge {
     ) -> Result<LichenFrame<'a>, BridgeError> {
         let decoded = self.decode_kiss_frame(kiss_frame, work_buf)?;
 
-        if decoded.port == PORT_AX25 {
+        if decoded.port != PORT_RAW {
             return Err(BridgeError::UnsupportedPort(decoded.port));
         }
 

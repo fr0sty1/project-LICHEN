@@ -304,6 +304,10 @@ static void dispatch_frame(struct kiss_transport_ctx *ctx)
 			ctx->stats.rx_data_port0++;
 		} else if (port == KISS_PORT_LICHEN_RAW) {
 			ctx->stats.rx_data_port1++;
+		} else if (port == KISS_PORT_LCI_IPV6) {
+			ctx->stats.rx_data_lci_ipv6++;
+		} else if (port == KISS_PORT_LCI_CTRL) {
+			ctx->stats.rx_data_lci_ctrl++;
 		} else {
 			ctx->stats.unknown_port++;
 		}
@@ -503,7 +507,8 @@ int kiss_transport_init(const struct kiss_transport_config *config)
 	}
 
 	/* At least one RX callback required */
-	if (config->ax25_rx_cb == NULL && config->raw_rx_cb == NULL) {
+	if (config->ax25_rx_cb == NULL && config->raw_rx_cb == NULL &&
+	    config->lci_ipv6_cb == NULL && config->lci_ctrl_cb == NULL) {
 		LOG_ERR("KISS: at least one RX callback required");
 		return -EINVAL;
 	}

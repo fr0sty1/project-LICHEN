@@ -1402,7 +1402,7 @@ err_wipe:
 int edhoc_responder_export_oscore(struct edhoc_responder *ctx,
 				  struct edhoc_oscore_ctx *oscore)
 {
-	int ret;
+	int ret = 0;
 
 	if (ctx == NULL || oscore == NULL) {
 		return -EINVAL;
@@ -1414,30 +1414,33 @@ int edhoc_responder_export_oscore(struct edhoc_responder *ctx,
 	ret = edhoc_kdf(ctx->prk_4e3m, ctx->th_4, "OSCORE_Master_Secret",
 			NULL, 0, oscore->master_secret, 16);
 	if (ret != 0) {
-		return ret;
+		goto wipe;
 	}
 
 	ret = edhoc_kdf(ctx->prk_4e3m, ctx->th_4, "OSCORE_Master_Salt",
 			NULL, 0, oscore->master_salt, 8);
 	if (ret != 0) {
-		return ret;
+		goto wipe;
 	}
 
-	/* Responder: sender=C_R, recipient=C_I (swapped from initiator) */
 	memcpy(oscore->sender_id, ctx->c_r, ctx->c_r_len);
 	oscore->sender_id_len = ctx->c_r_len;
 	memcpy(oscore->recipient_id, ctx->c_i, ctx->c_i_len);
 	oscore->recipient_id_len = ctx->c_i_len;
 
-	/* Wipe PRK material after export - PRK can derive any key */
 	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
 	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
 	crypto_wipe(ctx->prk_4e3m, sizeof(ctx->prk_4e3m));
 
-	/* SECURITY: Prevent double-export which would derive from zeroed PRK */
 	ctx->state = EDHOC_STATE_EXPORTED;
 
 	return 0;
+
+wipe:
+	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
+	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
+	crypto_wipe(ctx->prk_4e3m, sizeof(ctx->prk_4e3m));
+	return ret;
 }
 
 void edhoc_initiator_wipe(struct edhoc_initiator *ctx)
