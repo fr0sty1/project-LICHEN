@@ -1,0 +1,11 @@
+{
+  "id": "project-LICHEN-pko0",
+  "title": "Fix rf_health.rs EMA test expectation after alpha change",
+  "description": "The rssi_avg_multiple_samples test comment and assertion were based on alpha=1/8. After changing to 1/4 for CCP-15 faster interference response, test breaks. Parametrized test or updated expectation+comments. This is codereview-pass1 work for project-LICHEN-da2q.15.2.1",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:32:04.273280108Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:32:04.273280108Z"
+}

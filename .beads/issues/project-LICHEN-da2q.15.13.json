@@ -1,12 +1,16 @@
 {
   "id": "project-LICHEN-da2q.15.13",
   "title": "Create ccp15.json test vectors for CCA, interference mitigation, frequency agility, SF adaptation, TDMA",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T16:31:02.811759961Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:31:02.811759961Z",
+  "updated_at": "2026-07-22T16:32:04.307879239Z",
+  "started_at": "2026-07-22T16:32:04.307879239Z",
+  "lease_expires_at": "2026-07-22T16:37:04.307879239Z",
+  "heartbeat_at": "2026-07-22T16:32:04.307879239Z",
   "labels": [
     "ccp",
     "phy",
