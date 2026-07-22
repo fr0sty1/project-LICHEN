@@ -94,15 +94,23 @@ class PacketCoapResourceTransport(ResourceTransport):
         transport = self._resource_transport
         self._resource_transport = None
         if transport is not None:
-            with suppress(Exception):
+            try:
                 await transport.close()
+            except (CoapTransportError, OSError, asyncio.CancelledError):
+                pass  # Expected during cleanup
+            except Exception:
+                logger.exception("unexpected error during cleanup")
         channel = self._channel
         self._channel = None
         if channel is not None:
             await channel.aclose()
         else:
-            with suppress(Exception):
+            try:
                 await self.packet_transport.close()
+            except (OSError, asyncio.CancelledError):
+                pass  # Expected during cleanup
+            except Exception:
+                logger.exception("unexpected error during cleanup")
 
     async def request(
         self,

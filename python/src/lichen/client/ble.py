@@ -134,6 +134,8 @@ class BlePacketTransport:
         timeout_s: float = 10.0,
         reconnect_attempts: int = 0,
     ) -> None:
+        if reconnect_attempts < 0:
+            raise ValueError("reconnect_attempts must be non-negative")
         self.address = address
         self.profile = profile
         self._client_factory = client_factory
