@@ -3,15 +3,15 @@
   "title": "dtn.c: Buffer accounting uses MESSAGE_OVERHEAD constant that may drift from struct size",
   "description": "File: lichen/subsys/lichen/routing/dtn.c\nLines: 15, 20-23\n\nBuffer accounting uses a hardcoded overhead:\n\n    #define MESSAGE_OVERHEAD 100\n\n    static uint32_t message_size(const struct lichen_dtn_message *msg)\n    {\n        return (uint32_t)msg-\u003epacket_len + MESSAGE_OVERHEAD;\n    }\n\nBut sizeof(struct lichen_dtn_message) is:\n- packet[1280] + packet_len(2) + destination_iid[8] + expiry_unix(4) + buffered_at_ms(4) + valid(1) + padding\n- Actual: ~1300+ bytes\n\nThe MESSAGE_OVERHEAD=100 doesn't account for the struct's actual size.\n\nWhen max_bytes=65536 (64KB default) and actual message struct is ~1300 bytes:\n- Code thinks it can fit 65536/(packet_len+100) messages\n- But actual memory usage per slot is 1300+ bytes always\n\nThis causes the buffer to use more memory than max_bytes suggests, or fail to accept messages that should fit.\n\nFix: message_size should return sizeof(struct lichen_dtn_message) or use actual struct overhead.",
   "notes": "Commit: b3d72c380",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:52:39.579358Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T22:52:21.679556474Z",
+  "updated_at": "2026-07-22T22:52:25.691188149Z",
   "started_at": "2026-07-22T22:50:38.794044314Z",
-  "lease_expires_at": "2026-07-22T22:55:38.794044314Z",
-  "heartbeat_at": "2026-07-22T22:50:38.794044314Z"
+  "closed_at": "2026-07-22T22:52:25.691188149Z",
+  "close_reason": "Fixed buffer accounting to use sizeof(struct lichen_dtn_message)=1304 instead of packet_len+100. Updated message_size() and precompute in lichen_dtn_buffer_message(). Removed obsolete MESSAGE_OVERHEAD. Matches struct layout and prevents undercounting memory use. Verified with sizeof check and commit b3d72c380."
 }
