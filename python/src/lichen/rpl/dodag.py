@@ -98,7 +98,7 @@ class DodagState:
     """
 
     rpl_instance_id: int
-    dodag_id: str
+    dodag_id: IPv6Address
     version: int
     node_address: IPv6Address | None = None
     role: DodagRole = DodagRole.UNJOINED
@@ -114,13 +114,13 @@ class DodagState:
     def __post_init__(self) -> None:
         """Make defensive copies of mutable arguments to prevent cross-state pollution."""
         self.parents = dict(self.parents)
-        self.dodag_id = str(to_ipv6(self.dodag_id))
+        self.dodag_id = to_ipv6(self.dodag_id)
 
     @classmethod
     def as_root(
         cls,
         rpl_instance_id: int,
-        dodag_id: str,
+        dodag_id: IPv6Address | str,
         version: int,
         node_address: IPv6Address | str | None = None,
     ) -> DodagState:
@@ -173,7 +173,7 @@ class DodagState:
             return
         if dio.rpl_instance_id != self.rpl_instance_id and self.is_joined():
             return
-        if str(dio.dodag_id) != self.dodag_id and self.is_joined():
+        if dio.dodag_id != self.dodag_id and self.is_joined():
             return
 
         if version_is_newer(dio.version, self.version) or not self.is_joined():
@@ -198,7 +198,7 @@ class DodagState:
         self.select_parent()
 
     def _adopt_version(self, dio: DIO) -> None:
-        self.dodag_id = str(dio.dodag_id)
+        self.dodag_id = dio.dodag_id
         self.rpl_instance_id = dio.rpl_instance_id
         self.version = dio.version
         self.parents.clear()
