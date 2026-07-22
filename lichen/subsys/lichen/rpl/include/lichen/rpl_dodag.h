@@ -47,7 +47,10 @@ extern "C" {
 #define LICHEN_RPL_DEFAULT_MAX_RANK_INC   2048
 #define LICHEN_RPL_DEFAULT_SWITCH_THRESH  192
 
-/* Default max parents (can be overridden by Kconfig) */
+/* TDMA constants synced from constants.toml; see test/vectors/ccp_tdma.json
+ * for independent vectors on slot assignment (hash), 50ms guard boundaries,
+ * and drift compensation. Zephyr tests validate against these (no oracle). */
+
 #ifndef CONFIG_LICHEN_RPL_MAX_PARENTS
 #define CONFIG_LICHEN_RPL_MAX_PARENTS 4
 #endif

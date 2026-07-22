@@ -21,6 +21,10 @@
 //! (`/sensors/location`, `/pos`, `/pos/cache`); this type implements the
 //! spec contract so clients are ready once the node side lands.
 
+use lichen_core::constants::{
+    SENML_LOCATION_ALT, SENML_LOCATION_HEADING, SENML_LOCATION_LAT, SENML_LOCATION_LON,
+    SENML_LOCATION_SPEED, SENML_LOCATION_UNIT_DEG, SENML_LOCATION_UNIT_M, SENML_LOCATION_UNIT_MS,
+};
 use lichen_senml::cbor;
 use lichen_senml::Record;
 use serde::{Deserialize, Serialize};
@@ -80,20 +84,20 @@ impl Position {
             };
             n += 1;
         }
-        recs[n] = value_record("lat", "lat", self.lat);
+        recs[n] = value_record(SENML_LOCATION_LAT, SENML_LOCATION_UNIT_DEG, self.lat);
         n += 1;
-        recs[n] = value_record("lon", "lon", self.lon);
+        recs[n] = value_record(SENML_LOCATION_LON, SENML_LOCATION_UNIT_DEG, self.lon);
         n += 1;
         if let Some(alt) = self.alt {
-            recs[n] = value_record("alt", "m", alt);
+            recs[n] = value_record(SENML_LOCATION_ALT, SENML_LOCATION_UNIT_M, alt);
             n += 1;
         }
         if let Some(speed) = self.speed {
-            recs[n] = value_record("speed", "m/s", speed);
+            recs[n] = value_record(SENML_LOCATION_SPEED, SENML_LOCATION_UNIT_MS, speed);
             n += 1;
         }
         if let Some(heading) = self.heading {
-            recs[n] = value_record("heading", "deg", heading);
+            recs[n] = value_record(SENML_LOCATION_HEADING, SENML_LOCATION_UNIT_DEG, heading);
             n += 1;
         }
 
@@ -128,11 +132,11 @@ impl Position {
                 time = Some(bt as u64);
             }
             match (rec.name, rec.value) {
-                (Some("lat"), Some(v)) => lat = Some(v),
-                (Some("lon"), Some(v)) => lon = Some(v),
-                (Some("alt"), Some(v)) => alt = Some(v),
-                (Some("speed"), Some(v)) => speed = Some(v),
-                (Some("heading"), Some(v)) => heading = Some(v),
+                (Some(SENML_LOCATION_LAT), Some(v)) => lat = Some(v),
+                (Some(SENML_LOCATION_LON), Some(v)) => lon = Some(v),
+                (Some(SENML_LOCATION_ALT), Some(v)) => alt = Some(v),
+                (Some(SENML_LOCATION_SPEED), Some(v)) => speed = Some(v),
+                (Some(SENML_LOCATION_HEADING), Some(v)) => heading = Some(v),
                 _ => {}
             }
         }
@@ -186,16 +190,31 @@ mod tests {
         assert_eq!(recs[0].base_time, Some(1_716_742_800.0));
 
         let find = |name: &str| recs[..n].iter().find(|r| r.name == Some(name)).copied();
-        let lat = find("lat").expect("lat record");
-        assert_eq!((lat.unit, lat.value), (Some("lat"), Some(37.774929)));
-        let lon = find("lon").expect("lon record");
-        assert_eq!((lon.unit, lon.value), (Some("lon"), Some(-122.419416)));
-        let alt = find("alt").expect("alt record");
-        assert_eq!((alt.unit, alt.value), (Some("m"), Some(10.5)));
-        let speed = find("speed").expect("speed record");
-        assert_eq!((speed.unit, speed.value), (Some("m/s"), Some(1.2)));
-        let heading = find("heading").expect("heading record");
-        assert_eq!((heading.unit, heading.value), (Some("deg"), Some(45.0)));
+        let lat = find(SENML_LOCATION_LAT).expect("lat record");
+        assert_eq!(
+            (lat.unit, lat.value),
+            (Some(SENML_LOCATION_UNIT_DEG), Some(37.774929))
+        );
+        let lon = find(SENML_LOCATION_LON).expect("lon record");
+        assert_eq!(
+            (lon.unit, lon.value),
+            (Some(SENML_LOCATION_UNIT_DEG), Some(-122.419416))
+        );
+        let alt = find(SENML_LOCATION_ALT).expect("alt record");
+        assert_eq!(
+            (alt.unit, alt.value),
+            (Some(SENML_LOCATION_UNIT_M), Some(10.5))
+        );
+        let speed = find(SENML_LOCATION_SPEED).expect("speed record");
+        assert_eq!(
+            (speed.unit, speed.value),
+            (Some(SENML_LOCATION_UNIT_MS), Some(1.2))
+        );
+        let heading = find(SENML_LOCATION_HEADING).expect("heading record");
+        assert_eq!(
+            (heading.unit, heading.value),
+            (Some(SENML_LOCATION_UNIT_DEG), Some(45.0))
+        );
     }
 
     /// Oracle: an explicitly built spec-shaped SenML pack (independent of the
@@ -208,9 +227,9 @@ mod tests {
                 base_time: Some(1_716_742_800.0),
                 ..Record::empty()
             },
-            value_record("lat", "lat", 37.0),
-            value_record("lon", "lon", -122.0),
-            value_record("alt", "m", 5.0),
+            value_record(SENML_LOCATION_LAT, SENML_LOCATION_UNIT_DEG, 37.0),
+            value_record(SENML_LOCATION_LON, SENML_LOCATION_UNIT_DEG, -122.0),
+            value_record(SENML_LOCATION_ALT, SENML_LOCATION_UNIT_M, 5.0),
         ];
         let mut buf = [0u8; ENC_BUF_LEN];
         let n = cbor::encode(&recs, &mut buf).unwrap();
@@ -249,7 +268,7 @@ mod tests {
                 base_name: Some("urn:dev:mac:x:"),
                 ..Record::empty()
             },
-            value_record("lon", "lon", 1.0),
+            value_record(SENML_LOCATION_LON, SENML_LOCATION_UNIT_DEG, 1.0),
         ];
         let mut buf = [0u8; ENC_BUF_LEN];
         let n = cbor::encode(&recs, &mut buf).unwrap();
@@ -259,8 +278,8 @@ mod tests {
     #[test]
     fn decodes_position_without_base_name() {
         let recs = [
-            value_record("lat", "lat", 37.0),
-            value_record("lon", "lon", -122.0),
+            value_record(SENML_LOCATION_LAT, SENML_LOCATION_UNIT_DEG, 37.0),
+            value_record(SENML_LOCATION_LON, SENML_LOCATION_UNIT_DEG, -122.0),
         ];
         let mut buf = [0u8; ENC_BUF_LEN];
         let n = cbor::encode(&recs, &mut buf).unwrap();

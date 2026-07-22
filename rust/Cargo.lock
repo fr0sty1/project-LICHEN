@@ -21,6 +21,7 @@ dependencies = [
  "cfg-if",
  "cipher",
  "cpufeatures 0.2.17",
+ "zeroize",
 ]
 
 [[package]]
@@ -221,6 +222,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2f6c7dbe95a6ed67ad9f18e57daf93a2f034c524b99fd2b76d18fdfeb6660aa"
 dependencies = [
  "hybrid-array",
+ "zeroize",
 ]
 
 [[package]]
@@ -814,6 +816,7 @@ dependencies = [
  "block-buffer 0.12.1",
  "crypto-common 0.2.2",
  "ctutils",
+ "zeroize",
 ]
 
 [[package]]
@@ -1804,6 +1807,7 @@ name = "lichen-client"
 version = "0.1.0"
 dependencies = [
  "ciborium",
+ "lichen-core",
  "lichen-senml",
  "serde",
 ]
@@ -1826,6 +1830,7 @@ dependencies = [
  "heapless",
  "lichen-ipv6",
  "log",
+ "sha2 0.11.0",
 ]
 
 [[package]]
@@ -1974,6 +1979,7 @@ dependencies = [
  "heapless",
  "hex-literal",
  "hkdf",
+ "hmac",
  "lichen-core",
  "log",
  "rand_core",

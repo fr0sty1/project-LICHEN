@@ -14,4 +14,7 @@ pub mod routing;
 pub mod trickle;
 
 #[cfg(feature = "std")]
+pub use routing::RouteTarget;
+
+#[cfg(feature = "std")]
 extern crate std;

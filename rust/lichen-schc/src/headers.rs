@@ -13,6 +13,8 @@
 //! - rule 2: ICMPv6 Echo Request/Reply over link-local IPv6
 //! - rule 3: RPL DIO over link-local ICMPv6
 //! - rule 4: RPL DAO over link-local ICMPv6
+//! - rule 5: link-local IPv6 + UDP + OSCORE CoAP
+//! - rule 6: global IPv6 + UDP + OSCORE CoAP
 //!
 //! The variable trailer (CoAP token/options/payload, or RPL options) travels
 //! verbatim after the byte-aligned residue.

@@ -424,15 +424,14 @@ mod tests {
         app_data: &[u8],
         buf: &mut [u8],
     ) -> usize {
-        // First, build the signed data to sign
         let mut signed_data = [0u8; 256];
-        let signed_len = 8 + 32 + 2 + app_data.len();
+        let signed_len = 8 + 32 + 2 + 1 + app_data.len();
         signed_data[..8].copy_from_slice(&identity.iid);
         signed_data[8..40].copy_from_slice(identity.pubkey.as_bytes());
         signed_data[40..42].copy_from_slice(&seq_num.to_be_bytes());
-        signed_data[42..signed_len].copy_from_slice(app_data);
+        signed_data[42] = 0;
+        signed_data[43..signed_len].copy_from_slice(app_data);
 
-        // Sign it
         let sig = sign(
             &identity.privkey,
             &identity.pubkey,
@@ -445,6 +444,7 @@ mod tests {
             pubkey: identity.pubkey.as_bytes(),
             seq_num,
             hop_count,
+            rx_channel: 0,
             signature: &sig,
             app_data,
             flags: 0,
@@ -513,6 +513,7 @@ mod tests {
             pubkey: identity.pubkey.as_bytes(),
             seq_num: 100,
             hop_count: 3,
+            rx_channel: 0,
             signature: &sig,
             app_data: &[],
             flags: 0,
@@ -542,6 +543,7 @@ mod tests {
             pubkey: identity.pubkey.as_bytes(),
             seq_num: 100,
             hop_count: 3,
+            rx_channel: 0,
             signature: &bad_sig,
             app_data: &[],
             flags: 0,
@@ -626,6 +628,7 @@ mod tests {
             pubkey: identity2.pubkey.as_bytes(),
             seq_num: 200,
             hop_count: 3,
+            rx_channel: 0,
             signature: &sig,
             app_data: &[],
             flags: 0,

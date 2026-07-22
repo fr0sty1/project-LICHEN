@@ -38,6 +38,14 @@ extern "C" {
 #define CONFIG_LICHEN_COAP_STATUS_MAX_ROUTES 8
 #endif
 
+#ifndef CONFIG_LICHEN_COAP_STATUS_MAX_TXQ
+#define CONFIG_LICHEN_COAP_STATUS_MAX_TXQ 8
+#endif
+
+#ifndef CONFIG_LICHEN_COAP_STATUS_MAX_FWD
+#define CONFIG_LICHEN_COAP_STATUS_MAX_FWD 16
+#endif
+
 /**
  * @brief Radio statistics for /status endpoint
  */
@@ -76,14 +84,18 @@ struct lichen_coap_time_state {
  */
 struct lichen_coap_node_status {
 	uint32_t uptime_s;
-	uint8_t battery_pct;         /**< Battery percentage (0-100) */
+	uint8_t battery_pct;
 	bool battery_pct_valid;
-	uint16_t battery_mv;         /**< Battery voltage in mV */
+	uint16_t battery_mv;
 	bool battery_mv_valid;
 	uint32_t mem_free_kb;
 	struct lichen_coap_time_state time;
 	struct lichen_coap_dodag_state dodag;
 	struct lichen_coap_radio_stats radio;
+	uint8_t txq_cap;
+	uint8_t txq_used;
+	uint8_t fwd_cap;
+	uint8_t fwd_used;
 };
 
 /**

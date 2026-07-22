@@ -587,11 +587,12 @@ class NodeServer:
             await write_message(writer, encode_err(8, f"Node not found: {node_id}"))
             return
 
-        # Detect activity using the medium
+        # Detect activity using the medium (updated for CAD/rendezvous per CCP-9)
         current_time_us = self._simulation.current_time_us
         detected = self._simulation.medium.detect_activity(
             position=node.position,
             time_us=current_time_us,
+            rx_frequency_hz=None,  # explicit None or hash(SFN, EUI) computed rendezvous freq
         )
 
         logger.debug("CAD at %s: detected=%s", node_id, detected)

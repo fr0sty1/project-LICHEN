@@ -12,5 +12,6 @@ description = "Shared client-side domain models and CBOR wire codecs for LICHEN 
 serde        = { version = "1", features = ["derive"] }
 ciborium     = "0.2"
 lichen-senml = { path = "../lichen-senml" }
+lichen-core  = { path = "../lichen-core" }
 
 [dev-dependencies]

@@ -587,7 +587,7 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	uint8_t sig_struct_2[256] = {0};
 	uint8_t mac_3[32] = {0};
 	uint8_t sig_struct_3[256] = {0};
-	uint8_t plaintext_3[128] = {0};
+	uint8_t plaintext_3[EDHOC_MAX_MSG3_LEN - EDHOC_TAG_LEN] = {0};
 
 	if (ctx == NULL || msg2 == NULL || peer_pubkey == NULL ||
 	    msg3 == NULL || msg3_len == NULL) {
@@ -832,7 +832,6 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 		goto err_wipe;
 	}
 
-	/* A_3 for AAD - simplified */
 	uint8_t a_3[64];
 	ZCBOR_STATE_E(zse_a3, 0, a_3, sizeof(a_3), 0);
 	if (!zcbor_list_start_encode(zse_a3, 3) ||
@@ -844,6 +843,7 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 		goto err_wipe;
 	}
 	size_t a_3_len = zse_a3->payload - a_3;
+
 
 	/* Encrypt PLAINTEXT_3 -> CIPHERTEXT_3 (Message 3) */
 	if (msg3_size < pt3_len + 8) {
@@ -1237,7 +1237,7 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 	int ret;
 	uint8_t k_3[16] = {0};
 	uint8_t iv_3[13] = {0};
-	uint8_t plaintext_3[128] = {0};
+	uint8_t plaintext_3[EDHOC_MAX_MSG3_LEN - EDHOC_TAG_LEN] = {0};
 	uint8_t mac_3[32] = {0};
 	uint8_t sig_struct_3[256] = {0};
 
@@ -1252,7 +1252,6 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 		return -ENOMEM;
 	}
 
-	/* K_3 and IV_3 for AEAD decryption */
 	ret = edhoc_kdf(ctx->prk_3e2m, ctx->th_3, "K_3", NULL, 0, k_3, 16);
 	if (ret != 0) {
 		goto err_wipe;
@@ -1262,7 +1261,6 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 		goto err_wipe;
 	}
 
-	/* A_3 for AAD */
 	uint8_t a_3[64];
 	ZCBOR_STATE_E(zse_a3, 0, a_3, sizeof(a_3), 0);
 	if (!zcbor_list_start_encode(zse_a3, 3) ||
@@ -1275,9 +1273,7 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 	}
 	size_t a_3_len = zse_a3->payload - a_3;
 
-	/* Decrypt CIPHERTEXT_3 */
 	ret = aead_decrypt(k_3, iv_3, a_3, a_3_len, msg3, msg3_len, plaintext_3);
-	/* SECURITY: Generic error hides decryption vs verification failure */
 	if (ret != 0) {
 		LOG_WRN("Authentication failed");
 		goto err_wipe;

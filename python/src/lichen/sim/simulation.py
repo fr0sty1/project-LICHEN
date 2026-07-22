@@ -596,6 +596,7 @@ class Simulation:
             tx_power_dbm=tx_power_dbm,
             position=position,
             time_us=self._current_time_us,
+            frequency_hz=915_000_000,  # explicit vs None for rendezvous per CCP-9
         )
 
         self._active_transmissions[node_id] = tx.id
@@ -825,6 +826,7 @@ class Simulation:
             rx_node_id=node_id,
             rx_position=node.position,
             time_us=self._current_time_us,
+            rx_frequency_hz=None,  # explicit None; hash(SFN,EUI) per CCP-9
         )
 
         # Apply chaos rules to filter/modify candidates
@@ -914,6 +916,7 @@ class Simulation:
             rx_node_id=node_id,
             rx_position=node.position,
             time_us=self._current_time_us,
+            rx_frequency_hz=None,  # explicit CCP-9; hash(SFN,EUI) for rendezvous
         )
 
         # Apply chaos rules to filter/modify candidates

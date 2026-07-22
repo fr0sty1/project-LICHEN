@@ -248,6 +248,11 @@ impl Addr {
         (self.0[0] & 0xe0) == 0x20
     }
 
+    /// Check if address is in 02xx::/7 range for Yggdrasil inter-mesh routing.
+    pub fn is_yggdrasil(&self) -> bool {
+        self.0[0] == 0x02
+    }
+
     /// Check if this is the loopback address (::1).
     pub fn is_loopback(&self) -> bool {
         self.0 == [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]

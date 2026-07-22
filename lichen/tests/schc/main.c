@@ -102,7 +102,7 @@ static int round_trip(const char *packet_hex, const char *compressed_hex,
 	return 1;
 }
 
-/* ─── test vectors (from rust/lichen-schc/src/codec.rs) ───────────────────── */
+/* ─── test vectors (from test/vectors/schc_compression.json) ─────────────── */
 
 static int test_coap_linklocal(void)
 {
@@ -171,6 +171,34 @@ static int test_rpl_dao(void)
 		"044000000000000000010000000000000002004005"
 		"fe800000000000000000000000000001",
 		4 /* SCHC_RULE_RPL_DAO */
+	);
+}
+
+static int test_oscore_linklocal(void)
+{
+	return round_trip(
+		/* IPv6 + UDP + OSCORE-protected CoAP link-local (rule 5) */
+		"6000000000161140fe800000000000000000000000000001"
+		"fe800000000000000000000000000002163316330016517b42"
+		"0112340001920900ffdeadbeef",
+		/* Expected compressed */
+		"05400000000000000001000000000000000216331633080448d0"
+		"0001920900ffdeadbeef",
+		5 /* SCHC_RULE_LINK_LOCAL_OSCORE */
+	);
+}
+
+static int test_oscore_global(void)
+{
+	return round_trip(
+		/* IPv6 + UDP + OSCORE-protected CoAP global (rule 6) */
+		"600000000016114020010db8000000000000000000000001"
+		"20010db8000000000000000000000002163316330016f30a42"
+		"0112340001920900ffdeadbeef",
+		/* Expected compressed */
+		"064020010db800000000000000000000000120010db8000000"
+		"00000000000000000216331633080448d00001920900ffdeadbeef",
+		6 /* SCHC_RULE_GLOBAL_OSCORE */
 	);
 }
 
@@ -359,6 +387,8 @@ int main(void)
 	RUN_TEST(test_icmpv6_echo);
 	RUN_TEST(test_rpl_dio);
 	RUN_TEST(test_rpl_dao);
+	RUN_TEST(test_oscore_linklocal);
+	RUN_TEST(test_oscore_global);
 	RUN_TEST(test_uncompressed_fallback);
 	RUN_TEST(test_unknown_rule_id);
 	RUN_TEST(test_truncated_coap_linklocal);

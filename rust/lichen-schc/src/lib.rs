@@ -1,9 +1,8 @@
 //! SCHC header compression for LICHEN (RFC 8724).
 //!
 //! Provides the rule model (`Rule`, `FieldDescriptor`, `Mo`, `Cda`) and
-//! compress/decompress stubs. The five whole-packet rules 0-4 match the
-//! Python reference in `python/src/lichen/schc/rules.py`; rule 255 is the
-//! uncompressed fallback.
+//! compress/decompress stubs. Rules 0-6 match the Python reference in
+//! `python/src/lichen/schc/rules.py` (incl. OSCORE 5/6); rule 255 is uncompressed.
 //!
 //! Rule IDs match `constants.toml` [schc.rule_id]:
 //! - 0  link-local IPv6 + UDP + CoAP
@@ -11,6 +10,8 @@
 //! - 2  ICMPv6 Echo (link-local)
 //! - 3  RPL DIO (link-local ICMPv6)
 //! - 4  RPL DAO (link-local ICMPv6)
+//! - 5  link-local IPv6 + UDP + OSCORE CoAP
+//! - 6  global IPv6 + UDP + OSCORE CoAP
 //! - 255 uncompressed passthrough
 
 #![no_std]

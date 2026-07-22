@@ -9,12 +9,14 @@ target_include_directories(app PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../../lib/native/include)
 
 zephyr_linker_sources(DATA_SECTIONS sections-ram.ld)
-if(CONFIG_LICHEN_COAP_LOCATION)
-  zephyr_iterable_section(
-    NAME coap_resource_lichen_coap
-    GROUP DATA_REGION ${XIP_ALIGN_WITH_INPUT}
-    SUBALIGN CONFIG_LINKER_ITERABLE_SUBALIGN)
-endif()
+# Register the lichen_coap (modular, not _server) iterable section so
+# the linker resolves _coap_resource_lichen_coap_list_start / _list_end.
+# Matches gateway/CMakeLists.txt pattern and unconditional
+# sections-ram.ld (coap_resource_lichen_coap + _server).
+zephyr_iterable_section(
+  NAME coap_resource_lichen_coap
+  GROUP DATA_REGION ${XIP_ALIGN_WITH_INPUT}
+  SUBALIGN CONFIG_LINKER_ITERABLE_SUBALIGN)
 zephyr_iterable_section(
   NAME coap_resource_lichen_coap_server
   GROUP DATA_REGION ${XIP_ALIGN_WITH_INPUT}

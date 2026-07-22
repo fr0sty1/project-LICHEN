@@ -83,9 +83,10 @@ extern "C" {
  * @brief Classification of IPv6 destination address (spec 7.2).
  */
 enum lichen_addr_class {
-	LICHEN_ADDR_LINK_LOCAL, /**< fe80::/10 - direct neighbor */
-	LICHEN_ADDR_MESH_LOCAL, /**< ULA or mesh GUA - peer in mesh */
-	LICHEN_ADDR_EXTERNAL    /**< Other GUA or unknown - route via BR */
+	LICHEN_ADDR_LINK_LOCAL,
+	LICHEN_ADDR_MESH_LOCAL,
+	LICHEN_ADDR_YGGDRASIL,
+	LICHEN_ADDR_EXTERNAL
 };
 
 /**

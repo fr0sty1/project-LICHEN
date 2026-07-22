@@ -464,3 +464,9 @@ class TestEdgeCases:
         assert q.pop() == b"ack"
         assert q.pop() == b"urgent"
         assert q.pop() == b"bulk"
+
+    def test_invalid_capacity(self):
+        with pytest.raises(ValueError):
+            TxQueue(capacity=0)
+        with pytest.raises(ValueError):
+            TxQueue(capacity=-1)

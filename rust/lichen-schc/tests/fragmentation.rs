@@ -3,9 +3,9 @@
 //! Tests that large payloads fragment and reassemble correctly through the
 //! sender/receiver API.
 
-use lichen_schc::fragment::{
-    compute_mic, Ack, Fragment, FragmentReceiver, FragmentSender, DEFAULT_WINDOW_SIZE,
-};
+#[cfg(feature = "std")]
+use lichen_schc::fragment::FragmentReceiver;
+use lichen_schc::fragment::{compute_mic, Ack, Fragment, FragmentSender, DEFAULT_WINDOW_SIZE};
 
 /// Test small payload fits in single fragment.
 #[test]

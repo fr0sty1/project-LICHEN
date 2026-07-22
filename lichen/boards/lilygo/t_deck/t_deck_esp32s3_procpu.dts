@@ -13,6 +13,7 @@
 #include <espressif/esp32s3/esp32s3_wroom_n16r8.dtsi>
 #include "t_deck-pinctrl.dtsi"
 #include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <zephyr/dt-bindings/lvgl/lvgl.h>
 #include <zephyr/dt-bindings/lora/sx126x.h>
 #include <zephyr/dt-bindings/mipi_dbi/mipi_dbi.h>
 
@@ -53,6 +54,18 @@
 			label = "PRG";
 			zephyr,code = <INPUT_KEY_0>;
 		};
+	};
+
+	lvgl_keypad {
+		compatible = "zephyr,lvgl-keypad-input";
+		input = <&keyboard0>;
+		input-codes = <INPUT_KEY_UP INPUT_KEY_DOWN INPUT_KEY_LEFT INPUT_KEY_RIGHT INPUT_KEY_ENTER INPUT_KEY_BACKSPACE>;
+		lvgl-codes = <LV_KEY_UP LV_KEY_DOWN LV_KEY_LEFT LV_KEY_RIGHT LV_KEY_ENTER LV_KEY_ESC>;
+	};
+
+	lvgl_pointer {
+		compatible = "zephyr,lvgl-pointer-input";
+		input = <&keyboard0>;
 	};
 
 	/*
@@ -246,5 +259,13 @@
 			label = "logs";
 			reg = <0x00f90000 0x00070000>;
 		};
+	};
+};
+
+&i2c0 {
+	status = "okay";
+	keyboard0: keyboard@55 {
+		compatible = "lilygo,tdeck-keyboard";
+		reg = <0x55>;
 	};
 };

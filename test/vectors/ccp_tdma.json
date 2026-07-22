@@ -1,0 +1,49 @@
+{
+  "format_version": 2,
+  "description": "Independent test vectors for TDMA slot assignment (static hash(EUI64) % N), guard time boundaries (50ms guard before/after slot), and drift compensation (beacon timestamp based linear correction). Computed independently using external arithmetic (no LICHEN code oracle). Vectors must be used by Python, Rust, and Zephyr tests for cross-validation. Follows test vector discipline per RustCrypto workflow.",
+  "vectors": [
+    {
+      "name": "slot_static_hash_eui1",
+      "eui64_hex": "0000000000000001",
+      "n_slots": 8,
+      "expected_slot": 1,
+      "hash_method": "int.from_bytes(eui64, 'big') % n_slots",
+      "description": "Slot assignment test vector 1"
+    },
+    {
+      "name": "slot_static_hash_eui2",
+      "eui64_hex": "aabbccddeeff0011",
+      "n_slots": 16,
+      "expected_slot": 1,
+      "hash_method": "int.from_bytes(eui64, 'big') % n_slots",
+      "description": "Slot assignment test vector 2"
+    },
+    {
+      "name": "guard_boundary_inside",
+      "slot_start_ms": 1000,
+      "current_ms": 1070,
+      "slot_duration_ms": 250,
+      "guard_ms": 50,
+      "expected_in_guard": false,
+      "expected_tx_window_start": 1050,
+      "description": "Inside data slot, after guard"
+    },
+    {
+      "name": "guard_boundary_pre_guard",
+      "slot_start_ms": 1000,
+      "current_ms": 990,
+      "slot_duration_ms": 250,
+      "guard_ms": 50,
+      "expected_in_guard": true,
+      "description": "Pre-slot guard period"
+    },
+    {
+      "name": "drift_compensation",
+      "local_beacon_rx_ms": 123456,
+      "expected_beacon_ms": 123400,
+      "drift_ppm": 10,
+      "expected_correction_ms": 56,
+      "description": "Clock drift compensation from beacon delta"
+    }
+  ]
+}

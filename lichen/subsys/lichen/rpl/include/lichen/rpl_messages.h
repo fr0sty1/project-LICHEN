@@ -232,6 +232,7 @@ struct lichen_rpl_dodag_config {
 	uint8_t dio_int_min;
 	uint8_t dio_int_doublings;
 	uint8_t dio_redundancy_const;
+	bool gateway_centric;
 };
 
 /**

@@ -74,12 +74,14 @@ class Medium:
         tx_power_dbm: int,
         position: tuple[float, float, float],
         time_us: int,
+        frequency_hz: int = 915_000_000,
     ) -> Transmission:
         """Start a new transmission.
 
         Creates a Transmission object with calculated end time based on
         payload length, adds it to the active transmissions list, and
-        stores the transmitter position.
+        stores the transmitter position. frequency_hz explicit for CCP-9
+        rendezvous vs control/data channels (vs None default in RX for compat).
 
         Args:
             node_id: ID of the transmitting node.
@@ -87,6 +89,7 @@ class Medium:
             tx_power_dbm: Transmit power in dBm.
             position: (x, y, z) position of the transmitter in meters.
             time_us: Current simulation time in microseconds.
+            frequency_hz: Carrier frequency in Hz. Explicit per spec CCP-9.
 
         Returns:
             The created Transmission object.
@@ -98,6 +101,7 @@ class Medium:
             tx_power_dbm=tx_power_dbm,
             start_time_us=time_us,
             end_time_us=time_us + duration_us,
+            frequency_hz=frequency_hz,
         )
         self._active_transmissions.append(tx)
         self._tx_positions[tx.id] = position
@@ -136,17 +140,22 @@ class Medium:
         rx_node_id: str,
         rx_position: tuple[float, float, float],
         time_us: int,
+        rx_frequency_hz: int | None = None,
     ) -> list[RxCandidate]:
         """Get all decodable transmissions for a receiver.
 
-        For each active transmission (excluding transmissions from the
-        receiver itself), calculates distance, RSSI, and SNR. Only
-        includes transmissions that can be decoded based on sensitivity.
+        For each active transmission (excluding self or frequency mismatch),
+        calculates distance, RSSI, and SNR. Supports explicit rx_frequency_hz
+        for CCP-9 rendezvous/data channel distinction (None = all frequencies
+        for compat; callers MUST compute via hash(SFN, EUI) per spec for
+        rendezvous).
 
         Args:
             rx_node_id: ID of the receiving node.
             rx_position: (x, y, z) position of the receiver in meters.
             time_us: Current simulation time in microseconds.
+            rx_frequency_hz: Specific frequency to listen on (for CAD/rendezvous).
+                If None, matches any TX frequency.
 
         Returns:
             List of RxCandidate objects for decodable transmissions.
@@ -157,6 +166,8 @@ class Medium:
         for tx in active:
             # Skip self-transmission
             if tx.source_node_id == rx_node_id:
+                continue
+            if rx_frequency_hz is not None and tx.frequency_hz != rx_frequency_hz:
                 continue
 
             # Get transmitter position
@@ -229,18 +240,20 @@ class Medium:
         position: tuple[float, float, float],
         time_us: int,
         sensitivity_dbm: float = SENSITIVITY_DEFAULT,
+        rx_frequency_hz: int | None = None,
     ) -> bool:
         """Detect if any transmission is active and detectable at a position.
 
-        This implements Channel Activity Detection (CAD). Returns True if any
-        active transmission produces a received power above the sensitivity
-        threshold at the given position.
+        Implements CAD, updated for CCP-9 rendezvous: filters by rx_frequency_hz
+        if provided (explicit control vs data/rendezvous channel per spec).
 
         Args:
             position: (x, y, z) position of the detector in meters.
             time_us: Current simulation time in microseconds.
             sensitivity_dbm: Receiver sensitivity threshold in dBm.
                 Defaults to SF10 sensitivity (-132 dBm).
+            rx_frequency_hz: If provided, only consider TX on this frequency
+                for rendezvous/CAD. None matches any (explicit in callers).
 
         Returns:
             True if channel activity is detected, False otherwise.
@@ -248,6 +261,8 @@ class Medium:
         active = self.get_active_transmissions(time_us)
 
         for tx in active:
+            if rx_frequency_hz is not None and tx.frequency_hz != rx_frequency_hz:
+                continue
             tx_pos = self._tx_positions.get(tx.id)
             if tx_pos is None:
                 continue

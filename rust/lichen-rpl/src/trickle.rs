@@ -62,6 +62,10 @@ impl TrickleTimer {
     /// Create a new timer. `imax_doublings` is the number of times `imin` is
     /// doubled to reach the maximum interval (RFC 6206 uses this convention).
     pub fn new(imin_ms: u32, imax_doublings: u32, k: u32) -> Self {
+        assert!(
+            imin_ms > 0,
+            "Trickle Imin must be > 0 to prevent infinite loop"
+        );
         // checked_shl only detects invalid shift counts, not multiplication overflow.
         // Use checked_mul to properly detect when imin * 2^doublings overflows.
         let max_interval = 1u32
@@ -167,9 +171,10 @@ impl TrickleTimer {
 
     /// Handle an inconsistency: shrink to `imin` and restart (RFC 6206 step 6).
     ///
-    /// No-op if the interval is already `imin` (RFC 6206 §4.2).
+    /// Starts timer if currently Stopped. No-op if already at `imin` in active state.
     pub fn reset(&mut self, now: u32, rand_offset: u32) {
-        let _ = self.try_reset(now, rand_offset);
+        self.try_reset(now, rand_offset)
+            .expect("valid Trickle reset transition");
     }
 
     pub fn try_reset(
@@ -177,7 +182,7 @@ impl TrickleTimer {
         now: u32,
         rand_offset: u32,
     ) -> Result<(), InvalidTrickleTransition> {
-        if self.interval != self.imin {
+        if self.state == TrickleState::Stopped || self.interval != self.imin {
             self.interval = self.imin;
             self.begin_interval(now, rand_offset)?;
         }

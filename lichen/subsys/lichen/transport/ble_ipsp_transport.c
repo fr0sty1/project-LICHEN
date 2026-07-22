@@ -127,15 +127,17 @@ static void connected_cb(struct bt_conn *conn, uint8_t err)
 
 	LOG_DBG("Connected, initial ATT MTU: %u", bt_gatt_get_mtu(conn));
 
+	void (*cb)(enum lichen_ble_state, void *) = transport_state.config.conn_cb;
+	void *user_ctx = transport_state.config.user_ctx;
+
 	k_mutex_unlock(&transport_state.lock);
 
 	char addr[BT_ADDR_LE_STR_LEN];
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 	LOG_INF("BLE connected: %s", addr);
 
-	if (transport_state.config.conn_cb) {
-		transport_state.config.conn_cb(LICHEN_BLE_CONNECTED,
-					       transport_state.config.user_ctx);
+	if (cb) {
+		cb(LICHEN_BLE_CONNECTED, user_ctx);
 	}
 }
 
@@ -150,13 +152,15 @@ static void disconnected_cb(struct bt_conn *conn, uint8_t reason)
 		transport_state.stats.disconnections++;
 	}
 
+	void (*cb)(enum lichen_ble_state, void *) = transport_state.config.conn_cb;
+	void *user_ctx = transport_state.config.user_ctx;
+
 	k_mutex_unlock(&transport_state.lock);
 
 	LOG_INF("BLE disconnected (reason 0x%02x)", reason);
 
-	if (transport_state.config.conn_cb) {
-		transport_state.config.conn_cb(LICHEN_BLE_DISCONNECTED,
-					       transport_state.config.user_ctx);
+	if (cb) {
+		cb(LICHEN_BLE_DISCONNECTED, user_ctx);
 	}
 }
 
@@ -182,11 +186,14 @@ static void security_changed_cb(struct bt_conn *conn, bt_security_t level,
 		}
 	}
 
+	void (*cb)(enum lichen_ble_state, void *) = transport_state.config.conn_cb;
+	void *user_ctx = transport_state.config.user_ctx;
+	enum lichen_ble_state notify_state = transport_state.state;
+
 	k_mutex_unlock(&transport_state.lock);
 
-	if (transport_state.config.conn_cb) {
-		transport_state.config.conn_cb(transport_state.state,
-					       transport_state.config.user_ctx);
+	if (cb) {
+		cb(notify_state, user_ctx);
 	}
 }
 #endif
@@ -615,15 +622,15 @@ void lichen_ble_transport_reset_stats(void)
 
 void lichen_ble_transport_deinit(void)
 {
+	k_mutex_lock(&transport_state.lock, K_FOREVER);
 	if (!transport_state.initialized) {
+		k_mutex_unlock(&transport_state.lock);
 		return;
 	}
-
-	lichen_ble_transport_stop();
-
-	k_mutex_lock(&transport_state.lock, K_FOREVER);
 	transport_state.initialized = false;
 	k_mutex_unlock(&transport_state.lock);
+
+	lichen_ble_transport_stop();
 
 	LOG_INF("BLE transport deinitialized");
 }

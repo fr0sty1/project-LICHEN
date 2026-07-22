@@ -167,16 +167,30 @@ class TestSignedData:
         assert pubkey in msg.signed_data()
 
     def test_signed_data_includes_seq_num(self):
-        """signed_data() includes seq_num."""
-        # Why test: seq_num in signed data prevents replay of old announces.
         msg = AnnounceMessage(
             originator_iid=bytes(8),
             pubkey=bytes(32),
             seq_num=0x1234,
         )
         signed = msg.signed_data()
-        # seq_num is at offset 8+32=40, 2 bytes big-endian
         assert signed[40:42] == bytes([0x12, 0x34])
+
+    def test_signed_data_includes_rx_channel_at_offset(self):
+        msg = AnnounceMessage(
+            originator_iid=b"\x01\x02\x03\x04\x05\x06\x07\x08",
+            pubkey=b"\x00" * 32,
+            seq_num=0x1234,
+            rx_channel=0x0a,
+        )
+        signed = msg.signed_data()
+        expected = (
+            b"\x01\x02\x03\x04\x05\x06\x07\x08"
+            + b"\x00" * 32
+            + b"\x12\x34"
+            + b"\x0a"
+        )
+        assert signed == expected
+        assert signed[42] == 0x0a
 
     def test_signed_data_includes_app_data(self):
         """signed_data() includes app_data."""
@@ -315,15 +329,11 @@ class TestSerialization:
             msg.to_bytes()
 
     def test_from_bytes_rejects_truncated(self):
-        """Rejects data shorter than fixed portion."""
-        # Why test: Truncated messages are malformed.
         with pytest.raises(AnnounceError, match="too short"):
-            AnnounceMessage.from_bytes(bytes(50))  # Less than 93 bytes
+            AnnounceMessage.from_bytes(bytes(50))
 
     def test_from_bytes_rejects_wrong_type(self):
-        """Rejects messages with wrong type byte."""
-        # Why test: Type byte identifies announce vs other messages.
-        wire = bytes([0xFF]) + bytes(92)  # Wrong type
+        wire = bytes([0xFF]) + bytes(93)
         with pytest.raises(AnnounceError, match="wrong message type"):
             AnnounceMessage.from_bytes(wire)
 
@@ -402,36 +412,25 @@ class TestHopCount:
 
 
 class TestKnownVectors:
-    """Test against known wire format for regression detection."""
-
     def test_known_wire_format(self):
-        """Verify exact wire format for a known message."""
-        # Why test: Catch accidental changes to wire format.
         msg = AnnounceMessage(
             originator_iid=bytes([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]),
             pubkey=bytes([0xAA] * 32),
             seq_num=0x1234,
             hop_count=3,
             flags=0,
+            rx_channel=0,
             signature=bytes([0xBB] * SIGNATURE_LENGTH),
             app_data=b"",
         )
         wire = msg.to_bytes()
 
-        # Check header
-        assert wire[0] == ANNOUNCE_TYPE  # type
-        assert wire[1] == 0  # flags
-        assert wire[2] == 3  # hop_count
-        assert wire[3:5] == bytes([0x12, 0x34])  # seq_num
-
-        # Check IID position
-        assert wire[5:13] == bytes([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08])
-
-        # Check pubkey position
-        assert wire[13:45] == bytes([0xAA] * 32)
-
-        # Check signature position
-        assert wire[45:93] == bytes([0xBB] * SIGNATURE_LENGTH)
-
-        # No app_data, so wire ends at 93 bytes
-        assert len(wire) == 93
+        assert wire[0] == ANNOUNCE_TYPE
+        assert wire[1] == 0
+        assert wire[2] == 3
+        assert wire[3:5] == bytes([0x12, 0x34])
+        assert wire[5] == 0
+        assert wire[6:14] == bytes([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08])
+        assert wire[14:46] == bytes([0xAA] * 32)
+        assert wire[46:94] == bytes([0xBB] * SIGNATURE_LENGTH)
+        assert len(wire) == 94

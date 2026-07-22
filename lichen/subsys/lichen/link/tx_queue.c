@@ -18,7 +18,7 @@
 
 #ifdef __ZEPHYR__
 #include <zephyr/kernel.h>
-#define TX_QUEUE_NOW_MS() ((uint32_t)k_uptime_get())
+#define TX_QUEUE_NOW_MS() k_uptime_get_32()
 #else
 #include <time.h>
 

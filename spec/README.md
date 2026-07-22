@@ -38,14 +38,15 @@ hardware as a reflash -- same radios, new protocol.
 2. [Physical and Link Layers](02-physical-link.md) - LoRa PHY and Frame Format
 3. [Adaptation Layer](03-adaptation.md) - SCHC/6LoWPAN Compression
 4. [Network Layer](04-network.md) - IPv6 Addressing
-5. [Routing](05-routing.md) - Three-Tier Routing (RPL + Announce + LOADng)
-6. [Security](06-security.md) - Security Architecture
-7. [Transport and Application](07-transport-app.md) - UDP, CoAP, MQTT-SN
-8. [Node Types](08-nodes.md) - Roles and Responsibilities
-9. [Packets and Timing](09-packets-timing.md) - Formats and Duty Cycle
-10. [Implementation](10-implementation.md) - Platform and Software Notes
-11. [Local Client Interface](11-lci.md) - Phone/Desktop Connectivity
-12. [Applications](12-apps.md) - Messaging, Position, Emergency
+5. [Addressing](03-addressing.md) - Human-Readable Node Addresses and IID Derivation from Ed25519
+6. [Routing](05-routing.md) - Three-Tier Routing (RPL + Announce + LOADng)
+7. [Security](06-security.md) - Security Architecture
+8. [Transport and Application](07-transport-app.md) - UDP, CoAP, MQTT-SN
+9. [Node Types](08-nodes.md) - Roles and Responsibilities
+10. [Packets and Timing](09-packets-timing.md) - Formats and Duty Cycle
+11. [Implementation](10-implementation.md) - Platform and Software Notes
+12. [Local Client Interface](11-lci.md) - Phone/Desktop Connectivity
+13. [Applications](12-apps.md) - Messaging, Position, Emergency
 
 ### Appendices
 

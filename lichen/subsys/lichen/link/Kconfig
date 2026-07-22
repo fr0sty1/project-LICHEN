@@ -98,4 +98,9 @@ config LICHEN_LINK_EPOCH_TEST_HOOKS
 	  boot-epoch cache so tests can simulate a reboot and exercise the
 	  persist-and-advance behavior. Testing only.
 
+config LICHEN_TDMA
+	bool "TDMA slot management"
+	depends on LICHEN_LINK
+	default y
+
 endif # LICHEN_LINK

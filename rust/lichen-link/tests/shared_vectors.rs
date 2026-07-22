@@ -60,7 +60,7 @@ fn test_link_frame_vectors() {
     let vectors: VectorFile = serde_json::from_str(&content).expect("Failed to parse vectors JSON");
 
     assert_eq!(
-        vectors.format_version, 1,
+        vectors.format_version, 2,
         "Unexpected vector format version"
     );
 
@@ -278,7 +278,7 @@ fn test_l2_payload_vectors() {
         serde_json::from_str(&content).expect("Failed to parse vectors JSON");
 
     assert_eq!(
-        vectors.format_version, 1,
+        vectors.format_version, 2,
         "Unexpected vector format version"
     );
 

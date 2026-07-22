@@ -341,26 +341,11 @@ class LinkLayer:
         return await self.drain_tx_queue()
 
     async def drain_tx_queue(self) -> bool:
-        """Transmit packets from the TX queue until empty or channel busy.
-
-        Expires stale packets before attempting transmission. Transmits
-        in priority order (highest priority = lowest numeric value first).
-
-        Returns:
-            True if at least one packet was transmitted, False otherwise.
-        """
         transmitted_any = False
-
         while True:
-            # Expire stale packets and check if queue has work
             self.tx_queue.expire_stale()
             if len(self.tx_queue) == 0:
-                break  # Queue empty
-
-            # CAD before pop - on failure, packets remain safely queued.
-            # Why not pop first: Re-queuing after CAD failure can raise
-            # QueueFullError if queue is full of same-priority packets
-            # (e.g., ROUTING cannot preempt ROUTING), losing the packet.
+                break
             if self.cad_enabled and not await self._wait_for_clear_channel():
                 logger.warning(
                     "TX deferred: channel busy after %d backoff cycles, "
@@ -369,23 +354,20 @@ class LinkLayer:
                     len(self.tx_queue),
                 )
                 break
-
-            # Channel clear (or CAD disabled) - now safe to pop and transmit
-            frame_bytes = self.tx_queue.pop()
-            if frame_bytes is None:
-                break  # Packet expired during CAD (unlikely but possible)
-
-            # Transmit
-            if await self.radio.transmit(frame_bytes):
+            entry = self.tx_queue.reserve()
+            if entry is None:
+                break
+            if await self.radio.transmit(entry.data):
                 transmitted_any = True
                 logger.debug(
                     "TX success, %d packets remain queued",
                     len(self.tx_queue),
                 )
+                self.tx_queue.complete(entry, True)
             else:
                 logger.warning("TX radio transmit failed")
-                break  # Radio failure - stop draining
-
+                self.tx_queue.complete(entry, False)
+                break
         return transmitted_any
 
     async def _wait_for_clear_channel(self) -> bool:

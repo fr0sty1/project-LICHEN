@@ -280,15 +280,10 @@ impl KissBridge {
     ) -> Result<LichenFrame<'a>, BridgeError> {
         let decoded = self.decode_kiss_frame(kiss_frame, work_buf)?;
 
-        // Port 0 (AX.25) frames contain AX.25 UI frames wrapping the LICHEN payload.
-        // Parsing them as raw LICHEN frames will fail. AX.25 unwrapping requires
-        // the `kiss-aprs` feature; reject PORT_AX25 here rather than returning
-        // a confusing parse error.
-        if decoded.port == PORT_AX25 {
-            return Err(BridgeError::UnsupportedPort(PORT_AX25));
+        if decoded.port != PORT_RAW {
+            return Err(BridgeError::UnsupportedPort(decoded.port));
         }
 
-        // Port 1 (raw): payload is a raw LICHEN frame - parse directly
         let frame = LichenFrame::from_bytes(decoded.payload)?;
         Ok(frame)
     }
@@ -654,11 +649,9 @@ mod tests {
     fn test_handle_kiss_frame_rejects_port_ax25() {
         let bridge = KissBridge::default();
 
-        // Create a KISS data frame on port 0 (AX.25)
         let mut kiss_buf = [0u8; 64];
         let len = kiss_encode(PORT_AX25, KissCommand::Data, b"some data", &mut kiss_buf).unwrap();
 
-        // handle_kiss_frame should reject PORT_AX25 with UnsupportedPort error
         let mut work_buf = [0u8; 256];
         let result = bridge.handle_kiss_frame(&kiss_buf[..len], &mut work_buf);
 
@@ -666,5 +659,16 @@ mod tests {
             result,
             Err(BridgeError::UnsupportedPort(PORT_AX25))
         ));
+    }
+
+    #[test]
+    fn test_cross_port_injection_rejected() {
+        let bridge = KissBridge::default();
+        let lichen_bytes = &[0x07, 0x00, 0x01, 0x00, 0x02, b'a', b'b', b'c'];
+        let mut kiss_buf = [0u8; 64];
+        let len = kiss_encode(2, KissCommand::Data, lichen_bytes, &mut kiss_buf).unwrap();
+        let mut work_buf = [0u8; 256];
+        let result = bridge.handle_kiss_frame(&kiss_buf[..len], &mut work_buf);
+        assert!(matches!(result, Err(BridgeError::UnsupportedPort(2))));
     }
 }

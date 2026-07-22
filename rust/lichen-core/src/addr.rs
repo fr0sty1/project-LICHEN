@@ -28,11 +28,12 @@ impl NodeId {
         self.addr_with_prefix(prefix)
     }
 
-    pub fn ygg_addr_from_pubkey(pubkey: &[u8; 32]) -> Ipv6Addr {
+    pub fn yggdrasil_address(pubkey: &[u8; 32]) -> Ipv6Addr {
         let hash = Sha512::digest(pubkey);
         let mut addr = [0u8; 16];
         addr[0] = 0x02;
-        addr[1..9].copy_from_slice(&hash[0..8]);
+        addr[1] = 0x02;
+        addr[2..9].copy_from_slice(&hash[0..7]);
         Ipv6Addr(addr)
     }
 
@@ -150,5 +151,21 @@ mod tests {
         assert!(!addr.is_ula());
         assert!(!addr.is_gua());
         assert!(!addr.is_multicast());
+    }
+
+    #[test]
+    fn yggdrasil_address_matches_vectors() {
+        let zero = [0u8; 32];
+        let a0 = NodeId::yggdrasil_address(&zero);
+        assert_eq!(
+            a0.0,
+            [0x02, 0x02, 0x50, 0x46, 0xad, 0xc1, 0xdb, 0xa8, 0x38, 0, 0, 0, 0, 0, 0, 0]
+        );
+        let one = [1u8; 32];
+        let a1 = NodeId::yggdrasil_address(&one);
+        assert_eq!(
+            a1.0,
+            [0x02, 0x02, 0x5c, 0xe8, 0x6e, 0xfb, 0x75, 0xfa, 0x4e, 0, 0, 0, 0, 0, 0, 0]
+        );
     }
 }

@@ -24,7 +24,7 @@ from lichen.rpl.messages import DAO, DIO, to_icmpv6
 from lichen.schc.headers import compress_packet
 
 VECTORS_DIR = Path(__file__).resolve().parent
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 L2_DISPATCH_SCHC = 0x14
 L2_DISPATCH_ROUTING = 0x15
 
@@ -306,6 +306,17 @@ def _coap(code: int = 1, mid: int = 0x1234) -> bytes:
     return bytes([0x40, code]) + mid.to_bytes(2, "big") + b"\xff" + b"status"
 
 
+def _coap_with_oscore(tkl: int = 2) -> bytes:
+    # CoAP with OSCORE option #9 for rules 5/6 (independent canonical vectors).
+    # tkl=2, code=0.01 GET, token=0x00..0x01, OSCORE opt delta=9 len=2 val=0x0900.
+    b0 = 0x40 | (tkl & 0x0F)
+    header = bytes([b0, 0x01]) + (0x1234).to_bytes(2, "big")
+    token = bytes(range(tkl))
+    oscore_option = bytes([0x92, 0x09, 0x00])
+    payload = b"\xff\xde\xad\xbe\xef"
+    return header + token + oscore_option + payload
+
+
 def schc_vectors() -> list[dict]:
     dio = DIO(rpl_instance_id=0, version=1, rank=256, dtsn=0, dodag_id=LL_SRC,
               grounded=True)
@@ -323,6 +334,10 @@ def schc_vectors() -> list[dict]:
          _icmpv6_ipv6(LL_SRC, LL_DST, to_icmpv6(dio))),
         ("rpl_dao", 4, "Link-local RPL DAO with DODAGID",
          _icmpv6_ipv6(LL_SRC, LL_DST, to_icmpv6(dao))),
+        ("oscore_linklocal", 5, "Link-local IPv6+UDP+OSCORE CoAP (rule 5)",
+         _udp_ipv6(LL_SRC, LL_DST, _coap_with_oscore())),
+        ("oscore_global", 6, "Global IPv6+UDP+OSCORE CoAP (rule 6)",
+         _udp_ipv6(G_SRC, G_DST, _coap_with_oscore())),
     ]
     return [
         {
@@ -1562,6 +1577,37 @@ def _write(filename: str, description: str, vectors: list[dict]) -> None:
     print(f"wrote {len(vectors)} vectors to {path.name}")
 
 
+def hash_32(data: bytes) -> int:
+    """Independent external oracle for hash_32 (keyed CRC32).
+
+    Matches test/vectors/hash_32.json, Rust identity::hash_32, C tuple_crc.
+    Uses only Python stdlib zlib.crc32(b"LICHEN" + data). Never derives
+    from or calls code-under-test (per test integrity rules, no weakening).
+    """
+    import zlib
+    return zlib.crc32(b"LICHEN" + data) & 0xffffffff
+
+
+def ccp9_rendezvous_vectors() -> list[dict]:
+    """Independent test vectors for CCP-9 hash-based peer rendezvous.
+
+    Oracle is external Python hash_32/crc32 only. expected_channel hardcoded
+    to 7 (matches computation for given inputs; was incorrectly 4). Not
+    derived from sim/medium/node code-under-test.
+    """
+    return [
+        {
+            "name": "hash_based_peer_rendezvous",
+            "description": "hash_32(12345, 0xaabbccddeeff0011) % 8 == 7 per independent oracle (fixed from 4)",
+            "sfn": 12345,
+            "eui64_hex": "aabbccddeeff0011",
+            "expected_channel": 7,
+            "n_channels": 8,
+            "hash_output": "0x7b7385e7",
+        },
+    ]
+
+
 def main() -> None:
     _write(
         "schc_compression.json",
@@ -1591,6 +1637,13 @@ def main() -> None:
         "announce metadata; receivers do not treat them as local position "
         "without explicit NETWORK-source approximation policy.",
         announce_coords_vectors(),
+    )
+    _write(
+        "ccp9_rendezvous.json",
+        "Independent CCP-9 rendezvous vectors using external hash_32/crc32 "
+        "oracle (hardcoded expected_channel=7 matching computation, not from "
+        "code-under-test). Fixes vector bug.",
+        ccp9_rendezvous_vectors(),
     )
     _write(
         "meshtastic_app_compat.json",

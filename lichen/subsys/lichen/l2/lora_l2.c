@@ -1383,3 +1383,14 @@ int lichen_lora_l2_queue_stats_get(struct tx_queue_stats *stats)
      */
     return tx_queue_stats_get(&tx_queue, stats);
 }
+
+uint16_t adaptive_duty_permille(uint8_t density, uint8_t region)
+{
+    if (density > 8) {
+        return (region == 0) ? 5 : 10;
+    }
+    if (density < 3) {
+        return (region == 0) ? 20 : 50;
+    }
+    return (region == 0) ? 10 : 20;
+}

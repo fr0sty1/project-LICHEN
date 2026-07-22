@@ -561,7 +561,10 @@ mod tests {
             signature: Signature::Absent,
             encryption: Encryption::Plaintext,
         };
-        assert_eq!(frame.write_to(&mut [0; 300]), Err(FrameError::FrameTooLarge));
+        assert_eq!(
+            frame.write_to(&mut [0; 300]),
+            Err(FrameError::FrameTooLarge)
+        );
 
         let frame = LichenFrame {
             epoch: 0,
@@ -574,7 +577,10 @@ mod tests {
             signature: Signature::Absent,
             encryption: Encryption::Plaintext,
         };
-        assert!(matches!(frame.write_to(&mut [0; 4]), Err(FrameError::BufferTooSmall(_))));
+        assert!(matches!(
+            frame.write_to(&mut [0; 4]),
+            Err(FrameError::BufferTooSmall(_))
+        ));
     }
 
     // ─── Cross-validation tests from spec/test-vectors/frame.json ───────────────

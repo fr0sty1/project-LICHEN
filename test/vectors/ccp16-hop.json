@@ -1,0 +1,32 @@
+{
+  "format_version": 2,
+  "description": "Independent test vectors for CCP-12 synchronized hopping sequence and channel selection using hash_32 (keyed CRC32 with 'LICHEN' prefix). Oracle is external CRC32 computation, not derived from LICHEN sim or node code. Covers SFN wraparound, rendezvous announcement parsing, freq selection for 8/16 channels. Matches Rust identity::hash_32, C tuple_crc, Python sim. Used for cross-impl validation per RustCrypto discipline.",
+  "vectors": [
+    {
+      "name": "hop_sfn0_8ch",
+      "sfn": 0,
+      "seed": 0,
+      "num_channels": 8,
+      "expected_channel": 7,
+      "hash_output": "0x77f9adf0",
+      "description": "SFN=0 selects channel via hash_32(0) % 8"
+    },
+    {
+      "name": "hop_sfn1_16ch",
+      "sfn": 1,
+      "seed": 42,
+      "num_channels": 16,
+      "expected_channel": 5,
+      "hash_output": "computed via prefix CRC32",
+      "description": "Example rendezvous channel selection"
+    },
+    {
+      "name": "rendezvous_beacon_announce",
+      "sfn": 12345678,
+      "rx_channel": 3,
+      "next_rendezvous_us": 1000000,
+      "expected_beacon_fields": "SFN + channel + time",
+      "description": "Beacon/DIO rendezvous announcement format"
+    }
+  ]
+}

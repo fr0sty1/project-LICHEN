@@ -17,10 +17,23 @@ use std::collections::HashMap;
 use crate::message::Dio;
 
 pub const INFINITE_RANK: u16 = 0xFFFF;
-pub const ROOT_RANK: u16 = 256; // MinHopRankIncrease
+pub const ROOT_RANK: u16 = 256;
 pub const MIN_HOP_RANK_INCREASE: u16 = 256;
 pub const MAX_RANK_INCREASE: u16 = 2048;
 pub const PARENT_SWITCH_THRESHOLD: u16 = 192;
+pub const TDMA_GUARD_MS: u32 = 50;
+pub const TDMA_SLOT_MS: u32 = 250;
+
+/// DIO interval and Trickle params per spec appendix-rpl.md B.2/B.3 (matches C impl).
+pub const DIO_INTERVAL_MIN_MS: u32 = 4096; // Imin
+pub const DIO_INTERVAL_MAX_DOUBLINGS: u32 = 20; // Imax (2^20 ms ~17min)
+pub const DIO_REDUNDANCY_K: u32 = 10;
+#[derive(Clone, Copy)]
+pub struct TdmaSlot {
+    pub id: u8,
+    pub assigned: u8,
+    pub next: u32,
+}
 
 /// RFC 6550 Section 7.2: Lollipop sequence comparison for DODAG version.
 ///

@@ -141,24 +141,16 @@ Coordination between BRs is NOT required. Nodes handle multiple prefixes:
 
 ### 6.2. Interface Identifier (IID) Derivation
 
-From EUI-64 (IEEE method):
+See [03-addressing.md](03-addressing.md) for full definition of human-readable node address and IID derivation.
+
+Primary method (preferred, used by all implementations):
 ```
-IID = EUI-64 XOR 0x0200_0000_0000_0000
+IID = SHA-256(Ed25519_pubkey)[0:8] with U/L bit cleared (iid[0] &= 0b11111101)
 ```
 
-From 16-bit short address:
-```
-IID = 0x0000_00FF_FE00_0000 | (short_addr << 48)
-```
+Legacy fallback from EUI-64 or short address for compatibility (see addressing spec).
 
-**Stable IIDs only.** IIDs are stable and hardware-derived for the life of
-the node. Temporary addresses (RFC 4941) and opaque/random IIDs (RFC 7217)
-MUST NOT be used. This is a deliberate deviation from the RFC 8064 default:
-root election, short-address assignment, replay windows, and signature
-caching all key on a node's stable EUI-64, and every frame is already bound
-to a stable public key, so a rotating IID would break the mesh while
-providing no unlinkability. See Privacy in Security Considerations
-(section 15.5 in Security) for the full analysis.
+**Stable IIDs only.** The pubkey-derived IID provides cryptographic binding. See 03-addressing.md for human-readable Base32 format, collision analysis, and test vectors.
 
 ### 6.3. Multicast and Broadcast
 

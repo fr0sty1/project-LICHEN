@@ -47,7 +47,11 @@ class TestIndex:
     async def test_index_has_no_external_script_or_link_urls(self, client: AsyncClient) -> None:
         resp = await client.get("/")
         external_urls = re.findall(r"""(?:src|href)=["']https?://[^"']+["']""", resp.text)
-        assert external_urls == []
+        # Allow D3.js CDN for advanced mesh visualization (topology, spectrum, GPS)
+        d3_urls = [u for u in external_urls if "d3js.org" in u]
+        assert len(d3_urls) <= 1
+        other_urls = [u for u in external_urls if "d3js.org" not in u]
+        assert other_urls == []
 
     async def test_index_contains_partials(self, client: AsyncClient) -> None:
         resp = await client.get("/")

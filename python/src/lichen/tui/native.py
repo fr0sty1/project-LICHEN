@@ -436,7 +436,7 @@ def safe_display_value(name: str, value: object | None) -> str:
     if value is None:
         return "--"
     if isinstance(value, bytes | bytearray | memoryview):
-        return f"<{len(value)} bytes redacted>"
+        return "<sensitive bytes redacted>"
     if isinstance(value, dict):
         parts = [
             f"{key}={safe_display_value(str(key), item)}"
@@ -731,6 +731,10 @@ def flatten_diagnostics(
         for key, value in sorted(payload.items(), key=lambda pair: str(pair[0])):
             name = f"{prefix}.{key}" if prefix else str(key)
             rows.extend(flatten_diagnostics(value, prefix=name, depth=depth + 1))
+            if len(rows) > 64:
+                rows = rows[:64]
+                rows.append(DiagnosticRow("...", "truncated (size limit)"))
+                break
         return tuple(rows) or (DiagnosticRow(prefix or "value", "--"),)
     if isinstance(payload, list | tuple):
         if all(not isinstance(item, Mapping | list | tuple) for item in payload):
@@ -739,6 +743,10 @@ def flatten_diagnostics(
         for index, value in enumerate(payload):
             name = f"{prefix}.{index}" if prefix else str(index)
             rows.extend(flatten_diagnostics(value, prefix=name, depth=depth + 1))
+            if len(rows) > 64:
+                rows = rows[:64]
+                rows.append(DiagnosticRow("...", "truncated (size limit)"))
+                break
         return tuple(rows) or (DiagnosticRow(prefix or "value", "--"),)
     return (DiagnosticRow(prefix or "value", safe_display_value(prefix, payload)),)
 

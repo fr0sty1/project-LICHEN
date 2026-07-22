@@ -140,13 +140,13 @@ static void fuzz_reassembler(const uint8_t *data, size_t size)
 		.window_bits = (uint8_t)(((config_byte >> 4) & 0x03) + 1),
 		.fcn_bits = (uint8_t)(((config_byte >> 6) & 0x03) + 1),
 		.tile_size = 32,
-		.mode = SCHC_FRAGMENT_ACK_ALWAYS,
+		.mode = SCHC_FRAGMENT_ACK_ON_ERROR,
 	};
 
-	/* Validate config to avoid init failures unrelated to fuzzing */
 	if (config.window_bits > 7 || config.fcn_bits > 7 ||
 	    config.dtag_bits + config.window_bits + config.fcn_bits > 8) {
-		config.window_bits = 2;
+		config.dtag_bits = 0;
+		config.window_bits = 1;
 		config.fcn_bits = 6;
 	}
 

@@ -47,10 +47,22 @@
 extern "C" {
 #endif
 
-/** SenML+CBOR content format */
 #define SENML_CBOR_CONTENT_FORMAT 112
-
-/** Maximum records in a single SenML pack */
+#define SENML_LOCATION_LAT "lat"
+#define SENML_LOCATION_LON "lon"
+#define SENML_LOCATION_ALT "alt"
+#define SENML_LOCATION_SPEED "speed"
+#define SENML_LOCATION_HEADING "heading"
+#define SENML_LOCATION_UNIT_DEG "deg"
+#define SENML_LOCATION_UNIT_M "m"
+#define SENML_LOCATION_UNIT_MS "m/s"
+#define SENML_BATTERY_PCT "pct"
+#define SENML_BATTERY_MV "mv"
+#define SENML_BATTERY_CHARGING "charging"
+#define SENML_BATTERY_UNIT_PCT "%"
+#define SENML_BATTERY_UNIT_MV "mV"
+#define SENML_TELEMETRY_TEMP "temp"
+#define SENML_TELEMETRY_UNIT_CEL "Cel"
 #define SENML_MAX_RECORDS 16
 
 /** Maximum name string length */
@@ -77,11 +89,12 @@ struct senml_record {
 	const char *unit;          /**< Unit (u) - may be NULL */
 	enum senml_value_type type;
 	union {
-		float f;           /**< Float value */
-		bool b;            /**< Boolean value */
+		float f;
+		bool b;
+		const char *s;
 	} value;
-	int32_t time_offset;       /**< Time offset from base (t) - 0 means not set */
-	bool has_time;             /**< Include time offset */
+	int32_t time_offset;
+	bool has_time;
 };
 
 /**
@@ -151,19 +164,9 @@ int senml_add_float_t(struct senml_pack *_Nonnull pack,
 int senml_add_bool(struct senml_pack *_Nonnull pack,
 		   const char *_Nonnull name,
 		   bool value);
-
-/**
- * @brief Encode SenML pack to CBOR.
- *
- * @param[in]  pack    SenML pack to encode
- * @param[out] buf     Output buffer
- * @param[in]  buflen  Buffer size
- * @return Bytes written, or negative error code:
- *         -EINVAL if pack has no records
- *         -ENOTSUP if record uses unsupported value type (STRING, DATA)
- *         -ENOMEM if buffer too small
- *         -EMSGSIZE if string too long to encode
- */
+int senml_add_string(struct senml_pack *_Nonnull pack,
+		   const char *_Nonnull name,
+		   const char *_Nullable value);
 LICHEN_WARN_UNUSED_RESULT
 int senml_encode_cbor(const struct senml_pack *_Nonnull pack,
 		      uint8_t *_Nonnull buf, size_t buflen);
@@ -217,7 +220,9 @@ int senml_encode_battery(const char *_Nullable base_name, uint64_t base_time,
 int senml_encode_temperature(const char *_Nullable base_name, uint64_t base_time,
 			     float temp_c,
 			     uint8_t *_Nonnull buf, size_t buflen);
-
+int senml_encode_deaddrop(const char *_Nullable base_name, uint64_t base_time,
+			  uint16_t pending,
+			  uint8_t *_Nonnull buf, size_t buflen);
 #ifdef __cplusplus
 }
 #endif

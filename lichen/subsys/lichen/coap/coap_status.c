@@ -45,6 +45,10 @@ static inline bool cbor_check_space(struct cbor_ctx *ctx, size_t n)
 
 static void cbor_put_map_header(struct cbor_ctx *ctx, uint16_t count)
 {
+	if (count > UINT8_MAX) {
+		ctx->overflow = true;
+		return;
+	}
 	if (count < 24U) {
 		if (!cbor_check_space(ctx, 1)) {
 			return;
@@ -61,6 +65,10 @@ static void cbor_put_map_header(struct cbor_ctx *ctx, uint16_t count)
 
 static void cbor_put_array_header(struct cbor_ctx *ctx, uint16_t count)
 {
+	if (count > UINT8_MAX) {
+		ctx->overflow = true;
+		return;
+	}
 	if (count < 24U) {
 		if (!cbor_check_space(ctx, 1)) {
 			return;
@@ -201,10 +209,8 @@ static void cbor_put_int(struct cbor_ctx *ctx, int32_t value)
 	}
 }
 
-/* Format IPv6 address as string (fe80::1234:5678:9abc:def0) */
 static int format_ipv6(const uint8_t addr[16], char *buf, size_t buf_size)
 {
-	/* Simple hex format with colons, no zero compression */
 	return snprintf(buf, buf_size,
 			"%02x%02x:%02x%02x:%02x%02x:%02x%02x:"
 			"%02x%02x:%02x%02x:%02x%02x:%02x%02x",
@@ -228,8 +234,6 @@ static const char *trust_level_str(enum lichen_coap_trust_level trust)
 	}
 }
 
-/* ── CBOR encoders ─────────────────────────────────────────────────────────── */
-
 size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 				      const struct lichen_coap_node_status *status)
 {
@@ -238,8 +242,10 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 	char ipv6_buf[40];
 
 	if (buf == NULL || status == NULL || buf_size == 0 ||
-	    status->txq_used > CONFIG_LICHEN_COAP_STATUS_MAX_TXQ ||
-	    status->fwd_used > CONFIG_LICHEN_COAP_STATUS_MAX_FWD) {
+	    status->txq_cap == 0 || status->txq_cap > CONFIG_LICHEN_COAP_STATUS_MAX_TXQ ||
+	    status->txq_used > status->txq_cap ||
+	    status->fwd_cap == 0 || status->fwd_cap > CONFIG_LICHEN_COAP_STATUS_MAX_FWD ||
+	    status->fwd_used > status->fwd_cap) {
 		return 0;
 	}
 
@@ -376,13 +382,11 @@ size_t lichen_coap_encode_neighbors_cbor(uint8_t *buf, size_t buf_size,
 
 	cbor_ctx_init(&ctx, buf, buf_size);
 
-	/* Root map with "neighbors" array */
 	cbor_put_map_header(&ctx, 1);
 	cbor_put_key(&ctx, "neighbors");
 
 	if (neighbors == NULL || count == 0) {
 		cbor_put_array_header(&ctx, 0);
-		/* SECURITY: Return 0 if buffer overflow would have occurred */
 		return ctx.overflow ? 0 : ctx.off;
 	}
 
@@ -400,11 +404,9 @@ size_t lichen_coap_encode_neighbors_cbor(uint8_t *buf, size_t buf_size,
 		cbor_put_key(&ctx, "rssi_dbm");
 		cbor_put_int(&ctx, n->rssi_dbm);
 
-		/* snr_db as scaled integer (7.5 dB -> 75) */
 		cbor_put_key(&ctx, "snr_db");
 		cbor_put_int(&ctx, n->snr_db_x10);
 
-		/* etx as scaled integer (1.2 -> 12) */
 		cbor_put_key(&ctx, "etx");
 		cbor_put_uint(&ctx, n->etx_x10);
 
@@ -415,7 +417,6 @@ size_t lichen_coap_encode_neighbors_cbor(uint8_t *buf, size_t buf_size,
 		cbor_put_tstr(&ctx, trust_level_str(n->trust));
 	}
 
-	/* SECURITY: Return 0 if buffer overflow would have occurred */
 	if (ctx.overflow) {
 		return 0;
 	}
@@ -448,7 +449,7 @@ size_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
 
 	cbor_put_key(&ctx, "routes");
 
-	if (routes == NULL || count == 0) {
+		if (routes == NULL || count == 0) {
 		cbor_put_array_header(&ctx, 0);
 	} else {
 		if (count > UINT8_MAX) {
@@ -461,7 +462,6 @@ size_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
 
 			cbor_put_map_header(&ctx, 4);
 
-			/* prefix with length */
 			cbor_put_key(&ctx, "prefix");
 			format_ipv6(r->prefix, ipv6_buf, sizeof(ipv6_buf));
 			(void)snprintf(prefix_buf, sizeof(prefix_buf), "%s/%u",
@@ -480,14 +480,12 @@ size_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
 		}
 	}
 
-	/* default_route */
 	if (default_route) {
 		cbor_put_key(&ctx, "default_route");
 		format_ipv6(default_route, ipv6_buf, sizeof(ipv6_buf));
 		cbor_put_tstr(&ctx, ipv6_buf);
 	}
 
-	/* SECURITY: Return 0 if buffer overflow would have occurred */
 	if (ctx.overflow) {
 		return 0;
 	}
@@ -495,13 +493,12 @@ size_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
 	return ctx.off;
 }
 
-/* ── CoAP response helpers ─────────────────────────────────────────────────── */
-
 static int coap_respond(struct coap_resource *resource,
 			struct coap_packet *request,
 			struct sockaddr *addr, socklen_t addr_len,
 			uint8_t resp_code,
 			const uint8_t *payload, size_t payload_len)
+
 {
 	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
 	struct coap_packet resp;

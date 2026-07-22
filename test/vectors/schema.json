@@ -1,28 +1,40 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LICHEN test vector file",
-  "description": "Envelope shared by all LICHEN vector files. Each file holds a list of vectors of one kind; see the per-vector definitions.",
-  "type": "object",
-  "required": ["format_version", "description", "vectors"],
-  "properties": {
-    "format_version": {"type": "integer", "const": 1},
-    "description": {"type": "string"},
-    "vectors": {
-      "type": "array",
-      "items": {
-        "oneOf": [
-          {"$ref": "#/definitions/schc_vector"},
-          {"$ref": "#/definitions/l2_payload_vector"},
-          {"$ref": "#/definitions/frame_vector"},
-          {"$ref": "#/definitions/announce_coords_vector"},
-          {"$ref": "#/definitions/meshtastic_app_compat_vector"},
-          {"$ref": "#/definitions/meshcore_app_compat_vector"},
-          {"$ref": "#/definitions/oscore_vector"},
-          {"$ref": "#/definitions/rpl_messages_vector"}
-        ]
+  "description": "Envelope shared by all LICHEN vector files (object with format_version=2) or v2 array root (oneOf array of ccp_vector for ccp16-desync.json; compare object envelope).",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["format_version", "description", "vectors"],
+      "properties": {
+        "format_version": {"type": "integer", "const": 2},
+        "description": {"type": "string"},
+        "vectors": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {"$ref": "#/definitions/schc_vector"},
+              {"$ref": "#/definitions/l2_payload_vector"},
+              {"$ref": "#/definitions/frame_vector"},
+              {"$ref": "#/definitions/announce_coords_vector"},
+              {"$ref": "#/definitions/meshtastic_app_compat_vector"},
+              {"$ref": "#/definitions/meshcore_app_compat_vector"},
+              {"$ref": "#/definitions/oscore_vector"},
+              {"$ref": "#/definitions/rpl_messages_vector"},
+              {"$ref": "#/definitions/ccp_tdma_vector"},
+              {"$ref": "#/definitions/ccp15_vector"},
+              {"$ref": "#/definitions/ccp_load_balancing_vector"},
+              {"$ref": "#/definitions/ccp_vector"}
+            ]
+          }
+        }
       }
+    },
+    {
+      "type": "array",
+      "items": {"$ref": "#/definitions/ccp_vector"}
     }
-  },
+  ],
   "definitions": {
     "hex": {
       "type": "string",
@@ -550,6 +562,79 @@
           "$ref": "#/definitions/hex",
           "description": "Encoded message bytes (excluding ICMPv6 header)"
         }
+      }
+    },
+    "ccp_tdma_vector": {
+      "type": "object",
+      "required": ["name", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "eui64_hex": {"$ref": "#/definitions/hex"},
+        "n_slots": {"type": "integer", "minimum": 1},
+        "expected_slot": {"type": "integer", "minimum": 0},
+        "slot_start_ms": {"type": "integer"},
+        "current_ms": {"type": "integer"},
+        "slot_duration_ms": {"type": "integer"},
+        "guard_ms": {"type": "integer"},
+        "expected_in_guard": {"type": "boolean"},
+        "expected_tx_window_start": {"type": "integer"},
+        "local_beacon_rx_ms": {"type": "integer"},
+        "expected_beacon_ms": {"type": "integer"},
+        "drift_ppm": {"type": "integer"},
+        "expected_correction_ms": {"type": "integer"},
+        "hash_method": {"type": "string"}
+      }
+    },
+    "ccp15_vector": {
+      "type": "object",
+      "required": ["name", "description", "density_estimate_high", "per_percent", "expected_density"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "density_estimate_high": {"type": "number"},
+        "per_percent": {"type": "number"},
+        "expected_density": {"type": "number"},
+        "load_factor": {"type": "number"},
+        "snr_ema": {"type": "number"},
+        "expected_sf": {"type": "integer"},
+        "expected_tx_power": {"type": "integer"},
+        "density_estimate": {"type": "number"}
+      }
+    },
+    "ccp_load_balancing_vector": {
+      "type": "object",
+      "required": ["name", "description", "density_estimate_high", "per_percent", "expected_density"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "density_estimate_high": {"type": "number"},
+        "per_percent": {"type": "number"},
+        "expected_density": {"type": "number"},
+        "load_factor": {"type": "number"},
+        "snr_ema": {"type": "number"},
+        "expected_sf": {"type": "integer"}
+      }
+    },
+    "ccp_vector": {
+      "type": "object",
+      "required": ["name", "description", "sfn"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "sfn": {"type": "integer", "minimum": 0},
+        "seed": {"type": "integer"},
+        "num_channels": {"type": "integer", "minimum": 1, "maximum": 16},
+        "expected_channel": {"type": "integer", "minimum": 0},
+        "expected_freq_hz": {"type": "integer"},
+        "rx_channel": {"type": "integer"},
+        "next_rendezvous_us": {"type": "integer"},
+        "expected_beacon_fields": {"type": "string"},
+        "hash_output": {"type": "string"}
       }
     }
   }

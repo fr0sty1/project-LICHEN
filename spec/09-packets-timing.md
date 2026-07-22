@@ -228,6 +228,65 @@ Border routers with internet connectivity SHOULD:
 - Provide NTS/Roughtime proxy for LCI clients
 - Expose time provider state (source class, validity, age) via CoAP status
 
----
+### 14.7. Density-Aware Startup Delay
 
+High-density deployments risk boot storms when many nodes power up simultaneously and transmit before Trickle or CSMA/CA stabilizes the channel. Nodes MUST implement density-aware startup to mitigate this.
+
+**Constants:**
+
+| Constant          | Value     | Rationale                          |
+|-------------------|-----------|------------------------------------|
+| LISTEN_PERIOD_MIN | 30 s      | Minimum passive listen time        |
+| LISTEN_PERIOD_MAX | 60 s      | Maximum passive listen time        |
+| DELAY_PER_NODE    | 5 s/node  | Scaling factor per observed node   |
+| MAX_STARTUP_DELAY | 300 s     | Upper bound on computed delay      |
+
+**Normative Boot Behavior:**
+
+1. On boot, node MUST listen-only for random duration chosen uniformly from [LISTEN_PERIOD_MIN, LISTEN_PERIOD_MAX].
+2. During listen period, MUST count unique nodes heard (deduplicated by EUI-64/short address from announces, DIOs, DIS, and valid frames).
+3. Compute `initial_delay = min(MAX_STARTUP_DELAY, nodes_heard * DELAY_PER_NODE)`.
+4. MUST then delay by random(0, initial_delay) before first transmission.
+5. Scaled delay MUST apply to first announce, first DIO, and first DIS.
+
+**Additional Requirements (MUST):**
+- Listen before transmitting on initial boot.
+- Scale initial TX delay by observed network density.
+- MAY shorten listen to LISTEN_PERIOD_MIN if channel idle (no packets for first 15 s).
+
+### 14.8. TDMA Time Slots and Coordinated Capacity FSM (CCP-1.2)
+
+Superframe: beacon slot (gateway TX), N data slots (assigned node TX only), contention slot (CSMA/CA for joins, retries, legacy). Guard time: 50 ms. Slot duration: airtime + guard (e.g. SF10/125 kHz ≈ 250 ms).
+
+Assignment: static `hash(EUI64) % N` or dynamic via DIO/beacon; node confirms via DAO. Beacon carries SFN, slot bitmap, next-beacon time (see routing dispatch).
+
+**SFN Modulo and Time-Provider Interaction:**
+
+SFN is a 32-bit unsigned counter. Delta computation between current and last SFN MUST use unsigned 32-bit arithmetic (modulo 2^32 semantics) to correctly handle boundary at 0xFFFFFFFF:
+
+```
+SFN_delta(curr, last) = (curr - last) mod 2^32
+```
+
+(with unsigned wrap semantics: curr=0, last=0xFFFFFFFF yields delta=1). Implementations MUST compute this using language-native unsigned 32-bit subtraction or equivalent.
+
+The computation MUST anchor to the time-provider `effective_epoch_floor` (Section 14.6; `docs/firmware-time-provider.md`; Time Stratum and DIO Time Option). SFN derivation or validation from wall-clock time MUST only use samples where `wall_clock_valid=true` and `unix_time >= effective_epoch_floor`. Nodes MUST reject SFN updates derived from timestamps failing epoch_floor validation. This interaction prevents desynchronization from stale GNSS/RTC/network time and ensures consistent slotting across reboots and stratum changes. All SFN edge cases including wraparound MUST be covered by test vectors (see `test/vectors/ccp_tdma.json`). See also FSM transitions and RPL version handling below.
+
+**FSM for desync/rejoin robustness:** Nodes follow initialization order from `AGENTS.md:179` graph and `lichen_node_init()` (`AGENTS.md:218`, `lichen/subsys/lichen/lichen_node_init` example). `lichen_link_init()` MUST precede `lichen_link_load_key()`, `lichen_rpl_dodag_init()`, and TDMA. Rejoin timeout = 10 × superframe length (Kconfig `CONFIG_LICHEN_TDMA_REJOIN_TIMEOUT`, default 10 s).
+
+| Current State | Event/Condition | Timer/Timeout | Action | Next State | Reference |
+|---------------|-----------------|---------------|--------|------------|-----------|
+| UNJOINED | Power-on / reset | - | `lichen_node_init(eui64, seed)` per AGENTS.md graph | ACQUIRING | `AGENTS.md:218`, `lichen_link_init():147` |
+| ACQUIRING | Valid beacon (higher stratum/version) | BEACON_TIMEOUT = 3×superframe | Sync SFN, adopt time, DAO confirm, load key | SYNCED | `lichen_rpl_dodag_init():162` |
+| SYNCED | Beacon rx in assigned slot | superframe_timer | TX in slot, update RPL | SYNCED | Guard 50 ms enforced |
+| SYNCED | >3 missed beacons or RPL version increment | rejoin_timeout=10*superframe_len | Reset SFN, clear stale state | DRIFTING | desync recovery |
+| DRIFTING | Beacon rx or contention success | REJOIN_TIMEOUT | Re-init DODAG if needed, TOFU key pin | ACQUIRING | `oscore_init()` ordering |
+| REJOINING | DAO-ACK + slot assign | - | Enter assigned slot, report LCI status | SYNCED | `lichen_coap_client_init()` |
+
+MUST reset all timers on state transition. All transitions produce identical test vector output. See `test/vectors/` and full init graph in AGENTS.md for ordering to prevent use-before-init.
+
+Legacy nodes ignore unknown frames, use contention slot only. Mixed networks compatible.
+
+---
 [← Previous: Node Types](08-nodes.md) | [Index](README.md) | [Next: Implementation →](10-implementation.md)
+

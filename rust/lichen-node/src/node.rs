@@ -20,7 +20,7 @@ use crate::port_dispatch::{dispatch_by_port, Dispatched, UdpDispatchError};
 const IPV6_VERSION: u8 = 6;
 
 #[cfg(feature = "std")]
-use crate::routing::Router;
+use crate::routing::{RouteTarget, Router};
 
 /// ICMPv6 RPL message codes.
 pub mod rpl_code {
@@ -356,6 +356,18 @@ impl RplNode {
     /// Get preferred parent address.
     pub fn preferred_parent(&self) -> Option<[u8; 16]> {
         self.router.preferred_parent()
+    }
+
+    pub fn authorized_install_prefix_route(
+        &mut self,
+        target: RouteTarget,
+        path: &[[u8; 16]],
+    ) -> bool {
+        self.router.authorized_install_prefix_route(target, path)
+    }
+
+    pub fn authorized_remove_prefix_route(&mut self, target: &RouteTarget) -> bool {
+        self.router.authorized_remove_prefix_route(target)
     }
 
     /// Handle trickle timer transmit event.

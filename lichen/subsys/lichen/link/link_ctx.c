@@ -7,6 +7,7 @@
  */
 
 #include <lichen/link_ctx.h>
+#include <lichen/link.h>
 #include <lichen/schnorr48.h>
 #include <lichen/errno.h>
 #include <string.h>
@@ -91,8 +92,16 @@ static int link_nvs_mount(void)
 static uint32_t tuple_crc(const struct link_persisted_tuple *t)
 {
 	if (t == NULL) return 0;
-	return crc32_ieee((const uint8_t *)t + sizeof(uint32_t),
-			 sizeof(*t) - sizeof(uint32_t));
+	/* Keyed with b"LICHEN" (0x4c494348454e) as initializer per
+	 * project-LICHEN-swvz, spec 02a-coordinated-capacity.md, and
+	 * Rust lichen_link::identity::hash_32(). Syncs packet_hash.
+	 */
+	const uint8_t key[] = "LICHEN";
+	uint8_t combined[6 + sizeof(*t) - sizeof(uint32_t)];
+	memcpy(combined, key, 6);
+	memcpy(combined + 6, (const uint8_t *)t + sizeof(uint32_t),
+	       sizeof(*t) - sizeof(uint32_t));
+	return crc32_ieee(combined, sizeof(combined));
 }
 
 static int save_tuple(const struct lichen_link_ctx *ctx)
@@ -572,10 +581,9 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 	if (locked) {
 		(void)seq_unlock(ctx);
 #ifndef __ZEPHYR__
-		/* Only destroy mutex if we successfully acquired and released it.
-		 * If lock failed, mutex may be held by another thread - destroying
-		 * would cause undefined behavior per POSIX. */
 		pthread_mutex_destroy(&ctx->seq_lock);
 #endif
 	}
 }
+
+int lichen_tdma_init(struct lichen_tdma_slot *s){if(!s)return -EINVAL;s->id=0;s->assigned=0;s->next=0;return 0;}

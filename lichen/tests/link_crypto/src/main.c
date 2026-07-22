@@ -12,6 +12,7 @@
 #include <lichen/l2_payload.h>
 #include <lichen/link.h>
 #include <lichen/link_ctx.h>
+#include <ipv6_addr.h>
 #include <lichen/schc.h>
 #include <lichen/schnorr48.h>
 
@@ -341,6 +342,19 @@ ZTEST(link_crypto, test_derived_node_keys_authenticate_cross_node)
 				     &signed_payload[sizeof(payload)],
 				     pk_b);
 	zassert_equal(ret, 0, "wrong pubkey must not verify");
+}
+
+ZTEST(link_crypto, test_lichen_yggdrasil_addr_matches_vectors) {
+    uint8_t zero[32] = {0};
+    struct in6_addr a;
+    zassert_ok(lichen_yggdrasil_addr(zero, &a));
+    uint8_t e0[16] = {0x02,0x02,0x50,0x46,0xad,0xc1,0xdb,0xa8,0x38,0,0,0,0,0,0,0};
+    zassert_mem_equal(a.s6_addr, e0, 16);
+    uint8_t one[32];
+    memset(one, 1, 32);
+    zassert_ok(lichen_yggdrasil_addr(one, &a));
+    uint8_t e1[16] = {0x02,0x02,0x5c,0xe8,0x6e,0xfb,0x75,0xfa,0x4e,0,0,0,0,0,0,0};
+    zassert_mem_equal(a.s6_addr, e1, 16);
 }
 
 ZTEST_SUITE(link_crypto, NULL, NULL, NULL, NULL, NULL);

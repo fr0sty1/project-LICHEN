@@ -18,6 +18,7 @@ against these files (issue `ajr`, gate `ijj`).
 | `announce_coords.json` | Announce app_data Type=0x01 geographic coordinate encoding |
 | `meshtastic_app_compat.json` | Meshtastic BLE raw-protobuf app compatibility exchanges |
 | `meshcore_app_compat.json` | MeshCore byte-command app compatibility exchanges |
+| `ccp_tdma.json` | TDMA slot assignment, guard time boundaries, drift compensation (independent vectors per test vector discipline) |
 
 All byte strings are lowercase hex (possibly empty).
 

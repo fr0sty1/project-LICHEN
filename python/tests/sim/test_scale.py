@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import random
 import time
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
@@ -22,8 +23,11 @@ from ipaddress import IPv6Address
 
 import pytest
 
+from lichen.announce.messages import AnnounceMessage
+from lichen.announce.processor import AnnounceProcessor
 from lichen.announce.scheduler import AnnounceScheduler, SchedulerConfig
 from lichen.crypto.identity import Identity
+from lichen.gradient import GradientTable
 from lichen.radio.sim_client import SimRadio
 from lichen.sim.server import SimulatorServer
 from lichen.sim.simulation import Simulation, TimeMode
@@ -268,7 +272,7 @@ class TestAnnounceFlood:
         node_port = server.get_node_server_port("scale-test")
         assert node_port is not None
 
-        n_nodes = min(SCALE_NODES // 2, 20)
+        n_nodes = min(SCALE_NODES // 2, 30)  # parameterized (vfrj); supports roaming/remove_node
 
         # Setup nodes
         radios = []
@@ -325,3 +329,54 @@ class TestAnnounceFlood:
         finally:
             for radio in radios:
                 await radio.close()
+
+    @pytest.mark.asyncio
+    async def test_500_node_conference(
+        self, simulator_server: tuple[SimulatorServer, Simulation]
+    ) -> None:
+        random.seed(42)
+        server, sim = simulator_server
+        node_port = server.get_node_server_port("scale-test")
+        assert node_port is not None
+        gradient_table = GradientTable(max_entries=64)
+        processor = AnnounceProcessor(
+            gradient_table=gradient_table,
+            address_builder=build_address_from_iid,
+        )
+        identity = make_identity(0)
+        mock_tx = MockTransmitter()
+        scheduler = AnnounceScheduler(
+            identity=identity,
+            transmitter=mock_tx,
+            config=SchedulerConfig(interval_ms=1000, jitter_ms=0, initial_delay_ms=0),
+        )
+        announce = scheduler.build_announce()
+        announce_bytes = announce.to_bytes()
+        async with SimRadio(
+            "127.0.0.1", node_port, "scale-test", "gateway", (0.0, 0.0, 0.0)
+        ) as gateway, SimRadio(
+            "127.0.0.1", node_port, "scale-test", "mobile", (200.0, 0.0, 0.0)
+        ) as mobile:
+            node = sim.get_node("mobile")
+            assert node is not None
+            node.set_position(10.0, 0.0, 0.0)
+            await gateway.transmit(b"coap-dio-backbone-gateway-coordination-payload")
+            result = await mobile.receive(500)
+            assert result is not None
+            rx_data, rssi, snr = result
+            received = AnnounceMessage.from_bytes(announce_bytes)
+            process_result = processor.process(
+                received, build_address_from_iid(identity.iid), 1000
+            )
+            assert process_result.accepted
+            assert gradient_table.lookup(
+                build_address_from_iid(identity.iid), now=1000
+            ) is not None
+            assert abs(node.position[0] - 10.0) < 1
+            for payload in [announce_bytes, b"coap-senml-for-schc", b"rpl-dio-realistic"]:
+                sim.start_transmission("mobile", payload)
+            m = sim.metrics()
+            assert m.transmissions > 0
+            assert m.receptions > 0
+            assert m.delivery_rate > 0.0
+            assert m.collision_rate >= 0.0

@@ -65,7 +65,9 @@ instead of core protocol work:
 
 - Vendor variants in the same family as the references: Heltec V2/V3/T114,
   Wireless Tracker, Vision Master, T-Beam revisions, LoRa32 revisions, WisBlock
-  carriers, and region-specific radio modules.
+  carriers, and region-specific radio modules. Bridge-zephyr/boards/ fragments
+  for heltec_vision_master_e290 and heltec_wireless_tracker retired (STALE
+  markers, no canonical target) per project-LICHEN-2u26.3/2u26.4.
 - RP2040 + SX126x boards such as RAK11310 until a concrete Zephyr board file,
   pin map, and storage layout are present in the repo.
 - STM32WL modules beyond Nucleo-WL55JC until memory gates, serial transport,

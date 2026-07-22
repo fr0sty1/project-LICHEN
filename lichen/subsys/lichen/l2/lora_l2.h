@@ -261,6 +261,7 @@ bool lichen_lora_l2_needs_reinit(void);
  * @return 0 on success, -EINVAL if stats is NULL, -ENODEV if not initialized
  */
 int lichen_lora_l2_queue_stats_get(struct tx_queue_stats *stats);
+uint16_t adaptive_duty_permille(uint8_t density, uint8_t region);
 
 #ifdef __cplusplus
 }

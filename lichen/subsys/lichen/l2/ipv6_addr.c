@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include "lichen_util.h"
+#include "../crypto/monocypher-ed25519.h"
 
 /*
  * Logging abstraction: use Zephyr logging when available, otherwise
@@ -127,12 +128,17 @@ cleanup:
     return ret;
 }
 
-int lichen_eui_from_ed25519(const uint8_t *pubkey, uint8_t *eui) {
+int lichen_yggdrasil_addr(const uint8_t *pubkey, struct in6_addr *out) {
     uint8_t hash[64];
-    if (pubkey == NULL || eui == NULL) return -EINVAL;
-    lichen_sha512(hash, pubkey, 32);
-    memcpy(eui, hash, 8);
-    eui[0] = (eui[0] & 0xfe) | 0x02;
+    if (pubkey == NULL || out == NULL) {
+        LOG_ERR("lichen_ipv6: yggdrasil_addr failed (NULL input)");
+        return -EINVAL;
+    }
+    crypto_sha512(hash, pubkey, 32);
+    memset(out->s6_addr, 0, 16);
+    out->s6_addr[0] = 0x02;
+    out->s6_addr[1] = 0x02;
+    memcpy(&out->s6_addr[2], hash, 7);
     secure_zero(hash, sizeof(hash));
     return 0;
 }

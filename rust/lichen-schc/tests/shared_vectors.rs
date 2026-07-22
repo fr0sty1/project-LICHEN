@@ -1,7 +1,8 @@
 //! Tests against shared test vectors from test/vectors/schc_compression.json
 //!
-//! These vectors are the source of truth for cross-implementation compatibility.
-//! If this test fails, the Rust implementation doesn't match the Python reference.
+//! These vectors (now including canonical OSCORE rules 5/6) are the source of
+//! truth for cross-implementation compatibility. If this test fails, the Rust
+//! implementation doesn't match the Python reference.
 
 use std::fs;
 use std::path::Path;
@@ -44,7 +45,7 @@ fn test_schc_compression_vectors() {
     let vectors: VectorFile = serde_json::from_str(&content).expect("Failed to parse vectors JSON");
 
     assert_eq!(
-        vectors.format_version, 1,
+        vectors.format_version, 2,
         "Unexpected vector format version"
     );
 
@@ -148,8 +149,8 @@ fn test_schc_rule_coverage() {
 
     println!("SCHC rules with vectors: {:?}", rules_seen);
 
-    // Expect at least rules 0-4 (basic CoAP, global, ICMPv6, RPL)
-    for expected in 0..5 {
+    // Expect at least rules 0-6 (CoAP, global, ICMPv6, RPL, OSCORE 5/6)
+    for expected in 0..7 {
         if !rules_seen.contains(&expected) {
             eprintln!("WARNING: No vector for rule_id {}", expected);
         }

@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include <limits.h>
 
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/util.h>
@@ -14,6 +15,8 @@
 
 BUILD_ASSERT(CONFIG_LICHEN_MESHCORE_MAX_SERIAL_PAYLOAD <= UINT16_MAX,
 	     "Serial payload cannot exceed 16-bit length field");
+BUILD_ASSERT(CONFIG_LICHEN_MESHCORE_MAX_SERIAL_PAYLOAD <= INT_MAX - 3,
+	     "Serial payload too large for int return");
 
 int lichen_meshcore_decode_frame(const uint8_t *frame, size_t len,
 				 struct lichen_meshcore_frame_view *view)

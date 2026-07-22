@@ -16,6 +16,8 @@ use std::{
 use crate::message::{
     Dao, OptionIter, RplError, RplTarget, TransitInfo, OPT_RPL_TARGET, OPT_TRANSIT_INFO,
 };
+#[cfg(feature = "std")]
+use lichen_core::addr::NodeId;
 
 /// RFC 6550 Section 9.1: Lollipop sequence comparison for DAO sequence.
 ///
@@ -110,6 +112,48 @@ impl SourceRoutingHeader {
     }
 }
 
+/// Canonical route target for prefix routes (per closed 2auf.44.9.12).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct RouteTarget {
+    pub prefix: [u8; 16],
+    pub prefix_len: u8,
+}
+
+impl RouteTarget {
+    pub fn new(prefix: [u8; 16], prefix_len: u8) -> Option<Self> {
+        if prefix_len > 128 {
+            return None;
+        }
+        Some(Self { prefix, prefix_len })
+    }
+
+    pub fn canonical(prefix: [u8; 16], prefix_len: u8) -> Option<Self> {
+        if prefix_len > 128 {
+            return None;
+        }
+        let len = match prefix_len {
+            0 => 0,
+            l if l <= 64 => 64,
+            l if l <= 127 => 127,
+            _ => 128,
+        };
+        let mut p = prefix;
+        let bytes = (len / 8) as usize;
+        if bytes < 16 {
+            p[bytes..].fill(0);
+            let bits = len % 8;
+            if bits > 0 {
+                let mask = 0xff << (8 - bits);
+                p[bytes] &= mask;
+            }
+        }
+        Some(Self {
+            prefix: p,
+            prefix_len: len,
+        })
+    }
+}
+
 // ── Routing table ─────────────────────────────────────────────────────────────
 
 #[cfg(feature = "std")]
@@ -148,14 +192,19 @@ pub struct InvalidRouteEntryTransition {
 pub struct RouteEntry {
     pub path: Vec<[u8; 16]>,
     pub state: RouteEntryState,
+    /// Egress for reparenting/expiry handling in atomic DAO rebuilds. For hosts this is
+    /// the target; for prefixes it is the border router. Prevents stale source paths.
+    pub egress: [u8; 16],
 }
 
 #[cfg(feature = "std")]
 impl RouteEntry {
     pub fn fresh(path: &[[u8; 16]]) -> Self {
+        let egress = *path.last().expect("route path must not be empty");
         Self {
             path: path.to_vec(),
             state: RouteEntryState::Fresh,
+            egress,
         }
     }
 
@@ -187,6 +236,9 @@ impl RouteEntry {
             });
         }
         self.path = path.to_vec();
+        if let Some(&e) = path.last() {
+            self.egress = e;
+        }
         self.transition_to(RouteEntryState::Fresh)
     }
 
@@ -260,6 +312,14 @@ impl RoutingTable {
 
     pub fn is_empty(&self) -> bool {
         self.routes.is_empty()
+    }
+
+    pub fn add_prefix_route(&mut self, target: RouteTarget, path: &[[u8; 16]]) {
+        self.add_route(target.prefix, path);
+    }
+
+    pub fn remove_prefix_route(&mut self, target: &RouteTarget) {
+        self.remove_route(&target.prefix);
     }
 }
 
@@ -426,6 +486,28 @@ impl DaoManager {
         chain.reverse();
         Some(chain)
     }
+
+    pub fn populate_routes(&self, routes: &mut HashMap<[u8; 16], NodeId>) {
+        routes.clear();
+        let targets: Vec<[u8; 16]> = self.parent_map.keys().copied().collect();
+        for target in targets {
+            if let Some(path) = self.assemble_path(target) {
+                if let Some(&nexthop) = path.first() {
+                    let id = if nexthop[0] == 0x02 && nexthop[9..].iter().all(|&b| b == 0) {
+                        let mut id = [0u8; 8];
+                        id.copy_from_slice(&nexthop[1..9]);
+                        id
+                    } else {
+                        let mut id = [0u8; 8];
+                        id.copy_from_slice(&nexthop[8..16]);
+                        id[0] ^= 0x02;
+                        id
+                    };
+                    routes.insert(target, NodeId(id));
+                }
+            }
+        }
+    }
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -459,6 +541,13 @@ mod tests {
         table.remove_route(&target);
         assert!(table.lookup(&target).is_none());
         assert!(table.is_empty());
+
+        let rt = RouteTarget::new(ll(4), 128).unwrap();
+        let ppath = [ll(2), ll(4)];
+        table.add_prefix_route(rt, &ppath);
+        assert_eq!(table.lookup(&ll(4)), Some(ppath.as_slice()));
+        table.remove_prefix_route(&rt);
+        assert!(table.lookup(&ll(4)).is_none());
     }
 
     #[test]

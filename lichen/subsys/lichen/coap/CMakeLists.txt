@@ -45,6 +45,11 @@ zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_LOCATION
   coap_location.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_DTN
+  coap_dtn.c
+  coap_deaddrop.c
+)
+
 # coap_location.c reads the node EUI-64 via the L2 header for its SenML
 # base name.
 if(CONFIG_LICHEN_COAP_LOCATION)

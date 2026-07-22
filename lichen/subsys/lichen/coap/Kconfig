@@ -145,6 +145,22 @@ config LICHEN_COAP_STATUS_MAX_ROUTES
 	  Maximum number of route entries returned in a single
 	  /status/routes response.
 
+config LICHEN_COAP_STATUS_MAX_TXQ
+	int "Maximum TX queue capacity for /status"
+	depends on LICHEN_COAP_STATUS
+	default 8
+	range 1 32
+	help
+	  Maximum txq_cap value (TX queue size).
+
+config LICHEN_COAP_STATUS_MAX_FWD
+	int "Maximum forwarding capacity for /status"
+	depends on LICHEN_COAP_STATUS
+	default 16
+	range 1 64
+	help
+	  Maximum fwd_cap value (forwarding buffer size).
+
 config LICHEN_COAP_STATUS_LOG_LEVEL
 	int "CoAP status log level"
 	depends on LICHEN_COAP_STATUS
@@ -250,6 +266,25 @@ config LICHEN_COAP_LOCATION_LOG_LEVEL
 	range 0 4
 	help
 	  Log level for the LICHEN CoAP location handler:
+	  0=off, 1=error, 2=warning, 3=info, 4=debug
+
+config LICHEN_COAP_DEADDROP
+	bool "CoAP /deaddrop resource (lightweight storage not full DTN buffer ~2KB RAM)"
+	depends on !LICHEN_COAP_SERVER_STANDALONE
+	depends on LICHEN_SENML
+	depends on LICHEN_OSCORE
+	default n
+	help
+	  Implements /deaddrop using lightweight provider storage not full DTN
+	  buffer (~2KB RAM). OSCORE SenML supported via registered provider.
+
+config LICHEN_COAP_DEADDROP_LOG_LEVEL
+	int "CoAP deaddrop log level"
+	depends on LICHEN_COAP_DEADDROP
+	default 3
+	range 0 4
+	help
+	  Log level for the LICHEN CoAP deaddrop handler:
 	  0=off, 1=error, 2=warning, 3=info, 4=debug
 
 endif # LICHEN_COAP

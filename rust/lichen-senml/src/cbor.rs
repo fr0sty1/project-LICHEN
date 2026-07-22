@@ -933,4 +933,21 @@ mod tests {
         let val = buf[0].value.unwrap();
         assert!((val - 1.5).abs() < 1e-10);
     }
+
+    #[test]
+    fn dec_f64_half_precision_subnormal() {
+        let data = [0xf9, 0x00, 0x01];
+        let (val, adv) = dec_f64(&data, 0).unwrap();
+        assert_eq!(adv, 3);
+        assert_eq!(val, 2f64.powi(-24));
+
+        let data2 = [0xf9, 0x03, 0xff];
+        let (val2, _) = dec_f64(&data2, 0).unwrap();
+        let expected2 = (1023f64 / 1024.0) * 2f64.powi(-14);
+        assert!((val2 - expected2).abs() < f64::EPSILON);
+
+        let data_neg = [0xf9, 0x83, 0xff];
+        let (val_neg, _) = dec_f64(&data_neg, 0).unwrap();
+        assert!((val_neg + expected2).abs() < f64::EPSILON);
+    }
 }

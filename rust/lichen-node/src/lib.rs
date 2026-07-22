@@ -56,6 +56,8 @@ pub mod scheduler;
 pub mod secure;
 #[cfg(feature = "std")]
 pub mod stack;
+#[cfg(feature = "std")]
+pub mod tdma_scheduler;
 
 pub use dispatch::{Dispatcher, Request, Resource, Response};
 #[cfg(feature = "std")]
@@ -73,7 +75,7 @@ pub use port_dispatch::{
     dispatch_by_port, AppProtocol, DispatchError, Dispatched, UdpDispatchError,
 };
 #[cfg(feature = "std")]
-pub use routing::{DtnBuffer, DtnMessage, Router, DTN_BUFFER_MAX_BYTES};
+pub use routing::{DtnBuffer, DtnMessage, RouteTarget, Router, DTN_BUFFER_MAX_BYTES};
 pub use routing::{Neighbor, NeighborTable};
 // SECURITY: SecureStack is the primary export for CoAP traffic per spec section 8.7.
 // Use Stack (PlaintextStack) only for ICMPv6, diagnostics, or testing.
@@ -98,6 +100,8 @@ pub use forward_buffer::{
 pub use lichen_link::link_layer::LinkRxError;
 #[cfg(feature = "std")]
 pub use scheduler::{AnnounceScheduler, AnnounceTransmitter, SchedulerConfig, SchedulerError};
+#[cfg(feature = "std")]
+pub use tdma_scheduler::TdmaScheduler;
 
 #[cfg(feature = "std")]
 extern crate std;

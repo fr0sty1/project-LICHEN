@@ -592,8 +592,12 @@ pub fn aprs_to_cot(aprs: &str) -> Option<CompactCot> {
 
     Some(CompactCot {
         subtype: subtype::FRIENDLY_GROUND, // Default to friendly
-        lat_microdeg: (lat * 1_000_000.0) as i32,
-        lon_microdeg: (lon * 1_000_000.0) as i32,
+        lat_microdeg: (lat * 1_000_000.0)
+            .round()
+            .clamp(i32::MIN as f64, i32::MAX as f64) as i32,
+        lon_microdeg: (lon * 1_000_000.0)
+            .round()
+            .clamp(i32::MIN as f64, i32::MAX as f64) as i32,
         alt_dm,
         course_cdeg: 0,
         speed_cm_s: 0,
@@ -848,5 +852,42 @@ mod tests {
             typical_packet.len() < MAX_LINE_LEN,
             "typical packet should fit within MAX_LINE_LEN"
         );
+    }
+
+    #[test]
+    fn aprs_to_cot_f64_edge_cases() {
+        // Test rounding for exact 0.5 (should round to nearest, ties to even? but f64.round uses banker's but for this fine)
+        let aprs_half = "W1TEST>APRS:!4900.50N/07200.50W-";
+        let cot = aprs_to_cot(aprs_half).unwrap();
+        assert_eq!(cot.lat_microdeg, 49_008_333); // 49 + 0.5/60 = 49.0083333 -> 49008333
+        assert_eq!(cot.lon_microdeg, -72_008_333);
+
+        // Southern/boundary values
+        let aprs_south_pole = "W1TEST>APRS:!9000.00S/00000.00E-";
+        let cot_sp = aprs_to_cot(aprs_south_pole).unwrap();
+        assert_eq!(cot_sp.lat_microdeg, -90_000_000);
+        assert_eq!(cot_sp.lon_microdeg, 0);
+
+        // Very large values (clamped by our fix, no panic)
+        let aprs_large = "W1TEST>APRS:!9999.99N/99999.99W-";
+        let cot_large = aprs_to_cot(aprs_large).unwrap();
+        assert!(cot_large.lat_microdeg > 90_000_000); // clamped but positive
+        assert!(cot_large.lon_microdeg < -90_000_000);
+
+        // Verify no panic on extreme CompactCot cast (lat_deg uses i32 as f64 which is safe)
+        let extreme_cot = CompactCot {
+            subtype: subtype::FRIENDLY_GROUND,
+            lat_microdeg: i32::MAX,
+            lon_microdeg: i32::MIN,
+            alt_dm: i16::MAX,
+            course_cdeg: u16::MAX,
+            speed_cm_s: u16::MAX,
+            team: team::BLUE,
+            role: u8::MAX,
+        };
+        let _lat = extreme_cot.lat_deg(); // must not panic
+        let _lon = extreme_cot.lon_deg();
+        assert!(_lat.is_finite());
+        assert!(_lon.is_finite());
     }
 }

@@ -76,6 +76,8 @@ class BitWriter:
         """Return the written bits, zero-padded up to a byte boundary."""
         if self._nbits == 0:
             return b""
+        if self._nbits > 65536:  # prevent excessive memory use on malformed input
+            raise OverflowError(f"excessive bit count: {self._nbits}")
         pad = (-self._nbits) % 8
         total = self._nbits + pad
         return (self._acc << pad).to_bytes(total // 8, "big")

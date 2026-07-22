@@ -13,9 +13,10 @@
 //   0x1E ReadBuffer(offset) -> data... - read from RX buffer
 //   0x83 SetTx(timeout) - trigger transmit
 //   0x82 SetRx(timeout) - enter receive mode
-//   0xC0 GetStatus -> status byte
-//   0x17 GetIrqStatus -> IRQ flags
-//   0x02 ClearIrqStatus(flags)
+  //   0xC0 GetStatus -> status byte
+  //   0x12 GetIrqStatus -> IRQ flags
+  //   0x02 ClearIrqStatus(flags)
+
 
 using System;
 using System.Net.Sockets;
@@ -104,6 +105,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 latchedIrqFlags = 0;
                 clearIrqMask = 0;
                 rxMode = false;
+                rxOneShot = false;
                 Array.Clear(txBuffer, 0, txBuffer.Length);
                 Array.Clear(rxBuffer, 0, rxBuffer.Length);
                 Array.Clear(rxTimeoutBytes, 0, rxTimeoutBytes.Length);
@@ -114,8 +116,11 @@ namespace Antmicro.Renode.Peripherals.Wireless
 
         public void FinishTransmission()
         {
-            state = State.Idle;
-            byteIndex = 0;
+            lock (stateLock)
+            {
+                state = State.Idle;
+                byteIndex = 0;
+            }
         }
 
         public byte Transmit(byte data)
@@ -443,6 +448,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
             lock (stateLock)
             {
                 rxMode = true;
+                rxOneShot = timeoutUs != 0xFFFFFFFF;
             }
             this.Log(LogLevel.Debug, "RX_ENTER: timeout={0}us", timeoutUs == 0xFFFFFFFF ? "continuous" : timeoutUs.ToString());
 
@@ -469,6 +475,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 lock (stateLock)
                 {
                     rxMode = false;
+                    rxOneShot = false;
                 }
             }
         }
@@ -480,6 +487,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 lock (stateLock)
                 {
                     rxMode = false;
+                    rxOneShot = false;
                 }
                 return;
             }
@@ -507,6 +515,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
             lock (stateLock)
             {
                 rxMode = false;
+                rxOneShot = false;
             }
         }
 
@@ -635,7 +644,11 @@ namespace Antmicro.Renode.Peripherals.Wireless
                         Array.Copy(resp, 3, rxBuffer, 0, rxLen);
                         rxRssi = (short)ReadLE16(resp, payloadEnd);
                         rxSnr = (short)ReadLE16(resp, payloadEnd + 2);
-                        rxMode = false;
+                        if (rxOneShot)
+                        {
+                            rxMode = false;
+                            rxOneShot = false;
+                        }
                         this.Log(LogLevel.Debug, "RX_PACKET {0} bytes (async)", rxLen);
                         irqFlags |= 0x0002; // RxDone
                         IRQ.Set(true);
@@ -749,6 +762,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
         private ushort latchedIrqFlags;
         private ushort clearIrqMask;
         private bool rxMode;
+        private bool rxOneShot;
         private byte[] rxTimeoutBytes = new byte[3];
 
         // Background reader: ALL socket reads happen here so the SPI Transmit()
