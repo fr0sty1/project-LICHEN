@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-wz2c",
+  "title": "codereview-pass-2: draft-lichen-schc-lora-00.md rule descriptions in §4 still reference old rule 0/1/2/3 definitions that were replaced; need full current field tables or note that full descriptors are in rules.rs",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T14:46:09.447992398Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:46:09.447992398Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-wz2c",
+      "depends_on_id": "project-LICHEN-2cle",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T14:46:09.541958005Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
