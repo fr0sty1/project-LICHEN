@@ -26,15 +26,26 @@
 
 use heapless::Deque;
 
-/// Rolling window duration in milliseconds (1 hour).
 pub const WINDOW_MS: u64 = 3_600_000;
-
-/// Default duty cycle limit in permille (1% = 10 permille).
 pub const DEFAULT_DUTY_PERMILLE: u16 = 10;
+pub const REGION_EU: u8 = 0;
+pub const REGION_US: u8 = 1;
+pub const REGION_AS: u8 = 2;
 
-/// Maximum TX time allowed per window at 1% duty cycle (36000ms).
-/// Calculated as: WINDOW_MS * DEFAULT_DUTY_PERMILLE / 1000
-pub const MAX_TX_MS: u32 = (WINDOW_MS as u32 / 1000) * (DEFAULT_DUTY_PERMILLE as u32); // 36000ms
+pub fn adaptive_duty_permille(density: u8, region: u8) -> u16 {
+    let base = match region {
+        REGION_EU => 10,
+        REGION_US => 1000,
+        _ => DEFAULT_DUTY_PERMILLE,
+    };
+    if density > 8 {
+        if base > 1 { base / 2 } else { 1 }
+    } else if density < 3 {
+        (base * 2).min(1000)
+    } else {
+        base
+    }
+}
 
 /// A transmission record: (timestamp_ms, duration_ms).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -106,6 +117,10 @@ impl<const N: usize> DutyCycleTracker<N> {
         }
     }
 
+    pub fn set_from_density(&mut self, density: u8, region: u8) {
+        self.duty_permille = adaptive_duty_permille(density, region);
+    }
+
     /// Record a transmission.
     ///
     /// # Arguments
@@ -151,13 +166,8 @@ impl<const N: usize> DutyCycleTracker<N> {
         total
     }
 
-    /// Calculate max TX time in milliseconds based on duty cycle.
-    ///
-    /// max_tx_ms = WINDOW_MS * duty_permille / 1000
     #[inline]
-    fn max_tx_ms(&self) -> u32 {
-        // WINDOW_MS / 1000 = 3600, then * duty_permille
-        // This avoids overflow: 3600 * 1000 = 3_600_000 fits in u32
+    pub fn max_tx_ms(&self) -> u32 {
         (WINDOW_MS as u32 / 1000) * (self.duty_permille as u32)
     }
 
@@ -273,7 +283,7 @@ mod tests {
     #[test]
     fn new_tracker_has_full_budget() {
         let mut tracker: DutyCycleTracker<64> = DutyCycleTracker::new();
-        assert_eq!(tracker.remaining_ms(0), MAX_TX_MS);
+        assert_eq!(tracker.remaining_ms(0), tracker.max_tx_ms());
         assert_eq!(tracker.usage_permille(0), 0);
     }
 
@@ -283,7 +293,7 @@ mod tests {
         tracker.record_tx(1000, 200);
 
         // Budget should be reduced by 200ms
-        assert_eq!(tracker.remaining_ms(1000), MAX_TX_MS - 200);
+        assert_eq!(tracker.remaining_ms(1000), tracker.max_tx_ms() - 200);
     }
 
     #[test]
@@ -304,10 +314,10 @@ mod tests {
         tracker.record_tx(0, 200);
 
         // Just before window ends, record is still counted
-        assert_eq!(tracker.remaining_ms(WINDOW_MS - 1), MAX_TX_MS - 200);
+        assert_eq!(tracker.remaining_ms(WINDOW_MS - 1), tracker.max_tx_ms() - 200);
 
         // After window, record ages out (record ends at 200ms, ages out at WINDOW_MS + 200)
-        assert_eq!(tracker.remaining_ms(WINDOW_MS + 201), MAX_TX_MS);
+        assert_eq!(tracker.remaining_ms(WINDOW_MS + 201), tracker.max_tx_ms());
     }
 
     #[test]
@@ -319,7 +329,7 @@ mod tests {
         // At time WINDOW_MS + 500, only 500ms of the TX is in the window
         // Window starts at 500ms, TX ends at 1000ms, so 500ms overlap
         let remaining = tracker.remaining_ms(WINDOW_MS + 500);
-        assert_eq!(remaining, MAX_TX_MS - 500);
+        assert_eq!(remaining, tracker.max_tx_ms() - 500);
     }
 
     #[test]
@@ -335,8 +345,9 @@ mod tests {
     #[test]
     fn next_tx_available_when_budget_exhausted() {
         let mut tracker: DutyCycleTracker<64> = DutyCycleTracker::new();
+        let max_tx = tracker.max_tx_ms();
         // Use up all budget
-        tracker.record_tx(0, MAX_TX_MS);
+        tracker.record_tx(0, max_tx);
 
         // Can't transmit now
         assert!(!tracker.can_transmit(1000, 200));
@@ -351,7 +362,7 @@ mod tests {
         let mut tracker: DutyCycleTracker<64> = DutyCycleTracker::new();
 
         // Asking for more than max budget
-        let next = tracker.next_tx_available_ms(0, MAX_TX_MS + 1);
+        let next = tracker.next_tx_available_ms(0, tracker.max_tx_ms() + 1);
         assert_eq!(next, u64::MAX);
     }
 
@@ -362,7 +373,7 @@ mod tests {
         tracker.record_tx(1000, 100);
         tracker.record_tx(2000, 100);
 
-        assert_eq!(tracker.remaining_ms(2000), MAX_TX_MS - 300);
+        assert_eq!(tracker.remaining_ms(2000), tracker.max_tx_ms() - 300);
         assert_eq!(tracker.record_count(), 3);
     }
 
@@ -384,7 +395,8 @@ mod tests {
         let mut tracker: DutyCycleTracker<64> = DutyCycleTracker::new();
         assert!(tracker.can_transmit(0, 200));
 
-        tracker.record_tx(0, MAX_TX_MS);
+        let max_tx = tracker.max_tx_ms();
+        tracker.record_tx(0, max_tx);
         assert!(!tracker.can_transmit(0, 1));
     }
 
@@ -392,10 +404,9 @@ mod tests {
     fn custom_duty_permille() {
         let mut tracker: DutyCycleTracker<64> = DutyCycleTracker::with_duty_permille(100);
 
-        // 10% duty cycle (100 permille) = 360000ms max
-        // WINDOW_MS / 1000 * 100 = 3600 * 100 = 360000
-        let expected_max = (WINDOW_MS as u32 / 1000) * 100;
+        let expected_max = (WINDOW_MS as u32 / 1000) * (100u16 as u32);
         assert_eq!(tracker.remaining_ms(0), expected_max);
+        assert_eq!(tracker.max_tx_ms(), expected_max);
     }
 
     #[test]
@@ -405,7 +416,7 @@ mod tests {
         tracker.clear();
 
         assert_eq!(tracker.record_count(), 0);
-        assert_eq!(tracker.remaining_ms(0), MAX_TX_MS);
+        assert_eq!(tracker.remaining_ms(0), tracker.max_tx_ms());
     }
 
     #[test]
@@ -466,7 +477,7 @@ mod tests {
 
         // Total TX: 100 * 50 = 5000ms
         let remaining = tracker.remaining_ms(10000);
-        assert_eq!(remaining, MAX_TX_MS - 5000);
+        assert_eq!(remaining, tracker.max_tx_ms() - 5000);
     }
 
     #[test]
@@ -480,7 +491,7 @@ mod tests {
             // At WINDOW_MS + 100, window starts at 100, TX ends at 100
             // tx_end (100) <= window_start (100), so no overlap
             let remaining = tracker.remaining_ms(WINDOW_MS + 100);
-            assert_eq!(remaining, MAX_TX_MS);
+            assert_eq!(remaining, tracker.max_tx_ms());
         }
 
         // Test 2: 1ms overlap at boundary - 1
@@ -491,7 +502,7 @@ mod tests {
             // At WINDOW_MS + 99, window starts at 99, TX ends at 100
             // Overlap is 100 - 99 = 1ms
             let remaining = tracker.remaining_ms(WINDOW_MS + 99);
-            assert_eq!(remaining, MAX_TX_MS - 1);
+            assert_eq!(remaining, tracker.max_tx_ms() - 1);
         }
 
         // Test 3: 50ms overlap
@@ -502,7 +513,7 @@ mod tests {
             // At WINDOW_MS + 50, window starts at 50, TX ends at 100
             // Overlap is 100 - 50 = 50ms
             let remaining = tracker.remaining_ms(WINDOW_MS + 50);
-            assert_eq!(remaining, MAX_TX_MS - 50);
+            assert_eq!(remaining, tracker.max_tx_ms() - 50);
         }
     }
 
@@ -515,7 +526,17 @@ mod tests {
     #[test]
     fn constants_are_correct() {
         assert_eq!(WINDOW_MS, 3_600_000);
-        assert_eq!(DEFAULT_DUTY_PERMILLE, 10); // 1% = 10 permille
-        assert_eq!(MAX_TX_MS, 36000);
+        assert_eq!(DEFAULT_DUTY_PERMILLE, 10);
+        let tracker: DutyCycleTracker<64> = DutyCycleTracker::new();
+        assert_eq!(tracker.max_tx_ms(), (WINDOW_MS as u32 / 1000) * (DEFAULT_DUTY_PERMILLE as u32));
+    }
+
+    #[test]
+    fn adaptive_duty_density() {
+        assert_eq!(adaptive_duty_permille(0, REGION_EU), 20);
+        assert_eq!(adaptive_duty_permille(10, REGION_EU), 5);
+        assert_eq!(adaptive_duty_permille(5, REGION_EU), 10);
+        assert_eq!(adaptive_duty_permille(10, REGION_US), 500);
+        assert_eq!(adaptive_duty_permille(10, 255), 5);
     }
 }

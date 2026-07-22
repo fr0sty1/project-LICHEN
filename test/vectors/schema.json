@@ -1,13 +1,33 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LICHEN test vector file",
-  "description": "Envelope shared by all LICHEN vector files. Each file holds a list of vectors of one kind; see the per-vector definitions.",
-  "type": "object",
-  "required": ["format_version", "description", "vectors"],
-  "properties": {
-    "format_version": {"type": "integer", "enum": [1, 2]},
-    "description": {"type": "string"},
-    "vectors": {
+  "description": "Supports object envelope with format_version or v2 bare array root of vectors (for ccp16-desync.json). Each file holds list of one vector kind.",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["format_version", "description", "vectors"],
+      "properties": {
+        "format_version": {"type": "integer", "enum": [1, 2]},
+        "description": {"type": "string"},
+        "vectors": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {"$ref": "#/definitions/schc_vector"},
+              {"$ref": "#/definitions/l2_payload_vector"},
+              {"$ref": "#/definitions/frame_vector"},
+              {"$ref": "#/definitions/announce_coords_vector"},
+              {"$ref": "#/definitions/meshtastic_app_compat_vector"},
+              {"$ref": "#/definitions/meshcore_app_compat_vector"},
+              {"$ref": "#/definitions/oscore_vector"},
+              {"$ref": "#/definitions/rpl_messages_vector"},
+              {"$ref": "#/definitions/ccp_vector"}
+            ]
+          }
+        }
+      }
+    },
+    {
       "type": "array",
       "items": {
         "oneOf": [
@@ -21,9 +41,10 @@
           {"$ref": "#/definitions/rpl_messages_vector"},
           {"$ref": "#/definitions/ccp_vector"}
         ]
-      }
+      },
+      "description": "v2 bare array root for ccp16-desync.json and similar"
     }
-  },
+  ],
   "definitions": {
     "hex": {
       "type": "string",
