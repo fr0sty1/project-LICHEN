@@ -85,7 +85,6 @@ class TransitInformation:
             raise DaoError(f"not a Transit Information option: type {opt.type}")
         if len(opt.data) < 4:
             raise DaoError("Transit Information option too short")
-        # E flag (bit 7) indicates Parent Address field is present (RFC 6550 6.7.8)
         e_flag = opt.data[0] & 0x80
         if e_flag:
             if len(opt.data) < 4 + 16:

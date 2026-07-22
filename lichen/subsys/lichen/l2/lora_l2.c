@@ -740,33 +740,21 @@ int lichen_lora_l2_start(void)
         return -EAGAIN;
     }
 
-    /*
-     * Configure LoRa radio using Kconfig options and LICHEN protocol defaults.
-     * Modulation parameters (from <zephyr/drivers/lora.h> enums):
-     *   - BW_125_KHZ: 125kHz bandwidth (good range/throughput balance)
-     *   - SF_10: Spreading factor 10 (long range, ~980 bps at BW125)
-     *   - CR_4_5: Coding rate 4/5 (minimal FEC overhead)
-     * These match the LICHEN spec for mesh operation. Preamble length 8
-     * is the LoRa default (sufficient for synchronization at SF10).
-     *
-     * Stack-local struct is safe: lora_config() copies the values (see
-     * sx12xx_lora_config memcpy, rylr_config field reads) and does not
-     * retain a pointer.
-     *
-     * Zephyr's lora_modem_config.tx selects the direction being configured,
-     * and for the SX12xx driver family each direction is programmed
-     * independently: .tx=true calls Radio.SetTxConfig() (and caches the
-     * params lora_send() needs for airtime), .tx=false calls
-     * Radio.SetRxConfig(). lora_recv()'s Radio.Rx() re-enters RX *mode* but
-     * reuses whatever modulation params SetRxConfig last programmed - it does
-     * NOT re-derive them from the TX config. Configuring only .tx=true left
-     * the RX side unprogrammed (default SF/BW), making the radio deaf to
-     * matched-PHY peers. Configure BOTH directions: RX first, TX second.
-     *
-     * Driver-family caveat: drivers such as RYLR treat .tx as persistent
-     * direction state; this two-pass sequence targets the SX126x/SX127x
-     * path used by the supported boards.
-     */
+     /*
+      * Configure LoRa radio using Kconfig options and LICHEN protocol defaults.
+      * (project-LICHEN-6mka.2: SF assignment + multi-SF gateway)
+      * Modulation parameters (from <zephyr/drivers/lora.h> enums):
+      *   - BW_125_KHZ: 125kHz bandwidth
+      *   - SF_10 (CONFIG_LICHEN_DEFAULT_SF): default spreading factor
+      *   - CR_4_5: coding rate 4/5
+      * Matches spec for mesh. With CONFIG_LICHEN_SF_ASSIGNMENT_ENABLED,
+      * nodes parse ASSIGNED_SF from DIO/hash(IID); gateway uses CAD/multi-SF.
+      * Preamble=8. Stack-local struct copied by lora_config().
+      *
+      * RX-first then TX config required for SX12xx family (SetRxConfig/SetTxConfig).
+      * lora_recv() reuses last RX params.
+      */
+
     struct lora_modem_config config = {
         .frequency = CONFIG_LICHEN_LORA_FREQUENCY,
         .bandwidth = BW_125_KHZ,   /* Zephyr enum: 125kHz */

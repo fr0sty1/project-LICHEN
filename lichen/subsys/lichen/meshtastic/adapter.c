@@ -822,6 +822,8 @@ static bool resolve_text_destination(
 	struct nodedb_peer_state peers;
 	int ret;
 
+	packet->has_to_peer = false;
+
 	if (!packet->has_to) {
 		return false;
 	}
@@ -1423,7 +1425,11 @@ static int dispatch_want_config(struct lichen_meshtastic_adapter *adapter,
 	if (ret < 0) {
 		return ret;
 	}
-	return config_complete(adapter, nonce);
+	ret = config_complete(adapter, nonce);
+	if (ret < 0) {
+		return ret;
+	}
+	return 0;
 }
 
 static int dispatch_packet(struct lichen_meshtastic_adapter *adapter,
