@@ -70,7 +70,7 @@ class AnnounceMessage:
             Why NOT signed: Each relay increments it. If signed, relays couldn't
             update it without breaking the signature.
         current_channel: Preferred RX channel (0-15) for rendezvous per CCP-9.
-            Included in signed_data() to bind announced channel against tampering.
+            Included in signed_data() after seq_num to cryptographically bind announced channel (prevents tampering/injection per vectors).
         signature: 48-byte Schnorr signature over signed_data().
             Why 48: Schnorr48 spec (16-byte truncated challenge + 32-byte response).
         app_data: Optional application data (node name, capabilities).
