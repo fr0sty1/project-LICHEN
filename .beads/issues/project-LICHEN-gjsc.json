@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-gjsc",
+  "title": "[kimi-review] ecdc693: [SEVERITY: medium] Commit has no associated code changes. Ei",
+  "description": "Commit: ecdc693f7\nMessage: fix(meshtastic): enforce payload_len for text strings in adapter\n\nFinding: [SEVERITY: medium] Commit has no associated code changes. Either the diff was omitted when sharing, or the commit is empty and should be dropped/amended. The stated fix (enforcing `payload_len` for text strings) cannot be verified.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:52:40.937505118Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T21:52:40.937505118Z"
+}
