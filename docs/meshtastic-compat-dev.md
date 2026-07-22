@@ -4,7 +4,7 @@ This document describes how LICHEN nodes expose a Meshtastic-compatible BLE inte
 
 ## Source Baseline
 
-This contract is based on the Meshtastic app/protocol research recorded in Bead `project-LICHEN-t2hn.1`:
+This contract is based on the Meshtastic app/protocol research. Pinned baselines:
 
 | Source | Commit inspected |
 |--------|------------------|
@@ -14,8 +14,7 @@ This contract is based on the Meshtastic app/protocol research recorded in Bead 
 | `meshtastic/Meshtastic-Android` | `eb3bd10757a312d1537874bfab245117c46c36a9` |
 | `meshtastic/Meshtastic-Apple` | `aeeb0cc49fbe0ed593e918ba2f95100ecf694256` |
 
-The vendored `PortNum` table was rechecked for Bead `project-LICHEN-llgw` against current
-`meshtastic/protobufs` `master` at `aa53c96b79d9cb49a38e71fc2bc9c46cec1fd7c6`. `LORA_OTA_APP = 79`
+The vendored `PortNum` table was rechecked against current `meshtastic/protobufs` `master` at `aa53c96b79d9cb49a38e71fc2bc9c46cec1fd7c6`. `LORA_OTA_APP = 79`
 is new since the pinned protobuf baseline above; the LICHEN minimal subset also now includes app-visible
 PortNum values that existed upstream but had not previously been vendored locally.
 
