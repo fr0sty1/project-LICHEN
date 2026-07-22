@@ -1624,8 +1624,6 @@ def _write(filename: str, description: str, vectors: list[dict]) -> None:
     print(f"wrote {len(vectors)} vectors to {path.name}")
 
 
-<<<<<<< HEAD
-=======
 def schc_fragment_vectors() -> list[dict]:
     # Independent vectors from RFC 8724 §8 + CRC32 oracle + explicit ACK retry logic.
     # Not derived from any LICHEN impl code. Covers all required cases.
@@ -1795,8 +1793,6 @@ def ccp9_vectors() -> list[dict]:
         },
     ]
 
-
->>>>>>> origin/integration/worker5-20260722
 def ccp15_vectors() -> list[dict]:
     v = []
     for seed in range(3):

@@ -1,12 +1,6 @@
 /*
-<<<<<<< HEAD
- * STALE/RETIRED per project-LICHEN-2u26.10: no canonical Zephyr composite board+shield target.
- * Fragment retired; do not use for bridge builds. Support claims removed per 2u26 audit.
- * Seeed XIAO ESP32S3 + Wio-SX1262 device tree overlay for LICHEN bridge
-=======
  * BLOCKED/RETIRED: Seeed XIAO ESP32-S3 + Wio-SX1262 bridge overlay
  * (project-LICHEN-2u26.10 / project-LICHEN-2u26 / m5m1.8)
->>>>>>> origin/integration/worker5-20260722
  *
  * No canonical Zephyr board/composite (seeed_xiao_esp32s3 + Wio-SX1262
  * shield not in tree or upstream; xiao_s3_wio_sx1262 not a valid -b target).
