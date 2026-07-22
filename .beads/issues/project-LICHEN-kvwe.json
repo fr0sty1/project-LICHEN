@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kvwe",
   "title": "FieldDescriptor lacks mo_arg bounds validation",
   "description": "File: python/src/lichen/schc/rules.py:70-74\n\nFieldDescriptor.lsb_bits() computes:\n  return self.length_bits - self.mo_arg\n\nIf mo_arg \u003e length_bits, this returns a negative value. When used in BitWriter.write() or BitReader.read(), negative nbits would raise ValueError('nbits must be non-negative').\n\nSimilarly, _check_msb() in codec.py:111 computes:\n  shift = fd.length_bits - fd.mo_arg\n\nIf shift is negative, the subsequent \u003e\u003e operation on Python would still work but produce wrong results (Python handles negative shifts differently than expected).\n\nWhile rules are typically defined correctly at import time, there's no validation that prevents creating a FieldDescriptor with mo_arg \u003e length_bits.\n\nFix: Add validation in FieldDescriptor.__post_init__ or lsb_bits():\n  if self.mo_arg is not None and self.mo_arg \u003e self.length_bits:\n      raise ValueError(...)\n\nCategory: CORRECTNESS",
-  "notes": "Commit: 9f4ee7ee4",
+  "notes": "Commit: 767871f2d",
   "status": "closed",
   "priority": 2,
   "issue_type": "bug",
@@ -10,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:28:36.161423Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:19:23.853036597Z",
+  "updated_at": "2026-07-22T20:19:47.10179594Z",
   "started_at": "2026-07-22T20:19:10.790800596Z",
   "closed_at": "2026-07-22T20:19:23.853036597Z",
   "close_reason": "Closed"
