@@ -161,6 +161,9 @@ fn main() {
             }
             Err(e) => {
                 metrics.error_count = metrics.error_count.saturating_add(1);
+                if metrics.errors.len() < 1000 {
+                    metrics.errors.push(format!("TX error: {:?}", e));
+                }
                 eprintln!("rust-{}: TX error: {:?}", node_id, e);
             }
         }
@@ -222,6 +225,9 @@ fn main() {
                 Ok(None) => {} // timeout
                 Err(e) => {
                     metrics.error_count = metrics.error_count.saturating_add(1);
+                    if metrics.errors.len() < 1000 {
+                        metrics.errors.push(format!("RX error: {:?}", e));
+                    }
                     eprintln!("rust-{}: RX error: {:?}", node_id, e);
                 }
             }

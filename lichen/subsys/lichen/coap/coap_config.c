@@ -416,17 +416,13 @@ int lichen_config_decode_radio_cbor(const uint8_t *buf, size_t len,
 				(void)zcbor_list_map_end_force_decode(state);
 				return -EINVAL;
 			}
-<<<<<<< HEAD
 			/* Parse "0x34" format. Bound <=10 allows "0x" + up to 8 hex
 			 * digits (32-bit sync word). Stores low 16 bits in uint16_t.
 			 * Prevents shift UB on maliciously long strings. Accepts
 			 * "0x34", "0x0034", "0x12345678" etc. (latter truncated).
+			 * Maintains security bounds check against malicious input.
 			 */
 			if (val.len >= 2 && val.len <= 10 && val.value[0] == '0' &&
-=======
-			/* Parse "0x34" format - max 4 hex digits for uint16_t */
-			if (val.len > 2 && val.len <= 6 && val.value[0] == '0' &&
->>>>>>> origin/integration/worker11-20260722
 			    (val.value[1] == 'x' || val.value[1] == 'X')) {
 				size_t hex_len = val.len - 2;
 				if (hex_len > 4) {
@@ -844,21 +840,21 @@ static int config_identity_get(struct coap_resource *resource,
 #if IS_ENABLED(CONFIG_LICHEN_COAP_CONFIG)
 
 static const char * const config_path[] = { "config", NULL };
-COAP_RESOURCE_DEFINE(lichen_config, lichen_coap, {
+COAP_RESOURCE_DEFINE(lichen_config, lichen_coap_server, {
 	.get  = config_get,
 	.put  = config_put,
 	.path = config_path,
 });
 
 static const char * const config_radio_path[] = { "config", "radio", NULL };
-COAP_RESOURCE_DEFINE(lichen_config_radio, lichen_coap, {
+COAP_RESOURCE_DEFINE(lichen_config_radio, lichen_coap_server, {
 	.get  = config_radio_get,
 	.put  = config_radio_put,
 	.path = config_radio_path,
 });
 
 static const char * const config_identity_path[] = { "config", "identity", NULL };
-COAP_RESOURCE_DEFINE(lichen_config_identity, lichen_coap, {
+COAP_RESOURCE_DEFINE(lichen_config_identity, lichen_coap_server, {
 	.get  = config_identity_get,
 	.path = config_identity_path,
 });

@@ -287,17 +287,11 @@ impl AprsIsClient {
 
         if response.contains("logresp") && response.contains("verified") {
             self.callsign = callsign.to_string();
-            // Check for "unverified" before "verified" since "unverified" contains "verified"
             self.verification = if response.contains("unverified") {
                 Some(AprsVerification::Unverified)
             } else {
                 Some(AprsVerification::Verified)
             };
-            Ok(())
-        } else if response.contains("logresp") && response.contains("unverified") {
-            // Receive-only mode (passcode -1)
-            self.callsign = callsign.to_string();
-            self.verification = Some(AprsVerification::Unverified);
             Ok(())
         } else {
             Err(AprsError::LoginFailed(response))

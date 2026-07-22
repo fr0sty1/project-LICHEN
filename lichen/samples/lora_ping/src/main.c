@@ -30,7 +30,9 @@ static struct {
 	uint32_t rx_bytes;
 	uint32_t errors;
 	uint32_t unique_hashes_seen;
-	uint32_t hash_overflows;
+	uint32_t unique_hashes_dropped;
+	/* Simple hash set (fixed size for embedded); track drops and overflows
+	 * to diagnose hash collisions under load (preserves both branches). */
 	uint32_t seen_hashes[64];
 	size_t seen_hash_count;
 } metrics;
@@ -63,8 +65,8 @@ static void track_hash(uint32_t hash)
 		metrics.seen_hashes[metrics.seen_hash_count++] = hash;
 		metrics.unique_hashes_seen++;
 	} else {
-		metrics.hash_overflows++;
-		if (metrics.hash_overflows == 1) {
+		metrics.unique_hashes_dropped++;
+		if (metrics.unique_hashes_dropped == 1) {
 			LOG_WRN("hash set full, %zu unique tracked", ARRAY_SIZE(metrics.seen_hashes));
 		}
 	}
@@ -73,10 +75,10 @@ static void track_hash(uint32_t hash)
 /* Log metrics summary */
 static void log_metrics(void)
 {
-	LOG_INF("METRICS: tx=%u rx=%u tx_bytes=%u rx_bytes=%u errors=%u unique=%u overflows=%u",
+	LOG_INF("METRICS: tx=%u rx=%u tx_bytes=%u rx_bytes=%u errors=%u unique=%u dropped=%u",
 		metrics.tx_count, metrics.rx_count,
 		metrics.tx_bytes, metrics.rx_bytes,
-		metrics.errors, metrics.unique_hashes_seen, metrics.hash_overflows);
+		metrics.errors, metrics.unique_hashes_seen, metrics.unique_hashes_dropped);
 }
 
 /* Parse announce packet to extract peer IID */

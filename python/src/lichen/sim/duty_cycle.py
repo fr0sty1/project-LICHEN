@@ -39,6 +39,8 @@ class DutyCycleTracker:
             )
         self.limit_percent = limit_percent
         self.window_seconds = window_seconds
+        if limit_percent <= 0:
+            raise ValueError(f"limit_percent must be positive, got {limit_percent}")
         self._window_us = window_seconds * 1_000_000
         self._limit_ratio = limit_percent / 100.0
         self._transmissions: list[tuple[int, int]] = []

@@ -94,7 +94,7 @@ static int sensors_location_get(struct coap_resource *resource,
 static const char *const sensors_location_path[] = { "sensors", "location",
 						     NULL };
 
-COAP_RESOURCE_DEFINE(lichen_sensors_location, lichen_coap, {
+COAP_RESOURCE_DEFINE(lichen_sensors_location, lichen_coap_server, {
 	.get = sensors_location_get,
 	.path = sensors_location_path,
 });

@@ -33,8 +33,8 @@ static struct peer_slot s_peers[CONFIG_LICHEN_APP_IDENTITY_MAX_PEERS];
 static K_MUTEX_DEFINE(s_mutex);
 
 static void eui64_to_iid(
-	const uint8_t eui64[LICHEN_APP_IDENTITY_EUI64_LEN],
-	uint8_t iid[LICHEN_APP_IDENTITY_EUI64_LEN])
+	const uint8_t eui64[_Nonnull LICHEN_APP_IDENTITY_EUI64_LEN],
+	uint8_t iid[_Nonnull LICHEN_APP_IDENTITY_EUI64_LEN])
 {
 	memcpy(iid, eui64, LICHEN_EUI64_LEN);
 	iid[0] ^= 0x02U;
@@ -59,20 +59,20 @@ static int copy_string(char *dst, size_t dst_len, const char *src)
 	return 0;
 }
 
-static bool has_nul(const char *buf, size_t len)
+static bool has_nul(const char *_Nonnull buf, size_t len)
 {
 	return memchr(buf, '\0', len) != NULL;
 }
 
 static bool eui64_equal(
-	const uint8_t a[LICHEN_APP_IDENTITY_EUI64_LEN],
-	const uint8_t b[LICHEN_APP_IDENTITY_EUI64_LEN])
+	const uint8_t a[_Nonnull LICHEN_APP_IDENTITY_EUI64_LEN],
+	const uint8_t b[_Nonnull LICHEN_APP_IDENTITY_EUI64_LEN])
 {
 	return memcmp(a, b, LICHEN_EUI64_LEN) == 0;
 }
 
 static int find_peer_locked(
-	const uint8_t eui64[LICHEN_APP_IDENTITY_EUI64_LEN])
+	const uint8_t eui64[_Nonnull LICHEN_APP_IDENTITY_EUI64_LEN])
 {
 	for (uint8_t i = 0U; i < ARRAY_SIZE(s_peers); i++) {
 		if (s_peers[i].used &&

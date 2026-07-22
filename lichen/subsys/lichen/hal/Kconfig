@@ -56,19 +56,21 @@ config LICHEN_HAS_BATTERY
 	  Zephyr voltage-divider sensor or fuel-gauge device.
 
 config LICHEN_HAS_PMIC
-	bool "Board has PMIC or charger control"
-	depends on CHARGER || SENSOR || I2C || GPIO || ADC
-	help
-	  Enable when devicetree provides an okay pmic0 alias for a Zephyr
-	  charger, PMIC, or board-specific power telemetry/control device.
+ 	bool "Board has PMIC or charger control"
+ 	depends on CHARGER || SENSOR || I2C || GPIO || ADC
+ 	help
+ 	  Enable when devicetree provides an okay pmic0 alias for a Zephyr
+ 	  charger, PMIC, or board-specific power telemetry/control device.
 
-config LICHEN_POE
+config LICHEN_HAS_POE
 	bool "Board has PoE"
-	depends on GPIO || POWER_SUPPLY
+	depends on GPIO || POWER_SUPPLY || (REGULATOR && ADC)
 	help
 	  Enable when devicetree provides an okay poe0 alias or PoE detection
 	  via GPIO/ADC for power source selection. DT binding in
-	  dts/bindings/power/lichen,poe.yaml.
+	  dts/bindings/power/lichen,poe.yaml. Comprehensive for thinknode_m7
+	  and other power subsys per existing HAL pattern.
+
 
 config LICHEN_HAS_BUTTONS
 	bool "Board has user buttons"

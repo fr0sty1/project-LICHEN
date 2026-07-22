@@ -27,6 +27,7 @@ use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest, Sha256};
 use x25519_dalek::{PublicKey, StaticSecret};
 use zeroize::{Zeroize, ZeroizeOnDrop};
+use rand_core::{CryptoRng, RngCore};
 
 /// AES-CCM for Suite 0.
 type AesCcm = Ccm<Aes128, U8, U13>;
@@ -318,14 +319,23 @@ impl EdhocInitiator {
     /// or a wrapper around `lichen_hal::Rng` / hardware TRNG on embedded).
     ///
     /// # Arguments
+<<<<<<< HEAD
     /// * `seed` - Ed25519 seed (32 bytes) for long-term signing key
     /// * `c_i` - Connection identifier (1 byte, typically 0-23)
     /// * `rng` - CSPRNG implementing `RngCore + CryptoRng`
+=======
+    /// * `seed` - Ed25519 seed (32 bytes)
+    /// * `c_i` - Connection identifier (1 byte)
+    /// * `rng` - RNG implementing RngCore + CryptoRng for ephemeral key
+>>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
     pub fn new<R: RngCore + CryptoRng>(seed: [u8; 32], c_i: u8, rng: &mut R) -> Self {
         let signing_key = SigningKey::from_bytes(&seed);
         let pubkey = signing_key.verifying_key();
 
+<<<<<<< HEAD
         // Generate fresh ephemeral X25519 key pair. Consumed after first use.
+=======
+>>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
         let eph_secret = StaticSecret::random_from_rng(rng);
         let eph_public = PublicKey::from(&eph_secret);
 
@@ -761,8 +771,15 @@ impl Default for ResponderState {
 impl EdhocResponder {
     /// Create a new EDHOC responder.
     ///
+<<<<<<< HEAD
     /// See `EdhocInitiator::new` for RNG parameter rationale (no_std
     /// compatibility, fresh ephemerals per handshake).
+=======
+    /// # Arguments
+    /// * `seed` - Ed25519 seed (32 bytes)
+    /// * `c_r` - Connection identifier (1 byte)
+    /// * `rng` - RNG implementing RngCore + CryptoRng for ephemeral key
+>>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
     pub fn new<R: RngCore + CryptoRng>(seed: [u8; 32], c_r: u8, rng: &mut R) -> Self {
         let signing_key = SigningKey::from_bytes(&seed);
         let pubkey = signing_key.verifying_key();
@@ -1124,21 +1141,36 @@ mod tests {
     #[test]
     fn test_initiator_creation() {
         let seed = [0x01u8; 32];
+<<<<<<< HEAD
         let initiator = EdhocInitiator::new(seed, 0x00, &mut rand_core::OsRng);
+=======
+        let mut rng = rand_core::OsRng;
+        let initiator = EdhocInitiator::new(seed, 0x00, &mut rng);
+>>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
         assert_eq!(initiator.c_i, 0x00);
     }
 
     #[test]
     fn test_responder_creation() {
         let seed = [0x01u8; 32];
+<<<<<<< HEAD
         let responder = EdhocResponder::new(seed, 0x01, &mut rand_core::OsRng);
+=======
+        let mut rng = rand_core::OsRng;
+        let responder = EdhocResponder::new(seed, 0x01, &mut rng);
+>>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
         assert_eq!(responder.c_r, 0x01);
     }
 
     #[test]
     fn test_message_1_creation() {
         let seed = [0x01u8; 32];
+<<<<<<< HEAD
         let mut initiator = EdhocInitiator::new(seed, 0x05, &mut rand_core::OsRng);
+=======
+        let mut rng = rand_core::OsRng;
+        let mut initiator = EdhocInitiator::new(seed, 0x05, &mut rng);
+>>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
         let msg1 = initiator.create_message_1().unwrap();
 
         // Check basic structure: METHOD_CORR, SUITE, G_X, C_I
@@ -1156,9 +1188,15 @@ mod tests {
         // Create initiator and responder with different seeds
         let initiator_seed = [0x11u8; 32];
         let responder_seed = [0x22u8; 32];
+        let mut rng = rand_core::OsRng;
 
+<<<<<<< HEAD
         let mut initiator = EdhocInitiator::new(initiator_seed, 0x00, &mut rand_core::OsRng);
         let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rand_core::OsRng);
+=======
+        let mut initiator = EdhocInitiator::new(initiator_seed, 0x00, &mut rng);
+        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng);
+>>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
 
         // Get public keys for verification
         let initiator_pubkey = initiator.pubkey.to_bytes();
@@ -1289,7 +1327,12 @@ mod tests {
     #[test]
     fn test_responder_accepts_suites_i_array() {
         let responder_seed = [0x22u8; 32];
+<<<<<<< HEAD
         let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rand_core::OsRng);
+=======
+        let mut rng = rand_core::OsRng;
+        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng);
+>>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
 
         // Build a Message 1 with SUITES_I as array [0, 2]
         // Format: METHOD_CORR (1) | SUITES_I (array) | G_X (bstr 32) | C_I
@@ -1318,7 +1361,12 @@ mod tests {
     #[test]
     fn test_responder_rejects_unsupported_suite_in_array() {
         let responder_seed = [0x22u8; 32];
+<<<<<<< HEAD
         let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rand_core::OsRng);
+=======
+        let mut rng = rand_core::OsRng;
+        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng);
+>>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
 
         // Build a Message 1 with SUITES_I as array [2, 0] - Suite 2 selected
         let mut msg1 = heapless::Vec::<u8, 64>::new();
@@ -1343,7 +1391,12 @@ mod tests {
 
         // Initiator: export_oscore before process_message_2
         let initiator_seed = [0x11u8; 32];
+<<<<<<< HEAD
         let mut initiator = EdhocInitiator::new(initiator_seed, 0x00, &mut rand_core::OsRng);
+=======
+        let mut rng = rand_core::OsRng;
+        let mut initiator = EdhocInitiator::new(initiator_seed, 0x00, &mut rng);
+>>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
         let _msg1 = initiator.create_message_1().unwrap();
         // Handshake incomplete - should fail
         assert!(
@@ -1353,7 +1406,12 @@ mod tests {
 
         // Responder: export_oscore before process_message_3
         let responder_seed = [0x22u8; 32];
+<<<<<<< HEAD
         let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rand_core::OsRng);
+=======
+        let mut rng = rand_core::OsRng;
+        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng);
+>>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
         // Even after process_message_1, handshake is incomplete
         let _msg2 = responder.process_message_1(&_msg1).unwrap();
         assert!(

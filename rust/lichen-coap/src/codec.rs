@@ -125,10 +125,15 @@ impl<'a> CoapPacket<'a> {
             return Err(TooShort::new(options_start, data.len()).into());
         }
 
-        // Find payload marker
         let (options_end, payload_start) = match find_payload_marker(&data[options_start..])? {
-            Some(off) => (options_start + off, options_start + off + 1), // off is at 0xFF, +1 to skip
-            None => (data.len(), data.len()),                            // no marker, no payload
+            Some(off) => {
+                let ps = options_start + off + 1;
+                if ps == data.len() {
+                    return Err(TooShort::new(1, 0).into());
+                }
+                (options_start + off, ps)
+            }
+            None => (data.len(), data.len()),
         };
 
         Ok(Self {
