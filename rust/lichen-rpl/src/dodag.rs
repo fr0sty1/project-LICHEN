@@ -17,31 +17,24 @@ use std::collections::HashMap;
 use crate::message::Dio;
 
 pub const INFINITE_RANK: u16 = 0xFFFF;
-pub const ROOT_RANK: u16 = 256; // MinHopRankIncrease
+pub const ROOT_RANK: u16 = 256;
 pub const MIN_HOP_RANK_INCREASE: u16 = 256;
 pub const MAX_RANK_INCREASE: u16 = 2048;
 pub const PARENT_SWITCH_THRESHOLD: u16 = 192;
 
-/// RFC 6550 Section 7.2: Lollipop sequence comparison for DODAG version.
-///
-/// Values 0-127 are the linear region (restart); 128-255 are circular (normal).
-/// Returns true if `new_ver` is newer than `old_ver`.
+#[cfg(feature = "std")]
 const LOLLIPOP_CIRCULAR_BIT: u8 = 128;
+#[cfg(feature = "std")]
 const LOLLIPOP_SEQUENCE_WINDOW: u8 = 16;
 
+#[cfg(feature = "std")]
 fn version_is_newer(new_ver: u8, old_ver: u8) -> bool {
-    match (
-        new_ver < LOLLIPOP_CIRCULAR_BIT,
-        old_ver < LOLLIPOP_CIRCULAR_BIT,
-    ) {
-        // Both in linear region (0-127): simple comparison
+    match (new_ver < LOLLIPOP_CIRCULAR_BIT, old_ver < LOLLIPOP_CIRCULAR_BIT) {
         (true, true) => new_ver > old_ver,
-        // Both in circular region (128-255): modular comparison with window
         (false, false) => {
             let diff = new_ver.wrapping_sub(old_ver) & 0x7F;
             diff > 0 && diff <= LOLLIPOP_SEQUENCE_WINDOW
         }
-        // Mixed: linear (restart) is always newer than circular
         (true, false) => true,
         (false, true) => false,
     }

@@ -450,6 +450,15 @@ fn skip_one_depth(data: &[u8], pos: usize, depth: usize) -> Result<usize, CborEr
             }
             Ok(cur - pos)
         }
+        6 => {
+            // Major type 6 (tags per RFC 8949 §3.1). Consume header (`adv`)
+            // then recursively skip the tagged value. Required for compliance
+            // and to support tagged values in unknown SenML map keys.
+            let cur = pos.checked_add(adv).ok_or(CborError::InvalidInput)?;
+            let inner = skip_one_depth(data, cur, depth + 1)?;
+            let total = adv.checked_add(inner).ok_or(CborError::InvalidInput)?;
+            Ok(total)
+        }
         7 => match info {
             20..=23 => Ok(1),
             25 => {

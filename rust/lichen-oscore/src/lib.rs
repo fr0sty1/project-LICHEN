@@ -148,20 +148,21 @@ impl core::error::Error for OscoreError {
 ///
 /// Contains cryptographic material and state for one peer.
 ///
-/// # Thread Safety
+/// # Thread Safety and Cloning
 ///
-/// This type is designed for single-threaded use on embedded targets. The replay
-/// window (`replay_window` and `recipient_seq`) is not thread-safe: concurrent calls
-/// to `check_replay` could race, allowing both to pass the candidate check and both
-/// to update the window, potentially losing state or allowing replays.
+/// Single-threaded use on embedded targets. Replay window and sender_seq are
+/// **not thread-safe**. Concurrent `protect`/`unprotect` races on seq/replay.
 ///
-/// For multi-threaded use, wrap in a `Mutex` or use atomic operations.
+/// **CLONE WARNING**: Cloning shares `sender_seq` and `replay_window`. Cloned
+/// contexts MUST NOT be used for concurrent encryption (nonce reuse risk). Use
+/// for concurrent decryption only or single-owner handoff. Original and clones
+/// zeroize on drop.
+///
+/// For multi-threaded, wrap in Mutex.
 ///
 /// # Key Lifecycle
 ///
-/// All key material (master_secret, sender_key, recipient_key) is zeroized on drop
-/// via the `Zeroize` derive. Clone is intentionally supported for cases where multiple
-/// tasks need the context; both the original and clones will be zeroized when dropped.
+/// All key material zeroized on drop via `Zeroize`.
 #[derive(Clone, Zeroize)]
 #[zeroize(drop)]
 pub struct Context {
