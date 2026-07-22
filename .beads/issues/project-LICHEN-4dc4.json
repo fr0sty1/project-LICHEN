@@ -2,15 +2,15 @@
   "id": "project-LICHEN-4dc4",
   "title": "[merge-conflict] worktree-worker16: kiss_transport.c",
   "notes": "Commit: 2119996",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:11:41.813037245Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:26:02.166249052Z",
+  "updated_at": "2026-07-22T23:26:05.585551166Z",
   "started_at": "2026-07-22T23:22:28.538801784Z",
-  "lease_expires_at": "2026-07-22T23:27:28.538801784Z",
-  "heartbeat_at": "2026-07-22T23:22:28.538801784Z"
+  "closed_at": "2026-07-22T23:26:05.585551166Z",
+  "close_reason": "Synced kiss_transport.c atomic shutdown handling from main to worker16 worktree and ensured consistent atomic API usage in thread, deinit, and test_reset. Verified no conflict markers. Updated .beads files."
 }
