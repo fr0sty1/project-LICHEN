@@ -29,7 +29,8 @@ const MSG_TIME_OK: u8 = 0x31;
 const MSG_ERR: u8 = 0xFF;
 
 /// Maximum message size to prevent DoS via unbounded allocation.
-/// 64KB is generous for any legitimate simulator message.
+/// 128 KiB is generous for any legitimate simulator message (covers
+/// max RX_OK of ~65.5 KiB).
 const MAX_MSG_LEN: usize = 128 * 1024;
 
 /// Errors returned by [`SimClient`].

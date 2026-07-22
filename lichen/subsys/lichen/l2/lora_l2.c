@@ -1184,7 +1184,8 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len, uint8_t channel)
         }
     }
 #if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
-    if (!lichen_duty_cycle_can_transmit(&lora_data.duty, k_uptime_get(), 50)) return -EBUSY;
+    uint32_t dur = 80U + (uint32_t)len * 6U;
+    if (!lichen_duty_cycle_can_transmit(&lora_data.duty, k_uptime_get(), dur)) return -EBUSY;
 #endif
 
     /*
@@ -1339,7 +1340,8 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len, uint8_t channel)
     ret = lora_send(lora_data.lora_dev, tx_buf, (uint32_t)pop_len);
     k_mutex_unlock(&modem_mutex);
 #if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
-    if (ret >= 0) lichen_duty_cycle_record_tx(&lora_data.duty, k_uptime_get(), 50);
+    uint32_t dur = 80U + (uint32_t)pop_len * 6U;
+    if (ret >= 0) lichen_duty_cycle_record_tx(&lora_data.duty, k_uptime_get(), dur);
 #endif
 
     atomic_dec(&tx_pending);

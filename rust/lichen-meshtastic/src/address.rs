@@ -291,11 +291,37 @@ mod tests {
         let node_id = MeshtasticNodeId::new(0x12345678);
         let pubkey = PublicKey::new([0xAB; 32]);
 
-        mapper.learn_mapping(node_id, &pubkey);
+        assert!(mapper.learn_mapping(node_id, &pubkey));
         let addr = mapper.meshtastic_to_ipv6(node_id);
         assert!(!addr.is_synthetic());
         let result = mapper.ipv6_to_meshtastic(addr);
         assert_eq!(result, Some(node_id));
+    }
+
+    #[test]
+    fn test_tofu_collision_rejected() {
+        let mut mapper = AddressMapper::new();
+        let node1 = MeshtasticNodeId::new(0x11111111);
+        let node2 = MeshtasticNodeId::new(0x22222222);
+        let pubkey1 = PublicKey::new([0x11; 32]);
+        let pubkey2 = PublicKey::new([0x22; 32]);
+        let pubkey3 = PublicKey::new([0x33; 32]);
+
+        // First learn succeeds
+        assert!(mapper.learn_mapping(node1, &pubkey1));
+
+        // Same IID (via same pubkey) but different node_id: rejected (prevents hijack)
+        assert!(!mapper.learn_mapping(node2, &pubkey1));
+
+        // Verify lookup still points to first node
+        let addr1 = mapper.meshtastic_to_ipv6(node1);
+        assert_eq!(mapper.ipv6_to_meshtastic(addr1), Some(node1));
+
+        // Rekey same node (new pubkey -> new IID): allowed, updates mapping
+        assert!(mapper.learn_mapping(node1, &pubkey3));
+        let addr3 = mapper.meshtastic_to_ipv6(node1);
+        assert_eq!(mapper.ipv6_to_meshtastic(addr3), Some(node1));
+        assert_eq!(mapper.get_pubkey(node1), Some(&pubkey3));
     }
 
     #[test]
@@ -314,7 +340,7 @@ mod tests {
         assert!(mapper.is_empty());
         assert_eq!(mapper.len(), 0);
 
-        mapper.learn_mapping(MeshtasticNodeId::new(1), &PublicKey::new([0x11; 32]));
+        assert!(mapper.learn_mapping(MeshtasticNodeId::new(1), &PublicKey::new([0x11; 32])));
         assert!(!mapper.is_empty());
         assert_eq!(mapper.len(), 1);
     }
@@ -331,7 +357,7 @@ mod tests {
     fn test_non_synthetic_has_no_node_id() {
         let mut mapper = AddressMapper::new();
         let node_id = MeshtasticNodeId::new(123);
-        mapper.learn_mapping(node_id, &PublicKey::new([0xAA; 32]));
+        assert!(mapper.learn_mapping(node_id, &PublicKey::new([0xAA; 32])));
         let addr = mapper.meshtastic_to_ipv6(node_id);
         assert!(!addr.is_synthetic());
         assert_eq!(addr.synthetic_node_id(), None);
@@ -356,9 +382,9 @@ mod tests {
         #[test]
         fn test_known_nodes() {
             let mut mapper = AddressMapper::new();
-            mapper.learn_mapping(MeshtasticNodeId::new(1), &PublicKey::new([0x11; 32]));
-            mapper.learn_mapping(MeshtasticNodeId::new(2), &PublicKey::new([0x22; 32]));
-            mapper.learn_mapping(MeshtasticNodeId::new(3), &PublicKey::new([0x33; 32]));
+            assert!(mapper.learn_mapping(MeshtasticNodeId::new(1), &PublicKey::new([0x11; 32])));
+            assert!(mapper.learn_mapping(MeshtasticNodeId::new(2), &PublicKey::new([0x22; 32])));
+            assert!(mapper.learn_mapping(MeshtasticNodeId::new(3), &PublicKey::new([0x33; 32])));
 
             let mut nodes = mapper.known_nodes();
             nodes.sort();

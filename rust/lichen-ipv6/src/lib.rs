@@ -403,10 +403,15 @@ impl UdpHeader {
         }
     }
 
-    /// Write header to output buffer.
+    /// Write **only the 8-byte UDP header** to `out`.
     ///
-    /// Returns the number of bytes written (always `UDP_HEADER_LEN`).
-    pub fn write_to(
+    /// The `payload` slice is used *only* for IPv6 pseudo-header checksum
+    /// computation. Caller **MUST** copy `payload` to the output buffer
+    /// immediately after these 8 bytes. Checksum will be invalid for the
+    /// transmitted packet if payload is forgotten or differs.
+    ///
+    /// Returns `UDP_HEADER_LEN`.
+    pub fn write_header_to(
         &self,
         src: &Addr,
         dst: &Addr,
@@ -429,13 +434,39 @@ impl UdpHeader {
         out[3] = self.dst_port as u8;
         out[4] = (length >> 8) as u8;
         out[5] = length as u8;
+        out[6] = 0; // checksum placeholder
+        out[7] = 0;
 
-        // Compute checksum over pseudo-header + UDP header + payload
+        // Compute checksum over pseudo-header + UDP header (zeroed) + payload
         let checksum = udp_checksum(src, dst, &out[..UDP_HEADER_LEN], payload);
         out[6] = (checksum >> 8) as u8;
         out[7] = checksum as u8;
 
         Ok(UDP_HEADER_LEN)
+    }
+
+    /// Write complete UDP datagram (header + payload) to `out`.
+    ///
+    /// Preferred API: places payload in buffer then computes checksum over
+    /// the actual transmitted bytes. Eliminates the header-only footgun.
+    ///
+    /// Returns total bytes written (`UDP_HEADER_LEN + payload.len()`).
+    pub fn write_packet_to(
+        &self,
+        src: &Addr,
+        dst: &Addr,
+        payload: &[u8],
+        out: &mut [u8],
+    ) -> Result<usize, Ipv6Error> {
+        let total = UDP_HEADER_LEN + payload.len();
+        if out.len() < total {
+            return Err(BufferTooSmall::new(total, out.len()).into());
+        }
+
+        let _ = self.write_header_to(src, dst, payload, &mut out[0..UDP_HEADER_LEN])?;
+        out[UDP_HEADER_LEN..total].copy_from_slice(payload);
+
+        Ok(total)
     }
 
     pub fn from_bytes(buf: &[u8]) -> Result<Self, Ipv6Error> {

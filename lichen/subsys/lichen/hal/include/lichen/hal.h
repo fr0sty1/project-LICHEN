@@ -201,7 +201,7 @@ struct lichen_hal_time_sample {
 	enum lichen_hal_time_source_class source_class;
 	const char *source_name;
 	bool unix_time_valid;
-	uint32_t unix_time;
+	uint64_t unix_time;
 	bool observed_uptime_ms_valid;
 	int64_t observed_uptime_ms;
 	bool accuracy_ms_valid;
@@ -230,7 +230,7 @@ struct lichen_hal_location_sample {
 	bool altitude_cm_valid;
 	int32_t altitude_cm;
 	bool fix_time_unix_valid;
-	uint32_t fix_time_unix;
+	uint64_t fix_time_unix;
 	bool satellites_valid;
 	uint8_t satellites;
 };

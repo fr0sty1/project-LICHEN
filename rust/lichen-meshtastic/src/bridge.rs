@@ -462,7 +462,7 @@ mod tests {
 
         let dst_node = MeshtasticNodeId::new(0x87654321);
         let pubkey = lichen_link::PublicKey::new([0xAB; 32]);
-        bridge.mapper_mut().learn_mapping(dst_node, &pubkey);
+        assert!(bridge.mapper_mut().learn_mapping(dst_node, &pubkey));
 
         let mut ipv6_data = [0u8; 48];
         ipv6_data[0] = 0x60;

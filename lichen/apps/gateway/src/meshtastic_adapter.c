@@ -313,15 +313,16 @@ static size_t get_peers(struct lichen_meshtastic_peer_snapshot *peers,
 	struct lichen_app_identity_peer
 		identities[CONFIG_LICHEN_MESHTASTIC_NODEDB_MAX_PEERS];
 	size_t count;
+	size_t out_len;
 
 	ARG_UNUSED(user_data);
 	if (peers == NULL || peer_cap == 0U) {
 		return 0U;
 	}
 
-	count = lichen_app_identity_copy_peers(identities,
-					       MIN(peer_cap,
-						   ARRAY_SIZE(identities)));
+	out_len = MIN(peer_cap, ARRAY_SIZE(identities));
+	count = lichen_app_identity_copy_peers(identities, out_len);
+	count = MIN(count, out_len);
 	for (size_t i = 0U; i < count; i++) {
 		memset(&peers[i], 0, sizeof(peers[i]));
 		memcpy(peers[i].eui64, identities[i].eui64,

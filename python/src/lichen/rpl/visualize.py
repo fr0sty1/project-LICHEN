@@ -2,7 +2,12 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 from __future__ import annotations
 
-from typing import Optional
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from lichen.rpl.dodag import DodagState
+
 
 """DODAG visualization for the simulation harness (spec section 8).
 
@@ -15,13 +20,6 @@ from a set of :class:`~lichen.rpl.dodag.DodagState` objects.
 These are pure functions over a snapshot; the caller decides when to snapshot
 the evolving DODAG during a run.
 """
-
-from collections.abc import Mapping
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from lichen.rpl.dodag import DodagState
-
 
 Topology = dict[str, Optional[str]]  # noqa: UP045
 

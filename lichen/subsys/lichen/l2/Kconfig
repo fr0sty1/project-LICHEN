@@ -232,3 +232,12 @@ config LICHEN_LORA_CCA_TIMEOUT_MS
 	help
 	  Timeout for CAD operation. Must be long enough for radio to sample but short
 	  enough for low latency. Matches typical CAD duration ~ few symbol times.
+
+config LICHEN_DUTY_CYCLE
+	bool "LICHEN duty cycle enforcement"
+	depends on LICHEN_LORA_L2
+	default y
+	help
+	  Enforce 1% duty cycle (default) before every TX using fixed-size tracker.
+	  Check with estimated airtime in lichen_lora_l2_tx; record after send.
+	  Returns duty error if cannot transmit. Matches CCP-13 vectors.
