@@ -2375,7 +2375,9 @@ class NativeClientApp(App[None]):
             return
         try:
             result = await self.client.send_raw_tx(frame, wait=wait)
-        except Exception as exc:
+        except BaseException as exc:
+            if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             self._set_diagnostics_error(str(exc))
             return
         self._set_diagnostics_state(

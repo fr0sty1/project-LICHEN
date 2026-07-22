@@ -411,6 +411,7 @@ fn skip_one_depth(data: &[u8], pos: usize, depth: usize) -> Result<usize, CborEr
             }
             (u16::from_be_bytes([data[pos + 1], data[pos + 2]]) as u64, 3)
         }
+        26 | 27 | 31 => return Err(CborError::NotImplemented),
         _ => return Err(CborError::InvalidInput),
     };
     match major {

@@ -165,12 +165,9 @@ impl TrickleTimer {
         self.begin_interval(now, rand_offset)
     }
 
-    /// Handle an inconsistency: shrink to `imin` and restart (RFC 6206 step 6).
-    ///
-    /// No-op if the interval is already `imin` (RFC 6206 §4.2).
     pub fn reset(&mut self, now: u32, rand_offset: u32) {
         self.try_reset(now, rand_offset)
-            .expect("reset only valid on active timer");
+            .expect("invalid trickle timer transition");
     }
 
     pub fn try_reset(
@@ -178,7 +175,7 @@ impl TrickleTimer {
         now: u32,
         rand_offset: u32,
     ) -> Result<(), InvalidTrickleTransition> {
-        if self.interval != self.imin {
+        if self.state == TrickleState::Stopped || self.interval != self.imin {
             self.interval = self.imin;
             self.begin_interval(now, rand_offset)?;
         }

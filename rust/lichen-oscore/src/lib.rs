@@ -587,7 +587,6 @@ impl Context {
         // Parse OSCORE option
         let opt = parse_option(oscore_option)?;
 
-        // RFC 8613 Section 5.2: For responses, if PIV is absent, use request_piv for nonce
         let piv = if opt.piv_len > 0 {
             &opt.piv[..opt.piv_len as usize]
         } else {
@@ -597,6 +596,16 @@ impl Context {
             request_piv
         };
 
+        let response_seq = if opt.piv_len > 0 {
+            let seq = OscoreSeqNum::from_piv(piv);
+            if self.is_replay(seq) {
+                return Err(OscoreError::Replay);
+            }
+            Some(seq)
+        } else {
+            None
+        };
+
         let nonce_id = if opt.piv_len > 0 {
             self.recipient_id()
         } else {
@@ -604,13 +613,9 @@ impl Context {
         };
         let nonce = compute_nonce(nonce_id, piv, &self.common_iv);
 
-        // Build AAD per RFC 8613 Section 5.4 using ORIGINAL request's KID and PIV
-        // We (the client) sent the request, so request_kid is our sender_id
         let mut aad_buf = [0u8; 64];
         let aad_len = build_aad_cbor(self.sender_id(), request_piv, &mut aad_buf)?;
 
-        // Decrypt in place using detached API
-        // SECURITY: No replay check for responses - they're correlated with requests
         let tag_start = ciphertext.len() - TAG_LEN;
         let tag = ccm::aead::Tag::<AesCcm>::from_slice(&ciphertext[tag_start..]);
         let cipher =
@@ -624,7 +629,10 @@ impl Context {
             .decrypt_in_place_detached((&nonce).into(), &aad_buf[..aad_len], &mut plaintext, tag)
             .map_err(|_| OscoreError::DecryptFailed)?;
 
-        // Parse plaintext: code || options || 0xFF || payload
+        if let Some(seq) = response_seq {
+            self.update_replay_window(seq);
+        }
+
         if plaintext.is_empty() {
             return Err(OscoreError::InvalidParam);
         }

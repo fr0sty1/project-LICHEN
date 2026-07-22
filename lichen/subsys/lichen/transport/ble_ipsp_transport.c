@@ -660,15 +660,24 @@ void lichen_ble_transport_reset_stats(void)
 
 void lichen_ble_transport_deinit(void)
 {
+	k_mutex_lock(&transport_state.lock, K_FOREVER);
 	if (!transport_state.initialized) {
+		k_mutex_unlock(&transport_state.lock);
 		return;
 	}
 
-	lichen_ble_transport_stop();
-
-	k_mutex_lock(&transport_state.lock, K_FOREVER);
 	transport_state.initialized = false;
+	struct bt_conn *conn = transport_state.conn;
+	transport_state.conn = NULL;
+	transport_state.state = LICHEN_BLE_DISCONNECTED;
+	transport_state.advertising = false;
 	k_mutex_unlock(&transport_state.lock);
+
+	if (conn != NULL) {
+		bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+		bt_conn_unref(conn);
+	}
+	(void)bt_le_adv_stop();
 
 	LOG_INF("BLE transport deinitialized");
 }
