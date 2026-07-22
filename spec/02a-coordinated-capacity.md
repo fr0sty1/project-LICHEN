@@ -914,9 +914,9 @@ GPS-capable nodes still listen for beacons to detect:
 Jamming CH0, GNSS jamming or spoofing, and compromised authorized roots remain
 denial-of-service risks.
 
-## CCP-15. Capacity Claims
+## CCP-15. Capacity Claims (parent bead project-LICHEN-da2q.15)
 
-CCP does not guarantee a fixed capacity multiplier.
+CCP does not guarantee a fixed capacity multiplier. Integration notes updated per codereview-1: interference mitigation (da2q.15.8) feeds directly into CCP-16 load_factor and SF/channel selection; test vectors in ccp_load_balancing.json are authoritative oracle for all impls.
 
 TDMA can remove scheduler-created same-domain overlaps under bounded clocks,
 but not external interference, legacy transmissions, jamming, or unsafe reuse.
