@@ -20,6 +20,14 @@
       "created_at": "2026-07-22T17:21:36.922202874Z",
       "created_by": "ec2-user",
       "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-7fhs",
+      "depends_on_id": "project-LICHEN-3i18",
+      "type": "blocks",
+      "created_at": "2026-07-22T17:31:59.974448079Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
     }
   ]
 }
