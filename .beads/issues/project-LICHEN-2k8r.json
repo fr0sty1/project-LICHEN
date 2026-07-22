@@ -1,16 +1,16 @@
 {
   "id": "project-LICHEN-2k8r",
   "title": "Codereview pass 1 (P0-P4 findings on SenML profiles)",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",
   "created_at": "2026-07-22T14:52:27.178057212Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T14:52:35.714642317Z",
+  "updated_at": "2026-07-22T14:52:40.388691927Z",
   "started_at": "2026-07-22T14:52:35.714642317Z",
-  "lease_expires_at": "2026-07-22T14:57:35.714642317Z",
-  "heartbeat_at": "2026-07-22T14:52:35.714642317Z",
+  "closed_at": "2026-07-22T14:52:40.388691927Z",
+  "close_reason": "Pass 1 complete (P0-P2: none; P3 readability in match patterns; P4 opinion on const naming). No critical bugs found.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-2k8r",
