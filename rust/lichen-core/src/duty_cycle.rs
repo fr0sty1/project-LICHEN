@@ -453,6 +453,7 @@ mod tests {
     #[test]
     fn typical_lora_usage_pattern() {
         let mut tracker: DutyCycleTracker<64> = DutyCycleTracker::new();
+        tracker.set_from_density(5, REGION_EU);
 
         // Simulate typical LoRa usage: 60-byte packets at SF10/125kHz ~ 370ms airtime
         // Send one packet every 5 minutes (well within 1% duty cycle)

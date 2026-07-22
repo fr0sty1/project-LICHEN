@@ -79,6 +79,15 @@ routing headers without re-signing.
 | Hop Limit / TTL | Decremented per hop |
 | 6LoRH source routing headers | Inserted/consumed by relays |
 
+**Relay-mutable fields in practice (link-layer):**
+| Field | Changes each hop |
+|-------|------------------|
+| Link-layer destination | Yes |
+| Link-layer source | Yes (to relay's address) |
+
+**Implication:** Relays forward packets without re-signing. The original
+signature remains valid because signed fields are unchanged.
+
 ### 8.5. Unified Ed25519 Identity Derivation (new model)
 
 All node identity derives from a single Ed25519 keypair. This unifies:
@@ -103,11 +112,6 @@ This eliminates ULA entirely. The 02xx address is used for all routable traffic.
 - Single key management
 - Seamless mesh <-> global via Yggdrasil without NAT
 - TOFU binds key to address cryptographically
-| Link-layer destination | Changes each hop |
-| Link-layer source | Relay's address |
-
-**Implication:** Relays forward packets without re-signing. The original
-signature remains valid because signed fields are unchanged.
 
 ### 8.6. Signature Caching
 
@@ -121,10 +125,6 @@ Cache entries expire after 2× expected mesh traversal time (default: 30 seconds
 
 **Security note:** A compromised relay could inject unverified packets. In
 high-security deployments, enable per-hop verification (costs CPU, not bytes).
-
-### 8.6. Unified Derivation
-
-Single-seed SHA-256 derivation for Ed25519, X25519 and IPv6 IID (u-bit set) eliminates multiple vectors. Yggdrasil-compatible. No new attack surface. Bit mapping in appendix.
 
 ### 8.7. Key Management
 
@@ -140,7 +140,6 @@ A single 32-byte seed produces all material for signatures, X25519 (EDHOC), stab
 
 Self-provisioned (RECOMMENDED) or BR-provisioned nodes derive identically. TOFU pins pubkey to derived IID/02xx (cryptographic consistency per 04/05). Mismatch rejects (MITM protection).
 
-### 8.7. Key Management
 **Design Principles:**
 - No pre-shared network keys (each node has its own keypair)
 - No mandatory CA infrastructure
@@ -149,7 +148,7 @@ Self-provisioned (RECOMMENDED) or BR-provisioned nodes derive identically. TOFU 
 
 **Bootstrap and Key Derivation:**
 
-All nodes generate (or are provisioned) a single Ed25519 keypair at first boot. **One key for all purposes** (see 8.6):
+All nodes generate (or are provisioned) a single Ed25519 keypair at first boot. **One key for all purposes** (see 8.5):
 
 *Self-Provisioned (default, RECOMMENDED):*
 1. Device generates Ed25519 keypair at first boot

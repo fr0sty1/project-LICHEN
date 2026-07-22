@@ -3,15 +3,15 @@
   "title": "Zephyr 'Send' and 'Recv' keyword matching is too broad",
   "description": "## Location\nscripts/analyze-hetero-fleet.py:137\n\n## Description\nThe Zephyr parser checks for 'Send' and 'Recv' as substrings anywhere in the line, without case normalization (unlike 'TX:' which uses .upper()). These common English words appear in many contexts: error messages ('Failed to Send'), queue names ('SendBuffer'), status logs ('Sender ready'). Each match increments tx_count/rx_count even without a hash.\n\n## Failure Scenario\nA Zephyr log contains 'INFO: Sender thread initialized, receiver callback registered'. This line matches both 'Send' AND 'Recv' (in 'receiver'), incrementing both tx_count and rx_count by 1 each, inflating statistics and skewing the reception rate calculation.\n\n## Category\nparsing",
   "notes": "Commit: ef1932779",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-13T04:16:56.338916Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:16:16.367254381Z",
+  "updated_at": "2026-07-22T23:16:20.2901375Z",
   "started_at": "2026-07-22T23:13:37.037408773Z",
-  "lease_expires_at": "2026-07-22T23:18:37.037408773Z",
-  "heartbeat_at": "2026-07-22T23:13:37.037408773Z"
+  "closed_at": "2026-07-22T23:16:20.2901375Z",
+  "close_reason": "Closed"
 }

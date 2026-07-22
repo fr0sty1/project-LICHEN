@@ -326,7 +326,7 @@ security mechanism, not RPL's built-in security modes.
 
 ### 8.2. Link-Layer Signature Protection
 
-All RPL control messages (DIO, DAO, DIS) are link-layer frames that MUST carry Schnorr signatures per draft-lichen-link-01:4.2 (unsigned RPL control frames MUST be rejected by receivers; permissive mode is test-only). See spec/06-security.md:8.9 for full requirements.
+All RPL control messages (DIO, DAO, DIS) are link-layer frames that MUST carry Schnorr signatures per draft-lichen-link-01:4.2 (unsigned RPL control frames MUST be rejected by receivers; permissive mode is test-only). See spec/06-security.md:8.10 for full requirements.
 
 This provides:
 - Sender authentication

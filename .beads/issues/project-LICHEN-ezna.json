@@ -2,11 +2,15 @@
   "id": "project-LICHEN-ezna",
   "title": "Inconsistent settings rollback behavior on enqueue failure",
   "description": "File: lichen/subsys/lichen/meshcore/adapter.c\nLine: 593-606 (commit_settings_with_ok)\n\nWhen enqueue_ok fails after successfully persisting settings, the rollback behavior differs:\n```c\nret = enqueue_ok(adapter);\nif (ret \u003c 0) {\n    if (adapter-\u003eops.persist_settings == NULL) {\n        *settings = *old_settings;  // Rollback in-memory\n    }\n    // No rollback when persist_settings != NULL\n}\n```\n\nThe inconsistency:\n- If persist_settings is NULL: enqueue failure rolls back in-memory settings\n- If persist_settings is not NULL: enqueue failure leaves in-memory settings changed (matching persisted state)\n\nThis means the observable behavior differs based on whether persistence is configured, which is confusing.\n\nConsider documenting this explicitly or making behavior consistent (either always keep changed settings, or always rollback on any failure).",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:46:30.996693Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:46:30.996718Z"
+  "updated_at": "2026-07-22T23:16:21.395465606Z",
+  "started_at": "2026-07-22T23:16:21.395465606Z",
+  "lease_expires_at": "2026-07-22T23:21:21.395465606Z",
+  "heartbeat_at": "2026-07-22T23:16:21.395465606Z"
 }
