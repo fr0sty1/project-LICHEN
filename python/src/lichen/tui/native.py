@@ -463,6 +463,24 @@ def _is_sensitive_display_name(name: str) -> bool:
     )
 
 
+def safe_int(value: Any, default: int = 0) -> int:
+    if isinstance(value, bool) or value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def safe_float(value: Any, default: float | None = None) -> float | None:
+    if isinstance(value, bool) or value is None:
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def status_rows(state: DashboardState, width: int = 76) -> tuple[str, ...]:
     """Render dashboard rows from normalized shared-client status models."""
     if state.loading:
