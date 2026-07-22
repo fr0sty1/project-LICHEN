@@ -6,6 +6,7 @@
  * @brief LCI /status resource handlers (RFC 7641 Observable)
  *
  * Implements /status, /status/neighbors, /status/routes per LCI spec 17.5.3.
+ * CCP-17 capacity validation for CBOR encoders (BUILD_ASSERT + runtime checks).
  */
 
 #include <stdio.h>
