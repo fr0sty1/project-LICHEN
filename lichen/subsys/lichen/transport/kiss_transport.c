@@ -559,21 +559,24 @@ void kiss_transport_deinit(void)
 		return;
 	}
 
-	/* Disable UART interrupts first to prevent new data arriving */
 	if (ctx->uart_dev != NULL) {
 		uart_irq_rx_disable(ctx->uart_dev);
 	}
 
-	/* Signal the RX thread to shut down */
 	ctx->shutdown = true;
-	k_sem_give(&ctx->rx_sem);  /* Wake thread if waiting on semaphore */
+	k_sem_give(&ctx->rx_sem);
 
-	/* Wait for the RX thread to exit gracefully */
 	int ret = k_thread_join(&s_rx_thread, K_MSEC(1000));
 	if (ret != 0) {
 		LOG_WRN("KISS RX thread join failed: %d, aborting", ret);
 		k_thread_abort(&s_rx_thread);
+		(void)k_thread_join(&s_rx_thread, K_FOREVER);
 	}
+
+	ring_buf_reset(&ctx->rx_ring);
+	k_sem_reset(&ctx->rx_sem);
+	kiss_decode_init(&ctx->rx_ctx);
+	ctx->shutdown = false;
 
 	ctx->initialized = false;
 	LOG_INF("KISS transport deinitialized");
