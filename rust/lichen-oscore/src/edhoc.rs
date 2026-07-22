@@ -127,7 +127,9 @@ fn edhoc_kdf(
         info.push_err(length as u8)?;
     }
 
-    // TH as CBOR bstr
+    if th.len() > 255 {
+        return Err(EdhocError::BufferTooSmall);
+    }
     if th.len() <= 23 {
         info.push_err(0x40 | th.len() as u8)?;
     } else {
@@ -136,8 +138,10 @@ fn edhoc_kdf(
     }
     info.extend_err(th)?;
 
-    // label as CBOR tstr
     let label_bytes = label.as_bytes();
+    if label_bytes.len() > 255 {
+        return Err(EdhocError::BufferTooSmall);
+    }
     if label_bytes.len() <= 23 {
         info.push_err(0x60 | label_bytes.len() as u8)?;
     } else {
@@ -680,8 +684,9 @@ impl EdhocResponder {
             return Err(EdhocError::InvalidMessage);
         }
 
-        let _method_corr = msg1[0];
-        let suites_i = msg1[1];
+        if msg1[0] != 1 {
+            return Err(EdhocError::InvalidMessage);
+        }
 
         if suites_i != SUITE_0 {
             return Err(EdhocError::UnsupportedSuite);
