@@ -129,10 +129,13 @@ class DtnMessage:
     destination_iid: bytes
     expiry_unix: int
     buffered_at_ms: int
+    _cached_size: int = field(default=0, repr=False)
 
     def size(self) -> int:
-        """Approximate size in bytes for buffer accounting."""
-        return len(self.packet.payload) + 100  # header overhead estimate
+        """Approximate size in bytes for buffer accounting (cached)."""
+        if self._cached_size == 0:
+            self._cached_size = len(self.packet.payload) + 100  # header overhead estimate
+        return self._cached_size
 
 
 @dataclass
