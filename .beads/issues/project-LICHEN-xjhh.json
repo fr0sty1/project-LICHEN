@@ -5,7 +5,6 @@
   "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
-<<<<<<< HEAD
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T17:12:57.790543Z",
@@ -14,14 +13,4 @@
   "started_at": "2026-07-22T20:08:41.094829388Z",
   "lease_expires_at": "2026-07-22T20:13:41.094829388Z",
   "heartbeat_at": "2026-07-22T20:08:41.094829388Z"
-=======
-  "assignee": "ec2-user",
-  "owner": "me@mark.atwood.name",
-  "created_at": "2026-07-12T17:12:57.790543Z",
-  "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T14:40:37.854515285Z",
-  "started_at": "2026-07-22T14:40:37.854515285Z",
-  "lease_expires_at": "2026-07-22T14:45:37.854515285Z",
-  "heartbeat_at": "2026-07-22T14:40:37.854515285Z"
->>>>>>> origin/integration/worker8-20260722
 }
