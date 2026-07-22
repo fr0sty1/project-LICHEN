@@ -54,8 +54,9 @@ class SourceRoutingHeader:
         if data[0] != ROUTING_TYPE_SOURCE_ROUTE:
             raise RoutingError(f"not a source routing header: type {data[0]}")
         segments_left = data[1]
-        cmpr = data[2]  # CmprI (upper 4 bits) + CmprE (lower 4 bits)
-        if cmpr != 0:
+        cmpr_i = data[2] >> 4
+        cmpr_e = data[2] & 0x0F
+        if cmpr_i != 0 or cmpr_e != 0:
             raise RoutingError("compressed source routing headers not supported")
         addr_bytes = data[_SRH_FIELDS_LENGTH:]
         if len(addr_bytes) % 16 != 0:
