@@ -91,7 +91,6 @@ impl SourceRoutingHeader {
         }
         let addr_bytes = &data[6..];
         if !addr_bytes.len().is_multiple_of(16) {
-            // Address bytes must be a multiple of 16; partial trailing address is invalid.
             return Err(RplError::InvalidOption);
         }
         let addresses: Vec<[u8; 16]> = addr_bytes

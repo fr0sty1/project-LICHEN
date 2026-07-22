@@ -189,6 +189,13 @@ void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *_Nonnull d);
  * @param max_age Maximum age in timestamp units before expiring
  * @return Number of parents expired
  */
+static inline bool rpl_time_expired(uint32_t now, uint32_t last_updated,
+				     uint32_t max_age)
+{
+	uint32_t deadline = last_updated + max_age;
+	return (int32_t)(now - deadline) >= 0;
+}
+
 int lichen_rpl_dodag_expire_parents(struct lichen_rpl_dodag *_Nullable d,
 				    uint32_t now, uint32_t max_age);
 
