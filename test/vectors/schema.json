@@ -705,7 +705,7 @@
             "team": {"type": "integer"},
             "team_name": {"type": "string"},
             "role": {"type": "integer"},
-            "expected_hash": {"type": "integer"}
+            "expected_hash": {"type": "integer", "description": "hash_32(SFN, key) per spec/02a-coordinated-capacity.md §2a.7.1 (FNV-1a32 primitive, matches C lichen_hash_32 and Python _hash_32)"}
           }
         }
       }
