@@ -363,14 +363,25 @@ static void set_position_fix_time(
 {
 	position->effective_epoch_floor =
 		(uint32_t)CONFIG_LICHEN_MESHTASTIC_POSITION_EPOCH_FLOOR_UNIX;
+	uint32_t max_ts = position->effective_epoch_floor +
+			  (uint32_t)CONFIG_LICHEN_MESHTASTIC_POSITION_MAX_FUTURE_SKEW;
 	if (unix_time < position->effective_epoch_floor) {
 		position->fix_time_rejected_below_epoch_floor = true;
+		position->fix_time_rejected_future = false;
+		position->fix_time_unix_valid = false;
+		position->fix_time_unix = 0U;
+		return;
+	}
+	if (unix_time > max_ts) {
+		position->fix_time_rejected_below_epoch_floor = false;
+		position->fix_time_rejected_future = true;
 		position->fix_time_unix_valid = false;
 		position->fix_time_unix = 0U;
 		return;
 	}
 
 	position->fix_time_rejected_below_epoch_floor = false;
+	position->fix_time_rejected_future = false;
 	position->fix_time_unix = unix_time;
 	position->fix_time_unix_valid = true;
 }
