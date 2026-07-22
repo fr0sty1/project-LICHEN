@@ -1,12 +1,16 @@
 {
   "id": "project-LICHEN-nd68",
   "title": "[codereview-pass2-correctness] lichend.rs forward: TUN error logging removed in else; local mesh path ignores return value. P2. No TODOs. Tagged codereview",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T16:00:17.785532062Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:00:17.785532062Z",
+  "updated_at": "2026-07-22T16:00:25.536577163Z",
+  "started_at": "2026-07-22T16:00:25.536577163Z",
+  "lease_expires_at": "2026-07-22T16:05:25.536577163Z",
+  "heartbeat_at": "2026-07-22T16:00:25.536577163Z",
   "labels": [
     "codereview"
   ]
