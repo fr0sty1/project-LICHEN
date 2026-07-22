@@ -2,11 +2,15 @@
   "id": "project-LICHEN-mpj6",
   "title": "OscoreSeqNum::increment wraps silently in release builds at u32::MAX",
   "description": "File: rust/lichen-oscore/src/seqnum.rs\nLine: 57\n\nThe increment() method uses wrapping_add which silently wraps to 0 in release builds when sequence number is at u32::MAX. While Context::protect_request guards against this by checking before increment, direct use of increment() is unsafe.\n\nCode:\n```rust\npub fn increment(self) -\u003e Self {\n    debug_assert!(self.0 \u003c u32::MAX, ...);\n    Self(self.0.wrapping_add(1))  // wraps silently in release\n}\n```\n\nSecurity impact: Nonce reuse causes complete loss of OSCORE confidentiality (AES-CCM keystream reuse) and potentially auth bypass.\n\nFix: Return Option\u003cSelf\u003e or Result, or use checked_add and panic on overflow in release builds too. The doc comment acknowledges this is a security violation but doesn't prevent it.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:36:48.992166Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:36:48.992195Z"
+  "updated_at": "2026-07-22T20:17:48.53836972Z",
+  "started_at": "2026-07-22T20:17:48.53836972Z",
+  "lease_expires_at": "2026-07-22T20:22:48.53836972Z",
+  "heartbeat_at": "2026-07-22T20:17:48.53836972Z"
 }
