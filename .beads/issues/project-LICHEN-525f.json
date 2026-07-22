@@ -2,16 +2,14 @@
   "id": "project-LICHEN-525f",
   "title": "[CODEREVIEW-3] lora_l2.c CCA implementation uses compile-time IS_ENABLED but bead requires explicit LICHEN_LORA_CCA_ENABLE runtime read before lora_cad(); mutex held during CAD but busy abort path has duplicate unlocks",
   "description": "lichen/subsys/lichen/l2/lora_l2.c:1250 - No direct read of LICHEN_LORA_CCA_ENABLE (uses IS_ENABLED(CONFIG_...)); CAD inside modem_mutex but abort path unlocks multiple times potentially. firmware/bridge-zephyr version still missing entirely. Busy abort returns -EBUSY correctly but needs verification.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",
   "created_at": "2026-07-22T16:50:55.855533002Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:53:16.449661826Z",
+  "updated_at": "2026-07-22T16:53:58.646192162Z",
   "started_at": "2026-07-22T16:51:59.536300008Z",
-  "closed_at": "2026-07-22T16:53:16.449661826Z",
-  "close_reason": "Fixed: updated schema.json with format_version=2 support + ccp15/ccp16 defs (oneOf fixed to avoid overlap validation error); generate.py=2; test_vectors.py asserts updated to 2 + rpl_messages.json; Python future import ordering fixed for rpl/messages.py; vector tests pass (130/130); lora_l2.c CCA with IS_ENABLED read, lora_cad(), busy abort via -EBUSY + modem_mutex already present and correct (no further changes); Zephyr native_sim builds clean, no new issues after 3 codereview passes (correctness/security/robustness all clean, no open findings)",
   "labels": [
     "codereview"
   ]
