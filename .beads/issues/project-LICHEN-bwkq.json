@@ -3,15 +3,15 @@
   "title": "Timer wraparound bug in route expiration",
   "description": "File: lichen/subsys/lichen/rpl/routing.c:654\n\nThe age calculation `uint32_t age = now - r-\u003elast_updated;` in `lichen_rpl_routing_table_expire()` does not handle timestamp wraparound.\n\nSame issue as parent expiration: when the 32-bit millisecond counter wraps after ~49.7 days, routes may be incorrectly expired or retained.\n\nImpact: Route table corruption after extended runtime.\n\nFix: Add wraparound-aware age calculation. Consider extracting a common helper function.",
   "notes": "Commit: b8a9b5961",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:51:18.382989Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:13:23.647960382Z",
+  "updated_at": "2026-07-22T20:13:25.783076956Z",
   "started_at": "2026-07-22T20:13:08.070874999Z",
-  "lease_expires_at": "2026-07-22T20:18:08.070874999Z",
-  "heartbeat_at": "2026-07-22T20:13:08.070874999Z"
+  "closed_at": "2026-07-22T20:13:25.783076956Z",
+  "close_reason": "Route expiration now uses signed deadline method (routing.c:661) for wrap safety, matching dodag parents. No subtraction bug. Common helper noted for future. Json updated. Commit b8a9b5961"
 }
