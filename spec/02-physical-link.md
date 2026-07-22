@@ -136,6 +136,35 @@ Boundary example: When delta exceeds 0.25 symbols, destructive interference occu
 
 See CCP-12 synchronized hopping in [02a-coordinated-capacity.md](02a-coordinated-capacity.md) for full multi-channel coordination via SFN/GPS, hash_32 channel selection, and rendezvous announcements in beacons/DIOs.
 
+### 3.6. LR-FHSS Optional Mode (SX1262 Only)
+
+LR-FHSS provides superior collision resilience by frequency hopping each packet across many channels. Collisions corrupt only fragments rather than entire packets. Optional for SX1262 devices only.
+
+**Advertisement and Negotiation:**
+- Gateway sets `LR_FHSS_SUPPORTED` flag in DIO (MUST use a reserved bit).
+- Nodes advertise `LR_FHSS_CAPABLE` flag in Announce (1 bit in app_data field).
+- SX1262 nodes MAY select LR-FHSS for uplink if gateway advertises support.
+- Gateway MUST implement dual-mode RX (standard LoRa + LR-FHSS on same frequency).
+- Downlink always matches the mode of the node's most recent uplink.
+- Node-to-node defaults to standard LoRa; LR-FHSS only if both peers capable and negotiated.
+
+**Parameters:**
+- Uses LoRaWAN LR-FHSS DR8-DR11.
+- OCW: 137 kHz or 336 kHz.
+- CR: 1/3 or 2/3.
+- Hopping sequence per Semtech AN1200.62.
+
+**Backward Compatibility:**
+- SX127x nodes ignore flags, use standard LoRa exclusively.
+- Mixed networks supported without disruption.
+- No protocol flag day required.
+
+**Tradeoffs:**
+- ~2× airtime vs standard LoRa.
+- 10×+ better performance in high-density collision scenarios via fragment FEC.
+
+See child issue project-LICHEN-zd2d.2 for driver implementation.
+
 ---
 
 

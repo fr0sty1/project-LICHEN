@@ -1,8 +1,13 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
+<<<<<<< HEAD
   "description": "Normative test vectors for CCP-16 adaptive SF and load balancing. Implementations MUST produce identical output to these vectors for load_balancing cases using the exact pseudocode in spec/02-physical-link.md:3.4 and spec/02a-coordinated-capacity.md:2a.3 (EMA alpha=1/4, per-neighbor state, select_tx_sf with RFC 2119 MUST/SHOULD thresholds for density/SNR/loss/utilization). Hopping tests per CCP-12. All impls MUST match for interoperability.",
   "reference": "spec/02-physical-link.md#3.4, spec/02a-coordinated-capacity.md#2a.3, spec/appendix-design-rationale.md#7.6, CCP-16",
+=======
+  "description": "Combined CCP-16 test vectors from both branches: hopping channel tests (synchronized_hop_channel, CCP-12/15 integration, epoch wrap, desync recovery with mathematical oracles per spec 02a-coordinated-capacity.md:CCP-12) and load balancing tests (TDMA slot calc, adaptive SF, density-aware, multi-RX gateway). Updated description, added reference and format fields. Single valid JSON keeping BOTH sets of changes.",
+  "reference": "spec/02a-coordinated-capacity.md, spec/appendix-design-rationale.md#7.6",
+>>>>>>> origin/integration/worker4-20260722
   "format": {
     "input": {
       "eui64": "8-byte hex",

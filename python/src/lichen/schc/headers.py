@@ -167,17 +167,23 @@ def _ipv6_fields(header: IPv6Header) -> dict[str, int]:
     }
 
 
+def _require_field(fields: dict[str, int | None], key: str) -> int:
+    val = fields.get(key)
+    assert val is not None, f"decompress returned None for non-COMPUTE {key}"
+    return int(val)
+
+
 def _ipv6_header(
     fields: dict[str, int | None], next_header: int, payload_length: int
 ) -> IPv6Header:
     return IPv6Header(
-        src_addr=IPv6Address(int(fields.get("IPv6.src") or 0)),
-        dst_addr=IPv6Address(int(fields.get("IPv6.dst") or 0)),
+        src_addr=IPv6Address(_require_field(fields, "IPv6.src")),
+        dst_addr=IPv6Address(_require_field(fields, "IPv6.dst")),
         next_header=next_header,
         payload_length=payload_length,
-        hop_limit=int(fields.get("IPv6.hop_limit") or 64),
-        traffic_class=int(fields.get("IPv6.traffic_class") or 0),
-        flow_label=int(fields.get("IPv6.flow_label") or 0),
+        hop_limit=_require_field(fields, "IPv6.hop_limit"),
+        traffic_class=_require_field(fields, "IPv6.traffic_class"),
+        flow_label=_require_field(fields, "IPv6.flow_label"),
     )
 
 

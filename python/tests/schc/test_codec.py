@@ -104,11 +104,11 @@ class TestCoapRule:
 
     def test_roundtrip_nonzero(self) -> None:
         original = {
-            "CoAP.Version": 1,
-            "CoAP.Type": 2,
-            "CoAP.TKL": 5,
-            "CoAP.Code": 0x45,
-            "CoAP.MID": 0xBEEF,
+            "CoAP.version": 1,
+            "CoAP.type": 2,
+            "CoAP.tkl": 5,
+            "CoAP.code": 0x45,
+            "CoAP.mid": 0xBEEF,
         }
         rule_id, recovered = decompress(compress(COAP_RULE, original))
         assert rule_id == 64
@@ -116,8 +116,8 @@ class TestCoapRule:
 
     def test_equal_mismatch_raises(self) -> None:
         with pytest.raises(SchcError, match="EQUAL mismatch"):
-            compress(COAP_RULE, {"CoAP.Version": 2, "CoAP.Type": 0,
-                                 "CoAP.TKL": 0, "CoAP.Code": 0, "CoAP.MID": 0})
+            compress(COAP_RULE, {"CoAP.version": 2, "CoAP.type": 0,
+                                 "CoAP.tkl": 0, "CoAP.code": 0, "CoAP.mid": 0})
 
     def test_missing_field_raises(self) -> None:
         with pytest.raises(SchcError, match="missing required field"):

@@ -36,6 +36,13 @@ _RREQ_RREP_PREFIX = 36  # flags(1) hop(1) seq(2) originator(16) destination(16)
 _RERR_PREFIX = 18  # flags(1) error_code(1) unreachable(16)
 
 
+def _parse_signature(data: bytes, offset: int) -> bytes:
+    sig = data[offset:]
+    if len(sig) not in (0, SIGNATURE_LENGTH):
+        raise LoadngError(f"invalid signature length: {len(sig)}, expected 0 or {SIGNATURE_LENGTH}")
+    return sig
+
+
 class LoadngCode(IntEnum):
     """ICMPv6 code for LOADng messages (spec B2.4)."""
 
@@ -89,7 +96,11 @@ class RREQ:
             seq_num=int.from_bytes(data[2:4], "big"),
             originator=IPv6Address(data[4:20]),
             destination=IPv6Address(data[20:36]),
+<<<<<<< HEAD
             signature=signature,
+=======
+            signature=_parse_signature(data, 36),
+>>>>>>> origin/integration/worker4-20260722
         )
 
 

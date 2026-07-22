@@ -429,6 +429,12 @@ The difference is resource budget. Tactical radios have compute, memory, and
 bandwidth to spare. LICHEN has none of that luxury--so the protocol must be
 correspondingly smarter about what it spends.
 
----
+### Frequency Agility Channel Selection
 
+**Rejected alternative (pure random):** Pure random channel selection was considered but rejected because it prevents reliable rendezvous prediction between nodes (receiver cannot compute which channel the sender will use). Hash_32(SFN, EUI) provides deterministic, reproducible selection that enables synchronized hopping and rendezvous announcements while still providing statistical interference avoidance. See CCP-12 and CCP-15 pseudocode in 02a-coordinated-capacity.md.
+
+**now() and clamp():** Defined as monotonic millisecond clock and numeric range limiter respectively (see pseudocode conventions in 02a-coordinated-capacity.md). Floating point thresholds fixed at exactly 0.1/0.5/0.8 for interoperability (normative).
+
+---
 [Index](README.md) | [Architecture](01-architecture.md)
+
