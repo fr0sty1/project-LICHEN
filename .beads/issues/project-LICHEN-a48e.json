@@ -2,12 +2,16 @@
   "id": "project-LICHEN-a48e",
   "title": "codereview pass 3/3 post-chunk2: Verify hash_32 impl matches exactly between spec pseudocode, Rust, C link layer, and Python sim for CCP-15.8.3",
   "description": "P1 finding (correctness): The FNV-1a in spec must be verified against lichen/subsys/lichen/link and rust/lichen-link for bit exactness on test vectors. Current definition may not match 'packet_hash' fallback. Run interop tests after update. Do not close project-LICHEN-9qjs until 3 full passes done and all beads addressed or closed. This completes the mandatory 3x codereview after chunk.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T16:42:07.412716071Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:42:07.412716071Z",
+  "updated_at": "2026-07-22T16:42:21.826820908Z",
+  "started_at": "2026-07-22T16:42:21.826820908Z",
+  "lease_expires_at": "2026-07-22T16:47:21.826820908Z",
+  "heartbeat_at": "2026-07-22T16:42:21.826820908Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-a48e",
