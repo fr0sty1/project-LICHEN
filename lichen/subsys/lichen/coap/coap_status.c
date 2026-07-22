@@ -3,12 +3,21 @@
 
 #include <stdio.h>
 #include <string.h>
+<<<<<<< HEAD
+=======
+#include <errno.h>
+#include <stdint.h>
+>>>>>>> origin/integration/worker7-20260722
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/net/coap.h>
 #include <zephyr/net/coap_service.h>
+<<<<<<< HEAD
 #include <errno.h>
+=======
+#include <zephyr/net/net_ip.h>
+>>>>>>> origin/integration/worker7-20260722
 
 #include <lichen/coap_status.h>
 
