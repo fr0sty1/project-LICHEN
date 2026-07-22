@@ -528,7 +528,8 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 
 	/* Build signed data: iid || pubkey || seq_num || app_data */
 	/* SECURITY: IID is derived from pubkey hash to bind identity to the
-	 * cryptographic key material. Must match RX path (pubkey_to_iid). */
+	 * cryptographic key material. Must match RX path (pubkey_to_iid).
+	 * Resolves bead 796f (EUI-64 vs pubkey IID mismatch). */
 	uint8_t iid[LICHEN_ANNOUNCE_IID_LEN];
 
 	ret = pubkey_to_iid(sched.link_ctx->ed25519_pk, iid);
