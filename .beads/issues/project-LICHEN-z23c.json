@@ -3,15 +3,15 @@
   "title": "Priority elevation when re-queuing after CAD failure",
   "description": "File: python/src/lichen/link/link_layer.py:314-318\n\nIn drain_tx_queue(), when CAD fails and a packet must be re-queued, it is given Priority.ROUTING (highest priority) regardless of its original priority:\n\n    try:\n        self.tx_queue.push(frame_bytes, priority=Priority.ROUTING)\n\nA BULK packet that fails CAD will be elevated to ROUTING priority, potentially preempting legitimate routing control packets. This violates the priority guarantees.\n\nFix: Store original priority with frame_bytes or track it separately. Or re-queue with original priority.",
   "notes": "Commit: a2e48c366 - CAD now performed before pop() in drain_tx_queue(), avoiding re-queue priority elevation bug. Packets stay in original priority queue on busy channel. Updated comment with bead reference. RFC-compliant priority preserved.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:21:23.104548Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:22:16.335901882Z",
+  "updated_at": "2026-07-22T20:22:16.797451639Z",
   "started_at": "2026-07-22T20:22:03.015875935Z",
-  "lease_expires_at": "2026-07-22T20:27:03.015875935Z",
-  "heartbeat_at": "2026-07-22T20:22:03.015875935Z"
+  "closed_at": "2026-07-22T20:22:16.797451639Z",
+  "close_reason": "CAD-before-pop design prevents priority elevation (commit a2e48c366). Fixed."
 }
