@@ -53,13 +53,22 @@ static void cbor_put_array_header(uint8_t *buf, size_t *off, uint8_t count)
 
 static void cbor_put_tstr(uint8_t *buf, size_t *off, const char *value, size_t len)
 {
+	if (len > 0xffffffffU) {
+		len = 0xffffffffU;
+	}
 	if (len < 24U) {
 		buf[(*off)++] = 0x60U | (uint8_t)len;
 	} else if (len <= UINT8_MAX) {
 		buf[(*off)++] = 0x78;
 		buf[(*off)++] = (uint8_t)len;
-	} else {
+	} else if (len <= 0xffffU) {
 		buf[(*off)++] = 0x79;
+		buf[(*off)++] = (uint8_t)(len >> 8);
+		buf[(*off)++] = (uint8_t)(len & 0xffU);
+	} else {
+		buf[(*off)++] = 0x7a;
+		buf[(*off)++] = (uint8_t)(len >> 24);
+		buf[(*off)++] = (uint8_t)(len >> 16);
 		buf[(*off)++] = (uint8_t)(len >> 8);
 		buf[(*off)++] = (uint8_t)(len & 0xffU);
 	}
