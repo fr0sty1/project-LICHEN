@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-da2q.15.8.4",
+  "title": "codereview: pseudocode hash_32 fn and N_CHANNELS undefined; specify exact hash from link layer",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:31:48.678141936Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:31:48.678141936Z",
+  "labels": [
+    "codereview",
+    "ccp",
+    "spec",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.15.8.4",
+      "depends_on_id": "project-LICHEN-da2q.15.8",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:31:48.78716798Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
