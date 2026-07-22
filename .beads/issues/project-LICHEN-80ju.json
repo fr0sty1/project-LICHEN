@@ -2,15 +2,15 @@
   "id": "project-LICHEN-80ju",
   "title": "[merge-conflict] worktree-worker1: Kconfig",
   "notes": "Commit: 19687c004",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:17.259773649Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:49:41.194313978Z",
+  "updated_at": "2026-07-22T23:49:43.090198477Z",
   "started_at": "2026-07-22T23:45:18.943816236Z",
-  "lease_expires_at": "2026-07-22T23:50:18.943816236Z",
-  "heartbeat_at": "2026-07-22T23:45:18.943816236Z"
+  "closed_at": "2026-07-22T23:49:43.090198477Z",
+  "close_reason": "Merge conflicts in gateway Kconfig, board .conf/.overlay files resolved and consolidated. Coordination config integrated. Beads updated."
 }
