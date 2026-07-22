@@ -3,15 +3,15 @@
   "title": "TUI _connect_to_sim doesn't close SimRadio on connection failure",
   "description": "file: python/src/lichen/tui/app.py:329-358\n\nWhen _connect_to_sim catches an exception from SimRadio.connect(), it sets self._radio = None without first calling close() on the SimRadio object. If SimRadio.__init__ or the early part of connect() opened any resources (like sockets), those resources may leak.\n\nCurrent code:\n  try:\n      self._radio = SimRadio(...)\n      await self._radio.connect()\n      ...\n  except SimRadioError as e:\n      self._log_event('error', f'Connection failed: {e}')\n      self._radio = None  # Resources not closed\n\nShould be:\n  except SimRadioError as e:\n      self._log_event('error', f'Connection failed: {e}')\n      if self._radio is not None:\n          with suppress(Exception):\n              await self._radio.close()\n      self._radio = None",
   "notes": "Commit: 9a171ef70",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T17:06:38.809043Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T22:51:03.777336854Z",
+  "updated_at": "2026-07-22T22:51:05.778684422Z",
   "started_at": "2026-07-22T22:49:05.773836013Z",
-  "lease_expires_at": "2026-07-22T22:54:05.773836013Z",
-  "heartbeat_at": "2026-07-22T22:49:05.773836013Z"
+  "closed_at": "2026-07-22T22:51:05.778684422Z",
+  "close_reason": "Fixed resource leak on SimRadio connection failure and corrected method nesting in _connect_to_sim / _disconnect"
 }
