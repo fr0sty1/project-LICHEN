@@ -49,6 +49,9 @@ pub const TAG_LEN: usize = 8;
 /// Maximum sender/recipient ID length.
 pub const ID_MAX_LEN: usize = 8;
 
+/// Maximum master salt length (LICHEN-specific restriction).
+pub const SALT_MAX_LEN: usize = 32;
+
 /// Maximum Partial IV length.
 pub const PIV_MAX_LEN: usize = 5;
 
@@ -167,7 +170,7 @@ impl core::error::Error for OscoreError {
 pub struct Context {
     // Common context
     master_secret: [u8; KEY_LEN],
-    master_salt: [u8; 8],
+    master_salt: [u8; SALT_MAX_LEN],
     master_salt_len: u8,
     common_iv: [u8; NONCE_LEN],
     id_context: [u8; 8],
@@ -214,7 +217,7 @@ impl Context {
     ///
     /// Returns `InvalidParam` if:
     /// - `sender_id` or `recipient_id` exceeds 7 bytes (nonce capacity)
-    /// - `master_salt` exceeds 8 bytes
+    /// - `master_salt` exceeds SALT_MAX_LEN bytes
     pub fn new(
         master_secret: &[u8; KEY_LEN],
         master_salt: Option<&[u8]>,
@@ -229,13 +232,13 @@ impl Context {
         }
 
         let salt = master_salt.unwrap_or(&[]);
-        if salt.len() > 8 {
+        if salt.len() > SALT_MAX_LEN {
             return Err(OscoreError::InvalidParam);
         }
 
         let mut ctx = Self {
             master_secret: *master_secret,
-            master_salt: [0u8; 8],
+            master_salt: [0u8; SALT_MAX_LEN],
             master_salt_len: salt.len() as u8,
             common_iv: [0u8; NONCE_LEN],
             id_context: [0u8; 8],
@@ -884,6 +887,9 @@ fn build_info_cbor(
     off += type_bytes.len();
 
     // L: uint
+    if out_len > 0xff {
+        return Err(OscoreError::InvalidParam);
+    }
     if out_len <= 23 {
         buf[off] = out_len as u8;
         off += 1;
