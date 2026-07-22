@@ -9,6 +9,7 @@
 #include <zephyr/net/coap.h>
 #include <zephyr/net/coap_service.h>
 #include <errno.h>
+#include <stdint.h>
 
 #include <lichen/coap_status.h>
 
@@ -43,9 +44,9 @@ static inline bool cbor_check_space(struct cbor_ctx *ctx, size_t n)
 	return true;
 }
 
-static void cbor_put_map_header(struct cbor_ctx *ctx, uint8_t count)
+static void cbor_put_map_header(struct cbor_ctx *ctx, uint16_t count)
 {
-	if (count > 255) {
+	if (count > UINT16_MAX) {
 		ctx->overflow = true;
 		return;
 	}
@@ -53,19 +54,26 @@ static void cbor_put_map_header(struct cbor_ctx *ctx, uint8_t count)
 		if (!cbor_check_space(ctx, 1)) {
 			return;
 		}
-		ctx->buf[ctx->off++] = 0xa0U | count;
-	} else {
+		ctx->buf[ctx->off++] = 0xa0U | (uint8_t)count;
+	} else if (count <= UINT8_MAX) {
 		if (!cbor_check_space(ctx, 2)) {
 			return;
 		}
 		ctx->buf[ctx->off++] = 0xb8;
-		ctx->buf[ctx->off++] = count;
+		ctx->buf[ctx->off++] = (uint8_t)count;
+	} else {
+		if (!cbor_check_space(ctx, 3)) {
+			return;
+		}
+		ctx->buf[ctx->off++] = 0xb9;
+		ctx->buf[ctx->off++] = (uint8_t)(count >> 8);
+		ctx->buf[ctx->off++] = (uint8_t)count;
 	}
 }
 
-static void cbor_put_array_header(struct cbor_ctx *ctx, uint8_t count)
+static void cbor_put_array_header(struct cbor_ctx *ctx, uint16_t count)
 {
-	if (count > 255) {
+	if (count > UINT16_MAX) {
 		ctx->overflow = true;
 		return;
 	}
@@ -73,13 +81,20 @@ static void cbor_put_array_header(struct cbor_ctx *ctx, uint8_t count)
 		if (!cbor_check_space(ctx, 1)) {
 			return;
 		}
-		ctx->buf[ctx->off++] = 0x80U | count;
-	} else {
+		ctx->buf[ctx->off++] = 0x80U | (uint8_t)count;
+	} else if (count <= UINT8_MAX) {
 		if (!cbor_check_space(ctx, 2)) {
 			return;
 		}
 		ctx->buf[ctx->off++] = 0x98;
-		ctx->buf[ctx->off++] = count;
+		ctx->buf[ctx->off++] = (uint8_t)count;
+	} else {
+		if (!cbor_check_space(ctx, 3)) {
+			return;
+		}
+		ctx->buf[ctx->off++] = 0x99;
+		ctx->buf[ctx->off++] = (uint8_t)(count >> 8);
+		ctx->buf[ctx->off++] = (uint8_t)count;
 	}
 }
 
@@ -244,7 +259,7 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 				      const struct lichen_coap_node_status *status)
 {
 	struct cbor_ctx ctx;
-	uint8_t map_count;
+	uint16_t map_count;
 	char ipv6_buf[40];
 
 	if (buf == NULL || status == NULL || buf_size == 0) {
@@ -254,8 +269,11 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 	cbor_ctx_init(&ctx, buf, buf_size);
 
 	map_count = 9;
-	if (status->battery_pct_valid && map_count < 255) map_count++;
-	if (status->battery_mv_valid && map_count < 255) map_count++;
+	if (status->battery_pct_valid) map_count++;
+	if (status->battery_mv_valid) map_count++;
+	if (map_count > UINT16_MAX) {
+		return 0; // overflow guard
+	}
 	cbor_put_map_header(&ctx, map_count);
 
 	cbor_put_key(&ctx, "uptime_s");
@@ -275,10 +293,13 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 	cbor_put_uint(&ctx, status->mem_free_kb);
 
 	cbor_put_key(&ctx, "time");
-	uint8_t time_fields = 4;
+	uint16_t time_fields = 4;
 	if (status->time.wall_clock_valid) time_fields++;
 	if (status->time.source_class) time_fields++;
 	if (status->time.source_name) time_fields++;
+	if (time_fields > UINT16_MAX) {
+		return 0; // overflow guard
+	}
 	cbor_put_map_header(&ctx, time_fields);
 
 	cbor_put_key(&ctx, "wall_clock_valid");
