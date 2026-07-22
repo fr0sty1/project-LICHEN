@@ -1217,6 +1217,8 @@ static void compute_nonce(const uint8_t *sender_id, size_t sender_id_len,
 			  uint8_t nonce[OSCORE_NONCE_LEN])
 {
 	memset(nonce, 0, OSCORE_NONCE_LEN);
+	if (sender_id == NULL) sender_id_len = 0;
+	if (piv == NULL) piv_len = 0;
 
 	/*
 	 * RFC 8613 Section 5.2: The nonce is constructed as:
