@@ -276,7 +276,9 @@ RPL_DIO_RULE = Rule(
 )
 
 # Rule 4: RPL DAO base object (RFC 6550 6.4) with DODAGID (D flag set), the
-# common non-storing case. DAOs without a DODAGID fall back to uncompressed.
+# common non-storing case using routable ULA source for multi-hop forwarding.
+# DAOs without a DODAGID fall back to uncompressed. Preserves end-to-end source
+# per security spec.
 _DAO_BASE_FIELDS = (
     FieldDescriptor("RPL.instance", 8, MO.IGNORE, CDA.VALUE_SENT),
     FieldDescriptor("RPL.kd_flags", 8, MO.IGNORE, CDA.VALUE_SENT),
@@ -286,7 +288,7 @@ _DAO_BASE_FIELDS = (
 )
 RPL_DAO_RULE = Rule(
     rule_id=4,
-    fields=_ipv6_header_fields(58, link_local=True) + _icmpv6_rpl_fields(2)
+    fields=_ipv6_header_fields(58, link_local=False) + _icmpv6_rpl_fields(2)
     + _DAO_BASE_FIELDS,
 )
 

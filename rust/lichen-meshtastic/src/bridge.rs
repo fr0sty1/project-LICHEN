@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Bridge logic for translating between LICHEN IPv6 packets and Meshtastic MeshPackets.
 //!
-// Allow deprecated field usage for Meshtastic protocol compatibility
-#![allow(deprecated)]
-//!
 //! This module provides bidirectional translation:
 //! - Meshtastic MeshPacket -> LICHEN IPv6 (for incoming BLE/serial traffic)
 //! - LICHEN IPv6 -> Meshtastic MeshPacket (for outgoing to BLE/serial)
@@ -316,7 +313,6 @@ impl MeshtasticBridge {
             want_ack: true,
             priority: mesh_packet::Priority::Default as i32,
             rx_rssi: 0,
-            delayed: 0,
             via_mqtt: false,
             hop_start: 0,
             public_key: alloc::vec::Vec::new(),
@@ -324,6 +320,7 @@ impl MeshtasticBridge {
             next_hop: 0,
             relay_node: 0,
             payload_variant: Some(mesh_packet::PayloadVariant::Decoded(data)),
+            ..Default::default()
         })
     }
 
@@ -363,7 +360,6 @@ impl MeshtasticBridge {
             want_ack: false,
             priority: mesh_packet::Priority::Default as i32,
             rx_rssi: 0,
-            delayed: 0,
             via_mqtt: false,
             hop_start: 0,
             public_key: alloc::vec::Vec::new(),
@@ -371,6 +367,7 @@ impl MeshtasticBridge {
             next_hop: 0,
             relay_node: 0,
             payload_variant: Some(mesh_packet::PayloadVariant::Decoded(data)),
+            ..Default::default()
         })
     }
 
@@ -419,7 +416,6 @@ impl MeshtasticBridge {
             want_ack: false,
             priority: mesh_packet::Priority::Ack as i32,
             rx_rssi: 0,
-            delayed: 0,
             via_mqtt: false,
             hop_start: 0,
             public_key: alloc::vec::Vec::new(),
@@ -427,6 +423,7 @@ impl MeshtasticBridge {
             next_hop: 0,
             relay_node: 0,
             payload_variant: Some(mesh_packet::PayloadVariant::Decoded(data)),
+            ..Default::default()
         }
     }
 
@@ -535,7 +532,6 @@ mod tests {
             want_ack: false,
             priority: 0,
             rx_rssi: 0,
-            delayed: 0,
             via_mqtt: false,
             hop_start: 0,
             public_key: alloc::vec::Vec::new(),
@@ -553,6 +549,7 @@ mod tests {
                 emoji: 0,
                 bitfield: None,
             })),
+            ..Default::default()
         };
 
         let result = bridge.process_incoming(&packet);
@@ -619,7 +616,6 @@ mod tests {
             want_ack: false,
             priority: 0,
             rx_rssi: 0,
-            delayed: 0,
             via_mqtt: false,
             hop_start: 0,
             public_key: alloc::vec::Vec::new(),
@@ -627,6 +623,7 @@ mod tests {
             next_hop: 0,
             relay_node: 0,
             payload_variant: None,
+            ..Default::default()
         };
 
         let result = bridge.process_incoming(&packet);

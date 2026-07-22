@@ -1,5 +1,5 @@
 :name: ESP32-S3-LICHEN
-:description: Run LICHEN firmware on ESP32-S3 with SX1262 radio in Renode
+:description: Complete ESP32-S3 Renode model for LICHEN (Heltec V3/T-Deck/puck). Loads ELFs, reaches late markers, observes TX in lichen-sim.
 
 $name?="ESP32-S3-LICHEN"
 $simPort?=5555

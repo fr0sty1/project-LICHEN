@@ -8,7 +8,7 @@
   "vectors": [
     {
       "name": "minimal_valid_frame",
-      "description": "Broadcast unsigned frame with no payload",
+      "description": "Broadcast unsigned frame with no payload (bootstrap/test only; RPL control requires signature)",
       "input_hex": "0400011234",
       "expected": {
         "addr_mode": 0,

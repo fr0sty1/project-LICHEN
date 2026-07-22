@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     pass
 
 
-@dataclass(slots=True)
+@dataclass
 class Identity:
     """A node's cryptographic identity.
 
@@ -139,7 +139,7 @@ def _pubkey_to_iid(pubkey: bytes) -> bytes:
     return bytes(iid)
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class PeerIdentity:
     """A remote peer's public identity (no secret material).
 

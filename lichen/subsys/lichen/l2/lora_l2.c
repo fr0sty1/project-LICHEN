@@ -250,13 +250,11 @@ static struct tx_queue tx_queue;
  *     atomically via snapshot under lock (see rx_thread).
  */
 static struct {
-    /* Mutex-protected: device pointer set once during init */
     const struct device *lora_dev;
-    /* Mutex-protected: stable after init; copied by copy_eui64() */
     uint8_t eui64[8];
-    /* Mutex-protected: callback + user_data updated as a pair */
     lichen_lora_rx_cb_t rx_callback;
     void *rx_callback_user_data;
+    bool cca_enabled;
 } lora_data;
 
 /**
@@ -669,6 +667,7 @@ int lichen_lora_l2_init(void)
     }
     lora_data.rx_callback = NULL;
     lora_data.rx_callback_user_data = NULL;
+    lora_data.cca_enabled = IS_ENABLED(CONFIG_LICHEN_LORA_CCA_ENABLE);
 
     if (!device_is_ready(lora_data.lora_dev)) {
         LOG_ERR("lora_l2: device not ready");
@@ -1093,6 +1092,27 @@ int lichen_lora_l2_deinit(void)
     return 0;
 }
 
+/**
+ * @brief Perform Clear Channel Assessment (CCA/CAD) before TX.
+ *
+ * Stub for Zephyr lora driver. Real impl will call radio-specific CAD
+ * (lr11xx_cad_start, sx126x CAD params, etc.) and return 1 if activity
+ * detected. Part of CCP-15.2 interference mitigation. Link layer will
+ * use similar before framing/TX.
+ */
+static int lora_perform_cca(const struct device *dev, uint32_t timeout_ms)
+{
+    ARG_UNUSED(dev);
+    ARG_UNUSED(timeout_ms);
+
+    if (!lora_data.cca_enabled) {
+        return 0;
+    }
+
+    LOG_DBG("lora_l2: CCA stub - assuming channel clear");
+    return 0;
+}
+
 int lichen_lora_l2_tx(const uint8_t *data, size_t len)
 {
     if (data == NULL) {
@@ -1221,15 +1241,18 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
      */
     atomic_inc(&tx_pending);
 
-    /* Wait out any in-flight RX window (bounded by RX_TIMEOUT_MS; margin for
-     * the driver's own polling granularity), then transmit with exclusive
-     * driver access. Lock timeout keeps a wedged recv from blocking TX
-     * callers forever — surface -EBUSY instead. */
     if (k_mutex_lock(&modem_mutex, K_MSEC(RX_TIMEOUT_MS + 1000)) != 0) {
         atomic_dec(&tx_pending);
         secure_zero(tx_buf, sizeof(tx_buf));
         k_mutex_unlock(&tx_buf_mutex);
-        LOG_ERR("lora_l2: TX modem acquire timed out");
+        return -EBUSY;
+    }
+    int cca_status = lora_perform_cca(lora_data.lora_dev, CONFIG_LICHEN_LORA_CCA_TIMEOUT_MS);
+    if (cca_status > 0) {
+        k_mutex_unlock(&modem_mutex);
+        atomic_dec(&tx_pending);
+        secure_zero(tx_buf, sizeof(tx_buf));
+        k_mutex_unlock(&tx_buf_mutex);
         return -EBUSY;
     }
     ret = lora_send(lora_data.lora_dev, tx_buf, (uint32_t)pop_len);

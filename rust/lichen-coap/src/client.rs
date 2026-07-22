@@ -47,22 +47,22 @@ impl Response {
     }
 }
 
-/// GET coap://[addr][path].
+/// GET coap://\[addr\]\[path\].
 pub async fn get(addr: SocketAddr, path: &str) -> std::io::Result<Response> {
     request(addr, MessageCode::GET, path, None).await
 }
 
-/// POST coap://[addr][path] with CBOR body.
+/// POST coap://\[addr\]\[path\] with CBOR body.
 pub async fn post(addr: SocketAddr, path: &str, body: &[u8]) -> std::io::Result<Response> {
     request(addr, MessageCode::POST, path, Some(body)).await
 }
 
-/// PUT coap://[addr][path] with CBOR body.
+/// PUT coap://\[addr\]\[path\] with CBOR body.
 pub async fn put(addr: SocketAddr, path: &str, body: &[u8]) -> std::io::Result<Response> {
     request(addr, MessageCode::PUT, path, Some(body)).await
 }
 
-/// DELETE coap://[addr][path].
+/// DELETE coap://\[addr\]\[path\].
 pub async fn delete(addr: SocketAddr, path: &str) -> std::io::Result<Response> {
     request(addr, MessageCode::DELETE, path, None).await
 }
@@ -275,8 +275,8 @@ fn request_sequence() -> &'static AtomicU64 {
 mod tests {
     use super::*;
     use std::collections::HashSet;
-    use std::sync::Arc;
     use std::sync::atomic::Ordering;
+    use std::sync::Arc;
     use std::thread;
 
     /// Build a minimal CoAP response: Ver=1, Type=ACK, TKL, Code, MID, Token, optional payload.

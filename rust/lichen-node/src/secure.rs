@@ -97,12 +97,6 @@ impl<R: Radio> SecureStack<R> {
         self.contexts.insert(peer_iid, context);
     }
 
-    /// Get context for peer.
-    #[allow(dead_code)] // read-only counterpart of get_context_mut, unused so far
-    fn get_context(&self, peer_iid: &[u8; 8]) -> Option<&Context> {
-        self.contexts.get(peer_iid)
-    }
-
     /// Get mutable context for peer.
     fn get_context_mut(&mut self, peer_iid: &[u8; 8]) -> Option<&mut Context> {
         self.contexts.get_mut(peer_iid)

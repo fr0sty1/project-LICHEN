@@ -11,6 +11,7 @@ toolchain:
 supported:
   - adc
   - ble
+  - display
   - gpio
   - i2c
   - lora

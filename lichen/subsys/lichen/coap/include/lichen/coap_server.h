@@ -26,6 +26,8 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <zephyr/net/coap.h>
+#include <zephyr/net/socket.h>
 
 /* Nullability annotations for pointer safety */
 #ifndef __has_feature
@@ -189,6 +191,29 @@ int lichen_coap_server_stop(void);
  * @return 1 if running, 0 if stopped, negative on error
  */
 int lichen_coap_server_is_running(void);
+
+/**
+ * @brief Register deaddrop DTN resources and handlers
+ *
+ * Makes /deaddrop (POST for store-and-forward) and /confessions
+ * (rate-limited anonymous POST) available. Resources use lichen_coap
+ * service; call after server init when CONFIG_LICHEN_COAP_DEADDROP=y.
+ * Returns 0 on success; no error cases in current stub.
+ *
+ * @return 0 on success, negative errno on failure
+ */
+int lichen_coap_deaddrop_register(void);
+
+int lichen_coap_senml_respond(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len, uint8_t resp_code, const uint8_t *payload, size_t payload_len);
+
+struct oscore_ctx;
+
+int lichen_coap_respond(struct coap_resource *resource,
+			struct coap_packet *request,
+			struct sockaddr *addr, socklen_t addr_len,
+			uint8_t resp_code, const uint8_t *payload,
+			size_t payload_len, struct oscore_ctx *oscore_ctx,
+			const uint8_t *request_piv, size_t request_piv_len);
 
 #ifdef __cplusplus
 }

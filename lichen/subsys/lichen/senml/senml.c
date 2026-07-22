@@ -89,6 +89,10 @@ int senml_add_float(struct senml_pack *pack,
 		return -EINVAL;
 	}
 
+	if (isnan(value) || isinf(value)) {
+		return -EINVAL;
+	}
+
 	if (validate_name(name) < 0 || validate_unit(unit) < 0) {
 		return -EMSGSIZE;
 	}
@@ -115,6 +119,10 @@ int senml_add_float_t(struct senml_pack *pack,
 		      int32_t time_offset)
 {
 	if (pack == NULL || name == NULL) {
+		return -EINVAL;
+	}
+
+	if (isnan(value) || isinf(value)) {
 		return -EINVAL;
 	}
 

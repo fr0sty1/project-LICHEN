@@ -345,31 +345,30 @@ impl DaoManager {
         buf[..pos].to_vec()
     }
 
-    /// Process a received DAO on the root. Returns `true` if a route was installed.
+    /// Process a received DAO on the root. Returns `Some(target)` if a route was installed,
+    /// `None` otherwise. Uses parsed RPL Target option (not IPv6 src) to avoid divergence.
     ///
     /// `dao_bytes` is the raw DAO wire bytes (base object + options).
     /// SECURITY: Validates DAO sequence to prevent replay attacks with stale routes.
-    pub fn process_dao(&mut self, dao_bytes: &[u8]) -> bool {
+    pub fn process_dao(&mut self, dao_bytes: &[u8]) -> Option<[u8; 16]> {
         if !self.is_root {
-            return false;
+            return None;
         }
         // Parse DAO to get sequence number
         let Ok(dao) = Dao::from_bytes(dao_bytes) else {
-            return false;
+            return None;
         };
-        let Some((target, parent)) = self.extract_edge(dao_bytes) else {
-            return false;
-        };
+        let (target, parent) = self.extract_edge(dao_bytes)?;
         // SECURITY: Reject stale DAO sequences to prevent replay attacks
         if let Some(&last_seq) = self.dao_seq_map.get(&target) {
             if !seq_is_newer(dao.dao_sequence, last_seq) {
-                return false;
+                return None;
             }
         }
         self.dao_seq_map.insert(target, dao.dao_sequence);
         self.parent_map.insert(target, parent);
         self.rebuild_routes();
-        true
+        Some(target)
     }
 
     fn extract_edge(&self, dao_bytes: &[u8]) -> Option<([u8; 16], [u8; 16])> {
@@ -587,7 +586,7 @@ mod tests {
         let mut node2 = DaoManager::new(ll(2), 0, dodag_id());
         let dao = node2.build_dao(root_addr);
 
-        assert!(root.process_dao(&dao));
+        assert!(root.process_dao(&dao).is_some());
         // Single-hop path: [ll(2)]
         let path = root.routing_table.lookup(&ll(2)).unwrap();
         assert_eq!(path, &[ll(2)]);
@@ -600,11 +599,11 @@ mod tests {
 
         // Node ll(2) sends DAO: target=ll(2), parent=root
         let mut node2 = DaoManager::new(ll(2), 0, dodag_id());
-        root.process_dao(&node2.build_dao(root_addr));
+        assert!(root.process_dao(&node2.build_dao(root_addr)).is_some());
 
         // Node ll(3) sends DAO: target=ll(3), parent=ll(2)
         let mut node3 = DaoManager::new(ll(3), 0, dodag_id());
-        root.process_dao(&node3.build_dao(ll(2)));
+        assert!(root.process_dao(&node3.build_dao(ll(2))).is_some());
 
         // Two-hop path: root → ll(2) → ll(3)
         let path = root.routing_table.lookup(&ll(3)).unwrap();
@@ -618,7 +617,7 @@ mod tests {
 
         // ll(3) sends DAO pointing to ll(2), but ll(2) hasn't sent a DAO yet.
         let mut node3 = DaoManager::new(ll(3), 0, dodag_id());
-        root.process_dao(&node3.build_dao(ll(2)));
+        let _ = root.process_dao(&node3.build_dao(ll(2)));
 
         assert!(root.routing_table.lookup(&ll(3)).is_none());
     }
@@ -639,20 +638,23 @@ mod tests {
         // Node ll(2) sends DAO with sequence 1
         let mut node2 = DaoManager::new(ll(2), 0, dodag_id());
         let dao1 = node2.build_dao(root_addr);
-        assert!(root.process_dao(&dao1));
+        assert!(root.process_dao(&dao1).is_some());
         assert!(root.routing_table.lookup(&ll(2)).is_some());
 
         // Node ll(2) sends DAO with sequence 2 (newer, should be accepted)
         let dao2 = node2.build_dao(root_addr);
-        assert!(root.process_dao(&dao2));
+        assert!(root.process_dao(&dao2).is_some());
 
         // Replay attack: attacker replays dao1 (sequence 1, now stale)
-        assert!(!root.process_dao(&dao1), "stale DAO should be rejected");
+        assert!(
+            root.process_dao(&dao1).is_none(),
+            "stale DAO should be rejected"
+        );
 
         // Same sequence should also be rejected
         let dao2_copy = dao2.clone();
         assert!(
-            !root.process_dao(&dao2_copy),
+            root.process_dao(&dao2_copy).is_none(),
             "same sequence should be rejected"
         );
     }

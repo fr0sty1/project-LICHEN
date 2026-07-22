@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from ipaddress import IPv6Address
+from typing import Any
 
 from lichen.coap.schc_channel import DEFAULT_COAP_PORT, unwrap_coap, wrap_coap
 from lichen.coap.transport import DatagramChannel, ReceiveCallback
@@ -39,7 +40,7 @@ class NodeChannel(DatagramChannel):
 
     def __init__(
         self,
-        node,
+        node: Any,
         local_host: str,
         *,
         src_port: int = DEFAULT_COAP_PORT,
@@ -63,7 +64,7 @@ class NodeChannel(DatagramChannel):
         task = asyncio.get_running_loop().create_task(self._node.send(ipv6_bytes))
         task.add_done_callback(self._on_send_done)
 
-    def _on_send_done(self, task: asyncio.Task) -> None:
+    def _on_send_done(self, task: asyncio.Task[None]) -> None:
         if task.cancelled():
             return
         exc = task.exception()

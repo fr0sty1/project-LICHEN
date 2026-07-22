@@ -184,8 +184,7 @@ pub struct Router {
     pub trickle: TrickleTimer,
     pub dao_manager: DaoManager,
     pub neighbors: NeighborTable,
-    #[allow(dead_code)] // stored at construction; not yet consulted
-    node_addr: [u8; 16],
+    _node_addr: [u8; 16],
     dodag_id: [u8; 16],
     /// This node's geographic coordinates for GPSR (spec 9.7).
     /// None if GPS unavailable or privacy mode enabled.
@@ -201,7 +200,7 @@ impl Router {
             trickle: TrickleTimer::new(256, 8, 10), // Imin=256ms, doublings=8, k=10
             dao_manager: DaoManager::new(node_addr, RPL_INSTANCE_ID, dodag_id),
             neighbors: NeighborTable::new(),
-            node_addr,
+            _node_addr: node_addr,
             dodag_id,
             node_coords: None,
         }
@@ -215,7 +214,7 @@ impl Router {
             trickle: TrickleTimer::new(256, 8, 10),
             dao_manager: DaoManager::as_root(node_addr, RPL_INSTANCE_ID, dodag_id),
             neighbors: NeighborTable::new(),
-            node_addr,
+            _node_addr: node_addr,
             dodag_id,
             node_coords: None,
         }
@@ -245,10 +244,10 @@ impl Router {
 
     /// Process a received DAO message (root only).
     ///
-    /// Returns true if a route was updated.
-    pub fn process_dao(&mut self, dao_bytes: &[u8]) -> bool {
+    /// Returns the parsed target if a route was updated, None otherwise.
+    pub fn process_dao(&mut self, dao_bytes: &[u8]) -> Option<[u8; 16]> {
         if !self.dodag.is_root() {
-            return false;
+            return None;
         }
         self.dao_manager.process_dao(dao_bytes)
     }

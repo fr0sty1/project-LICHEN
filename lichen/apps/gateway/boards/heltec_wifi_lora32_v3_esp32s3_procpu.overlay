@@ -1,1 +1,1 @@
-/ { chosen { zephyr,lora = &lora0; }; };
+/ { chosen { zephyr,lora = &lora0; }; }; /* Renode support via esp32s3_lichen repl + updated overlays */

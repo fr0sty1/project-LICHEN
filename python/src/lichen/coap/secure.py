@@ -37,7 +37,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import aiocoap
 from aiocoap import Message
@@ -392,7 +392,7 @@ class SecureDatagramChannel(DatagramChannel):
             if not is_response and new_request_id is not None:
                 peer_ctx.pending_requests[msg.token] = new_request_id
 
-            return unprotected_msg.encode()
+            return cast(bytes, unprotected_msg.encode())
 
         except Exception as e:
             logger.warning("OSCORE unprotection failed for %s: %r", source, e)

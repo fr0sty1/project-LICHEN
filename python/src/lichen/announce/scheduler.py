@@ -172,7 +172,8 @@ class AnnounceScheduler:
             originator_iid=self.identity.iid,
             pubkey=self.identity.pubkey,
             seq_num=seq,
-            hop_count=0,  # We're the originator
+            hop_count=0,
+            rx_channel=0,
             app_data=self.app_data,
         )
 
@@ -189,6 +190,7 @@ class AnnounceScheduler:
             pubkey=msg.pubkey,
             seq_num=msg.seq_num,
             hop_count=msg.hop_count,
+            rx_channel=msg.rx_channel,
             signature=signature,
             app_data=msg.app_data,
         )

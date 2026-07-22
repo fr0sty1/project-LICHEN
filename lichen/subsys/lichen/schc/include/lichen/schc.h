@@ -12,7 +12,7 @@
  *   Rule 1: global IPv6 + UDP + CoAP
  *   Rule 2: ICMPv6 Echo (link-local)
  *   Rule 3: RPL DIO (link-local ICMPv6)
- *   Rule 4: RPL DAO (link-local ICMPv6)
+ *   Rule 4: RPL DAO (routable ULA source for multi-hop)
  *   Rule 5: link-local IPv6 + UDP + OSCORE-protected CoAP
  *   Rule 6: global IPv6 + UDP + OSCORE-protected CoAP
  *   Rule 255: uncompressed passthrough

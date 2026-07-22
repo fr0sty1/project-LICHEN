@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import struct
+from collections.abc import Coroutine
 from typing import TYPE_CHECKING
 
 from lichen.sim.protocol import (
@@ -118,7 +119,7 @@ class RenodeServer:
         # Start simulation driver task
         self._sim_driver_task = asyncio.create_task(self._simulation_driver())
 
-        return actual_port
+        return int(actual_port)
 
     async def stop(self) -> None:
         """Stop server."""
@@ -294,7 +295,7 @@ class RenodeServer:
         if self._writer is writer:
             await _write_message(writer, data)
 
-    def _create_background_task(self, coro: asyncio.Coroutine[None, None, None]) -> None:
+    def _create_background_task(self, coro: Coroutine[None, None, None]) -> None:
         """Create a tracked background task with exception handling.
 
         The task is added to _pending_tasks and automatically removed when done.

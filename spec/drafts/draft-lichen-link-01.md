@@ -202,11 +202,10 @@ When S=0, the MIC field is absent (length is 0 regardless of MicLength).
 Unsigned frames SHOULD be limited to:
 
 - Bootstrap messages (before a node has announced its key)
-- Simulator and test traffic
+- Simulator and test traffic (non-production only)
 - Frames where the payload itself carries authentication (OSCORE)
 
-Nodes SHOULD NOT accept routing-affecting messages (RPL DIO/DAO) from
-unsigned frames unless the node is in a permissive mode.
+**RPL Control Requirement:** All RPL control messages (DIO, DAO, DIS; ICMPv6 type 155 after SCHC decompression) MUST be sent with S=1 and valid Schnorr signature. Receivers MUST reject unsigned RPL control frames before any routing state mutation. Permissive mode for unsigned routing-affecting frames is limited exclusively to development simulators and test harnesses; it MUST NOT be enabled in production nodes. This reconciles the link-layer and security specifications (see spec/06-security.md:8.9).
 
 ### 4.3. Key Lookup
 
@@ -248,19 +247,19 @@ out-of-band trust re-establishment.
 
 ## 6. Examples
 
-### 6.1. Broadcast RPL DIO (No Signature)
+### 6.1. Broadcast RPL DIO (Signed)
 
 ```
-  LENGTH = 0x1A  (26 bytes body)
-  LLSec  = 0x00  (AddrMode=None, MicLength=0, S=0, E=0)
+  LENGTH = 0x4A  (74 bytes body: header + ~22B SCHC RPL DIO + 48B MIC)
+  LLSec  = 0x20  (AddrMode=None, MicLength=0, S=1, E=0)
   EPO    = 0x03
   SEQ    = 0x00, 0x2C
   DST    = (absent, AddrMode=None)
-  PLD    = <26 - 4 bytes of SCHC-compressed RPL DIO>
-  MIC    = (absent, S=0)
+  PLD    = <22 bytes of SCHC-compressed RPL DIO>
+  MIC    = 48-byte Schnorr signature
 ```
 
-Total frame: 27 bytes.
+Total frame: 75 bytes. RPL control frames MUST use S=1 per section 4.2.
 
 ### 6.2. Unicast CoAP Request (Extended Address, signed)
 
@@ -304,11 +303,9 @@ The (EPO, SEQ) tuple and the replay window (Section 5) prevent frame
 injection via replay. An attacker who captures an authenticated frame cannot
 replay it because the SEQ will fall within the window.
 
-### 8.3. Broadcast Spoofing
+### 8.3. Broadcast Spoofing and RPL Control
 
-Broadcast frames with S=0 are unauthenticated. Implementations MUST NOT
-take security-relevant actions (key installation, routing table modification)
-based solely on unsigned broadcast frames.
+Broadcast frames with S=0 are unauthenticated. Implementations MUST reject unsigned RPL control messages (DIO/DAO/DIS) and MUST NOT perform routing table modifications based on them. See section 4.2 for normative receiver behavior. Permissive mode is test-only.
 
 ### 8.4. Signature Scheme
 

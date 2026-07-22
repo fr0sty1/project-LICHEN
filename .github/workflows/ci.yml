@@ -36,6 +36,9 @@ jobs:
       - name: Lint (ruff)
         run: uv run ruff check src tests pyproject.toml
 
+      - name: Type check (mypy core)
+        run: uv run mypy src/lichen/coap src/lichen/crypto src/lichen/sim src/lichen/slip src/lichen/client
+
       - name: Tests with coverage
         # The full suite runs, including the integration tests (the BARRIER_SYNC
         # deadlock fgk and the half-duplex self-collision euj are both fixed).
@@ -239,7 +242,7 @@ jobs:
         run: scripts/zephyr-meshtastic-negative-builds.sh
 
   zephyr-hardware:
-    name: Zephyr hardware targets
+    name: Zephyr ${{ matrix.app }} on ${{ matrix.board }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -261,9 +264,12 @@ jobs:
           - board: nucleo_wl55jc
             app: gateway
             extra-conf: ""
-          - board: nucleo_wl55jc
-            app: puck
-            extra-conf: ""
+           - board: nucleo_wl55jc
+             app: puck
+             extra-conf: ""
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.job }}-${{ matrix.board | replace('/', '-') }}-${{ matrix.app }}
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -299,7 +305,7 @@ jobs:
             modules
             bootloader
             tools
-          key: west-workspace-${{ hashFiles('lichen/west.yml') }}
+          key: west-workspace-${{ hashFiles('lichen/west.yml') }}-${{ matrix.board | replace('/', '-') }}-${{ matrix.app }}
 
       - name: west init + update
         if: steps.cache-zephyr.outputs.cache-hit != 'true'

@@ -10,10 +10,11 @@
 
 use clap::Parser;
 use lichen_core::addr::NodeId;
+use lichen_core::ipv6::{field, IPV6_HEADER_LEN};
 use lichen_gateway::{
     config::Config,
     slip::{SlipFramer, SLIP_TX_BUF_SIZE},
-    Gateway,
+    Gateway, RplEvent,
 };
 use lichen_sim::SimClient;
 use std::path::PathBuf;
@@ -230,7 +231,18 @@ where
             frame_opt = rx_recv.recv() => {
                 match frame_opt {
                     Some(frame) => {
-                        forward_mesh_to_upstream(gw, &frame, &tun).await;
+                        if let Some(reply) = forward_mesh_to_upstream(gw, &frame, &tun).await {
+                            match tx_send.try_send(reply) {
+                                Ok(()) => {}
+                                Err(mpsc::error::TrySendError::Full(_)) => {
+                                    warn!("TX channel full, dropping reply packet");
+                                }
+                                Err(mpsc::error::TrySendError::Closed(_)) => {
+                                    error!("sim task exited, cannot send reply packets");
+                                    break;
+                                }
+                            }
+                        }
                     }
                     None => {
                         error!("sim task exited, cannot receive inbound packets");
@@ -306,8 +318,13 @@ where
                 match result {
                     Ok(0) => { info!("serial port closed"); break; }
                     Ok(n) => {
-                        for packet in slip.feed(&rx_buf[..n]) {
-                            forward_mesh_to_upstream(gw, &packet, &tun).await;
+                        let packets: Vec<_> = slip.feed(&rx_buf[..n]).collect();
+                        for packet in packets {
+                            if let Some(to_tx) = forward_mesh_to_upstream(gw, &packet, &tun).await {
+                                if let Err(e) = slip.queue_send(&to_tx) {
+                                    warn!("SLIP queue full, dropping reply packet: {e}");
+                                }
+                            }
                         }
                     }
                     Err(e) => { error!("serial read: {e}"); break; }
@@ -346,14 +363,49 @@ where
 
 // ── packet forwarding ─────────────────────────────────────────────────────────
 
-async fn forward_mesh_to_upstream<T: TunLike>(gw: &mut Gateway, frame: &[u8], tun: &Option<T>) {
+async fn forward_mesh_to_upstream<T: TunLike>(
+    gw: &mut Gateway,
+    frame: &[u8],
+    tun: &Option<T>,
+) -> Option<Vec<u8>> {
+    let mut reply_buf = [0u8; 256];
+    let (reply_len, event) = gw.rpl.handle_frame_rpl(frame, &mut reply_buf, 0);
+    let mut control_plane = false;
+    if let RplEvent::DaoReceived {
+        target,
+        route_updated: true,
+    } = event {
+        let node_id = NodeId::from_ipv6(&target);
+        gw.add_route(target, node_id);
+        info!(
+            ?target,
+            "DAO processed via RPL integration; routing table and gateway.routes updated"
+        );
+        control_plane = true;
+    }
+    if reply_len > 0 {
+        return Some(reply_buf[..reply_len].to_vec());
+    }
+    if control_plane {
+        return None;
+    }
     if let Some(ipv6) = gw.mesh_to_upstream(frame) {
+        if ipv6.len() >= IPV6_HEADER_LEN {
+            let mut dst = [0u8; 16];
+            dst.copy_from_slice(&ipv6[field::DST_OFFSET..IPV6_HEADER_LEN]);
+            if gw.is_local_mesh(&dst) {
+                let _ = gw.mesh_to_mesh(&ipv6);
+                return None;
+            }
+        }
+
         if let Some(t) = tun {
             if let Err(e) = t.send_pkt(&ipv6).await {
                 error!("TUN write: {e}");
             }
         }
     }
+    None
 }
 
 // ── TunLike trait (abstracts TunDevice vs. no-op placeholder) ─────────────────

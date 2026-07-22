@@ -13,16 +13,12 @@ struct VectorFile {
     vectors: Vec<Vector>,
 }
 
-/// Individual test vector
-/// Many fields are for documentation/schema; not all tested directly.
-#[allow(dead_code)]
+/// Individual test vector. Only fields used by tests are retained (no dead code).
 #[derive(Debug, Deserialize)]
 struct Vector {
     name: String,
     #[serde(rename = "type")]
     vector_type: String,
-    #[serde(default)]
-    description: String,
     #[serde(default)]
     master_secret: Option<String>,
     #[serde(default)]
@@ -49,14 +45,11 @@ struct Vector {
     #[serde(default)]
     highest_seq: Option<u32>,
     #[serde(default)]
-    window_bits: Option<u32>,
-    #[serde(default)]
     test_seq: Option<u32>,
     #[serde(default)]
     expected_error: Option<String>,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 struct Plaintext {
     code: u8,
@@ -64,18 +57,11 @@ struct Plaintext {
     payload: String,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 struct Expected {
-    sender_key: Option<String>,
-    recipient_key: Option<String>,
-    common_iv: Option<String>,
-    nonce: Option<String>,
     oscore_option: Option<String>,
     ciphertext: Option<String>,
     is_replay: Option<bool>,
-    new_highest: Option<u32>,
-    new_window: Option<u32>,
 }
 
 fn load_vectors() -> VectorFile {

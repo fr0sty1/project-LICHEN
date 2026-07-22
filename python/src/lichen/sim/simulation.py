@@ -368,15 +368,20 @@ class Simulation:
                 self._handle_rx_timeout(event)
 
     def _handle_tx_start_delayed(self, event: TxStartDelayedEvent) -> None:
-        """Handle delayed transmission start event.
-
-        Args:
-            event: The TxStartDelayedEvent to handle.
-        """
         node = self._nodes.get(event.node_id)
         if node is None or not node.connected:
-            # Node was removed or disconnected while waiting for jitter
             return
+
+        self._debug_log(
+            "tx_start_delayed",
+            sim_id=self._id,
+            node_id=event.node_id,
+            payload_len=len(event.payload),
+            node_state=node.state.name if node is not None else None,
+            queue_size=len(self._event_queue),
+            jitter_enabled=True,
+            current_time=self._current_time_us,
+        )
 
         self._do_start_transmission(
             node_id=event.node_id,
@@ -485,9 +490,6 @@ class Simulation:
         if not connected_nodes:
             return False
 
-        # Advance only when something is actually waiting on the clock; without
-        # a waiting receiver nothing polls this and advancing would race ahead
-        # of nodes still expected to issue commands at the current time.
         if not any(n.state == NodeState.RX_WAIT for n in connected_nodes):
             return False
 
@@ -495,11 +497,15 @@ class Simulation:
         if next_event is None:
             return False
 
+        blocked_info = self._get_blocked_node_info()
         self._debug_log(
             "time_advance",
             sim_id=self._id,
             from_us=self._current_time_us,
             to_us=next_event.time_us,
+            queue_size=len(self._event_queue),
+            pending_rx_timeouts=len(self._pending_rx_timeouts),
+            **blocked_info,
         )
         self.process_next_event()
         return True
@@ -527,7 +533,6 @@ class Simulation:
         if not node.connected:
             raise ValueError(f"Node '{node_id}' is not connected")
 
-        # If jitter is enabled, queue a delayed start event
         if self._jitter_max_us > 0:
             jitter = self.calculate_tx_jitter()
             delayed_event = TxStartDelayedEvent(
@@ -547,7 +552,6 @@ class Simulation:
             )
             return ""
 
-        # No jitter: start transmission immediately
         return self._do_start_transmission(
             node_id=node_id,
             payload=payload,
@@ -634,8 +638,8 @@ class Simulation:
         if self._debug_enabled:
             tx_log.update(
                 node_state=node.state.name if node is not None else None,
-                pending_txs=len(self._active_transmissions),
-                event_queue_len=len(self._event_queue),
+                queue_size=len(self._event_queue),
+                active_txs=len(self._active_transmissions),
             )
         self._debug_log("tx_start", **tx_log)
 
@@ -760,23 +764,6 @@ class Simulation:
                 payload, rssi, snr, tx_id, source_node_id = result
                 on_packet = node.rx_callbacks[0]
 
-                rx_log = {
-                    "sim_id": self._id,
-                    "node_id": node_id,
-                    "tx_id": tx_id,
-                    "payload_len": len(payload),
-                    "rssi": rssi,
-                    "snr": snr,
-                    "time_us": self._current_time_us,
-                    "from_node_id": source_node_id,
-                }
-                if self._debug_enabled:
-                    rx_log.update(
-                        node_state=node.state.name,
-                        pending_timeouts=len(self._pending_rx_timeouts),
-                        event_queue_len=len(self._event_queue),
-                    )
-
                 self._metrics.record_reception(node_id, tx_id, self._current_time_us)
                 self._observers.notify(
                     "on_rx_success",
@@ -789,13 +776,10 @@ class Simulation:
                     snr=snr,
                     time_us=self._current_time_us,
                 )
-                self._debug_log("rx_success", **rx_log)
 
-                # Clear state before calling callback (callback might re-enter)
                 node.state = NodeState.IDLE
                 node.rx_callbacks = None
                 self._pending_rx_timeouts.pop(node_id, None)
-                # Remove pending timeout event for this node
                 self._event_queue.remove_events_for_node(node_id)
 
                 self._debug_log(
@@ -869,17 +853,27 @@ class Simulation:
                     )
             return None
 
-        # Record simulation-wide + per-node metrics. The callback (push) path
-        # must record the reception just like the poll path (get_rx_result);
-        # without this, callback-delivered packets (Renode nodes) never show up
-        # in sim.metrics.receptions even though they were delivered.
         self._metrics.record_reception(node_id, tx.id, self._current_time_us)
         packet_hash = hashlib.sha256(tx.payload).hexdigest()[:16]
         node.metrics.record_rx(tx.payload, packet_hash, from_peer=tx.source_node_id)
 
-        # Find the candidate to get RSSI/SNR
         for candidate in candidates:
             if candidate.transmission is tx:
+                rx_log = {
+                    "sim_id": self._id,
+                    "node_id": node_id,
+                    "tx_id": tx.id,
+                    "payload_len": len(tx.payload),
+                    "rssi": int(candidate.rssi),
+                    "snr": int(candidate.snr),
+                    "time_us": self._current_time_us,
+                    "from_node_id": tx.source_node_id,
+                    "node_state": node.state.name,
+                    "queue_size": len(self._event_queue),
+                    "candidate_count": len(candidates),
+                    "pending_rx_timeouts": len(self._pending_rx_timeouts),
+                }
+                self._debug_log("rx_success", **rx_log)
                 return (
                     tx.payload,
                     int(candidate.rssi),
@@ -983,8 +977,8 @@ class Simulation:
                 if self._debug_enabled:
                     rx_log.update(
                         node_state=node.state.name,
-                        pending_timeouts=len(self._pending_rx_timeouts),
-                        event_queue_len=len(self._event_queue),
+                        pending_rx_timeouts=len(self._pending_rx_timeouts),
+                        queue_size=len(self._event_queue),
                     )
                 self._debug_log("rx_success", **rx_log)
                 # Notify observers
@@ -1014,6 +1008,24 @@ class Simulation:
             Count of nodes where connected is True.
         """
         return sum(1 for n in self._nodes.values() if n.connected)
+
+    def _get_blocked_node_info(self) -> dict[str, int]:
+        """Return detailed blocked node info for debug logging.
+        Returns counts of total, connected, rx_wait, tx, idle, blocked nodes
+        when debug is enabled (blocked = rx_wait count for barrier sync).
+        """
+        if not self._debug_enabled:
+            return {}
+        connected_nodes = [n for n in self._nodes.values() if n.connected]
+        rx_wait = sum(1 for n in connected_nodes if n.state == NodeState.RX_WAIT)
+        return {
+            "total": len(self._nodes),
+            "connected": len(connected_nodes),
+            "rx_wait": rx_wait,
+            "tx": sum(1 for n in connected_nodes if n.state == NodeState.TX),
+            "idle": sum(1 for n in connected_nodes if n.state == NodeState.IDLE),
+            "blocked": rx_wait,
+        }
 
     def get_all_nodes(self) -> list[SimNode]:
         """Return all nodes in the simulation.

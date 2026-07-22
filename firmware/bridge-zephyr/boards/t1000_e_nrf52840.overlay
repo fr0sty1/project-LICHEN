@@ -1,0 +1,21 @@
+/ {
+	chosen {
+		zephyr,lora = &lora0;
+	};
+
+	aliases {
+		led0 = &green_led;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		green_led: led_0 {
+			gpios = <&gpio0 24 GPIO_ACTIVE_LOW>;
+		};
+	};
+};
+
+&lora0 {
+	status = "okay";
+};
+

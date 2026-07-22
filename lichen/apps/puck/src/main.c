@@ -16,6 +16,7 @@
 
 #include <lichen/hal.h>
 #include "../../../subsys/lichen/l2/lichen_util.h"
+#include "../../../subsys/lichen/l2/crash_info.h"
 
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 #include <lichen/native.h>
@@ -28,6 +29,7 @@
 #include <zephyr/net/socket.h>
 #include <zephyr/net/coap_service.h>
 #include <lichen/coap_client.h>
+#include <lichen/coap_server.h>
 #include "lichen_l2.h"
 #include "ipv6_addr.h"
 #endif
@@ -350,10 +352,14 @@ static void wdt_init(void)
 		return;
 	}
 
-	if (wdt_setup(s_wdt, WDT_OPT_PAUSE_HALTED_BY_DBG) < 0) {
-		LOG_WRN("wdt_setup failed");
-		s_wdt = NULL;
-		return;
+	int ret = wdt_setup(s_wdt, WDT_OPT_PAUSE_HALTED_BY_DBG);
+	if (ret < 0) {
+		LOG_ERR("wdt_setup failed: %d", ret);
+		crash_info_store(CRASH_WDT_SETUP_FAILURE, __LINE__, (uint32_t)ret);
+		if (!IS_ENABLED(CONFIG_IWDG_STM32)) {
+			s_wdt = NULL;
+			return;
+		}
 	}
 
 	k_timer_start(&s_wdt_timer, K_MSEC(WDT_FEED_MS), K_MSEC(WDT_FEED_MS));
@@ -543,6 +549,11 @@ int main(void)
 	ret = lichen_coap_client_init();
 	if (ret != 0) {
 		LOG_ERR("CoAP client init failed: %d", ret);
+	}
+
+	ret = lichen_coap_server_init(NULL);
+	if (ret != 0) {
+		LOG_ERR("CoAP server init failed: %d", ret);
 	}
 
 #if IS_ENABLED(CONFIG_STATS)

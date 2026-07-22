@@ -144,9 +144,11 @@
 };
 
 /*
- * GDEW0154M10 e-ink display on SPI2 — disabled by default.
- * CS=P0.30  DC=P0.28  RESET=P0.02  BUSY=P0.03  EINK_EN=P1.11
- * Enable and add display child node in an app overlay when needed.
+ * GDEW0154M10 e-ink display on SPI2.
+ * CS=P0.30, DC=P0.28, RESET=P0.02, BUSY=P0.03, EN=P0.12 (tied to periph-pwr-hog).
+ * Child node under &spi2 using solomon,ssd1681 compatible (matches ssd16xx driver
+ * and busy active-high). Follows t_deck board conventions. Enable via puck overlay.
+ * (project-LICHEN-2h1i.1.2.1.1)
  */
 &spi2 {
 	compatible = "nordic,nrf-spim";
@@ -155,6 +157,19 @@
 	pinctrl-0 = <&spi2_default>;
 	pinctrl-1 = <&spi2_sleep>;
 	pinctrl-names = "default", "sleep";
+
+	eink0: gdew0154m10@0 {
+		compatible = "solomon,ssd1681", "gooddisplay,gdew0154m10";
+		reg = <0>;
+		status = "disabled";
+		dc-gpios = <&gpio0 28 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&gpio0 2 GPIO_ACTIVE_LOW>;
+		busy-gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
+		en-gpios = <&gpio0 12 GPIO_ACTIVE_HIGH>;
+		spi-max-frequency = <4000000>;
+		width = <200>;
+		height = <200>;
+	};
 };
 
 /*

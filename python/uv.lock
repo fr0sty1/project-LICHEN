@@ -627,6 +627,15 @@ wheels = [
 ]
 
 [[package]]
+name = "intelhex"
+version = "2.3.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/66/37/1e7522494557d342a24cb236e2aec5d078fac8ed03ad4b61372586406b01/intelhex-2.3.0.tar.gz", hash = "sha256:892b7361a719f4945237da8ccf754e9513db32f5628852785aea108dcd250093", size = 44513, upload-time = "2020-10-20T20:35:51.526Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/97/78/79461288da2b13ed0a13deb65c4ad1428acb674b95278fa9abf1cefe62a2/intelhex-2.3.0-py2.py3-none-any.whl", hash = "sha256:87cc5225657524ec6361354be928adfd56bcf2a3dcc646c40f8f094c39c07db4", size = 50914, upload-time = "2020-10-20T20:35:50.162Z" },
+]
+
+[[package]]
 name = "jsonschema"
 version = "4.26.0"
 source = { registry = "https://pypi.org/simple" }
@@ -737,6 +746,7 @@ dependencies = [
     { name = "cryptography" },
     { name = "defusedxml" },
     { name = "filelock" },
+    { name = "intelhex" },
     { name = "pynacl" },
     { name = "pyserial" },
     { name = "rich" },
@@ -791,6 +801,7 @@ requires-dist = [
     { name = "filelock", specifier = ">=3.29,<3.30" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.28,<0.29" },
     { name = "hypothesis", marker = "extra == 'dev'", specifier = ">=6.100,<7" },
+    { name = "intelhex", specifier = ">=2.3.0,<3.0" },
     { name = "jsonschema", marker = "extra == 'dev'", specifier = ">=4.26,<5" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=2.1,<3" },
     { name = "pynacl", specifier = ">=1.6,<2" },

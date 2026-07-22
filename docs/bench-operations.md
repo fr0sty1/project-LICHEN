@@ -3,9 +3,7 @@
 
 # Hardware Bench Operations
 
-Operational reference for the physical LICHEN test bench: device inventory,
-port-safety rules, flash/OTA procedures, over-the-air verification, and the
-findings that shaped current bench practice.
+Operational reference for the physical LICHEN test bench and T-Echo production run (500 units): device inventory, port-safety rules, scalable flash/OTA pipeline (MCUboot+DFU initial, SMP OTA field updates), power optimization notes, over-the-air verification, and findings. T-Echo firmware is production-ready per project-LICHEN-2h1i.1.2.
 
 Detailed rationale for each finding lives in the referenced beads
 (`bd show <id>`). This document is the how-to; the beads are the why.

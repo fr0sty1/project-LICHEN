@@ -194,3 +194,24 @@ config LICHEN_L2_TEST_HOOKS
 	help
 	  Expose deterministic key loading and packet counters for automated
 	  L2 path tests. This must stay disabled in production builds.
+
+config LICHEN_LORA_CCA_ENABLE
+	bool "Enable CCA before TX (CCP-15.2)"
+	depends on LICHEN_LORA_L2
+	default n
+	help
+	  Enable Clear Channel Assessment (using CAD where supported) before
+	  every transmission. Part of interference mitigation for CCP-15.
+	  When enabled, lora_l2_tx() and link layer TX path will perform CCA.
+	  Default n to avoid breaking sim/loopback drivers without CAD impl.
+	  See project-LICHEN-da2q.15.7 and related codereview beads.
+
+config LICHEN_LORA_CCA_TIMEOUT_MS
+	int "CCA/CAD timeout in ms"
+	depends on LICHEN_LORA_CCA_ENABLE
+	default 5
+	range 1 20
+	help
+	  Timeout for the CCA check before TX. LoRa CAD is typically very fast
+	  (few ms). This limits how long we wait for channel assessment. Used
+	  in both lora_l2 (Zephyr driver) and link layer.

@@ -84,6 +84,10 @@ struct lichen_coap_node_status {
 	struct lichen_coap_time_state time;
 	struct lichen_coap_dodag_state dodag;
 	struct lichen_coap_radio_stats radio;
+	uint16_t txq_cap;
+	uint16_t txq_used;
+	uint16_t fwd_cap;
+	uint16_t fwd_used;
 };
 
 /**

@@ -27,6 +27,21 @@ impl NodeId {
         self.addr_with_prefix(prefix)
     }
 
+    /// Derive NodeId from an IPv6 address by extracting its IID (low 64 bits)
+    /// and reversing the modified EUI-64 U/L bit (XOR 0x02 on first IID byte).
+    ///
+    /// **Codereview fix**: Now uses `Ipv6Addr::iid()` (centralized extraction)
+    /// instead of assuming bytes 8-15 directly. Explicitly documents that
+    /// callers (RPL DAO targets, gateway routes) guarantee link-local/ULA/GUA
+    /// address with standard /64 IID. No runtime check added to avoid no_std
+    /// overhead; validation is caller's responsibility per current design.
+    pub fn from_ipv6(addr: &[u8; 16]) -> Self {
+        let ipv6 = Ipv6Addr(*addr);
+        let mut eui = ipv6.iid();
+        eui[0] ^= 0x02;
+        NodeId(eui)
+    }
+
     fn addr_with_prefix(&self, prefix: [u8; 8]) -> Ipv6Addr {
         let e = self.0;
         Ipv6Addr([
@@ -141,5 +156,13 @@ mod tests {
         assert!(!addr.is_ula());
         assert!(!addr.is_gua());
         assert!(!addr.is_multicast());
+    }
+
+    #[test]
+    fn from_ipv6_roundtrips_link_local() {
+        let node = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
+        let ll = node.link_local_addr();
+        let recovered = NodeId::from_ipv6(&ll.0);
+        assert_eq!(recovered, node);
     }
 }

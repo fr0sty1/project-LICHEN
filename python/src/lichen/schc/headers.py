@@ -62,6 +62,14 @@ def _is_global(addr: int) -> bool:
     return addr >> 125 == 0b001  # 2000::/3
 
 
+def _is_ula(addr: int) -> bool:
+    return (addr >> 120) == 0xFD  # fd00::/8
+
+
+def _is_routable(addr: int) -> bool:
+    return _is_link_local(addr) or _is_ula(addr) or _is_global(addr)
+
+
 def _coap_has_oscore_option(coap: bytes) -> bool:
     """Check if a CoAP packet contains the OSCORE option (option 9).
 
@@ -295,7 +303,7 @@ class OscoreUdpGlobalProfile(_OscoreUdpProfile):
 
 
 class _RplProfile(PacketProfile):
-    """RPL control message over link-local ICMPv6 (type 155)."""
+    """RPL control message over routable IPv6 (link-local or ULA) for multi-hop DAO support (type 155)."""
 
     code: int
     base_length: int
@@ -314,7 +322,7 @@ class _RplProfile(PacketProfile):
             return False
         if header.payload_length < _ICMPV6_HEADER + self.base_length:
             return False
-        if not (_is_link_local(int(header.src_addr)) and _is_link_local(int(header.dst_addr))):
+        if not (_is_routable(int(header.src_addr)) and _is_routable(int(header.dst_addr))):
             return False
         icmpv6 = raw[HEADER_LENGTH:]
         return icmpv6[0] == _ICMPV6_RPL_TYPE and icmpv6[1] == self.code
@@ -387,7 +395,7 @@ class RplDioProfile(_RplProfile):
 
 
 class RplDaoProfile(_RplProfile):
-    """RPL DAO with DODAGID over link-local ICMPv6 (SCHC rule 4)."""
+    """RPL DAO with DODAGID over routable IPv6 (SCHC rule 4, multi-hop source model)."""
 
     rule = RPL_DAO_RULE
     code = 2

@@ -110,3 +110,5 @@ def test_invalid_sender_parameters() -> None:
         FragmentSender(payload=b"x", rule_id=1, tile_size=0)
     with pytest.raises(FragmentError):
         FragmentSender(payload=b"x", rule_id=1, tile_size=1, window_size=0)
+    with pytest.raises(FragmentError):
+        FragmentSender(payload=bytes(1282), rule_id=1, tile_size=10, window_size=7)

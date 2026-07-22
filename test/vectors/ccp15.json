@@ -1,0 +1,25 @@
+{
+  "format_version": 2,
+  "description": "CCP-15 RF health, EMA alpha=1/4 interference response, CCA/CAD integration for channel_busy metric (RSSI>=-85dBm or CAD fail per spec 2a.7.1), select_channel/now() pseudocode with TDMA. Matches rf_health.rs, CAD tests, vectors exactly. Python source of truth.",
+  "vectors": [
+    {
+      "name": "rf_health_ema_alpha",
+      "description": "CCP-15 EMA with alpha=1/4 for fast response to changing interference (from rf_health test).",
+      "rssi_samples": [
+        -80,
+        -60
+      ],
+      "expected_avg": -75
+    },
+    {
+      "name": "packet_loss_50",
+      "description": "50% packet loss calculation in Q16.16 fixed point per CCP-15 metrics.",
+      "tx": 100,
+      "failures": 50,
+      "expected": {
+        "percent": 50,
+        "permille": 500
+      }
+    }
+  ]
+}

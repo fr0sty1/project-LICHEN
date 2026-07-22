@@ -258,7 +258,12 @@ impl Addr {
         &self.0
     }
 
-    /// Extract the Interface Identifier (IID) - the low 64 bits.
+    /// Extract the Interface Identifier (IID) - the low 64 bits (bytes 8-15).
+    ///
+    /// Per LICHEN spec and RFC 4291, node addresses use /64 prefixes with
+    /// modified EUI-64 in the IID. This is the canonical extraction used by
+    /// `NodeId::from_ipv6`. Assumption is validated by caller context (RPL,
+    /// link-local/ULA addresses).
     pub fn iid(&self) -> [u8; 8] {
         let mut iid = [0u8; 8];
         iid.copy_from_slice(&self.0[8..16]);

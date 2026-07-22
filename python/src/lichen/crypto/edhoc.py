@@ -17,7 +17,7 @@ import os
 from dataclasses import dataclass, field
 from enum import IntEnum
 from hashlib import sha256
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import cbor2
 from cryptography.hazmat.primitives import hashes
@@ -186,9 +186,9 @@ def _decode_connection_id(data: bytes | int) -> bytes:
     return data
 
 
-def _decode_cbor_sequence(data: bytes) -> list:
+def _decode_cbor_sequence(data: bytes) -> list[Any]:
     """Decode a CBOR sequence (concatenated CBOR items) into a list."""
-    items = []
+    items: list[Any] = []
     fp = io.BytesIO(data)
     while fp.tell() < len(data):
         try:

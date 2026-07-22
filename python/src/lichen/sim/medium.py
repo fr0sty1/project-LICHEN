@@ -74,6 +74,7 @@ class Medium:
         tx_power_dbm: int,
         position: tuple[float, float, float],
         time_us: int,
+        frequency_hz: int = 915_000_000,
     ) -> Transmission:
         """Start a new transmission.
 
@@ -87,6 +88,7 @@ class Medium:
             tx_power_dbm: Transmit power in dBm.
             position: (x, y, z) position of the transmitter in meters.
             time_us: Current simulation time in microseconds.
+            frequency_hz: Carrier frequency for this TX.
 
         Returns:
             The created Transmission object.
@@ -98,6 +100,7 @@ class Medium:
             tx_power_dbm=tx_power_dbm,
             start_time_us=time_us,
             end_time_us=time_us + duration_us,
+            frequency_hz=frequency_hz,
         )
         self._active_transmissions.append(tx)
         self._tx_positions[tx.id] = position
@@ -136,6 +139,7 @@ class Medium:
         rx_node_id: str,
         rx_position: tuple[float, float, float],
         time_us: int,
+        rx_frequency_hz: int | None = None,
     ) -> list[RxCandidate]:
         """Get all decodable transmissions for a receiver.
 
@@ -147,39 +151,36 @@ class Medium:
             rx_node_id: ID of the receiving node.
             rx_position: (x, y, z) position of the receiver in meters.
             time_us: Current simulation time in microseconds.
+            rx_frequency_hz: Optional frequency filter for rendezvous.
 
         Returns:
             List of RxCandidate objects for decodable transmissions.
         """
         candidates: list[RxCandidate] = []
         active = self.get_active_transmissions(time_us)
+        if rx_frequency_hz is not None:
+            active = [tx for tx in active if tx.frequency_hz == rx_frequency_hz]
 
         for tx in active:
-            # Skip self-transmission
             if tx.source_node_id == rx_node_id:
                 continue
 
-            # Get transmitter position
             tx_pos = self._tx_positions.get(tx.id)
             if tx_pos is None:
                 continue
 
-            # Calculate 3D distance
             distance = math.sqrt(
                 (rx_position[0] - tx_pos[0]) ** 2
                 + (rx_position[1] - tx_pos[1]) ** 2
                 + (rx_position[2] - tx_pos[2]) ** 2
             )
 
-            # Avoid division by zero for co-located nodes
             if distance <= 0:
-                distance = 0.001  # 1mm minimum
+                distance = 0.001
 
-            # Calculate RSSI and SNR
             rssi = self.propagation.received_power(tx.tx_power_dbm, distance)
             snr = rssi - self.noise_floor_dbm
 
-            # Check if signal can be decoded
             if self.propagation.can_decode(
                 tx.tx_power_dbm, distance, sensitivity_dbm=SENSITIVITY_SF10
             ):
@@ -229,6 +230,7 @@ class Medium:
         position: tuple[float, float, float],
         time_us: int,
         sensitivity_dbm: float = SENSITIVITY_DEFAULT,
+        rx_frequency_hz: int | None = None,
     ) -> bool:
         """Detect if any transmission is active and detectable at a position.
 
@@ -241,32 +243,31 @@ class Medium:
             time_us: Current simulation time in microseconds.
             sensitivity_dbm: Receiver sensitivity threshold in dBm.
                 Defaults to SF10 sensitivity (-132 dBm).
+            rx_frequency_hz: Optional frequency filter for rendezvous.
 
         Returns:
             True if channel activity is detected, False otherwise.
         """
         active = self.get_active_transmissions(time_us)
+        if rx_frequency_hz is not None:
+            active = [tx for tx in active if tx.frequency_hz == rx_frequency_hz]
 
         for tx in active:
             tx_pos = self._tx_positions.get(tx.id)
             if tx_pos is None:
                 continue
 
-            # Calculate 3D distance
             distance = math.sqrt(
                 (position[0] - tx_pos[0]) ** 2
                 + (position[1] - tx_pos[1]) ** 2
                 + (position[2] - tx_pos[2]) ** 2
             )
 
-            # Avoid division by zero for co-located nodes
             if distance <= 0:
-                distance = 0.001  # 1mm minimum
+                distance = 0.001
 
-            # Calculate received power
             rx_power = self.propagation.received_power(tx.tx_power_dbm, distance)
 
-            # If any transmission is above sensitivity, activity is detected
             if rx_power >= sensitivity_dbm:
                 return True
 

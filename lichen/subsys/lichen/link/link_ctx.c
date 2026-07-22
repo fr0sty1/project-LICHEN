@@ -439,6 +439,26 @@ int lichen_link_copy_identity(const struct lichen_link_ctx *ctx,
 	return 0;
 }
 
+int lichen_identity_ygg_addr_from_ed25519(const uint8_t pk[LICHEN_PK_LEN],
+					 uint8_t addr[16])
+{
+	if (pk == NULL || addr == NULL) {
+		return -EINVAL;
+	}
+
+#ifdef CONFIG_LICHEN_CRYPTO_MONOCYPHER
+	uint8_t hash[64];
+	crypto_sha512(hash, pk, LICHEN_PK_LEN);
+	memcpy(addr, hash, 16);
+	addr[0] = 0x02 | (addr[0] & 0x01);
+	crypto_wipe(hash, sizeof(hash));
+#else
+	memset(addr, 0, 16);
+	addr[0] = 0x02;
+#endif
+	return 0;
+}
+
 void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 {
 	if (ctx == NULL) {
@@ -474,10 +494,20 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 	if (locked) {
 		(void)seq_unlock(ctx);
 #ifndef __ZEPHYR__
-		/* Only destroy mutex if we successfully acquired and released it.
-		 * If lock failed, mutex may be held by another thread - destroying
-		 * would cause undefined behavior per POSIX. */
 		pthread_mutex_destroy(&ctx->seq_lock);
 #endif
 	}
+}
+
+uint32_t lichen_hash_32(uint32_t sfn, uint64_t key) {
+	uint32_t h = 0x811c9dc5u;
+	for (int i = 0; i < 4; ++i) {
+		uint8_t b = (sfn >> (i * 8)) & 0xffu;
+		h ^= b; h *= 0x01000193u;
+	}
+	for (int i = 0; i < 8; ++i) {
+		uint8_t b = (key >> (i * 8)) & 0xffu;
+		h ^= b; h *= 0x01000193u;
+	}
+	return h;
 }

@@ -44,15 +44,14 @@ def route_packet(dst):
         return queue_pending(dst, packet)
 ```
 
-**Address classification:**
+**Address classification (new model - no ULA, Ed25519-derived primary addresses):**
 
 | Address Type | Classification | Routing |
 |--------------|----------------|---------|
-| Link-local (fe80::/10) | Direct neighbor | Send to neighbor |
-| ULA (fd00::/8) in mesh prefix | Mesh peer | Gradient or LOADng |
-| GUA in mesh prefix | Mesh peer | Gradient or LOADng |
-| Other GUA | Off-mesh | RPL to border router |
-| Unknown | Off-mesh | RPL to border router |
+| Link-local (fe80::/10) | Control plane only (NDP, RPL DIO/DAO) | Direct neighbor |
+| Ed25519-derived (02xx::/7) in local mesh (RPL DODAG) | Mesh peer | RPL (non-storing) or gradient |
+| Ed25519-derived not in local mesh | Off-mesh | Forward via gateway to Yggdrasil |
+| Unknown | Off-mesh | Forward to border router / Yggdrasil |
 
 ### 7.3. Conformance Requirements
 
@@ -164,7 +163,7 @@ announce because SCHC global CoAP also uses rule ID `0x01`.
 
 ```
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-| Type=ANN  | Flags     | Hop Count   | Seq Num               |
+| Type=0x01 | Flags | Hop Cnt | Rx Ch | Seq Num               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                    Originator IID (8 bytes)                   |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -176,17 +175,18 @@ announce because SCHC global CoAP also uses rule ID `0x01`.
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-Total: ~92 bytes minimum.
+Total: 94 bytes minimum (includes current_channel for CCP-9 rendezvous; see 02a.3).
 
 **Fields:**
-- **Type:** Announce message identifier
-- **Flags:** Reserved
-- **Hop Count:** Incremented at each relay
-- **Seq Num:** Monotonic, detects duplicates and freshness
+- **Type:** Announce message identifier (0x01)
+- **Flags:** Reserved for future use (MUST be 0)
+- **Hop Count:** Incremented at each relay (NOT signed)
+- **Current Channel:** u8 preferred RX channel for CCP-9 rendezvous (wire byte 3 after hop_count; MUST be 0-15; included in signed_data() at offset 42 after seq_num; value from local scheduler's current RX state per 02a-coordinated-capacity.md §2a.3 and §2a.7; default=0 for control channel)
+- **Seq Num:** Monotonic 16-bit, detects duplicates and freshness
 - **Originator IID:** 8-byte Interface Identifier of announcer
 - **Public Key:** Ed25519 public key (32 bytes)
-- **Signature:** Schnorr signature over (IID, pubkey, seq, app_data)
-- **App Data:** Optional application data (node name, capabilities, etc.)
+- **Signature:** Schnorr-48 signature over signed_data() = originator_iid (8B) + pubkey (32B) + seq_num (2B BE) + current_channel (1B) + app_data
+- **App Data:** Optional application data (node name, capabilities, etc. per §9.7)
 
 ### 9.3. Announce Processing
 

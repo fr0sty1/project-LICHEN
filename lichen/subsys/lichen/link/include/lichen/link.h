@@ -45,6 +45,10 @@ extern "C" {
 
 /** Maximum LICHEN frame payload size (LoRa SF10 255B - overhead) */
 #define LICHEN_MAX_PAYLOAD 200
+#define GUARD_TIME_MS 50
+#define SLOT_DURATION_MS 250
+struct LICHEN_TDMA_Slot { uint8_t id; uint8_t pad[3]; uint32_t start_time_ms; uint8_t owner_eui64[8]; };
+BUILD_ASSERT(sizeof(struct LICHEN_TDMA_Slot) == 16);
 
 /** Schnorr-48 signature length in bytes */
 #define LICHEN_SIG_LEN 48
@@ -68,6 +72,19 @@ enum lichen_addr_mode {
 enum lichen_mic_len {
 	LICHEN_MIC_32 = 0,  /**< Compatibility value; unsigned frames have no MIC */
 	LICHEN_MIC_64 = 1,  /**< Compatibility value; unsigned frames have no MIC */
+};
+
+/**
+ * @brief Coordination mechanisms per CCP-5 (da2q context)
+ *
+ * Priority order for negotiation: scheduled > hash_based > announce_driven > fallback
+ * Matches ccp9-rendezvous.json test vectors.
+ */
+enum lichen_coordination_mechanism {
+	LICHEN_COORD_HASH_BASED = 0,
+	LICHEN_COORD_SCHEDULED = 1,
+	LICHEN_COORD_ANNOUNCE_DRIVEN = 2,
+	LICHEN_COORD_FALLBACK = 3,
 };
 
 /** Legacy MIC length constant; not a current wire MIC length */
@@ -281,6 +298,8 @@ int lichen_link_rx(struct lichen_link_rx_ctx *_Nonnull ctx,
 		   const uint8_t *_Nonnull frame, size_t frame_len,
 		   uint8_t *_Nonnull out_ipv6, size_t *_Nonnull out_len,
 		   uint8_t *_Nonnull src_eui64);
+
+uint32_t lichen_hash_32(uint32_t sfn, uint64_t key);
 
 #ifdef __cplusplus
 }

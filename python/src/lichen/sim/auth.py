@@ -16,10 +16,11 @@ sends ``Sec-WebSocket-Protocol: bearer, <token>`` and the server echoes back
 from __future__ import annotations
 
 import secrets
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 
 if TYPE_CHECKING:
     from starlette.requests import Request
@@ -115,7 +116,9 @@ class BearerAuthMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self._token = token
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         """Validate the bearer token before passing to the handler.
 
         Args:

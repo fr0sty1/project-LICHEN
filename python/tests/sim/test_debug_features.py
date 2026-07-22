@@ -52,8 +52,8 @@ class TestDebugFeatures:
         tx_logs = [log for log in logs if log.get("event") == "tx_start"]
         assert len(tx_logs) == 1
         assert tx_logs[0]["node_state"] == NodeState.TX.name
-        assert "pending_txs" in tx_logs[0]
-        assert "event_queue_len" in tx_logs[0]
+        assert "active_txs" in tx_logs[0]
+        assert "queue_size" in tx_logs[0]
 
     def test_debug_logging_disabled_omits_context(self) -> None:
         """Disabled debugging emits no simulation diagnostic events."""
@@ -78,8 +78,8 @@ class TestDebugFeatures:
         rx_logs = [log for log in logs if log.get("event") == "rx_success"]
         assert len(rx_logs) == 1
         assert rx_logs[0]["node_state"] == NodeState.RX_WAIT.name
-        assert "pending_timeouts" in rx_logs[0]
-        assert "event_queue_len" in rx_logs[0]
+        assert "pending_rx_timeouts" in rx_logs[0]
+        assert "queue_size" in rx_logs[0]
         sim.disable_debug()
         assert sim.debug_enabled is False
 
@@ -126,8 +126,8 @@ class TestDebugFeatures:
         assert rx_logs[0]["from_node_id"] == "tx"
         assert rx_logs[0]["payload_len"] == 5
         assert rx_logs[0]["node_state"] == NodeState.RX_WAIT.name
-        assert rx_logs[0]["pending_timeouts"] == 1
-        assert rx_logs[0]["event_queue_len"] == 2
+        assert rx_logs[0]["pending_rx_timeouts"] == 1
+        assert rx_logs[0]["queue_size"] == 2
 
     def test_debug_node_state_tracking(self) -> None:
         """Test that node state transitions generate detailed debug logs."""

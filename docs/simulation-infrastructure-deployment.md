@@ -21,65 +21,74 @@ The LICHEN simulation infrastructure supports distributed testing across multipl
 
 ## Components
 
-1. **lichen-sim**: The central simulation coordinator responsible for:
-   - Managing time advancement
-   - Handling packet propagation and reception
-   - Coordinating multiple heterogeneous node types
-   - Providing metrics and observability
+1. **lichen-sim (SimulatorServer)**: Central RF propagation and time coordinator (python/src/lichen/sim/server.py):
+    - Manages multiple simulations with BARRIER_SYNC or WALLCLOCK time modes
+    - TCP node servers (default base port 5555) for SimRadio/Renode clients
+    - REST API + WebSocket (port 5556) for control, metrics, chaos rules
+    - Built-in chaos engine for drop/partition/jam/degrade rules
+    - PCAPng export, structured logging, metrics collection
 
-2. **Implementation Nodes**: Each node type connects to the coordinator:
-   - Python: Using `liche-radio` client
-   - Rust: Using `lichend` binary
-   - C/Zephyr: Using embedded `lichen` stack with Renode bridge
-   
-3. **Support Services**:
-   - Redis/MQTT: For message queuing between nodes (optional)
-   - Load balancer: Distributing node connections
+2. **Heterogeneous Nodes**: Connect via TCP to lichen-sim:
+    - Zephyr C (Renode + SX1262.cs peripheral)
+    - Rust (native `mesh-sim-node` or `lichend` with SimRadio)
+    - Python (`lichen.sim` client libraries)
+    - All implementations validated against shared test vectors
+
+3. **Fleet Support**: EC2 instances run multiple node instances per VM using the fleet AMI; SSH tunnels or public binding for coordinator connectivity. No Redis/MQTT or Docker in current implementation.
 
 ## Deployment Methods
 
-### Method 1: Heterogeneous Mesh Testing
+### Distributed EC2 Heterogeneous Deployment
 
-This approach uses mixed implementation node types to test cross-platform compatibility.
-
-#### Prerequisites:
-- Python (3.9+) on coordinator instance
-- Rust compiler for `lichend` on coordinator instance  
-- Python virtual environment setup
-- Existing Docker image containing simulation services
-
-#### Deployment Steps:
-1. Launch coordinator instance with sufficient resources
-2. Deploy Python node implementation containers
-3. Deploy Rust node implementation containers  
-4. Configure node connectivity to coordinator
-5. Start all services and monitor metrics
-
-#### Resource Allocation:
-- Coordinator: m5.large or m5.xlarge (2vCPU, 8GB RAM minimum)
-- Node Instances: t3.medium or t3.large per node (2vCPU, 4GB RAM minimum)
-- Additional: t3.small for Redis/MQTT if needed (1vCPU, 2GB RAM)
-
-### Method 2: Renode-Based Zephyr Cluster
-
-This approach emulates Zephyr nodes using Renode peripherals.
+Uses the fleet launchers for large-scale mixed-implementation testing (Zephyr/Renode + Rust + Python).
 
 #### Prerequisites:
-- Renode installation (using provided scripts)
-- ARM64 container support for cross-compilation  
-- Access to `renode-hetero-fleet.sh` script
+- AWS_PROFILE=personal configured (account 210337117346, us-west-2)
+- Fleet AMI `ami-0764d1b512e22671f` (pre-installed Renode 1.16.1, Rust 1.97, Python 3.11+uv)
+- Built firmware (`west build` for Zephyr nodes) or compiled Rust/Python packages
+- Follow AGENTS.md AWS isolation: only touch `Project=LICHEN` tagged resources
+- EBS builder cache `vol-0a95eee8d1d8461eb` for Zephyr builds
 
-#### Deployment Steps:
-1. Launch base EC2 instance with Renode support
-2. Deploy Renode fleet with `ec2-renode-fleet.sh` command
-3. Launch Zephyr node instances using Renode bridge
-4. Configure position-based simulation parameters
-5. Monitor via logs and metrics exporter
+#### Deployment Steps (via scripts):
+1. Build required firmware/binaries in clean worktree if validating changes (`tools/zephyr-clean-worktree.sh`)
+2. Run `./scripts/ec2-hetero-fleet.sh --zephyr 40 --rust 40 --python 40 --duration 300`
+3. Script starts lichen-sim coordinator (binds to 0.0.0.0), launches EC2 fleet, establishes tunnels, runs nodes
+4. Nodes auto-register, participate in mesh, simulation runs for specified duration
+5. Results, logs, metrics collected to local RESULTS_DIR; instances terminated on exit
 
 #### Resource Allocation:
-- Renode Coordinator: c5.2xlarge or c5.4xlarge (8vCPU, 16GB RAM minimum)
-- Zephyr Emulation Instances: m5.large per node (2vCPU, 8GB RAM)
-- Storage: EBS 100GB SSD per instance for logs and cache
+- Coordinator: runs locally or on small EC2 (c7g.xlarge recommended for >100 nodes)
+- Fleet instances: c7g.xlarge (ARM64, 4vCPU; ~20 Renodes per instance)
+- Scale by adjusting --nodes or per-type counts; monitor with CloudWatch
+
+### AWS Fleet + Renode/Zephyr Deployment (Large Scale Distributed)
+
+**Local Validation First:**
+- Zephyr native_sim: `west build -b native_sim lichen/tests/link_crypto && west build -t run`
+- Renode local: see `docs/renode-workflow.md`; `python lichen/boards/renode/nrf52840_lichen/run_multi_node.py`
+- Use `tools/zephyr-clean-worktree.sh` on EC2 for validation of uncommitted changes.
+
+**Fleet Scripts (Distributed Testing):**
+- `ec2-renode-fleet.sh`: Pure Zephyr/Renode fleet (default 20 Renodes per c7g.xlarge)
+- `ec2-hetero-fleet.sh`: Mixed Zephyr+ Rust + Python nodes for interop testing
+- `ec2-renode-fleet-simple.sh`: Simplified single-command variant
+- All launch lichen-sim via SimulatorServer (ports 5555 TCP nodes, 5556 API), use SSH for control/tunneling, collect metrics/PCAP/logs.
+
+Example:
+```bash
+AWS_PROFILE=personal ./scripts/ec2-hetero-fleet.sh --zephyr 60 --rust 40 --python 40 --duration 600
+AWS_PROFILE=personal ./scripts/ec2-renode-fleet.sh --nodes 200 --duration 300 --firmware build/lora_ping/zephyr/zephyr.elf
+```
+
+- Instances auto-tagged `Project=LICHEN`, `LaunchedBy=...`
+- Fleet AMI: `ami-0764d1b512e22671f` (Renode, Rust, uv, no Docker)
+- See `scripts/ec2-*.sh` for full options, cleanup, metrics export.
+- Always follow AGENTS.md: verify tags before any destructive ops; use EBS cache for builds.
+
+**Resource Notes:**
+- c7g.xlarge for fleet (ARM64 Graviton, good for Renode parallelism)
+- Coordinator can run on launch host; scale coordinator vertically for 1000+ nodes
+- Use `bd remember` for persistent notes on Renode quirks (nRF52840 easyDMA etc.)
 
 ## Scaling Strategies
 
@@ -141,30 +150,29 @@ This approach emulates Zephyr nodes using Renode peripherals.
 3. Use caching where appropriate for repetitive computations
 4. Optimize message serialization for reduced overhead
 
-## Deployment Automation
+## Automation Commands (AWS Fleet)
 
-### Example commands:
 ```bash
-# Deploy coordinator node
-./ec2-launch-instance.sh --type m5.large --ami ami-12345678 --key my-key
+# Heterogeneous interop test (recommended for validation)
+AWS_PROFILE=personal ./scripts/ec2-hetero-fleet.sh --zephyr 50 --rust 50 --python 50 --duration 180
 
-# Deploy Python node fleet
-./ec2-hetero-fleet.sh --count 10 --node-type python --region us-east-2
+# Large Renode fleet
+AWS_PROFILE=personal ./scripts/ec2-renode-fleet.sh --nodes 300 --duration 600
 
-# Deploy Renode Zephyr cluster  
-./ec2-renode-fleet.sh --count 5 --region us-west-2
-
-# Deploy with custom parameters
-./ec2-deploy-fleet.sh --type c5.2xlarge --count 20 --config simulation-config.yaml
+# Simple variant or with custom firmware
+./scripts/ec2-renode-fleet-simple.sh
 ```
 
-### Docker Deployment:
-```dockerfile
-FROM python:3.9
-RUN pip install lichen-sim
-COPY ./simulation-scripts/ /app/
-CMD ["python", "/app/coordinate.py"]
+Local testing:
+```bash
+# Zephyr native_sim (fast)
+west build -b native_sim -d build/native_sim lichen/tests/link_crypto && west build -t run
+
+# Multi-node Renode (see renode-workflow.md)
+python -m pytest lichen/boards/renode/nrf52840_lichen/test_mesh.py -q
 ```
+
+See script headers for all flags (`--help`), AMI details, cleanup behavior, metrics/RESULTS_DIR output. Coordinator uses `SimulatorServer` from `lichen.sim.server`. Follow strict AWS tagging and isolation rules in AGENTS.md.
 
 ## Testing Scenarios
 
@@ -259,7 +267,12 @@ Consider these improvements for larger-scale deployments:
 
 ## References
 
-- **LICHEN AGENTS.md**: Main project documentation for EC2 setup
-- **Scripts**: `ec2-hetero-fleet.sh`, `ec2-renode-fleet.sh`
-- **AWS CLI Documentation**: Official AWS EC2 and CloudWatch documentation
-- **Simulation Protocol**: `lichen/sim/protocol.py` for wire format details
+- **docs/renode-workflow.md**: Renode setup, multi-node tests, peripherals
+- **docs/simulation-api.md**: REST/WebSocket/TCP protocol details
+- **docs/enhanced-debugging-observability.md**: Logging, chaos rules, metrics
+- **scripts/ec2-*.sh**: Distributed fleet launchers with full option reference
+- **AGENTS.md**: AWS isolation rules (`Project=LICHEN`), EBS volume, EC2 usage
+- **python/src/lichen/sim/**: SimulatorServer, chaos, metrics, node_server
+- **lichen/tests/** + **test/vectors/**: Validation suite and cross-impl vectors
+
+This completes documentation for distributed EC2 simulation deployment per project-LICHEN-zt09. Always verify tags before EC2 operations.

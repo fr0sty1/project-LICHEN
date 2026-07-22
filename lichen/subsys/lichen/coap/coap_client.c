@@ -69,7 +69,14 @@ int lichen_coap_client_init(void)
 		return 0;
 	}
 
-	/* Create UDP socket for CoAP */
+#ifdef CONFIG_LICHEN_COAP_CLIENT_OSCORE
+	ret = oscore_init();
+	if (ret < 0) {
+		k_mutex_unlock(&s_mutex);
+		return ret;
+	}
+#endif
+
 	s_sock = zsock_socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
 	if (s_sock < 0) {
 		LOG_ERR("Failed to create socket: %d", errno);

@@ -138,6 +138,14 @@ fn is_global(addr: &[u8]) -> bool {
     addr.len() == 16 && (addr[0] >> 5) == 0b001
 }
 
+fn is_ula(addr: &[u8]) -> bool {
+    addr.len() == 16 && (addr[0] & 0xfe) == 0xfc
+}
+
+fn is_routable(addr: &[u8]) -> bool {
+    is_link_local(addr) || is_ula(addr) || is_global(addr)
+}
+
 fn addr_to_u128(addr: &[u8]) -> u128 {
     let mut bytes = [0u8; 16];
     bytes.copy_from_slice(addr);
@@ -680,7 +688,7 @@ impl PacketProfile for Icmpv6EchoProfile {
 /// RPL DIO over link-local ICMPv6 (SCHC rule 3).
 pub struct RplDioProfile;
 
-/// RPL DAO with DODAGID over link-local ICMPv6 (SCHC rule 4).
+/// RPL DAO with DODAGID over routable IPv6 (SCHC rule 4, multi-hop source model).
 pub struct RplDaoProfile;
 
 impl PacketProfile for RplDioProfile {
@@ -706,7 +714,7 @@ impl PacketProfile for RplDioProfile {
         if payload_length < ICMPV6_HEADER + DIO_BASE {
             return false;
         }
-        if !is_link_local(&raw[8..24]) || !is_link_local(&raw[24..40]) {
+        if !is_routable(&raw[8..24]) || !is_routable(&raw[24..40]) {
             return false;
         }
         let icmpv6 = &raw[IPV6_HEADER_LEN..];
@@ -859,7 +867,7 @@ impl PacketProfile for RplDaoProfile {
         if payload_length < ICMPV6_HEADER + DAO_BASE_WITH_DODAGID {
             return false;
         }
-        if !is_link_local(&raw[8..24]) || !is_link_local(&raw[24..40]) {
+        if !is_routable(&raw[8..24]) || !is_routable(&raw[24..40]) {
             return false;
         }
         let icmpv6 = &raw[IPV6_HEADER_LEN..];

@@ -1,0 +1,50 @@
+{
+  "format_version": 2,
+  "description": "CCP-13 Duty Cycle Management vectors (da2q context). Tracker, remaining_ms, usage_permille, next_tx_available for CCP coordination, preferred_duty signaling. Matches Rust/Python impls exactly.",
+  "vectors": [
+    {
+      "name": "duty_1pct_full",
+      "description": "CCP-13 default 1% duty cycle starts with full 36000ms budget (da2q coordination).",
+      "duty_permille": 10,
+      "now_ms": 0,
+      "expected_remaining_ms": 36000,
+      "expected_usage_permille": 0
+    },
+    {
+      "name": "record_and_usage",
+      "description": "Record 200ms TX updates usage_permille and remaining (matches Rust/Python tracker).",
+      "duty_permille": 10,
+      "now_ms": 1000,
+      "records": [
+        [
+          0,
+          200
+        ]
+      ],
+      "expected_remaining_ms": 35800,
+      "expected_usage_permille": 0
+    },
+    {
+      "name": "next_tx_window_roll",
+      "description": "next_tx_available after budget exhaust uses window roll for CCP-13 TDMA (da2q).",
+      "duty_permille": 10,
+      "now_ms": 1000,
+      "records": [
+        [
+          0,
+          36000
+        ]
+      ],
+      "duration_ms": 100,
+      "expected_next_ms": 3600000,
+      "can_transmit": false
+    },
+    {
+      "name": "preferred_duty_vetting",
+      "description": "preferred_duty=5 (0.5%) for new node vetting in CCP-13 da2q multi-channel DIO.",
+      "preferred_duty": 5,
+      "eui64": "1122334455667788",
+      "stratum": 15
+    }
+  ]
+}

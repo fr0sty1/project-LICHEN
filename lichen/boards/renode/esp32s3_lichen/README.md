@@ -21,25 +21,27 @@ renode lichen/boards/renode/esp32s3_lichen/support/esp32s3_lichen.resc \
 
 ## Architecture
 
-The platform provides a minimal ESP32-S3 environment:
+The platform provides sufficient ESP32-S3 environment for LICHEN ELF execution:
 
 - **CPU** — Xtensa LX7 at 240 MHz (single-core mode for simulation)
+- **Lowmem** — 8KB dummy at 0x0 (bootloader vectors/headers)
+- **ROM** — 512KB at 0x40000000
 - **SRAM** — 512KB at 0x3FC88000 (data) / 0x40370000 (instruction)
-- **ROM** — 384KB at 0x40000000
-- **Flash cache** — 16MB at 0x3C000000 (XIP region)
+- **Flash XIP** — 64MB at 0x42000000 + 16MB cache at 0x3C000000
 - **UART0** — Console at 0x60000000
-- **SPI2** — SX1262 radio at 0x60024000
+- **SPI2** — SX1262 radio at 0x60024000 (full lichen-sim bridge)
 
-GPIO, I2C, and other peripherals are stubbed with memory tags.
+GPIO, timers, I2C, EFUSE, etc. are stubbed with sysbus tags. Updated memory map resolves all unmapped segment errors for canonical Zephyr ESP32-S3 ELFs from bridge, gateway, and puck.
 
 ## Limitations
 
 This is a simulation-focused platform, not cycle-accurate hardware emulation:
 
 - Single-core only (no CPU1)
-- No WiFi/BLE radio emulation
-- GPIO routing is symbolic (the SX1262 bridges directly to lichen-sim)
-- No display/keyboard emulation (T-Deck peripherals)
+- No WiFi/BLE radio emulation (BT HCI stubbed in DTS)
+- GPIO routing is symbolic (SX1262 CS/IRQ/BUSY wired via C# peripheral)
+- No display/keyboard/SD emulation for T-Deck (disabled in DTS)
+- Peripherals sufficient for LICHEN L2, CoAP, RPL but not full ESP32 feature set
 
 ## Files
 

@@ -1,0 +1,13 @@
+[
+  {
+    "name": "desync_test",
+    "description": "CCP-16 desynchronization recovery test vector. Array root for v2 CCP16.",
+    "current_sf": 5,
+    "target_sf": 3,
+    "success_rate": 0.85,
+    "expected": {
+      "action": "desync_recovery",
+      "new_sf": 4
+    }
+  }
+]

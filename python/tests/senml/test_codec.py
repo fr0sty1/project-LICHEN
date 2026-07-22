@@ -81,6 +81,21 @@ class TestSenmlRecord:
         with pytest.raises(ValueError, match="'v' must be a number"):
             SenmlRecord.from_cbor_map({2: True})
 
+    def test_from_cbor_map_rejects_non_finite_for_numeric_field(self) -> None:
+        """Independent literal CBOR vectors (do not derive from codec/pack()).
+
+        RFC 8428 decoded numeric policy: reject non-finite floats.
+        Tag 5 bigfloats rejected (decode to Decimal); Tag 4 also rejected
+        for simplicity (embedded float32 constraint).
+        """
+        # v = NaN, +inf, -inf using float16 special values (label 2=v)
+        nan_cbor = b"\x81\xa1\x02\xf9\x7e\x00"
+        inf_cbor = b"\x81\xa1\x02\xf9\x7c\x00"
+        ninf_cbor = b"\x81\xa1\x02\xf9\xfc\x00"
+        for cbor_bytes in (nan_cbor, inf_cbor, ninf_cbor):
+            with pytest.raises(ValueError, match="must be finite"):
+                unpack(cbor_bytes)
+
     def test_from_cbor_map_accepts_int_for_numeric_field(self) -> None:
         # v (label 2) should accept int (which gets stored as float conceptually)
         r = SenmlRecord.from_cbor_map({2: 42})

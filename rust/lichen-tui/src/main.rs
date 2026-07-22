@@ -2,12 +2,12 @@
 //!
 //! Layout (Node tab):
 //!   ┌─ Neighbors ──────────┬─ Node Info ────────────────────────┐
-//!   │ ● fe80::1  -108 dBm  │ node      [::1]:5683               │
+//!   │ ● fe80::1  -108 dBm  │ node      \[::1\]:5683               │
 //!   │                      │ status    connected                 │
 //!   │ ● fe80::2  -115 dBm  │ uptime    1h 23m                   │
 //!   │                      │ firmware  0.1.0                     │
 //!   ├──────────────────────┴───────────────────────────────────┤
-//!   │ [Node] [Radio]  [::1]:5683  ↑↓/jk:nav  Tab:switch  q:quit│
+//!   │ \[Node\] \[Radio\]  \[::1\]:5683  ↑↓/jk:nav  Tab:switch  q:quit│
 //!   └──────────────────────────────────────────────────────────┘
 //!
 //! Layout (Radio tab):
@@ -22,7 +22,7 @@
 //!   │ User     2 ██                                             │
 //!   │ Bulk     1 █                                              │
 //!   ├──────────────────────────────────────────────────────────┤
-//!   │ [Node] [Radio]  Tab:switch  q:quit                       │
+//!   │ \[Node\] \[Radio\]  Tab:switch  q:quit                       │
 //!   └──────────────────────────────────────────────────────────┘
 //!
 //! Keys: ↑↓/jk — navigate neighbors  Tab — switch tab  q/Ctrl-C — quit

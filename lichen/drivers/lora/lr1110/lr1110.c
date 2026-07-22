@@ -409,10 +409,7 @@ static int lr1110_lora_send(const struct device *dev, uint8_t *data,
 		return -EMSGSIZE;
 	}
 
-	/* Poll for TXDONE over SPI rather than via the DIO9 interrupt: the LR1110
-	 * signals TX/RX errors (CMDERR, ERR) on IRQ bits that are NOT routed to
-	 * DIO9, so a failed TX would otherwise never wake a waiting semaphore.
-	 * Polling lets us observe the true status and bound the wait. */
+	LOG_DBG("lr1110: tx_start len=%u", data_len);
 	gpio_pin_interrupt_configure_dt(&lr1110_gpio_dio9, GPIO_INT_DISABLE);
 
 	/* STANDBY_XOSC before loading the buffer: the recv() timeout path

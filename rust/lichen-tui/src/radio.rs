@@ -96,12 +96,6 @@ impl RadioState {
             .push(TxPriority::Bulk, now + DEADLINE_BULK_MS, now, &[0u8; 200]); // Firmware chunk
     }
 
-    /// Advance simulated time (call from main event loop).
-    #[allow(dead_code)] // not yet wired into the event loop
-    pub fn tick(&mut self, delta_ms: u64) {
-        self.now_ms = self.now_ms.wrapping_add(delta_ms);
-    }
-
     /// Get duty cycle usage as a fraction (0.0 to 1.0+).
     pub fn duty_cycle_fraction(&mut self) -> f64 {
         self.duty_cycle.usage_permille(self.now_ms) as f64 / 1000.0

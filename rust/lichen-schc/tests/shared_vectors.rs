@@ -6,6 +6,7 @@
 use std::fs;
 use std::path::Path;
 
+use lichen_schc::{compress, decompress};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -43,9 +44,10 @@ fn test_schc_compression_vectors() {
     let content = fs::read_to_string(&vectors_path).expect("Failed to read vectors file");
     let vectors: VectorFile = serde_json::from_str(&content).expect("Failed to parse vectors JSON");
 
-    assert_eq!(
-        vectors.format_version, 1,
-        "Unexpected vector format version"
+    assert!(
+        vectors.format_version == 1 || vectors.format_version == 2,
+        "Unexpected vector format version: {}",
+        vectors.format_version
     );
 
     let mut failures = Vec::new();
@@ -84,7 +86,40 @@ fn test_schc_compression_vectors() {
             ));
         }
 
-        // Compression should reduce size
+        let mut output = [0u8; 1500];
+        let n = match compress(&packet, &mut output) {
+            Ok(n) => n,
+            Err(e) => {
+                failures.push(format!(
+                    "Vector '{}': compress failed: {:?}",
+                    vector.name, e
+                ));
+                continue;
+            }
+        };
+        if n != compressed.len() || output[..n] != compressed[..] {
+            failures.push(format!(
+                "Vector '{}': compress mismatch (got {} bytes, expected exact match to fixture)",
+                vector.name, n
+            ));
+        }
+
+        let mut decompressed = [0u8; 1500];
+        let m = match decompress(&compressed, &mut decompressed) {
+            Ok(m) => m,
+            Err(e) => {
+                failures.push(format!(
+                    "Vector '{}': decompress failed: {:?}",
+                    vector.name, e
+                ));
+                continue;
+            }
+        };
+        if m != packet.len() || decompressed[..m] != packet[..] {
+            failures.push(format!("Vector '{}': decompress mismatch", vector.name));
+        }
+
+        // Compression should reduce size for these vectors
         if compressed.len() >= packet.len() {
             failures.push(format!(
                 "Vector '{}': compression did not reduce size ({} -> {})",
@@ -93,16 +128,6 @@ fn test_schc_compression_vectors() {
                 compressed.len()
             ));
         }
-
-        // TODO: When Rust SCHC implementation is ready, test actual compression:
-        // let mut output = [0u8; 1500];
-        // let result = lichen_schc::compress(&packet, &mut output).unwrap();
-        // assert_eq!(result, &compressed[..]);
-
-        // TODO: Test decompression:
-        // let mut decompressed = [0u8; 1500];
-        // let result = lichen_schc::decompress(&compressed, &mut decompressed).unwrap();
-        // assert_eq!(&decompressed[..result], &packet[..]);
 
         println!(
             "Vector '{}' ({}; rule {}): {} -> {} bytes ({}% reduction)",

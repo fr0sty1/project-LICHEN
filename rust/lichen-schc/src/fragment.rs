@@ -12,7 +12,10 @@
 //!   byte 2: n  (bitmap length)
 //!   bytes 3..: ceil(n/8) bitmap bytes, MSB-first
 
-use lichen_core::error::{BufferTooSmall, TooShort};
+use lichen_core::{
+    constants::SCHC_MAX_DECOMPRESSED,
+    error::{BufferTooSmall, TooShort},
+};
 
 /// 6-bit all-ones FCN, marks the last fragment of a datagram.
 pub const ALL_1_FCN: u8 = 63;
@@ -268,6 +271,9 @@ impl<'a> FragmentSender<'a> {
         }
         if window_size == 0 || window_size > MAX_WINDOW_SIZE {
             return Err(FragmentError::InvalidWindowSize);
+        }
+        if payload.len() > SCHC_MAX_DECOMPRESSED {
+            return Err(BufferTooSmall::new(SCHC_MAX_DECOMPRESSED, payload.len()).into());
         }
         let mic = compute_mic(payload);
         let count = if payload.is_empty() {

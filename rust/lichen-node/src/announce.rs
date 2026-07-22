@@ -49,7 +49,7 @@ pub fn seq_gt(a: u16, b: u16) -> bool {
 pub enum AnnounceRejectReason {
     /// Schnorr48 signature verification failed.
     InvalidSignature,
-    /// IID in announce doesn't match SHA-256(pubkey)[0:8].
+    /// IID in announce doesn't match SHA-256(pubkey)\[0:8\].
     IidMismatch,
     /// seq_num <= existing (RFC 1982 serial arithmetic).
     StaleSeqNum,
@@ -445,6 +445,7 @@ mod tests {
             pubkey: identity.pubkey.as_bytes(),
             seq_num,
             hop_count,
+            rx_channel: 0,
             signature: &sig,
             app_data,
             flags: 0,
@@ -513,6 +514,7 @@ mod tests {
             pubkey: identity.pubkey.as_bytes(),
             seq_num: 100,
             hop_count: 3,
+            rx_channel: 5,
             signature: &sig,
             app_data: &[],
             flags: 0,
@@ -542,6 +544,7 @@ mod tests {
             pubkey: identity.pubkey.as_bytes(),
             seq_num: 100,
             hop_count: 3,
+            rx_channel: 5,
             signature: &bad_sig,
             app_data: &[],
             flags: 0,
@@ -626,6 +629,7 @@ mod tests {
             pubkey: identity2.pubkey.as_bytes(),
             seq_num: 200,
             hop_count: 3,
+            rx_channel: 5,
             signature: &sig,
             app_data: &[],
             flags: 0,

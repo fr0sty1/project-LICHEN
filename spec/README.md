@@ -36,6 +36,7 @@ hardware as a reflash -- same radios, new protocol.
 
 1. [Architecture](01-architecture.md) - Design Principles and Protocol Stack
 2. [Physical and Link Layers](02-physical-link.md) - LoRa PHY and Frame Format
+2a. [Coordinated Capacity](02a-coordinated-capacity.md) - TDMA time slots, frequency/channel agility, rendezvous (CCP-1)
 3. [Adaptation Layer](03-adaptation.md) - SCHC/6LoWPAN Compression
 4. [Network Layer](04-network.md) - IPv6 Addressing
 5. [Routing](05-routing.md) - Three-Tier Routing (RPL + Announce + LOADng)

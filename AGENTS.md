@@ -186,6 +186,10 @@ The LICHEN Zephyr subsystems in `lichen/subsys/lichen/` have **implicit initiali
          |                                |
          └─────────────┬──────────────────┘
                        v
+                 lichen_tdma_init() (after link_init, before oscore; see
+                 struct LICHEN_TDMA_Slot in link.h:50 and Kconfig help)
+                       |
+                       v
                  oscore_init()
                        |
                        v
@@ -201,6 +205,7 @@ The LICHEN Zephyr subsystems in `lichen/subsys/lichen/` have **implicit initiali
 |-----------|--------------|---------------|---------------|
 | **Link Layer** | `lichen_link_init(ctx, eui64)` | None | Per-context (no global state) |
 | **Link Keys** | `lichen_link_load_key(ctx, seed)` | `lichen_link_init()` | Per-context |
+| **TDMA** | `lichen_tdma_init()` | `lichen_link_init()` | After link, before oscore (see link.h:50 struct LICHEN_TDMA_Slot) |
 | **RPL DODAG** | `lichen_rpl_dodag_init(d, ...)` | None | Per-DODAG (caller must synchronize) |
 | **OSCORE** | `oscore_init()` | None | Thread-safe (internal mutex) |
 | **OSCORE Contexts** | `oscore_ctx_create(...)` | `oscore_init()` | Thread-safe |
@@ -236,7 +241,11 @@ int lichen_node_init(const uint8_t eui64[8], const uint8_t seed[32])
     ret = lichen_link_load_key(&link_ctx, seed);
     if (ret < 0) return ret;
 
-    /* 2. OSCORE subsystem (must init before creating contexts) */
+    /* 2. TDMA after link_init, before oscore (see Kconfig LICHEN_TDMA help
+     * and struct LICHEN_TDMA_Slot in link.h:50) */
+    /* lichen_tdma_init(); */
+
+    /* 3. OSCORE subsystem (must init before creating contexts) */
     ret = oscore_init();
     if (ret < 0) return ret;
 

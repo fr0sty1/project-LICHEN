@@ -299,6 +299,20 @@ int lichen_link_copy_identity(const struct lichen_link_ctx *_Nonnull ctx,
 			      uint8_t pk[_Nullable LICHEN_PK_LEN],
 			      bool *_Nullable has_key);
 
+/**
+ * @brief Derive Yggdrasil IPv6 address (02xx::/7) from Ed25519 public key.
+ *
+ * Matches Rust implementation exactly (SHA-512 bit selection for prefix and IID).
+ * Used for primary unicast address per spec/04-network.md and 06-security.md.
+ * Output is 16-byte IPv6 address buffer. Test vectors in test/vectors/.
+ *
+ * @param[in]  pk   32-byte Ed25519 public key
+ * @param[out] addr 16-byte Yggdrasil IPv6 address
+ * @return 0 on success, -EINVAL on NULL args
+ */
+int lichen_identity_ygg_addr_from_ed25519(const uint8_t pk[_Nonnull LICHEN_PK_LEN],
+					 uint8_t addr[_Nonnull 16]);
+
 #ifdef __cplusplus
 }
 #endif

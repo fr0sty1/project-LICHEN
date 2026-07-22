@@ -68,20 +68,27 @@ LOG_MODULE_REGISTER(lichen_coap_config, CONFIG_LICHEN_COAP_CONFIG_LOG_LEVEL);
 
 /* Provider registration */
 static const struct lichen_config_provider *s_provider;
+static K_MUTEX_DEFINE(s_provider_mutex);
 
 int lichen_coap_config_register(const struct lichen_config_provider *provider)
 {
 	if (provider == NULL) {
 		return -EINVAL;
 	}
+	k_mutex_lock(&s_provider_mutex, K_FOREVER);
 	s_provider = provider;
+	k_mutex_unlock(&s_provider_mutex);
 	LOG_INF("Config provider registered");
 	return 0;
 }
 
 const struct lichen_config_provider *lichen_coap_config_provider_get(void)
 {
-	return s_provider;
+	const struct lichen_config_provider *provider;
+	k_mutex_lock(&s_provider_mutex, K_FOREVER);
+	provider = s_provider;
+	k_mutex_unlock(&s_provider_mutex);
+	return provider;
 }
 
 /* CBOR encoding helpers - use zcbor_tstr_put_term for keys since they are
@@ -643,13 +650,14 @@ static int config_get(struct coap_resource *resource,
 	uint8_t cbor_buf[CONFIG_CBOR_MAX_SIZE];
 	size_t len;
 
-	if (s_provider == NULL || s_provider->node_get == NULL) {
+	const struct lichen_config_provider *prov = lichen_coap_config_provider_get();
+	if (prov == NULL || prov->node_get == NULL) {
 		LOG_WRN("No config provider registered");
 		return coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
 	}
 
-	int ret = s_provider->node_get(&node_cfg);
+	int ret = prov->node_get(&node_cfg);
 	if (ret < 0) {
 		LOG_ERR("node_get failed: %d", ret);
 		return coap_respond(resource, request, addr, addr_len,
@@ -676,8 +684,9 @@ static int config_put(struct coap_resource *resource,
 	struct lichen_config_node node_cfg;
 	int ret;
 
-	if (s_provider == NULL || s_provider->node_get == NULL ||
-	    s_provider->node_set == NULL) {
+	const struct lichen_config_provider *prov = lichen_coap_config_provider_get();
+	if (prov == NULL || prov->node_get == NULL ||
+	    prov->node_set == NULL) {
 		return coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
 	}
@@ -688,7 +697,7 @@ static int config_put(struct coap_resource *resource,
 	}
 
 	/* Get current config for partial update */
-	ret = s_provider->node_get(&node_cfg);
+	ret = prov->node_get(&node_cfg);
 	if (ret < 0) {
 		return coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
@@ -703,7 +712,7 @@ static int config_put(struct coap_resource *resource,
 	}
 
 	/* Apply update */
-	ret = s_provider->node_set(&node_cfg);
+	ret = prov->node_set(&node_cfg);
 	if (ret < 0) {
 		LOG_WRN("Config validation failed: %d", ret);
 		return coap_respond(resource, request, addr, addr_len,
@@ -724,12 +733,13 @@ static int config_radio_get(struct coap_resource *resource,
 	uint8_t cbor_buf[CONFIG_CBOR_MAX_SIZE];
 	size_t len;
 
-	if (s_provider == NULL || s_provider->radio_get == NULL) {
+	const struct lichen_config_provider *prov = lichen_coap_config_provider_get();
+	if (prov == NULL || prov->radio_get == NULL) {
 		return coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
 	}
 
-	int ret = s_provider->radio_get(&radio_cfg);
+	int ret = prov->radio_get(&radio_cfg);
 	if (ret < 0) {
 		return coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
@@ -755,8 +765,9 @@ static int config_radio_put(struct coap_resource *resource,
 	struct lichen_config_radio radio_cfg;
 	int ret;
 
-	if (s_provider == NULL || s_provider->radio_get == NULL ||
-	    s_provider->radio_set == NULL) {
+	const struct lichen_config_provider *prov = lichen_coap_config_provider_get();
+	if (prov == NULL || prov->radio_get == NULL ||
+	    prov->radio_set == NULL) {
 		return coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
 	}
@@ -767,7 +778,7 @@ static int config_radio_put(struct coap_resource *resource,
 	}
 
 	/* Get current config for partial update */
-	ret = s_provider->radio_get(&radio_cfg);
+	ret = prov->radio_get(&radio_cfg);
 	if (ret < 0) {
 		return coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
@@ -782,7 +793,7 @@ static int config_radio_put(struct coap_resource *resource,
 	}
 
 	/* Apply update */
-	ret = s_provider->radio_set(&radio_cfg);
+	ret = prov->radio_set(&radio_cfg);
 	if (ret < 0) {
 		LOG_WRN("Radio config validation failed: %d", ret);
 		return coap_respond(resource, request, addr, addr_len,
@@ -804,12 +815,13 @@ static int config_identity_get(struct coap_resource *resource,
 	uint8_t cbor_buf[CONFIG_CBOR_MAX_SIZE];
 	size_t len;
 
-	if (s_provider == NULL || s_provider->identity_get == NULL) {
+	const struct lichen_config_provider *prov = lichen_coap_config_provider_get();
+	if (prov == NULL || prov->identity_get == NULL) {
 		return coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
 	}
 
-	int ret = s_provider->identity_get(&identity);
+	int ret = prov->identity_get(&identity);
 	if (ret < 0) {
 		return coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);

@@ -46,6 +46,10 @@
 #include "meshcore_adapter.h"
 #endif
 
+#if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
+#include "rpl_root.h"
+#endif
+
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 #include <lichen/native.h>
 #endif
