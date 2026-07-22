@@ -2,6 +2,7 @@
   "id": "project-LICHEN-m257",
   "title": "simulation.py: negative jitter_min_us not validated, can cause past-time events",
   "description": "File: python/src/lichen/sim/simulation.py\nLines: 101-106, 169-178\n\nSimulation.__init__ validates that jitter_min_us \u003c= jitter_max_us, but does not validate that jitter_min_us is non-negative.\n\nIf jitter_min_us is negative, calculate_tx_jitter() can return negative jitter values, causing TxStartDelayedEvent to be scheduled in the past:\n```python\ndelayed_event = TxStartDelayedEvent(\n    time_us=self._current_time_us + jitter,  # jitter could be negative\n    ...\n)\n```\n\nEvents scheduled in the past will fire immediately, but this semantic is confusing and likely unintended by callers.\n\nFailure scenario:\n```python\nsim = Simulation(\"test\", jitter_min_us=-5000, jitter_max_us=5000)\n# calculate_tx_jitter() may return -3000\n# TX event scheduled at current_time - 3000us (in the past)\n# Event fires immediately, causing non-intuitive timing behavior\n```\n\nFix: Add validation that jitter_min_us \u003e= 0:\n```python\nif jitter_min_us \u003c 0:\n    raise ValueError(f\"jitter_min_us must be non-negative, got {jitter_min_us}\")\n```",
+  "notes": "Commit: 7a4299166",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T17:06:38.974273Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:06:17.678246947Z",
+  "updated_at": "2026-07-22T23:07:46.619198179Z",
   "started_at": "2026-07-22T23:06:17.678246947Z",
   "lease_expires_at": "2026-07-22T23:11:17.678246947Z",
   "heartbeat_at": "2026-07-22T23:06:17.678246947Z"
