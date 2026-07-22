@@ -64,12 +64,19 @@ static int find_free_slot(const struct lichen_dtn_buffer *buf)
 /**
  * Evict oldest messages to make room for new_size bytes.
  * Returns number of messages evicted.
+ * Safety counter prevents any possible infinite loop (e.g. if find_oldest
+ * or valid flags are corrupted).
  */
 static uint16_t evict_if_needed(struct lichen_dtn_buffer *buf, uint32_t new_size)
 {
 	uint16_t evicted = 0;
+	uint16_t iterations = 0;
+	const uint16_t max_iterations = CONFIG_LICHEN_DTN_MAX_MESSAGES + 1;
 
 	while (buf->current_bytes + new_size > buf->max_bytes) {
+		if (++iterations > max_iterations) {
+			break;
+		}
 		int oldest = find_oldest(buf);
 		if (oldest < 0) {
 			break;
