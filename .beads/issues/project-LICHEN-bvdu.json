@@ -3,15 +3,15 @@
   "title": "Router.pending_queue allows unbounded destinations causing memory exhaustion",
   "description": "file: python/src/lichen/routing/router.py:353-356\n\nRouter.pending_queue limits packets per destination (max_pending_per_dest=3) but places no limit on the number of destinations. An attacker or malfunctioning network could send packets to many unique destinations, causing unbounded memory growth.\n\nThe _queue_pending method (line 515-541) adds new destination keys without checking total destination count. While expire_pending removes old entries, continuous addition of new destinations faster than expiration could exhaust memory.\n\nSuggested fix: Add max_pending_destinations limit and evict oldest destination when exceeded, similar to ForwardingBuffer's max_sources pattern.",
   "notes": "Commit: da8959639",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T17:02:24.044629Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T22:58:36.163063943Z",
+  "updated_at": "2026-07-22T22:58:38.369408819Z",
   "started_at": "2026-07-22T22:55:11.417198214Z",
-  "lease_expires_at": "2026-07-22T23:00:11.417198214Z",
-  "heartbeat_at": "2026-07-22T22:55:11.417198214Z"
+  "closed_at": "2026-07-22T22:58:38.369408819Z",
+  "close_reason": "Closed"
 }
