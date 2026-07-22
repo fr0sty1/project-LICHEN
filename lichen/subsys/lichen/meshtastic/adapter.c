@@ -28,6 +28,8 @@
 #define DATA_REQUEST_ID_FIELD 6U
 
 #define POSITION_LATITUDE_I_FIELD 1U
+
+#define PB_MAX_FIELD_NUMBER 536870911ULL
 #define POSITION_LONGITUDE_I_FIELD 2U
 #define POSITION_ALTITUDE_FIELD 3U
 #define POSITION_TIME_FIELD 4U
@@ -364,7 +366,7 @@ static int pb_read_key(struct pb_cursor *cur, uint32_t *field, uint32_t *wire_ty
 	uint64_t key;
 	int ret = pb_read_varint(cur, &key);
 
-	if (ret < 0 || (key >> 3) == 0U || (key >> 3) > UINT32_MAX) {
+	if (ret < 0 || (key >> 3) == 0U || (key >> 3) > PB_MAX_FIELD_NUMBER) {
 		return -EINVAL;
 	}
 
