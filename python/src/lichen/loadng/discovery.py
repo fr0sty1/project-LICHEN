@@ -141,10 +141,6 @@ class LoadngRouter:
             )
             return RreqResult(reply=rrep, reply_next_hop=from_neighbor)
 
-        # Intermediate reply if we already hold a gradient to the destination.
-        # SECURITY: This is a proxy reply on behalf of the destination. We use
-        # the gradient's seq_num (the destination's known sequence number) rather
-        # than the RREQ's seq_num (which belongs to the RREQ originator).
         grad = self.gradient.lookup(rreq.destination, now)
         if grad is not None:
             rrep = RREP(
