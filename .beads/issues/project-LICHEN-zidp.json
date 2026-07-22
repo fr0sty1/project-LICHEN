@@ -2,12 +2,16 @@
   "id": "project-LICHEN-zidp",
   "title": "Codereview P0-P2 for CCP vector changes and Rust CCP-12 stub",
   "description": "3 independent codereview passes required per workflow for generate.py:1581, test_vectors.py:79, rust/lichen-link/src/lib.rs:84, ccp*.json. Check schema compatibility, test integrity (no oracle from impl), fnv1a32 correctness vs Python, hopping ambiguity resolution.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T17:04:19.834518866Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T17:04:19.834518866Z",
+  "updated_at": "2026-07-22T17:05:27.576198744Z",
+  "started_at": "2026-07-22T17:05:27.576198744Z",
+  "lease_expires_at": "2026-07-22T17:10:27.576198744Z",
+  "heartbeat_at": "2026-07-22T17:05:27.576198744Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-zidp",
