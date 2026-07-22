@@ -2,12 +2,16 @@
   "id": "project-LICHEN-wdcd",
   "title": "[CODEREVIEW-P1] Placeholder expected values in ccp16_vectors not independently computed",
   "description": "test/vectors/generate.py:1770 - expected_channel and hash must be derived from actual hash_32 impl or external oracle (e.g. run crc32 on mixed seed). Violates test integrity (no code-under-test oracle). tagged codereview",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T17:02:48.303251841Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T17:02:48.303251841Z",
+  "updated_at": "2026-07-22T17:03:33.880350567Z",
+  "started_at": "2026-07-22T17:03:33.880350567Z",
+  "lease_expires_at": "2026-07-22T17:08:33.880350567Z",
+  "heartbeat_at": "2026-07-22T17:03:33.880350567Z",
   "labels": [
     "codereview"
   ]
