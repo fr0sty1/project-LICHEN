@@ -2,6 +2,7 @@
   "id": "project-LICHEN-3t2f",
   "title": "DIS from_bytes doesn't validate reserved field",
   "description": "File: python/src/lichen/rpl/messages.py:117-123\n\nThe DIS.from_bytes() accepts any value for the reserved field without validation:\n\n```python\n@classmethod\ndef from_bytes(cls, data: bytes) -\u003e DIS:\n    if len(data) \u003c 2:\n        raise RplError(f\"DIS too short: {len(data)} bytes\")\n    return cls(\n        flags=data[0], reserved=data[1], options=_parse_options(data[2:])\n    )\n```\n\nRFC 6550 Section 6.2 states reserved fields MUST be zero on transmission and SHOULD be ignored on receipt. The current implementation stores the reserved value, which is fine for parsing, but:\n\n1. DIS.to_bytes() will emit whatever reserved value is set, not forcing it to 0\n2. No warning is emitted if reserved != 0, which could indicate a newer protocol version\n\nThis is low severity but a protocol compliance consideration.\n\nSimilar issues exist in DIO.from_bytes() (reserved field at byte 7).",
+  "notes": "Commit: 8695161",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:25:05.744162Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:31:56.357854184Z",
+  "updated_at": "2026-07-22T23:37:13.06398161Z",
   "started_at": "2026-07-22T23:31:56.357854184Z",
   "lease_expires_at": "2026-07-22T23:36:56.357854184Z",
   "heartbeat_at": "2026-07-22T23:31:56.357854184Z"
