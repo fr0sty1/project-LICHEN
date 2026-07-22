@@ -121,7 +121,7 @@ class TestCoapRule:
 
     def test_missing_field_raises(self) -> None:
         with pytest.raises(SchcError, match="missing required field"):
-            compress(COAP_RULE, {"CoAP.Version": 1, "CoAP.Type": 0})
+            compress(COAP_RULE, {"CoAP.version": 1, "CoAP.type": 0})
 
     def test_value_out_of_range_raises(self) -> None:
         with pytest.raises(SchcError, match="does not fit"):

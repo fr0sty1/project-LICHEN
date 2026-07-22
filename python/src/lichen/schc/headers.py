@@ -247,17 +247,17 @@ class _CoapUdpProfile(PacketProfile):
         return fields, tail
 
     def build(self, fields: dict[str, int | None], tail: bytes) -> bytes:
-        src = IPv6Address(int(fields.get("IPv6.src") or 0))
-        dst = IPv6Address(int(fields.get("IPv6.dst") or 0))
-        coap_type = int(fields.get("CoAP.type") or 0)
-        coap_tkl = int(fields.get("CoAP.tkl") or 0)
-        coap_code = int(fields.get("CoAP.code") or 0)
-        coap_mid = int(fields.get("CoAP.mid") or 0)
+        src = IPv6Address(_require_field(fields, "IPv6.src"))
+        dst = IPv6Address(_require_field(fields, "IPv6.dst"))
+        coap_type = _require_field(fields, "CoAP.type")
+        coap_tkl = _require_field(fields, "CoAP.tkl")
+        coap_code = _require_field(fields, "CoAP.code")
+        coap_mid = _require_field(fields, "CoAP.mid")
         b0 = (1 << 6) | ((coap_type & 0x3) << 4) | (coap_tkl & 0x0F)
         coap = bytes([b0, coap_code]) + coap_mid.to_bytes(2, "big") + tail
         udp_bytes = UdpDatagram(
-            int(fields.get("UDP.src_port") or 0),
-            int(fields.get("UDP.dst_port") or 0),
+            _require_field(fields, "UDP.src_port"),
+            _require_field(fields, "UDP.dst_port"),
             coap,
         ).to_bytes(src, dst)
         return _ipv6_header(fields, UDP_NEXT_HEADER, len(udp_bytes)).to_bytes() + udp_bytes
