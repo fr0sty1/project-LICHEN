@@ -941,12 +941,23 @@ mod tests {
         let mut buf = [0u8; IPV6_HEADER_LEN];
         let n = hdr.write_to(24, &mut buf).unwrap();
         assert_eq!(n, IPV6_HEADER_LEN);
+
+        let expected = hex!(
+            "60 00 00 00 00 18 3a 40 fe 80 00 00 00 00 00 00
+             02 11 22 ff fe 33 44 55 fe 80 00 00 00 00 00 00
+             64 55 44 ff fe 33 22 11"
+        );
+        assert_eq!(&buf[..], &expected[..]);
+
         let parsed = Ipv6Header::from_bytes(&buf).unwrap();
 
         assert_eq!(parsed.src, src);
         assert_eq!(parsed.dst, dst);
         assert_eq!(parsed.next_header, next_header::ICMPV6);
         assert_eq!(parsed.payload_len, 24);
+        assert_eq!(parsed.hop_limit, 64);
+        assert_eq!(parsed.traffic_class, 0);
+        assert_eq!(parsed.flow_label, 0);
     }
 
     #[test]
