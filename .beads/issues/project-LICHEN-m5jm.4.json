@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-m5jm.4",
+  "title": "[codereview-pass1] coap_dtn.h and CMakeLists.txt: verify init follows exact AGENTS.md dependency graph order without use-before-init; check for lichen_ naming consistency and missing includes",
+  "description": "Correctness pass on new header and CMake update for DEADDROP. discovered-from:project-LICHEN-m5jm.2",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:19:01.772546897Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:19:01.772546897Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-m5jm.4",
+      "depends_on_id": "project-LICHEN-m5jm",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:19:01.868069589Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
