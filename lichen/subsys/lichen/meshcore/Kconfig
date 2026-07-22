@@ -30,10 +30,10 @@ config LICHEN_MESHCORE_MAX_FRAME
 config LICHEN_MESHCORE_MAX_SERIAL_PAYLOAD
 	int "Maximum MeshCore serial payload size"
 	default 172
-	range 1 176
+	range 1 65535
 	help
 	  Maximum MeshCore inner payload size accepted inside the serial/TCP
-	  0x3c/0x3e + uint16_le length wrapper.
+	  0x3c/0x3e + uint16_le length wrapper. Must fit in uint16_t per codec assert.
 
 config LICHEN_MESHCORE_PENDING_EVENTS
 	int "Maximum pending MeshCore app events"
