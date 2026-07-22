@@ -392,18 +392,12 @@ class SimRadio:
             (msg_len,) = struct.unpack("<I", length_data)
 
             if msg_len == 0:
-                # Close and invalidate stream on protocol error to prevent desync.
-                # Use try/finally to ensure _stream is cleared even if aclose() fails.
                 try:
                     await self._stream.aclose()
                 finally:
                     self._stream = None
                 raise ProtocolError("Received zero-length message")
             if msg_len > MAX_MESSAGE_LENGTH:
-                # Close and invalidate the stream: we've read the length header
-                # but not the body, so the protocol is now desynced. Closing
-                # prevents subsequent reads from starting mid-message.
-                # Use try/finally to ensure _stream is cleared even if aclose() fails.
                 try:
                     await self._stream.aclose()
                 finally:
