@@ -455,13 +455,18 @@ int lichen_coap_request(const struct lichen_coap_request *req)
 		/*
 		 * Extract PIV from the OSCORE option for response decryption.
 		 * The PIV is the sender sequence number used for this request.
+		 * Failure here means we cannot decrypt the response - fail early.
 		 */
 		struct oscore_option opt;
 		ret = oscore_option_parse(oscore_opt_buf, oscore_opt_len, &opt);
-		if (ret == OSCORE_OK && opt.has_piv && opt.piv_len > 0) {
-			memcpy(ctx->request_piv, opt.piv, opt.piv_len);
-			ctx->request_piv_len = opt.piv_len;
+		if (ret != OSCORE_OK || !opt.has_piv || opt.piv_len == 0 ||
+		    opt.piv_len > sizeof(ctx->request_piv)) {
+			LOG_ERR("Failed to extract PIV from OSCORE option: %d", ret);
+			k_free(ctx);
+			return LICHEN_COAP_ERR_OSCORE_PROTECT;
 		}
+		memcpy(ctx->request_piv, opt.piv, opt.piv_len);
+		ctx->request_piv_len = opt.piv_len;
 
 		/* Build OSCORE option for coap_client */
 		oscore_option.code = COAP_OPTION_OSCORE;
