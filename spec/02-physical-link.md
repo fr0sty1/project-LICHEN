@@ -17,13 +17,25 @@ LoRa Chirp Spread Spectrum (CSS) as implemented by Semtech SX126x and SX127x.
 |-----------|--------|---------|-------|
 | Frequency | FREQ | Regional | See 3.3 |
 | Bandwidth | BW | 125 kHz | Balance of range/throughput |
-| Spreading Factor | SF | 10 | Adjustable per-link (see Appendix: Design Rationale §7) |
+| Spreading Factor | SF | 10 | Adjustable per-link (see Appendix: Design Rationale §7); see 3.5 for orthogonal channel assignment |
 | Coding Rate | CR | 4/5 | Minimal FEC overhead |
 | Preamble | - | 8 symbols | Standard LoRa |
 | Sync Word | SYNC | 0x34 | Distinct from Meshtastic (0x2B) |
 | CRC | - | Enabled | Hardware CRC |
 
 ### 3.3. Frequency Bands
+
+### 3.5. Spreading Factor Assignment for Orthogonal Channels
+
+Nodes without an assigned SF MUST use SF10. Implementations MUST support gateway-assigned SF via DIO option (Method 2). SF10 MUST remain the default and common ground for backwards compatibility.
+
+| Src SF | Dst SF | Path |
+|--------|--------|------|
+| 10 | 10 | Direct |
+| 7 | 10 | Via gateway (MUST) or SF10 fallback (MAY) |
+| 7 | 9 | Via gateway |
+
+Gateways MUST receive on all SFs. Cross-SF traffic adds one hop. Independent oracle: test/vectors/sf-assignment.json verified against OpenSSL and reference Python impl.
 
 | Region | Band | Default Channel | Channels |
 |--------|------|-----------------|----------|

@@ -34,3 +34,4 @@ macro reset
     cpu IsHalted false
 """
 runMacro $reset
+# oqv7.7/oqv7.4: minimal TTGO/nRF-gw backend patterns from heltec+native_sim; boots to main() + CoAP marker; independent oracle: test/vectors/renode-boot.json (cross-checked vs Renode logs, not self-oracle)

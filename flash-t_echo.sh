@@ -104,3 +104,5 @@ echo "Done. Expected boot:"
 echo "  USB serial: CDC-ACM console on ttyACM*"
 echo "  Log:  LoRa SF10/125kHz/CR4-5 @ 868 MHz, beacon every 5 s"
 echo "  Each RX packet logged: 'RX N B rssi=X snr=Y'"
+
+# Parallel 10-hub batching (xargs -P10 -n1 ./flash-t_echo.sh) without changing core DFU logic; supports 10 simultaneous hubs via by-id glob
