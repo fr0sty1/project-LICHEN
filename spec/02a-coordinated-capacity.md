@@ -143,8 +143,6 @@ See `test/vectors/ccp16.json#vectors[3+]` for Gateway Multi-RX test cases with i
 - `spec/09-packets-timing.md`
 - da2q multi-channel context for CCP-14
 
-<<<<<<< HEAD
-=======
 For slot `n`, let `t0` be its local monotonic start and `t1` its end. Each
 endpoint begins retuning at `t0`. The receiver MUST be in receive mode by
 `t0 + setup_window` and remain there through `t1`. The transmitter MUST finish
