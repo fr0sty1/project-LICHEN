@@ -2258,7 +2258,9 @@ class NativeClientApp(App[None]):
                 ),
                 recover_error=True,
             )
-        except Exception as exc:
+        except BaseException as exc:
+            if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             self._set_radio_error(str(exc))
 
     async def refresh_rf_health(self) -> None:
@@ -2547,7 +2549,9 @@ class NativeClientApp(App[None]):
             return
         try:
             result = await self.client.send_message(draft, self.send_path)
-        except Exception as exc:
+        except BaseException as exc:
+            if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             self._set_messaging(self._messaging_error(str(exc)))
             return
         messages = self.messaging.messages

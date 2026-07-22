@@ -287,8 +287,17 @@ mod tests {
         let mut t = TrickleTimer::new(1000, 4, 10);
         t.start(0, 0);
         let tt_before = t.transmit_time;
-        t.reset(0, 999); // different rand_offset — should not restart
+        t.reset(0, 999);
         assert_eq!(t.transmit_time, tt_before);
+    }
+
+    #[test]
+    fn reset_from_stopped_starts_timer() {
+        let mut t = TrickleTimer::new(1000, 4, 10);
+        assert_eq!(t.state, TrickleState::Stopped);
+        t.reset(0, 0);
+        assert_eq!(t.state, TrickleState::WaitingTransmit);
+        assert_eq!(t.interval, 1000);
     }
 
     #[test]
