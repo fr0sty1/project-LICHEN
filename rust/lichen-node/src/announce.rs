@@ -364,10 +364,8 @@ impl AnnounceProcessor {
     }
 }
 
-/// Parse congestion (type 0x02) from announce app_data TLV stream.
-///
-/// TLV format: Type (1 byte) | Length (1 byte) | Value (Length bytes)
-/// Unknown types are skipped using the length field.
+const CONGESTION_TLV: u8 = 0x02;
+
 fn parse_congestion(app_data: &[u8]) -> Option<u8> {
     let mut pos = 0;
     while pos + 2 <= app_data.len() {
@@ -377,16 +375,13 @@ fn parse_congestion(app_data: &[u8]) -> Option<u8> {
         let value_end = value_start + len;
 
         if value_end > app_data.len() {
-            // Truncated TLV - stop parsing
             return None;
         }
 
-        if typ == 0x02 && len >= 1 {
-            // Congestion: 1 byte queue depth
+        if typ == CONGESTION_TLV && len >= 1 {
             return Some(app_data[value_start]);
         }
 
-        // Skip to next TLV (works for known and unknown types)
         pos = value_end;
     }
     None
