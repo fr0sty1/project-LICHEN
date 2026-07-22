@@ -28,8 +28,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "slip_transport.h"
-
 #include <lichen/transport/slip_transport.h>
 
 #ifdef __cplusplus
