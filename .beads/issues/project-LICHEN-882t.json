@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-882t",
+  "title": "Pass 3: SCHC Rust tests have unresolved TODOs for compression/decompression vector testing",
+  "description": "lichen-schc/tests/shared_vectors.rs:97 still comments out actual compress/decompress calls against test/vectors/schc_compression.json. Violates test vectors discipline and interop requirements with C impl in lichen/tests/schc/. Completeness gap vs spec appendix-schc.md. See rust/lichen-schc/src/lib.rs:5 referencing Python.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T14:44:12.54108613Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:44:12.54108613Z",
+  "labels": [
+    "codereview"
+  ]
+}
