@@ -11,11 +11,7 @@ a Meshtastic LoRa mesh.
 
 ## Scope
 
-Run this procedure whenever Meshtastic BLE, the Meshtastic codec/adapter,
-app-interface ingress/egress, BLE advertising policy, or metadata/config sync
-changes. The no-hardware preflight is mandatory before any mobile-client run.
-The mobile phase requires a BLE-capable target, one Android device, and one iOS
-device with Meshtastic installed.
+This implements project-LICHEN-t2hn.11: smoke-test procedure and script for iOS/Android Meshtastic app against R1 Neo (`r1_neo_nrf52840`) firmware (and other boards). Run this procedure whenever Meshtastic BLE, the Meshtastic codec/adapter, app-interface ingress/egress, BLE advertising policy, or metadata/config sync changes. The no-hardware preflight is mandatory before any mobile-client run. The mobile phase requires a BLE-capable target, one Android device, and one iOS device with Meshtastic installed. Execute mobile steps when project-LICHEN-avrb hardware access resolved.
 
 Record all observed versions and logs in the Bead that requests the smoke run:
 
