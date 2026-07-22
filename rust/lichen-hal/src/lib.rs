@@ -117,7 +117,10 @@ pub trait Radio {
     ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
 
     /// CCP-15: Clear Channel Assessment (CAD/CCA) before TX. Returns true if clear.
-    fn cca(&mut self, threshold_dbm: i8) -> impl core::future::Future<Output = Result<bool, Self::Error>>;
+    fn cca(
+        &mut self,
+        threshold_dbm: i8,
+    ) -> impl core::future::Future<Output = Result<bool, Self::Error>>;
 
     /// Receive a packet with timeout.
     ///

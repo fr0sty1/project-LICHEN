@@ -40,7 +40,6 @@ from textual.widgets import (
     RichLog,
     Static,
 )
-from rich.markup import escape
 
 from lichen.radio.sim_client import SimRadio, SimRadioError
 

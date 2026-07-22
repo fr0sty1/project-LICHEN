@@ -236,13 +236,12 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
             originator_iid: &self.identity.iid,
             pubkey: self.identity.pubkey.as_bytes(),
             seq_num: seq,
-            hop_count: 0, // We're the originator
+            hop_count: 0,  // We're the originator
             rx_channel: 0, // CCP-9 control channel until hopping implemented
             signature: &signature,
             app_data: &self.app_data,
             flags: 0,
         };
-
 
         builder
             .write_to(out)

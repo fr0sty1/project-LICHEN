@@ -97,7 +97,11 @@ impl Radio for LoopbackRadio {
             guard.recv()
         };
 
-        debug_assert!(buf.len() >= 255, "Radio::receive buffer too small: {} < 255", buf.len());
+        debug_assert!(
+            buf.len() >= 255,
+            "Radio::receive buffer too small: {} < 255",
+            buf.len()
+        );
 
         match data {
             Some(pkt) => {

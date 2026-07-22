@@ -87,7 +87,9 @@ impl std::fmt::Display for SlipError {
         match self {
             Self::PacketTooLarge => write!(f, "packet too large"),
             Self::QueueFull => write!(f, "TX queue full"),
-            Self::BufferTooSmall { needed } => write!(f, "buffer too small (need {} bytes)", needed),
+            Self::BufferTooSmall { needed } => {
+                write!(f, "buffer too small (need {} bytes)", needed)
+            }
         }
     }
 }

@@ -24,7 +24,10 @@ const LOLLIPOP_SEQUENCE_WINDOW: u8 = 16;
 
 #[cfg(feature = "std")]
 fn seq_is_newer(new_seq: u8, old_seq: u8) -> bool {
-    match (new_seq < LOLLIPOP_CIRCULAR_BIT, old_seq < LOLLIPOP_CIRCULAR_BIT) {
+    match (
+        new_seq < LOLLIPOP_CIRCULAR_BIT,
+        old_seq < LOLLIPOP_CIRCULAR_BIT,
+    ) {
         (true, true) => new_seq > old_seq,
         (false, false) => {
             let diff = new_seq.wrapping_sub(old_seq) & 0x7F;

@@ -198,7 +198,7 @@ class TestMetrics:
         cbor2 construction (cross-validated against RFC 8428 example structure).
         Avoids using pack() as self-oracle.
         """
-        from lichen.senml.codec import pack, make_base_name, SenmlRecord
+        from lichen.senml.codec import SenmlRecord, make_base_name, pack
         bn = make_base_name(bytes.fromhex("0011223344556677"))
         records = [SenmlRecord(bn=bn)] + metrics(rssi=-85, battery=75.0)
         payload = pack(records)

@@ -15,7 +15,6 @@ implementation drifts from the committed files.
 from __future__ import annotations
 
 import json
-import struct
 from ipaddress import IPv6Address
 from pathlib import Path
 

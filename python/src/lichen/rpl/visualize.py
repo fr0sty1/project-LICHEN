@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 from __future__ import annotations
+
 from typing import Optional
 
 """DODAG visualization for the simulation harness (spec section 8).
@@ -23,7 +24,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from lichen.rpl.dodag import DodagState
 
-    from lichen.rpl.dodag import DodagState
 
 Topology = dict[str, Optional[str]]  # noqa: UP045
 

@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 from __future__ import annotations
+
 from typing import Union
 
 """LOADng control message codecs (spec section 10, appendix B2).
@@ -22,7 +23,6 @@ The default unsigned signature is empty; a signed message carries 48 bytes.
 from dataclasses import dataclass, field
 from enum import IntEnum
 from ipaddress import IPv6Address
-from typing import Union
 
 from lichen.ipv6.icmpv6 import Icmpv6Message
 

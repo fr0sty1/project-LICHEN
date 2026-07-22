@@ -431,7 +431,6 @@ class TestKnownVectors:
             seq_num=0x1234,
             hop_count=3,
             flags=0,
-            rx_channel=5,
             signature=bytes([0xBB] * SIGNATURE_LENGTH),
             app_data=b"",
             rx_channel=7,

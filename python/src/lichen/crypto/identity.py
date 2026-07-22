@@ -25,7 +25,6 @@ from nacl.bindings import crypto_scalarmult_base
 from .schnorr48 import derive_keypair
 
 
-
 @dataclass
 class Identity:
     """A node's cryptographic identity.

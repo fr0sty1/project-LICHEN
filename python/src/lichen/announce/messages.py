@@ -194,7 +194,6 @@ class AnnounceMessage:
             signature=signature,
             app_data=app_data,
             flags=flags,
-            rx_channel=rx_channel,
         )
 
     def with_incremented_hop_count(self) -> AnnounceMessage:
@@ -212,7 +211,6 @@ class AnnounceMessage:
             signature=self.signature,
             app_data=self.app_data,
             flags=self.flags,
-            rx_channel=self.rx_channel,
         )
 
     def should_relay(self) -> bool:

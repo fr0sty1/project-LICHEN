@@ -35,10 +35,9 @@ log = { version = "0.4", default-features = false, optional = true }
 
 [dev-dependencies]
 hex-literal = "0.4"
-rand_core = { version = "0.6", features = ["getrandom"] }
+rand_core = { version = "0.6", default-features = false, features = ["getrandom", "std"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-rand_core = { version = "0.6", default-features = false, features = ["getrandom", "std"] }
 
 [features]
 default = []

@@ -104,7 +104,12 @@ pub async fn neighbors(node: SocketAddr, fmt: &OutputFormat) -> CmdResult {
                 for n in &ns.neighbors {
                     println!(
                         "  {} rssi={:3} snr={:.1} etx={:.1} seen={}s trust={}",
-                        n.addr, n.rssi_dbm, n.snr_db(), n.etx(), n.last_seen_s, n.trust
+                        n.addr,
+                        n.rssi_dbm,
+                        n.snr_db(),
+                        n.etx(),
+                        n.last_seen_s,
+                        n.trust
                     );
                 }
             }
@@ -157,7 +162,6 @@ pub async fn inbox(node: SocketAddr, fmt: &OutputFormat) -> CmdResult {
     }
     Ok(())
 }
-
 
 pub async fn key(node: SocketAddr, action: KeyAction, fmt: &OutputFormat) -> CmdResult {
     match action {

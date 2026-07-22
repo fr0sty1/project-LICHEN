@@ -172,7 +172,11 @@ mod tests {
         let id = Identity::from_seed(seed);
         let direct = yggdrasil_addr_from_pubkey(&id.pubkey);
         assert_eq!(direct[0], 0x02, "must start with Yggdrasil prefix");
-        assert_eq!(&direct[8..], &id.iid[..], "lower 64 bits must match LICHEN IID");
+        assert_eq!(
+            &direct[8..],
+            &id.iid[..],
+            "lower 64 bits must match LICHEN IID"
+        );
         // deterministic
         assert_eq!(direct, yggdrasil_addr_from_pubkey(&id.pubkey));
     }
