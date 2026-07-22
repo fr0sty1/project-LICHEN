@@ -1,8 +1,9 @@
-//! Duty cycle tracking for regulatory compliance.
+//! Duty cycle tracking for regulatory compliance (CCP-16 integration).
 //!
 //! EU 868 MHz and similar bands require duty cycle limits (typically 1% per
 //! sub-band over a 1-hour rolling window). This module tracks transmission
-//! history and provides methods to query remaining budget.
+//! history and provides methods to query remaining budget. Adaptive logic
+//! respects density from RPL DIOs per worker8 CCP-16 changes.
 //!
 //! # Fixed-Point Representation
 //!
