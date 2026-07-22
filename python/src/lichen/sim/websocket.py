@@ -233,18 +233,13 @@ class WebSocketObserver:
         self._sim_id = sim_id
 
     def _broadcast(self, event_type: str, **data: Any) -> None:
-        """Schedule a broadcast (non-blocking).
-
-        Creates an async task to send the event. This allows the simulation
-        to continue without waiting for WebSocket sends.
-        """
         try:
             loop = asyncio.get_running_loop()
-            loop.create_task(
+            task = loop.create_task(
                 self._manager.broadcast_to_sim(self._sim_id, event_type, data)
             )
+            task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
         except RuntimeError:
-            # No event loop running (e.g., during tests)
             pass
 
     def on_tx_start(
@@ -409,6 +404,12 @@ async def handle_websocket(
             elif cmd == "subscribe":
                 events = data.get("events", [])
                 if isinstance(events, list):
+                    if not all(isinstance(e, str) for e in events):
+                        await websocket.send_json({
+                            "event": "error",
+                            "message": "events must be a list of strings",
+                        })
+                        continue
                     client.subscriptions.update(events)
                     await websocket.send_json({
                         "event": "subscribed",
@@ -418,6 +419,12 @@ async def handle_websocket(
             elif cmd == "unsubscribe":
                 events = data.get("events", [])
                 if isinstance(events, list):
+                    if not all(isinstance(e, str) for e in events):
+                        await websocket.send_json({
+                            "event": "error",
+                            "message": "events must be a list of strings",
+                        })
+                        continue
                     client.subscriptions.difference_update(events)
                     await websocket.send_json({
                         "event": "unsubscribed",

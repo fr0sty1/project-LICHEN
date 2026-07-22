@@ -461,8 +461,12 @@ class SimulatorAPI:
         if not groups_raw:
             return _error_response("Missing required field: groups")
 
-        if not isinstance(groups_raw, list):
-            return _error_response("groups must be a list of lists")
+        if not isinstance(groups_raw, list) or not groups_raw:
+            return _error_response("groups must be a non-empty list of lists")
+
+        for group in groups_raw:
+            if not isinstance(group, list) or not group or not all(isinstance(item, str) for item in group):
+                return _error_response("each group must be a non-empty list of string node IDs")
 
         try:
             groups = [set(group) for group in groups_raw]
