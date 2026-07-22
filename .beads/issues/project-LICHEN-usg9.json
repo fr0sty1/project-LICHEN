@@ -2,15 +2,15 @@
   "id": "project-LICHEN-usg9",
   "title": "[merge-conflict] worktree-worker23: heltec_wireless_tracker.overlay",
   "notes": "Commit: 9fe388b96",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:41:06.091598824Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:44:40.114441904Z",
+  "updated_at": "2026-07-22T23:44:42.078342229Z",
   "started_at": "2026-07-22T23:41:39.828235589Z",
-  "lease_expires_at": "2026-07-22T23:46:39.828235589Z",
-  "heartbeat_at": "2026-07-22T23:41:39.828235589Z"
+  "closed_at": "2026-07-22T23:44:42.078342229Z",
+  "close_reason": "Restored STALE heltec_wireless_tracker bridge overlay and conf with retirement documentation per matrix and previous 2u26 work; resolved merge conflict by keeping ours"
 }
