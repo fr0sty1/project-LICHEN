@@ -219,6 +219,8 @@ pub const DODAG_CONFIG_DATA_LEN: usize = 14;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DodagConfig {
+    pub pcs: u8,
+    pub a_flag: bool,
     pub min_hop_rank_increase: u16,
     pub max_rank_increase: u16,
     pub ocp: u16,
@@ -232,9 +234,11 @@ pub struct DodagConfig {
 impl Default for DodagConfig {
     fn default() -> Self {
         Self {
+            pcs: 0,
+            a_flag: false,
             min_hop_rank_increase: 256,
             max_rank_increase: 2048,
-            ocp: 1, // MRHOF
+            ocp: 1,
             def_lifetime: 0xFF,
             lifetime_unit: 60,
             dio_int_min: 3,
@@ -249,7 +253,12 @@ impl DodagConfig {
         if data.len() < DODAG_CONFIG_DATA_LEN {
             return Err(TooShort::new(DODAG_CONFIG_DATA_LEN, data.len()).into());
         }
+        let flags = data[0];
+        let pcs = flags & 0x07;
+        let a_flag = (flags & 0x10) != 0;
         Ok(Self {
+            pcs,
+            a_flag,
             dio_int_doublings: data[1],
             dio_int_min: data[2],
             dio_redundancy_const: data[3],
@@ -268,7 +277,8 @@ impl DodagConfig {
         }
         out[0] = OPT_DODAG_CONFIG;
         out[1] = DODAG_CONFIG_DATA_LEN as u8;
-        out[2] = 0; // A/PCS flags
+        let flags = ((self.a_flag as u8) << 4) | (self.pcs & 0x07);
+        out[2] = flags;
         out[3] = self.dio_int_doublings;
         out[4] = self.dio_int_min;
         out[5] = self.dio_redundancy_const;
@@ -278,7 +288,7 @@ impl DodagConfig {
         out[9] = self.min_hop_rank_increase as u8;
         out[10] = (self.ocp >> 8) as u8;
         out[11] = self.ocp as u8;
-        out[12] = 0; // reserved
+        out[12] = 0;
         out[13] = self.def_lifetime;
         out[14] = (self.lifetime_unit >> 8) as u8;
         out[15] = self.lifetime_unit as u8;
@@ -624,6 +634,8 @@ mod tests {
         assert_eq!(buf[1], 14);
 
         let decoded = DodagConfig::from_bytes(&buf[2..n]).unwrap();
+        assert_eq!(decoded.pcs, 0);
+        assert_eq!(decoded.a_flag, false);
         assert_eq!(decoded.min_hop_rank_increase, 256);
         assert_eq!(decoded.max_rank_increase, 2048);
         assert_eq!(decoded.ocp, 1);

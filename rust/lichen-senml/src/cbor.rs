@@ -452,6 +452,12 @@ fn skip_one_depth(data: &[u8], pos: usize, depth: usize) -> Result<usize, CborEr
         }
         7 => match info {
             20..=23 => Ok(1),
+            24 => {
+                if pos + 2 > data.len() {
+                    return Err(CborError::InvalidInput);
+                }
+                Ok(2)
+            }
             25 => {
                 if pos + 3 > data.len() {
                     return Err(CborError::InvalidInput);
