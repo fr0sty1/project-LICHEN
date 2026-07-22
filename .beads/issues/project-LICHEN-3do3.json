@@ -2,15 +2,15 @@
   "id": "project-LICHEN-3do3",
   "title": "firmware_version validation logic duplicated in adapter.c and codec.c",
   "description": "Files: \n- lichen/subsys/lichen/meshtastic/adapter.c:1235-1273 (has_compatible_firmware_brand, starts_with_lichen_brand)\n- lichen/subsys/lichen/meshtastic/codec.c:477-511 (info_firmware_version)\n\nBoth files independently implement the same firmware version validation logic:\n1. Check string starts with LICHEN brand\n2. Scan for 'meshtastic' substring (case-insensitive)\n3. Reject if found\n\nIf the validation rules change, both implementations must be updated.\n\nFix: Extract the validation into a single shared function.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:48:11.820437Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:09:55.848856066Z",
+  "updated_at": "2026-07-22T23:14:16.150838717Z",
   "started_at": "2026-07-22T23:09:55.848856066Z",
-  "lease_expires_at": "2026-07-22T23:14:55.848856066Z",
-  "heartbeat_at": "2026-07-22T23:09:55.848856066Z"
+  "closed_at": "2026-07-22T23:14:16.150838717Z",
+  "close_reason": "Duplication removed; shared function lichen_meshtastic_has_compatible_firmware_brand now in codec.c and used by both adapter and info_firmware_version. Behavior and tests preserved."
 }
