@@ -3,7 +3,7 @@
 
 /**
  * @file schc.c
- * @brief SCHC compress/decompress (RFC 8724) - rules 0-7 + uncompressed fallback
+ * @brief SCHC compress/decompress (RFC 8724) - rules 0-4 + uncompressed fallback
  *
  * Ported from rust/lichen-schc/src/codec.rs.
  * Bit order: MSB-first (network bit order). The residue is zero-padded to
@@ -746,6 +746,7 @@ static int compress_coap(const uint8_t *packet, size_t pkt_len,
 	const uint8_t *src = ipv6_src(packet);
 	const uint8_t *dst = ipv6_dst(packet);
 
+	/* Validate addresses match rule to prevent silent corruption. */
 	if (rule_id == SCHC_RULE_LINK_LOCAL_COAP || rule_id == SCHC_RULE_LINK_LOCAL_OSCORE) {
 		if (!is_link_local(src) || !is_link_local(dst)) {
 			return SCHC_ERR_NO_MATCHING_RULE;
@@ -760,7 +761,7 @@ static int compress_coap(const uint8_t *packet, size_t pkt_len,
 	uint16_t src_port = udp_src_port(udp);
 	uint16_t dst_port = udp_dst_port(udp);
 	const uint8_t *coap = udp_payload(udp);
-	if (((coap[0] >> 6) & 0x3) != 1) {
+	if ((coap[SCHC_COAP_VER_TYPE_TKL_OFFSET] >> 6) != 1) {
 		return SCHC_ERR_NO_MATCHING_RULE;
 	}
 	uint8_t type = coap_type(coap);
@@ -892,8 +893,7 @@ static int compress_rpl_dio(const uint8_t *packet, size_t pkt_len,
 }
 
 /**
- * Rule 4: RPL DAO with routable ULA source for multi-hop. Preserves end-to-end
- * source address per security spec (relays forward without rewrite).
+ * Rule 4: link-local IPv6 + ICMPv6 RPL DAO with DODAGID.
  */
 static int compress_rpl_dao(const uint8_t *packet, size_t pkt_len,
 			    uint8_t *out, size_t out_len)
@@ -923,9 +923,7 @@ static int compress_rpl_dao(const uint8_t *packet, size_t pkt_len,
 	struct schc_bit_writer w;
 	schc_bit_writer_init(&w, &out[1], out_len - 1);
 
-	if (schc_bit_writer_write(&w, hop_limit, 8) < 0 ||
-	    schc_bit_writer_write128(&w, src, 128) < 0 ||
-	    schc_bit_writer_write128(&w, dst, 128) < 0 ||
+	if (compress_link_local_header(&w, hop_limit, src, dst) < 0 ||
 	    schc_bit_writer_write(&w, instance, 8) < 0 ||
 	    schc_bit_writer_write(&w, kd_flags, 8) < 0 ||
 	    schc_bit_writer_write(&w, seq, 8) < 0 ||
@@ -962,7 +960,6 @@ static int decompress_coap(const uint8_t *data, size_t data_len,
 	uint8_t src[16], dst[16];
 
 	if (rule_id == SCHC_RULE_LINK_LOCAL_COAP || rule_id == SCHC_RULE_LINK_LOCAL_OSCORE) {
-		/* Reconstruct link-local prefix + IID */
 		memset(src, 0, 16);
 		memset(dst, 0, 16);
 		src[0] = 0xFE;
@@ -1089,7 +1086,7 @@ static int decompress_icmpv6_echo(const uint8_t *data, size_t data_len,
 		memcpy(icmpv6_echo_tail_mut(icmp), tail, tail_len);
 	}
 
-	uint16_t cksum = icmpv6_checksum(src, dst, icmp, (uint16_t)icmp_len);
+	uint16_t cksum = icmpv6_checksum(src, dst, icmp, icmp_len);
 	icmpv6_write_checksum(icmp, cksum);
 
 	return (int)total;
@@ -1167,7 +1164,7 @@ static int decompress_rpl_dio(const uint8_t *data, size_t data_len,
 		memcpy(rpl_dio_tail_mut(rpl), tail, tail_len);
 	}
 
-	uint16_t cksum = icmpv6_checksum(src, dst, icmp, (uint16_t)icmp_len);
+	uint16_t cksum = icmpv6_checksum(src, dst, icmp, icmp_len);
 	icmpv6_write_checksum(icmp, cksum);
 
 	return (int)total;
@@ -1177,10 +1174,10 @@ static int decompress_rpl_dao(const uint8_t *data, size_t data_len,
 			      uint8_t *out, size_t out_len)
 {
 	/*
-	 * Minimum residue size (excluding rule ID byte) for routable source:
-	 * 8 + 128 + 128 + 8 + 8 + 8 + 128 = 416 bits = 52 bytes
+	 * Minimum residue size (excluding rule ID byte):
+	 * 8 + 64 + 64 + 8 + 8 + 8 + 128 = 288 bits = 36 bytes
 	 */
-	if (data_len < 1 + 52) {
+	if (data_len < 1 + 36) {
 		return SCHC_ERR_TOO_SHORT;
 	}
 
@@ -1190,9 +1187,19 @@ static int decompress_rpl_dao(const uint8_t *data, size_t data_len,
 	uint64_t hop_limit;
 	uint8_t src[16], dst[16];
 
-	if (schc_bit_reader_read(&r, 8, &hop_limit) < 0 ||
-	    schc_bit_reader_read_bytes(&r, 128, src, 16) < 0 ||
-	    schc_bit_reader_read_bytes(&r, 128, dst, 16) < 0) {
+	if (schc_bit_reader_read(&r, 8, &hop_limit) < 0) {
+		return SCHC_ERR_TOO_SHORT;
+	}
+
+	memset(src, 0, 16);
+	memset(dst, 0, 16);
+	src[0] = 0xFE;
+	src[1] = 0x80;
+	dst[0] = 0xFE;
+	dst[1] = 0x80;
+
+	if (schc_bit_reader_read_bytes(&r, 64, &src[8], 8) < 0 ||
+	    schc_bit_reader_read_bytes(&r, 64, &dst[8], 8) < 0) {
 		return SCHC_ERR_TOO_SHORT;
 	}
 
@@ -1232,7 +1239,7 @@ static int decompress_rpl_dao(const uint8_t *data, size_t data_len,
 		memcpy(rpl_dao_tail_mut(rpl), tail, tail_len);
 	}
 
-	uint16_t cksum = icmpv6_checksum(src, dst, icmp, (uint16_t)icmp_len);
+	uint16_t cksum = icmpv6_checksum(src, dst, icmp, icmp_len);
 	icmpv6_write_checksum(icmp, cksum);
 
 	return (int)total;
@@ -1316,10 +1323,13 @@ static int lichen_rule_compress_rpl_dao(const struct schc_rule *rule,
 		return SCHC_ERR_NO_MATCHING_RULE;
 	}
 
+	const uint8_t *src = ipv6_src(packet);
+	const uint8_t *dst = ipv6_dst(packet);
 	const uint8_t *icmp = ipv6_payload(packet);
 
 	if (icmpv6_type(icmp) != ICMPV6_TYPE_RPL ||
-	    icmpv6_code(icmp) != ICMPV6_CODE_RPL_DAO) {
+	    icmpv6_code(icmp) != ICMPV6_CODE_RPL_DAO ||
+	    !is_link_local(src) || !is_link_local(dst)) {
 		return SCHC_ERR_NO_MATCHING_RULE;
 	}
 

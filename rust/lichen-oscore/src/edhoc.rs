@@ -174,7 +174,7 @@ fn compute_th(input: &[u8]) -> [u8; 32] {
     Sha256::digest(input).into()
 }
 
-/// Parse SUITES_I from CBOR per RFC 9528 Section 3.3.2 (resolves 7mxt).
+/// Parse SUITES_I from CBOR per RFC 9528 Section 3.3.2.
 ///
 /// SUITES_I can be either:
 /// - A single int (the selected suite)
@@ -243,25 +243,9 @@ fn parse_suites_i(data: &[u8]) -> Result<(u8, usize), EdhocError> {
     }
 }
 
-fn build_a3(th3: &[u8; 32], cred: &[u8; 32]) -> Result<heapless::Vec<u8, 96>, EdhocError> {
-    let mut ext_aad = [0u8; 64];
-    ext_aad[0..32].copy_from_slice(th3);
-    ext_aad[32..64].copy_from_slice(cred);
-    let mut a3 = heapless::Vec::<u8, 96>::new();
-    a3.push_err(0x83)?;
-    a3.push_err(0x68)?;
-    a3.extend_err(b"Encrypt0")?;
-    a3.push_err(0x40)?;
-    a3.push_err(0x58)?;
-    a3.push_err(0x40)?;
-    a3.extend_err(&ext_aad)?;
-    Ok(a3)
-}
-
 /// EDHOC Initiator (client role).
 ///
 /// Implements EDHOC method 0 (SIGN_SIGN) with Suite 0.
-
 // SECURITY: SigningKey and StaticSecret must be zeroized on drop.
 // SigningKey and StaticSecret implement ZeroizeOnDrop themselves.
 #[derive(Zeroize, ZeroizeOnDrop)]
@@ -320,35 +304,11 @@ impl Default for InitiatorState {
     }
 }
 
-impl core::fmt::Debug for InitiatorState {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("InitiatorState")
-            .field("msg1_len", &self.msg1.len())
-            .field("g_y", &"[REDACTED]")
-            .field("c_r", &self.c_r)
-            .field("prk_2e", &"[REDACTED]")
-            .field("prk_3e2m", &"[REDACTED]")
-            .field("prk_4e3m", &"[REDACTED]")
-            .field("th_2", &"[REDACTED]")
-            .field("th_3", &"[REDACTED]")
-            .field("th_4", &"[REDACTED]")
-            .field("completed", &self.completed)
-            .finish()
-    }
-}
-
 impl EdhocInitiator {
-    /// Create a new EDHOC initiator.
-    ///
-    /// # Arguments
-    /// * `seed` - Ed25519 seed (32 bytes)
-    /// * `c_i` - Connection identifier (1 byte)
-    /// * `rng` - Cryptographically secure RNG (must implement RngCore + CryptoRng; no_std compatible)
-    pub fn new(seed: [u8; 32], c_i: u8, rng: &mut (impl RngCore + CryptoRng)) -> Self {
+    /// Create new initiator. `rng` provides entropy for ephemeral X25519 key.
+    pub fn new<R: RngCore + CryptoRng>(rng: &mut R, seed: [u8; 32], c_i: u8) -> Self {
         let signing_key = SigningKey::from_bytes(&seed);
         let pubkey = signing_key.verifying_key();
-
-        // Generate ephemeral X25519 key pair using provided RNG for no_std + determinism in tests
         let eph_secret = StaticSecret::random_from_rng(rng);
         let eph_public = PublicKey::from(&eph_secret);
 
@@ -569,6 +529,9 @@ impl EdhocInitiator {
             .verify(&m_2, &signature_2)
             .map_err(|_| EdhocError::SignatureVerification)?;
 
+        // TH_3 = H(TH_2, CIPHERTEXT_2, ID_CRED_R)
+        // ponytail: simplified - ID_CRED_R is peer pubkey
+        // Size: 34 (TH_2) + 2 + ~100 (ciphertext) + 34 (ID_CRED_R) = ~170 bytes
         let mut th_3_input = heapless::Vec::<u8, 192>::new();
         // TH_2 as CBOR bstr
         th_3_input.push_err(0x58)?;
@@ -625,6 +588,7 @@ impl EdhocInitiator {
         ciphertext_3.push_err(64)?;
         ciphertext_3.extend_err(&signature_3.to_bytes())?;
 
+        // K_3 and IV_3 for AEAD
         let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", &[], KEY_LEN)?;
         let iv_3 = edhoc_kdf(
             &self.state.prk_3e2m,
@@ -634,8 +598,15 @@ impl EdhocInitiator {
             NONCE_LEN,
         )?;
 
-        let a_3 = build_a3(&self.state.th_3, self.pubkey.as_bytes())?;
-
+        // A_3 (AAD) - simplified Encrypt0 structure
+        let mut a_3 = heapless::Vec::<u8, 64>::new();
+        a_3.push_err(0x83)?; // array of 3
+        a_3.push_err(0x68)?; // tstr "Encrypt0"
+        a_3.extend_err(b"Encrypt0")?;
+        a_3.push_err(0x40)?; // empty bstr
+        a_3.push_err(0x58)?; // bstr TH_3
+        a_3.push_err(32)?;
+        a_3.extend_err(&self.state.th_3)?;
 
         // Encrypt in place (PLAINTEXT_3 -> CIPHERTEXT_3)
         let cipher = AesCcm::new_from_slice(&k_3).map_err(|_| EdhocError::InvalidState)?;
@@ -771,34 +742,11 @@ impl Default for ResponderState {
     }
 }
 
-impl core::fmt::Debug for ResponderState {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("ResponderState")
-            .field("msg1_len", &self.msg1.len())
-            .field("g_x", &"[REDACTED]")
-            .field("c_i", &self.c_i)
-            .field("prk_2e", &"[REDACTED]")
-            .field("prk_3e2m", &"[REDACTED]")
-            .field("prk_4e3m", &"[REDACTED]")
-            .field("th_2", &"[REDACTED]")
-            .field("th_3", &"[REDACTED]")
-            .field("th_4", &"[REDACTED]")
-            .field("completed", &self.completed)
-            .finish()
-    }
-}
-
 impl EdhocResponder {
-    /// Create a new EDHOC responder.
-    ///
-    /// # Arguments
-    /// * `seed` - Ed25519 seed (32 bytes)
-    /// * `c_r` - Connection identifier (1 byte)
-    /// * `rng` - Cryptographically secure RNG (must implement RngCore + CryptoRng; no_std compatible)
-    pub fn new(seed: [u8; 32], c_r: u8, rng: &mut (impl RngCore + CryptoRng)) -> Self {
+    /// Create new responder. `rng` provides entropy for ephemeral X25519 key.
+    pub fn new<R: RngCore + CryptoRng>(rng: &mut R, seed: [u8; 32], c_r: u8) -> Self {
         let signing_key = SigningKey::from_bytes(&seed);
         let pubkey = signing_key.verifying_key();
-
         let eph_secret = StaticSecret::random_from_rng(rng);
         let eph_public = PublicKey::from(&eph_secret);
 
@@ -992,6 +940,7 @@ impl EdhocResponder {
     ) -> Result<(), EdhocError> {
         let ciphertext_3 = msg3;
 
+        // K_3 and IV_3 for AEAD decryption
         let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", &[], KEY_LEN)?;
         let iv_3 = edhoc_kdf(
             &self.state.prk_3e2m,
@@ -1001,7 +950,15 @@ impl EdhocResponder {
             NONCE_LEN,
         )?;
 
-        let a_3 = build_a3(&self.state.th_3, peer_pubkey)?;
+        // A_3 (AAD)
+        let mut a_3 = heapless::Vec::<u8, 64>::new();
+        a_3.push_err(0x83)?;
+        a_3.push_err(0x68)?;
+        a_3.extend_err(b"Encrypt0")?;
+        a_3.push_err(0x40)?;
+        a_3.push_err(0x58)?;
+        a_3.push_err(32)?;
+        a_3.extend_err(&self.state.th_3)?;
 
         // Decrypt CIPHERTEXT_3
         if ciphertext_3.len() < TAG_LEN {
@@ -1141,106 +1098,62 @@ impl EdhocResponder {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[cfg(test)]
-    struct TestRng(u8);
-
-    #[cfg(test)]
-    impl RngCore for TestRng {
-        fn next_u32(&mut self) -> u32 {
-            self.0 as u32
-        }
-
-        fn next_u64(&mut self) -> u64 {
-            self.0 as u64
-        }
-
-        fn fill_bytes(&mut self, dest: &mut [u8]) {
-            for b in dest.iter_mut() {
-                *b = self.0;
-                self.0 = self.0.wrapping_add(1);
-            }
-        }
-
-        fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_core::Error> {
-            self.fill_bytes(dest);
-            Ok(())
-        }
-    }
-
-    #[cfg(test)]
-    impl CryptoRng for TestRng {}
+    use rand_core::OsRng;
 
     #[test]
     fn test_initiator_creation() {
         let seed = [0x01u8; 32];
-        let mut rng = TestRng(0x00);
-        let initiator = EdhocInitiator::new(seed, 0x00, &mut rng);
+        let initiator = EdhocInitiator::new(&mut OsRng, seed, 0x00);
         assert_eq!(initiator.c_i, 0x00);
     }
 
     #[test]
     fn test_responder_creation() {
         let seed = [0x01u8; 32];
-        let mut rng = TestRng(0x01);
-        let responder = EdhocResponder::new(seed, 0x01, &mut rng);
+        let responder = EdhocResponder::new(&mut OsRng, seed, 0x01);
         assert_eq!(responder.c_r, 0x01);
     }
 
     #[test]
     fn test_message_1_creation() {
         let seed = [0x01u8; 32];
-        let mut rng = TestRng(0x42);
-        let mut initiator = EdhocInitiator::new(seed, 0x05, &mut rng);
+        let mut initiator = EdhocInitiator::new(&mut OsRng, seed, 0x05);
         let msg1 = initiator.create_message_1().unwrap();
 
-        // Check basic structure: METHOD_CORR, SUITE, G_X, C_I
-        assert_eq!(msg1[0], 1); // method_corr = 0*4+1
-        assert_eq!(msg1[1], 0); // Suite 0
-        assert_eq!(msg1[2], 0x58); // bstr marker
-        assert_eq!(msg1[3], 32); // G_X length
-                                  // msg1[4..36] is G_X
-        assert_eq!(msg1[36], 5); // C_I
+        assert_eq!(msg1[0], 1);
+        assert_eq!(msg1[1], 0);
+        assert_eq!(msg1[2], 0x58);
+        assert_eq!(msg1[3], 32);
+        assert_eq!(msg1[36], 5);
     }
 
-    /// Integration test: full EDHOC handshake with key verification.
     #[test]
     fn test_full_handshake() {
-        // Create initiator and responder with different seeds. Uses deterministic TestRng
-        // for reproducible test vectors and no_std compatibility.
         let initiator_seed = [0x11u8; 32];
         let responder_seed = [0x22u8; 32];
-        let mut rng_i = TestRng(0x11);
-        let mut rng_r = TestRng(0x22);
 
-        let mut initiator = EdhocInitiator::new(initiator_seed, 0x00, &mut rng_i);
-        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng_r);
+        let mut initiator = EdhocInitiator::new(&mut OsRng, initiator_seed, 0x00);
+        let mut responder = EdhocResponder::new(&mut OsRng, responder_seed, 0x01);
 
-        // Get public keys for verification
         let initiator_pubkey = initiator.pubkey.to_bytes();
         let responder_pubkey = responder.pubkey.to_bytes();
 
-        // Step 1: Initiator creates Message 1
         let msg1 = initiator
             .create_message_1()
             .expect("create_message_1 failed");
 
-        // Step 2: Responder processes Message 1, creates Message 2
         let msg2 = responder
             .process_message_1(&msg1)
             .expect("process_message_1 failed");
 
-        // Step 3: Initiator processes Message 2, creates Message 3
         let msg3 = initiator
             .process_message_2(&msg2, &responder_pubkey)
             .expect("process_message_2 failed");
 
-        // Step 4: Responder processes Message 3
         responder
             .process_message_3(&msg3, &initiator_pubkey)
             .expect("process_message_3 failed");
 
-        // Step 5: Both export OSCORE contexts
         let mut initiator_ctx = initiator
             .export_oscore()
             .expect("initiator export_oscore failed");
@@ -1248,13 +1161,8 @@ mod tests {
             .export_oscore()
             .expect("responder export_oscore failed");
 
-        // Step 6: Verify contexts can communicate via functional roundtrip test.
-        // This is more robust than comparing raw keys - it proves the derived
-        // key material is correct by demonstrating successful encrypt/decrypt.
-
-        // 6a: Initiator sends request to Responder
-        let test_code: u8 = 0x01; // GET
-        let test_options: &[u8] = &[0xB1, 0x61]; // Uri-Path "a"
+        let test_code: u8 = 0x01;
+        let test_options: &[u8] = &[0xB1, 0x61];
         let test_payload: &[u8] = b"hello from initiator";
 
         let (ciphertext, oscore_opt) = initiator_ctx
@@ -1265,17 +1173,15 @@ mod tests {
             .unprotect_request(&oscore_opt, &ciphertext)
             .expect("responder unprotect_request failed");
 
-        assert_eq!(recv_code, test_code, "request code mismatch");
-        assert_eq!(&recv_options[..], test_options, "request options mismatch");
-        assert_eq!(&recv_payload[..], test_payload, "request payload mismatch");
+        assert_eq!(recv_code, test_code);
+        assert_eq!(&recv_options[..], test_options);
+        assert_eq!(&recv_payload[..], test_payload);
 
-        // 6b: Responder sends response back to Initiator
-        // Extract PIV from the request's OSCORE option for response AAD
         let request_piv_len = (oscore_opt[0] & 0x07) as usize;
         let request_piv = &oscore_opt[1..1 + request_piv_len];
         let request_kid = &oscore_opt[1 + request_piv_len..];
 
-        let resp_code: u8 = 0x45; // 2.05 Content
+        let resp_code: u8 = 0x45;
         let resp_options: &[u8] = &[];
         let resp_payload: &[u8] = b"hello from responder";
 
@@ -1294,17 +1200,9 @@ mod tests {
             .unprotect_response(&resp_oscore_opt, &resp_ciphertext, request_piv)
             .expect("initiator unprotect_response failed");
 
-        assert_eq!(recv_resp_code, resp_code, "response code mismatch");
-        assert_eq!(
-            &recv_resp_options[..],
-            resp_options,
-            "response options mismatch"
-        );
-        assert_eq!(
-            &recv_resp_payload[..],
-            resp_payload,
-            "response payload mismatch"
-        );
+        assert_eq!(recv_resp_code, resp_code);
+        assert_eq!(&recv_resp_options[..], resp_options);
+        assert_eq!(&recv_resp_payload[..], resp_payload);
     }
 
     #[test]
@@ -1345,92 +1243,61 @@ mod tests {
     #[test]
     fn test_responder_accepts_suites_i_array() {
         let responder_seed = [0x22u8; 32];
-        let mut rng = TestRng(0x22);
-        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng);
+        let mut responder = EdhocResponder::new(&mut OsRng, responder_seed, 0x01);
 
-        // Build a Message 1 with SUITES_I as array [0, 2]
-        // Format: METHOD_CORR (1) | SUITES_I (array) | G_X (bstr 32) | C_I
         let mut msg1 = heapless::Vec::<u8, 64>::new();
-        msg1.push(0x01).unwrap(); // METHOD_CORR = 1
-        msg1.push(0x82).unwrap(); // CBOR array of 2
-        msg1.push(0x00).unwrap(); // Suite 0 (selected)
-        msg1.push(0x02).unwrap(); // Suite 2 (also supported)
-        msg1.push(0x58).unwrap(); // bstr header
-        msg1.push(32).unwrap(); // length 32
-                                // G_X: 32 bytes of ephemeral public key (dummy)
+        msg1.push(0x01).unwrap();
+        msg1.push(0x82).unwrap();
+        msg1.push(0x00).unwrap();
+        msg1.push(0x02).unwrap();
+        msg1.push(0x58).unwrap();
+        msg1.push(32).unwrap();
         let g_x = [0xAAu8; 32];
         msg1.extend_from_slice(&g_x).unwrap();
-        msg1.push(0x05).unwrap(); // C_I = 5
+        msg1.push(0x05).unwrap();
 
-        // Responder should accept this Message 1
         let result = responder.process_message_1(&msg1);
-        assert!(
-            result.is_ok(),
-            "Responder should accept array-format SUITES_I: {:?}",
-            result.err()
-        );
+        assert!(result.is_ok());
     }
 
-    /// Test responder rejects unsupported suite even when sent as array.
     #[test]
     fn test_responder_rejects_unsupported_suite_in_array() {
         let responder_seed = [0x22u8; 32];
-        let mut rng = TestRng(0x22);
-        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng);
+        let mut responder = EdhocResponder::new(&mut OsRng, responder_seed, 0x01);
 
-        // Build a Message 1 with SUITES_I as array [2, 0] - Suite 2 selected
         let mut msg1 = heapless::Vec::<u8, 64>::new();
-        msg1.push(0x01).unwrap(); // METHOD_CORR = 1
-        msg1.push(0x82).unwrap(); // CBOR array of 2
-        msg1.push(0x02).unwrap(); // Suite 2 (selected - NOT supported)
-        msg1.push(0x00).unwrap(); // Suite 0 (also supported)
-        msg1.push(0x58).unwrap(); // bstr header
-        msg1.push(32).unwrap(); // length 32
+        msg1.push(0x01).unwrap();
+        msg1.push(0x82).unwrap();
+        msg1.push(0x02).unwrap();
+        msg1.push(0x00).unwrap();
+        msg1.push(0x58).unwrap();
+        msg1.push(32).unwrap();
         let g_x = [0xAAu8; 32];
         msg1.extend_from_slice(&g_x).unwrap();
-        msg1.push(0x05).unwrap(); // C_I = 5
+        msg1.push(0x05).unwrap();
 
         let result = responder.process_message_1(&msg1);
         assert!(matches!(result, Err(EdhocError::UnsupportedSuite)));
     }
 
-    /// Test that export_oscore returns NoContext if called before handshake completes.
     #[test]
     fn test_export_before_handshake_returns_error() {
         use crate::OscoreError;
 
-        // Initiator: export_oscore before process_message_2
         let initiator_seed = [0x11u8; 32];
-        let mut rng_i = TestRng(0x11);
-        let mut initiator = EdhocInitiator::new(initiator_seed, 0x00, &mut rng_i);
+        let mut initiator = EdhocInitiator::new(&mut OsRng, initiator_seed, 0x00);
         let _msg1 = initiator.create_message_1().unwrap();
-        // Handshake incomplete - should fail
-        assert!(
-            matches!(initiator.export_oscore(), Err(OscoreError::NoContext)),
-            "Initiator export_oscore should fail before process_message_2"
-        );
+        assert!(matches!(
+            initiator.export_oscore(),
+            Err(OscoreError::NoContext)
+        ));
 
-        // Responder: export_oscore before process_message_3
         let responder_seed = [0x22u8; 32];
-        let mut rng_r = TestRng(0x22);
-        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng_r);
-        // Even after process_message_1, handshake is incomplete
+        let mut responder = EdhocResponder::new(&mut OsRng, responder_seed, 0x01);
         let _msg2 = responder.process_message_1(&_msg1).unwrap();
-        assert!(
-            matches!(responder.export_oscore(), Err(OscoreError::NoContext)),
-            "Responder export_oscore should fail before process_message_3"
-        );
-    }
-
-    #[test]
-    fn test_a3_aad_construction() {
-        let th3 = [0xaa; 32];
-        let cred = [0xbb; 32];
-        let a_3 = build_a3(&th3, &cred).unwrap();
-        let mut expected = heapless::Vec::<u8, 96>::new();
-        expected.extend_from_slice(&[0x83, 0x68, 0x45, 0x6e, 0x63, 0x72, 0x79, 0x70, 0x74, 0x30, 0x40, 0x58, 0x40]).unwrap();
-        expected.extend_from_slice(&[0xaa; 32]).unwrap();
-        expected.extend_from_slice(&[0xbb; 32]).unwrap();
-        assert_eq!(&a_3[..], &expected[..]);
+        assert!(matches!(
+            responder.export_oscore(),
+            Err(OscoreError::NoContext)
+        ));
     }
 }

@@ -92,32 +92,6 @@ static ssize_t nus_rx_cb(struct bt_conn *conn, const struct bt_gatt_attr *attr,
 			 uint8_t flags);
 static void nus_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value);
 
-static void safe_invoke_conn_cb(enum lichen_ble_conn_state s)
-{
-	k_mutex_lock(&transport_state.lock, K_FOREVER);
-	if (!transport_state.initialized || !transport_state.config.conn_cb) {
-		k_mutex_unlock(&transport_state.lock);
-		return;
-	}
-	lichen_ble_conn_cb_t cb = transport_state.config.conn_cb;
-	void *ctx = transport_state.config.user_ctx;
-	k_mutex_unlock(&transport_state.lock);
-	cb(s, ctx);
-}
-
-static void safe_invoke_rx_cb(const uint8_t *data, size_t len)
-{
-	k_mutex_lock(&transport_state.lock, K_FOREVER);
-	if (!transport_state.initialized || !transport_state.config.rx_cb) {
-		k_mutex_unlock(&transport_state.lock);
-		return;
-	}
-	lichen_ble_rx_cb_t cb = transport_state.config.rx_cb;
-	void *ctx = transport_state.config.user_ctx;
-	k_mutex_unlock(&transport_state.lock);
-	cb(data, len, ctx);
-}
-
 /* ─── BLE callbacks ─────────────────────────────────────────────────────────── */
 
 BT_CONN_CB_DEFINE(conn_callbacks) = {
@@ -153,8 +127,8 @@ static void connected_cb(struct bt_conn *conn, uint8_t err)
 
 	LOG_DBG("Connected, initial ATT MTU: %u", bt_gatt_get_mtu(conn));
 
-	void (*cb)(enum lichen_ble_state, void *) = transport_state.config.conn_cb;
-	void *user_ctx = transport_state.config.user_ctx;
+	lichen_ble_conn_cb_t cb = transport_state.config.conn_cb;
+	void *ctx = transport_state.config.user_ctx;
 
 	k_mutex_unlock(&transport_state.lock);
 
@@ -162,7 +136,9 @@ static void connected_cb(struct bt_conn *conn, uint8_t err)
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 	LOG_INF("BLE connected: %s", addr);
 
-	safe_invoke_conn_cb(LICHEN_BLE_CONNECTED);
+	if (cb) {
+		cb(LICHEN_BLE_CONNECTED, ctx);
+	}
 }
 
 static void disconnected_cb(struct bt_conn *conn, uint8_t reason)
@@ -176,14 +152,16 @@ static void disconnected_cb(struct bt_conn *conn, uint8_t reason)
 		transport_state.stats.disconnections++;
 	}
 
-	void (*cb)(enum lichen_ble_state, void *) = transport_state.config.conn_cb;
-	void *user_ctx = transport_state.config.user_ctx;
+	lichen_ble_conn_cb_t cb = transport_state.config.conn_cb;
+	void *ctx = transport_state.config.user_ctx;
 
 	k_mutex_unlock(&transport_state.lock);
 
 	LOG_INF("BLE disconnected (reason 0x%02x)", reason);
 
-	safe_invoke_conn_cb(LICHEN_BLE_DISCONNECTED);
+	if (cb) {
+		cb(LICHEN_BLE_DISCONNECTED, ctx);
+	}
 }
 
 #if defined(CONFIG_BT_SMP) || defined(CONFIG_BT_CLASSIC)
@@ -208,13 +186,15 @@ static void security_changed_cb(struct bt_conn *conn, bt_security_t level,
 		}
 	}
 
-	void (*cb)(enum lichen_ble_state, void *) = transport_state.config.conn_cb;
-	void *user_ctx = transport_state.config.user_ctx;
-	enum lichen_ble_state notify_state = transport_state.state;
+	lichen_ble_conn_cb_t cb = transport_state.config.conn_cb;
+	void *ctx = transport_state.config.user_ctx;
+	enum lichen_ble_conn_state state = transport_state.state;
 
 	k_mutex_unlock(&transport_state.lock);
 
-	safe_invoke_conn_cb(transport_state.state);
+	if (cb) {
+		cb(state, ctx);
+	}
 }
 #endif
 
@@ -228,10 +208,10 @@ static void slip_process_frame(void)
 	struct slip_rx_state *slip = &transport_state.slip_rx;
 
 	if (slip->len == 0) {
-		return;
+		return; /* Empty frame, ignore */
 	}
 
-	if (slip->len < 40) {
+	if (slip->len < 40) { /* Minimum IPv6 header */
 		LOG_WRN("SLIP frame too short: %zu bytes", slip->len);
 		transport_state.stats.slip_frame_errors++;
 		return;
@@ -246,7 +226,10 @@ static void slip_process_frame(void)
 	LOG_DBG("SLIP frame complete: %zu bytes", slip->len);
 	transport_state.stats.rx_packets++;
 
-	safe_invoke_rx_cb(slip->buf, slip->len);
+	if (transport_state.config.rx_cb) {
+		transport_state.config.rx_cb(slip->buf, slip->len,
+					     transport_state.config.user_ctx);
+	}
 }
 
 /**
@@ -311,12 +294,8 @@ static ssize_t nus_rx_cb(struct bt_conn *conn, const struct bt_gatt_attr *attr,
 	ARG_UNUSED(offset);
 	ARG_UNUSED(flags);
 
-	bool require_secure;
-	k_mutex_lock(&transport_state.lock, K_FOREVER);
-	require_secure = transport_state.initialized && transport_state.config.require_secure;
-	k_mutex_unlock(&transport_state.lock);
-
-	if (require_secure) {
+	/* SECURITY: Check security level for write operations */
+	if (transport_state.config.require_secure) {
 		bt_security_t level = bt_conn_get_security(conn);
 		if (level < BT_SECURITY_L4) {
 			LOG_WRN("NUS RX rejected: insufficient security (level %d)", level);
@@ -613,20 +592,12 @@ int lichen_ble_ipsp_send(const uint8_t *data, size_t len)
 
 enum lichen_ble_conn_state lichen_ble_transport_get_state(void)
 {
-	enum lichen_ble_conn_state s;
-	k_mutex_lock(&transport_state.lock, K_FOREVER);
-	s = transport_state.initialized ? transport_state.state : LICHEN_BLE_DISCONNECTED;
-	k_mutex_unlock(&transport_state.lock);
-	return s;
+	return transport_state.state;
 }
 
 bool lichen_ble_transport_is_secure(void)
 {
-	bool secure;
-	k_mutex_lock(&transport_state.lock, K_FOREVER);
-	secure = transport_state.initialized && transport_state.state >= LICHEN_BLE_SECURE;
-	k_mutex_unlock(&transport_state.lock);
-	return secure;
+	return transport_state.state >= LICHEN_BLE_SECURE;
 }
 
 int lichen_ble_transport_get_stats(struct lichen_ble_transport_stats *stats)
@@ -651,15 +622,15 @@ void lichen_ble_transport_reset_stats(void)
 
 void lichen_ble_transport_deinit(void)
 {
-	k_mutex_lock(&transport_state.lock, K_FOREVER);
 	if (!transport_state.initialized) {
-		k_mutex_unlock(&transport_state.lock);
 		return;
 	}
-	transport_state.initialized = false;
-	k_mutex_unlock(&transport_state.lock);
 
 	lichen_ble_transport_stop();
+
+	k_mutex_lock(&transport_state.lock, K_FOREVER);
+	transport_state.initialized = false;
+	k_mutex_unlock(&transport_state.lock);
 
 	LOG_INF("BLE transport deinitialized");
 }

@@ -92,12 +92,7 @@ class TrickleTimer:
         self.interval = min(self.interval * 2, self.max_interval)
         self._begin_interval(now)
 
-    def reset(self, now: int = 0) -> None:
-        """Handle an inconsistency: shrink to Imin and restart (step 6).
-
-        Per RFC 6206 this is a no-op if the interval is already Imin, to avoid
-        needlessly short-cycling the timer.
-        """
+    def reset(self, now: int) -> None:
         if self.interval != self.imin:
             self.interval = self.imin
             self._begin_interval(now)

@@ -213,17 +213,19 @@ static int slip_encode(const uint8_t *ipv6, size_t ipv6_len,
  */
 static int slip_decode_byte(struct slip_transport_ctx *ctx, uint8_t b)
 {
-	if (ctx == NULL) return 0;
+	if (ctx == NULL) {
+		return 0;
+	}
 	switch (ctx->rx_state) {
 	case SLIP_STATE_IDLE:
 		if (b == SLIP_END) {
+			/* Empty frame or frame delimiter - stay idle */
 			ctx->rx_len = 0;
 			ctx->rx_overflow = false;
 		} else if (b == SLIP_ESC) {
-			ctx->rx_len = 0;
-			ctx->rx_overflow = false;
 			ctx->rx_state = SLIP_STATE_ESC;
 		} else {
+			/* First data byte */
 			ctx->rx_state = SLIP_STATE_DATA;
 			ctx->rx_len = 0;
 			ctx->rx_overflow = false;
@@ -234,12 +236,15 @@ static int slip_decode_byte(struct slip_transport_ctx *ctx, uint8_t b)
 			}
 		}
 		break;
+
 	case SLIP_STATE_DATA:
 		if (b == SLIP_END) {
+			/* Frame complete */
 			ctx->rx_state = SLIP_STATE_IDLE;
 			if (ctx->rx_len > 0 && !ctx->rx_overflow) {
 				return 1;
 			}
+			/* Empty or overflow frame - discard */
 			if (ctx->rx_overflow) {
 				k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 				ctx->stats.rx_overflow++;
@@ -257,12 +262,14 @@ static int slip_decode_byte(struct slip_transport_ctx *ctx, uint8_t b)
 			}
 		}
 		break;
+
 	case SLIP_STATE_ESC:
 		if (b == SLIP_ESC_END) {
 			b = SLIP_END;
 		} else if (b == SLIP_ESC_ESC) {
 			b = SLIP_ESC;
 		} else {
+			/* Invalid escape sequence - discard entire frame per RFC 1055 */
 			LOG_WRN("SLIP RX: invalid escape sequence 0x%02x, discarding frame", b);
 			k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 			ctx->stats.slip_frame_errors++;
@@ -270,8 +277,9 @@ static int slip_decode_byte(struct slip_transport_ctx *ctx, uint8_t b)
 			ctx->rx_state = SLIP_STATE_IDLE;
 			ctx->rx_len = 0;
 			ctx->rx_overflow = false;
-			return 0;
+			break;
 		}
+
 		ctx->rx_state = SLIP_STATE_DATA;
 		if (ctx->rx_len < sizeof(ctx->rx_pkt)) {
 			ctx->rx_pkt[ctx->rx_len++] = b;
@@ -280,6 +288,7 @@ static int slip_decode_byte(struct slip_transport_ctx *ctx, uint8_t b)
 		}
 		break;
 	}
+
 	return 0;
 }
 
@@ -475,27 +484,41 @@ static int slip_iface_send(const struct device *dev, struct net_pkt *pkt)
 	}
 
 	k_mutex_lock(&ctx->tx_mutex, K_FOREVER);
+
+	/* Extract packet data */
 	net_pkt_cursor_init(pkt);
 	ret = net_pkt_read(pkt, pkt_buf, pkt_len);
 	if (ret < 0) {
+		LOG_WRN("SLIP TX: failed to read packet: %d", ret);
 		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.tx_errors++;
 		k_mutex_unlock(&ctx->stats_mutex);
-		goto cleanup;
+		k_mutex_unlock(&ctx->tx_mutex);
+		return ret;
 	}
-	ret = slip_encode(pkt_buf, pkt_len, ctx->tx_frame, sizeof(ctx->tx_frame), &frame_len);
+
+	/* Encode with SLIP framing */
+	ret = slip_encode(pkt_buf, pkt_len, ctx->tx_frame, sizeof(ctx->tx_frame),
+			  &frame_len);
 	if (ret < 0) {
+		LOG_WRN("SLIP TX: encode failed: %d", ret);
 		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.tx_errors++;
 		k_mutex_unlock(&ctx->stats_mutex);
-		goto cleanup;
+		k_mutex_unlock(&ctx->tx_mutex);
+		return ret;
 	}
+
 #ifdef CONFIG_ZTEST
 	memcpy(ctx->last_tx, ctx->tx_frame, frame_len);
 	ctx->last_tx_len = frame_len;
 #endif
+
+	/* Transmit over UART */
 	if (ctx->uart_dev != NULL) {
-		for (size_t i = 0; i < frame_len; i++) uart_poll_out(ctx->uart_dev, ctx->tx_frame[i]);
+		for (size_t i = 0; i < frame_len; i++) {
+			uart_poll_out(ctx->uart_dev, ctx->tx_frame[i]);
+		}
 		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.tx_packets++;
 		ctx->stats.tx_bytes += (uint32_t)pkt_len;
@@ -506,8 +529,10 @@ static int slip_iface_send(const struct device *dev, struct net_pkt *pkt)
 		k_mutex_unlock(&ctx->stats_mutex);
 		ret = -ENODEV;
 	}
-cleanup:
+
 	k_mutex_unlock(&ctx->tx_mutex);
+
+	LOG_DBG("SLIP TX: %zu bytes IPv6 -> %zu bytes framed", pkt_len, frame_len);
 	return ret;
 }
 
@@ -545,22 +570,36 @@ int slip_transport_send(const uint8_t *ipv6, size_t len)
 	struct slip_transport_ctx *ctx = &s_ctx;
 	size_t frame_len;
 	int ret = 0;
-	if (ipv6 == NULL && len > 0) return -EINVAL;
-	if (len > SLIP_LCI_MTU) return -EMSGSIZE;
+
+	if (ipv6 == NULL && len > 0) {
+		return -EINVAL;
+	}
+
+	if (len > SLIP_LCI_MTU) {
+		return -EMSGSIZE;
+	}
+
 	k_mutex_lock(&ctx->tx_mutex, K_FOREVER);
-	ret = slip_encode(ipv6, len, ctx->tx_frame, sizeof(ctx->tx_frame), &frame_len);
+
+	ret = slip_encode(ipv6, len, ctx->tx_frame, sizeof(ctx->tx_frame),
+			  &frame_len);
 	if (ret < 0) {
 		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.tx_errors++;
 		k_mutex_unlock(&ctx->stats_mutex);
-		goto cleanup;
+		k_mutex_unlock(&ctx->tx_mutex);
+		return ret;
 	}
+
 #ifdef CONFIG_ZTEST
 	memcpy(ctx->last_tx, ctx->tx_frame, frame_len);
 	ctx->last_tx_len = frame_len;
 #endif
+
 	if (ctx->uart_dev != NULL) {
-		for (size_t i = 0; i < frame_len; i++) uart_poll_out(ctx->uart_dev, ctx->tx_frame[i]);
+		for (size_t i = 0; i < frame_len; i++) {
+			uart_poll_out(ctx->uart_dev, ctx->tx_frame[i]);
+		}
 		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.tx_packets++;
 		ctx->stats.tx_bytes += (uint32_t)len;
@@ -571,7 +610,7 @@ int slip_transport_send(const uint8_t *ipv6, size_t len)
 		k_mutex_unlock(&ctx->stats_mutex);
 		ret = -ENODEV;
 	}
-cleanup:
+
 	k_mutex_unlock(&ctx->tx_mutex);
 	return ret;
 }

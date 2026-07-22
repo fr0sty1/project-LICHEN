@@ -6,7 +6,7 @@
 //! Provides a pair of connected radios for host-side integration tests.
 //! TX on one side appears as RX on the other.
 
-use crate::{ChannelConfig, Radio, RadioConfig, RadioError, RxPacket};
+use crate::{Radio, RadioConfig, RadioError, RxPacket};
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
@@ -73,7 +73,8 @@ impl LoopbackRadio {
 
     /// Check if there are pending packets to receive.
     pub fn has_pending(&self) -> bool {
-        !self.rx_chan.lock().unwrap().queue.is_empty()
+        let guard = self.rx_chan.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        !guard.queue.is_empty()
     }
 }
 
@@ -81,16 +82,19 @@ impl Radio for LoopbackRadio {
     type Error = RadioError<std::convert::Infallible>;
 
     async fn transmit(&mut self, payload: &[u8]) -> Result<(), Self::Error> {
-        self.tx_chan.lock().unwrap().send(payload);
+        let mut guard = self.tx_chan.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        guard.send(payload);
         Ok(())
     }
 
     async fn receive(
         &mut self,
         buf: &mut [u8],
-        timeout_ms: u32,
+        _timeout_ms: u32,
     ) -> Result<Option<RxPacket>, Self::Error> {
-        let data = self.rx_chan.lock().unwrap().recv();
+        // ponytail: no actual timeout in loopback, just check queue
+        let mut guard = self.rx_chan.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let data = guard.recv();
 
         // SECURITY: Enforce buffer contract from Radio trait docs.
         // Buffer must be at least 255 bytes (max LoRa payload).
@@ -114,21 +118,12 @@ impl Radio for LoopbackRadio {
                     snr: Some(10),
                 }))
             }
-            None => {
-                std::thread::sleep(std::time::Duration::from_millis(timeout_ms as u64));
-                Ok(None)
-            }
+            None => Ok(None),
         }
     }
 
     fn configure(&mut self, config: &RadioConfig) {
         self.config = *config;
-    }
-
-    async fn cca(&mut self, _threshold_dbm: i8) -> Result<bool, Self::Error> {
-        // Loopback sim always reports clear channel (CCP-15 test vector compliant).
-        // Real hardware impls (SX126x etc.) will use CAD.
-        Ok(true)
     }
 }
 

@@ -24,18 +24,37 @@
  * Returns true if 'a' is newer than 'b' per lollipop semantics.
  * The circular region uses modular comparison with a window of SEQUENCE_WINDOW.
  */
+#define LOLLIPOP_MAX_VALUE    255
 #define LOLLIPOP_CIRCULAR_BIT 128
+/*
+ * SEQUENCE_WINDOW per RFC 1982 serial number arithmetic: 'a' is newer than 'b'
+ * if (a - b) mod 128 is in (0, WINDOW]. Value 16 balances tolerance for
+ * out-of-order delivery (~16 missed DIOs) against detecting true rollbacks.
+ */
 #define LOLLIPOP_SEQUENCE_WINDOW 16
 
 static bool version_is_newer(uint8_t a, uint8_t b)
 {
+	/* If both in linear region (0-127), simple comparison */
 	if (a < LOLLIPOP_CIRCULAR_BIT && b < LOLLIPOP_CIRCULAR_BIT) {
 		return a > b;
 	}
+
+	/* If both in circular region (128-255), use modular comparison */
 	if (a >= LOLLIPOP_CIRCULAR_BIT && b >= LOLLIPOP_CIRCULAR_BIT) {
-		uint8_t diff = (uint8_t)(a - b) & 0x7f;
+		/*
+		 * The circular region has 128 values (128-255).
+		 * a is newer than b if (a - b) mod 128 is in (0, WINDOW].
+		 * We mask with 0x7F to get the circular distance.
+		 */
+		uint8_t diff = (uint8_t)((a - b) & 0x7F);
 		return diff > 0 && diff <= LOLLIPOP_SEQUENCE_WINDOW;
 	}
+
+	/*
+	 * Mixed regions: linear (restart) is always newer than circular.
+	 * A node restarting with version 0 should be accepted over version 250.
+	 */
 	return a < LOLLIPOP_CIRCULAR_BIT;
 }
 
@@ -271,11 +290,19 @@ void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 	    !rpl_addr_eq(dio->dodag_id, d->dodag_id)) {
 		return;
 	}
-	if (!lichen_rpl_dodag_is_joined(d)) {
+
+	/*
+	 * Version handling per RFC 6550 lollipop semantics.
+	 * A newer version triggers DODAG rejoin; stale versions are ignored.
+	 */
+	if (!lichen_rpl_dodag_is_joined(d) || version_is_newer(dio->version, d->version)) {
+		/* First DIO - join unconditionally */
 		adopt_version(d, dio);
 	} else if (version_is_newer(dio->version, d->version)) {
+		/* Newer version - rejoin the DODAG */
 		adopt_version(d, dio);
-	} else if (version_is_newer(d->version, dio->version)) {
+	} else if (dio->version != d->version) {
+		/* Stale version (not newer and not equal) - ignore */
 		return;
 	}
 
@@ -301,24 +328,28 @@ void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 	/* Update or add parent candidate */
 	struct lichen_rpl_parent *p = find_parent(d, neighbor_addr);
 	if (p == NULL) {
-		uint32_t new_increment = ((uint32_t)link_etx * d->min_hop_rank_increase) / 256;
-		uint32_t new_cost = (uint32_t)dio->rank + new_increment;
-		if (new_cost > 0xFFFF) {
-			new_cost = 0xFFFF;
-		}
-		if (d->lowest_rank != LICHEN_RPL_INFINITE_RANK && new_cost > (uint32_t)d->lowest_rank + d->max_rank_increase) {
-			return;
-		}
 		p = find_free_slot(d);
 		if (p == NULL) {
+			/*
+			 * Table full - evict the worst parent if the new
+			 * candidate would be better. Compute the new
+			 * candidate's path cost to compare.
+			 */
 			struct lichen_rpl_parent *worst = find_worst_parent(d);
 			if (worst == NULL) {
 				return;
 			}
 			uint16_t worst_cost = path_cost(worst, d->min_hop_rank_increase);
+			uint32_t new_increment = ((uint32_t)link_etx * d->min_hop_rank_increase) / 256;
+			uint32_t new_cost = (uint32_t)dio->rank + new_increment;
+			if (new_cost > 0xFFFF) {
+				new_cost = 0xFFFF;
+			}
 			if (new_cost >= worst_cost) {
+				/* New candidate is not better - ignore it */
 				return;
 			}
+			/* Evict the worst and use its slot */
 			p = worst;
 		}
 		memcpy(p->addr, neighbor_addr, 16);

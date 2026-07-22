@@ -49,14 +49,15 @@ using `crc32_ieee` (see appendix-design-rationale.md:388, lichen/subsys/schc/sch
 
 For SFN (superframe number, a u32 epoch counter) wrap-around, all nodes MUST compute using unsigned 32-bit arithmetic (modulo 0x100000000). The time-provider (see `docs/firmware-time-provider.md`) is the canonical source: SFN/epoch updates MUST pass epoch_floor validation, set `wall_clock_valid`, and respect stratum before adoption. RPL version changes or desync MUST reset SFN relative to the new root per the FSM in Section 2a.5. This integrates with `lichen_rpl_dodag_init()` ordering.
 
-Delta = wrapping_sub(current_sfn, last_sfn) or unsigned uint32_t subtraction.
+Delta = (current_sfn - last_sfn) using uint32_t subtraction ensures correct wrap behavior. 
+
 Edge case example (0xFFFFFFFF boundary):
 ```
 last_sfn = 0xFFFFFFFFu;
 current_sfn = 0x00000002u;
-delta = current_sfn - last_sfn;
+delta = current_sfn - last_sfn;  /* = 3 in unsigned 32-bit arithmetic */
 ```
-This MUST be treated as advancement of 3 slots. Test vectors in ccp16.json MUST cover boundaries.
+This MUST be treated as advancement of 3 slots. Signed arithmetic would yield a large negative value, breaking desync detection and slot scheduling. Test vectors in ccp16.json MUST cover this and similar boundaries.
 
 A node MUST only transmit in its assigned slot. Slot duration = max_airtime(current_SF) + 100 ms guard. The link layer MUST enforce via `lichen_link_set_slot()` and `tdma_tx_allowed()` (see lichen/subsys/lichen/link: implementation).
 
@@ -142,6 +143,8 @@ See `test/vectors/ccp16.json#vectors[3+]` for Gateway Multi-RX test cases with i
 - `spec/09-packets-timing.md`
 - da2q multi-channel context for CCP-14
 
+<<<<<<< HEAD
+=======
 For slot `n`, let `t0` be its local monotonic start and `t1` its end. Each
 endpoint begins retuning at `t0`. The receiver MUST be in receive mode by
 `t0 + setup_window` and remain there through `t1`. The transmitter MUST finish

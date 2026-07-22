@@ -62,10 +62,7 @@ static void cbor_put_map_header(uint8_t *buf, size_t *off, uint8_t count)
 
 static void cbor_put_tstr(uint8_t *buf, size_t *off, const char *value)
 {
-	size_t len = value ? strlen(value) : 0;
-	if (len > UINT16_MAX) {
-		return;
-	}
+	size_t len = strlen(value);
 
 	if (len < 24U) {
 		buf[(*off)++] = 0x60U | (uint8_t)len;
@@ -319,31 +316,6 @@ int lichen_key_pubkey_fingerprint(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
 #endif
 }
 
-int lichen_key_pubkey_to_iid(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
-			     uint8_t iid[LICHEN_KEY_IID_LEN])
-{
-	if (pubkey == NULL || iid == NULL) {
-		return -EINVAL;
-	}
-
-#ifdef CONFIG_TINYCRYPT_SHA256
-	struct tc_sha256_state_struct sha_state;
-	uint8_t hash[32];
-
-	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS ||
-	    tc_sha256_update(&sha_state, pubkey, LICHEN_KEY_PUBKEY_LEN) != TC_CRYPTO_SUCCESS ||
-	    tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
-		return -EIO;
-	}
-	memcpy(iid, hash, LICHEN_KEY_IID_LEN);
-	return 0;
-#else
-	/* Fallback for test: first 8 bytes of pubkey */
-	memcpy(iid, pubkey, LICHEN_KEY_IID_LEN);
-	return 0;
-#endif
-}
-
 /* --------------------------------------------------------------------------
  * Key store implementation
  * -------------------------------------------------------------------------- */
@@ -366,7 +338,7 @@ static int find_free_slot_locked(void)
 			return i;
 		}
 	}
-	return -ENOSPC;
+	return -ENOMEM;
 }
 
 static uint32_t get_unix_time(void)
@@ -410,7 +382,7 @@ int lichen_key_store_put(const uint8_t iid[LICHEN_KEY_IID_LEN],
 	slot = find_free_slot_locked();
 	if (slot < 0) {
 		k_mutex_unlock(&s_mutex);
-		return slot;
+		return -ENOMEM;
 	}
 
 	memcpy(s_keys[slot].iid, iid, LICHEN_KEY_IID_LEN);
@@ -587,7 +559,8 @@ static size_t encode_iso8601_timestamp(uint32_t unix_time, char *buf, size_t buf
 	uint32_t days = unix_time / 86400;
 	uint32_t secs = unix_time % 86400;
 	uint16_t year = 1970;
-	uint8_t month = 1, day = 1;
+	uint8_t month = 1;
+	uint8_t day = 1;
 
 	static const uint16_t days_in_month[] = {
 		31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
@@ -629,10 +602,6 @@ static size_t encode_iso8601_timestamp(uint32_t unix_time, char *buf, size_t buf
 
 static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 {
-	BUILD_ASSERT(CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES <= 32,
-		     "CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES > 32 risks stack overflow "
-		     "in encode_keys_list_cbor (~57 bytes per entry)");
-
 	size_t off = 0;
 	size_t encoded = 0;
 
@@ -645,7 +614,7 @@ static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 	cbor_put_key(buf, &off, "keys");
 
 	/* Get all keys */
-	static struct lichen_key_entry entries[CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES];
+	struct lichen_key_entry entries[16];
 	size_t n = lichen_key_store_list(entries, ARRAY_SIZE(entries));
 
 	/* Reserve a fixed-width definite array header; patch its count after
@@ -1186,7 +1155,7 @@ static int keys_single_put(struct coap_resource *resource,
 		return coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_CONFLICT, NULL, 0);
 	}
-	if (ret == -ENOSPC || ret == -ENOMEM) {
+	if (ret == -ENOMEM) {
 		return coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_SERVICE_UNAVAILABLE, NULL, 0);
 	}

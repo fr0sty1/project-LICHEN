@@ -8,6 +8,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/net/coap.h>
 #include <zephyr/net/coap_service.h>
+#include <zephyr/net/net_ip.h>
 #include <errno.h>
 
 #include <lichen/coap_status.h>
@@ -86,31 +87,36 @@ static void cbor_put_array_header(struct cbor_ctx *ctx, uint8_t count)
 static void cbor_put_tstr(struct cbor_ctx *ctx, const char *value)
 {
 	size_t len = value ? strlen(value) : 0;
-	size_t header_len;
-
-	if (len > UINT16_MAX) {
+	if (len > 0xffffffffU) {
 		ctx->overflow = true;
 		return;
 	}
+	size_t header_len;
 	if (len < 24U) {
 		header_len = 1;
 	} else if (len <= UINT8_MAX) {
 		header_len = 2;
-	} else {
+	} else if (len <= 0xffffU) {
 		header_len = 3;
+	} else {
+		header_len = 5;
 	}
-
 	if (!cbor_check_space(ctx, header_len + len)) {
 		return;
 	}
-
 	if (len < 24U) {
 		ctx->buf[ctx->off++] = 0x60U | (uint8_t)len;
 	} else if (len <= UINT8_MAX) {
 		ctx->buf[ctx->off++] = 0x78;
 		ctx->buf[ctx->off++] = (uint8_t)len;
-	} else {
+	} else if (len <= 0xffffU) {
 		ctx->buf[ctx->off++] = 0x79;
+		ctx->buf[ctx->off++] = (uint8_t)(len >> 8);
+		ctx->buf[ctx->off++] = (uint8_t)(len & 0xffU);
+	} else {
+		ctx->buf[ctx->off++] = 0x7a;
+		ctx->buf[ctx->off++] = (uint8_t)(len >> 24);
+		ctx->buf[ctx->off++] = (uint8_t)(len >> 16);
 		ctx->buf[ctx->off++] = (uint8_t)(len >> 8);
 		ctx->buf[ctx->off++] = (uint8_t)(len & 0xffU);
 	}
@@ -215,17 +221,12 @@ static void cbor_put_int(struct cbor_ctx *ctx, int32_t value)
 
 static int format_ipv6(const uint8_t addr[16], char *buf, size_t buf_size)
 {
-	int r = snprintf(buf, buf_size,
-			"%02x%02x:%02x%02x:%02x%02x:%02x%02x:"
-			"%02x%02x:%02x%02x:%02x%02x:%02x%02x",
-			addr[0], addr[1], addr[2], addr[3],
-			addr[4], addr[5], addr[6], addr[7],
-			addr[8], addr[9], addr[10], addr[11],
-			addr[12], addr[13], addr[14], addr[15]);
-	if (r < 0 || (size_t)r >= buf_size) {
+	struct in6_addr in6;
+	memcpy(in6.s6_addr, addr, 16);
+	if (net_addr_ntop(AF_INET6, &in6, buf, buf_size) == NULL) {
 		return -ENOBUFS;
 	}
-	return r;
+	return 0;
 }
 
 static const char *trust_level_str(enum lichen_coap_trust_level trust)
@@ -242,8 +243,6 @@ static const char *trust_level_str(enum lichen_coap_trust_level trust)
 	}
 }
 
-/* ── CBOR encoders ─────────────────────────────────────────────────────────── */
-
 size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 				      const struct lichen_coap_node_status *status)
 {
@@ -251,13 +250,14 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 	uint8_t map_count;
 	char ipv6_buf[40];
 
+
 	if (buf == NULL || status == NULL || buf_size == 0) {
 		return 0;
 	}
 
 	cbor_ctx_init(&ctx, buf, buf_size);
 
-	map_count = 5;
+	map_count = 6;
 	if (status->battery_pct_valid && map_count < 255) map_count++;
 	if (status->battery_mv_valid && map_count < 255) map_count++;
 	cbor_put_map_header(&ctx, map_count);
@@ -341,7 +341,7 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 	}
 
 	cbor_put_key(&ctx, "radio");
-	cbor_put_map_header(&ctx, 5);
+	cbor_put_map_header(&ctx, 4);
 
 	cbor_put_key(&ctx, "rx_packets");
 	cbor_put_uint(&ctx, status->radio.rx_packets);

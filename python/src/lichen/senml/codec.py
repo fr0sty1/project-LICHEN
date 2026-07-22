@@ -195,7 +195,7 @@ def unpack(data: bytes) -> list[SenmlRecord]:
         ValueError: If ``data`` is not a valid CBOR array of maps.
     """
     try:
-        raw = cbor2.loads(data)
+        raw = cbor2.loads(data, allow_duplicate_keys=False)
     except Exception as exc:
         raise ValueError(f"SenML CBOR decode failed: {exc}") from exc
     if not isinstance(raw, list):

@@ -131,10 +131,7 @@ struct lichen_app_location_time_snapshot {
 	bool altitude_m_valid;
 	int32_t altitude_m;
 	bool fix_time_unix_valid;
-	/* Y2K38: uint32_t overflows 2038-01-19. Long-lived meshes should
-	 * use relative offsets from build_epoch or upgrade to uint64_t.
-	 * See docs/firmware-time-provider.md and use-firmware-or-board-build-time-epoch-stamps memory. */
-	uint32_t fix_time_unix;
+	int64_t fix_time_unix;
 	bool satellites_valid;
 	uint8_t satellites;
 	bool fix_source_valid;
@@ -159,10 +156,7 @@ struct lichen_app_time_snapshot {
 	enum lichen_app_time_source_class source_class;
 	char source_name[24];
 	bool unix_time_valid;
-	/* Y2K38: uint32_t overflows 2038-01-19. Long-lived meshes should
-	 * use relative offsets from build_epoch or upgrade to uint64_t.
-	 * See docs/firmware-time-provider.md and use-firmware-or-board-build-time-epoch-stamps memory. */
-	uint32_t unix_time;
+	int64_t unix_time;
 	bool age_seconds_valid;
 	uint32_t age_seconds;
 	bool accuracy_ms_valid;

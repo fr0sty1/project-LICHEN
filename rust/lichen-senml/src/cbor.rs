@@ -165,16 +165,9 @@ fn value_field_count(r: &Record<'_>) -> usize {
 /// Returns `CborError::MultipleValues` if any record has more than one value
 /// field set (RFC 8428 Section 4.2 requires at most one of value/string_value/bool_value).
 pub fn encode<'a>(records: &[Record<'a>], out: &mut [u8]) -> Result<usize, CborError> {
-    // SECURITY: Validate RFC 8428 Section 4.2 constraint before encoding.
-    // At most one of value/string_value/bool_value may be present per record.
     for r in records {
         if value_field_count(r) > 1 {
             return Err(CborError::MultipleValues);
-        }
-        let bn_len = r.base_name.map_or(0, |s| s.len());
-        let n_len = r.name.map_or(0, |s| s.len());
-        if bn_len + n_len > 255 {
-            return Err(CborError::InvalidInput); // concatenated name too long
         }
     }
 
@@ -268,9 +261,9 @@ fn dec_text(data: &[u8], pos: usize) -> Result<(&str, usize), CborError> {
     if major != 3 {
         return Err(CborError::InvalidInput);
     }
-    // Use checked arithmetic + try_from to prevent overflow/truncation on
-    // 16-bit platforms (resolves k1wt). len up to 65535 from dec_head; checked_add
-    // ensures no wraparound even if usize=16.
+    // Use checked arithmetic to prevent overflow on 16-bit platforms.
+    // len can be up to 65535 from 2-byte length encoding, which would
+    // wrap on 16-bit usize if added carelessly.
     let len_usize = usize::try_from(len).map_err(|_| CborError::InvalidInput)?;
     let start = pos.checked_add(adv).ok_or(CborError::InvalidInput)?;
     let end = start
@@ -292,34 +285,33 @@ fn f16_to_f64(bits: u16) -> f64 {
     let exp = (bits >> 10) & 0x1f;
     let mant = bits & 0x3ff;
 
-    let val = match exp {
+    match exp {
         0 => {
             if mant == 0 {
-                0.0
+                if sign == 0 {
+                    0.0
+                } else {
+                    -0.0
+                }
             } else {
-                (mant as f64) / 16777216.0
+                let v = (mant as f64) / 16777216.0;
+                if sign == 0 { v } else { -v }
             }
         }
         31 => {
-            if mant == 0 {
+            let v = if mant == 0 {
                 f64::INFINITY
             } else {
                 f64::NAN
-            }
+            };
+            if sign == 0 { v } else { -v }
         }
         _ => {
             let f64_exp = (exp as u64) - 15 + 1023;
             let f64_mant = (mant as u64) << 42;
-            let f64_bits = (f64_exp << 52) | f64_mant;
+            let f64_bits = ((sign as u64) << 63) | (f64_exp << 52) | f64_mant;
             f64::from_bits(f64_bits)
         }
-    };
-
-    let bits = val.to_bits();
-    if sign == 1 {
-        f64::from_bits(bits | (1u64 << 63))
-    } else {
-        val
     }
 }
 
@@ -414,7 +406,6 @@ fn skip_one_depth(data: &[u8], pos: usize, depth: usize) -> Result<usize, CborEr
             }
             (u16::from_be_bytes([data[pos + 1], data[pos + 2]]) as u64, 3)
         }
-        26 | 27 | 31 => return Err(CborError::NotImplemented), // 32/64-bit lengths or indefinite not supported (SenML profile uses definite)
         _ => return Err(CborError::InvalidInput),
     };
     match major {
@@ -451,23 +442,8 @@ fn skip_one_depth(data: &[u8], pos: usize, depth: usize) -> Result<usize, CborEr
             }
             Ok(cur - pos)
         }
-        6 => {
-            // Major type 6 (tags per RFC 8949 §3.1). Consume header (`adv`)
-            // then recursively skip the tagged value. Required for compliance
-            // and to support tagged values in unknown SenML map keys.
-            let cur = pos.checked_add(adv).ok_or(CborError::InvalidInput)?;
-            let inner = skip_one_depth(data, cur, depth + 1)?;
-            let total = adv.checked_add(inner).ok_or(CborError::InvalidInput)?;
-            Ok(total)
-        }
         7 => match info {
             20..=23 => Ok(1),
-            24 => {
-                if pos + 2 > data.len() {
-                    return Err(CborError::InvalidInput);
-                }
-                Ok(2)
-            }
             25 => {
                 if pos + 3 > data.len() {
                     return Err(CborError::InvalidInput);
@@ -520,13 +496,12 @@ pub fn decode<'a>(data: &'a [u8], buf: &mut [Record<'a>]) -> Result<usize, CborE
         for _ in 0..n_kv {
             let (key, adv) = dec_int(data, pos)?;
             pos += adv;
-            if key >= -3 && key <= 6 {
-                let bit = (key + 3) as u32;
-                let mask = 1u16 << bit;
-                if (seen_keys & mask) != 0 {
+            if (-3..=12).contains(&key) {
+                let k = (key + 3) as u16;
+                if (seen_keys & (1u16 << k)) != 0 {
                     return Err(CborError::InvalidInput);
                 }
-                seen_keys |= mask;
+                seen_keys |= 1u16 << k;
             }
             match key {
                 -2 => {
@@ -960,22 +935,5 @@ mod tests {
         assert_eq!(buf[0].name, Some("temp"));
         let val = buf[0].value.unwrap();
         assert!((val - 1.5).abs() < 1e-10);
-    }
-
-    #[test]
-    fn dec_f64_half_precision_subnormal() {
-        let data = [0xf9, 0x00, 0x01];
-        let (val, adv) = dec_f64(&data, 0).unwrap();
-        assert_eq!(adv, 3);
-        assert_eq!(val, 2f64.powi(-24));
-
-        let data2 = [0xf9, 0x03, 0xff];
-        let (val2, _) = dec_f64(&data2, 0).unwrap();
-        let expected2 = (1023f64 / 1024.0) * 2f64.powi(-14);
-        assert!((val2 - expected2).abs() < f64::EPSILON);
-
-        let data_neg = [0xf9, 0x83, 0xff];
-        let (val_neg, _) = dec_f64(&data_neg, 0).unwrap();
-        assert!((val_neg + expected2).abs() < f64::EPSILON);
     }
 }

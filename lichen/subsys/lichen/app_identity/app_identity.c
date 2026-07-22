@@ -50,11 +50,10 @@ static int copy_string(char *dst, size_t dst_len, const char *src)
 	if (src == NULL) {
 		return 0;
 	}
-	size_t len = strlen(src);
-	if (len >= dst_len) {
+	if (strlen(src) >= dst_len) {
 		return -ENAMETOOLONG;
 	}
-	memcpy(dst, src, len);
+	memcpy(dst, src, strlen(src));
 	return 0;
 }
 
@@ -205,13 +204,27 @@ int lichen_app_identity_upsert_peer(
 	k_mutex_lock(&s_mutex, K_FOREVER);
 	slot = find_peer_locked(peer->eui64);
 	if (slot >= 0) {
+		/*
+		 * SECURITY: TOFU key pinning (spec 8.6). First contact pins
+		 * pubkey; subsequent contacts must present the same key.
+		 * Key rotation requires explicit removal followed by re-add.
+		 * Silent key changes are rejected to prevent impersonation.
+		 */
 		if (s_peers[slot].peer.has_public_key &&
 		    memcmp(s_peers[slot].peer.public_key, peer->public_key,
 			   LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN) != 0) {
 			k_mutex_unlock(&s_mutex);
-			return -EEXIST;
+			return -EEXIST;  /* TOFU violation: pubkey mismatch */
 		}
 	} else {
+		/*
+		 * SECURITY: a full table rejects new peers (-ENOSPC) rather
+		 * than evicting an LRU entry. TOFU pins (spec 8.6) must not
+		 * be silently discarded: an attacker who floods the table
+		 * with ephemeral peers could evict a victim's pinned key and
+		 * then be accepted as that victim's "first contact". Freeing
+		 * capacity requires explicit peer removal.
+		 */
 		slot = find_free_peer_locked();
 	}
 	if (slot < 0) {
@@ -219,10 +232,11 @@ int lichen_app_identity_upsert_peer(
 		return slot;
 	}
 
+	memset(&s_peers[slot].peer, 0, sizeof(s_peers[slot].peer));
 	s_peers[slot].peer = *peer;
-	copy_string(s_peers[slot].peer.display_name,
-		    sizeof(s_peers[slot].peer.display_name),
-		    peer->display_name);
+	(void)copy_string(s_peers[slot].peer.display_name,
+			  sizeof(s_peers[slot].peer.display_name),
+			  peer->display_name);
 	eui64_to_iid(s_peers[slot].peer.eui64, s_peers[slot].peer.iid);
 	s_peers[slot].used = true;
 	k_mutex_unlock(&s_mutex);

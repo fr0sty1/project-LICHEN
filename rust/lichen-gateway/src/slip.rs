@@ -78,6 +78,8 @@ pub enum SlipError {
     PacketTooLarge,
     /// TX queue is full.
     QueueFull,
+    /// Output buffer too small for worst-case SLIP encoding of queued packet.
+    BufferTooSmall { needed: usize },
 }
 
 impl std::fmt::Display for SlipError {
@@ -85,6 +87,7 @@ impl std::fmt::Display for SlipError {
         match self {
             Self::PacketTooLarge => write!(f, "packet too large"),
             Self::QueueFull => write!(f, "TX queue full"),
+            Self::BufferTooSmall { needed } => write!(f, "buffer too small (need {} bytes)", needed),
         }
     }
 }
@@ -123,17 +126,14 @@ pub const SLIP_TX_BUF_SIZE: usize = 2 + TX_BUFFER_SIZE * 2;
 ///
 /// let mut framer = SlipFramer::new();
 ///
-/// // Queue a packet to send
 /// framer.queue_send(b"hello").unwrap();
 ///
-/// // Get encoded bytes to write to serial
 /// let mut tx_buf = [0u8; 64];
-/// if let Some(len) = framer.try_get_tx(&mut tx_buf) {
-///     // tx_buf[..len] contains: FEND, escaped data, FEND
+/// if let Ok(Some(len)) = framer.try_get_tx(&mut tx_buf) {
+///     // use tx_buf[..len]
 /// }
 ///
-/// // Feed incoming bytes from serial
-/// let wire_data = [0xC0, 0x48, 0x69, 0xC0]; // "Hi" framed
+/// let wire_data = [0xC0, 0x48, 0x69, 0xC0];
 /// let packets: Vec<_> = framer.feed(&wire_data).collect();
 /// assert_eq!(packets.len(), 1);
 /// assert_eq!(packets[0], b"Hi");
@@ -233,35 +233,29 @@ impl SlipFramer {
 
         Err(SlipError::PacketTooLarge)
     }
-
     /// Try to get the next SLIP-encoded TX frame.
     ///
-    /// Encodes the packet on-the-fly into `out`. Returns the number of bytes
-    /// written, or `None` if queue is empty. Caller must provide a buffer
-    /// large enough for worst-case encoding (2 + 2*packet_len bytes).
-    pub fn try_get_tx(&mut self, out: &mut [u8]) -> Option<usize> {
-        // Peek first to check size before removing from queue
-        let &(offset, len) = self.tx_packets.front()?;
+    /// Encodes the packet on-the-fly into `out`. Returns `Ok(Some(n))` with bytes written
+    /// or `Ok(None)` if queue empty. Returns `Err(BufferTooSmall)` if `out` is too small.
+    pub fn try_get_tx(&mut self, out: &mut [u8]) -> Result<Option<usize>, SlipError> {
+        let Some(&(offset, len)) = self.tx_packets.front() else {
+            return Ok(None);
+        };
         let packet = &self.tx_buffer[offset..offset + len];
 
-        // Calculate worst-case encoded size: 2 FENDs + all bytes escaped
         let worst_case = 2 + len * 2;
         if out.len() < worst_case {
-            // Buffer too small - leave packet in queue, caller should retry with larger buffer
-            return None;
+            return Err(SlipError::BufferTooSmall { needed: worst_case });
         }
 
-        // Buffer is large enough, now remove from queue
         self.tx_packets.pop_front();
 
-        // Update head to next packet's offset, or to tail if queue is now empty
         self.tx_head = self
             .tx_packets
             .front()
             .map(|&(next_offset, _)| next_offset)
             .unwrap_or(self.tx_tail);
 
-        // Encode: leading FEND + escaped data + trailing FEND
         let mut pos = 0;
 
         out[pos] = FEND;
@@ -276,7 +270,7 @@ impl SlipFramer {
         out[pos] = FEND;
         pos += 1;
 
-        Some(pos)
+        Ok(Some(pos))
     }
 
     /// Number of packets waiting in TX queue.
@@ -499,7 +493,7 @@ mod tests {
         framer.queue_send(b"Hi").unwrap();
         assert_eq!(framer.tx_pending(), 1);
 
-        let len = framer.try_get_tx(&mut out).unwrap();
+        let len = framer.try_get_tx(&mut out).unwrap().unwrap();
         assert_eq!(&out[..len], &[FEND, b'H', b'i', FEND]);
         assert!(framer.tx_empty());
     }
@@ -510,7 +504,7 @@ mod tests {
         let mut out = [0u8; 64];
 
         framer.queue_send(&[b'A', FEND, b'B']).unwrap();
-        let len = framer.try_get_tx(&mut out).unwrap();
+        let len = framer.try_get_tx(&mut out).unwrap().unwrap();
         assert_eq!(&out[..len], &[FEND, b'A', FESC, TFEND, b'B', FEND]);
     }
 
@@ -522,7 +516,7 @@ mod tests {
 
         // Encode with TX framer
         tx_framer.queue_send(b"Hello").unwrap();
-        let len = tx_framer.try_get_tx(&mut wire).unwrap();
+        let len = tx_framer.try_get_tx(&mut wire).unwrap().unwrap();
 
         // Decode with RX framer
         let packets: Vec<_> = rx_framer.feed(&wire[..len]).collect();
@@ -596,7 +590,7 @@ mod tests {
         assert_eq!(framer.tx_pending(), 1);
 
         // Consume the large packet - frees space at the front
-        let len = framer.try_get_tx(&mut out).unwrap();
+        let len = framer.try_get_tx(&mut out).unwrap().unwrap();
         assert!(len > 0);
         assert!(framer.tx_empty());
 
@@ -613,8 +607,7 @@ mod tests {
             framer.queue_send(&small).unwrap();
             assert_eq!(framer.tx_pending(), 2);
 
-            // Consume the large packet
-            let _ = framer.try_get_tx(&mut out).unwrap();
+            let _ = framer.try_get_tx(&mut out).unwrap().unwrap();
             assert_eq!(framer.tx_pending(), 1);
 
             // Replace consumed large packet with new one
@@ -622,9 +615,7 @@ mod tests {
             framer.queue_send(&large).unwrap();
             assert_eq!(framer.tx_pending(), 2);
 
-            // Consume the small packet
-            let len = framer.try_get_tx(&mut out).unwrap();
-            // Verify it decoded correctly (FEND + 50 bytes + FEND = 52)
+            let len = framer.try_get_tx(&mut out).unwrap().unwrap();
             assert_eq!(len, 52);
             assert_eq!(framer.tx_pending(), 1);
         }

@@ -194,7 +194,7 @@ def _derive_uid_from_cot(cot: CompactCot) -> str:
 # -- Data classes --
 
 
-@dataclass(slots=True)
+@dataclass
 class PliPayload:
     """Position Location Information payload."""
 
@@ -243,7 +243,7 @@ class PliPayload:
         return role_to_name(self.role)
 
 
-@dataclass(slots=True)
+@dataclass
 class ChatPayload:
     """Chat message payload."""
 
@@ -820,17 +820,16 @@ def _parse_xml_pli(root: Element, subtype: CompactCotType) -> CompactCot:
 
     lat = float(lat_str)
     lon = float(lon_str)
-    if not math.isfinite(lat) or not math.isfinite(lon):
-        raise ValueError(f"Invalid coordinate: lat={lat}, lon={lon}")
+    if math.isnan(lat) or math.isinf(lat) or math.isnan(lon) or math.isinf(lon):
+        raise ValueError("NaN/Inf in CoT coordinates")
     if not (-90.0 <= lat <= 90.0):
         raise ValueError(f"Latitude {lat} out of range [-90, 90]")
     if not (-180.0 <= lon <= 180.0):
         raise ValueError(f"Longitude {lon} out of range [-180, 180]")
 
+    # hae = height above ellipsoid (altitude in meters)
     hae_str = point.get("hae")
     alt_m = float(hae_str) if hae_str else 0.0
-    if not math.isfinite(alt_m):
-        alt_m = 0.0
 
     # Extract course/speed from <track> element
     course_deg = 0.0
@@ -843,13 +842,10 @@ def _parse_xml_pli(root: Element, subtype: CompactCotType) -> CompactCot:
             speed_str = track.get("speed")
             if course_str:
                 course_deg = float(course_str)
-                if not math.isfinite(course_deg):
-                    raise ValueError(f"Invalid course: {course_deg}")
+                # Normalize course to [0, 360) for valid bearing
                 course_deg = course_deg % 360.0
             if speed_str:
                 speed_m_s = float(speed_str)
-                if not math.isfinite(speed_m_s):
-                    raise ValueError(f"Invalid speed: {speed_m_s}")
                 if speed_m_s < 0:
                     raise ValueError(f"Speed {speed_m_s} cannot be negative")
 

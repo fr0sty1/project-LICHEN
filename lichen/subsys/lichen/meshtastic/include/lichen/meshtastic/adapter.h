@@ -262,6 +262,7 @@ struct lichen_meshtastic_adapter {
 	uint32_t from_radio_id;
 	bool stream_in_frame;
 	bool disconnected;
+	struct k_mutex lock;
 };
 
 void lichen_meshtastic_adapter_init(

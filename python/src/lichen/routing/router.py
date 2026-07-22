@@ -35,6 +35,7 @@ MAX_PACKETS_PER_SOURCE = 2
 # GPSR null island detection threshold (~111 meters).
 # GPS sensors often produce near-zero garbage, not exactly (0, 0).
 NULL_ISLAND_EPSILON = 0.001
+MAX_DTN_TTL_SECONDS = 604800
 
 
 class RoutingError(Exception):
@@ -116,23 +117,17 @@ class PendingPacket:
 
 @dataclass
 class DtnMessage:
-    """A message buffered for DTN store-and-forward (spec 9.8).
-
-    Attributes:
-        packet: The IPv6 packet data.
-        destination_iid: 8-byte IID of destination.
-        expiry_unix: Unix timestamp when message expires.
-        buffered_at_ms: When message was buffered (for eviction ordering).
-    """
-
     packet: IPv6Packet
     destination_iid: bytes
     expiry_unix: int
     buffered_at_ms: int
+    _cached_size: int = field(default=0, repr=False)
+
+    def __post_init__(self) -> None:
+        self._cached_size = len(self.packet.payload) + 100
 
     def size(self) -> int:
-        """Approximate size in bytes for buffer accounting."""
-        return len(self.packet.payload) + 100  # header overhead estimate
+        return self._cached_size
 
 
 @dataclass
@@ -166,6 +161,7 @@ class ForwardingBuffer:
     packets_accepted: int = 0
     packets_backpressure: int = 0
     packets_expired: int = 0
+    packets_evicted: int = 0
 
     def try_buffer(
         self,
@@ -213,9 +209,9 @@ class ForwardingBuffer:
         # New source - check if we need to evict
         result = ForwardingResult.ACCEPTED
         if len(self._buffer) >= self.max_sources:
-            # Evict oldest source (LRU)
             oldest_iid = self._source_order.pop(0)
             evicted_count = len(self._buffer.pop(oldest_iid))
+            self.packets_evicted += evicted_count
             logger.debug(
                 "forwarding buffer evicting source %s (%d packets)",
                 oldest_iid.hex(),
@@ -223,7 +219,6 @@ class ForwardingBuffer:
             )
             result = ForwardingResult.EVICTED
 
-        # Create new queue for this source
         self._buffer[source_iid] = deque([entry])
         self._source_order.append(source_iid)
         self.packets_accepted += 1
@@ -308,7 +303,6 @@ class ForwardingBuffer:
         return len(self._buffer)
 
     def get_stats(self) -> dict[str, int]:
-        """Return buffer statistics for diagnostics."""
         return {
             "total_packets": self.total_count(),
             "sources": self.source_count(),
@@ -317,6 +311,7 @@ class ForwardingBuffer:
             "accepted": self.packets_accepted,
             "backpressure": self.packets_backpressure,
             "expired": self.packets_expired,
+            "evicted": self.packets_evicted,
         }
 
     def _touch_source(self, source_iid: bytes) -> None:
@@ -536,7 +531,7 @@ class Router:
             queued_at_ms=now_ms,
         )
 
-        queue = self.pending_queue.setdefault(dst, deque())
+        queue = self.pending_queue.setdefault(dst, deque(maxlen=self.max_pending_per_dest))
 
         # Why limit: Prevent memory exhaustion during slow discovery.
         if len(queue) >= self.max_pending_per_dest:
@@ -681,6 +676,9 @@ class Router:
         if expiry_unix <= now_unix:
             logger.debug("dtn: rejecting expired message (expiry=%d, now=%d)",
                         expiry_unix, now_unix)
+            return False
+        if expiry_unix > now_unix + MAX_DTN_TTL_SECONDS:
+            logger.warning("dtn: rejecting message with excessive TTL")
             return False
 
         msg = DtnMessage(

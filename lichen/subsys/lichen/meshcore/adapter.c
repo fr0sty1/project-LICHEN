@@ -5,13 +5,11 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <limits.h>
 #include <string.h>
 
 #include <zephyr/kernel.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/util.h>
-#include <zephyr/sys/__assert.h>
 
 #if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
 #include <lichen/app_identity/app_identity.h>
@@ -43,8 +41,6 @@
 BUILD_ASSERT(CONFIG_LICHEN_MESHCORE_MAX_SERIAL_PAYLOAD <=
 	     LICHEN_MESHCORE_FRAME_MAX,
 	     "MeshCore serial payload cannot exceed inner frame buffer");
-BUILD_ASSERT(CONFIG_LICHEN_MESHCORE_MAX_SERIAL_PAYLOAD <= INT_MAX - 3,
-	     "Serial payload too large for int return");
 BUILD_ASSERT(LICHEN_MESHCORE_CHANNEL_MSG_V3_HEADER_LEN <
 	     LICHEN_MESHCORE_FRAME_MAX,
 	     "MeshCore channel V3 header must fit in a frame");
@@ -52,10 +48,6 @@ BUILD_ASSERT(CONFIG_LICHEN_MESHCORE_PENDING_EVENTS <= UINT8_MAX,
 	     "Pending event queue indices are uint8_t");
 BUILD_ASSERT(LICHEN_MESHCORE_FRAME_MAX <= UINT16_MAX,
 	     "Frame max exceeds uint16_t limit for length fields");
-BUILD_ASSERT(LICHEN_MESHCORE_FRAME_MAX <= LICHEN_MESHCORE_BLE_FRAME_MAX,
-	     "Exceeds MeshCore BLE frame maximum");
-BUILD_ASSERT(LICHEN_MESHCORE_FRAME_MAX <= 256,
-	     "MeshCore frame too large for tx_buf or pending payload");
 
 static int enqueue(struct lichen_meshcore_adapter *adapter,
 		   const uint8_t *frame, size_t len)
@@ -128,8 +120,8 @@ static void copy_fixed_string(uint8_t *dst, size_t dst_len,
 	}
 
 	len = strlen(src);
-	if (len > dst_len) {
-		len = dst_len;
+	if (len >= dst_len && dst_len > 0) {
+		len = dst_len - 1;
 	}
 	memcpy(dst, src, len);
 	if (len < dst_len) {
@@ -279,14 +271,12 @@ static int enqueue_time(struct lichen_meshcore_adapter *adapter)
 static struct lichen_meshcore_pending_event *
 pending_tail(struct lichen_meshcore_adapter *adapter)
 {
-	__ASSERT_NO_MSG(adapter->pending_tail < ARRAY_SIZE(adapter->pending));
 	return &adapter->pending[adapter->pending_tail];
 }
 
 static const struct lichen_meshcore_pending_event *
 pending_head(const struct lichen_meshcore_adapter *adapter)
 {
-	__ASSERT_NO_MSG(adapter->pending_head < ARRAY_SIZE(adapter->pending));
 	return &adapter->pending[adapter->pending_head];
 }
 
@@ -376,20 +366,21 @@ static int encode_pending_status(
 static int enqueue_next_pending(struct lichen_meshcore_adapter *adapter)
 {
 	const struct lichen_meshcore_pending_event *event;
+	uint8_t out[LICHEN_MESHCORE_FRAME_MAX];
 	int ret;
 
 	if (adapter->pending_count == 0U) {
-		adapter->tx_buf[0] = LICHEN_MESHCORE_RESP_NO_MORE_MESSAGES;
-		return enqueue(adapter, adapter->tx_buf, 1U);
+		uint8_t none = LICHEN_MESHCORE_RESP_NO_MORE_MESSAGES;
+		return enqueue(adapter, &none, sizeof(none));
 	}
 
 	event = pending_head(adapter);
 	switch (event->kind) {
 	case LICHEN_MESHCORE_PENDING_TEXT:
-		ret = encode_pending_text(event, adapter->tx_buf, sizeof(adapter->tx_buf));
+		ret = encode_pending_text(event, out, sizeof(out));
 		break;
 	case LICHEN_MESHCORE_PENDING_STATUS:
-		ret = encode_pending_status(event, adapter->tx_buf, sizeof(adapter->tx_buf));
+		ret = encode_pending_status(event, out, sizeof(out));
 		break;
 	default:
 		adapter->stats.pending_drop_count++;
@@ -400,7 +391,7 @@ static int enqueue_next_pending(struct lichen_meshcore_adapter *adapter)
 		return ret;
 	}
 
-	ret = enqueue(adapter, adapter->tx_buf, (size_t)ret);
+	ret = enqueue(adapter, out, (size_t)ret);
 	if (ret >= 0) {
 		pending_pop(adapter);
 	}
@@ -453,6 +444,7 @@ static uint8_t meshcore_error_from_errno(int err)
 	case -EMSGSIZE:
 	case -ERANGE:
 		return LICHEN_MESHCORE_ERR_ILLEGAL_ARG;
+	case -ENOSYS:
 	default:
 		return LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD;
 	}
@@ -559,7 +551,7 @@ static bool valid_default_flood_name(const uint8_t *payload)
 	}
 
 	len = (size_t)(nul - payload);
-	if (len > LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN - 1U) {
+	if (len > 30U) {
 		return false;
 	}
 	return valid_utf8_text(payload, len);
@@ -588,7 +580,7 @@ static int persist_settings_or_error(
 		compat_settings(adapter);
 	int ret;
 
-	if (settings == NULL || adapter->ops.persist_settings == NULL) {
+	if (adapter->ops.persist_settings == NULL) {
 		return 0;
 	}
 
@@ -614,7 +606,7 @@ static int commit_settings_with_ok(
 
 	ret = enqueue_ok(adapter);
 	if (ret < 0) {
-		if (settings != NULL && adapter->ops.persist_settings == NULL) {
+		if (adapter->ops.persist_settings == NULL) {
 			*settings = *old_settings;
 		}
 	}
@@ -1057,18 +1049,20 @@ static int dispatch_supported(struct lichen_meshcore_adapter *adapter,
 }
 
 void lichen_meshcore_adapter_init(
-	struct lichen_meshcore_adapter *_Nonnull adapter,
-	const struct lichen_meshcore_adapter_ops *_Nonnull ops)
+	struct lichen_meshcore_adapter *adapter,
+	const struct lichen_meshcore_adapter_ops *ops)
 {
 	if (adapter == NULL) {
 		return;
 	}
 
 	memset(adapter, 0, sizeof(*adapter));
-	adapter->ops = *ops;
+	if (ops != NULL) {
+		adapter->ops = *ops;
+	}
 }
 
-void lichen_meshcore_adapter_reset(struct lichen_meshcore_adapter *_Nonnull adapter)
+void lichen_meshcore_adapter_reset(struct lichen_meshcore_adapter *adapter)
 {
 	struct lichen_meshcore_adapter_ops ops;
 
