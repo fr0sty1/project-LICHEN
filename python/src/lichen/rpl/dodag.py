@@ -40,14 +40,8 @@ _VERSION_HALF = 128
 
 
 def version_is_newer(new_version: int, old_version: int) -> bool:
-    """Check if new_version is newer than old_version using modular comparison.
-
-    RFC 6550 Section 7.2 defines DODAGVersionNumber as an 8-bit lollipop counter.
-    After wraparound (255 -> 0), simple integer comparison fails. This function
-    uses modular arithmetic: new > old iff (new - old) mod 256 is in (0, 128).
-
-    Example: version 5 is newer than version 250 because (5 - 250) mod 256 = 11.
-    """
+    if (old_version < _VERSION_HALF) != (new_version < _VERSION_HALF):
+        return new_version < _VERSION_HALF
     diff = (new_version - old_version) % _VERSION_MODULUS
     return 0 < diff < _VERSION_HALF
 
