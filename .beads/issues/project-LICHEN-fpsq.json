@@ -2,12 +2,16 @@
   "id": "project-LICHEN-fpsq",
   "title": "[codereview-pass3] coap_dtn.c lacks full OSCORE check in POST, no confessions_post handler, duplicate respond patterns remain",
   "description": "lichen/subsys/lichen/coap/coap_dtn.c:29 - POST does not check for COAP_OPTION_OSCORE or use oscore_unprotect; confessions_post stub missing entirely; error logging duplicated across handlers. Use lichen_coap_respond consistently but add OSCORE path. discovered-from:project-LICHEN-2ysa",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T15:31:35.942622139Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:31:35.942622139Z",
+  "updated_at": "2026-07-22T15:49:03.987833997Z",
+  "started_at": "2026-07-22T15:49:03.987833997Z",
+  "lease_expires_at": "2026-07-22T15:54:03.987833997Z",
+  "heartbeat_at": "2026-07-22T15:49:03.987833997Z",
   "labels": [
     "codereview"
   ],
