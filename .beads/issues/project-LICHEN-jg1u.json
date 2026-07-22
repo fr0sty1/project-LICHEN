@@ -2,15 +2,15 @@
   "id": "project-LICHEN-jg1u",
   "title": "[merge-conflict] worktree-worker21: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: c24f19d16",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:22.457680785Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:46:23.511491476Z",
+  "updated_at": "2026-07-22T23:46:26.702626782Z",
   "started_at": "2026-07-22T23:46:00.929235891Z",
-  "lease_expires_at": "2026-07-22T23:51:00.929235891Z",
-  "heartbeat_at": "2026-07-22T23:46:00.929235891Z"
+  "closed_at": "2026-07-22T23:46:26.702626782Z",
+  "close_reason": "Resolved merge conflict in lichen/apps/gateway/boards/heltec_wifi_lora32_v3_esp32s3_procpu.conf by adopting canonical resolution from main worktree (includes battery support, stack tuning, WiFi buffers, RPL root, additional heap/net configs). Verified no conflict markers remain. Commit c24f19d16."
 }
