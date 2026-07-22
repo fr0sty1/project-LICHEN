@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-js7c",
+  "title": "Integrate EMA, load_factor, density for adaptive SF/rebalance in rf_health",
+  "description": "Update rf_health.rs to use EMA for metrics, compute load_factor and density, implement adaptive spreading factor (SF) selection and channel rebalance logic. Match ccp16 vectors. Ensure no_std, heapless, forbid(unsafe_code).",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T23:55:37.420738691Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T23:55:37.420738691Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-js7c",
+      "depends_on_id": "project-LICHEN-l3j5",
+      "type": "blocks",
+      "created_at": "2026-07-22T23:55:37.545653427Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
