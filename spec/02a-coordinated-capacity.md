@@ -18,7 +18,7 @@
 7. [Constants and Parameters](#6-constants-and-parameters)
 8. [Implementation Notes](#implementation-notes)
 9. [Appendix A: Interference Mitigation Algorithm (CCP-15.2)](#appendix-a-interference-mitigation-algorithm-ccp-15.2)
-10. [CCP-12 Synchronized Hopping](#ccp-12-synchronized-hopping-project-lichen-da2q126)
+10. [CCP-12 Synchronized Hopping](#ccp-12-synchronized-hopping)
 
 (Note: Security considerations covered inline per RFC2119 cross-refs to appendix-design-rationale.md:7 and 02a:2; full treatment in spec/06-security.md. All constants defined; no arbitrary values.)
 
