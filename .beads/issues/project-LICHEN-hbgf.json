@@ -1,12 +1,16 @@
 {
   "id": "project-LICHEN-hbgf",
   "title": "codereview pass 2 chunk1: select_channel still uses undefined N_CHANNELS in some comments; add explicit primitive",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T16:41:29.316394356Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:41:29.316394356Z",
+  "updated_at": "2026-07-22T16:44:07.559406454Z",
+  "started_at": "2026-07-22T16:44:07.559406454Z",
+  "lease_expires_at": "2026-07-22T16:49:07.559406454Z",
+  "heartbeat_at": "2026-07-22T16:44:07.559406454Z",
   "labels": [
     "codereview"
   ],
