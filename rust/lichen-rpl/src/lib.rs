@@ -15,3 +15,17 @@ pub mod trickle;
 
 #[cfg(feature = "std")]
 extern crate std;
+
+pub fn lollipop_is_newer(new_val: u8, old_val: u8) -> bool {
+    const CIRCULAR_BIT: u8 = 128;
+    const WINDOW: u8 = 16;
+    match (new_val < CIRCULAR_BIT, old_val < CIRCULAR_BIT) {
+        (true, true) => new_val > old_val,
+        (false, false) => {
+            let diff = new_val.wrapping_sub(old_val) & 0x7F;
+            diff > 0 && diff <= WINDOW
+        }
+        (true, false) => true,
+        (false, true) => false,
+    }
+}

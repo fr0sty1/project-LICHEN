@@ -129,6 +129,24 @@ in the range 5680-5695 to a 4-bit residue. This range covers CoAP (5683),
 compact CoT (5681), SenML (5682), Cayenne LPP (5685), APRS-IS (5686), and
 NMEA (5687). See Section 9.1 for the complete port allocation.
 
+**Rule 3/4: RPL DIO/DAO over link-local ICMPv6 (RFC 6550)**
+
+Rule 3 for DIO (code=1), Rule 4 for DAO with D=1 (kd_flags bit 6 set, DODAGID present; common non-storing case). DAOs without DODAGID fall back to Rule 255. kd_flags byte: bit7=K (ACK req), bit6=D, lower bits flags. Matches Python _DAO_BASE_FIELDS, Rust RPL_DAO_RULE and codec (now fully synced at rules.py:290).
+
+| Field | TV | MO | CDA |
+|-------|----|----|-----|
+| IPv6 (link-local as Rule 0) | ... | ... | ... |
+| ICMPv6.type | 155 | equal | not-sent |
+| ICMPv6.code | 1/2 | equal | not-sent |
+| ICMPv6.checksum | - | ignore | compute |
+| RPL.instance | - | ignore | value-sent |
+| RPL.kd_flags | - | ignore | value-sent |
+| RPL.reserved | 0 | equal | not-sent |
+| RPL.seq (or dtsn/gmop/rank for DIO) | - | ignore | value-sent |
+| RPL.dodagid | - | ignore | value-sent |
+
+**Compressed size:** 6-10 bytes (RuleID + hop/IID residue + RPL fields).
+
 ### 5.6. Fragmentation
 
 Packets exceeding L2 MTU are fragmented per RFC 8724 Section 8:
@@ -163,7 +181,7 @@ Version increments when rules are added, removed, or modified.
 | 1 | Initial LICHEN release |
 | 2+ | Future versions |
 
-**DIO Rule Version Option (Type TBD):**
+**DIO Rule Version Option (Type TBD):** PIO proposal for RPL options (incl. potential PIO) at python/src/lichen/schc/rules.py:272 and 03-adaptation.md:184 (cross-ref 04-network.md:52 no-PIO in no-ULA model per 06-security.md:128).
 
 DODAG roots advertise their rule set version in DIO messages:
 

@@ -314,6 +314,17 @@ impl RplNode {
                         }
                         let dao_bytes = &pkt[body_offset..n];
                         let route_updated = self.router.process_dao(dao_bytes);
+                        if route_updated {
+                            if let Some((target, _)) = self.router.dao_manager.extract_edge(dao_bytes) {
+                                let mut s_iid = [0u8; 8]; s_iid.copy_from_slice(&sender_addr[8..16]);
+                                let mut t_iid = [0u8; 8]; t_iid.copy_from_slice(&target[8..16]);
+                                assert_eq!(s_iid, t_iid, "DAO sender_addr IID must match parsed Target");
+                                if let Some(path) = self.router.lookup_route(&target) {
+                                    let path_vec: std::vec::Vec<[u8; 16]> = path.to_vec();
+                                    self.router.add_route(target, &path_vec);
+                                }
+                            }
+                        }
                         return (0, RplEvent::DaoReceived { route_updated });
                     }
                     rpl_code::DIS => {

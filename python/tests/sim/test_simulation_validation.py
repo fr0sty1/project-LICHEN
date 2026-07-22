@@ -7,6 +7,7 @@ packet tracking and heterogeneous mesh testing capabilities.
 """
 
 import asyncio
+import json
 import tempfile
 from pathlib import Path
 
@@ -145,6 +146,9 @@ class TestSimulationValidation:
             assert "rx_node" in content
             # Note: packet content isn't stored in metrics, just hash and counts
             assert "tx_count" in content or "packet_hashes" in content
+            # Cross-impl test: hashes are now 32-char hex (16-byte prefix)
+            if "packet_hashes_sent" in content or "packet_hashes_received" in content:
+                assert all(len(h) == 32 for h in json.loads(content).get("tx_node", {}).get("packet_hashes_sent", []))
 
     @pytest.mark.asyncio
     async def test_renode_bridge_integration(self) -> None:

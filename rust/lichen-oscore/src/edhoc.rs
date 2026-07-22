@@ -534,9 +534,6 @@ impl EdhocInitiator {
             .verify(&m_2, &signature_2)
             .map_err(|_| EdhocError::SignatureVerification)?;
 
-        // TH_3 = H(TH_2, CIPHERTEXT_2, ID_CRED_R)
-        // ponytail: simplified - ID_CRED_R is peer pubkey
-        // Size: 34 (TH_2) + 2 + ~100 (ciphertext) + 34 (ID_CRED_R) = ~170 bytes
         let mut th_3_input = heapless::Vec::<u8, 192>::new();
         // TH_2 as CBOR bstr
         th_3_input.push_err(0x58)?;

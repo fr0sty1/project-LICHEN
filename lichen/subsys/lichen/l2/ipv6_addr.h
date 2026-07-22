@@ -140,6 +140,25 @@ int lichen_eui64_to_iid(const uint8_t *eui64, uint8_t *iid);
 int lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid);
 
 /**
+ * @brief Derive 13-character human-readable Crockford base32 node address
+ *
+ * From SHA-256(Ed25519 pubkey) first 8 bytes, encoded with alphabet
+ * 0123456789ABCDEFGHJKMNPQRSTVWXYZ, formatted as XXXX-XXXX-XXXXX.
+ * Buffer must hold at least 16 bytes (15 chars + NUL).
+ *
+ * Matches Rust `human_address_from_pubkey` and test vectors exactly.
+ * Used for UI, voice, logs, and LCI display (spec 03-addressing).
+ *
+ * @param pubkey 32-byte Ed25519 public key
+ * @param buf Output buffer for formatted string (must be >=16 bytes)
+ * @param buflen Size of buf
+ *
+ * @return 0 on success, -EINVAL on NULL or insufficient buffer
+ */
+int lichen_pubkey_to_human_address(const uint8_t *pubkey,
+                                   char *buf, size_t buflen);
+
+/**
  * @brief Construct link-local address from IID
  *
  * Builds fe80::<IID>

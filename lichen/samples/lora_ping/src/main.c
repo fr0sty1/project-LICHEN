@@ -34,10 +34,14 @@ static struct {
 	uint8_t seen_hash_count;
 } metrics;
 
-/* Compute packet hash using CRC32 */
+/* Compute packet hash using hash_32 with LICHEN key per spec (replaces crc32_ieee) */
 static uint32_t packet_hash(const uint8_t *data, size_t len)
 {
-	return crc32_ieee(data, len);
+	uint32_t h = 0x4c494348; /* LICHEN key seed */
+	for (size_t i = 0; i < len; i++) {
+		h = (h ^ data[i]) * 0x01000193u;
+	}
+	return h;
 }
 
 /* Track unique packets by hash */

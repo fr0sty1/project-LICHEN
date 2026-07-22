@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import random
 import time
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
@@ -325,3 +326,45 @@ class TestAnnounceFlood:
         finally:
             for radio in radios:
                 await radio.close()
+
+    @pytest.mark.asyncio
+    async def test_500_node_conference(
+        self, simulator_server: tuple[SimulatorServer, Simulation]
+    ) -> None:
+        random.seed(42)
+        server, sim = simulator_server
+        node_port = server.get_node_server_port("scale-test")
+        assert node_port is not None
+        n = min(SCALE_NODES * 10, 500)
+        radios = []
+        for i in range(n):
+            pos = (random.uniform(0, 100), random.uniform(0, 100), 0.0)
+            radio = SimRadio(
+                "127.0.0.1", node_port, "scale-test", f"node-{i}", pos
+            )
+            await radio.connect()
+            radios.append(radio)
+        try:
+            sim.remove_node("node-0")
+            p = b"realistic-coap-senml-rpl-dio-announce-payload-for-radio-stress"
+            await radios[1].transmit(p)
+            rx_count = 0
+            for r in radios[2:20]:
+                if await r.receive(100):
+                    rx_count += 1
+            rx = rx_count
+            assert rx > 10
+            m = sim.metrics
+            assert m.receptions > 0
+            g = SimRadio(
+                "127.0.0.1",
+                node_port,
+                "scale-test",
+                "backbone-gateway",
+                (50.0, 50.0, 0.0),
+            )
+            await g.connect()
+            await g.close()
+        finally:
+            for r in radios:
+                await r.close()

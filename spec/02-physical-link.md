@@ -199,10 +199,10 @@ Address 0x0000 reserved (broadcast). Range 0xFFF0-0xFFFF reserved. Short address
 
 **When No Coordinator (Isolated Mesh):**
 
-Nodes self-assign using hash-based allocation with DAD:
+Nodes self-assign using hash-based allocation with DAD (CCP-15.8.3: consistent hash_32 with LICHEN key per python/src/lichen/crypto/identity.py:hash_32 and 02a-coordinated-capacity.md, never CRC16):
 
-1. **Compute candidate:** `short_addr = CRC16(EUI-64) | 0x0001` (ensure non-zero)
-2. **DAD probe:** Broadcast 3 DAD requests with random jitter (0-500ms between)
+1. **Compute candidate:** `short_addr = (hash_32(EUI-64, 0) & 0xFFFE) | 0x0001` (ensure non-zero; hash_32 = SipHash-2-4)
+2. **DAD probe:** Broadcast 5 DAD requests with exponential jitter (initial 0-500ms, double on retry)
    ```
    DAD Request:
      Type: DAD_PROBE
@@ -221,10 +221,11 @@ DAD Conflict:
 
    ```
 5. **Resolution:**
-   - If conflict received: increment candidate, retry from step 2
-    - If no conflict after 3 probes: claim address
-    - After 5 failed attempts: fall back to full 02xx address (no short address compression)
+   - If conflict received: increment candidate (or re-hash with entropy), retry from step 2
+    - If no conflict after 5 probes: claim address
+    - After 7 failed attempts: fall back to full 02xx address (no short address compression)
 
+**DAD Retry Strategy Note:** hash_32(EUI-64,0) (per identity.py:hash_32 with LICHEN key) exhibits higher collision probability than prior CRC16 (especially with correlated manufacturer OUIs in EUI-64). Recommend 5+ probes, exponential backoff, and optional mixing with DODAGID or local 32-bit entropy (`hash_32(EUI-64 XOR DODAGID, local_entropy)`) per updated pseudocode. This reduces DAD airtime waste in dense meshes while maintaining robustness. Security implications discussed in 06-security.md:15.5.
 
 **Collision Detection (Safety Net):**
 

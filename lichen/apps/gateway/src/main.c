@@ -16,6 +16,7 @@
 #include <zephyr/net/coap_service.h>
 
 #include <lichen/hal.h>
+#include <lichen/rpl_dodag.h>
 
 #if IS_ENABLED(CONFIG_LICHEN_LORA_L2)
 #include "lora_l2.h"
@@ -174,6 +175,8 @@ static size_t encode_status_cbor(uint8_t *buf, size_t buf_size, uint16_t rank,
 
 /* Gateway status state (observable) */
 static uint16_t s_rank = LICHEN_GATEWAY_STATUS_RANK;
+static struct lichen_rpl_dodag s_dodag;
+static const uint8_t s_dodag_id[16] = {0xfd,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1};
 
 /*
  * Respond with Block2 slicing (RFC 7959) when the payload will not fit a
@@ -692,7 +695,11 @@ int main(void)
 #endif
 
 #if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
-	LOG_INF("RPL root signalling enabled");
+	if (lichen_rpl_dodag_init_root(&s_dodag, 0, s_dodag_id, 0) == 0) {
+		LOG_INF("RPL root signalling enabled");
+	} else {
+		LOG_ERR("RPL root init failed");
+	}
 #else
 	LOG_WRN("RPL root signalling disabled - advertising /status rpl=false");
 #endif

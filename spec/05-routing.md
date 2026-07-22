@@ -25,34 +25,36 @@ LICHEN uses a three-tier routing architecture optimized for different traffic pa
 
 - **LOADng** handles edge cases: new nodes, nodes that missed announces, or rarely-contacted destinations. Reactive discovery when gradient doesn't exist.
 
-### 7.2. Routing Decision
+### 7.2. Routing Decision (updated for 02xx-only)
 
 ```
 def route_packet(dst):
-    if is_off_mesh(dst):
-        # External destination (GUA not in mesh, or unknown)
-        return forward_to_rpl_parent()
+    if is_link_local(dst):
+        return send_to_neighbor(dst)
 
-    gradient = gradient_table.lookup(dst)
-    if gradient and not gradient.expired:
-        # Known peer - follow gradient
-        return forward_to(gradient.next_hop)
+    # 02xx destinations: local mesh first, then Yggdrasil via gateway
+    if is_local_mesh_peer(dst):  # via gradient, RPL route, or announce cache
+        gradient = gradient_table.lookup(dst)
+        if gradient and not gradient.expired:
+            return forward_to(gradient.next_hop)
+        else:
+            loadng_discover(dst)
+            return queue_pending(dst, packet)
 
-    else:
-        # Unknown peer - reactive discovery
-        loadng_discover(dst)
-        return queue_pending(dst, packet)
+    # Not local: forward to gateway for Yggdrasil routing (if BR present)
+    return forward_to_default_gateway_or_yggdrasil(dst)
 ```
 
-**Address classification:**
+**Address classification (simplified):**
 
 | Address Type | Classification | Routing |
 |--------------|----------------|---------|
-| Link-local (fe80::/10) | Direct neighbor | Send to neighbor |
-| ULA (fd00::/8) in mesh prefix | Mesh peer | Gradient or LOADng |
-| GUA in mesh prefix | Mesh peer | Gradient or LOADng |
-| Other GUA | Off-mesh | RPL to border router |
-| Unknown | Off-mesh | RPL to border router |
+| Link-local (fe80::/10) | Direct neighbor/control | Send to neighbor (no routing) |
+| 02xx::/7 | Local mesh peer (gradient/RPL) | Gradient or LOADng or RPL |
+| 02xx::/7 | Remote (not in local mesh) | Forward to gateway for Yggdrasil |
+| Other | Off-mesh | Gateway/Yggdrasil |
+
+Local preference for 02xx addresses eliminates previous ULA/GUA complexity (unified Ed25519 derivation per 06-security.md:109). Gateways run Yggdrasil with the same Ed25519 key for unified identity.
 
 ### 7.3. Conformance Requirements
 
@@ -164,7 +166,7 @@ announce because SCHC global CoAP also uses rule ID `0x01`.
 
 ```
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-| Type=ANN  | Flags     | Hop Count   | Seq Num               |
+| Type=ANN  | Flags     | Hop Count   | Seq Num | rx_valid_until_sfn (2) |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                    Originator IID (8 bytes)                   |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -176,16 +178,17 @@ announce because SCHC global CoAP also uses rule ID `0x01`.
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-Total: ~92 bytes minimum.
+Total: ~94 bytes minimum (rx_valid_until_sfn adds 2 bytes; human decision on format noted).
 
 **Fields:**
 - **Type:** Announce message identifier
 - **Flags:** Reserved
 - **Hop Count:** Incremented at each relay
 - **Seq Num:** Monotonic, detects duplicates and freshness
+- **rx_valid_until_sfn:** SFN until which RX window/announce is valid (human decision on format noted; included in signed_data per link spec)
 - **Originator IID:** 8-byte Interface Identifier of announcer
 - **Public Key:** Ed25519 public key (32 bytes)
-- **Signature:** Schnorr signature over (IID, pubkey, seq, app_data)
+- **Signature:** Schnorr signature over signed_data (reference signed_data definition only; independent of impls)
 - **App Data:** Optional application data (node name, capabilities, etc.)
 
 ### 9.3. Announce Processing

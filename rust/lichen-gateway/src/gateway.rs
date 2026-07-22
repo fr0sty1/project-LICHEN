@@ -2,39 +2,36 @@
 
 use lichen_core::addr::NodeId;
 use lichen_core::constants::L2_DISPATCH_SCHC;
-use lichen_core::ipv6::field;
+use lichen_core::ipv6::{field, next_header, write_extension_header};
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
-use lichen_node::{routing::SourceRoutingHeader, Node, Router};
+use lichen_node::{routing::SourceRoutingHeader, RplNode};
 use lichen_schc::codec::{compress, decompress, SchcError};
 use tracing::{info, warn};
 
 /// Top-level border router state.
 #[derive(Debug)]
 pub struct Gateway {
-    pub node: Node,
-    router: Router,
+    pub node: RplNode,
 }
 
 impl Gateway {
     pub fn new(node_id: NodeId) -> Self {
         info!(?node_id, "gateway initialising");
-        let node_addr = node_id.link_local_addr().0;
         Self {
-            node: Node::new(node_id),
-            router: Router::new_root(node_addr),
+            node: RplNode::new_root(node_id),
         }
     }
 
     /// Returns true if `dst` has a route in the DAO-based RoutingTable (non-storing RPL root).
     pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
-        self.router.lookup_route(dst).is_some()
+        (dst[0] == 0xfe && (dst[1] & 0xc0) == 0x80) || dst[0] == 0xfd || self.node.router.lookup_route(dst).is_some()
     }
 
     /// Process incoming DAO to update DAO table / RoutingTable (replaces stale HashMap).
     pub fn process_dao(&mut self, dao_bytes: &[u8]) -> bool {
-        self.router.process_dao(dao_bytes)
+        self.node.router.process_dao(dao_bytes)
     }
 
     /// SCHC-decompress a frame received from the mesh via SLIP.
@@ -88,7 +85,7 @@ impl Gateway {
         let mut packet_to_compress = ipv6_packet.to_vec();
 
         if self.is_local_mesh(&dst) {
-            if let Some(path) = self.router.lookup_route(&dst) {
+            if let Some(path) = self.node.router.lookup_route(&dst) {
                 info!(
                     path_len = path.len(),
                     "downward to local mesh — SRH insertion"
@@ -102,10 +99,27 @@ impl Gateway {
                             segments_left: (path.len() - 1) as u8,
                             addresses: path[1..].to_vec(),
                         };
-                        // Full SRH insertion into extension headers + update NH/length
-                        // omitted for brevity; see Python lichen.rpl.routing.insert_source_route
-                        // and RFC 6554 §3. Full impl in next chunk.
-                        info!(?srh, "SRH stub inserted (full wire format TBD)");
+                        let original_nh = packet_to_compress[6];
+                        packet_to_compress[6] = next_header::ROUTING;
+                        let mut srh_inner = [0u8; 6 + 16 * 8];
+                        let srh_len = srh.write_to(&mut srh_inner).expect("SRH fits in buffer");
+                        let mut ext_buf = [0u8; 128];
+                        let ext_len = write_extension_header(
+                            next_header::ROUTING,
+                            original_nh,
+                            &srh_inner[0..srh_len],
+                            &mut ext_buf,
+                        )
+                        .expect("extension header fits");
+                        let original_payload = packet_to_compress[40..].to_vec();
+                        let new_len = 40 + ext_len + original_payload.len();
+                        packet_to_compress.resize(new_len, 0);
+                        packet_to_compress[40..40 + ext_len].copy_from_slice(&ext_buf[0..ext_len]);
+                        packet_to_compress[40 + ext_len..].copy_from_slice(&original_payload);
+                        info!(
+                            ?srh,
+                            ext_len, "full SRH extension header inserted (next_header=43)"
+                        );
                     }
                 }
             }

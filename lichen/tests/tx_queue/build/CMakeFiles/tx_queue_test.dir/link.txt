@@ -1,1 +1,0 @@
-/usr/bin/cc  -arch arm64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/tx_queue_test.dir/main.c.o "CMakeFiles/tx_queue_test.dir/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/link/tx_queue.c.o" -o tx_queue_test  -lpthread

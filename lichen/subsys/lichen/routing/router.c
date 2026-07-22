@@ -61,10 +61,13 @@ static bool is_ula(const uint8_t addr[16])
 }
 
 /**
- * Extract IID from IPv6 address (last 8 bytes).
+ * Extract IID from IPv6 address (bytes 8-15).
+ *
+ * Guarded for link-local/ULA only (codereview 2oe9). Matches Rust iid().
  */
 static void extract_iid(const uint8_t addr[16], uint8_t iid[8])
 {
+	__ASSERT_NO_MSG(is_link_local(addr) || is_ula(addr));
 	memcpy(iid, &addr[8], 8);
 }
 

@@ -1,5 +1,5 @@
 {
-  "format_version": 1,
+  "format_version": 2,
   "description": "RPL control message parse/generate vectors (RFC 6550). 'fields' are the decoded message contents; 'encoded' is the message to_bytes() output (excluding ICMPv6 type/code/checksum header). Round-trip: from_bytes(encoded) == fields and to_bytes(fields) == encoded.",
   "vectors": [
     {
@@ -248,7 +248,7 @@
           }
         ]
       },
-      "encoded": "00400001fd00000000000000000000000000000105120080fe8000000000000000000000000000030614000000fffe800000000000000000000000000002"
+      "encoded": "00400001fd00000000000000000000000000000105120080fe8000000000000000000000000000030614800000fffe800000000000000000000000000002"
     },
     {
       "name": "option_chain_pad1_padn",
@@ -278,7 +278,7 @@
           "parent_address": "fe80::1"
         }
       ],
-      "encoded": "05120080fe800000000000000000000000000005061400000178fe800000000000000000000000000001"
+      "encoded": "05120080fe800000000000000000000000000005061480000178fe800000000000000000000000000001"
     }
   ]
 }

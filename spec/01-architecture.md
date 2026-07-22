@@ -51,13 +51,14 @@ Every protocol layer uses existing IETF standards:
 |                    Transport Layer                        |
 |  UDP (RFC 768) - compressed via SCHC                      |
 +----------------------------------------------------------+
-|                    Network Layer                          |
+|  Network Layer                          |
 |  IPv6 (RFC 8200) - compressed via SCHC                    |
-|  Link-local (fe80::/10) or Global (/64 prefix)            |
+|  Link-local (fe80::/10) + Yggdrasil-derived 02xx::/7 only |
+|  (unified Ed25519 identity; no ULA)                       |
 +----------------------------------------------------------+
 |                    Routing Layer                          |
 |  RPL (RFC 6550) - DODAG mesh formation                    |
-|  Source routing via 6LoRH (RFC 8138)                      |
+|  Local 02xx preference before Yggdrasil gateway forward   |
 +----------------------------------------------------------+
 |                    Adaptation Layer                       |
 |  6LoWPAN (RFC 4944, 6282) - fragmentation                 |

@@ -56,6 +56,8 @@ pub mod schnorr;
 
 #[cfg(feature = "schnorr")]
 pub mod identity;
+#[cfg(feature = "schnorr")]
+pub use identity::{human_address_from_pubkey, iid_from_pubkey};
 
 #[cfg(all(feature = "schnorr", feature = "std"))]
 pub mod link_layer;

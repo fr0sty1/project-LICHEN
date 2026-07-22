@@ -26,6 +26,15 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+/* BUILD_ASSERT for non-Zephyr test builds (Zephyr provides via util.h) */
+#ifndef BUILD_ASSERT
+#define BUILD_ASSERT(cond, msg) _Static_assert(cond, msg)
+#endif
+
+#ifdef __ZEPHYR__
+#include <zephyr/sys/util.h>
+#endif
+
 /* Nullability annotations for pointer safety (Clang/GCC compatibility) */
 #ifndef __has_feature
 #define __has_feature(x) 0
@@ -281,6 +290,31 @@ int lichen_link_rx(struct lichen_link_rx_ctx *_Nonnull ctx,
 		   const uint8_t *_Nonnull frame, size_t frame_len,
 		   uint8_t *_Nonnull out_ipv6, size_t *_Nonnull out_len,
 		   uint8_t *_Nonnull src_eui64);
+
+/* ─── TDMA (CCP-16 load balancing) ──────────────────────────────────────── */
+
+#ifdef CONFIG_LICHEN_TDMA
+/**
+ * @brief TDMA slot for collision-free scheduling (20 bytes exact for ARM).
+ */
+struct lichen_tdma_slot {
+	uint32_t start_time_us;  /**< Slot start time in microseconds */
+	uint16_t duration_ms;    /**< Slot duration */
+	uint8_t slot_id;         /**< Slot identifier */
+	uint8_t flags;           /**< Scheduling flags */
+	uint8_t owner_eui64[8];  /**< Owning node's EUI-64 */
+	uint8_t padding[4];      /**< Explicit padding for alignment */
+};
+
+BUILD_ASSERT(sizeof(struct lichen_tdma_slot) == 20,
+	     "lichen_tdma_slot must be exactly 20 bytes (Zephyr ARM targets)");
+
+/**
+ * @brief Initialize TDMA subsystem (call after lichen_link_load_key(),
+ * before oscore_init() per AGENTS.md dependency graph).
+ */
+int lichen_tdma_init(struct lichen_link_ctx *_Nonnull link_ctx);
+#endif /* CONFIG_LICHEN_TDMA */
 
 #ifdef __cplusplus
 }

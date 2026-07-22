@@ -19,8 +19,8 @@ use lichen_core::l2_payload::{
 };
 use lichen_hal::Radio;
 use lichen_ipv6::{next_header, Addr, Ipv6Header, UdpHeader, IPV6_HEADER_LEN, UDP_HEADER_LEN};
-use lichen_link::link_layer::LinkRxError;
 use lichen_link::seqnum::LinkSeqNum;
+use lichen_link::{frame::FrameError, link_layer::LinkRxError};
 use lichen_schc::codec;
 
 use crate::forward_buffer::{ForwardBuffer, ForwardError};
@@ -342,7 +342,10 @@ impl<R: Radio> Stack<R> {
         let wire_len = self
             .link
             .build_frame(self.epoch, seqnum, &[], l2_data, &mut wire)
-            .map_err(|_| TxError::FrameEncode)?;
+            .map_err(|e| match e {
+                FrameError::BufferTooSmall => TxError::BufferTooSmall,
+                _ => TxError::FrameEncode,
+            })?;
 
         // Radio TX
         self.radio
@@ -367,7 +370,10 @@ impl<R: Radio> Stack<R> {
         let wire_len = self
             .link
             .build_frame(self.epoch, seqnum, &[], l2_data, &mut wire)
-            .map_err(|_| TxError::FrameEncode)?;
+            .map_err(|e| match e {
+                FrameError::BufferTooSmall => TxError::BufferTooSmall,
+                _ => TxError::FrameEncode,
+            })?;
 
         self.radio
             .transmit(&wire[..wire_len])

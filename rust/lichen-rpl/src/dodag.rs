@@ -16,36 +16,14 @@ use std::collections::HashMap;
 #[cfg(feature = "std")]
 use crate::message::Dio;
 
+#[cfg(feature = "std")]
+use crate::lollipop_is_newer;
+
 pub const INFINITE_RANK: u16 = 0xFFFF;
 pub const ROOT_RANK: u16 = 256; // MinHopRankIncrease
 pub const MIN_HOP_RANK_INCREASE: u16 = 256;
 pub const MAX_RANK_INCREASE: u16 = 2048;
 pub const PARENT_SWITCH_THRESHOLD: u16 = 192;
-
-/// RFC 6550 Section 7.2: Lollipop sequence comparison for DODAG version.
-///
-/// Values 0-127 are the linear region (restart); 128-255 are circular (normal).
-/// Returns true if `new_ver` is newer than `old_ver`.
-const LOLLIPOP_CIRCULAR_BIT: u8 = 128;
-const LOLLIPOP_SEQUENCE_WINDOW: u8 = 16;
-
-fn version_is_newer(new_ver: u8, old_ver: u8) -> bool {
-    match (
-        new_ver < LOLLIPOP_CIRCULAR_BIT,
-        old_ver < LOLLIPOP_CIRCULAR_BIT,
-    ) {
-        // Both in linear region (0-127): simple comparison
-        (true, true) => new_ver > old_ver,
-        // Both in circular region (128-255): modular comparison with window
-        (false, false) => {
-            let diff = new_ver.wrapping_sub(old_ver) & 0x7F;
-            diff > 0 && diff <= LOLLIPOP_SEQUENCE_WINDOW
-        }
-        // Mixed: linear (restart) is always newer than circular
-        (true, false) => true,
-        (false, true) => false,
-    }
-}
 
 /// Node's role in the DODAG.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -181,14 +159,14 @@ impl DodagState {
         }
         // A same-version foreign DODAG cannot establish membership. A newer
         // foreign version is handled below as an explicit DODAG adoption.
-        if dio.dodag_id != self.dodag_id && !version_is_newer(dio.version, self.version) {
+        if dio.dodag_id != self.dodag_id && !lollipop_is_newer(dio.version, self.version) {
             return;
         }
 
-        if version_is_newer(dio.version, self.version) {
+        if lollipop_is_newer(dio.version, self.version) {
             // Newer version — rejoin.
             self.adopt_version(dio);
-        } else if version_is_newer(self.version, dio.version) {
+        } else if lollipop_is_newer(self.version, dio.version) {
             return; // stale
         }
 
@@ -535,22 +513,22 @@ mod tests {
 
     #[test]
     fn version_lollipop_semantics() {
-        // Test the version_is_newer function directly
+        // Test the lollipop_is_newer function directly
         // Linear region comparisons (0-127)
-        assert!(super::version_is_newer(1, 0));
-        assert!(super::version_is_newer(127, 0));
-        assert!(!super::version_is_newer(0, 1));
+        assert!(super::lollipop_is_newer(1, 0));
+        assert!(super::lollipop_is_newer(127, 0));
+        assert!(!super::lollipop_is_newer(0, 1));
 
         // Circular region comparisons (128-255) with window
-        assert!(super::version_is_newer(129, 128));
-        assert!(super::version_is_newer(144, 128)); // diff=16, within window
-        assert!(!super::version_is_newer(145, 128)); // diff=17, outside window
-        assert!(super::version_is_newer(128, 255)); // wraps around within circular region
+        assert!(super::lollipop_is_newer(129, 128));
+        assert!(super::lollipop_is_newer(144, 128)); // diff=16, within window
+        assert!(!super::lollipop_is_newer(145, 128)); // diff=17, outside window
+        assert!(super::lollipop_is_newer(128, 255)); // wraps around within circular region
 
         // Mixed region: linear is always newer than circular
-        assert!(super::version_is_newer(0, 255));
-        assert!(super::version_is_newer(0, 128));
-        assert!(super::version_is_newer(127, 200));
-        assert!(!super::version_is_newer(200, 127)); // circular not newer than linear
+        assert!(super::lollipop_is_newer(0, 255));
+        assert!(super::lollipop_is_newer(0, 128));
+        assert!(super::lollipop_is_newer(127, 200));
+        assert!(!super::lollipop_is_newer(200, 127)); // circular not newer than linear
     }
 }

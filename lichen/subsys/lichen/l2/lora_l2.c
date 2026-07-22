@@ -257,6 +257,7 @@ static struct {
     /* Mutex-protected: callback + user_data updated as a pair */
     lichen_lora_rx_cb_t rx_callback;
     void *rx_callback_user_data;
+    bool cca_enabled;
 } lora_data;
 
 /**
@@ -669,6 +670,7 @@ int lichen_lora_l2_init(void)
     }
     lora_data.rx_callback = NULL;
     lora_data.rx_callback_user_data = NULL;
+    lora_data.cca_enabled = IS_ENABLED(CONFIG_LICHEN_LORA_CCA_ENABLE);
 
     if (!device_is_ready(lora_data.lora_dev)) {
         LOG_ERR("lora_l2: device not ready");
@@ -1057,6 +1059,7 @@ int lichen_lora_l2_deinit(void)
      */
     lora_data.rx_callback = NULL;
     lora_data.rx_callback_user_data = NULL;
+    lora_data.cca_enabled = false;
 
     /*
      * Reinitialize lichen_l2's rx_mutex (project-LICHEN-dq6n.22).
@@ -1242,6 +1245,30 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
         LOG_ERR("lora_l2: TX modem acquire timed out");
         return -EBUSY;
     }
+
+    /* CCA before TX if enabled (uses runtime flag from struct after update).
+     * If busy, abort TX to avoid collision (per CCP-15.2 / TDMA spec).
+     * Driver CAD impl (added for LR1110/SX126x) determines busy flag.
+     */
+    if (lora_data.cca_enabled) {
+        bool busy = false;
+        int cad_ret = lora_cad(lora_data.lora_dev,
+                               K_MSEC(CONFIG_LICHEN_LORA_CCA_TIMEOUT_MS),
+                               &busy);
+        if (cad_ret < 0) {
+            if (cad_ret != -ENOSYS) {
+                LOG_WRN("lora_l2: CAD failed (%d), proceeding with TX", cad_ret);
+            }
+        } else if (busy) {
+            LOG_INF("lora_l2: CCA detected busy channel, aborting TX");
+            k_mutex_unlock(&modem_mutex);
+            atomic_dec(&tx_pending);
+            secure_zero(tx_buf, sizeof(tx_buf));
+            k_mutex_unlock(&tx_buf_mutex);
+            return -EBUSY;
+        }
+    }
+
     ret = lora_send(lora_data.lora_dev, tx_buf, (uint32_t)pop_len);
     k_mutex_unlock(&modem_mutex);
 

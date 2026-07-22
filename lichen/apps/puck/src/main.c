@@ -535,6 +535,16 @@ int main(void)
 		}
 	}
 
+	/* Publish self identity (the "identity canary") so /config/identity,
+	 * MeshCore, and logs confirm successful L2 key + app identity setup.
+	 * Fixes missing canary in nRF/ESP puck L2 startup. */
+	ret = lichen_l2_publish_app_identity("puck", identity.board_name);
+	if (ret < 0) {
+		LOG_WRN("app identity publish failed (%d)", ret);
+	} else {
+		LOG_INF("OK: local node identity at startup");
+	}
+
 	lichen_eui64_to_iid(peer_eui64, peer_iid);
 	lichen_make_link_local(peer_iid,
 			       (struct in6_addr *)&peer_addr.sin6_addr);

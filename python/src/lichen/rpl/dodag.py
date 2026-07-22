@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
+from __future__ import annotations
+
 """RPL DODAG state machine and parent selection (RFC 6550, spec section 8).
 
 Implements DODAG join/parent selection using MRHOF with ETX (spec B.1). A node
@@ -18,8 +20,6 @@ Stability mechanisms:
 - MaxRankIncrease: reject candidates whose path cost exceeds the lowest rank
   held this version plus ``max_rank_increase`` (spec B.2), bounding rank growth.
 """
-
-from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum

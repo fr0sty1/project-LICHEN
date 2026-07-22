@@ -509,7 +509,7 @@ Specific values TBD.
 
 ```
 RPLInstanceID: 0
-DODAGID: fd12:3456:789a:1::1
+DODAGID: 0201:0203:0405:0607::1
 Version: 1
 Rank: 256 (root)
 Mode: Non-Storing
@@ -522,9 +522,7 @@ Trickle:
   Imax: 8 doublings (17 min)
   k: 10
 
-Prefix: fd12:3456:789a:1::/64
-Valid Lifetime: 86400s (1 day)
-Preferred Lifetime: 43200s (12 hours)
+# No ULA prefix advertised (no-ULA model); nodes use self-derived 02xx addresses
 ```
 
 ## Appendix B. Parent Selection Example

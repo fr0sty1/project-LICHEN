@@ -98,4 +98,47 @@ config LICHEN_LINK_EPOCH_TEST_HOOKS
 	  boot-epoch cache so tests can simulate a reboot and exercise the
 	  persist-and-advance behavior. Testing only.
 
+config LICHEN_LINK_CCP_LOAD_BALANCING
+	bool "CCP-16 Load Balancing (TDMA, adaptive SF, multi-channel, density-aware)"
+	depends on LICHEN_LINK
+	depends on LICHEN_RPL
+	select LICHEN_SCHC
+	select LICHEN_LINK_EPOCH_PERSIST
+	default y
+	help
+	  Enable Coordinated Capacity Profile load balancing features. See
+	  spec/02a-coordinated-capacity.md for multi-root beacon conflict,
+	  full desync recovery state machine (with RPL version/drift, SFN reset,
+	  time-provider stratum), CCP-16 algorithm (TDMA hash, adaptive SF on
+	  SNR+ density, multi-channel), and RFC2119 robustness. Test vectors in
+	  test/vectors/ccp16-desync.json.
+	  SECURITY: selects LICHEN_SCHC so compressed control messages for
+	  density metrics cannot be disabled independently.
+
+config LICHEN_TDMA
+	bool "TDMA slot scheduling"
+	depends on LICHEN_LINK_CCP_LOAD_BALANCING
+	help
+	  Enable TDMA struct and lichen_tdma_init() (link_ctx.c:508) after
+	  lichen_link_load_key() per initialization graph in AGENTS.md and
+	  spec/02a-coordinated-capacity.md §3. Must not call before key loaded.
+
+config LICHEN_ADAPTIVE_SF_ENABLED
+	bool "Adaptive spreading factor"
+	default y
+	depends on LICHEN_LINK_CCP_LOAD_BALANCING
+	help
+	  Enable per-neighbor adaptive SF based on SNR EWMA and density per
+	  spec/02a-coordinated-capacity.md and zrh2.2. Part of CCP-16.
+	  Adds fields to neighbor/gradient table.
+
+config LICHEN_DEFAULT_SF
+	int "Default spreading factor"
+	default 10
+	range 7 12
+	depends on LICHEN_LINK
+	help
+	  Default SF when no per-neighbor adaptation or assignment.
+	  SF10 balances range and airtime for typical LoRa meshes.
+
 endif # LICHEN_LINK

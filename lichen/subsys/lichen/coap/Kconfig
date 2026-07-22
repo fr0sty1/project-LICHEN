@@ -50,7 +50,7 @@ config LICHEN_COAP_SERVER
 	help
 	  Enable LICHEN CoAP server for responding to requests from mesh nodes.
 	  Exposes LCI resources: /status, /config, /neighbors, /key, /msg/inbox,
-	  and /.well-known/core for resource discovery.
+	  /deaddrop, and /.well-known/core for resource discovery.
 
 config LICHEN_COAP_SERVER_STANDALONE
 	bool "Standalone subsystem-owned CoAP service (coap_server.c)"
@@ -59,7 +59,9 @@ config LICHEN_COAP_SERVER_STANDALONE
 	help
 	  Compile the subsystem-owned COAP_SERVICE (lichen_coap_server) from
 	  coap_server.c, which registers its own /status, /config, /neighbors,
-	  /key and /msg/inbox resources.
+	  /key and /msg/inbox resources. Other LCI resources (including
+	  /deaddrop when LICHEN_COAP_DEADDROP=y) are provided by per-module
+	  files.
 
 	  Keep this off in applications that define their own CoAP service
 	  and use the per-resource handler modules (LICHEN_COAP_STATUS,
@@ -249,6 +251,47 @@ config LICHEN_COAP_LOCATION_LOG_LEVEL
 	range 0 4
 	help
 	  Log level for the LICHEN CoAP location handler:
+	  0=off, 1=error, 2=warning, 3=info, 4=debug
+
+config LICHEN_COAP_DEADDROP
+	bool "LCI /deaddrop resource handlers (DTN store-forward)"
+	depends on LICHEN_COAP_SERVER
+	select ZCBOR
+	select COAP_URI_WILDCARD
+	select LICHEN_SENML
+	help
+	  Enable CoAP server resources for dead drop (encrypted store-and-forward
+	  DTN) per spec/12-apps.md section 18.9:
+	  - POST /deaddrop - store OSCORE E2E ciphertext for recipient
+	  - GET /deaddrop?recipient=... - pickup pending drops (query param)
+	  - Observable for gateway push notifications
+	  - RAM-backed with TTL expiry. See LICHEN_COAP_DEADDROP_MAX_* options.
+
+config LICHEN_COAP_DEADDROP_MAX_MESSAGES
+	int "Maximum dead drop messages to store"
+	depends on LICHEN_COAP_DEADDROP
+	default 8
+	range 1 32
+	help
+	  Maximum pending dead drop messages kept in RAM. Each entry ~100-200
+	  bytes depending on ciphertext size. Enforces memory budget on gateways.
+
+config LICHEN_COAP_DEADDROP_MAX_TTL
+	int "Maximum TTL for dead drops (seconds)"
+	depends on LICHEN_COAP_DEADDROP
+	default 86400
+	range 3600 604800
+	help
+	  Maximum time-to-live in seconds for stored dead drops (default 24h,
+	  max ~7 days). Messages beyond this are discarded.
+
+config LICHEN_COAP_DEADDROP_LOG_LEVEL
+	int "CoAP deaddrop log level"
+	depends on LICHEN_COAP_DEADDROP
+	default 3
+	range 0 4
+	help
+	  Log level for LICHEN CoAP deaddrop handlers:
 	  0=off, 1=error, 2=warning, 3=info, 4=debug
 
 endif # LICHEN_COAP

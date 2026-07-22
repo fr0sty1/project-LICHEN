@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
+from __future__ import annotations
+from typing import Optional
+
 """DODAG visualization for the simulation harness (spec section 8).
 
 Renders the routing tree formed by RPL into serializable representations that a
@@ -12,13 +15,11 @@ These are pure functions over a snapshot; the caller decides when to snapshot
 the evolving DODAG during a run.
 """
 
-from __future__ import annotations
-
 from collections.abc import Mapping
 
 from lichen.rpl.dodag import DodagState
 
-Topology = dict[str, str | None]
+Topology = dict[str, Optional[str]]
 
 
 def topology_from_states(states: Mapping[str, DodagState]) -> Topology:

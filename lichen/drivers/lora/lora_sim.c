@@ -387,10 +387,20 @@ static int lora_sim_init(const struct device *dev)
 	return 0;
 }
 
+static int lora_sim_cad(const struct device *dev, k_timeout_t timeout,
+			 bool *busy)
+{
+	ARG_UNUSED(dev);
+	ARG_UNUSED(timeout);
+	if (busy) *busy = false; /* simulator assumes clear for testing */
+	return 0;
+}
+
 static const struct lora_driver_api lora_sim_api = {
 	.config = lora_sim_config,
 	.send   = lora_sim_send,
 	.recv   = lora_sim_recv,
+	.cad    = lora_sim_cad,
 };
 
 #define LORA_SIM_DEFINE(inst)						\

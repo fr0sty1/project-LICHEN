@@ -31,9 +31,8 @@ logger = logging.getLogger(__name__)
 # Forwarding buffer limits (spec appendix-bufferbloat.md)
 MAX_FORWARDING_SOURCES = 8
 MAX_PACKETS_PER_SOURCE = 2
-
-# GPSR null island detection threshold (~111 meters).
-# GPS sensors often produce near-zero garbage, not exactly (0, 0).
+MAX_PENDING_DESTINATIONS = 16
+MAX_NEIGHBORS = 32
 NULL_ISLAND_EPSILON = 0.001
 
 
@@ -330,25 +329,22 @@ class ForwardingBuffer:
 class Router:
     """Hybrid routing decision engine (spec 7.2).
 
-    Why a class: Needs state across invocations:
-    - gradient_table: Where to look up routes
-    - dodag: RPL state for parent selection
-    - loadng: LOADng router for discovery
-    - pending_queue: Packets waiting for discovery
-    - mesh_prefixes: Which prefixes are "in the mesh"
+    Why a class: Needs state across invocations for gradient, pending, neighbors, buffers.
 
     Attributes:
         node_address: This node's IPv6 address.
         gradient_table: Unified routing table (spec section 11).
         dodag: RPL DODAG state for upward routing.
-        loadng: LOADng router for reactive discovery.
+        loadng: Loadng router for reactive discovery.
         mesh_prefixes: Set of IPv6 prefixes that are "mesh-local".
-            Why a set: Nodes may be part of multiple prefixes (ULA + GUA).
         pending_queue: Packets waiting for route discovery.
-            Why dict by destination: Multiple packets may be queued for same dest.
-        max_pending_per_dest: Max packets to queue per destination.
-            Why limit: Prevent memory exhaustion during discovery.
+        max_pending_per_dest: Max packets per destination.
+        max_pending_destinations: Max unique pending destinations with oldest eviction.
+        max_neighbors: Max tracked neighbors with LRU eviction for coords/queue_depth.
+        _pending_order: Internal eviction order for pending destinations.
+        _neighbor_order: Internal LRU order for neighbors.
     """
+
 
     node_address: IPv6Address
     gradient_table: GradientTable
@@ -359,18 +355,20 @@ class Router:
         default_factory=dict, repr=False
     )
     max_pending_per_dest: int = 3
-    node_coords: tuple[float, float] | None = None  # (lat, lon) for GPSR (spec 9.7)
+    max_pending_destinations: int = MAX_PENDING_DESTINATIONS
+    _pending_order: list[IPv6Address] = field(default_factory=list, repr=False)
+    node_coords: tuple[float, float] | None = None
     neighbor_coords: dict[IPv6Address, tuple[float, float]] = field(
         default_factory=dict, repr=False
-    )  # link-local -> coords
+    )
     neighbor_queue_depth: dict[IPv6Address, int] = field(
         default_factory=dict, repr=False
-    )  # link-local -> queue depth (spec 11.4)
-    # DTN store-and-forward buffer (spec 9.8)
+    )
+    max_neighbors: int = MAX_NEIGHBORS
+    _neighbor_order: list[IPv6Address] = field(default_factory=list, repr=False)
     dtn_buffer: deque[DtnMessage] = field(default_factory=deque, repr=False)
-    dtn_buffer_max_bytes: int = 65536  # 64KB default
-    _dtn_buffer_bytes: int = field(default=0, repr=False)  # Running total for O(1) size checks
-    # Forwarding buffer with backpressure (spec appendix-bufferbloat.md)
+    dtn_buffer_max_bytes: int = 65536
+    _dtn_buffer_bytes: int = field(default=0, repr=False)
     forwarding_buffer: ForwardingBuffer = field(default_factory=ForwardingBuffer, repr=False)
 
     # Why fe80::/10: RFC 4291 link-local prefix. All link-local addresses
@@ -527,26 +525,22 @@ class Router:
         dst: IPv6Address,
         now_ms: int,
     ) -> None:
-        """Queue a packet pending route discovery.
-
-        Why queue: During LOADng discovery, packets should be held rather
-        than dropped. When discovery succeeds, queued packets are forwarded.
-        """
         pending = PendingPacket(
             packet=packet,
             destination=dst,
             queued_at_ms=now_ms,
         )
-
+        if (
+            dst not in self.pending_queue
+            and len(self.pending_queue) >= self.max_pending_destinations
+        ):
+            self._evict_oldest_pending()
         queue = self.pending_queue.setdefault(dst, deque())
-
-        # Why limit: Prevent memory exhaustion during slow discovery.
         if len(queue) >= self.max_pending_per_dest:
-            # Drop oldest packet (O(1) with deque.popleft())
             queue.popleft()
             logger.debug("pending queue full for %s, dropped oldest", dst)
-
         queue.append(pending)
+        self._touch_pending_dest(dst)
         logger.debug("queued packet for %s, queue depth=%d", dst, len(queue))
 
     def get_pending(self, dst: IPv6Address) -> list[PendingPacket]:
@@ -561,49 +555,30 @@ class Router:
         return list(self.pending_queue.get(dst, []))
 
     def clear_pending(self, dst: IPv6Address) -> int:
-        """Clear pending packets for a destination.
-
-        Why: Called after forwarding or after timeout to clean up.
-
-        Returns:
-            Number of packets cleared.
-        """
-        queue = self.pending_queue.pop(dst, [])
-        return len(queue)
+        if dst in self.pending_queue:
+            queue = self.pending_queue.pop(dst)
+            if dst in self._pending_order:
+                self._pending_order.remove(dst)
+            return len(queue)
+        return 0
 
     def expire_pending(self, now_ms: int, timeout_ms: int) -> int:
-        """Remove pending packets older than timeout.
-
-        Why: Packets shouldn't be queued forever. If discovery fails or
-        takes too long, drop the packets.
-
-        Returns:
-            Number of packets expired.
-        """
         expired_count = 0
-        # Age-based expiry: cutoff is the oldest acceptable queue time.
-        # Packets queued before cutoff (queued_at_ms <= cutoff) are expired.
-        # This differs from ForwardingBuffer.expire_old() which uses deadline-based
-        # expiry (deadline_ms > now_ms), but both achieve the same goal: discard
-        # packets that have waited too long.
         cutoff = now_ms - timeout_ms
-
-        # Why iterate copy: We're modifying the dict during iteration.
         for dst in list(self.pending_queue.keys()):
             queue = self.pending_queue[dst]
             original_len = len(queue)
-            # deque doesn't support slice assignment; replace entirely
-            # Keep packets queued after the cutoff (i.e., queued within timeout_ms)
-            self.pending_queue[dst] = deque(p for p in queue if p.queued_at_ms > cutoff)
+            self.pending_queue[dst] = deque(
+                p for p in queue if p.queued_at_ms > cutoff
+            )
             queue = self.pending_queue[dst]
             expired_count += original_len - len(queue)
-
             if not queue:
                 del self.pending_queue[dst]
-
+                if dst in self._pending_order:
+                    self._pending_order.remove(dst)
         if expired_count > 0:
             logger.debug("expired %d pending packets", expired_count)
-
         return expired_count
 
     def add_mesh_prefix(self, prefix: IPv6Network | str) -> None:
@@ -623,47 +598,59 @@ class Router:
         self.mesh_prefixes.discard(prefix)
 
     def release_pending_for(self, dst: IPv6Address) -> list[PendingPacket]:
-        """Release pending packets for a destination after route discovery.
-
-        Call this after updating the gradient_table with a discovered route.
-        The Router owns the pending queue; this method returns queued packets
-        for forwarding once a route is available.
-
-        Returns:
-            List of pending packets that can now be forwarded.
-        """
         pending = self.get_pending(dst)
         self.clear_pending(dst)
         logger.debug("releasing %d pending packets for %s", len(pending), dst)
         return pending
 
+    def _touch_pending_dest(self, dst: IPv6Address) -> None:
+        if dst in self._pending_order:
+            self._pending_order.remove(dst)
+        self._pending_order.append(dst)
+
+    def _touch_neighbor(self, neighbor: IPv6Address) -> None:
+        if neighbor in self._neighbor_order:
+            self._neighbor_order.remove(neighbor)
+        self._neighbor_order.append(neighbor)
+
+    def _evict_oldest_pending(self) -> int:
+        if not self._pending_order:
+            return 0
+        oldest = self._pending_order.pop(0)
+        return self.clear_pending(oldest)
+
+    def _evict_oldest_neighbor(self) -> None:
+        if not self._neighbor_order:
+            return
+        oldest = self._neighbor_order.pop(0)
+        self.neighbor_coords.pop(oldest, None)
+        self.neighbor_queue_depth.pop(oldest, None)
+
     def update_neighbor_coords(
         self, neighbor: IPv6Address, coords: tuple[float, float]
     ) -> bool:
-        """Update coords for a neighbor (from their announce).
-
-        Validates coordinates before storing. Invalid coordinates
-        (NaN, inf, null island, out-of-range) are rejected.
-
-        Returns:
-            True if coords were stored, False if rejected as invalid.
-        """
         lat, lon = coords
         if not _validate_coords(lat, lon):
             logger.warning("rejecting invalid coords for neighbor %s: (%s, %s)",
                           neighbor, lat, lon)
             return False
+        if (len(self._neighbor_order) >= self.max_neighbors and
+            neighbor not in self._neighbor_order):
+            self._evict_oldest_neighbor()
         self.neighbor_coords[neighbor] = coords
+        self._touch_neighbor(neighbor)
         return True
 
     def update_neighbor_queue_depth(
         self, neighbor: IPv6Address, depth: int
     ) -> None:
-        """Update queue depth for a neighbor (from their announce, spec 11.4)."""
+        if (len(self._neighbor_order) >= self.max_neighbors and
+            neighbor not in self._neighbor_order):
+            self._evict_oldest_neighbor()
         self.neighbor_queue_depth[neighbor] = depth
+        self._touch_neighbor(neighbor)
 
     def get_neighbor_queue_depth(self, neighbor: IPv6Address) -> int:
-        """Get queue depth for a neighbor (0 if unknown)."""
         return self.neighbor_queue_depth.get(neighbor, 0)
 
     # --- DTN store-and-forward (spec 9.8) ---

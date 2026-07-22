@@ -244,10 +244,20 @@ static int lora_renode_init(const struct device *dev)
 	return 0;
 }
 
+static int lora_renode_cad(const struct device *dev, k_timeout_t timeout,
+			    bool *busy)
+{
+	ARG_UNUSED(dev);
+	ARG_UNUSED(timeout);
+	if (busy) *busy = false; /* renode sim assumes clear */
+	return 0;
+}
+
 static const struct lora_driver_api lora_renode_api = {
 	.config = lora_renode_config,
 	.send   = lora_renode_send,
 	.recv   = lora_renode_recv,
+	.cad    = lora_renode_cad,
 };
 
 #define LORA_RENODE_DEFINE(inst)					\

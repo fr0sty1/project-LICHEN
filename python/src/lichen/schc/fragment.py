@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 N_FCN_BITS = 6
 ALL_1 = (1 << N_FCN_BITS) - 1  # 63 — marks the last fragment of the datagram
 MAX_WINDOW_SIZE = ALL_1 - 1  # 62 regular FCNs (62..0) per full window
-DEFAULT_WINDOW_SIZE = 7
+DEFAULT_WINDOW_SIZE = 32
 MIC_LENGTH = 4  # CRC32
 
 _W_SHIFT = 6
@@ -103,28 +103,28 @@ class Ack:
     complete: bool = False
 
     def to_bytes(self) -> bytes:
-        # Byte 1: window bit in top position (bit 6), complete flag in LSB (bit 0)
         byte1 = ((self.window & 1) << _W_SHIFT) | (0x01 if self.complete else 0)
-        # Pack bitmap into big-endian bytes: first fragment's bit is MSB of first byte.
-        # Shift-accumulate: for each bool, shift left and OR in 1 or 0.
-        # Example: bitmap (T,F,T,T,F) -> bits = 0b10110 = 22
+        if self.complete:
+            return bytes([self.rule_id, byte1])
         bits = 0
         for received in self.bitmap:
             bits = (bits << 1) | (1 if received else 0)
         n = len(self.bitmap)
-        # Pad to a whole number of bytes: if n=5, pad=3, so we shift left 3
-        # to align the 5 bits to the MSB of a single byte (0b10110 -> 0b10110000).
         pad = (-n) % 8
         body = (bits << pad).to_bytes((n + pad) // 8, "big") if n else b""
         return bytes([self.rule_id, byte1, n]) + body
 
     @classmethod
     def from_bytes(cls, data: bytes) -> Ack:
-        if len(data) < 3:
+        if len(data) < 2:
             raise FragmentError("ACK too short")
         rule_id = data[0]
         window = (data[1] >> _W_SHIFT) & 1
         complete = bool(data[1] & 0x01)
+        if complete and len(data) == 2:
+            return cls(rule_id, window, (), complete)
+        if len(data) < 3:
+            raise FragmentError("ACK too short")
         n = data[2]
         body = data[3:]
         required_bytes = (n + 7) // 8

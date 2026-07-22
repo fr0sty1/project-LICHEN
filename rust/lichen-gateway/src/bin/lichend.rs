@@ -15,6 +15,10 @@ use lichen_gateway::{
     slip::{SlipFramer, SLIP_TX_BUF_SIZE},
     Gateway,
 };
+use lichen_hal::storage::fs::FileStorage;
+use lichen_hal::storage::{load_epoch, load_seed, save_epoch, save_seed};
+use lichen_link::identity::Identity;
+use lichen_link::keys::Seed;
 use lichen_sim::SimClient;
 use std::path::PathBuf;
 use tokio::{
@@ -83,6 +87,48 @@ async fn main() {
         error!("invalid --node-id: {e}");
         std::process::exit(1);
     });
+
+    let storage_path = if args.sim || config.mesh.interface == "sim" {
+        "/tmp/lichen"
+    } else {
+        "/var/lib/lichen"
+    };
+    let mut storage = match FileStorage::new(storage_path) {
+        Ok(s) => s,
+        Err(e) => {
+            error!("storage init failed: {}", e);
+            std::process::exit(1);
+        }
+    };
+    let seed = match load_seed(&storage) {
+        Some(s) => s,
+        None => {
+            let mut b = [0u8; 32];
+            let mut f = match std::fs::File::open("/dev/urandom") {
+                Ok(f) => f,
+                Err(e) => {
+                    error!("cannot open urandom: {}", e);
+                    std::process::exit(1);
+                }
+            };
+            let _ = std::io::Read::read_exact(&mut f, &mut b);
+            let s = Seed::new(b);
+            let _ = save_seed(&mut storage, &s);
+            s
+        }
+    };
+    let id = Identity::from_seed(seed);
+    if id.iid != node_id.0 {
+        error!("configured root IID does not match persisted identity; fail closed");
+        std::process::exit(1);
+    }
+    let epoch = load_epoch(&storage).unwrap_or(128);
+    let safe_epoch = if epoch < 128 {
+        128
+    } else {
+        epoch.wrapping_add(1)
+    };
+    let _ = save_epoch(&mut storage, safe_epoch);
 
     let use_sim = args.sim || config.mesh.interface == "sim";
 

@@ -26,7 +26,8 @@ fn single_fragment_payload() {
 fn multi_fragment_single_window() {
     let payload: Vec<u8> = (0u8..20).collect();
     let tile_size = 5;
-    let sender = FragmentSender::new(&payload, 20, tile_size, DEFAULT_WINDOW_SIZE).unwrap();
+    let window_size = 7;
+    let sender = FragmentSender::new(&payload, 20, tile_size, window_size).unwrap();
 
     assert_eq!(sender.fragment_count(), 4); // 20 bytes / 5 bytes per tile
     assert_eq!(sender.window_count(), 1);

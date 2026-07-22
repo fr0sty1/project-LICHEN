@@ -54,4 +54,22 @@
 			output-low;
 		};
 	};
+
+	/*
+	 * UART1: spare console for bench use (non-destructive monitoring).
+	 * Pins: GPIO21 (TX) / GPIO22 (RX) — avoids CP2102 auto-reset circuit
+	 * on port open (lora_ipv6_mesh-9ia2). Use with external USB-UART
+	 * adapter (TX-adapter to board-RX, RX-adapter to board-TX). Onboard
+	 * CP2102/UART0 for boot messages only.
+	 */
+	uart1_default: uart1_default {
+		group1 {
+			pinmux = <UART1_TX_GPIO21>;
+			output-high;
+		};
+		group2 {
+			pinmux = <UART1_RX_GPIO22>;
+			bias-pull-up;
+		};
+	};
 };

@@ -601,23 +601,12 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 	 * start index (start = random % count, wrap around).
 	 */
 	int found_idx = -1;
-	int found_ret = -LICHEN_EAUTH;
-	size_t found_out_len = 0;
-	uint8_t found_ipv6[sizeof(rx_ipv6_buf)];
-	uint8_t found_src_eui64[LICHEN_EUI64_LEN];
 
 	for (size_t i = 0; i < CONFIG_LICHEN_LINK_MAX_NEIGHBORS; i++) {
 		if (!peer_table[i].active) {
 			continue;
 		}
 
-		/*
-		 * BY DESIGN (project-LICHEN-0li1.32): lichen_link_rx is called once per
-		 * peer to try signature verification with each pubkey. LICHEN frames omit
-		 * sender identity, so we must try all known peers. The redundant SCHC
-		 * decompression and MIC verification per iteration is acceptable given
-		 * LoRa's low packet rate and bounded peer count (CONFIG_LICHEN_LINK_MAX_NEIGHBORS).
-		 */
 		ctx->peer_pubkey = peer_table[i].pubkey;
 		ctx->peer_eui64 = peer_table[i].eui64;
 		*out_len = saved_out_len;
@@ -625,33 +614,14 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 		ret = lichen_link_rx(ctx, replay, frame, frame_len,
 				     out_ipv6, out_len, src_eui64);
 		if (ret == 0) {
-			/*
-			 * Signature verified - record but don't return yet.
-			 * Continue checking all remaining peers for constant time.
-			 * Save output bytes and source address because later failed
-			 * attempts reuse the same caller-provided buffers.
-			 */
-			if (found_idx < 0) {
-				if (*out_len > sizeof(found_ipv6)) {
-					ctx->peer_pubkey = saved_peer_pubkey;
-					ctx->peer_eui64 = saved_peer_eui64;
-					*out_len = saved_out_len;
-					return -EOVERFLOW;
-				}
-				found_idx = (int)i;
-				found_ret = 0;
-				found_out_len = *out_len;
-				memcpy(found_ipv6, out_ipv6, found_out_len);
-				memcpy(found_src_eui64, src_eui64, sizeof(found_src_eui64));
-			}
+			found_idx = (int)i;
+#ifdef CONFIG_LICHEN_L2_DEV_PROVISIONING
+			break;
+#else
 			continue;
+#endif
 		}
 
-		/*
-		 * SECURITY: Abort on non-auth errors (malformed frame, replay).
-		 * These don't leak peer identity - the frame is rejected before
-		 * peer matching completes.
-		 */
 		if (ret != -LICHEN_EAUTH) {
 			ctx->peer_pubkey = saved_peer_pubkey;
 			ctx->peer_eui64 = saved_peer_eui64;
@@ -660,23 +630,25 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 		}
 	}
 
-	/* Return result after checking all peers */
 	if (found_idx >= 0) {
-		/* Update last_seen for LRU eviction (project-LICHEN-tvfm.98) */
-		peer_table[found_idx].last_seen = k_uptime_get();
-
-		/* Restore context and out_len to the matched peer's values */
 		ctx->peer_pubkey = peer_table[found_idx].pubkey;
 		ctx->peer_eui64 = peer_table[found_idx].eui64;
-		*out_len = found_out_len;
-		memcpy(out_ipv6, found_ipv6, found_out_len);
-		memcpy(src_eui64, found_src_eui64, sizeof(found_src_eui64));
+		*out_len = saved_out_len;
+		ret = lichen_link_rx(ctx, replay, frame, frame_len,
+				     out_ipv6, out_len, src_eui64);
+		if (ret < 0) {
+			ctx->peer_pubkey = saved_peer_pubkey;
+			ctx->peer_eui64 = saved_peer_eui64;
+			*out_len = saved_out_len;
+			return ret;
+		}
+
+		peer_table[found_idx].last_seen = k_uptime_get();
 		LOG_DBG("lichen_l2: RX auth ok (peer ..%02x:%02x)",
 			peer_table[found_idx].eui64[6], peer_table[found_idx].eui64[7]);
-		return found_ret;
+		return 0;
 	}
 
-	/* No peer's pubkey verified the signature */
 	ctx->peer_pubkey = saved_peer_pubkey;
 	ctx->peer_eui64 = saved_peer_eui64;
 	*out_len = saved_out_len;

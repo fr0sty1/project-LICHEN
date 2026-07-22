@@ -182,7 +182,10 @@ The LICHEN Zephyr subsystems in `lichen/subsys/lichen/` have **implicit initiali
     lichen_link_load_key()     lichen_rpl_dodag_init()
          |                                |
          v                                v
-    [Signing available]        [RPL routing available]
+    lichen_tdma_init()         [RPL routing available]
+         | 
+         v
+    [Signing + TDMA available]             |
          |                                |
          └─────────────┬──────────────────┘
                        v
@@ -201,6 +204,7 @@ The LICHEN Zephyr subsystems in `lichen/subsys/lichen/` have **implicit initiali
 |-----------|--------------|---------------|---------------|
 | **Link Layer** | `lichen_link_init(ctx, eui64)` | None | Per-context (no global state) |
 | **Link Keys** | `lichen_link_load_key(ctx, seed)` | `lichen_link_init()` | Per-context |
+| **TDMA** | `lichen_tdma_init(ctx)` | `lichen_link_load_key()` | Per-context |
 | **RPL DODAG** | `lichen_rpl_dodag_init(d, ...)` | None | Per-DODAG (caller must synchronize) |
 | **OSCORE** | `oscore_init()` | None | Thread-safe (internal mutex) |
 | **OSCORE Contexts** | `oscore_ctx_create(...)` | `oscore_init()` | Thread-safe |
@@ -234,6 +238,10 @@ int lichen_node_init(const uint8_t eui64[8], const uint8_t seed[32])
     if (ret < 0) return ret;
 
     ret = lichen_link_load_key(&link_ctx, seed);
+    if (ret < 0) return ret;
+
+    /* TDMA after link_init/load_key, before oscore per updated graph */
+    ret = lichen_tdma_init(&link_ctx);
     if (ret < 0) return ret;
 
     /* 2. OSCORE subsystem (must init before creating contexts) */
@@ -441,7 +449,7 @@ aws ec2 attach-volume --profile personal --region us-west-2 \
   --volume-id vol-0a95eee8d1d8461eb --instance-id <instance-id> --device /dev/sdf
 
 sudo /mnt/lichen-zephyr/scripts/mount-volume.sh vol-0a95eee8d1d8461eb /mnt/lichen-zephyr
-/mnt/lichen-zephyr/scripts/bootstrap-host.sh   # only if host packages are missing
+/mnt/lichen-zephyr/scripts/bootstrap-host.sh  # idempotent; installs git + Zephyr deps via dnf on Amazon Linux 2023
 . /mnt/lichen-zephyr/env.sh
 cd /mnt/lichen-zephyr/work/project-LICHEN
 ```

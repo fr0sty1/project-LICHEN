@@ -185,16 +185,13 @@ config LORA_LICHEN_GATEWAY_MESSAGE_QUEUE_DEPTH
 config LORA_LICHEN_GATEWAY_RPL_ROOT
 	bool "RPL root signalling"
 	depends on LICHEN_RPL
-	depends on BROKEN
 	default n
 	help
 	  Enable gateway DIO/DAO processing and root signalling.
 
-	  This is intentionally unavailable until the gateway has an app-level
-	  packet I/O integration that drives the caller-owned LICHEN RPL state
-	  machine. With this option disabled, the gateway advertises itself as
-	  non-RPL-capable in /status so users do not mistake it for a complete
-	  mesh root.
+	  This option now has the packet I/O integration required for the
+	  caller-owned LICHEN RPL state machine. The gateway will act as DODAG
+	  root when enabled.
 
 config LICHEN_GATEWAY_RX1_DELAY_MS
 	int "RX1-style delay before answering a CoAP request (ms)"

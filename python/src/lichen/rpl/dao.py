@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
+from __future__ import annotations
+
 """RPL DAO handling for non-storing mode (RFC 6550, spec section 8.5).
 
 In non-storing mode every node sends a DAO directly to the root advertising
@@ -11,8 +13,6 @@ This module provides the RPL Target (type 5) and Transit Information (type 6)
 option codecs and a :class:`DaoManager` for both sending (non-root) and
 receiving (root) sides.
 """
-
-from __future__ import annotations
 
 from dataclasses import dataclass, field
 from ipaddress import IPv6Address

@@ -1,5 +1,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from enum import IntEnum
+from ipaddress import IPv6Address
+from typing import Union
+
+from lichen.ipv6.icmpv6 import Icmpv6Message
+
 """RPL control message codecs (RFC 6550, spec section 8).
 
 RPL control messages are ICMPv6 type 155, with the code selecting the message:
@@ -13,14 +22,6 @@ generic :class:`RplOption` values and built out by the DODAG state machine.
 
 LICHEN uses RPLInstanceID 0 and Non-Storing mode (MOP=1) per spec B.2.
 """
-
-from __future__ import annotations
-
-from dataclasses import dataclass, field
-from enum import IntEnum
-from ipaddress import IPv6Address
-
-from lichen.ipv6.icmpv6 import Icmpv6Message
 
 RPL_ICMPV6_TYPE = 155
 DIO_BASE_LENGTH = 24
@@ -287,7 +288,7 @@ class DAOAck:
         )
 
 
-RplMessage = DIS | DIO | DAO | DAOAck
+RplMessage = Union[DIS, DIO, DAO, DAOAck]
 
 _CODE_BY_TYPE = {
     DIS: RplCode.DIS,

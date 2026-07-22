@@ -2381,7 +2381,9 @@ class NativeClientApp(App[None]):
                 await subscription.close()
         except asyncio.CancelledError:
             raise
-        except Exception as exc:
+        except BaseException as exc:
+            if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             self._set_diagnostics_error(str(exc))
         finally:
             self._raw_rx_task = None
@@ -2416,7 +2418,9 @@ class NativeClientApp(App[None]):
                 await subscription.close()
         except asyncio.CancelledError:
             raise
-        except Exception as exc:
+        except BaseException as exc:
+            if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             self._set_logs_error(str(exc))
 
     def set_compose(self, target: str, body: str) -> None:
@@ -2539,7 +2543,9 @@ class NativeClientApp(App[None]):
                 await subscription.close()
         except asyncio.CancelledError:
             raise
-        except Exception as exc:
+        except BaseException as exc:
+            if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             self._set_messaging(self._messaging_error(str(exc)))
 
     def apply_inbound_messages(self, messages: tuple[MessageRecord, ...]) -> None:

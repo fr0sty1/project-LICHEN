@@ -73,6 +73,8 @@ def test_vectors_directory_exists() -> None:
         "meshtastic_app_compat.json",
         "meshcore_app_compat.json",
         "rpl_messages.json",
+        "ccp15.json",
+        "ccp16-desync.json",
     ],
 )
 def test_vector_file_schema(filename: str) -> None:
@@ -84,37 +86,37 @@ def test_vector_file_schema(filename: str) -> None:
 
 def _schc_cases():
     doc = _load("schc_compression.json")
-    assert doc["format_version"] == 1
+    assert doc["format_version"] in (1, 2)
     return [(v["name"], v) for v in doc["vectors"]]
 
 
 def _frame_cases():
     doc = _load("link_frame.json")
-    assert doc["format_version"] == 1
+    assert doc["format_version"] in (1, 2)
     return [(v["name"], v) for v in doc["vectors"]]
 
 
 def _l2_payload_cases():
     doc = _load("l2_payload.json")
-    assert doc["format_version"] == 1
+    assert doc["format_version"] in (1, 2)
     return [(v["name"], v) for v in doc["vectors"]]
 
 
 def _meshtastic_cases():
     doc = _load("meshtastic_app_compat.json")
-    assert doc["format_version"] == 1
+    assert doc["format_version"] in (1, 2)
     return [(v["name"], v) for v in doc["vectors"]]
 
 
 def _announce_coords_cases():
     doc = _load("announce_coords.json")
-    assert doc["format_version"] == 1
+    assert doc["format_version"] in (1, 2)
     return [(v["name"], v) for v in doc["vectors"]]
 
 
 def _meshcore_cases():
     doc = _load("meshcore_app_compat.json")
-    assert doc["format_version"] == 1
+    assert doc["format_version"] in (1, 2)
     return [(v["name"], v) for v in doc["vectors"]]
 
 
@@ -559,7 +561,7 @@ def test_schnorr_vector(desc: str, vector: dict) -> None:
 
 def _rpl_messages_cases():
     doc = _load("rpl_messages.json")
-    assert doc["format_version"] == 1
+    assert doc["format_version"] in (1, 2)
     return [(v["name"], v) for v in doc["vectors"]]
 
 

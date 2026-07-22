@@ -10,6 +10,8 @@ pytest python/tests/test_vectors.py`` re-derives every vector and fails if the
 implementation drifts from the committed files.
 """
 
+# ruff: noqa: E501  # Long descriptions in test vector data are deliberate for clarity.
+
 from __future__ import annotations
 
 import json
@@ -24,7 +26,7 @@ from lichen.rpl.messages import DAO, DIO, to_icmpv6
 from lichen.schc.headers import compress_packet
 
 VECTORS_DIR = Path(__file__).resolve().parent
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 L2_DISPATCH_SCHC = 0x14
 L2_DISPATCH_ROUTING = 0x15
 
@@ -52,8 +54,10 @@ MESHCORE_SOURCE_BASELINE = {
 def _announce_coords_encode(latitude: float, longitude: float) -> bytes:
     latitude_e7 = int(round(latitude * 10_000_000))
     longitude_e7 = int(round(longitude * 10_000_000))
-    return bytes([0x01]) + latitude_e7.to_bytes(4, "big", signed=True) + longitude_e7.to_bytes(
-        4, "big", signed=True
+    return (
+        bytes([0x01])
+        + latitude_e7.to_bytes(4, "big", signed=True)
+        + longitude_e7.to_bytes(4, "big", signed=True)
     )
 
 
@@ -137,11 +141,7 @@ def _bytes_field(field: int, value: bytes) -> bytes:
 
 
 def _module_config_disabled_telemetry() -> bytes:
-    telemetry = (
-        _varint_field(1, 0)
-        + _varint_field(2, 0)
-        + _bool_field(14, False)
-    )
+    telemetry = _varint_field(1, 0) + _varint_field(2, 0) + _bool_field(14, False)
     return _bytes_field(6, telemetry)
 
 
@@ -174,8 +174,9 @@ def _config_section_entry(name: str, oneof_field: int, fields: list[tuple[int, i
         "section": name,
         "oneof_field": oneof_field,
         "payload": _bytes_field(oneof_field, payload).hex(),
-        "fields": [{"field": field, "wire_type": "varint", "value": value}
-                   for field, value in fields],
+        "fields": [
+            {"field": field, "wire_type": "varint", "value": value} for field, value in fields
+        ],
     }
 
 
@@ -184,13 +185,13 @@ def _config_section_expectations() -> list[dict]:
 
 
 def _data(portnum: int, payload: bytes = b"", request_id: int | None = None) -> bytes:
-	out = bytearray()
-	out += _varint_field(1, portnum)
-	if payload:
-		out += _bytes_field(2, payload)
-	if request_id is not None:
-		out += _fixed32_field(6, request_id)
-	return bytes(out)
+    out = bytearray()
+    out += _varint_field(1, portnum)
+    if payload:
+        out += _bytes_field(2, payload)
+    if request_id is not None:
+        out += _fixed32_field(6, request_id)
+    return bytes(out)
 
 
 def _position_payload(
@@ -307,22 +308,28 @@ def _coap(code: int = 1, mid: int = 0x1234) -> bytes:
 
 
 def schc_vectors() -> list[dict]:
-    dio = DIO(rpl_instance_id=0, version=1, rank=256, dtsn=0, dodag_id=LL_SRC,
-              grounded=True)
+    dio = DIO(rpl_instance_id=0, version=1, rank=256, dtsn=0, dodag_id=LL_SRC, grounded=True)
     dao = DAO(rpl_instance_id=0, dao_sequence=5, dodag_id=LL_SRC)
     cases = [
-        ("coap_linklocal", 0, "Link-local IPv6+UDP+CoAP GET",
-         _udp_ipv6(LL_SRC, LL_DST, _coap())),
-        ("coap_global", 1, "Global IPv6+UDP+CoAP GET",
-         _udp_ipv6(G_SRC, G_DST, _coap())),
-        ("icmpv6_echo", 2, "Link-local ICMPv6 Echo Request",
-         _icmpv6_ipv6(LL_SRC, LL_DST,
-                      EchoRequest(identifier=0xABCD, sequence=7, data=b"ping")
-                      .to_message())),
-        ("rpl_dio", 3, "Link-local RPL DIO",
-         _icmpv6_ipv6(LL_SRC, LL_DST, to_icmpv6(dio))),
-        ("rpl_dao", 4, "Link-local RPL DAO with DODAGID",
-         _icmpv6_ipv6(LL_SRC, LL_DST, to_icmpv6(dao))),
+        ("coap_linklocal", 0, "Link-local IPv6+UDP+CoAP GET", _udp_ipv6(LL_SRC, LL_DST, _coap())),
+        ("coap_global", 1, "Global IPv6+UDP+CoAP GET", _udp_ipv6(G_SRC, G_DST, _coap())),
+        (
+            "icmpv6_echo",
+            2,
+            "Link-local ICMPv6 Echo Request",
+            _icmpv6_ipv6(
+                LL_SRC,
+                LL_DST,
+                EchoRequest(identifier=0xABCD, sequence=7, data=b"ping").to_message(),
+            ),
+        ),
+        ("rpl_dio", 3, "Link-local RPL DIO", _icmpv6_ipv6(LL_SRC, LL_DST, to_icmpv6(dio))),
+        (
+            "rpl_dao",
+            4,
+            "Link-local RPL DAO with DODAGID",
+            _icmpv6_ipv6(LL_SRC, LL_DST, to_icmpv6(dao)),
+        ),
     ]
     return [
         {
@@ -338,7 +345,7 @@ def schc_vectors() -> list[dict]:
 
 def l2_payload_vectors() -> list[dict]:
     schc_global = next(v for v in schc_vectors() if v["name"] == "coap_global")
-    announce_min = bytes([0x01, 0x00, 0x00, 0x00, 0x01]) + bytes(8 + 32 + 48)
+    announce_min = bytes([0x01, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF]) + bytes(8 + 32 + 48)  # rx_valid_until_sfn=0xFFFF (human decision on format noted)
     schc_body = bytes.fromhex(schc_global["compressed"])
     return [
         {
@@ -379,23 +386,60 @@ def l2_payload_vectors() -> list[dict]:
 
 def frame_vectors() -> list[dict]:
     cases = [
-        ("broadcast_min", "Broadcast, no address, unsigned",
-         LichenFrame(epoch=1, seqnum=2, dst_addr=b"", payload=b"abc",
-                     mic=b"", addr_mode=AddrMode.NONE,
-                     mic_length=MicLength.BITS32)),
-        ("short_addr", "16-bit short destination address",
-         LichenFrame(epoch=0x10, seqnum=0x2030, dst_addr=bytes([0xAB, 0xCD]),
-                      payload=b"hi", mic=b"", addr_mode=AddrMode.SHORT,
-                     mic_length=MicLength.BITS32)),
-        ("extended_addr_mic64", "64-bit address, 64-bit MIC",
-         LichenFrame(epoch=0xFF, seqnum=0xFFFF, dst_addr=bytes(range(8)),
-                      payload=b"data", mic=b"",
-                     addr_mode=AddrMode.EXTENDED, mic_length=MicLength.BITS64)),
-        ("signed_encrypted", "Unsupported signature + encrypted combination",
-         LichenFrame(epoch=3, seqnum=4, dst_addr=b"", payload=b"x",
-                     mic=bytes(48), addr_mode=AddrMode.NONE,
-                     mic_length=MicLength.BITS32, signature_present=True,
-                     encrypted=True)),
+        (
+            "broadcast_min",
+            "Broadcast, no address, unsigned",
+            LichenFrame(
+                epoch=1,
+                seqnum=2,
+                dst_addr=b"",
+                payload=b"abc",
+                mic=b"",
+                addr_mode=AddrMode.NONE,
+                mic_length=MicLength.BITS32,
+            ),
+        ),
+        (
+            "short_addr",
+            "16-bit short destination address",
+            LichenFrame(
+                epoch=0x10,
+                seqnum=0x2030,
+                dst_addr=bytes([0xAB, 0xCD]),
+                payload=b"hi",
+                mic=b"",
+                addr_mode=AddrMode.SHORT,
+                mic_length=MicLength.BITS32,
+            ),
+        ),
+        (
+            "extended_addr_mic64",
+            "64-bit address, 64-bit MIC",
+            LichenFrame(
+                epoch=0xFF,
+                seqnum=0xFFFF,
+                dst_addr=bytes(range(8)),
+                payload=b"data",
+                mic=b"",
+                addr_mode=AddrMode.EXTENDED,
+                mic_length=MicLength.BITS64,
+            ),
+        ),
+        (
+            "signed_encrypted",
+            "Unsupported signature + encrypted combination",
+            LichenFrame(
+                epoch=3,
+                seqnum=4,
+                dst_addr=b"",
+                payload=b"x",
+                mic=bytes(48),
+                addr_mode=AddrMode.NONE,
+                mic_length=MicLength.BITS32,
+                signature_present=True,
+                encrypted=True,
+            ),
+        ),
     ]
     out = []
     for name, desc, frame in cases:
@@ -415,9 +459,11 @@ def frame_vectors() -> list[dict]:
                     "encrypted": frame.encrypted,
                 },
                 "encoded": (
-                    (bytes.fromhex("35 60 03 0004 78" + "00" * 48)
-                     if name == "signed_encrypted" else frame.to_bytes())
-                    .hex()
+                    (
+                        bytes.fromhex("35 60 03 0004 78" + "00" * 48)
+                        if name == "signed_encrypted"
+                        else frame.to_bytes()
+                    ).hex()
                 ),
             }
         )
@@ -461,10 +507,7 @@ def meshtastic_app_compat_vectors() -> list[dict]:
         time=1700000010,
         timestamp=1699999999,
     )
-    position_duplicate_time = (
-        _position_payload(time=1700000010)
-        + _fixed32_field(4, 1699999999)
-    )
+    position_duplicate_time = _position_payload(time=1700000010) + _fixed32_field(4, 1699999999)
     inbound_text = _from_radio_packet(
         1,
         _mesh_packet(
@@ -472,7 +515,7 @@ def meshtastic_app_compat_vectors() -> list[dict]:
             to_num=local_num,
             packet_id=0x55667788,
             decoded=_data(1, b"hi"),
-        )
+        ),
     )
     routing_ack = _from_radio_packet(
         2,
@@ -481,7 +524,7 @@ def meshtastic_app_compat_vectors() -> list[dict]:
             to_num=local_num,
             packet_id=0x55667789,
             decoded=_data(5, request_id=packet_id),
-        )
+        ),
     )
     routing_nak = _from_radio_packet(
         3,
@@ -490,7 +533,7 @@ def meshtastic_app_compat_vectors() -> list[dict]:
             to_num=local_num,
             packet_id=0x5566778A,
             decoded=_data(5, _routing_error(1), request_id=packet_id),
-        )
+        ),
     )
     heartbeat_queue_status = _from_radio_queue_status(
         _queue_status(res=0, free=4, maxlen=8, mesh_packet_id=packet_id),
@@ -979,8 +1022,7 @@ def meshtastic_app_compat_vectors() -> list[dict]:
             "direction": "app_to_node",
             "protobuf": "ToRadio",
             "message": "invalid_stream_framing",
-            "encoded": ("94c3" + len(outbound_text).to_bytes(2, "big").hex()
-                        + outbound_text.hex()),
+            "encoded": ("94c3" + len(outbound_text).to_bytes(2, "big").hex() + outbound_text.hex()),
             "decoded": {},
             "expect": {
                 "reject": True,
@@ -1072,7 +1114,7 @@ def _meshcore_channel_info() -> bytes:
 def _meshcore_channel_body(name: bytes = b"Public") -> bytes:
     out = bytearray(49)
     out[0] = 0
-    out[1:1 + len(name)] = name
+    out[1 : 1 + len(name)] = name
     return bytes(out)
 
 
@@ -1084,7 +1126,7 @@ def _meshcore_channel_body_with_secret(name: bytes = b"Field") -> bytes:
 
 def _meshcore_default_flood_payload(name: bytes = b"FieldScope") -> bytes:
     out = bytearray(47)
-    out[0:len(name)] = name
+    out[0 : len(name)] = name
     out[len(name)] = 0
     out[31:47] = bytes(range(0xA0, 0xB0))
     return bytes(out)
@@ -1105,7 +1147,8 @@ def _meshcore_vector(
         "name": name,
         "description": description,
         "source_baseline": MESHCORE_SOURCE_BASELINE,
-        "transport": transport or {
+        "transport": transport
+        or {
             "name": "ble-nus",
             "framing": "one raw MeshCore inner frame per NUS value",
         },
@@ -1238,7 +1281,12 @@ def meshcore_app_compat_vectors() -> list[dict]:
             direction="exchange",
             frame="command",
             encoded=bytes.fromhex("0300006869"),
-            decoded={"command": "SEND_CHANNEL_TXT_MSG", "channel": 0, "txt_type": 0, "payload_utf8": "hi"},
+            decoded={
+                "command": "SEND_CHANNEL_TXT_MSG",
+                "channel": 0,
+                "txt_type": 0,
+                "payload_utf8": "hi",
+            },
             expect={
                 "responses": [err_unsupported.hex()],
                 "adapter_test": True,
@@ -1348,11 +1396,7 @@ def meshcore_app_compat_vectors() -> list[dict]:
             description="Secret-bearing MeshCore channel writes are recognized but unsupported so MeshCore secrets are never imported as native LICHEN material.",
             direction="exchange",
             frame="command",
-            encoded=(
-                bytes([0x20, 0x00])
-                + b"Field".ljust(32, b"\x00")
-                + bytes(range(32))
-            ),
+            encoded=(bytes([0x20, 0x00]) + b"Field".ljust(32, b"\x00") + bytes(range(32))),
             decoded={
                 "command": "SET_CHANNEL",
                 "index": 0,
@@ -1536,7 +1580,10 @@ def meshcore_app_compat_vectors() -> list[dict]:
             encoded=bytes.fromhex("3c01000a"),
             decoded={"serial_marker": "app_to_device", "payload": "0a"},
             expect={"inner_frame": "0a"},
-            transport={"name": "serial", "framing": "0x3c + uint16_le length + MeshCore inner frame"},
+            transport={
+                "name": "serial",
+                "framing": "0x3c + uint16_le length + MeshCore inner frame",
+            },
         ),
         _meshcore_vector(
             name="serial_device_to_app_no_more_messages",
@@ -1546,7 +1593,10 @@ def meshcore_app_compat_vectors() -> list[dict]:
             encoded=bytes.fromhex("3e01000a"),
             decoded={"serial_marker": "device_to_app", "payload": "0a"},
             expect={"inner_frame": "0a"},
-            transport={"name": "serial", "framing": "0x3e + uint16_le length + MeshCore inner frame"},
+            transport={
+                "name": "serial",
+                "framing": "0x3e + uint16_le length + MeshCore inner frame",
+            },
         ),
     ]
 

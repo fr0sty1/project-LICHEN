@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
+from __future__ import annotations
+from typing import Union
+
 """LOADng control message codecs (spec section 10, appendix B2).
 
 LOADng provides reactive peer-to-peer route discovery. Messages are ICMPv6
@@ -15,8 +18,6 @@ B2.3 the default metric is hop count, so no separate metric field is carried
 
 The default unsigned signature is empty; a signed message carries 48 bytes.
 """
-
-from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import IntEnum
@@ -150,7 +151,7 @@ class RERR:
         )
 
 
-LoadngMessage = RREQ | RREP | RERR
+LoadngMessage = Union[RREQ, RREP, RERR]
 
 _CODE_BY_TYPE = {RREQ: LoadngCode.RREQ, RREP: LoadngCode.RREP, RERR: LoadngCode.RERR}
 _CLASS_BY_CODE = {

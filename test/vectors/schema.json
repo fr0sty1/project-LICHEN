@@ -1,12 +1,14 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LICHEN test vector file",
-  "description": "Envelope shared by all LICHEN vector files. Each file holds a list of vectors of one kind; see the per-vector definitions.",
-  "type": "object",
-  "required": ["format_version", "description", "vectors"],
+  "description": "Supports both object envelope (with format_version) and v2 bare array root with ccp_vector items (for ccp16-desync.json and similar).",
+  "type": ["object", "array"],
+  "additionalProperties": true,
+  "items": {"$ref": "#/definitions/ccp_vector"},
   "properties": {
-    "format_version": {"type": "integer", "const": 1},
+    "format_version": {"type": "integer", "enum": [1, 2]},
     "description": {"type": "string"},
+    "$schema": {"type": "string"},
     "vectors": {
       "type": "array",
       "items": {
@@ -18,7 +20,8 @@
           {"$ref": "#/definitions/meshtastic_app_compat_vector"},
           {"$ref": "#/definitions/meshcore_app_compat_vector"},
           {"$ref": "#/definitions/oscore_vector"},
-          {"$ref": "#/definitions/rpl_messages_vector"}
+          {"$ref": "#/definitions/rpl_messages_vector"},
+          {"$ref": "#/definitions/ccp_vector"}
         ]
       }
     }
@@ -522,6 +525,7 @@
     "rpl_messages_vector": {
       "type": "object",
       "required": ["name", "type", "encoded"],
+      "additionalProperties": false,
       "description": "RPL control message (RFC 6550) parse/generate vector.",
       "properties": {
         "name": {"type": "string"},
@@ -550,6 +554,38 @@
           "$ref": "#/definitions/hex",
           "description": "Encoded message bytes (excluding ICMPv6 header)"
         }
+      }
+    },
+    "ccp_vector": {
+      "type": "object",
+      "required": ["name", "snr_ema"],
+      "additionalProperties": true,
+      "description": "CCP vector for CCP-15/16 (load balancing, SF/TDMA selection, desync FSM). Tailored via oneOf in envelope and additionalProperties per JSON Schema best practices. Includes hash_32_example for standardized hash function (replaces prior fnv1a32 mentions).",
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "note": {"type": "string"},
+        "density": {"type": "integer"},
+        "density_estimate_high": {"type": "integer"},
+        "per_percent": {"type": "number"},
+        "expected_density": {"type": "integer"},
+        "snr_ema": {"type": "number"},
+        "load_factor": {"type": "number"},
+        "current_sfn": {"type": "integer"},
+        "assigned_slot": {"type": "integer"},
+        "expected_sf": {"type": "integer"},
+        "expected_channel": {"type": "integer"},
+        "expected_outcome": {"type": "string"},
+        "expected_cca_result": {"type": "boolean"},
+        "expected_backoff": {"type": "boolean"},
+        "hash_32_example": {"type": "string"},
+        "ts_now": {"type": "integer"},
+        "node_iid": {"type": "string"},
+        "rssi_dbm": {"type": "integer"},
+        "channel": {"type": "integer"},
+        "cca_duration_syms": {"type": "integer"},
+        "rssi_threshold": {"type": "integer"},
+        "slot_adjust_ticks": {"type": "integer"}
       }
     }
   }

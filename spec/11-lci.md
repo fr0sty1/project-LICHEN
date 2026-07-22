@@ -269,7 +269,7 @@ Content-Format: application/cbor
   "pubkey_fingerprint": "SHA256:xY7...",
   "addrs": {
     "link_local": "fe80::0211:22ff:fe33:4455",
-    "ula": "fd12:3456:789a:1::0211:22ff:fe33:4455",
+    "ula": "0201:3456:789a:1::0211:22ff:fe33:4455",
     "gua": null
   }
 }
@@ -300,7 +300,7 @@ Content-Format: application/cbor
     "joined": true,
     "rank": 512,
     "parent": "fe80::1234:5678:9abc:def0",
-    "root": "fd12:3456:789a:1::1"
+    "root": "0201:3456:789a:1::1"
   },
   "radio": {
     "rx_packets": 1234,
@@ -357,7 +357,7 @@ Content-Format: application/cbor
 {
   "routes": [
     {
-      "prefix": "fd12:3456:789a:1::/64",
+      "prefix": "0201:3456:789a:1::/64",
       "via": "fe80::1234:5678:9abc:def0",
       "metric": 512,
       "lifetime_s": 1800
@@ -531,7 +531,7 @@ not an LCI forward-proxy resource.
 
 ```
 # Client sends directly to mesh node
-GET coap://[fd12:3456:789a:1::aaaa:bbbb:cccc:dddd]/sensors/temp
+GET coap://[0201:3456:789a:1::aaaa:bbbb:cccc:dddd]/sensors/temp
 
 # Node routes via LoRa mesh, returns response to client
 Response: 2.05 Content
@@ -541,7 +541,7 @@ Response: 2.05 Content
 For discovery, the client can query the Resource Directory (if available):
 
 ```
-GET coap://[fd12:3456:789a:1::1]/rd-lookup/res?rt=temperature
+GET coap://[0201:3456:789a:1::1]/rd-lookup/res?rt=temperature
 ```
 
 Implementations MAY expose an optional RFC 7252 forward proxy at `/proxy` for
@@ -553,7 +553,7 @@ name the mesh target; the gateway strips proxy options before forwarding.
 
 ```
 GET coap://[fe80::1]/proxy
-Proxy-Uri: coap://[fd12:3456:789a:1::aaaa:bbbb:cccc:dddd]/status
+Proxy-Uri: coap://[0201:3456:789a:1::aaaa:bbbb:cccc:dddd]/status
 ```
 
 #### 17.5.7. Messaging (Application-Level)
@@ -566,7 +566,7 @@ POST /msg/inbox
 Content-Format: application/cbor
 
 {
-  "to": "fd12:3456:789a:1::aaaa:bbbb:cccc:dddd",
+  "to": "0201:3456:789a:1::aaaa:bbbb:cccc:dddd",
   "body": "Hello from the mesh!",
   "ack": true
 }
@@ -585,7 +585,7 @@ Content-Format: application/cbor
   "messages": [
     {
       "id": 17,
-      "from": "fd12:3456:789a:1::1111:2222:3333:4444",
+      "from": "0201:3456:789a:1::1111:2222:3333:4444",
       "body": "Hi there!",
       "received": "2026-05-26T14:35:00Z"
     }

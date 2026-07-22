@@ -41,6 +41,7 @@ LOG_MODULE_REGISTER(lichen_ipv6, LOG_LEVEL_INF);
 #define UL_BIT 0x02
 
 static const char hex_digits[] = "0123456789abcdef";
+static const char CROCKFORD_ALPHABET[] = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
 /* Link-local prefix: fe80::/10 */
 static const uint8_t link_local_prefix[8] = {
@@ -124,6 +125,45 @@ int lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid)
 
 cleanup:
     /* SECURITY: Zero hash on all paths (sha_state zeroed by helper) */
+    secure_zero(hash, sizeof(hash));
+    return ret;
+}
+
+int lichen_pubkey_to_human_address(const uint8_t *pubkey,
+                                   char *buf, size_t buflen)
+{
+    if (pubkey == NULL || buf == NULL || buflen < 16) {
+        LOG_ERR("ipv6_addr: pubkey_to_human_address failed (NULL or small buf)");
+        return -EINVAL;
+    }
+
+    uint8_t hash[TC_SHA256_DIGEST_SIZE];
+    int ret = lichen_sha256(pubkey, LICHEN_ED25519_PUBKEY_LEN, hash);
+    if (ret != 0) {
+        LOG_ERR("ipv6_addr: pubkey_to_human_address failed (SHA-256 error %d)", ret);
+        goto cleanup;
+    }
+
+    uint64_t num = 0;
+    for (size_t i = 0; i < 8; i++) {
+        num = (num << 8) | hash[i];
+    }
+
+    char temp[13];
+    for (int i = 12; i >= 0; i--) {
+        temp[i] = CROCKFORD_ALPHABET[num % 32];
+        num /= 32;
+    }
+
+    /* Format: XXXX-XXXX-XXXXX (13 chars + 2 dashes + NUL = 16) */
+    memcpy(buf, temp, 4);
+    buf[4] = '-';
+    memcpy(buf + 5, temp + 4, 4);
+    buf[9] = '-';
+    memcpy(buf + 10, temp + 8, 5);
+    buf[15] = '\0';
+
+cleanup:
     secure_zero(hash, sizeof(hash));
     return ret;
 }

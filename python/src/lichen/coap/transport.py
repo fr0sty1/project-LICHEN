@@ -26,6 +26,8 @@ import aiocoap
 from aiocoap import Message, error, interfaces, util
 from aiocoap.numbers import constants
 
+from lichen.crypto.identity import hash_32
+
 ReceiveCallback = Callable[[bytes, str], None]
 
 
@@ -131,7 +133,7 @@ class LichenRemote(interfaces.EndpointAddress):
         return isinstance(other, LichenRemote) and other._host == self._host
 
     def __hash__(self) -> int:
-        return hash(self._host)
+        return hash_32(self._host)
 
     def __repr__(self) -> str:
         return f"<LichenRemote {self._host}>"

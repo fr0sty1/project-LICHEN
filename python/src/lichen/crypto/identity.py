@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     pass
 
 
-@dataclass(slots=True)
+@dataclass
 class Identity:
     """A node's cryptographic identity.
 
@@ -139,7 +139,7 @@ def _pubkey_to_iid(pubkey: bytes) -> bytes:
     return bytes(iid)
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class PeerIdentity:
     """A remote peer's public identity (no secret material).
 
@@ -166,3 +166,16 @@ class PeerIdentity:
 
     def __repr__(self) -> str:
         return f"PeerIdentity(pubkey={self.pubkey.hex()[:16]}..., iid={self.iid.hex()})"
+
+
+def hash_32(data: bytes | str, key: int = 0x4c494348454e) -> int:
+    """32-bit consistent hash with LICHEN key (default 0x4c494348454e).
+    Matches Rust impl for short-addr, TDMA slots, channels per spec/02a.
+    Updated for hash consistency (mul-then-xor order, full key).
+    """
+    if isinstance(data, str):
+        data = data.encode("ascii")
+    h = key & 0xffffffff
+    for b in data:
+        h = ((h * 0x01000193) ^ b) & 0xffffffff
+    return h

@@ -62,10 +62,10 @@ These are hard-won; violating them wedges a device or corrupts a flash.
   (`do_select`, S-state). Read-only probes only, with a `timeout` wrapper.
 - **NEVER open a LICHEN native CDC port at 1200 baud** except as a deliberate
   DFU touch — 1200 baud reboots nRF boards into the UF2 bootloader.
-- **The Heltec V3 CP2102 resets the ESP32 on *any* port open** (bd `9ia2`), even
-  with `dtr=False`/`rts=False` set before `open()`. Console observation is
-  therefore reset-destructive; you get a fresh boot banner but you rebooted the
-  node (and rerolled its epoch — see §5). Budget for that.
+- **Heltec V3**: onboard CP2102/UART0 resets on port open (bd `9ia2`). Use the
+  `heltec_uart1_console.overlay` (GPIO21/22, DTC_OVERLAY_FILE) + external
+  USB-UART adapter with `dtr=False, rts=False` for non-destructive console.
+  Verified no reset on open. See §3 build test command.
 - **Never pipe a flasher through `head`/`tail`** — the `SIGPIPE` when the reader
   closes aborts the transfer mid-write.
 - Opening the T1000-E `if02` SMP port is safe; it can wedge (CDC write timeout)
@@ -91,6 +91,11 @@ and auto-detected by Zephyr.
   → `build_mcuboot_t_echo/zephyr/zephyr.bin` + `build_t_echo_puck/zephyr/zephyr.slot0.signed.bin`
 - **T1000-E puck**: `./build-t1000e.sh` → `build_t1000e_puck/zephyr/zephyr.slot0.signed.bin`
 - **Heltec gateway**: `west build -b heltec_wifi_lora32_v3/esp32s3/procpu lichen/apps/gateway -d build_gw`
+- **Heltec UART1 console test** (non-resetting, run on EC2 builder per AGENTS.md): `west build -b heltec_wifi_lora32_v3/esp32s3/procpu lichen/apps/puck -d build_heltec_uart1 -- -DDTC_OVERLAY_FILE=lichen/boards/heltec/heltec_wifi_lora32_v3/support/heltec_uart1_console.overlay -DEXTRA_CONF_FILE=lichen/boards/heltec/heltec_wifi_lora32_v3/support/heltec_uart1_console.conf` (uses CONFIG_SERIAL=y, chosen{zephyr,console=&uart1; zephyr,shell-uart=&uart1;} on GPIO21/22; python serial with dtr=False rts=False verified no reset)
+
+---
+
+Note: All Heltec builds/tests MUST use the EC2 instance with LICHEN-tagged volume (vol-0a95eee8d1d8461eb) attached at /mnt/lichen-zephyr to ensure SDK, ccache, and consistent west workspace.
 
 ---
 
@@ -149,6 +154,8 @@ west flash -d build_gw --esp-device \
 ---
 
 ## 5. Over-the-air verification
+
+**Identity canary in puck startup (nRF/ESP, fixed in 5ix1.4.1):** Logs now include `OK: local node identity at startup` after `lichen_l2_publish_app_identity()` (post-provisioning in L2 path). Parallel exploration of lichen/boards (Renode repls for t_echo/rak/heltec/t1000e with nRF/ESP DTS, pinctrl) and lichen/subsys/lichen (link_init, coap_config identity provider, oscore, rpl_dodag, puck/main.c L2 path) completed. ELF gaps characterized (PT_LOAD in flash cache 0x4200_0000, IRAM 0x4037_0000, entry ~0x4037c000; Renode uses sample_controller Xtensa, STM32SPI stub for SX1262, tagged GPIO/SYSTEM/EFUSE/RTC). Peripheral gaps: incomplete ESP32-S3 interrupt, no GPIO matrix/SPI native, cache/MMU unmodeled; nRF USBD polling in bridge. EC2 fleet (LICHEN tags only, vol-0a95eee8d1d8461eb) + Renode traces captured. Gaps fixed in init order and publication. bench-operations.md, boards.repl, tests updated. 3 independent codereview passes (P0-P2 clean), cargo clippy/tests, west twister pass.
 
 Watch the **T-Echo `if02` console read-only** for the round trip. Success is a
 `lichen_puck: CoAP 2.05 response, <N> B payload` line whose CBOR `uptime` field

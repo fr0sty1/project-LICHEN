@@ -357,7 +357,6 @@ class TestPendingQueue:
     def test_release_pending_for_returns_pending(
         self, router: Router, gradient_table: GradientTable
     ):
-        """release_pending_for returns and clears pending packets."""
         from lichen.loadng.cache import RouteCache
         from lichen.loadng.discovery import LoadngRouter
 
@@ -373,12 +372,35 @@ class TestPendingQueue:
         router.route(p1, now_ms=0)
         router.route(p2, now_ms=1)
 
-        # Discovery completes - caller updates gradient_table first,
-        # then calls release_pending_for to get queued packets
         pending = router.release_pending_for(dst)
 
         assert len(pending) == 2
-        assert router.get_pending(dst) == []  # Cleared
+        assert router.get_pending(dst) == []
+
+    def test_max_pending_destinations_evicts_oldest(self, router: Router):
+        from lichen.gradient import GradientTable
+        from lichen.loadng.cache import RouteCache
+        from lichen.loadng.discovery import LoadngRouter
+
+        gradient_table = GradientTable()
+        router.loadng = LoadngRouter(
+            node_address=router.node_address,
+            gradient=gradient_table,
+            cache=RouteCache(),
+        )
+        router.max_pending_destinations = 2
+
+        d1 = IPv6Address("fd00:aaaa::1")
+        d2 = IPv6Address("fd00:bbbb::1")
+        d3 = IPv6Address("fd00:cccc::1")
+        router.route(make_packet(str(d1)), now_ms=0)
+        router.route(make_packet(str(d2)), now_ms=1)
+        router.route(make_packet(str(d3)), now_ms=2)
+
+        assert len(router.pending_queue) == 2
+        assert d1 not in router.pending_queue
+        assert d2 in router.pending_queue
+        assert d3 in router.pending_queue
 
 
 class TestMeshPrefixManagement:
@@ -598,13 +620,26 @@ class TestBackpressure:
         assert depth == 0
 
     def test_get_neighbor_queue_depth_known(self, router: Router):
-        """get_neighbor_queue_depth returns stored value."""
         neighbor = IPv6Address("fe80::a")
         router.neighbor_queue_depth[neighbor] = 42
 
         depth = router.get_neighbor_queue_depth(neighbor)
 
         assert depth == 42
+
+    def test_neighbor_lru_eviction(self, router: Router):
+        router.max_neighbors = 2
+        n1 = IPv6Address("fe80::1")
+        n2 = IPv6Address("fe80::2")
+        n3 = IPv6Address("fe80::3")
+        router.update_neighbor_coords(n1, (10.0, 10.0))
+        router.update_neighbor_queue_depth(n2, 0)
+        router.update_neighbor_coords(n1, (11.0, 11.0))
+        router.update_neighbor_coords(n3, (30.0, 30.0))
+        assert n2 not in router.neighbor_coords
+        assert n2 not in router.neighbor_queue_depth
+        assert n1 in router.neighbor_coords
+        assert n3 in router.neighbor_coords
 
 
 class TestDtnBuffer:
