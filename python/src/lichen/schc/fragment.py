@@ -126,6 +126,8 @@ class Ack:
         window = (data[1] >> _W_SHIFT) & 1
         complete = bool(data[1] & 0x01)
         n = data[2]
+        if n > MAX_WINDOW_SIZE:
+            raise FragmentError(f"bitmap size {n} exceeds maximum {MAX_WINDOW_SIZE}")
         body = data[3:]
         required_bytes = (n + 7) // 8
         if len(body) < required_bytes:

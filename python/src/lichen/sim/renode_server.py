@@ -176,14 +176,14 @@ class RenodeServer:
         """
         try:
             while True:
-                # Deliver packets to nodes in callback-based RX mode
                 self._simulation.deliver_pending_packets()
-                # Advance time (fires TxEndEvent, RxTimeoutEvent)
                 self._simulation.maybe_advance_time()
-                # Brief delay to avoid busy loop
                 await asyncio.sleep(0.001)
         except asyncio.CancelledError:
-            pass
+            raise
+        except Exception:
+            logger.exception("Simulation driver error")
+            raise
 
     async def _handle_connection(
         self,

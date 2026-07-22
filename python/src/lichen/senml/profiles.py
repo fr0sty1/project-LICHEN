@@ -61,7 +61,7 @@ def battery(voltage_v: float | None = None, percent: float | None = None) -> lis
 
     Args:
         voltage_v: Terminal voltage in volts (unit "V"), or None to omit.
-        percent:   State of charge 0-100 % (unit "%EL"), or None to omit.
+        percent:   State of charge 0-100 % (unit "%"), or None to omit.
 
     Returns:
         List of 0-2 SenML records.  Pass at least one of the arguments.
@@ -70,7 +70,7 @@ def battery(voltage_v: float | None = None, percent: float | None = None) -> lis
     if voltage_v is not None:
         records.append(SenmlRecord(n="voltage", u="V", v=voltage_v))
     if percent is not None:
-        records.append(SenmlRecord(n="battery", u="%EL", v=percent))
+        records.append(SenmlRecord(n="battery", u="%", v=percent))
     return records
 
 
