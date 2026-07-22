@@ -5,11 +5,11 @@
   "status": "closed",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": "Mark Atwood",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:22:13.463002Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-13T04:43:58.31508Z",
-  "closed_at": "2026-07-13T04:43:58.31508Z",
-  "close_reason": "Closed"
+  "updated_at": "2026-07-22T20:21:00.000000000Z",
+  "closed_at": "2026-07-22T20:21:00.000000000Z",
+  "close_reason": "handle_echo_request now takes local_addr param and uses it as reply_src for multicast dst (icmpv6.py:273-278). Drops if no unicast source available. Fully RFC 4443 compliant. SECURITY comment added. Matches suggested fix. Commit recorded."
 }
