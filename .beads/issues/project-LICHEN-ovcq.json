@@ -2,12 +2,16 @@
   "id": "project-LICHEN-ovcq",
   "title": "[codereview-pass1] coap_dtn.c:23 missing full OSCORE integration in POST handlers per task spec and coap_client.c pattern; rate limit is global not per-IID",
   "description": "lichen/subsys/lichen/coap/coap_dtn.c:60 - Correctness pass 1: no oscore_ctx check or protect/unprotect calls. Global rate limit allows one node to block all. P0 correctness. Also DTN storage uses fixed array without TTL or SenML encoding as per task. File all 12 findings.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T15:01:07.805902062Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:01:07.805902062Z",
+  "updated_at": "2026-07-22T15:01:24.33985452Z",
+  "started_at": "2026-07-22T15:01:24.33985452Z",
+  "lease_expires_at": "2026-07-22T15:06:24.33985452Z",
+  "heartbeat_at": "2026-07-22T15:01:24.33985452Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-ovcq",
