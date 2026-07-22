@@ -3,15 +3,15 @@
   "title": "visualize.to_dot doesn't escape special characters in node labels",
   "description": "File: python/src/lichen/rpl/visualize.py:66-78\n\nThe to_dot() function generates Graphviz DOT output but doesn't escape special characters in node labels:\n\n```python\nfor node in sorted(parents):\n    label = node\n    if ranks is not None and node in ranks:\n        label = f\"{node}\\\\nrank={ranks[node]}\"\n    attrs = f'label=\"{label}\"'  # No escaping of node content\n```\n\nIf a node ID contains characters special to DOT syntax (quotes, backslashes, braces), the generated DOT would be malformed:\n- Node \"fe80::1\" works fine\n- Node 'test\"node' would break: label=\"test\"node\"\n- Node 'a\\b' would break: label=\"a\\b\" (backslash interpreted)\n\nIPv6 addresses don't typically contain these characters, but the function accepts arbitrary strings per its type signature.\n\nFix: Escape the label:\n```python\ndef escape_dot(s: str) -\u003e str:\n    return s.replace('\\\\', '\\\\\\\\').replace('\"', '\\\\\"')\n\nlabel = escape_dot(node)\n```",
   "notes": "Commit: 223dbfa87",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:24:54.8858Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:29:52.180763184Z",
+  "updated_at": "2026-07-22T23:29:54.035233723Z",
   "started_at": "2026-07-22T23:27:44.37317408Z",
-  "lease_expires_at": "2026-07-22T23:32:44.37317408Z",
-  "heartbeat_at": "2026-07-22T23:27:44.37317408Z"
+  "closed_at": "2026-07-22T23:29:54.035233723Z",
+  "close_reason": "Implemented DOT label escaping in visualize.to_dot(), removed dead _escape_dot nested fn, fixed import order for ruff; tests + lint pass"
 }
