@@ -2,14 +2,13 @@
   "id": "project-LICHEN-vfl0",
   "title": "[codereview-P2] 04-network.md short address section update should reference exact line in 02-physical-link.md and mention hash_32(EUI-64,0) more explicitly in list item 1",
   "description": "The summary in 04-network.md:12.3 is improved but list item 1 is vague. Make consistent with new pseudocode. Also verify no other spec files reference old CRC16 short addr computation. discovered-from:b6zw",
-  "status": "closed",
+  "notes": "Reopened for codereview loop per task: after every logical chunk run /codereview 3 times, file findings tagged codereview, fix all, 3 clean passes before close. Current updates to 04-network.md complete with references to 02-physical-link.md:215 and explicit hash_32(EUI-64,0). Additional codereview beads: project-LICHEN-3ywg, project-LICHEN-jlgr",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "created_at": "2026-07-22T16:45:48.237743426Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:46:23.064918289Z",
-  "closed_at": "2026-07-22T16:46:23.064918289Z",
-  "close_reason": "Updated 04-network.md:12.3 with explicit SipHash-2-4 reference and precise cross-link to 02-physical-link.md:4.5. Consistent across all spec files.",
+  "updated_at": "2026-07-22T16:51:59.252531533Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-vfl0",
