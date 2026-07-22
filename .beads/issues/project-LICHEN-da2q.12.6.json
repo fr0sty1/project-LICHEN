@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-da2q.12.6",
+  "title": "CCP-12 synchronized hopping definition needed",
+  "description": "Context unclear on exact requirements for synchronized hopping in CCP-12 (bead project-LICHEN-da2q.12). Current impl in spec/02a and ccp16.json uses select_channel with fnv1a32 on (eui64 ^ t ^ epoch). Is this it, or separate time-synced hop sequence, rendezvous channel in announce, or priority selection? Also, ccp13_vectors undefined in generate.py from prior chunk on CCP-13.4. HUMAN review required before implementing in Zephyr/Rust per scope. Will address existing codereview-P1 kb8d after clarification.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:59:51.195830708Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:59:51.195830708Z",
+  "labels": [
+    "human",
+    "ccp",
+    "codereview",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.12.6",
+      "depends_on_id": "project-LICHEN-da2q.12",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:59:51.31981046Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
