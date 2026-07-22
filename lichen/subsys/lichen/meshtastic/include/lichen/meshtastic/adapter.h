@@ -77,6 +77,7 @@ struct lichen_meshtastic_position_snapshot {
 	uint8_t precision_bits;
 	bool timestamp_field_valid;
 	bool fix_time_rejected_below_epoch_floor;
+	bool fix_time_rejected_future;
 	uint32_t effective_epoch_floor;
 };
 
@@ -266,6 +267,12 @@ struct lichen_meshtastic_adapter {
 	bool stream_in_frame;
 	bool disconnected;
 };
+
+/*
+ * Thread-safety: No internal mutex or atomics. Caller must serialize all
+ * accesses to a given adapter instance (emit_*, feed_*, process_*, get_stats,
+ * etc). Stats updates are racy but best-effort. Matches embedded usage.
+ */
 
 void lichen_meshtastic_adapter_init(
 	struct lichen_meshtastic_adapter *_Nonnull adapter,

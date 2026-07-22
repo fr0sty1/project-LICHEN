@@ -2206,6 +2206,7 @@ ZTEST(meshtastic_adapter, test_position_packet_routes_to_stub_and_status)
 	zassert_equal(ctx.last_position.altitude_m, 42);
 	zassert_true(ctx.last_position.fix_time_unix_valid);
 	zassert_equal(ctx.last_position.fix_time_unix, 1710000200U);
+	zassert_false(ctx.last_position.fix_time_rejected_future);
 	zassert_true(ctx.last_position.satellites_valid);
 	zassert_equal(ctx.last_position.satellites, 9U);
 	zassert_equal(ctx.out_count, 1U);
@@ -2241,6 +2242,7 @@ ZTEST(meshtastic_adapter, test_position_time_timestamp_policy_is_deterministic)
 	zassert_equal(ctx.position_count, 1U);
 	zassert_true(ctx.last_position.fix_time_unix_valid);
 	zassert_equal(ctx.last_position.fix_time_unix, 1710000000U);
+	zassert_false(ctx.last_position.fix_time_rejected_future);
 
 	position_len = build_position_payload_with_metadata(
 		position, sizeof(position), false, false, 0U, true,
@@ -2256,6 +2258,7 @@ ZTEST(meshtastic_adapter, test_position_time_timestamp_policy_is_deterministic)
 	zassert_equal(ctx.position_count, 1U);
 	zassert_true(ctx.last_position.fix_time_unix_valid);
 	zassert_equal(ctx.last_position.fix_time_unix, 1710000300U);
+	zassert_false(ctx.last_position.fix_time_rejected_future);
 
 	position_len = build_position_payload_with_metadata(
 		position, sizeof(position), false, true, 1710000000U, true,
@@ -2271,6 +2274,7 @@ ZTEST(meshtastic_adapter, test_position_time_timestamp_policy_is_deterministic)
 	zassert_equal(ctx.position_count, 1U);
 	zassert_true(ctx.last_position.fix_time_unix_valid);
 	zassert_equal(ctx.last_position.fix_time_unix, 1710000400U);
+	zassert_false(ctx.last_position.fix_time_rejected_future);
 }
 
 ZTEST(meshtastic_adapter, test_position_below_build_epoch_strips_fix_time_only)
@@ -2303,6 +2307,7 @@ ZTEST(meshtastic_adapter, test_position_below_build_epoch_strips_fix_time_only)
 	zassert_true(ctx.last_position.longitude_e7_valid);
 	zassert_false(ctx.last_position.fix_time_unix_valid);
 	zassert_true(ctx.last_position.fix_time_rejected_below_epoch_floor);
+	zassert_false(ctx.last_position.fix_time_rejected_future);
 	zassert_equal(ctx.last_position.effective_epoch_floor,
 		      (uint32_t)CONFIG_LICHEN_MESHTASTIC_POSITION_EPOCH_FLOOR_UNIX);
 }
@@ -2345,6 +2350,7 @@ ZTEST(meshtastic_adapter,
 	zassert_true(ctx.last_position.timestamp_field_valid);
 	zassert_false(ctx.last_position.fix_time_unix_valid);
 	zassert_true(ctx.last_position.fix_time_rejected_below_epoch_floor);
+	zassert_false(ctx.last_position.fix_time_rejected_future);
 	zassert_equal(ctx.last_position.effective_epoch_floor,
 		      (uint32_t)CONFIG_LICHEN_MESHTASTIC_POSITION_EPOCH_FLOOR_UNIX);
 }
@@ -2387,6 +2393,7 @@ ZTEST(meshtastic_adapter,
 	zassert_false(ctx.last_position.timestamp_field_valid);
 	zassert_false(ctx.last_position.fix_time_unix_valid);
 	zassert_true(ctx.last_position.fix_time_rejected_below_epoch_floor);
+	zassert_false(ctx.last_position.fix_time_rejected_future);
 	zassert_equal(ctx.last_position.effective_epoch_floor,
 		      (uint32_t)CONFIG_LICHEN_MESHTASTIC_POSITION_EPOCH_FLOOR_UNIX);
 }
