@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.16.8.1",
+  "title": "codereview-pass1: ccp16_vectors missing roundtrip test oracle and Python sim consumption",
+  "description": "Review pass 1 on test/vectors/generate.py update for CCP-16. New vectors added for TDMA/adaptive-SF/density/multi-channel but no corresponding test in test_vectors.py or sim/test_scale.py to validate against Python reference impl. P2 correctness. Parent: project-LICHEN-da2q.16.8. File as codereview.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:14:52.548661756Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:14:52.548661756Z",
+  "labels": [
+    "codereview",
+    "da2q.16",
+    "ccp",
+    "phy",
+    "python",
+    "scalability",
+    "sim"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.16.8.1",
+      "depends_on_id": "project-LICHEN-da2q.16.8",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:14:52.669861398Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
