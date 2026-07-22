@@ -35,6 +35,10 @@ class RplTarget:
     target: IPv6Address
     prefix_length: int = 128
 
+    def __post_init__(self) -> None:
+        if not (0 <= self.prefix_length <= 128):
+            raise DaoError(f"prefix_length must be between 0 and 128, got {self.prefix_length}")
+
     def to_option(self) -> RplOption:
         nbytes = (self.prefix_length + 7) // 8
         data = bytes([0, self.prefix_length]) + self.target.packed[:nbytes]
