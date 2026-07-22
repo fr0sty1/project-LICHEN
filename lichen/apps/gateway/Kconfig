@@ -230,6 +230,45 @@ config LICHEN_GATEWAY_RX1_DELAY_MS
 	  missed (lora_ipv6_mesh-fe1z, observed on the T1000-E/LR1110). 0
 	  disables the delay. ~100 ms is a safe LoRa value.
 
+config LICHEN_GATEWAY_COORDINATION
+	bool "Gateway coordination protocol (TDMA slots, node registry, handoff)"
+	depends on LICHEN_RPL
+	depends on LICHEN_COAP
+	depends on LICHEN_COAP_SERVER || LICHEN_COAP_CONFIG
+	default n
+	help
+	  Enable multi-gateway coordination per mugl.3 / spec/05-routing.md:145
+	  (backbone UDP/CoAP to /.well-known/lichen-gw). Supports closed (PSK+OSCORE)
+	  and open (Ed25519 signatures+TOFU) federation modes. Stubs in subsys and
+	  rust/lichen-gateway to follow. Required for >1 gateway deployments.
+
+choice LICHEN_GW_FEDERATION_MODE
+	prompt "Gateway federation mode for coordination"
+	default LICHEN_GW_FEDERATION_CLOSED
+	depends on LICHEN_GATEWAY_COORDINATION
+	help
+	  Closed: PSK-based for single-operator. Open: signature-based for
+	  multi-operator with TOFU. Dual supports both simultaneously (mugl.3).
+
+config LICHEN_GW_FEDERATION_CLOSED
+	bool "Closed federation (PSK + OSCORE)"
+
+config LICHEN_GW_FEDERATION_OPEN
+	bool "Open federation (Ed25519 + TOFU)"
+
+config LICHEN_GW_FEDERATION_DUAL
+	bool "Dual federation (both modes)"
+
+endchoice
+
+config LICHEN_GW_PSK
+	string "Base64-encoded PSK for closed/dual federation"
+	depends on LICHEN_GATEWAY_COORDINATION
+	depends on LICHEN_GW_FEDERATION_CLOSED || LICHEN_GW_FEDERATION_DUAL
+	help
+	  Shared secret for OSCORE in closed federation. Must match on all
+	  cooperating gateways in closed mode. 32+ bytes recommended.
+
 # Force modular CoAP (lichen_coap service + LICHEN_COAP_CONFIG) for
 # gateway; legacy standalone server (lichen_coap_server) would duplicate
 # lichen_config ownership and lacks linker bounds on nucleo_wl55jc/r1_neo.
