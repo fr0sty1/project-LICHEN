@@ -824,18 +824,9 @@ pub fn handle_icmpv6(
             let echo = Icmpv6Echo::from_bytes(body)?;
             let data = &body[4..]; // After id+seq
 
-            // Truncate data if it would exceed reply buffer capacity.
-            // MAX_ECHO_DATA (120) + 8 header = 128 byte ICMPv6 reply.
-            // With 40-byte IPv6 header, total is 168 bytes, fits in 256.
-            let truncated_data = if data.len() > MAX_ECHO_DATA {
-                &data[..MAX_ECHO_DATA]
-            } else {
-                data
-            };
-
             // RFC 4443 Section 4.2: reply source SHOULD be the destination of the request.
             // This ensures nodes with multiple addresses reply from the address that was pinged.
-            let reply_icmp = echo.build_reply(&ip_header.dst, &ip_header.src, truncated_data)?;
+            let reply_icmp = echo.build_reply(&ip_header.dst, &ip_header.src, data)?;
             let mut reply_ip = Ipv6Header::new(next_header::ICMPV6, ip_header.dst, ip_header.src);
             reply_ip.hop_limit = 255;
 

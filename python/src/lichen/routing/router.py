@@ -149,6 +149,13 @@ class ForwardingBuffer:
     Why total source limit: Bounded memory. With MAX_FORWARDING_SOURCES sources
     and MAX_PACKETS_PER_SOURCE each, total capacity is 16 packets.
 
+    **Thread safety (project-LICHEN-ccjp):** NOT thread-safe. All methods
+    (try_buffer, expire_old, dequeue, etc.) mutate _buffer, _source_order,
+    and stats counters without locks. Races possible in async/threaded use
+    (e.g. concurrent expire + try_buffer). Use only from single thread
+    (asyncio event loop). Add external lock or redesign if concurrent access
+    needed.
+
     Attributes:
         max_sources: Maximum unique sources to track.
         max_per_source: Maximum packets buffered per source.

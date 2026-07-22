@@ -23,6 +23,7 @@ from lichen.link.frame import AddrMode, LichenFrame
 from lichen.link.link_layer import (
     PLACEHOLDER_MIC,
     ReceiveError,
+    RxFrame,
     SIGNATURE_LENGTH,
     LinkLayer,
 )

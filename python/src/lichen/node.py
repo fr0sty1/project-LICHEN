@@ -231,21 +231,8 @@ class Node:
         return self._state_machine.state
 
     def _peer_lookup(self, hint: bytes) -> PeerIdentity | None:
-        """Look up a peer by IID hint.
-
-        Why a callback: LinkLayer needs to verify signatures but doesn't
-        own the peer database. This callback provides the lookup.
-
-        For now, returns the first matching peer. In production, would
-        use the hint (e.g., destination address) to narrow down.
-        """
-        # Why iterate: Without sender IID in frame, must try all peers.
-        # This is O(n) but n is small for mesh networks.
-        if hint and hint in self.peer_db:
+        if hint and len(hint) == 8 and hint in self.peer_db:
             return self.peer_db[hint]
-        # Try first peer as fallback (for testing)
-        if self.peer_db:
-            return next(iter(self.peer_db.values()))
         return None
 
     def add_peer(self, peer: PeerIdentity) -> None:

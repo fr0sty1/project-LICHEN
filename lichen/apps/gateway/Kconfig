@@ -204,7 +204,6 @@ config LORA_LICHEN_GATEWAY_RPL_ROOT
 	  missed (lora_ipv6_mesh-fe1z, observed on the T1000-E/LR1110). 0
 	  disables the delay. ~100 ms is a safe LoRa value.
 
-<<<<<<< HEAD
 config LICHEN_GATEWAY_PREFIX_DELEGATION
 	bool "WiFi station backhaul prefix delegation (Heltec V3 6LBR)"
 	default y if WIFI
@@ -274,43 +273,10 @@ config LICHEN_GW_FEDERATION_OPEN
 
 config LICHEN_GW_FEDERATION_DUAL
 	bool "Dual federation (both modes)"
-=======
-config LICHEN_GATEWAY_COORDINATION
-	bool "Gateway coordination (multi-gateway TDMA, handoff, registry)"
-	depends on LICHEN_GATEWAY
-	default n
-	help
-	  Enable inter-gateway coordination over backbone (CoAP/UDP). Supports
-	  closed federation (PSK+OSCORE) and open federation (Ed25519 signatures).
-	  Implements slot negotiation, node registry, handoff per mugl spec.
-
-choice LICHEN_GW_FEDERATION_MODE
-	prompt "Federation mode"
-	default LICHEN_GW_FEDERATION_CLOSED
-	depends on LICHEN_GATEWAY_COORDINATION
-	help
-	  Federation mode for gateway coordination.
-
-config LICHEN_GW_FEDERATION_CLOSED
-	bool "Closed (PSK only)"
-	help
-	  Pre-shared key among gateways, OSCORE protection.
-
-config LICHEN_GW_FEDERATION_OPEN
-	bool "Open (Ed25519 signatures)"
-	help
-	  Signature-based with TOFU or pinned keys.
-
-config LICHEN_GW_FEDERATION_DUAL
-	bool "Dual (both modes)"
-	help
-	  Support both PSK and signature peers simultaneously.
->>>>>>> origin/integration/worker3-20260722
 
 endchoice
 
 config LICHEN_GW_PSK
-<<<<<<< HEAD
 	string "Base64-encoded PSK for closed/dual federation"
 	depends on LICHEN_GATEWAY_COORDINATION
 	depends on LICHEN_GW_FEDERATION_CLOSED || LICHEN_GW_FEDERATION_DUAL
@@ -323,12 +289,6 @@ config LICHEN_GW_PSK
 # lichen_config ownership and lacks linker bounds on nucleo_wl55jc/r1_neo.
 config LICHEN_COAP_SERVER_STANDALONE
 	default n
-=======
-	string "PSK for closed federation (base64)"
-	depends on LICHEN_GW_FEDERATION_CLOSED || LICHEN_GW_FEDERATION_DUAL
-	help
-	  Base64 encoded PSK for closed federation mode.
->>>>>>> origin/integration/worker3-20260722
 
 endmenu
 

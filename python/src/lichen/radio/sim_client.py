@@ -215,6 +215,8 @@ class SimRadio:
 
     async def receive(self, timeout_ms: int, channel: int = 0) -> tuple[bytes, int, int] | None:
         self._ensure_connected()
+        if timeout_ms < 0:
+            raise ValueError("timeout_ms must be non-negative")
         if not (0 <= timeout_ms <= MAX_TIMEOUT_MS):
             raise ValueError(f"timeout_ms must be <= {MAX_TIMEOUT_MS} (~71 minutes), got {timeout_ms}")
         timeout_us = timeout_ms * 1000
@@ -263,6 +265,8 @@ class SimRadio:
 
     async def cad(self, timeout_ms: int, channel: int = 0) -> bool:
         self._ensure_connected()
+        if timeout_ms < 0:
+            raise ValueError("timeout_ms must be non-negative")
         msg = encode_cad(timeout_ms, channel)
         async with self._lock:
             await self._send(msg)

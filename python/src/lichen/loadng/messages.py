@@ -96,11 +96,7 @@ class RREQ:
             seq_num=int.from_bytes(data[2:4], "big"),
             originator=IPv6Address(data[4:20]),
             destination=IPv6Address(data[20:36]),
-<<<<<<< HEAD
-            signature=signature,
-=======
             signature=_parse_signature(data, 36),
->>>>>>> origin/integration/worker4-20260722
         )
 
 
@@ -158,6 +154,8 @@ class RERR:
     signature: bytes = field(default=b"")
 
     def to_bytes(self) -> bytes:
+        if not 0 <= self.error_code <= 255:
+            raise LoadngError(f"error_code out of range: {self.error_code}")
         return (
             bytes([self.flags & 0xFF, self.error_code & 0xFF])
             + IPv6Address(self.unreachable).packed

@@ -46,13 +46,8 @@ class FragmentReceiver:
     """
 
     def __init__(self, window_size: int) -> None:
-<<<<<<< HEAD
-        if window_size < 1:
-            raise ValueError("window_size must be positive")
-=======
         if not isinstance(window_size, int) or not 1 <= window_size <= MAX_WINDOW_SIZE:
             raise FragmentError(f"window_size must be integer 1..{MAX_WINDOW_SIZE}")
->>>>>>> origin/integration/worker4-20260722
         self.window_size = window_size
         self._tiles: dict[int, bytes] = {}
         self._current_window = 0
@@ -134,11 +129,13 @@ class FragmentReceiver:
     def receive(self, frag: Fragment) -> ReceiverResult:
         if self.done:
             return ReceiverResult()
+        if self._rule_id == 0:
+            self._rule_id = frag.rule_id
+        elif self._rule_id != frag.rule_id:
+            return ReceiverResult()
         # Reject fragments with FCN >= window_size (except ALL_1 which has special FCN)
         if not frag.is_all_1 and frag.fcn >= self.window_size:
             return ReceiverResult()
-        if self._rule_id == 0:
-            self._rule_id = frag.rule_id
         abs_window = self._abs_window(frag)
 
         # SECURITY: Reject stale retransmissions from completed windows to
