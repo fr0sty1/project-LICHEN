@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 
-#include <stdio.h>
 #include <string.h>
+#include <errno.h>
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
