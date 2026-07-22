@@ -45,6 +45,7 @@ static inline bool cbor_check_space(struct cbor_ctx *ctx, size_t n)
 
 static void cbor_put_map_header(struct cbor_ctx *ctx, uint8_t count)
 {
+	if (ctx->overflow) return;
 	if (count < 24U) {
 		if (!cbor_check_space(ctx, 1)) {
 			return;
@@ -61,6 +62,7 @@ static void cbor_put_map_header(struct cbor_ctx *ctx, uint8_t count)
 
 static void cbor_put_array_header(struct cbor_ctx *ctx, uint8_t count)
 {
+	if (ctx->overflow) return;
 	if (count < 24U) {
 		if (!cbor_check_space(ctx, 1)) {
 			return;
@@ -77,6 +79,7 @@ static void cbor_put_array_header(struct cbor_ctx *ctx, uint8_t count)
 
 static void cbor_put_tstr(struct cbor_ctx *ctx, const char *value)
 {
+	if (ctx->overflow) return;
 	size_t len = value ? strlen(value) : 0;
 	size_t header_len;
 	if (len < 24U) {
@@ -112,6 +115,7 @@ static void cbor_put_key(struct cbor_ctx *ctx, const char *key)
 
 static void cbor_put_bool(struct cbor_ctx *ctx, bool value)
 {
+	if (ctx->overflow) return;
 	if (!cbor_check_space(ctx, 1)) {
 		return;
 	}
@@ -120,6 +124,7 @@ static void cbor_put_bool(struct cbor_ctx *ctx, bool value)
 
 static void cbor_put_uint(struct cbor_ctx *ctx, uint32_t value)
 {
+	if (ctx->overflow) return;
 	size_t needed;
 	if (value < 24U) {
 		needed = 1;
@@ -153,6 +158,7 @@ static void cbor_put_uint(struct cbor_ctx *ctx, uint32_t value)
 
 static void cbor_put_int(struct cbor_ctx *ctx, int32_t value)
 {
+	if (ctx->overflow) return;
 	uint32_t encoded;
 	size_t needed;
 	if (value >= 0) {
@@ -321,6 +327,7 @@ size_t lichen_coap_encode_neighbors_cbor(uint8_t *buf, size_t buf_size,
 		cbor_put_array_header(&ctx, 0);
 		return ctx.overflow ? 0 : ctx.off;
 	}
+	if (count > 255) count = 255;
 	cbor_put_array_header(&ctx, (uint8_t)count);
 	for (size_t i = 0; i < count; i++) {
 		const struct lichen_coap_neighbor *n = &neighbors[i];
@@ -364,6 +371,7 @@ size_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
 	if (routes == NULL || count == 0) {
 		cbor_put_array_header(&ctx, 0);
 	} else {
+		if (count > 255) count = 255;
 		cbor_put_array_header(&ctx, (uint8_t)count);
 		for (size_t i = 0; i < count; i++) {
 			const struct lichen_coap_route *r = &routes[i];
