@@ -315,26 +315,7 @@ int lichen_announce_ingest_authenticated(
 	} else {
 		location_seq_num = announce.wire_seq_num;
 	}
-	k_mutex_unlock(&announce_mutex);
-
-	announce.seq_num = location_seq_num;
-	announce.seq_stale = seq_stale_for_pin;
-	ret = notify_observers(&announce, meta, seq_stale_for_pin);
-	if (ret < 0) {
-		k_mutex_unlock(&ingest_mutex);
-		return ret;
-	}
-
-	k_mutex_lock(&announce_mutex, K_FOREVER);
-	peer = find_peer_locked(announce.originator_iid);
-	if (peer != NULL) {
-		if (memcmp(peer->pubkey, announce.pubkey,
-			   LICHEN_ANNOUNCE_PUBKEY_LEN) != 0) {
-			k_mutex_unlock(&announce_mutex);
-			k_mutex_unlock(&ingest_mutex);
-			return -EKEYREJECTED;
-		}
-	} else {
+	if (peer == NULL) {
 		peer = allocate_peer_locked(observed_uptime_s);
 		if (peer == NULL) {
 			k_mutex_unlock(&announce_mutex);
@@ -350,6 +331,15 @@ int lichen_announce_ingest_authenticated(
 	peer->location_seq_num = location_seq_num;
 	peer->last_seen_uptime_s = observed_uptime_s;
 	k_mutex_unlock(&announce_mutex);
+
+	announce.seq_num = location_seq_num;
+	announce.seq_stale = seq_stale_for_pin;
+	ret = notify_observers(&announce, meta, seq_stale_for_pin);
+	if (ret < 0) {
+		k_mutex_unlock(&ingest_mutex);
+		return ret;
+	}
+
 	k_mutex_unlock(&ingest_mutex);
 	return 0;
 }
