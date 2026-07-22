@@ -124,6 +124,9 @@ impl<'a> BitReader<'a> {
     }
 
     fn read(&mut self, nbits: usize) -> Result<u128, SchcError> {
+        if nbits > 128 {
+            return Err(TooShort::new(nbits, 128).into());
+        }
         let required_bits = self.pos + nbits;
         let available_bits = self.buf.len() * 8;
         if required_bits > available_bits {
@@ -751,14 +754,13 @@ fn decompress_rpl_dao(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     Ok(total)
 }
 
-fn decompress_mqtt_sn(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
+fn decompress_mqtt_sn(data: &[u8], out: &mut [u8], _rule_id: u8) -> Result<usize, SchcError> {
     let mut r = BitReader::new(&data[1..]);
 
     let hop_limit = r.read(8)? as u8;
     let addr_mode = r.read(1)? as u8;
 
     let (src, dst) = if addr_mode == 0 {
-        // Link-local
         let src_iid = r.read(64)?;
         let dst_iid = r.read(64)?;
         (
@@ -766,16 +768,18 @@ fn decompress_mqtt_sn(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
             (LINK_LOCAL_PREFIX | dst_iid).to_be_bytes(),
         )
     } else {
-        // Full addresses
         let src_int = r.read(128)?;
         let dst_int = r.read(128)?;
         (src_int.to_be_bytes(), dst_int.to_be_bytes())
     };
 
+    if (addr_mode == 0) != (is_link_local(&src) && is_link_local(&dst)) {
+        return Err(SchcError::NoMatchingRule);
+    }
+
     let direction = r.read(1)? as u8;
     let other_port = r.read(16)? as u16;
 
-    // Reconstruct ports: direction 0 = src is 10883, direction 1 = dst is 10883
     let (src_port, dst_port) = if direction == 0 {
         (PORT_MQTT_SN, other_port)
     } else {
@@ -903,7 +907,7 @@ pub fn decompress(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
         RULE_ICMPV6_ECHO => decompress_icmpv6_echo(data, out),
         RULE_RPL_DIO => decompress_rpl_dio(data, out),
         RULE_RPL_DAO => decompress_rpl_dao(data, out),
-        RULE_MQTT_SN => decompress_mqtt_sn(data, out),
+        RULE_MQTT_SN => decompress_mqtt_sn(data, out, RULE_MQTT_SN),
         RULE_UNCOMPRESSED => {
             let payload = &data[1..];
             if out.len() < payload.len() {
