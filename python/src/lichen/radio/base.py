@@ -55,6 +55,11 @@ class Radio(Protocol):
     def configure(self, freq_hz: int, tx_power_dbm: int) -> None:
         """Configure the radio parameters.
 
+        Advisory only. Implementations MUST store values for the ``freq_hz``
+        and ``tx_power_dbm`` properties. Some (e.g. SimRadio) do not send
+        configuration over the wire; a future CONFIGURE protocol message
+        would be required for full synchronization with the simulator.
+
         Args:
             freq_hz: Center frequency in Hz (e.g., 915_000_000 for 915 MHz).
             tx_power_dbm: Transmit power in dBm (e.g., 14 for 14 dBm / 25 mW).
