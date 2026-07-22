@@ -1,16 +1,16 @@
 {
   "id": "project-LICHEN-78j3",
   "title": "[merge-conflict] worktree-worker21: Kconfig",
-  "notes": "Commit: f1a6687ed",
-  "status": "in_progress",
+  "notes": "Commit: a1ebace",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:22.265831032Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:49:10.931578902Z",
+  "updated_at": "2026-07-22T23:50:33.770384373Z",
   "started_at": "2026-07-22T23:46:47.220306372Z",
-  "lease_expires_at": "2026-07-22T23:51:47.220306372Z",
-  "heartbeat_at": "2026-07-22T23:46:47.220306372Z"
+  "closed_at": "2026-07-22T23:50:33.770384373Z",
+  "close_reason": "Resolved merge conflicts in xiao_s3_wio_sx1262.conf, coap_dtn.c, coap_status.c, coap_config.c, coap_keys.c and .beads event files. Cleaned conflict markers, standardized retirement comments, added safety bounds in base64, removed junk code. Commits in worker21 and main."
 }

@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-nanq",
   "title": "[merge-conflict] worktree-worker24: messages.py",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:47:39.240902522Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:47:39.240902522Z"
+  "updated_at": "2026-07-22T23:50:10.293262662Z",
+  "started_at": "2026-07-22T23:50:10.293262662Z",
+  "lease_expires_at": "2026-07-22T23:55:10.293262662Z",
+  "heartbeat_at": "2026-07-22T23:50:10.293262662Z"
 }
