@@ -24,9 +24,9 @@ rsource "l2/Kconfig"
 rsource "oscore/Kconfig"
 rsource "schc/Kconfig"
 rsource "senml/Kconfig"
- rsource "rpl/Kconfig"
- rsource "routing/Kconfig"
- rsource "transport/Kconfig"
+rsource "rpl/Kconfig"
+rsource "routing/Kconfig"
+rsource "transport/Kconfig"
 
 # Adaptive SF configuration (centralized here to prevent duplicate definitions
 # across link/, routing/, and main Kconfig per codereview project-LICHEN-5273.*)
