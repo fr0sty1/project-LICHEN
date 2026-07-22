@@ -2,15 +2,15 @@
   "id": "project-LICHEN-b889",
   "title": "[merge-conflict] worktree-worker17: heltec_wireless_tracker.conf",
   "notes": "Commit: 54f6f1675",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:42:09.074859662Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:46:27.836837493Z",
+  "updated_at": "2026-07-22T23:46:31.86401466Z",
   "started_at": "2026-07-22T23:45:18.894718789Z",
-  "lease_expires_at": "2026-07-22T23:50:18.894718789Z",
-  "heartbeat_at": "2026-07-22T23:45:18.894718789Z"
+  "closed_at": "2026-07-22T23:46:31.86401466Z",
+  "close_reason": "Removed stale retired heltec_wireless_tracker bridge fragments in worker17 worktree (matches project-LICHEN-2u26.4 retirement). Commit 54f6f1675 pushed to worktree-worker17 branch."
 }
