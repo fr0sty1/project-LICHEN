@@ -2,11 +2,15 @@
   "id": "project-LICHEN-ex1z",
   "title": "_window_bitmap does not account for All-1 tile position",
   "description": "File: python/src/lichen/schc/reassembly.py:111-113\n\nThe _window_bitmap() method computes the bitmap by checking self._tiles:\n  return tuple(base + p in self._tiles for p in range(self.window_size))\n\nHowever, the All-1 fragment's payload is stored separately in self._all1_payload (line 136), NOT in self._tiles. This means the bitmap position corresponding to the All-1 tile is always False, even when the All-1 fragment was received.\n\nExample with 10 tiles (0-9), window_size=7:\n- Window 1 contains tiles 7, 8, and All-1 (at index 9)\n- _window_bitmap(1) checks indices 7-13 in _tiles\n- Index 9 (All-1) is NOT in _tiles, so bitmap[2] = False\n\nWhen MIC fails and NACK is sent, the sender will retransmit All-1 unnecessarily if tiles 7-8 are marked received but position 2 (All-1) shows as missing.\n\nFix: Track All-1's logical position and include it in the bitmap calculation when _all1_seen is True and the window matches _all1_window.\n\nCategory: PROTOCOL",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:28:30.961908Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:28:30.961942Z"
+  "updated_at": "2026-07-22T20:19:15.036716087Z",
+  "started_at": "2026-07-22T20:19:15.036716087Z",
+  "lease_expires_at": "2026-07-22T20:24:15.036716087Z",
+  "heartbeat_at": "2026-07-22T20:19:15.036716087Z"
 }
