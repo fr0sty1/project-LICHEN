@@ -53,7 +53,7 @@ static struct lichen_coap_server_handlers s_handlers;
 int lichen_coap_respond(struct coap_resource *resource,
 			struct coap_packet *request,
 			struct sockaddr *addr, socklen_t addr_len,
-			uint8_t resp_code,
+			uint8_t resp_code, uint16_t content_format,
 			const uint8_t *payload, size_t payload_len)
 {
 	static uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
@@ -77,7 +77,7 @@ int lichen_coap_respond(struct coap_resource *resource,
 
 	if (payload != NULL && payload_len > 0) {
 		ret = coap_append_option_int(&response, COAP_OPTION_CONTENT_FORMAT,
-					     CBOR_CONTENT_FORMAT);
+					     content_format);
 		if (ret < 0) {
 			LOG_ERR("Failed to add content-format: %d", ret);
 			return ret;

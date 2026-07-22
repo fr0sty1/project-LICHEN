@@ -390,9 +390,6 @@ static int write_user(uint8_t *buf, size_t buflen, size_t *pos,
 				     'a' + (nibble - 10));
 	}
 	id[9] = '\0';
-	if (id[0] != '!' || id[9] != '\0') {
-		return -EINVAL;
-	}
 
 	if (pb_write_string_field(buf, buflen, pos, USER_ID_FIELD, id) < 0 ||
 	    pb_write_string_field(buf, buflen, pos, USER_LONG_NAME_FIELD,

@@ -211,9 +211,10 @@ static int encode_record(zcbor_state_t *state,
 	if (rec->unit != NULL) entries++;
 	if (rec->has_time) entries++;
 
-	if ((is_first && validate_name(pack->base_name) < 0) ||
-	    validate_name(rec->name) < 0 ||
-	    validate_unit(rec->unit) < 0) {
+	if ((is_first && pack->base_name != NULL && validate_name(pack->base_name) < 0) ||
+	    (rec->name != NULL && validate_name(rec->name) < 0) ||
+	    (rec->unit != NULL && validate_unit(rec->unit) < 0) ||
+	    (rec->type == SENML_VALUE_STRING && rec->value.s != NULL && validate_string(rec->value.s) < 0)) {
 		return -EMSGSIZE;
 	}
 
