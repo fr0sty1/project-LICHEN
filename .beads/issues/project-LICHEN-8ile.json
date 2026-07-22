@@ -2,15 +2,15 @@
   "id": "project-LICHEN-8ile",
   "title": "Add debug logging to TX/RX timeout handling",
   "description": "Modify _handle_tx_end and _handle_rx_timeout methods in python/src/lichen/sim/simulation.py to add debug logging with detailed information about: node_id, tx_id/node_state, pending_txs/event_queue_len, current_time, and other relevant debugging information when these events are processed.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-15T03:22:44.480887Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T14:20:08.702369735Z",
+  "updated_at": "2026-07-22T14:22:34.481849784Z",
   "started_at": "2026-07-22T14:20:08.702369735Z",
-  "lease_expires_at": "2026-07-22T14:25:08.702369735Z",
-  "heartbeat_at": "2026-07-22T14:20:08.702369735Z"
+  "closed_at": "2026-07-22T14:22:34.481849784Z",
+  "close_reason": "Enhanced _handle_tx_end and _handle_rx_timeout in python/src/lichen/sim/simulation.py:388 with node_state, pending_txs, event_queue_len, current_time_us per spec; fixed scoping bug in node lookup; updated renode_console.conf for USBD/LICHEN_NATIVE enable matching oqv7.1 close. Verified with pytest simulation tests."
 }
