@@ -1,12 +1,16 @@
 {
   "id": "project-LICHEN-laz6",
   "title": "codereview pass 2 chunk1: now() cross-ref to TDMA Slot struct good but should also cite draft-lichen-tdma SFN interaction",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:41:28.726663837Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:41:28.726663837Z",
+  "updated_at": "2026-07-22T22:33:32.216231418Z",
+  "started_at": "2026-07-22T22:33:32.216231418Z",
+  "lease_expires_at": "2026-07-22T22:38:32.216231418Z",
+  "heartbeat_at": "2026-07-22T22:33:32.216231418Z",
   "labels": [
     "codereview"
   ],
