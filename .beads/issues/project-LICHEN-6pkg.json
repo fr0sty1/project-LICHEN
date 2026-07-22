@@ -2,7 +2,7 @@
   "id": "project-LICHEN-6pkg",
   "title": "Duplicate source class conversion functions with different semantics",
   "description": "File: lichen/subsys/lichen/app_interface/hal_bridge.c\n\nTwo functions convert HAL location source class to app source class but have different default behaviors:\n\n1. app_location_source_class_from_hal() at lines 29-48:\n   default: return LICHEN_APP_LOCATION_SOURCE_NONE;\n\n2. app_source_class_from_hal() at lines 282-294:\n   default: return LICHEN_APP_LOCATION_SOURCE_LOCAL_CLIENT;\n\nThe naming is nearly identical but semantics differ. This can cause confusion:\n- Function 1 is used in lichen_app_location_time_from_hal() for reading from HAL\n- Function 2 is used in submit_to_hal_as() for validation\n\nIf an unknown source class is encountered:\n- Reading: maps to NONE\n- Validation: expects LOCAL_CLIENT\n\nThis asymmetry may be intentional but should be documented. If not intentional, consolidate to a single function with consistent behavior.",
-  "notes": "Consolidated duplicate HAL-to-APP location source class conversion into single function; default_source_name now uses it for consistent default semantics (NONE for unknown). Matches bead description.",
+  "notes": "Commit: fb96e1b27",
   "status": "closed",
   "priority": 3,
   "issue_type": "bug",
@@ -10,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:41:39.099606Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:18:14.145221221Z",
+  "updated_at": "2026-07-22T23:18:22.155075048Z",
   "started_at": "2026-07-22T23:15:02.452349658Z",
   "closed_at": "2026-07-22T23:18:14.145221221Z",
   "close_reason": "fixed duplicate conversion by making default_source_name use the single app_location_source_class_from_hal function for consistent behavior; no functional change"
