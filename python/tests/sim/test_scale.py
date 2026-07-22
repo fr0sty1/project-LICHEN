@@ -28,9 +28,12 @@ from lichen.radio.sim_client import SimRadio
 from lichen.sim.server import SimulatorServer
 from lichen.sim.simulation import Simulation, TimeMode
 
-# Configuration from environment
+# Configuration from environment (parameterized for flexibility, addresses hardcoded caps/roaming/kill counts)
 SCALE_NODES = int(os.environ.get("LICHEN_SCALE_NODES", "50"))
 SCALE_MESSAGES = int(os.environ.get("LICHEN_SCALE_MESSAGES", "100"))
+SCALE_CAP = int(os.environ.get("LICHEN_SCALE_CAP", "100"))
+ROAM_PCT = 0.2  # for future roaming/kill tests (20%)
+KILL_PCT = 0.3  # for future roaming/kill tests (30%)
 
 
 class MockTransmitter:
@@ -93,7 +96,7 @@ class TestMeshScale:
         node_port = server.get_node_server_port("scale-test")
         assert node_port is not None
 
-        n_nodes = min(SCALE_NODES, 100)  # Cap for this test
+        n_nodes = min(SCALE_NODES, SCALE_CAP)  # Cap for this test (configurable, no hardcoded)
 
         # Setup nodes
         start = time.time()
@@ -153,7 +156,7 @@ class TestMeshScale:
         assert node_port is not None
 
         import math
-        grid_size = int(math.sqrt(min(SCALE_NODES, 100)))
+        grid_size = int(math.sqrt(min(SCALE_NODES, SCALE_CAP)))
         n_nodes = grid_size * grid_size
 
         # Setup nodes in grid
@@ -217,7 +220,7 @@ class TestMeshScale:
         node_port = server.get_node_server_port("scale-test")
         assert node_port is not None
 
-        n_messages = min(SCALE_MESSAGES, 200)
+        n_messages = min(SCALE_MESSAGES, SCALE_CAP * 2)  # parameterized, was hardcoded 200
 
         # Two nodes: TX and RX
         async with SimRadio(
@@ -268,7 +271,7 @@ class TestAnnounceFlood:
         node_port = server.get_node_server_port("scale-test")
         assert node_port is not None
 
-        n_nodes = min(SCALE_NODES // 2, 20)
+        n_nodes = min(SCALE_NODES // 2, int(SCALE_CAP * 0.2))  # parameterized, was hardcoded 20 (roaming/kill style)
 
         # Setup nodes
         radios = []

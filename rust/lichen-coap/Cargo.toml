@@ -9,7 +9,8 @@ description = "CoAP (RFC 7252): message types, options, and blockwise transfer s
 default = []
 std = []
 tokio = ["std", "dep:tokio"]
-# Logging: enable one or neither, not both
+# Logging: enable one or neither, not both. Test feature enables std for cargo test --features test (no_std compatible where possible)
+test = ["std"]
 defmt = ["dep:defmt", "lichen-core/defmt"]
 log = ["dep:log", "lichen-core/log"]
 

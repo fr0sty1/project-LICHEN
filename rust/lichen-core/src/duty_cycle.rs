@@ -39,7 +39,11 @@ pub fn adaptive_duty_permille(density: u8, region: u8) -> u16 {
         _ => DEFAULT_DUTY_PERMILLE,
     };
     if density > 8 {
-        if base > 1 { base / 2 } else { 1 }
+        if base > 1 {
+            base / 2
+        } else {
+            1
+        }
     } else if density < 3 {
         (base * 2).min(1000)
     } else {
@@ -314,7 +318,10 @@ mod tests {
         tracker.record_tx(0, 200);
 
         // Just before window ends, record is still counted
-        assert_eq!(tracker.remaining_ms(WINDOW_MS - 1), tracker.max_tx_ms() - 200);
+        assert_eq!(
+            tracker.remaining_ms(WINDOW_MS - 1),
+            tracker.max_tx_ms() - 200
+        );
 
         // After window, record ages out (record ends at 200ms, ages out at WINDOW_MS + 200)
         assert_eq!(tracker.remaining_ms(WINDOW_MS + 201), tracker.max_tx_ms());
@@ -528,7 +535,10 @@ mod tests {
         assert_eq!(WINDOW_MS, 3_600_000);
         assert_eq!(DEFAULT_DUTY_PERMILLE, 10);
         let tracker: DutyCycleTracker<64> = DutyCycleTracker::new();
-        assert_eq!(tracker.max_tx_ms(), (WINDOW_MS as u32 / 1000) * (DEFAULT_DUTY_PERMILLE as u32));
+        assert_eq!(
+            tracker.max_tx_ms(),
+            (WINDOW_MS as u32 / 1000) * (DEFAULT_DUTY_PERMILLE as u32)
+        );
     }
 
     #[test]
