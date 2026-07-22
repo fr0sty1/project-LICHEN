@@ -2,6 +2,7 @@
   "id": "project-LICHEN-suks",
   "title": "[kimi-review] 9f25f75: [SEVERITY: medium] **Bogus commit reference.** The close_rea",
   "description": "Commit: 9f25f7556\nMessage: fix(oscore): reject both-empty sender/recipient IDs in ctx_create\n\nFinding: [SEVERITY: medium] **Bogus commit reference.** The close_reason cites \"",
+  "notes": "Commit: 78a94bdf3",
   "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T22:05:08.2363139Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T22:27:01.776343545Z",
+  "updated_at": "2026-07-22T22:28:05.96901566Z",
   "started_at": "2026-07-22T22:27:01.776343545Z",
   "lease_expires_at": "2026-07-22T22:32:01.776343545Z",
   "heartbeat_at": "2026-07-22T22:27:01.776343545Z"
