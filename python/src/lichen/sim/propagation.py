@@ -131,7 +131,11 @@ class PropagationModel:
         return rx_power - self.noise_floor_dbm
 
     def can_decode(
-        self, tx_power_dbm: float, distance_m: float, *, sensitivity_dbm: float = SENSITIVITY_SF10
+        self,
+        tx_power_dbm: float,
+        distance_m: float,
+        *,
+        sensitivity_dbm: float = SENSITIVITY_SF10,
     ) -> bool:
         """Check if a signal can be decoded at a given distance.
 
@@ -154,7 +158,10 @@ class PropagationModel:
         return rx_power >= sensitivity_dbm
 
     def max_range(
-        self, tx_power_dbm: float, *, sensitivity_dbm: float = SENSITIVITY_SF10
+        self,
+        tx_power_dbm: float,
+        *,
+        sensitivity_dbm: float = SENSITIVITY_SF10,
     ) -> float:
         """Calculate the maximum communication range.
 

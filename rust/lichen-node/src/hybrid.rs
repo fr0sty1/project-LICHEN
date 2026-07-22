@@ -349,14 +349,12 @@ impl HybridRouter {
     /// Start a LOADng route discovery for a destination.
     /// Returns the RREQ to broadcast.
     pub fn start_discovery(&mut self, dst: [u8; 16], now_ms: u32) -> Rreq {
-        // Check if discovery already active
-        if self.active_discoveries.iter().any(|d| d.destination == dst) {
-            // Return existing RREQ
-            let discovery = self
-                .active_discoveries
-                .iter()
-                .find(|d| d.destination == dst)
-                .unwrap();
+        if let Some(discovery) = self
+            .active_discoveries
+            .iter_mut()
+            .find(|d| d.destination == dst)
+        {
+            discovery.sent_at_ms = now_ms;
             return discovery.discovery.rreq();
         }
 
