@@ -280,14 +280,8 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 				      const struct lichen_coap_node_status *status)
 {
 	struct cbor_ctx ctx;
-<<<<<<< HEAD
-	uint8_t map_count;
-	char ipv6_buf[LICHEN_CONFIG_ADDR_MAX_LEN];
-
-=======
 	uint16_t map_count;
 	char ipv6_buf[40];
->>>>>>> origin/integration/worker8-20260722
 
 	if (buf == NULL || status == NULL || buf_size == 0) {
 		return 0;
@@ -295,18 +289,12 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 
 	cbor_ctx_init(&ctx, buf, buf_size);
 
-<<<<<<< HEAD
-	map_count = 6;
-	if (status->battery_pct_valid && map_count < 255) map_count++;
-	if (status->battery_mv_valid && map_count < 255) map_count++;
-=======
 	map_count = 9;
 	if (status->battery_pct_valid) map_count++;
 	if (status->battery_mv_valid) map_count++;
 	if (map_count > UINT16_MAX) {
 		return 0; // overflow guard
 	}
->>>>>>> origin/integration/worker8-20260722
 	cbor_put_map_header(&ctx, map_count);
 
 	cbor_put_key(&ctx, "uptime_s");
@@ -326,17 +314,6 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 	cbor_put_uint(&ctx, status->mem_free_kb);
 
 	cbor_put_key(&ctx, "time");
-<<<<<<< HEAD
-	uint16_t time_fields = 2;
-	if (status->time.wall_clock_valid) time_fields++;
-	if (status->time.source_class) time_fields++;
-	if (status->time.source_name) time_fields++;
-	if (time_fields > 255) {
-		ctx.overflow = true;
-		return 0;
-	}
-	cbor_put_map_header(&ctx, (uint8_t)time_fields);
-=======
 	uint16_t time_fields = 4;
 	if (status->time.wall_clock_valid) time_fields++;
 	if (status->time.source_class) time_fields++;
@@ -345,7 +322,6 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 		return 0; // overflow guard
 	}
 	cbor_put_map_header(&ctx, time_fields);
->>>>>>> origin/integration/worker8-20260722
 
 	cbor_put_key(&ctx, "wall_clock_valid");
 	cbor_put_bool(&ctx, status->time.wall_clock_valid);

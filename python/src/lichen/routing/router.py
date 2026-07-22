@@ -98,6 +98,10 @@ class ForwardingEntry:
     buffered_at_ms: int
     deadline_ms: int
 
+    def __post_init__(self) -> None:
+        if len(self.source_iid) != 8:
+            raise ValueError(f"source_iid must be 8 bytes, got {len(self.source_iid)}")
+
 
 @dataclass
 class PendingPacket:
@@ -126,6 +130,8 @@ class DtnMessage:
     _cached_size: int = field(default=0, repr=False)
 
     def __post_init__(self) -> None:
+        if len(self.destination_iid) != 8:
+            raise ValueError(f"destination_iid must be 8 bytes, got {len(self.destination_iid)}")
         self._cached_size = len(self.packet.payload) + 100
 
     def size(self) -> int:
