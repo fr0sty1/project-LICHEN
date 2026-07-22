@@ -105,9 +105,10 @@ impl KissBleTnc {
 
     /// Try to get the next complete frame from the app.
     ///
-    /// Returns `None` if no complete frame is available or on parse error.
-    /// Parse errors are logged (with the `log` feature) for debuggability.
-    /// The `buf` is used as scratch space for unescaping.
+    /// Returns `Ok(Some(AppFrame))` for a valid parsed frame,
+    /// `Ok(None)` if no complete frame available yet, or `Err(KissError)`
+    /// on parse failure (bad frame is consumed to prevent reader stall).
+    /// The `buf` parameter provides scratch space for unescaping.
     pub fn try_get_app_frame(&mut self, buf: &mut [u8]) -> Result<Option<AppFrame>, KissError> {
         let frame = match self.reader.try_read_frame(buf) {
             Ok(Some(f)) => f,

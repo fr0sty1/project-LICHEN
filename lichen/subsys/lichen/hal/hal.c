@@ -1697,97 +1697,87 @@ void lichen_hal_reset_test_clear_request(void)
 }
 #endif
 
-static void duty_evict_stale(struct lichen_duty_cycle_ctx *t, uint64_t now)
-{
-	uint64_t ws = now > 3600000ULL ? now - 3600000ULL : 0;
-	while (t->len > 0) {
-		uint8_t i = t->head % 32;
-		uint64_t e = t->records[i] + (uint64_t)t->durations[i];
-		if (e <= ws) {
-			t->head = (t->head + 1) % 32;
-			t->len--;
-		} else {
-			break;
-		}
+static void prune(struct lichen_duty_cycle_ctx *t, uint64_t now) {
+	uint64_t ws = now > 3600000ULL ? now - 3600000ULL : 0ULL;
+	uint8_t to_remove = 0;
+	while (to_remove < t->len) {
+		uint64_t e = t->records[to_remove] + (uint64_t)t->durations[to_remove];
+		if (e <= ws) to_remove++;
+		else break;
 	}
+	if (to_remove > 0) {
+		uint8_t n = t->len - to_remove;
+		if (n > 0) {
+			memmove(t->records, t->records + to_remove, n * sizeof(uint64_t));
+			memmove(t->durations, t->durations + to_remove, n * sizeof(uint32_t));
+		}
+		t->len = n;
+	}
+	t->head = 0;
 }
 
-static uint32_t duty_total_tx(const struct lichen_duty_cycle_ctx *t, uint64_t now)
-{
-	uint64_t ws = now > 3600000ULL ? now - 3600000ULL : 0;
+static uint32_t total_airtime_with_proration(const struct lichen_duty_cycle_ctx *t, uint64_t now) {
+	uint64_t ws = now > 3600000ULL ? now - 3600000ULL : 0ULL;
 	uint32_t tot = 0;
 	for (uint8_t k = 0; k < t->len; k++) {
-		uint8_t i = (t->head + k) % 32;
-		uint64_t ts = t->records[i];
-		uint32_t d = t->durations[i];
+		uint64_t ts = t->records[k];
+		uint32_t d = t->durations[k];
 		if (ts >= ws) {
-			tot += d;
+			if (tot > UINT32_MAX - d) tot = UINT32_MAX; else tot += d;
 		} else {
 			uint64_t e = ts + (uint64_t)d;
 			if (e > ws) {
-				tot += (uint32_t)(e - ws);
+				uint32_t o = (uint32_t)(e - ws);
+				if (tot > UINT32_MAX - o) tot = UINT32_MAX; else tot += o;
 			}
 		}
 	}
 	return tot;
 }
 
-void lichen_duty_cycle_init(struct lichen_duty_cycle_ctx *t, uint16_t permille)
-{
+void lichen_duty_cycle_init(struct lichen_duty_cycle_ctx *t, uint16_t permille) {
 	t->head = 0;
 	t->len = 0;
 	t->duty_permille = (permille == 0 || permille > 1000) ? 10 : permille;
 }
 
-bool lichen_duty_cycle_record_tx(struct lichen_duty_cycle_ctx *t, uint64_t ts, uint32_t dur)
-{
-	duty_evict_stale(t, ts);
-	if (t->len == 32) {
-		return false;
-	}
-	uint8_t i = (t->head + t->len) % 32;
-	t->records[i] = ts;
-	t->durations[i] = dur;
+bool lichen_duty_cycle_record_tx(struct lichen_duty_cycle_ctx *t, uint64_t ts, uint32_t dur) {
+	prune(t, ts);
+	if (t->len == 32) return false;
+	t->records[t->len] = ts;
+	t->durations[t->len] = dur;
 	t->len++;
 	return true;
 }
 
-uint32_t lichen_duty_cycle_remaining_ms(struct lichen_duty_cycle_ctx *t, uint64_t now)
-{
-	duty_evict_stale(t, now);
+uint32_t lichen_duty_cycle_remaining_ms(struct lichen_duty_cycle_ctx *t, uint64_t now) {
+	prune(t, now);
 	uint32_t m = 3600UL * t->duty_permille;
-	uint32_t u = duty_total_tx(t, now);
+	uint32_t u = total_airtime_with_proration(t, now);
 	return m > u ? m - u : 0;
 }
 
-uint16_t lichen_duty_cycle_usage_permille(struct lichen_duty_cycle_ctx *t, uint64_t now)
-{
-	duty_evict_stale(t, now);
-	uint32_t u = duty_total_tx(t, now);
+uint16_t lichen_duty_cycle_usage_permille(struct lichen_duty_cycle_ctx *t, uint64_t now) {
+	prune(t, now);
+	uint32_t u = total_airtime_with_proration(t, now);
 	return (uint16_t)((uint64_t)u * 1000ULL / 3600000ULL);
 }
 
-uint64_t lichen_duty_cycle_next_tx_available_ms(struct lichen_duty_cycle_ctx *t, uint64_t now, uint32_t dur)
-{
-	duty_evict_stale(t, now);
+uint64_t lichen_duty_cycle_next_tx_available_ms(struct lichen_duty_cycle_ctx *t, uint64_t now, uint32_t dur) {
+	prune(t, now);
 	uint32_t m = 3600UL * t->duty_permille;
-	uint32_t u = duty_total_tx(t, now);
-	if ((uint64_t)u + (uint64_t)dur <= (uint64_t)m) {
-		return now;
-	}
+	uint32_t u = total_airtime_with_proration(t, now);
+	if ((uint64_t)u + (uint64_t)dur <= (uint64_t)m) return now;
 	uint32_t need = (uint32_t)((uint64_t)u + (uint64_t)dur - (uint64_t)m);
 	uint32_t f = 0;
 	for (uint8_t k = 0; k < t->len; k++) {
-		uint8_t i = (t->head + k) % 32;
-		f += t->durations[i];
-		if (f >= need) {
-			return t->records[i] + 3600000ULL;
-		}
+		uint32_t d = t->durations[k];
+		if (f > UINT32_MAX - d) f = UINT32_MAX; else f += d;
+		if (f >= need) return t->records[k] + 3600000ULL;
 	}
 	return (uint64_t)-1;
 }
 
-bool lichen_duty_cycle_can_transmit(struct lichen_duty_cycle_ctx *t, uint64_t now, uint32_t dur)
-{
+bool lichen_duty_cycle_can_transmit(struct lichen_duty_cycle_ctx *t, uint64_t now, uint32_t dur) {
 	return lichen_duty_cycle_remaining_ms(t, now) >= dur;
 }

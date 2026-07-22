@@ -20,8 +20,8 @@ class MockRadio:
         self.last_channel = channel
         return True
 
-    async def receive(self, timeout_ms: int) -> tuple[bytes, int, int] | None:
-        """Return queued packet or None."""
+    async def receive(self, timeout_ms: int, channel: int = 0) -> tuple[bytes, int, int] | None:
+        """Return queued packet or None. Channel for rendezvous per ccp9."""
         if self.receive_queue:
             return self.receive_queue.pop(0)
         return None
@@ -31,8 +31,8 @@ class MockRadio:
         self.freq_hz = freq_hz
         self.tx_power_dbm = tx_power_dbm
 
-    async def cad(self, timeout_ms: int) -> bool:
-        """Return False (channel clear) by default."""
+    async def cad(self, timeout_ms: int, channel: int = 0) -> bool:
+        """Return False (channel clear) by default. Supports per-channel CAD."""
         return False
 
 

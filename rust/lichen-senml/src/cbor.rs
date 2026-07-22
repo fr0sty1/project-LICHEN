@@ -2,7 +2,8 @@
 //!
 //! Encodes/decodes SenML packs as CBOR arrays-of-maps with integer labels.
 //! Supports the `Record` fields: n(0), u(1), v(2), vs(3), vb(4), t(6),
-//! bn(-2), bt(-3). Unknown keys on decode are silently skipped.
+//! bn(-2), bt(-3). Unknown keys on decode are silently skipped; duplicate
+//! known keys within a record return InvalidInput.
 //!
 //! No heap allocation — all I/O through caller-supplied byte slices.
 
@@ -484,7 +485,8 @@ fn skip_one_depth(data: &[u8], pos: usize, depth: usize) -> Result<usize, CborEr
 
 /// Decode SenML-CBOR bytes into a fixed-size array of records.
 ///
-/// Returns the number of records decoded. Unknown map keys are skipped.
+/// Returns the number of records decoded. Unknown map keys are skipped;
+/// duplicate known keys within a record return `InvalidInput`.
 /// Returns an error if the data is not a valid CBOR array-of-maps or if
 /// the number of records exceeds `buf.len()`.
 pub fn decode<'a>(data: &'a [u8], buf: &mut [Record<'a>]) -> Result<usize, CborError> {
