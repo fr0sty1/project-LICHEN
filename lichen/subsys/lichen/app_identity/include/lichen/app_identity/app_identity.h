@@ -77,8 +77,22 @@ int lichen_app_identity_set_self_from_link_ctx(
 int lichen_app_identity_copy_self(
 	struct lichen_app_identity_self *_Nonnull out);
 
+/**
+ * @brief Upsert peer record into fixed-size table
+ *
+ * SECURITY: Enforces TOFU key pinning. Returns 0 on success,
+ * -ENOSPC when peer table (CONFIG_LICHEN_APP_IDENTITY_MAX_PEERS) is full,
+ * -EINVAL on NULL or invalid EUI64.
+ */
 int lichen_app_identity_upsert_peer(
 	const struct lichen_app_identity_peer *_Nonnull peer);
+
+/**
+ * @brief Upsert peer public key (convenience for key rotation)
+ *
+ * Returns 0 on success, -ENOSPC when peer table full,
+ * -EINVAL on NULL, -EEXIST on key conflict after TOFU pin.
+ */
 int lichen_app_identity_upsert_peer_key(
 	const uint8_t eui64[_Nonnull LICHEN_APP_IDENTITY_EUI64_LEN],
 	const uint8_t public_key[_Nonnull LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN]);

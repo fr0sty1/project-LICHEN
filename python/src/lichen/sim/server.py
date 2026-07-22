@@ -132,7 +132,8 @@ class SimulatorServer:
     async def stop(self) -> None:
         """Stop the simulator server.
 
-        Signals shutdown, stops uvicorn, and closes all TCP node servers.
+        Signals shutdown, stops uvicorn, and deletes all simulations (drains
+        pending transmissions via node removal and event queue cleanup).
         """
         self._logger.info("Shutting down simulator server")
 
@@ -154,9 +155,9 @@ class SimulatorServer:
                     await self._uvicorn_task
             self._uvicorn_task = None
 
-        # Close all node servers
-        for sim_id in list(self._node_servers.keys()):
-            await self._stop_node_server_for_sim(sim_id)
+        # Delete all simulations to drain pending transmissions and clean state
+        for sim_id in list(self._simulations.keys()):
+            await self.delete_simulation(sim_id)
 
         self._logger.info("Simulator server stopped")
 

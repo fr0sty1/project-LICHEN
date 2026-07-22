@@ -73,7 +73,8 @@ impl LoopbackRadio {
 
     /// Check if there are pending packets to receive.
     pub fn has_pending(&self) -> bool {
-        !self.rx_chan.lock().unwrap().queue.is_empty()
+        let guard = self.rx_chan.lock().unwrap_or_else(|e| e.into_inner());
+        !guard.queue.is_empty()
     }
 }
 
@@ -81,7 +82,8 @@ impl Radio for LoopbackRadio {
     type Error = RadioError<std::convert::Infallible>;
 
     async fn transmit(&mut self, payload: &[u8]) -> Result<(), Self::Error> {
-        self.tx_chan.lock().unwrap().send(payload);
+        let guard = self.tx_chan.lock().unwrap_or_else(|e| e.into_inner());
+        guard.send(payload);
         Ok(())
     }
 
@@ -90,28 +92,22 @@ impl Radio for LoopbackRadio {
         buf: &mut [u8],
         _timeout_ms: u32,
     ) -> Result<Option<RxPacket>, Self::Error> {
-        // ponytail: no actual timeout in loopback, just check queue
-        let data = self.rx_chan.lock().unwrap().recv();
+        let data = {
+            let guard = self.rx_chan.lock().unwrap_or_else(|e| e.into_inner());
+            guard.recv()
+        };
 
-        // SECURITY: Enforce buffer contract from Radio trait docs.
-        // Buffer must be at least 255 bytes (max LoRa payload).
-        debug_assert!(
-            buf.len() >= 255,
-            "Radio::receive buffer too small: {} < 255",
-            buf.len()
-        );
+        debug_assert!(buf.len() >= 255, "Radio::receive buffer too small: {} < 255", buf.len());
 
         match data {
             Some(pkt) => {
-                // Return error if packet exceeds buffer - silent truncation
-                // would cause protocol errors downstream.
                 if pkt.len() > buf.len() {
                     return Err(RadioError::Protocol);
                 }
                 buf[..pkt.len()].copy_from_slice(&pkt);
                 Ok(Some(RxPacket {
                     len: pkt.len(),
-                    rssi: Some(-50), // Fake good signal
+                    rssi: Some(-50),
                     snr: Some(10),
                 }))
             }

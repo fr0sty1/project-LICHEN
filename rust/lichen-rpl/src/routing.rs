@@ -104,8 +104,19 @@ impl SourceRoutingHeader {
             .chunks_exact(16)
             .map(|chunk| chunk.try_into().unwrap())
             .collect();
+
+        let segments_left = data[1];
+        // RFC 6554: segments_left must be <= number of addresses.
+        // Prevents out-of-bounds indexing and routing loops on malformed SRH.
+        if (segments_left as usize) > addresses.len() {
+            return Err(RplError::InvalidOption);
+        }
+        // Guard: assert in debug for segments_left == addresses.len() on fresh SRH
+        debug_assert!(segments_left as usize == addresses.len() || segments_left == 0,
+                     "invalid SRH segments_left");
+
         Ok(Self {
-            segments_left: data[1],
+            segments_left,
             addresses,
         })
     }
