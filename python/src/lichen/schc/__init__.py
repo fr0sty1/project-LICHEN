@@ -21,7 +21,7 @@ from lichen.schc.context import NoMatchingRuleError, SchcContext, rule_matches
 from lichen.schc.fragment import (
     ALL_1,
     DEFAULT_WINDOW_SIZE,
-    MAX_BITMAP_SIZE,
+    MAX_WINDOW_SIZE,
     MIC_LENGTH,
     Ack,
     Fragment,
@@ -63,7 +63,7 @@ __all__ = [
     "CDA",
     "COAP_RULE",
     "DEFAULT_WINDOW_SIZE",
-    "MAX_BITMAP_SIZE",
+    "MAX_WINDOW_SIZE",
     "MIC_LENGTH",
     "Ack",
     "CoapUdpGlobalProfile",

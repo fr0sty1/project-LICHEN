@@ -67,42 +67,42 @@ class FragmentReceiver:
         as windows advance. Internally, _current_window is a monotonically
         increasing counter (0, 1, 2, ...).
 
-        To handle late retransmissions correctly, we scan backwards through
-        older windows with matching parity (same W bit value):
-        1. If an older window is INCOMPLETE, the fragment fills a gap there
-        2. If payload exactly matches an older completed window's tile, it's a
-           stale duplicate and receive() will filter it out
-        3. Otherwise, the fragment belongs to the current (same parity) or
-           next (different parity) window
+        To handle late retransmissions, out-of-order delivery, and duplicates
+        correctly we scan backwards through older same-parity windows:
+        1. Incomplete older window with gap at this position -> fill it
+        2. Tile already present with exact payload match -> stale duplicate
+           (completed or incomplete window); receive() will ignore
+        3. Otherwise map to current window (same parity) or next window.
         """
         if not frag.is_all_1:
             pos = self.window_size - 1 - frag.fcn
 
-            # Determine starting window for backward scan based on parity.
-            # We check windows with the same parity as the fragment's W bit.
+            # Determine most-recent same-parity previous window to scan from.
             if frag.window == self._current_window % 2:
-                # Same parity: check from current-2 back (current could be target)
                 start_window = self._current_window - 2 if self._current_window >= 2 else -1
             else:
-                # Different parity: check from current-1 back
                 start_window = self._current_window - 1 if self._current_window >= 1 else -1
 
             older = start_window
             while older >= 0:
                 older_idx = older * self.window_size + pos
                 if older not in self._completed_windows:
-                    # Incomplete window with matching parity. Only assign here
-                    # if the specific tile slot is empty (gap to fill). If the
-                    # slot is already filled, this is a new fragment, not a
-                    # retransmission for this window.
-                    if older_idx not in self._tiles:
+                    if older_idx in self._tiles:
+                        if self._tiles[older_idx] == frag.payload:
+                            # Duplicate retransmit/reorder for already-filled
+                            # slot in incomplete window; treat as stale.
+                            return older
+                        # payload mismatch on filled slot: likely corruption or
+                        # mapping error; do not use this window, continue scan
+                    else:
+                        # Gap in incomplete older window: retransmission to fill.
                         return older
                 elif older_idx in self._tiles and self._tiles[older_idx] == frag.payload:
-                    # Window complete; exact payload match - stale retransmission
+                    # Completed window with exact payload match: stale duplicate.
                     return older
                 older -= 2
 
-        # No incomplete or stale-duplicate window found
+        # No matching older window found for retransmit/duplicate.
         if frag.window == self._current_window % 2:
             return self._current_window
         return self._current_window + 1
