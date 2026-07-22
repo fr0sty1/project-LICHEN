@@ -75,10 +75,13 @@ static int compute_th(uint8_t out[32],
 	uint8_t cbor_buf[256];
 	ZCBOR_STATE_E(zse, 0, cbor_buf, sizeof(cbor_buf), 0);
 
-	zcbor_bstr_encode_ptr(zse, b1, b1_len);
-	zcbor_bstr_encode_ptr(zse, b2, b2_len);
-	if (b3 != NULL && b3_len > 0) {
-		zcbor_bstr_encode_ptr(zse, b3, b3_len);
+	if (!zcbor_bstr_encode_ptr(zse, b1, b1_len) ||
+	    !zcbor_bstr_encode_ptr(zse, b2, b2_len)) {
+		return -ENOMEM;
+	}
+	if (b3 != NULL && b3_len > 0 &&
+	    !zcbor_bstr_encode_ptr(zse, b3, b3_len)) {
+		return -ENOMEM;
 	}
 
 	size_t cbor_len = zse->payload - cbor_buf;
