@@ -159,17 +159,10 @@ class SimRadio:
                 else:
                     raise SimRadioError(f"Unexpected response to REGISTER: 0x{msg_type:02x}")
             except BaseException:
-                if self._stream is not None:
-<<<<<<< HEAD
-                    stream = self._stream
-                    self._stream = None
-                    await stream.aclose()
-=======
-                    async with self._lock:
-                        if self._stream is not None:
-                            await self._stream.aclose()
-                            self._stream = None
->>>>>>> origin/integration/worker12-20260722
+                async with self._lock:
+                    if self._stream is not None:
+                        await self._stream.aclose()
+                        self._stream = None
                 raise
 
     async def reconnect(self) -> None:

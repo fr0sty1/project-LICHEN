@@ -151,18 +151,9 @@ impl Dio {
 
 // ── DAO ──────────────────────────────────────────────────────────────────────
 
-<<<<<<< HEAD
 /// DAO base object (RFC 6550 §6.4). D-flag (bit 6 of byte 1) determines length:
 /// D=1 includes 16-byte DODAGID (20 bytes total); D=0 elides it (4 bytes total).
 /// LICHEN/SCHC rule 4 uses D=1; parser supports both (D=0 zeros dodag_id).
-=======
-/// DAO base object (4 bytes if D=0, 20 bytes if D=1 per RFC 6550 §6.4).
-/// LICHEN/SCHC requires D=1 but parser accepts D=0 for interop (dodag_id
-/// zeroed; callers should prefer DODAGID from DIO in that case).
-///
-/// In a full decompressed packet the DAO base starts at offset 44; options
-/// start at offset 64 (for D=1).
->>>>>>> origin/integration/worker12-20260722
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Dao {
     pub rpl_instance_id: u8,

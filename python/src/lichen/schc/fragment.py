@@ -198,6 +198,11 @@ class FragmentSender:
     ) -> list[Fragment]:
         """Fragments in ``abs_window`` not acknowledged by ``bitmap`` (positional)."""
         window_frags = self.fragments_in_window(abs_window)
+        if len(bitmap) > len(window_frags):
+            raise FragmentError(
+                f"bitmap ({len(bitmap)}) longer than window {abs_window} "
+                f"({len(window_frags)} fragments)"
+            )
         missing: list[Fragment] = []
         for pos, frag in enumerate(window_frags):
             if pos >= len(bitmap) or not bitmap[pos]:
