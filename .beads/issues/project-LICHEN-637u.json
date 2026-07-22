@@ -1,0 +1,11 @@
+{
+  "id": "project-LICHEN-637u",
+  "title": "Build hardware procurement, flashing, and resale pipeline for T-Echo nodes",
+  "description": "Finalize hardware resale strategy. Specific next steps: 1. Contact LilyGO sales for bulk pricing quote on 500+ T-Echo units (target \u003c0/unit). 2. Design scalable flashing/provisioning pipeline (jig, automated script, key provisioning for TOFU). 3. Define resale process post-conference (online storefront, warranty, source code offer per GPL). 4. Model full P\u0026L: procurement, flashing labor, shipping, margin at 5 sale price. 5. Explore partnerships with existing LoRa/Meshtastic resellers. 6. Plan for initial 500 unit inventory management. --type=task --priority=2 --parent=project-LICHEN-2h1i --json",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T14:37:43.692859621Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:37:43.692859621Z"
+}

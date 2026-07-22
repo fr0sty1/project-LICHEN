@@ -1,0 +1,11 @@
+{
+  "id": "project-LICHEN-f2ga",
+  "title": "Develop conference sales playbook and purchase funnel for LICHEN nodes",
+  "description": "Finalize sales strategy for 500 T-Echo nodes at DEFCON, HOPE, CCC. Specific next steps: 1. Research payment options (Square, crypto wallets, cash with receipts). 2. Create demo-to-sale script emphasizing open source IPv6 mesh advantages over Meshtastic. 3. Define pricing (5-85/unit including case/battery/firmware). 4. Design inventory tracking (spreadsheet or simple app). 5. Prepare GPL compliance packaging/labels. 6. Plan post-event online sales channel. Link to parent epic. --type=task --priority=2 --parent=project-LICHEN-2h1i --json",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T14:37:41.901366154Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:37:41.901366154Z"
+}
