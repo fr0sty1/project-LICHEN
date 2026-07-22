@@ -39,10 +39,10 @@ The root advertises `epoch` (u32) and `num_slots` (default 8) in an extended RPL
 Slot ID MUST be computed as:
 
 ```
-slot_id = fnv1a32(eui64 XOR epoch) % num_slots
+slot_id = (crc32_ieee(eui64, 8) ^ epoch) % num_slots
 ```
 
-where `fnv1a32` is the FNV-1a hash (see pseudocode in appendix-design-rationale.md:388). The XOR ensures time-varying slots to prevent persistent collisions.
+using `crc32_ieee` (see appendix-design-rationale.md:388, lichen/subsys/schc/schc.c:90). This fixes prior inconsistency between crc16 (SMP/Meshtastic legacy) and hash_32 in CCP-15.8.3 pseudocode (`spec/02a-coordinated-capacity.md:41`). The XOR with epoch ensures time-varying slots to prevent persistent collisions. All impls MUST match ccp16.json vectors exactly.
 
 For SFN (superframe number, a u32 epoch counter) wrap-around, all nodes MUST compute using unsigned 32-bit arithmetic (modulo 0x100000000). The time-provider (see `docs/firmware-time-provider.md`) is the canonical source: SFN/epoch updates MUST pass epoch_floor validation, set `wall_clock_valid`, and respect stratum before adoption. RPL version changes or desync MUST reset SFN relative to the new root per the FSM in Section 2a.5. This integrates with `lichen_rpl_dodag_init()` ordering.
 
@@ -62,18 +62,28 @@ A node MUST only transmit in its assigned slot. Slot duration = max_airtime(curr
 
 ## 2a.3. Channel Agility and Adaptive SF
 
-CH0 is the control channel; all nodes MUST listen continuously on it for DIOs and beacons.
+CH0 is the control channel; all nodes MUST listen continuously on it for DIOs and beacons (see draft-lichen-schc-lora-00).
 
-Data channels (1+) are selected via the same hash function or root-assigned map in DAO-ACK.
+Data channels are selected via select_channel (normative pseudocode below, cross-ref draft-lichen-tdma for TDMA integration). All implementations MUST produce identical results to test/vectors/ccp16.json for CCP-14/15/16 vectors.
 
-Adaptive SF:
+### select_channel and now() (logical chunk: function definitions - pure pseudocode)
 
-- Base: SF10 (Kconfig default).
-- Inputs: local SNR, neighbor density (unique neighbors over last 300s), utilization.
-- Rules (MUST match ccp16.json):
-  - density < 5 AND snr_db > 8.0 → SF9
-  - density > 8 OR snr_db < 0 → SF11
-  - else SF10.
+```
+function select_channel(ctx, metrics, t):
+    IF (metrics.density > 8) OR (NOT ctx.wall_clock_valid) THEN
+        RETURN 0   // control CH0 for high density or desync (per vectors[1,3])
+    hash = fnv1a32( (ctx.eui64 XOR t XOR ctx.epoch) )
+    n = ctx.num_data_channels IF ctx.num_data_channels > 0 ELSE 3
+    RETURN 1 + (hash MOD n)
+
+function now():
+    RETURN current_sfn()   // from time-provider; unsigned modular arithmetic per 2a.2
+```
+Note: All operators are spelled out (OR, NOT, MOD, XOR) for language-agnostic IETF compatibility. No Rust 'or', no C types or structs, no dead code.
+
+### Density Rules Rationale (logical chunk: rationale paragraph)
+
+SF10 is the REQUIRED default (Kconfig, see appendix-design-rationale.md:7.1 for general-purpose range/battery balance). The density-aware rules below MUST override SF10 only when explicit conditions are met (low-density good-SNR for capacity, high-density/poor-SNR for robustness). This is a layered adaptive mechanism per RFC 2119, not a contradiction with the SF10 baseline. Inputs from RPL neighbor list, RfHealthMetrics EMA, and PER. Root optimizer uses reported metrics.
 
 Updates MUST be propagated in RPL metric container. Root optimizer uses reported neighbor_count and channel_util to minimize collisions.
 
