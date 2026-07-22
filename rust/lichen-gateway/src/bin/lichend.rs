@@ -374,7 +374,8 @@ async fn forward_mesh_to_upstream<T: TunLike>(
     if let RplEvent::DaoReceived {
         target,
         route_updated: true,
-    } = event {
+    } = event
+    {
         let node_id = NodeId::from_ipv6(&target);
         gw.add_route(target, node_id);
         info!(
