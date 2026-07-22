@@ -223,7 +223,7 @@ static void cbor_put_int(struct cbor_ctx *ctx, int32_t value)
 	}
 }
 
-static int format_ipv6(const uint8_t addr[16], char *buf, size_t buf_size)
+int lichen_coap_format_ipv6(const uint8_t *addr, char *buf, size_t buf_size)
 {
 	struct in6_addr in6;
 	memcpy(in6.s6_addr, addr, 16);

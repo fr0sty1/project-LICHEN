@@ -16,6 +16,7 @@ import json
 import re
 import sys
 from collections import defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -43,10 +44,25 @@ class NodeStats:
     rx_count: int = 0
 
 
-def parse_telemetry(content: str, stats: NodeStats) -> bool:
-    """Parse common JSONL events; return whether any valid event was found."""
+def parse_telemetry(source: str | Iterable[str] | Path, stats: NodeStats) -> bool:
+    """Parse common JSONL events; return whether any valid event was found.
+
+    Supports str (backcompat), iterable of lines, or Path (streams from
+    disk to avoid loading gigabyte logs into memory).
+    """
     found = False
-    for line in content.splitlines():
+    if isinstance(source, Path):
+        try:
+            with source.open(encoding="utf-8", errors="replace") as f:
+                return parse_telemetry(f, stats)
+        except OSError as e:
+            print(f"Warning: skipping {source}: {e}", file=sys.stderr)
+            return False
+    if isinstance(source, str):
+        lines = source.splitlines()
+    else:
+        lines = source
+    for line in lines:
         marker = line.find("TELEMETRY ")
         if marker < 0:
             continue
@@ -80,15 +96,16 @@ def parse_python_logs(log_dir: Path) -> dict[str, NodeStats]:
         node_id = log_file.stem  # e.g., "py-1000"
         stats = NodeStats(node_id=node_id, impl="py")
 
+        if parse_telemetry(log_file, stats):
+            if stats.tx_count > 0 or stats.rx_count > 0:
+                nodes[node_id] = stats
+            continue
+
+        # Legacy fallback (no telemetry found)
         try:
             content = log_file.read_text(errors="replace")
         except OSError as e:
             print(f"Warning: skipping {log_file}: {e}", file=sys.stderr)
-            continue
-
-        if parse_telemetry(content, stats):
-            if stats.tx_count > 0 or stats.rx_count > 0:
-                nodes[node_id] = stats
             continue
 
         # Look for [TX] or [RX] with hash=
@@ -127,15 +144,16 @@ def parse_rust_logs(log_dir: Path) -> dict[str, NodeStats]:
         node_id = log_file.stem  # e.g., "rust-2000"
         stats = NodeStats(node_id=node_id, impl="rust")
 
+        if parse_telemetry(log_file, stats):
+            if stats.tx_count > 0 or stats.rx_count > 0:
+                nodes[node_id] = stats
+            continue
+
+        # Legacy fallback (no telemetry found)
         try:
             content = log_file.read_text(errors="replace")
         except OSError as e:
             print(f"Warning: skipping {log_file}: {e}", file=sys.stderr)
-            continue
-
-        if parse_telemetry(content, stats):
-            if stats.tx_count > 0 or stats.rx_count > 0:
-                nodes[node_id] = stats
             continue
 
         for line in content.splitlines():
@@ -172,15 +190,16 @@ def parse_zephyr_logs(log_dir: Path) -> dict[str, NodeStats]:
         node_id = log_file.stem  # e.g., "zephyr-3000"
         stats = NodeStats(node_id=node_id, impl="zephyr")
 
+        if parse_telemetry(log_file, stats):
+            if stats.tx_count > 0 or stats.rx_count > 0:
+                nodes[node_id] = stats
+            continue
+
+        # Legacy fallback (no telemetry found)
         try:
             content = log_file.read_text(errors="replace")
         except OSError as e:
             print(f"Warning: skipping {log_file}: {e}", file=sys.stderr)
-            continue
-
-        if parse_telemetry(content, stats):
-            if stats.tx_count > 0 or stats.rx_count > 0:
-                nodes[node_id] = stats
             continue
 
         for line in content.splitlines():

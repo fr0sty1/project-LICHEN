@@ -127,8 +127,12 @@ static void connected_cb(struct bt_conn *conn, uint8_t err)
 
 	LOG_DBG("Connected, initial ATT MTU: %u", bt_gatt_get_mtu(conn));
 
-	lichen_ble_conn_cb_t cb = transport_state.config.conn_cb;
-	void *ctx = transport_state.config.user_ctx;
+	lichen_ble_conn_cb_t cb = NULL;
+	void *ctx = NULL;
+	if (transport_state.initialized) {
+		cb = transport_state.config.conn_cb;
+		ctx = transport_state.config.user_ctx;
+	}
 
 	k_mutex_unlock(&transport_state.lock);
 
@@ -152,8 +156,12 @@ static void disconnected_cb(struct bt_conn *conn, uint8_t reason)
 		transport_state.stats.disconnections++;
 	}
 
-	lichen_ble_conn_cb_t cb = transport_state.config.conn_cb;
-	void *ctx = transport_state.config.user_ctx;
+	lichen_ble_conn_cb_t cb = NULL;
+	void *ctx = NULL;
+	if (transport_state.initialized) {
+		cb = transport_state.config.conn_cb;
+		ctx = transport_state.config.user_ctx;
+	}
 
 	k_mutex_unlock(&transport_state.lock);
 
@@ -186,9 +194,14 @@ static void security_changed_cb(struct bt_conn *conn, bt_security_t level,
 		}
 	}
 
-	lichen_ble_conn_cb_t cb = transport_state.config.conn_cb;
-	void *ctx = transport_state.config.user_ctx;
+	lichen_ble_conn_cb_t cb = NULL;
+	void *ctx = NULL;
 	enum lichen_ble_conn_state state = transport_state.state;
+	if (transport_state.initialized) {
+		cb = transport_state.config.conn_cb;
+		ctx = transport_state.config.user_ctx;
+		state = transport_state.state;
+	}
 
 	k_mutex_unlock(&transport_state.lock);
 
