@@ -457,26 +457,17 @@ class LinkLayer:
         Why async: Radio reception blocks until a packet arrives or timeout.
 
         Validation steps (in order):
-        1. Parse frame structure (FrameError on malformed)
-        2. Extract signature from payload
+        1. Parse frame structure
+        2. Extract signature from mic field (when signature_present)
         3. Look up sender by IID (reject if unknown)
         4. Verify signature (reject if invalid)
         5. Check replay protection (reject if replay)
-
-        Why this order:
-        - Parsing first: Can't do anything else with garbage
-        - Signature extraction: Need to know what to verify
-        - Sender lookup: Need pubkey for verification
-        - Signature verify: Proves authenticity before trusting content
-        - Replay last: Only matters if signature is valid
 
         Args:
             timeout_ms: Maximum time to wait for a frame, in milliseconds.
 
         Returns:
-            RxFrame on success.
-            None on radio timeout (normal, no packet).
-            ReceiveError on any validation failure. This fixes the original
+            RxFrame on success, ReceiveError on validation failure, None on timeout.
             problem where all failures collapsed to None; callers can now
             distinguish security events from malformed frames from timeouts.
         """
