@@ -3,15 +3,15 @@
   "title": "TUI _observe_messages_loop catches all exceptions but may swallow important errors",
   "description": "File: python/src/lichen/tui/native.py\nLines: 2525-2541\n\nThe _observe_messages_loop has a broad exception handler:\n\n    async def _observe_messages_loop(self) -\u003e None:\n        try:\n            if self.client is None:\n                ...\n                return\n            subscription = await self.client.observe_inbox(self.inbox_path)\n            try:\n                async for messages in subscription.messages():\n                    self._sync_compose_from_inputs_if_available()\n                    self.apply_inbound_messages(tuple(messages))\n            finally:\n                await subscription.close()\n        except asyncio.CancelledError:\n            raise\n        except Exception as exc:\n            self._set_messaging(self._messaging_error(str(exc)))\n\nThe 'except Exception' catches everything including:\n- SystemExit (should propagate)\n- KeyboardInterrupt (should propagate) \n- GeneratorExit (should propagate)\n\nWhile asyncio.CancelledError is re-raised, other critical exceptions are swallowed and just set an error message.\n\nSimilar pattern in _logs_loop (2397-2418) and _raw_rx_loop (2358-2385).\n\nImpact: Critical system exceptions may be hidden, making debugging difficult.\n\nFix: Use more specific exception types or re-raise BaseException:\n    except asyncio.CancelledError:\n        raise\n    except BaseException as exc:\n        if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):\n            raise\n        self._set_messaging(self._messaging_error(str(exc)))",
   "notes": "Commit: 4ecc736fc",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:30:43.232841Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:24:57.010434266Z",
+  "updated_at": "2026-07-22T23:24:59.381910726Z",
   "started_at": "2026-07-22T23:21:29.556882845Z",
-  "lease_expires_at": "2026-07-22T23:26:29.556882845Z",
-  "heartbeat_at": "2026-07-22T23:21:29.556882845Z"
+  "closed_at": "2026-07-22T23:24:59.381910726Z",
+  "close_reason": "Fixed broad exception handlers in TUI loops and refresh methods to properly propagate SystemExit, KeyboardInterrupt, and GeneratorExit; applied consistent BaseException pattern across native.py and app.py"
 }
