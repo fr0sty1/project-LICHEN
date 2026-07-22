@@ -2,12 +2,16 @@
   "id": "project-LICHEN-u9in.2",
   "title": "[codereview-pass2] coap_dtn.c POST handler chunk: ctx lookup by IID/EUI64 mimics coap_client.c style but oscore_unprotect_request not yet added per task; confessions_post still uses old pattern; no build/test yet",
   "description": "Reviewed the edit for deaddrop_post. Findings: P0 none. P1: should use direct oscore_unprotect_request(ctx, oscore_opt, opt_len, payload, ...) per oscore.h to avoid wrapper overhead in embedded. P2: duplicate slot logic in confessions_post. P3: style matches existing but added var without init check. P4: documentation update needed but no comments per rule.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T15:31:28.239285466Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:31:28.239285466Z",
+  "updated_at": "2026-07-22T15:42:31.940216753Z",
+  "started_at": "2026-07-22T15:42:31.940216753Z",
+  "lease_expires_at": "2026-07-22T15:47:31.940216753Z",
+  "heartbeat_at": "2026-07-22T15:42:31.940216753Z",
   "labels": [
     "codereview"
   ],
