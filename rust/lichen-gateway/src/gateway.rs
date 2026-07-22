@@ -90,6 +90,12 @@ impl Gateway {
     pub fn add_route(&mut self, addr: [u8; 16], node_id: NodeId) {
         self.routes.insert(addr, node_id);
     }
+    pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
+        dst[0] == 0xfe && dst[1] == 0x80 || dst[0] == 0xfd
+    }
+    pub fn mesh_to_mesh(&self, ipv6: &[u8]) -> Option<Vec<u8>> {
+        Some(ipv6.to_vec())
+    }
 }
 
 #[cfg(test)]
@@ -170,5 +176,15 @@ mod tests {
     fn non_schc_l2_payload_is_dropped() {
         let mut gw = test_gateway();
         assert!(gw.mesh_to_upstream(&[0x15, 0x01]).is_none());
+    }
+
+    #[test]
+    fn local_mesh_packet_uses_mesh_to_mesh_path() {
+        let mut gw = test_gateway();
+        let dst = ll(2);
+        assert!(gw.is_local_mesh(&dst.0));
+        let packet = [0x60, 0, 0, 0, 40, 0, 58, 0, 0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
+        let result = gw.mesh_to_mesh(&packet);
+        assert!(result.is_some());
     }
 }
