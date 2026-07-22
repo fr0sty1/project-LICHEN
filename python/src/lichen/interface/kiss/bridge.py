@@ -336,7 +336,7 @@ class KissBridge:
         while self._running:
             try:
                 rx = await self.link_layer.receive(timeout_ms)
-                if isinstance(rx, RxFrame):
+                if rx is not None and not isinstance(rx, ReceiveError):
                     await self._on_link_rx(rx)
                 elif isinstance(rx, ReceiveError):
                     if rx in (ReceiveError.KEY_CHANGE, ReceiveError.REPLAY, ReceiveError.MIC_FAILED):

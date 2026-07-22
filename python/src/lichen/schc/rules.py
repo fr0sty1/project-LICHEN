@@ -122,11 +122,11 @@ RULE_ID_UNCOMPRESSED = 255
 COAP_RULE = Rule(
     rule_id=64,
     fields=(
-        FieldDescriptor("CoAP.Version", 2, MO.EQUAL, CDA.NOT_SENT, target_value=1),
-        FieldDescriptor("CoAP.Type", 2, MO.IGNORE, CDA.VALUE_SENT),
-        FieldDescriptor("CoAP.TKL", 4, MO.IGNORE, CDA.VALUE_SENT),
-        FieldDescriptor("CoAP.Code", 8, MO.IGNORE, CDA.VALUE_SENT),
-        FieldDescriptor("CoAP.MID", 16, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("CoAP.version", 2, MO.EQUAL, CDA.NOT_SENT, target_value=1),
+        FieldDescriptor("CoAP.type", 2, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("CoAP.tkl", 4, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("CoAP.code", 8, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("CoAP.mid", 16, MO.IGNORE, CDA.VALUE_SENT),
     ),
 )
 
@@ -137,10 +137,10 @@ UDP_PORT_RULE = Rule(
     rule_id=65,
     fields=(
         FieldDescriptor(
-            "UDP.SrcPort", 16, MO.MSB, CDA.LSB, target_value=5683, mo_arg=12
+            "UDP.src_port", 16, MO.MSB, CDA.LSB, target_value=5683, mo_arg=12
         ),
         FieldDescriptor(
-            "UDP.DstPort", 16, MO.MSB, CDA.LSB, target_value=5683, mo_arg=12
+            "UDP.dst_port", 16, MO.MSB, CDA.LSB, target_value=5683, mo_arg=12
         ),
     ),
 )
