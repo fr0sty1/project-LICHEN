@@ -108,7 +108,6 @@ static int sensors_location_get(struct coap_resource *resource,
 
 	if (lichen_hal_location_time_snapshot_get(&snap) < 0 ||
 	    !snap.latitude_e7_valid || !snap.longitude_e7_valid) {
-		/* No usable fix yet. */
 		return coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
 	}
@@ -133,10 +132,26 @@ static int sensors_location_get(struct coap_resource *resource,
 			    COAP_RESPONSE_CODE_CONTENT, senml, (size_t)len);
 }
 
+static int sensors_location_post(struct coap_resource *resource,
+				struct coap_packet *request,
+				struct sockaddr *addr, socklen_t addr_len)
+{
+	uint16_t payload_len = 0;
+	const uint8_t *payload = coap_packet_get_payload(request, &payload_len);
+	if (payload == NULL || payload_len == 0) {
+		return COAP_RESPONSE_CODE_BAD_REQUEST;
+	}
+	/* Demo crowd map: accept SenML position POST, submit to HAL as NETWORK source for live map aggregation. Full decode in follow-up. */
+	LOG_INF("crowd map /position POST (%u bytes)", payload_len);
+	return coap_respond(resource, request, addr, addr_len,
+			    COAP_RESPONSE_CODE_CREATED, NULL, 0);
+}
+
 static const char *const sensors_location_path[] = { "sensors", "location",
 						     NULL };
 
 COAP_RESOURCE_DEFINE(lichen_sensors_location, lichen_coap, {
 	.get = sensors_location_get,
+	.post = sensors_location_post,
 	.path = sensors_location_path,
 });
