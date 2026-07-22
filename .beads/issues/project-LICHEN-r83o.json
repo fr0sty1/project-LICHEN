@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-r83o",
+  "title": "codereview-pass1: reply_buf ignored in forward_mesh_to_upstream",
+  "description": "If handle_frame_rpl produces a reply (e.g. for echo request or DIS), the reply_len \u003e0 and reply_buf has compressed reply but we ignore it. Should queue to SLIP TX like other mesh responses. P2 completeness. discovered-from:project-LICHEN-3k6w.2",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:46:50.800934684Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:46:50.800934684Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-r83o",
+      "depends_on_id": "project-LICHEN-3k6w.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:46:50.900280445Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
