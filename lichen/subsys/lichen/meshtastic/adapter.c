@@ -639,22 +639,18 @@ static int parse_position_payload(
 			position->gps_accuracy_mm_valid = true;
 			break;
 		case POSITION_SATS_IN_VIEW_FIELD:
-			if (wt != PB_WT_VARINT || pb_read_varint(&cur, &v) < 0) {
+			if (wt != PB_WT_VARINT || pb_read_varint(&cur, &v) < 0 || v > UINT8_MAX) {
 				return -EINVAL;
 			}
-			if (v <= UINT8_MAX) {
-				position->satellites = (uint8_t)v;
-				position->satellites_valid = true;
-			}
+			position->satellites = (uint8_t)v;
+			position->satellites_valid = true;
 			break;
 		case POSITION_PRECISION_BITS_FIELD:
-			if (wt != PB_WT_VARINT || pb_read_varint(&cur, &v) < 0) {
+			if (wt != PB_WT_VARINT || pb_read_varint(&cur, &v) < 0 || v > UINT8_MAX) {
 				return -EINVAL;
 			}
-			if (v <= UINT8_MAX) {
-				position->precision_bits = (uint8_t)v;
-				position->precision_bits_valid = true;
-			}
+			position->precision_bits = (uint8_t)v;
+			position->precision_bits_valid = true;
 			break;
 		default:
 			if (pb_skip_value(&cur, wt) < 0) {
@@ -781,21 +777,25 @@ static int parse_data(const uint8_t *data, size_t len,
 
 	if (info->has_portnum) {
 		if (info->portnum == MESHTASTIC_PORTNUM_TEXT_MESSAGE_APP) {
-			info->kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_TEXT_MESSAGE_APP;
-			} else if (info->portnum == MESHTASTIC_PORTNUM_POSITION_APP) {
-				if (info->payload == NULL ||
-				    parse_position_payload(info->payload,
-							   info->payload_len,
-							   &info->position) < 0) {
-					info->kind =
-						LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED;
-				} else {
-					info->kind =
-						LICHEN_MESHTASTIC_ADAPTER_PACKET_POSITION_APP;
-				}
-			} else if (info->portnum == MESHTASTIC_PORTNUM_ADMIN_APP &&
-				   info->payload != NULL) {
-			if (!parse_admin_payload(info->payload, info->payload_len,
+			if (info->payload == NULL || info->payload_len == 0U) {
+				info->kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED;
+			} else {
+				info->kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_TEXT_MESSAGE_APP;
+			}
+		} else if (info->portnum == MESHTASTIC_PORTNUM_POSITION_APP) {
+			if (info->payload == NULL ||
+			    parse_position_payload(info->payload,
+						   info->payload_len,
+						   &info->position) < 0) {
+				info->kind =
+					LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED;
+			} else {
+				info->kind =
+					LICHEN_MESHTASTIC_ADAPTER_PACKET_POSITION_APP;
+			}
+		} else if (info->portnum == MESHTASTIC_PORTNUM_ADMIN_APP) {
+			if (info->payload == NULL ||
+			    !parse_admin_payload(info->payload, info->payload_len,
 						 &info->kind)) {
 				info->kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED;
 			}
@@ -1358,51 +1358,60 @@ static int enqueue_static_sync(struct lichen_meshtastic_adapter *adapter,
 {
 	uint8_t payload[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
 	int ret;
+	int enq;
 
 	ret = lichen_meshtastic_encode_my_info_payload(info, payload,
 						       sizeof(payload));
-	if (ret < 0 || enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_MY_INFO,
-				       payload, (size_t)ret) < 0) {
-		return ret < 0 ? ret : -ENOMEM;
+	if (ret < 0) {
+		return ret;
+	}
+	enq = enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_MY_INFO,
+			      payload, (size_t)ret);
+	if (enq < 0) {
+		return enq;
 	}
 
 	ret = lichen_meshtastic_encode_metadata_payload(info, payload,
 							sizeof(payload));
-	if (ret < 0 || enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_METADATA,
-				       payload, (size_t)ret) < 0) {
-		return ret < 0 ? ret : -ENOMEM;
+	int enq = enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_METADATA,
+				  payload, (size_t)ret);
+	if (ret < 0 || enq < 0) {
+		return ret < 0 ? ret : enq;
 	}
 
 	ret = lichen_meshtastic_encode_region_presets_payload(info, payload,
 							      sizeof(payload));
-	if (ret < 0 || enqueue_payload(adapter,
-				       LICHEN_MESHTASTIC_FROM_RADIO_REGION_PRESETS,
-				       payload, (size_t)ret) < 0) {
-		return ret < 0 ? ret : -ENOMEM;
+	enq = enqueue_payload(adapter,
+			      LICHEN_MESHTASTIC_FROM_RADIO_REGION_PRESETS,
+			      payload, (size_t)ret);
+	if (ret < 0 || enq < 0) {
+		return ret < 0 ? ret : enq;
 	}
 
 	ret = lichen_meshtastic_encode_channel_payload(info, payload, sizeof(payload));
-	if (ret < 0 || enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_CHANNEL,
-				       payload, (size_t)ret) < 0) {
-		return ret < 0 ? ret : -ENOMEM;
+	enq = enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_CHANNEL,
+			      payload, (size_t)ret);
+	if (ret < 0 || enq < 0) {
+		return ret < 0 ? ret : enq;
 	}
 
 	for (size_t i = 0U; i < ARRAY_SIZE(s_config_sections); i++) {
 		ret = lichen_meshtastic_encode_config_section_payload(
 			s_config_sections[i], info, payload, sizeof(payload));
-		if (ret < 0 ||
-		    enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_CONFIG,
-				    payload, (size_t)ret) < 0) {
-			return ret < 0 ? ret : -ENOMEM;
+		enq = enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_CONFIG,
+				      payload, (size_t)ret);
+		if (ret < 0 || enq < 0) {
+			return ret < 0 ? ret : enq;
 		}
 	}
 
 	ret = lichen_meshtastic_encode_module_config_payload(info, payload,
 							     sizeof(payload));
-	if (ret < 0 || enqueue_payload(adapter,
-				       LICHEN_MESHTASTIC_FROM_RADIO_MODULE_CONFIG,
-				       payload, (size_t)ret) < 0) {
-		return ret < 0 ? ret : -ENOMEM;
+	enq = enqueue_payload(adapter,
+			      LICHEN_MESHTASTIC_FROM_RADIO_MODULE_CONFIG,
+			      payload, (size_t)ret);
+	if (ret < 0 || enq < 0) {
+		return ret < 0 ? ret : enq;
 	}
 
 	return 0;
