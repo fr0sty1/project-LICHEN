@@ -33,13 +33,15 @@ class Radio(Protocol):
         """
         ...
 
-    async def receive(self, timeout_ms: int) -> tuple[bytes, int, int] | None:
-        """Receive a payload from the radio.
+    async def receive(self, timeout_ms: int, channel: int = 0) -> tuple[bytes, int, int] | None:
+        """Receive a payload from the radio on specified channel (for rendezvous).
 
-        Blocks until a packet is received or timeout expires.
+        Blocks until a packet is received or timeout expires. Channel used for
+        rendezvous per ccp9 vectors (CH0 fallback for unknown peers).
 
         Args:
             timeout_ms: Maximum time to wait for a packet, in milliseconds.
+            channel: Expected channel for RX (default 0 = control).
 
         Returns:
             A tuple of (payload, rssi_dbm, snr_db) if a packet was received,
