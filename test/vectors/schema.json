@@ -585,6 +585,10 @@
           "description": "CCP-16 vector type (added for schema completeness per codereview)"
         },
         "description": {"type": "string"},
+        "security_review": {
+          "type": "string",
+          "description": "Pass 2 security: no injection or crypto issues in CCP-16 vectors (project-LICHEN-ray3)"
+        },
         "input": {
           "type": "object",
           "properties": {
