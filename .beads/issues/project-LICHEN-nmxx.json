@@ -2,11 +2,15 @@
   "id": "project-LICHEN-nmxx",
   "title": "icmpv6: lichen_internet_checksum missing NULL validation",
   "description": "File: lichen/subsys/lichen/l2/icmpv6.c\nLines: 64-86 (lichen_internet_checksum function)\n\nThe lichen_internet_checksum() utility function does not validate its input parameters. If called with data=NULL and len\u003e0, it will crash with a null pointer dereference.\n\nCompare to other functions in the same file:\n- lichen_icmpv6_verify_checksum: checks NULL at line 147\n- lichen_icmpv6_parse: checks NULL at lines 169-172\n- lichen_icmpv6_handle: checks NULL at lines 469-472\n\nThe function is declared in the public header (icmpv6.h) and could be called by external code.\n\nFix: Add NULL validation at the start:\n```c\nuint16_t lichen_internet_checksum(const uint8_t *data, size_t len)\n{\n    if (data == NULL \u0026\u0026 len \u003e 0) {\n        return 0; // Or define error behavior\n    }\n    // ...\n}\n```\n\nNote: This is lower severity (P3) because the function is primarily an internal utility and all current internal call sites pass valid data. However, as a public API function, defensive validation is best practice.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:47:05.444641Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:47:05.444673Z"
+  "updated_at": "2026-07-22T23:24:58.397426629Z",
+  "started_at": "2026-07-22T23:24:58.397426629Z",
+  "lease_expires_at": "2026-07-22T23:29:58.397426629Z",
+  "heartbeat_at": "2026-07-22T23:24:58.397426629Z"
 }
