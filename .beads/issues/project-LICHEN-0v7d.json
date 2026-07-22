@@ -2,12 +2,16 @@
   "id": "project-LICHEN-0v7d",
   "title": "[codereview-pass1] 06-security.md post-8.5 numbering",
   "description": "Numbering fixed sequentially. All internal xrefs updated. Other files reference old 8.9 for RPL now at 8.10 (P3 cross-file). Table in 8.5 benefits section appears misplaced from mutable fields discussion (P2 correctness but scoped to numbering task).",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T15:16:37.286964786Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:16:37.286964786Z",
+  "updated_at": "2026-07-22T23:14:28.953494374Z",
+  "started_at": "2026-07-22T23:14:28.953494374Z",
+  "lease_expires_at": "2026-07-22T23:19:28.953494374Z",
+  "heartbeat_at": "2026-07-22T23:14:28.953494374Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-0v7d",
