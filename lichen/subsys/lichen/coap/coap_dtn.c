@@ -84,7 +84,7 @@ static int deaddrop_get(struct coap_resource *resource, struct coap_packet *requ
 	int len = s_provider->retrieve(buf, sizeof(buf), NULL);
 	k_mutex_unlock(&s_dtn_buf_mutex);
 	if (len < 0) return 0xA0;
-	return lichen_coap_respond(resource, request, addr, addr_len, 0x45, buf, len);
+	return lichen_coap_respond(resource, request, addr, addr_len, 0x45, 112, buf, len);
 }
 
 static int confessions_post(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len) {
