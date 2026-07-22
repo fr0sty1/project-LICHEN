@@ -190,7 +190,12 @@ int lichen_coap_server_stop(void);
  */
 int lichen_coap_server_is_running(void);
 
-int lichen_coap_deaddrop_register(void);
+struct lichen_deaddrop_provider {
+	int (*store)(const uint8_t *payload, size_t len);
+	int (*retrieve)(uint8_t *buf, size_t buf_len, const char *node);
+};
+
+int lichen_coap_deaddrop_register(const struct lichen_deaddrop_provider *provider);
 
 #ifdef __cplusplus
 }
