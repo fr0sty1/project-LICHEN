@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-kywf",
+  "title": "codereview pass 1: Kconfig help text references non-existent project-LICHEN-da2q instead of nrfg",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:45:33.078893211Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:45:33.078893211Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-kywf",
+      "depends_on_id": "project-LICHEN-nrfg",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:45:33.192438604Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
