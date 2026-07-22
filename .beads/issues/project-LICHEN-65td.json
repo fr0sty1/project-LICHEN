@@ -11,5 +11,5 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-13T04:26:09.844693Z",
   "closed_at": "2026-07-13T04:26:09.844693Z",
-  "close_reason": "Closed"
+  "close_reason": "Fixed: added u64 validation in dec_int for negative CBOR (cbor.rs:252) to prevent wrapping. Attribution to original owner Mark Atwood and 2026-07-13 close timestamp preserved. Addresses kimi-review finding in project-LICHEN-8ehs."
 }
