@@ -21,11 +21,12 @@ class Radio(Protocol):
     Methods are async to support non-blocking I/O with real hardware.
     """
 
-    async def transmit(self, payload: bytes) -> bool:
-        """Transmit a payload over the radio.
+    async def transmit(self, payload: bytes, channel: int = 0) -> bool:
+        """Transmit a payload over the radio on specified channel.
 
         Args:
             payload: The raw bytes to transmit.
+            channel: Channel index (0 = control per CCP-9/da2q.2; default 0).
 
         Returns:
             True if transmission succeeded, False otherwise.

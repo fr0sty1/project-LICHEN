@@ -41,7 +41,7 @@ config LICHEN_RPL_MAX_ROUTES
 
 config LICHEN_RPL_TRICKLE_IMIN_MS
 	int "Trickle Imin (ms)"
-	default 1000
+	default 4096
 	range 100 60000
 	help
 	  Minimum Trickle interval in milliseconds (RFC 6206).

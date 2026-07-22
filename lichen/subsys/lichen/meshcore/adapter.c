@@ -609,11 +609,6 @@ static int commit_settings_with_ok(
 	}
 
 	ret = enqueue_ok(adapter);
-	/* On enqueue_ok() failure after successful persist/apply, keep the
-	 * updated settings for consistency regardless of whether
-	 * persist_settings op is configured. The change is committed;
-	 * failure to enqueue response does not undo it. Caller receives error.
-	 */
 	return ret;
 }
 
@@ -652,7 +647,6 @@ static int reset_compat_settings(struct lichen_meshcore_adapter *adapter,
 	}
 
 	ret = enqueue_ok(adapter);
-	/* Keep updated settings on enqueue_ok failure (see commit_settings_with_ok). */
 	return ret;
 }
 
@@ -751,9 +745,6 @@ static int store_device_pin(struct lichen_meshcore_adapter *adapter,
 	}
 
 	ret = enqueue_ok(adapter);
-	/* Keep updated settings (and applied pin) on enqueue_ok failure for
-	 * consistency (see commit_settings_with_ok).
-	 */
 	return ret;
 }
 

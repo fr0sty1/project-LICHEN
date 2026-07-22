@@ -1094,7 +1094,7 @@ static int decompress_icmpv6_echo(const uint8_t *data, size_t data_len,
 		memcpy(icmpv6_echo_tail_mut(icmp), tail, tail_len);
 	}
 
-	uint16_t cksum = icmpv6_checksum(src, dst, icmp, icmp_len);
+	uint16_t cksum = icmpv6_checksum(src, dst, icmp, (uint16_t)icmp_len);
 	icmpv6_write_checksum(icmp, cksum);
 
 	return (int)total;
@@ -1172,7 +1172,7 @@ static int decompress_rpl_dio(const uint8_t *data, size_t data_len,
 		memcpy(rpl_dio_tail_mut(rpl), tail, tail_len);
 	}
 
-	uint16_t cksum = icmpv6_checksum(src, dst, icmp, icmp_len);
+	uint16_t cksum = icmpv6_checksum(src, dst, icmp, (uint16_t)icmp_len);
 	icmpv6_write_checksum(icmp, cksum);
 
 	return (int)total;
@@ -1247,7 +1247,7 @@ static int decompress_rpl_dao(const uint8_t *data, size_t data_len,
 		memcpy(rpl_dao_tail_mut(rpl), tail, tail_len);
 	}
 
-	uint16_t cksum = icmpv6_checksum(src, dst, icmp, icmp_len);
+	uint16_t cksum = icmpv6_checksum(src, dst, icmp, (uint16_t)icmp_len);
 	icmpv6_write_checksum(icmp, cksum);
 
 	return (int)total;

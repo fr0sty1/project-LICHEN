@@ -702,6 +702,13 @@ mod tests {
     }
 
     #[test]
+    fn decode_rejects_duplicate_keys() {
+        let data = [0x81u8, 0xa3, 0x00, 0x61, b'a', 0x00, 0x61, b'b', 0x02, 0x17];
+        let mut buf = [Record::empty()];
+        assert!(decode(&data, &mut buf).is_err());
+    }
+
+    #[test]
     fn encode_rejects_multiple_value_fields() {
         // RFC 8428 Section 4.2: at most one of value/string_value/bool_value
         let records = [Record {
