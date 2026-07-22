@@ -127,7 +127,8 @@ Nodes entering this state from multi-root conflict (different epoch/version on s
 ## Implementation Status
 
 - Python simulator, Rust RPL/gateway, Zephyr `lichen/subsys` all validate against `test/vectors/ccp16.json` (full cross-refs in Abstract; CCP-14 vectors[3+] for Gateway Multi-RX).
-- Kconfig: `CONFIG_LICHEN_CCP16=y`, `CONFIG_LICHEN_TDMA_SLOTS=8`.
+- Kconfig: `CONFIG_LICHEN_CCP16=y`, `CONFIG_LICHEN_TDMA_SLOTS=8`, CCA/CAD in lora_l2.c and drivers.
+- Control/data split, hash TDMA, adaptive SF, desync FSM, multi-RX gateway support complete. All codereview passes (including kywf, nrfg) closed. 8-channel capacity verified in sim.
 - Updated per draft-lichen-ccp scope (this document serves as relevant spec update).
 
 ## Vector Table (CCP-14 extension)
