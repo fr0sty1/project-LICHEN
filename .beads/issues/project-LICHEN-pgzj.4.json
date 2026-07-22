@@ -2,12 +2,16 @@
   "id": "project-LICHEN-pgzj.4",
   "title": "[codereview-P3] Test collection fails due to dataclass(slots=True) on Python 3.9 in crypto/identity.py blocking vector tests",
   "description": "pytest collection fails with TypeError on @dataclass(slots=True) because test env uses Python 3.9 (per __pycache__). v2 migration tests cannot run. Fix by making slots conditional (if sys.version_info \u003e= (3, 10)) or bump test Python requirement. This is P0 for the epic. Test integrity requires fixing implementation not tests. Escalate if out of scope for vector migration. Parent: project-LICHEN-pgzj",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T17:00:32.106920876Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T17:00:32.106920876Z",
+  "updated_at": "2026-07-22T17:00:54.594213524Z",
+  "started_at": "2026-07-22T17:00:54.594213524Z",
+  "lease_expires_at": "2026-07-22T17:05:54.594213524Z",
+  "heartbeat_at": "2026-07-22T17:00:54.594213524Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-pgzj.4",
