@@ -248,6 +248,8 @@ static int encode_record(zcbor_state_t *state,
 
 	case SENML_VALUE_DATA:
 		return -ENOTSUP;
+	default:
+		return -EINVAL;
 	}
 
 	/* Time offset */
