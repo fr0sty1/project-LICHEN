@@ -805,6 +805,10 @@ int main(void)
 		LOG_WRN("RPL root init failed - continuing without full DODAG support");
 	}
 
+#if IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)
+	LOG_INF("Prefix delegation enabled - WiFi backhaul stub active");
+#endif
+
 #if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
 	gateway_rpl_sync_status();
 	LOG_INF("RPL root signalling enabled (DODAG root active)");
