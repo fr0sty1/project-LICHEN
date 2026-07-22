@@ -1,4 +1,9 @@
 /*
+ * STALE/RETIRED bridge fragment per project-LICHEN-2u26.9: station_g2 has
+ * no canonical Zephyr target. Fragment retired per 2u26 audit. Do not use
+ * for builds. See docs/firmware-board-capability-matrix.md for partner-owned
+ * long tail policy.
+ *
  * B&Q Consulting Station G2 device tree overlay for LICHEN bridge
  *
  * ESP32-S3 + SX1262 LoRa (with PA/LNA)
