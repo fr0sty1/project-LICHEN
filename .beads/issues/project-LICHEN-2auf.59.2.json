@@ -3,6 +3,7 @@
   "title": "Validate Zephyr IPv6 and routing rows",
   "description": "Scope under project-LICHEN-2auf.59: validate only recovered routing, RPL, ICMPv6, and ping_l2 behavior on all declared native_sim/native/64 and applicable QEMU scenarios from a fresh clean EBS worktree. Use profile personal in account 210337117346, region us-west-2, an owned tagged builder in us-west-2c, and exact approved volume vol-0a95eee8d1d8461eb. Preserve per-slice base commit, applied commit/binary-patch SHA-256, west manifest, Zephyr/SDK/compiler versions, full command/cwd/environment, UTC timing, exit status, logs and artifact hashes. Require observable runtime assertions for each declared scenario; a build-only substitution, missing target, skip, timeout, ignored nonzero exit, stale artifact, or dirty worktree fails closed. Exclude puck/L2 and other link-specific .35.6 rows. Hash/copy evidence before mandatory sync, unmount, ownership-checked detach, wait-available, and tagged-instance cleanup.",
   "acceptance_criteria": "Routing, RPL, ICMPv6, and ping_l2 declared rows all build and run with independent expected outcomes on every supported host/QEMU target; no target or assertion is silently reduced. Exact source/patch/tool/command/log/artifact evidence is retained and hashed; clean-worktree verification passes per row; account/AZ/volume identity is exact; log collection and explicit EBS unmount, detach, wait-volume-available plus ownership-checked instance termination succeed.",
+  "notes": "Validation matrix for IPv6/routing (clean worktree west builds for native_sim, QEMU, ping_l2, RPL, ICMPv6) and link migration gates (.35.6: link_crypto, puck/L2, kiss_transport, bridge builds) requires exact base commit, patch from recovery, full evidence collection (cmd, env, hashes, logs, cleanup). Current wip/checkpoint branch ahead by 103. Per instructions, no untagged AWS. Flagging HUMAN for guidance on recorded base/patch or simplified local test run. See .59 design and .56 recovery for exact steps.",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
@@ -10,13 +11,14 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-17T21:32:02.459406Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T14:08:05.914812473Z",
+  "updated_at": "2026-07-22T14:09:23.521303686Z",
   "started_at": "2026-07-22T14:08:05.914812473Z",
   "lease_expires_at": "2026-07-22T14:13:05.914812473Z",
   "heartbeat_at": "2026-07-22T14:08:05.914812473Z",
   "labels": [
     "aws",
-    "validation"
+    "validation",
+    "human"
   ],
   "dependencies": [
     {
