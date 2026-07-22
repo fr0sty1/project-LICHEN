@@ -3,15 +3,15 @@
   "title": "ctx_find_by_recipient_locked crashes on NULL recipient_id with nonzero len",
   "description": "File: lichen/subsys/lichen/oscore/oscore.c\nLines: 58-62\n\nThe internal function ctx_find_by_recipient_locked does not validate that recipient_id is non-NULL before memcpy:\n\n```c\nuint8_t padded_input[OSCORE_ID_MAX_LEN] = {0};\nif (recipient_id_len \u003c= OSCORE_ID_MAX_LEN) {\n    memcpy(padded_input, recipient_id, recipient_id_len);  // Crash if recipient_id NULL\n}\n```\n\nIf recipient_id is NULL but recipient_id_len \u003e 0, memcpy causes undefined behavior (likely crash).\n\nWhile this is an internal function, its callers (oscore_ctx_lookup and oscore_ctx_get) do not validate recipient_id before calling. The public API allows:\n```c\noscore_ctx_get(NULL, 5, \u0026ctx_out);  // Will crash\n```\n\nFix: Add validation in the public API functions:\n```c\nif (recipient_id == NULL \u0026\u0026 recipient_id_len \u003e 0) {\n    return OSCORE_ERR_INVALID_PARAM;\n}\n```\n\nOr in the internal function:\n```c\nif (recipient_id_len \u003c= OSCORE_ID_MAX_LEN \u0026\u0026 recipient_id != NULL) {\n    memcpy(padded_input, recipient_id, recipient_id_len);\n}\n```",
   "notes": "Commit: 80cf102aa",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:50:15.885045Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:14:21.204201069Z",
+  "updated_at": "2026-07-22T20:14:23.531147818Z",
   "started_at": "2026-07-22T20:13:59.071381363Z",
-  "lease_expires_at": "2026-07-22T20:18:59.071381363Z",
-  "heartbeat_at": "2026-07-22T20:13:59.071381363Z"
+  "closed_at": "2026-07-22T20:14:23.531147818Z",
+  "close_reason": "Closed"
 }
