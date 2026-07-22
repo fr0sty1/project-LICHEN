@@ -66,7 +66,6 @@ config LORA_LICHEN_MESHTASTIC_BLE
 	depends on BT_MAX_CONN = 1
 	depends on LICHEN_MESHTASTIC_CODEC
 	depends on LICHEN_LINK
-	select LICHEN_LINK
 	depends on !LORA_LICHEN_BLE
 	select LICHEN_APP_IDENTITY
 	select LICHEN_APP_INTERFACE
@@ -90,7 +89,6 @@ config LORA_LICHEN_MESHCORE_BLE
 	depends on BT_FIXED_PASSKEY || ZTEST
 	depends on LICHEN_MESHCORE_CODEC
 	depends on LICHEN_LINK
-	select LICHEN_LINK
 	depends on !LORA_LICHEN_BLE
 	depends on !LORA_LICHEN_MESHTASTIC_BLE
 	select LICHEN_APP_IDENTITY
@@ -189,13 +187,41 @@ config LORA_LICHEN_GATEWAY_RPL_ROOT
 	depends on LICHEN_RPL
 	default y
 	help
-	  Enable gateway DIO/DAO processing and root signalling for LICHEN_RPL.
-	  Gateway now acts as RPL root per project-LICHEN-t4in.
+	  Enable gateway as RPL DODAG root (lichen_rpl_dodag_init_root).
+	  Initializes per AGENTS.md order after link_ctx. Drives Trickle DIOs
+	  as root for mesh formation. Updates /status to reflect joined root role.
 
-	config LICHEN_GATEWAY_RX1_DELAY_MS
+config LICHEN_GATEWAY_WIFI_SSID
+	string "WiFi SSID for Heltec V3 backhaul"
+	default "LICHEN-TEST"
+	depends on LICHEN_GATEWAY_PREFIX_DELEGATION
+	help
+	  SSID for WiFi station mode on Heltec V3 6LBR (used by wifi_mgmt in main.c).
+
+config LICHEN_GATEWAY_WIFI_PSK
+	string "WiFi PSK for Heltec V3 backhaul"
+	default "lichen123"
+	depends on LICHEN_GATEWAY_PREFIX_DELEGATION
+	help
+	  Pre-shared key for WiFi STA. INSECURE default for bench; override per deployment.
+
+config LICHEN_GATEWAY_PREFIX_DELEGATION
+	bool "Enable IPv6 prefix delegation from WiFi/Ethernet backhaul to RPL mesh"
+	depends on LICHEN_RPL
+	depends on NET_DHCPV6
+	depends on NET_IPV6_ND
+	select WIFI
+	select NET_L2_WIFI_MGMT
+	select NET_IPV6_ND6
+	imply NET_DHCPV6_CLIENT
+	default y
+	help
+	  WiFi STA + upstream prefix to RPL DODAG for Heltec V3 6LBR (spec/appendix-border-router.md).
+	  Requires main.c event handlers + AGENTS.md init order. Increases heap (see board defconfig).
+
+config LICHEN_GATEWAY_RX1_DELAY_MS
 	int "RX1-style delay before answering a CoAP request (ms)"
 	default 0
-	range 0 1000
 	help
 	  Milliseconds to wait after receiving a CoAP request before sending
 	  the response, giving a half-duplex requesting node time to switch
@@ -203,86 +229,6 @@ config LORA_LICHEN_GATEWAY_RPL_ROOT
 	  reply can arrive during the requester's TX->RX turnaround and be
 	  missed (lora_ipv6_mesh-fe1z, observed on the T1000-E/LR1110). 0
 	  disables the delay. ~100 ms is a safe LoRa value.
-
-config LICHEN_GATEWAY_PREFIX_DELEGATION
-	bool "WiFi station backhaul prefix delegation (Heltec V3 6LBR)"
-	default y if WIFI
-	depends on WIFI && NET_IPV6 && NET_L2_ETHERNET
-	select NET_L2_WIFI_MGMT
-	select NET_MGMT
-	select NET_MGMT_EVENT_INFO
-	select NET_IPV6_ND
-	select WIFI_NM
-	select ESP_WIFI_ENABLED if SOC_ESP32S3
-	imply NET_CONFIG_SETTINGS
-	help
-	  Enables WiFi station mode + net_mgmt handler for NET_EVENT_WIFI_CONNECT_RESULT
-	  and NET_EVENT_IPV6_PREFIX_ADD (from upstream RA). The prefix is passed to
-	  lichen_rpl_root_set_prefix() to update DODAG ID for RPL DIOs to mesh nodes.
-	  Updates gateway status CBOR with backhaul info. Centralizes 6LBR WiFi config.
-	  See spec/appendix-border-router.md, spec/04-network.md:6.1 (prefix/ULA/GUA),
-	  spec/05-routing.md (RPL non-storing with BR), AGENTS.md init graph.
-	  Implements/refines project-LICHEN-vsdl, project-LICHEN-sl32.*, project-LICHEN-b4yi.
-	  SSID/PSK via Kconfig (bench defaults overridden in board .conf; production
-	  should use SETTINGS_NVS + CoAP /config). Heap/stack/ESP buffer tuning via
-	  associated Kconfig.defconfig and board .conf when enabled. No test vectors
-	  altered.
-
-config LICHEN_GATEWAY_WIFI_SSID
-	string "WiFi SSID for station backhaul"
-	default "lichen-test"
-	depends on LICHEN_GATEWAY_PREFIX_DELEGATION
-	help
-	  SSID for automatic WiFi station connection. Bench default is test network;
-	  override in board .conf or via runtime config for production. See Zephyr
-	  wifi_mgmt samples for security.
-
-config LICHEN_GATEWAY_WIFI_PSK
-	string "WiFi PSK for station backhaul"
-	default "lichen123"
-	depends on LICHEN_GATEWAY_WIFI_SSID
-	help
-	  Pre-shared key for the SSID (WPA2/3). Bench default only; change for
-	  any real deployment. See Zephyr wifi_mgmt and connectivity samples.
-
-config LICHEN_GATEWAY_COORDINATION
-	bool "Gateway coordination protocol (TDMA slots, node registry, handoff)"
-	depends on LICHEN_RPL
-	depends on LICHEN_COAP
-	depends on LICHEN_COAP_SERVER || LICHEN_COAP_CONFIG
-	default n
-	help
-	  Enable multi-gateway coordination per mugl.3 / spec/05-routing.md:145
-	  (backbone UDP/CoAP to /.well-known/lichen-gw). Supports closed (PSK+OSCORE)
-	  and open (Ed25519 signatures+TOFU) federation modes. Stubs in subsys and
-	  rust/lichen-gateway to follow. Required for >1 gateway deployments.
-
-choice LICHEN_GW_FEDERATION_MODE
-	prompt "Gateway federation mode for coordination"
-	default LICHEN_GW_FEDERATION_CLOSED
-	depends on LICHEN_GATEWAY_COORDINATION
-	help
-	  Closed: PSK-based for single-operator. Open: signature-based for
-	  multi-operator with TOFU. Dual supports both simultaneously (mugl.3).
-
-config LICHEN_GW_FEDERATION_CLOSED
-	bool "Closed federation (PSK + OSCORE)"
-
-config LICHEN_GW_FEDERATION_OPEN
-	bool "Open federation (Ed25519 + TOFU)"
-
-config LICHEN_GW_FEDERATION_DUAL
-	bool "Dual federation (both modes)"
-
-endchoice
-
-config LICHEN_GW_PSK
-	string "Base64-encoded PSK for closed/dual federation"
-	depends on LICHEN_GATEWAY_COORDINATION
-	depends on LICHEN_GW_FEDERATION_CLOSED || LICHEN_GW_FEDERATION_DUAL
-	help
-	  Shared secret for OSCORE in closed federation. Must match on all
-	  cooperating gateways in closed mode. 32+ bytes recommended.
 
 # Force modular CoAP (lichen_coap service + LICHEN_COAP_CONFIG) for
 # gateway; legacy standalone server (lichen_coap_server) would duplicate

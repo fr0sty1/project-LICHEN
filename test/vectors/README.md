@@ -52,7 +52,11 @@ All byte strings are lowercase hex (possibly empty). Schema validation and indep
 - `encoded` is the complete announce `app_data` value for Type `0x01`.
 - Implementations MUST decode `encoded` as `type(1) + lat_e7(4) + lon_e7(4)`,
   where `lat_e7` and `lon_e7` are signed big-endian 32-bit integers.
-- Encoding `latitude_degrees` and `longitude_degrees` MUST reproduce `encoded`.
+
+**CCP-16 Load Balancing** (`ccp16.json`): for each vector (spec/02a-coordinated-capacity.md:36, da2q context),
+- TDMA slot = (crc32(EUI64) ^ epoch) % num_slots, adaptive_sf_select(density, snr_ema, load), now() for timing.
+- Includes multi-RX gateway, SF thresholds, modulo/wrap (0xFFFFFFFF edge), desync. Matches generate.py + test_vectors.py.
+- Python/Rust/Zephyr MUST match vectors exactly (no oracle weakening).
 
 **Meshtastic app compatibility** (`meshtastic_app_compat.json`): for each vector,
 - `encoded` is one raw protobuf GATT value unless `expect.reject` is true.

@@ -2,11 +2,16 @@
   "id": "project-LICHEN-sdj3",
   "title": "TUI safe_display_value redaction may leak key material length",
   "description": "File: python/src/lichen/tui/native.py\nLines: 432-448\n\nThe safe_display_value function redacts sensitive fields but leaks the length of bytes:\n\n    if isinstance(value, bytes | bytearray | memoryview):\n        return f\"\u003c{len(value)} bytes redacted\u003e\"\n\nFor cryptographic keys, the length can reveal:\n- Key algorithm (32 bytes = likely Curve25519, 16 bytes = AES-128, etc.)\n- Whether key material is present vs placeholder\n- Differences between nodes' key configurations\n\nWhile individual length disclosure is low-risk, combined with other side channels it could aid attacks.\n\nImpact: Minor information disclosure about key lengths.\n\nFix: Use a generic message that doesn't reveal length:\n    return \"\u003csensitive bytes redacted\u003e\"",
-  "status": "open",
+  "notes": "Commit: 811125d4f",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:29:08.491785Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:29:08.491817Z"
+  "updated_at": "2026-07-22T23:40:21.798994963Z",
+  "started_at": "2026-07-22T23:39:27.12478679Z",
+  "closed_at": "2026-07-22T23:40:21.798994963Z",
+  "close_reason": "fixed - safe_display_value already uses generic redaction string without leaking length"
 }

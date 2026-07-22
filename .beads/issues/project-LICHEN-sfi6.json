@@ -2,11 +2,16 @@
   "id": "project-LICHEN-sfi6",
   "title": "configure() silently ignores settings - no wire-level config synchronization",
   "description": "**File:** python/src/lichen/radio/sim_client.py\n**Lines:** 277-290\n\n**Issue:** The configure() method only stores values locally without sending them to the simulator:\n```python\ndef configure(self, freq_hz: int, tx_power_dbm: int) -\u003e None:\n    \"\"\"Configure the radio parameters.\n\n    These values are stored locally only...\n    \"\"\"\n    self._freq_hz = freq_hz\n    self._tx_power_dbm = tx_power_dbm\n```\n\n**Problems:**\n1. The Radio protocol in base.py implies configure() actually configures the radio\n2. Callers might expect that after configure(868_000_000, 20), transmissions use those settings\n3. The simulator receives TX messages without knowing frequency or power, so it cannot simulate:\n   - Frequency-dependent propagation characteristics\n   - Power-dependent range calculations\n   - Regulatory compliance (e.g., different power limits per frequency band)\n\n**Impact:** The SimRadio implementation does not faithfully implement the Radio protocol contract. Tests using SimRadio may pass but real hardware would behave differently if it respects configuration.\n\n**Note:** The docstring acknowledges this is intentional (\"would require a new protocol message\"), but this is a protocol/API design issue that should be tracked.\n\n**Possible fix:** Add a CONFIGURE message type to the simulator protocol, or document in the Radio protocol that configure() is advisory and may not affect actual radio behavior in all implementations.",
-  "status": "open",
+  "notes": "Commit: 54039f4c1",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:23:31.579546Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:23:31.5796Z"
+  "updated_at": "2026-07-22T23:43:23.445017174Z",
+  "started_at": "2026-07-22T23:41:09.610618378Z",
+  "closed_at": "2026-07-22T23:43:23.445017174Z",
+  "close_reason": "documented advisory nature of configure() in Radio protocol and SimRadio"
 }

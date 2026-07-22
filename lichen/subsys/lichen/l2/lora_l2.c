@@ -743,38 +743,26 @@ int lichen_lora_l2_start(void)
     /*
      * Configure LoRa radio using Kconfig options and LICHEN protocol defaults.
      * Modulation parameters (from <zephyr/drivers/lora.h> enums):
-     *   - BW_125_KHZ: 125kHz bandwidth (good range/throughput balance)
-     *   - SF_10: Spreading factor 10 (long range, ~980 bps at BW125)
-     *   - CR_4_5: Coding rate 4/5 (minimal FEC overhead)
-     * These match the LICHEN spec for mesh operation. Preamble length 8
-     * is the LoRa default (sufficient for synchronization at SF10).
+     *   - BW_125_KHZ: 125kHz bandwidth
+     *   - SF_9/SF_10: conditional on CONFIG_LICHEN_SF_ASSIGNMENT_ENABLED
+     *   - CR_4_5: Coding rate 4/5
+     * Matches spec; preamble 8 default. New Kconfigs enable DIO/hash SF
+     * assignment and gateway CAD for multi-SF (CONFIG_LICHEN_GATEWAY_MULTI_SF).
      *
-     * Stack-local struct is safe: lora_config() copies the values (see
-     * sx12xx_lora_config memcpy, rylr_config field reads) and does not
-     * retain a pointer.
+     * Stack-local struct is safe: lora_config() copies values.
      *
-     * Zephyr's lora_modem_config.tx selects the direction being configured,
-     * and for the SX12xx driver family each direction is programmed
-     * independently: .tx=true calls Radio.SetTxConfig() (and caches the
-     * params lora_send() needs for airtime), .tx=false calls
-     * Radio.SetRxConfig(). lora_recv()'s Radio.Rx() re-enters RX *mode* but
-     * reuses whatever modulation params SetRxConfig last programmed - it does
-     * NOT re-derive them from the TX config. Configuring only .tx=true left
-     * the RX side unprogrammed (default SF/BW), making the radio deaf to
-     * matched-PHY peers. Configure BOTH directions: RX first, TX second.
-     *
-     * Driver-family caveat: drivers such as RYLR treat .tx as persistent
-     * direction state; this two-pass sequence targets the SX126x/SX127x
-     * path used by the supported boards.
+     * RX then TX pass programs both directions (RX config reused by recv).
+     * CAD scan added in rx_thread under multi-SF config (lr1110 IRQ extended
+     * for PREAMBLEDETECTED per ASSIGNED_SF in DIO).
      */
     struct lora_modem_config config = {
         .frequency = CONFIG_LICHEN_LORA_FREQUENCY,
-        .bandwidth = BW_125_KHZ,   /* Zephyr enum: 125kHz */
-        .datarate = SF_10,         /* Zephyr enum: spreading factor 10 */
-        .coding_rate = CR_4_5,     /* Zephyr enum: 4/5 coding rate */
-        .preamble_len = 8,         /* LoRa default preamble symbols */
+        .bandwidth = BW_125_KHZ,
+        .datarate = IS_ENABLED(CONFIG_LICHEN_SF_ASSIGNMENT_ENABLED) ? SF_9 : SF_10,
+        .coding_rate = CR_4_5,
+        .preamble_len = 8,
         .tx_power = CONFIG_LICHEN_LORA_TX_POWER,
-        .tx = false,               /* pass 1: program the RX side */
+        .tx = false,
     };
 
     int ret = lora_config(lora_data.lora_dev, &config);

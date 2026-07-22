@@ -2,11 +2,16 @@
   "id": "project-LICHEN-suju",
   "title": "Fresh deadline assigned on re-queue extends packet lifetime",
   "description": "File: python/src/lichen/link/link_layer.py:316\n\nWhen a packet is re-queued after CAD failure, push() is called without deadline_ms, causing a fresh deadline to be computed:\n\n    self.tx_queue.push(frame_bytes, priority=Priority.ROUTING)\n\nA packet that was 50ms from expiry gets a fresh 5000ms deadline (ROUTING default). This defeats the deadline-based expiry mechanism designed to prevent bufferbloat.\n\nFix: Track original deadline and pass it to re-queue, or compute remaining time from original deadline.",
-  "status": "open",
+  "notes": "Commit: 0edaf85de",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:21:26.092455Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:21:26.092496Z"
+  "updated_at": "2026-07-22T23:43:38.682661073Z",
+  "started_at": "2026-07-22T23:38:49.176151591Z",
+  "closed_at": "2026-07-22T23:43:38.682661073Z",
+  "close_reason": "Fixed re-queue deadline preservation in TxQueue by adding TxReservation and reserve/complete methods that keep original absolute deadline_ms on CAD/TX failure requeues. Updated push to support reservations. Tests and lint pass. Commit 0edaf85"
 }

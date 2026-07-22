@@ -2,11 +2,16 @@
   "id": "project-LICHEN-avg2",
   "title": "iid_to_callsign uses 4-char base36 but prefix is 1 char, total 5 chars not 6",
   "description": "File: python/src/lichen/interface/kiss/callsign.py\nLines: 77-102\n\nThe iid_to_callsign function generates callsigns with inconsistent length:\n\n```python\n# Last 3 bytes as 24-bit value\nsuffix = (iid[5] \u003c\u003c 16) | (iid[6] \u003c\u003c 8) | iid[7]\n\n# Base-36 encode (max 5 chars for 24 bits: 36^5 \u003e 2^24)\nencoded = _encode_base36(suffix, width=4)  # 4 chars + 2 prefix = 6 max\n\ncall = LICHEN_PREFIX + encoded  # LICHEN_PREFIX = 'L'\n```\n\nThe comment says '4 chars + 2 prefix = 6 max' but LICHEN_PREFIX is only 'L' (1 char), so the result is 5 chars max (L + 4 base36 chars).\n\nAlso, the comment says 'max 5 chars for 24 bits' but then uses width=4. The math:\n- 36^4 = 1,679,616 \u003c 2^24 = 16,777,216\n- 36^5 = 60,466,176 \u003e 2^24\n\nSo for a full 24-bit value, we need 5 base36 chars, but width=4 is used. This means high suffix values will produce 5-char base36 strings (since _encode_base36 extends beyond width if needed).\n\nImpact: Callsigns can be 6 chars (L + 5 base36) for high suffix values, not 5 as suggested. This is within AX.25's 6-char limit, so not a functional bug, but the comments are misleading.\n\nFix: Update comments to reflect actual behavior, or explicitly limit to width=5 with truncation for consistency.",
-  "status": "open",
+  "notes": "Commit: 9a89279f0",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:19:59.429788Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:19:59.429826Z"
+  "updated_at": "2026-07-22T23:40:40.793154945Z",
+  "started_at": "2026-07-22T23:38:44.650990687Z",
+  "closed_at": "2026-07-22T23:40:40.793154945Z",
+  "close_reason": "Comments and width fixed for consistency with 1-char prefix and full 24-bit range; tests pass"
 }

@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-v57q",
   "title": "[merge-conflict] integration/worker11-20260722: coap_keys.c",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:29:25.143465118Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:29:25.143465118Z"
+  "updated_at": "2026-07-22T23:41:21.216117165Z",
+  "started_at": "2026-07-22T23:38:51.717567861Z",
+  "closed_at": "2026-07-22T23:41:21.216117165Z",
+  "close_reason": "Resolved merge conflicts in coap_keys.c by using clean implementation from worker14 with manual CBOR parser, security checks, and previous bead fixes (byge). Removed conflict markers. File now consistent."
 }

@@ -1,11 +1,16 @@
 {
   "id": "project-LICHEN-r2q7",
   "title": "[merge-conflict] integration/worker11-20260722: coap_dtn.c",
-  "status": "open",
+  "notes": "Commit: 6b7cb454b - resolved merge conflict remnant in coap_dtn.c by removing invalid OSCORE path code from worker11 integration",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:29:24.255319312Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:29:24.255319312Z"
+  "updated_at": "2026-07-22T23:40:32.865420132Z",
+  "started_at": "2026-07-22T23:38:51.6043331Z",
+  "closed_at": "2026-07-22T23:40:32.865420132Z",
+  "close_reason": "Fixed merge conflict in coap_dtn.c by removing leftover git conflict markers and invalid OSCORE respond function remnant from worker11 branch integration. Code now clean, builds, matches previous codereview fixes."
 }

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-usg9",
+  "title": "[merge-conflict] worktree-worker23: heltec_wireless_tracker.overlay",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T23:41:06.091598824Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T23:41:39.828235589Z",
+  "started_at": "2026-07-22T23:41:39.828235589Z",
+  "lease_expires_at": "2026-07-22T23:46:39.828235589Z",
+  "heartbeat_at": "2026-07-22T23:41:39.828235589Z"
+}

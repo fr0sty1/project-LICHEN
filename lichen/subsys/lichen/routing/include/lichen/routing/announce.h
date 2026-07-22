@@ -34,6 +34,13 @@ extern "C" {
 #define LICHEN_ANNOUNCE_ACCEPT_SEQ_RESET 1
 #define LICHEN_ANNOUNCE_OBSERVER_F_ALLOW_SEQ_RESET 0x01U
 
+/*
+ * LOCK ORDERING (see announce.c for full rules):
+ * ingest_mutex > announce_mutex > observer_mutex. Ingest must be outermost.
+ * Violating order risks deadlock. observer_mutex is usually independent.
+ * Enforced via comments + call-site ordering in ingest/parse paths.
+ */
+
 struct lichen_announce_view {
 	uint8_t flags;
 	uint8_t hop_count;

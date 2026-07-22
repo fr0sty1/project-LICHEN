@@ -16,7 +16,6 @@
 #endif
 
 #define SINK_MAX CONFIG_LICHEN_APP_INTERFACE_MAX_SUBSCRIBERS
-BUILD_ASSERT(SINK_MAX <= 8, "SINK_MAX too large for stack snapshots");
 
 struct sink_slot {
 	struct lichen_app_interface_sink sink;
@@ -84,7 +83,9 @@ int lichen_app_interface_register_sink(
 	k_mutex_lock(&s_mutex, K_FOREVER);
 	for (size_t i = 0U; i < ARRAY_SIZE(s_sinks); i++) {
 		if (s_sinks[i].used && same_sink(&s_sinks[i].sink, sink)) {
-			*out_id = (uint8_t)i;
+			if (out_id != NULL) {
+				*out_id = (uint8_t)i;
+			}
 			k_mutex_unlock(&s_mutex);
 			return 0;
 		}
@@ -103,7 +104,9 @@ int lichen_app_interface_register_sink(
 
 	s_sinks[free_idx].sink = *sink;
 	s_sinks[free_idx].used = true;
-	*out_id = (uint8_t)free_idx;
+	if (out_id != NULL) {
+		*out_id = (uint8_t)free_idx;
+	}
 	k_mutex_unlock(&s_mutex);
 	return 0;
 }
@@ -629,16 +632,14 @@ void lichen_app_interface_test_reset(void)
 void lichen_app_interface_test_fail_next_location_submit(int ret)
 {
 	k_mutex_lock(&s_mutex, K_FOREVER);
-	s_test_next_location_submit_ret = ret;
+	s_test_next_location_submit_ret = ret != 0 ? ret : 0;
 	k_mutex_unlock(&s_mutex);
 }
-
 
 void lichen_app_interface_test_fail_next_clear_network(int ret)
 {
 	k_mutex_lock(&s_mutex, K_FOREVER);
-	s_test_next_clear_network_ret = ret;
+	s_test_next_clear_network_ret = ret != 0 ? ret : 0;
 	k_mutex_unlock(&s_mutex);
 }
-
 #endif

@@ -2,11 +2,16 @@
   "id": "project-LICHEN-58hd",
   "title": "announce: Missing __all__ exports in coords.py",
   "description": "File: python/src/lichen/announce/coords.py\n\nThe coords.py module exports functions like encode_coords, decode_coords, encode_congestion, etc. but does not define __all__.\n\nWhile __init__.py re-exports from messages.py, processor.py, and scheduler.py, it does NOT re-export anything from coords.py:\n\n```python\n# __init__.py imports from:\nfrom lichen.announce.messages import ...\nfrom lichen.announce.processor import ...  \nfrom lichen.announce.scheduler import ...\n# coords.py not imported!\n```\n\nThis means users must import directly from coords.py:\n```python\nfrom lichen.announce.coords import encode_coords  # Required\nfrom lichen.announce import encode_coords  # Fails!\n```\n\nEither:\n1. Add coords.py exports to __init__.py __all__\n2. Add __all__ to coords.py to document public API\n3. Document that coords functions are internal",
-  "status": "open",
+  "notes": "Commit: 2b73e3a98",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:19:55.530948Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:19:55.530988Z"
+  "updated_at": "2026-07-22T23:42:58.241827Z",
+  "started_at": "2026-07-22T23:40:50.849429564Z",
+  "closed_at": "2026-07-22T23:42:58.241827Z",
+  "close_reason": "Added re-exports for coords.py functions and constants to announce/__init__.py and updated __all__; verified with package-level imports"
 }

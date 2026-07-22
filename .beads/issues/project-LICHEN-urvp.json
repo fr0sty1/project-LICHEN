@@ -2,11 +2,16 @@
   "id": "project-LICHEN-urvp",
   "title": "Tests use code-under-test as oracle for roundtrip verification",
   "description": "File: rust/lichen-ipv6/src/lib.rs:834-847\n\ntest_ipv6_header_roundtrip() verifies serialization/parsing by round-tripping through the same code:\n```rust\nlet hdr = Ipv6Header::new(next_header::ICMPV6, src, dst);\nlet mut buf = [0u8; IPV6_HEADER_LEN];\nlet n = hdr.write_to(24, \u0026mut buf).unwrap();\nlet parsed = Ipv6Header::from_bytes(\u0026buf).unwrap();\nassert_eq!(parsed.src, src);\n```\n\nThis test only verifies internal consistency - that write_to and from_bytes are inverses. It does NOT verify:\n1. The wire format is correct per RFC 8200\n2. Interoperability with other IPv6 implementations\n\nThe test would pass even if both functions were wrong in complementary ways.\n\nPer CLAUDE.md: 'Tests must have independent oracles: known test vectors from an external source, cross-validation between two independent implementations.'\n\nShould add test vectors from:\n1. Wireshark packet captures\n2. RFC examples\n3. Another IPv6 implementation (smoltcp, std::net)\n\nSimilar issue in test_echo_request_response (lines 851-863).",
-  "status": "open",
+  "notes": "Commit: 5964cdc78",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:36:12.056287Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:36:12.056325Z"
+  "updated_at": "2026-07-22T23:40:40.114931601Z",
+  "started_at": "2026-07-22T23:38:49.26145805Z",
+  "closed_at": "2026-07-22T23:40:40.114931601Z",
+  "close_reason": "Fixed test to use independent RFC 8200 wire-format reference vector for IPv6 header serialization/parsing oracle"
 }

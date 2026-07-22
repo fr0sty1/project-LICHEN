@@ -1,11 +1,16 @@
 {
   "id": "project-LICHEN-isgq",
   "title": "[merge-conflict] integration/worker12-20260722: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
-  "status": "open",
+  "notes": "Commit: 3ff22a1a4",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:31:45.466207232Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:31:45.466207232Z"
+  "updated_at": "2026-07-22T23:42:43.142696628Z",
+  "started_at": "2026-07-22T23:38:50.657199612Z",
+  "closed_at": "2026-07-22T23:42:43.142696628Z",
+  "close_reason": "Resolved merge conflict in heltec_wifi_lora32_v3_esp32s3_procpu.conf by providing clean consolidated Kconfig with WiFi, tuned stacks (bd r002), epoch persistence (bd 3uhb), bench provisioning. Omitted BROKEN RPL_ROOT and battery per Kconfig and scope. Updated on worker6 branch, commit 3ff22a1a4"
 }

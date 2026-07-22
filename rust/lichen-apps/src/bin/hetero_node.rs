@@ -22,7 +22,7 @@ struct NodeMetrics {
     tx_bytes: u64,
     rx_bytes: u64,
     unique_peers: HashSet<[u8; 8]>,
-    error_count: u32,
+    errors: Vec<String>,
     packet_hashes_sent: HashSet<[u8; 16]>,
     packet_hashes_received: HashSet<[u8; 16]>,
 }
@@ -35,7 +35,7 @@ impl NodeMetrics {
             tx_bytes: 0,
             rx_bytes: 0,
             unique_peers: HashSet::new(),
-            error_count: 0,
+            errors: Vec::new(),
             packet_hashes_sent: HashSet::new(),
             packet_hashes_received: HashSet::new(),
         }
@@ -144,9 +144,7 @@ fn main() {
                 metrics.tx_bytes += announce.len() as u64;
                 let hash = Sha256::digest(&announce);
                 let hash_prefix: [u8; 16] = hash[..16].try_into().unwrap();
-                if metrics.packet_hashes_sent.len() < 10000 {
-                    metrics.packet_hashes_sent.insert(hash_prefix);
-                }
+                metrics.packet_hashes_sent.insert(hash_prefix);
                 emit(
                     "tx",
                     &announce,
@@ -160,7 +158,9 @@ fn main() {
                 seq_num = seq_num.wrapping_add(1);
             }
             Err(e) => {
-                metrics.error_count = metrics.error_count.saturating_add(1);
+                if metrics.errors.len() < 1000 {
+                    metrics.errors.push(format!("TX error: {:?}", e));
+                }
                 eprintln!("rust-{}: TX error: {:?}", node_id, e);
             }
         }
@@ -174,11 +174,10 @@ fn main() {
                     metrics.rx_count += 1;
                     metrics.rx_bytes += pkt.len as u64;
 
+                    // Track packet hash
                     let hash = Sha256::digest(&buf[..pkt.len]);
                     let hash_prefix: [u8; 16] = hash[..16].try_into().unwrap();
-                    if metrics.packet_hashes_received.len() < 10000 {
-                        metrics.packet_hashes_received.insert(hash_prefix);
-                    }
+                    metrics.packet_hashes_received.insert(hash_prefix);
                     let peer_id = if pkt.len > 12 && buf[0] == 0x15 && buf[1] == 0x01 {
                         Some(buf[5..13].iter().map(|b| format!("{b:02x}")).collect())
                     } else {
@@ -220,10 +219,13 @@ fn main() {
                     }
                 }
                 Ok(None) => {} // timeout
-                Err(e) => {
-                    metrics.error_count = metrics.error_count.saturating_add(1);
-                    eprintln!("rust-{}: RX error: {:?}", node_id, e);
-                }
+                    Err(e) => {
+                        if metrics.errors.len() < 1000 {
+                            metrics.errors.push(format!("RX error: {:?}", e));
+                        }
+                        eprintln!("rust-{}: RX error: {:?}", node_id, e);
+                    }
+
             }
         }
 
@@ -245,7 +247,7 @@ fn main() {
         "tx_bytes": metrics.tx_bytes,
         "rx_bytes": metrics.rx_bytes,
         "unique_peers": metrics.unique_peers.len(),
-        "errors": metrics.error_count,
+        "errors": metrics.errors.len(),
         "hashes_sent": metrics.packet_hashes_sent.len(),
         "hashes_received": metrics.packet_hashes_received.len(),
     });

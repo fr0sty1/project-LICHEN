@@ -2,11 +2,16 @@
   "id": "project-LICHEN-7tss",
   "title": "UdpDatagram.to_bytes payload length overflow",
   "description": "File: python/src/lichen/ipv6/udp.py:63-77\n\nThe UdpDatagram class does not validate that the payload fits in the 16-bit length field:\n\n```python\ndef to_bytes(self, src: IPv6Address, dst: IPv6Address) -\u003e bytes:\n    ...\n    without_checksum = (\n        self.src_port.to_bytes(2, 'big')\n        + self.dst_port.to_bytes(2, 'big')\n        + self.length.to_bytes(2, 'big')  # length is UDP_HEADER_LENGTH + len(payload)\n        + bytes(2)\n        + self.payload\n    )\n```\n\nThe `length` property (line 59-61) returns `UDP_HEADER_LENGTH + len(self.payload)`.\n\nIf `len(self.payload) \u003e 65527`, then `length \u003e 65535`, causing:\n```\nOverflowError: int too big to convert\n```\n\nImpact:\n1. Confusing error (OverflowError instead of UdpError)\n2. No early validation - error only occurs at serialization\n\nFix: Add validation in to_bytes or a __post_init__ method:\n```python\nmax_payload = 0xFFFF - UDP_HEADER_LENGTH  # 65527\nif len(self.payload) \u003e max_payload:\n    raise UdpError(f'payload too large: {len(self.payload)} \u003e {max_payload}')\n```\n\nTags: correctness, ipv6",
-  "status": "open",
+  "notes": "Commit: cfc6b14b6",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:23:06.871833Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:23:06.871866Z"
+  "updated_at": "2026-07-22T23:40:20.193192615Z",
+  "started_at": "2026-07-22T23:39:05.635760883Z",
+  "closed_at": "2026-07-22T23:40:20.193192615Z",
+  "close_reason": "Added max_payload validation in to_bytes(); raises UdpError for \u003e65527 byte payloads (prevents OverflowError). Test passes."
 }

@@ -2,11 +2,16 @@
   "id": "project-LICHEN-6kk0",
   "title": "announce: start() not exception-safe - leaves _running=True if task creation fails",
   "description": "File: python/src/lichen/announce/scheduler.py:189-205\n\nThe start() method sets _running=True before creating the task:\n\n```python\nasync def start(self) -\u003e None:\n    if self._running:\n        raise RuntimeError('scheduler already running')\n\n    self._running = True  # Set BEFORE task creation\n    self._task = asyncio.create_task(\n        self._loop(),\n        name=f'announce-{self.identity.iid.hex()[:8]}',\n    )\n```\n\nIf asyncio.create_task() raises an exception (unlikely but possible, e.g., if event loop is closed), _running remains True but _task is None.\n\nSubsequent calls to start() would raise 'scheduler already running' even though no task exists.\n\nFix: Wrap in try/except and reset _running=False on failure, or set _running=True after task creation:\n\n```python\nself._task = asyncio.create_task(...)\nself._running = True  # Only set after success\n```",
-  "status": "open",
+  "notes": "Commit: 146b3ca",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:19:11.005454Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:19:11.005493Z"
+  "updated_at": "2026-07-22T23:41:43.812418261Z",
+  "started_at": "2026-07-22T23:40:13.436864425Z",
+  "closed_at": "2026-07-22T23:41:43.812418261Z",
+  "close_reason": "Fixed start() to set _running after task creation. Commit 146b3ca"
 }

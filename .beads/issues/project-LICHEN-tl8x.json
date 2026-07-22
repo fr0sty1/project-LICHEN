@@ -2,11 +2,16 @@
   "id": "project-LICHEN-tl8x",
   "title": "api.py: no validation of partition group node IDs",
   "description": "File: python/src/lichen/sim/api.py\nLines: 460-474\n\nadd_chaos_partition does not validate that group items are strings:\n\n    groups_raw = body.get('groups')\n    ...\n    groups = [set(group) for group in groups_raw]\n\nA request with non-string node IDs like {\"groups\": [[1, 2], [3, 4]]} creates a PartitionRule with integer sets. Since node_id comparisons in _find_group use 'node_id in group' where node_id is always a string, the rule silently never matches anything.\n\nFix: Validate that all items in all groups are strings before creating the rule.\n\nImpact: Minor - API accepts invalid input that silently fails; no security impact.",
-  "status": "open",
+  "notes": "Commit: 582c862",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:28:28.165197Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:28:28.165233Z"
+  "updated_at": "2026-07-22T23:40:13.89225169Z",
+  "started_at": "2026-07-22T23:38:48.502614974Z",
+  "closed_at": "2026-07-22T23:40:13.89225169Z",
+  "close_reason": "Closed"
 }

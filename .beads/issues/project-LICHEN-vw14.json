@@ -2,11 +2,16 @@
   "id": "project-LICHEN-vw14",
   "title": "coap_keys.c: VLA on stack risks stack overflow",
   "description": "File: lichen/subsys/lichen/coap/coap_keys.c\nLines: 642-643\n\nStack-allocated array sized by Kconfig option:\n```c\nstruct lichen_key_entry entries[CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES];\n```\n\nIf CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES is configured to a large value, this could exceed the stack size on embedded targets. Each lichen_key_entry is 57 bytes; at max 256 entries this would be ~14KB on the stack.\n\nShould either:\n1. Use static buffer (already have one: s_keys)\n2. Add a compile-time check limiting CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES\n3. Use k_heap_alloc\n\nCategory: MEMORY - potential stack overflow",
-  "status": "open",
+  "notes": "Commit: 55d2c7686",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:42:23.537442Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:42:23.537486Z"
+  "updated_at": "2026-07-22T23:41:24.602527028Z",
+  "started_at": "2026-07-22T23:40:04.792941659Z",
+  "closed_at": "2026-07-22T23:41:24.602527028Z",
+  "close_reason": "Fixed stack allocation risk by limiting Kconfig range to 16 and adding BUILD_ASSERT; updated list buffer to use CONFIG consistently. Commit 55d2c7686"
 }

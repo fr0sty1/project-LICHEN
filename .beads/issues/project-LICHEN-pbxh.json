@@ -2,11 +2,16 @@
   "id": "project-LICHEN-pbxh",
   "title": "write_to_radio returns borrowed reference without enforcing clear_write_buffer",
   "description": "File: rust/lichen-meshtastic/src/gatt.rs:211-282\n\nThe write_to_radio function returns a borrowed reference to the internal buffer when a complete message is received:\n\n```rust\npub fn write_to_radio(\u0026mut self, chunk: \u0026[u8]) -\u003e Result\u003cOption\u003c\u0026[u8]\u003e, GattError\u003e {\n    ...\n    return Ok(Some(\u0026self.write_buffer[..expected as usize]));\n}\n```\n\nThe API contract requires callers to call clear_write_buffer() after processing the returned data, but this is not enforced by the type system. If a caller forgets:\n\n1. The next write_to_radio call will corrupt/append to the previous message's buffer\n2. The state machine (write_expected_len) will be in an inconsistent state\n3. Subsequent messages will be malformed or incorrectly parsed\n\nIMPACT: Hard-to-debug corruption of BLE message parsing.\n\nFIX OPTIONS:\n1. Return owned data (Vec) instead of borrowed slice to auto-clear\n2. Use a builder pattern that consumes self\n3. Add debug assertions to detect misuse\n4. Document the contract more prominently with SAFETY comments",
-  "status": "open",
+  "notes": "Commit: ac03d6564",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:34:43.634793Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:34:43.634839Z"
+  "updated_at": "2026-07-22T23:42:18.909583398Z",
+  "started_at": "2026-07-22T23:38:50.896452Z",
+  "closed_at": "2026-07-22T23:42:18.909583398Z",
+  "close_reason": "Added auto-clear of previous state in write_to_radio to prevent buffer corruption if clear_write_buffer is not called. Updated to match Python implementation behavior. Tests pass."
 }

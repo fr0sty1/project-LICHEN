@@ -548,19 +548,12 @@ static bool valid_name_text(const uint8_t *payload, size_t payload_len)
 
 static bool valid_default_flood_name(const uint8_t *payload)
 {
-	const uint8_t *nul = memchr(payload, 0,
-				    LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN);
-	size_t len;
-
-	if (nul == NULL || nul == payload) {
+	size_t len = strnlen((const char *)payload,
+			     LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN);
+	if (len == 0U || len == LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN) {
 		return false;
 	}
-
-	len = (size_t)(nul - payload);
-	if (len > (LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN - 1U)) {
-		return false;
-	}
-	return valid_utf8_text(payload, len);
+	return valid_name_text(payload, len);
 }
 
 static bool channel_body_has_secret(const uint8_t *payload)

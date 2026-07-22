@@ -2,11 +2,15 @@
   "id": "project-LICHEN-5ky0",
   "title": "coap_server.c: handler return values ignored",
   "description": "File: lichen/subsys/lichen/coap/coap_server.c\nLines: 126-145, 165-184, 232-251, 271-329, 349-368\n\nSeveral CoAP handlers return response codes directly but the Zephyr CoAP service expects handlers to return 0 on success or negative errno on failure. The handlers mix return patterns:\n\n```c\nstatic int status_get(...)\n{\n    if (s_handlers.status == NULL) {\n        return COAP_RESPONSE_CODE_NOT_FOUND;  // Returns positive CoAP code\n    }\n    ...\n    return build_response(...);  // Returns coap_resource_send result\n}\n```\n\nCOAP_RESPONSE_CODE_NOT_FOUND is 0x84 (132), which is positive and may be misinterpreted by the service framework. The handlers should send a response via build_response and return 0, or return negative errno on failure.\n\nCategory: API MISUSE - incorrect return value semantics",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:43:52.072272Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:43:52.07231Z"
+  "updated_at": "2026-07-22T23:38:51.624829339Z",
+  "started_at": "2026-07-22T23:38:51.624829339Z",
+  "lease_expires_at": "2026-07-22T23:43:51.624829339Z",
+  "heartbeat_at": "2026-07-22T23:38:51.624829339Z"
 }

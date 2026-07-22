@@ -359,8 +359,7 @@ class TestLinkLayerRoundTrip:
 
         # Receive it
         result = await ll.receive(timeout_ms=100)
-
-        assert result is not None
+        assert isinstance(result, RxFrame)
         assert result.frame.payload == original_payload
 
     @pytest.mark.asyncio
@@ -399,7 +398,7 @@ class TestLinkLayerRoundTrip:
         mock_radio.queue_rx(peer_frame_bytes)
         result = await node_ll.receive(timeout_ms=100)
 
-        assert result is not None
+        assert isinstance(result, RxFrame)
         assert result.frame.payload == original_payload
         assert result.sender.pubkey == peer_identity.pubkey
 
@@ -487,8 +486,7 @@ class TestRxFrameMetadata:
         mock_radio.queue_rx(mock_radio.tx_history[0], rssi=-75, snr=5)
 
         result = await ll.receive(timeout_ms=100)
-
-        assert result is not None
+        assert isinstance(result, RxFrame)
         assert result.rssi_dbm == -75
         assert result.snr_db == 5
 

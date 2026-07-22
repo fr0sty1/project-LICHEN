@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-9ppq",
+  "title": "[merge-conflict] worktree-worker24: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
+  "notes": "Commit: 305ca136b (in worktree-worker24)",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T23:41:07.449754707Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T23:43:25.360420012Z",
+  "started_at": "2026-07-22T23:42:16.00646427Z",
+  "closed_at": "2026-07-22T23:43:25.360420012Z",
+  "close_reason": "Resolved merge conflict in heltec_wifi_lora32_v3_esp32s3_procpu.conf by combining battery, RPL root, and stack/buffer tunings. Committed to worktree-worker24 branch as 305ca136b and pushed."
+}

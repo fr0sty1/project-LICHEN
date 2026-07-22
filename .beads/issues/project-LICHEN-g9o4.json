@@ -2,11 +2,16 @@
   "id": "project-LICHEN-g9o4",
   "title": "coap_keys.c: no mutual exclusion between encode and store operations",
   "description": "File: lichen/subsys/lichen/coap/coap_keys.c\nLines: 629-684\n\nThe encode_keys_list_cbor function reads from the key store without holding s_mutex:\n```c\nstatic size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)\n{\n    size_t count = lichen_key_store_count();  // Acquires/releases mutex\n    ...\n    size_t n = lichen_key_store_list(entries, ...);  // Acquires/releases mutex\n    ...\n}\n```\n\nBetween count() and list(), another thread could add/remove keys, causing:\n1. count != n (array header has wrong size)\n2. Iterator inconsistency\n\nShould hold mutex for the entire operation or use a snapshot approach.\n\nCategory: CONCURRENCY - race condition",
-  "status": "open",
+  "notes": "Commit: 0afcda8b7 - resolved merge conflict in base64_encode (safety bounds checks); encode_keys_list_cbor now uses clean snapshot via lichen_key_store_list under mutex (addresses described race condition between count/list)",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:44:15.885623Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:44:15.885653Z"
+  "updated_at": "2026-07-22T23:40:52.383998343Z",
+  "started_at": "2026-07-22T23:38:49.775674105Z",
+  "closed_at": "2026-07-22T23:40:26.019802983Z",
+  "close_reason": "Closed"
 }

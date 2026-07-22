@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-w3vp",
+  "title": "[merge-conflict] integration/worker14-20260722: Kconfig",
+  "notes": "Commit: e0559c474",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T23:38:23.876288702Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T23:40:50.057243173Z",
+  "started_at": "2026-07-22T23:39:42.952587875Z",
+  "closed_at": "2026-07-22T23:40:50.057243173Z",
+  "close_reason": "Closed"
+}

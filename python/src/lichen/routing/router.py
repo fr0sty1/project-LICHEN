@@ -348,6 +348,15 @@ class Router:
     - loadng: LOADng router for discovery
     - pending_queue: Packets waiting for discovery
     - mesh_prefixes: Which prefixes are "in the mesh"
+    - forwarding_buffer, dtn_buffer: DTN and relay buffers
+
+    **Thread safety (project-LICHEN-ccjp):** NOT thread-safe. Methods like
+    expire_pending(), dtn_buffer_message(), dtn_retrieve_for(), and
+    forwarding_buffer operations mutate shared state (pending_queue,
+    dtn_buffer, _dtn_buffer_bytes, neighbor structures) without locks.
+    Races can corrupt counters or lose packets in concurrent calls.
+    Intended for single-threaded use (asyncio event loop). See
+    ForwardingBuffer for details. External locking required for multi-thread.
 
     Attributes:
         node_address: This node's IPv6 address.

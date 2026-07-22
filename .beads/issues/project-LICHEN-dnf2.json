@@ -2,11 +2,16 @@
   "id": "project-LICHEN-dnf2",
   "title": "TxQueue.peek() does not expire stale packets unlike pop()",
   "description": "File: python/src/lichen/link/tx_queue.py:297-309\n\nThe peek() method does not call expire_stale():\n\n    def peek(self) -\u003e tuple[bytes, Priority] | None:\n        '''...Does NOT expire stale packets (use expire_stale() explicitly\n        if needed before peek).'''\n        if not self._entries:\n            return None\n        entry = self._entries[0]\n        return (entry.data, entry.priority)\n\nThis is documented behavior, but creates an inconsistency: peek() can return a packet that pop() would have expired. Callers may make decisions based on stale data.\n\nIf caller peeks, sees a packet, then another task calls pop() which expires it, the original caller's view is inconsistent.\n\nConsider: Either document this prominently or have peek() also expire stale entries for consistency with pop().",
-  "status": "open",
+  "notes": "Commit: 90b9d392d",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:23:09.429175Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:23:09.429208Z"
+  "updated_at": "2026-07-22T23:43:44.22214447Z",
+  "started_at": "2026-07-22T23:41:53.041221982Z",
+  "closed_at": "2026-07-22T23:43:22.798954889Z",
+  "close_reason": "peek now calls expire_stale() for consistency with pop(); updated docstring"
 }

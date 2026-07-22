@@ -2,11 +2,16 @@
   "id": "project-LICHEN-rthp",
   "title": "Race between close() and active operations can cause BrokenResourceError",
   "description": "**File:** python/src/lichen/radio/sim_client.py\n**Lines:** 292-296, 338-342\n\n**Issue:** The close() method does not coordinate with active operations:\n\n```python\nasync def close(self) -\u003e None:\n    if self._stream is not None:\n        await self._stream.aclose()  # Closes stream\n        self._stream = None\n```\n\nMeanwhile, operations like transmit() may be mid-flight:\n```python\nasync with self._lock:\n    await self._send(msg)      # Using the stream\n    response = await self._recv()  # Waiting on the stream\n```\n\n**Race scenario:**\n1. Task A: In transmit(), holding `_lock`, awaiting `_recv()`\n2. Task B: Calls close() (no lock required)\n3. Task B: Calls `self._stream.aclose()`\n4. Task A: `_recv()` fails with BrokenResourceError\n5. Task A: Sets `self._stream = None` in error handler\n6. Task B: Tries to set `self._stream = None` again (already None, benign)\n\n**Impact:** Operations in progress get unexpected BrokenResourceError instead of a clean shutdown. While the error is caught and re-raised as SimRadioError, the behavior is racy and hard to reason about.\n\n**Note:** This is related to but distinct from the other race conditions - this one affects operations that are already holding the lock.\n\n**Possible fix:** close() should acquire `_lock` before closing to ensure no operations are in progress, or use a cancellation scope to cleanly abort waiting operations.",
-  "status": "open",
+  "notes": "Commit: a13ec1b16",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:22:56.031006Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:22:56.03104Z"
+  "updated_at": "2026-07-22T23:40:04.722827049Z",
+  "started_at": "2026-07-22T23:38:52.125873335Z",
+  "closed_at": "2026-07-22T23:40:04.722827049Z",
+  "close_reason": "Fixed race condition by making close() acquire the _lock"
 }

@@ -84,6 +84,8 @@ def _validate_field_type(name: str, value: object) -> None:
             raise ValueError(
                 f"SenML field '{name}' must be an integer, got {type(value).__name__}"
             )
+        if name == "bver" and not (1 <= value <= 10):
+            raise ValueError(f"SenML bver must be in range [1, 10], got {value}")
     elif expected == "bool":
         if not isinstance(value, bool):
             raise ValueError(
@@ -106,7 +108,7 @@ class SenmlRecord:
     * ``bu``   — base unit
     * ``bv``   — base value
     * ``bs``   — base sum
-    * ``bver`` — base version (must be 10 per RFC 8428 §4.4)
+    * ``bver`` — base version (integer [1,10] per RFC 8428 §4.4; > current version rejected)
 
     Per-record fields:
 

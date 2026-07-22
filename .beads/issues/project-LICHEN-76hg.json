@@ -2,11 +2,16 @@
   "id": "project-LICHEN-76hg",
   "title": "edhoc: Broad exception handling in signature verification may leak timing info",
   "description": "File: python/src/lichen/crypto/edhoc.py\nLines: 360-363, 634-638\n\nThe signature verification uses broad exception handling:\n\n```python\ntry:\n    verify_key.verify(m_2, signature_2)\nexcept Exception as e:\n    raise ValueError(f'Signature verification failed: {e}') from e\n```\n\nIssues:\n\n1. **Timing leakage**: Different exception types (BadSignatureError vs other errors) may take different time to raise and catch. An attacker measuring response times could potentially distinguish between 'valid format, bad signature' vs 'malformed input'.\n\n2. **Information leakage**: The exception message is included in the ValueError, potentially revealing internal state (e.g., 'expected 64 bytes, got 63' reveals signature parsing internals).\n\n3. **Masking real bugs**: If verify_key.verify() raises an unexpected exception (e.g., TypeError due to wrong input types), it's caught and reported as 'signature verification failed' rather than surfacing the real bug.\n\nFix: Catch only nacl.exceptions.BadSignatureError (or the specific verification failure exception), let other exceptions propagate.",
-  "status": "open",
+  "notes": "Commit: 41de1b82c",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:19:24.786484Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:19:24.78651Z"
+  "updated_at": "2026-07-22T23:41:43.562597561Z",
+  "started_at": "2026-07-22T23:40:04.514940835Z",
+  "closed_at": "2026-07-22T23:41:43.562597561Z",
+  "close_reason": "Fixed broad Exception catch in signature verification to only catch BadSignatureError preventing timing and info leaks"
 }

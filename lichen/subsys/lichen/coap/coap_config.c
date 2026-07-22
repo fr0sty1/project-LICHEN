@@ -844,21 +844,21 @@ static int config_identity_get(struct coap_resource *resource,
 #if IS_ENABLED(CONFIG_LICHEN_COAP_CONFIG)
 
 static const char * const config_path[] = { "config", NULL };
-COAP_RESOURCE_DEFINE(lichen_config, lichen_coap, {
+COAP_RESOURCE_DEFINE(lichen_config, lichen_coap_server, {
 	.get  = config_get,
 	.put  = config_put,
 	.path = config_path,
 });
 
 static const char * const config_radio_path[] = { "config", "radio", NULL };
-COAP_RESOURCE_DEFINE(lichen_config_radio, lichen_coap, {
+COAP_RESOURCE_DEFINE(lichen_config_radio, lichen_coap_server, {
 	.get  = config_radio_get,
 	.put  = config_radio_put,
 	.path = config_radio_path,
 });
 
 static const char * const config_identity_path[] = { "config", "identity", NULL };
-COAP_RESOURCE_DEFINE(lichen_config_identity, lichen_coap, {
+COAP_RESOURCE_DEFINE(lichen_config_identity, lichen_coap_server, {
 	.get  = config_identity_get,
 	.path = config_identity_path,
 });

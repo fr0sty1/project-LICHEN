@@ -2,11 +2,16 @@
   "id": "project-LICHEN-y57c",
   "title": "DODAG ID comparison uses string equality, not normalized IPv6",
   "description": "File: python/src/lichen/rpl/dodag.py:137\n\nThe dodag_id comparison uses string equality, but IPv6 addresses have multiple string representations (e.g., \"::1\" vs \"0000:0000:0000:0000:0000:0000:0000:0001\").\n\nCurrent code:\n```python\nif str(dio.dodag_id) != self.dodag_id and self.is_joined():\n    return  # belongs to a different DODAG\n```\n\nWhile Python's IPv6Address.__str__() returns a canonical form, self.dodag_id is stored as a string and could have been initialized with a non-canonical form.\n\nLooking at the DodagState constructor:\n```python\ndodag_id: str  # stored as string, not IPv6Address\n```\n\nIf created with dodag_id=\"0:0:0:0:0:0:0:1\" and a DIO arrives with dodag_id=IPv6Address(\"::1\"), the comparison would fail:\n- str(dio.dodag_id) = \"::1\"\n- self.dodag_id = \"0:0:0:0:0:0:0:1\"\n- These are not equal as strings\n\nFix: Either store dodag_id as IPv6Address, or normalize on assignment:\n```python\nself.dodag_id = str(IPv6Address(dodag_id))  # normalize\n```",
-  "status": "open",
+  "notes": "Commit: b94d8cb5d",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:23:40.46142Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:23:40.461461Z"
+  "updated_at": "2026-07-22T23:43:49.658078588Z",
+  "started_at": "2026-07-22T23:40:41.757958735Z",
+  "closed_at": "2026-07-22T23:43:04.606609757Z",
+  "close_reason": "Closed"
 }

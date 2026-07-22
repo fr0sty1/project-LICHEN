@@ -197,6 +197,23 @@ config LICHEN_L2_DEV_PEER_EUI64
 	  own EUI-64 / link-local address at boot. Each peer's dev pubkey
 	  is derived from its EUI-64 (see lichen_link_derive_seed).
 
+config LICHEN_SF_ASSIGNMENT_ENABLED
+	bool "Enable per-peer SF assignment (DIO or hash(IID))"
+	depends on LICHEN_LORA_L2
+	default n
+	help
+	  Parse ASSIGNED_SF from DIO (per closed bead 6mka.2). Fall back to
+	  hash(IID) or fixed SF10. Required for multi-SF gateway support.
+
+config LICHEN_GATEWAY_MULTI_SF
+	bool "Enable multi-SF CAD scan on gateway (SF7-SF12)"
+	depends on LICHEN_LORA_L2
+	depends on LORA_LICHEN_GATEWAY_RPL_ROOT
+	default n
+	help
+	  Gateway performs CAD across SFs before RX (lr1110/lora_l2 updates).
+	  Complements SF assignment. Increases power but supports dense mesh.
+
 config LICHEN_L2_TEST_HOOKS
 	bool "LICHEN L2 ztest-only test hooks"
 	depends on LICHEN_L2

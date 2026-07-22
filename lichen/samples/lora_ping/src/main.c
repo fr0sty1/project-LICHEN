@@ -15,7 +15,6 @@
 #include <zephyr/drivers/lora.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/crc.h>
-#include <string.h>
 
 LOG_MODULE_REGISTER(lora_ping, LOG_LEVEL_DBG);
 
@@ -30,31 +29,22 @@ static struct {
 	uint32_t rx_bytes;
 	uint32_t errors;
 	uint32_t unique_hashes_seen;
-	uint32_t hash_overflows;
+	uint32_t unique_hashes_dropped;
+	/* Simple hash set (fixed size for embedded) */
 	uint32_t seen_hashes[64];
-	size_t seen_hash_count;
+	uint8_t seen_hash_count;
 } metrics;
 
-/* Compute keyed packet hash using b"LICHEN" (0x4c494348454e) as initializer.
- * Prefixes key before CRC32 to match Rust lichen_link::identity::hash_32(),
- * updated tuple_crc in link_ctx.c, and spec 02a-coordinated-capacity.md.
- * Independent oracle from Python zlib.crc32(key + data).
- */
+/* Compute packet hash using CRC32 */
 static uint32_t packet_hash(const uint8_t *data, size_t len)
 {
-	const uint8_t key[] = "LICHEN";
-	uint8_t combined[6 + 256]; /* safe upper bound for sample packets */
-	memcpy(combined, key, 6);
-	if (len > 256) {
-		len = 256;
-	}
-	memcpy(combined + 6, data, len);
-	return crc32_ieee(combined, 6 + len);
+	return crc32_ieee(data, len);
 }
 
+/* Track unique packets by hash */
 static void track_hash(uint32_t hash)
 {
-	for (size_t i = 0; i < metrics.seen_hash_count; i++) {
+	for (int i = 0; i < metrics.seen_hash_count; i++) {
 		if (metrics.seen_hashes[i] == hash) {
 			return;
 		}
@@ -63,20 +53,17 @@ static void track_hash(uint32_t hash)
 		metrics.seen_hashes[metrics.seen_hash_count++] = hash;
 		metrics.unique_hashes_seen++;
 	} else {
-		metrics.hash_overflows++;
-		if (metrics.hash_overflows == 1) {
-			LOG_WRN("hash set full, %zu unique tracked", ARRAY_SIZE(metrics.seen_hashes));
-		}
+		metrics.unique_hashes_dropped++;
 	}
 }
 
 /* Log metrics summary */
 static void log_metrics(void)
 {
-	LOG_INF("METRICS: tx=%u rx=%u tx_bytes=%u rx_bytes=%u errors=%u unique=%u overflows=%u",
+	LOG_INF("METRICS: tx=%u rx=%u tx_bytes=%u rx_bytes=%u errors=%u unique=%u dropped=%u",
 		metrics.tx_count, metrics.rx_count,
 		metrics.tx_bytes, metrics.rx_bytes,
-		metrics.errors, metrics.unique_hashes_seen, metrics.hash_overflows);
+		metrics.errors, metrics.unique_hashes_seen, metrics.unique_hashes_dropped);
 }
 
 /* Parse announce packet to extract peer IID */

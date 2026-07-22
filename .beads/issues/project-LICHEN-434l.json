@@ -2,11 +2,16 @@
   "id": "project-LICHEN-434l",
   "title": "routing.rs: neighbor table eviction tie-breaker prefers higher indices arbitrarily",
   "description": "File: rust/lichen-node/src/routing.rs:105-120\n\nThe neighbor table eviction uses max_by_key with (age, index) tuple, which on age ties prefers higher indices:\n\n```rust\nlet oldest = self\n    .entries\n    .iter()\n    .enumerate()\n    .filter_map(|(i, e)| e.as_ref().map(|n| (i, n.last_seen_ms)))\n    .max_by_key(|(i, t)| (now_ms.wrapping_sub(*t), *i))\n    .map(|(i, _)| i)\n    .unwrap_or(0);\n```\n\nImpact: Minor - when two neighbors have identical last_seen timestamps, the one at a higher array index is evicted. This is arbitrary but deterministic.\n\nFix: Consider using a more meaningful tie-breaker (e.g., worse ETX, lower RSSI) or document the behavior.",
-  "status": "open",
+  "notes": "Commit: 3dfd095c1",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:35:39.730471Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:35:39.730537Z"
+  "updated_at": "2026-07-22T23:43:35.139925349Z",
+  "started_at": "2026-07-22T23:41:55.241702802Z",
+  "closed_at": "2026-07-22T23:43:35.139925349Z",
+  "close_reason": "Closed"
 }

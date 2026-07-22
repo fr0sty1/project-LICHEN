@@ -13,8 +13,7 @@ use tracing::info;
 // TUNSETIFF ioctl number from <linux/if_tun.h>: _IOW('T', 202, int) = 0x400454CA
 const TUNSETIFF: libc::c_ulong = 0x4004_54ca;
 const IFF_TUN: libc::c_short = 0x0001;
-const IFF_NO_PI: libc::c_short = 0x1000;
-const IPV6_MIN_MTU: usize = 1280;
+const IFF_NO_PI: libc::c_short = 0x1000; // suppress 4-byte packet-info header
 
 /// Matches Linux `struct ifreq` from <linux/if.h> for ioctl ABI compatibility.
 ///
@@ -125,7 +124,7 @@ impl TunDevice {
         if buf.len() > 1500 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
-                format!("packet exceeds MTU of 1500 (IPv6 min {})", IPV6_MIN_MTU),
+                "packet exceeds MTU",
             ));
         }
         loop {
@@ -145,7 +144,10 @@ impl TunDevice {
                         format!("TUN write failed ({} bytes): {e}", buf.len()),
                     ))
                 } else if n as usize != buf.len() {
-                    Err(io::Error::other("partial TUN write"))
+                    Err(io::Error::new(
+                        io::ErrorKind::Other,
+                        "partial TUN write",
+                    ))
                 } else {
                     Ok(())
                 }
