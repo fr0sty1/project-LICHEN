@@ -2,11 +2,15 @@
   "id": "project-LICHEN-dphw",
   "title": "KISS transport: kiss_decode_init doesn't need NULL check",
   "description": "File: lichen/subsys/lichen/transport/kiss_transport.c\nLines: 76-82\n\nkiss_decode_init() checks for NULL ctx:\n\n    void kiss_decode_init(struct kiss_decode_ctx *ctx)\n    {\n        if (ctx == NULL) {\n            return;\n        }\n        memset(ctx, 0, sizeof(*ctx));\n    }\n\nThis function is called from:\n1. kiss_transport_init() line 498: kiss_decode_init(\u0026ctx-\u003erx_ctx) - ctx is \u0026s_ctx, never NULL\n2. kiss_rx_thread_fn() line 398: kiss_decode_init(\u0026ctx-\u003erx_ctx) - ctx is p1 argument, always valid\n3. kiss_transport_test_inject_rx() line 676: kiss_decode_init(\u0026ctx-\u003erx_ctx) - ctx is \u0026s_ctx\n4. kiss_transport_test_reset() line 714: kiss_decode_init(\u0026ctx-\u003erx_ctx) - ctx is \u0026s_ctx\n\nIn all cases, ctx points to a valid rx_ctx within the global s_ctx. The NULL check is dead code.\n\nThis is a minor issue but inconsistent with kiss_decode_byte() which does use its NULL check for early return with error code.\n\nFix: Remove the NULL check for consistency, or add a return value to indicate the check failed.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:56:10.37075Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:56:10.370788Z"
+  "updated_at": "2026-07-22T22:58:23.464631499Z",
+  "started_at": "2026-07-22T22:58:23.464631499Z",
+  "lease_expires_at": "2026-07-22T23:03:23.464631499Z",
+  "heartbeat_at": "2026-07-22T22:58:23.464631499Z"
 }
