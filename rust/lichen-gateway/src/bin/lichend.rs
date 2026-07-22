@@ -274,6 +274,13 @@ where
                 }
             }
         }
+        // Final drain of any pending TX frames on shutdown (prevents lost transmissions).
+        while let Ok(frame) = tx_recv.try_recv() {
+            match sim.transmit(&frame).await {
+                Ok(airtime_us) => info!(airtime_us, "TX done (shutdown drain)"),
+                Err(e) => warn!("shutdown TX failed: {e}"),
+            }
+        }
     });
 
     let mut tun_buf = vec![0u8; 1500];
