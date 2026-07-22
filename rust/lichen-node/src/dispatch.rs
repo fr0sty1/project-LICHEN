@@ -60,13 +60,17 @@ pub struct Response {
 
 impl Response {
     pub fn content(payload: &[u8]) -> Self {
+        let payload_len = payload.len().min(128);
+        if payload.len() > 128 {
+            warn!("payload truncated from {} to 128 bytes", payload.len());
+        }
         let mut resp = Self {
             code: MessageCode::CONTENT,
             content_format: Some(content_format::APPLICATION_CBOR),
             payload: [0u8; 128],
-            payload_len: payload.len().min(128),
+            payload_len,
         };
-        resp.payload[..resp.payload_len].copy_from_slice(&payload[..resp.payload_len]);
+        resp.payload[..payload_len].copy_from_slice(&payload[..payload_len]);
         resp
     }
 
