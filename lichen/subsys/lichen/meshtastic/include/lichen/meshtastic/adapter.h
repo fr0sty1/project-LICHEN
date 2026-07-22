@@ -302,9 +302,9 @@ bool lichen_meshtastic_adapter_disconnected(
  *
  * Each entry describes an unsupported operation. For entries where has_portnum
  * is true, the portnum field identifies the Meshtastic portnum that triggers
- * this operation. Callers must check has_portnum before using portnum; when
- * has_portnum is false, portnum is unset and the operation is not associated
- * with a specific portnum (e.g., config writes that come via admin commands).
+ * this operation. Callers MUST check `op->has_portnum` before reading `op->portnum`
+ * (see parse_data:794 for example). When false, portnum is invalid (e.g. admin
+ * config writes). Resolves l5ym.
  */
 size_t lichen_meshtastic_adapter_unsupported_operations(
 	const struct lichen_meshtastic_adapter_unsupported_operation *_Nullable *_Nonnull operations);
