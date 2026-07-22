@@ -23,9 +23,9 @@ use ccm::{
 };
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use hkdf::Hkdf;
+use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest, Sha256};
 use x25519_dalek::{PublicKey, StaticSecret};
-use rand_core::{CryptoRng, RngCore};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// AES-CCM for Suite 0.
@@ -232,17 +232,22 @@ impl Default for InitiatorState {
 impl EdhocInitiator {
     /// Create a new EDHOC initiator.
     ///
+    /// The ephemeral X25519 key is generated using the provided RNG for
+    /// forward secrecy. This design is idiomatic no_std: the caller supplies
+    /// a platform-appropriate CSPRNG (e.g. `&mut rand_core::OsRng` on std,
+    /// or a wrapper around `lichen_hal::Rng` / hardware TRNG on embedded).
+    ///
     /// # Arguments
-    /// * `seed` - Ed25519 seed (32 bytes)
-    /// * `c_i` - Connection identifier (1 byte)
-    /// * `rng` - &mut impl RngCore for ephemeral X25519 (no_std compatible)
+    /// * `seed` - Ed25519 seed (32 bytes) for long-term signing key
+    /// * `c_i` - Connection identifier (1 byte, typically 0-23)
+    /// * `rng` - &mut impl (RngCore + CryptoRng) for ephemeral X25519 key (no_std compatible CSPRNG ensuring forward secrecy)
     pub fn new<R: RngCore + CryptoRng>(seed: [u8; 32], c_i: u8, rng: &mut R) -> Self {
         let signing_key = SigningKey::from_bytes(&seed);
         let pubkey = signing_key.verifying_key();
 
         // Generate ephemeral X25519 key pair using provided RNG.
         // Matches hal::Rng fill_bytes pattern but uses rand_core::RngCore + CryptoRng
-        // for security (ephemeral keys must be unpredictable).
+        // for security (ephemeral keys must be unpredictable). Consumed after first use.
         let eph_secret = StaticSecret::random_from_rng(rng);
         let eph_public = PublicKey::from(&eph_secret);
 
@@ -655,6 +660,9 @@ impl Default for ResponderState {
 
 impl EdhocResponder {
     /// Create a new EDHOC responder.
+    ///
+    /// See `EdhocInitiator::new` for RNG parameter rationale (no_std
+    /// compatibility, fresh ephemerals per handshake, CSPRNG for security).
     pub fn new<R: RngCore + CryptoRng>(seed: [u8; 32], c_r: u8, rng: &mut R) -> Self {
         let signing_key = SigningKey::from_bytes(&seed);
         let pubkey = signing_key.verifying_key();
@@ -1198,6 +1206,7 @@ mod tests {
         let responder_seed = [0x22u8; 32];
         let mut rng = TestRng::new();
         let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng);
+        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rand_core::OsRng);
 
         // Build a Message 1 with SUITES_I as array [0, 2]
         // Format: METHOD_CORR (1) | SUITES_I (array) | G_X (bstr 32) | C_I
@@ -1228,6 +1237,7 @@ mod tests {
         let responder_seed = [0x22u8; 32];
         let mut rng = TestRng::new();
         let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng);
+        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rand_core::OsRng);
 
         // Build a Message 1 with SUITES_I as array [2, 0] - Suite 2 selected
         let mut msg1 = heapless::Vec::<u8, 64>::new();
@@ -1255,6 +1265,7 @@ mod tests {
         // Initiator: export_oscore before process_message_2
         let initiator_seed = [0x11u8; 32];
         let mut initiator = EdhocInitiator::new(initiator_seed, 0x00, &mut rng);
+        let mut initiator = EdhocInitiator::new(initiator_seed, 0x00, &mut rand_core::OsRng);
         let _msg1 = initiator.create_message_1().unwrap();
         // Handshake incomplete - should fail
         assert!(
@@ -1265,6 +1276,7 @@ mod tests {
         // Responder: export_oscore before process_message_3
         let responder_seed = [0x22u8; 32];
         let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng);
+        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rand_core::OsRng);
         // Even after process_message_1, handshake is incomplete
         let _msg2 = responder.process_message_1(&_msg1).unwrap();
         assert!(

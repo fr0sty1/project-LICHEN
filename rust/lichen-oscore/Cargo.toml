@@ -34,14 +34,16 @@ log = { version = "0.4", default-features = false, optional = true }
 
 [dev-dependencies]
 hex-literal = "0.4"
+rand_core = { version = "0.6", features = ["getrandom"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 [features]
 default = []
-std = []
+std = ["rand_core?/getrandom"]
 # EDHOC Suite 0 (RFC 9528) for establishing OSCORE contexts
 # Uses X25519/Ed25519 to match link-layer Schnorr48
+# rand_core/getrandom enables OsRng for std/tests; no_std users provide custom RNG impl.
 edhoc = ["dep:x25519-dalek", "dep:ed25519-dalek", "dep:rand_core"]
 # Logging: enable one or neither, not both
 defmt = ["dep:defmt", "lichen-core/defmt"]
