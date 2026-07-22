@@ -98,15 +98,12 @@ class SimRadio:
         self._position = position
         if not (1 <= port <= 65535):
             raise ValueError(f"port must be in range 1-65535, got {port}")
+        if not sim_id or not node_id or len(sim_id) > 255 or len(node_id) > 255:
+            raise ValueError("sim_id and node_id must be non-empty and <=255 chars")
         self._stream: SocketStream | None = None
         self._freq_hz: int = 915_000_000
         self._tx_power_dbm: int = 14
-        # Serializes each request/response exchange. Without it, concurrent
-        # operations could interleave their _send/_recv calls and mismatch
-        # responses to requests (or corrupt frame framing on the shared stream).
         self._lock = anyio.Lock()
-        # Serializes connect() calls to prevent leaking connections when
-        # multiple tasks call connect() concurrently.
         self._connect_lock = anyio.Lock()
 
     @property
