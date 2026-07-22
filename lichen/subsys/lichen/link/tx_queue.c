@@ -173,11 +173,16 @@ int tx_queue_init(struct tx_queue *queue)
 
 	memset(queue, 0, sizeof(*queue));
 
+	int mret;
 #ifdef __ZEPHYR__
-	k_mutex_init(&queue->lock);
+	mret = k_mutex_init(&queue->lock);
 #else
-	pthread_mutex_init(&queue->lock, NULL);
+	mret = pthread_mutex_init(&queue->lock, NULL);
 #endif
+	if (mret != 0) {
+		/* Audit/propagate pthread_mutex_init (or k_mutex_init) failure */
+		return -mret;
+	}
 
 	return 0;
 }
@@ -314,51 +319,53 @@ out:
 	return ret;
 }
 
-int tx_queue_count(const struct tx_queue *queue)
+int tx_queue_count(struct tx_queue *queue)
 {
 	if (queue == NULL) {
 		return -EINVAL;
 	}
 
+	lock_queue(queue);
 	int count = 0;
-
 	for (int i = 0; i < TX_QUEUE_SIZE; i++) {
 		if (queue->entries[i].valid) {
 			count++;
 		}
 	}
+	unlock_queue(queue);
 
 	return count;
 }
 
-bool tx_queue_empty(const struct tx_queue *queue)
+bool tx_queue_empty(struct tx_queue *queue)
 {
 	if (queue == NULL) {
 		return true;
 	}
 
+	lock_queue(queue);
+	bool is_empty = true;
 	for (int i = 0; i < TX_QUEUE_SIZE; i++) {
 		if (queue->entries[i].valid) {
-			return false;
+			is_empty = false;
+			break;
 		}
 	}
+	unlock_queue(queue);
 
-	return true;
+	return is_empty;
 }
 
-int tx_queue_stats_get(const struct tx_queue *queue,
+int tx_queue_stats_get(struct tx_queue *queue,
 		       struct tx_queue_stats *stats)
 {
 	if (queue == NULL || stats == NULL) {
 		return -EINVAL;
 	}
 
-	/*
-	 * Note: This read is not atomic with respect to concurrent writes.
-	 * For diagnostic purposes this is acceptable; for precise accounting
-	 * the caller should serialize access externally.
-	 */
+	lock_queue(queue);
 	*stats = queue->stats;
+	unlock_queue(queue);
 	return 0;
 }
 
@@ -377,4 +384,23 @@ void tx_queue_clear(struct tx_queue *queue)
 	memset(&queue->stats, 0, sizeof(queue->stats));
 
 	unlock_queue(queue);
+}
+
+int tx_queue_destroy(struct tx_queue *queue)
+{
+	if (queue == NULL) {
+		return -EINVAL;
+	}
+
+#ifdef __ZEPHYR__
+	/* Zephyr k_mutex has no destroy (re-init via init() or K_MUTEX_DEFINE) */
+	return 0;
+#else
+	int ret = pthread_mutex_destroy(&queue->lock);
+	if (ret != 0) {
+		/* Propagate pthread_mutex_destroy failure (e.g. EBUSY) */
+		return -ret;
+	}
+	return 0;
+#endif
 }

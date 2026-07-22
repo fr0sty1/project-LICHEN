@@ -178,29 +178,34 @@ int tx_queue_pop(struct tx_queue *_Nonnull queue,
 /**
  * @brief Get the number of valid (non-expired) packets in the queue.
  *
- * Does not expire packets; returns current count of valid entries.
+ * Acquires queue lock for thread-safe consistent snapshot. Does not
+ * expire packets (lazily done by push/pop/clear).
  *
- * @param[in] queue TX queue
- * @return Number of packets, or -EINVAL if queue is NULL
+ * @param[in,out] queue TX queue (non-const due to internal locking)
+ * @return Number of packets (>=0), or -EINVAL if queue is NULL
  */
-int tx_queue_count(const struct tx_queue *_Nonnull queue);
+int tx_queue_count(struct tx_queue *_Nonnull queue);
 
 /**
  * @brief Check if the queue is empty.
  *
- * @param[in] queue TX queue
- * @return true if empty, false if has packets
+ * Thread-safe via lock; returns snapshot of current valid entries.
+ *
+ * @param[in,out] queue TX queue (non-const due to internal locking)
+ * @return true if empty, false otherwise (NULL returns true)
  */
-bool tx_queue_empty(const struct tx_queue *_Nonnull queue);
+bool tx_queue_empty(struct tx_queue *_Nonnull queue);
 
 /**
  * @brief Get a copy of queue statistics.
  *
- * @param[in]  queue TX queue
+ * Thread-safe atomic copy under lock (no longer non-atomic).
+ *
+ * @param[in,out] queue TX queue (non-const due to internal locking)
  * @param[out] stats Statistics output
  * @return 0 on success, -EINVAL if args are NULL
  */
-int tx_queue_stats_get(const struct tx_queue *_Nonnull queue,
+int tx_queue_stats_get(struct tx_queue *_Nonnull queue,
 		       struct tx_queue_stats *_Nonnull stats);
 
 /**
@@ -209,6 +214,16 @@ int tx_queue_stats_get(const struct tx_queue *_Nonnull queue,
  * @param[in,out] queue TX queue
  */
 void tx_queue_clear(struct tx_queue *_Nonnull queue);
+
+/**
+ * @brief Destroy a TX queue (releases pthread mutex on POSIX).
+ *
+ * Propagates pthread_mutex_destroy failures. Zephyr path is no-op.
+ *
+ * @param[in,out] queue TX queue
+ * @return 0 on success, negative errno on mutex destroy failure
+ */
+int tx_queue_destroy(struct tx_queue *_Nonnull queue);
 
 #ifdef __cplusplus
 }

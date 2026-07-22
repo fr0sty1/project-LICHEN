@@ -1077,6 +1077,16 @@ int lichen_lora_l2_deinit(void)
 #endif
 
     /*
+     * Destroy TX queue (audits and propagates pthread_mutex_destroy failures;
+     * Zephyr no-op). Done before final state transition.
+     */
+    int qret = tx_queue_destroy(&tx_queue);
+    if (qret < 0) {
+        LOG_ERR("lora_l2: tx_queue_destroy failed (%d) - module may be unstable",
+                qret);
+    }
+
+    /*
      * Final transition to UNINIT - module ready for re-initialization.
      * Use atomic CAS to ensure no state race: while DEINITING can only
      * transition to UNINIT, using lora_transition_from() guarantees the
@@ -1377,9 +1387,8 @@ int lichen_lora_l2_queue_stats_get(struct tx_queue_stats *stats)
     }
 
     /*
-     * tx_queue_stats_get() is documented as non-atomic for diagnostic
-     * purposes. We don't hold tx_buf_mutex here because queue stats
-     * reads don't need to be strictly synchronized with TX operations.
+     * tx_queue_stats_get() now acquires internal lock for atomic snapshot.
+     * No tx_buf_mutex needed: queue lock serializes with TX path.
      */
     return tx_queue_stats_get(&tx_queue, stats);
 }
