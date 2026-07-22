@@ -206,11 +206,11 @@ class AnnounceScheduler:
         if self._running:
             raise RuntimeError("scheduler already running")
 
-        self._running = True
         self._task = asyncio.create_task(
             self._loop(),
             name=f"announce-{self.identity.iid.hex()[:8]}",
         )
+        self._running = True
         logger.info("announce scheduler started")
 
     async def stop(self) -> None:
