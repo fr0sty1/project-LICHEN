@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-z6vb",
+  "title": "codereview-pass2: coap_dtn.c stub uses wrong function names, violates C naming (lichen_ prefix)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:12:27.600847321Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:12:27.600847321Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-z6vb",
+      "depends_on_id": "project-LICHEN-0n1r",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:12:27.69689411Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
