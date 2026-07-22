@@ -2,12 +2,16 @@
   "id": "project-LICHEN-iqp8",
   "title": "codereview-pass3-chunk2-hash-call",
   "description": "Pass 2/3: verified pseudocode still produces deterministic slots; cross-ref to 02-physical-link.md:199 and 06-security.md:481. Clean convergence.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T16:47:13.596803911Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:47:13.596803911Z",
+  "updated_at": "2026-07-22T16:50:40.610499584Z",
+  "started_at": "2026-07-22T16:50:40.610499584Z",
+  "lease_expires_at": "2026-07-22T16:55:40.610499584Z",
+  "heartbeat_at": "2026-07-22T16:50:40.610499584Z",
   "labels": [
     "codereview"
   ]
