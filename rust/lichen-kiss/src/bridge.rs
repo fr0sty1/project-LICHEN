@@ -16,11 +16,10 @@ use lichen_link::seqnum::LinkSeqNum;
 
 use crate::framing::{kiss_decode, kiss_encode, kiss_unescape, KissCommand, KissError, FEND};
 
-/// KISS port for AX.25-wrapped frames (legacy TNC apps).
 pub const PORT_AX25: u8 = 0;
-
-/// KISS port for raw LICHEN payload.
 pub const PORT_RAW: u8 = 1;
+pub const PORT_LCI_IPV6: u8 = 2;
+pub const PORT_LCI_CTRL: u8 = 3;
 
 /// Maximum payload size for bridge operations.
 pub const MAX_PAYLOAD: usize = 256;
@@ -284,7 +283,7 @@ impl KissBridge {
     ) -> Result<LichenFrame<'a>, BridgeError> {
         let decoded = self.decode_kiss_frame(kiss_frame, work_buf)?;
 
-        if decoded.port != PORT_RAW {
+        if decoded.port == PORT_AX25 {
             return Err(BridgeError::UnsupportedPort(decoded.port));
         }
 
