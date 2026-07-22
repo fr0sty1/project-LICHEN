@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-g5um",
+  "title": "Test and validation for RAK2287 gateway",
+  "description": "Add integration tests, Renode simulation if possible, interop with node-side LICHEN, packet capture validation. Update CI for gateway board.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:31:52.068751011Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T21:31:52.068751011Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-g5um",
+      "depends_on_id": "project-LICHEN-253m",
+      "type": "parent-child",
+      "created_at": "2026-07-22T21:31:52.18319122Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
