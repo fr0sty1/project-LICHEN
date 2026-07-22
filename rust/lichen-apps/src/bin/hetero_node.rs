@@ -13,9 +13,9 @@ use std::collections::HashSet;
 use std::env;
 use std::time::{Duration, Instant};
 
+use lichen_client::status::{Metrics, Telemetry};
 use sha2::{Digest, Sha256};
 
-/// Metrics collected during node operation.
 struct NodeMetrics {
     tx_count: u32,
     rx_count: u32,
@@ -23,8 +23,8 @@ struct NodeMetrics {
     rx_bytes: u64,
     unique_peers: HashSet<[u8; 8]>,
     errors: Vec<String>,
-    packet_hashes_sent: HashSet<[u8; 16]>,
-    packet_hashes_received: HashSet<[u8; 16]>,
+    packet_hashes_sent: HashSet<String>,
+    packet_hashes_received: HashSet<String>,
 }
 
 impl NodeMetrics {
@@ -120,27 +120,28 @@ fn main() {
                 peer_id: Option<String>,
                 rssi: Option<i32>,
                 snr: Option<i32>| {
-        let h_bytes = packet_hash(payload);
-        let h = hex::encode(h_bytes);
-        println!(
-            "TELEMETRY {}",
-            serde_json::json!({
-                "schema": "lichen.telemetry.v1",
-                "event": event,
-                "ts_us": ts_us,
-                "node_id": format!("rust-{}", node_id),
-                "impl": "rust",
-                "tx_id": h.clone(),
-                "packet_hash": h,
-                "direction": if event.starts_with("tx") { "tx" } else { "rx" },
-                "peer_id": peer_id,
-                "payload_len": payload.len(),
-                "rssi_dbm": rssi,
-                "snr_db": snr,
-                "seq": seq,
-                "status": status,
-            })
-        );
+        let hash = format!("{:x}", Sha256::digest(payload));
+        let telemetry = Telemetry {
+            schema: "lichen.telemetry.v1".to_string(),
+            event: event.to_string(),
+            ts_us,
+            node_id: format!("rust-{}", node_id),
+            r#impl: "rust".to_string(),
+            tx_id: hash[..16].to_string(),
+            packet_hash: hash[..16].to_string(),
+            direction: if event.starts_with("tx") {
+                "tx".to_string()
+            } else {
+                "rx".to_string()
+            },
+            peer_id,
+            payload_len: payload.len(),
+            rssi_dbm: rssi,
+            snr_db_x10: snr.map(|s| s * 10),
+            seq,
+            status: status.to_string(),
+        };
+        println!("TELEMETRY {}", serde_json::to_string(&telemetry).unwrap());
     };
 
     // Main loop
@@ -162,7 +163,8 @@ fn main() {
             Ok(()) => {
                 metrics.tx_count += 1;
                 metrics.tx_bytes += announce.len() as u64;
-                metrics.record_hash_sent(packet_hash(&announce));
+                let hash = format!("{:x}", Sha256::digest(&announce));
+                metrics.packet_hashes_sent.insert(hash[..16].to_string());
                 emit(
                     "tx",
                     &announce,
@@ -189,7 +191,11 @@ fn main() {
                 Ok(Some(pkt)) => {
                     metrics.rx_count += 1;
                     metrics.rx_bytes += pkt.len as u64;
-                    metrics.record_hash_received(packet_hash(&buf[..pkt.len]));
+
+                    let hash = format!("{:x}", Sha256::digest(&buf[..pkt.len]));
+                    metrics
+                        .packet_hashes_received
+                        .insert(hash[..16].to_string());
                     let peer_id = if pkt.len > 12 && buf[0] == 0x15 && buf[1] == 0x01 {
                         Some(buf[5..13].iter().map(|b| format!("{b:02x}")).collect())
                     } else {
@@ -247,20 +253,16 @@ fn main() {
         node_id, metrics.tx_count, metrics.rx_count
     );
 
-    let mut sent: Vec<String> = metrics.packet_hashes_sent.into_iter().map(hex::encode).collect();
-    sent.sort_unstable();
-    let mut received: Vec<String> = metrics.packet_hashes_received.into_iter().map(hex::encode).collect();
-    received.sort_unstable();
-    let metrics_json = serde_json::json!({
-        "node_id": node_id,
-        "tx_count": metrics.tx_count,
-        "rx_count": metrics.rx_count,
-        "tx_bytes": metrics.tx_bytes,
-        "rx_bytes": metrics.rx_bytes,
-        "unique_peers": metrics.unique_peers.len(),
-        "errors": metrics.errors.len(),
-        "packet_hashes_sent": sent,
-        "packet_hashes_received": received,
-    });
-    println!("METRICS:{}", serde_json::to_string(&metrics_json).unwrap());
+    let metrics_out = Metrics {
+        node_id,
+        tx_count: metrics.tx_count,
+        rx_count: metrics.rx_count,
+        tx_bytes: metrics.tx_bytes,
+        rx_bytes: metrics.rx_bytes,
+        unique_peers: metrics.unique_peers.len(),
+        errors: metrics.errors.len(),
+        hashes_sent: metrics.packet_hashes_sent.len(),
+        hashes_received: metrics.packet_hashes_received.len(),
+    };
+    println!("METRICS:{}", serde_json::to_string(&metrics_out).unwrap());
 }

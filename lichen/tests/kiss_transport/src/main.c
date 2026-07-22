@@ -46,43 +46,13 @@ static void raw_rx_cb(const uint8_t *data, size_t len, void *user_ctx)
 	}
 }
 
-static void lci_ipv6_rx_cb(const uint8_t *data, size_t len, void *user_ctx)
-{
-	ARG_UNUSED(user_ctx);
-	lci_ipv6_rx_count++;
-	if (len <= sizeof(last_lci_ipv6_data)) {
-		memcpy(last_lci_ipv6_data, data, len);
-		last_lci_ipv6_len = len;
-	}
-}
-
-static void lci_ctrl_rx_cb(const uint8_t *data, size_t len, void *user_ctx)
-{
-	ARG_UNUSED(user_ctx);
-	lci_ctrl_rx_count++;
-	if (len <= sizeof(last_lci_ctrl_data)) {
-		memcpy(last_lci_ctrl_data, data, len);
-		last_lci_ctrl_len = len;
-	}
-}
-
-/**
- * @brief Returns a complete test configuration including all LCI callbacks.
- *
- * Used by rx and cmd tests to ensure consistent init (avoids "config lacks LCI cbs"
- * codereview findings). hw_cmd_cb left NULL as optional.
- */
-static struct kiss_transport_config test_config(void)
-{
-	struct kiss_transport_config config = {
+static struct kiss_transport_config get_test_config(void) {
+	struct kiss_transport_config c = {
 		.ax25_rx_cb = ax25_rx_cb,
 		.raw_rx_cb = raw_rx_cb,
-		.lci_ipv6_cb = lci_ipv6_rx_cb,
-		.lci_ctrl_cb = lci_ctrl_rx_cb,
-		.hw_cmd_cb = NULL,
 		.user_ctx = NULL,
 	};
-	return config;
+	return c;
 }
 
 static void reset_test_state(void *fixture)
@@ -435,7 +405,8 @@ ZTEST(kiss_transport, test_set_params_null)
  */
 ZTEST(kiss_transport, test_rx_ax25)
 {
-	struct kiss_transport_config config = test_config();
+	/* Initialize transport first */
+	struct kiss_transport_config config = get_test_config();
 	int ret = kiss_transport_init(&config);
 	zassert_true(ret == 0 || ret == -EALREADY, "Init should succeed or already be done");
 
@@ -455,7 +426,8 @@ ZTEST(kiss_transport, test_rx_ax25)
  */
 ZTEST(kiss_transport, test_rx_raw)
 {
-	struct kiss_transport_config config = test_config();
+	/* Initialize transport first */
+	struct kiss_transport_config config = get_test_config();
 	int ret = kiss_transport_init(&config);
 	zassert_ok(ret);
 
@@ -476,7 +448,7 @@ ZTEST(kiss_transport, test_rx_raw)
  */
 ZTEST(kiss_transport, test_cmd_txdelay)
 {
-	struct kiss_transport_config config = test_config();
+	struct kiss_transport_config config = get_test_config();
 	int ret = kiss_transport_init(&config);
 	zassert_ok(ret);
 
@@ -496,7 +468,7 @@ ZTEST(kiss_transport, test_cmd_txdelay)
  */
 ZTEST(kiss_transport, test_cmd_persistence)
 {
-	struct kiss_transport_config config = test_config();
+	struct kiss_transport_config config = get_test_config();
 	int ret = kiss_transport_init(&config);
 	zassert_true(ret == 0 || ret == -EALREADY,
 		     "Init should succeed or already be done");
@@ -522,7 +494,7 @@ ZTEST(kiss_transport, test_cmd_persistence)
  */
 ZTEST(kiss_transport, test_cmd_slottime)
 {
-	struct kiss_transport_config config = test_config();
+	struct kiss_transport_config config = get_test_config();
 	int ret = kiss_transport_init(&config);
 	zassert_true(ret == 0 || ret == -EALREADY,
 		     "Init should succeed or already be done");

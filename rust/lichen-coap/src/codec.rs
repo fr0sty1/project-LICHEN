@@ -45,6 +45,7 @@ pub enum CoapError {
     BlockOutOfOrder,
     /// Option number overflow (cumulative delta exceeds u16::MAX).
     OptionNumberOverflow,
+    InvalidPayloadMarker,
 }
 
 impl core::fmt::Display for CoapError {
@@ -61,6 +62,7 @@ impl core::fmt::Display for CoapError {
             Self::PayloadTooLarge => write!(f, "payload exceeds maximum size"),
             Self::BlockOutOfOrder => write!(f, "block received out of order"),
             Self::OptionNumberOverflow => write!(f, "option number overflow"),
+            Self::InvalidPayloadMarker => write!(f, "invalid payload marker"),
         }
     }
 }
@@ -70,6 +72,7 @@ impl core::error::Error for CoapError {
         match self {
             Self::TooShort(e) => Some(e),
             Self::BufferTooSmall(e) => Some(e),
+            Self::InvalidPayloadMarker => None,
             _ => None,
         }
     }
@@ -87,7 +90,7 @@ impl From<BufferTooSmall> for CoapError {
     }
 }
 
-/// A parsed CoAP message (zero-copy).
+/// A parsed CoAP message (zero-copy, rejects 0xFF at end per RFC 7252).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CoapPacket<'a> {
     /// Raw message bytes.
@@ -122,10 +125,15 @@ impl<'a> CoapPacket<'a> {
             return Err(TooShort::new(options_start, data.len()).into());
         }
 
-        // Find payload marker
         let (options_end, payload_start) = match find_payload_marker(&data[options_start..])? {
-            Some(off) => (options_start + off, options_start + off + 1), // off is at 0xFF, +1 to skip
-            None => (data.len(), data.len()),                            // no marker, no payload
+            Some(off) => {
+                let ps = options_start + off + 1;
+                if ps == data.len() {
+                    return Err(CoapError::InvalidPayloadMarker);
+                }
+                (options_start + off, ps)
+            }
+            None => (data.len(), data.len()),
         };
 
         Ok(Self {
@@ -760,6 +768,14 @@ mod tests {
             CoapPacket::from_bytes(&[0x40, 0x01]),
             Err(CoapError::TooShort(_))
         ));
+    }
+
+    #[test]
+    fn invalid_payload_marker() {
+        assert_eq!(
+            CoapPacket::from_bytes(&[0x40, 0x01, 0x00, 0x01, 0xFF]),
+            Err(CoapError::InvalidPayloadMarker)
+        );
     }
 
     #[test]

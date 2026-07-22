@@ -25,6 +25,7 @@ from nacl.bindings import crypto_scalarmult_base
 from .schnorr48 import derive_keypair
 
 
+
 @dataclass
 class Identity:
     """A node's cryptographic identity.
@@ -139,27 +140,6 @@ def _pubkey_to_iid(pubkey: bytes) -> bytes:
     iid = bytearray(digest[:8])
     iid[0] &= 0b1111_1101  # clear U/L bit
     return bytes(iid)
-
-
-def yggdrasil_addr_from_pubkey(pubkey: bytes) -> bytes:
-    """Derive 16-byte Yggdrasil address bytes from Ed25519 pubkey (spec 8.6).
-
-    Matches Rust `lichen_link::identity::yggdrasil_addr_from_pubkey` and
-    test/vectors/yggdrasil.json exactly:
-    - addr[0] = 0x02 (for 0200::/7)
-    - addr[1:8] = SHA-512(pubkey)[0:7]
-    - addr[8:16] = IID (ensures cryptographic binding)
-    """
-    if len(pubkey) != 32:
-        raise ValueError(f"pubkey must be 32 bytes, got {len(pubkey)}")
-
-    hash512 = sha512(pubkey).digest()
-    iid = _pubkey_to_iid(pubkey)
-    addr = bytearray(16)
-    addr[0] = 0x02
-    addr[1:8] = hash512[:7]
-    addr[8:16] = iid
-    return bytes(addr)
 
 
 @dataclass(frozen=True)

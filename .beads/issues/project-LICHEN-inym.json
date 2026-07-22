@@ -2,13 +2,15 @@
   "id": "project-LICHEN-inym",
   "title": "Density-aware startup delay to prevent boot storms",
   "description": "## Problem\n\nAt high-density events (DEFCON, HOPE, HAMfest), mass node power-on causes a startup storm that saturates the channel before Trickle suppression converges.\n\nCurrent state:\n- Initial announce delay: random 1-30 sec (not density-aware)\n- DIS rate limit: 1 per 10 sec\n- No listen-before-talk with density detection\n\nAt 300 nodes arriving over 30 minutes, all clear their delays within the first minute → 10+ announces/sec → collision storm.\n\n## Solution\n\nAdd density-aware startup delay:\n\n1. **Listen-first period**: 30-60 sec of RX-only before any TX\n2. **Density detection**: Count unique nodes heard during listen period\n3. **Scaled initial delay**: `delay = min(300, nodes_heard * 5)` seconds\n4. **Apply to all TX**: Announces, DIO, DIS\n\n## Acceptance criteria\n\n- Spec section defines density-aware startup normatively\n- Python sim models the behavior\n- Python node implements listen-first + scaled delay\n- Rust node implements same\n- Zephyr firmware implements same\n- Scale test shows reduced collision rate at 100+ node startup",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-16T16:52:39.034485Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-16T16:52:39.034485Z",
+  "updated_at": "2026-07-22T14:17:01.452610647Z",
+  "closed_at": "2026-07-22T14:17:01.452610647Z",
+  "close_reason": "Density-aware startup delay fully implemented across Python/Rust/C, schedulers/tests/sim updated per spec 14.7, boot storm prevented at scale",
   "labels": [
     "protocol",
     "scalability"

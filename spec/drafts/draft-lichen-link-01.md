@@ -45,7 +45,7 @@ overhead minimal for the common case of authenticated unicast.
   - **Small overhead:** 5 bytes minimum header + optional address + optional MIC.
 - **Replay-safe:** Epoch + sequence number support a sliding-window replay filter.
 - **Flexible addressing:** Broadcast, 16-bit short, EUI-64, or address-elided modes.
-- **Authentication optional:** Unsigned frames are valid for bootstrap/discovery.
+- **Authentication required for RPL:** All RPL control frames (DIO/DAO via dispatch 0x15 or SCHC rule 3/4) MUST set S=1 (link-layer Schnorr signature present). Unsigned permitted only for pure bootstrap/discovery not affecting routing state.
   - **Encryption unsupported:** Frames with encrypted payloads are not part of
     the current interoperable profile.
 

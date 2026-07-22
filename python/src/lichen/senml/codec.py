@@ -169,16 +169,15 @@ class SenmlRecord:
     t: float | None = None
     ut: float | None = None
 
-    def __post_init__(self) -> None:
-        """Validate all fields on construction per RFC 8428.
-
-        Centralizes type and value-field checks. Called automatically by dataclass.
-        """
-        for f in fields(self):
-            val = getattr(self, f.name)
-            if val is not None:
-                _validate_field_type(f.name, val)
-        _validate_value_fields(self)
+    def __post_init__(self):
+        """Enforce RFC 8428 §4.5: at most one value field (v/vs/vb/vd) per record."""
+        value_fields = sum(
+            1 for f in (self.v, self.vs, self.vb, self.vd) if f is not None
+        )
+        if value_fields > 1:
+            raise ValueError(
+                "SenML record must have at most one value field (v, vs, vb, or vd) per RFC 8428 §4.5"
+            )
 
     def to_cbor_map(self) -> dict[int, Any]:
         """Serialise to a dict with numeric CBOR keys (omits None fields)."""

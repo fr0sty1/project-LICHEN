@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-8m8p.2",
+  "title": "Update C SCHC fragmentation (schc_fragmenter) to bound application chunks by full SCHC packet (1281 bytes)",
+  "description": "Add bound check in schc_fragmenter_init for packet_len \u003c= 1281. Update tests. Refs project-LICHEN-8m8p",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T14:33:02.643487841Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:34:58.077167926Z",
+  "closed_at": "2026-07-22T14:34:58.077167926Z",
+  "close_reason": "Bounded SCHC datagram size to 1281 bytes in FragmentSender (Rust/Python) and schc_fragmenter_init (C). Updated constants, added validation, extended tests. Cargo test, clippy, ruff, Python pytest all pass. Vectors covered by roundtrip tests.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-8m8p.2",
+      "depends_on_id": "project-LICHEN-8m8p",
+      "type": "parent-child",
+      "created_at": "2026-07-22T14:33:02.729847392Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -90,17 +90,7 @@ struct lichen_meshtastic_adapter_packet_info {
 	uint32_t portnum;
 	uint8_t to_eui64[8];
 	uint8_t to_iid[8];
-	/*
-	 * payload points into payload_buf (part of this struct) when set.
-	 * The buffer and pointer are valid for the lifetime of the
-	 * packet_info (i.e. for the duration of the handle_*() callback
-	 * ONLY). Storing the pointer, queuing it across threads, or using
-	 * it after the callback returns will read from reused stream_buf
-	 * and see corrupted data on the next frame. Callers MUST copy
-	 * payload if retention beyond callback is needed. This fixes the
-	 * pointer-escape exposure (project-LICHEN-4b40 and codereview
-	 * beads w0or/bex2/2guf).
-	 */
+	uint8_t payload_buf[LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX];
 	const uint8_t *payload;
 	size_t payload_len;
 	uint8_t payload_buf[LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX];
@@ -320,9 +310,9 @@ bool lichen_meshtastic_adapter_disconnected(
  *
  * Each entry describes an unsupported operation. For entries where has_portnum
  * is true, the portnum field identifies the Meshtastic portnum that triggers
- * this operation. Callers must check has_portnum before using portnum; when
- * has_portnum is false, portnum is unset and the operation is not associated
- * with a specific portnum (e.g., config writes that come via admin commands).
+ * this operation. Callers MUST check `op->has_portnum` before reading `op->portnum`
+ * (see parse_data:794 for example). When false, portnum is invalid (e.g. admin
+ * config writes). Resolves l5ym.
  */
 size_t lichen_meshtastic_adapter_unsupported_operations(
 	const struct lichen_meshtastic_adapter_unsupported_operation *_Nullable *_Nonnull operations);

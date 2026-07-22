@@ -540,7 +540,50 @@ static int slip_iface_send(const struct device *dev, struct net_pkt *pkt)
 		return ret;
 	}
 
-	ret = slip_perform_tx(ctx, pkt_buf, pkt_len);
+	ret = validate_ipv6_packet(pkt_buf, pkt_len);
+	if (ret < 0) {
+		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
+		ctx->stats.tx_errors++;
+		k_mutex_unlock(&ctx->stats_mutex);
+		k_mutex_unlock(&ctx->tx_mutex);
+		return ret;
+	}
+	/* TX validation ensures only valid IPv6 (version, length, etc.)
+	 * reaches SLIP encode per bead shnr. Matches RX path. */
+
+	/* Encode with SLIP framing */
+	ret = slip_encode(pkt_buf, pkt_len, ctx->tx_frame, sizeof(ctx->tx_frame),
+			  &frame_len);
+	if (ret < 0) {
+		LOG_WRN("SLIP TX: encode failed: %d", ret);
+		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
+		ctx->stats.tx_errors++;
+		k_mutex_unlock(&ctx->stats_mutex);
+		k_mutex_unlock(&ctx->tx_mutex);
+		return ret;
+	}
+
+#ifdef CONFIG_ZTEST
+	memcpy(ctx->last_tx, ctx->tx_frame, frame_len);
+	ctx->last_tx_len = frame_len;
+#endif
+
+	/* Transmit over UART */
+	if (ctx->uart_dev != NULL) {
+		for (size_t i = 0; i < frame_len; i++) {
+			uart_poll_out(ctx->uart_dev, ctx->tx_frame[i]);
+		}
+		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
+		ctx->stats.tx_packets++;
+		ctx->stats.tx_bytes += (uint32_t)pkt_len;
+		k_mutex_unlock(&ctx->stats_mutex);
+	} else {
+		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
+		ctx->stats.tx_errors++;
+		k_mutex_unlock(&ctx->stats_mutex);
+		ret = -ENODEV;
+	}
+
 	k_mutex_unlock(&ctx->tx_mutex);
 
 	LOG_DBG("SLIP TX: %zu bytes IPv6", pkt_len);
@@ -589,6 +632,11 @@ int slip_transport_send(const uint8_t *ipv6, size_t len)
 
 	if (len > SLIP_LCI_MTU) {
 		return -EMSGSIZE;
+	}
+
+	ret = validate_ipv6_packet(ipv6, len);
+	if (ret < 0) {
+		return ret;
 	}
 
 	k_mutex_lock(&ctx->tx_mutex, K_FOREVER);

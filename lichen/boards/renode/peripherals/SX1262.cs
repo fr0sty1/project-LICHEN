@@ -210,12 +210,12 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     break;
 
                 case State.GetStatus:
-                    // Return status: bits [6:4]=mode (0x2=STDBY_RC, 0x5=RX), bits [3:1]=cmd_status=0x2 (OK).
-                    // Uses lock(stateLock) for consistent rxMode read to support one-shot PollRx/SetRx.
                     lock (stateLock)
                     {
-                        byte mode = rxMode ? (byte)0x5 : (byte)0x2;
-                        result = (byte)((mode << 4) | 0x2);
+                        if (rxMode)
+                            result = 0x52;
+                        else
+                            result = 0x62;
                     }
                     break;
 

@@ -56,10 +56,12 @@ def _children_of(parents: Topology) -> dict[str | None, list[str]]:
 def _roots(parents: Topology) -> list[str]:
     """Nodes with no parent, or whose parent is outside the topology."""
     return sorted(
-        node
-        for node, parent in parents.items()
-        if parent is None or parent not in parents
+        node for node, parent in parents.items() if parent is None or parent not in parents
     )
+
+
+def _escape_dot(s: str) -> str:
+    return s.replace("\\", "\\\\").replace('"', '\\"')
 
 
 def to_dot(
@@ -75,11 +77,12 @@ def to_dot(
         escaped = _escape_dot(node)
         label = escaped
         if ranks is not None and node in ranks:
-            label = f"{label}\\nrank={ranks[node]}"
+            label = f"{node}\\nrank={ranks[node]}"
+        label = _escape_dot(label)
         attrs = f'label="{label}"'
         if parents[node] is None:
             attrs += ", shape=doublecircle"
-        lines.append(f'  "{escaped}" [{attrs}];')
+        lines.append(f'  "{_escape_dot(node)}" [{attrs}];')
     for node in sorted(parents):
         parent = parents[node]
         if parent is not None:

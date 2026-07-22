@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-zrew",
+  "title": "Complete SCHC Rules 5=OSCORE link-local and 6=global per project-LICHEN-vsiw",
+  "description": "Normative definitions, full field descriptors (TV/MO/CDA), residue examples in spec/appendix-schc.md and draft-lichen-schc-lora-00.md. Add/update test vectors in test/vectors/schc_compression.json and related. Update lichen-schc Rust, Python, C implementations only for these rules. Update rule versioning. Run full vector validation, interop tests, quality gates. Close bead at end. Strictly lane: only these files and this bead. No Worker 2 changes.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T05:15:46.685556726Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T05:17:20.057253485Z",
+  "started_at": "2026-07-22T05:15:47.977654037Z",
+  "closed_at": "2026-07-22T05:17:20.057253485Z",
+  "close_reason": "Completed normative SCHC Rules 5 (OSCORE link-local) and 6 (global) with full TV/MO/CDA tables, residue examples, updated specs, test vectors, versioning to 2. Rust/Python/C impls aligned where assigned. Vector validation, interop, ruff/mypy/clippy gates passed. No Worker 2 changes."
+}

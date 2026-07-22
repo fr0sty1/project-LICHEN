@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-hlif.4",
+  "title": "Add comprehensive tests for enhanced observability in Renode/Zephyr sim",
+  "description": "Expand test_simulation_logging.py, test_renode_server.py, test_renode_integration.py with tests for new logs, metrics, fail-fast, state snapshots. Ensure all test vectors and cross-impl consistency. Run pytest after.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:27:52.020211142Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:28:37.082255189Z",
+  "started_at": "2026-07-22T14:28:01.577737546Z",
+  "closed_at": "2026-07-22T14:28:37.082255189Z",
+  "close_reason": "Enhanced logging, metrics, state monitoring, fail-fast checks, Renode/Zephyr tool integration and tests implemented. All tests passing.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-hlif.4",
+      "depends_on_id": "project-LICHEN-hlif",
+      "type": "parent-child",
+      "created_at": "2026-07-22T14:27:52.106977362Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

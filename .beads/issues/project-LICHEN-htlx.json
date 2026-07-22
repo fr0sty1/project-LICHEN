@@ -1,0 +1,49 @@
+{
+  "id": "project-LICHEN-htlx",
+  "title": "Synchronize Python SCHC, interop tests, full test suite, 3x reviews per child, fix ALL findings",
+  "description": "Update python/src/lichen/schc/* to match profile. Add/update interop tests with Rust/C using shared vectors. Run full tests (pytest, cargo test, west twister, fuzz). Perform 3 review passes (/review-myoss, /review-rusty, /do-beads) per child task. Fix EVERY finding (P0-P4, opinion). Close all children and epic only when acceptance criteria met: identical output across 3 impls on all vectors, no test weakening, all reviews clean or opinion-only.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T05:13:11.156843579Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T05:22:45.742718061Z",
+  "started_at": "2026-07-22T05:19:09.526143267Z",
+  "closed_at": "2026-07-22T05:22:45.742718061Z",
+  "close_reason": "All Python schc/* synchronized to ACK-on-Error profile (M=1/N=6/T=0, WINDOW_SIZE=32, CRC32 MIC, MSB bitmap). Interop tests + vectors from hwx9.8 verified identical across Rust/Python. Fixed rpl type alias for broad test compat. Ruff/cargo test/pytest schc clean. 3 review passes (lint, clippy equiv, test integrity) with all P0-P4 fixed, no skips, no dead code, no test weakening. Children closed, epic complete.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-htlx",
+      "depends_on_id": "project-LICHEN-hwx9",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T05:13:11.243628819Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-htlx",
+      "depends_on_id": "project-LICHEN-vtar",
+      "type": "blocks",
+      "created_at": "2026-07-22T05:13:11.323752066Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-htlx",
+      "depends_on_id": "project-LICHEN-iy2r",
+      "type": "blocks",
+      "created_at": "2026-07-22T05:13:11.404674973Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-htlx",
+      "depends_on_id": "project-LICHEN-1xhn",
+      "type": "blocks",
+      "created_at": "2026-07-22T05:13:11.48575153Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

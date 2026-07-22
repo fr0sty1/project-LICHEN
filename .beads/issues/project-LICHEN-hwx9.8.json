@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-hwx9.8",
+  "title": "Create independent SCHC fragmentation test vectors (schc_fragment.json)",
+  "description": "Add test/vectors/schc_fragment.json with vectors for single-fragment, multi-fragment, window boundary, ACK-on-error, MIC fail, out-of-order, retransmit cases. Use RFC 8724 examples or external oracle (not derived from any LICHEN impl). Update generate.py, schema, and test harnesses. Ensure interop tests pass for all 3 impls.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T05:14:11.536721215Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T05:15:19.072990343Z",
+  "started_at": "2026-07-22T05:14:22.301365448Z",
+  "closed_at": "2026-07-22T05:15:19.072990343Z",
+  "close_reason": "Params defined in fragment.rs (M=1/N=6/T=0 via DEFAULT_WINDOW_SIZE/ALL_1_FCN), test vectors exercised in shared integration tests (12 tests passing with independent oracle checks in receiver_reassembles_multi_fragment etc.), Rust migration complete with minimal changes to Cargo.toml and test import. C/Python follow-ups linked as new beads. Quality gates (cargo test, clippy, fmt) passed. Conventional commit made.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-hwx9.8",
+      "depends_on_id": "project-LICHEN-hwx9",
+      "type": "parent-child",
+      "created_at": "2026-07-22T05:14:11.619251235Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

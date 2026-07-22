@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-8m8p.1",
+  "title": "Update Rust SCHC fragmentation to bound by full SCHC packet size (1281)",
+  "description": "Add MAX_SCHC_PACKET=1281 constant and enforce in FragmentSender::new(). Update tests to use vectors. Reference project-LICHEN-8m8p",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:32:58.883827383Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:34:57.913414774Z",
+  "started_at": "2026-07-22T14:33:09.382440758Z",
+  "closed_at": "2026-07-22T14:34:57.913414774Z",
+  "close_reason": "Bounded SCHC datagram size to 1281 bytes in FragmentSender (Rust/Python) and schc_fragmenter_init (C). Updated constants, added validation, extended tests. Cargo test, clippy, ruff, Python pytest all pass. Vectors covered by roundtrip tests.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-8m8p.1",
+      "depends_on_id": "project-LICHEN-8m8p",
+      "type": "parent-child",
+      "created_at": "2026-07-22T14:32:58.969050276Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

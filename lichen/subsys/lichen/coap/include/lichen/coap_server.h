@@ -207,60 +207,7 @@ int lichen_coap_server_stop(void);
  */
 int lichen_coap_server_is_running(void);
 int lichen_coap_deaddrop_register(void);
-
-/**
- * @brief Register deaddrop DTN resources and handlers
- *
- * Makes /deaddrop (POST for store-and-forward) and /confessions
- * (rate-limited anonymous POST) available. Resources use lichen_coap
- * service; call after server init when CONFIG_LICHEN_COAP_DEADDROP=y.
- * Returns 0 on success; no error cases in current stub.
- *
- * @return 0 on success, negative errno on failure
- */
-int lichen_coap_deaddrop_register(void);
-
-int lichen_coap_senml_respond(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len, uint8_t resp_code, const uint8_t *payload, size_t payload_len);
-
-struct oscore_ctx;
-
-int lichen_coap_respond(struct coap_resource *resource,
-			struct coap_packet *request,
-			struct sockaddr *addr, socklen_t addr_len,
-			uint8_t resp_code, const uint8_t *payload,
-			size_t payload_len, struct oscore_ctx *oscore_ctx,
-			const uint8_t *request_piv, size_t request_piv_len);
-
-struct lichen_coap_deaddrop_provider {
-	int (*store)(const uint8_t *payload, size_t len, const uint8_t *recipient, uint32_t ttl);
-	int (*retrieve)(const uint8_t *recipient, uint8_t *buf, size_t buf_len);
-};
-
-int lichen_coap_deaddrop_register(const struct lichen_coap_deaddrop_provider *provider);
-int coap_respond(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len, uint8_t resp_code, const uint8_t *payload, size_t payload_len);
-
-/**
- * @brief Shared CoAP response helper for SenML and other content formats.
- *
- * Eliminates duplication between coap_dtn.c, coap_location.c and internal
- * server handlers. Handles CON->ACK vs NON_CON, content-format option,
- * and payload. Uses SENML_CBOR_CONTENT_FORMAT from senml.h when appropriate.
- *
- * @param resource CoAP resource
- * @param request Incoming request
- * @param addr Client address
- * @param addr_len Address length
- * @param resp_code CoAP response code (e.g. COAP_RESPONSE_CODE_CONTENT)
- * @param content_format IANA content format (60 for CBOR, 112 for SenML+CBOR)
- * @param payload Payload or NULL
- * @param payload_len Length or 0
- * @return 0 on success, negative on error
- */
-int lichen_coap_respond(struct coap_resource *resource,
-			struct coap_packet *request,
-			struct sockaddr *addr, socklen_t addr_len,
-			uint8_t resp_code, uint16_t content_format,
-			const uint8_t *payload, size_t payload_len);
+int lichen_coap_respond(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len, uint8_t resp_code, uint16_t content_format, const uint8_t *payload, size_t payload_len);
 
 #ifdef __cplusplus
 }

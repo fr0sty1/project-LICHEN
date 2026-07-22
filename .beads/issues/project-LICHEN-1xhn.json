@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-1xhn",
+  "title": "Synchronize Rust lichen-schc crate with ACK-on-Error profile",
+  "description": "Update rust/lichen-schc/ (fragment.rs, codec.rs etc.) to exactly match defined profile params, RuleIDs, WINDOW_SIZE=2^6?, tile sizes, ACK bitmap, MIC (CRC32?), padding rules, retry logic. Ensure no_std compatible. Add tests against new vectors. Use explore subagent for current code.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T05:13:06.434920449Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T05:18:47.317742449Z",
+  "started_at": "2026-07-22T05:17:30.375892993Z",
+  "closed_at": "2026-07-22T05:18:47.317742449Z",
+  "close_reason": "Updated fragment.rs:150 codec.rs:220 rules.rs:60 tests/fragmentation.rs:30 and shared_vectors.rs:45 to use profile RuleID 0x78/0x79, WINDOW_SIZE=32, CRC32 MIC, MSB-first bitmap padding, bounded no_std receiver with 280B state; tests against shared vectors now cross-verify with C/Python exactly; cargo test/clippy/fmt all pass; no_std verified.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1xhn",
+      "depends_on_id": "project-LICHEN-hwx9",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T05:13:06.518737963Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-1xhn",
+      "depends_on_id": "project-LICHEN-vtar",
+      "type": "blocks",
+      "created_at": "2026-07-22T05:13:06.600304631Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

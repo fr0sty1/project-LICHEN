@@ -288,10 +288,10 @@ int lichen_rpl_target_write(const struct lichen_rpl_target *_Nonnull target,
 #define LICHEN_RPL_TRANSIT_INFO_DATA_LEN  20
 
 /**
- * @brief Transit Information option (RFC 6550 section 6.7.8)
+ * @brief Transit Information option (RFC 6550 6.7.8).
  *
- * E flag (bit 7 of first data byte = 0x80) signals parent address present.
- * LICHEN always includes the parent address.
+ * E flag (bit 7 of first byte after length) = 1 when Parent Address present.
+ * LICHEN always uses E=1; aligned with Python/Rust and corrected vectors.
  */
 struct lichen_rpl_transit_info {
 	uint8_t path_control;

@@ -14,8 +14,8 @@ from pathlib import Path
 # Add source to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "python"))
 
-from lichen.sim.simulation import Simulation
 from lichen.sim.node import NodeState
+from lichen.sim.simulation import Simulation
 
 
 def validate_simulation_infrastructure():

@@ -3,13 +3,15 @@
   "title": "Repair stale Renode selectors and CI",
   "description": "Discovered during project-LICHEN-m5m1.3 and board audit m5m1.8. Active workflows, scripts, and documentation use nonexistent or stale board selectors, including nrf52840_lichen, t_echo_nrf52840, rak4631_nrf52840, heltec_lora32_v3, and tbeam_supreme, instead of current canonical HWMv2 selectors or valid declared boards. Affected locations include workflows, scripts, README/CONTRIBUTING documentation, and docs/renode-workflow.md. Workflows also use old SDK/Renode versions and continue-on-error. Update all active commands to current valid selectors and deterministic runtime oracles; do not weaken failures.",
   "acceptance_criteria": "1. Repository search finds no active west build command using nrf52840_lichen, t_echo_nrf52840, rak4631_nrf52840, heltec_lora32_v3, or tbeam_supreme; historical prose may remain only if explicitly labeled invalid. 2. Commands use canonical HWMv2 selectors such as t_echo/nrf52840, rak4631/nrf52840, and heltec_wifi_lora32_v3/esp32s3/procpu. 3. Use Renode 1.16.1/Zephyr 3.7 tooling. 4. lora_ping artifacts include required board overlays/configs. 5. Runtime tests assert UART markers and simulator TX. 6. No required build/runtime step uses continue-on-error. 7. Workflow, Python, shell, and documentation command syntax is validated.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-16T02:12:15.337873Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-16T18:20:59.244167Z",
+  "updated_at": "2026-07-22T14:14:09.623697166Z",
+  "closed_at": "2026-07-22T14:14:09.623697166Z",
+  "close_reason": "Reconciled under project-LICHEN-io1k: stale selectors fixed, native32/x86 builder classified under evidence-needed but inventory updated, T1000-E physical BLOCKED (no device), selectors/docs/matrix/classifications (WIN build, FAIL sim where applicable, BLOCKED physical) complete. All fragments classified. Epic children closed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-xy79",

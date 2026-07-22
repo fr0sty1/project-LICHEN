@@ -112,7 +112,6 @@ signature remains valid because signed fields are unchanged.
 ### 8.6. Signature Caching
 
 To reduce verification overhead:
-
 1. **First-hop verification:** Verify signature when packet first arrives
 2. **Cache result:** Mark packet as "verified from <IID>" in forwarding state
 3. **Relay without re-verify:** Subsequent hops trust first-hop verification
@@ -123,7 +122,12 @@ Cache entries expire after 2× expected mesh traversal time (default: 30 seconds
 **Security note:** A compromised relay could inject unverified packets. In
 high-security deployments, enable per-hop verification (costs CPU, not bytes).
 
-### 8.6. Unified Ed25519 Derivation (no-ULA model)
+### 8.6. Unified Derivation
+
+Single-seed SHA-256 derivation for Ed25519, X25519 and IPv6 IID (u-bit set) eliminates multiple vectors. Yggdrasil-compatible. No new attack surface. Bit mapping in appendix.
+
+### 8.7. Key Management
+
 
 A single 32-byte seed produces all material for signatures, X25519 (EDHOC), stable IID, and primary 02xx address. Supports simplified no-ULA model (fe80::IID + 02xx::/7 Yggdrasil primary address only) per 04-network.md:12, 05-routing.md. Matches test/vectors/yggdrasil.json + schnorr48.json; see `python/src/lichen/crypto/identity.py:59` (from_seed), `rust/lichen-link/src/identity.rs:70` (Identity::from_seed), schnorr48.py:100.
 

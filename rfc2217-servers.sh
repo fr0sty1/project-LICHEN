@@ -66,7 +66,7 @@ watch_server() {
     while true; do
         until [[ -e "$dev" ]]; do sleep 1; done
         until port_free "$port"; do sleep 1; done
-
+        stty -F "$dev" -hupcl -crtscts -ixon -ixoff 2>/dev/null || true
         python3 "$SCRIPT" -p "$port" "$dev" &
         pid=$!
         echo "[$(date '+%H:%M:%S')] START $label :$port  pid=$pid"

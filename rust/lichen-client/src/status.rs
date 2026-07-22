@@ -147,6 +147,39 @@ pub struct Neighbors {
     pub neighbors: Vec<Neighbor>,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Telemetry {
+    pub schema: String,
+    pub event: String,
+    pub ts_us: u128,
+    pub node_id: String,
+    #[serde(rename = "impl")]
+    pub r#impl: String,
+    pub tx_id: String,
+    pub packet_hash: String,
+    pub direction: String,
+    pub peer_id: Option<String>,
+    pub payload_len: usize,
+    pub rssi_dbm: Option<i32>,
+    #[serde(rename = "snr_db")]
+    pub snr_db_x10: Option<i32>,
+    pub seq: Option<u16>,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Metrics {
+    pub node_id: u32,
+    pub tx_count: u32,
+    pub rx_count: u32,
+    pub tx_bytes: u64,
+    pub rx_bytes: u64,
+    pub unique_peers: usize,
+    pub errors: usize,
+    pub hashes_sent: usize,
+    pub hashes_received: usize,
+}
+
 impl Neighbors {
     /// Decode a `GET /status/neighbors` CBOR response.
     pub fn from_cbor(bytes: &[u8]) -> Result<Self, Error> {

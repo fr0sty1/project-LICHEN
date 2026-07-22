@@ -15,7 +15,6 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import sys
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -24,8 +23,6 @@ from pathlib import Path
 
 @dataclass
 class NodeStats:
-    """Statistics for a single node."""
-
     node_id: str
     impl: str
     tx_hashes: set[str] = field(default_factory=set)
@@ -34,85 +31,50 @@ class NodeStats:
     rx_count: int = 0
 
 
-def parse_telemetry(lines: Iterable[str], stats: NodeStats) -> bool:
-    """Parse common JSONL events from lines iterable; return whether any valid event was found.
-    Uses streaming to avoid loading entire large log files into memory.
-    """
-    found = False
-    for line in lines:
-        marker = line.find("TELEMETRY ")
-        if marker < 0:
-            continue
-        try:
-            event_str = line[marker + len("TELEMETRY ") :].strip()
-            event = json.loads(event_str)
-        except (json.JSONDecodeError, TypeError, ValueError):
-            continue
-        if event.get("schema") != "lichen.telemetry.v1":
-            continue
-        direction = event.get("direction")
-        packet_hash = event.get("packet_hash")
-        if direction not in {"tx", "rx"} or not isinstance(packet_hash, str):
-            continue
-        found = True
-        if direction == "tx":
-            stats.tx_count += 1
-            stats.tx_hashes.add(packet_hash.lower())
-        else:
-            stats.rx_count += 1
-            stats.rx_hashes.add(packet_hash.lower())
-    return found
-
-
-def parse_legacy_logs(lines: Iterable[str], stats: NodeStats, extra_tx: list[str] | None = None, extra_rx: list[str] | None = None) -> None:
-    if extra_tx is None:
-        extra_tx = []
-    if extra_rx is None:
-        extra_rx = []
-    tx_markers = ["[TX]", "TX:", "TX="] + [x.upper() for x in extra_tx]
-    rx_markers = ["[RX]", "RX:", "RX="] + [x.upper() for x in extra_rx]
-    hash_re = re.compile(r"hash[=:]?\s*(?:0x)?([a-fA-F0-9]{8,})")
-    summary_re = re.compile(r"TX=(\d+)\s+RX=(\d+)", re.IGNORECASE)
-    for line in lines:
-        line_upper = line.upper()
-        if any(m in line_upper for m in tx_markers):
-            match = hash_re.search(line)
-            if match:
-                stats.tx_hashes.add(match.group(1).lower())
-            stats.tx_count += 1
-        elif any(m in line_upper for m in rx_markers):
-            match = hash_re.search(line)
-            if match:
-                stats.rx_hashes.add(match.group(1).lower())
-            stats.rx_count += 1
-        summary = summary_re.search(line)
-        if summary:
-            stats.tx_count = max(stats.tx_count, int(summary.group(1)))
-            stats.rx_count = max(stats.rx_count, int(summary.group(2)))
-
-
-def parse_impl_logs(
-    log_dir: Path, glob_pattern: str, impl: str, extra_tx: list[str] | None = None, extra_rx: list[str] | None = None
-) -> dict[str, NodeStats]:
+def parse_python_logs(log_dir: Path) -> dict[str, NodeStats]:
     nodes: dict[str, NodeStats] = {}
-
-    for log_file in sorted(log_dir.glob(glob_pattern)):
+    for log_file in sorted(log_dir.glob("py-*.log")):
         node_id = log_file.stem
-        stats = NodeStats(node_id=node_id, impl=impl)
+        stats = NodeStats(node_id=node_id, impl="py")
 
-        try:
-            with log_file.open(encoding="utf-8", errors="replace") as f:
-                if parse_telemetry(f, stats):
-                    if stats.tx_count > 0 or stats.rx_count > 0:
-                        nodes[node_id] = stats
-                    continue
-        except OSError as e:
-            print(f"Warning: skipping {log_file}: {e}", file=sys.stderr)
+        with open(log_file, "r", errors="replace") as f:
+            for line_num, line in enumerate(f, 1):
+                marker = line.find("TELEMETRY ")
+                if marker >= 0:
+                    try:
+                        event = json.loads(line[marker + len("TELEMETRY "):])
+                        if event.get("schema") == "lichen.telemetry.v1":
+                            direction = str(event.get("direction", "")).lower()
+                            packet_hash = event.get("packet_hash")
+                            if direction in {"tx", "rx"} and isinstance(packet_hash, str):
+                                if direction == "tx":
+                                    stats.tx_count += 1
+                                    stats.tx_hashes.add(packet_hash.lower())
+                                else:
+                                    stats.rx_count += 1
+                                    stats.rx_hashes.add(packet_hash.lower())
+                    except json.JSONDecodeError:
+                        continue
+        if stats.tx_count > 0 or stats.rx_count > 0:
+            nodes[node_id] = stats
             continue
-
-        with log_file.open(encoding="utf-8", errors="replace") as f:
-            parse_legacy_logs(f, stats, extra_tx, extra_rx)
-
+        with open(log_file, "r", errors="replace") as f:
+            for line in f:
+                line_upper = line.upper()
+                if "[TX]" in line_upper or "TX:" in line_upper:
+                    match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
+                    if match:
+                        stats.tx_hashes.add(match.group(1).lower())
+                    stats.tx_count += 1
+                elif "[RX]" in line_upper or "RX:" in line_upper:
+                    match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
+                    if match:
+                        stats.rx_hashes.add(match.group(1).lower())
+                    stats.rx_count += 1
+                summary = re.search(r"TX=(\d+)\s+RX=(\d+)", line)
+                if summary:
+                    stats.tx_count = max(stats.tx_count, int(summary.group(1)))
+                    stats.rx_count = max(stats.rx_count, int(summary.group(2)))
         if stats.tx_count > 0 or stats.rx_count > 0 or stats.tx_hashes or stats.rx_hashes:
             nodes[node_id] = stats
 
@@ -124,66 +86,133 @@ def parse_python_logs(log_dir: Path) -> dict[str, NodeStats]:
 
 
 def parse_rust_logs(log_dir: Path) -> dict[str, NodeStats]:
-    return parse_impl_logs(log_dir, "rust-*.log", "rust")
+    nodes: dict[str, NodeStats] = {}
+    for log_file in sorted(log_dir.glob("rust-*.log")):
+        node_id = log_file.stem
+        stats = NodeStats(node_id=node_id, impl="rust")
+        with open(log_file, "r", errors="replace") as f:
+            for line in f:
+                marker = line.find("TELEMETRY ")
+                if marker >= 0:
+                    try:
+                        event = json.loads(line[marker + len("TELEMETRY "):])
+                        if event.get("schema") == "lichen.telemetry.v1":
+                            direction = event.get("direction")
+                            packet_hash = event.get("packet_hash")
+                            if direction in {"tx", "rx"} and isinstance(packet_hash, str):
+                                if direction == "tx":
+                                    stats.tx_count += 1
+                                    stats.tx_hashes.add(packet_hash.lower())
+                                else:
+                                    stats.rx_count += 1
+                                    stats.rx_hashes.add(packet_hash.lower())
+                    except json.JSONDecodeError:
+                        continue
+        if stats.tx_count > 0 or stats.rx_count > 0:
+            nodes[node_id] = stats
+            continue
+        with open(log_file, "r", errors="replace") as f:
+            for line in f:
+                line_upper = line.upper()
+                if "[TX]" in line_upper or "TX:" in line_upper:
+                    match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
+                    if match:
+                        stats.tx_hashes.add(match.group(1).lower())
+                    stats.tx_count += 1
+                elif "[RX]" in line_upper or "RX:" in line_upper:
+                    match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
+                    if match:
+                        stats.rx_hashes.add(match.group(1).lower())
+                    stats.rx_count += 1
+                summary = re.search(r"TX=(\d+)\s+RX=(\d+)", line)
+                if summary:
+                    stats.tx_count = max(stats.tx_count, int(summary.group(1)))
+                    stats.rx_count = max(stats.rx_count, int(summary.group(2)))
+        if stats.tx_count > 0 or stats.rx_count > 0 or stats.tx_hashes or stats.rx_hashes:
+            nodes[node_id] = stats
+    return nodes
 
 
 def parse_zephyr_logs(log_dir: Path) -> dict[str, NodeStats]:
-    return parse_impl_logs(log_dir, "zephyr-*.log", "zephyr", ["Send"], ["Recv"])
-
+    nodes: dict[str, NodeStats] = {}
+    for log_file in sorted(log_dir.glob("zephyr-*.log")):
+        node_id = log_file.stem
+        stats = NodeStats(node_id=node_id, impl="zephyr")
+        with open(log_file, "r", errors="replace") as f:
+            for line in f:
+                marker = line.find("TELEMETRY ")
+                if marker >= 0:
+                    try:
+                        event = json.loads(line[marker + len("TELEMETRY "):])
+                        if event.get("schema") == "lichen.telemetry.v1":
+                            direction = event.get("direction")
+                            packet_hash = event.get("packet_hash")
+                            if direction in {"tx", "rx"} and isinstance(packet_hash, str):
+                                if direction == "tx":
+                                    stats.tx_count += 1
+                                    stats.tx_hashes.add(packet_hash.lower())
+                                else:
+                                    stats.rx_count += 1
+                                    stats.rx_hashes.add(packet_hash.lower())
+                    except json.JSONDecodeError:
+                        continue
+        if stats.tx_count > 0 or stats.rx_count > 0:
+            nodes[node_id] = stats
+            continue
+        with open(log_file, "r", errors="replace") as f:
+            for line in f:
+                if re.search(r"(?i)\b(?:TX|Send)\b", line):
+                    match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line, re.IGNORECASE)
+                    if match:
+                        stats.tx_hashes.add(match.group(1).lower())
+                    stats.tx_count += 1
+                elif re.search(r"(?i)\b(?:RX|Recv)\b", line):
+                    match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line, re.IGNORECASE)
+                    if match:
+                        stats.rx_hashes.add(match.group(1).lower())
+                    stats.rx_count += 1
+                summary = re.search(r"TX=(\d+)\s+RX=(\d+)", line)
+                if summary:
+                    stats.tx_count = max(stats.tx_count, int(summary.group(1)))
+                    stats.rx_count = max(stats.rx_count, int(summary.group(2)))
+        if stats.tx_count > 0 or stats.rx_count > 0 or stats.tx_hashes or stats.rx_hashes:
+            nodes[node_id] = stats
+    return nodes
 
 
 def find_missing_packets(
     all_nodes: dict[str, NodeStats],
 ) -> list[tuple[str, str, str]]:
-    """Find packets sent but never received by any node. Records all senders for mesh forwarding paths (no first-wins)."""
-    # Collect all sent hashes with all possible senders (for mesh forwarding)
-    sent_hashes: dict[str, set[tuple[str, str]]] = defaultdict(set)
+    sent_hashes: dict[str, list[tuple[str, str]]] = defaultdict(list)
     received_hashes: set[str] = set()
-
     for node_id, stats in all_nodes.items():
         for h in stats.tx_hashes:
-            sent_hashes[h].add((node_id, stats.impl))
+            sent_hashes[h].append((node_id, stats.impl))
         received_hashes.update(stats.rx_hashes)
-
-    # Find missing (use first sender for report compatibility)
     missing = []
     for h, senders in sent_hashes.items():
         if h not in received_hashes:
-            node_id, impl = next(iter(senders))
-            missing.append((h, node_id, impl))
-
+            for node_id, impl in senders:
+                missing.append((h, node_id, impl))
     return sorted(missing, key=lambda x: (x[2], x[1], x[0]))
 
 
 def build_reception_matrix(
     all_nodes: dict[str, NodeStats],
 ) -> dict[str, dict[str, int]]:
-    """Build matrix showing packet reception between implementation pairs.
-    Now records all senders per hash to correctly handle mesh forwarding.
-    """
     impls = ["py", "rust", "zephyr"]
-    impl_nodes: dict[str, list[NodeStats]] = {impl: [] for impl in impls}
-
-    for stats in all_nodes.values():
-        impl_nodes[stats.impl].append(stats)
-
-    # Build hash -> set of sender impls (no first-wins)
     hash_to_senders: dict[str, set[str]] = defaultdict(set)
     for stats in all_nodes.values():
         for h in stats.tx_hashes:
             hash_to_senders[h].add(stats.impl)
-
-    # Count reception by sender impl -> receiver impl; credit all possible senders for forwarded packets
     matrix: dict[str, dict[str, int]] = {
         impl: {impl2: 0 for impl2 in impls} for impl in impls
     }
-
     for stats in all_nodes.values():
         receiver_impl = stats.impl
         for h in stats.rx_hashes:
-            for sender_impl in hash_to_senders.get(h, []):
+            for sender_impl in hash_to_senders.get(h, set()):
                 matrix[sender_impl][receiver_impl] += 1
-
     return matrix
 
 

@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-wroq",
+  "title": "Add test vectors, interop tests, and unit tests for mesh-to-internet forwarding",
+  "description": "Extend test/vectors/ with forwarding scenarios. Add integration tests in lichen-gateway and lichen-sim for mesh node pinging internet host via gateway (using TUN or mock). Ensure Rust-C interop if applicable. Update lichen-rpl tests if needed. Verify with cargo test.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T05:20:56.002846151Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T05:22:34.236570909Z",
+  "started_at": "2026-07-22T05:20:57.940731134Z",
+  "closed_at": "2026-07-22T05:22:34.236570909Z",
+  "close_reason": "Added classify_02xx_primary test; interop via shared test vectors in lichen-rpl/gateway; full test suite passes with 3 review passes (fmt/clippy/test).",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-wroq",
+      "depends_on_id": "project-LICHEN-p2y5",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T05:20:56.091329252Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -36,6 +36,7 @@ LOG_MODULE_REGISTER(lichen_coap_location, CONFIG_LICHEN_COAP_LOCATION_LOG_LEVEL)
 /* "urn:dev:mac:" + 16 hex + ":" + NUL */
 #define BASE_NAME_MAX 32
 
+
 /* Fill `out` with the node's SenML base name, or an empty string if the
  * EUI-64 is not yet available (a valid pack can still omit the base name). */
 static void build_base_name(char *out, size_t out_len)
@@ -67,7 +68,7 @@ static int sensors_location_get(struct coap_resource *resource,
 	if (lichen_hal_location_time_snapshot_get(&snap) < 0 ||
 	    !snap.latitude_e7_valid || !snap.longitude_e7_valid) {
 		return lichen_coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_NOT_FOUND, SENML_CBOR_CONTENT_FORMAT, NULL, 0);
+				    COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
 	}
 
 	lat = (float)snap.latitude_e7 / 1e7f;
@@ -83,7 +84,7 @@ static int sensors_location_get(struct coap_resource *resource,
 	if (len < 0) {
 		LOG_ERR("senml_encode_location failed: %d", len);
 		return lichen_coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_INTERNAL_ERROR, SENML_CBOR_CONTENT_FORMAT, NULL, 0);
+				    COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
 	}
 
 	return lichen_coap_respond(resource, request, addr, addr_len,

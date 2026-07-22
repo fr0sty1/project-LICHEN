@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-iy2r",
+  "title": "Add shared SCHC ACK-on-Error test vectors to test/vectors/",
+  "description": "Create or extend test/vectors/schc_fragment.json or similar with strict vectors covering M=1 N=6 T=0, windowing, bitmap ACKs, MIC verification, padding, retries, All-1, error cases. Ensure vectors are independent oracles (not derived from any impl). Update generate.py and schema.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T05:13:06.334972537Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T05:14:50.507395844Z",
+  "started_at": "2026-07-22T05:13:25.480622437Z",
+  "closed_at": "2026-07-22T05:14:50.507395844Z",
+  "close_reason": "Decomposed into child tasks hwx9.7 (params) and hwx9.8 (vectors) to enable coordinated 3-impl migration per epic instructions and user query",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-iy2r",
+      "depends_on_id": "project-LICHEN-hwx9",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T05:13:06.419946999Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

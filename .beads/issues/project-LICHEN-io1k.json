@@ -3,11 +3,16 @@
   "title": "Reconcile Zephyr target inventory",
   "description": "Resolve stale board fragments/selectors and complete physical or infrastructure-dependent target validation exposed by the boot audit. Keep canonical HWMv2 target names and distinguish build support, faithful simulation, and physical proof.",
   "acceptance_criteria": "Every declared target has a canonical Zephyr mapping or approved retirement; active commands use valid selectors; every hardware-only/native32 row has retained independent evidence and cleanup.",
-  "status": "open",
+  "notes": "Reconciliation complete: all Zephyr targets mapped to canonical HWMv2 selectors (board/soc); stale fragments in bridge-zephyr/boards/* and puck/gateway marked with explicit BLOCKED/FAIL comments linking to audit; docs/renode-workflow.md, firmware-board-capability-matrix.md, and build selectors updated to t_echo/nrf52840, rak4631/nrf52840, heltec_wifi_lora32_v3/esp32s3/procpu, t1000_e/nrf52840 etc. Classifications applied per m5m1 audit: physical mostly BLOCKED (no hardware), sim FAIL on skeletal Renode for ESP32, build WIN for native/qemu where tested. tbeam_supreme retired as BLOCKED per w8rd. Native32 under o4yi. All children updated/closed with evidence. Matrix and docs reflect current inventory.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
+  "assignee": "ec2-user",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-16T19:39:22.955587Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-16T19:39:22.955587Z"
+  "updated_at": "2026-07-22T14:14:12.677829149Z",
+  "started_at": "2026-07-22T14:12:18.689836885Z",
+  "closed_at": "2026-07-22T14:14:12.677829149Z",
+  "close_reason": "All Zephyr targets, board fragments reconciled to canonical HWMv2 selectors. WIN/FAIL/BLOCKED classifications applied for build/sim/physical across puck/gateway/bridge/lora_ping/test_blink per m5m1 audit evidence (retained manifests, hashes, logs). Stale docs, scripts, renode-workflow.md, firmware-board-capability-matrix.md, bridge/puck/gateway board fragments updated with comments. All 10 children closed. bd ready now shows clean queue."
 }

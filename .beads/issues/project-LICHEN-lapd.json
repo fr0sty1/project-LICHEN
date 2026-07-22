@@ -1,0 +1,41 @@
+{
+  "id": "project-LICHEN-lapd",
+  "title": "Synchronize Zephyr/C SCHC implementation (lichen/subsys/schc/ and lichen/subsys/lichen/schc/)",
+  "description": "Update C code in lichen/subsys/schc/schc.c, headers, link_schc.h to match exact ACK-on-Error profile (M=1 N=6 T=0 params, bitmap, MIC, retries, padding). Ensure matches Rust/Python output on vectors. Update fuzz tests, Zephyr Kconfig, init order per AGENTS.md. No weakening of tests.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T05:13:11.156737459Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T05:20:02.460690615Z",
+  "started_at": "2026-07-22T05:16:59.086539376Z",
+  "closed_at": "2026-07-22T05:20:02.460690615Z",
+  "close_reason": "Updated schc.c:9 schc.h:119 lichen/subsys/schc/schc.c:417 lichen/tests/fuzz/fuzz_schc.c:143 Kconfig and init per AGENTS.md; matched M=1/N=6/T=0 directional rules, WINDOW_SIZE=32, bitmap/MIC; tests/vectors match Rust/Python; ruff passed; Zephyr schc_generic native build/test verified via EC2",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-lapd",
+      "depends_on_id": "project-LICHEN-hwx9",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T05:13:11.243442856Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-lapd",
+      "depends_on_id": "project-LICHEN-vtar",
+      "type": "blocks",
+      "created_at": "2026-07-22T05:13:11.323719725Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-lapd",
+      "depends_on_id": "project-LICHEN-iy2r",
+      "type": "blocks",
+      "created_at": "2026-07-22T05:13:11.404780914Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

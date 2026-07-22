@@ -44,6 +44,10 @@ BUILD_ASSERT(sizeof(((struct edhoc_responder *)0)->ed_seed) >= EDHOC_ED25519_SK_
 	     "ed_seed too small for EDHOC_ED25519_SK_LEN");
 BUILD_ASSERT(sizeof(((struct edhoc_responder *)0)->ed_pubkey) >= EDHOC_ED25519_PK_LEN,
 	     "ed_pubkey too small for EDHOC_ED25519_PK_LEN");
+BUILD_ASSERT(sizeof(((struct edhoc_initiator *)0)->eph_sk) == EDHOC_X25519_KEY_LEN,
+	     "eph_sk size mismatch");
+BUILD_ASSERT(sizeof(((struct edhoc_responder *)0)->eph_sk) == EDHOC_X25519_KEY_LEN,
+	     "eph_sk size mismatch");
 
 /* CBOR encoding buffer size */
 #define CBOR_BUF_SIZE 128
@@ -634,6 +638,9 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	} else {
 		return -EINVAL;
 	}
+	if (!zcbor_payload_at_end(zsd) || zsd->error) {
+		return -EINVAL;
+	}
 
 	/* Compute shared secret G_XY */
 	x25519_shared_secret(g_xy, ctx->eph_sk, ctx->g_y);
@@ -752,13 +759,10 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 		goto err_wipe;
 	}
 
-	/*
-	 * SECURITY: Constant-time signature verification.
-	 * - crypto_ed25519_check is constant-time internally
-	 * - volatile prevents compiler from optimizing away the check
-	 * - No logging here to avoid timing variation from log backends
-	 * - Generic error hides which verification step failed
-	 */
+	if (is_all_zeros(peer_pubkey, 32)) {
+		ret = -EACCES;
+		goto err_wipe;
+	}
 	volatile int sig2_result = ed25519_verify(peer_pubkey, signature_2.value,
 						  sig_struct_2, sig_struct_2_len);
 	if (sig2_result != 0) {
@@ -1057,6 +1061,9 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	} else {
 		return -EINVAL;
 	}
+	if (!zcbor_payload_at_end(zsd) || zsd->error) {
+		return -EINVAL;
+	}
 
 	/* Compute shared secret */
 	x25519_shared_secret(g_xy, ctx->eph_sk, ctx->g_x);
@@ -1303,6 +1310,10 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 		ret = -EINVAL;
 		goto err_wipe;
 	}
+	if (!zcbor_payload_at_end(zsd) || zsd->error) {
+		ret = -EINVAL;
+		goto err_wipe;
+	}
 
 	/* PRK_4e3m = PRK_3e2m for SIGN_SIGN */
 	memcpy(ctx->prk_4e3m, ctx->prk_3e2m, 32);
@@ -1331,6 +1342,10 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 		goto err_wipe;
 	}
 
+	if (is_all_zeros(peer_pubkey, 32)) {
+		ret = -EACCES;
+		goto err_wipe;
+	}
 	/*
 	 * SECURITY: Constant-time signature verification.
 	 * - crypto_ed25519_check is constant-time internally

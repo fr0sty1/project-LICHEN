@@ -28,8 +28,6 @@ Requirements:
 
 import argparse
 import asyncio
-import os
-import signal
 import subprocess
 import sys
 import tempfile
@@ -40,7 +38,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "python/src"))
 
 from lichen.sim.server import SimulatorServer
-from lichen.sim.simulation import Simulation, TimeMode
+from lichen.sim.simulation import TimeMode
 
 
 async def start_renode_node(

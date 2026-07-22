@@ -536,7 +536,6 @@ static void set_position_fix_time(
 {
 	position->effective_epoch_floor =
 		(uint32_t)CONFIG_LICHEN_MESHTASTIC_POSITION_EPOCH_FLOOR_UNIX;
-	position->fix_time_rejected_below_epoch_floor = false;
 	position->fix_time_rejected_future = false;
 	if (unix_time < position->effective_epoch_floor) {
 		position->fix_time_rejected_below_epoch_floor = true;
@@ -544,13 +543,14 @@ static void set_position_fix_time(
 		position->fix_time_unix = 0U;
 		return;
 	}
-	if (unix_time > position->effective_epoch_floor + LICHEN_MESHTASTIC_POSITION_MAX_FUTURE_SKEW) {
+	if (unix_time > 3000000000U) {
 		position->fix_time_rejected_future = true;
+		position->fix_time_rejected_below_epoch_floor = false;
 		position->fix_time_unix_valid = false;
 		position->fix_time_unix = 0U;
 		return;
 	}
-
+	position->fix_time_rejected_below_epoch_floor = false;
 	position->fix_time_unix = unix_time;
 	position->fix_time_unix_valid = true;
 }
@@ -775,16 +775,12 @@ static int parse_data(const uint8_t *data, size_t len,
 			    pb_read_len_value(&cur, &payload, &payload_len) < 0) {
 				return -EINVAL;
 			}
-			if (payload_len > sizeof(info->payload_buf)) {
-				info->payload = NULL;
-				info->payload_len = 0U;
-			} else if (payload_len > 0U) {
+			info->payload_len = payload_len;
+			if (payload_len > 0U && payload_len <= sizeof(info->payload_buf)) {
 				memcpy(info->payload_buf, payload, payload_len);
 				info->payload = info->payload_buf;
-				info->payload_len = payload_len;
 			} else {
 				info->payload = NULL;
-				info->payload_len = 0U;
 			}
 			break;
 		default:
@@ -1165,11 +1161,12 @@ static void nodedb_peer_snapshot(struct lichen_meshtastic_adapter *adapter,
 		return;
 	}
 
-	state->peer_count = adapter->ops.get_peers(
+	size_t n = adapter->ops.get_peers(
 		state->peers, ARRAY_SIZE(state->peers), adapter->ops.user_data);
-	if (state->peer_count > ARRAY_SIZE(state->peers)) {
-		state->peer_count = ARRAY_SIZE(state->peers);
+	if (n > ARRAY_SIZE(state->peers)) {
+		n = ARRAY_SIZE(state->peers);
 	}
+	state->peer_count = n;
 	sort_peers_by_eui64(state);
 
 	for (size_t i = 0U; i < state->peer_count; i++) {

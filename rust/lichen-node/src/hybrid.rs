@@ -513,7 +513,6 @@ impl HybridRouter {
     }
 }
 
-/// Validate geographic coordinates.
 #[cfg(feature = "std")]
 fn is_valid_coords(coords: &GeoCoords) -> bool {
     if coords.lat.is_nan()
@@ -523,15 +522,12 @@ fn is_valid_coords(coords: &GeoCoords) -> bool {
     {
         return false;
     }
-    // Reject null island (0, 0) as likely invalid GPS data
     if coords.lat == 0.0 && coords.lon == 0.0 {
         return false;
     }
-    // Valid range
     coords.lat >= -90.0 && coords.lat <= 90.0 && coords.lon >= -180.0 && coords.lon <= 180.0
 }
 
-/// Haversine distance in meters between two (lat, lon) points.
 #[cfg(feature = "std")]
 fn haversine(c1: &GeoCoords, c2: &GeoCoords) -> f32 {
     const EARTH_RADIUS_M: f32 = 6_371_000.0;
@@ -545,7 +541,6 @@ fn haversine(c1: &GeoCoords, c2: &GeoCoords) -> f32 {
     let dlon = lon2 - lon1;
 
     let a = (dlat / 2.0).sin().powi(2) + lat1.cos() * lat2.cos() * (dlon / 2.0).sin().powi(2);
-    // Clamp for floating point errors
     let c = 2.0 * a.min(1.0).sqrt().asin();
 
     EARTH_RADIUS_M * c

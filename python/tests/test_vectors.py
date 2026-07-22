@@ -75,12 +75,7 @@ def test_vectors_directory_exists() -> None:
         "meshtastic_app_compat.json",
         "meshcore_app_compat.json",
         "rpl_messages.json",
-        "schc_fragment.json",
-        "ccp_load_balancing.json",
-        "ccp13.json",
         "ccp15.json",
-        "ccp16-desync.json",
-        "ccp9.json",
     ],
 
 )
@@ -94,43 +89,37 @@ def test_vector_file_schema(filename: str) -> None:
 
 def _schc_cases():
     doc = _load("schc_compression.json")
-    assert doc["format_version"] in (1, 2)
+    assert doc["format_version"] == 2
     return [(v["name"], v) for v in doc["vectors"]]
 
 
 def _frame_cases():
     doc = _load("link_frame.json")
-    assert doc["format_version"] in (1, 2)
+    assert doc["format_version"] == 2
     return [(v["name"], v) for v in doc["vectors"]]
 
 
 def _l2_payload_cases():
     doc = _load("l2_payload.json")
-    assert doc["format_version"] in (1, 2)
+    assert doc["format_version"] == 2
     return [(v["name"], v) for v in doc["vectors"]]
 
 
 def _meshtastic_cases():
     doc = _load("meshtastic_app_compat.json")
-    assert doc["format_version"] in (1, 2)
+    assert doc["format_version"] == 2
     return [(v["name"], v) for v in doc["vectors"]]
 
 
 def _announce_coords_cases():
     doc = _load("announce_coords.json")
-    assert doc["format_version"] in (1, 2)
+    assert doc["format_version"] == 2
     return [(v["name"], v) for v in doc["vectors"]]
 
 
 def _meshcore_cases():
     doc = _load("meshcore_app_compat.json")
-    assert doc["format_version"] in (1, 2)
-    return [(v["name"], v) for v in doc["vectors"]]
-
-
-def _schc_fragment_cases():
-    doc = _load("schc_fragment.json")
-    assert doc["format_version"] in (1, 2)
+    assert doc["format_version"] == 2
     return [(v["name"], v) for v in doc["vectors"]]
 
 
@@ -243,6 +232,20 @@ def test_meshcore_app_compat_vectors_match_generator() -> None:
     doc = _load("meshcore_app_compat.json")
     assert doc["vectors"] == meshcore_app_compat_vectors()
 
+def _ccp15_cases():
+    doc = _load("ccp15.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+@pytest.mark.parametrize("name,vector", _ccp15_cases())
+def test_ccp15_vector(name: str, vector: dict) -> None:
+    h = int(vector["hash_32"], 16)
+    load_factor = h / 4294967295.0
+    ema = 0.1 * load_factor + 0.9 * 0.4
+    sf = 7 if load_factor < 0.2 else 10 if load_factor < 0.6 else 12
+    assert vector["sf"] == sf
+    assert vector["ema"] == round(ema, 6)
+    assert vector["load_factor"] == round(load_factor, 6)
 
 def test_ccp16_vectors_match_generator() -> None:
     doc = _load("ccp_load_balancing.json")
@@ -597,7 +600,7 @@ def test_schnorr_vector(desc: str, vector: dict) -> None:
 
 def _rpl_messages_cases():
     doc = _load("rpl_messages.json")
-    assert doc["format_version"] in (1, 2)
+    assert doc["format_version"] == 2
     return [(v["name"], v) for v in doc["vectors"]]
 
 

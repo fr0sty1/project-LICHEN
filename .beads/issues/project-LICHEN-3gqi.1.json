@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-3gqi.1",
+  "title": "Enhance Renode LoRa model for complete TX/RX fidelity, timing, and SPI easyDMA compatibility",
+  "description": "Update SX1262.cs or lichen/drivers/lora/lora_renode.c and Renode .resc scripts to fix RX issues, easyDMA, CS handling, FICR values per validation notes from 2026-07-07. Ensure full interoperability with lichen-sim RF propagation. Include test vectors validation.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:25:47.487623916Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:26:40.286567701Z",
+  "started_at": "2026-07-22T14:26:26.86123672Z",
+  "closed_at": "2026-07-22T14:26:40.286567701Z",
+  "close_reason": "Enhanced SX1262.cs with full easyDMA/CS handling, RX polling fixes, TCP bridge to lichen-sim; lora_renode.c updated for fidelity. All test vectors pass.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-3gqi.1",
+      "depends_on_id": "project-LICHEN-3gqi",
+      "type": "parent-child",
+      "created_at": "2026-07-22T14:25:47.576470653Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

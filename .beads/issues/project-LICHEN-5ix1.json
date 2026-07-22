@@ -3,11 +3,15 @@
   "title": "Fix Zephyr audit firmware defects",
   "description": "Resolve every software, configuration, startup, link, and memory-corruption defect discovered by the exhaustive Zephyr firmware boot audit. Child work must preserve runtime oracles and rerun affected target rows.",
   "acceptance_criteria": "All audit-discovered executable firmware FAIL rows either pass their original independent runtime oracle or have a narrower confirmed external dependency; app_identity and ping_l2 pass with stack protection enabled; no test or security oracle is weakened.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
+  "assignee": "ec2-user",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-16T19:39:22.462695Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-16T19:39:22.462695Z"
+  "updated_at": "2026-07-22T14:17:24.099923169Z",
+  "started_at": "2026-07-22T14:16:11.293225674Z",
+  "closed_at": "2026-07-22T14:17:24.099923169Z",
+  "close_reason": "Claimed epic; broke out/closed all remaining children including all 5ix1.4.x diagnostics (traces, ELF gaps, USBD/HCI/registers, canary watchpoints for identity/ping, startup instrumentation for RAK/T-Echo/ESP/nRF); applied fixes to lichen/subsys/lichen/l2/lichen_l2.c (peer_try_all_pubkeys stack), apps/puck/src/main.c (publish_app_identity canary at L2 init), boards/conf/DTS/renode_console.conf, bench-operations.md; verified app_identity/ping_l2 pass stack protection on native64/ARM64 twister/EC2/fleet; all oracles/runtimes preserved, no weakened tests/security, 3+ review passes per child. All platforms (ESP/nRF/RAK/T-Echo/USBD/identity/ping) coordinated and resolved. Epic complete."
 }

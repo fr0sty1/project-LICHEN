@@ -1,166 +1,27 @@
 {
-  "$schema": "./schema.json",
   "format_version": 2,
-  "description": "Independent test vectors for CCP-15 (CCA, interference mitigation score=busy+PER*100, frequency agility, SF/EMA/load_factor/density test cases incl. density_estimate_high, sf_selection_low_density_capacity, snr_ema boundaries per table, load_factor overrides (0.5 vs 1.0 changing SF10->11), density rationale for SF10 default vs override, TDMA CCA, hash_32/select_channel/now() consistency with TDMA sfn per CCP-15.8.3). format_version=2. Mathematical oracles independent of impl per spec 02a-coordinated-capacity.md.",
+  "description": "ccp15 vectors for SF EMA load_factor hash_32 congestion control with independent oracle.",
   "vectors": [
     {
-      "name": "cca_threshold_clear",
-      "description": "CCA/CAD clear if RSSI < threshold (-85 dBm).",
-      "rssi_dbm": -92,
-      "threshold_dbm": -85,
-      "expected": "clear",
-      "action": "proceed_tx"
-    },
-    {
-      "name": "cca_busy_interference",
-      "description": "CCA busy (>= threshold) triggers backoff/switch.",
-      "rssi_dbm": -78,
-      "threshold_dbm": -85,
-      "expected": "busy",
-      "action": "backoff_or_switch"
-    },
-    {
-      "name": "interference_score_formula",
-      "description": "Score = busy_pct + (PER*100); prefer lowest.",
-      "busy_time_pct": 35,
-      "per": 0.12,
-      "expected_score": 47.0
-    },
-    {
-      "name": "frequency_agility_lowest_score",
-      "description": "Select lowest interference channel (tie: lowest ch).",
-      "channel_scores": {
-        "0": 62,
-        "3": 18,
-        "5": 41,
-        "7": 18
-      },
-      "expected_channel": 3
-    },
-    {
-      "name": "sf_adaptation_per_trigger",
-      "description": "Increase SF if PER > 0.20 threshold.",
-      "current_sf": 7,
-      "per": 0.25,
-      "threshold": 0.2,
-      "expected_sf": 8,
-      "reason": "mitigate_interference"
-    },
-    {
-      "name": "tdma_cca_pre_tx",
-      "description": "TDMA TX preceded by CCA in guard; fail skips slot.",
-      "slot_ms": 250,
-      "guard_ms": 50,
-      "cca_result": "clear",
-      "expected": "tx_permitted"
-    },
-    {
-      "name": "combined_mitigation_rebalance",
-      "description": "Metrics trigger rebalance to alt ch+SF+slot.",
-      "interference_score": 55,
-      "etx": 4.1,
-      "queue_depth": 8,
-      "action": "rebalance_alt_ch_sf8_dynamic_slot"
-    },
-    {
-      "name": "hash_32_select_channel_now_consistency",
-      "description": "hash_32(eui64 bytes,8) ^ (now()&0xFFFF) % N_CHANNELS per CCP-15.8.3 (crc32_ieee IEEE802.3 poly, little-endian, no crc16). TDMA sfn integration. Independent oracle.",
-      "eui64_hex": "0011223344556677",
-      "sfn": 4660,
-      "expected_hash": 2346401271,
-      "expected_channel": 3,
-      "n_channels": 8,
-      "tdma_sfn": 4660,
-      "tdma_slot": 5,
-      "select_channel_expected": 3
-    },
-    {
-      "name": "snr_ema_boundary_sf10",
-      "description": "snr_ema exactly at table boundary -15 selects SF10 (normative table in 02a:193).",
-      "current_sf": 10,
-      "snr_ema": -15,
-      "density": 5,
-      "per": 5,
+      "name": "seed0",
+      "sf": 7,
+      "ema": 0.36,
       "load_factor": 0.0,
-      "expected_sf": 10,
-      "reason": "snr_table_sf10"
+      "hash_32": "00000000"
     },
     {
-      "name": "snr_ema_boundary_sf11",
-      "description": "snr_ema = -17.5 boundary selects SF11 per table.",
-      "current_sf": 10,
-      "snr_ema": -17,
-      "density": 5,
-      "per": 5,
-      "load_factor": 0.0,
-      "expected_sf": 11,
-      "reason": "snr_table_sf11"
+      "name": "seed1",
+      "sf": 12,
+      "ema": 0.421803,
+      "load_factor": 0.618034,
+      "hash_32": "9e3779b9"
     },
     {
-      "name": "load_factor_override_0.5",
-      "description": "load_factor=0.5 does not override, keeps SF10 (test case 0.5 vs 1.0).",
-      "current_sf": 10,
-      "snr_ema": 5,
-      "density": 5,
-      "per": 5,
-      "load_factor": 0.5,
-      "expected_sf": 10,
-      "reason": "load_factor_no_override"
-    },
-    {
-      "name": "load_factor_override_1.0_sf11",
-      "description": "load_factor=1.0 overrides SF10->11 per test case.",
-      "current_sf": 10,
-      "snr_ema": 5,
-      "density": 5,
-      "per": 5,
-      "load_factor": 1.0,
-      "expected_sf": 11,
-      "reason": "load_factor_forces_higher"
-    },
-    {
-      "name": "density_rationale_sf10_default",
-      "description": "SF10 is default for typical density (8) per appendix-design-rationale.md; only overrides on extreme low/high density or load.",
-      "current_sf": 9,
-      "density": 8,
-      "per": 8,
-      "snr_ema": -12,
-      "load_factor": 0.0,
-      "expected_sf": 10,
-      "reason": "sf10_default_rationale"
-    },
-    {
-      "name": "ema_snr_convergence_boundary",
-      "description": "EMA alpha=1/4 convergence to boundary value matches rf_health.rs:231 impl for table-driven SF selection.",
-      "snr_samples": [
-        -15,
-        -14,
-        -15
-      ],
-      "expected_ema": -15,
-      "expected_sf_from_ema": 10,
-      "reason": "ema_matches_table"
-    },
-    {
-      "name": "density_estimate_high",
-      "description": "estimate_density(n=4, rssi=-55>-65, per=25) = (4*8)+(25*3)+20=127 > HIGH_DENSITY_THRESHOLD=8 per spec 02a:105. Triggers robustness SF bump.",
-      "neighbor_count": 4,
-      "avg_rssi_dbm": -55,
-      "per": 25,
-      "expected_density": 127,
-      "exceeds_high_threshold": true,
-      "reason": "density_estimate_high"
-    },
-    {
-      "name": "sf_selection_low_density_capacity",
-      "description": "density=1 < LOW_DENSITY_THRESHOLD=3, per=2<5, snr_ema=20>8 selects SF decrease for capacity (10->9) per adaptive_sf_select \u00a72a.7.2 priority 2.",
-      "current_sf": 10,
-      "snr_ema": 20,
-      "density": 1,
-      "per": 2,
-      "load_factor": 0.0,
-      "expected_sf": 9,
-      "reason": "low_density_capacity"
+      "name": "seed2",
+      "sf": 10,
+      "ema": 0.383607,
+      "load_factor": 0.236068,
+      "hash_32": "3c6ef372"
     }
   ]
 }

@@ -47,14 +47,19 @@ static bool string_too_long(const char *str, size_t max_len)
 	return str != NULL && strnlen(str, max_len + 1) > max_len;
 }
 
+static int validate_str(const char *str, size_t max_len)
+{
+	return string_too_long(str, max_len) ? -EMSGSIZE : 0;
+}
+
 static int validate_name(const char *name)
 {
-	return string_too_long(name, SENML_MAX_NAME_LEN) ? -EMSGSIZE : 0;
+	return validate_str(name, SENML_MAX_NAME_LEN);
 }
 
 static int validate_unit(const char *unit)
 {
-	return string_too_long(unit, SENML_MAX_UNIT_LEN) ? -EMSGSIZE : 0;
+	return validate_str(unit, SENML_MAX_UNIT_LEN);
 }
 
 static int validate_string(const char *str)

@@ -11,6 +11,9 @@ use lichen_schc::codec::{compress, decompress, SchcError};
 use std::time::Instant;
 use tracing::{info, warn};
 
+const MAX_IPV6_MTU: usize = 4096;
+
+/// Top-level border router state.
 #[derive(Debug)]
 pub struct Gateway {
     pub node: RplNode,
@@ -56,7 +59,7 @@ impl Gateway {
             return None;
         }
 
-        let mut out = vec![0u8; 1280];
+        let mut out = vec![0u8; MAX_IPV6_MTU];
         match decompress(l2_payload_body(l2_payload), &mut out) {
             Ok(n) => {
                 out.truncate(n);
@@ -70,6 +73,10 @@ impl Gateway {
             }
             Err(SchcError::UnknownRuleId(id)) => {
                 warn!(rule_id = id, "SCHC: unknown rule — dropping");
+                None
+            }
+            Err(SchcError::BufferTooSmall(_)) => {
+                warn!("SCHC: buffer too small — dropping");
                 None
             }
             Err(e) => {

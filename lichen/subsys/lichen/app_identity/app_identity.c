@@ -9,6 +9,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/sys/util.h>
+#include <zephyr/sys/__assert.h>
 
 #include <lichen/app_identity/app_identity.h>
 #include <lichen/coap_keys.h>
@@ -203,11 +204,13 @@ int lichen_app_identity_upsert_peer(
 	k_mutex_lock(&s_mutex, K_FOREVER);
 	slot = find_peer_locked(peer->eui64);
 	if (slot >= 0) {
+		__ASSERT(s_peers[slot].peer.has_public_key, "existing peer must have key");
 		/*
 		 * SECURITY: TOFU key pinning (spec 8.6). First contact pins
 		 * pubkey; subsequent contacts must present the same key.
-		 * Key rotation requires explicit removal followed by re-add.
-		 * Silent key changes are rejected to prevent impersonation.
+		 * Key rotation requires lichen_app_identity_remove_peer()
+		 * followed by re-upsert (resolves aiq3). Silent key changes
+		 * rejected to prevent impersonation.
 		 */
 		if (s_peers[slot].peer.has_public_key &&
 		    memcmp(s_peers[slot].peer.public_key, peer->public_key,

@@ -131,7 +131,7 @@ class Ack:
         rule_id = data[0]
         window = (data[1] >> _W_SHIFT) & 1
         complete = bool(data[1] & 0x01)
-        if complete and len(data) == 2:
+        if complete:
             return cls(rule_id, window, (), complete)
         if len(data) < 3:
             raise FragmentError("ACK too short")

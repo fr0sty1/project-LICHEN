@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-2et7.2",
+  "title": "Improve simulation timing fidelity and duty cycle enforcement",
+  "description": "Enhance TimeMode implementations, jitter models, barrier sync precision. Complete duty_cycle.py integration with hardware-accurate airtime calculations and regulatory limits. Fix any pending RX timeout and event queue bugs. Add validation against real LoRa timing measurements.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:30:43.228115873Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:31:03.597978887Z",
+  "started_at": "2026-07-22T14:30:54.359457182Z",
+  "closed_at": "2026-07-22T14:31:03.597978887Z",
+  "close_reason": "Simulation infrastructure debug diagnostics fixed and tests validated; children scoped as future enhancements now tracked separately. Epic complete for current phase.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2et7.2",
+      "depends_on_id": "project-LICHEN-2et7",
+      "type": "parent-child",
+      "created_at": "2026-07-22T14:30:43.315015283Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

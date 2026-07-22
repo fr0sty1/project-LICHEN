@@ -2,16 +2,14 @@
   "id": "project-LICHEN-x1h3",
   "title": "Data race in tx_queue_count and tx_queue_empty",
   "description": "File: lichen/subsys/lichen/link/tx_queue.c\nLines: 311-341\n\ntx_queue_count() and tx_queue_empty() read queue-\u003eentries[i].valid without holding the queue lock:\n\n```c\nint tx_queue_count(const struct tx_queue *queue)\n{\n    // ... no lock_queue(queue) call\n    for (int i = 0; i \u003c TX_QUEUE_SIZE; i++) {\n        if (queue-\u003eentries[i].valid) {  // Data race\n            count++;\n        }\n    }\n    return count;\n}\n```\n\nSimilarly for tx_queue_empty() at lines 328-341.\n\nWhile individual bool reads may be atomic on most architectures, the iteration over multiple entries without synchronization can yield inconsistent results - e.g., counting an entry that was just invalidated while missing one that was just added.\n\nImpact: Inconsistent queue state reporting in concurrent scenarios. May affect backpressure decisions if callers rely on accurate counts.\n\nFix: Acquire lock before iteration, or document that these functions provide approximate values only (the stats read already has such documentation).",
-  "notes": "Commit: f9e7302c0",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:46:59.704661Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:15:54.182487455Z",
-  "started_at": "2026-07-22T20:14:54.094814705Z",
-  "lease_expires_at": "2026-07-22T20:19:54.094814705Z",
-  "heartbeat_at": "2026-07-22T20:14:54.094814705Z"
+  "updated_at": "2026-07-22T05:19:56.491749934Z",
+  "closed_at": "2026-07-22T05:19:56.491749934Z",
+  "close_reason": "Fixed as part of project-LICHEN-5ku5: now uses proper locking in count/empty/stats_get. No races remain. 3 review passes clean."
 }

@@ -10,6 +10,7 @@
 use std::collections::VecDeque;
 use std::io;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+use tracing::warn;
 
 // Use shared framing constants from lichen-kiss (KISS and SLIP use the same byte values).
 use lichen_kiss::framing::{FEND, FESC, TFEND, TFESC};
@@ -61,6 +62,10 @@ fn slip_decode_byte(byte: u8, in_escape: bool) -> (SlipDecodeResult, bool) {
         FESC => (SlipDecodeResult::None, true),
         TFEND if in_escape => (SlipDecodeResult::Byte(FEND), false),
         TFESC if in_escape => (SlipDecodeResult::Byte(FESC), false),
+        b if in_escape => {
+            tracing::warn!(byte = b, "invalid SLIP escape sequence");
+            (SlipDecodeResult::Byte(b), false)
+        }
         b => (SlipDecodeResult::Byte(b), false),
     }
 }

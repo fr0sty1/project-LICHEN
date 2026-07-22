@@ -378,12 +378,14 @@ impl<const MTU: usize> MeshtasticGattService<MTU> {
     /// Returns the number of entries dropped.
     fn drain_expired(&mut self, now_ms: u64) -> usize {
         let mut dropped = 0;
-        while let Some(front) = self.from_radio_queue.front() {
-            if front.is_expired(now_ms) {
-                self.from_radio_queue.pop_front();
-                dropped += 1;
-            } else {
-                break;
+        let len = self.from_radio_queue.len();
+        for _ in 0..len {
+            if let Some(entry) = self.from_radio_queue.pop_front() {
+                if entry.is_expired(now_ms) {
+                    dropped += 1;
+                } else {
+                    let _ = self.from_radio_queue.push_back(entry);
+                }
             }
         }
         dropped
