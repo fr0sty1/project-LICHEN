@@ -3,15 +3,15 @@
   "title": "Lollipop version transition from circular to linear may cause spurious rejoin",
   "description": "File: lichen/subsys/lichen/rpl/dodag.c:36-59\n\nThe lollipop version comparison handles linear (0-127) and circular (128-255) regions separately, but the transition between them has a subtle edge case.\n\nWhen a node is in circular region (e.g., version=250) and receives a linear version (e.g., version=0), the code at line 58 returns `a \u003c LOLLIPOP_CIRCULAR_BIT` (true), indicating the linear version is 'newer'.\n\nPer RFC 6550 Section 7.2, this is the intended restart behavior - a node restarting from version 0 should be accepted. However, this also means:\n\n1. An attacker with knowledge of current version could send a DIO with version=0 to force all nodes to rejoin\n2. Legitimate out-of-order delivery of old DIOs (from before a restart) would be incorrectly treated as newer\n\nImpact: Potential DODAG instability or denial-of-service via version manipulation.\n\nNote: The SECURITY comment in routing.c mentions link-layer auth, but this version attack could come from any authenticated neighbor that has been compromised or is replaying old messages.\n\nMitigation: Consider adding a cooldown period after restart, or logging suspicious version transitions.",
   "notes": "Commit: 426e3d20f",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:54:40.664506Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T22:54:00.638907447Z",
+  "updated_at": "2026-07-22T22:54:01.242026976Z",
   "started_at": "2026-07-22T22:52:20.307118573Z",
-  "lease_expires_at": "2026-07-22T22:57:20.307118573Z",
-  "heartbeat_at": "2026-07-22T22:52:20.307118573Z"
+  "closed_at": "2026-07-22T22:54:01.242026976Z",
+  "close_reason": "Updated version handling in lichen_rpl_dodag_process_dio and DODAG ID check to match Rust/Python lollipop logic, eliminating dead code and spurious rejoin edge cases during circular-to-linear transitions. Tests and builds pass."
 }
