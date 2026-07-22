@@ -40,10 +40,8 @@ pub use bridge::{
 #[cfg(test)]
 mod tests {
     extern crate alloc;
-    #[allow(deprecated)]
     use super::*;
     use alloc::vec;
-    use alloc::vec::Vec;
 
     #[test]
     fn test_portnum_values() {
@@ -90,6 +88,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_from_radio_variants() {
         // Test my_info variant
         let my_info = MyNodeInfo {
@@ -156,6 +155,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_channel_settings() {
         let settings = ChannelSettings {
             channel_num: 0,
