@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-9x92",
+  "title": "codereview-pass2: drift compensation in scheduler.rs lacks independent test vectors from openssl or reference",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:16:55.35667173Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:16:55.35667173Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9x92",
+      "depends_on_id": "project-LICHEN-rl6f.6",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:16:55.462367118Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
