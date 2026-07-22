@@ -24,6 +24,7 @@ BRIDGE_AUTO_MERGE_BOARD_FILES = (
 )
 BRIDGE_OBSOLETE_ALIAS_BOARD_FILES = (
     "heltec_lora32_v3",
+    "heltec_t114",
     "lilygo_tdeck",
     "lilygo_techo",
 )
