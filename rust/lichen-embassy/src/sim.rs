@@ -14,7 +14,7 @@ use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::time::Duration;
 
-use lichen_hal::{Radio, RadioConfig, RadioError, RxPacket};
+use lichen_hal::{ChannelConfig, Radio, RadioConfig, RadioError, RxPacket};
 use sha2::{Digest, Sha256};
 
 /// Radio that connects to lichen-sim for packet transfer.
@@ -120,31 +120,28 @@ impl SimRadio {
 impl Radio for SimRadio {
     type Error = SimError;
 
-    async fn transmit(&mut self, payload: &[u8]) -> Result<(), Self::Error> {
-        // Build TX message: [0x10][payload_len:2][payload]
+    async fn transmit(&mut self, channel: u8, payload: &[u8]) -> Result<(), Self::Error> {
         let mut msg = Vec::with_capacity(3 + payload.len());
-        msg.push(0x10); // MSG_TX
+        msg.push(0x10);
         msg.extend_from_slice(&(payload.len() as u16).to_le_bytes());
         msg.extend_from_slice(payload);
 
         self.send_message(&msg)?;
 
-        // Read TX_DONE response
         let resp = self.recv_message()?;
         if resp.is_empty() || resp[0] != 0x11 {
             return Err(RadioError::Protocol);
         }
 
-        // Log TX packet with hash
         let hash = Sha256::digest(payload);
         eprintln!(
-            "[TX] len={} hash={} hex={}",
+            "[TX ch={}] len={} hash={} hex={}",
+            channel,
             payload.len(),
             hex::encode(&hash[..8]),
             hex::encode(payload)
         );
 
-        // resp[1..5] contains airtime in us (ignored for now)
         Ok(())
     }
 

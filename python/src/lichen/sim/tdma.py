@@ -36,7 +36,8 @@ class TDMAScheduler:
         else:
             self.assigned_slot = self.hash_slot(self.eui64, self.num_slots)
     def is_tx_allowed(self, current_time_us: int) -> bool:
-        if self.state != TDMAState.SYNCED: return True
+        if self.state != TDMAState.SYNCED:
+            return True
         d = self.slot_duration_ms * 1000
         slot_start_us = self.clock.sfn * self.num_slots * d + self.assigned_slot * d
         slot_end_us = slot_start_us + d

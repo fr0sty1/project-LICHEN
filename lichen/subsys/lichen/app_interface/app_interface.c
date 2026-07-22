@@ -16,6 +16,7 @@
 #endif
 
 #define SINK_MAX CONFIG_LICHEN_APP_INTERFACE_MAX_SUBSCRIBERS
+BUILD_ASSERT(SINK_MAX <= 8, "SINK_MAX too large for stack snapshots");
 
 struct sink_slot {
 	struct lichen_app_interface_sink sink;

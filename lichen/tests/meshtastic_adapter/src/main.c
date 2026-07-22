@@ -2452,7 +2452,7 @@ ZTEST(meshtastic_adapter, test_position_oversized_precision_is_ignored)
 						    to_radio_len);
 
 	zassert_equal(ret, 0);
-	zassert_equal(ctx.position_count, 1U);
+	zassert_equal(ctx.position_count, 0U);
 	zassert_false(ctx.last_position.precision_bits_valid);
 }
 
@@ -2507,11 +2507,11 @@ ZTEST(meshtastic_adapter, test_position_oversized_satellites_are_ignored)
 						    to_radio_len);
 
 	zassert_equal(ret, 0);
-	zassert_equal(ctx.position_count, 1U);
+	zassert_equal(ctx.position_count, 0U);
 	zassert_false(ctx.last_position.satellites_valid);
 	decode_queue_status(ctx.out[0], ctx.out_len[0], &status);
 	zassert_true(status.has_res);
-	zassert_equal(status.res, 0U);
+	zassert_equal(status.res, 3U);
 	zassert_equal(status.mesh_packet_id, 0x1234567dU);
 }
 
