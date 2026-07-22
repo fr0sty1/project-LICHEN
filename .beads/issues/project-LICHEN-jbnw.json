@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-jbnw",
   "title": "[merge-conflict] worktree-worker16: kiss_transport.c",
+  "notes": "Commit: dc6b5d4b1",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:16:19.469056101Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:32:35.88040795Z",
+  "updated_at": "2026-07-22T23:35:00.601461012Z",
   "started_at": "2026-07-22T23:32:35.88040795Z",
   "lease_expires_at": "2026-07-22T23:37:35.88040795Z",
   "heartbeat_at": "2026-07-22T23:32:35.88040795Z"
