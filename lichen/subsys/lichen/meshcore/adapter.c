@@ -120,8 +120,8 @@ static void copy_fixed_string(uint8_t *dst, size_t dst_len,
 	}
 
 	len = strlen(src);
-	if (len > dst_len) {
-		len = dst_len;
+	if (len >= dst_len && dst_len > 0) {
+		len = dst_len - 1;
 	}
 	memcpy(dst, src, len);
 	if (len < dst_len) {
