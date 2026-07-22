@@ -1,0 +1,39 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-FileCopyrightText: The contributors to the LICHEN project
+ *
+ * Heltec WiFi LoRa 32 V3 UART1 console overlay for non-resetting bench use.
+ *
+ * Routes Zephyr console and shell to UART1 on GPIO21(TX)/GPIO22(RX).
+ * This avoids the CP2102 auto-reset circuit on the onboard UART0/CP2102
+ * USB port (see bench-operations.md bd-9ia2). Use with external USB-UART
+ * adapter and serial.Serial(..., dtr=False, rts=False).
+ *
+ * Build test command (uses DTC_OVERLAY_FILE + companion .conf):
+ *   west build -b heltec_wifi_lora32_v3/esp32s3/procpu lichen/apps/puck \
+ *     -d build_heltec_uart1 -- \
+ *     -DDTC_OVERLAY_FILE=$PWD/lichen/boards/heltec/heltec_wifi_lora32_v3/support/heltec_uart1_console.overlay \
+ *     -DEXTRA_CONF_FILE=$PWD/lichen/boards/heltec/heltec_wifi_lora32_v3/support/heltec_uart1_console.conf
+ *
+ * Verification (no reset on port open):
+ *   python -c '
+ * import serial,time
+ * s=serial.Serial()
+ * s.port="/dev/ttyUSB0"; s.baudrate=115200; s.dtr=False; s.rts=False
+ * s.open(); time.sleep(0.5); print(repr(s.read(200))); s.close()
+ * '
+ * (Confirmed on EC2 builder with LICHEN volume; no reset/boot banner repeat.)
+ */
+&uart1 {
+	status = "okay";
+	current-speed = <115200>;
+	pinctrl-0 = <&uart1_default>;
+	pinctrl-names = "default";
+};
+
+ / {
+	chosen {
+		zephyr,console = &uart1;
+		zephyr,shell-uart = &uart1;
+	};
+};

@@ -1,31 +1,38 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LICHEN test vector file",
-  "description": "Supports both object envelope (with format_version) and v2 bare array root with ccp_vector items (for ccp16-desync.json and similar).",
-  "type": ["object", "array"],
-  "additionalProperties": true,
-  "items": {"$ref": "#/definitions/ccp_vector"},
-  "properties": {
-    "format_version": {"type": "integer", "enum": [1, 2]},
-    "description": {"type": "string"},
-    "$schema": {"type": "string"},
-    "vectors": {
-      "type": "array",
-      "items": {
-        "oneOf": [
-          {"$ref": "#/definitions/schc_vector"},
-          {"$ref": "#/definitions/l2_payload_vector"},
-          {"$ref": "#/definitions/frame_vector"},
-          {"$ref": "#/definitions/announce_coords_vector"},
-          {"$ref": "#/definitions/meshtastic_app_compat_vector"},
-          {"$ref": "#/definitions/meshcore_app_compat_vector"},
-          {"$ref": "#/definitions/oscore_vector"},
-          {"$ref": "#/definitions/rpl_messages_vector"},
-          {"$ref": "#/definitions/ccp_vector"}
-        ]
+  "description": "Supports v1 object envelope (format_version + vectors) and v2 bare array root of ccp_vector (ccp16-desync.json). Top-level oneOf for array root support.",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "format_version": {"type": "integer", "enum": [1, 2]},
+        "description": {"type": "string"},
+        "$schema": {"type": "string"},
+        "vectors": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {"$ref": "#/definitions/schc_vector"},
+              {"$ref": "#/definitions/l2_payload_vector"},
+              {"$ref": "#/definitions/frame_vector"},
+              {"$ref": "#/definitions/announce_coords_vector"},
+              {"$ref": "#/definitions/meshtastic_app_compat_vector"},
+              {"$ref": "#/definitions/meshcore_app_compat_vector"},
+              {"$ref": "#/definitions/oscore_vector"},
+              {"$ref": "#/definitions/rpl_messages_vector"},
+              {"$ref": "#/definitions/ccp_vector"}
+            ]
+          }
+        }
       }
+    },
+    {
+      "type": "array",
+      "items": {"$ref": "#/definitions/ccp_vector"}
     }
-  },
+  ],
   "definitions": {
     "hex": {
       "type": "string",
