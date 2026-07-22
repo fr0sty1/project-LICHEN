@@ -109,7 +109,7 @@ static int send_ack(struct coap_resource *resource,
 		    struct sockaddr *addr, socklen_t addr_len,
 		    uint8_t code)
 {
-	return lichen_coap_respond(resource, request, addr, addr_len, code, NULL, 0);
+	return lichen_coap_respond(resource, request, addr, addr_len, code, 0, NULL, 0);
 }
 
 
@@ -124,19 +124,18 @@ static int status_get(struct coap_resource *resource,
 	int len;
 
 	if (s_handlers.status == NULL) {
-		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
+		return COAP_RESPONSE_CODE_NOT_FOUND;
 	}
 
 	len = s_handlers.status(payload, sizeof(payload));
 	if (len < 0) {
 		LOG_ERR("Status callback failed: %d", len);
-		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
+		return COAP_RESPONSE_CODE_INTERNAL_ERROR;
 	}
 
-	return lichen_coap_respond(resource, request, addr, addr_len,
-			      COAP_RESPONSE_CODE_CONTENT, payload, len);
+	int ret = lichen_coap_respond(resource, request, addr, addr_len,
+			      COAP_RESPONSE_CODE_CONTENT, CBOR_CONTENT_FORMAT, payload, len);
+	return ret < 0 ? ret : 0;
 }
 
 static const char * const status_path[] = { "status", NULL };
@@ -165,19 +164,18 @@ static int config_get(struct coap_resource *resource,
 	int len;
 
 	if (s_handlers.config_get == NULL) {
-		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
+		return COAP_RESPONSE_CODE_NOT_FOUND;
 	}
 
 	len = s_handlers.config_get(payload, sizeof(payload));
 	if (len < 0) {
 		LOG_ERR("Config GET callback failed: %d", len);
-		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
+		return COAP_RESPONSE_CODE_INTERNAL_ERROR;
 	}
 
-	return lichen_coap_respond(resource, request, addr, addr_len,
-			      COAP_RESPONSE_CODE_CONTENT, payload, len);
+	int ret = lichen_coap_respond(resource, request, addr, addr_len,
+			      COAP_RESPONSE_CODE_CONTENT, CBOR_CONTENT_FORMAT, payload, len);
+	return ret < 0 ? ret : 0;
 }
 
 static int config_put(struct coap_resource *resource,
@@ -189,21 +187,18 @@ static int config_put(struct coap_resource *resource,
 	int ret;
 
 	if (s_handlers.config_put == NULL) {
-		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
+		return COAP_RESPONSE_CODE_NOT_FOUND;
 	}
 
 	payload = coap_packet_get_payload(request, &payload_len);
 	if (payload == NULL || payload_len == 0) {
-		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
+		return COAP_RESPONSE_CODE_BAD_REQUEST;
 	}
 
 	ret = s_handlers.config_put(payload, payload_len);
 	if (ret < 0) {
 		LOG_ERR("Config PUT callback failed: %d", ret);
-		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
+		return COAP_RESPONSE_CODE_BAD_REQUEST;
 	}
 
 	return send_ack(resource, request, addr, addr_len,
@@ -238,19 +233,18 @@ static int neighbors_get(struct coap_resource *resource,
 	int len;
 
 	if (s_handlers.neighbors == NULL) {
-		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
+		return COAP_RESPONSE_CODE_NOT_FOUND;
 	}
 
 	len = s_handlers.neighbors(payload, sizeof(payload));
 	if (len < 0) {
 		LOG_ERR("Neighbors callback failed: %d", len);
-		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
+		return COAP_RESPONSE_CODE_INTERNAL_ERROR;
 	}
 
-	return lichen_coap_respond(resource, request, addr, addr_len,
-			      COAP_RESPONSE_CODE_CONTENT, 60, payload, len);
+	int ret = lichen_coap_respond(resource, request, addr, addr_len,
+			      COAP_RESPONSE_CODE_CONTENT, CBOR_CONTENT_FORMAT, payload, len);
+	return ret < 0 ? ret : 0;
 }
 
 static const char * const neighbors_path[] = { "neighbors", NULL };
@@ -284,56 +278,36 @@ static int key_get(struct coap_resource *resource,
 	size_t idx = 0;
 
 	if (s_handlers.key == NULL) {
-		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
+		return COAP_RESPONSE_CODE_NOT_FOUND;
 	}
 
 	ret = s_handlers.key(pubkey);
 	if (ret < 0) {
 		LOG_ERR("Key callback failed: %d", ret);
-		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
+		return COAP_RESPONSE_CODE_INTERNAL_ERROR;
 	}
 
-	/*
-	 * Encode minimal CBOR response:
-	 * { "fingerprint": "<hex>", "pubkey": h'<32 bytes>' }
-	 *
-	 * For simplicity, encode manually:
-	 * A2 (map of 2)
-	 *   6B "fingerprint" (text, 11 chars)
-	 *   70 <16 hex chars> (text, 16 chars)
-	 *   66 "pubkey" (text, 6 chars)
-	 *   58 20 <32 bytes> (bytes, length 32)
-	 */
-	payload[idx++] = 0xA2; /* Map of 2 items */
-
-	/* Key: "fingerprint" */
-	payload[idx++] = 0x6B; /* Text, 11 chars */
+	payload[idx++] = 0xA2;
+	payload[idx++] = 0x6B;
 	memcpy(&payload[idx], "fingerprint", 11);
 	idx += 11;
-
-	/* Value: hex string of first 8 bytes */
-	payload[idx++] = 0x70; /* Text, 16 chars */
+	payload[idx++] = 0x70;
 	static const char hex[] = "0123456789abcdef";
 	for (int i = 0; i < 8; i++) {
 		payload[idx++] = hex[(pubkey[i] >> 4) & 0xF];
 		payload[idx++] = hex[pubkey[i] & 0xF];
 	}
-
-	/* Key: "pubkey" */
-	payload[idx++] = 0x66; /* Text, 6 chars */
+	payload[idx++] = 0x66;
 	memcpy(&payload[idx], "pubkey", 6);
 	idx += 6;
-
-	/* Value: 32-byte public key */
-	payload[idx++] = 0x58; /* Bytes, 1-byte length follows */
-	payload[idx++] = 0x20; /* 32 bytes */
+	payload[idx++] = 0x58;
+	payload[idx++] = 0x20;
 	memcpy(&payload[idx], pubkey, 32);
 	idx += 32;
 
-	return lichen_coap_respond(resource, request, addr, addr_len,
-			      COAP_RESPONSE_CODE_CONTENT, 60, payload, idx);
+	ret = lichen_coap_respond(resource, request, addr, addr_len,
+			      COAP_RESPONSE_CODE_CONTENT, CBOR_CONTENT_FORMAT, payload, idx);
+	return ret < 0 ? ret : 0;
 }
 
 static const char * const key_path[] = { "key", NULL };
@@ -362,50 +336,42 @@ static int msg_inbox_get(struct coap_resource *resource,
 	int len;
 
 	if (s_handlers.msg_get == NULL) {
-		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
+		return COAP_RESPONSE_CODE_NOT_FOUND;
 	}
 
 	len = s_handlers.msg_get(payload, sizeof(payload));
 	if (len < 0) {
 		LOG_ERR("Message GET callback failed: %d", len);
-		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
+		return COAP_RESPONSE_CODE_INTERNAL_ERROR;
 	}
 
-	return lichen_coap_respond(resource, request, addr, addr_len,
-			      COAP_RESPONSE_CODE_CONTENT, 60, payload, len);
+	int ret = lichen_coap_respond(resource, request, addr, addr_len,
+			      COAP_RESPONSE_CODE_CONTENT, CBOR_CONTENT_FORMAT, payload, len);
+	return ret < 0 ? ret : 0;
 }
 
 static int msg_inbox_post(struct coap_resource *resource,
 			  struct coap_packet *request,
 			  struct sockaddr *addr, socklen_t addr_len)
 {
-	struct coap_packet response;
-	uint8_t token[COAP_TOKEN_MAX_LEN];
-	uint16_t id;
-	uint8_t tkl;
 	const uint8_t *payload;
 	uint16_t payload_len;
 	uint32_t msg_id = 0;
 	int ret;
 
 	if (s_handlers.msg_post == NULL) {
-		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
+		return COAP_RESPONSE_CODE_NOT_FOUND;
 	}
 
 	payload = coap_packet_get_payload(request, &payload_len);
 	if (payload == NULL || payload_len == 0) {
-		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
+		return COAP_RESPONSE_CODE_BAD_REQUEST;
 	}
 
 	ret = s_handlers.msg_post(payload, payload_len, &msg_id);
 	if (ret < 0) {
 		LOG_ERR("Message POST callback failed: %d", ret);
-		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
+		return COAP_RESPONSE_CODE_BAD_REQUEST;
 	}
 
 	static uint8_t response_buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
@@ -413,40 +379,40 @@ static int msg_inbox_post(struct coap_resource *resource,
 	uint8_t token[COAP_TOKEN_MAX_LEN];
 	uint16_t id;
 	uint8_t tkl;
-	int ret2;
 
 	id = coap_header_get_id(request);
 	tkl = coap_header_get_token(request, token);
 
-	ret2 = coap_packet_init(&response, response_buf, sizeof(response_buf),
+	ret = coap_packet_init(&response, response_buf, sizeof(response_buf),
 			       COAP_VERSION_1, COAP_TYPE_ACK, tkl, token,
 			       COAP_RESPONSE_CODE_CREATED, id);
-	if (ret2 < 0) {
-		return ret2;
+	if (ret < 0) {
+		return ret;
 	}
 
-	ret2 = coap_packet_append_option(&response, COAP_OPTION_LOCATION_PATH,
+	ret = coap_packet_append_option(&response, COAP_OPTION_LOCATION_PATH,
 					"msg", 3);
-	if (ret2 < 0) {
-		return ret2;
+	if (ret < 0) {
+		return ret;
 	}
 
-	ret2 = coap_packet_append_option(&response, COAP_OPTION_LOCATION_PATH,
+	ret = coap_packet_append_option(&response, COAP_OPTION_LOCATION_PATH,
 					"sent", 4);
-	if (ret2 < 0) {
-		return ret2;
+	if (ret < 0) {
+		return ret;
 	}
 
 	char id_str[12];
 	int id_len = snprintf(id_str, sizeof(id_str), "%u", msg_id);
 
-	ret2 = coap_packet_append_option(&response, COAP_OPTION_LOCATION_PATH,
+	ret = coap_packet_append_option(&response, COAP_OPTION_LOCATION_PATH,
 					id_str, id_len);
-	if (ret2 < 0) {
-		return ret2;
+	if (ret < 0) {
+		return ret;
 	}
 
-	return coap_resource_send(resource, &response, addr, addr_len, NULL);
+	ret = coap_resource_send(resource, &response, addr, addr_len, NULL);
+	return ret < 0 ? ret : 0;
 }
 
 static const char * const msg_inbox_path[] = { "msg", "inbox", NULL };
