@@ -13,6 +13,7 @@ These tests verify that the simulation correctly applies transmission jitter:
 from __future__ import annotations
 
 import random
+
 import pytest
 
 from lichen.sim.chaos import ChaosEngine, TxJitterRule
@@ -528,3 +529,18 @@ class TestEdgeCases:
 
         event = delayed_events[0]
         assert 1_000_000 <= event.time_us <= 5_000_000
+
+    def test_rejects_negative_jitter(self) -> None:
+        """Simulation rejects negative jitter_min_us (prevents past-time scheduling)."""
+        with pytest.raises(ValueError, match="non-negative"):
+            Simulation(
+                "test-neg-min",
+                jitter_min_us=-5000,
+                jitter_max_us=5000,
+            )
+        with pytest.raises(ValueError, match="non-negative"):
+            Simulation(
+                "test-neg-max",
+                jitter_min_us=0,
+                jitter_max_us=-1000,
+            )
