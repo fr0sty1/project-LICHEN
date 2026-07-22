@@ -95,14 +95,19 @@ def test_retransmit_treats_short_bitmap_as_missing() -> None:
 
 def test_ack_round_trip() -> None:
     ack = Ack(rule_id=20, window=1, bitmap=(True, False, True, True, False), complete=False)
-    restored = Ack.from_bytes(ack.to_bytes())
+    # independent oracle: rule 20=0x14, byte1=0x40 (W=1,C=0), n=5, bitmap 0b10110 padded to 0xb0
+    expected = b"\x14\x40\x05\xb0"
+    restored = Ack.from_bytes(expected)
     assert restored == ack
 
 
 def test_ack_complete_flag() -> None:
-    ack = Ack(rule_id=20, window=0, bitmap=(True,), complete=True)
-    restored = Ack.from_bytes(ack.to_bytes())
+    ack = Ack(rule_id=20, window=0, bitmap=(), complete=True)
+    # independent oracle per RFC 8724 8.3.3: 2-byte complete ACK (no n/bitmap)
+    expected = b"\x14\x01"
+    restored = Ack.from_bytes(expected)
     assert restored.complete is True
+    assert restored.to_bytes() == expected
 
 
 def test_invalid_sender_parameters() -> None:
