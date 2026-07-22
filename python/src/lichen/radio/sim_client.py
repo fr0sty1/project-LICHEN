@@ -201,11 +201,11 @@ class SimRadio:
         msg_type = self._validate_response(response)
         if msg_type == MSG_TX_DONE:
             packet_hash = hashlib.sha256(payload).digest()[:16].hex()
-            logger.info("tx",node_id=self._node_id,len=len(payload),hex=payload[:16].hex(),packet_hash=packet_hash)
+            logger.info("tx",node_id=self._node_id,len=len(payload),packet_hash=packet_hash)
             return True
         elif msg_type == MSG_TX_FAIL:
             packet_hash = hashlib.sha256(payload).digest()[:16].hex()
-            logger.warning("tx_fail",node_id=self._node_id,len=len(payload),hex=payload[:16].hex(),packet_hash=packet_hash)
+            logger.warning("tx_fail",node_id=self._node_id,len=len(payload),packet_hash=packet_hash)
             return False
         elif msg_type == MSG_ERR:
             code, err_msg = decode_err(response[1:])
@@ -228,7 +228,7 @@ class SimRadio:
         if msg_type == MSG_RX_PACKET:
             payload, rssi, snr = decode_rx_packet(response[1:])
             packet_hash = hashlib.sha256(payload).digest()[:16].hex()
-            logger.info("rx",node_id=self._node_id,len=len(payload),hex=payload[:16].hex(),rssi=rssi,snr=snr,packet_hash=packet_hash)
+            logger.info("rx",node_id=self._node_id,len=len(payload),rssi=rssi,snr=snr,packet_hash=packet_hash)
             return (payload, rssi, snr)
         elif msg_type == MSG_RX_TIMEOUT_PUSH:
             return None
