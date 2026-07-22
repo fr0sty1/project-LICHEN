@@ -2,11 +2,15 @@
   "id": "project-LICHEN-pn1f",
   "title": "simulation.py: callback-based RX misses metrics/observers",
   "description": "File: python/src/lichen/sim/simulation.py\nLines: 736-781\n\n_get_rx_result_internal() (used by deliver_pending_packets for push-based RX) does not:\n1. Record successful receptions in metrics (line 854 only in get_rx_result)\n2. Record collisions in metrics (lines 831-851 only in get_rx_result)\n3. Notify observers of rx_success or collision events\n\nThis means when using RX_ENTER/RX_EXIT (push-based RX mode), metrics are incomplete and WebSocket observers miss events. The duplicate code paths should be unified.\n\nImpact: Metrics dashboard shows incorrect reception/collision counts; real-time WebSocket clients miss events in push mode.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:27:24.964824Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:27:24.964863Z"
+  "updated_at": "2026-07-22T20:19:38.008596649Z",
+  "started_at": "2026-07-22T20:19:38.008596649Z",
+  "lease_expires_at": "2026-07-22T20:24:38.008596649Z",
+  "heartbeat_at": "2026-07-22T20:19:38.008596649Z"
 }
