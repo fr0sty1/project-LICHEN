@@ -559,14 +559,16 @@ mod std_ext {
                 };
             }
             let abs_window = self.abs_window(frag);
-            if abs_window > self.current_window + 1 {
+            if self.completed_windows.contains(&abs_window) {
                 return ReceiverResult {
                     ack: None,
                     reassembled: None,
                     mic_ok: None,
                 };
             }
-            self.current_window = abs_window;
+            if abs_window > self.current_window {
+                self.current_window = abs_window;
+            }
 
             if frag.is_all_1() {
                 self.all1_seen = true;
@@ -585,7 +587,9 @@ mod std_ext {
             }
             let pos = self.window_size - 1 - frag.fcn as usize;
             let global_idx = abs_window * self.window_size + pos;
-            self.tiles.insert(global_idx, frag.payload.to_vec());
+            if !self.tiles.contains_key(&global_idx) {
+                self.tiles.insert(global_idx, frag.payload.to_vec());
+            }
 
             if self.all1_seen {
                 return self.finalize();
@@ -594,6 +598,7 @@ mod std_ext {
             if frag.is_all_0() || self.window_full(abs_window) {
                 let bitmap = self.window_bitmap(abs_window);
                 if self.window_full(abs_window) {
+                    self.completed_windows.insert(abs_window);
                     self.current_window = abs_window + 1;
                 }
                 return ReceiverResult {
