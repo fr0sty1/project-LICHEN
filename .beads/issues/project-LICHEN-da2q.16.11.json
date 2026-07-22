@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-da2q.16.11",
+  "title": "[codereview-1] Kconfig option naming and placement for CCP-16",
+  "description": "Review pass 1 (correctness): New config LICHEN_CCP_LOAD_BALANCING should follow pattern LICHEN_LINK_CCP_LOAD_BALANCING or LICHEN_LINK_LOAD_BALANCE. It is placed correctly but should depend on LICHEN_RPL for coordination features. Priority P2. File: lichen/subsys/lichen/link/Kconfig:105. Fix by renaming and adding depends.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:12:14.062314598Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:12:14.062314598Z",
+  "labels": [
+    "codereview",
+    "da2q.16",
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.16.11",
+      "depends_on_id": "project-LICHEN-da2q.16",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:12:14.175939188Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
