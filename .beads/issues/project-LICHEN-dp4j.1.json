@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-dp4j.1",
+  "title": "Update spec for rx_channel field name (CCP-9)",
+  "description": "Standardize to rx_channel in spec/05-routing.md, spec/02a-coordinated-capacity.md and related docs to match chosen name per epic. Update diagrams, field descriptions, signed_data references.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T17:25:44.309773502Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:25:44.309773502Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-dp4j.1",
+      "depends_on_id": "project-LICHEN-dp4j",
+      "type": "parent-child",
+      "created_at": "2026-07-22T17:25:44.418523304Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
