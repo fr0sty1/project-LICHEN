@@ -191,14 +191,6 @@ static int encode_record(zcbor_state_t *state,
 		return -ENOMEM;
 	}
 
-	/* Base name (first record only) */
-	if (is_first && pack->base_name != NULL) {
-		if (!zcbor_int32_put(state, SENML_LABEL_BN) ||
-		    !zcbor_tstr_put_term(state, pack->base_name, 256)) {
-			return -ENOMEM;
-		}
-	}
-
 	/* Base time (first record only) */
 	if (is_first && pack->has_base_time) {
 		if (!zcbor_int32_put(state, SENML_LABEL_BT) ||
@@ -207,10 +199,18 @@ static int encode_record(zcbor_state_t *state,
 		}
 	}
 
+	/* Base name (first record only) */
+	if (is_first && pack->base_name != NULL) {
+		if (!zcbor_int32_put(state, SENML_LABEL_BN) ||
+		    !zcbor_tstr_put_term(state, pack->base_name, SENML_MAX_NAME_LEN + 1)) {
+			return -ENOMEM;
+		}
+	}
+
 	/* Name */
 	if (rec->name != NULL) {
 		if (!zcbor_int32_put(state, SENML_LABEL_N) ||
-		    !zcbor_tstr_put_term(state, rec->name, 256)) {
+		    !zcbor_tstr_put_term(state, rec->name, SENML_MAX_NAME_LEN + 1)) {
 			return -ENOMEM;
 		}
 	}
@@ -218,7 +218,7 @@ static int encode_record(zcbor_state_t *state,
 	/* Unit */
 	if (rec->unit != NULL) {
 		if (!zcbor_int32_put(state, SENML_LABEL_U) ||
-		    !zcbor_tstr_put_term(state, rec->unit, 256)) {
+		    !zcbor_tstr_put_term(state, rec->unit, SENML_MAX_UNIT_LEN + 1)) {
 			return -ENOMEM;
 		}
 	}
@@ -281,7 +281,7 @@ int senml_encode_cbor(const struct senml_pack *pack,
 		return -EINVAL;
 	}
 
-	ZCBOR_STATE_E(state, 1, buf, buflen, 1);
+	ZCBOR_STATE_E(state, 2, buf, buflen, 1);
 
 	/* SenML is an array of records */
 	if (!zcbor_list_start_encode(state, pack->record_count)) {
@@ -363,8 +363,9 @@ int senml_encode_battery(const char *base_name, uint64_t base_time,
 	if (ret < 0) {
 		return ret;
 	}
-
-	/* Use "%" for battery percentage (not %RH which is relative humidity) */
+	if (percent > 100) {
+		return -ERANGE;
+	}
 	ret = senml_add_float(&pack, "pct", "%", (float)percent);
 	if (ret < 0) {
 		return ret;

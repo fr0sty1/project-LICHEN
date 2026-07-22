@@ -250,6 +250,8 @@ int lichen_router_route(struct lichen_router *router,
 
 	case LICHEN_ADDR_EXTERNAL:
 		return route_external(router, result);
+	default:
+		break;
 	}
 
 	result->decision = LICHEN_ROUTE_DROP;
