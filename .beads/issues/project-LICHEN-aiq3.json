@@ -2,6 +2,7 @@
   "id": "project-LICHEN-aiq3",
   "title": "app_identity: No peer removal API prevents TOFU key rotation",
   "description": "File: lichen/subsys/lichen/app_identity/app_identity.c\n\nThe SECURITY comment at line 203-209 states: 'Key rotation requires explicit removal followed by re-add.' However, there is no lichen_app_identity_remove_peer() function exposed in the API.\n\nImpact: Once a peer's public key is pinned via TOFU (Trust On First Use), there is no way to remove it. If a peer's private key is compromised and they generate a new keypair, nodes cannot update the pinned key. The compromised peer is permanently locked out of the network from the perspective of other nodes.\n\nThe only removal mechanism is lichen_app_identity_test_reset() which:\n1. Is guarded by CONFIG_LICHEN_APP_IDENTITY_TEST_HOOKS\n2. Clears ALL peers, not a single one\n3. Is only intended for unit testing\n\nSuggested fix: Add a removal function:\nint lichen_app_identity_remove_peer(const uint8_t eui64[LICHEN_APP_IDENTITY_EUI64_LEN]);",
+  "notes": "Commit: b06f2bc7f - remove_peer() API and impl already present (header:97, c:319). Updated TOFU comment to reference lichen_app_identity_remove_peer() explicitly. Key rotation now documented.",
   "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:39:54.198649Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:17:14.003382153Z",
+  "updated_at": "2026-07-22T20:17:35.666211954Z",
   "started_at": "2026-07-22T20:17:14.003382153Z",
   "lease_expires_at": "2026-07-22T20:22:14.003382153Z",
   "heartbeat_at": "2026-07-22T20:17:14.003382153Z"
