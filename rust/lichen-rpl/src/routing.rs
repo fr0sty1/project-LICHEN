@@ -18,29 +18,18 @@ use crate::message::{
 };
 
 #[cfg(feature = "std")]
-/// RFC 6550 Section 9.1: Lollipop sequence comparison for DAO sequence.
-///
-/// Values 0-127 are the linear region (restart); 128-255 are circular (normal).
-/// Returns true if `new_seq` is newer than `old_seq`.
-#[cfg(feature = "std")]
 const LOLLIPOP_CIRCULAR_BIT: u8 = 128;
 #[cfg(feature = "std")]
 const LOLLIPOP_SEQUENCE_WINDOW: u8 = 16;
 
 #[cfg(feature = "std")]
 fn seq_is_newer(new_seq: u8, old_seq: u8) -> bool {
-    match (
-        new_seq < LOLLIPOP_CIRCULAR_BIT,
-        old_seq < LOLLIPOP_CIRCULAR_BIT,
-    ) {
-        // Both in linear region (0-127): simple comparison
+    match (new_seq < LOLLIPOP_CIRCULAR_BIT, old_seq < LOLLIPOP_CIRCULAR_BIT) {
         (true, true) => new_seq > old_seq,
-        // Both in circular region (128-255): modular comparison with window
         (false, false) => {
             let diff = new_seq.wrapping_sub(old_seq) & 0x7F;
             diff > 0 && diff <= LOLLIPOP_SEQUENCE_WINDOW
         }
-        // Mixed: linear (restart) is always newer than circular
         (true, false) => true,
         (false, true) => false,
     }
@@ -106,19 +95,8 @@ impl SourceRoutingHeader {
             .chunks_exact(16)
             .map(|chunk| chunk.try_into().unwrap())
             .collect();
-
-        let segments_left = data[1];
-        // RFC 6554: segments_left must be <= number of addresses.
-        // Prevents out-of-bounds indexing and routing loops on malformed SRH.
-        if (segments_left as usize) > addresses.len() {
-            return Err(RplError::InvalidOption);
-        }
-        // Guard: assert in debug for segments_left == addresses.len() on fresh SRH
-        debug_assert!(segments_left as usize == addresses.len() || segments_left == 0,
-                     "invalid SRH segments_left");
-
         Ok(Self {
-            segments_left,
+            segments_left: data[1],
             addresses,
         })
     }

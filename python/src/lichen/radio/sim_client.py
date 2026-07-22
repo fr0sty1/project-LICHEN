@@ -48,6 +48,10 @@ if TYPE_CHECKING:
 # headroom while bounding memory use.
 MAX_MESSAGE_LENGTH = 1 << 20
 
+# LoRa maximum payload size (varies by SF/bandwidth but 255 is safe upper bound
+# for most configurations; real hardware will reject larger).
+MAX_LORA_PAYLOAD = 255
+
 logger = structlog.get_logger()
 
 
@@ -61,6 +65,9 @@ class SimRadio:
     This class implements the Radio protocol by communicating with a simulator
     server over TCP. Each operation sends a request message and waits for
     the corresponding response.
+
+    On connection loss, call ``reconnect()`` to recover (see reconnect() for
+    details). The context manager does not auto-reconnect.
 
     Usage:
         async with SimRadio("localhost", 5555, "sim1", "node1", (0, 0, 0)) as radio:
@@ -93,6 +100,8 @@ class SimRadio:
         self._sim_id = sim_id
         self._node_id = node_id
         self._position = position
+        if not (1 <= port <= 65535):
+            raise ValueError(f"port must be in range 1-65535, got {port}")
         self._stream: SocketStream | None = None
         self._freq_hz: int = 915_000_000
         self._tx_power_dbm: int = 14
@@ -154,6 +163,16 @@ class SimRadio:
                     await stream.aclose()
                 raise
 
+    async def reconnect(self) -> None:
+        """Close any existing connection and establish a fresh one.
+
+        Call after SimRadioError from connection loss (BrokenResourceError
+        or ClosedResourceError) to restore usability. Context-manager users
+        must re-enter the context after reconnect.
+        """
+        await self.close()
+        await self.connect()
+
     async def transmit(self, payload: bytes) -> bool:
         """Transmit a payload over the simulated radio.
 
@@ -165,8 +184,15 @@ class SimRadio:
 
         Raises:
             SimRadioError: If not connected or protocol error occurs.
+            ValueError: If payload exceeds LoRa MTU.
         """
         self._ensure_connected()
+
+        if len(payload) > MAX_LORA_PAYLOAD:
+            raise ValueError(
+                f"payload length {len(payload)} exceeds LoRa MTU "
+                f"({MAX_LORA_PAYLOAD} bytes)"
+            )
 
         msg = encode_tx(payload)
         async with self._lock:
@@ -394,20 +420,16 @@ class SimRadio:
             (msg_len,) = struct.unpack("<I", length_data)
 
             if msg_len == 0:
-                # Close and invalidate stream on protocol error to prevent desync.
-                # Use try/finally to ensure _stream is cleared even if aclose() fails.
                 try:
-                    await self._stream.aclose()
+                    if self._stream is not None:
+                        await self._stream.aclose()
                 finally:
                     self._stream = None
                 raise ProtocolError("Received zero-length message")
             if msg_len > MAX_MESSAGE_LENGTH:
-                # Close and invalidate the stream: we've read the length header
-                # but not the body, so the protocol is now desynced. Closing
-                # prevents subsequent reads from starting mid-message.
-                # Use try/finally to ensure _stream is cleared even if aclose() fails.
                 try:
-                    await self._stream.aclose()
+                    if self._stream is not None:
+                        await self._stream.aclose()
                 finally:
                     self._stream = None
                 raise ProtocolError(

@@ -123,7 +123,7 @@ impl TrickleTimer {
 
     /// Record a consistent transmission seen from a neighbour (RFC 6206 step 3).
     pub fn heard_consistent(&mut self) {
-        self.counter += 1;
+        self.counter = self.counter.saturating_add(1);
     }
 
     /// Whether a DIO should be sent at transmit time (c < k, RFC 6206 step 4).

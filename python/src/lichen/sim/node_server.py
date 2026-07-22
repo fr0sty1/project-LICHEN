@@ -140,17 +140,13 @@ class NodeServer:
         """
         try:
             while True:
-                # Deliver packets to nodes in callback-based RX mode
                 self._simulation.deliver_pending_packets()
-                # Advance time (fires TxEndEvent, RxTimeoutEvent)
                 self._simulation.maybe_advance_time()
-                # Brief delay to avoid busy loop
                 await asyncio.sleep(0.001)
         except asyncio.CancelledError:
             raise
-        except BaseException as exc:
-            if not isinstance(exc, (KeyboardInterrupt, SystemExit)):
-                logger.exception("Error in simulation driver")
+        except Exception:
+            logger.exception("Simulation driver error")
             raise
 
     def _ensure_simulation_driver(self) -> None:

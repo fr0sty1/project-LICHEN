@@ -32,7 +32,7 @@ use ccm::{
 use hkdf::Hkdf;
 use lichen_core::error::BufferTooSmall;
 use sha2::Sha256;
-use zeroize::{Zeroize, ZeroizeOnDrop};
+use zeroize::Zeroize;
 
 /// AES-CCM-16-64-128: 128-bit key, 13-byte nonce, 8-byte tag.
 type AesCcm = Ccm<Aes128, U8, U13>;
@@ -48,9 +48,6 @@ pub const TAG_LEN: usize = 8;
 
 /// Maximum sender/recipient ID length.
 pub const ID_MAX_LEN: usize = 8;
-
-/// Maximum master salt length (LICHEN-specific restriction).
-pub const SALT_MAX_LEN: usize = 32;
 
 /// Maximum Partial IV length.
 pub const PIV_MAX_LEN: usize = 5;
@@ -86,7 +83,7 @@ const _: () = assert!(
     "nonce fields must sum to NONCE_LEN"
 );
 
-/// Algorithm ID for AES-CCM-16-64-128.
+/// COSE Algorithm ID for AES-CCM-16-64-128.
 pub const ALG_AEAD: u8 = 10;
 
 /// OSCORE CoAP option number.
@@ -165,14 +162,13 @@ impl core::error::Error for OscoreError {
 ///
 /// # Key Lifecycle
 ///
-/// All key material (master_secret, sender_key, recipient_key) is zeroized on drop
-/// via the `Zeroize` derive. Clone is intentionally supported for cases where multiple
-/// tasks need the context; both the original and clones will be zeroized when dropped.
-#[derive(Clone, Zeroize, ZeroizeOnDrop)]
+/// All key material zeroized on drop via `Zeroize`.
+#[derive(Clone, Zeroize)]
+#[zeroize(drop)]
 pub struct Context {
     // Common context
     master_secret: [u8; KEY_LEN],
-    master_salt: [u8; SALT_MAX_LEN],
+    master_salt: [u8; 8],
     master_salt_len: u8,
     common_iv: [u8; NONCE_LEN],
     id_context: [u8; 8],
@@ -219,7 +215,7 @@ impl Context {
     ///
     /// Returns `InvalidParam` if:
     /// - `sender_id` or `recipient_id` exceeds 7 bytes (nonce capacity)
-    /// - `master_salt` exceeds SALT_MAX_LEN bytes
+    /// - `master_salt` exceeds 8 bytes
     pub fn new(
         master_secret: &[u8; KEY_LEN],
         master_salt: Option<&[u8]>,
@@ -234,13 +230,13 @@ impl Context {
         }
 
         let salt = master_salt.unwrap_or(&[]);
-        if salt.len() > SALT_MAX_LEN {
+        if salt.len() > 8 {
             return Err(OscoreError::InvalidParam);
         }
 
         let mut ctx = Self {
             master_secret: *master_secret,
-            master_salt: [0u8; SALT_MAX_LEN],
+            master_salt: [0u8; 8],
             master_salt_len: salt.len() as u8,
             common_iv: [0u8; NONCE_LEN],
             id_context: [0u8; 8],
@@ -889,9 +885,6 @@ fn build_info_cbor(
     off += type_bytes.len();
 
     // L: uint
-    if out_len > 0xff {
-        return Err(OscoreError::InvalidParam);
-    }
     if out_len <= 23 {
         buf[off] = out_len as u8;
         off += 1;

@@ -61,7 +61,7 @@ def battery(voltage_v: float | None = None, percent: float | None = None) -> lis
 
     Args:
         voltage_v: Terminal voltage in volts (unit "V"), or None to omit.
-        percent:   State of charge 0-100 % (unit "%EL"), or None to omit.
+        percent:   State of charge 0-100 % (unit "%"), or None to omit.
 
     Returns:
         List of 0-2 SenML records.  Pass at least one of the arguments.
@@ -70,9 +70,7 @@ def battery(voltage_v: float | None = None, percent: float | None = None) -> lis
     if voltage_v is not None:
         records.append(SenmlRecord(n="voltage", u="V", v=voltage_v))
     if percent is not None:
-        if not (0.0 <= percent <= 100.0):
-            raise ValueError(f"percent {percent} out of range [0, 100]")
-        records.append(SenmlRecord(n="battery", u="%EL", v=percent))
+        records.append(SenmlRecord(n="battery", u="%", v=percent))
     return records
 
 
@@ -102,8 +100,6 @@ def humidity(percent_rh: float) -> SenmlRecord:
     Returns:
         A single SenML record.
     """
-    if not (0.0 <= percent_rh <= 100.0):
-        raise ValueError(f"percent_rh {percent_rh} out of range [0, 100]")
     return SenmlRecord(n="rel-humidity", u="%RH", v=percent_rh)
 
 
@@ -182,6 +178,4 @@ def voc_index(index: float) -> SenmlRecord:
     Returns:
         A single SenML record named "voc-index".
     """
-    if not (1.0 <= index <= 500.0):
-        raise ValueError(f"VOC index {index} out of range [1, 500]")
     return SenmlRecord(n="voc-index", v=index)

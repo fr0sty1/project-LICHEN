@@ -397,37 +397,39 @@ impl KissReader {
     /// Add bytes to the buffer.
     ///
     /// If the buffer is full, old data is discarded from the last FEND.
+    /// Bytes from *this* `data` slice that cannot be kept after recovery
+    /// are tracked in `discarded_bytes()`.
     pub fn feed(&mut self, data: &[u8]) {
-        // Append what we can
         let space = self.buffer.len() - self.len;
         let to_copy = data.len().min(space);
+        let copy_start = self.len;
         self.buffer[self.len..self.len + to_copy].copy_from_slice(&data[..to_copy]);
         self.len += to_copy;
 
-        // If we couldn't fit it all, we need to drop old data
         if to_copy < data.len() {
-            // Find last FEND to keep sync
             let last_fend = self.buffer[..self.len]
                 .iter()
                 .rposition(|&b| b == FEND)
                 .unwrap_or(0);
 
             if last_fend > 0 {
-                // Shift buffer
+                if last_fend > copy_start {
+                    let lost = (last_fend - copy_start).min(to_copy);
+                    self.discarded += lost;
+                }
                 self.buffer.copy_within(last_fend..self.len, 0);
                 self.len -= last_fend;
             } else {
+                self.discarded += to_copy;
                 self.len = 0;
             }
 
-            // Now add remaining input
             let remaining = &data[to_copy..];
             let available = self.buffer.len() - self.len;
             let to_copy2 = remaining.len().min(available);
             self.buffer[self.len..self.len + to_copy2].copy_from_slice(&remaining[..to_copy2]);
             self.len += to_copy2;
 
-            // Track bytes that couldn't fit
             if remaining.len() > available {
                 self.discarded += remaining.len() - available;
             }

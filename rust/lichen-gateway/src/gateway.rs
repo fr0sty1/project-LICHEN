@@ -86,9 +86,12 @@ impl Gateway {
         }
     }
 
-    /// Record that `node_id` is reachable via `addr`.
     pub fn add_route(&mut self, addr: [u8; 16], node_id: NodeId) {
         self.routes.insert(addr, node_id);
+    }
+
+    pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
+        self.routes.contains_key(dst) || (dst[0] == 0xfe && dst[1] == 0x80)
     }
 }
 
@@ -170,5 +173,14 @@ mod tests {
     fn non_schc_l2_payload_is_dropped() {
         let mut gw = test_gateway();
         assert!(gw.mesh_to_upstream(&[0x15, 0x01]).is_none());
+    }
+
+    #[test]
+    fn yggdrasil_cross_mesh_routing() {
+        let gw = test_gateway();
+        let local = ll(1);
+        let ygg_cross = [0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2];
+        assert!(gw.is_local_mesh(&local.0));
+        assert!(!gw.is_local_mesh(&ygg_cross));
     }
 }

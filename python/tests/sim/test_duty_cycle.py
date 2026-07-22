@@ -22,6 +22,13 @@ class TestDutyCycleTracker:
         assert tracker.limit_percent == 0.1
         assert tracker.window_seconds == 1800
 
+    def test_init_rejects_nonpositive_limit(self) -> None:
+        """Rejects limit_percent <= 0 to prevent division by zero."""
+        with pytest.raises(ValueError, match="must be positive"):
+            DutyCycleTracker(limit_percent=0.0)
+        with pytest.raises(ValueError, match="must be positive"):
+            DutyCycleTracker(limit_percent=-5.0)
+
     def test_empty_tracker_zero_usage(self) -> None:
         """Empty tracker reports zero usage."""
         tracker = DutyCycleTracker()

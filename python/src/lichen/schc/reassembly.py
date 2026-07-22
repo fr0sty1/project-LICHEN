@@ -28,11 +28,10 @@ DEFAULT_MAX_CONTEXTS = 4
 
 @dataclass
 class ReceiverResult:
-    """Outcome of feeding one fragment to a receiver."""
-
     ack: Ack | None = None
     reassembled: bytes | None = None
     mic_ok: bool | None = None
+    evicted: bool = False
 
 
 class FragmentReceiver:
@@ -228,15 +227,19 @@ class ReassemblyManager:
 
     def receive(self, key: Hashable, frag: Fragment) -> ReceiverResult:
         receiver = self._contexts.get(key)
+        evicted = False
         if receiver is None:
             receiver = FragmentReceiver(self.window_size)
             self._contexts[key] = receiver
             while len(self._contexts) > self.max_contexts:
-                self._contexts.popitem(last=False)  # evict oldest
+                self._contexts.popitem(last=False)
+                evicted = True
         self._contexts.move_to_end(key)
         result = receiver.receive(frag)
+        if evicted:
+            result.evicted = True
         if result.reassembled is not None:
-            self._contexts.pop(key, None)  # clear on completion
+            self._contexts.pop(key, None)
         return result
 
     def drop(self, key: Hashable) -> None:
