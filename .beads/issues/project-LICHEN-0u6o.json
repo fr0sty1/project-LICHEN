@@ -2,11 +2,15 @@
   "id": "project-LICHEN-0u6o",
   "title": "[merge-conflict] worker8: codec.c",
   "description": "Resolve merge conflict in lichen/subsys/lichen/meshtastic/codec.c between main and integration/worker8-20260722. Keep BOTH sets of changes.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:52:03.017522027Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T20:52:03.017522027Z"
+  "updated_at": "2026-07-22T21:29:49.071099042Z",
+  "started_at": "2026-07-22T21:29:49.071099042Z",
+  "lease_expires_at": "2026-07-22T21:34:49.071099042Z",
+  "heartbeat_at": "2026-07-22T21:29:49.071099042Z"
 }
