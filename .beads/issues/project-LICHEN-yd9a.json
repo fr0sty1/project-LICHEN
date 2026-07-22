@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-yd9a",
+  "title": "Update simulator tests for LR-FHSS with independent oracle test vectors",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:57:53.957890973Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:57:53.957890973Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-yd9a",
+      "depends_on_id": "project-LICHEN-zd2d.3",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T22:57:54.07665905Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
