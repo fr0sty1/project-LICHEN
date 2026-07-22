@@ -303,6 +303,23 @@ impl Default for InitiatorState {
     }
 }
 
+impl core::fmt::Debug for InitiatorState {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("InitiatorState")
+            .field("msg1_len", &self.msg1.len())
+            .field("g_y", &"[REDACTED]")
+            .field("c_r", &self.c_r)
+            .field("prk_2e", &"[REDACTED]")
+            .field("prk_3e2m", &"[REDACTED]")
+            .field("prk_4e3m", &"[REDACTED]")
+            .field("th_2", &"[REDACTED]")
+            .field("th_3", &"[REDACTED]")
+            .field("th_4", &"[REDACTED]")
+            .field("completed", &self.completed)
+            .finish()
+    }
+}
+
 impl EdhocInitiator {
     /// Create a new EDHOC initiator.
     ///
@@ -744,6 +761,23 @@ impl Default for ResponderState {
             th_4: [0; 32],
             completed: false,
         }
+    }
+}
+
+impl core::fmt::Debug for ResponderState {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ResponderState")
+            .field("msg1_len", &self.msg1.len())
+            .field("g_x", &"[REDACTED]")
+            .field("c_i", &self.c_i)
+            .field("prk_2e", &"[REDACTED]")
+            .field("prk_3e2m", &"[REDACTED]")
+            .field("prk_4e3m", &"[REDACTED]")
+            .field("th_2", &"[REDACTED]")
+            .field("th_3", &"[REDACTED]")
+            .field("th_4", &"[REDACTED]")
+            .field("completed", &self.completed)
+            .finish()
     }
 }
 
