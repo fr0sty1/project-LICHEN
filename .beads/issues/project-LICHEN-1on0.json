@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-1on0",
   "title": "[merge-conflict] integration/worker7-20260722: coap_status.c",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:52:30.770509249Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:52:30.770509249Z"
+  "updated_at": "2026-07-22T23:54:37.367978934Z",
+  "started_at": "2026-07-22T23:54:37.367978934Z",
+  "lease_expires_at": "2026-07-22T23:59:37.367978934Z",
+  "heartbeat_at": "2026-07-22T23:54:37.367978934Z"
 }

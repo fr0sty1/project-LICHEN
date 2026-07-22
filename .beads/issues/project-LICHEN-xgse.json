@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-xgse",
   "title": "[merge-conflict] worktree-worker17: coap_keys.c",
+  "notes": "Investigating merge conflict in lichen/subsys/lichen/coap/coap_keys.c: missing lichen_key_pubkey_to_iid implementation (declared in header, called in tests, matches ipv6_addr.c + python reference)",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:45:31.411932639Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:53:20.731375663Z",
+  "updated_at": "2026-07-22T23:54:20.873011865Z",
   "started_at": "2026-07-22T23:53:20.731375663Z",
   "lease_expires_at": "2026-07-22T23:58:20.731375663Z",
   "heartbeat_at": "2026-07-22T23:53:20.731375663Z"
