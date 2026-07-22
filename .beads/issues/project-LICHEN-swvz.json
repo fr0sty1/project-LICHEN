@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-swvz",
+  "title": "hash_32 key not used in lichen-link/src/identity.rs or sample lora_ping packet_hash",
+  "description": "Spec claims Rust lichen-link/src/identity.rs:22 and samples/lora_ping:38 use hash_32 with LICHEN key=0x4c494348454e as initializer. But identity.rs uses SHA256 for IID (no crc), sample uses plain crc32_ieee(data, len) with no key/seed. link_ctx.c:96 tuple_crc also plain. Channel selection pseudocode in 02a-coordinated-capacity.md assumes it. Mismatch in short-addr derivation and channel hash. Tagged codereview.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:54:47.565053307Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:54:47.565053307Z",
+  "labels": [
+    "codereview"
+  ]
+}
