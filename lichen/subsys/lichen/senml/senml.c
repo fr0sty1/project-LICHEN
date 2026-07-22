@@ -400,3 +400,9 @@ int senml_encode_temperature(const char *base_name, uint64_t base_time,
 
 	return senml_encode_cbor(&pack, buf, buflen);
 }
+
+int senml_encode_deaddrop(const struct senml_pack *pack,
+			  uint8_t *buf, size_t buflen)
+{
+	return senml_encode_cbor(pack, buf, buflen);
+}
