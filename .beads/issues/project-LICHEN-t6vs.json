@@ -1,0 +1,11 @@
+{
+  "id": "project-LICHEN-t6vs",
+  "title": "schema.json v2 breaks all v1 vector validation",
+  "description": "Recent edit set format_version const to 2 and added ccp15_vector/ccp_load_balancing_vector to oneOf. Existing test/vectors/*.json all use format_version:1 (schc_compression.json, ccp_tdma.json, rpl_messages.json etc). python/tests/test_vectors.py:test_vector_file_schema uses Draft7Validator(schema) and asserts ==1 in _*_cases(). generate.py:FORMAT_VERSION=1. This is P0 correctness break per test integrity rules. Also new vector schemas are stub-like with additionalProperties:true only. See test/vectors/schema.json:8,23-24,580-597.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:52:07.707095562Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:52:07.707095562Z"
+}
