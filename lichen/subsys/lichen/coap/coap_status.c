@@ -226,6 +226,11 @@ static void cbor_put_int(struct cbor_ctx *ctx, int32_t value)
 int lichen_coap_format_ipv6(const uint8_t *addr, char *buf, size_t buf_size)
 {
 	struct in6_addr in6;
+
+	if (addr == NULL || buf == NULL || buf_size < 46) {
+		return -ENOBUFS;
+	}
+
 	memcpy(in6.s6_addr, addr, 16);
 	if (net_addr_ntop(AF_INET6, &in6, buf, buf_size) == NULL) {
 		return -ENOBUFS;
@@ -252,7 +257,7 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 {
 	struct cbor_ctx ctx;
 	uint8_t map_count;
-	char ipv6_buf[40];
+	char ipv6_buf[46];
 
 
 	if (buf == NULL || status == NULL || buf_size == 0) {
@@ -387,7 +392,7 @@ size_t lichen_coap_encode_neighbors_cbor(uint8_t *buf, size_t buf_size,
 					 size_t count)
 {
 	struct cbor_ctx ctx;
-	char ipv6_buf[40];
+	char ipv6_buf[46];
 
 	if (buf == NULL || buf_size == 0) {
 		return 0;
@@ -450,7 +455,7 @@ size_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
 				      const uint8_t *default_route)
 {
 	struct cbor_ctx ctx;
-	char ipv6_buf[40];
+	char ipv6_buf[46];
 	char prefix_buf[48];
 	uint16_t map_count = 1;
 

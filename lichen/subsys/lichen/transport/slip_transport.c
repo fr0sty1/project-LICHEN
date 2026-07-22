@@ -119,8 +119,6 @@ static uint16_t ipv6_payload_len(const uint8_t *pkt)
 
 static int validate_ipv6_packet(const uint8_t *pkt, size_t len)
 {
-	size_t expected;
-
 	if (pkt == NULL) {
 		return -EINVAL;
 	}
@@ -140,7 +138,14 @@ static int validate_ipv6_packet(const uint8_t *pkt, size_t len)
 		return -EPROTONOSUPPORT;
 	}
 
-	expected = IPV6_HDR_LEN + ipv6_payload_len(pkt);
+	uint16_t payload_len = ipv6_payload_len(pkt);
+	if (payload_len > SLIP_LCI_MTU - IPV6_HDR_LEN) {
+		LOG_WRN("SLIP RX: IPv6 payload too large (%u > %u)",
+			payload_len, SLIP_LCI_MTU - IPV6_HDR_LEN);
+		return -EMSGSIZE;
+	}
+
+	size_t expected = IPV6_HDR_LEN + payload_len;
 	if (expected != len) {
 		LOG_WRN("SLIP RX: length mismatch (header says %zu, got %zu)",
 			expected, len);
