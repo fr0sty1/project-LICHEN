@@ -2,6 +2,7 @@
   "id": "project-LICHEN-c16l",
   "title": "KISS transport: response frame buffer too small for worst-case",
   "description": "File: lichen/subsys/lichen/transport/kiss_transport.c\nLines: 262-267\n\nIn handle_sethardware(), the response frame buffer is 128 bytes:\n\n    uint8_t resp_frame[128];\n    ...\n    if (kiss_encode(0, resp_cmd, response, (size_t)resp_len,\n                    resp_frame, sizeof(resp_frame), \u0026resp_frame_len) == 0) {\n\nBut response buffer is 64 bytes (line 250):\n    uint8_t response[64];\n\nWith KISS encoding, worst case is 2x + 3 bytes:\n- 64 * 2 + 3 = 131 bytes\n\nThis exceeds the 128-byte resp_frame buffer. If the hardware callback returns a 64-byte response where every byte needs escaping, kiss_encode() will return -ENOMEM.\n\nWhile the code handles this gracefully (no response sent), it's a silent failure.\n\nFix: Increase resp_frame to at least 131 bytes, or reduce response buffer to 62 bytes (62*2+3=127).",
+  "notes": "Commit: 0361e43a8 - response frame buffer increased to 132 bytes to cover worst-case KISS encoding of 64-byte hardware responses",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:55:22.593009Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:25:04.580388875Z",
+  "updated_at": "2026-07-22T23:27:04.734662106Z",
   "started_at": "2026-07-22T23:25:04.580388875Z",
   "lease_expires_at": "2026-07-22T23:30:04.580388875Z",
   "heartbeat_at": "2026-07-22T23:25:04.580388875Z"
