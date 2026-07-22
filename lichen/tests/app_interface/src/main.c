@@ -122,7 +122,7 @@ static int get_status_sink(struct lichen_app_status_snapshot *status,
 
 	status->rank = ctx->rank;
 	status->uptime_seconds = 42U;
-	status->role = "test";
+	strncpy(status->role, "test", sizeof(status->role) - 1); status->role[sizeof(status->role) - 1] = '\0';
 	status->rpl_capable = true;
 	status->power = (struct lichen_app_power_snapshot){
 		.battery_provider_available = true,
@@ -155,7 +155,7 @@ static int get_minimal_status_sink(struct lichen_app_status_snapshot *status,
 
 	status->rank = ctx->rank;
 	status->uptime_seconds = 42U;
-	status->role = "test";
+	strncpy(status->role, "test", sizeof(status->role) - 1); status->role[sizeof(status->role) - 1] = '\0';
 	status->rpl_capable = true;
 	return 0;
 }
