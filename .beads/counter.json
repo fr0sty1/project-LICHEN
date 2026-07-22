@@ -1,10 +1,6 @@
 {
   "prefixes": {},
   "children": {
-<<<<<<< HEAD
-    "project-LICHEN-afbk": 3,
-    "project-LICHEN-ail8": 9
-=======
     "project-LICHEN-2auf": 68,
     "project-LICHEN-2auf.31": 5,
     "project-LICHEN-2auf.35": 7,
@@ -32,6 +28,9 @@
     "project-LICHEN-5ix1.4": 8,
     "project-LICHEN-6mka": 2,
     "project-LICHEN-7fqg": 3,
+    "project-LICHEN-afbk": 3,
+    "project-LICHEN-afbk.1": 1,
+    "project-LICHEN-ail8": 9,
     "project-LICHEN-cy6c": 2,
     "project-LICHEN-da2q": 2,
     "project-LICHEN-dk3c": 6,
@@ -48,6 +47,5 @@
     "project-LICHEN-zd2d": 3,
     "project-LICHEN-zrh2": 2,
     "project-LICHEN-zt3c": 5
->>>>>>> origin/integration/worker3-20260722
   }
 }
