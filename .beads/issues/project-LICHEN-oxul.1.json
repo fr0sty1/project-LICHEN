@@ -2,12 +2,16 @@
   "id": "project-LICHEN-oxul.1",
   "title": "Implement human-readable Crockford base32 node addresses (13 chars)",
   "description": "From oxul follow-up: Crockford base32 (no 0O1Il) of SHA256(Ed25519 pubkey) first ~65 bits → 13 char string (dashes every 4 chars e.g. KCVN-MRPX-QWERT). Update/create spec/03-addressing.md with full spec, collision analysis, examples. Add test vectors. Implement in Rust lichen-link::identity::pubkey_to_address() and C equivalent. Integrate with IID derivation (reuse hash). Update all references, CoAP, TUI, tests, docs. After code, run 3 full codereview passes. bd create children if epic too large for one bead. Fix ALL issues found. Close when done.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "epic",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T14:43:37.605815036Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T14:43:37.605815036Z",
+  "updated_at": "2026-07-22T14:43:39.492313692Z",
+  "started_at": "2026-07-22T14:43:39.492313692Z",
+  "lease_expires_at": "2026-07-22T14:48:39.492313692Z",
+  "heartbeat_at": "2026-07-22T14:43:39.492313692Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-oxul.1",
