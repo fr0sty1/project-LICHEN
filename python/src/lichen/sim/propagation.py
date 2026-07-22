@@ -78,6 +78,12 @@ class PropagationModel:
     n: float = 2.7
     noise_floor_dbm: float = -120.0
 
+    def __post_init__(self) -> None:
+        if self.n <= 0:
+            raise ValueError(f"Path loss exponent n must be positive, got {self.n}")
+        if self.d0_m <= 0:
+            raise ValueError(f"Reference distance d0_m must be positive, got {self.d0_m}")
+
     def path_loss(self, distance_m: float) -> float:
         """Calculate path loss at a given distance.
 

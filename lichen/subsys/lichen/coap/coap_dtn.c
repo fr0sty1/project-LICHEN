@@ -9,6 +9,7 @@
 #include <lichen/oscore.h>
 #include <lichen/routing/dtn.h>
 #include <lichen/senml.h>
+#include <zcbor_decode.h>
 
 LOG_MODULE_REGISTER(lichen_coap_dtn, CONFIG_LICHEN_COAP_DEADDROP_LOG_LEVEL);
 
@@ -19,21 +20,7 @@ static K_MUTEX_DEFINE(s_dtn_buf_mutex);
 static K_MUTEX_DEFINE(s_senml_pack_mutex);
 static struct k_work_delayable s_dtn_expire_work;
 
-static int coap_respond(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len, uint8_t code, const uint8_t *payload, size_t payload_len) {
-	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
-	struct coap_packet resp;
-	uint8_t token[COAP_TOKEN_MAX_LEN];
-	uint8_t tkl = coap_header_get_token(request, token);
-	uint8_t type = (coap_header_get_type(request) == COAP_TYPE_CON) ? COAP_TYPE_ACK : COAP_TYPE_NON_CON;
-	int r = coap_packet_init(&resp, buf, sizeof(buf), COAP_VERSION_1, type, tkl, token, code, coap_header_get_id(request));
-	if (r < 0) return r;
-	if (payload && payload_len) {
-		coap_append_option_int(&resp, COAP_OPTION_CONTENT_FORMAT, SENML_CBOR_CONTENT_FORMAT);
-		coap_packet_append_payload_marker(&resp);
-		coap_packet_append_payload(&resp, payload, payload_len);
-	}
-	return coap_resource_send(resource, &resp, addr, addr_len, NULL);
-}
+
 
 static uint32_t dtn_get_unix_time(void) { return (uint32_t)(k_uptime_get() / 1000); }
 static void dtn_expire_work_handler(struct k_work *work) { ARG_UNUSED(work); k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER); lichen_dtn_expire_old(&s_dtn_buf, dtn_get_unix_time()); k_mutex_unlock(&s_dtn_buf_mutex); k_work_reschedule(&s_dtn_expire_work, K_SECONDS(30)); }
@@ -60,6 +47,7 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 	uint16_t payload_len = 0;
 	const uint8_t *payload = coap_packet_get_payload(request, &payload_len);
 	if (payload == NULL || payload_len == 0) { k_mutex_unlock(&s_dtn_buf_mutex); return 0x80; }
+	uint8_t recipient[16]; size_t rlen = 0; zcbor_state_t zs[2] = {0}; if (zcbor_new_decode_state(zs, 2, payload, payload_len, 1) && zcbor_map_start_decode(zs) && zcbor_tstr_expect(zs, "recipient") && zcbor_bstr_decode(zs, recipient, &rlen)) {} 
 	int r = s_provider->store(payload, payload_len);
 	k_mutex_unlock(&s_dtn_buf_mutex);
 	if (r < 0) return 0xA0;
@@ -73,7 +61,7 @@ static int deaddrop_get(struct coap_resource *resource, struct coap_packet *requ
 	int len = s_provider->retrieve(buf, sizeof(buf), NULL);
 	k_mutex_unlock(&s_dtn_buf_mutex);
 	if (len < 0) return 0xA0;
-	return coap_respond(resource, request, addr, addr_len, 0x45, buf, len);
+	return lichen_coap_respond(resource, request, addr, addr_len, 0x45, buf, len);
 }
 
 static const char * const deaddrop_path[] = { "deaddrop", NULL };

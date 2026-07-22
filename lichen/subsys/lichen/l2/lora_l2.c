@@ -255,6 +255,9 @@ static struct {
     lichen_lora_rx_cb_t rx_callback;
     void *rx_callback_user_data;
     bool cca_enabled;
+#if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
+    struct lichen_duty_cycle_tracker duty;
+#endif
 } lora_data;
 
 /**
@@ -668,6 +671,9 @@ int lichen_lora_l2_init(void)
     lora_data.rx_callback = NULL;
     lora_data.rx_callback_user_data = NULL;
     lora_data.cca_enabled = IS_ENABLED(CONFIG_LICHEN_LORA_CCA_ENABLE);
+#if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
+    lichen_duty_cycle_tracker_init(&lora_data.duty, LICHEN_DUTY_CYCLE_DEFAULT_PERMILLE);
+#endif
 
     if (!device_is_ready(lora_data.lora_dev)) {
         LOG_ERR("lora_l2: device not ready");
@@ -1140,6 +1146,9 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
         LOG_ERR("lora_l2: packet too large (%zu > %d)", len, LICHEN_LORA_MAX_PHY_PAYLOAD);
         return -EMSGSIZE;
     }
+#if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
+    if (!lichen_duty_cycle_tracker_can_transmit(&lora_data.duty, k_uptime_get(), 50)) return -EBUSY;
+#endif
 
     /*
      * Check state atomically without mutex. The lora_send() call below blocks
@@ -1292,6 +1301,9 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
 
     ret = lora_send(lora_data.lora_dev, tx_buf, (uint32_t)pop_len);
     k_mutex_unlock(&modem_mutex);
+#if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
+    if (ret >= 0) lichen_duty_cycle_tracker_record_tx(&lora_data.duty, k_uptime_get(), 50);
+#endif
 
     atomic_dec(&tx_pending);
 

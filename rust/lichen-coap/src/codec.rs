@@ -39,6 +39,8 @@ pub enum CoapError {
     BufferTooSmall(BufferTooSmall),
     /// Invalid Block option value.
     InvalidBlockOption,
+    /// Integer option value longer than 4 bytes (u32 limit).
+    UintOptionTooLong,
     /// Payload exceeds maximum size.
     PayloadTooLarge,
     /// Block received out of order during blockwise transfer.
@@ -58,6 +60,7 @@ impl core::fmt::Display for CoapError {
             Self::TruncatedOption => write!(f, "option runs past end of message"),
             Self::BufferTooSmall(e) => write!(f, "CoAP {}", e),
             Self::InvalidBlockOption => write!(f, "invalid Block option value"),
+            Self::UintOptionTooLong => write!(f, "uint option value too long (>4 bytes)"),
             Self::PayloadTooLarge => write!(f, "payload exceeds maximum size"),
             Self::BlockOutOfOrder => write!(f, "block received out of order"),
             Self::OptionNumberOverflow => write!(f, "option number overflow"),
@@ -278,14 +281,20 @@ pub struct CoapOption<'a> {
 }
 
 impl<'a> CoapOption<'a> {
-    /// Interpret value as u32 (for integer options like Max-Age).
-    pub fn as_uint(&self) -> u32 {
+    /// Interpret value as u32 (for integer options like Max-Age, Content-Format).
+    ///
+    /// Returns `Err(CoapError::UintOptionTooLong)` if value >4 bytes.
+    /// Per RFC 7252, these fit in 32 bits; longer values indicate malformed
+    /// messages.
+    pub fn as_uint(&self) -> Result<u32, CoapError> {
+        if self.value.len() > 4 {
+            return Err(CoapError::UintOptionTooLong);
+        }
         let mut val = 0u32;
-        let start = self.value.len().saturating_sub(4);
-        for &b in &self.value[start..] {
+        for &b in self.value {
             val = (val << 8) | b as u32;
         }
-        val
+        Ok(val)
     }
 
     /// True if this is a Uri-Path option.
@@ -700,7 +709,7 @@ mod tests {
         assert_eq!(opts[0].value, b"sensors");
         assert_eq!(opts[1].value, b"temp");
         assert_eq!(opts[2].number, OptionNumber::ContentFormat as u16);
-        assert_eq!(opts[2].as_uint(), 60);
+        assert_eq!(opts[2].as_uint().unwrap(), 60);
     }
 
     #[test]

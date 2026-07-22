@@ -279,11 +279,15 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 	cbor_put_uint(&ctx, status->mem_free_kb);
 
 	cbor_put_key(&ctx, "time");
-	uint8_t time_fields = 2;
+	uint16_t time_fields = 2;
 	if (status->time.wall_clock_valid) time_fields++;
 	if (status->time.source_class) time_fields++;
 	if (status->time.source_name) time_fields++;
-	cbor_put_map_header(&ctx, time_fields);
+	if (time_fields > 255) {
+		ctx.overflow = true;
+		return 0;
+	}
+	cbor_put_map_header(&ctx, (uint8_t)time_fields);
 
 	cbor_put_key(&ctx, "wall_clock_valid");
 	cbor_put_bool(&ctx, status->time.wall_clock_valid);
@@ -307,14 +311,14 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 	cbor_put_uint(&ctx, status->time.age_s);
 
 	cbor_put_key(&ctx, "dodag");
-	uint8_t dodag_fields = 2;
+	uint16_t dodag_fields = 2;
 	dodag_fields += status->dodag.has_parent ? 1 : 0;
 	dodag_fields += status->dodag.has_root ? 1 : 0;
 	if (dodag_fields > 255) {
 		ctx.overflow = true;
 		return 0;
 	}
-	cbor_put_map_header(&ctx, dodag_fields);
+	cbor_put_map_header(&ctx, (uint8_t)dodag_fields);
 
 	cbor_put_key(&ctx, "joined");
 	cbor_put_bool(&ctx, status->dodag.joined);
