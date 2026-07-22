@@ -2,11 +2,15 @@
   "id": "project-LICHEN-7isq",
   "title": "[kimi-review] 55c464d: [SEVERITY: high] Commit message/diff mismatch: the message c",
   "description": "Commit: 55c464d46\nMessage: feat: break RAK2287 integration into sub-issues\n\nFinding: [SEVERITY: high] Commit message/diff mismatch: the message claims \"break RAK2287 integration into sub-issues,\" but the diff only bumps a bookkeeping pointer in `.beads/last-touched` from `afbk.1.4` to",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:34:42.437657691Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T20:34:42.437657691Z"
+  "updated_at": "2026-07-22T21:31:15.530078117Z",
+  "started_at": "2026-07-22T21:31:15.530078117Z",
+  "lease_expires_at": "2026-07-22T21:36:15.530078117Z",
+  "heartbeat_at": "2026-07-22T21:31:15.530078117Z"
 }
