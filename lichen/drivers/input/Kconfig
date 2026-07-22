@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+config INPUT_LILYGO_TDECK_KEYBOARD
+	bool "LilyGo T-Deck I2C keyboard support"
+	depends on DT_HAS_LILYGO_TDECK_KEYBOARD_ENABLED
+	select I2C
+	help
+	  Driver for lilygo,tdeck-keyboard at I2C addr 0x55 following Zephyr input patterns.
+

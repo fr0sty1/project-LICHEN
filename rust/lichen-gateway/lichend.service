@@ -1,0 +1,19 @@
+[Unit]
+Description=LICHEN Border Router (lichend) for RPi + LoRa HAT
+After=network.target multi-user.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/bin/lichend --config /etc/lichen/gateway.toml
+Restart=always
+RestartSec=3
+Environment=RUST_LOG=info,lichen_gateway=debug
+StandardOutput=journal
+StandardError=journal
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW
+
+[Install]
+WantedBy=multi-user.target
