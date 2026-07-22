@@ -2,12 +2,16 @@
   "id": "project-LICHEN-2zo5.1",
   "title": "Update Gateway struct to use RplNode as root with router",
   "description": "Change node: Node to rpl_node: RplNode in Gateway. Update new() to use RplNode::new_root. Expose router methods. No comments. Mimic existing style. Tests must pass.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T15:26:21.504918275Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:26:21.504918275Z",
+  "updated_at": "2026-07-22T15:29:15.024022314Z",
+  "started_at": "2026-07-22T15:29:15.024022314Z",
+  "lease_expires_at": "2026-07-22T15:34:15.024022314Z",
+  "heartbeat_at": "2026-07-22T15:29:15.024022314Z",
   "labels": [
     "codereview"
   ],
