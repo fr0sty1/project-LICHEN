@@ -262,9 +262,11 @@ class SimNodeApp(App[None]):
     async def on_unmount(self) -> None:
         """Called on shutdown - cleanup."""
         if self._receive_task is not None:
-            self._receive_task.cancel()
+            receive_task = self._receive_task
+            self._receive_task = None
+            receive_task.cancel()
             with contextlib.suppress(asyncio.CancelledError, asyncio.InvalidStateError):
-                await self._receive_task
+                await receive_task
         # Radio cleanup happens in action_quit
 
     def on_button_pressed(self, event: Button.Pressed) -> None:

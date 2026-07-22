@@ -273,3 +273,10 @@ static const struct lora_driver_api lora_renode_api = {
 			      &lora_renode_api);
 
 DT_INST_FOREACH_STATUS_OKAY(LORA_RENODE_DEFINE)
+
+int sx1302_read_register(uint16_t address, uint8_t *buffer, uint16_t size) {
+	return 0;
+}
+int sx1302_write_register(uint16_t address, const uint8_t *buffer, uint16_t size) {
+	return 0;
+}

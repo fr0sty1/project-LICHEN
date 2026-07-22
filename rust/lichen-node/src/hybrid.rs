@@ -708,8 +708,8 @@ mod tests {
         let mut router = HybridRouter::new(link_local(1));
         let dst = ula(2);
 
-        router.queue_pending(vec![1, 2, 3], dst, 1000);
-        router.queue_pending(vec![4, 5, 6], dst, 2000);
+        router.queue_pending(vec![1, 2, 3], dst, 2, 1000);
+        router.queue_pending(vec![4, 5, 6], dst, 2, 2000);
 
         let pending = router.get_pending(&dst);
         assert_eq!(pending.len(), 2);
@@ -723,9 +723,9 @@ mod tests {
         router.max_pending_per_dest = 2;
         let dst = ula(2);
 
-        router.queue_pending(vec![1], dst, 1000);
-        router.queue_pending(vec![2], dst, 2000);
-        router.queue_pending(vec![3], dst, 3000); // Should evict [1]
+        router.queue_pending(vec![1], dst, 2, 1000);
+        router.queue_pending(vec![2], dst, 2, 2000);
+        router.queue_pending(vec![3], dst, 2, 3000); // Should evict [1]
 
         let pending = router.get_pending(&dst);
         assert_eq!(pending.len(), 2);

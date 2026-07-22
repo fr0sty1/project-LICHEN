@@ -8,8 +8,7 @@
 use alloc::vec::Vec;
 use core::fmt;
 use hashbrown::HashMap;
-use lichen_link::PublicKey;
-use sha2::{Digest, Sha256};
+use lichen_link::{identity::iid_from_pubkey, PublicKey};
 
 // Re-export Ipv6Addr from lichen-core
 pub use lichen_core::addr::Ipv6Addr;

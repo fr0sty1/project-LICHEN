@@ -451,8 +451,6 @@ static uint8_t meshcore_error_from_errno(int err)
 	case -EMSGSIZE:
 	case -ERANGE:
 		return LICHEN_MESHCORE_ERR_ILLEGAL_ARG;
-	case -ENOTSUP:
-	case -ENOSYS:
 	default:
 		return LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD;
 	}

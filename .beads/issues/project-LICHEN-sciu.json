@@ -2,11 +2,15 @@
   "id": "project-LICHEN-sciu",
   "title": "senml: encoder doesn't validate name concatenation length",
   "description": "File: rust/lichen-senml/src/cbor.rs\nLines: 146-188 (encode function)\n\nRFC 8428 Section 4.2 specifies that the resolved Name (base_name + name) must be a valid URI or URN. The encoder accepts arbitrarily long base_name and name strings, potentially creating:\n\n1. Names exceeding URI length limits (RFC 3986 doesn't specify a limit, but many implementations have practical limits)\n2. Names that concatenate to invalid URIs (e.g., malformed UTF-8 after concatenation)\n3. Total encoded size exceeding practical buffer limits\n\nWhile the encoder does handle buffer overflow gracefully (returns BufferTooSmall), it doesn't validate that the semantic content is valid SenML.\n\nImpact: Potentially non-compliant output; receivers may reject or truncate long names; interop issues.\n\nRecommendation: Document that name validation is caller responsibility, or add optional validation.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:40:00.448837Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:40:00.448882Z"
+  "updated_at": "2026-07-22T23:27:15.072124598Z",
+  "started_at": "2026-07-22T23:27:15.072124598Z",
+  "lease_expires_at": "2026-07-22T23:32:15.072124598Z",
+  "heartbeat_at": "2026-07-22T23:27:15.072124598Z"
 }

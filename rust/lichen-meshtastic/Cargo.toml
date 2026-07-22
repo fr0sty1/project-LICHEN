@@ -21,7 +21,6 @@ heapless = "0.8"
 lichen-core = { path = "../lichen-core" }
 lichen-link = { path = "../lichen-link" }
 prost = { version = "0.13", default-features = false, features = ["derive"] }
-sha2 = { version = "0.11", default-features = false }
 
 # Logging backends (optional, feature-gated)
 defmt = { version = "0.3", optional = true }

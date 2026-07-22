@@ -653,7 +653,7 @@ static int parse_data(const uint8_t *data, size_t len,
 					LICHEN_MESHTASTIC_ADAPTER_PACKET_POSITION_APP;
 			}
 		} else if (info->portnum == MESHTASTIC_PORTNUM_ADMIN_APP) {
-			if (info->payload == NULL || !parse_admin_payload(info->payload, info->payload_len,
+			if (info->payload == NULL || info->payload_len == 0U || !parse_admin_payload(info->payload, info->payload_len,
 						 &info->kind)) {
 				info->kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED;
 			}
