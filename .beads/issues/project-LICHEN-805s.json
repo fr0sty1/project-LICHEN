@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-805s",
+  "title": "Implement DutyCycleTracker ringbuffer in hal.c no comments",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:43:05.206261319Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:43:05.206261319Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-805s",
+      "depends_on_id": "project-LICHEN-cm7z",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T22:43:05.340050399Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
