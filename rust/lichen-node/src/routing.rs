@@ -245,13 +245,11 @@ impl Router {
         was_joined != now_joined || old_parent != new_parent
     }
 
-    /// Process a received DAO message (root only).
-    ///
-    /// Returns true if a route was updated.
-    pub fn process_dao(&mut self, dao_bytes: &[u8]) -> bool {
+    pub fn process_dao(&mut self, sender: &[u8; 16], dao_bytes: &[u8], now_ms: u32) -> bool {
         if !self.dodag.is_root() {
             return false;
         }
+        self.neighbors.update(sender, 1.0, 0, now_ms);
         self.dao_manager.process_dao(dao_bytes)
     }
 

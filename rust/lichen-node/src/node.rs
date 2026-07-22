@@ -314,8 +314,10 @@ impl RplNode {
                             return (0, RplEvent::None);
                         }
                         let dao_bytes = &pkt[body_offset..n];
-                        let route_updated = self.router.process_dao(dao_bytes);
+                        let route_updated = self.router.process_dao(&sender_addr, dao_bytes, now_ms);
                         return (0, RplEvent::DaoReceived { route_updated });
+
+
                     }
                     rpl_code::DIS => {
                         return (0, RplEvent::DisReceived);
