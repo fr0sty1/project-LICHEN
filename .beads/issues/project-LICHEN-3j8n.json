@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-3j8n",
+  "title": "[codereview-3] schema.json format_version const=2 now matches ccp15.json; test_vector_file_schema includes it; structural nesting bug fixed in this chunk. No P0-P1 findings. Clean pass for correctness.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:52:10.561815633Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:52:10.561815633Z",
+  "labels": [
+    "codereview"
+  ]
+}
