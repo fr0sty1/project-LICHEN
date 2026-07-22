@@ -321,7 +321,7 @@ int lichen_rpl_dao_manager_build_dao(struct lichen_rpl_dao_manager *dm,
 
 	struct lichen_rpl_dao dao = {
 		.rpl_instance_id = dm->rpl_instance_id,
-		.ack_requested = false,
+		.ack_requested = true,
 		.flags = 0,
 		.dao_sequence = seq,
 	};
@@ -359,6 +359,28 @@ int lichen_rpl_dao_manager_build_dao(struct lichen_rpl_dao_manager *dm,
 	pos += n;
 
 	return pos;
+}
+
+int lichen_rpl_dao_manager_build_dao_ack(struct lichen_rpl_dao_manager *dm,
+				     uint8_t dao_sequence, uint8_t status,
+				     uint8_t *buf, size_t len)
+{
+	if (dm == NULL || buf == NULL) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
+	if (len < 20) {
+		return LICHEN_RPL_ERR_BUF_SMALL;
+	}
+
+	struct lichen_rpl_dao_ack ack = {
+		.rpl_instance_id = dm->rpl_instance_id,
+		.flags = 0,
+		.dao_sequence = dao_sequence,
+		.status = status,
+	};
+	rpl_addr_copy(ack.dodag_id, dm->dodag_id);
+
+	return lichen_rpl_dao_ack_write(&ack, buf, len);
 }
 
 /**

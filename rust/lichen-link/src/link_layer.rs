@@ -193,17 +193,17 @@ pub struct AuthenticatedFrame {
 /// Per-peer replay state: tracks highest epoch and current seqnum window.
 #[derive(Debug)]
 struct PeerReplayState {
-    /// Highest epoch accepted from this peer.
     last_epoch: u8,
-    /// Replay window for `last_epoch`.
     window: ReplayWindow,
+    last_access: u64,
 }
 
 impl PeerReplayState {
-    fn new(epoch: u8) -> Self {
+    fn new(epoch: u8, last_access: u64) -> Self {
         Self {
             last_epoch: epoch,
             window: ReplayWindow::new(),
+            last_access,
         }
     }
 }
@@ -217,12 +217,16 @@ impl PeerReplayState {
 #[derive(Debug)]
 pub struct ReplayProtector {
     peers: HashMap<PublicKey, PeerReplayState>,
+    access_counter: u64,
+    max_peers: usize,
 }
 
 impl ReplayProtector {
     pub fn new() -> Self {
         ReplayProtector {
             peers: HashMap::new(),
+            access_counter: 0,
+            max_peers: 32,
         }
     }
 
@@ -232,30 +236,44 @@ impl ReplayProtector {
     /// 8-bit wrap-around correctly. An epoch difference in [-128, 0) is
     /// considered "behind" (replay); a difference in (0, 128] is "ahead".
     pub fn check_and_update(&mut self, pubkey: &PublicKey, epoch: u8, seqnum: LinkSeqNum) -> bool {
+        self.access_counter = self.access_counter.wrapping_add(1);
+        let access = self.access_counter;
         match self.peers.get_mut(pubkey) {
             None => {
-                // First frame from this peer: create state
-                let mut state = PeerReplayState::new(epoch);
+                let mut state = PeerReplayState::new(epoch, access);
                 let accepted = state.window.accept(seqnum);
                 self.peers.insert(*pubkey, state);
+                self.evict_if_needed();
                 accepted
             }
             Some(state) => {
-                // SECURITY: Use signed diff for wrap-around safe comparison
+                state.last_access = access;
                 let epoch_diff = epoch.wrapping_sub(state.last_epoch) as i8;
 
                 if epoch_diff > 0 {
-                    // Epoch advanced: reset window for new epoch
                     state.last_epoch = epoch;
                     state.window = ReplayWindow::new();
                     state.window.accept(seqnum)
                 } else if epoch_diff < 0 {
-                    // SECURITY: Reject old epoch (replay or rollback attack)
                     false
                 } else {
-                    // Same epoch: check seqnum window
                     state.window.accept(seqnum)
                 }
+            }
+        }
+    }
+
+    fn evict_if_needed(&mut self) {
+        while self.peers.len() > self.max_peers {
+            let oldest = self
+                .peers
+                .iter()
+                .min_by_key(|(_, e)| e.last_access)
+                .map(|(k, _)| *k);
+            if let Some(k) = oldest {
+                self.peers.remove(&k);
+            } else {
+                break;
             }
         }
     }
@@ -269,6 +287,18 @@ impl Default for ReplayProtector {
     fn default() -> Self {
         Self::new()
     }
+}
+
+#[derive(Debug, Clone)]
+struct TrackedPeer {
+    identity: PeerIdentity,
+    last_access: u64,
+}
+
+#[derive(Debug, Clone)]
+struct PinnedKey {
+    pubkey: PublicKey,
+    last_access: u64,
 }
 
 /// LICHEN link layer: builds signed frames for TX and verifies them on RX.
@@ -292,9 +322,11 @@ impl Default for ReplayProtector {
 /// pubkey; a mismatch returns `LinkRxError::KeyChange`.
 pub struct LinkLayer {
     identity: Identity,
-    peers: HashMap<[u8; 8], PeerIdentity>,
+    peers: HashMap<[u8; 8], TrackedPeer>,
     replay: ReplayProtector,
-    pinned: HashMap<[u8; 8], PublicKey>,
+    pinned: HashMap<[u8; 8], PinnedKey>,
+    access_counter: u64,
+    max_peers: usize,
 }
 
 impl std::fmt::Debug for LinkLayer {
@@ -315,6 +347,8 @@ impl LinkLayer {
             peers: HashMap::new(),
             replay: ReplayProtector::new(),
             pinned: HashMap::new(),
+            access_counter: 0,
+            max_peers: 32,
         }
     }
 
@@ -325,27 +359,55 @@ impl LinkLayer {
 
     /// Return the pinned pubkey for an IID, or None if not yet seen.
     pub fn pinned_pubkey_for(&self, iid: &[u8; 8]) -> Option<&PublicKey> {
-        self.pinned.get(iid)
+        self.pinned.get(iid).map(|p| &p.pubkey)
     }
 
     pub fn peer_auth_state(&self, iid: &[u8; 8]) -> PeerAuthState {
         match (self.peers.get(iid), self.pinned.get(iid)) {
-            (Some(peer), Some(pk)) if *pk == peer.pubkey => PeerAuthState::Authenticated,
+            (Some(peer), Some(pinned)) if pinned.pubkey == peer.identity.pubkey => PeerAuthState::Authenticated,
             (Some(_), _) => PeerAuthState::Authenticating,
             (None, _) => PeerAuthState::Unknown,
         }
     }
 
     pub fn add_peer(&mut self, peer: PeerIdentity) {
-        self.peers.insert(peer.iid, peer);
+        self.access_counter = self.access_counter.wrapping_add(1);
+        let access = self.access_counter;
+        let tracked = TrackedPeer {
+            identity: peer,
+            last_access: access,
+        };
+        self.peers.insert(tracked.identity.iid, tracked);
+        self.evict_if_needed();
     }
 
     pub fn remove_peer(&mut self, iid: &[u8; 8]) {
-        self.peers.remove(iid);
+        if let Some(tracked) = self.peers.remove(iid) {
+            self.replay.reset_peer(&tracked.identity.pubkey);
+        }
+        self.pinned.remove(iid);
     }
 
     pub fn peer_count(&self) -> usize {
         self.peers.len()
+    }
+
+    fn evict_if_needed(&mut self) {
+        while self.peers.len() > self.max_peers {
+            let oldest_iid = self
+                .peers
+                .iter()
+                .min_by_key(|(_, e)| e.last_access)
+                .map(|(k, _)| *k);
+            if let Some(iid) = oldest_iid {
+                if let Some(tracked) = self.peers.remove(&iid) {
+                    self.replay.reset_peer(&tracked.identity.pubkey);
+                    self.pinned.remove(&iid);
+                }
+            } else {
+                break;
+            }
+        }
     }
 
     /// Serialise a signed frame into `out`. Returns bytes written.
@@ -441,7 +503,7 @@ impl LinkLayer {
         let Some(sender) = self
             .peers
             .values()
-            .find(|peer| {
+            .find(|p| {
                 schnorr::verify_frame(
                     frame_length as u8,
                     frame.llsec_byte(),
@@ -450,20 +512,19 @@ impl LinkLayer {
                     frame.dst_addr,
                     frame.payload,
                     frame.mic,
-                    &peer.pubkey,
+                    &p.identity.pubkey,
                 )
             })
-            .cloned()
+            .map(|p| p.identity.clone())
         else {
             #[cfg(feature = "log")]
             debug!("link_layer: frame from unknown sender");
             return Err(LinkRxError::UnknownSender);
         };
 
-        // Key pinning: first-contact pins IID→pubkey; subsequent frames must match.
         let old_state = self.peer_auth_state(&sender.iid);
         match self.pinned.get(&sender.iid) {
-            Some(pk) if *pk != sender.pubkey => {
+            Some(pinned) if pinned.pubkey != sender.pubkey => {
                 #[cfg(feature = "log")]
                 warn!(
                     "link_layer: key change detected for IID {:02x?}",
@@ -487,7 +548,18 @@ impl LinkLayer {
             return Err(LinkRxError::Replay);
         }
 
-        self.pinned.entry(sender.iid).or_insert(sender.pubkey);
+        self.access_counter = self.access_counter.wrapping_add(1);
+        let access = self.access_counter;
+        if let Some(tracked) = self.peers.get_mut(&sender.iid) {
+            tracked.last_access = access;
+        }
+        self.pinned.insert(
+            sender.iid,
+            PinnedKey {
+                pubkey: sender.pubkey,
+                last_access: access,
+            },
+        );
         let new_state = self.peer_auth_state(&sender.iid);
         if !old_state.can_transition_to(new_state) {
             #[cfg(feature = "log")]
@@ -841,7 +913,7 @@ mod tests {
 
         // Simulate key change: overwrite pin with a different pubkey.
         let impostor_pk = Identity::from_seed(Seed::new([0x99u8; 32])).pubkey;
-        ll_bob.pinned.insert(alice_iid, impostor_pk);
+        ll_bob.pinned.insert(alice_iid, PinnedKey { pubkey: impostor_pk, last_access: 0 });
 
         // Second RX with same alice frame must now fail with KeyChange.
         let ll_alice2 = LinkLayer::new(Identity::from_seed(Seed::new([0x01u8; 32])));

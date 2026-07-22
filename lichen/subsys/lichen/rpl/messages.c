@@ -156,7 +156,6 @@ const uint8_t *lichen_rpl_dao_options(const uint8_t *data, size_t len)
 		return NULL;
 	}
 
-	/* Check D-flag (bit 6 of byte 1) to determine base length */
 	if (len < DAO_BASE_NO_DODAGID) {
 		return NULL;
 	}
@@ -164,6 +163,78 @@ const uint8_t *lichen_rpl_dao_options(const uint8_t *data, size_t len)
 	uint8_t kd = data[1];
 	bool d_flag = (kd >> 6) & 1;
 	size_t base_len = d_flag ? LICHEN_RPL_DAO_BASE_LEN : DAO_BASE_NO_DODAGID;
+
+	if (len > base_len) {
+		return &data[base_len];
+	}
+	return NULL;
+}
+
+int lichen_rpl_dao_ack_parse(struct lichen_rpl_dao_ack *ack,
+			 const uint8_t *data, size_t len)
+{
+	if (ack == NULL || data == NULL) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
+	if (len < 4) {
+		return LICHEN_RPL_ERR_TOO_SHORT;
+	}
+
+	uint8_t d_byte = data[1];
+	bool d_flag = (d_byte >> 7) & 1;
+
+	if (d_flag && len < 20) {
+		return LICHEN_RPL_ERR_TOO_SHORT;
+	}
+
+	ack->rpl_instance_id = data[0];
+	ack->flags = d_byte & 0x7F;
+	ack->dao_sequence = data[2];
+	ack->status = data[3];
+
+	if (d_flag) {
+		memcpy(ack->dodag_id, &data[4], 16);
+	} else {
+		memset(ack->dodag_id, 0, 16);
+	}
+
+	return LICHEN_RPL_OK;
+}
+
+int lichen_rpl_dao_ack_write(const struct lichen_rpl_dao_ack *ack,
+			 uint8_t *buf, size_t len)
+{
+	if (ack == NULL || buf == NULL) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
+	bool d_flag = true;
+	size_t base_len = d_flag ? 20 : 4;
+	if (len < base_len) {
+		return LICHEN_RPL_ERR_BUF_SMALL;
+	}
+
+	uint8_t d_byte = (d_flag ? 0x80 : 0) | (ack->flags & 0x7F);
+
+	buf[0] = ack->rpl_instance_id;
+	buf[1] = d_byte;
+	buf[2] = ack->dao_sequence;
+	buf[3] = ack->status;
+	if (d_flag) {
+		memcpy(&buf[4], ack->dodag_id, 16);
+	}
+
+	return (int)base_len;
+}
+
+const uint8_t *lichen_rpl_dao_ack_options(const uint8_t *data, size_t len)
+{
+	if (data == NULL || len < 4) {
+		return NULL;
+	}
+
+	uint8_t d_byte = data[1];
+	bool d_flag = (d_byte >> 7) & 1;
+	size_t base_len = d_flag ? 20 : 4;
 
 	if (len > base_len) {
 		return &data[base_len];

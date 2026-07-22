@@ -287,22 +287,15 @@ void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 
 	/* Only accept DIOs from the same DODAG once joined */
 	if (lichen_rpl_dodag_is_joined(d) &&
-	    !rpl_addr_eq(dio->dodag_id, d->dodag_id)) {
+	    !rpl_addr_eq(dio->dodag_id, d->dodag_id) &&
+	    !version_is_newer(dio->version, d->version)) {
 		return;
 	}
 
-	/*
-	 * Version handling per RFC 6550 lollipop semantics.
-	 * A newer version triggers DODAG rejoin; stale versions are ignored.
-	 */
-	if (!lichen_rpl_dodag_is_joined(d) || version_is_newer(dio->version, d->version)) {
-		/* First DIO - join unconditionally */
+	if (version_is_newer(dio->version, d->version) ||
+	    !lichen_rpl_dodag_is_joined(d)) {
 		adopt_version(d, dio);
-	} else if (version_is_newer(dio->version, d->version)) {
-		/* Newer version - rejoin the DODAG */
-		adopt_version(d, dio);
-	} else if (dio->version != d->version) {
-		/* Stale version (not newer and not equal) - ignore */
+	} else if (version_is_newer(d->version, dio->version)) {
 		return;
 	}
 

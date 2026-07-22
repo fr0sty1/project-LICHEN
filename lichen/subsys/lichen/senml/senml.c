@@ -72,10 +72,8 @@ int senml_pack_init(struct senml_pack *pack,
 	}
 
 	pack->base_name = base_name;
-	if (base_time > 0) {
-		pack->base_time = base_time;
-		pack->has_base_time = true;
-	}
+	pack->base_time = base_time;
+	pack->has_base_time = true;
 
 	return 0;
 }

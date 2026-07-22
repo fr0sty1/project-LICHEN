@@ -232,6 +232,10 @@ int lichen_rpl_dao_manager_build_dao(struct lichen_rpl_dao_manager *_Nonnull dm,
 				     const uint8_t *_Nonnull parent_addr,
 				     uint8_t *_Nonnull buf, size_t len);
 
+int lichen_rpl_dao_manager_build_dao_ack(struct lichen_rpl_dao_manager *_Nonnull dm,
+				     uint8_t dao_sequence, uint8_t status,
+				     uint8_t *_Nonnull buf, size_t len);
+
 /**
  * @brief Process a received DAO on the root.
  *

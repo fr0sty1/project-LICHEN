@@ -40,16 +40,10 @@ LOG_MODULE_REGISTER(lichen_coap_keys, CONFIG_LICHEN_COAP_KEYS_LOG_LEVEL);
 #define CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES 16
 #endif
 
-/* CBOR content-format code */
 #define CBOR_CONTENT_FORMAT 60
 
-/* Key store */
 static struct lichen_key_entry s_keys[CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES];
 static K_MUTEX_DEFINE(s_mutex);
-
-/* --------------------------------------------------------------------------
- * CBOR helpers (string-keyed encoding per spec)
- * -------------------------------------------------------------------------- */
 
 static void cbor_put_map_header(uint8_t *buf, size_t *off, uint8_t count)
 {

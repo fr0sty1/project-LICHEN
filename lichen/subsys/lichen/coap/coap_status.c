@@ -525,7 +525,7 @@ static int coap_respond(struct coap_resource *resource,
 			uint8_t resp_code,
 			const uint8_t *payload, size_t payload_len)
 {
-	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+	static uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
 	struct coap_packet resp;
 	uint8_t token[COAP_TOKEN_MAX_LEN];
 	uint8_t tkl = coap_header_get_token(request, token);
@@ -598,7 +598,7 @@ static int status_get(struct coap_resource *resource,
 static void status_notify(struct coap_resource *resource,
 			  struct coap_observer *observer)
 {
-	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+	static uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
 	uint8_t cbor_buf[LICHEN_COAP_STATUS_CBOR_MAX_SIZE];
 	struct coap_packet notif;
 	struct lichen_coap_node_status status = {0};
