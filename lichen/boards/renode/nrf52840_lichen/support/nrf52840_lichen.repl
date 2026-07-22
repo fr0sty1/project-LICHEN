@@ -17,7 +17,7 @@ twi1: @ none
 // driver. Renode builds select nordic,nrf-spi in renode_console.overlay, so the
 // model must expose the matching legacy TXD/RXD/EVENTS_READY interface.
 spi1: SPI.NRF52840_SPI @ sysbus 0x40004000
-    easyDMA: false
+    easyDMA: true
     -> nvic@4
 
 // SX1262 LoRa radio on SPI1.
