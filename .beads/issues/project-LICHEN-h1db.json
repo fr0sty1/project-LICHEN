@@ -2,11 +2,15 @@
   "id": "project-LICHEN-h1db",
   "title": "SCHC: icmpv6_checksum accepts size_t but truncates to uint16_t",
   "description": "File: lichen/subsys/lichen/schc/schc.c\nLines: 661-668\n\nThe icmpv6_checksum function signature accepts size_t len:\n\n```c\nstatic uint16_t icmpv6_checksum(const uint8_t src[16], const uint8_t dst[16],\n                                const uint8_t *icmpv6_payload, size_t len)\n{\n    uint32_t sum = pseudo_sum(src, dst, IPV6_NH_ICMPV6, len);  // len truncated here!\n```\n\nBut pseudo_sum expects uint16_t:\n\n```c\nstatic uint32_t pseudo_sum(const uint8_t src[16], const uint8_t dst[16],\n                           uint8_t next_header, uint16_t length)\n```\n\nIf len \u003e 65535, it silently truncates, causing incorrect checksum calculation.\n\nCurrent state:\n- All callers check icmp_len \u003c= UINT16_MAX before calling (lines 1069, 1144, 1220)\n- So this is not currently exploitable\n\nRisk:\n- Future callers might forget the check\n- Latent bug / API footgun\n\nFix: Either:\n1. Change icmpv6_checksum signature to take uint16_t and let callers cast explicitly\n2. Add assert(len \u003c= UINT16_MAX) in icmpv6_checksum\n3. Return error if len \u003e UINT16_MAX",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:54:20.32957Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:54:20.329597Z"
+  "updated_at": "2026-07-22T23:19:27.80655698Z",
+  "started_at": "2026-07-22T23:19:27.80655698Z",
+  "lease_expires_at": "2026-07-22T23:24:27.80655698Z",
+  "heartbeat_at": "2026-07-22T23:19:27.80655698Z"
 }
