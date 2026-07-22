@@ -190,6 +190,8 @@ int lichen_coap_server_stop(void);
  */
 int lichen_coap_server_is_running(void);
 
+int lichen_coap_deaddrop_register(void);
+
 #ifdef __cplusplus
 }
 #endif
