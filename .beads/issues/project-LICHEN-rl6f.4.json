@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-rl6f.4",
+  "title": "CCP-1.2: TDMA time slot structure and allocation",
+  "description": "Define time slot format, guard times, slot assignment via RPL or CoAP, master/slave roles or distributed scheduling. Reference relevant IETF drafts if any.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:14:36.440567545Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:14:36.440567545Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-rl6f.4",
+      "depends_on_id": "project-LICHEN-rl6f",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:14:36.542106762Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
