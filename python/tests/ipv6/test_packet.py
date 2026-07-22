@@ -157,3 +157,22 @@ def test_packet_rejects_truncated_payload() -> None:
     hdr = IPv6Header("::1", "::2", NextHeader.UDP, payload_length=10)
     with pytest.raises(PacketError):
         IPv6Packet.from_bytes(hdr.to_bytes() + b"short")
+
+
+def test_packet_rejects_oversized_payload() -> None:
+    pkt = IPv6Packet(
+        header=IPv6Header("::1", "::2", NextHeader.UDP),
+        payload=b"x" * 70000,
+    )
+    with pytest.raises(PacketError):
+        pkt.to_bytes()
+    ext = ExtensionHeader(
+        header_type=NextHeader.HOP_BY_HOP, data=b"\x00" * 6
+    )
+    pkt = IPv6Packet(
+        header=IPv6Header("::1", "::2", NextHeader.UDP),
+        payload=b"x" * 65000,
+        extension_headers=[ext],
+    )
+    with pytest.raises(PacketError):
+        pkt.to_bytes()

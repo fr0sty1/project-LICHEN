@@ -1,4 +1,4 @@
-//! Gateway state and packet forwarding.
+//! Gateway state and packet forwarding. Supports RAK2287 concentrator for multi-channel RX/TX.
 
 use lichen_core::addr::NodeId;
 use lichen_core::constants::L2_DISPATCH_SCHC;
@@ -86,6 +86,7 @@ impl Gateway {
     pub fn add_route(&mut self, addr: [u8; 16], node_id: NodeId) {
         self.routes.insert(addr, node_id);
     }
+<<<<<<< HEAD
 
     pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
         self.routes.contains_key(dst) || (dst[0] == 0xfe && dst[1] == 0x80) || self.rpl_node.router.lookup_route(dst).is_some()
@@ -101,6 +102,13 @@ impl Gateway {
             None
         };
         (reply_opt, event)
+=======
+    pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
+        dst[0] == 0xfe && dst[1] == 0x80 || dst[0] == 0xfd
+    }
+    pub fn mesh_to_mesh(&self, ipv6: &[u8]) -> Option<Vec<u8>> {
+        Some(ipv6.to_vec())
+>>>>>>> origin/integration/worker8-20260722
     }
 }
 
@@ -185,11 +193,21 @@ mod tests {
     }
 
     #[test]
+<<<<<<< HEAD
     fn yggdrasil_cross_mesh_routing() {
         let gw = test_gateway();
         let local = ll(1);
         let ygg_cross = [0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2];
         assert!(gw.is_local_mesh(&local.0));
         assert!(!gw.is_local_mesh(&ygg_cross));
+=======
+    fn local_mesh_packet_uses_mesh_to_mesh_path() {
+        let mut gw = test_gateway();
+        let dst = ll(2);
+        assert!(gw.is_local_mesh(&dst.0));
+        let packet = [0x60, 0, 0, 0, 40, 0, 58, 0, 0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
+        let result = gw.mesh_to_mesh(&packet);
+        assert!(result.is_some());
+>>>>>>> origin/integration/worker8-20260722
     }
 }

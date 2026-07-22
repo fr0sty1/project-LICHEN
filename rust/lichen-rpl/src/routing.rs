@@ -276,8 +276,8 @@ pub struct DaoManager {
     pub routing_table: RoutingTable,
     dao_sequence: u8,
     parent_map: HashMap<[u8; 16], [u8; 16]>,
-    /// Last accepted DAO sequence per target (replay protection).
     dao_seq_map: HashMap<[u8; 16], u8>,
+    last_dao_ts: u32,
 }
 
 #[cfg(feature = "std")]
@@ -292,6 +292,7 @@ impl DaoManager {
             dao_sequence: 0,
             parent_map: HashMap::new(),
             dao_seq_map: HashMap::new(),
+            last_dao_ts: 0,
         }
     }
 
@@ -398,6 +399,7 @@ impl DaoManager {
                 self.routing_table.add_route(target, &path);
             }
         }
+        self.last_dao_ts = self.last_dao_ts.wrapping_add(1);
     }
 
     /// Walk target → parent → … → root and return the reversed downward path.

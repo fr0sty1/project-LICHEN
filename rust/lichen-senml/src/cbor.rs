@@ -846,6 +846,36 @@ mod tests {
     }
 
     #[test]
+    fn decode_rejects_trailing_bytes() {
+        let records = [Record {
+            name: Some("temp"),
+            value: Some(23.5),
+            ..Record::empty()
+        }];
+        let mut buf = [0u8; 64];
+        let n = encode(&records, &mut buf).unwrap();
+        let mut decoded = [Record::empty()];
+        let count = decode(&buf[..n], &mut decoded).unwrap();
+        assert_eq!(count, 1);
+
+        // valid 1-record pack + trailing garbage bytes must be rejected
+        // (tests the pos == data.len() check and Record::parse path)
+        let mut bad = [0u8; 80];
+        bad[..n].copy_from_slice(&buf[..n]);
+        for b in &mut bad[n..n + 16] {
+            *b = 0xaa;
+        }
+        assert!(matches!(
+            decode(&bad[..n + 16], &mut decoded),
+            Err(CborError::InvalidInput)
+        ));
+        assert!(matches!(
+            Record::parse(&bad[..n + 16]),
+            Err(CborError::InvalidInput)
+        ));
+    }
+
+    #[test]
     fn roundtrip_long_string_value() {
         // Test string > 255 bytes (requires 2-byte length encoding)
         let long_string = "x".repeat(300);

@@ -180,13 +180,21 @@ Nodes MUST implement select_channel and now as follows. All operators use spelle
 function select_channel(ctx, metrics, t):
     IF (metrics.density > 8) OR (NOT ctx.wall_clock_valid) THEN
         RETURN 0
+<<<<<<< HEAD
     hash = fnv1a32((ctx.eui64 XOR t XOR ctx.epoch))
+=======
+    hash = fnv1a32( (ctx.eui64 XOR t XOR ctx.epoch) )
+>>>>>>> origin/integration/worker8-20260722
     n = ctx.num_data_channels IF ctx.num_data_channels > 0 ELSE 3
     RETURN 1 + (hash MOD n)
 
 function now():
     RETURN current_sfn()
 ```
+<<<<<<< HEAD
+=======
+Note: All operators are spelled out (OR, NOT, MOD, XOR) for language-agnostic IETF compatibility. No Rust 'or', no C types or structs, no dead code. now_ts TDMA alignment uses LICHEN_TDMA_Slot relation for slot calc.
+>>>>>>> origin/integration/worker8-20260722
 
 ### Density Rules Rationale (logical chunk: rationale paragraph - updated)
 

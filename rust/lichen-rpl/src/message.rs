@@ -151,11 +151,9 @@ impl Dio {
 
 // ── DAO ──────────────────────────────────────────────────────────────────────
 
-/// DAO base object with DODAGID always present (D-flag = 1), as required by
-/// SCHC rule 4. The base is 20 bytes.
-///
-/// In a full decompressed packet the DAO base starts at offset 44; options
-/// start at offset 64.
+/// DAO base object (RFC 6550 §6.4). D-flag (bit 6 of byte 1) determines length:
+/// D=1 includes 16-byte DODAGID (20 bytes total); D=0 elides it (4 bytes total).
+/// LICHEN/SCHC rule 4 uses D=1; parser supports both (D=0 zeros dodag_id).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Dao {
     pub rpl_instance_id: u8,
@@ -166,26 +164,29 @@ pub struct Dao {
 }
 
 impl Dao {
-    pub const BASE_LEN: usize = 20;
+    pub const BASE_LEN: usize = 20; // for D=1 (common case)
 
     pub fn from_bytes(data: &[u8]) -> Result<Self, RplError> {
-        if data.len() < Self::BASE_LEN {
-            return Err(TooShort::new(Self::BASE_LEN, data.len()).into());
+        if data.len() < 4 {
+            return Err(TooShort::new(4, data.len()).into());
         }
         let kd = data[1];
-        // SECURITY: D-flag (bit 6) must be set; LICHEN requires DODAGID present (SCHC rule 4).
-        // If D=0, DAO base is only 4 bytes with no DODAGID, which would cause misparse.
-        if (kd >> 6) & 1 == 0 {
-            return Err(RplError::InvalidOption);
+        let d_flag = (kd >> 6) & 1;
+        let base_len = if d_flag == 1 { 20 } else { 4 };
+        if data.len() < base_len {
+            return Err(TooShort::new(base_len, data.len()).into());
         }
+        let dodag_id = if d_flag == 1 {
+            data[4..20].try_into().unwrap()
+        } else {
+            [0u8; 16] // D=0 elides DODAGID per RFC 6550 §6.4.2; use context DODAG
+        };
         Ok(Self {
             rpl_instance_id: data[0],
             ack_requested: (kd >> 7) & 1 == 1,
             flags: kd & 0x3F,
             dao_sequence: data[3],
-            // SAFETY: length check above ensures data.len() >= BASE_LEN (20),
-            // so 4..20 is within bounds and exactly 16 bytes
-            dodag_id: data[4..20].try_into().unwrap(),
+            dodag_id,
         })
     }
 
@@ -194,7 +195,7 @@ impl Dao {
             return Err(BufferTooSmall::new(Self::BASE_LEN, out.len()).into());
         }
         let kd = ((self.ack_requested as u8) << 7)
-            | (1u8 << 6) // D-flag always set
+            | (1u8 << 6) // D-flag always set (LICHEN/SCHC rule 4)
             | (self.flags & 0x3F);
         out[0] = self.rpl_instance_id;
         out[1] = kd;
@@ -205,8 +206,14 @@ impl Dao {
     }
 
     pub fn options_tail(data: &[u8]) -> &[u8] {
-        if data.len() > Self::BASE_LEN {
-            &data[Self::BASE_LEN..]
+        if data.len() < 4 {
+            return &[];
+        }
+        let kd = data[1];
+        let d_flag = (kd >> 6) & 1;
+        let base_len = if d_flag == 1 { 20 } else { 4 };
+        if data.len() > base_len {
+            &data[base_len..]
         } else {
             &[]
         }
@@ -541,31 +548,23 @@ mod tests {
     }
 
     #[test]
-    fn dao_rejects_d_flag_zero() {
-        // DAO with D=0 is invalid for LICHEN (requires DODAGID present)
+    fn dao_supports_both_d_flags() {
+        // Per RFC 6550 §6.4.2 both D=0 (elided DODAGID) and D=1 valid.
+        // D=0 uses zeroed dodag_id (context DODAG assumed); SCHC rule 4 uses D=1.
         let mut buf = [0u8; 20];
-        buf[0] = 0; // rpl_instance_id
-        buf[1] = 0x00; // K=0, D=0, flags=0 (invalid: D must be 1)
-        buf[2] = 0; // reserved
-        buf[3] = 1; // dao_sequence
-                    // buf[4..20] would be DODAGID, but D=0 means it shouldn't be present
-        assert_eq!(Dao::from_bytes(&buf), Err(RplError::InvalidOption));
-    }
+        buf[0] = 0;
+        buf[1] = 0x00; // D=0
+        buf[2] = 0;
+        buf[3] = 1;
+        let dao0 = Dao::from_bytes(&buf).unwrap();
+        assert_eq!(dao0.dao_sequence, 1);
+        assert_eq!(dao0.dodag_id, [0u8; 16]);
 
-    #[test]
-    fn dao_accepts_d_flag_one() {
-        // DAO with D=1 should be accepted
-        let mut buf = [0u8; 20];
-        buf[0] = 0; // rpl_instance_id
-        buf[1] = 0x40; // K=0, D=1, flags=0 (valid)
-        buf[2] = 0; // reserved
-        buf[3] = 5; // dao_sequence
-        buf[4] = 0xfd; // DODAGID starts here
-        let dao = Dao::from_bytes(&buf).unwrap();
-        assert_eq!(dao.rpl_instance_id, 0);
-        assert!(!dao.ack_requested);
-        assert_eq!(dao.dao_sequence, 5);
-        assert_eq!(dao.dodag_id[0], 0xfd);
+        buf[1] = 0x40; // D=1
+        buf[4] = 0xfd;
+        let dao1 = Dao::from_bytes(&buf).unwrap();
+        assert_eq!(dao1.dao_sequence, 1);
+        assert_eq!(dao1.dodag_id[0], 0xfd);
     }
 
     // ── RPL Target option ─────────────────────────────────────────────────────

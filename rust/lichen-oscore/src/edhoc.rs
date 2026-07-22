@@ -257,7 +257,6 @@ fn parse_suites_i(data: &[u8]) -> Result<(u8, usize), EdhocError> {
 #[derive(Zeroize, ZeroizeOnDrop)]
 pub struct EdhocInitiator {
     /// Our Ed25519 signing key (implements ZeroizeOnDrop).
-    #[zeroize(skip)]
     signing_key: SigningKey,
     /// Our Ed25519 public key.
     #[zeroize(skip)]
@@ -707,7 +706,6 @@ impl EdhocInitiator {
 #[derive(Zeroize, ZeroizeOnDrop)]
 pub struct EdhocResponder {
     /// Our Ed25519 signing key (implements ZeroizeOnDrop).
-    #[zeroize(skip)]
     signing_key: SigningKey,
     /// Our Ed25519 public key.
     #[zeroize(skip)]

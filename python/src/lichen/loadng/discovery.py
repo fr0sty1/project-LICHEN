@@ -131,9 +131,12 @@ class LoadngRouter:
             return RreqResult(reply=rrep, reply_next_hop=from_neighbor)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         # Intermediate reply if we already hold a gradient to the destination.
 =======
 >>>>>>> origin/integration/worker11-20260722
+=======
+>>>>>>> origin/integration/worker8-20260722
         grad = self.gradient.lookup(rreq.destination, now)
         if grad is not None:
             rrep = RREP(

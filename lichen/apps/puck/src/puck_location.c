@@ -49,7 +49,7 @@ static uint8_t puck_days_in_month(uint16_t year, uint8_t month)
 }
 
 static bool puck_gnss_utc_to_unix(const struct gnss_time *utc,
-				  uint32_t *unix_time)
+				  uint64_t *unix_time)
 {
 	struct tm tm = { 0 };
 	int64_t epoch;
@@ -77,17 +77,17 @@ static bool puck_gnss_utc_to_unix(const struct gnss_time *utc,
 	tm.tm_sec = utc->millisecond / 1000U;
 
 	epoch = timeutil_timegm64(&tm);
-	if (epoch <= 0 || epoch > UINT32_MAX) {
+	if (epoch <= 0) {
 		return false;
 	}
 
-	*unix_time = (uint32_t)epoch;
+	*unix_time = (uint64_t)epoch;
 	return true;
 }
 
 static void puck_submit_gnss_time(const struct gnss_data *data)
 {
-	uint32_t unix_time;
+	uint64_t unix_time;
 	struct lichen_hal_time_sample sample = {
 		.source_class = LICHEN_HAL_TIME_SOURCE_GNSS,
 		.source_name = "gnss0",

@@ -331,7 +331,20 @@ where
         }
     }
 
-    let _ = sim_task.await;
+    // Graceful shutdown: drop senders so sim_task can drain TX and exit.
+    drop(tx_send);
+    drop(rx_recv);
+    info!("waiting for sim_task to finish draining transmissions");
+    tokio::select! {
+        _ = &mut sim_task => {
+            info!("sim_task completed");
+        }
+        _ = sleep(Duration::from_secs(5)) => {
+            warn!("sim_task did not finish in time, aborting");
+            sim_task.abort();
+            let _ = sim_task.await;
+        }
+    }
 }
 
 // ── serial mode ───────────────────────────────────────────────────────────────

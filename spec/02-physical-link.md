@@ -29,6 +29,7 @@ LoRa Chirp Spread Spectrum (CSS) as implemented by Semtech SX126x and SX127x.
 **Channel Plan**
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 | Channel | Role | Traffic | Listen Requirement |
 |---------|------|---------|--------------------|
 | CH0 (control) | Routing, control | Announces, DIO, DIS, DAO, beacons (TDMA) | All nodes MUST listen when idle |
@@ -141,8 +142,67 @@ See CCP-12 synchronized hopping in [02a-coordinated-capacity.md](02a-coordinated
 
 See CCP-16 in spec/02a-coordinated-capacity.md for the normative adaptive SF algorithm, per-neighbor EMA tracking of SNR, density and load thresholds, signaling in DIOs, RX scanning on control channel, and test vector requirements. SF10 is REQUIRED default per appendix-design-rationale.md.
 >>>>>>> origin/integration/worker11-20260722
+=======
+### 3.4. Adaptive Spreading Factor (ADR)
+
+SF10 is the REQUIRED default and fallback SF for all nodes (see appendix-design-rationale:7.1). New nodes SHOULD implement per-neighbor adaptive SF based on observed SNR and success rate. This provides significant capacity gains in dense deployments while maintaining full backwards compatibility with SF10-only nodes.
+
+#### 3.4.1. SF Selection Algorithm
+
+Nodes maintain per-neighbor state: `(snr_ema, success_rate, tx_sf, last_updated)`.
+
+On RX (including announces and data packets):
+- Update neighbor SNR EMA (alpha=0.1)
+- Update success rate (EWMA of ACKs or successful decodes)
+- If 3 consecutive samples show SNR >10dB above sensitivity for current SF: decrease SF
+- If 3 consecutive samples show SNR <5dB above sensitivity: increase SF
+- Hysteresis prevents oscillation
+
+Thresholds (125 kHz, SF10 baseline):
+
+| SF | Sensitivity | Upgrade Threshold | Downgrade Threshold |
+|----|-------------|-------------------|---------------------|
+| SF7 | -123 dBm | N/A | SNR < 0 dB |
+| SF8 | -126 dBm | SNR > 10 dB | SNR < 0 dB |
+| SF9 | -129 dBm | SNR > 10 dB | SNR < 0 dB |
+| SF10 | -132 dBm | SNR > 10 dB | SNR < 0 dB |
+| SF11 | -134 dBm | SNR > 10 dB | SNR < 0 dB |
+| SF12 | -137 dBm | SNR > 10 dB | N/A |
+
+See `spec/02a-coordinated-capacity.md:2a.3` for density/load_factor integration and normative `adaptive_sf_select()` pseudocode that MUST match `test/vectors/ccp16.json`.
+
+#### 3.4.2. Signaling
+
+**Announce includes current TX_SF (1 byte, Option 1 chosen):** 
+
+The LICHEN Announce message (routing type 0x01) SHALL include an optional `TX_SF` field (current transmit SF used by sender, 7-12). Absence of field or value=10 means SF10 (backwards compatible).
+
+Receivers use the announced TX_SF + measured SNR to update per-neighbor state.
+
+This enables informed adaptation without probing. For CON messages, sender uses the last known `tx_sf` for that dst; if unknown, defaults to SF10.
+
+#### 3.4.3. Backwards Compatibility
+
+No flag day required.
+
+- Legacy nodes: always use SF10 (current behavior)
+- New nodes: adapt SF per-neighbor when `tx_sf` known from announce; otherwise use SF10
+- Mixed networks: SF10 is universal common ground
+- New nodes MUST accept on any SF (hardware CAD already supports multi-SF RX)
+- Adaptation logic:
+  ```
+  if (dst.tx_sf known from announce):
+      sf = adaptive_sf_select(snr_to_dst)
+  else:
+      sf = 10  // safe default
+  ```
+
+Old nodes gain no benefit; new-to-new links gain reduced airtime (SF7/8/9 in good conditions). Benefit scales with deployment penetration. See parent epic project-LICHEN-zrh2 for full ADR v2 with density awareness.
+>>>>>>> origin/integration/worker8-20260722
 
 ---
+
+
 
 ## 4. Link Layer
 

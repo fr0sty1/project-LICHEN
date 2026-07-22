@@ -428,6 +428,9 @@ SENSITIVE_FIELD_PARTS = (
     "private",
     "nonce",
     "mac",
+    "iv",
+    "cert",
+    "certificate",
 )
 RADIO_CONFIG_FIELDS = frozenset({"freq_mhz", "bw_khz", "sf", "cr", "tx_power_dbm"})
 NODE_CONFIG_FIELDS = frozenset({"name", "role"})

@@ -758,6 +758,7 @@
           "description": "CCP-16 vector type (added for schema completeness per codereview)"
         },
         "description": {"type": "string"},
+<<<<<<< HEAD
         "name": {"type": "string"},
         "rssi_dbm": {"type": "number", "minimum": -140, "maximum": 0},
         "per": {"type": "number", "minimum": 0, "maximum": 1},
@@ -766,6 +767,12 @@
           "items": {"type": "number"}
         },
         "hash_32_example": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
+=======
+        "security_review": {
+          "type": "string",
+          "description": "Pass 2 security: no injection or crypto issues in CCP-16 vectors (project-LICHEN-ray3)"
+        },
+>>>>>>> origin/integration/worker8-20260722
         "input": {
           "type": "object",
           "properties": {
