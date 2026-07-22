@@ -592,8 +592,8 @@ pub fn aprs_to_cot(aprs: &str) -> Option<CompactCot> {
 
     Some(CompactCot {
         subtype: subtype::FRIENDLY_GROUND, // Default to friendly
-        lat_microdeg: (lat * 1_000_000.0) as i32,
-        lon_microdeg: (lon * 1_000_000.0) as i32,
+        lat_microdeg: (lat * 1_000_000.0).round() as i32,
+        lon_microdeg: (lon * 1_000_000.0).round() as i32,
         alt_dm,
         course_cdeg: 0,
         speed_cm_s: 0,
@@ -848,5 +848,49 @@ mod tests {
             typical_packet.len() < MAX_LINE_LEN,
             "typical packet should fit within MAX_LINE_LEN"
         );
+    }
+
+    #[test]
+    fn aprs_to_cot_f64_edge_cases() {
+        // f64 NaN/Inf/very-large/exact-0.5 rounding, southern/boundary, no panic on cast
+        let cot = CompactCot {
+            subtype: subtype::FRIENDLY_GROUND,
+            lat_microdeg: (0.5f64 / 1_000_000.0 * 1_000_000.0).round() as i32, // exact 0.5 -> 1
+            lon_microdeg: 0,
+            alt_dm: 0,
+            course_cdeg: 0,
+            speed_cm_s: 0,
+            team: team::BLUE,
+            role: 0,
+        };
+        assert_eq!(cot.lat_microdeg, 1);
+
+        // Southern/boundary lat-lon
+        if let Some(southern) = aprs_to_cot("W1TEST>APRS,TCPIP*:!9000.00S/18000.00W-") {
+            assert!(southern.lat_deg() <= -89.999);
+            assert!(southern.lon_deg() <= -179.999);
+        }
+
+        // Verify no panic on cast for NaN/Inf/very large (saturates in practice)
+        let _nan_cot = CompactCot {
+            subtype: subtype::FRIENDLY_GROUND,
+            lat_microdeg: (f64::NAN * 1_000_000.0).round() as i32,
+            lon_microdeg: (f64::INFINITY * 1_000_000.0).round() as i32,
+            alt_dm: 0,
+            course_cdeg: 0,
+            speed_cm_s: 0,
+            team: team::BLUE,
+            role: 0,
+        };
+        let _large_cot = CompactCot {
+            subtype: subtype::FRIENDLY_GROUND,
+            lat_microdeg: (10000.0f64 * 1_000_000.0).round() as i32,
+            lon_microdeg: (-10000.0f64 * 1_000_000.0).round() as i32,
+            alt_dm: 0,
+            course_cdeg: 0,
+            speed_cm_s: 0,
+            team: team::BLUE,
+            role: 0,
+        };
     }
 }

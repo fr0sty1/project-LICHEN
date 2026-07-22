@@ -168,13 +168,13 @@ def _ipv6_header(
     fields: dict[str, int | None], next_header: int, payload_length: int
 ) -> IPv6Header:
     return IPv6Header(
-        src_addr=IPv6Address(fields["IPv6.src"]),
-        dst_addr=IPv6Address(fields["IPv6.dst"]),
+        src_addr=IPv6Address(int(fields.get("IPv6.src") or 0)),
+        dst_addr=IPv6Address(int(fields.get("IPv6.dst") or 0)),
         next_header=next_header,
         payload_length=payload_length,
-        hop_limit=fields["IPv6.hop_limit"],
-        traffic_class=fields["IPv6.traffic_class"],
-        flow_label=fields["IPv6.flow_label"],
+        hop_limit=int(fields.get("IPv6.hop_limit") or 64),
+        traffic_class=int(fields.get("IPv6.traffic_class") or 0),
+        flow_label=int(fields.get("IPv6.flow_label") or 0),
     )
 
 
@@ -238,13 +238,19 @@ class _CoapUdpProfile(PacketProfile):
         return fields, tail
 
     def build(self, fields: dict[str, int | None], tail: bytes) -> bytes:
-        src = IPv6Address(fields["IPv6.src"])
-        dst = IPv6Address(fields["IPv6.dst"])
-        b0 = (1 << 6) | ((fields["CoAP.type"] & 0x3) << 4) | (fields["CoAP.tkl"] & 0x0F)
-        coap = bytes([b0, fields["CoAP.code"]]) + int(fields["CoAP.mid"]).to_bytes(2, "big") + tail
-        udp_bytes = UdpDatagram(fields["UDP.src_port"], fields["UDP.dst_port"], coap).to_bytes(
-            src, dst
-        )
+        src = IPv6Address(int(fields.get("IPv6.src") or 0))
+        dst = IPv6Address(int(fields.get("IPv6.dst") or 0))
+        coap_type = int(fields.get("CoAP.type") or 0)
+        coap_tkl = int(fields.get("CoAP.tkl") or 0)
+        coap_code = int(fields.get("CoAP.code") or 0)
+        coap_mid = int(fields.get("CoAP.mid") or 0)
+        b0 = (1 << 6) | ((coap_type & 0x3) << 4) | (coap_tkl & 0x0F)
+        coap = bytes([b0, coap_code]) + coap_mid.to_bytes(2, "big") + tail
+        udp_bytes = UdpDatagram(
+            int(fields.get("UDP.src_port") or 0),
+            int(fields.get("UDP.dst_port") or 0),
+            coap,
+        ).to_bytes(src, dst)
         return _ipv6_header(fields, UDP_NEXT_HEADER, len(udp_bytes)).to_bytes() + udp_bytes
 
 
@@ -343,8 +349,8 @@ class _RplProfile(PacketProfile):
         return fields, rpl[self.base_length :]
 
     def build(self, fields: dict[str, int | None], tail: bytes) -> bytes:
-        src = IPv6Address(fields["IPv6.src"])
-        dst = IPv6Address(fields["IPv6.dst"])
+        src = IPv6Address(int(fields.get("IPv6.src") or 0))
+        dst = IPv6Address(int(fields.get("IPv6.dst") or 0))
         body = self._build_base(fields) + tail
         zero = bytes([_ICMPV6_RPL_TYPE, self.code, 0, 0]) + body
         checksum = icmpv6_checksum(src, dst, zero)
@@ -380,17 +386,17 @@ class RplDioProfile(_RplProfile):
 
     def _build_base(self, fields: dict[str, int | None]) -> bytes:
         return (
-            bytes([fields["RPL.instance"], fields["RPL.version"]])
-            + int(fields["RPL.rank"]).to_bytes(2, "big")
+            bytes([int(fields.get("RPL.instance") or 0), int(fields.get("RPL.version") or 0)])
+            + int(fields.get("RPL.rank") or 0).to_bytes(2, "big")
             + bytes(
                 [
-                    fields["RPL.gmop"],
-                    fields["RPL.dtsn"],
-                    fields["RPL.flags"],
-                    fields["RPL.reserved"],
+                    int(fields.get("RPL.gmop") or 0),
+                    int(fields.get("RPL.dtsn") or 0),
+                    int(fields.get("RPL.flags") or 0),
+                    int(fields.get("RPL.reserved") or 0),
                 ]
             )
-            + int(fields["RPL.dodagid"]).to_bytes(16, "big")
+            + int(fields.get("RPL.dodagid") or 0).to_bytes(16, "big")
         )
 
 
@@ -421,12 +427,12 @@ class RplDaoProfile(_RplProfile):
     def _build_base(self, fields: dict[str, int | None]) -> bytes:
         return bytes(
             [
-                fields["RPL.instance"],
-                fields["RPL.kd_flags"],
-                fields["RPL.reserved"],
-                fields["RPL.seq"],
+                int(fields.get("RPL.instance") or 0),
+                int(fields.get("RPL.kd_flags") or 0),
+                int(fields.get("RPL.reserved") or 0),
+                int(fields.get("RPL.seq") or 0),
             ]
-        ) + int(fields["RPL.dodagid"]).to_bytes(16, "big")
+        ) + int(fields.get("RPL.dodagid") or 0).to_bytes(16, "big")
 
 
 class Icmpv6EchoProfile(PacketProfile):
@@ -469,15 +475,13 @@ class Icmpv6EchoProfile(PacketProfile):
         return fields, icmpv6[_ICMPV6_ECHO_BASE:]
 
     def build(self, fields: dict[str, int | None], tail: bytes) -> bytes:
-        src = IPv6Address(fields["IPv6.src"])
-        dst = IPv6Address(fields["IPv6.dst"])
-        body = (
-            int(fields["ICMPv6.identifier"]).to_bytes(2, "big")
-            + int(fields["ICMPv6.sequence"]).to_bytes(2, "big")
-            + tail
-        )
-        msg_type = fields["ICMPv6.type"]
-        code = fields["ICMPv6.code"]
+        src = IPv6Address(int(fields.get("IPv6.src") or 0))
+        dst = IPv6Address(int(fields.get("IPv6.dst") or 0))
+        ident = int(fields.get("ICMPv6.identifier") or 0)
+        seq = int(fields.get("ICMPv6.sequence") or 0)
+        msg_type = int(fields.get("ICMPv6.type") or 128)
+        code = int(fields.get("ICMPv6.code") or 0)
+        body = ident.to_bytes(2, "big") + seq.to_bytes(2, "big") + tail
         zero = bytes([msg_type, code, 0, 0]) + body
         checksum = icmpv6_checksum(src, dst, zero)
         icmpv6 = bytes([msg_type, code]) + checksum.to_bytes(2, "big") + body

@@ -258,6 +258,7 @@ struct lichen_meshtastic_adapter {
 	struct lichen_meshtastic_adapter_ops ops;
 	struct lichen_meshtastic_adapter_stats stats;
 	uint8_t stream_buf[LICHEN_MESHTASTIC_TO_RADIO_MAX];
+	uint8_t tx_buf[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
 	size_t stream_len;
 	size_t stream_expected;
 	uint8_t stream_header[LICHEN_MESHTASTIC_STREAM_HEADER_LEN];

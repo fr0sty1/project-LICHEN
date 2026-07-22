@@ -131,7 +131,7 @@ struct lichen_app_location_time_snapshot {
 	bool altitude_m_valid;
 	int32_t altitude_m;
 	bool fix_time_unix_valid;
-	uint32_t fix_time_unix;
+	uint64_t fix_time_unix;
 	bool satellites_valid;
 	uint8_t satellites;
 	bool fix_source_valid;
@@ -156,7 +156,7 @@ struct lichen_app_time_snapshot {
 	enum lichen_app_time_source_class source_class;
 	char source_name[24];
 	bool unix_time_valid;
-	uint32_t unix_time;
+	uint64_t unix_time;
 	bool age_seconds_valid;
 	uint32_t age_seconds;
 	bool accuracy_ms_valid;

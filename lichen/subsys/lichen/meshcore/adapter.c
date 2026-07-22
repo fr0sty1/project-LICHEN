@@ -48,6 +48,8 @@ BUILD_ASSERT(CONFIG_LICHEN_MESHCORE_PENDING_EVENTS <= UINT8_MAX,
 	     "Pending event queue indices are uint8_t");
 BUILD_ASSERT(LICHEN_MESHCORE_FRAME_MAX <= UINT16_MAX,
 	     "Frame max exceeds uint16_t limit for length fields");
+BUILD_ASSERT(CONFIG_LICHEN_MESHCORE_MAX_FRAME <= 176,
+	     "Exceeds MeshCore BLE MTU (176 bytes is firmware frame budget)");
 
 static int enqueue(struct lichen_meshcore_adapter *adapter,
 		   const uint8_t *frame, size_t len)
@@ -366,7 +368,6 @@ static int encode_pending_status(
 static int enqueue_next_pending(struct lichen_meshcore_adapter *adapter)
 {
 	const struct lichen_meshcore_pending_event *event;
-	uint8_t out[LICHEN_MESHCORE_FRAME_MAX];
 	int ret;
 
 	if (adapter->pending_count == 0U) {
@@ -377,10 +378,10 @@ static int enqueue_next_pending(struct lichen_meshcore_adapter *adapter)
 	event = pending_head(adapter);
 	switch (event->kind) {
 	case LICHEN_MESHCORE_PENDING_TEXT:
-		ret = encode_pending_text(event, out, sizeof(out));
+		ret = encode_pending_text(event, adapter->tx_buf, sizeof(adapter->tx_buf));
 		break;
 	case LICHEN_MESHCORE_PENDING_STATUS:
-		ret = encode_pending_status(event, out, sizeof(out));
+		ret = encode_pending_status(event, adapter->tx_buf, sizeof(adapter->tx_buf));
 		break;
 	default:
 		adapter->stats.pending_drop_count++;
@@ -391,7 +392,7 @@ static int enqueue_next_pending(struct lichen_meshcore_adapter *adapter)
 		return ret;
 	}
 
-	ret = enqueue(adapter, out, (size_t)ret);
+	ret = enqueue(adapter, adapter->tx_buf, (size_t)ret);
 	if (ret >= 0) {
 		pending_pop(adapter);
 	}

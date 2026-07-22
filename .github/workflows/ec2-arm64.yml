@@ -9,9 +9,9 @@ on:
 # Use self-hosted ARM64 runner on EC2
 # Setup: https://docs.github.com/en/actions/hosting-your-own-runners
 jobs:
-  zephyr-arm64:
-    name: Zephyr native_sim/native/64 (ARM64)
-    runs-on: [self-hosted, linux, arm64, lichen]
+  zephyr-x86_64:
+    name: Zephyr native_sim/native/64 (x86_64 GitHub Actions)
+    runs-on: ubuntu-24.04
     if: github.repository == 'MarkAtwood/project-LICHEN'
     timeout-minutes: 60
     steps:
@@ -20,15 +20,12 @@ jobs:
       - name: Set SOURCE_DATE_EPOCH
         run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
 
-      - name: Verify ARM64
+      - name: Install dependencies
         run: |
-          uname -m
-          test "$(uname -m)" = "aarch64" || { echo "Not ARM64!"; exit 1; }
-
-      - name: Install dependencies (if needed)
-        run: |
-          which west || pip3 install west
-          which cmake || sudo dnf install -y cmake ninja-build gcc
+          sudo apt-get update -q
+          sudo apt-get install -y cmake ninja-build meson gcc g++ python3-pip python3-venv device-tree-compiler gperf ccache
+          python3 -m pip install --user -U west
+          which west || echo "west installed via pip"
 
       - name: Setup west workspace
         run: |

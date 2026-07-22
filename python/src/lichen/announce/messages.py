@@ -26,7 +26,7 @@ SIGNATURE_LENGTH = 48
 # Why 15: Spec section 9.4. Limits propagation to prevent infinite flooding.
 MAX_ANNOUNCE_HOPS = 15
 
-_FIXED_LENGTH = 1 + 1 + 1 + 1 + 2 + 8 + 32 + 48
+_FIXED_LENGTH = 1 + 1 + 1 + 1 + 2 + 4 + 8 + 32 + 48
 
 
 class AnnounceError(Exception):
@@ -57,9 +57,11 @@ class AnnounceMessage:
         hop_count: How many hops this announce has traveled.
             Why NOT signed: Each relay increments it. If signed, relays couldn't
             update it without breaking the signature.
-        rx_channel: u8 RX channel for CCP-9 rendezvous (0-15).
+        rx_channel: u8 RX channel for CCP-9 rendezvous (0-15, wire byte 3).
             Why included in signed_data(): Binds RX channel to signer
             (prevents tampering per CCP-9). Matches Rust.
+        rx_valid_until_sfn: u32 SFN until which rx_channel is valid (after seq_num in binary/signed_data).
+            Why: Provides validity window for announce-driven rendezvous per 02a.3; receivers ignore if expired. Matches spec human decision.
         signature: 48-byte Schnorr signature over signed_data().
             Why 48: Schnorr48 spec (16-byte truncated challenge + 32-byte response).
         app_data: Optional application data (node name, capabilities).
@@ -73,6 +75,7 @@ class AnnounceMessage:
     seq_num: int
     hop_count: int = 0
     rx_channel: int = 0
+    rx_valid_until_sfn: int = 0
     signature: bytes = field(default=b"")
     app_data: bytes = field(default=b"")
     flags: int = 0
@@ -91,6 +94,8 @@ class AnnounceMessage:
             raise AnnounceError(f"hop_count out of range: {self.hop_count}")
         if not 0 <= self.rx_channel <= 15:
             raise AnnounceError(f"rx_channel out of range: {self.rx_channel}")
+        if not 0 <= self.rx_valid_until_sfn <= 0xFFFFFFFF:
+            raise AnnounceError(f"rx_valid_until_sfn out of range: {self.rx_valid_until_sfn}")
         if not 0 <= self.flags <= 0xFF:
             raise AnnounceError(f"flags out of range: {self.flags}")
         if self.signature and len(self.signature) != SIGNATURE_LENGTH:
@@ -103,14 +108,15 @@ class AnnounceMessage:
         """Bytes signed by Schnorr48 signature.
 
         Why this exact composition: originator_iid + pubkey + seq_num (BE) +
-        rx_channel + app_data. rx_channel inclusion binds the CCP-9
-        announced RX channel to the signer (tamper-proof per security review).
-        hop_count deliberately omitted (relays must increment it).
+        rx_valid_until_sfn (4B BE) + rx_channel + app_data. Binds validity
+        and channel to signer per CCP-9 (tamper-proof). hop_count omitted
+        (relays increment it).
         """
         return (
             self.originator_iid
             + self.pubkey
             + self.seq_num.to_bytes(2, "big")
+            + self.rx_valid_until_sfn.to_bytes(4, "big")
             + bytes([self.rx_channel])
             + self.app_data
         )
@@ -123,6 +129,7 @@ class AnnounceMessage:
         return (
             bytes([ANNOUNCE_TYPE, self.flags, self.hop_count, self.rx_channel])
             + self.seq_num.to_bytes(2, "big")
+            + self.rx_valid_until_sfn.to_bytes(4, "big")
             + self.originator_iid
             + self.pubkey
             + self.signature
@@ -144,10 +151,11 @@ class AnnounceMessage:
         hop_count = data[2]
         rx_channel = data[3]
         seq_num = int.from_bytes(data[4:6], "big")
-        originator_iid = data[6:14]
-        pubkey = data[14:46]
-        signature = data[46:94]
-        app_data = data[94:]
+        rx_valid_until_sfn = int.from_bytes(data[6:10], "big")
+        originator_iid = data[10:18]
+        pubkey = data[18:50]
+        signature = data[50:98]
+        app_data = data[98:]
 
         return cls(
             originator_iid=originator_iid,
@@ -155,6 +163,7 @@ class AnnounceMessage:
             seq_num=seq_num,
             hop_count=hop_count,
             rx_channel=rx_channel,
+            rx_valid_until_sfn=rx_valid_until_sfn,
             signature=signature,
             app_data=app_data,
             flags=flags,
@@ -172,6 +181,7 @@ class AnnounceMessage:
             seq_num=self.seq_num,
             hop_count=new_hop_count,
             rx_channel=self.rx_channel,
+            rx_valid_until_sfn=self.rx_valid_until_sfn,
             signature=self.signature,
             app_data=self.app_data,
             flags=self.flags,

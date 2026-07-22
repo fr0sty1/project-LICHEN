@@ -131,6 +131,10 @@ impl Node {
     }
 
     fn reply_echo_ipv6(&self, ipv6: &[u8], out: &mut [u8]) -> usize {
+        if ipv6.len() < IPV6_HEADER_LEN + echo_field::DATA_OFFSET {
+            return 0;
+        }
+
         let mut reply_src = [0u8; 16];
         let mut reply_dst = [0u8; 16];
         // Swap src/dst for reply: original dst = our address becomes reply src

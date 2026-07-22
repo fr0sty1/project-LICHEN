@@ -68,6 +68,25 @@ static void extract_iid(const uint8_t addr[16], uint8_t iid[8])
 	memcpy(iid, &addr[8], 8);
 }
 
+/**
+ * Check if address belongs to this node (exact match or matching IID for
+ * ULA/GUA support per codereview P3 for project-LICHEN-8ey9).
+ */
+static bool is_our_address(const struct lichen_router *router,
+			   const uint8_t addr[16])
+{
+	if (router == NULL || addr == NULL) {
+		return false;
+	}
+	if (memcmp(addr, router->node_address, 16) == 0) {
+		return true;
+	}
+	if (memcmp(&addr[8], router->node_iid, 8) == 0) {
+		return true;
+	}
+	return false;
+}
+
 int lichen_router_init(struct lichen_router *router,
 		       const uint8_t node_address[16])
 {
@@ -232,8 +251,8 @@ int lichen_router_route(struct lichen_router *router,
 
 	memset(result, 0, sizeof(*result));
 
-	/* Check if packet is for this node */
-	if (memcmp(dst_addr, router->node_address, 16) == 0) {
+	/* Check if packet is for this node (uses is_our_address for link-local + ULA/GUA) */
+	if (is_our_address(router, dst_addr)) {
 		result->decision = LICHEN_ROUTE_DELIVER_LOCAL;
 		return 0;
 	}

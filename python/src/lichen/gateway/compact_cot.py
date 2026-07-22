@@ -14,6 +14,7 @@ Wire formats:
 from __future__ import annotations
 
 import hashlib
+import math
 import struct
 import uuid
 from dataclasses import dataclass
@@ -829,6 +830,8 @@ def _parse_xml_pli(root: Element, subtype: CompactCotType) -> CompactCot:
     # hae = height above ellipsoid (altitude in meters)
     hae_str = point.get("hae")
     alt_m = float(hae_str) if hae_str else 0.0
+    if not math.isfinite(alt_m):
+        raise ValueError(f"Altitude {alt_m} is not a finite number")
 
     # Extract course/speed from <track> element
     course_deg = 0.0
@@ -841,10 +844,14 @@ def _parse_xml_pli(root: Element, subtype: CompactCotType) -> CompactCot:
             speed_str = track.get("speed")
             if course_str:
                 course_deg = float(course_str)
+                if not math.isfinite(course_deg):
+                    raise ValueError(f"Course {course_deg} is not a finite number")
                 # Normalize course to [0, 360) for valid bearing
                 course_deg = course_deg % 360.0
             if speed_str:
                 speed_m_s = float(speed_str)
+                if not math.isfinite(speed_m_s):
+                    raise ValueError(f"Speed {speed_m_s} is not a finite number")
                 if speed_m_s < 0:
                     raise ValueError(f"Speed {speed_m_s} cannot be negative")
 

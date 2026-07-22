@@ -76,7 +76,7 @@ Rendezvous ensures sender and receiver are on same channel and time slot for mul
 
 All nodes MUST listen on control channel at least every superframe for beacons, Announces, and neighbor discovery. Receivers advertise preferred RX channel in Announce based on local `select_channel()` from §2a.7. The AnnounceScheduler MUST be provided the current value before each build_announce() (via config, shared state, or callback).
 
-(Note: rx_valid_until_sfn deferred to future extension; binary header only for now. CBOR mention removed for consistency with L2 binary announce format.)
+rx_valid_until_sfn (u32 after seq_num in binary and in signed_data() per 05-routing.md:188; see §9-packets-timing for SFN from beacon sfn field) provides validity window for announced preferred RX channel (MUST ignore if current SFN > value per RFC2119; fallback to hash-based per §2a.3.2 or control CH0). See test/vectors/ccp9-rendezvous.json for exact vectors (independent oracle). Default 0 = immediate fallback. Updated per project-LICHEN-3i18.4.2.
 
 **Compatibility**: Uncoordinated nodes use ALOHA on any channel; CCP nodes use contention slot + CCA. Test vectors in `test/vectors/ccp_load_balancing.json` and new `test/vectors/ccp9-rendezvous.json` (to be generated). All impls (Python sim source-of-truth, Rust, Zephyr) MUST match exactly.
 

@@ -34,6 +34,7 @@ MAX_PACKETS_PER_SOURCE = 2
 
 # Pending queue limits - prevent unbounded destinations (project-LICHEN-bvdu)
 MAX_PENDING_DESTINATIONS = 32
+MAX_DTN_TTL_SECONDS = 604800
 
 # GPSR null island detection threshold (~111 meters).
 # GPS sensors often produce near-zero garbage, not exactly (0, 0).
@@ -746,6 +747,9 @@ class Router:
         if expiry_unix <= now_unix:
             logger.debug("dtn: rejecting expired message (expiry=%d, now=%d)",
                         expiry_unix, now_unix)
+            return False
+        if expiry_unix > now_unix + MAX_DTN_TTL_SECONDS:
+            logger.warning("dtn: rejecting message with excessive TTL")
             return False
 
         msg = DtnMessage(

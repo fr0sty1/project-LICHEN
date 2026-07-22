@@ -1,5 +1,4 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Flash via USB (esptool) or OpenOCD.
 
 if(NOT "${OPENOCD}" MATCHES "^${ESPRESSIF_TOOLCHAIN_PATH}/.*")
   set(OPENOCD OPENOCD-NOTFOUND)

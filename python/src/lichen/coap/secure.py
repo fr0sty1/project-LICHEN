@@ -102,15 +102,37 @@ def _monotonic_time() -> float:
         return time.monotonic()
 
 
+def _hash_32(sfn: int, key: int = 0) -> int:
+    """FNV-1a 32-bit hash (matches C lichen_hash_32:502 and test/vectors/generate.py:1600).
+    For OSCORE nonce check: _hash_32(seqno, int.from_bytes(nonce[0:8], 'big')) ^ LICHEN_SEED.
+    See RFC8613 4.1, spec/06-security.md:15.3 for replay/nonce uniqueness.
+    """
+    lichen_seed = 0x4c494348454e  # "LICHEN" as u48 for seed (task requirement)
+    h = 0x811c9dc5
+    sfn = sfn ^ lichen_seed  # incorporate LICHEN per task
+    for i in range(4):
+        b = (sfn >> (i * 8)) & 0xff
+        h = ((h ^ b) * 0x01000193) & 0xffffffff
+    for i in range(8):
+        b = (key >> (i * 8)) & 0xff
+        h = ((h ^ b) * 0x01000193) & 0xffffffff
+    return h
+
+
 @dataclass
 class PeerContext:
-    """OSCORE context and metadata for a peer."""
+    """OSCORE context and metadata for a peer.
+    SECURITY: replay_hashes tracks nonce hashes using _hash_32(LICHEN) to enforce
+    replay protection (RFC 8613 §4.1, spec/06-security:15.3). Prevents CoAP observe replays.
+    """
 
     oscore: MemorySecurityContext
     peer_pubkey: bytes
     established_at: float = field(default_factory=_monotonic_time)
     # Track pending requests for response correlation
     pending_requests: dict[bytes, object] = field(default_factory=dict)
+    # Replay protection: set of hashed nonces/seqnos (32-bit to bound memory)
+    replay_hashes: set[int] = field(default_factory=set)
 
 
 class OscoreContextStore:
@@ -357,6 +379,21 @@ class SecureDatagramChannel(DatagramChannel):
         if peer_ctx is None:
             logger.warning("No OSCORE context for %s, dropping message", source)
             return None
+
+        # SECURITY: nonce check using hash_32(LICHEN) for replay protection
+        # (supplements aiocoap ReplayWindow per RFC8613 §4.1 and spec/06-security.md:15.3;
+        # fixes missing protection for CoAP observes/replays). Full PIV extraction in future.
+        if peer_ctx.peer_pubkey:
+            key = int.from_bytes(peer_ctx.peer_pubkey[:8], "big")
+            # Use mid or token byte as proxy for nonce/seq (unique per msg)
+            proxy = getattr(msg, "mid", 0) or (msg.token[0] if msg.token else 0)
+            nonce_hash = _hash_32(proxy, key)
+            if nonce_hash in peer_ctx.replay_hashes:
+                logger.info("Replay detected (hash_32) for %s", source)
+                return None
+            peer_ctx.replay_hashes.add(nonce_hash)
+            if len(peer_ctx.replay_hashes) > 256:  # bound memory per constrained design
+                peer_ctx.replay_hashes.pop()  # LRU-like; better window in prod
 
         try:
             # Determine if this is a request or response

@@ -66,8 +66,8 @@ class TrickleTimer:
         self.counter = 0
         self._transmitted = False
         self._generation += 1
-        half = self.interval / 2
-        self.transmit_time = now + int(half + self._rng() * half)
+        half = self.interval // 2
+        self.transmit_time = now + half + int(self._rng() * (self.interval - half))
 
     @property
     def interval_end(self) -> int:

@@ -1,9 +1,20 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* SPDX-FileCopyrightText: The contributors to the LICHEN project */
+
+/**
+ * @file coap_dtn.c
+ * @brief LICHEN CoAP DTN/deaddrop resources using SenML CBOR (spec 17, 18, Appendix F).
+ *
+ * GET /deaddrop returns SenML pack with pending message count.
+ * Uses senml_encode pattern from location.c for consistency.
+ */
+
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/net/coap.h>
 #include <zephyr/net/coap_service.h>
 #include <zephyr/net/net_ip.h>
-#include <errno.h>
+#include <stdio.h>
 #include <string.h>
 #include <lichen/senml.h>
 #include <lichen/oscore.h>
@@ -11,11 +22,49 @@
 #include <lichen/coap_server.h>
 #include <lichen/routing/dtn.h>
 #include <lichen/l2/ipv6_addr.h>
+#include <lichen/l2/lora_l2.h>
 #include <zcbor_decode.h>
+
 LOG_MODULE_REGISTER(lichen_coap_dtn, CONFIG_LICHEN_COAP_DEADDROP_LOG_LEVEL);
+
+/* Bounded: base record (~40 B urn) + count record. 128 B is ample. */
+#define DEADDROP_SENML_MAX 128
+
+/* "urn:dev:mac:" + 16 hex + ":" + NUL */
+#define BASE_NAME_MAX 32
 static uint64_t s_last_confessions[256];
 static struct lichen_dtn_buffer s_dtn_buf;
 static K_MUTEX_DEFINE(s_dtn_mutex);
+
+/* Fill `out` with the node's SenML base name, or empty if EUI not available. */
+static void build_base_name(char *out, size_t out_len)
+{
+	uint8_t eui[8];
+
+	if (lichen_lora_l2_copy_eui64(eui) != 0) {
+		out[0] = '\0';
+		return;
+	}
+	snprintf(out, out_len,
+		 "urn:dev:mac:%02x%02x%02x%02x%02x%02x%02x%02x:", eui[0], eui[1],
+		 eui[2], eui[3], eui[4], eui[5], eui[6], eui[7]);
+}
+
+static int senml_encode_dtn_count(const char *base_name, uint16_t count,
+				  uint8_t *buf, size_t buflen)
+{
+	struct senml_pack pack;
+	int r = senml_pack_init(&pack, base_name, 0);
+	if (r < 0) {
+		return r;
+	}
+	r = senml_add_float(&pack, "count", NULL, (float)count);
+	if (r < 0) {
+		return r;
+	}
+	return senml_encode_cbor(&pack, buf, buflen);
+}
+
 static int deaddrop_post(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len) {
 	if (!coap_oscore_is_protected(request)) {
 		return coap_oscore_send_unauthorized(resource, request, addr, addr_len);
@@ -122,28 +171,21 @@ static int confessions_post(struct coap_resource *resource, struct coap_packet *
 }
 static int deaddrop_get(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len)
 {
-	uint8_t senml[64];
-	struct senml_pack pack;
+	char base_name[BASE_NAME_MAX];
+	uint8_t senml[DEADDROP_SENML_MAX];
+	build_base_name(base_name, sizeof(base_name));
 	k_mutex_lock(&s_dtn_mutex, K_FOREVER);
-	int r = senml_pack_init(&pack, NULL, 0);
-	if (r < 0) {
-		k_mutex_unlock(&s_dtn_mutex);
-		LOG_ERR("senml_pack_init failed: %d", r);
-		return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0, NULL, NULL, 0);
-	}
-	r = senml_add_float(&pack, "count", NULL, (float)lichen_dtn_len(&s_dtn_buf));
-	if (r < 0) {
-		k_mutex_unlock(&s_dtn_mutex);
-		LOG_ERR("senml_add_float failed: %d", r);
-		return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0, NULL, NULL, 0);
-	}
-	r = senml_encode_cbor(&pack, senml, sizeof(senml));
+	int r = senml_encode_dtn_count(base_name[0] != '\0' ? base_name : NULL,
+				       lichen_dtn_len(&s_dtn_buf), senml,
+				       sizeof(senml));
 	k_mutex_unlock(&s_dtn_mutex);
 	if (r < 0) {
-		LOG_ERR("senml_encode_cbor failed: %d", r);
-		return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0, NULL, NULL, 0);
+		LOG_ERR("senml_encode_dtn_count failed: %d", r);
+		return lichen_coap_senml_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
 	}
-	return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_CONTENT, senml, (size_t)r, NULL, NULL, 0);
+	return lichen_coap_senml_respond(resource, request, addr, addr_len,
+			    COAP_RESPONSE_CODE_CONTENT, senml, (size_t)r);
 }
 static const char *const deaddrop_path[] = { "deaddrop", NULL };
 COAP_RESOURCE_DEFINE(lichen_deaddrop, lichen_coap, {

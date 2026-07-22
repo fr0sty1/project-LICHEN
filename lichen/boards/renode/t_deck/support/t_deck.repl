@@ -19,9 +19,6 @@ sysbus:
     init add:
         Tag <0x60025000 0x100> "SPI3_ST7789_STUB"
 
-// Keyboard controller (I2C0 addr 0x55)
-// lilygo_tdeck_keyboard driver talks to this
-// Stubbed - returns no keypresses
 sysbus:
     init add:
         Tag <0x60026055 1> "I2C0_KEYBOARD_STUB"

@@ -1212,7 +1212,6 @@ static int queue_status(struct lichen_meshtastic_adapter *adapter, uint32_t res,
 		.maxlen = adapter->ops.queue_maxlen,
 		.has_res = true,
 	};
-	uint8_t buf[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
 	int ret;
 
 	if (packet != NULL && packet->has_id) {
@@ -1228,25 +1227,24 @@ static int queue_status(struct lichen_meshtastic_adapter *adapter, uint32_t res,
 		status.free--;
 	}
 
-	ret = lichen_meshtastic_encode_from_radio_queue_status(&status, buf,
-							       sizeof(buf));
+	ret = lichen_meshtastic_encode_from_radio_queue_status(&status, adapter->tx_buf,
+							       sizeof(adapter->tx_buf));
 	if (ret < 0) {
 		return ret;
 	}
 
-	return enqueue(adapter, buf, (size_t)ret);
+	return enqueue(adapter, adapter->tx_buf, (size_t)ret);
 }
 
 static int config_complete(struct lichen_meshtastic_adapter *adapter, uint32_t nonce)
 {
-	uint8_t buf[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
-	int ret = lichen_meshtastic_encode_from_radio_config_complete(nonce, buf,
-								      sizeof(buf));
+	int ret = lichen_meshtastic_encode_from_radio_config_complete(nonce, adapter->tx_buf,
+								      sizeof(adapter->tx_buf));
 
 	if (ret < 0) {
 		return ret;
 	}
-	return enqueue(adapter, buf, (size_t)ret);
+	return enqueue(adapter, adapter->tx_buf, (size_t)ret);
 }
 
 static bool starts_with_lichen_brand(const char *value)
@@ -1343,14 +1341,13 @@ static int enqueue_payload(struct lichen_meshtastic_adapter *adapter,
 			   enum lichen_meshtastic_from_radio_message message,
 			   const uint8_t *payload, size_t payload_len)
 {
-	uint8_t buf[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
 	int ret = lichen_meshtastic_encode_from_radio_message(
-		message, payload, payload_len, buf, sizeof(buf));
+		message, payload, payload_len, adapter->tx_buf, sizeof(adapter->tx_buf));
 
 	if (ret < 0) {
 		return ret;
 	}
-	return enqueue(adapter, buf, (size_t)ret);
+	return enqueue(adapter, adapter->tx_buf, (size_t)ret);
 }
 
 static int enqueue_static_sync(struct lichen_meshtastic_adapter *adapter,
@@ -1669,7 +1666,6 @@ int lichen_meshtastic_adapter_emit_text(
 {
 	struct lichen_meshtastic_text_packet packet;
 	uint8_t mesh_packet[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
-	uint8_t from_radio[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
 	uint32_t from_radio_id;
 	int ret;
 
@@ -1706,12 +1702,12 @@ int lichen_meshtastic_adapter_emit_text(
 	ret = lichen_meshtastic_encode_from_radio_packet(from_radio_id,
 							 mesh_packet,
 							 (size_t)ret,
-							 from_radio,
-							 sizeof(from_radio));
+							 adapter->tx_buf,
+							 sizeof(adapter->tx_buf));
 	if (ret < 0) {
 		return ret;
 	}
-	ret = enqueue(adapter, from_radio, (size_t)ret);
+	ret = enqueue(adapter, adapter->tx_buf, (size_t)ret);
 	if (ret < 0) {
 		return ret;
 	}
@@ -1727,7 +1723,6 @@ int lichen_meshtastic_adapter_emit_status(
 {
 	struct lichen_meshtastic_routing_packet packet;
 	uint8_t mesh_packet[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
-	uint8_t from_radio[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
 	uint32_t from_radio_id;
 	int ret;
 
@@ -1759,12 +1754,12 @@ int lichen_meshtastic_adapter_emit_status(
 	ret = lichen_meshtastic_encode_from_radio_packet(from_radio_id,
 							 mesh_packet,
 							 (size_t)ret,
-							 from_radio,
-							 sizeof(from_radio));
+							 adapter->tx_buf,
+							 sizeof(adapter->tx_buf));
 	if (ret < 0) {
 		return ret;
 	}
-	ret = enqueue(adapter, from_radio, (size_t)ret);
+	ret = enqueue(adapter, adapter->tx_buf, (size_t)ret);
 	if (ret < 0) {
 		return ret;
 	}

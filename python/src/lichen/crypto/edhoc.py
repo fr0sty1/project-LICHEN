@@ -330,7 +330,9 @@ class EdhocInitiator:
         keystream_2 = _edhoc_kdf(
             self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(ciphertext_2)
         )
-        plaintext_2 = bytes(a ^ b for a, b in zip(ciphertext_2, keystream_2, strict=True))
+        if len(ciphertext_2) != len(keystream_2):
+            raise ValueError("keystream length mismatch")
+        plaintext_2 = bytes(a ^ b for a, b in zip(ciphertext_2, keystream_2))
 
         # PLAINTEXT_2 = (ID_CRED_R, Signature_or_MAC_2, ?EAD_2)
         # For SIGN_SIGN, ID_CRED_R is bstr (pubkey), followed by Signature_2
@@ -409,8 +411,9 @@ class EdhocInitiator:
         k_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "K_3", b"", CCM_KEY_LEN)
         iv_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "IV_3", b"", CCM_NONCE_LEN)
 
-        # A_3 = Enc(ID_CRED_I) for AAD
-        a_3 = cbor2.dumps(["Encrypt0", b"", self._th_3])
+        # A_3 per RFC 9528 4.4.2: ["Encrypt0", h'', TH_3 || CRED_I]
+        ext_aad = self._th_3 + cred_i
+        a_3 = cbor2.dumps(["Encrypt0", b"", ext_aad])
 
         ciphertext_3 = _aead_encrypt(k_3, iv_3, a_3, plaintext_3)
 
@@ -593,7 +596,9 @@ class EdhocResponder:
         keystream_2 = _edhoc_kdf(
             self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(plaintext_2)
         )
-        ciphertext_2 = bytes(a ^ b for a, b in zip(plaintext_2, keystream_2, strict=True))
+        if len(plaintext_2) != len(keystream_2):
+            raise ValueError("keystream length mismatch")
+        ciphertext_2 = bytes(a ^ b for a, b in zip(plaintext_2, keystream_2))
 
         # TH_3 = H(TH_2, CIPHERTEXT_2, ID_CRED_R)
         th_3_input = cbor2.dumps(self._th_2) + cbor2.dumps(ciphertext_2) + cbor2.dumps(id_cred_r)
@@ -621,8 +626,9 @@ class EdhocResponder:
         k_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "K_3", b"", CCM_KEY_LEN)
         iv_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "IV_3", b"", CCM_NONCE_LEN)
 
-        # A_3 = Enc(ID_CRED_I) for AAD
-        a_3 = cbor2.dumps(["Encrypt0", b"", self._th_3])
+        # A_3 per RFC 9528 4.4.2: ["Encrypt0", h'', TH_3 || CRED_I]
+        ext_aad = self._th_3 + peer_pubkey
+        a_3 = cbor2.dumps(["Encrypt0", b"", ext_aad])
 
         plaintext_3 = _aead_decrypt(k_3, iv_3, a_3, ciphertext_3)
 

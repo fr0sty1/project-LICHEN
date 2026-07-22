@@ -160,7 +160,7 @@ impl ForwardBuffer {
             .min_by_key(|(_, e)| (e.priority, e.queued_at_ms))
             .map(|(i, _)| i)?;
 
-        Some(self.entries.swap_remove(best_idx))
+        Some(self.entries.remove(best_idx))
     }
 
     /// Dequeue the next packet for a specific source (oldest first).
@@ -179,7 +179,7 @@ impl ForwardBuffer {
             .min_by_key(|(_, e)| e.queued_at_ms)
             .map(|(i, _)| i)?;
 
-        Some(self.entries.swap_remove(idx))
+        Some(self.entries.remove(idx))
     }
 
     /// Count packets queued for a specific source.
@@ -261,7 +261,7 @@ impl ForwardBuffer {
             .map(|(i, _)| i)
             .unwrap_or(0);
 
-        self.entries.swap_remove(oldest_idx);
+        self.entries.remove(oldest_idx);
     }
 }
 

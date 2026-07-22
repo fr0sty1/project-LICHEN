@@ -603,15 +603,18 @@ impl EdhocInitiator {
             NONCE_LEN,
         )?;
 
-        // A_3 (AAD) - simplified Encrypt0 structure
-        let mut a_3 = heapless::Vec::<u8, 64>::new();
+        // A_3 per RFC 9528 4.4.2: external_aad = TH_3 || CRED_I (64 bytes)
+        let mut ext_aad = [0u8; 64];
+        ext_aad[0..32].copy_from_slice(&self.state.th_3);
+        ext_aad[32..64].copy_from_slice(self.pubkey.as_bytes());
+        let mut a_3 = heapless::Vec::<u8, 96>::new();
         a_3.push_err(0x83)?; // array of 3
         a_3.push_err(0x68)?; // tstr "Encrypt0"
         a_3.extend_err(b"Encrypt0")?;
         a_3.push_err(0x40)?; // empty bstr
-        a_3.push_err(0x58)?; // bstr TH_3
-        a_3.push_err(32)?;
-        a_3.extend_err(&self.state.th_3)?;
+        a_3.push_err(0x58)?; // bstr (64 bytes)
+        a_3.push_err(64)?;
+        a_3.extend_err(&ext_aad)?;
 
         // Encrypt in place (PLAINTEXT_3 -> CIPHERTEXT_3)
         let cipher = AesCcm::new_from_slice(&k_3).map_err(|_| EdhocError::InvalidState)?;
@@ -956,15 +959,18 @@ impl EdhocResponder {
             NONCE_LEN,
         )?;
 
-        // A_3 (AAD)
-        let mut a_3 = heapless::Vec::<u8, 64>::new();
+        // A_3 per RFC 9528 4.4.2: external_aad = TH_3 || CRED_I (64 bytes)
+        let mut ext_aad = [0u8; 64];
+        ext_aad[0..32].copy_from_slice(&self.state.th_3);
+        ext_aad[32..64].copy_from_slice(peer_pubkey);
+        let mut a_3 = heapless::Vec::<u8, 96>::new();
         a_3.push_err(0x83)?;
         a_3.push_err(0x68)?;
         a_3.extend_err(b"Encrypt0")?;
         a_3.push_err(0x40)?;
         a_3.push_err(0x58)?;
-        a_3.push_err(32)?;
-        a_3.extend_err(&self.state.th_3)?;
+        a_3.push_err(64)?;
+        a_3.extend_err(&ext_aad)?;
 
         // Decrypt CIPHERTEXT_3
         if ciphertext_3.len() < TAG_LEN {

@@ -130,16 +130,16 @@ config LICHEN_TDMA
 	bool "LICHEN TDMA slot management"
 	depends on LICHEN_LINK
 	depends on LICHEN_RPL
+	select LICHEN_RPL
 	default y if LICHEN_LINK_CCP16_LOAD_BALANCING
 	help
-	  TDMA slot management. Uses struct LICHEN_TDMA_Slot (see
-	  lichen/subsys/lichen/link/include/lichen/link.h:50 for 16-byte
-	  layout with id, start_time_ms, owner_eui64; BUILD_ASSERT confirms
-	  size). 
-
-	  Init ordering: call after lichen_link_init() but before oscore_init()
-	  in lichen_node_init() sequence (see AGENTS.md dependency graph to
-	  avoid use-before-init crashes). Required by CCP-16 load balancing.
+	  TDMA slot management for CCP-16. Uses struct LICHEN_TDMA_Slot
+	  in link.h:50 (16B: id+pad[3]+start_time_ms+owner_eui64[8];
+	  BUILD_ASSERT confirms size). lichen_tdma_init() AFTER
+	  lichen_link_init() + lichen_link_load_key() but BEFORE
+	  oscore_init() per AGENTS.md dependency graph (line 190) and
+	  lichen_node_init() example. Prevents use-before-init crashes
+	  or zeroed signatures. Required by CCP-16.
 
 config LICHEN_CCP5_COORD_NEGOTIATION
 	bool "CCP-5 coordination mechanism negotiation (da2q)"
