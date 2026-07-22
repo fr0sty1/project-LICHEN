@@ -1,13 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 
-/**
- * @file coap_status.c
- * @brief LCI /status resource handlers (RFC 7641 Observable)
- *
- * Implements /status, /status/neighbors, /status/routes per LCI spec 17.5.3.
- */
-
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -20,23 +14,11 @@
 
 LOG_MODULE_REGISTER(lichen_coap_status, CONFIG_LICHEN_COAP_STATUS_LOG_LEVEL);
 
-/* CBOR content-format code (RFC 7252 / IANA) */
 #define CBOR_CONTENT_FORMAT 60
-
-/* ── Static state ─────────────────────────────────────────────────────────── */
 
 static struct lichen_coap_status_config s_config;
 static bool s_initialized;
 
-/* ── CBOR encoding context with bounds checking ────────────────────────────── */
-
-/**
- * @brief CBOR encoding context for bounds-checked writes
- *
- * SECURITY: All CBOR writes go through this context to prevent buffer overflow.
- * If any write would exceed buf_size, the overflow flag is set and subsequent
- * writes become no-ops. Callers must check ctx->overflow after encoding.
- */
 struct cbor_ctx {
 	uint8_t *buf;
 	size_t off;
@@ -52,7 +34,6 @@ static void cbor_ctx_init(struct cbor_ctx *ctx, uint8_t *buf, size_t size)
 	ctx->overflow = false;
 }
 
-/* SECURITY: Check bounds before writing n bytes */
 static inline bool cbor_check_space(struct cbor_ctx *ctx, size_t n)
 {
 	if (ctx->overflow || ctx->off + n > ctx->size) {
@@ -62,35 +43,35 @@ static inline bool cbor_check_space(struct cbor_ctx *ctx, size_t n)
 	return true;
 }
 
-static void cbor_put_map_header(struct cbor_ctx *ctx, uint8_t count)
+static void cbor_put_map_header(struct cbor_ctx *ctx, uint16_t count)
 {
 	if (count < 24U) {
 		if (!cbor_check_space(ctx, 1)) {
 			return;
 		}
-		ctx->buf[ctx->off++] = 0xa0U | count;
+		ctx->buf[ctx->off++] = 0xa0U | (uint8_t)count;
 	} else {
 		if (!cbor_check_space(ctx, 2)) {
 			return;
 		}
 		ctx->buf[ctx->off++] = 0xb8;
-		ctx->buf[ctx->off++] = count;
+		ctx->buf[ctx->off++] = (uint8_t)count;
 	}
 }
 
-static void cbor_put_array_header(struct cbor_ctx *ctx, uint8_t count)
+static void cbor_put_array_header(struct cbor_ctx *ctx, uint16_t count)
 {
 	if (count < 24U) {
 		if (!cbor_check_space(ctx, 1)) {
 			return;
 		}
-		ctx->buf[ctx->off++] = 0x80U | count;
+		ctx->buf[ctx->off++] = 0x80U | (uint8_t)count;
 	} else {
 		if (!cbor_check_space(ctx, 2)) {
 			return;
 		}
 		ctx->buf[ctx->off++] = 0x98;
-		ctx->buf[ctx->off++] = count;
+		ctx->buf[ctx->off++] = (uint8_t)count;
 	}
 }
 
@@ -253,21 +234,22 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 				      const struct lichen_coap_node_status *status)
 {
 	struct cbor_ctx ctx;
-	uint8_t map_count;
+	uint16_t map_count;
 	char ipv6_buf[40];
 
-	if (buf == NULL || status == NULL || buf_size == 0) {
+	if (buf == NULL || status == NULL || buf_size == 0 ||
+	    status->txq_used > CONFIG_LICHEN_COAP_STATUS_MAX_TXQ ||
+	    status->fwd_used > CONFIG_LICHEN_COAP_STATUS_MAX_FWD) {
 		return 0;
 	}
 
 	cbor_ctx_init(&ctx, buf, buf_size);
-
-	/* Count fields for map header */
-	map_count = 4; /* uptime_s, mem_free_kb, time, radio */
+	map_count = 9;
 	map_count += status->battery_pct_valid ? 1 : 0;
 	map_count += status->battery_mv_valid ? 1 : 0;
-	map_count += 1; /* dodag */
-
+	if (map_count > UINT8_MAX) {
+		return 0;
+	}
 	cbor_put_map_header(&ctx, map_count);
 
 	/* uptime_s */
@@ -290,15 +272,17 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 	cbor_put_key(&ctx, "mem_free_kb");
 	cbor_put_uint(&ctx, status->mem_free_kb);
 
-	/* time object */
 	cbor_put_key(&ctx, "time");
 	{
-		uint8_t time_fields = 1; /* wall_clock_valid always present */
-		time_fields += status->time.wall_clock_valid ? 1 : 0; /* unix_time */
+		uint16_t time_fields = 1;
+		time_fields += status->time.wall_clock_valid ? 1 : 0;
 		time_fields += status->time.source_class ? 1 : 0;
 		time_fields += status->time.source_name ? 1 : 0;
-		time_fields += 1; /* age_s */
+		time_fields += 1;
 
+		if (time_fields > UINT8_MAX) {
+			return 0;
+		}
 		cbor_put_map_header(&ctx, time_fields);
 
 		cbor_put_key(&ctx, "wall_clock_valid");
@@ -323,13 +307,15 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 		cbor_put_uint(&ctx, status->time.age_s);
 	}
 
-	/* dodag object */
 	cbor_put_key(&ctx, "dodag");
 	{
-		uint8_t dodag_fields = 2; /* joined, rank */
+		uint16_t dodag_fields = 2;
 		dodag_fields += status->dodag.has_parent ? 1 : 0;
 		dodag_fields += status->dodag.has_root ? 1 : 0;
 
+		if (dodag_fields > UINT8_MAX) {
+			return 0;
+		}
 		cbor_put_map_header(&ctx, dodag_fields);
 
 		cbor_put_key(&ctx, "joined");
@@ -351,30 +337,29 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 		}
 	}
 
-	/* radio object */
 	cbor_put_key(&ctx, "radio");
 	{
 		cbor_put_map_header(&ctx, 4);
-
 		cbor_put_key(&ctx, "rx_packets");
 		cbor_put_uint(&ctx, status->radio.rx_packets);
-
 		cbor_put_key(&ctx, "tx_packets");
 		cbor_put_uint(&ctx, status->radio.tx_packets);
-
 		cbor_put_key(&ctx, "rx_errors");
 		cbor_put_uint(&ctx, status->radio.rx_errors);
-
-		/* duty_cycle_pct as integer (scaled by 10) */
 		cbor_put_key(&ctx, "duty_cycle_pct");
 		cbor_put_uint(&ctx, status->radio.duty_cycle_pct_x10);
 	}
-
-	/* SECURITY: Return 0 if buffer overflow would have occurred */
+	cbor_put_key(&ctx, "txq_cap");
+	cbor_put_uint(&ctx, status->txq_cap);
+	cbor_put_key(&ctx, "txq_used");
+	cbor_put_uint(&ctx, status->txq_used);
+	cbor_put_key(&ctx, "fwd_cap");
+	cbor_put_uint(&ctx, status->fwd_cap);
+	cbor_put_key(&ctx, "fwd_used");
+	cbor_put_uint(&ctx, status->fwd_used);
 	if (ctx.overflow) {
 		return 0;
 	}
-
 	return ctx.off;
 }
 
@@ -445,8 +430,8 @@ size_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
 {
 	struct cbor_ctx ctx;
 	char ipv6_buf[40];
-	char prefix_buf[48]; /* IPv6/prefix_len */
-	uint8_t map_count = 1; /* routes array */
+	char prefix_buf[48];
+	uint16_t map_count = 1;
 
 	if (buf == NULL || buf_size == 0) {
 		return 0;
@@ -455,16 +440,21 @@ size_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
 	cbor_ctx_init(&ctx, buf, buf_size);
 
 	map_count += default_route ? 1 : 0;
+	if (map_count > UINT8_MAX) {
+		return 0;
+	}
 
 	cbor_put_map_header(&ctx, map_count);
 
-	/* routes array */
 	cbor_put_key(&ctx, "routes");
 
 	if (routes == NULL || count == 0) {
 		cbor_put_array_header(&ctx, 0);
 	} else {
-		cbor_put_array_header(&ctx, (uint8_t)count);
+		if (count > UINT8_MAX) {
+			return 0;
+		}
+		cbor_put_array_header(&ctx, count);
 
 		for (size_t i = 0; i < count; i++) {
 			const struct lichen_coap_route *r = &routes[i];
@@ -547,8 +537,6 @@ static int coap_respond(struct coap_resource *resource,
 	return coap_resource_send(resource, &resp, addr, addr_len, NULL);
 }
 
-/* ── /status handlers ──────────────────────────────────────────────────────── */
-
 static int status_get(struct coap_resource *resource,
 		      struct coap_packet *request,
 		      struct sockaddr *addr, socklen_t addr_len)
@@ -558,7 +546,6 @@ static int status_get(struct coap_resource *resource,
 	size_t len;
 	int r;
 
-	/* Handle Observe registration */
 	r = coap_resource_parse_observe(resource, request, addr);
 	if (r < 0 && r != -ENOENT) {
 		LOG_WRN("Observe parse failed: %d", r);
@@ -578,8 +565,7 @@ static int status_get(struct coap_resource *resource,
 
 	len = lichen_coap_encode_status_cbor(cbor_buf, sizeof(cbor_buf), &status);
 	if (len == 0) {
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
+		return -ENOBUFS;
 	}
 
 	return coap_respond(resource, request, addr, addr_len,
@@ -643,8 +629,6 @@ static void status_notify(struct coap_resource *resource,
 				 &observer->addr, sizeof(observer->addr), NULL);
 }
 
-/* ── /status/neighbors handlers ────────────────────────────────────────────── */
-
 static int neighbors_get(struct coap_resource *resource,
 			 struct coap_packet *request,
 			 struct sockaddr *addr, socklen_t addr_len)
@@ -654,35 +638,29 @@ static int neighbors_get(struct coap_resource *resource,
 	size_t len;
 	int count;
 	int r;
-
-	/* Handle Observe registration */
 	r = coap_resource_parse_observe(resource, request, addr);
 	if (r < 0 && r != -ENOENT) {
 		LOG_WRN("Observe parse failed: %d", r);
 	}
-
 	if (!s_initialized || !s_config.neighbors_get) {
-		/* Return empty array if no callback */
 		len = lichen_coap_encode_neighbors_cbor(cbor_buf, sizeof(cbor_buf),
 							NULL, 0);
 		return coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_CONTENT, cbor_buf, len);
 	}
-
 	count = s_config.neighbors_get(neighbors, ARRAY_SIZE(neighbors));
 	if (count < 0) {
-		LOG_WRN("neighbors_get callback failed: %d", count);
 		return coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
 	}
-
+	if (count > CONFIG_LICHEN_COAP_STATUS_MAX_NEIGHBORS) {
+		return -ENOBUFS;
+	}
 	len = lichen_coap_encode_neighbors_cbor(cbor_buf, sizeof(cbor_buf),
 						neighbors, (size_t)count);
 	if (len == 0) {
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
+		return -ENOBUFS;
 	}
-
 	return coap_respond(resource, request, addr, addr_len,
 			    COAP_RESPONSE_CODE_CONTENT, cbor_buf, len);
 }
@@ -746,8 +724,6 @@ static void neighbors_notify(struct coap_resource *resource,
 				 &observer->addr, sizeof(observer->addr), NULL);
 }
 
-/* ── /status/routes handlers ───────────────────────────────────────────────── */
-
 static int routes_get(struct coap_resource *resource,
 		      struct coap_packet *request,
 		      struct sockaddr *addr, socklen_t addr_len)
@@ -760,7 +736,6 @@ static int routes_get(struct coap_resource *resource,
 	int count;
 
 	if (!s_initialized || !s_config.routes_get) {
-		/* Return empty routes if no callback */
 		len = lichen_coap_encode_routes_cbor(cbor_buf, sizeof(cbor_buf),
 						     NULL, 0, NULL);
 		return coap_respond(resource, request, addr, addr_len,
@@ -773,8 +748,10 @@ static int routes_get(struct coap_resource *resource,
 		return coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
 	}
+	if (count > CONFIG_LICHEN_COAP_STATUS_MAX_ROUTES) {
+		return -ENOBUFS;
+	}
 
-	/* Check if default_route was set (non-zero) */
 	for (int i = 0; i < 16; i++) {
 		if (default_route[i] != 0) {
 			has_default = true;
@@ -786,27 +763,17 @@ static int routes_get(struct coap_resource *resource,
 					     routes, (size_t)count,
 					     has_default ? default_route : NULL);
 	if (len == 0) {
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
+		return -ENOBUFS;
 	}
 
 	return coap_respond(resource, request, addr, addr_len,
 			    COAP_RESPONSE_CODE_CONTENT, cbor_buf, len);
 }
 
-/* ── Resource definitions ──────────────────────────────────────────────────── */
-
 static const char * const status_path[] = { "status", NULL };
 static const char * const neighbors_path[] = { "status", "neighbors", NULL };
 static const char * const routes_path[] = { "status", "routes", NULL };
 
-/*
- * Resources are defined but must be registered with a CoAP service.
- * The application must call COAP_RESOURCE_DEFINE or manually add these
- * to its service.
- */
-
-/* Exported resource descriptors for applications to use */
 const struct coap_resource lichen_coap_status_resource = {
 	.get    = status_get,
 	.notify = status_notify,
@@ -824,15 +791,12 @@ const struct coap_resource lichen_coap_routes_resource = {
 	.path = routes_path,
 };
 
-/* ── Public API ────────────────────────────────────────────────────────────── */
-
 int lichen_coap_status_init(const struct lichen_coap_status_config *config)
 {
 	if (config == NULL) {
 		return -EINVAL;
 	}
 
-	/* status_get is required, others are optional */
 	if (config->status_get == NULL) {
 		return -EINVAL;
 	}
@@ -846,15 +810,6 @@ int lichen_coap_status_init(const struct lichen_coap_status_config *config)
 
 void lichen_coap_status_notify(void)
 {
-	/*
-	 * Note: This requires the resource to be registered with a service.
-	 * The coap_resource_notify() function iterates through observers
-	 * registered on the resource and calls the notify callback.
-	 *
-	 * Since we export const resources, the application must copy them
-	 * or use COAP_RESOURCE_DEFINE to get mutable resources that can
-	 * track observers.
-	 */
 	LOG_DBG("Status notification triggered");
 }
 
