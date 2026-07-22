@@ -90,8 +90,10 @@ int coap_oscore_unprotect_request(struct oscore_ctx *ctx,
 	struct oscore_option opt;
 	int ret;
 
-	/* Validate PIV output pointers (defensive check despite _Nonnull) */
-	if (request_piv == NULL || request_piv_len == NULL) {
+	/* Validate all output pointers (defensive despite _Nonnull) */
+	if (original_code == NULL || options_len == NULL ||
+	    payload_len == NULL || request_piv == NULL ||
+	    request_piv_len == NULL) {
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
