@@ -3,15 +3,15 @@
   "title": "[merge-conflict] worker8: adapter.h",
   "description": "Resolve merge conflict in lichen/subsys/lichen/meshtastic/include/lichen/meshtastic/adapter.h between main and integration/worker8-20260722. Keep BOTH sets of changes.",
   "notes": "Commit: 24fe9e900",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:52:03.207173763Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T21:31:06.946130382Z",
+  "updated_at": "2026-07-22T21:31:08.567539449Z",
   "started_at": "2026-07-22T21:29:01.000136287Z",
-  "lease_expires_at": "2026-07-22T21:34:01.000136287Z",
-  "heartbeat_at": "2026-07-22T21:29:01.000136287Z"
+  "closed_at": "2026-07-22T21:31:08.567539449Z",
+  "close_reason": "Closed"
 }
