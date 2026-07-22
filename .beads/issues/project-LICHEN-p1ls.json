@@ -2,11 +2,15 @@
   "id": "project-LICHEN-p1ls",
   "title": "drain_tx_queue loses re-queued packet if queue is full with equal priority",
   "description": "File: python/src/lichen/link/link_layer.py:314-318\n\nWhen CAD fails and we try to re-queue with Priority.ROUTING:\n\n    self.tx_queue.push(frame_bytes, priority=Priority.ROUTING)\n\nIf the queue is full of ROUTING packets (e.g., a routing storm), push() will raise QueueFullError because preemption requires strictly higher priority.\n\nFrom tx_queue.py:230:\n    if priority \u003c lowest.priority:  # strict less-than\n        # preempt\n    else:\n        raise QueueFullError\n\nROUTING is the highest priority (0), so it cannot preempt other ROUTING packets. The packet we just popped (which was successfully dequeued) is now lost.\n\nFix: Before popping, ensure we have transmission capability, or use a separate re-queue slot.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:22:17.589366Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:22:17.589395Z"
+  "updated_at": "2026-07-22T20:21:29.75377328Z",
+  "started_at": "2026-07-22T20:21:29.75377328Z",
+  "lease_expires_at": "2026-07-22T20:26:29.75377328Z",
+  "heartbeat_at": "2026-07-22T20:21:29.75377328Z"
 }
