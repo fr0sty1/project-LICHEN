@@ -282,6 +282,9 @@ impl Router {
         dio.write_to(out).unwrap_or(0)
     }
 
+    /// Look up route for a destination (root only).
+    ///
+    /// Non-root nodes always return `None`.
     pub fn lookup_route(&self, dst: &[u8; 16]) -> Option<&[[u8; 16]]> {
         if !self.dodag.is_root() {
             return None;
