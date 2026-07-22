@@ -2,10 +2,14 @@
   "id": "project-LICHEN-aoyu",
   "title": "[codereview-P1 pass1] ccp16-desync.json array root not validated by schema.json",
   "description": "test_vector_file_schema will fail for new file because schema requires object with description/vectors. Must update schema with oneOf for array case using ccp_vector etc. Tagged codereview. Blocks project-LICHEN-pgzj.2",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T17:02:15.546106946Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T17:02:15.546106946Z"
+  "updated_at": "2026-07-22T17:03:34.217743512Z",
+  "started_at": "2026-07-22T17:03:34.217743512Z",
+  "lease_expires_at": "2026-07-22T17:08:34.217743512Z",
+  "heartbeat_at": "2026-07-22T17:03:34.217743512Z"
 }
