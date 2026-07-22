@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-4yw0",
+  "title": "Rust: add channel to Radio trait and coordination module",
+  "description": "Per da2q.2: extend lichen-hal Radio trait with channel support, implement channel coordination in lichen-link or new module using hash_32 and CCP-9/12 logic from vectors. Update node/scheduler. Add tests.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "feature",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T23:00:04.241112234Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T23:00:04.241112234Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-4yw0",
+      "depends_on_id": "project-LICHEN-da2q.2",
+      "type": "blocks",
+      "created_at": "2026-07-22T23:00:04.382518912Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
