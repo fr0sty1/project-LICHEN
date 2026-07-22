@@ -114,6 +114,7 @@ class DodagState:
     def __post_init__(self) -> None:
         """Make defensive copies of mutable arguments to prevent cross-state pollution."""
         self.parents = dict(self.parents)
+        self.dodag_id = str(to_ipv6(self.dodag_id))
 
     @classmethod
     def as_root(

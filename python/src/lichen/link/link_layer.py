@@ -445,7 +445,7 @@ class LinkLayer:
 
         return False
 
-    async def receive(self, timeout_ms: int) -> RxFrame | None:
+    async def receive(self, timeout_ms: int) -> RxFrame | ReceiveError | None:
         """Receive and validate a frame.
 
         Why async: Radio reception blocks until a packet arrives or timeout.
@@ -468,9 +468,11 @@ class LinkLayer:
             timeout_ms: Maximum time to wait for a frame, in milliseconds.
 
         Returns:
-            RxFrame with validated frame and metadata, or None on timeout.
-            Returns None (not raises) for validation failures - they're
-            expected in adversarial environments.
+            RxFrame on success.
+            None on radio timeout (normal, no packet).
+            ReceiveError on any validation failure. This fixes the original
+            problem where all failures collapsed to None; callers can now
+            distinguish security events from malformed frames from timeouts.
         """
         result = await self.radio.receive(timeout_ms)
         if result is None:
@@ -483,14 +485,14 @@ class LinkLayer:
             frame = LichenFrame.from_bytes(raw_bytes)
         except FrameError as e:
             logger.warning("RX malformed frame: %s", e)
-            return None
+            return ReceiveError.MALFORMED
 
         # Why check signature_present: Unsigned frames are not authenticated.
         # In a real deployment, we might accept them for specific purposes
         # (e.g., discovery), but for now we require signatures.
         if not frame.signature_present:
             logger.warning("RX unsigned frame rejected (policy requires signatures)")
-            return None
+            return ReceiveError.UNSIGNED
 
         # SECURITY: Reject frames with encrypted=True until encryption is implemented.
         # Why reject (not accept): An attacker could send a frame with encrypted=True
@@ -507,7 +509,7 @@ class LinkLayer:
                 _encrypted_frame_warned = True
             else:
                 logger.debug("RX encrypted frame rejected (encryption not implemented)")
-            return None
+            return ReceiveError.ENCRYPTED
 
         # S=1 makes the MIC field the 48-byte Schnorr signature.
         signature = frame.mic
@@ -526,7 +528,7 @@ class LinkLayer:
         sender = self._find_sender(frame, signature, inner_payload)
         if sender is None:
             logger.warning("RX frame from unknown sender or bad signature")
-            return None
+            return ReceiveError.BAD_SIGNATURE
 
         # Step 4 happened inside _find_sender (signature verification)
 
@@ -542,14 +544,14 @@ class LinkLayer:
                 pinned_pk.hex()[:16],
                 sender.pubkey.hex()[:16],
             )
-            return None
+            return ReceiveError.KEY_CHANGE
 
         # Step 4.6: Verify MIC (stub - logs warning, always accepts)
         # Encrypted-frame processing is unsupported by the current profile.
         # The MIC covers: LLSec || epoch || seqnum || dst_addr || payload
         if not _verify_mic_stub(frame):
             logger.warning("MIC verification failed for frame from %s", sender.iid.hex())
-            return None
+            return ReceiveError.MIC_FAILED
 
         # Step 4.7: Pin key after MIC verification succeeds.
         # SECURITY: Key pinning is disabled while MIC verification is a stub.
@@ -571,7 +573,7 @@ class LinkLayer:
                 frame.seqnum,
                 sender.iid.hex(),
             )
-            return None
+            return ReceiveError.REPLAY
 
         # Success! Return the validated frame
         logger.debug(

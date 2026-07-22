@@ -100,10 +100,12 @@ All node identity derives from a single Ed25519 keypair. This unifies:
 **Derivation (normative):**
 
 1. Generate Ed25519 keypair (32-byte priv, 32-byte pub)
-2. IPv6 IID = first 64 bits of SHA-256(pubkey) with u-bit set (per Yggdrasil mapping for interop; exact fn in reference impl and test vectors)
-3. Address = 0x02 || (appropriate bits) || IID  (full spec in Yggdrasil docs + test vectors/schnorr48.json)
-4. Link pubkey = the Ed25519 pubkey
-5. TOFU pins the (IID, PubKey) tuple
+2. hash = SHA-256(pubkey) (32 bytes, no truncation beyond IID)
+3. IID = hash[0:8]; IID[0] |= 0x02 (u-bit set per Yggdrasil/RFC4291 for 02xx::/7 interop; exact mapping in appendix and test/vectors/schnorr48.json)
+4. Address = fe80::/10 for link-local or 0200::/7 || IID for global (Yggdrasil-compatible)
+5. Link pubkey = the Ed25519 pubkey
+6. TOFU pins the (IID, PubKey) tuple
+(Appendix A updated with bit positions, hash steps, and vectors for exact interop.)
 
 This eliminates ULA entirely. The 02xx address is used for all routable traffic. Link-local fe80::/10 is reserved exclusively for control traffic (see 04-network.md). See test/vectors/ for canonical derivation examples. Reference implementation in python/src/lichen/crypto/ and rust/lichen-link/.
 

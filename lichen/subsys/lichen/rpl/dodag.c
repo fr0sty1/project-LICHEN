@@ -402,11 +402,10 @@ int lichen_rpl_dodag_expire_parents(struct lichen_rpl_dodag *d,
 			continue;
 		}
 
-		/* Use signed comparison for 32-bit timestamp wraparound safety.
-		 * Deadline is when entry should expire; entry is expired if
-		 * now is at or past the deadline. Works for wraparound within ~24 days. */
-		uint32_t deadline = p->last_updated + max_age;
-		if ((int32_t)(now - deadline) >= 0) {
+		/* Unsigned subtraction handles full 32-bit wraparound correctly:
+		 * if now wrapped past last_updated, age is large (> max_age). */
+		uint32_t age = now - p->last_updated;
+		if (age > max_age) {
 			p->valid = false;
 			expired++;
 		}

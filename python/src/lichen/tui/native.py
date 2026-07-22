@@ -2071,9 +2071,15 @@ class NativeClientApp(App[None]):
                 self.client.list_neighbors(),
                 self.client.list_routes(),
             )
+<<<<<<< HEAD
         except BaseException as exc:
             if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
                 raise
+=======
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+>>>>>>> origin/integration/worker3-20260722
             self._set_mesh_error(str(exc))
             return
         self._set_mesh_state(
@@ -2093,9 +2099,15 @@ class NativeClientApp(App[None]):
                 self.client.get_radio_config(),
                 self.client.get_identity(),
             )
+<<<<<<< HEAD
         except BaseException as exc:
             if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
                 raise
+=======
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+>>>>>>> origin/integration/worker3-20260722
             self._set_config_error(str(exc))
             return
         self._set_config_state(
@@ -2150,9 +2162,15 @@ class NativeClientApp(App[None]):
             else:
                 self._set_config_error(f"{path} writes are unsupported")
                 return
+<<<<<<< HEAD
         except BaseException as exc:
             if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
                 raise
+=======
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+>>>>>>> origin/integration/worker3-20260722
             self._set_config_error(f"{path} write failed: {exc}")
             return
         if not result.is_success:
@@ -2184,9 +2202,15 @@ class NativeClientApp(App[None]):
                 if raw_available and self.raw_diagnostics_admin_enabled
                 else None
             )
+<<<<<<< HEAD
         except BaseException as exc:
             if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
                 raise
+=======
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+>>>>>>> origin/integration/worker3-20260722
             self._set_diagnostics_error(str(exc))
             return
         self._set_diagnostics_state(
@@ -2242,7 +2266,10 @@ class NativeClientApp(App[None]):
             queue_info = radio_info.get("tx_queue") or {}
             depth_by_priority = tuple(
                 (safe_int(k), safe_int(v))
-                for k, v in sorted(queue_info.get("depth_by_priority", {}).items())
+                for k, v in sorted(
+                    queue_info.get("depth_by_priority", {}).items(),
+                    key=lambda item: safe_int(item[0]),
+                )
             )
             total_bytes = safe_int(queue_info.get("total_bytes"))
             drain_time = safe_int(queue_info.get("drain_time_ms"))
@@ -2261,9 +2288,15 @@ class NativeClientApp(App[None]):
                 ),
                 recover_error=True,
             )
+<<<<<<< HEAD
         except BaseException as exc:
             if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
                 raise
+=======
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+>>>>>>> origin/integration/worker3-20260722
             self._set_radio_error(str(exc))
 
     async def refresh_rf_health(self) -> None:
@@ -2312,9 +2345,15 @@ class NativeClientApp(App[None]):
                 ),
                 recover_error=True,
             )
+<<<<<<< HEAD
         except BaseException as exc:
             if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
                 raise
+=======
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+>>>>>>> origin/integration/worker3-20260722
             self._set_rf_health_error(str(exc))
 
     def enable_raw_diagnostics_admin(self, *, enabled: bool = True) -> None:
@@ -2347,9 +2386,15 @@ class NativeClientApp(App[None]):
         try:
             result = await self.client.arm_raw_rx(ttl_s=ttl_s, include_payload=include_payload)
             status = await self.client.get_raw_rx_status()
+<<<<<<< HEAD
         except BaseException as exc:
             if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
                 raise
+=======
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+>>>>>>> origin/integration/worker3-20260722
             self._set_diagnostics_error(str(exc))
             return
         self._set_diagnostics_state(

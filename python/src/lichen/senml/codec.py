@@ -167,6 +167,8 @@ class SenmlRecord:
             name = _LABEL_TO_FIELD.get(label)
             if name is not None:
                 _validate_field_type(name, val)
+                if name == "bver" and not (1 <= val <= 10):
+                    raise ValueError(f"'bver' must be an integer in [1,10], got {val}")
                 kwargs[name] = val
         value_count = sum(1 for k in _VALUE_FIELDS if k in kwargs)
         if value_count > 1:

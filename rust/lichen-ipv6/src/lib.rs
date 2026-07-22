@@ -684,25 +684,18 @@ fn icmpv6_checksum(src: &Addr, dst: &Addr, icmpv6_msg: &[u8]) -> u16 {
     for chunk in dst.0.chunks(2) {
         sum += ((chunk[0] as u32) << 8) | (chunk[1] as u32);
     }
-    sum += icmpv6_msg.len() as u32; // Upper-layer length
-    sum += next_header::ICMPV6 as u32; // Next header
+    sum += icmpv6_msg.len() as u32;
+    sum += next_header::ICMPV6 as u32;
 
-    // ICMPv6 message (with checksum field zeroed - caller should have zeros there)
-    let mut i = 0;
-    while i + 1 < icmpv6_msg.len() {
-        // Skip checksum field (bytes 2-3)
+    for i in (0..icmpv6_msg.len()).step_by(2) {
         if i == 2 {
-            i += 2;
             continue;
         }
-        sum += ((icmpv6_msg[i] as u32) << 8) | (icmpv6_msg[i + 1] as u32);
-        i += 2;
-    }
-    if i < icmpv6_msg.len() {
-        sum += (icmpv6_msg[i] as u32) << 8;
+        let high = icmpv6_msg.get(i).copied().unwrap_or(0);
+        let low = icmpv6_msg.get(i + 1).copied().unwrap_or(0);
+        sum += ((high as u32) << 8) | (low as u32);
     }
 
-    // Fold 32-bit sum to 16 bits
     while sum >> 16 != 0 {
         sum = (sum & 0xffff) + (sum >> 16);
     }
@@ -1117,5 +1110,31 @@ mod tests {
             result,
             Err(Ipv6Error::InvalidFlowLabel(0xffffffff))
         ));
+    }
+
+    #[test]
+    fn test_with_decremented_hop_limit() {
+        let src = Addr::link_local_from_mac(&hex!("001122334455"));
+        let dst = Addr::link_local_from_mac(&hex!("665544332211"));
+        let mut hdr = Ipv6Header::new(next_header::ICMPV6, src, dst);
+        hdr.hop_limit = 5;
+        hdr.flow_label = 0x12345;
+
+        // independent test vector per RFC 8200: 5->4, fields preserved
+        let dec = hdr.with_decremented_hop_limit().unwrap();
+        assert_eq!(dec.hop_limit, 4);
+        assert_eq!(dec.flow_label, 0x12345);
+        assert_eq!(dec.src, src);
+        assert_eq!(dec.dst, dst);
+        assert_eq!(dec.next_header, next_header::ICMPV6);
+
+        // hop_limit=1 or 0 reaches zero after decrement -> None (drop + ICMP)
+        let mut one = hdr;
+        one.hop_limit = 1;
+        assert!(one.with_decremented_hop_limit().is_none());
+
+        let mut zero = hdr;
+        zero.hop_limit = 0;
+        assert!(zero.with_decremented_hop_limit().is_none());
     }
 }

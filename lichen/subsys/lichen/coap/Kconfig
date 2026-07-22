@@ -261,6 +261,7 @@ config LICHEN_COAP_DEADDROP
 	select COAP_URI_WILDCARD
 	select ZCBOR
 	help
+<<<<<<< HEAD
 	  LCI /deaddrop (POST to store encrypted msg for recipient, GET?node=IID to pickup pending).
 <<<<<<< HEAD
 	  Per spec 18.11, uses OSCORE E2E (init after oscore_init() + lichen_coap_client_init() per AGENTS.md), SenML+CBOR (112), rate limited by CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS.
@@ -268,6 +269,28 @@ config LICHEN_COAP_DEADDROP
 	  Per spec 18.11, uses OSCORE E2E (init after oscore_init() + lichen_coap_client_init() per AGENTS.md), SenML+CBOR (112), rate limited DTN buffer by CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS (for confessions_post).
 	  Query params require the URI wildcard. No separate MAX_* yet (uses LICHEN_DTN_MAX_*).
 >>>>>>> origin/integration/worker8-20260722
+=======
+	  CoAP handlers for /deaddrop (encrypted store-forward) and
+	  /confessions (anonymous rate-limited broadcast). Uses OSCORE,
+	  rate limiting, and DTN storage.
+
+config LICHEN_COAP_DEADDROP_RATE_LIMIT_MS
+	int "Rate limit for confessions in ms"
+	depends on LICHEN_COAP_DEADDROP
+	default 30000
+	range 1000 300000
+	help
+	  Minimum interval between /confessions POSTs (enforced in confessions_post).
+	  Prevents anonymous spam/DoS on DTN storage (security per 06-security.md).
+
+config LICHEN_COAP_DEADDROP_MAX_STORAGE
+	int "Max deaddrop storage entries"
+	depends on LICHEN_COAP_DEADDROP
+	default 8
+	range 1 64
+	help
+	  Maximum messages in DTN deaddrop buffer.
+>>>>>>> origin/integration/worker3-20260722
 
 config LICHEN_COAP_DEADDROP_LOG_LEVEL
 	int "CoAP deaddrop log level"

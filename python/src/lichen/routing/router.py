@@ -189,6 +189,8 @@ class ForwardingBuffer:
         Returns:
             ForwardingResult indicating success or failure mode.
         """
+        if len(source_iid) != 8:
+            raise RoutingError(f"source_iid must be 8 bytes, got {len(source_iid)}")
         entry = ForwardingEntry(
             packet=packet,
             source_iid=source_iid,
@@ -715,6 +717,8 @@ class Router:
 
         Returns True if buffered, False if rejected (e.g., already expired).
         """
+        if len(destination_iid) != 8:
+            raise RoutingError(f"destination_iid must be 8 bytes, got {len(destination_iid)}")
         now_unix = int(time.time())
         if expiry_unix <= now_unix:
             logger.debug("dtn: rejecting expired message (expiry=%d, now=%d)",

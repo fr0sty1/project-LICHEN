@@ -557,7 +557,7 @@ static bool valid_default_flood_name(const uint8_t *payload)
 	}
 
 	len = (size_t)(nul - payload);
-	if (len > 30U) {
+	if (len > (LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN - 1U)) {
 		return false;
 	}
 	return valid_utf8_text(payload, len);

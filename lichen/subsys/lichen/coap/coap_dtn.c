@@ -20,24 +20,7 @@ static struct senml_pack s_senml_pack;
 static K_MUTEX_DEFINE(s_dtn_buf_mutex);
 static K_MUTEX_DEFINE(s_senml_pack_mutex);
 static struct k_work_delayable s_dtn_expire_work;
-<<<<<<< HEAD
 static uint32_t s_last_deaddrop[16] = {0};
-=======
-
-static int coap_respond(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len, uint8_t code, const uint8_t *payload, size_t payload_len, const uint8_t *piv) {
-	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
-	struct coap_packet resp;
-	uint8_t token[COAP_TOKEN_MAX_LEN];
-	uint8_t tkl = coap_header_get_token(request, token);
-	uint8_t type = (coap_header_get_type(request) == COAP_TYPE_CON) ? COAP_TYPE_ACK : COAP_TYPE_NON_CON;
-	int r = coap_packet_init(&resp, buf, sizeof(buf), COAP_VERSION_1, type, tkl, token, code, coap_header_get_id(request));
-	if (r < 0) return r;
-	if (payload && payload_len) {
-		coap_append_option_int(&resp, COAP_OPTION_CONTENT_FORMAT, 112);
-		coap_packet_append_payload_marker(&resp);
-		coap_packet_append_payload(&resp, payload, payload_len);
-	}
-	if (piv != NULL) {
 		LOG_DBG("OSCORE path");
 	}
 	return coap_resource_send(resource, &resp, addr, addr_len, piv);
@@ -103,13 +86,8 @@ static int deaddrop_get(struct coap_resource *resource, struct coap_packet *requ
 	uint16_t pending = lichen_dtn_pending_count(&s_dtn_buf);
 	int len = senml_encode_deaddrop(NULL, dtn_get_unix_time(), pending, buf, sizeof(buf));
 	k_mutex_unlock(&s_dtn_buf_mutex);
-<<<<<<< HEAD
 	if (len < 0) return COAP_RESPONSE_CODE_INTERNAL_ERROR;
 	return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_CONTENT, 112, buf, (size_t)len);
-=======
-	if (len < 0) return 0xA0;
-	return coap_respond(resource, request, addr, addr_len, 0x45, buf, len, NULL);
->>>>>>> origin/integration/worker11-20260722
 }
 
 static const char * const deaddrop_path[] = { "deaddrop", NULL };

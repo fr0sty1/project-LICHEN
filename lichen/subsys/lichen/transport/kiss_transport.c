@@ -82,6 +82,10 @@ void kiss_decode_init(struct kiss_decode_ctx *ctx)
 
 int kiss_decode_byte(struct kiss_decode_ctx *ctx, uint8_t byte)
 {
+	if (ctx == NULL) {
+		return -EINVAL;
+	}
+
 	if (byte == KISS_FEND) {
 		if (ctx->in_frame && ctx->has_cmd && ctx->len > 0) {
 			/* Complete frame ready */

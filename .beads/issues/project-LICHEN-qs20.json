@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-qs20",
+  "title": "icmpv6: build_error() missing invoking_packet NULL validation",
+  "description": "File: lichen/subsys/lichen/l2/icmpv6.c\nLines: 341-403 (build_error function)\n\nThe build_error() function does not validate that invoking_packet is non-NULL when invoking_len \u003e 0. Compare to build_echo() at lines 270-273 which correctly checks:\n\n```c\nif (data_len \u003e 0 \u0026\u0026 data == NULL) {\n    LOG_ERR(\"icmpv6: build_echo failed (data_len \u003e 0 but data is NULL)\");\n    return -EINVAL;\n}\n```\n\nIn build_error(), if invoking_packet is NULL but invoking_len \u003e 0:\n1. quoted_len is set to min(invoking_len, MAX) at line 363\n2. total_len includes quoted_len at line 369\n3. The memcpy at line 393-394 is skipped (NULL check)\n4. BUT the function returns total_len, claiming quoted_len bytes were written\n\nResult: The returned packet contains uninitialized memory in the invoking packet section. An attacker could potentially exploit this for information disclosure if the uninitialized memory contains sensitive data from previous operations.\n\nAll four public error-building APIs are affected:\n- lichen_icmpv6_build_dest_unreachable\n- lichen_icmpv6_build_packet_too_big\n- lichen_icmpv6_build_time_exceeded\n- lichen_icmpv6_build_param_problem\n\nFix: Add NULL check at the start of build_error():\n```c\nif (invoking_len \u003e 0 \u0026\u0026 invoking_packet == NULL) {\n    LOG_ERR(\"icmpv6: build_error failed (invoking_len \u003e 0 but invoking_packet is NULL)\");\n    return -EINVAL;\n}\n```",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:45:36.984801Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-13T05:13:42.48103Z",
+  "closed_at": "2026-07-13T05:13:42.48103Z",
+  "close_reason": "Fixed with NULL check for invoking_packet when invoking_len > 0 in build_error() and callers (lines 362, 399). Matches build_echo pattern. No info disclosure. Commit 44bc90c05."
+}

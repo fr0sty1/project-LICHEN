@@ -449,6 +449,58 @@ int oscore_ctx_check_freshness(const struct oscore_ctx *_Nonnull ctx,
 int oscore_ctx_persist_ssn(struct oscore_ctx *_Nonnull ctx);
 
 /**
+<<<<<<< HEAD
+=======
+ * @brief Look up a security context by recipient ID (copy).
+ *
+ * @deprecated This function copies key material to the caller's stack, which
+ * is a security concern. Use oscore_ctx_get() instead, which returns a pointer
+ * to the internal context without copying sensitive data.
+ *
+ * Copies the context into the caller-provided buffer.
+ *
+ * WARNING: The copied context CANNOT be used with oscore_protect_request()
+ * or oscore_unprotect_request() because those functions require a pointer
+ * to the real internal context for atomic state updates. Use oscore_ctx_get()
+ * instead for contexts that will be used with protect/unprotect.
+ *
+ * @warning Copies key material (sender_key, recipient_key, common_iv) to
+ * caller's stack. This exposes sensitive cryptographic material outside the
+ * protected internal context array. The caller MUST call oscore_ctx_wipe()
+ * on the buffer before it goes out of scope to prevent key material leakage.
+ *
+ * @param[in]  recipient_id     Recipient ID to search for
+ * @param[in]  recipient_id_len Length of recipient ID
+ * @param[out] ctx_out          Buffer to copy context into (must not be NULL)
+ * @return 0 on success, OSCORE_ERR_NO_CONTEXT if not found,
+ *         OSCORE_ERR_INVALID_PARAM if ctx_out is NULL
+ */
+__deprecated int oscore_ctx_lookup(const uint8_t *_Nonnull recipient_id,
+		      size_t recipient_id_len,
+		      struct oscore_ctx *_Nonnull ctx_out);
+
+/**
+ * @brief Securely wipe a context copy.
+ *
+ * Use this function to wipe key material from a context copy obtained via
+ * oscore_ctx_lookup() before it goes out of scope. This prevents sensitive
+ * cryptographic keys from persisting on the stack.
+ *
+ * Example:
+ * @code
+ *     struct oscore_ctx ctx_copy;
+ *     if (oscore_ctx_lookup(rid, rid_len, &ctx_copy) == OSCORE_OK) {
+ *         // use ctx_copy for read-only inspection
+ *         oscore_ctx_wipe(&ctx_copy);
+ *     }
+ * @endcode
+ *
+ * @param[in,out] ctx Context to wipe (may be NULL, in which case this is a no-op)
+ */
+void oscore_ctx_wipe(struct oscore_ctx *_Nullable ctx);
+
+/**
+>>>>>>> origin/integration/worker3-20260722
  * @brief Get a security context pointer by recipient ID.
  *
  * Returns a pointer to the internal context. This pointer is required for

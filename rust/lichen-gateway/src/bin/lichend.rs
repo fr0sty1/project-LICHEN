@@ -434,9 +434,27 @@ where
 
 // ── packet forwarding ─────────────────────────────────────────────────────────
 
+<<<<<<< HEAD
 async fn forward_mesh_to_upstream<T: TunLike>(gw: &mut Gateway, frame: &[u8], tun: &Option<T>) {
     let (reply_opt, event) = gw.process_rpl(frame, 1000); // TODO: real monotonic ms for trickle
     if let Some(reply) = reply_opt {
+=======
+async fn forward_mesh_to_upstream<T: TunLike>(
+    gw: &mut Gateway,
+    frame: &[u8],
+    tun: &Option<T>,
+) -> Option<Vec<u8>> {
+    let mut reply_buf = [0u8; 256];
+    let (reply_len, event) = gw.rpl.handle_frame_rpl(frame, &mut reply_buf, 0);
+    let mut control_plane = false;
+    if let RplEvent::DaoReceived {
+        target,
+        route_updated: true,
+    } = event
+    {
+        let node_id = NodeId::from_ipv6(&target);
+        gw.add_route(target, node_id);
+>>>>>>> origin/integration/worker3-20260722
         info!(
             len = reply.len(),
             "reply_buf used (no ignore); mesh reply ready for SLIP TX queue"

@@ -105,6 +105,8 @@ impl Default for RadioConfig {
 ///
 /// Async-first design for Embassy compatibility. Implementations may use
 /// blocking internally on platforms without async (wrapped in executor).
+/// Extended for SX1302 multi-channel CCP support in gateways (mimics
+/// SX126x wrapper patterns in lichen-embassy).
 pub trait Radio {
     /// Error type for radio operations.
     type Error;
@@ -137,11 +139,19 @@ pub trait Radio {
     /// Apply radio configuration.
     fn configure(&mut self, config: &RadioConfig);
 
+<<<<<<< HEAD
     /// Configure multiple channels for concentrator mode (SX1302 gateways).
     fn configure_channels(
         &mut self,
         channels: &[ChannelConfig],
     ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
+=======
+    /// Returns current RX channel for multi-channel gateways (SX1302).
+    /// Defaults to 0 to mimic single-channel SX126x behavior.
+    fn current_channel(&self) -> u8 {
+        0
+    }
+>>>>>>> origin/integration/worker3-20260722
 }
 
 /// Minimal ChannelPlan support (u8 index into regional plan per CCP-4).

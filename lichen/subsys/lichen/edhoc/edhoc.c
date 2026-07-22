@@ -846,12 +846,12 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 		goto err_wipe;
 	}
 
-	ed25519_sign(signature_3, ctx->ed_seed, sig_struct_3, sig_struct_3_len);
+	edhoc_sign(signature_3, ctx->ed_seed, ctx->ed_pubkey, sig_struct_3, sig_struct_3_len);
 
 	/* Encode PLAINTEXT_3 */
 	ZCBOR_STATE_E(zse_pt3, 0, plaintext_3, sizeof(plaintext_3), 0);
 	if (!zcbor_bstr_encode_ptr(zse_pt3, ctx->ed_pubkey, 32) ||
-	    !zcbor_bstr_encode_ptr(zse_pt3, signature_3, 64)) {
+	    !zcbor_bstr_encode_ptr(zse_pt3, signature_3, EDHOC_SIG_LEN)) {
 		ret = -ENOMEM;
 		goto err_wipe;
 	}
@@ -1160,11 +1160,11 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 		goto err_wipe;
 	}
 
-	ed25519_sign(signature_2, ctx->ed_seed, sig_struct_2, sig_struct_2_len);
+	edhoc_sign(signature_2, ctx->ed_seed, ctx->ed_pubkey, sig_struct_2, sig_struct_2_len);
 
 	ZCBOR_STATE_E(zse_pt2, 0, plaintext_2, sizeof(plaintext_2), 0);
 	if (!zcbor_bstr_encode_ptr(zse_pt2, ctx->ed_pubkey, 32) ||
-	    !zcbor_bstr_encode_ptr(zse_pt2, signature_2, 64)) {
+	    !zcbor_bstr_encode_ptr(zse_pt2, signature_2, EDHOC_SIG_LEN)) {
 		ret = -ENOMEM;
 		goto err_wipe;
 	}
@@ -1333,7 +1333,7 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 		ret = -EINVAL;
 		goto err_wipe;
 	}
-	if (signature_3.len != EDHOC_ED25519_SIG_LEN) {
+	if (signature_3.len != EDHOC_SIG_LEN) {
 		ret = -EINVAL;
 		goto err_wipe;
 	}
@@ -1371,13 +1371,13 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 
 	/*
 	 * SECURITY: Constant-time signature verification.
-	 * - crypto_ed25519_check is constant-time internally
+	 * - schnorr48_verify uses crypto_verify16 + nonzero accumulator (see schnorr48.c:156)
 	 * - volatile prevents compiler from optimizing away the check
 	 * - No logging here to avoid timing variation from log backends
 	 * - Generic error hides which verification step failed
 	 */
-	volatile int sig3_result = ed25519_verify(peer_pubkey, signature_3.value,
-						  sig_struct_3, sig_struct_3_len);
+	volatile int sig3_result = edhoc_verify(peer_pubkey, signature_3.value,
+						sig_struct_3, sig_struct_3_len);
 	if (sig3_result != 0) {
 		ret = -EACCES;
 		goto err_wipe;
