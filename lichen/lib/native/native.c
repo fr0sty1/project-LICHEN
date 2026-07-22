@@ -22,6 +22,7 @@
 #include <zephyr/drivers/uart.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/kernel.h>
+#include <zephyr/sys/atomic.h>
 #include <zephyr/init.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/reboot.h>
@@ -422,6 +423,7 @@ static uint8_t s_tx_buf[TX_BUF_SIZE];
 static bool s_log_subscribed;
 static lichen_native_rx_cb_t s_rx_cb;
 static bool s_initialized;
+static atomic_t s_rx_shutdown = ATOMIC_INIT(0);
 static K_MUTEX_DEFINE(s_init_mutex);
 
 static const uint8_t s_default_supported_types[] = {
@@ -746,8 +748,12 @@ static void rx_thread_fn(void *p1, void *p2, void *p3)
 	uint16_t rx_pos = 0;
 	uint8_t byte;
 
-	while (1) {
+	while (true) {
 		k_msgq_get(&s_rx_msgq, &byte, K_FOREVER);
+
+		if (atomic_get(&s_rx_shutdown)) {
+			break;
+		}
 
 		switch (state) {
 		case S_SYNC:
@@ -927,6 +933,40 @@ int lichen_native_init(lichen_native_rx_cb_t rx_cb)
 
 	s_initialized = true;
 	k_mutex_unlock(&s_init_mutex);
+	return 0;
+}
+
+int lichen_native_deinit(void)
+{
+	k_mutex_lock(&s_init_mutex, K_FOREVER);
+
+	if (!s_initialized) {
+		k_mutex_unlock(&s_init_mutex);
+		return 0;
+	}
+
+	atomic_set(&s_rx_shutdown, 1);
+
+	if (s_uart && device_is_ready(s_uart)) {
+		uart_irq_rx_disable(s_uart);
+	}
+
+	uint8_t poison = 0xFF;
+	k_msgq_put(&s_rx_msgq, &poison, K_NO_WAIT);
+
+	int join_ret = k_thread_join(&s_rx_thread, K_MSEC(500));
+	if (join_ret != 0) {
+		LOG_WRN("native_rx join timeout (%d), aborting", join_ret);
+		k_thread_abort(&s_rx_thread);
+		k_thread_join(&s_rx_thread, K_FOREVER);
+	}
+
+	s_initialized = false;
+	s_rx_cb = NULL;
+	atomic_clear(&s_rx_shutdown);
+
+	k_mutex_unlock(&s_init_mutex);
+	LOG_INF("native deinit complete");
 	return 0;
 }
 
