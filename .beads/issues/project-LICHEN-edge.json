@@ -2,6 +2,7 @@
   "id": "project-LICHEN-edge",
   "title": "Integer overflow in receive() when timeout_ms exceeds ~4.2 million",
   "description": "**File:** python/src/lichen/radio/sim_client.py\n**Lines:** 202-204\n\n**Issue:** The receive() method converts milliseconds to microseconds:\n```python\ntimeout_us = timeout_ms * 1000\nmsg = encode_rx_enter(timeout_us)\n```\n\nThe protocol encoder validates that `timeout_us` fits in a uint32 (max 4,294,967,295). This means:\n- Maximum valid `timeout_ms` is approximately 4,294,967 (~71.6 minutes)\n- If user passes `timeout_ms = 5_000_000` (83 minutes, a plausible long timeout for mesh networks), the multiplication produces 5,000,000,000 which exceeds uint32 max\n- The error message will say \"timeout_us must be in range 0..4294967295\" which is confusing since the user passed timeout_ms\n\n**Impact:** Users cannot request timeouts longer than ~71 minutes, and the error message when they try does not help them understand the limit applies to milliseconds.\n\n**Fix:** Add early validation with a clear error message:\n```python\nMAX_TIMEOUT_MS = 4_294_967  # ~71.6 minutes, fits in uint32 when * 1000\nif timeout_ms \u003e MAX_TIMEOUT_MS:\n    raise ValueError(f\"timeout_ms must be \u003c= {MAX_TIMEOUT_MS} (~71 minutes)\")\n```",
+  "notes": "Commit: a73291b76",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:22:48.582687Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:33:17.230366677Z",
+  "updated_at": "2026-07-22T23:35:49.543330236Z",
   "started_at": "2026-07-22T23:33:17.230366677Z",
   "lease_expires_at": "2026-07-22T23:38:17.230366677Z",
   "heartbeat_at": "2026-07-22T23:33:17.230366677Z"
