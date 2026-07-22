@@ -322,6 +322,26 @@ impl<const MTU: usize> MeshtasticGattService<MTU> {
         self.write_expected_len = None;
     }
 
+    pub fn consume_to_radio_message(&mut self) -> Option<Vec<u8, MAX_MESSAGE_SIZE>> {
+        let expected = self.write_expected_len?;
+        let expected_usize = expected as usize;
+        if self.write_buffer.len() < expected_usize {
+            return None;
+        }
+        let mut msg = Vec::<u8, MAX_MESSAGE_SIZE>::new();
+        let _ = msg.extend_from_slice(&self.write_buffer[..expected_usize]);
+        if self.write_buffer.len() > expected_usize {
+            let excess_len = self.write_buffer.len() - expected_usize;
+            self.write_buffer.copy_within(expected_usize.., 0);
+            self.write_buffer.truncate(excess_len);
+            self.write_expected_len = None;
+        } else {
+            self.write_buffer.clear();
+            self.write_expected_len = None;
+        }
+        Some(msg)
+    }
+
     /// Queue an outbound FromRadio message with a deadline.
     ///
     /// The `deadline_ms` is an absolute timestamp (monotonic clock). The entry
