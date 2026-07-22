@@ -2,6 +2,7 @@
   "id": "project-LICHEN-x2g2",
   "title": "[merge-conflict] worker8: lib.rs",
   "description": "Resolve merge conflict in rust/lichen-rpl/src/lib.rs between main and integration/worker8-20260722. Keep BOTH sets of changes.",
+  "notes": "Commit: 4c6b59096",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:52:14.639665568Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T21:23:16.501213875Z",
+  "updated_at": "2026-07-22T21:23:37.194839267Z",
   "started_at": "2026-07-22T21:23:16.501213875Z",
   "lease_expires_at": "2026-07-22T21:28:16.501213875Z",
   "heartbeat_at": "2026-07-22T21:23:16.501213875Z"
