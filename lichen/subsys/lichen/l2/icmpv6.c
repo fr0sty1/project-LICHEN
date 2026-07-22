@@ -63,6 +63,10 @@ LOG_MODULE_REGISTER(lichen_icmpv6, LOG_LEVEL_INF);
 
 uint16_t lichen_internet_checksum(const uint8_t *data, size_t len)
 {
+    if (data == NULL && len > 0) {
+        return 0;
+    }
+
     uint32_t sum = 0;
 
     /* Sum 16-bit words */
