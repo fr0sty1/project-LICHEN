@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3rfh",
   "title": "[cross-impl] TrickleTimer reset/start behavior differs across Rust/C/Python",
   "description": "Rust treats Stopped state specially in reset() and starts the timer (see test reset_from_stopped_starts_timer and try_reset logic using state==Stopped). C and Python only check interval != imin (no-op after init since interval=imin). C rpl_root.c inits trickle but never calls start(). Leads to different behavior for same RFC 6206 algorithm. Python uses _generation for async resets. See lichen/subsys/lichen/rpl/trickle.c:125, rust/lichen-rpl/src/trickle.rs:181, python/src/lichen/rpl/trickle.py:95, lichen/apps/gateway/src/rpl_root.c:27. Reviewed commits b722c4233,8ce765f9d,a8face218,f29f0c9c2 and related trickle ports.",
-  "notes": "Commit: a850840",
+  "notes": "Commit: 92a59b47f",
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
@@ -10,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:25:23.274107561Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:45:51.280606999Z",
+  "updated_at": "2026-07-22T23:47:01.070317411Z",
   "started_at": "2026-07-22T23:41:00.048299188Z",
   "closed_at": "2026-07-22T23:45:51.280606999Z",
   "close_reason": "Cross-impl consistency fixed: reset now starts timer from stopped state in C/Python/gateway to match Rust per RFC 6206. Tests pass. Commit a850840"
