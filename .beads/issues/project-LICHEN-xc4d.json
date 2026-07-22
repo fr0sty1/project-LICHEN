@@ -1,0 +1,11 @@
+{
+  "id": "project-LICHEN-xc4d",
+  "title": "[codereview-pass2] handle_frame_rpl still does not call add_route after DAO; routes HashMap remains unpopulated on route_updated=true",
+  "description": "lichen-node/src/node.rs:316 sets route_updated but lichend.rs forwarding and gateway do not use the event to call add_route with DAO path derived nexthop. P0. discovered-from:project-LICHEN-fy9q",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:51:59.524553101Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:51:59.524553101Z"
+}
