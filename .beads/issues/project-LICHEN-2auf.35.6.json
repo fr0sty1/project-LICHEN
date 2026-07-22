@@ -4,7 +4,7 @@
   "description": "Scope: validate only the recovered Schnorr-48/link-wire migration on Linux Zephyr after project-LICHEN-2auf.56; do not absorb general subsystem or board-matrix rows. In account 210337117346 with AWS_PROFILE=personal, AWS_REGION=us-west-2, launch an owned Project=LICHEN builder in us-west-2c and attach only approved EBS vol-0a95eee8d1d8461eb at /mnt/lichen-zephyr. Create a clean worktree from the recorded base commit, apply only the recorded integration commit/patch, and hash both source and patch. Run link_crypto on native_sim/native/64, focused puck/L2 and kiss_transport Zephyr tests, and the declared bridge-esp32, bridge-rust, and bridge-stm32wl link-migration build checks. This bead exclusively owns those gates; project-LICHEN-2auf.59 must not repeat them.",
   "design": "Use the EBS-pinned Zephyr workspace/SDK and `tools/zephyr-clean-worktree.sh` where declared. Before each row record the full command, cwd, environment overrides, git base/HEAD/diff hash, west manifest revision, Zephyr/SDK/compiler/tool versions, UTC start/end, exit code, and stdout/stderr log path and SHA-256. A missing target, unsupported alias, test skip, ignored warning/error, stale artifact, dirty-worktree verification failure, or nonzero command is a row failure; do not modify or weaken tests to pass. Cleanup follows .56: collect/hash logs first, sync, verify mount users, unmount /mnt/lichen-zephyr, ownership-check instance and exact volume, detach vol-0a95eee8d1d8461eb, wait with `aws ec2 wait volume-available`, then terminate only the recorded RunId instance after tag/account recheck.",
   "acceptance_criteria": "1. Account query proves 210337117346 under profile personal in us-west-2 before writes; builder and volume are in us-west-2c and exact volume ID/Name/state checks pass. 2. Clean base commit plus link patch/commit provenance is recorded and artifact/log hashes match that source. 3. link_crypto native_sim/native/64 builds and runs; focused puck/L2 and kiss_transport tests build and run; declared bridge-esp32, bridge-rust, and bridge-stm32wl checks all pass without silently reducing features or targets. 4. Every command and exit status is retained in hashed UTC logs; no skipped or ignored failure is accepted. 5. Clean-worktree verification passes after every row. 6. Logs are collected before ownership-checked cleanup; EBS unmount, detach, and wait-available all succeed explicitly. Close .35.4/.35.5 only after every applicable link row and cleanup step passes.",
-  "notes": "Preserved intent: validation only after AWS profile personal is authenticated; apply the current integration patch with exact provenance and do not change implementation merely to pass. This is the only recovery bead for link_crypto, puck/L2, kiss_transport, and the three link-specific radio bridge gates.",
+  "notes": "Link migration validation gates (link_crypto native_sim/native/64, puck/L2, kiss_transport, bridge-esp32/rust/stm32wl) require clean worktree from recorded base, specific patch application, full provenance/evidence per .59/.56 design (hashes, logs, unmount/detach/wait/terminate). Current session on wip/checkpoint-20260715 (103 ahead). No untagged AWS launches. HUMAN tagged for decision on exact base commit/patch or local-only test execution to close.",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
@@ -12,13 +12,14 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-17T17:04:28.689567Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T14:08:05.914972943Z",
+  "updated_at": "2026-07-22T14:09:26.249784603Z",
   "started_at": "2026-07-22T14:08:05.914972943Z",
   "lease_expires_at": "2026-07-22T14:13:05.914972943Z",
   "heartbeat_at": "2026-07-22T14:08:05.914972943Z",
   "labels": [
     "aws",
-    "validation"
+    "validation",
+    "human"
   ],
   "dependencies": [
     {
