@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-0d5b",
+  "title": "codereview: 06-security.md derivation still references SHA-512 for IID but impl uses SHA-256(pubkey)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:13:15.120603925Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:13:15.120603925Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0d5b",
+      "depends_on_id": "project-LICHEN-86ur",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:13:15.222426707Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
