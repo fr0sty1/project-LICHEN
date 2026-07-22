@@ -28,18 +28,26 @@ static uint32_t dtn_get_unix_time(void) { return (uint32_t)(k_uptime_get() / 100
 static void dtn_expire_work_handler(struct k_work *work) { ARG_UNUSED(work); k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER); lichen_dtn_expire_old(&s_dtn_buf, dtn_get_unix_time()); k_mutex_unlock(&s_dtn_buf_mutex); k_work_reschedule(&s_dtn_expire_work, K_SECONDS(30)); }
 int lichen_coap_deaddrop_register(const struct lichen_deaddrop_provider *provider) {
 	if (provider == NULL) return -EINVAL;
-	s_provider = provider;
 	int r = oscore_init();
 	if (r < 0) return r;
 	r = lichen_coap_client_init();
 	if (r < 0) return r;
+	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
+	s_provider = provider;
 	r = lichen_dtn_init(&s_dtn_buf);
-	if (r < 0) return r;
+	if (r < 0) {
+		k_mutex_unlock(&s_dtn_buf_mutex);
+		return r;
+	}
 	r = senml_pack_init(&s_senml_pack, "", 0);
-	if (r < 0) return r;
+	if (r < 0) {
+		k_mutex_unlock(&s_dtn_buf_mutex);
+		return r;
+	}
 	k_work_init_delayable(&s_dtn_expire_work, dtn_expire_work_handler);
 	lichen_dtn_expire_old(&s_dtn_buf, dtn_get_unix_time());
 	k_work_schedule(&s_dtn_expire_work, K_SECONDS(30));
+	k_mutex_unlock(&s_dtn_buf_mutex);
 	return 0;
 }
 

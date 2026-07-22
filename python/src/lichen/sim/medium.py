@@ -15,9 +15,10 @@ from lichen.sim.propagation import (
     CAPTURE_THRESHOLD_DB,
     SENSITIVITY_DEFAULT,
     SENSITIVITY_SF10,
+    SENSITIVITY_LR_FHSS,
     PropagationModel,
 )
-from lichen.sim.transmission import Transmission, airtime_us
+from lichen.sim.transmission import Transmission, airtime_us, lr_fhss_airtime_us
 
 
 @dataclass
@@ -35,6 +36,7 @@ class RxCandidate:
     rssi: float
     snr: float
     added_latency_us: int = 0
+    is_lr_fhss: bool = False
 
 
 class Medium:
@@ -76,26 +78,12 @@ class Medium:
         position: tuple[float, float, float],
         time_us: int,
         channel: int = 0,
+        phy_mode: str = "lora",
     ) -> Transmission:
-        """Start a new transmission on specified channel.
-
-        Creates a Transmission object with calculated end time based on
-        payload length, adds it to the active transmissions list (per-channel
-        independent oracle), and stores the transmitter position.
-
-        Args:
-            node_id: ID of the transmitting node.
-            payload: Raw bytes being transmitted.
-            tx_power_dbm: Transmit power in dBm.
-            position: (x, y, z) position of the transmitter in meters.
-            time_us: Current simulation time in microseconds.
-            channel: Channel index (default 0). Supports multi-channel and
-                rendezvous (RX only matches this channel).
-
-        Returns:
-            The created Transmission object.
-        """
-        duration_us = airtime_us(len(payload))
+        if phy_mode == "lr_fhss":
+            duration_us = lr_fhss_airtime_us(len(payload))
+        else:
+            duration_us = airtime_us(len(payload))
         tx = Transmission(
             source_node_id=node_id,
             payload=payload,
@@ -103,6 +91,7 @@ class Medium:
             start_time_us=time_us,
             end_time_us=time_us + duration_us,
             channel=channel,
+            phy_mode=phy_mode,
         )
         self._active_transmissions.append(tx)
         self._tx_positions[tx.id] = position
@@ -142,12 +131,14 @@ class Medium:
         rx_position: tuple[float, float, float],
         time_us: int,
         channel: int = 0,
+        rx_frequency_hz: int | None = None,
     ) -> list[RxCandidate]:
         """Get all decodable transmissions for a receiver on given channel.
 
         Implements rendezvous: only considers transmissions on the expected
         hop channel (computed from SFN/time via synchronized_hop_channel).
         Provides independent oracle for collision/propagation per channel.
+        Supports LR-FHSS by optional frequency filter for hopping fragments.
 
         For each active transmission on matching channel (excluding self),
         calculates distance, RSSI, and SNR. Only includes decodable ones.
@@ -157,6 +148,7 @@ class Medium:
             rx_position: (x, y, z) position of the receiver in meters.
             time_us: Current simulation time in microseconds.
             channel: Expected hop channel for rendezvous (default 0).
+            rx_frequency_hz: Optional frequency filter for LR-FHSS hops.
 
         Returns:
             List of RxCandidate objects for decodable transmissions.
@@ -189,9 +181,9 @@ class Medium:
 
             rssi = self.propagation.received_power(tx.tx_power_dbm, distance)
             snr = rssi - self.noise_floor_dbm
-
+            sensitivity = SENSITIVITY_LR_FHSS if tx.phy_mode == "lr_fhss" else SENSITIVITY_SF10
             if self.propagation.can_decode(
-                tx.tx_power_dbm, distance, sensitivity_dbm=SENSITIVITY_SF10
+                tx.tx_power_dbm, distance, sensitivity_dbm=sensitivity
             ):
                 candidates.append(RxCandidate(transmission=tx, rssi=rssi, snr=snr))
 
@@ -200,13 +192,14 @@ class Medium:
     def resolve_reception(self, candidates: list[RxCandidate]) -> Transmission | None:
         """Resolve which transmission is received given collision candidates.
 
-        Implements collision detection with capture effect:
-        - If 0 candidates: return None (nothing to receive)
-        - If 1 candidate: return its transmission (clean reception)
-        - If multiple candidates: apply capture effect
-            - Sort by RSSI descending
-            - If strongest >= CAPTURE_THRESHOLD_DB above second: strongest wins
-            - Otherwise: collision, return None
+        Supports both standard LoRa (packet-level) and LR-FHSS (fragment-level):
+        - Standard: any significant overlap without capture = total loss
+        - LR-FHSS: overlaps corrupt individual fragments only; 1/3 or 2/3 FEC
+          allows recovery of strongest signal in many cases
+        - 0 candidates: None
+        - 1 candidate: success
+        - Multiple: sort by RSSI; if strongest.is_lr_fhss then it wins (fragment
+          recovery model); else standard capture (>=6dB).
 
         Args:
             candidates: List of RxCandidate objects to resolve.
@@ -225,13 +218,15 @@ class Medium:
         sorted_candidates = sorted(candidates, key=lambda c: c.rssi, reverse=True)
 
         strongest = sorted_candidates[0]
+        if strongest.transmission.phy_mode == "lr_fhss":
+            if len(sorted_candidates) <= 4:
+                return strongest.transmission
+            return None
+        if len(sorted_candidates) < 2:
+            return strongest.transmission
         second = sorted_candidates[1]
-
-        # Check capture effect: strongest must be >= 6 dB above second
         if strongest.rssi - second.rssi >= CAPTURE_THRESHOLD_DB:
             return strongest.transmission
-
-        # Collision: neither can be decoded
         return None
 
     def detect_activity(
@@ -240,13 +235,14 @@ class Medium:
         time_us: int,
         sensitivity_dbm: float = SENSITIVITY_DEFAULT,
         channel: int = 0,
+        rx_frequency_hz: int | None = None,
     ) -> bool:
         """Detect if any transmission is active and detectable at a position
         on the specified channel.
 
         Implements per-channel CAD for multi-channel support and rendezvous.
-        Only considers transmissions on the expected hop channel. Independent
-        oracle per channel.
+        Supports LR-FHSS frequency hopping via optional rx_frequency_hz.
+        Independent oracle per channel.
 
         Args:
             position: (x, y, z) position of the detector in meters.
@@ -254,6 +250,7 @@ class Medium:
             sensitivity_dbm: Receiver sensitivity threshold in dBm.
                 Defaults to SF10 sensitivity (-132 dBm).
             channel: Channel for CAD (default 0, matches rendezvous hop).
+            rx_frequency_hz: Optional frequency filter for LR-FHSS hops.
 
         Returns:
             True if channel activity is detected, False otherwise.

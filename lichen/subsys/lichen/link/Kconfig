@@ -128,4 +128,22 @@ config LICHEN_TDMA_BEACON_SYNC
 	help
 	  Nodes sync time and slots from gateway periodic beacons.
 
+config LICHEN_MULTI_CHANNEL_ENABLED
+	bool "Multi-channel TX/RX coordination (CCP-9/12 da2q)"
+	depends on LICHEN_LINK
+	default y
+	help
+	  Enable multi-channel per bead project-LICHEN-da2q.2. Control on CH0,
+	  data channels 1-N with hash/rendezvous selection, idle listen on control,
+	  dynamic hop for RX. Requires updated radio API and link scheduler.
+
+config LICHEN_N_CHANNELS
+	int "Number of LoRa channels (incl. control)"
+	depends on LICHEN_MULTI_CHANNEL_ENABLED
+	default 8
+	range 1 16
+	help
+	  Matches regional plan (e.g. 8 for EU868). Used for mod N in
+	  select_channel/hash_32 and synchronized_hop_channel(CCP-12).
+
 endif # LICHEN_LINK

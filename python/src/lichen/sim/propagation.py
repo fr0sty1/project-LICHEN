@@ -36,8 +36,7 @@ SENSITIVITY_SF9 = -129.0
 SENSITIVITY_SF10 = -132.0
 SENSITIVITY_SF11 = -134.5
 SENSITIVITY_SF12 = -137.0
-
-# Default sensitivity for SF10 (our fixed spreading factor)
+SENSITIVITY_LR_FHSS = -135.0
 SENSITIVITY_DEFAULT = SENSITIVITY_SF10
 
 # Capture effect threshold: stronger signal wins if delta >= 6 dB

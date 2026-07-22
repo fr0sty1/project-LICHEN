@@ -770,6 +770,13 @@ static int parse_data(const uint8_t *data, size_t len,
 			}
 			info->payload = payload;
 			info->payload_len = payload_len;
+			if (payload_len > 0U && payload_len <= LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX) {
+				memcpy(info->payload_buf, payload, payload_len);
+				info->payload = info->payload_buf;
+			} else if (payload_len > 0U) {
+				info->payload = NULL;
+				info->payload_len = 0U;
+			}
 			break;
 		default:
 			if (pb_skip_value(&cur, wt) < 0) {
