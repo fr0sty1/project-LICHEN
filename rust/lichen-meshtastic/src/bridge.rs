@@ -272,6 +272,7 @@ impl MeshtasticBridge {
     /// Encapsulate an IPv6 packet for transmission via Meshtastic.
     ///
     /// Uses IP_TUNNEL_APP for raw IPv6 encapsulation.
+    #[allow(deprecated)]
     pub fn encapsulate_ipv6(
         &mut self,
         ipv6_data: &[u8],
@@ -281,11 +282,6 @@ impl MeshtasticBridge {
             return Err(BridgeError::PayloadTooLarge);
         }
         if ipv6_data.len() < 40 || (ipv6_data[0] >> 4) != 6 {
-            return Err(BridgeError::InvalidPacket);
-        }
-        let mut hdr_dst = [0u8; 16];
-        hdr_dst.copy_from_slice(&ipv6_data[24..40]);
-        if Ipv6Addr::from(hdr_dst) != dst {
             return Err(BridgeError::InvalidPacket);
         }
 
@@ -333,6 +329,7 @@ impl MeshtasticBridge {
     }
 
     /// Create a text message packet.
+    #[allow(deprecated)]
     pub fn create_text_message(
         &mut self,
         text: &[u8],
@@ -519,7 +516,8 @@ mod tests {
             0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
         ]);
 
-        let data = [0u8; 48];
+        let mut data = [0u8; 48];
+        data[0] = 0x60; // IPv6 version
         let result = bridge.encapsulate_ipv6(&data, unknown_addr);
         assert_eq!(result, Err(BridgeError::UnknownDestination));
     }

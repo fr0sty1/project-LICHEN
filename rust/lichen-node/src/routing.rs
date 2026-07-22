@@ -812,16 +812,13 @@ mod tests {
         let iid2 = make_iid(2);
         let iid3 = make_iid(3);
 
-        // Each message is ~140 bytes (100 packet + 40 struct overhead)
         buf.buffer_message(vec![0u8; 100], iid1, 1000, 100, 10);
         buf.buffer_message(vec![0u8; 100], iid2, 1000, 100, 20);
         assert_eq!(buf.len(), 2);
 
-        // Adding a third should evict the oldest (iid1)
         buf.buffer_message(vec![0u8; 100], iid3, 1000, 100, 30);
         assert_eq!(buf.len(), 2);
 
-        // iid1 should be gone
         let pending = buf.get_pending_iids();
         assert!(!pending.contains(&iid1));
         assert!(pending.contains(&iid2));

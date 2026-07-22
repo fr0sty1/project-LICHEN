@@ -27,15 +27,32 @@ pub const PARENT_SWITCH_THRESHOLD: u16 = 192;
 pub const TDMA_GUARD_MS: u32 = 50;
 pub const TDMA_SLOT_MS: u32 = 250;
 
-/// DIO interval and Trickle params per spec appendix-rpl.md B.2/B.3 (matches C impl).
-pub const DIO_INTERVAL_MIN_MS: u32 = 4096; // Imin
-pub const DIO_INTERVAL_MAX_DOUBLINGS: u32 = 20; // Imax (2^20 ms ~17min)
-pub const DIO_REDUNDANCY_K: u32 = 10;
-#[derive(Clone, Copy)]
-pub struct TdmaSlot {
-    pub id: u8,
-    pub assigned: u8,
-    pub next: u32,
+#[cfg(feature = "std")]
+/// RFC 6550 Section 7.2: Lollipop sequence comparison for DODAG version.
+///
+/// Values 0-127 are the linear region (restart); 128-255 are circular (normal).
+/// Returns true if `new_ver` is newer than `old_ver`.
+const LOLLIPOP_CIRCULAR_BIT: u8 = 128;
+#[cfg(feature = "std")]
+const LOLLIPOP_SEQUENCE_WINDOW: u8 = 16;
+
+#[cfg(feature = "std")]
+fn version_is_newer(new_ver: u8, old_ver: u8) -> bool {
+    match (
+        new_ver < LOLLIPOP_CIRCULAR_BIT,
+        old_ver < LOLLIPOP_CIRCULAR_BIT,
+    ) {
+        // Both in linear region (0-127): simple comparison
+        (true, true) => new_ver > old_ver,
+        // Both in circular region (128-255): modular comparison with window
+        (false, false) => {
+            let diff = new_ver.wrapping_sub(old_ver) & 0x7F;
+            diff > 0 && diff <= LOLLIPOP_SEQUENCE_WINDOW
+        }
+        // Mixed: linear (restart) is always newer than circular
+        (true, false) => true,
+        (false, true) => false,
+    }
 }
 
 /// Node's role in the DODAG.

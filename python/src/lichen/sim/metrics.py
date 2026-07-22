@@ -27,14 +27,14 @@ class NodeMetrics:
     Tracks transmission/reception counts, byte totals, unique peers seen,
     and packet hashes (first 16 bytes of SHA256 as 32-char hex) for verifying cross-implementation interoperability.
 
-    The packet hash sets are capped at ``_PACKET_HASH_SET_MAX_SIZE`` to prevent
+    The packet hash sets are capped at ``PACKET_HASH_SET_MAX_SIZE`` to prevent
     unbounded memory growth in long-running simulations. Once the cap is reached,
     no new hashes are added, but counts (tx_count, rx_count) remain accurate.
     """
 
     # Maximum entries in packet_hashes_sent and packet_hashes_received.
     # Prevents unbounded memory growth in long-running simulations.
-    _PACKET_HASH_SET_MAX_SIZE: ClassVar[int] = 10000
+    PACKET_HASH_SET_MAX_SIZE: ClassVar[int] = 10000
 
     tx_count: int = 0
     rx_count: int = 0
@@ -50,11 +50,11 @@ class NodeMetrics:
 
         Args:
             payload: The transmitted payload bytes.
-            packet_hash: First 16 bytes of SHA256(payload) as 32-char lowercase hex.
+            packet_hash: hex-encoded SHA256[:16] (32-char hex string) of the payload.
         """
         self.tx_count += 1
         self.tx_bytes += len(payload)
-        if len(self.packet_hashes_sent) < self._PACKET_HASH_SET_MAX_SIZE:
+        if len(self.packet_hashes_sent) < self.PACKET_HASH_SET_MAX_SIZE:
             self.packet_hashes_sent.add(packet_hash)
 
     def record_rx(self, payload: bytes, packet_hash: str, from_peer: str | None = None) -> None:
@@ -62,12 +62,12 @@ class NodeMetrics:
 
         Args:
             payload: The received payload bytes.
-            packet_hash: First 16 bytes of SHA256(payload) as 32-char lowercase hex.
+            packet_hash: hex-encoded SHA256[:16] (32-char hex string) of the payload.
             from_peer: Optional IID or node ID of the sender.
         """
         self.rx_count += 1
         self.rx_bytes += len(payload)
-        if len(self.packet_hashes_received) < self._PACKET_HASH_SET_MAX_SIZE:
+        if len(self.packet_hashes_received) < self.PACKET_HASH_SET_MAX_SIZE:
             self.packet_hashes_received.add(packet_hash)
         if from_peer is not None:
             self.unique_peers.add(from_peer)
@@ -116,11 +116,8 @@ class Metrics:
     totals.
     """
 
-    # Max age for _tx_start_times entries (60 seconds in microseconds).
-    # Entries older than this are pruned to prevent unbounded memory growth.
-    _TX_START_TIMES_MAX_AGE_US = 60_000_000
-    # Only prune when dict exceeds this size (avoids overhead for small runs).
-    _TX_START_TIMES_PRUNE_THRESHOLD = 1000
+    TX_START_TIMES_MAX_AGE_US = 60_000_000
+    TX_START_TIMES_PRUNE_THRESHOLD = 1000
 
     def __init__(self) -> None:
         self._transmissions = 0
@@ -147,9 +144,8 @@ class Metrics:
         self._tx_start_times[tx_id] = start_time_us
         self._transmissions += 1
 
-        # Prune old entries to prevent unbounded memory growth.
-        if len(self._tx_start_times) > self._TX_START_TIMES_PRUNE_THRESHOLD:
-            cutoff = start_time_us - self._TX_START_TIMES_MAX_AGE_US
+        if len(self._tx_start_times) > self.TX_START_TIMES_PRUNE_THRESHOLD:
+            cutoff = start_time_us - self.TX_START_TIMES_MAX_AGE_US
             old_keys = [k for k, v in self._tx_start_times.items() if v < cutoff]
             for k in old_keys:
                 del self._tx_start_times[k]

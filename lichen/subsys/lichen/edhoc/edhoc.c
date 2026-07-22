@@ -828,15 +828,14 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 		goto err_wipe;
 	}
 
-	/* A_3 = ["Encrypt0", h'', TH_3 || CRED_I] per RFC 9528 §4.4.2 / RFC 9052 §5.3 */
 	uint8_t ext_aad[64];
 	memcpy(ext_aad, ctx->th_3, 32);
-	memcpy(ext_aad + 32, ctx->ed_pubkey, 32); /* CRED_I = our ed_pubkey */
-	uint8_t a_3[96];
+	memcpy(ext_aad + 32, ctx->ed_pubkey, 32);
+	uint8_t a_3[100];
 	ZCBOR_STATE_E(zse_a3, 0, a_3, sizeof(a_3), 0);
 	if (!zcbor_list_start_encode(zse_a3, 3) ||
 	    !zcbor_tstr_put_lit(zse_a3, "Encrypt0") ||
-	    !zcbor_bstr_encode_ptr(zse_a3, NULL, 0) || /* protected = h'' */
+	    !zcbor_bstr_encode_ptr(zse_a3, NULL, 0) ||
 	    !zcbor_bstr_encode_ptr(zse_a3, ext_aad, 64) ||
 	    !zcbor_list_end_encode(zse_a3, 3)) {
 		ret = -ENOMEM;
@@ -1256,15 +1255,14 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 		goto err_wipe;
 	}
 
-	/* A_3 = ["Encrypt0", h'', TH_3 || CRED_I] per RFC 9528 §4.4.2 / RFC 9052 §5.3 */
 	uint8_t ext_aad[64];
 	memcpy(ext_aad, ctx->th_3, 32);
-	memcpy(ext_aad + 32, peer_pubkey, 32); /* CRED_I = initiator pubkey */
-	uint8_t a_3[96];
+	memcpy(ext_aad + 32, peer_pubkey, 32);
+	uint8_t a_3[100];
 	ZCBOR_STATE_E(zse_a3, 0, a_3, sizeof(a_3), 0);
 	if (!zcbor_list_start_encode(zse_a3, 3) ||
 	    !zcbor_tstr_put_lit(zse_a3, "Encrypt0") ||
-	    !zcbor_bstr_encode_ptr(zse_a3, NULL, 0) || /* protected = h'' */
+	    !zcbor_bstr_encode_ptr(zse_a3, NULL, 0) ||
 	    !zcbor_bstr_encode_ptr(zse_a3, ext_aad, 64) ||
 	    !zcbor_list_end_encode(zse_a3, 3)) {
 		ret = -ENOMEM;

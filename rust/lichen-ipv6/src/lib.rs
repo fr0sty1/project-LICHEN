@@ -378,16 +378,12 @@ impl Ipv6Header {
         })
     }
 
-    /// Decrement hop limit per RFC 8200 §3 for forwarding. Returns None if it
-    /// would reach zero (caller must generate ICMPv6 Time Exceeded msg type 3).
-    /// Uses independent test vectors from RFC 8200 examples.
-    pub fn with_decremented_hop_limit(&self) -> Option<Self> {
+    pub fn decrement_hop_limit(&mut self) -> Option<()> {
         if self.hop_limit == 0 {
             None
         } else {
-            let mut hdr = *self;
-            hdr.hop_limit = hdr.hop_limit.saturating_sub(1);
-            Some(hdr)
+            self.hop_limit = self.hop_limit.wrapping_sub(1);
+            Some(())
         }
     }
 }
@@ -454,10 +450,15 @@ impl UdpHeader {
             return Err(TooShort::new(UDP_HEADER_LEN, buf.len()).into());
         }
 
+        let length = ((buf[4] as u16) << 8) | (buf[5] as u16);
+        if length < UDP_HEADER_LEN as u16 {
+            return Err(TooShort::new(UDP_HEADER_LEN, length as usize).into());
+        }
+
         Ok(Self {
             src_port: ((buf[0] as u16) << 8) | (buf[1] as u16),
             dst_port: ((buf[2] as u16) << 8) | (buf[3] as u16),
-            length: ((buf[4] as u16) << 8) | (buf[5] as u16),
+            length,
             checksum: ((buf[6] as u16) << 8) | (buf[7] as u16),
         })
     }
@@ -515,23 +516,18 @@ impl Icmpv6Echo {
 
         let mut pkt = Vec::new();
 
-        // ICMPv6 header: type, code, checksum (placeholder)
-        // These pushes cannot fail - we checked capacity above
-        pkt.push(msg_type).unwrap();
-        pkt.push(0).unwrap(); // code
-        pkt.push(0).unwrap(); // checksum high (placeholder)
-        pkt.push(0).unwrap(); // checksum low
+        pkt.push(msg_type).expect("capacity checked");
+        pkt.push(0).expect("capacity checked");
+        pkt.push(0).expect("capacity checked");
+        pkt.push(0).expect("capacity checked");
 
-        // Echo header: id, seq
-        pkt.push((self.id >> 8) as u8).unwrap();
-        pkt.push(self.id as u8).unwrap();
-        pkt.push((self.seq >> 8) as u8).unwrap();
-        pkt.push(self.seq as u8).unwrap();
+        pkt.push((self.id >> 8) as u8).expect("capacity checked");
+        pkt.push(self.id as u8).expect("capacity checked");
+        pkt.push((self.seq >> 8) as u8).expect("capacity checked");
+        pkt.push(self.seq as u8).expect("capacity checked");
 
-        // Data
-        pkt.extend_from_slice(data).unwrap();
+        pkt.extend_from_slice(data).expect("capacity checked");
 
-        // Compute checksum
         let checksum = icmpv6_checksum(src, dst, &pkt);
         pkt[2] = (checksum >> 8) as u8;
         pkt[3] = checksum as u8;
@@ -565,19 +561,17 @@ impl NeighborSolicitation {
     pub fn build(&self, src: &Addr, dst: &Addr) -> Vec<u8, 64> {
         let mut pkt = Vec::new();
 
-        // ICMPv6 header
-        pkt.push(icmpv6_type::NEIGHBOR_SOLICITATION).unwrap();
-        pkt.push(0).unwrap(); // code
-        pkt.push(0).unwrap(); // checksum
-        pkt.push(0).unwrap();
+        pkt.push(icmpv6_type::NEIGHBOR_SOLICITATION)
+            .expect("capacity checked");
+        pkt.push(0).expect("capacity checked");
+        pkt.push(0).expect("capacity checked");
+        pkt.push(0).expect("capacity checked");
 
-        // Reserved (4 bytes)
-        pkt.extend_from_slice(&[0u8; 4]).unwrap();
+        pkt.extend_from_slice(&[0u8; 4]).expect("capacity checked");
 
-        // Target address (16 bytes)
-        pkt.extend_from_slice(&self.target.0).unwrap();
+        pkt.extend_from_slice(&self.target.0)
+            .expect("capacity checked");
 
-        // Compute checksum
         let checksum = icmpv6_checksum(src, dst, &pkt);
         pkt[2] = (checksum >> 8) as u8;
         pkt[3] = checksum as u8;
@@ -617,13 +611,12 @@ impl NeighborAdvertisement {
     pub fn build(&self, src: &Addr, dst: &Addr) -> Vec<u8, 64> {
         let mut pkt = Vec::new();
 
-        // ICMPv6 header
-        pkt.push(icmpv6_type::NEIGHBOR_ADVERTISEMENT).unwrap();
-        pkt.push(0).unwrap(); // code
-        pkt.push(0).unwrap(); // checksum
-        pkt.push(0).unwrap();
+        pkt.push(icmpv6_type::NEIGHBOR_ADVERTISEMENT)
+            .expect("capacity checked");
+        pkt.push(0).expect("capacity checked");
+        pkt.push(0).expect("capacity checked");
+        pkt.push(0).expect("capacity checked");
 
-        // Flags + reserved (4 bytes)
         let mut flags = 0u8;
         if self.router {
             flags |= 0x80;
@@ -634,13 +627,12 @@ impl NeighborAdvertisement {
         if self.override_flag {
             flags |= 0x20;
         }
-        pkt.push(flags).unwrap();
-        pkt.extend_from_slice(&[0u8; 3]).unwrap();
+        pkt.push(flags).expect("capacity checked");
+        pkt.extend_from_slice(&[0u8; 3]).expect("capacity checked");
 
-        // Target address
-        pkt.extend_from_slice(&self.target.0).unwrap();
+        pkt.extend_from_slice(&self.target.0)
+            .expect("capacity checked");
 
-        // Compute checksum
         let checksum = icmpv6_checksum(src, dst, &pkt);
         pkt[2] = (checksum >> 8) as u8;
         pkt[3] = checksum as u8;
@@ -803,20 +795,13 @@ pub fn handle_icmpv6(
             }
             // Reply to ping
             let echo = Icmpv6Echo::from_bytes(body)?;
-            let data = &body[4..]; // After id+seq
+            let data = &body[4..];
 
-            // Truncate data if it would exceed reply buffer capacity.
-            // MAX_ECHO_DATA (120) + 8 header = 128 byte ICMPv6 reply.
-            // With 40-byte IPv6 header, total is 168 bytes, fits in 256.
-            let truncated_data = if data.len() > MAX_ECHO_DATA {
-                &data[..MAX_ECHO_DATA]
-            } else {
-                data
-            };
+            if data.len() > MAX_ECHO_DATA {
+                return Err(BufferTooSmall::new(data.len() + 8, 128).into());
+            }
 
-            // RFC 4443 Section 4.2: reply source SHOULD be the destination of the request.
-            // This ensures nodes with multiple addresses reply from the address that was pinged (resolves pw7o).
-            let reply_icmp = echo.build_reply(&ip_header.dst, &ip_header.src, truncated_data)?;
+            let reply_icmp = echo.build_reply(&ip_header.dst, &ip_header.src, data)?;
             let reply_ip = Ipv6Header::new(next_header::ICMPV6, ip_header.dst, ip_header.src);
 
             let mut pkt = Vec::new();

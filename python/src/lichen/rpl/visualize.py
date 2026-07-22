@@ -17,10 +17,11 @@ the evolving DODAG during a run.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from collections.abc import Mapping
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from lichen.rpl.dodag import DodagState
 
     from lichen.rpl.dodag import DodagState
 
@@ -60,8 +61,10 @@ def _roots(parents: Topology) -> list[str]:
     )
 
 
-def _escape_dot(s: str) -> str:
-    return s.replace("\\", "\\\\").replace('"', '\\"')
+def _dot_escape(s: str) -> str:
+    s = s.replace("\\", "\\\\")
+    s = s.replace('"', '\\"')
+    return s
 
 
 def to_dot(
@@ -74,19 +77,17 @@ def to_dot(
         return s.replace("\\", "\\\\").replace('"', '\\"')
     lines = [f"digraph {name} {{", "  rankdir=BT;"]
     for node in sorted(parents):
-        escaped = _escape_dot(node)
-        label = escaped
+        label = _dot_escape(node)
         if ranks is not None and node in ranks:
-            label = f"{node}\\nrank={ranks[node]}"
-        label = _escape_dot(label)
+            label = f"{label}\\nrank={ranks[node]}"
         attrs = f'label="{label}"'
         if parents[node] is None:
             attrs += ", shape=doublecircle"
-        lines.append(f'  "{_escape_dot(node)}" [{attrs}];')
+        lines.append(f'  "{_dot_escape(node)}" [{attrs}];')
     for node in sorted(parents):
         parent = parents[node]
         if parent is not None:
-            lines.append(f'  "{_escape_dot(node)}" -> "{_escape_dot(parent)}";')
+            lines.append(f'  "{_dot_escape(node)}" -> "{_dot_escape(parent)}";')
     lines.append("}")
     return "\n".join(lines)
 

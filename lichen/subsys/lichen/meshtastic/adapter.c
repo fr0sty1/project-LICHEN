@@ -1161,12 +1161,14 @@ static void nodedb_peer_snapshot(struct lichen_meshtastic_adapter *adapter,
 		return;
 	}
 
-	size_t n = adapter->ops.get_peers(
+	int count = adapter->ops.get_peers(
 		state->peers, ARRAY_SIZE(state->peers), adapter->ops.user_data);
-	if (n > ARRAY_SIZE(state->peers)) {
-		n = ARRAY_SIZE(state->peers);
+	if (count < 0) {
+		count = 0;
+	} else if (count > (int)ARRAY_SIZE(state->peers)) {
+		count = (int)ARRAY_SIZE(state->peers);
 	}
-	state->peer_count = n;
+	state->peer_count = (size_t)count;
 	sort_peers_by_eui64(state);
 
 	for (size_t i = 0U; i < state->peer_count; i++) {

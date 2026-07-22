@@ -247,7 +247,8 @@ int lichen_router_route(struct lichen_router *router,
 			uint32_t now_ms,
 			struct lichen_route_result *result)
 {
-	if (router == NULL || dst_addr == NULL || result == NULL) {
+	if (router == NULL || dst_addr == NULL || dst_iid == NULL ||
+	    result == NULL) {
 		return -EINVAL;
 	}
 

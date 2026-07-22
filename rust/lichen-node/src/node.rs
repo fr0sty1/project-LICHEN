@@ -138,12 +138,13 @@ impl Node {
 
         let mut reply_src = [0u8; 16];
         let mut reply_dst = [0u8; 16];
-        // Swap src/dst for reply: original dst = our address becomes reply src
+        let icmpv6_start = IPV6_HEADER_LEN;
+        if ipv6.len() < icmpv6_start + echo_field::DATA_OFFSET {
+            return 0;
+        }
         reply_src.copy_from_slice(&ipv6[field::DST_OFFSET..IPV6_HEADER_LEN]);
         reply_dst.copy_from_slice(&ipv6[field::SRC_OFFSET..field::DST_OFFSET]);
 
-        // ICMPv6 echo fields are at IPv6 header + ICMPv6 header offsets
-        let icmpv6_start = IPV6_HEADER_LEN;
         let id_offset = icmpv6_start + echo_field::ID_OFFSET;
         let seq_offset = icmpv6_start + echo_field::SEQ_OFFSET;
         let data_offset = icmpv6_start + echo_field::DATA_OFFSET;
