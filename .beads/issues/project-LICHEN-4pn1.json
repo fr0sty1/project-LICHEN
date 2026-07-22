@@ -2,12 +2,16 @@
   "id": "project-LICHEN-4pn1",
   "title": "[codereview-pass1] coap_status.c:265 map_count can exceed uint8_t on high optionals",
   "description": "lichen/subsys/lichen/coap/coap_status.c:266 - map_count uint8_t calc before validation. Per CCP-17 must check before map header. Tag: codereview",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T16:01:36.382863515Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:01:36.382863515Z",
+  "updated_at": "2026-07-22T16:02:12.808023983Z",
+  "started_at": "2026-07-22T16:02:12.808023983Z",
+  "lease_expires_at": "2026-07-22T16:07:12.808023983Z",
+  "heartbeat_at": "2026-07-22T16:02:12.808023983Z",
   "labels": [
     "codereview"
   ]
