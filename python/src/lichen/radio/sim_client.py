@@ -338,10 +338,10 @@ class SimRadio:
         self._tx_power_dbm = tx_power_dbm
 
     async def close(self) -> None:
-        """Close the TCP connection to the simulator."""
-        if self._stream is not None:
-            await self._stream.aclose()
+        stream = self._stream
+        if stream is not None:
             self._stream = None
+            await stream.aclose()
 
     async def __aenter__(self) -> SimRadio:
         """Enter async context manager, connecting to the simulator."""
@@ -409,18 +409,16 @@ class SimRadio:
             (msg_len,) = struct.unpack("<I", length_data)
 
             if msg_len == 0:
-                try:
-                    if self._stream is not None:
-                        await self._stream.aclose()
-                finally:
+                stream = self._stream
+                if stream is not None:
                     self._stream = None
+                    await stream.aclose()
                 raise ProtocolError("Received zero-length message")
             if msg_len > MAX_MESSAGE_LENGTH:
-                try:
-                    if self._stream is not None:
-                        await self._stream.aclose()
-                finally:
+                stream = self._stream
+                if stream is not None:
                     self._stream = None
+                    await stream.aclose()
                 raise ProtocolError(
                     f"Message length {msg_len} exceeds maximum {MAX_MESSAGE_LENGTH}"
                 )
