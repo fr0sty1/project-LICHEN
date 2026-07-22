@@ -263,9 +263,9 @@ fn dec_text(data: &[u8], pos: usize) -> Result<(&str, usize), CborError> {
     if major != 3 {
         return Err(CborError::InvalidInput);
     }
-    // Use checked arithmetic to prevent overflow on 16-bit platforms.
-    // len can be up to 65535 from 2-byte length encoding, which would
-    // wrap on 16-bit usize if added carelessly.
+    // Use checked arithmetic + try_from to prevent overflow/truncation on
+    // 16-bit platforms (resolves k1wt). len up to 65535 from dec_head; checked_add
+    // ensures no wraparound even if usize=16.
     let len_usize = usize::try_from(len).map_err(|_| CborError::InvalidInput)?;
     let start = pos.checked_add(adv).ok_or(CborError::InvalidInput)?;
     let end = start
