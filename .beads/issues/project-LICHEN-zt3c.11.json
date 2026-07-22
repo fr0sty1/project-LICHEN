@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-zt3c.11",
+  "title": "Yggdrasil gateway integration (TUN forwarding, peering, crypto)",
+  "description": "Add Yggdrasil support to lichen-gateway: share key with daemon or embed, setup TUN for 02xx prefix, forward between mesh SLIP/SCHC and Yggdrasil interface. Handle inter-mesh routing.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:08:05.776318529Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:08:05.776318529Z",
+  "labels": [
+    "gateway",
+    "global",
+    "networking"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zt3c.11",
+      "depends_on_id": "project-LICHEN-zt3c",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:08:05.876317769Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
