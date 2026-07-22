@@ -2,6 +2,7 @@
   "id": "project-LICHEN-7fwp",
   "title": "[merge-conflict] worker8: ccp16.json",
   "description": "Resolve merge conflict in test/vectors/ccp16.json between main and integration/worker8-20260722. Keep BOTH sets of changes.",
+  "notes": "Commit: 722016c58",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:52:15.967912516Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T21:23:13.027533137Z",
+  "updated_at": "2026-07-22T21:23:28.923256703Z",
   "started_at": "2026-07-22T21:23:13.027533137Z",
   "lease_expires_at": "2026-07-22T21:28:13.027533137Z",
   "heartbeat_at": "2026-07-22T21:23:13.027533137Z"
