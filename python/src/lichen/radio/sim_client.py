@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 import anyio
 import structlog
 
+from lichen.radio.base import MAX_LORA_PAYLOAD
 from lichen.sim.protocol import (
     MSG_CAD_RESULT,
     MSG_ERR,
@@ -47,10 +48,6 @@ if TYPE_CHECKING:
 # (1 type + 2 length + 65535 payload + 4 rssi/snr); 1 MiB leaves generous
 # headroom while bounding memory use.
 MAX_MESSAGE_LENGTH = 1 << 20
-
-# LoRa maximum payload size (varies by SF/bandwidth but 255 is safe upper bound
-# for most configurations; real hardware will reject larger).
-MAX_LORA_PAYLOAD = 255
 MAX_TIMEOUT_MS = 4_294_967
 
 logger = structlog.get_logger()
