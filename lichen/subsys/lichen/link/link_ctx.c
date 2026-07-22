@@ -151,6 +151,8 @@ int lichen_link_load_key(struct lichen_link_ctx *ctx,
 	memcpy(ctx->ed25519_pk, new_pk, LICHEN_PK_LEN);
 	secure_wipe(new_sk, sizeof(new_sk));
 	ctx->has_key = true;
+	ctx->tx_seq = 0;
+	ctx->nonce_exhausted = false;
 	return 0;
 }
 
