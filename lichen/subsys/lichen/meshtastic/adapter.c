@@ -505,9 +505,11 @@ static int parse_position_payload(
 
 static bool admin_payload_variant_field(uint32_t field)
 {
-	/* Current Meshtastic AdminMessage.payload_variant fields. Field 101 is
-	 * session_passkey context, not a oneof arm; unknown future fields must
-	 * be skipped rather than overriding a previous known oneof arm.
+	/* Ranges for Meshtastic AdminMessage.payload_variant oneof (admin.proto)
+	 * pinned at LICHEN_MESHTASTIC_PROTOBUF_COMMIT
+	 * 032b7dfd68e875c4323e6ac67590c6fc616b1714 (see codec.h:28).
+	 * Field 101 (session_passkey) is context not a oneof arm.
+	 * Unknown future fields must be skipped (do not override prior oneof).
 	 */
 	return (field >= 0U && field <= 8U) ||
 	       (field >= 10U && field <= 27U) ||
