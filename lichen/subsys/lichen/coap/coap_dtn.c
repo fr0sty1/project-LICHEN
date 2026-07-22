@@ -19,7 +19,7 @@ static K_MUTEX_DEFINE(s_dtn_buf_mutex);
 static K_MUTEX_DEFINE(s_senml_pack_mutex);
 static struct k_work_delayable s_dtn_expire_work;
 
-static int coap_respond(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len, uint8_t code, const uint8_t *payload, size_t payload_len) {
+static int coap_respond(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len, uint8_t code, const uint8_t *payload, size_t payload_len, const uint8_t *piv) {
 	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
 	struct coap_packet resp;
 	uint8_t token[COAP_TOKEN_MAX_LEN];
@@ -32,7 +32,10 @@ static int coap_respond(struct coap_resource *resource, struct coap_packet *requ
 		coap_packet_append_payload_marker(&resp);
 		coap_packet_append_payload(&resp, payload, payload_len);
 	}
-	return coap_resource_send(resource, &resp, addr, addr_len, NULL);
+	if (piv != NULL) {
+		LOG_DBG("OSCORE path");
+	}
+	return coap_resource_send(resource, &resp, addr, addr_len, piv);
 }
 
 static uint32_t dtn_get_unix_time(void) { return (uint32_t)(k_uptime_get() / 1000); }
@@ -73,7 +76,7 @@ static int deaddrop_get(struct coap_resource *resource, struct coap_packet *requ
 	int len = s_provider->retrieve(buf, sizeof(buf), NULL);
 	k_mutex_unlock(&s_dtn_buf_mutex);
 	if (len < 0) return 0xA0;
-	return coap_respond(resource, request, addr, addr_len, 0x45, buf, len);
+	return coap_respond(resource, request, addr, addr_len, 0x45, buf, len, NULL);
 }
 
 static const char * const deaddrop_path[] = { "deaddrop", NULL };
