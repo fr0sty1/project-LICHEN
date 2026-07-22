@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-g80o",
+  "title": "Add TTGO LoRa32 (ESP32+SX1276) Renode backend",
+  "description": "Implement full Renode support for ttgo_lora32_esp32_procpu board including new SX127x peripheral (register SPI protocol), esp32_lichen base platform, ttgo_lora32 platform files, update renode-workflow.md. Ensure puck ELF boots to main/CoAP, TX/RX works with lichen-sim. Follow all guidelines, only touch specified files.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:55:27.683930478Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T21:55:27.683930478Z"
+}
