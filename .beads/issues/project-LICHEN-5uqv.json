@@ -1,12 +1,16 @@
 {
   "id": "project-LICHEN-5uqv",
   "title": "Codereview P2: Verify hash_32 key usage in all short-addr and channel-selection code matches spec",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T16:51:51.879529722Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:51:51.879529722Z",
+  "updated_at": "2026-07-22T16:53:48.755500957Z",
+  "started_at": "2026-07-22T16:53:48.755500957Z",
+  "lease_expires_at": "2026-07-22T16:58:48.755500957Z",
+  "heartbeat_at": "2026-07-22T16:53:48.755500957Z",
   "labels": [
     "codereview"
   ],
