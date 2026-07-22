@@ -202,25 +202,33 @@ def find_missing_packets(
 ) -> list[tuple[str, str, str]]:
     """Find packets sent but never received by any node.
 
-    Returns list of (hash, sender_node_id, sender_impl).
+    Supports multiple senders per hash (origin + forwarders) to preserve
+    forwarding information instead of first-wins policy. Fixes skewed
+    statistics and missing-packet detection for forwarded drops.
     """
-    # Collect all sent hashes with sender info
-    sent_hashes: dict[str, tuple[str, str]] = {}  # hash -> (node_id, impl)
+    sent_by_hash: dict[str, set[tuple[str, str]]] = defaultdict(set)
     received_hashes: set[str] = set()
 
     for node_id, stats in all_nodes.items():
         for h in stats.tx_hashes:
-            if h not in sent_hashes:
-                sent_hashes[h] = (node_id, stats.impl)
+            sent_by_hash[h].add((node_id, stats.impl))
         received_hashes.update(stats.rx_hashes)
 
-    # Find missing
+    # Find missing - report under ALL senders that transmitted it
     missing = []
-    for h, (node_id, impl) in sent_hashes.items():
+    for h, senders in sent_by_hash.items():
         if h not in received_hashes:
-            missing.append((h, node_id, impl))
+            for node_id, impl in senders:
+                missing.append((h, node_id, impl))
 
-    return sorted(missing, key=lambda x: (x[2], x[1], x[0]))
+    # Deduplicate and sort by impl, node, hash
+    seen: set[tuple[str, str, str]] = set()
+    unique_missing = []
+    for item in sorted(missing, key=lambda x: (x[2], x[1], x[0])):
+        if item not in seen:
+            seen.add(item)
+            unique_missing.append(item)
+    return unique_missing
 
 
 def build_reception_matrix(
@@ -228,26 +236,23 @@ def build_reception_matrix(
 ) -> dict[str, dict[str, int]]:
     """Build matrix showing packet reception between implementation pairs.
 
-    Returns dict[sender_impl][receiver_impl] = count.
-
-    For this to work accurately, we need hash overlap data. Without
-    per-packet sender tracking, we estimate based on overall reception.
+    Uses set of senders per hash to credit forwarding nodes in addition
+    to originators. Fixes first-wins policy that lost forwarding info
+    and skewed cross-implementation statistics.
     """
-    # Group nodes by implementation
     impls = ["py", "rust", "zephyr"]
     impl_nodes: dict[str, list[NodeStats]] = {impl: [] for impl in impls}
 
     for stats in all_nodes.values():
         impl_nodes[stats.impl].append(stats)
 
-    # Build hash -> sender impl mapping
-    hash_to_sender: dict[str, str] = {}
+    # hash -> set of sender impls (preserves forwarding)
+    hash_to_senders: dict[str, set[str]] = defaultdict(set)
     for stats in all_nodes.values():
         for h in stats.tx_hashes:
-            if h not in hash_to_sender:
-                hash_to_sender[h] = stats.impl
+            hash_to_senders[h].add(stats.impl)
 
-    # Count reception by sender impl -> receiver impl
+    # Count reception: credit ALL senders for each RX of their hash
     matrix: dict[str, dict[str, int]] = {
         impl: {impl2: 0 for impl2 in impls} for impl in impls
     }
@@ -255,8 +260,7 @@ def build_reception_matrix(
     for stats in all_nodes.values():
         receiver_impl = stats.impl
         for h in stats.rx_hashes:
-            sender_impl = hash_to_sender.get(h)
-            if sender_impl:
+            for sender_impl in hash_to_senders.get(h, set()):
                 matrix[sender_impl][receiver_impl] += 1
 
     return matrix

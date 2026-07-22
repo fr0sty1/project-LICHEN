@@ -875,6 +875,18 @@ The following require separate specifications and evidence:
 - adaptive slot duration or per-cell PHY profiles;
 - sleep scheduling that removes baseline receive availability.
 
+## Appendix A. Parameter Justifications
+
+Timing parameters (setup_window, occupied_time, guard, slot_duration): derived from TCXO drift, retune/ramp times, and airtime for SF10/125kHz frames. Constraint setup_window + occupied_time + 2*G <= slot_duration and E=(G-P-M)/2 prevent independent guard consumption. No fixed 50 ms guard; schedule-specific and hardware-qualified.
+
+Desync timers (T_DRIFT_WARN=30s, T_DRIFT_MAX=120s, T_GIVE_UP=600s): balance drift accumulation, power, and responsiveness. +50% RX in DRIFT is conservative. Configurable per deployment.
+
+PHY profile 0x01 (125 kHz, SF10, CR 4/5): range/throughput/regulatory tradeoff with computable airtime for slot fitting. ADR prohibited inside schedules.
+
+Simulator gates (4.0 median / 3.0 5th-percentile payload ratio, 50% collision reduction, <=5% p95 regression): engineering targets from measured overheads in 76-byte/7-pair and 64-source star scenarios. Seeds 0-99 paired with baseline; not protocol guarantees. Implementations must report measured values.
+
+19-byte cells, paging, 48-byte Schnorr48, 16-byte digest: LoRa bandwidth-driven scaling for large schedules. See test/vectors/ccp*.json for validation.
+
 ---
 
 [← Physical and Link Layers](02-physical-link.md) | [Index](README.md) |
