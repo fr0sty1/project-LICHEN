@@ -491,7 +491,7 @@ static size_t base64_encode(const uint8_t *src, size_t src_len,
 static void compute_pubkey_fingerprint(const uint8_t pubkey[32],
 				       char *buf, size_t buf_size)
 {
-	if (buf_size < 20) {
+	if (buf_size < 25) {
 		buf[0] = '\0';
 		return;
 	}
