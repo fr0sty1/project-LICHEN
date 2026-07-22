@@ -441,7 +441,7 @@ pub use std_ext::*;
 #[cfg(feature = "std")]
 mod std_ext {
     extern crate std;
-    use std::collections::HashMap;
+    use std::collections::{HashMap, HashSet};
     use std::vec::Vec;
 
     use super::*;
@@ -464,6 +464,7 @@ mod std_ext {
         rule_id: u8,
         tiles: HashMap<usize, Vec<u8>>,
         current_window: usize,
+        completed_windows: HashSet<usize>,
         all1_seen: bool,
         all1_window: usize,
         all1_payload: Vec<u8>,
