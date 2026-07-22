@@ -72,7 +72,7 @@ class Transmission:
     """A LoRa radio transmission in the simulated channel.
 
     Represents a single transmission from a node, including its timing,
-    power, payload, and channel. Used by the channel simulator to
+    power, payload, channel, and phy_mode. Used by the channel simulator to
     model propagation and interference. Different channels are orthogonal
     (independent collision/propagation oracle).
 
@@ -86,6 +86,9 @@ class Transmission:
         frequency_hz: Carrier frequency in Hz (default 915 MHz).
         channel: Channel index for multi-channel support and rendezvous
             (default 0). RX only sees matching channel.
+        phy_mode: Physical layer mode ("lora" or "lr_fhss"). Determines
+            airtime calculation, sensitivity, and collision resolution
+            behavior (default "lora").
     """
 
     source_node_id: str
