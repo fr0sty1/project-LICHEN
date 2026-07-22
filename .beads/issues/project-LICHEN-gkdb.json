@@ -2,11 +2,12 @@
   "id": "project-LICHEN-gkdb",
   "title": "[merge-conflict] worker8: 02a-coordinated-capacity.md",
   "description": "Resolve merge conflict in spec/02a-coordinated-capacity.md between main and integration/worker8-20260722. Keep BOTH sets of changes.",
+  "notes": "Commit: cbb04ede3",
   "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:52:15.019734291Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T20:52:15.019734291Z"
+  "updated_at": "2026-07-22T21:21:46.780355375Z"
 }
