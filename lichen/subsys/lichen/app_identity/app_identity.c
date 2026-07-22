@@ -289,14 +289,10 @@ size_t lichen_app_identity_copy_peers(
 {
 	size_t count = 0U;
 
-<<<<<<< HEAD
-	__ASSERT(out != NULL, "lichen_app_identity_copy_peers out cannot be NULL");
-=======
->>>>>>> origin/integration/worker15-20260722
 	if (out_len == 0U) {
 		return 0U;
 	}
-	__ASSERT_NO_MSG(out != NULL);
+	__ASSERT(out != NULL, "lichen_app_identity_copy_peers out cannot be NULL");
 
 	k_mutex_lock(&s_mutex, K_FOREVER);
 	for (uint8_t i = 0U; i < ARRAY_SIZE(s_peers) && count < out_len; i++) {
