@@ -87,29 +87,23 @@ int kiss_decode_byte(struct kiss_decode_ctx *ctx, uint8_t byte)
 	if (ctx == NULL) {
 		return -EINVAL;
 	}
-
 	if (byte == KISS_FEND) {
 		if (ctx->in_frame && ctx->has_cmd && ctx->len > 0) {
-			/* Complete frame ready */
 			ctx->in_frame = false;
 			return 1;
 		}
-		/* Start of new frame or empty frame */
 		ctx->in_frame = true;
 		ctx->has_cmd = false;
 		ctx->len = 0;
 		ctx->escape_next = false;
 		return 0;
 	}
-
 	if (!ctx->in_frame) {
-		/* Data before first FEND - start frame implicitly */
 		ctx->in_frame = true;
 		ctx->has_cmd = false;
 		ctx->len = 0;
 		ctx->escape_next = false;
 	}
-
 	if (ctx->escape_next) {
 		ctx->escape_next = false;
 		if (byte == KISS_TFEND) {
@@ -117,7 +111,6 @@ int kiss_decode_byte(struct kiss_decode_ctx *ctx, uint8_t byte)
 		} else if (byte == KISS_TFESC) {
 			byte = KISS_FESC;
 		} else {
-			/* Invalid escape sequence - reset frame */
 			LOG_WRN("KISS: invalid escape sequence 0x%02x", byte);
 			ctx->in_frame = false;
 			ctx->len = 0;
@@ -127,15 +120,11 @@ int kiss_decode_byte(struct kiss_decode_ctx *ctx, uint8_t byte)
 		ctx->escape_next = true;
 		return 0;
 	}
-
-	/* First byte after FEND is the command byte */
 	if (!ctx->has_cmd) {
 		ctx->cmd = byte;
 		ctx->has_cmd = true;
 		return 0;
 	}
-
-	/* Store data byte */
 	if (ctx->len < sizeof(ctx->buf)) {
 		ctx->buf[ctx->len++] = byte;
 	} else {
@@ -144,7 +133,6 @@ int kiss_decode_byte(struct kiss_decode_ctx *ctx, uint8_t byte)
 		ctx->len = 0;
 		return -EOVERFLOW;
 	}
-
 	return 0;
 }
 
@@ -162,9 +150,7 @@ int kiss_encode(uint8_t port, uint8_t cmd,
 	if (port > KISS_PORT_MAX) {
 		return -EINVAL;
 	}
-
-	/* Check worst-case size: 2*data + escaped cmd (2) + 2 delimiters */
-	if (frame_max < data_len * 2u + 4u) {
+	if (frame_max < data_len * 2u + 6u) {
 		return -ENOMEM;
 	}
 
@@ -431,57 +417,33 @@ static void kiss_rx_thread_fn(void *p1, void *p2, void *p3)
 
 /* ─── TX helper ───────────────────────────────────────────────────────────── */
 
-static int kiss_tx_frame(struct kiss_transport_ctx *ctx,
-			 uint8_t port, const uint8_t *data, size_t len)
+static int kiss_tx_frame(struct kiss_transport_ctx *ctx, uint8_t port, const uint8_t *data, size_t len)
 {
 	size_t frame_len;
 	int ret;
-
-	if (data == NULL && len > 0) {
-		return -EINVAL;
-	}
-
-	if (len > KISS_MAX_PAYLOAD) {
-		return -EMSGSIZE;
-	}
-
+	if (data == NULL && len > 0) return -EINVAL;
+	if (len > KISS_MAX_PAYLOAD) return -EMSGSIZE;
 	k_mutex_lock(&ctx->tx_mutex, K_FOREVER);
-
-	ret = kiss_encode(port, KISS_CMD_DATA, data, len,
-			  ctx->tx_frame, sizeof(ctx->tx_frame), &frame_len);
-	if (ret < 0) {
-		k_mutex_unlock(&ctx->tx_mutex);
-		return ret;
-	}
-
+	ret = kiss_encode(port, KISS_CMD_DATA, data, len, ctx->tx_frame, sizeof(ctx->tx_frame), &frame_len);
+	if (ret < 0) goto cleanup;
 #ifdef CONFIG_ZTEST
 	memcpy(ctx->last_tx, ctx->tx_frame, frame_len);
 	ctx->last_tx_len = frame_len;
 #endif
-
 	if (ctx->uart_dev != NULL) {
-		for (size_t i = 0; i < frame_len; i++) {
-			uart_poll_out(ctx->uart_dev, ctx->tx_frame[i]);
-		}
-
+		for (size_t i = 0; i < frame_len; i++) uart_poll_out(ctx->uart_dev, ctx->tx_frame[i]);
 		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.tx_frames++;
 		ctx->stats.tx_bytes += (uint32_t)frame_len;
-		if (port == KISS_PORT_AX25) {
-			ctx->stats.tx_data_port0++;
-		} else if (port == KISS_PORT_LICHEN_RAW) {
-			ctx->stats.tx_data_port1++;
-		}
+		if (port == KISS_PORT_AX25) ctx->stats.tx_data_port0++;
+		else if (port == KISS_PORT_LICHEN_RAW) ctx->stats.tx_data_port1++;
 		k_mutex_unlock(&ctx->stats_mutex);
 	} else {
-		k_mutex_unlock(&ctx->tx_mutex);
-		return -ENODEV;
+		ret = -ENODEV;
 	}
-
+cleanup:
 	k_mutex_unlock(&ctx->tx_mutex);
-
-	LOG_DBG("KISS TX: port=%u len=%zu -> %zu bytes framed", port, len, frame_len);
-	return 0;
+	return ret;
 }
 
 /* ─── Public API ──────────────────────────────────────────────────────────── */

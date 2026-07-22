@@ -24,37 +24,18 @@
  * Returns true if 'a' is newer than 'b' per lollipop semantics.
  * The circular region uses modular comparison with a window of SEQUENCE_WINDOW.
  */
-#define LOLLIPOP_MAX_VALUE    255
 #define LOLLIPOP_CIRCULAR_BIT 128
-/*
- * SEQUENCE_WINDOW per RFC 1982 serial number arithmetic: 'a' is newer than 'b'
- * if (a - b) mod 128 is in (0, WINDOW]. Value 16 balances tolerance for
- * out-of-order delivery (~16 missed DIOs) against detecting true rollbacks.
- */
 #define LOLLIPOP_SEQUENCE_WINDOW 16
 
 static bool version_is_newer(uint8_t a, uint8_t b)
 {
-	/* If both in linear region (0-127), simple comparison */
 	if (a < LOLLIPOP_CIRCULAR_BIT && b < LOLLIPOP_CIRCULAR_BIT) {
 		return a > b;
 	}
-
-	/* If both in circular region (128-255), use modular comparison */
 	if (a >= LOLLIPOP_CIRCULAR_BIT && b >= LOLLIPOP_CIRCULAR_BIT) {
-		/*
-		 * The circular region has 128 values (128-255).
-		 * a is newer than b if (a - b) mod 128 is in (0, WINDOW].
-		 * We mask with 0x7F to get the circular distance.
-		 */
-		uint8_t diff = (uint8_t)((a - b) & 0x7F);
+		uint8_t diff = (uint8_t)(a - b) & 0x7f;
 		return diff > 0 && diff <= LOLLIPOP_SEQUENCE_WINDOW;
 	}
-
-	/*
-	 * Mixed regions: linear (restart) is always newer than circular.
-	 * A node restarting with version 0 should be accepted over version 250.
-	 */
 	return a < LOLLIPOP_CIRCULAR_BIT;
 }
 
@@ -290,19 +271,11 @@ void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 	    !rpl_addr_eq(dio->dodag_id, d->dodag_id)) {
 		return;
 	}
-
-	/*
-	 * Version handling per RFC 6550 lollipop semantics.
-	 * A newer version triggers DODAG rejoin; stale versions are ignored.
-	 */
 	if (!lichen_rpl_dodag_is_joined(d)) {
-		/* First DIO - join unconditionally */
 		adopt_version(d, dio);
 	} else if (version_is_newer(dio->version, d->version)) {
-		/* Newer version - rejoin the DODAG */
 		adopt_version(d, dio);
-	} else if (dio->version != d->version) {
-		/* Stale version (not newer and not equal) - ignore */
+	} else if (version_is_newer(d->version, dio->version)) {
 		return;
 	}
 

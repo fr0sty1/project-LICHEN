@@ -50,10 +50,11 @@ static int copy_string(char *dst, size_t dst_len, const char *src)
 	if (src == NULL) {
 		return 0;
 	}
-	if (strlen(src) >= dst_len) {
+	size_t len = strlen(src);
+	if (len >= dst_len) {
 		return -ENAMETOOLONG;
 	}
-	memcpy(dst, src, strlen(src));
+	memcpy(dst, src, len);
 	return 0;
 }
 
@@ -232,7 +233,6 @@ int lichen_app_identity_upsert_peer(
 		return slot;
 	}
 
-	memset(&s_peers[slot].peer, 0, sizeof(s_peers[slot].peer));
 	s_peers[slot].peer = *peer;
 	(void)copy_string(s_peers[slot].peer.display_name,
 			  sizeof(s_peers[slot].peer.display_name),

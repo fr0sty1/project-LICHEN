@@ -602,6 +602,10 @@ static size_t encode_iso8601_timestamp(uint32_t unix_time, char *buf, size_t buf
 
 static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 {
+	BUILD_ASSERT(CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES <= 32,
+		     "CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES > 32 risks stack overflow "
+		     "in encode_keys_list_cbor (~57 bytes per entry)");
+
 	size_t off = 0;
 	size_t encoded = 0;
 

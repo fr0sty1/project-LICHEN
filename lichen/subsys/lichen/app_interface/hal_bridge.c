@@ -237,6 +237,10 @@ int lichen_app_location_time_from_hal(
 		.vertical_accuracy_mm_valid = hal->vertical_accuracy_mm_valid,
 		.vertical_accuracy_mm = hal->vertical_accuracy_mm,
 	};
+	if (strnlen(hal->source_name, sizeof(app->source_name)) ==
+	    sizeof(app->source_name)) {
+		return -ENAMETOOLONG;
+	}
 	strncpy(app->source_name, hal->source_name,
 		sizeof(app->source_name) - 1U);
 	app->source_name[sizeof(app->source_name) - 1U] = '\0';
@@ -276,6 +280,15 @@ int lichen_app_time_from_hal(struct lichen_app_time_snapshot *app,
 		.provision_epoch_valid = hal->provision_epoch_valid,
 		.provision_epoch = hal->provision_epoch,
 	};
+	if (strnlen(hal->source_name, sizeof(app->source_name)) ==
+	    sizeof(app->source_name)) {
+		return -ENAMETOOLONG;
+	}
+	if (strnlen(hal->rejection_source_name,
+		    sizeof(app->rejection_source_name)) ==
+	    sizeof(app->rejection_source_name)) {
+		return -ENAMETOOLONG;
+	}
 	strncpy(app->source_name, hal->source_name,
 		sizeof(app->source_name) - 1U);
 	app->source_name[sizeof(app->source_name) - 1U] = '\0';

@@ -623,7 +623,8 @@ int schc_reassembler_input(struct schc_reassembler *reassembler,
 		}
 	}
 
-	if (tile_index >= SCHC_FRAGMENT_MAX_TRACKED_TILES) {
+	if (tile_index >= SCHC_FRAGMENT_MAX_TRACKED_TILES ||
+	    (reassembler->config.tile_size > 0 && tile_index > reassembler->packet_max_len / reassembler->config.tile_size)) {
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
 

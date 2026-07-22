@@ -1587,76 +1587,49 @@ cleanup_protect_request:
 	crypto_wipe(nonce, sizeof(nonce));
 	crypto_wipe(piv, sizeof(piv));
 	crypto_wipe(plaintext, sizeof(plaintext));
-	crypto_wipe(&seq, sizeof(seq)); /* python-ano.23: wipe sender seq from stack */
+	crypto_wipe(&seq, sizeof(seq));
 	return ret;
 }
 
-/*
- * Find the CoAP payload marker (0xFF) by properly parsing options (RFC 7252).
- *
- * CoAP option format: first byte encodes delta (4 bits) and length (4 bits).
- * Extended delta/length use subsequent bytes. The naive scan for 0xFF is wrong
- * because option delta/length bytes can legitimately contain 0xFF (python-ano.15).
- *
- * Returns the position of the 0xFF marker, or the end of data if no payload.
- * Returns -1 on malformed options (e.g., option extends past data).
- *
- * ponytail: Return type is int, limiting buffer size to INT_MAX bytes (~2GB).
- * OSCORE payloads on constrained devices won't approach this limit.
- */
-static int find_coap_payload_marker(const uint8_t *data, size_t len)
+static size_t find_coap_payload_marker(const uint8_t *data, size_t len)
+
 {
 	size_t pos = 0;
-
 	while (pos < len) {
 		uint8_t byte = data[pos];
-
-		/* 0xFF is the payload marker - found it */
 		if (byte == 0xFF) {
-			return (int)pos;
+			return pos;
 		}
-
-		/* Parse option delta and length nibbles */
 		uint8_t delta_nibble = (byte >> 4) & 0x0F;
 		uint8_t len_nibble = byte & 0x0F;
 		pos++;
-
-		/* Decode delta (determines how many extra bytes for delta) */
 		if (delta_nibble == 13) {
-			if (pos >= len) return -1;  /* Malformed */
-			pos++;  /* 1 extended byte */
+			if (pos >= len) return (size_t)-1;
+			pos++;
 		} else if (delta_nibble == 14) {
-			if (pos + 1 >= len) return -1;  /* Malformed */
-			pos += 2;  /* 2 extended bytes */
+			if (pos + 1 >= len) return (size_t)-1;
+			pos += 2;
 		} else if (delta_nibble == 15) {
-			/* Reserved for payload marker, but we already checked 0xFF */
-			return -1;  /* Malformed */
+			return (size_t)-1;
 		}
-
-		/* Decode length */
 		size_t opt_len;
 		if (len_nibble == 13) {
-			if (pos >= len) return -1;  /* Malformed */
+			if (pos >= len) return (size_t)-1;
 			opt_len = data[pos] + 13;
 			pos++;
 		} else if (len_nibble == 14) {
-			if (pos + 1 >= len) return -1;  /* Malformed */
+			if (pos + 1 >= len) return (size_t)-1;
 			opt_len = ((size_t)data[pos] << 8) + data[pos + 1] + 269;
 			pos += 2;
 		} else if (len_nibble == 15) {
-			/* Reserved */
-			return -1;  /* Malformed */
+			return (size_t)-1;
 		} else {
 			opt_len = len_nibble;
 		}
-
-		/* Skip option value */
-		if (pos + opt_len > len) return -1;  /* Malformed */
+		if (pos + opt_len > len) return (size_t)-1;
 		pos += opt_len;
 	}
-
-	/* No payload marker found - all data is options */
-	return (int)len;
+	return len;
 }
 
 int oscore_unprotect_request(struct oscore_ctx *ctx,
@@ -1768,25 +1741,17 @@ int oscore_unprotect_request(struct oscore_ctx *ctx,
 	}
 	k_mutex_unlock(&s_ctx_mutex);
 
-	/* Parse plaintext: code || options || 0xFF || payload */
 	if (pt_len < 1) {
 		ret = OSCORE_ERR_INVALID_PARAM;
 		goto cleanup_unprotect_request;
 	}
 	*code = plaintext[0];
-
-	/*
-	 * Find payload marker by properly parsing CoAP options (python-ano.15).
-	 * The naive scan for 0xFF is incorrect because option deltas/lengths
-	 * can legitimately contain 0xFF bytes.
-	 */
-	int marker_result = find_coap_payload_marker(plaintext + 1, pt_len - 1);
-	if (marker_result < 0) {
-		/* Malformed CoAP options */
+	size_t marker_result = find_coap_payload_marker(plaintext + 1, pt_len - 1);
+	if (marker_result == (size_t)-1) {
 		ret = OSCORE_ERR_INVALID_PARAM;
 		goto cleanup_unprotect_request;
 	}
-	size_t marker_pos = 1 + (size_t)marker_result;
+	size_t marker_pos = 1 + marker_result;
 
 	/* Copy options */
 	size_t opt_len = marker_pos - 1;
@@ -2009,23 +1974,17 @@ int oscore_unprotect_response(struct oscore_ctx *ctx,
 		goto cleanup_unprotect_response;
 	}
 
-	/* Parse plaintext */
 	if (pt_len < 1) {
 		ret = OSCORE_ERR_INVALID_PARAM;
 		goto cleanup_unprotect_response;
 	}
 	*code = plaintext[0];
-
-	/*
-	 * Find payload marker by properly parsing CoAP options (python-ano.15).
-	 */
-	int marker_result = find_coap_payload_marker(plaintext + 1, pt_len - 1);
-	if (marker_result < 0) {
-		/* Malformed CoAP options */
+	size_t marker_result = find_coap_payload_marker(plaintext + 1, pt_len - 1);
+	if (marker_result == (size_t)-1) {
 		ret = OSCORE_ERR_INVALID_PARAM;
 		goto cleanup_unprotect_response;
 	}
-	size_t marker_pos = 1 + (size_t)marker_result;
+	size_t marker_pos = 1 + marker_result;
 
 	/* Copy options */
 	size_t opt_len = marker_pos - 1;

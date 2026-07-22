@@ -62,14 +62,17 @@ These are hard-won; violating them wedges a device or corrupts a flash.
   (`do_select`, S-state). Read-only probes only, with a `timeout` wrapper.
 - **NEVER open a LICHEN native CDC port at 1200 baud** except as a deliberate
   DFU touch — 1200 baud reboots nRF boards into the UF2 bootloader.
-- **The Heltec V3 CP2102 resets the ESP32 on *any* port open** (bd `9ia2`), even
-  with `dtr=False`/`rts=False` set before `open()`. Console observation is
-  therefore reset-destructive; you get a fresh boot banner but you rebooted the
-  node (and rerolled its epoch — see §5). Budget for that.
+- **Heltec V3 console on UART1 (GPIO21/22) with external adapter is non-destructive.**
 - **Never pipe a flasher through `head`/`tail`** — the `SIGPIPE` when the reader
   closes aborts the transfer mid-write.
 - Opening the T1000-E `if02` SMP port is safe; it can wedge (CDC write timeout)
   only if a reset drops mid-SMP-transaction — recover with a DFU touch + reflash.
+
+---
+
+## 2.1 Non-destructive Heltec console monitoring
+
+External USB-UART on GPIO21 (TX), GPIO22 (RX). Board DTS uses uart1 for console with status=okay and correct pinctrl. Open with dtr=False rts=False. Verify uptime not reset in logs. ROM-loader SHA-256 warning is benign.
 
 ---
 
@@ -80,8 +83,7 @@ workspace):
 
 ```bash
 export ZEPHYR_SDK_INSTALL_DIR=/path/to/zephyr-sdk-0.16.8
-# Activate the workspace virtual environment if west is not already on PATH.
-export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)   # build-epoch policy requires this
+export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
 ```
 
 `ZEPHYR_SDK_INSTALL_DIR` may be omitted when the SDK is registered with CMake

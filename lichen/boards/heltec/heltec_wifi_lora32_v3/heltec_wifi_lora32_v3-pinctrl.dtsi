@@ -12,7 +12,6 @@
 #include <zephyr/dt-bindings/pinctrl/esp32s3-gpio-sigmap.h>
 
 &pinctrl {
-	/* UART0: debug console — TX=GPIO43, RX=GPIO44 */
 	uart0_default: uart0_default {
 		group1 {
 			pinmux = <UART0_TX_GPIO43>;
@@ -20,6 +19,17 @@
 		};
 		group2 {
 			pinmux = <UART0_RX_GPIO44>;
+			bias-pull-up;
+		};
+	};
+
+	uart1_default: uart1_default {
+		group1 {
+			pinmux = <UART1_TX_GPIO21>;
+			output-high;
+		};
+		group2 {
+			pinmux = <UART1_RX_GPIO22>;
 			bias-pull-up;
 		};
 	};
