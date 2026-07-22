@@ -2,12 +2,16 @@
   "id": "project-LICHEN-hlif.3",
   "title": "Implement fail-fast mechanisms and detailed state monitoring tools",
   "description": "Add fail-fast checks in sim core, RenodeServer, Zephyr drivers for invalid states/transitions. Add debug dump tool (e.g. sim.dump_state(), CLI --debug-dump) for fast debug/fix/retry. Follow spec for observability.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T14:27:51.556544351Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T14:27:51.556544351Z",
+  "updated_at": "2026-07-22T14:28:00.928895598Z",
+  "started_at": "2026-07-22T14:28:00.928895598Z",
+  "lease_expires_at": "2026-07-22T14:33:00.928895598Z",
+  "heartbeat_at": "2026-07-22T14:28:00.928895598Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-hlif.3",
