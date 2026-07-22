@@ -2,7 +2,6 @@
   "id": "project-LICHEN-ssfb",
   "title": "Missing validation of IPv6 version field in incoming tunnel packets",
   "description": "File: rust/lichen-meshtastic/src/bridge.rs:183-209\n\nWhen processing IP_TUNNEL_APP packets, the code only validates minimum header size (40 bytes) but does not validate the IPv6 version field:\n\n```rust\nPortNum::IpTunnelApp =\u003e {\n    if data.payload.len() \u003c 40 {\n        return Err(BridgeError::InvalidPacket);\n    }\n    // Extract src/dst from IPv6 header without checking version\n    let src_bytes: [u8; 16] = data.payload[8..24]...\n```\n\nThe first 4 bits of byte 0 should equal 6 for IPv6. Without this check:\n\n1. IPv4 packets (version 4) could be misinterpreted as IPv6\n2. Malformed/corrupted packets proceed through the stack\n3. Address extraction from wrong offsets could occur\n\nIMPACT: Malformed packets are not rejected early, potentially causing downstream confusion or security issues.\n\nFIX: Add version validation:\n```rust\nif (data.payload[0] \u003e\u003e 4) != 6 {\n    return Err(BridgeError::InvalidPacket);\n}\n```",
-  "notes": "Commit: a76f283",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -10,7 +9,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:35:02.31506Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:20:55.960651204Z",
+  "updated_at": "2026-07-22T23:19:43.356946238Z",
   "started_at": "2026-07-22T23:19:43.356946238Z",
   "lease_expires_at": "2026-07-22T23:24:43.356946238Z",
   "heartbeat_at": "2026-07-22T23:19:43.356946238Z"
