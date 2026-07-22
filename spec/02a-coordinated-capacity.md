@@ -632,6 +632,8 @@ If a received beacon's epoch differs from the local epoch by more than one,
 the node's time estimate is grossly wrong. It MUST transition to RECOVER
 regardless of current state.
 
+Blacklist timer comparison and dwell calc use unsigned u32 subtraction; no underflow risk as timers reset frequently. Vectors in ccp16.json cover all wrap cases.
+
 ### GPS-Capable Nodes
 
 Nodes with GNSS-PPS hardware MAY use GPS time instead of beacon time:
