@@ -80,7 +80,7 @@ function select_channel(ctx, metrics, t):
     RETURN 1 + (hash MOD n)
 
 function now():
-    RETURN current_sfn()   // from time-provider; unsigned modular arithmetic per 2a.2
+    RETURN current_sfn()   // from time-provider per draft-lichen-tdma:2a.2 (wrap semantics)
 ```
 Note: All operators are spelled out (OR, NOT, MOD, XOR) for language-agnostic IETF compatibility. No Rust 'or', no C types or structs, no dead code.
 
