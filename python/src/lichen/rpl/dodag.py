@@ -219,8 +219,6 @@ class DodagState:
                 self.role = DodagRole.UNJOINED
                 self.preferred_parent = None
                 self.rank = INFINITE_RANK
-                # Reset lowest_rank so node can rejoin at any rank after isolation
-                # (RFC 6550 Section 8.2.2.4 MaxRankIncrease bound restarts on rejoin)
                 self._lowest_rank = INFINITE_RANK
             return
 
