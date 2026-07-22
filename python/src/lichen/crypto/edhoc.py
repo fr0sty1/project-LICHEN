@@ -29,6 +29,7 @@ from nacl.bindings import (
     crypto_sign_ed25519_pk_to_curve25519,
     crypto_sign_ed25519_sk_to_curve25519,
 )
+from nacl.exceptions import BadSignatureError
 from nacl.signing import SigningKey, VerifyKey
 
 if TYPE_CHECKING:
@@ -370,8 +371,8 @@ class EdhocInitiator:
         verify_key = VerifyKey(peer_pubkey)
         try:
             verify_key.verify(m_2, signature_2)
-        except Exception as e:
-            raise ValueError(f"Signature verification failed: {e}") from e
+        except BadSignatureError as e:
+            raise ValueError("Signature verification failed") from e
 
         # PRK_3e2m already set above
 
@@ -671,8 +672,8 @@ class EdhocResponder:
         verify_key = VerifyKey(peer_pubkey)
         try:
             verify_key.verify(m_3, signature_3)
-        except Exception as e:
-            raise ValueError(f"Signature verification failed: {e}") from e
+        except BadSignatureError as e:
+            raise ValueError("Signature verification failed") from e
 
         # TH_4 = H(TH_3, CIPHERTEXT_3)
         th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(ciphertext_3)
