@@ -621,19 +621,23 @@ static int parse_data(const uint8_t *data, size_t len,
 
 	if (info->has_portnum) {
 		if (info->portnum == MESHTASTIC_PORTNUM_TEXT_MESSAGE_APP) {
-			info->kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_TEXT_MESSAGE_APP;
-			} else if (info->portnum == MESHTASTIC_PORTNUM_POSITION_APP) {
-				if (info->payload == NULL ||
-				    parse_position_payload(info->payload,
-							   info->payload_len,
-							   &info->position) < 0) {
-					info->kind =
-						LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED;
-				} else {
-					info->kind =
-						LICHEN_MESHTASTIC_ADAPTER_PACKET_POSITION_APP;
-				}
-			} else if (info->portnum == MESHTASTIC_PORTNUM_ADMIN_APP) {
+			if (info->payload == NULL || info->payload_len == 0U) {
+				info->kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED;
+			} else {
+				info->kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_TEXT_MESSAGE_APP;
+			}
+		} else if (info->portnum == MESHTASTIC_PORTNUM_POSITION_APP) {
+			if (info->payload == NULL ||
+			    parse_position_payload(info->payload,
+						   info->payload_len,
+						   &info->position) < 0) {
+				info->kind =
+					LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED;
+			} else {
+				info->kind =
+					LICHEN_MESHTASTIC_ADAPTER_PACKET_POSITION_APP;
+			}
+		} else if (info->portnum == MESHTASTIC_PORTNUM_ADMIN_APP) {
 			if (info->payload == NULL || !parse_admin_payload(info->payload, info->payload_len,
 						 &info->kind)) {
 				info->kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED;
@@ -650,6 +654,7 @@ static int parse_packet(const uint8_t *packet, size_t len,
 			struct lichen_meshtastic_adapter_packet_info *info)
 {
 	struct pb_cursor cur = { .buf = packet, .len = len };
+	bool seen_payload_variant = false;
 
 	memset(info, 0, sizeof(*info));
 
@@ -716,6 +721,10 @@ static int parse_packet(const uint8_t *packet, size_t len,
 			info->want_ack = (v != 0U);
 			break;
 		case MESH_PACKET_DECODED_FIELD:
+			if (seen_payload_variant) {
+				return -EINVAL;
+			}
+			seen_payload_variant = true;
 			if (wt != PB_WT_LEN ||
 			    pb_read_len_value(&cur, &data, &data_len) < 0) {
 				return -EINVAL;
@@ -725,6 +734,10 @@ static int parse_packet(const uint8_t *packet, size_t len,
 			}
 			break;
 		case MESH_PACKET_ENCRYPTED_FIELD:
+			if (seen_payload_variant) {
+				return -EINVAL;
+			}
+			seen_payload_variant = true;
 			if (wt != PB_WT_LEN ||
 			    pb_read_len_value(&cur, &data, &data_len) < 0) {
 				return -EINVAL;

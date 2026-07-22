@@ -26,7 +26,7 @@ int lichen_rpl_root_init(struct lichen_rpl_root *root, const uint8_t *dodag_id, 
 			   CONFIG_LICHEN_RPL_TRICKLE_IMAX_DOUBLINGS,
 			   CONFIG_LICHEN_RPL_TRICKLE_K);
 	memcpy(root->prefix, dodag_id, 16);
-	root->prefix_len = 64;
+	root->prefix_len = 128;
 	return 0;
 }
 
@@ -54,7 +54,8 @@ int lichen_rpl_root_set_prefix(struct lichen_rpl_root *root, const uint8_t *pref
 	memcpy(root->prefix, prefix, 16);
 	root->prefix_len = len;
 	if (len >= 64) {
-		memcpy(root->dodag.dodag_id, prefix, 8);
+		memcpy(root->dodag.dodag_id, prefix, 16);
+		memcpy(root->dao_manager.dodag_id, prefix, 16);
 	}
 	return 0;
 }

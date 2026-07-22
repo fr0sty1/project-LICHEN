@@ -356,11 +356,13 @@ static int aead_encrypt(const uint8_t key[16],
 {
 	struct tc_aes_key_sched_struct sched;
 	struct tc_ccm_mode_struct ccm;
+	uint8_t nonce_buf[13];
+	memcpy(nonce_buf, nonce, 13);
 
 	if (tc_aes128_set_encrypt_key(&sched, key) != TC_CRYPTO_SUCCESS) {
 		return -EINVAL;
 	}
-	if (tc_ccm_config(&ccm, &sched, (uint8_t *)nonce, 13, 8) != TC_CRYPTO_SUCCESS) {
+	if (tc_ccm_config(&ccm, &sched, nonce_buf, 13, 8) != TC_CRYPTO_SUCCESS) {
 		return -EINVAL;
 	}
 	if (tc_ccm_generation_encryption(ciphertext, pt_len + 8,
