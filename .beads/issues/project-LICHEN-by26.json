@@ -2,11 +2,15 @@
   "id": "project-LICHEN-by26",
   "title": "[kimi-review] eaed7ad: [SEVERITY: high] The diff contains no actual code changes — ",
   "description": "Commit: eaed7ad5e\nMessage: fix(announce): zero signature buffer after use\n\nFinding: [SEVERITY: high] The diff contains no actual code changes — only the commit message. Either the commit is empty (the claimed fix was never applied) or the diff is incomplete/truncated and cannot be reviewed.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T22:06:41.995255555Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T22:06:41.995255555Z"
+  "updated_at": "2026-07-22T22:27:00.318371919Z",
+  "started_at": "2026-07-22T22:27:00.318371919Z",
+  "lease_expires_at": "2026-07-22T22:32:00.318371919Z",
+  "heartbeat_at": "2026-07-22T22:27:00.318371919Z"
 }
