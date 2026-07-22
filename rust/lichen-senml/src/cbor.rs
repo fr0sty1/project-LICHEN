@@ -287,39 +287,33 @@ fn f16_to_f64(bits: u16) -> f64 {
     let exp = (bits >> 10) & 0x1f;
     let mant = bits & 0x3ff;
 
-    let val = match exp {
+    match exp {
         0 => {
-            // Zero or subnormal
             if mant == 0 {
-                0.0
+                if sign == 0 {
+                    0.0
+                } else {
+                    -0.0
+                }
             } else {
-                // Subnormal: value = mant * 2^(-24)
-                // 2^(-24) = 1 / 16777216
-                (mant as f64) / 16777216.0
+                let v = (mant as f64) / 16777216.0;
+                if sign == 0 { v } else { -v }
             }
         }
         31 => {
-            // Infinity or NaN
-            if mant == 0 {
+            let v = if mant == 0 {
                 f64::INFINITY
             } else {
                 f64::NAN
-            }
+            };
+            if sign == 0 { v } else { -v }
         }
         _ => {
-            // Normal: value = (1 + mant/1024) * 2^(exp - 15)
-            // Build the f64 directly via bit manipulation for exactness
-            let f64_exp = (exp as u64) - 15 + 1023; // f64 bias is 1023
-            let f64_mant = (mant as u64) << 42; // f64 has 52-bit mantissa, f16 has 10-bit
-            let f64_bits = (f64_exp << 52) | f64_mant;
+            let f64_exp = (exp as u64) - 15 + 1023;
+            let f64_mant = (mant as u64) << 42;
+            let f64_bits = ((sign as u64) << 63) | (f64_exp << 52) | f64_mant;
             f64::from_bits(f64_bits)
         }
-    };
-
-    if sign == 1 {
-        -val
-    } else {
-        val
     }
 }
 
@@ -500,9 +494,17 @@ pub fn decode<'a>(data: &'a [u8], buf: &mut [Record<'a>]) -> Result<usize, CborE
         }
         pos += adv;
         *rec = Record::empty();
+        let mut seen_keys = 0u16;
         for _ in 0..n_kv {
             let (key, adv) = dec_int(data, pos)?;
             pos += adv;
+            if key >= -3 && key <= 12 {
+                let k = (key + 3) as u16;
+                if (seen_keys & (1u16 << k)) != 0 {
+                    return Err(CborError::InvalidInput);
+                }
+                seen_keys |= 1u16 << k;
+            }
             match key {
                 -2 => {
                     let (s, adv) = dec_text(data, pos)?;
@@ -549,6 +551,9 @@ pub fn decode<'a>(data: &'a [u8], buf: &mut [Record<'a>]) -> Result<usize, CborE
                 }
             }
         }
+    }
+    if pos != data.len() {
+        return Err(CborError::InvalidInput);
     }
     Ok(n_recs)
 }

@@ -661,7 +661,7 @@ static int udp_checksum(const uint8_t src[16], const uint8_t dst[16],
 }
 
 static uint16_t icmpv6_checksum(const uint8_t src[16], const uint8_t dst[16],
-				const uint8_t *icmpv6_payload, size_t len)
+				const uint8_t *icmpv6_payload, uint16_t len)
 {
 	uint32_t sum = pseudo_sum(src, dst, IPV6_NH_ICMPV6, len);
 
@@ -761,6 +761,9 @@ static int compress_coap(const uint8_t *packet, size_t pkt_len,
 	uint16_t src_port = udp_src_port(udp);
 	uint16_t dst_port = udp_dst_port(udp);
 	const uint8_t *coap = udp_payload(udp);
+	if ((coap[SCHC_COAP_VER_TYPE_TKL_OFFSET] >> 6) != 1) {
+		return SCHC_ERR_NO_MATCHING_RULE;
+	}
 	uint8_t type = coap_type(coap);
 	uint8_t tkl = coap_tkl(coap);
 	uint8_t code = coap_code(coap);

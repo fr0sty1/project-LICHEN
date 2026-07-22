@@ -592,8 +592,8 @@ pub fn aprs_to_cot(aprs: &str) -> Option<CompactCot> {
 
     Some(CompactCot {
         subtype: subtype::FRIENDLY_GROUND, // Default to friendly
-        lat_microdeg: (lat * 1_000_000.0) as i32,
-        lon_microdeg: (lon * 1_000_000.0) as i32,
+        lat_microdeg: (lat * 1_000_000.0).round() as i32,
+        lon_microdeg: (lon * 1_000_000.0).round() as i32,
         alt_dm,
         course_cdeg: 0,
         speed_cm_s: 0,

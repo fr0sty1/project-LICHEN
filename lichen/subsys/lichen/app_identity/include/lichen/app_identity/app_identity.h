@@ -82,6 +82,11 @@ int lichen_app_identity_upsert_peer(
 int lichen_app_identity_upsert_peer_key(
 	const uint8_t eui64[_Nonnull LICHEN_APP_IDENTITY_EUI64_LEN],
 	const uint8_t public_key[_Nonnull LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN]);
+/*
+ * Returns 0 on success, -EINVAL/-ENOKEY/-ENAMETOOLONG on invalid input,
+ * -EEXIST on TOFU key mismatch, -ENOSPC if peer table is full (capacity reached;
+ * explicit remove_peer required to free slots per TOFU policy).
+ */
 int lichen_app_identity_copy_peer(
 	const uint8_t eui64[_Nonnull LICHEN_APP_IDENTITY_EUI64_LEN],
 	struct lichen_app_identity_peer *_Nonnull out);

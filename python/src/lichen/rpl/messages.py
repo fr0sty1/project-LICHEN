@@ -114,14 +114,14 @@ class DIS:
     options: list[RplOption] = field(default_factory=list)
 
     def to_bytes(self) -> bytes:
-        return bytes([self.flags, self.reserved]) + _options_to_bytes(self.options)
+        return bytes([self.flags, 0]) + _options_to_bytes(self.options)
 
     @classmethod
     def from_bytes(cls, data: bytes) -> DIS:
         if len(data) < 2:
             raise RplError(f"DIS too short: {len(data)} bytes")
         return cls(
-            flags=data[0], reserved=data[1], options=_parse_options(data[2:])
+            flags=data[0], reserved=0, options=_parse_options(data[2:])
         )
 
 
@@ -159,7 +159,7 @@ class DIO:
         return (
             bytes([self.rpl_instance_id, self.version])
             + self.rank.to_bytes(2, "big")
-            + bytes([gmop_prf, self.dtsn, self.flags, self.reserved])
+            + bytes([gmop_prf, self.dtsn, self.flags, 0])
             + self.dodag_id.packed
             + _options_to_bytes(self.options)
         )
@@ -178,7 +178,7 @@ class DIO:
             preference=gmop_prf & 0x7,
             dtsn=data[5],
             flags=data[6],
-            reserved=data[7],
+            reserved=0,
             dodag_id=IPv6Address(data[8:24]),
             options=_parse_options(data[24:]),
         )
@@ -210,7 +210,7 @@ class DAO:
             | (int(d_flag) << 6)
             | (self.flags & 0x3F)
         )
-        out = bytes([self.rpl_instance_id, kd, self.reserved, self.dao_sequence])
+        out = bytes([self.rpl_instance_id, kd, 0, self.dao_sequence])
         if self.dodag_id is not None:
             out += self.dodag_id.packed
         return out + _options_to_bytes(self.options)
@@ -232,7 +232,7 @@ class DAO:
             rpl_instance_id=data[0],
             ack_requested=bool(kd & 0x80),
             flags=kd & 0x3F,
-            reserved=data[2],
+            reserved=0,
             dao_sequence=data[3],
             dodag_id=dodag_id,
             options=_parse_options(data[offset:]),

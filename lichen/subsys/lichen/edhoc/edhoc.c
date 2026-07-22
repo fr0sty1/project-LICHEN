@@ -576,7 +576,7 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 				 uint8_t *msg3, size_t msg3_size,
 				 size_t *msg3_len)
 {
-	int ret;
+	int ret = 0;
 	uint8_t g_xy[32] = {0};
 	uint8_t k_3[16] = {0};
 	uint8_t iv_3[13] = {0};
@@ -899,7 +899,7 @@ err_wipe:
 int edhoc_initiator_export_oscore(struct edhoc_initiator *ctx,
 				  struct edhoc_oscore_ctx *oscore)
 {
-	int ret;
+	int ret = 0;
 
 	if (ctx == NULL || oscore == NULL) {
 		return -EINVAL;

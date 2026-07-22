@@ -614,7 +614,7 @@ static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 	cbor_put_key(buf, &off, "keys");
 
 	/* Get all keys */
-	struct lichen_key_entry entries[CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES];
+	struct lichen_key_entry entries[16];
 	size_t n = lichen_key_store_list(entries, ARRAY_SIZE(entries));
 
 	/* Reserve a fixed-width definite array header; patch its count after
@@ -1234,7 +1234,7 @@ static int keys_single_delete(struct coap_resource *resource,
 #if IS_ENABLED(CONFIG_LICHEN_COAP_KEYS)
 
 static const char * const keys_path[] = { "keys", NULL };
-COAP_RESOURCE_DEFINE(keys_list, lichen_coap, {
+COAP_RESOURCE_DEFINE(keys_list, lichen_coap_server, {
 	.get = keys_list_get,
 	.path = keys_path,
 });
@@ -1244,7 +1244,7 @@ COAP_RESOURCE_DEFINE(keys_list, lichen_coap, {
  * Requires CONFIG_COAP_URI_WILDCARD=y
  */
 static const char * const keys_single_path[] = { "keys", "+", NULL };
-COAP_RESOURCE_DEFINE(keys_single, lichen_coap, {
+COAP_RESOURCE_DEFINE(keys_single, lichen_coap_server, {
 	.get = keys_single_get,
 	.put = keys_single_put,
 	.del = keys_single_delete,

@@ -267,7 +267,7 @@ where
         }
     }
 
-    sim_task.abort();
+    let _ = sim_task.await;
 }
 
 // ── serial mode ───────────────────────────────────────────────────────────────
@@ -334,8 +334,7 @@ where
             }
         }
 
-        // Drain TX queue to serial
-        while let Some(n) = slip.try_get_tx(&mut tx_buf) {
+        while let Ok(Some(n)) = slip.try_get_tx(&mut tx_buf) {
             if let Err(e) = tty.write_all(&tx_buf[..n]).await {
                 error!("serial write: {e}");
                 return;

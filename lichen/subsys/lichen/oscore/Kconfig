@@ -28,7 +28,7 @@ config LICHEN_OSCORE_MAX_CONTEXTS
 config LICHEN_OSCORE_REPLAY_WINDOW
 	int "OSCORE replay window size"
 	default 32
-	range 16 128
+	range 16 32
 	help
 	  Size of the OSCORE replay window in sequence numbers.
 	  Larger values tolerate more out-of-order delivery.

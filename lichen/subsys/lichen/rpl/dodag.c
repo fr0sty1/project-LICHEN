@@ -295,7 +295,7 @@ void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 	 * Version handling per RFC 6550 lollipop semantics.
 	 * A newer version triggers DODAG rejoin; stale versions are ignored.
 	 */
-	if (!lichen_rpl_dodag_is_joined(d)) {
+	if (!lichen_rpl_dodag_is_joined(d) || version_is_newer(dio->version, d->version)) {
 		/* First DIO - join unconditionally */
 		adopt_version(d, dio);
 	} else if (version_is_newer(dio->version, d->version)) {

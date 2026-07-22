@@ -73,7 +73,8 @@ impl LoopbackRadio {
 
     /// Check if there are pending packets to receive.
     pub fn has_pending(&self) -> bool {
-        !self.rx_chan.lock().unwrap().queue.is_empty()
+        let guard = self.rx_chan.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        !guard.queue.is_empty()
     }
 }
 
@@ -81,7 +82,8 @@ impl Radio for LoopbackRadio {
     type Error = RadioError<std::convert::Infallible>;
 
     async fn transmit(&mut self, payload: &[u8]) -> Result<(), Self::Error> {
-        self.tx_chan.lock().unwrap().send(payload);
+        let mut guard = self.tx_chan.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        guard.send(payload);
         Ok(())
     }
 
@@ -91,7 +93,8 @@ impl Radio for LoopbackRadio {
         _timeout_ms: u32,
     ) -> Result<Option<RxPacket>, Self::Error> {
         // ponytail: no actual timeout in loopback, just check queue
-        let data = self.rx_chan.lock().unwrap().recv();
+        let mut guard = self.rx_chan.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let data = guard.recv();
 
         // SECURITY: Enforce buffer contract from Radio trait docs.
         // Buffer must be at least 255 bytes (max LoRa payload).

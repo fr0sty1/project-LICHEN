@@ -814,26 +814,26 @@ bad_request:
 #if IS_ENABLED(CONFIG_LICHEN_COAP_MSG)
 
 static const char * const msg_sent_path[] = { "msg", "sent", NULL };
-COAP_RESOURCE_DEFINE(msg_sent, lichen_coap, {
+COAP_RESOURCE_DEFINE(msg_sent, lichen_coap_server, {
 	.post = lichen_msg_sent_post,
 	.path = msg_sent_path,
 });
 
 static const char * const msg_sent_id_path[] = { "msg", "sent", "*", NULL };
-COAP_RESOURCE_DEFINE(msg_sent_id, lichen_coap, {
+COAP_RESOURCE_DEFINE(msg_sent_id, lichen_coap_server, {
 	.get = lichen_msg_sent_id_get,
 	.path = msg_sent_id_path,
 });
 
 static const char * const msg_inbox_path[] = { "msg", "inbox", NULL };
-COAP_RESOURCE_DEFINE(msg_inbox, lichen_coap, {
+COAP_RESOURCE_DEFINE(msg_inbox, lichen_coap_server, {
 	.get = lichen_msg_inbox_get_handler,
 	.notify = lichen_msg_inbox_notify_cb,
 	.path = msg_inbox_path,
 });
 
 static const char * const msg_ack_path[] = { "msg", "ack", NULL };
-COAP_RESOURCE_DEFINE(msg_ack, lichen_coap, {
+COAP_RESOURCE_DEFINE(msg_ack, lichen_coap_server, {
 	.post = lichen_msg_ack_post,
 	.path = msg_ack_path,
 });

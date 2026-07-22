@@ -14,6 +14,7 @@ Wire formats:
 from __future__ import annotations
 
 import hashlib
+import math
 import struct
 import uuid
 from dataclasses import dataclass
@@ -819,8 +820,8 @@ def _parse_xml_pli(root: Element, subtype: CompactCotType) -> CompactCot:
 
     lat = float(lat_str)
     lon = float(lon_str)
-
-    # Validate geographic coordinates early for clear error messages
+    if math.isnan(lat) or math.isinf(lat) or math.isnan(lon) or math.isinf(lon):
+        raise ValueError("NaN/Inf in CoT coordinates")
     if not (-90.0 <= lat <= 90.0):
         raise ValueError(f"Latitude {lat} out of range [-90, 90]")
     if not (-180.0 <= lon <= 180.0):

@@ -321,9 +321,10 @@ class SimRadio:
 
     async def close(self) -> None:
         """Close the TCP connection to the simulator."""
-        if self._stream is not None:
-            await self._stream.aclose()
+        stream = self._stream
+        if stream is not None:
             self._stream = None
+            await stream.aclose()
 
     async def __aenter__(self) -> SimRadio:
         """Enter async context manager, connecting to the simulator."""

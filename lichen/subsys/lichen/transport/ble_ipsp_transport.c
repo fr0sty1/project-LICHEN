@@ -127,15 +127,17 @@ static void connected_cb(struct bt_conn *conn, uint8_t err)
 
 	LOG_DBG("Connected, initial ATT MTU: %u", bt_gatt_get_mtu(conn));
 
+	lichen_ble_conn_cb_t cb = transport_state.config.conn_cb;
+	void *ctx = transport_state.config.user_ctx;
+
 	k_mutex_unlock(&transport_state.lock);
 
 	char addr[BT_ADDR_LE_STR_LEN];
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 	LOG_INF("BLE connected: %s", addr);
 
-	if (transport_state.config.conn_cb) {
-		transport_state.config.conn_cb(LICHEN_BLE_CONNECTED,
-					       transport_state.config.user_ctx);
+	if (cb) {
+		cb(LICHEN_BLE_CONNECTED, ctx);
 	}
 }
 
@@ -150,13 +152,15 @@ static void disconnected_cb(struct bt_conn *conn, uint8_t reason)
 		transport_state.stats.disconnections++;
 	}
 
+	lichen_ble_conn_cb_t cb = transport_state.config.conn_cb;
+	void *ctx = transport_state.config.user_ctx;
+
 	k_mutex_unlock(&transport_state.lock);
 
 	LOG_INF("BLE disconnected (reason 0x%02x)", reason);
 
-	if (transport_state.config.conn_cb) {
-		transport_state.config.conn_cb(LICHEN_BLE_DISCONNECTED,
-					       transport_state.config.user_ctx);
+	if (cb) {
+		cb(LICHEN_BLE_DISCONNECTED, ctx);
 	}
 }
 
@@ -182,11 +186,14 @@ static void security_changed_cb(struct bt_conn *conn, bt_security_t level,
 		}
 	}
 
+	lichen_ble_conn_cb_t cb = transport_state.config.conn_cb;
+	void *ctx = transport_state.config.user_ctx;
+	enum lichen_ble_conn_state state = transport_state.state;
+
 	k_mutex_unlock(&transport_state.lock);
 
-	if (transport_state.config.conn_cb) {
-		transport_state.config.conn_cb(transport_state.state,
-					       transport_state.config.user_ctx);
+	if (cb) {
+		cb(state, ctx);
 	}
 }
 #endif

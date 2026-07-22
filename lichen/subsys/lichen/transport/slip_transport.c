@@ -213,6 +213,9 @@ static int slip_encode(const uint8_t *ipv6, size_t ipv6_len,
  */
 static int slip_decode_byte(struct slip_transport_ctx *ctx, uint8_t b)
 {
+	if (ctx == NULL) {
+		return 0;
+	}
 	switch (ctx->rx_state) {
 	case SLIP_STATE_IDLE:
 		if (b == SLIP_END) {
@@ -566,7 +569,7 @@ int slip_transport_send(const uint8_t *ipv6, size_t len)
 {
 	struct slip_transport_ctx *ctx = &s_ctx;
 	size_t frame_len;
-	int ret;
+	int ret = 0;
 
 	if (ipv6 == NULL && len > 0) {
 		return -EINVAL;
@@ -605,12 +608,11 @@ int slip_transport_send(const uint8_t *ipv6, size_t len)
 		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.tx_errors++;
 		k_mutex_unlock(&ctx->stats_mutex);
-		k_mutex_unlock(&ctx->tx_mutex);
-		return -ENODEV;
+		ret = -ENODEV;
 	}
 
 	k_mutex_unlock(&ctx->tx_mutex);
-	return 0;
+	return ret;
 }
 
 int slip_transport_get_stats(struct slip_transport_stats *stats)

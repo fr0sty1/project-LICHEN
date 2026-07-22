@@ -83,7 +83,7 @@ const _: () = assert!(
     "nonce fields must sum to NONCE_LEN"
 );
 
-/// COSE Algorithm ID for AES-CCM-16-64-128.
+/// Algorithm ID for AES-CCM-16-64-128.
 pub const ALG_AEAD: u8 = 10;
 
 /// OSCORE CoAP option number.

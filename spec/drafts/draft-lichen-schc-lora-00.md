@@ -370,7 +370,7 @@ in the same DODAG.
 
 ## 8. IANA Considerations
 
-This document requests no IANA allocations.
+This document requests no IANA allocations. SCHC registry coordination with LPWAN WG required.
 
 Future versions may request:
 - DIO Option Type for Rule Version advertisement

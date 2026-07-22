@@ -47,6 +47,8 @@ class FragmentReceiver:
     """
 
     def __init__(self, window_size: int) -> None:
+        if window_size < 1:
+            raise ValueError("window_size must be positive")
         self.window_size = window_size
         self._tiles: dict[int, bytes] = {}  # regular tiles: global index -> bytes
         self._current_window = 0

@@ -54,7 +54,7 @@ class SourceRoutingHeader:
         if data[0] != ROUTING_TYPE_SOURCE_ROUTE:
             raise RoutingError(f"not a source routing header: type {data[0]}")
         segments_left = data[1]
-        cmpr = data[2]  # CmprI (upper 4 bits) + CmprE (lower 4 bits)
+        cmpr = data[2]
         if cmpr != 0:
             raise RoutingError("compressed source routing headers not supported")
         addr_bytes = data[_SRH_FIELDS_LENGTH:]
@@ -66,6 +66,8 @@ class SourceRoutingHeader:
         ]
         if segments_left > len(addresses):
             raise RoutingError("segments_left exceeds address count")
+        if segments_left == 0:
+            addresses = []
         return cls(segments_left=segments_left, addresses=addresses)
 
     def to_extension_header(self) -> ExtensionHeader:

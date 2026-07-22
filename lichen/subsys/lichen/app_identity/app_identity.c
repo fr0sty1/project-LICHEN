@@ -88,7 +88,7 @@ static int find_free_peer_locked(void)
 			return i;
 		}
 	}
-	return -ENOMEM;
+	return -ENOSPC;
 }
 
 int lichen_app_identity_set_self(
@@ -218,7 +218,7 @@ int lichen_app_identity_upsert_peer(
 		}
 	} else {
 		/*
-		 * SECURITY: a full table rejects new peers (-ENOMEM) rather
+		 * SECURITY: a full table rejects new peers (-ENOSPC) rather
 		 * than evicting an LRU entry. TOFU pins (spec 8.6) must not
 		 * be silently discarded: an attacker who floods the table
 		 * with ephemeral peers could evict a victim's pinned key and
