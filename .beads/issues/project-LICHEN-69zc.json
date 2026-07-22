@@ -2,6 +2,7 @@
   "id": "project-LICHEN-69zc",
   "title": "CBOR encoding in build_info_cbor truncates lengths \u003e 255",
   "description": "File: rust/lichen-oscore/src/lib.rs\nLines: 879-886\n\nWhen encoding the L (output length) field for HKDF info:\n```rust\nif out_len \u003c= 23 {\n    buf[off] = out_len as u8;\n    off += 1;\n} else {\n    buf[off] = 0x18;  // 1-byte uint follows\n    buf[off + 1] = out_len as u8;  // TRUNCATES if out_len \u003e 255\n    off += 2;\n}\n```\n\nThe 0x18 CBOR prefix indicates a 1-byte unsigned integer follows, but out_len is usize. If out_len \u003e 255, the cast to u8 silently truncates.\n\nCurrently not exploitable because callers only pass KEY_LEN (16) or NONCE_LEN (13), but this is a latent bug if the function is reused for larger outputs.\n\nImpact: Would produce incorrect HKDF info, leading to wrong derived keys.\n\nFix: Add bounds check or use 0x19 (2-byte uint) for larger values.",
+  "notes": "Commit: 34383cf",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:37:28.114769Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:22:58.011903637Z",
+  "updated_at": "2026-07-22T23:26:26.638297336Z",
   "started_at": "2026-07-22T23:22:58.011903637Z",
   "lease_expires_at": "2026-07-22T23:27:58.011903637Z",
   "heartbeat_at": "2026-07-22T23:22:58.011903637Z"
