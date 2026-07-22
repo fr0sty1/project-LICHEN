@@ -2,15 +2,15 @@
   "id": "project-LICHEN-x4a8",
   "title": "[merge-conflict] worktree-worker20: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: 79d9e9f (synced battery support in heltec_wifi_lora32_v3_esp32s3_procpu.conf puck config in worker9 to match canonical from main/worker20; resolved related merge conflicts in t_deck and coap via consolidated HEAD versions)",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:52:03.700860812Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:56:31.072338757Z",
+  "updated_at": "2026-07-22T23:56:33.183094075Z",
   "started_at": "2026-07-22T23:52:24.58465426Z",
-  "lease_expires_at": "2026-07-22T23:57:24.58465426Z",
-  "heartbeat_at": "2026-07-22T23:52:24.58465426Z"
+  "closed_at": "2026-07-22T23:56:33.183094075Z",
+  "close_reason": "Synced heltec puck board config with battery support and resolved associated merge conflicts in main tree using consolidated canonical versions from HEAD. Updated worker9 integration branch, committed+ pushed. Beads and .beads/ files updated."
 }
