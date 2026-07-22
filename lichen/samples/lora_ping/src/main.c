@@ -53,7 +53,7 @@ static uint32_t packet_hash(const uint8_t *data, size_t len)
 
 static void track_hash(uint32_t hash)
 {
-	for (int i = 0; i < metrics.seen_hash_count; i++) {
+	for (size_t i = 0; i < metrics.seen_hash_count; i++) {
 		if (metrics.seen_hashes[i] == hash) {
 			return;
 		}
