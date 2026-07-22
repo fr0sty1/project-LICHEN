@@ -2,12 +2,16 @@
   "id": "project-LICHEN-mv61",
   "title": "codereview pass2: missing test for InvalidChannel in announce",
   "description": "rust/lichen-core/src/announce.rs: no unit test exercises the new InvalidChannel error path from from_bytes or Builder::write_to. Add test similar to wrong_type. codereview P3",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T17:21:40.82105375Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T17:21:40.82105375Z",
+  "updated_at": "2026-07-22T22:40:16.596356191Z",
+  "started_at": "2026-07-22T22:40:16.596356191Z",
+  "lease_expires_at": "2026-07-22T22:45:16.596356191Z",
+  "heartbeat_at": "2026-07-22T22:40:16.596356191Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-mv61",
