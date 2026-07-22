@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-4mlt",
   "title": "Zephyr: per-neighbor SF tracking in gradient and L2 TX/RX",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T22:45:49.953030712Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T22:45:56.142028309Z",
+  "updated_at": "2026-07-22T22:48:19.735207145Z",
   "started_at": "2026-07-22T22:45:56.142028309Z",
-  "lease_expires_at": "2026-07-22T22:50:56.142028309Z",
-  "heartbeat_at": "2026-07-22T22:45:56.142028309Z",
+  "closed_at": "2026-07-22T22:48:19.735207145Z",
+  "close_reason": "Completed as part of parent zrh2.2",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-4mlt",
