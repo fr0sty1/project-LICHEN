@@ -453,7 +453,7 @@ void lichen_loadng_seen_prune(uint32_t now_ms)
 {
 	k_mutex_lock(&seen_mutex, K_FOREVER);
 	prune_seen_locked(now_ms);
-	prune_countdown = PRUNE_INTERVAL;
+	atomic_set(&prune_countdown, PRUNE_INTERVAL);
 	k_mutex_unlock(&seen_mutex);
 }
 

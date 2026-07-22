@@ -329,6 +329,9 @@ static bool coap_has_oscore_option(const uint8_t *coap, size_t coap_len)
 	if (coap_len < SCHC_COAP_FIXED_LEN) {
 		return false;
 	}
+	if (coap_version(coap) != 1) {
+		return false;
+	}
 
 	uint8_t tkl = coap_tkl(coap);
 	if (tkl > 8) {

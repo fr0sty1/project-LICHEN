@@ -1574,12 +1574,14 @@ cleanup_protect_request:
 }
 
 static size_t find_coap_payload_marker(const uint8_t *data, size_t len)
-
 {
 	size_t pos = 0;
 	while (pos < len) {
 		uint8_t byte = data[pos];
 		if (byte == 0xFF) {
+			if (pos > (size_t)INT_MAX) {
+				return (size_t)-1;
+			}
 			return pos;
 		}
 		uint8_t delta_nibble = (byte >> 4) & 0x0F;
@@ -1610,6 +1612,9 @@ static size_t find_coap_payload_marker(const uint8_t *data, size_t len)
 		}
 		if (pos + opt_len > len) return (size_t)-1;
 		pos += opt_len;
+	}
+	if (len > (size_t)INT_MAX) {
+		return (size_t)-1;
 	}
 	return len;
 }
