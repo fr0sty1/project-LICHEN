@@ -31,6 +31,7 @@ pub enum SecureError {
     EncryptFailed,
     /// OSCORE decryption failed.
     DecryptFailed,
+    MalformedOscore,
     /// CoAP encoding error.
     CoapEncode,
     /// TX error from underlying stack.
@@ -43,6 +44,7 @@ impl core::fmt::Display for SecureError {
             Self::NoContext => write!(f, "no OSCORE context for peer"),
             Self::EncryptFailed => write!(f, "OSCORE encryption failed"),
             Self::DecryptFailed => write!(f, "OSCORE decryption failed"),
+            Self::MalformedOscore => write!(f, "malformed OSCORE option"),
             Self::CoapEncode => write!(f, "CoAP encoding failed"),
             Self::Tx(e) => write!(f, "TX error: {}", e),
         }
@@ -192,7 +194,7 @@ impl<R: Radio> SecureStack<R> {
         let piv_len = (oscore_opt[0] & 0x07) as usize;
         // SECURITY: Bounds check to prevent panic on malformed OSCORE option
         if oscore_opt.len() < 1 + piv_len {
-            return Err(SecureError::CoapEncode);
+            return Err(SecureError::MalformedOscore);
         }
         let request_piv = oscore_opt[1..1 + piv_len].to_vec();
 
