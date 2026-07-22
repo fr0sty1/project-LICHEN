@@ -13,14 +13,39 @@ renode lichen/boards/renode/heltec_wifi_lora32_v3/support/heltec_wifi_lora32_v3.
     -e "\$elf=@build/zephyr/zephyr.elf; start"
 ```
 
+## Validation (project-LICHEN-27vk)
+
+Basic Renode simulation validated:
+- CPU starts (Xtensa LX7 @ 240 MIPS)
+- UART0 console works (showAnalyzer shows Zephyr boot, "LICHEN" messages)
+- SX1262 connects to lichen-sim (SimPort 5555, "Connected to lichen-sim")
+- Basic TX works (lichen-sim receives frames when using puck/gateway with LORA_L2)
+
+Run with:
+```bash
+lichen-sim --node-port 5555
+renode lichen/boards/renode/heltec_wifi_lora32_v3/support/heltec_wifi_lora32_v3.resc \
+  -e "\$elf=build/zephyr/zephyr.elf; start"
+```
+
 ## Peripherals
 
 | Peripheral | Status | Notes |
 |-----------|--------|-------|
-| SX1262 radio | Working | Via lichen-sim TCP bridge |
+| SX1262 radio | Working | Via lichen-sim TCP bridge; basic TX/RX validated |
 | LED (white) | Stubbed | GPIO35, not wired (GPIO is memory tag) |
-| Button | Not implemented | GPIO0 |
-| OLED display | Not implemented | I2C, SSD1306 |
+| Button (PRG) | Not implemented | GPIO0 |
+| OLED display | Not implemented | I2C SSD1306 (no Renode model) |
+
+## ESP32-S3 Renode Limitations
+
+- Single-core only (no CPU1 support in model)
+- No cycle-accurate timing (LoRa timing approximations via lichen-sim)
+- GPIO fully stubbed (memory tags; no interrupt or LED toggle emulation)
+- No I2C/display/keyboard support (OLED, buttons ignored)
+- ELF loading requires careful memory map; some Zephyr sections map to tagged regions
+- No WiFi/BLE radio (focus is LoRa + UART console only)
+- Best used with `lichen-sim` for L2 validation; full CoAP/gateway needs physical hardware for complete proof
 
 ## GPIO Mapping
 
