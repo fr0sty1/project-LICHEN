@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-vre1",
+  "title": "codereview-pass-3 post-TOC-edit: Appendix A. Complete Rule Set and B still contain TODO/outdated list; must align exactly with current Rule Set Version 2 from appendix-schc.md:10 and test/vectors/",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T14:48:32.377949377Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:48:32.377949377Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-vre1",
+      "depends_on_id": "project-LICHEN-g38a",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T14:48:32.471731771Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
