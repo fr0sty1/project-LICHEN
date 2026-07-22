@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-urvj",
+  "title": "codereview pass 1: missing impl for lichen_coordination_negotiate in link_ctx.c after enum addition; Kconfig select not wired to CMake",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T17:16:46.290526013Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:16:46.290526013Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-urvj",
+      "depends_on_id": "project-LICHEN-da2q.5.3",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T17:16:46.403468214Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
