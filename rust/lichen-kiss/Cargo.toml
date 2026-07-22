@@ -3,6 +3,7 @@ name = "lichen-kiss"
 edition.workspace = true
 version.workspace = true
 license.workspace = true
+rust-version = "1.81"
 description = "KISS protocol framing for TNC app compatibility (APRSDroid, aprs.fi)."
 
 [features]
