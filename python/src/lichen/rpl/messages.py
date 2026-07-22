@@ -149,12 +149,26 @@ class DIO:
         )
 
     def to_bytes(self) -> bytes:
+        if not 0 <= self.rpl_instance_id <= 0xFF:
+            raise RplError(f"rpl_instance_id out of range: {self.rpl_instance_id}")
+        if not 0 <= self.version <= 0xFF:
+            raise RplError(f"version out of range: {self.version}")
         if not 0 <= self.rank <= 0xFFFF:
             raise RplError(f"rank out of range: {self.rank}")
+        if not 0 <= self.dtsn <= 0xFF:
+            raise RplError(f"dtsn out of range: {self.dtsn}")
+        if not 0 <= self.mode_of_operation <= 7:
+            raise RplError(f"mode_of_operation out of range: {self.mode_of_operation}")
+        if not 0 <= self.preference <= 7:
+            raise RplError(f"preference out of range: {self.preference}")
+        if not 0 <= self.flags <= 0xFF:
+            raise RplError(f"flags out of range: {self.flags}")
+        if not 0 <= self.reserved <= 0xFF:
+            raise RplError(f"reserved out of range: {self.reserved}")
         gmop_prf = (
             (int(self.grounded) << 7)
-            | ((self.mode_of_operation & 0x7) << 3)
-            | (self.preference & 0x7)
+            | (self.mode_of_operation << 3)
+            | self.preference
         )
         return (
             bytes([self.rpl_instance_id, self.version])
