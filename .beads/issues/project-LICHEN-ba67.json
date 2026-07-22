@@ -3,15 +3,15 @@
   "title": "renode_server.py: orphan asyncio tasks in RX callbacks",
   "description": "File: python/src/lichen/sim/renode_server.py\nLines: 260, 271\n\n_on_rx_packet and _on_rx_timeout create tasks via asyncio.create_task() that are never awaited or tracked:\n\n    asyncio.create_task(self.push_to_renode(msg))\n\nIf push_to_renode raises RuntimeError (no client connected) or any other exception, the exception propagates to the task and produces 'Task exception was never retrieved' warnings. The tasks should be tracked and exceptions handled properly.\n\nImpact: Unhandled exceptions in async tasks; potential resource leaks; noisy error logs.",
   "notes": "Commit: d8577a592",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:27:31.561155Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:19:51.076179444Z",
+  "updated_at": "2026-07-22T20:19:51.472811823Z",
   "started_at": "2026-07-22T20:19:36.65984962Z",
-  "lease_expires_at": "2026-07-22T20:24:36.65984962Z",
-  "heartbeat_at": "2026-07-22T20:19:36.65984962Z"
+  "closed_at": "2026-07-22T20:19:51.472811823Z",
+  "close_reason": "_on_rx_packet/_on_rx_timeout now use _create_background_task with done_callback for exception handling. No orphan tasks or un-retrieved exceptions. Verified in sim tests."
 }
