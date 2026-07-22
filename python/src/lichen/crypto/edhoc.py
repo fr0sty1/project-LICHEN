@@ -341,6 +341,8 @@ class EdhocInitiator:
             )
 
         id_cred_r = pt2_items[0]
+        if id_cred_r != peer_pubkey:
+            raise ValueError("ID_CRED_R mismatch")
         signature_2 = pt2_items[1]
 
         # PRK_3e2m = PRK_2e for Suite 0 SIGN_SIGN (needed for MAC_2)
@@ -633,6 +635,8 @@ class EdhocResponder:
                 f"Malformed PLAINTEXT_3: expected at least 2 CBOR items, got {len(pt3_items)}"
             )
         id_cred_i = pt3_items[0]
+        if id_cred_i != peer_pubkey:
+            raise ValueError("ID_CRED_I mismatch")
         signature_3 = pt3_items[1]
 
         # PRK_4e3m = PRK_3e2m for SIGN_SIGN (needed for MAC_3)
