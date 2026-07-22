@@ -72,6 +72,7 @@ def test_vectors_directory_exists() -> None:
         "announce_coords.json",
         "ccp15.json",
         "ccp16.json",
+        "ccp16-desync.json",
         "meshtastic_app_compat.json",
         "meshcore_app_compat.json",
         "rpl_messages.json",
