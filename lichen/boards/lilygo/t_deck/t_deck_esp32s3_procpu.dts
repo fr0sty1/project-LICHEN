@@ -48,17 +48,18 @@
 	buttons {
 		compatible = "gpio-keys";
 		button0: button_0 {
-			/* Boot/PRG button */
 			gpios = <&gpio0 0 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
 			label = "PRG";
 			zephyr,code = <INPUT_KEY_0>;
 		};
 	};
 
-	/*
-	 * ST7789 display on SPI3 CS1, disabled until display/input bring-up
-	 * validates panel init, orientation, and bus coexistence with LoRa.
-	 */
+	power_monitor {
+		compatible = "lichen,poe-pg";
+		pg-gpios = <&gpio0 21 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+	};
+
 	tdeck_mipi_dbi: mipi-dbi {
 		compatible = "zephyr,mipi-dbi-spi";
 		spi-dev = <&spi3>;
