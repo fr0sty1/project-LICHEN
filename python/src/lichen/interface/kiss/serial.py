@@ -78,11 +78,11 @@ class KissSerialConnection:
 
     async def send_frame(self, payload: bytes, port: int = 0) -> None:
         """Send a frame to the KISS host (radio RX -> host)."""
-        if self._closed or self._serial is None:
+        if self._closed or self._serial is None or self._loop is None:
             raise ConnectionError("serial port not open")
 
         data = self.handler.rx_frame(payload, port)
-        ser = self._serial  # Capture to avoid race with close()
+        ser = self._serial
 
         def _write():
             if ser is None or not ser.is_open:
@@ -99,13 +99,13 @@ class KissSerialConnection:
         Returns:
             True if still running, False if closed or RETURN received.
         """
-        if self._serial is None:
+        if self._serial is None or self._loop is None:
             raise ConnectionError("serial port not open")
 
         if self._closed or self.handler.exited:
             return False
 
-        ser = self._serial  # Capture to avoid race with close()
+        ser = self._serial
 
         def _read():
             if ser is None or not ser.is_open:
