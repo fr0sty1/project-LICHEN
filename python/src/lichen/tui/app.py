@@ -322,7 +322,6 @@ class SimNodeApp(App[None]):
         log = self.query_one("#event-log", RichLog)
         timestamp = datetime.now().strftime("%H:%M:%S")
 
-        # Color by level
         colors = {
             "info": "cyan",
             "warn": "yellow",
@@ -349,13 +348,11 @@ class SimNodeApp(App[None]):
             )
             await self._radio.connect()
 
-            # Update status widget
             status = self.query_one(ConnectionStatus)
             status.set_connected(self._host, self._port, self._sim_id, self._node_id)
 
             self._log_event("info", "Connected successfully")
 
-            # Get initial time
             await self._update_sim_time()
 
         except SimRadioError as e:
@@ -373,15 +370,13 @@ class SimNodeApp(App[None]):
                     await self._radio.close()
             self._radio = None
 
-        @work(exclusive=True, group="connect")
-        async def _disconnect(self) -> None:
-            """Disconnect from the simulator (async worker)."""
-            if self._radio is None:
-                self._log_event("warn", "Not connected")
-
+    @work(exclusive=True, group="connect")
+    async def _disconnect(self) -> None:
+        """Disconnect from the simulator (async worker)."""
+        if self._radio is None:
+            self._log_event("warn", "Not connected")
             return
 
-        # Cancel any pending receive
         if self._receive_task is not None:
             self._receive_task.cancel()
             self._receive_task = None
