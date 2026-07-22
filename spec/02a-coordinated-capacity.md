@@ -551,6 +551,216 @@ beacons consume airtime, empty cells waste opportunities, and legacy nodes may
 collide with scheduled CH0 cells. Compatibility means continued communication
 and bounded fallback, not guaranteed improvement.
 
+## CCP-13a. Desync Recovery State Machine
+
+This section defines how a node detects synchronization loss and recovers.
+Terminology uses plain language because the state machine must be implementable
+by firmware engineers without real-time systems backgrounds.
+
+### States
+
+A CCP-capable node is always in exactly one of these states:
+
+| State | Meaning | Channel behavior |
+|-------|---------|------------------|
+| UNJOINED | Never successfully synchronized | CH0 only; cannot hop |
+| JOINED | Clock is trusted; normal operation | Hop per schedule |
+| DRIFT | Clock may be drifting; watching | Hop with extended RX windows |
+| RECOVER | Clock is untrusted; seeking beacon | CH0 only; stopped hopping |
+
+### State Diagram
+
+```
+                         beacon_rx
+    ┌──────────┐ ───────────────────────▶ ┌──────────┐
+    │ UNJOINED │                          │  JOINED  │
+    └──────────┘                          └────┬─────┘
+         ▲                                     │
+         │                                     │ no_beacon(T_DRIFT_WARN)
+         │                                     ▼
+         │                                ┌─────────┐
+         │          beacon_rx             │  DRIFT  │
+         │       ◀───────────────────     └────┬────┘
+         │       │                             │
+         │       │                             │ no_beacon(T_DRIFT_MAX)
+         │       │                             ▼
+         │       │                        ┌─────────┐
+         └───────┴─── no_beacon(T_GIVE_UP)│ RECOVER │
+                      beacon_rx           └─────────┘
+                   ◀──────────────────────────┘
+```
+
+### Clock Reference
+
+The SX1262 temperature-compensated oscillator (TCXO) is the timing reference,
+not the nRF52840 main crystal. Typical accuracy:
+
+| Source | Accuracy | Drift per minute |
+|--------|----------|------------------|
+| nRF52840 crystal | ±40 ppm | ±2.4 ms |
+| SX1262 TCXO | ±2.5 ppm | ±0.15 ms |
+
+At ±2.5 ppm, a node drifts approximately 0.3 ms after 2 minutes without
+synchronization—within tolerance for typical 10–50 ms slots.
+
+### Timers
+
+| Timer | Default | Description |
+|-------|---------|-------------|
+| `T_DRIFT_WARN` | 30 s | Time without beacon before entering DRIFT |
+| `T_DRIFT_MAX` | 120 s | Time in DRIFT before entering RECOVER |
+| `T_GIVE_UP` | 600 s | Time in RECOVER before returning to UNJOINED |
+
+`T_GIVE_UP` MUST be configurable. The default balances battery life against
+recovery robustness. Deployments with frequent temporary RF shadows MAY
+increase it; solar-powered nodes MAY decrease it.
+
+### Transitions
+
+#### UNJOINED → JOINED
+
+**Trigger:** Receive authenticated beacon containing SFN and epoch.
+
+**Actions:**
+1. Set local SFN and epoch from beacon.
+2. Set `wall_clock_valid = true`.
+3. Start drift watchdog with period `T_DRIFT_WARN`.
+4. Begin channel hopping per schedule.
+
+A node in UNJOINED MUST listen on CH0 continuously. It cannot hop because it
+does not know the current time.
+
+#### JOINED → DRIFT
+
+**Trigger:** Drift watchdog expires (no beacon received for `T_DRIFT_WARN`).
+
+**Actions:**
+1. Extend RX window by 50% on each channel.
+2. Start recovery countdown with period `T_DRIFT_MAX`.
+3. Continue hopping but with extended windows.
+
+The extended window hedges against clock uncertainty without abandoning the
+schedule. A quiet network is not necessarily a lost network.
+
+#### DRIFT → JOINED
+
+**Trigger:** Receive authenticated beacon.
+
+**Actions:**
+1. Apply small SFN correction if within tolerance.
+2. Reset drift watchdog.
+3. Cancel recovery countdown.
+4. Restore normal RX window duration.
+
+Small corrections adjust for measured drift. A correction exceeding the
+guard budget indicates the node was further off than believed; it MUST
+transition to RECOVER instead.
+
+#### DRIFT → RECOVER
+
+**Trigger:** Recovery countdown expires (`T_DRIFT_MAX` elapsed without beacon).
+
+**Actions:**
+1. Set `wall_clock_valid = false`.
+2. Stop channel hopping immediately.
+3. Return to CH0 and listen continuously.
+
+A node in RECOVER MUST NOT transmit in scheduled cells. Its clock is
+untrusted and it would likely transmit in the wrong slot, causing collisions.
+
+Recovery is passive: the node listens on CH0 for beacons. It does not
+actively solicit beacons because:
+- Solicitation consumes airtime on an already-stressed network.
+- A lost node does not know when its solicitation would collide.
+- Beacons arrive at coordinator-controlled intervals regardless.
+
+#### RECOVER → JOINED
+
+**Trigger:** Receive authenticated beacon on CH0.
+
+**Actions:**
+1. Hard-reset SFN and epoch from beacon (not a small correction).
+2. Set `wall_clock_valid = true`.
+3. Start drift watchdog.
+4. Resume channel hopping.
+5. Log recovery event for diagnostics.
+
+The hard reset acknowledges that the node's prior time estimate was wrong.
+
+#### RECOVER → UNJOINED
+
+**Trigger:** No beacon received for `T_GIVE_UP`.
+
+**Actions:**
+1. Clear cached routing and schedule state (it is stale).
+2. Enter low-power periodic listen mode on CH0.
+3. Remain in UNJOINED until beacon reception.
+
+This transition indicates prolonged isolation. The node conserves power while
+remaining available for rejoining.
+
+### Multi-Root Conflict
+
+A node MAY receive beacons from multiple roots with different epochs.
+
+**Resolution order:**
+1. Prefer the root with the higher epoch number.
+2. If epochs are equal, prefer the root the node was already following.
+3. If newly joining, prefer the root with the lower Node ID (deterministic
+   tiebreak).
+
+Higher epoch indicates more recent network time. A node MUST NOT oscillate
+between roots; once it accepts a root's beacon, it ignores lower-epoch
+beacons from other roots until it returns to UNJOINED.
+
+### RPL Version Independence
+
+An RPL DODAG version change does not reset SFN. Routing topology and time
+synchronization are independent concerns. A node MAY experience an RPL
+version increment while remaining in JOINED with unchanged time state.
+
+Exception: if the RPL version change accompanies a new CCP epoch from the
+same root, the node treats the epoch change normally.
+
+### SFN Wraparound
+
+SFN is an unsigned integer that wraps to zero. Wraparound within the same
+epoch is expected and handled by modular arithmetic.
+
+When local SFN wraps:
+1. Increment local epoch counter.
+2. Continue hopping normally.
+
+If a received beacon's epoch differs from the local epoch by more than one,
+the node's time estimate is grossly wrong. It MUST transition to RECOVER
+regardless of current state.
+
+### GPS-Capable Nodes
+
+Nodes with GNSS-PPS hardware MAY use GPS time instead of beacon time:
+
+- `wall_clock_valid = true` when GPS lock is acquired with valid PPS.
+- GPS provides authoritative SFN; beacons are used to detect epoch changes.
+- Loss of GPS lock starts the drift watchdog as if a beacon were missed.
+
+GPS-capable nodes still listen for beacons to detect:
+- Epoch increments from the root.
+- Network-wide schedule changes.
+- Multi-root conflicts.
+
+### Implementation Notes
+
+1. **Drift watchdog** resets on any authenticated beacon reception, not only
+   beacons from the preferred root.
+
+2. **Extended RX windows** in DRIFT increase power consumption. The 50%
+   extension is a tradeoff; deployments MAY tune this via configuration.
+
+3. **Recovery logging** aids debugging but MUST NOT delay state transitions.
+
+4. **State persistence** across reboot: a node that reboots without
+   persisted time state MUST start in UNJOINED regardless of prior state.
+
 ## CCP-14. Security Requirements
 
 - Capability, join, schedule, revocation, disable, request,
