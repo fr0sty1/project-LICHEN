@@ -89,7 +89,25 @@ No flag day required.
 
 SF10 MUST remain the default and fallback SF. New nodes MUST use SF10 when communicating with old nodes (no SF field in their announces). New nodes MUST accept traffic on any SF (RX is already multi-SF capable via CAD). Announce MAY include TX_SF field; absence means SF10.
 
-Adaptation logic: if dst.tx_sf is known (from announce): use adapted SF based on SNR to that neighbor else: use SF10 (safe default, works with old nodes).
+Adaptation logic (normative, density-aware per CCP §2a.7.2):
+
+```pseudocode
+function adaptive_sf_select(density: u8, snr_ema: f32, load_factor: f32 = 0.0) -> u8
+    // Floating-point exactness: IEEE-754 f32 required for test vector match (EMA rounded to 6 decimals per ccp15.json).
+    // Embedded no_std note: avoid f32 in hot path; use Q7.8 fixed-point (snr_ema * 256, integer mul/add/shift) or lookup table. See rf_health.rs:64, lichen_rpl_update_sf for reference.
+    // Vector cross-refs per branch (ccp15.json + ccp_load_balancing.json):
+    //   high-density (>8 or load>0.8 or snr_ema<0): seed1 -> SF11
+    //   low-density good link (<5 and snr_ema>8): low_density_capacity -> SF9/SF7
+    //   poor link (>20 or snr_ema<-5): SF12
+    //   default: SF10 (baseline per 7.1)
+    if density > 8 or snr_ema < 0.0 or load_factor > 0.8:
+        return 11
+    elif density < 5 and snr_ema > 8.0:
+        return 9
+    elif density > 20 or snr_ema < -5.0:
+        return 12
+    return 10
+```
 
 Degradation: Old nodes always use SF10 (no adaptation). New nodes adapt when talking to new nodes. New-to-old: SF10. Benefit scales with fraction of new nodes.
 
