@@ -5,11 +5,11 @@
   "status": "closed",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": "Mark Atwood",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:39:31.239471Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-13T04:26:09.844693Z",
-  "closed_at": "2026-07-13T04:26:09.844693Z",
-  "close_reason": "Closed"
+  "updated_at": "2026-07-22T20:17:00.000000000Z",
+  "closed_at": "2026-07-22T20:17:00.000000000Z",
+  "close_reason": "dec_int now validates val <= i64::MAX before cast/negation (cbor.rs:252-254), uses - (val as i64) - 1. Defense-in-depth for future dec_head extensions. Matches suggested fix exactly. Commit recorded."
 }
