@@ -2,11 +2,15 @@
   "id": "project-LICHEN-kaow",
   "title": "update_neighbor_coords: stores unvalidated coordinates",
   "description": "File: python/src/lichen/routing/router.py:629-631\n\n```python\ndef update_neighbor_coords(\n    self, neighbor: IPv6Address, coords: tuple[float, float]\n) -\u003e None:\n    \"\"\"Update coords for a neighbor (from their announce).\"\"\"\n    self.neighbor_coords[neighbor] = coords  # No validation!\n```\n\nWhile gpsr_forward() validates coords before USE (lines 794-799), update_neighbor_coords() stores them without any validation.\n\nWHY IT'S A BUG: \n1. Invalid coords (NaN, inf, out-of-range, null island) are stored in neighbor_coords\n2. gpsr_forward() must check every neighbor every time, instead of rejecting bad data at ingestion\n3. Logging at line 796-797 happens on every GPSR lookup, not once at ingestion\n4. Inconsistent with how dst_coords are handled (validated in gpsr_forward before any use)\n\nIMPACT: Performance degradation from repeated validation; log spam from repeated warnings for same invalid neighbor; conceptual inconsistency in where validation occurs.\n\nFIX: Validate in update_neighbor_coords and reject invalid coords:\n```python\ndef update_neighbor_coords(self, neighbor: IPv6Address, coords: tuple[float, float]) -\u003e bool:\n    lat, lon = coords\n    if not _validate_coords(lat, lon):  # extract validation to helper\n        logger.warning(\"rejecting invalid coords for neighbor %s\", neighbor)\n        return False\n    self.neighbor_coords[neighbor] = coords\n    return True\n```",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:24:26.928867Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:24:26.928892Z"
+  "updated_at": "2026-07-22T20:20:06.762663953Z",
+  "started_at": "2026-07-22T20:20:06.762663953Z",
+  "lease_expires_at": "2026-07-22T20:25:06.762663953Z",
+  "heartbeat_at": "2026-07-22T20:20:06.762663953Z"
 }
