@@ -97,32 +97,30 @@ def _coap_has_oscore_option(coap: bytes) -> bool:
         offset += 1
 
         if delta == 13:
-            if offset >= len(coap):
+            if offset + 1 > len(coap):
                 return False
             delta = coap[offset] + 13
             offset += 1
         elif delta == 14:
-            if offset + 1 >= len(coap):
+            if offset + 2 > len(coap):
                 return False
             delta = int.from_bytes(coap[offset : offset + 2], "big") + 269
             offset += 2
         elif delta == 15:
-            # Reserved
             return False
 
         # Parse option length
         if length == 13:
-            if offset >= len(coap):
+            if offset + 1 > len(coap):
                 return False
             length = coap[offset] + 13
             offset += 1
         elif length == 14:
-            if offset + 1 >= len(coap):
+            if offset + 2 > len(coap):
                 return False
             length = int.from_bytes(coap[offset : offset + 2], "big") + 269
             offset += 2
         elif length == 15:
-            # Reserved
             return False
 
         option_number += delta
