@@ -215,20 +215,10 @@ class AnnounceProcessor:
                 reject_reason=AnnounceRejectReason.STALE_SEQNUM,
             )
 
-        # Accept: pin pubkey (TOFU first-contact), update seen, update gradient.
-        # Use LRU eviction to bound memory: move to end, then evict oldest if over limit.
-        self._pinned_keys[iid] = announce.pubkey
-        self._pinned_keys.move_to_end(iid)
-        while len(self._pinned_keys) > MAX_ENTRIES:
-            self._pinned_keys.popitem(last=False)
-
-        self._seen[iid] = announce.seq_num
-        self._seen.move_to_end(iid)
-        while len(self._seen) > MAX_ENTRIES:
-            self._seen.popitem(last=False)
-
-        # Step 5: Update gradient table
-        # Why build full IPv6: Gradient table uses full addresses for lookup.
+        # Step 5: Update gradient table first (preferred ordering).
+        # Why before _seen/_pinned: if address_builder or gradient.update fails,
+        # do not pollute seen cache (future same-seq announces would be rejected
+        # as STALE but no route installed). Matches bug report qndk.
         destination = self.address_builder(iid)
         coords = decode_coords(announce.app_data)  # None if not present
         congestion = decode_congestion(announce.app_data)  # None if not present
@@ -242,6 +232,17 @@ class AnnounceProcessor:
             coords=coords,
         )
         self.gradient_table.update(entry, now=now_ms)
+
+        # Accept: pin pubkey (TOFU), update seen (LRU-bounded).
+        self._pinned_keys[iid] = announce.pubkey
+        self._pinned_keys.move_to_end(iid)
+        while len(self._pinned_keys) > MAX_ENTRIES:
+            self._pinned_keys.popitem(last=False)
+
+        self._seen[iid] = announce.seq_num
+        self._seen.move_to_end(iid)
+        while len(self._seen) > MAX_ENTRIES:
+            self._seen.popitem(last=False)
 
         logger.debug(
             "announce accepted: originator=%s seq=%d hops=%d via=%s",
