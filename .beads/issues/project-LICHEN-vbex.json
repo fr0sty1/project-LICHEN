@@ -2,11 +2,15 @@
   "id": "project-LICHEN-vbex",
   "title": "router.c: Unused variable oldest_time in lichen_router_queue_pending",
   "description": "File: lichen/subsys/lichen/routing/router.c\nLines: 270-286\n\nIn lichen_router_queue_pending():\n\n    int dest_count = 0;\n    struct lichen_pending_packet *oldest_for_dest = NULL;\n    uint32_t oldest_time = 0xFFFFFFFF;  // \u003c-- initialized\n\n    for (size_t i = 0; i \u003c CONFIG_LICHEN_ROUTER_MAX_PENDING; i++) {\n        ...\n        if (memcmp(p-\u003edestination_iid, dst_iid, 8) == 0) {\n            dest_count++;\n            if (oldest_for_dest == NULL ||\n                (int32_t)(p-\u003equeued_at_ms - oldest_for_dest-\u003equeued_at_ms) \u003c 0) {\n                oldest_for_dest = p;\n                oldest_time = p-\u003equeued_at_ms;  // \u003c-- assigned but never read\n            }\n        }\n    }\n\nThe variable oldest_time is assigned but never read. Same pattern as gradient.c find_lru. Dead code that should be removed.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:49:58.432686Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:49:58.432725Z"
+  "updated_at": "2026-07-22T23:07:24.611927349Z",
+  "started_at": "2026-07-22T23:07:24.611927349Z",
+  "lease_expires_at": "2026-07-22T23:12:24.611927349Z",
+  "heartbeat_at": "2026-07-22T23:07:24.611927349Z"
 }
