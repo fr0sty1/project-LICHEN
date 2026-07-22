@@ -101,6 +101,10 @@ class TestMeshScale:
         n_nodes = min(SCALE_NODES, SCALE_CAP)  # Cap for this test (configurable, no hardcoded)
         random.seed(42)  # reproducibility for conference/dense mesh stress (exercises radio/medium/chaos)
 
+        # Exercise full stack + chaos (fixes bypass in conference test per project-LICHEN-1jvr)
+        if sim.chaos_engine is not None:
+            sim.chaos_engine.add_rule(DropRule(node_id="node-0", direction="rx"))
+
         # Setup nodes
         start = time.time()
         radios = []
