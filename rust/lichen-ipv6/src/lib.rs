@@ -957,10 +957,10 @@ mod tests {
         // Should be IPv6 header + ICMPv6 reply
         assert!(pkt.len() > IPV6_HEADER_LEN);
 
-        // Parse response
         let (resp_ip, resp_payload) = parse_packet(&pkt).unwrap();
         assert_eq!(resp_ip.src, local);
         assert_eq!(resp_ip.dst, remote);
+        assert_eq!(resp_ip.hop_limit, 255);
         assert_eq!(resp_payload[0], icmpv6_type::ECHO_REPLY);
     }
 

@@ -488,7 +488,6 @@ class NodeServer:
             await write_message(writer, encode_err(1, f"Invalid RX_ENTER: {e}"))
             return
 
-        # Result holder for callbacks
         rx_result: list[tuple[bytes, int, int] | None] = [None]
         rx_done = asyncio.Event()
 
@@ -499,7 +498,7 @@ class NodeServer:
         def on_timeout() -> None:
             rx_done.set()
 
-        # Enter push-based RX mode
+        entered = False
         try:
             self._simulation.enter_rx_mode(
                 node_id,
@@ -507,28 +506,31 @@ class NodeServer:
                 on_packet,
                 on_timeout,
             )
+            entered = True
         except ValueError as e:
             logger.error("Failed to enter RX mode for %s: %s", node_id, e)
             await write_message(writer, encode_err(7, str(e)))
             return
 
-        # Wait for callback to fire - simulation driver handles time advancement
-        await rx_done.wait()
+        try:
+            await rx_done.wait()
 
-        # Send response
-        if rx_result[0] is not None:
-            pkt_payload, rssi, snr = rx_result[0]
-            logger.debug(
-                "RX_ENTER at %s: %d bytes, RSSI %d, SNR %d",
-                node_id,
-                len(pkt_payload),
-                rssi,
-                snr,
-            )
-            await write_message(writer, encode_rx_packet(pkt_payload, rssi, snr))
-        else:
-            logger.debug("RX_ENTER timeout at %s after %d us", node_id, timeout_us)
-            await write_message(writer, encode_rx_timeout_push())
+            if rx_result[0] is not None:
+                pkt_payload, rssi, snr = rx_result[0]
+                logger.debug(
+                    "RX_ENTER at %s: %d bytes, RSSI %d, SNR %d",
+                    node_id,
+                    len(pkt_payload),
+                    rssi,
+                    snr,
+                )
+                await write_message(writer, encode_rx_packet(pkt_payload, rssi, snr))
+            else:
+                logger.debug("RX_ENTER timeout at %s after %d us", node_id, timeout_us)
+                await write_message(writer, encode_rx_timeout_push())
+        finally:
+            if entered:
+                self._simulation.exit_rx_mode(node_id)
 
     def _handle_rx_exit(self, node_id: str) -> None:
         """Handle an RX_EXIT message.
