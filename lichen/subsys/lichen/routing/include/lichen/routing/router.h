@@ -403,15 +403,14 @@ void lichen_router_remove_mesh_prefix(struct lichen_router *router,
 /**
  * @brief Callback when LOADng discovers a route.
  *
- * Installs a gradient entry for the discovered route.
- * Caller should then retrieve pending packets via lichen_router_get_pending(),
- * forward them, and clear with lichen_router_clear_pending().
+ * Installs gradient and clears pending packets for dst (caller must
+ * lichen_router_get_pending() first to retrieve/forward).
  *
  * @param router Router instance.
  * @param dst_iid 8-byte destination IID.
  * @param next_hop 16-byte next hop IPv6 address.
  * @param now_ms Current time in milliseconds.
- * @return Number of pending packets awaiting forwarding.
+ * @return Number of packets cleared.
  */
 int lichen_router_on_route_discovered(struct lichen_router *router,
 				      const uint8_t dst_iid[8],

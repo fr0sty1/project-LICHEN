@@ -495,16 +495,7 @@ int lichen_router_on_route_discovered(struct lichen_router *router,
 
 	lichen_gradient_update(&router->gradient_table, &entry, now_ms);
 
-	/* Count pending packets (caller must retrieve and forward them, then
-	 * call lichen_router_clear_pending() explicitly) */
-	int count = 0;
-	for (size_t i = 0; i < CONFIG_LICHEN_ROUTER_MAX_PENDING; i++) {
-		struct lichen_pending_packet *p = &router->pending[i];
-		if (p->valid && memcmp(p->destination_iid, dst_iid, 8) == 0) {
-			count++;
-		}
-	}
-	return count;
+	return lichen_router_clear_pending(router, dst_iid);
 }
 
 void lichen_router_set_coords(struct lichen_router *router,
