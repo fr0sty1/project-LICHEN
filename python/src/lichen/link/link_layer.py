@@ -357,10 +357,6 @@ class LinkLayer:
             if len(self.tx_queue) == 0:
                 break  # Queue empty
 
-            # CAD before pop - on failure, packets remain safely queued.
-            # Why not pop first: Re-queuing after CAD failure can raise
-            # QueueFullError if queue is full of same-priority packets
-            # (e.g., ROUTING cannot preempt ROUTING), losing the packet.
             if self.cad_enabled and not await self._wait_for_clear_channel():
                 logger.warning(
                     "TX deferred: channel busy after %d backoff cycles, "
