@@ -11,6 +11,7 @@
 #include <zephyr/sys/util.h>
 
 #include <lichen/meshtastic/adapter.h>
+#include <lichen/meshtastic/pb_internal.h>
 
 #define MESHTASTIC_STREAM_MAGIC0 0x94U
 #define MESHTASTIC_STREAM_MAGIC1 0xc3U
@@ -99,20 +100,6 @@
 #define LICHEN_BRAND "LICHEN"
 #define MESHTASTIC_BRAND "meshtastic"
 
-/* Protobuf wire types per https://protobuf.dev/programming-guides/encoding/ */
-#define PB_WT_VARINT 0U
-#define PB_WT_64BIT 1U
-#define PB_WT_LEN 2U
-#define PB_WT_SGROUP 3U  /* Deprecated: proto2 start group marker */
-#define PB_WT_EGROUP 4U  /* Deprecated: proto2 end group marker */
-#define PB_WT_32BIT 5U
-/* Wire types 6 and 7 are reserved/undefined per protobuf spec */
-
-struct pb_cursor {
-	const uint8_t *buf;
-	size_t len;
-	size_t pos;
-};
 
 struct nodedb_peer_state {
 	struct lichen_meshtastic_peer_snapshot peers[MESHTASTIC_NODEDB_MAX_PEERS];

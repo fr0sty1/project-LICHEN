@@ -377,7 +377,7 @@ static void uart_rx_callback(const struct device *dev, void *user_data)
 
 			if (written == 0) {
 				LOG_WRN("KISS RX: ring buffer overflow");
-				ctx->stats.overflow_errors++;
+				atomic_inc((atomic_t *)&ctx->stats.overflow_errors);
 			}
 			k_sem_give(&ctx->rx_sem);
 		}

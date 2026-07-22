@@ -36,6 +36,7 @@
 #include <zephyr/net/net_pkt.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/ring_buffer.h>
+#include <zephyr/sys/atomic.h>
 
 LOG_MODULE_REGISTER(slip_transport, CONFIG_SLIP_TRANSPORT_LOG_LEVEL);
 
@@ -388,6 +389,7 @@ static void uart_rx_callback(const struct device *dev, void *user_data)
 			if (written == 0) {
 				/* Ring buffer full - drop byte */
 				LOG_WRN("SLIP RX: ring buffer overflow");
+				atomic_inc((atomic_t *)&ctx->stats.rx_overflow);
 			}
 			k_sem_give(&ctx->rx_sem);
 		}

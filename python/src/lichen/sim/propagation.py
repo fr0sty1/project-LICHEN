@@ -33,14 +33,14 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-# Sensitivity thresholds at 125kHz bandwidth (from LoRaSim)
+# Sensitivity thresholds at 125kHz bandwidth (LoRaSim for SFs; AN1200.64 for LR-FHSS)
 SENSITIVITY_SF7 = -123.0
 SENSITIVITY_SF8 = -126.0
 SENSITIVITY_SF9 = -129.0
 SENSITIVITY_SF10 = -132.0
 SENSITIVITY_SF11 = -134.5
 SENSITIVITY_SF12 = -137.0
-SENSITIVITY_LR_FHSS = -135.0
+SENSITIVITY_LR_FHSS = -137.0
 SENSITIVITY_DEFAULT = SENSITIVITY_SF10
 
 # Capture effect threshold: stronger signal wins if delta >= 6 dB
