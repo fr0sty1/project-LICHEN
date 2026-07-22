@@ -2,11 +2,15 @@
   "id": "project-LICHEN-v82v",
   "title": "[kimi-review] 7f46d18: [SEVERITY: high] **Thread blocked in I/O never sees the flag",
   "description": "Commit: 7f46d1898\nMessage: fix(kiss): stop RX thread in deinit with shutdown flag\n\nFinding: [SEVERITY: high] **Thread blocked in I/O never sees the flag** — If the RX thread blocks in `read()`/`recv()` on the serial port/socket, setting a flag won't wake it. Deinit will hang on `join()` or the thread outlives deinit. Typically requires closing the fd, a self-pipe/`eventfd`, or a `select()`/`poll()` timeout.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T22:07:36.411341329Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T22:07:36.411341329Z"
+  "updated_at": "2026-07-22T22:28:58.327457121Z",
+  "started_at": "2026-07-22T22:28:58.327457121Z",
+  "lease_expires_at": "2026-07-22T22:33:58.327457121Z",
+  "heartbeat_at": "2026-07-22T22:28:58.327457121Z"
 }
