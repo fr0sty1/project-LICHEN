@@ -166,7 +166,6 @@ int lichen_gradient_update(struct lichen_gradient_table *table,
 		if (slot == NULL) {
 			return -ENOMEM;
 		}
-		/* Guard against underflow if count tracking is out of sync */
 		if (table->count > 0) {
 			table->count--;
 		}
