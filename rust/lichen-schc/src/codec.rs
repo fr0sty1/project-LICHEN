@@ -202,15 +202,18 @@ fn finalize(sum: u32) -> u16 {
     !(s as u16)
 }
 
-fn udp_checksum(src: &[u8], dst: &[u8], src_port: u16, dst_port: u16, payload: &[u8]) -> u16 {
-    let udp_len = (8 + payload.len()) as u16;
+fn udp_checksum(src: &[u8], dst: &[u8], src_port: u16, dst_port: u16, payload: &[u8]) -> Result<u16, SchcError> {
+    let total_len = 8usize.saturating_add(payload.len());
+    if total_len > u16::MAX as usize {
+        return Err(BufferTooSmall::new(total_len, u16::MAX as usize).into());
+    }
+    let udp_len = total_len as u16;
     let mut sum = pseudo_sum(src, dst, 17, udp_len);
     sum = oc_add(sum, src_port as u32);
     sum = oc_add(sum, dst_port as u32);
     sum = oc_add(sum, udp_len as u32);
-    // checksum field (0 during computation)
     sum = oc_add(sum, checksum_bytes(payload));
-    finalize(sum)
+    Ok(finalize(sum))
 }
 
 fn icmpv6_checksum(src: &[u8], dst: &[u8], icmpv6_payload: &[u8]) -> u16 {
