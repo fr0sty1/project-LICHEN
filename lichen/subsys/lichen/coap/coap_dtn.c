@@ -12,6 +12,8 @@
 
 LOG_MODULE_REGISTER(lichen_coap_dtn, CONFIG_LICHEN_COAP_DEADDROP_LOG_LEVEL);
 
+#define CONFESSIONS_RATE_LIMIT_S 30
+
 static const struct lichen_deaddrop_provider *s_provider;
 static struct lichen_dtn_buffer s_dtn_buf;
 static struct senml_pack s_senml_pack;
@@ -80,7 +82,7 @@ static int deaddrop_get(struct coap_resource *resource, struct coap_packet *requ
 static int confessions_post(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len) {
 	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
 	uint32_t now = dtn_get_unix_time();
-	if (now - s_last_confessions < 30) {
+	if (now - s_last_confessions < CONFESSIONS_RATE_LIMIT_S) {
 		k_mutex_unlock(&s_dtn_buf_mutex);
 		return 0xa0;
 	}
