@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-sa32",
   "title": "WiFi station mode and net_mgmt event handler in main.c for Heltec V3",
+  "notes": "Commit: 8158186",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T22:42:12.536356947Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T22:46:29.93794719Z",
+  "updated_at": "2026-07-22T22:52:46.584927353Z",
   "started_at": "2026-07-22T22:46:29.93794719Z",
   "lease_expires_at": "2026-07-22T22:51:29.93794719Z",
   "heartbeat_at": "2026-07-22T22:46:29.93794719Z",
