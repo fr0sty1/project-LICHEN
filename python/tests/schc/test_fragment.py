@@ -105,9 +105,10 @@ def test_ack_complete_flag() -> None:
     ack = Ack(rule_id=20, window=0, bitmap=(), complete=True)
     # independent oracle per RFC 8724 8.3.3: 2-byte complete ACK (no n/bitmap)
     expected = b"\x14\x01"
+    assert ack.to_bytes() == expected
     restored = Ack.from_bytes(expected)
     assert restored.complete is True
-    assert restored.to_bytes() == expected
+    assert restored == ack
 
 
 def test_invalid_sender_parameters() -> None:
