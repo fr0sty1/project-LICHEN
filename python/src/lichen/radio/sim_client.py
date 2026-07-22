@@ -149,10 +149,11 @@ class SimRadio:
                 else:
                     raise SimRadioError(f"Unexpected response to REGISTER: 0x{msg_type:02x}")
             except BaseException:
-                # Close stream on any error during registration
                 if self._stream is not None:
-                    await self._stream.aclose()
-                    self._stream = None
+                    async with self._lock:
+                        if self._stream is not None:
+                            await self._stream.aclose()
+                            self._stream = None
                 raise
 
     async def transmit(self, payload: bytes) -> bool:
