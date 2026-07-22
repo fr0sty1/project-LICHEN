@@ -651,7 +651,7 @@ impl EdhocInitiator {
     /// # Errors
     /// Returns `OscoreError::NoContext` if called before handshake completes
     /// (i.e., before `process_message_2` succeeds).
-    pub fn export_oscore(&self) -> Result<Context, OscoreError> {
+    pub fn export_oscore(self) -> Result<Context, OscoreError> {
         // SECURITY: Reject export before handshake completes. Without this check,
         // keys would be derived from zeroed PRK/TH state, producing deterministic
         // but wrong keys that won't match the peer's keys.
@@ -1066,7 +1066,7 @@ impl EdhocResponder {
     /// # Errors
     /// Returns `OscoreError::NoContext` if called before handshake completes
     /// (i.e., before `process_message_3` succeeds).
-    pub fn export_oscore(&self) -> Result<Context, OscoreError> {
+    pub fn export_oscore(self) -> Result<Context, OscoreError> {
         // SECURITY: Reject export before handshake completes. Without this check,
         // keys would be derived from zeroed PRK/TH state, producing deterministic
         // but wrong keys that won't match the peer's keys.
