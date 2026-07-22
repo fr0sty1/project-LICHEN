@@ -6,9 +6,10 @@
 //! Centralizing the paths keeps client apps from drifting onto stale or
 //! never-implemented endpoints. For example, the messaging inbox is
 //! [`MSG_INBOX`] (`/msg/inbox`) — the firmware never exposed the legacy
-//! `/messages` path some early clients used.
+//! `/messages` path some early clients used. The CLI was updated to use
+//! only supported paths (`/status/neighbors` not `/presence` or `/neighbors`).
 //!
-//! Sources: `lichen/subsys/lichen/coap/coap_msg.c`, `spec/12-apps.md` §18.1.
+//! Sources: `lichen/subsys/lichen/coap/`, `spec/11-lci.md`, `spec/12-apps.md`.
 
 /// Node status snapshot (GET, Observable).
 pub const STATUS: &str = "/status";
@@ -35,8 +36,6 @@ pub fn keys_iid(iid: &str) -> String {
 }
 
 // --- Position sharing (spec §18.2) -----------------------------------------
-// NOTE: these resources are specified but not yet served by the firmware; the
-// `lichen-client` position codec targets them so clients are ready in advance.
 
 /// Query a node's current position (GET, `application/senml+cbor`). §18.2.2.
 pub const SENSORS_LOCATION: &str = "/sensors/location";

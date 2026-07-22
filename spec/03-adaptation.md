@@ -94,7 +94,47 @@ Rule 3 for DIO (code=1), Rule 4 for DAO with D=1 (kd_flags bit 6 set, DODAGID pr
 | RPL.seq (or dtsn/gmop/rank for DIO) | - | ignore | value-sent |
 | RPL.dodagid | - | ignore | value-sent |
 
-**Compressed size:** 6-10 bytes (RuleID + hop/IID residue + RPL fields).
+**Compressed size: 2 bytes** (Rule ID + 2x 4-bit port residue)
+
+**Rule 1: Global IPv6 + UDP (internet-routable)**
+
+| Field | TV | MO | CDA |
+|-------|----|----|-----|
+| IPv6.SrcPrefix | 02xx-prefix/64 | equal | not-sent |
+| IPv6.DstPrefix | 0 | ignore | value-sent (64 bits) |
+| (other fields as Rule 0) | | | |
+
+**Compressed size: 10 bytes** (includes full destination prefix)
+
+**Rule 7: IPv6 + UDP + MQTT-SN (port 10883)**
+
+MQTT-SN uses port 10883 (outside CoAP range compressed by Rules 0/1). Rule 7 supports both link-local and global addresses (via address-mode bit) and direction bit + residue for the non-10883 port. See draft-lichen-schc-lora-00.md §4 and Rust implementation for exact residue format. Updated to align with appendix A.1 (ICMP=Rule 2).
+
+| Field | TV | MO | CDA |
+|-------|----|----|-----|
+| IPv6.Version | 6 | equal | not-sent |
+| IPv6.TrafficClass | 0 | equal | not-sent |
+| IPv6.FlowLabel | 0 | equal | not-sent |
+| IPv6.PayloadLength | - | ignore | compute |
+| IPv6.NextHeader | 17 (UDP) | equal | not-sent |
+| IPv6.HopLimit | 64 | ignore | not-sent |
+| IPv6.SrcPrefix | fe80::/64 | equal | not-sent |
+| IPv6.SrcIID | - | equal | not-sent (from L2) |
+| IPv6.DstPrefix | fe80::/64 | equal | not-sent |
+| IPv6.DstIID | - | equal | not-sent (from L2) |
+| UDP.SrcPort | 10883 | equal | not-sent |
+| UDP.DstPort | 10883 | equal | not-sent |
+| UDP.Length | - | ignore | compute |
+| UDP.Checksum | - | ignore | compute |
+
+**Compressed size: 1 byte** (Rule ID only; both ports exactly match)
+
+**Port Compression Note:**
+
+Rules 0 and 1 use MSB(12)/LSB(4) matching on port 5683, compressing any port
+in the range 5680-5695 to a 4-bit residue. This range covers CoAP (5683),
+compact CoT (5681), SenML (5682), Cayenne LPP (5685), APRS-IS (5686), and
+NMEA (5687). See Section 9.1 for the complete port allocation.
 
 ### 5.6. Fragmentation
 

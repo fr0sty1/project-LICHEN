@@ -30,8 +30,6 @@
 
 LOG_MODULE_REGISTER(lichen_coap_location, CONFIG_LICHEN_COAP_LOCATION_LOG_LEVEL);
 
-#include <lichen/coap_server.h>
-
 /* Bounded: base record (~40 B urn) + lat/lon/alt records. 128 B is ample. */
 #define LOCATION_SENML_MAX 128
 
@@ -68,9 +66,8 @@ static int sensors_location_get(struct coap_resource *resource,
 
 	if (lichen_hal_location_time_snapshot_get(&snap) < 0 ||
 	    !snap.latitude_e7_valid || !snap.longitude_e7_valid) {
-		/* No usable fix yet. */
-		return lichen_coap_senml_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_NOT_FOUND, SENML_CBOR_CONTENT_FORMAT, NULL, 0);
 	}
 
 	lat = (float)snap.latitude_e7 / 1e7f;
@@ -85,12 +82,12 @@ static int sensors_location_get(struct coap_resource *resource,
 				    sizeof(senml));
 	if (len < 0) {
 		LOG_ERR("senml_encode_location failed: %d", len);
-		return lichen_coap_senml_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_INTERNAL_ERROR, SENML_CBOR_CONTENT_FORMAT, NULL, 0);
 	}
 
-	return lichen_coap_senml_respond(resource, request, addr, addr_len,
-			    COAP_RESPONSE_CODE_CONTENT, senml, (size_t)len);
+	return lichen_coap_respond(resource, request, addr, addr_len,
+			    COAP_RESPONSE_CODE_CONTENT, SENML_CBOR_CONTENT_FORMAT, senml, (size_t)len);
 }
 
 static const char *const sensors_location_path[] = { "sensors", "location",

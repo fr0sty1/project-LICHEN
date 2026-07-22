@@ -147,6 +147,7 @@ int gateway_announce_parse(const uint8_t *data, size_t len,
 
 	announce->flags = view.flags;
 	announce->hop_count = view.hop_count;
+	announce->rx_channel = view.rx_channel;
 	announce->seq_num = view.wire_seq_num;
 	announce->originator_iid = view.originator_iid;
 	announce->pubkey = view.pubkey;

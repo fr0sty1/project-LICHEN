@@ -1,0 +1,36 @@
+:name: T1000-E
+:description: Run LICHEN firmware on Seeed SenseCAP T1000-E (nRF52840 + LR1110 + AG3335) in Renode
+
+$name?="T1000-E"
+$simPort?=5555
+
+using sysbus
+
+# Load LR1110 (SPI fidelity + sim TX/RX), GPS (UART NMEA for GNSS), USBD (CDC/SMP)
+include $ORIGIN/../../peripherals/LR1110.cs
+include $ORIGIN/../../peripherals/GPS.cs
+include $ORIGIN/../../peripherals/USBD.cs
+
+mach create $name
+machine LoadPlatformDescription $ORIGIN/t1000_e.repl
+
+# Connect LR1110 to lichen-sim
+lr1110 SimPort $simPort
+
+# Console (uart0 via renode_console.overlay; CDC via USBD model)
+showAnalyzer uart0
+
+# 64 MIPS for nRF52840
+cpu PerformanceInMips 64
+
+macro reset
+"""
+    sysbus LoadELF $elf
+    # Vector table offset for MCUboot slot0 app (matches test_mesh.py pattern)
+    $vt=`sysbus GetSymbolAddress "_vector_table"`
+    cpu VectorTableOffset $vt
+    cpu SP `sysbus ReadDoubleWord $vt`
+    cpu PC `sysbus GetSymbolAddress "__start"`
+    cpu IsHalted false
+"""
+runMacro $reset

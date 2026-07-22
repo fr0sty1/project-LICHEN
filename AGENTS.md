@@ -204,6 +204,7 @@ The LICHEN Zephyr subsystems in `lichen/subsys/lichen/` have **implicit initiali
 | Subsystem | Init Function | Prerequisites | Thread-Safety |
 |-----------|--------------|---------------|---------------|
 | **Link Layer** | `lichen_link_init(ctx, eui64)` | None | Per-context (no global state) |
+| **TDMA** | `lichen_tdma_init(&tdma_ctx, &link_ctx)` | `lichen_link_init()` | Per-context |
 | **Link Keys** | `lichen_link_load_key(ctx, seed)` | `lichen_link_init()` | Per-context |
 | **TDMA** | `lichen_tdma_init(ctx)` | `lichen_link_load_key()` | Per-context |
 | **RPL DODAG** | `lichen_rpl_dodag_init(d, ...)` | None | Per-DODAG (caller must synchronize) |
@@ -219,23 +220,35 @@ The LICHEN Zephyr subsystems in `lichen/subsys/lichen/` have **implicit initiali
 #include <lichen/oscore.h>
 #include <lichen/rpl_dodag.h>
 #include <lichen/coap_client.h>
+#ifdef CONFIG_LICHEN_TDMA
+#include <lichen/link.h>
+#endif
 
 int lichen_node_init(const uint8_t eui64[8], const uint8_t seed[32])
 {
-	int ret;
-	static struct lichen_link_ctx link_ctx;
-	ret = lichen_link_init(&link_ctx, eui64);
-	if (ret < 0) return ret;
-	ret = lichen_link_load_key(&link_ctx, seed);
-	if (ret < 0) return ret;
-	static struct lichen_tdma_slot tdma;
-	lichen_tdma_init(&tdma);
-	ret = oscore_init();
-	if (ret < 0) return ret;
-	static struct lichen_rpl_dodag dodag;
-	uint8_t dodag_id[16] = {0};
-	lichen_rpl_dodag_init(&dodag, 0x00, dodag_id, 0);
-	return 0;
+    int ret;
+
+    static struct lichen_link_ctx link_ctx;
+    ret = lichen_link_init(&link_ctx, eui64);
+    if (ret < 0) return ret;
+
+    ret = lichen_link_load_key(&link_ctx, seed);
+    if (ret < 0) return ret;
+
+#ifdef CONFIG_LICHEN_TDMA
+    static struct lichen_tdma_ctx tdma_ctx;
+    lichen_tdma_init(&tdma_ctx, &link_ctx);  /* after link_init per graph */
+    if (ret < 0) return ret;  /* placeholder */
+#endif
+
+    ret = oscore_init();
+    if (ret < 0) return ret;
+
+    static struct lichen_rpl_dodag dodag;
+    uint8_t dodag_id[16] = {0};
+    lichen_rpl_dodag_init(&dodag, 0x00, dodag_id, 0);
+
+    return 0;
 }
 ```
 

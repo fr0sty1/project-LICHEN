@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: The contributors to the LICHEN project
+//
+// Seeed T1000-E Renode model: nRF52840 + LR1110 (SPI2) + AG3335 GNSS (UART1)
+// Integrates nrf52840_lichen.repl for USBD/FICR/nRF base; overrides radio/GNSS.
+// Provides SPI, UART, GPIO fidelity for boot/L2/CoAP tests. GNSS is deterministic NMEA stub.
+// Excludes real RF, UF2 flash layout, USB electricals per acceptance criteria.
+
+using "../../nrf52840_lichen/support/nrf52840_lichen.repl"
+
+// Disable SX1262 (SPI1) from base model to avoid pin conflicts
+sx1262: @ none
+
+// LR1110 on SPI2 (stock platform provides SPI.NRF52840_SPI @ 0x40023000)
+lr1110: Wireless.LR1110 @ spi2
+    simHost: "127.0.0.1"
+    simPort: 5555
+
+// AG3335 GNSS fidelity via UART1 + deterministic NMEA GPS peripheral
+gps: Sensors.GPS @ uart1
+    latitude: 47.6062
+    longitude: -122.3321
+
+// LR1110 GPIO wiring per t1000_e_nrf52840.dts + t1000_e-pinctrl.dtsi
+// RESET = P1.10 (active-low) -> lr1110 input 0
+// CS = P0.12 (active-low) -> lr1110 input 1
+gpio1:
+    10 -> lr1110@0
+gpio0:
+    12 -> lr1110@1
+
+// LR1110 outputs
+lr1110:
+    DIO9 -> gpio1@1
+    Busy -> gpio0@7
+
+// T1000-E also has LED on P0.24 (PRE_KERNEL_1 blink in native.c); model it
+gpio0:
+    24 -> led0@0
+
+led0: Miscellaneous.LED @ gpio0 24
+    invert: true
+
+// Stable FICR and USBD already provided by nrf52840_lichen.repl

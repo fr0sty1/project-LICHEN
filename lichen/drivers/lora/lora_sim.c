@@ -289,9 +289,11 @@ static int lora_sim_send(const struct device *dev,
 		return -EIO;
 	}
 	if (resp[0] == MSG_TX_DONE) {
+		LOG_DBG("TX successful: %u bytes", data_len);
 		return 0;
 	}
 	if (resp[0] == MSG_TX_FAIL) {
+		LOG_ERR("TX failed: %u bytes", data_len);
 		return -EIO;
 	}
 	LOG_ERR("unexpected TX response: 0x%02x", resp[0]);
@@ -335,6 +337,7 @@ static int lora_sim_recv(const struct device *dev,
 		return -EIO;
 	}
 	if (buf[0] == MSG_RX_TIMEOUT) {
+		LOG_DBG("RX timeout");
 		return -EAGAIN;
 	}
 	if (buf[0] != MSG_RX_OK) {
@@ -362,6 +365,8 @@ static int lora_sim_recv(const struct device *dev,
 	if (snr) {
 		*snr = (int8_t)((int16_t)sys_get_le16(buf + 3 + payload_len + 2) / 10);
 	}
+	LOG_DBG("RX successful: %u bytes, rssi=%d, snr=%d", payload_len,
+		rssi ? *rssi : 0, snr ? *snr : 0);
 	return payload_len;
 }
 

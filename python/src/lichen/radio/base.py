@@ -9,6 +9,7 @@ The protocol supports LoRa radio operations: transmission, reception, and config
 """
 
 from __future__ import annotations
+
 from typing import Protocol, runtime_checkable
 
 

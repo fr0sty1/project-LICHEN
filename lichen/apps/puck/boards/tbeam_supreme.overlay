@@ -1,13 +1,12 @@
 /*
- * LilyGO T-Beam Supreme — ESP32-S3 + SX1262
+ * BLOCKED: LilyGO T-Beam Supreme (ESP32-S3 + SX1262)
  *
- * NOTE: As of Zephyr v3.7.0 the T-Beam Supreme does not have an upstream
- * board definition.  This overlay is a stub that will be activated once a
- * board file is contributed (or maintained out-of-tree in a custom board
- * directory under lichen/boards/).
- *
- * When a board file becomes available, verify the SX1262 node label and
- * remove this comment block.
+ * No canonical Zephyr board definition exists (investigated lichen/boards/
+ * and Zephyr boards/lilygo/, heltec/; no tbeam_supreme or supreme dir).
+ * Closest canonical targets: heltec_wifi_lora32_v3/esp32s3/procpu or
+ * lilygo/t_deck_esp32s3_procpu. Puck target is orphaned per m5m1.8 audit.
+ * Classified BLOCKED with evidence; do not present as supported.
+ * Future support tracked by project-LICHEN-w8rd.
  */
 
 / {

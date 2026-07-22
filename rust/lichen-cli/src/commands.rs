@@ -3,13 +3,13 @@
 //! Each function sends a real CoAP request to the node, decodes the CBOR
 //! response, and prints it using the selected output format.
 
-use crate::{output, ConfigAction, KeyAction, OutputFormat, PositionAction, RdAction};
+use crate::{output, ConfigAction, KeyAction, OutputFormat, PositionAction};
 use lichen_client::keys::{KeyEntry, KeyList, KeyPin};
 use lichen_client::msg::{Inbox, OutgoingMessage, SentMessage};
 use lichen_client::paths;
 use lichen_client::pos::Position;
+use lichen_client::status::Neighbors;
 use lichen_coap::client;
-use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use sha2::{Digest, Sha256};
 use std::net::{Ipv6Addr, SocketAddr};
 use zeroize::{Zeroize, Zeroizing};
@@ -90,25 +90,25 @@ pub async fn status(node: SocketAddr, fmt: &OutputFormat) -> CmdResult {
 }
 
 pub async fn neighbors(node: SocketAddr, fmt: &OutputFormat) -> CmdResult {
-    let resp = client::get(node, "/neighbors").await?;
-    let cbor = decode_cbor(&resp)?;
-    match &cbor {
-        ciborium::value::Value::Array(arr) if arr.is_empty() => {
-            println!("(no neighbors)");
-        }
-        _ => output::print_cbor(cbor, fmt),
+    let resp = client::get(node, paths::STATUS_NEIGHBORS).await?;
+    if !resp.is_success() {
+        return Err(format!("neighbors failed: {}", resp.code_str()).into());
     }
-    Ok(())
-}
-
-pub async fn presence(node: SocketAddr, fmt: &OutputFormat) -> CmdResult {
-    let resp = client::get(node, "/presence").await?;
-    let cbor = decode_cbor(&resp)?;
-    match &cbor {
-        ciborium::value::Value::Array(arr) if arr.is_empty() => {
-            println!("(no peers in presence table)");
+    let ns = Neighbors::from_cbor(&resp.payload)?;
+    match fmt {
+        OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&ns)?),
+        OutputFormat::Human => {
+            if ns.neighbors.is_empty() {
+                println!("(no neighbors)");
+            } else {
+                for n in &ns.neighbors {
+                    println!(
+                        "  {} rssi={:3} snr={:.1} etx={:.1} seen={}s trust={}",
+                        n.addr, n.rssi_dbm, n.snr_db(), n.etx(), n.last_seen_s, n.trust
+                    );
+                }
+            }
         }
-        _ => output::print_cbor(cbor, fmt),
     }
     Ok(())
 }
@@ -158,32 +158,6 @@ pub async fn inbox(node: SocketAddr, fmt: &OutputFormat) -> CmdResult {
     Ok(())
 }
 
-pub async fn sos_status(node: SocketAddr, fmt: &OutputFormat) -> CmdResult {
-    let resp = client::get(node, "/sos").await?;
-    let cbor = decode_cbor(&resp)?;
-    output::print_cbor(cbor, fmt);
-    Ok(())
-}
-
-pub async fn sos_activate(node: SocketAddr, fmt: &OutputFormat) -> CmdResult {
-    let resp = client::put(node, "/sos", &[]).await?;
-    if resp.is_success() {
-        output::print_kv("sos", "ACTIVE — emergency beacon transmitted", fmt);
-    } else {
-        return Err(format!("SOS activation failed: {}", resp.code_str()).into());
-    }
-    Ok(())
-}
-
-pub async fn sos_cancel(node: SocketAddr, fmt: &OutputFormat) -> CmdResult {
-    let resp = client::delete(node, "/sos").await?;
-    if resp.is_success() {
-        output::print_kv("sos", "cancelled", fmt);
-    } else {
-        return Err(format!("SOS cancel failed: {}", resp.code_str()).into());
-    }
-    Ok(())
-}
 
 pub async fn key(node: SocketAddr, action: KeyAction, fmt: &OutputFormat) -> CmdResult {
     match action {
@@ -393,56 +367,6 @@ pub async fn position(node: SocketAddr, action: PositionAction, fmt: &OutputForm
         }
         PositionAction::Broadcast => {
             return Err("position broadcast not implemented".into());
-        }
-        PositionAction::Peers => {
-            let resp = client::get(node, "/presence").await?;
-            let cbor = decode_cbor(&resp)?;
-            output::print_cbor(cbor, fmt);
-        }
-    }
-    Ok(())
-}
-
-pub async fn rd(node: SocketAddr, action: RdAction, fmt: &OutputFormat) -> CmdResult {
-    match action {
-        RdAction::List { ep } => {
-            let path = match &ep {
-                Some(name) => {
-                    let encoded = utf8_percent_encode(name, NON_ALPHANUMERIC);
-                    format!("/rd?ep={encoded}")
-                }
-                None => "/rd".to_owned(),
-            };
-            let resp = client::get(node, &path).await?;
-            let cbor = decode_cbor(&resp)?;
-            match &cbor {
-                ciborium::value::Value::Array(arr) if arr.is_empty() => {
-                    println!("(no registrations)");
-                }
-                _ => output::print_cbor(cbor, fmt),
-            }
-        }
-        RdAction::Register { ep, lt } => {
-            let ep_name = ep.unwrap_or_else(|| node.to_string());
-            let encoded = utf8_percent_encode(&ep_name, NON_ALPHANUMERIC);
-            let path = format!("/rd?ep={encoded}&lt={lt}");
-            let resp = client::post(node, &path, &[]).await?;
-            if resp.is_success() {
-                output::print_kv("registered", &ep_name, fmt);
-                output::print_kv("lt", &lt.to_string(), fmt);
-            } else {
-                return Err(format!("registration failed: {}", resp.code_str()).into());
-            }
-        }
-        RdAction::Delete { id } => {
-            let encoded_id = utf8_percent_encode(&id, NON_ALPHANUMERIC);
-            let path = format!("/rd/{encoded_id}");
-            let resp = client::delete(node, &path).await?;
-            if resp.is_success() {
-                output::print_kv("deleted", &id, fmt);
-            } else {
-                return Err(format!("delete failed: {}", resp.code_str()).into());
-            }
         }
     }
     Ok(())

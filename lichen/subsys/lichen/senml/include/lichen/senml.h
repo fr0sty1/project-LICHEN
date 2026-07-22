@@ -68,6 +68,9 @@ extern "C" {
 /** Maximum name string length */
 #define SENML_MAX_NAME_LEN 32
 
+/** Maximum string value length (for vs field, e.g. DTN messages) */
+#define SENML_MAX_STRING_LEN 256
+
 /** Maximum unit string length */
 #define SENML_MAX_UNIT_LEN 8
 
@@ -77,25 +80,26 @@ extern "C" {
 enum senml_value_type {
 	SENML_VALUE_FLOAT,   /**< Floating point value (v) */
 	SENML_VALUE_BOOL,    /**< Boolean value (vb) */
-	SENML_VALUE_STRING,  /**< String value (vs) - not yet supported */
+	SENML_VALUE_STRING,  /**< String value (vs) */
 	SENML_VALUE_DATA,    /**< Binary data (vd) - not yet supported */
 };
 
 /**
  * @brief SenML record
  */
-struct senml_record {
+	struct senml_record {
 	const char *name;          /**< Record name (n) */
 	const char *unit;          /**< Unit (u) - may be NULL */
 	enum senml_value_type type;
 	union {
-		float f;
-		bool b;
-		const char *s;
+		float f;           /**< Float value */
+		bool b;            /**< Boolean value */
+		const char *s;     /**< String value (vs) */
 	} value;
 	int32_t time_offset;
 	bool has_time;
 };
+
 
 /**
  * @brief SenML pack (array of records with common base)
@@ -164,9 +168,32 @@ int senml_add_float_t(struct senml_pack *_Nonnull pack,
 int senml_add_bool(struct senml_pack *_Nonnull pack,
 		   const char *_Nonnull name,
 		   bool value);
+
+/**
+ * @brief Add a string record to the pack.
+ *
+ * @param[in,out] pack  SenML pack
+ * @param[in]     name  Record name (e.g., "content" or "type")
+ * @param[in]     value String value (vs field)
+ * @return 0 on success, -ENOMEM if pack is full, -EMSGSIZE if name or value is
+ *         too long
+ */
 int senml_add_string(struct senml_pack *_Nonnull pack,
-		   const char *_Nonnull name,
-		   const char *_Nullable value);
+		    const char *_Nonnull name,
+		    const char *_Nullable value);
+
+/**
+ * @brief Encode SenML pack to CBOR.
+ *
+ * @param[in]  pack    SenML pack to encode
+ * @param[out] buf     Output buffer
+ * @param[in]  buflen  Buffer size
+ * @return Bytes written, or negative error code:
+ *         -EINVAL if pack has no records
+ *         -ENOTSUP if record uses unsupported value type (DATA)
+ *         -ENOMEM if buffer too small
+ *         -EMSGSIZE if string too long to encode
+ */
 LICHEN_WARN_UNUSED_RESULT
 int senml_encode_cbor(const struct senml_pack *_Nonnull pack,
 		      uint8_t *_Nonnull buf, size_t buflen);

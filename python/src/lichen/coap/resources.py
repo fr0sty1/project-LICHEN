@@ -38,6 +38,7 @@ import asyncio
 import copy
 import ipaddress
 import itertools
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Protocol
@@ -343,6 +344,58 @@ class SenMLLocationResource(resource.ObservableResource):
         return msg
 
 
+class SenMLMetricsResource(resource.ObservableResource):
+    """Basic observable ``/metrics`` CoAP resource — SenML+CBOR (112)
+    telemetry+battery profile (RSSI, nodecount, pps, battery, collision-rate).
+
+    Updated via :meth:`update(**kwargs)` where kwargs match
+    :func:`~lichen.senml.profiles.metrics`. Supports GET, Observe.
+    """
+
+    def __init__(self) -> None:
+        """Initialize with empty payload."""
+        super().__init__()
+        self._payload: bytes = b""
+
+    def update(
+        self,
+        rssi: int | None = None,
+        nodecount: int | None = None,
+        packets_per_sec: float | None = None,
+        battery: float | None = None,
+        collision_rate: float | None = None,
+    ) -> None:
+        """Update telemetry+battery readings and notify all observers."""
+        from lichen.senml.codec import pack  # noqa: PLC0415
+        from lichen.senml.profiles import metrics  # noqa: PLC0415
+        self._payload = pack(
+            metrics(
+                rssi=rssi,
+                nodecount=nodecount,
+                packets_per_sec=packets_per_sec,
+                battery=battery,
+                collision_rate=collision_rate,
+            ),
+        )
+        self.updated_state()
+
+    async def render_get(self, request: Message) -> Message:  # noqa: D102,ARG002
+        from lichen.senml.codec import pack  # noqa: PLC0415
+        payload = getattr(self, "_payload", pack([]))
+        msg = Message(code=CONTENT, payload=payload)
+        msg.opt.content_format = SENML_CBOR
+        return msg
+
+    def get_link_description(self) -> dict[str, Any]:
+        """Link description for .well-known/core and RD."""
+        return {
+            "rt": "senml",
+            "if": "sensor",
+            "ct": str(int(SENML_CBOR)),
+            "obs": None,
+        }
+
+
 class PresenceResource(resource.ObservableResource):
     """Observable ``/presence`` — CBOR list of recently-heard mesh nodes.
 
@@ -498,6 +551,80 @@ class SosResource(resource.ObservableResource):
     async def render_delete(self, request: Message) -> Message:
         self.cancel()
         return Message(code=aiocoap.DELETED)
+
+
+class RollcallResource(resource.ObservableResource):
+    """Demo CoAP resource for conference rollcall use case per spec/12-apps.md §18.6.
+    Supports POST to initiate, observable GET for status with SenML position data.
+    Used by LCI-based conference demo application.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._rollcalls: dict[str, dict[str, Any]] = {}
+
+    def update(
+        self,
+        roll_id: str,
+        responded: list[dict[str, Any]] | None = None,
+        missing: list[dict[str, Any]] | None = None,
+    ) -> None:
+        """Update rollcall state and notify observers (for demo position beacons)."""
+        if roll_id not in self._rollcalls:
+            self._rollcalls[roll_id] = {
+                "id": roll_id,
+                "started": int(time.time()),
+                "timeout_s": 60,
+                "responded": [],
+                "missing": [],
+            }
+        if responded is not None:
+            self._rollcalls[roll_id]["responded"] = responded
+        if missing is not None:
+            self._rollcalls[roll_id]["missing"] = missing
+        self.updated_state()
+
+    def get_link_description(self) -> dict[str, Any]:
+        return {"rt": "rollcall", "ct": str(int(CBOR)), "obs": None}
+
+    async def render_post(self, request: Message) -> Message:
+        """POST /rollcall to initiate a roll call."""
+        if not request.payload:
+            return Message(code=aiocoap.BAD_REQUEST)
+        try:
+            data = cbor2.loads(request.payload)
+        except Exception:
+            return Message(code=aiocoap.BAD_REQUEST)
+        if not isinstance(data, dict) or "id" not in data:
+            return Message(code=aiocoap.BAD_REQUEST)
+        roll_id = str(data["id"])
+        self._rollcalls[roll_id] = {
+            "id": roll_id,
+            "started": data.get("ts", int(time.time())),
+            "timeout_s": data.get("timeout_s", 60),
+            "responded": [],
+            "missing": [],
+        }
+        self.updated_state()
+        return Message(code=CREATED)
+
+    async def render_get(self, request: Message) -> Message:
+        """GET /rollcall/{id} or /rollcall returns status. Uses SenML via profiles for position."""
+        roll_id = None
+        if request.opt.uri_path and len(request.opt.uri_path) > 1:
+            roll_id = request.opt.uri_path[-1]
+        if roll_id and roll_id in self._rollcalls:
+            data = dict(self._rollcalls[roll_id])
+            # Use SenML for position in conference demo
+            from lichen.senml.codec import pack
+            from lichen.senml.profiles import location
+            data["position"] = pack(location(37.7749, -122.4194, 10.0))
+            payload = cbor2.dumps(data)
+        else:
+            payload = cbor2.dumps({"rollcalls": list(self._rollcalls.values())})
+        msg = Message(code=CONTENT, payload=payload)
+        msg.opt.content_format = CBOR
+        return msg
 
 
 _MESSAGES_MAX = 100  # maximum inbox depth
@@ -1036,29 +1163,24 @@ def build_site(
     mesh_client: aiocoap.Context | None = None,
     sensors_resource: SenMLSensorsResource | None = None,
     location_resource: SenMLLocationResource | None = None,
+    metrics_resource: SenMLMetricsResource | None = None,
     presence_resource: PresenceResource | None = None,
     messages_resource: MessagesResource | None = None,
     message_receipts_resource: MessageReceiptsResource | None = None,
     sos_resource: SosResource | None = None,
+    rollcall_resource: RollcallResource | None = None,
     resource_directory: bool = False,
     edhoc_resource: EdhocResource | None = None,
     config_allow_writes: bool = False,
 ) -> resource.Site:
     """Build an aiocoap Site exposing the LICHEN node resources.
 
-    Pass ``mesh_client`` to also expose the optional RFC 7252 compatibility
-    forward proxy at ``/proxy``. Native LCI clients should prefer direct IPv6
-    CoAP routing to mesh node addresses when the local transport supports it.
     Pass pre-constructed observable resources to expose ``/sensors``,
-    ``/location``, ``/presence``, ``/msg/inbox``, ``/msg/ack``, and/or ``/sos``; callers
-    hold the references and call ``update()`` / ``seen()`` / ``deliver()`` /
-    ``activate()`` to push data to observers.
-    Pass ``resource_directory=True`` to expose a CoAP Resource Directory
-    at ``/rd`` (RFC 9176).
-    Pass ``edhoc_resource`` to expose ``/.well-known/edhoc`` for EDHOC key
-    establishment (RFC 9528, spec section 8.8).
-    Pass ``config_allow_writes=True`` to allow PUT on ``/config``. SECURITY:
-    Only enable when transport-layer authentication (OSCORE) is enforced.
+    ``/location``, ``/metrics``, ``/presence``, ``/msg/inbox``, ``/msg/ack``,
+    ``/sos``, and/or ``/rollcall`` for conference demo (messaging, presence,
+    rollcall, position beacons with SenML). Callers hold references and call
+    update() methods to push LCI notifications. Pass ``rollcall_resource`` to
+    enable conference rollcall demo using LCI and SenML per spec 18.
     """
     site = resource.Site()
     site.add_resource(
@@ -1074,6 +1196,8 @@ def build_site(
         site.add_resource(["sensors"], sensors_resource)
     if location_resource is not None:
         site.add_resource(["location"], location_resource)
+    if metrics_resource is not None:
+        site.add_resource(["metrics"], metrics_resource)
     if presence_resource is not None:
         site.add_resource(["presence"], presence_resource)
     if messages_resource is not None:
@@ -1090,6 +1214,8 @@ def build_site(
         site.add_resource(["msg", "ack"], message_receipts_resource)
     if sos_resource is not None:
         site.add_resource(["sos"], sos_resource)
+    if rollcall_resource is not None:
+        site.add_resource(["rollcall"], rollcall_resource)
     if resource_directory:
         site.add_resource(["rd"], ResourceDirectoryResource(site))
     if pubkey is not None:

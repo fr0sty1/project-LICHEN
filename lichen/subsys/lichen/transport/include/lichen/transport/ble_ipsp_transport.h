@@ -29,6 +29,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <lichen/transport/slip_transport.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -47,14 +49,6 @@ extern "C" {
  * Same as LICHEN_L2_MTU to maintain consistency across transports.
  */
 #define LICHEN_BLE_IPV6_MTU 200
-
-/**
- * @brief SLIP framing constants (RFC 1055)
- */
-#define SLIP_END     0xC0
-#define SLIP_ESC     0xDB
-#define SLIP_ESC_END 0xDC
-#define SLIP_ESC_ESC 0xDD
 
 /**
  * @brief BLE transport connection state

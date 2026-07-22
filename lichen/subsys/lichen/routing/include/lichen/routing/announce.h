@@ -144,6 +144,8 @@ struct lichen_announce_sched_config {
 	const uint8_t *_Nullable app_data;
 	/** Length of application data. */
 	size_t app_data_len;
+	/** RX channel to announce and bind in signature (CCP-9). Default 0 for CH0. */
+	uint8_t rx_channel;
 };
 
 /**

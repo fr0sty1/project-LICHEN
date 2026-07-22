@@ -43,13 +43,30 @@ namespace Antmicro.Renode.Peripherals.Wireless
             Reset();
         }
 
+        public string SimHost
+        {
+            get => simHost;
+            set
+            {
+                lock (connectionLock)
+                {
+                    Disconnect();
+                    simHost = value;
+                }
+                this.Log(LogLevel.Info, "SimHost set to {0}", value);
+            }
+        }
+
         public int SimPort
         {
             get => simPort;
             set
             {
-                Disconnect();
-                simPort = value;
+                lock (connectionLock)
+                {
+                    Disconnect();
+                    simPort = value;
+                }
                 this.Log(LogLevel.Info, "SimPort set to {0}", value);
             }
         }
@@ -78,29 +95,37 @@ namespace Antmicro.Renode.Peripherals.Wireless
 
         public void Reset()
         {
-            state = State.Idle;
-            opcode = 0;
-            opcodeByteCount = 0;
-            byteIndex = 0;
-            bufferOffset = 0;
-            txLen = 0;
-            rxLen = 0;
-            rxRssi = 0;
-            rxSnr = 0;
-            irqFlags = 0;
-            rxMode = false;
-            Array.Clear(txBuffer, 0, txBuffer.Length);
-            Array.Clear(rxBuffer, 0, rxBuffer.Length);
-            Array.Clear(rxTimeoutBytes, 0, rxTimeoutBytes.Length);
-            Busy.Set(false);
-            DIO9.Set(false);
+            lock (stateLock)
+            {
+                state = State.Idle;
+                opcode = 0;
+                opcodeByteCount = 0;
+                byteIndex = 0;
+                bufferOffset = 0;
+                txLen = 0;
+                rxLen = 0;
+                rxRssi = 0;
+                rxSnr = 0;
+                irqFlags = 0;
+                latchedIrqFlags = 0;
+                clearIrqMask = 0;
+                rxMode = false;
+                Array.Clear(txBuffer, 0, txBuffer.Length);
+                Array.Clear(rxBuffer, 0, rxBuffer.Length);
+                Array.Clear(rxTimeoutBytes, 0, rxTimeoutBytes.Length);
+                Busy.Set(false);
+                DIO9.Set(false);
+            }
         }
 
         public void FinishTransmission()
         {
-            state = State.Idle;
-            opcodeByteCount = 0;
-            byteIndex = 0;
+            lock (stateLock)
+            {
+                state = State.Idle;
+                opcodeByteCount = 0;
+                byteIndex = 0;
+            }
         }
 
         public byte Transmit(byte data)
@@ -676,7 +701,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
         }
 
         private readonly IMachine machine;
-        private readonly string simHost;
+        private string simHost;
         private int simPort;
         private readonly byte[] txBuffer;
         private readonly byte[] rxBuffer;
@@ -694,7 +719,17 @@ namespace Antmicro.Renode.Peripherals.Wireless
         private short rxRssi;
         private short rxSnr;
         private uint irqFlags;  // 32-bit for LR1110 (vs 16-bit for SX1262)
+        private uint latchedIrqFlags;
+        private uint clearIrqMask;
         private bool rxMode;
         private byte[] rxTimeoutBytes = new byte[3];
+
+        // Background reader for async messages from lichen-sim (TX_DONE, RX_PACKET,
+        // RX_TIMEOUT). Prevents SPI bus deadlock during RX (critical for nRF52840
+        // Meshtastic boards like T1000-E).
+        private System.Threading.Thread readerThread;
+        private readonly object writeLock = new object();
+        private readonly object stateLock = new object();
+        private readonly object connectionLock = new object();
     }
 }

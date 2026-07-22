@@ -125,11 +125,10 @@ impl Radio for LoopbackRadio {
         self.config = *config;
     }
 
-    fn configure_channels(
-        &mut self,
-        _channels: &[ChannelConfig],
-    ) -> impl core::future::Future<Output = Result<(), Self::Error>> {
-        async { Err(RadioError::NotSupported) }
+    async fn cca(&mut self, _threshold_dbm: i8) -> Result<bool, Self::Error> {
+        // Loopback sim always reports clear channel (CCP-15 test vector compliant).
+        // Real hardware impls (SX126x etc.) will use CAD.
+        Ok(true)
     }
 }
 

@@ -22,6 +22,7 @@
 #endif
 
 #include <lichen/meshcore/codec.h>
+#include <lichen/meshcore/limits.h>
 
 struct lichen_meshcore_compat_settings;
 

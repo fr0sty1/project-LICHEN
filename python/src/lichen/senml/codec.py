@@ -105,6 +105,28 @@ def _validate_field_type(name: str, value: object) -> None:
         )
 
 
+def _validate_value_fields(record: SenmlRecord | dict[str, Any]) -> None:
+    """Ensure at most one value field per record per RFC 8428 §4.5.
+
+    Accepts either a SenmlRecord instance or kwargs dict from from_cbor_map.
+    """
+    if isinstance(record, dict):
+        value_fields = [
+            k for k in ("v", "vs", "vb", "vd") if k in record and record[k] is not None
+        ]
+    else:
+        value_fields = [
+            f.name
+            for f in fields(record)
+            if f.name in ("v", "vs", "vb", "vd")
+            and getattr(record, f.name) is not None
+        ]
+    if len(value_fields) > 1:
+        raise ValueError(
+            f"SenML record must have at most one value field (v/vs/vb/vd), got {value_fields}"
+        )
+
+
 @dataclass
 class SenmlRecord:
     """One SenML record (RFC 8428 §4).
@@ -147,8 +169,20 @@ class SenmlRecord:
     t: float | None = None
     ut: float | None = None
 
+    def __post_init__(self) -> None:
+        """Validate all fields on construction per RFC 8428.
+
+        Centralizes type and value-field checks. Called automatically by dataclass.
+        """
+        for f in fields(self):
+            val = getattr(self, f.name)
+            if val is not None:
+                _validate_field_type(f.name, val)
+        _validate_value_fields(self)
+
     def to_cbor_map(self) -> dict[int, Any]:
         """Serialise to a dict with numeric CBOR keys (omits None fields)."""
+        # Validation already done by __post_init__
         out: dict[int, Any] = {}
         for f in fields(self):
             val = getattr(self, f.name)
@@ -171,6 +205,7 @@ class SenmlRecord:
             if name is not None:
                 _validate_field_type(name, val)
                 kwargs[name] = val
+        _validate_value_fields(kwargs)
         return cls(**kwargs)
 
 

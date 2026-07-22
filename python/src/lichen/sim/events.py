@@ -54,6 +54,7 @@ class TxStartDelayedEvent(Event):
     payload: bytes
     tx_power_dbm: int
     position: tuple[float, float, float]
+    channel: int = 0
 
 
 @dataclass(frozen=True)

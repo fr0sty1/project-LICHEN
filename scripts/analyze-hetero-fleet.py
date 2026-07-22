@@ -35,7 +35,9 @@ class NodeStats:
 
 
 def parse_telemetry(lines: Iterable[str], stats: NodeStats) -> bool:
-    """Parse common JSONL events; return whether any valid event was found."""
+    """Parse common JSONL events from lines iterable; return whether any valid event was found.
+    Uses streaming to avoid loading entire large log files into memory.
+    """
     found = False
     for line in lines:
         marker = line.find("TELEMETRY ")
@@ -62,54 +64,44 @@ def parse_telemetry(lines: Iterable[str], stats: NodeStats) -> bool:
     return found
 
 
-def parse_legacy_events(
-    lines: Iterable[str], stats: NodeStats, is_zephyr: bool = False
-) -> None:
-    """Shared streaming helper for legacy TX/RX/summary parsing (vqo6).
-    One pass over lines, consistent uppercase matching for TX/RX to fix
-    case sensitivity bugs (jjyh). No dead code.
-    """
+def parse_legacy_logs(lines: Iterable[str], stats: NodeStats, extra_tx: list[str] | None = None, extra_rx: list[str] | None = None) -> None:
+    if extra_tx is None:
+        extra_tx = []
+    if extra_rx is None:
+        extra_rx = []
+    tx_markers = ["[TX]", "TX:", "TX="] + [x.upper() for x in extra_tx]
+    rx_markers = ["[RX]", "RX:", "RX="] + [x.upper() for x in extra_rx]
+    hash_re = re.compile(r"hash[=:]?\s*(?:0x)?([a-fA-F0-9]{8,})")
+    summary_re = re.compile(r"TX=(\d+)\s+RX=(\d+)", re.IGNORECASE)
     for line in lines:
         line_upper = line.upper()
-        # TX detection (merged from all three parsers)
-        if (
-            "[TX]" in line_upper
-            or "TX:" in line_upper
-            or (is_zephyr and ("SEND" in line_upper or "TX" in line_upper))
-        ):
-            match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line, re.IGNORECASE)
+        if any(m in line_upper for m in tx_markers):
+            match = hash_re.search(line)
             if match:
                 stats.tx_hashes.add(match.group(1).lower())
             stats.tx_count += 1
-        # RX detection
-        elif (
-            "[RX]" in line_upper
-            or "RX:" in line_upper
-            or (is_zephyr and ("RECV" in line_upper or "RX" in line_upper))
-        ):
-            match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line, re.IGNORECASE)
+        elif any(m in line_upper for m in rx_markers):
+            match = hash_re.search(line)
             if match:
                 stats.rx_hashes.add(match.group(1).lower())
             stats.rx_count += 1
-        # Summary line check (now in single pass)
-        summary = re.search(r"TX=(\d+)\s+RX=(\d+)", line, re.IGNORECASE)
+        summary = summary_re.search(line)
         if summary:
             stats.tx_count = max(stats.tx_count, int(summary.group(1)))
             stats.rx_count = max(stats.rx_count, int(summary.group(2)))
 
 
-def parse_python_logs(log_dir: Path) -> dict[str, NodeStats]:
-    """Parse py-*.log files, extract TX/RX with hashes. Streams with open()
-    + line iterator to avoid OOM on GB logs (ein8, ix7m.1).
-    """
+def parse_impl_logs(
+    log_dir: Path, glob_pattern: str, impl: str, extra_tx: list[str] | None = None, extra_rx: list[str] | None = None
+) -> dict[str, NodeStats]:
     nodes: dict[str, NodeStats] = {}
 
-    for log_file in sorted(log_dir.glob("py-*.log")):
+    for log_file in sorted(log_dir.glob(glob_pattern)):
         node_id = log_file.stem
-        stats = NodeStats(node_id=node_id, impl="py")
+        stats = NodeStats(node_id=node_id, impl=impl)
 
         try:
-            with open(log_file, encoding="utf-8", errors="replace") as f:
+            with log_file.open(encoding="utf-8", errors="replace") as f:
                 if parse_telemetry(f, stats):
                     if stats.tx_count > 0 or stats.rx_count > 0:
                         nodes[node_id] = stats
@@ -118,101 +110,25 @@ def parse_python_logs(log_dir: Path) -> dict[str, NodeStats]:
             print(f"Warning: skipping {log_file}: {e}", file=sys.stderr)
             continue
 
-        # Legacy fallback: reopen for streaming parse (telemetry iterator consumed)
-        try:
-            with open(log_file, encoding="utf-8", errors="replace") as f:
-                parse_legacy_events(f, stats, is_zephyr=False)
-        except OSError as e:
-            print(f"Warning: legacy parse failed for {log_file}: {e}", file=sys.stderr)
-            continue
+        with log_file.open(encoding="utf-8", errors="replace") as f:
+            parse_legacy_logs(f, stats, extra_tx, extra_rx)
 
-        if (
-            stats.tx_count > 0
-            or stats.rx_count > 0
-            or stats.tx_hashes
-            or stats.rx_hashes
-        ):
+        if stats.tx_count > 0 or stats.rx_count > 0 or stats.tx_hashes or stats.rx_hashes:
             nodes[node_id] = stats
 
     return nodes
+
+
+def parse_python_logs(log_dir: Path) -> dict[str, NodeStats]:
+    return parse_impl_logs(log_dir, "py-*.log", "py")
 
 
 def parse_rust_logs(log_dir: Path) -> dict[str, NodeStats]:
-    """Parse rust-*.log files, extract TX/RX with hashes. Streams with open()
-    + line iterator to avoid OOM on GB logs (ein8, ix7m.1).
-    """
-    nodes: dict[str, NodeStats] = {}
-
-    for log_file in sorted(log_dir.glob("rust-*.log")):
-        node_id = log_file.stem
-        stats = NodeStats(node_id=node_id, impl="rust")
-
-        try:
-            with open(log_file, encoding="utf-8", errors="replace") as f:
-                if parse_telemetry(f, stats):
-                    if stats.tx_count > 0 or stats.rx_count > 0:
-                        nodes[node_id] = stats
-                    continue
-        except OSError as e:
-            print(f"Warning: skipping {log_file}: {e}", file=sys.stderr)
-            continue
-
-        # Legacy fallback: reopen for streaming parse (telemetry iterator consumed)
-        try:
-            with open(log_file, encoding="utf-8", errors="replace") as f:
-                parse_legacy_events(f, stats, is_zephyr=False)
-        except OSError as e:
-            print(f"Warning: legacy parse failed for {log_file}: {e}", file=sys.stderr)
-            continue
-
-        if (
-            stats.tx_count > 0
-            or stats.rx_count > 0
-            or stats.tx_hashes
-            or stats.rx_hashes
-        ):
-            nodes[node_id] = stats
-
-    return nodes
+    return parse_impl_logs(log_dir, "rust-*.log", "rust")
 
 
 def parse_zephyr_logs(log_dir: Path) -> dict[str, NodeStats]:
-    """Parse zephyr-*.log files, extract TX/RX with hashes. Streams with open()
-    + line iterator to avoid OOM on GB logs (ein8, ix7m.1).
-    """
-    nodes: dict[str, NodeStats] = {}
-
-    for log_file in sorted(log_dir.glob("zephyr-*.log")):
-        node_id = log_file.stem
-        stats = NodeStats(node_id=node_id, impl="zephyr")
-
-        try:
-            with open(log_file, encoding="utf-8", errors="replace") as f:
-                if parse_telemetry(f, stats):
-                    if stats.tx_count > 0 or stats.rx_count > 0:
-                        nodes[node_id] = stats
-                    continue
-        except OSError as e:
-            print(f"Warning: skipping {log_file}: {e}", file=sys.stderr)
-            continue
-
-        # Legacy fallback: reopen for streaming parse (telemetry iterator consumed)
-        try:
-            with open(log_file, encoding="utf-8", errors="replace") as f:
-                parse_legacy_events(f, stats, is_zephyr=True)
-        except OSError as e:
-            print(f"Warning: legacy parse failed for {log_file}: {e}", file=sys.stderr)
-            continue
-
-        if (
-            stats.tx_count > 0
-            or stats.rx_count > 0
-            or stats.tx_hashes
-            or stats.rx_hashes
-        ):
-            nodes[node_id] = stats
-
-    return nodes
+    return parse_impl_logs(log_dir, "zephyr-*.log", "zephyr", ["Send"], ["Recv"])
 
 
 

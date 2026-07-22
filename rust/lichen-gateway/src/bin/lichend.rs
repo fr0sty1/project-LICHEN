@@ -9,9 +9,10 @@
 //!   lichend --sim --no-tun                 # TCP simulator, logging only (CI)
 
 use clap::Parser;
-use lichen_core::addr::Ipv6Addr;
-use lichen_core::addr::NodeId;
-use lichen_core::ipv6::{field, IPV6_HEADER_LEN};
+use lichen_core::{
+    addr::NodeId,
+    ipv6::{field, IPV6_HEADER_LEN},
+};
 use lichen_gateway::{
     config::Config,
     slip::{SlipFramer, SLIP_TX_BUF_SIZE},
@@ -22,6 +23,7 @@ use lichen_hal::storage::{load_epoch, load_seed, save_epoch, save_seed};
 use lichen_link::identity::Identity;
 use lichen_link::keys::Seed;
 use lichen_sim::SimClient;
+
 use std::path::PathBuf;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -411,46 +413,33 @@ where
 
 // ── packet forwarding ─────────────────────────────────────────────────────────
 
-async fn forward_mesh_to_upstream<T: TunLike>(
-    gw: &mut Gateway,
-    frame: &[u8],
-    tun: &Option<T>,
-) -> Option<Vec<u8>> {
-    let mut reply_buf = [0u8; 256];
-    let (reply_len, event) = gw.rpl.handle_frame_rpl(frame, &mut reply_buf, 0);
-    let mut control_plane = false;
-    if let RplEvent::DaoReceived {
-        target,
-        route_updated: true,
-    } = event {
-        let node_id = NodeId::from_ipv6(&target);
-        gw.add_route(target, node_id);
+async fn forward_mesh_to_upstream<T: TunLike>(gw: &mut Gateway, frame: &[u8], tun: &Option<T>) {
+    let (reply_opt, event) = gw.process_rpl(frame, 1000); // TODO: real monotonic ms for trickle
+    if let Some(reply) = reply_opt {
         info!(
-            ?target,
-            "DAO processed via RPL integration; routing table and gateway.routes updated"
+            len = reply.len(),
+            "reply_buf used (no ignore); mesh reply ready for SLIP TX queue"
         );
-        control_plane = true;
+        // TODO: queue via slip.queue_send(&reply) or tx_send in run_* context
     }
-    if reply_len > 0 {
-        return Some(reply_buf[..reply_len].to_vec());
+    if let RplEvent::DaoReceived {
+        route_updated: true,
+    } = event
+    {
+        info!("DAO event: route updated");
     }
-    if control_plane {
-        return None;
-    }
+
     if let Some(ipv6) = gw.mesh_to_upstream(frame) {
-        if ipv6.len() < 40 || ipv6[0] >> 4 != 6 {
-            return;
+        let mut dst = [0u8; 16];
+        if ipv6.len() >= IPV6_HEADER_LEN {
+            dst.copy_from_slice(&ipv6[field::DST_OFFSET..IPV6_HEADER_LEN]);
+            if gw.is_local_mesh(&dst) {
+                return;
+            }
         }
-        let mut dst_bytes = [0u8; 16];
-        dst_bytes.copy_from_slice(&ipv6[24..40]);
-        let dst = Ipv6Addr(dst_bytes);
-        // Inter-mesh routing decision: local RPL via LoRa, 02xx::/7 to Yggdrasil TUN,
-        // other to backhaul; MTU note: Yggdrasil encapsulation + SCHC (effective ~200B).
-        if gw.is_local_mesh(&dst_bytes) {
-            let _ = gw.node.router.dao_manager.routing_table.lookup(&dst_bytes);
-        } else if dst.is_yggdrasil() {
-            if let Some(t) = tun {
-                let _ = t.send_pkt(&ipv6).await;
+        if let Some(t) = tun {
+            if let Err(e) = t.send_pkt(&ipv6).await {
+                error!("TUN write: {e}");
             }
         } else {
             // backhaul or icmp unreachable (TODO for full impl)

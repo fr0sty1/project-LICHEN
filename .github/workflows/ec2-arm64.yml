@@ -22,10 +22,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y cmake ninja-build meson gcc g++ python3-pip python3-venv device-tree-compiler gperf ccache
-          python3 -m pip install --user -U west
-          which west || echo "west installed via pip"
+          uname -m
+          test "$(uname -m)" = "aarch64" || { echo "Not ARM64!"; exit 1; }
+
+      - name: Install dependencies (if needed)
+        run: |
+          which west || pip3 install west
+          which cmake || sudo dnf install -y cmake ninja-build gcc meson
 
       - name: Setup west workspace
         run: |

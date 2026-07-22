@@ -97,7 +97,15 @@ extern "C" {
 #define SCHC_RULE_RPL_DAO           4
 #define SCHC_RULE_LINK_LOCAL_OSCORE 5
 #define SCHC_RULE_GLOBAL_OSCORE     6
+#define SCHC_RULE_MQTT_SN           7
 #define SCHC_RULE_UNCOMPRESSED      255
+#define SCHC_FRAGMENT_M 1
+#define SCHC_FRAGMENT_N 6
+#define SCHC_FRAGMENT_T 0
+#define SCHC_RCS_BYTES 4
+#define SCHC_RETRANSMISSION_TIMEOUT_S 10
+#define SCHC_MAX_ACK_REQUESTS 3
+#define SCHC_INACTIVITY_TIMEOUT_S 60
 
 /**
  * @brief Compress an IPv6 packet using SCHC.

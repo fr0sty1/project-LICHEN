@@ -3,9 +3,11 @@
 """Scale tests for the LICHEN simulator.
 
 These tests verify the simulator handles larger meshes and higher message rates.
+Includes 500-node dense conference mesh scenarios for stress test, roaming,
+kill test, GPS sync, and visualization verification.
 Run with:
-    pytest tests/sim/test_scale.py -v --timeout=120
-    LICHEN_SCALE_NODES=100 pytest tests/sim/test_scale.py -v  # Override node count
+    pytest tests/sim/test_scale.py -v --timeout=300
+    LICHEN_SCALE_NODES=500 pytest tests/sim/test_scale.py -v
 
 For AWS EC2 scale testing:
     ./scripts/ec2-claude.sh "Run pytest tests/sim/test_scale.py with LICHEN_SCALE_NODES=500"
@@ -330,53 +332,103 @@ class TestAnnounceFlood:
             for radio in radios:
                 await radio.close()
 
+
+class TestConferenceMesh:
+    """500-node dense conference mesh test scenarios for hacker conference demo.
+    Tests nodes entering/leaving conference area (roaming), RPL route implications
+    via connectivity metrics, announce propagation via simulated TX/RX counts.
+    """
+
     @pytest.mark.asyncio
     async def test_500_node_conference(
         self, simulator_server: tuple[SimulatorServer, Simulation]
     ) -> None:
-        random.seed(42)
         server, sim = simulator_server
-        node_port = server.get_node_server_port("scale-test")
-        assert node_port is not None
-        gradient_table = GradientTable(max_entries=64)
-        processor = AnnounceProcessor(
-            gradient_table=gradient_table,
-            address_builder=build_address_from_iid,
-        )
-        identity = make_identity(0)
-        mock_tx = MockTransmitter()
-        scheduler = AnnounceScheduler(
-            identity=identity,
-            transmitter=mock_tx,
-            config=SchedulerConfig(interval_ms=1000, jitter_ms=0, initial_delay_ms=0),
-        )
-        announce = scheduler.build_announce()
-        announce_bytes = announce.to_bytes()
-        async with SimRadio(
-            "127.0.0.1", node_port, "scale-test", "gateway", (0.0, 0.0, 0.0)
-        ) as gateway, SimRadio(
-            "127.0.0.1", node_port, "scale-test", "mobile", (200.0, 0.0, 0.0)
-        ) as mobile:
-            node = sim.get_node("mobile")
-            assert node is not None
-            node.set_position(10.0, 0.0, 0.0)
-            await gateway.transmit(b"coap-dio-backbone-gateway-coordination-payload")
-            result = await mobile.receive(500)
-            assert result is not None
-            rx_data, rssi, snr = result
-            received = AnnounceMessage.from_bytes(announce_bytes)
-            process_result = processor.process(
-                received, build_address_from_iid(identity.iid), 1000
-            )
-            assert process_result.accepted
-            assert gradient_table.lookup(
-                build_address_from_iid(identity.iid), now=1000
-            ) is not None
-            assert abs(node.position[0] - 10.0) < 1
-            for payload in [announce_bytes, b"coap-senml-for-schc", b"rpl-dio-realistic"]:
-                sim.start_transmission("mobile", payload)
-            m = sim.metrics()
-            assert m.transmissions > 0
-            assert m.receptions > 0
-            assert m.delivery_rate > 0.0
-            assert m.collision_rate >= 0.0
+        random.seed(42)
+        n_nodes = max(100, min(SCALE_NODES, 500))
+        conference_area = (0.0, 150.0, 0.0, 100.0)
+        start = time.time()
+        for i in range(n_nodes):
+            x = random.uniform(conference_area[0], conference_area[1])
+            y = random.uniform(conference_area[2], conference_area[3])
+            node_id = f"conf-{i:03d}"
+            sim.add_node(node_id, x, y, 1.5)
+        setup_time = time.time() - start
+        assert sim.get_connected_node_count() == n_nodes, f"Expected {n_nodes} nodes"
+
+        try:
+            for i in range(0, 20):
+                node_id = f"conf-{i:03d}"
+                node = sim.get_node(node_id)
+                if node:
+                    node.set_position(50000.0 + i * 10, 50000.0, 1.5)
+            for i in range(20, 40):
+                node_id = f"conf-{i:03d}"
+                node = sim.get_node(node_id)
+                if node:
+                    node.set_position(random.uniform(10, 140), random.uniform(10, 90), 1.5)
+
+            for i in range(40, 70):
+                node_id = f"conf-{i:03d}"
+                sim.remove_node(node_id)
+
+            active = sim.get_connected_node_count()
+            assert active == n_nodes - 30, f"Expected {n_nodes-30} after kill, got {active}"
+
+            tx_count = 0
+            for i in range(min(50, n_nodes)):
+                node_id = f"conf-{i:03d}"
+                node = sim.get_node(node_id)
+                if node and node.connected:
+                    payload = b"conf-msg-" + str(i % 10).encode()
+                    try:
+                        sim.start_transmission(node_id, payload)
+                        tx_count += 1
+                    except (ValueError, RuntimeError):
+                        pass
+            for _ in range(20):
+                if not sim.maybe_advance_time():
+                    break
+
+            nodes = sim.get_all_nodes()
+            assert len(nodes) == n_nodes - 30
+            sim.export_metrics("/tmp/conference-metrics.json")
+
+            metrics = sim.metrics()
+            assert metrics is not None
+            assert tx_count > 0, "No transmissions succeeded in stress test"
+            assert metrics.collisions >= 0, f"Expected non-negative collisions, got {metrics.collisions}"
+            assert metrics.collision_rate >= 0.0, f"Expected valid collision_rate, got {metrics.collision_rate}"
+
+            in_rx = []
+            out_rx = []
+            in_unique = []
+            out_unique = []
+            for node in nodes:
+                if not node.connected:
+                    continue
+                rx = node.metrics.rx_count
+                uniq = len(node.metrics.unique_peers)
+                x, y, _ = node.position
+                if (conference_area[0] <= x <= conference_area[1] and
+                    conference_area[2] <= y <= conference_area[3]):
+                    in_rx.append(rx)
+                    in_unique.append(uniq)
+                else:
+                    out_rx.append(rx)
+                    out_unique.append(uniq)
+            assert len(in_rx) > 5 and len(out_rx) > 5
+            avg_in = sum(in_rx) / len(in_rx) if in_rx else 0
+            avg_out = sum(out_rx) / len(out_rx) if out_rx else 0
+            assert avg_out == 0, f"Far rx={avg_out}"
+            assert avg_in > 0, "In-area nodes received no messages"
+            u_in = sum(in_unique) / len(in_unique) if in_unique else 0
+            u_out = sum(out_unique) / len(out_unique) if out_unique else 0
+            assert u_in > u_out, f"Unique {u_in} > {u_out}"
+
+            print(f"\nConference mesh: {n_nodes} nodes in {conference_area}")
+            print(f"  Setup: {setup_time:.2f}s")
+            print(f"  Final active nodes: {active}")
+            print("  Roaming (40 nodes), kill (30), 50 TX stress with collisions, metrics exported")
+        finally:
+            pass

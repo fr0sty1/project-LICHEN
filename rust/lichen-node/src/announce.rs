@@ -416,20 +416,22 @@ mod tests {
         [0xfd, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
     }
 
-    /// Create a valid signed announce message.
+    /// Create a valid signed announce message (CCP-9 includes rx_channel in signed_data).
     fn make_signed_announce(
         identity: &Identity,
         seq_num: u16,
         hop_count: u8,
+        rx_channel: u8,
         app_data: &[u8],
         buf: &mut [u8],
     ) -> usize {
+        // First, build the signed data to sign (includes rx_channel per CCP-9 to match core)
         let mut signed_data = [0u8; 256];
         let signed_len = 8 + 32 + 2 + 1 + app_data.len();
         signed_data[..8].copy_from_slice(&identity.iid);
         signed_data[8..40].copy_from_slice(identity.pubkey.as_bytes());
         signed_data[40..42].copy_from_slice(&seq_num.to_be_bytes());
-        signed_data[42] = 0;
+        signed_data[42] = rx_channel;
         signed_data[43..signed_len].copy_from_slice(app_data);
 
         let sig = sign(
@@ -444,7 +446,7 @@ mod tests {
             pubkey: identity.pubkey.as_bytes(),
             seq_num,
             hop_count,
-            rx_channel: 0,
+            rx_channel,
             signature: &sig,
             app_data,
             flags: 0,
@@ -480,7 +482,7 @@ mod tests {
         let mut processor = AnnounceProcessor::new(gradient_table, ula_prefix());
 
         let mut buf = [0u8; 256];
-        let len = make_signed_announce(&identity, 100, 3, &[], &mut buf);
+        let len = make_signed_announce(&identity, 100, 3, 0, &[], &mut buf);
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
 
         let from_neighbor = link_local(0xAA);
@@ -502,14 +504,15 @@ mod tests {
 
         // Build announce with wrong IID
         let wrong_iid = [0xAA; 8];
-        let mut signed_data = [0u8; 42];
+        let mut signed_data = [0u8; 43];
         signed_data[..8].copy_from_slice(&identity.iid); // sign with correct IID
         signed_data[8..40].copy_from_slice(identity.pubkey.as_bytes());
         signed_data[40..42].copy_from_slice(&100u16.to_be_bytes());
-        let sig = sign(&identity.privkey, &identity.pubkey, &signed_data);
+        signed_data[42] = 0; // rx_channel per CCP-9
+        let sig = sign(&identity.privkey, &identity.pubkey, &signed_data[..43]);
 
         let builder = AnnounceBuilder {
-            originator_iid: &wrong_iid, // but put wrong IID in message
+            originator_iid: &wrong_iid,
             pubkey: identity.pubkey.as_bytes(),
             seq_num: 100,
             hop_count: 3,
@@ -517,6 +520,7 @@ mod tests {
             signature: &sig,
             app_data: &[],
             flags: 0,
+            rx_channel: 0,
         };
         let mut buf = [0u8; 256];
         let len = builder.write_to(&mut buf).unwrap();
@@ -547,6 +551,7 @@ mod tests {
             signature: &bad_sig,
             app_data: &[],
             flags: 0,
+            rx_channel: 0,
         };
         let mut buf = [0u8; 256];
         let len = builder.write_to(&mut buf).unwrap();
@@ -568,13 +573,13 @@ mod tests {
 
         // Accept first announce with seq_num 100
         let mut buf = [0u8; 256];
-        let len = make_signed_announce(&identity, 100, 3, &[], &mut buf);
+        let len = make_signed_announce(&identity, 100, 3, 0, &[], &mut buf);
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
         let result = processor.process(&announce, link_local(0xAA), 1000);
         assert!(result.accepted);
 
         // Reject announce with same seq_num
-        let len = make_signed_announce(&identity, 100, 3, &[], &mut buf);
+        let len = make_signed_announce(&identity, 100, 3, 0, &[], &mut buf);
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
         let result = processor.process(&announce, link_local(0xAA), 2000);
         assert!(!result.accepted);
@@ -584,7 +589,7 @@ mod tests {
         );
 
         // Reject announce with lower seq_num
-        let len = make_signed_announce(&identity, 50, 3, &[], &mut buf);
+        let len = make_signed_announce(&identity, 50, 3, 0, &[], &mut buf);
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
         let result = processor.process(&announce, link_local(0xAA), 3000);
         assert!(!result.accepted);
@@ -594,7 +599,7 @@ mod tests {
         );
 
         // Accept announce with higher seq_num
-        let len = make_signed_announce(&identity, 200, 3, &[], &mut buf);
+        let len = make_signed_announce(&identity, 200, 3, 0, &[], &mut buf);
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
         let result = processor.process(&announce, link_local(0xAA), 4000);
         assert!(result.accepted);
@@ -609,7 +614,7 @@ mod tests {
 
         // Accept first announce from identity1
         let mut buf = [0u8; 256];
-        let len = make_signed_announce(&identity1, 100, 3, &[], &mut buf);
+        let len = make_signed_announce(&identity1, 100, 3, 0, &[], &mut buf);
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
         let result = processor.process(&announce, link_local(0xAA), 1000);
         assert!(result.accepted);
@@ -617,11 +622,12 @@ mod tests {
         // Now try to spoof the same IID with identity2's pubkey
         // (This would require a SHA-256 collision, so we simulate by
         // manually constructing an announce with identity1's IID but identity2's key)
-        let mut signed_data = [0u8; 42];
+        let mut signed_data = [0u8; 43];
         signed_data[..8].copy_from_slice(&identity1.iid);
         signed_data[8..40].copy_from_slice(identity2.pubkey.as_bytes());
         signed_data[40..42].copy_from_slice(&200u16.to_be_bytes());
-        let sig = sign(&identity2.privkey, &identity2.pubkey, &signed_data);
+        signed_data[42] = 0; // rx_channel per CCP-9
+        let sig = sign(&identity2.privkey, &identity2.pubkey, &signed_data[..43]);
 
         let builder = AnnounceBuilder {
             originator_iid: &identity1.iid,
@@ -632,6 +638,7 @@ mod tests {
             signature: &sig,
             app_data: &[],
             flags: 0,
+            rx_channel: 0,
         };
         let len = builder.write_to(&mut buf).unwrap();
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
@@ -657,7 +664,7 @@ mod tests {
 
         // Accept announce - pins the key
         let mut buf = [0u8; 256];
-        let len = make_signed_announce(&identity, 100, 3, &[], &mut buf);
+        let len = make_signed_announce(&identity, 100, 3, 0, &[], &mut buf);
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
         processor.process(&announce, link_local(0xAA), 1000);
 
@@ -675,7 +682,7 @@ mod tests {
 
         // Accept first announce
         let mut buf = [0u8; 256];
-        let len = make_signed_announce(&identity, 100, 3, &[], &mut buf);
+        let len = make_signed_announce(&identity, 100, 3, 0, &[], &mut buf);
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
         let result = processor.process(&announce, link_local(0xAA), 1000);
         assert!(result.accepted);
@@ -699,7 +706,7 @@ mod tests {
         let mut processor = AnnounceProcessor::new(gradient_table, ula_prefix());
 
         let mut buf = [0u8; 256];
-        let len = make_signed_announce(&identity, 100, 3, &[], &mut buf);
+        let len = make_signed_announce(&identity, 100, 3, 0, &[], &mut buf);
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
 
         let from_neighbor = link_local(0xAA);
@@ -727,7 +734,7 @@ mod tests {
 
         // Announce at max hops (15)
         let mut buf = [0u8; 256];
-        let len = make_signed_announce(&identity, 100, 15, &[], &mut buf);
+        let len = make_signed_announce(&identity, 100, 15, 0, &[], &mut buf);
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
 
         let result = processor.process(&announce, link_local(0xAA), 1000);
@@ -735,7 +742,7 @@ mod tests {
         assert!(!result.should_relay); // At max hops, don't relay
 
         // Announce below max hops should relay
-        let len = make_signed_announce(&identity, 101, 14, &[], &mut buf);
+        let len = make_signed_announce(&identity, 101, 14, 0, &[], &mut buf);
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
 
         let result = processor.process(&announce, link_local(0xAA), 2000);
@@ -752,7 +759,7 @@ mod tests {
         // App data with congestion TLV: type=0x02, length=1, value=42
         let app_data = [0x02, 0x01, 42];
         let mut buf = [0u8; 256];
-        let len = make_signed_announce(&identity, 100, 3, &app_data, &mut buf);
+        let len = make_signed_announce(&identity, 100, 3, 0, &app_data, &mut buf);
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
 
         let result = processor.process(&announce, link_local(0xAA), 1000);
@@ -770,7 +777,7 @@ mod tests {
         // followed by congestion TLV (type=0x02, length=1, value=77)
         let app_data = [0xFF, 0x02, 0xAA, 0xBB, 0x02, 0x01, 77];
         let mut buf = [0u8; 256];
-        let len = make_signed_announce(&identity, 100, 3, &app_data, &mut buf);
+        let len = make_signed_announce(&identity, 100, 3, 0, &app_data, &mut buf);
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
 
         let result = processor.process(&announce, link_local(0xAA), 1000);
@@ -789,7 +796,7 @@ mod tests {
         let mut buf = [0u8; 256];
         for i in 1..=3 {
             let identity = make_identity(i);
-            let len = make_signed_announce(&identity, 100, 3, &[], &mut buf);
+            let len = make_signed_announce(&identity, 100, 3, 0, &[], &mut buf);
             let announce = Announce::from_bytes(&buf[..len]).unwrap();
             processor.process(&announce, link_local(0xAA), 1000 + i as u32);
         }
@@ -797,7 +804,7 @@ mod tests {
 
         // Add a 4th - should evict the oldest (identity 1)
         let identity4 = make_identity(4);
-        let len = make_signed_announce(&identity4, 100, 3, &[], &mut buf);
+        let len = make_signed_announce(&identity4, 100, 3, 0, &[], &mut buf);
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
         processor.process(&announce, link_local(0xAA), 5000);
 
@@ -815,19 +822,19 @@ mod tests {
 
         // Start near max seq_num
         let mut buf = [0u8; 256];
-        let len = make_signed_announce(&identity, 65534, 3, &[], &mut buf);
+        let len = make_signed_announce(&identity, 65534, 3, 0, &[], &mut buf);
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
         let result = processor.process(&announce, link_local(0xAA), 1000);
         assert!(result.accepted);
 
         // Wrapped seq_num (0) is newer than 65534
-        let len = make_signed_announce(&identity, 0, 3, &[], &mut buf);
+        let len = make_signed_announce(&identity, 0, 3, 0, &[], &mut buf);
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
         let result = processor.process(&announce, link_local(0xAA), 2000);
         assert!(result.accepted);
 
         // And 1 is newer than 0
-        let len = make_signed_announce(&identity, 1, 3, &[], &mut buf);
+        let len = make_signed_announce(&identity, 1, 3, 0, &[], &mut buf);
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
         let result = processor.process(&announce, link_local(0xAA), 3000);
         assert!(result.accepted);

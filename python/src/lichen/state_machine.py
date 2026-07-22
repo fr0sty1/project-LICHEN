@@ -9,7 +9,8 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import wraps
-from typing import Concatenate, Generic, ParamSpec, TypeVar
+from typing import Generic, TypeVar
+from typing_extensions import Concatenate, ParamSpec
 
 logger = logging.getLogger(__name__)
 

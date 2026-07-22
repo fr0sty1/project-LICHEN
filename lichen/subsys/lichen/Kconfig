@@ -25,7 +25,28 @@ rsource "oscore/Kconfig"
 rsource "schc/Kconfig"
 rsource "senml/Kconfig"
 rsource "rpl/Kconfig"
-rsource "routing/Kconfig"
-rsource "transport/Kconfig"
+ rsource "routing/Kconfig"
+ rsource "transport/Kconfig"
+
+config LICHEN_ADAPTIVE_SF_ENABLED
+	bool "Adaptive spreading factor per-neighbor (project-LICHEN-zrh2.2)"
+	depends on LICHEN
+	default y
+	help
+	  Enable per-neighbor SF tracking, SNR EWMA, upgrade/downgrade hysteresis
+	  for dynamic TX SF selection. Adds fields to gradient entries. See
+	  project-LICHEN-zrh2.2 and spec section 2a. SF10 is normative baseline.
+
+config LICHEN_DEFAULT_SF
+	int "Default spreading factor"
+	depends on LICHEN
+	default 10
+	range 7 12
+	help
+	  Default SF7-SF12 for transmissions when adaptive SF disabled or no
+	  per-neighbor data available. SF10 is the normative baseline per
+	  coordinated-capacity spec.
 
 endif # LICHEN
+
+

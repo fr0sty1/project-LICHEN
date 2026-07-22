@@ -129,6 +129,56 @@ static int send_ack(struct coap_resource *resource,
 }
 
 /*
+ * Shared helper for CoAP responses (used by DTN, location, and server resources).
+ * Replaces duplicated coap_respond() in coap_dtn.c and coap_location.c.
+ * Supports both CBOR (60) and SenML+CBOR (112) formats.
+ */
+int lichen_coap_respond(struct coap_resource *resource,
+			struct coap_packet *request,
+			struct sockaddr *addr, socklen_t addr_len,
+			uint8_t resp_code, uint16_t content_format,
+			const uint8_t *payload, size_t payload_len)
+{
+	if (payload_len > LICHEN_COAP_SERVER_MAX_PAYLOAD) {
+		return -EINVAL;
+	}
+
+	uint8_t buf[COAP_RESPONSE_BUF_SIZE];
+	struct coap_packet resp;
+	uint8_t token[COAP_TOKEN_MAX_LEN];
+	uint8_t tkl = coap_header_get_token(request, token);
+	uint8_t type = (coap_header_get_type(request) == COAP_TYPE_CON)
+			       ? COAP_TYPE_ACK
+			       : COAP_TYPE_NON_CON;
+	int r;
+
+	r = coap_packet_init(&resp, buf, sizeof(buf), COAP_VERSION_1, type, tkl,
+			     token, resp_code, coap_header_get_id(request));
+	if (r < 0) {
+		return r;
+	}
+
+	if (payload != NULL && payload_len > 0) {
+		r = coap_append_option_int(&resp, COAP_OPTION_CONTENT_FORMAT,
+					   content_format);
+		if (r < 0) {
+			return r;
+		}
+		r = coap_packet_append_payload_marker(&resp);
+		if (r < 0) {
+			return r;
+		}
+		r = coap_packet_append_payload(&resp, payload,
+					       (uint16_t)payload_len);
+		if (r < 0) {
+			return r;
+		}
+	}
+
+	return coap_resource_send(resource, &resp, addr, addr_len, NULL);
+}
+
+/*
  * /status resource - GET returns node status as CBOR
  */
 static int status_get(struct coap_resource *resource,
@@ -537,7 +587,10 @@ int lichen_coap_server_init(const struct lichen_coap_server_handlers *handlers)
 	} else {
 		memset(&s_handlers, 0, sizeof(s_handlers));
 	}
-	if (IS_ENABLED(CONFIG_LICHEN_COAP_DEADDROP)) lichen_coap_deaddrop_register();
+
+	BUILD_ASSERT(LICHEN_COAP_SERVER_MAX_PAYLOAD + 128 <= CONFIG_COAP_SERVER_MESSAGE_SIZE,
+		     "server payload exceeds CoAP capacity");
+
 	LOG_INF("CoAP server initialized on port %u", s_coap_port);
 	return lichen_coap_server_start();
 }

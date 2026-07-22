@@ -204,6 +204,21 @@ int lichen_make_gua(const uint8_t *prefix, const uint8_t *iid,
                     struct in6_addr *addr);
 
 /**
+ * @brief Construct primary Yggdrasil address from Ed25519 pubkey
+ *
+ * Builds 02xx::/64 address per Yggdrasil spec (project-LICHEN-p8i6):
+ * - byte 0 = 0x02
+ * - bytes 1-7 = SHA-512(pubkey)[0:7]
+ * - bytes 8-15 = IID from SHA-256(pubkey)[0:8] with U/L bit cleared
+ * This is now the primary address (replaces ULA).
+ *
+ * @param pubkey 32-byte Ed25519 public key
+ * @param addr Output struct in6_addr for the Yggdrasil address
+ * @return 0 on success, negative errno on error
+ */
+int lichen_yggdrasil_addr(const uint8_t pubkey[32], struct in6_addr *addr);
+
+/**
  * @brief Format IPv6 address as string
  *
  * @param addr IPv6 address to format

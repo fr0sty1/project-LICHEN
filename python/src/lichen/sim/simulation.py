@@ -110,6 +110,7 @@ class Simulation:
         self._time_mode = time_mode
         self._current_time_us = 0
         self._nodes: dict[str, SimNode] = {}
+        self._gateways: dict[str, dict] = {}
         self._medium = Medium()
         self._event_queue = EventQueue()
         self._pending_rx_timeouts: dict[str, int] = {}  # node_id -> timeout_time_us
@@ -279,6 +280,35 @@ class Simulation:
 
         return node
 
+    def add_gateway(
+        self,
+        gateway_id: str,
+        x: float,
+        y: float,
+        z: float,
+        slot_range: tuple[int, int] = (0, 10),
+    ) -> SimNode:
+        if gateway_id in self._nodes:
+            raise ValueError(f"Node '{gateway_id}' already exists")
+        node = SimNode(id=gateway_id, position=(x, y, z), connected=True)
+        self._nodes[gateway_id] = node
+        self._gateways[gateway_id] = {
+            "node": node,
+            "slot_range": slot_range,
+            "backbone_id": f"bb-{gateway_id}",
+            "owned_nodes": set(),
+            "negotiation_state": "idle",
+        }
+        self._observers.notify(
+            "on_node_added",
+            sim_id=self._id,
+            node_id=gateway_id,
+            x=x,
+            y=y,
+            z=z,
+        )
+        return node
+
     def remove_node(self, node_id: str) -> None:
         """Remove a node from the simulation.
 
@@ -290,7 +320,7 @@ class Simulation:
         """
         node = self._nodes.pop(node_id, None)
         if node is None:
-            return  # Node didn't exist, nothing to do
+            return
 
         node.disconnect()
         self._pending_rx_timeouts.pop(node_id, None)
@@ -388,6 +418,7 @@ class Simulation:
             payload=event.payload,
             tx_power_dbm=event.tx_power_dbm,
             position=event.position,
+            channel=event.channel,
         )
 
     def _handle_tx_end(self, event: TxEndEvent) -> None:
@@ -400,10 +431,12 @@ class Simulation:
         # Only clear node state for the node's *current* transmission. A stale
         # TxEndEvent from a transmission that was superseded by a later one
         # (half-duplex, see start_transmission) must not retire the new one.
+        node = self._nodes.get(event.node_id)
+        node_state = node.state.name if node is not None else None
         if self._active_transmissions.get(event.node_id) == event.transmission_id:
-            node = self._nodes.get(event.node_id)
             if node is not None and node.state == NodeState.TX:
                 node.state = NodeState.IDLE
+                node_state = node.state.name
             self._active_transmissions.pop(event.node_id, None)
         self._debug_log(
             "tx_end",
@@ -411,6 +444,10 @@ class Simulation:
             node_id=event.node_id,
             tx_id=event.transmission_id,
             time_us=event.time_us,
+            current_time_us=self._current_time_us,
+            node_state=node_state,
+            pending_txs=len(self._active_transmissions),
+            event_queue_len=len(self._event_queue),
         )
 
         # Notify observers
@@ -430,18 +467,24 @@ class Simulation:
         """
         node = self._nodes.get(event.node_id)
         on_timeout: Callable[[], None] | None = None
+        node_state = node.state.name if node is not None else None
         if node is not None and node.state == NodeState.RX_WAIT:
             # Capture callback before clearing state
             if node.rx_callbacks is not None:
                 on_timeout = node.rx_callbacks[1]
             node.state = NodeState.IDLE
             node.rx_callbacks = None
+            node_state = node.state.name
         self._pending_rx_timeouts.pop(event.node_id, None)
         self._debug_log(
             "rx_timeout",
             sim_id=self._id,
             node_id=event.node_id,
             time_us=event.time_us,
+            current_time_us=self._current_time_us,
+            node_state=node_state,
+            pending_timeouts=len(self._pending_rx_timeouts),
+            event_queue_len=len(self._event_queue),
         )
 
         # Notify observers
@@ -541,6 +584,7 @@ class Simulation:
                 payload=payload,
                 tx_power_dbm=node.tx_power_dbm,
                 position=node.position,
+                channel=node.current_channel,
             )
             self._event_queue.push(delayed_event)
             self._debug_log(
@@ -565,17 +609,21 @@ class Simulation:
         payload: bytes,
         tx_power_dbm: int,
         position: tuple[float, float, float],
+        channel: int = 0,
     ) -> str:
         """Execute the actual transmission start in the medium.
 
         This is the core TX logic, called either immediately from
         start_transmission() or later via TxStartDelayedEvent.
+        Integrates synchronized hopping by using provided channel from
+        node's hop_schedule/SFN or current_channel.
 
         Args:
             node_id: ID of the transmitting node.
             payload: Raw bytes to transmit.
             tx_power_dbm: Transmit power in dBm.
             position: Node position (x, y, z) in meters.
+            channel: Channel from synchronized hopping (overrides node.current_channel).
 
         Returns:
             The transmission ID.
@@ -593,6 +641,10 @@ class Simulation:
 
         if node is not None:
             node.state = NodeState.TX
+            if channel != node.current_channel:
+                node.current_channel = channel  # update for synchronized hopping
+        else:
+            channel = 0
 
         tx = self._medium.start_tx(
             node_id=node_id,
@@ -600,7 +652,7 @@ class Simulation:
             tx_power_dbm=tx_power_dbm,
             position=position,
             time_us=self._current_time_us,
-            frequency_hz=915_000_000,  # explicit vs None for rendezvous per CCP-9
+            channel=channel,
         )
 
         self._active_transmissions[node_id] = tx.id
@@ -608,7 +660,7 @@ class Simulation:
 
         # Record per-node metrics
         if node is not None:
-            packet_hash = hashlib.sha256(payload).digest()[:16].hex()
+            packet_hash = hashlib.sha256(payload).hexdigest()[:32]
             node.metrics.record_tx(payload, packet_hash)
 
         # Notify observers
@@ -856,7 +908,7 @@ class Simulation:
             return None
 
         self._metrics.record_reception(node_id, tx.id, self._current_time_us)
-        packet_hash = hashlib.sha256(tx.payload).digest()[:16].hex()
+        packet_hash = hashlib.sha256(tx.payload).hexdigest()[:32]
         node.metrics.record_rx(tx.payload, packet_hash, from_peer=tx.source_node_id)
 
         for candidate in candidates:
@@ -961,7 +1013,7 @@ class Simulation:
         self._metrics.record_reception(node_id, tx.id, self._current_time_us)
 
         # Record per-node metrics
-        packet_hash = hashlib.sha256(tx.payload).digest()[:16].hex()
+        packet_hash = hashlib.sha256(tx.payload).hexdigest()[:32]
         node.metrics.record_rx(tx.payload, packet_hash, from_peer=tx.source_node_id)
 
         # Find the candidate to get RSSI/SNR
@@ -1042,8 +1094,9 @@ class Simulation:
         """Export per-node metrics as JSON for analysis.
 
         Writes a JSON file containing per-node telemetry metrics including
-        TX/RX counts, byte totals, unique peers seen, and packet hashes.
-        This enables post-test analysis for cross-implementation verification.
+        TX/RX counts, byte totals, unique peers seen, and packet hashes
+        (32-char lowercase hex of first 16 SHA256 bytes). Matches Rust
+        hetero_node.rs METRICS export for cross-impl interop.
 
         Args:
             path: Path to the output JSON file.

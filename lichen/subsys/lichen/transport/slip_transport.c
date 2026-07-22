@@ -115,10 +115,13 @@ static uint16_t ipv6_payload_len(const uint8_t *pkt)
 	return sys_get_be16(&pkt[IPV6_PAYLOAD_OFFSET]);
 }
 
+static bool ipv6_next_header_valid(uint8_t nh)
+{
+	return nh != 0xFFu;
+}
+
 static int validate_ipv6_packet(const uint8_t *pkt, size_t len)
 {
-	size_t expected;
-
 	if (pkt == NULL) {
 		return -EINVAL;
 	}
@@ -138,14 +141,19 @@ static int validate_ipv6_packet(const uint8_t *pkt, size_t len)
 		return -EPROTONOSUPPORT;
 	}
 
+	if (!ipv6_next_header_valid(pkt[6])) {
+		LOG_WRN("SLIP RX: invalid next header 0x%02x", pkt[6]);
+		return -EPROTONOSUPPORT;
+	}
+
 	uint16_t payload_len = ipv6_payload_len(pkt);
 	if (payload_len > SLIP_LCI_MTU - IPV6_HDR_LEN) {
-		LOG_WRN("SLIP RX: IPv6 payload too large (%u > %u)",
+		LOG_WRN("SLIP RX: IPv6 payload length exceeds MTU (%u > %u)",
 			payload_len, SLIP_LCI_MTU - IPV6_HDR_LEN);
 		return -EMSGSIZE;
 	}
 
-	expected = IPV6_HDR_LEN + payload_len;
+	size_t expected = IPV6_HDR_LEN + (size_t)payload_len;
 	if (expected != len) {
 		LOG_WRN("SLIP RX: length mismatch (header says %zu, got %zu)",
 			expected, len);
@@ -211,13 +219,43 @@ static int slip_encode(const uint8_t *ipv6, size_t ipv6_len,
 	return 0;
 }
 
-/**
- * @brief Process one received byte through the SLIP state machine
- *
- * @param ctx Transport context
- * @param b   Received byte
- * @return 1 if a complete packet is ready, 0 otherwise
- */
+static int slip_perform_tx(struct slip_transport_ctx *ctx,
+			   const uint8_t *data, size_t len)
+{
+	size_t frame_len;
+	int ret;
+
+	ret = slip_encode(data, len, ctx->tx_frame, sizeof(ctx->tx_frame),
+			  &frame_len);
+	if (ret < 0) {
+		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
+		ctx->stats.tx_errors++;
+		k_mutex_unlock(&ctx->stats_mutex);
+		return ret;
+	}
+
+#ifdef CONFIG_ZTEST
+	memcpy(ctx->last_tx, ctx->tx_frame, frame_len);
+	ctx->last_tx_len = frame_len;
+#endif
+
+	if (ctx->uart_dev != NULL) {
+		for (size_t i = 0; i < frame_len; i++) {
+			uart_poll_out(ctx->uart_dev, ctx->tx_frame[i]);
+		}
+		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
+		ctx->stats.tx_packets++;
+		ctx->stats.tx_bytes += (uint32_t)len;
+		k_mutex_unlock(&ctx->stats_mutex);
+		return 0;
+	}
+
+	k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
+	ctx->stats.tx_errors++;
+	k_mutex_unlock(&ctx->stats_mutex);
+	return -ENODEV;
+}
+
 static int slip_decode_byte(struct slip_transport_ctx *ctx, uint8_t b)
 {
 	switch (ctx->rx_state) {
@@ -479,7 +517,6 @@ static int slip_iface_send(const struct device *dev, struct net_pkt *pkt)
 	struct slip_transport_ctx *ctx = dev->data;
 	size_t pkt_len = net_pkt_get_len(pkt);
 	uint8_t pkt_buf[SLIP_LCI_MTU];
-	size_t frame_len;
 	int ret;
 
 	if (pkt_len > sizeof(pkt_buf)) {
@@ -492,7 +529,6 @@ static int slip_iface_send(const struct device *dev, struct net_pkt *pkt)
 
 	k_mutex_lock(&ctx->tx_mutex, K_FOREVER);
 
-	/* Extract packet data */
 	net_pkt_cursor_init(pkt);
 	ret = net_pkt_read(pkt, pkt_buf, pkt_len);
 	if (ret < 0) {
@@ -504,42 +540,10 @@ static int slip_iface_send(const struct device *dev, struct net_pkt *pkt)
 		return ret;
 	}
 
-	/* Encode with SLIP framing */
-	ret = slip_encode(pkt_buf, pkt_len, ctx->tx_frame, sizeof(ctx->tx_frame),
-			  &frame_len);
-	if (ret < 0) {
-		LOG_WRN("SLIP TX: encode failed: %d", ret);
-		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
-		ctx->stats.tx_errors++;
-		k_mutex_unlock(&ctx->stats_mutex);
-		k_mutex_unlock(&ctx->tx_mutex);
-		return ret;
-	}
-
-#ifdef CONFIG_ZTEST
-	memcpy(ctx->last_tx, ctx->tx_frame, frame_len);
-	ctx->last_tx_len = frame_len;
-#endif
-
-	/* Transmit over UART */
-	if (ctx->uart_dev != NULL) {
-		for (size_t i = 0; i < frame_len; i++) {
-			uart_poll_out(ctx->uart_dev, ctx->tx_frame[i]);
-		}
-		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
-		ctx->stats.tx_packets++;
-		ctx->stats.tx_bytes += (uint32_t)pkt_len;
-		k_mutex_unlock(&ctx->stats_mutex);
-	} else {
-		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
-		ctx->stats.tx_errors++;
-		k_mutex_unlock(&ctx->stats_mutex);
-		ret = -ENODEV;
-	}
-
+	ret = slip_perform_tx(ctx, pkt_buf, pkt_len);
 	k_mutex_unlock(&ctx->tx_mutex);
 
-	LOG_DBG("SLIP TX: %zu bytes IPv6 -> %zu bytes framed", pkt_len, frame_len);
+	LOG_DBG("SLIP TX: %zu bytes IPv6", pkt_len);
 	return ret;
 }
 
@@ -553,9 +557,11 @@ static const struct dummy_api s_slip_api = {
  * -------------------------------------------------------------------------- */
 
 /*
- * NET_DEVICE_INIT defines the network device and calls slip_init at boot.
- * We use NULL for the init function because actual UART setup happens in
- * slip_transport_init(), which should be called after the UART device is ready.
+ * NET_DEVICE_INIT registers the dummy network interface (slip_lci).
+ * The iface_init callback (slip_iface_init) runs at boot. slip_transport_init()
+ * must be called explicitly (or via CONFIG_SLIP_TRANSPORT_AUTO_INIT) to setup
+ * mutexes, optional UART, and RX thread. UART is now optional per updated
+ * is_ready() and docs (for native_sim tests using test helpers).
  */
 NET_DEVICE_INIT(slip_lci, "slip_lci",
 		NULL, NULL, &s_ctx, NULL,
@@ -575,7 +581,6 @@ struct net_if *slip_transport_iface_get(void)
 int slip_transport_send(const uint8_t *ipv6, size_t len)
 {
 	struct slip_transport_ctx *ctx = &s_ctx;
-	size_t frame_len;
 	int ret;
 
 	if (ipv6 == NULL && len > 0) {
@@ -587,40 +592,10 @@ int slip_transport_send(const uint8_t *ipv6, size_t len)
 	}
 
 	k_mutex_lock(&ctx->tx_mutex, K_FOREVER);
-
-	ret = slip_encode(ipv6, len, ctx->tx_frame, sizeof(ctx->tx_frame),
-			  &frame_len);
-	if (ret < 0) {
-		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
-		ctx->stats.tx_errors++;
-		k_mutex_unlock(&ctx->stats_mutex);
-		k_mutex_unlock(&ctx->tx_mutex);
-		return ret;
-	}
-
-#ifdef CONFIG_ZTEST
-	memcpy(ctx->last_tx, ctx->tx_frame, frame_len);
-	ctx->last_tx_len = frame_len;
-#endif
-
-	if (ctx->uart_dev != NULL) {
-		for (size_t i = 0; i < frame_len; i++) {
-			uart_poll_out(ctx->uart_dev, ctx->tx_frame[i]);
-		}
-		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
-		ctx->stats.tx_packets++;
-		ctx->stats.tx_bytes += (uint32_t)len;
-		k_mutex_unlock(&ctx->stats_mutex);
-	} else {
-		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
-		ctx->stats.tx_errors++;
-		k_mutex_unlock(&ctx->stats_mutex);
-		k_mutex_unlock(&ctx->tx_mutex);
-		return -ENODEV;
-	}
-
+	ret = slip_perform_tx(ctx, ipv6, len);
 	k_mutex_unlock(&ctx->tx_mutex);
-	return 0;
+
+	return ret;
 }
 
 int slip_transport_get_stats(struct slip_transport_stats *stats)

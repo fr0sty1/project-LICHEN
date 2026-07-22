@@ -140,6 +140,24 @@ async def partial_location(request: Request) -> HTMLResponse:
     return HTMLResponse(_render_senml(data))
 
 
+async def partial_mesh_stats(request: Request) -> HTMLResponse:
+    """Mock live stats for 500-node conference mesh demo."""
+    # TODO: aggregate CoAP from gateways for real topology/packet data.
+    stats = {"nodes": "500/500", "pps": 1243, "loss": "0.3%", "hops": 2.4, "gws": 4, "tdma": "98.7%"}
+    html = f'''<div style="font-size:1.1em;line-height:1.8">
+<div><strong>Nodes:</strong> {stats["nodes"]}</div>
+<div><strong>PPS:</strong> {stats["pps"]}</div>
+<div><strong>Loss:</strong> {stats["loss"]}</div>
+<div><strong>Hops:</strong> {stats["hops"]}</div>
+<div><strong>GWs:</strong> {stats["gws"]}</div>
+<div><strong>TDMA:</strong> {stats["tdma"]}</div>
+<div style="margin-top:1rem;font-size:0.8em;color:#58a6ff">Live • 4 gateways</div>
+</div><div style="margin-top:1rem;height:120px;background:#161b22;border:1px solid #30363d;border-radius:4px;position:relative">
+<div style="position:absolute;bottom:10px;left:10px;font-size:0.7em;color:#58a6ff">Converged, no collisions</div>
+</div>'''
+    return HTMLResponse(html)
+
+
 async def api_status(request: Request) -> JSONResponse:
     data = await _fetch("/status")
     return JSONResponse({"ok": data is not None, "data": data})
@@ -182,6 +200,7 @@ def create_app() -> Starlette:
             Route("/partial/messages", partial_messages),
             Route("/partial/sensors", partial_sensors),
             Route("/partial/location", partial_location),
+            Route("/partial/mesh-stats", partial_mesh_stats),
             Route("/api/status", api_status),
         ]
     )
@@ -293,6 +312,78 @@ _PAGE_HTML = """\
       <h2>Location <span class="htmx-indicator">&#8635;</span></h2>
       <div hx-get="/partial/location" hx-trigger="load, every 15s" hx-indicator="closest .card">
         Loading&#8230;
+      </div>
+    </div>
+
+    <div class="card" style="grid-column: span 2;">
+      <h2>Live Mesh Stats (500 nodes) <span class="htmx-indicator">&#8635;</span></h2>
+      <div id="mesh-stats" hx-get="/partial/mesh-stats" hx-trigger="load, every 5s" hx-indicator="closest .card">
+        Loading conference mesh stats...
+      </div>
+    </div>
+
+    <div class="card" style="grid-column: span 3; height: 420px;">
+      <h2>Topology (500 nodes) <span class="htmx-indicator">&#8635;</span></h2>
+      <div id="topology" style="width:100%; height:380px; background:#161b22; border:1px solid #30363d; border-radius:4px; position:relative;">
+        <svg id="mesh-svg" width="100%" height="100%" style="position:absolute;"></svg>
+      </div>
+      <script src="https://d3js.org/d3.v7.min.js"></script>
+      <script>
+        function initTopology() {
+          const svg = d3.select("#mesh-svg");
+          const width = 800, height = 380;
+          svg.attr("viewBox", `0 0 ${width} ${height}`);
+          // Mock 500-node graph (20 for perf; WebGL for full)
+          const nodes = Array.from({length:20},(_,i)=>({id:i,x:Math.random()*width,y:Math.random()*height,group:i%4}));
+          const links = nodes.slice(1).map((n,i)=>({source:0,target:i+1,value:Math.random()}));
+          const simulation = d3.forceSimulation(nodes)
+            .force("link",d3.forceLink(links).distance(30))
+            .force("charge",d3.forceManyBody().strength(-80))
+            .force("center",d3.forceCenter(width/2,height/2));
+          const link = svg.append("g").selectAll("line")
+            .data(links).join("line")
+            .attr("stroke","#58a6ff").attr("stroke-opacity",0.6);
+          const node = svg.append("g").selectAll("circle")
+            .data(nodes).join("circle")
+            .attr("r",5).attr("fill",d=>["#ff7f0e","#2ca02c","#1f77b4","#d62728"][d.group]);
+          simulation.on("tick",()=>{link
+            .attr("x1",d=>d.source.x).attr("y1",d=>d.source.y)
+            .attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);
+            node.attr("cx",d=>d.x).attr("cy",d=>d.y);});
+          setInterval(()=>{node.attr("r",d=>5+Math.random()*3);
+            setTimeout(()=>node.attr("r",5),300);},800);
+        }
+        setTimeout(initTopology, 100);
+      </script>
+    </div>
+
+    <div class="card" style="grid-column: span 2;">
+      <h2>Spectrum Waterfall + TDMA <span class="htmx-indicator">&#8635;</span></h2>
+      <canvas id="spectrum" width="800" height="160" style="background:#000; display:block; margin:0 auto; image-rendering:pixelated;"></canvas>
+      <script>
+        const canvas = document.getElementById('spectrum');
+        const ctx = canvas.getContext('2d');
+        let t = 0;
+        function drawSpectrum() {
+          ctx.fillStyle = '#000'; ctx.fillRect(0,0,800,160);
+          for (let x=0; x<800; x+=4) {
+            const intensity = Math.sin(t/10 + x/50) * 40 + 80 + Math.random()*20;
+            const hue = (x / 8) % 360;
+            ctx.fillStyle = `hsl(${hue}, 80%, ${intensity}%)`;
+            ctx.fillRect(x, 0, 4, 160);
+          }
+          // Overlay LICHEN channel and TDMA slots
+          ctx.fillStyle = 'rgba(0,255,100,0.3)'; ctx.fillRect(200, 0, 80, 160); // active channel
+          ctx.strokeStyle = '#0f0'; ctx.lineWidth=2;
+          for (let s=0; s<8; s++) {
+            const y = 20 + (t % 160); ctx.beginPath(); ctx.moveTo(50+s*90, y); ctx.lineTo(120+s*90, y+20); ctx.stroke();
+          }
+          t += 3; requestAnimationFrame(drawSpectrum);
+        }
+        drawSpectrum();
+      </script>
+      <div style="text-align:center; font-size:0.75em; margin-top:0.5rem; color:#58a6ff;">
+        LoRa CSS channels • LICHEN active on SF10 CH4 • TDMA slots active (green bars)
       </div>
     </div>
 

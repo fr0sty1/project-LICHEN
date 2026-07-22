@@ -12,9 +12,9 @@
 extern "C" {
 #endif
 
-#define LICHEN_COAP_STATUS_CBOR_MAX_SIZE    256U
-#define LICHEN_COAP_NEIGHBORS_CBOR_MAX_SIZE 512U
-#define LICHEN_COAP_ROUTES_CBOR_MAX_SIZE    512U
+#define LICHEN_COAP_STATUS_CBOR_MAX_SIZE CONFIG_LICHEN_COAP_STATUS_CBOR_MAX_SIZE
+#define LICHEN_COAP_NEIGHBORS_CBOR_MAX_SIZE CONFIG_LICHEN_COAP_NEIGHBORS_CBOR_MAX_SIZE
+#define LICHEN_COAP_ROUTES_CBOR_MAX_SIZE CONFIG_LICHEN_COAP_ROUTES_CBOR_MAX_SIZE
 
 #ifndef CONFIG_LICHEN_COAP_STATUS_MAX_NEIGHBORS
 #define CONFIG_LICHEN_COAP_STATUS_MAX_NEIGHBORS 8
@@ -59,6 +59,13 @@ struct lichen_coap_time_state {
 	uint32_t age_s;
 };
 
+/**
+ * @brief Node status for /status endpoint
+ *
+ * Capacity fields (txq_*, fwd_*) report current queue depths per
+ * CCP-17 / appendix-bufferbloat. Clients use these to detect
+ * backpressure and return ENOBUFS before queues overflow.
+ */
 struct lichen_coap_node_status {
 	uint32_t uptime_s;
 	uint8_t battery_pct;
@@ -75,6 +82,11 @@ struct lichen_coap_node_status {
 	uint8_t fwd_used;
 };
 
+
+
+/**
+ * @brief Trust level for neighbors
+ */
 enum lichen_coap_trust_level {
 	LICHEN_COAP_TRUST_UNKNOWN,
 	LICHEN_COAP_TRUST_TOFU,

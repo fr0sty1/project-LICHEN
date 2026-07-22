@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <limits.h>
 #include <string.h>
 #include <limits.h>
 
@@ -15,6 +16,8 @@
 
 BUILD_ASSERT(CONFIG_LICHEN_MESHCORE_MAX_SERIAL_PAYLOAD <= UINT16_MAX,
 	     "Serial payload cannot exceed 16-bit length field");
+BUILD_ASSERT(CONFIG_LICHEN_MESHCORE_MAX_SERIAL_PAYLOAD <= LICHEN_MESHCORE_BLE_FRAME_MAX,
+	     "Exceeds MeshCore BLE frame maximum");
 BUILD_ASSERT(CONFIG_LICHEN_MESHCORE_MAX_SERIAL_PAYLOAD <= INT_MAX - 3,
 	     "Serial payload too large for int return");
 
@@ -66,7 +69,7 @@ int lichen_meshcore_encode_serial_frame(uint8_t marker, const uint8_t *payload,
 	     marker != LICHEN_MESHCORE_SERIAL_DEVICE_TO_APP) ||
 	    payload_len == 0U || (payload == NULL && payload_len > 0U) ||
 	    payload_len > CONFIG_LICHEN_MESHCORE_MAX_SERIAL_PAYLOAD ||
-	    out == NULL || out_len < payload_len + 3U) {
+	    out == NULL || out_len < 3U || payload_len > out_len - 3U) {
 		return -EINVAL;
 	}
 

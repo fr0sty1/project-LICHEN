@@ -40,10 +40,11 @@ LICHEN/
 │   ├── drivers/
 │   │   └── lora/               # LoRa-specific adaptations
 │   ├── boards/                 # Board-specific overlays
-│   │   ├── heltec_lora32_v3.overlay
-│   │   ├── rak4631.overlay
-│   │   ├── tbeam_supreme.overlay
-│   │   └── nucleo_wl55jc.overlay
+   │   │   ├── heltec_lora32_v3.overlay
+   │   │   ├── rak4631.overlay
+   │   │   ├── tbeam_supreme.overlay (BLOCKED: no canonical board)
+   │   │   └── nucleo_wl55jc.overlay
+
 │   └── samples/
 │       ├── basic_node/         # Minimal node example
 │       ├── sensor_node/        # Sensor + position beacon
@@ -278,7 +279,7 @@ RAM (64 KB available):
 |----------|---------|
 | draft-lichen-link | Link layer, LLSec, Ed25519 |
 | draft-lichen-schc | SCHC profile for LICHEN |
-| draft-lichen-addr | IPv6 addressing (no-ULA, 02xx/Yggdrasil), isolated mesh |
+| draft-lichen-addr | IPv6 addressing (link-local + 02xx Yggdrasil only) |
 | draft-lichen-rpl | RPL configuration, MRHOF |
 | draft-lichen-security | TOFU, DANE, OSCORE profile |
 | draft-lichen-lci | Local Client Interface |

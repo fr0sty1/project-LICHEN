@@ -33,6 +33,7 @@ rpl_dio          = 3    # RPL DIO over link-local ICMPv6
 rpl_dao          = 4    # RPL DAO with DODAGID over link-local ICMPv6
 link_local_oscore = 5   # Link-local IPv6 + UDP + OSCORE-protected CoAP
 global_oscore    = 6    # Global IPv6 + UDP + OSCORE-protected CoAP
+mqtt_sn          = 7    # IPv6 + UDP + MQTT-SN (port 10883)
 uncompressed     = 255  # No compression; full headers follow
 
 [l2.payload_dispatch]
@@ -58,6 +59,17 @@ lifetime_unit_s       = 60    # Lifetime field unit
 imin_ms         = 4096  # ~4 seconds
 imax_doublings  = 8     # imax_doublings so max = imin * 2^8 = 2^20 ms (~17 min)
 k               = 10    # Redundancy constant
+
+[schc.fragment]
+# SCHC ACK-on-Error profile params (M=1 N=6 T=0) adapted from RFC 8724 for LICHEN
+m = 1
+n = 6
+t = 0
+rcs_bytes = 4
+retransmission_timeout_s = 10
+max_ack_requests = 3
+inactivity_timeout_s = 60
+bitmap_msb_first = true
 
 [announce]
 # LICHEN Announce message (spec §05-routing)

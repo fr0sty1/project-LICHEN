@@ -248,7 +248,10 @@ impl Addr {
         (self.0[0] & 0xe0) == 0x20
     }
 
-    /// Check if address is in 02xx::/7 range for Yggdrasil inter-mesh routing.
+    /// Check if this is a LICHEN primary Yggdrasil-derived address (`02xx::/7`).
+    ///
+    /// These are now the primary routable addresses (replacing ULA per
+    /// spec/04-network.md and project-LICHEN-fmu3). Starts with 0x02.
     pub fn is_yggdrasil(&self) -> bool {
         self.0[0] == 0x02
     }

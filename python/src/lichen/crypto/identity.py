@@ -19,15 +19,10 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from hashlib import sha256, sha512
-from ipaddress import IPv6Address
-from typing import TYPE_CHECKING
 
 from nacl.bindings import crypto_scalarmult_base
 
 from .schnorr48 import derive_keypair
-
-if TYPE_CHECKING:
-    pass
 
 
 @dataclass
@@ -38,13 +33,15 @@ class Identity:
         seed: 32-byte secret seed. NEVER log, transmit, or expose this.
         privkey: 32-byte Ed25519 private scalar (derived from seed).
         pubkey: 32-byte Ed25519 public point (can be shared).
-        iid: 8-byte Interface Identifier derived from pubkey (for IPv6).
+        iid: 8-byte Interface Identifier derived from pubkey.
+        ygg_addr: 16-byte Yggdrasil-derived primary IPv6 address (02xx::/7).
     """
 
     seed: bytes
     privkey: bytes
     pubkey: bytes
     iid: bytes
+    ygg_addr: bytes
 
     def __post_init__(self) -> None:
         if len(self.seed) != 32:
@@ -55,6 +52,8 @@ class Identity:
             raise ValueError(f"pubkey must be 32 bytes, got {len(self.pubkey)}")
         if len(self.iid) != 8:
             raise ValueError(f"iid must be 8 bytes, got {len(self.iid)}")
+        if len(self.ygg_addr) != 16:
+            raise ValueError(f"ygg_addr must be 16 bytes, got {len(self.ygg_addr)}")
 
     @classmethod
     def from_seed(cls, seed: bytes) -> Identity:
@@ -71,8 +70,9 @@ class Identity:
 
         privkey, pubkey = derive_keypair(seed)
         iid = _pubkey_to_iid(pubkey)
+        ygg_addr = yggdrasil_addr_from_pubkey(pubkey)
 
-        return cls(seed=seed, privkey=privkey, pubkey=pubkey, iid=iid)
+        return cls(seed=seed, privkey=privkey, pubkey=pubkey, iid=iid, ygg_addr=ygg_addr)
 
     @classmethod
     def generate(cls) -> Identity:
@@ -84,12 +84,8 @@ class Identity:
         return cls.from_seed(os.urandom(32))
 
     def __repr__(self) -> str:
-        return f"Identity(iid={self.iid.hex()[:8]}, human={self.human_address})"
-
-    @property
-    def human_address(self) -> str:
-        """Human-readable node address (Base32 of IID, 13 chars with dashes)."""
-        return iid_to_human_address(self.iid)
+        ygg = self.ygg_addr.hex()[:16]
+        return f"Identity(pubkey={self.pubkey.hex()[:16]}..., iid={self.iid.hex()}, ygg={ygg})"
 
     @property
     def x25519_private(self) -> bytes:
@@ -133,7 +129,7 @@ class Identity:
 def _pubkey_to_iid(pubkey: bytes) -> bytes:
     """Derive 8-byte Interface Identifier from public key.
 
-    SHA-256 truncation matches ORCHID (RFC 7343). Bit 6 cleared per RFC 4291
+    SHA-256 truncation matches ORCHID (RFC 7343). U/L bit cleared per RFC 4291
     for locally-assigned addresses.
     """
     if len(pubkey) != 32:
@@ -141,8 +137,29 @@ def _pubkey_to_iid(pubkey: bytes) -> bytes:
 
     digest = sha256(pubkey).digest()
     iid = bytearray(digest[:8])
-    iid[0] &= 0b1111_1101  # clear "u" bit
+    iid[0] &= 0b1111_1101  # clear U/L bit
     return bytes(iid)
+
+
+def yggdrasil_addr_from_pubkey(pubkey: bytes) -> bytes:
+    """Derive 16-byte Yggdrasil address bytes from Ed25519 pubkey (spec 8.6).
+
+    Matches Rust `lichen_link::identity::yggdrasil_addr_from_pubkey` and
+    test/vectors/yggdrasil.json exactly:
+    - addr[0] = 0x02 (for 0200::/7)
+    - addr[1:8] = SHA-512(pubkey)[0:7]
+    - addr[8:16] = IID (ensures cryptographic binding)
+    """
+    if len(pubkey) != 32:
+        raise ValueError(f"pubkey must be 32 bytes, got {len(pubkey)}")
+
+    hash512 = sha512(pubkey).digest()
+    iid = _pubkey_to_iid(pubkey)
+    addr = bytearray(16)
+    addr[0] = 0x02
+    addr[1:8] = hash512[:7]
+    addr[8:16] = iid
+    return bytes(addr)
 
 
 @dataclass(frozen=True)

@@ -124,6 +124,8 @@ ZTEST(schc_generic, test_uncompressed_fallback_without_rules)
 
 ZTEST(schc_generic, test_fragmenter_emits_tiles_and_all_1)
 {
+	/* Matches schc_fragment.json:single_fragment and multi_fragment vectors.
+	 * Independent oracle from RFC 8724; all 3 impls (Python/Rust/C) interop on these. */
 	const uint8_t packet[] = {
 		0x10, 0x11, 0x12, 0x13,
 		0x20, 0x21, 0x22, 0x23,

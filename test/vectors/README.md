@@ -11,12 +11,17 @@ Language-neutral conformance vectors for the LICHEN protocol using **format_vers
 |------|--------|
 | `schema.json` | v2-only JSON Schema (draft-07); const format_version=2, per-family docs, no legacy envelope |
 | `schc_compression.json` | SCHC whole-packet compression (RFC 8724), rules 0–4 |
-| `l2_payload.json` | Authenticated L2 inner-payload dispatch wrapping SCHC/routing |
+| `schc_fragment.json` | SCHC fragmentation (RFC 8724 §8): single/multi, window, ACK-on-error, MIC fail, OOO, retransmit (independent RFC oracles) |
+| `l2_payload.json` | Authenticated L2 inner-payload dispatch wrapping SCHC and routing/control bodies |
 | `link_frame.json` | LICHEN link-layer frame encoding (spec section 4) |
 | `announce_coords.json` | Announce app_data Type=0x01 geographic coordinate encoding |
 | `meshtastic_app_compat.json` | Meshtastic BLE raw-protobuf app compatibility exchanges |
 | `meshcore_app_compat.json` | MeshCore byte-command app compatibility exchanges |
-| `ccp_tdma.json` | TDMA slot assignment, guard time boundaries, drift compensation (independent vectors per test vector discipline) |
+| `ccp_load_balancing.json` | TDMA slot assignment (static hash), guard time boundaries (50ms), drift compensation, CCP-16 load metrics/rebalancing (independent mathematical oracles from spec timing/hash formulas) |
+| `ccp15.json` | CCP-15 CCA threshold, interference score (busy_pct + PER*100), frequency agility (lowest score channel), SF adaptation (PER>0.2), TDMA CCA guard integration (independent mathematical oracles per spec 02a) |
+| `ccp16-desync.json` | CCP-16 desync transitions, SFN wrap, multi-root conflict, clock drift recovery (v2 schema array root support example). Independent oracles from spec 02a and 09-packets-timing.md. |
+| `ccp9.json` | CCP-9 rendezvous mechanisms (announce_rx_ch scheduling, CH0 control fallback for unknown peers, synchronized_hop_channel(CCP-12) override of announce rendezvous, announce channel field parse/roundtrip in L2 payload). Independent mathematical oracles from spec/02a-coordinated-capacity.md §CCP-9, da2q multi-channel context, and python/src/lichen/sim/medium.py. Matches ccp9_vectors() in generate.py. |
+| `deaddrop.json` | /deaddrop DTN store-and-forward (POST/GET, OSCORE-wrapped, SenML payloads). Independent RFC 7252/8613/8428 oracles aligned with oscore.json. No code-under-test oracle.
 
 All byte strings are lowercase hex (possibly empty). Schema validation and independent oracles used in tests.
 

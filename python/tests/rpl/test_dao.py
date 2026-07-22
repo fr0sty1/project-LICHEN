@@ -109,10 +109,11 @@ def test_parent_change_updates_route() -> None:
     root = DaoManager(node_address=ROOT, is_root=True)
     root.process_dao(DaoManager(node_address=N1).build_dao(ROOT))
     root.process_dao(DaoManager(node_address=N2).build_dao(ROOT))
-    root.process_dao(DaoManager(node_address=N3).build_dao(N1))
+    n3 = DaoManager(node_address=N3)
+    root.process_dao(n3.build_dao(N1))
     assert root.routing_table.lookup(N3) == [N1, N3]
-    # N3 reparents to N2.
-    root.process_dao(DaoManager(node_address=N3).build_dao(N2))
+    # N3 reparents to N2 (seq now increments, satisfying replay check).
+    root.process_dao(n3.build_dao(N2))
     assert root.routing_table.lookup(N3) == [N2, N3]
 
 

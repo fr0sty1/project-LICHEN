@@ -377,12 +377,12 @@ class Router:
     pending_accepted: int = 0
     neighbor_evicted: int = 0  # for LRU on neighbor_coords/queue_depth
 
-    # Why fe80::/10: RFC 4291 link-local prefix. All link-local addresses
-    # start with fe80:: through febf::, which is fe80::/10.
+    # Why fe80::/10: RFC 4291 link-local prefix (control plane only).
     _LINK_LOCAL_PREFIX = IPv6Network("fe80::/10")
 
-    # Why fd00::/8: RFC 4193 ULA prefix. LICHEN meshes typically use ULA.
-    _ULA_PREFIX = IPv6Network("fd00::/8")
+    # 0200::/7 for Yggdrasil-derived primary addresses (spec 04-network.md:19,
+    # 06-security.md:109). Replaces ULA per simplified addressing model.
+    _YGG_PREFIX = IPv6Network("0200::/7")
 
     def classify_address(self, addr: IPv6Address) -> AddressClass:
         """Classify an IPv6 destination address (spec 7.2 table).
@@ -398,17 +398,15 @@ class Router:
         Returns:
             AddressClass indicating how to route.
         """
-        # Why check link-local first: It's the most specific and common case
-        # for neighbor discovery, etc.
         if addr in self._LINK_LOCAL_PREFIX:
             return AddressClass.LINK_LOCAL
 
-        # Why check ULA: LICHEN meshes typically use fd00::/8 ULA prefixes
-        # for mesh-internal addressing.
-        if addr in self._ULA_PREFIX:
+        # 02xx primary addresses: local mesh (gradient/RPL) or Yggdrasil/gateway.
+        # Per updated spec 05-routing.md:41 and project-LICHEN-nqz6.
+        if addr in self._YGG_PREFIX:
             return AddressClass.MESH_LOCAL
 
-        for prefix in list(self.mesh_prefixes):
+        for prefix in self.mesh_prefixes:
             if addr in prefix:
                 return AddressClass.MESH_LOCAL
 

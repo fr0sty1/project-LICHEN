@@ -7,6 +7,8 @@ Connects Python code to real LoRa hardware via USB serial.
 Drop-in replacement for SimRadio in the simulator.
 """
 
+from __future__ import annotations
+
 import asyncio
 import serial
 import serial.tools.list_ports

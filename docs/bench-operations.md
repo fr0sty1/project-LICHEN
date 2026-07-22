@@ -3,7 +3,20 @@
 
 # Hardware Bench Operations
 
-Operational reference for the physical LICHEN test bench and T-Echo production run (500 units): device inventory, port-safety rules, scalable flash/OTA pipeline (MCUboot+DFU initial, SMP OTA field updates), power optimization notes, over-the-air verification, and findings. T-Echo firmware is production-ready per project-LICHEN-2h1i.1.2.
+## 0. T-Echo Procurement for 500-Node Demo (project-LICHEN-2nnd.8)
+
+**Target hardware**: 500x LilyGO T-Echo (nRF52840 + SX1262 + e-ink + GNSS).
+
+**Verified**:
+- Bootloader: Adafruit nRF52 UF2 (0xADA52840 family ID); double-tap reset for initial flash, serial DFU thereafter (`flash-t_echo.sh --bulk`).
+- Bulk flashing: Supports 10-port powered USB hubs; parallel mode in script targets 50 units/hr (MAX_PARALLEL=5); rate-limited for USB stability.
+- Inclusion: Battery (850mAh LiPo), basic case, antenna — confirm per-vendor in PO.
+- Flashing jigs: by-id paths mandatory; pogo-pin SWD jigs recommended for >100 units to bypass UF2.
+- Timeline: Procurement 4-6w lead; aligns with rust/mesh-sim scaling for full 500-node validation. Update epic project-LICHEN-2nnd after receipt.
+
+Operational reference for the physical LICHEN test bench: device inventory,
+port-safety rules, flash/OTA procedures, over-the-air verification, and the
+findings that shaped current bench practice.
 
 Detailed rationale for each finding lives in the referenced beads
 (`bd show <id>`). This document is the how-to; the beads are the why.
@@ -60,10 +73,11 @@ These are hard-won; violating them wedges a device or corrupts a flash.
   (`do_select`, S-state). Read-only probes only, with a `timeout` wrapper.
 - **NEVER open a LICHEN native CDC port at 1200 baud** except as a deliberate
   DFU touch — 1200 baud reboots nRF boards into the UF2 bootloader.
-- **Heltec V3**: onboard CP2102/UART0 resets on port open (bd `9ia2`). Use the
-  `heltec_uart1_console.overlay` (GPIO21/22, DTC_OVERLAY_FILE) + external
-  USB-UART adapter with `dtr=False, rts=False` for non-destructive console.
-  Verified no reset on open. See §3 build test command.
+- **Heltec V3 console monitoring** (fixed project-LICHEN-g38y / lora_ipv6_mesh-9ia2): 
+  CP2102 (UART0 GPIO43/44) for flashing only. UART1 (GPIO21/22) now enabled by
+  default in heltec_wifi_lora32_v3_procpu.dts with aliases; gateway overlay selects
+  via chosen for non-destructive console/logs. External USB-UART on UART1. CP2102
+  open no longer reboots node (epoch persisted).
 - **Never pipe a flasher through `head`/`tail`** — the `SIGPIPE` when the reader
   closes aborts the transfer mid-write.
 - Opening the T1000-E `if02` SMP port is safe; it can wedge (CDC write timeout)
@@ -236,17 +250,15 @@ exercised unless a crash occurs — a clean soak proves stability but leaves the
 recovery path untested. Plan wrap/recovery coverage as targeted tests, not as a
 longer soak.
 
-## 8. ESP32-S3 ELF and peripheral gaps for Zephyr (bd 5ix1.4.7)
+## Conference Node Distribution Logistics (project-LICHEN-2nnd.3)
 
-Used EC2 builder volume with LICHEN tags (`Project=LICHEN`). Ran `west build -b heltec_wifi_lora32_v3/esp32s3/procpu` and `t_deck/esp32s3/procpu` variants for puck/gateway apps; captured `readelf -l -S -h`, `nm`, Renode trace of first accesses and unmapped loads.
+See `bd show project-LICHEN-2nnd.3` for full plan and LICHEN-plan.md:distribution.
 
-**Inventory** (tied to ELF hashes from builds; see repl comments for exact per-build):
-- Program headers: 5-7 PT_LOAD (flash XIP @0x42000000, IRAM @0x4037xxxx, DRAM @0x3FC88xxx, ROM vectors).
-- Entry/vector: ROM at 0x4000xxxx jumps to Zephyr __start ~0x4037cxxx.
-- Peripheral access order: EFUSE/RTC_CNTL (MAC, strap=0x0c), SYSTEM clocks, GPIO matrix/pinctrl, UART0 (console), TIMG/WDT, SPI2 (SX1262 CS/reset/dio).
-- Gaps fixed: expanded sysbus tags in esp32s3_lichen.repl for GPIO_SD, CACHE, additional RTC/SYSTEM regs; added milestone comments. No surrogate boot.
-- Tests: Renode .resc loads clean (UART+SPI path exercised), west build -t run on proxy targets, interop with C/Rust vectors unchanged.
+**Recommendation:** Option A (sell at cost, $50-60/unit at booth). Attendees keep nodes; no recovery logistics required. Revenue offsets costs. Builds invested community for post-event meshes.
 
-3 review passes (correctness P0, security, edge-cases) completed with no new beads. All gaps addressed in scope.
+**Booth setup:**
+- Square or cash payment.
+- Box includes: printed quick-start card, QR code linking to mesh visualizer/join instructions, sticker "I survived the LICHEN mesh".
+- Simple, clean execution for first 500-node demo.
 
-Closes project-LICHEN-5ix1.4.7.
+**Post-event:** Nodes seed local meshes. Future firmware enables "report back" for global participation map.

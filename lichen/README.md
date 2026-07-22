@@ -8,7 +8,7 @@ Zephyr v3.7.0 (LTS) and all modules are fetched as dependencies.
 - [west](https://docs.zephyrproject.org/latest/develop/west/install.html) (`pip install west`)
 - [Zephyr SDK](https://docs.zephyrproject.org/latest/develop/toolchains/zephyr_sdk.html) (≥ 0.16)
 - `arm-zephyr-eabi` toolchain — for nRF52840 (rak4631) and STM32WL (nucleo_wl55jc) targets
-- `xtensa-espressif_esp32s3_zephyr-elf` toolchain — for ESP32-S3 targets (heltec_lora32_v3, tbeam_supreme)
+- `xtensa-espressif_esp32s3_zephyr-elf` toolchain — for ESP32-S3 targets (heltec_wifi_lora32_v3/esp32s3/procpu)
 
 ## Initialise workspace
 
@@ -47,10 +47,9 @@ containing `zephyr/`, `lichen/`, etc. after `west init`).
 west build -b rak4631_nrf52840 lichen/apps/puck
 
 # Heltec LoRa32 v3 — ESP32-S3 + SX1262
-west build -b heltec_lora32_v3 lichen/apps/puck
-
-# T-Beam Supreme — ESP32-S3 + SX1262
-west build -b tbeam_supreme lichen/apps/puck
+west build -b heltec_wifi_lora32_v3/esp32s3/procpu lichen/apps/puck
+# Note: T-Beam Supreme is BLOCKED (no canonical board definition); see
+# project-LICHEN-w8rd and tbeam_supreme.* fragments for details.
 ```
 
 ### Gateway (border router / dev target)

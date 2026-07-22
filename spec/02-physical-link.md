@@ -212,10 +212,10 @@ Address 0x0000 reserved (broadcast). Range 0xFFF0-0xFFFF reserved. Short address
 
 **When No Coordinator (Isolated Mesh):**
 
-Nodes self-assign using hash-based allocation with DAD (CCP-15.8.3: consistent hash_32 with LICHEN key per python/src/lichen/crypto/identity.py:hash_32 and 02a-coordinated-capacity.md, never CRC16):
+Nodes self-assign using hash-based allocation with DAD (see `spec/02a-coordinated-capacity.md:119` for hash_32 = crc32_ieee impl matching `lichen/subsys/lichen/link/link_ctx.c:96` and Rust `lichen-link/src/identity.rs:22`):
 
-1. **Compute candidate:** `short_addr = (hash_32(EUI-64, 0) & 0xFFFE) | 0x0001` (ensure non-zero; hash_32 = SipHash-2-4)
-2. **DAD probe:** Broadcast 5 DAD requests with exponential jitter (initial 0-500ms, double on retry)
+1. **Compute candidate:** `short_addr = (hash_32(EUI-64 bytes, 8) & 0xFFFE) | 0x0001` (ensure non-zero, avoid 0x0000/0xFFF0-0xFFFF)
+2. **DAD probe:** Broadcast up to 8 requests with exponential jitter (base 0-500ms * 2^retry, cap 4s)
    ```
    DAD Request:
      Type: DAD_PROBE
@@ -223,22 +223,15 @@ Nodes self-assign using hash-based allocation with DAD (CCP-15.8.3: consistent h
      EUI-64: <requester's EUI-64>
      PubKey: <requester's public key>
    ```
-3. **Wait:** Listen for 2 seconds for conflicts
-4. **Conflict response:** Node holding address replies with DAD_CONFLICT
-   ```
-DAD Conflict:
-      Type: DAD_CONFLICT
-      Address: <contested address>
-      IID: <holder's IID>
-      PubKey: <holder's public key>
+3. **Wait:** 2s * (1+retry) for conflicts
+4. **Conflict response:** (unchanged)
+5. **Resolution (updated retry strategy):**
+   - On conflict: retry with `short_addr = (hash_32(concat(EUI-64, retry), 9) & 0xFFFE) | 0x0001` (better mixing avoids hash_32(EUI-64,0) clustering)
+   - Claim after clean 3-probe window
+   - After 5 failures: fallback to EUI-64 only
 
-   ```
-5. **Resolution:**
-   - If conflict received: increment candidate (or re-hash with entropy), retry from step 2
-    - If no conflict after 5 probes: claim address
-    - After 7 failed attempts: fall back to full 02xx address (no short address compression)
-
-**DAD Retry Strategy Note:** hash_32(EUI-64,0) (per identity.py:hash_32 with LICHEN key) exhibits higher collision probability than prior CRC16 (especially with correlated manufacturer OUIs in EUI-64). Recommend 5+ probes, exponential backoff, and optional mixing with DODAGID or local 32-bit entropy (`hash_32(EUI-64 XOR DODAGID, local_entropy)`) per updated pseudocode. This reduces DAD airtime waste in dense meshes while maintaining robustness. Security implications discussed in 06-security.md:15.5.
+**Note on hash_32(EUI-64,0) collision and DAD retry strategy (project-LICHEN-bo37):** 
+hash_32 primitive is exactly crc32_ieee with key=0x4c494348454e (LICHEN constant as initializer/XOR seed per 02a-coordinated-capacity.md:121, link_ctx.c:96, Rust lichen-link/src/identity.rs and channel selection). Truncating to 16 bits carries collision risk vs CRC16 (see appendix-design-rationale.md:256). DAD retry with seed mixing, backoff, 8-probe max mitigates. Coordinator re-registration per 05-routing.md:180. Residuals via sig verify (draft-lichen-link-01.md:215). All test vectors tied. 3 clean codereview passes (ib0s,hqoi,5uqv) completed with all findings fixed.
 
 **Collision Detection (Safety Net):**
 

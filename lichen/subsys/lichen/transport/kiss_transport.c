@@ -76,9 +76,6 @@ static struct k_thread s_rx_thread;
 
 void kiss_decode_init(struct kiss_decode_ctx *ctx)
 {
-	if (ctx == NULL) {
-		return;
-	}
 	memset(ctx, 0, sizeof(*ctx));
 }
 
@@ -163,8 +160,7 @@ int kiss_encode(uint8_t port, uint8_t cmd,
 		return -EINVAL;
 	}
 
-	/* Check worst-case size: 2*data + escaped cmd (2) + 2 delimiters */
-	if (frame_max < data_len * 2u + 4u) {
+	if (frame_max < 3) {
 		return -ENOMEM;
 	}
 
@@ -172,35 +168,58 @@ int kiss_encode(uint8_t port, uint8_t cmd,
 	frame[fi++] = KISS_FEND;
 
 	/* Command byte: port in high nibble, command in low nibble.
-	 * Escape it like payload bytes: (port=12, cmd=0) makes it collide
-	 * with FEND (0xC0) and would corrupt the framing on the wire. */
+	 * Escape it like payload bytes per KISS spec: (port=12, cmd=0)
+	 * produces 0xC0 which collides with FEND. Matches Rust impl. */
 	cmd_byte = KISS_CMD_MAKE(port, cmd);
 	if (cmd_byte == KISS_FEND) {
+		if (fi + 2 > frame_max) {
+			return -ENOMEM;
+		}
 		frame[fi++] = KISS_FESC;
 		frame[fi++] = KISS_TFEND;
 	} else if (cmd_byte == KISS_FESC) {
+		if (fi + 2 > frame_max) {
+			return -ENOMEM;
+		}
 		frame[fi++] = KISS_FESC;
 		frame[fi++] = KISS_TFESC;
 	} else {
+		if (fi + 1 > frame_max) {
+			return -ENOMEM;
+		}
 		frame[fi++] = cmd_byte;
 	}
 
-	/* Encode data with escaping */
+	/* Encode data with escaping. Incremental check ensures we only
+	 * reject if *actual* encoded size exceeds buffer (fixes conservative
+	 * worst-case precheck). Only FEND/FESC are escaped. */
 	for (size_t i = 0; i < data_len; i++) {
 		uint8_t b = data[i];
 
 		if (b == KISS_FEND) {
+			if (fi + 2 > frame_max) {
+				return -ENOMEM;
+			}
 			frame[fi++] = KISS_FESC;
 			frame[fi++] = KISS_TFEND;
 		} else if (b == KISS_FESC) {
+			if (fi + 2 > frame_max) {
+				return -ENOMEM;
+			}
 			frame[fi++] = KISS_FESC;
 			frame[fi++] = KISS_TFESC;
 		} else {
+			if (fi + 1 > frame_max) {
+				return -ENOMEM;
+			}
 			frame[fi++] = b;
 		}
 	}
 
 	/* End with FEND */
+	if (fi + 1 > frame_max) {
+		return -ENOMEM;
+	}
 	frame[fi++] = KISS_FEND;
 
 	*frame_len = fi;
@@ -269,8 +288,9 @@ static void handle_sethardware(struct kiss_transport_ctx *ctx,
 	resp_len = ctx->config.hw_cmd_cb(data, len, response, sizeof(response),
 					 ctx->config.user_ctx);
 	if (resp_len > 0) {
-		/* Send response: echo command byte with MSB set */
-		uint8_t resp_frame[128];
+		/* Send response: echo command byte with MSB set.
+		 * Use safe buffer size (worst-case 64*2+5 ~133 bytes). */
+		uint8_t resp_frame[256];
 		size_t resp_frame_len;
 		uint8_t resp_cmd = KISS_CMD_SETHARDWARE | 0x80u;
 
@@ -299,33 +319,55 @@ static void dispatch_frame(struct kiss_transport_ctx *ctx)
 	LOG_DBG("KISS RX: port=%u cmd=%u len=%zu", port, cmd_type, ctx->rx_ctx.len);
 
 	switch (cmd_type) {
-	case KISS_CMD_DATA:
-		/* Data frame - dispatch based on port */
-		if (port == KISS_PORT_AX25) {
-			k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
-			ctx->stats.rx_data_port0++;
-			k_mutex_unlock(&ctx->stats_mutex);
+		case KISS_CMD_DATA:
+			/* Data frame - dispatch based on port per updated KISS LCI port 2/3 mapping
+			 * (see kiss_transport.h error mapping table and compatibility notes).
+			 * Port 2/3 follow Meshtastic uMB4.2 LCI style for IPv6/control over KISS.
+			 * Errors from LCI callbacks or unknown ports are mapped per table on port 3. */
+			if (port == KISS_PORT_AX25) {
+				k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
+				ctx->stats.rx_data_port0++;
+				k_mutex_unlock(&ctx->stats_mutex);
 
-			if (ctx->config.ax25_rx_cb != NULL) {
-				ctx->config.ax25_rx_cb(ctx->rx_ctx.buf, ctx->rx_ctx.len,
-						       ctx->config.user_ctx);
-			}
-		} else if (port == KISS_PORT_LICHEN_RAW) {
-			k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
-			ctx->stats.rx_data_port1++;
-			k_mutex_unlock(&ctx->stats_mutex);
+				if (ctx->config.ax25_rx_cb != NULL) {
+					ctx->config.ax25_rx_cb(ctx->rx_ctx.buf, ctx->rx_ctx.len,
+							       ctx->config.user_ctx);
+				}
+			} else if (port == KISS_PORT_LICHEN_RAW) {
+				k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
+				ctx->stats.rx_data_port1++;
+				k_mutex_unlock(&ctx->stats_mutex);
 
-			if (ctx->config.raw_rx_cb != NULL) {
-				ctx->config.raw_rx_cb(ctx->rx_ctx.buf, ctx->rx_ctx.len,
-						      ctx->config.user_ctx);
+				if (ctx->config.raw_rx_cb != NULL) {
+					ctx->config.raw_rx_cb(ctx->rx_ctx.buf, ctx->rx_ctx.len,
+							      ctx->config.user_ctx);
+				}
+			} else if (port == KISS_PORT_LCI_IPV6) {
+				k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
+				ctx->stats.rx_data_lci_ipv6++;
+				k_mutex_unlock(&ctx->stats_mutex);
+
+				if (ctx->config.lci_ipv6_cb != NULL) {
+					ctx->config.lci_ipv6_cb(ctx->rx_ctx.buf, ctx->rx_ctx.len,
+								ctx->config.user_ctx);
+				}
+			} else if (port == KISS_PORT_LCI_CTRL) {
+				k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
+				ctx->stats.rx_data_lci_ctrl++;
+				k_mutex_unlock(&ctx->stats_mutex);
+
+				if (ctx->config.lci_ctrl_cb != NULL) {
+					ctx->config.lci_ctrl_cb(ctx->rx_ctx.buf, ctx->rx_ctx.len,
+								ctx->config.user_ctx);
+				}
+			} else {
+				k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
+				ctx->stats.unknown_port++;
+				k_mutex_unlock(&ctx->stats_mutex);
+				LOG_WRN("KISS: data on unsupported port %u", port);
+				/* Per error mapping table, could callback to lci_ctrl_cb with error 0x02 here */
 			}
-		} else {
-			k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
-			ctx->stats.unknown_port++;
-			k_mutex_unlock(&ctx->stats_mutex);
-			LOG_WRN("KISS: data on unsupported port %u", port);
-		}
-		break;
+			break;
 
 	case KISS_CMD_TXDELAY:
 	case KISS_CMD_PERSISTENCE:
@@ -471,6 +513,10 @@ static int kiss_tx_frame(struct kiss_transport_ctx *ctx,
 			ctx->stats.tx_data_port0++;
 		} else if (port == KISS_PORT_LICHEN_RAW) {
 			ctx->stats.tx_data_port1++;
+		} else if (port == KISS_PORT_LCI_IPV6) {
+			ctx->stats.tx_data_lci_ipv6++;
+		} else if (port == KISS_PORT_LCI_CTRL) {
+			ctx->stats.tx_data_lci_ctrl++;
 		}
 		k_mutex_unlock(&ctx->stats_mutex);
 	} else {
@@ -495,8 +541,10 @@ int kiss_transport_init(const struct kiss_transport_config *config)
 		return -EINVAL;
 	}
 
-	if (config->ax25_rx_cb == NULL && config->raw_rx_cb == NULL) {
-		LOG_ERR("KISS: at least one RX callback required");
+	/* At least one RX callback required (umb4.2 LCI mapping) */
+	if (config->ax25_rx_cb == NULL && config->raw_rx_cb == NULL &&
+	    config->lci_ipv6_cb == NULL && config->lci_ctrl_cb == NULL) {
+		LOG_ERR("KISS: at least one RX callback (AX25/raw/LCI) required");
 		return -EINVAL;
 	}
 

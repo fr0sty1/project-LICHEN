@@ -174,6 +174,21 @@ ZTEST(coap_keys, test_fingerprint_format_and_stability)
 		     "distinct keys must have distinct fingerprints");
 }
 
+ZTEST(coap_keys, test_pubkey_to_iid_derivation)
+{
+	uint8_t iid[LICHEN_KEY_IID_LEN];
+	uint8_t iid2[LICHEN_KEY_IID_LEN];
+
+	zassert_ok(lichen_key_pubkey_to_iid(pubkey_a, iid));
+	zassert_ok(lichen_key_pubkey_to_iid(pubkey_a, iid2));
+	zassert_mem_equal(iid, iid2, LICHEN_KEY_IID_LEN, "must be deterministic");
+
+	zassert_ok(lichen_key_pubkey_to_iid(pubkey_b, iid2));
+	/* Different pubkeys produce different IIDs (with high probability) */
+	zassert_true(memcmp(iid, iid2, LICHEN_KEY_IID_LEN) != 0,
+		     "distinct keys must produce distinct IIDs");
+}
+
 ZTEST(coap_keys, test_list_endpoint_truncates_with_valid_array_count)
 {
 	uint8_t cbor[512];

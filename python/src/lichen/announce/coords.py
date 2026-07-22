@@ -76,13 +76,19 @@ def decode_coords(app_data: bytes) -> tuple[float, float] | None:
     Returns:
         (lat, lon) tuple in degrees, or None if no coords present.
     """
-    i = 0
-    while i + 9 <= len(app_data):
+    if len(app_data) < 9:
+        return None
+    for i in range(len(app_data) - 8):
         if app_data[i] == APP_DATA_TYPE_COORDS:
-            lat_raw, lon_raw = struct.unpack(">ii", app_data[i + 1 : i + 9])
-            if _LAT_E7_MIN <= lat_raw <= _LAT_E7_MAX and _LON_E7_MIN <= lon_raw <= _LON_E7_MAX:
+            try:
+                lat_raw, lon_raw = struct.unpack(">ii", app_data[i + 1 : i + 9])
+                if not (_LAT_E7_MIN <= lat_raw <= _LAT_E7_MAX):
+                    continue
+                if not (_LON_E7_MIN <= lon_raw <= _LON_E7_MAX):
+                    continue
                 return (lat_raw / _SCALE, lon_raw / _SCALE)
-        i += 1
+            except struct.error:
+                continue
     return None
 
 
@@ -115,11 +121,11 @@ def decode_congestion(app_data: bytes) -> int | None:
     Returns:
         Queue depth (0-255), or None if no congestion indicator present.
     """
-    i = 0
-    while i + 2 <= len(app_data):
+    if len(app_data) < 2:
+        return None
+    for i in range(len(app_data) - 1):
         if app_data[i] == APP_DATA_TYPE_CONGESTION:
             return app_data[i + 1]
-        i += 1
     return None
 
 
@@ -152,12 +158,15 @@ def decode_dtn_expiry(app_data: bytes) -> int | None:
     Returns:
         Unix timestamp, or None if no DTN expiry present.
     """
-    i = 0
-    while i + 5 <= len(app_data):
+    if len(app_data) < 5:
+        return None
+    for i in range(len(app_data) - 4):
         if app_data[i] == APP_DATA_TYPE_DTN_EXPIRY:
-            expiry: int = struct.unpack(">I", app_data[i + 1 : i + 5])[0]
-            return expiry
-        i += 1
+            try:
+                expiry: int = struct.unpack(">I", app_data[i + 1 : i + 5])[0]
+                return expiry
+            except struct.error:
+                continue
     return None
 
 
@@ -190,19 +199,18 @@ def decode_dtn_pending(app_data: bytes) -> list[bytes] | None:
     Returns:
         List of 8-byte IIDs, or None if no pending list present.
     """
-    i = 0
-    while i + 2 <= len(app_data):
+    if len(app_data) < 2:
+        return None
+    for i in range(len(app_data) - 1):
         if app_data[i] == APP_DATA_TYPE_DTN_PENDING:
             count = app_data[i + 1]
             expected_len = 2 + count * 8
-            if len(app_data) < i + expected_len:
-                return None
-            iids = []
-            for j in range(count):
-                start = i + 2 + j * 8
-                iids.append(app_data[start : start + 8])
-            return iids
-        i += 1
+            if len(app_data) - i >= expected_len:
+                iids = []
+                for j in range(count):
+                    start = i + 2 + j * 8
+                    iids.append(app_data[start : start + 8])
+                return iids
     return None
 
 

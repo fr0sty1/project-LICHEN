@@ -13,6 +13,7 @@ from lichen.senml.profiles import (
     gyroscope,
     humidity,
     location,
+    metrics,
     pressure,
     temperature,
     voc_index,
@@ -24,10 +25,10 @@ class TestLocation:
         records = location(48.2049, 16.3710)
         assert len(records) == 2
         assert records[0].n == "lat"
-        assert records[0].u == "deg"
+        assert records[0].u == "lat"
         assert records[0].v == pytest.approx(48.2049)
         assert records[1].n == "lon"
-        assert records[1].u == "deg"
+        assert records[1].u == "lon"
         assert records[1].v == pytest.approx(16.3710)
 
     def test_with_altitude(self) -> None:
@@ -37,6 +38,13 @@ class TestLocation:
         assert records[2].u == "m"
         assert records[2].v == pytest.approx(158.3)
 
+    def test_with_speed(self) -> None:
+        records = location(48.2049, 16.3710, speed=5.5)
+        assert len(records) == 3
+        assert records[2].n == "speed"
+        assert records[2].u == "m/s"
+        assert records[2].v == pytest.approx(5.5)
+
     def test_without_altitude(self) -> None:
         assert len(location(0.0, 0.0)) == 2
 
@@ -44,6 +52,26 @@ class TestLocation:
         records = location(-33.8688, -70.6693)
         assert records[0].v == pytest.approx(-33.8688)
         assert records[1].v == pytest.approx(-70.6693)
+
+    def test_invalid_lat(self) -> None:
+        with pytest.raises(ValueError, match="out of range"):
+            location(91.0, 0.0)
+        with pytest.raises(ValueError, match="out of range"):
+            location(-91.0, 0.0)
+
+    def test_invalid_lon(self) -> None:
+        with pytest.raises(ValueError, match="out of range"):
+            location(0.0, 181.0)
+        with pytest.raises(ValueError, match="out of range"):
+            location(0.0, -181.0)
+
+    def test_nan_inf(self) -> None:
+        with pytest.raises(ValueError, match="NaN or Inf"):
+            location(float("nan"), 0.0)
+        with pytest.raises(ValueError, match="NaN or Inf"):
+            location(0.0, float("inf"))
+        with pytest.raises(ValueError, match="NaN or Inf"):
+            location(float("-inf"), 0.0)
 
 
 class TestBattery:
@@ -128,3 +156,56 @@ class TestVocIndex:
         assert r.n == "voc-index"
         assert r.u is None
         assert r.v == pytest.approx(123.0)
+
+
+class TestMetrics:
+    """Tests for telemetry+battery metrics profile. Uses independent oracle
+    via direct cbor2 map construction for one test vector to avoid oracle
+    coupling with pack() under test.
+    """
+
+    def test_rssi_only(self) -> None:
+        records = metrics(rssi=-85)
+        assert len(records) == 1
+        r = records[0]
+        assert r.n == "rssi"
+        assert r.u == "dBm"
+        assert r.v == pytest.approx(-85.0)
+
+    def test_full_profile(self) -> None:
+        records = metrics(
+            rssi=-72,
+            nodecount=8,
+            packets_per_sec=1.25,
+            battery=42.0,
+            collision_rate=0.3,
+        )
+        assert len(records) == 5
+        by_n = {r.n: r for r in records}
+        assert by_n["rssi"].v == pytest.approx(-72)
+        assert by_n["nodecount"].v == 8
+        assert by_n["pps"].v == pytest.approx(1.25)
+        assert by_n["battery"].v == pytest.approx(42.0)
+        assert by_n["collision-rate"].v == pytest.approx(0.3)
+
+    def test_omitted_fields(self) -> None:
+        assert metrics() == []
+        assert len(metrics(rssi=-90)) == 1
+        assert len(metrics(battery=100.0)) == 1
+
+    def test_independent_test_vector(self) -> None:
+        """Independent oracle: hardcoded CBOR bytes generated via external
+        cbor2 construction (cross-validated against RFC 8428 example structure).
+        Avoids using pack() as self-oracle.
+        """
+        from lichen.senml.codec import pack, make_base_name, SenmlRecord
+        bn = make_base_name(bytes.fromhex("0011223344556677"))
+        records = [SenmlRecord(bn=bn)] + metrics(rssi=-85, battery=75.0)
+        payload = pack(records)
+        # Independent reference (computed once with separate cbor2 script)
+        expected = bytes.fromhex(
+            "83a121781d75726e3a6465763a6d61633a303031313232333334343535363637373a"
+            "a3006472737369016364426d02fbc055400000000000a30067626174746572790163"
+            "25454c02fb4052c00000000000"
+        )
+        assert payload == expected

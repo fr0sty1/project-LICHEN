@@ -5,34 +5,33 @@
 
 # Appendix A: SCHC Compression Rules
 
-## A.1. Rule Set
+See draft-lichen-schc-lora-00.md §4 for rules, §5 for fragmentation (M=1 N=6 T=0, RCS=CRC32, timers, bitmap MSB-first) from constants.toml and test/vectors/.
 
-Precise sizes use `1 + residue_byte_length(rule)` from BitWriter (Python `codec.py:49`, Rust `codec.rs:142`). Test vectors include variable tail, yielding 33/49 bytes for rules 0/1.
+## A.1. Rule Set (from constants.toml [schc.rule_id] and lichen-core::constants, lichen/schc.h)
 
-| Rule ID | Use Case | SCHC Header Size | Test Vector Size | Notes |
-|---------|----------|------------------|------------------|-------|
-| 0 | Link-local IPv6 + UDP + CoAP | 26 bytes | 33 bytes | 198 residue bits (25B) + rule ID; see rules.rs:59, codec.rs:319 |
-| 1 | Global IPv6 + UDP + CoAP | 42 bytes | 49 bytes | 326 residue bits (41B); full addresses; see rules.rs:63 |
-| 2 | ICMPv6 Echo | 23 bytes | 27 bytes | 176 residue bits (22B) + rule ID; similar + ICMP; see rules.rs:67 |
-| 3 | RPL DIO (link-local) | 40 bytes | 40 bytes | 312 residue bits (39B) + rule ID; RPL fields after ICMP; see rules.rs:71 |
-| 4 | RPL DAO (routable ULA source, multi-hop) | 53 bytes | 53 bytes | 416 residue bits (52B) + rule ID; matches test vector; see rules.rs:75 and DAO note below |
-| 5 | OSCORE link-local IPv6 + UDP | 26 bytes | tbd | reuses CoAP fields with distinct rule ID; see rules.rs:80 |
-| 6 | OSCORE global IPv6 + UDP | 42 bytes | tbd | see rules.rs:85 |
-| 7 | MQTT-SN | tbd | tbd | see rules.rs:89 |
-| 255 | No compression | 1 byte | full | fallback; see rules.rs:93 |
+Current constants (Rust/C synchronized):
 
-**DAO Source Model (Rule 4):** See 04-network.md and 05-routing.md for the routable multi-hop DAO source model using ULA from DODAG root prefix. Relays forward preserving the original IPv6 source per security spec. Test vectors updated accordingly.
+| Rule ID | Name | Use Case |
+|---------|------|----------|
+| 0 | LINK_LOCAL_COAP | Link-local IPv6 + UDP + CoAP |
+| 1 | GLOBAL_COAP | Global IPv6 + UDP + CoAP |
+| 2 | ICMPV6_ECHO | ICMPv6 Echo Request/Reply |
+| 3 | RPL_DIO | RPL DIO over link-local ICMPv6 |
+| 4 | RPL_DAO | RPL DAO with DODAGID over link-local ICMPv6 |
+| 5 | LINK_LOCAL_OSCORE | Link-local IPv6 + UDP + OSCORE-protected CoAP |
+| 6 | GLOBAL_OSCORE | Global IPv6 + UDP + OSCORE-protected CoAP |
+| 7 | MQTT_SN | IPv6 + UDP + MQTT-SN (port 10883) |
+| 255 | UNCOMPRESSED | No compression (full headers passthrough) |
 
-## A.2. CoAP Compression
+See rust/lichen-schc/src/rules.rs, lichen/subsys/lichen/schc/include/lichen/schc.h:93, constants.toml:29-36, and test/vectors/schc_compression.json for exact matching logic and test vectors. Fragmentation uses [schc.fragment]: M=1, N=6, T=0, RCS=4 bytes, RETX=10s, MAX_ACK=3, INACTIVITY=60s (MSB-first bitmap).
 
-| Field | TV | MO | CDA |
-|-------|----|----|-----|
-| Version | 1 | equal | not-sent |
-| Type | - | ignore | value-sent (2 bits) |
-| TKL | - | ignore | value-sent (4 bits) |
-| Code | - | ignore | value-sent (8 bits) |
-| MID | - | ignore | value-sent (16 bits) |
-| Token | - | ignore | value-sent (TKL bytes) |
+## A.2. Fragmentation (from constants.toml [schc.fragment])
+
+See draft-lichen-schc-lora-00.md §5 (updated to match current constants).
+
+## A.3. CoAP Compression
+
+See RFC 8824 and lichen-coap. Content-Format for SenML-CBOR is 112 (see lichen-coap/src/option.rs:33 and appendix-senml.md).
 
 ## A.3. OSCORE Compression (Rules 5 and 6)
 

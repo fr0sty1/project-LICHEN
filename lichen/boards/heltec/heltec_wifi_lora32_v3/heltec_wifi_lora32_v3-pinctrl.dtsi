@@ -24,6 +24,20 @@
 		};
 	};
 
+	/* UART1: non-destructive console for gateway (GPIO21 TX, GPIO22 RX)
+	 * Off CP2102 auto-reset circuit. External USB-UART required for monitoring.
+	 */
+	uart1_default: uart1_default {
+		group1 {
+			pinmux = <UART1_TX_GPIO21>;
+			output-high;
+		};
+		group2 {
+			pinmux = <UART1_RX_GPIO22>;
+			bias-pull-up;
+		};
+	};
+
 	/*
 	 * UART1: always-enabled bench console (non-destructive, dtr/rts=false; ref codereview bead project-LICHEN-g38y). GPIO21 TX / GPIO22 RX. No conflicts. See project-LICHEN-xb92.
 	 */

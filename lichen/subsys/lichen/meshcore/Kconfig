@@ -24,9 +24,10 @@ config LICHEN_MESHCORE_MAX_FRAME
 	range 1 176
 	help
 	  Maximum raw MeshCore inner frame size accepted or emitted by BLE.
-	  176 bytes matches the reference MeshCore firmware BLE GATT MTU/frame
-	  budget (see Meshtastic BLE protocol). Kconfig range + BUILD_ASSERT
-	  in adapter.c provide both config-time and compile-time coupling.
+	  This is capped at LICHEN_MESHCORE_BLE_FRAME_MAX (176 bytes) per the
+	  MeshCore protocol's BLE transport constraints (fits within typical
+	  BLE GATT MTU after accounting for headers). See limits.h for coupling
+	  BUILD_ASSERTs that enforce this at compile time if Kconfig range changes.
 	  Serial/TCP transports may use a smaller outer-framing budget.
 
 config LICHEN_MESHCORE_MAX_SERIAL_PAYLOAD
@@ -35,8 +36,9 @@ config LICHEN_MESHCORE_MAX_SERIAL_PAYLOAD
 	range 1 176
 	help
 	  Maximum MeshCore inner payload size accepted inside the serial/TCP
-	  0x3c/0x3e + uint16_le length wrapper. Constrained by
-	  LICHEN_MESHCORE_MAX_FRAME via BUILD_ASSERT in adapter.c and codec.c.
+	  0x3c/0x3e + uint16_le length wrapper. Must not exceed
+	  LICHEN_MESHCORE_FRAME_MAX; the Kconfig range and BUILD_ASSERTs in
+	  adapter.c/codec.c couple this to protocol limits.
 
 config LICHEN_MESHCORE_PENDING_EVENTS
 	int "Maximum pending MeshCore app events"

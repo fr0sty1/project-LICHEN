@@ -136,13 +136,9 @@ class StreamDecoder:
                     self._overflow = False
                 continue
 
-            # SECURITY: Prevent memory exhaustion from missing END delimiters
             if len(self._buf) >= self._max_size:
                 self._buf.clear()
                 self._escaped = False
-                # Only enter overflow mode if current byte is NOT END.
-                # If byte IS END, the oversized packet just ended - don't discard
-                # the next valid packet.
                 if byte != END:
                     self._overflow = True
                 continue

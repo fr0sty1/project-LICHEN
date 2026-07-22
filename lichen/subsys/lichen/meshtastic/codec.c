@@ -68,6 +68,8 @@
 #define MESHTASTIC_MODEM_LONG_FAST 0U
 #define MESHTASTIC_DEFAULT_TX_POWER_DBM 14
 #define MESHTASTIC_NODE_INFO_BROADCAST_SECS 900U
+#define MESHTASTIC_BROADCAST_NODE 0xffffffffU
+#define LICHEN_DEFAULT_NODE_NUM 0x4c494348U
 
 #define MY_INFO_NODE_NUM_FIELD 1U
 #define MY_INFO_REBOOT_COUNT_FIELD 8U
@@ -543,8 +545,9 @@ static const char *info_pio_env(const struct lichen_meshtastic_local_info *info)
 
 static uint32_t info_node_num(const struct lichen_meshtastic_local_info *info)
 {
-	if (info == NULL || info->node_num == 0U || info->node_num == 0xffffffffU) {
-		return 0x4c494348U;
+	if (info == NULL || info->node_num == 0U ||
+	    info->node_num == MESHTASTIC_BROADCAST_NODE) {
+		return LICHEN_DEFAULT_NODE_NUM;
 	}
 	return info->node_num;
 }

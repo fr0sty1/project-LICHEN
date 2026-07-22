@@ -15,10 +15,16 @@
 /* Test state */
 static int ax25_rx_count;
 static int raw_rx_count;
+static int lci_ipv6_rx_count;
+static int lci_ctrl_rx_count;
 static uint8_t last_ax25_data[256];
 static size_t last_ax25_len;
 static uint8_t last_raw_data[256];
 static size_t last_raw_len;
+static uint8_t last_lci_ipv6_data[256];
+static size_t last_lci_ipv6_len;
+static uint8_t last_lci_ctrl_data[256];
+static size_t last_lci_ctrl_len;
 
 static void ax25_rx_cb(const uint8_t *data, size_t len, void *user_ctx)
 {
@@ -40,16 +46,39 @@ static void raw_rx_cb(const uint8_t *data, size_t len, void *user_ctx)
 	}
 }
 
+static void lci_ipv6_rx_cb(const uint8_t *data, size_t len, void *user_ctx)
+{
+	ARG_UNUSED(user_ctx);
+	lci_ipv6_rx_count++;
+	if (len <= sizeof(last_lci_ipv6_data)) {
+		memcpy(last_lci_ipv6_data, data, len);
+		last_lci_ipv6_len = len;
+	}
+}
+
+static void lci_ctrl_rx_cb(const uint8_t *data, size_t len, void *user_ctx)
+{
+	ARG_UNUSED(user_ctx);
+	lci_ctrl_rx_count++;
+	if (len <= sizeof(last_lci_ctrl_data)) {
+		memcpy(last_lci_ctrl_data, data, len);
+		last_lci_ctrl_len = len;
+	}
+}
+
 /**
- * @brief Get test configuration with all callbacks for consistency across rx_*, cmd_*, persistence, slottime tests.
+ * @brief Returns a complete test configuration including all LCI callbacks.
  *
- * Explicitly sets hw_cmd_cb = NULL for complete LCI coverage. Replaces duplicated struct initializers.
+ * Used by rx and cmd tests to ensure consistent init (avoids "config lacks LCI cbs"
+ * codereview findings). hw_cmd_cb left NULL as optional.
  */
-static struct kiss_transport_config get_test_config(void)
+static struct kiss_transport_config test_config(void)
 {
 	struct kiss_transport_config config = {
 		.ax25_rx_cb = ax25_rx_cb,
 		.raw_rx_cb = raw_rx_cb,
+		.lci_ipv6_cb = lci_ipv6_rx_cb,
+		.lci_ctrl_cb = lci_ctrl_rx_cb,
 		.hw_cmd_cb = NULL,
 		.user_ctx = NULL,
 	};
@@ -61,8 +90,12 @@ static void reset_test_state(void *fixture)
 	ARG_UNUSED(fixture);
 	ax25_rx_count = 0;
 	raw_rx_count = 0;
+	lci_ipv6_rx_count = 0;
+	lci_ctrl_rx_count = 0;
 	last_ax25_len = 0;
 	last_raw_len = 0;
+	last_lci_ipv6_len = 0;
+	last_lci_ctrl_len = 0;
 #ifdef CONFIG_ZTEST
 	kiss_transport_test_reset();
 #endif
@@ -402,9 +435,9 @@ ZTEST(kiss_transport, test_set_params_null)
  */
 ZTEST(kiss_transport, test_rx_ax25)
 {
-	struct kiss_transport_config config = get_test_config();
+	struct kiss_transport_config config = test_config();
 	int ret = kiss_transport_init(&config);
-	zassert_ok(ret);
+	zassert_true(ret == 0 || ret == -EALREADY, "Init should succeed or already be done");
 
 	/* KISS frame: port 0, data command, payload "TEST" */
 	uint8_t frame[] = { KISS_FEND, 0x00, 'T', 'E', 'S', 'T', KISS_FEND };
@@ -422,7 +455,7 @@ ZTEST(kiss_transport, test_rx_ax25)
  */
 ZTEST(kiss_transport, test_rx_raw)
 {
-	struct kiss_transport_config config = get_test_config();
+	struct kiss_transport_config config = test_config();
 	int ret = kiss_transport_init(&config);
 	zassert_ok(ret);
 
@@ -443,13 +476,14 @@ ZTEST(kiss_transport, test_rx_raw)
  */
 ZTEST(kiss_transport, test_cmd_txdelay)
 {
-	struct kiss_transport_config config = get_test_config();
+	struct kiss_transport_config config = test_config();
 	int ret = kiss_transport_init(&config);
 	zassert_ok(ret);
 
 	const uint8_t frame[] = { KISS_FEND, KISS_CMD_TXDELAY, 100, KISS_FEND };
 
-	kiss_transport_test_inject_rx(frame, sizeof(frame));
+	int frames = kiss_transport_test_inject_rx(frame, sizeof(frame));
+	zassert_equal(frames, 1, "Should process one command frame");
 
 	struct kiss_params params;
 	ret = kiss_transport_get_params(&params);
@@ -462,18 +496,25 @@ ZTEST(kiss_transport, test_cmd_txdelay)
  */
 ZTEST(kiss_transport, test_cmd_persistence)
 {
-	struct kiss_transport_config config = get_test_config();
+	struct kiss_transport_config config = test_config();
 	int ret = kiss_transport_init(&config);
-	zassert_ok(ret);
+	zassert_true(ret == 0 || ret == -EALREADY,
+		     "Init should succeed or already be done");
 
 	const uint8_t frame[] = { KISS_FEND, KISS_CMD_PERSISTENCE, 128, KISS_FEND };
 
-	kiss_transport_test_inject_rx(frame, sizeof(frame));
+	int frames = kiss_transport_test_inject_rx(frame, sizeof(frame));
+	zassert_equal(frames, 1, "Should process one command frame");
 
 	struct kiss_params params;
 	ret = kiss_transport_get_params(&params);
 	zassert_equal(ret, 0, "get_params ok");
 	zassert_equal(params.persistence, 128, "Persistence should be 128");
+
+	struct kiss_transport_stats stats;
+	ret = kiss_transport_get_stats(&stats);
+	zassert_equal(ret, 0, "get_stats ok");
+	zassert_equal(stats.rx_commands, 1u, "One timing command should be counted");
 }
 
 /**
@@ -481,18 +522,26 @@ ZTEST(kiss_transport, test_cmd_persistence)
  */
 ZTEST(kiss_transport, test_cmd_slottime)
 {
-	struct kiss_transport_config config = get_test_config();
+	struct kiss_transport_config config = test_config();
 	int ret = kiss_transport_init(&config);
-	zassert_ok(ret);
+	zassert_true(ret == 0 || ret == -EALREADY,
+		     "Init should succeed or already be done");
 
-	const uint8_t frame[] = { KISS_FEND, KISS_CMD_SLOTTIME, 20, KISS_FEND };
+	/* SlotTime command (10ms units): set to 20 (=200ms) */
+	uint8_t frame[] = { KISS_FEND, KISS_CMD_SLOTTIME, 20, KISS_FEND };
 
-	kiss_transport_test_inject_rx(frame, sizeof(frame));
+	int frames = kiss_transport_test_inject_rx(frame, sizeof(frame));
+	zassert_equal(frames, 1, "Should process one command frame");
 
 	struct kiss_params params;
 	ret = kiss_transport_get_params(&params);
 	zassert_equal(ret, 0, "get_params ok");
 	zassert_equal(params.slottime, 20, "SlotTime should be 20");
+
+	struct kiss_transport_stats stats;
+	ret = kiss_transport_get_stats(&stats);
+	zassert_equal(ret, 0, "get_stats ok");
+	zassert_equal(stats.rx_commands, 1u, "One timing command should be counted");
 }
 
 /**

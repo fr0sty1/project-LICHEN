@@ -35,6 +35,7 @@ class TestIdentityConstruction:
         assert len(ident.privkey) == 32
         assert len(ident.pubkey) == 32
         assert len(ident.iid) == 8
+        assert len(ident.ygg_addr) == 16
 
     def test_generate_is_random(self):
         """Each generate() call produces a different identity."""
@@ -45,6 +46,7 @@ class TestIdentityConstruction:
         assert ident1.seed != ident2.seed
         assert ident1.pubkey != ident2.pubkey
         assert ident1.iid != ident2.iid
+        assert ident1.ygg_addr != ident2.ygg_addr
 
     def test_from_seed_is_deterministic(self):
         """Same seed always produces same keys."""
@@ -58,6 +60,7 @@ class TestIdentityConstruction:
         assert ident1.privkey == ident2.privkey
         assert ident1.pubkey == ident2.pubkey
         assert ident1.iid == ident2.iid
+        assert ident1.ygg_addr == ident2.ygg_addr
 
     def test_from_seed_different_seeds_different_keys(self):
         """Different seeds produce different keys."""

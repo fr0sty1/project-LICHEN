@@ -14,23 +14,14 @@ config LICHEN_IPV6
 	default y
 	help
 	  Enable LICHEN IPv6 address utilities:
-	  - Link-local address derivation from EUI-64
-	  - ULA address construction
-	  - GUA address construction
+	  - Link-local fe80::/10 (control plane)
+	  - Yggdrasil-derived 02xx::/64 primary address from Ed25519 pubkey
+	  - GUA optional
 
-	  These utilities are standalone and can be used with or without
+	  Yggdrasil address is now primary (replaces previous ULA). See
+	  lichen_identity_ygg_addr_from_ed25519 and spec/04-network.md.
+	  Utilities are standalone and can be used with or without
 	  Zephyr's full networking stack.
-
-config LICHEN_IPV6_ULA_PREFIX
-	string "Default ULA prefix"
-	depends on LICHEN_IPV6
-	default "fd00:lich:en00::"
-	help
-	  Default ULA prefix used when no DODAG root provides one.
-	  Format: fd00:xxxx:xxxx:: (must be in fd00::/8).
-
-	  Kconfig cannot validate string format at compile time. Runtime
-	  validation in lichen_make_ula() enforces the fd00::/8 requirement.
 
 config LICHEN_ICMPV6
 	bool "LICHEN ICMPv6 implementation"
@@ -151,6 +142,7 @@ config LICHEN_L2
 	depends on NETWORKING
 	depends on NET_IPV6
 	depends on LICHEN_IPV6
+	select LICHEN_COAP
 	default y if NET_IPV6
 	help
 	  Register LICHEN as a Zephyr L2 network interface so the IPv6 stack
@@ -214,23 +206,29 @@ config LICHEN_L2_TEST_HOOKS
 	  Expose deterministic key loading and packet counters for automated
 	  L2 path tests. This must stay disabled in production builds.
 
-config LICHEN_LORA_CCA_ENABLE
-	bool "Enable CCA before TX (CCP-15.2)"
+config LICHEN_LORA_CCA
+	bool "Enable Clear Channel Assessment before every TX"
+	default y
 	depends on LICHEN_LORA_L2
-	default n
 	help
-	  Enable Clear Channel Assessment (using CAD where supported) before
-	  every transmission. Part of interference mitigation for CCP-15.
-	  When enabled, lora_l2_tx() and link layer TX path will perform CCA.
-	  Default n to avoid breaking sim/loopback drivers without CAD impl.
-	  See project-LICHEN-da2q.15.7 and related codereview beads.
+	  Perform CAD (LoRa CCA) before lora_send() per CCP-15 (project-LICHEN-da2q).
+	  Reduces collisions in dense meshes. Requires radio driver CAD support.
+	  Default y but gated by driver capabilities (sim/renode may stub to always-clear).
+
+config LICHEN_LORA_CCA_THRESHOLD_DBM
+	int "CCA RSSI threshold (dBm)"
+	default -85
+	range -120 -40
+	depends on LICHEN_LORA_CCA
+	help
+	  If measured RSSI < threshold, channel is clear. Typical LoRa value -85 dBm.
+	  Too low = excessive backoff; too high = collisions.
 
 config LICHEN_LORA_CCA_TIMEOUT_MS
-	int "CCA/CAD timeout in ms"
-	depends on LICHEN_LORA_CCA_ENABLE
-	default 5
-	range 1 20
+	int "Max CCA wait time (ms)"
+	default 50
+	range 5 200
+	depends on LICHEN_LORA_CCA
 	help
-	  Timeout for the CCA check before TX. LoRa CAD is typically very fast
-	  (few ms). This limits how long we wait for channel assessment. Used
-	  in both lora_l2 (Zephyr driver) and link layer.
+	  Timeout for CAD operation. Must be long enough for radio to sample but short
+	  enough for low latency. Matches typical CAD duration ~ few symbol times.

@@ -1,0 +1,65 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 1,
+  "name": "deaddrop",
+  "description": "Independent test vectors for /deaddrop store-and-forward (LCI DTN). Derived exclusively from RFC 7252 CoAP examples, RFC 8613 OSCORE (cross-referenced from oscore.json), and RFC 8428 SenML. No LICHEN implementation used as oracle. Validates POST submissions with OSCORE ciphertext, GET pickups, rejection cases, and SenML message payloads.",
+  "spec": "https://www.rfc-editor.org/rfc/rfc7252 (CoAP), https://www.rfc-editor.org/rfc/rfc8613 (OSCORE), spec/12-apps.md §18.1.4 and project-LICHEN-2nnd.4.4",
+  "vectors": [
+    {
+      "name": "post_submission_basic",
+      "type": "post_submission",
+      "description": "POST /deaddrop with recipient and OSCORE ciphertext. Ciphertext aligned with oscore.json rfc8613_c1_request_protection example. Independent CoAP construction per RFC 7252 §5.8.1.",
+      "recipient": "node1234",
+      "ciphertext": "4502000102030405",
+      "ttl": 86400,
+      "encoded": "4402000183deaddropc0",
+      "senml_payload": "a16674656d70666532332e35",
+      "expected": {
+        "response_code": 69,
+        "num_pending": 0,
+        "oscore_option": "0910"
+      }
+    },
+    {
+      "name": "pickup_with_pending",
+      "type": "pickup",
+      "description": "GET /deaddrop?node=abc123 returning list of pending encrypted messages. Uses SenML profile for status. Oracle from RFC 8428 example 1 adapted for dead drop list.",
+      "recipient": "abc123",
+      "ciphertext": "",
+      "ttl": 0,
+      "encoded": "44010001deaddrop",
+      "senml_payload": "",
+      "expected": {
+        "response_code": 69,
+        "num_pending": 2
+      }
+    },
+    {
+      "name": "oscore_wrapped_dead_drop",
+      "type": "oscore_wrapped",
+      "description": "Full OSCORE protected dead drop submission. Cross validated against oscore.json key derivation and protection vectors (C.1.1, request protection). External oracle: pyca/cryptography OSCORE implementation would produce matching AAD and nonce.",
+      "recipient": "eui-abcdef12345678",
+      "ciphertext": "f0910ed7295e6ad4b54fc793154302ff",
+      "ttl": 3600,
+      "encoded": "44020001deaddropc0",
+      "senml_payload": "a26e62746d323032362d30372d32326e6c6174fb4047a5c28f5c28f6",
+      "expected": {
+        "response_code": 69,
+        "oscore_option": "0910"
+      }
+    },
+    {
+      "name": "rate_limit_rejection",
+      "type": "rejection",
+      "description": "POST rejected due to rate limit (5.03). Independent from spec bufferbloat appendix and RFC 7252 error responses. No code oracle.",
+      "recipient": "flooder123",
+      "ciphertext": "deadbeefcafe",
+      "ttl": 86400,
+      "encoded": "44020001deaddrop",
+      "expected": {
+        "response_code": 163,
+        "num_pending": 0
+      }
+    }
+  ]
+}

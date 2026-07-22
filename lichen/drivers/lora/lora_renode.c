@@ -146,11 +146,11 @@ static int lora_renode_send(const struct device *dev,
 	do {
 		status = reg_read(cfg, REG_TX_STATUS);
 		if (status == TX_DONE) {
-			LOG_DBG("TX done, airtime=%u us", reg_read(cfg, REG_TX_AIRTIME));
+			LOG_DBG("TX done, airtime=%u us, len=%u", reg_read(cfg, REG_TX_AIRTIME), data_len);
 			return 0;
 		}
 		if (status == TX_FAIL) {
-			LOG_ERR("TX failed");
+			LOG_ERR("TX failed, len=%u", data_len);
 			return -EIO;
 		}
 		k_sleep(K_MSEC(1));
@@ -206,7 +206,8 @@ static int lora_renode_recv(const struct device *dev,
 			/* Consume the packet */
 			reg_write(cfg, REG_RX_CONSUME, 1);
 
-			LOG_DBG("RX: %u bytes, RSSI=%d", rx_len, rssi ? *rssi : 0);
+			LOG_DBG("RX: %u bytes, RSSI=%d, SNR=%d", rx_len,
+				rssi ? *rssi : 0, snr ? *snr : 0);
 			return rx_len;
 		}
 

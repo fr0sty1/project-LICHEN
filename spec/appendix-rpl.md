@@ -8,34 +8,27 @@
 RPL is used for border router traffic only. See Section 8 for details.
 For peer-to-peer traffic, see Appendix B2 (LOADng).
 
-## B.1. Objective Function
+## B.1. Constants (from constants.toml [rpl], lichen-core::constants, lichen/rpl)
 
-**MRHOF (Minimum Rank with Hysteresis Objective Function):**
+| Parameter | Value | Source |
+|-----------|-------|--------|
+| RPL_INSTANCE_ID | 0 | constants.toml:46 |
+| MODE_OF_OPERATION | 1 (Non-Storing) | constants.toml:47, RFC 6550 MOP=1 |
+| ICMPV6_TYPE | 155 | constants.toml:48 |
+| MIN_HOP_RANK_INCREASE | 256 | constants.toml:49 |
+| ROOT_RANK | 256 | constants.toml:52 |
+| INFINITE_RANK | 0xFFFF | constants.toml:51 |
+| DEFAULT_LIFETIME_S | 1800 (30min) | constants.toml:53 |
+| LIFETIME_UNIT_S | 60 | constants.toml:54 |
+| MAX_RANK_INCREASE | 2048 | constants.toml:50 |
 
-```
-ETX(link) = transmissions / successes
-PathETX = sum(ETX(link)) for all links to root
-Rank = (PathETX * 128) + MinHopRankIncrease
-```
+Trickle: Imin=4096ms, Imax_doublings=8 (~17min), k=10 per constants.toml:56-60, lichen_rpl_dodag_init() and Trickle timer impl in lichen/subsys/lichen/rpl/.
 
-## B.2. Configuration Option Values
+See lichen/subsys/lichen/rpl_dodag.h: lichen_rpl_dodag_init(), rust/rpl/ for current impl.
 
-| Parameter | Value |
-|-----------|-------|
-| RPLInstanceID | 0 (default instance) |
-| Mode of Operation | Non-Storing (MOP=1) |
-| MinHopRankIncrease | 256 |
-| MaxRankIncrease | 2048 |
-| Default Lifetime | 30 minutes |
-| Lifetime Unit | 60 seconds |
+## B.2. Objective Function
 
-## B.3. Trickle Parameters
-
-| Parameter | Value | Notes |
-|-----------|-------|-------|
-| Imin | 4096 ms | ~4 seconds |
-| Imax | 20 | 2^20 ms = ~17 minutes |
-| k | 10 | Redundancy constant |
+MRHOF per RFC 6719 tuned for LoRa ETX.
 
 ## B.4. CCP-16 Load Balancing Extensions
 
@@ -48,5 +41,6 @@ See `rust/lichen-rpl/src/lib.rs` and `test/vectors/ccp_load_balancing.json` for:
 Python reference impl is authoritative. All changes validated against vectors.
 
 ---
+
 
 [← Previous: Appendix A](appendix-schc.md) | [Index](README.md) | [Next: Appendix B2 →](appendix-loadng.md)

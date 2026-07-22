@@ -876,9 +876,8 @@ impl PacketProfile for RplDaoProfile {
         if icmpv6[0] != ICMPV6_RPL_TYPE || icmpv6[1] != 2 {
             return false;
         }
-        // Check D flag (bit 6 of KD flags byte)
-        let kd_flags = icmpv6[ICMPV6_HEADER + 1];
-        (kd_flags & 0x40) != 0
+        let flags = icmpv6[ICMPV6_HEADER + 1];
+        (flags & 0x40) != 0
     }
 
     fn parse<'a>(&self, raw: &'a [u8]) -> Result<ParsedPacket<'a>, PacketError> {
@@ -912,7 +911,7 @@ impl PacketProfile for RplDaoProfile {
         );
 
         parsed.add_field("RPL.instance", rpl[0] as u128);
-        parsed.add_field("RPL.kd_flags", rpl[1] as u128);
+        parsed.add_field("RPL.flags", rpl[1] as u128);
         parsed.add_field("RPL.reserved", rpl[2] as u128);
         parsed.add_field("RPL.seq", rpl[3] as u128);
 
@@ -944,7 +943,7 @@ impl PacketProfile for RplDaoProfile {
         let flow_label = get("IPv6.flow_label").unwrap_or(0) as u32;
 
         let instance = get("RPL.instance")? as u8;
-        let kd_flags = get("RPL.kd_flags")? as u8;
+        let flags = get("RPL.flags")? as u8;
         let reserved = get("RPL.reserved").unwrap_or(0) as u8;
         let seq = get("RPL.seq")? as u8;
         let dodagid = get("RPL.dodagid")?;
@@ -967,7 +966,7 @@ impl PacketProfile for RplDaoProfile {
         icmp_buf[2] = 0; // checksum placeholder
         icmp_buf[3] = 0;
         icmp_buf[4] = instance;
-        icmp_buf[5] = kd_flags;
+        icmp_buf[5] = flags;
         icmp_buf[6] = reserved;
         icmp_buf[7] = seq;
         icmp_buf[8..24].copy_from_slice(&dodagid.to_be_bytes());
@@ -1108,15 +1107,14 @@ mod tests {
         assert!(profile.matches(&packet));
 
         let parsed = profile.parse(&packet).unwrap();
-        assert_eq!(parsed.get("ICMPv6.type"), Some(155)); // RPL
-        assert_eq!(parsed.get("ICMPv6.code"), Some(2)); // DAO
-        assert_eq!(parsed.get("RPL.kd_flags"), Some(0x40)); // D flag set
+        assert_eq!(parsed.get("ICMPv6.type"), Some(155));
+        assert_eq!(parsed.get("ICMPv6.code"), Some(2));
+        assert_eq!(parsed.get("RPL.flags"), Some(0x40));
         assert_eq!(parsed.get("RPL.seq"), Some(5));
     }
 
     #[test]
     fn dao_without_d_flag_does_not_match() {
-        // DAO with D flag clear (kd_flags = 0x00)
         let packet = hex("6000000000083a40fe800000000000000000000000000001\
              fe8000000000000000000000000000029b0200000005");
         let profile = RplDaoProfile;

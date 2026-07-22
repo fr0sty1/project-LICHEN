@@ -242,9 +242,25 @@ fn parse_suites_i(data: &[u8]) -> Result<(u8, usize), EdhocError> {
     }
 }
 
+fn build_a3(th3: &[u8; 32], cred: &[u8; 32]) -> Result<heapless::Vec<u8, 96>, EdhocError> {
+    let mut ext_aad = [0u8; 64];
+    ext_aad[0..32].copy_from_slice(th3);
+    ext_aad[32..64].copy_from_slice(cred);
+    let mut a3 = heapless::Vec::<u8, 96>::new();
+    a3.push_err(0x83)?;
+    a3.push_err(0x68)?;
+    a3.extend_err(b"Encrypt0")?;
+    a3.push_err(0x40)?;
+    a3.push_err(0x58)?;
+    a3.push_err(0x40)?;
+    a3.extend_err(&ext_aad)?;
+    Ok(a3)
+}
+
 /// EDHOC Initiator (client role).
 ///
 /// Implements EDHOC method 0 (SIGN_SIGN) with Suite 0.
+
 // SECURITY: SigningKey and StaticSecret must be zeroized on drop.
 // SigningKey and StaticSecret implement ZeroizeOnDrop themselves.
 #[derive(Zeroize, ZeroizeOnDrop)]
@@ -607,7 +623,6 @@ impl EdhocInitiator {
         ciphertext_3.push_err(64)?;
         ciphertext_3.extend_err(&signature_3.to_bytes())?;
 
-        // K_3 and IV_3 for AEAD
         let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", &[], KEY_LEN)?;
         let iv_3 = edhoc_kdf(
             &self.state.prk_3e2m,
@@ -617,18 +632,8 @@ impl EdhocInitiator {
             NONCE_LEN,
         )?;
 
-        // A_3 per RFC 9528 4.4.2: external_aad = TH_3 || CRED_I (64 bytes)
-        let mut ext_aad = [0u8; 64];
-        ext_aad[0..32].copy_from_slice(&self.state.th_3);
-        ext_aad[32..64].copy_from_slice(self.pubkey.as_bytes());
-        let mut a_3 = heapless::Vec::<u8, 96>::new();
-        a_3.push_err(0x83)?; // array of 3
-        a_3.push_err(0x68)?; // tstr "Encrypt0"
-        a_3.extend_err(b"Encrypt0")?;
-        a_3.push_err(0x40)?; // empty bstr
-        a_3.push_err(0x58)?; // bstr (64 bytes)
-        a_3.push_err(64)?;
-        a_3.extend_err(&ext_aad)?;
+        let a_3 = build_a3(&self.state.th_3, self.pubkey.as_bytes())?;
+
 
         // Encrypt in place (PLAINTEXT_3 -> CIPHERTEXT_3)
         let cipher = AesCcm::new_from_slice(&k_3).map_err(|_| EdhocError::InvalidState)?;
@@ -980,7 +985,6 @@ impl EdhocResponder {
     ) -> Result<(), EdhocError> {
         let ciphertext_3 = msg3;
 
-        // K_3 and IV_3 for AEAD decryption
         let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", &[], KEY_LEN)?;
         let iv_3 = edhoc_kdf(
             &self.state.prk_3e2m,
@@ -990,18 +994,7 @@ impl EdhocResponder {
             NONCE_LEN,
         )?;
 
-        // A_3 per RFC 9528 4.4.2: external_aad = TH_3 || CRED_I (64 bytes)
-        let mut ext_aad = [0u8; 64];
-        ext_aad[0..32].copy_from_slice(&self.state.th_3);
-        ext_aad[32..64].copy_from_slice(peer_pubkey);
-        let mut a_3 = heapless::Vec::<u8, 96>::new();
-        a_3.push_err(0x83)?;
-        a_3.push_err(0x68)?;
-        a_3.extend_err(b"Encrypt0")?;
-        a_3.push_err(0x40)?;
-        a_3.push_err(0x58)?;
-        a_3.push_err(64)?;
-        a_3.extend_err(&ext_aad)?;
+        let a_3 = build_a3(&self.state.th_3, peer_pubkey)?;
 
         // Decrypt CIPHERTEXT_3
         if ciphertext_3.len() < TAG_LEN {
@@ -1381,5 +1374,17 @@ mod tests {
             matches!(responder.export_oscore(), Err(OscoreError::NoContext)),
             "Responder export_oscore should fail before process_message_3"
         );
+    }
+
+    #[test]
+    fn test_a3_aad_construction() {
+        let th3 = [0xaa; 32];
+        let cred = [0xbb; 32];
+        let a_3 = build_a3(&th3, &cred).unwrap();
+        let mut expected = heapless::Vec::<u8, 96>::new();
+        expected.extend_from_slice(&[0x83, 0x68, 0x45, 0x6e, 0x63, 0x72, 0x79, 0x70, 0x74, 0x30, 0x40, 0x58, 0x40]).unwrap();
+        expected.extend_from_slice(&[0xaa; 32]).unwrap();
+        expected.extend_from_slice(&[0xbb; 32]).unwrap();
+        assert_eq!(&a_3[..], &expected[..]);
     }
 }

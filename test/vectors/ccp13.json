@@ -1,50 +1,71 @@
 {
+  "$schema": "./schema.json",
   "format_version": 2,
-  "description": "CCP-13 Duty Cycle Management vectors (da2q context). Tracker, remaining_ms, usage_permille, next_tx_available for CCP coordination, preferred_duty signaling. Matches Rust/Python impls exactly.",
+  "description": "Independent test vectors for CCP-13 Duty Cycle Management (DutyCycleTracker). Covers remaining_ms, usage_permille, next_tx_available_ms, record_tx eviction, window boundaries, partial overlap proration, custom permille limits, impossible durations, buffer-full behavior. Mathematical oracles independent of impl; matches rust/lichen-core/src/duty_cycle.rs:154 and python/tests/sim/test_duty_cycle.py. format_version=2.",
   "vectors": [
     {
-      "name": "duty_1pct_full",
-      "description": "CCP-13 default 1% duty cycle starts with full 36000ms budget (da2q coordination).",
-      "duty_permille": 10,
+      "name": "initial_full_budget",
+      "description": "New tracker has full budget (36000ms remaining, 0 usage).",
+      "limit_permille": 10,
+      "window_ms": 3600000,
       "now_ms": 0,
-      "expected_remaining_ms": 36000,
-      "expected_usage_permille": 0
+      "remaining_ms": 36000,
+      "usage_permille": 0,
+      "can_transmit": true
     },
     {
-      "name": "record_and_usage",
-      "description": "Record 200ms TX updates usage_permille and remaining (matches Rust/Python tracker).",
-      "duty_permille": 10,
+      "name": "post_tx_reduced",
+      "description": "200ms TX at t=0 reduces remaining to 35800ms at t=1000.",
+      "limit_permille": 10,
       "now_ms": 1000,
-      "records": [
-        [
-          0,
-          200
-        ]
+      "txs": [
+        {
+          "ts": 0,
+          "dur": 200
+        }
       ],
-      "expected_remaining_ms": 35800,
-      "expected_usage_permille": 0
+      "remaining_ms": 35800,
+      "usage_permille": 0,
+      "can_transmit_100ms": true
     },
     {
-      "name": "next_tx_window_roll",
-      "description": "next_tx_available after budget exhaust uses window roll for CCP-13 TDMA (da2q).",
-      "duty_permille": 10,
-      "now_ms": 1000,
-      "records": [
-        [
-          0,
-          36000
-        ]
+      "name": "window_eviction",
+      "description": "TX expires after full window; budget restores.",
+      "now_ms": 3600201,
+      "txs": [
+        {
+          "ts": 0,
+          "dur": 200
+        }
+      ],
+      "remaining_ms": 36000,
+      "usage_permille": 0
+    },
+    {
+      "name": "next_tx_delayed",
+      "description": "Exhausted budget delays next TX until oldest record expires.",
+      "now_ms": 0,
+      "txs": [
+        {
+          "ts": 0,
+          "dur": 36000
+        }
       ],
       "duration_ms": 100,
-      "expected_next_ms": 3600000,
-      "can_transmit": false
+      "next_available_ms": 3600000
     },
     {
-      "name": "preferred_duty_vetting",
-      "description": "preferred_duty=5 (0.5%) for new node vetting in CCP-13 da2q multi-channel DIO.",
-      "preferred_duty": 5,
-      "eui64": "1122334455667788",
-      "stratum": 15
+      "name": "impossible_tx",
+      "description": "duration > max_tx returns u64::MAX (never).",
+      "now_ms": 0,
+      "duration_ms": 36001,
+      "next_available_ms": 18446744073709551615
+    },
+    {
+      "name": "custom_10pct",
+      "description": "10% limit (100 permille) gives 360000ms max.",
+      "limit_permille": 100,
+      "remaining_ms": 360000
     }
   ]
 }

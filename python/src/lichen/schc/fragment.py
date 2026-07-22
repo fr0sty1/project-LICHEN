@@ -21,14 +21,24 @@ import zlib
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-N_FCN_BITS = 6
-ALL_1 = (1 << N_FCN_BITS) - 1  # 63 — marks the last fragment of the datagram
-MAX_WINDOW_SIZE = ALL_1 - 1  # 62 regular FCNs (62..0) per full window
-DEFAULT_WINDOW_SIZE = 32
-MIC_LENGTH = 4  # CRC32
+from lichen.constants import (
+    SCHC_FRAGMENT_M,
+    SCHC_FRAGMENT_N,
+    SCHC_FRAGMENT_T,
+    SCHC_RCS_BYTES,
+)
 
-_W_SHIFT = 6
-_FCN_MASK = 0x3F
+N_FCN_BITS = SCHC_FRAGMENT_N
+ALL_1 = (1 << N_FCN_BITS) - 1
+MAX_WINDOW_SIZE = ALL_1 - 1
+DEFAULT_WINDOW_SIZE = 32
+MIC_LENGTH = SCHC_RCS_BYTES
+FRAGMENT_M = SCHC_FRAGMENT_M
+FRAGMENT_N = SCHC_FRAGMENT_N
+FRAGMENT_T = SCHC_FRAGMENT_T
+
+_W_SHIFT = SCHC_FRAGMENT_N
+_FCN_MASK = (1 << SCHC_FRAGMENT_N) - 1
 
 
 class FragmentError(Exception):

@@ -335,11 +335,15 @@ class TestSerialization:
             msg.to_bytes()
 
     def test_from_bytes_rejects_truncated(self):
+        """Rejects data shorter than fixed portion."""
+        # Why test: Truncated messages are malformed. _FIXED_LENGTH=94 for CCP-9.
         with pytest.raises(AnnounceError, match="too short"):
-            AnnounceMessage.from_bytes(bytes(50))
+            AnnounceMessage.from_bytes(bytes(50))  # Less than 94 bytes
 
     def test_from_bytes_rejects_wrong_type(self):
-        wire = bytes([0xFF]) + bytes(93)
+        """Rejects messages with wrong type byte."""
+        # Why test: Type byte identifies announce vs other messages.
+        wire = bytes([0xFF]) + bytes(93)  # 94 bytes total, enough for length check
         with pytest.raises(AnnounceError, match="wrong message type"):
             AnnounceMessage.from_bytes(wire)
 
@@ -419,25 +423,36 @@ class TestHopCount:
 
 class TestKnownVectors:
     def test_known_wire_format(self):
+        """Verify exact wire format for a known message (CCP-9 with rx_channel)."""
+        # Why test: Catch accidental changes to wire format. rx_channel at end per Python impl.
         msg = AnnounceMessage(
             originator_iid=bytes([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]),
             pubkey=bytes([0xAA] * 32),
             seq_num=0x1234,
             hop_count=3,
             flags=0,
-            rx_channel=0,
+            rx_channel=5,
             signature=bytes([0xBB] * SIGNATURE_LENGTH),
             app_data=b"",
             rx_channel=7,
         )
         wire = msg.to_bytes()
 
-        assert wire[0] == ANNOUNCE_TYPE
-        assert wire[1] == 0
-        assert wire[2] == 3
-        assert wire[3:5] == bytes([0x12, 0x34])
-        assert wire[5] == 0
-        assert wire[6:14] == bytes([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08])
-        assert wire[14:46] == bytes([0xAA] * 32)
-        assert wire[46:94] == bytes([0xBB] * SIGNATURE_LENGTH)
+        # Check header
+        assert wire[0] == ANNOUNCE_TYPE  # type
+        assert wire[1] == 0  # flags
+        assert wire[2] == 3  # hop_count
+        assert wire[3:5] == bytes([0x12, 0x34])  # seq_num
+
+        # Check IID position
+        assert wire[5:13] == bytes([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08])
+
+        # Check pubkey position
+        assert wire[13:45] == bytes([0xAA] * 32)
+
+        # Check signature position
+        assert wire[45:93] == bytes([0xBB] * SIGNATURE_LENGTH)
+
+        # rx_channel after signature per to_bytes/from_bytes (CCP-9)
         assert len(wire) == 94
+        assert wire[93] == 5

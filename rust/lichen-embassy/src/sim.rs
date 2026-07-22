@@ -228,6 +228,11 @@ impl Radio for SimRadio {
         self.config = *config;
         // ponytail: config sent to sim on next TX/RX if sim supports it
     }
+
+    async fn cca(&mut self, _threshold_dbm: i8) -> Result<bool, Self::Error> {
+        // Sim always clear for CCP-15 test vectors; real radio sim would query backend.
+        Ok(true)
+    }
 }
 
 #[cfg(test)]

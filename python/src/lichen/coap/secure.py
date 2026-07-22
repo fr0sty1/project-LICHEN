@@ -334,17 +334,14 @@ class SecureDatagramChannel(DatagramChannel):
             # Decode with a remote so aiocoap knows the source
             remote = LichenRemote(source)
             msg = Message.decode(data, remote)
+            msg.direction = Direction.INCOMING
 
             # Check for OSCORE option (option number 9)
             # Use 'oscore' attribute (aiocoap >= 0.4 naming)
             has_oscore = msg.opt.oscore is not None
 
             if has_oscore:
-                # Set direction only for OSCORE path where _unprotect needs it.
-                # EDHOC and passthrough paths dispatch raw bytes, so the decoded
-                # message (and its direction) is not used.
-                msg.direction = Direction.INCOMING
-                # OSCORE protected - unprotect it
+                # OSCORE protected - unprotect it (uses the INCOMING direction)
                 plaintext = await self._unprotect(msg, source)
                 if plaintext is not None and self._receiver is not None:
                     self._receiver(plaintext, source)
@@ -354,7 +351,7 @@ class SecureDatagramChannel(DatagramChannel):
                 logger.debug(
                     "Allowing plaintext from %s (EDHOC in progress)", source
                 )
-                # Dispatch to EDHOC channel for response matching
+                # Dispatch to EDHOC channel for response matching (raw bytes to avoid double-decode)
                 if self._edhoc_channel is not None:
                     self._edhoc_channel.dispatch(data, source)
             elif self._require_oscore:

@@ -10,6 +10,7 @@
 
 #include <lichen/app_identity/app_identity.h>
 #include <lichen/link_ctx.h>
+#include <lichen/coap_keys.h>
 
 static const uint8_t test_eui64[LICHEN_EUI64_LEN] = {
 	0x02, 0x00, 0x00, 0xff, 0xfe, 0x00, 0x00, 0x01,
@@ -65,8 +66,7 @@ ZTEST(app_identity, test_self_identity_from_link_ctx)
 			   &ctx, "node", "fw"));
 	zassert_ok(lichen_app_identity_copy_self(&out));
 
-	memcpy(expected_iid, test_eui64, sizeof(expected_iid));
-	expected_iid[0] ^= 0x02U;
+	zassert_ok(lichen_key_pubkey_to_iid(out.public_key, expected_iid));
 	zassert_mem_equal(out.eui64, test_eui64, sizeof(test_eui64));
 	zassert_mem_equal(out.iid, expected_iid, sizeof(expected_iid));
 	zassert_mem_equal(out.public_key, ctx.ed25519_pk, sizeof(out.public_key));
@@ -152,12 +152,15 @@ ZTEST(app_identity, test_peer_lookup_and_enumeration)
 	zassert_ok(lichen_app_identity_upsert_peer_key(peer2_eui64, key2));
 	zassert_equal(lichen_app_identity_peer_count(), 2U);
 	zassert_equal(lichen_app_identity_upsert_peer_key(peer3_eui64, key3),
-		      -ENOMEM);
+		      -ENOSPC);
 
 	zassert_ok(lichen_app_identity_copy_peer(peer1_eui64, &out));
 	zassert_mem_equal(out.eui64, peer1_eui64, sizeof(peer1_eui64));
 	zassert_mem_equal(out.public_key, key1, sizeof(key1));
-	zassert_equal(out.iid[0], peer1_eui64[0] ^ 0x02U);
+	/* IID now derived from pubkey (project-LICHEN-oxul) */
+	uint8_t expected_iid[LICHEN_KEY_IID_LEN];
+	zassert_ok(lichen_key_pubkey_to_iid(key1, expected_iid));
+	zassert_mem_equal(out.iid, expected_iid, sizeof(expected_iid));
 	zassert_true(out.has_public_key);
 
 	/* TOFU key pinning rejects key replacement for a known peer. */

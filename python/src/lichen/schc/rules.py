@@ -280,11 +280,12 @@ RPL_DIO_RULE = Rule(
 # DAOs without a DODAGID fall back to uncompressed. Preserves end-to-end source
 # per security spec.
 _DAO_BASE_FIELDS = (
-    FieldDescriptor("RPL.instance", 8, MO.IGNORE, CDA.VALUE_SENT, target_value=0),
-    FieldDescriptor("RPL.kd_flags", 8, MO.IGNORE, CDA.VALUE_SENT, target_value=0),
-    FieldDescriptor("RPL.reserved", 8, MO.EQUAL, CDA.NOT_SENT, target_value=0),
-    FieldDescriptor("RPL.seq", 8, MO.IGNORE, CDA.VALUE_SENT, target_value=0),
-    FieldDescriptor("RPL.dodagid", 128, MO.IGNORE, CDA.VALUE_SENT, target_value=0),
+    FieldDescriptor("RPL.instance", 8, MO.IGNORE, CDA.VALUE_SENT),
+    FieldDescriptor("RPL.flags", 8, MO.IGNORE, CDA.VALUE_SENT),
+    FieldDescriptor("RPL.reserved", 8, MO.EQUAL, CDA.NOT_SENT),
+    FieldDescriptor("RPL.seq", 8, MO.IGNORE, CDA.VALUE_SENT),
+    FieldDescriptor("RPL.dodagid", 128, MO.IGNORE, CDA.VALUE_SENT),
+
 )
 
 RPL_DAO_RULE = Rule(

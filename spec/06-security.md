@@ -123,61 +123,58 @@ Cache entries expire after 2× expected mesh traversal time (default: 30 seconds
 **Security note:** A compromised relay could inject unverified packets. In
 high-security deployments, enable per-hop verification (costs CPU, not bytes).
 
-### 8.7. Key Management
+### 8.6. Unified Ed25519 Derivation (no-ULA model)
 
+A single 32-byte seed produces all material for signatures, X25519 (EDHOC), stable IID, and primary 02xx address. Supports simplified no-ULA model (fe80::IID + 02xx::/7 Yggdrasil primary address only) per 04-network.md:12, 05-routing.md. Matches test/vectors/yggdrasil.json + schnorr48.json; see `python/src/lichen/crypto/identity.py:59` (from_seed), `rust/lichen-link/src/identity.rs:70` (Identity::from_seed), schnorr48.py:100.
+
+**Normative Derivation (MUST match test vectors exactly):**
+
+1. **Keypair**: `privkey, pubkey = derive_keypair(seed)` per draft-lichen-schnorr-00.md:97 (h=SHA-512(seed); privkey=clamp(h[0:32]); pubkey=basepoint_mult). Matches schnorr48.py:107 and Rust exactly.
+2. **IID**: `hash=SHA-256(pubkey); iid=hash[0:8]; iid[0] &= 0b1111_1101` (U/L bit clear per RFC 4291). See 04-network.md:53, identity.rs:22.
+3. **02xx Address**: `addr=[0x02] + SHA-512(pubkey)[0:7] + IID` (MUST: lower 64 bits == IID to bind key to address and prevent substitution; upper from SHA-512(pubkey) for Yggdrasil 0200::/7 dispersion). No ULA. See identity.rs:34 (yggdrasil_addr_from_pubkey), test/vectors/yggdrasil.json.
+4. **X25519**: `x25519_priv=SHA-512(seed)[0:32]` (raw hash slice before clamp; X25519 clamps internally) for EDHOC (see 8.9).
+
+Self-provisioned (RECOMMENDED) or BR-provisioned nodes derive identically. TOFU pins pubkey to derived IID/02xx (cryptographic consistency per 04/05). Mismatch rejects (MITM protection).
+
+### 8.7. Key Management
 **Design Principles:**
 - No pre-shared network keys (each node has its own keypair)
 - No mandatory CA infrastructure
 - Trust is per-peer, not per-network
 - Packet overhead must not increase for verified peers
 
-**Unified Ed25519 Identity Derivation (no-ULA model, zt3c.1/nqz6):**
+**Bootstrap and Key Derivation:**
 
-All node identities, addresses, and cryptographic material derive from **one Ed25519 keypair per node**. This is normative. No ULA (fd00::/8), no EUI-derived IIDs, no separate keys or prefixes. Matches 04-network.md simplified addressing (link-local + 02xx only). See test/vectors/unified-derivation.json (and schnorr48.json) for canonical test vectors; all impls (Rust, Zephyr, Python) MUST match exactly. Yggdrasil interop via compatible derivation at BRs.
+All nodes generate (or are provisioned) a single Ed25519 keypair at first boot. **One key for all purposes** (see 8.6):
 
-**Normative Derivation Steps:**
+*Self-Provisioned (default, RECOMMENDED):*
+1. Device generates Ed25519 keypair at first boot
+2. Derives stable IID and 02xx address from public key
+3. Private key stored securely (never transmitted)
 
-1. Generate/load Ed25519 keypair from 32-byte seed (RFC8032 or hardware RNG; persistent across boots).
-2. pubkey = 32-byte compressed Ed25519 public key.
-3. hash = SHA-512(pubkey)  // 64 bytes
-4. IID = hash[0:8]; IID[0] &= 0xfd;  // clear U/L bit (bit 1)
-5. 02xx address: apply Yggdrasil derivation rules to hash[0:16] (set prefix 0x02, specific bit flips per Yggdrasil spec for valid 0200::/7 address; full address uses derived IID).
-6. Same keypair used for:
-   - Schnorr48 link signatures (pubkey for verification)
-   - OSCORE contexts (HKDF-SHA-256 from key material per RFC8613)
-   - TOFU pinning (full pubkey bound to 02xx address)
-   - BR Yggdrasil daemon (same private key for seamless backbone interop)
+*BR-Provisioned (optional for managed fleets):*
+1. Node boots in commissioning mode
+2. Border router provisions keypair via secure out-of-band channel
+3. Node derives IID/02xx from the provisioned key (BR does not assign IID)
 
-**Properties (no-ULA model):**
-- Stable global 02xx address works for mesh routing, applications, and Yggdrasil bridging without prefix management.
-- Eliminates ULA/GUA selection logic, multiple address state, and PIO prefix distribution for ULA.
-- TOFU binds pubkey <-> 02xx address; mismatch or key change = MITM alert.
-- Privacy: stable IIDs (no rotation); see privacy analysis in section 8.7.
+**Trust Establishment (Layered):**
 
-**Bootstrap:**
-
-*Self-Provisioned (default):*
-1. Device generates/persists Ed25519 keypair at first boot.
-2. Derives IID + 02xx address deterministically from pubkey.
-3. Private key never leaves device.
-
-*BR-Provisioned (optional):* BR provisions seed/keypair over encrypted channel (LCI, BLE, USB); node derives addresses identically.
-
-**Trust Establishment:**
-
-TOFU pins full pubkey to 02xx address (not IID). Key change for a given 02xx address is always treated as potential MITM.
+Implementations MUST support TOFU. DANE/PKIX optional upgrades.
 
 | Method | Infrastructure | Trust Level | Use Case |
 |--------|---------------|-------------|----------|
-| TOFU | None | Pinned (key<->02xx) | Default, offline meshes |
-| DANE | DNSSEC | Verified | Internet-reachable nodes |
-| PKIX/ACME | CA/out-of-band | Verified | Enterprise deployments |
+| TOFU | None | Pinned per-IID | Default, fully offline |
+| BR-Provisioned | Border Router | Delegated | Managed deployments |
+| DANE | DNSSEC + TLSA | Verified | When internet available |
+| PKIX/ACME | CA | Verified | Enterprise |
 
 **1. TOFU Baseline (updated for no-ULA unified identity)**
 
-- First contact: receive pubkey + signature, derive 02xx, verify binding, pin (pubkey, 02xx, IID).
-- Subsequent contacts: verify Schnorr signature and address-key binding.
-- Works with or without Yggdrasil gateway/BR.
+- On first contact (via any address), accept peer's public key and pin it to the 02xx/IID
+- The key *must* match the one that derives the observed IID/02xx address
+- On subsequent contacts, verify signature and key match pinned value
+- Key change or IID mismatch -> reject and alert (MITM or key compromise)
+- Fully offline, cryptographically bound by derivation
 
 ```
 Key Store Entry:
@@ -190,52 +187,28 @@ Key Store Entry:
 
 **2. BR-Provisioned -- Optional**
 
-For managed deployments, the border router MAY provision keypairs to nodes
-during commissioning. This enables central control over network membership.
+For managed fleets, border router can provision keypairs. Nodes still derive IID and 02xx address from the provisioned Ed25519 public key.
 
 **Provisioning Flow:**
 
-1. Node boots in commissioning mode (no keypair yet)
-2. Node connects to border router via secure channel (USB, BLE, or LCI)
-3. Border router generates Ed25519 keypair for node
-4. Border router assigns IID (may differ from EUI-64)
-5. Border router transmits keypair to node over secure channel
-6. Node stores keypair; exits commissioning mode
-7. Border router records (IID, PubKey) in its trust anchor list
-8. Border router distributes trust anchor to other managed nodes
+1. Node boots in commissioning mode
+2. Connects to BR via secure channel (USB/BLE/LCI)
+3. BR generates Ed25519 keypair
+4. BR transmits private key + pubkey (node derives IID/02xx/Yggdrasil addr from pubkey)
+5. Node stores keypair, derives addresses, exits commissioning
+6. BR records (derived IID, PubKey) in trust anchor list
+7. BR distributes anchors to other nodes via CoAP
 
 **Security Requirements:**
 
-- Provisioning channel MUST be encrypted (TLS, DTLS, or physical isolation)
-- Private key MUST be deleted from border router after successful transfer
-- Node MUST NOT accept provisioning after initial setup (factory reset required)
-- Border router SHOULD log all provisioning events
+- Channel MUST be encrypted and authenticated
+- Private key deleted from BR immediately after transfer
+- Node rejects further provisioning (factory reset to reset)
+- All derived addresses (02xx, IID) MUST match key
 
-**Trust Anchor Distribution:**
+**Trust Anchor Distribution:** (unchanged, uses derived IID)
 
-The border router maintains an authoritative list of provisioned nodes:
-
-```
-Trust Anchor List:
-  - IID: 1234:5678:9abc:def0, PubKey: <32 bytes>, Provisioned: <timestamp>
-  - IID: 1234:5678:9abc:def1, PubKey: <32 bytes>, Provisioned: <timestamp>
-```
-
-Managed nodes MAY fetch this list via CoAP:
-
-```
-GET coap://[border-router]/.well-known/trust-anchors
-Content-Format: application/cbor
-
-[
-  [h'12345678...', h'<pubkey>'],  ; [IID, PubKey]
-  [h'12345678...', h'<pubkey>']
-]
-```
-
-Nodes receiving trust anchors from the border router trust those keys
-without TOFU. This enables instant mesh formation without first-contact
-verification delays.
+Nodes trust anchors from BR without TOFU. The derivation ensures key matches the 02xx/IID observed in traffic.
 
 **Revocation:**
 
@@ -484,38 +457,27 @@ on wrap or reboot. See 02-physical-link.md:4.4 (and draft-lichen-link-01.md:5.2)
 
 ### 15.5. Privacy: No Address Randomization
 
-LICHEN does not implement MAC/EUI-64 randomization or IPv6 privacy
-addressing (RFC 4941 temporary addresses, RFC 7217 opaque IIDs), and
-implementations MUST NOT add them. Addresses (IID and 02xx) are stable,
-derived from the Ed25519 keypair (unified derivation in 8.5; no-ULA model per 04-network.md:6.1).
+LICHEN does not implement address randomization or IPv6 privacy extensions
+(RFC 4941, RFC 7217). All IIDs and 02xx addresses are stable and
+cryptographically derived from the Ed25519 public key (section 6.2 in Network Layer).
 
 **It would break the protocol:**
 
-- Root election is deterministic on lowest IID (from key; 04-network.md:6.1). Rotating addresses destabilizes election.
-- Short-address assignment binds hash_32(EUI-64,0) using SipHash-2-4(key=0x4c494348454e) (per 02-physical-link.md:202, 02a-coordinated-capacity.md; no CRC16; FNV retained per bo37/vfl0 current impls) to the public key-derived IID in mesh-wide coordinator table. Rotation forces continual DAD and table churn on airtime-starved link.
-- Replay windows, signature caching (8.5), and TOFU pinning are per-sender state keyed on stable pubkey/IID/02xx binding.
+- Root election uses lowest IID (pubkey-derived, section 6.1 in 04-network.md).
+  Rotation would destabilize DODAG.
+- Short-address assignment uses `hash_32(EUI-64 bytes, 8)` (crc32_ieee per `02a-coordinated-capacity.md:119`; see DAD retry note+strategy in `02-physical-link.md:215` addressing hash_32(EUI-64,0) collision risk via seed mixing). Signature/replay caches keyed on stable IID.
+   Rotation causes constant DAD churn and cache invalidation on LoRa.
+- All security bindings (TOFU pinning, OSCORE, Schnorr signatures) rely on
+  the deterministic key-to-address mapping.
 
 **It would not provide privacy anyway:**
 
-- Every frame carries a link-layer signature bound to a long-term public
-  key (8.3). The key, not the address, is the trackable identifier.
-  Randomizing the address under a stable signing key is unlinkability
-  theater.
-- On a sparse LoRa mesh, traffic analysis and RF direction finding
-  identify a transmitter regardless of the address it wears (15.4,
-  metadata visible).
+- Link signatures and OSCORE bind every frame to the long-term public key.
+  The key (not the address) is the stable identifier.
+- RF-layer traffic analysis and direction finding work regardless of IPv6 address.
 
-**The Wi-Fi precedent does not transfer:** 802.11 MAC randomization helps
-only for unassociated probe requests; once a station associates, its MAC
-is stable for the session and the AP tracks it regardless. LICHEN nodes
-are persistently joined to the mesh, so even that narrow benefit has no
-analog here.
-
-The privacy controls that do work are specified where they work: position
-privacy (omit coords from announces, Routing; `/config/privacy` access
-control, Applications) and payload confidentiality (OSCORE, 8.8).
-Identity privacy is out of scope for a network whose security model binds
-every frame to a long-term key.
+Privacy is achieved via application-layer controls (position beacons, access control,
+payload encryption) rather than address randomization. See 12-apps.md and routing spec.
 
 ### 15.6. Recommendations
 

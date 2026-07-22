@@ -37,14 +37,9 @@ zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_LOCATION
 zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_DEADDROP
   coap_dtn.c
 )
-
-zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_DTN
-  coap_dtn.c
-  coap_deaddrop.c
-)
-
-# coap_location.c reads the node EUI-64 via the L2 header for its SenML
-# base name.
+if(CONFIG_LICHEN_COAP_DEADDROP)
+  zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../routing/include)
+endif()
 if(CONFIG_LICHEN_COAP_LOCATION)
   zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../l2)
 endif()

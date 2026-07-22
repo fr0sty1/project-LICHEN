@@ -75,7 +75,7 @@ static size_t build_signed_announce(uint8_t *buf, size_t cap,
 	size_t signed_len;
 
 	zassert_true(cap >= LICHEN_ANNOUNCE_MIN_LEN + app_data_len);
-	zassert_true(sizeof(signed_data) >= 42U + app_data_len);
+	zassert_true(sizeof(signed_data) >= 43U + app_data_len);
 
 	schnorr48_derive_keypair(seed, privkey, pubkey);
 	pubkey_to_iid(pubkey, &buf[6]);
