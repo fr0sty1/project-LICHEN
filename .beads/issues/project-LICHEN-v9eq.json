@@ -5,10 +5,11 @@
   "status": "closed",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:50:20.121691Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T02:14:17.18183359Z",
-  "closed_at": "2026-07-22T02:14:17.18183359Z",
-  "close_reason": "Fixed wraparound-unsafe timestamp comparison in find_oldest using signed diff"
+  "updated_at": "2026-07-22T20:14:00.000000000Z",
+  "closed_at": "2026-07-22T20:14:00.000000000Z",
+  "close_reason": "find_oldest now uses signed int32_t diff for buffered_at_ms (lines 41-44), exactly as suggested and used in router/gradient. Initial oldest_idx logic avoids UINT32_MAX. Wrap-safe. Matches other codebase patterns. No DTN eviction bug after 49 days. Commit will be recorded."
 }
