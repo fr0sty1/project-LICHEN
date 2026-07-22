@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-hw6w",
+  "title": "codereview-p2: vector lacks full now() and select_channel test coverage",
+  "description": "Per spec Appendix A, needs test for select_channel(ctx, metrics, now()) with TDMA SFN seeding and hash output test. Current vector is partial. Add expected output from pseudocode. Tag codereview.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:45:20.183520875Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:45:20.183520875Z",
+  "labels": [
+    "codereview"
+  ]
+}
