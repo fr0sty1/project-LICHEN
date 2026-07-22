@@ -2,11 +2,15 @@
   "id": "project-LICHEN-35ks",
   "title": "compact_cot: parse_cot_xml does not validate NaN/Inf in course, speed, altitude",
   "description": "File: python/src/lichen/gateway/compact_cot.py\n\nLines 762-798 in _parse_xml_pli:\n\nThe function parses course, speed, and altitude from XML attributes using float() but does not validate for NaN or Inf values before converting to integers on lines 796-798 and 804.\n\nFor lat/lon, the range check (-90\u003c=lat\u003c=90) correctly rejects NaN values since NaN comparisons are always False. However, course/speed/altitude have no such validation:\n\n- alt_m = float(hae_str) -\u003e int(alt_m * 10) on line 796\n- course_deg = float(course_str) -\u003e int(course_deg * 100) on line 804  \n- speed_m_s = float(speed_str) -\u003e int(speed_m_s * 100) on line 798\n\nIf a malformed XML has course='nan' or speed='inf', the code crashes with an unclear ValueError: 'cannot convert float NaN to integer' or OverflowError for infinity, instead of a clear validation error at parse time.\n\nFix: Add math.isfinite() checks after parsing floats, similar to the lat/lon range validation, raising ValueError with a clear message like 'Course value nan is not a finite number'.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T16:57:31.499975Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T16:57:31.500013Z"
+  "updated_at": "2026-07-22T23:08:03.940739217Z",
+  "started_at": "2026-07-22T23:08:03.940739217Z",
+  "lease_expires_at": "2026-07-22T23:13:03.940739217Z",
+  "heartbeat_at": "2026-07-22T23:08:03.940739217Z"
 }
