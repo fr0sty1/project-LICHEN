@@ -50,10 +50,11 @@ static int copy_string(char *dst, size_t dst_len, const char *src)
 	if (src == NULL) {
 		return 0;
 	}
-	if (strlen(src) >= dst_len) {
+	size_t len = strlen(src);
+	if (len >= dst_len) {
 		return -ENAMETOOLONG;
 	}
-	memcpy(dst, src, strlen(src));
+	memcpy(dst, src, len);
 	return 0;
 }
 

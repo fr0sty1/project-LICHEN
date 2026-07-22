@@ -13,9 +13,9 @@ use std::collections::HashSet;
 use std::env;
 use std::time::{Duration, Instant};
 
-use lichen_client::status::{Metrics, Telemetry};
 use sha2::{Digest, Sha256};
 
+/// Metrics collected during node operation.
 struct NodeMetrics {
     tx_count: u32,
     rx_count: u32,
@@ -23,8 +23,8 @@ struct NodeMetrics {
     rx_bytes: u64,
     unique_peers: HashSet<[u8; 8]>,
     errors: Vec<String>,
-    packet_hashes_sent: HashSet<String>,
-    packet_hashes_received: HashSet<String>,
+    packet_hashes_sent: HashSet<[u8; 16]>,
+    packet_hashes_received: HashSet<[u8; 16]>,
 }
 
 impl NodeMetrics {
@@ -38,18 +38,6 @@ impl NodeMetrics {
             errors: Vec::new(),
             packet_hashes_sent: HashSet::new(),
             packet_hashes_received: HashSet::new(),
-        }
-    }
-
-    fn record_hash_sent(&mut self, h: [u8; 16]) {
-        if self.packet_hashes_sent.len() < 10000 {
-            self.packet_hashes_sent.insert(h);
-        }
-    }
-
-    fn record_hash_received(&mut self, h: [u8; 16]) {
-        if self.packet_hashes_received.len() < 10000 {
-            self.packet_hashes_received.insert(h);
         }
     }
 }
@@ -105,13 +93,6 @@ fn main() {
     let mut seq_num = 0u16;
     let mut buf = [0u8; 256];
 
-    let packet_hash = |payload: &[u8]| {
-        let digest = Sha256::digest(payload);
-        let mut h = [0u8; 16];
-        h.copy_from_slice(&digest[..16]);
-        h
-    };
-
     let emit = |event: &str,
                 payload: &[u8],
                 status: &str,
@@ -121,27 +102,25 @@ fn main() {
                 rssi: Option<i32>,
                 snr: Option<i32>| {
         let hash = format!("{:x}", Sha256::digest(payload));
-        let telemetry = Telemetry {
-            schema: "lichen.telemetry.v1".to_string(),
-            event: event.to_string(),
-            ts_us,
-            node_id: format!("rust-{}", node_id),
-            r#impl: "rust".to_string(),
-            tx_id: hash[..16].to_string(),
-            packet_hash: hash[..16].to_string(),
-            direction: if event.starts_with("tx") {
-                "tx".to_string()
-            } else {
-                "rx".to_string()
-            },
-            peer_id,
-            payload_len: payload.len(),
-            rssi_dbm: rssi,
-            snr_db_x10: snr.map(|s| s * 10),
-            seq,
-            status: status.to_string(),
-        };
-        println!("TELEMETRY {}", serde_json::to_string(&telemetry).unwrap());
+        println!(
+            "TELEMETRY {}",
+            serde_json::json!({
+                "schema": "lichen.telemetry.v1",
+                "event": event,
+                "ts_us": ts_us,
+                "node_id": format!("rust-{}", node_id),
+                "impl": "rust",
+                "tx_id": hash[..16].to_string(),
+                "packet_hash": hash[..16].to_string(),
+                "direction": if event.starts_with("tx") { "tx" } else { "rx" },
+                "peer_id": peer_id,
+                "payload_len": payload.len(),
+                "rssi_dbm": rssi,
+                "snr_db": snr,
+                "seq": seq,
+                "status": status,
+            })
+        );
     };
 
     // Main loop
@@ -163,8 +142,11 @@ fn main() {
             Ok(()) => {
                 metrics.tx_count += 1;
                 metrics.tx_bytes += announce.len() as u64;
-                let hash = format!("{:x}", Sha256::digest(&announce));
-                metrics.packet_hashes_sent.insert(hash[..16].to_string());
+                let hash = Sha256::digest(&announce);
+                let hash_prefix: [u8; 16] = hash[..16].try_into().unwrap();
+                if metrics.packet_hashes_sent.len() < 10000 {
+                    metrics.packet_hashes_sent.insert(hash_prefix);
+                }
                 emit(
                     "tx",
                     &announce,
@@ -178,7 +160,9 @@ fn main() {
                 seq_num = seq_num.wrapping_add(1);
             }
             Err(e) => {
-                metrics.errors.push(format!("TX error: {:?}", e));
+                if metrics.errors.len() < 100 {
+                    metrics.errors.push(format!("TX error: {:?}", e));
+                }
                 eprintln!("rust-{}: TX error: {:?}", node_id, e);
             }
         }
@@ -192,10 +176,11 @@ fn main() {
                     metrics.rx_count += 1;
                     metrics.rx_bytes += pkt.len as u64;
 
-                    let hash = format!("{:x}", Sha256::digest(&buf[..pkt.len]));
-                    metrics
-                        .packet_hashes_received
-                        .insert(hash[..16].to_string());
+                    let hash = Sha256::digest(&buf[..pkt.len]);
+                    let hash_prefix: [u8; 16] = hash[..16].try_into().unwrap();
+                    if metrics.packet_hashes_received.len() < 10000 {
+                        metrics.packet_hashes_received.insert(hash_prefix);
+                    }
                     let peer_id = if pkt.len > 12 && buf[0] == 0x15 && buf[1] == 0x01 {
                         Some(buf[5..13].iter().map(|b| format!("{b:02x}")).collect())
                     } else {
@@ -227,7 +212,7 @@ fn main() {
 
                         // Parse announce to extract peer IID
                         // Format: [0x15 dispatch][type=0x01][seq:2][hop:1][iid:8]...
-                        if pkt.len >= 13 && buf[0] == 0x15 && buf[1] == 0x01 {
+                        if pkt.len > 10 && buf[0] == 0x15 && buf[1] == 0x01 {
                             let peer_iid: [u8; 8] = buf[5..13].try_into().unwrap();
                             if peer_iid != identity.iid {
                                 metrics.unique_peers.insert(peer_iid);
@@ -238,7 +223,9 @@ fn main() {
                 }
                 Ok(None) => {} // timeout
                 Err(e) => {
-                    metrics.errors.push(format!("RX error: {:?}", e));
+                    if metrics.errors.len() < 100 {
+                        metrics.errors.push(format!("RX error: {:?}", e));
+                    }
                     eprintln!("rust-{}: RX error: {:?}", node_id, e);
                 }
             }
@@ -248,21 +235,23 @@ fn main() {
         std::thread::sleep(Duration::from_millis(8000 + (node_id as u64 % 4000)));
     }
 
+    // Final stats (legacy format for compatibility)
     println!(
         "rust-{}: TX={} RX={}",
         node_id, metrics.tx_count, metrics.rx_count
     );
 
-    let metrics_out = Metrics {
-        node_id,
-        tx_count: metrics.tx_count,
-        rx_count: metrics.rx_count,
-        tx_bytes: metrics.tx_bytes,
-        rx_bytes: metrics.rx_bytes,
-        unique_peers: metrics.unique_peers.len(),
-        errors: metrics.errors.len(),
-        hashes_sent: metrics.packet_hashes_sent.len(),
-        hashes_received: metrics.packet_hashes_received.len(),
-    };
-    println!("METRICS:{}", serde_json::to_string(&metrics_out).unwrap());
+    // Export metrics as JSON
+    let metrics_json = serde_json::json!({
+        "node_id": node_id,
+        "tx_count": metrics.tx_count,
+        "rx_count": metrics.rx_count,
+        "tx_bytes": metrics.tx_bytes,
+        "rx_bytes": metrics.rx_bytes,
+        "unique_peers": metrics.unique_peers.len(),
+        "errors": metrics.errors.len(),
+        "hashes_sent": metrics.packet_hashes_sent.len(),
+        "hashes_received": metrics.packet_hashes_received.len(),
+    });
+    println!("METRICS:{}", serde_json::to_string(&metrics_json).unwrap());
 }

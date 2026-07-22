@@ -44,10 +44,9 @@ class NodeStats:
     rx_count: int = 0
 
 
-def parse_telemetry(content: str, stats: NodeStats) -> bool:
-    """Parse common JSONL events; return whether any valid event was found."""
+def parse_telemetry(lines, stats: NodeStats) -> bool:
     found = False
-    for line in content.splitlines():
+    for line in lines:
         marker = line.find("TELEMETRY ")
         if marker < 0:
             continue
@@ -72,130 +71,107 @@ def parse_telemetry(content: str, stats: NodeStats) -> bool:
 
 
 def parse_python_logs(log_dir: Path) -> dict[str, NodeStats]:
-    """Parse py-*.log files, extract TX/RX with hashes."""
     nodes: dict[str, NodeStats] = {}
-
     for log_file in sorted(log_dir.glob("py-*.log")):
-        node_id = log_file.stem  # e.g., "py-1000"
+        node_id = log_file.stem
         stats = NodeStats(node_id=node_id, impl="py")
-
         try:
-            content = log_file.read_text(errors="replace")
+            with log_file.open(errors="replace") as f:
+                if parse_telemetry(f, stats):
+                    if stats.tx_count > 0 or stats.rx_count > 0:
+                        nodes[node_id] = stats
+                    continue
+            with log_file.open(errors="replace") as f:
+                for line in f:
+                    if "[TX]" in line or "TX:" in line.upper():
+                        match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
+                        if match:
+                            stats.tx_hashes.add(match.group(1).lower())
+                        stats.tx_count += 1
+                    elif "[RX]" in line or "RX:" in line.upper():
+                        match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
+                        if match:
+                            stats.rx_hashes.add(match.group(1).lower())
+                        stats.rx_count += 1
+                    summary = re.search(r"TX=(\d+)\s+RX=(\d+)", line)
+                    if summary:
+                        stats.tx_count = max(stats.tx_count, int(summary.group(1)))
+                        stats.rx_count = max(stats.rx_count, int(summary.group(2)))
+            if stats.tx_count > 0 or stats.rx_count > 0 or stats.tx_hashes or stats.rx_hashes:
+                nodes[node_id] = stats
         except OSError as e:
             print(f"Warning: skipping {log_file}: {e}", file=sys.stderr)
             continue
-
-        if parse_telemetry(content, stats):
-            if stats.tx_count > 0 or stats.rx_count > 0:
-                nodes[node_id] = stats
-            continue
-
-        # Look for [TX] or [RX] with hash=
-        # Pattern: [TX] ... hash=abc123 or similar
-        for line in content.splitlines():
-            if "[TX]" in line or "TX:" in line.upper():
-                match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
-                if match:
-                    stats.tx_hashes.add(match.group(1).lower())
-                stats.tx_count += 1
-            elif "[RX]" in line or "RX:" in line.upper():
-                match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
-                if match:
-                    stats.rx_hashes.add(match.group(1).lower())
-                stats.rx_count += 1
-
-        # Also look for summary line: "py-1000: TX=5 RX=3"
-        for line in content.splitlines():
-            summary = re.search(r"TX=(\d+)\s+RX=(\d+)", line)
-            if summary:
-                stats.tx_count = max(stats.tx_count, int(summary.group(1)))
-                stats.rx_count = max(stats.rx_count, int(summary.group(2)))
-
-        if stats.tx_count > 0 or stats.rx_count > 0 or stats.tx_hashes or stats.rx_hashes:
-            nodes[node_id] = stats
-
     return nodes
 
 
 def parse_rust_logs(log_dir: Path) -> dict[str, NodeStats]:
-    """Parse rust-*.log files, extract TX/RX with hashes."""
     nodes: dict[str, NodeStats] = {}
-
     for log_file in sorted(log_dir.glob("rust-*.log")):
-        node_id = log_file.stem  # e.g., "rust-2000"
+        node_id = log_file.stem
         stats = NodeStats(node_id=node_id, impl="rust")
-
         try:
-            content = log_file.read_text(errors="replace")
+            with log_file.open(errors="replace") as f:
+                if parse_telemetry(f, stats):
+                    if stats.tx_count > 0 or stats.rx_count > 0:
+                        nodes[node_id] = stats
+                    continue
+            with log_file.open(errors="replace") as f:
+                for line in f:
+                    if "[TX]" in line or "TX:" in line.upper():
+                        match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
+                        if match:
+                            stats.tx_hashes.add(match.group(1).lower())
+                        stats.tx_count += 1
+                    elif "[RX]" in line or "RX:" in line.upper():
+                        match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
+                        if match:
+                            stats.rx_hashes.add(match.group(1).lower())
+                        stats.rx_count += 1
+                    summary = re.search(r"TX=(\d+)\s+RX=(\d+)", line)
+                    if summary:
+                        stats.tx_count = max(stats.tx_count, int(summary.group(1)))
+                        stats.rx_count = max(stats.rx_count, int(summary.group(2)))
+            if stats.tx_count > 0 or stats.rx_count > 0 or stats.tx_hashes or stats.rx_hashes:
+                nodes[node_id] = stats
         except OSError as e:
             print(f"Warning: skipping {log_file}: {e}", file=sys.stderr)
             continue
-
-        if parse_telemetry(content, stats):
-            if stats.tx_count > 0 or stats.rx_count > 0:
-                nodes[node_id] = stats
-            continue
-
-        for line in content.splitlines():
-            if "[TX]" in line or "TX:" in line.upper():
-                match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
-                if match:
-                    stats.tx_hashes.add(match.group(1).lower())
-                stats.tx_count += 1
-            elif "[RX]" in line or "RX:" in line.upper():
-                match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
-                if match:
-                    stats.rx_hashes.add(match.group(1).lower())
-                stats.rx_count += 1
-
-        # Summary line
-        for line in content.splitlines():
-            summary = re.search(r"TX=(\d+)\s+RX=(\d+)", line)
-            if summary:
-                stats.tx_count = max(stats.tx_count, int(summary.group(1)))
-                stats.rx_count = max(stats.rx_count, int(summary.group(2)))
-
-        if stats.tx_count > 0 or stats.rx_count > 0 or stats.tx_hashes or stats.rx_hashes:
-            nodes[node_id] = stats
-
     return nodes
 
 
 def parse_zephyr_logs(log_dir: Path) -> dict[str, NodeStats]:
-    """Parse zephyr-*.log files, extract TX/RX with hashes."""
     nodes: dict[str, NodeStats] = {}
-
     for log_file in sorted(log_dir.glob("zephyr-*.log")):
-        node_id = log_file.stem  # e.g., "zephyr-3000"
+        node_id = log_file.stem
         stats = NodeStats(node_id=node_id, impl="zephyr")
-
         try:
-            content = log_file.read_text(errors="replace")
+            with log_file.open(errors="replace") as f:
+                if parse_telemetry(f, stats):
+                    if stats.tx_count > 0 or stats.rx_count > 0:
+                        nodes[node_id] = stats
+                    continue
+            with log_file.open(errors="replace") as f:
+                for line in f:
+                    if "[TX]" in line or "TX:" in line.upper() or "Send" in line:
+                        match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
+                        if match:
+                            stats.tx_hashes.add(match.group(1).lower())
+                        stats.tx_count += 1
+                    elif "[RX]" in line or "RX:" in line.upper() or "Recv" in line:
+                        match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
+                        if match:
+                            stats.rx_hashes.add(match.group(1).lower())
+                        stats.rx_count += 1
+                    summary = re.search(r"TX=(\d+)\s+RX=(\d+)", line)
+                    if summary:
+                        stats.tx_count = max(stats.tx_count, int(summary.group(1)))
+                        stats.rx_count = max(stats.rx_count, int(summary.group(2)))
+            if stats.tx_count > 0 or stats.rx_count > 0 or stats.tx_hashes or stats.rx_hashes:
+                nodes[node_id] = stats
         except OSError as e:
             print(f"Warning: skipping {log_file}: {e}", file=sys.stderr)
             continue
-
-        if parse_telemetry(content, stats):
-            if stats.tx_count > 0 or stats.rx_count > 0:
-                nodes[node_id] = stats
-            continue
-
-        for line in content.splitlines():
-            # Zephyr may use TX/Send, RX/Recv
-            if "[TX]" in line or "TX:" in line.upper() or "Send" in line:
-                match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
-                if match:
-                    stats.tx_hashes.add(match.group(1).lower())
-                stats.tx_count += 1
-            elif "[RX]" in line or "RX:" in line.upper() or "Recv" in line:
-                match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
-                if match:
-                    stats.rx_hashes.add(match.group(1).lower())
-                stats.rx_count += 1
-
-        if stats.tx_count > 0 or stats.rx_count > 0 or stats.tx_hashes or stats.rx_hashes:
-            nodes[node_id] = stats
-
     return nodes
 
 

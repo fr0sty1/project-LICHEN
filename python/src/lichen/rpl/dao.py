@@ -212,13 +212,6 @@ class DaoManager:
 
     @staticmethod
     def _extract_edge(dao: DAO) -> tuple[IPv6Address, IPv6Address]:
-        """Extract the single (target, parent) edge from a DAO.
-
-        RFC 6550 Section 6.7.7 allows multiple RPL Target options to share a
-        single Transit Information option. This implementation supports only
-        single-target DAOs. Multi-target DAOs are rejected with DaoError rather
-        than silently dropping targets.
-        """
         target: IPv6Address | None = None
         parent: IPv6Address | None = None
         for opt in dao.options:
@@ -230,6 +223,11 @@ class DaoManager:
                     )
                 target = RplTarget.from_option(opt).target
             elif opt.type == RplOptionType.TRANSIT_INFORMATION:
+                if parent is not None:
+                    raise DaoError(
+                        "multi-transit DAOs not supported; "
+                        "send one DAO per target"
+                    )
                 parent = TransitInformation.from_option(opt).parent_address
         if target is None or parent is None:
             raise DaoError("DAO missing RPL Target or Transit Information")

@@ -160,7 +160,6 @@ int lichen_gradient_update(struct lichen_gradient_table *table,
 		if (slot == NULL) {
 			return -ENOMEM;
 		}
-		/* Guard against underflow if count tracking is out of sync */
 		if (table->count > 0) {
 			table->count--;
 		}
@@ -184,7 +183,6 @@ void lichen_gradient_remove(struct lichen_gradient_table *table,
 		find_entry(table, destination_iid);
 	if (entry != NULL) {
 		entry->valid = false;
-		/* Guard against underflow if count tracking is out of sync */
 		if (table->count > 0) {
 			table->count--;
 		}
@@ -206,7 +204,6 @@ int lichen_gradient_remove_via(struct lichen_gradient_table *table,
 			removed++;
 		}
 	}
-	/* Guard against underflow if count tracking is out of sync */
 	if ((size_t)removed > table->count) {
 		table->count = 0;
 	} else {
@@ -233,7 +230,6 @@ int lichen_gradient_expire(struct lichen_gradient_table *table, uint32_t now_ms)
 			expired++;
 		}
 	}
-	/* Guard against underflow if count tracking is out of sync */
 	if ((size_t)expired > table->count) {
 		table->count = 0;
 	} else {

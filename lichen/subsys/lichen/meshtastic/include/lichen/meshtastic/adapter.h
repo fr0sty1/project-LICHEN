@@ -288,7 +288,7 @@ int lichen_meshtastic_adapter_emit_status(
 
 const struct lichen_meshtastic_adapter_stats *
 lichen_meshtastic_adapter_get_stats(
-	const struct lichen_meshtastic_adapter *_Nonnull adapter);
+	const struct lichen_meshtastic_adapter *adapter);
 
 bool lichen_meshtastic_adapter_disconnected(
 	const struct lichen_meshtastic_adapter *_Nonnull adapter);

@@ -632,10 +632,12 @@ void lichen_app_interface_test_fail_next_location_submit(int ret)
 	k_mutex_unlock(&s_mutex);
 }
 
+
 void lichen_app_interface_test_fail_next_clear_network(int ret)
 {
 	k_mutex_lock(&s_mutex, K_FOREVER);
 	s_test_next_clear_network_ret = ret;
 	k_mutex_unlock(&s_mutex);
 }
+
 #endif

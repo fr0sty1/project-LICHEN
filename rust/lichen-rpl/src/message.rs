@@ -219,6 +219,8 @@ pub const DODAG_CONFIG_DATA_LEN: usize = 14;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DodagConfig {
+    pub pcs: u8,
+    pub a_flag: bool,
     pub min_hop_rank_increase: u16,
     pub max_rank_increase: u16,
     pub ocp: u16,
@@ -227,21 +229,21 @@ pub struct DodagConfig {
     pub dio_int_min: u8,
     pub dio_int_doublings: u8,
     pub dio_redundancy_const: u8,
-    pub gateway_centric: bool,
 }
 
 impl Default for DodagConfig {
     fn default() -> Self {
         Self {
+            pcs: 0,
+            a_flag: false,
             min_hop_rank_increase: 256,
             max_rank_increase: 2048,
-            ocp: 1, // MRHOF
+            ocp: 1,
             def_lifetime: 0xFF,
             lifetime_unit: 60,
             dio_int_min: 3,
             dio_int_doublings: 8,
             dio_redundancy_const: 10,
-            gateway_centric: false,
         }
     }
 }
@@ -251,7 +253,12 @@ impl DodagConfig {
         if data.len() < DODAG_CONFIG_DATA_LEN {
             return Err(TooShort::new(DODAG_CONFIG_DATA_LEN, data.len()).into());
         }
+        let flags = data[0];
+        let pcs = flags & 0x07;
+        let a_flag = (flags & 0x10) != 0;
         Ok(Self {
+            pcs,
+            a_flag,
             dio_int_doublings: data[1],
             dio_int_min: data[2],
             dio_redundancy_const: data[3],
@@ -260,7 +267,6 @@ impl DodagConfig {
             ocp: u16::from_be_bytes([data[8], data[9]]),
             def_lifetime: data[11],
             lifetime_unit: u16::from_be_bytes([data[12], data[13]]),
-            gateway_centric: (data[0] & 0x80) != 0,
         })
     }
 
@@ -271,7 +277,8 @@ impl DodagConfig {
         }
         out[0] = OPT_DODAG_CONFIG;
         out[1] = DODAG_CONFIG_DATA_LEN as u8;
-        out[2] = if self.gateway_centric { 0x80 } else { 0 }; // GATEWAY_CENTRIC bit 7
+        let flags = ((self.a_flag as u8) << 4) | (self.pcs & 0x07);
+        out[2] = flags;
         out[3] = self.dio_int_doublings;
         out[4] = self.dio_int_min;
         out[5] = self.dio_redundancy_const;
@@ -281,7 +288,7 @@ impl DodagConfig {
         out[9] = self.min_hop_rank_increase as u8;
         out[10] = (self.ocp >> 8) as u8;
         out[11] = self.ocp as u8;
-        out[12] = 0; // reserved
+        out[12] = 0;
         out[13] = self.def_lifetime;
         out[14] = (self.lifetime_unit >> 8) as u8;
         out[15] = self.lifetime_unit as u8;
@@ -354,7 +361,6 @@ impl TransitInfo {
         if data.len() < Self::DATA_LEN {
             return Err(TooShort::new(Self::DATA_LEN, data.len()).into());
         }
-        // data[0] = E flag (0x80 when parent present); ignored here per current contract
         // SAFETY: length check above ensures data.len() >= DATA_LEN (20),
         // so 4..20 is within bounds and exactly 16 bytes. E flag (data[0] bit 7)
         // is asserted by caller tests per aligned E/Parent contract.
@@ -614,10 +620,6 @@ mod tests {
         assert_eq!(&buf[6..22], &parent);
 
         let decoded = TransitInfo::from_bytes(&buf[2..n]).unwrap();
-        assert_eq!(decoded.path_control, 0);
-        assert_eq!(decoded.path_sequence, 3);
-        assert_eq!(decoded.path_lifetime, 255);
-        assert_eq!(decoded.parent_address, parent);
         assert_eq!(decoded, ti);
     }
 
@@ -632,6 +634,8 @@ mod tests {
         assert_eq!(buf[1], 14);
 
         let decoded = DodagConfig::from_bytes(&buf[2..n]).unwrap();
+        assert_eq!(decoded.pcs, 0);
+        assert!(!decoded.a_flag);
         assert_eq!(decoded.min_hop_rank_increase, 256);
         assert_eq!(decoded.max_rank_increase, 2048);
         assert_eq!(decoded.ocp, 1);

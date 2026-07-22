@@ -789,8 +789,8 @@ class Router:
             return None
         # Validate node_coords for NaN/inf (same rationale as dst_coords check below).
         my_lat, my_lon = self.node_coords
-        if math.isnan(my_lat) or math.isnan(my_lon) or math.isinf(my_lat) or math.isinf(my_lon):
-            logger.warning("gpsr: node_coords contain NaN/inf")
+        if not _validate_coords(my_lat, my_lon):
+            logger.warning("gpsr: node_coords invalid")
             return None
         if not self.neighbor_coords:
             return None
@@ -815,8 +815,8 @@ class Router:
 
         for neighbor, coords in self.neighbor_coords.items():
             n_lat, n_lon = coords
-            if math.isnan(n_lat) or math.isnan(n_lon) or math.isinf(n_lat) or math.isinf(n_lon):
-                logger.warning("gpsr: neighbor %s has NaN/inf coords, skipping", neighbor)
+            if not _validate_coords(n_lat, n_lon):
+                logger.warning("gpsr: neighbor %s has invalid coords, skipping", neighbor)
                 continue
             d = _haversine(coords, dst_coords)
             if d < best_dist:

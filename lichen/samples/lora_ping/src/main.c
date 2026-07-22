@@ -51,7 +51,6 @@ static uint32_t packet_hash(const uint8_t *data, size_t len)
 	return crc32_ieee(combined, 6 + len);
 }
 
-/* Track unique packets by hash */
 static void track_hash(uint32_t hash)
 {
 	for (int i = 0; i < metrics.seen_hash_count; i++) {
@@ -61,8 +60,8 @@ static void track_hash(uint32_t hash)
 	}
 	if (metrics.seen_hash_count < ARRAY_SIZE(metrics.seen_hashes)) {
 		metrics.seen_hashes[metrics.seen_hash_count++] = hash;
-		metrics.unique_hashes_seen++;
 	}
+	metrics.unique_hashes_seen++;
 }
 
 /* Log metrics summary */

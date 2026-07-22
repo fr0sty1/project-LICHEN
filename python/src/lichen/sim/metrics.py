@@ -73,12 +73,8 @@ class NodeMetrics:
             self.unique_peers.add(from_peer)
 
     def record_error(self, error: str) -> None:
-        """Record an error message.
-
-        Args:
-            error: Description of the error.
-        """
-        self.errors.append(error)
+        if len(self.errors) < 1000:
+            self.errors.append(error)
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable dictionary of all metrics.
@@ -92,7 +88,7 @@ class NodeMetrics:
             "tx_bytes": self.tx_bytes,
             "rx_bytes": self.rx_bytes,
             "unique_peers": sorted(self.unique_peers),
-            "errors": self.errors,
+            "errors": self.errors[:],
             "packet_hashes_sent": sorted(self.packet_hashes_sent),
             "packet_hashes_received": sorted(self.packet_hashes_received),
         }

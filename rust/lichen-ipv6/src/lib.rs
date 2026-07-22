@@ -362,16 +362,16 @@ impl Ipv6Header {
         })
     }
 
-    pub fn decrement_hop_limit(mut self) -> Option<Self> {
+    /// For forwarding/routing code (out of scope here but noted per issue): returns copy
+    /// with decremented hop_limit. Returns `None` if already 0 (MUST generate ICMPv6
+    /// Time Exceeded per RFC 8200 section 3).
+    pub fn decrement_hop_limit(&self) -> Option<Self> {
         if self.hop_limit == 0 {
             None
         } else {
-            self.hop_limit -= 1;
-            if self.hop_limit == 0 {
-                None
-            } else {
-                Some(self)
-            }
+            let mut copy = *self;
+            copy.hop_limit = copy.hop_limit.wrapping_sub(1);
+            Some(copy)
         }
     }
 }
@@ -438,10 +438,15 @@ impl UdpHeader {
             return Err(TooShort::new(UDP_HEADER_LEN, buf.len()).into());
         }
 
+        let length = ((buf[4] as u16) << 8) | (buf[5] as u16);
+        if length < UDP_HEADER_LEN as u16 {
+            return Err(TooShort::new(UDP_HEADER_LEN, length as usize).into());
+        }
+
         Ok(Self {
             src_port: ((buf[0] as u16) << 8) | (buf[1] as u16),
             dst_port: ((buf[2] as u16) << 8) | (buf[3] as u16),
-            length: ((buf[4] as u16) << 8) | (buf[5] as u16),
+            length,
             checksum: ((buf[6] as u16) << 8) | (buf[7] as u16),
         })
     }
@@ -499,16 +504,22 @@ impl Icmpv6Echo {
 
         let mut pkt = Vec::new();
 
+        // ICMPv6 header: type, code, checksum (placeholder)
+        // These cannot fail: capacity pre-checked and heapless::Vec<u8,128> capacity respected
         pkt.push(msg_type).expect("capacity pre-checked");
-        pkt.push(0).expect("capacity pre-checked");
-        pkt.push(0).expect("capacity pre-checked");
-        pkt.push(0).expect("capacity pre-checked");
+        pkt.push(0).expect("capacity pre-checked"); // code
+        pkt.push(0).expect("capacity pre-checked"); // checksum high (placeholder)
+        pkt.push(0).expect("capacity pre-checked"); // checksum low
 
-        pkt.push((self.id >> 8) as u8).expect("capacity pre-checked");
+        // Echo header: id, seq
+        pkt.push((self.id >> 8) as u8)
+            .expect("capacity pre-checked");
         pkt.push(self.id as u8).expect("capacity pre-checked");
-        pkt.push((self.seq >> 8) as u8).expect("capacity pre-checked");
+        pkt.push((self.seq >> 8) as u8)
+            .expect("capacity pre-checked");
         pkt.push(self.seq as u8).expect("capacity pre-checked");
 
+        // Data
         pkt.extend_from_slice(data).expect("capacity pre-checked");
 
         // Compute checksum
@@ -545,15 +556,22 @@ impl NeighborSolicitation {
     pub fn build(&self, src: &Addr, dst: &Addr) -> Vec<u8, 64> {
         let mut pkt = Vec::new();
 
-        pkt.push(icmpv6_type::NEIGHBOR_SOLICITATION).expect("fixed size fits capacity");
-        pkt.push(0).expect("fixed size fits capacity");
-        pkt.push(0).expect("fixed size fits capacity");
-        pkt.push(0).expect("fixed size fits capacity");
+        // ICMPv6 header
+        pkt.push(icmpv6_type::NEIGHBOR_SOLICITATION)
+            .expect("fixed-size NS < Vec<u8,64> capacity");
+        pkt.push(0).expect("fixed-size NS < Vec<u8,64> capacity"); // code
+        pkt.push(0).expect("fixed-size NS < Vec<u8,64> capacity"); // checksum
+        pkt.push(0).expect("fixed-size NS < Vec<u8,64> capacity");
 
-        pkt.extend_from_slice(&[0u8; 4]).expect("fixed size fits capacity");
+        // Reserved (4 bytes)
+        pkt.extend_from_slice(&[0u8; 4])
+            .expect("fixed-size NS < Vec<u8,64> capacity");
 
-        pkt.extend_from_slice(&self.target.0).expect("fixed size fits capacity");
+        // Target address (16 bytes)
+        pkt.extend_from_slice(&self.target.0)
+            .expect("fixed-size NS < Vec<u8,64> capacity");
 
+        // Compute checksum
         let checksum = icmpv6_checksum(src, dst, &pkt);
         pkt[2] = (checksum >> 8) as u8;
         pkt[3] = checksum as u8;
@@ -584,20 +602,27 @@ pub struct NeighborAdvertisement {
     pub router: bool,
     pub solicited: bool,
     pub override_flag: bool,
+    /// Optional Target Link-Layer Address (TLLA) option per RFC 4861 §7.2.4.
+    /// If present, included as ND option type=2, len=2 (16-byte option).
+    pub target_link_layer_addr: Option<[u8; 8]>,
 }
 
 impl NeighborAdvertisement {
     /// Build NA packet.
     ///
-    /// NA is fixed-size (24 bytes), so this cannot fail with the 64-byte buffer.
+    /// Base size 24 bytes + optional 16-byte TLLA (type=2,len=2 + 8-byte addr + pad).
+    /// Total <= 40 bytes, fits in Vec<u8,64>.
     pub fn build(&self, src: &Addr, dst: &Addr) -> Vec<u8, 64> {
         let mut pkt = Vec::new();
 
-        pkt.push(icmpv6_type::NEIGHBOR_ADVERTISEMENT).expect("fixed size fits capacity");
-        pkt.push(0).expect("fixed size fits capacity");
-        pkt.push(0).expect("fixed size fits capacity");
-        pkt.push(0).expect("fixed size fits capacity");
+        // ICMPv6 header
+        pkt.push(icmpv6_type::NEIGHBOR_ADVERTISEMENT)
+            .expect("NA size < Vec<u8,64> capacity");
+        pkt.push(0).expect("NA size < Vec<u8,64> capacity"); // code
+        pkt.push(0).expect("NA size < Vec<u8,64> capacity"); // checksum
+        pkt.push(0).expect("NA size < Vec<u8,64> capacity");
 
+        // Flags + reserved (4 bytes)
         let mut flags = 0u8;
         if self.router {
             flags |= 0x80;
@@ -608,11 +633,25 @@ impl NeighborAdvertisement {
         if self.override_flag {
             flags |= 0x20;
         }
-        pkt.push(flags).expect("fixed size fits capacity");
-        pkt.extend_from_slice(&[0u8; 3]).expect("fixed size fits capacity");
+        pkt.push(flags).expect("NA size < Vec<u8,64> capacity");
+        pkt.extend_from_slice(&[0u8; 3])
+            .expect("NA size < Vec<u8,64> capacity");
 
-        pkt.extend_from_slice(&self.target.0).expect("fixed size fits capacity");
+        // Target address
+        pkt.extend_from_slice(&self.target.0)
+            .expect("NA size < Vec<u8,64> capacity");
 
+        // Optional Target Link-Layer Address option (RFC 4861 7.2.4)
+        if let Some(lladdr) = self.target_link_layer_addr {
+            pkt.push(2).expect("NA size < Vec<u8,64> capacity"); // type = TLLA
+            pkt.push(2).expect("NA size < Vec<u8,64> capacity"); // len = 2 (16 bytes)
+            pkt.extend_from_slice(&lladdr)
+                .expect("NA size < Vec<u8,64> capacity");
+            pkt.extend_from_slice(&[0u8; 6])
+                .expect("NA size < Vec<u8,64> capacity"); // pad
+        }
+
+        // Compute checksum
         let checksum = icmpv6_checksum(src, dst, &pkt);
         pkt[2] = (checksum >> 8) as u8;
         pkt[3] = checksum as u8;
@@ -782,6 +821,12 @@ pub fn handle_icmpv6(
             let echo = Icmpv6Echo::from_bytes(body)?;
             let data = &body[4..]; // After id+seq
 
+            if data.len() > MAX_ECHO_DATA {
+                return Ok(None); // RFC 4443 requires full echo data in Reply; oversized requests dropped (no truncation)
+            }
+
+            // RFC 4443 Section 4.2: reply source SHOULD be the destination of the request.
+            // This ensures nodes with multiple addresses reply from the address that was pinged.
             let reply_icmp = echo.build_reply(&ip_header.dst, &ip_header.src, data)?;
             let reply_ip = Ipv6Header::new(next_header::ICMPV6, ip_header.dst, ip_header.src);
 
@@ -841,6 +886,7 @@ pub fn handle_icmpv6(
                 router: false,
                 solicited,
                 override_flag: true,
+                target_link_layer_addr: None,
             };
 
             let reply_icmp = na.build(local_addr, &reply_dst);

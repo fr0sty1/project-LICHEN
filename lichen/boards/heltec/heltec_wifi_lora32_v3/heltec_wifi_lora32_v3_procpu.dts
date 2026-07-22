@@ -24,14 +24,12 @@
 		sw0       = &button0;
 		lora0     = &lora0;
 		watchdog0 = &wdt0;
-		uart0     = &uart0;
-		uart1     = &uart1;
 	};
 
 	chosen {
 		zephyr,sram           = &sram0;
-		zephyr,console        = &uart0;
-		zephyr,shell-uart     = &uart0;
+		zephyr,console        = &uart1;
+		zephyr,shell-uart     = &uart1;
 		zephyr,flash          = &flash0;
 		zephyr,code-partition = &slot0_partition;
 		zephyr,bt-hci         = &esp32_bt_hci;
@@ -62,12 +60,6 @@
 	pinctrl-names = "default";
 };
 
-/* UART1 (GPIO21 TX / GPIO22 RX) for non-destructive gateway console.
- * Off CP2102 auto-reset (RTS/EN); fixes lora_ipv6_mesh-9ia2 / project-LICHEN-g38y.
- * UART0 reserved for flashing. Pins free (no SPI/I2C conflict). Enabled by default
- * (status=okay); gateway overlay selects via chosen. Aliases added for uart0/1.
- * Alternative GPIO4/5 rejected (less exposed on headers).
- */
 &uart1 {
 	status = "okay";
 	current-speed = <115200>;

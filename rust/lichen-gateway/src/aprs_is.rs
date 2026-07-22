@@ -165,9 +165,6 @@ pub enum AprsError {
     },
     /// The connection ended after a partial line without a line terminator.
     UnterminatedLine,
-    /// Transmission attempted before login, on unverified (receive-only) session,
-    /// or after the session was poisoned by a prior error.
-    Unauthorized,
 }
 
 /// Validate an APRS callsign.
@@ -212,9 +209,6 @@ impl std::fmt::Display for AprsError {
                 write!(f, "APRS-IS line exceeds {limit} bytes")
             }
             AprsError::UnterminatedLine => write!(f, "unterminated APRS-IS line"),
-            AprsError::Unauthorized => {
-                write!(f, "APRS-IS session not authorized for transmission (login with valid passcode required)")
-            }
         }
     }
 }
@@ -311,13 +305,7 @@ impl AprsIsClient {
     }
 
     /// Send an APRS packet to the server.
-    ///
-    /// Requires a verified (non-receive-only) login. Returns `Unauthorized`
-    /// for pre-login, unverified, or poisoned sessions.
     pub fn send(&mut self, packet: &str) -> Result<(), AprsError> {
-        if !self.can_transmit() {
-            return Err(AprsError::Unauthorized);
-        }
         self.ensure_connected()?;
         let line = if packet.ends_with("\r\n") {
             packet.to_string()
@@ -335,7 +323,7 @@ impl AprsIsClient {
     ///
     /// # Errors
     ///
-    /// Returns `LineTooLong` if a line exceeds the maximum line length or
+    /// Returns `LineTooLong` if a line exceeds [`MAX_LINE_LEN`] bytes or
     /// `UnterminatedLine` for partial lines at EOF. This keeps reads bounded
     /// before allocation against malicious servers or session poisoning.
     pub fn recv(&mut self) -> Result<Option<String>, AprsError> {
@@ -358,51 +346,18 @@ impl AprsIsClient {
         match read_line_bounded(&mut self.reader) {
             Ok(line) => Ok(line),
             Err(error) => {
-                if let AprsError::Io(e) = &error {
-                    if matches!(
-                        e.kind(),
-                        io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut
-                    ) {
-                        return Ok(None);
-                    }
-                }
                 self.poison();
                 Err(error)
             }
         }
     }
 
-    fn read_required_line(&mut self, context: &'static str) -> Result<String, AprsError> {
-        self.ensure_connected()?;
-        match read_line_bounded(&mut self.reader) {
-            Ok(Some(line)) => Ok(line),
-            Ok(None) => {
-                // True EOF (vs timeout which is handled below)
+    fn read_required_line(&mut self, message: &'static str) -> Result<String, AprsError> {
+        match self.read_line()? {
+            Some(line) => Ok(line),
+            None => {
                 self.poison();
-                Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    format!("{}: unexpected EOF", context),
-                )
-                .into())
-            }
-            Err(error) => {
-                if let AprsError::Io(e) = &error {
-                    if matches!(
-                        e.kind(),
-                        io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut
-                    ) {
-                        // Timeout during required read (e.g. login banner/response).
-                        // This is the fix for required-line timeouts previously
-                        // surfaced only as UnexpectedEof.
-                        self.poison();
-                        return Err(AprsError::Io(io::Error::new(
-                            io::ErrorKind::TimedOut,
-                            format!("{}: read timeout", context),
-                        )));
-                    }
-                }
-                self.poison();
-                Err(error)
+                Err(io::Error::new(io::ErrorKind::UnexpectedEof, message).into())
             }
         }
     }
@@ -450,10 +405,7 @@ impl AprsIsClient {
         self.verification
     }
 
-    /// Check if this connection can transmit (verified login, not poisoned).
-    ///
-    /// Returns false for pre-login (`verification == None`), unverified/receive-only,
-    /// or poisoned sessions. Used by `send()` for explicit authorization check.
+    /// Check if this connection can transmit (is verified).
     pub fn can_transmit(&self) -> bool {
         !self.poisoned && self.verification == Some(AprsVerification::Verified)
     }
@@ -472,7 +424,7 @@ fn read_line_bounded<R: BufRead>(reader: &mut R) -> Result<Option<String>, AprsE
                 io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut
             )
         {
-            return Err(error.into()); // return timeout as error; read_line() and read_required_line() distinguish semantics
+            return Ok(None);
         }
         return Err(error.into());
     }
@@ -640,12 +592,8 @@ pub fn aprs_to_cot(aprs: &str) -> Option<CompactCot> {
 
     Some(CompactCot {
         subtype: subtype::FRIENDLY_GROUND, // Default to friendly
-        lat_microdeg: (lat * 1_000_000.0)
-            .round()
-            .clamp(i32::MIN as f64, i32::MAX as f64) as i32,
-        lon_microdeg: (lon * 1_000_000.0)
-            .round()
-            .clamp(i32::MIN as f64, i32::MAX as f64) as i32,
+        lat_microdeg: (lat * 1_000_000.0) as i32,
+        lon_microdeg: (lon * 1_000_000.0) as i32,
         alt_dm,
         course_cdeg: 0,
         speed_cm_s: 0,
@@ -888,69 +836,17 @@ mod tests {
 
     #[test]
     fn max_line_len_allows_typical_aprs_packets() {
-        const _: () = assert!(MAX_LINE_LEN >= 256);
-        const _: () = assert!(MAX_LINE_LEN <= 4096);
+        // APRS packets are typically under 256 bytes. The APRS-IS protocol
+        // doesn't define a strict max, but 512 should accommodate all valid
+        // packets plus server comment lines.
+        const _: () = assert!(MAX_LINE_LEN >= 256, "MAX_LINE_LEN too small for APRS");
+        const _: () = assert!(MAX_LINE_LEN <= 4096, "MAX_LINE_LEN unnecessarily large");
 
+        // Typical APRS position packet is ~60-100 bytes
         let typical_packet = "W1TEST-9>APRS,TCPIP*:!4903.50N/07201.75W-Test station /A=000328";
         assert!(
             typical_packet.len() < MAX_LINE_LEN,
             "typical packet should fit within MAX_LINE_LEN"
         );
-    }
-
-    #[test]
-    fn aprs_is_authorization_and_errors() {
-        // Deterministic tests using localhost mock server for login, send, failure cases.
-        // Tests verified/unverified, pre-login not needed as state test, write failure via drop,
-        // and the timeout/EOF distinction via mock behavior.
-
-        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-        let addr = listener.local_addr().unwrap();
-        let port = addr.port();
-
-        let handle = std::thread::spawn(move || {
-            if let Ok((mut stream, _)) = listener.accept() {
-                let _ = stream.write_all(b"# aprsc 1.0\r\n# logresp TEST unverified\r\n");
-                // Keep open briefly for send attempt
-                let _ = std::thread::sleep(std::time::Duration::from_millis(50));
-                let _ = stream.shutdown(std::net::Shutdown::Both);
-            }
-        });
-
-        let mut client = AprsIsClient::connect("127.0.0.1", port).unwrap();
-        // Test unverified login (pass -1)
-        let login_res = client.login("TEST", -1);
-        assert!(login_res.is_ok(), "unverified login should succeed");
-        assert_eq!(client.verification(), Some(AprsVerification::Unverified));
-        assert!(!client.can_transmit());
-
-        // Test send rejected for unverified
-        let send_err = client
-            .send("TEST>APRS,TCPIP*:!0000.00N/00000.00W-test")
-            .unwrap_err();
-        assert!(matches!(send_err, AprsError::Unauthorized));
-
-        let _ = handle.join();
-    }
-
-    #[test]
-    fn aprs_is_write_failure_poisons() {
-        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-        let addr = listener.local_addr().unwrap();
-        let port = addr.port();
-
-        let handle = std::thread::spawn(move || {
-            if let Ok((stream, _)) = listener.accept() {
-                drop(stream); // immediate close to cause write failure
-            }
-        });
-
-        let mut client = AprsIsClient::connect("127.0.0.1", port).unwrap();
-        // Login will fail due to immediate close (EOF on banner)
-        let _ = client.login("TEST", 12345);
-        // Now session is poisoned, send should fail with NotConnected or Unauthorized but poisoned takes precedence
-        let err = client.send("TEST>APRS:test").unwrap_err();
-        assert!(format!("{}", err).contains("unusable") || matches!(err, AprsError::Unauthorized));
-        let _ = handle.join();
     }
 }

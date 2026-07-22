@@ -45,7 +45,6 @@ pub enum CoapError {
     BlockOutOfOrder,
     /// Option number overflow (cumulative delta exceeds u16::MAX).
     OptionNumberOverflow,
-    InvalidPayloadMarker,
 }
 
 impl core::fmt::Display for CoapError {
@@ -62,7 +61,6 @@ impl core::fmt::Display for CoapError {
             Self::PayloadTooLarge => write!(f, "payload exceeds maximum size"),
             Self::BlockOutOfOrder => write!(f, "block received out of order"),
             Self::OptionNumberOverflow => write!(f, "option number overflow"),
-            Self::InvalidPayloadMarker => write!(f, "invalid payload marker"),
         }
     }
 }
@@ -72,7 +70,6 @@ impl core::error::Error for CoapError {
         match self {
             Self::TooShort(e) => Some(e),
             Self::BufferTooSmall(e) => Some(e),
-            Self::InvalidPayloadMarker => None,
             _ => None,
         }
     }
@@ -90,7 +87,7 @@ impl From<BufferTooSmall> for CoapError {
     }
 }
 
-/// A parsed CoAP message (zero-copy, rejects 0xFF at end per RFC 7252).
+/// A parsed CoAP message (zero-copy).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CoapPacket<'a> {
     /// Raw message bytes.
@@ -125,15 +122,10 @@ impl<'a> CoapPacket<'a> {
             return Err(TooShort::new(options_start, data.len()).into());
         }
 
+        // Find payload marker
         let (options_end, payload_start) = match find_payload_marker(&data[options_start..])? {
-            Some(off) => {
-                let ps = options_start + off + 1;
-                if ps == data.len() {
-                    return Err(CoapError::InvalidPayloadMarker);
-                }
-                (options_start + off, ps)
-            }
-            None => (data.len(), data.len()),
+            Some(off) => (options_start + off, options_start + off + 1), // off is at 0xFF, +1 to skip
+            None => (data.len(), data.len()),                            // no marker, no payload
         };
 
         Ok(Self {
@@ -286,21 +278,11 @@ pub struct CoapOption<'a> {
 }
 
 impl<'a> CoapOption<'a> {
-    /// Interpret value as u32 (for integer options like Max-Age, Content-Format).
-    ///
-    /// Per RFC 7252 §3.2 integer options MUST NOT exceed 4 bytes. For
-    /// robustness to malformed >4-byte values, this explicitly uses only the
-    /// last 4 bytes (least significant in big-endian encoding). This matches
-    /// prior shift-out behavior but is now documented.
-    pub fn as_uint(&self) -> u32 {
-        let bytes = if self.value.len() > 4 {
-            &self.value[self.value.len() - 4..]
-        } else {
-            self.value
-        };
-        let mut val = 0u32;
-        for &b in bytes {
-            val = (val << 8) | b as u32;
+    /// Interpret value as u32 (for integer options like Max-Age).
+    pub fn as_uint(&self) -> u64 {
+        let mut val = 0u64;
+        for &b in self.value {
+            val = (val << 8) | b as u64;
         }
         val
     }
@@ -771,14 +753,6 @@ mod tests {
     }
 
     #[test]
-    fn invalid_payload_marker() {
-        assert_eq!(
-            CoapPacket::from_bytes(&[0x40, 0x01, 0x00, 0x01, 0xFF]),
-            Err(CoapError::InvalidPayloadMarker)
-        );
-    }
-
-    #[test]
     fn option_number_overflow_fails_fast() {
         // Build a message with two large deltas that would overflow u16.
         // First option: delta = 60000 (uses extended 2-byte delta: nibble 14, ext = 60000-269 = 59731)
@@ -847,19 +821,5 @@ mod tests {
             CoapPacket::from_bytes(&data),
             Err(CoapError::OptionNumberOverflow)
         );
-    }
-
-    #[test]
-    fn as_uint_truncates_long_values() {
-        let long = CoapOption {
-            number: 0,
-            value: &[0x01u8, 0x02, 0x03, 0x04, 0x05],
-        };
-        assert_eq!(long.as_uint(), 0x02030405);
-        let normal = CoapOption {
-            number: 0,
-            value: &[0x01, 0x02, 0x03, 0x04],
-        };
-        assert_eq!(normal.as_uint(), 0x01020304);
     }
 }

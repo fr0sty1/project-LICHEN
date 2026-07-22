@@ -125,8 +125,6 @@ hal_location_fix_state_from_app(enum lichen_app_location_fix_state fix_state)
 		return LICHEN_HAL_LOCATION_FIX_2D;
 	case LICHEN_APP_LOCATION_FIX_3D:
 		return LICHEN_HAL_LOCATION_FIX_3D;
-	case LICHEN_APP_LOCATION_FIX_STALE:
-		return LICHEN_HAL_LOCATION_FIX_STALE;
 	case LICHEN_APP_LOCATION_FIX_ERROR:
 		return LICHEN_HAL_LOCATION_FIX_ERROR;
 	case LICHEN_APP_LOCATION_FIX_NONE:
@@ -210,9 +208,6 @@ int lichen_app_location_time_from_hal(
 	if (app == NULL || hal == NULL) {
 		return -EINVAL;
 	}
-	if (strnlen(hal->source_name, sizeof(app->source_name)) >= sizeof(app->source_name)) {
-		return -ENAMETOOLONG;
-	}
 
 	*app = (struct lichen_app_location_time_snapshot){
 		.location_provider_available = hal->location_provider_available,
@@ -242,9 +237,13 @@ int lichen_app_location_time_from_hal(
 		.vertical_accuracy_mm_valid = hal->vertical_accuracy_mm_valid,
 		.vertical_accuracy_mm = hal->vertical_accuracy_mm,
 	};
-	size_t len = strnlen(hal->source_name, sizeof(app->source_name) - 1);
-	memcpy(app->source_name, hal->source_name, len);
-	app->source_name[len] = '\0';
+	if (strnlen(hal->source_name, sizeof(app->source_name)) ==
+	    sizeof(app->source_name)) {
+		return -ENAMETOOLONG;
+	}
+	strncpy(app->source_name, hal->source_name,
+		sizeof(app->source_name) - 1U);
+	app->source_name[sizeof(app->source_name) - 1U] = '\0';
 	return 0;
 }
 
@@ -253,10 +252,6 @@ int lichen_app_time_from_hal(struct lichen_app_time_snapshot *app,
 {
 	if (app == NULL || hal == NULL) {
 		return -EINVAL;
-	}
-	if (strnlen(hal->source_name, sizeof(app->source_name)) >= sizeof(app->source_name) ||
-	    strnlen(hal->rejection_source_name, sizeof(app->rejection_source_name)) >= sizeof(app->rejection_source_name)) {
-		return -ENAMETOOLONG;
 	}
 
 	*app = (struct lichen_app_time_snapshot){
@@ -285,13 +280,36 @@ int lichen_app_time_from_hal(struct lichen_app_time_snapshot *app,
 		.provision_epoch_valid = hal->provision_epoch_valid,
 		.provision_epoch = hal->provision_epoch,
 	};
-	size_t len = strnlen(hal->source_name, sizeof(app->source_name) - 1);
-	memcpy(app->source_name, hal->source_name, len);
-	app->source_name[len] = '\0';
-	len = strnlen(hal->rejection_source_name, sizeof(app->rejection_source_name) - 1);
-	memcpy(app->rejection_source_name, hal->rejection_source_name, len);
-	app->rejection_source_name[len] = '\0';
+	if (strnlen(hal->source_name, sizeof(app->source_name)) ==
+	    sizeof(app->source_name)) {
+		return -ENAMETOOLONG;
+	}
+	if (strnlen(hal->rejection_source_name,
+		    sizeof(app->rejection_source_name)) ==
+	    sizeof(app->rejection_source_name)) {
+		return -ENAMETOOLONG;
+	}
+	strncpy(app->source_name, hal->source_name,
+		sizeof(app->source_name) - 1U);
+	app->source_name[sizeof(app->source_name) - 1U] = '\0';
+	strncpy(app->rejection_source_name, hal->rejection_source_name,
+		sizeof(app->rejection_source_name) - 1U);
+	app->rejection_source_name[sizeof(app->rejection_source_name) - 1U] = '\0';
 	return 0;
+}
+
+static enum lichen_app_location_source_class app_source_class_from_hal(
+	enum lichen_hal_location_source_class source_class)
+{
+	switch (source_class) {
+	case LICHEN_HAL_LOCATION_SOURCE_NETWORK:
+		return LICHEN_APP_LOCATION_SOURCE_NETWORK;
+	case LICHEN_HAL_LOCATION_SOURCE_MANUAL_STATIC:
+		return LICHEN_APP_LOCATION_SOURCE_MANUAL_STATIC;
+	case LICHEN_HAL_LOCATION_SOURCE_LOCAL_CLIENT:
+	default:
+		return LICHEN_APP_LOCATION_SOURCE_LOCAL_CLIENT;
+	}
 }
 
 static int submit_to_hal_as(
@@ -305,7 +323,7 @@ static int submit_to_hal_as(
 	if (app == NULL) {
 		return -EINVAL;
 	}
-	expected_source_class = app_location_source_class_from_hal(source_class);
+	expected_source_class = app_source_class_from_hal(source_class);
 	if (app->fix_state_valid &&
 	    !valid_app_location_fix_state(app->fix_state)) {
 		return -EINVAL;

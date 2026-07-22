@@ -1,40 +1,30 @@
 //! Gateway state and packet forwarding.
 
-use lichen_core::addr::{Ipv6Addr, NodeId};
+use lichen_core::addr::NodeId;
 use lichen_core::constants::L2_DISPATCH_SCHC;
-use lichen_core::ipv6::{field, next_header, IPV6_HEADER_LEN};
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
-use lichen_node::{RplEvent, RplNode};
+use lichen_node::Node;
 use lichen_schc::codec::{compress, decompress, SchcError};
-use std::time::Instant;
 use tracing::{info, warn};
-
-const MAX_IPV6_MTU: usize = 4096;
 
 /// Top-level border router state.
 #[derive(Debug)]
 pub struct Gateway {
-    pub node: RplNode,
+    pub node: Node,
+    /// Routes installed in the kernel routing table.
+    /// Key: mesh IPv6 address (16 bytes, network order); Value: nexthop EUI-64.
+    routes: std::collections::HashMap<[u8; 16], NodeId>,
 }
 
 impl Gateway {
     pub fn new(node_id: NodeId) -> Self {
         info!(?node_id, "gateway initialising");
         Self {
-            node: RplNode::new_root(node_id),
+            node: Node::new(node_id),
+            routes: std::collections::HashMap::new(),
         }
-    }
-
-    /// Returns true if `dst` has a route in the DAO-based RoutingTable (non-storing RPL root).
-    pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
-        (dst[0] == 0xfe && (dst[1] & 0xc0) == 0x80) || dst[0] == 0xfd || self.node.router.lookup_route(dst).is_some()
-    }
-
-    /// Process incoming DAO to update DAO table / RoutingTable (replaces stale HashMap).
-    pub fn process_dao(&mut self, dao_bytes: &[u8]) -> bool {
-        self.node.router.process_dao(dao_bytes)
     }
 
     /// SCHC-decompress a frame received from the mesh via SLIP.
@@ -42,24 +32,12 @@ impl Gateway {
     /// Returns the raw IPv6 packet to inject into the upstream TUN device, or
     /// `None` if decompression fails or the result is not a valid IPv6 packet.
     pub fn mesh_to_upstream(&mut self, l2_payload: &[u8]) -> Option<Vec<u8>> {
-        let now_ms = self.start_time.elapsed().as_millis() as u32;
-        let mut reply = [0u8; 259];
-        let (_, event) = self.node.handle_frame_rpl(l2_payload, &mut reply, now_ms);
-        if let RplEvent::DaoReceived {
-            route_updated: true,
-        } = event
-        {
-            self.node
-                .router
-                .dao_manager
-                .populate_routes(&mut self.routes);
-        }
         if classify_l2_payload(l2_payload) != L2PayloadKind::Schc {
             warn!("non-SCHC L2 payload received on upstream gateway path");
             return None;
         }
 
-        let mut out = vec![0u8; MAX_IPV6_MTU];
+        let mut out = vec![0u8; 1280];
         match decompress(l2_payload_body(l2_payload), &mut out) {
             Ok(n) => {
                 out.truncate(n);
@@ -75,10 +53,6 @@ impl Gateway {
                 warn!(rule_id = id, "SCHC: unknown rule — dropping");
                 None
             }
-            Err(SchcError::BufferTooSmall(_)) => {
-                warn!("SCHC: buffer too small — dropping");
-                None
-            }
             Err(e) => {
                 warn!("SCHC decompress: {e:?}");
                 None
@@ -88,52 +62,18 @@ impl Gateway {
 
     /// SCHC-compress an IPv6 packet from the upstream TUN device for the mesh.
     ///
-    /// For local-mesh destinations (per DAO table), inserts SRH for downward
-    /// non-storing RPL routing per spec/05-routing.md:8.5 and spec/17-lci.
+    /// Returns the compressed frame to send via SLIP, or `None` on error.
     pub fn upstream_to_mesh(&mut self, ipv6_packet: &[u8]) -> Option<Vec<u8>> {
-        if ipv6_packet.len() < IPV6_HEADER_LEN || ipv6_packet[0] >> 4 != 6 {
+        if ipv6_packet.len() < 40 || ipv6_packet[0] >> 4 != 6 {
             warn!(
                 len = ipv6_packet.len(),
                 "upstream packet is not IPv6 — dropping"
             );
             return None;
         }
-        let mut dst = [0u8; 16];
-        dst.copy_from_slice(&ipv6_packet[field::DST_OFFSET..IPV6_HEADER_LEN]);
-        let packet = if self.is_local_mesh(&dst) {
-            if let Some(path) = self.node.router.lookup_route(&dst) {
-                info!(?path, "SRH downward routing for local mesh dst per spec 5");
-                let mut p = ipv6_packet.to_vec();
-                if path.len() > 1 {
-                    let first = path[0];
-                    let remaining = &path[1..];
-                    let rh_len = 8 + 16 * remaining.len();
-                    let original_next = p[6];
-                    p[6] = next_header::ROUTING;
-                    let old_plen = u16::from_be_bytes([p[4], p[5]]);
-                    let new_plen = old_plen + rh_len as u16;
-                    p[4..6].copy_from_slice(&new_plen.to_be_bytes());
-                    p[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&first);
-                    let mut rh = vec![0u8; rh_len];
-                    rh[0] = original_next;
-                    rh[1] = (2 * remaining.len()) as u8;
-                    rh[2] = 3;
-                    rh[3] = remaining.len() as u8;
-                    for (i, addr) in remaining.iter().enumerate() {
-                        rh[8 + i * 16..8 + (i + 1) * 16].copy_from_slice(addr);
-                    }
-                    p.splice(IPV6_HEADER_LEN..IPV6_HEADER_LEN, rh);
-                }
-                p
-            } else {
-                ipv6_packet.to_vec()
-            }
-        } else {
-            ipv6_packet.to_vec()
-        };
-        let mut out = vec![0u8; packet.len() + 3];
+        let mut out = vec![0u8; ipv6_packet.len() + 3];
         out[0] = L2_DISPATCH_SCHC;
-        match compress(&packet, &mut out[1..]) {
+        match compress(ipv6_packet, &mut out[1..]) {
             Ok(n) => {
                 out.truncate(n + 1);
                 info!(compressed_len = n + 1, "upstream → mesh");
@@ -146,34 +86,16 @@ impl Gateway {
         }
     }
 
-    pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
-        Ipv6Addr(*dst).is_yggdrasil() && self.node.router.lookup_route(dst).is_some()
-    }
-
-    /// Process L2 frame through RplNode. Returns (reply, event). reply is Some if
-    /// handle_frame_rpl produced compressed reply in reply_buf (e.g. echo). No ignore.
-    pub fn process_rpl(&mut self, l2_payload: &[u8], now_ms: u32) -> (Option<Vec<u8>>, RplEvent) {
-        let mut reply_buf = [0u8; 256];
-        let (reply_len, event) = self
-            .node
-            .handle_frame_rpl(l2_payload, &mut reply_buf, now_ms);
-        let reply = if reply_len > 0 {
-            Some(reply_buf[..reply_len].to_vec())
-        } else {
-            None
-        };
-        (reply, event)
+    /// Record that `node_id` is reachable via `addr`.
+    pub fn add_route(&mut self, addr: [u8; 16], node_id: NodeId) {
+        self.routes.insert(addr, node_id);
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lichen_core::{
-        addr::Ipv6Addr,
-        icmpv6,
-        ipv6::{field, IPV6_HEADER_LEN},
-    };
+    use lichen_core::{addr::Ipv6Addr, icmpv6};
 
     fn ll(iid: u8) -> Ipv6Addr {
         Ipv6Addr([0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0x02, 0, 0, 0, 0, 0, 0, iid])
@@ -198,17 +120,10 @@ mod tests {
 
         let recovered = gw.mesh_to_upstream(&schc).expect("decompress failed");
 
+        // IPv6 header fields
         assert_eq!(recovered[6], 58, "NH should be ICMPv6");
-        assert_eq!(
-            &recovered[field::SRC_OFFSET..field::DST_OFFSET],
-            &src.0,
-            "src mismatch"
-        );
-        assert_eq!(
-            &recovered[field::DST_OFFSET..IPV6_HEADER_LEN],
-            &dst.0,
-            "dst mismatch"
-        );
+        assert_eq!(&recovered[8..24], &src.0, "src mismatch");
+        assert_eq!(&recovered[24..40], &dst.0, "dst mismatch");
         // ICMPv6 fields
         assert_eq!(recovered[40], icmpv6::ECHO_REQUEST, "type should be 128");
         assert_eq!(recovered[41], 0, "code should be 0");
@@ -232,52 +147,28 @@ mod tests {
 
         let recovered = gw.mesh_to_upstream(&schc).expect("decompress failed");
         assert_eq!(recovered[40], icmpv6::ECHO_REPLY, "type should be 129");
-        assert_eq!(
-            &recovered[field::SRC_OFFSET..field::DST_OFFSET],
-            &src.0,
-            "src mismatch"
-        );
-        assert_eq!(
-            &recovered[field::DST_OFFSET..IPV6_HEADER_LEN],
-            &dst.0,
-            "dst mismatch"
-        );
+        assert_eq!(&recovered[8..24], &src.0, "src mismatch");
+        assert_eq!(&recovered[24..40], &dst.0, "dst mismatch");
     }
 
     #[test]
     fn non_ipv6_upstream_is_dropped() {
         let mut gw = test_gateway();
-        assert!(gw.upstream_to_mesh(&[0u8; IPV6_HEADER_LEN]).is_none());
+        assert!(gw.upstream_to_mesh(&[0u8; 40]).is_none());
     }
 
     #[test]
-    fn non_schc_l2_payload_is_dropped() {
+    fn unknown_schc_rule_is_dropped() {
         let mut gw = test_gateway();
+        // Rule 0xAA is not defined
         assert!(gw
             .mesh_to_upstream(&[L2_DISPATCH_SCHC, 0xAAu8, 0x00])
             .is_none());
     }
 
     #[test]
-    fn inter_mesh_routing_decision_uses_independent_oracle() {
-        // Independent oracle from test/vectors/yggdrasil.json zero-key vector.
-        let ygg_bytes = [
-            0x02, 0x02, 0x50, 0x46, 0xad, 0xc1, 0xdb, 0xa8, 0x38, 0, 0, 0, 0, 0, 0, 0,
-        ];
-        let dst = Ipv6Addr(ygg_bytes);
-        assert!(dst.is_yggdrasil(), "02xx::/7 recognition");
+    fn non_schc_l2_payload_is_dropped() {
         let mut gw = test_gateway();
-        assert!(!gw.is_local_mesh(&ygg_bytes), "remote Ygg not local RPL");
-        // local RPL would be in routes; MTU note verified in sim
-    }
-
-    #[test]
-    fn yggdrasil_remote_address_not_local_mesh() {
-        let gw = test_gateway();
-        let remote = [0x02, 0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01];
-        assert!(
-            !gw.is_local_mesh(&remote),
-            "remote Yggdrasil addr should route via upstream (Yggdrasil backbone) for cross-mesh"
-        );
+        assert!(gw.mesh_to_upstream(&[0x15, 0x01]).is_none());
     }
 }

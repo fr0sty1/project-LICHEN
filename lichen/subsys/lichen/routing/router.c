@@ -61,33 +61,11 @@ static bool is_ula(const uint8_t addr[16])
 }
 
 /**
- * Extract IID from IPv6 address (bytes 8-15).
- *
- * Guarded for link-local/ULA only (codereview 2oe9). Matches Rust iid().
+ * Extract IID from IPv6 address (last 8 bytes).
  */
 static void extract_iid(const uint8_t addr[16], uint8_t iid[8])
 {
-	__ASSERT_NO_MSG(is_link_local(addr) || is_ula(addr));
 	memcpy(iid, &addr[8], 8);
-}
-
-/**
- * Check if address belongs to this node (exact match or matching IID for
- * ULA/GUA support per codereview P3 for project-LICHEN-8ey9).
- */
-static bool is_our_address(const struct lichen_router *router,
-			   const uint8_t addr[16])
-{
-	if (router == NULL || addr == NULL) {
-		return false;
-	}
-	if (memcmp(addr, router->node_address, 16) == 0) {
-		return true;
-	}
-	if (memcmp(&addr[8], router->node_iid, 8) == 0) {
-		return true;
-	}
-	return false;
 }
 
 int lichen_router_init(struct lichen_router *router,
@@ -143,12 +121,12 @@ enum lichen_addr_class lichen_router_classify(const struct lichen_router *router
 		return LICHEN_ADDR_LINK_LOCAL;
 	}
 
+	/* Check ULA (LICHEN meshes typically use fd00::/8) */
 	if (is_ula(dst_addr)) {
 		return LICHEN_ADDR_MESH_LOCAL;
 	}
-	if (dst_addr[0] == 0x02) {
-		return LICHEN_ADDR_YGGDRASIL;
-	}
+
+	/* Check configured mesh prefixes (GUA from DIO/border router) */
 	for (size_t i = 0; i < CONFIG_LICHEN_ROUTER_MAX_MESH_PREFIXES; i++) {
 		const struct lichen_mesh_prefix *p = &router->mesh_prefixes[i];
 		if (!p->valid) {
@@ -158,6 +136,8 @@ enum lichen_addr_class lichen_router_classify(const struct lichen_router *router
 			return LICHEN_ADDR_MESH_LOCAL;
 		}
 	}
+
+	/* Everything else goes to the border router */
 	return LICHEN_ADDR_EXTERNAL;
 }
 
@@ -247,15 +227,14 @@ int lichen_router_route(struct lichen_router *router,
 			uint32_t now_ms,
 			struct lichen_route_result *result)
 {
-	if (router == NULL || dst_addr == NULL || dst_iid == NULL ||
-	    result == NULL) {
+	if (router == NULL || dst_addr == NULL || result == NULL) {
 		return -EINVAL;
 	}
 
 	memset(result, 0, sizeof(*result));
 
-	/* Check if packet is for this node (uses is_our_address for link-local + ULA/GUA) */
-	if (is_our_address(router, dst_addr)) {
+	/* Check if packet is for this node */
+	if (memcmp(dst_addr, router->node_address, 16) == 0) {
 		result->decision = LICHEN_ROUTE_DELIVER_LOCAL;
 		return 0;
 	}
@@ -265,17 +244,16 @@ int lichen_router_route(struct lichen_router *router,
 	switch (addr_class) {
 	case LICHEN_ADDR_LINK_LOCAL:
 		return route_link_local(dst_addr, result);
+
 	case LICHEN_ADDR_MESH_LOCAL:
 		return route_mesh_local(router, dst_iid, now_ms, result);
-	case LICHEN_ADDR_YGGDRASIL:
+
 	case LICHEN_ADDR_EXTERNAL:
 		return route_external(router, result);
 	default:
-		break;
+		result->decision = LICHEN_ROUTE_DROP;
+		return 0;
 	}
-
-	result->decision = LICHEN_ROUTE_DROP;
-	return 0;
 }
 
 int lichen_router_queue_pending(struct lichen_router *router,
@@ -400,11 +378,7 @@ int lichen_router_clear_pending(struct lichen_router *router,
 			cleared++;
 		}
 	}
-	if ((size_t)cleared > router->pending_count) {
-		router->pending_count = 0;
-	} else {
-		router->pending_count -= (size_t)cleared;
-	}
+	router->pending_count -= (size_t)cleared;
 	return cleared;
 }
 
@@ -426,11 +400,7 @@ int lichen_router_expire_pending(struct lichen_router *router, uint32_t now_ms)
 			expired++;
 		}
 	}
-	if ((size_t)expired > router->pending_count) {
-		router->pending_count = 0;
-	} else {
-		router->pending_count -= (size_t)expired;
-	}
+	router->pending_count -= (size_t)expired;
 	return expired;
 }
 
@@ -507,7 +477,16 @@ int lichen_router_on_route_discovered(struct lichen_router *router,
 
 	lichen_gradient_update(&router->gradient_table, &entry, now_ms);
 
-	return lichen_router_clear_pending(router, dst_iid);
+	/* Count pending packets (caller must retrieve and forward them, then
+	 * call lichen_router_clear_pending() explicitly) */
+	int count = 0;
+	for (size_t i = 0; i < CONFIG_LICHEN_ROUTER_MAX_PENDING; i++) {
+		struct lichen_pending_packet *p = &router->pending[i];
+		if (p->valid && memcmp(p->destination_iid, dst_iid, 8) == 0) {
+			count++;
+		}
+	}
+	return count;
 }
 
 void lichen_router_set_coords(struct lichen_router *router,

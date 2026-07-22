@@ -3,17 +3,6 @@
 
 # Hardware Bench Operations
 
-## 0. T-Echo Procurement for 500-Node Demo (project-LICHEN-2nnd.8)
-
-**Target hardware**: 500x LilyGO T-Echo (nRF52840 + SX1262 + e-ink + GNSS).
-
-**Verified**:
-- Bootloader: Adafruit nRF52 UF2 (0xADA52840 family ID); double-tap reset for initial flash, serial DFU thereafter (`flash-t_echo.sh --bulk`).
-- Bulk flashing: Supports 10-port powered USB hubs; parallel mode in script targets 50 units/hr (MAX_PARALLEL=5); rate-limited for USB stability.
-- Inclusion: Battery (850mAh LiPo), basic case, antenna — confirm per-vendor in PO.
-- Flashing jigs: by-id paths mandatory; pogo-pin SWD jigs recommended for >100 units to bypass UF2.
-- Timeline: Procurement 4-6w lead; aligns with rust/mesh-sim scaling for full 500-node validation. Update epic project-LICHEN-2nnd after receipt.
-
 Operational reference for the physical LICHEN test bench: device inventory,
 port-safety rules, flash/OTA procedures, over-the-air verification, and the
 findings that shaped current bench practice.
@@ -73,15 +62,17 @@ These are hard-won; violating them wedges a device or corrupts a flash.
   (`do_select`, S-state). Read-only probes only, with a `timeout` wrapper.
 - **NEVER open a LICHEN native CDC port at 1200 baud** except as a deliberate
   DFU touch — 1200 baud reboots nRF boards into the UF2 bootloader.
-- **Heltec V3 console monitoring** (fixed project-LICHEN-g38y / lora_ipv6_mesh-9ia2): 
-  CP2102 (UART0 GPIO43/44) for flashing only. UART1 (GPIO21/22) now enabled by
-  default in heltec_wifi_lora32_v3_procpu.dts with aliases; gateway overlay selects
-  via chosen for non-destructive console/logs. External USB-UART on UART1. CP2102
-  open no longer reboots node (epoch persisted).
+- **Heltec V3 console on UART1 (GPIO21/22) with external adapter is non-destructive.**
 - **Never pipe a flasher through `head`/`tail`** — the `SIGPIPE` when the reader
   closes aborts the transfer mid-write.
 - Opening the T1000-E `if02` SMP port is safe; it can wedge (CDC write timeout)
   only if a reset drops mid-SMP-transaction — recover with a DFU touch + reflash.
+
+---
+
+## 2.1 Non-destructive Heltec console monitoring
+
+External USB-UART on GPIO21 (TX), GPIO22 (RX). Board DTS uses uart1 for console with status=okay and correct pinctrl. Open with dtr=False rts=False. Verify uptime not reset in logs. ROM-loader SHA-256 warning is benign.
 
 ---
 
@@ -92,8 +83,7 @@ workspace):
 
 ```bash
 export ZEPHYR_SDK_INSTALL_DIR=/path/to/zephyr-sdk-0.16.8
-# Activate the workspace virtual environment if west is not already on PATH.
-export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)   # build-epoch policy requires this
+export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
 ```
 
 `ZEPHYR_SDK_INSTALL_DIR` may be omitted when the SDK is registered with CMake
@@ -103,11 +93,6 @@ and auto-detected by Zephyr.
   → `build_mcuboot_t_echo/zephyr/zephyr.bin` + `build_t_echo_puck/zephyr/zephyr.slot0.signed.bin`
 - **T1000-E puck**: `./build-t1000e.sh` → `build_t1000e_puck/zephyr/zephyr.slot0.signed.bin`
 - **Heltec gateway**: `west build -b heltec_wifi_lora32_v3/esp32s3/procpu lichen/apps/gateway -d build_gw`
-- **Heltec UART1 console test** (non-resetting, run on EC2 builder per AGENTS.md): `west build -b heltec_wifi_lora32_v3/esp32s3/procpu lichen/apps/puck -d build_heltec_uart1 -- -DDTC_OVERLAY_FILE=lichen/boards/heltec/heltec_wifi_lora32_v3/support/heltec_uart1_console.overlay -DEXTRA_CONF_FILE=lichen/boards/heltec/heltec_wifi_lora32_v3/support/heltec_uart1_console.conf` (uses CONFIG_SERIAL=y, chosen{zephyr,console=&uart1; zephyr,shell-uart=&uart1;} on GPIO21/22; python serial with dtr=False rts=False verified no reset)
-
----
-
-Note: All Heltec builds/tests MUST use the EC2 instance with LICHEN-tagged volume (vol-0a95eee8d1d8461eb) attached at /mnt/lichen-zephyr to ensure SDK, ccache, and consistent west workspace.
 
 ---
 
@@ -166,8 +151,6 @@ west flash -d build_gw --esp-device \
 ---
 
 ## 5. Over-the-air verification
-
-**Identity canary in puck startup (nRF/ESP, fixed in 5ix1.4.1):** Logs now include `OK: local node identity at startup` after `lichen_l2_publish_app_identity()` (post-provisioning in L2 path). Parallel exploration of lichen/boards (Renode repls for t_echo/rak/heltec/t1000e with nRF/ESP DTS, pinctrl) and lichen/subsys/lichen (link_init, coap_config identity provider, oscore, rpl_dodag, puck/main.c L2 path) completed. ELF gaps characterized (PT_LOAD in flash cache 0x4200_0000, IRAM 0x4037_0000, entry ~0x4037c000; Renode uses sample_controller Xtensa, STM32SPI stub for SX1262, tagged GPIO/SYSTEM/EFUSE/RTC). Peripheral gaps: incomplete ESP32-S3 interrupt, no GPIO matrix/SPI native, cache/MMU unmodeled; nRF USBD polling in bridge. EC2 fleet (LICHEN tags only, vol-0a95eee8d1d8461eb) + Renode traces captured. Gaps fixed in init order and publication. bench-operations.md, boards.repl, tests updated. 3 independent codereview passes (P0-P2 clean), cargo clippy/tests, west twister pass.
 
 Watch the **T-Echo `if02` console read-only** for the round trip. Success is a
 `lichen_puck: CoAP 2.05 response, <N> B payload` line whose CBOR `uptime` field
@@ -249,16 +232,3 @@ wrap is far beyond that. Watchdog-recovery correctness (bd `gald`) is also *not*
 exercised unless a crash occurs — a clean soak proves stability but leaves the
 recovery path untested. Plan wrap/recovery coverage as targeted tests, not as a
 longer soak.
-
-## Conference Node Distribution Logistics (project-LICHEN-2nnd.3)
-
-See `bd show project-LICHEN-2nnd.3` for full plan and LICHEN-plan.md:distribution.
-
-**Recommendation:** Option A (sell at cost, $50-60/unit at booth). Attendees keep nodes; no recovery logistics required. Revenue offsets costs. Builds invested community for post-event meshes.
-
-**Booth setup:**
-- Square or cash payment.
-- Box includes: printed quick-start card, QR code linking to mesh visualizer/join instructions, sticker "I survived the LICHEN mesh".
-- Simple, clean execution for first 500-node demo.
-
-**Post-event:** Nodes seed local meshes. Future firmware enables "report back" for global participation map.

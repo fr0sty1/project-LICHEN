@@ -3,7 +3,6 @@
 // Re-export Addr from lichen-ipv6 as Ipv6Addr for backward compatibility.
 // This eliminates the duplicate type definition while preserving the API.
 pub use lichen_ipv6::Addr as Ipv6Addr;
-use sha2::{Digest, Sha512};
 
 /// A 64-bit node identifier (EUI-64 derived from the radio hardware address).
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -28,13 +27,18 @@ impl NodeId {
         self.addr_with_prefix(prefix)
     }
 
-    pub fn yggdrasil_address(pubkey: &[u8; 32]) -> Ipv6Addr {
-        let hash = Sha512::digest(pubkey);
-        let mut addr = [0u8; 16];
-        addr[0] = 0x02;
-        addr[1] = 0x02;
-        addr[2..9].copy_from_slice(&hash[0..7]);
-        Ipv6Addr(addr)
+    /// Reconstruct a NodeId from the interface identifier in an IPv6 address.
+    ///
+    /// Reverses the U/L bit flip (XOR 0x02 on first IID byte) performed by
+    /// `link_local_addr` and `ula_addr`. Works for both link-local and ULA/GUA
+    /// addresses per spec §6.1. Independent roundtrip oracle used in tests.
+    pub fn from_ipv6(addr: Ipv6Addr) -> Self {
+        let bytes = addr.0;
+        let mut iid = [
+            bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15],
+        ];
+        iid[0] ^= 0x02;
+        NodeId(iid)
     }
 
     fn addr_with_prefix(&self, prefix: [u8; 8]) -> Ipv6Addr {
@@ -154,18 +158,13 @@ mod tests {
     }
 
     #[test]
-    fn yggdrasil_address_matches_vectors() {
-        let zero = [0u8; 32];
-        let a0 = NodeId::yggdrasil_address(&zero);
-        assert_eq!(
-            a0.0,
-            [0x02, 0x02, 0x50, 0x46, 0xad, 0xc1, 0xdb, 0xa8, 0x38, 0, 0, 0, 0, 0, 0, 0]
-        );
-        let one = [1u8; 32];
-        let a1 = NodeId::yggdrasil_address(&one);
-        assert_eq!(
-            a1.0,
-            [0x02, 0x02, 0x5c, 0xe8, 0x6e, 0xfb, 0x75, 0xfa, 0x4e, 0, 0, 0, 0, 0, 0, 0]
-        );
+    fn from_ipv6_roundtrip_link_local_and_ula() {
+        let node = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
+        let ll = node.link_local_addr();
+        assert_eq!(NodeId::from_ipv6(ll), node);
+
+        let prefix = [0xfd, 0x00, 0, 0, 0, 0, 0, 0];
+        let ula = node.ula_addr(prefix);
+        assert_eq!(NodeId::from_ipv6(ula), node);
     }
 }

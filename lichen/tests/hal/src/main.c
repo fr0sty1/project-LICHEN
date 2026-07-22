@@ -10,8 +10,12 @@
 #include <zephyr/drivers/charger.h>
 #endif
 #if DT_NODE_HAS_COMPAT(DT_ALIAS(battery0), sbs_sbs_gauge_new_api)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#include <zephyr/drivers/fuel_gauge.h>
 #include <zephyr/drivers/emul.h>
 #include <zephyr/drivers/emul_fuel_gauge.h>
+#pragma GCC diagnostic pop
 #endif
 
 #include <lichen/hal.h>

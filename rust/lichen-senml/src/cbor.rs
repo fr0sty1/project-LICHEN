@@ -171,6 +171,11 @@ pub fn encode<'a>(records: &[Record<'a>], out: &mut [u8]) -> Result<usize, CborE
         if value_field_count(r) > 1 {
             return Err(CborError::MultipleValues);
         }
+        let bn_len = r.base_name.map_or(0, |s| s.len());
+        let n_len = r.name.map_or(0, |s| s.len());
+        if bn_len + n_len > 255 {
+            return Err(CborError::InvalidInput); // concatenated name too long
+        }
     }
 
     let mut p = 0;
@@ -409,6 +414,7 @@ fn skip_one_depth(data: &[u8], pos: usize, depth: usize) -> Result<usize, CborEr
             }
             (u16::from_be_bytes([data[pos + 1], data[pos + 2]]) as u64, 3)
         }
+        26 | 27 | 31 => return Err(CborError::NotImplemented), // 32/64-bit lengths or indefinite not supported (SenML profile uses definite)
         _ => return Err(CborError::InvalidInput),
     };
     match major {
@@ -456,6 +462,12 @@ fn skip_one_depth(data: &[u8], pos: usize, depth: usize) -> Result<usize, CborEr
         }
         7 => match info {
             20..=23 => Ok(1),
+            24 => {
+                if pos + 2 > data.len() {
+                    return Err(CborError::InvalidInput);
+                }
+                Ok(2)
+            }
             25 => {
                 if pos + 3 > data.len() {
                     return Err(CborError::InvalidInput);
