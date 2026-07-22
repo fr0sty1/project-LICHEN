@@ -783,11 +783,7 @@ pub fn handle_icmpv6(
             if code != 0 {
                 return Ok(None);
             }
-            // SECURITY: RFC 4443 Section 4.2 - "An Echo Reply MUST NOT be sent in
-            // response to a request sent to any multicast address." The RFC actually
-            // refers to the destination, but we also reject multicast sources to
-            // prevent reflection attacks where an attacker spoofs a multicast source.
-            if ip_header.src.is_multicast() {
+            if ip_header.dst.is_multicast() || ip_header.src.is_multicast() {
                 return Ok(None);
             }
             // Reply to ping
