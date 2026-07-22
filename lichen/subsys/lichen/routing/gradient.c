@@ -88,12 +88,6 @@ static struct lichen_gradient_entry *find_lru(struct lichen_gradient_table *tabl
 		if (!e->valid) {
 			continue;
 		}
-		/*
-		 * Use wrapping subtraction for timestamp comparison.
-		 * An entry with smaller last_used_ms (older) has larger
-		 * (oldest_time - e->last_used_ms), but we want the smallest
-		 * last_used_ms, so we just compare directly.
-		 */
 		if (lru == NULL || (int32_t)(e->last_used_ms - lru->last_used_ms) < 0) {
 			lru = e;
 		}
