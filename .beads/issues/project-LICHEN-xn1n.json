@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-xn1n",
+  "title": "codereview-p1: expected_hash should be integer not string",
+  "description": "The added vector in generate.py uses string for expected_hash. Change to numeric 2346401271 or 0x8ba925f7 in hex if schema supports. Matches independent oracle requirement. File as codereview tag.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:45:17.306788508Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:45:17.306788508Z",
+  "labels": [
+    "codereview"
+  ]
+}
