@@ -2,11 +2,15 @@
   "id": "project-LICHEN-l3af",
   "title": "Missing bounds check on master_salt length in Context::new",
   "description": "File: rust/lichen-oscore/src/lib.rs\nLines: 230-234\n\nThe master_salt length is validated:\n```rust\nlet salt = master_salt.unwrap_or(\u0026[]);\nif salt.len() \u003e 8 {\n    return Err(OscoreError::InvalidParam);\n}\n```\n\nHowever, this limit of 8 bytes is arbitrary and inconsistent:\n1. RFC 8613 doesn't specify a max salt length\n2. HKDF-SHA256 can accept salts of any length\n3. The internal buffer master_salt is [u8; 8], so \u003e8 would overflow\n\nThe code is safe (bounds check before copy), but the limit of 8 bytes may be too restrictive for some deployments.\n\nImpact: May reject valid OSCORE contexts with longer salts.\n\nFix: Either document this as a LICHEN-specific restriction, or increase the buffer size to support the RFC's full flexibility.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:38:17.741085Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:38:17.741132Z"
+  "updated_at": "2026-07-22T23:19:33.422430138Z",
+  "started_at": "2026-07-22T23:19:33.422430138Z",
+  "lease_expires_at": "2026-07-22T23:24:33.422430138Z",
+  "heartbeat_at": "2026-07-22T23:19:33.422430138Z"
 }
