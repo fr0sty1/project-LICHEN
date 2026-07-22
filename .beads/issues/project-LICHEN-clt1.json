@@ -2,12 +2,16 @@
   "id": "project-LICHEN-clt1",
   "title": "[codereview-3] cbor_put_tstr header_len+overrun fix: edge cases, uint32, CBOR conformance",
   "description": "Pass 3 review of coap_status.c cbor_put_tstr: edge cases for len=0,=23,=255,=65535,=65536,\u003e4G. CBOR now conforms to RFC8949 (0x7a for 32bit). No P0-P1. Dupe cbor_put_tstr in coap_keys.c/coap_msg.c noted but out of scope per bead. codereview",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "chore",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:18:30.832098621Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:18:30.832098621Z",
+  "updated_at": "2026-07-22T23:18:28.194485868Z",
+  "started_at": "2026-07-22T23:18:28.194485868Z",
+  "lease_expires_at": "2026-07-22T23:23:28.194485868Z",
+  "heartbeat_at": "2026-07-22T23:18:28.194485868Z",
   "labels": [
     "codereview"
   ]
