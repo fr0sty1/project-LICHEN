@@ -130,9 +130,9 @@ def insert_source_route(
 ) -> tuple[IPv6Packet, IPv6Address]:
     """At the root: prepend an SRH for ``path`` and return (packet, first hop).
 
-    ``path`` is ``[h1, ..., hk, destination]``. The IPv6 destination is set to
-    the first hop. A single-element path (destination is a direct neighbour)
-    needs no SRH.
+    ``path`` is ``[h1, ..., hk, destination]`` (per RFC 6554 §3: final dst in
+    IPv6 header, intermediates in SRH). Single-hop needs no SRH. Validates
+    path ends with destination if ``expected_destination`` provided (project-LICHEN-dzgv).
 
     IMPORTANT: The final element of ``path`` must be the intended destination.
     This function replaces the packet's destination address with the first hop;
