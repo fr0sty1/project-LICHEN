@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-da2q.7.1",
+  "title": "Python impl: time synchronization for channel hopping",
+  "description": "Python implementation for CCP-7 synchronization requirements from da2q context.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:12:42.638738186Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:12:42.638738186Z",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.7.1",
+      "depends_on_id": "project-LICHEN-da2q.7",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:12:42.745790947Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
