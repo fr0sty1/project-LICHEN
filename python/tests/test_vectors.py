@@ -210,6 +210,43 @@ def test_meshcore_app_compat_vectors_match_generator() -> None:
     assert doc["vectors"] == meshcore_app_compat_vectors()
 
 
+def _hash_32(data: bytes) -> int:
+    h = 0x811c9dc5
+    for b in data:
+        h = ((h ^ b) * 0x01000193) & 0xffffffff
+    return h
+
+
+def _ccp15_cases():
+    doc = _load("ccp15.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _ccp15_cases())
+def test_ccp15_sf_ema_load_factor_hash32_logic(name: str, vector: dict) -> None:
+    i = vector["input"]
+    o = vector["output"]
+    eui = bytes.fromhex(i["eui64"])
+    h = _hash_32(eui + i["epoch"].to_bytes(4, "little"))
+    assert h == o["hash_32"]
+    snr_ema = i.get("snr_ema", i["snr_db"])
+    load_factor = i.get("load_factor", 0.0)
+    if i["density"] > 8 or snr_ema < 0 or load_factor > 0.8:
+        sf = 11
+    elif i["density"] < 5 and snr_ema > 8.0:
+        sf = 9
+    elif i["density"] > 20 or snr_ema < -5.0:
+        sf = 12
+    else:
+        sf = 10
+    assert sf == o["sf"]
+    ch = 0 if i["density"] > 8 else ((h % 3) + 1)
+    assert ch == o["select_channel"]
+    assert ch == o["channel"]
+    assert i["now"] == o.get("now", i["now"])
+
+
 def _read_varint(data: bytes, offset: int) -> tuple[int, int]:
     value = 0
     shift = 0

@@ -26,9 +26,12 @@ pub const PARENT_SWITCH_THRESHOLD: u16 = 192;
 ///
 /// Values 0-127 are the linear region (restart); 128-255 are circular (normal).
 /// Returns true if `new_ver` is newer than `old_ver`.
+#[cfg(feature = "std")]
 const LOLLIPOP_CIRCULAR_BIT: u8 = 128;
+#[cfg(feature = "std")]
 const LOLLIPOP_SEQUENCE_WINDOW: u8 = 16;
 
+#[cfg(feature = "std")]
 fn version_is_newer(new_ver: u8, old_ver: u8) -> bool {
     match (
         new_ver < LOLLIPOP_CIRCULAR_BIT,

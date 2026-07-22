@@ -125,6 +125,8 @@ hal_location_fix_state_from_app(enum lichen_app_location_fix_state fix_state)
 		return LICHEN_HAL_LOCATION_FIX_2D;
 	case LICHEN_APP_LOCATION_FIX_3D:
 		return LICHEN_HAL_LOCATION_FIX_3D;
+	case LICHEN_APP_LOCATION_FIX_STALE:
+		return LICHEN_HAL_LOCATION_FIX_STALE;
 	case LICHEN_APP_LOCATION_FIX_ERROR:
 		return LICHEN_HAL_LOCATION_FIX_ERROR;
 	case LICHEN_APP_LOCATION_FIX_NONE:
@@ -281,20 +283,6 @@ int lichen_app_time_from_hal(struct lichen_app_time_snapshot *app,
 	return 0;
 }
 
-static enum lichen_app_location_source_class app_source_class_from_hal(
-	enum lichen_hal_location_source_class source_class)
-{
-	switch (source_class) {
-	case LICHEN_HAL_LOCATION_SOURCE_NETWORK:
-		return LICHEN_APP_LOCATION_SOURCE_NETWORK;
-	case LICHEN_HAL_LOCATION_SOURCE_MANUAL_STATIC:
-		return LICHEN_APP_LOCATION_SOURCE_MANUAL_STATIC;
-	case LICHEN_HAL_LOCATION_SOURCE_LOCAL_CLIENT:
-	default:
-		return LICHEN_APP_LOCATION_SOURCE_LOCAL_CLIENT;
-	}
-}
-
 static int submit_to_hal_as(
 	const struct lichen_app_location_time_snapshot *app,
 	enum lichen_hal_location_source_class source_class)
@@ -306,7 +294,7 @@ static int submit_to_hal_as(
 	if (app == NULL) {
 		return -EINVAL;
 	}
-	expected_source_class = app_source_class_from_hal(source_class);
+	expected_source_class = app_location_source_class_from_hal(source_class);
 	if (app->fix_state_valid &&
 	    !valid_app_location_fix_state(app->fix_state)) {
 		return -EINVAL;
