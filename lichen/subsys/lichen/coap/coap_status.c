@@ -244,7 +244,7 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 				      const struct lichen_coap_node_status *status)
 {
 	struct cbor_ctx ctx;
-	uint16_t map_count;
+	uint8_t map_count;
 	char ipv6_buf[40];
 
 	if (buf == NULL || status == NULL || buf_size == 0) {
@@ -254,13 +254,9 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 	cbor_ctx_init(&ctx, buf, buf_size);
 
 	map_count = 6;
-	map_count += status->battery_pct_valid ? 1 : 0;
-	map_count += status->battery_mv_valid ? 1 : 0;
-	if (map_count > 255) {
-		ctx.overflow = true;
-		return 0;
-	}
-	cbor_put_map_header(&ctx, (uint8_t)map_count);
+	if (status->battery_pct_valid && map_count < 255) map_count++;
+	if (status->battery_mv_valid && map_count < 255) map_count++;
+	cbor_put_map_header(&ctx, map_count);
 
 	cbor_put_key(&ctx, "uptime_s");
 	cbor_put_uint(&ctx, status->uptime_s);
