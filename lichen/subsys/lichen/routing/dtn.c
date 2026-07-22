@@ -265,7 +265,9 @@ uint16_t lichen_dtn_retrieve_for(struct lichen_dtn_buffer *buf,
 			continue;
 		}
 
-		/* Call callback if provided */
+		/* Call callback if provided. Callback returns true to continue,
+		 * false to stop after this message (per doc in dtn.h:156).
+		 * Removal always happens (message is retrieved). */
 		bool should_continue = true;
 		if (callback != NULL) {
 			should_continue = callback(msg->packet,
@@ -279,9 +281,8 @@ uint16_t lichen_dtn_retrieve_for(struct lichen_dtn_buffer *buf,
 		buf->count--;
 		retrieved++;
 
-		/* If callback returned false, stop iterating */
 		if (!should_continue) {
-			break;
+			break; /* stop after processing current (resolves nsw1) */
 		}
 	}
 
