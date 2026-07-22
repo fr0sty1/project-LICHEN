@@ -1856,8 +1856,10 @@ int oscore_protect_response(struct oscore_ctx *ctx,
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
-	/* Response uses request's PIV for nonce */
-	compute_nonce(ctx->recipient_id, ctx->recipient_id_len,
+	/* Response nonce: use sender_id (response sender) + request_piv for RFC 8613
+	 * Section 5.2 nonce + 5.4 AAD request_kid binding (checkpoint fix).
+	 */
+	compute_nonce(ctx->sender_id, ctx->sender_id_len,
 		      request_piv, request_piv_len, ctx->common_iv, nonce);
 
 	/* Build plaintext: code || options || payload */
@@ -1975,8 +1977,10 @@ int oscore_unprotect_response(struct oscore_ctx *ctx,
 		}
 	}
 
-	/* Response nonce uses response PIV if present, else request PIV */
-	compute_nonce(ctx->sender_id, ctx->sender_id_len,
+	/* Response nonce: use recipient_id (response sender's ID) + PIV (response or
+	 * request) per RFC 8613 5.2/8.4 for correct binding (checkpoint fix).
+	 */
+	compute_nonce(ctx->recipient_id, ctx->recipient_id_len,
 		      nonce_piv, nonce_piv_len, ctx->common_iv, nonce);
 
 	/* Build AAD per RFC 8613 Section 5.4 - use request KID/PIV */

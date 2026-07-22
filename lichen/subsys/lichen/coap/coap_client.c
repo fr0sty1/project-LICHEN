@@ -309,11 +309,10 @@ static void coap_response_handler(int16_t code, size_t offset, const uint8_t *pa
 				int ret;
 
 				/*
-				 * Parse OSCORE option from response.
-				 * For client responses, the OSCORE option is typically
-				 * empty (h=0, n=0) since the response uses the request PIV.
+				 * Response OSCORE option (typically empty per RFC 8613 8.4).
+				 * Uses request_piv for nonce/KID binding (checkpoint fixed in oscore.c).
 				 */
-				uint8_t oscore_opt[1] = {0};  /* Empty option for response */
+				uint8_t oscore_opt[1] = {0};
 				size_t oscore_opt_len = 0;
 
 				ret = oscore_unprotect_response(ctx->oscore_ctx,
