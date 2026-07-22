@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-i2wa",
+  "title": "codereview-pass1: TDMA vectors and tests",
+  "description": "Reviewed Python test_ccp_tdma_independent_vectors, Rust tdma_scheduler test, schema update, independent oracles verified. No P0-P2 findings.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:22:57.346279695Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:22:57.346279695Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-i2wa",
+      "depends_on_id": "project-LICHEN-szmi",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:22:57.44998064Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
