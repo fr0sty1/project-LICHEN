@@ -3,13 +3,13 @@
   "title": "Define lichend DAO admission policy",
   "description": "Choose and specify how the production border router durably admits DAO origin identities. Announce TOFU pinning alone is insufficient and automatic first-seen admission would create a new security policy. Define operator provisioning, trust upgrade/revocation, persistence, and failure behavior before lichend activates the RPL root.",
   "acceptance_criteria": "A reviewed policy identifies admission authority, durable record format, provisioning and revocation flows, restart behavior, and fail-closed handling; implementation-ready acceptance vectors are defined.",
-  "notes": "HUMAN: What is the exact DAO admission policy for lichend production border router (operator provisioning vs TOFU vs DANE/PKIX, durable format, revocation, fail-closed behavior)?",
+  "notes": "HUMAN: What exact operator provisioning, durable record format, trust upgrade/revocation, persistence, and fail-closed behavior for lichend DAO origin admission (beyond TOFU)? Policy decision blocks implementation.",
   "status": "open",
   "priority": 1,
   "issue_type": "task",
   "created_at": "2026-07-21T00:13:51.255296996Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T05:07:48.514710121Z",
+  "updated_at": "2026-07-22T05:07:54.504071129Z",
   "labels": [
     "human"
   ],
