@@ -198,7 +198,7 @@ static size_t find_lru_slot_locked(void)
 			have_active = true;
 			continue;
 		}
-		/* Wrap-safe LRU using signed diff on access stamp. */
+		/* SECURITY: signed comparison handles 32-bit access_counter wraparound safely */
 		if ((int32_t)(route_access_order[i] - oldest_access) < 0) {
 			oldest_access = route_access_order[i];
 			oldest_idx = i;

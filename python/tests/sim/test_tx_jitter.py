@@ -13,6 +13,7 @@ These tests verify that the simulation correctly applies transmission jitter:
 from __future__ import annotations
 
 import random
+import pytest
 
 from lichen.sim.chaos import ChaosEngine, TxJitterRule
 from lichen.sim.events import TxStartDelayedEvent

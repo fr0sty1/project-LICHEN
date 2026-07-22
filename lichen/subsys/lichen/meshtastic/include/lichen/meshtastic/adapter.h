@@ -22,6 +22,7 @@
 #endif
 
 #include <lichen/meshtastic/codec.h>
+#include <zephyr/kernel.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -251,6 +252,17 @@ struct lichen_meshtastic_adapter_ops {
 	lichen_meshtastic_adapter_location_fn handle_location;
 };
 
+/*
+ * THREAD SAFETY NOTE (project-LICHEN-9jlb):
+ * This adapter's mutable state (stats, stream buffers, from_radio_id,
+ * disconnected flag, etc.) is accessed from multiple contexts (RX feed_stream
+ * from interrupt or thread, TX emit_* from application thread, stats monitoring).
+ * No internal synchronization is provided (the k_mutex is initialized but
+ * unused by the implementation). Callers MUST serialize access to all
+ * mutating functions. get_stats() and disconnected() are safe for concurrent
+ * read-only use. Stats increments are not atomic.
+ */
+
 struct lichen_meshtastic_adapter {
 	struct lichen_meshtastic_adapter_ops ops;
 	struct lichen_meshtastic_adapter_stats stats;
@@ -262,6 +274,7 @@ struct lichen_meshtastic_adapter {
 	uint32_t from_radio_id;
 	bool stream_in_frame;
 	bool disconnected;
+	struct k_mutex lock;
 };
 
 void lichen_meshtastic_adapter_init(
