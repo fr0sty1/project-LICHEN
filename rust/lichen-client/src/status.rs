@@ -159,8 +159,8 @@ mod tests {
     }
 
     /// Oracle: a CBOR map built with the firmware's exact `/status` keys and
-    /// nesting (`uptime_s`/`mem_free_kb`/`time`/`dodag`/`radio`, optional
-    /// battery), independent of the struct's serde mapping.
+    /// nesting (uptime_s, batteries, mem_free_kb, time, dodag, radio, capacity),
+    /// independent of the struct's serde mapping.
     #[test]
     fn status_decodes_firmware_map() {
         let wire = Value::Map(vec![
@@ -192,6 +192,15 @@ mod tests {
                     (txt("tx_packets"), Value::Integer(7u64.into())),
                     (txt("rx_errors"), Value::Integer(1u64.into())),
                     (txt("duty_cycle_pct"), Value::Integer(125u64.into())),
+                ]),
+            ),
+            (
+                txt("capacity"),
+                Value::Map(vec![
+                    (txt("txq_used"), Value::Integer(2u64.into())),
+                    (txt("txq_cap"), Value::Integer(4u64.into())),
+                    (txt("fwd_used"), Value::Integer(1u64.into())),
+                    (txt("fwd_cap"), Value::Integer(8u64.into())),
                 ]),
             ),
         ]);
@@ -243,6 +252,15 @@ mod tests {
                     (txt("tx_packets"), Value::Integer(0u64.into())),
                     (txt("rx_errors"), Value::Integer(0u64.into())),
                     (txt("duty_cycle_pct"), Value::Integer(0u64.into())),
+                ]),
+            ),
+            (
+                txt("capacity"),
+                Value::Map(vec![
+                    (txt("txq_used"), Value::Integer(0u64.into())),
+                    (txt("txq_cap"), Value::Integer(4u64.into())),
+                    (txt("fwd_used"), Value::Integer(0u64.into())),
+                    (txt("fwd_cap"), Value::Integer(8u64.into())),
                 ]),
             ),
         ]);
