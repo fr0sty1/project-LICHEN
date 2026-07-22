@@ -3,15 +3,15 @@
   "title": "router.h: lichen_dtn_message redefined with different layout than dtn.h",
   "description": "File: lichen/subsys/lichen/routing/include/lichen/routing/router.h\nLines: 116-123\n\nrouter.h defines:\n    struct lichen_dtn_message {\n        uint8_t destination_iid[8];\n        uint8_t *data;              // \u003c-- pointer\n        size_t len;\n        uint32_t expiry_unix;\n        uint32_t buffered_at_ms;\n        bool valid;\n    };\n\nBut dtn.h lines 54-67 defines:\n    struct lichen_dtn_message {\n        uint8_t packet[CONFIG_LICHEN_DTN_MAX_PACKET_SIZE];  // \u003c-- inline buffer\n        uint16_t packet_len;\n        uint8_t destination_iid[8];\n        uint32_t expiry_unix;\n        uint32_t buffered_at_ms;\n        bool valid;\n    };\n\nThese are completely different layouts! The router.h version uses a pointer, dtn.h uses an inline buffer. If code includes both headers, or uses the wrong type, memory corruption will occur.\n\nOne definition should be removed, or they should be given different names if they serve different purposes.",
   "notes": "Commit: 32fc60dfc",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:52:44.60508Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:12:44.341044895Z",
+  "updated_at": "2026-07-22T20:12:46.311301426Z",
   "started_at": "2026-07-22T20:11:49.458485227Z",
-  "lease_expires_at": "2026-07-22T20:16:49.458485227Z",
-  "heartbeat_at": "2026-07-22T20:11:49.458485227Z"
+  "closed_at": "2026-07-22T20:12:46.311301426Z",
+  "close_reason": "Resolved redefinition by prior rename to lichen_router_dtn_message + inline buffer (matches dtn.h intent). Removed outdated distinct-note. router.h and dtn.h now consistent. Commit 32fc60dfc."
 }
