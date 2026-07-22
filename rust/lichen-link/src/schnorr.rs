@@ -183,7 +183,6 @@ pub fn verify_frame(
     verify(sender_pubkey, &msg, &sig)
 }
 
-// LENGTH || LLSec || epoch || seqnum || dst_addr || inner_payload
 fn build_signable(
     length: u8,
     llsec: u8,
@@ -192,11 +191,12 @@ fn build_signable(
     dst_addr: &[u8],
     inner_payload: &[u8],
 ) -> Vec<u8> {
-    let mut buf = Vec::with_capacity(5 + dst_addr.len() + inner_payload.len());
+    let mut buf = Vec::with_capacity(6 + dst_addr.len() + inner_payload.len());
     buf.push(length);
     buf.push(llsec);
     buf.push(epoch);
     buf.extend_from_slice(&seqnum.to_be_bytes());
+    buf.push(dst_addr.len() as u8);
     buf.extend_from_slice(dst_addr);
     buf.extend_from_slice(inner_payload);
     buf
