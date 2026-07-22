@@ -15,9 +15,18 @@
 LOG_MODULE_REGISTER(lichen_coap_status, CONFIG_LICHEN_COAP_STATUS_LOG_LEVEL);
 
 #define CBOR_CONTENT_FORMAT 60
+#define CBOR_MAP_BASE 0xa0U
+#define CBOR_ARRAY_BASE 0x80U
+#define CBOR_TEXT_BASE 0x60U
+#define CBOR_TRUE 0xf5U
+#define CBOR_FALSE 0xf4U
+#define CBOR_UINT8 0x18U
+#define CBOR_UINT16 0x19U
+#define CBOR_UINT32 0x1aU
 
 static struct lichen_coap_status_config s_config;
 static bool s_initialized;
+static K_MUTEX_DEFINE(s_init_mutex);
 
 struct cbor_ctx {
 	uint8_t *buf;
@@ -53,7 +62,7 @@ static void cbor_put_map_header(struct cbor_ctx *ctx, uint8_t count)
 		if (!cbor_check_space(ctx, 1)) {
 			return;
 		}
-		ctx->buf[ctx->off++] = 0xa0U | count;
+		ctx->buf[ctx->off++] = CBOR_MAP_BASE | count;
 	} else {
 		if (!cbor_check_space(ctx, 2)) {
 			return;
@@ -73,7 +82,7 @@ static void cbor_put_array_header(struct cbor_ctx *ctx, uint8_t count)
 		if (!cbor_check_space(ctx, 1)) {
 			return;
 		}
-		ctx->buf[ctx->off++] = 0x80U | count;
+		ctx->buf[ctx->off++] = CBOR_ARRAY_BASE | count;
 	} else {
 		if (!cbor_check_space(ctx, 2)) {
 			return;
@@ -101,7 +110,7 @@ static void cbor_put_tstr(struct cbor_ctx *ctx, const char *value)
 	}
 
 	if (len < 24U) {
-		ctx->buf[ctx->off++] = 0x60U | (uint8_t)len;
+		ctx->buf[ctx->off++] = CBOR_TEXT_BASE | (uint8_t)len;
 	} else if (len <= UINT8_MAX) {
 		ctx->buf[ctx->off++] = 0x78;
 		ctx->buf[ctx->off++] = (uint8_t)len;
@@ -126,7 +135,7 @@ static void cbor_put_bool(struct cbor_ctx *ctx, bool value)
 	if (!cbor_check_space(ctx, 1)) {
 		return;
 	}
-	ctx->buf[ctx->off++] = value ? 0xf5 : 0xf4;
+	ctx->buf[ctx->off++] = value ? CBOR_TRUE : CBOR_FALSE;
 }
 
 static void cbor_put_uint(struct cbor_ctx *ctx, uint32_t value)
@@ -812,27 +821,17 @@ const struct coap_resource lichen_coap_routes_resource = {
 
 int lichen_coap_status_init(const struct lichen_coap_status_config *config)
 {
-	if (config == NULL) {
+	if (config == NULL || config->status_get == NULL) {
 		return -EINVAL;
 	}
 
-	if (config->status_get == NULL) {
-		return -EINVAL;
+	k_mutex_lock(&s_init_mutex, K_FOREVER);
+	if (!s_initialized) {
+		memcpy(&s_config, config, sizeof(s_config));
+		s_initialized = true;
 	}
-
-	memcpy(&s_config, config, sizeof(s_config));
-	s_initialized = true;
+	k_mutex_unlock(&s_init_mutex);
 
 	LOG_INF("CoAP status handlers initialized");
 	return 0;
-}
-
-void lichen_coap_status_notify(void)
-{
-	LOG_DBG("Status notification triggered");
-}
-
-void lichen_coap_status_neighbors_notify(void)
-{
-	LOG_DBG("Neighbors notification triggered");
 }
