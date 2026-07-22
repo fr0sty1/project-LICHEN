@@ -1,5 +1,6 @@
 {
-  "description": "CCP-16 Load Balancing test vectors for TDMA slot calculation, adaptive SF selection, density-aware channel assignment. Used by Python sim, Rust rpl/gateway, Zephyr lichen/subsys for interop validation.",
+  "format_version": 2,
+  "description": "CCP-16 Load Balancing test vectors for TDMA slot calculation, adaptive SF selection, density-aware channel assignment. Used by Python sim, Rust rpl/gateway, Zephyr lichen/subsys for interop validation. Includes now()/select_channel for TDMA cross-ref per spec/09-packets-timing.md and 02a-coordinated-capacity.md.",
   "reference": "spec/appendix-design-rationale.md#7.6",
   "format": {
     "input": {

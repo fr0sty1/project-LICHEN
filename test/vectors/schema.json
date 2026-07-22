@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["format_version", "description", "vectors"],
   "properties": {
-    "format_version": {"type": "integer", "const": 1},
+    "format_version": {"type": "integer", "enum": [1, 2]},
     "description": {"type": "string"},
     "vectors": {
       "type": "array",
@@ -18,7 +18,8 @@
           {"$ref": "#/definitions/meshtastic_app_compat_vector"},
           {"$ref": "#/definitions/meshcore_app_compat_vector"},
           {"$ref": "#/definitions/oscore_vector"},
-          {"$ref": "#/definitions/rpl_messages_vector"}
+          {"$ref": "#/definitions/rpl_messages_vector"},
+          {"$ref": "#/definitions/ccp_vector"}
         ]
       }
     }
@@ -550,6 +551,53 @@
           "$ref": "#/definitions/hex",
           "description": "Encoded message bytes (excluding ICMPv6 header)"
         }
+      }
+    },
+    "ccp_vector": {
+      "type": "object",
+      "required": ["description", "input", "output"],
+      "additionalProperties": false,
+      "properties": {
+        "description": {"type": "string"},
+        "input": {
+          "type": "object",
+          "properties": {
+            "eui64": {"$ref": "#/definitions/hex"},
+            "epoch": {"type": "integer"},
+            "density": {"type": "integer", "minimum": 0},
+            "snr_db": {"type": "number"},
+            "utilization": {"type": "integer", "minimum": 0, "maximum": 255},
+            "neighbors": {
+              "type": "array",
+              "items": {"$ref": "#/definitions/hex"}
+            },
+            "now": {
+              "type": "integer",
+              "description": "now() u32 timestamp for TDMA cross-reference and monotonicity test"
+            },
+            "select_channel": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Channel selected via hash_32(now() ^ iid) % num_channels"
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "properties": {
+            "slot_id": {"type": "integer"},
+            "sf": {"type": "integer", "minimum": 7, "maximum": 12},
+            "channel": {"type": "integer", "minimum": 0},
+            "tx_allowed": {"type": "boolean"},
+            "expected_sf": {"type": "integer"},
+            "snr_ema": {"type": "number"},
+            "load_factor": {"type": "number"},
+            "hash_32_example": {"type": "integer"},
+            "multi_rx_success": {"type": "integer"},
+            "gateway_capacity": {"type": "integer"}
+          }
+        },
+        "notes": {"type": "string"}
       }
     }
   }
