@@ -269,7 +269,8 @@ config LICHEN_COAP_DEADDROP_RATE_LIMIT_MS
 	default 30000
 	range 1000 300000
 	help
-	  Minimum interval between /confessions POSTs.
+	  Minimum interval between /confessions POSTs (enforced in confessions_post).
+	  Prevents anonymous spam/DoS on DTN storage (security per 06-security.md).
 
 config LICHEN_COAP_DEADDROP_MAX_STORAGE
 	int "Max deaddrop storage entries"
