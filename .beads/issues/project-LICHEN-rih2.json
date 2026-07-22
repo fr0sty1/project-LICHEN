@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-rih2",
+  "title": "[codereview-pass3-edgecases] coap_dtn.c service name fixed to lichen_coap for modular non-standalone builds; matches header and CMake conditional compilation",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "chore",
+  "created_at": "2026-07-22T15:51:38.096387855Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:51:38.096387855Z",
+  "labels": [
+    "codereview"
+  ]
+}
