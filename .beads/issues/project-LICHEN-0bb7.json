@@ -3,15 +3,15 @@
   "title": "app_identity: copy_string calls strlen twice on same string",
   "description": "File: lichen/subsys/lichen/app_identity/app_identity.c:53-56\n\nstatic int copy_string(char *dst, size_t dst_len, const char *src)\n{\n    ...\n    if (strlen(src) \u003e= dst_len) {     // Line 53\n        return -ENAMETOOLONG;\n    }\n    memcpy(dst, src, strlen(src));    // Line 56\n    return 0;\n}\n\nstrlen(src) is computed twice. While src cannot change between calls (no aliasing concern), this is inefficient. On embedded systems with limited resources, unnecessary repeated strlen calls add up.\n\nSuggested fix:\n    size_t src_len = strlen(src);\n    if (src_len \u003e= dst_len) {\n        return -ENAMETOOLONG;\n    }\n    memcpy(dst, src, src_len);",
   "notes": "Commit: efe08af22",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "cleanup",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:40:05.611299Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:19:27.046808614Z",
+  "updated_at": "2026-07-22T23:19:28.908533077Z",
   "started_at": "2026-07-22T23:18:23.649313382Z",
-  "lease_expires_at": "2026-07-22T23:23:23.649313382Z",
-  "heartbeat_at": "2026-07-22T23:18:23.649313382Z"
+  "closed_at": "2026-07-22T23:19:28.908533077Z",
+  "close_reason": "Closed"
 }
