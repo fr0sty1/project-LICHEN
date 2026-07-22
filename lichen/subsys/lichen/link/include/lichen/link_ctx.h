@@ -86,7 +86,7 @@ struct lichen_link_ctx {
  *
  * @param[out] ctx   Link context to initialize
  * @param[in]  eui64 8-byte EUI-64 address
- * @return 0 on success, -EINVAL if ctx or eui64 is NULL
+ * @return 0 on success, -EINVAL if ctx or eui64 is NULL, -EIO on CSPRNG failure
  */
 int lichen_link_init(struct lichen_link_ctx *_Nonnull ctx,
 		     const uint8_t *_Nonnull eui64);

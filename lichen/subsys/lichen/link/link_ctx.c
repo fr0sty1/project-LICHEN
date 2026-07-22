@@ -148,7 +148,18 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
 	if (ctx == NULL || eui64 == NULL) {
 		return -EINVAL;
 	}
-
+	uint8_t rand_byte;
+#ifdef __ZEPHYR__
+	if (sys_csrand_get(&rand_byte, 1) != 0) {
+		return -EIO;
+	}
+#elif defined(__linux__) || defined(__APPLE__)
+	if (getentropy(&rand_byte, 1) != 0) {
+		return -EIO;
+	}
+#else
+	return -EIO;
+#endif
 #ifdef __ZEPHYR__
 	k_mutex_init(&ctx->seq_lock);
 #else
@@ -156,7 +167,6 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
 		return -EIO;
 	}
 #endif
-
 	memcpy(ctx->eui64, eui64, LICHEN_EUI64_LEN);
 	memset(ctx->ed25519_sk, 0, LICHEN_SK_LEN);
 	memset(ctx->ed25519_pk, 0, LICHEN_PK_LEN);
@@ -164,35 +174,13 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
 	ctx->has_key = false;
 	ctx->has_link_key = false;
 	ctx->nonce_exhausted = false;
-
 #ifdef CONFIG_NVS
-	/* Initialization-only restore of persisted tuple (EUI, keys, replay counters,
-	 * epoch/seq tuple + exhaustion). Prevents reuse of previously signed tuple
-	 * across reboot. Falls back to random epoch if no persisted state. */
 	if (restore_tuple(ctx) == 0) {
 		return 0;
 	}
 #endif
-
-	/* ponytail: random epoch in [128,255] for reboot resilience without flash.
-	 * Half-space arithmetic treats upper-half counters as "ahead" of lower-half.
-	 * Callers with persisted epoch should call lichen_link_set_epoch() after init.
-	 *
-	 * SECURITY: ESP32 HW RNG produces weak/predictable output before WiFi/BT radio
-	 * init. On ESP32 without epoch persistence, an attacker who knows the boot
-	 * timing may predict the epoch. Mitigation: persist epoch to flash, or defer
-	 * this call until after radio subsystem init. */
-	uint8_t rand_byte;
-#ifdef __ZEPHYR__
-	sys_csrand_get(&rand_byte, 1);
-#elif defined(__linux__) || defined(__APPLE__)
-	(void)getentropy(&rand_byte, 1);
-#else
-	rand_byte = 0; /* fallback: no CSPRNG available */
-#endif
-	ctx->epoch = 128 + (rand_byte & 0x7F); /* [128, 255] */
+	ctx->epoch = 128 + (rand_byte & 0x7F);
 	ctx->tx_seq = 0;
-
 	return 0;
 }
 

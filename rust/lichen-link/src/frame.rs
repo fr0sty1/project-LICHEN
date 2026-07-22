@@ -1,7 +1,7 @@
 //! LICHEN frame format (spec section 4).
 
 use crate::seqnum::LinkSeqNum;
-use lichen_core::error::TooShort;
+use lichen_core::error::{BufferTooSmall, TooShort};
 
 /// Coarse states in zero-copy link-frame parsing.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -182,6 +182,7 @@ pub enum FrameError {
     SignedEncryptedUnsupported,
     TrailingBytes,
     FrameTooLarge,
+    BufferTooSmall(BufferTooSmall),
 }
 
 impl core::fmt::Display for FrameError {
@@ -199,6 +200,7 @@ impl core::fmt::Display for FrameError {
             }
             Self::TrailingBytes => write!(f, "trailing bytes after frame"),
             Self::FrameTooLarge => write!(f, "frame too large"),
+            Self::BufferTooSmall(e) => write!(f, "frame {}", e),
         }
     }
 }
@@ -207,6 +209,7 @@ impl core::error::Error for FrameError {
     fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
         match self {
             Self::TooShort(e) => Some(e),
+            Self::BufferTooSmall(e) => Some(e),
             _ => None,
         }
     }
@@ -215,6 +218,12 @@ impl core::error::Error for FrameError {
 impl From<TooShort> for FrameError {
     fn from(e: TooShort) -> Self {
         Self::TooShort(e)
+    }
+}
+
+impl From<BufferTooSmall> for FrameError {
+    fn from(e: BufferTooSmall) -> Self {
+        Self::BufferTooSmall(e)
     }
 }
 
@@ -261,14 +270,10 @@ impl<'a> LichenFrame<'a> {
         v
     }
 
-    /// Serialize the frame into `buf`, returning the number of bytes written.
-    ///
-    /// Returns `FrameError::FrameTooLarge` if the body exceeds 255 bytes.
     pub fn write_to(&self, buf: &mut [u8]) -> Result<usize, FrameError> {
         if self.signature.is_present() && self.encryption.is_encrypted() {
             return Err(FrameError::SignedEncryptedUnsupported);
         }
-        // body = LLSec(1) + epoch(1) + seqnum(2) + dst_addr + payload + MIC
         if self.addr_mode.addr_len() != self.dst_addr.len() {
             return Err(FrameError::AddrLenMismatch);
         }
@@ -286,7 +291,7 @@ impl<'a> LichenFrame<'a> {
         }
         let total = 1 + body_len;
         if buf.len() < total {
-            return Err(FrameError::FrameTooLarge);
+            return Err(BufferTooSmall::new(total, buf.len()).into());
         }
         buf[0] = body_len as u8;
         buf[1] = self.llsec_byte();
@@ -544,6 +549,32 @@ mod tests {
             frame.write_to(&mut [0; 64]),
             Err(FrameError::SignatureMicMismatch)
         );
+
+        let frame = LichenFrame {
+            epoch: 0,
+            seqnum: LinkSeqNum::new(0),
+            dst_addr: &[],
+            payload: &[0; 252],
+            mic: &[],
+            addr_mode: AddrMode::None,
+            mic_length: MicLength::Bits32,
+            signature: Signature::Absent,
+            encryption: Encryption::Plaintext,
+        };
+        assert_eq!(frame.write_to(&mut [0; 300]), Err(FrameError::FrameTooLarge));
+
+        let frame = LichenFrame {
+            epoch: 0,
+            seqnum: LinkSeqNum::new(0),
+            dst_addr: &[],
+            payload: &[],
+            mic: &[],
+            addr_mode: AddrMode::None,
+            mic_length: MicLength::Bits32,
+            signature: Signature::Absent,
+            encryption: Encryption::Plaintext,
+        };
+        assert!(matches!(frame.write_to(&mut [0; 4]), Err(FrameError::BufferTooSmall(_))));
     }
 
     // ─── Cross-validation tests from spec/test-vectors/frame.json ───────────────
