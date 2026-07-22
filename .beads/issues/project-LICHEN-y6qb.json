@@ -2,11 +2,15 @@
   "id": "project-LICHEN-y6qb",
   "title": "_Nonnull ops parameter ignored in lichen_meshcore_adapter_init",
   "description": "File: lichen/subsys/lichen/meshcore/include/lichen/meshcore/adapter.h\nLine: 148-150\n\nFile: lichen/subsys/lichen/meshcore/adapter.c\nLine: 1043-1055\n\nThe header declares ops as _Nonnull:\n```c\nvoid lichen_meshcore_adapter_init(\n    struct lichen_meshcore_adapter *_Nonnull adapter,\n    const struct lichen_meshcore_adapter_ops *_Nonnull ops);\n```\n\nBut the implementation handles NULL:\n```c\nif (ops != NULL) {\n    adapter-\u003eops = *ops;\n}\n```\n\nThis is an API contract inconsistency. Either:\n1. Remove _Nonnull annotation (if NULL is valid)\n2. Remove the NULL check (if callers must pass non-NULL)\n3. Assert on NULL input to catch violations",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:45:56.223124Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:45:56.223163Z"
+  "updated_at": "2026-07-22T23:25:35.211693029Z",
+  "started_at": "2026-07-22T23:25:35.211693029Z",
+  "lease_expires_at": "2026-07-22T23:30:35.211693029Z",
+  "heartbeat_at": "2026-07-22T23:25:35.211693029Z"
 }
