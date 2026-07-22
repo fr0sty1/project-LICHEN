@@ -19,10 +19,22 @@
 		zephyr,shell-uart  = &cdc_acm_uart1;
 		lichen,native-uart = &cdc_acm_uart0;
 		zephyr,uart-mcumgr = &cdc_acm_uart2;
+		zephyr,display     = &gdew0154m10;
 	};
 };
 
 &lora {
+	status = "okay";
+};
+
+/* Enable SPI2 + e-ink display for LICHEN_HAS_DISPLAY. Follows t_deck
+ * pattern of enabling in app overlay after board DTS node definition.
+ */
+&spi2 {
+	status = "okay";
+};
+
+&gdew0154m10 {
 	status = "okay";
 };
 
