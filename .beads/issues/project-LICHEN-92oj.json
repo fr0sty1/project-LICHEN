@@ -3,14 +3,14 @@
   "title": "[codereview-pass2] coap_dtn.c: deaddrop_get uses snprintf and JSON instead of SenML CBOR per spec and location.c pattern",
   "description": "lichen/subsys/lichen/coap/coap_dtn.c:103 - should use senml_encode_* for consistency with sensors/location. P3 style. discovered-from:project-LICHEN-fnj7",
   "notes": "Commit: 091e484",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "AI Agent",
   "created_at": "2026-07-22T15:22:03.893405988Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T23:15:00.503654228Z",
+  "updated_at": "2026-07-22T23:15:03.80175861Z",
   "started_at": "2026-07-22T23:08:09.759693312Z",
-  "lease_expires_at": "2026-07-22T23:13:09.759693312Z",
-  "heartbeat_at": "2026-07-22T23:08:09.759693312Z"
+  "closed_at": "2026-07-22T23:15:03.80175861Z",
+  "close_reason": "deaddrop_get now uses senml_encode_deaddrop with pending count from dtn buffer for SenML-CBOR consistency with location.c and spec; resolved merge conflicts in coap_dtn.c; senml.c updated with encode impl; verified with commit 091e484"
 }
