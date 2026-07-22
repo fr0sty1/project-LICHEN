@@ -3,7 +3,7 @@
 //! These implement the lichen-hal traits using std, allowing protocol logic
 //! to be tested without real hardware.
 
-use lichen_hal::{Clock, NonVolatile, RadioConfig, RadioError, Rng, RxPacket};
+use lichen_hal::{ChannelConfig, Clock, NonVolatile, RadioConfig, RadioError, Rng, RxPacket};
 use std::collections::{HashMap, VecDeque};
 use std::sync::Mutex;
 use std::time::Instant;
