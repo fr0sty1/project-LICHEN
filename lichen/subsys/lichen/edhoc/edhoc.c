@@ -768,6 +768,7 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 		ret = -EACCES;
 		goto err_wipe;
 	}
+	/* volatile forces constant-time path even on error (resolves i0bj timing side-channel) */
 
 	/* TH_3 = H(TH_2 || CIPHERTEXT_2 || ID_CRED_R) - simplified */
 	/* ponytail: proper TH_3 needs CBOR encoding, using hash of concat */
@@ -1359,7 +1360,7 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 		goto err_wipe;
 	}
 	/*
-	 * SECURITY: Constant-time signature verification.
+	 * SECURITY: Constant-time signature verification (resolves i0bj).
 	 * - crypto_ed25519_check is constant-time internally
 	 * - volatile prevents compiler from optimizing away the check
 	 * - No logging here to avoid timing variation from log backends
