@@ -5,18 +5,19 @@
 
 # Appendix A: SCHC Compression Rules
 
-See draft-lichen-schc-lora-00.md §4 for rules, §5 for fragmentation (M=1 N=6 T=0, RCS=CRC32, timers, bitmap MSB-first) from constants.toml and test/vectors/.
+See draft-lichen-schc-lora-00.md §4 for rules, §5 for fragmentation (M=1 N=6 T=0, RCS=CRC32, timers, bitmap MSB-first) from constants.toml and test/vectors/. Full table is canonical here.
 
-| Rule ID | Use Case | Compressed Size |
-|---------|----------|-----------------|
-| 0 | Link-local IPv6 + UDP + CoAP | 4-6 bytes |
-| 1 | Global IPv6 + UDP + CoAP | 12-14 bytes |
-| 2 | ICMPv6 Echo | 3 bytes |
-| 3 | RPL DIO (link-local) | 8 bytes |
-| 4 | RPL DAO (routable ULA source for multi-hop) | 6 bytes |
-| 5 | Link-local IPv6 + UDP + OSCORE | 6 bytes |
-| 6 | Global IPv6 + UDP + OSCORE | 14 bytes |
-| 255 | No compression | Full headers |
+| Rule ID | Use Case | Compressed Size | Notes |
+|---------|----------|-----------------|-------|
+| 0 | Link-local IPv6 + UDP + CoAP | 4-6 bytes | MSB(64) IIDs; ports MSB(12)/LSB(4) for CoAP/SenML range |
+| 1 | Global IPv6 + UDP + CoAP | 12-14 bytes | ULA/GUA source, full dst as needed |
+| 2 | ICMPv6 Echo | 3 bytes | Type 128/129, Code=0 not-sent |
+| 3 | RPL DIO (link-local) | 8 bytes | ICMPv6 type=155/code=0 + options |
+| 4 | RPL DAO (routable ULA source for multi-hop) | 6 bytes | Multi-hop source preservation |
+| 5 | Link-local IPv6 + UDP + OSCORE | ~6 bytes residue | + OSCORE tail |
+| 6 | Global IPv6 + UDP + OSCORE | ~14 bytes residue | + OSCORE tail |
+| 7 | MQTT-SN (port 10883) | ~6 bytes | Exact port match |
+| 255 | No compression | Full headers | Version mismatch or unknown rule fallback |
 
 Current constants (Rust/C synchronized):
 
