@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-y8kq",
+  "title": "codereview pass1: Builder struct update missed in from_bytes impl",
+  "description": "rust/lichen-core/src/announce.rs:108 - from_bytes() does not yet set current_channel in returned Announce. Will default to 0 or panic on struct update. P1. codereview",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T17:17:17.771707246Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:17:17.771707246Z",
+  "labels": [
+    "codereview"
+  ]
+}
