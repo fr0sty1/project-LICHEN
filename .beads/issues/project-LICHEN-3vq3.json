@@ -2,6 +2,7 @@
   "id": "project-LICHEN-3vq3",
   "title": "SLIP transport: IPv6 payload length could cause integer overflow",
   "description": "File: lichen/subsys/lichen/transport/slip_transport.c\nLines: 139-143\n\nIn validate_ipv6_packet():\n\n    expected = IPV6_HDR_LEN + ipv6_payload_len(pkt);\n    if (expected != len) {\n        LOG_WRN(\"SLIP RX: length mismatch (header says %zu, got %zu)\", expected, len);\n        return -EINVAL;\n    }\n\nipv6_payload_len() returns uint16_t (line 112):\n    return sys_get_be16(\u0026pkt[IPV6_PAYLOAD_OFFSET]);\n\nIPV6_HDR_LEN is 40 (line 104).\n\nIf a malicious/corrupted packet has payload_len = 0xFFFF:\n- expected = 40 + 65535 = 65575\n\nThis exceeds SLIP_LCI_MTU (1280), so the check at line 128-131 should catch it:\n\n    if (len \u003e SLIP_LCI_MTU) {\n        LOG_WRN(\"SLIP RX: packet exceeds MTU (%zu \u003e %u)\", len, SLIP_LCI_MTU);\n        return -EMSGSIZE;\n    }\n\nHowever, the check is on 'len' (actual received bytes), not 'expected'. A packet could have len=1280 but claim payload_len=65535, which would be rejected by the mismatch check - but the error message would be confusing.\n\nThis is a minor issue but could cause confusion in debugging.",
+  "notes": "Commit: 52f230848",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:55:29.874748Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:04:39.340450138Z",
+  "updated_at": "2026-07-22T23:06:24.505951624Z",
   "started_at": "2026-07-22T23:04:39.340450138Z",
   "lease_expires_at": "2026-07-22T23:09:39.340450138Z",
   "heartbeat_at": "2026-07-22T23:04:39.340450138Z"
