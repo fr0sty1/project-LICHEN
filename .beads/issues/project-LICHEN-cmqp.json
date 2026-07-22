@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-cmqp",
+  "title": "codereview: lora_l2.c does not read LICHEN_LORA_CCA_ENABLE or call lora_cad before lora_send",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:46:24.275640561Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:46:24.275640561Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-cmqp",
+      "depends_on_id": "project-LICHEN-nrfg",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:46:24.39030824Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
