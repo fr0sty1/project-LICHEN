@@ -227,16 +227,23 @@ class MeshtasticGattService:
         return self._from_num
 
     def _drain_expired(self) -> int:
-        """Remove expired entries from front of queue."""
+        """Silently drop all expired entries (handles non-monotonic deadlines).
+
+        Processes original queue length to remove expired entries anywhere
+        in the queue by rotating non-expired entries to the back. Mirrors
+        the Rust lichen-meshtastic implementation.
+        """
         now = monotonic()
         dropped = 0
-        while self._from_radio_queue:
-            front = self._from_radio_queue[0]
-            if front.is_expired(now):
-                self._from_radio_queue.popleft()
+        original_len = len(self._from_radio_queue)
+        for _ in range(original_len):
+            if not self._from_radio_queue:
+                break
+            entry = self._from_radio_queue.popleft()
+            if entry.is_expired(now):
                 dropped += 1
             else:
-                break
+                self._from_radio_queue.append(entry)
         return dropped
 
     def peek_from_radio(self) -> bytes | None:

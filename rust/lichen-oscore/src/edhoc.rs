@@ -119,46 +119,49 @@ fn edhoc_kdf(
     context: &[u8],
     length: usize,
 ) -> Result<heapless::Vec<u8, 128>, EdhocError> {
-    // Build info: CBOR sequence of (length, TH, label, context)
     let mut info = heapless::Vec::<u8, 128>::new();
 
-    // length as CBOR uint
     if length <= 23 {
         info.push_err(length as u8)?;
-    } else {
+    } else if length <= 255 {
         info.push_err(0x18)?;
         info.push_err(length as u8)?;
+    } else {
+        return Err(EdhocError::BufferTooSmall);
     }
 
-    // TH as CBOR bstr
     if th.len() <= 23 {
         info.push_err(0x40 | th.len() as u8)?;
-    } else {
+    } else if th.len() <= 255 {
         info.push_err(0x58)?;
         info.push_err(th.len() as u8)?;
+    } else {
+        return Err(EdhocError::BufferTooSmall);
     }
     info.extend_err(th)?;
 
-    // label as CBOR tstr
     let label_bytes = label.as_bytes();
     if label_bytes.len() <= 23 {
         info.push_err(0x60 | label_bytes.len() as u8)?;
-    } else {
+    } else if label_bytes.len() <= 255 {
         info.push_err(0x78)?;
         info.push_err(label_bytes.len() as u8)?;
+    } else {
+        return Err(EdhocError::BufferTooSmall);
     }
     info.extend_err(label_bytes)?;
 
-    // context as CBOR bstr
     if context.is_empty() {
-        info.push_err(0x40)?; // empty bstr
+        info.push_err(0x40)?;
     } else if context.len() <= 23 {
         info.push_err(0x40 | context.len() as u8)?;
         info.extend_err(context)?;
-    } else {
+    } else if context.len() <= 255 {
         info.push_err(0x58)?;
         info.push_err(context.len() as u8)?;
         info.extend_err(context)?;
+    } else {
+        return Err(EdhocError::BufferTooSmall);
     }
 
     // HKDF-Expand

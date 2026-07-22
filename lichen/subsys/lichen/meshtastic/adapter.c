@@ -530,6 +530,13 @@ static bool admin_payload_variant_field(uint32_t field)
 static bool parse_admin_payload(const uint8_t *payload, size_t len,
 				enum lichen_meshtastic_adapter_packet_kind *kind)
 {
+	if (kind == NULL || payload == NULL || len == 0U) {
+		if (kind != NULL) {
+			*kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED;
+		}
+		return false;
+	}
+
 	struct pb_cursor cur = { .buf = payload, .len = len };
 
 	*kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_UNSUPPORTED;
