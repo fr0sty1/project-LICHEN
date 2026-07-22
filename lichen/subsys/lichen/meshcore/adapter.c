@@ -602,8 +602,6 @@ static int commit_settings_with_ok(
 	struct lichen_meshcore_adapter *adapter,
 	const struct lichen_meshcore_compat_settings *old_settings)
 {
-	struct lichen_meshcore_compat_settings *settings =
-		compat_settings(adapter);
 	int ret = persist_settings_or_error(adapter, old_settings);
 
 	if (ret < 0) {

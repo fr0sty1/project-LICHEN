@@ -219,7 +219,13 @@ impl Radio for SimRadio {
 
     fn configure(&mut self, config: &RadioConfig) {
         self.config = *config;
-        // ponytail: config sent to sim on next TX/RX if sim supports it
+    }
+
+    async fn configure_channels(
+        &mut self,
+        _channels: &[ChannelConfig],
+    ) -> Result<(), Self::Error> {
+        Ok(())
     }
 
     async fn cca(&mut self, _channel: u8, _threshold_dbm: i8) -> Result<bool, Self::Error> {

@@ -240,9 +240,12 @@ int lichen_app_location_time_from_hal(
 		.vertical_accuracy_mm_valid = hal->vertical_accuracy_mm_valid,
 		.vertical_accuracy_mm = hal->vertical_accuracy_mm,
 	};
-	memcpy(app->source_name, hal->source_name,
-		sizeof(app->source_name) - 1U);
-	app->source_name[sizeof(app->source_name) - 1U] = '\0';
+	size_t name_len = strnlen(hal->source_name, sizeof(app->source_name));
+	if (name_len == sizeof(app->source_name)) {
+		return -EINVAL;
+	}
+	memcpy(app->source_name, hal->source_name, name_len);
+	app->source_name[name_len] = '\0';
 	return 0;
 }
 
