@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-ail8.1",
+  "title": "Process worker13-batch: identify non-bd commits vs checkpoint, link via grep/bd, cherry-pick to main, 3x codereview (fix ALL), update beads, file new",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T20:03:44.623634884Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T20:03:44.623634884Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ail8.1",
+      "depends_on_id": "project-LICHEN-ail8",
+      "type": "parent-child",
+      "created_at": "2026-07-22T20:03:44.698304522Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
