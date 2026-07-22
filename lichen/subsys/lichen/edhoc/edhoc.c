@@ -595,7 +595,7 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	uint8_t sig_struct_2[256] = {0};
 	uint8_t mac_3[32] = {0};
 	uint8_t sig_struct_3[256] = {0};
-	uint8_t plaintext_3[128] = {0};
+	uint8_t plaintext_3[EDHOC_MAX_MSG3_LEN - EDHOC_TAG_LEN] = {0};
 
 	if (ctx == NULL || msg2 == NULL || peer_pubkey == NULL ||
 	    msg3 == NULL || msg3_len == NULL) {

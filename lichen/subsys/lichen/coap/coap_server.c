@@ -190,20 +190,20 @@ static int config_put(struct coap_resource *resource,
 
 	if (s_handlers.config_put == NULL) {
 		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
+					   COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
 	}
 
 	payload = coap_packet_get_payload(request, &payload_len);
 	if (payload == NULL || payload_len == 0) {
 		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_BAD_REQUEST, NULL, 0);
+					   COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
 	}
 
 	ret = s_handlers.config_put(payload, payload_len);
 	if (ret < 0) {
 		LOG_ERR("Config PUT callback failed: %d", ret);
 		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_BAD_REQUEST, NULL, 0);
+					   COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
 	}
 
 	return send_ack(resource, request, addr, addr_len,
