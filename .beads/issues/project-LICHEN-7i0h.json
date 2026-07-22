@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-7i0h",
+  "title": "[codereview] coap_dtn.c: added comments violating NO COMMENTS policy",
+  "description": "coap_dtn.c:46-78 contains explanatory comments. Per coding guidelines in AGENTS.md, DO NOT ADD ANY COMMENTS unless explicitly asked. This was introduced in the coap_respond chunk. Fix by removing all comments. lichen/subsys/lichen/coap/coap_dtn.c:41",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:21:48.344730499Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:21:48.344730499Z",
+  "labels": [
+    "codereview"
+  ]
+}
