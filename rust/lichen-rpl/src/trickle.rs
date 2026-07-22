@@ -170,10 +170,15 @@ impl TrickleTimer {
     /// Starts timer if stopped; no-op if already at `imin` and running (RFC 6206 §4.2).
     pub fn reset(&mut self, now: u32, rand_offset: u32) {
 <<<<<<< HEAD
+<<<<<<< HEAD
         self.try_reset(now, rand_offset)
             .expect("invalid trickle timer transition");
 =======
         let _ = self.try_reset(now, rand_offset);
+>>>>>>> origin/worktree-worker1
+=======
+        self.try_reset(now, rand_offset)
+            .expect("invalid trickle timer transition");
 >>>>>>> origin/worktree-worker1
     }
 

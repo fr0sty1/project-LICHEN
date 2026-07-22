@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-uzsj",
+  "title": "NDP messages must require hop_limit=255 per RFC 4861",
+  "description": "File: rust/lichen-ipv6/src/lib.rs:775-802\n\nThe Neighbor Solicitation handler in handle_icmpv6() does not validate that the IPv6 hop_limit is 255 before processing.\n\nPer RFC 4861 Section 6.1.1 (Neighbor Solicitation validation):\n- The IP Hop Limit field has a value of 255, i.e., the packet could not possibly have been forwarded by a router.\n\nAnd RFC 4861 Section 6.1.2 (Neighbor Advertisement validation):\n- The IP Hop Limit field has a value of 255\n\nCurrent code (lines 775-777):\n```rust\nicmpv6_type::NEIGHBOR_SOLICITATION =\u003e {\n    let ns = NeighborSolicitation::from_bytes(body)?;\n    // No hop_limit check!\n```\n\nImpact: An attacker could send spoofed NS/NA messages from a remote network, bypassing the link-local security assumption of Neighbor Discovery. This could enable:\n- Address spoofing (claiming to be another node)\n- Denial of service (incorrect neighbor cache entries)\n- Man-in-the-middle attacks\n\nFix: Add validation at the start of NS/NA handling:\n```rust\nif ip_header.hop_limit != 255 {\n    return Ok(None); // Silently drop per RFC 4861\n}\n```",
+  "notes": "Commit: 061ea0109",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T17:14:10.384709Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-22T20:10:37.081189029Z",
+  "started_at": "2026-07-22T20:09:21.073891674Z",
+  "closed_at": "2026-07-22T20:10:37.081189029Z",
+  "close_reason": "Added hop_limit==255 validation for NEIGHBOR_SOLICITATION and NEIGHBOR_ADVERTISEMENT in handle_icmpv6 per RFC 4861. Tests and clippy pass. Commit 061ea0109"
+}
