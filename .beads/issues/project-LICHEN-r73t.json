@@ -1,12 +1,14 @@
 {
   "id": "project-LICHEN-r73t",
   "title": "coap_dtn.c: no DTN buffer integration or rate limiting",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "created_at": "2026-07-22T15:13:18.446770933Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:13:18.446770933Z",
+  "updated_at": "2026-07-22T15:15:53.481852646Z",
+  "closed_at": "2026-07-22T15:15:53.481852646Z",
+  "close_reason": "DTN+rate limit added",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-r73t",
