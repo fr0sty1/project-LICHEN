@@ -28,6 +28,14 @@
       "created_at": "2026-07-22T17:31:59.974448079Z",
       "created_by": "ec2-user",
       "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-7fhs",
+      "depends_on_id": "project-LICHEN-da2q",
+      "type": "blocks",
+      "created_at": "2026-07-22T17:32:00.8246922Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
     }
   ]
 }
