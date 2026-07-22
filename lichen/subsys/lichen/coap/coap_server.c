@@ -40,8 +40,9 @@ static uint16_t s_coap_port = 5683;
 /* Registered handlers */
 static struct lichen_coap_server_handlers s_handlers;
 
-/* Response buffer size for stack allocation */
 #define COAP_RESPONSE_BUF_SIZE CONFIG_COAP_SERVER_MESSAGE_SIZE
+BUILD_ASSERT(CONFIG_COAP_SERVER_MESSAGE_SIZE >= LICHEN_COAP_SERVER_MAX_PAYLOAD + 64,
+	     "CoAP response buffer must accommodate max payload plus overhead");
 
 /*
  * Helper to build a CBOR response.

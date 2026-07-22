@@ -51,7 +51,7 @@ extern "C" {
 #define LICHEN_COAP_NEIGHBORS_MAX 8
 
 /** Maximum CBOR payload size for responses */
-#define LICHEN_COAP_SERVER_MAX_PAYLOAD 256
+#define LICHEN_COAP_SERVER_MAX_PAYLOAD 512
 
 /**
  * @brief Node status provider callback
