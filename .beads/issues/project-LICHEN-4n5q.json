@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-4n5q",
+  "title": "[codereview-pass1] coap_status.c comments",
+  "description": "lichen/subsys/lichen/coap/coap_status.c:4-9 - Doxygen header and section separators violate no-comment rule. Remove all non-SPDX comments. Also fix uint8_t map_count calculations causing -Wconversion warnings at lines ~246,267,297,330,457.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:06:53.849069257Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:06:53.849069257Z",
+  "labels": [
+    "codereview"
+  ]
+}
