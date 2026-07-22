@@ -2,12 +2,16 @@
   "id": "project-LICHEN-gsuc",
   "title": "Pass 3: RPL compliance gaps in Rust vs spec appendix-rpl.md and C impl",
   "description": "lichen-rpl/src/dodag.rs MRHOF and Trickle not fully matching spec params in appendix-rpl.md (e.g. DIO interval, rank computation). No Python interop test for RPL mesh formation. P3 as impacts completeness.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T14:44:19.483021564Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T14:44:19.483021564Z",
+  "updated_at": "2026-07-22T22:36:56.044748571Z",
+  "started_at": "2026-07-22T22:36:56.044748571Z",
+  "lease_expires_at": "2026-07-22T22:41:56.044748571Z",
+  "heartbeat_at": "2026-07-22T22:36:56.044748571Z",
   "labels": [
     "codereview"
   ]
