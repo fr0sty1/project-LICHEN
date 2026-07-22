@@ -2,11 +2,15 @@
   "id": "project-LICHEN-toz5",
   "title": "coap_client.c: OSCORE PIV extraction silently fails on parse error",
   "description": "File: lichen/subsys/lichen/coap/coap_client.c\nLines: 458-464\n\nWhen protecting a request with OSCORE, the PIV is extracted for later response decryption:\n```c\nret = oscore_option_parse(oscore_opt_buf, oscore_opt_len, \u0026opt);\nif (ret == OSCORE_OK \u0026\u0026 opt.has_piv \u0026\u0026 opt.piv_len \u003e 0) {\n    memcpy(ctx-\u003erequest_piv, opt.piv, opt.piv_len);\n    ctx-\u003erequest_piv_len = opt.piv_len;\n}\n```\n\nIf oscore_option_parse fails or PIV is not present, ctx-\u003erequest_piv_len remains 0. Later, oscore_unprotect_response (line 319) is called with empty PIV, which may fail or cause incorrect decryption.\n\nThe request was already protected and sent, so we cannot recover. Should fail the request earlier if PIV extraction fails.\n\nCategory: CORRECTNESS - error handling",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:42:39.915643Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:42:39.915677Z"
+  "updated_at": "2026-07-22T20:16:20.324971229Z",
+  "started_at": "2026-07-22T20:16:20.324971229Z",
+  "lease_expires_at": "2026-07-22T20:21:20.324971229Z",
+  "heartbeat_at": "2026-07-22T20:16:20.324971229Z"
 }
