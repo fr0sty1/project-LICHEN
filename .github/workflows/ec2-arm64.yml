@@ -25,10 +25,12 @@ jobs:
           uname -m
           test "$(uname -m)" = "aarch64" || { echo "Not ARM64!"; exit 1; }
 
-      - name: Install dependencies (if needed)
+      - name: Install dependencies
         run: |
-          which west || pip3 install west
+          which west || pip3 install --user west
+          which uv || pip3 install --user uv
           which cmake || sudo dnf install -y cmake ninja-build gcc meson
+          pip3 install -r zephyr/scripts/requirements.txt || true
 
       - name: Setup west workspace
         run: |
@@ -73,7 +75,7 @@ jobs:
 
       - name: Install Python deps
         run: |
-          pip3 install uv || true
+          pip3 install --user uv || true
           uv sync --locked --all-extras --dev
 
       - name: Run tests
