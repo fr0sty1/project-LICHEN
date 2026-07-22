@@ -1,12 +1,16 @@
 {
   "id": "project-LICHEN-uwuz",
   "title": "[codereview] Python subagent: rules.py and codec need alignment with updated RPL_DAO model in adaptation.md and Rust codec for DAO base fields",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T14:50:30.833944411Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T14:50:30.833944411Z",
+  "updated_at": "2026-07-22T14:54:05.031412712Z",
+  "started_at": "2026-07-22T14:54:05.031412712Z",
+  "lease_expires_at": "2026-07-22T14:59:05.031412712Z",
+  "heartbeat_at": "2026-07-22T14:54:05.031412712Z",
   "labels": [
     "codereview"
   ],
