@@ -203,13 +203,12 @@ def parse_zephyr_logs(log_dir: Path) -> dict[str, NodeStats]:
             continue
 
         for line in content.splitlines():
-            line_upper = line.upper()
-            if "[TX]" in line_upper or "TX:" in line_upper or "SEND" in line_upper:
+            if re.search(r'\b(?:\[TX\]|TX:|SEND)\b', line, re.IGNORECASE):
                 match = re.search(r"hash[=:]?\s*(?:0x)?([a-fA-F0-9]{8,32})", line)
                 if match:
                     stats.tx_hashes.add(match.group(1).lower())
                 stats.tx_count += 1
-            elif "[RX]" in line_upper or "RX:" in line_upper or "RECV" in line_upper:
+            elif re.search(r'\b(?:\[RX\]|RX:|RECV)\b', line, re.IGNORECASE):
                 match = re.search(r"hash[=:]?\s*(?:0x)?([a-fA-F0-9]{8,32})", line)
                 if match:
                     stats.rx_hashes.add(match.group(1).lower())

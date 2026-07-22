@@ -487,6 +487,7 @@ mod std_ext {
                 rule_id: 0,
                 tiles: HashMap::new(),
                 current_window: 0,
+                completed_windows: HashSet::new(),
                 all1_seen: false,
                 all1_window: 0,
                 all1_payload: Vec::new(),
@@ -497,6 +498,30 @@ mod std_ext {
         }
 
         fn abs_window(&self, frag: &Fragment<'_>) -> usize {
+            if !frag.is_all_1() {
+                let pos = self.window_size - 1 - frag.fcn as usize;
+                let parity = frag.window as usize;
+                let current_parity = self.current_window % 2;
+                let mut older = if parity == current_parity {
+                    if self.current_window >= 2 { self.current_window - 2 } else { 0 }
+                } else {
+                    if self.current_window >= 1 { self.current_window - 1 } else { 0 }
+                };
+                while older > 0 {
+                    if !self.completed_windows.contains(&older) {
+                        let older_idx = older * self.window_size + pos;
+                        if self.tiles.contains_key(&older_idx) {
+                            // duplicate or filled; continue to find gap or treat as current
+                        } else {
+                            // gap in incomplete older window: likely retransmission
+                            return older;
+                        }
+                    } else if self.tiles.contains_key(&(older * self.window_size + pos)) {
+                        return older;
+                    }
+                    older = older.saturating_sub(2);
+                }
+            }
             if frag.window == (self.current_window % 2) as u8 {
                 self.current_window
             } else {

@@ -576,9 +576,12 @@ fn decompress_coap(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     let dst = dst_int.to_be_bytes();
     let coap_b0 = (1u8 << 6) | ((coap_type & 0x3) << 4) | (coap_tkl & 0x0F);
     let coap_len = 4 + tail.len();
-    let udp_len = (8 + coap_len) as u16;
+    let total_udp = 8usize.saturating_add(coap_len);
+    if total_udp > u16::MAX as usize {
+        return Err(BufferTooSmall::new(total_udp, u16::MAX as usize).into());
+    }
+    let udp_len = total_udp as u16;
 
-    // Build CoAP bytes for checksum.
     if coap_len > SCHC_MAX_DECOMPRESSED {
         return Err(BufferTooSmall::new(coap_len, SCHC_MAX_DECOMPRESSED).into());
     }
@@ -590,7 +593,7 @@ fn decompress_coap(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     coap_buf[4..4 + tail.len()].copy_from_slice(tail);
     let coap_slice = &coap_buf[..coap_len];
 
-    let udp_cksum = udp_checksum(&src, &dst, src_port, dst_port, coap_slice);
+    let udp_cksum = udp_checksum(&src, &dst, src_port, dst_port, coap_slice)?;
     let total = 40 + 8 + coap_len;
     if total > out.len() {
         return Err(BufferTooSmall::new(total, out.len()).into());
@@ -835,8 +838,8 @@ fn decompress_mqtt_sn(data: &[u8], out: &mut [u8], _rule_id: u8) -> Result<usize
 /// matches. Returns the number of bytes written to `out`.
 pub fn compress(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     if packet.len() < 40 || packet[0] >> 4 != 6 {
-        // Not IPv6 — uncompressed fallback
-        let needed = 1 + packet.len();
+        // Not IPv6 — uncompressed fallback (saturating_add prevents usize overflow)
+        let needed = packet.len().saturating_add(1);
         if out.len() < needed {
             return Err(BufferTooSmall::new(needed, out.len()).into());
         }

@@ -1182,16 +1182,17 @@ static int enqueue_static_sync(struct lichen_meshtastic_adapter *adapter,
 {
 	uint8_t payload[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
 	int ret;
+	int enqueue_ret;
 
 	ret = lichen_meshtastic_encode_my_info_payload(info, payload,
 						       sizeof(payload));
 	if (ret < 0) {
 		return ret;
 	}
-	ret = enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_MY_INFO,
+	enqueue_ret = enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_MY_INFO,
 				       payload, (size_t)ret);
-	if (ret < 0) {
-		return ret;
+	if (enqueue_ret < 0) {
+		return enqueue_ret;
 	}
 
 	ret = lichen_meshtastic_encode_metadata_payload(info, payload,
@@ -1199,10 +1200,10 @@ static int enqueue_static_sync(struct lichen_meshtastic_adapter *adapter,
 	if (ret < 0) {
 		return ret;
 	}
-	ret = enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_METADATA,
+	enqueue_ret = enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_METADATA,
 				       payload, (size_t)ret);
-	if (ret < 0) {
-		return ret;
+	if (enqueue_ret < 0) {
+		return enqueue_ret;
 	}
 
 	ret = lichen_meshtastic_encode_region_presets_payload(info, payload,
@@ -1210,21 +1211,21 @@ static int enqueue_static_sync(struct lichen_meshtastic_adapter *adapter,
 	if (ret < 0) {
 		return ret;
 	}
-	ret = enqueue_payload(adapter,
+	enqueue_ret = enqueue_payload(adapter,
 				       LICHEN_MESHTASTIC_FROM_RADIO_REGION_PRESETS,
 				       payload, (size_t)ret);
-	if (ret < 0) {
-		return ret;
+	if (enqueue_ret < 0) {
+		return enqueue_ret;
 	}
 
 	ret = lichen_meshtastic_encode_channel_payload(info, payload, sizeof(payload));
 	if (ret < 0) {
 		return ret;
 	}
-	ret = enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_CHANNEL,
+	enqueue_ret = enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_CHANNEL,
 				       payload, (size_t)ret);
-	if (ret < 0) {
-		return ret;
+	if (enqueue_ret < 0) {
+		return enqueue_ret;
 	}
 
 	for (size_t i = 0U; i < ARRAY_SIZE(s_config_sections); i++) {
@@ -1233,10 +1234,10 @@ static int enqueue_static_sync(struct lichen_meshtastic_adapter *adapter,
 		if (ret < 0) {
 			return ret;
 		}
-		ret = enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_CONFIG,
+		enqueue_ret = enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_CONFIG,
 				    payload, (size_t)ret);
-		if (ret < 0) {
-			return ret;
+		if (enqueue_ret < 0) {
+			return enqueue_ret;
 		}
 	}
 
@@ -1245,11 +1246,11 @@ static int enqueue_static_sync(struct lichen_meshtastic_adapter *adapter,
 	if (ret < 0) {
 		return ret;
 	}
-	ret = enqueue_payload(adapter,
+	enqueue_ret = enqueue_payload(adapter,
 				       LICHEN_MESHTASTIC_FROM_RADIO_MODULE_CONFIG,
 				       payload, (size_t)ret);
-	if (ret < 0) {
-		return ret;
+	if (enqueue_ret < 0) {
+		return enqueue_ret;
 	}
 
 	return 0;
