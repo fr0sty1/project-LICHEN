@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-da2q.3.4",
+  "title": "Zephyr impl: operating class parameter definitions and lookup tables",
+  "description": "Implement operating class support in Zephyr as part of CCP-3 from da2q.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:12:25.746228798Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:12:25.746228798Z",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.3.4",
+      "depends_on_id": "project-LICHEN-da2q.3",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:12:25.850042693Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
