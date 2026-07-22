@@ -502,6 +502,8 @@ static int slip_iface_send(const struct device *dev, struct net_pkt *pkt)
 		k_mutex_unlock(&ctx->tx_mutex);
 		return ret;
 	}
+	/* TX validation ensures only valid IPv6 (version, length, etc.)
+	 * reaches SLIP encode per bead shnr. Matches RX path. */
 
 	/* Encode with SLIP framing */
 	ret = slip_encode(pkt_buf, pkt_len, ctx->tx_frame, sizeof(ctx->tx_frame),
