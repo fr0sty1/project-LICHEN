@@ -2,11 +2,15 @@
   "id": "project-LICHEN-bpuv",
   "title": "Unix timestamp 0 cannot be encoded as base_time",
   "description": "File: lichen/subsys/lichen/senml/senml.c\nLines: 75-78\n\nCATEGORY: PROTOCOL\n\nThe senml_pack_init() function uses base_time \u003e 0 to determine if base_time should be set:\n  if (base_time \u003e 0) {\n      pack-\u003ebase_time = base_time;\n      pack-\u003ehas_base_time = true;\n  }\n\nUnix timestamp 0 (January 1, 1970 00:00:00 UTC) is a valid timestamp, but this code treats it as 'not set'.\n\nRFC 8428 Section 4.2 states base_time is an optional field that can be any numeric value. There is no prohibition against timestamp 0.\n\nIMPACT:\n- Cannot encode events that occurred at Unix epoch\n- Historical data from embedded systems that initialized clocks to 0 cannot be properly timestamped\n- Unlikely in practice but violates RFC\n\nFIX: Change API to accept a bool parameter explicitly indicating whether base_time should be included, or use UINT64_MAX as sentinel, or accept a pointer to optional base_time.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:51:51.236736Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:51:51.236766Z"
+  "updated_at": "2026-07-22T22:52:12.724931254Z",
+  "started_at": "2026-07-22T22:52:12.724931254Z",
+  "lease_expires_at": "2026-07-22T22:57:12.724931254Z",
+  "heartbeat_at": "2026-07-22T22:52:12.724931254Z"
 }
