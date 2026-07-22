@@ -34,10 +34,10 @@
 
 LOG_MODULE_REGISTER(lichen_coap_keys, CONFIG_LICHEN_COAP_KEYS_LOG_LEVEL);
 
-/* Maximum keys to store */
 #ifndef CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES
 #define CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES 16
 #endif
+BUILD_ASSERT(CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES <= 16, "CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES >16 risks stack overflow in encode_keys_list_cbor (project-LICHEN-vw14)");
 
 /* CBOR content-format code */
 #define CBOR_CONTENT_FORMAT 60
