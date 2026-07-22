@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-f28b",
+  "title": "codereview-pass-1 project-LICHEN-hm3t: flash-t_echo.sh batch/provision changes",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T14:46:48.537504152Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:46:48.537504152Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-f28b",
+      "depends_on_id": "project-LICHEN-hm3t",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T14:46:48.627723525Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
