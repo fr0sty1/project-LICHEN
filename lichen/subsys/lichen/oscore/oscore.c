@@ -969,22 +969,6 @@ int oscore_ctx_lookup(const uint8_t *recipient_id,
 
 	ctx = ctx_find_by_recipient_locked(recipient_id, recipient_id_len);
 	if (ctx != NULL) {
-		/*
-		 * Copy context to caller buffer.
-		 *
-		 * WARNING: The copied context CANNOT be used with
-		 * oscore_protect_request() or oscore_unprotect_request()
-		 * because those functions require a pointer to the real
-		 * context in s_contexts[] for atomic state updates.
-		 *
-		 * Use oscore_ctx_get() instead to obtain a pointer that
-		 * works with protect/unprotect operations.
-		 *
-		 * SECURITY: The copy contains key material (sender_key,
-		 * recipient_key, common_iv). Caller MUST call oscore_ctx_wipe()
-		 * on ctx_out before it goes out of scope to prevent key
-		 * material persisting on stack.
-		 */
 		memcpy(ctx_out, ctx, sizeof(*ctx_out));
 		ret = OSCORE_OK;
 	}
@@ -1000,12 +984,6 @@ void oscore_ctx_wipe(struct oscore_ctx *ctx)
 	}
 }
 
-/**
- * @warning The returned pointer references internal state and is only valid
- * while no other thread modifies or frees OSCORE contexts. For thread-safe
- * access, use oscore_ctx_lookup() which copies the context, or ensure
- * external synchronization around all uses of the returned pointer.
- */
 int oscore_ctx_get(const uint8_t *recipient_id,
 		   size_t recipient_id_len,
 		   struct oscore_ctx **ctx_out)
