@@ -9,5 +9,15 @@
   "updated_at": "2026-07-22T15:44:40.882257909Z",
   "labels": [
     "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-i986",
+      "depends_on_id": "project-LICHEN-rq3t",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:44:40.985740156Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
   ]
 }
