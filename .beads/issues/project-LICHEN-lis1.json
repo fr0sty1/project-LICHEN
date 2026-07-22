@@ -2,12 +2,16 @@
   "id": "project-LICHEN-lis1",
   "title": "spec/02a-coordinated-capacity.md: TOC uses plain list instead of markdown links",
   "description": "Table of Contents should have proper markdown links to sections for better navigation, per IETF draft style in other spec files. Discovered during codereview of TOC update for Appendix A and CCP-15.2. Tag: codereview",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T16:33:36.901491062Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:33:36.901491062Z",
+  "updated_at": "2026-07-22T16:34:22.27666763Z",
+  "started_at": "2026-07-22T16:34:22.27666763Z",
+  "lease_expires_at": "2026-07-22T16:39:22.27666763Z",
+  "heartbeat_at": "2026-07-22T16:34:22.27666763Z",
   "labels": [
     "codereview"
   ]
