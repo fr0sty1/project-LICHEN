@@ -17,7 +17,7 @@ class DutyCycleTracker:
     regulatory duty cycle constraints.
 
     Attributes:
-        limit_percent: Maximum allowed duty cycle as percentage (default 1.0%).
+        limit_percent: Maximum allowed duty cycle as percentage (>0.0, default 1.0%).
         window_seconds: Sliding window duration in seconds (default 3600).
     """
 
@@ -30,8 +30,13 @@ class DutyCycleTracker:
 
         Args:
             limit_percent: Maximum duty cycle as percentage (e.g., 1.0 for 1%).
+                Must be > 0.0.
             window_seconds: Duration of sliding window in seconds.
         """
+        if limit_percent <= 0.0:
+            raise ValueError(
+                f"limit_percent must be positive, got {limit_percent}"
+            )
         self.limit_percent = limit_percent
         self.window_seconds = window_seconds
         self._window_us = window_seconds * 1_000_000
