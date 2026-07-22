@@ -2,6 +2,7 @@
   "id": "project-LICHEN-n6db",
   "title": "LichenRemote.uri_base missing brackets for IPv6 addresses",
   "description": "File: python/src/lichen/coap/transport.py:115-120\n\nThe uri_base property constructs URIs without IPv6 bracket notation:\n```python\n@property\ndef uri_base(self) -\u003e str:\n    return f'coap://{self._host}'\n```\n\nFor IPv6 addresses like 'fe80::1', this produces 'coap://fe80::1' which is malformed - RFC 3986 requires brackets: 'coap://[fe80::1]'\n\nThis causes parse failures when the URI is used with standard URI parsing libraries, and interoperability issues with other CoAP implementations.\n\nFix: Detect IPv6 addresses and wrap them:\n```python\n@property\ndef uri_base(self) -\u003e str:\n    if ':' in self._host:  # IPv6\n        return f'coap://[{self._host}]'\n    return f'coap://{self._host}'\n```",
+  "notes": "Commit: da93d2151",
   "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:17:59.721376Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:22:37.726287653Z",
+  "updated_at": "2026-07-22T20:22:49.699972732Z",
   "started_at": "2026-07-22T20:22:37.726287653Z",
   "lease_expires_at": "2026-07-22T20:27:37.726287653Z",
   "heartbeat_at": "2026-07-22T20:22:37.726287653Z"
