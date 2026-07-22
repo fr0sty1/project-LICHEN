@@ -1,0 +1,11 @@
+{
+  "id": "project-LICHEN-ufjy",
+  "title": "[codereview-2] ccp9_vectors rendezvous test cases lack independent oracle for announce parse",
+  "description": "test/vectors/generate.py:1770 announce_channel_parse_roundtrip should reference exact L2 dispatch or SenML format from spec. Add oracle computation. File as codereview. Tag: codereview",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T17:11:37.550205057Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:11:37.550205057Z"
+}
