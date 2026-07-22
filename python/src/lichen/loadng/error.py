@@ -56,11 +56,6 @@ class RouteErrorManager:
     def process_rerr(
         self, rerr: RERR, from_neighbor: IPv6Address | str, now: int
     ) -> RerrAction | None:
-        """Process a received RERR; return a propagated RERR action or None.
-
-        Only acts if a local route to the unreachable destination goes through
-        ``from_neighbor`` (the neighbour that reported the failure).
-        """
         dest = to_ipv6(rerr.unreachable)
         from_neighbor = to_ipv6(from_neighbor)
 
