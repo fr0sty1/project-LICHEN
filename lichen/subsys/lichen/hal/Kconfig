@@ -62,6 +62,10 @@ config LICHEN_HAS_PMIC
 	  Enable when devicetree provides an okay pmic0 alias for a Zephyr
 	  charger, PMIC, or board-specific power telemetry/control device.
 
+config LICHEN_POE
+	bool
+	select LICHEN_HAS_PMIC
+
 config LICHEN_HAS_BUTTONS
 	bool "Board has user buttons"
 	depends on GPIO

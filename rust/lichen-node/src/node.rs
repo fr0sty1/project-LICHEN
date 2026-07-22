@@ -120,7 +120,7 @@ impl Node {
         {
             let mut dst_bytes = [0u8; 16];
             dst_bytes.copy_from_slice(&ipv6[field::DST_OFFSET..IPV6_HEADER_LEN]);
-            if dst_bytes == self.node_id.link_local_addr().0 {
+            if dst_bytes == self.node_id.link_local_addr().0 || dst_bytes[0] == 0xfd || (dst_bytes[0] & 0xe0) == 0x20 {
                 return self.reply_echo_ipv6(ipv6, reply);
             }
         }
@@ -283,7 +283,7 @@ impl RplNode {
                 // Handle ping
                 let mut dst_bytes = [0u8; 16];
                 dst_bytes.copy_from_slice(&pkt[field::DST_OFFSET..IPV6_HEADER_LEN]);
-                if dst_bytes == self.node.node_id.link_local_addr().0 {
+                if dst_bytes == self.node.node_id.link_local_addr().0 || dst_bytes[0] == 0xfd || (dst_bytes[0] & 0xe0) == 0x20 {
                     let mut reply_ipv6 = [0u8; 256];
                     let reply_ipv6_len = self.node.reply_echo_ipv6(pkt, &mut reply_ipv6);
                     let reply_len = wrap_compressed_reply(&reply_ipv6[..reply_ipv6_len], reply);

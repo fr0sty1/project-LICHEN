@@ -1,10 +1,10 @@
-//! RPL routing engine for LICHEN (RFC 6550, Non-Storing Mode).
+//! RPL routing engine for LICHEN (RFC 6550, Non-Storing Mode, CCP-16).
 //!
 //! Modules:
-//! - `message`  — DIO / DAO / DIS / DAO-ACK wire codec + TLV option parser
-//! - `dodag`    — DODAG state machine with MRHOF parent selection
-//! - `routing`  — Non-Storing routing table and DAO manager
-//! - `trickle`  — Trickle timer state machine (RFC 6206)
+//! - `message` — DIO/DAO/DIS/DAO-ACK codec + TLV
+//! - `dodag` — DODAG state with MRHOF
+//! - `routing` — non-storing table + DAO
+//! - `trickle` — Trickle timer (RFC 6206)
 
 #![no_std]
 
