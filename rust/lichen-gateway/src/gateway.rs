@@ -91,7 +91,7 @@ impl Gateway {
         self.routes.contains_key(dst) || (dst[0] == 0xfe && dst[1] == 0x80) || self.rpl_node.router.lookup_route(dst).is_some()
     }
 
-    pub fn process_rpl(&mut self, frame: &[u8], now_ms: u32) -> (Option<std::vec::Vec<u8>>, RplEvent) {
+    pub fn process_rpl(&mut self, frame: &[u8], now_ms: u32) -> (Option<Vec<u8>>, RplEvent) {
         let mut reply = vec![0u8; 512];
         let (reply_len, event) = self.rpl_node.handle_frame_rpl(frame, &mut reply, now_ms);
         let reply_opt = if reply_len > 0 {

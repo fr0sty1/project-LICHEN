@@ -157,6 +157,7 @@ config LICHEN_COAP_STATUS_LOG_LEVEL
 config LICHEN_COAP_MSG
 	bool "LCI /msg/* resource handlers"
 	depends on LICHEN_COAP_SERVER
+	select LICHEN_COAP_STATUS
 	select ZCBOR
 	select COAP_URI_WILDCARD
 	help

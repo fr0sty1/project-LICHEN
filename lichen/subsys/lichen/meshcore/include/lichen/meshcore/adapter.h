@@ -24,6 +24,15 @@
 #include <lichen/meshcore/codec.h>
 #include <lichen/meshcore/limits.h>
 
+/**
+ * Thread-safety: All adapter functions must be called from a single thread
+ * or protected by external synchronization. The adapter is not reentrant.
+ * Internal state (pending queue, stream buffer, statistics) is modified
+ * without locks or atomics. feed_stream() may be called from ISR/RX thread;
+ * emit_text/emit_status/process_raw from application context. Caller must
+ * ensure mutual exclusion.
+ */
+
 struct lichen_meshcore_compat_settings;
 
 typedef int (*lichen_meshcore_adapter_enqueue_fn)(const uint8_t *_Nonnull frame,
