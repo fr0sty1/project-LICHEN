@@ -2,6 +2,7 @@
   "id": "project-LICHEN-ra3n",
   "title": "loadng.c: Route cache expiry comparison not wraparound-safe",
   "description": "File: lichen/subsys/lichen/routing/loadng.c\nLines: 244, 328-330\n\nIn lichen_loadng_cache_lookup() line 244:\n    if (now_ms != 0 \u0026\u0026 found-\u003evalid_until_ms \u003c= now_ms) {\n\nIn lichen_loadng_cache_expire() lines 328-330:\n    if (route_cache[i].active \u0026\u0026\n        route_cache[i].valid_until_ms \u003c= now_ms) {\n\nThese comparisons are NOT wraparound-safe. After ~49 days of uptime:\n- valid_until_ms could be 0xFFFFFF00 (near wrap)\n- now_ms could be 0x00000100 (after wrap)\n- The comparison 0xFFFFFF00 \u003c= 0x100 is FALSE, keeping expired routes active\n\nThe correct approach uses signed comparison:\n    (int32_t)(valid_until_ms - now_ms) \u003c= 0\n\nOther parts of the codebase handle this correctly (gradient.c lines 129, 151, 228).",
+  "notes": "Commit: 18dd92c99",
   "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:50:25.132669Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:13:52.158920522Z",
+  "updated_at": "2026-07-22T20:13:59.28026267Z",
   "started_at": "2026-07-22T20:13:52.158920522Z",
   "lease_expires_at": "2026-07-22T20:18:52.158920522Z",
   "heartbeat_at": "2026-07-22T20:13:52.158920522Z"
