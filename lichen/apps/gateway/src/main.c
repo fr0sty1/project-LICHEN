@@ -108,7 +108,12 @@ static int gateway_rpl_init(void) {
 	int ret = 0;
 #if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
 	uint8_t dodag_id[16] = {0};
-	dodag_id[0] = 0xfd;
+	if (IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)) {
+		dodag_id[0] = 0xfd;
+		dodag_id[1] = 0x00;
+	} else {
+		dodag_id[0] = 0xfd;
+	}
 	dodag_id[15] = 0x01;
 	ret = lichen_rpl_dodag_init_root(&s_dodag, 0x00, dodag_id, 0);
 	if (ret == 0) {
