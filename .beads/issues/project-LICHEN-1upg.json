@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-1upg",
+  "title": "[codereview-pass3-robustness-6] Update references and test vectors mention for new content",
+  "description": "After all chunks: References section should explicitly include draft-lichen-tdma and AGENTS.md note if normative. Test vectors update note should reference new FSM and multi-root cases. P3 readability. Final pass 3/3 - no critical findings. All robustness details added in IETF style. Ready to close epic after this set.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:22:01.692869219Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:22:01.692869219Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1upg",
+      "depends_on_id": "project-LICHEN-ofrf",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:22:01.792856979Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
