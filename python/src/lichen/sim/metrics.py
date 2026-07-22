@@ -92,7 +92,7 @@ class NodeMetrics:
             "tx_bytes": self.tx_bytes,
             "rx_bytes": self.rx_bytes,
             "unique_peers": sorted(self.unique_peers),
-            "errors": list(self.errors),
+            "errors": sorted(self.errors),
             "packet_hashes_sent": sorted(self.packet_hashes_sent),
             "packet_hashes_received": sorted(self.packet_hashes_received),
         }
