@@ -2,12 +2,16 @@
   "id": "project-LICHEN-c88c",
   "title": "codereview: reexport of RplEvent in lichen-gateway/lib.rs may expose internal node types",
   "description": "The reexport adds lichen_node::RplEvent to public API of gateway. Is this intended? Consider pub(crate) or a gateway-specific event enum to hide RPL details. P2 API design. discovered-from:project-LICHEN-3k6w.2",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T15:45:48.956885498Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:45:48.956885498Z",
+  "updated_at": "2026-07-22T15:54:08.284401926Z",
+  "started_at": "2026-07-22T15:54:08.284401926Z",
+  "lease_expires_at": "2026-07-22T15:59:08.284401926Z",
+  "heartbeat_at": "2026-07-22T15:54:08.284401926Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-c88c",
