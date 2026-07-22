@@ -2,11 +2,15 @@
   "id": "project-LICHEN-2t8v",
   "title": "icmpv6_checksum skipping logic has subtle index handling",
   "description": "File: rust/lichen-ipv6/src/lib.rs:617-625\n\nThe checksum loop skips the checksum field:\n```rust\nlet mut i = 0;\nwhile i + 1 \u003c icmpv6_msg.len() {\n    if i == 2 {\n        i += 2;\n        continue;\n    }\n    sum += ((icmpv6_msg[i] as u32) \u003c\u003c 8) | (icmpv6_msg[i + 1] as u32);\n    i += 2;\n}\n```\n\nWhen i==2, the code does i+=2 then continue, so i becomes 4 and the loop continues.\nWhen i!=2, the code processes bytes i and i+1, then does i+=2.\n\nIssue: The while condition is `i + 1 \u003c icmpv6_msg.len()`, which means:\n- For 4-byte message: processes i=0 (bytes 0,1), then i=2 skips, then i=4 fails condition (4+1=5 \u003e 4), loop ends. But bytes 4-5 don't exist anyway.\n- For 5-byte message: same as 4-byte, then line 627 handles byte 4 as odd byte.\n- For 6-byte message: i=0 processes bytes 0-1, i=2 skips to i=4, i=4 processes bytes 4-5, i=6 fails condition. Correct.\n\nThe logic is correct but fragile. If someone refactors to i+=2 only at end, they'll break the skip logic.\n\nConsider a clearer implementation:\n```rust\nfor i in (0..icmpv6_msg.len()).step_by(2) {\n    if i == 2 { continue; } // skip checksum\n    let high = icmpv6_msg.get(i).copied().unwrap_or(0);\n    let low = icmpv6_msg.get(i+1).copied().unwrap_or(0);\n    sum += ((high as u32) \u003c\u003c 8) | (low as u32);\n}\n```",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:36:01.692276Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:36:01.692309Z"
+  "updated_at": "2026-07-22T23:32:25.996747802Z",
+  "started_at": "2026-07-22T23:32:25.996747802Z",
+  "lease_expires_at": "2026-07-22T23:37:25.996747802Z",
+  "heartbeat_at": "2026-07-22T23:32:25.996747802Z"
 }
