@@ -64,6 +64,9 @@ static struct oscore_ctx *ctx_find_by_recipient_locked(const uint8_t *recipient_
 	if (recipient_id_len > OSCORE_ID_MAX_LEN) {
 		return NULL;
 	}
+	if (recipient_id_len > 0 && recipient_id == NULL) {
+		return NULL;
+	}
 
 	/* Pad input to OSCORE_ID_MAX_LEN with zeros for constant-time compare */
 	uint8_t padded_input[OSCORE_ID_MAX_LEN] = {0};
