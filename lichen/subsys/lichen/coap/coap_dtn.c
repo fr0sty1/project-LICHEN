@@ -14,6 +14,7 @@
 
 LOG_MODULE_REGISTER(lichen_coap_dtn, CONFIG_LICHEN_COAP_DEADDROP_LOG_LEVEL);
 
+
 static const struct lichen_deaddrop_provider *s_provider;
 static struct lichen_dtn_buffer s_dtn_buf;
 static struct senml_pack s_senml_pack;
@@ -44,6 +45,7 @@ static bool parse_recipient(const uint8_t *payload, size_t len, uint8_t dest_iid
 
 static uint32_t dtn_get_unix_time(void) { return (uint32_t)(k_uptime_get() / 1000); }
 
+
 static void dtn_expire_work_handler(struct k_work *work) {
 	ARG_UNUSED(work);
 	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
@@ -51,6 +53,7 @@ static void dtn_expire_work_handler(struct k_work *work) {
 	k_mutex_unlock(&s_dtn_buf_mutex);
 	k_work_reschedule(&s_dtn_expire_work, K_SECONDS(30));
 }
+
 
 int lichen_coap_deaddrop_register(const struct lichen_deaddrop_provider *provider) {
 	if (provider == NULL) return -EINVAL;
@@ -69,9 +72,11 @@ int lichen_coap_deaddrop_register(const struct lichen_deaddrop_provider *provide
 	return 0;
 }
 
+
 int lichen_coap_dtn_init(void) {
 	return lichen_coap_deaddrop_register(NULL);
 }
+
 
 static int deaddrop_post(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len) {
 	if (s_provider == NULL || s_provider->store == NULL) return COAP_RESPONSE_CODE_NOT_FOUND;
