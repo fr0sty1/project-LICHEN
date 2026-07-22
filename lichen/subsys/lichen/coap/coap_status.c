@@ -1,28 +1,16 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 
-<<<<<<< HEAD
-/**
- * @file coap_status.c
- * @brief LCI /status resource handlers (RFC 7641 Observable)
- *
- * Implements /status, /status/neighbors, /status/routes per LCI spec 17.5.3.
- * CCP-17 capacity validation for CBOR encoders (BUILD_ASSERT + runtime checks).
- */
-
 #include <stdio.h>
-=======
->>>>>>> origin/integration/worker3-20260722
 #include <string.h>
 #include <errno.h>
+#include <stdint.h>
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/net/coap.h>
 #include <zephyr/net/coap_service.h>
 #include <zephyr/net/net_ip.h>
-#include <errno.h>
-#include <stdint.h>
 
 #include <lichen/coap_status.h>
 #include <lichen/coap_config.h>
