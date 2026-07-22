@@ -74,13 +74,13 @@ Data channels are selected via select_channel (normative pseudocode below, cross
 ```
 function select_channel(ctx, metrics, t):
     IF (metrics.density > 8) OR (NOT ctx.wall_clock_valid) THEN
-        RETURN 0   // control CH0 for high density or desync (per vectors[1,3])
+        RETURN 0
     hash = fnv1a32( (ctx.eui64 XOR t XOR ctx.epoch) )
     n = ctx.num_data_channels IF ctx.num_data_channels > 0 ELSE 3
     RETURN 1 + (hash MOD n)
 
 function now():
-    RETURN current_sfn()   // superframe tick aligned to LICHEN_TDMA_Slot (exact: now_ts = sfn * ticks_per_slot from struct; modulo superframe for rendezvous per draft-lichen-tdma)
+    RETURN current_sfn()
 ```
 Note: All operators are spelled out (OR, NOT, MOD, XOR) for language-agnostic IETF compatibility. No Rust 'or', no C types or structs, no dead code. now_ts TDMA alignment uses LICHEN_TDMA_Slot relation for slot calc.
 
@@ -94,7 +94,7 @@ Updates MUST be propagated in RPL metric container. Root optimizer uses reported
 
 ```
 function adaptive_sf_select(density, snr_db, load_factor, t):
-    snr_ema = ema_update(previous_ema, snr_db, t)  // alpha=0.1 over 300s window; exact match to vectors
+    snr_ema = ema_update(previous_ema, snr_db, t)
     IF (density > 8) OR (snr_ema < 0) OR (load_factor > 0.8) THEN
         RETURN 11
     ELSE IF (density < 5) AND (snr_ema > 8.0) THEN
