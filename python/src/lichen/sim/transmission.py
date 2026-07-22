@@ -61,6 +61,12 @@ def airtime_us(payload_len: int) -> int:
     return int(airtime_s * 1_000_000)
 
 
+def lr_fhss_airtime_us(payload_len: int) -> int:
+    if payload_len < 0:
+        raise ValueError(f"payload_len must be non-negative, got {payload_len}")
+    return airtime_us(payload_len) * 2
+
+
 @dataclass
 class Transmission:
     """A LoRa radio transmission in the simulated channel.
@@ -90,3 +96,4 @@ class Transmission:
     id: str = field(default_factory=lambda: str(uuid4()))
     frequency_hz: int = 915_000_000
     channel: int = 0
+    phy_mode: str = "lora"
