@@ -1233,7 +1233,7 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 	int ret;
 	uint8_t k_3[16] = {0};
 	uint8_t iv_3[13] = {0};
-	uint8_t plaintext_3[128] = {0};
+	uint8_t plaintext_3[EDHOC_MAX_MSG3_LEN - EDHOC_TAG_LEN] = {0};
 	uint8_t mac_3[32] = {0};
 	uint8_t sig_struct_3[256] = {0};
 
