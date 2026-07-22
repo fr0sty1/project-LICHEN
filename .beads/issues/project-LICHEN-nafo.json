@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-nafo",
+  "title": "Update related files: hal, gateway, rpl, lichend",
+  "description": "Propagate changes to lichen-hal/src/lib.rs, lichen-gateway/src/gateway.rs, lichen-gateway/src/bin/lichend.rs, lichen-rpl/src/message.rs. Ensure clippy clean, no dead code, perfect test vector matching.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T23:55:37.815381409Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T23:55:37.815381409Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-nafo",
+      "depends_on_id": "project-LICHEN-l3j5",
+      "type": "blocks",
+      "created_at": "2026-07-22T23:55:37.938455831Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
