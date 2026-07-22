@@ -1,12 +1,16 @@
 {
   "id": "project-LICHEN-bcsn",
   "title": "Implement human-readable node address (Base32) in Rust lichen-link::identity",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T14:40:16.996860947Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T14:40:16.996860947Z",
+  "updated_at": "2026-07-22T14:40:22.282329178Z",
+  "started_at": "2026-07-22T14:40:22.282329178Z",
+  "lease_expires_at": "2026-07-22T14:45:22.282329178Z",
+  "heartbeat_at": "2026-07-22T14:40:22.282329178Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-bcsn",
