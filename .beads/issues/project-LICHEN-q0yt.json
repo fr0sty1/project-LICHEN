@@ -1,12 +1,16 @@
 {
   "id": "project-LICHEN-q0yt",
   "title": "codereview-P3: spec/02a-coordinated-capacity.md not yet updated with CCP-13 adaptive duty pseudocode or reference to standards/ tables",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T17:06:53.406576043Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T17:06:53.406576043Z",
+  "updated_at": "2026-07-22T17:06:58.410890569Z",
+  "started_at": "2026-07-22T17:06:58.410890569Z",
+  "lease_expires_at": "2026-07-22T17:11:58.410890569Z",
+  "heartbeat_at": "2026-07-22T17:06:58.410890569Z",
   "labels": [
     "codereview"
   ],
