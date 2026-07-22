@@ -94,7 +94,8 @@ class SimRadio:
         """
         for coord in position:
             if not math.isfinite(coord):
-                raise ValueError(f"Position coordinates must be finite, got {position}")
+                msg = f"Position coordinates must be finite, got {position}"
+                raise ValueError(msg)
         self._host = host
         self._port = port
         self._sim_id = sim_id
