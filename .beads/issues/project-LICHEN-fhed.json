@@ -1,12 +1,16 @@
 {
   "id": "project-LICHEN-fhed",
   "title": "codereview P1: reply_buf dropped in forward_mesh_to_upstream when event also set",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T16:03:36.344667034Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:03:36.344667034Z",
+  "updated_at": "2026-07-22T16:03:42.257157982Z",
+  "started_at": "2026-07-22T16:03:42.257157982Z",
+  "lease_expires_at": "2026-07-22T16:08:42.257157982Z",
+  "heartbeat_at": "2026-07-22T16:03:42.257157982Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-fhed",
