@@ -51,6 +51,7 @@ MAX_MESSAGE_LENGTH = 1 << 20
 # LoRa maximum payload size (varies by SF/bandwidth but 255 is safe upper bound
 # for most configurations; real hardware will reject larger).
 MAX_LORA_PAYLOAD = 255
+MAX_TIMEOUT_MS = 4_294_967
 
 logger = structlog.get_logger()
 
@@ -101,17 +102,12 @@ class SimRadio:
         self._sim_id = sim_id
         self._node_id = node_id
         self._position = position
-<<<<<<< HEAD
         if not (1 <= port <= 65535):
             raise ValueError(f"port must be in range 1-65535, got {port}")
-        if not sim_id or not node_id or len(sim_id) > 255 or len(node_id) > 255:
-            raise ValueError("sim_id and node_id must be non-empty and <=255 chars")
-=======
-        if len(sim_id.encode("utf-8")) > 255 or len(node_id.encode("utf-8")) > 255:
-            raise ProtocolError("sim_id or node_id exceeds 255 bytes")
         if not sim_id or not node_id:
             raise ProtocolError("sim_id and node_id cannot be empty")
->>>>>>> origin/integration/worker3-20260722
+        if len(sim_id.encode("utf-8")) > 255 or len(node_id.encode("utf-8")) > 255:
+            raise ProtocolError("sim_id or node_id exceeds 255 bytes")
         self._stream: SocketStream | None = None
         self._freq_hz: int = 915_000_000
         self._tx_power_dbm: int = 14
@@ -129,19 +125,15 @@ class SimRadio:
         return self._tx_power_dbm
 
     def _validate_response(self, response: bytes) -> int:
-        """Validate response length before decoding payload.
-
-        Raises SimRadioError on empty or too-short responses for types that
-        carry payload.
-        """
         if not response:
             raise SimRadioError("Empty simulator response")
-        msg_type = self._validate_response(response)
+        msg_type = get_message_type(response)
         if len(response) < 2 and msg_type in (MSG_ERR, MSG_RX_PACKET, MSG_TIME_OK):
             raise SimRadioError(
                 f"Simulator response type 0x{msg_type:02x} too short for payload"
             )
         return msg_type
+
 
     async def connect(self) -> None:
         """Open TCP connection to the simulator and register this node.
@@ -206,12 +198,7 @@ class SimRadio:
         async with self._lock:
             await self._send(msg)
             response = await self._recv()
-<<<<<<< HEAD
-        msg_type = get_message_type(response)
-=======
         msg_type = self._validate_response(response)
-
->>>>>>> origin/integration/worker3-20260722
         if msg_type == MSG_TX_DONE:
             packet_hash = hashlib.sha256(payload).digest()[:16].hex()
             logger.info("tx",node_id=self._node_id,len=len(payload),hex=payload[:16].hex(),packet_hash=packet_hash)
@@ -228,17 +215,14 @@ class SimRadio:
 
     async def receive(self, timeout_ms: int, channel: int = 0) -> tuple[bytes, int, int] | None:
         self._ensure_connected()
+        if not (0 <= timeout_ms <= MAX_TIMEOUT_MS):
+            raise ValueError(f"timeout_ms must be <= {MAX_TIMEOUT_MS} (~71 minutes), got {timeout_ms}")
         timeout_us = timeout_ms * 1000
         msg = encode_rx_enter(timeout_us, channel)
         async with self._lock:
             await self._send(msg)
             response = await self._recv()
-<<<<<<< HEAD
-        msg_type = get_message_type(response)
-=======
         msg_type = self._validate_response(response)
-
->>>>>>> origin/integration/worker3-20260722
         if msg_type == MSG_RX_PACKET:
             payload, rssi, snr = decode_rx_packet(response[1:])
             packet_hash = hashlib.sha256(payload).digest()[:16].hex()
@@ -283,12 +267,7 @@ class SimRadio:
         async with self._lock:
             await self._send(msg)
             response = await self._recv()
-<<<<<<< HEAD
-        msg_type = get_message_type(response)
-=======
         msg_type = self._validate_response(response)
-
->>>>>>> origin/integration/worker3-20260722
         if msg_type == MSG_CAD_RESULT:
             return decode_cad_result(response[1:])
         elif msg_type == MSG_ERR:
