@@ -1,1 +1,2 @@
 {"id":"019f8abd-810f-7b08-a380-3e1d966f64bf","issue_id":"project-LICHEN-vts4","event_type":"created","actor":"ec2-user","old_value":"","new_value":"","created_at":"2026-07-22T16:51:42.991724004Z"}
+{"id":"019f8abd-8895-7500-853d-f26473a90228","issue_id":"project-LICHEN-vts4","event_type":"label_added","actor":"ec2-user","comment":"Added label: codereview","created_at":"2026-07-22T16:51:44.917328672Z"}
