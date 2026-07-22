@@ -109,6 +109,9 @@ static void connected_cb(struct bt_conn *conn, uint8_t err)
 		return;
 	}
 
+	lichen_ble_conn_cb_t cb = NULL;
+	void *ctx = NULL;
+	enum lichen_ble_conn_state reported_state = LICHEN_BLE_DISCONNECTED;
 	k_mutex_lock(&transport_state.lock, K_FOREVER);
 
 	if (transport_state.conn != NULL) {
@@ -127,11 +130,10 @@ static void connected_cb(struct bt_conn *conn, uint8_t err)
 
 	LOG_DBG("Connected, initial ATT MTU: %u", bt_gatt_get_mtu(conn));
 
-	lichen_ble_conn_cb_t cb = NULL;
-	void *ctx = NULL;
 	if (transport_state.initialized) {
 		cb = transport_state.config.conn_cb;
 		ctx = transport_state.config.user_ctx;
+		reported_state = transport_state.state;
 	}
 
 	k_mutex_unlock(&transport_state.lock);
@@ -141,7 +143,7 @@ static void connected_cb(struct bt_conn *conn, uint8_t err)
 	LOG_INF("BLE connected: %s", addr);
 
 	if (cb) {
-		cb(LICHEN_BLE_CONNECTED, ctx);
+		cb(reported_state, ctx);
 	}
 }
 

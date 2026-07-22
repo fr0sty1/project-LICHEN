@@ -445,7 +445,6 @@ async fn forward_mesh_to_upstream<T: TunLike>(gw: &mut Gateway, frame: &[u8], tu
             // backhaul or icmp unreachable (TODO for full impl)
         }
     }
-    None
 }
 
 // ── TunLike trait (abstracts TunDevice vs. no-op placeholder) ─────────────────
