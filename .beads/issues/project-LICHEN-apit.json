@@ -1,12 +1,16 @@
 {
   "id": "project-LICHEN-apit",
   "title": "[codereview-pass1] TDMA slot timing in spec/02a-coordinated-capacity.md:25-45 references non-existent scheduler.rs for drift and tdma-timing.json; create dedicated TDMA scheduler module first or update reference",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T16:18:16.098456867Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:18:16.098456867Z",
+  "updated_at": "2026-07-22T16:18:33.523568704Z",
+  "started_at": "2026-07-22T16:18:33.523568704Z",
+  "lease_expires_at": "2026-07-22T16:23:33.523568704Z",
+  "heartbeat_at": "2026-07-22T16:18:33.523568704Z",
   "labels": [
     "codereview"
   ],
