@@ -2,15 +2,15 @@
   "id": "project-LICHEN-xgse",
   "title": "[merge-conflict] worktree-worker17: coap_keys.c",
   "notes": "Commit: 3da3c0924",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:45:31.411932639Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:55:25.743014226Z",
+  "updated_at": "2026-07-22T23:55:28.302710434Z",
   "started_at": "2026-07-22T23:53:20.731375663Z",
-  "lease_expires_at": "2026-07-22T23:58:20.731375663Z",
-  "heartbeat_at": "2026-07-22T23:53:20.731375663Z"
+  "closed_at": "2026-07-22T23:55:28.302710434Z",
+  "close_reason": "Added missing lichen_key_pubkey_to_iid impl in coap_keys.c matching Python and l2/ipv6_addr.c semantics (SHA256 truncate + clear U/L bit); resolved merge conflict loss of function; tests now pass"
 }
