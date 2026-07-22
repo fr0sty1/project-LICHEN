@@ -109,15 +109,9 @@ Per-SF SNR thresholds (normative, for ema_update fallback): SF9: >8dB, SF10: >0d
 
 ## 2a.4. Time Synchronization
 
-Time sync is provided by the DODAG root via epoch in beacons and RPL options. Nodes MUST maintain:
+Time sync provided by DODAG root via epoch in beacons/RPL options (see 2a.2 for time-provider, epoch_floor validation, SFN modulo/wrap independence). Nodes MUST maintain `epoch_floor`, `stratum`, `wall_clock_valid` (see `docs/firmware-time-provider.md`).
 
-* `epoch_floor`: floor of current epoch for modulo calculations.
-* `stratum`: root distance for priority.
-* `wall_clock_valid`: flag set when synced within tolerance.
-
-The root's time-provider (GPS, NTP over CoAP, or local) determines the epoch. Nodes adopt the lowest DODAG ID root's time. Sync drift > threshold triggers desync state.
-
-See interaction with `lichen_rpl_dodag_init()` ordering per subsystem init graph in AGENTS.md.
+Root time-provider is authoritative. Adopt lowest DODAG ID root. Drift > threshold triggers desync (2a.5). Integrates with `lichen_rpl_dodag_init()` per AGENTS.md.
 
 ## 2a.5. Desync Recovery State Machine
 
