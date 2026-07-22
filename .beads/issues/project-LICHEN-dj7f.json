@@ -2,11 +2,15 @@
   "id": "project-LICHEN-dj7f",
   "title": "fix_time_unix uses uint32_t causing Y2K38 overflow",
   "description": "File: lichen/subsys/lichen/app_interface/include/lichen/app_interface/app_interface.h:134\n\n  bool fix_time_unix_valid;\n  uint32_t fix_time_unix;\n\nAnd in app_time_snapshot at line 159:\n  bool unix_time_valid;\n  uint32_t unix_time;\n\nUnix timestamps stored as uint32_t will overflow on January 19, 2038 (Y2K38 problem). After this date:\n- Valid timestamps will wrap to low values\n- Time comparisons will be incorrect\n- Timestamp arithmetic will produce unexpected results\n\nThis affects:\n- lichen_app_location_time_snapshot.fix_time_unix (line 134)\n- lichen_app_time_snapshot.unix_time (line 159)\n\nFor embedded systems with long deployment lifetimes, this is a design consideration. Either:\n1. Document the 2038 limitation explicitly\n2. Change to uint64_t or int64_t for future-proofing",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:42:18.396923Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:42:18.39696Z"
+  "updated_at": "2026-07-22T23:26:52.020983142Z",
+  "started_at": "2026-07-22T23:26:52.020983142Z",
+  "lease_expires_at": "2026-07-22T23:31:52.020983142Z",
+  "heartbeat_at": "2026-07-22T23:26:52.020983142Z"
 }
