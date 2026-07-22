@@ -47,6 +47,11 @@ config LICHEN_DEFAULT_SF
 	  per-neighbor data available. SF10 is the normative baseline per
 	  coordinated-capacity spec.
 
+config LICHEN_DUTY_CYCLE
+	bool "Duty cycle tracker (CCP-13)"
+	default y
+	depends on LICHEN
+
 endif # LICHEN
 
 

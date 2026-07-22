@@ -117,7 +117,7 @@ config LICHEN_LINK_CCP16_LOAD_BALANCING
 	select LICHEN_SCHC
 	select LICHEN_ROUTING
 	select LICHEN_TDMA
-	default y
+	default n
 	help
 	  Enable CCP-16 congestion control point load metric and rebalancing for
 	  TDMA slot assignment at DEFCON-scale densities. See DEFCON density
