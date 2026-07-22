@@ -1,9 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/integration/worker2-20260722
 #include <errno.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
@@ -14,17 +10,9 @@
 #include <lichen/routing/dtn.h>
 #include <lichen/senml.h>
 #include <zcbor_decode.h>
-<<<<<<< HEAD
 #include <zephyr/net/net_ip.h>
 
 LOG_MODULE_REGISTER(lichen_coap_dtn, CONFIG_LICHEN_COAP_DEADDROP_LOG_LEVEL);
-
-#define CONFESSIONS_RATE_LIMIT_S 30
-=======
-
-LOG_MODULE_REGISTER(lichen_coap_dtn, CONFIG_LICHEN_COAP_DEADDROP_LOG_LEVEL);
-
->>>>>>> origin/integration/worker2-20260722
 
 static const struct lichen_deaddrop_provider *s_provider;
 static struct lichen_dtn_buffer s_dtn_buf;

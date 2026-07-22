@@ -111,8 +111,13 @@ class TxQueueStats:
 class TxQueue:
     """Priority TX queue with deadline expiry.
 
-    Thread safety: Not thread-safe. Use external synchronization if
-    accessed from multiple async tasks.
+    Reentrancy: expire_stale(), push() (which does list rebuild on
+    preempt/expire), and pop() are not atomic. The list mutation +
+    stats update sequence must not be interrupted (or protected by
+    lock). Matches C pending_drop_tail non-atomic tail-update/memset/
+    decrement requirement. Caller must ensure single-threaded access
+    or external synchronization. See adapter.c:305 comment and
+    spec for TDMA/pending semantics.
 
     Attributes:
         capacity: Maximum number of packets (default: 4).
