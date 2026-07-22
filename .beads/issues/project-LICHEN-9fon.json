@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-9fon",
   "title": "[merge-conflict] worktree-worker21: main.c",
+  "notes": "Commit: 8e6e6d8 (in worker21 worktree: resolved merge conflicts in main.c and coap_config.c using consistent string handling and parser comment)",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:22.67944135Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:44:02.821280207Z",
+  "updated_at": "2026-07-22T23:46:22.299634827Z",
   "started_at": "2026-07-22T23:44:02.821280207Z",
   "lease_expires_at": "2026-07-22T23:49:02.821280207Z",
   "heartbeat_at": "2026-07-22T23:44:02.821280207Z"
