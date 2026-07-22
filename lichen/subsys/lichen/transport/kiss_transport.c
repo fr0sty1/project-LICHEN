@@ -161,43 +161,55 @@ int kiss_encode(uint8_t port, uint8_t cmd,
 		return -EINVAL;
 	}
 
-	if (frame_max < 2u * (data_len + 2u)) {
+	if (frame_max < 3u) {
 		return -ENOMEM;
 	}
 
-	/* Start with FEND */
 	frame[fi++] = KISS_FEND;
 
-	/* Command byte: port in high nibble, command in low nibble.
-	 * Escape it like payload bytes: (port=12, cmd=0) makes it collide
-	 * with FEND (0xC0) and would corrupt the framing on the wire. */
 	cmd_byte = KISS_CMD_MAKE(port, cmd);
 	if (cmd_byte == KISS_FEND) {
+		if (fi + 2 > frame_max) {
+			return -ENOMEM;
+		}
 		frame[fi++] = KISS_FESC;
 		frame[fi++] = KISS_TFEND;
 	} else if (cmd_byte == KISS_FESC) {
+		if (fi + 2 > frame_max) {
+			return -ENOMEM;
+		}
 		frame[fi++] = KISS_FESC;
 		frame[fi++] = KISS_TFESC;
 	} else {
 		frame[fi++] = cmd_byte;
 	}
 
-	/* Encode data with escaping */
 	for (size_t i = 0; i < data_len; i++) {
 		uint8_t b = data[i];
 
 		if (b == KISS_FEND) {
+			if (fi + 2 > frame_max) {
+				return -ENOMEM;
+			}
 			frame[fi++] = KISS_FESC;
 			frame[fi++] = KISS_TFEND;
 		} else if (b == KISS_FESC) {
+			if (fi + 2 > frame_max) {
+				return -ENOMEM;
+			}
 			frame[fi++] = KISS_FESC;
 			frame[fi++] = KISS_TFESC;
 		} else {
+			if (fi + 1 > frame_max) {
+				return -ENOMEM;
+			}
 			frame[fi++] = b;
 		}
 	}
 
-	/* End with FEND */
+	if (fi + 1 > frame_max) {
+		return -ENOMEM;
+	}
 	frame[fi++] = KISS_FEND;
 
 	*frame_len = fi;
