@@ -2,12 +2,16 @@
   "id": "project-LICHEN-6op5",
   "title": "P1: map_count in encode_status_cbor can theoretically overflow uint16_t",
   "description": "Although 4 base + 4 optionals is small, the calculation map_count += ... for time and dodag fields uses uint16_t but if status struct had many more optional fields it could overflow before the bounds check. The check is after calculation. Better to use saturating add or check incrementally. Discovered in codereview pass1 of coap_status.c comment removal. Related to project-LICHEN-2bix.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T16:11:04.39629679Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:11:04.39629679Z",
+  "updated_at": "2026-07-22T16:13:34.856689403Z",
+  "started_at": "2026-07-22T16:13:34.856689403Z",
+  "lease_expires_at": "2026-07-22T16:18:34.856689403Z",
+  "heartbeat_at": "2026-07-22T16:13:34.856689403Z",
   "labels": [
     "codereview"
   ],
