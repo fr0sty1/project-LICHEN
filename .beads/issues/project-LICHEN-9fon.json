@@ -2,15 +2,15 @@
   "id": "project-LICHEN-9fon",
   "title": "[merge-conflict] worktree-worker21: main.c",
   "notes": "Commit: 8e6e6d8 (in worker21 worktree: resolved merge conflicts in main.c and coap_config.c using consistent string handling and parser comment)",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:22.67944135Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:46:22.299634827Z",
+  "updated_at": "2026-07-22T23:46:25.683063744Z",
   "started_at": "2026-07-22T23:44:02.821280207Z",
-  "lease_expires_at": "2026-07-22T23:49:02.821280207Z",
-  "heartbeat_at": "2026-07-22T23:44:02.821280207Z"
+  "closed_at": "2026-07-22T23:46:25.683063744Z",
+  "close_reason": "Resolved merge conflicts in lichen/tests/app_interface/src/main.c (chose strnlen+memcpy style consistent with hal_bridge.c) and lichen/subsys/lichen/coap/coap_config.c (kept detailed parser comment and bounds). Commits in worktree-worker21. Other conflicts remain in keyboard driver and require broader merge resolution."
 }
