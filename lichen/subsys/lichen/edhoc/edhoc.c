@@ -309,7 +309,7 @@ static int build_sig_structure(const uint8_t *id_cred, size_t id_cred_len,
 			       uint8_t *out, size_t out_size, size_t *out_len)
 {
 	/* external_aad = << TH, CRED >> */
-	uint8_t ext_aad[96];
+	uint8_t ext_aad[512];
 	ZCBOR_STATE_E(zse_ext, 0, ext_aad, sizeof(ext_aad), 0);
 	if (!zcbor_bstr_encode_ptr(zse_ext, th, 32)) {
 		return -EINVAL;
