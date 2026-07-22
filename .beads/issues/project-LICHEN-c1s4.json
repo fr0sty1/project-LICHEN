@@ -1,12 +1,16 @@
 {
   "id": "project-LICHEN-c1s4",
   "title": "[codereview-pass2] coap_dtn.c:75 ZCBOR parsing in deaddrop_post only extracts first 'recipient' key and uses array_end on map decoder; fragile for SenML/CBOR per spec 18.9 and SenML appendix. P2 robustness. discovered-from:project-LICHEN-vh1t",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T15:57:00.825152047Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:57:00.825152047Z",
+  "updated_at": "2026-07-22T15:57:31.837088387Z",
+  "started_at": "2026-07-22T15:57:31.837088387Z",
+  "lease_expires_at": "2026-07-22T16:02:31.837088387Z",
+  "heartbeat_at": "2026-07-22T15:57:31.837088387Z",
   "labels": [
     "codereview"
   ],
