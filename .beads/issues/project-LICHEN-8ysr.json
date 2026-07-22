@@ -2,11 +2,15 @@
   "id": "project-LICHEN-8ysr",
   "title": "KISS transport: kiss_encode buffer size check is conservative",
   "description": "File: lichen/subsys/lichen/transport/kiss_transport.c\nLines: 165-168\n\nIn kiss_encode():\n\n    /* Check worst-case size: 2*data + cmd + 2 delimiters */\n    if (frame_max \u003c data_len * 2u + 3u) {\n        return -ENOMEM;\n    }\n\nThe comment says \"cmd + 2 delimiters\" but the check uses +3u. Let's verify:\n- 2 FEND delimiters = 2 bytes\n- 1 command byte = 1 byte  \n- Escaped data = data_len * 2 (worst case)\n- Total = 2 + 1 + data_len * 2 = data_len * 2 + 3\n\nThe formula is correct. However, this conservative check means kiss_encode() may return -ENOMEM even when there's enough space for the actual encoded data (which only needs escaping for FEND and FESC bytes, not all bytes).\n\nThis is a performance/usability issue rather than a bug - the function works correctly but may reject valid use cases where the output buffer is sufficient for the actual data.\n\nNote: This is by design for safety, but could be documented better.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:56:04.593172Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:56:04.593211Z"
+  "updated_at": "2026-07-22T22:56:05.264403334Z",
+  "started_at": "2026-07-22T22:56:05.264403334Z",
+  "lease_expires_at": "2026-07-22T23:01:05.264403334Z",
+  "heartbeat_at": "2026-07-22T22:56:05.264403334Z"
 }
