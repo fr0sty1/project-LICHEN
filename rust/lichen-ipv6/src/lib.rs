@@ -808,8 +808,10 @@ pub fn handle_icmpv6(
         }
 
         icmpv6_type::NEIGHBOR_SOLICITATION => {
-            // RFC 4861: code MUST be 0 for Neighbor Solicitation
             if code != 0 {
+                return Ok(None);
+            }
+            if ip_header.hop_limit != 255 {
                 return Ok(None);
             }
             let ns = NeighborSolicitation::from_bytes(body)?;
@@ -866,6 +868,16 @@ pub fn handle_icmpv6(
                 .map_err(|()| BufferTooSmall::new(pkt.len() + reply_icmp.len(), pkt.capacity()))?;
 
             Ok(Some(pkt))
+        }
+
+        icmpv6_type::NEIGHBOR_ADVERTISEMENT => {
+            if code != 0 {
+                return Ok(None);
+            }
+            if ip_header.hop_limit != 255 {
+                return Ok(None);
+            }
+            Ok(None)
         }
 
         _ => Ok(None),
