@@ -765,17 +765,8 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 		goto err_wipe;
 	}
 
-	/* TH_3 = H(TH_2 || CIPHERTEXT_2 || ID_CRED_R) - simplified */
-	/* ponytail: proper TH_3 needs CBOR encoding, using hash of concat */
-	uint8_t th3_input[256];
-	size_t th3_len = 0;
-	memcpy(th3_input + th3_len, ctx->th_2, 32);
-	th3_len += 32;
-	memcpy(th3_input + th3_len, plaintext_2, ct2_len);
-	th3_len += ct2_len;
-	memcpy(th3_input + th3_len, peer_pubkey, 32);
-	th3_len += 32;
-	ret = sha256_hash(th3_input, th3_len, ctx->th_3);
+	ret = compute_th(ctx->th_3, ctx->th_2, 32, ciphertext_2, ct2_len,
+			 id_cred_r.value, id_cred_r.len);
 	if (ret != 0) {
 		goto err_wipe;
 	}
@@ -1152,17 +1143,8 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 		ciphertext_2[i] = plaintext_2[i] ^ keystream_2[i];
 	}
 
-	/* TH_3 = H(TH_2 || PLAINTEXT_2 || CRED_R) per RFC 9528 Section 4.2.2 */
-	/* ponytail: CRED_R = raw pubkey, proper impl needs CBOR credential */
-	uint8_t th3_input[256];
-	size_t th3_len = 0;
-	memcpy(th3_input + th3_len, ctx->th_2, 32);
-	th3_len += 32;
-	memcpy(th3_input + th3_len, plaintext_2, pt2_len);
-	th3_len += pt2_len;
-	memcpy(th3_input + th3_len, ctx->ed_pubkey, 32);
-	th3_len += 32;
-	ret = sha256_hash(th3_input, th3_len, ctx->th_3);
+	ret = compute_th(ctx->th_3, ctx->th_2, 32, ciphertext_2, pt2_len,
+			 ctx->ed_pubkey, 32);
 	if (ret != 0) {
 		goto err_wipe;
 	}
