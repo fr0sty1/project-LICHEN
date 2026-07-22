@@ -479,22 +479,20 @@ static int parse_position_payload(
 			position->gps_accuracy_mm_valid = true;
 			break;
 		case POSITION_SATS_IN_VIEW_FIELD:
-			if (wt != PB_WT_VARINT || pb_read_varint(&cur, &v) < 0) {
+			if (wt != PB_WT_VARINT || pb_read_varint(&cur, &v) < 0 ||
+			    v > UINT8_MAX) {
 				return -EINVAL;
 			}
-			if (v <= UINT8_MAX) {
-				position->satellites = (uint8_t)v;
-				position->satellites_valid = true;
-			}
+			position->satellites = (uint8_t)v;
+			position->satellites_valid = true;
 			break;
 		case POSITION_PRECISION_BITS_FIELD:
-			if (wt != PB_WT_VARINT || pb_read_varint(&cur, &v) < 0) {
+			if (wt != PB_WT_VARINT || pb_read_varint(&cur, &v) < 0 ||
+			    v > UINT8_MAX) {
 				return -EINVAL;
 			}
-			if (v <= UINT8_MAX) {
-				position->precision_bits = (uint8_t)v;
-				position->precision_bits_valid = true;
-			}
+			position->precision_bits = (uint8_t)v;
+			position->precision_bits_valid = true;
 			break;
 		default:
 			if (pb_skip_value(&cur, wt) < 0) {

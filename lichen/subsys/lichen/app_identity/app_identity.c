@@ -236,11 +236,10 @@ int lichen_app_identity_upsert_peer(
 		return slot;
 	}
 
-	memset(&s_peers[slot].peer, 0, sizeof(s_peers[slot].peer));
 	s_peers[slot].peer = *peer;
-	(void)copy_string(s_peers[slot].peer.display_name,
-			  sizeof(s_peers[slot].peer.display_name),
-			  peer->display_name);
+	size_t len = strlen(peer->display_name);
+	memset(s_peers[slot].peer.display_name + len + 1, 0,
+	       sizeof(s_peers[slot].peer.display_name) - len - 1);
 	eui64_to_iid(s_peers[slot].peer.eui64, s_peers[slot].peer.iid);
 	s_peers[slot].used = true;
 	k_mutex_unlock(&s_mutex);

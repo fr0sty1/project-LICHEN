@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 
 from lichen.sim.metrics import NodeMetrics
+from lichen.sim.tdma import TDMAScheduler, TDMAState
 from lichen.state_machine import StateMachine
 
 # Type alias for RX callbacks: (on_packet, on_timeout)
@@ -52,6 +53,7 @@ class SimNode:
     metrics: NodeMetrics = field(repr=False)
     current_channel: int = 0
     hop_schedule: tuple[int, ...] = field(default_factory=tuple, repr=False)
+    tdma_scheduler: TDMAScheduler = field(repr=False, default_factory=TDMAScheduler)
     _state_machine: StateMachine[NodeState] = field(init=False, repr=False)
 
     def __init__(
@@ -67,6 +69,7 @@ class SimNode:
         metrics: NodeMetrics | None = None,
         current_channel: int = 0,
         hop_schedule: tuple[int, ...] | None = None,
+        tdma_scheduler: TDMAScheduler | None = None,
     ) -> None:
         self.id = id
         self.position = position
@@ -78,6 +81,7 @@ class SimNode:
         self.metrics = metrics if metrics is not None else NodeMetrics()
         self.current_channel = current_channel
         self.hop_schedule = tuple(hop_schedule) if hop_schedule is not None else ()
+        self.tdma_scheduler = tdma_scheduler if tdma_scheduler is not None else TDMAScheduler()
         self._state_machine = StateMachine(
             initial=state,
             transitions=NODE_STATE_TRANSITIONS,

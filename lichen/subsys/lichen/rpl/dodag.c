@@ -280,12 +280,14 @@ void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 		return;
 	}
 
-	/* Root ignores DIOs */
 	if (d->role == LICHEN_RPL_ROOT) {
 		return;
 	}
 
-	/* Only accept DIOs from the same DODAG once joined */
+	if (dio->mode_of_operation != 1 || !dio->grounded) {
+		return;
+	}
+
 	if (lichen_rpl_dodag_is_joined(d) &&
 	    !rpl_addr_eq(dio->dodag_id, d->dodag_id) &&
 	    !version_is_newer(dio->version, d->version)) {

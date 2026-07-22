@@ -113,12 +113,12 @@ def parse_python_logs(log_dir: Path) -> dict[str, NodeStats]:
         for line in content.splitlines():
             line_upper = line.upper()
             if "[TX]" in line_upper or "TX:" in line_upper:
-                match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
+                match = re.search(r"hash[=:]?\s*(?:0x)?([a-fA-F0-9]{8,32})", line)
                 if match:
                     stats.tx_hashes.add(match.group(1).lower())
                 stats.tx_count += 1
             elif "[RX]" in line_upper or "RX:" in line_upper:
-                match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
+                match = re.search(r"hash[=:]?\s*(?:0x)?([a-fA-F0-9]{8,32})", line)
                 if match:
                     stats.rx_hashes.add(match.group(1).lower())
                 stats.rx_count += 1
@@ -159,12 +159,12 @@ def parse_rust_logs(log_dir: Path) -> dict[str, NodeStats]:
         for line in content.splitlines():
             line_upper = line.upper()
             if "[TX]" in line_upper or "TX:" in line_upper:
-                match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
+                match = re.search(r"hash[=:]?\s*(?:0x)?([a-fA-F0-9]{8,32})", line)
                 if match:
                     stats.tx_hashes.add(match.group(1).lower())
                 stats.tx_count += 1
             elif "[RX]" in line_upper or "RX:" in line_upper:
-                match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
+                match = re.search(r"hash[=:]?\s*(?:0x)?([a-fA-F0-9]{8,32})", line)
                 if match:
                     stats.rx_hashes.add(match.group(1).lower())
                 stats.rx_count += 1

@@ -50,25 +50,34 @@ Channel list in regional config (not hardcoded):
 
 No flag day required. CH0 is universal fallback. Old nodes stay on CH0. New nodes listen on CH0 for routing + data channels for new-to-new. Gateway RX on all channels. Selection: CH0 if old/unknown else announced or hash. Degradation scales with new node fraction. Test vectors in test/vectors/ccp9*.json and ccp16*.json.
 
-### 3.5. Spreading Factor Assignment for Orthogonal Channels
+### 3.4. Spreading Factor Assignment for Orthogonal Channels
 
-Different LoRa spreading factors are quasi-orthogonal. SF7 and SF12 transmissions can overlap without collision. This is effectively 6 parallel channels on the same frequency. Works on ALL hardware.
+Different LoRa spreading factors are quasi-orthogonal. SF7 and SF12 transmissions can overlap without collision. This enables up to 6x capacity scaling via parallel logical channels on the same frequency. Works on ALL hardware.
 
-Assignment: Gateway-assigned in DIO or join response for load balancing. Hash-based node_sf = SF7 + (hash(iid) mod 6). Topology-aware: core nodes SF7, edge SF12.
+**SF Assignment:**
+- Preferred (Gateway-assigned): Border router includes `ASSIGNED_SF` RPL DIO option. Gateway tracks per-SF node counts and assigns least-loaded SF for load balance. Nodes **MUST** use assigned SF for all TX after joining.
+- Stateless hash-based (fallback): `assigned_sf = 7 + (hash_32(IID) mod 6)`. Uses consistent `hash_32` (SipHash-2-4, LICHEN key) from short-address DAD (4.5) and CCP-15.8.3.
+- Join-based: Nodes join on SF10 (common ground). Gateway assigns via DIO or join response; node switches post-assignment.
+- Nodes without explicit assignment **MUST** use SF10 (backwards compatibility with all existing nodes).
 
-Nodes without an assigned SF MUST use SF10. Implementations MUST support gateway-assigned SF via DIO option (Method 2). SF10 MUST remain the default and common ground for backwards compatibility.
+| Src SF | Dst SF | Path          | Notes                          |
+|--------|--------|---------------|--------------------------------|
+| 10     | 10     | Direct        | Legacy + new fallback          |
+| X≠10   | 10     | Via gateway   | New→legacy or legacy→new       |
+| X      | Y (X≠Y)| Via gateway   | Cross-SF                       |
+| X      | X      | Direct        | Same-SF optimal                |
 
-| Src SF | Dst SF | Path |
-|--------|--------|------|
-| 10 | 10 | Direct |
-| 7 | 10 | Via gateway (MUST) or SF10 fallback (MAY) |
-| 7 | 9 | Via gateway |
+Gateways **MUST** receive on all SF7-SF12 (multi-SF RX or CAD/round-robin scan). Multi-radio preferred for parallel RX. Single radio: ~200ms/SF → 1.2s full scan cycle. **SHOULD** advertise capability in DIO.
 
-Gateways MUST receive on all SFs. Cross-SF traffic adds one hop. Independent oracle: test/vectors/sf-assignment.json verified against OpenSSL and reference Python impl.
+Cross-SF traffic adds one hop. New nodes **MAY** fallback to SF10 for direct P2P to SF10 peers.
 
-### 3.4. Adaptive Spreading Factor (CCP-16)
+Independent oracle: `test/vectors/sf-assignment.json` verified against OpenSSL and reference Python impl.
 
-Nodes MUST receive on all SF7-SF12. Gateways and nodes MUST announce TX_SF in DIO options and Announce messages. ASSIGNED_SF and RF metrics (per-neighbor EMA SNR with alpha=1/4, packet loss rate) MUST be signaled in DIO per CCP-16. Per-neighbor state MUST track EMA values, loss rate, and sample count. Thresholds:
+### 3.5. Adaptive Spreading Factor (CCP-16)
+
+Nodes MUST receive on all SF7-SF12. Gateways and nodes MUST announce current TX_SF in DIO options and Announce messages (1-byte field; absence means SF10). ASSIGNED_SF and RF metrics (per-neighbor EMA SNR with alpha=1/4, packet loss rate) MUST be signaled in DIO per CCP-16. Per-neighbor state MUST track EMA values, loss rate, and sample count.
+
+Thresholds:
 
 | SF | Sensitivity | Upgrade (SHOULD decrease SF) | Downgrade (MUST increase SF) |
 |----|-------------|------------------------------|------------------------------|
@@ -78,9 +87,8 @@ Nodes MUST receive on all SF7-SF12. Gateways and nodes MUST announce TX_SF in DI
 | 11 | -134 dBm   | SNR > 10                     | SNR < 0 or density > 12      |
 | 12 | -137 dBm   | SNR > 10                     | N/A                          |
 
-Nodes MUST use TX_SF from pseudocode for unicast. DIO MUST carry ASSIGNED_SF for load balance. RX on all SF is REQUIRED for gateways. Test vectors in test/vectors/ccp16.json for load_balancing inputs MUST match output exactly (SF9 for density=3/snr=12.5, SF11 for density=12/snr=-2, SF12+tx_allowed=false for density=255/utilization=255).
+**Normative Pseudocode:**
 
-<<<<<<< HEAD
 ```pseudocode
 ema_update(avg, sample):
     diff = sample - avg
@@ -101,43 +109,18 @@ select_tx_sf(nbr, density, utilization):
         return 12, false
     return sf, true
 ```
-=======
-Signaling: Announce includes current TX_SF (1 byte). Absence means SF10.
+
+Embedded note: no_std implementations SHOULD prefer Q7.8 fixed-point or lookup tables over f32 in hot paths (see lichen-rpl reference for `lichen_rpl_update_sf`). Test vectors in `test/vectors/ccp16.json` (and ccp15.json, ccp_load_balancing.json) MUST match output exactly for load_balancing cases (SF9 for density=3/snr=12.5, SF11 for density=12/snr=-2, SF12+tx_allowed=false for density=255/utilization=255).
 
 **Backwards Compatibility**
 
-No flag day required.
+No flag day required. SF10 remains the universal common-ground.
 
-- Old nodes: Use SF10 for all traffic (current behavior)
-- New nodes: Adapt SF per-neighbor based on SNR
-- Mixed network: SF10 is common ground, always works
+- Old nodes: Use SF10 for all traffic (no adaptation).
+- New nodes: Adapt per-neighbor for new-to-new; MUST fallback to SF10 for old nodes.
+- Mixed network: All old-node traffic on SF10/CH0. Benefit scales with upgraded node fraction + gateway multi-SF RX capacity.
 
-SF10 MUST remain the default and fallback SF. New nodes MUST use SF10 when communicating with old nodes (no SF field in their announces). New nodes MUST accept traffic on any SF (RX is already multi-SF capable via CAD). Announce MAY include TX_SF field; absence means SF10.
-
-Adaptation logic (normative, density-aware per CCP §2a.7.2):
-
-```pseudocode
-function adaptive_sf_select(density: u8, snr_ema: f32, load_factor: f32 = 0.0) -> u8
-    // Floating-point exactness: IEEE-754 f32 required for test vector match (EMA rounded to 6 decimals per ccp15.json).
-    // Embedded no_std note: avoid f32 in hot path; use Q7.8 fixed-point (snr_ema * 256, integer mul/add/shift) or lookup table. See rf_health.rs:64, lichen_rpl_update_sf for reference.
-    // Vector cross-refs per branch (ccp15.json + ccp_load_balancing.json):
-    //   high-density (>8 or load>0.8 or snr_ema<0): seed1 -> SF11
-    //   low-density good link (<5 and snr_ema>8): low_density_capacity -> SF9/SF7
-    //   poor link (>20 or snr_ema<-5): SF12
-    //   default: SF10 (baseline per 7.1)
-    if density > 8 or snr_ema < 0.0 or load_factor > 0.8:
-        return 11
-    elif density < 5 and snr_ema > 8.0:
-        return 9
-    elif density > 20 or snr_ema < -5.0:
-        return 12
-    return 10
-```
-
-Degradation: Old nodes always use SF10 (no adaptation). New nodes adapt when talking to new nodes. New-to-old: SF10. Benefit scales with fraction of new nodes.
->>>>>>> origin/worktree-worker1
-
-### 3.5. SFN Delta for Coordinated Capacity
+### 3.6. SFN Delta for Coordinated Capacity
 
 Coordinated transmissions on a single frequency (SFN) improve capacity and reliability by having multiple nodes transmit identical frames with deliberate timing deltas. Receivers combine signals constructively if deltas fall within the cyclic prefix/symbol guard.
 
@@ -153,58 +136,7 @@ Boundary example: When delta exceeds 0.25 symbols, destructive interference occu
 
 See CCP-12 synchronized hopping in [02a-coordinated-capacity.md](02a-coordinated-capacity.md) for full multi-channel coordination via SFN/GPS, hash_32 channel selection, and rendezvous announcements in beacons/DIOs.
 
-### 3.6. Orthogonal Spreading Factor Assignment (SF7-SF12)
-
-LoRa SF7-SF12 are quasi-orthogonal. Different SF transmissions on the same frequency experience negligible collision probability. This enables up to 6x capacity scaling via parallel logical channels.
-
-#### 3.6.1. SF Assignment
-
-Nodes without explicit assignment **MUST** use SF10 (backwards compatibility with all existing nodes).
-
-**Preferred (Gateway-assigned):** Border router includes `ASSIGNED_SF` RPL DIO option. Gateway tracks per-SF node counts and assigns least-loaded SF for load balance. Nodes **MUST** use assigned SF for all TX after joining.
-
-**Stateless Hash-based (fallback):**
-```
-assigned_sf = 7 + (hash_32(IID) mod 6)
-```
-Uses consistent `hash_32` (SipHash-2-4, LICHEN key) from short-address DAD (4.5) and CCP-15.8.3.
-
-**Join-based:** Nodes join on SF10 (common ground). Gateway assigns via DIO/join response; node switches post-assignment.
-
-#### 3.6.2. Cross-SF Communication
-
-Different SFs cannot communicate directly:
-
-1. Source TX to gateway on *src_sf*
-2. Gateway relays to destination on *dst_sf*
-
-Adds one hop. New nodes **MAY** fallback to SF10 for direct P2P to SF10 peers.
-
-#### 3.6.3. Gateway Requirements (**MUST**)
-
-- Receive on all SF7-SF12 (multi-SF RX or CAD/round-robin scan).
-- Multi-radio preferred for parallel RX.
-- Single radio: ~200ms/SF → 1.2s full scan cycle.
-- **SHOULD** advertise capability in DIO.
-
-#### 3.6.4. Backwards Compatibility
-
-No flag day. SF10 remains universal common-ground. Mixed networks:
-
-**Communication Matrix:**
-
-| Src SF | Dst SF | Path          | Notes                          |
-|--------|--------|---------------|--------------------------------|
-| 10     | 10     | Direct        | Legacy + new fallback          |
-| X≠10   | 10     | Via gateway   | New→legacy                     |
-| 10     | X≠10   | Via gateway   | Legacy→new                     |
-| X      | Y (X≠Y)| Via gateway   | Cross-SF                       |
-| X      | X      | Direct        | Same-SF optimal                |
-
-Old nodes unchanged. Gains proportional to upgraded node fraction + gateway capacity.
-
 ---
-
 
 ## 4. Link Layer
 

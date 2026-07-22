@@ -52,7 +52,7 @@ int lichen_coap_deaddrop_register(const struct lichen_deaddrop_provider *provide
 }
 
 static int deaddrop_post(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len) {
-	if (s_provider == NULL || s_provider->store == NULL) return 0x84;
+	if (s_provider == NULL || s_provider->store == NULL) return COAP_RESPONSE_CODE_NOT_FOUND;
 	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
 	uint32_t now = k_uptime_get();
 	uint8_t idx = 0;
@@ -62,27 +62,27 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 	}
 	if (now - s_last_deaddrop[idx] < CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS) {
 		k_mutex_unlock(&s_dtn_buf_mutex);
-		return 0xA3;
+		return COAP_RESPONSE_CODE_TOO_MANY_REQUESTS;
 	}
 	s_last_deaddrop[idx] = now;
 	uint16_t payload_len = 0;
 	const uint8_t *payload = coap_packet_get_payload(request, &payload_len);
-	if (payload == NULL || payload_len == 0) { k_mutex_unlock(&s_dtn_buf_mutex); return 0x80; }
+	if (payload == NULL || payload_len == 0) { k_mutex_unlock(&s_dtn_buf_mutex); return COAP_RESPONSE_CODE_BAD_REQUEST; }
 	int r = s_provider->store(payload, payload_len);
 	k_mutex_unlock(&s_dtn_buf_mutex);
-	if (r < 0) return 0xA0;
-	return 0x41;
+	if (r < 0) return COAP_RESPONSE_CODE_INTERNAL_ERROR;
+	return COAP_RESPONSE_CODE_CHANGED;
 }
 
 static int deaddrop_get(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len) {
-	if (s_provider == NULL || s_provider->retrieve == NULL) return 0x84;
+	if (s_provider == NULL || s_provider->retrieve == NULL) return COAP_RESPONSE_CODE_NOT_FOUND;
 	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
-	static uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+	uint8_t buf[256];
 	uint16_t pending = lichen_dtn_pending_count(&s_dtn_buf);
 	int len = senml_encode_deaddrop(NULL, dtn_get_unix_time(), pending, buf, sizeof(buf));
 	k_mutex_unlock(&s_dtn_buf_mutex);
-	if (len < 0) return 0xA0;
-	return lichen_coap_respond(resource, request, addr, addr_len, 0x45, buf, len);
+	if (len < 0) return COAP_RESPONSE_CODE_INTERNAL_ERROR;
+	return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_CONTENT, 112, buf, (size_t)len);
 }
 
 static const char * const deaddrop_path[] = { "deaddrop", NULL };

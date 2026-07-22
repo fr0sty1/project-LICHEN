@@ -166,12 +166,13 @@ static bool valid_app_time_source_class(
 static const char *default_source_name(
 	enum lichen_hal_location_source_class source_class)
 {
-	switch (source_class) {
-	case LICHEN_HAL_LOCATION_SOURCE_NETWORK:
+	enum lichen_app_location_source_class app_class =
+		app_location_source_class_from_hal(source_class);
+	switch (app_class) {
+	case LICHEN_APP_LOCATION_SOURCE_NETWORK:
 		return APP_LOCATION_NETWORK_SOURCE_NAME;
-	case LICHEN_HAL_LOCATION_SOURCE_MANUAL_STATIC:
+	case LICHEN_APP_LOCATION_SOURCE_MANUAL_STATIC:
 		return APP_LOCATION_MANUAL_SOURCE_NAME;
-	case LICHEN_HAL_LOCATION_SOURCE_LOCAL_CLIENT:
 	default:
 		return APP_LOCATION_DEFAULT_SOURCE_NAME;
 	}

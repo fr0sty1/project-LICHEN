@@ -137,6 +137,7 @@ config LICHEN_CCP_TIME_SYNC
 	bool "CCP time synchronization (SFN, beacons, GPS stratum)"
 	default y
 	depends on LICHEN_LINK_CCP16_LOAD_BALANCING
+	select LICHEN_TIME_PROVIDER_GNSS if LICHEN_HAS_GNSS
 	help
 	  Enable time sync for CCP-16 desync recovery, TDMA slots, and RPL
 	  version interactions per spec/02a-coordinated-capacity.md §5. Uses
