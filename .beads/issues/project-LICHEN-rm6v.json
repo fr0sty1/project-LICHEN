@@ -1,12 +1,16 @@
 {
   "id": "project-LICHEN-rm6v",
   "title": "Implement human-readable node address in Python lichen.crypto.identity and update tests",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T14:40:17.004801626Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T14:40:17.004801626Z",
+  "updated_at": "2026-07-22T14:40:22.543524788Z",
+  "started_at": "2026-07-22T14:40:22.543524788Z",
+  "lease_expires_at": "2026-07-22T14:45:22.543524788Z",
+  "heartbeat_at": "2026-07-22T14:40:22.543524788Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-rm6v",
