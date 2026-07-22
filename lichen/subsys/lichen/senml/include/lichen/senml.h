@@ -13,6 +13,10 @@
  * before transmission. The base_name field often contains device identifiers
  * (e.g., MAC addresses) which leak device identity even if values are
  * encrypted separately.
+ *
+ * @warning Caller must ensure all string pointers (base_name, name, unit,
+ * value strings) remain valid until senml_encode_cbor() returns. The API
+ * stores raw pointers; strings are not copied internally.
  */
 
 #ifndef LICHEN_SENML_H_
