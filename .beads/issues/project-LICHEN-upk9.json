@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-upk9",
+  "title": "codereview-pass-1: appendix-schc.md rule table omits compressed size estimates and exact field descriptors from rules.rs",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T14:45:49.47322039Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:45:49.47322039Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-upk9",
+      "depends_on_id": "project-LICHEN-2cle",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T14:45:49.565939641Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
