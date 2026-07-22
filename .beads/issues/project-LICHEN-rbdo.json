@@ -2,15 +2,15 @@
   "id": "project-LICHEN-rbdo",
   "title": "[merge-conflict] worktree-worker24: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: 35b47b984",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:48:47.576853162Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:55:54.033504597Z",
+  "updated_at": "2026-07-22T23:55:56.717597445Z",
   "started_at": "2026-07-22T23:51:34.797212339Z",
-  "lease_expires_at": "2026-07-22T23:56:34.797212339Z",
-  "heartbeat_at": "2026-07-22T23:51:34.797212339Z"
+  "closed_at": "2026-07-22T23:55:56.717597445Z",
+  "close_reason": "Updated heltec_wifi_lora32_v3_esp32s3_procpu.conf in worker24 worktree: removed legacy raw-LoRa NETWORKING=n override and TINYCRYPT that was causing repeated merge conflicts; aligned with full L2/CoAP puck path used by t_deck/t_echo. Verified via git diff, build-ready status, and commit 35b47b984 pushed to origin."
 }
