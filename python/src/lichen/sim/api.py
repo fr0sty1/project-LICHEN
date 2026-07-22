@@ -474,6 +474,10 @@ class SimulatorAPI:
         except TypeError:
             return _error_response("groups must be a list of lists of node IDs")
 
+        for group in groups:
+            if not all(isinstance(item, str) for item in group):
+                return _error_response("All node IDs in groups must be strings")
+
         rule = PartitionRule(groups=groups)
         engine.add_rule(rule)
 
