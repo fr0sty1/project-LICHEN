@@ -1,21 +1,15 @@
 /*
-<<<<<<< HEAD
- * STALE/RETIRED per project-LICHEN-2u26.10: no canonical Zephyr composite board+shield target.
- * Fragment retired; do not use for bridge builds. Support claims removed per 2u26 audit.
- * Seeed XIAO ESP32S3 + Wio-SX1262 device tree overlay for LICHEN bridge
-=======
  * BLOCKED/RETIRED: Seeed XIAO ESP32-S3 + Wio-SX1262 bridge overlay
  * (project-LICHEN-2u26.10 / project-LICHEN-2u26 / m5m1.8)
->>>>>>> origin/integration/worker5-20260722
  *
- * No canonical Zephyr board/composite (seeed_xiao_esp32s3 + Wio-SX1262
- * shield not in tree or upstream; xiao_s3_wio_sx1262 not a valid -b target).
- * Closest proxies: heltec_wifi_lora32_v3/esp32s3/procpu.
- * Classified FAIL (no canonical board) in bridge audit; orphaned fragment.
- * Do not present as supported. Follows tbeam_supreme pattern (w8rd).
- * Pin map retained for reference only.
+ * No canonical Zephyr board or composite shield mapping (seeed_xiao_esp32s3
+ * + custom Wio-SX1262 shield not defined). xiao_s3_wio_sx1262 not a valid -b
+ * target. Classified FAIL in m5m1.8 bridge audit. Use heltec_wifi_lora32_v3/
+ * esp32s3/procpu proxy instead. See docs/firmware-board-capability-matrix.md
+ * and closed epic 2u26. Support claims removed; fragment retained for reference
+ * only. Follows tbeam_supreme pattern (w8rd).
  *
- * Original:
+ * Original pin map (for reference):
  * ESP32-S3 + SX1262 LoRa (via B2B connector)
  * SX1262 SPI: SCK=GPIO7, MISO=GPIO8, MOSI=GPIO9, NSS=GPIO41
  * Control: RESET=GPIO42, BUSY=GPIO40, DIO1=GPIO39
