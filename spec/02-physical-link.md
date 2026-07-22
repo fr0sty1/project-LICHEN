@@ -44,6 +44,56 @@ Nodes SHOULD implement ADR to optimize SF/TX power based on link quality:
 
 See spec/02a-coordinated-capacity.md for full details on TDMA, multi-root beacon conflict resolution, desync recovery state machine (including RPL version/drift interactions, SFN reset, time-provider stratum), adaptive SF on SNR/density, multi-channel load balancing, and all robustness requirements per RFC 2119. Test vectors in test/vectors/ccp16-desync.json MUST be matched by all implementations.
 
+### 3.6. Orthogonal Spreading Factor Assignment (SF7-SF12)
+
+LoRa SF7-SF12 are quasi-orthogonal. Different SF transmissions on the same frequency experience negligible collision probability. This enables up to 6x capacity scaling via parallel logical channels.
+
+#### 3.6.1. SF Assignment
+
+Nodes without explicit assignment **MUST** use SF10 (backwards compatibility with all existing nodes).
+
+**Preferred (Gateway-assigned):** Border router includes `ASSIGNED_SF` RPL DIO option. Gateway tracks per-SF node counts and assigns least-loaded SF for load balance. Nodes **MUST** use assigned SF for all TX after joining.
+
+**Stateless Hash-based (fallback):**
+```
+assigned_sf = 7 + (hash_32(IID) mod 6)
+```
+Uses consistent `hash_32` (SipHash-2-4, LICHEN key) from short-address DAD (4.5) and CCP-15.8.3.
+
+**Join-based:** Nodes join on SF10 (common ground). Gateway assigns via DIO/join response; node switches post-assignment.
+
+#### 3.6.2. Cross-SF Communication
+
+Different SFs cannot communicate directly:
+
+1. Source TX to gateway on *src_sf*
+2. Gateway relays to destination on *dst_sf*
+
+Adds one hop. New nodes **MAY** fallback to SF10 for direct P2P to SF10 peers.
+
+#### 3.6.3. Gateway Requirements (**MUST**)
+
+- Receive on all SF7-SF12 (multi-SF RX or CAD/round-robin scan).
+- Multi-radio preferred for parallel RX.
+- Single radio: ~200ms/SF → 1.2s full scan cycle.
+- **SHOULD** advertise capability in DIO.
+
+#### 3.6.4. Backwards Compatibility
+
+No flag day. SF10 remains universal common-ground. Mixed networks:
+
+**Communication Matrix:**
+
+| Src SF | Dst SF | Path          | Notes                          |
+|--------|--------|---------------|--------------------------------|
+| 10     | 10     | Direct        | Legacy + new fallback          |
+| X≠10   | 10     | Via gateway   | New→legacy                     |
+| 10     | X≠10   | Via gateway   | Legacy→new                     |
+| X      | Y (X≠Y)| Via gateway   | Cross-SF                       |
+| X      | X      | Direct        | Same-SF optimal                |
+
+Old nodes unchanged. Gains proportional to upgraded node fraction + gateway capacity.
+
 ---
 
 
