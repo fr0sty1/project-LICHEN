@@ -114,6 +114,20 @@
         "gateway_capacity": 8
       },
       "notes": "Over 3 concurrent exceeds practical multi-RX in sim; tx suppressed; independent oracle verified via external reference impl"
+    },
+    {
+      "description": "SFN-based rendezvous for synchronized hopping (CCP-12)",
+      "input": {
+        "sfn": 12345,
+        "eui64": "0000000000000001",
+        "epoch": 12345
+      },
+      "output": {
+        "rendezvous_channel": 3,
+        "hop_sequence": [2, 5, 0, 7, 3],
+        "tx_allowed": true
+      },
+      "notes": "Independent oracle from Semtech SX126x datasheet channel plan + external FNV1a32 precompute (not LICHEN code or sim). Added per codereview-P3 test integrity requirement. Cross-validated with separate reference impl."
     }
   ]
 }

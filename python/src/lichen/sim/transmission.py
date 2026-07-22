@@ -77,6 +77,7 @@ class Transmission:
         start_time_us: Simulation time when transmission starts (microseconds).
         end_time_us: Simulation time when transmission ends (microseconds).
         frequency_hz: Carrier frequency in Hz (default 915 MHz).
+        channel: Logical channel index for synchronized hopping/rendezvous (default 0).
     """
 
     source_node_id: str
@@ -86,3 +87,4 @@ class Transmission:
     end_time_us: int
     id: str = field(default_factory=lambda: str(uuid4()))
     frequency_hz: int = 915_000_000
+    channel: int = 0

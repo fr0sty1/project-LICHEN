@@ -159,3 +159,14 @@ class TestTransmission:
             end_time_us=100,
         )
         assert tx.tx_power_dbm == -10
+
+    def test_channel_field(self) -> None:
+        tx = Transmission(
+            source_node_id="node-1",
+            payload=b"test",
+            tx_power_dbm=10,
+            start_time_us=0,
+            end_time_us=100,
+            channel=5,
+        )
+        assert tx.channel == 5
