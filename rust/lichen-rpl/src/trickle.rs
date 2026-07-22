@@ -315,6 +315,12 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "Trickle Imin must be non-zero")]
+    fn new_rejects_zero_imin() {
+        let _ = TrickleTimer::new(0, 4, 10);
+    }
+
+    #[test]
     fn interval_end_saturates_near_u32_max() {
         // Test that interval_end uses saturating_add to avoid wraparound
         let mut t = TrickleTimer::new(1000, 4, 10);

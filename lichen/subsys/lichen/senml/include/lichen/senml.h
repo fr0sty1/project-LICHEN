@@ -26,6 +26,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#define SENML_KEY_CONFESSIONS "confessions"
+
 #ifndef LICHEN_WARN_UNUSED_RESULT
 #if defined(__GNUC__) || defined(__clang__)
 #define LICHEN_WARN_UNUSED_RESULT __attribute__((warn_unused_result))

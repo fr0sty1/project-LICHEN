@@ -727,9 +727,6 @@ static int store_device_pin(struct lichen_meshcore_adapter *adapter,
 	uint32_t pin;
 	int ret;
 
-	if (settings == NULL) {
-		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
-	}
 	if (view->payload_len != sizeof(uint32_t)) {
 		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
 	}
@@ -779,9 +776,6 @@ static int store_autoadd_config(struct lichen_meshcore_adapter *adapter,
 		compat_settings(adapter);
 	struct lichen_meshcore_compat_settings old_settings;
 
-	if (settings == NULL) {
-		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
-	}
 	if (view->payload_len != LICHEN_MESHCORE_AUTOADD_CONFIG_LEN) {
 		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
 	}
@@ -804,9 +798,6 @@ static int store_default_flood_scope(
 		compat_settings(adapter);
 	struct lichen_meshcore_compat_settings old_settings;
 
-	if (settings == NULL) {
-		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
-	}
 	if (view->payload_len != 0U &&
 	    view->payload_len != LICHEN_MESHCORE_DEFAULT_FLOOD_PAYLOAD_LEN) {
 		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);

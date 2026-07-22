@@ -101,7 +101,7 @@ impl Default for RadioConfig {
     }
 }
 
-/// LoRa radio interface.
+/// LoRa radio interface (CCP-aware for coordinated multi-channel operation per spec 02a).
 ///
 /// Async-first design for Embassy compatibility. Implementations may use
 /// blocking internally on platforms without async (wrapped in executor).
@@ -109,24 +109,27 @@ pub trait Radio {
     /// Error type for radio operations.
     type Error;
 
-    /// Transmit a packet. Returns when transmission completes.
+    /// Transmit a packet on specified channel (CCP-12/15). Returns when transmission completes.
     fn transmit(
         &mut self,
+        channel: u8,
         payload: &[u8],
     ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
 
-    /// CCP-15: Clear Channel Assessment (CAD/CCA) before TX. Returns true if clear.
+    /// CCP-15: Clear Channel Assessment (CAD/CCA) on channel before TX. Returns true if clear.
     fn cca(
         &mut self,
+        channel: u8,
         threshold_dbm: i8,
     ) -> impl core::future::Future<Output = Result<bool, Self::Error>>;
 
-    /// Receive a packet with timeout.
+    /// Receive a packet on specified channel with timeout (CCP rendezvous).
     ///
     /// Writes received data to `buf`, returns `Some(RxPacket)` on success,
     /// `None` on timeout. Buffer must be at least 255 bytes for max LoRa payload.
     fn receive(
         &mut self,
+        channel: u8,
         buf: &mut [u8],
         timeout_ms: u32,
     ) -> impl core::future::Future<Output = Result<Option<RxPacket>, Self::Error>>;
@@ -140,6 +143,9 @@ pub trait Radio {
         channels: &[ChannelConfig],
     ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
 }
+
+/// Minimal ChannelPlan support (u8 index into regional plan per CCP-4).
+pub type ChannelPlan = u8;
 
 /// Monotonic clock source.
 pub trait Clock {

@@ -2,11 +2,15 @@
   "id": "project-LICHEN-dz63",
   "title": "Lost error code in enqueue_static_sync error handling",
   "description": "File: lichen/subsys/lichen/meshtastic/adapter.c:1339-1392\n\nMultiple instances of this pattern:\n  ret = lichen_meshtastic_encode_my_info_payload(info, payload, sizeof(payload));\n  if (ret \u003c 0 || enqueue_payload(adapter, ..., payload, (size_t)ret) \u003c 0) {\n      return ret \u003c 0 ? ret : -ENOMEM;\n  }\n\nWhen encode succeeds (ret \u003e= 0) but enqueue_payload fails, the actual error from enqueue_payload is discarded and replaced with -ENOMEM.\n\nThis loses diagnostic information. For example, if enqueue_payload returned -ENOTCONN, the caller sees -ENOMEM instead.\n\nFix: Capture enqueue_payload return value:\n  int enqueue_ret = enqueue_payload(...);\n  if (ret \u003c 0 || enqueue_ret \u003c 0) {\n      return ret \u003c 0 ? ret : enqueue_ret;\n  }",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:48:20.83019Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:48:20.830231Z"
+  "updated_at": "2026-07-22T23:12:32.838279758Z",
+  "started_at": "2026-07-22T23:12:32.838279758Z",
+  "lease_expires_at": "2026-07-22T23:17:32.838279758Z",
+  "heartbeat_at": "2026-07-22T23:12:32.838279758Z"
 }

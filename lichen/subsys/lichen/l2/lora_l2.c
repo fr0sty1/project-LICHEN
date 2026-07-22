@@ -14,7 +14,7 @@
  *   Application calls lichen_lora_l2_start()
  *       -> Configures LoRa radio
  *       -> Starts RX thread
- *       -> TX is called directly via lichen_lora_l2_tx()
+ *       -> TX is called directly via lichen_lora_l2_tx(data, len, channel)
  *
  * Threading model:
  * - TX is synchronous (called from application context)
@@ -1167,7 +1167,7 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len, uint8_t channel)
      * Control CH0 uses Kconfig base freq; data channels use base + ch*spacing.
      * Matches lr1110/lora_config path and test vectors (channel field in announce).
      */
-    if (IS_ENABLED(CONFIG_LICHEN_MULTI_CHANNEL_ENABLED) && effective_channel > 0) {
+    if (IS_ENABLED(CONFIG_LICHEN_MULTI_CHANNEL_ENABLED) && effective_channel > 0 && lora_data.lora_dev != NULL) {
         uint32_t ch_freq = CONFIG_LICHEN_LORA_FREQUENCY + (uint32_t)effective_channel * 200000U;
         struct lora_modem_config ch_config = {
             .frequency = ch_freq,

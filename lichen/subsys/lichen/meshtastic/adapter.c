@@ -614,6 +614,7 @@ static int parse_data(const uint8_t *data, size_t len,
 			info->payload_len = payload_len;
 			if (payload_len > 0U && payload_len <= LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX) {
 				memcpy(info->payload_buf, payload, payload_len);
+				info->payload_buf[payload_len] = '\0';
 				info->payload = info->payload_buf;
 			} else if (payload_len > 0U) {
 				info->payload = NULL;

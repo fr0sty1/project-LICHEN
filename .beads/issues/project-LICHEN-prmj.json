@@ -2,11 +2,15 @@
   "id": "project-LICHEN-prmj",
   "title": "Tinycrypt SHA256 return values ignored in RX path",
   "description": "File: lichen/subsys/lichen/link/lichen_link_rx.c\nLines: 287-291\n\nauthenticate_inner_payload() ignores return values from tinycrypt SHA256 functions when deriving src_eui64 from peer_pubkey:\n\n```c\n} else if (ctx-\u003epeer_pubkey != NULL) {\n    struct tc_sha256_state_struct sha_state;\n    uint8_t hash[TC_SHA256_DIGEST_SIZE];\n\n    (void)tc_sha256_init(\u0026sha_state);        // Return value ignored\n    (void)tc_sha256_update(\u0026sha_state, ctx-\u003epeer_pubkey,\n                           SCHNORR48_PUBKEY_LEN);  // Return value ignored\n    (void)tc_sha256_final(hash, \u0026sha_state); // Return value ignored\n    memcpy(src_eui64, hash, LICHEN_EUI64_LEN);\n}\n```\n\ntc_sha256_update and tc_sha256_final return TC_CRYPTO_FAIL (0) on NULL parameters. While the parameters are validated earlier making failure unlikely, ignoring crypto function return values is not defensive programming.\n\nImpact: If hash computation fails (currently unlikely), src_eui64 would contain uninitialized/garbage data, potentially causing incorrect sender identification.\n\nFix: Check return values and propagate errors, or add static assert that the tinycrypt functions cannot fail given non-NULL inputs.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:47:18.465982Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:47:18.466018Z"
+  "updated_at": "2026-07-22T23:11:48.577009038Z",
+  "started_at": "2026-07-22T23:11:48.577009038Z",
+  "lease_expires_at": "2026-07-22T23:16:48.577009038Z",
+  "heartbeat_at": "2026-07-22T23:11:48.577009038Z"
 }

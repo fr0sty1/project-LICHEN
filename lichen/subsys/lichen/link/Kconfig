@@ -112,7 +112,40 @@ config LICHEN_LINK_CCP16_LOAD_BALANCING
 	  link epoch features required for TDMA/multi-channel operation.
 
 config LICHEN_TDMA
+<<<<<<< HEAD
 	bool "TDMA gateway-centric mode (beacon-sync, slot assign, spatial reuse)"
+=======
+	bool "TDMA slot scheduling"
+	depends on LICHEN_LINK_CCP_LOAD_BALANCING
+	help
+	  Enable TDMA struct and lichen_tdma_init() (link_ctx.c:508) after
+	  lichen_link_load_key() per initialization graph in AGENTS.md and
+	  spec/02a-coordinated-capacity.md §3. Must not call before key loaded.
+
+config LICHEN_ADAPTIVE_SF_ENABLED
+	bool "Adaptive spreading factor"
+	default y
+	depends on LICHEN_LINK_CCP_LOAD_BALANCING
+	help
+	  Enable per-neighbor adaptive SF based on SNR EWMA and density per
+	  spec/02a-coordinated-capacity.md and zrh2.2. Part of CCP-16.
+	  Adds fields to neighbor/gradient table.
+
+config LICHEN_CCP_TIME_SYNC
+	bool "CCP time synchronization (SFN, beacons, GPS stratum)"
+	default y
+	depends on LICHEN_LINK_CCP_LOAD_BALANCING
+	help
+	  Enable time sync for CCP-16 desync recovery, TDMA slots, and RPL
+	  version interactions per spec/02a-coordinated-capacity.md §5. Uses
+	  beacon SFN with GPS stratum-0 priority, local RTC fallback. Matches
+	  ccp16-desync.json vectors exactly. SECURITY: signed beacons only.
+
+config LICHEN_DEFAULT_SF
+	int "Default spreading factor"
+	default 10
+	range 7 12
+>>>>>>> origin/integration/worker2-20260722
 	depends on LICHEN_LINK
 	depends on LICHEN_RPL
 	select LICHEN_LINK_CCP16_LOAD_BALANCING

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 {
   "$schema": "./schema.json",
   "format_version": 2,
@@ -36,3 +37,104 @@
     }
   ]
 }
+=======
+[
+  {
+    "name": "desync-1",
+    "description": "Normal SYNCED to DRIFTING on beacon timeout",
+    "initial_state": "SYNCED",
+    "event": "beacon_timeout",
+    "timer": "T_Drift=90s (3*30s)",
+    "rpl_version": "unchanged",
+    "sfn_drift": "5",
+    "time_provider": "beacon",
+    "expected_state": "DRIFTING",
+    "actions": [
+      "start_acquire_timer",
+      "increment_local_sfn_drift"
+    ],
+    "rpl_version_action": "none",
+    "snr_ema": 0.0
+  },
+  {
+    "name": "desync-2",
+    "description": "DRIFTING to ACQUIRING on RPL version increment from root",
+    "initial_state": "DRIFTING",
+    "event": "rpl_version_increment",
+    "timer": "none",
+    "rpl_version": "from 5 to 6",
+    "sfn_drift": "12",
+    "time_provider": "beacon",
+    "expected_state": "ACQUIRING",
+    "actions": [
+      "reset_sfn_to_0",
+      "send_dis",
+      "adopt_new_dodag_version"
+    ],
+    "rpl_version_action": "full reset",
+    "snr_ema": 0.0
+  },
+  {
+    "name": "desync-3",
+    "description": "ACQUIRING to SYNCED on valid beacon with matching version",
+    "initial_state": "ACQUIRING",
+    "event": "valid_beacon_rx",
+    "timer": "T_Recovery < 60s",
+    "rpl_version": "matches",
+    "sfn_drift": "0",
+    "time_provider": "gps_stratum_0",
+    "expected_state": "SYNCED",
+    "actions": [
+      "sync_sfn",
+      "update_time_provider",
+      "restart_trickle"
+    ],
+    "rpl_version_action": "none",
+    "snr_ema": 0.0
+  },
+  {
+    "name": "desync-4",
+    "description": "Any state to LOST on time-provider failure (GPS lost)",
+    "initial_state": "SYNCED",
+    "event": "time_provider_lost",
+    "timer": "exceeds T_Recovery",
+    "rpl_version": "unchanged",
+    "sfn_drift": "30",
+    "time_provider": "none",
+    "expected_state": "LOST",
+    "actions": [
+      "reset_sfn",
+      "increment_dodag_version_if_root",
+      "enter_rejoin"
+    ],
+    "rpl_version_action": "force increment if root",
+    "snr_ema": 0.0
+  },
+  {
+    "name": "ccp16-sf-1",
+    "description": "Adaptive SF density adjustment",
+    "density": 25,
+    "base_snr": -12,
+    "expected_sf": 11,
+    "thresholds": {
+      "SF7": -6,
+      "SF8": -9,
+      "SF9": -12,
+      "SF10": -15,
+      "SF11": -17.5,
+      "SF12": -20
+    },
+    "snr_ema": 0.0
+  },
+  {
+    "name": "ccp16-tdma-1",
+    "description": "TDMA slot computation example",
+    "node_iid": "0201:0203:0405:0607",
+    "sfn": 42,
+    "num_slots": 64,
+    "expected_slot": 23,
+    "hash": "siphash_2_4",
+    "snr_ema": 0.0
+  }
+]
+>>>>>>> origin/integration/worker2-20260722

@@ -1457,7 +1457,7 @@ static int lichen_l2_send_inner(struct net_if *iface, struct net_pkt *pkt)
 	 * of the packet and must free it. The caller (IPv6 stack) will not
 	 * free it on success.
 	 *
-	 * The packet is guaranteed valid here because lichen_lora_l2_tx()
+	 * The packet is guaranteed valid here because lichen_lora_l2_tx(..., channel)
 	 * only receives a pointer to our static tx_frame_buf/tx_ipv6_buf,
 	 * not the net_pkt itself. The packet was linearized into that buffer
 	 * earlier via net_pkt_read(), so the pkt structure is untouched by TX.

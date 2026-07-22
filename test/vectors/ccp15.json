@@ -1,5 +1,6 @@
 {
   "format_version": 2,
+<<<<<<< HEAD
   "description": "ccp15 vectors for SF EMA load_factor hash_32 congestion control with independent oracle.",
   "vectors": [
     {
@@ -25,3 +26,125 @@
     }
   ]
 }
+=======
+  "description": "Test vectors for CCP-15.2/16 (updated for full SF selection with SNR table, EMA formula, load_factor override, pure pseudocode, select_channel/now() per draft-lichen-tdma, consistent hash_32 vs crc16 in CCP-15.8.3, density rules rationale). All impls MUST match. Includes EMA boundaries, load_factor=0.5/1.0, SF10 default vs override, hash outputs. 6 new vectors added for snr_ema boundaries per table, load_factor override cases, density rationale.",
+  "vectors": [
+    {
+      "name": "cca-pass-low-density-tdma-ok",
+      "density": 5,
+      "snr_ema": -5.9,
+      "load_factor": 1.0,
+      "current_sfn": 42,
+      "assigned_slot": 1,
+      "rssi_dbm": -92,
+      "channel": 0,
+      "cca_duration_syms": 5,
+      "rssi_threshold": -85,
+      "slot_adjust_ticks": 8,
+      "expected_sf": 7,
+      "expected_cca_result": true,
+      "expected_channel": 0,
+      "expected_outcome": "TX_SUCCESS",
+      "expected_backoff": false,
+      "hash_32_example": "consistent_slot_calc"
+    },
+    {
+      "name": "ema-snr-boundary-sf10",
+      "density": 8,
+      "snr_ema": -14.9,
+      "load_factor": 0.5,
+      "current_sfn": 100,
+      "expected_sf": 10,
+      "expected_outcome": "TX_SUCCESS"
+    },
+    {
+      "name": "load_factor-override-sf10-to11-dense",
+      "density": 12,
+      "snr_ema": -14.0,
+      "load_factor": 1.0,
+      "current_sfn": 150,
+      "expected_sf": 11,
+      "note": "load_factor pushes effective_density over 15, overrides SF10 default per clarified rationale"
+    },
+    {
+      "name": "select_channel-now-hash32",
+      "density": 4,
+      "snr_ema": -5.0,
+      "load_factor": 1.0,
+      "ts_now": 123456,
+      "node_iid": "0xAABBCCDD",
+      "expected_channel": 2,
+      "note": "hash_32(node_iid XOR now()) % N consistent per CCP-15.8.3; cross-ref draft-lichen-tdma"
+    },
+    {
+      "name": "density-aware-sf12-boundary-high-load",
+      "density": 16,
+      "snr_ema": -19.5,
+      "load_factor": 0.9,
+      "current_sfn": 200,
+      "expected_sf": 12,
+      "expected_outcome": "TX_SUCCESS"
+    },
+    {
+      "name": "tdma-drift-exceeds-8-ema-lowsnr",
+      "density": 8,
+      "snr_ema": -18.0,
+      "load_factor": 1.0,
+      "current_sfn": 105,
+      "assigned_slot": 1,
+      "slot_adjust_ticks": 8,
+      "expected_sf": 12,
+      "expected_outcome": "TDMA_BACKOFF",
+      "expected_backoff": true
+    },
+    {
+      "name": "snr-boundary-sf7-above",
+      "density": 5,
+      "snr_ema": -5.9,
+      "load_factor": 1.0,
+      "expected_sf": 7,
+      "note": "snr_ema > -6.0 → SF7 per snr_to_sf table from spec/02a-coordinated-capacity.md"
+    },
+    {
+      "name": "snr-boundary-sf8-exact",
+      "density": 5,
+      "snr_ema": -6.0,
+      "load_factor": 1.0,
+      "expected_sf": 8,
+      "note": "snr_ema == -6.0 not > -6.0, falls to SF8"
+    },
+    {
+      "name": "snr-boundary-sf10-exact",
+      "density": 8,
+      "snr_ema": -15.0,
+      "load_factor": 0.5,
+      "expected_sf": 10,
+      "note": "exact boundary test for SF10"
+    },
+    {
+      "name": "load_factor-0.5-no-override-sf10",
+      "density": 32,
+      "snr_ema": -14.0,
+      "load_factor": 0.5,
+      "expected_sf": 10,
+      "note": "effective_density=16 but low load_factor=0.5 does not trigger override"
+    },
+    {
+      "name": "load_factor-1.0-dense-override-to-sf11",
+      "density": 16,
+      "snr_ema": -14.0,
+      "load_factor": 1.0,
+      "expected_sf": 11,
+      "note": "load_factor=1.0 with density=16 triggers override from SF10 base to 11"
+    },
+    {
+      "name": "density-rationale-sf10-sparse-default",
+      "density": 4,
+      "snr_ema": -14.0,
+      "load_factor": 1.0,
+      "expected_sf": 10,
+      "note": "SF10 default for sparse (density<15) per appendix even with SNR suggesting possible higher SF; override only on congestion"
+    }
+  ]
+}
+>>>>>>> origin/integration/worker2-20260722

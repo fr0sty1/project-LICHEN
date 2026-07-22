@@ -951,4 +951,23 @@ mod tests {
         let val = buf[0].value.unwrap();
         assert!((val - 1.5).abs() < 1e-10);
     }
+
+    #[test]
+    fn dec_f64_half_precision_subnormal() {
+        let data = [0xf9, 0x00, 0x01];
+        let (val, _) = dec_f64(&data, 0).unwrap();
+        assert!((val - 5.960464477539063e-8).abs() < 1e-20);
+
+        let data = [0xf9, 0x03, 0xff];
+        let (val, _) = dec_f64(&data, 0).unwrap();
+        assert!((val - 6.091594696044922e-5).abs() < 1e-15);
+
+        let data = [0xf9, 0x80, 0x01];
+        let (val, _) = dec_f64(&data, 0).unwrap();
+        assert!((val + 5.960464477539063e-8).abs() < 1e-20);
+
+        let data = [0xf9, 0x04, 0x00];
+        let (val, _) = dec_f64(&data, 0).unwrap();
+        assert_eq!(val, 6.103515625e-5);
+    }
 }

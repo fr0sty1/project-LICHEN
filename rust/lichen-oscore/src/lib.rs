@@ -215,6 +215,7 @@ impl Context {
     ///
     /// Returns `InvalidParam` if:
     /// - `sender_id` or `recipient_id` exceeds 7 bytes (nonce capacity)
+    /// - `sender_id == recipient_id` (including both empty)
     /// - `master_salt` exceeds 8 bytes
     pub fn new(
         master_secret: &[u8; KEY_LEN],
@@ -222,10 +223,11 @@ impl Context {
         sender_id: &[u8],
         recipient_id: &[u8],
     ) -> Result<Self, OscoreError> {
-        // SECURITY: Validate ID length against nonce capacity (7 bytes), not ID_MAX_LEN (8).
-        // RFC 8613 allows IDs up to 8 bytes, but only 7 bytes fit in the nonce layout.
-        // Accepting 8-byte IDs would cause silent truncation in compute_nonce.
         if sender_id.len() > NONCE_ID_LEN || recipient_id.len() > NONCE_ID_LEN {
+            return Err(OscoreError::InvalidParam);
+        }
+
+        if sender_id == recipient_id {
             return Err(OscoreError::InvalidParam);
         }
 

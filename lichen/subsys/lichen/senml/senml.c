@@ -434,3 +434,23 @@ int senml_encode_temperature(const char *base_name, uint64_t base_time,
 
 	return senml_encode_cbor(&pack, buf, buflen);
 }
+
+int senml_encode_deaddrop(const char *base_name, uint64_t base_time,
+			  uint16_t pending,
+			  uint8_t *buf, size_t buflen)
+{
+	struct senml_pack pack;
+	int ret;
+
+	ret = senml_pack_init(&pack, base_name, base_time);
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = senml_add_float(&pack, "pending", NULL, (float)pending);
+	if (ret < 0) {
+		return ret;
+	}
+
+	return senml_encode_cbor(&pack, buf, buflen);
+}

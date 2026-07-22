@@ -10,12 +10,11 @@
 #include <lichen/oscore.h>
 #include <lichen/senml.h>
 
-LOG_MODULE_REGISTER(lichen_coap_deaddrop, CONFIG_LICHEN_COAP_DTN_LOG_LEVEL);
+LOG_MODULE_REGISTER(lichen_coap_deaddrop, CONFIG_LICHEN_COAP_DEADDROP_LOG_LEVEL);
 
-#define SENML_CBOR_CONTENT_FORMAT 112
 #define DEADDROP_SENML_MAX 128
 
-static const struct lichen_coap_deaddrop_provider *s_provider;
+static const struct lichen_deaddrop_provider *s_provider;
 
 int coap_respond(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len, uint8_t resp_code, const uint8_t *payload, size_t payload_len) {
 	static uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
@@ -49,7 +48,7 @@ static int deaddrop_get(struct coap_resource *resource, struct coap_packet *requ
 	uint8_t payload[DEADDROP_SENML_MAX];
 	int len;
 	if (s_provider && s_provider->retrieve) {
-		len = s_provider->retrieve(NULL, payload, sizeof(payload));
+		len = s_provider->retrieve(payload, sizeof(payload), NULL);
 	} else {
 		return COAP_RESPONSE_CODE_NOT_FOUND;
 	}
@@ -66,15 +65,15 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 		return COAP_RESPONSE_CODE_BAD_REQUEST;
 	}
 	if (s_provider && s_provider->store) {
-		int r = s_provider->store(payload, payload_len, NULL, 86400);
+		int r = s_provider->store(payload, payload_len);
 		if (r < 0) {
 			return COAP_RESPONSE_CODE_INTERNAL_ERROR;
 		}
 	}
-	return coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_CREATED, NULL, 0);
+	return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_CREATED, 0, NULL, 0);
 }
 
-int lichen_coap_deaddrop_register(const struct lichen_coap_deaddrop_provider *provider) {
+int lichen_coap_deaddrop_register(const struct lichen_deaddrop_provider *provider) {
 	if (provider == NULL) {
 		return -EINVAL;
 	}

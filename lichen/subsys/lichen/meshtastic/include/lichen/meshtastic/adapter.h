@@ -93,7 +93,7 @@ struct lichen_meshtastic_adapter_packet_info {
 	uint8_t to_iid[8];
 	const uint8_t *payload;
 	size_t payload_len;
-	uint8_t payload_buf[LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX];
+	uint8_t payload_buf[LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX + 1U];
 	bool has_from;
 	bool has_to;
 	bool has_id;

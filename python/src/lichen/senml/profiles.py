@@ -28,7 +28,9 @@ from lichen.senml.codec import SenmlRecord
 # ---------------------------------------------------------------------------
 
 
-def location(lat: float, lon: float, alt: float | None = None) -> list[SenmlRecord]:
+def location(
+    lat: float, lon: float, alt: float | None = None
+) -> list[SenmlRecord]:
     """Geographic position as SenML records.
 
     Uses IANA-registered SenML names "lat", "lon", "alt" with unit "deg" or
