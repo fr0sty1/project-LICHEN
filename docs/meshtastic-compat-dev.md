@@ -80,6 +80,22 @@ runs. It defines the required no-hardware preflight, BLE discovery, config sync,
 node DB sync, message ingress/egress, unsupported-operation checks, and physical
 client evidence.
 
+## Support Matrix (R1 MVP)
+
+This matrix describes the implemented LICHEN Meshtastic app-compatibility surface for R1. It is intentionally **local-client compatibility only**. LICHEN nodes do not join Meshtastic LoRa meshes, emit Meshtastic frames, or share keys with Meshtastic nodes.
+
+| Area | Current support | Evidence | Remaining gap |
+|------|-----------------|----------|---------------|
+| RF interoperability | Not supported. Local BLE app interface only; all mesh uses LICHEN IPv6/SCHC/RPL/CoAP/Ed25519/LoRa. | `lichen/tests/meshtastic_*`, `docs/meshtastic-smoke-test.md` unsupported checks, no Meshtastic RF path in adapter. | None; RF interop out of scope (see t2hn.2 contract). |
+| BLE transport | Meshtastic service UUID `6ba1b218-...`, ToRadio (write), FromRadio (read), FromNum (notify/read/write). Raw protobuf values, no StreamAPI prefix. ATT long ops (~504B write/510B read). | `lichen/apps/gateway/src/ble_meshtastic.*`, `meshtastic_adapter.c`, `tests/meshtastic_ble`, `test/vectors/meshtastic_app_compat.json`, smoke-test ATT section. | R1 Neo ATT evidence in project-LICHEN-t2hn.21 (P1). |
+| Discovery/pairing | Advertises `LICHEN-XXXX` name + service. Plain permissions for MVP (no mandatory pairing). | BLE owner, advertising logs `Meshtastic BLE advertising as`, smoke-test discovery table. | Android/iOS pairing behavior evidence in t2hn.16.1/.16.2 (hardware blocked). |
+| Sync flows | want_config_id stages return LICHEN-branded DeviceMetadata (PRIVATE_HW, excluded_modules), region presets, channels, oneof-clean configs, moduleConfig placeholders, node DB. config_complete_id terminates each stage. | t2hn.6/13/15/24/25, codec tests, adapter enqueue order, vectors, smoke-test checkpoints 6-9. | Post-sync ADMIN_APP in t2hn.23. |
+| Messaging | Broadcast text maps to LICHEN local submit (port TEXT_MESSAGE_APP). Incoming LICHEN text/status -> FromRadio events + FromNum notify. | t2hn.7/.8, gateway_adapter tests, vectors for ingress/egress. | Concrete submit provider (t2hn.7.2); full physical smoke pending hardware. |
+| Unsupported ops | Explicit ERR or no-op for admin/radio/secondary-channel/store-forward/range-test/unknown portnum. No LICHEN state mutation. | t2hn.9, unsupported tests, smoke-test section. | Any new op that reaches radio must add test+Bead. |
+| R1 build | r1_neo/nrf52840 + gateway + MESHTASTIC_BLE overlay. Fits in flash/RAM. | `lichen/apps/gateway/boards/r1_neo_nrf52840.*`, ev5b.4, smoke preflight twister. | Hardware flash+smoke blocked by avrb (ev5b.5). |
+
+Any expansion of a "Not supported" row requires new Beads for tests, vectors, and smoke evidence before updating this matrix.
+
 **Reference and test platforms:**
 - Python prototype and tests for adapter behavior.
 - Rust `lichen-meshtastic` for schema, address mapping, config, and host tooling. Its current `gatt.rs` is not
