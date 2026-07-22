@@ -93,7 +93,7 @@ class TrickleTimer:
         self._begin_interval(now)
 
     def reset(self, now: int) -> None:
-        if self.interval != self.imin:
+        if self._generation == 0 or self.interval != self.imin:
             self.interval = self.imin
             self._begin_interval(now)
 

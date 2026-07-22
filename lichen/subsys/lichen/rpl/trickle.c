@@ -118,7 +118,7 @@ void lichen_trickle_reset(struct lichen_trickle *t,
 	}
 
 	/* RFC 6206 section 4.2: no-op if already at imin */
-	if (t->interval != t->imin) {
+	if (t->transmit_time == 0 || t->interval != t->imin) {
 		t->interval = t->imin;
 		begin_interval(t, now, rand_offset);
 	}
