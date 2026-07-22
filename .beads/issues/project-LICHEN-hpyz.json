@@ -2,6 +2,7 @@
   "id": "project-LICHEN-hpyz",
   "title": "SLIP transport: ESC in IDLE state doesn't reset rx buffers",
   "description": "File: lichen/subsys/lichen/transport/slip_transport.c\nLines: 220-222\n\nWhen in SLIP_STATE_IDLE and receiving an ESC byte, the state transitions to SLIP_STATE_ESC but rx_len and rx_overflow are not reset:\n\n    case SLIP_STATE_IDLE:\n        if (b == SLIP_END) {\n            /* Empty frame or frame delimiter - stay idle */\n            ctx-\u003erx_len = 0;\n            ctx-\u003erx_overflow = false;\n        } else if (b == SLIP_ESC) {\n            ctx-\u003erx_state = SLIP_STATE_ESC;  // rx_len not reset!\n        } else {\n            /* First data byte */\n            ctx-\u003erx_state = SLIP_STATE_DATA;\n            ctx-\u003erx_len = 0;\n            ctx-\u003erx_overflow = false;\n            ...\n        }\n\nIf stale data exists in rx_pkt from a previous aborted frame, it could affect the new frame if rx_len is non-zero.\n\nThe regular data byte case properly resets rx_len to 0, but the ESC case doesn't. While subsequent DATA state handling appends, starting from a non-zero rx_len would corrupt the frame.\n\nFix: Reset rx_len and rx_overflow when transitioning from IDLE on ESC byte.",
+  "notes": "Commit: 569d4a5",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:53:43.708245Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T22:58:38.279559035Z",
+  "updated_at": "2026-07-22T22:59:11.860309386Z",
   "started_at": "2026-07-22T22:58:38.279559035Z",
   "lease_expires_at": "2026-07-22T23:03:38.279559035Z",
   "heartbeat_at": "2026-07-22T22:58:38.279559035Z"
