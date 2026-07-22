@@ -121,6 +121,10 @@ class Simulation:
         self._rng = random.Random(seed)
         self._observers = ObserverRegistry()
         self._debug_enabled = DEBUG_ENABLED
+        if jitter_min_us < 0 or jitter_max_us < 0:
+            raise ValueError(
+                f"jitter values must be non-negative, got min={jitter_min_us} max={jitter_max_us}"
+            )
         if jitter_max_us > 0 and jitter_min_us > jitter_max_us:
             raise ValueError(
                 f"jitter_min_us ({jitter_min_us}) must be <= jitter_max_us ({jitter_max_us})"

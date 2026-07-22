@@ -144,45 +144,6 @@ class SimulatorAPI:
         """
         return self._chaos_engines.get(sim_id)
 
-    def _parse_position(
-        self, body: dict[str, Any], defaults: tuple[float, float, float] | None = None
-    ) -> tuple[float, float, float]:
-        """Parse x, y, z from JSON body and validate they are finite numbers.
-
-        Rejects NaN, Inf, -Inf to prevent downstream NaN propagation in
-        distance calculations and comparisons (medium.py, chaos.py, etc).
-
-        Args:
-            body: The parsed JSON request body dict.
-            defaults: Optional (x, y, z) tuple for partial updates (used by move_node).
-
-        Returns:
-            Validated (x, y, z) tuple.
-
-        Raises:
-            ValueError: On invalid or non-finite coordinates.
-        """
-        if defaults is None:
-            x = body.get("x", 0.0)
-            y = body.get("y", 0.0)
-            z = body.get("z", 0.0)
-        else:
-            x = body.get("x", defaults[0])
-            y = body.get("y", defaults[1])
-            z = body.get("z", defaults[2])
-
-        try:
-            x = float(x)
-            y = float(y)
-            z = float(z)
-        except (TypeError, ValueError):
-            raise ValueError("Position coordinates must be numeric") from None
-
-        if not all(math.isfinite(v) for v in (x, y, z)):
-            raise ValueError("Position coordinates must be finite numbers (no NaN or Inf)")
-
-        return x, y, z
-
     async def create_simulation(self, request: Request) -> JSONResponse:
         """Create a new simulation.
 
@@ -356,8 +317,20 @@ class SimulatorAPI:
         if not node_id:
             return _error_response("Missing required field: id")
 
+        x = body.get("x", 0.0)
+        y = body.get("y", 0.0)
+        z = body.get("z", 0.0)
+
         try:
-            x, y, z = self._parse_position(body)
+            x = float(x)
+            y = float(y)
+            z = float(z)
+        except (TypeError, ValueError):
+            return _error_response("Position coordinates must be numeric")
+        if not all(math.isfinite(v) for v in (x, y, z)):
+            return _error_response("Position coordinates must be finite numbers")
+
+        try:
             node = sim.add_node(node_id, x, y, z)
         except ValueError as e:
             return _error_response(str(e))
@@ -412,11 +385,20 @@ class SimulatorAPI:
         except json.JSONDecodeError:
             return _error_response("Invalid JSON body")
 
+        x = body.get("x", node.position[0])
+        y = body.get("y", node.position[1])
+        z = body.get("z", node.position[2])
+
         try:
-            x, y, z = self._parse_position(body, defaults=node.position)
-            node.set_position(x, y, z)
-        except ValueError as e:
-            return _error_response(str(e))
+            x = float(x)
+            y = float(y)
+            z = float(z)
+        except (TypeError, ValueError):
+            return _error_response("Position coordinates must be numeric")
+        if not all(math.isfinite(v) for v in (x, y, z)):
+            return _error_response("Position coordinates must be finite numbers")
+
+        node.set_position(x, y, z)
 
         return JSONResponse(
             {
@@ -454,7 +436,7 @@ class SimulatorAPI:
         if direction not in ("tx", "rx", "both"):
             return _error_response(f"Invalid direction: {direction}. Must be 'tx', 'rx', or 'both'")
 
-        rule = DropRule(node_id=node_id, direction=direction)
+        rule = DropRule(node_id=node_id, direction=direction)  # type: ignore[arg-type]
         engine.add_rule(rule)
 
         return JSONResponse({"rule_id": rule.id, "type": "drop"})
@@ -484,12 +466,8 @@ class SimulatorAPI:
         if not groups_raw:
             return _error_response("Missing required field: groups")
 
-        if not isinstance(groups_raw, list) or not groups_raw:
-            return _error_response("groups must be a non-empty list of lists")
-
-        for group in groups_raw:
-            if not isinstance(group, list) or not group or not all(isinstance(item, str) for item in group):
-                return _error_response("each group must be a non-empty list of string node IDs")
+        if not isinstance(groups_raw, list):
+            return _error_response("groups must be a list of lists")
 
         try:
             groups = [set(group) for group in groups_raw]
@@ -579,9 +557,6 @@ class SimulatorAPI:
             radius_m = float(radius_m)
         except (TypeError, ValueError):
             return _error_response("Position and radius must be numeric")
-
-        if not all(math.isfinite(v) for v in (x, y, z, radius_m)):
-            return _error_response("Position and radius must be finite numbers (no NaN or Inf)")
 
         if radius_m <= 0:
             return _error_response("radius_m must be positive")

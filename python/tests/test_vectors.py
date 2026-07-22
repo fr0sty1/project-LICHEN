@@ -218,6 +218,13 @@ def test_meshcore_app_compat_vectors_match_generator() -> None:
     assert doc["vectors"] == meshcore_app_compat_vectors()
 
 
+def _hash_32(data: bytes) -> int:
+    h = 0x811c9dc5
+    for b in data:
+        h = ((h ^ b) * 0x01000193) & 0xffffffff
+    return h
+
+
 def _ccp15_cases():
     doc = _load("ccp15.json")
     assert doc["format_version"] == 2
@@ -229,9 +236,7 @@ def test_ccp15_sf_ema_load_factor_hash32_logic(name: str, vector: dict) -> None:
     i = vector["input"]
     o = vector["output"]
     eui = bytes.fromhex(i["eui64"])
-    h = 0x811c9dc5
-    for b in eui + i["epoch"].to_bytes(4, "little"):
-        h = ((h ^ b) * 0x01000193) & 0xffffffff
+    h = _hash_32(eui + i["epoch"].to_bytes(4, "little"))
     assert h == o["hash_32"]
     snr_ema = i.get("snr_ema", i["snr_db"])
     load_factor = i.get("load_factor", 0.0)

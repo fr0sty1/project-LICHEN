@@ -390,6 +390,8 @@ in the same DODAG.
 
 This document requests no IANA allocations. SCHC registry coordination with LPWAN WG required.
 
+Any future SCHC Context ID registry MUST coordinate with the IETF LPWAN WG to prevent namespace fragmentation.
+
 Future versions may request:
 - DIO Option Type for Rule Version advertisement
 - Rule ID registry for standardized rules
@@ -437,7 +439,7 @@ Rule versioning and interoperability (including DIO advertisement of rule set ve
 
 ## Appendix B. Compression Examples
 
-**TODO:** Add worked examples showing compression of sample packets.
+See test/vectors/schc-rules.json and test/vectors/schc-fragment.json for canonical test vectors. These are the independent oracle for interop validation between Rust, C, and Python implementations. All compression and fragmentation paths MUST match these vectors bit-exactly.
 
 ## Authors' Address
 

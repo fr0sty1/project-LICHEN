@@ -18,7 +18,6 @@
 / {
 	chosen {
 		zephyr,lora      = &lora;
-		/* SLIP rides Zephyr's uart_pipe; the driver requires this chosen node */
 		zephyr,uart-pipe = &lpuart1;
 	};
 };

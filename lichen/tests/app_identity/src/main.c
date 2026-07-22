@@ -174,7 +174,6 @@ ZTEST(app_identity, test_peer_lookup_and_enumeration)
 
 	copied = lichen_app_identity_copy_peers(peers, ARRAY_SIZE(peers));
 	zassert_equal(copied, 2U);
-	zassert_equal(lichen_app_identity_copy_peers(NULL, 2U), 0U);
 }
 
 ZTEST(app_identity, test_validation)

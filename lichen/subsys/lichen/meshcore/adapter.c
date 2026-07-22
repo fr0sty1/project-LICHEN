@@ -46,10 +46,6 @@ BUILD_ASSERT(LICHEN_MESHCORE_CHANNEL_MSG_V3_HEADER_LEN <
 	     "MeshCore channel V3 header must fit in a frame");
 BUILD_ASSERT(CONFIG_LICHEN_MESHCORE_PENDING_EVENTS <= UINT8_MAX,
 	     "Pending event queue indices are uint8_t");
-BUILD_ASSERT(LICHEN_MESHCORE_FRAME_MAX <= UINT16_MAX,
-	     "Frame max exceeds uint16_t limit for length fields");
-BUILD_ASSERT(LICHEN_MESHCORE_FRAME_MAX <= 256,
-	     "large stack in enqueue_next_pending");
 
 static int enqueue(struct lichen_meshcore_adapter *adapter,
 		   const uint8_t *frame, size_t len)
@@ -122,8 +118,8 @@ static void copy_fixed_string(uint8_t *dst, size_t dst_len,
 	}
 
 	len = strlen(src);
-	if (len >= dst_len && dst_len > 0) {
-		len = dst_len - 1;
+	if (len > dst_len) {
+		len = dst_len;
 	}
 	memcpy(dst, src, len);
 	if (len < dst_len) {
@@ -446,6 +442,7 @@ static uint8_t meshcore_error_from_errno(int err)
 	case -EMSGSIZE:
 	case -ERANGE:
 		return LICHEN_MESHCORE_ERR_ILLEGAL_ARG;
+	case -ENOTSUP:
 	case -ENOSYS:
 	default:
 		return LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD;
@@ -1054,10 +1051,14 @@ void lichen_meshcore_adapter_init(
 	struct lichen_meshcore_adapter *adapter,
 	const struct lichen_meshcore_adapter_ops *ops)
 {
-	__ASSERT_NO_MSG(adapter != NULL);
-	__ASSERT_NO_MSG(ops != NULL);
+	if (adapter == NULL) {
+		return;
+	}
+
 	memset(adapter, 0, sizeof(*adapter));
-	adapter->ops = *ops;
+	if (ops != NULL) {
+		adapter->ops = *ops;
+	}
 }
 
 void lichen_meshcore_adapter_reset(struct lichen_meshcore_adapter *adapter)

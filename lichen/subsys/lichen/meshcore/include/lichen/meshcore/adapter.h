@@ -51,6 +51,9 @@ typedef int (*lichen_meshcore_adapter_resolve_peer_prefix_fn)(
 #define LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN 31U
 #define LICHEN_MESHCORE_DEFAULT_FLOOD_KEY_LEN 16U
 
+BUILD_ASSERT(LICHEN_MESHCORE_FRAME_MAX <= UINT16_MAX,
+	     "Frame max exceeds uint16_t limit for length fields");
+
 struct lichen_meshcore_compat_settings {
 	bool advert_name_valid;
 	uint8_t advert_name_len;

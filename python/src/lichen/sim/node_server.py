@@ -140,13 +140,17 @@ class NodeServer:
         """
         try:
             while True:
+                # Deliver packets to nodes in callback-based RX mode
                 self._simulation.deliver_pending_packets()
+                # Advance time (fires TxEndEvent, RxTimeoutEvent)
                 self._simulation.maybe_advance_time()
+                # Brief delay to avoid busy loop
                 await asyncio.sleep(0.001)
         except asyncio.CancelledError:
             raise
-        except Exception:
-            logger.exception("Simulation driver error")
+        except BaseException as exc:
+            if not isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                logger.exception("Error in simulation driver")
             raise
 
     def _ensure_simulation_driver(self) -> None:
@@ -587,12 +591,11 @@ class NodeServer:
             await write_message(writer, encode_err(8, f"Node not found: {node_id}"))
             return
 
-        # Detect activity using the medium (updated for CAD/rendezvous per CCP-9)
+        # Detect activity using the medium
         current_time_us = self._simulation.current_time_us
         detected = self._simulation.medium.detect_activity(
             position=node.position,
             time_us=current_time_us,
-            rx_frequency_hz=None,  # explicit None or hash(SFN, EUI) computed rendezvous freq
         )
 
         logger.debug("CAD at %s: detected=%s", node_id, detected)

@@ -125,6 +125,8 @@ hal_location_fix_state_from_app(enum lichen_app_location_fix_state fix_state)
 		return LICHEN_HAL_LOCATION_FIX_2D;
 	case LICHEN_APP_LOCATION_FIX_3D:
 		return LICHEN_HAL_LOCATION_FIX_3D;
+	case LICHEN_APP_LOCATION_FIX_STALE:
+		return LICHEN_HAL_LOCATION_FIX_STALE;
 	case LICHEN_APP_LOCATION_FIX_ERROR:
 		return LICHEN_HAL_LOCATION_FIX_ERROR;
 	case LICHEN_APP_LOCATION_FIX_NONE:

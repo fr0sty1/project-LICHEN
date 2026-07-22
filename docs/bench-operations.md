@@ -48,20 +48,6 @@ The gateway's EUI is read from its boot log (`link-local ...ec45:2f74:419c:f281`
 |-------|-----------------|--------------|-------|
 | **T-Echo** | `if02` = console (log-only) | `if04` | `if00` = native-uart |
 | **T1000-E** | `if00` = native (**wedge trigger**) | `if02` | LR1110 |
-| **T-Deck** | USB-CDC console | SMP on secondary | I2C keyboard/trackball on I2C0/I2C1 |
-
-### Hardware pinouts & configs (vo1y clarification)
-
-**T-Deck I2C keyboard/trackball:**
-- Keyboard controller at I2C addr 0x55 (SDA/SCL typically GPIO18/GPIO8 or per pinctrl; enable `&i2c0 { status = "okay"; clock-frequency = <400000>; };`)
-- Trackball on I2C1 (separate controller, stub in Renode at 0x60027000)
-- Periph power rail GPIO10 must be HIGH before I2C/peripherals (see t_deck_esp32s3_procpu.dts:118)
-- See lichen/boards/lilygo/t_deck/t_deck-pinctrl.dtsi:27 and dts for SPI3 sharing.
-
-**ThinkNode M7 PoE:**
-- PoE PG (Power-Good) pin: GPIO input to detect valid PoE supply (active-high typically on dedicated pin).
-- Add to dts/conf: `&gpio0 { poe_pg_pin: poe-pg { gpios = <xx GPIO_ACTIVE_HIGH>; }; };` and monitor in border router init for power state.
-- Industrial border router target with Ethernet/PoE fallback.
 
 ---
 
@@ -76,17 +62,11 @@ These are hard-won; violating them wedges a device or corrupts a flash.
   (`do_select`, S-state). Read-only probes only, with a `timeout` wrapper.
 - **NEVER open a LICHEN native CDC port at 1200 baud** except as a deliberate
   DFU touch — 1200 baud reboots nRF boards into the UF2 bootloader.
-- **Heltec V3 console on UART1 (GPIO21/22) with external adapter is non-destructive.**
+- Heltec V3 gateway console now on UART1 (GPIO21/22); CP2102 open is non-destructive.
 - **Never pipe a flasher through `head`/`tail`** — the `SIGPIPE` when the reader
   closes aborts the transfer mid-write.
 - Opening the T1000-E `if02` SMP port is safe; it can wedge (CDC write timeout)
   only if a reset drops mid-SMP-transaction — recover with a DFU touch + reflash.
-
----
-
-## 2.1 Non-destructive Heltec console monitoring
-
-External USB-UART on GPIO21 (TX), GPIO22 (RX). Board DTS uses uart1 for console with status=okay and correct pinctrl. Open with dtr=False rts=False. Verify uptime not reset in logs. ROM-loader SHA-256 warning is benign.
 
 ---
 
@@ -97,7 +77,8 @@ workspace):
 
 ```bash
 export ZEPHYR_SDK_INSTALL_DIR=/path/to/zephyr-sdk-0.16.8
-export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+# Activate the workspace virtual environment if west is not already on PATH.
+export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)   # build-epoch policy requires this
 ```
 
 `ZEPHYR_SDK_INSTALL_DIR` may be omitted when the SDK is registered with CMake

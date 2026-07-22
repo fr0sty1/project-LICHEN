@@ -17,7 +17,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import struct
-from collections.abc import Coroutine
 from typing import TYPE_CHECKING
 
 from lichen.sim.protocol import (
@@ -119,7 +118,7 @@ class RenodeServer:
         # Start simulation driver task
         self._sim_driver_task = asyncio.create_task(self._simulation_driver())
 
-        return int(actual_port)
+        return actual_port
 
     async def stop(self) -> None:
         """Stop server."""
@@ -177,13 +176,17 @@ class RenodeServer:
         """
         try:
             while True:
+                # Deliver packets to nodes in callback-based RX mode
                 self._simulation.deliver_pending_packets()
+                # Advance time (fires TxEndEvent, RxTimeoutEvent)
                 self._simulation.maybe_advance_time()
+                # Brief delay to avoid busy loop
                 await asyncio.sleep(0.001)
         except asyncio.CancelledError:
             raise
-        except Exception:
-            logger.exception("Simulation driver error")
+        except BaseException as exc:
+            if not isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                logger.exception("Error in simulation driver")
             raise
 
     async def _handle_connection(
@@ -245,12 +248,7 @@ class RenodeServer:
             return
 
         tx_airtime = airtime_us(len(payload))
-        logger.debug(
-            "Renode TX: node=%s bytes=%d airtime=%d us",
-            self._node_id,
-            len(payload),
-            tx_airtime,
-        )
+        logger.debug("Renode TX: %d bytes, airtime %d us", len(payload), tx_airtime)
         await _write_message(writer, encode_tx_done(tx_airtime))
 
     def _handle_rx_enter(self, data: bytes, writer: asyncio.StreamWriter) -> None:
@@ -300,7 +298,7 @@ class RenodeServer:
         if self._writer is writer:
             await _write_message(writer, data)
 
-    def _create_background_task(self, coro: Coroutine[None, None, None]) -> None:
+    def _create_background_task(self, coro: asyncio.Coroutine[None, None, None]) -> None:
         """Create a tracked background task with exception handling.
 
         The task is added to _pending_tasks and automatically removed when done.

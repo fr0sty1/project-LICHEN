@@ -540,8 +540,10 @@ static const char *info_pio_env(const struct lichen_meshtastic_local_info *info)
 
 static uint32_t info_node_num(const struct lichen_meshtastic_local_info *info)
 {
-	return (info != NULL && info->node_num != 0U) ? info->node_num :
-							LICHEN_MESHTASTIC_DEFAULT_NODE_NUM;
+	if (info == NULL || info->node_num == 0U || info->node_num == 0xffffffffU) {
+		return 0x4c494348U;
+	}
+	return info->node_num;
 }
 
 static uint32_t info_min_app_version(
@@ -589,15 +591,8 @@ static bool info_has_position(const struct lichen_meshtastic_local_info *info)
 static int write_user(uint8_t *buf, size_t buflen, size_t *pos,
 		      const struct lichen_meshtastic_local_info *info)
 {
-	if (info == NULL) {
-		return -EINVAL;
-	}
-	uint32_t node_num = info_node_num(info);
-	if (node_num == 0U) {
-		return -EINVAL;
-	}
-
 	char id[10];
+	uint32_t node_num = info_node_num(info);
 
 	id[0] = '!';
 	for (size_t i = 0U; i < 8U; i++) {
@@ -607,6 +602,9 @@ static int write_user(uint8_t *buf, size_t buflen, size_t *pos,
 				     'a' + (nibble - 10));
 	}
 	id[9] = '\0';
+	if (id[0] != '!' || id[9] != '\0') {
+		return -EINVAL;
+	}
 
 	if (pb_write_string_field(buf, buflen, pos, USER_ID_FIELD, id) < 0 ||
 	    pb_write_string_field(buf, buflen, pos, USER_LONG_NAME_FIELD,

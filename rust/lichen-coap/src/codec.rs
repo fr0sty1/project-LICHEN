@@ -279,10 +279,11 @@ pub struct CoapOption<'a> {
 
 impl<'a> CoapOption<'a> {
     /// Interpret value as u32 (for integer options like Max-Age).
-    pub fn as_uint(&self) -> u64 {
-        let mut val = 0u64;
-        for &b in self.value {
-            val = (val << 8) | b as u64;
+    pub fn as_uint(&self) -> u32 {
+        let mut val = 0u32;
+        let start = self.value.len().saturating_sub(4);
+        for &b in &self.value[start..] {
+            val = (val << 8) | b as u32;
         }
         val
     }

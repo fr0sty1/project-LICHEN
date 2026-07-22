@@ -46,8 +46,6 @@ _LABEL_TO_FIELD: dict[int, str] = {
 
 _FIELD_TO_LABEL: dict[str, int] = {v: k for k, v in _LABEL_TO_FIELD.items()}
 
-# RFC 8428 type requirements for each field
-# str = string, num = float or int, int = int only, bool = boolean, bytes = bytes
 _FIELD_TYPES: dict[str, str] = {
     "bn": "str", "n": "str", "bu": "str", "u": "str", "vs": "str",
     "bt": "num", "bv": "num", "bs": "num", "v": "num", "s": "num", "t": "num", "ut": "num",
@@ -55,6 +53,8 @@ _FIELD_TYPES: dict[str, str] = {
     "vb": "bool",
     "vd": "bytes",
 }
+
+_VALUE_FIELDS: set[str] = {"v", "vs", "vb", "vd"}
 
 
 def _validate_field_type(name: str, value: object) -> None:
@@ -139,6 +139,13 @@ class SenmlRecord:
 
     def to_cbor_map(self) -> dict[int, Any]:
         """Serialise to a dict with numeric CBOR keys (omits None fields)."""
+        value_count = sum(
+            1
+            for f in fields(self)
+            if f.name in _VALUE_FIELDS and getattr(self, f.name) is not None
+        )
+        if value_count > 1:
+            raise ValueError("SenML record must have at most one value field")
         out: dict[int, Any] = {}
         for f in fields(self):
             val = getattr(self, f.name)
@@ -146,8 +153,6 @@ class SenmlRecord:
                 continue
             label = _FIELD_TO_LABEL[f.name]
             out[label] = val
-        if sum(1 for k in (2,3,4,8) if k in out) > 1:
-            raise ValueError("multiple SenML value fields")
         return out
 
     @classmethod
@@ -163,8 +168,9 @@ class SenmlRecord:
             if name is not None:
                 _validate_field_type(name, val)
                 kwargs[name] = val
-        if len({k for k in ("v","vs","vb","vd") if k in kwargs}) > 1:
-            raise ValueError("multiple SenML value fields")
+        value_count = sum(1 for k in _VALUE_FIELDS if k in kwargs)
+        if value_count > 1:
+            raise ValueError("SenML record must have at most one value field")
         return cls(**kwargs)
 
 
@@ -195,7 +201,7 @@ def unpack(data: bytes) -> list[SenmlRecord]:
         ValueError: If ``data`` is not a valid CBOR array of maps.
     """
     try:
-        raw = cbor2.loads(data, allow_duplicate_keys=False)
+        raw = cbor2.loads(data)
     except Exception as exc:
         raise ValueError(f"SenML CBOR decode failed: {exc}") from exc
     if not isinstance(raw, list):

@@ -592,12 +592,24 @@ int lichen_ble_ipsp_send(const uint8_t *data, size_t len)
 
 enum lichen_ble_conn_state lichen_ble_transport_get_state(void)
 {
-	return transport_state.state;
+	if (!transport_state.initialized) {
+		return LICHEN_BLE_DISCONNECTED;
+	}
+	k_mutex_lock(&transport_state.lock, K_FOREVER);
+	enum lichen_ble_conn_state state = transport_state.state;
+	k_mutex_unlock(&transport_state.lock);
+	return state;
 }
 
 bool lichen_ble_transport_is_secure(void)
 {
-	return transport_state.state >= LICHEN_BLE_SECURE;
+	if (!transport_state.initialized) {
+		return false;
+	}
+	k_mutex_lock(&transport_state.lock, K_FOREVER);
+	bool secure = transport_state.state >= LICHEN_BLE_SECURE;
+	k_mutex_unlock(&transport_state.lock);
+	return secure;
 }
 
 int lichen_ble_transport_get_stats(struct lichen_ble_transport_stats *stats)

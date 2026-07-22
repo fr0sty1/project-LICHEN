@@ -283,23 +283,21 @@ fn dec_text(data: &[u8], pos: usize) -> Result<(&str, usize), CborError> {
 ///
 /// Half-precision format: 1 sign bit, 5 exponent bits (bias 15), 10 mantissa bits.
 fn f16_to_f64(bits: u16) -> f64 {
-    let sign = ((bits >> 15) & 1) as u64;
+    let sign = (bits >> 15) & 1;
     let exp = (bits >> 10) & 0x1f;
     let mant = bits & 0x3ff;
 
-    match exp {
+    let val = match exp {
         0 => {
             if mant == 0 {
-                // Preserve signed zero per IEEE 754 using explicit bit pattern
-                f64::from_bits(sign << 63)
+                0.0
             } else {
-                let val = (mant as f64) / 16777216.0;
-                if sign == 1 { -val } else { val }
+                (mant as f64) / 16777216.0
             }
         }
         31 => {
             if mant == 0 {
-                if sign == 1 { f64::NEG_INFINITY } else { f64::INFINITY }
+                f64::INFINITY
             } else {
                 f64::NAN
             }
@@ -307,9 +305,16 @@ fn f16_to_f64(bits: u16) -> f64 {
         _ => {
             let f64_exp = (exp as u64) - 15 + 1023;
             let f64_mant = (mant as u64) << 42;
-            let f64_bits = (sign << 63) | (f64_exp << 52) | f64_mant;
+            let f64_bits = (f64_exp << 52) | f64_mant;
             f64::from_bits(f64_bits)
         }
+    };
+
+    let bits = val.to_bits();
+    if sign == 1 {
+        f64::from_bits(bits | (1u64 << 63))
+    } else {
+        val
     }
 }
 
@@ -490,19 +495,21 @@ pub fn decode<'a>(data: &'a [u8], buf: &mut [Record<'a>]) -> Result<usize, CborE
         }
         pos += adv;
         *rec = Record::empty();
-        let mut seen_keys = 0u16; // bitmap for keys -3..=6 to dedup per RFC 8949 §5.6
+        let mut seen_keys = 0u16;
         for _ in 0..n_kv {
             let (key, adv) = dec_int(data, pos)?;
             pos += adv;
-            let bit = 1u16 << ((key + 3) as u32).clamp(0, 15); // guard for bitmap
-            if seen_keys & bit != 0 {
-                return Err(CborError::InvalidInput); // reject duplicate map keys
+            if key >= -3 && key <= 6 {
+                let bit = (key + 3) as u32;
+                let mask = 1u16 << bit;
+                if (seen_keys & mask) != 0 {
+                    return Err(CborError::InvalidInput);
+                }
+                seen_keys |= mask;
             }
-            seen_keys |= bit;
             match key {
                 -2 => {
                     let (s, adv) = dec_text(data, pos)?;
-                    if s.len() > 64 { return Err(CborError::InvalidInput); } // name length validation
                     rec.base_name = Some(s);
                     pos += adv;
                 }
@@ -513,7 +520,6 @@ pub fn decode<'a>(data: &'a [u8], buf: &mut [Record<'a>]) -> Result<usize, CborE
                 }
                 0 => {
                     let (s, adv) = dec_text(data, pos)?;
-                    if s.len() > 32 { return Err(CborError::InvalidInput); } // name length validation
                     rec.name = Some(s);
                     pos += adv;
                 }
@@ -547,6 +553,9 @@ pub fn decode<'a>(data: &'a [u8], buf: &mut [Record<'a>]) -> Result<usize, CborE
                 }
             }
         }
+    }
+    if pos != data.len() {
+        return Err(CborError::InvalidInput);
     }
     Ok(n_recs)
 }

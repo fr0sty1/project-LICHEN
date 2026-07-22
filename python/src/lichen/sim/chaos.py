@@ -12,7 +12,7 @@ import math
 import random
 from abc import ABC, abstractmethod
 from collections import OrderedDict
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Literal
 from uuid import uuid4
 
@@ -228,8 +228,6 @@ class DegradeRule(ChaosRule):
         rx_position: tuple[float, float, float] | None = None,
     ) -> RxCandidate:
         """Return new RxCandidate with reduced RSSI and SNR."""
-        from dataclasses import replace
-
         return replace(
             candidate,
             rssi=candidate.rssi - self.rssi_penalty_db,
@@ -321,8 +319,6 @@ class LatencyRule(ChaosRule):
         rx_position: tuple[float, float, float] | None = None,
     ) -> RxCandidate:
         """Add latency to the candidate's delivery delay."""
-        from dataclasses import replace
-
         return replace(candidate, added_latency_us=candidate.added_latency_us + self.added_us)
 
 

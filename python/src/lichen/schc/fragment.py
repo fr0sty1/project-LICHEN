@@ -21,24 +21,15 @@ import zlib
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from lichen.constants import (
-    SCHC_FRAGMENT_M,
-    SCHC_FRAGMENT_N,
-    SCHC_FRAGMENT_T,
-    SCHC_RCS_BYTES,
-)
+N_FCN_BITS = 6
+ALL_1 = (1 << N_FCN_BITS) - 1  # 63 — marks the last fragment of the datagram
+MAX_WINDOW_SIZE = ALL_1 - 1  # 62 regular FCNs (62..0) per full window
+DEFAULT_WINDOW_SIZE = 7
+MAX_BITMAP_SIZE = 64
+MIC_LENGTH = 4  # CRC32
 
-N_FCN_BITS = SCHC_FRAGMENT_N
-ALL_1 = (1 << N_FCN_BITS) - 1
-MAX_WINDOW_SIZE = ALL_1 - 1
-DEFAULT_WINDOW_SIZE = 32
-MIC_LENGTH = SCHC_RCS_BYTES
-FRAGMENT_M = SCHC_FRAGMENT_M
-FRAGMENT_N = SCHC_FRAGMENT_N
-FRAGMENT_T = SCHC_FRAGMENT_T
-
-_W_SHIFT = SCHC_FRAGMENT_N
-_FCN_MASK = (1 << SCHC_FRAGMENT_N) - 1
+_W_SHIFT = 6
+_FCN_MASK = 0x3F
 
 
 class FragmentError(Exception):
@@ -46,7 +37,7 @@ class FragmentError(Exception):
 
 
 def compute_mic(payload: bytes) -> bytes:
-    """Reassembly Check Sequence (RCS) per RFC 8724 §8.1 using CRC-32 (IEEE 802.3 poly 0x04C11DB7, init 0xFFFFFFFF, final XOR 0xFFFFFFFF) as provided by zlib.crc32()."""
+    """Reassembly Check Sequence over the full datagram (RFC 8724 default CRC32)."""
     return zlib.crc32(payload).to_bytes(MIC_LENGTH, "big")
 
 
@@ -113,29 +104,33 @@ class Ack:
     complete: bool = False
 
     def to_bytes(self) -> bytes:
+        # Byte 1: window bit in top position (bit 6), complete flag in LSB (bit 0)
         byte1 = ((self.window & 1) << _W_SHIFT) | (0x01 if self.complete else 0)
-        if self.complete:
-            return bytes([self.rule_id, byte1])
+        # Pack bitmap into big-endian bytes: first fragment's bit is MSB of first byte.
+        # Shift-accumulate: for each bool, shift left and OR in 1 or 0.
+        # Example: bitmap (T,F,T,T,F) -> bits = 0b10110 = 22
         bits = 0
         for received in self.bitmap:
             bits = (bits << 1) | (1 if received else 0)
         n = len(self.bitmap)
+        # Pad to a whole number of bytes: if n=5, pad=3, so we shift left 3
+        # to align the 5 bits to the MSB of a single byte (0b10110 -> 0b10110000).
         pad = (-n) % 8
         body = (bits << pad).to_bytes((n + pad) // 8, "big") if n else b""
         return bytes([self.rule_id, byte1, n]) + body
 
     @classmethod
     def from_bytes(cls, data: bytes) -> Ack:
-        if len(data) < 2:
+        if len(data) < 3:
             raise FragmentError("ACK too short")
         rule_id = data[0]
         window = (data[1] >> _W_SHIFT) & 1
         complete = bool(data[1] & 0x01)
-        if complete:
-            return cls(rule_id, window, (), complete)
-        if len(data) < 3:
-            raise FragmentError("ACK too short")
         n = data[2]
+        if n > MAX_BITMAP_SIZE:
+            raise FragmentError(
+                f"bitmap size {n} exceeds MAX_BITMAP_SIZE={MAX_BITMAP_SIZE}"
+            )
         body = data[3:]
         required_bytes = (n + 7) // 8
         if len(body) < required_bytes:
@@ -164,8 +159,6 @@ class FragmentSender:
             raise FragmentError("tile_size must be positive")
         if not 1 <= self.window_size <= MAX_WINDOW_SIZE:
             raise FragmentError(f"window_size must be 1..{MAX_WINDOW_SIZE}")
-        if len(self.payload) > MAX_SCHC_PACKET:
-            raise FragmentError(f"payload exceeds MAX_SCHC_PACKET={MAX_SCHC_PACKET}")
         self._fragments = self._build()
 
     def _build(self) -> list[Fragment]:

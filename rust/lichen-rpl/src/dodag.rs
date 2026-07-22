@@ -32,6 +32,7 @@ pub const TDMA_SLOT_MS: u32 = 250;
 ///
 /// Values 0-127 are the linear region (restart); 128-255 are circular (normal).
 /// Returns true if `new_ver` is newer than `old_ver`.
+#[cfg(feature = "std")]
 const LOLLIPOP_CIRCULAR_BIT: u8 = 128;
 #[cfg(feature = "std")]
 const LOLLIPOP_SEQUENCE_WINDOW: u8 = 16;

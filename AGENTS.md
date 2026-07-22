@@ -259,7 +259,7 @@ int lichen_node_init(const uint8_t eui64[8], const uint8_t seed[32])
 
 ### Rules for Issue Resolution
 
-1. **"All issues" means ALL issues** — P0, P1, P2, P3, every single one. Do not skip P2/P3 because they're "low priority." The user asked for all of them.
+1. **"All issues" means ALL issues** — P0, P1, P2, P3, P4, every single one. Treat all priorities including P4 as real work — implement full fixes, do not close as low priority/opinion. The user asked for all of them.
 
 2. **Fix completely** — Don't half-fix an issue. Don't say "this could be improved further." Make all necessary code changes, run tests, close the issue.
 

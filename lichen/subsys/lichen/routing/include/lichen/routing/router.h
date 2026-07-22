@@ -127,10 +127,6 @@ struct lichen_mesh_prefix {
  *
  * SECURITY: data is a static buffer; data is copied on enqueue to prevent
  * use-after-free if caller frees their buffer before message expires.
- *
- * Note: This is distinct from struct lichen_dtn_message in dtn.h, which is
- * the standalone DTN module with larger buffers. This router-specific version
- * is for the embedded DTN buffer feature.
  */
 struct lichen_router_dtn_message {
 	uint8_t destination_iid[8]; /**< 8-byte IID of destination */

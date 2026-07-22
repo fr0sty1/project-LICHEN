@@ -22,7 +22,9 @@ use crate::message::{
 ///
 /// Values 0-127 are the linear region (restart); 128-255 are circular (normal).
 /// Returns true if `new_seq` is newer than `old_seq`.
+#[cfg(feature = "std")]
 const LOLLIPOP_CIRCULAR_BIT: u8 = 128;
+#[cfg(feature = "std")]
 const LOLLIPOP_SEQUENCE_WINDOW: u8 = 16;
 
 #[cfg(feature = "std")]
