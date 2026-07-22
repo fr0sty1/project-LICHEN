@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 
-<<<<<<< HEAD
 /**
  * @file coap_status.c
  * @brief LCI /status resource handlers (RFC 7641 Observable)
@@ -11,8 +10,6 @@
  */
 
 #include <stdio.h>
-=======
->>>>>>> origin/integration/worker3-20260722
 #include <string.h>
 #include <errno.h>
 
