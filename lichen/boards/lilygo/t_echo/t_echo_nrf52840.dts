@@ -144,10 +144,10 @@
 };
 
 /*
- * GDEW0154M10 e-ink display on SPI2.
- * CS=P0.30 (cs-gpios), DC=P0.28, RESET=P0.02, BUSY=P0.03, EINK_EN=P1.11
- * Follows t_deck display node conventions (chosen zephyr,display + status
- * enable in app overlay). SPI2 enabled per previous board bring-up.
+ * GDEW0154M10 e-ink display on SPI2 — disabled by default.
+ * Enable via app overlay for applications that use the display.
+ * Follows t_deck/heltec patterns exactly (chosen zephyr,display + status
+ * = "okay" in overlay). Node label mimics tdeck_display style.
  */
 &spi2 {
 	compatible = "nordic,nrf-spim";
@@ -159,14 +159,14 @@
 	pinctrl-1 = <&spi2_sleep>;
 	pinctrl-names = "default", "sleep";
 
-	gdew0154m10: gdew0154m10@0 {
+	eink0: uc81xx@0 {
 		compatible = "ultrachip,uc81xx";
 		reg = <0>;
 		status = "disabled";
 		dc-gpios = <&gpio0 28 GPIO_ACTIVE_HIGH>;
 		reset-gpios = <&gpio0 2 GPIO_ACTIVE_LOW>;
 		busy-gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
-		/* EINK_EN on P1.11 powers the panel; driver may map via power-gpios or custom */
+		/* EINK_EN on P1.11 powers the panel; mapped via power-gpios */
 		power-gpios = <&gpio1 11 GPIO_ACTIVE_HIGH>;
 		spi-max-frequency = <2000000>;
 		width = <152>;
