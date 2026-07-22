@@ -107,7 +107,7 @@ static int confessions_get(struct coap_resource *resource, struct coap_packet *r
 	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
 	uint8_t buf[64];
 	senml_pack_init(&s_senml_pack, NULL, 0);
-	senml_add_float(&s_senml_pack, "confessions", NULL, 0.0f);
+	senml_add_float(&s_senml_pack, SENML_KEY_CONFESSIONS, NULL, 0.0f);
 	int len = senml_encode_cbor(&s_senml_pack, buf, sizeof(buf));
 	k_mutex_unlock(&s_dtn_buf_mutex);
 	if (len < 0) return COAP_RESPONSE_CODE_INTERNAL_ERROR;
