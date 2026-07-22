@@ -206,7 +206,6 @@ int lichen_coap_server_stop(void);
  * @return 1 if running, 0 if stopped, negative on error
  */
 int lichen_coap_server_is_running(void);
-int lichen_coap_deaddrop_register(void);
 
 struct lichen_deaddrop_provider {
 	int (*store)(const uint8_t *payload, size_t len);

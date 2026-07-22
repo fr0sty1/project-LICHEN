@@ -453,11 +453,11 @@ static bool is_all_zeros(const uint8_t *buf, size_t len)
  * Ed25519 sign
  */
 static void ed25519_sign(uint8_t sig[64],
-			 const uint8_t seed[32],
+			 uint8_t seed[32],
 			 const uint8_t *msg, size_t msg_len)
 {
 	uint8_t sk[64], pk[32];
-	crypto_ed25519_key_pair(sk, pk, (uint8_t *)seed);
+	crypto_ed25519_key_pair(sk, pk, seed);
 	crypto_ed25519_sign(sig, sk, msg, msg_len);
 	crypto_wipe(sk, sizeof(sk));
 }
