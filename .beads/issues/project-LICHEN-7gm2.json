@@ -1,14 +1,16 @@
 {
   "id": "project-LICHEN-7gm2",
   "title": "[codereview-pass-3 Python] rules.py:290 RPL_DAO uses kd_flags but adaptation.md and Rust codec use different DAO base fields - needs sync",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",
   "created_at": "2026-07-22T14:50:56.347389747Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:01:46.472591465Z",
+  "updated_at": "2026-07-22T15:01:47.747281924Z",
   "started_at": "2026-07-22T14:54:03.956108921Z",
+  "lease_expires_at": "2026-07-22T15:06:47.747281924Z",
+  "heartbeat_at": "2026-07-22T15:01:47.747281924Z",
   "labels": [
     "codereview"
   ],
