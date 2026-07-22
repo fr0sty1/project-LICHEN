@@ -635,7 +635,7 @@ mod tests {
 
         let decoded = DodagConfig::from_bytes(&buf[2..n]).unwrap();
         assert_eq!(decoded.pcs, 0);
-        assert_eq!(decoded.a_flag, false);
+        assert!(!decoded.a_flag);
         assert_eq!(decoded.min_hop_rank_increase, 256);
         assert_eq!(decoded.max_rank_increase, 2048);
         assert_eq!(decoded.ocp, 1);

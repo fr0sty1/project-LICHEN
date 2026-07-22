@@ -34,7 +34,9 @@ impl NodeId {
     /// addresses per spec §6.1. Independent roundtrip oracle used in tests.
     pub fn from_ipv6(addr: Ipv6Addr) -> Self {
         let bytes = addr.0;
-        let mut iid = [bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]];
+        let mut iid = [
+            bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15],
+        ];
         iid[0] ^= 0x02;
         NodeId(iid)
     }
