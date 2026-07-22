@@ -797,6 +797,24 @@ int main(void)
 				     NET_EVENT_IPV6_PREFIX_DEL);
 	net_mgmt_add_event_callback(&wifi_mgmt_cb);
 	LOG_INF("WiFi station backhaul + net_mgmt prefix events registered for LICHEN_GATEWAY_PREFIX_DELEGATION");
+
+	/* WiFi station mode for Heltec V3 (project-LICHEN-sa32) */
+	struct wifi_connect_req_params cnx_params = {
+		.ssid = CONFIG_LICHEN_GATEWAY_WIFI_SSID,
+		.ssid_length = strlen(CONFIG_LICHEN_GATEWAY_WIFI_SSID),
+		.psk = CONFIG_LICHEN_GATEWAY_WIFI_PSK,
+		.psk_length = strlen(CONFIG_LICHEN_GATEWAY_WIFI_PSK),
+		.security = WIFI_SECURITY_TYPE_PSK,
+		.channel = WIFI_CHANNEL_ANY,
+	};
+	struct net_if *backhaul_if = net_if_get_default();
+	int ret = net_mgmt(NET_REQUEST_WIFI_CONNECT, backhaul_if,
+			   &cnx_params, sizeof(cnx_params));
+	if (ret < 0) {
+		LOG_WRN("WiFi STA connect request failed (%d); check NET_CONFIG_SETTINGS or credentials", ret);
+	} else {
+		LOG_INF("WiFi station mode initiated to %s for 6LBR backhaul", CONFIG_LICHEN_GATEWAY_WIFI_SSID);
+	}
 #endif
 
 	LOG_INF("CoAP server on port %u (AUTOSTART)", coap_port);

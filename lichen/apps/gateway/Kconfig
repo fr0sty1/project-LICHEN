@@ -212,7 +212,21 @@ config LICHEN_GATEWAY_PREFIX_DELEGATION
 	help
 	  Use net_mgmt events for WiFi connect and IPv6 RA prefix acquisition.
 	  Integrates with RPL root via lichen_rpl_root_set_prefix and updates
-	  status CBOR. Implements project-LICHEN-vsdl.
+	  status CBOR. Implements project-LICHEN-vsdl and project-LICHEN-sa32.
+
+config LICHEN_GATEWAY_WIFI_SSID
+	string "WiFi SSID for Heltec V3 station backhaul"
+	default "lichen-test"
+	depends on LICHEN_GATEWAY_PREFIX_DELEGATION
+	help
+	  SSID to automatically connect to in station mode. Override per-board.
+
+config LICHEN_GATEWAY_WIFI_PSK
+	string "WiFi PSK for Heltec V3 station backhaul"
+	default "lichen123"
+	depends on LICHEN_GATEWAY_WIFI_SSID
+	help
+	  PSK for the SSID. Uses WPA2/3. See Zephyr wifi_mgmt samples.
 
 config LICHEN_GATEWAY_COORDINATION
 	bool "Gateway coordination protocol (TDMA slots, node registry, handoff)"
