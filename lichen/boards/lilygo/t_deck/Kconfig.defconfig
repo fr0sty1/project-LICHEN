@@ -10,11 +10,19 @@ config HEAP_MEM_POOL_ADD_SIZE_BOARD
 	default 40960 if BT
 	default 8192
 
-endif
+config LICHEN_HAS_DISPLAY
+	default y
+	select LVGL
+	select DISPLAY
+	select ST7789V if DISPLAY
+	select INPUT
+	select GPIO_KEYS
+
+endif # BOARD_T_DECK_ESP32S3_PROCPU
 
 if BOARD_T_DECK_ESP32S3_APPCPU
 
 config HEAP_MEM_POOL_ADD_SIZE_BOARD
 	default 256
 
-endif
+endif # BOARD_T_DECK_ESP32S3_APPCPU
