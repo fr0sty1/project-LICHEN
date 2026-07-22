@@ -271,4 +271,11 @@ config LICHEN_COAP_DEADDROP_LOG_LEVEL
 	help
 	  Log level for LICHEN CoAP deaddrop handler: 0=off ... 4=debug
 
+config LICHEN_COAP_DEADDROP_RATE_LIMIT_MS
+	int "Rate limit for /deaddrop POSTs in ms"
+	depends on LICHEN_COAP_DEADDROP
+	default 600000
+	help
+	  Minimum ms between POSTs per-source (IID bucket). Implements 6/hour per spec 12-apps.md:18.9. Prevents storage exhaustion.
+
 endif # LICHEN_COAP

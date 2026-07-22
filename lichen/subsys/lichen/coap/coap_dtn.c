@@ -10,6 +10,7 @@
 #include <lichen/routing/dtn.h>
 #include <lichen/senml.h>
 #include <zcbor_decode.h>
+#include <zephyr/net/net_ip.h>
 
 LOG_MODULE_REGISTER(lichen_coap_dtn, CONFIG_LICHEN_COAP_DEADDROP_LOG_LEVEL);
 
