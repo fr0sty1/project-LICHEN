@@ -292,6 +292,9 @@ int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 	if (payload_len > 0 && payload == NULL) {
 		return -EINVAL;
 	}
+	if (privkey == NULL || pubkey == NULL || sig == NULL) {
+		return -EINVAL;
+	}
 
 	/* Build the exact wire prefix, excluding the signature MIC.
 	 * addr_len prefix provides domain separation (prevents addr/payload

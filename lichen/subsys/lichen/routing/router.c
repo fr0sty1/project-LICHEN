@@ -956,7 +956,6 @@ int lichen_router_fwd_dequeue(struct lichen_router *router,
 	/* Find oldest packet across all sources (FIFO) */
 	struct lichen_fwd_source *oldest_src = NULL;
 	struct lichen_fwd_packet *oldest_pkt = NULL;
-	uint32_t oldest_time = 0xFFFFFFFF;
 
 	for (size_t i = 0; i < CONFIG_LICHEN_ROUTER_MAX_FORWARDING_SOURCES; i++) {
 		struct lichen_fwd_source *src = &router->fwd_sources[i];
@@ -971,10 +970,9 @@ int lichen_router_fwd_dequeue(struct lichen_router *router,
 			}
 
 			if (oldest_pkt == NULL ||
-			    (int32_t)(pkt->enqueued_at_ms - oldest_time) < 0) {
+			    (int32_t)(pkt->enqueued_at_ms - oldest_pkt->enqueued_at_ms) < 0) {
 				oldest_src = src;
 				oldest_pkt = pkt;
-				oldest_time = pkt->enqueued_at_ms;
 			}
 		}
 	}
@@ -994,7 +992,7 @@ int lichen_router_fwd_dequeue(struct lichen_router *router,
 	router->fwd_stats.packets_forwarded++;
 
 	/* Update activity timestamp */
-	oldest_src->last_activity_ms = oldest_time;
+	oldest_src->last_activity_ms = oldest_pkt->enqueued_at_ms;
 
 	/* If source has no more packets, mark it invalid for reuse */
 	if (oldest_src->packet_count == 0) {
