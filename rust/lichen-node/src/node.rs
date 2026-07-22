@@ -120,7 +120,8 @@ impl Node {
         {
             let mut dst_bytes = [0u8; 16];
             dst_bytes.copy_from_slice(&ipv6[field::DST_OFFSET..IPV6_HEADER_LEN]);
-            if dst_bytes == self.node_id.link_local_addr().0 {
+            let dst = Ipv6Addr(dst_bytes);
+            if dst == self.node_id.link_local_addr() || dst.is_ula() || dst.is_gua() {
                 return self.reply_echo_ipv6(ipv6, reply);
             }
         }

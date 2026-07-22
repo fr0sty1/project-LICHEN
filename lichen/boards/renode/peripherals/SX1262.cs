@@ -114,8 +114,11 @@ namespace Antmicro.Renode.Peripherals.Wireless
 
         public void FinishTransmission()
         {
-            state = State.Idle;
-            byteIndex = 0;
+            lock (stateLock)
+            {
+                state = State.Idle;
+                byteIndex = 0;
+            }
         }
 
         public byte Transmit(byte data)
@@ -205,9 +208,13 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     break;
 
                 case State.GetStatus:
-                    // Return status: bits [6:4]=mode, bits [3:1]=cmd_status
-                    // Mode: 0x2=STDBY_RC, 0x5=RX, 0x6=TX
-                    result = 0x22; // STDBY_RC, command OK
+                    lock (stateLock)
+                    {
+                        if (rxMode)
+                            result = 0x52;
+                        else
+                            result = 0x62;
+                    }
                     break;
 
                 case State.GetIrqStatus:

@@ -40,6 +40,15 @@ static void raw_rx_cb(const uint8_t *data, size_t len, void *user_ctx)
 	}
 }
 
+static struct kiss_transport_config get_test_config(void) {
+	struct kiss_transport_config c = {
+		.ax25_rx_cb = ax25_rx_cb,
+		.raw_rx_cb = raw_rx_cb,
+		.user_ctx = NULL,
+	};
+	return c;
+}
+
 static void reset_test_state(void *fixture)
 {
 	ARG_UNUSED(fixture);
@@ -390,11 +399,7 @@ ZTEST(kiss_transport, test_set_params_null)
 ZTEST(kiss_transport, test_rx_ax25)
 {
 	/* Initialize transport first */
-	struct kiss_transport_config config = {
-		.ax25_rx_cb = ax25_rx_cb,
-		.raw_rx_cb = raw_rx_cb,
-		.user_ctx = NULL,
-	};
+	struct kiss_transport_config config = get_test_config();
 	int ret = kiss_transport_init(&config);
 	/* May already be initialized */
 	zassert_true(ret == 0 || ret == -EALREADY, "Init should succeed or already be done");
@@ -416,11 +421,7 @@ ZTEST(kiss_transport, test_rx_ax25)
 ZTEST(kiss_transport, test_rx_raw)
 {
 	/* Initialize transport first */
-	struct kiss_transport_config config = {
-		.ax25_rx_cb = ax25_rx_cb,
-		.raw_rx_cb = raw_rx_cb,
-		.user_ctx = NULL,
-	};
+	struct kiss_transport_config config = get_test_config();
 	int ret = kiss_transport_init(&config);
 	zassert_true(ret == 0 || ret == -EALREADY, "Init should succeed or already be done");
 
@@ -441,11 +442,7 @@ ZTEST(kiss_transport, test_rx_raw)
  */
 ZTEST(kiss_transport, test_cmd_txdelay)
 {
-	struct kiss_transport_config config = {
-		.ax25_rx_cb = ax25_rx_cb,
-		.raw_rx_cb = raw_rx_cb,
-		.user_ctx = NULL,
-	};
+	struct kiss_transport_config config = get_test_config();
 	int ret = kiss_transport_init(&config);
 	zassert_true(ret == 0 || ret == -EALREADY, "Init ok");
 
@@ -465,11 +462,7 @@ ZTEST(kiss_transport, test_cmd_txdelay)
  */
 ZTEST(kiss_transport, test_cmd_persistence)
 {
-	struct kiss_transport_config config = {
-		.ax25_rx_cb = ax25_rx_cb,
-		.raw_rx_cb = raw_rx_cb,
-		.user_ctx = NULL,
-	};
+	struct kiss_transport_config config = get_test_config();
 	int ret = kiss_transport_init(&config);
 	zassert_true(ret == 0 || ret == -EALREADY, "Init ok");
 
@@ -489,11 +482,7 @@ ZTEST(kiss_transport, test_cmd_persistence)
  */
 ZTEST(kiss_transport, test_cmd_slottime)
 {
-	struct kiss_transport_config config = {
-		.ax25_rx_cb = ax25_rx_cb,
-		.raw_rx_cb = raw_rx_cb,
-		.user_ctx = NULL,
-	};
+	struct kiss_transport_config config = get_test_config();
 	int ret = kiss_transport_init(&config);
 	zassert_true(ret == 0 || ret == -EALREADY, "Init ok");
 

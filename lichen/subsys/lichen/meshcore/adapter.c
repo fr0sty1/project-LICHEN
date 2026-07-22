@@ -552,7 +552,7 @@ static bool valid_default_flood_name(const uint8_t *payload)
 	}
 
 	len = (size_t)(nul - payload);
-	if (len > 30U) {
+	if (len > LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN - 1U) {
 		return false;
 	}
 	return valid_utf8_text(payload, len);
@@ -581,7 +581,7 @@ static int persist_settings_or_error(
 		compat_settings(adapter);
 	int ret;
 
-	if (adapter->ops.persist_settings == NULL) {
+	if (settings == NULL || adapter->ops.persist_settings == NULL) {
 		return 0;
 	}
 
@@ -607,7 +607,7 @@ static int commit_settings_with_ok(
 
 	ret = enqueue_ok(adapter);
 	if (ret < 0) {
-		if (adapter->ops.persist_settings == NULL) {
+		if (settings != NULL && adapter->ops.persist_settings == NULL) {
 			*settings = *old_settings;
 		}
 	}

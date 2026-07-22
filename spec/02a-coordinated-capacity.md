@@ -724,16 +724,11 @@ same root, the node treats the epoch change normally.
 
 ### SFN Wraparound
 
-SFN is an unsigned integer that wraps to zero. Wraparound within the same
-epoch is expected and handled by modular arithmetic.
+SFN is an unsigned 32-bit integer that wraps at 0xFFFFFFFF. The delta MUST be computed as current_sfn - last_sfn using unsigned arithmetic. This correctly handles the boundary (0xFFFFFFFF to 0x00000000 yields delta=1). The node MUST call enter_desync() if delta exceeds MAX_SFN_DELTA. Wraparound within the same epoch is expected and handled by modular arithmetic.
 
-When local SFN wraps:
-1. Increment local epoch counter.
-2. Continue hopping normally.
+When local SFN wraps the node MUST increment local epoch counter and continue hopping normally.
 
-If a received beacon's epoch differs from the local epoch by more than one,
-the node's time estimate is grossly wrong. It MUST transition to RECOVER
-regardless of current state.
+If a received beacon's epoch differs from the local epoch by more than one the node MUST transition to RECOVER regardless of current state.
 
 ### GPS-Capable Nodes
 

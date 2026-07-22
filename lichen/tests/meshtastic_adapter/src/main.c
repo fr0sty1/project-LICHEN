@@ -3925,4 +3925,25 @@ ZTEST(meshtastic_adapter, test_oversized_raw_is_rejected)
 		      1U);
 }
 
+ZTEST(meshtastic_adapter, test_position_future_timestamp_rejected)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	uint8_t position[32];
+	size_t position_len;
+	size_t to_radio_len;
+	int ret;
+	position_len = build_position_payload_with_metadata(position, sizeof(position), false, false, 0U, true, 4000000000U, false, false, 0U, false, 0U, false, 0U, false, 0U);
+	to_radio_len = build_app_to_radio(s_text_packet, sizeof(s_text_packet), 3U, position, position_len, 0x12345674U);
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, s_text_packet, to_radio_len);
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.position_count, 1U);
+	zassert_true(ctx.last_position.latitude_e7_valid);
+	zassert_true(ctx.last_position.longitude_e7_valid);
+	zassert_false(ctx.last_position.fix_time_unix_valid);
+	zassert_true(ctx.last_position.fix_time_rejected_future);
+	zassert_false(ctx.last_position.fix_time_rejected_below_epoch_floor);
+	zassert_equal(ctx.last_position.effective_epoch_floor, (uint32_t)CONFIG_LICHEN_MESHTASTIC_POSITION_EPOCH_FLOOR_UNIX);
+}
 ZTEST_SUITE(meshtastic_adapter, NULL, NULL, NULL, NULL, NULL);

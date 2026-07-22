@@ -328,7 +328,7 @@ Position queries (`GET /sensors/location`) are protected based on privacy mode:
 |------|------------------------|
 | public | None |
 | group | OSCORE with group context (see 18.8) |
-| private | OSCORE with pairwise context (see 8.8 EDHOC) |
+| private | OSCORE with pairwise context (see 8.9 EDHOC) |
 
 Unauthenticated queries to non-public nodes receive `4.01 Unauthorized`:
 

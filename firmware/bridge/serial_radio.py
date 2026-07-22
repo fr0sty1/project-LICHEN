@@ -8,9 +8,10 @@ Drop-in replacement for SimRadio in the simulator.
 """
 
 import asyncio
+from dataclasses import dataclass
+
 import serial
 import serial.tools.list_ports
-from dataclasses import dataclass
 
 
 @dataclass

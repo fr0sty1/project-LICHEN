@@ -1,0 +1,27 @@
+{
+  "format_version": 2,
+  "description": "ccp15 vectors for SF EMA load_factor hash_32 congestion control with independent oracle.",
+  "vectors": [
+    {
+      "name": "seed0",
+      "sf": 7,
+      "ema": 0.36,
+      "load_factor": 0.0,
+      "hash_32": "00000000"
+    },
+    {
+      "name": "seed1",
+      "sf": 12,
+      "ema": 0.421803,
+      "load_factor": 0.618034,
+      "hash_32": "9e3779b9"
+    },
+    {
+      "name": "seed2",
+      "sf": 10,
+      "ema": 0.383607,
+      "load_factor": 0.236068,
+      "hash_32": "3c6ef372"
+    }
+  ]
+}

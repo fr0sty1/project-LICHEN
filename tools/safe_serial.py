@@ -11,10 +11,11 @@ Examples:
 """
 # ponytail: subprocess with hard timeout, no blocking reads
 
-import sys
-import glob
 import argparse
+import glob
 import signal
+import sys
+
 
 def timeout_handler(signum, frame):
     print("\n[TIMEOUT]", file=sys.stderr)

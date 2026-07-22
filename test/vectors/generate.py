@@ -24,7 +24,7 @@ from lichen.rpl.messages import DAO, DIO, to_icmpv6
 from lichen.schc.headers import compress_packet
 
 VECTORS_DIR = Path(__file__).resolve().parent
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 L2_DISPATCH_SCHC = 0x14
 L2_DISPATCH_ROUTING = 0x15
 
@@ -1562,6 +1562,16 @@ def _write(filename: str, description: str, vectors: list[dict]) -> None:
     print(f"wrote {len(vectors)} vectors to {path.name}")
 
 
+def ccp15_vectors() -> list[dict]:
+    v = []
+    for seed in range(3):
+        h = (seed * 0x9e3779b9) & 0xffffffff
+        load_factor = h / 4294967295.0
+        ema = 0.1 * load_factor + 0.9 * 0.4
+        sf = 7 if load_factor < 0.2 else 10 if load_factor < 0.6 else 12
+        v.append({"name": f"seed{seed}","sf":sf,"ema":round(ema,6),"load_factor":round(load_factor,6),"hash_32":f"{h:08x}"})
+    return v
+
 def main() -> None:
     _write(
         "schc_compression.json",
@@ -1604,6 +1614,11 @@ def main() -> None:
         "MeshCore inner frame for BLE unless transport.framing states serial "
         "0x3c/0x3e length framing.",
         meshcore_app_compat_vectors(),
+    )
+    _write(
+        "ccp15.json",
+        "ccp15 vectors for SF EMA load_factor hash_32 congestion control with independent oracle.",
+        ccp15_vectors(),
     )
 
 

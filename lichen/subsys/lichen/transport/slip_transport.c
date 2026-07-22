@@ -494,6 +494,15 @@ static int slip_iface_send(const struct device *dev, struct net_pkt *pkt)
 		return ret;
 	}
 
+	ret = validate_ipv6_packet(pkt_buf, pkt_len);
+	if (ret < 0) {
+		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
+		ctx->stats.tx_errors++;
+		k_mutex_unlock(&ctx->stats_mutex);
+		k_mutex_unlock(&ctx->tx_mutex);
+		return ret;
+	}
+
 	/* Encode with SLIP framing */
 	ret = slip_encode(pkt_buf, pkt_len, ctx->tx_frame, sizeof(ctx->tx_frame),
 			  &frame_len);
@@ -574,6 +583,11 @@ int slip_transport_send(const uint8_t *ipv6, size_t len)
 
 	if (len > SLIP_LCI_MTU) {
 		return -EMSGSIZE;
+	}
+
+	ret = validate_ipv6_packet(ipv6, len);
+	if (ret < 0) {
+		return ret;
 	}
 
 	k_mutex_lock(&ctx->tx_mutex, K_FOREVER);

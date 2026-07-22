@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["format_version", "description", "vectors"],
   "properties": {
-    "format_version": {"type": "integer", "const": 1},
+    "format_version": {"type": "integer", "const": 2},
     "description": {"type": "string"},
     "vectors": {
       "type": "array",
@@ -18,7 +18,8 @@
           {"$ref": "#/definitions/meshtastic_app_compat_vector"},
           {"$ref": "#/definitions/meshcore_app_compat_vector"},
           {"$ref": "#/definitions/oscore_vector"},
-          {"$ref": "#/definitions/rpl_messages_vector"}
+          {"$ref": "#/definitions/rpl_messages_vector"},
+          {"$ref": "#/definitions/ccp15_vector"}
         ]
       }
     }
@@ -550,6 +551,18 @@
           "$ref": "#/definitions/hex",
           "description": "Encoded message bytes (excluding ICMPv6 header)"
         }
+      }
+    },
+    "ccp15_vector": {
+      "type": "object",
+      "required": ["name", "sf", "ema", "load_factor", "hash_32"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "sf": {"type": "integer", "enum": [7, 10, 12]},
+        "ema": {"type": "number"},
+        "load_factor": {"type": "number"},
+        "hash_32": {"type": "string", "pattern": "^[0-9a-f]{8}$"}
       }
     }
   }

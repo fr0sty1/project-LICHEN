@@ -2,6 +2,8 @@
 import subprocess
 import sys
 from pathlib import Path
+
+
 def main():
     p = Path(__file__).parent.parent / "python"
     cmd = ["uv", "run", "pytest", "-q", "--timeout=60", "tests/test_vectors.py", "tests/interface/meshtastic", "tests/interface/test_meshtastic_address.py", "tests/interface/test_meshtastic_translate.py", "tests/interface/meshtastic/test_zephyr_unsupported_portnums.py", "tests/client/test_lci.py", "--tb=no"]

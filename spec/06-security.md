@@ -87,7 +87,6 @@ signature remains valid because signed fields are unchanged.
 ### 8.5. Signature Caching
 
 To reduce verification overhead:
-
 1. **First-hop verification:** Verify signature when packet first arrives
 2. **Cache result:** Mark packet as "verified from <IID>" in forwarding state
 3. **Relay without re-verify:** Subsequent hops trust first-hop verification
@@ -98,7 +97,12 @@ Cache entries expire after 2× expected mesh traversal time (default: 30 seconds
 **Security note:** A compromised relay could inject unverified packets. In
 high-security deployments, enable per-hop verification (costs CPU, not bytes).
 
-### 8.6. Key Management
+### 8.6. Unified Derivation
+
+Single-seed SHA-256 derivation for Ed25519, X25519 and IPv6 IID (u-bit set) eliminates multiple vectors. Yggdrasil-compatible. No new attack surface. Bit mapping in appendix.
+
+### 8.7. Key Management
+
 
 **Design Principles:**
 - No pre-shared network keys (each node has its own keypair)
@@ -257,7 +261,7 @@ For high-security pairing without infrastructure:
 - Key change without signature -> reject, require re-verification
 - Revocation: remove from local key store; no global revocation list
 
-### 8.7. OSCORE (RFC 8613)
+### 8.8. OSCORE (RFC 8613)
 
 Object Security for Constrained RESTful Environments provides end-to-end
 security for CoAP:
@@ -271,7 +275,7 @@ security for CoAP:
 
 **OSCORE Overhead:** 8-13 bytes (Partial IV + Tag)
 
-### 8.8. EDHOC (RFC 9528)
+### 8.9. EDHOC (RFC 9528)
 
 Ephemeral Diffie-Hellman Over COSE provides lightweight authenticated key
 exchange for establishing OSCORE security contexts.
@@ -343,9 +347,9 @@ EDHOC is designed for constrained devices:
 - One-RTT for initiator-authenticated, two-RTT for mutual auth
 
 Nodes unable to run EDHOC MAY use pre-shared OSCORE contexts provisioned
-out-of-band (see 8.6 Key Management).
+out-of-band (see 8.7 Key Management).
 
-### 8.9. RPL Security
+### 8.10. RPL Security
 
 RPL control messages (DIO, DAO, DIS) are protected by **link-layer signatures**
 as the baseline. RPL's native secure modes are OPTIONAL for additional

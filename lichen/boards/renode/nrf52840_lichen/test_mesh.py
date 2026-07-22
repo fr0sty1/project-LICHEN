@@ -31,7 +31,6 @@ sys.path.insert(0, str(project_root / "python" / "src"))
 from lichen.sim.renode_server import start_renode_server  # noqa: E402
 from lichen.sim.simulation import Simulation  # noqa: E402
 
-
 # The T-Echo/RAK4631 firmware is built as an MCUboot slot-0 application: its
 # vector table lives at `_vector_table` (slot0 base + CONFIG_ROM_START_OFFSET,
 # e.g. 0x32200), NOT at flash 0x0. On real hardware MCUboot chain-loads it; in

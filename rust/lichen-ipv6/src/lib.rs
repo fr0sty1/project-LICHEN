@@ -172,15 +172,17 @@ impl Addr {
     /// All-routers multicast (ff02::2).
     pub const ALL_ROUTERS: Self = Self([0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x02]);
 
-    /// Create link-local address from 8-byte node ID (EUI-64).
-    ///
-    /// Format: fe80::XX:XX:XX:ff:fe:XX:XX:XX with U/L bit flipped.
     pub fn link_local_from_eui64(eui64: &[u8; 8]) -> Self {
         let mut addr = [0u8; 16];
         addr[0] = 0xfe;
         addr[1] = 0x80;
-        // bytes 2-7 are zero (link-local prefix)
-        addr[8] = eui64[0] ^ 0x02; // Flip U/L bit
+        addr[2] = 0;
+        addr[3] = 0;
+        addr[4] = 0;
+        addr[5] = 0;
+        addr[6] = 0;
+        addr[7] = 0;
+        addr[8] = eui64[0] ^ 0x02;
         addr[9] = eui64[1];
         addr[10] = eui64[2];
         addr[11] = eui64[3];
@@ -191,7 +193,6 @@ impl Addr {
         Self(addr)
     }
 
-    /// Create link-local address from 6-byte MAC (insert ff:fe).
     pub fn link_local_from_mac(mac: &[u8; 6]) -> Self {
         let mut eui64 = [0u8; 8];
         eui64[0] = mac[0];
@@ -635,18 +636,13 @@ fn icmpv6_checksum(src: &Addr, dst: &Addr, icmpv6_msg: &[u8]) -> u16 {
     sum += next_header::ICMPV6 as u32; // Next header
 
     // ICMPv6 message (with checksum field zeroed - caller should have zeros there)
-    let mut i = 0;
-    while i + 1 < icmpv6_msg.len() {
-        // Skip checksum field (bytes 2-3)
+    for i in (0..icmpv6_msg.len()).step_by(2) {
         if i == 2 {
-            i += 2;
-            continue;
+            continue; // skip checksum field (bytes 2-3)
         }
-        sum += ((icmpv6_msg[i] as u32) << 8) | (icmpv6_msg[i + 1] as u32);
-        i += 2;
-    }
-    if i < icmpv6_msg.len() {
-        sum += (icmpv6_msg[i] as u32) << 8;
+        let high = icmpv6_msg.get(i).copied().unwrap_or(0);
+        let low = icmpv6_msg.get(i + 1).copied().unwrap_or(0);
+        sum += ((high as u32) << 8) | (low as u32);
     }
 
     // Fold 32-bit sum to 16 bits
@@ -900,17 +896,20 @@ mod tests {
     fn test_ipv6_header_roundtrip() {
         let src = Addr::link_local_from_mac(&hex!("001122334455"));
         let dst = Addr::link_local_from_mac(&hex!("665544332211"));
-
+        let expected = hex!("60 00 00 00 00 18 3a 40 fe 80 00 00 00 00 00 00 02 11 22 ff fe 33 44 55 fe 80 00 00 00 00 00 00 64 55 44 ff fe 33 22 11");
         let hdr = Ipv6Header::new(next_header::ICMPV6, src, dst);
         let mut buf = [0u8; IPV6_HEADER_LEN];
         let n = hdr.write_to(24, &mut buf).unwrap();
         assert_eq!(n, IPV6_HEADER_LEN);
-        let parsed = Ipv6Header::from_bytes(&buf).unwrap();
-
+        assert_eq!(&buf[..], &expected[..]);
+        let parsed = Ipv6Header::from_bytes(&expected).unwrap();
         assert_eq!(parsed.src, src);
         assert_eq!(parsed.dst, dst);
         assert_eq!(parsed.next_header, next_header::ICMPV6);
         assert_eq!(parsed.payload_len, 24);
+        assert_eq!(parsed.hop_limit, 64);
+        assert_eq!(parsed.traffic_class, 0);
+        assert_eq!(parsed.flow_label, 0);
     }
 
     #[test]

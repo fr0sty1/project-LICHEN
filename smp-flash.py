@@ -15,13 +15,13 @@ Verified working T1000-E 2026-07-02: 364 KB upload, ~19 s MCUboot copy on
 the post-reset boot, new image boots with SMP alive.
 """
 
-import sys
-import os
-import struct
+import argparse
 import base64
 import hashlib
+import os
+import struct
+import sys
 import time
-import argparse
 
 # cbor2 may live in the user site
 sys.path.insert(0, "/home/frosty/.local/lib/python3.10/site-packages")
@@ -139,7 +139,7 @@ def _read_frame(ser: serial.Serial) -> bytes:
 
     # Verify CRC: crc16(SMP_data || CRC) must be 0 (self-verifying)
     if _crc16(smp_and_crc) != 0:
-        raise ValueError(f"CRC verify failed")
+        raise ValueError("CRC verify failed")
 
     # Return SMP header + payload (strip trailing 2-byte CRC)
     return bytes(smp_and_crc[:-2])

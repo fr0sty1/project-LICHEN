@@ -5,9 +5,9 @@
 
 ```
 Internet-Draft                                              LICHEN Project
-draft-lichen-schc-lora-00                                       May 2026
+draft-lichen-schc-lora-00                                       July 2026
 Intended status: Experimental
-Expires: November 2026
+Expires: January 2027
 ```
 
 ## Status of This Document
@@ -163,8 +163,14 @@ Most common case: link-local communication with CoAP.
 | UDP.DstPort | 5683 | MSB(12) | LSB | 4 bits |
 | UDP.Length | - | ignore | compute | 0 |
 | UDP.Checksum | - | ignore | compute | 0 |
+| CoAP.Version | 1 | equal | not-sent | 0 |
+| CoAP.Type | - | ignore | value-sent | 2 bits |
+| CoAP.TKL | - | ignore | value-sent | 4 bits |
+| CoAP.Code | - | ignore | value-sent | 8 bits |
+| CoAP.MID | - | ignore | value-sent | 16 bits |
+| CoAP.Token | - | ignore | value-sent | variable |
 
-**Compressed size:** 2 bytes (1 byte Rule ID + 1 byte port residue)
+**Compressed size:** 4-6 bytes (Rule ID + port residues + CoAP fields)
 
 **deviid:** Derive IID from link-layer address (EUI-64 or short address).
 
@@ -196,12 +202,18 @@ within mesh.
 | UDP.DstPort | 5683 | MSB(12) | LSB | 4 bits |
 | UDP.Length | - | ignore | compute | 0 |
 | UDP.Checksum | - | ignore | compute | 0 |
+| CoAP.Version | 1 | equal | not-sent | 0 |
+| CoAP.Type | - | ignore | value-sent | 2 bits |
+| CoAP.TKL | - | ignore | value-sent | 4 bits |
+| CoAP.Code | - | ignore | value-sent | 8 bits |
+| CoAP.MID | - | ignore | value-sent | 16 bits |
+| CoAP.Token | - | ignore | value-sent | variable |
 
-**Compressed size:** 10 bytes (Rule ID + HopLimit + DstIID + ports)
+**Compressed size:** 12-14 bytes (Rule ID + HopLimit + DstIID + ports + CoAP)
 
-### 4.4. Rule 2: Global IPv6 + UDP
+### 4.4. Rule 2: Link-local IPv6 + UDP + MQTT-SN
 
-For traffic to/from internet via border router.
+For MQTT-SN traffic (port 10883) outside CoAP range used by Rules 0/1 (per adaptation.md and appendix A.2). Global traffic falls to Rule 1 or 255.
 
 **Applicability:**
 - IPv6 source is mesh (ULA or GUA)
@@ -416,9 +428,9 @@ Total: ~1-2 KB RAM, ~2-3 KB Flash
 
 ### 7.3. Existing Implementations
 
+- **Rust lichen-schc:** rules.rs codec defines FieldDescriptor Mo/Cda enums static Rule registry for LINK_LOCAL_COAP GLOBAL_COAP RPL_DIO etc; test/vectors/schc_compression.json updated for codec and RPL option parsing impact
 - **libschc:** C library, MIT license (recommended)
 - **openschc:** Python reference, BSD license
-- **Custom:** May be needed for constrained targets
 
 ## 8. Security Considerations
 
