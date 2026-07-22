@@ -78,6 +78,7 @@ struct lichen_meshtastic_position_snapshot {
 	uint8_t precision_bits;
 	bool timestamp_field_valid;
 	bool fix_time_rejected_below_epoch_floor;
+	bool fix_time_rejected_future;
 	uint32_t effective_epoch_floor;
 };
 

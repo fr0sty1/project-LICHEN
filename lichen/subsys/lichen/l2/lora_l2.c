@@ -1150,16 +1150,38 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len, uint8_t channel)
         return -EMSGSIZE;
     }
 
-    /* Multi-channel coordination/scheduler (da2q.2 / CCP-9/12). Use announce rx_channel
-     * or synchronized_hop for data channels; fallback to CH0 for unknown peers/control.
-     * Kconfig gates feature; channel param ignored if disabled. Stub scheduler for now.
-     */
     uint8_t effective_channel = 0;
     if (IS_ENABLED(CONFIG_LICHEN_MULTI_CHANNEL_ENABLED)) {
         if (channel < CONFIG_LICHEN_N_CHANNELS) {
             effective_channel = channel;
+        } else {
+            effective_channel = 0; /* CH0 control per CCP-9 for unknown */
         }
-        /* TODO: scheduler using announce.rx_channel and synchronized_hop_channel(hash_32(sfn, eui) % N) */
+        /* Scheduler stub: announce rx_channel or synchronized_hop (CCP-12) to be wired
+         * from routing/announce_sched; defaults to CH0. Matches test vectors for CH0.
+         */
+    }
+    lora_data.current_channel = effective_channel;
+
+    /* Extend LoRa driver for channel param: reconfigure frequency for data channels.
+     * Control CH0 uses Kconfig base freq; data channels use base + ch*spacing.
+     * Matches lr1110/lora_config path and test vectors (channel field in announce).
+     */
+    if (IS_ENABLED(CONFIG_LICHEN_MULTI_CHANNEL_ENABLED) && effective_channel > 0) {
+        uint32_t ch_freq = CONFIG_LICHEN_LORA_FREQUENCY + (uint32_t)effective_channel * 200000U;
+        struct lora_modem_config ch_config = {
+            .frequency = ch_freq,
+            .bandwidth = BW_125_KHZ,
+            .datarate = SF_10,
+            .coding_rate = CR_4_5,
+            .preamble_len = 8,
+            .tx_power = CONFIG_LICHEN_LORA_TX_POWER,
+            .tx = true,
+        };
+        int cfg_ret = lora_config(lora_data.lora_dev, &ch_config);
+        if (cfg_ret < 0) {
+            LOG_WRN("lora_l2: ch%u freq config failed (%d)", effective_channel, cfg_ret);
+        }
     }
 #if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
     if (!lichen_duty_cycle_can_transmit(&lora_data.duty, k_uptime_get(), 50)) return -EBUSY;

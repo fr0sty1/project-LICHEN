@@ -1112,46 +1112,6 @@ static int config_complete(struct lichen_meshtastic_adapter *adapter, uint32_t n
 	return enqueue(adapter, buf, (size_t)ret);
 }
 
-static bool starts_with_lichen_brand(const char *value)
-{
-	size_t brand_len = strlen(LICHEN_BRAND);
-	char next;
-
-	if (value == NULL || strncmp(value, LICHEN_BRAND, brand_len) != 0) {
-		return false;
-	}
-
-	next = value[brand_len];
-	return next == '\0' || next == ' ' || next == '-' || next == '+';
-}
-
-static bool has_compatible_firmware_brand(const char *value)
-{
-	size_t meshtastic_pos = 0U;
-
-	if (!starts_with_lichen_brand(value)) {
-		return false;
-	}
-
-	for (const char *p = value; *p != '\0'; p++) {
-		char c = *p;
-
-		if (c >= 'A' && c <= 'Z') {
-			c = (char)(c - 'A' + 'a');
-		}
-		if (c == MESHTASTIC_BRAND[meshtastic_pos]) {
-			meshtastic_pos++;
-			if (MESHTASTIC_BRAND[meshtastic_pos] == '\0') {
-				return false;
-			}
-		} else {
-			meshtastic_pos = (c == MESHTASTIC_BRAND[0]) ? 1U : 0U;
-		}
-	}
-
-	return true;
-}
-
 static int local_info(struct lichen_meshtastic_adapter *adapter,
 		      struct lichen_meshtastic_local_info *info)
 {
@@ -1192,7 +1152,7 @@ static int local_info(struct lichen_meshtastic_adapter *adapter,
 	if (info->short_name == NULL || info->short_name[0] == '\0') {
 		info->short_name = default_short_name;
 	}
-	if (!has_compatible_firmware_brand(info->firmware_version)) {
+	if (!lichen_meshtastic_has_compatible_firmware_brand(info->firmware_version)) {
 		info->firmware_version = default_fw;
 	}
 	if (info->pio_env == NULL || info->pio_env[0] == '\0') {

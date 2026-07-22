@@ -249,6 +249,7 @@ int lichen_router_route(struct lichen_router *router,
 	case LICHEN_ADDR_MESH_LOCAL:
 		return route_mesh_local(router, dst_iid, now_ms, result);
 
+	case LICHEN_ADDR_YGGDRASIL:
 	case LICHEN_ADDR_EXTERNAL:
 		return route_external(router, result);
 	default:

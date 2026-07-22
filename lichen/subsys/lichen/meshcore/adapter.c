@@ -623,9 +623,6 @@ static int reset_compat_settings(struct lichen_meshcore_adapter *adapter,
 	struct lichen_meshcore_compat_settings old_settings;
 	int ret;
 
-	if (settings == NULL) {
-		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
-	}
 	if (view->payload_len != 0U) {
 		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
 	}
@@ -673,9 +670,6 @@ static int store_advert_name(struct lichen_meshcore_adapter *adapter,
 	struct lichen_meshcore_compat_settings old_settings;
 	uint8_t len;
 
-	if (settings == NULL) {
-		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
-	}
 	if (view->payload_len == 0U ||
 	    view->payload_len >= LICHEN_MESHCORE_ADVERT_NAME_MAX ||
 	    !valid_name_text(view->payload, view->payload_len)) {
@@ -701,9 +695,6 @@ static int store_channel(struct lichen_meshcore_adapter *adapter,
 		compat_settings(adapter);
 	struct lichen_meshcore_compat_settings old_settings;
 
-	if (settings == NULL) {
-		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
-	}
 	if (view->payload_len == 65U) {
 		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
 	}
@@ -1031,7 +1022,7 @@ static int dispatch_supported(struct lichen_meshcore_adapter *adapter,
 		if (view->payload_len != 0U) {
 			return enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
 		}
-		if (settings != NULL && settings->default_flood_scope_valid) {
+		if (settings->default_flood_scope_valid) {
 			memcpy(&out[1], settings->default_flood_name,
 			       sizeof(settings->default_flood_name));
 			memcpy(&out[1U + LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN],
