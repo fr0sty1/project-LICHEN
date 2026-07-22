@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gi31",
   "title": "Missing segments_left validation in SourceRoutingHeader",
   "description": "File: rust/lichen-rpl/src/routing.rs\nLines: 84-104\n\nThe SourceRoutingHeader::from_bytes() method does not validate that segments_left is consistent with the number of addresses:\n```rust\nOk(Self {\n    segments_left: data[1],  // Not validated against addresses.len()\n    addresses,\n})\n```\n\nRFC 6554 states that Segments Left indicates the number of route segments remaining. For a valid SRH:\n- segments_left should be \u003c= addresses.len()\n- For a freshly created SRH, segments_left should equal addresses.len()\n\nImpact: A malformed SRH with segments_left \u003e addresses.len() would be silently accepted. When processed, this could cause:\n1. Out-of-bounds access when using segments_left as an index\n2. Routing loops or black holes\n3. Potential denial of service\n\nFix: Add validation after parsing:\n```rust\nif (segments_left as usize) \u003e addresses.len() {\n    return Err(RplError::InvalidOption);\n}\n```",
-  "notes": "Commit: $(git rev-parse --short HEAD)",
+  "notes": "Commit: e1f2dcbbe (segments_left validation added to SourceRoutingHeader::from_bytes per RFC 6554)",
   "status": "closed",
   "priority": 3,
   "issue_type": "bug",
@@ -10,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:39:56.165019Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:22:55.393822658Z",
+  "updated_at": "2026-07-22T23:23:01.444303146Z",
   "started_at": "2026-07-22T23:20:50.655547529Z",
   "closed_at": "2026-07-22T23:22:55.393822658Z",
   "close_reason": "Closed"
