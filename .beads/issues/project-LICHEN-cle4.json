@@ -2,11 +2,15 @@
   "id": "project-LICHEN-cle4",
   "title": "Missing check for empty payload in text message validation",
   "description": "File: lichen/subsys/lichen/meshtastic/adapter.c:980-981\n\ntext_packet_supported checks for empty payload:\n  if (packet-\u003epayload == NULL || packet-\u003epayload_len == 0U ||\n\nBut in parse_data (lines 724-791), payload defaults to NULL and payload_len defaults to 0 (from memset at line 798).\n\nIf a packet has portnum=TEXT_MESSAGE_APP but no DATA_PAYLOAD_FIELD, then:\n- payload = NULL\n- payload_len = 0\n- has_portnum = true\n- kind = TEXT_MESSAGE_APP (set at line 767)\n\nThen in dispatch_packet, text_packet_supported returns false (correctly rejecting empty text).\n\nHowever, the packet reaches dispatch_packet with kind=TEXT_MESSAGE_APP, triggering text_packet_count++ before the supported check. This inflates the text_packet_count stat for invalid packets.\n\nConsider setting kind=MALFORMED for empty TEXT_MESSAGE payloads in parse_data.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:49:13.120706Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:49:13.12074Z"
+  "updated_at": "2026-07-22T23:06:38.518121119Z",
+  "started_at": "2026-07-22T23:06:38.518121119Z",
+  "lease_expires_at": "2026-07-22T23:11:38.518121119Z",
+  "heartbeat_at": "2026-07-22T23:06:38.518121119Z"
 }
