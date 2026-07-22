@@ -23,9 +23,33 @@ LoRa Chirp Spread Spectrum (CSS) as implemented by Semtech SX126x and SX127x.
 | Sync Word | SYNC | 0x34 | Distinct from Meshtastic (0x2B) |
 | CRC | - | Enabled | Hardware CRC |
 
-### 3.3. Frequency Bands
+### 3.3. Frequency Bands and Multi-Channel Coordination
+
+Control channel (CH0): Announces, DIO, DIS, DAO. Beacons (if TDMA). All nodes MUST listen on CH0 when idle. Data channels (CH1-N): Application traffic only. Node selects channel per-packet or per-flow.
+
+Coordination uses hash-based: data_ch = 1 + (hash(src_iid ^ dst_iid) mod (N_CHANNELS - 1)). Or rendezvous via announced RX_CHANNEL in Announce. Gateway-assigned in DIO for load balancing.
+
+Regional parameters: EU868: 8 channels (868.1-868.5, 867.1-867.9); US915: 64 uplink + 8 downlink. Channel list in regional config.
+
+**Backwards Compatibility**
+
+No flag day required.
+
+- Old nodes: Stay on CH0 (current single-channel behavior)
+- New nodes: Use CH0 for control, data channels for application traffic
+- Mixed network: CH0 carries ALL traffic types for old nodes
+
+CH0 MUST remain the control channel AND fallback data channel. Old nodes never leave CH0, so all traffic TO old nodes MUST be on CH0. New nodes MUST listen on CH0 for routing (announces, DIO). New nodes MAY use data channels for traffic between new nodes only. Gateway MUST receive on all channels (or round-robin scan).
+
+Channel selection logic: if dst is old_node or dst.rx_channel unknown: use CH0 else: use dst.rx_channel (from announce) or hash-based.
+
+Degradation: Traffic to/from old nodes uses CH0 only. New-to-new traffic uses data channels. Capacity scales with fraction of new nodes.
 
 ### 3.5. Spreading Factor Assignment for Orthogonal Channels
+
+Different LoRa spreading factors are quasi-orthogonal. SF7 and SF12 transmissions can overlap without collision. This is effectively 6 parallel channels on the same frequency. Works on ALL hardware.
+
+Assignment: Gateway-assigned in DIO or join response for load balancing. Hash-based node_sf = SF7 + (hash(iid) mod 6). Topology-aware: core nodes SF7, edge SF12.
 
 Nodes without an assigned SF MUST use SF10. Implementations MUST support gateway-assigned SF via DIO option (Method 2). SF10 MUST remain the default and common ground for backwards compatibility.
 
@@ -37,20 +61,36 @@ Nodes without an assigned SF MUST use SF10. Implementations MUST support gateway
 
 Gateways MUST receive on all SFs. Cross-SF traffic adds one hop. Independent oracle: test/vectors/sf-assignment.json verified against OpenSSL and reference Python impl.
 
-| Region | Band | Default Channel | Channels |
-|--------|------|-----------------|----------|
-| US/CA | 915 MHz ISM | 903.9 MHz | 64 (200 kHz spacing) |
-| EU | 868 MHz | 868.1 MHz | 3 (duty cycle limited) |
-| AU/NZ | 915 MHz | 916.8 MHz | 64 |
+### 3.4. Adaptive Spreading Factor
 
-### 3.4. Adaptive Data Rate (ADR)
+Nodes SHOULD implement adaptive SF based on link quality. Track per-neighbor (SNR, packet success rate). SNR > 10dB above sensitivity: decrease SF. SNR < 5dB above sensitivity: increase SF. Hysteresis: require N consecutive samples before changing.
 
-Nodes SHOULD implement ADR to optimize SF/TX power based on link quality:
+Thresholds (SF10 baseline):
 
-1. Track SNR of received packets from each neighbor
-2. If SNR > threshold + margin: decrease SF (faster)
-3. If SNR < threshold: increase SF (more robust)
-4. Propagate via RPL DIO options
+| SF | Sensitivity | Upgrade threshold | Downgrade threshold |
+|----|-------------|-------------------|---------------------|
+| SF7 | -123 dBm | -- | SNR < 0 dB |
+| SF8 | -126 dBm | SNR > 10 dB | SNR < 0 dB |
+| SF9 | -129 dBm | SNR > 10 dB | SNR < 0 dB |
+| SF10 | -132 dBm | SNR > 10 dB | SNR < 0 dB |
+| SF11 | -134 dBm | SNR > 10 dB | SNR < 0 dB |
+| SF12 | -137 dBm | SNR > 10 dB | -- |
+
+Signaling: Announce includes current TX_SF (1 byte). Absence means SF10.
+
+**Backwards Compatibility**
+
+No flag day required.
+
+- Old nodes: Use SF10 for all traffic (current behavior)
+- New nodes: Adapt SF per-neighbor based on SNR
+- Mixed network: SF10 is common ground, always works
+
+SF10 MUST remain the default and fallback SF. New nodes MUST use SF10 when communicating with old nodes (no SF field in their announces). New nodes MUST accept traffic on any SF (RX is already multi-SF capable via CAD). Announce MAY include TX_SF field; absence means SF10.
+
+Adaptation logic: if dst.tx_sf is known (from announce): use adapted SF based on SNR to that neighbor else: use SF10 (safe default, works with old nodes).
+
+Degradation: Old nodes always use SF10 (no adaptation). New nodes adapt when talking to new nodes. New-to-old: SF10. Benefit scales with fraction of new nodes.
 
 ---
 
