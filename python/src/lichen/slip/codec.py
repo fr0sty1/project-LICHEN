@@ -66,11 +66,15 @@ def decode(frame: bytes) -> bytes:
     """
     out = bytearray()
     i = 0
+    seen_data = False
     while i < len(frame):
         b = frame[i]
         if b == END:
             i += 1
+            if seen_data:
+                break
             continue
+        seen_data = True
         if b == ESC:
             i += 1
             if i >= len(frame):
@@ -81,7 +85,6 @@ def decode(frame: bytes) -> bytes:
             elif nxt == ESC_ESC:
                 out.append(ESC)
             else:
-                # RFC 1055: invalid escape — ignore ESC, pass byte through as data
                 out.append(nxt)
         else:
             out.append(b)
