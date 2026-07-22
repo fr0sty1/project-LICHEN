@@ -826,19 +826,10 @@ int lichen_coap_status_init(const struct lichen_coap_status_config *config)
 
 void lichen_coap_status_notify(void)
 {
-	/*
-	 * Note: This requires the resource to be registered with a service.
-	 * The coap_resource_notify() function iterates through observers
-	 * registered on the resource and calls the notify callback.
-	 *
-	 * Since we export const resources, the application must copy them
-	 * or use COAP_RESOURCE_DEFINE to get mutable resources that can
-	 * track observers.
-	 */
-	LOG_DBG("Status notification triggered");
+	coap_resource_notify((struct coap_resource *)&lichen_coap_status_resource);
 }
 
 void lichen_coap_status_neighbors_notify(void)
 {
-	LOG_DBG("Neighbors notification triggered");
+	coap_resource_notify((struct coap_resource *)&lichen_coap_status_resource);
 }

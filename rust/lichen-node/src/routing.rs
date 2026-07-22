@@ -283,6 +283,8 @@ impl Router {
     }
 
     /// Get the route path for a destination (root only).
+    ///
+    /// Non-root nodes always return None (routing table is root-only in non-storing RPL mode per spec/05-routing.md). Error handling for invalid dst is delegated to routing_table.lookup.
     pub fn lookup_route(&self, dst: &[u8; 16]) -> Option<&[[u8; 16]]> {
         self.dao_manager.routing_table.lookup(dst)
     }

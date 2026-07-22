@@ -145,7 +145,8 @@ pub const SIGNATURE_LENGTH: usize = 48;
 
 /// Sign a link-layer frame. The returned 48 bytes occupy the MIC field.
 ///
-/// Signed data layout: length || LLSec || epoch || seqnum || dst_addr || payload.
+/// Signed data layout: length || LLSec || epoch || seqnum || dst_addr_len(1)
+/// || dst_addr || payload (domain separation per j7rk).
 #[allow(clippy::too_many_arguments)]
 pub fn sign_frame(
     length: u8,
@@ -183,7 +184,7 @@ pub fn verify_frame(
     verify(sender_pubkey, &msg, &sig)
 }
 
-// LENGTH || LLSec || epoch || seqnum || dst_addr || inner_payload
+// LENGTH || LLSec || epoch || seqnum || dst_addr_len(1) || dst_addr || inner_payload
 fn build_signable(
     length: u8,
     llsec: u8,
@@ -192,11 +193,12 @@ fn build_signable(
     dst_addr: &[u8],
     inner_payload: &[u8],
 ) -> Vec<u8> {
-    let mut buf = Vec::with_capacity(5 + dst_addr.len() + inner_payload.len());
+    let mut buf = Vec::with_capacity(6 + dst_addr.len() + inner_payload.len());
     buf.push(length);
     buf.push(llsec);
     buf.push(epoch);
     buf.extend_from_slice(&seqnum.to_be_bytes());
+    buf.push(dst_addr.len() as u8);
     buf.extend_from_slice(dst_addr);
     buf.extend_from_slice(inner_payload);
     buf

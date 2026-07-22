@@ -129,8 +129,8 @@ class TestLinkLayerTx:
             0, 0, b"", address + payload, 62, 0x20
         )
 
-        assert with_address == b">\x22\x00\x00\x00" + address + payload
-        assert without_address == b">\x20\x00\x00\x00" + address + payload
+        assert with_address == b">\x22\x00\x00\x00\x08" + address + payload
+        assert without_address == b">\x20\x00\x00\x00\x00" + (address + payload)
         assert with_address != without_address
         assert sign(node_identity.privkey, node_identity.pubkey, with_address) != sign(
             node_identity.privkey, node_identity.pubkey, without_address
