@@ -21,6 +21,8 @@ Usage::
 
 from __future__ import annotations
 
+import math
+
 from lichen.senml.codec import SenmlRecord
 
 # ---------------------------------------------------------------------------
@@ -42,6 +44,14 @@ def location(lat: float, lon: float, alt: float | None = None) -> list[SenmlReco
     Returns:
         List of SenML records: lat, lon, and optionally alt.
     """
+    if (math.isnan(lat) or math.isnan(lon) or
+            math.isinf(lat) or math.isinf(lon)):
+        raise ValueError("lat/lon cannot be NaN or Inf")
+    if not (-90.0 <= lat <= 90.0):
+        raise ValueError(f"lat {lat} out of range [-90, 90]")
+    if not (-180.0 <= lon <= 180.0):
+        raise ValueError(f"lon {lon} out of range [-180, 180]")
+
     records = [
         SenmlRecord(n="lat", u="deg", v=lat),
         SenmlRecord(n="lon", u="deg", v=lon),
