@@ -3,15 +3,15 @@
   "title": "announce: interval_ms validation missing - zero or negative causes infinite loop or crash",
   "description": "File: python/src/lichen/announce/scheduler.py:258\n\nSchedulerConfig does not validate interval_ms \u003e 0:\n\n```python\n@dataclass\nclass SchedulerConfig:\n    interval_ms: int = DEFAULT_INTERVAL_MS  # No validation\n```\n\nIn _loop():\n```python\ndelay = (self.config.interval_ms + jitter) / 1000  # Line 258\nawait asyncio.sleep(delay)\n```\n\nIf interval_ms is 0 and jitter is 0:\n- delay = 0, causing a tight loop that pegs CPU and floods the network with announces\n\nIf interval_ms is negative (e.g., -1000) and jitter is 0:\n- delay = -1.0\n- asyncio.sleep(-1.0) raises: ValueError: sleep length must be non-negative\n\nBoth cases cause operational problems. Should add validation in SchedulerConfig.__post_init__ to require interval_ms \u003e 0.",
   "notes": "Commit: 21225f40a\nSchedulerConfig.__post_init__ already validates interval_ms \u003e 0 with ValueError. Prevents zero/negative delay, tight loop, or sleep(-). P2 fixed.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:18:53.924651Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:22:18.442571449Z",
+  "updated_at": "2026-07-22T20:22:20.904200585Z",
   "started_at": "2026-07-22T20:22:10.584704202Z",
-  "lease_expires_at": "2026-07-22T20:27:10.584704202Z",
-  "heartbeat_at": "2026-07-22T20:22:10.584704202Z"
+  "closed_at": "2026-07-22T20:22:20.904200585Z",
+  "close_reason": "Validation already in __post_init__; commit 21225f40a"
 }
