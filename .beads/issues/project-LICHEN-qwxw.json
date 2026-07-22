@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-qwxw",
   "title": "[merge-conflict] integration/worker14-20260722: messages.py",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:47:36.740364853Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:47:36.740364853Z"
+  "updated_at": "2026-07-22T23:48:51.353013754Z",
+  "started_at": "2026-07-22T23:48:51.353013754Z",
+  "lease_expires_at": "2026-07-22T23:53:51.353013754Z",
+  "heartbeat_at": "2026-07-22T23:48:51.353013754Z"
 }

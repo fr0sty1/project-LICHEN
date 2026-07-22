@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-ic2r",
   "title": "[merge-conflict] worktree-worker1: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
-  "status": "in_progress",
+  "notes": "Commit: 5d3c7c2bd",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:41:02.568124951Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:46:46.634835169Z",
+  "updated_at": "2026-07-22T23:49:15.106314052Z",
   "started_at": "2026-07-22T23:46:46.634835169Z",
-  "lease_expires_at": "2026-07-22T23:51:46.634835169Z",
-  "heartbeat_at": "2026-07-22T23:46:46.634835169Z"
+  "closed_at": "2026-07-22T23:49:15.106314052Z",
+  "close_reason": "Resolved merge conflict by consolidating duplicate CONFIG entries and WiFi settings in heltec_wifi_lora32_v3_esp32s3_procpu.conf; committed 5d3c7c2bd to worktree-worker1"
 }

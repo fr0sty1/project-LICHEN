@@ -25,8 +25,6 @@
 		sw0       = &button0;
 		lora0     = &lora0;
 		watchdog0 = &wdt0;
-<<<<<<< HEAD
-=======
 		uart0     = &uart0;
 		uart1     = &uart1;
 		battery0  = &vbatt;
@@ -38,7 +36,6 @@
 		output-ohms = <10000>;
 		full-ohms = <49000>; /* ~4.9x multiplier for typical Heltec divider */
 		status = "okay";
->>>>>>> origin/integration/worker5-20260722
 	};
 
 	chosen {

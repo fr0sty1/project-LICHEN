@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-f70h",
   "title": "[merge-conflict] worktree-worker21: main.c",
-  "status": "in_progress",
+  "notes": "Commit: 59573d7",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:42:13.617694185Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:46:12.14222226Z",
+  "updated_at": "2026-07-22T23:49:15.619958179Z",
   "started_at": "2026-07-22T23:46:12.14222226Z",
-  "lease_expires_at": "2026-07-22T23:51:12.14222226Z",
-  "heartbeat_at": "2026-07-22T23:46:12.14222226Z"
+  "closed_at": "2026-07-22T23:49:15.619958179Z",
+  "close_reason": "Resolved merge conflicts in lichen/tests/app_interface/src/main.c, lichen/subsys/lichen/coap/coap_config.c, lichen/drivers/input/lilygo_tdeck_keyboard.c and CMakeLists.txt by selecting readable structured implementation and consistent parsing logic. Verified no conflict markers remain. Commit 59573d7"
 }
