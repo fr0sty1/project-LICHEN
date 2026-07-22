@@ -24,9 +24,9 @@ zeroize = { version = "1.8", default-features = false, features = ["derive"] }
 # EDHOC (RFC 9528) Suite 0 - feature-gated since it adds dependencies
 # ponytail: lakers only supports Suite 2 (P-256), not Suite 0 (X25519/Ed25519).
 # Rolling minimal Suite 0 for interop with Python simulator.
-x25519-dalek = { version = "2.0", default-features = false, features = ["static_secrets"], optional = true }
-ed25519-dalek = { version = "2.1", default-features = false, optional = true }
-rand_core = { version = "0.6", default-features = false, features = ["getrandom"], optional = true }
+x25519-dalek = { version = "2.0", default-features = false, features = ["static_secrets", "zeroize"], optional = true }
+ed25519-dalek = { version = "2.1", default-features = false, features = ["zeroize"], optional = true }
+rand_core = { version = "0.6", default-features = false, optional = true }
 
 # Logging backends (optional, feature-gated)
 defmt = { version = "0.3", optional = true }

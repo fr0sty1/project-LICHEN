@@ -147,7 +147,11 @@ class NodeServer:
                 # Brief delay to avoid busy loop
                 await asyncio.sleep(0.001)
         except asyncio.CancelledError:
-            pass
+            raise
+        except BaseException as exc:
+            if not isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                logger.exception("Error in simulation driver")
+            raise
 
     def _ensure_simulation_driver(self) -> None:
         """Start the simulation driver task if not already running."""
