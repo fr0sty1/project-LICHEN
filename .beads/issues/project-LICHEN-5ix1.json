@@ -3,11 +3,15 @@
   "title": "Fix Zephyr audit firmware defects",
   "description": "Resolve every software, configuration, startup, link, and memory-corruption defect discovered by the exhaustive Zephyr firmware boot audit. Child work must preserve runtime oracles and rerun affected target rows.",
   "acceptance_criteria": "All audit-discovered executable firmware FAIL rows either pass their original independent runtime oracle or have a narrower confirmed external dependency; app_identity and ping_l2 pass with stack protection enabled; no test or security oracle is weakened.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "epic",
+  "assignee": "ec2-user",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-16T19:39:22.462695Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-16T19:39:22.462695Z"
+  "updated_at": "2026-07-22T14:16:11.293225674Z",
+  "started_at": "2026-07-22T14:16:11.293225674Z",
+  "lease_expires_at": "2026-07-22T14:21:11.293225674Z",
+  "heartbeat_at": "2026-07-22T14:16:11.293225674Z"
 }
