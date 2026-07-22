@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-h8g1",
   "title": "[merge-conflict] worktree-worker24: main.c",
-  "notes": "Commit: 5012949",
+  "notes": "Commit: c1be15c",
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:25.833263924Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:49:04.415277394Z",
+  "updated_at": "2026-07-22T23:50:53.875555568Z",
   "started_at": "2026-07-22T23:47:39.529705841Z",
   "closed_at": "2026-07-22T23:49:04.415277394Z",
   "close_reason": "Resolved merge conflict in main.c by adopting consistent strnlen+memcpy string initialization matching hal_bridge.c style. Fixed test/app_interface test."
