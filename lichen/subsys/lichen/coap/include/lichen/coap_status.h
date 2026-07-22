@@ -161,8 +161,8 @@ typedef int (*lichen_coap_neighbors_get_cb)(struct lichen_coap_neighbor *neighbo
  *
  * @param[out] routes Array to fill with route entries
  * @param[in]  max_routes Maximum number of entries to return
- * @param[out] default_route Default route next-hop IPv6 (filled only if has_default_route)
- * @param[out] has_default_route Set to true if default_route was populated
+ * @param[out] default_route Default route next-hop IPv6 (filled only if *has_default_route)
+ * @param[out] has_default_route Set to true if default_route was populated (non-fragile, no byte scan)
  * @return Number of routes written, or negative errno on error
  */
 typedef int (*lichen_coap_routes_get_cb)(struct lichen_coap_route *routes,
