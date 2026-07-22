@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-ofrf.2",
+  "title": "codereview: missing state machine transition table",
+  "description": "Add a table showing all states, triggers, actions, timers for desync recovery. Current text description is ambiguous on RPL version/drift interaction with time-provider.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:23:32.281828737Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:23:32.281828737Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ofrf.2",
+      "depends_on_id": "project-LICHEN-ofrf",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:23:32.3895807Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
