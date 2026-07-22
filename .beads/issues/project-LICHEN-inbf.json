@@ -2,6 +2,7 @@
   "id": "project-LICHEN-inbf",
   "title": "compat_settings dereference without null check in multiple functions",
   "description": "File: lichen/subsys/lichen/meshcore/adapter.c\n\nSeveral functions call compat_settings() or compat_settings_const() and check for NULL before use, but the pattern is inconsistent.\n\nGood pattern (with check):\n- Line 185: if (settings != NULL \u0026\u0026 settings-\u003eadvert_name_valid)\n- Line 231: if (settings != NULL \u0026\u0026 settings-\u003edevice_pin_valid)\n- Line 399-400: if (settings != NULL \u0026\u0026 settings-\u003echannel0_valid)\n\nSome store_* functions check for NULL and return error:\n- Line 661-663: if (settings == NULL) return error\n\nThis is defensive and correct. However, a code reviewer seeing both patterns might assume NULL is impossible and remove checks in the future.\n\nConsider: standardize on one approach - either always check and handle NULL, or use _Nonnull annotation on compat_settings and never check.",
+  "notes": "Commit: d9ccb3eb7",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:47:52.415201Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:09:11.497523074Z",
+  "updated_at": "2026-07-22T23:13:46.305787687Z",
   "started_at": "2026-07-22T23:09:11.497523074Z",
   "lease_expires_at": "2026-07-22T23:14:11.497523074Z",
   "heartbeat_at": "2026-07-22T23:09:11.497523074Z"
