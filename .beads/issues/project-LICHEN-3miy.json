@@ -2,11 +2,15 @@
   "id": "project-LICHEN-3miy",
   "title": "Implement _get_blocked_node_info helper method",
   "description": "Add _get_blocked_node_info() helper method to python/src/lichen/sim/simulation.py that returns detailed information about blocked nodes including counts and states when debug is enabled. This should return counts of total, connected, rx_wait, tx, idle, and blocked nodes.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-15T03:22:23.987914Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-15T03:22:23.987944Z"
+  "updated_at": "2026-07-22T14:23:05.86559715Z",
+  "started_at": "2026-07-22T14:23:05.86559715Z",
+  "lease_expires_at": "2026-07-22T14:28:05.86559715Z",
+  "heartbeat_at": "2026-07-22T14:23:05.86559715Z"
 }
