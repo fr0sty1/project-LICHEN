@@ -2,6 +2,7 @@
   "id": "project-LICHEN-rby3",
   "title": "IPv6Packet.to_bytes does not validate payload length",
   "description": "File: python/src/lichen/ipv6/packet.py:188-211\n\nThe to_bytes() method computes payload_length as `len(ext_bytes) + len(self.payload)` but relies on downstream validation in IPv6Header._validate(). If the combined length exceeds 65535 (the max for a 16-bit field), the error is raised late with a generic message.\n\n```python\nheader = replace(\n    self.header,\n    next_header=wire_next_header,\n    payload_length=len(ext_bytes) + len(self.payload),\n)\nreturn header.to_bytes() + ext_bytes + self.payload\n```\n\nThe validation in _validate() (line 92-93):\n```python\nif not 0 \u003c= self.payload_length \u003c= 0xFFFF:\n    raise PacketError(f'payload_length out of range: {self.payload_length}')\n```\n\nImpact: Error is raised at serialization time with a message about 'payload_length' that doesn't mention extension headers. The caller might not realize the combined size is the issue.\n\nFix: Add early validation or improve error message:\n```python\ntotal_payload = len(ext_bytes) + len(self.payload)\nif total_payload \u003e 0xFFFF:\n    raise PacketError(\n        f'combined payload too large: {len(ext_bytes)} extension + '\n        f'{len(self.payload)} payload = {total_payload} \u003e 65535'\n    )\n```\n\nTags: correctness, ipv6",
+  "notes": "Commit: 0ba823400",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:23:55.101297Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:28:58.454982867Z",
+  "updated_at": "2026-07-22T23:30:53.383948016Z",
   "started_at": "2026-07-22T23:28:58.454982867Z",
   "lease_expires_at": "2026-07-22T23:33:58.454982867Z",
   "heartbeat_at": "2026-07-22T23:28:58.454982867Z"
