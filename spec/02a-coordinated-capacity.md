@@ -457,9 +457,8 @@ See test/vectors/ccp16.json, ccp_load_balancing.json, tdma*.json for exact FSM t
 
 **Zephyr** (`lichen/subsys/lichen/link/`): Kconfig guard and TDMA hooks present (CONFIG_LICHEN_CCP16); full CCP-16 FSM, channel assignment, and metric logic pending. Matches Python on shared vectors.
 
-<<<<<<< HEAD
 Schema and spec appendix updates complete per CODEREVIEW-P2.
-=======
+
 ```
 +----------+---------+---------+----------------+-------------------+
 | Msg 0x02 | Version | Subtype | Sender IID (8) | Subtype Body ...  |
@@ -1014,4 +1013,3 @@ The following require separate specifications and evidence:
 
 [← Physical and Link Layers](02-physical-link.md) | [Index](README.md) |
 [Next: Adaptation Layer →](03-adaptation.md)
->>>>>>> 47566351a (spec(ccp): add desync recovery state machine (CCP-13a))
