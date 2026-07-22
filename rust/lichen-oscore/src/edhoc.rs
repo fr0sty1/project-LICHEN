@@ -173,7 +173,7 @@ fn compute_th(input: &[u8]) -> [u8; 32] {
     Sha256::digest(input).into()
 }
 
-/// Parse SUITES_I from CBOR per RFC 9528 Section 3.3.2.
+/// Parse SUITES_I from CBOR per RFC 9528 Section 3.3.2 (resolves 7mxt).
 ///
 /// SUITES_I can be either:
 /// - A single int (the selected suite)
