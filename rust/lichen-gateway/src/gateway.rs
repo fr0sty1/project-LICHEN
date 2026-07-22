@@ -37,7 +37,7 @@ impl Gateway {
             return None;
         }
 
-        let mut out = vec![0u8; 1500];
+        let mut out = vec![0u8; 4096];
         match decompress(l2_payload_body(l2_payload), &mut out) {
             Ok(n) => {
                 out.truncate(n);

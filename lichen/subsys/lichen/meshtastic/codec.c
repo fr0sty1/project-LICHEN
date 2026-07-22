@@ -6,8 +6,12 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include <limits.h>
 
 #include <lichen/meshtastic/codec.h>
+
+BUILD_ASSERT(LICHEN_MESHTASTIC_FROM_RADIO_MAX <= INT_MAX,
+	     "max must fit in int");
 
 /* Protobuf wire types per https://protobuf.dev/programming-guides/encoding/ */
 #define PB_WT_VARINT 0U

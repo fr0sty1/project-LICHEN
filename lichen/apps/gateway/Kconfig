@@ -185,16 +185,18 @@ config LORA_LICHEN_GATEWAY_MESSAGE_QUEUE_DEPTH
 config LORA_LICHEN_GATEWAY_RPL_ROOT
 	bool "RPL root signalling"
 	depends on LICHEN_RPL
-	depends on BROKEN
-	default n
+	default y
 	help
-	  Enable gateway DIO/DAO processing and root signalling.
+	  Enable gateway as RPL DODAG root (lichen_rpl_dodag_init_root).
+	  Initializes per AGENTS.md order after link_ctx. Drives Trickle DIOs
+	  as root for mesh formation. Updates /status to reflect joined root role.
 
-	  This is intentionally unavailable until the gateway has an app-level
-	  packet I/O integration that drives the caller-owned LICHEN RPL state
-	  machine. With this option disabled, the gateway advertises itself as
-	  non-RPL-capable in /status so users do not mistake it for a complete
-	  mesh root.
+config LICHEN_GATEWAY_PREFIX_DELEGATION
+	bool "Enable IPv6 prefix delegation from WiFi/Ethernet backhaul to RPL mesh"
+	depends on LICHEN_RPL
+	depends on NET_DHCPV6
+	depends on NET_IPV6_ND
+	default y
 
 config LICHEN_GATEWAY_RX1_DELAY_MS
 	int "RX1-style delay before answering a CoAP request (ms)"

@@ -243,6 +243,8 @@ static int encode_record(zcbor_state_t *state,
 	case SENML_VALUE_DATA:
 		/* String and binary data types not yet implemented */
 		return -ENOTSUP;
+	default:
+		return -EINVAL;
 	}
 
 	/* Time offset */

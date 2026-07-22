@@ -62,6 +62,13 @@ config LICHEN_HAS_PMIC
 	  Enable when devicetree provides an okay pmic0 alias for a Zephyr
 	  charger, PMIC, or board-specific power telemetry/control device.
 
+config LICHEN_HAS_POE
+	bool "Board has PoE"
+	depends on REGULATOR
+	depends on ADC
+	help
+	  Enable for thinknode_m7 per existing power subsys.
+
 config LICHEN_HAS_BUTTONS
 	bool "Board has user buttons"
 	depends on GPIO

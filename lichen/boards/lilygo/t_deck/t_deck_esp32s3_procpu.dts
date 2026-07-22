@@ -1,14 +1,7 @@
-/*
- * SPDX-License-Identifier: GPL-3.0-or-later
- * SPDX-FileCopyrightText: The contributors to the LICHEN project
- *
- * Lilygo T-Deck — ESP32-S3-WROOM-N16R8 (16 MB flash, 8 MB PSRAM) + SX1262 LoRa
- *
- * Pin assignments sourced from Lilygo T-Deck schematics and cross-checked
- * against the Meshtastic firmware (variants/esp32s3/t-deck/variant.h).
- */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 
-/dts-v1/;
+ /dts-v1/;
 
 #include <espressif/esp32s3/esp32s3_wroom_n16r8.dtsi>
 #include "t_deck-pinctrl.dtsi"

@@ -58,7 +58,7 @@ class TestBattery:
         records = battery(percent=72.0)
         assert len(records) == 1
         assert records[0].n == "battery"
-        assert records[0].u == "%EL"
+        assert records[0].u == "%"
         assert records[0].v == pytest.approx(72.0)
 
     def test_both(self) -> None:

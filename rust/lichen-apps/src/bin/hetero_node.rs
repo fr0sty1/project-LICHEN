@@ -158,7 +158,9 @@ fn main() {
                 seq_num = seq_num.wrapping_add(1);
             }
             Err(e) => {
-                metrics.errors.push(format!("TX error: {:?}", e));
+                if metrics.errors.len() < 1000 {
+                    metrics.errors.push(format!("TX error: {:?}", e));
+                }
                 eprintln!("rust-{}: TX error: {:?}", node_id, e);
             }
         }
@@ -217,10 +219,13 @@ fn main() {
                     }
                 }
                 Ok(None) => {} // timeout
-                Err(e) => {
-                    metrics.errors.push(format!("RX error: {:?}", e));
-                    eprintln!("rust-{}: RX error: {:?}", node_id, e);
-                }
+                    Err(e) => {
+                        if metrics.errors.len() < 1000 {
+                            metrics.errors.push(format!("RX error: {:?}", e));
+                        }
+                        eprintln!("rust-{}: RX error: {:?}", node_id, e);
+                    }
+
             }
         }
 

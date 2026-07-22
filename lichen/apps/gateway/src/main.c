@@ -16,6 +16,7 @@
 #include <zephyr/net/coap_service.h>
 
 #include <lichen/hal.h>
+#include <lichen/rpl_dodag.h>
 
 #if IS_ENABLED(CONFIG_LICHEN_LORA_L2)
 #include "lora_l2.h"
@@ -99,6 +100,25 @@ BUILD_ASSERT(CONFIG_COAP_SERVER_MESSAGE_SIZE >=
 static int8_t s_tx_power_dbm = 14;
 static struct lichen_gateway_manual_location_config s_manual_location;
 static bool s_has_manual_location;
+
+#if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
+static struct lichen_rpl_dodag s_dodag;
+#endif
+static int gateway_rpl_init(void) {
+	int ret = 0;
+#if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
+	uint8_t dodag_id[16] = {0};
+	dodag_id[0] = 0xfd;
+	dodag_id[15] = 0x01;
+	ret = lichen_rpl_dodag_init_root(&s_dodag, 0x00, dodag_id, 0);
+	if (ret == 0) {
+		LOG_INF("RPL DODAG root initialized (rank=%u, role=ROOT)", s_dodag.rank);
+	} else {
+		LOG_ERR("lichen_rpl_dodag_init_root failed: %d", ret);
+	}
+#endif
+	return ret;
+}
 
 /* --------------------------------------------------------------------------
  * CBOR helpers
@@ -691,8 +711,12 @@ int main(void)
 	}
 #endif
 
+	if (gateway_rpl_init() < 0) {
+		LOG_WRN("RPL root init failed - continuing without full DODAG support");
+	}
+
 #if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
-	LOG_INF("RPL root signalling enabled");
+	LOG_INF("RPL root signalling enabled (DODAG root active)");
 #else
 	LOG_WRN("RPL root signalling disabled - advertising /status rpl=false");
 #endif
