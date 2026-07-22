@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-2h1i.2.6.2",
+  "title": "Add /confessions CoAP resource for anonymous mesh board",
+  "description": "Implement POST /confessions for text messages, GET for recent confessions. Use appropriate Content-Format (text/plain or cbor). Require OSCORE for privacy. Update lichen/coap and apps. Add rate limiting stub.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "feature",
+  "created_at": "2026-07-22T14:39:45.995105883Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:39:45.995105883Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2h1i.2.6.2",
+      "depends_on_id": "project-LICHEN-2h1i.2.6",
+      "type": "parent-child",
+      "created_at": "2026-07-22T14:39:46.082359604Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
