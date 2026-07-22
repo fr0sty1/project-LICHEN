@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import random
 import time
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
@@ -97,6 +98,7 @@ class TestMeshScale:
         assert node_port is not None
 
         n_nodes = min(SCALE_NODES, SCALE_CAP)  # Cap for this test (configurable, no hardcoded)
+        random.seed(42)  # reproducibility for conference/dense mesh stress (exercises radio/medium/chaos)
 
         # Setup nodes
         start = time.time()
