@@ -178,4 +178,6 @@ def voc_index(index: float) -> SenmlRecord:
     Returns:
         A single SenML record named "voc-index".
     """
+    if not (1.0 <= index <= 500.0):
+        raise ValueError(f'VOC index {index} out of range [1, 500]')
     return SenmlRecord(n="voc-index", v=index)
