@@ -32,6 +32,7 @@ from lichen.sim.events import (
 from lichen.sim.medium import Medium
 from lichen.sim.metrics import Metrics
 from lichen.sim.node import NodeState, SimNode
+from lichen.sim.tdma import synchronized_hop_channel
 
 if TYPE_CHECKING:
     from lichen.sim.chaos import ChaosEngine
@@ -627,7 +628,7 @@ class Simulation:
             if channel != node.current_channel:
                 node.current_channel = channel  # update for synchronized hopping
         else:
-            channel = 0
+            channel = synchronized_hop_channel(0)  # rendezvous default
 
         tx = self._medium.start_tx(
             node_id=node_id,
@@ -727,6 +728,9 @@ class Simulation:
             raise ValueError(f"Node '{node_id}' does not exist")
         if not node.connected:
             raise ValueError(f"Node '{node_id}' is not connected")
+        if channel == 0:
+            # Use synchronized_hop_channel for TX/RX rendezvous per CCP-12
+            channel = synchronized_hop_channel(0)
         node.state = NodeState.RX_WAIT
         if not (node.hop_schedule and len(node.hop_schedule) > 0):
             node.current_channel = channel

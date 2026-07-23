@@ -69,3 +69,8 @@ class TDMAScheduler:
             in_window = (start - g) <= t <= (start + dur + g)
             return in_window == (not vector.get("expected_in_guard", False))
         return True
+    def get_hop_channel(self, sfn: int | None = None, seed: int = 0, num_channels: int = 8) -> int:
+        """Convenience for scheduler. Uses clock.sfn if available."""
+        if sfn is None:
+            sfn = self.clock.sfn
+        return synchronized_hop_channel(sfn, seed, num_channels)

@@ -18,6 +18,7 @@ from lichen.sim.propagation import (
     SENSITIVITY_SF10,
     PropagationModel,
 )
+from lichen.sim.tdma import synchronized_hop_channel
 from lichen.sim.transmission import Transmission, airtime_us, lr_fhss_airtime_us
 
 
@@ -44,9 +45,9 @@ class Medium:
 
     Supports multi-channel operation with independent collision/propagation
     oracles per channel. RX uses rendezvous logic: get_rx_candidates and
-    detect_activity only consider TX on the expected hop channel (computed
-    from SFN/time via synchronized_hop_channel). start_tx tags TX with
-    channel.
+    detect_activity only consider TX on the expected hop channel computed
+    by calling synchronized_hop_channel(current_sfn, seed=0, num_channels=8).
+    start_tx tags TX with the rendezvous channel from synchronized_hop_channel.
 
     Attributes:
         propagation: The propagation model used for path loss calculations.
@@ -136,9 +137,10 @@ class Medium:
         """Get all decodable transmissions for a receiver on given channel.
 
         Implements rendezvous: only considers transmissions on the expected
-        hop channel (computed from SFN/time via synchronized_hop_channel).
-        Provides independent oracle for collision/propagation per channel.
-        Supports LR-FHSS by optional frequency filter for hopping fragments.
+        hop channel computed via synchronized_hop_channel(sfn, seed=0, num_channels=8)
+        (called in simulation.py before passing channel here). Provides independent
+        oracle for collision/propagation per channel. Supports LR-FHSS by optional
+        frequency filter for hopping fragments.
 
         For each active transmission on matching channel (excluding self),
         calculates distance, RSSI, and SNR. Only includes decodable ones.
@@ -147,7 +149,7 @@ class Medium:
             rx_node_id: ID of the receiving node.
             rx_position: (x, y, z) position of the receiver in meters.
             time_us: Current simulation time in microseconds.
-            channel: Expected hop channel for rendezvous (default 0).
+            channel: Expected hop channel for rendezvous from synchronized_hop_channel (default 0).
             rx_frequency_hz: Optional frequency filter for LR-FHSS hops.
 
         Returns:
@@ -247,7 +249,8 @@ class Medium:
         on the specified channel.
 
         Implements per-channel CAD for multi-channel support and rendezvous.
-        Supports LR-FHSS frequency hopping via optional rx_frequency_hz.
+        The channel param should be from synchronized_hop_channel(sfn, seed=0, num_channels=8)
+        for TX/RX rendezvous. Supports LR-FHSS frequency hopping via optional rx_frequency_hz.
         Independent oracle per channel.
 
         Args:
@@ -255,7 +258,7 @@ class Medium:
             time_us: Current simulation time in microseconds.
             sensitivity_dbm: Receiver sensitivity threshold in dBm.
                 Defaults to SF10 sensitivity (-132 dBm).
-            channel: Channel for CAD (default 0, matches rendezvous hop).
+            channel: Channel for CAD from synchronized_hop_channel (default 0, matches rendezvous hop).
             rx_frequency_hz: Optional frequency filter for LR-FHSS hops.
 
         Returns:

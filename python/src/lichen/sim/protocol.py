@@ -3,7 +3,10 @@
 """Wire protocol encoding/decoding for LICHEN simulator.
 
 Binary protocol using little-endian byte order. Each message starts with
-a 1-byte message type, followed by type-specific payload.
+a 1-byte message type, followed by type-specific payload. The u8 channel
+field in TX/RX_ENTER/CAD messages carries the channel from
+synchronized_hop_channel(sfn, seed=0, num_channels=8) for TX/RX rendezvous
+(CCP-12).
 
 Message types:
     REGISTER (0x01): Node registration with position
