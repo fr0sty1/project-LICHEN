@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-50yc",
   "title": "[merge-conflict] worktree-worker1: xiao_s3_wio_sx1262.conf",
-  "notes": "Commit: $(git rev-parse --short HEAD)",
+  "notes": "Commit: 2a378bb (xiao_s3_wio_sx1262.conf merge conflict resolution)",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:31:39.360139034Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:05:16.97894425Z",
+  "updated_at": "2026-07-23T02:05:26.689050269Z",
   "started_at": "2026-07-23T02:04:20.760385515Z",
   "lease_expires_at": "2026-07-23T02:09:20.760385515Z",
   "heartbeat_at": "2026-07-23T02:04:20.760385515Z"
