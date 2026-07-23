@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-03v0",
   "title": "[merge-conflict] worktree-worker24: sales-playbook.md",
+  "notes": "Commit: 456639bc4 (in worktree-worker24/docs/sales-playbook.md)",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:12:00.954302669Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:36:05.284281192Z",
+  "updated_at": "2026-07-23T03:37:02.886940938Z",
   "started_at": "2026-07-23T03:36:05.284281192Z",
   "lease_expires_at": "2026-07-23T03:41:05.284281192Z",
   "heartbeat_at": "2026-07-23T03:36:05.284281192Z"
