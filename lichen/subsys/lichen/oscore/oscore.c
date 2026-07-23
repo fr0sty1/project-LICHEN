@@ -23,9 +23,9 @@
 LOG_MODULE_REGISTER(oscore, CONFIG_LICHEN_OSCORE_LOG_LEVEL);
 
 /*
- * Private definition of opaque struct oscore_ctx.
- * This is the ONLY place where member access (ctx->xxx) is allowed.
- * All other code MUST use the accessor functions only.
+ * OSCORE security context - full private definition.
+ * This is the canonical definition; oscore.h has only forward declaration.
+ * All direct field access must be confined to this file.
  */
 struct oscore_ctx {
 	/* Common context (shared) */

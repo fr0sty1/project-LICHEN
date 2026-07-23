@@ -180,30 +180,25 @@ typedef int (*oscore_nvm_read_cb)(const uint8_t *_Nullable eui64, uint32_t *_Non
 /**
  * @brief OSCORE security context (opaque)
  *
- * Contains the cryptographic material and state for one peer.
- * **This is an opaque type.** The full definition is private to oscore.c.
- * Callers MUST treat `struct oscore_ctx *` as opaque and use ONLY the
- * accessor functions. Direct member access is a P0 security violation.
+ * Full definition is private to oscore.c to protect cryptographic material
+ * (keys, sequence numbers, replay window) from external access. This is a
+ * P0 security requirement.
  *
- * Available accessors (all thread-safe where required):
- * - oscore_ctx_create(), oscore_ctx_create_with_eui64()
- * - oscore_ctx_free()
- * - oscore_ctx_get(), oscore_ctx_get_by_eui64()
- * - oscore_ctx_set_peer_eui64()
- * - oscore_ctx_set_sender_seq(), oscore_ctx_get_sender_seq()
- * - oscore_ctx_get_seq_remaining(), oscore_ctx_check_freshness()
- * - oscore_ctx_persist_ssn()
- * - oscore_protect_request(), oscore_unprotect_request(), etc.
+ * Callers MUST treat as completely opaque and use ONLY the provided API:
+ *   - oscore_ctx_create() / oscore_ctx_create_with_eui64()
+ *   - oscore_ctx_free()
+ *   - oscore_ctx_get() / oscore_ctx_get_by_eui64()
+ *   - oscore_ctx_set_peer_eui64()
+ *   - oscore_ctx_get_sender_seq() / oscore_ctx_set_sender_seq()
+ *   - oscore_ctx_get_seq_remaining()
+ *   - oscore_ctx_check_freshness()
+ *   - oscore_ctx_persist_ssn()
+ *   - protect/unprotect functions (which take oscore_ctx *)
  *
- * Direct field access:
- *   - Bypasses mutex protection for thread safety and replay window
- *   - Exposes master/derived keys (must stay protected)
- *   - Creates ABI coupling preventing layout changes
- *
- * Layout subject to change without notice. Code accessing fields directly
- * will no longer compile.
+ * Direct field access is forbidden (will not compile after this change).
+ * Layout changes are now possible without breaking callers.
  */
-struct oscore_ctx; /* opaque - full definition in oscore.c */
+struct oscore_ctx;  /* forward declaration - full definition in oscore.c */
 
 /**
  * @brief OSCORE option value structure
