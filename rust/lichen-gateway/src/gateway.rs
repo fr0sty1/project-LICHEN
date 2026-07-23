@@ -31,37 +31,6 @@ impl Gateway {
         }
     }
 
-    /// Process RPL control messages (DIO/DAO/DIS) from mesh frames and handle
-    /// echo requests. Returns reply to send (if any) and event for DAO route updates.
-    pub fn process_rpl(&mut self, frame: &[u8], now_ms: u32) -> (Option<Vec<u8>>, RplEvent) {
-        let mut reply_buf = [0u8; 256];
-        let (reply_len, event) = self.rpl_node.handle_frame_rpl(frame, &mut reply_buf, now_ms);
-        let reply = if reply_len > 0 {
-            Some(reply_buf[..reply_len].to_vec())
-        } else {
-            None
-        };
-        if let RplEvent::DaoReceived { route_updated: true } = event {
-            if frame.len() >= field::SRC_OFFSET + 16 {
-                let mut src = [0u8; 16];
-                src.copy_from_slice(&frame[field::SRC_OFFSET..field::SRC_OFFSET + 16]);
-                let ipv6_src = Ipv6Addr(src);
-                let node_id = NodeId::from_ipv6(ipv6_src);
-                self.add_route(src, node_id);
-            }
-            info!("DAO event: route updated");
-        }
-        (reply, event)
-    }
-
-    /// Whether the destination is in our local RPL mesh (link-local, ULA, or routed).
-    pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
-        self.routes.contains_key(dst)
-            || (dst[0] == 0xfe && dst[1] == 0x80)
-            || dst[0] == 0xfd
-            || self.rpl_node.router.lookup_route(dst).is_some()
-    }
-
     /// SCHC-decompress a frame received from the mesh via SLIP.
     ///
     /// Returns the raw IPv6 packet to inject into the upstream TUN device, or
@@ -128,6 +97,25 @@ impl Gateway {
     /// Record that `node_id` is reachable via `addr`.
     pub fn add_route(&mut self, addr: [u8; 16], node_id: NodeId) {
         self.routes.insert(addr, node_id);
+    }
+
+    pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
+        self.routes.contains_key(dst)
+            || (dst[0] == 0xfe && dst[1] == 0x80)
+            || dst[0] == 0xfd
+            || self.rpl_node.router.lookup_route(dst).is_some()
+    }
+
+    pub fn process_rpl(&mut self, frame: &[u8], now_ms: u64) -> (Option<Vec<u8>>, RplEvent) {
+        let mut reply = vec![0u8; 512];
+        let (reply_len, event) = self.rpl_node.handle_frame_rpl(frame, [0u8; 8], &mut reply, now_ms);
+        let reply_opt = if reply_len > 0 {
+            reply.truncate(reply_len);
+            Some(reply)
+        } else {
+            None
+        };
+        (reply_opt, event)
     }
 
     pub fn mesh_to_mesh(&self, ipv6: &[u8]) -> Option<Vec<u8>> {
