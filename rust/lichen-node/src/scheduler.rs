@@ -26,7 +26,9 @@ use lichen_core::announce::AnnounceBuilder;
 use lichen_link::identity::Identity;
 use lichen_link::schnorr::sign;
 
-#[cfg(feature = "log")]
+#[cfg(feature = "defmt")]
+use defmt::{info, warn};
+#[cfg(all(feature = "log", not(feature = "defmt")))]
 use log::{info, warn};
 
 /// Default announce interval in milliseconds (spec 9.4: 5 minutes).
@@ -164,7 +166,7 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
     /// sets it here before starting the scheduler.
     pub fn set_seq_num(&self, seq_num: u16) {
         self.state.seq_num.store(seq_num, Ordering::SeqCst);
-        #[cfg(feature = "log")]
+        #[cfg(any(feature = "defmt", feature = "log"))]
         info!("sequence number set to {}", seq_num);
     }
 
@@ -266,7 +268,7 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
             return Err(SchedulerError::AlreadyRunning);
         }
 
-        #[cfg(feature = "log")]
+        #[cfg(any(feature = "defmt", feature = "log"))]
         info!("announce scheduler started");
 
         self.run_loop().await;
@@ -279,7 +281,7 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
     /// Safe to call even if not running.
     pub fn stop(&self) {
         self.state.running.store(false, Ordering::SeqCst);
-        #[cfg(feature = "log")]
+        #[cfg(any(feature = "defmt", feature = "log"))]
         info!("announce scheduler stopped");
     }
 
@@ -324,7 +326,7 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
         match self.build_announce(&mut buf) {
             Ok(len) => {
                 let success = self.transmitter.transmit_announce(&buf[..len]).await;
-                #[cfg(feature = "log")]
+                #[cfg(any(feature = "defmt", feature = "log"))]
                 {
                     let seq = self.get_seq_num();
                     if success {
@@ -333,11 +335,11 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
                         warn!("failed to send announce seq={}", seq);
                     }
                 }
-                let _ = success; // Silence unused warning when log is disabled
+                let _ = success; // Silence unused warning when diagnostics are disabled
             }
             Err(_e) => {
-                #[cfg(feature = "log")]
-                warn!("failed to build announce: {}", _e);
+                #[cfg(any(feature = "defmt", feature = "log"))]
+                warn!("failed to build announce");
             }
         }
     }
@@ -350,7 +352,7 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
     /// Returns Ok(true) if announce was sent successfully.
     pub async fn send_now(&self) -> Result<bool, SchedulerError> {
         if !self.state.running.load(Ordering::SeqCst) {
-            #[cfg(feature = "log")]
+            #[cfg(any(feature = "defmt", feature = "log"))]
             warn!("cannot send announce: scheduler not running");
             return Err(SchedulerError::NotRunning);
         }
@@ -548,6 +550,7 @@ mod tests {
 
         assert!(scheduler.is_running());
         assert!(scheduler.transmitter.tx_count() >= 1);
+        assert!(!scheduler.transmitter.last_data().is_empty());
 
         // Stop
         scheduler.stop();

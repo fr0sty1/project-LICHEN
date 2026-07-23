@@ -237,6 +237,16 @@ batch technique. Given n signatures:
 Batch verification is approximately 2x faster than individual verification
 for large batches.
 
+### 5.5. Application Profiles
+
+An application profile MAY pass a fixed-length, domain-separated digest as
+`msg`. The application specification, not this document, defines that digest
+and transcript. In particular, the LICHEN DAO Origin Signature profile passes
+the complete 64-byte SHA-512 digest defined by its RPL profile; Schnorr48 MUST
+sign those 64 bytes directly and MUST NOT hash, truncate, decode, or append a
+NUL to the application transcript before applying the signing procedure in
+Section 4.2. The SHA-512 operation intrinsic to Section 4.2 still applies.
+
 ## 6. Security Considerations
 
 ### 6.1. Security Level

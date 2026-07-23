@@ -232,9 +232,8 @@ impl ReplayProtector {
 
     /// Check and advance the window. Returns `true` if the frame is fresh.
     ///
-    /// SECURITY: Epoch comparison uses half-space arithmetic to handle
-    /// 8-bit wrap-around correctly. An epoch difference in [-128, 0) is
-    /// considered "behind" (replay); a difference in (0, 128] is "ahead".
+    /// Epochs are finite for a given public key: wrapping from 255 to 0 is a
+    /// rollback and requires a new key (and therefore fresh replay state).
     pub fn check_and_update(&mut self, pubkey: &PublicKey, epoch: u8, seqnum: LinkSeqNum) -> bool {
         self.access_counter = self.access_counter.wrapping_add(1);
         let access = self.access_counter;
@@ -386,6 +385,20 @@ impl LinkLayer {
             self.replay.reset_peer(&tracked.identity.pubkey);
         }
         self.pinned.remove(iid);
+    }
+
+    /// Atomically remove a peer's configured key, pin, and replay window.
+    pub fn forget_peer(&mut self, iid: &[u8; 8]) {
+        let peer_key = self.peers.remove(iid).map(|peer| peer.pubkey);
+        let pinned_key = self.pinned.remove(iid);
+        if let Some(key) = peer_key {
+            self.replay.reset_peer(&key);
+        }
+        if let Some(key) = pinned_key {
+            if Some(key) != peer_key {
+                self.replay.reset_peer(&key);
+            }
+        }
     }
 
     pub fn peer_count(&self) -> usize {
@@ -766,8 +779,7 @@ mod tests {
     }
 
     #[test]
-    fn epoch_wraparound_handled() {
-        // SECURITY: Test epoch wrap-around (255 -> 0) is handled correctly.
+    fn epoch_wraparound_rejected_for_same_pubkey() {
         let alice = Identity::from_seed(Seed::new([0x01u8; 32]));
         let alice_peer = PeerIdentity::from_pubkey(alice.pubkey);
         let mut ll_bob = make_ll(0x02);
@@ -775,36 +787,37 @@ mod tests {
 
         let ll_alice = LinkLayer::new(alice);
 
-        // Accept frame with epoch=254
         let mut wire1 = [0u8; 256];
         let n1 = ll_alice
             .build_frame(254, seq(1), &[], b"e254", &mut wire1)
             .unwrap();
         ll_bob.receive_frame(&wire1[..n1]).unwrap();
 
-        // Accept frame with epoch=255 (> 254)
         let mut wire2 = [0u8; 256];
         let n2 = ll_alice
             .build_frame(255, seq(1), &[], b"e255", &mut wire2)
             .unwrap();
         ll_bob.receive_frame(&wire2[..n2]).unwrap();
 
-        // Accept frame with epoch=0 after wrap (0 is 1 step ahead of 255 in u8 arithmetic)
         let mut wire3 = [0u8; 256];
         let n3 = ll_alice
             .build_frame(0, seq(1), &[], b"e0wrap", &mut wire3)
             .unwrap();
-        ll_bob.receive_frame(&wire3[..n3]).unwrap();
-
-        // Reject frame with epoch=255 (now behind after wrap)
-        let mut wire4 = [0u8; 256];
-        let n4 = ll_alice
-            .build_frame(255, seq(2), &[], b"e255again", &mut wire4)
-            .unwrap();
         assert_eq!(
-            ll_bob.receive_frame(&wire4[..n4]).unwrap_err(),
+            ll_bob.receive_frame(&wire3[..n3]).unwrap_err(),
             LinkRxError::Replay
         );
+    }
+
+    #[test]
+    fn new_pubkey_has_fresh_replay_state() {
+        let old_key = Identity::from_seed(Seed::new([0x01; 32])).pubkey;
+        let new_key = Identity::from_seed(Seed::new([0x02; 32])).pubkey;
+        let mut replay = ReplayProtector::new();
+
+        assert!(replay.check_and_update(&old_key, 255, seq(65535)));
+        assert!(!replay.check_and_update(&old_key, 0, seq(0)));
+        assert!(replay.check_and_update(&new_key, 0, seq(0)));
     }
 
     #[test]
@@ -964,5 +977,25 @@ mod tests {
             ll_bob.pinned_pubkey_for(&new_alice_iid),
             Some(&new_alice_pubkey)
         );
+    }
+
+    #[test]
+    fn forget_peer_clears_peer_pin_and_replay_state() {
+        let alice = Identity::from_seed(Seed::new([0x42; 32]));
+        let peer = PeerIdentity::from_pubkey(alice.pubkey);
+        let iid = peer.iid;
+        let mut bob = make_ll(0x24);
+        bob.add_peer(peer.clone());
+        let mut wire = [0u8; 256];
+        let len = LinkLayer::new(alice)
+            .build_frame(1, seq(1), &[], b"hello", &mut wire)
+            .unwrap();
+        bob.receive_frame(&wire[..len]).unwrap();
+
+        bob.forget_peer(&iid);
+        assert_eq!(bob.peer_count(), 0);
+        assert_eq!(bob.pinned_pubkey_for(&iid), None);
+        bob.add_peer(peer);
+        assert!(bob.receive_frame(&wire[..len]).is_ok());
     }
 }

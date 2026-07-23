@@ -9,6 +9,7 @@
  */
 
 #include <lichen/schnorr48.h>
+#include <lichen/link.h>
 #include <errno.h>
 #include <string.h>
 
@@ -321,7 +322,7 @@ static int test_sign_verify_roundtrip(void)
 	};
 	uint8_t privkey[32], pubkey[32];
 	uint8_t message[] = "hello LICHEN mesh network";
-	uint8_t sig[48];
+	uint8_t sig[48] = { 0 };
 
 	schnorr48_derive_keypair(seed, privkey, pubkey);
 	schnorr48_sign(privkey, pubkey, message, sizeof(message) - 1, sig);
@@ -404,6 +405,97 @@ static int test_frame_bounds_checking(void)
 	return 1;
 }
 
+static int test_signed_frame_cross_language_oracle(void)
+{
+	static const char seed_hex[] =
+		"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
+	static const char private_hex[] =
+		"3894eea49c580aef816935762be049559d6d1440dede12e6a125f1841fff8e6f";
+	static const char public_hex[] =
+		"03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8";
+	static const char signature_hex[] =
+		"bc6fe764bf7f37be5152ad40a8d2dcc2b06cf4da946e1690d3398874a5686dc"
+		"ca3ace783caf4d3950699082eea0f5b09";
+	static const char wire_hex[] =
+		"3d21123456beef147369676e6564"
+		"bc6fe764bf7f37be5152ad40a8d2dcc2b06cf4da946e1690d3398874a5686dc"
+		"ca3ace783caf4d3950699082eea0f5b09";
+	uint8_t seed[32], expected_private[32], expected_public[32];
+	uint8_t private_key[32], public_key[32], expected_signature[48], signature[48];
+	uint8_t expected_wire[62], wire[62];
+	uint8_t dst_addr[] = { 0xbe, 0xef };
+	uint8_t payload[] = { 0x14, 's', 'i', 'g', 'n', 'e', 'd' };
+	struct lichen_frame frame;
+
+	ASSERT_TRUE(hex_decode(seed_hex, seed, sizeof(seed)) == sizeof(seed), "decode oracle seed");
+	ASSERT_TRUE(hex_decode(private_hex, expected_private, sizeof(expected_private)) == sizeof(expected_private),
+		    "decode oracle private key");
+	ASSERT_TRUE(hex_decode(public_hex, expected_public, sizeof(expected_public)) == sizeof(expected_public),
+		    "decode oracle public key");
+	ASSERT_TRUE(hex_decode(signature_hex, expected_signature, sizeof(expected_signature)) == sizeof(expected_signature),
+		    "decode oracle signature");
+	ASSERT_TRUE(hex_decode(wire_hex, expected_wire, sizeof(expected_wire)) == sizeof(expected_wire),
+		    "decode oracle wire frame");
+
+	schnorr48_derive_keypair(seed, private_key, public_key);
+	ASSERT_MEM_EQ(private_key, expected_private, sizeof(private_key), "oracle private key");
+	ASSERT_MEM_EQ(public_key, expected_public, sizeof(public_key), "oracle public key");
+	ASSERT_TRUE(schnorr48_sign_frame(0x3d, 0x21, 0x12, 0x3456,
+					dst_addr, sizeof(dst_addr), payload, sizeof(payload),
+					private_key, public_key, signature) == 0,
+		    "sign oracle frame");
+	ASSERT_MEM_EQ(signature, expected_signature, sizeof(signature), "oracle signature");
+
+	memset(&frame, 0, sizeof(frame));
+	frame.epoch = 0x12;
+	frame.seqnum = 0x3456;
+	memcpy(frame.dst_addr, dst_addr, sizeof(dst_addr));
+	frame.dst_addr_len = sizeof(dst_addr);
+	frame.payload = payload;
+	frame.payload_len = sizeof(payload);
+	memcpy(frame.mic, signature, sizeof(signature));
+	frame.mic_len = sizeof(signature);
+	frame.addr_mode = LICHEN_ADDR_SHORT;
+	frame.mic_length = LICHEN_MIC_32;
+	frame.signature_present = true;
+	ASSERT_TRUE(lichen_frame_write(&frame, wire, sizeof(wire)) == sizeof(wire),
+		    "serialize oracle frame");
+	ASSERT_MEM_EQ(wire, expected_wire, sizeof(wire), "oracle wire frame");
+	ASSERT_TRUE(schnorr48_verify_frame(0x3d, 0x21, 0x12, 0x3456,
+					  dst_addr, sizeof(dst_addr), payload, sizeof(payload),
+					  signature, public_key) == 1,
+		    "verify oracle frame");
+
+	dst_addr[0] ^= 1;
+	ASSERT_FALSE(schnorr48_verify_frame(0x3d, 0x21, 0x12, 0x3456,
+					   dst_addr, sizeof(dst_addr), payload, sizeof(payload),
+					   signature, public_key), "reject tampered destination");
+	dst_addr[0] ^= 1;
+	payload[0] ^= 1;
+	ASSERT_FALSE(schnorr48_verify_frame(0x3d, 0x21, 0x12, 0x3456,
+					   dst_addr, sizeof(dst_addr), payload, sizeof(payload),
+					   signature, public_key), "reject tampered payload");
+	payload[0] ^= 1;
+	ASSERT_FALSE(schnorr48_verify_frame(0x3c, 0x21, 0x12, 0x3456,
+					   dst_addr, sizeof(dst_addr), payload, sizeof(payload),
+					   signature, public_key), "reject tampered length");
+	ASSERT_FALSE(schnorr48_verify_frame(0x3d, 0x20, 0x12, 0x3456,
+					   dst_addr, sizeof(dst_addr), payload, sizeof(payload),
+					   signature, public_key), "reject tampered LLSec");
+	ASSERT_FALSE(schnorr48_verify_frame(0x3d, 0x21, 0x13, 0x3456,
+					   dst_addr, sizeof(dst_addr), payload, sizeof(payload),
+					   signature, public_key), "reject tampered epoch");
+	ASSERT_FALSE(schnorr48_verify_frame(0x3d, 0x21, 0x12, 0x3457,
+					   dst_addr, sizeof(dst_addr), payload, sizeof(payload),
+					   signature, public_key), "reject tampered sequence");
+	signature[0] ^= 1;
+	ASSERT_FALSE(schnorr48_verify_frame(0x3d, 0x21, 0x12, 0x3456,
+					   dst_addr, sizeof(dst_addr), payload, sizeof(payload),
+					   signature, public_key), "reject tampered signature");
+
+	return 1;
+}
+
 /* Test runner */
 
 #define RUN_TEST(fn) do { \
@@ -427,6 +519,7 @@ int main(void)
 	RUN_TEST(test_sign_verify_roundtrip);
 	RUN_TEST(test_frame_sign_verify);
 	RUN_TEST(test_frame_bounds_checking);
+	RUN_TEST(test_signed_frame_cross_language_oracle);
 
 	printf("\n%d/%d tests passed\n", tests_passed, tests_run);
 

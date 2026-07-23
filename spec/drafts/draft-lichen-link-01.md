@@ -70,8 +70,7 @@ document are to be interpreted as described in RFC 2119.
 - **MIC:** Message Integrity Code — the cryptographic authentication tag.
 - **EUI-64:** An IEEE 64-bit extended unique identifier, typically derived
   from the LoRa module's hardware address.
-- **Epoch:** A key generation counter used to invalidate old sequence numbers
-  when a node reboots or rotates its link key.
+- **Epoch:** The high-order octet of the finite 24-bit replay counter.
 
 ## 3. Frame Format
 
@@ -85,19 +84,21 @@ Octets: 1        1       1      2       var     var      var
 ```
 
 - **LENGTH** (1 octet): Number of bytes in the frame body (everything after
-  the LENGTH byte). Implementations MUST NOT transmit frames with LENGTH > 255.
-  Receivers MUST discard frames where LENGTH exceeds the received byte count.
+  the LENGTH byte). The complete frame MUST NOT exceed 255 octets, so LENGTH
+  MUST NOT exceed 254. Receivers MUST discard frames with LENGTH=255 or when
+  LENGTH does not equal the received frame size minus the LENGTH byte. The maximum
+  unsigned broadcast PLD is 250 octets (254 minus the 4-octet fixed header).
 
 - **LLSec** (1 octet): Link-layer security flags. See Section 3.2.
 
-- **EPO** (1 octet): Key epoch. Incremented when the node's link key changes
-  (e.g. after a reboot or key rotation). Receivers use the (EPO, SEQ) tuple
-  for replay detection. Wraps modulo 256.
+- **EPO** (1 octet): High-order octet of the replay counter. Receivers use the
+  (EPO, SEQ) tuple for replay detection. EPO does not wrap; exhausting EPO and
+  SEQ requires link-key rotation.
 
 - **SEQ** (2 octets, big-endian): Sequence number. Monotonically increasing
   within an epoch. Receivers MUST maintain a replay window per (peer, epoch)
   pair and MUST discard frames whose (EPO, SEQ) has already been accepted.
-  Wraps modulo 65536; see Section 5.2 for epoch management on wrap.
+  After 0xFFFF, the next tuple uses the next EPO and SEQ zero. See Section 5.2.
 
 - **DST** (0, 2, or 8 octets): Destination address. Present and length
   determined by AddrMode in LLSec. See Section 3.3.
@@ -106,8 +107,9 @@ Octets: 1        1       1      2       var     var      var
   dispatch value: `0x14` for SCHC, whose body begins with the SCHC rule ID, or
   `0x15` for LICHEN routing/control messages, whose body begins with the
   routing message type. Length derived as
-  `LENGTH - fixed_header_size - DST_len - MIC_len`. MUST be at least 2 bytes
-  for currently defined dispatch values.
+  `LENGTH - fixed_header_size - DST_len - MIC_len`. Link framing permits an
+  empty PLD; a PLD using a currently defined dispatch value MUST be at least
+  2 bytes.
 
 - **MIC** (0 or 48 octets): Message Integrity Code. When S=0, the MIC is
   absent regardless of MicLength. When S=1, the MIC is the full 48-byte
@@ -226,8 +228,13 @@ node tracks:
 - The highest accepted SEQ value within that EPO.
 - A bitmask of recently accepted SEQ values (sliding window).
 
-The minimum window size is 64 frames. Implementations SHOULD use at least a
-128-bit window.
+The replay window size is 32 frames.
+
+EPO and SEQ form the finite unsigned integer
+`counter = (EPO << 16) | SEQ`, ranging from 0x000000 through 0xFFFFFF.
+Implementations MUST compare counters using ordinary unsigned integer ordering
+and MUST NOT use serial-number or modulo arithmetic. Replay state is scoped to
+the peer's authenticated link key.
 
 A frame MUST be discarded if:
 
@@ -235,16 +242,29 @@ A frame MUST be discarded if:
 2. EPO == highest accepted EPO and SEQ falls outside the window or has
    already been accepted.
 
+A lower EPO MUST always be rejected. When EPO is unchanged, a decrease from a
+high SEQ to a low SEQ is stale or outside the replay window and MUST NOT be
+accepted as sequence-number wrap.
+
 ### 5.2. Epoch Transitions
 
-When SEQ reaches 0xFFFF, the sender MUST increment EPO and reset SEQ to 0
-before sending further frames. Receivers MUST accept EPO increments even
-without a signed epoch-change notification.
+When SEQ reaches 0xFFFF, the sender MUST increment EPO and use SEQ zero for
+the next frame. Receivers apply ordinary numeric ordering to that next tuple;
+no separate epoch-change notification is required.
 
-When a node reboots, it SHOULD increment EPO to invalidate old sequence
-numbers. Receivers MUST accept EPO values higher than previously seen,
-within the range [previous_EPO, previous_EPO + 4]. Larger EPO jumps require
-out-of-band trust re-establishment.
+EPO MUST NOT wrap from 0xFF to 0x00. After sending the terminal tuple
+`(EPO=0xFF, SEQ=0xFFFF)`, the sender MUST rotate its link key before sending
+another authenticated frame. A receiver MUST reject `(0x00, 0x0000)` and all
+other lower tuples under the exhausted key. After authenticating a new link
+key according to the LICHEN security architecture, the receiver MUST create
+fresh replay state for that key.
+
+On reboot, a node SHOULD resume above its last used counter, for example by
+incrementing EPO and restarting SEQ at zero. If no persisted counter is
+available, a random initial EPO reduces accidental tuple reuse but does not
+establish freshness: receivers retaining state for the same key apply the
+normal numeric rules and may reject it. The node MUST rotate its link key if
+it cannot establish an unused greater tuple under the existing key.
 
 ## 6. Examples
 

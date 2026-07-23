@@ -127,7 +127,7 @@ struct senml_pack {
  * @return 0 on success, -EINVAL if pack is NULL, -EMSGSIZE if base_name is
  *         longer than SENML_MAX_NAME_LEN
  */
-int senml_pack_init(struct senml_pack *_Nonnull pack,
+int senml_pack_init(struct senml_pack *_Nullable pack,
 		    const char *_Nullable base_name,
 		    uint64_t base_time);
 
@@ -141,8 +141,8 @@ int senml_pack_init(struct senml_pack *_Nonnull pack,
  * @return 0 on success, -EINVAL if non-finite, -ENOMEM if pack is full,
  *         -EMSGSIZE if name or unit is too long
  */
-int senml_add_float(struct senml_pack *_Nonnull pack,
-		    const char *_Nonnull name,
+int senml_add_float(struct senml_pack *_Nullable pack,
+		    const char *_Nullable name,
 		    const char *_Nullable unit,
 		    float value);
 
@@ -157,8 +157,8 @@ int senml_add_float(struct senml_pack *_Nonnull pack,
  * @return 0 on success, -EINVAL if non-finite, -ENOMEM if pack is full,
  *         -EMSGSIZE if name or unit is too long
  */
-int senml_add_float_t(struct senml_pack *_Nonnull pack,
-		      const char *_Nonnull name,
+int senml_add_float_t(struct senml_pack *_Nullable pack,
+		      const char *_Nullable name,
 		      const char *_Nullable unit,
 		      float value,
 		      int32_t time_offset);
@@ -169,10 +169,11 @@ int senml_add_float_t(struct senml_pack *_Nonnull pack,
  * @param[in,out] pack  SenML pack
  * @param[in]     name  Record name (e.g., "charging")
  * @param[in]     value Boolean value
- * @return 0 on success, -ENOMEM if pack is full, -EMSGSIZE if name is too long
+ * @return 0 on success, -EINVAL if pack or name is NULL, -ENOMEM if pack is
+ *         full, -EMSGSIZE if name is too long
  */
-int senml_add_bool(struct senml_pack *_Nonnull pack,
-		   const char *_Nonnull name,
+int senml_add_bool(struct senml_pack *_Nullable pack,
+		   const char *_Nullable name,
 		   bool value);
 
 /**

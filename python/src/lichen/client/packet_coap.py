@@ -18,7 +18,15 @@ from lichen.client.lci import ResourceSubscription, ResourceTransport
 from lichen.client.model import CoapResult
 from lichen.client.transport import PacketTransport
 from lichen.coap.schc_channel import DEFAULT_COAP_PORT, unwrap_coap, wrap_coap
-from lichen.coap.transport import DatagramChannel, ReceiveCallback, create_lichen_context
+from lichen.coap.transport import (
+    DatagramChannel,
+    Endpoint,
+    EndpointPolicy,
+    ReceiveCallback,
+    create_lichen_context,
+    parse_channel_endpoint,
+    unscoped_ipv6,
+)
 from lichen.ipv6.packet import IPv6Packet, NextHeader
 from lichen.ipv6.udp import UdpDatagram, udp_checksum
 
@@ -43,7 +51,14 @@ class PacketCoapConfig:
     @property
     def base_uri(self) -> str:
         """Return the peer CoAP URI used by the shared LCI client."""
-        return f"coap://[{self.peer_host}]"
+        return parse_channel_endpoint(self.peer_host, default_port=self.dst_port).uri
+
+    @property
+    def local_endpoint(self) -> str:
+        """Return the local endpoint identity presented to aiocoap."""
+        return parse_channel_endpoint(
+            self.local_host, default_port=self.src_port
+        ).authority
 
 
 class PacketCoapResourceTransport(ResourceTransport):
@@ -65,29 +80,55 @@ class PacketCoapResourceTransport(ResourceTransport):
         self.config = config or PacketCoapConfig()
         self._channel: PacketDatagramChannel | None = None
         self._resource_transport: AiocoapResourceTransport | None = None
+        self._lifecycle_lock = asyncio.Lock()
+        self._close_task: asyncio.Task[None] | None = None
+        self._packet_closed = False
 
     async def connect(self) -> None:
         """Open the packet link and construct an aiocoap context over it."""
-        if self._resource_transport is not None:
-            return
-        await self.packet_transport.connect()
-        channel = PacketDatagramChannel(
-            self.packet_transport,
-            self.config.local_host,
-            src_port=self.config.src_port,
-            dst_port=self.config.dst_port,
-        )
-        channel.start()
-        self._channel = channel
-        self._resource_transport = AiocoapResourceTransport(
-            config=IpCoapConfig(base_uri=self.config.base_uri, timeout_s=self.config.timeout_s),
-            context_factory=lambda: create_lichen_context(channel, self.config.local_host),
-        )
-        try:
-            await self._resource_transport.connect()
-        except Exception:
-            await self.close()
-            raise
+        async with self._lifecycle_lock:
+            if self._resource_transport is not None:
+                return
+            if self._close_task is not None and not self._close_task.done():
+                raise CoapTransportError("packet CoAP transport is closing")
+            self._close_task = None
+            self._packet_closed = False
+            channel: PacketDatagramChannel | None = None
+            resource_transport: AiocoapResourceTransport | None = None
+            try:
+                await self.packet_transport.connect()
+                channel = PacketDatagramChannel(
+                    self.packet_transport,
+                    self.config.local_host,
+                    src_port=self.config.src_port,
+                    dst_port=self.config.dst_port,
+                )
+                channel.start()
+                await asyncio.sleep(0)
+                if channel._reader_task is not None and channel._reader_task.done():
+                    channel._reader_task.result()
+                resource_transport = AiocoapResourceTransport(
+                    config=IpCoapConfig(
+                        base_uri=self.config.base_uri,
+                        timeout_s=self.config.timeout_s,
+                    ),
+                    context_factory=lambda: create_lichen_context(
+                        channel, self.config.local_endpoint
+                    ),
+                )
+                await resource_transport.connect()
+                await asyncio.sleep(0)
+                if channel._reader_task is not None and channel._reader_task.done():
+                    channel._reader_task.result()
+            except BaseException as primary:
+                if resource_transport is not None:
+                    with suppress(BaseException):
+                        await resource_transport.close()
+                with suppress(BaseException):
+                    await self._close_packet(channel)
+                raise primary
+            self._channel = channel
+            self._resource_transport = resource_transport
 
     async def close(self) -> None:
         """Close the CoAP context and underlying packet transport."""
@@ -290,31 +331,57 @@ class PacketDatagramChannel(DatagramChannel):
         dst_port: int = DEFAULT_COAP_PORT,
     ) -> None:
         self._packet_transport = packet_transport
-        self._local = IPv6Address(local_host)
-        self._src_port = src_port
+        local = parse_channel_endpoint(local_host, default_port=src_port)
+        local_address = IPv6Address(local.host)
+        if local_address.scope_id is not None and not local_address.is_link_local:
+            raise ValueError("IPv6 scope is only supported for link-local endpoints")
+        self._local_endpoint = local
+        self._local = unscoped_ipv6(local.host)
+        self._endpoint_policy = EndpointPolicy.owning_link_local(local.host)
+        self._src_port = local.port
         self._dst_port = dst_port
         self._receiver: ReceiveCallback | None = None
         self._reader_task: asyncio.Task[None] | None = None
         self._send_tasks: set[asyncio.Task[None]] = set()
         self._closed = False
+        self._close_task: asyncio.Task[None] | None = None
 
     def start(self) -> None:
         """Start forwarding inbound packets to aiocoap."""
+        if self._closed:
+            raise RuntimeError("channel is closed")
         if self._reader_task is None:
             self._reader_task = asyncio.create_task(self._read_packets())
 
     def set_receiver(self, receiver: ReceiveCallback) -> None:
+        if self._closed:
+            raise RuntimeError("channel is closed")
+        if self._receiver is not None:
+            raise RuntimeError("channel already has a receiver")
         self._receiver = receiver
+
+    def clear_receiver(self, receiver: ReceiveCallback) -> None:
+        if self._receiver == receiver:
+            self._receiver = None
+
+    @property
+    def endpoint_policy(self) -> EndpointPolicy:
+        return self._endpoint_policy
 
     def send_datagram(self, data: bytes, dest: str) -> None:
         if self._closed:
-            return
+            raise RuntimeError("channel is closed")
+        endpoint = self.normalize_endpoint(
+            parse_channel_endpoint(dest, default_port=self._dst_port)
+        )
+        destination = IPv6Address(endpoint.host)
+        wire_destination = unscoped_ipv6(destination)
         packet = wrap_coap(
             self._local,
-            IPv6Address(dest),
+            wire_destination,
             data,
             src_port=self._src_port,
-            dst_port=self._dst_port,
+            dst_port=endpoint.port,
         )
         task = asyncio.create_task(self._packet_transport.send_packet(packet))
         self._send_tasks.add(task)
@@ -326,7 +393,10 @@ class PacketDatagramChannel(DatagramChannel):
             task.add_done_callback(self._log_unscoped_send_done)
 
     def close(self) -> None:
+        if self._closed:
+            return
         self._closed = True
+        self._receiver = None
         if self._reader_task is not None:
             self._reader_task.cancel()
         for task in tuple(self._send_tasks):
@@ -340,14 +410,48 @@ class PacketDatagramChannel(DatagramChannel):
 
     async def aclose(self) -> None:
         """Close the channel and packet transport."""
+        if self._close_task is None:
+            self._close_task = asyncio.create_task(self._aclose_once())
+        await asyncio.shield(self._close_task)
+
+    async def _aclose_once(self) -> None:
         self.close()
-        if self._reader_task is not None:
-            with suppress(asyncio.CancelledError):
-                await self._reader_task
-        for task in tuple(self._send_tasks):
-            with suppress(asyncio.CancelledError):
-                await task
-        await self._packet_transport.close()
+        reader = self._reader_task
+        sends = tuple(self._send_tasks)
+        tasks = (() if reader is None else (reader,)) + sends
+        error: BaseException | None = None
+        try:
+            if tasks:
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                failures = [
+                    result
+                    for result in results
+                    if isinstance(result, BaseException)
+                    and not isinstance(result, asyncio.CancelledError)
+                ]
+                if failures:
+                    if (
+                        reader is not None
+                        and isinstance(results[0], BaseException)
+                        and not isinstance(results[0], asyncio.CancelledError)
+                    ):
+                        error = results[0]
+                    else:
+                        error = min(
+                            failures,
+                            key=lambda exc: (
+                                f"{type(exc).__module__}.{type(exc).__qualname__}",
+                                str(exc),
+                            ),
+                        )
+        finally:
+            try:
+                await self._packet_transport.close()
+            except BaseException as exc:
+                if error is None:
+                    error = exc
+        if error is not None:
+            raise error
 
     async def _read_packets(self) -> None:
         async for packet in self._packet_transport.packets():
@@ -359,18 +463,20 @@ class PacketDatagramChannel(DatagramChannel):
             return
         try:
             parsed = IPv6Packet.from_bytes(packet)
-            if parsed.header.dst_addr != self._local:
+            if parsed.header.dst_addr.packed != self._local.packed:
                 return
             if parsed.header.next_header != NextHeader.UDP:
                 return
             udp = UdpDatagram.from_bytes(parsed.payload)
-            if udp.dst_port != self._src_port or udp.src_port != self._dst_port:
+            if udp.dst_port != self._src_port:
                 return
             if udp.checksum == 0:
                 return
             if udp_checksum(parsed.header.src_addr, parsed.header.dst_addr, parsed.payload) != 0:
                 return
-            source = str(parsed.header.src_addr)
+            source = self.normalize_endpoint(
+                Endpoint(str(parsed.header.src_addr), udp.src_port)
+            ).authority
             coap = unwrap_coap(packet)
         except Exception:
             logger.debug("failed to parse packet", exc_info=True)

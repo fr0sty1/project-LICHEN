@@ -9,7 +9,7 @@ import asyncio
 import pytest
 
 from lichen.coap.secure import (
-    OscoreContextStore,
+    InMemoryOscoreContextStore,
     SecureDatagramChannel,
     TofuPeerResolver,
     create_secure_channel,
@@ -26,7 +26,7 @@ class TestOscoreContextStore:
     @pytest.mark.asyncio
     async def test_put_and_get(self) -> None:
         """Store and retrieve a context."""
-        store = OscoreContextStore()
+        store = InMemoryOscoreContextStore()
         ctx = MemorySecurityContext(
             master_secret=b"0" * 16,
             master_salt=b"1" * 8,
@@ -43,13 +43,13 @@ class TestOscoreContextStore:
     @pytest.mark.asyncio
     async def test_get_missing_returns_none(self) -> None:
         """Getting a missing context returns None."""
-        store = OscoreContextStore()
+        store = InMemoryOscoreContextStore()
         assert await store.get("fd00::1") is None
 
     @pytest.mark.asyncio
     async def test_has_context(self) -> None:
         """has_context reflects stored contexts."""
-        store = OscoreContextStore()
+        store = InMemoryOscoreContextStore()
         assert not await store.has_context("fd00::1")
 
         ctx = MemorySecurityContext(
@@ -64,7 +64,7 @@ class TestOscoreContextStore:
     @pytest.mark.asyncio
     async def test_remove(self) -> None:
         """Remove deletes stored context."""
-        store = OscoreContextStore()
+        store = InMemoryOscoreContextStore()
         ctx = MemorySecurityContext(
             master_secret=b"0" * 16,
             master_salt=b"1" * 8,
@@ -77,7 +77,7 @@ class TestOscoreContextStore:
 
     def test_sync_operations(self) -> None:
         """Synchronous operations work without event loop."""
-        store = OscoreContextStore()
+        store = InMemoryOscoreContextStore()
         ctx = MemorySecurityContext(
             master_secret=b"0" * 16,
             master_salt=b"1" * 8,

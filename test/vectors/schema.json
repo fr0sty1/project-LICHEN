@@ -273,6 +273,7 @@
         "description": {"type": "string"},
         "fields": {
           "type": "object",
+          "additionalProperties": false,
           "required": ["epoch", "seqnum", "dst_addr", "payload", "mic",
                        "addr_mode", "mic_length", "signature_present", "encrypted"],
           "properties": {

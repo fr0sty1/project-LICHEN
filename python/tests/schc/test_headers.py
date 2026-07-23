@@ -7,10 +7,12 @@ from __future__ import annotations
 from ipaddress import IPv6Address
 
 import aiocoap
+import pytest
 from aiocoap import GET, Message
 
 from lichen.ipv6.packet import HEADER_LENGTH, IPv6Header, NextHeader
 from lichen.ipv6.udp import UdpDatagram
+from lichen.schc.codec import SchcError
 from lichen.schc.headers import compress_packet, decompress_packet
 
 SRC = IPv6Address("fe80::1")
@@ -118,6 +120,23 @@ def test_truncated_coap_packet_falls_back() -> None:
     assert compressed[0] == 255  # Falls back since no UDP data
 
 
+def test_packet_with_trailing_bytes_falls_back() -> None:
+    raw = _build_packet(_coap_request()) + b"junk"
+    assert compress_packet(raw)[0] == 255
+
+
+def test_packet_with_invalid_udp_length_falls_back() -> None:
+    raw = bytearray(_build_packet(_coap_request()))
+    raw[HEADER_LENGTH + 4 : HEADER_LENGTH + 6] = (8).to_bytes(2, "big")
+    assert compress_packet(bytes(raw))[0] == 255
+
+
+def test_packet_with_invalid_udp_checksum_falls_back() -> None:
+    raw = bytearray(_build_packet(_coap_request()))
+    raw[HEADER_LENGTH + 6] ^= 0x01
+    assert compress_packet(bytes(raw))[0] == 255
+
+
 def test_truncated_icmpv6_falls_back() -> None:
     """A valid IPv6 header with ICMPv6 but truncated payload falls back."""
     header = IPv6Header(
@@ -129,3 +148,23 @@ def test_truncated_icmpv6_falls_back() -> None:
     raw = header.to_bytes() + bytes(2)
     compressed = compress_packet(raw)
     assert compressed[0] == 255  # Falls back
+
+
+def test_decompress_rejects_truncated_packet_residue() -> None:
+    # Rule 0 requires exactly 1 rule-ID byte plus 25 residue bytes.
+    with pytest.raises(SchcError, match="requires 25 residue bytes"):
+        decompress_packet(bytes(25))
+
+
+def test_decompress_rejects_missing_declared_token() -> None:
+    coap = bytes([0x48, 0x01, 0x12, 0x34]) + bytes(8)
+    compressed = compress_packet(_build_packet(coap))
+    with pytest.raises(SchcError, match="does not reconstruct its packet profile"):
+        decompress_packet(compressed[:-8])
+
+
+def test_decompress_rejects_plain_content_under_oscore_rule() -> None:
+    compressed = bytearray(compress_packet(_build_packet(_coap_request())))
+    compressed[0] = 5
+    with pytest.raises(SchcError, match="does not reconstruct its packet profile"):
+        decompress_packet(bytes(compressed))

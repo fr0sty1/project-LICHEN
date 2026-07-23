@@ -121,14 +121,14 @@ class TestSosPutDelete:
             await client.shutdown()
             await server.shutdown()
 
-    async def test_put_no_body_activates_with_defaults(self) -> None:
+    async def test_put_no_body_is_rejected(self) -> None:
         client, server, sos = await _setup()
         try:
             resp = await client.request(
                 Message(code=PUT, uri="coap://srv/sos", payload=b"")
             ).response
-            assert resp.code == aiocoap.CHANGED
-            assert sos._active is True
+            assert resp.code == aiocoap.BAD_REQUEST
+            assert sos._active is False
         finally:
             await client.shutdown()
             await server.shutdown()

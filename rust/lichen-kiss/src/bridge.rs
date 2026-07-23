@@ -14,7 +14,9 @@
 
 use core::fmt;
 
-use lichen_link::frame::{AddrMode, Encryption, FrameError, LichenFrame, MicLength, Signature};
+use lichen_link::frame::{
+    AddrMode, Encryption, FrameError, LichenFrame, MicLength, Signature, MAX_FRAME_LEN,
+};
 use lichen_link::seqnum::LinkSeqNum;
 
 use crate::framing::{kiss_decode, kiss_encode, kiss_unescape, KissCommand, KissError, FEND};
@@ -24,8 +26,8 @@ pub const PORT_RAW: u8 = 1;
 pub const PORT_LCI_IPV6: u8 = 2;
 pub const PORT_LCI_CTRL: u8 = 3;
 
-/// Maximum payload size for bridge operations.
-pub const MAX_PAYLOAD: usize = 256;
+/// Maximum LoRa wire frame size accepted by the bridge.
+pub const MAX_PAYLOAD: usize = MAX_FRAME_LEN;
 
 /// Bridge error type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -237,6 +239,9 @@ impl KissBridge {
 
         // Unescape the payload
         let payload_len = kiss_unescape(frame.data, payload_buf)?;
+        if payload_len > MAX_PAYLOAD {
+            return Err(BridgeError::PayloadTooLarge);
+        }
 
         Ok(DecodedKissFrame {
             port: frame.port,
@@ -456,6 +461,37 @@ mod tests {
 
         assert_eq!(decoded.port, PORT_RAW);
         assert_eq!(decoded.payload, b"Test");
+    }
+
+    #[test]
+    fn test_wire_frame_size_boundary() {
+        let bridge = KissBridge::default();
+        let mut kiss_buf = [0u8; 520];
+        let accepted = [0u8; MAX_PAYLOAD];
+
+        let kiss_len = bridge
+            .encode_payload(&accepted, PORT_RAW, &mut kiss_buf)
+            .unwrap();
+        let mut decoded = [0u8; MAX_PAYLOAD + 1];
+        assert_eq!(
+            bridge
+                .decode_kiss_frame(&kiss_buf[..kiss_len], &mut decoded)
+                .unwrap()
+                .payload,
+            accepted
+        );
+
+        let oversized = [0u8; MAX_PAYLOAD + 1];
+        assert_eq!(
+            bridge.encode_payload(&oversized, PORT_RAW, &mut kiss_buf),
+            Err(BridgeError::PayloadTooLarge)
+        );
+
+        let kiss_len = kiss_encode(PORT_RAW, KissCommand::Data, &oversized, &mut kiss_buf).unwrap();
+        assert!(matches!(
+            bridge.decode_kiss_frame(&kiss_buf[..kiss_len], &mut decoded),
+            Err(BridgeError::PayloadTooLarge)
+        ));
     }
 
     #[test]

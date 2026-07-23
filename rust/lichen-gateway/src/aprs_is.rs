@@ -599,6 +599,142 @@ pub fn aprs_to_cot(aprs: &str) -> Option<CompactCot> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Cursor;
+    use std::net::TcpListener;
+    use std::thread;
+
+    fn loopback_client() -> (AprsIsClient, TcpStream) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let stream = TcpStream::connect(address).unwrap();
+        let server = listener.accept().unwrap().0;
+        let reader = BufReader::new(stream.try_clone().unwrap());
+        let client = AprsIsClient {
+            stream,
+            reader,
+            callsign: String::new(),
+            verification: None,
+            poisoned: false,
+        };
+        (client, server)
+    }
+
+    #[test]
+    fn bounded_line_accepts_512_wire_bytes() {
+        let mut input = vec![b'A'; 511];
+        input.push(b'\n');
+        assert_eq!(
+            read_line_bounded(&mut Cursor::new(input))
+                .unwrap()
+                .unwrap()
+                .len(),
+            512
+        );
+    }
+
+    #[test]
+    fn bounded_line_accepts_512_wire_bytes_with_crlf() {
+        let mut input = vec![b'A'; 510];
+        input.extend_from_slice(b"\r\n");
+        assert_eq!(
+            read_line_bounded(&mut Cursor::new(input))
+                .unwrap()
+                .unwrap()
+                .len(),
+            512
+        );
+    }
+
+    #[test]
+    fn bounded_line_rejects_513_wire_bytes() {
+        let mut input = vec![b'A'; 512];
+        input.push(b'\n');
+        assert!(matches!(
+            read_line_bounded(&mut Cursor::new(input)),
+            Err(AprsError::LineTooLong { limit: 512 })
+        ));
+    }
+
+    #[test]
+    fn bounded_line_stops_after_513_bytes() {
+        let mut input = Cursor::new(vec![b'A'; 4096]);
+        assert!(matches!(
+            read_line_bounded(&mut input),
+            Err(AprsError::LineTooLong { limit: 512 })
+        ));
+        assert_eq!(input.position(), 513);
+    }
+
+    #[test]
+    fn bounded_line_rejects_unterminated_eof() {
+        assert!(matches!(
+            read_line_bounded(&mut Cursor::new(vec![b'A'; 511])),
+            Err(AprsError::UnterminatedLine)
+        ));
+    }
+
+    #[test]
+    fn bounded_line_accepts_empty_eof() {
+        assert!(read_line_bounded(&mut Cursor::new(Vec::new()))
+            .unwrap()
+            .is_none());
+    }
+
+    #[test]
+    fn bounded_line_rejects_invalid_utf8() {
+        let error = read_line_bounded(&mut Cursor::new(vec![0xff, b'\n'])).unwrap_err();
+        assert!(
+            matches!(error, AprsError::Io(ref error) if error.kind() == io::ErrorKind::InvalidData)
+        );
+    }
+
+    #[test]
+    fn oversized_line_poisons_buffered_connection() {
+        let (mut client, mut server) = loopback_client();
+        client.verification = Some(AprsVerification::Verified);
+        let mut input = vec![b'A'; 512];
+        input.extend_from_slice(b"\nVALID\n");
+        server.write_all(&input).unwrap();
+
+        assert!(client.can_transmit());
+        assert!(matches!(
+            client.recv(),
+            Err(AprsError::LineTooLong { limit: 512 })
+        ));
+        assert!(!client.can_transmit());
+        assert!(matches!(
+            client.recv(),
+            Err(AprsError::Io(ref error)) if error.kind() == io::ErrorKind::NotConnected
+        ));
+        assert!(matches!(
+            client.send("TEST>APRS:payload"),
+            Err(AprsError::Io(ref error)) if error.kind() == io::ErrorKind::NotConnected
+        ));
+    }
+
+    #[test]
+    fn missing_login_response_poisons_connection() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let mut stream = listener.accept().unwrap().0;
+            stream.write_all(b"# banner\n").unwrap();
+            let mut command = [0u8; 128];
+            let _ = stream.read(&mut command).unwrap();
+            stream.shutdown(Shutdown::Write).unwrap();
+        });
+        let mut client = AprsIsClient::connect("127.0.0.1", address.port()).unwrap();
+
+        assert!(matches!(
+            client.login("N0CALL", -1),
+            Err(AprsError::Io(ref error)) if error.kind() == io::ErrorKind::UnexpectedEof
+        ));
+        assert!(matches!(
+            client.send("N0CALL>APRS:payload"),
+            Err(AprsError::Io(ref error)) if error.kind() == io::ErrorKind::NotConnected
+        ));
+        server.join().unwrap();
+    }
 
     #[test]
     fn compact_cot_roundtrip() {

@@ -323,7 +323,8 @@ A node typically has link-local + primary 02xx address; GUA when BR provides ups
 
 ### 12.3. Short Address Assignment
 
-16-bit short addresses optimize 6LoWPAN compression (2 bytes vs 8).
+16-bit short addresses optimize link-layer addressing and SCHC rule targets
+(2 bytes vs 8).
 
 Assignment methods (no central authority required):
 1. **Derived from IID (Ed25519-derived):** Hash lower 16 bits of stable IID, check for collision

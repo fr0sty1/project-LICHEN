@@ -53,6 +53,15 @@ def test_routing_table_accepts_string_addresses() -> None:
     assert table.lookup(DEST) == [A, DEST]
 
 
+def test_routing_table_accepts_eight_hops_and_rejects_nine() -> None:
+    hops: list[IPv6Address | str] = [IPv6Address(f"fd00::{index}") for index in range(1, 10)]
+    table = RoutingTable()
+    table.add_route(hops[7], hops[:8])
+    assert table.lookup(hops[7]) == hops[:8]
+    with pytest.raises(RoutingError, match="maximum hop count"):
+        table.add_route(hops[8], hops)
+
+
 def test_srh_round_trip() -> None:
     srh = SourceRoutingHeader(segments_left=2, addresses=[B, DEST])
     ext = srh.to_extension_header()
@@ -82,6 +91,23 @@ def test_srh_from_ext_data_rejects_segments_left_exceeds_addresses() -> None:
         SourceRoutingHeader.from_ext_data(data)
 
 
+def test_srh_encode_rejects_segments_left_exceeds_addresses() -> None:
+    with pytest.raises(RoutingError, match="segments_left exceeds"):
+        SourceRoutingHeader(segments_left=2, addresses=[DEST]).to_ext_data()
+
+
+def test_srh_accepts_eight_addresses_and_rejects_nine() -> None:
+    addresses = [IPv6Address(f"fd00::{index}") for index in range(1, 10)]
+    encoded = SourceRoutingHeader(8, addresses[:8]).to_ext_data()
+    assert SourceRoutingHeader.from_ext_data(encoded).addresses == addresses[:8]
+
+    with pytest.raises(RoutingError, match="maximum hop count"):
+        SourceRoutingHeader(9, addresses).to_ext_data()
+    wire = bytes([3, 8, 0, 0, 0, 0]) + b"".join(address.packed for address in addresses)
+    with pytest.raises(RoutingError, match="maximum hop count"):
+        SourceRoutingHeader.from_ext_data(wire)
+
+
 def test_next_hop_upward_is_preferred_parent() -> None:
     dodag = DodagState(rpl_instance_id=0, dodag_id="fd00::1", version=1)
     assert next_hop_upward(dodag) is None
@@ -90,20 +116,29 @@ def test_next_hop_upward_is_preferred_parent() -> None:
 
 
 def test_insert_source_route_single_hop_no_srh() -> None:
-    packet = IPv6Packet(
-        header=IPv6Header(ROOT, ROOT, NextHeader.UDP), payload=b"hi"
-    )
+    packet = IPv6Packet(header=IPv6Header(ROOT, ROOT, NextHeader.UDP), payload=b"hi")
     routed, first_hop = insert_source_route(packet, [DEST])
     assert first_hop == DEST
     assert routed.header.dst_addr == DEST
     assert routed.extension_headers == []  # direct neighbour, no SRH
 
 
+def test_insert_source_route_accepts_eight_hops_and_rejects_nine() -> None:
+    packet = IPv6Packet(header=IPv6Header(ROOT, ROOT, NextHeader.UDP), payload=b"hi")
+    hops: list[IPv6Address | str] = [IPv6Address(f"fd00::{index}") for index in range(1, 10)]
+    routed, first_hop = insert_source_route(packet, hops[:8])
+    assert first_hop == hops[0]
+    assert (
+        SourceRoutingHeader.from_extension_header(routed.extension_headers[0]).addresses
+        == hops[1:8]
+    )
+    with pytest.raises(RoutingError, match="maximum hop count"):
+        insert_source_route(packet, hops)
+
+
 def test_source_route_end_to_end_traversal() -> None:
     # Root sends to DEST via A then B. Path = [A, B, DEST].
-    packet = IPv6Packet(
-        header=IPv6Header(ROOT, ROOT, NextHeader.UDP), payload=b"payload"
-    )
+    packet = IPv6Packet(header=IPv6Header(ROOT, ROOT, NextHeader.UDP), payload=b"payload")
     routed, first_hop = insert_source_route(packet, [A, B, DEST])
     assert first_hop == A
     assert routed.header.dst_addr == A
@@ -127,9 +162,7 @@ def test_source_route_end_to_end_traversal() -> None:
 
 
 def test_advance_without_srh_returns_none() -> None:
-    packet = IPv6Packet(
-        header=IPv6Header(ROOT, DEST, NextHeader.UDP), payload=b"x"
-    )
+    packet = IPv6Packet(header=IPv6Header(ROOT, DEST, NextHeader.UDP), payload=b"x")
     _, nxt = advance_source_route(packet)
     assert nxt is None
 

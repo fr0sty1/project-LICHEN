@@ -98,6 +98,8 @@ impl core::error::Error for SlipError {}
 
 /// Maximum size of raw packet data (before SLIP encoding).
 const TX_BUFFER_SIZE: usize = 4096;
+/// Buffer size required for a worst-case encoded TX packet.
+pub const SLIP_TX_BUF_SIZE: usize = 2 + TX_BUFFER_SIZE * 2;
 /// Maximum number of packets in TX queue.
 const TX_QUEUE_CAPACITY: usize = 8;
 /// Maximum size of RX buffer before discarding the frame.
@@ -508,6 +510,37 @@ mod tests {
         framer.queue_send(&[b'A', FEND, b'B']).unwrap();
         let len = framer.try_get_tx(&mut out).unwrap().unwrap();
         assert_eq!(&out[..len], &[FEND, b'A', FESC, TFEND, b'B', FEND]);
+    }
+
+    #[test]
+    fn framer_tx_worst_case_fits_public_buffer_size() {
+        let mut framer = SlipFramer::new();
+        let packet = [FEND; TX_BUFFER_SIZE];
+        let mut out = [0u8; SLIP_TX_BUF_SIZE];
+
+        framer.queue_send(&packet).unwrap();
+        let len = framer.try_get_tx(&mut out).unwrap();
+
+        assert_eq!(len, 8194);
+        assert_eq!(out[0], FEND);
+        assert_eq!(out[len - 1], FEND);
+        assert!(out[1..len - 1]
+            .chunks_exact(2)
+            .all(|pair| pair == [FESC, TFEND]));
+    }
+
+    #[test]
+    fn framer_retains_packet_when_tx_buffer_is_too_small() {
+        let mut framer = SlipFramer::new();
+        let packet = [FEND; TX_BUFFER_SIZE];
+        let mut small = [0u8; SLIP_TX_BUF_SIZE - 1];
+        let mut full = [0u8; SLIP_TX_BUF_SIZE];
+
+        framer.queue_send(&packet).unwrap();
+        assert_eq!(framer.try_get_tx(&mut small), None);
+        assert_eq!(framer.tx_pending(), 1);
+        assert_eq!(framer.try_get_tx(&mut full), Some(8194));
+        assert!(framer.tx_empty());
     }
 
     #[test]

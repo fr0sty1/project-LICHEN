@@ -303,7 +303,7 @@ pub struct BlockReceiver {
     /// Accumulated payload.
     data: [u8; 4096],
     data_len: usize,
-    /// Expected next block number.
+    /// Block number to use for the next request.
     expected_block: u32,
     /// Negotiated block size.
     block_size: usize,
@@ -336,7 +336,20 @@ impl BlockReceiver {
 
     /// Receive a block. Returns true if this completes the transfer.
     pub fn receive_block(&mut self, block: BlockOption, data: &[u8]) -> Result<bool, CoapError> {
-        if block.num != self.expected_block {
+        if self.complete {
+            return Err(CoapError::BlockOutOfOrder);
+        }
+
+        let block_size = block.size();
+        if block_size > self.block_size
+            || data.len() > block_size
+            || (block.more && data.len() != block_size)
+        {
+            return Err(CoapError::InvalidBlockOption);
+        }
+
+        let offset = block.offset();
+        if offset != self.data_len {
             return Err(CoapError::BlockOutOfOrder);
         }
         let offset = self.data_len;
@@ -550,9 +563,8 @@ mod tests {
         // Receiver tracks cumulative bytes, not block_num * block_size.
         let mut receiver = BlockReceiver::new(64); // szx=2
 
-        // Block 0 arrives with szx=2 (64 bytes)
-        let block0 = BlockOption::new(0, true, 2).unwrap();
-        assert!(!receiver.receive_block(block0, &[1u8; 64]).unwrap());
+        let block0 = BlockOption::new(0, true, 3).unwrap();
+        assert!(!receiver.receive_block(block0, &[1u8; 128]).unwrap());
 
         // Block 1 arrives with szx=3 (128 bytes) - sender changed szx mid-transfer
         // Without fix: offset = 1 * 128 = 128, leaving 64-byte gap
@@ -561,9 +573,106 @@ mod tests {
         assert!(receiver.receive_block(block1, &[2u8; 64]).unwrap());
 
         let payload = receiver.payload();
-        assert_eq!(payload.len(), 128);
-        assert!(payload[..64].iter().all(|&b| b == 1));
-        assert!(payload[64..128].iter().all(|&b| b == 2));
+        assert_eq!(payload.len(), 224);
+        assert!(payload[..128].iter().all(|&b| b == 1));
+        assert!(payload[128..192].iter().all(|&b| b == 2));
+        assert!(payload[192..].iter().all(|&b| b == 3));
+    }
+
+    #[test]
+    fn receiver_rejects_gap_without_mutating_state() {
+        let mut receiver = BlockReceiver::new(64);
+        let block0 = BlockOption::new(0, true, 2).unwrap();
+        receiver.receive_block(block0, &[1u8; 64]).unwrap();
+
+        let block2 = BlockOption::new(2, false, 2).unwrap();
+        assert_eq!(
+            receiver.receive_block(block2, &[2u8; 64]),
+            Err(CoapError::BlockOutOfOrder)
+        );
+        assert_eq!(receiver.payload(), &[1u8; 64]);
+        assert_eq!(receiver.next_request_block().num, 1);
+
+        let block1 = BlockOption::new(1, false, 2).unwrap();
+        assert!(receiver.receive_block(block1, &[3u8; 64]).unwrap());
+        assert_eq!(&receiver.payload()[64..], &[3u8; 64]);
+    }
+
+    #[test]
+    fn receiver_rejects_overlap_without_mutating_state() {
+        let mut receiver = BlockReceiver::new(128);
+        let block0 = BlockOption::new(0, true, 3).unwrap();
+        receiver.receive_block(block0, &[1u8; 128]).unwrap();
+
+        let overlapping = BlockOption::new(1, false, 2).unwrap();
+        assert_eq!(
+            receiver.receive_block(overlapping, &[2u8; 64]),
+            Err(CoapError::BlockOutOfOrder)
+        );
+        assert_eq!(receiver.payload(), &[1u8; 128]);
+
+        let block2 = BlockOption::new(2, false, 2).unwrap();
+        assert!(receiver.receive_block(block2, &[3u8; 64]).unwrap());
+        assert_eq!(&receiver.payload()[128..], &[3u8; 64]);
+    }
+
+    #[test]
+    fn receiver_rejects_short_non_final_block() {
+        let mut receiver = BlockReceiver::new(64);
+        let short = BlockOption::new(0, true, 2).unwrap();
+        assert_eq!(
+            receiver.receive_block(short, &[1u8; 63]),
+            Err(CoapError::InvalidBlockOption)
+        );
+        assert!(receiver.payload().is_empty());
+
+        let valid = BlockOption::new(0, false, 2).unwrap();
+        assert!(receiver.receive_block(valid, &[2u8; 32]).unwrap());
+    }
+
+    #[test]
+    fn receiver_rejects_initial_szx_increase() {
+        let mut receiver = BlockReceiver::new(64);
+        let larger = BlockOption::new(0, false, 3).unwrap();
+
+        assert_eq!(
+            receiver.receive_block(larger, &[1u8; 128]),
+            Err(CoapError::InvalidBlockOption)
+        );
+        assert!(receiver.payload().is_empty());
+    }
+
+    #[test]
+    fn receiver_rejects_mid_transfer_szx_increase() {
+        let mut receiver = BlockReceiver::new(128);
+        let block0 = BlockOption::new(0, true, 2).unwrap();
+        let block1 = BlockOption::new(1, true, 2).unwrap();
+        receiver.receive_block(block0, &[1u8; 64]).unwrap();
+        receiver.receive_block(block1, &[2u8; 64]).unwrap();
+
+        let larger = BlockOption::new(1, false, 3).unwrap();
+        assert_eq!(
+            receiver.receive_block(larger, &[3u8; 128]),
+            Err(CoapError::InvalidBlockOption)
+        );
+        assert_eq!(receiver.payload().len(), 128);
+        assert_eq!(receiver.next_request_block().num, 2);
+        assert_eq!(receiver.next_request_block().size(), 64);
+    }
+
+    #[test]
+    fn receiver_rejects_blocks_after_completion() {
+        let mut receiver = BlockReceiver::new(64);
+        let final_block = BlockOption::new(0, false, 2).unwrap();
+        receiver.receive_block(final_block, &[1u8; 32]).unwrap();
+
+        let extra = BlockOption::new(2, false, 0).unwrap();
+        assert_eq!(
+            receiver.receive_block(extra, &[2u8; 16]),
+            Err(CoapError::BlockOutOfOrder)
+        );
+        assert_eq!(receiver.payload(), &[1u8; 32]);
+        assert!(receiver.is_complete());
     }
 
     #[test]

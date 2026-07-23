@@ -4,6 +4,8 @@ use lichen_core::constants::L2_DISPATCH_SCHC;
 #[cfg(feature = "std")]
 use lichen_core::constants::RPL_ICMPV6_TYPE;
 #[cfg(feature = "std")]
+use lichen_core::constants::RPL_INSTANCE_ID;
+#[cfg(feature = "std")]
 use lichen_core::icmpv6::hdr_field;
 use lichen_core::icmpv6::{echo_field, ICMPV6_HEADER_LEN};
 use lichen_core::ipv6::{field, next_header, IPV6_HEADER_LEN};
@@ -20,7 +22,18 @@ use crate::port_dispatch::{dispatch_by_port, Dispatched, UdpDispatchError};
 const IPV6_VERSION: u8 = 6;
 
 #[cfg(feature = "std")]
-use crate::routing::Router;
+use crate::routing::{DioProcessOutcome, Router, RplMaintenanceOutcome};
+#[cfg(feature = "std")]
+use crate::{
+    announce::AnnounceProcessor,
+    routing::{DaoProcessError, DaoProcessOutcome, DaoProvisionError, DaoRxState, DaoVerifyError},
+};
+#[cfg(feature = "std")]
+use lichen_hal::NonVolatile;
+#[cfg(feature = "std")]
+use lichen_ipv6::{icmpv6_checksum, Addr};
+#[cfg(feature = "std")]
+use lichen_rpl::routing::SignatureVerifiedDao;
 
 /// ICMPv6 RPL message codes.
 pub mod rpl_code {
@@ -35,7 +48,7 @@ pub mod rpl_code {
 const RPL_DIO_BASE_LEN: usize = 24;
 /// Minimum RPL DAO base message length (RFC 6550 Section 6.4).
 #[cfg(feature = "std")]
-const RPL_DAO_BASE_LEN: usize = 20;
+const RPL_DAO_BASE_LEN: usize = 4;
 
 /// RPL control event from `handle_frame_rpl` / `Gateway::process_rpl`.
 /// `PartialEq`/`Eq`/`Debug`/etc. derived for testing and matching. Field
@@ -54,6 +67,24 @@ pub enum RplEvent {
     DisReceived,
 }
 
+#[cfg(feature = "std")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DaoHandlingOutcome {
+    Applied,
+    Duplicate,
+    Malformed,
+    UnknownKey,
+    WrongScope,
+    IidMismatch,
+    BadSignature,
+    Replay,
+    Persistence,
+    Stale,
+    Exhausted,
+    Corrupt,
+    RouteRejected,
+}
+
 /// Top-level node state.
 #[derive(Debug)]
 pub struct Node {
@@ -64,8 +95,8 @@ pub struct Node {
 #[cfg(feature = "std")]
 #[derive(Debug)]
 pub struct RplNode {
-    pub node: Node,
-    pub router: Router,
+    pub(crate) node: Node,
+    pub(crate) router: Router,
 }
 
 impl Node {
@@ -238,7 +269,8 @@ impl Node {
 #[cfg(feature = "std")]
 impl RplNode {
     /// Create a new RPL-enabled node.
-    pub fn new(node_id: NodeId, dodag_id: [u8; 16]) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(node_id: NodeId, dodag_id: [u8; 16]) -> Self {
         let node_addr = node_id.link_local_addr().0;
         Self {
             node: Node::new(node_id),
@@ -246,23 +278,142 @@ impl RplNode {
         }
     }
 
-    /// Create a new RPL-enabled node as DODAG root.
-    pub fn new_root(node_id: NodeId) -> Self {
+    /// Provision component-level root routing state.
+    ///
+    /// This advanced API does not serialize access to `RplNode`, `DaoRxState`, or
+    /// storage. The caller must maintain exclusive ownership of all three. Prefer
+    /// [`crate::RplStack`] for production ownership and authenticated dispatch.
+    pub fn provision_root<S: NonVolatile>(
+        node_id: NodeId,
+        storage: &mut S,
+    ) -> Result<(Self, DaoRxState), DaoProvisionError<S::Error>> {
         let node_addr = node_id.link_local_addr().0;
-        Self {
-            node: Node::new(node_id),
-            router: Router::new_root(node_addr),
+        let (router, state) = Router::provision_root(storage, node_addr)?;
+        Ok((
+            Self {
+                node: Node::new(node_id),
+                router,
+            },
+            state,
+        ))
+    }
+
+    /// Open previously provisioned component-level root routing state.
+    ///
+    /// This advanced API does not serialize access to `RplNode`, `DaoRxState`, or
+    /// storage. The caller must maintain exclusive ownership of all three. Prefer
+    /// [`crate::RplStack`] for production ownership and authenticated dispatch.
+    pub fn open_root<S: NonVolatile>(
+        node_id: NodeId,
+        storage: &S,
+    ) -> Result<(Self, DaoRxState), crate::routing::DaoPersistentOpenError<S::Error>> {
+        let node_addr = node_id.link_local_addr().0;
+        let (router, state) = Router::open_root(storage, node_addr)?;
+        Ok((
+            Self {
+                node: Node::new(node_id),
+                router,
+            },
+            state,
+        ))
+    }
+
+    /// Verify and apply a DAO received from an authenticated immediate sender.
+    ///
+    /// `authenticated_sender_iid` **must** be the IID established by link-layer
+    /// authentication for the immediate sender of this packet. It is not an IID
+    /// claimed by the DAO payload and must never be inferred from `origin`.
+    ///
+    /// This advanced component API does not serialize ownership of this node,
+    /// `rx_state`, or `storage`; the caller must provide exclusive access to all
+    /// three for the entire operation. Prefer [`crate::RplStack`] for production
+    /// ownership, link authentication, and packet dispatch.
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "security-critical identity and caller-owned state remain explicit"
+    )]
+    pub fn handle_dao<S: NonVolatile>(
+        &mut self,
+        dao_bytes: &[u8],
+        origin: [u8; 16],
+        authenticated_sender_iid: [u8; 8],
+        announces: &AnnounceProcessor,
+        rx_state: &mut DaoRxState,
+        storage: &mut S,
+        now_ms: u64,
+    ) -> DaoHandlingOutcome {
+        let iid = origin[8..].try_into().expect("IPv6 IID is eight bytes");
+        let verified = match SignatureVerifiedDao::verify_signature(
+            dao_bytes,
+            origin,
+            RPL_INSTANCE_ID,
+            self.router.dodag_id(),
+            announces.pinned_pubkey_for(&iid),
+        ) {
+            Ok(verified) => verified,
+            Err(DaoVerifyError::Malformed(_)) => return DaoHandlingOutcome::Malformed,
+            Err(DaoVerifyError::UnknownKey) => return DaoHandlingOutcome::UnknownKey,
+            Err(DaoVerifyError::WrongInstance | DaoVerifyError::WrongDodag) => {
+                return DaoHandlingOutcome::WrongScope
+            }
+            Err(DaoVerifyError::IidMismatch) => return DaoHandlingOutcome::IidMismatch,
+            Err(DaoVerifyError::BadSignature) => return DaoHandlingOutcome::BadSignature,
+        };
+        match self.router.process_signature_verified_dao_from_at_ms(
+            &verified,
+            authenticated_sender_iid,
+            rx_state,
+            storage,
+            now_ms,
+        ) {
+            Ok(DaoProcessOutcome::Applied) => DaoHandlingOutcome::Applied,
+            Ok(DaoProcessOutcome::Duplicate) => DaoHandlingOutcome::Duplicate,
+            Err(DaoProcessError::Replay) => DaoHandlingOutcome::Replay,
+            Err(DaoProcessError::Persistence(_)) => DaoHandlingOutcome::Persistence,
+            Err(DaoProcessError::Stale) => DaoHandlingOutcome::Stale,
+            Err(DaoProcessError::Exhausted) => DaoHandlingOutcome::Exhausted,
+            Err(DaoProcessError::Corrupt) => DaoHandlingOutcome::Corrupt,
+            Err(DaoProcessError::RouteRejected) => DaoHandlingOutcome::RouteRejected,
         }
     }
 
     /// Process a received authenticated L2 SCHC payload with RPL handling.
     ///
-    /// Returns (reply_len, rpl_event). reply_len > 0 means a reply should be sent.
+    /// `sender_iid` is the identity established by link-layer signature verification.
+    ///
+    /// Returns `(output_len, rpl_event)`. For [`RplEvent::DaoForwarded`], send
+    /// the output bytes to `next_hop`; otherwise a nonzero output is a reply.
     pub fn handle_frame_rpl(
         &mut self,
         l2_payload: &[u8],
+        sender_iid: [u8; 8],
         reply: &mut [u8],
-        now_ms: u32,
+        now_ms: u64,
+    ) -> (usize, RplEvent) {
+        self.handle_frame_rpl_inner(l2_payload, sender_iid, reply, now_ms, None)
+    }
+
+    /// Process an authenticated SCHC payload with measured link quality.
+    /// `now_ms` must use one nondecreasing monotonic `u64` timeline.
+    pub fn handle_frame_rpl_with_link(
+        &mut self,
+        l2_payload: &[u8],
+        sender_iid: [u8; 8],
+        reply: &mut [u8],
+        now_ms: u64,
+        etx: f32,
+        rssi: i8,
+    ) -> (usize, RplEvent) {
+        self.handle_frame_rpl_inner(l2_payload, sender_iid, reply, now_ms, Some((etx, rssi)))
+    }
+
+    fn handle_frame_rpl_inner(
+        &mut self,
+        l2_payload: &[u8],
+        sender_iid: [u8; 8],
+        reply: &mut [u8],
+        now_ms: u64,
+        link: Option<(f32, i8)>,
     ) -> (usize, RplEvent) {
         if classify_l2_payload(l2_payload) != L2PayloadKind::Schc {
             return (0, RplEvent::None);
@@ -276,6 +427,10 @@ impl RplNode {
             return (0, RplEvent::None);
         }
         let pkt = &ipv6[..n];
+
+        if is_rpl_ipv6(pkt) && !valid_rpl_ipv6(pkt) {
+            return (0, RplEvent::None);
+        }
 
         let nh = pkt[6];
         if nh == next_header::ICMPV6 {
@@ -309,15 +464,46 @@ impl RplNode {
 
                 match icmp_code {
                     rpl_code::DIO => {
+                        if !source_matches_sender_iid(&sender_addr, &sender_iid) {
+                            return (0, RplEvent::None);
+                        }
                         if n < body_offset + RPL_DIO_BASE_LEN {
                             return (0, RplEvent::None);
                         }
                         let dio_bytes = &pkt[body_offset..];
                         if let Ok(dio) = lichen_rpl::message::Dio::from_bytes(dio_bytes) {
-                            // ponytail: use 0 for rssi, real radio would provide it
-                            let inconsistent =
-                                self.router.process_dio(&dio, sender_addr, 0, now_ms);
-                            return (0, RplEvent::DioReceived { inconsistent });
+                            let outcome = match link {
+                                Some((etx, rssi)) => self.router.process_dio_with_etx_outcome(
+                                    &dio,
+                                    dio_bytes,
+                                    sender_addr,
+                                    etx,
+                                    rssi,
+                                    now_ms,
+                                ),
+                                None => self.router.process_dio_outcome(
+                                    &dio,
+                                    dio_bytes,
+                                    sender_addr,
+                                    0,
+                                    now_ms,
+                                ),
+                            };
+                            return match outcome {
+                                DioProcessOutcome::Rejected => (0, RplEvent::None),
+                                DioProcessOutcome::Consistent => {
+                                    self.router.trickle_consistent();
+                                    (
+                                        0,
+                                        RplEvent::DioReceived {
+                                            inconsistent: false,
+                                        },
+                                    )
+                                }
+                                DioProcessOutcome::Inconsistent => {
+                                    (0, RplEvent::DioReceived { inconsistent: true })
+                                }
+                            };
                         }
                     }
                     rpl_code::DAO => {
@@ -325,10 +511,47 @@ impl RplNode {
                             return (0, RplEvent::None);
                         }
                         let dao_bytes = &pkt[body_offset..n];
-                        let route_updated = self.router.process_dao(dao_bytes);
-                        return (0, RplEvent::DaoReceived { route_updated });
+                        let mut dst = [0u8; 16];
+                        dst.copy_from_slice(&pkt[field::DST_OFFSET..IPV6_HEADER_LEN]);
+                        if dst != self.router.dodag_id() {
+                            return (0, RplEvent::None);
+                        }
+                        if self.router.is_root() {
+                            return (0, RplEvent::DaoReceived);
+                        }
+                        let Some(advertised_parents) =
+                            crate::routing::dao_parents_for_source(dao_bytes, &sender_addr)
+                        else {
+                            return (0, RplEvent::None);
+                        };
+                        if advertised_parents.iter().any(|parent| {
+                            same_interface(parent, &self.node.node_id.link_local_addr().0)
+                        }) && !source_matches_sender_iid(&sender_addr, &sender_iid)
+                        {
+                            return (0, RplEvent::None);
+                        }
+
+                        if !is_ula_or_global(&sender_addr) || !is_ula_or_global(&dst) {
+                            return (0, RplEvent::None);
+                        }
+
+                        let Some(next_hop) = self.router.preferred_parent() else {
+                            return (0, RplEvent::None);
+                        };
+                        if pkt[7] <= 1 {
+                            return (0, RplEvent::None);
+                        }
+
+                        ipv6[7] -= 1;
+                        let reply_len = wrap_compressed_reply(&ipv6[..n], reply);
+                        if reply_len > 0 {
+                            return (reply_len, RplEvent::DaoForwarded { next_hop });
+                        }
                     }
                     rpl_code::DIS => {
+                        if !source_matches_sender_iid(&sender_addr, &sender_iid) {
+                            return (0, RplEvent::None);
+                        }
                         return (0, RplEvent::DisReceived);
                     }
                     _ => {}
@@ -344,15 +567,30 @@ impl RplNode {
         self.router.build_dio(out)
     }
 
-    /// Build a DAO message for transmission to parent.
-    #[cfg(feature = "std")]
-    pub fn build_dao(&mut self) -> std::vec::Vec<u8> {
-        self.router.build_dao()
+    /// Build one signed logical DAO after durably reserving its origin sequence.
+    /// Retain the returned bytes unchanged for retransmission.
+    pub(crate) fn build_signed_dao<S: NonVolatile>(
+        &mut self,
+        origin_ipv6: [u8; 16],
+        tx_state: &mut crate::routing::DaoTxState,
+        storage: &mut S,
+        link: &lichen_link::link_layer::LinkLayer,
+    ) -> Result<std::vec::Vec<u8>, crate::routing::DaoTxError<S::Error>> {
+        self.router
+            .build_signed_dao(origin_ipv6, tx_state, storage, link)
     }
 
     /// Check if this node is joined to the DODAG.
     pub fn is_joined(&self) -> bool {
         self.router.is_joined()
+    }
+
+    pub fn node(&self) -> &Node {
+        &self.node
+    }
+
+    pub fn router(&self) -> &Router {
+        &self.router
     }
 
     /// Check if this node is the DODAG root.
@@ -370,25 +608,95 @@ impl RplNode {
         self.router.preferred_parent()
     }
 
+    /// Run DAO-route and neighbor maintenance from one monotonic observation.
+    pub fn maintain(&mut self, now_ms: u64, neighbor_timeout_ms: u64) -> RplMaintenanceOutcome {
+        self.router.maintain(now_ms, neighbor_timeout_ms)
+    }
+
+    /// Return the current Trickle deadline without advancing it.
+    pub fn poll_trickle(&self) -> lichen_rpl::trickle::TrickleEvent {
+        self.router.poll_trickle()
+    }
+
     /// Handle trickle timer transmit event.
     pub fn trickle_transmit(&mut self) -> bool {
         self.router.trickle_transmit()
     }
 
     /// Handle trickle timer expiry.
-    pub fn trickle_expire(&mut self, now_ms: u32, rand_offset: u32) {
+    pub fn trickle_expire(&mut self, now_ms: u64, rand_offset: u32) {
         self.router.trickle_expire(now_ms, rand_offset);
     }
 
     /// Reset trickle timer on inconsistency.
-    pub fn trickle_reset(&mut self, now_ms: u32, rand_offset: u32) {
+    pub fn trickle_reset(&mut self, now_ms: u64, rand_offset: u32) {
         self.router.trickle_reset(now_ms, rand_offset);
     }
 
     /// Start trickle timer.
-    pub fn trickle_start(&mut self, now_ms: u32, rand_offset: u32) {
+    pub fn trickle_start(&mut self, now_ms: u64, rand_offset: u32) {
         self.router.trickle_start(now_ms, rand_offset);
     }
+}
+
+#[cfg(feature = "std")]
+fn source_matches_sender_iid(source: &[u8; 16], sender_iid: &[u8; 8]) -> bool {
+    source[8..] == *sender_iid
+}
+
+#[cfg(feature = "std")]
+fn same_interface(left: &[u8; 16], right: &[u8; 16]) -> bool {
+    left[8..] == right[8..]
+}
+
+#[cfg(feature = "std")]
+fn is_ula_or_global(address: &[u8; 16]) -> bool {
+    let address = Ipv6Addr(*address);
+    address.is_ula() || address.is_gua()
+}
+
+#[cfg(feature = "std")]
+pub(crate) fn is_rpl_ipv6(ipv6: &[u8]) -> bool {
+    ipv6.len() >= IPV6_HEADER_LEN + hdr_field::BODY_OFFSET
+        && ipv6[0] >> 4 == IPV6_VERSION
+        && ipv6[6] == next_header::ICMPV6
+        && ipv6[IPV6_HEADER_LEN + hdr_field::TYPE_OFFSET] == RPL_ICMPV6_TYPE
+}
+
+#[cfg(feature = "std")]
+pub(crate) fn claims_rpl_ipv6(ipv6: &[u8]) -> bool {
+    ipv6.len() > IPV6_HEADER_LEN
+        && ipv6.len() > 6
+        && ipv6[6] == next_header::ICMPV6
+        && ipv6[IPV6_HEADER_LEN] == RPL_ICMPV6_TYPE
+}
+
+#[cfg(feature = "std")]
+pub(crate) fn valid_ipv6_envelope(ipv6: &[u8]) -> bool {
+    if ipv6.len() < IPV6_HEADER_LEN || ipv6[0] >> 4 != IPV6_VERSION {
+        return false;
+    }
+    let payload_len = usize::from(u16::from_be_bytes([ipv6[4], ipv6[5]]));
+    IPV6_HEADER_LEN.checked_add(payload_len) == Some(ipv6.len())
+}
+
+#[cfg(feature = "std")]
+pub(crate) fn valid_rpl_ipv6(ipv6: &[u8]) -> bool {
+    if !is_rpl_ipv6(ipv6) {
+        return false;
+    }
+    if !valid_ipv6_envelope(ipv6) {
+        return false;
+    }
+    let src = Addr(
+        ipv6[field::SRC_OFFSET..field::DST_OFFSET]
+            .try_into()
+            .unwrap(),
+    );
+    let dst = Addr(ipv6[field::DST_OFFSET..IPV6_HEADER_LEN].try_into().unwrap());
+    let icmpv6 = &ipv6[IPV6_HEADER_LEN..];
+    let received = u16::from_be_bytes([icmpv6[2], icmpv6[3]]);
+    icmpv6_checksum(&src, &dst, icmpv6).is_ok_and(|computed| computed == received)
 }
 
 fn wrap_compressed_reply(ipv6: &[u8], reply: &mut [u8]) -> usize {
@@ -409,6 +717,558 @@ mod tests {
 
     fn node(iid: u8) -> Node {
         Node::new(NodeId([0x02, 0, 0, 0, 0, 0, 0, iid]))
+    }
+
+    #[cfg(feature = "std")]
+    fn ula(node_id: NodeId) -> [u8; 16] {
+        node_id.ula_addr([0xfd, 0, 0, 0, 0, 0, 0, 0]).0
+    }
+
+    #[cfg(feature = "std")]
+    fn address_iid(address: [u8; 16]) -> [u8; 8] {
+        address[8..].try_into().unwrap()
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn rpl_source_must_match_authenticated_sender() {
+        let source = NodeId([0x02, 0, 0, 0, 0, 0, 0, 2]).link_local_addr().0;
+        let source_iid: [u8; 8] = source[8..].try_into().unwrap();
+
+        assert!(source_matches_sender_iid(&source, &source_iid));
+        assert!(!source_matches_sender_iid(
+            &source,
+            &[0x02, 0, 0, 0, 0, 0, 0, 3]
+        ));
+    }
+
+    #[cfg(feature = "std")]
+    fn l2_rpl_packet(
+        source: [u8; 16],
+        destination: [u8; 16],
+        code: u8,
+        body: &[u8],
+    ) -> std::vec::Vec<u8> {
+        let icmpv6_len = hdr_field::BODY_OFFSET + body.len();
+        let mut ipv6 = std::vec![0u8; IPV6_HEADER_LEN + icmpv6_len];
+        ipv6[0] = 0x60;
+        ipv6[4..6].copy_from_slice(&(icmpv6_len as u16).to_be_bytes());
+        ipv6[6] = next_header::ICMPV6;
+        ipv6[7] = 64;
+        ipv6[field::SRC_OFFSET..field::DST_OFFSET].copy_from_slice(&source);
+        ipv6[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&destination);
+        ipv6[IPV6_HEADER_LEN] = RPL_ICMPV6_TYPE;
+        ipv6[IPV6_HEADER_LEN + 1] = code;
+        ipv6[IPV6_HEADER_LEN + hdr_field::BODY_OFFSET..].copy_from_slice(body);
+        let checksum =
+            icmpv6_checksum(&Addr(source), &Addr(destination), &ipv6[IPV6_HEADER_LEN..]).unwrap();
+        ipv6[IPV6_HEADER_LEN + 2..IPV6_HEADER_LEN + 4].copy_from_slice(&checksum.to_be_bytes());
+
+        let mut l2 = std::vec![0u8; 260];
+        l2[0] = L2_DISPATCH_SCHC;
+        let n = codec::compress(&ipv6, &mut l2[1..]).unwrap();
+        l2.truncate(n + 1);
+        l2
+    }
+
+    #[cfg(feature = "std")]
+    fn l2_dao_packet(source: [u8; 16], destination: [u8; 16], dao: &[u8]) -> std::vec::Vec<u8> {
+        l2_rpl_packet(source, destination, rpl_code::DAO, dao)
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn measured_link_quality_reaches_rpl_router() {
+        const WRAP: u64 = 0x1_0000_0000;
+        let root_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
+        let child_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 2]);
+        let root_addr = root_id.link_local_addr().0;
+        let child_addr = child_id.link_local_addr().0;
+        let mut child = RplNode {
+            node: Node::new(child_id),
+            router: Router::new(child_addr, root_addr),
+        };
+        let dio = lichen_rpl::message::Dio {
+            rpl_instance_id: RPL_INSTANCE_ID,
+            version: 0,
+            rank: crate::routing::ROOT_RANK,
+            grounded: true,
+            mode_of_operation: 1,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id: root_addr,
+        };
+        let mut dio_bytes = [0u8; lichen_rpl::message::Dio::BASE_LEN];
+        dio.write_to(&mut dio_bytes).unwrap();
+        let packet = l2_rpl_packet(root_addr, child_addr, rpl_code::DIO, &dio_bytes);
+
+        assert_eq!(
+            child.handle_frame_rpl_with_link(
+                &packet,
+                address_iid(root_addr),
+                &mut [0u8; 260],
+                WRAP + 100,
+                2.0,
+                -70,
+            ),
+            (0, RplEvent::DioReceived { inconsistent: true })
+        );
+        assert_eq!(child.router.rank(), 768);
+        assert_eq!(
+            child.router.poll_trickle(),
+            lichen_rpl::trickle::TrickleEvent::Transmit { at_ms: WRAP + 104 }
+        );
+        let neighbor = child.router.neighbors().iter().next().unwrap();
+        assert_eq!(neighbor.etx, 2.0);
+        assert_eq!(neighbor.rssi, -70);
+        assert_eq!(neighbor.last_seen_ms, WRAP + 100);
+
+        child.handle_frame_rpl(&packet, address_iid(root_addr), &mut [0u8; 260], WRAP + 200);
+        assert_eq!(child.router.rank(), 768);
+        assert_eq!(child.router.neighbors().iter().next().unwrap().etx, 2.0);
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn only_valid_consistent_dios_increment_trickle_redundancy() {
+        let root_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
+        let root_addr = root_id.link_local_addr().0;
+        let dio = lichen_rpl::message::Dio {
+            rpl_instance_id: RPL_INSTANCE_ID,
+            version: 0,
+            rank: crate::routing::ROOT_RANK,
+            grounded: true,
+            mode_of_operation: 1,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id: root_addr,
+        };
+        let mut dio_bytes = [0u8; lichen_rpl::message::Dio::BASE_LEN];
+        dio.write_to(&mut dio_bytes).unwrap();
+
+        let make_child = |last: u8| {
+            let child_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, last]);
+            let child_addr = child_id.link_local_addr().0;
+            (
+                RplNode {
+                    node: Node::new(child_id),
+                    router: Router::new(child_addr, root_addr),
+                },
+                child_addr,
+            )
+        };
+        let (mut suppressed, suppressed_addr) = make_child(2);
+        let packet = l2_rpl_packet(root_addr, suppressed_addr, rpl_code::DIO, &dio_bytes);
+        assert_eq!(
+            suppressed.handle_frame_rpl(&packet, address_iid(root_addr), &mut [0u8; 260], 100,),
+            (0, RplEvent::DioReceived { inconsistent: true })
+        );
+        for now_ms in 101..111 {
+            assert_eq!(
+                suppressed.handle_frame_rpl(
+                    &packet,
+                    address_iid(root_addr),
+                    &mut [0u8; 260],
+                    now_ms,
+                ),
+                (
+                    0,
+                    RplEvent::DioReceived {
+                        inconsistent: false
+                    }
+                )
+            );
+        }
+        assert!(!suppressed.trickle_transmit());
+
+        let (mut unsuppressed, unsuppressed_addr) = make_child(3);
+        let packet = l2_rpl_packet(root_addr, unsuppressed_addr, rpl_code::DIO, &dio_bytes);
+        assert!(matches!(
+            unsuppressed.handle_frame_rpl(&packet, address_iid(root_addr), &mut [0u8; 260], 100,),
+            (0, RplEvent::DioReceived { inconsistent: true })
+        ));
+        let mut foreign = dio;
+        foreign.rpl_instance_id ^= 1;
+        foreign.write_to(&mut dio_bytes).unwrap();
+        let foreign_packet = l2_rpl_packet(root_addr, unsuppressed_addr, rpl_code::DIO, &dio_bytes);
+        for now_ms in 101..111 {
+            assert_eq!(
+                unsuppressed.handle_frame_rpl(
+                    &foreign_packet,
+                    address_iid(root_addr),
+                    &mut [0u8; 260],
+                    now_ms,
+                ),
+                (0, RplEvent::None)
+            );
+        }
+        assert!(unsuppressed.trickle_transmit());
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn leaf_dao_is_forwarded_by_parent_and_processed_by_root() {
+        use crate::{announce::AnnounceProcessor, gradient::GradientTable};
+        use lichen_hal::storage::mem::MemStorage;
+        use lichen_link::{identity::Identity, keys::Seed, link_layer::LinkLayer};
+
+        let root_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
+        let parent_identity = Identity::from_seed(Seed::new([2; 32]));
+        let leaf_identity = Identity::from_seed(Seed::new([3; 32]));
+        let mut parent_eui64 = parent_identity.iid;
+        parent_eui64[0] ^= 0x02;
+        let mut leaf_eui64 = leaf_identity.iid;
+        leaf_eui64[0] ^= 0x02;
+        let parent_id = NodeId(parent_eui64);
+        let leaf_id = NodeId(leaf_eui64);
+        let root_addr = ula(root_id);
+        let parent_addr = ula(parent_id);
+        let leaf_addr = ula(leaf_id);
+        let mut root_storage = MemStorage::new();
+        let (root_router, mut root_rx) =
+            Router::provision_root(&mut root_storage, root_addr).unwrap();
+        let mut root = RplNode {
+            node: Node::new(root_id),
+            router: root_router,
+        };
+        let mut parent = RplNode {
+            node: Node::new(parent_id),
+            router: Router::new(parent_addr, root_addr),
+        };
+        let mut leaf = RplNode {
+            node: Node::new(leaf_id),
+            router: Router::new(leaf_addr, root_addr),
+        };
+        let mut announces = AnnounceProcessor::new(
+            GradientTable::new(crate::announce::MAX_TRACKED_ORIGINATORS),
+            root_addr[..8].try_into().unwrap(),
+        );
+        announces.pin_for_test(parent_identity.pubkey);
+        announces.pin_for_test(leaf_identity.pubkey);
+
+        let root_dio = lichen_rpl::message::Dio {
+            rpl_instance_id: RPL_INSTANCE_ID,
+            version: 0,
+            rank: crate::routing::ROOT_RANK,
+            grounded: true,
+            mode_of_operation: 1,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id: root_addr,
+        };
+        let mut dio_bytes = [0u8; lichen_rpl::message::Dio::BASE_LEN];
+        root_dio.write_to(&mut dio_bytes).unwrap();
+        assert!(parent
+            .router
+            .process_dio(&root_dio, &dio_bytes, root_addr, 0, 0));
+        let parent_dio = lichen_rpl::message::Dio {
+            rank: parent.router.rank(),
+            ..root_dio
+        };
+        parent_dio.write_to(&mut dio_bytes).unwrap();
+        assert!(leaf
+            .router
+            .process_dio(&parent_dio, &dio_bytes, parent_addr, 0, 0));
+
+        let mut parent_storage = MemStorage::new();
+        let mut parent_tx = crate::routing::DaoTxState::provision(
+            &mut parent_storage,
+            parent_identity.pubkey,
+            parent_addr,
+            RPL_INSTANCE_ID,
+            root_addr,
+        )
+        .unwrap();
+        let parent_dao = parent
+            .build_signed_dao(
+                parent_addr,
+                &mut parent_tx,
+                &mut parent_storage,
+                &LinkLayer::new(parent_identity.clone()),
+            )
+            .unwrap();
+        let parent_packet = l2_dao_packet(parent_addr, root_addr, &parent_dao);
+        let mut output = [0u8; 260];
+        assert_eq!(
+            root.handle_frame_rpl(&parent_packet, parent_identity.iid, &mut output, 0),
+            (0, RplEvent::DaoReceived)
+        );
+        assert_eq!(
+            root.handle_dao(
+                &parent_dao,
+                parent_addr,
+                parent_identity.iid,
+                &announces,
+                &mut root_rx,
+                &mut root_storage,
+                0,
+            ),
+            DaoHandlingOutcome::Applied
+        );
+
+        let mut leaf_storage = MemStorage::new();
+        let mut leaf_tx = crate::routing::DaoTxState::provision(
+            &mut leaf_storage,
+            leaf_identity.pubkey,
+            leaf_addr,
+            RPL_INSTANCE_ID,
+            root_addr,
+        )
+        .unwrap();
+        let leaf_dao = leaf
+            .build_signed_dao(
+                leaf_addr,
+                &mut leaf_tx,
+                &mut leaf_storage,
+                &LinkLayer::new(leaf_identity.clone()),
+            )
+            .unwrap();
+        let leaf_packet = l2_dao_packet(leaf_addr, root_addr, &leaf_dao);
+        assert_eq!(
+            parent.handle_frame_rpl(&leaf_packet, [0x02, 0, 0, 0, 0, 0, 0, 4], &mut output, 0,),
+            (0, RplEvent::None)
+        );
+        let (forwarded_len, event) =
+            parent.handle_frame_rpl(&leaf_packet, leaf_identity.iid, &mut output, 0);
+        assert_eq!(
+            event,
+            RplEvent::DaoForwarded {
+                next_hop: root_addr
+            }
+        );
+
+        let mut forwarded_ipv6 = [0u8; 256];
+        let forwarded_n = codec::decompress(
+            l2_payload_body(&output[..forwarded_len]),
+            &mut forwarded_ipv6,
+        )
+        .unwrap();
+        assert_eq!(
+            &forwarded_ipv6[field::SRC_OFFSET..field::DST_OFFSET],
+            &leaf_addr
+        );
+        assert_eq!(forwarded_ipv6[7], 63);
+        let body_offset = IPV6_HEADER_LEN + hdr_field::BODY_OFFSET;
+        let forwarded_dao = &forwarded_ipv6[body_offset..forwarded_n];
+        assert_eq!(forwarded_dao, leaf_dao);
+        assert!(parent.router.lookup_route(&leaf_addr).is_none());
+
+        assert_eq!(
+            root.handle_frame_rpl(
+                &output[..forwarded_len],
+                parent_identity.iid,
+                &mut [0u8; 260],
+                0,
+            ),
+            (0, RplEvent::DaoReceived)
+        );
+        assert!(root.router.lookup_route(&leaf_addr).is_none());
+
+        let mut tampered = forwarded_dao.to_vec();
+        tampered[3] ^= 1;
+        assert_eq!(
+            root.handle_dao(
+                &tampered,
+                leaf_addr,
+                parent_identity.iid,
+                &announces,
+                &mut root_rx,
+                &mut root_storage,
+                0,
+            ),
+            DaoHandlingOutcome::BadSignature
+        );
+        assert!(root.router.lookup_route(&leaf_addr).is_none());
+        assert_eq!(
+            root.handle_dao(
+                forwarded_dao,
+                leaf_addr,
+                parent_identity.iid,
+                &announces,
+                &mut root_rx,
+                &mut root_storage,
+                0,
+            ),
+            DaoHandlingOutcome::Applied
+        );
+        assert_eq!(
+            root.router.lookup_route(&leaf_addr),
+            Some([parent_addr, leaf_addr].as_slice())
+        );
+        assert_eq!(
+            root.handle_dao(
+                forwarded_dao,
+                leaf_addr,
+                parent_identity.iid,
+                &announces,
+                &mut root_rx,
+                &mut root_storage,
+                0,
+            ),
+            DaoHandlingOutcome::Duplicate
+        );
+        assert_eq!(
+            root.router.lookup_route(&leaf_addr),
+            Some([parent_addr, leaf_addr].as_slice())
+        );
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn production_signed_dao_cannot_mutate_equal_path_sequence() {
+        use crate::{announce::AnnounceProcessor, gradient::GradientTable};
+        use lichen_hal::storage::mem::MemStorage;
+        use lichen_link::{identity::Identity, keys::Seed, link_layer::LinkLayer};
+
+        let root_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
+        let root_addr = ula(root_id);
+        let identity = Identity::from_seed(Seed::new([0x36; 32]));
+        let mut origin = root_addr;
+        origin[8..].copy_from_slice(&identity.iid);
+        let mut storage = MemStorage::new();
+        let (router, mut rx_state) = Router::provision_root(&mut storage, root_addr).unwrap();
+        let mut root = RplNode {
+            node: Node::new(root_id),
+            router,
+        };
+        assert!(root.router.set_dao_lifetime_unit(1));
+        let mut announces = AnnounceProcessor::new(
+            GradientTable::new(crate::announce::MAX_TRACKED_ORIGINATORS),
+            root_addr[..8].try_into().unwrap(),
+        );
+        announces.pin_for_test(identity.pubkey);
+        let link = LinkLayer::new(identity.clone());
+        let sign = |unsigned: &[u8], origin_sequence: u64| {
+            let digest =
+                crate::routing::dao_origin_digest(origin, root_addr, origin_sequence, unsigned);
+            let signature = link.sign_digest(&digest);
+            let mut wire = unsigned.to_vec();
+            let offset = wire.len();
+            wire.resize(offset + lichen_rpl::message::DAO_ORIGIN_SIGNATURE_LEN, 0);
+            lichen_rpl::message::DaoOriginSignature::write_to(
+                origin_sequence,
+                &signature,
+                &mut wire[offset..],
+            )
+            .unwrap();
+            wire
+        };
+        let mut sender = lichen_rpl::routing::DaoManager::new(origin, RPL_INSTANCE_ID, root_addr);
+        let first_unsigned = sender.build_dao_with_lifetime(root_addr, 10);
+        let first = sign(&first_unsigned, 1);
+        assert_eq!(
+            root.handle_dao(
+                &first,
+                origin,
+                identity.iid,
+                &announces,
+                &mut rx_state,
+                &mut storage,
+                100_000,
+            ),
+            DaoHandlingOutcome::Applied
+        );
+        let route = root.router.lookup_route(&origin).unwrap().to_vec();
+
+        let mut changed_lifetime = first_unsigned;
+        let lifetime_index = changed_lifetime.len() - 17;
+        changed_lifetime[lifetime_index] = 20;
+        let changed_lifetime = sign(&changed_lifetime, 2);
+        assert_eq!(
+            root.handle_dao(
+                &changed_lifetime,
+                origin,
+                identity.iid,
+                &announces,
+                &mut rx_state,
+                &mut storage,
+                101_000,
+            ),
+            DaoHandlingOutcome::RouteRejected
+        );
+        assert_eq!(root.router.lookup_route(&origin), Some(route.as_slice()));
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn production_dao_time_is_seconds_and_expires_routes() {
+        let root_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
+        let first_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 2]);
+        let root_addr = ula(root_id);
+        let first_addr = ula(first_id);
+        let mut root = RplNode {
+            node: Node::new(root_id),
+            router: Router::new_root(root_addr),
+        };
+        assert!(root.router.set_dao_lifetime_unit(1));
+        let mut first =
+            lichen_rpl::routing::DaoManager::new(first_addr, RPL_INSTANCE_ID, root_addr);
+        let first_packet = l2_dao_packet(
+            first_addr,
+            root_addr,
+            &first.build_dao_with_lifetime(root_addr, 1),
+        );
+
+        assert_eq!(
+            root.handle_frame_rpl(
+                &first_packet,
+                address_iid(first_addr),
+                &mut [0u8; 260],
+                1_999,
+            ),
+            (0, RplEvent::DaoReceived)
+        );
+        assert!(root.router.lookup_route_at(&first_addr, 2_999).is_none());
+        assert_eq!(
+            root.handle_frame_rpl(
+                &first_packet,
+                address_iid(first_addr),
+                &mut [0u8; 260],
+                2_999,
+            ),
+            (0, RplEvent::DaoReceived)
+        );
+        assert!(root.router.lookup_route(&first_addr).is_none());
+        assert!(root.router.lookup_route_at(&first_addr, 3_000).is_none());
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn link_local_multi_hop_dao_is_not_forwarded() {
+        let root_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
+        let parent_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 2]);
+        let leaf_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 3]);
+        let root_addr = root_id.link_local_addr().0;
+        let parent_addr = parent_id.link_local_addr().0;
+        let leaf_addr = leaf_id.link_local_addr().0;
+        let mut parent = RplNode::new(parent_id, root_addr);
+        let dio = lichen_rpl::message::Dio {
+            rpl_instance_id: RPL_INSTANCE_ID,
+            version: 0,
+            rank: crate::routing::ROOT_RANK,
+            grounded: true,
+            mode_of_operation: 1,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id: root_addr,
+        };
+        let mut dio_bytes = [0u8; lichen_rpl::message::Dio::BASE_LEN];
+        dio.write_to(&mut dio_bytes).unwrap();
+        assert!(parent.router.process_dio(&dio, &dio_bytes, root_addr, 0, 0));
+
+        let mut leaf_daos =
+            lichen_rpl::routing::DaoManager::new(leaf_addr, RPL_INSTANCE_ID, root_addr);
+        let dao = leaf_daos.build_dao(parent_addr);
+        let packet = l2_dao_packet(leaf_addr, root_addr, &dao);
+
+        assert_eq!(
+            parent.handle_frame_rpl(&packet, address_iid(leaf_addr), &mut [0u8; 260], 0),
+            (0, RplEvent::None)
+        );
     }
 
     /// Build an L2-wrapped SCHC-compressed ICMPv6 Echo Request from src_iid to dst_iid.

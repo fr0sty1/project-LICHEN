@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 import cbor2
 import pytest
 
@@ -113,7 +115,7 @@ class TestPack:
         raw = cbor2.loads(data)
         assert len(raw) == 1
         assert raw[0][0] == "temperature"  # label 0 = n
-        assert raw[0][1] == "Cel"          # label 1 = u
+        assert raw[0][1] == "Cel"  # label 1 = u
         assert raw[0][2] == pytest.approx(23.4)  # label 2 = v
 
     def test_multi_record_with_base(self) -> None:
@@ -135,6 +137,29 @@ class TestPack:
 
 
 class TestUnpack:
+    @pytest.mark.parametrize(
+        "data",
+        [
+            bytes.fromhex("81a2016343656cf5646576696c"),
+            bytes.fromhex("81a2016343656cfb3ff0000000000000646576696c"),
+        ],
+    )
+    def test_rejects_labels_that_alias_integer_keys(self, data: bytes) -> None:
+        with pytest.raises(ValueError, match="Duplicate map key"):
+            unpack(data)
+
+    def test_rejects_bool_for_numeric_field_from_literal_cbor(self) -> None:
+        with pytest.raises(ValueError, match="'v' must be a number"):
+            unpack(bytes.fromhex("81a102f5"))
+
+    def test_accepts_integer_numeric_value_from_literal_cbor(self) -> None:
+        assert unpack(bytes.fromhex("81a102182a"))[0].v == 42
+
+    def test_accepts_decimal_fraction_from_literal_cbor(self) -> None:
+        value = unpack(bytes.fromhex("81a102c482211864"))[0].v
+        assert type(value) is Decimal
+        assert value == Decimal("1.00")
+
     def test_round_trip(self) -> None:
         original = [
             SenmlRecord(bn="urn:dev:mac:0102030405060708:", bt=1_700_000_000.0),

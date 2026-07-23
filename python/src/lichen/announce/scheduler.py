@@ -243,21 +243,27 @@ class AnnounceScheduler:
            a. Build and send announce
            b. Wait interval + random jitter
         """
-        # Why initial delay: Let node receive announces from others first.
-        # This builds gradients before we advertise ourselves.
-        # Why randomize: Prevents thundering herd if many nodes power on together.
-        initial_delay = self.config.initial_delay_ms
-        if initial_delay == 0:
-            # Random 1-30 seconds (at least 1s to receive some announces)
-            # Ensure upper bound >= 1000 to avoid ValueError if jitter_ms < 1000
-            initial_delay = random.randint(1000, max(1000, self.config.jitter_ms))
-        try:
-            await asyncio.sleep(initial_delay / 1000)
-        except asyncio.CancelledError:
-            return
+        while self._running:
+            try:
+                # Why initial delay: Let node receive announces from others first.
+                # Why randomize: Prevents a thundering herd on mass power-on.
+                self.config.validate()
+                initial_delay = self.config.initial_delay_ms
+                if initial_delay == 0:
+                    initial_delay = random.randint(
+                        1000, max(1000, self.config.jitter_ms)
+                    )
+                await asyncio.sleep(initial_delay / 1000)
+                break
+            except asyncio.CancelledError:
+                return
+            except ValueError as e:
+                logger.error("invalid announce scheduler config: %s", e)
+                await asyncio.sleep(1)
 
         while self._running:
             try:
+                self.config.validate()
                 # Send announce
                 await self._send_announce()
 

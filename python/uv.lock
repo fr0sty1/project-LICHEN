@@ -787,9 +787,9 @@ native-client = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aiocoap", specifier = ">=0.4.17,<0.5" },
-    { name = "aiocoap", marker = "extra == 'coap'", specifier = ">=0.4.17,<0.5" },
-    { name = "aiocoap", marker = "extra == 'native-client'", specifier = ">=0.4.17,<0.5" },
+    { name = "aiocoap", specifier = "==0.4.17" },
+    { name = "aiocoap", marker = "extra == 'coap'", specifier = "==0.4.17" },
+    { name = "aiocoap", marker = "extra == 'native-client'", specifier = "==0.4.17" },
     { name = "anyio", specifier = ">=4.14.1,<4.15" },
     { name = "betterproto", marker = "extra == 'meshtastic'", specifier = ">=2.0.0b6" },
     { name = "bleak", marker = "extra == 'ble'", specifier = ">=0.21" },

@@ -21,7 +21,6 @@ Packet flow (TX):
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import logging
 import random
 from collections import OrderedDict
@@ -49,7 +48,7 @@ from lichen.link.link_layer import LinkLayer, ReceiveError, RxFrame
 from lichen.radio.base import Radio
 from lichen.routing.router import RouteDecision, Router
 from lichen.schc.headers import compress_packet, decompress_packet
-from lichen.state_machine import StateMachine, requires_state
+from lichen.state_machine import StateMachine
 
 logger = logging.getLogger(__name__)
 
@@ -155,6 +154,7 @@ class Node:
     # Lifecycle state
     _state_machine: StateMachine[NodeState] = field(init=False, repr=False)
     _receive_task: asyncio.Task[None] | None = field(default=None, init=False, repr=False)
+    _lifecycle_lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False, repr=False)
 
     # Announce scheduler - manages periodic announce transmission
     # Why separate: Single responsibility, persistence support, testability.
@@ -164,6 +164,7 @@ class Node:
     _on_receive: Callable[[bytes, PeerIdentity], None] | None = field(
         default=None, init=False, repr=False
     )
+    _on_receive_owner: object | None = field(default=None, init=False, repr=False)
 
     # Relay dedup: SCHC payloads forwarded by this node; prevents relay loops.
     # Why OrderedDict: LRU eviction preserves recent history when cache exceeds max.
@@ -262,62 +263,123 @@ class Node:
         Why callback: Upper layers (CoAP, etc.) need to receive data.
         The callback is invoked with (payload, sender).
         """
+        if self._on_receive_owner is not None and self._on_receive_owner is not self:
+            raise RuntimeError("node receive callback already has an owner")
         self._on_receive = callback
+        self._on_receive_owner = self
 
-    @requires_state(NodeState.STOPPED)
+    def register_on_receive(
+        self,
+        owner: object,
+        callback: Callable[[bytes, PeerIdentity], None],
+    ) -> None:
+        """Register one owner-controlled receive callback."""
+        if owner is None:
+            raise ValueError("node receive callback owner must not be None")
+        if self._on_receive is not None:
+            raise RuntimeError("node receive callback already has an owner")
+        self._on_receive = callback
+        self._on_receive_owner = owner
+
+    def unregister_on_receive(self, owner: object) -> bool:
+        """Clear the receive callback only when ``owner`` still controls it."""
+        if owner is None:
+            raise ValueError("node receive callback owner must not be None")
+        if self._on_receive_owner is not owner:
+            return False
+        self._on_receive = None
+        self._on_receive_owner = None
+        return True
+
     async def start(self) -> None:
         """Start the node's async tasks.
 
         Why async: Creates background tasks that run until stop().
         """
-        self._state_machine.transition(NodeState.STARTING)
-        logger.info("starting node %s", self.identity.iid.hex())
-
-        # Start receive loop
-        self._receive_task = asyncio.create_task(
-            self._receive_loop(),
-            name=f"node-rx-{self.identity.iid.hex()[:8]}",
-        )
-
-        # Start announce scheduler
-        # Why separate: Scheduler owns timing and seq_num; Node owns integration.
-        await self._scheduler.start()
-
-        # Start Meshtastic adapter if enabled
-        if self._meshtastic_adapter is not None:
-            await self._meshtastic_adapter.start()
-
-        self._state_machine.transition(NodeState.RUNNING)
-        logger.info("node started")
+        async with self._lifecycle_lock:
+            self._state_machine.require(NodeState.STOPPED)
+            self._state_machine.transition(NodeState.STARTING)
+            logger.info("starting node %s", self.identity.iid.hex())
+            scheduler_attempted = False
+            adapter_attempted = False
+            try:
+                self._receive_task = asyncio.create_task(
+                    self._receive_loop(),
+                    name=f"node-rx-{self.identity.iid.hex()[:8]}",
+                )
+                await asyncio.sleep(0)
+                self._raise_receive_failure()
+                scheduler_attempted = True
+                await self._scheduler.start()
+                if self._meshtastic_adapter is not None:
+                    adapter_attempted = True
+                    await self._meshtastic_adapter.start()
+                await asyncio.sleep(0)
+                self._raise_receive_failure()
+            except BaseException as primary:
+                self._state_machine.transition(NodeState.STOPPING)
+                await self._cleanup_started(
+                    adapter=adapter_attempted,
+                    scheduler=scheduler_attempted,
+                )
+                self._state_machine.transition(NodeState.STOPPED)
+                raise primary
+            self._state_machine.transition(NodeState.RUNNING)
+            logger.info("node started")
 
     async def stop(self) -> None:
         """Stop the node's async tasks.
 
         Why graceful: Cancels tasks and waits for them to finish.
         """
-        if self.state != NodeState.RUNNING:
-            return
+        async with self._lifecycle_lock:
+            if self.state == NodeState.STOPPED:
+                return
+            self._state_machine.require(NodeState.RUNNING)
+            self._state_machine.transition(NodeState.STOPPING)
+            logger.info("stopping node")
+            error = await self._cleanup_started(
+                adapter=self._meshtastic_adapter is not None,
+                scheduler=True,
+            )
+            self._state_machine.transition(NodeState.STOPPED)
+            logger.info("node stopped")
+            if error is not None:
+                raise error
 
-        self._state_machine.transition(NodeState.STOPPING)
-        logger.info("stopping node")
+    def _raise_receive_failure(self) -> None:
+        task = self._receive_task
+        if task is not None and task.done():
+            task.result()
 
-        # Stop Meshtastic adapter first
-        if self._meshtastic_adapter is not None:
-            await self._meshtastic_adapter.stop()
-
-        # Stop announce scheduler
-        # Why first: Prevents new announces while shutting down.
-        await self._scheduler.stop()
-
-        # Cancel receive task
-        if self._receive_task:
-            self._receive_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await self._receive_task
-            self._receive_task = None
-
-        self._state_machine.transition(NodeState.STOPPED)
-        logger.info("node stopped")
+    async def _cleanup_started(
+        self, *, adapter: bool, scheduler: bool
+    ) -> BaseException | None:
+        error: BaseException | None = None
+        if adapter and self._meshtastic_adapter is not None:
+            try:
+                await self._meshtastic_adapter.stop()
+            except BaseException as exc:
+                error = exc
+        if scheduler:
+            try:
+                await self._scheduler.stop()
+            except BaseException as exc:
+                if error is None:
+                    error = exc
+        task = self._receive_task
+        self._receive_task = None
+        if task is not None:
+            task.cancel()
+            results = await asyncio.gather(task, return_exceptions=True)
+            result = results[0]
+            if (
+                error is None
+                and isinstance(result, BaseException)
+                and not isinstance(result, asyncio.CancelledError)
+            ):
+                error = result
+        return error
 
     async def _receive_loop(self) -> None:
         """Continuously receive and process frames.
@@ -605,7 +667,11 @@ class Node:
         unknown = set(updates.keys()) - self._VALID_CONFIG_KEYS
         if unknown:
             raise ValueError(f"unknown config keys: {sorted(unknown)}")
+        receive_timeout_ms = self.config.receive_timeout_ms
+        announce_interval_ms = self.config.announce_interval_ms
         if "receive_timeout_ms" in updates:
-            self.config.receive_timeout_ms = int(cast(int | str, updates["receive_timeout_ms"]))
+            receive_timeout_ms = int(cast(int | str, updates["receive_timeout_ms"]))
         if "announce_interval_ms" in updates:
-            self.config.announce_interval_ms = int(cast(int | str, updates["announce_interval_ms"]))
+            announce_interval_ms = int(cast(int | str, updates["announce_interval_ms"]))
+        self.config.receive_timeout_ms = receive_timeout_ms
+        self.config.announce_interval_ms = announce_interval_ms

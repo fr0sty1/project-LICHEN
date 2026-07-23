@@ -10,8 +10,6 @@ use std::vec;
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-use lichen_coap::codec::CoapBuilder;
-use lichen_coap::message::{MessageCode, MessageType};
 use lichen_core::addr::NodeId;
 use lichen_core::constants::{L2_DISPATCH_SCHC, PORT_COAP};
 use lichen_core::l2_payload::{
@@ -28,6 +26,9 @@ use crate::Node;
 
 /// Maximum wire frame size (LoRa MTU with some headroom).
 pub const MAX_FRAME_SIZE: usize = 255;
+// 254-byte frame body minus fixed header, EUI-64 destination, 48-byte signature,
+// and the L2 SCHC dispatch byte.
+const MAX_EXTENDED_SCHC_SIZE: usize = 193;
 
 /// TX path error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,6 +46,14 @@ pub enum TxError {
     BufferTooSmall,
     /// Forwarding queue full for source — send NACK upstream.
     QueueFull,
+    /// Every link-layer epoch/sequence tuple has been consumed.
+    SequenceExhausted,
+    /// No next hop is available for the destination.
+    NoRoute,
+    /// Plaintext CoAP is forbidden on the production transmit path.
+    PlaintextCoap,
+    /// IPv6 extension headers are unsupported by the production router.
+    UnsupportedIpv6Extension,
 }
 
 impl core::fmt::Display for TxError {
@@ -56,6 +65,10 @@ impl core::fmt::Display for TxError {
             Self::RadioTx => write!(f, "radio TX failed"),
             Self::BufferTooSmall => write!(f, "buffer too small"),
             Self::QueueFull => write!(f, "forwarding queue full"),
+            Self::SequenceExhausted => write!(f, "link-layer sequence exhausted"),
+            Self::NoRoute => write!(f, "no route to destination"),
+            Self::PlaintextCoap => write!(f, "plaintext CoAP is forbidden"),
+            Self::UnsupportedIpv6Extension => write!(f, "IPv6 extension header is unsupported"),
         }
     }
 }
@@ -81,6 +94,16 @@ pub enum RxError {
     Link(LinkRxError),
     /// SCHC decompression failed.
     SchcDecompress,
+    /// Radio reported a packet larger than the supplied receive buffer.
+    RadioPacketTooLarge,
+    /// CoAP traffic was not protected with OSCORE.
+    PlaintextCoap,
+    /// OSCORE CoAP framing is malformed.
+    MalformedSecureCoap,
+    /// RPL source routing failed strict validation.
+    InvalidSourceRoute,
+    /// IPv6 Hop Limit was exhausted while forwarding.
+    HopLimitExceeded,
     /// Timeout waiting for frame.
     Timeout,
 }
@@ -91,6 +114,11 @@ impl core::fmt::Display for RxError {
             Self::RadioRx => write!(f, "radio RX failed"),
             Self::Link(e) => write!(f, "link error: {}", e),
             Self::SchcDecompress => write!(f, "SCHC decompression failed"),
+            Self::RadioPacketTooLarge => write!(f, "radio packet exceeds receive buffer"),
+            Self::PlaintextCoap => write!(f, "plaintext CoAP is forbidden"),
+            Self::MalformedSecureCoap => write!(f, "malformed secure CoAP"),
+            Self::InvalidSourceRoute => write!(f, "invalid RPL source route"),
+            Self::HopLimitExceeded => write!(f, "IPv6 Hop Limit exceeded"),
             Self::Timeout => write!(f, "receive timeout"),
         }
     }
@@ -136,6 +164,7 @@ pub struct Stack<R: Radio> {
     /// - A random value in [128, 255] (if no persistence)
     epoch: u8,
     seqnum: LinkSeqNum,
+    sequence_exhausted: bool,
     message_id: u16,
     /// Forwarding buffer with per-source backpressure (spec appendix-bufferbloat.md).
     forward_buffer: ForwardBuffer,
@@ -157,7 +186,9 @@ impl<R: Radio> Stack<R> {
             epoch >= 128,
             "SECURITY: epoch MUST be in [128, 255] per spec section 4.4"
         );
-        let node_id = NodeId(identity.iid);
+        let mut eui64 = identity.iid;
+        eui64[0] ^= 0x02;
+        let node_id = NodeId(eui64);
         Self {
             radio,
             link: lichen_link::link_layer::LinkLayer::new(identity),
@@ -179,6 +210,10 @@ impl<R: Radio> Stack<R> {
         Addr::link_local_from_eui64(&self.node.node_id.0)
     }
 
+    pub fn local_public_key(&self) -> lichen_link::keys::PublicKey {
+        self.link.local_public_key()
+    }
+
     /// Add a peer for signature verification.
     pub fn add_peer(&mut self, peer: lichen_link::identity::PeerIdentity) {
         self.link.add_peer(peer);
@@ -191,116 +226,31 @@ impl<R: Radio> Stack<R> {
         mid
     }
 
-    /// Get the next sequence number.
-    pub fn next_seqnum(&mut self) -> LinkSeqNum {
-        self.seqnum.fetch_increment()
-    }
-
-    /// Set the epoch counter (for reboot resilience).
-    ///
-    /// Callers with persisted epoch should call this after construction.
-    /// Without persistence, callers should pass a random value in [128, 255]
-    /// so half-space replay arithmetic treats new frames as "ahead" of stale
-    /// receiver windows.
-    pub fn set_epoch(&mut self, epoch: u8) {
-        self.epoch = epoch;
-    }
-
-    /// Build and send a CoAP request.
-    ///
-    /// Common helper for GET/POST/PUT. Returns the message ID for matching responses.
-    async fn send_coap_request(
-        &mut self,
-        dst: &Addr,
-        method: MessageCode,
-        uri_path: &[&str],
-        token: &[u8],
-        content_format: Option<u16>,
-        payload: Option<&[u8]>,
-    ) -> Result<u16, TxError> {
-        let mid = self.next_message_id();
-        let mut coap = [0u8; 192];
-        let mut builder = CoapBuilder::new(&mut coap, MessageType::Confirmable, method, mid, token)
-            .map_err(|_| TxError::CoapEncode)?;
-        for seg in uri_path {
-            builder.uri_path(seg).map_err(|_| TxError::CoapEncode)?;
+    /// Allocate the next epoch and sequence tuple.
+    pub fn try_next_link_tuple(&mut self) -> Result<(u8, LinkSeqNum), TxError> {
+        if self.sequence_exhausted {
+            return Err(TxError::SequenceExhausted);
         }
-        if let Some(cf) = content_format {
-            builder
-                .content_format(cf)
-                .map_err(|_| TxError::CoapEncode)?;
+
+        let tuple = (self.epoch, self.seqnum);
+        if self.epoch == u8::MAX && self.seqnum.get() == u16::MAX {
+            self.sequence_exhausted = true;
+        } else if self.seqnum.get() == u16::MAX {
+            self.epoch += 1;
+            self.seqnum = LinkSeqNum::new(0);
+        } else {
+            self.seqnum.fetch_increment();
         }
-        if let Some(p) = payload {
-            builder.payload(p).map_err(|_| TxError::CoapEncode)?;
-        }
-        let coap_len = builder.finish();
-
-        self.send_coap_raw(dst, &coap[..coap_len]).await?;
-        Ok(mid)
+        Ok(tuple)
     }
 
-    /// Build a CoAP GET request and transmit it.
-    ///
-    /// Returns the message ID for matching responses.
-    pub async fn send_get(
-        &mut self,
-        dst: &Addr,
-        uri_path: &[&str],
-        token: &[u8],
-    ) -> Result<u16, TxError> {
-        self.send_coap_request(dst, MessageCode::GET, uri_path, token, None, None)
-            .await
-    }
-
-    /// Build a CoAP POST request and transmit it.
-    ///
-    /// Returns the message ID for matching responses.
-    pub async fn send_post(
-        &mut self,
-        dst: &Addr,
-        uri_path: &[&str],
-        token: &[u8],
-        content_format: Option<u16>,
-        payload: &[u8],
-    ) -> Result<u16, TxError> {
-        self.send_coap_request(
-            dst,
-            MessageCode::POST,
-            uri_path,
-            token,
-            content_format,
-            Some(payload),
-        )
-        .await
-    }
-
-    /// Build a CoAP PUT request and transmit it.
-    ///
-    /// Returns the message ID for matching responses.
-    pub async fn send_put(
-        &mut self,
-        dst: &Addr,
-        uri_path: &[&str],
-        token: &[u8],
-        content_format: Option<u16>,
-        payload: &[u8],
-    ) -> Result<u16, TxError> {
-        self.send_coap_request(
-            dst,
-            MessageCode::PUT,
-            uri_path,
-            token,
-            content_format,
-            Some(payload),
-        )
-        .await
-    }
-
-    /// Send a raw CoAP message to destination.
+    /// Send an OSCORE-protected CoAP message to destination.
     ///
     /// Path: CoAP → IPv6/UDP → SCHC compress → L2 sign → Radio TX
-    pub async fn send_coap_raw(&mut self, dst: &Addr, coap: &[u8]) -> Result<(), TxError> {
+    pub(crate) async fn send_coap_raw(&mut self, dst: &Addr, coap: &[u8]) -> Result<(), TxError> {
         let src = self.local_addr();
+        self.send_coap_raw_to(&src, dst, coap, &[], &[]).await
+    }
 
         // Build IPv6 + UDP + CoAP packet
         let udp_total = UDP_HEADER_LEN + coap.len();
@@ -325,16 +275,23 @@ impl<R: Radio> Stack<R> {
 
         let ipv6_len = IPV6_HEADER_LEN + udp_total;
 
+        let mut routed = [0u8; 512];
+        let ipv6 = if source_route.len() > 1 {
+            let routed_len = add_rpl_source_route(&ipv6[..ipv6_len], source_route, &mut routed)?;
+            &routed[..routed_len]
+        } else {
+            &ipv6[..ipv6_len]
+        };
+
         // SCHC compress
         let mut schc = [0u8; 200];
-        let schc_len =
-            codec::compress(&ipv6[..ipv6_len], &mut schc).map_err(|_| TxError::SchcCompress)?;
+        let schc_len = codec::compress(ipv6, &mut schc).map_err(|_| TxError::SchcCompress)?;
 
         let mut l2_payload = [0u8; 201];
         let l2_data = wrap_schc_payload(&schc[..schc_len], &mut l2_payload)?;
 
         // L2 sign and frame
-        let seqnum = self.next_seqnum();
+        let (epoch, seqnum) = self.try_next_link_tuple()?;
         let mut wire = [0u8; MAX_FRAME_SIZE];
         let wire_len = self
             .link
@@ -357,12 +314,50 @@ impl<R: Radio> Stack<R> {
     ///
     /// Path: IPv6 → SCHC compress → L2 sign → Radio TX
     pub async fn send_ipv6_raw(&mut self, ipv6: &[u8]) -> Result<(), TxError> {
+        self.send_ipv6_to(ipv6, &[]).await
+    }
+
+    pub(crate) async fn send_ipv6_to(
+        &mut self,
+        ipv6: &[u8],
+        dst_addr: &[u8],
+    ) -> Result<(), TxError> {
         let mut schc = [0u8; 200];
         let schc_len = codec::compress(ipv6, &mut schc).map_err(|_| TxError::SchcCompress)?;
         let mut l2_payload = [0u8; 201];
         let l2_data = wrap_schc_payload(&schc[..schc_len], &mut l2_payload)?;
 
-        let seqnum = self.next_seqnum();
+        self.send_l2_payload_to(l2_data, dst_addr).await
+    }
+
+    pub(crate) async fn send_ipv6_to_route(
+        &mut self,
+        ipv6: &[u8],
+        dst_addr: &[u8],
+        source_route: &[[u8; 16]],
+    ) -> Result<(), TxError> {
+        if source_route.len() <= 1 {
+            return self.send_ipv6_to(ipv6, dst_addr).await;
+        }
+        let mut routed = [0u8; 512];
+        let routed_len = add_rpl_source_route(ipv6, source_route, &mut routed)?;
+        self.send_ipv6_to(&routed[..routed_len], dst_addr).await
+    }
+
+    pub(crate) async fn send_l2_payload_to(
+        &mut self,
+        l2_payload: &[u8],
+        dst_addr: &[u8],
+    ) -> Result<(), TxError> {
+        let max_payload = if dst_addr.len() == 8 {
+            MAX_EXTENDED_SCHC_SIZE + 1
+        } else {
+            202
+        };
+        if l2_payload.len() > max_payload {
+            return Err(TxError::FrameEncode);
+        }
+        let (epoch, seqnum) = self.try_next_link_tuple()?;
         let mut wire = [0u8; MAX_FRAME_SIZE];
         let wire_len = self
             .link
@@ -394,6 +389,9 @@ impl<R: Radio> Stack<R> {
         let Some(pkt) = rx else {
             return Ok(None);
         };
+        if pkt.len > buf.len() {
+            return Err(RxError::RadioPacketTooLarge);
+        }
 
         let wire = &buf[..pkt.len];
         let l2 = self.link.receive_frame(wire)?;
@@ -460,8 +458,8 @@ impl<R: Radio> Stack<R> {
         &mut self.radio
     }
 
-    /// Access the link layer.
-    pub fn link(&mut self) -> &mut lichen_link::link_layer::LinkLayer {
+    /// Internal authenticated-link access for the production RPL owner.
+    pub(crate) fn link(&mut self) -> &mut lichen_link::link_layer::LinkLayer {
         &mut self.link
     }
 
@@ -540,6 +538,49 @@ impl<R: Radio> Stack<R> {
     }
 }
 
+pub(crate) fn add_rpl_source_route(
+    ipv6: &[u8],
+    route: &[[u8; 16]],
+    out: &mut [u8],
+) -> Result<usize, TxError> {
+    let remaining = route.len().checked_sub(1).ok_or(TxError::NoRoute)?;
+    if remaining == 0 || remaining > u8::MAX as usize {
+        return Err(TxError::NoRoute);
+    }
+    let routing_len = 8usize
+        .checked_add(remaining.checked_mul(16).ok_or(TxError::BufferTooSmall)?)
+        .ok_or(TxError::BufferTooSmall)?;
+    let total_len = ipv6
+        .len()
+        .checked_add(routing_len)
+        .ok_or(TxError::BufferTooSmall)?;
+    if ipv6.len() < IPV6_HEADER_LEN || total_len > out.len() {
+        return Err(TxError::BufferTooSmall);
+    }
+    let payload_len = usize::from(u16::from_be_bytes([ipv6[4], ipv6[5]]));
+    let routed_payload_len = payload_len
+        .checked_add(routing_len)
+        .and_then(|len| u16::try_from(len).ok())
+        .ok_or(TxError::BufferTooSmall)?;
+
+    out[..IPV6_HEADER_LEN].copy_from_slice(&ipv6[..IPV6_HEADER_LEN]);
+    out[4..6].copy_from_slice(&routed_payload_len.to_be_bytes());
+    let transport = out[6];
+    out[6] = 43;
+    out[24..40].copy_from_slice(&route[0]);
+    out[40] = transport;
+    out[41] = (routing_len / 8 - 1) as u8;
+    out[42] = 3;
+    out[43] = remaining as u8;
+    out[44..48].fill(0);
+    for (index, address) in route[1..].iter().enumerate() {
+        let start = 48 + index * 16;
+        out[start..start + 16].copy_from_slice(address);
+    }
+    out[IPV6_HEADER_LEN + routing_len..total_len].copy_from_slice(&ipv6[IPV6_HEADER_LEN..]);
+    Ok(total_len)
+}
+
 fn wrap_schc_payload<'a>(schc: &[u8], out: &'a mut [u8]) -> Result<&'a [u8], TxError> {
     if out.len() < schc.len() + 1 {
         return Err(TxError::BufferTooSmall);
@@ -560,6 +601,37 @@ mod tests {
     // Per spec section 8.7, all CoAP traffic MUST use OSCORE encryption.
     // The plaintext Stack is only for ICMPv6 and diagnostics.
 
+    fn test_stack(epoch: u8) -> Stack<LoopbackRadio> {
+        let identity = Identity::from_seed(Seed::new([0x01; 32]));
+        let (radio, _) = LoopbackRadio::pair();
+        Stack::new(radio, identity, epoch)
+    }
+
+    #[test]
+    fn link_tuple_rollover_advances_epoch() {
+        let mut stack = test_stack(128);
+        stack.seqnum = LinkSeqNum::new(u16::MAX);
+
+        assert_eq!(
+            stack.try_next_link_tuple(),
+            Ok((128, LinkSeqNum::new(u16::MAX)))
+        );
+        assert_eq!(stack.try_next_link_tuple(), Ok((129, LinkSeqNum::new(0))));
+    }
+
+    #[test]
+    fn terminal_link_tuple_is_allocated_once() {
+        let mut stack = test_stack(u8::MAX);
+        stack.seqnum = LinkSeqNum::new(u16::MAX);
+
+        assert_eq!(
+            stack.try_next_link_tuple(),
+            Ok((u8::MAX, LinkSeqNum::new(u16::MAX)))
+        );
+        assert_eq!(stack.try_next_link_tuple(), Err(TxError::SequenceExhausted));
+        assert_eq!(stack.try_next_link_tuple(), Err(TxError::SequenceExhausted));
+    }
+
     /// ICMPv6 ping-pong test using plaintext Stack.
     ///
     /// SECURITY: This uses plaintext Stack because OSCORE (RFC 8613) is CoAP-specific.
@@ -569,6 +641,8 @@ mod tests {
     async fn stack_ping_pong() {
         let alice_id = Identity::from_seed(Seed::new([0x01; 32]));
         let bob_id = Identity::from_seed(Seed::new([0x02; 32]));
+        let alice_iid = alice_id.iid;
+        let bob_iid = bob_id.iid;
 
         let alice_peer = PeerIdentity::from_pubkey(alice_id.pubkey);
         let bob_peer = PeerIdentity::from_pubkey(bob_id.pubkey);
@@ -584,6 +658,8 @@ mod tests {
         // Build and send ICMPv6 Echo Request from Alice to Bob
         let alice_addr = alice.local_addr();
         let bob_addr = bob.local_addr();
+        assert_eq!(&alice_addr.0[8..], &alice_iid);
+        assert_eq!(&bob_addr.0[8..], &bob_iid);
 
         let echo = lichen_ipv6::Icmpv6Echo { id: 42, seq: 1 };
         let icmp = echo.build_request(&alice_addr, &bob_addr, b"ping").unwrap();
@@ -604,5 +680,26 @@ mod tests {
         // Alice receives reply
         let reply = alice.receive(1000).await.unwrap().unwrap();
         assert_eq!(reply.ipv6[40], 129); // ICMPv6 Echo Reply
+    }
+
+    #[tokio::test]
+    async fn raw_coap_rejects_payload_beyond_ipv6_buffer() {
+        let mut stack = test_stack(128);
+        let dst = stack.local_addr();
+        let coap = [0u8; 209];
+
+        assert_ne!(
+            stack.send_coap_raw(&dst, &coap[..208]).await,
+            Err(TxError::BufferTooSmall)
+        );
+        let tuple_state = (stack.epoch, stack.seqnum, stack.sequence_exhausted);
+        assert_eq!(
+            stack.send_coap_raw(&dst, &coap).await,
+            Err(TxError::BufferTooSmall)
+        );
+        assert_eq!(
+            (stack.epoch, stack.seqnum, stack.sequence_exhausted),
+            tuple_state
+        );
     }
 }

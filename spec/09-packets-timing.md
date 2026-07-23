@@ -115,7 +115,20 @@ Options:
 |-------|-------|
 | Initial DAO | Random 0-2 seconds after joining |
 | DAO retry | 4, 8, 16 seconds (exponential backoff) |
-| DAO refresh | 30 minutes (soft state lifetime / 2) |
+| DAO refresh | 15 minutes (30-minute soft state lifetime / 2) |
+
+Each new logical DAO, including a refresh or parent change, MUST advance its
+64-bit DAO Origin Sequence, construct the complete signed DAO, and crash-safely
+commit both the sequence and complete signed bytes before transmission. State
+is keyed by the public key, not the full IPv6 address. Storage MUST provide
+atomic commit or two independently validated slots with generation numbers.
+The TX API MUST expose the retained complete bytes after reboot so a retry can
+reuse the sequence only by retransmitting those bytes exactly; rebuilding or
+re-signing an equal-sequence DAO is forbidden. The sequence starts above zero
+and MUST NOT wrap; at `0xffffffffffffffff`, no new logical DAO may be sent.
+Missing, corrupt, unavailable, or uncommitted state MUST stop DAO origination
+until valid state above every value previously used with that key is restored.
+A node MUST NOT fall back to a clock, random value, or link replay counter.
 
 ### 14.3. Data Traffic
 
@@ -212,7 +225,8 @@ epoch floor.
 **Constrained Node Behavior:**
 
 Nodes without a valid wall-clock source:
-- Use sequence numbers for replay protection (works within power cycle)
+- Use link sequence numbers for replay protection within a power cycle; the
+  DAO Origin Sequence in Section 14.2 remains persistent across power cycles
 - SHOULD persist replay epoch counter across reboots (increment on boot)
 - MAY omit absolute timestamps from SenML (use relative `t` offsets only)
 - MUST NOT originate time-sensitive operations (scheduled check-in, message

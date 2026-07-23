@@ -51,6 +51,7 @@ extern "C" {
 #define LICHEN_RPL_ERR_BUF_SMALL  -5
 #define LICHEN_RPL_ERR_INVALID    -6  /**< NULL pointer or invalid argument */
 #define LICHEN_RPL_ERR_FULL       -7  /**< Table or buffer is full */
+#define LICHEN_RPL_ERR_NOT_FOUND  -8  /**< Requested entry does not exist */
 
 /* ── Option type bytes ─────────────────────────────────────────────────────── */
 
@@ -61,6 +62,7 @@ extern "C" {
 #define LICHEN_RPL_OPT_RPL_TARGET    5
 #define LICHEN_RPL_OPT_TRANSIT_INFO  6
 #define LICHEN_RPL_OPT_PREFIX_INFO   8
+#define LICHEN_RPL_OPT_RPL_TARGET_DESCRIPTOR 9
 
 /* ── ICMPv6 codes for RPL messages ────────────────────────────────────────── */
 
@@ -143,7 +145,8 @@ static inline size_t lichen_rpl_dio_options_len(size_t total_len)
 /**
  * @brief DAO base object (RFC 6550 section 6.4)
  *
- * DODAGID is always present (D-flag = 1) as required by LICHEN SCHC rule 4.
+ * DODAGID is populated when the D flag is set. For D=0 wire messages, callers
+ * supply the active DODAG context separately and this field is zeroed.
  */
 struct lichen_rpl_dao {
 	uint8_t rpl_instance_id;
@@ -157,7 +160,7 @@ struct lichen_rpl_dao {
  * @brief Parse a DAO from wire bytes.
  *
  * @param dao  Output structure
- * @param data Wire bytes (DAO base, at least 20 bytes)
+ * @param data Wire bytes (4-byte base, plus 16-byte DODAGID when D=1)
  * @param len  Length of data
  * @return 0 on success, negative error code on failure
  */

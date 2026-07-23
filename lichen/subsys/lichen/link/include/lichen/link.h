@@ -174,8 +174,8 @@ struct lichen_tdma_ctx {
  * @param[in]  len    Length of wire data
  * @return 0 on success, negative error code on failure
  */
-int lichen_frame_parse(struct lichen_frame *_Nonnull frame,
-		       const uint8_t *_Nonnull data, size_t len);
+int lichen_frame_parse(struct lichen_frame *_Nullable frame,
+		       const uint8_t *_Nullable data, size_t len);
 
 
 /**
@@ -186,8 +186,8 @@ int lichen_frame_parse(struct lichen_frame *_Nonnull frame,
  * @param[in]  buflen Buffer size
  * @return Number of bytes written, or negative error code
  */
-int lichen_frame_write(const struct lichen_frame *_Nonnull frame,
-		       uint8_t *_Nonnull buf, size_t buflen);
+int lichen_frame_write(const struct lichen_frame *_Nullable frame,
+		       uint8_t *_Nullable buf, size_t buflen);
 
 /* ─── replay table ────────────────────────────────────────────────────────── */
 

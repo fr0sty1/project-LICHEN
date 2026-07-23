@@ -46,6 +46,8 @@ jobs:
           uv sync --locked --all-extras --dev
 
       - name: Run Python→Rust interop tests
+        env:
+          LICHEN_RUN_CROSS_IMPL: "1"
         run: |
           cd python
           uv run pytest tests/sim/test_cross_impl_interop.py::TestPythonToRust -v
@@ -99,9 +101,11 @@ jobs:
           cd python
           PYTHONPATH=src python3 ../test/vectors/generate.py
           # Check for uncommitted changes
-          if ! git diff --quiet test/vectors/*.json; then
+          vector_status="$(git -C .. status --porcelain --untracked-files=all -- 'test/vectors/*.json')"
+          if [ -n "$vector_status" ]; then
             echo "ERROR: Vectors are out of date!"
-            git diff test/vectors/*.json
+            echo "$vector_status"
+            git -C .. diff -- 'test/vectors/*.json'
             exit 1
           fi
 
@@ -109,6 +113,18 @@ jobs:
         run: |
           cd python
           uv run pytest tests/test_vectors.py -v
+
+      - name: C signed-frame oracle
+        run: |
+          cmake -S lichen/tests/schnorr48 -B /tmp/lichen-schnorr48
+          cmake --build /tmp/lichen-schnorr48
+          ctest --test-dir /tmp/lichen-schnorr48 --output-on-failure
+          cmake -S lichen/tests/frame -B /tmp/lichen-frame
+          cmake --build /tmp/lichen-frame
+          ctest --test-dir /tmp/lichen-frame --output-on-failure
+          cmake -S lichen/tests/link_ctx -B /tmp/lichen-link-ctx
+          cmake --build /tmp/lichen-link-ctx
+          ctest --test-dir /tmp/lichen-link-ctx --output-on-failure
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -119,7 +135,8 @@ jobs:
       - name: Rust vector tests
         run: |
           cd rust
-          cargo test --features lichen-link/std,lichen-link/schnorr shared_vectors -- --nocapture
+          cargo test -p lichen-link --no-default-features --test shared_vectors
+          cargo test -p lichen-link --all-features
 
       - name: Install Zephyr deps
         run: |

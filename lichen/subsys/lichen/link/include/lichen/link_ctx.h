@@ -78,6 +78,13 @@ struct lichen_link_ctx {
 #endif
 };
 
+/** Atomic signing identity snapshot. Clear immediately after use. */
+struct lichen_link_keypair_snapshot {
+	uint8_t eui64[LICHEN_EUI64_LEN];
+	uint8_t sk[LICHEN_SK_LEN];
+	uint8_t pk[LICHEN_PK_LEN];
+};
+
 /**
  * @brief Initialize link context with an EUI-64 address.
  *

@@ -74,6 +74,7 @@
 
 #include <lichen/schc.h>
 #include <schc/bitstream.h>
+#include <limits.h>
 #include <string.h>
 #include <stdbool.h>
 

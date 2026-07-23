@@ -136,9 +136,14 @@ class LichenFrame:
 
         Raises:
             FrameError: If a field is out of range, lengths are inconsistent
-                with the LLSec modes, or the frame exceeds 255 body bytes.
+                with the LLSec modes, or the frame exceeds 254 body bytes.
         """
         self._validate()
+        body_len = 4 + len(self.dst_addr) + len(self.payload) + len(self.mic)
+        if body_len > MAX_FRAME_BODY:
+            raise FrameError(
+                f"frame body is {body_len} bytes, exceeds {MAX_FRAME_BODY}"
+            )
         body = (
             bytes([self.llsec_byte(), self.epoch])
             + self.seqnum.to_bytes(2, "big")
@@ -146,10 +151,6 @@ class LichenFrame:
             + self.payload
             + self.mic
         )
-        if len(body) > _MAX_FRAME_BODY:
-            raise FrameError(
-                f"frame body is {len(body)} bytes, exceeds {_MAX_FRAME_BODY}"
-            )
         return bytes([len(body)]) + body
 
     @classmethod
@@ -162,12 +163,21 @@ class LichenFrame:
         """
         if len(data) < 1:
             raise FrameError("frame is empty")
-        length = data[0]
-        body = data[1:]
-        if len(body) != length:
+        if len(data) > MAX_FRAME_BODY + 1:
             raise FrameError(
-                f"length field says {length} but {len(body)} body bytes present"
+                f"frame is {len(data)} bytes, exceeds {MAX_FRAME_BODY + 1}"
             )
+        length = data[0]
+        if length > MAX_FRAME_BODY:
+            raise FrameError(
+                f"frame body is {length} bytes, exceeds {MAX_FRAME_BODY}"
+            )
+        received_body_len = len(data) - 1
+        if received_body_len != length:
+            raise FrameError(
+                f"length field says {length} but {received_body_len} body bytes present"
+            )
+        body = data[1:]
         # Fixed fields: LLSec(1) + Epoch(1) + SeqNum(2) = 4 bytes minimum.
         if length < 4:
             raise FrameError(f"frame body too short: {length} bytes")

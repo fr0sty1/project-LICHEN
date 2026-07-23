@@ -19,7 +19,6 @@ struct VectorFile {
 #[derive(Deserialize)]
 struct SchcVector {
     name: String,
-    description: String,
     rule_id: u8,
     packet: String,
     compressed: String,

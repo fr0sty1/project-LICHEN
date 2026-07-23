@@ -5,8 +5,8 @@
  * @file lichen/replay.h
  * @brief Replay protection window
  *
- * Per-neighbor sliding window to detect and reject replayed frames.
- * Uses a 64-bit bitmap to track recently seen sequence numbers.
+ * Per-public-key sliding window to detect and reject replayed frames.
+ * Uses a 32-bit bitmap to track recently seen sequence numbers.
  *
  * Ported from rust/lichen-link/src/replay.rs
  */
@@ -45,26 +45,26 @@ extern "C" {
 /**
  * @brief Replay window state for one peer
  *
- * Tracks a 64-slot sliding window of (epoch, sequence number) pairs using
- * a 24-bit logical counter: counter = (epoch << 16) | seqnum. This prevents
- * cross-epoch replay attacks when tx_seq wraps from 0xFFFF to 0.
+ * Tracks a 32-slot sliding window within the latest finite epoch. Epochs and
+ * sequence numbers never wrap: a lower epoch is stale, and a lower sequence
+ * number is accepted only when it is an unseen value still in the window.
  *
- * Bit layout: bit 0 of bitmap represents last_counter, bit i represents
- * last_counter - i. A set bit means that counter was already accepted.
+ * Bit layout: bit 0 of bitmap represents last_seq, bit i represents
+ * last_seq - i. A set bit means that sequence number was already accepted.
  */
 struct lichen_replay_window {
-	uint32_t last_counter; /**< Highest accepted 24-bit counter (epoch<<16|seq) */
-	uint64_t bitmap;       /**< 64-bit seen counter bitmap */
-	bool initialised;      /**< True once first counter accepted */
+	uint16_t last_seq; /**< Highest accepted sequence in current epoch */
+	uint8_t epoch;     /**< Highest accepted finite epoch */
+	uint32_t bitmap;   /**< 32-bit seen sequence bitmap */
+	bool initialised;  /**< True once first tuple accepted */
 };
 
 /**
  * @brief Per-peer replay table entry
  */
 struct lichen_replay_entry {
-	uint8_t eui64[LICHEN_EUI64_LEN]; /**< Peer's EUI-64 address */
+	uint8_t public_key[LICHEN_PK_LEN]; /**< Authenticated peer public key */
 	struct lichen_replay_window window;
-	uint32_t last_used;                /**< Monotonic counter for LRU eviction */
 	bool active;                       /**< Entry is in use */
 };
 
@@ -73,7 +73,6 @@ struct lichen_replay_entry {
  */
 struct lichen_replay_table {
 	struct lichen_replay_entry peers[CONFIG_LICHEN_LINK_MAX_NEIGHBORS];
-	uint32_t access_counter;           /**< Monotonic counter for LRU tracking */
 };
 
 /**
@@ -89,13 +88,9 @@ void lichen_replay_init(struct lichen_replay_window *_Nonnull rw);
  * Call this for every received frame. Returns true if the frame
  * should be accepted (not a replay), false if it should be rejected.
  *
- * The window uses a 24-bit logical counter formed from (epoch << 16) | seqnum.
- * This ensures that when tx_seq wraps from 0xFFFF to 0 and epoch increments,
- * old (epoch, seqnum) pairs cannot be replayed against the new epoch.
- *
- * The window tracks 64 counter values relative to the highest seen.
- * The 24-bit counter wraps at 16M (256 epochs * 65536 sequences), with
- * half-space arithmetic to handle wraparound correctly.
+ * A higher epoch starts a fresh sequence window. A lower epoch, including
+ * epoch 0 after epoch 255, is always rejected. Within an epoch, sequence
+ * numbers use ordinary finite ordering; 0 after 65535 is not a wrap.
  *
  * @param[in,out] rw     Replay window state
  * @param[in]     epoch  8-bit epoch from frame header
@@ -115,48 +110,29 @@ void lichen_replay_table_init(struct lichen_replay_table *_Nonnull table);
 /**
  * @brief Get or create replay window for a peer.
  *
- * Looks up the replay window for the given EUI-64 address. If no entry
- * exists and there's room in the table, creates a new entry. If the table
- * is full, the least-recently-used entry is evicted to make room.
+ * Looks up the replay window for the authenticated public key. If no entry
+ * exists and there's room in the table, creates a new entry. A full table
+ * fails closed instead of evicting replay history.
  *
- * @warning REPLAY WINDOW POISONING ATTACK
- *
- * An attacker can evict legitimate peer replay windows by sending frames
- * from many spoofed source addresses. Attack sequence:
- *   1. Attacker sends N+1 frames with distinct spoofed EUI-64 addresses
- *      (where N = CONFIG_LICHEN_LINK_MAX_NEIGHBORS, default 16)
- *   2. Each spoofed frame evicts the LRU entry
- *   3. Eventually all legitimate peer windows are evicted
- *   4. Attacker can now replay captured frames from evicted peers
- *
- * This is a fundamental limitation of unauthenticated LRU eviction.
- * Mitigations:
- *   - Size table >> expected neighbors (but memory is limited on MCUs)
- *   - Only call lichen_replay_get() for peers with verified link keys
- *     (OSCORE peers, post-EDHOC handshake) - this prevents unauthenticated
- *     sources from allocating replay slots
- *   - Monitor for eviction storms (rapid evictions indicate attack)
- *
- * The current implementation does NOT enforce authenticated peer registration.
- * Deployments in hostile RF environments should verify peer identity before
+ * Callers MUST verify that the frame was authenticated by public_key before
  * calling this function.
  *
  * @param[in,out] table Replay table
- * @param[in]     eui64 Peer's EUI-64 address (8 bytes)
- * @return Pointer to replay window, or NULL only on invalid input
+ * @param[in]     public_key Authenticated peer public key (32 bytes)
+ * @return Pointer to replay window, or NULL on invalid input or full table
  */
 struct lichen_replay_window *_Nullable lichen_replay_get(
 	struct lichen_replay_table *_Nonnull table,
-	const uint8_t eui64[_Nonnull LICHEN_EUI64_LEN]);
+	const uint8_t public_key[_Nonnull LICHEN_PK_LEN]);
 
 /**
  * @brief Remove a peer from the replay table.
  *
  * @param[in,out] table Replay table
- * @param[in]     eui64 Peer's EUI-64 address (8 bytes)
+ * @param[in]     public_key Peer's public key (32 bytes)
  */
 void lichen_replay_remove(struct lichen_replay_table *_Nonnull table,
-			  const uint8_t eui64[_Nonnull LICHEN_EUI64_LEN]);
+			  const uint8_t public_key[_Nonnull LICHEN_PK_LEN]);
 
 #ifdef __cplusplus
 }

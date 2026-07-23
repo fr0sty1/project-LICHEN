@@ -34,6 +34,10 @@ int lichen_frame_parse(struct lichen_frame *frame,
 	if (frame == NULL || data == NULL) {
 		return -EINVAL;
 	}
+	if (len > LICHEN_MAX_FRAME_LEN ||
+	    (len > 0U && data[0] > LICHEN_MAX_FRAME_BODY_LEN)) {
+		return -EMSGSIZE;
+	}
 
 	/*
 	 * Minimum frame size: 5 bytes
@@ -132,21 +136,21 @@ int lichen_frame_write(const struct lichen_frame *frame,
 	if (frame->mic_len != mic_len) {
 		return -EINVAL;
 	}
+	if (frame->mic_length != LICHEN_MIC_32 &&
+	    frame->mic_length != LICHEN_MIC_64) {
+		return -EINVAL;
+	}
 
-	/* SECURITY: Check payload_len before arithmetic to prevent overflow on 32-bit size_t */
-	if (frame->payload_len > LICHEN_MAX_PAYLOAD) {
+	size_t non_payload_len = LICHEN_FRAME_PAYLOAD_OFFSET(addr_len) + mic_len;
+
+	if (frame->payload_len > LICHEN_MAX_FRAME_LEN - non_payload_len) {
 		return -EMSGSIZE;
 	}
 
-	/* Calculate total frame size */
-	size_t frame_len = LICHEN_FRAME_PAYLOAD_OFFSET(addr_len) +
-			   frame->payload_len + mic_len;
+	size_t frame_len = non_payload_len + frame->payload_len;
 
 	if (frame_len > buflen) {
-		return -ENOMEM; /* Buffer too small */
-	}
-	if (frame_len > 256) {
-		return -EMSGSIZE; /* Frame too large */
+		return -ENOMEM;
 	}
 
 	size_t off = 0;

@@ -22,14 +22,28 @@ from lichen.coap.resources import (
 )
 from lichen.coap.schc_channel import SchcChannel, unwrap_coap, wrap_coap
 from lichen.coap.secure import (
+    ContextGenerationError,
     EdhocPeerResolver,
+    EndpointPolicyConflictError,
+    ForkSafetyError,
+    InMemoryOscoreContextStore,
     OscoreContextStore,
+    PeerKeyConflictError,
+    ReplayWindowConflictError,
     SecureDatagramChannel,
+    SequenceReservation,
+    SequenceReservationError,
+    SqliteOscoreContextStore,
+    SqliteStoreHooks,
     TofuPeerResolver,
+    TransactionalOscoreContextStore,
     create_secure_channel,
+    normalize_host,
+    validate_endpoint_key,
 )
 from lichen.coap.transport import (
     DatagramChannel,
+    EndpointPolicy,
     InMemoryChannel,
     InMemoryNetwork,
     LichenRemote,
@@ -41,6 +55,7 @@ from lichen.coap.udp_server import bind_coap_udp
 __all__ = [
     # Transport
     "DatagramChannel",
+    "EndpointPolicy",
     "InMemoryChannel",
     "InMemoryNetwork",
     "LichenRemote",
@@ -48,11 +63,24 @@ __all__ = [
     "SchcChannel",
     "create_lichen_context",
     # Security (OSCORE)
+    "ContextGenerationError",
     "EdhocPeerResolver",
+    "EndpointPolicyConflictError",
+    "ForkSafetyError",
+    "InMemoryOscoreContextStore",
     "OscoreContextStore",
+    "PeerKeyConflictError",
+    "ReplayWindowConflictError",
+    "SequenceReservation",
+    "SequenceReservationError",
     "SecureDatagramChannel",
+    "SqliteOscoreContextStore",
+    "SqliteStoreHooks",
     "TofuPeerResolver",
+    "TransactionalOscoreContextStore",
     "create_secure_channel",
+    "normalize_host",
+    "validate_endpoint_key",
     # Resources
     "ConfigResource",
     "EdhocResource",

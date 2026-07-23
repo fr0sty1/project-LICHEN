@@ -35,7 +35,7 @@ from ..constants import (
 )
 from ..crypto.identity import Identity, PeerIdentity
 from ..crypto.schnorr48 import sign, verify
-from .frame import AddrMode, FrameError, LichenFrame, MicLength
+from .frame import MAX_FRAME_BODY, AddrMode, FrameError, LichenFrame, MicLength
 from .replay import ReplayProtector
 from .tx_queue import Priority, TxQueue
 
@@ -140,6 +140,21 @@ class RxFrame:
     rssi_dbm: int
     snr_db: int
 
+    @property
+    def payload(self) -> bytes:
+        """Authenticated frame payload."""
+        return self.frame.payload
+
+    @property
+    def sender_iid(self) -> bytes:
+        """Authenticated sender IID."""
+        return self.sender.iid
+
+    @property
+    def sender_pubkey(self) -> bytes:
+        """Authenticated sender public key."""
+        return self.sender.pubkey
+
 
 class ReceiveError(IntEnum):
     MALFORMED = 1
@@ -220,14 +235,16 @@ class LinkLayer:
             raise RuntimeError("link tuple exhaustion")
 
         epoch, seqnum = self._epoch, self._seqnum
+        self._sequence_started = True
 
         # Advance for next call
-        self._seqnum += 1
-        if self._seqnum > 0xFFFF:
+        if epoch == 0xFF and seqnum == 0xFFFF:
+            self._sequence_exhausted = True
+        elif seqnum == 0xFFFF:
             # Why wrap handling: seqnum is 16-bit, epoch is 8-bit
             # Together they form a 24-bit monotonic counter
             self._seqnum = 0
-            self._epoch = (self._epoch + 1) & 0xFF
+            self._epoch += 1
             logger.debug("epoch wrapped to %d", self._epoch)
             if self._epoch == 0:
                 self._exhausted = True
@@ -278,20 +295,19 @@ class LinkLayer:
         priority: Priority = Priority.BULK,
         deadline_ms: int | None = None,
     ) -> bool:
-        """Transmit a signed frame via the TX queue.
+        """Queue and transmit one frame while serializing TX state."""
+        async with self._tx_lock:
+            return await self._send_locked(payload, dst_addr, addr_mode, priority, deadline_ms)
 
-        Why async: Radio transmission may block waiting for channel clear
-        (listen-before-talk) or TX completion.
-
-        The frame is queued with the specified priority. Then the queue is
-        drained: packets are transmitted in priority order until the queue
-        is empty or CAD fails. Packets remaining in queue after CAD failure
-        will be transmitted on the next send() call.
-
-        If cad_enabled is True, performs CAD before transmitting. On busy
-        channel, backs off with exponential delay (0 to 2^attempt - 1 slots,
-        capped at 31 slots). After 3 full backoff cycles without clearing,
-        packets remain queued for later retry.
+    async def _send_locked(
+        self,
+        payload: bytes,
+        dst_addr: bytes = b"",
+        addr_mode: AddrMode = AddrMode.NONE,
+        priority: Priority = Priority.BULK,
+        deadline_ms: int | None = None,
+    ) -> bool:
+        """Build, enqueue, and drain while the TX lock is held.
 
         Args:
             payload: The data to send (typically SCHC-compressed packet).
@@ -303,10 +319,6 @@ class LinkLayer:
             priority: Queue priority (ROUTING, ACK, URGENT, or BULK).
             deadline_ms: Absolute deadline in ms. If None, uses default
                          for the priority level.
-
-        Returns:
-            True if at least one packet was transmitted from the queue,
-            False if CAD failed or queue was empty after expiry.
 
         Raises:
             QueueFullError: If queue is full and cannot preempt lower priority.
@@ -583,8 +595,7 @@ class LinkLayer:
             len(inner_payload),
         )
 
-        # Why create new frame with inner payload: The caller shouldn't see
-        # the signature bytes - they're link-layer overhead, not application data.
+        # Preserve the authenticated payload; signature bytes live in MIC.
         validated_frame = LichenFrame(
             epoch=frame.epoch,
             seqnum=frame.seqnum,
@@ -674,13 +685,21 @@ class LinkLayer:
 
         Raises:
             ValueError: If values are out of range.
+            RuntimeError: If any frame has already been accepted for transmission.
         """
         if not 0 <= epoch <= 0xFF:
             raise ValueError(f"epoch out of range: {epoch}")
         if not 0 <= seqnum <= 0xFFFF:
             raise ValueError(f"seqnum out of range: {seqnum}")
+        if self._sequence_exhausted:
+            raise OverflowError("link-layer sequence exhausted; rotate identity key")
+        if self._sequence_started:
+            raise RuntimeError("link-layer sequence cannot be reset after use")
         self._epoch = epoch
         self._seqnum = seqnum
+        if epoch == 0xFF and seqnum == 0xFFFF:
+            self._sequence_exhausted = True
+            raise OverflowError("link-layer sequence exhausted; rotate identity key")
         logger.info("sequence set to epoch=%d seqnum=%d", epoch, seqnum)
 
     def get_sequence(self) -> tuple[int, int]:
@@ -689,12 +708,6 @@ class LinkLayer:
         Returns:
             (epoch, seqnum) tuple.
         """
+        if self._sequence_exhausted:
+            raise OverflowError("link-layer sequence exhausted; rotate identity key")
         return self._epoch, self._seqnum
-
-    def unpin_peer(self, iid: bytes) -> None:
-        """Remove the key pin for a peer IID (use only for intentional key rotation)."""
-        self._pinned_keys.pop(iid, None)
-
-    def pinned_pubkey_for(self, iid: bytes) -> bytes | None:
-        """Return the pinned pubkey for an IID, or None if not yet seen."""
-        return self._pinned_keys.get(iid)

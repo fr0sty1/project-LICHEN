@@ -121,7 +121,7 @@ class TxQueueStats:
         packets_dropped_deadline: Packets dropped due to deadline expiry.
         packets_dropped_preempt: Packets evicted by higher-priority preemption.
         packets_dropped_full: Packets rejected with QueueFullError.
-        packets_transmitted: Packets successfully popped for transmission.
+        packets_transmitted: Packets confirmed transmitted by the radio.
         max_latency_ms: Maximum time any packet spent in queue.
         avg_latency_ms: Smoothed average queue latency (EMA, alpha=0.1).
     """
@@ -239,8 +239,8 @@ class TxQueue:
         Raises:
             QueueFullError: If queue is full and preemption not possible.
         """
-        # Expire stale packets first - might make room
         self.expire_stale()
+        self.ensure_can_push(priority)
 
         now = self._clock()
         if deadline_ms is None:
@@ -274,6 +274,25 @@ class TxQueue:
         # Find lowest-priority (highest numeric value) packet
         lowest = max(self._entries, key=lambda e: e.priority)
 
+        # ensure_can_push() established that a full queue is preemptible.
+        self._entries.remove(lowest)
+        self.stats.packets_dropped_preempt += 1
+        logger.debug(
+            "TX queue preempt: evicted priority=%s for priority=%s",
+            Priority(lowest.priority).name,
+            priority.name,
+        )
+        self._insert_sorted(entry)
+        self.stats.packets_queued += 1
+
+    def ensure_can_push(self, priority: Priority) -> None:
+        """Reject a non-preemptible full queue without mutating live entries."""
+        now = self._clock()
+        active_entries = [entry for entry in self._entries if entry.deadline_ms > now]
+        if len(active_entries) < self._capacity:
+            return
+
+        lowest = max(active_entries, key=lambda entry: entry.priority)
         if priority < lowest.priority:
             # New packet is higher priority - preempt
             self._entries.remove(lowest)
@@ -314,7 +333,20 @@ class TxQueue:
         if not self._entries:
             return None
 
-        # Entries are sorted: highest priority (lowest value) first
+        return self._entries.pop(0).data
+
+    def confirm_transmitted(self, expected: bytes) -> None:
+        """Remove the front packet after the radio confirms transmission.
+
+        The expected bytes bind confirmation to the packet selected by peek().
+        No expiry runs here because the packet has already been transmitted.
+        """
+        if not self._entries or self._entries[0].data != expected:
+            raise ValueError("transmitted packet is not at queue front")
+        self._remove_first()
+
+    def _remove_first(self) -> TxQueueEntry:
+        """Remove the front entry and update successful-transmission stats."""
         entry = self._entries.pop(0)
 
         # Track latency stats
@@ -340,7 +372,7 @@ class TxQueue:
             self._capacity,
         )
 
-        return entry.data
+        return entry
 
     def peek(self) -> tuple[bytes, Priority] | None:
         """Peek at the highest-priority packet without removing it.

@@ -15,6 +15,8 @@ Test categories:
 4. Error cases: Malformed frames, bad signatures, replays
 """
 
+import asyncio
+
 import pytest
 
 from lichen.crypto.identity import Identity, PeerIdentity
@@ -39,13 +41,41 @@ class MockRadio:
 
     def __init__(self):
         self.tx_history: list[bytes] = []
+        self.tx_attempts: list[bytes] = []
         self.rx_queue: list[tuple[bytes, int, int]] = []
         self.cad_returns: bool = False  # False = channel clear
+        self.transmit_returns: bool = True
+        self.transmit_results: list[bool] = []
+        self.transmit_error: Exception | None = None
+        self.transmit_started: asyncio.Event | None = None
+        self.transmit_release: asyncio.Event | None = None
+        self.active_transmits = 0
+        self.max_active_transmits = 0
+        self.cad_started: asyncio.Event | None = None
+        self.cad_release: asyncio.Event | None = None
 
     async def transmit(self, payload: bytes) -> bool:
         """Record transmitted frames."""
-        self.tx_history.append(payload)
-        return True
+        self.active_transmits += 1
+        self.max_active_transmits = max(self.max_active_transmits, self.active_transmits)
+        self.tx_attempts.append(payload)
+        try:
+            if self.transmit_error is not None:
+                raise self.transmit_error
+            if self.transmit_started is not None:
+                self.transmit_started.set()
+            if self.transmit_release is not None:
+                await self.transmit_release.wait()
+            result = (
+                self.transmit_results.pop(0)
+                if self.transmit_results
+                else self.transmit_returns
+            )
+            if result:
+                self.tx_history.append(payload)
+            return result
+        finally:
+            self.active_transmits -= 1
 
     async def receive(self, timeout_ms: int) -> tuple[bytes, int, int] | None:
         """Return next queued frame or None."""
@@ -59,6 +89,10 @@ class MockRadio:
 
     async def cad(self, timeout_ms: int) -> bool:
         """Return configured CAD result (default: channel clear)."""
+        if self.cad_started is not None:
+            self.cad_started.set()
+        if self.cad_release is not None:
+            await self.cad_release.wait()
         return self.cad_returns
 
     def queue_rx(self, data: bytes, rssi: int = -50, snr: int = 10) -> None:
@@ -114,6 +148,41 @@ def link_layer(
     )
     ll.set_sequence(0, 0)  # deterministic epoch for tests
     return ll
+
+
+class TestLinkLayerEpoch:
+    """Tests for unpredictable reboot epoch initialization."""
+
+    def test_epoch_uses_system_entropy(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        mock_radio: MockRadio,
+        node_identity: Identity,
+    ) -> None:
+        calls: list[int] = []
+
+        def randbelow(limit: int) -> int:
+            calls.append(limit)
+            return 127
+
+        monkeypatch.setattr("lichen.link.link_layer.secrets.randbelow", randbelow)
+        ll = LinkLayer(radio=mock_radio, identity=node_identity, peer_lookup=lambda _: None)
+
+        assert calls == [128]
+        assert ll.get_sequence() == (255, 0)
+
+    def test_entropy_failure_propagates(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        mock_radio: MockRadio,
+        node_identity: Identity,
+    ) -> None:
+        def fail(_: int) -> int:
+            raise RuntimeError("entropy unavailable")
+
+        monkeypatch.setattr("lichen.link.link_layer.secrets.randbelow", fail)
+        with pytest.raises(RuntimeError, match="entropy unavailable"):
+            LinkLayer(radio=mock_radio, identity=node_identity, peer_lookup=lambda _: None)
 
 
 class TestLinkLayerTx:
@@ -202,6 +271,43 @@ class TestLinkLayerTx:
         assert frames[1].seqnum == 0
 
     @pytest.mark.asyncio
+    async def test_signing_failure_consumes_tuple(
+        self, link_layer: LinkLayer, monkeypatch: pytest.MonkeyPatch
+    ):
+        class SigningError(Exception):
+            pass
+
+        def fail_sign(*args: object) -> bytes:
+            raise SigningError
+
+        monkeypatch.setattr("lichen.link.link_layer.sign", fail_sign)
+        with pytest.raises(SigningError):
+            await link_layer.send(b"payload")
+        assert link_layer.get_sequence() == (0, 1)
+        with pytest.raises(RuntimeError, match="cannot be reset after use"):
+            link_layer.set_sequence(0, 0)
+
+    @pytest.mark.asyncio
+    async def test_terminal_tuple_is_used_once_then_exhausts(
+        self, link_layer: LinkLayer, mock_radio: MockRadio
+    ):
+        link_layer.set_sequence(0xFF, 0xFFFE)
+
+        await link_layer.send(b"penultimate")
+        assert link_layer.get_sequence() == (0xFF, 0xFFFF)
+        await link_layer.send(b"terminal")
+
+        with pytest.raises(OverflowError, match="sequence exhausted"):
+            link_layer.get_sequence()
+        with pytest.raises(OverflowError, match="sequence exhausted"):
+            await link_layer.send(b"reused")
+        frames = [LichenFrame.from_bytes(data) for data in mock_radio.tx_history]
+        assert [(frame.epoch, frame.seqnum) for frame in frames] == [
+            (0xFF, 0xFFFE),
+            (0xFF, 0xFFFF),
+        ]
+
+    @pytest.mark.asyncio
     async def test_send_with_destination(self, link_layer: LinkLayer, mock_radio: MockRadio):
         """send with destination address sets addr_mode correctly."""
         dst = bytes([0x12, 0x34])
@@ -210,6 +316,34 @@ class TestLinkLayerTx:
         frame = LichenFrame.from_bytes(mock_radio.tx_history[0])
         assert frame.addr_mode == AddrMode.SHORT
         assert frame.dst_addr == dst
+
+    @pytest.mark.asyncio
+    async def test_send_payload_boundary(
+        self, link_layer: LinkLayer, mock_radio: MockRadio
+    ) -> None:
+        await link_layer.send(b"\xaa" * 202)
+        assert len(mock_radio.tx_history[0]) == 255
+
+    @pytest.mark.asyncio
+    async def test_oversized_send_rejects_before_signing_without_mutation(
+        self,
+        link_layer: LinkLayer,
+        mock_radio: MockRadio,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        def unexpected_sign(*args: object) -> bytes:
+            raise AssertionError("oversized payload was signed")
+
+        monkeypatch.setattr("lichen.link.link_layer.sign", unexpected_sign)
+        sequence = link_layer.get_sequence()
+        queue_len = len(link_layer.tx_queue)
+
+        with pytest.raises(FrameError, match="frame body is 255 bytes, exceeds 254"):
+            await link_layer.send(b"\xaa" * 203)
+
+        assert link_layer.get_sequence() == sequence
+        assert len(link_layer.tx_queue) == queue_len
+        assert mock_radio.tx_history == []
 
 
 class TestLinkLayerRx:
@@ -240,7 +374,7 @@ class TestLinkLayerRx:
             seqnum=0,
             dst_addr=b"",
             payload=b"unsigned",
-            mic=PLACEHOLDER_MIC,
+            mic=b"",
             signature_present=False,  # No signature
         )
         mock_radio.queue_rx(frame.to_bytes())
@@ -323,6 +457,8 @@ class TestLinkLayerRx:
         mock_radio.queue_rx(frame_bytes)
         result1 = await link_layer.receive(timeout_ms=100)
         assert result1 is not None
+        assert result1.frame.payload == payload
+        assert result1.frame.mic == signature
 
         # Second receive (replay) should fail
         mock_radio.queue_rx(frame_bytes)
@@ -430,6 +566,37 @@ class TestSequenceManagement:
         with pytest.raises(ValueError, match="seqnum out of range"):
             link_layer.set_sequence(0, -1)
 
+    def test_restored_terminal_tuple_fails_closed(self, link_layer: LinkLayer):
+        with pytest.raises(OverflowError, match="sequence exhausted"):
+            link_layer.set_sequence(0xFF, 0xFFFF)
+
+        with pytest.raises(OverflowError, match="sequence exhausted"):
+            link_layer.get_sequence()
+        with pytest.raises(OverflowError, match="sequence exhausted"):
+            link_layer.set_sequence(0, 0)
+
+    @pytest.mark.asyncio
+    async def test_set_sequence_rejects_queued_frame(
+        self, link_layer: LinkLayer, mock_radio: MockRadio
+    ) -> None:
+        mock_radio.cad_returns = True
+        assert await link_layer.send(b"queued") is False
+
+        with pytest.raises(RuntimeError, match="cannot be reset"):
+            link_layer.set_sequence(0, 0)
+
+        assert link_layer.get_sequence() == (0, 1)
+        assert len(link_layer.tx_queue) == 1
+
+    @pytest.mark.asyncio
+    async def test_set_sequence_rejects_used_counter(self, link_layer: LinkLayer) -> None:
+        assert await link_layer.send(b"sent") is True
+        assert len(link_layer.tx_queue) == 0
+
+        with pytest.raises(RuntimeError, match="cannot be reset"):
+            link_layer.set_sequence(0, 0)
+
+        assert link_layer.get_sequence() == (0, 1)
 
 class TestLinkLayerConstruction:
     """Tests for LinkLayer construction and validation."""
@@ -489,6 +656,9 @@ class TestRxFrameMetadata:
         assert isinstance(result, RxFrame)
         assert result.rssi_dbm == -75
         assert result.snr_db == 5
+        assert result.payload == b"test"
+        assert result.sender_iid == node_identity.iid
+        assert result.sender_pubkey == node_identity.pubkey
 
 
 class TestTxQueueIntegration:
@@ -708,75 +878,52 @@ class TestTxQueueIntegration:
         assert len(ll.tx_queue) == 1
         assert len(mock_radio.tx_history) == 0
 
-
-class TestKeyPinning:
-    """Tests for link-layer TOFU key pinning and change detection.
-
-    SECURITY NOTE: Key pinning is disabled while MIC verification is a stub.
-    These tests verify the pinning infrastructure works correctly, but automatic
-    pinning on first RX is intentionally disabled until MIC is implemented.
-    See _should_pin_key() for details.
-    """
-
     @pytest.mark.asyncio
-    async def test_no_pinning_while_mic_is_stub(
-        self,
-        mock_radio: MockRadio,
-        node_identity: Identity,
-        peer_identity: Identity,
-    ):
-        """While MIC verification is a stub, key pinning is disabled for security.
-
-        SECURITY: Key pinning without MIC verification could allow attackers
-        to poison the pin table. Rather than provide false security, pinning
-        is disabled until MIC verification is implemented.
-        """
-        peer_peer = PeerIdentity.from_pubkey(peer_identity.pubkey)
-
-        def peer_lookup(hint: bytes) -> PeerIdentity | None:
-            return peer_peer
-
-        node_ll = LinkLayer(
+    async def test_cad_busy_preserves_full_same_priority_queue(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ) -> None:
+        mock_radio.cad_returns = True
+        ll = LinkLayer(
             radio=mock_radio,
             identity=node_identity,
-            peer_lookup=peer_lookup,
+            peer_lookup=lambda _: None,
+            cad_enabled=True,
         )
+        ll.set_sequence(0, 0)
 
-        peer_ll = LinkLayer(radio=MockRadio(), identity=peer_identity, peer_lookup=lambda h: None)
-        await peer_ll.send(b"hello")
-        mock_radio.queue_rx(peer_ll.radio.tx_history[0])
+        for i in range(4):
+            await ll.send(f"routing{i}".encode(), priority=Priority.ROUTING)
 
-        result = await node_ll.receive(timeout_ms=100)
-        assert result is not None
-        # Key should NOT be pinned while MIC is a stub
-        assert node_ll.pinned_pubkey_for(peer_peer.iid) is None
+        assert len(ll.tx_queue) == 4
+        mock_radio.cad_returns = False
+        assert await ll.drain_tx_queue() is True
+        assert [LichenFrame.from_bytes(raw).seqnum for raw in mock_radio.tx_history] == [
+            0,
+            1,
+            2,
+            3,
+        ]
 
     @pytest.mark.asyncio
-    async def test_key_change_rejected(
-        self,
-        mock_radio: MockRadio,
-        node_identity: Identity,
-        peer_identity: Identity,
-    ):
-        """After pinning a peer's pubkey, a frame from the same IID with a
-        different pubkey must be silently dropped."""
-        peer_peer = PeerIdentity.from_pubkey(peer_identity.pubkey)
-
-        def peer_lookup(hint: bytes) -> PeerIdentity | None:
-            return peer_peer
-
-        node_ll = LinkLayer(
+    async def test_radio_false_preserves_packet_for_retry(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ) -> None:
+        mock_radio.transmit_returns = False
+        ll = LinkLayer(
             radio=mock_radio,
             identity=node_identity,
-            peer_lookup=peer_lookup,
+            peer_lookup=lambda _: None,
+            cad_enabled=False,
         )
+        ll.set_sequence(0, 0)
 
-        # First RX: pins the pubkey.
-        peer_ll = LinkLayer(radio=MockRadio(), identity=peer_identity, peer_lookup=lambda h: None)
-        await peer_ll.send(b"first")
-        mock_radio.queue_rx(peer_ll.radio.tx_history[0])
-        result1 = await node_ll.receive(timeout_ms=100)
-        assert result1 is not None
+        assert await ll.send(b"retry", priority=Priority.ACK) is False
+        queued = ll.tx_queue.peek()
+        assert queued is not None
+        frame_bytes, priority = queued
+        assert priority == Priority.ACK
+        assert LichenFrame.from_bytes(frame_bytes).seqnum == 0
+        assert ll.tx_queue.stats.packets_transmitted == 0
 
         # Overwrite pin to simulate key-change scenario.
         node_ll._pinned_keys[peer_peer.iid] = bytes([0x99] * 32)
@@ -789,43 +936,163 @@ class TestKeyPinning:
         assert result2 == ReceiveError.KEY_CHANGE
 
     @pytest.mark.asyncio
-    async def test_unpin_allows_key_rotation(
-        self,
-        mock_radio: MockRadio,
-        node_identity: Identity,
-        peer_identity: Identity,
-    ):
-        """After unpin_peer(), a manually pinned key is cleared and frames are accepted.
-
-        This tests the unpin_peer() API that will be used for admin key rotation
-        once MIC verification is implemented and automatic pinning is enabled.
-        """
-        peer_peer = PeerIdentity.from_pubkey(peer_identity.pubkey)
-
-        def peer_lookup(hint: bytes) -> PeerIdentity | None:
-            return peer_peer
-
-        node_ll = LinkLayer(
+    async def test_radio_exception_preserves_packet_for_retry(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ) -> None:
+        mock_radio.transmit_error = RuntimeError("radio failed")
+        ll = LinkLayer(
             radio=mock_radio,
             identity=node_identity,
-            peer_lookup=peer_lookup,
+            peer_lookup=lambda _: None,
+            cad_enabled=False,
         )
-        node_ll.set_sequence(0, 0)  # deterministic epoch for test
+        ll.set_sequence(0, 0)
 
-        # Manually pin a different key to simulate previous pinning
-        fake_key = bytes([0xAA] * 32)
-        node_ll._pinned_keys[peer_peer.iid] = fake_key
+        with pytest.raises(RuntimeError, match="radio failed"):
+            await ll.send(b"retry", priority=Priority.URGENT)
+        queued = ll.tx_queue.peek()
+        assert queued is not None
+        frame_bytes, priority = queued
+        assert priority == Priority.URGENT
+        assert LichenFrame.from_bytes(frame_bytes).seqnum == 0
+        assert ll.tx_queue.stats.packets_transmitted == 0
 
-        # Admin unpins
-        node_ll.unpin_peer(peer_peer.iid)
-        assert node_ll.pinned_pubkey_for(peer_peer.iid) is None
+        mock_radio.transmit_error = None
+        assert await ll.drain_tx_queue() is True
+        assert len(ll.tx_queue) == 0
+        assert ll.tx_queue.stats.packets_transmitted == 1
+        assert mock_radio.tx_attempts == [frame_bytes, frame_bytes]
+        assert mock_radio.tx_history == [frame_bytes]
 
-        # Peer can now send frames (no pinned key to conflict with)
-        peer_ll = LinkLayer(radio=MockRadio(), identity=peer_identity, peer_lookup=lambda h: None)
-        peer_ll.set_sequence(0, 0)  # deterministic epoch for test
-        await peer_ll.send(b"after_unpin")
-        mock_radio.queue_rx(peer_ll.radio.tx_history[0])
-        result = await node_ll.receive(timeout_ms=100)
-        assert result is not None
-        # Key still not pinned (MIC stub active)
-        assert node_ll.pinned_pubkey_for(peer_peer.iid) is None
+    @pytest.mark.asyncio
+    async def test_concurrent_send_cannot_replace_in_flight_packet(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ) -> None:
+        mock_radio.transmit_started = asyncio.Event()
+        mock_radio.transmit_release = asyncio.Event()
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=lambda _: None,
+            cad_enabled=False,
+        )
+        ll.set_sequence(0, 0)
+
+        first = asyncio.create_task(ll.send(b"first", priority=Priority.BULK))
+        await mock_radio.transmit_started.wait()
+        second = asyncio.create_task(ll.send(b"second", priority=Priority.ROUTING))
+        await asyncio.sleep(0)
+
+        assert not second.done()
+        assert len(ll.tx_queue) == 1
+        mock_radio.transmit_release.set()
+        assert await first is True
+        assert await second is True
+        assert [LichenFrame.from_bytes(raw).seqnum for raw in mock_radio.tx_history] == [0, 1]
+        assert ll.tx_queue.stats.packets_transmitted == 2
+
+    @pytest.mark.asyncio
+    async def test_cancelled_transmit_preserves_packet_and_releases_lock(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ) -> None:
+        mock_radio.transmit_started = asyncio.Event()
+        mock_radio.transmit_release = asyncio.Event()
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=lambda _: None,
+            cad_enabled=False,
+        )
+        ll.set_sequence(0, 0)
+
+        send = asyncio.create_task(ll.send(b"cancelled", priority=Priority.ACK))
+        await mock_radio.transmit_started.wait()
+        send.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await send
+
+        queued = ll.tx_queue.peek()
+        assert queued is not None
+        frame_bytes, priority = queued
+        assert priority == Priority.ACK
+        assert ll.tx_queue.stats.packets_transmitted == 0
+        mock_radio.transmit_started = None
+        mock_radio.transmit_release = None
+        assert await ll.drain_tx_queue() is True
+        assert mock_radio.tx_attempts == [frame_bytes, frame_bytes]
+        assert mock_radio.tx_history == [frame_bytes]
+
+    @pytest.mark.asyncio
+    async def test_concurrent_public_drain_does_not_overlap_radio(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ) -> None:
+        mock_radio.transmit_started = asyncio.Event()
+        mock_radio.transmit_release = asyncio.Event()
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=lambda _: None,
+            cad_enabled=False,
+        )
+
+        send = asyncio.create_task(ll.send(b"one"))
+        await mock_radio.transmit_started.wait()
+        drain = asyncio.create_task(ll.drain_tx_queue())
+        await asyncio.sleep(0)
+        assert not drain.done()
+
+        mock_radio.transmit_release.set()
+        assert await send is True
+        assert await drain is False
+        assert mock_radio.max_active_transmits == 1
+
+    @pytest.mark.asyncio
+    async def test_send_reports_its_own_frame_failure(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ) -> None:
+        mock_radio.cad_returns = True
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=lambda _: None,
+            cad_enabled=True,
+        )
+        ll.set_sequence(0, 0)
+        assert await ll.send(b"older", priority=Priority.ROUTING) is False
+
+        mock_radio.cad_returns = False
+        mock_radio.transmit_results = [True, False]
+        assert await ll.send(b"submitted", priority=Priority.BULK) is False
+        queued = ll.tx_queue.peek()
+        assert queued is not None
+        frame_bytes, _ = queued
+        assert LichenFrame.from_bytes(frame_bytes).seqnum == 1
+        assert ll.tx_queue.stats.packets_transmitted == 1
+
+        mock_radio.transmit_returns = True
+        assert await ll.drain_tx_queue() is True
+        assert ll.tx_queue.stats.packets_transmitted == 2
+
+    @pytest.mark.asyncio
+    async def test_packet_expiring_during_cad_is_not_transmitted(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ) -> None:
+        now = 0
+        mock_radio.cad_started = asyncio.Event()
+        mock_radio.cad_release = asyncio.Event()
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=lambda _: None,
+            cad_enabled=True,
+            tx_queue=TxQueue(clock=lambda: now),
+        )
+
+        send = asyncio.create_task(ll.send(b"stale", deadline_ms=100))
+        await mock_radio.cad_started.wait()
+        now = 100
+        mock_radio.cad_release.set()
+
+        assert await send is False
+        assert mock_radio.tx_attempts == []
+        assert ll.tx_queue.stats.packets_dropped_deadline == 1

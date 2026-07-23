@@ -211,7 +211,11 @@ pub trait NonVolatile {
     /// `stored_len` against `buf.len()` and expected size (see `load_*` in storage.rs).
     fn read(&self, key: &str, buf: &mut [u8]) -> Option<usize>;
 
-    /// Write value for key. Returns Err if storage full or key too long.
+    /// Atomically and durably replace one value.
+    ///
+    /// `Ok(())` guarantees the complete new value survives power loss. `Err`
+    /// guarantees the old value remains intact. Implementations must not expose
+    /// torn, partially written, or acknowledged-but-volatile values.
     fn write(&mut self, key: &str, data: &[u8]) -> Result<(), Self::Error>;
 
     /// Delete key. Returns true if key existed.

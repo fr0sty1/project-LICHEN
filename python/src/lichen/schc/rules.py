@@ -67,6 +67,54 @@ class FieldDescriptor:
     mo_arg: int | None = None
     mapping: tuple[int, ...] | None = None
 
+    def __post_init__(self) -> None:
+        if type(self.field_id) is not str:
+            raise ValueError("field_id must be a string")
+        if not isinstance(self.mo, MO):
+            raise ValueError(f"{self.field_id}: mo must be an MO")
+        if not isinstance(self.cda, CDA):
+            raise ValueError(f"{self.field_id}: cda must be a CDA")
+        if type(self.length_bits) is not int or self.length_bits < 0:
+            raise ValueError(f"{self.field_id}: length_bits must be a non-negative integer")
+        if self.mapping is not None and type(self.mapping) is not tuple:
+            raise ValueError(f"{self.field_id}: mapping must be a tuple")
+        if self.mo_arg is not None and (
+            type(self.mo_arg) is not int or not 0 <= self.mo_arg <= self.length_bits
+        ):
+            raise ValueError(f"{self.field_id}: mo_arg must be between 0 and length_bits")
+        if self.mo != MO.MSB and self.mo_arg is not None:
+            raise ValueError(f"{self.field_id}: mo_arg is only valid with MSB")
+        if self.mo == MO.MSB and self.mo_arg is None:
+            raise ValueError(f"{self.field_id}: MSB requires mo_arg")
+        if self.cda == CDA.LSB and self.mo != MO.MSB:
+            raise ValueError(f"{self.field_id}: LSB requires MSB matching operator")
+        if self.cda == CDA.NOT_SENT and self.mo != MO.EQUAL:
+            raise ValueError(f"{self.field_id}: NOT_SENT requires EQUAL matching operator")
+        if self.cda == CDA.MAPPING_SENT and self.mo != MO.MATCH_MAPPING:
+            raise ValueError(
+                f"{self.field_id}: MAPPING_SENT requires MATCH_MAPPING matching operator"
+            )
+        if self.mo == MO.MATCH_MAPPING and not self.mapping:
+            raise ValueError(f"{self.field_id}: MATCH_MAPPING requires a mapping")
+        if self.mo != MO.MATCH_MAPPING and self.mapping is not None:
+            raise ValueError(f"{self.field_id}: mapping is only valid with MATCH_MAPPING")
+
+        limit = 1 << self.length_bits
+        if type(self.target_value) is not int or not 0 <= self.target_value < limit:
+            raise ValueError(
+                f"{self.field_id}: target value {self.target_value} does not fit in "
+                f"{self.length_bits} bits"
+            )
+        if self.mapping is not None:
+            for value in self.mapping:
+                if type(value) is not int or not 0 <= value < limit:
+                    raise ValueError(
+                        f"{self.field_id}: mapping value {value} does not fit in "
+                        f"{self.length_bits} bits"
+                    )
+            if len(set(self.mapping)) != len(self.mapping):
+                raise ValueError(f"{self.field_id}: mapping values must be unique")
+
     def lsb_bits(self) -> int:
         """Number of residue bits for an LSB action (length_bits - MSB length)."""
         if self.mo_arg is None:
@@ -102,12 +150,23 @@ class FieldDescriptor:
 class Rule:
     """A SCHC rule: an ordered set of field descriptors keyed by a rule ID.
 
-    Rule IDs 0-127 are compression rules; 255 is the uncompressed fallback
-    (spec section 5.5). The rule ID is encoded as a single leading byte.
+    Rule IDs 0-127 are compression rules. ID 255 is the uncompressed fallback
+    marker (spec section 5.5), not a compression rule.
     """
 
     rule_id: int
     fields: tuple[FieldDescriptor, ...]
+
+    def __post_init__(self) -> None:
+        if type(self.rule_id) is not int or not 0 <= self.rule_id <= 0x7F:
+            raise ValueError(f"compression rule_id must be between 0 and 127, got {self.rule_id}")
+        if type(self.fields) is not tuple:
+            raise ValueError("fields must be a tuple")
+        if any(not isinstance(field, FieldDescriptor) for field in self.fields):
+            raise ValueError("fields must contain only FieldDescriptor values")
+        field_ids = [field.field_id for field in self.fields]
+        if len(set(field_ids)) != len(field_ids):
+            raise ValueError("field IDs must be unique within a rule")
 
 
 # Rule ID reserved for the uncompressed fallback (spec sections 5.5 / 5.7).

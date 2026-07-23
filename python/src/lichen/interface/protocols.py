@@ -149,12 +149,12 @@ class FrameParser(Protocol):
 
     @property
     def payload(self) -> bytes:
-        """Frame payload (SCHC-compressed packet + optional signature)."""
+        """Frame payload (typically a SCHC-compressed packet)."""
         ...
 
     @property
     def signature_present(self) -> bool:
-        """Whether Schnorr-48 signature is appended to payload."""
+        """Whether the MIC field contains a Schnorr-48 signature."""
         ...
 
 
@@ -175,7 +175,8 @@ class LinkLayerTx(Protocol):
     ) -> bool:
         """Transmit a signed frame.
 
-        Signs the payload with node identity, appends signature, and transmits.
+        Signs the frame with the node identity, stores the signature in MIC,
+        and transmits it.
         Performs CAD with backoff if cad_enabled.
 
         Args:
@@ -230,7 +231,7 @@ class RxResult(Protocol):
 
     @property
     def payload(self) -> bytes:
-        """Inner payload (signature stripped)."""
+        """Authenticated frame payload, unchanged from the wire."""
         ...
 
     @property

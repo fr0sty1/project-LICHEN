@@ -455,6 +455,9 @@ static int kiss_tx_frame(struct kiss_transport_ctx *ctx,
 	if (len > KISS_MAX_PAYLOAD) {
 		return -EMSGSIZE;
 	}
+	if (port == KISS_PORT_LICHEN_RAW && len > KISS_RAW_MAX_PAYLOAD) {
+		return -EMSGSIZE;
+	}
 
 	k_mutex_lock(&ctx->tx_mutex, K_FOREVER);
 

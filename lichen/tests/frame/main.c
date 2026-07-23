@@ -43,6 +43,40 @@ static int test_parse_rejects_null_data(void)
 	return 1;
 }
 
+static int test_parse_rejects_canonical_invalid_frames(void)
+{
+	uint8_t empty = 0U;
+	uint8_t truncated[] = { 0x14, 0x00, 0x01, 0x12, 0x34, 0xaa, 0xbb, 0xcc, 0xdd };
+	uint8_t reserved[] = { 0x08, 0x80, 0x01, 0x12, 0x34, 0xaa, 0xbb, 0xcc, 0xdd };
+	uint8_t too_short[] = { 0x02, 0x00, 0x01 };
+	struct lichen_frame frame;
+
+	ASSERT_EQ(lichen_frame_parse(&frame, &empty, 0), -EINVAL,
+		  "parse rejects empty frame");
+	ASSERT_EQ(lichen_frame_parse(&frame, truncated, sizeof(truncated)), -EINVAL,
+		  "parse rejects length mismatch");
+	ASSERT_EQ(lichen_frame_parse(&frame, reserved, sizeof(reserved)), -EINVAL,
+		  "parse rejects reserved bit");
+	ASSERT_EQ(lichen_frame_parse(&frame, too_short, sizeof(too_short)), -EINVAL,
+		  "parse rejects short body");
+
+	return 1;
+}
+
+static int test_parse_rejects_oversize_frames(void)
+{
+	uint8_t length_255[] = { 0xff };
+	uint8_t frame_256[256] = { 0xfe };
+	struct lichen_frame frame;
+
+	ASSERT_EQ(lichen_frame_parse(&frame, length_255, sizeof(length_255)), -EMSGSIZE,
+		  "parse rejects LENGTH 255 before truncation");
+	ASSERT_EQ(lichen_frame_parse(&frame, frame_256, sizeof(frame_256)), -EMSGSIZE,
+		  "parse rejects 256-byte frame");
+
+	return 1;
+}
+
 static int test_write_rejects_null_frame(void)
 {
 	uint8_t buf[16];
@@ -206,6 +240,8 @@ int main(void)
 
 	RUN_TEST(test_parse_rejects_null_frame);
 	RUN_TEST(test_parse_rejects_null_data);
+	RUN_TEST(test_parse_rejects_canonical_invalid_frames);
+	RUN_TEST(test_parse_rejects_oversize_frames);
 	RUN_TEST(test_write_rejects_null_frame);
 	RUN_TEST(test_write_rejects_null_buf);
 	RUN_TEST(test_write_rejects_invalid_addr_mode);

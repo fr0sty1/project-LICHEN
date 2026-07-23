@@ -101,10 +101,6 @@ def compress(rule: Rule, fields: dict[str, int]) -> bytes:
         if fd.mo == MO.MATCH_MAPPING and (fd.mapping is None or value not in fd.mapping):
             raise SchcError(f"{fd.field_id}: value {value} not in mapping")
         if fd.cda == CDA.VALUE_SENT:
-            if value < 0 or value >= (1 << fd.length_bits):
-                raise SchcError(
-                    f"{fd.field_id}: value {value} does not fit in {fd.length_bits} bits"
-                )
             writer.write(value, fd.length_bits)
         elif fd.cda == CDA.LSB:
             k = fd.lsb_bits()

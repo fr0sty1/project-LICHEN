@@ -20,7 +20,9 @@ Typical usage::
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, fields
+from decimal import Decimal
 from typing import Any
 
 import cbor2
@@ -33,15 +35,15 @@ _LABEL_TO_FIELD: dict[int, str] = {
     -5: "bv",
     -6: "bs",
     -1: "bver",
-     0: "n",
-     1: "u",
-     2: "v",
-     3: "vs",
-     4: "vb",
-     5: "s",
-     6: "t",
-     7: "ut",
-     8: "vd",
+    0: "n",
+    1: "u",
+    2: "v",
+    3: "vs",
+    4: "vb",
+    5: "s",
+    6: "t",
+    7: "ut",
+    8: "vd",
 }
 
 _FIELD_TO_LABEL: dict[str, int] = {v: k for k, v in _LABEL_TO_FIELD.items()}
@@ -114,30 +116,30 @@ class SenmlRecord:
 
     * ``n``  — name (appended to bn to form the full resource name)
     * ``u``  — unit (overrides bu for this record)
-    * ``v``  — numeric value (float)
+    * ``v``  — numeric value
     * ``vs`` — string value
     * ``vb`` — boolean value
     * ``vd`` — data value (bytes)
     * ``s``  — sum (running total)
-    * ``t``  — time offset from bt (seconds, float)
-    * ``ut`` — update time (seconds, float)
+    * ``t``  — time offset from bt (seconds)
+    * ``ut`` — update time (seconds)
     """
 
     bn: str | None = None
-    bt: float | None = None
+    bt: int | float | Decimal | None = None
     bu: str | None = None
-    bv: float | None = None
-    bs: float | None = None
+    bv: int | float | Decimal | None = None
+    bs: int | float | Decimal | None = None
     bver: int | None = None
     n: str | None = None
     u: str | None = None
-    v: float | None = None
+    v: int | float | Decimal | None = None
     vs: str | None = None
     vb: bool | None = None
     vd: bytes | None = None
-    s: float | None = None
-    t: float | None = None
-    ut: float | None = None
+    s: int | float | Decimal | None = None
+    t: int | float | Decimal | None = None
+    ut: int | float | Decimal | None = None
 
     def to_cbor_map(self) -> dict[int, Any]:
         """Serialise to a dict with numeric CBOR keys (omits None fields)."""
@@ -166,6 +168,14 @@ class SenmlRecord:
         """
         kwargs: dict[str, Any] = {}
         for label, val in m.items():
+            if type(label) is str:
+                if label.endswith("_"):
+                    raise ValueError(f"unknown mandatory SenML label '{label}'")
+                continue
+            if type(label) is not int:
+                raise ValueError(
+                    f"SenML label must be an integer or string, got {type(label).__name__}"
+                )
             name = _LABEL_TO_FIELD.get(label)
             if name is not None:
                 _validate_field_type(name, val)
@@ -205,7 +215,7 @@ def unpack(data: bytes) -> list[SenmlRecord]:
         ValueError: If ``data`` is not a valid CBOR array of maps.
     """
     try:
-        raw = cbor2.loads(data)
+        raw = cbor2.loads(data, allow_duplicate_keys=False)
     except Exception as exc:
         raise ValueError(f"SenML CBOR decode failed: {exc}") from exc
     if not isinstance(raw, list):

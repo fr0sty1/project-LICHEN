@@ -39,7 +39,7 @@ All byte strings are lowercase hex (possibly empty). Schema validation and indep
   and encoders MUST NOT emit it.
 
 `addr_mode`: 0=none/broadcast, 1=16-bit short, 2=EUI-64, 3=elided.
-`mic_length`: 0=32-bit, 1=64-bit.
+`mic_length`: compatibility selector 0 or 1; unsigned frames carry no MIC.
 
 **L2 payload dispatch** (`l2_payload.json`): for each vector,
 - `wrapped` is the authenticated link inner payload.
@@ -87,10 +87,16 @@ All byte strings are lowercase hex (possibly empty). Schema validation and indep
 
 ```
 PYTHONPATH=python/src python3 test/vectors/generate.py
+cd python
+uv run --extra dev python ../test/vectors/generate_dao_origin_signature.py
+uv run --extra dev python ../test/vectors/generate_dao_origin_signature.py --check
+cd ..
+python3 test/vectors/generate_rpl_route_state.py
+python3 test/vectors/generate_rpl_route_state.py --check
 ```
 
-The Python suite re-derives every vector and fails on drift:
+The Python suite validates schema, structure, relations, hashes, and signatures:
 
-```
-cd python && PYTHONPATH=src python3 -m pytest tests/test_vectors.py
+```sh
+cd python && uv run --extra dev pytest tests/test_vectors.py
 ```

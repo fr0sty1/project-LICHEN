@@ -232,6 +232,7 @@ class ReplayWindowMachine(RuleBasedStateMachine):
         super().__init__()
         self.window = ReplayWindow()
         self.seen = set()
+        self.highest = -1
 
     @rule(epoch=st.integers(0, 3), seqnum=st.integers(0, 127))
     def receive_seqnum(self, epoch, seqnum):

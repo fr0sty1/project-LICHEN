@@ -1,7 +1,7 @@
 //! Replay-protection window (spec §5).
 //!
-//! Tracks seen (epoch, seqnum) pairs for one peer using a 64-slot bitmask
-//! window.  A frame is accepted if its sequence number falls within the window
+//! Tracks seen (epoch, seqnum) pairs for one peer using a 32-slot bitmask
+//! window. A frame is accepted if its sequence number falls within the window
 //! and has not been seen before, OR if it advances the window.
 
 use crate::seqnum::LinkSeqNum;
@@ -27,21 +27,21 @@ pub struct InvalidReplayWindowTransition {
     pub to: ReplayWindowState,
 }
 
-/// A 64-slot replay window for one (peer, epoch) context.
+/// A 32-slot replay window for one (peer, epoch) context.
 ///
 /// Bit layout: bit 0 of `window` represents `last_seq`; bit `i` represents
 /// `last_seq - i`.  A set bit means that sequence number was already accepted.
 ///
-/// `last_seq` stores the highest accepted sequence number. Sequence number
-/// arithmetic wraps modulo 65536. The caller must handle epoch transitions
-/// (discard this window and create a fresh one when the epoch advances).
+/// `last_seq` stores the highest accepted sequence number. Sequence numbers do
+/// not wrap within an epoch. The caller must discard this window and create a
+/// fresh one when the epoch advances.
 #[derive(Debug)]
 pub struct ReplayWindow {
     /// Highest sequence number accepted so far.
     last_seq: LinkSeqNum,
     /// Bitmask of accepted sequence numbers relative to `last_seq`.
-    /// Bit 0 = last_seq, bit 1 = last_seq-1, ..., bit 63 = last_seq-63.
-    window: u64,
+    /// Bit 0 = last_seq, bit 1 = last_seq-1, ..., bit 31 = last_seq-31.
+    window: u32,
     /// True once at least one sequence number has been accepted (to
     /// distinguish "last_seq = 0 never seen" from "last_seq = 0 was seen").
     initialised: bool,
@@ -80,7 +80,7 @@ impl ReplayWindow {
     /// Check `seq` and record it if accepted.
     ///
     /// Returns `true` if the frame should be processed; `false` if it is a
-    /// replay or too old to check (outside the 64-slot window).
+    /// replay or too old to check (outside the 32-slot window).
     pub fn accept(&mut self, seq: LinkSeqNum) -> bool {
         if !self.initialised {
             self.last_seq = seq;
@@ -91,13 +91,12 @@ impl ReplayWindow {
             return true;
         }
 
-        // Signed distance: positive means seq is newer than last_seq.
-        let diff = seq.signed_diff(self.last_seq);
+        let diff = i32::from(seq.get()) - i32::from(self.last_seq.get());
 
         if diff > 0 {
             // Newer than anything we've seen: advance the window.
             let shift = diff as u32;
-            self.window = if shift >= 64 {
+            self.window = if shift >= 32 {
                 // Entire window is beyond what we've seen; reset it.
                 1
             } else {
@@ -113,11 +112,11 @@ impl ReplayWindow {
         } else {
             // Older than last_seq: check the bitmask.
             let offset = (-diff) as u32;
-            if offset >= 64 {
+            if offset >= 32 {
                 // Outside the window — too old to verify, reject.
                 return false;
             }
-            let bit = 1u64 << offset;
+            let bit = 1u32 << offset;
             if self.window & bit != 0 {
                 // Already seen.
                 false
@@ -192,9 +191,9 @@ mod tests {
         let mut w = ReplayWindow::new();
         assert!(w.accept(seq(100)));
         // Advance window past slot 0.
-        assert!(w.accept(seq(164))); // 64 slots ahead
-                                     // seq=100 is now 64 slots behind last_seq=164 — exactly at the edge.
-                                     // offset = 64, which is >= 64, so rejected.
+        assert!(w.accept(seq(132))); // 32 slots ahead
+                                     // seq=100 is now 32 slots behind last_seq=132 — exactly at the edge.
+                                     // offset = 32, so rejected.
         assert!(!w.accept(seq(100)));
         assert!(!w.accept(seq(50))); // way too old
     }
@@ -202,26 +201,26 @@ mod tests {
     #[test]
     fn window_boundary_accepted() {
         let mut w = ReplayWindow::new();
-        assert!(w.accept(seq(63)));
-        assert!(w.accept(seq(0))); // 63 slots back — last slot in window
+        assert!(w.accept(seq(31)));
+        assert!(w.accept(seq(0))); // 31 slots back — last slot in window
         assert!(!w.accept(seq(0))); // replay
     }
 
     #[test]
-    fn sequence_wraps_u16() {
+    fn sequence_wrap_rejected_within_epoch() {
         let mut w = ReplayWindow::new();
         assert!(w.accept(seq(0xFFFE)));
         assert!(w.accept(seq(0xFFFF)));
-        assert!(w.accept(seq(0x0000))); // wraps around
-        assert!(w.accept(seq(0x0001)));
-        assert!(!w.accept(seq(0xFFFF))); // replay in wrapped window
+        assert!(!w.accept(seq(0x0000)));
+        assert!(!w.accept(seq(0x0001)));
+        assert!(!w.accept(seq(0xFFFF)));
     }
 
     #[test]
     fn large_gap_resets_window() {
         let mut w = ReplayWindow::new();
         assert!(w.accept(seq(0)));
-        assert!(w.accept(seq(200))); // gap > 64, resets window
+        assert!(w.accept(seq(200))); // gap > 32, resets window
         assert!(!w.accept(seq(0))); // 0 is now 200 slots back — outside window
         assert!(w.accept(seq(199))); // just inside window (offset = 1)
     }

@@ -11,13 +11,6 @@
 //! **all CoAP traffic MUST use OSCORE end-to-end encryption**.
 //!
 //! - **[`SecureStack`]** — OSCORE-protected CoAP. Use this for all application traffic.
-//! - **[`Stack`]** — Plaintext stack for ICMPv6, diagnostics, or testing only.
-//!
-//! The plaintext [`Stack`] is acceptable for:
-//! - ICMPv6 (ping) — OSCORE is CoAP-specific per RFC 8613
-//! - Link-layer testing and diagnostics
-//! - Development/debugging (never in production)
-//!
 //! # Integration Testing
 //!
 //! This crate has integration tests that exercise the full protocol path without mocking:
@@ -51,6 +44,10 @@ pub mod node;
 pub mod port_dispatch;
 pub mod routing;
 #[cfg(feature = "std")]
+pub mod rpl_stack;
+#[cfg(feature = "std")]
+pub mod runtime;
+#[cfg(feature = "std")]
 pub mod scheduler;
 #[cfg(feature = "std")]
 pub mod secure;
@@ -59,6 +56,10 @@ pub mod stack;
 #[cfg(feature = "std")]
 pub mod tdma_scheduler;
 
+#[cfg(feature = "std")]
+pub use announce::{
+    seq_gt, AnnounceProcessor, AnnounceRejectReason, AnnounceResult, MAX_TRACKED_ORIGINATORS,
+};
 pub use dispatch::{Dispatcher, Request, Resource, Response};
 #[cfg(feature = "std")]
 pub use gradient::GradientTable;

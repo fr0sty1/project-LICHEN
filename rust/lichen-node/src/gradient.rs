@@ -163,7 +163,7 @@ impl GradientEntry {
 /// Bounded, LRU-evicting table of gradient entries populated by all routing
 /// methods (announce, LOADng, RPL, passive learning).
 #[cfg(feature = "std")]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct GradientTable {
     entries: std::vec::Vec<GradientEntry>,
     max_entries: usize,

@@ -17,9 +17,17 @@ import logging
 from ipaddress import IPv6Address
 from typing import Any
 
-from lichen.coap.schc_channel import DEFAULT_COAP_PORT, unwrap_coap, wrap_coap
-from lichen.coap.transport import DatagramChannel, ReceiveCallback
-from lichen.ipv6.packet import IPv6Packet
+from lichen.coap.schc_channel import DEFAULT_COAP_PORT, wrap_coap
+from lichen.coap.transport import (
+    DatagramChannel,
+    Endpoint,
+    EndpointPolicy,
+    ReceiveCallback,
+    parse_channel_endpoint,
+    unscoped_ipv6,
+)
+from lichen.ipv6.packet import IPv6Packet, NextHeader
+from lichen.ipv6.udp import UdpDatagram, udp_checksum
 from lichen.l2_payload import L2PayloadKind, classify_l2_payload, l2_payload_body
 from lichen.schc.headers import decompress_packet
 
@@ -46,22 +54,49 @@ class NodeChannel(DatagramChannel):
         src_port: int = DEFAULT_COAP_PORT,
         dst_port: int = DEFAULT_COAP_PORT,
     ) -> None:
-        self._node = node
-        self._local = IPv6Address(local_host)
-        self._src_port = src_port
+        self._node: Any | None = node
+        local = parse_channel_endpoint(local_host, default_port=src_port)
+        local_address = IPv6Address(local.host)
+        if local_address.scope_id is not None and not local_address.is_link_local:
+            raise ValueError("IPv6 scope is only supported for link-local endpoints")
+        self._local_endpoint = local
+        self._local = unscoped_ipv6(local.host)
+        self._endpoint_policy = EndpointPolicy.owning_link_local(local.host)
+        self._src_port = local.port
         self._dst_port = dst_port
         self._receiver: ReceiveCallback | None = None
-        node.set_on_receive(self._on_node_receive)
+        self._tasks: set[asyncio.Task[Any]] = set()
+        self._closed = False
+        node.register_on_receive(self, self._on_node_receive)
 
     def set_receiver(self, receiver: ReceiveCallback) -> None:
+        if self._closed:
+            raise RuntimeError("channel is closed")
+        if self._receiver is not None:
+            raise RuntimeError("channel already has a receiver")
         self._receiver = receiver
 
+    def clear_receiver(self, receiver: ReceiveCallback) -> None:
+        if self._receiver == receiver:
+            self._receiver = None
+
+    @property
+    def endpoint_policy(self) -> EndpointPolicy:
+        return self._endpoint_policy
+
     def send_datagram(self, data: bytes, dest: str) -> None:
-        dst = IPv6Address(dest)
+        if self._closed or self._node is None:
+            raise RuntimeError("channel is closed")
+        endpoint = self.normalize_endpoint(
+            parse_channel_endpoint(dest, default_port=self._dst_port)
+        )
+        destination = IPv6Address(endpoint.host)
+        dst = unscoped_ipv6(destination)
         ipv6_bytes = wrap_coap(
-            self._local, dst, data, src_port=self._src_port, dst_port=self._dst_port
+            self._local, dst, data, src_port=self._src_port, dst_port=endpoint.port
         )
         task = asyncio.get_running_loop().create_task(self._node.send(ipv6_bytes))
+        self._tasks.add(task)
         task.add_done_callback(self._on_send_done)
 
     def _on_send_done(self, task: asyncio.Task[None]) -> None:
@@ -72,13 +107,34 @@ class NodeChannel(DatagramChannel):
             logger.warning("NodeChannel: send failed: %s", exc)
 
     def _on_node_receive(self, payload: bytes, _sender: object) -> None:
+        if self._closed:
+            return
         try:
             if classify_l2_payload(payload) is not L2PayloadKind.SCHC:
                 logger.debug("NodeChannel: ignoring non-SCHC L2 payload")
                 return
             ipv6_bytes = decompress_packet(l2_payload_body(payload))
-            coap = unwrap_coap(ipv6_bytes)
-            src = str(IPv6Packet.from_bytes(ipv6_bytes).header.src_addr)
+            packet = IPv6Packet.from_bytes(ipv6_bytes)
+            if packet.header.next_header != NextHeader.UDP:
+                return
+            udp = UdpDatagram.from_bytes(packet.payload)
+            if packet.header.dst_addr.packed != self._local.packed:
+                return
+            if udp.dst_port != self._src_port or udp.checksum == 0:
+                return
+            if (
+                udp_checksum(
+                    packet.header.src_addr,
+                    packet.header.dst_addr,
+                    packet.payload,
+                )
+                != 0
+            ):
+                return
+            coap = udp.payload
+            src = self.normalize_endpoint(
+                Endpoint(str(packet.header.src_addr), udp.src_port)
+            ).authority
         except Exception as exc:
             logger.debug("NodeChannel: failed to unwrap received packet: %s", exc)
             return
@@ -86,4 +142,20 @@ class NodeChannel(DatagramChannel):
             self._receiver(coap, src)
 
     def close(self) -> None:
-        pass
+        if self._closed:
+            return
+        self._closed = True
+        node = self._node
+        self._node = None
+        self._receiver = None
+        if node is not None:
+            node.unregister_on_receive(self)
+        for task in tuple(self._tasks):
+            task.cancel()
+
+    async def shutdown(self) -> None:
+        """Release callback ownership and drain pending sends."""
+        self.close()
+        tasks = tuple(self._tasks)
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)

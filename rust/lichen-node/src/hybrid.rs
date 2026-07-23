@@ -532,6 +532,7 @@ impl HybridRouter {
 
 #[cfg(feature = "std")]
 /// Validate geographic coordinates.
+#[cfg(feature = "std")]
 fn is_valid_coords(coords: &GeoCoords) -> bool {
     if coords.lat.is_nan()
         || coords.lat.is_infinite()
@@ -550,6 +551,7 @@ fn is_valid_coords(coords: &GeoCoords) -> bool {
 
 #[cfg(feature = "std")]
 /// Haversine distance in meters between two (lat, lon) points.
+#[cfg(feature = "std")]
 fn haversine(c1: &GeoCoords, c2: &GeoCoords) -> f32 {
     const EARTH_RADIUS_M: f32 = 6_371_000.0;
 
@@ -563,7 +565,7 @@ fn haversine(c1: &GeoCoords, c2: &GeoCoords) -> f32 {
 
     let a = (dlat / 2.0).sin().powi(2) + lat1.cos() * lat2.cos() * (dlon / 2.0).sin().powi(2);
     // Clamp for floating point errors
-    let c = 2.0 * a.min(1.0).sqrt().asin();
+    let c = 2.0 * libm::asinf(libm::sqrtf(a.min(1.0)));
 
     EARTH_RADIUS_M * c
 }

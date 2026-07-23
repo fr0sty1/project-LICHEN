@@ -93,6 +93,9 @@ extern "C" {
 /** Maximum frame payload size (after unescaping) */
 #define KISS_MAX_PAYLOAD     1024u
 
+/** Maximum raw LICHEN link frame carried on port 1 */
+#define KISS_RAW_MAX_PAYLOAD 255u
+
 /** Default KISS timing parameters (10ms units) */
 #define KISS_DEFAULT_TXDELAY     50u   /**< 500ms */
 #define KISS_DEFAULT_PERSISTENCE 63u   /**< p=0.25 */
@@ -174,7 +177,7 @@ typedef void (*kiss_ax25_rx_cb_t)(const uint8_t *data, size_t len, void *user_ct
  * @brief Callback for received raw LICHEN frames (port 1)
  *
  * @param data Pointer to raw LICHEN frame data
- * @param len  Length of frame data
+ * @param len  Length of frame data (max KISS_MAX_PAYLOAD)
  * @param user_ctx User context pointer
  */
 typedef void (*kiss_raw_rx_cb_t)(const uint8_t *data, size_t len, void *user_ctx);
@@ -264,10 +267,10 @@ int kiss_transport_send_ax25(const uint8_t *data, size_t len);
  * Encodes the frame with KISS framing and transmits over the serial link.
  *
  * @param data Pointer to raw LICHEN frame data
- * @param len  Length of frame data (max KISS_MAX_PAYLOAD)
+ * @param len  Length of frame data (max KISS_RAW_MAX_PAYLOAD)
  * @return 0 on success
  * @return -EINVAL if data is NULL with len > 0
- * @return -EMSGSIZE if len > KISS_MAX_PAYLOAD
+ * @return -EMSGSIZE if len > KISS_RAW_MAX_PAYLOAD
  * @return -ENODEV if transport not initialized
  */
 int kiss_transport_send_raw(const uint8_t *data, size_t len);

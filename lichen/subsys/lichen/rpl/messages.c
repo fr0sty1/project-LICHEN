@@ -106,6 +106,9 @@ int lichen_rpl_dao_parse(struct lichen_rpl_dao *dao,
 
 	uint8_t kd = data[1];
 	bool d_flag = (kd >> 6) & 1;
+	if ((kd & 0x3fU) != 0 || data[2] != 0) {
+		return LICHEN_RPL_ERR_BAD_OPT;
+	}
 
 	/* If D-flag set, DODAGID is present (16 bytes more) */
 	if (d_flag && len < LICHEN_RPL_DAO_BASE_LEN) {
@@ -130,6 +133,9 @@ int lichen_rpl_dao_write(const struct lichen_rpl_dao *dao,
 			 uint8_t *buf, size_t len)
 {
 	if (dao == NULL || buf == NULL) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
+	if (dao->flags != 0) {
 		return LICHEN_RPL_ERR_INVALID;
 	}
 	if (len < LICHEN_RPL_DAO_BASE_LEN) {
@@ -384,6 +390,9 @@ int lichen_rpl_transit_info_parse(struct lichen_rpl_transit_info *ti,
 	}
 	if (len < LICHEN_RPL_TRANSIT_INFO_DATA_LEN) {
 		return LICHEN_RPL_ERR_TOO_SHORT;
+	}
+	if (data[0] != 0) {
+		return LICHEN_RPL_ERR_INVALID;
 	}
 
 	/* data[0] holds flags with E bit (0x80 = parent present per RFC 6550 6.7.8);

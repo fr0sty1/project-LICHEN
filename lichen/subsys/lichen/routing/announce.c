@@ -505,6 +505,7 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 	uint8_t signed_data[ANNOUNCE_SIGNED_MAX_LEN];
 	size_t signed_len;
 	uint8_t signature[LICHEN_ANNOUNCE_SIGNATURE_LEN];
+	struct lichen_link_keypair_snapshot keypair = { 0 };
 	size_t pos = 0;
 	uint16_t seq;
 	size_t app_data_len_snapshot;
@@ -512,9 +513,14 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 
 	k_mutex_lock(&sched.mutex, K_FOREVER);
 
-	if (sched.link_ctx == NULL || !sched.link_ctx->has_key) {
+	if (sched.link_ctx == NULL) {
 		k_mutex_unlock(&sched.mutex);
 		return -ENOKEY;
+	}
+	ret = lichen_link_snapshot_keypair(sched.link_ctx, &keypair);
+	if (ret < 0) {
+		k_mutex_unlock(&sched.mutex);
+		return ret;
 	}
 
 	/* Increment and get sequence number */
@@ -540,12 +546,13 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 	uint8_t channel_snapshot = sched.rx_channel;
 	signed_len = ANNOUNCE_SIGNED_PREFIX_LEN + app_data_len_snapshot;
 	if (signed_len > sizeof(signed_data)) {
+		lichen_link_clear_keypair_snapshot(&keypair);
 		k_mutex_unlock(&sched.mutex);
 		return -EMSGSIZE;
 	}
 
 	memcpy(&signed_data[0], iid, LICHEN_ANNOUNCE_IID_LEN);
-	memcpy(&signed_data[LICHEN_ANNOUNCE_IID_LEN], sched.link_ctx->ed25519_pk,
+	memcpy(&signed_data[LICHEN_ANNOUNCE_IID_LEN], keypair.pk,
 	       LICHEN_ANNOUNCE_PUBKEY_LEN);
 	signed_data[LICHEN_ANNOUNCE_IID_LEN + LICHEN_ANNOUNCE_PUBKEY_LEN] =
 		(uint8_t)(seq >> 8);
@@ -559,9 +566,9 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 	}
 
 	/* Sign the announce */
-	ret = schnorr48_sign(sched.link_ctx->ed25519_sk,
-			     sched.link_ctx->ed25519_pk,
+	ret = schnorr48_sign(keypair.sk, keypair.pk,
 			     signed_data, signed_len, signature);
+	lichen_link_clear_keypair_snapshot(&keypair);
 
 	if (ret < 0) {
 		memset(signature, 0, sizeof(signature));

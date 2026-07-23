@@ -14,3 +14,6 @@ add_executable(frame_test
 )
 
 target_compile_options(frame_test PRIVATE -Wall -Wextra -Werror)
+
+include(CTest)
+add_test(NAME frame COMMAND frame_test)

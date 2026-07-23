@@ -23,6 +23,7 @@ use crate::message::{MessageCode, MessageType};
 const TIMEOUT_S: u64 = 5;
 /// Content-Format value for CBOR (RFC 7049).
 const CONTENT_FORMAT_CBOR: u16 = 60;
+static REQUEST_SEQUENCE: OnceLock<AtomicU64> = OnceLock::new();
 
 static REQUEST_SEQUENCE: OnceLock<AtomicU64> = OnceLock::new();
 

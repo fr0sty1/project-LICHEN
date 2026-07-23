@@ -24,6 +24,7 @@
 #define DEVICE_INFO_BUILD_OFF 8U
 #define DEVICE_INFO_MODEL_OFF 20U
 #define DEVICE_INFO_VERSION_OFF 60U
+#define CHANNEL_MSG_V3_WIRE_HEADER_LEN 11U
 
 struct out_slot {
 	uint8_t data[LICHEN_MESHCORE_FRAME_MAX];
@@ -1431,6 +1432,50 @@ ZTEST(meshcore_adapter, test_incoming_validation)
 		      -ENOTSUP);
 	zassert_equal(lichen_meshcore_adapter_emit_status(&adapter, &bad_reason),
 		      -ERANGE);
+}
+
+ZTEST(meshcore_adapter, test_incoming_text_payload_boundary)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+	uint8_t payload[LICHEN_MESHCORE_FRAME_MAX -
+			CHANNEL_MSG_V3_WIRE_HEADER_LEN] = { 0 };
+	const uint8_t sync_next[] = { LICHEN_MESHCORE_CMD_SYNC_NEXT_MESSAGE };
+	struct lichen_meshcore_incoming_text event = {
+		.payload = payload,
+		.payload_len = sizeof(payload),
+	};
+
+	init_adapter(&adapter, &ctx, OUT_DEPTH);
+	zassert_ok(lichen_meshcore_adapter_emit_text(&adapter, &event));
+	zassert_ok(lichen_meshcore_adapter_process_raw(&adapter, sync_next,
+						      sizeof(sync_next)));
+	zassert_equal(ctx.out[1].len, LICHEN_MESHCORE_FRAME_MAX);
+
+	init_adapter(&adapter, &ctx, OUT_DEPTH);
+	event.payload_len = sizeof(payload) + 1U;
+	zassert_equal(lichen_meshcore_adapter_emit_text(&adapter, &event),
+		      -EMSGSIZE);
+}
+
+ZTEST(meshcore_adapter, test_corrupted_pending_text_payload_rejected)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t sync_next[] = { LICHEN_MESHCORE_CMD_SYNC_NEXT_MESSAGE };
+
+	init_adapter(&adapter, &ctx, OUT_DEPTH);
+	adapter.pending[0].kind = LICHEN_MESHCORE_PENDING_TEXT;
+	adapter.pending[0].payload_len =
+		LICHEN_MESHCORE_FRAME_MAX -
+		CHANNEL_MSG_V3_WIRE_HEADER_LEN + 1U;
+	adapter.pending_count = 1U;
+
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, sync_next,
+							 sizeof(sync_next)),
+		      -EINVAL);
+	zassert_equal(ctx.count, 0U);
+	zassert_equal(adapter.pending_count, 1U);
 }
 
 ZTEST(meshcore_adapter, test_reset_clears_partial_stream)

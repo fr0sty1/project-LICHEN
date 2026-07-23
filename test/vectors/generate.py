@@ -18,6 +18,8 @@ import json
 from ipaddress import IPv6Address
 from pathlib import Path
 
+from lichen.crypto.identity import Identity
+from lichen.crypto.schnorr48 import sign
 from lichen.ipv6.icmpv6 import EchoRequest
 from lichen.ipv6.packet import IPv6Header, NextHeader
 from lichen.ipv6.udp import UdpDatagram
@@ -1854,8 +1856,9 @@ def main() -> None:
     )
     _write(
         "link_frame.json",
-        "LICHEN link-layer frame vectors (spec section 4). 'fields' are the "
-        "frame inputs; 'encoded' is LichenFrame(**fields).to_bytes().",
+        "LICHEN link-layer frame vectors (spec section 4). Complete frames are "
+        "at most 255 bytes (LENGTH at most 254). 'fields' are the frame inputs; "
+        "'encoded' is LichenFrame(**fields).to_bytes().",
         frame_vectors(),
     )
     _write(

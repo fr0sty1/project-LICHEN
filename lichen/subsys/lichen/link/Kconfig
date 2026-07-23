@@ -6,9 +6,8 @@
 menuconfig LICHEN_LINK
 	bool "LICHEN link layer"
 	depends on LICHEN
-	select CRC
-	select LICHEN_CRYPTO_AES_CCM
 	select LICHEN_SCHC
+	select TINYCRYPT
 	select TINYCRYPT_SHA256
 	help
 	  Enable the LICHEN link layer with Schnorr-48 signatures
@@ -18,8 +17,8 @@ menuconfig LICHEN_LINK
 if LICHEN_LINK
 
 config LICHEN_LINK_SCHNORR
-	bool "Schnorr-48 link signatures"
-	default y
+	def_bool y
+	select LICHEN_CRYPTO_MONOCYPHER
 	help
 	  Enable 48-byte Schnorr signatures per draft-lichen-schnorr-00.
 	  This provides sender authentication for every link-layer frame.
@@ -30,8 +29,8 @@ config LICHEN_LINK_MAX_NEIGHBORS
 	range 4 64
 	help
 	  Maximum number of neighbors to track replay state for.
-	  Each neighbor uses approximately 20 bytes of RAM (EUI-64 +
-	  64-bit replay window + metadata).
+	  Each neighbor uses approximately 48 bytes of RAM (public key +
+	  32-bit replay window + metadata).
 
 config LICHEN_LINK_LOG_LEVEL
 	int "Link layer log level"

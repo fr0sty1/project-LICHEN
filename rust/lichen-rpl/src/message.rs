@@ -69,6 +69,11 @@ pub const OPT_DODAG_CONFIG: u8 = 4;
 pub const OPT_RPL_TARGET: u8 = 5;
 pub const OPT_TRANSIT_INFO: u8 = 6;
 pub const OPT_PREFIX_INFO: u8 = 8;
+pub const OPT_RPL_TARGET_DESCRIPTOR: u8 = 9;
+/// Provisional LICHEN DAO origin-authentication option.
+pub const OPT_DAO_ORIGIN_SIGNATURE: u8 = 0x12;
+pub const DAO_ORIGIN_SIGNATURE_DATA_LEN: usize = 56;
+pub const DAO_ORIGIN_SIGNATURE_LEN: usize = 58;
 
 // ── ICMPv6 code for each RPL message ─────────────────────────────────────────
 
@@ -160,7 +165,7 @@ pub struct Dao {
     pub ack_requested: bool,
     pub flags: u8,
     pub dao_sequence: u8,
-    pub dodag_id: [u8; 16],
+    pub dodag_id: Option<[u8; 16]>,
 }
 
 impl Dao {
@@ -192,8 +197,16 @@ impl Dao {
     }
 
     pub fn write_to(&self, out: &mut [u8]) -> Result<usize, RplError> {
-        if out.len() < Self::BASE_LEN {
-            return Err(BufferTooSmall::new(Self::BASE_LEN, out.len()).into());
+        if self.rpl_instance_id & 0x80 != 0 && self.dodag_id.is_none() {
+            return Err(RplError::InvalidOption);
+        }
+        let base_len = if self.dodag_id.is_some() {
+            Self::DODAG_BASE_LEN
+        } else {
+            Self::MIN_BASE_LEN
+        };
+        if out.len() < base_len {
+            return Err(BufferTooSmall::new(base_len, out.len()).into());
         }
         let kd = ((self.ack_requested as u8) << 7)
             | (1u8 << 6) // D-flag always set (LICHEN/SCHC rule 4)
@@ -202,8 +215,10 @@ impl Dao {
         out[1] = kd;
         out[2] = 0; // reserved
         out[3] = self.dao_sequence;
-        out[4..20].copy_from_slice(&self.dodag_id);
-        Ok(Self::BASE_LEN)
+        if let Some(dodag_id) = self.dodag_id {
+            out[4..20].copy_from_slice(&dodag_id);
+        }
+        Ok(base_len)
     }
 
     pub fn options_tail(data: &[u8]) -> &[u8] {
@@ -216,8 +231,133 @@ impl Dao {
         if data.len() > base_len {
             &data[base_len..]
         } else {
-            &[]
+            Self::MIN_BASE_LEN
+        };
+        data.get(base_len..).unwrap_or_default()
+    }
+}
+
+/// Parsed terminal DAO origin-authentication option.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DaoOriginSignature<'a> {
+    pub origin_sequence: u64,
+    pub signature: &'a [u8; 48],
+}
+
+impl<'a> DaoOriginSignature<'a> {
+    pub fn from_bytes(data: &'a [u8]) -> Result<Self, RplError> {
+        if data.len() != DAO_ORIGIN_SIGNATURE_DATA_LEN {
+            return Err(RplError::InvalidOption);
         }
+        Ok(Self {
+            origin_sequence: u64::from_be_bytes(data[..8].try_into().unwrap()),
+            signature: data[8..].try_into().unwrap(),
+        })
+    }
+
+    pub fn write_to(
+        origin_sequence: u64,
+        signature: &[u8; 48],
+        out: &mut [u8],
+    ) -> Result<usize, RplError> {
+        if origin_sequence == 0 {
+            return Err(RplError::InvalidOption);
+        }
+        if out.len() < DAO_ORIGIN_SIGNATURE_LEN {
+            return Err(BufferTooSmall::new(DAO_ORIGIN_SIGNATURE_LEN, out.len()).into());
+        }
+        out[0] = OPT_DAO_ORIGIN_SIGNATURE;
+        out[1] = DAO_ORIGIN_SIGNATURE_DATA_LEN as u8;
+        out[2..10].copy_from_slice(&origin_sequence.to_be_bytes());
+        out[10..DAO_ORIGIN_SIGNATURE_LEN].copy_from_slice(signature);
+        Ok(DAO_ORIGIN_SIGNATURE_LEN)
+    }
+}
+
+/// Structurally valid signed DAO borrowing the exact signed wire prefix.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SignedDaoEnvelope<'a> {
+    pub dao: Dao,
+    pub signed_bytes: &'a [u8],
+    pub unsigned_bytes: &'a [u8],
+    pub origin: DaoOriginSignature<'a>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum DaoEnvelopeError {
+    Rpl(RplError),
+    MissingSignature,
+    DuplicateSignature,
+    NonTerminalSignature,
+    InvalidOptionLength,
+    UnknownOption(u8),
+}
+
+impl From<RplError> for DaoEnvelopeError {
+    fn from(error: RplError) -> Self {
+        Self::Rpl(error)
+    }
+}
+
+impl<'a> SignedDaoEnvelope<'a> {
+    /// Require one origin signature option, with exact length, as the final option.
+    pub fn from_bytes(data: &'a [u8]) -> Result<Self, DaoEnvelopeError> {
+        let dao = Dao::from_bytes(data)?;
+        if dao.flags != 0 || data[2] != 0 {
+            return Err(DaoEnvelopeError::Rpl(RplError::InvalidOption));
+        }
+        let base_len = data.len() - dao.options_tail(data).len();
+        let mut pos = base_len;
+        let mut found = None;
+        while pos < data.len() {
+            if data[pos] == OPT_PAD1 {
+                if found.is_some() {
+                    return Err(DaoEnvelopeError::NonTerminalSignature);
+                }
+                pos += 1;
+                continue;
+            }
+            if pos + 2 > data.len() {
+                return Err(DaoEnvelopeError::InvalidOptionLength);
+            }
+            let end = pos + 2 + usize::from(data[pos + 1]);
+            if end > data.len() {
+                return Err(DaoEnvelopeError::InvalidOptionLength);
+            }
+            if data[pos] == OPT_DAO_ORIGIN_SIGNATURE {
+                if found.is_some() {
+                    return Err(DaoEnvelopeError::DuplicateSignature);
+                }
+                let origin = DaoOriginSignature::from_bytes(&data[pos + 2..end])
+                    .map_err(|_| DaoEnvelopeError::InvalidOptionLength)?;
+                if origin.origin_sequence == 0 {
+                    return Err(DaoEnvelopeError::InvalidOptionLength);
+                }
+                found = Some((pos, origin));
+            } else {
+                if found.is_some() {
+                    return Err(DaoEnvelopeError::NonTerminalSignature);
+                }
+                match data[pos] {
+                    OPT_PADN => {}
+                    OPT_RPL_TARGET if data[pos + 1] as usize == 18 => {}
+                    OPT_TRANSIT_INFO if data[pos + 1] as usize == TransitInfo::DATA_LEN => {}
+                    OPT_RPL_TARGET_DESCRIPTOR if data[pos + 1] as usize == 4 => {}
+                    OPT_RPL_TARGET | OPT_TRANSIT_INFO | OPT_RPL_TARGET_DESCRIPTOR => {
+                        return Err(DaoEnvelopeError::InvalidOptionLength)
+                    }
+                    option => return Err(DaoEnvelopeError::UnknownOption(option)),
+                }
+            }
+            pos = end;
+        }
+        let (unsigned_len, origin) = found.ok_or(DaoEnvelopeError::MissingSignature)?;
+        Ok(Self {
+            dao,
+            signed_bytes: data,
+            unsigned_bytes: &data[..unsigned_len],
+            origin,
+        })
     }
 }
 
@@ -515,7 +655,7 @@ mod tests {
             ack_requested: false,
             flags: 0,
             dao_sequence: 7,
-            dodag_id,
+            dodag_id: Some(dodag_id),
         };
 
         let mut buf = [0u8; 20];
@@ -541,7 +681,7 @@ mod tests {
             ack_requested: true,
             flags: 0,
             dao_sequence: 1,
-            dodag_id,
+            dodag_id: Some(dodag_id),
         };
         let mut buf = [0u8; 20];
         dao.write_to(&mut buf).unwrap();

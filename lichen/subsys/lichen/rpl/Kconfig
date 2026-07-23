@@ -26,18 +26,28 @@ config LICHEN_RPL_MRHOF
 config LICHEN_RPL_MAX_PARENTS
 	int "Maximum parent candidates"
 	default 4
-	range 2 16
+	range 2 8
 	help
-	  Maximum number of parent candidates to track per DODAG.
-	  More parents improves resilience but uses more memory.
+	  Maximum number of parent candidates tracked per DODAG and retained
+	  per DAO target. More parents improves resilience but multiplies the
+	  root-state memory used by every configured route.
 
 config LICHEN_RPL_MAX_ROUTES
 	int "Maximum routing table entries"
 	default 32
-	range 8 128
+	range 1 64
 	help
 	  Maximum number of target routes in the routing table.
-	  Only relevant for root nodes in non-storing mode.
+	  Only relevant for root nodes in non-storing mode. The default root
+	  state uses approximately 15 KiB before thread stacks and packet buffers.
+
+config LICHEN_RPL_MAX_ACTIVE_DAO_CANDIDATES
+	int "Maximum active DAO candidates"
+	default 32
+	range 1 64
+	help
+	  Maximum aggregate number of active target-to-parent candidates retained
+	  by a root. A grouped DAO that would exceed this limit is rejected atomically.
 
 config LICHEN_RPL_TRICKLE_IMIN_MS
 	int "Trickle Imin (ms)"

@@ -30,6 +30,8 @@ def rule_matches(rule: Rule, fields: dict[str, int]) -> bool:
             if fd.requires_value():
                 return False
             continue
+        if type(value) is not int or not 0 <= value < (1 << fd.length_bits):
+            return False
         if fd.mo == MO.EQUAL and value != fd.target_value:
             return False
         if fd.mo == MO.MSB:

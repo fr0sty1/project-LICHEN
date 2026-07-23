@@ -156,6 +156,17 @@ impl TunDevice {
     }
 }
 
+fn advance_written(written: &mut usize, n: usize) -> io::Result<()> {
+    if n == 0 {
+        return Err(io::Error::new(
+            io::ErrorKind::WriteZero,
+            "TUN write returned 0 bytes",
+        ));
+    }
+    *written += n;
+    Ok(())
+}
+
 /// Bring the TUN device up and assign a gateway address from `prefix`.
 ///
 /// Derives the gateway address by replacing the trailing `::` of the prefix
@@ -219,5 +230,14 @@ mod tests {
     #[test]
     fn gateway_addr_no_double_colon() {
         assert!(gateway_addr("fd00:1:0:0/48").is_err());
+    }
+
+    #[test]
+    fn zero_write_fails_without_progress() {
+        let mut written = 0;
+        let error = advance_written(&mut written, 0).unwrap_err();
+
+        assert_eq!(error.kind(), io::ErrorKind::WriteZero);
+        assert_eq!(written, 0);
     }
 }

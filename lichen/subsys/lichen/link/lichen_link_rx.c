@@ -29,7 +29,7 @@
 
 #define LICHEN_PROTECTED_PAYLOAD_MAX (LICHEN_MAX_PAYLOAD + LICHEN_SIG_LEN)
 
-/* Maximum decompressed IPv6 packet size: MTU payload (200) + base header (40) */
+/* Maximum decompressed IPv6 packet size: frame payload + base header. */
 #define LICHEN_MAX_IPV6_LEN (LICHEN_MAX_PAYLOAD + 40)
 
 struct lichen_link_auth_payload {
@@ -115,14 +115,18 @@ static int verify_mic(const struct lichen_link_rx_ctx *ctx,
 }
 
 static int commit_replay(struct lichen_replay_table *replay,
-			 struct lichen_link_auth_payload *auth)
+			 struct lichen_link_auth_payload *auth,
+			 const uint8_t *public_key)
 {
 	struct lichen_replay_window *replay_window;
 
 	if (replay == NULL || !auth->replay_eligible) {
 		return 0;
 	}
-	replay_window = lichen_replay_get(replay, auth->info.src_eui64);
+	if (public_key == NULL) {
+		return -LICHEN_EAUTH;
+	}
+	replay_window = lichen_replay_get(replay, public_key);
 	if (replay_window == NULL) {
 		return -ENOMEM;
 	}
@@ -240,7 +244,7 @@ static int authenticate_inner_payload(struct lichen_link_rx_ctx *ctx,
 	auth->info.addr_mode = parsed.addr_mode;
 	auth->info.signature_present = parsed.signature_present;
 	auth->info.encrypted = parsed.encrypted;
-	auth->replay_eligible = parsed.signature_present || parsed.encrypted;
+	auth->replay_eligible = true;
 	ret = 0;
 
 cleanup:
@@ -282,7 +286,7 @@ int lichen_link_rx_payload(struct lichen_link_rx_ctx *ctx,
 		return -ENOMEM;
 	}
 
-	ret = commit_replay(replay, &auth);
+	ret = commit_replay(replay, &auth, ctx->peer_pubkey);
 	if (ret < 0) {
 		memset(inner_payload, 0, sizeof(inner_payload));
 		memset(work_payload, 0, sizeof(work_payload));
@@ -371,7 +375,7 @@ int lichen_link_rx(struct lichen_link_rx_ctx *ctx,
 		goto cleanup;
 	}
 
-	ret = commit_replay(replay, &auth);
+	ret = commit_replay(replay, &auth, ctx->peer_pubkey);
 	if (ret < 0) {
 		goto cleanup;
 	}

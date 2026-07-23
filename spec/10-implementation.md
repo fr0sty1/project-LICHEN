@@ -166,7 +166,7 @@ Both Rust and Zephyr are on the roadmap. Whichever gets contributors first wins,
 | LICHEN Component | Zephyr Subsystem | Notes |
 |------------------|------------------|-------|
 | IPv6 | `CONFIG_NET_IPV6` | Native |
-| 6LoWPAN | `CONFIG_NET_L2_IEEE802154` | Adapt for LoRa |
+| Adaptation | Custom SCHC | Replaces 6LoWPAN compression and fragmentation |
 | UDP | `CONFIG_NET_UDP` | Native |
 | CoAP | `CONFIG_COAP` | Native library |
 | OSCORE | Custom or port | May need to implement |
@@ -190,7 +190,7 @@ FLASH (256 KB available):
 │ Component                          │ Est.   │
 ├────────────────────────────────────┼────────┤
 │ Zephyr kernel + HAL                │ ~40 KB │
-│ IPv6 + 6LoWPAN                     │ ~30 KB │
+│ IPv6 network stack                 │ ~20 KB │
 │ RPL                                │ ~15 KB │
 │ CoAP                               │ ~15 KB │
 │ OSCORE/DTLS                        │ ~20 KB │
@@ -200,7 +200,7 @@ FLASH (256 KB available):
 │ BLE (minimal)                      │ ~30 KB │
 │ LICHEN application                 │ ~40 KB │
 ├────────────────────────────────────┼────────┤
-│ TOTAL                              │ ~220KB │
+│ TOTAL                              │ ~210KB │
 │ Margin                             │ ~36 KB │
 └────────────────────────────────────┴────────┘
 
@@ -286,6 +286,25 @@ RAM (64 KB available):
 | draft-lichen-senml | SenML sensor profiles |
 | draft-lichen-apps | Application protocols |
 | draft-lichen-border | Border router behavior |
+
+### 16.7. DAO Origin Persistence
+
+DAO TX and RX persistence intentionally store different records:
+
+- TX stores the public-key identity, last reserved Origin Sequence, and complete
+  last signed DAO bytes in a crash-safe record. On reboot the API exposes those
+  exact bytes for retransmission; it does not reconstruct or re-sign them.
+- RX stores only the public key, accepted high-water sequence, and digest of the
+  complete signed DAO. It does not persist the complete received DAO or route
+  table.
+
+For a fresh receive, persist the RX floor before exposing the route or returning
+success. Then apply the fully validated route proposal atomically in memory. A
+crash between those operations leaves the floor durable and route state absent.
+An equal-sequence/equal-digest retransmission does not rewrite persistence; it
+may repeat semantic parsing and exact self-Target validation to idempotently
+reconstruct the missing route. Implementations MUST snapshot the complete route, replay-floor,
+and storage state around rejected DAOs to test that no partial mutation occurs.
 
 ---
 

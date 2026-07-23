@@ -18,6 +18,9 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(test)]
+extern crate std;
+
 use heapless::Vec;
 
 /// Error indicating input data was shorter than expected.
@@ -140,6 +143,22 @@ pub const UDP_HEADER_LEN: usize = 8;
 
 /// ICMPv6 header length (type + code + checksum).
 pub const ICMPV6_HEADER_LEN: usize = 4;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Icmpv6ChecksumError {
+    MessageTooLong,
+}
+
+impl core::fmt::Display for Icmpv6ChecksumError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::MessageTooLong => write!(f, "ICMPv6 message exceeds the 32-bit length field"),
+        }
+    }
+}
+
+impl core::error::Error for Icmpv6ChecksumError {}
 
 /// Next Header values.
 pub mod next_header {
@@ -557,7 +576,7 @@ impl Icmpv6Echo {
         pkt.extend_from_slice(data).unwrap();
 
         // Compute checksum
-        let checksum = icmpv6_checksum(src, dst, &pkt);
+        let checksum = icmpv6_checksum(src, dst, &pkt).expect("bounded echo request");
         pkt[2] = (checksum >> 8) as u8;
         pkt[3] = checksum as u8;
 
@@ -603,7 +622,7 @@ impl NeighborSolicitation {
         pkt.extend_from_slice(&self.target.0).unwrap();
 
         // Compute checksum
-        let checksum = icmpv6_checksum(src, dst, &pkt);
+        let checksum = icmpv6_checksum(src, dst, &pkt).expect("fixed-size solicitation");
         pkt[2] = (checksum >> 8) as u8;
         pkt[3] = checksum as u8;
 
@@ -666,7 +685,7 @@ impl NeighborAdvertisement {
         pkt.extend_from_slice(&self.target.0).unwrap();
 
         // Compute checksum
-        let checksum = icmpv6_checksum(src, dst, &pkt);
+        let checksum = icmpv6_checksum(src, dst, &pkt).expect("fixed-size advertisement");
         pkt[2] = (checksum >> 8) as u8;
         pkt[3] = checksum as u8;
 
@@ -674,16 +693,25 @@ impl NeighborAdvertisement {
     }
 }
 
-/// Compute ICMPv6 checksum over pseudo-header + message.
-fn icmpv6_checksum(src: &Addr, dst: &Addr, icmpv6_msg: &[u8]) -> u16 {
-    let mut sum: u32 = 0;
+/// Compute an ICMPv6 checksum over the IPv6 pseudo-header and complete message.
+///
+/// The message checksum bytes are ignored, so callers may use this both to fill
+/// a zeroed checksum field and to independently recompute an existing packet.
+pub fn icmpv6_checksum(
+    src: &Addr,
+    dst: &Addr,
+    icmpv6_msg: &[u8],
+) -> Result<u16, Icmpv6ChecksumError> {
+    let length =
+        u32::try_from(icmpv6_msg.len()).map_err(|_| Icmpv6ChecksumError::MessageTooLong)?;
+    let mut sum = 0u64;
 
     // Pseudo-header: src, dst, length, next header
     for chunk in src.0.chunks(2) {
-        sum += ((chunk[0] as u32) << 8) | (chunk[1] as u32);
+        add_checksum_word(&mut sum, u16::from_be_bytes([chunk[0], chunk[1]]));
     }
     for chunk in dst.0.chunks(2) {
-        sum += ((chunk[0] as u32) << 8) | (chunk[1] as u32);
+        add_checksum_word(&mut sum, u16::from_be_bytes([chunk[0], chunk[1]]));
     }
     sum += icmpv6_msg.len() as u32;
     sum += next_header::ICMPV6 as u32;
@@ -701,7 +729,12 @@ fn icmpv6_checksum(src: &Addr, dst: &Addr, icmpv6_msg: &[u8]) -> u16 {
         sum = (sum & 0xffff) + (sum >> 16);
     }
 
-    !sum as u16
+    Ok(!sum as u16)
+}
+
+fn add_checksum_word(sum: &mut u64, word: u16) {
+    *sum += u64::from(word);
+    *sum = (*sum & 0xffff) + (*sum >> 16);
 }
 
 /// Verify ICMPv6 checksum.
@@ -712,8 +745,7 @@ fn verify_icmpv6_checksum(src: &Addr, dst: &Addr, icmpv6_msg: &[u8]) -> bool {
         return false;
     }
     let received = ((icmpv6_msg[2] as u16) << 8) | (icmpv6_msg[3] as u16);
-    let computed = icmpv6_checksum(src, dst, icmpv6_msg);
-    received == computed
+    icmpv6_checksum(src, dst, icmpv6_msg).is_ok_and(|computed| received == computed)
 }
 
 /// Compute UDP checksum over pseudo-header + UDP header + payload.

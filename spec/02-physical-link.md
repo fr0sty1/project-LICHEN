@@ -182,7 +182,7 @@ See child issue project-LICHEN-zd2d.2 for driver implementation.
 
 | Field | Size | Description |
 |-------|------|-------------|
-| Length | 1 byte | Total frame length (excl. Length field) |
+| Length | 1 byte | Frame body length (excludes this field), 4-254 bytes |
 | LLSec | 1 byte | Link-layer security flags |
 | Epoch | 1 byte | Epoch counter (see 4.4) |
 | SeqNum | 2 bytes | Sequence number (replay protection) |
@@ -200,14 +200,14 @@ The first byte of the authenticated inner payload is a dispatch value:
 Receivers MUST NOT infer the payload namespace from the first body byte. This
 is required because SCHC rule `0x01` is global CoAP and LICHEN routing
 announce type `0x01` would otherwise collide. The dispatch byte is covered by
-the link signature and MIC because it is part of the frame payload.
+the link signature in the MIC field because it is part of the frame payload.
 
 ### 4.2. Link-Layer Security (LLSec) Byte
 
 ```
   7   6   5   4   3   2   1   0
 +---+---+---+---+---+---+---+---+
-| E | S |  MIC Len  | Addr Mode |
+| R | E | S |  MIC Len  | Addr Mode |
 +---+---+---+---+---+---+---+---+
 ```
 
@@ -230,22 +230,31 @@ the link signature and MIC because it is part of the frame payload.
 
 ### 4.4. Epoch and Sequence Number
 
-Replay protection uses a 24-bit logical counter: 8-bit epoch + 16-bit seqnum.
+Replay protection uses EPO and SeqNum as one finite 24-bit unsigned counter:
+`counter = (EPO << 16) | SeqNum`, in the range 0x000000 through 0xFFFFFF.
+Counter comparisons use ordinary unsigned integer ordering, not serial-number
+arithmetic or modulo arithmetic.
 
 **Epoch (8 bits):**
 
-The epoch counter increments on:
-1. **SeqNum wrap:** When SeqNum rolls over from 0xFFFF to 0x0000
-2. **Reboot:** Epoch MUST advance on every power cycle or reset
-3. **Manual reset:** Operator-initiated counter reset
+The epoch counter increments when SeqNum reaches 0xFFFF and another tuple is
+needed. SeqNum then restarts at zero in the new epoch. EPO MUST NOT wrap from
+0xFF to 0x00. After using `(EPO=0xFF, SeqNum=0xFFFF)`, the sender MUST rotate
+its link key before transmitting another authenticated frame.
+
+On reboot or manual reset, a sender MUST resume above its last used counter
+under the current key. It MUST NOT reset or wrap either component under that
+key.
 
 **Epoch Initialization:**
 
 When no persisted epoch is available (cold boot without flash, or flash read
 failure), implementations MUST initialize epoch to a random value uniformly
-distributed in [128, 255]. This ensures the 24-bit counter starts in the upper
-half of the counter space (8M-16M), so half-space arithmetic treats it as
-"ahead" of any counter value peers may have cached in the lower half.
+distributed in [128, 255]. This reduces the probability of reusing a tuple
+when no prior counter state exists, but does not prove freshness. A receiver
+with replay state for the same key MUST apply the normal numeric acceptance
+rules and can reject the randomized value. If the sender cannot establish a
+counter above its last use, it MUST rotate its link key before transmitting.
 
 > **Security Note:** Some platforms (notably ESP32) have weak hardware RNG output
 > before the radio subsystem initializes. On such platforms without epoch
@@ -284,6 +293,10 @@ Sender State Entry:
 | Epoch < LastEpoch | Reject (replay) |
 | Epoch == LastEpoch, SeqNum ≤ window floor | Reject (replay) |
 
+A lower epoch is always stale. Within the current epoch, a decrease from a
+high SeqNum to a low SeqNum is evaluated only as an old or out-of-window
+packet; it MUST NOT be interpreted as sequence-number wrap.
+
 **Wrap Behavior:**
 
 At ~1 packet/second, 16-bit seqnum wraps every ~18 hours (per Section 2a.2 of draft-lichen-tdma for SFN/now() unsigned modular arithmetic). The epoch
@@ -292,8 +305,11 @@ At maximum traffic (10 pkt/sec), epoch wraps in ~7.5 years--acceptable.
 
 **Reboot Resilience:**
 
-On reboot, the node increments epoch and starts seqnum at 0. Receivers
-see epoch advance and accept packets immediately. No time sync required.
+With persisted state, a rebooted node resumes at a greater unused tuple, for
+example by incrementing EPO and starting SeqNum at zero. Without persisted
+state, random initialization does not guarantee acceptance by receivers that
+retain replay state; key rotation is required when freshness cannot otherwise
+be established. No time synchronization is required.
 
 ---
 

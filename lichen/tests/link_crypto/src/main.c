@@ -6,6 +6,7 @@
  * @brief LICHEN encrypted link-frame TX/RX tests
  */
 
+#include <zephyr/fff.h>
 #include <zephyr/ztest.h>
 
 #include <lichen/errno.h>
@@ -42,6 +43,21 @@ static const uint8_t test_ipv6[40] = {
 	0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02
 };
+
+ZTEST(link_crypto, test_init_rejects_csrand_failure_without_mutation)
+{
+	struct lichen_link_ctx ctx;
+	struct lichen_link_ctx before;
+
+	memset(&ctx, 0xa5, sizeof(ctx));
+	memcpy(&before, &ctx, sizeof(before));
+	__wrap_z_impl_sys_csrand_get_fake.custom_fake = NULL;
+	__wrap_z_impl_sys_csrand_get_fake.return_val = -EIO;
+
+	zassert_equal(lichen_link_init(&ctx, test_eui64), -EIO);
+	zassert_equal(__wrap_z_impl_sys_csrand_get_fake.call_count, 1U);
+	zassert_mem_equal(&ctx, &before, sizeof(ctx));
+}
 
 static void init_tx_ctx(struct lichen_link_ctx *tx)
 {

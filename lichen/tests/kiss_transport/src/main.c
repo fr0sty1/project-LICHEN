@@ -543,6 +543,9 @@ ZTEST(kiss_transport, test_send_oversized)
 
 	int ret = kiss_transport_send_ax25(oversized, sizeof(oversized));
 	zassert_equal(ret, -EMSGSIZE, "Oversized data should be rejected");
+
+	ret = kiss_transport_send_raw(oversized, KISS_RAW_MAX_PAYLOAD + 1U);
+	zassert_equal(ret, -EMSGSIZE, "Oversized raw frame should be rejected");
 }
 
 /**

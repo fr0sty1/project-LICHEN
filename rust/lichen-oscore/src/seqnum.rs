@@ -1,15 +1,15 @@
 //! OSCORE sender sequence number newtype.
 //!
-//! Wraps a u32 sequence number with OSCORE-specific semantics:
+//! Wraps a 40-bit sequence number with OSCORE-specific semantics:
 //! - Monotonically increasing (never wraps for security)
 //! - Used for nonce derivation and replay protection
 //!
 //! The newtype provides type safety to prevent mixing OSCORE sequence
-//! numbers with other u32 values or link-layer sequence numbers.
+//! numbers with other integer values or link-layer sequence numbers.
 
 use zeroize::Zeroize;
 
-/// OSCORE sender sequence number (u32, monotonic).
+/// OSCORE sender sequence number (40-bit, monotonic).
 ///
 /// This is the Partial IV (PIV) included in OSCORE-protected messages.
 /// Unlike link-layer sequence numbers, OSCORE sequences must never wrap
@@ -17,27 +17,33 @@ use zeroize::Zeroize;
 ///
 /// # Security
 ///
-/// When `sender_seq` approaches `u32::MAX`, the context must be
+/// When `sender_seq` approaches [`OscoreSeqNum::MAX`], the context must be
 /// renegotiated to prevent nonce reuse. The `is_near_exhaustion`
 /// method checks for this condition.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Zeroize)]
 #[repr(transparent)]
-pub struct OscoreSeqNum(u32);
+pub struct OscoreSeqNum(u64);
 
 /// Threshold for sequence number exhaustion warning.
-/// At 4 billion - 1000, warn the application to renegotiate.
-const EXHAUSTION_THRESHOLD: u32 = u32::MAX - 1000;
+const EXHAUSTION_THRESHOLD: u64 = OscoreSeqNum::MAX - 1000;
 
 impl OscoreSeqNum {
-    /// Create a new OSCORE sequence number.
+    /// Maximum OSCORE Partial IV value (RFC 8613 Section 5.2).
+    pub const MAX: u64 = (1 << 40) - 1;
+
+    /// Create a new OSCORE sequence number, or `None` if it exceeds 40 bits.
     #[inline]
-    pub const fn new(value: u32) -> Self {
-        Self(value)
+    pub const fn new(value: u64) -> Option<Self> {
+        if value <= Self::MAX {
+            Some(Self(value))
+        } else {
+            None
+        }
     }
 
-    /// Get the raw u32 value.
+    /// Get the raw value.
     #[inline]
-    pub const fn get(self) -> u32 {
+    pub const fn get(self) -> u64 {
         self.0
     }
 
@@ -103,29 +109,15 @@ impl OscoreSeqNum {
         len
     }
 
-    /// Decode from variable-length big-endian PIV.
-    ///
-    /// PIV values exceeding u32::MAX (i.e., PIV > 4 bytes with high bits set)
-    /// saturate to u32::MAX rather than silently wrapping. Per RFC 8613 Section 5.2,
-    /// PIV is at most 5 bytes, but only 4 bytes fit in a u32.
-    pub fn from_piv(piv: &[u8]) -> Self {
-        // Limit to 4 bytes to prevent overflow; extra bytes saturate to MAX
-        if piv.len() > 4 {
-            // Check if high bytes would cause overflow
-            let high_bytes = &piv[..piv.len() - 4];
-            if high_bytes.iter().any(|&b| b != 0) {
-                return Self(u32::MAX);
-            }
-            // Use only the last 4 bytes
-            let start = piv.len() - 4;
-            return Self(u32::from_be_bytes([
-                piv[start],
-                piv[start + 1],
-                piv[start + 2],
-                piv[start + 3],
-            ]));
+    /// Decode from a 1-5 byte big-endian PIV.
+    pub fn from_piv(piv: &[u8]) -> Option<Self> {
+        if piv.is_empty() || piv.len() > 5 || (piv.len() > 1 && piv[0] == 0) {
+            return None;
         }
-        Self(piv.iter().fold(0u32, |acc, &b| (acc << 8) | (b as u32)))
+        Self::new(
+            piv.iter()
+                .fold(0u64, |acc, &byte| (acc << 8) | u64::from(byte)),
+        )
     }
 }
 
@@ -138,11 +130,20 @@ impl core::fmt::Display for OscoreSeqNum {
 impl From<u32> for OscoreSeqNum {
     #[inline]
     fn from(value: u32) -> Self {
-        Self(value)
+        Self(u64::from(value))
     }
 }
 
-impl From<OscoreSeqNum> for u32 {
+impl TryFrom<u64> for OscoreSeqNum {
+    type Error = ();
+
+    #[inline]
+    fn try_from(value: u64) -> Result<Self, Self::Error> {
+        Self::new(value).ok_or(())
+    }
+}
+
+impl From<OscoreSeqNum> for u64 {
     #[inline]
     fn from(value: OscoreSeqNum) -> Self {
         value.0
@@ -155,8 +156,10 @@ mod tests {
 
     #[test]
     fn basic_operations() {
-        let mut seq = OscoreSeqNum::new(0);
+        let seq = OscoreSeqNum::new(0).unwrap();
         assert_eq!(seq.get(), 0);
+        assert_eq!(seq.increment().unwrap().get(), 1);
+    }
 
         let old = seq.fetch_increment().expect("should not overflow from 0");
         assert_eq!(old.get(), 0);
@@ -183,43 +186,40 @@ mod tests {
 
     #[test]
     fn exhaustion_detection() {
-        let low = OscoreSeqNum::new(1000);
+        let low = OscoreSeqNum::new(1000).unwrap();
         assert!(!low.is_near_exhaustion());
 
-        let high = OscoreSeqNum::new(EXHAUSTION_THRESHOLD);
+        let high = OscoreSeqNum::new(EXHAUSTION_THRESHOLD).unwrap();
         assert!(high.is_near_exhaustion());
 
-        let max = OscoreSeqNum::new(u32::MAX);
+        let max = OscoreSeqNum::new(OscoreSeqNum::MAX).unwrap();
         assert!(max.is_near_exhaustion());
     }
 
     #[test]
-    fn piv_encode_decode() {
-        let mut piv = [0u8; 5];
+    fn literal_piv_boundaries_roundtrip_minimally() {
+        for (value, encoded) in [
+            (0xff, &b"\xff"[..]),
+            (0x100, &b"\x01\x00"[..]),
+            (0xffff_ffff, &b"\xff\xff\xff\xff"[..]),
+            (0x1_0000_0000, &b"\x01\x00\x00\x00\x00"[..]),
+            (0xff_ffff_ffff, &b"\xff\xff\xff\xff\xff"[..]),
+        ] {
+            let seq = OscoreSeqNum::new(value).unwrap();
+            let mut piv = [0u8; 5];
+            let len = seq.encode_piv(&mut piv);
+            assert_eq!(&piv[..len], encoded);
+            assert_eq!(OscoreSeqNum::from_piv(encoded), Some(seq));
+        }
+    }
 
-        let seq = OscoreSeqNum::new(0);
-        let len = seq.encode_piv(&mut piv);
-        assert_eq!(len, 1);
-        assert_eq!(piv[0], 0);
-        assert_eq!(OscoreSeqNum::from_piv(&piv[..len]), seq);
-
-        let seq = OscoreSeqNum::new(1);
-        let len = seq.encode_piv(&mut piv);
-        assert_eq!(len, 1);
-        assert_eq!(piv[0], 1);
-        assert_eq!(OscoreSeqNum::from_piv(&piv[..len]), seq);
-
-        let seq = OscoreSeqNum::new(256);
-        let len = seq.encode_piv(&mut piv);
-        assert_eq!(len, 2);
-        assert_eq!(&piv[..2], &[0x01, 0x00]);
-        assert_eq!(OscoreSeqNum::from_piv(&piv[..len]), seq);
-
-        let seq = OscoreSeqNum::new(0x123456);
-        let len = seq.encode_piv(&mut piv);
-        assert_eq!(len, 3);
-        assert_eq!(&piv[..3], &[0x12, 0x34, 0x56]);
-        assert_eq!(OscoreSeqNum::from_piv(&piv[..len]), seq);
+    #[test]
+    fn rejects_out_of_range_overlong_and_nonminimal_pivs() {
+        assert_eq!(OscoreSeqNum::new(0x0100_0000_0000), None);
+        assert_eq!(OscoreSeqNum::from_piv(b"\x01\x00\x00\x00\x00\x00"), None);
+        assert_eq!(OscoreSeqNum::from_piv(b"\x00\x01"), None);
+        assert_eq!(OscoreSeqNum::from_piv(b"\x00\x00"), None);
+        assert_eq!(OscoreSeqNum::from_piv(b"\x00"), OscoreSeqNum::new(0));
     }
 
     #[test]
@@ -227,7 +227,7 @@ mod tests {
         let seq: OscoreSeqNum = 42u32.into();
         assert_eq!(seq.get(), 42);
 
-        let raw: u32 = seq.into();
+        let raw: u64 = seq.into();
         assert_eq!(raw, 42);
     }
 }

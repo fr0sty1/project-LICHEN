@@ -46,6 +46,8 @@ BUILD_ASSERT(LICHEN_MESHCORE_CHANNEL_MSG_V3_HEADER_LEN <
 	     "MeshCore channel V3 header must fit in a frame");
 BUILD_ASSERT(CONFIG_LICHEN_MESHCORE_PENDING_EVENTS <= UINT8_MAX,
 	     "Pending event queue indices are uint8_t");
+BUILD_ASSERT(LICHEN_MESHCORE_FRAME_MAX <= UINT16_MAX,
+	     "Frame max exceeds uint16_t limit for length fields");
 
 static int enqueue(struct lichen_meshcore_adapter *adapter,
 		   const uint8_t *frame, size_t len)
@@ -325,8 +327,13 @@ static void pending_drop_tail(struct lichen_meshcore_adapter *adapter)
 static int encode_pending_text(const struct lichen_meshcore_pending_event *event,
 			       uint8_t *out, size_t out_len)
 {
-	size_t len = LICHEN_MESHCORE_CHANNEL_MSG_V3_HEADER_LEN +
-		     event->payload_len;
+	size_t len;
+
+	if (event->payload_len > LICHEN_MESHCORE_FRAME_MAX -
+				 LICHEN_MESHCORE_CHANNEL_MSG_V3_HEADER_LEN) {
+		return -EINVAL;
+	}
+	len = LICHEN_MESHCORE_CHANNEL_MSG_V3_HEADER_LEN + event->payload_len;
 
 	/* SECURITY: Guard against corrupted payload_len reading beyond buffer */
 	if (event->payload_len > LICHEN_MESHCORE_FRAME_MAX) {

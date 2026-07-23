@@ -329,7 +329,7 @@ bool lichen_meshtastic_adapter_disconnected(
  * with a specific portnum (e.g., config writes that come via admin commands).
  */
 size_t lichen_meshtastic_adapter_unsupported_operations(
-	const struct lichen_meshtastic_adapter_unsupported_operation *_Nullable *_Nonnull operations);
+	const struct lichen_meshtastic_adapter_unsupported_operation *_Nonnull *_Nullable operations);
 
 #ifdef __cplusplus
 }

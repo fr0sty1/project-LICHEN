@@ -16,6 +16,7 @@
  */
 
 #include <lichen/schc.h>
+#include <limits.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -283,27 +284,32 @@ static int test_null_public_args(void)
 	uint8_t packet[40] = { 0x60 };
 	uint8_t data[1] = { SCHC_RULE_UNCOMPRESSED };
 	uint8_t out[64];
+	volatile uint8_t *null_ptr = NULL;
 	int ret;
 
-	ret = lichen_schc_compress(NULL, sizeof(packet), out, sizeof(out));
+	ret = lichen_schc_compress((const uint8_t *)null_ptr,
+				    sizeof(packet), out, sizeof(out));
 	if (ret != SCHC_ERR_TOO_SHORT) {
 		printf("  FAIL: compress NULL packet expected SCHC_ERR_TOO_SHORT (got %d)\n", ret);
 		return 0;
 	}
 
-	ret = lichen_schc_compress(packet, sizeof(packet), NULL, sizeof(out));
+	ret = lichen_schc_compress(packet, sizeof(packet),
+				    (uint8_t *)null_ptr, sizeof(out));
 	if (ret != SCHC_ERR_BUFFER_TOO_SMALL) {
 		printf("  FAIL: compress NULL out expected SCHC_ERR_BUFFER_TOO_SMALL (got %d)\n", ret);
 		return 0;
 	}
 
-	ret = lichen_schc_decompress(NULL, sizeof(data), out, sizeof(out));
+	ret = lichen_schc_decompress((const uint8_t *)null_ptr,
+				      sizeof(data), out, sizeof(out));
 	if (ret != SCHC_ERR_TOO_SHORT) {
 		printf("  FAIL: decompress NULL data expected SCHC_ERR_TOO_SHORT (got %d)\n", ret);
 		return 0;
 	}
 
-	ret = lichen_schc_decompress(data, sizeof(data), NULL, sizeof(out));
+	ret = lichen_schc_decompress(data, sizeof(data),
+				      (uint8_t *)null_ptr, sizeof(out));
 	if (ret != SCHC_ERR_BUFFER_TOO_SMALL) {
 		printf("  FAIL: decompress NULL out expected SCHC_ERR_BUFFER_TOO_SMALL (got %d)\n", ret);
 		return 0;
@@ -366,6 +372,17 @@ static int test_reject_bad_udp_len(void)
 	return 1;
 }
 
+static int test_uncompressed_length_exceeds_int(void)
+{
+	static const uint8_t packet = 0;
+	volatile size_t pkt_len = (size_t)INT_MAX;
+	uint8_t out;
+	int ret = lichen_schc_compress(&packet, pkt_len, &out, SIZE_MAX);
+
+	ASSERT_EQ(ret, SCHC_ERR_BUFFER_TOO_SMALL, "uncompressed int length overflow");
+	return 1;
+}
+
 /* ─── test runner ─────────────────────────────────────────────────────────── */
 
 #define RUN_TEST(fn) do { \
@@ -396,6 +413,7 @@ int main(void)
 	RUN_TEST(test_null_public_args);
 	RUN_TEST(test_reject_bad_ipv6_payload_len);
 	RUN_TEST(test_reject_bad_udp_len);
+	RUN_TEST(test_uncompressed_length_exceeds_int);
 
 	printf("\n%d/%d tests passed\n", tests_passed, tests_run);
 

@@ -3,7 +3,45 @@
 
 //! Tests using RFC 8613 test vectors from test/vectors/oscore.json
 
-use lichen_oscore::{Context, OscoreError};
+use lichen_oscore::{
+    validate_option, Context, ContextId, ContextStoreError, OscoreError, SenderSequenceState,
+    SenderStateStore,
+};
+
+struct TestStore(SenderSequenceState);
+
+impl TestStore {
+    fn existing(sequence: u64) -> Self {
+        Self(SenderSequenceState {
+            next_sequence: sequence,
+            exhausted: false,
+        })
+    }
+}
+
+impl SenderStateStore for TestStore {
+    type Error = core::convert::Infallible;
+
+    fn load(
+        &mut self,
+        _context_id: &ContextId,
+    ) -> Result<Option<SenderSequenceState>, Self::Error> {
+        Ok(Some(self.0))
+    }
+
+    fn compare_exchange(
+        &mut self,
+        _context_id: &ContextId,
+        expected: Option<SenderSequenceState>,
+        next: SenderSequenceState,
+    ) -> Result<bool, Self::Error> {
+        if Some(self.0) != expected {
+            return Ok(false);
+        }
+        self.0 = next;
+        Ok(true)
+    }
+}
 use serde::Deserialize;
 use std::fs;
 
@@ -64,6 +102,27 @@ struct Expected {
     is_replay: Option<bool>,
 }
 
+fn context_at(
+    master_secret: &[u8; 16],
+    master_salt: Option<&[u8]>,
+    id_context: Option<&[u8]>,
+    sender_id: &[u8],
+    recipient_id: &[u8],
+    sequence: u64,
+) -> (Context, TestStore) {
+    let mut store = TestStore::existing(sequence);
+    let context = Context::load_existing(
+        master_secret,
+        master_salt,
+        id_context,
+        sender_id,
+        recipient_id,
+        &mut store,
+    )
+    .unwrap();
+    (context, store)
+}
+
 fn load_vectors() -> VectorFile {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -108,6 +167,7 @@ fn test_request_protection_vectors() {
         let mut ctx = Context::new(
             &master_secret,
             master_salt.as_deref(),
+            None,
             &sender_id,
             &recipient_id,
         )
@@ -259,9 +319,19 @@ fn test_sender_id_too_long() {
     let master_secret = [0u8; 16];
     let too_long_id = [0u8; 8]; // 8 bytes - too long
 
-    let result = Context::new(&master_secret, None, &too_long_id, &[1]);
+    let result = Context::load_existing(
+        &master_secret,
+        None,
+        None,
+        &too_long_id,
+        &[1],
+        &mut TestStore::existing(0),
+    );
     assert!(
-        matches!(result, Err(OscoreError::InvalidParam)),
+        matches!(
+            result,
+            Err(ContextStoreError::Oscore(OscoreError::InvalidParam))
+        ),
         "Expected InvalidParam for 8-byte sender_id"
     );
 }
@@ -271,58 +341,181 @@ fn test_recipient_id_too_long() {
     let master_secret = [0u8; 16];
     let too_long_id = [0u8; 8];
 
-    let result = Context::new(&master_secret, None, &[0], &too_long_id);
+    let result = Context::load_existing(
+        &master_secret,
+        None,
+        None,
+        &[0],
+        &too_long_id,
+        &mut TestStore::existing(0),
+    );
     assert!(
-        matches!(result, Err(OscoreError::InvalidParam)),
+        matches!(
+            result,
+            Err(ContextStoreError::Oscore(OscoreError::InvalidParam))
+        ),
         "Expected InvalidParam for 8-byte recipient_id"
     );
 }
 
 #[test]
-fn test_key_derivation_symmetry() {
-    // Test that client and server derive symmetric keys
-    // (client sender_key == server recipient_key)
-    let vectors = load_vectors();
+fn present_empty_id_context_is_distinct_and_encoded() {
+    let secret = [0u8; 16];
+    let (absent, _) = context_at(&secret, None, None, &[0], &[1], 0);
+    let (mut present, mut store) = context_at(&secret, None, Some(&[]), &[0], &[1], 0);
 
-    for v in vectors
+    assert_ne!(absent.context_id(), present.context_id());
+    let (_, option) = present
+        .reserve_sender(&mut store)
+        .unwrap()
+        .protect_request(0x01, &[], &[])
+        .unwrap();
+    assert_eq!(option.as_slice(), &[0x19, 0x00, 0x00, 0x00]);
+}
+
+#[test]
+fn id_context_over_implementation_capacity_is_rejected() {
+    let result = Context::load_existing(
+        &[0u8; 16],
+        None,
+        Some(&[0; 9]),
+        &[0],
+        &[1],
+        &mut TestStore::existing(0),
+    );
+    assert!(matches!(
+        result,
+        Err(ContextStoreError::Oscore(OscoreError::InvalidParam))
+    ));
+}
+
+#[test]
+fn malformed_oscore_options_are_rejected_without_keys() {
+    for option in [
+        &b"\x20"[..],
+        &b"\x02\x01"[..],
+        &b"\x02\x00\x01"[..],
+        &b"\x10"[..],
+        &b"\x19\x01\x09\x00"[..],
+        &b"\x09\x01\x00\x01\x02\x03\x04\x05\x06\x07\x08"[..],
+    ] {
+        assert_eq!(validate_option(option), Err(OscoreError::InvalidParam));
+    }
+
+    assert_eq!(validate_option(b"\x09\x01\x00"), Ok(()));
+}
+
+#[test]
+fn test_request_protection_vectors() {
+    for vector in load_vectors()
         .vectors
-        .iter()
-        .filter(|v| v.vector_type == "key_derivation")
+        .into_iter()
+        .filter(|vector| vector.vector_type == "request_protection")
     {
-        let master_secret: [u8; 16] = hex_to_array(v.master_secret.as_ref().unwrap());
-        let master_salt = v.master_salt.as_ref().map(|s| hex_to_bytes(s));
-        let sender_id = hex_to_bytes(v.sender_id.as_ref().unwrap_or(&String::new()));
-        let recipient_id = hex_to_bytes(v.recipient_id.as_ref().unwrap_or(&String::new()));
-
-        // Skip vectors with id_context for now (not supported in Context::new)
-        if v.id_context.is_some() {
-            continue;
-        }
-
-        // Create both contexts
-        let sender_ctx = Context::new(
+        let master_secret = hex_to_array(vector.master_secret.as_ref().unwrap());
+        let master_salt = vector.master_salt.as_ref().map(|value| hex_to_bytes(value));
+        let id_context = vector.id_context.as_ref().map(|value| hex_to_bytes(value));
+        let sender_id = hex_to_bytes(vector.sender_id.as_ref().unwrap());
+        let recipient_id = hex_to_bytes(vector.recipient_id.as_ref().unwrap());
+        let plaintext = vector.plaintext.as_ref().unwrap();
+        let (expected_option, expected_ciphertext) = match vector.name.as_str() {
+            "rfc8613_c4_request_protection" => (
+                hex_to_bytes("0914"),
+                hex_to_bytes("612f1092f1776f1c1668b3825e"),
+            ),
+            "rfc8613_c5_request_protection_no_salt" => (
+                hex_to_bytes("091400"),
+                hex_to_bytes("4ed339a5a379b0b8bc731fffb0"),
+            ),
+            "rfc8613_c6_request_protection_with_id_context" => (
+                hex_to_bytes("19140837cbf3210017a2d3"),
+                hex_to_bytes("72cd7273fd331ac45cffbe55c3"),
+            ),
+            _ => panic!("missing independent expected values for {}", vector.name),
+        };
+        let (mut context, mut store) = context_at(
             &master_secret,
             master_salt.as_deref(),
+            id_context.as_deref(),
             &sender_id,
             &recipient_id,
-        );
-        let recipient_ctx = Context::new(
-            &master_secret,
-            master_salt.as_deref(),
-            &recipient_id,
-            &sender_id,
+            u64::from(vector.sender_seq.unwrap()),
         );
 
-        // Both should succeed
-        assert!(
-            sender_ctx.is_ok(),
-            "Failed to create sender context for {}",
-            v.name
+        let (ciphertext, option) = context
+            .reserve_sender(&mut store)
+            .unwrap()
+            .protect_request(
+                plaintext.code,
+                &hex_to_bytes("b3747631"),
+                &hex_to_bytes(&plaintext.payload),
+            )
+            .unwrap();
+
+        assert_eq!(
+            option.as_slice(),
+            expected_option,
+            "OSCORE option mismatch for {}",
+            vector.name
         );
-        assert!(
-            recipient_ctx.is_ok(),
-            "Failed to create recipient context for {}",
-            v.name
+        assert_eq!(
+            ciphertext.as_slice(),
+            expected_ciphertext,
+            "ciphertext mismatch for {}",
+            vector.name
+        );
+    }
+}
+
+#[test]
+fn test_response_protection_vectors() {
+    for vector in load_vectors()
+        .vectors
+        .into_iter()
+        .filter(|vector| vector.vector_type == "response_protection")
+    {
+        let master_secret = hex_to_array(vector.master_secret.as_ref().unwrap());
+        let master_salt = vector.master_salt.as_ref().map(|value| hex_to_bytes(value));
+        let responder_id = hex_to_bytes(vector.sender_id.as_ref().unwrap());
+        let requester_id = hex_to_bytes(vector.request_kid.as_ref().unwrap());
+        let request_piv = hex_to_bytes(vector.request_piv.as_ref().unwrap());
+        let plaintext = vector.plaintext.as_ref().unwrap();
+        let (expected_option, expected_ciphertext) = match vector.name.as_str() {
+            "rfc8613_c7_response_protection" => (
+                hex_to_bytes(""),
+                hex_to_bytes("dbaad1e9a7e7b2a813d3c31524378303cdafae119106"),
+            ),
+            "rfc8613_c8_response_with_partial_iv" => (
+                hex_to_bytes("0100"),
+                hex_to_bytes("4d4c13669384b67354b2b6175ff4b8658c666a6cf88e"),
+            ),
+            _ => panic!("missing independent expected values for {}", vector.name),
+        };
+        let (mut requester, _) = context_at(
+            &master_secret,
+            master_salt.as_deref(),
+            None,
+            &requester_id,
+            &responder_id,
+            0,
+        );
+
+        let (code, options, payload) = requester
+            .unprotect_response(&expected_option, &expected_ciphertext, &request_piv)
+            .unwrap_or_else(|_| panic!("unprotect_response failed for {}", vector.name));
+
+        assert_eq!(code, plaintext.code, "code mismatch for {}", vector.name);
+        assert_eq!(
+            options.as_slice(),
+            hex_to_bytes(&plaintext.options),
+            "options mismatch for {}",
+            vector.name
+        );
+        assert_eq!(
+            payload.as_slice(),
+            hex_to_bytes(&plaintext.payload),
+            "payload mismatch for {}",
+            vector.name
         );
     }
 }

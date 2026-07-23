@@ -82,6 +82,8 @@ pub struct AnnounceResult {
     pub peer: Option<PeerIdentity>,
     /// Queue depth from announce app_data (spec 11.4), or None.
     pub congestion: Option<u8>,
+    /// Pin evicted by the bounded LRU while accepting this announce.
+    pub evicted_iid: Option<[u8; 8]>,
 }
 
 impl AnnounceResult {
@@ -92,16 +94,23 @@ impl AnnounceResult {
             reject_reason: Some(reason),
             peer: None,
             congestion: None,
+            evicted_iid: None,
         }
     }
 
-    fn accepted(should_relay: bool, peer: PeerIdentity, congestion: Option<u8>) -> Self {
+    fn accepted(
+        should_relay: bool,
+        peer: PeerIdentity,
+        congestion: Option<u8>,
+        evicted_iid: Option<[u8; 8]>,
+    ) -> Self {
         Self {
             accepted: true,
             should_relay,
             reject_reason: None,
             peer: Some(peer),
             congestion,
+            evicted_iid,
         }
     }
 }
@@ -132,6 +141,7 @@ struct PinnedKeyEntry {
 /// - pinned_keys: IID -> pubkey (TOFU trust anchors)
 /// - address_builder: How to convert IID to full IPv6 (prefix is context)
 #[cfg(feature = "std")]
+#[derive(Clone)]
 pub struct AnnounceProcessor {
     /// Unified routing table (spec section 11).
     gradient_table: GradientTable,
@@ -277,7 +287,7 @@ impl AnnounceProcessor {
         let should_relay = announce.should_relay();
 
         let peer = PeerIdentity::from_pubkey(pubkey);
-        AnnounceResult::accepted(should_relay, peer, congestion)
+        AnnounceResult::accepted(should_relay, peer, congestion, evicted_iid)
     }
 
     /// Forget the seq_num for an originator (e.g., on key rotation).
@@ -298,8 +308,22 @@ impl AnnounceProcessor {
     }
 
     /// Return the pinned pubkey for an IID, or None if not yet seen.
-    pub fn pinned_pubkey_for(&self, iid: &[u8; 8]) -> Option<&[u8; 32]> {
-        self.pinned_keys.get(iid).map(|e| &e.pubkey)
+    pub fn pinned_pubkey_for(&self, iid: &[u8; 8]) -> Option<PublicKey> {
+        self.pinned_keys
+            .get(iid)
+            .map(|entry| PublicKey::new(entry.pubkey))
+    }
+
+    #[cfg(test)]
+    pub(crate) fn pin_for_test(&mut self, pubkey: PublicKey) {
+        let iid = iid_from_pubkey(&pubkey);
+        self.pinned_keys.insert(
+            iid,
+            PinnedKeyEntry {
+                pubkey: *pubkey.as_bytes(),
+                last_access: 0,
+            },
+        );
     }
 
     /// Return IIDs of all originators we've seen announces from.
@@ -334,7 +358,8 @@ impl AnnounceProcessor {
     }
 
     /// Evict oldest pinned key entry if over capacity.
-    fn evict_pinned_if_needed(&mut self) {
+    fn evict_pinned_if_needed(&mut self) -> Option<[u8; 8]> {
+        let mut evicted = None;
         while self.pinned_keys.len() > self.max_entries {
             // Find oldest entry (lowest last_access)
             let oldest_iid = self
@@ -344,8 +369,10 @@ impl AnnounceProcessor {
                 .map(|(k, _)| *k);
             if let Some(iid) = oldest_iid {
                 self.pinned_keys.remove(&iid);
+                evicted = Some(iid);
             }
         }
+        evicted
     }
 
     /// Evict oldest seen entry if over capacity.
@@ -666,7 +693,7 @@ mod tests {
         // Key is now pinned
         let pinned = processor.pinned_pubkey_for(&identity.iid);
         assert!(pinned.is_some());
-        assert_eq!(pinned.unwrap(), identity.pubkey.as_bytes());
+        assert_eq!(pinned.unwrap(), identity.pubkey);
     }
 
     #[test]

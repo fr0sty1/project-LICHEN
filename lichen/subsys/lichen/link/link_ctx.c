@@ -146,9 +146,31 @@ static int seq_unlock(struct lichen_link_ctx *ctx);
 
 int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
 {
+	uint8_t rand_byte;
+
 	if (ctx == NULL || eui64 == NULL) {
 		return -EINVAL;
 	}
+
+	/* ponytail: random epoch in [128,255] for reboot resilience without flash.
+	 * Half-space arithmetic treats upper-half counters as "ahead" of lower-half.
+	 * Callers with persisted epoch should call lichen_link_set_epoch() after init.
+	 *
+	 * SECURITY: ESP32 HW RNG produces weak/predictable output before WiFi/BT radio
+	 * init. On ESP32 without epoch persistence, an attacker who knows the boot
+	 * timing may predict the epoch. Mitigation: persist epoch to flash, or defer
+	 * this call until after radio subsystem init. */
+#ifdef __ZEPHYR__
+	if (sys_csrand_get(&rand_byte, sizeof(rand_byte)) != 0) {
+		return -EIO;
+	}
+#elif defined(__linux__) || defined(__APPLE__)
+	if (getentropy(&rand_byte, sizeof(rand_byte)) != 0) {
+		return -EIO;
+	}
+#else
+	return -EIO;
+#endif
 
 #ifdef __ZEPHYR__
 	k_mutex_init(&ctx->seq_lock);
@@ -175,22 +197,6 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
 	}
 #endif
 
-	/* ponytail: random epoch in [128,255] for reboot resilience without flash.
-	 * Half-space arithmetic treats upper-half counters as "ahead" of lower-half.
-	 * Callers with persisted epoch should call lichen_link_set_epoch() after init.
-	 *
-	 * SECURITY: ESP32 HW RNG produces weak/predictable output before WiFi/BT radio
-	 * init. On ESP32 without epoch persistence, an attacker who knows the boot
-	 * timing may predict the epoch. Mitigation: persist epoch to flash, or defer
-	 * this call until after radio subsystem init. */
-	uint8_t rand_byte;
-#ifdef __ZEPHYR__
-	sys_csrand_get(&rand_byte, 1);
-#elif defined(__linux__) || defined(__APPLE__)
-	(void)getentropy(&rand_byte, 1);
-#else
-	rand_byte = 0; /* fallback: no CSPRNG available */
-#endif
 	ctx->epoch = 128 + (rand_byte & 0x7F); /* [128, 255] */
 	ctx->tx_seq = 0;
 
@@ -216,10 +222,24 @@ int lichen_link_load_key(struct lichen_link_ctx *ctx,
 {
 	uint8_t new_sk[LICHEN_SK_LEN];
 	uint8_t new_pk[LICHEN_PK_LEN];
+	uint8_t new_epoch;
 
 	if (ctx == NULL || seed == NULL) {
 		return -EINVAL;
 	}
+
+#ifdef __ZEPHYR__
+	if (sys_csrand_get(&new_epoch, 1) != 0) {
+		return -EIO;
+	}
+#elif defined(__linux__) || defined(__APPLE__)
+	if (getentropy(&new_epoch, 1) != 0) {
+		return -EIO;
+	}
+#else
+	return -EIO;
+#endif
+	new_epoch = 128 + (new_epoch & 0x7F);
 
 #ifdef CONFIG_LICHEN_CRYPTO_MONOCYPHER
 	uint8_t hash[64];
@@ -251,13 +271,18 @@ int lichen_link_load_key(struct lichen_link_ctx *ctx,
 	new_pk[0] = 0x01;
 #endif
 
+	if (seq_lock(ctx) != 0) {
+		secure_wipe(new_sk, sizeof(new_sk));
+		secure_wipe(new_pk, sizeof(new_pk));
+		return -EIO;
+	}
+	bool rotating_key = ctx->has_key &&
+		memcmp(ctx->ed25519_pk, new_pk, LICHEN_PK_LEN) != 0;
 	if (ctx->has_key) {
 		secure_wipe(ctx->ed25519_sk, LICHEN_SK_LEN);
 	}
-
 	memcpy(ctx->ed25519_sk, new_sk, LICHEN_SK_LEN);
 	memcpy(ctx->ed25519_pk, new_pk, LICHEN_PK_LEN);
-	secure_wipe(new_sk, sizeof(new_sk));
 	ctx->has_key = true;
 	ctx->tx_seq = 0;
 	ctx->nonce_exhausted = false;
@@ -285,7 +310,7 @@ int lichen_link_generate_key(struct lichen_link_ctx *ctx)
 		return -EIO;
 	}
 #else
-#error "No CSPRNG available for this platform"
+	return -EIO;
 #endif
 
 	ret = lichen_link_load_key(ctx, seed);

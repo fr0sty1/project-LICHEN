@@ -161,7 +161,7 @@ struct lichen_meshcore_adapter {
 
 void lichen_meshcore_adapter_init(
 	struct lichen_meshcore_adapter *_Nonnull adapter,
-	const struct lichen_meshcore_adapter_ops *_Nonnull ops);
+	const struct lichen_meshcore_adapter_ops *_Nullable ops);
 void lichen_meshcore_adapter_reset(struct lichen_meshcore_adapter *_Nonnull adapter);
 int lichen_meshcore_adapter_process_raw(
 	struct lichen_meshcore_adapter *_Nonnull adapter,

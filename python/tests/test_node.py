@@ -17,6 +17,7 @@ Test categories:
 
 import asyncio
 import contextlib
+from typing import Any, cast
 
 import pytest
 
@@ -141,6 +142,130 @@ class TestNodeLifecycle:
         await node.stop()  # Should not raise
         assert node.state == NodeState.STOPPED
 
+    @pytest.mark.asyncio
+    async def test_start_scheduler_failure_rolls_back_receive_task(self, node: Node):
+        primary = RuntimeError("scheduler start failed")
+
+        class Scheduler:
+            stop_calls = 0
+
+            async def start(self) -> None:
+                raise primary
+
+            async def stop(self) -> None:
+                self.stop_calls += 1
+
+        scheduler = Scheduler()
+        node._scheduler = cast(Any, scheduler)
+
+        with pytest.raises(RuntimeError) as raised:
+            await node.start()
+
+        assert raised.value is primary
+        assert scheduler.stop_calls == 1
+        assert node._receive_task is None
+        assert node.state is NodeState.STOPPED
+
+    @pytest.mark.asyncio
+    async def test_start_adapter_failure_preserves_primary_and_stops_all(self, node: Node):
+        primary = RuntimeError("adapter start failed")
+
+        class Stage:
+            def __init__(self, start_error: BaseException | None = None) -> None:
+                self.start_error = start_error
+                self.stop_calls = 0
+
+            async def start(self) -> None:
+                if self.start_error is not None:
+                    raise self.start_error
+
+            async def stop(self) -> None:
+                self.stop_calls += 1
+                raise RuntimeError("cleanup failed")
+
+        scheduler = Stage()
+        adapter = Stage(primary)
+        node._scheduler = cast(Any, scheduler)
+        node._meshtastic_adapter = cast(Any, adapter)
+
+        with pytest.raises(RuntimeError) as raised:
+            await node.start()
+
+        assert raised.value is primary
+        assert scheduler.stop_calls == 1
+        assert adapter.stop_calls == 1
+        assert node._receive_task is None
+        assert node.state is NodeState.STOPPED
+
+    @pytest.mark.asyncio
+    async def test_receive_task_start_failure_rolls_back_without_leak(self, node: Node):
+        primary = RuntimeError("receive task failed")
+
+        async def fail_receive() -> None:
+            raise primary
+
+        node._receive_loop = fail_receive  # type: ignore[method-assign]
+        with pytest.raises(RuntimeError) as raised:
+            await node.start()
+
+        assert raised.value is primary
+        assert node._receive_task is None
+        assert node.state is NodeState.STOPPED
+
+    @pytest.mark.asyncio
+    async def test_stop_attempts_all_cleanup_and_is_retry_safe(self, node: Node):
+        class Stage:
+            def __init__(self, error: BaseException) -> None:
+                self.error = error
+                self.stop_calls = 0
+
+            async def start(self) -> None:
+                pass
+
+            async def stop(self) -> None:
+                self.stop_calls += 1
+                raise self.error
+
+        adapter_error = RuntimeError("adapter stop failed")
+        scheduler = Stage(RuntimeError("scheduler stop failed"))
+        adapter = Stage(adapter_error)
+        node._scheduler = cast(Any, scheduler)
+        node._meshtastic_adapter = cast(Any, adapter)
+        await node.start()
+
+        with pytest.raises(RuntimeError) as raised:
+            await node.stop()
+        await node.stop()
+
+        assert raised.value is adapter_error
+        assert adapter.stop_calls == 1
+        assert scheduler.stop_calls == 1
+        assert node._receive_task is None
+        assert node.state is NodeState.STOPPED
+
+    @pytest.mark.asyncio
+    async def test_concurrent_start_stop_are_serialized(self, node: Node):
+        entered = asyncio.Event()
+        release = asyncio.Event()
+
+        class Scheduler:
+            async def start(self) -> None:
+                entered.set()
+                await release.wait()
+
+            async def stop(self) -> None:
+                pass
+
+        node._scheduler = cast(Any, Scheduler())
+        start = asyncio.create_task(node.start())
+        await entered.wait()
+        stop = asyncio.create_task(node.stop())
+        await asyncio.sleep(0)
+        assert not stop.done()
+        release.set()
+        await asyncio.gather(start, stop)
+        assert node.state is NodeState.STOPPED
+
 
 class TestPeerManagement:
     """Tests for peer database management."""
@@ -258,3 +383,66 @@ class TestCallback:
         node.set_on_receive(lambda data, sender: received.append((data, sender)))
 
         assert node._on_receive is not None
+
+    def test_owner_registration_is_conditional(self, node: Node):
+        first_owner = object()
+        second_owner = object()
+
+        def callback(_data, _sender):
+            pass
+
+        node.register_on_receive(first_owner, callback)
+
+        with pytest.raises(RuntimeError, match="already has an owner"):
+            node.register_on_receive(second_owner, callback)
+        with pytest.raises(RuntimeError, match="already has an owner"):
+            node.set_on_receive(callback)
+        assert not node.unregister_on_receive(second_owner)
+        assert node._on_receive is callback
+        assert node.unregister_on_receive(first_owner)
+        assert node._on_receive is None
+
+    def test_none_owner_is_rejected_before_mutation(self, node: Node):
+        callback_calls = []
+
+        def callback(data, sender):
+            callback_calls.append((data, sender))
+
+        with pytest.raises(ValueError, match="must not be None"):
+            node.register_on_receive(None, callback)
+        assert node._on_receive is None
+        assert node._on_receive_owner is None
+
+        owner = object()
+        node.register_on_receive(owner, callback)
+        with pytest.raises(ValueError, match="must not be None"):
+            node.unregister_on_receive(None)
+        assert node._on_receive is callback
+        assert node._on_receive_owner is owner
+        assert callback_calls == []
+
+
+def test_set_config_validates_all_values_before_mutation(node: Node) -> None:
+    node.set_config({"receive_timeout_ms": "250", "announce_interval_ms": "500"})
+    assert node.get_config() == {
+        "receive_timeout_ms": 250,
+        "announce_interval_ms": 500,
+    }
+
+    with pytest.raises(ValueError):
+        node.set_config({
+            "receive_timeout_ms": "300",
+            "announce_interval_ms": "invalid",
+        })
+
+    assert node.get_config() == {
+        "receive_timeout_ms": 250,
+        "announce_interval_ms": 500,
+    }
+
+
+def test_set_config_rejects_unknown_fields_before_mutation(node: Node) -> None:
+    before = node.get_config()
+    with pytest.raises(ValueError, match="unknown config keys"):
+        node.set_config({"receive_timeout_ms": 300, "unknown": 1})
+    assert node.get_config() == before

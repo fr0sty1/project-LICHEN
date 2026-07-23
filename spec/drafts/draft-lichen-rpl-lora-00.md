@@ -137,6 +137,10 @@ This profile uses **Non-Storing Mode** exclusively:
 Rationale: LoRa nodes are often memory-constrained. Non-storing mode
 minimizes RAM requirements at routers.
 
+Full multi-hop downward routing uses the end-to-end DAO Origin Signature Option
+in Section 7.5. A DAO that fails that profile MUST NOT mutate downward route
+state.
+
 ### 4.2. DODAG Configuration
 
 | Parameter | Value | Rationale | Source |
@@ -270,7 +274,7 @@ To prevent DIS storms:
 |-------|--------|
 | Initial DAO | Random 0-2s after parent selection |
 | DAO retry | 4, 8, 16 seconds (exponential backoff) |
-| DAO refresh | Every 30 minutes (before lifetime expires) |
+| DAO refresh | Every 15 minutes (50% of default lifetime) |
 | DAO on parent change | Immediate (with jitter 0-500ms) |
 
 **DAO Source Address Model:** DAO packets use routable ULA source (DODAG-root derived prefix) for multi-hop forwarding. Relays preserve the original IPv6 source end-to-end (see spec/04-network.md and SCHC Rule 4). This satisfies security requirements for source binding.
@@ -279,37 +283,280 @@ To prevent DIS storms:
 
 ```
 Lifetime = DAO_LIFETIME_UNIT × DAO_LIFETIME
-         = 60 seconds × 60
-         = 3600 seconds = 1 hour
+         = 60 seconds × 30
+         = 1800 seconds = 30 minutes
 ```
 
 Nodes MUST refresh DAO before lifetime expires (recommend 50% of lifetime).
 
 ### 7.3. DAO-ACK
 
-Root MUST send DAO-ACK for every DAO received:
-- Confirms receipt
-- Provides feedback (accept/reject)
-- Triggers bidirectional verification
+For a newly accepted DAO that requests an acknowledgement, the root MUST send
+a success DAO-ACK after replay-floor persistence. It MAY send a rejection
+DAO-ACK for an invalid DAO.
+
+An authenticated equal-sequence DAO whose complete signed-byte digest exactly
+matches the stored digest is an idempotent retransmission. The root MAY resend
+the same DAO-ACK and MUST NOT rewrite the replay floor. If volatile route state
+is missing after a crash, it MAY repeat semantic parsing and exact self-Target
+validation to reconcile that route idempotently. Equal-sequence DAOs with different bytes and
+lower-sequence DAOs are rejected.
 
 ### 7.4. Source Routing Header
 
-In non-storing mode, root inserts source routing header:
+When the root is also the original packet source and the `/128` destination is
+inside the RPL domain, it inserts an RFC 6554 Type 3 Source Routing Header that
+describes the strict path to that node. The IPv6 base Destination Address is
+the first hop; the SRH contains the remaining hops in the order required by
+RFC 6554 processing. The originator MUST set `Segments Left` exactly to the
+number of addresses in the SRH.
 
 ```
 IPv6 header:
   Source: root
-  Destination: final (via source route)
+  Destination: hop 1
 
 Routing Header (type 3, RFC 6554):
-  Segments Left: N
-  Address[1]: hop 1
-  Address[2]: hop 2
+  Segments Left: N - 1
+  Address[1]: hop 2
   ...
-  Address[N]: final destination
+  Address[N-1]: target node
 ```
 
 Maximum path length: 8 hops (header size constraint).
+
+For every packet not originated by the root, including Internet-originated
+traffic to a `/128`, the root MUST use the IPv6-in-IPv6 procedure in RFC 6554
+Section 4.1. The same procedure is required for a prefix Target shorter than
+`/128`, because that Target is not a hop address. Let `D` be the actual
+destination, `E` the authenticated DAO origin authorized to advertise the
+prefix, and `[H1, ..., E]` the strict mesh path. The root MUST preserve `D` in
+an inner IPv6 packet and use an outer RFC 6554 route to `E`. The canonical
+prefix value MUST NOT appear as a hop. At `E`, the outer destination MUST be
+local and `Segments Left` MUST be zero before decapsulation. `E` MUST verify
+that inner destination `D` still matches a prefix delegated to `E` before local
+delivery or normal egress forwarding.
+
+If the path has one hop, the root MAY omit the SRH but MUST retain the outer
+IPv6 tunnel. If the root is `E`, it MUST route the original packet without an
+RPL tunnel. The root MUST decrement the inner Hop Limit by the initial
+`Segments Left`. When the root is forwarding rather than originating the inner
+packet, it MUST first apply the additional normal forwarding decrement. The
+initial `Segments Left` MUST be strictly less than the Hop Limit available
+after any forwarding decrement. Routes that are incomplete, cyclic, or longer
+than eight hops MUST be rejected rather than truncated. Packets larger than
+one LoRa frame MUST use SCHC fragmentation after encapsulation and SCHC
+compression. They are rejected only when the complete compressed datagram
+cannot be represented by the configured SCHC fragmentation rule or no
+fragmentation context exists.
+
+### 7.5. DAO Origin Signature Option
+
+Every DAO in this profile MUST contain exactly one DAO Origin Signature Option.
+The temporary implementation value is RPL Control Message Option type `0x12`
+pending IETF Review and IANA allocation. Its Data Length is 56 octets.
+Deployments using this temporary value MUST coordinate to avoid collisions,
+and future drafts may change it:
+
+```
+  0                   1                   2                   3
+  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ |  Type=0x12    |  Length=56   |                               |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               +
+ |                 Origin Sequence (8 octets)                    |
+ +                               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ |                               |                               |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               +
+ |                                                               |
+ |                    Schnorr48 (48 octets)                       |
+ |                                                               |
+ |                                                               |
+ |                                                               |
+ |                                                               |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+Origin Sequence is an unsigned 64-bit integer in network byte order. Schnorr48
+signs this 64-octet application message:
+
+```
+digest = SHA-512("LICHEN-DAO-ORIGIN-v1" || origin_ipv6 ||
+                 effective_dodagid || origin_sequence_be ||
+                 unsigned_dao_bytes)
+signature = Schnorr48-Sign(origin_key, digest)
+```
+
+`"LICHEN-DAO-ORIGIN-v1"` is exactly 20 ASCII octets with no NUL terminator.
+`origin_ipv6` is the 16-octet IPv6 Source Address preserved end to end.
+`effective_dodagid` is the 16-octet DODAGID carried when `D=1`; when `D=0`, it
+is the active DODAG's DODAGID for the DAO's RPLInstanceID.
+`origin_sequence_be` is the eight on-wire sequence octets. `unsigned_dao_bytes`
+is the exact byte string beginning at RPLInstanceID and ending immediately
+before this option. It includes all DAO base fields, the DODAGID when `D=1`,
+and every preceding option; it excludes the ICMPv6 header and this complete
+option. Implementations MUST NOT decode, canonicalize, reorder, or re-encode
+these bytes when constructing the transcript.
+
+For example, the transcript concatenation is:
+
+```
+4c494348454e2d44414f2d4f524947494e2d7631  # domain, no NUL
+<16-byte preserved IPv6 Source Address>
+<16-byte effective DODAGID>
+<8-byte big-endian Origin Sequence>
+<exact DAO bytes from RPLInstanceID through the preceding option>
+```
+
+This option MUST be final. Before selecting a signature context, a receiver
+MUST validate the fixed DAO base length and flags, require a configured
+RPLInstanceID, derive the effective DODAGID, and require it to equal the active
+DODAG for that instance. It then performs only bounds-safe option framing.
+Unknown option types, missing, duplicate, or non-final origin-signature
+options, trailing bytes, truncation, or any malformed option framing MUST
+reject the whole DAO without semantic parsing or state mutation. An RPL Target
+Option in `.44.7` MUST have Data Length 18; Prefix Length 128 and equality with
+the origin are checked during semantic parsing. A Transit Information Option
+Data Length MUST equal 20 and
+include the 16-octet Parent Address required by this non-storing profile. The
+DAO Origin Signature Option Data Length MUST equal 56.
+
+The verification key MUST be the 32-octet public key from an already
+authenticated, pre-pinned Announce identity. The preserved source address IID
+MUST equal the IID bound to that identity, and the key/IID binding MUST be
+verified before signature use. An arbitrary caller-supplied or self-certified
+key is insufficient. A DAO MUST NOT establish or replace an Announce identity.
+
+Replay state is keyed by the pinned 32-octet public key, not by the full IPv6
+address. Origin Sequence starts above zero, never wraps, and is strictly
+monotonic for that key. Before transmitting a new logical DAO, the origin MUST
+crash-safely commit a greater sequence and the complete signed DAO bytes before
+transmission. Storage MUST provide atomic commit semantics or two independently
+validated slots with generation numbers. Missing, corrupt, unavailable, or
+partially committed state is a hard failure. The origin MUST remain fail closed
+until valid state is restored or provisioned above every value previously used
+with that key. At `0xffffffffffffffff`, it MUST NOT originate a new logical DAO.
+The TX API MUST expose the complete retained signed DAO bytes after reboot so
+an equal-sequence retry transmits those bytes exactly rather than rebuilding or
+re-signing the DAO.
+
+The root MUST crash-safely retain, per pinned public key, the accepted
+high-water sequence and a collision-resistant digest of the complete signed DAO
+bytes. It need not retain the received DAO or volatile route table. A greater
+authenticated sequence is fresh. An equal sequence is accepted only when the
+complete signed-byte digest equals the stored digest. Equal different bytes and
+lower sequences are rejected. For a fresh DAO, the root MUST commit the new
+floor before route use or success DAO-ACK, then atomically mutate route state in
+memory. A crash between those operations may leave route state missing. An
+equal retransmission does not rewrite the floor and may repeat semantic parsing
+and exact self-Target validation solely to reconcile that missing route.
+
+Relays MUST preserve the IPv6 Source Address and complete DAO bytes exactly;
+they may change only Hop Limit and the enclosing hop-by-hop link frame and
+signature. Link-layer fields are not DAO bytes.
+
+The root MUST verify in this order:
+
+1. Link framing and the immediate-hop link signature.
+2. Fixed DAO base framing and flags, configured RPLInstanceID, and effective
+   DODAGID equality with the active DODAG.
+3. Bounds-safe framing of known option types, their exact lengths, and exactly
+   one final DAO Origin Signature Option.
+4. Pre-pinned Announce public-key lookup and its source-IID binding.
+5. Exact transcript digest and Schnorr48 signature.
+6. Crash-safe per-key sequence/digest classification, allowing only an
+   identical signed DAO retransmission at the accepted high-water value.
+7. DAO semantic parsing.
+8. Exact self `/128` Target validation.
+9. For a fresh DAO, persistence of the replay floor before route use or success
+   DAO-ACK, followed by atomic in-memory route mutation. An identical
+   retransmission does not rewrite the floor and may reconcile missing route
+   state after a crash.
+
+No expiry, replay, capacity, parent, or route state may be
+changed before all applicable checks succeed. Any failure rejects the complete
+DAO without such mutation.
+
+### 7.6. Target Encoding for `.44.7`
+
+The current `.44.7` profile permits exactly the authenticated origin's own
+IPv6 address as one node-owned `/128` Target. Its 16 target octets MUST equal
+the preserved Source Address and Transit `E` MUST be zero. Missing Target or
+Transit options, duplicate Targets, or inconsistent Transit Path Sequence,
+Path Lifetime, or `E` values reject the DAO after replay classification.
+
+The generalized prefix behavior below is future `.44.9` work. `/0` through
+`/127`, Target Descriptors, canonicalization, and external `E=1` routes are not
+`.44.7` conformance requirements and current Rust support is not claimed.
+
+### 7.6.1. Future Generalized Target Prefix Encoding
+
+The Target route key is `(RPLInstanceID, DODAGID, Prefix Length, Prefix)`, with
+all bits after Prefix Length cleared. A sender MUST use the minimum number of
+prefix octets and set reserved flags and unused low bits to zero. Per RFC 6550,
+a receiver MUST ignore reserved flags and bits beyond Prefix Length and
+canonicalize its internal key. It MUST reject truncated or greater-than-128-bit
+Targets before any DAOSequence replay or route mutation. Link-layer replay
+state is updated independently after link authentication.
+
+| Prefix | Prefix octets | Canonical requirement |
+|--------|---------------|-----------------------|
+| `/0` | 0 | `::/0`; exact root delegation required |
+| `/64` | 8 | Final 64 bits cleared internally |
+| `/127` | 16 | Sender sets final low bit to zero; receiver ignores it |
+| `/128` | 16 | Exact address |
+
+The authenticated DAO origin advertises every Target in its DAO and is the mesh
+egress for a prefix shorter than `/128`. A Target MAY be owned by that origin
+or MAY describe external reachability through it; external reachability MUST
+set the Transit Information `E` flag. Forwarders MUST preserve the origin IPv6
+source and ordered DAO content and MUST NOT combine Targets from different
+origins.
+
+The root MUST verify provenance under Section 7.5 and authorize each Target
+before changing route state. Delegation MUST name the Target's single sequence
+authority and whether the Target is node-owned (`E=0`) or external (`E=1`).
+Prefix authorization is separate from provenance and remains limited to exact
+static delegations as specified by LICHEN Section .44.9.2. A valid origin
+signature conveys no implicit prefix rights. `/0` requires an explicit exact
+delegation of `::/0` to that origin.
+
+### 7.7. Target and Transit Processing
+
+One or more Targets, each optionally followed by an RPL Target Descriptor,
+followed by consecutive Transit Information options form one group; every
+Transit applies to every Target in that group. This profile assigns no meaning
+to Target Descriptors, but receivers MUST allow and ignore them while
+preserving their bytes for provenance verification. A later Target starts a
+new group. Any malformed ordering, duplicate Target, inconsistent Path
+Sequence, Path Lifetime, or `E` flag among a group's Transit options, failed
+authorization, cycle, or capacity failure MUST reject the entire DAO without
+mutation.
+
+DAOSequence state is per authenticated origin. Path Sequence and withdrawal
+state are per canonical Target across the DODAG, and only the Target's
+authorized sequence authority may originate them. Parent, egress, lifetime,
+Path Control, and retention state are retained per candidate. A newer Path
+Sequence replaces the complete candidate set and gives every installed edge
+the accepted group's Path Lifetime. An equal sequence MUST be accepted only as
+an exact idempotent copy of candidate state already installed by that
+authority. The sequence authority MUST pack the complete redundant candidate
+set for one Path Sequence into one atomic DAO; this profile does not accept
+later equal-sequence candidate additions. Older or incomparable sequences,
+forbidden equal updates, and unauthorized authorities MUST reject the complete
+DAO before any DAO replay or route-state mutation. Other parent-set, Path
+Control, and lifetime changes require a newer Path Sequence. Path Lifetime zero
+withdraws a Target only with a newer Path Sequence from the sequence authority.
+
+The root MUST use longest-prefix match over active, authorized Targets with a
+complete path to their egress. Redundant candidates for one Target MUST be
+originated by its sequence authority in one logical Path Sequence. The root
+MUST mask bits outside the configured `PCS + 1` active bits, then compare each
+candidate's most-preferred active non-empty Path Control subfield in PC1, PC2,
+PC3, PC4 order. It MUST NOT compare complete Path Control octets or individual
+bits numerically. A candidate with no active Path Control bit MUST cause atomic
+DAO rejection. Candidates in the same subfield are ordered by the
+lexicographically smallest complete root-to-egress address sequence.
 
 ## 8. Security
 
@@ -329,9 +576,15 @@ security mechanism, not RPL's built-in security modes.
 All RPL control messages (DIO, DAO, DIS) are link-layer frames that MUST carry Schnorr signatures per draft-lichen-link-01:4.2 (unsigned RPL control frames MUST be rejected by receivers; permissive mode is test-only). See spec/06-security.md:8.10 for full requirements.
 
 This provides:
-- Sender authentication
+- Immediate-transmitter authentication
 - Message integrity
 - Replay protection (via epoch + sequence number)
+
+For a forwarded DAO, the link signature authenticates only the immediate
+relay. DAO-origin provenance is supplied by the mandatory DAO Origin Signature
+Option in Section 7.5, which binds the preserved source, effective DODAGID,
+persistent origin sequence, and exact unsigned DAO bytes. It MUST be verified
+before semantic parsing, prefix authorization, or route mutation.
 
 ### 8.3. Optional Preinstalled Mode
 
@@ -451,10 +704,18 @@ When DODAG root advertises prefix:
 #define RPL_TRICKLE_IMAX         8             // 2^8 doublings
 #define RPL_TRICKLE_K            10            // redundancy constant
 #define RPL_DAO_LIFETIME_UNIT    60            // seconds
-#define RPL_DAO_LIFETIME         60            // 1 hour
+#define RPL_DAO_LIFETIME         30            // 30 minutes
 #define RPL_DEFAULT_PARENT_COUNT 3             // max parents to track
 #define RPL_MRHOF_THRESHOLD      384           // parent switch hysteresis
 ```
+
+### 10.4. Implementation Status
+
+The current Rust `.44.7` routing implementation supports only self `/128`
+Targets and currently requires `std`. It does not claim the future `.44.9`
+prefix, Descriptor, canonicalization, or external-egress profile. These are
+implementation limitations, not relaxations of the `.44.7` wire, verification,
+persistence, and fail-closed requirements.
 
 ## 11. Security Considerations
 
@@ -488,8 +749,14 @@ Full mitigation requires secure localization, out of scope.
 
 ## 12. IANA Considerations
 
-This document requests allocation of:
+This document requests allocation under the IETF Review policy of:
 
+- RPL Control Message Option type `0x12` for the DAO Origin Signature Option.
+  Implementations use `0x12` temporarily pending IETF Review and IANA
+  assignment; its Data Length is fixed at 56 octets.
+  Deployments MUST coordinate use to avoid collisions. Future drafts may
+  change this value, and implementations MUST use the allocated value when one
+  is assigned.
 - RPL DIO Option Types for:
   - SCHC Rule Version
   - Time Synchronization
@@ -503,13 +770,13 @@ Specific values TBD.
 
 - [RFC 2119] Key words for use in RFCs
 - [RFC 6550] RPL: IPv6 Routing Protocol for LLNs
+- [RFC 6554] RPL Source Routing Header
 - [RFC 6206] The Trickle Algorithm
 - [RFC 6719] MRHOF for RPL
 
 ### 13.2. Informative References
 
 - [RFC 6551] RPL Metrics
-- [RFC 6554] RPL Source Routing Header
 - [LICHEN] LICHEN Protocol Specification
 
 ## Appendix A. Sample DODAG Configuration

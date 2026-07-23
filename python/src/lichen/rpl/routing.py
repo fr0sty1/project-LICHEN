@@ -23,6 +23,7 @@ SCHC-layer concern.
 """
 
 ROUTING_TYPE_SOURCE_ROUTE = 3
+MAX_ROUTE_HOPS = 8
 _SRH_FIELDS_LENGTH = 6  # routing_type, segments_left, CmprI/E, 3-byte pad/reserved
 
 
@@ -43,9 +44,11 @@ class SourceRoutingHeader:
 
     def to_ext_data(self) -> bytes:
         """The extension-header body after the next-header/length prefix."""
-        fields = bytes(
-            [ROUTING_TYPE_SOURCE_ROUTE, self.segments_left, 0, 0, 0, 0]
-        )
+        if len(self.addresses) > MAX_ROUTE_HOPS:
+            raise RoutingError("source route exceeds maximum hop count")
+        if not 0 <= self.segments_left <= len(self.addresses):
+            raise RoutingError("segments_left exceeds address count")
+        fields = bytes([ROUTING_TYPE_SOURCE_ROUTE, self.segments_left, 0, 0, 0, 0])
         return fields + b"".join(a.packed for a in self.addresses)
 
     @classmethod
@@ -61,10 +64,9 @@ class SourceRoutingHeader:
         addr_bytes = data[_SRH_FIELDS_LENGTH:]
         if len(addr_bytes) % 16 != 0:
             raise RoutingError("source-route address list is not 16-byte aligned")
-        addresses = [
-            IPv6Address(addr_bytes[i : i + 16])
-            for i in range(0, len(addr_bytes), 16)
-        ]
+        addresses = [IPv6Address(addr_bytes[i : i + 16]) for i in range(0, len(addr_bytes), 16)]
+        if len(addresses) > MAX_ROUTE_HOPS:
+            raise RoutingError("source route exceeds maximum hop count")
         if segments_left > len(addresses):
             raise RoutingError("segments_left exceeds address count")
         if segments_left == 0:
@@ -94,6 +96,8 @@ class RoutingTable:
     ) -> None:
         if not path:
             raise RoutingError("route path must not be empty")
+        if len(path) > MAX_ROUTE_HOPS:
+            raise RoutingError("route path exceeds maximum hop count")
         converted_target = to_ipv6(target)
         converted_path = [to_ipv6(a) for a in path]
         if converted_path[-1] != converted_target:
@@ -110,9 +114,7 @@ class RoutingTable:
         path = self._routes.get(to_ipv6(target))
         return list(path) if path is not None else None
 
-    def build_source_route(
-        self, target: IPv6Address | str
-    ) -> list[IPv6Address] | None:
+    def build_source_route(self, target: IPv6Address | str) -> list[IPv6Address] | None:
         """The hop path to ``target``, or ``None`` if no route is known."""
         return self.lookup(target)
 

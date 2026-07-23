@@ -8,7 +8,7 @@
 //!
 //! Usage:
 //!   frame-parser frame.bin          # Parse binary file
-//!   frame-parser --hex 0b0001000261626301020304  # Parse hex string
+//!   frame-parser --hex 0700010002616263  # Parse hex string
 
 use std::env;
 use std::fs;

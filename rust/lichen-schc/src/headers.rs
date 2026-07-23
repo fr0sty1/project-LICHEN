@@ -270,11 +270,11 @@ fn write_ipv6_header(
     payload_len: u16,
     next_header: u8,
     hop_limit: u8,
-    traffic_class: u8,
-    flow_label: u32,
+    flow: (u8, u32),
     src: &[u8; 16],
     dst: &[u8; 16],
 ) {
+    let (traffic_class, flow_label) = flow;
     out[0] = 0x60 | ((traffic_class >> 4) & 0x0F);
     out[1] = ((traffic_class & 0x0F) << 4) | ((flow_label >> 16) as u8 & 0x0F);
     out[2] = (flow_label >> 8) as u8;

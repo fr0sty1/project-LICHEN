@@ -61,17 +61,21 @@ valid = (e'[0:16] == e_received)
 
 ### 8.4. Signed vs Relay-Mutable Fields
 
-Signatures cover the **immutable** portion of the packet. Relays modify
-routing headers without re-signing.
+The LICHEN link signature is hop-by-hop. It covers the current link-layer
+destination and payload as specified by the link-layer draft. A receiver MUST
+verify that signature and update the authenticated peer's link replay window
+before processing the payload. A forwarding node then applies permitted
+mutations, creates a new link frame for the next hop, allocates its own replay
+counter, and signs the complete new frame. Hop Limit changes, RFC 6554 address
+swaps, source-routing-header updates, and link-address changes therefore never
+occur under an unchanged link signature.
 
-**Signed (immutable):**
-| Field | Notes |
-|-------|-------|
-| Source IPv6 address | Origin identity |
-| Destination IPv6 address | Final destination |
-| Payload | Application data |
-| Sequence number | Replay protection |
-| LLSec flags | Security parameters |
+An end-to-end origin signature is a separate object. DAOs carry the DAO Origin
+Signature Option defined in Routing Section 8.6. It signs a domain-separated
+SHA-512 transcript containing the preserved source, effective DODAGID,
+persistent 64-bit origin sequence, and exact unsigned DAO bytes. Relays MUST
+preserve the source and DAO bytes; only Hop Limit and the enclosing hop-by-hop
+link frame and signature may change.
 
 **Unsigned (relay-mutable):**
 | Field | Notes |
@@ -85,8 +89,16 @@ routing headers without re-signing.
 | Link-layer destination | Yes |
 | Link-layer source | Yes (to relay's address) |
 
-**Implication:** Relays forward packets without re-signing. The original
-signature remains valid because signed fields are unchanged.
+The root MUST validate in this order: structural framing and active
+instance/DODAG context; pinned key, IID, transcript, and origin signature;
+per-key replay classification; semantic parsing; exact self `/128` Target
+validation; persistence of a fresh replay floor; and atomic in-memory route mutation.
+Structural failure therefore wins over replay, while a structurally and
+cryptographically valid replay wins over semantic or Target-validation failure.
+Missing, corrupt, or unavailable replay persistence fails closed. Signature
+validity establishes provenance only; `.44.7` accepts exactly one `/128` Target
+whose 16 octets equal the preserved Source Address. General prefix delegation
+remains future `.44.9` work.
 
 ### 8.5. Unified Ed25519 Identity Derivation (new model)
 
@@ -272,6 +284,8 @@ For high-security pairing without infrastructure:
 
 - Nodes SHOULD support key rotation announcements
 - Key change with valid signature from old key -> accept new key
+- An authenticated new key creates fresh per-peer replay state; counters from
+  the old key MUST NOT constrain the new key
 - Key change without signature -> reject, require re-verification
 - Revocation: remove from local key store; no global revocation list
 
@@ -397,8 +411,8 @@ for control plane messages. This provides:
 
 | Mode | When to Use |
 |------|-------------|
-| Unsecured + link sigs | Default, sufficient for most deployments |
-| Preinstalled + link sigs | Adversarial environments, critical infrastructure |
+| Unsecured + required link/origin sigs | Default, sufficient for most deployments |
+| Preinstalled + required link/origin sigs | Adversarial environments, critical infrastructure |
 
 **Configuration:**
 

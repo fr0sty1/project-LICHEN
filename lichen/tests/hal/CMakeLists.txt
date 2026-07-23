@@ -6,3 +6,7 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(hal)
 
 target_sources(app PRIVATE src/main.c)
+
+if(CONFIG_FUEL_GAUGE)
+  target_compile_options(app PRIVATE -Wno-error=sign-compare)
+endif()

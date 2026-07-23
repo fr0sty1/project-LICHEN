@@ -39,6 +39,7 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 	size_t off;
 	size_t frame_body_len;
 	uint8_t mic_len;
+	bool signing_enabled;
 	int ret;
 
 	if (ctx == NULL || ipv6_pkt == NULL || out_frame == NULL || out_len == NULL) {
@@ -143,12 +144,7 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 			goto cleanup;
 		}
 	} else {
-		/* No signature */
-		if (l2_payload_len > sizeof(payload_buf)) {
-			return -EMSGSIZE;
-		}
-		memcpy(payload_buf, l2_payload, l2_payload_len);
-		payload_len = l2_payload_len;
+		goto cleanup;
 	}
 
 	/* CCP-15: CCA before every TX (project-LICHEN-bwmc / ccp15.json). Threshold from Kconfig. */
@@ -164,7 +160,7 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 	frame_body_len = (LICHEN_FRAME_PAYLOAD_OFFSET(dst_addr_len) -
 			  LICHEN_FRAME_LEN_FIELD_LEN) + payload_len + mic_len;
 
-	if (frame_body_len > 255) {
+	if (frame_body_len > LICHEN_MAX_FRAME_BODY_LEN) {
 		ret = -EMSGSIZE;
 		goto cleanup;
 	}
@@ -172,6 +168,25 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 	/* Total frame = length byte + body */
 	if (1 + frame_body_len > *out_len) {
 		ret = -ENOMEM;
+		goto cleanup;
+	}
+
+	/* Allocate a nonce only after every deterministic preflight check passes. */
+	int seq_err = lichen_link_next_tx(ctx, &epoch, &seqnum);
+	if (seq_err != 0) {
+		ret = seq_err;
+		goto cleanup;
+	}
+
+	if (signing_enabled &&
+	    schnorr48_sign_frame((uint8_t)frame_body_len,
+				 (uint8_t)(addr_mode | 0x20),
+				 epoch, seqnum,
+				 dst_addr, dst_addr_len,
+				 l2_payload, l2_payload_len,
+				 keypair.sk, keypair.pk,
+				 signature) != 0) {
+		ret = -EINVAL;
 		goto cleanup;
 	}
 
@@ -217,5 +232,6 @@ cleanup:
 	memset(signature, 0, sizeof(signature));
 	memset(l2_payload, 0, sizeof(l2_payload));
 	memset(compressed, 0, sizeof(compressed));
+	lichen_link_clear_keypair_snapshot(&keypair);
 	return ret;
 }

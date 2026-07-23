@@ -255,15 +255,10 @@ BUILD_ASSERT(LICHEN_MIN_FRAME_LEN ==
  * - LICHEN_LORA_FRAME_OVERHEAD (55 bytes): Conservative MTU overhead.
  *   Always reserves space for signature even when not used. This is
  *   intentional: a static MTU simplifies buffer sizing and avoids
- *   dynamic MTU changes when signing keys are provisioned. The 46-byte
+ *   dynamic MTU changes when signing keys are provisioned. The 50-byte
  *   overhead when unsigned is acceptable for the simplicity benefit.
  */
-#define LICHEN_FRAME_BASE_OVERHEAD \
-	(LICHEN_FRAME_LENGTH_FIELD + \
-	 LICHEN_FRAME_LLSEC_FIELD + \
-	 LICHEN_FRAME_EPOCH_FIELD + \
-	 LICHEN_FRAME_SEQNUM_FIELD + \
-	 LICHEN_FRAME_MIN_MIC)
+#define LICHEN_FRAME_BASE_OVERHEAD LICHEN_FRAME_FIXED_HEADER_LEN
 
 /*
  * Assert: signature length has not changed.
@@ -626,11 +621,9 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 	}
 
 	/*
-	 * SECURITY: This helper is the peer-authenticated RX path. CRC32-only
-	 * frames may still be accepted by lichen_link_rx() for explicit
-	 * unauthenticated/dev-mode callers, but they must not be attributed to
-	 * a known peer by trying each peer's public key. Without a signature,
-	 * lichen_link_rx() has no peer-auth proof to verify.
+	 * SECURITY: This helper is the peer-authenticated RX path. Unsigned frames
+	 * must not be attributed to a known peer by trying each peer's public key;
+	 * without a signature, lichen_link_rx() has no peer-auth proof to verify.
 	 */
 	if (!parsed.signature_present) {
 		return -LICHEN_EAUTH;
@@ -820,7 +813,7 @@ int lichen_peer_add(const uint8_t eui64[LICHEN_EUI64_LEN],
 		 * sequence numbers fall within the old window.
 		 * (project-LICHEN-0li1.53)
 		 */
-		lichen_replay_remove(&replay_table, peer_table[slot].eui64);
+		lichen_replay_remove(&replay_table, peer_table[slot].pubkey);
 		LOG_INF("lichen_l2: peer table full, evicting ..%02x:%02x",
 			peer_table[slot].eui64[6], peer_table[slot].eui64[7]);
 	}
@@ -899,7 +892,7 @@ int lichen_peer_remove(const uint8_t eui64[8])
 	 * (if the peer reconnects and the attacker replays old frames).
 	 * (project-LICHEN-tvfm.45)
 	 */
-	lichen_replay_remove(&replay_table, eui64);
+	lichen_replay_remove(&replay_table, entry->pubkey);
 
 	/* SECURITY: Zero pubkey before marking inactive */
 	secure_zero(entry->pubkey, sizeof(entry->pubkey));
@@ -1391,7 +1384,7 @@ static int lichen_l2_send_inner(struct net_if *iface, struct net_pkt *pkt)
 	 * This handles:
 	 * - SCHC compression
 	 * - Schnorr-48 signature if has_key
-	 * - AES-CCM-64 MIC if has_link_key, else CRC32 fallback
+	 * - No MIC for unsigned frames
 	 */
 	size_t frame_len = sizeof(tx_frame_buf);
 	/*
@@ -1949,6 +1942,10 @@ void lichen_l2_iface_init(struct net_if *iface)
 	int ret;
 
 	LOG_INF("lichen_l2: initializing interface");
+	if (atomic_get(&iface_init_failed)) {
+		LOG_ERR("lichen_l2: refusing retry after failed initialization");
+		return;
+	}
 
 	/*
 	 * Do NOT clear iface_init_failed here (project-LICHEN-i1gk.63).
@@ -1964,8 +1961,8 @@ void lichen_l2_iface_init(struct net_if *iface)
 	 * - Never explicitly cleared here; first boot starts at 0 (static init)
 	 * - Checked by send/recv/enable to reject operations on half-initialized state
 	 *
-	 * After a failed init, the lichen_iface != NULL check (see below) catches
-	 * retry attempts, ensuring failure is permanent until system restart.
+	 * After a failed init, the check above rejects retry attempts, ensuring
+	 * failure is permanent until system restart.
 	 * This is fail-safe by design.
 	 */
 
@@ -2341,7 +2338,7 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 * - Frame parsing
 	 * - Replay protection (if replay table provided)
 	 * - Schnorr-48 signature verification (if peer_pubkey provided)
-	 * - MIC verification (AES-CCM-64 or CRC32)
+	 * - Unsigned or Schnorr-48 frame validation
 	 * - SCHC decompression
 	 *
 	 * SECURITY: Copy link_key into a local buffer rather than capturing a
@@ -2355,14 +2352,8 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 * also write valid key material to link_key. If this invariant is violated,
 	 * MIC verification will fail (not silently accept).
 	 *
-	 * SECURITY (project-LICHEN-tvfm.85): When has_link_key is false,
-	 * rx_link_key_ptr remains NULL. This is passed to lichen_link_rx() which:
-	 * - For AES-CCM-64 MIC (8-byte): Fails with -LICHEN_EAUTH (requires key)
-	 * - For CRC32 MIC (4-byte): Falls back to CRC32 verification only
-	 * CRC32 provides integrity (accidental corruption) but not authentication.
-	 * This is expected during unauthenticated bootstrap before key exchange.
-	 * Once EDHOC handshake completes, has_link_key becomes true and frames
-	 * require cryptographic MIC verification.
+	 * The retained link key is copied for API compatibility but current frames
+	 * are either unsigned or authenticated by Schnorr-48.
 	 */
 	uint8_t rx_link_key[LICHEN_LINK_KEY_LEN];
 	const uint8_t *rx_link_key_ptr = NULL;

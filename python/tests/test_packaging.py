@@ -55,8 +55,8 @@ def test_native_client_dependency_extras_are_declared() -> None:
 
     coap = _requirements(optional["coap"])
     native_client = _requirements(optional["native-client"])
-    _assert_specifier(coap["aiocoap"], "<0.5,>=0.4.17")
-    _assert_specifier(native_client["aiocoap"], "<0.5,>=0.4.17")
+    _assert_specifier(coap["aiocoap"], "==0.4.17")
+    _assert_specifier(native_client["aiocoap"], "==0.4.17")
     _assert_specifier(native_client["cbor2"], "<6.2,>=6.1.2")
     _assert_specifier(native_client["textual"], "<8.3,>=8.2.7")
     _assert_specifier(native_client["rich"], "<15.1,>=15.0.0")
@@ -68,7 +68,7 @@ def test_runtime_dependency_ranges_are_bounded_to_tested_majors() -> None:
     requirements = _requirements(project["dependencies"])
 
     expected = {
-        "aiocoap": "<0.5,>=0.4.17",
+        "aiocoap": "==0.4.17",
         "anyio": "<4.15,>=4.14.1",
         "starlette": "<1.4,>=1.3.1",
         "uvicorn": "<0.50,>=0.49",

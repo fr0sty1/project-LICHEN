@@ -8,6 +8,8 @@ use std::path::Path;
 
 use serde::Deserialize;
 
+use lichen_link::frame::{FrameError, LichenFrame, MAX_FRAME_LEN};
+
 #[derive(Deserialize)]
 struct VectorFile {
     format_version: u32,
@@ -47,14 +49,25 @@ fn hex_decode(s: &str) -> Vec<u8> {
 }
 
 #[test]
+fn parser_rejects_length_255_frame() {
+    let mut encoded = vec![0; MAX_FRAME_LEN + 1];
+    encoded[0] = u8::MAX;
+    assert_eq!(
+        LichenFrame::from_bytes(&encoded),
+        Err(FrameError::FrameTooLarge)
+    );
+}
+
+#[test]
 fn test_link_frame_vectors() {
     let vectors_path =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("../../test/vectors/link_frame.json");
 
-    if !vectors_path.exists() {
-        eprintln!("Vectors file not found at {:?}, skipping", vectors_path);
-        return;
-    }
+    assert!(
+        vectors_path.exists(),
+        "Vectors file not found at {:?}",
+        vectors_path
+    );
 
     let content = fs::read_to_string(&vectors_path).expect("Failed to read vectors file");
     let vectors: VectorFile = serde_json::from_str(&content).expect("Failed to parse vectors JSON");
@@ -69,6 +82,125 @@ fn test_link_frame_vectors() {
     for vector in &vectors.vectors {
         let encoded = hex_decode(&vector.encoded);
         let fields = &vector.fields;
+
+        #[cfg(feature = "schnorr")]
+        if let Some(crypto) = &vector.crypto {
+            use lichen_link::schnorr::{derive_keypair, sign_frame, verify_frame};
+            use lichen_link::{LinkSeqNum, Seed};
+
+            let seed: [u8; 32] = hex_decode(&crypto.seed).try_into().unwrap();
+            let expected_private = hex_decode(&crypto.private_key);
+            let expected_public = hex_decode(&crypto.public_key);
+            let expected_preimage = hex_decode(&crypto.preimage);
+            let expected_signature: [u8; 48] = hex_decode(&crypto.signature).try_into().unwrap();
+            let (private_key, public_key) = derive_keypair(&Seed::new(seed));
+            assert_eq!(private_key.as_bytes().as_slice(), expected_private);
+            assert_eq!(public_key.as_bytes().as_slice(), expected_public);
+            assert_eq!(&encoded[..encoded.len() - 48], expected_preimage);
+
+            let dst_addr = hex_decode(&fields.dst_addr);
+            let payload = hex_decode(&fields.payload);
+            let signature = sign_frame(
+                encoded[0],
+                encoded[1],
+                fields.epoch,
+                LinkSeqNum::new(fields.seqnum),
+                &dst_addr,
+                &payload,
+                &private_key,
+                &public_key,
+            );
+            assert_eq!(signature, expected_signature);
+            assert_eq!(hex_decode(&fields.mic), expected_signature);
+            assert_eq!(&encoded[encoded.len() - 48..], expected_signature);
+            assert!(verify_frame(
+                encoded[0],
+                encoded[1],
+                fields.epoch,
+                LinkSeqNum::new(fields.seqnum),
+                &dst_addr,
+                &payload,
+                &signature,
+                &public_key,
+            ));
+
+            let mut tampered_dst = dst_addr.clone();
+            tampered_dst[0] ^= 1;
+            let mut tampered_payload = payload.clone();
+            tampered_payload[0] ^= 1;
+            let mut tampered_signature = signature;
+            tampered_signature[0] ^= 1;
+            assert!(!verify_frame(
+                encoded[0] ^ 1,
+                encoded[1],
+                fields.epoch,
+                LinkSeqNum::new(fields.seqnum),
+                &dst_addr,
+                &payload,
+                &signature,
+                &public_key
+            ));
+            assert!(!verify_frame(
+                encoded[0],
+                encoded[1],
+                fields.epoch ^ 1,
+                LinkSeqNum::new(fields.seqnum),
+                &dst_addr,
+                &payload,
+                &signature,
+                &public_key
+            ));
+            assert!(!verify_frame(
+                encoded[0],
+                encoded[1],
+                fields.epoch,
+                LinkSeqNum::new(fields.seqnum ^ 1),
+                &dst_addr,
+                &payload,
+                &signature,
+                &public_key
+            ));
+            assert!(!verify_frame(
+                encoded[0],
+                encoded[1] ^ 1,
+                fields.epoch,
+                LinkSeqNum::new(fields.seqnum),
+                &dst_addr,
+                &payload,
+                &signature,
+                &public_key
+            ));
+            assert!(!verify_frame(
+                encoded[0],
+                encoded[1],
+                fields.epoch,
+                LinkSeqNum::new(fields.seqnum),
+                &tampered_dst,
+                &payload,
+                &signature,
+                &public_key
+            ));
+            assert!(!verify_frame(
+                encoded[0],
+                encoded[1],
+                fields.epoch,
+                LinkSeqNum::new(fields.seqnum),
+                &dst_addr,
+                &tampered_payload,
+                &signature,
+                &public_key
+            ));
+            assert!(!verify_frame(
+                encoded[0],
+                encoded[1],
+                fields.epoch,
+                LinkSeqNum::new(fields.seqnum),
+                &dst_addr,
+                &payload,
+                &tampered_signature,
+                &public_key
+            ));
+        }
 
         // Verify minimum frame size (header + MIC)
         if encoded.len() < 5 {
@@ -252,10 +384,11 @@ fn test_l2_payload_vectors() {
     let vectors_path =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("../../test/vectors/l2_payload.json");
 
-    if !vectors_path.exists() {
-        eprintln!("Vectors file not found at {:?}, skipping", vectors_path);
-        return;
-    }
+    assert!(
+        vectors_path.exists(),
+        "Vectors file not found at {:?}",
+        vectors_path
+    );
 
     let content = fs::read_to_string(&vectors_path).expect("Failed to read vectors file");
 

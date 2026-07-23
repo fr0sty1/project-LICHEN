@@ -114,13 +114,6 @@ impl MicLength {
             _ => None,
         }
     }
-
-    pub fn mic_len(self) -> usize {
-        match self {
-            MicLength::Bits32 => 4,
-            MicLength::Bits64 => 8,
-        }
-    }
 }
 
 /// Whether the frame includes a Schnorr signature (LLSec bit 5, spec 4.4).
@@ -165,8 +158,11 @@ const SIGNATURE_BIT: u8 = 1 << 5;
 const ENCRYPTED_BIT: u8 = 1 << 6;
 const RESERVED_BIT: u8 = 1 << 7;
 
-/// Maximum body length in bytes (the Length field is a single byte).
-pub const MAX_FRAME_BODY: usize = 255;
+/// Maximum serialized LoRa frame length, including the Length field.
+pub const MAX_FRAME_LEN: usize = 255;
+
+/// Maximum body length represented by the Length field.
+pub const MAX_FRAME_BODY: usize = MAX_FRAME_LEN - 1;
 
 /// Error type for link-layer frame parsing and serialisation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -325,9 +321,19 @@ impl<'a> LichenFrame<'a> {
                 .expect("empty input can fail before length read");
             return Err(FrameError::Empty);
         }
+        if data.len() > MAX_FRAME_LEN {
+            transition_frame_state(&mut state, FrameProcessingState::Failed)
+                .expect("oversized input can fail before length read");
+            return Err(FrameError::FrameTooLarge);
+        }
         let length = data[0] as usize;
         transition_frame_state(&mut state, FrameProcessingState::LengthRead)
             .expect("non-empty frame can read length");
+        if length > MAX_FRAME_BODY {
+            transition_frame_state(&mut state, FrameProcessingState::Failed)
+                .expect("length-read frame can fail size check");
+            return Err(FrameError::FrameTooLarge);
+        }
         let expected_total = 1 + length;
         if data.len() > expected_total {
             transition_frame_state(&mut state, FrameProcessingState::Failed)
@@ -643,6 +649,8 @@ mod tests {
             #[serde(default)]
             error: bool,
             #[serde(default)]
+            error_type: String,
+            #[serde(default)]
             addr_mode: u8,
             #[serde(default)]
             mic_length: u8,
@@ -660,6 +668,12 @@ mod tests {
             payload_hex: String,
             #[serde(default)]
             payload_len: Option<usize>,
+            #[serde(default)]
+            payload_fill_hex: String,
+            #[serde(default)]
+            payload_fill_len: Option<usize>,
+            #[serde(default)]
+            payload_suffix_hex: String,
             #[serde(default)]
             mic_hex: String,
         }
@@ -679,24 +693,27 @@ mod tests {
             for vector in &file.vectors {
                 let name = &vector.name;
 
-                // Empty frame
-                if vector.input_hex.is_empty() {
-                    assert!(
-                        LichenFrame::from_bytes(&[]).is_err(),
-                        "{}: empty should error",
-                        name
-                    );
-                    continue;
-                }
-
                 let data = hex_decode(&vector.input_hex);
 
                 // Error cases
                 if vector.expected.error {
+                    let error = LichenFrame::from_bytes(&data)
+                        .expect_err("invalid vector unexpectedly parsed");
+                    let matches_type = match vector.expected.error_type.as_str() {
+                        "empty_frame" => error == FrameError::Empty,
+                        "length_mismatch" | "frame_too_short" => {
+                            matches!(error, FrameError::TooShort(_))
+                        }
+                        "reserved_bit_set" => error == FrameError::ReservedBitSet,
+                        "reserved_mic_length" => error == FrameError::ReservedMicLength(2),
+                        "encryption_unsupported" => error == FrameError::EncryptionUnsupported,
+                        "frame_too_large" => error == FrameError::FrameTooLarge,
+                        _ => false,
+                    };
                     assert!(
-                        LichenFrame::from_bytes(&data).is_err(),
-                        "{}: expected error",
-                        name
+                        matches_type,
+                        "{}: expected {}, got {:?}",
+                        name, vector.expected.error_type, error
                     );
                     continue;
                 }
@@ -750,6 +767,23 @@ mod tests {
                 // Payload - check by length if specified
                 if let Some(expected_len) = vector.expected.payload_len {
                     assert_eq!(frame.payload.len(), expected_len, "{}: payload_len", name);
+                    if let Some(fill_len) = vector.expected.payload_fill_len {
+                        let fill = hex_decode(&vector.expected.payload_fill_hex);
+                        assert_eq!(fill.len(), 1, "{}: payload fill byte", name);
+                        assert!(
+                            frame.payload[..fill_len]
+                                .iter()
+                                .all(|byte| *byte == fill[0]),
+                            "{}: payload fill",
+                            name
+                        );
+                        assert_eq!(
+                            &frame.payload[fill_len..],
+                            hex_decode(&vector.expected.payload_suffix_hex).as_slice(),
+                            "{}: payload suffix",
+                            name
+                        );
+                    }
                 } else {
                     assert_eq!(
                         frame.payload,

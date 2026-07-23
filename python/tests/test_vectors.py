@@ -10,6 +10,7 @@ ajr / gate ijj). If a vector changes intentionally, regenerate with
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -32,10 +33,12 @@ VECTORS_DIR = Path(__file__).resolve().parents[2] / "test" / "vectors"
 sys.path.insert(0, str(VECTORS_DIR))
 from generate import (  # noqa: E402
     announce_coords_vectors,
+    frame_vectors,
     l2_payload_vectors,
     meshcore_app_compat_vectors,
     meshtastic_app_compat_vectors,
 )
+from generate_rpl_route_state import build_document as build_route_state_document  # noqa: E402
 
 CONFIG_SECTION_EXPECTATIONS = [
     ("device", 1, [(1, 0), (7, 900)]),
@@ -75,6 +78,8 @@ def test_vectors_directory_exists() -> None:
         "meshtastic_app_compat.json",
         "meshcore_app_compat.json",
         "rpl_messages.json",
+        "rpl_route_state.json",
+        "dao_origin_signature.json",
     ],
 )
 def test_vector_file_schema(filename: str) -> None:
@@ -206,6 +211,11 @@ def test_announce_coords_vectors_match_generator() -> None:
 def test_l2_payload_vectors_match_generator() -> None:
     doc = _load("l2_payload.json")
     assert doc["vectors"] == l2_payload_vectors()
+
+
+def test_frame_vectors_match_generator() -> None:
+    doc = _load("link_frame.json")
+    assert doc["vectors"] == frame_vectors()
 
 
 def test_meshtastic_app_compat_vectors_match_generator() -> None:
@@ -601,6 +611,273 @@ def _rpl_messages_cases():
     doc = _load("rpl_messages.json")
     assert doc["format_version"] == 1
     return [(v["name"], v) for v in doc["vectors"]]
+
+
+def _dao_origin_signature_cases():
+    doc = _load("dao_origin_signature.json")
+    assert doc["format_version"] == 1
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+def _dao_base_context(wire: bytes, vector: dict) -> tuple[str | None, str | None]:
+    if len(wire) < 4:
+        return "malformed_dao", "structural"
+    if wire[1] & 0x3F:
+        return "unsupported_flags", "structural"
+    if wire[2] != 0:
+        return "nonzero_reserved", "structural"
+    offset = 20 if wire[1] & 0x40 else 4
+    if len(wire) < offset:
+        return "malformed_dao", "structural"
+    if wire[0] != vector["effective_instance_id"]:
+        return "instance_mismatch", "context"
+    if wire[1] & 0x40 and wire[4:20] != bytes.fromhex(vector["active_dodag_id"]):
+        return "dodag_mismatch", "context"
+    return None, None
+
+
+def _dao_structure(wire: bytes) -> tuple[str | None, list[tuple[int, bytes]], int | None]:
+    offset = 20 if wire[1] & 0x40 else 4
+    options = []
+    origin_offset = None
+    while offset < len(wire):
+        start = offset
+        if wire[offset] == 0:
+            if origin_offset is not None:
+                return "nonterminal_option", options, origin_offset
+            options.append((0, b""))
+            offset += 1
+            continue
+        if offset + 2 > len(wire):
+            return "truncated", options, origin_offset
+        option_type = wire[offset]
+        length = wire[offset + 1]
+        end = offset + 2 + length
+        if end > len(wire):
+            return "truncated", options, origin_offset
+        data = wire[offset + 2:end]
+        if option_type == 0x12:
+            if length != 56:
+                return "bad_option_length", options, origin_offset
+            if origin_offset is not None:
+                return "duplicate_option", options, origin_offset
+            if int.from_bytes(data[:8], "big") == 0:
+                return "zero_sequence", options, start
+            origin_offset = start
+        elif option_type not in {1, 5, 6}:
+            return "unknown_option", options, origin_offset
+        elif option_type == 5 and length != 18 or option_type == 6 and length != 20:
+            return "bad_option_length", options, origin_offset
+        if origin_offset is not None and option_type != 0x12:
+            return "nonterminal_option", options, origin_offset
+        options.append((option_type, data))
+        offset = end
+    if origin_offset is None:
+        return "missing_signature", options, None
+    return None, options, origin_offset
+
+
+def _dao_semantics(options: list[tuple[int, bytes]], source: bytes) -> str | None:
+    targets = [(data[1], data[2:]) for option_type, data in options if option_type == 5]
+    transits = [data for option_type, data in options if option_type == 6]
+    if not targets:
+        return "missing_target"
+    if not transits:
+        return "missing_transit"
+    if len(targets) > 1:
+        return "duplicate_target" if len(set(targets)) == 1 else "multiple_target"
+    if targets[0][0] != 128:
+        return "non128_target"
+    if targets[0][1] != source:
+        return "target_mismatch"
+    if any(data[0] != 0 for data in transits):
+        return "unsupported_transit_e"
+    if len({(data[2], data[3]) for data in transits}) != 1:
+        return "inconsistent_transit"
+    return None
+
+
+def _assert_dao_relations(vector: dict) -> None:
+    source = bytes.fromhex(vector["source_ipv6"])
+    dodag = bytes.fromhex(vector["effective_dodag_id"])
+    unsigned = bytes.fromhex(vector["unsigned_dao"])
+    option = bytes.fromhex(vector["signature_option"])
+    sequence = vector["sequence"]
+    digest = hashlib.sha512(
+        b"LICHEN-DAO-ORIGIN-v1" + source + dodag + sequence.to_bytes(8, "big") + unsigned
+    ).digest()
+    assert digest.hex() == vector["digest"]
+    assert len(option) == 58 and option[0] == 0x12
+    assert int.from_bytes(option[2:10], "big") == sequence
+    coverage = vector["coverage"]
+    signed = bytes.fromhex(vector["signed_dao"])
+    offset = vector["option_offset"]
+    if coverage in {"duplicate_option", "replay_structural"}:
+        assert signed == unsigned + option + option
+    elif coverage == "nonterminal_option":
+        assert signed == unsigned[:offset] + option + unsigned[offset:]
+    elif coverage in {"missing_signature", "malformed_base", "truncated_dodag"}:
+        assert signed == unsigned
+    elif coverage == "truncated_option":
+        assert signed == unsigned + option[:-1]
+    else:
+        assert offset == len(unsigned)
+        assert signed == unsigned + option
+
+
+@pytest.mark.parametrize("name,vector", _dao_origin_signature_cases())
+def test_dao_origin_signature_vector(name: str, vector: dict) -> None:
+    """Secondary oracle: no production Python DAO-origin codec currently exists."""
+    _assert_dao_relations(vector)
+    source = bytes.fromhex(vector["source_ipv6"])
+    dodag = bytes.fromhex(vector["effective_dodag_id"])
+    unsigned = bytes.fromhex(vector["unsigned_dao"])
+    option = bytes.fromhex(vector["signature_option"])
+    signed = bytes.fromhex(vector["signed_dao"])
+    public_key = bytes.fromhex(vector["public_key"])
+    sequence = vector["sequence"]
+    expected_digest = hashlib.sha512(
+        b"LICHEN-DAO-ORIGIN-v1" + source + dodag + sequence.to_bytes(8, "big") + unsigned
+    ).digest()
+    signature_valid = schnorr_verify(public_key, expected_digest, option[10:])
+    assert signature_valid is vector["expected"]["signature_valid"]
+    if signature_valid:
+        identity = Identity.from_seed(bytes.fromhex(vector["signing_seed"]))
+        assert identity.pubkey == public_key
+        assert schnorr_sign(identity.privkey, identity.pubkey, expected_digest) == option[10:]
+
+    iid = bytearray(hashlib.sha256(public_key).digest()[:8])
+    iid[0] &= 0xFD
+    iid_matches = source[8:] == bytes(iid)
+    base_reason, base_stage = _dao_base_context(signed, vector)
+    structural_reason, options, _ = (None, [], None)
+    base_length = 20 if len(signed) >= 2 and signed[1] & 0x40 else 4
+    if len(signed) >= base_length:
+        structural_reason, options, _ = _dao_structure(signed)
+    structurally_valid = base_stage != "structural" and structural_reason is None
+    assert structurally_valid is vector["expected"]["envelope_valid"]
+    prior = vector["prior"]
+    if prior is not None:
+        prior_source = bytes.fromhex(prior["source_ipv6"])
+        prior_signed = bytes.fromhex(prior["signed_dao"])
+        prior_option = prior_signed[-58:]
+        prior_unsigned = prior_signed[:-58]
+        prior_sequence = prior["sequence"]
+        prior_dodag = prior_unsigned[4:20] if prior_unsigned[1] & 0x40 else dodag
+        prior_digest = hashlib.sha512(
+            b"LICHEN-DAO-ORIGIN-v1"
+            + prior_source
+            + prior_dodag
+            + prior_sequence.to_bytes(8, "big")
+            + prior_unsigned
+        ).digest()
+        assert prior_option[:2] == b"\x12\x38"
+        assert int.from_bytes(prior_option[2:10], "big") == prior_sequence
+        assert schnorr_verify(public_key, prior_digest, prior_option[10:])
+        prior_iid = prior_source[8:]
+        assert prior_iid == source[8:] == bytes(iid)
+    if base_reason is not None:
+        reason, stage = base_reason, base_stage
+    elif structural_reason is not None:
+        reason, stage = structural_reason, "structural"
+    elif not vector["key_available"]:
+        reason, stage = "unknown_key", "identity"
+    elif not iid_matches:
+        reason, stage = "iid_mismatch", "identity"
+    elif not signature_valid:
+        reason, stage = "invalid_signature", "identity"
+    elif prior is not None and sequence < prior["sequence"]:
+        reason, stage = "replay", "replay"
+    elif prior is not None and sequence == prior["sequence"]:
+        if signed != bytes.fromhex(prior["signed_dao"]):
+            reason, stage = "sequence_conflict", "replay"
+        elif prior["route_present"]:
+            reason, stage = "idempotent", "replay"
+        else:
+            semantic_reason = _dao_semantics(options, source)
+            assert semantic_reason is None
+            reason, stage = "reconciled", "semantic"
+    else:
+        semantic_reason = _dao_semantics(options, source)
+        if semantic_reason is not None:
+            reason, stage = semantic_reason, "semantic"
+        else:
+            reason, stage = "accepted", "applied"
+    assert vector["expected"]["reason"] == reason
+    assert vector["expected"]["decision_stage"] == stage
+    assert vector["expected"]["accepted"] is (reason in {"accepted", "idempotent", "reconciled"})
+    assert vector["expected"]["route_changed"] is (reason in {"accepted", "reconciled"})
+    assert vector["expected"]["replay_persisted"] is (reason == "accepted")
+
+
+def test_dao_origin_signature_coverage_and_dodag_rules() -> None:
+    vectors = [vector for _, vector in _dao_origin_signature_cases()]
+    coverage = {vector["coverage"] for vector in vectors}
+    assert len(vectors) == len(coverage) == 50
+    assert {
+        "d1", "d0_effective_dodag", "identical_retransmission", "reconcile_after_crash",
+        "replay_target_mismatch", "replay_malformed_semantics", "replay_structural",
+        "missing_signature", "zero_sequence", "bad_option_length", "truncated_option",
+        "malformed_base", "truncated_dodag", "unsupported_flags", "nonzero_reserved",
+        "d1_active_dodag_mismatch", "missing_target", "missing_transit", "duplicate_target",
+        "inconsistent_transit_sequence", "inconsistent_transit_lifetime",
+        "unsupported_transit_e", "cross_prefix_equal", "cross_prefix_lower",
+        "fresh_cross_prefix_target", "multiple_distinct_targets", "replay_non128_target",
+        "context_malformed_option",
+    } <= coverage
+    for vector in vectors:
+        unsigned = bytes.fromhex(vector["unsigned_dao"])
+        if len(unsigned) >= 20 and unsigned[1] & 0x40:
+            assert unsigned[4:20].hex() == vector["effective_dodag_id"]
+        if vector["expected"]["reason"] == "accepted":
+            assert _dao_semantics(
+                _dao_structure(bytes.fromhex(vector["signed_dao"]))[1],
+                bytes.fromhex(vector["source_ipv6"]),
+            ) is None
+
+
+def test_dao_origin_signature_schema_is_closed_and_relational() -> None:
+    schema = _load("schema.json")
+    original = _load("dao_origin_signature.json")
+    validator = Draft7Validator(schema)
+
+    def rejected(mutator) -> None:
+        document = json.loads(json.dumps(original))
+        mutator(document)
+        assert list(validator.iter_errors(document))
+
+    rejected(lambda document: document.update(unexpected=True))
+    rejected(lambda document: document.pop("oracle_provenance"))
+    rejected(lambda document: document.pop("vector_type"))
+    rejected(lambda document: document.update(vector_type="other"))
+    rejected(lambda document: document["vectors"][0]["expected"].update(route_changed=False))
+    rejected(lambda document: document["vectors"][0]["expected"].update(signature_valid=False))
+    rejected(lambda document: document["vectors"][19].update(prior=None))
+    rejected(lambda document: document["vectors"][0].update(unexpected=True))
+
+    changed_description = json.loads(json.dumps(original))
+    changed_description["description"] = "Not used as a schema discriminator."
+    assert not list(validator.iter_errors(changed_description))
+
+
+def test_dao_origin_signature_relational_corruptions_fail() -> None:
+    vector = _load("dao_origin_signature.json")["vectors"][0]
+    for mutate in (
+        lambda item: item.update(sequence=item["sequence"] + 1),
+        lambda item: item.update(digest="00" * 64),
+        lambda item: item.update(signature_option=item["signature_option"][:4] + "00" * 56),
+        lambda item: item.update(signed_dao=item["signed_dao"][:-2]),
+        lambda item: item.update(option_offset=item["option_offset"] - 1),
+    ):
+        corrupted = json.loads(json.dumps(vector))
+        mutate(corrupted)
+        with pytest.raises(AssertionError):
+            _assert_dao_relations(corrupted)
+
+
+def test_rpl_route_state_generation_is_deterministic() -> None:
+    document = _load("rpl_route_state.json")
+    assert document == build_route_state_document()
 
 
 @pytest.mark.parametrize("name,vector", _rpl_messages_cases())

@@ -192,7 +192,7 @@ impl Default for MockNonVolatile {
 impl NonVolatile for MockNonVolatile {
     type Error = core::convert::Infallible;
 
-    fn read(&self, key: &str, buf: &mut [u8]) -> Option<usize> {
+    fn read(&self, key: &str, buf: &mut [u8]) -> Result<Option<usize>, Self::Error> {
         let data = self.data.lock().unwrap();
         data.get(key).map(|v| {
             let stored = v.len();
@@ -242,11 +242,11 @@ mod tests {
         nv.write("test_key", b"hello").unwrap();
 
         let mut buf = [0u8; 32];
-        let len = nv.read("test_key", &mut buf).unwrap();
+        let len = nv.read("test_key", &mut buf).unwrap().unwrap();
         assert_eq!(&buf[..len], b"hello");
 
         assert!(nv.delete("test_key"));
-        assert!(nv.read("test_key", &mut buf).is_none());
+        assert_eq!(nv.read("test_key", &mut buf).unwrap(), None);
     }
 
     #[tokio::test]

@@ -132,6 +132,15 @@
       }
     },
     {
+      "name": "reserved_mic_length",
+      "description": "MIC selector 2 is reserved",
+      "input_hex": "0408000000",
+      "expected": {
+        "error": true,
+        "error_type": "reserved_mic_length"
+      }
+    },
+    {
       "name": "frame_too_short",
       "description": "Frame body too short for minimum header fields",
       "input_hex": "020001",
