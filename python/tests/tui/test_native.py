@@ -441,7 +441,11 @@ def message_record(
 
 def test_clip_uses_stable_ascii_ellipsis() -> None:
     assert clip("abcdef", 4) == "a..."
-    assert clip("abcdef", 2) == "ab"
+    assert clip("abcdef", 3) == "..."
+    assert clip("abcdef", 2) == ".."
+    assert clip("abcdef", 1) == "."
+    assert clip("abcdef", 0) == ""
+    assert clip("ab", 5) == "ab"
 
 
 def test_status_line_contains_text_indicators() -> None:

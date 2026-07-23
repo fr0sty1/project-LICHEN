@@ -359,8 +359,12 @@ def clip(value: str, width: int) -> str:
         return ""
     if len(value) <= width:
         return value
-    if width <= 3:
-        return value[:width]
+    if width == 1:
+        return "."
+    if width == 2:
+        return ".."
+    if width == 3:
+        return "..."
     return f"{value[: width - 3]}..."
 
 
