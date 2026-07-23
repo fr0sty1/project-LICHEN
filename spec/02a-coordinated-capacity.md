@@ -918,8 +918,6 @@ The following require separate specifications and evidence:
 
 [← Physical and Link Layers](02-physical-link.md) | [Index](README.md) |
 [Next: Adaptation Layer →](03-adaptation.md)
-<<<<<<< HEAD
-=======
 
 
 
@@ -927,6 +925,4 @@ The following require separate specifications and evidence:
 
 
 
-
-**Resolved Key Sections Summary:** Merge conflicts resolved into coherent normative text across affected files. Spelled-out pseudocode standardized for `select_channel` (density >8 or !wall_clock_valid → CH0; else hash-based data channel selection using FNV1a32 on EUI/t/epoch), `adaptive_sf_select` (SF selection from density, SNR_EMA, load_factor with exact thresholds), `ema_update`, and `now()` (SFN). CH0 rules mandate control traffic (Announce, RPL control, LOADng, all CCP including capability/schedule/rendezvous). Capability DIO option detailed with 36-byte format, flags, timing params. CCP-9 da2q rendezvous: signed rx_channel in Announce payload for known-peer scheduling (byte offset in signed data), CH0 fallback for initial/unknown peers; prevents tampering via signature. Density/EMA (alpha=1/4)/load rules drive SF/channel adaptation for capacity vs robustness tradeoff. All cross-reference independent test vector oracles (`test/vectors/ccp9*.json`, `ccp16.json`, `ccp_load_balancing.json`, `schc_compression.json`, `node_address.json`). Removed all conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`), duplicates, worker notes, codereview references, and TODOs. Files updated for consistency. CC-BY-4.0 license header preserved in all. Sales-playbook.md consolidated into PRFAQ highlighting resolved CCP features. See Appendix A for parameter justifications.
 >>>>>>> origin/worktree-worker23
