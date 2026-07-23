@@ -588,16 +588,27 @@ class LinkLayer:
         # Step 5: Replay protection
         # Why use pubkey as sender ID: It's the unique identifier for a node.
         # IID has a (tiny) collision risk; pubkey is definitive.
-        if not self.replay_protector.check_and_update(
-            sender.pubkey, frame.epoch, frame.seqnum
-        ):
-            logger.warning(
-                "RX replay detected: epoch=%d seqnum=%d sender=%s",
-                frame.epoch,
-                frame.seqnum,
-                sender.iid.hex(),
-            )
-            return ReceiveError.REPLAY
+        #
+        # Why skip for loopback: When we receive our own broadcast (loopback),
+        # _find_sender returns a PeerIdentity with our own pubkey. Running
+        # replay protection on it creates a ReplayWindow keyed on our pubkey,
+        # which couples our TX sequence to RX replay state. This means our
+        # own future transmissions could be rejected as replays if their
+        # sequence numbers fall behind what the loopback window has seen.
+        # Since we are the sender, we trust our own sequence — no external
+        # adversary can replay a frame we sent unless they also have our
+        # signing key. If they have our key, replay protection is moot.
+        if sender.pubkey != self.identity.pubkey:
+            if not self.replay_protector.check_and_update(
+                sender.pubkey, frame.epoch, frame.seqnum
+            ):
+                logger.warning(
+                    "RX replay detected: epoch=%d seqnum=%d sender=%s",
+                    frame.epoch,
+                    frame.seqnum,
+                    sender.iid.hex(),
+                )
+                return ReceiveError.REPLAY
 
         # Success! Return the validated frame
         logger.debug(
