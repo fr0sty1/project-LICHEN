@@ -2,15 +2,15 @@
   "id": "project-LICHEN-n653",
   "title": "[merge-conflict] worktree-worker24: trickle.c",
   "notes": "Commit: 434228883",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:38:03.939479894Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:50:28.513554605Z",
+  "updated_at": "2026-07-23T01:50:31.945980837Z",
   "started_at": "2026-07-23T01:49:20.867835492Z",
-  "lease_expires_at": "2026-07-23T01:54:20.867835492Z",
-  "heartbeat_at": "2026-07-23T01:49:20.867835492Z"
+  "closed_at": "2026-07-23T01:50:31.945980837Z",
+  "close_reason": "Updated trickle.c and rpl_trickle.h in worktree-worker24 with converged bias-fixed begin_interval, reset guard aligned to Rust/Python (transmit_time==0 check), removed redundant NULL checks, matching main/worker9 version. Verified via git diff and commit 434228883. Pushed to origin."
 }
