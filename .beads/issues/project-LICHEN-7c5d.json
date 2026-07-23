@@ -2,15 +2,15 @@
   "id": "project-LICHEN-7c5d",
   "title": "[merge-conflict] worktree-worker23: coap_location.c",
   "notes": "Commit: 58da7a35f",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:16:19.929370716Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:37:08.667289969Z",
+  "updated_at": "2026-07-23T02:37:10.808050282Z",
   "started_at": "2026-07-23T02:34:22.019207622Z",
-  "lease_expires_at": "2026-07-23T02:39:22.019207622Z",
-  "heartbeat_at": "2026-07-23T02:34:22.019207622Z"
+  "closed_at": "2026-07-23T02:37:10.808050282Z",
+  "close_reason": "Resolved merge conflict in coap_location.c by removing prohibited comment, ensuring consistent use of lichen_coap_respond() for BAD_REQUEST case per codereview patterns from related beads (2nob, gzf2). Matches canonical style with SENML_CBOR_CONTENT_FORMAT and no comments."
 }
