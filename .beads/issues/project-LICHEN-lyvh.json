@@ -2,15 +2,15 @@
   "id": "project-LICHEN-lyvh",
   "title": "[merge-conflict] worktree-worker24: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: dda15e2fe",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:39:07.280021532Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:06:15.207899348Z",
+  "updated_at": "2026-07-23T03:06:17.403949734Z",
   "started_at": "2026-07-23T03:04:34.200361257Z",
-  "lease_expires_at": "2026-07-23T03:09:34.200361257Z",
-  "heartbeat_at": "2026-07-23T03:04:34.200361257Z"
+  "closed_at": "2026-07-23T03:06:17.403949734Z",
+  "close_reason": "Updated heltec_wifi_lora32_v3_esp32s3_procpu.conf puck board config with consolidated merge resolution comment including project-LICHEN-lyvh. Synced across worktrees. Committed and pushed."
 }
