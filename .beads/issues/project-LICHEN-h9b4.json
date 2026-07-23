@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-h9b4",
   "title": "[merge-conflict] worktree-worker19: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
-  "notes": "Commit: 46196afca",
+  "notes": "Commit: f652ac8a7",
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:50:58.090704583Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:05:18.732308131Z",
+  "updated_at": "2026-07-23T00:05:33.501051847Z",
   "started_at": "2026-07-22T23:58:42.941587816Z",
   "closed_at": "2026-07-23T00:05:18.732308131Z",
   "close_reason": "Resolved merge conflict in heltec_wifi_lora32_v3_esp32s3_procpu.conf by syncing canonical config with latest multi-worker resolution including battery, stack tuning, WiFi buffers; cleaned Rust merge conflicts in parallel via subagent; committed and pushed"
