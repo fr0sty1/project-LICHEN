@@ -21,7 +21,7 @@ VECTORS_DIR = Path(__file__).resolve().parents[3] / "test" / "vectors"
 class TestAnnounceMessage:
     def test_valid_minimal_announce(self):
         """A valid announce with minimum required fields."""
-        msg = AnnounceMessage(
+        AnnounceMessage(
             originator_iid=bytes(8),
             pubkey=bytes(32),
             seq_num=0,
