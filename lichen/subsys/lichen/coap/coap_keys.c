@@ -23,7 +23,6 @@
 #include <zephyr/net/coap_service.h>
 #include <zephyr/net/net_if.h>
 #include <zephyr/net/net_ip.h>
-#include <zcbor_decode.h>
 
 #include <lichen/coap_keys.h>
 #include <lichen/transport/slip_transport.h>
@@ -35,15 +34,21 @@
 
 LOG_MODULE_REGISTER(lichen_coap_keys, CONFIG_LICHEN_COAP_KEYS_LOG_LEVEL);
 
-/* Maximum keys to store */
 #ifndef CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES
 #define CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES 16
 #endif
+BUILD_ASSERT(CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES <= 16, "CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES >16 risks stack overflow in encode_keys_list_cbor (project-LICHEN-vw14)");
 
+/* CBOR content-format code */
 #define CBOR_CONTENT_FORMAT 60
 
+/* Key store */
 static struct lichen_key_entry s_keys[CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES];
 static K_MUTEX_DEFINE(s_mutex);
+
+/* --------------------------------------------------------------------------
+ * CBOR helpers (string-keyed encoding per spec)
+ * -------------------------------------------------------------------------- */
 
 static void cbor_put_map_header(uint8_t *buf, size_t *off, uint8_t count)
 {
@@ -57,23 +62,15 @@ static void cbor_put_map_header(uint8_t *buf, size_t *off, uint8_t count)
 
 static void cbor_put_tstr(uint8_t *buf, size_t *off, const char *value)
 {
-	size_t len = value ? strlen(value) : 0;
-	if (len > 0xffffffffU) {
-		len = 0xffffffffU;
-	}
+	size_t len = strlen(value);
+
 	if (len < 24U) {
 		buf[(*off)++] = 0x60U | (uint8_t)len;
 	} else if (len <= UINT8_MAX) {
 		buf[(*off)++] = 0x78;
 		buf[(*off)++] = (uint8_t)len;
-	} else if (len <= 0xffffU) {
-		buf[(*off)++] = 0x79;
-		buf[(*off)++] = (uint8_t)(len >> 8);
-		buf[(*off)++] = (uint8_t)(len & 0xffU);
 	} else {
-		buf[(*off)++] = 0x7a;
-		buf[(*off)++] = (uint8_t)(len >> 24);
-		buf[(*off)++] = (uint8_t)(len >> 16);
+		buf[(*off)++] = 0x79;
 		buf[(*off)++] = (uint8_t)(len >> 8);
 		buf[(*off)++] = (uint8_t)(len & 0xffU);
 	}
@@ -92,8 +89,8 @@ static void cbor_put_key(uint8_t *buf, size_t *off, const char *key)
 
 static const char hex_chars[] = "0123456789abcdef";
 
-int lichen_key_iid_to_str(const uint8_t iid[LICHEN_KEY_IID_LEN],
-			  char *buf, size_t buf_len)
+int lichen_key_iid_to_str(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN],
+			  char *_Nonnull buf, size_t buf_len)
 {
 	if (iid == NULL || buf == NULL || buf_len < LICHEN_KEY_IID_STR_LEN) {
 		return -EINVAL;
@@ -128,7 +125,7 @@ static int hex_char_to_nibble(char c)
 	return -1;
 }
 
-int lichen_key_str_to_iid(const char *str, uint8_t iid[LICHEN_KEY_IID_LEN])
+int lichen_key_str_to_iid(const char *_Nonnull str, uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN])
 {
 	if (str == NULL || iid == NULL) {
 		return -EINVAL;
@@ -175,20 +172,13 @@ static const char base64_chars[] =
 
 static size_t base64_encode(const uint8_t *data, size_t len, char *out, size_t out_len)
 {
-	size_t needed = ((len + 2) / 3) * 4 + 1;
-	if (out_len < needed) {
-		return 0;
-	}
 	size_t out_idx = 0;
 	size_t i;
 
 	for (i = 0; i + 2 < len; i += 3) {
-<<<<<<< HEAD
-=======
-		if (out_idx + 5 > out_len) {
+		if (out_idx + 4 > out_len) {
 			return 0;
 		}
->>>>>>> origin/integration/worker11-20260722
 		out[out_idx++] = base64_chars[(data[i] >> 2) & 0x3f];
 		out[out_idx++] = base64_chars[((data[i] & 0x03) << 4) | ((data[i + 1] >> 4) & 0x0f)];
 		out[out_idx++] = base64_chars[((data[i + 1] & 0x0f) << 2) | ((data[i + 2] >> 6) & 0x03)];
@@ -196,12 +186,9 @@ static size_t base64_encode(const uint8_t *data, size_t len, char *out, size_t o
 	}
 
 	if (i < len) {
-<<<<<<< HEAD
-=======
-		if (out_idx + 5 > out_len) {
+		if (out_idx + 4 > out_len) {
 			return 0;
 		}
->>>>>>> origin/integration/worker11-20260722
 		out[out_idx++] = base64_chars[(data[i] >> 2) & 0x3f];
 		if (i + 1 < len) {
 			out[out_idx++] = base64_chars[((data[i] & 0x03) << 4) |
@@ -282,8 +269,8 @@ static int base64_decode(const char *in, size_t in_len, uint8_t *out, size_t out
 	return (int)out_idx;
 }
 
-int lichen_key_pubkey_fingerprint(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
-				  char *buf, size_t buf_len)
+int lichen_key_pubkey_fingerprint(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
+				  char *_Nonnull buf, size_t buf_len)
 {
 	if (pubkey == NULL || buf == NULL || buf_len < LICHEN_KEY_FINGERPRINT_STR_LEN) {
 		return -EINVAL;
@@ -329,11 +316,36 @@ int lichen_key_pubkey_fingerprint(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
 #endif
 }
 
+int lichen_key_pubkey_to_iid(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN], uint8_t iid[LICHEN_KEY_IID_LEN]) {
+	if (pubkey == NULL || iid == NULL) {
+		return -EINVAL;
+	}
+#ifdef CONFIG_TINYCRYPT_SHA256
+	struct tc_sha256_state_struct sha_state;
+	uint8_t hash[32];
+	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS) {
+		return -EIO;
+	}
+	if (tc_sha256_update(&sha_state, pubkey, LICHEN_KEY_PUBKEY_LEN) != TC_CRYPTO_SUCCESS) {
+		return -EIO;
+	}
+	if (tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
+		return -EIO;
+	}
+	memcpy(iid, hash, LICHEN_KEY_IID_LEN);
+	iid[0] &= ~0x02U;
+	memset(hash, 0, sizeof(hash));
+	return 0;
+#else
+	return -ENOSYS;
+#endif
+}
+
 /* --------------------------------------------------------------------------
  * Key store implementation
  * -------------------------------------------------------------------------- */
 
-static int find_key_locked(const uint8_t iid[LICHEN_KEY_IID_LEN])
+static int find_key_locked(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN])
 {
 	for (int i = 0; i < CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES; i++) {
 		if (s_keys[i].valid &&
@@ -360,8 +372,8 @@ static uint32_t get_unix_time(void)
 	return (uint32_t)(k_uptime_get() / 1000);
 }
 
-int lichen_key_store_put(const uint8_t iid[LICHEN_KEY_IID_LEN],
-			 const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
+int lichen_key_store_put(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN],
+			 const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
 			 enum lichen_key_trust trust)
 {
 	int slot;
@@ -409,8 +421,8 @@ int lichen_key_store_put(const uint8_t iid[LICHEN_KEY_IID_LEN],
 	return 0;
 }
 
-int lichen_key_store_get(const uint8_t iid[LICHEN_KEY_IID_LEN],
-			 struct lichen_key_entry *entry)
+int lichen_key_store_get(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN],
+			 struct lichen_key_entry *_Nonnull entry)
 {
 	int slot;
 
@@ -431,7 +443,7 @@ int lichen_key_store_get(const uint8_t iid[LICHEN_KEY_IID_LEN],
 	return 0;
 }
 
-int lichen_key_store_delete(const uint8_t iid[LICHEN_KEY_IID_LEN])
+int lichen_key_store_delete(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN])
 {
 	int slot;
 
@@ -484,7 +496,7 @@ size_t lichen_key_store_list(struct lichen_key_entry *entries, size_t max_entrie
 	return count;
 }
 
-int lichen_key_store_touch(const uint8_t iid[LICHEN_KEY_IID_LEN], uint32_t unix_time)
+int lichen_key_store_touch(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN], uint32_t unix_time)
 {
 	int slot;
 
@@ -590,8 +602,7 @@ static size_t encode_iso8601_timestamp(uint32_t unix_time, char *buf, size_t buf
 		year++;
 	}
 
-	int m;
-	for (m = 0; m < 12; m++) {
+	for (int m = 0; m < 12; m++) {
 		uint16_t mdays = days_in_month[m];
 
 		if (m == 1 && ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0))) {
@@ -603,10 +614,6 @@ static size_t encode_iso8601_timestamp(uint32_t unix_time, char *buf, size_t buf
 			break;
 		}
 		days -= mdays;
-	}
-	if (m == 12) {
-		month = 12;
-		day = 31;
 	}
 
 	uint8_t hour = secs / 3600;
@@ -632,7 +639,7 @@ static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 	cbor_put_key(buf, &off, "keys");
 
 	/* Get all keys */
-	struct lichen_key_entry entries[16];
+	struct lichen_key_entry entries[CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES];
 	size_t n = lichen_key_store_list(entries, ARRAY_SIZE(entries));
 
 	/* Reserve a fixed-width definite array header; patch its count after
@@ -699,7 +706,7 @@ static size_t encode_key_single_cbor(const struct lichen_key_entry *entry,
 	char last_str[24];
 
 	if (entry == NULL || buf == NULL || buf_size < 100) {
-		return 0;
+		return 0; /* prevents underflow in offset checks (project-LICHEN-byge) */
 	}
 
 	lichen_key_iid_to_str(entry->iid, iid_str, sizeof(iid_str));
@@ -734,60 +741,185 @@ static size_t encode_key_single_cbor(const struct lichen_key_entry *entry,
  * CBOR payload decoding for PUT
  * -------------------------------------------------------------------------- */
 
+/*
+ * Minimal CBOR decoder for PUT /keys/{iid} payload.
+ * Expected format: { "pubkey": "<base64>", "trust": "<trust>" }
+ */
 static int decode_key_put_cbor(const uint8_t *payload, size_t payload_len,
-			       uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
-			       enum lichen_key_trust *trust)
+			       uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
+			       enum lichen_key_trust *_Nonnull trust)
 {
-	if (payload == NULL || payload_len == 0 || trust == NULL) {
+	if (payload == NULL || pubkey == NULL || trust == NULL || payload_len < 5) {
 		return -EINVAL;
 	}
 
-	ZCBOR_STATE_D(state, 4, payload, payload_len, 1, 0);
+	/*
+	 * Parse CBOR map header (major type 5).
+	 * CBOR encoding for maps:
+	 *   0xa0-0xb7: Small map with 0-23 items (count in lower 5 bits)
+	 *   0xb8 NN:   Map with 1-byte length (up to 255 items)
+	 *   0xb9 NNNN: Map with 2-byte length (big-endian)
+	 *   0xba NNNNNNNN: Map with 4-byte length (big-endian)
+	 *   0xbf:      Indefinite-length map (not supported - requires break code)
+	 *
+	 * For key management, we limit map_count to 32 entries max.
+	 */
+	uint8_t first_byte = payload[0];
+	uint8_t major_type = first_byte >> 5;
+	uint8_t additional_info = first_byte & 0x1f;
+	size_t map_count;
+	size_t pos;
 
-	if (!zcbor_map_start_decode(state)) {
+	if (major_type != 5) {
+		/* Not a map */
 		return -EINVAL;
 	}
 
+	if (additional_info < 24) {
+		/* Small map: count is in lower 5 bits */
+		map_count = additional_info;
+		pos = 1;
+	} else if (additional_info == 24 && payload_len > 1) {
+		/* 1-byte length */
+		map_count = payload[1];
+		pos = 2;
+	} else if (additional_info == 25 && payload_len > 2) {
+		/* 2-byte length (big-endian) */
+		map_count = ((size_t)payload[1] << 8) | payload[2];
+		pos = 3;
+	} else if (additional_info == 26 && payload_len > 4) {
+		/* 4-byte length (big-endian) */
+		map_count = ((size_t)payload[1] << 24) | ((size_t)payload[2] << 16) |
+			    ((size_t)payload[3] << 8) | payload[4];
+		pos = 5;
+	} else {
+		/* 8-byte length (27), indefinite-length (31), or reserved: not supported */
+		return -EINVAL;
+	}
+
+	/* Sanity check: key management payloads should not have huge maps */
+	if (map_count > 32) {
+		return -EINVAL;
+	}
 	bool has_pubkey = false;
-	*trust = LICHEN_KEY_TRUST_VERIFIED;
+	bool has_trust = false;
 
-	while (!zcbor_array_at_end(state)) {
-		struct zcbor_string key;
+	*trust = LICHEN_KEY_TRUST_VERIFIED; /* default for manual add */
 
-		if (!zcbor_tstr_decode(state, &key)) {
-			(void)zcbor_list_map_end_force_decode(state);
+	for (size_t i = 0; i < map_count && pos < payload_len; i++) {
+		/* Read key (text string) */
+		uint8_t key_type = payload[pos];
+		size_t key_len;
+		const char *key_str;
+
+		if ((key_type & 0xe0) == 0x60) {
+			key_len = key_type & 0x1f;
+			pos++;
+		} else if (key_type == 0x78 && pos + 1 < payload_len) {
+			key_len = payload[pos + 1];
+			pos += 2;
+		} else {
 			return -EINVAL;
 		}
 
-		if (key.len == 6 && memcmp(key.value, "pubkey", 6) == 0) {
-			struct zcbor_string val;
-			if (!zcbor_tstr_decode(state, &val) || val.len == 0) {
-				(void)zcbor_list_map_end_force_decode(state);
+		if (pos + key_len > payload_len) {
+			return -EINVAL;
+		}
+		key_str = (const char *)&payload[pos];
+		pos += key_len;
+
+		/* Bounds check before reading value type */
+		if (pos >= payload_len) {
+			return -EINVAL;
+		}
+
+		/* Read value */
+		uint8_t val_type = payload[pos];
+		size_t val_len;
+		const uint8_t *val_data;
+
+		if ((val_type & 0xe0) == 0x60) {
+			/* Text string */
+			val_len = val_type & 0x1f;
+			pos++;
+		} else if (val_type == 0x78 && pos + 1 < payload_len) {
+			val_len = payload[pos + 1];
+			pos += 2;
+		} else {
+			/* Skip other CBOR types by advancing pos past the value */
+			uint8_t major = (val_type >> 5) & 0x07;
+			uint8_t info = val_type & 0x1f;
+
+			pos++; /* advance past the initial byte */
+
+			if (major == 0 || major == 1) {
+				/* Unsigned or negative integer */
+				if (info < 24) {
+					/* value is inline, no extra bytes */
+				} else if (info == 24) {
+					pos += 1;
+				} else if (info == 25) {
+					pos += 2;
+				} else if (info == 26) {
+					pos += 4;
+				} else if (info == 27) {
+					pos += 8;
+				} else {
+					return -EINVAL;
+				}
+			} else if (major == 2) {
+				/* Byte string - skip header + data */
+				size_t bstr_len;
+
+				if (info < 24) {
+					bstr_len = info;
+				} else if (info == 24 && pos < payload_len) {
+					bstr_len = payload[pos];
+					pos++;
+				} else {
+					return -EINVAL;
+				}
+				pos += bstr_len;
+			} else if (major == 7) {
+				/* Simple values: false(20), true(21), null(22), undefined(23) */
+				if (info < 24) {
+					/* value is inline, no extra bytes */
+				} else {
+					return -EINVAL;
+				}
+			} else {
+				/* Arrays, maps, tags - not expected in key PUT payload */
 				return -EINVAL;
 			}
-			int dec_len = base64_decode((const char *)val.value, val.len,
+
+			if (pos > payload_len) {
+				return -EINVAL;
+			}
+			continue;
+		}
+
+		if (pos + val_len > payload_len) {
+			return -EINVAL;
+		}
+		val_data = &payload[pos];
+		pos += val_len;
+
+		/* Process known keys */
+		if (key_len == 6 && memcmp(key_str, "pubkey", 6) == 0) {
+			/* Decode base64 pubkey */
+			int dec_len = base64_decode((const char *)val_data, val_len,
 						    pubkey, LICHEN_KEY_PUBKEY_LEN);
 			if (dec_len != LICHEN_KEY_PUBKEY_LEN) {
-				(void)zcbor_list_map_end_force_decode(state);
 				return -EINVAL;
 			}
 			has_pubkey = true;
-		} else if (key.len == 5 && memcmp(key.value, "trust", 5) == 0) {
-			struct zcbor_string val;
-			if (!zcbor_tstr_decode(state, &val) || val.len == 0) {
-				(void)zcbor_list_map_end_force_decode(state);
-				return -EINVAL;
-			}
-			*trust = str_to_trust((const char *)val.value, val.len);
-		} else {
-			if (!zcbor_any_skip(state, NULL)) {
-				(void)zcbor_list_map_end_force_decode(state);
-				return -EINVAL;
-			}
+		} else if (key_len == 5 && memcmp(key_str, "trust", 5) == 0) {
+			*trust = str_to_trust((const char *)val_data, val_len);
+			has_trust = true;
 		}
 	}
 
-	if (!zcbor_map_end_decode(state) || !has_pubkey) {
+	if (!has_pubkey) {
 		return -EINVAL;
 	}
 
@@ -866,7 +998,7 @@ static int coap_respond(struct coap_resource *resource,
 			uint8_t resp_code,
 			const uint8_t *payload, size_t payload_len)
 {
-	static uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
 	struct coap_packet resp;
 	uint8_t token[COAP_TOKEN_MAX_LEN];
 	uint8_t tkl = coap_header_get_token(request, token);
