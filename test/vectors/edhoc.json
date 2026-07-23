@@ -1,0 +1,24 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "edhoc",
+  "description": "EDHOC (RFC 9528) Suite 0 PRK derivation and OSCORE export interop vectors between Rust lichen-oscore and Python reference. PRK_*, TH_*, master_secret, master_salt must match byte-for-byte.",
+  "spec": "https://www.rfc-editor.org/rfc/rfc9528",
+  "vectors": [
+    {
+      "name": "rfc9529_trace_prk_export",
+      "description": "Derived from RFC 9529 test vector trace adjusted for LICHEN Suite 0. Verifies PRK and OSCORE outputs.",
+      "prk_2e": "d584ac2e5dad5a77d14b53ebe72ef1d5daa8860d399373bf2c240afa7ba804da",
+      "th_4": "ed23f6181a7f6cfea92aa9b24aa84a8ccc413217ad454fbf13bc2739537398f1",
+      "prk_4e3m": "d584ac2e5dad5a77d14b53ebe72ef1d5daa8860d399373bf2c240afa7ba804da",
+      "prk_out": "d4f7ac068845afc9db248f707f30364614da1a32bbd46f86d46e064ab7cf2051",
+      "prk_exporter": "cd0be090fd1398923f9f616bc2e063e080af41238ee0756d87fa7a511c64e7ba",
+      "master_secret": "6dd8bfb559c311377364fd583db800f8",
+      "master_salt": "39b3ec8bfae98a3e",
+      "expected": {
+        "master_secret": "6dd8bfb559c311377364fd583db800f8",
+        "master_salt": "39b3ec8bfae98a3e"
+      }
+    }
+  ]
+}
