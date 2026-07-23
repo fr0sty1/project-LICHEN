@@ -39,7 +39,7 @@ class SimNode:
     """State for a single simulated node in the LICHEN mesh.
 
     Tracks position, radio state, connection status, and synchronized
-    hopping state (current_channel, hop_schedule based on SFN/time).
+    hopping state via hop_schedule + synchronized_hop_channel(sfn).
     Position is mutable to support node mobility scenarios.
     """
 
@@ -126,3 +126,22 @@ class SimNode:
             True if the node is connected, False otherwise.
         """
         return self.connected
+
+    def synchronized_hop_channel(self, sfn: int) -> int:
+        """Compute synchronized hop channel for given SFN using hop_schedule.
+
+        Per CCP-12, provides deterministic channel = hop_schedule[sfn % len(schedule)]
+        for rendezvous (sender and receiver compute identical channel at same SFN).
+        Falls back to current_channel if no schedule (CH0 control channel).
+        Matches ccp16.json and ccp9.json test vectors. No dead code.
+
+        Args:
+            sfn: Superframe number (modular arithmetic for wraparound).
+
+        Returns:
+            Channel index (0=CH0, >=1 for data channels).
+        """
+        if not self.hop_schedule:
+            return self.current_channel
+        idx = sfn % len(self.hop_schedule)
+        return self.hop_schedule[idx]
