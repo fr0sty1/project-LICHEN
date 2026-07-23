@@ -1729,18 +1729,12 @@ def ccp_load_balancing_vectors() -> list[dict]:
 
 
 def _l2_announce_with_channel(channel: int) -> bytes:
-    """Independent oracle for CCP-9 announce channel parse roundtrip.
-    Constructs L2 payload (dispatch 0x15 + announce with flags=channel) per
-    exact spec wire format in messages.py and 02a-coordinated-capacity.md.
-    Avoids any dependency on AnnounceMessage, parse, or to_bytes to satisfy
-    test integrity rule against code-under-test as oracle.
-    """
     announce = (
-        bytes([0x01, channel & 0xFF, 0x00])  # type, flags=channel (CCP-9 rx ch), hop=0
-        + b"\x00\x01"  # seq=1
-        + bytes(8)  # originator_iid
-        + bytes(32)  # pubkey
-        + bytes(48)  # signature
+        bytes([0x01, channel & 0xFF, 0x00])
+        + b"\x00\x01"
+        + bytes(8)
+        + bytes(32)
+        + bytes(48)
     )
     return bytes([L2_DISPATCH_ROUTING]) + announce
 
