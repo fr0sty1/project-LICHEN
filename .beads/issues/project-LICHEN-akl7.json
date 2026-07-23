@@ -2,6 +2,7 @@
   "id": "project-LICHEN-akl7",
   "title": "Reconcile TrickleTimer implementations across worktrees",
   "description": "Merge conflict between u32 (worker19) and u64 (main) versions of lichen-rpl/src/trickle.rs. Canonicalize on u64 bias-free RFC-6206 compliant version with Stopped event and expanded tests. Update callers in lichen-node.",
+  "notes": "Commit: 1350c9a70",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "epic",
@@ -9,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T03:16:01.237841507Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:20:24.082457914Z",
+  "updated_at": "2026-07-23T03:24:17.212570937Z",
   "started_at": "2026-07-23T03:20:24.082457914Z",
   "lease_expires_at": "2026-07-23T03:25:24.082457914Z",
   "heartbeat_at": "2026-07-23T03:20:24.082457914Z"
