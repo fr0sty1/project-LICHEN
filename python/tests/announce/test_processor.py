@@ -1,20 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """Tests for announce processor.
-
-Why these tests: The processor is where security decisions happen. Bugs here mean:
-- Invalid signatures accepted (authentication bypass)
-- IID/pubkey mismatches accepted (identity spoofing)
-- Stale announces accepted (old state injection)
-- Gradient not updated (routing failure)
-- Should_relay wrong (flooding or isolation)
-
-Test categories:
-1. Signature verification
-2. IID/pubkey binding
-3. Duplicate/stale detection
-4. Gradient table updates
-5. Relay decisions
 """
 
 from ipaddress import IPv6Address
@@ -105,7 +91,6 @@ class TestSignatureVerification:
         self, processor: AnnounceProcessor, identity: Identity, neighbor: IPv6Address
     ):
         """A properly signed announce is accepted."""
-        # Why test: Baseline - valid announces must work.
         announce = make_signed_announce(identity, seq_num=1)
         result = processor.process(announce, neighbor, now_ms=0)
 
@@ -116,7 +101,6 @@ class TestSignatureVerification:
         self, processor: AnnounceProcessor, identity: Identity, neighbor: IPv6Address
     ):
         """An announce with garbage signature is rejected."""
-        # Why test: Invalid signatures must be caught.
         announce = AnnounceMessage(
             originator_iid=identity.iid,
             pubkey=identity.pubkey,
@@ -132,8 +116,6 @@ class TestSignatureVerification:
         self, processor: AnnounceProcessor, identity: Identity, neighbor: IPv6Address
     ):
         """Signature computed over different data is rejected."""
-        # Why test: Attacker might try to reuse a signature from another message.
-        # Sign over different seq_num
         original = make_signed_announce(identity, seq_num=1)
 
         # Create message with different seq_num but same signature
@@ -160,14 +142,11 @@ class TestIIDBinding:
         neighbor: IPv6Address,
     ):
         """Rejects announce where IID doesn't match pubkey hash."""
-        # Why test: Attacker might try to announce for someone else's IID.
-        # Create announce with identity's IID but other_identity's pubkey
         msg = AnnounceMessage(
-            originator_iid=identity.iid,  # From identity
-            pubkey=other_identity.pubkey,  # From other_identity - mismatch!
+            originator_iid=identity.iid,
+            pubkey=other_identity.pubkey,
             seq_num=1,
         )
-        # Sign with other_identity (the signature will be valid for the pubkey)
         signature = sign(other_identity.privkey, other_identity.pubkey, msg.signed_data())
         announce = AnnounceMessage(
             originator_iid=msg.originator_iid,
@@ -185,18 +164,15 @@ class TestIIDBinding:
         self, processor: AnnounceProcessor, neighbor: IPv6Address
     ):
         """IID check happens before signature verification (cheaper)."""
-        # Why test: IID check is O(1), signature is O(crypto). Check IID first.
-        # Create announce with mismatched IID - should fail on IID, not signature
-        bad_iid = bytes([0xFF] * 8)  # Definitely wrong
+        bad_iid = bytes([0xFF] * 8)
         announce = AnnounceMessage(
             originator_iid=bad_iid,
-            pubkey=bytes(32),  # Zero pubkey - would fail signature too
+            pubkey=bytes(32),
             seq_num=1,
-            signature=bytes(SIGNATURE_LENGTH),  # Garbage signature
+            signature=bytes(SIGNATURE_LENGTH),
         )
         result = processor.process(announce, neighbor, now_ms=0)
 
-        # Should fail on IID mismatch, not signature
         assert result.reject_reason == AnnounceRejectReason.IID_MISMATCH
 
 
@@ -207,7 +183,6 @@ class TestDuplicateDetection:
         self, processor: AnnounceProcessor, identity: Identity, neighbor: IPv6Address
     ):
         """First announce from an originator is always accepted."""
-        # Why test: New originators must be able to join.
         announce = make_signed_announce(identity, seq_num=1)
         result = processor.process(announce, neighbor, now_ms=0)
 
@@ -217,7 +192,6 @@ class TestDuplicateDetection:
         self, processor: AnnounceProcessor, identity: Identity, neighbor: IPv6Address
     ):
         """Announce with higher seq_num is accepted."""
-        # Why test: Newer announces replace older ones.
         first = make_signed_announce(identity, seq_num=1)
         second = make_signed_announce(identity, seq_num=2)
 

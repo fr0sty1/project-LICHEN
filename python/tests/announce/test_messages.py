@@ -1,20 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """Tests for announce message codec.
-
-Why these tests: Announce messages are the primary routing mechanism for active
-nodes. Bugs here mean:
-- Malformed messages rejected by receivers (routing failure)
-- Wrong signed_data() = signature verification fails
-- Hop count not incremented = infinite flooding
-- seq_num wrong = stale announces accepted or fresh ones rejected
-
-Test categories:
-1. Construction and validation
-2. Serialization round-trip
-3. signed_data() correctness
-4. Hop count management
-5. Error cases
 """
 
 import pytest
@@ -33,7 +19,6 @@ class TestAnnounceConstruction:
 
     def test_valid_minimal_announce(self):
         """A valid announce with minimum required fields."""
-        # Why test: Baseline - a properly constructed message should work.
         msg = AnnounceMessage(
             originator_iid=bytes(8),
             pubkey=bytes(32),
@@ -51,7 +36,6 @@ class TestAnnounceConstruction:
 
     def test_valid_announce_with_app_data(self):
         """Announce with optional app_data field."""
-        # Why test: app_data is optional but must be handled correctly.
         app_data = b"node-name:alice"
         msg = AnnounceMessage(
             originator_iid=bytes(8),
@@ -65,7 +49,6 @@ class TestAnnounceConstruction:
 
     def test_rejects_wrong_iid_length(self):
         """IID must be exactly 8 bytes."""
-        # Why test: IID is a fixed-size field. Wrong length = parsing failure.
         with pytest.raises(AnnounceError, match="originator_iid must be 8 bytes"):
             AnnounceMessage(
                 originator_iid=bytes(7),  # Too short
@@ -82,7 +65,6 @@ class TestAnnounceConstruction:
 
     def test_rejects_wrong_pubkey_length(self):
         """Pubkey must be exactly 32 bytes."""
-        # Why test: Ed25519 pubkeys are 32 bytes. Wrong length = crypto failure.
         with pytest.raises(AnnounceError, match="pubkey must be 32 bytes"):
             AnnounceMessage(
                 originator_iid=bytes(8),
@@ -92,7 +74,6 @@ class TestAnnounceConstruction:
 
     def test_rejects_seq_num_out_of_range(self):
         """seq_num must fit in 16 bits."""
-        # Why test: Wire format uses 2 bytes. Overflow = wrong seq on wire.
         with pytest.raises(AnnounceError, match="seq_num out of range"):
             AnnounceMessage(
                 originator_iid=bytes(8),
@@ -109,7 +90,6 @@ class TestAnnounceConstruction:
 
     def test_rejects_hop_count_out_of_range(self):
         """hop_count must fit in 8 bits."""
-        # Why test: Wire format uses 1 byte. Overflow = wrong hop on wire.
         with pytest.raises(AnnounceError, match="hop_count out of range"):
             AnnounceMessage(
                 originator_iid=bytes(8),
@@ -120,7 +100,6 @@ class TestAnnounceConstruction:
 
     def test_rejects_wrong_signature_length(self):
         """Signature must be 0 (unsigned) or 48 bytes (signed)."""
-        # Why test: Schnorr48 signatures are exactly 48 bytes.
         with pytest.raises(AnnounceError, match="signature must be 0 or 48"):
             AnnounceMessage(
                 originator_iid=bytes(8),
@@ -131,7 +110,6 @@ class TestAnnounceConstruction:
 
     def test_allows_empty_signature_for_construction(self):
         """Empty signature allowed during construction (before signing)."""
-        # Why test: Caller builds message, computes signed_data(), then signs.
         msg = AnnounceMessage(
             originator_iid=bytes(8),
             pubkey=bytes(32),
@@ -351,7 +329,6 @@ class TestHopCount:
 
     def test_with_incremented_hop_count(self):
         """with_incremented_hop_count() returns new message with hop+1."""
-        # Why test: Relays must increment hop count before forwarding.
         original = AnnounceMessage(
             originator_iid=bytes(8),
             pubkey=bytes(32),
@@ -370,7 +347,6 @@ class TestHopCount:
 
     def test_with_incremented_rejects_at_max(self):
         """Cannot increment beyond MAX_ANNOUNCE_HOPS."""
-        # Why test: Prevents infinite flooding in the mesh.
         msg = AnnounceMessage(
             originator_iid=bytes(8),
             pubkey=bytes(32),
@@ -383,7 +359,6 @@ class TestHopCount:
 
     def test_should_relay_true_below_max(self):
         """should_relay() returns True when hop_count < MAX."""
-        # Why test: Messages below limit should propagate.
         msg = AnnounceMessage(
             originator_iid=bytes(8),
             pubkey=bytes(32),
@@ -395,7 +370,6 @@ class TestHopCount:
 
     def test_should_relay_false_at_max(self):
         """should_relay() returns False when hop_count == MAX."""
-        # Why test: Messages at limit should not be forwarded.
         msg = AnnounceMessage(
             originator_iid=bytes(8),
             pubkey=bytes(32),
@@ -407,8 +381,6 @@ class TestHopCount:
 
     def test_should_relay_false_above_max(self):
         """should_relay() returns False when hop_count > MAX."""
-        # Why test: Messages somehow above limit should definitely not relay.
-        # This shouldn't happen in practice but defensive check is good.
         msg = AnnounceMessage(
             originator_iid=bytes(8),
             pubkey=bytes(32),

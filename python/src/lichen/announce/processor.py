@@ -88,19 +88,6 @@ class AnnounceProcessor:
             )
 
         iid = announce.originator_iid
-        existing_seq = self._seen.get(iid)
-        if existing_seq is not None and not seq_gt(announce.seq_num, existing_seq):
-            logger.debug(
-                "announce stale: originator=%s seq=%d <= seen=%d",
-                iid.hex(),
-                announce.seq_num,
-                existing_seq,
-            )
-            return AnnounceResult(
-                accepted=False,
-                should_relay=False,
-                reject_reason=AnnounceRejectReason.STALE_SEQNUM,
-            )
 
         signable = announce.signed_data()
         if not verify(announce.pubkey, signable, announce.signature):
@@ -126,6 +113,20 @@ class AnnounceProcessor:
                 accepted=False,
                 should_relay=False,
                 reject_reason=AnnounceRejectReason.KEY_CHANGE_DETECTED,
+            )
+
+        existing_seq = self._seen.get(iid)
+        if existing_seq is not None and not seq_gt(announce.seq_num, existing_seq):
+            logger.debug(
+                "announce stale: originator=%s seq=%d <= seen=%d",
+                iid.hex(),
+                announce.seq_num,
+                existing_seq,
+            )
+            return AnnounceResult(
+                accepted=False,
+                should_relay=False,
+                reject_reason=AnnounceRejectReason.STALE_SEQNUM,
             )
 
         destination = self.address_builder(iid)
