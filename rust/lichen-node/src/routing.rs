@@ -44,7 +44,7 @@ pub use lichen_rpl::routing::{
     SourceRoutingHeader,
 };
 #[cfg(feature = "std")]
-pub use lichen_rpl::trickle::{TrickleEvent, TrickleState, TrickleTimer};
+pub use lichen_rpl::trickle::{TrickleEvent, TrickleTimer};
 
 #[cfg(feature = "std")]
 fn trickle_from_config(config: &DodagConfig) -> Option<TrickleTimer> {
@@ -548,11 +548,7 @@ impl Router {
                 || was_joined != self.dodag.is_joined()
                 || old_parent != self.dodag.preferred_parent;
             if inconsistent {
-                if self.trickle.state == TrickleState::Stopped {
-                    self.trickle.start(now_ms, 0);
-                } else {
-                    self.trickle.reset(now_ms, 0);
-                }
+                self.trickle.reset(now_ms, 0);
             }
             return DioProcessOutcome::accepted(inconsistent);
         }
@@ -592,11 +588,7 @@ impl Router {
                     || was_joined != self.dodag.is_joined()
                     || old_parent != self.dodag.preferred_parent;
                 if inconsistent {
-                    if self.trickle.state == TrickleState::Stopped {
-                        self.trickle.start(now_ms, 0);
-                    } else {
-                        self.trickle.reset(now_ms, 0);
-                    }
+                    self.trickle.reset(now_ms, 0);
                 }
                 return DioProcessOutcome::accepted(inconsistent);
             }
@@ -618,8 +610,6 @@ impl Router {
             if config_changed {
                 self.trickle = trickle_from_config(&self.dodag_config)
                     .expect("accepted Trickle config was validated");
-                self.trickle.start(now_ms, 0);
-            } else if self.trickle.state == TrickleState::Stopped {
                 self.trickle.start(now_ms, 0);
             } else {
                 self.trickle.reset(now_ms, 0);
@@ -959,11 +949,7 @@ impl Router {
             || was_joined != self.dodag.is_joined()
             || old_parent != self.dodag.preferred_parent;
         if inconsistent {
-            if self.trickle.state == TrickleState::Stopped {
-                self.trickle.start(now_ms, 0);
-            } else {
-                self.trickle.reset(now_ms, 0);
-            }
+            self.trickle.reset(now_ms, 0);
         }
         (removed_len != 0, inconsistent)
     }
