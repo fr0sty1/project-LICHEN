@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-iaui.4",
+  "title": "Remove or secure dev stubs that log insecure keys",
+  "description": "Dev/test stubs that log master_secret, keys, etc. must be removed or guarded by CONFIG_LICHEN_INSECURE_DEBUG only with clear warnings. Prevent accidental key exposure in logs. P0. Parent of project-LICHEN-iaui",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:20:20.799754811Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:20:20.799754811Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-iaui.4",
+      "depends_on_id": "project-LICHEN-iaui",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:20:20.935472379Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
