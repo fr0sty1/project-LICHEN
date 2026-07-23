@@ -1124,11 +1124,10 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len, uint8_t channel)
         if (channel < CONFIG_LICHEN_N_CHANNELS) {
             effective_channel = channel;
         } else {
-            effective_channel = 0; /* CH0 control per CCP-9 for unknown */
+            static uint8_t next = 1;
+            effective_channel = next;
+            next = (next % (CONFIG_LICHEN_N_CHANNELS - 1)) + 1;
         }
-        /* Scheduler stub: announce rx_channel or synchronized_hop (CCP-12) to be wired
-         * from routing/announce_sched; defaults to CH0. Matches test vectors for CH0.
-         */
     }
     lora_data.rx_channel = effective_channel;
 
