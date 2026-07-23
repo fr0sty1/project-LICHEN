@@ -1,16 +1,18 @@
 {
   "id": "project-LICHEN-naek",
   "title": "[merge-conflict] worktree-worker19: coap_status.c",
-  "labels": ["defer-boardconfig"],
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:57:29.286939244Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:02:21.594361142Z",
+  "updated_at": "2026-07-23T04:52:12.185237209Z",
   "started_at": "2026-07-23T00:02:21.594361142Z",
-  "lease_expires_at": "2026-07-23T00:07:21.594361142Z",
-  "heartbeat_at": "2026-07-23T00:02:21.594361142Z"
+  "lease_expires_at": "2026-07-23T04:57:12.185237209Z",
+  "heartbeat_at": "2026-07-23T04:52:12.185237209Z",
+  "labels": [
+    "defer-boardconfig"
+  ]
 }
