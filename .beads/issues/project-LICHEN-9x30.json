@@ -2,15 +2,15 @@
   "id": "project-LICHEN-9x30",
   "title": "[merge-conflict] worktree-worker21: sales-playbook.md",
   "notes": "Commit: de84426d2 (updated sales-playbook.md in worker21 to resolved canonical version, removed duplication)",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:11:58.909459235Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:21:21.422122743Z",
+  "updated_at": "2026-07-23T03:21:25.630414788Z",
   "started_at": "2026-07-23T03:20:00.096955872Z",
-  "lease_expires_at": "2026-07-23T03:25:00.096955872Z",
-  "heartbeat_at": "2026-07-23T03:20:00.096955872Z"
+  "closed_at": "2026-07-23T03:21:25.630414788Z",
+  "close_reason": "Fixed sales-playbook.md merge conflict by syncing to canonical resolved version from main (removed duplication, added SPDX and consolidated sales/PRFAQ content). Committed locally in worker21 worktree as de84426d2. Push skipped due to extensive unrelated conflicts in rebase (out of scope for this bead)."
 }
