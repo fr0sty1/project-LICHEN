@@ -338,63 +338,21 @@ fn compute_th(input: &[u8]) -> [u8; 32] {
     Sha256::digest(input).into()
 }
 
-/// Encode bytes as deterministic CBOR bstr (major type 2) matching zcbor/cbor2.
-fn encode_bstr<const N: usize>(
-    buf: &mut heapless::Vec<u8, N>,
-    data: &[u8],
-) -> Result<(), EdhocError> {
-    let len = data.len();
-    if len <= 23 {
-        buf.push_err(0x40u8 | len as u8)?;
-    } else if len <= 0xff {
-        buf.push_err(0x58)?;
-        buf.push_err(len as u8)?;
-    } else if len <= 0xffff {
-        buf.push_err(0x59)?;
-        buf.push_err((len >> 8) as u8)?;
-        buf.push_err((len & 0xff) as u8)?;
-    } else {
-        return Err(EdhocError::BufferTooSmall);
-    }
-    buf.extend_err(data)?;
-    Ok(())
-}
-
-/// TH_2 = H(G_Y || H(message_1)) per RFC 9528 / test vectors.
+/// TH_2 per RFC 9528: H(CBOR-bstr(G_Y) || CBOR-bstr(H(message_1)))
+/// Matches Python edhoc.py, test vectors, and rfc9529_signature_trace_vectors.
 fn transcript_2(g_y: &[u8], msg1: &[u8]) -> Result<[u8; 32], EdhocError> {
+    if g_y.len() != 32 {
+        return Err(EdhocError::InvalidMessage);
+    }
     let h_msg1 = compute_th(msg1);
-    let mut buf = heapless::Vec::<u8, 64>::new();
-    buf.extend_err(g_y).map_err(|_| EdhocError::BufferTooSmall)?;
-    buf.extend_err(&h_msg1).map_err(|_| EdhocError::BufferTooSmall)?;
-    Ok(compute_th(&buf))
-}
-
-/// TH_3 = H(CBOR(TH_2) || CBOR(input) || CBOR(cred)).
-fn transcript_3(
-    th_2: &[u8; 32],
-    input: &[u8],
-    cred: &[u8],
-) -> Result<[u8; 32], EdhocError> {
-    let mut buf = heapless::Vec::<u8, 1024>::new();
-    encode_bstr(&mut buf, th_2)?;
-    encode_bstr(&mut buf, input)?;
-    encode_bstr(&mut buf, cred)?;
-    Ok(compute_th(&buf))
-}
-
-/// TH_4 = H(CBOR(TH_3) || CBOR(PLAINTEXT_3) || CBOR(CRED)) per RFC 9528 §4.1.2/4.2.2.
-/// Uses PLAINTEXT_3 (not CIPHERTEXT_3) + full credential for initiator/responder
-/// consistency, matching test vector, C impl, and Python reference (adjusted).
-fn transcript_4(
-    th_3: &[u8; 32],
-    input: &[u8],
-    cred: &[u8],
-) -> Result<[u8; 32], EdhocError> {
-    let mut buf = heapless::Vec::<u8, 1024>::new();
-    encode_bstr(&mut buf, th_3)?;
-    encode_bstr(&mut buf, input)?;
-    encode_bstr(&mut buf, cred)?;
-    Ok(compute_th(&buf))
+    let mut input = [0u8; 68];
+    input[0] = 0x58;
+    input[1] = 32;
+    input[2..34].copy_from_slice(g_y);
+    input[34] = 0x58;
+    input[35] = 32;
+    input[36..68].copy_from_slice(&h_msg1);
+    Ok(compute_th(&input))
 }
 
 /// Parse SUITES_I from CBOR per RFC 9528 Section 3.3.2.
