@@ -438,6 +438,9 @@ void lichen_rpl_opt_iter_init(struct lichen_rpl_opt_iter *it,
 	if (it == NULL) {
 		return;
 	}
+	if (data == NULL) {
+		len = 0;
+	}
 	it->data = data;
 	it->len = len;
 	it->pos = 0;
