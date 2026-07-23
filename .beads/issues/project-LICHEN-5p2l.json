@@ -2,15 +2,15 @@
   "id": "project-LICHEN-5p2l",
   "title": "[merge-conflict] worktree-worker1: messages.py",
   "notes": "Commit: 6efe2b61e",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:47:37.032203879Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:46:10.410701Z",
+  "updated_at": "2026-07-23T04:46:12.935325789Z",
   "started_at": "2026-07-23T03:43:02.147400114Z",
-  "lease_expires_at": "2026-07-23T04:43:05.269360072Z",
-  "heartbeat_at": "2026-07-23T04:38:05.269360072Z"
+  "closed_at": "2026-07-23T04:46:12.935325789Z",
+  "close_reason": "fixed merge conflict artifacts in announce/messages.py by standardizing on rx_channel per spec/Rust, removed vestigial flags field, fixed scheduler and tests, resolved test indentation, tests now pass"
 }
