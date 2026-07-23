@@ -1603,28 +1603,29 @@ cleanup_protect_request:
 	return ret;
 
 nvm_failed:
-	/* SECURITY ANALYSIS (project-LICHEN-ow3c.1.3.2.1):
-	 * Per RFC 8613 §7.2 (Sequence Numbers), §7.5 (Losing Context State),
-	 * and Appendix D.4 (Uniqueness of (key, nonce)), AES-CCM requires
-	 * unique (key, nonce) pairs; SSN must never repeat for a context.
-	 * python-ano.41 identified nonce reuse on NVM failure+reboot.
-	 * oscore_ctx_persist_ssn() (which copies sender_seq under mutex then
-	 * calls NVM write_cb) can fail transiently.
+	/* SECURITY ANALYSIS (project-LICHEN-ow3c.1.2 + uosj):
+	 * Per RFC 8613 §7.2, §7.5, Appendix D.4: AES-CCM requires unique
+	 * (key, nonce) pairs; SSN must be monotonic and never repeat.
+	 * python-ano.41: NVM failure + reboot = nonce reuse risk.
+	 * oscore_ctx_persist_ssn copies SSN under mutex then calls callback.
 	 *
-	 * Rollback (ctx->sender_seq = seq) chosen over safe-advance (+256 or
-	 * 2^8 boundary under re-lock):
-	 * - Maintains exact match between in-memory SSN and NVM on reboot.
-	 * - Allows safe retry of identical request (same SSN/nonce).
-	 * - Safe-advance risks desync: advanced in-memory but stale NVM on
-	 *   reboot leads to reuse of values "skipped" but never persisted.
-	 * - Frequent NVM errors would exhaust SSN faster with advance.
-	 * Mutex re-lock serializes with unprotect/other threads. Early errors
-	 * bypass this path. See oscore_protect_request() and header.
+	 * Conditional rollback (if (ctx->sender_seq == seq + 1)) under
+	 * re-acquired mutex chosen:
+	 * - Prevents SSN regression under concurrency (fixes uosj).
+	 * - Allows retry of exact SSN/nonce on transient NVM fail.
+	 * - Exact match to persisted NVM on reboot.
+	 * Rejected unconditional rollback (current before this fix, allows
+	 * backward SSN on concurrent protect_request). Rejected safe-advance
+	 * (risks memory/NVM desync on reboot causing reuse of "skipped" SSNs).
+	 * Early error paths bypass this. See persist_ssn, atomic block,
+	 * oscore.h docs.
 	 */
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
 	ctx_idx = ctx_get_index(ctx);
 	if (ctx_idx >= 0) {
-		ctx->sender_seq = seq;
+		if (ctx->sender_seq == seq + 1) {
+			ctx->sender_seq = seq;
+		}
 		s_seq_initialized[ctx_idx] = true;
 	}
 	k_mutex_unlock(&s_ctx_mutex);
