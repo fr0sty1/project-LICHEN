@@ -2,15 +2,15 @@
   "id": "project-LICHEN-h2ck",
   "title": "[merge-conflict] worktree-worker24: xiao_s3_wio_sx1262.conf",
   "notes": "Commit: 250e5d9b0",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:22:53.991532567Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:34:43.549941613Z",
+  "updated_at": "2026-07-23T02:34:46.008443767Z",
   "started_at": "2026-07-23T02:33:16.616704963Z",
-  "lease_expires_at": "2026-07-23T02:38:16.616704963Z",
-  "heartbeat_at": "2026-07-23T02:33:16.616704963Z"
+  "closed_at": "2026-07-23T02:34:46.008443767Z",
+  "close_reason": "Fixed merge conflict remnant (lone '#' comment line) in worker24 copy of xiao_s3_wio_sx1262.conf to match canonical formatting. Verified diff clean, committed and pushed."
 }
