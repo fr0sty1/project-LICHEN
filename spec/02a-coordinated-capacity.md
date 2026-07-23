@@ -129,13 +129,13 @@ listen-before-talk procedure even in a dedicated cell.
 Slow-changing domain parameters are advertised in a CCP Capability DIO option (provisional experimental type `0xE0`; MUST be replaced by assigned IANA value before interoperable publication).
 
 The option format (36 bytes total data) is:
->>>>>>> origin/worktree-worker23
+
 
 ```
 slot_id = (crc32_ieee(eui64, 8) ^ epoch) % num_slots
 ```
 
-<<<<<<< HEAD
+
 using `crc32_ieee` (see appendix-design-rationale.md:388, lichen/subsys/schc/schc.c:90). This fixes prior inconsistency between crc16 (SMP/Meshtastic legacy) and hash_32 in CCP-15.8.3 pseudocode (`spec/02a-coordinated-capacity.md:41`). The XOR with epoch ensures time-varying slots to prevent persistent collisions. All impls MUST match ccp16.json vectors exactly.
 
 For SFN (superframe number, a u32 epoch counter) wrap-around, all nodes MUST compute using unsigned 32-bit arithmetic (modulo 0x100000000). The time-provider (see `docs/firmware-time-provider.md`) is the canonical source: SFN/epoch updates MUST pass epoch_floor validation, set `wall_clock_valid`, and respect stratum before adoption. RPL version changes or desync MUST reset SFN relative to the new root per the FSM in Section 2a.5. This integrates with `lichen_rpl_dodag_init()` ordering.
@@ -148,15 +148,15 @@ uint32_t last_sfn = 0xFFFFFFFFu;
 uint32_t current_sfn = 0x00000000u;
 uint32_t delta = current_sfn - last_sfn;  // yields 1 via unsigned wrap
 ```
-<<<<<<< HEAD
+
 last_sfn = 0xFFFFFFFFu;
 current_sfn = 0x00000002u;
 delta = current_sfn - last_sfn;  /* = 3 in unsigned 32-bit arithmetic */
 ```
 This MUST be treated as advancement of 3 slots. Signed arithmetic would yield a large negative value, breaking desync detection and slot scheduling. Test vectors in ccp16.json MUST cover this and similar boundaries.
-=======
+
 This MUST be treated as advancement of 1 slot (epoch_floor validation independent of SFN per time-provider). Test vectors in ccp16.json MUST cover boundaries.
->>>>>>> origin/integration/worker9-20260722
+
 
 A node MUST only transmit in its assigned slot. Slot duration = max_airtime(current_SF) + 100 ms guard. The link layer MUST enforce via `lichen_link_set_slot()` and `tdma_tx_allowed()` (see lichen/subsys/lichen/link: implementation).
 
@@ -165,19 +165,19 @@ A node MUST only transmit in its assigned slot. Slot duration = max_airtime(curr
 ## 2a.3. Channel Agility and Adaptive SF
 
 CH0 is the control channel; all nodes MUST listen continuously on it for DIOs and beacons (see draft-lichen-schc-lora-00).
-=======
+
 Multi-byte integers are unsigned big-endian. Flags bits: 0=scheduled mode, 1=CSMA rendezvous, 2=concurrent CH0 RX, 3=GNSS-PPS, 4-7 reserved (zero). `Setup Window` bounds retune/readiness/CAD. `Occupied Time` bounds data+ACK. `Guard` is separation between occupied envelopes. `RX Chains` is simultaneous receive count (1 for typical single-radio). `Channel Mask` bit 0 = CH0. Receivers compute local intersection. See test/vectors/ccp*.json for format validation.
->>>>>>> origin/worktree-worker23
+
 
 CH0 is the mandatory control channel. All nodes MUST listen continuously on CH0 for Announce, DIOs, DIS, DAO, LOADng control (RREQ/RREP/RERR), CCP messages, and beacons. See draft-lichen-rpl-lora-00 and draft-lichen-schc-lora-00 for RPL/SCHC usage on CH0. Data channels are used only after rendezvous or scheduled assignment.
 
-<<<<<<< HEAD
+
 ### select_channel and now() (logical chunk: function definitions - pure pseudocode)
-=======
+
 ## CCP-6.1. Channel Selection and Adaptive SF (normative pseudocode)
 
 Nodes MUST implement the following spelled-out pseudocode exactly (using IF/OR/NOT/MOD/XOR for IETF language neutrality). All implementations MUST produce bit-identical results to independent test oracles in test/vectors/ccp16.json, test/vectors/ccp_load_balancing.json, and test/vectors/ccp9.json. Cross-reference CCP-16 for load_factor integration and CCP-9 for da2q rendezvous.
->>>>>>> origin/worktree-worker23
+
 
 ```
 function ema_update(avg, sample):
@@ -186,7 +186,7 @@ function ema_update(avg, sample):
 
 function select_channel(ctx, metrics, t):
     IF (metrics.density > 8) OR (NOT ctx.wall_clock_valid) THEN
-<<<<<<< HEAD
+
         RETURN 0   // control CH0 for high density or desync (per vectors[1,3])
     hash = fnv1a32( (ctx.eui64 XOR t XOR ctx.epoch) )
     n = ctx.num_data_channels IF ctx.num_data_channels > 0 ELSE 3
@@ -208,7 +208,7 @@ Updates MUST be propagated in RPL metric container. Root optimizer uses reported
 ```
 function adaptive_sf_select(density, snr_db, load_factor, t):
     snr_ema = ema_update(previous_ema, snr_db, t)  // alpha=0.1 over 300s window; exact match to vectors
-=======
+
         RETURN 0
     hash = fnv1a32(ctx.eui64 XOR t XOR ctx.epoch)
     n = ctx.num_data_channels
@@ -221,7 +221,7 @@ function now():
     RETURN current_sfn()   // SFN from GNSS-PPS or monotonic clock
 
 function adaptive_sf_select(density, snr_ema, load_factor):
->>>>>>> origin/worktree-worker23
+
     IF (density > 8) OR (snr_ema < 0) OR (load_factor > 0.8) THEN
         RETURN 11
     ELSE IF (density < 5) AND (snr_ema > 8) THEN
@@ -233,17 +233,17 @@ function adaptive_sf_select(density, snr_ema, load_factor):
 END FUNCTION
 ```
 
-<<<<<<< HEAD
+
 Per-SF SNR thresholds (normative, for ema_update fallback): SF9: >8dB, SF10: >0dB, SF11: >-5dB, SF12: any. Matches all ccp16.json vectors[0-4]. No dead code; all paths exercised by test vectors. Defines ema_update, select_channel, now() per prior beads.
-=======
+
 Default is SF10 per rationale in appendix-design-rationale.md. Density = neighbor count. Load_factor from DIO utilization and EMA (alpha=0.25 or 0.1 per vector). SNR_EMA updated via now(). Selected SF signaled in DIO capability option and Announce. RX on all SF. High density/load forces CH0 + higher SF for robustness; low density/good SNR enables SF9 on data channel for capacity. See CCP-9 for da2q rendezvous: Announce packets include signed rx_channel field (offset in signed_data per rust/lichen-core/src/announce.rs) for known-peer prediction. Unknown peers use CH0 control. Vectors in ccp9.json are authoritative independent oracle (hash-based, announce-driven, scheduled, with signed rx_channel preventing tampering).
->>>>>>> origin/worktree-worker23
+
 
 ## 2a.4. Time Synchronization
 
-<<<<<<< HEAD
+
 Time sync provided by DODAG root via epoch in beacons/RPL options (see 2a.2 for time-provider, epoch_floor validation, SFN modulo/wrap independence). Nodes MUST maintain `epoch_floor`, `stratum`, `wall_clock_valid` (see `docs/firmware-time-provider.md`).
-=======
+
 
 | Bit | Meaning |
 |-----|---------|
@@ -252,7 +252,7 @@ Time sync provided by DODAG root via epoch in beacons/RPL options (see 2a.2 for 
 | 2 | Concurrent CH0 reception supported |
 | 3 | GNSS-PPS scheduled clock supported |
 | 4-7 | Reserved; send as zero and ignore on receipt |
->>>>>>> origin/worktree-worker23
+
 
 Root time-provider is authoritative. Adopt lowest DODAG ID root. Drift > threshold triggers desync (2a.5). Integrates with `lichen_rpl_dodag_init()` per AGENTS.md.
 
@@ -813,11 +813,11 @@ denial-of-service risks.
 
 ## CCP-15. Capacity Claims
 
-<<<<<<< HEAD
+
 CCP does not guarantee a fixed capacity multiplier.
-=======
+
 CCP does not guarantee a fixed capacity multiplier. TDMA removes scheduler overlaps under bounded clocks but not external interference or legacy traffic. With 8 frequencies and CH0 reserved for control (Announce, RPL, LOADng, CCP per CCP-5), aggregate capacity depends on disjoint links, receiver chains, regulatory budgets, and load. Test vectors in test/vectors/ccp_load_balancing.json and ccp16.json are authoritative independent oracles for density/EMA/load_factor rules, SF selection, and channel rendezvous. Implementations MUST report measured goodput against these oracles; no unsubstantiated "Nx capacity" claims.
->>>>>>> origin/worktree-worker23
+
 
 TDMA can remove scheduler-created same-domain overlaps under bounded clocks,
 but not external interference, legacy transmissions, jamming, or unsafe reuse.
@@ -922,4 +922,4 @@ The following require separate specifications and evidence:
 
 
 
->>>>>>> origin/worktree-worker23
+
