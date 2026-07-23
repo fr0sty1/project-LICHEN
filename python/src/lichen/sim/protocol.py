@@ -12,13 +12,10 @@ Message types:
     TX (0x10): Transmit with u8 channel after len
     TX_DONE (0x11): Transmit complete with airtime
     TX_FAIL (0x12): Transmit failed
-    RX (0x20): Receive request with timeout (poll-based)
-    RX_OK (0x21): Receive success with payload, RSSI, SNR (poll-based)
-    RX_TIMEOUT (0x22): Receive timeout (poll-based)
     RX_ENTER (0x24): RX enter with timeout_us + u8 channel
-    RX_EXIT (0x26): Renode -> Sim: leaving RX mode (push-based)
-    RX_PACKET (0x27): Sim -> Renode: packet arrived, unsolicited (push-based)
-    RX_TIMEOUT_PUSH (0x28): Sim -> Renode: RX timeout, unsolicited (push-based)
+    RX_EXIT (0x26): Renode -> Sim: leaving RX mode
+    RX_PACKET (0x27): Sim -> Renode: packet arrived, unsolicited
+    RX_TIMEOUT_PUSH (0x28): Sim -> Renode: RX timeout, unsolicited
     TIME (0x30): Time query request
     TIME_OK (0x31): Time query response
     CAD (0x40): CAD with timeout_ms + u8 channel
@@ -36,9 +33,6 @@ MSG_REGISTER: Final[int] = 0x01
 MSG_TX: Final[int] = 0x10
 MSG_TX_DONE: Final[int] = 0x11
 MSG_TX_FAIL: Final[int] = 0x12
-MSG_RX: Final[int] = 0x20
-MSG_RX_OK: Final[int] = 0x21
-MSG_RX_TIMEOUT: Final[int] = 0x22
 MSG_RX_ENTER: Final[int] = 0x24
 MSG_RX_EXIT: Final[int] = 0x26
 MSG_RX_PACKET: Final[int] = 0x27
@@ -241,119 +235,6 @@ def encode_tx_fail() -> bytes:
         Encoded message bytes.
     """
     return struct.pack("<B", MSG_TX_FAIL)
-
-
-def encode_rx(timeout_ms: int) -> bytes:
-    """Encode an RX message.
-
-    Format:
-        - 1 byte: message type (0x20)
-        - 4 bytes: timeout in milliseconds (uint32, little-endian)
-
-    Args:
-        timeout_ms: Receive timeout in milliseconds.
-
-    Returns:
-        Encoded message bytes.
-
-    Raises:
-        ProtocolError: If timeout_ms does not fit in a uint32.
-    """
-    _check_range("timeout_ms", timeout_ms, 0, _UINT32_MAX)
-    return struct.pack("<BI", MSG_RX, timeout_ms)
-
-
-def decode_rx(data: bytes) -> int:
-    """Decode an RX message payload.
-
-    Args:
-        data: Message bytes (excluding message type byte).
-
-    Returns:
-        Timeout in milliseconds.
-
-    Raises:
-        ProtocolError: If data is too short.
-    """
-    if len(data) < 4:
-        raise ProtocolError("RX message too short")
-
-    (timeout_ms,) = struct.unpack_from("<I", data, 0)
-    return int(timeout_ms)
-
-
-def encode_rx_ok(payload: bytes, rssi: int, snr: int) -> bytes:
-    """Encode an RX_OK message.
-
-    Format:
-        - 1 byte: message type (0x21)
-        - 2 bytes: payload length (uint16, little-endian)
-        - N bytes: payload
-        - 2 bytes: RSSI in dBm (int16, little-endian)
-        - 2 bytes: SNR in dB * 10 (int16, little-endian)
-
-    Args:
-        payload: Received data.
-        rssi: Received signal strength in dBm.
-        snr: Signal-to-noise ratio in dB * 10 (e.g., -5.5 dB = -55).
-
-    Returns:
-        Encoded message bytes.
-
-    Raises:
-        ProtocolError: If payload exceeds 65535 bytes or rssi/snr do not fit
-            in an int16.
-    """
-    if len(payload) > MAX_PAYLOAD_LENGTH:
-        raise ProtocolError(
-            f"payload too long: {len(payload)} > {MAX_PAYLOAD_LENGTH}"
-        )
-    _check_range("rssi", rssi, _INT16_MIN, _INT16_MAX)
-    _check_range("snr", snr, _INT16_MIN, _INT16_MAX)
-
-    return (
-        struct.pack("<BH", MSG_RX_OK, len(payload))
-        + payload
-        + struct.pack("<hh", rssi, snr)
-    )
-
-
-def decode_rx_ok(data: bytes) -> tuple[bytes, int, int]:
-    """Decode an RX_OK message payload.
-
-    Args:
-        data: Message bytes (excluding message type byte).
-
-    Returns:
-        Tuple of (payload, rssi, snr).
-
-    Raises:
-        ProtocolError: If data is malformed or too short.
-    """
-    if len(data) < 2:
-        raise ProtocolError("RX_OK message too short")
-
-    (payload_len,) = struct.unpack_from("<H", data, 0)
-
-    if len(data) < 2 + payload_len + 4:
-        raise ProtocolError("RX_OK message truncated")
-
-    payload = data[2 : 2 + payload_len]
-    rssi, snr = struct.unpack_from("<hh", data, 2 + payload_len)
-
-    return (payload, rssi, snr)
-
-
-def encode_rx_timeout() -> bytes:
-    """Encode an RX_TIMEOUT message.
-
-    Format:
-        - 1 byte: message type (0x22)
-
-    Returns:
-        Encoded message bytes.
-    """
-    return struct.pack("<B", MSG_RX_TIMEOUT)
 
 
 def encode_rx_enter(timeout_us: int, channel: int = 0) -> bytes:

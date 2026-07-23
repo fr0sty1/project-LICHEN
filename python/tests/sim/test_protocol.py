@@ -12,12 +12,9 @@ from lichen.sim.protocol import (
     MSG_ERR,
     MSG_OK,
     MSG_REGISTER,
-    MSG_RX,
     MSG_RX_ENTER,
     MSG_RX_EXIT,
-    MSG_RX_OK,
     MSG_RX_PACKET,
-    MSG_RX_TIMEOUT,
     MSG_RX_TIMEOUT_PUSH,
     MSG_TIME,
     MSG_TIME_OK,
@@ -27,9 +24,7 @@ from lichen.sim.protocol import (
     ProtocolError,
     decode_err,
     decode_register,
-    decode_rx,
     decode_rx_enter,
-    decode_rx_ok,
     decode_rx_packet,
     decode_time_ok,
     decode_tx,
@@ -37,12 +32,9 @@ from lichen.sim.protocol import (
     encode_err,
     encode_ok,
     encode_register,
-    encode_rx,
     encode_rx_enter,
     encode_rx_exit,
-    encode_rx_ok,
     encode_rx_packet,
-    encode_rx_timeout,
     encode_rx_timeout_push,
     encode_time,
     encode_time_ok,
@@ -71,15 +63,6 @@ class TestMessageTypeConstants:
 
     def test_tx_fail_is_0x12(self) -> None:
         assert MSG_TX_FAIL == 0x12
-
-    def test_rx_is_0x20(self) -> None:
-        assert MSG_RX == 0x20
-
-    def test_rx_ok_is_0x21(self) -> None:
-        assert MSG_RX_OK == 0x21
-
-    def test_rx_timeout_is_0x22(self) -> None:
-        assert MSG_RX_TIMEOUT == 0x22
 
     def test_rx_enter_is_0x24(self) -> None:
         assert MSG_RX_ENTER == 0x24
@@ -230,17 +213,19 @@ class TestTxMessage:
         assert get_message_type(encoded) == MSG_TX
 
         msg_payload = get_message_payload(encoded)
-        decoded = decode_tx(msg_payload)
+        decoded_payload, channel = decode_tx(msg_payload)
 
-        assert decoded == payload
+        assert decoded_payload == payload
+        assert channel == 0
 
     def test_roundtrip_empty_payload(self) -> None:
         """Round-trip with empty payload."""
         encoded = encode_tx(b"")
         msg_payload = get_message_payload(encoded)
-        decoded = decode_tx(msg_payload)
+        decoded_payload, channel = decode_tx(msg_payload)
 
-        assert decoded == b""
+        assert decoded_payload == b""
+        assert channel == 0
 
     def test_roundtrip_binary_payload(self) -> None:
         """Round-trip with binary data including null bytes."""
@@ -248,9 +233,10 @@ class TestTxMessage:
 
         encoded = encode_tx(payload)
         msg_payload = get_message_payload(encoded)
-        decoded = decode_tx(msg_payload)
+        decoded_payload, channel = decode_tx(msg_payload)
 
-        assert decoded == payload
+        assert decoded_payload == payload
+        assert channel == 0
 
     def test_roundtrip_max_payload(self) -> None:
         """Round-trip with maximum payload size (65535 bytes)."""
@@ -258,9 +244,10 @@ class TestTxMessage:
 
         encoded = encode_tx(payload)
         msg_payload = get_message_payload(encoded)
-        decoded = decode_tx(msg_payload)
+        decoded_payload, channel = decode_tx(msg_payload)
 
-        assert decoded == payload
+        assert decoded_payload == payload
+        assert channel == 0
 
     def test_encode_payload_too_long(self) -> None:
         """Encoding should fail if payload exceeds 65535 bytes."""
@@ -285,8 +272,8 @@ class TestTxMessage:
         encoded = encode_tx(payload)
 
         assert encoded[0] == MSG_TX
-        assert struct.unpack("<H", encoded[1:3])[0] == 4  # length
-        assert encoded[3:7] == b"test"
+        assert struct.unpack("<H", encoded[1:3])[0] == 4
+        assert encoded[4:8] == b"test"
 
 
 class TestTxDoneMessage:
@@ -346,136 +333,6 @@ class TestTxFailMessage:
         assert get_message_type(encoded) == MSG_TX_FAIL
 
 
-class TestRxMessage:
-    """Test RX message encoding/decoding."""
-
-    def test_roundtrip_basic(self) -> None:
-        """Basic round-trip with typical timeout."""
-        timeout_ms = 5000
-
-        encoded = encode_rx(timeout_ms)
-        assert get_message_type(encoded) == MSG_RX
-
-        payload = get_message_payload(encoded)
-        decoded = decode_rx(payload)
-
-        assert decoded == timeout_ms
-
-    def test_roundtrip_zero_timeout(self) -> None:
-        """Round-trip with zero timeout (immediate)."""
-        encoded = encode_rx(0)
-        payload = get_message_payload(encoded)
-        decoded = decode_rx(payload)
-
-        assert decoded == 0
-
-    def test_roundtrip_max_timeout(self) -> None:
-        """Round-trip with maximum uint32 timeout."""
-        max_val = 2**32 - 1
-
-        encoded = encode_rx(max_val)
-        payload = get_message_payload(encoded)
-        decoded = decode_rx(payload)
-
-        assert decoded == max_val
-
-    def test_decode_too_short(self) -> None:
-        """Decoding should fail if data is too short."""
-        with pytest.raises(ProtocolError, match="too short"):
-            decode_rx(b"\x00\x00")
-
-    def test_wire_format(self) -> None:
-        """Verify exact wire format (little-endian)."""
-        encoded = encode_rx(0xAABBCCDD)
-
-        assert encoded[0] == MSG_RX
-        assert encoded[1:5] == b"\xDD\xCC\xBB\xAA"
-
-
-class TestRxOkMessage:
-    """Test RX_OK message encoding/decoding."""
-
-    def test_roundtrip_basic(self) -> None:
-        """Basic round-trip with typical values."""
-        payload = b"received data"
-        rssi = -85
-        snr = -55  # -5.5 dB * 10
-
-        encoded = encode_rx_ok(payload, rssi, snr)
-        assert get_message_type(encoded) == MSG_RX_OK
-
-        msg_payload = get_message_payload(encoded)
-        decoded = decode_rx_ok(msg_payload)
-
-        assert decoded == (payload, rssi, snr)
-
-    def test_roundtrip_empty_payload(self) -> None:
-        """Round-trip with empty payload."""
-        encoded = encode_rx_ok(b"", -100, 50)
-        msg_payload = get_message_payload(encoded)
-        decoded = decode_rx_ok(msg_payload)
-
-        assert decoded == (b"", -100, 50)
-
-    def test_roundtrip_positive_values(self) -> None:
-        """Round-trip with positive RSSI/SNR values."""
-        encoded = encode_rx_ok(b"x", 10, 200)
-        msg_payload = get_message_payload(encoded)
-        decoded = decode_rx_ok(msg_payload)
-
-        assert decoded == (b"x", 10, 200)
-
-    def test_roundtrip_extreme_rssi_snr(self) -> None:
-        """Round-trip with int16 min/max values."""
-        encoded = encode_rx_ok(b"test", -32768, 32767)
-        msg_payload = get_message_payload(encoded)
-        decoded = decode_rx_ok(msg_payload)
-
-        assert decoded == (b"test", -32768, 32767)
-
-    def test_encode_payload_too_long(self) -> None:
-        """Encoding should fail if payload exceeds 65535 bytes."""
-        with pytest.raises(ProtocolError, match="payload too long"):
-            encode_rx_ok(b"x" * 65536, -50, 100)
-
-    def test_decode_too_short(self) -> None:
-        """Decoding should fail if data is too short."""
-        with pytest.raises(ProtocolError, match="too short"):
-            decode_rx_ok(b"\x00")
-
-    def test_decode_truncated(self) -> None:
-        """Decoding should fail if truncated after payload."""
-        # Length says 4, payload present, but RSSI/SNR missing
-        data = struct.pack("<H", 4) + b"test" + b"\x00"
-        with pytest.raises(ProtocolError, match="truncated"):
-            decode_rx_ok(data)
-
-    def test_wire_format(self) -> None:
-        """Verify exact wire format."""
-        payload = b"AB"
-        rssi = -100
-        snr = 75
-
-        encoded = encode_rx_ok(payload, rssi, snr)
-
-        assert encoded[0] == MSG_RX_OK
-        assert struct.unpack("<H", encoded[1:3])[0] == 2  # payload length
-        assert encoded[3:5] == b"AB"
-        assert struct.unpack("<h", encoded[5:7])[0] == -100  # RSSI
-        assert struct.unpack("<h", encoded[7:9])[0] == 75  # SNR
-
-
-class TestRxTimeoutMessage:
-    """Test RX_TIMEOUT message encoding."""
-
-    def test_encode(self) -> None:
-        """RX_TIMEOUT should be a single type byte."""
-        encoded = encode_rx_timeout()
-
-        assert encoded == bytes([MSG_RX_TIMEOUT])
-        assert get_message_type(encoded) == MSG_RX_TIMEOUT
-
-
 class TestRxEnterMessage:
     """Test RX_ENTER message encoding/decoding (push-based RX)."""
 
@@ -487,17 +344,19 @@ class TestRxEnterMessage:
         assert get_message_type(encoded) == MSG_RX_ENTER
 
         payload = get_message_payload(encoded)
-        decoded = decode_rx_enter(payload)
+        decoded_timeout, channel = decode_rx_enter(payload)
 
-        assert decoded == timeout_us
+        assert decoded_timeout == timeout_us
+        assert channel == 0
 
     def test_roundtrip_zero_timeout(self) -> None:
         """Round-trip with zero timeout."""
         encoded = encode_rx_enter(0)
         payload = get_message_payload(encoded)
-        decoded = decode_rx_enter(payload)
+        decoded_timeout, channel = decode_rx_enter(payload)
 
-        assert decoded == 0
+        assert decoded_timeout == 0
+        assert channel == 0
 
     def test_roundtrip_max_timeout(self) -> None:
         """Round-trip with maximum uint32 timeout."""
@@ -505,9 +364,10 @@ class TestRxEnterMessage:
 
         encoded = encode_rx_enter(max_val)
         payload = get_message_payload(encoded)
-        decoded = decode_rx_enter(payload)
+        decoded_timeout, channel = decode_rx_enter(payload)
 
-        assert decoded == max_val
+        assert decoded_timeout == max_val
+        assert channel == 0
 
     def test_decode_too_short(self) -> None:
         """Decoding should fail if data is too short."""
@@ -807,9 +667,6 @@ class TestMessageHelpers:
         assert get_message_type(encode_tx(b"x")) == MSG_TX
         assert get_message_type(encode_tx_done(100)) == MSG_TX_DONE
         assert get_message_type(encode_tx_fail()) == MSG_TX_FAIL
-        assert get_message_type(encode_rx(1000)) == MSG_RX
-        assert get_message_type(encode_rx_ok(b"x", -50, 10)) == MSG_RX_OK
-        assert get_message_type(encode_rx_timeout()) == MSG_RX_TIMEOUT
         assert get_message_type(encode_rx_enter(5000)) == MSG_RX_ENTER
         assert get_message_type(encode_rx_exit()) == MSG_RX_EXIT
         assert get_message_type(encode_rx_packet(b"x", -50, 10)) == MSG_RX_PACKET
@@ -867,14 +724,14 @@ class TestLittleEndianness:
         assert airtime == 0xDEADBEEF
 
     def test_rx_timeout(self) -> None:
-        """RX timeout should be little-endian uint32."""
-        encoded = encode_rx(0xCAFEBABE)
+        """RX_ENTER timeout should be little-endian uint32."""
+        encoded = encode_rx_enter(0xCAFEBABE)
         timeout = struct.unpack("<I", encoded[1:5])[0]
         assert timeout == 0xCAFEBABE
 
     def test_rx_ok_rssi_snr(self) -> None:
-        """RX_OK RSSI and SNR should be little-endian int16."""
-        encoded = encode_rx_ok(b"", -1234, 5678)
+        """RX_PACKET RSSI and SNR should be little-endian int16."""
+        encoded = encode_rx_packet(b"", -1234, 5678)
         # Skip: type(1) + length(2) + payload(0) = 3 bytes
         rssi, snr = struct.unpack("<hh", encoded[3:7])
         assert rssi == -1234
@@ -903,26 +760,26 @@ class TestEncoderRangeValidation:
         with pytest.raises(ProtocolError, match="airtime_us out of range"):
             encode_tx_done(0x1_0000_0000)
 
-    def test_rx_rejects_out_of_range_timeout(self) -> None:
-        with pytest.raises(ProtocolError, match="timeout_ms out of range"):
-            encode_rx(-1)
-        with pytest.raises(ProtocolError, match="timeout_ms out of range"):
-            encode_rx(0x1_0000_0000)
+    def test_rx_enter_rejects_out_of_range_timeout(self) -> None:
+        with pytest.raises(ProtocolError, match="timeout_us out of range"):
+            encode_rx_enter(-1)
+        with pytest.raises(ProtocolError, match="timeout_us out of range"):
+            encode_rx_enter(0x1_0000_0000)
 
-    def test_rx_ok_accepts_int16_bounds(self) -> None:
+    def test_rx_packet_accepts_int16_bounds(self) -> None:
         """rssi/snr at the int16 boundaries encode successfully."""
-        payload, rssi, snr = decode_rx_ok(encode_rx_ok(b"x", -32768, 32767)[1:])
+        payload, rssi, snr = decode_rx_packet(encode_rx_packet(b"x", -32768, 32767)[1:])
         assert (payload, rssi, snr) == (b"x", -32768, 32767)
 
-    def test_rx_ok_rejects_out_of_range_rssi(self) -> None:
+    def test_rx_packet_rejects_out_of_range_rssi(self) -> None:
         with pytest.raises(ProtocolError, match="rssi out of range"):
-            encode_rx_ok(b"", -32769, 0)
+            encode_rx_packet(b"", -32769, 0)
         with pytest.raises(ProtocolError, match="rssi out of range"):
-            encode_rx_ok(b"", 32768, 0)
+            encode_rx_packet(b"", 32768, 0)
 
-    def test_rx_ok_rejects_out_of_range_snr(self) -> None:
+    def test_rx_packet_rejects_out_of_range_snr(self) -> None:
         with pytest.raises(ProtocolError, match="snr out of range"):
-            encode_rx_ok(b"", 0, 40000)
+            encode_rx_packet(b"", 0, 40000)
 
     def test_err_rejects_out_of_range_code(self) -> None:
         with pytest.raises(ProtocolError, match="code out of range"):
