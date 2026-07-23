@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-ey0p",
+  "title": "Update lichen-gateway to use RplStack for root instead of bare RplNode",
+  "description": "Update only the file lichen-gateway/src/gateway.rs to use RplStack for the root instead of bare RplNode. Integrate durable storage using MemStorage for tests, admission policy, and single-owner runtime pattern from RplStack. Update all methods to use the stack's API. Update tests. Ensure tests pass. Do not edit any other files.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "epic",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T06:18:14.71340575Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T06:18:14.71340575Z"
+}
