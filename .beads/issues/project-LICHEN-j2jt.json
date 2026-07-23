@@ -1,18 +1,17 @@
 {
   "id": "project-LICHEN-j2jt",
   "title": "[merge-conflict] worktree-worker1: coap_dtn.c",
-  "notes": "Commit: f0c1452f7 - resolved merge conflict in coap_dtn.c by adopting SenML pending count in deaddrop_get from worker1 for spec consistency",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:09:33.497468391Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:06:27.406982054Z",
+  "updated_at": "2026-07-23T05:03:41.413513569Z",
   "started_at": "2026-07-23T03:34:30.417837091Z",
-  "closed_at": "2026-07-23T05:06:27.406982054Z",
-  "close_reason": "Resolved merge conflict by integrating worker1 changes to use SenML pending count in deaddrop_get; build verified; matches prior codereview canonical impl",
+  "lease_expires_at": "2026-07-23T05:08:41.413513569Z",
+  "heartbeat_at": "2026-07-23T05:03:41.413513569Z",
   "labels": [
     "defer-boardconfig"
   ]
