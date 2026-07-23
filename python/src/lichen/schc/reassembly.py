@@ -4,10 +4,26 @@
 
 from __future__ import annotations
 
+from collections import OrderedDict
 from collections.abc import Hashable
 from dataclasses import dataclass
 
-from lichen.schc.fragment import MAX_WINDOW_SIZE, Ack, Fragment, FragmentError, compute_mic
+from lichen.schc.fragment import (
+    ALL_1,
+    DEFAULT_RECEIVER_LIMIT,
+    MAX_ACK_REQUESTS,
+    MAX_PACKET_SIZE,
+    MAX_WINDOW_SIZE,
+    RULE_IDS,
+    WINDOW_SIZE,
+    Ack,
+    Fragment,
+    FragmentError,
+    ack_request,
+    compute_mic,
+    receiver_abort,
+    sender_abort,
+)
 
 DEFAULT_MAX_CONTEXTS = 4
 
@@ -19,10 +35,11 @@ class ReceiverResult:
     reassembled: bytes | None = None
     mic_ok: bool | None = None
     evicted: bool = False
+    aborted: bool = False
 
 
 class FragmentReceiver:
-    """One fixed-profile reassembly context."""
+    """One fixed-profile reassembly context.
 
     Regular tiles are stored by their global index (window * window_size +
     position, position = window_size - 1 - FCN). The All-1 tile (the datagram's
@@ -47,14 +64,38 @@ class FragmentReceiver:
         self.reassembled: bytes | None = None
         self.done = False
 
+    def __init__(self, window_size: int = WINDOW_SIZE, max_size: int = DEFAULT_RECEIVER_LIMIT) -> None:
+        if not 1 <= window_size <= ALL_1:
+            raise FragmentError(f"window_size must be integer 1..{ALL_1}")
+        if not 1 <= max_size <= MAX_PACKET_SIZE:
+            raise ValueError("max_size out of range")
+        self.window_size = window_size
+        self.max_size = max_size
+        self._tiles: dict[int, bytes] = {}
+        self._current_window = 0
+        self._completed_windows: set[int] = set()
+        self._all1_seen = False
+        self._all1_window = 0
+        self._all1_payload = b""
+        self._mic: bytes | None = None
+        self._all1: Fragment | None = None
+        self._rule_id = 0
+        self.reassembled: bytes | None = None
+        self.done = False
+        self.attempts = 0
+
     def _release(self) -> None:
         self._tiles.clear()
         self._all1 = None
+        self._all1_seen = False
         self.done = True
 
     def _abort(self, rule_id: int) -> ReceiverResult:
         self._release()
         return ReceiverResult(response=receiver_abort(rule_id), aborted=True)
+
+    def _abs_window(self, frag: Fragment) -> int:
+        """Map the 1-bit wire window to the monotonic absolute window number.
 
         To handle late retransmissions, out-of-order delivery, and duplicates
         correctly we scan backwards through older same-parity windows:
@@ -114,6 +155,64 @@ class FragmentReceiver:
         if 0 <= all1_pos < self.window_size:
             bitmap[all1_pos] = True
         return tuple(bitmap)
+
+    def _bitmap(self, window: int) -> tuple[bool, ...]:
+        bits = [False] * WINDOW_SIZE
+        for (tile_window, fcn), _ in self._tiles.items():
+            if tile_window == window:
+                bits[62 - fcn] = True
+        if self._all1 is not None and self._all1.window == window:
+            bits[-1] = True
+        return tuple(bits)
+
+    def _respond(
+        self,
+        ack: Ack,
+        *,
+        packet: bytes | None = None,
+        mic_ok: bool | None = None,
+    ) -> ReceiverResult:
+        if self.attempts >= MAX_ACK_REQUESTS:
+            return self._abort(ack.rule_id)
+        self.attempts += 1
+        response = ack.to_bytes()
+        result = ReceiverResult(
+            ack=ack, response=response, reassembled=packet, mic_ok=mic_ok
+        )
+        if ack.complete:
+            self._release()
+        return result
+
+    def _lowest_incomplete_window(self) -> int:
+        assert self._all1 is not None
+        if self._all1.window == 1 and any((0, fcn) not in self._tiles for fcn in range(63)):
+            return 0
+        return self._all1.window
+
+    def _finalize(self) -> ReceiverResult:
+        assert self._all1 is not None
+        window = self._lowest_incomplete_window()
+        if window != self._all1.window:
+            return self._respond(Ack(self._all1.rule_id, window, self._bitmap(window)))
+        regular = sorted(
+            ((w * WINDOW_SIZE + 62 - fcn, tile) for (w, fcn), tile in self._tiles.items()),
+            key=lambda item: item[0],
+        )
+        if len(regular) != len(self._tiles):
+            return self._respond(Ack(self._all1.rule_id, window, self._bitmap(window)))
+        data = b"".join(tile for _, tile in regular) + self._all1.payload
+        if compute_mic(data) != self._all1.mic:
+            return self._respond(
+                Ack(self._all1.rule_id, self._all1.window, self._bitmap(self._all1.window)), mic_ok=False
+            )
+        self.reassembled = data
+        self.done = True
+        bitmap = self._bitmap(self._all1.window)
+        return self._respond(
+            Ack(self._all1.rule_id, self._all1.window, bitmap, complete=True),
+            packet=data,
+            mic_ok=True,
+        )
 
     def receive(self, frag: Fragment) -> ReceiverResult:
         if self.done:
@@ -225,15 +324,13 @@ class ReassemblyManager:
         max_contexts: int = DEFAULT_MAX_CONTEXTS,
         max_size: int = DEFAULT_RECEIVER_LIMIT,
     ) -> None:
-        if not isinstance(window_size, int) or not 1 <= window_size <= MAX_WINDOW_SIZE:
-            raise FragmentError(f"window_size must be integer 1..{MAX_WINDOW_SIZE}")
         if max_contexts <= 0:
             raise ValueError("max_contexts must be positive")
         if not 1 <= max_size <= MAX_PACKET_SIZE:
             raise ValueError("max_size out of range")
         self.max_contexts = max_contexts
         self.max_size = max_size
-        self._contexts: dict[tuple[Hashable, int], FragmentReceiver] = {}
+        self._contexts: OrderedDict[tuple[Hashable, int], FragmentReceiver] = OrderedDict()
 
     def _receiver(self, key: Hashable, rule_id: int) -> FragmentReceiver | None:
         context_key = (key, rule_id)
@@ -244,20 +341,12 @@ class ReassemblyManager:
         return receiver
 
     def receive(self, key: Hashable, frag: Fragment) -> ReceiverResult:
-        receiver = self._contexts.get(key)
-        evicted = False
+        receiver = self._receiver(key, frag.rule_id)
         if receiver is None:
-            receiver = FragmentReceiver(self.window_size)
-            self._contexts[key] = receiver
-            while len(self._contexts) > self.max_contexts:
-                self._contexts.popitem(last=False)
-                evicted = True
-        self._contexts.move_to_end(key)
+            return ReceiverResult(response=receiver_abort(frag.rule_id), aborted=True)
         result = receiver.receive(frag)
-        if evicted:
-            result.evicted = True
         if result.reassembled is not None:
-            self._contexts.pop(key, None)
+            self._contexts.pop((key, frag.rule_id), None)
         return result
 
     def receive_bytes(self, key: Hashable, data: bytes) -> ReceiverResult:
