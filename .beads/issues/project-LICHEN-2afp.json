@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-2afp",
+  "title": "[cross-impl] dao_origin_signature schema not closed for relational test",
+  "description": "test_dao_origin_signature_schema_is_closed_and_relational fails because schema accepts invalid document (signature_valid=False) instead of rejecting per closed schema rules. Affects validation of Schnorr48 vectors used across Python reference, Rust lichen-link/src/schnorr.rs, and Zephyr lichen/subsys/lichen/link/schnorr48.c. Recent commits touching schnorr (b2c0ae3b3 etc.) and test vectors did not fix schema strictness. See tests/test_vectors.py:1095-1101.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:27:02.990009852Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:27:02.990009852Z"
+}
