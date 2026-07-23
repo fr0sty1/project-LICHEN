@@ -12,4 +12,4 @@ pub mod tun;
 
 pub use aprs_is::{aprs_to_cot, cot_to_aprs, AprsIsClient, CompactCot};
 pub use gateway::Gateway;
-pub use lichen_node::RplEvent;
+pub use lichen_node::{RplEvent, RplNode};
