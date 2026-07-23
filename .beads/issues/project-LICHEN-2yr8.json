@@ -2,6 +2,7 @@
   "id": "project-LICHEN-2yr8",
   "title": "[security] missing X25519 clamping in key derivation",
   "description": "python/src/lichen/crypto/identity.py:99-100 uses sha512(self.seed).digest()[:32] for x25519_private without clamping (cf. _clamp in schnorr48.py:91-97 and libsodium crypto_scalarmult_curve25519). This is a key handling flaw relevant to EDHOC static DH and OSCORE key material. No constant-time guarantees from Python hashlib in hot paths. See RFC 7748 section 5 and draft-lichen-security. Commit 2984998b1 touched this code.",
+  "notes": "Commit: a406e47",
   "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:43:14.694736733Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:41:56.750002393Z",
+  "updated_at": "2026-07-23T01:45:33.635924608Z",
   "started_at": "2026-07-23T01:41:56.750002393Z",
   "lease_expires_at": "2026-07-23T01:46:56.750002393Z",
   "heartbeat_at": "2026-07-23T01:41:56.750002393Z"
