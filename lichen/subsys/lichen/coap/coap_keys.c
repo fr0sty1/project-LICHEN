@@ -28,6 +28,9 @@
 #include <lichen/coap_keys.h>
 #include <lichen/coap_server.h>
 #include <lichen/transport/slip_transport.h>
+#include <lichen/oscore.h>
+#include <lichen/coap_oscore.h>
+#include <lichen/l2/ipv6_addr.h>
 
 #ifdef CONFIG_TINYCRYPT_SHA256
 #include <tinycrypt/sha256.h>
@@ -906,14 +909,24 @@ bool lichen_coap_is_local_admin(const struct sockaddr *addr, socklen_t addr_len)
 
 		return true;
 	}
-
 	return false;
 }
 
+static int lichen_coap_extract_peer_eui64(const struct sockaddr *addr, socklen_t addr_len, uint8_t eui64[LICHEN_KEY_IID_LEN]) {
+	if (addr == NULL || addr_len < sizeof(struct sockaddr_in6) || addr->sa_family != AF_INET6) {
+		memset(eui64, 0, LICHEN_KEY_IID_LEN);
+		return -EINVAL;
+	}
+	const struct sockaddr_in6 *in6 = (const struct sockaddr_in6 *)addr;
+	memcpy(eui64, &in6->sin6_addr.s6_addr[8], LICHEN_KEY_IID_LEN);
+	lichen_eui64_to_iid(eui64, eui64);
+	return 0;
+}
 
 /* --------------------------------------------------------------------------
  * CoAP resource handlers
- * -------------------------------------------------------------------------- */
+ * --------------------------------------------------------------------------
+ */
 
 /*
  * GET /keys - List all keys with fingerprints and trust levels
