@@ -146,8 +146,7 @@ static int enqueue_contacts_empty(struct lichen_meshcore_adapter *adapter)
 		adapter->stats.enqueue_fail_count++;
 		return -ENOSYS;
 	}
-	if (adapter->ops.tx_free(adapter->ops.user_data) < 2U) {
-		adapter->stats.enqueue_fail_count++;
+	if (preflight_tx_slots(adapter, 2U) < 0) {
 		return -ENOMEM;
 	}
 
