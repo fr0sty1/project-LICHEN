@@ -1098,30 +1098,28 @@ impl EdhocResponder {
             // PRK_3e2m = PRK_2e for Suite 0 SIGN_SIGN (needed for MAC_2)
             self.state.prk_3e2m = self.state.prk_2e;
 
-            let mut id_cred_r = heapless::Vec::<u8, 40>::new();
-            encode_id_cred(&mut id_cred_r, self.pubkey.as_bytes())?;
-            let mut credential_r = heapless::Vec::<u8, 80>::new();
-            encode_credential(&mut credential_r, self.pubkey.as_bytes())?;
-            let context_2 = build_context_2(
-                &ConnectionId::new(&[self.c_r]).map_err(|_| EdhocError::BufferTooSmall)?,
-                &id_cred_r,
-                &self.state.th_2,
-                &credential_r,
-            )?;
-            let mac_2 = edhoc_kdf(
-                &self.state.prk_3e2m,
-                &self.state.th_2,
-                "MAC_2",
-                &context_2,
-                32,
-            )?;
-            let m_2 = build_signature_structure(
-                &id_cred_r,
-                &self.state.th_2,
-                &credential_r,
-                &mac_2,
-            )?;
-            let signature_2 = self.signing_key.sign(&m_2);
+        let mut context_2 = heapless::Vec::<u8, 128>::new();
+        context_2.push_err(0x58)?;
+        context_2.push_err(32)?;
+        context_2.extend_err(self.pubkey.as_bytes())?;
+        context_2.push_err(0x58)?;
+        context_2.push_err(32)?;
+        context_2.extend_err(self.pubkey.as_bytes())?;
+        let mac_2 = edhoc_kdf(
+            &self.state.prk_3e2m,
+            &self.state.th_2,
+            "MAC_2",
+            &context_2,
+            32,
+        )?;
+        let m_2 = build_signature_structure(
+            self.pubkey.as_bytes(),
+            &self.state.th_2,
+            self.pubkey.as_bytes(),
+            &mac_2,
+        )?;
+        let signature_2 = self.signing_key.sign(&m_2);
+        let credential_r = self.pubkey.as_bytes();
 
             let mut plaintext_2 = SecretVec::<128>::new();
             encode_identifier(&mut plaintext_2, &self.c_r)?;
