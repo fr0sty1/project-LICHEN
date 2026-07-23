@@ -93,7 +93,7 @@ function now():
     RETURN current_sfn()   // from time-provider; unsigned modular arithmetic per 2a.2; SFN_MODULUS=2^32
 ```
 
-Note: All operators are spelled out (OR, NOT, MOD, XOR) for language-agnostic IETF compatibility. blacklist_until[] timer comparisons MUST use unsigned 32-bit subtraction to correctly handle wrap-around. t = now() % SFN_MODULUS (cross-ref 2a.2) if select_channel expanded later. Cross-ref draft-lichen-tdma, RPL, and SCHC.
+Note: All operators are spelled out (OR, NOT, MOD, XOR) for language-agnostic IETF compatibility. blacklist_until[] timer comparisons MUST use unsigned 32-bit subtraction to correctly handle wrap-around. t = now() % SFN_MODULUS (cross-ref 2a.2) if select_channel expanded later. Cross-ref TDMA link layer (link.h:50 for LICHEN_TDMA_Slot and lichen_tdma_init, draft-lichen-tdma), RPL, and SCHC.
 
 ### Density Rules Rationale
 
