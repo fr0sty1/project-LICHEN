@@ -2,15 +2,15 @@
   "id": "project-LICHEN-451x",
   "title": "[merge-conflict] worktree-worker20: heltec_wireless_tracker.conf",
   "notes": "Commit: 9614f5cf8 (restored canonical STALE heltec_wireless_tracker.conf in worktree-worker20 per project-LICHEN-2u26.4 and board matrix; resolved merge conflict)",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:42:12.052347734Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:32:12.184024527Z",
+  "updated_at": "2026-07-23T04:32:16.220091962Z",
   "started_at": "2026-07-23T04:30:28.471890696Z",
-  "lease_expires_at": "2026-07-23T04:35:28.471890696Z",
-  "heartbeat_at": "2026-07-23T04:30:28.471890696Z"
+  "closed_at": "2026-07-23T04:32:16.220091962Z",
+  "close_reason": "Restored canonical STALE version of heltec_wireless_tracker.conf to worktree-worker20 resolving the merge conflict. Matches primary workspace, project-LICHEN-2u26.4 retirement note, firmware-board-capability-matrix.md, and no-dead-code cleaning of prior bead refs. Commit 9614f5cf8 pushed to worktree-worker20 branch."
 }
