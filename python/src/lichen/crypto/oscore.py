@@ -124,23 +124,35 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
 
         Raises:
             ValueError: If starting_sequence_number is negative or exceeds the
-                RFC 8613 limit (2^40 - 1).
+                RFC 8613 limit (2^40 - 1), or if algorithm or hashfun is invalid.
         """
-        # SECURITY: Validate starting_sequence_number to prevent invalid state
         if starting_sequence_number < 0:
             raise ValueError("starting_sequence_number must be non-negative")
         if starting_sequence_number > _MAX_SEQUENCE_NUMBER:
             raise ValueError(
                 f"starting_sequence_number exceeds RFC 8613 limit ({_MAX_SEQUENCE_NUMBER})"
             )
+        if hashfun not in hashfunctions:
+            raise ValueError(
+                f"unknown hashfun {hashfun!r}. "
+                f"Valid values: {sorted(hashfunctions.keys())}"
+            )
         if isinstance(algorithm, int):
             matching_algorithms = [
                 candidate for candidate in algorithms.values() if int(candidate.value) == algorithm
             ]
             if len(matching_algorithms) != 1:
-                raise ValueError(f"unknown or ambiguous COSE algorithm ID: {algorithm}")
+                raise ValueError(
+                    f"unknown or ambiguous COSE algorithm ID: {algorithm}. "
+                    f"Valid: {sorted(algorithms.keys())}"
+                )
             self.alg_aead = matching_algorithms[0]
         else:
+            if algorithm not in algorithms:
+                raise ValueError(
+                    f"unknown algorithm {algorithm!r}. "
+                    f"Valid: {sorted(algorithms.keys())}"
+                )
             self.alg_aead = algorithms[algorithm]
         algorithm_id = int(self.alg_aead.value)
         self.hashfun = hashfunctions[hashfun]
