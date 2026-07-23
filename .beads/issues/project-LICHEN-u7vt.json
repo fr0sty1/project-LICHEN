@@ -2,6 +2,7 @@
   "id": "project-LICHEN-u7vt",
   "title": "TUI flatten_diagnostics recursion could be exploited with crafted payload",
   "description": "File: python/src/lichen/tui/native.py\nLines: 720-743\n\nThe flatten_diagnostics function has a depth limit of 3:\n\n    def flatten_diagnostics(payload: Any, *, prefix: str = \"\", depth: int = 0) -\u003e tuple[DiagnosticRow, ...]:\n        if depth \u003e 3:\n            return (DiagnosticRow(prefix or \"value\", safe_display_value(prefix, payload)),)\n\nHowever, at depth 3 it still processes the payload. A malicious device could craft a response with:\n1. Wide but shallow structures (many keys at each level) to generate many rows\n2. Large string values that consume memory before being clipped\n\nThe function creates lists and tuples for each level, so a structure like {\"a\": {\"b\": {\"c\": {\"d1\": ..., \"d2\": ..., ..., \"d1000\": ...}}}} would generate 1000 rows.\n\nImpact: Potential DoS via memory/CPU exhaustion from crafted diagnostics payload.\n\nFix: Add a maximum row count limit in addition to depth limit:\n    if len(rows) \u003e MAX_DIAG_ROWS:\n        return tuple(rows[:MAX_DIAG_ROWS]) + (DiagnosticRow(\"...\", \"truncated\"),)",
+  "notes": "Claimed; reviewed flatten_diagnostics and related TUI code",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:29:15.601305Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T03:40:20.589487935Z",
+  "updated_at": "2026-07-23T03:40:50.598411299Z",
   "started_at": "2026-07-23T03:40:20.589487935Z",
   "lease_expires_at": "2026-07-23T03:45:20.589487935Z",
   "heartbeat_at": "2026-07-23T03:40:20.589487935Z"
