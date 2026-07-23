@@ -89,6 +89,7 @@ struct lichen_rpl_dodag {
 	uint8_t rpl_instance_id;
 	uint8_t dodag_id[16];
 	uint8_t version;
+	uint8_t dtsn;
 	enum lichen_rpl_role role;
 	uint16_t rank;
 	uint8_t preferred_parent[16];
@@ -153,7 +154,7 @@ static inline bool lichen_rpl_dodag_is_joined(const struct lichen_rpl_dodag *_No
  * @param link_etx     Fixed-point ETX estimate (256 = perfect link)
  * @param now          Current timestamp for lifetime tracking
  */
-void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *_Nonnull d,
+int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *_Nonnull d,
 				  const struct lichen_rpl_dio *_Nonnull dio,
 				  const uint8_t *_Nonnull neighbor_addr,
 				  uint16_t link_etx,

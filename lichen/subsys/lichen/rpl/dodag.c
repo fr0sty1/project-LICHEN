@@ -146,6 +146,7 @@ static void adopt_version(struct lichen_rpl_dodag *d,
 	memcpy(d->dodag_id, dio->dodag_id, 16);
 	d->rpl_instance_id = dio->rpl_instance_id;
 	d->version = dio->version;
+	d->dtsn = dio->dtsn;
 
 	/* Clear all parent state */
 	for (int i = 0; i < CONFIG_LICHEN_RPL_MAX_PARENTS; i++) {
@@ -172,6 +173,7 @@ int lichen_rpl_dodag_init(struct lichen_rpl_dodag *d,
 	d->rpl_instance_id = rpl_instance_id;
 	memcpy(d->dodag_id, dodag_id, 16);
 	d->version = version;
+	d->dtsn = 0;
 	d->role = LICHEN_RPL_UNJOINED;
 	d->rank = LICHEN_RPL_INFINITE_RANK;
 	d->has_preferred_parent = false;
@@ -270,35 +272,41 @@ void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d)
 	}
 }
 
-void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
+int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 				  const struct lichen_rpl_dio *dio,
 				  const uint8_t *neighbor_addr,
 				  uint16_t link_etx,
 				  uint32_t now)
 {
 	if (d == NULL || dio == NULL || neighbor_addr == NULL) {
-		return;
+		return 0;
 	}
 
 	if (d->role == LICHEN_RPL_ROOT) {
-		return;
+		return 0;
 	}
 
 	if (dio->mode_of_operation != 1 || !dio->grounded) {
-		return;
+		return 0;
 	}
 
 	if (lichen_rpl_dodag_is_joined(d) &&
 	    !rpl_addr_eq(dio->dodag_id, d->dodag_id) &&
 	    !version_is_newer(dio->version, d->version)) {
-		return;
+		return 0;
 	}
 
 	if (version_is_newer(dio->version, d->version) ||
 	    !lichen_rpl_dodag_is_joined(d)) {
 		adopt_version(d, dio);
 	} else if (version_is_newer(d->version, dio->version)) {
-		return;
+		return 0;
+	}
+
+	int ret = 0;
+	if (dio->dtsn != d->dtsn) {
+		d->dtsn = dio->dtsn;
+		ret = 1;
 	}
 
 	/* Poisoned route? Drop this candidate. */
@@ -308,7 +316,7 @@ void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 			p->valid = false;
 		}
 		lichen_rpl_dodag_select_parent(d);
-		return;
+		return ret;
 	}
 
 	/*
@@ -317,7 +325,7 @@ void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 	 * strictly lower rank (unless we're unjoined with infinite rank).
 	 */
 	if (d->rank != LICHEN_RPL_INFINITE_RANK && dio->rank >= d->rank) {
-		return;
+		return ret;
 	}
 
 	/* Update or add parent candidate */
@@ -332,7 +340,7 @@ void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 			 */
 			struct lichen_rpl_parent *worst = find_worst_parent(d);
 			if (worst == NULL) {
-				return;
+				return ret;
 			}
 			uint16_t worst_cost = path_cost(worst, d->min_hop_rank_increase);
 			uint32_t new_increment = ((uint32_t)link_etx * d->min_hop_rank_increase) / 256;
@@ -342,7 +350,7 @@ void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 			}
 			if (new_cost >= worst_cost) {
 				/* New candidate is not better - ignore it */
-				return;
+				return ret;
 			}
 			/* Evict the worst and use its slot */
 			p = worst;
@@ -356,6 +364,7 @@ void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 	p->valid = true;
 
 	lichen_rpl_dodag_select_parent(d);
+	return ret;
 }
 
 void lichen_rpl_dodag_remove_parent(struct lichen_rpl_dodag *d,
