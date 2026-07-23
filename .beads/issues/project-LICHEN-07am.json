@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-07am",
   "title": "[merge-conflict] worktree-worker17: Kconfig",
-  "notes": "Commit: 3bc5363",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:18.276407221Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:28:36.708754896Z",
-  "started_at": "2026-07-23T03:24:35.328430778Z",
-  "closed_at": "2026-07-23T03:28:27.539555344Z",
-  "close_reason": "Consolidated duplicate LICHEN_LORA_CCA_TIMEOUT_MS and conflicting CCA_ENABLE vs LORA_CCA blocks in lichen/subsys/lichen/l2/Kconfig; restored LICHEN_DUTY_CYCLE to lichen/subsys/lichen/Kconfig; updated lora_l2.c IS_ENABLED to use new config name; whitespace fixed; Kconfig now parses cleanly; matches reconciliation from bead 48xu and main"
+  "updated_at": "2026-07-23T03:28:26.403710828Z",
+  "started_at": "2026-07-23T03:28:26.403710828Z",
+  "lease_expires_at": "2026-07-23T03:33:26.403710828Z",
+  "heartbeat_at": "2026-07-23T03:28:26.403710828Z"
 }
