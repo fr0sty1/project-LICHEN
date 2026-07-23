@@ -136,7 +136,7 @@ class NodeChannel(DatagramChannel):
                 Endpoint(str(packet.header.src_addr), udp.src_port)
             ).authority
         except Exception as exc:
-            logger.debug("NodeChannel: failed to unwrap received packet: %s", exc)
+            logger.warning("NodeChannel: failed to unwrap received packet: %s", exc)
             return
         if self._receiver is not None:
             self._receiver(coap, src)
