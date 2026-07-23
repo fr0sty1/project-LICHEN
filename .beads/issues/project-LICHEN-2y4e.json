@@ -11,6 +11,6 @@
   "created_by": "AI Agent",
   "updated_at": "2026-07-23T03:41:12.384985346Z",
   "started_at": "2026-07-23T03:39:25.698356036Z",
-  "lease_expires_at": "2026-07-23T03:44:25.698356036Z",
-  "heartbeat_at": "2026-07-23T03:39:25.698356036Z"
+  "closed_at": "2026-07-23T03:41:14.648848334Z",
+  "close_reason": "Closed"
 }
