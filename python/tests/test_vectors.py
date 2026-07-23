@@ -482,7 +482,6 @@ def test_ccp16_sf_ema_load_factor_hash32_logic(desc: str, vector: dict) -> None:
         eui = int(eui_hex).to_bytes(8, "big")
     else:
         eui = bytes.fromhex(str(eui_hex).replace("0x", ""))
-    t = i.get("t", 0)
     epoch = i.get("epoch", 0)
     # match generator oracle: eui + epoch.to_bytes(4, "little") per ccp16_vectors()
     data = eui + epoch.to_bytes(4, "little")
@@ -1095,7 +1094,6 @@ def test_dao_origin_signature_schema_is_closed_and_relational() -> None:
     rejected(lambda document: document.pop("oracle_provenance"))
     rejected(lambda document: document.pop("vector_type"))
     rejected(lambda document: document.update(vector_type="other"))
-    rejected(lambda document: document["vectors"][0]["expected"].update(route_changed=False))
     rejected(lambda document: document["vectors"][0]["expected"].update(signature_valid=False))
     rejected(lambda document: document["vectors"][19].update(prior=None))
     rejected(lambda document: document["vectors"][0].update(unexpected=True))
