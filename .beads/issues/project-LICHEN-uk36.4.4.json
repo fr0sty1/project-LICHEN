@@ -8,15 +8,5 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:18:20.479390435Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:18:20.479390435Z",
-  "dependencies": [
-    {
-      "issue_id": "project-LICHEN-uk36.4.4",
-      "depends_on_id": "project-LICHEN-uk36.4",
-      "type": "parent-child",
-      "created_at": "2026-07-23T05:18:20.61406055Z",
-      "created_by": "AI Agent",
-      "metadata": "{}"
-    }
-  ]
+  "updated_at": "2026-07-23T05:18:20.479390435Z"
 }
