@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-grx5",
+  "title": "Ensure schnorr48.c + Rust lichen-core fully implements constant-time MUST from draft-lichen-schnorr-00.md:5.3",
+  "description": "Spec: 'Implementations MUST use constant-time operations for: Scalar multiplication, Signature comparison'. Verify in frame signing (lichen_link_tx.c:124, schnorr48_verify_frame:469 crypto_verify16) and batch support. No violation found but audit required post-recent link changes.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T01:44:33.279251463Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T01:44:33.279251463Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-grx5",
+      "depends_on_id": "project-LICHEN-vu0r",
+      "type": "discovered-from",
+      "created_at": "2026-07-23T01:44:33.408227841Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
