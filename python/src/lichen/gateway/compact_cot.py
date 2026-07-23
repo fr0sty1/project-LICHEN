@@ -17,6 +17,7 @@ import hashlib
 import math
 import struct
 import uuid
+import warnings
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import IntEnum
@@ -307,6 +308,8 @@ def _decode_pli(subtype: CompactCotType, data: bytes) -> CompactCot:
     """Decode PLI message."""
     if len(data) < PLI_TOTAL_SIZE:
         raise DecodeError(f"PLI too short: {len(data)} < {PLI_TOTAL_SIZE}")
+    if len(data) > PLI_TOTAL_SIZE:
+        warnings.warn(f"PLI has {len(data) - PLI_TOTAL_SIZE} trailing bytes", stacklevel=2)
 
     # Parse fields (big-endian)
     lat = struct.unpack(">i", data[1:5])[0]
@@ -365,6 +368,8 @@ def _decode_chat(data: bytes) -> CompactCot:
 
     if len(data) < total_size:
         raise DecodeError(f"Chat message truncated: {len(data)} < {total_size}")
+    if len(data) > total_size:
+        warnings.warn(f"Chat message has {len(data) - total_size} trailing bytes", stacklevel=2)
 
     msg_start = len_pos + 1
     msg_bytes = data[msg_start : msg_start + msg_len]
