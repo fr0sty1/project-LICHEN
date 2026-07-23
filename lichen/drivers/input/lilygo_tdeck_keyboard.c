@@ -9,8 +9,6 @@
 #include <zephyr/kernel.h>
 #include <zephyr/sys/util.h>
 
-#define DT_DRV_COMPAT lilygo_tdeck_keyboard
-
 struct lilygo_tdeck_keyboard_config {
 	struct i2c_dt_spec i2c;
 };
