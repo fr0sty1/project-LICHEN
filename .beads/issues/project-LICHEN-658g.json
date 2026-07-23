@@ -2,15 +2,15 @@
   "id": "project-LICHEN-658g",
   "title": "[merge-conflict] integration/worker2-20260722: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: 82441f0e6",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:41:25.765936987Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:02:38.534758306Z",
+  "updated_at": "2026-07-23T02:02:41.981198506Z",
   "started_at": "2026-07-23T02:00:17.788672511Z",
-  "lease_expires_at": "2026-07-23T02:05:17.788672511Z",
-  "heartbeat_at": "2026-07-23T02:00:17.788672511Z"
+  "closed_at": "2026-07-23T02:02:41.981198506Z",
+  "close_reason": "Cleaned heltec_wifi_lora32_v3_esp32s3_procpu.conf: added SPDX, deduplicated Kconfig entries, updated merge resolution comment to include worker2 integration changes and this bead. Commit 82441f0e6"
 }
