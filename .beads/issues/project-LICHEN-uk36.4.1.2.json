@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-uk36.4.1.2",
+  "title": "Align PRK_2e/PRK_3e2m/PRK_4e3m derivation chain and transcript binding in edhoc.rs with Python reference",
+  "description": "Update comments and code in InitiatorState and ResponderState for PRK assignments (lines ~640-654, 1076-1082). Ensure TH_2 used as salt for HKDF-Extract(G_XY) produces matching PRKs. Fix any copy_from_slice or Zeroizing mismatches.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:28:46.42813877Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:28:46.42813877Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-uk36.4.1.2",
+      "depends_on_id": "project-LICHEN-uk36.4.1",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:28:46.566957394Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
