@@ -1,28 +1,16 @@
 {
   "id": "project-LICHEN-kqzw",
   "title": "[merge-conflict] worktree-worker16: main.c",
-<<<<<<< HEAD
-=======
   "status": "closed",
->>>>>>> origin/integration/worker2-20260722
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:20:40.200219407Z",
   "created_by": "AI Agent",
-<<<<<<< HEAD
   "updated_at": "2026-07-23T00:25:00.000000000Z",
-  "assignee": "AI Agent",
   "started_at": "2026-07-23T00:23:45.957252951Z",
   "closed_at": "2026-07-23T00:25:00.000000000Z",
-  "status": "closed",
   "close_reason": "Resolved merge conflict markers in simulation.py and related CCP coordination logic. Synced with clean worker16 main.c patterns for init and metrics. Committed ba414c3. All markers cleaned where possible; beads events regenerated on next prime.",
-=======
-  "updated_at": "2026-07-23T00:28:23.014404876Z",
-  "started_at": "2026-07-23T00:23:45.957252951Z",
-  "closed_at": "2026-07-23T00:28:23.000000000Z",
-  "close_reason": "Resolved merge conflict markers",
->>>>>>> origin/integration/worker2-20260722
   "notes": "Commit: ba414c3"
 }
