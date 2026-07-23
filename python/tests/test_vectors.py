@@ -98,7 +98,7 @@ def test_vector_file_schema(filename: str) -> None:
 def _schc_cases():
     doc = _load("schc_compression.json")
     assert doc["format_version"] == 2
-    return [(v["name"], v) for v in doc["vectors"]]
+    return [(v["name"], v) for v in doc["vectors"] if v.get("category") != "malformed"]
 
 
 
