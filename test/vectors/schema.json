@@ -15,23 +15,25 @@
           "type": "array",
           "minItems": 1,
           "items": {
-            "oneOf": [
-              {"$ref": "#/definitions/schc_vector"},
-              {"$ref": "#/definitions/l2_payload_vector"},
-              {"$ref": "#/definitions/frame_vector"},
-              {"$ref": "#/definitions/announce_coords_vector"},
-              {"$ref": "#/definitions/meshtastic_app_compat_vector"},
-              {"$ref": "#/definitions/meshcore_app_compat_vector"},
-              {"$ref": "#/definitions/oscore_vector"},
-               {"$ref": "#/definitions/rpl_messages_vector"},
-               {"$ref": "#/definitions/ccp13_vector"},
-               {"$ref": "#/definitions/ccp15_vector"},
-               {"$ref": "#/definitions/ccp_vector"},
-               {"$ref": "#/definitions/compact_cot_vector"},
-               {"$ref": "#/definitions/schnorr48_vector"},
-               {"$ref": "#/definitions/hash_32_vector"},
-               {"$ref": "#/definitions/ccp_load_balancing_vector"}
-             ]
+             "oneOf": [
+               {"$ref": "#/definitions/schc_vector"},
+               {"$ref": "#/definitions/schc_fragmentation_vector"},
+               {"$ref": "#/definitions/l2_payload_vector"},
+               {"$ref": "#/definitions/frame_vector"},
+               {"$ref": "#/definitions/announce_coords_vector"},
+               {"$ref": "#/definitions/meshtastic_app_compat_vector"},
+               {"$ref": "#/definitions/meshcore_app_compat_vector"},
+               {"$ref": "#/definitions/oscore_vector"},
+                {"$ref": "#/definitions/rpl_messages_vector"},
+                {"$ref": "#/definitions/ccp13_vector"},
+                {"$ref": "#/definitions/ccp15_vector"},
+                {"$ref": "#/definitions/ccp_vector"},
+                {"$ref": "#/definitions/compact_cot_vector"},
+                {"$ref": "#/definitions/schnorr48_vector"},
+                {"$ref": "#/definitions/hash_32_vector"},
+                {"$ref": "#/definitions/ccp_load_balancing_vector"}
+              ]
+
            }
          }
        }
