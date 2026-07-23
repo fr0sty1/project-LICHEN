@@ -1547,6 +1547,25 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 		      piv, piv_len, ctx->common_iv, nonce);
 
 	/*
+	 * SECURITY: Error handling below follows a two-class model.
+	 *
+	 * Class 1 - pre-transmission errors (options/payload/AAD/ciphertext
+	 * buffer too small, AEAD encrypt failure, OSCORE option build
+	 * failure): each sets ret to the specific error code and goes to
+	 * common_wipe. The sender_seq increment above is consumed but the
+	 * packet is never transmitted, which is safe: sequence gaps are
+	 * harmless in RFC 8613, only nonce REUSE is catastrophic (§7.2).
+	 * common_wipe destroys nonce, PIV, plaintext and seq so no key
+	 * material or plaintext lingers on the stack.
+	 *
+	 * Class 2 - post-transmittable NVM failure (persist_ssn failing
+	 * after ciphertext and OSCORE option are fully built and returned
+	 * to the caller): goes to the distinct nvm_failed path, which takes
+	 * extra measures (safety-margin SSN bump inside persist_ssn,
+	 * s_seq_initialized sync) because the packet may still be sent.
+	 */
+
+	/*
 	 * Build plaintext: code || options || payload
 	 * Code is first byte, options follow, then 0xFF marker and payload.
 	 */
@@ -1626,6 +1645,15 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	ret = OSCORE_OK;
 
 common_wipe:
+	/*
+	 * SECURITY: Single convergence point for the success path and all
+	 * Class 1 pre-transmission error paths (see two-class model above);
+	 * nvm_failed also joins here after its extra SSN handling. ret was
+	 * set by the originating path (specific error code, OSCORE_OK, or
+	 * OSCORE_ERR_NVM_FAILED). Wipe nonce, PIV, plaintext and seq from
+	 * the stack unconditionally so key material and unencrypted content
+	 * cannot leak via stack reuse, regardless of which path got here.
+	 */
 	crypto_wipe(nonce, sizeof(nonce));
 	crypto_wipe(piv, sizeof(piv));
 	crypto_wipe(plaintext, sizeof(plaintext));
