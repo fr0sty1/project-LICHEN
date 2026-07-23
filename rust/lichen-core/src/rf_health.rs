@@ -15,14 +15,8 @@
 //! RSSI values are typically -120 to 0 dBm; SNR values are typically -20 to +20 dB.
 //! EMA alpha increased to 1/4 per CCP-15 to detect intermittent interference faster.
 
-/// Fixed-point scale factor (2^16 = 65536).
-const FP_SCALE: i32 = 1 << 16;
+const FP_SCALE: u32 = 1 << 16;
 const EMA_ALPHA_SHIFT: u32 = 2;
-
-/// EMA alpha = 1/4 (>>2 shift) for accelerated response to interference per CCP-15
-/// (da2q multi-channel load balancing). Saturating fixed-point math prevents overflow.
-/// RF health metrics aggregator for CCP-15/16 (RSSI/SNR EMA, density, load_factor,
-/// adaptive SF, channel rebalance). Matches all ccp*.json vectors. no_std compatible.
 
 /// All counters saturate. Uses Q16.16 fixed-point. Matches all ccp*.json vectors.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -164,8 +158,6 @@ impl RssiStats {
         if self.count == 0 {
             self.avg_fp = rssi_fp;
         } else {
-            // saturating EMA (alpha=1/4 via >> EMA_ALPHA_SHIFT): avg += (sample - avg) >> 2
-            // per CCP-15 for faster detection of intermittent interference in multi-channel (da2q).
             let diff = rssi_fp.saturating_sub(self.avg_fp);
             self.avg_fp = self.avg_fp.saturating_add(diff >> EMA_ALPHA_SHIFT);
         }
@@ -247,8 +239,6 @@ impl SnrStats {
         if self.count == 0 {
             self.avg_fp = snr_fp;
         } else {
-            // saturating EMA (alpha=1/4 via >> EMA_ALPHA_SHIFT): avg += (sample - avg) >> 2
-            // per CCP-15 for faster detection of intermittent interference in multi-channel (da2q).
             let diff = snr_fp.saturating_sub(self.avg_fp);
             self.avg_fp = self.avg_fp.saturating_add(diff >> EMA_ALPHA_SHIFT);
         }
@@ -340,29 +330,25 @@ impl PacketLossRate {
 }
 
 impl RfHealthMetrics {
-    /// Adaptive spreading factor selection per CCP-16 pseudocode.
-    /// Uses density, SNR EMA, load_factor. Matches ccp15.json + ccp16 vectors.
     #[inline]
     pub fn adaptive_sf(&self) -> u8 {
         let snr_ema = self.snr.avg().unwrap_or(0);
-        let load_high = self.load_factor_fp > ((FP_SCALE as u32) * 4 / 5); // > 0.8
-        if self.density > 8 || snr_ema < 0 || load_high {
+        let load_high = self.load_factor_fp > (FP_SCALE * 4 / 5);
+        if self.density > 20 || snr_ema < -5 {
+            12
+        } else if self.density > 8 || snr_ema < 0 || load_high {
             11
         } else if self.density < 5 && snr_ema > 8 {
             9
-        } else if self.density > 20 || snr_ema < -5 {
-            12
         } else {
             10
         }
     }
 
-    /// Returns true if channel rebalance or TDMA slot reassignment is recommended
-    /// per ccp_load_balancing.json (high util/load/density triggers prefer_alt_channel).
     #[inline]
     pub fn should_rebalance(&self) -> bool {
         self.density > 8
-            || self.load_factor_fp > ((FP_SCALE as u32) * 2 / 5) // >0.4
+            || self.load_factor_fp > (FP_SCALE * 2 / 5)
             || self.packet_loss_rate_fp().as_percent() > 40
     }
 }
@@ -596,14 +582,18 @@ mod tests {
     fn adaptive_sf_and_rebalance_matches_ccp_vectors() {
         let mut m = RfHealthMetrics::new();
         m.record_density(3);
-        m.record_rx(-70, 12); // good SNR -> ema ~12
+        m.record_rx(-70, 12);
         m.record_load_factor(0);
-        assert_eq!(m.adaptive_sf(), 9); // low density + good snr -> SF9
+        assert_eq!(m.adaptive_sf(), 9);
 
         m.record_density(12);
-        m.record_rx(-70, -10); // poor SNR
-        m.record_load_factor((FP_SCALE as u32 * 85) / 100); // >0.8
+        m.record_rx(-70, -10);
+        m.record_load_factor((FP_SCALE * 85) / 100);
         assert_eq!(m.adaptive_sf(), 11);
-        assert!(m.should_rebalance()); // high density/load triggers rebalance per ccp_load_balancing
+        assert!(m.should_rebalance());
+
+        m.record_density(25);
+        m.record_rx(-70, -10);
+        assert_eq!(m.adaptive_sf(), 12);
     }
 }
