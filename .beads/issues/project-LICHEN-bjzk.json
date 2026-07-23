@@ -2,11 +2,15 @@
   "id": "project-LICHEN-bjzk",
   "title": "[cross-impl] unresolved merge conflicts in lichen-core/src/announce.rs",
   "description": "rust/lichen-core/src/announce.rs contains git conflict markers (\u003c\u003c\u003c\u003c\u003c\u003c\u003c HEAD, =======, \u003e\u003e\u003e\u003e\u003e\u003e\u003e origin/worktree-worker24) from CCP-9 rx_channel integration. Python announce/messages.py puts rx_channel at wire offset 93 (post-sig) and signs iid+pubkey+seq+rx+appdata. Rust has conflicting from_bytes() (data[1] flags vs data[93]) and signed_data(). Breaks interop and same-algorithm behavior across Python/Rust/Zephyr. Discovered during crossimpl review of recent integration merges (convergence-20260721, interop-fail-closed).",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T01:05:20.580652334Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:05:20.580652334Z"
+  "updated_at": "2026-07-23T02:25:01.916945303Z",
+  "started_at": "2026-07-23T02:25:01.916945303Z",
+  "lease_expires_at": "2026-07-23T02:30:01.916945303Z",
+  "heartbeat_at": "2026-07-23T02:25:01.916945303Z"
 }
