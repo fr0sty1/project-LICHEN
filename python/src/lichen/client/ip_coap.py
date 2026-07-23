@@ -157,6 +157,7 @@ class AiocoapResourceSubscription(ResourceSubscription):
         self._timeout_s = timeout_s
         self._closed = False
         self._closed_event = asyncio.Event()
+        self._last_seq: int | None = None
 
     def results(self) -> AsyncIterator[CoapResult]:
         """Yield decoded Observe notifications."""
@@ -173,16 +174,31 @@ class AiocoapResourceSubscription(ResourceSubscription):
             with suppress(AssertionError):
                 cancel()
 
+    def _should_accept(self, msg: Message) -> bool:
+        seq = msg.opt.observe
+        if seq is None:
+            return True
+        if self._last_seq is None:
+            self._last_seq = seq
+            return True
+        diff = (seq - self._last_seq) & 0xffffff
+        if 0 < diff < 0x800000:
+            self._last_seq = seq
+            return True
+        return False
+
     async def _results(self) -> AsyncIterator[CoapResult]:
         try:
             first = await asyncio.wait_for(self._handle.response, timeout=self._timeout_s)
-            yield _coap_result(first)
+            if self._should_accept(first):
+                yield _coap_result(first)
             iterator = self._handle.observation.__aiter__()
             while not self._closed:
                 response = await self._next_observation_or_close(iterator)
                 if response is None:
                     return
-                yield _coap_result(response)
+                if self._should_accept(response):
+                    yield _coap_result(response)
         except Exception as exc:
             raise CoapTransportError(f"{self._method} {self._path} observe failed: {exc}") from exc
 
@@ -200,6 +216,13 @@ class AiocoapResourceSubscription(ResourceSubscription):
             with suppress(asyncio.CancelledError):
                 await next_task
             return None
+        with suppress(asyncio.CancelledError):
+            await close_task
+        try:
+            return next_task.result()
+        except StopAsyncIteration:
+            return None
+
         with suppress(asyncio.CancelledError):
             await close_task
         try:
