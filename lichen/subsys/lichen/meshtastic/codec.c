@@ -13,6 +13,9 @@
 BUILD_ASSERT(LICHEN_MESHTASTIC_FROM_RADIO_MAX <= INT_MAX,
 	     "max must fit in int");
 
+BUILD_ASSERT(sizeof(float) == sizeof(uint32_t),
+	     "float must be 32-bit (IEEE 754 binary32 assumed for float32_bits)");
+
 /* Protobuf wire types per https://protobuf.dev/programming-guides/encoding/ */
 #define PB_WT_VARINT 0U
 #define PB_WT_64BIT 1U
@@ -412,6 +415,11 @@ static int pb_write_fixed32_field(uint8_t *buf, size_t buflen, size_t *pos,
 
 static uint32_t float32_bits(float value)
 {
+	/* Returns the IEEE 754 binary32 bit pattern (as uint32_t) of `value`.
+	 * The BUILD_ASSERT above and Zephyr target support (ARM/RISC-V/x86)
+	 * guarantee the memcpy type-pun is valid. No NaN/inf special cases
+	 * are needed for battery voltage encoding.
+	 */
 	uint32_t bits;
 
 	memcpy(&bits, &value, sizeof(bits));
