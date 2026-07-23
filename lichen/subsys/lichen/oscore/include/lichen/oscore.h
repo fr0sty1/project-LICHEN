@@ -141,7 +141,12 @@ enum oscore_err {
 	OSCORE_ERR_NO_MEMORY = -7,
 	OSCORE_ERR_SEQ_EXHAUSTED = -8,  /**< Sender sequence exhausted, key rotation required */
 	OSCORE_ERR_ENCRYPT_FAILED = -9, /**< Encryption failed */
-	OSCORE_ERR_NVM_FAILED = -10,    /**< NVM read/write operation failed */
+	/**< NVM SSN persistence or restoration failed. In protect_request(), triggers
+	 * rollback of sender_seq (retry with same nonce safe). In set_sender_seq()
+	 * or persist_ssn(), prevents marking initialized. Guarantees (key,nonce)
+	 * uniqueness per RFC 8613 §7.2.1, Appendix D.4 even on transient NVM errors.
+	 * See oscore_protect_request() nvm_failed path and security comment. */
+	OSCORE_ERR_NVM_FAILED = -10,
 	OSCORE_ERR_CONTEXT_STALE = -11, /**< Context freshness check failed (RFC 8613 7.2.1) */
 };
 
@@ -156,24 +161,30 @@ enum oscore_freshness {
 };
 
 /**
- * @brief NVM storage callback for SSN persistence.
+ * @brief NVM storage callback for SSN persistence (write_cb).
  *
- * Called periodically when SSN needs to be persisted to NVM.
+ * Called from oscore_ctx_set_sender_seq(), oscore_ctx_persist_ssn(), and
+ * oscore_protect_request() success path. Invoked WITHOUT holding OSCORE mutex
+ * (non-blocking I/O recommended). On failure, protect_request() rolls back
+ * the SSN increment (new retry semantics); set_sender_seq() leaves context
+ * uninitialized.
  *
- * @param[in] eui64  8-byte peer EUI-64 (or NULL if not set)
- * @param[in] ssn    Sender sequence number to store
- * @return 0 on success, negative error code on failure
+ * @param[in] eui64  Peer EUI-64 for per-peer NVM key (NULL if not set)
+ * @param[in] ssn    Sender sequence number to persist
+ * @return 0 on success, any negative on failure (maps to OSCORE_ERR_NVM_FAILED)
  */
 typedef int (*oscore_nvm_write_cb)(const uint8_t *_Nullable eui64, uint32_t ssn);
 
 /**
- * @brief NVM read callback for SSN restoration.
+ * @brief NVM read callback for SSN restoration (read_cb).
  *
- * Called at context initialization to restore SSN from NVM.
+ * Called during oscore_ctx_create_with_eui64(). On failure or NULL callback,
+ * SSN starts at 0; caller MUST call oscore_ctx_set_sender_seq() before first
+ * oscore_protect_request() to prevent nonce reuse on reboot.
  *
- * @param[in]  eui64  8-byte peer EUI-64 (or NULL if not set)
- * @param[out] ssn    Pointer to receive restored SSN
- * @return 0 on success (ssn is valid), negative error code on failure
+ * @param[in]  eui64  Peer EUI-64 for lookup (NULL if not set)
+ * @param[out] ssn    Receives restored SSN on success
+ * @return 0 on success (ssn valid), negative on failure
  */
 typedef int (*oscore_nvm_read_cb)(const uint8_t *_Nullable eui64, uint32_t *_Nonnull ssn);
 
@@ -232,12 +243,19 @@ int oscore_init(void);
 /**
  * @brief Register NVM callbacks for SSN persistence.
  *
- * When NVM callbacks are registered, the OSCORE subsystem will:
- * - Call the read callback during context creation to restore SSN
- * - Call the write callback periodically to persist SSN changes
+ * Critical for preventing nonce reuse across reboots (RFC 8613 §7.2.1,
+ * Appendix D.4). Thread-safe; may be called at any time (even after
+ * contexts exist). Updates are atomic. Callbacks invoked outside mutex.
  *
- * @param[in] write_cb Callback for writing SSN to NVM (may be NULL to disable)
- * @param[in] read_cb  Callback for reading SSN from NVM (may be NULL)
+ * When registered:
+ * - read_cb used in oscore_ctx_create_with_eui64() to restore SSN (failure
+ *   starts at 0; caller must call set_sender_seq before protect).
+ * - write_cb used by set_sender_seq(), persist_ssn(), and protect_request()
+ *   success path. On NVM failure in protect_request(), SSN rolled back
+ *   (enables safe retry with identical nonce/SSN; see retry/bump behavior).
+ *
+ * @param[in] write_cb Callback for writing SSN to NVM (NULL disables)
+ * @param[in] read_cb  Callback for reading SSN from NVM (NULL disables)
  */
 void oscore_nvm_register_callbacks(oscore_nvm_write_cb write_cb,
 				   oscore_nvm_read_cb read_cb);
@@ -271,8 +289,9 @@ int oscore_ctx_create(const uint8_t *_Nonnull master_secret,
  * Same as oscore_ctx_create(), but also associates the peer's EUI-64 address
  * for per-peer lookup via oscore_ctx_get_by_eui64().
  *
- * If NVM callbacks registered, restores SSN from NVM; on OSCORE_ERR_NVM_FAILED
- * SSN starts at 0. Caller MUST ensure nonce uniqueness via set_sender_seq.
+ * If NVM read callback registered, restores SSN from NVM using read_cb.
+ * On failure or no callback, SSN=0; caller MUST call oscore_ctx_set_sender_seq()
+ * before oscore_protect_request() (see OSCORE_ERR_NVM_FAILED and NVM docs).
  *
  * @param[in]  master_secret   16-byte master secret
  * @param[in]  master_salt     Master salt (may be NULL)
@@ -333,13 +352,14 @@ void oscore_ctx_free(struct oscore_ctx *_Nullable ctx);
 /**
  * @brief Set the sender sequence number for nonce persistence.
  *
- * If NVM write callback registered, persists SSN before marking context
- * initialized. On NVM failure returns OSCORE_ERR_NVM_FAILED without setting
- * initialized flag (ensures protect_request fails). MUST call before
- * oscore_protect_request() to avoid nonce reuse on reboot.
+ * MUST be called after oscore_ctx_create*() (before first protect_request())
+ * to prevent nonce reuse on reboot (see python-ano.41). If NVM write_cb
+ * registered, persists it; on OSCORE_ERR_NVM_FAILED, context remains
+ * uninitialized (protect_request will fail). Use after NVM failure in
+ * protect_request() to bump SSN if retry not desired.
  *
  * @param[in] ctx       Security context
- * @param[in] sender_seq New sender sequence number (must be > any previously used)
+ * @param[in] sender_seq New sender sequence number (MUST be > previously used)
  * @return OSCORE_OK on success, OSCORE_ERR_INVALID_PARAM if ctx NULL,
  *         OSCORE_ERR_NVM_FAILED on NVM write error
  */
@@ -404,9 +424,8 @@ int oscore_ctx_check_freshness(const struct oscore_ctx *_Nonnull ctx,
  * should bump SSN (to avoid reuse) and trigger key rotation per security
  * requirements.
  *
- * Requires that NVM callbacks have been registered via
- * oscore_nvm_register_callbacks(). If no write callback is registered,
- * this function returns 0 (success, no-op).
+ * If no write callback registered via oscore_nvm_register_callbacks(), returns
+ * OSCORE_OK immediately (no-op).
  *
  * @param[in] ctx Security context
  * @return 0 on success, OSCORE_ERR_INVALID_PARAM if ctx is NULL,
