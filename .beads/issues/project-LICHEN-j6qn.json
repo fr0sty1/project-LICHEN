@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-j6qn",
   "title": "[merge-conflict] worktree-worker23: xiao_s3_wio_sx1262.overlay",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:38:02.590390507Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:38:02.590390507Z"
+  "updated_at": "2026-07-23T00:40:10.359839438Z",
+  "started_at": "2026-07-23T00:40:10.359839438Z",
+  "lease_expires_at": "2026-07-23T00:45:10.359839438Z",
+  "heartbeat_at": "2026-07-23T00:40:10.359839438Z"
 }

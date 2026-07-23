@@ -39,7 +39,14 @@ Nodes compute their slot using a deterministic hash (FNV-1a) of (EUI64 XOR epoch
 
 The root advertises `epoch` (u32) and `num_slots` (default 8) in an extended RPL configuration option.
 
+<<<<<<< HEAD
 Slot ID MUST be computed as (merged preferring worker23 completeness for modes and channel plans):
+=======
+
+Slot ID MUST be computed as:
+
+CCP supports two compatible modes:
+>>>>>>> origin/worktree-worker1
 
 1. **Scheduled mode:** The coordinator assigns leased cells. This is the
    preferred high-density mode and requires GNSS with a hardware PPS signal at
@@ -130,18 +137,25 @@ listen-before-talk procedure even in a dedicated cell.
 Slow-changing domain parameters are advertised in a CCP Capability DIO option (provisional experimental type `0xE0`; MUST be replaced by assigned IANA value before interoperable publication).
 
 The option format (36 bytes total data) is:
+<<<<<<< HEAD
 
 =======
 CH0 is the control channel; all nodes MUST listen continuously on it for DIOs and beacons (see draft-lichen-schc-lora-00.md).
 
 Slow-changing domain parameters are advertised in a CCP Capability DIO option. The provisional experimental option type is `0xE0`; it MUST be replaced by an assigned value before publication as an interoperable Internet standard.
 >>>>>>> origin/worktree-worker24
+=======
+worktree-worker23
+>>>>>>> origin/worktree-worker1
 
 ```
 slot_id = (crc32_ieee(eui64, 8) ^ epoch) % num_slots
 ```
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> origin/worktree-worker1
 
 using `crc32_ieee` (see appendix-design-rationale.md:388, lichen/subsys/schc/schc.c:90). This fixes prior inconsistency between crc16 (SMP/Meshtastic legacy) and hash_32 in CCP-15.8.3 pseudocode (`spec/02a-coordinated-capacity.md:41`). The XOR with epoch ensures time-varying slots to prevent persistent collisions. All impls MUST match ccp16.json vectors exactly.
 
@@ -163,7 +177,11 @@ delta = current_sfn - last_sfn;  /* = 3 in unsigned 32-bit arithmetic */
 This MUST be treated as advancement of 3 slots. Signed arithmetic would yield a large negative value, breaking desync detection and slot scheduling. Test vectors in ccp16.json MUST cover this and similar boundaries.
 
 This MUST be treated as advancement of 1 slot (epoch_floor validation independent of SFN per time-provider). Test vectors in ccp16.json MUST cover boundaries.
+<<<<<<< HEAD
 
+=======
+integration/worker9-20260722
+>>>>>>> origin/worktree-worker1
 
 A node MUST only transmit in its assigned slot. Slot duration = max_airtime(current_SF) + 100 ms guard. The link layer MUST enforce via `lichen_link_set_slot()` and `tdma_tx_allowed()` (see lichen/subsys/lichen/link: implementation).
 
@@ -174,7 +192,11 @@ A node MUST only transmit in its assigned slot. Slot duration = max_airtime(curr
 CH0 is the control channel; all nodes MUST listen continuously on it for DIOs and beacons (see draft-lichen-schc-lora-00).
 
 Multi-byte integers are unsigned big-endian. Flags bits: 0=scheduled mode, 1=CSMA rendezvous, 2=concurrent CH0 RX, 3=GNSS-PPS, 4-7 reserved (zero). `Setup Window` bounds retune/readiness/CAD. `Occupied Time` bounds data+ACK. `Guard` is separation between occupied envelopes. `RX Chains` is simultaneous receive count (1 for typical single-radio). `Channel Mask` bit 0 = CH0. Receivers compute local intersection. See test/vectors/ccp*.json for format validation.
+<<<<<<< HEAD
 
+=======
+worktree-worker23
+>>>>>>> origin/worktree-worker1
 
 CH0 is the mandatory control channel. All nodes MUST listen continuously on CH0 for Announce, DIOs, DIS, DAO, LOADng control (RREQ/RREP/RERR), CCP messages, and beacons. See draft-lichen-rpl-lora-00 and draft-lichen-schc-lora-00 for RPL/SCHC usage on CH0. Data channels are used only after rendezvous or scheduled assignment.
 
@@ -184,6 +206,7 @@ CH0 is the mandatory control channel. All nodes MUST listen continuously on CH0 
 ## CCP-6.1. Channel Selection and Adaptive SF (normative pseudocode)
 
 Nodes MUST implement the following spelled-out pseudocode exactly (using IF/OR/NOT/MOD/XOR for IETF language neutrality). All implementations MUST produce bit-identical results to independent test oracles in test/vectors/ccp16.json, test/vectors/ccp_load_balancing.json, and test/vectors/ccp9.json. Cross-reference CCP-16 for load_factor integration and CCP-9 for da2q rendezvous.
+<<<<<<< HEAD
 
 =======
 The option data length is 36 bytes. Multi-byte integers are unsigned big-endian. `Setup Window` bounds retune, receiver readiness, and CAD before RF transmission. `Occupied Time` bounds data plus immediate acknowledgment. `Guard` is the total separation required between occupied transmission envelopes. `Max PHY Len` includes the complete link frame.
@@ -194,6 +217,9 @@ Data channels are selected via `select_channel` (normative pseudocode below; cro
 
 Nodes MUST implement these functions with spelled-out keywords (IF, OR, NOT, MOD, XOR) for IETF compatibility. No language-specific operators, types, or dead code. `now()` and `t` use unsigned 32-bit modular arithmetic per Section 2a.2; blacklist timer comparisons MUST use unsigned subtraction to handle wraparound. Implementations MUST match `test/vectors/ccp16.json` exactly (including density/EMA/load_factor cases, CH0 control rules, and CCP-9 da2q integration). Cross-reference CCP-16.
 >>>>>>> origin/worktree-worker24
+=======
+worktree-worker23
+>>>>>>> origin/worktree-worker1
 
 ```
 function ema_update(avg, sample):
@@ -203,6 +229,9 @@ function ema_update(avg, sample):
 function select_channel(ctx, metrics, t):
     IF (metrics.density > 8) OR (NOT ctx.wall_clock_valid) THEN
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> origin/worktree-worker1
 
         RETURN 0   // control CH0 for high density or desync (per vectors[1,3])
     hash = fnv1a32( (ctx.eui64 XOR t XOR ctx.epoch) )
@@ -251,7 +280,11 @@ function now():
     RETURN current_sfn()   // SFN from GNSS-PPS or monotonic clock
 
 function adaptive_sf_select(density, snr_ema, load_factor):
+<<<<<<< HEAD
 
+=======
+worktree-worker23
+>>>>>>> origin/worktree-worker1
     IF (density > 8) OR (snr_ema < 0) OR (load_factor > 0.8) THEN
         RETURN 11
     ELSE IF (density < 5) AND (snr_ema > 8) THEN
@@ -264,14 +297,21 @@ END FUNCTION
 ```
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 SF10 is the REQUIRED default per appendix-design-rationale.md:7.1. Density rules override it ONLY on the explicit thresholds above per RFC 2119. This balances sensitivity (~-132 dBm at 125 kHz) and airtime (~250 ms for 50B payload) for typical mesh density. Adaptation prioritizes capacity (SF9 at low density <5 + good SNR >8 dB) vs robustness (SF11/12 at density >8, poor SNR, or high load_factor). EMA (alpha ~0.1-0.25) on SNR integrates with load_factor from gateway DIOs. Updates propagate in RPL metric container. Root uses neighbor_count and channel_util for optimization. Per-SF SNR thresholds: SF9>8dB, SF10>0dB, SF11>-5dB, SF12 any. Selected SF signaled in DIOs per draft-lichen-rpl-lora-00. Nodes MUST scan CH0 for updates. All thresholds, EMA, and selection MUST match ccp16.json vectors. (Resolved sections from worker8, worker11, jr2k, worker4 consolidated; duplicates and meta-notes removed.)
 >>>>>>> origin/worktree-worker24
+=======
+>>>>>>> origin/worktree-worker1
 
 Per-SF SNR thresholds (normative, for ema_update fallback): SF9: >8dB, SF10: >0dB, SF11: >-5dB, SF12: any. Matches all ccp16.json vectors[0-4]. No dead code; all paths exercised by test vectors. Defines ema_update, select_channel, now() per prior beads.
 
 Default is SF10 per rationale in appendix-design-rationale.md. Density = neighbor count. Load_factor from DIO utilization and EMA (alpha=0.25 or 0.1 per vector). SNR_EMA updated via now(). Selected SF signaled in DIO capability option and Announce. RX on all SF. High density/load forces CH0 + higher SF for robustness; low density/good SNR enables SF9 on data channel for capacity. See CCP-9 for da2q rendezvous: Announce packets include signed rx_channel field (offset in signed_data per rust/lichen-core/src/announce.rs) for known-peer prediction. Unknown peers use CH0 control. Vectors in ccp9.json are authoritative independent oracle (hash-based, announce-driven, scheduled, with signed rx_channel preventing tampering).
+<<<<<<< HEAD
 
+=======
+worktree-worker23
+>>>>>>> origin/worktree-worker1
 
 ## 2a.4. Time Synchronization
 
@@ -286,15 +326,17 @@ Time sync provided by DODAG root via epoch in beacons/RPL options (see 2a.2 for 
 | 2 | Concurrent CH0 reception supported |
 | 3 | GNSS-PPS scheduled clock supported |
 | 4-7 | Reserved; send as zero and ignore on receipt |
+<<<<<<< HEAD
 
+=======
+worktree-worker23
+>>>>>>> origin/worktree-worker1
 
 Root time-provider is authoritative. Adopt lowest DODAG ID root. Drift > threshold triggers desync (2a.5). Integrates with `lichen_rpl_dodag_init()` per AGENTS.md.
 
 ## 2a.5. Desync Recovery State Machine
 
-[STUB - detailed FSM with transitions, timers, RPL version change handling, and multi-root conflict resolution to be expanded in subsequent chunks per parent epic project-LICHEN-ofrf. Includes full table of states (UNJOINED, JOINED, DRIFT, RECOVER), Trickle integration, and test vectors.]
-
-Nodes entering this state from multi-root conflict (different epoch/version on same control channel) MUST refrain from data TX until re-synchronized. See Section 2a.2 for conflict detection rules.
+See CCP-13a below for the full normative state machine, timers, transitions, multi-root conflict resolution, and test vectors. Nodes entering RECOVER from multi-root conflict (different epoch/version on same control channel) MUST refrain from data TX until re-synchronized. See Section 2a.2 for conflict detection rules.
 
 ## Implementation Status
 
@@ -851,7 +893,11 @@ denial-of-service risks.
 CCP does not guarantee a fixed capacity multiplier.
 
 CCP does not guarantee a fixed capacity multiplier. TDMA removes scheduler overlaps under bounded clocks but not external interference or legacy traffic. With 8 frequencies and CH0 reserved for control (Announce, RPL, LOADng, CCP per CCP-5), aggregate capacity depends on disjoint links, receiver chains, regulatory budgets, and load. Test vectors in test/vectors/ccp_load_balancing.json and ccp16.json are authoritative independent oracles for density/EMA/load_factor rules, SF selection, and channel rendezvous. Implementations MUST report measured goodput against these oracles; no unsubstantiated "Nx capacity" claims.
+<<<<<<< HEAD
 
+=======
+worktree-worker23
+>>>>>>> origin/worktree-worker1
 
 TDMA can remove scheduler-created same-domain overlaps under bounded clocks,
 but not external interference, legacy transmissions, jamming, or unsafe reuse.
@@ -958,6 +1004,12 @@ The following require separate specifications and evidence:
 
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 Resolved merge conflicts from worker4, worker8, worker11, jr2k branches into normative pseudocode, CH0 rules, capability DIO, adaptive SF/EMA/density logic, test vector xrefs (ccp16.json), and CCP-9 da2q integration. Duplicates, meta-notes, and conflict markers removed. Consistent with independent oracles in test/vectors/. (CC-BY-4.0)
 >>>>>>> origin/worktree-worker24
+=======
+
+
+worktree-worker23
+>>>>>>> origin/worktree-worker1

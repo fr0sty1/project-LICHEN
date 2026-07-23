@@ -59,7 +59,11 @@ class AnnounceMessage:
         hop_count: How many hops this announce has traveled.
             Why NOT signed: Each relay increments it. If signed, relays couldn't
             update it without breaking the signature.
+<<<<<<< HEAD
         rx_channel: Preferred RX channel for rendezvous (0-7 per CCP-9). Matches Rust/C structs.
+=======
+        rx_channel: Preferred RX channel for rendezvous (0-15 per CCP-9). Matches Rust/C structs.
+>>>>>>> origin/worktree-worker1
             Used for rendezvous per CCP-9; signed in signed_data() to prevent tampering.
         signature: 48-byte Schnorr signature over signed_data().
         app_data: Optional application data (node name, capabilities).
