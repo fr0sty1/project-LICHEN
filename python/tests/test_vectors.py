@@ -475,8 +475,8 @@ def _ccp16_cases():
 
 @pytest.mark.parametrize("desc,vector", _ccp16_cases())
 def test_ccp16_sf_ema_load_factor_hash32_logic(desc: str, vector: dict) -> None:
-    i = vector
-    o = vector
+    i = vector.get("input", vector)
+    o = vector.get("output", vector)
     eui_hex = i.get("eui64") or i.get("eui64_hex", "")
     if isinstance(eui_hex, (int, float)):
         eui = int(eui_hex).to_bytes(8, "big")
@@ -484,9 +484,8 @@ def test_ccp16_sf_ema_load_factor_hash32_logic(desc: str, vector: dict) -> None:
         eui = bytes.fromhex(str(eui_hex).replace("0x", ""))
     t = i.get("t", 0)
     epoch = i.get("epoch", 0)
-    eui_int = int.from_bytes(eui, "big")
-    x = eui_int ^ t ^ epoch
-    data = x.to_bytes(8, "little")
+    # match generator oracle: eui + epoch.to_bytes(4, "little") per ccp16_vectors()
+    data = eui + epoch.to_bytes(4, "little")
     h = hash_32(data)
     assert h == o.get("hash_32", o.get("expected_hash", h))
     snr_ema = i.get("snr_ema", i.get("snr_db", 5.0))
@@ -495,13 +494,13 @@ def test_ccp16_sf_ema_load_factor_hash32_logic(desc: str, vector: dict) -> None:
         sf = 12
     elif i["density"] > 8 or snr_ema < 0 or load_factor > 0.8:
         sf = 11
-    elif density < 5 and snr_ema > 8.0:
+    elif i["density"] < 5 and snr_ema > 8.0:
         sf = 9
     else:
         sf = 10
     assert sf == o.get("sf", 10)
     n = i.get("n_channels", 3)
-    ch = 0 if density > 8 else (1 + (h % n))
+    ch = 0 if i["density"] > 8 else (1 + (h % n))
     assert ch == o.get("select_channel", o.get("expected_channel", o.get("channel", ch)))
     assert ch == o.get("channel", ch)
     now = i.get("now", 0)

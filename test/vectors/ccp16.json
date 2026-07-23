@@ -14,14 +14,15 @@
         "snr_db": 12,
         "now": 4660
       },
-        "output": {
-        "hash_32": 926423932,
-        "channel": 2,
-        "expected_channel": 2,
-        "sf": 9,
-        "select_channel": 2,
-        "now": 4660
-      }
+            "output": {
+                "hash_32": 926423932,
+                "channel": 2,
+                "expected_channel": 2,
+                "sf": 9,
+                "select_channel": 2,
+                "now": 4660
+            }
+
 
     },
     {
