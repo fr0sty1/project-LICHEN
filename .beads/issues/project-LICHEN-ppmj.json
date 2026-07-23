@@ -2,15 +2,15 @@
   "id": "project-LICHEN-ppmj",
   "title": "[merge-conflict] worktree-worker19: lichend.rs",
   "notes": "Commit: d21f0e65c",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:30:34.423147332Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:01:25.003621594Z",
+  "updated_at": "2026-07-23T02:01:27.09933201Z",
   "started_at": "2026-07-23T02:00:35.834765756Z",
-  "lease_expires_at": "2026-07-23T02:05:35.834765756Z",
-  "heartbeat_at": "2026-07-23T02:00:35.834765756Z"
+  "closed_at": "2026-07-23T02:01:27.09933201Z",
+  "close_reason": "Resolved merge conflict artifacts in lichend.rs by restoring section comment, monotonic time TODO, and proper error logging for TUN send; cleaned dangling code from bad merge resolution; committed and pushed to worktree-worker19"
 }
