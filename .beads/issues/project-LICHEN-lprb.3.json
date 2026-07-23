@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-lprb.3",
+  "title": "Update lichen-node/src/lib.rs to reflect deferred boardconfig changes from worker1 merge",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:14:47.627082675Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:14:47.627082675Z",
+  "labels": [
+    "defer-boardconfig"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-lprb.3",
+      "depends_on_id": "project-LICHEN-lprb",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:14:47.757786513Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
