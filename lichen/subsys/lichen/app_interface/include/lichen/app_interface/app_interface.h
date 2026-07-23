@@ -178,7 +178,7 @@ struct lichen_app_time_snapshot {
 struct lichen_app_status_snapshot {
 	uint16_t rank;
 	uint32_t uptime_seconds;
-	const char *role;
+	char role[24];
 	bool rpl_capable;
 	struct lichen_app_power_snapshot power;
 	struct lichen_app_location_time_snapshot location_time;

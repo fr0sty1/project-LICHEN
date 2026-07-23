@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-c97s",
+  "title": "[kimi-review] 29abf80: [SEVERITY: medium] The diff contains no code changes — the c",
+  "description": "Commit: 29abf801b\nMessage: fix(schc): add mo_arg validation in _check_msb\n\nFinding: [SEVERITY: medium] The diff contains no code changes — the commit is empty despite the message claiming to add `mo_arg` validation in `_check_msb`. Either the actual change was omitted from the diff or this is a no-op commit that doesn't implement the stated fix. Cannot verify correctness of validation logic that isn't present; the commit should be amended to include the change or dropped.",
+  "notes": "Commit: 2fca30749",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:29:54.20549383Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T21:32:49.809755541Z",
+  "started_at": "2026-07-22T21:31:12.719178056Z",
+  "closed_at": "2026-07-22T21:32:49.809755541Z",
+  "close_reason": "Added consistent mo_arg \u003e length_bits validation in Python context.rule_matches, updated _check_msb to use SchcError uniformly, and mirrored the check in Rust rule_matches to prevent invalid shifts; tests pass"
+}

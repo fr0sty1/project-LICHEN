@@ -89,8 +89,9 @@ struct lichen_gradient_table {
  * @brief Initialize a gradient table.
  *
  * @param table Gradient table to initialize.
+ * @return 0 on success, -EINVAL if table is NULL.
  */
-void lichen_gradient_table_init(struct lichen_gradient_table *table);
+int lichen_gradient_table_init(struct lichen_gradient_table *table);
 
 /**
  * @brief Look up a gradient by destination IID.

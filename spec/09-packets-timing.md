@@ -312,11 +312,13 @@ SFN is a 32-bit unsigned counter. Delta computation between current and last SFN
 SFN_delta(curr, last) = (curr - last) mod 2^32
 ```
 
-(with unsigned wrap semantics: curr=0, last=0xFFFFFFFF yields delta=1). Implementations MUST compute this using language-native unsigned 32-bit subtraction or equivalent.
+(with unsigned modular arithmetic: curr=0, last=0xFFFFFFFF yields delta=1). Implementations MUST compute this using language-native unsigned 32-bit subtraction or equivalent.
 
-The computation MUST anchor to the time-provider `effective_epoch_floor` (Section 14.6; `docs/firmware-time-provider.md`; Time Stratum and DIO Time Option). SFN derivation or validation from wall-clock time MUST only use samples where `wall_clock_valid=true` and `unix_time >= effective_epoch_floor`. Nodes MUST reject SFN updates derived from timestamps failing epoch_floor validation. This interaction prevents desynchronization from stale GNSS/RTC/network time and ensures consistent slotting across reboots and stratum changes. All SFN edge cases including wraparound MUST be covered by test vectors (see `test/vectors/ccp_tdma.json`). See also FSM transitions and RPL version handling below.
+The computation MUST anchor to the time-provider `effective_epoch_floor` (Section 14.6; `docs/firmware-time-provider.md`; Time Stratum and DIO Time Option). SFN derivation or validation from wall-clock time MUST only use samples where `wall_clock_valid=true` and `unix_time >= effective_epoch_floor`. Nodes MUST reject SFN updates derived from timestamps failing epoch_floor validation. This interaction prevents desynchronization from stale GNSS/RTC/network time and ensures consistent slotting across reboots and stratum changes.
 
-**FSM for desync/rejoin robustness:** Nodes follow initialization order from `AGENTS.md:179` graph and `lichen_node_init()` (`AGENTS.md:218`, `lichen/subsys/lichen/lichen_node_init` example). `lichen_link_init()` MUST precede `lichen_link_load_key()`, `lichen_rpl_dodag_init()`, and TDMA. Rejoin timeout = 10 × superframe length (Kconfig `CONFIG_LICHEN_TDMA_REJOIN_TIMEOUT`, default 10 s).
+All SFN edge cases including wraparound, desynchronization recovery FSM transitions, multi-root beacon conflicts, and RPL version changes during join/drift MUST be covered by test vectors (see `test/vectors/ccp_tdma.json`; updated for new FSM and multi-root cases per draft-lichen-tdma). See 02a-coordinated-capacity.md for full normative FSM table.
+
+**FSM for desync/rejoin robustness:** See Section 2a.2 of draft-lichen-tdma (normative content replicated in 02a-coordinated-capacity.md#tdma-frame-structure-and-slot-assignment-project-lichen-i9r01) for complete definition. Nodes MUST follow the initialization dependency graph from AGENTS.md:179 (normative for subsystem ordering to prevent use-before-init crashes) and the `lichen_node_init()` example (AGENTS.md:218). `lichen_link_init()` MUST precede `lichen_link_load_key()`, `lichen_rpl_dodag_init()`, TDMA, oscore_init(), and lichen_coap_client_init() per the graph in AGENTS.md. Rejoin timeout = 10 × superframe length (Kconfig `CONFIG_LICHEN_TDMA_REJOIN_TIMEOUT`, default 10 s).
 
 | Current State | Event/Condition | Timer/Timeout | Action | Next State | Reference |
 |---------------|-----------------|---------------|--------|------------|-----------|
@@ -327,7 +329,7 @@ The computation MUST anchor to the time-provider `effective_epoch_floor` (Sectio
 | DRIFTING | Beacon rx or contention success | REJOIN_TIMEOUT | Re-init DODAG if needed, TOFU key pin | ACQUIRING | `oscore_init()` ordering |
 | REJOINING | DAO-ACK + slot assign | - | Enter assigned slot, report LCI status | SYNCED | `lichen_coap_client_init()` |
 
-MUST reset all timers on state transition. All transitions produce identical test vector output. See `test/vectors/` and full init graph in AGENTS.md for ordering to prevent use-before-init.
+MUST reset all timers on state transition. All transitions and multi-root cases produce identical test vector output. See `test/vectors/` (updated for FSM/multi-root) and full init graph in AGENTS.md (normative where referenced).
 
 Legacy nodes ignore unknown frames, use contention slot only. Mixed networks compatible.
 

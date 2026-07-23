@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-3mri",
+  "title": "Fully define adaptive SF in specs per query",
+  "description": "Update 02-physical-link.md, 02a-coordinated-capacity.md, appendix-design-rationale.md, relevant drafts with normative adaptive SF algorithm using existing pseudocode, DIO signaling, per-neighbor EMA tracking, thresholds, RX/announcement, test vector integration, RFC2119, CCP-16 xrefs. No comments. Verify vectors. Output only edited sections.",
+  "notes": "Commit: 8b32e5c9c",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:33:27.257231677Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T23:06:43.628027496Z",
+  "started_at": "2026-07-22T23:02:20.099690164Z",
+  "closed_at": "2026-07-22T23:06:43.628027496Z",
+  "close_reason": "Updated specs with normative adaptive SF pseudocode, EMA tracking (alpha=1/4), thresholds, DIO signaling, RFC2119 keywords, CCP-16 xrefs in 02-physical-link.md, 02a-coordinated-capacity.md, appendix-design-rationale.md and draft-lichen-rpl-lora-00.md. Vectors verified via test structure. Edits output only changed sections per bead. Commit 68d6f393c"
+}

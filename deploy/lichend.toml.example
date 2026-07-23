@@ -28,14 +28,15 @@ instance_id = 1
 mode = "non-storing"
 
 [yggdrasil]
-# Yggdrasil peers for global backbone connectivity (see project-LICHEN-zt3c.2).
-# List of tcp://host:port endpoints.
+# Automatic peering (layered discovery per project-LICHEN-zt3c.4)
+auto_peer.public_network = true     # baseline via public Yggdrasil
+auto_peer.lichen_registry = true    # direct peers via registry
+auto_peer.local_discovery = true    # mDNS on LAN
+# Manual peers (optional)
 peers = [
   "tcp://ygg.mkg20001.io:80",
-  # Add private peers here for production
+  # Add other gateways here
 ]
-# Enable public peering (default: true).
-public_peering = true
 # Path to yggdrasil binary (default provided).
 # binary = "/usr/bin/yggdrasil"
 

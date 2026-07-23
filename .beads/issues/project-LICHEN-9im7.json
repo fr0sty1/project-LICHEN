@@ -2,11 +2,16 @@
   "id": "project-LICHEN-9im7",
   "title": "Type mismatch between seen_hash_count and array capacity creates overflow hazard",
   "description": "## Location\nlichen/samples/lora_ping/src/main.c:34\n\n## Description\nseen_hash_count is uint8_t (max 255) but is compared against ARRAY_SIZE(seen_hashes). Currently the array is 64 elements so this works, but if the array is increased beyond 255 elements, seen_hash_count would wrap to 0 after reaching 255, causing index reuse and silent hash overwrites. The type should use size_t or match the intended maximum capacity.\n\n## Failure Scenario\nA future change increases seen_hashes to 300 elements. After 256 unique packets, seen_hash_count wraps from 255 to 0. The condition '0 \u003c 300' is true, so seen_hashes[0] is overwritten, corrupting the hash tracking and creating false duplicate detection.\n\n## Category\nsafety",
-  "status": "open",
+  "notes": "Commit: ff861ec",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-13T04:16:54.241607Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-13T04:16:54.241644Z"
+  "updated_at": "2026-07-22T22:41:58.651876202Z",
+  "started_at": "2026-07-22T22:41:01.858347253Z",
+  "closed_at": "2026-07-22T22:41:58.651876202Z",
+  "close_reason": "Changed for-loop index from int to size_t to match seen_hash_count type and ARRAY_SIZE capacity. Prevents potential overflow if array size \u003e255. Verified via code review and git diff. Only touched scoped file."
 }

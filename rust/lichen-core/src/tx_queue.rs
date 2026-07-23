@@ -211,6 +211,15 @@ pub struct TxQueueStats {
 }
 
 /// Priority-based transmission queue with observability.
+///
+/// Reentrancy: `expire_before`, `try_preempt` (drain+rebuild heap),
+/// `push` and `pop` update multiple fields (heap, stats, sequence,
+/// bytes_pending) non-atomically. Matches C `pending_drop_tail`
+/// requirement (tail-update + memset + count-decrement not atomic;
+/// must run in interrupt-disabled context or with protection).
+/// No built-in locks (no_std); caller must synchronize. See
+/// lichen/subsys/lichen/meshcore/adapter.c:305 and spec for
+/// TDMA/pending semantics.
 pub struct TxQueue {
     heap: BinaryHeap<TxItem, Max, TX_QUEUE_CAPACITY>,
     /// Monotonic sequence counter for FIFO within priority.

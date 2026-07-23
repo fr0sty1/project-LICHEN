@@ -79,6 +79,14 @@ typedef void (*lichen_native_rx_cb_t)(uint8_t msg_type, const uint8_t *buf, size
 int lichen_native_init(lichen_native_rx_cb_t rx_cb);
 
 /*
+ * lichen_native_deinit — stop RX thread and release resources.
+ *
+ * Must be called before re-init or module unload. Wakes blocked RX thread
+ * via poison message + IRQ disable + join/abort. Idempotent.
+ */
+int lichen_native_deinit(void);
+
+/*
  * lichen_native_send_hello — transmit a hello frame to the host.
  *
  * Announces the default device-side message types implemented by this library

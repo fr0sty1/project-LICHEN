@@ -326,7 +326,7 @@ security mechanism, not RPL's built-in security modes.
 
 ### 8.2. Link-Layer Signature Protection
 
-All RPL control messages (DIO, DAO, DIS) are link-layer frames that MUST carry Schnorr signatures per draft-lichen-link-01:4.2 (unsigned RPL control frames MUST be rejected by receivers; permissive mode is test-only). See spec/06-security.md:8.9 for full requirements.
+All RPL control messages (DIO, DAO, DIS) are link-layer frames that MUST carry Schnorr signatures per draft-lichen-link-01:4.2 (unsigned RPL control frames MUST be rejected by receivers; permissive mode is test-only). See spec/06-security.md:8.10 for full requirements.
 
 This provides:
 - Sender authentication
@@ -392,6 +392,14 @@ Provides time synchronization for replay protection.
 ```
 
 Advertises node congestion for routing decisions.
+
+<<<<<<< HEAD
+**ASSIGNED_SF and RF Metrics Option (CCP-16):** MUST be carried in RPL DIO options per CCP-16. Nodes MUST compute TX_SF via pseudocode in physical-link:3.4 and 02a:2a.3. Includes per-neighbor EMA, density, utilization. Test vectors ccp16.json MUST validate interop.
+=======
+**Adaptive SF Recommendation:**
+
+The DAG Metric Container MUST include current SF per-neighbor EMA-derived recommendation per CCP-16 in spec/02a-coordinated-capacity.md section 4.2. Thresholds and EMA update are normative there. DIOs on control channel provide the announcement. RX scanning on CH0 is REQUIRED.
+>>>>>>> origin/integration/worker11-20260722
 
 ### 9.3. Prefix Information Option
 

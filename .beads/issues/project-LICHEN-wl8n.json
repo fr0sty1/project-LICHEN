@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-wl8n",
+  "title": "[kimi-review] 7f46d18: [SEVERITY: medium] **Flag checked at wrong granularity** — I",
+  "description": "Commit: 7f46d1898\nMessage: fix(kiss): stop RX thread in deinit with shutdown flag\n\nFinding: [SEVERITY: medium] **Flag checked at wrong granularity** — If the flag is only checked once per loop iteration but the loop contains multiple blocking or long operations, shutdown latency or races remain.",
+  "notes": "Commit: c3cef809c",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:07:36.965624991Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:30:57.792212437Z",
+  "started_at": "2026-07-22T22:29:45.206301198Z",
+  "closed_at": "2026-07-22T22:30:57.792212437Z",
+  "close_reason": "Improved shutdown flag granularity in kiss_rx_thread_fn: added checks in drain while, byte for-loop (stops promptly even during large RX buffers or multiple frames). Updated deinit join/abort path. Eliminates latency/race per kimi-review. No comments added. Commit c3cef809c."
+}

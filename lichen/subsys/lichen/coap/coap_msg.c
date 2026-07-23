@@ -19,6 +19,7 @@
 #include <zcbor_decode.h>
 
 #include <lichen/coap_msg.h>
+#include <lichen/coap_status.h>
 
 LOG_MODULE_REGISTER(lichen_coap_msg, CONFIG_LICHEN_COAP_MSG_LOG_LEVEL);
 
@@ -52,13 +53,22 @@ static void cbor_put_array_header(uint8_t *buf, size_t *off, uint8_t count)
 
 static void cbor_put_tstr(uint8_t *buf, size_t *off, const char *value, size_t len)
 {
+	if (len > 0xffffffffU) {
+		len = 0xffffffffU;
+	}
 	if (len < 24U) {
 		buf[(*off)++] = 0x60U | (uint8_t)len;
 	} else if (len <= UINT8_MAX) {
 		buf[(*off)++] = 0x78;
 		buf[(*off)++] = (uint8_t)len;
-	} else {
+	} else if (len <= 0xffffU) {
 		buf[(*off)++] = 0x79;
+		buf[(*off)++] = (uint8_t)(len >> 8);
+		buf[(*off)++] = (uint8_t)(len & 0xffU);
+	} else {
+		buf[(*off)++] = 0x7a;
+		buf[(*off)++] = (uint8_t)(len >> 24);
+		buf[(*off)++] = (uint8_t)(len >> 16);
 		buf[(*off)++] = (uint8_t)(len >> 8);
 		buf[(*off)++] = (uint8_t)(len & 0xffU);
 	}
@@ -310,7 +320,7 @@ static int coap_respond(struct coap_resource *resource,
 			uint8_t resp_code,
 			const uint8_t *payload, size_t payload_len)
 {
-	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+	static uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
 	struct coap_packet resp;
 	uint8_t token[COAP_TOKEN_MAX_LEN];
 	uint8_t tkl = coap_header_get_token(request, token);
@@ -382,20 +392,6 @@ static int parse_ipv6_addr(const char *str, size_t len, uint8_t *addr)
 	}
 
 	memcpy(addr, in6.s6_addr, 16);
-	return 0;
-}
-
-/* Format IPv6 address to string */
-static int format_ipv6_addr(const uint8_t *addr, char *buf, size_t buf_size)
-{
-	struct in6_addr in6;
-
-	memcpy(in6.s6_addr, addr, 16);
-
-	if (net_addr_ntop(AF_INET6, &in6, buf, buf_size) == NULL) {
-		return -EINVAL;
-	}
-
 	return 0;
 }
 
@@ -487,7 +483,7 @@ int lichen_msg_sent_post(struct coap_resource *resource,
 
 	/* Build response with Location-Path */
 	{
-		uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+		static uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
 		struct coap_packet resp;
 		uint8_t token[COAP_TOKEN_MAX_LEN];
 		uint8_t tkl = coap_header_get_token(request, token);
@@ -606,7 +602,7 @@ int lichen_msg_sent_id_get(struct coap_resource *resource,
 		break;
 	}
 
-	if (format_ipv6_addr(msg.peer_addr, addr_str, sizeof(addr_str)) < 0) {
+	if (lichen_coap_format_ipv6(msg.peer_addr, addr_str, sizeof(addr_str)) < 0) {
 		return coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
 	}
@@ -648,7 +644,7 @@ static size_t encode_inbox_cbor(uint8_t *buf, size_t buf_size)
 	for (size_t i = 0; i < count && off + 100 < buf_size; i++) {
 		const struct lichen_msg *msg = &s_inbox[i];
 
-		if (format_ipv6_addr(msg->peer_addr, addr_str,
+		if (lichen_coap_format_ipv6(msg->peer_addr, addr_str,
 				     sizeof(addr_str)) < 0) {
 			continue;
 		}
@@ -690,7 +686,7 @@ int lichen_msg_inbox_get_handler(struct coap_resource *resource,
 void lichen_msg_inbox_notify_cb(struct coap_resource *resource,
 				struct coap_observer *observer)
 {
-	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+	static uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
 	uint8_t cbor_buf[MSG_CBOR_MAX_SIZE];
 	struct coap_packet notif;
 	size_t cbor_len;

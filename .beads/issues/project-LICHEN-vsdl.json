@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-vsdl",
+  "title": "WiFi station backhaul for Heltec V3 gateway",
+  "description": "Implement WiFi station mode, net_mgmt events for connection and prefix acquisition, integrate with LICHEN_GATEWAY_PREFIX_DELEGATION and status CBOR. Child of project-LICHEN-sl32.",
+  "notes": "Commit: e483b3855",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:38:39.505374934Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:43:14.95080271Z",
+  "started_at": "2026-07-22T22:40:58.014272611Z",
+  "closed_at": "2026-07-22T22:43:14.95080271Z",
+  "close_reason": "Implemented WiFi station net_mgmt handler, LICHEN_GATEWAY_PREFIX_DELEGATION Kconfig, updated Heltec V3 board config and main.c for prefix events + RPL integration. Verified no compile breakage in scope. Pushed e483b3855"
+}

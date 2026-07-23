@@ -34,7 +34,7 @@ def rule_matches(rule: Rule, fields: dict[str, int]) -> bool:
         if fd.mo == MO.EQUAL and value != fd.target_value:
             return False
         if fd.mo == MO.MSB:
-            if fd.mo_arg is None:
+            if fd.mo_arg is None or fd.mo_arg > fd.length_bits:
                 return False
             shift = fd.length_bits - fd.mo_arg
             if (value >> shift) != (fd.target_value >> shift):

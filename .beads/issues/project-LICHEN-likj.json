@@ -2,11 +2,16 @@
   "id": "project-LICHEN-likj",
   "title": "Integer overflow possible in encode_serial_frame return value",
   "description": "File: lichen/subsys/lichen/meshcore/codec.c\nLine: 70-71\n\n```c\nreturn (int)(payload_len + 3U);\n```\n\nIf CONFIG_LICHEN_MESHCORE_MAX_SERIAL_PAYLOAD is larger than INT_MAX - 3, the addition could exceed INT_MAX. Casting a size_t larger than INT_MAX to int is implementation-defined behavior.\n\nWhile unlikely in practice (embedded systems rarely have such large payloads), there is no compile-time check to prevent misconfiguration.\n\nFix: Add BUILD_ASSERT(CONFIG_LICHEN_MESHCORE_MAX_SERIAL_PAYLOAD \u003c= INT_MAX - 3, \"Serial payload too large for int return\");",
-  "status": "open",
+  "notes": "Commit: f3b1f704f (assert already present per description)",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:46:12.682964Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:46:12.682994Z"
+  "updated_at": "2026-07-22T23:20:00.951135183Z",
+  "started_at": "2026-07-22T23:19:14.3038044Z",
+  "closed_at": "2026-07-22T23:20:00.951135183Z",
+  "close_reason": "BUILD_ASSERT already implemented in codec.c:18-19 matching the described fix. Verified Kconfig range and asserts prevent overflow."
 }

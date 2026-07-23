@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+description: LilyGo T-Deck I2C keyboard controller
+compatible: "lilygo,tdeck-keyboard"
+include: i2c-device.yaml
+properties:
+  reg:
+    required: true
+    description: I2C address, must be 0x55

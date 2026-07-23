@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-0mk7",
+  "title": "[kimi-review] b73f00a: [SEVERITY: low] Error message text changed from \"packet too ",
+  "description": "Commit: b73f00a6e\nMessage: fix(schc): improve short packet error in decompress_packet\n\nFinding: [SEVERITY: low] Error message text changed from \"packet too short:\" to \"packet too short for residue:\". If any tests or downstream code match on the old message substring (e.g., `pytest.raises(SchcError, match=\"packet too short\")` still works, but a match on the full old string would break), this could cause failures. The commit notes ruff passes but doesn't mention running the test suite — worth confirming no `match=` assertions depend on the exact old text.",
+  "notes": "Commit: 4ff6543e3",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:27:38.839048687Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T21:32:26.337461939Z",
+  "started_at": "2026-07-22T21:31:32.666523732Z",
+  "closed_at": "2026-07-22T21:32:26.337461939Z",
+  "close_reason": "Closed"
+}

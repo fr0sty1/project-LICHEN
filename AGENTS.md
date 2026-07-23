@@ -766,6 +766,7 @@ Issues are stored as flat JSON files in `.beads/issues/`, tracked by git. Each w
 - ✅ Always use `--json` flag for programmatic use
 - ✅ Link discovered work with `discovered-from` dependencies
 - ✅ Check `bd ready` before asking "what should I work on?"
+- Before `bd update` or `bd close`, verify issue is not already closed by human (owner/created_by contains "Mark" or "ec2-user", or closed_at predates session). If so, create new follow-up with `discovered-from:<id>` dependency instead of rewriting to preserve audit trail.
 - ❌ Do NOT create markdown TODO lists
 - ❌ Do NOT use external issue trackers
 - ❌ Do NOT duplicate tracking systems

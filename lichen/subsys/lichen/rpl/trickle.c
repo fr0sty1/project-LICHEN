@@ -50,6 +50,11 @@ void lichen_trickle_init(struct lichen_trickle *t,
 		return;
 	}
 
+	/* Trickle Imin must be > 0 (RFC 6206); 0 causes infinite busy-loop
+	 * on transmit/expire (see bead project-LICHEN-p00p). Defensive default. */
+	if (imin_ms == 0) {
+		imin_ms = 1;
+	}
 	t->imin = imin_ms;
 
 	/* Calculate max_interval = imin << doublings, clamped at UINT32_MAX.
@@ -118,7 +123,7 @@ void lichen_trickle_reset(struct lichen_trickle *t,
 	}
 
 	/* RFC 6206 section 4.2: no-op if already at imin */
-	if (t->transmit_time == 0 || t->interval != t->imin) {
+	if (t->interval != t->imin) {
 		t->interval = t->imin;
 		begin_interval(t, now, rand_offset);
 	}

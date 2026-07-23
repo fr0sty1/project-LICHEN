@@ -2,11 +2,16 @@
   "id": "project-LICHEN-8yrz",
   "title": "[merge-conflict] worker8: bridge.rs",
   "description": "Resolve merge conflict in rust/lichen-meshtastic/src/bridge.rs between main and integration/worker8-20260722. Keep BOTH sets of changes.",
-  "status": "open",
+  "notes": "Commit: a17fd46fd - Merged heapless::Vec import, IPv6 header parsing with version byte check + hardcoded offsets [8..24]/[24..40], updated test; kept current BridgeError, queue, address mapping, TEXT_MESSAGE_APP, and full test suite from this branch.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:52:13.693061659Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T20:52:13.693061659Z"
+  "updated_at": "2026-07-22T21:25:09.447046308Z",
+  "started_at": "2026-07-22T21:24:19.265624879Z",
+  "closed_at": "2026-07-22T21:25:09.447046308Z",
+  "close_reason": "Merge conflict resolved in rust/lichen-meshtastic/src/bridge.rs: incorporated worker8 heapless import, simplified IPv6 version check + hardcoded header offsets for src/dst, updated test; retained current BridgeError variants, queue logic, TEXT_MESSAGE_APP support, address mapper, and comprehensive tests. Code compiles and maintains Meshtastic-LICHEN bidirectional translation. Commit a17fd46fd pushed."
 }

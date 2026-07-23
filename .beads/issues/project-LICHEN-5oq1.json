@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-5oq1",
+  "title": "[kimi-review] cf7526a: [SEVERITY: medium] The change is behaviorally a no-op. After",
+  "description": "Commit: cf7526a08\nMessage: fix(proto): handle signed int32 for rx_rssi in MeshPacket decode\n\nFinding: [SEVERITY: medium] The change is behaviorally a no-op. After `value \u0026 0xFFFFFFFF`, value is in [0, 2³²−1], so `value \u0026 0x80000000` (truthy check) and `value \u003e 0x7FFFFFFF` are exactly equivalent conditions. If there was a real bug decoding negative `rx_rssi` values, this commit does not fix it — the actual bug likely lives elsewhere (e.g., `_varint_to_int32`",
+  "notes": "Commit: 3bbdda33c (addressed kimi-review on signed int32 decode with improved _varint_to_int32 + QueueStatus.from_bytes + test)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:01:36.867851455Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:44:37.811899835Z",
+  "started_at": "2026-07-22T22:41:02.731648338Z",
+  "closed_at": "2026-07-22T22:44:27.077934508Z",
+  "close_reason": "Closed"
+}

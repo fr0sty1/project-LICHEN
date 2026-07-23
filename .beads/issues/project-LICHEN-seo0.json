@@ -2,11 +2,16 @@
   "id": "project-LICHEN-seo0",
   "title": "hybrid.rs: pending queue eviction doesn't consider priority",
   "description": "File: rust/lichen-node/src/hybrid.rs:309-316\n\nWhen the pending packet queue for a destination is full, queue_pending evicts the oldest packet regardless of priority:\n\n```rust\npub fn queue_pending(\u0026mut self, data: Vec\u003cu8\u003e, dst: [u8; 16], now_ms: u32) {\n    let pending = PendingPacket {\n        data,\n        destination: dst,\n        queued_at_ms: now_ms,\n    };\n    let queue = self.pending_queue.entry(dst).or_default();\n    if queue.len() \u003e= self.max_pending_per_dest {\n        queue.pop_front(); // Drop oldest - ignores priority\n    }\n    queue.push_back(pending);\n    // ...\n}\n```\n\nImpact: A high-priority packet waiting for route discovery could be evicted in favor of a low-priority packet that arrives later.\n\nNote: PendingPacket doesn't have a priority field, so this would require adding priority support to the pending queue.",
-  "status": "open",
+  "notes": "Commit: d425eb474",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:36:24.01969Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:36:24.019755Z"
+  "updated_at": "2026-07-22T23:28:12.273048507Z",
+  "started_at": "2026-07-22T23:23:55.470987437Z",
+  "closed_at": "2026-07-22T23:28:12.273048507Z",
+  "close_reason": "Closed"
 }

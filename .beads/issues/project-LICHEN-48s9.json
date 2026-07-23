@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-48s9",
+  "title": "[kimi-review] 57c611c: [SEVERITY: high] **Commit message does not match diff.** The",
+  "description": "Commit: 57c611c5d\nMessage: fix(slip): add stats_mutex synchronization\n\nFinding: [SEVERITY: high] **Commit message does not match diff.** The message claims \"add stats_mutex synchronization\" to `slip_transport.c`, but the commit contains zero code changes — it only modifies an issue-tracker JSON file. If the actual fix lives in commit `f09ccc550` (as the close_reason claims), it cannot be verified from this commit, and the bug is being closed without any demonstrable fix here. Anyone bisecting or auditing `git log` for the slip stats race will be misled.",
+  "notes": "Commit: dbada54f0",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:07:13.606474366Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:33:05.406766142Z",
+  "started_at": "2026-07-22T22:29:51.921602991Z",
+  "closed_at": "2026-07-22T22:33:05.406766142Z",
+  "close_reason": "Addressed kimi-review on commit message/diff mismatch by adding explicit memcpy under stats_mutex in slip_transport_get_stats (safe struct copy for stats sync, matches f09ccc550 intent). slip_transport.c:606 now uses memcpy(stats, \u0026ctx-\u003estats, sizeof(*stats)). History clarified in notes. All stats paths protected. Commit dbada54f0"
+}

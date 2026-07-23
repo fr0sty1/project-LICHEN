@@ -2,11 +2,16 @@
   "id": "project-LICHEN-7fwp",
   "title": "[merge-conflict] worker8: ccp16.json",
   "description": "Resolve merge conflict in test/vectors/ccp16.json between main and integration/worker8-20260722. Keep BOTH sets of changes.",
-  "status": "open",
+  "notes": "Commit: 722016c58",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:52:15.967912516Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T20:52:15.967912516Z"
+  "updated_at": "2026-07-22T21:23:30.990341066Z",
+  "started_at": "2026-07-22T21:23:13.027533137Z",
+  "closed_at": "2026-07-22T21:23:30.990341066Z",
+  "close_reason": "Restored test/vectors/ccp16.json from main's combined version incorporating hopping/desync vectors (CCP-12/15/16, epoch wrap, synchronized_hop_channel) from one branch and load-balancing/TDMA/adaptive-SF/multi-RX gateway vectors (CCP-14) from worker8. Added format/schema fields. Matches both original test sets + interop oracles. Committed 722016c58."
 }

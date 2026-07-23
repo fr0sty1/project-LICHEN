@@ -26,6 +26,12 @@ protocol.
 
 ## CCP-2. Terminology
 
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+"SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+"OPTIONAL" in this document are to be interpreted as described in
+BCP 14 [RFC2119] [RFC8174] when, and only when, they appear in all
+capitals, as shown here.
+
 - **CCP domain:** One DODAG using one root identity and schedule generation.
 - **Coordinator:** The accepted DODAG root that authorizes schedules.
 - **ASN:** Absolute Slot Number, a monotonically increasing 64-bit slot index.
@@ -78,11 +84,36 @@ Each versioned plan contains:
 CCP PHY profile ID `0x01` is fixed as LoRa bandwidth 125 kHz, SF10, coding rate
 4/5, eight-symbol preamble, explicit header, payload CRC enabled, and low-data-
 rate optimization disabled. ADR MUST NOT change these parameters inside a
-schedule generation. Future profile IDs require canonical airtime vectors and a
+schedule generation. See 2a.3 for normative adaptive SF outside schedules. Future profile IDs require canonical airtime vectors and a
 new specification revision before use.
 
 Remote capability and schedule messages MAY reduce the locally permitted
 intersection. Unknown plan identifiers or versions MUST cause CH0 fallback.
+
+## 2a.3. Adaptive Spreading Factor
+
+Adaptive SF integrates with TDMA/channel selection per CCP-16. Nodes MUST maintain per-neighbor EMA state (alpha=1/4 from rf_health.rs), signal ASSIGNED_SF and metrics (SNR EMA, loss, density, utilization) in DIO, announce TX_SF, and RX on all SF. Pseudocode MUST be followed exactly and produce identical output to test/vectors/ccp16.json load_balancing vectors. Thresholds and logic from physical-link:3.4. DIO option for metrics is REQUIRED for root load balancing. All impls MUST match vectors (low density/good SNR yields SF9 on data channel; high density/poor SNR yields SF11 on CH0; high utilization suppresses TX).
+
+```pseudocode
+ema_update(avg, sample):
+    diff = sample - avg
+    return avg + (diff >> 2)
+update_neighbor(nbr, snr, loss):
+    nbr.ema_snr = ema_update(nbr.ema_snr, snr)
+    nbr.ema_loss = ema_update(nbr.ema_loss, loss)
+    nbr.samples = nbr.samples + 1
+select_tx_sf(nbr, density, utilization):
+    sf = nbr.assigned_sf or 10
+    if density > 10 or utilization > 150:
+        sf = min(12, sf + 2)
+    if nbr.ema_snr > 8 and density < 5:
+        sf = max(7, sf - 1)
+    if nbr.ema_loss > 0.25:
+        sf = min(12, sf + 1)
+    if utilization > 200:
+        return 12, false
+    return sf, true
+```
 
 LoRaWAN regional tables MAY inform a LICHEN plan, but LoRaWAN uplink/downlink
 roles MUST NOT be copied into a symmetric peer-to-peer plan without a separate
@@ -112,6 +143,7 @@ listen-before-talk procedure even in a dedicated cell.
 
 ## CCP-6. Capability Advertisement
 
+<<<<<<< HEAD
 Slow-changing domain parameters are advertised in a CCP Capability DIO option.
 The provisional experimental option type is `0xE0`; it MUST be replaced by an
 assigned value before publication as an interoperable Internet standard.
@@ -135,6 +167,60 @@ big-endian. `Setup Window` bounds retune, receiver readiness, and CAD before RF
 transmission. `Occupied Time` bounds data plus immediate acknowledgment.
 `Guard` is the total separation required between occupied transmission
 envelopes. `Max PHY Len` includes the complete link frame.
+=======
+CH0 is the control channel; all nodes MUST listen continuously on it for DIOs and beacons (see draft-lichen-schc-lora-00).
+
+Data channels are selected via select_channel (normative pseudocode below, cross-ref draft-lichen-tdma for TDMA integration). All implementations MUST produce identical results to test/vectors/ccp16.json for CCP-14/15/16 vectors.
+
+### 4.1. select_channel and now()
+
+Nodes MUST implement select_channel and now as follows. All operators use spelled-out keywords for IETF compatibility. Implementations MUST match test vectors in test/vectors/ccp16.json exactly. Cross reference CCP-16.
+
+```
+function select_channel(ctx, metrics, t):
+    IF (metrics.density > 8) OR (NOT ctx.wall_clock_valid) THEN
+        RETURN 0
+<<<<<<< HEAD
+    hash = fnv1a32((ctx.eui64 XOR t XOR ctx.epoch))
+=======
+    hash = fnv1a32( (ctx.eui64 XOR t XOR ctx.epoch) )
+>>>>>>> origin/integration/worker8-20260722
+    n = ctx.num_data_channels IF ctx.num_data_channels > 0 ELSE 3
+    RETURN 1 + (hash MOD n)
+
+function now():
+    RETURN current_sfn()
+```
+<<<<<<< HEAD
+=======
+Note: All operators are spelled out (OR, NOT, MOD, XOR) for language-agnostic IETF compatibility. No Rust 'or', no C types or structs, no dead code. now_ts TDMA alignment uses LICHEN_TDMA_Slot relation for slot calc.
+>>>>>>> origin/integration/worker8-20260722
+
+### Density Rules Rationale (logical chunk: rationale paragraph - updated)
+
+SF10 is the REQUIRED default per appendix-design-rationale.md:7.1. Density rules MUST override it ONLY on the explicit thresholds given (see adaptive_sf_select below) per RFC 2119 layering for capacity/robustness tradeoffs vs SF10 baseline. This balances sensitivity (~ -132 dBm at 125 kHz) and airtime (~250 ms for typical 50B payload per appendix-design-rationale.md:7.1) for typical mesh density per appendix-design-rationale.md:7.6 and independent sim oracle in ccp16.json vectors. Adaptation prioritizes capacity (SF9 in low density <5 + good SNR >8 dB to reduce airtime ~2x) vs robustness (SF11/12 in density >8 or poor SNR or high load_factor to lower PER). This yields net capacity gain in sims at 50 nodes/km^2 despite longer airtime for higher SF. EMA on SNR (snr_ema = 0.1 * current + 0.9 * previous, updated via now()) integrates with load_factor override from gateway DIOs.
+
+Updates MUST be propagated in RPL metric container. Root optimizer uses reported neighbor_count and channel_util to minimize collisions.
+
+### 4.2. adaptive_sf_select
+
+Nodes MUST maintain per-neighbor tracking of SNR using EMA with alpha 0.1 over 300s window. Density is neighbor count. Load factor from DIO utilization. The algorithm MUST be:
+
+```
+function adaptive_sf_select(density, snr_db, load_factor, t):
+    snr_ema = ema_update(previous_ema, snr_db, t)
+    IF (density > 8) OR (snr_ema < 0) OR (load_factor > 0.8) THEN
+        RETURN 11
+    ELSE IF (density < 5) AND (snr_ema > 8.0) THEN
+        RETURN 9
+    ELSE IF (density > 20) OR (snr_ema < -5.0) THEN
+        RETURN 12
+    ELSE
+        RETURN 10
+```
+
+Per-SF SNR thresholds for fallback: SF9 >8 dB, SF10 >0 dB, SF11 >-5 dB, SF12 any. The selected SF MUST be signaled in DIOs per draft-lichen-rpl-lora-00. Nodes MUST RX scan control channel or use announcements for updates. Thresholds and EMA MUST produce identical results to ccp16.json vectors. See CCP-16.
+>>>>>>> origin/integration/worker11-20260722
 
 Flags are:
 
@@ -557,7 +643,10 @@ This section defines how a node detects synchronization loss and recovers.
 Terminology uses plain language because the state machine must be implementable
 by firmware engineers without real-time systems backgrounds.
 
-### States
+Implementations MUST follow the desynchronization recovery FSM defined in
+Table 1 exactly. Table 1 is normative per [RFC2119].
+
+### Table 1: Desynchronization Recovery States
 
 A CCP-capable node is always in exactly one of these states:
 
@@ -735,6 +824,8 @@ If a received beacon's epoch differs from the local epoch by more than one,
 the node's time estimate is grossly wrong. It MUST transition to RECOVER
 regardless of current state.
 
+Blacklist timer comparison and dwell calc use unsigned u32 subtraction; no underflow risk as timers reset frequently. Vectors in ccp16.json cover all wrap cases.
+
 ### GPS-Capable Nodes
 
 Nodes with GNSS-PPS hardware MAY use GPS time instead of beacon time:
@@ -779,9 +870,9 @@ GPS-capable nodes still listen for beacons to detect:
 Jamming CH0, GNSS jamming or spoofing, and compromised authorized roots remain
 denial-of-service risks.
 
-## CCP-15. Capacity Claims
+## CCP-15. Capacity Claims (parent bead project-LICHEN-da2q.15)
 
-CCP does not guarantee a fixed capacity multiplier.
+CCP does not guarantee a fixed capacity multiplier. Integration notes updated per codereview-1: interference mitigation (da2q.15.8) feeds directly into CCP-16 load_factor and SF/channel selection; test vectors in ccp_load_balancing.json are authoritative oracle for all impls. RAK2287 fixtures and interop vectors added per project-LICHEN-8f9e (packet formats, forwarder, multi-channel demod, cross-impl with SX126x).
 
 TDMA can remove scheduler-created same-domain overlaps under bounded clocks,
 but not external interference, legacy transmissions, jamming, or unsafe reuse.
@@ -875,7 +966,46 @@ The following require separate specifications and evidence:
 - adaptive slot duration or per-cell PHY profiles;
 - sleep scheduling that removes baseline receive availability.
 
+## Appendix A. Parameter Justifications
+
+Timing parameters (setup_window, occupied_time, guard, slot_duration): derived from TCXO drift, retune/ramp times, and airtime for SF10/125kHz frames. Constraint setup_window + occupied_time + 2*G <= slot_duration and E=(G-P-M)/2 prevent independent guard consumption. No fixed 50 ms guard; schedule-specific and hardware-qualified.
+
+Desync timers (T_DRIFT_WARN=30s, T_DRIFT_MAX=120s, T_GIVE_UP=600s): balance drift accumulation, power, and responsiveness. +50% RX in DRIFT is conservative. Configurable per deployment.
+
+PHY profile 0x01 (125 kHz, SF10, CR 4/5): range/throughput/regulatory tradeoff with computable airtime for slot fitting. ADR prohibited inside schedules.
+
+Simulator gates (4.0 median / 3.0 5th-percentile payload ratio, 50% collision reduction, <=5% p95 regression): engineering targets from measured overheads in 76-byte/7-pair and 64-source star scenarios. Seeds 0-99 paired with baseline; not protocol guarantees. Implementations must report measured values.
+
+19-byte cells, paging, 48-byte Schnorr48, 16-byte digest: LoRa bandwidth-driven scaling for large schedules. See test/vectors/ccp*.json for validation.
+
+## References
+
+### Normative References
+
+- [RFC2119] Bradner, S., "Key words for use in RFCs to Indicate
+  Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+- [RFC8174] Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC 2119
+  Key Words", BCP 14, RFC 8174, May 2017.
+
 ---
 
 [← Physical and Link Layers](02-physical-link.md) | [Index](README.md) |
 [Next: Adaptation Layer →](03-adaptation.md)
+
+
+
+
+
+
+
+
+<<<<<<< HEAD
+=======
+**Pseudocode Conventions (for CCP-15 frequency agility and all sections):**
+- `now()`: current monotonic time in milliseconds (u64, from boot or GNSS epoch).
+- `clamp(x, lo, hi)`: `max(lo, min(x, hi))` for numeric x (prevents wraparound).
+- Floating point thresholds (e.g. interference scores): MUST use exact values 0.1 (low), 0.5 (medium), 0.8 (high) for interoperability. Normative per §2.
+
+See parent epic da2q.13 and da2q.13.5 for full CCP. Frequency agility pseudocode (mitigate_and_transmit, channel selection with history scores) fixed per codereview wlb0.
+>>>>>>> origin/integration/worker4-20260722

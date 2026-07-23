@@ -22,6 +22,7 @@
 #endif
 
 #include <lichen/meshtastic/codec.h>
+#include <zephyr/kernel.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -77,6 +78,7 @@ struct lichen_meshtastic_position_snapshot {
 	uint8_t precision_bits;
 	bool timestamp_field_valid;
 	bool fix_time_rejected_below_epoch_floor;
+	bool fix_time_rejected_future;
 	uint32_t effective_epoch_floor;
 };
 
@@ -89,15 +91,9 @@ struct lichen_meshtastic_adapter_packet_info {
 	uint32_t portnum;
 	uint8_t to_eui64[8];
 	uint8_t to_iid[8];
-	/*
-	 * WARNING: payload points directly into internal stream_buf/ToRadio buffer.
-	 * Valid ONLY during the callback that receives this packet_info (e.g.
-	 * handle_text()). DO NOT store the pointer - buffer is immediately
-	 * reused on next frame, leading to use-after-free or corruption.
-	 * Copy payload if retention is needed. Strict lifetime discipline required.
-	 */
 	const uint8_t *payload;
 	size_t payload_len;
+	uint8_t payload_buf[LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX + 1U];
 	bool has_from;
 	bool has_to;
 	bool has_id;
@@ -240,9 +236,10 @@ struct lichen_meshtastic_adapter_ops {
 	 * enqueued. The hook must report the same queue used by
 	 * enqueue_from_radio; it is not a reservation or rollback mechanism, so
 	 * stale hook values or later enqueue failures can still leave partial
-	 * output. When omitted, the adapter keeps best-effort degraded semantics:
-	 * records are enqueued until enqueue_from_radio fails, and the caller may
-	 * observe a partial sync.
+	 * output (see enqueue_static_sync/enqueue_node_sync). When omitted, the
+	 * adapter keeps best-effort degraded semantics: records are enqueued
+	 * until enqueue_from_radio fails, and the caller may observe a partial
+	 * sync. Re-issue WantConfig to recover. (project-LICHEN-k1tb)
 	 */
 	lichen_meshtastic_adapter_queue_free_fn queue_free;
 	lichen_meshtastic_adapter_local_info_fn get_local_info;
@@ -257,6 +254,17 @@ struct lichen_meshtastic_adapter_ops {
 	lichen_meshtastic_adapter_location_fn handle_location;
 };
 
+/*
+ * THREAD SAFETY NOTE (project-LICHEN-9jlb):
+ * This adapter's mutable state (stats, stream buffers, from_radio_id,
+ * disconnected flag, etc.) is accessed from multiple contexts (RX feed_stream
+ * from interrupt or thread, TX emit_* from application thread, stats monitoring).
+ * No internal synchronization is provided (the k_mutex is initialized but
+ * unused by the implementation). Callers MUST serialize access to all
+ * mutating functions. get_stats() and disconnected() are safe for concurrent
+ * read-only use. Stats increments are not atomic.
+ */
+
 struct lichen_meshtastic_adapter {
 	struct lichen_meshtastic_adapter_ops ops;
 	struct lichen_meshtastic_adapter_stats stats;
@@ -268,6 +276,7 @@ struct lichen_meshtastic_adapter {
 	uint32_t from_radio_id;
 	bool stream_in_frame;
 	bool disconnected;
+	struct k_mutex lock;
 };
 
 void lichen_meshtastic_adapter_init(

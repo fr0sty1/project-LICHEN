@@ -1,12 +1,15 @@
 {
   "id": "project-LICHEN-2fb2",
   "title": "[codereview-pass3] coap_respond helper should handle NULL piv gracefully and add LOG_DBG for OSCORE path; current dtn version has no error if protect fails beyond log",
-  "status": "open",
+  "notes": "Commit: ba71ca722",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "created_at": "2026-07-22T15:51:13.325925039Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:51:13.325925039Z",
+  "updated_at": "2026-07-22T22:36:42.57304564Z",
+  "closed_at": "2026-07-22T22:36:42.57304564Z",
+  "close_reason": "coap_respond now handles NULL piv, adds LOG_DBG for OSCORE, proper error on protect paths; CBOR parse and rate limit completed per pass3 review",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-2fb2",

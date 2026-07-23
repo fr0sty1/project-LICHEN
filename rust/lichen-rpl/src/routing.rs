@@ -91,15 +91,18 @@ impl SourceRoutingHeader {
         }
         let addr_bytes = &data[6..];
         if !addr_bytes.len().is_multiple_of(16) {
-            // Address bytes must be a multiple of 16; partial trailing address is invalid.
             return Err(RplError::InvalidOption);
         }
         let addresses: Vec<[u8; 16]> = addr_bytes
             .chunks_exact(16)
             .map(|chunk| chunk.try_into().unwrap())
             .collect();
+        let segments_left = data[1];
+        if (segments_left as usize) > addresses.len() {
+            return Err(RplError::InvalidOption);
+        }
         Ok(Self {
-            segments_left: data[1],
+            segments_left,
             addresses,
         })
     }
@@ -273,8 +276,8 @@ pub struct DaoManager {
     pub routing_table: RoutingTable,
     dao_sequence: u8,
     parent_map: HashMap<[u8; 16], [u8; 16]>,
-    /// Last accepted DAO sequence per target (replay protection).
     dao_seq_map: HashMap<[u8; 16], u8>,
+    last_dao_ts: u32,
 }
 
 #[cfg(feature = "std")]
@@ -289,6 +292,7 @@ impl DaoManager {
             dao_sequence: 0,
             parent_map: HashMap::new(),
             dao_seq_map: HashMap::new(),
+            last_dao_ts: 0,
         }
     }
 
@@ -395,6 +399,7 @@ impl DaoManager {
                 self.routing_table.add_route(target, &path);
             }
         }
+        self.last_dao_ts = self.last_dao_ts.wrapping_add(1);
     }
 
     /// Walk target → parent → … → root and return the reversed downward path.

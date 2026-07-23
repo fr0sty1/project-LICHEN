@@ -45,7 +45,7 @@ from lichen.l2_payload import (
     wrap_routing_payload,
     wrap_schc_payload,
 )
-from lichen.link.link_layer import LinkLayer, RxFrame
+from lichen.link.link_layer import LinkLayer, ReceiveError, RxFrame
 from lichen.radio.base import Radio
 from lichen.routing.router import RouteDecision, Router
 from lichen.schc.headers import compress_packet, decompress_packet
@@ -231,21 +231,8 @@ class Node:
         return self._state_machine.state
 
     def _peer_lookup(self, hint: bytes) -> PeerIdentity | None:
-        """Look up a peer by IID hint.
-
-        Why a callback: LinkLayer needs to verify signatures but doesn't
-        own the peer database. This callback provides the lookup.
-
-        For now, returns the first matching peer. In production, would
-        use the hint (e.g., destination address) to narrow down.
-        """
-        # Why iterate: Without sender IID in frame, must try all peers.
-        # This is O(n) but n is small for mesh networks.
-        if hint and hint in self.peer_db:
+        if hint and len(hint) == 8 and hint in self.peer_db:
             return self.peer_db[hint]
-        # Try first peer as fallback (for testing)
-        if self.peer_db:
-            return next(iter(self.peer_db.values()))
         return None
 
     def add_peer(self, peer: PeerIdentity) -> None:
@@ -340,8 +327,13 @@ class Node:
         while True:
             try:
                 rx = await self.link.receive(self.config.receive_timeout_ms)
-                if rx is not None:
+                if rx is not None and not isinstance(rx, ReceiveError):
                     await self._process_received(rx)
+                elif isinstance(rx, ReceiveError):
+                    if rx in (ReceiveError.KEY_CHANGE, ReceiveError.REPLAY, ReceiveError.MIC_FAILED):
+                        logger.warning("link RX security event: %s", rx)
+                    else:
+                        logger.debug("link RX rejected: %s", rx)
             except asyncio.CancelledError:
                 break
             except Exception as e:

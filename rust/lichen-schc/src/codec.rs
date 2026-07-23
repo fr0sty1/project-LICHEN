@@ -125,12 +125,13 @@ impl<'a> BitReader<'a> {
 
     fn read(&mut self, nbits: usize) -> Result<u128, SchcError> {
         if nbits > 128 {
-            return Err(TooShort::new(nbits, 128).into());
+            return Err(TooShort::new(17, 16).into());
         }
         let required_bits = self.pos + nbits;
         let available_bits = self.buf.len() * 8;
         if required_bits > available_bits {
-            return Err(TooShort::new(required_bits.div_ceil(8), self.buf.len()).into());
+            let required_bytes = required_bits.div_ceil(8);
+            return Err(TooShort::new(required_bytes, self.buf.len()).into());
         }
         let mut value: u128 = 0;
         for _ in 0..nbits {
@@ -199,18 +200,22 @@ fn finalize(sum: u32) -> u16 {
     while s >> 16 != 0 {
         s = (s & 0xFFFF) + (s >> 16);
     }
-    !(s as u16)
+    let c = !(s as u16);
+    if c == 0 { 0xFFFF } else { c }
 }
 
-fn udp_checksum(src: &[u8], dst: &[u8], src_port: u16, dst_port: u16, payload: &[u8]) -> u16 {
-    let udp_len = (8 + payload.len()) as u16;
+fn udp_checksum(src: &[u8], dst: &[u8], src_port: u16, dst_port: u16, payload: &[u8]) -> Result<u16, SchcError> {
+    let total_len = 8usize.saturating_add(payload.len());
+    if total_len > u16::MAX as usize {
+        return Err(BufferTooSmall::new(total_len, u16::MAX as usize).into());
+    }
+    let udp_len = total_len as u16;
     let mut sum = pseudo_sum(src, dst, 17, udp_len);
     sum = oc_add(sum, src_port as u32);
     sum = oc_add(sum, dst_port as u32);
     sum = oc_add(sum, udp_len as u32);
-    // checksum field (0 during computation)
     sum = oc_add(sum, checksum_bytes(payload));
-    finalize(sum)
+    Ok(finalize(sum))
 }
 
 fn icmpv6_checksum(src: &[u8], dst: &[u8], icmpv6_payload: &[u8]) -> u16 {
@@ -573,9 +578,12 @@ fn decompress_coap(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     let dst = dst_int.to_be_bytes();
     let coap_b0 = (1u8 << 6) | ((coap_type & 0x3) << 4) | (coap_tkl & 0x0F);
     let coap_len = 4 + tail.len();
-    let udp_len = (8 + coap_len) as u16;
+    let total_udp = 8usize.saturating_add(coap_len);
+    if total_udp > u16::MAX as usize {
+        return Err(BufferTooSmall::new(total_udp, u16::MAX as usize).into());
+    }
+    let udp_len = total_udp as u16;
 
-    // Build CoAP bytes for checksum.
     if coap_len > SCHC_MAX_DECOMPRESSED {
         return Err(BufferTooSmall::new(coap_len, SCHC_MAX_DECOMPRESSED).into());
     }
@@ -587,7 +595,7 @@ fn decompress_coap(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     coap_buf[4..4 + tail.len()].copy_from_slice(tail);
     let coap_slice = &coap_buf[..coap_len];
 
-    let udp_cksum = udp_checksum(&src, &dst, src_port, dst_port, coap_slice);
+    let udp_cksum = udp_checksum(&src, &dst, src_port, dst_port, coap_slice)?;
     let total = 40 + 8 + coap_len;
     if total > out.len() {
         return Err(BufferTooSmall::new(total, out.len()).into());
@@ -769,7 +777,10 @@ fn decompress_rpl_dao(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     Ok(total)
 }
 
-fn decompress_mqtt_sn(data: &[u8], out: &mut [u8], _rule_id: u8) -> Result<usize, SchcError> {
+fn decompress_mqtt_sn(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, SchcError> {
+    if data.is_empty() || data[0] != rule_id {
+        return Err(SchcError::NoMatchingRule);
+    }
     let mut r = BitReader::new(&data[1..]);
 
     let hop_limit = r.read(8)? as u8;
@@ -803,8 +814,12 @@ fn decompress_mqtt_sn(data: &[u8], out: &mut [u8], _rule_id: u8) -> Result<usize
 
     let tail = &data[1 + r.residue_byte_end()..];
 
-    let udp_len = (8 + tail.len()) as u16;
-    let udp_cksum = udp_checksum(&src, &dst, src_port, dst_port, tail);
+    let total_len = 8usize.saturating_add(tail.len());
+    if total_len > u16::MAX as usize {
+        return Err(BufferTooSmall::new(total_len, u16::MAX as usize).into());
+    }
+    let udp_len = total_len as u16;
+    let udp_cksum = udp_checksum(&src, &dst, src_port, dst_port, tail)?;
     let total = 40 + 8 + tail.len();
     if total > out.len() {
         return Err(BufferTooSmall::new(total, out.len()).into());
@@ -832,8 +847,8 @@ fn decompress_mqtt_sn(data: &[u8], out: &mut [u8], _rule_id: u8) -> Result<usize
 /// matches. Returns the number of bytes written to `out`.
 pub fn compress(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     if packet.len() < 40 || packet[0] >> 4 != 6 {
-        // Not IPv6 — uncompressed fallback
-        let needed = 1 + packet.len();
+        // Not IPv6 — uncompressed fallback (saturating_add prevents usize overflow)
+        let needed = packet.len().saturating_add(1);
         if out.len() < needed {
             return Err(BufferTooSmall::new(needed, out.len()).into());
         }
@@ -899,8 +914,8 @@ pub fn compress(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
         }
     }
 
-    // Uncompressed fallback
-    let needed = 1 + packet.len();
+    // Uncompressed fallback (saturating_add prevents usize overflow)
+    let needed = packet.len().saturating_add(1);
     if out.len() < needed {
         return Err(BufferTooSmall::new(needed, out.len()).into());
     }
@@ -1047,7 +1062,7 @@ mod tests {
         let udp_len: u16 = 8 + payload.len() as u16;
 
         // Compute UDP checksum
-        let cksum = udp_checksum(&src_addr, &dst_addr, src_port, dst_port, payload);
+        let cksum = udp_checksum(&src_addr, &dst_addr, src_port, dst_port, payload).unwrap();
 
         // Build full IPv6 packet
         let mut packet = [0u8; 60];
@@ -1088,7 +1103,7 @@ mod tests {
         let payload = b"connect";
 
         let udp_len: u16 = 8 + payload.len() as u16;
-        let cksum = udp_checksum(&src_addr, &dst_addr, src_port, dst_port, payload);
+        let cksum = udp_checksum(&src_addr, &dst_addr, src_port, dst_port, payload).unwrap();
 
         let mut packet = [0u8; 64];
         packet[0] = 0x60;
@@ -1126,7 +1141,7 @@ mod tests {
         let payload = b"pub";
 
         let udp_len: u16 = 8 + payload.len() as u16;
-        let cksum = udp_checksum(&src_addr, &dst_addr, src_port, dst_port, payload);
+        let cksum = udp_checksum(&src_addr, &dst_addr, src_port, dst_port, payload).unwrap();
 
         let mut packet = [0u8; 64];
         packet[0] = 0x60;

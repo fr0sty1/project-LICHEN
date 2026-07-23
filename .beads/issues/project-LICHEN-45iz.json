@@ -2,11 +2,16 @@
   "id": "project-LICHEN-45iz",
   "title": "to_dict leaks mutable reference to errors list",
   "description": "## Location\npython/src/lichen/sim/metrics.py:85\n\n## Description\nThe to_dict() method returns a direct reference to self.errors rather than a copy. Unlike the set fields (packet_hashes_sent, packet_hashes_received, unique_peers) which are converted to new sorted lists, the errors list is included directly. Any caller that modifies the returned dictionary's errors key will corrupt the internal NodeMetrics state.\n\n## Failure Scenario\nCaller receives metrics dict via `d = node.metrics.to_dict()`, then calls `d['errors'].clear()` or `d['errors'].append('extra')`. The internal self.errors list is modified, corrupting the metrics for all future reads and serializations.\n\n## Category\ncorrectness",
-  "status": "open",
+  "notes": "Commit: 41a96d067",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-13T04:16:35.053988Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-13T04:16:35.054031Z"
+  "updated_at": "2026-07-22T22:48:29.918841843Z",
+  "started_at": "2026-07-22T22:46:51.724245307Z",
+  "closed_at": "2026-07-22T22:48:29.918841843Z",
+  "close_reason": "Fixed by using sorted(self.errors) for consistency and to avoid reference sharing"
 }

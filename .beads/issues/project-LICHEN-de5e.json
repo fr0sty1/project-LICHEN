@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-de5e",
+  "title": "[kimi-review] 3bd50d3: [SEVERITY: high] Stack buffers are only safe if the response",
+  "description": "Commit: 3bd50d339\nMessage: fix(coap): eliminate shared response buffer race Handlers now use per-call stack buffers. Closes project-LICHEN-cx3a\n\nFinding: [SEVERITY: high] Stack buffers are only safe if the response is fully consumed (serialized/transmitted) synchronously within the handler call. CoAP stacks commonly defer transmission (separate responses, retransmission of CON messages, observe notifications, async send queues). If anything retains a pointer to the buffer after the handler returns, this trades a race condition for a use-after-return. Verify no async path holds the buffer.",
+  "notes": "Commit: a371fc8e9",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:44:07.901632981Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:55:08.940362978Z",
+  "started_at": "2026-07-22T22:48:36.269562692Z",
+  "closed_at": "2026-07-22T22:55:08.940362978Z",
+  "close_reason": "Closed"
+}

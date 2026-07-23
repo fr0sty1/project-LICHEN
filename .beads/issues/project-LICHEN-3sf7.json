@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-3sf7",
+  "title": "[kimi-review] 7381a43: [SEVERITY: high] Empty commit claims a security-relevant fix",
+  "description": "Commit: 7381a433f\nMessage: fix(edhoc): prevent double export_oscore returning success on zeroed keys\n\nFinding: [SEVERITY: high] Empty commit claims a security-relevant fix (\"prevent double export_oscore returning success on zeroed keys\") but includes no actual changes. Either the fix was not committed, or the diff was lost — the described bug may still be present in the codebase.",
+  "notes": "Commit: 1ad6effbd",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:44:45.28673364Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:29:57.273174642Z",
+  "started_at": "2026-07-22T22:29:11.9100122Z",
+  "closed_at": "2026-07-22T22:29:57.273174642Z",
+  "close_reason": "Closed"
+}

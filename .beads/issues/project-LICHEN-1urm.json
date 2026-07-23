@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-1urm",
+  "title": "[kimi-review] 074cc10: [SEVERITY: low] Metadata noise inconsistent with the fix cla",
+  "description": "Commit: 074cc1067\nMessage: fix(coap): bound sync_word hex length in config parser\n\nFinding: [SEVERITY: low] Metadata noise inconsistent with the fix claim: assignee rewritten from \"Mark Atwood\" to \"AI",
+  "notes": "Commit: ba3596ba2",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:42:06.983959099Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:29:56.956308983Z",
+  "started_at": "2026-07-22T22:29:49.868025986Z",
+  "lease_expires_at": "2026-07-22T22:34:49.868025986Z",
+  "heartbeat_at": "2026-07-22T22:29:49.868025986Z"
+}

@@ -22,7 +22,7 @@ struct NodeMetrics {
     tx_bytes: u64,
     rx_bytes: u64,
     unique_peers: HashSet<[u8; 8]>,
-    errors: Vec<String>,
+    error_count: u32,
     packet_hashes_sent: HashSet<[u8; 16]>,
     packet_hashes_received: HashSet<[u8; 16]>,
 }
@@ -35,7 +35,7 @@ impl NodeMetrics {
             tx_bytes: 0,
             rx_bytes: 0,
             unique_peers: HashSet::new(),
-            errors: Vec::new(),
+            error_count: 0,
             packet_hashes_sent: HashSet::new(),
             packet_hashes_received: HashSet::new(),
         }
@@ -160,9 +160,7 @@ fn main() {
                 seq_num = seq_num.wrapping_add(1);
             }
             Err(e) => {
-                if metrics.errors.len() < 100 {
-                    metrics.errors.push(format!("TX error: {:?}", e));
-                }
+                metrics.error_count = metrics.error_count.saturating_add(1);
                 eprintln!("rust-{}: TX error: {:?}", node_id, e);
             }
         }
@@ -223,9 +221,7 @@ fn main() {
                 }
                 Ok(None) => {} // timeout
                 Err(e) => {
-                    if metrics.errors.len() < 100 {
-                        metrics.errors.push(format!("RX error: {:?}", e));
-                    }
+                    metrics.error_count = metrics.error_count.saturating_add(1);
                     eprintln!("rust-{}: RX error: {:?}", node_id, e);
                 }
             }
@@ -249,7 +245,7 @@ fn main() {
         "tx_bytes": metrics.tx_bytes,
         "rx_bytes": metrics.rx_bytes,
         "unique_peers": metrics.unique_peers.len(),
-        "errors": metrics.errors.len(),
+        "errors": metrics.error_count,
         "hashes_sent": metrics.packet_hashes_sent.len(),
         "hashes_received": metrics.packet_hashes_received.len(),
     });

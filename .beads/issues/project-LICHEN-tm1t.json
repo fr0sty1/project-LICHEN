@@ -2,11 +2,16 @@
   "id": "project-LICHEN-tm1t",
   "title": "coap_status.c: format_ipv6 does not use standard zero compression",
   "description": "File: lichen/subsys/lichen/coap/coap_status.c\nLines: 131-141\n\nThe IPv6 formatting function outputs addresses in non-standard format:\n```c\nreturn snprintf(buf, buf_size,\n        \"%02x%02x:%02x%02x:%02x%02x:%02x%02x:\"\n        \"%02x%02x:%02x%02x:%02x%02x:%02x%02x\", ...);\n```\n\nThis outputs \"fe80:0000:0000:0000:0211:22ff:fe33:4455\" instead of the standard \"fe80::211:22ff:fe33:4455\".\n\nWhile technically valid, this:\n1. Uses more bytes than necessary (increases CBOR size)\n2. Does not match the format used by net_addr_ntop in coap_msg.c\n3. May confuse clients expecting standard format\n\nCategory: PROTOCOL - non-standard address format",
-  "status": "open",
+  "notes": "Commit: 8a8ee17",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:44:20.489211Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:44:20.489248Z"
+  "updated_at": "2026-07-22T23:13:24.537247931Z",
+  "started_at": "2026-07-22T23:11:56.243241129Z",
+  "closed_at": "2026-07-22T23:13:24.537247931Z",
+  "close_reason": "format_ipv6 now uses net_addr_ntop for standard :: zero-compression (lichen/subsys/lichen/coap/coap_status.c:235); matches coap_msg.c; resolved merge conflicts in coap subsystem; commit 8a8ee17"
 }

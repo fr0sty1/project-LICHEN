@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-6ab3",
+  "title": "[kimi-review] 37223cc: [SEVERITY: low] The one visible hunk (ec2-arm64.yml) is trun",
+  "description": "Commit: 37223ccd5\nMessage: fix: batch zephyr integration, test vectors, renode support and spec updates\n\nFinding: [SEVERITY: low] The one visible hunk (ec2-arm64.yml) is truncated mid-command (`pip3 install we...`), so even it can't be verified — if this changed the dependency install line, a typo here would silently break CI (or worse, install an unintended package).",
+  "notes": "Commit: f3925bc67",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:21:55.412370766Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:29:37.394577968Z",
+  "started_at": "2026-07-22T22:28:59.374275123Z",
+  "closed_at": "2026-07-22T22:29:37.394577968Z",
+  "close_reason": "Fixed ec2-arm64.yml install steps: made pip3 commands explicit with --user, added uv install, combined deps step, full non-truncated commands for reviewability and CI reliability. No mid-command truncation. Commit f3925bc67."
+}

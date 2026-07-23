@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-1gz5",
+  "title": "[kimi-review] 732462f: [SEVERITY: medium] The commit diff contains no code changes ",
+  "description": "Commit: 732462f6c\nMessage: fix(tx_queue): check clock_gettime return value\n\nFinding: [SEVERITY: medium] The commit diff contains no code changes — only the commit header and message. Despite the message claiming to \"check clock_gettime return value,\" no actual modifications to tx_queue (or any file) are present. This is either an empty commit or the diff was omitted. In either case, the claimed fix cannot be verified and, if the commit is truly empty, the bug it purports to fix remains unaddressed.",
+  "notes": "Commit: 74e11fbac",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:50:06.802411425Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:26:40.102309722Z",
+  "started_at": "2026-07-22T22:26:33.203688654Z",
+  "closed_at": "2026-07-22T22:26:40.102309722Z",
+  "close_reason": "tx_queue clock_gettime check refined and verified; empty commit addressed via real diff; tests/builds clean"
+}

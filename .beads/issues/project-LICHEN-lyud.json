@@ -2,10 +2,13 @@
   "id": "project-LICHEN-lyud",
   "title": "[codereview-pass1] minor: populate_routes rebuilds map on every mesh frame; could cache last DAO time",
   "description": "Performance P3. No correctness issue. discovered-from:project-LICHEN-fy9q",
-  "status": "open",
+  "notes": "Commit: a2782839c",
+  "status": "closed",
   "priority": 3,
   "issue_type": "chore",
   "created_at": "2026-07-22T15:54:04.432007503Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:54:04.432007503Z"
+  "updated_at": "2026-07-22T22:34:55.1443816Z",
+  "closed_at": "2026-07-22T22:34:55.1443816Z",
+  "close_reason": "Closed"
 }

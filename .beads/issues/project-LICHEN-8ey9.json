@@ -1,12 +1,17 @@
 {
   "id": "project-LICHEN-8ey9",
   "title": "codereview P3: echo reply dst check only matches link-local, misses ULA/GUA",
-  "status": "open",
+  "notes": "Commit: 7dd22cb93",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:03:42.432429371Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:03:42.432429371Z",
+  "updated_at": "2026-07-22T22:34:51.702195488Z",
+  "started_at": "2026-07-22T22:34:11.202598113Z",
+  "closed_at": "2026-07-22T22:34:51.702195488Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-8ey9",

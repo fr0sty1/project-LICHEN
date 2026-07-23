@@ -126,7 +126,8 @@ hal_location_fix_state_from_app(enum lichen_app_location_fix_state fix_state)
 	case LICHEN_APP_LOCATION_FIX_3D:
 		return LICHEN_HAL_LOCATION_FIX_3D;
 	case LICHEN_APP_LOCATION_FIX_STALE:
-		return LICHEN_HAL_LOCATION_FIX_STALE;
+		__ASSERT(false, "STALE not valid from app side");
+		return LICHEN_HAL_LOCATION_FIX_NONE;
 	case LICHEN_APP_LOCATION_FIX_ERROR:
 		return LICHEN_HAL_LOCATION_FIX_ERROR;
 	case LICHEN_APP_LOCATION_FIX_NONE:
@@ -166,12 +167,13 @@ static bool valid_app_time_source_class(
 static const char *default_source_name(
 	enum lichen_hal_location_source_class source_class)
 {
-	switch (source_class) {
-	case LICHEN_HAL_LOCATION_SOURCE_NETWORK:
+	enum lichen_app_location_source_class app_class =
+		app_location_source_class_from_hal(source_class);
+	switch (app_class) {
+	case LICHEN_APP_LOCATION_SOURCE_NETWORK:
 		return APP_LOCATION_NETWORK_SOURCE_NAME;
-	case LICHEN_HAL_LOCATION_SOURCE_MANUAL_STATIC:
+	case LICHEN_APP_LOCATION_SOURCE_MANUAL_STATIC:
 		return APP_LOCATION_MANUAL_SOURCE_NAME;
-	case LICHEN_HAL_LOCATION_SOURCE_LOCAL_CLIENT:
 	default:
 		return APP_LOCATION_DEFAULT_SOURCE_NAME;
 	}
@@ -239,9 +241,12 @@ int lichen_app_location_time_from_hal(
 		.vertical_accuracy_mm_valid = hal->vertical_accuracy_mm_valid,
 		.vertical_accuracy_mm = hal->vertical_accuracy_mm,
 	};
-	memcpy(app->source_name, hal->source_name,
-		sizeof(app->source_name) - 1U);
-	app->source_name[sizeof(app->source_name) - 1U] = '\0';
+	size_t name_len = strnlen(hal->source_name, sizeof(app->source_name));
+	if (name_len == sizeof(app->source_name)) {
+		return -EINVAL;
+	}
+	memcpy(app->source_name, hal->source_name, name_len);
+	app->source_name[name_len] = '\0';
 	return 0;
 }
 
@@ -278,12 +283,18 @@ int lichen_app_time_from_hal(struct lichen_app_time_snapshot *app,
 		.provision_epoch_valid = hal->provision_epoch_valid,
 		.provision_epoch = hal->provision_epoch,
 	};
-	memcpy(app->source_name, hal->source_name,
-		sizeof(app->source_name) - 1U);
-	app->source_name[sizeof(app->source_name) - 1U] = '\0';
-	memcpy(app->rejection_source_name, hal->rejection_source_name,
-		sizeof(app->rejection_source_name) - 1U);
-	app->rejection_source_name[sizeof(app->rejection_source_name) - 1U] = '\0';
+	size_t name_len = strnlen(hal->source_name, sizeof(app->source_name));
+	if (name_len == sizeof(app->source_name)) {
+		return -EINVAL;
+	}
+	memcpy(app->source_name, hal->source_name, name_len);
+	app->source_name[name_len] = '\0';
+	name_len = strnlen(hal->rejection_source_name, sizeof(app->rejection_source_name));
+	if (name_len == sizeof(app->rejection_source_name)) {
+		return -EINVAL;
+	}
+	memcpy(app->rejection_source_name, hal->rejection_source_name, name_len);
+	app->rejection_source_name[name_len] = '\0';
 	return 0;
 }
 

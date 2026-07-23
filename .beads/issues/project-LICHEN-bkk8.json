@@ -1,12 +1,16 @@
 {
   "id": "project-LICHEN-bkk8",
   "title": "codereview-pass2 mq7a chunk1: new baseline SF10 clarification sentence accurate but should also update pseudocode default comment from 'moderate default' sf=9 to sf=10 for full consistency with appendix",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:41:29.700342271Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:41:29.700342271Z",
+  "updated_at": "2026-07-22T21:30:44.220848793Z",
+  "started_at": "2026-07-22T21:30:44.220848793Z",
+  "lease_expires_at": "2026-07-22T21:35:44.220848793Z",
+  "heartbeat_at": "2026-07-22T21:30:44.220848793Z",
   "labels": [
     "codereview"
   ],

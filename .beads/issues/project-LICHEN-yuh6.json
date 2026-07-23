@@ -2,11 +2,16 @@
   "id": "project-LICHEN-yuh6",
   "title": "senml: decode ignores trailing bytes after valid pack",
   "description": "File: rust/lichen-senml/src/cbor.rs\nLines: 434-501 (decode function)\n\nAfter successfully parsing n_recs records, the decode function returns Ok(n_recs) without verifying that all input bytes were consumed. Trailing garbage bytes are silently ignored.\n\nThis affects:\n1. Record::parse() which expects exactly one record from a complete buffer\n2. Detection of malformed or truncated input\n3. Security: extra bytes could be an injection attempt\n\nExample: A buffer containing a valid 1-record pack followed by arbitrary bytes will parse successfully, masking the corruption.\n\nImpact: Silent acceptance of malformed input; potential security issue if trailing data is attacker-controlled.\n\nFix: Add check at end of decode():\n```rust\nif pos != data.len() {\n    return Err(CborError::InvalidInput);  // trailing bytes\n}\n```",
-  "status": "open",
+  "notes": "Commit: d6bf042d9",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:39:11.448749Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:39:11.448783Z"
+  "updated_at": "2026-07-22T23:32:42.620320762Z",
+  "started_at": "2026-07-22T23:28:33.969830218Z",
+  "closed_at": "2026-07-22T23:32:42.620320762Z",
+  "close_reason": "Closed"
 }

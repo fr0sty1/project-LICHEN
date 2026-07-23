@@ -2,11 +2,16 @@
   "id": "project-LICHEN-tstp",
   "title": "BLE transport: conn_cb called outside mutex may race with state changes",
   "description": "File: lichen/subsys/lichen/transport/ble_ipsp_transport.c\nLines: 136-139, 156-159, 186-189\n\nConnection callbacks are invoked after releasing the mutex, creating a race window:\n\n    k_mutex_unlock(\u0026transport_state.lock);\n    ...\n    if (transport_state.config.conn_cb) {\n        transport_state.config.conn_cb(LICHEN_BLE_CONNECTED,\n                                       transport_state.config.user_ctx);\n    }\n\nProblems:\n1. transport_state.config is read without holding the lock\n2. Between unlock and callback invocation, another thread could modify state\n3. The callback receives potentially stale state information\n\nWhile config is typically set once at init and doesn't change, this pattern is fragile. If security_changed_cb updates state to PAIRED, then quickly to SECURE, callbacks could be invoked out of order.\n\nFix: Either copy the callback pointer under lock then invoke, or document the ordering guarantees (or lack thereof) for connection callbacks.",
-  "status": "open",
+  "notes": "Commit: 684f46bbd",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:54:15.760181Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:54:15.760218Z"
+  "updated_at": "2026-07-22T23:06:02.218686157Z",
+  "started_at": "2026-07-22T23:02:24.642923757Z",
+  "closed_at": "2026-07-22T23:06:02.218686157Z",
+  "close_reason": "Closed"
 }

@@ -181,10 +181,7 @@ impl<R: Radio> SecureStack<R> {
             .protect_request(MessageCode::GET.0, &class_e[..class_e_len], &[])
             .map_err(|_| SecureError::EncryptFailed)?;
 
-        // Extract PIV from OSCORE option for response decryption
-        // Option format: flags(1) | piv(n) | kid(rest), where n = flags & 0x07
         let piv_len = (oscore_opt[0] & 0x07) as usize;
-        // SECURITY: Bounds check to prevent panic on malformed OSCORE option
         if oscore_opt.len() < 1 + piv_len {
             return Err(SecureError::CoapEncode);
         }

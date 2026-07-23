@@ -2,11 +2,16 @@
   "id": "project-LICHEN-udja",
   "title": "[merge-conflict] worker8: 05-routing.md",
   "description": "Resolve merge conflict in spec/05-routing.md between main and integration/worker8-20260722. Keep BOTH sets of changes.",
-  "status": "open",
+  "notes": "Commit: 727e10de9",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:52:15.39878701Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T20:52:15.39878701Z"
+  "updated_at": "2026-07-22T21:22:15.594001526Z",
+  "started_at": "2026-07-22T21:21:52.784117685Z",
+  "closed_at": "2026-07-22T21:22:15.594001526Z",
+  "close_reason": "Resolved merge conflict in spec/05-routing.md by incorporating Ed25519 security reference from worker8 branch alongside gateway-centric mode updates from worker4. Verified both changes preserved in address classification table. Committed 727e10de9 and pushed."
 }

@@ -2,11 +2,16 @@
   "id": "project-LICHEN-rl9v",
   "title": "aprs_is.rs: lat/lon conversion truncates precision via i32 cast",
   "description": "File: rust/lichen-gateway/src/aprs_is.rs\nLines: 495-496\n\nWhen converting APRS position to CompactCot, the latitude and longitude are converted using a simple cast that truncates rather than rounds:\n\n```rust\nSome(CompactCot {\n    // ...\n    lat_microdeg: (lat * 1_000_000.0) as i32,  // truncates toward zero\n    lon_microdeg: (lon * 1_000_000.0) as i32,  // truncates toward zero\n    // ...\n})\n```\n\nFor positive values, truncation rounds down. For negative values (Southern/Western hemispheres), truncation rounds up (toward zero). This creates asymmetric behavior and up to 1 microdegree (~0.1m) of error.\n\nExample:\n- 37.7749 degrees -\u003e 37774900 microdegrees (correct: truncation == rounding down)\n- -122.4194 degrees -\u003e -122419400 (truncated) vs -122419400 (correct, same)\n- But 37.7749999 -\u003e 37774999 when it should round to 37775000\n\nImpact: Sub-meter position error, which is likely acceptable for APRS (already has ~18m precision), but inconsistent with proper rounding.\n\nFix: Use rounding instead of truncation:\n```rust\nlat_microdeg: (lat * 1_000_000.0).round() as i32,\nlon_microdeg: (lon * 1_000_000.0).round() as i32,\n```\n\nTags: correctness, precision, aprs, gateway",
-  "status": "open",
+  "notes": "Commit: 2965f0b",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:32:14.455288Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:32:14.455327Z"
+  "updated_at": "2026-07-22T23:36:49.748600034Z",
+  "started_at": "2026-07-22T23:34:02.322440626Z",
+  "closed_at": "2026-07-22T23:36:49.748600034Z",
+  "close_reason": "Fixed by using .round() instead of direct cast to i32 in aprs_to_cot (already present in code at rust/lichen-gateway/src/aprs_is.rs:595); added commit with bead tracking; tests pass for rounding and roundtrip"
 }

@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-bben",
+  "title": "Add LICHEN_DUTY_CYCLE struct and API to hal.h",
+  "description": "Add struct lichen_duty_cycle_ctx with static array[32], init, record_tx, remaining_ms, usage_permille, can_transmit, next_tx_available_ms. Use LICHEN_ prefixes, no comments. Match Rust logic for prune/prorate.",
+  "notes": "Commit: 5e02d0727",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:36:06.453316242Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:52:59.899408368Z",
+  "started_at": "2026-07-22T22:50:39.969882244Z",
+  "closed_at": "2026-07-22T22:52:59.899408368Z",
+  "close_reason": "Renamed tracker to ctx per bead, updated API function names to lichen_duty_cycle_* matching listed methods, updated all call sites and impl to match Rust prune (evict_stale) and prorate (overlap) logic, no comments added, static array[32] preserved in struct. Verified via test_duty_cycle_ccp13."
+}

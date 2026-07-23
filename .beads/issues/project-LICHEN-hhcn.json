@@ -2,11 +2,16 @@
   "id": "project-LICHEN-hhcn",
   "title": "pending_drop_tail decrement may wrap with count underflow protection",
   "description": "File: lichen/subsys/lichen/meshcore/adapter.c\nLines: 300-312 (pending_drop_tail)\n\n```c\nstatic void pending_drop_tail(struct lichen_meshcore_adapter *adapter)\n{\n    if (adapter-\u003epending_count == 0U) {\n        return;  // Correctly guards against count underflow\n    }\n\n    adapter-\u003epending_tail =\n        (adapter-\u003epending_tail + ARRAY_SIZE(adapter-\u003epending) - 1U) %\n        ARRAY_SIZE(adapter-\u003epending);\n    memset(\u0026adapter-\u003epending[adapter-\u003epending_tail], 0,\n           sizeof(adapter-\u003epending[adapter-\u003epending_tail]));\n    adapter-\u003epending_count--;\n}\n```\n\nThe function checks pending_count before operating, which is good. However:\n\n1. The decrement order is: update tail, clear entry, decrement count. If an interrupt fires between tail update and count decrement, the state is inconsistent.\n\n2. The modulo operation handles wrap correctly: if pending_tail is 0 and ARRAY_SIZE is 8, then (0 + 8 - 1) % 8 = 7. Good.\n\n3. pending_count is uint8_t. The decrement is safe due to the \u003e 0 guard.\n\nThe interrupt concern is worth documenting if this code runs in interrupt context. Add comment about reentrancy requirements.",
-  "status": "open",
+  "notes": "Commit: fafb267bb",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:48:05.126181Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:48:05.126209Z"
+  "updated_at": "2026-07-22T23:02:04.838062022Z",
+  "started_at": "2026-07-22T23:01:25.562914186Z",
+  "closed_at": "2026-07-22T23:02:04.838062022Z",
+  "close_reason": "Closed"
 }

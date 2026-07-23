@@ -368,7 +368,7 @@ int lichen_config_decode_radio_cbor(const uint8_t *buf, size_t len,
 		if (key.len == sizeof(KEY_FREQ_MHZ) - 1 &&
 		    memcmp(key.value, KEY_FREQ_MHZ, key.len) == 0) {
 			double val;
-			if (!zcbor_float64_decode(state, &val) || val <= 0) {
+			if (!zcbor_float64_decode(state, &val) || val <= 0 || val > 4294967.295) {
 				(void)zcbor_list_map_end_force_decode(state);
 				return -EINVAL;
 			}
@@ -376,7 +376,8 @@ int lichen_config_decode_radio_cbor(const uint8_t *buf, size_t len,
 		} else if (key.len == sizeof(KEY_BW_KHZ) - 1 &&
 			   memcmp(key.value, KEY_BW_KHZ, key.len) == 0) {
 			uint32_t val;
-			if (!zcbor_uint32_decode(state, &val)) {
+			if (!zcbor_uint32_decode(state, &val) ||
+			    val == 0 || val > 65535) {
 				(void)zcbor_list_map_end_force_decode(state);
 				return -EINVAL;
 			}
@@ -415,9 +416,13 @@ int lichen_config_decode_radio_cbor(const uint8_t *buf, size_t len,
 				(void)zcbor_list_map_end_force_decode(state);
 				return -EINVAL;
 			}
-			/* Parse "0x34" format - max 4 hex digits for uint16_t */
-			if (val.len >= 2 && val.len <= 6 && val.value[0] == '0' &&
+			if (val.len >= 2 && val.len <= 10 && val.value[0] == '0' &&
 			    (val.value[1] == 'x' || val.value[1] == 'X')) {
+				size_t hex_len = val.len - 2;
+				if (hex_len > 4) {
+					(void)zcbor_list_map_end_force_decode(state);
+					return -EINVAL;
+				}
 				unsigned long v = 0;
 				for (size_t i = 2; i < val.len; i++) {
 					char c = (char)val.value[i];

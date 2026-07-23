@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-t3oy",
+  "title": "[kimi-review] f8d2596: [SEVERITY: high] The commit contains no actual code changes ",
+  "description": "Commit: f8d259667\nMessage: fix(routing): prevent integer overflow in GPSR distance_approx_m()\n\nFinding: [SEVERITY: high] The commit contains no actual code changes — the diff shows only the commit header and message. Either the fix was never committed (empty commit) or the diff was omitted from what I was given. A commit claiming to fix an integer overflow with no diff means the bug is almost certainly still present.",
+  "notes": "Commit: eee7731f0",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:01:47.281724446Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:29:00.879197863Z",
+  "started_at": "2026-07-22T22:28:49.993020307Z",
+  "closed_at": "2026-07-22T22:29:00.879197863Z",
+  "close_reason": "Closed"
+}

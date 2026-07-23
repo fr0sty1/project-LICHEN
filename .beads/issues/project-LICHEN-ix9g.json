@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-ix9g",
+  "title": "RAK2287 hardware abstraction layer (SPI/SX130x)",
+  "description": "Implement platform-agnostic driver for RAK2287 concentrator (SX1302 baseband + SX1250 RF). Support reset, SPI, IRQ, GPS PPS. Target Rust lora-phy or new concentrator crate. Link to epic project-LICHEN-253m.",
+  "notes": "Commit: fb2de2ffe",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:31:40.709640155Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:40:41.087382858Z",
+  "started_at": "2026-07-22T22:38:17.622129773Z",
+  "closed_at": "2026-07-22T22:40:41.087382858Z",
+  "close_reason": "Added Concentrator trait to lichen-hal/lib.rs (reset/SPI/IRQ/PPS/configure; matches Radio style for RAK2287/SX130x). Linked to epic 253m."
+}

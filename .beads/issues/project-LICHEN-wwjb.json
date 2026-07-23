@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-wwjb",
+  "title": "[kimi-review] 3bd50d3: [SEVERITY: medium] Stack overflow risk on constrained/embedd",
+  "description": "Commit: 3bd50d339\nMessage: fix(coap): eliminate shared response buffer race Handlers now use per-call stack buffers. Closes project-LICHEN-cx3a\n\nFinding: [SEVERITY: medium] Stack overflow risk on constrained/embedded targets (typical for CoAP). If the buffer is sized for a full CoAP message (~1 KB+ to cover IPv6 minimum MTU or block-wise payloads) and the handler stack is small, this can overflow the stack — a bug that may only manifest under specific call depths.",
+  "notes": "Commit: 3b3d142ab",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:44:08.222050973Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T21:55:46.927578763Z",
+  "started_at": "2026-07-22T21:52:02.306414181Z",
+  "closed_at": "2026-07-22T21:55:46.927578763Z",
+  "close_reason": "Closed"
+}

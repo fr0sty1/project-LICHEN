@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-by26",
+  "title": "[kimi-review] eaed7ad: [SEVERITY: high] The diff contains no actual code changes — ",
+  "description": "Commit: eaed7ad5e\nMessage: fix(announce): zero signature buffer after use\n\nFinding: [SEVERITY: high] The diff contains no actual code changes — only the commit message. Either the commit is empty (the claimed fix was never applied) or the diff is incomplete/truncated and cannot be reviewed.",
+  "notes": "Commit: b6af1ea91",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:06:41.995255555Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:27:51.100364513Z",
+  "started_at": "2026-07-22T22:27:00.318371919Z",
+  "closed_at": "2026-07-22T22:27:51.100364513Z",
+  "close_reason": "Added explicit memset(signed_data, 0, sizeof(signed_data)) after use in build_announce_frame (TX path). Signature already zeroed in all paths; this ensures full buffer clearing post-sign. Real code change addresses empty-diff review finding. Commit b6af1ea91. Follows secure zeroing pattern."
+}

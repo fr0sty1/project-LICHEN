@@ -22,6 +22,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/ring_buffer.h>
+#include <zephyr/sys/atomic.h>
 
 LOG_MODULE_REGISTER(kiss_transport, CONFIG_KISS_TRANSPORT_LOG_LEVEL);
 
@@ -35,7 +36,7 @@ LOG_MODULE_REGISTER(kiss_transport, CONFIG_KISS_TRANSPORT_LOG_LEVEL);
 struct kiss_transport_ctx {
 	const struct device *uart_dev;
 	bool initialized;
-	volatile bool shutdown;  /* Signal RX thread to exit */
+	atomic_t shutdown;
 	struct kiss_transport_config config;
 
 	/* KISS timing parameters */
@@ -160,43 +161,55 @@ int kiss_encode(uint8_t port, uint8_t cmd,
 		return -EINVAL;
 	}
 
-	if (frame_max < 2u * (data_len + 2u)) {
+	if (frame_max < 3u) {
 		return -ENOMEM;
 	}
 
-	/* Start with FEND */
 	frame[fi++] = KISS_FEND;
 
-	/* Command byte: port in high nibble, command in low nibble.
-	 * Escape it like payload bytes: (port=12, cmd=0) makes it collide
-	 * with FEND (0xC0) and would corrupt the framing on the wire. */
 	cmd_byte = KISS_CMD_MAKE(port, cmd);
 	if (cmd_byte == KISS_FEND) {
+		if (fi + 2 > frame_max) {
+			return -ENOMEM;
+		}
 		frame[fi++] = KISS_FESC;
 		frame[fi++] = KISS_TFEND;
 	} else if (cmd_byte == KISS_FESC) {
+		if (fi + 2 > frame_max) {
+			return -ENOMEM;
+		}
 		frame[fi++] = KISS_FESC;
 		frame[fi++] = KISS_TFESC;
 	} else {
 		frame[fi++] = cmd_byte;
 	}
 
-	/* Encode data with escaping */
 	for (size_t i = 0; i < data_len; i++) {
 		uint8_t b = data[i];
 
 		if (b == KISS_FEND) {
+			if (fi + 2 > frame_max) {
+				return -ENOMEM;
+			}
 			frame[fi++] = KISS_FESC;
 			frame[fi++] = KISS_TFEND;
 		} else if (b == KISS_FESC) {
+			if (fi + 2 > frame_max) {
+				return -ENOMEM;
+			}
 			frame[fi++] = KISS_FESC;
 			frame[fi++] = KISS_TFESC;
 		} else {
+			if (fi + 1 > frame_max) {
+				return -ENOMEM;
+			}
 			frame[fi++] = b;
 		}
 	}
 
-	/* End with FEND */
+	if (fi + 1 > frame_max) {
+		return -ENOMEM;
+	}
 	frame[fi++] = KISS_FEND;
 
 	*frame_len = fi;
@@ -252,6 +265,7 @@ static void handle_timing_command(struct kiss_transport_ctx *ctx,
 }
 
 static void handle_sethardware(struct kiss_transport_ctx *ctx,
+			       uint8_t port,
 			       const uint8_t *data, size_t len)
 {
 	uint8_t response[64];
@@ -269,7 +283,7 @@ static void handle_sethardware(struct kiss_transport_ctx *ctx,
 		size_t resp_frame_len;
 		uint8_t resp_cmd = KISS_CMD_SETHARDWARE | 0x80u;
 
-		if (kiss_encode(0, resp_cmd, response, (size_t)resp_len,
+		if (kiss_encode(port, resp_cmd, response, (size_t)resp_len,
 				resp_frame, sizeof(resp_frame), &resp_frame_len) == 0) {
 			k_mutex_lock(&ctx->tx_mutex, K_FOREVER);
 			if (ctx->uart_dev != NULL) {
@@ -294,6 +308,10 @@ static void dispatch_frame(struct kiss_transport_ctx *ctx)
 			ctx->stats.rx_data_port0++;
 		} else if (port == KISS_PORT_LICHEN_RAW) {
 			ctx->stats.rx_data_port1++;
+		} else if (port == KISS_PORT_LCI_IPV6) {
+			ctx->stats.rx_data_lci_ipv6++;
+		} else if (port == KISS_PORT_LCI_CTRL) {
+			ctx->stats.rx_data_lci_ctrl++;
 		} else {
 			ctx->stats.unknown_port++;
 		}
@@ -318,6 +336,16 @@ static void dispatch_frame(struct kiss_transport_ctx *ctx)
 				ctx->config.raw_rx_cb(ctx->rx_ctx.buf, ctx->rx_ctx.len,
 						      ctx->config.user_ctx);
 			}
+		} else if (port == KISS_PORT_LCI_IPV6) {
+			if (ctx->config.lci_ipv6_cb != NULL) {
+				ctx->config.lci_ipv6_cb(ctx->rx_ctx.buf, ctx->rx_ctx.len,
+							ctx->config.user_ctx);
+			}
+		} else if (port == KISS_PORT_LCI_CTRL) {
+			if (ctx->config.lci_ctrl_cb != NULL) {
+				ctx->config.lci_ctrl_cb(ctx->rx_ctx.buf, ctx->rx_ctx.len,
+							ctx->config.user_ctx);
+			}
 		} else {
 			LOG_WRN("KISS: data on unsupported port %u", port);
 		}
@@ -332,7 +360,7 @@ static void dispatch_frame(struct kiss_transport_ctx *ctx)
 		break;
 
 	case KISS_CMD_SETHARDWARE:
-		handle_sethardware(ctx, ctx->rx_ctx.buf, ctx->rx_ctx.len);
+		handle_sethardware(ctx, port, ctx->rx_ctx.buf, ctx->rx_ctx.len);
 		break;
 
 	case KISS_CMD_RETURN:
@@ -363,7 +391,7 @@ static void uart_rx_callback(const struct device *dev, void *user_data)
 
 			if (written == 0) {
 				LOG_WRN("KISS RX: ring buffer overflow");
-				ctx->stats.overflow_errors++;
+				atomic_inc((atomic_t *)&ctx->stats.overflow_errors);
 			}
 			k_sem_give(&ctx->rx_sem);
 		}
@@ -381,16 +409,17 @@ static void kiss_rx_thread_fn(void *p1, void *p2, void *p3)
 
 	LOG_INF("KISS RX thread started");
 
-	while (!ctx->shutdown) {
+	while (atomic_get(&ctx->shutdown) == 0) {
 		k_sem_take(&ctx->rx_sem, K_FOREVER);
-		if (ctx->shutdown) {
+
+		if (atomic_get(&ctx->shutdown) != 0) {
 			break;
 		}
-		while (!ctx->shutdown && (n = ring_buf_get(&ctx->rx_ring, buf, sizeof(buf))) > 0) {
+		while (atomic_get(&ctx->shutdown) == 0 && (n = ring_buf_get(&ctx->rx_ring, buf, sizeof(buf))) > 0) {
 			k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 			ctx->stats.rx_bytes += n;
 			k_mutex_unlock(&ctx->stats_mutex);
-			for (uint32_t i = 0; !ctx->shutdown && i < n; i++) {
+			for (uint32_t i = 0; atomic_get(&ctx->shutdown) == 0 && i < n; i++) {
 				int ret = kiss_decode_byte(&ctx->rx_ctx, buf[i]);
 				if (ret == 1) {
 					dispatch_frame(ctx);
@@ -453,6 +482,10 @@ static int kiss_tx_frame(struct kiss_transport_ctx *ctx,
 			ctx->stats.tx_data_port0++;
 		} else if (port == KISS_PORT_LICHEN_RAW) {
 			ctx->stats.tx_data_port1++;
+		} else if (port == KISS_PORT_LCI_IPV6) {
+			ctx->stats.tx_data_lci_ipv6++;
+		} else if (port == KISS_PORT_LCI_CTRL) {
+			ctx->stats.tx_data_lci_ctrl++;
 		}
 		k_mutex_unlock(&ctx->stats_mutex);
 	} else {
@@ -478,7 +511,8 @@ int kiss_transport_init(const struct kiss_transport_config *config)
 	}
 
 	/* At least one RX callback required */
-	if (config->ax25_rx_cb == NULL && config->raw_rx_cb == NULL) {
+	if (config->ax25_rx_cb == NULL && config->raw_rx_cb == NULL &&
+	    config->lci_ipv6_cb == NULL && config->lci_ctrl_cb == NULL) {
 		LOG_ERR("KISS: at least one RX callback required");
 		return -EINVAL;
 	}
@@ -493,7 +527,7 @@ int kiss_transport_init(const struct kiss_transport_config *config)
 	k_mutex_init(&ctx->stats_mutex);
 	k_sem_init(&ctx->rx_sem, 0, K_SEM_MAX_LIMIT);
 	ring_buf_init(&ctx->rx_ring, sizeof(ctx->rx_ring_buf), ctx->rx_ring_buf);
-	ctx->shutdown = false;
+	atomic_set(&ctx->shutdown, 0);
 
 	/* Initialize RX decoder */
 	kiss_decode_init(&ctx->rx_ctx);
@@ -551,21 +585,24 @@ void kiss_transport_deinit(void)
 		return;
 	}
 
-	/* Disable UART interrupts first to prevent new data arriving */
 	if (ctx->uart_dev != NULL) {
 		uart_irq_rx_disable(ctx->uart_dev);
 	}
 
-	/* Signal the RX thread to shut down */
-	ctx->shutdown = true;
-	k_sem_give(&ctx->rx_sem);  /* Wake thread if waiting on semaphore */
+	atomic_set(&ctx->shutdown, 1);
+	k_sem_give(&ctx->rx_sem);
 
-	/* Wait for the RX thread to exit gracefully */
 	int ret = k_thread_join(&s_rx_thread, K_MSEC(1000));
 	if (ret != 0) {
 		LOG_WRN("KISS RX thread join failed: %d, aborting", ret);
 		k_thread_abort(&s_rx_thread);
+		(void)k_thread_join(&s_rx_thread, K_FOREVER);
 	}
+
+	ring_buf_reset(&ctx->rx_ring);
+	k_sem_reset(&ctx->rx_sem);
+	kiss_decode_init(&ctx->rx_ctx);
+	atomic_set(&ctx->shutdown, 0);
 
 	ctx->initialized = false;
 	LOG_INF("KISS transport deinitialized");
@@ -716,23 +753,21 @@ void kiss_transport_test_reset(void)
 {
 	struct kiss_transport_ctx *ctx = &s_ctx;
 
-	k_mutex_lock(&ctx->tx_mutex, K_FOREVER);
-	k_mutex_lock(&ctx->params_mutex, K_FOREVER);
-	k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
-
 	kiss_decode_init(&ctx->rx_ctx);
 	ring_buf_reset(&ctx->rx_ring);
-	memset(&ctx->stats, 0, sizeof(ctx->stats));
-	ctx->last_tx_len = 0;
+	atomic_set(&ctx->shutdown, 0);
+	kiss_transport_reset_stats();
 
+	k_mutex_lock(&ctx->params_mutex, K_FOREVER);
 	ctx->params.txdelay = KISS_DEFAULT_TXDELAY;
 	ctx->params.persistence = KISS_DEFAULT_PERSISTENCE;
 	ctx->params.slottime = KISS_DEFAULT_SLOTTIME;
 	ctx->params.txtail = 0;
 	ctx->params.fullduplex = false;
-
-	k_mutex_unlock(&ctx->stats_mutex);
 	k_mutex_unlock(&ctx->params_mutex);
+
+	k_mutex_lock(&ctx->tx_mutex, K_FOREVER);
+	ctx->last_tx_len = 0;
 	k_mutex_unlock(&ctx->tx_mutex);
 }
 #endif /* CONFIG_ZTEST */

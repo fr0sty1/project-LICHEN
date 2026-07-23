@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-8c17",
+  "title": "[security] EDHOC signature verification incompatible with Schnorr48",
+  "description": "Commit 789c92645 updated lichen/subsys/lichen/edhoc/include/lichen/edhoc.h:48 to define EDHOC_SIG_LEN=48 and edhoc.c:752 to check signature_2.len != EDHOC_SIG_LEN. However, the local ed25519_verify() at edhoc.c:492 (sig param typed [64]), 792, and 1365 still calls crypto_ed25519_check() expecting full 64-byte Ed25519 signature. Schnorr48 (per draft-lichen-schnorr-00.md: 16B challenge + 32B response, test/vectors/schnorr48.json) is incompatible. This can lead to incorrect verification (forgery possible), buffer overread, or timing sidechannels. The SECURITY: constant-time comment is now inaccurate for this path. Must replace with schnorr48_verify() from lichen/subsys/lichen/link/schnorr48.h (which has dedicated test in lichen/tests/schnorr48/). Also affects key handling in EDHOC context and MIC-like MAC_2/3 computations. No similar issue in Rust lichen-oscore/edhoc.rs which uses proper SIG_LEN. Related to Schnorr, EDHOC, crypto timing, key handling. See lichen_node_init() ordering too.",
+  "notes": "Commit: 14ff25d09",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T23:26:24.314059177Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T23:36:39.467829837Z",
+  "started_at": "2026-07-22T23:28:48.892094302Z",
+  "closed_at": "2026-07-22T23:36:39.467829837Z",
+  "close_reason": "Closed"
+}

@@ -22,3 +22,13 @@ tests:
       - qemu_x86
     integration_platforms:
       - qemu_x86
+  app.lichen.gateway.rak2287:
+    platform_allow:
+      - native_sim
+    integration_platforms:
+      - native_sim
+    extra_args:
+      - CONFIG_LICHEN_GATEWAY_COORDINATION=y
+    tags:
+      - rak2287
+      - sx1302

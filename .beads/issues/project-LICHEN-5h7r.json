@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-5h7r",
+  "title": "[kimi-review] e61148d: [SEVERITY: high] The commit contains no code changes — the d",
+  "description": "Commit: e61148d32\nMessage: fix(coap): add bounds checking to CBOR status encoding\n\nFinding: [SEVERITY: high] The commit contains no code changes — the diff is empty. The commit message claims to add bounds checking to CBOR status encoding, but no such fix is present. If this addresses a real overflow/out-of-bounds risk, the vulnerability remains unfixed while the history suggests otherwise. Either the changes were lost (e.g., committed with `--allow-empty` or a bad amend), or the diff was omitted — this should be verified and the actual fix re-applied.",
+  "notes": "Commit: 4d55da46c",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:43:45.923705566Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:28:24.892311171Z",
+  "started_at": "2026-07-22T22:27:18.743337918Z",
+  "closed_at": "2026-07-22T22:28:24.892311171Z",
+  "close_reason": "Closed"
+}

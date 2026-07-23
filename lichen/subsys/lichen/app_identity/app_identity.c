@@ -50,7 +50,7 @@ static int copy_string(char *dst, size_t dst_len, const char *src)
 		memset(dst, 0, dst_len);
 		return 0;
 	}
-	const size_t len = strlen(src); /* dedup: compute once (P3 codereview) */
+	const size_t len = strlen(src);
 	if (len >= dst_len) {
 		return -ENAMETOOLONG;
 	}
@@ -206,6 +206,8 @@ int lichen_app_identity_upsert_peer(
 	k_mutex_lock(&s_mutex, K_FOREVER);
 	slot = find_peer_locked(peer->eui64);
 	if (slot >= 0) {
+		__ASSERT(s_peers[slot].peer.has_public_key,
+			 "lichen_app_identity_upsert_peer: existing peer must have public key");
 		/*
 		 * SECURITY: TOFU key pinning (spec 8.6). First contact pins
 		 * pubkey; subsequent contacts must present the same key.
@@ -234,11 +236,10 @@ int lichen_app_identity_upsert_peer(
 		return slot;
 	}
 
-	memset(&s_peers[slot].peer, 0, sizeof(s_peers[slot].peer));
 	s_peers[slot].peer = *peer;
-	(void)copy_string(s_peers[slot].peer.display_name,
-			  sizeof(s_peers[slot].peer.display_name),
-			  peer->display_name);
+	size_t len = strlen(peer->display_name);
+	memset(s_peers[slot].peer.display_name + len + 1, 0,
+	       sizeof(s_peers[slot].peer.display_name) - len - 1);
 	eui64_to_iid(s_peers[slot].peer.eui64, s_peers[slot].peer.iid);
 	s_peers[slot].used = true;
 	k_mutex_unlock(&s_mutex);
@@ -288,19 +289,23 @@ size_t lichen_app_identity_copy_peers(
 {
 	size_t count = 0U;
 
-	__ASSERT(out != NULL, "lichen_app_identity_copy_peers out cannot be NULL");
 	if (out_len == 0U) {
 		return 0U;
 	}
+	__ASSERT(out != NULL, "lichen_app_identity_copy_peers out cannot be NULL");
 
 	k_mutex_lock(&s_mutex, K_FOREVER);
-	for (uint8_t i = 0U; i < ARRAY_SIZE(s_peers) && count < out_len; i++) {
+	size_t total = 0U;
+	for (uint8_t i = 0U; i < ARRAY_SIZE(s_peers); i++) {
 		if (s_peers[i].used) {
-			out[count++] = s_peers[i].peer;
+			total++;
+			if (count < out_len) {
+				out[count++] = s_peers[i].peer;
+			}
 		}
 	}
 	k_mutex_unlock(&s_mutex);
-	return count;
+	return total;
 }
 
 size_t lichen_app_identity_peer_count(void)

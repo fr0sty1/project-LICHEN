@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+if BOARD_ELECROW_THINKNODE_M7
+
+config HEAP_MEM_POOL_ADD_SIZE_BOARD
+	int
+	default 65535 if WIFI && BT
+	default 51200 if WIFI
+	default 40960 if BT
+	default 4096
+
+config BOARD
+	default "elecrow_thinknode_m7"
+
+endif # BOARD_ELECROW_THINKNODE_M7
+
+if BOARD_ELECROW_THINKNODE_M7_ESP32S3_APPCPU
+
+config HEAP_MEM_POOL_ADD_SIZE_BOARD
+	default 256
+
+endif # BOARD_ELECROW_THINKNODE_M7_ESP32S3_APPCPU

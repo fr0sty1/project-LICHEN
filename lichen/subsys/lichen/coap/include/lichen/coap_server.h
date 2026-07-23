@@ -153,7 +153,8 @@ typedef int (*lichen_coap_deaddrop_cb)(const uint8_t *_Nonnull payload, size_t p
 int lichen_coap_respond(struct coap_resource *resource,
 			struct coap_packet *request,
 			struct sockaddr *addr, socklen_t addr_len,
-			uint8_t resp_code, const uint8_t *payload, size_t payload_len);
+			uint8_t resp_code, uint16_t content_format,
+			const uint8_t *payload, size_t payload_len);
 
 /**
  * @brief CoAP server callback configuration
@@ -206,8 +207,6 @@ int lichen_coap_server_stop(void);
  * @return 1 if running, 0 if stopped, negative on error
  */
 int lichen_coap_server_is_running(void);
-int lichen_coap_deaddrop_register(void);
-int lichen_coap_respond(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len, uint8_t resp_code, uint16_t content_format, const uint8_t *payload, size_t payload_len);
 
 struct lichen_deaddrop_provider {
 	int (*store)(const uint8_t *payload, size_t len);

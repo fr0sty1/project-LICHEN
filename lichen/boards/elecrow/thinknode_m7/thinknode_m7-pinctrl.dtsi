@@ -1,0 +1,61 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-FileCopyrightText: The contributors to the LICHEN project
+ *
+ * Elecrow ThinkNode M7 PoE pinctrl — cross-checked with Meshtastic
+ * ELECROW-ThinkNode-M7 variant.h (LR1110 SPI: SCK=11, MISO=9, MOSI=10,
+ * CS=12), T1000-E LR1110 SPI pattern, and ELECROW schematic.
+ * PoE controller: SI3402 identified, PG on GPIO21.
+ */
+#include <zephyr/dt-bindings/pinctrl/esp-pinctrl-common.h>
+#include <dt-bindings/pinctrl/esp32s3-pinctrl.h>
+#include <zephyr/dt-bindings/pinctrl/esp32s3-gpio-sigmap.h>
+
+&pinctrl {
+	uart0_default: uart0_default {
+		group1 {
+			pinmux = <UART0_TX_GPIO43>;
+			output-high;
+		};
+		group2 {
+			pinmux = <UART0_RX_GPIO44>;
+			bias-pull-up;
+		};
+	};
+
+	spim2_default: spim2_default {
+		group1 {
+			pinmux = <SPIM2_MISO_GPIO9>,
+				 <SPIM2_SCLK_GPIO11>,
+				 <SPIM2_CSEL_GPIO12>;
+		};
+		group2 {
+			pinmux = <SPIM2_MOSI_GPIO10>;
+			output-low;
+		};
+	};
+
+	poe_pg_default: poe_pg_default {
+		group1 {
+			pinmux = <GPIO21>;
+			bias-pull-up;
+		};
+	};
+
+	/*
+	 * SPI2 sleep state for LR1110 completeness (cross-checked with
+	 * T1000-E spi2_sleep low-power pattern).
+	 */
+	spim2_sleep: spim2_sleep {
+		group1 {
+			pinmux = <SPIM2_MISO_GPIO9>,
+				 <SPIM2_SCLK_GPIO11>,
+				 <SPIM2_CSEL_GPIO12>;
+			bias-pull-up;
+		};
+		group2 {
+			pinmux = <SPIM2_MOSI_GPIO10>;
+			bias-pull-up;
+		};
+	};
+};

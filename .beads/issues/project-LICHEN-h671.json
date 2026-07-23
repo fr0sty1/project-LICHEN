@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-h671",
+  "title": "[kimi-review] d3c9b8b: [SEVERITY: high] The diff contains no code changes. The comm",
+  "description": "Commit: d3c9b8b3a\nMessage: fix(rpl): validate D-flag in Dao::from_bytes Rejects D=0 per RFC 6550 + SCHC. Closes project-LICHEN-hhgv\n\nFinding: [SEVERITY: high] The diff contains no code changes. The commit message claims `Dao::from_bytes` now rejects D=0, but there is no modified code to review. Either the commit is empty or the diff is truncated — the fix cannot be verified and may not exist at all.",
+  "notes": "Commit: 0e65560",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:36:06.087628333Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:19:01.946143993Z",
+  "started_at": "2026-07-22T22:15:30.400377964Z",
+  "closed_at": "2026-07-22T22:19:01.946143993Z",
+  "close_reason": "Fixed DAO D-flag parsing per RFC 6550 to support both values (zeroes dodag_id on D=0); updated tests and options_tail. Matched review requirements."
+}

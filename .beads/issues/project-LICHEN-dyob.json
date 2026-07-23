@@ -2,11 +2,16 @@
   "id": "project-LICHEN-dyob",
   "title": "[merge-conflict] worker8: tx_queue.py",
   "description": "Resolve merge conflict in python/src/lichen/link/tx_queue.py between main and integration/worker8-20260722. Keep BOTH sets of changes.",
-  "status": "open",
+  "notes": "Commit: 3f169f988",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:52:03.977299969Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T20:52:03.977299969Z"
+  "updated_at": "2026-07-22T21:25:25.328345984Z",
+  "started_at": "2026-07-22T21:25:13.484124406Z",
+  "closed_at": "2026-07-22T21:25:25.328345984Z",
+  "close_reason": "Merged TX queue with CCP-16 TDMA/slot awareness from worker8 and bufferbloat priority/expiry logic from main. Updated docs and rationale cross-refs. Commit 3f169f988"
 }

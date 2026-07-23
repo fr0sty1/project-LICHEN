@@ -11,6 +11,7 @@
  * - GET /status/routes - Routing table
  *
  * All resources support RFC 7641 Observe for push notifications.
+ * CCP-17: capacity validation for CBOR encoders (BUILD_ASSERT + runtime checks).
  */
 
 #ifndef LICHEN_COAP_STATUS_H_
@@ -240,6 +241,19 @@ size_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
 				      const struct lichen_coap_route *routes,
 				      size_t count,
 				      const uint8_t *default_route);
+
+/**
+ * @brief Shared helper to format IPv6 address to string
+ *
+ * Used by both coap_status.c and coap_msg.c. Uses net_addr_ntop for
+ * standard compressed IPv6 format (no snprintf truncation issues).
+ *
+ * @param addr 16-byte IPv6 address
+ * @param buf Output buffer (recommend >=46 bytes)
+ * @param buf_size Size of buf
+ * @return 0 on success, -ENOBUFS on buffer error
+ */
+int lichen_coap_format_ipv6(const uint8_t *addr, char *buf, size_t buf_size);
 
 #ifdef __cplusplus
 }

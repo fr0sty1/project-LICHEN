@@ -24,12 +24,13 @@ COMBINED_BIN="/tmp/t_echo_combined.bin"
 COMBINED_DFU="/tmp/t_echo_combined_dfu.zip"
 BY_ID="/dev/serial/by-id"
 
-export PYTHONPATH="/home/frosty/.local/lib/python3.10/site-packages:${PYTHONPATH:-}"
-export ZEPHYR_SDK_INSTALL_DIR=/home/frosty/.local/share/safe-agent/b9243483d7697056/zephyr-sdk-0.16.8
+if [[ -f /mnt/lichen-zephyr/env.sh ]]; then
+    . /mnt/lichen-zephyr/env.sh
+else
+    export PYTHONPATH="/home/frosty/.local/lib/python3.10/site-packages:${PYTHONPATH:-}"
+    export ZEPHYR_SDK_INSTALL_DIR=/home/frosty/.local/share/safe-agent/b9243483d7697056/zephyr-sdk-0.16.8
+fi
 
-# -----------------------------------------------------------------------
-# 1. Build
-# -----------------------------------------------------------------------
 BUILD_ARGS=()
 [[ "${1:-}" == "--rebuild" ]] && BUILD_ARGS=(--all)
 ./build-t_echo.sh "${BUILD_ARGS[@]}"
@@ -72,19 +73,25 @@ adafruit-nrfutil dfu genpkg \
     "$COMBINED_DFU"
 
 find_port() {
-    ls "$BY_ID/"*"${1}"* 2>/dev/null | head -1
+    ls "$BY_ID/"*"$1"* 2>/dev/null | head -1 || true
 }
 
 echo ""
 if [[ -n "${T_ECHO_PORT:-}" ]]; then
     PORT="$T_ECHO_PORT"
-    echo "==> Using T_ECHO_PORT=$PORT"
-elif PORT=$(find_port "LICHEN_T-Echo"); [ -n "$PORT" ]; then
-    echo "==> Found LICHEN T-Echo on $PORT — 1200-bps touch will trigger DFU"
-elif PORT=$(find_port "LICHEN_Node_2BE0BCC87606D748-if00"); [ -n "$PORT" ]; then
-    echo "==> Found T-Echo running LICHEN puck on $PORT — 1200-bps touch will trigger DFU"
-elif PORT=$(find_port "T-Echo"); [ -n "$PORT" ]; then
-    echo "==> Found T-Echo DFU bootloader on $PORT — flashing directly"
+elif PORT=$(find_port LICHEN); [ -n "$PORT" ]; then
+    python3 -c '
+import serial, time, sys
+p=sys.argv[1]
+s=serial.serial_for_url(p,1200,timeout=1,do_not_open=True)
+s.dtr=s.rts=False
+s.open();time.sleep(0.5);s.close()
+' "$PORT" >/dev/null 2>&1
+    sleep 4
+    PORT=$(find_port LilyGo || find_port T-Echo || find_port DFU)
+    [ -z "$PORT" ] && { echo "ERROR: no bootloader after touch"; exit 1; }
+elif PORT=$(find_port LilyGo || find_port T-Echo); [ -n "$PORT" ]; then
+    :
 else
     echo "ERROR: No T-Echo serial port found in $BY_ID/"
     echo "  Double-tap reset to enter bootloader, then re-run this script."
@@ -92,12 +99,11 @@ else
 fi
 
 echo "==> Flashing via serial DFU on $PORT..."
-adafruit-nrfutil --verbose dfu serial \
+timeout 90 adafruit-nrfutil dfu serial \
     --package "$COMBINED_DFU" \
     -p "$PORT" \
     -b 115200 \
-    --singlebank \
-    --touch 1200
+    --singlebank || true
 
 echo ""
 echo "Done. Expected boot:"

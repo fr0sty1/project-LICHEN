@@ -3,7 +3,7 @@
 //! These implement the lichen-hal traits using std, allowing protocol logic
 //! to be tested without real hardware.
 
-use lichen_hal::{Clock, NonVolatile, RadioConfig, RadioError, Rng, RxPacket};
+use lichen_hal::{ChannelConfig, Clock, NonVolatile, RadioConfig, RadioError, Rng, RxPacket};
 use std::collections::{HashMap, VecDeque};
 use std::sync::Mutex;
 use std::time::Instant;
@@ -52,29 +52,29 @@ impl Default for MockRadio {
 impl lichen_hal::Radio for MockRadio {
     type Error = RadioError<core::convert::Infallible>;
 
-    async fn transmit(&mut self, payload: &[u8]) -> Result<(), Self::Error> {
+    async fn transmit(&mut self, _channel: u8, payload: &[u8]) -> Result<(), Self::Error> {
         self.tx_queue.lock().unwrap().push(payload.to_vec());
         Ok(())
     }
 
+    async fn cca(&mut self, _channel: u8, _threshold_dbm: i8) -> Result<bool, Self::Error> {
+        Ok(true)
+    }
+
     async fn receive(
         &mut self,
+        _channel: u8,
         buf: &mut [u8],
         timeout_ms: u32,
     ) -> Result<Option<RxPacket>, Self::Error> {
-        // SECURITY: Enforce buffer contract from Radio trait docs.
-        // Buffer must be at least 255 bytes (max LoRa payload).
         debug_assert!(
             buf.len() >= 255,
             "Radio::receive buffer too small: {} < 255",
             buf.len()
         );
 
-        // Check for queued packet
         let mut queue = self.rx_queue.lock().unwrap();
         if let Some((data, meta)) = queue.pop_front() {
-            // Return error if packet exceeds buffer - silent truncation
-            // would cause protocol errors downstream.
             if data.len() > buf.len() {
                 return Err(RadioError::Protocol);
             }
@@ -87,14 +87,19 @@ impl lichen_hal::Radio for MockRadio {
         }
         drop(queue);
 
-        // Simulate timeout - use std sleep in blocking manner since mock is for testing only
-        // ponytail: real Embassy code would use embassy-time, but mock is std-only
         std::thread::sleep(std::time::Duration::from_millis(timeout_ms as u64));
         Ok(None)
     }
 
     fn configure(&mut self, config: &RadioConfig) {
         self.config = *config;
+    }
+
+    async fn configure_channels(
+        &mut self,
+        _channels: &[ChannelConfig],
+    ) -> Result<(), Self::Error> {
+        Ok(())
     }
 }
 
@@ -190,9 +195,10 @@ impl NonVolatile for MockNonVolatile {
     fn read(&self, key: &str, buf: &mut [u8]) -> Option<usize> {
         let data = self.data.lock().unwrap();
         data.get(key).map(|v| {
-            let len = v.len().min(buf.len());
-            buf[..len].copy_from_slice(&v[..len]);
-            len
+            let stored = v.len();
+            let n = stored.min(buf.len());
+            buf[..n].copy_from_slice(&v[..n]);
+            stored
         })
     }
 
@@ -248,7 +254,7 @@ mod tests {
         use lichen_hal::Radio;
 
         let mut radio = MockRadio::new();
-        radio.transmit(b"hello mesh").await.unwrap();
+        radio.transmit(0, b"hello mesh").await.unwrap();
 
         let tx = radio.take_transmitted();
         assert_eq!(tx.len(), 1);
@@ -262,8 +268,8 @@ mod tests {
         let mut radio = MockRadio::new();
         radio.feed_rx(b"incoming", -80, 10);
 
-        let mut buf = [0u8; 255]; // Radio trait requires >= 255 byte buffer
-        let pkt = radio.receive(&mut buf, 1000).await.unwrap().unwrap();
+        let mut buf = [0u8; 255];
+        let pkt = radio.receive(0, &mut buf, 1000).await.unwrap().unwrap();
         assert_eq!(pkt.len, 8);
         assert_eq!(&buf[..8], b"incoming");
         assert_eq!(pkt.rssi, Some(-80));

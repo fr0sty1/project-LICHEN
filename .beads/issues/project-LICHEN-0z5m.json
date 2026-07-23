@@ -2,12 +2,17 @@
   "id": "project-LICHEN-0z5m",
   "title": "codereview-pass2.5: 04-network.md IPv6 section",
   "description": "Pass 2 (Security/Consistency): Unified Ed25519 derivation emphasized, link-local restricted per subsystem init graph in AGENTS.md. Consistent with updated 05-routing.md table. No new secrets or key exposure. P3: exact derivation function should be normatively referenced from draft or 06-security once stabilized. file:spec/04-network.md:10",
-  "status": "open",
+  "notes": "Commit: b1755ecb3",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T15:10:46.186941311Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:10:46.186941311Z",
+  "updated_at": "2026-07-22T22:54:54.368787252Z",
+  "started_at": "2026-07-22T22:51:32.742300656Z",
+  "closed_at": "2026-07-22T22:54:54.368787252Z",
+  "close_reason": "Fixed IPv6 section with unified Ed25519 derivation emphasis, link-local init restriction per AGENTS.md, normative references, and consistency with 05-routing.md and 06-security.md. No secrets exposed.",
   "labels": [
     "codereview"
   ]

@@ -32,6 +32,9 @@ target_sources_ifdef(CONFIG_LORA_LICHEN_MESHCORE_BLE app PRIVATE
   src/message_contract.c
   src/meshcore_adapter.c)
 
+target_sources_ifdef(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT app PRIVATE
+  src/rpl_root.c)
+
 # Register the lichen_coap (modular, not _server) iterable section so
 # the linker resolves _coap_resource_lichen_coap_list_start / _list_end.
 # Standalone server conditionalized off via Kconfig for single owner.

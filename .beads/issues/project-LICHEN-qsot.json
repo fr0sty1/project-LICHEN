@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-qsot",
+  "title": "[merge-conflict] worktree-worker1: 02-physical-link.md",
+  "notes": "Commit: b405409b4",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T23:09:34.169525953Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T23:17:39.668811244Z",
+  "started_at": "2026-07-22T23:14:52.789799896Z",
+  "closed_at": "2026-07-22T23:17:39.668811244Z",
+  "close_reason": "Closed"
+}

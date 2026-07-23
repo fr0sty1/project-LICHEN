@@ -43,38 +43,44 @@ static int tests_passed = 0;
 /* ─── test vectors ────────────────────────────────────────────────────────── */
 
 /*
- * Test vector: temperature 25.0 Celsius, no base name/time
- * Python: cbor2.dumps([{0: 'temp', 1: 'Cel', 2: 25.0}])  (with float32)
+ * Test vector: temperature 25.0 Celsius with base time 0
+ * Python: cbor2.dumps([{-3: 0, 0: 'temp', 1: 'Cel', 2: 25.0}]) (float32)
  * CBOR structure:
  *   81        array(1)
- *   a3        map(3)
- *   00        label 0 (n = name)
- *   64 74656d70   tstr(4) "temp"
- *   01        label 1 (u = unit)
- *   63 43656c     tstr(3) "Cel"
- *   02        label 2 (v = value)
- *   fa 41c80000   float32(25.0)
+ *   a4        map(4)
+ *   22        label -3 (bt)
+ *   00        uint 0
+ *   00        label 0 (n)
+ *   64 74656d70 tstr "temp"
+ *   01        label 1 (u)
+ *   63 43656c tstr "Cel"
+ *   02        label 2 (v)
+ *   fa 41c80000 float32(25.0)
  */
 static const uint8_t VEC_TEMP_SIMPLE[] = {
-	0x81, 0xa3,
+	0x81, 0xa4,
+	0x22, 0x00,
 	0x00, 0x64, 0x74, 0x65, 0x6d, 0x70,
 	0x01, 0x63, 0x43, 0x65, 0x6c,
 	0x02, 0xfa, 0x41, 0xc8, 0x00, 0x00
 };
 
 /*
- * Test vector: boolean value (charging: true)
- * Python: cbor2.dumps([{0: 'charging', 4: True}])
+ * Test vector: boolean value (charging: true) with base time 0
+ * Python: cbor2.dumps([{-3: 0, 0: 'charging', 4: True}])
  * CBOR structure:
  *   81        array(1)
- *   a2        map(2)
+ *   a3        map(3)
+ *   22        label -3 (bt)
+ *   00        0
  *   00        label 0 (n)
- *   68 6368617267696e67   tstr(8) "charging"
- *   04        label 4 (vb = boolean value)
+ *   68 6368617267696e67 tstr "charging"
+ *   04        label 4 (vb)
  *   f5        true
  */
 static const uint8_t VEC_BOOL_TRUE[] = {
-	0x81, 0xa2,
+	0x81, 0xa3,
+	0x22, 0x00,
 	0x00, 0x68, 0x63, 0x68, 0x61, 0x72, 0x67, 0x69, 0x6e, 0x67,
 	0x04, 0xf5
 };

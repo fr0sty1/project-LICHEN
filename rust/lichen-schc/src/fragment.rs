@@ -441,7 +441,7 @@ pub use std_ext::*;
 #[cfg(feature = "std")]
 mod std_ext {
     extern crate std;
-    use std::collections::HashMap;
+    use std::collections::{HashMap, HashSet};
     use std::vec::Vec;
 
     use super::*;
@@ -461,9 +461,10 @@ mod std_ext {
     #[derive(Debug)]
     pub struct FragmentReceiver {
         window_size: usize,
-        rule_id: u8,
+        rule_id: Option<u8>,
         tiles: HashMap<usize, Vec<u8>>,
         current_window: usize,
+        completed_windows: HashSet<usize>,
         all1_seen: bool,
         all1_window: usize,
         all1_payload: Vec<u8>,
@@ -486,6 +487,7 @@ mod std_ext {
                 rule_id: 0,
                 tiles: HashMap::new(),
                 current_window: 0,
+                completed_windows: HashSet::new(),
                 all1_seen: false,
                 all1_window: 0,
                 all1_payload: Vec::new(),
@@ -496,6 +498,30 @@ mod std_ext {
         }
 
         fn abs_window(&self, frag: &Fragment<'_>) -> usize {
+            if !frag.is_all_1() {
+                let pos = self.window_size - 1 - frag.fcn as usize;
+                let parity = frag.window as usize;
+                let current_parity = self.current_window % 2;
+                let mut older = if parity == current_parity {
+                    if self.current_window >= 2 { self.current_window - 2 } else { 0 }
+                } else {
+                    if self.current_window >= 1 { self.current_window - 1 } else { 0 }
+                };
+                while older > 0 {
+                    if !self.completed_windows.contains(&older) {
+                        let older_idx = older * self.window_size + pos;
+                        if self.tiles.contains_key(&older_idx) {
+                            // duplicate or filled; continue to find gap or treat as current
+                        } else {
+                            // gap in incomplete older window: likely retransmission
+                            return older;
+                        }
+                    } else if self.tiles.contains_key(&(older * self.window_size + pos)) {
+                        return older;
+                    }
+                    older = older.saturating_sub(2);
+                }
+            }
             if frag.window == (self.current_window % 2) as u8 {
                 self.current_window
             } else {
@@ -533,14 +559,16 @@ mod std_ext {
                 };
             }
             let abs_window = self.abs_window(frag);
-            if abs_window > self.current_window + 1 {
+            if self.completed_windows.contains(&abs_window) {
                 return ReceiverResult {
                     ack: None,
                     reassembled: None,
                     mic_ok: None,
                 };
             }
-            self.current_window = abs_window;
+            if abs_window > self.current_window {
+                self.current_window = abs_window;
+            }
 
             if frag.is_all_1() {
                 self.all1_seen = true;
@@ -559,7 +587,9 @@ mod std_ext {
             }
             let pos = self.window_size - 1 - frag.fcn as usize;
             let global_idx = abs_window * self.window_size + pos;
-            self.tiles.insert(global_idx, frag.payload.to_vec());
+            if !self.tiles.contains_key(&global_idx) {
+                self.tiles.insert(global_idx, frag.payload.to_vec());
+            }
 
             if self.all1_seen {
                 return self.finalize();
@@ -568,6 +598,7 @@ mod std_ext {
             if frag.is_all_0() || self.window_full(abs_window) {
                 let bitmap = self.window_bitmap(abs_window);
                 if self.window_full(abs_window) {
+                    self.completed_windows.insert(abs_window);
                     self.current_window = abs_window + 1;
                 }
                 return ReceiverResult {

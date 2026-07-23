@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-ul5u",
+  "title": "[kimi-review] 9f25f75: [SEVERITY: high] **False verification claims in the audit tr",
+  "description": "Commit: 9f25f7556\nMessage: fix(oscore): reject both-empty sender/recipient IDs in ctx_create\n\nFinding: [SEVERITY: high] **False verification claims in the audit trail.** The `close_reason` asserts \"Matches suggested patch exactly,\" \"Verified in oscore tests and full handshake,\" and cites \"lines 570-575\" of a source file. None of this can be true — no source file was modified and no tests could have validated a nonexistent change. This creates a misleading record that a security-relevant fix was implemented and verified when it was not.",
+  "notes": "Commit: ddf9e0f1d",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:05:07.961345875Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:35:28.235799464Z",
+  "started_at": "2026-07-22T22:35:04.094569083Z",
+  "closed_at": "2026-07-22T22:35:28.235799464Z",
+  "close_reason": "Added both-empty sender/recipient ID rejection + doc update in Context::new (oscore/lib.rs:229). Verified in tests. Audit now accurate (no false claims)."
+}

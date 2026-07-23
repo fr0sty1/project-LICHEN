@@ -77,6 +77,8 @@ All byte strings are lowercase hex (possibly empty). Schema validation and indep
 
 **CCP-16 vectors** (`ccp*.json`): for coordinated capacity planning, density, TDMA slot selection, load balancing, desync recovery. Uses `hash_32` (FNV-1a) primitive. Supports both object envelope (format_version 2) and bare array root (for ccp16-desync.json). Schema updated with `type`, `expected_hash`, allOf conditionals, and Rust no_std compatible notes. Caps and SCALE_NODES parameterized in test_scale.py for flexibility. Cleanup of magic numbers and features completed.
 
+**RAK2287 vectors** (`rak2287*.json`): test fixtures for packet formats, UDP forwarder protocol, multi-channel demod. Ensures cross-impl interop with SX126x paths in mesh-gateway, Python sim, and Rust tests. Updated schema and generate.py.
+
 ## Regenerating
 
 ```

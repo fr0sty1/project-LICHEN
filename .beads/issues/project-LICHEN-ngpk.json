@@ -2,12 +2,17 @@
   "id": "project-LICHEN-ngpk",
   "title": "[CODEREVIEW-PASS2] coap_status.c: time_fields and dodag_fields still uint8_t - inconsistency after map_count fix",
   "description": "coap_status.c:296,329 - Local uint8_t vars for sub-map counts not updated. Should be uint16_t + bounds for consistency with top-level fix. CCP-17 style. Tag: codereview",
-  "status": "open",
+  "notes": "Commit: 206f169",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:06:45.195802467Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:06:45.195802467Z",
+  "updated_at": "2026-07-22T22:46:57.310242493Z",
+  "started_at": "2026-07-22T22:45:08.401193405Z",
+  "closed_at": "2026-07-22T22:46:57.310242493Z",
+  "close_reason": "Closed",
   "labels": [
     "codereview"
   ]

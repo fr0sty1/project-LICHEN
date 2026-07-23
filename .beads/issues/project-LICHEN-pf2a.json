@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-pf2a",
+  "title": "Add normative pseudocode for adaptive SF (CCP-16)",
+  "description": "Update ONLY relevant sections: spec/02-physical-link.md section 3.4 with adaptive SF pseudocode using EMA alpha=1/4 from rf_health.rs, per-neighbor state, DIO for ASSIGNED_SF/metrics, RX all SF, TX_SF announcement; add/update 2a.3 in spec/02a-coordinated-capacity.md; update 7.6 in appendix-design-rationale.md; integrate ccp16.json vectors with MUST/SHOULD/RFC2119, CCP-16 xrefs. Use exact pseudocode patterns, no comments, verify vectors match. Output only edited markdown sections.",
+  "notes": "Commit: 14ff25d09",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "epic",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T23:05:14.564497234Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T23:36:44.926852198Z",
+  "started_at": "2026-07-22T23:31:03.944271881Z",
+  "closed_at": "2026-07-22T23:36:44.926852198Z",
+  "close_reason": "Closed"
+}

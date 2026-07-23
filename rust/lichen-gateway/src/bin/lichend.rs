@@ -29,6 +29,7 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     signal,
     sync::mpsc,
+    time::{sleep, Duration},
 };
 use tracing::{error, info, warn};
 use tracing_subscriber::{fmt, EnvFilter};
@@ -142,6 +143,7 @@ async fn main() {
         prefix = %config.ipv6.prefix,
         rpl_mode = %config.rpl.mode,
         ygg_peers = config.yggdrasil.peers.len(),
+        auto_peer = ?config.yggdrasil.auto_peer,
         "lichend starting"
     );
 
@@ -272,6 +274,13 @@ where
                 }
             }
         }
+        // Final drain of any pending TX frames on shutdown (prevents lost transmissions).
+        while let Ok(frame) = tx_recv.try_recv() {
+            match sim.transmit(&frame).await {
+                Ok(airtime_us) => info!(airtime_us, "TX done (shutdown drain)"),
+                Err(e) => warn!("shutdown TX failed: {e}"),
+            }
+        }
     });
 
     let mut tun_buf = vec![0u8; 1500];
@@ -329,7 +338,20 @@ where
         }
     }
 
-    let _ = sim_task.await;
+    // Graceful shutdown: drop senders so sim_task can drain TX and exit.
+    drop(tx_send);
+    drop(rx_recv);
+    info!("waiting for sim_task to finish draining transmissions");
+    tokio::select! {
+        _ = &mut sim_task => {
+            info!("sim_task completed");
+        }
+        _ = sleep(Duration::from_secs(5)) => {
+            warn!("sim_task did not finish in time, aborting");
+            sim_task.abort();
+            let _ = sim_task.await;
+        }
+    }
 }
 
 // ── serial mode ───────────────────────────────────────────────────────────────
@@ -412,9 +434,27 @@ where
 
 // ── packet forwarding ─────────────────────────────────────────────────────────
 
+<<<<<<< HEAD
 async fn forward_mesh_to_upstream<T: TunLike>(gw: &mut Gateway, frame: &[u8], tun: &Option<T>) {
     let (reply_opt, event) = gw.process_rpl(frame, 1000); // TODO: real monotonic ms for trickle
     if let Some(reply) = reply_opt {
+=======
+async fn forward_mesh_to_upstream<T: TunLike>(
+    gw: &mut Gateway,
+    frame: &[u8],
+    tun: &Option<T>,
+) -> Option<Vec<u8>> {
+    let mut reply_buf = [0u8; 256];
+    let (reply_len, event) = gw.rpl.handle_frame_rpl(frame, &mut reply_buf, 0);
+    let mut control_plane = false;
+    if let RplEvent::DaoReceived {
+        target,
+        route_updated: true,
+    } = event
+    {
+        let node_id = NodeId::from_ipv6(&target);
+        gw.add_route(target, node_id);
+>>>>>>> origin/integration/worker3-20260722
         info!(
             len = reply.len(),
             "reply_buf used (no ignore); mesh reply ready for SLIP TX queue"
@@ -444,7 +484,6 @@ async fn forward_mesh_to_upstream<T: TunLike>(gw: &mut Gateway, frame: &[u8], tu
             // backhaul or icmp unreachable (TODO for full impl)
         }
     }
-    None
 }
 
 // ── TunLike trait (abstracts TunDevice vs. no-op placeholder) ─────────────────

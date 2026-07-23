@@ -2,11 +2,16 @@
   "id": "project-LICHEN-c27b",
   "title": "ZCBOR_STATE_E backup count of 1 may be insufficient for rollback",
   "description": "File: lichen/subsys/lichen/senml/senml.c\nLine: 280\n\nCATEGORY: API MISUSE\n\nThe ZCBOR_STATE_E macro is initialized with backup_num=1:\n  ZCBOR_STATE_E(state, 1, buf, buflen, 1);\n\nzcbor backup states are used for rollback when encoding fails mid-operation. With nested structures (list containing maps), a single backup may be insufficient.\n\nIf encoding fails after starting a map but before completing it, and zcbor needs to rollback past the list start, it may not have enough backup states.\n\nThe encoding structure is:\n  zcbor_list_start_encode  (level 1)\n    zcbor_map_start_encode (level 2)\n      ... encode fields ...\n    zcbor_map_end_encode\n  zcbor_list_end_encode\n\nWith backup_num=1, a failure at level 2 that needs to rollback to before level 1 could fail.\n\nIMPACT:\n- Potential zcbor assertion failure or undefined behavior on encode error\n- Error recovery may leave CBOR state corrupted\n- Difficult to debug intermittent failures\n\nFIX: Increase backup_num to match nesting depth (2 or more):\n  ZCBOR_STATE_E(state, 2, buf, buflen, 1);\n\nNote: This depends on zcbor version and exact rollback requirements. Review zcbor documentation for correct backup_num calculation.",
-  "status": "open",
+  "notes": "Commit: 6e4cf422e",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:53:27.986511Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:53:27.986547Z"
+  "updated_at": "2026-07-22T23:21:15.422077168Z",
+  "started_at": "2026-07-22T23:17:28.569196835Z",
+  "closed_at": "2026-07-22T23:21:15.422077168Z",
+  "close_reason": "Closed"
 }

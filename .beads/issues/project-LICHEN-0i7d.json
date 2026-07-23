@@ -2,10 +2,15 @@
   "id": "project-LICHEN-0i7d",
   "title": "[codereview-pass1] coap_dtn.c:1-71 compacted code violates readability; restore logical blank lines and structure per other coap_*.c files",
   "description": "lichen/subsys/lichen/coap/coap_dtn.c:4 - No blank lines after includes or between functions. Other files use them for readability. This was introduced in create step. CODEREVIEW",
-  "status": "open",
+  "notes": "Commit: b521474d5",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T15:03:41.876298419Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:03:41.876298419Z"
+  "updated_at": "2026-07-22T22:37:34.932356991Z",
+  "started_at": "2026-07-22T22:37:15.499639019Z",
+  "closed_at": "2026-07-22T22:37:34.932356991Z",
+  "close_reason": "Closed"
 }

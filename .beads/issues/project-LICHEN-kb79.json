@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-kb79",
+  "title": "[kimi-review] 8478849: [SEVERITY: medium] Commit contains no changes. Either this i",
+  "description": "Commit: 84788497a\nMessage: fix(oscore): OscoreSeqNum::increment returns None on overflow\n\nFinding: [SEVERITY: medium] Commit contains no changes. Either this is an empty commit (`--allow-empty`), in which case the claimed fix doesn't exist, or the diff was truncated before submission. The fix cannot be verified.",
+  "notes": "Commit: 4eef8bfe2",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:35:40.979589904Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:29:33.879376789Z",
+  "closed_at": "2026-07-22T22:29:33.879376789Z",
+  "close_reason": "Made OscoreSeqNum::increment const fn; verified overflow returns None with tests (addresses empty-commit review)."
+}

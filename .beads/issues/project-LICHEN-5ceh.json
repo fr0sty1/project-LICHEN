@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-5ceh",
+  "title": "[kimi-review] 1bef7e2: [SEVERITY: low] Potential API regression: this makes a previ",
+  "description": "Commit: 1bef7e208\nMessage: fix(routing): validate dst_iid in lichen_router_route\n\nFinding: [SEVERITY: low] Potential API regression: this makes a previously accepted (if unsafe) input now fail with `-EINVAL`. If any",
+  "notes": "Commit: 19f63fddb",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:55:16.495319892Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:26:43.65075889Z",
+  "started_at": "2026-07-22T22:26:18.337325862Z",
+  "closed_at": "2026-07-22T22:26:43.65075889Z",
+  "close_reason": "Made dst_iid optional with derivation from dst_addr[8:] to avoid API regression while preventing NULL deref in mesh_local path; only touches router.c per scope"
+}

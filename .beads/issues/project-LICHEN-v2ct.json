@@ -2,11 +2,16 @@
   "id": "project-LICHEN-v2ct",
   "title": "serial.py: _loop attribute access without null check causes AttributeError",
   "description": "File: python/src/lichen/interface/kiss/serial.py\nLines: 93, 164\n\nThe send_frame() method uses self._loop.run_in_executor() but _loop can be None if open() was never called successfully:\n\nLine 93:\n```python\nawait self._loop.run_in_executor(None, _write)  # _loop could be None\n```\n\nWhile send_frame() checks _serial is not None, it does not check _loop. If open() failed partway (serial opened but _loop not set) or was never called, this raises AttributeError.\n\nSimilarly in close() at line 164:\n```python\nif self._loop:  # OK, checks first\n    await self._loop.run_in_executor(None, _close)\n```\nBut this only matters if _serial exists without _loop.\n\nImpact: Unexpected AttributeError crash when calling send_frame on a connection that was not properly opened.\n\nFix: Add explicit check for _loop in send_frame():\n```python\nif self._closed or self._serial is None or self._loop is None:\n    raise ConnectionError(\"serial port not open\")\n```",
-  "status": "open",
+  "notes": "Commit: 8ceec6c5b",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:17:18.488431Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:17:18.488459Z"
+  "updated_at": "2026-07-22T22:24:48.934475329Z",
+  "started_at": "2026-07-22T22:24:09.306716448Z",
+  "closed_at": "2026-07-22T22:24:48.934475329Z",
+  "close_reason": "Added _loop is None guard to send_frame() and recv() (consistent with existing patterns and close()). Removed dead comments. Prevents AttributeError on unopened connection. Commit 8ceec6c5b."
 }

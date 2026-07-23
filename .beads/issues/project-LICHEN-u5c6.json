@@ -2,11 +2,16 @@
   "id": "project-LICHEN-u5c6",
   "title": "KISS transport: SetHardware response uses hardcoded port 0",
   "description": "File: lichen/subsys/lichen/transport/kiss_transport.c\nLines: 261-276\n\nIn handle_sethardware(), the response frame is always encoded with port 0:\n\n    if (kiss_encode(0, resp_cmd, response, (size_t)resp_len,\n                    resp_frame, sizeof(resp_frame), \u0026resp_frame_len) == 0) {\n\nHowever, SetHardware commands could arrive on any port (the cmd byte in dispatch_frame contains port info at line 281). The response should go back on the same port the request came from.\n\nPer KISS protocol, while SetHardware is typically port-agnostic, responses should maintain port consistency for applications that use port multiplexing.\n\nFix: Pass the original request port to handle_sethardware() and use it in the response encoding.",
-  "status": "open",
+  "notes": "Commit: b585eddba",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:54:25.318262Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:54:25.318294Z"
+  "updated_at": "2026-07-22T22:57:36.334241191Z",
+  "started_at": "2026-07-22T22:56:46.289531797Z",
+  "closed_at": "2026-07-22T22:57:36.334241191Z",
+  "close_reason": "Closed"
 }

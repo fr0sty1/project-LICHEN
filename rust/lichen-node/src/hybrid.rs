@@ -92,6 +92,8 @@ pub struct PendingPacket {
     pub destination: [u8; 16],
     /// Timestamp when queued (for timeout).
     pub queued_at_ms: u32,
+    /// Priority (0=highest, 3=lowest per ForwardEntry/TxPriority spec).
+    pub priority: u8,
 }
 
 /// Active LOADng route discovery state.
@@ -305,19 +307,29 @@ impl HybridRouter {
     }
 
     /// Queue a packet pending route discovery.
-    pub fn queue_pending(&mut self, data: Vec<u8>, dst: [u8; 16], now_ms: u32) {
+    pub fn queue_pending(&mut self, data: Vec<u8>, dst: [u8; 16], priority: u8, now_ms: u32) {
         let pending = PendingPacket {
             data,
             destination: dst,
             queued_at_ms: now_ms,
+            priority,
         };
 
         let queue = self.pending_queue.entry(dst).or_default();
 
-        // Limit queue size per destination
-        if queue.len() >= self.max_pending_per_dest {
-            queue.pop_front(); // Drop oldest
+        queue.push_back(pending);
+
+        // If over limit, evict lowest-priority packet (highest `priority` u8 value,
+        // tie broken by oldest `queued_at_ms`). Prevents high-prio packets being
+        // evicted by later low-prio ones.
+        if queue.len() > self.max_pending_per_dest {
+            if let Some((idx, _)) = queue.iter().enumerate().max_by_key(|(_, p)| {
+                (p.priority, std::cmp::Reverse(p.queued_at_ms))
+            }) {
+                queue.remove(idx);
+            }
         }
+    }
         queue.push_back(pending);
     }
 
@@ -696,8 +708,8 @@ mod tests {
         let mut router = HybridRouter::new(link_local(1));
         let dst = ula(2);
 
-        router.queue_pending(vec![1, 2, 3], dst, 1000);
-        router.queue_pending(vec![4, 5, 6], dst, 2000);
+        router.queue_pending(vec![1, 2, 3], dst, 2, 1000);
+        router.queue_pending(vec![4, 5, 6], dst, 2, 2000);
 
         let pending = router.get_pending(&dst);
         assert_eq!(pending.len(), 2);
@@ -711,9 +723,9 @@ mod tests {
         router.max_pending_per_dest = 2;
         let dst = ula(2);
 
-        router.queue_pending(vec![1], dst, 1000);
-        router.queue_pending(vec![2], dst, 2000);
-        router.queue_pending(vec![3], dst, 3000); // Should evict [1]
+        router.queue_pending(vec![1], dst, 2, 1000);
+        router.queue_pending(vec![2], dst, 2, 2000);
+        router.queue_pending(vec![3], dst, 2, 3000); // Should evict [1]
 
         let pending = router.get_pending(&dst);
         assert_eq!(pending.len(), 2);
@@ -726,8 +738,8 @@ mod tests {
         let mut router = HybridRouter::new(link_local(1));
         let dst = ula(2);
 
-        router.queue_pending(vec![1], dst, 1000);
-        router.queue_pending(vec![2], dst, 5000);
+        router.queue_pending(vec![1], dst, 2, 1000);
+        router.queue_pending(vec![2], dst, 2, 5000);
 
         let expired = router.expire_pending(6000, 4000);
         assert_eq!(expired, 1);

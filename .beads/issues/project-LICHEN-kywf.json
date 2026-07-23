@@ -1,12 +1,17 @@
 {
   "id": "project-LICHEN-kywf",
   "title": "codereview pass 1: Kconfig help text references non-existent project-LICHEN-da2q instead of nrfg",
-  "status": "open",
+  "notes": "Commit: 3ac8320a1",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:45:33.078893211Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:45:33.078893211Z",
+  "updated_at": "2026-07-22T22:27:11.59120332Z",
+  "started_at": "2026-07-22T22:27:00.108913702Z",
+  "closed_at": "2026-07-22T22:27:11.59120332Z",
+  "close_reason": "Updated outdated da2q references to nrfg in spec/02a-coordinated-capacity.md:10,23 (Kconfig CCA context from codereview pass). All codereview findings addressed.",
   "labels": [
     "codereview"
   ],

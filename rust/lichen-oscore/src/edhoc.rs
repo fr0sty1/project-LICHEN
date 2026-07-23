@@ -50,6 +50,8 @@ pub enum EdhocError {
     InvalidMessage,
     /// Unsupported cipher suite.
     UnsupportedSuite,
+    /// Unsupported EDHOC method (only method 0 / SIGN_SIGN supported).
+    UnsupportedMethod,
     /// Signature verification failed.
     SignatureVerification,
     /// AEAD decryption failed.
@@ -66,6 +68,7 @@ impl core::fmt::Display for EdhocError {
             Self::InvalidState => write!(f, "invalid protocol state"),
             Self::InvalidMessage => write!(f, "invalid message format"),
             Self::UnsupportedSuite => write!(f, "unsupported cipher suite"),
+            Self::UnsupportedMethod => write!(f, "unsupported EDHOC method"),
             Self::SignatureVerification => write!(f, "signature verification failed"),
             Self::DecryptFailed => write!(f, "AEAD decryption failed"),
             Self::BufferTooSmall => write!(f, "buffer too small"),
@@ -116,46 +119,49 @@ fn edhoc_kdf(
     context: &[u8],
     length: usize,
 ) -> Result<heapless::Vec<u8, 128>, EdhocError> {
-    // Build info: CBOR sequence of (length, TH, label, context)
     let mut info = heapless::Vec::<u8, 128>::new();
 
-    // length as CBOR uint
     if length <= 23 {
         info.push_err(length as u8)?;
-    } else {
+    } else if length <= 255 {
         info.push_err(0x18)?;
         info.push_err(length as u8)?;
+    } else {
+        return Err(EdhocError::BufferTooSmall);
     }
 
-    // TH as CBOR bstr
     if th.len() <= 23 {
         info.push_err(0x40 | th.len() as u8)?;
-    } else {
+    } else if th.len() <= 255 {
         info.push_err(0x58)?;
         info.push_err(th.len() as u8)?;
+    } else {
+        return Err(EdhocError::BufferTooSmall);
     }
     info.extend_err(th)?;
 
-    // label as CBOR tstr
     let label_bytes = label.as_bytes();
     if label_bytes.len() <= 23 {
         info.push_err(0x60 | label_bytes.len() as u8)?;
-    } else {
+    } else if label_bytes.len() <= 255 {
         info.push_err(0x78)?;
         info.push_err(label_bytes.len() as u8)?;
+    } else {
+        return Err(EdhocError::BufferTooSmall);
     }
     info.extend_err(label_bytes)?;
 
-    // context as CBOR bstr
     if context.is_empty() {
-        info.push_err(0x40)?; // empty bstr
+        info.push_err(0x40)?;
     } else if context.len() <= 23 {
         info.push_err(0x40 | context.len() as u8)?;
         info.extend_err(context)?;
-    } else {
+    } else if context.len() <= 255 {
         info.push_err(0x58)?;
         info.push_err(context.len() as u8)?;
         info.extend_err(context)?;
+    } else {
+        return Err(EdhocError::BufferTooSmall);
     }
 
     // HKDF-Expand
@@ -251,7 +257,6 @@ fn parse_suites_i(data: &[u8]) -> Result<(u8, usize), EdhocError> {
 #[derive(Zeroize, ZeroizeOnDrop)]
 pub struct EdhocInitiator {
     /// Our Ed25519 signing key (implements ZeroizeOnDrop).
-    #[zeroize(skip)]
     signing_key: SigningKey,
     /// Our Ed25519 public key.
     #[zeroize(skip)]
@@ -701,7 +706,6 @@ impl EdhocInitiator {
 #[derive(Zeroize, ZeroizeOnDrop)]
 pub struct EdhocResponder {
     /// Our Ed25519 signing key (implements ZeroizeOnDrop).
-    #[zeroize(skip)]
     signing_key: SigningKey,
     /// Our Ed25519 public key.
     #[zeroize(skip)]
@@ -787,7 +791,9 @@ impl EdhocResponder {
             return Err(EdhocError::InvalidMessage);
         }
 
-        let _method_corr = msg1[0];
+        if msg1[0] != 1 {
+            return Err(EdhocError::UnsupportedMethod);
+        }
 
         // Parse SUITES_I per RFC 9528 Section 3.3.2:
         // - Single int: the selected suite

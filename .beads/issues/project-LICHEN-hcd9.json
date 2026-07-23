@@ -2,11 +2,16 @@
   "id": "project-LICHEN-hcd9",
   "title": "Hash regex delimiter is optional, allowing false substring matches",
   "description": "## Location\nscripts/analyze-hetero-fleet.py:61\n\n## Description\nThe pattern `hash[=:]?\\s*` makes the = or : delimiter optional (? means 0 or 1). This means 'hashABCDEF01' would match 'ABCDEF01' even without a delimiter. Words containing 'hash' followed by hex could produce false matches.\n\n## Failure Scenario\nA debug log contains 'rehashABCDEF01234567 operation complete'. The regex matches 'ABCDEF01234567' as a hash because 'hash' is a substring and no delimiter is required. This spurious hash pollutes the TX set and will never be received, inflating the missing packet count.\n\n## Category\nparsing",
-  "status": "open",
+  "notes": "Commit: e85ef42d8",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-13T04:17:02.23908Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-13T04:17:02.239125Z"
+  "updated_at": "2026-07-22T22:39:36.211704886Z",
+  "started_at": "2026-07-22T22:39:05.489819305Z",
+  "closed_at": "2026-07-22T22:39:36.211704886Z",
+  "close_reason": "Changed regex from  to  (required delimiter) in parse_*_logs (3 places) in analyze-hetero-fleet.py. Prevents substring false positives like 'rehashABC...' matching 'ABC...'. Fixes P3 parsing bug."
 }

@@ -275,6 +275,7 @@ impl Default for GradientTable {
 
 /// Check if a timestamp is expired (handles u32 wraparound).
 #[inline]
+#[allow(dead_code)]
 fn is_expired(expires_ms: u32, now_ms: u32) -> bool {
     let diff = now_ms.wrapping_sub(expires_ms);
     diff != 0 && diff < 0x8000_0000

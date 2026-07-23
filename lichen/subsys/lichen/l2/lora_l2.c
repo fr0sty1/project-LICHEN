@@ -14,7 +14,7 @@
  *   Application calls lichen_lora_l2_start()
  *       -> Configures LoRa radio
  *       -> Starts RX thread
- *       -> TX is called directly via lichen_lora_l2_tx()
+ *       -> TX is called directly via lichen_lora_l2_tx(data, len, channel)
  *
  * Threading model:
  * - TX is synchronous (called from application context)
@@ -34,6 +34,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/random/random.h>
 #include <zephyr/drivers/hwinfo.h>
+#include <zephyr/sys/util.h>
 
 #include <lichen/hal.h>
 #include <lichen/tx_queue.h>
@@ -255,6 +256,10 @@ static struct {
     lichen_lora_rx_cb_t rx_callback;
     void *rx_callback_user_data;
     bool cca_enabled;
+    uint8_t current_channel;
+#if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
+    struct lichen_duty_cycle_ctx duty;
+#endif
 } lora_data;
 
 /**
@@ -668,6 +673,10 @@ int lichen_lora_l2_init(void)
     lora_data.rx_callback = NULL;
     lora_data.rx_callback_user_data = NULL;
     lora_data.cca_enabled = IS_ENABLED(CONFIG_LICHEN_LORA_CCA_ENABLE);
+    lora_data.current_channel = 0;
+#if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
+    lichen_duty_cycle_init(&lora_data.duty, LICHEN_DUTY_CYCLE_DEFAULT_PERMILLE);
+#endif
 
     if (!device_is_ready(lora_data.lora_dev)) {
         LOG_ERR("lora_l2: device not ready");
@@ -1057,6 +1066,7 @@ int lichen_lora_l2_deinit(void)
     lora_data.rx_callback = NULL;
     lora_data.rx_callback_user_data = NULL;
     lora_data.cca_enabled = false;
+    lora_data.current_channel = 0;
 
     /*
      * Reinitialize lichen_l2's rx_mutex (project-LICHEN-dq6n.22).
@@ -1114,17 +1124,16 @@ int lichen_lora_l2_deinit(void)
 static int lora_perform_cca(const struct device *dev, uint32_t timeout_ms)
 {
     ARG_UNUSED(dev);
-    ARG_UNUSED(timeout_ms);
+    LOG_DBG("lora_l2: CCA stub (timeout_ms=%u) - assuming channel clear", timeout_ms);
 
     if (!lora_data.cca_enabled) {
         return 0;
     }
 
-    LOG_DBG("lora_l2: CCA stub - assuming channel clear");
     return 0;
 }
 
-int lichen_lora_l2_tx(const uint8_t *data, size_t len)
+int lichen_lora_l2_tx(const uint8_t *data, size_t len, uint8_t channel)
 {
     if (data == NULL) {
         LOG_ERR("lora_l2: TX data pointer is NULL");
@@ -1140,6 +1149,44 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
         LOG_ERR("lora_l2: packet too large (%zu > %d)", len, LICHEN_LORA_MAX_PHY_PAYLOAD);
         return -EMSGSIZE;
     }
+
+    uint8_t effective_channel = 0;
+    if (IS_ENABLED(CONFIG_LICHEN_MULTI_CHANNEL_ENABLED)) {
+        if (channel < CONFIG_LICHEN_N_CHANNELS) {
+            effective_channel = channel;
+        } else {
+            effective_channel = 0; /* CH0 control per CCP-9 for unknown */
+        }
+        /* Scheduler stub: announce rx_channel or synchronized_hop (CCP-12) to be wired
+         * from routing/announce_sched; defaults to CH0. Matches test vectors for CH0.
+         */
+    }
+    lora_data.current_channel = effective_channel;
+
+    /* Extend LoRa driver for channel param: reconfigure frequency for data channels.
+     * Control CH0 uses Kconfig base freq; data channels use base + ch*spacing.
+     * Matches lr1110/lora_config path and test vectors (channel field in announce).
+     */
+    if (IS_ENABLED(CONFIG_LICHEN_MULTI_CHANNEL_ENABLED) && effective_channel > 0 && lora_data.lora_dev != NULL) {
+        uint32_t ch_freq = CONFIG_LICHEN_LORA_FREQUENCY + (uint32_t)effective_channel * 200000U;
+        struct lora_modem_config ch_config = {
+            .frequency = ch_freq,
+            .bandwidth = BW_125_KHZ,
+            .datarate = SF_10,
+            .coding_rate = CR_4_5,
+            .preamble_len = 8,
+            .tx_power = CONFIG_LICHEN_LORA_TX_POWER,
+            .tx = true,
+        };
+        int cfg_ret = lora_config(lora_data.lora_dev, &ch_config);
+        if (cfg_ret < 0) {
+            LOG_WRN("lora_l2: ch%u freq config failed (%d)", effective_channel, cfg_ret);
+        }
+    }
+#if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
+    uint32_t dur = 80U + (uint32_t)len * 6U;
+    if (!lichen_duty_cycle_can_transmit(&lora_data.duty, k_uptime_get(), dur)) return -EBUSY;
+#endif
 
     /*
      * Check state atomically without mutex. The lora_send() call below blocks
@@ -1292,6 +1339,10 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
 
     ret = lora_send(lora_data.lora_dev, tx_buf, (uint32_t)pop_len);
     k_mutex_unlock(&modem_mutex);
+#if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
+    uint32_t dur = 80U + (uint32_t)pop_len * 6U;
+    if (ret >= 0) lichen_duty_cycle_record_tx(&lora_data.duty, k_uptime_get(), dur);
+#endif
 
     atomic_dec(&tx_pending);
 

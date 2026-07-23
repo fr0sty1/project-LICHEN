@@ -28,27 +28,14 @@ from lichen.gradient import (
     GradientTable,
 )
 from lichen.ipv6 import to_ipv6
-from lichen.loadng.cache import RouteCache, RouteEntry
+from lichen.loadng.cache import _SEQ_MAX, RouteCache, RouteEntry, _is_seq_fresher
 from lichen.loadng.messages import INITIAL_HOP_LIMIT, RREP, RREQ
 
-SUPPRESS_WINDOW_MS = 10_000  # duplicate-RREQ suppression window (spec B2.6)
-
-
-def _seq_is_newer(new_seq: int, old_seq: int) -> bool:
-    """Return True if new_seq is ahead of old_seq in wrap-around sense.
-
-    Uses half-space comparison for 16-bit sequence numbers: if the unsigned
-    difference (new - old) mod 65536 is in [1, 32767], new_seq is considered
-    newer. This handles wrap-around correctly: seq 0 is newer than seq 65535.
-    """
-    diff = (new_seq - old_seq) & 0xFFFF
-    return 0 < diff < 0x8000
+SUPPRESS_WINDOW_MS = 10_000
 
 
 @dataclass
 class RreqResult:
-    """Outcome of processing an RREQ."""
-
     suppressed: bool = False
     reply: RREP | None = None
     reply_next_hop: IPv6Address | None = None
@@ -70,6 +57,7 @@ class LoadngRouter:
 
     # Prune _seen cache every N suppression checks to amortize O(n) cost.
     _PRUNE_INTERVAL = 16
+    _MAX_SEEN_ENTRIES = 1024
 
     def __init__(
         self,
@@ -84,8 +72,6 @@ class LoadngRouter:
         self.cache = cache
         self.suppress_window_ms = suppress_window_ms
         self._own_seq = 0
-        # Maps (originator, destination) -> (highest_seq_num, timestamp).
-        # Uses wrap-aware comparison to handle 16-bit sequence number rollover.
         self._seen: dict[tuple[IPv6Address, IPv6Address], tuple[int, int]] = {}
         self._prune_countdown = self._PRUNE_INTERVAL
 
@@ -96,7 +82,7 @@ class LoadngRouter:
         hop_limit: int = INITIAL_HOP_LIMIT,
     ) -> RREQ:
         """Create a new RREQ for ``destination`` and record it as seen."""
-        self._own_seq = (self._own_seq + 1) & 0xFFFF
+        self._own_seq = (self._own_seq + 1) & _SEQ_MAX
         rreq = RREQ(
             originator=self.node_address,
             destination=to_ipv6(destination),
@@ -132,7 +118,7 @@ class LoadngRouter:
         if rreq.destination == self.node_address:
             # We are the destination; reply with our own sequence number
             # (not the RREQ's seq_num, which belongs to the RREQ originator).
-            self._own_seq = (self._own_seq + 1) & 0xFFFF
+            self._own_seq = (self._own_seq + 1) & _SEQ_MAX
             rrep = RREP(
                 originator=self.node_address,
                 destination=rreq.originator,
@@ -142,6 +128,10 @@ class LoadngRouter:
             return RreqResult(reply=rrep, reply_next_hop=from_neighbor)
 
         # Intermediate reply if we already hold a gradient to the destination.
+        # Set proxy flag (bit 0) so receivers can distinguish direct/authoritative
+        # RREPs (flags=0, from actual destination) from proxied ones (flags=0x01,
+        # from intermediate using cached gradient, potentially stale).
+        # Addresses bead project-LICHEN-ih8n.
         grad = self.gradient.lookup(rreq.destination, now)
         if grad is not None:
             rrep = RREP(
@@ -149,6 +139,7 @@ class LoadngRouter:
                 destination=rreq.originator,
                 seq_num=grad.seq_num,
                 hop_count=grad.hop_count,
+                flags=0x01,  # proxy/intermediate reply indicator
             )
             return RreqResult(reply=rrep, reply_next_hop=from_neighbor)
 
@@ -203,15 +194,16 @@ class LoadngRouter:
 
     def _mark_seen(self, rreq: RREQ, now: int) -> None:
         key = self._rreq_key(rreq)
+        if len(self._seen) >= self._MAX_SEEN_ENTRIES:
+            self._prune_seen(now)
+            if len(self._seen) >= self._MAX_SEEN_ENTRIES:
+                oldest_key = min(self._seen, key=lambda k: self._seen[k][1])
+                del self._seen[oldest_key]
         cached = self._seen.get(key)
-        # Update if no entry exists, or if the new seq is newer or equal.
-        # Equal seq updates the timestamp (same RREQ seen again).
-        if cached is None or rreq.seq_num == cached[0] or _seq_is_newer(rreq.seq_num, cached[0]):
+        if cached is None or rreq.seq_num == cached[0] or _is_seq_fresher(cached[0], rreq.seq_num):
             self._seen[key] = (rreq.seq_num, now)
 
     def _is_suppressed(self, rreq: RREQ, now: int) -> bool:
-        # Lazy prune: only prune every N checks to amortize O(n) cost.
-        # Stale entries don't affect correctness; they only waste memory.
         self._prune_countdown -= 1
         if self._prune_countdown <= 0:
             self._prune_seen(now)
@@ -220,11 +212,12 @@ class LoadngRouter:
         if cached is None:
             return False
         cached_seq, cached_ts = cached
-        # Not suppressed if the incoming seq is newer (handles wrap-around).
-        if _seq_is_newer(rreq.seq_num, cached_seq):
+        if _is_seq_fresher(cached_seq, rreq.seq_num):
             return False
-        # Suppressed if equal or older seq and within the suppression window.
-        return now - cached_ts < self.suppress_window_ms
+        elapsed = now - cached_ts
+        if elapsed < 0:
+            return False
+        return elapsed < self.suppress_window_ms
 
     def _prune_seen(self, now: int) -> None:
         stale = [k for k, (_, ts) in self._seen.items() if now - ts >= self.suppress_window_ms]

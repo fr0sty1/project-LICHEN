@@ -2,12 +2,15 @@
   "id": "project-LICHEN-h01w",
   "title": "[codereview-3] hal.c fuel_gauge suppression",
   "description": "Review pass 3 (style/maintainability): Code is clean, comment preserved, no dead code added. Suggestion (opinion/P4): Consider extracting to a Zephyr toolchain guard macro in a header for reuse across files (e.g. lichen/compiler.h). No blocking issues. 3 passes complete with only P3+ findings. Linked to project-LICHEN-3wmt",
-  "status": "open",
+  "notes": "Commit: 80f02b7a8",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "created_at": "2026-07-22T16:21:49.716709698Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:21:49.716709698Z",
+  "updated_at": "2026-07-22T22:34:57.048468486Z",
+  "closed_at": "2026-07-22T22:34:57.048468486Z",
+  "close_reason": "Guarded #pragma GCC/clang diagnostic for fuel_gauge.h in hal.c per compiler portability epic (matches tx_queue/senml patterns). Pass 3 clean (P4 opinion for macro extracted).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-h01w",

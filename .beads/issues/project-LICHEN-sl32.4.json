@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-sl32.4",
+  "title": "Heltec V3 6LBR: testing and validation",
+  "description": "Add tests for WiFi backhaul border router on Heltec V3: unit tests for prefix delegation, integration tests in mesh-sim or Renode with WiFi emulation (if possible), hardware test procedure in docs/bench-operations.md, interop with Rust lichen-gateway. Verify RPL root advertises correct prefix, bridging works for CoAP from mesh to upstream, status reflects backhaul. Use test vectors where applicable. Update build-t1000e.sh style scripts if needed for gateway. Close when CI/builds pass and manual WiFi test succeeds. Parent of project-LICHEN-sl32.",
+  "notes": "Commit: fbfe52104",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:17:36.081578808Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:29:07.04968348Z",
+  "started_at": "2026-07-22T22:27:28.191402515Z",
+  "closed_at": "2026-07-22T22:29:07.04968348Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-sl32.4",
+      "depends_on_id": "project-LICHEN-sl32",
+      "type": "parent-child",
+      "created_at": "2026-07-22T22:17:36.193172599Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}

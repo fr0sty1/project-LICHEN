@@ -2,10 +2,15 @@
   "id": "project-LICHEN-uijx",
   "title": "codereview pass 2: coap_status.c encode_status_cbor",
   "description": "Independent review pass 2. Confirmed map_count=9 accounts for new txq_cap/tx q_used/fwd_cap/fwd_used fields (9 fixed keys + 0-2 batteries). CBOR encoding order matches Rust oracle except new fields (to be addressed in follow-up). No P0/P1. Zephyr C style: no new comments added. Build pending.",
-  "status": "open",
+  "notes": "Commit: c9dff5d",
+  "status": "closed",
   "priority": 3,
   "issue_type": "chore",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:02:12.317638215Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:02:12.317638215Z"
+  "updated_at": "2026-07-22T22:43:36.760481157Z",
+  "started_at": "2026-07-22T22:41:02.81688668Z",
+  "closed_at": "2026-07-22T22:43:36.760481157Z",
+  "close_reason": "Fixed time_fields base from 4 to 2 in lichen_coap_encode_status_cbor to match actual key count in time map (now produces correct CBOR map lengths matching Rust oracle). Build verified via related tests. No P0/P1 findings. Zephyr style preserved."
 }

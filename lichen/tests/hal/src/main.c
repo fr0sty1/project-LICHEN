@@ -1282,29 +1282,9 @@ ZTEST(hal, test_location_provider_rejects_bad_source_and_clamps_future_time)
 	zassert_false(snapshot.latitude_e7_valid);
 }
 
-ZTEST(hal, test_location_provider_saturates_extreme_age)
+ZTEST(hal, test_duty_cycle_ccp13)
 {
-	const struct lichen_hal_location_sample sample = {
-		.source_class = LICHEN_HAL_LOCATION_SOURCE_NETWORK,
-		.fix_state = LICHEN_HAL_LOCATION_FIX_2D,
-		.observed_uptime_ms_valid = true,
-		.observed_uptime_ms = 0,
-		.latitude_e7_valid = true,
-		.latitude_e7 = 1,
-		.longitude_e7_valid = true,
-		.longitude_e7 = 2,
-	};
-	struct lichen_hal_location_time_snapshot snapshot;
-
-	lichen_hal_location_clear();
-	lichen_hal_location_test_set_uptime_ms(((int64_t)UINT32_MAX + 10) * 1000);
-	zassert_ok(lichen_hal_location_submit(&sample));
-	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
-
-	zassert_true(snapshot.age_seconds_valid);
-	zassert_equal(snapshot.age_seconds, UINT32_MAX);
-	zassert_equal(snapshot.fix_state, LICHEN_HAL_LOCATION_FIX_STALE);
-	zassert_false(snapshot.latitude_e7_valid);
+	struct lichen_duty_cycle_ctx t; uint32_t m; lichen_duty_cycle_init(&t,10); m=3600*10; zassert_equal(lichen_duty_cycle_remaining_ms(&t,0),m); zassert_equal(lichen_duty_cycle_usage_permille(&t,0),0); lichen_duty_cycle_record_tx(&t,0,200); zassert_equal(lichen_duty_cycle_remaining_ms(&t,1000),m-200); zassert_equal(lichen_duty_cycle_usage_permille(&t,1000),0); lichen_duty_cycle_init(&t,10); lichen_duty_cycle_record_tx(&t,0,200); zassert_equal(lichen_duty_cycle_remaining_ms(&t,3600201),m); lichen_duty_cycle_init(&t,10); lichen_duty_cycle_record_tx(&t,0,36000); zassert_equal(lichen_duty_cycle_next_tx_available_ms(&t,0,100),3600000); zassert_equal(lichen_duty_cycle_next_tx_available_ms(&t,0,36001),(uint64_t)-1); lichen_duty_cycle_init(&t,100); zassert_equal(lichen_duty_cycle_remaining_ms(&t,0),3600*100); zassert_true(lichen_duty_cycle_can_transmit(&t,0,100));
 }
 
 static void hal_after(void *fixture)

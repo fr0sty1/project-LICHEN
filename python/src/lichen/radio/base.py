@@ -21,24 +21,27 @@ class Radio(Protocol):
     Methods are async to support non-blocking I/O with real hardware.
     """
 
-    async def transmit(self, payload: bytes) -> bool:
-        """Transmit a payload over the radio.
+    async def transmit(self, payload: bytes, channel: int = 0) -> bool:
+        """Transmit a payload over the radio on specified channel.
 
         Args:
             payload: The raw bytes to transmit.
+            channel: Channel index (0 = control per CCP-9/da2q.2; default 0).
 
         Returns:
             True if transmission succeeded, False otherwise.
         """
         ...
 
-    async def receive(self, timeout_ms: int) -> tuple[bytes, int, int] | None:
-        """Receive a payload from the radio.
+    async def receive(self, timeout_ms: int, channel: int = 0) -> tuple[bytes, int, int] | None:
+        """Receive a payload from the radio on specified channel (for rendezvous).
 
-        Blocks until a packet is received or timeout expires.
+        Blocks until a packet is received or timeout expires. Channel used for
+        rendezvous per ccp9 vectors (CH0 fallback for unknown peers).
 
         Args:
             timeout_ms: Maximum time to wait for a packet, in milliseconds.
+            channel: Expected channel for RX (default 0 = control).
 
         Returns:
             A tuple of (payload, rssi_dbm, snr_db) if a packet was received,
@@ -58,12 +61,11 @@ class Radio(Protocol):
         """
         ...
 
-    async def cad(self, timeout_ms: int) -> bool:
-        """Perform Channel Activity Detection (CAD).
+    async def cad(self, timeout_ms: int, channel: int = 0) -> bool:
+        """Perform Channel Activity Detection (CAD) on specified channel.
 
-        CAD listens briefly for LoRa preamble activity without fully receiving
-        a packet. This is used for carrier-sense before transmitting (CSMA/CA)
-        and for low-power wake-on-radio applications.
+        CAD for per-channel listen-before-talk and rendezvous (CCP-9). Uses
+        channel from link selector or control CH0.
 
         The operation completes quickly (typically 2-4 symbol periods) or when
         the timeout expires, whichever comes first.
@@ -71,6 +73,7 @@ class Radio(Protocol):
         Args:
             timeout_ms: Maximum time to wait for CAD completion, in milliseconds.
                         Typical values are 20-50ms for SF10/125kHz.
+            channel: Channel for CAD (default 0 = control).
 
         Returns:
             True if channel activity (LoRa preamble) was detected,

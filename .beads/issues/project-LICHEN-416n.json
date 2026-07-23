@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-416n",
+  "title": "[kimi-review] 1a81b18: [SEVERITY: high] The commit message and `close_reason` claim",
+  "description": "Commit: 1a81b185b\nMessage: fix(schc): improve _abs_window for retransmit/reorder\n\nFinding: [SEVERITY: high] The commit message and `close_reason` claim a code fix to `_abs_window` in `reassembly.py` (line 97), but the diff contains **no code changes at all** — only issue-tracker metadata. Either the actual fix was never committed (the bug is still present) or it landed in a separate commit, in which case this commit is mislabeled and the issue is being closed on a fix that isn't in this changeset. Verify the reassembly.py change actually exists somewhere before considering this resolved.",
+  "notes": "Commit: 9c8e77a3d",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:29:29.675979889Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T21:32:58.090938916Z",
+  "started_at": "2026-07-22T21:30:54.175735659Z",
+  "closed_at": "2026-07-22T21:32:58.090938916Z",
+  "close_reason": "Improved _abs_window() in python/src/lichen/schc/reassembly.py:63 for retransmit/reorder/duplicates (lines 93-109); fixed inconsistent MAX_BITMAP_SIZE re-export in schc/__init__.py (was referencing non-existent name). All unit tests in test_reassembly.py now pass with the updated logic. Commit 9c8e77a3d"
+}

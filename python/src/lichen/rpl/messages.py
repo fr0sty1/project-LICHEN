@@ -22,8 +22,6 @@ generic :class:`RplOption` values and built out by the DODAG state machine.
 LICHEN uses RPLInstanceID 0 and Non-Storing mode (MOP=1) per spec B.2.
 """
 
-from __future__ import annotations
-
 RPL_ICMPV6_TYPE = 155
 DIO_BASE_LENGTH = 24
 DODAGID_LENGTH = 16
@@ -122,8 +120,11 @@ class DIS:
     def from_bytes(cls, data: bytes) -> DIS:
         if len(data) < 2:
             raise RplError(f"DIS too short: {len(data)} bytes")
+        reserved = data[1]
+        if reserved != 0:
+            raise RplError(f"DIS reserved field must be zero per RFC 6550 §6.2, got {reserved}")
         return cls(
-            flags=data[0], reserved=0, options=_parse_options(data[2:])
+            flags=data[0], reserved=reserved, options=_parse_options(data[2:])
         )
 
 
@@ -184,6 +185,8 @@ class DIO:
     def from_bytes(cls, data: bytes) -> DIO:
         if len(data) < DIO_BASE_LENGTH:
             raise RplError(f"DIO too short: {len(data)} bytes")
+        if data[7] != 0:
+            raise RplError(f"DIO reserved field must be zero per RFC 6550 §6.3, got {data[7]}")
         gmop_prf = data[4]
         return cls(
             rpl_instance_id=data[0],
@@ -194,7 +197,7 @@ class DIO:
             preference=gmop_prf & 0x7,
             dtsn=data[5],
             flags=data[6],
-            reserved=0,
+            reserved=data[7],
             dodag_id=IPv6Address(data[8:24]),
             options=_parse_options(data[24:]),
         )
@@ -232,7 +235,7 @@ class DAO:
         kd = (
             (int(self.ack_requested) << 7)
             | (int(d_flag) << 6)
-            | self.flags
+            | (self.flags & 0x3F)
         )
         out = bytes([self.rpl_instance_id, kd, 0, self.dao_sequence])
         if self.dodag_id is not None:
@@ -288,7 +291,7 @@ class DAOAck:
             if not 0 <= val <= 255:
                 raise RplError(f"{name} out of range: {val}")
         d_flag = self.dodag_id is not None
-        d_byte = (int(d_flag) << 7) | self.flags
+        d_byte = (int(d_flag) << 7) | (self.flags & 0x7F)
         out = bytes(
             [self.rpl_instance_id, d_byte, self.dao_sequence, self.status]
         )

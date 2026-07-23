@@ -109,6 +109,9 @@ static void connected_cb(struct bt_conn *conn, uint8_t err)
 		return;
 	}
 
+	lichen_ble_conn_cb_t cb = NULL;
+	void *ctx = NULL;
+	enum lichen_ble_conn_state reported_state = LICHEN_BLE_DISCONNECTED;
 	k_mutex_lock(&transport_state.lock, K_FOREVER);
 
 	if (transport_state.conn != NULL) {
@@ -127,8 +130,11 @@ static void connected_cb(struct bt_conn *conn, uint8_t err)
 
 	LOG_DBG("Connected, initial ATT MTU: %u", bt_gatt_get_mtu(conn));
 
-	lichen_ble_conn_cb_t cb = transport_state.config.conn_cb;
-	void *ctx = transport_state.config.user_ctx;
+	if (transport_state.initialized) {
+		cb = transport_state.config.conn_cb;
+		ctx = transport_state.config.user_ctx;
+		reported_state = transport_state.state;
+	}
 
 	k_mutex_unlock(&transport_state.lock);
 
@@ -137,12 +143,14 @@ static void connected_cb(struct bt_conn *conn, uint8_t err)
 	LOG_INF("BLE connected: %s", addr);
 
 	if (cb) {
-		cb(LICHEN_BLE_CONNECTED, ctx);
+		cb(reported_state, ctx);
 	}
 }
 
 static void disconnected_cb(struct bt_conn *conn, uint8_t reason)
 {
+	lichen_ble_conn_cb_t cb = NULL;
+	void *ctx = NULL;
 	k_mutex_lock(&transport_state.lock, K_FOREVER);
 
 	if (transport_state.conn == conn) {
@@ -150,10 +158,11 @@ static void disconnected_cb(struct bt_conn *conn, uint8_t reason)
 		transport_state.conn = NULL;
 		transport_state.state = LICHEN_BLE_DISCONNECTED;
 		transport_state.stats.disconnections++;
+		if (transport_state.initialized) {
+			cb = transport_state.config.conn_cb;
+			ctx = transport_state.config.user_ctx;
+		}
 	}
-
-	lichen_ble_conn_cb_t cb = transport_state.config.conn_cb;
-	void *ctx = transport_state.config.user_ctx;
 
 	k_mutex_unlock(&transport_state.lock);
 
@@ -173,6 +182,9 @@ static void security_changed_cb(struct bt_conn *conn, bt_security_t level,
 		return;
 	}
 
+	lichen_ble_conn_cb_t cb = NULL;
+	void *ctx = NULL;
+	enum lichen_ble_conn_state reported_state = LICHEN_BLE_DISCONNECTED;
 	k_mutex_lock(&transport_state.lock, K_FOREVER);
 
 	if (transport_state.conn == conn) {
@@ -184,16 +196,17 @@ static void security_changed_cb(struct bt_conn *conn, bt_security_t level,
 			transport_state.state = LICHEN_BLE_SECURE;
 			LOG_INF("BLE secure (LE Secure Connections)");
 		}
+		if (transport_state.initialized) {
+			cb = transport_state.config.conn_cb;
+			ctx = transport_state.config.user_ctx;
+			reported_state = transport_state.state;
+		}
 	}
-
-	lichen_ble_conn_cb_t cb = transport_state.config.conn_cb;
-	void *ctx = transport_state.config.user_ctx;
-	enum lichen_ble_conn_state state = transport_state.state;
 
 	k_mutex_unlock(&transport_state.lock);
 
 	if (cb) {
-		cb(state, ctx);
+		cb(reported_state, ctx);
 	}
 }
 #endif
@@ -559,12 +572,25 @@ int lichen_ble_slip_send(const uint8_t *data, size_t len)
 
 		err = bt_gatt_notify_cb(transport_state.conn, &params);
 		if (err) {
-			LOG_WRN("Notify failed (err %d), sent %zu/%zu",
+			LOG_WRN("Notify failed (err %d), sent %zu/%zu bytes of SLIP frame",
 				err, offset, slip_len);
 			transport_state.stats.tx_errors++;
 			break;
 		}
 		offset += send_len;
+	}
+
+	if (err && offset < slip_len) {
+		/* Partial SLIP frame was sent (protocol corruption risk).
+		 * Send a terminating END byte to allow client SLIP decoder
+		 * to resync and discard the incomplete frame. Best effort. */
+		uint8_t end_byte = SLIP_END;
+		struct bt_gatt_notify_params end_params = {
+			.attr = tx_attr,
+			.data = &end_byte,
+			.len = 1,
+		};
+		(void)bt_gatt_notify_cb(transport_state.conn, &end_params);
 	}
 
 	if (err == 0) {
@@ -634,15 +660,24 @@ void lichen_ble_transport_reset_stats(void)
 
 void lichen_ble_transport_deinit(void)
 {
+	k_mutex_lock(&transport_state.lock, K_FOREVER);
 	if (!transport_state.initialized) {
+		k_mutex_unlock(&transport_state.lock);
 		return;
 	}
 
-	lichen_ble_transport_stop();
-
-	k_mutex_lock(&transport_state.lock, K_FOREVER);
 	transport_state.initialized = false;
+	struct bt_conn *conn = transport_state.conn;
+	transport_state.conn = NULL;
+	transport_state.state = LICHEN_BLE_DISCONNECTED;
+	transport_state.advertising = false;
 	k_mutex_unlock(&transport_state.lock);
+
+	if (conn != NULL) {
+		bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+		bt_conn_unref(conn);
+	}
+	(void)bt_le_adv_stop();
 
 	LOG_INF("BLE transport deinitialized");
 }

@@ -203,8 +203,9 @@ int lichen_link_next_tx(struct lichen_link_ctx *_Nonnull ctx,
  *
  * @param[in,out] ctx   Link context
  * @param[in]     epoch New epoch value
+ * @return 0 on success, -EINVAL if ctx NULL, -EIO on lock failure
  */
-void lichen_link_set_epoch(struct lichen_link_ctx *_Nonnull ctx, uint8_t epoch);
+int lichen_link_set_epoch(struct lichen_link_ctx *_Nonnull ctx, uint8_t epoch);
 
 #ifdef CONFIG_LICHEN_LINK_EPOCH_PERSIST
 /**

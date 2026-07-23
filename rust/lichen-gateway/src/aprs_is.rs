@@ -836,13 +836,13 @@ mod tests {
 
     #[test]
     fn max_line_len_allows_typical_aprs_packets() {
-        // APRS packets are typically under 256 bytes. The APRS-IS protocol
-        // doesn't define a strict max, but 512 should accommodate all valid
-        // packets plus server comment lines.
-        assert!(MAX_LINE_LEN >= 256, "MAX_LINE_LEN too small for APRS");
-        assert!(MAX_LINE_LEN <= 4096, "MAX_LINE_LEN unnecessarily large");
+        const {
+            assert!(MAX_LINE_LEN >= 256, "MAX_LINE_LEN too small for APRS");
+        }
+        const {
+            assert!(MAX_LINE_LEN <= 4096, "MAX_LINE_LEN unnecessarily large");
+        }
 
-        // Typical APRS position packet is ~60-100 bytes
         let typical_packet = "W1TEST-9>APRS,TCPIP*:!4903.50N/07201.75W-Test station /A=000328";
         assert!(
             typical_packet.len() < MAX_LINE_LEN,

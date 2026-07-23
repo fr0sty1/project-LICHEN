@@ -14,7 +14,7 @@ use lora_phy::mod_traits::InterfaceVariant;
 use lora_phy::sx126x::{self, Stm32wl, Sx126x, TcxoCtrlVoltage};
 use lora_phy::{LoRa, RxMode};
 
-use lichen_hal::{Radio, RadioConfig, RadioError, RxPacket};
+use lichen_hal::{ChannelConfig, Radio, RadioConfig, RadioError, RxPacket};
 
 /// STM32WL SubGHz Radio wrapper implementing lichen_hal::Radio.
 ///
@@ -114,7 +114,7 @@ where
 {
     type Error = Stm32wlError<SPI::Error>;
 
-    async fn transmit(&mut self, payload: &[u8]) -> Result<(), Self::Error> {
+    async fn transmit(&mut self, _channel: u8, payload: &[u8]) -> Result<(), Self::Error> {
         let mdltn = self
             .lora
             .create_modulation_params(
@@ -140,8 +140,13 @@ where
         Ok(())
     }
 
+    async fn cca(&mut self, _channel: u8, _threshold_dbm: i8) -> Result<bool, Self::Error> {
+        Ok(true)
+    }
+
     async fn receive(
         &mut self,
+        _channel: u8,
         buf: &mut [u8],
         timeout_ms: u32,
     ) -> Result<Option<RxPacket>, Self::Error> {
@@ -160,7 +165,6 @@ where
             .create_rx_packet_params(8, false, 255, true, false, &mdltn)
             .map_err(|_| RadioError::Hardware)?;
 
-        // RxMode::Single takes u16, saturate if timeout exceeds u16::MAX
         let timeout = timeout_ms.min(u16::MAX as u32) as u16;
 
         self.lora
@@ -181,5 +185,12 @@ where
 
     fn configure(&mut self, config: &RadioConfig) {
         self.config = *config;
+    }
+
+    async fn configure_channels(
+        &mut self,
+        _channels: &[ChannelConfig],
+    ) -> Result<(), Self::Error> {
+        Err(RadioError::NotSupported)
     }
 }

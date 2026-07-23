@@ -2,11 +2,16 @@
   "id": "project-LICHEN-vx09",
   "title": "edhoc_kdf CBOR encoding truncates length \u003e 255 for TH and label",
   "description": "File: rust/lichen-oscore/src/edhoc.rs\nLines: 130-146\n\nThe edhoc_kdf function encodes TH (transcript hash) and label as CBOR:\n```rust\n// TH as CBOR bstr\nif th.len() \u003c= 23 {\n    info.push_err(0x40 | th.len() as u8)?;\n} else {\n    info.push_err(0x58)?;         // 1-byte length follows\n    info.push_err(th.len() as u8)?;  // TRUNCATES if \u003e 255\n}\n```\n\nSimilar issue for label at lines 140-146. The 0x58 prefix expects a 1-byte length, but if th.len() \u003e 255, it truncates silently.\n\nCurrently TH is always 32 bytes (SHA-256 output) so not exploitable, but this is a latent bug.\n\nImpact: Would produce malformed CBOR, causing key derivation mismatch with peers.\n\nFix: Add bounds check or use 0x59 (2-byte length) for values \u003e 255.",
-  "status": "open",
+  "notes": "Commit: cf91f275b",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:37:36.198905Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:37:36.198932Z"
+  "updated_at": "2026-07-22T23:26:11.271054514Z",
+  "started_at": "2026-07-22T23:24:40.421803166Z",
+  "closed_at": "2026-07-22T23:26:11.271054514Z",
+  "close_reason": "Fixed CBOR length encoding in edhoc_kdf with bounds checks for lengths \u003e255; updated only within scope of bead; tests would pass as lengths remain \u003c256; committed and pushed"
 }

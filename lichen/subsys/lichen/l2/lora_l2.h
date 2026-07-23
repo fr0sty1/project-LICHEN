@@ -17,7 +17,7 @@
  *   lichen_lora_l2_set_rx_callback(my_rx_handler, NULL);
  *   lichen_lora_l2_start();
  *   ...
- *   lichen_lora_l2_tx(data, len);
+ *   lichen_lora_l2_tx(data, len, 0); /* channel 0 = control */
  *   ...
  *   lichen_lora_l2_stop();
  *

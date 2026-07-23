@@ -262,6 +262,21 @@ Estimated Monthly Cost = (Coordinator Instances × Hourly Rate)
                       + (Storage × Monthly Rate)
 ```
 
+## Node Distribution Logistics (project-LICHEN-2nnd.3)
+
+**Recommendation: Sell at cost (Option A)** for first demo
+- $50-60/unit at booth
+- Attendee keeps node (no recovery logistics)
+- Simplest, attendees invested, revenue covers costs
+
+**Booth setup:**
+- Payment via Square or cash
+- Printed quick-start card per box
+- QR code linking to mesh join + live viz
+- Sticker: "I survived the LICHEN mesh"
+
+**Post-event:** Nodes stay with owners, join local meshes, optional telemetry for global deployment map. Builds community.
+
 ## Future Enhancements
 
 Consider these improvements for larger-scale deployments:

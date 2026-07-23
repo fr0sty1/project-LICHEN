@@ -2,11 +2,16 @@
   "id": "project-LICHEN-vzyv",
   "title": "router.c: switch statement missing default in lichen_router_route",
   "description": "File: lichen/subsys/lichen/routing/router.c\nLines: 244-256\n\nIn lichen_router_route():\n\n    switch (addr_class) {\n    case LICHEN_ADDR_LINK_LOCAL:\n        return route_link_local(dst_addr, result);\n\n    case LICHEN_ADDR_MESH_LOCAL:\n        return route_mesh_local(router, dst_iid, now_ms, result);\n\n    case LICHEN_ADDR_EXTERNAL:\n        return route_external(router, result);\n    }\n\n    result-\u003edecision = LICHEN_ROUTE_DROP;\n    return 0;\n\nWhile the fallthrough to ROUTE_DROP handles unexpected values, compilers may warn about non-exhaustive switch without explicit default. Adding 'default:' would silence warnings and make the fallthrough intentional.\n\nMore importantly, if lichen_addr_class enum is extended in the future, this code will silently drop packets for the new class type rather than failing explicitly.",
-  "status": "open",
+  "notes": "Commit: 4bcaa6011",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:50:53.611264Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:50:53.611297Z"
+  "updated_at": "2026-07-22T23:12:02.103824466Z",
+  "started_at": "2026-07-22T23:09:42.235699375Z",
+  "closed_at": "2026-07-22T23:12:02.103824466Z",
+  "close_reason": "Closed"
 }

@@ -153,7 +153,7 @@ impl<'a> Request<'a> {
                     );
                 }
             } else if opt.is_content_format() {
-                content_format = Some(opt.as_uint() as u16);
+                content_format = Some((opt.as_uint().ok()?) as u16);
             }
         }
 

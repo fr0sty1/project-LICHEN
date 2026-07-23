@@ -51,6 +51,7 @@ MAX_MESSAGE_LENGTH = 1 << 20
 # LoRa maximum payload size (varies by SF/bandwidth but 255 is safe upper bound
 # for most configurations; real hardware will reject larger).
 MAX_LORA_PAYLOAD = 255
+MAX_TIMEOUT_MS = 4_294_967
 
 logger = structlog.get_logger()
 
@@ -94,7 +95,8 @@ class SimRadio:
         """
         for coord in position:
             if not math.isfinite(coord):
-                raise ValueError(f"Position coordinates must be finite, got {position}")
+                msg = f"Position coordinates must be finite, got {position}"
+                raise ValueError(msg)
         self._host = host
         self._port = port
         self._sim_id = sim_id
@@ -102,6 +104,10 @@ class SimRadio:
         self._position = position
         if not (1 <= port <= 65535):
             raise ValueError(f"port must be in range 1-65535, got {port}")
+        if not sim_id or not node_id:
+            raise ProtocolError("sim_id and node_id cannot be empty")
+        if len(sim_id.encode("utf-8")) > 255 or len(node_id.encode("utf-8")) > 255:
+            raise ProtocolError("sim_id or node_id exceeds 255 bytes")
         self._stream: SocketStream | None = None
         self._freq_hz: int = 915_000_000
         self._tx_power_dbm: int = 14
@@ -117,6 +123,17 @@ class SimRadio:
     def tx_power_dbm(self) -> int:
         """Current configured transmit power in dBm."""
         return self._tx_power_dbm
+
+    def _validate_response(self, response: bytes) -> int:
+        if not response:
+            raise SimRadioError("Empty simulator response")
+        msg_type = get_message_type(response)
+        if len(response) < 2 and msg_type in (MSG_ERR, MSG_RX_PACKET, MSG_TIME_OK):
+            raise SimRadioError(
+                f"Simulator response type 0x{msg_type:02x} too short for payload"
+            )
+        return msg_type
+
 
     async def connect(self) -> None:
         """Open TCP connection to the simulator and register this node.
@@ -147,7 +164,7 @@ class SimRadio:
                 async with self._lock:
                     await self._send(msg)
                     response = await self._recv()
-                msg_type = get_message_type(response)
+                msg_type = self._validate_response(response)
 
                 if msg_type == MSG_OK:
                     return
@@ -157,10 +174,10 @@ class SimRadio:
                 else:
                     raise SimRadioError(f"Unexpected response to REGISTER: 0x{msg_type:02x}")
             except BaseException:
-                if self._stream is not None:
-                    stream = self._stream
-                    self._stream = None
-                    await stream.aclose()
+                async with self._lock:
+                    if self._stream is not None:
+                        await self._stream.aclose()
+                        self._stream = None
                 raise
 
     async def reconnect(self) -> None:
@@ -173,52 +190,22 @@ class SimRadio:
         await self.close()
         await self.connect()
 
-    async def transmit(self, payload: bytes) -> bool:
-        """Transmit a payload over the simulated radio.
-
-        Args:
-            payload: The raw bytes to transmit.
-
-        Returns:
-            True if transmission succeeded (TX_DONE), False if it failed (TX_FAIL).
-
-        Raises:
-            SimRadioError: If not connected or protocol error occurs.
-            ValueError: If payload exceeds LoRa MTU.
-        """
+    async def transmit(self, payload: bytes, channel: int = 0) -> bool:
         self._ensure_connected()
-
         if len(payload) > MAX_LORA_PAYLOAD:
-            raise ValueError(
-                f"payload length {len(payload)} exceeds LoRa MTU "
-                f"({MAX_LORA_PAYLOAD} bytes)"
-            )
-
-        msg = encode_tx(payload)
+            raise ValueError(f"payload length {len(payload)} exceeds LoRa MTU ({MAX_LORA_PAYLOAD} bytes)")
+        msg = encode_tx(payload, channel)
         async with self._lock:
             await self._send(msg)
             response = await self._recv()
-        msg_type = get_message_type(response)
-
+        msg_type = self._validate_response(response)
         if msg_type == MSG_TX_DONE:
             packet_hash = hashlib.sha256(payload).digest()[:16].hex()
-            logger.info(
-                "tx",
-                node_id=self._node_id,
-                len=len(payload),
-                hex=payload[:16].hex(),
-                packet_hash=packet_hash,
-            )
+            logger.info("tx",node_id=self._node_id,len=len(payload),hex=payload[:16].hex(),packet_hash=packet_hash)
             return True
         elif msg_type == MSG_TX_FAIL:
             packet_hash = hashlib.sha256(payload).digest()[:16].hex()
-            logger.warning(
-                "tx_fail",
-                node_id=self._node_id,
-                len=len(payload),
-                hex=payload[:16].hex(),
-                packet_hash=packet_hash,
-            )
+            logger.warning("tx_fail",node_id=self._node_id,len=len(payload),hex=payload[:16].hex(),packet_hash=packet_hash)
             return False
         elif msg_type == MSG_ERR:
             code, err_msg = decode_err(response[1:])
@@ -226,44 +213,22 @@ class SimRadio:
         else:
             raise SimRadioError(f"Unexpected response to TX: 0x{msg_type:02x}")
 
-    async def receive(self, timeout_ms: int) -> tuple[bytes, int, int] | None:
-        """Receive a payload from the simulated radio using push-based RX.
-
-        Sends RX_ENTER to enter receive mode, then blocks waiting for either
-        RX_PACKET (packet received) or RX_TIMEOUT_PUSH (timeout expired).
-
-        Args:
-            timeout_ms: Maximum time to wait for a packet, in milliseconds.
-
-        Returns:
-            A tuple of (payload, rssi_dbm, snr_db) if a packet was received,
-            or None if the timeout expired without receiving a packet.
-
-        Raises:
-            SimRadioError: If not connected or protocol error occurs.
-        """
+    async def receive(self, timeout_ms: int, channel: int = 0) -> tuple[bytes, int, int] | None:
         self._ensure_connected()
-
-        # RX_ENTER takes timeout in microseconds
+        if timeout_ms < 0:
+            raise ValueError("timeout_ms must be non-negative")
+        if not (0 <= timeout_ms <= MAX_TIMEOUT_MS):
+            raise ValueError(f"timeout_ms must be <= {MAX_TIMEOUT_MS} (~71 minutes), got {timeout_ms}")
         timeout_us = timeout_ms * 1000
-        msg = encode_rx_enter(timeout_us)
+        msg = encode_rx_enter(timeout_us, channel)
         async with self._lock:
             await self._send(msg)
             response = await self._recv()
-        msg_type = get_message_type(response)
-
+        msg_type = self._validate_response(response)
         if msg_type == MSG_RX_PACKET:
             payload, rssi, snr = decode_rx_packet(response[1:])
             packet_hash = hashlib.sha256(payload).digest()[:16].hex()
-            logger.info(
-                "rx",
-                node_id=self._node_id,
-                len=len(payload),
-                hex=payload[:16].hex(),
-                rssi=rssi,
-                snr=snr,
-                packet_hash=packet_hash,
-            )
+            logger.info("rx",node_id=self._node_id,len=len(payload),hex=payload[:16].hex(),rssi=rssi,snr=snr,packet_hash=packet_hash)
             return (payload, rssi, snr)
         elif msg_type == MSG_RX_TIMEOUT_PUSH:
             return None
@@ -288,7 +253,7 @@ class SimRadio:
         async with self._lock:
             await self._send(msg)
             response = await self._recv()
-        msg_type = get_message_type(response)
+        msg_type = self._validate_response(response)
 
         if msg_type == MSG_TIME_OK:
             return decode_time_ok(response[1:])
@@ -298,29 +263,15 @@ class SimRadio:
         else:
             raise SimRadioError(f"Unexpected response to TIME: 0x{msg_type:02x}")
 
-    async def cad(self, timeout_ms: int) -> bool:
-        """Perform Channel Activity Detection (CAD).
-
-        CAD is a quick check for LoRa preamble activity on the channel,
-        used for listen-before-talk and low-power wake-up detection.
-
-        Args:
-            timeout_ms: Maximum time to wait for CAD completion, in milliseconds.
-
-        Returns:
-            True if channel activity (LoRa preamble) was detected, False otherwise.
-
-        Raises:
-            SimRadioError: If not connected or protocol error occurs.
-        """
+    async def cad(self, timeout_ms: int, channel: int = 0) -> bool:
         self._ensure_connected()
-
-        msg = encode_cad(timeout_ms)
+        if timeout_ms < 0:
+            raise ValueError("timeout_ms must be non-negative")
+        msg = encode_cad(timeout_ms, channel)
         async with self._lock:
             await self._send(msg)
             response = await self._recv()
-        msg_type = get_message_type(response)
-
+        msg_type = self._validate_response(response)
         if msg_type == MSG_CAD_RESULT:
             return decode_cad_result(response[1:])
         elif msg_type == MSG_ERR:

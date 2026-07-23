@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-9o94",
+  "title": "LR-FHSS sim research and test vectors",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:57:44.752842451Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T23:02:00.701507712Z",
+  "closed_at": "2026-07-22T23:02:00.701507712Z",
+  "close_reason": "LR-FHSS sim implemented with phy_mode, airtime fn, fragment collision model (4 frags), sensitivity update; core tests 100% pass with independent vectors/oracle approach; ruff/mypy/pytest verified; 3 parallel review passes on changed modules clean; no test weakening",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9o94",
+      "depends_on_id": "project-LICHEN-zd2d.3",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T22:57:44.904130751Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}

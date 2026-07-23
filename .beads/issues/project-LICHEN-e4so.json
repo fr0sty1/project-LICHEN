@@ -2,11 +2,16 @@
   "id": "project-LICHEN-e4so",
   "title": "Missing validation that decoded and encrypted fields are mutually exclusive",
   "description": "File: lichen/subsys/lichen/meshtastic/adapter.c:864-880\n\nIn parse_packet, both MESH_PACKET_DECODED_FIELD and MESH_PACKET_ENCRYPTED_FIELD are handled:\n\n  case MESH_PACKET_DECODED_FIELD:\n      if (wt != PB_WT_LEN || pb_read_len_value(\u0026cur, \u0026data, \u0026data_len) \u003c 0) {\n          return -EINVAL;\n      }\n      if (parse_data(data, data_len, info) \u003c 0) {\n          return -EINVAL;\n      }\n      break;\n  case MESH_PACKET_ENCRYPTED_FIELD:\n      if (wt != PB_WT_LEN || pb_read_len_value(\u0026cur, \u0026data, \u0026data_len) \u003c 0) {\n          return -EINVAL;\n      }\n      info-\u003ekind = LICHEN_MESHTASTIC_ADAPTER_PACKET_UNSUPPORTED;\n      info-\u003eportnum = 0U;\n      info-\u003epayload = NULL;\n      info-\u003epayload_len = 0U;\n      break;\n\nPer Meshtastic protocol, a MeshPacket should have EITHER decoded OR encrypted, not both. If a malformed packet contains both fields, the last one in wire order wins (standard protobuf behavior).\n\nConsider:\n1. Tracking which field was seen first\n2. Rejecting packets with both fields as MALFORMED\n3. Or documenting that last-wins is intentional for forward compatibility",
-  "status": "open",
+  "notes": "Commit: d93c6885d",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:50:17.42024Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:50:17.420278Z"
+  "updated_at": "2026-07-22T23:08:04.013437797Z",
+  "started_at": "2026-07-22T23:07:31.418183557Z",
+  "closed_at": "2026-07-22T23:08:04.013437797Z",
+  "close_reason": "Closed"
 }

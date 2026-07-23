@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-3ewo",
+  "title": "[kimi-review] 96a2a2a: [SEVERITY: medium] The stated rationale (\"strict `\u003e` to allo",
+  "description": "Commit: 96a2a2a1c\nMessage: fix(coap): correct base64_encode buffer check off-by-one Uses strict \u003e to allow exact fits. Closes project-LICHEN-ja8d\n\nFinding: [SEVERITY: medium] The stated rationale (\"strict `\u003e` to allow exact fits\") cannot be validated without code, and is only correct if `base64_encode` does **not** write a null terminator. If the function appends `'\\0'` after the encoded output, then allowing `output_len == buf_size` produces a one-byte buffer overflow — i.e., this \"fix\" would convert an off",
+  "notes": "Commit: bbc5c2492",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:40:45.386348705Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:45:53.436640301Z",
+  "started_at": "2026-07-22T22:41:04.867958785Z",
+  "closed_at": "2026-07-22T22:45:53.436640301Z",
+  "close_reason": "Fixed base64_encode to precompute needed size including NUL terminator per review finding. Matches coap_config.c pattern. Test passes with exact buffer sizes."
+}

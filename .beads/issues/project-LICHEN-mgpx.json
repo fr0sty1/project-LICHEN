@@ -2,10 +2,15 @@
   "id": "project-LICHEN-mgpx",
   "title": "[codereview-pass3-round2] draft-lichen-schc-lora-00.md - table duplication with appendix-schc.md; consider moving full tables to appendix-schc.md and keep summary only here per I-D best practices",
   "description": "spec/drafts/draft-lichen-schc-lora-00.md:328 - A.4 adds detail but duplicates appendix-schc.md content. Docs consistency P3. discovered-from:project-LICHEN-ahmj",
-  "status": "open",
+  "notes": "Commit: e1f08c02e",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T15:00:38.804612465Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:00:38.804612465Z"
+  "updated_at": "2026-07-22T22:47:33.402882201Z",
+  "started_at": "2026-07-22T22:46:17.744687719Z",
+  "closed_at": "2026-07-22T22:47:33.402882201Z",
+  "close_reason": "Closed"
 }

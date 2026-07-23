@@ -906,6 +906,8 @@ class TestForwardingBuffer:
         assert stats["sources"] == 1
         assert stats["accepted"] == 2
         assert stats["backpressure"] == 1
+        assert stats["expired"] == 0
+        assert stats["evicted"] == 0
 
     def test_lru_eviction_order(self, router: Router):
         """Most recently used source survives eviction."""

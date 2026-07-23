@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-5ehm",
+  "title": "[kimi-review] 167f01e: [SEVERITY: low] This commit removes the only in-function sec",
+  "description": "Commit: 167f01e6d\nMessage: fix(oscore): clean deprecated oscore_ctx_lookup per security audit\n\nFinding: [SEVERITY: low] This commit removes the only in-function security warning for a function that still performs the hazardous behavior (stack-copying key material via `memcpy(ctx_out, ctx, ...)`). The justification — that the warning now lives in the header — cannot be verified from this diff. If the header documentation is missing or incomplete, callers lose the only notice that (a) the copy can't be used with protect/unprotect and (b) `oscore_ctx_wipe()` is mandatory. Recommend verifying the header actually contains this warning, and better yet, adding a compiler-enforced deprecation (`__attribute__((deprecated))` / `__DEPRECATED_MACRO`) or removing `oscore_ctx_lookup()` entirely rather than deleting its warning comment.",
+  "notes": "Commit: d17f261ff",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:59:03.990911633Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:40:37.288215186Z",
+  "started_at": "2026-07-22T22:40:15.447806125Z",
+  "lease_expires_at": "2026-07-22T22:45:15.447806125Z",
+  "heartbeat_at": "2026-07-22T22:40:15.447806125Z"
+}

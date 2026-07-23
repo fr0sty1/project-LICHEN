@@ -280,6 +280,11 @@ static uint8_t coap_tkl(const uint8_t *coap)
 	return coap[SCHC_COAP_VER_TYPE_TKL_OFFSET] & 0x0F;
 }
 
+static uint8_t coap_version(const uint8_t *coap)
+{
+	return coap[SCHC_COAP_VER_TYPE_TKL_OFFSET] >> 6;
+}
+
 static uint8_t coap_code(const uint8_t *coap)
 {
 	return coap[SCHC_COAP_CODE_OFFSET];
@@ -322,6 +327,9 @@ static void coap_write_fixed(uint8_t *coap, uint8_t type, uint8_t tkl,
 static bool coap_has_oscore_option(const uint8_t *coap, size_t coap_len)
 {
 	if (coap_len < SCHC_COAP_FIXED_LEN) {
+		return false;
+	}
+	if (coap_version(coap) != 1) {
 		return false;
 	}
 
@@ -761,7 +769,7 @@ static int compress_coap(const uint8_t *packet, size_t pkt_len,
 	uint16_t src_port = udp_src_port(udp);
 	uint16_t dst_port = udp_dst_port(udp);
 	const uint8_t *coap = udp_payload(udp);
-	if ((coap[SCHC_COAP_VER_TYPE_TKL_OFFSET] >> 6) != 1) {
+	if (coap_version(coap) != 1) {
 		return SCHC_ERR_NO_MATCHING_RULE;
 	}
 	uint8_t type = coap_type(coap);
@@ -1086,7 +1094,7 @@ static int decompress_icmpv6_echo(const uint8_t *data, size_t data_len,
 		memcpy(icmpv6_echo_tail_mut(icmp), tail, tail_len);
 	}
 
-	uint16_t cksum = icmpv6_checksum(src, dst, icmp, icmp_len);
+	uint16_t cksum = icmpv6_checksum(src, dst, icmp, (uint16_t)icmp_len);
 	icmpv6_write_checksum(icmp, cksum);
 
 	return (int)total;
@@ -1164,7 +1172,7 @@ static int decompress_rpl_dio(const uint8_t *data, size_t data_len,
 		memcpy(rpl_dio_tail_mut(rpl), tail, tail_len);
 	}
 
-	uint16_t cksum = icmpv6_checksum(src, dst, icmp, icmp_len);
+	uint16_t cksum = icmpv6_checksum(src, dst, icmp, (uint16_t)icmp_len);
 	icmpv6_write_checksum(icmp, cksum);
 
 	return (int)total;
@@ -1239,7 +1247,7 @@ static int decompress_rpl_dao(const uint8_t *data, size_t data_len,
 		memcpy(rpl_dao_tail_mut(rpl), tail, tail_len);
 	}
 
-	uint16_t cksum = icmpv6_checksum(src, dst, icmp, icmp_len);
+	uint16_t cksum = icmpv6_checksum(src, dst, icmp, (uint16_t)icmp_len);
 	icmpv6_write_checksum(icmp, cksum);
 
 	return (int)total;

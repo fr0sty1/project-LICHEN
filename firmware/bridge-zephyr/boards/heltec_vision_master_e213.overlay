@@ -1,4 +1,9 @@
 /*
+ * STALE bridge fragment: heltec_vision_master_e213 has no canonical Zephyr
+ * board target (no matching board in Zephyr tree, lichen/boards/, or HWMv2
+ * selector). Retired per project-LICHEN-2u26.2 / 2u26 (bridge mapping scoped).
+ * Do not use for builds. See docs/firmware-board-capability-matrix.md.
+ *
  * Heltec Vision Master E213 device tree overlay for LICHEN bridge
  *
  * ESP32-S3 + SX1262 LoRa + 2.13" E-ink display

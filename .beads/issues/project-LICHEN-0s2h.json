@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-0s2h",
+  "title": "[cross-impl] pending_drop_tail reentrancy not modeled in Python/Rust",
+  "description": "Zephyr adapter.c:305 documents non-atomic tail-update/memset/decrement and interrupt context requirement (from hhcn fix in 31def34ba). Python sim/medium.py:17 and Rust tx_queue.rs use different queuing without matching reentrancy guards or race simulation. Same logical queue-drop algorithm produces observably different behavior under concurrency. Add cross-impl test or unified queue primitive. See lichen/subsys/lichen/meshcore/adapter.c:302 and spec for TDMA/pending semantics.",
+  "notes": "Commit: 6b65a0902",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T23:03:22.940952069Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T23:14:49.335246422Z",
+  "started_at": "2026-07-22T23:10:03.880802007Z",
+  "closed_at": "2026-07-22T23:14:49.335246422Z",
+  "close_reason": "Added reentrancy documentation and modeling to Python tx_queue and Rust tx_queue to match C pending_drop_tail; cross-impl consistency improved; committed as 6b65a0902"
+}

@@ -1,0 +1,12 @@
+[Interface]
+PrivateKey = <your-private-key-here>
+Address = fd00:1:2:3::1/64
+ListenPort = 51820
+PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+
+[Peer]
+PublicKey = <peer-public-key>
+AllowedIPs = fd00:1:2:3::/64, 10.0.0.0/8
+Endpoint = your-border-router.example.com:51820
+PersistentKeepalive = 25

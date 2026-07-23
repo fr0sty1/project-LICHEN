@@ -2,11 +2,16 @@
   "id": "project-LICHEN-ci71",
   "title": "[merge-conflict] worker8: t_deck_esp32s3_procpu.conf",
   "description": "Resolve merge conflict in lichen/apps/puck/boards/t_deck_esp32s3_procpu.conf between main and integration/worker8-20260722. Keep BOTH sets of changes - do not discard work.",
-  "status": "open",
+  "notes": "Commit: 78765e107",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:51:53.079641167Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T20:51:53.079641167Z"
+  "updated_at": "2026-07-22T21:31:09.170174036Z",
+  "started_at": "2026-07-22T21:30:25.212439927Z",
+  "closed_at": "2026-07-22T21:31:09.170174036Z",
+  "close_reason": "Resolved merge conflict by including both the board comment and all LVGL UI settings (LVGL, KEYPAD, FONT) from the divergent branches. File now matches main branch version. Verified with git show. Closes project-LICHEN-ci71"
 }

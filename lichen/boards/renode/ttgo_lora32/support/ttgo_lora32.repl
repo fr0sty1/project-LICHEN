@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: The contributors to the LICHEN project
+//
+// TTGO LoRa32 (ESP32 + SX1276) board for Renode
+// Includes esp32_lichen base, SX127x on SPI3 per upstream DTS for ttgo_lora32_esp32_procpu.
+// Mimics heltec_wifi_lora32_v3 and esp32s3 style. Radio works via lichen-sim; GPIO stubbed.
+
+using "../../esp32_lichen/support/esp32_lichen.repl"
+
+// SX1276 radio on SPI3 (per DTS: SPI3 for LoRa)
+// GPIO stubs for RESET/DIO in base platform; full GPIO not wired for simulation.
+// LED on GPIO2, button on GPIO0 not implemented in this backend.
+

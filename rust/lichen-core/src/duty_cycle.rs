@@ -1,8 +1,9 @@
-//! Duty cycle tracking for regulatory compliance.
+//! Duty cycle tracking for regulatory compliance (CCP-16 integration).
 //!
 //! EU 868 MHz and similar bands require duty cycle limits (typically 1% per
 //! sub-band over a 1-hour rolling window). This module tracks transmission
-//! history and provides methods to query remaining budget.
+//! history and provides methods to query remaining budget. Adaptive logic
+//! respects density from RPL DIOs per worker8 CCP-16 changes.
 //!
 //! # Fixed-Point Representation
 //!
@@ -453,6 +454,7 @@ mod tests {
     #[test]
     fn typical_lora_usage_pattern() {
         let mut tracker: DutyCycleTracker<64> = DutyCycleTracker::new();
+        tracker.set_from_density(5, REGION_EU);
 
         // Simulate typical LoRa usage: 60-byte packets at SF10/125kHz ~ 370ms airtime
         // Send one packet every 5 minutes (well within 1% duty cycle)

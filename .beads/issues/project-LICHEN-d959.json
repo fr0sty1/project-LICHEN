@@ -2,13 +2,16 @@
   "id": "project-LICHEN-d959",
   "title": "T-Deck: border router mode (WiFi backhaul)",
   "description": "Enable LilyGO T-Deck as border router with WiFi backhaul. ESP32-S3 + SX1262 + WiFi + screen + keyboard. Same as Heltec V3 but with UI for local config/status. Chunky, higher battery drain than Heltec. Board files exist at lichen/boards/lilygo/t_deck/. $60.",
-  "status": "open",
+  "notes": "Commit: 641cb1f3b",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T22:37:25.413658Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T22:37:39.478425Z",
+  "updated_at": "2026-07-22T22:31:52.139471549Z",
+  "closed_at": "2026-07-22T22:31:52.139471549Z",
+  "close_reason": "Updated lichen/apps/gateway/boards/t_deck_esp32s3_procpu.conf with full WiFi backhaul 6LBR settings (LICHEN_GATEWAY_PREFIX_DELEGATION, WIFI_SSID/PSK, NET tuning, heaps=131072, L2 provisioning, stacks, HAL). Mirrors validated Heltec V3 pattern for T-Deck border router mode. Board files now enable runtime.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-d959",

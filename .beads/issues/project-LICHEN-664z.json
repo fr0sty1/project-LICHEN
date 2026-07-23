@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-664z",
+  "title": "[kimi-review] 31a4abc: [SEVERITY: low] Replacing error handling with `.expect()` co",
+  "description": "Commit: 31a4abcd3\nMessage: fix(meshtastic): use expect for protobuf encode in create_routing_error\n\nFinding: [SEVERITY: low] Replacing error handling with `.expect()` converts a recoverable encode failure into a panic. For prost/protobuf encoding into a growable `Vec\u003cu8\u003e` this is practically infallible, so it's usually acceptable — but if `create_routing_error` is reachable with attacker-influenced message contents in a long-running service, a panic path is a potential DoS vector. Cannot confirm either way without the actual code.",
+  "notes": "Commit: f7acea00d",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:32:10.24726379Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:25:09.337713962Z",
+  "started_at": "2026-07-22T22:24:40.994670489Z",
+  "closed_at": "2026-07-22T22:25:09.337713962Z",
+  "close_reason": "Switched to encode_to_vec() removing .expect() entirely; encode path has no attacker influence and is infallible for this fixed struct; preserves no_std+alloc semantics"
+}

@@ -192,7 +192,7 @@ config LORA_LICHEN_GATEWAY_RPL_ROOT
 	  Enable gateway DIO/DAO processing and root signalling for LICHEN_RPL.
 	  Gateway now acts as RPL root per project-LICHEN-t4in.
 
-config LICHEN_GATEWAY_RX1_DELAY_MS
+	config LICHEN_GATEWAY_RX1_DELAY_MS
 	int "RX1-style delay before answering a CoAP request (ms)"
 	default 0
 	range 0 1000
@@ -203,6 +203,47 @@ config LICHEN_GATEWAY_RX1_DELAY_MS
 	  reply can arrive during the requester's TX->RX turnaround and be
 	  missed (lora_ipv6_mesh-fe1z, observed on the T1000-E/LR1110). 0
 	  disables the delay. ~100 ms is a safe LoRa value.
+
+config LICHEN_GATEWAY_PREFIX_DELEGATION
+	bool "WiFi station backhaul prefix delegation (Heltec V3 6LBR)"
+	default y if WIFI
+	depends on WIFI && NET_IPV6 && NET_L2_ETHERNET
+	select NET_L2_WIFI_MGMT
+	select NET_MGMT
+	select NET_MGMT_EVENT_INFO
+	select NET_IPV6_ND
+	select WIFI_NM
+	select ESP_WIFI_ENABLED if SOC_ESP32S3
+	imply NET_CONFIG_SETTINGS
+	help
+	  Enables WiFi station mode + net_mgmt handler for NET_EVENT_WIFI_CONNECT_RESULT
+	  and NET_EVENT_IPV6_PREFIX_ADD (from upstream RA). The prefix is passed to
+	  lichen_rpl_root_set_prefix() to update DODAG ID for RPL DIOs to mesh nodes.
+	  Updates gateway status CBOR with backhaul info. Centralizes 6LBR WiFi config.
+	  See spec/appendix-border-router.md, spec/04-network.md:6.1 (prefix/ULA/GUA),
+	  spec/05-routing.md (RPL non-storing with BR), AGENTS.md init graph.
+	  Implements/refines project-LICHEN-vsdl, project-LICHEN-sl32.*, project-LICHEN-b4yi.
+	  SSID/PSK via Kconfig (bench defaults overridden in board .conf; production
+	  should use SETTINGS_NVS + CoAP /config). Heap/stack/ESP buffer tuning via
+	  associated Kconfig.defconfig and board .conf when enabled. No test vectors
+	  altered.
+
+config LICHEN_GATEWAY_WIFI_SSID
+	string "WiFi SSID for station backhaul"
+	default "lichen-test"
+	depends on LICHEN_GATEWAY_PREFIX_DELEGATION
+	help
+	  SSID for automatic WiFi station connection. Bench default is test network;
+	  override in board .conf or via runtime config for production. See Zephyr
+	  wifi_mgmt samples for security.
+
+config LICHEN_GATEWAY_WIFI_PSK
+	string "WiFi PSK for station backhaul"
+	default "lichen123"
+	depends on LICHEN_GATEWAY_WIFI_SSID
+	help
+	  Pre-shared key for the SSID (WPA2/3). Bench default only; change for
+	  any real deployment. See Zephyr wifi_mgmt and connectivity samples.
 
 config LICHEN_GATEWAY_COORDINATION
 	bool "Gateway coordination protocol (TDMA slots, node registry, handoff)"

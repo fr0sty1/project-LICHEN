@@ -6,7 +6,7 @@
 //! Provides a pair of connected radios for host-side integration tests.
 //! TX on one side appears as RX on the other.
 
-use crate::{Radio, RadioConfig, RadioError, RxPacket};
+use crate::{ChannelConfig, Radio, RadioConfig, RadioError, RxPacket};
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
@@ -81,7 +81,7 @@ impl LoopbackRadio {
 impl Radio for LoopbackRadio {
     type Error = RadioError<std::convert::Infallible>;
 
-    async fn transmit(&mut self, payload: &[u8]) -> Result<(), Self::Error> {
+    async fn transmit(&mut self, _channel: u8, payload: &[u8]) -> Result<(), Self::Error> {
         let guard = self.tx_chan.lock().unwrap_or_else(|e| e.into_inner());
         guard.send(payload);
         Ok(())
@@ -89,6 +89,7 @@ impl Radio for LoopbackRadio {
 
     async fn receive(
         &mut self,
+        _channel: u8,
         buf: &mut [u8],
         _timeout_ms: u32,
     ) -> Result<Option<RxPacket>, Self::Error> {
@@ -122,6 +123,13 @@ impl Radio for LoopbackRadio {
     fn configure(&mut self, config: &RadioConfig) {
         self.config = *config;
     }
+
+    async fn configure_channels(
+        &mut self,
+        _channels: &[ChannelConfig],
+    ) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -133,18 +141,18 @@ mod tests {
         let (mut radio_a, mut radio_b) = LoopbackRadio::pair();
 
         // A sends, B receives
-        radio_a.transmit(b"hello from A").await.unwrap();
+        radio_a.transmit(0, b"hello from A").await.unwrap();
 
         let mut buf = [0u8; 256];
-        let rx = radio_b.receive(&mut buf, 1000).await.unwrap();
+        let rx = radio_b.receive(0, &mut buf, 1000).await.unwrap();
         assert!(rx.is_some());
         let rx = rx.unwrap();
         assert_eq!(&buf[..rx.len], b"hello from A");
 
         // B sends, A receives
-        radio_b.transmit(b"hello from B").await.unwrap();
+        radio_b.transmit(0, b"hello from B").await.unwrap();
 
-        let rx = radio_a.receive(&mut buf, 1000).await.unwrap();
+        let rx = radio_a.receive(0, &mut buf, 1000).await.unwrap();
         assert!(rx.is_some());
         let rx = rx.unwrap();
         assert_eq!(&buf[..rx.len], b"hello from B");
@@ -155,7 +163,7 @@ mod tests {
         let (mut radio_a, _radio_b) = LoopbackRadio::pair();
 
         let mut buf = [0u8; 256];
-        let rx = radio_a.receive(&mut buf, 100).await.unwrap();
+        let rx = radio_a.receive(0, &mut buf, 100).await.unwrap();
         assert!(rx.is_none());
     }
 }

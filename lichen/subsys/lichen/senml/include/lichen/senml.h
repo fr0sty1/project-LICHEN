@@ -13,6 +13,10 @@
  * before transmission. The base_name field often contains device identifiers
  * (e.g., MAC addresses) which leak device identity even if values are
  * encrypted separately.
+ *
+ * @warning Caller must ensure all string pointers (base_name, name, unit,
+ * value strings) remain valid until senml_encode_cbor() returns. The API
+ * stores raw pointers; strings are not copied internally.
  */
 
 #ifndef LICHEN_SENML_H_
@@ -21,6 +25,8 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+
+#define SENML_KEY_CONFESSIONS "confessions"
 
 #ifndef LICHEN_WARN_UNUSED_RESULT
 #if defined(__GNUC__) || defined(__clang__)
@@ -106,7 +112,7 @@ enum senml_value_type {
  */
 struct senml_pack {
 	const char *base_name;     /**< Base name (bn) - may be NULL */
-	uint64_t base_time;        /**< Base time (bt) - 0 means not set */
+	uint64_t base_time;        /**< Base time (bt) - always included now */
 	bool has_base_time;        /**< Include base time */
 	struct senml_record records[SENML_MAX_RECORDS];
 	size_t record_count;
@@ -117,7 +123,7 @@ struct senml_pack {
  *
  * @param[out] pack       Pack to initialize
  * @param[in]  base_name  Base name (e.g., "urn:dev:mac:0011223344556677:")
- * @param[in]  base_time  Base Unix timestamp (0 to omit)
+ * @param[in]  base_time  Base Unix timestamp (0 is valid epoch)
  * @return 0 on success, -EINVAL if pack is NULL, -EMSGSIZE if base_name is
  *         longer than SENML_MAX_NAME_LEN
  */
@@ -198,6 +204,10 @@ LICHEN_WARN_UNUSED_RESULT
 int senml_encode_cbor(const struct senml_pack *_Nonnull pack,
 		      uint8_t *_Nonnull buf, size_t buflen);
 
+LICHEN_WARN_UNUSED_RESULT
+int senml_encode_deaddrop(const struct senml_pack *_Nonnull pack,
+			  uint8_t *_Nonnull buf, size_t buflen);
+
 /* --------------------------------------------------------------------------
  * Convenience functions for common sensor types
  * -------------------------------------------------------------------------- */
@@ -206,7 +216,7 @@ int senml_encode_cbor(const struct senml_pack *_Nonnull pack,
  * @brief Encode location as SenML.
  *
  * @param[in]  base_name  Base name or NULL
- * @param[in]  base_time  Unix timestamp or 0
+ * @param[in]  base_time  Unix timestamp (0 valid for epoch)
  * @param[in]  lat        Latitude (WGS84 degrees)
  * @param[in]  lon        Longitude (WGS84 degrees)
  * @param[in]  alt        Altitude (meters) or NAN to omit
@@ -223,7 +233,7 @@ int senml_encode_location(const char *_Nullable base_name, uint64_t base_time,
  * @brief Encode battery status as SenML.
  *
  * @param[in]  base_name  Base name or NULL
- * @param[in]  base_time  Unix timestamp or 0
+ * @param[in]  base_time  Unix timestamp (0 valid for epoch)
  * @param[in]  percent    State of charge (0-100)
  * @param[in]  mv         Battery voltage in millivolts
  * @param[in]  charging   True if charging
@@ -240,7 +250,7 @@ int senml_encode_battery(const char *_Nullable base_name, uint64_t base_time,
  * @brief Encode temperature as SenML.
  *
  * @param[in]  base_name  Base name or NULL
- * @param[in]  base_time  Unix timestamp or 0
+ * @param[in]  base_time  Unix timestamp (0 valid for epoch)
  * @param[in]  temp_c     Temperature in Celsius
  * @param[out] buf        Output buffer
  * @param[in]  buflen     Buffer size

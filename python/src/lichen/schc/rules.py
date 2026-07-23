@@ -47,7 +47,7 @@ class FieldDescriptor:
     """One field's compression behaviour within a rule.
 
     Attributes:
-        field_id: Stable identifier for the field (e.g. "CoAP.MID").
+        field_id: Stable identifier for the field (e.g. "CoAP.mid").
         length_bits: Field width in bits.
         mo: Matching Operator.
         cda: Compression/Decompression Action.
@@ -122,11 +122,11 @@ RULE_ID_UNCOMPRESSED = 255
 COAP_RULE = Rule(
     rule_id=64,
     fields=(
-        FieldDescriptor("CoAP.Version", 2, MO.EQUAL, CDA.NOT_SENT, target_value=1),
-        FieldDescriptor("CoAP.Type", 2, MO.IGNORE, CDA.VALUE_SENT),
-        FieldDescriptor("CoAP.TKL", 4, MO.IGNORE, CDA.VALUE_SENT),
-        FieldDescriptor("CoAP.Code", 8, MO.IGNORE, CDA.VALUE_SENT),
-        FieldDescriptor("CoAP.MID", 16, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("CoAP.version", 2, MO.EQUAL, CDA.NOT_SENT, target_value=1),
+        FieldDescriptor("CoAP.type", 2, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("CoAP.tkl", 4, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("CoAP.code", 8, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("CoAP.mid", 16, MO.IGNORE, CDA.VALUE_SENT),
     ),
 )
 
@@ -137,10 +137,10 @@ UDP_PORT_RULE = Rule(
     rule_id=65,
     fields=(
         FieldDescriptor(
-            "UDP.SrcPort", 16, MO.MSB, CDA.LSB, target_value=5683, mo_arg=12
+            "UDP.src_port", 16, MO.MSB, CDA.LSB, target_value=5683, mo_arg=12
         ),
         FieldDescriptor(
-            "UDP.DstPort", 16, MO.MSB, CDA.LSB, target_value=5683, mo_arg=12
+            "UDP.dst_port", 16, MO.MSB, CDA.LSB, target_value=5683, mo_arg=12
         ),
     ),
 )
@@ -154,11 +154,11 @@ UDP_PORT_RULE = Rule(
 ICMPV6_ECHO_RULE = Rule(
     rule_id=66,
     fields=(
-        FieldDescriptor("ICMPv6.Type", 8, MO.IGNORE, CDA.VALUE_SENT),
-        FieldDescriptor("ICMPv6.Code", 8, MO.EQUAL, CDA.NOT_SENT, target_value=0),
-        FieldDescriptor("ICMPv6.Checksum", 16, MO.IGNORE, CDA.COMPUTE),
-        FieldDescriptor("ICMPv6.Identifier", 16, MO.IGNORE, CDA.VALUE_SENT),
-        FieldDescriptor("ICMPv6.Sequence", 16, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("ICMPv6.type", 8, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("ICMPv6.code", 8, MO.EQUAL, CDA.NOT_SENT, target_value=0),
+        FieldDescriptor("ICMPv6.checksum", 16, MO.IGNORE, CDA.COMPUTE),
+        FieldDescriptor("ICMPv6.identifier", 16, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("ICMPv6.sequence", 16, MO.IGNORE, CDA.VALUE_SENT),
     ),
 )
 
@@ -167,11 +167,12 @@ ICMPV6_ECHO_RULE = Rule(
 # Whole-packet rules (spec appendix A.1), built from shared field helpers.
 #
 # Constant IPv6/transport fields are elided. Link-local addresses match the
-# fe80::/64 prefix via MSB(64) so only the 64-bit IID travels; global addresses
-# are carried in full (prefix-context elision and full L2-derived IID elision
-# are future optimizations that need the link layer). Lengths and checksums are
-# recomputed on decompression. Variable trailers (CoAP token/options/payload,
-# RPL options) travel verbatim after the residue, handled by schc/headers.py.
+# fe80::/64 prefix via MSB(64) so only the 64-bit IID travels; global (02xx::/7
+# primary Yggdrasil or 2000::/3 GUA) addresses carried in full (prefix context
+# elision deferred to link layer per spec/03-adaptation.md and 04-network.md).
+# Lengths and checksums are recomputed on decompression. Variable trailers
+# (CoAP token/options/payload, RPL options) travel verbatim after the residue,
+# handled by schc/headers.py.
 # ---------------------------------------------------------------------------
 
 _LINK_LOCAL_PREFIX_TV = 0xFE80 << 112  # fe80::/64 as a 128-bit target value

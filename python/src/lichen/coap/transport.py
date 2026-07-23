@@ -19,6 +19,7 @@ module only moves opaque datagrams between endpoints addressed by host string.
 from __future__ import annotations
 
 import asyncio
+import struct
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 
@@ -163,8 +164,8 @@ class LichenTransport(interfaces.MessageInterface):
     def _on_datagram(self, data: bytes, source: str) -> None:
         try:
             message = Message.decode(data, LichenRemote(source))
-        except (error.UnparsableMessage, ValueError, IndexError):
-            return  # drop malformed datagrams
+        except (error.UnparsableMessage, IndexError, struct.error, TypeError, ValueError):
+            return
         self._mm.dispatch_message(message)
 
     def send(self, message: Message) -> None:

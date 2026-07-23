@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-b1rs",
+  "title": "[kimi-review] 1dd79e1: [SEVERITY: medium] Empty commit: the message claims to fix b",
+  "description": "Commit: 1dd79e11c\nMessage: fix(coap): bounds checking in CBOR status encoders\n\nFinding: [SEVERITY: medium] Empty commit: the message claims to fix bounds checking in CBOR status encoders, but the diff shows zero modifications. Either the fix was never actually committed, it was lost during a rebase/amend, or it duplicates an earlier change. If merged as-is, the bounds-checking bug it claims to fix would still be present. Verify the intended changes exist elsewhere before relying on this commit.",
+  "notes": "Commit: 098a2e7da",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:41:38.738399901Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:27:20.979088586Z",
+  "started_at": "2026-07-22T22:27:12.427637755Z",
+  "closed_at": "2026-07-22T22:27:20.979088586Z",
+  "close_reason": "Closed"
+}

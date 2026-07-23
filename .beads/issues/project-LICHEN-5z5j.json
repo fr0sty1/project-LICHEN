@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-5z5j",
+  "title": "[kimi-review] 94f2e21: [SEVERITY: medium] Unverifiable fix: a commit claiming to fi",
+  "description": "Commit: 94f2e2147\nMessage: fix(schc): prevent integer overflow in uncompressed fallback\n\nFinding: [SEVERITY: medium] Unverifiable fix: a commit claiming to fix an integer overflow with no visible code changes could indicate an empty commit, an incomplete push, or changes applied to the wrong branch. Worth verifying the commit actually contains the intended fix (e.g., `git show --stat 94f2e21`).",
+  "notes": "Commit: d061107c3",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:03:57.937783811Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T23:15:58.471051248Z",
+  "started_at": "2026-07-22T23:14:31.83742393Z",
+  "closed_at": "2026-07-22T23:15:58.471051248Z",
+  "close_reason": "Implemented saturating_add in uncompressed fallback paths in rust/lichen-schc/src/codec.rs:835 and :902 to prevent usize overflow on 1 + packet.len(); test passes; committed d061107c3 and pushed"
+}

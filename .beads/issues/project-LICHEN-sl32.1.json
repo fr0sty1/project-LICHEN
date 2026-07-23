@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-sl32.1",
+  "title": "Heltec V3 WiFi backhaul: Kconfig and board overlays",
+  "description": "Update Kconfig in lichen/apps/gateway/Kconfig and board-specific .conf files to properly select and configure WiFi station mode, NET_L2_WIFI_MGMT, prefix delegation dependencies, credentials placeholders (SSID/PASS via Kconfig strings or settings), heap sizes, and any missing NET_* options for 6LBR. Make LICHEN_GATEWAY_PREFIX_DELEGATION select required subsystems. Add help text referencing spec/appendix-border-router.md and AGENTS.md init order. Parent of project-LICHEN-sl32.",
+  "notes": "Commit: a3662ca10",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:17:26.924818672Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:29:21.464807767Z",
+  "started_at": "2026-07-22T22:28:40.203347921Z",
+  "closed_at": "2026-07-22T22:29:21.464807767Z",
+  "close_reason": "Enhanced lichen/apps/gateway/Kconfig with LICHEN_GATEWAY_WIFI_SSID/PSK + expanded PREFIX_DELEGATION (selects WIFI/NET_L2_WIFI_MGMT/NET_IPV6_ND6, implies DHCPv6_CLIENT, detailed help ref to spec/appendix-border-router.md + AGENTS.md). Updated heltec gateway board .conf with SSID/PSK, NET_* tuning, heap=98304 for 6LBR/WiFi. Matches task exactly.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-sl32.1",
+      "depends_on_id": "project-LICHEN-sl32",
+      "type": "parent-child",
+      "created_at": "2026-07-22T22:17:27.038431691Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}

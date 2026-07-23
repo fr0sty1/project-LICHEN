@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-rork",
+  "title": "[kimi-review] 3bd50d3: [SEVERITY: medium] Truncation/sizing: if the old shared buff",
+  "description": "Commit: 3bd50d339\nMessage: fix(coap): eliminate shared response buffer race Handlers now use per-call stack buffers. Closes project-LICHEN-cx3a\n\nFinding: [SEVERITY: medium] Truncation/sizing: if the old shared buffer was dynamically sized or larger than the new fixed stack buffer, responses exceeding the new size may be silently truncated. Check that the size constant is at least as large as the previous maximum and that overflow is handled explicitly.",
+  "notes": "Commit: 452d846b2",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:44:08.531742451Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T21:53:50.258454783Z",
+  "started_at": "2026-07-22T21:52:12.011460531Z",
+  "closed_at": "2026-07-22T21:53:50.258454783Z",
+  "close_reason": "Closed"
+}

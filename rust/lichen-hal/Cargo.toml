@@ -11,6 +11,7 @@ std = []
 # Logging: enable one or neither, not both
 defmt = ["dep:defmt", "lichen-link/defmt"]
 log = ["dep:log", "lichen-link/log"]
+rand = ["dep:rand_core"]  # Enables RngCore + CryptoRng blanket impls for lichen_hal::Rng (for EDHOC etc.)
 
 # Hardware variants
 tdeck = []   # T-Deck: ST7789, keyboard, trackball
@@ -20,6 +21,7 @@ twatch = []  # T-Watch: ST7789, touch
 [dependencies]
 heapless = "0.8"
 lichen-link = { path = "../lichen-link" }
+rand_core = { version = "0.6", default-features = false, optional = true }
 
 # Logging backends (optional, feature-gated)
 defmt = { version = "0.3", optional = true }

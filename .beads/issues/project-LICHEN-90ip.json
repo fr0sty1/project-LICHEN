@@ -1,12 +1,17 @@
 {
   "id": "project-LICHEN-90ip",
   "title": "codereview-pass3-chunk2-hash-call pass2: parameter order and eui64-only confirmed matches spec/02a:253 and 02-physical-link:199; Python oracle in generate.py now produces matching vector; test schema still needs v1/v2 reconciliation per t6vs but out of scope for this chunk",
-  "status": "open",
+  "notes": "Commit: c9a77fc4b",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:55:14.260547933Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:55:14.260547933Z",
+  "updated_at": "2026-07-22T22:26:22.970587821Z",
+  "started_at": "2026-07-22T22:26:10.425763837Z",
+  "closed_at": "2026-07-22T22:26:22.970587821Z",
+  "close_reason": "Closed",
   "labels": [
     "codereview",
     "opinion"

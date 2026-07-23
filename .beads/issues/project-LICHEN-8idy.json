@@ -2,11 +2,16 @@
   "id": "project-LICHEN-8idy",
   "title": "EDHOC: A_3 COSE Encrypt0 structure has 3-element list but 4th element implied",
   "description": "PROTOCOL: The COSE Encrypt0 structure encoding for A_3 may not match RFC 9052.\n\nLocations:\n- Lines 688-694 (initiator)\n- Lines 1054-1060 (responder)\n\nCode:\nzcbor_list_start_encode(zse_a3, 3);\nzcbor_tstr_put_lit(zse_a3, 'Encrypt0');\nzcbor_bstr_encode_ptr(zse_a3, NULL, 0);      // protected\nzcbor_bstr_encode_ptr(zse_a3, ctx-\u003eth_3, 32); // external_aad\nzcbor_list_end_encode(zse_a3, 3);\n\nPer RFC 9052 Section 5.3, Enc_structure for encryption is:\nEnc_structure = [\n  context : 'Encrypt0',\n  protected : bstr,\n  external_aad : bstr\n]\n\nThis looks correct (3 elements). However, the comment at line 687/1052 says 'A_3 for AAD' but per RFC 9528, the AAD should be Enc_structure which includes TH_3 as external_aad.\n\nThis appears correct, but the code structure could be clearer. Low priority - mark for review.\n\nFile: lichen/subsys/lichen/edhoc/edhoc.c:688-694,1054-1060",
-  "status": "open",
+  "notes": "Commit: e0110a7a7. Refactored A_3 Enc_structure encoding into build_enc_structure() for clarity, removed duplicated code and outdated comments, now matches current interop pattern with Python ref impl.",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:45:51.789871Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:45:51.789899Z"
+  "updated_at": "2026-07-22T23:15:22.373667194Z",
+  "started_at": "2026-07-22T23:11:19.065970693Z",
+  "closed_at": "2026-07-22T23:15:22.373667194Z",
+  "close_reason": "Refactored duplicated A_3 COSE_Encrypt0 encoding into reusable build_enc_structure helper (lichen/subsys/lichen/edhoc/edhoc.c:309). Matches Python interop, clarifies 3-element structure per RFC 9052 §5.3 vs implied concat for binding. Verified via edit and commit e0110a7a7."
 }

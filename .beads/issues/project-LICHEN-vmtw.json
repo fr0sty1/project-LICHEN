@@ -2,11 +2,16 @@
   "id": "project-LICHEN-vmtw",
   "title": "Large stack allocation in enqueue_next_pending depends on config",
   "description": "File: lichen/subsys/lichen/meshcore/adapter.c\nLine: 360\n\n```c\nuint8_t out[LICHEN_MESHCORE_FRAME_MAX];\n```\n\nThis allocates LICHEN_MESHCORE_FRAME_MAX bytes on the stack, where the size depends on CONFIG_LICHEN_MESHCORE_MAX_FRAME.\n\nOn embedded systems with limited stack sizes (often 1-8KB), a large CONFIG value (e.g., 4096 bytes) could cause stack overflow when this function is called from an interrupt handler or deeply nested call chain.\n\nConsider:\n1. Adding BUILD_ASSERT(LICHEN_MESHCORE_FRAME_MAX \u003c= 256, \"Frame too large for stack allocation\");\n2. Using static allocation with mutex protection\n3. Passing a caller-provided buffer\n\nSimilar concern exists in encode_pending_text() which receives 'out' and 'out_len' from this function.",
-  "status": "open",
+  "notes": "Commit: e69921dff",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:46:11.351632Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:46:11.351669Z"
+  "updated_at": "2026-07-22T23:16:04.707575421Z",
+  "started_at": "2026-07-22T23:15:00.723763629Z",
+  "closed_at": "2026-07-22T23:16:04.707575421Z",
+  "close_reason": "Replaced stack allocation of LICHEN_MESHCORE_FRAME_MAX in enqueue_next_pending() with pre-allocated adapter-\u003etx_buf (option 3 from bead). Verified no functional change to encode/enqueue path. Updated .beads/ files."
 }

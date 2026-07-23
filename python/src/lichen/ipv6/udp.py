@@ -78,12 +78,6 @@ class UdpDatagram:
 
     @classmethod
     def from_bytes(cls, data: bytes) -> UdpDatagram:
-        """Parse a UDP datagram (the checksum is not verified here).
-
-        SECURITY: Callers MUST verify the checksum via verify_checksum() before
-        processing the payload. For IPv6, UDP checksums are mandatory (RFC 8200
-        section 8.1).
-        """
         if len(data) < UDP_HEADER_LENGTH:
             raise UdpError(f"UDP datagram too short: {len(data)} bytes")
         src_port = int.from_bytes(data[0:2], "big")

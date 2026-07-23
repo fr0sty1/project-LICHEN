@@ -7,6 +7,7 @@
 
 static void cbor_put_map_header(uint8_t *buf, size_t *off, uint8_t count)
 {
+	if (*off >= LICHEN_GATEWAY_STATUS_CBOR_MAX_SIZE) return;
 	if (count < 24U) {
 		buf[(*off)++] = 0xa0U | count;
 	} else {
@@ -17,6 +18,7 @@ static void cbor_put_map_header(uint8_t *buf, size_t *off, uint8_t count)
 
 static void cbor_put_tstr(uint8_t *buf, size_t *off, const char *value)
 {
+	if (*off >= LICHEN_GATEWAY_STATUS_CBOR_MAX_SIZE) return;
 	size_t len = strlen(value);
 
 	if (len < 24U) {
@@ -29,6 +31,7 @@ static void cbor_put_tstr(uint8_t *buf, size_t *off, const char *value)
 		buf[(*off)++] = (uint8_t)(len >> 8);
 		buf[(*off)++] = (uint8_t)(len & 0xffU);
 	}
+	if (*off + len > LICHEN_GATEWAY_STATUS_CBOR_MAX_SIZE) return;
 	memcpy(&buf[*off], value, len);
 	*off += len;
 }
@@ -40,11 +43,13 @@ static void cbor_put_key(uint8_t *buf, size_t *off, const char *key)
 
 static void cbor_put_bool(uint8_t *buf, size_t *off, bool value)
 {
+	if (*off >= LICHEN_GATEWAY_STATUS_CBOR_MAX_SIZE) return;
 	buf[(*off)++] = value ? 0xf5 : 0xf4;
 }
 
 static void cbor_put_uint(uint8_t *buf, size_t *off, uint32_t value)
 {
+	if (*off >= LICHEN_GATEWAY_STATUS_CBOR_MAX_SIZE) return;
 	if (value < 24U) {
 		buf[(*off)++] = (uint8_t)value;
 	} else if (value <= UINT8_MAX) {
@@ -65,6 +70,7 @@ static void cbor_put_uint(uint8_t *buf, size_t *off, uint32_t value)
 
 static void cbor_put_int(uint8_t *buf, size_t *off, int32_t value)
 {
+	if (*off >= LICHEN_GATEWAY_STATUS_CBOR_MAX_SIZE) return;
 	uint32_t encoded;
 
 	if (value >= 0) {

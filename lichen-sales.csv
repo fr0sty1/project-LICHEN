@@ -1,0 +1,2 @@
+timestamp,serial,eui64,price,payment_method,buyer_note
+2026-07-22T15:04:49Z,TEST001,00:11:22:33:44:55:66:77,75,square,"Test sale"

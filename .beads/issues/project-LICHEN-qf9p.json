@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-qf9p",
+  "title": "[kimi-review] 1d4545c: [SEVERITY: high] Commit message/diff mismatch: the message c",
+  "description": "Commit: 1d4545c15\nMessage: fix(kconfig): resolve codereview for RPL/SCHC/L2 callback, now_ms, PoE, T-Deck LVGL, board Kconfig\n\nFinding: [SEVERITY: high] Commit message/diff mismatch: the message claims to resolve code review findings for \"RPL/SCHC/L2 callback, now_ms, PoE, T-Deck LVGL, board Kconfig,\" but the diff contains none of those changes — only a one-line comment edit in `spec/02a-coordinated-capacity.md`. Either the actual fixes were omitted from this commit or the message is stale/copy-pasted. As-is, the claimed code review resolutions are unverifiable and likely missing.",
+  "notes": "Commit: 39a75ef13",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:45:54.65351274Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:52:17.351574235Z",
+  "started_at": "2026-07-22T22:50:18.255923469Z",
+  "closed_at": "2026-07-22T22:52:17.351574235Z",
+  "close_reason": "Closed"
+}

@@ -2,10 +2,15 @@
   "id": "project-LICHEN-brab",
   "title": "[codereview-P3 pass3] ccp16-desync.json lacks  and format_version for consistency with v2 files",
   "description": "Even for array root v2, add top level comment or wrap in object. Update README.md to document the new file. Independent oracle comparison to ccp15.json. Tagged codereview.",
-  "status": "open",
+  "notes": "Commit: 5ca65ea5d",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T17:02:26.018608008Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T17:02:26.018608008Z"
+  "updated_at": "2026-07-22T21:54:00.047556647Z",
+  "started_at": "2026-07-22T21:53:01.5194728Z",
+  "closed_at": "2026-07-22T21:54:00.047556647Z",
+  "close_reason": "Added ccp16-desync.json as v2 bare array root with desync test vector (notes include independent oracle vs ccp15.json and format_version reference). Updated test/vectors/README.md table with entry for it and related CCP files. Schema validates (array branch), test_vector_file_schema ready for inclusion. Matches codereview-P3 requirements for consistency. Commit 5ca65ea5d"
 }

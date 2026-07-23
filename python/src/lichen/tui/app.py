@@ -262,9 +262,11 @@ class SimNodeApp(App[None]):
     async def on_unmount(self) -> None:
         """Called on shutdown - cleanup."""
         if self._receive_task is not None:
-            self._receive_task.cancel()
+            receive_task = self._receive_task
+            self._receive_task = None
+            receive_task.cancel()
             with contextlib.suppress(asyncio.CancelledError, asyncio.InvalidStateError):
-                await self._receive_task
+                await receive_task
         # Radio cleanup happens in action_quit
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -282,10 +284,12 @@ class SimNodeApp(App[None]):
             self._do_receive()
 
     async def action_quit(self) -> None:
-        """Quit the application with cleanup."""
         if self._receive_task is not None:
-            self._receive_task.cancel()
-        # Properly close the radio connection before exiting
+            receive_task = self._receive_task
+            self._receive_task = None
+            receive_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError, asyncio.InvalidStateError):
+                await receive_task
         if self._radio is not None:
             with contextlib.suppress(Exception):
                 await self._radio.close()
@@ -322,7 +326,6 @@ class SimNodeApp(App[None]):
         log = self.query_one("#event-log", RichLog)
         timestamp = datetime.now().strftime("%H:%M:%S")
 
-        # Color by level
         colors = {
             "info": "cyan",
             "warn": "yellow",
@@ -349,13 +352,11 @@ class SimNodeApp(App[None]):
             )
             await self._radio.connect()
 
-            # Update status widget
             status = self.query_one(ConnectionStatus)
             status.set_connected(self._host, self._port, self._sim_id, self._node_id)
 
             self._log_event("info", "Connected successfully")
 
-            # Get initial time
             await self._update_sim_time()
 
         except SimRadioError as e:
@@ -366,22 +367,22 @@ class SimNodeApp(App[None]):
             self._radio = None
         except asyncio.CancelledError:
             raise
-        except Exception as e:
+        except BaseException as e:
+            if isinstance(e, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             self._log_event("error", f"Unexpected error: {e}")
             if self._radio is not None:
                 with contextlib.suppress(Exception):
                     await self._radio.close()
             self._radio = None
 
-        @work(exclusive=True, group="connect")
-        async def _disconnect(self) -> None:
-            """Disconnect from the simulator (async worker)."""
-            if self._radio is None:
-                self._log_event("warn", "Not connected")
-
+    @work(exclusive=True, group="connect")
+    async def _disconnect(self) -> None:
+        """Disconnect from the simulator (async worker)."""
+        if self._radio is None:
+            self._log_event("warn", "Not connected")
             return
 
-        # Cancel any pending receive
         if self._receive_task is not None:
             self._receive_task.cancel()
             self._receive_task = None
@@ -390,7 +391,9 @@ class SimNodeApp(App[None]):
             await self._radio.close()
         except asyncio.CancelledError:
             raise
-        except Exception as e:
+        except BaseException as e:
+            if isinstance(e, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             self._log_event("error", f"Error during disconnect: {e}")
         finally:
             self._radio = None

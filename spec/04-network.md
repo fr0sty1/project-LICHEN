@@ -18,14 +18,15 @@
 
 | Type | Prefix | When Available | Routable To |
 |------|--------|----------------|-------------|
-| Link-local | fe80::/10 | Always | Direct neighbors |
-| ULA | fd00::/8 | DODAG root present | Entire mesh |
+| Link-local | fe80::/10 | After lichen_link_init() | Direct neighbors (control only) |
+| 02xx (Yggdrasil) | 0200::/7 | Always (self-derived from pubkey) | Mesh peers and internet gateways (Ed25519 per 06-security) |
 | GUA | 2000::/3 | BR with upstream prefix | Internet |
+| ULA | fd00::/8 | Optional (legacy) | Mesh (if configured) |
 
-All addresses use the same IID, derived from EUI-64 using unified Ed25519 method (see 06-security.md and draft-lichen-link). Link-local restricted to after lichen_link_init per AGENTS.md graph.
-**1. Link-Local -- Always Available**
+All addresses share a stable IID derived from the node's Ed25519 public key using the unified derivation normatively specified in 06-security.md §8.5 (and draft-lichen-schnorr-00 once stabilized; see also 03-addressing.md and test/vectors/). This binds identity cryptographically with no new secrets or key exposure. Link-local addresses are restricted to after `lichen_link_init()` per the subsystem initialization dependency graph in AGENTS.md. Mesh peer routing uses Ed25519-derived IID consistent with the address classification table in 05-routing.md.
+**1. Link-Local -- Control Traffic (post-init)**
 
-Every node has a link-local address from boot:
+Every node has a link-local address after `lichen_link_init()`:
 ```
 fe80::<IID>
 ```
@@ -140,24 +141,15 @@ Coordination between BRs is NOT required. Nodes handle multiple prefixes:
 
 ### 6.2. Interface Identifier (IID) Derivation
 
-From EUI-64 (IEEE method):
+IID is derived from Ed25519 public key via the unified normative function in 06-security.md §8.5 (MUST match test vectors exactly; see also 03-addressing.md:12-18, draft-lichen-schnorr-00, rust/lichen-link/src/identity.rs:24, python/src/lichen/crypto/identity.py):
+
 ```
-IID = EUI-64 XOR 0x0200_0000_0000_0000
+hash = SHA-256(pubkey)  // or hash_32 variant per vectors
+IID = hash[0:8]
+IID[0] &= 0b11111101    // clear U/L bit (RFC 4291)
 ```
 
-From 16-bit short address:
-```
-IID = 0x0000_00FF_FE00_0000 | (short_addr << 48)
-```
-
-**Stable IIDs only.** IIDs are stable and hardware-derived for the life of
-the node. Temporary addresses (RFC 4941) and opaque/random IIDs (RFC 7217)
-MUST NOT be used. This is a deliberate deviation from the RFC 8064 default:
-root election, short-address assignment, replay windows, and signature
-caching all key on a node's stable EUI-64, and every frame is already bound
-to a stable public key, so a rotating IID would break the mesh while
-providing no unlinkability. See Privacy in Security Considerations
-(section 15.5 in Security) for the full analysis.
+**Stable cryptographic IIDs only.** The IID binds the IPv6 address to the Ed25519 keypair used for signatures and OSCORE (no new key material). Temporary (RFC 4941) and opaque (RFC 7217) IIDs MUST NOT be used. See 06-security.md §8.7 for full analysis and privacy considerations. Short address derivation for 6LoWPAN remains compatible but defers to the key-derived IID for identity.
 
 ### 6.3. Multicast and Broadcast
 
@@ -309,39 +301,39 @@ Standard ICMPv6 (RFC 4443) for:
 
 ### 12.1. Address Structure
 
-See Section 6.1 for full addressing design. Summary:
+See Section 6.1 for full addressing design (unified Ed25519 IID per 06-security.md §8.5). Summary:
 
 ```
-Link-local:  fe80::<IID>                    (always available)
-ULA:         fd<40-bit random>:<subnet>::<IID>  (mesh-routable)
-GUA:         <delegated prefix>::<IID>      (internet-routable)
+Link-local:  fe80::<IID>                    (control, post-lichen_link_init)
+02xx:        02xx::[derived-from-pubkey]   (primary mesh routable, Ed25519 per 06-security)
+GUA:         <delegated prefix>::<IID>      (internet optional)
 ```
 
-IID is derived from EUI-64 (see Section 6.2), ensuring stable identity.
+IID is derived from Ed25519 pubkey (see Section 6.2 and 06-security.md), ensuring cryptographic binding. ULA optional in some deployments.
 
 ### 12.2. Example Addresses
 
 | Type | Example | Routable To |
 |------|---------|-------------|
-| Link-local | fe80::1234:5678:9abc:def0 | Direct neighbors |
-| ULA | fd12:3456:789a:0001::1234:5678:9abc:def0 | Entire mesh |
-| GUA | 2001:db8:1234:1::1234:5678:9abc:def0 | Internet |
+| Link-local | fe80::0211:22ff:fe33:4455 | Direct neighbors (control) |
+| 02xx (primary) | 0201:0203:0405:0607:0211:22ff:fe33:4455 | Mesh peers (Ed25519 per 06-security) |
+| GUA | 2001:db8:1234:1::0211:22ff:fe33:4455 | Internet |
 
-A node typically has all three when a BR with upstream connectivity is present.
+A node typically has link-local + primary 02xx address; GUA when BR provides upstream prefix. Consistent with 05-routing.md table.
 
 ### 12.3. Short Address Assignment
 
 16-bit short addresses optimize 6LoWPAN compression (2 bytes vs 8).
 
 Assignment methods (no central authority required):
-1. **Derived from EUI-64:** Hash lower 16 bits, check for collision
+1. **Derived from IID (Ed25519-derived):** Hash lower 16 bits of stable IID, check for collision
 2. **Self-assigned + DAD:** Pick random, verify uniqueness via DAD
 3. **DODAG root assignment:** Root allocates from pool (optional optimization)
 
 Collision resolution: If DAD detects duplicate, regenerate and retry.
 
 Short addresses are mesh-local; they compress the IID for routing efficiency
-but the full IID remains the stable identifier for security (key binding).
+but the full key-derived IID remains the stable identifier for security (key binding per 06-security).
 
 ---
 

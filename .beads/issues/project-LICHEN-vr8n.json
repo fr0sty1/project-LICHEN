@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-vr8n",
+  "title": "[kimi-review] ef7c0bc: [SEVERITY: medium] Commit contains no code changes in the pr",
+  "description": "Commit: ef7c0bc84\nMessage: fix(icmpv6): add invoking_packet NULL validation in build_error Closes project-LICHEN-qs20\n\nFinding: [SEVERITY: medium] Commit contains no code changes in the provided diff — the claimed fix cannot be verified; possible empty commit or truncated diff.",
+  "notes": "Commit: d27c6c4c1",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:47:18.607123041Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:36:46.853118329Z",
+  "closed_at": "2026-07-22T22:36:46.853118329Z",
+  "close_reason": "Closed"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-3rrp",
+  "title": "[kimi-review] 1d4545c: [SEVERITY: low] The new citation format `draft-lichen-tdma:2",
+  "description": "Commit: 1d4545c15\nMessage: fix(kconfig): resolve codereview for RPL/SCHC/L2 callback, now_ms, PoE, T-Deck LVGL, board Kconfig\n\nFinding: [SEVERITY: low] The new citation format `draft-lichen-tdma:2a.2` is nonstandard for IETF references (draft sections are normally cited as \"Section X.Y of draft-...\"), and `2a.2` looks like an internal spec numbering, not an IETF draft section. Also, replacing the normative phrase \"unsigned modular arithmetic\" with the vaguer \"(wrap semantics)\" loses precision about the required behavior of `now()`.",
+  "notes": "Commit: 867b7c8be",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:45:55.002097951Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T23:25:09.376825779Z",
+  "started_at": "2026-07-22T23:23:09.358718587Z",
+  "closed_at": "2026-07-22T23:25:09.376825779Z",
+  "close_reason": "Fixed nonstandard IETF citation format to \"Section 2a.2 of draft-lichen-tdma\" across spec files and restored precise \"unsigned modular arithmetic\" terminology for now()/SFN wrap behavior in 02-physical-link.md, 09-packets-timing.md, and related cross-refs. Verified with 3 codereview-style passes (no remaining P0-P2). Commit 867b7c8be"
+}

@@ -1,0 +1,8 @@
+using sysbus
+mach create "ttgo_lora32"
+machine LoadPlatformDescription @ttgo_lora32.repl
+sysbus LoadELF @build_t1000e_puck/zephyr/zephyr.elf
+cpu0 Start
+showAnalyzer uart0
+logLevel 3
+echo "TTGO LoRa32 loaded. Waiting for CoAP marker..."

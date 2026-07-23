@@ -14,7 +14,7 @@ use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::time::Duration;
 
-use lichen_hal::{Radio, RadioConfig, RadioError, RxPacket};
+use lichen_hal::{ChannelConfig, Radio, RadioConfig, RadioError, RxPacket};
 use sha2::{Digest, Sha256};
 
 /// Radio that connects to lichen-sim for packet transfer.
@@ -120,56 +120,53 @@ impl SimRadio {
 impl Radio for SimRadio {
     type Error = SimError;
 
-    async fn transmit(&mut self, payload: &[u8]) -> Result<(), Self::Error> {
-        // Build TX message: [0x10][payload_len:2][payload]
+    async fn transmit(&mut self, channel: u8, payload: &[u8]) -> Result<(), Self::Error> {
+        if payload.len() > u16::MAX as usize {
+            return Err(RadioError::Protocol);
+        }
         let mut msg = Vec::with_capacity(3 + payload.len());
-        msg.push(0x10); // MSG_TX
+        msg.push(0x10);
         msg.extend_from_slice(&(payload.len() as u16).to_le_bytes());
         msg.extend_from_slice(payload);
 
         self.send_message(&msg)?;
 
-        // Read TX_DONE response
         let resp = self.recv_message()?;
         if resp.is_empty() || resp[0] != 0x11 {
             return Err(RadioError::Protocol);
         }
 
-        // Log TX packet with hash
         let hash = Sha256::digest(payload);
         eprintln!(
-            "[TX] len={} hash={} hex={}",
+            "[TX ch={}] len={} hash={} hex={}",
+            channel,
             payload.len(),
             hex::encode(&hash[..8]),
             hex::encode(payload)
         );
 
-        // resp[1..5] contains airtime in us (ignored for now)
         Ok(())
     }
 
     async fn receive(
         &mut self,
+        channel: u8,
         buf: &mut [u8],
         timeout_ms: u32,
     ) -> Result<Option<RxPacket>, Self::Error> {
-        // Convert timeout to microseconds
         let timeout_us = (timeout_ms as u64) * 1000;
         let timeout_us = timeout_us.min(u32::MAX as u64) as u32;
 
-        // Set read timeout to slightly longer than requested to allow server response
         let read_timeout = Duration::from_millis(timeout_ms as u64 + 1000);
         self.stream
             .set_read_timeout(Some(read_timeout))
             .map_err(RadioError::Bus)?;
 
-        // Send RX_ENTER: [0x24][timeout_us:4 LE]
         let mut msg = [0u8; 5];
         msg[0] = 0x24;
         msg[1..5].copy_from_slice(&timeout_us.to_le_bytes());
         self.send_message(&msg)?;
 
-        // Block reading response (push-based, no polling)
         let resp = self.recv_message()?;
 
         if resp.is_empty() {
@@ -178,7 +175,6 @@ impl Radio for SimRadio {
 
         match resp[0] {
             0x27 => {
-                // RX_PACKET: [0x27][payload_len:2 LE][payload][rssi:2 LE signed][snr:2 LE signed]
                 if resp.len() < 3 {
                     return Err(RadioError::Protocol);
                 }
@@ -188,7 +184,6 @@ impl Radio for SimRadio {
                     return Err(RadioError::Protocol);
                 }
 
-                // Reject packets that don't fit - truncation would corrupt the frame
                 if payload_len > buf.len() {
                     return Err(RadioError::Protocol);
                 }
@@ -198,10 +193,10 @@ impl Radio for SimRadio {
                 let rssi = i16::from_le_bytes([resp[rssi_offset], resp[rssi_offset + 1]]);
                 let snr = i16::from_le_bytes([resp[rssi_offset + 2], resp[rssi_offset + 3]]);
 
-                // Log RX packet with hash
                 let hash = Sha256::digest(&buf[..payload_len]);
                 eprintln!(
-                    "[RX] len={} rssi={} snr={} hash={} hex={}",
+                    "[RX ch={}] len={} rssi={} snr={} hash={} hex={}",
+                    channel,
                     payload_len,
                     rssi,
                     snr,
@@ -212,12 +207,10 @@ impl Radio for SimRadio {
                 Ok(Some(RxPacket {
                     len: payload_len,
                     rssi: Some(rssi),
-                    // Protocol uses i16, RxPacket uses i8; clamp to valid range
                     snr: Some(snr.clamp(i8::MIN as i16, i8::MAX as i16) as i8),
                 }))
             }
             0x28 => {
-                // RX_TIMEOUT: no packet received within timeout
                 Ok(None)
             }
             _ => Err(RadioError::Protocol),
@@ -226,11 +219,17 @@ impl Radio for SimRadio {
 
     fn configure(&mut self, config: &RadioConfig) {
         self.config = *config;
-        // ponytail: config sent to sim on next TX/RX if sim supports it
     }
 
-    async fn cca(&mut self, _threshold_dbm: i8) -> Result<bool, Self::Error> {
-        // Sim always clear for CCP-15 test vectors; real radio sim would query backend.
+    async fn configure_channels(
+        &mut self,
+        _channels: &[ChannelConfig],
+    ) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    async fn cca(&mut self, channel: u8, _threshold_dbm: i8) -> Result<bool, Self::Error> {
+        eprintln!("[CCA ch={}] clear", channel);
         Ok(true)
     }
 }

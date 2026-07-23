@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-f31o",
+  "title": "Update mesh-gateway for RAK2287 packet forwarding",
+  "description": "Extend Rust mesh-gateway to use RAK2287 concentrator for multi-channel RX/TX. Integrate with SCHC, RPL border router logic, 6LBR. Handle LoRaWAN to IPv6 translation if needed. See spec/7-border.",
+  "notes": "Commit: f2c8d1111",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:31:40.884692981Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:16:25.383512821Z",
+  "started_at": "2026-07-22T22:14:56.897866695Z",
+  "closed_at": "2026-07-22T22:16:25.383512821Z",
+  "close_reason": "Closed"
+}

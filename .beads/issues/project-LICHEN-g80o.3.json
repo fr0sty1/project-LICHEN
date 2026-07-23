@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-g80o.3",
+  "title": "Create ttgo_lora32 Renode support files (.repl .resc README.md)",
+  "description": "Include the esp32_lichen base, attach SX127x on SPI3 (per upstream DTS). Mimic heltec or esp32s3 style exactly. Ensure ELF loads and runs to CoAP marker.",
+  "notes": "Commit: 2fc60f63a",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:55:52.416884159Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:38:19.650799455Z",
+  "started_at": "2026-07-22T22:37:23.986204333Z",
+  "closed_at": "2026-07-22T22:38:03.710952421Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-g80o.3",
+      "depends_on_id": "project-LICHEN-g80o",
+      "type": "parent-child",
+      "created_at": "2026-07-22T21:55:52.530342046Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-y4p3",
+  "title": "[kimi-review] abfe0c5: [SEVERITY: high] **Commit contains no code changes.** The me",
+  "description": "Commit: abfe0c5c1\nMessage: fix(senml): enforce CBOR type validation in from_cbor_map\n\nFinding: [SEVERITY: high] **Commit contains no code changes.** The message claims to \"enforce CBOR type validation in from_cbor_map\" and the close_reason asserts `codec.py:164` now calls `_validate_field_type` for every field — but the diff only touches `.beads/issues/project-LICHEN-itah.json` (an issue-tracker metadata file). The claimed fix in `codec.py` is absent from this commit, so there is nothing to verify here. Either the actual code change was never committed (bug remains unfixed while the issue is closed), or it lives in a different commit and this one's message misrepresents its contents. The issue should not be closed on the basis of this commit alone, and the fix commit (if it exists) should be",
+  "notes": "Commit: 5186bf330",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:23:31.998381523Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T21:32:34.710718701Z",
+  "started_at": "2026-07-22T21:31:44.644061722Z",
+  "closed_at": "2026-07-22T21:32:34.710718701Z",
+  "close_reason": "Added bver range validation [1,10] and test coverage in senml/codec.py; addressed kimi-review on prior empty fix commit"
+}

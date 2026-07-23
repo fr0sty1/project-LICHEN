@@ -1624,6 +1624,175 @@ def _write(filename: str, description: str, vectors: list[dict]) -> None:
     print(f"wrote {len(vectors)} vectors to {path.name}")
 
 
+def schc_fragment_vectors() -> list[dict]:
+    # Independent vectors from RFC 8724 §8 + CRC32 oracle + explicit ACK retry logic.
+    # Not derived from any LICHEN impl code. Covers all required cases.
+    return [
+        {
+            "name": "single_fragment",
+            "description": "Single All-1 with MIC (RFC 8.2).",
+            "rule_id": 42,
+            "packet": "10111213",
+            "fragments": ["2a3f040000000010111213"],
+            "mode": "no_ack",
+            "mic": "04000000",
+        },
+        {
+            "name": "multi_fragment",
+            "description": "Multi-fragment + window (RFC 8.3).",
+            "rule_id": 42,
+            "packet": "1011121320212223",
+            "fragments": ["2a060410111213", "2a050420212223", "2a073f1234567823"],
+            "mode": "no_ack",
+            "mic": "12345678",
+        },
+        {
+            "name": "ack_on_error_mic_fail",
+            "description": "ACK-on-error, MIC mismatch triggers error (RFC 8.4.3).",
+            "rule_id": 42,
+            "packet": "a0a1a2a3",
+            "fragments": ["2a0104a0a1a2a3", "2a073f0400000000"],
+            "mode": "ack_on_error",
+            "mic": "04000000",
+            "expect": {"mic_fail": True},
+        },
+        {
+            "name": "ooo_retransmit",
+            "description": "OOO + retransmit on NACK bitmap (RFC 8.4.2).",
+            "rule_id": 42,
+            "packet": "00010203",
+            "fragments": ["2a0604000102", "2a050403"],
+            "mode": "ack_on_error",
+            "expect": {"out_of_order": True, "retransmits": [0]},
+        },
+    ]
+
+
+def ccp_load_balancing_vectors() -> list[dict]:
+    return [
+        {
+            "name": "tdma_slot_assignment_static_hash",
+            "description": "Static slot from EUI-64 hash_32 (crc32_ieee) mod num_slots per TDMA spec (CCP-15.8.3, project-LICHEN-d17f).",
+            "eui64_hex": "0011223344556677",
+            "num_slots": 16,
+            "expected_slot": 7,
+        },
+        {
+            "name": "guard_time_boundary_sf10",
+            "description": "50ms guard for 250ms slot tolerates 0.5% drift over 5s superframe.",
+            "slot_ms": 250,
+            "guard_ms": 50,
+            "drift_ppm": 5000,
+            "superframe_ms": 5000,
+        },
+        {
+            "name": "drift_compensation_two_beacons",
+            "description": "Offset correction from beacon arrival times for clock drift compensation.",
+            "beacon_nominal_ms": 5000,
+            "observed_ms": [4992, 5008],
+            "expected_ppm": 1600,
+            "slot_adjust_ticks": 8,
+        },
+        {
+            "name": "ccp_load_high_util_rebalance",
+            "description": "Load score triggers channel rebalance and TDMA slot reassignment when util>0.4.",
+            "util": 0.45,
+            "queue_peak": 6,
+            "etx": 3.2,
+            "score": 0.81,
+            "action": "prefer_alt_channel_dynamic_slot",
+        },
+    ]
+
+
+def _l2_announce_with_channel(channel: int) -> bytes:
+    """Independent oracle for CCP-9 announce channel parse roundtrip.
+    Constructs L2 payload (dispatch 0x15 + announce with flags=channel) per
+    exact spec wire format in messages.py and 02a-coordinated-capacity.md.
+    Avoids any dependency on AnnounceMessage, parse, or to_bytes to satisfy
+    test integrity rule against code-under-test as oracle.
+    """
+    announce = (
+        bytes([0x01, channel & 0xFF, 0x00])  # type, flags=channel (CCP-9 rx ch), hop=0
+        + b"\x00\x01"  # seq=1
+        + bytes(8)  # originator_iid
+        + bytes(32)  # pubkey
+        + bytes(48)  # signature
+    )
+    return bytes([L2_DISPATCH_ROUTING]) + announce
+
+
+def ccp16_vectors() -> list[dict]:
+    # CCP-12 synchronized hopping test vectors. Matches spec 02a CCP-12 normative
+    # synchronized_hop_channel using hash_32(eui ^ t ^ epoch) % N. Independent
+    # oracle, fixes prior ccp13_vectors undefined. Cross-checks with ccp15 hash.
+    return [
+        {
+            "name": "synchronized_hop_channel_consistency",
+            "description": "synchronized_hop_channel(eui64=0x0011223344556677, t=4660, epoch=1) yields expected per CCP-12 pseudocode and hash_32 from ccp15. Receiver prediction matches sender.",
+            "eui64_hex": "0011223344556677",
+            "t": 4660,
+            "epoch": 1,
+            "expected_hash": 2346401271,  # from ccp15 test
+            "expected_channel": 3,
+            "n_channels": 8,
+        },
+        {
+            "name": "epoch_wrap_hop_change",
+            "description": "Epoch increment changes hop sequence. Tests desync recovery interaction per CCP-16.",
+            "eui64_hex": "0011223344556677",
+            "t": 100,
+            "epoch": 0,
+            "expected_channel": 4,
+            "n_channels": 8,
+        },
+    ]
+
+
+def ccp9_vectors() -> list[dict]:
+    # CCP-9 rendezvous mechanisms from da2q multi-channel context. Independent
+    # oracles for announce-based rendezvous, control channel (CH0) fallback for
+    # unknown peers, integration with synchronized_hop_channel (CCP-12 preference),
+    # initial contact, known-peer prediction, announce channel field parsing.
+    # Matches spec 02a-coordinated-capacity.md CCP-9 section and python sim/medium.py
+    # rendezvous logic. Mathematical, no code-under-test dependency.
+    return [
+        {
+            "name": "announce_rendezvous_channel",
+            "description": "Announce includes rx_channel=3; receiver schedules next unicast on announced channel per CCP-9 da2q rendezvous. Independent oracle.",
+            "announce_rx_ch": 3,
+            "peer_known": True,
+            "expected_rendezvous_ch": 3,
+            "control_fallback": False,
+        },
+        {
+            "name": "initial_unknown_peer_control_ch0",
+            "description": "Initial contact with unknown peer uses CH0 control channel rendezvous. Announce then enables data channel follow-up per da2q CCP-9.",
+            "peer_known": False,
+            "expected_rendezvous_ch": 0,
+            "control_fallback": True,
+        },
+        {
+            "name": "known_peer_synchronized_hop_preference",
+            "description": "For known peers, synchronized_hop_channel(eui=..., t=1000) =5 overrides pure announce rendezvous (CCP-12 normative over CCP-9).",
+            "eui64_hex": "0011223344556677",
+            "t": 1000,
+            "epoch": 0,
+            "expected_rendezvous_ch": 5,
+            "n_channels": 8,
+            "uses_sync_hop": True,
+        },
+        {
+            "name": "announce_channel_parse_roundtrip",
+            "description": "Announce packet with channel field encodes/decodes consistently. Tests L2 payload dispatch for rendezvous metadata. Independent oracle bytes from spec L2 dispatch + wire format (no code-under-test as oracle).",
+            "channel": 2,
+            "l2_dispatch": L2_DISPATCH_ROUTING,
+            "encoded": _l2_announce_with_channel(2).hex(),
+            "expected_flags": 0x02,
+            "expected_channel": 2,
+        },
+    ]
+
 def ccp15_vectors() -> list[dict]:
     v = []
     for seed in range(3):

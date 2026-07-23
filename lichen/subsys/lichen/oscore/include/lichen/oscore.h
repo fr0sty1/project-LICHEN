@@ -202,10 +202,6 @@ typedef int (*oscore_nvm_read_cb)(const uint8_t *_Nullable eui64, uint32_t *_Non
  *
  * The struct layout is subject to change without notice. Code that accesses
  * fields directly will break.
- *
- * @note oscore_ctx_lookup() copies this struct including key material to the
- * caller's stack. Prefer oscore_ctx_get() which returns a pointer and keeps
- * key material in the protected context array.
  */
 struct oscore_ctx {
 	/* Common context (shared) */
@@ -308,9 +304,8 @@ int oscore_ctx_create(const uint8_t *_Nonnull master_secret,
  * Same as oscore_ctx_create(), but also associates the peer's EUI-64 address
  * for per-peer lookup via oscore_ctx_get_by_eui64().
  *
- * If NVM callbacks are registered, this function will attempt to restore
- * the sender sequence number from NVM. If restoration fails, the SSN starts
- * at 0 and the caller should call oscore_ctx_set_sender_seq() with a safe value.
+ * If NVM callbacks registered, restores SSN from NVM; on OSCORE_ERR_NVM_FAILED
+ * SSN starts at 0. Caller MUST ensure nonce uniqueness via set_sender_seq.
  *
  * @param[in]  master_secret   16-byte master secret
  * @param[in]  master_salt     Master salt (may be NULL)
@@ -371,14 +366,9 @@ void oscore_ctx_free(struct oscore_ctx *_Nullable ctx);
 /**
  * @brief Set the sender sequence number for nonce persistence.
  *
- * IMPORTANT: AES-CCM requires unique nonces per key. After a reboot,
- * the sender sequence must be restored to a value greater than any
- * previously used value to prevent nonce reuse. Callers should persist
- * sender_seq to non-volatile storage and restore it here after reboot.
- *
- * A common pattern is to persist sender_seq periodically (e.g., every
- * 100 messages) plus a safety margin, then restore sender_seq + margin
- * after reboot.
+ * IMPORTANT: AES-CCM requires unique nonces per key. MUST restore to value
+ * > any prior use after reboot or NVM failure to prevent reuse. Persist
+ * via oscore_ctx_persist_ssn().
  *
  * @param[in] ctx       Security context
  * @param[in] sender_seq New sender sequence number (must be > any previously used)
@@ -439,8 +429,8 @@ int oscore_ctx_check_freshness(const struct oscore_ctx *_Nonnull ctx,
 /**
  * @brief Persist the current sender sequence number to NVM.
  *
- * Manually triggers NVM persistence of the context's SSN. This is useful
- * before shutdown or when the application wants to ensure SSN is saved.
+ * Manually triggers NVM write for SSN (critical for nonce uniqueness on
+ * restart). Handle OSCORE_ERR_NVM_FAILED by retry or safe SSN bump.
  *
  * Requires that NVM callbacks have been registered via
  * oscore_nvm_register_callbacks(). If no write callback is registered,
@@ -451,55 +441,6 @@ int oscore_ctx_check_freshness(const struct oscore_ctx *_Nonnull ctx,
  *         OSCORE_ERR_NVM_FAILED if NVM write fails
  */
 int oscore_ctx_persist_ssn(struct oscore_ctx *_Nonnull ctx);
-
-/**
- * @brief Look up a security context by recipient ID (copy).
- *
- * @deprecated This function copies key material to the caller's stack, which
- * is a security concern. Use oscore_ctx_get() instead, which returns a pointer
- * to the internal context without copying sensitive data.
- *
- * Copies the context into the caller-provided buffer.
- *
- * WARNING: The copied context CANNOT be used with oscore_protect_request()
- * or oscore_unprotect_request() because those functions require a pointer
- * to the real internal context for atomic state updates. Use oscore_ctx_get()
- * instead for contexts that will be used with protect/unprotect.
- *
- * @warning Copies key material (sender_key, recipient_key, common_iv) to
- * caller's stack. This exposes sensitive cryptographic material outside the
- * protected internal context array. The caller MUST call oscore_ctx_wipe()
- * on the buffer before it goes out of scope to prevent key material leakage.
- *
- * @param[in]  recipient_id     Recipient ID to search for
- * @param[in]  recipient_id_len Length of recipient ID
- * @param[out] ctx_out          Buffer to copy context into (must not be NULL)
- * @return 0 on success, OSCORE_ERR_NO_CONTEXT if not found,
- *         OSCORE_ERR_INVALID_PARAM if ctx_out is NULL
- */
-int oscore_ctx_lookup(const uint8_t *_Nonnull recipient_id,
-		      size_t recipient_id_len,
-		      struct oscore_ctx *_Nonnull ctx_out);
-
-/**
- * @brief Securely wipe a context copy.
- *
- * Use this function to wipe key material from a context copy obtained via
- * oscore_ctx_lookup() before it goes out of scope. This prevents sensitive
- * cryptographic keys from persisting on the stack.
- *
- * Example:
- * @code
- *     struct oscore_ctx ctx_copy;
- *     if (oscore_ctx_lookup(rid, rid_len, &ctx_copy) == OSCORE_OK) {
- *         // use ctx_copy for read-only inspection
- *         oscore_ctx_wipe(&ctx_copy);
- *     }
- * @endcode
- *
- * @param[in,out] ctx Context to wipe (may be NULL, in which case this is a no-op)
- */
-void oscore_ctx_wipe(struct oscore_ctx *_Nullable ctx);
 
 /**
  * @brief Get a security context pointer by recipient ID.

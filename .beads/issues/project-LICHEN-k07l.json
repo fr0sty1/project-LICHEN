@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-k07l",
+  "title": "[kimi-review] 767871f: [SEVERITY: low] The commit appears to be empty (no file chan",
+  "description": "Commit: 767871f2d\nMessage: fix(sim): unify metrics/observers in push RX path\n\nFinding: [SEVERITY: low] The commit appears to be empty (no file changes), despite a message claiming to \"unify metrics/observers in push RX path.\" Either the diff was omitted from what was pasted here, or this is an empty commit that doesn't implement what it claims. If intentional (e.g., a placeholder), it should be squashed or amended; if the diff was lost, the actual changes need review before merge.",
+  "notes": "Commit: 9dae39feb",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:24:09.118708269Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T21:33:13.51277697Z",
+  "started_at": "2026-07-22T21:32:26.43038351Z",
+  "closed_at": "2026-07-22T21:33:13.51277697Z",
+  "close_reason": "Closed"
+}

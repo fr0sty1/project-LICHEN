@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-n2hs",
+  "title": "[kimi-review] 7e34aa1: [SEVERITY: low] **Issue metadata was rewritten.** The issue ",
+  "description": "Commit: 7e34aa1a0\nMessage: fix(node): add bounds check for OSCORE PIV extraction\n\nFinding: [SEVERITY: low] **Issue metadata was rewritten.** The issue was already closed on 2026-07-13 by Mark Atwood; this commit reassigns it to \"AI Agent,\" rewrites `updated_at`/`closed_at`, and replaces the original close reason. Retroactively editing a previously closed issue's history obscures the audit trail (and may indicate the original close was wrong, which itself deserves a note).",
+  "notes": "Commit: f1da09d",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:34:40.233778973Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T21:54:24.679687134Z",
+  "started_at": "2026-07-22T21:52:24.637400093Z",
+  "closed_at": "2026-07-22T21:54:24.679687134Z",
+  "close_reason": "Added rule to AGENTS.md preventing metadata rewrites of human-closed issues by checking owner/created_by/closed_at before bd update/close; creates follow-up bead instead. Addresses audit trail concern."
+}

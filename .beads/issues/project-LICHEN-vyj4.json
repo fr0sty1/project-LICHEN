@@ -2,12 +2,17 @@
   "id": "project-LICHEN-vyj4",
   "title": "[codereview-1] cbor_put_tstr header_len+overrun fix: correctness, logic, off-by-one",
   "description": "Pass 1 review of edited cbor_put_tstr in coap_status.c:102-140. Verified header_len now matches encoding (1/2/3/5 bytes), 0x7a for \u003eU16, u32 length bytes correct, \u003e4GiB guard sets overflow. No P0-P1. No buffer overrun possible due to check_space. codereview",
-  "status": "open",
+  "notes": "Commit: faca2ac07",
+  "status": "closed",
   "priority": 3,
   "issue_type": "chore",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:18:26.053033021Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:18:26.053033021Z",
+  "updated_at": "2026-07-22T22:37:54.840499767Z",
+  "started_at": "2026-07-22T22:35:49.182287127Z",
+  "closed_at": "2026-07-22T22:37:54.840499767Z",
+  "close_reason": "cbor_put_tstr header_len+overrun fixed and reviewed: header_len matches encoding branches (1/2/3/5B), 0x7a for \u003e0xffff, u32 length bytes correct BE, \u003e4GiB guard, check_space prevents overrun. No P0-P1. Codereview pass complete. Commit faca2ac07",
   "labels": [
     "codereview"
   ]

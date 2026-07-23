@@ -1,0 +1,10 @@
+identifier: elecrow_thinknode_m7/esp32s3/appcpu
+name: Elecrow ThinkNode M7 PoE APPCPU
+type: mcu
+arch: xtensa
+toolchain:
+  - zephyr
+  - espressif
+supported:
+  - uart
+vendor: elecrow

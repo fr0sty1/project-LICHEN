@@ -33,10 +33,7 @@ impl NodeId {
     /// `link_local_addr` and `ula_addr`. Works for both link-local and ULA/GUA
     /// addresses per spec §6.1. Independent roundtrip oracle used in tests.
     pub fn from_ipv6(addr: Ipv6Addr) -> Self {
-        let bytes = addr.0;
-        let mut iid = [
-            bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15],
-        ];
+        let mut iid = addr.iid();
         iid[0] ^= 0x02;
         NodeId(iid)
     }
@@ -166,5 +163,26 @@ mod tests {
         let prefix = [0xfd, 0x00, 0, 0, 0, 0, 0, 0];
         let ula = node.ula_addr(prefix);
         assert_eq!(NodeId::from_ipv6(ula), node);
+    }
+
+    #[test]
+    fn from_ipv6_roundtrip_ula() {
+        let node = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
+        let prefix = [0xfd, 0x00, 0x12, 0x34, 0, 0, 0, 0];
+        let ula = node.ula_addr(prefix);
+        assert_eq!(NodeId::from_ipv6(ula), node);
+    }
+
+    #[test]
+    fn from_ipv6_independent_roundtrip() {
+        // Independent test (no dependency on link_local_addr/ula_addr for input construction)
+        // Verifies from_ipv6 correctly reverses the U/L bit flip on IID per spec.
+        let node = NodeId([0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77]);
+        let addr = Ipv6Addr([
+            0xfe, 0x80, 0, 0, 0, 0, 0, 0,
+            0x02, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, // U/L bit flipped in IID
+        ]);
+        assert_eq!(NodeId::from_ipv6(addr), node);
+        assert_eq!(node.link_local_addr(), addr); // full roundtrip
     }
 }

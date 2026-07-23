@@ -2,7 +2,8 @@
 //!
 //! Encodes/decodes SenML packs as CBOR arrays-of-maps with integer labels.
 //! Supports the `Record` fields: n(0), u(1), v(2), vs(3), vb(4), t(6),
-//! bn(-2), bt(-3). Unknown keys on decode are silently skipped.
+//! bn(-2), bt(-3). Unknown keys on decode are silently skipped; duplicate
+//! known keys within a record return InvalidInput.
 //!
 //! No heap allocation — all I/O through caller-supplied byte slices.
 
@@ -21,6 +22,8 @@ pub enum CborError {
     NotImplemented,
     /// Multiple value fields set in a single record (RFC 8428 violation).
     MultipleValues,
+    /// Resolved name too long (RFC 8428 §4.2).
+    NameTooLong,
 }
 
 impl From<BufferTooSmall> for CborError {
@@ -36,6 +39,7 @@ impl core::fmt::Display for CborError {
             Self::InvalidInput => write!(f, "invalid CBOR input"),
             Self::NotImplemented => write!(f, "CBOR feature not implemented"),
             Self::MultipleValues => write!(f, "multiple value fields set (RFC 8428 violation)"),
+            Self::NameTooLong => write!(f, "resolved name too long (RFC 8428 §4.2)"),
         }
     }
 }
@@ -163,14 +167,17 @@ fn value_field_count(r: &Record<'_>) -> usize {
 /// Encode a slice of records into `out` as SenML-CBOR.
 ///
 /// Returns the number of bytes written, or an error if `out` is too small.
-/// Returns `CborError::MultipleValues` if any record has more than one value
-/// field set (RFC 8428 Section 4.2 requires at most one of value/string_value/bool_value).
+/// Returns `CborError::MultipleValues` if multiple value fields or
+/// `CborError::NameTooLong` if resolved name exceeds 128 bytes (RFC 8428 §4.2).
 pub fn encode<'a>(records: &[Record<'a>], out: &mut [u8]) -> Result<usize, CborError> {
-    // SECURITY: Validate RFC 8428 Section 4.2 constraint before encoding.
-    // At most one of value/string_value/bool_value may be present per record.
     for r in records {
         if value_field_count(r) > 1 {
             return Err(CborError::MultipleValues);
+        }
+        let bn_len = r.base_name.map_or(0, |s| s.len());
+        let n_len = r.name.map_or(0, |s| s.len());
+        if bn_len.checked_add(n_len).map_or(true, |l| l > 128) || bn_len > 128 || n_len > 128 {
+            return Err(CborError::NameTooLong);
         }
     }
 
@@ -304,7 +311,7 @@ fn f16_to_f64(bits: u16) -> f64 {
             }
         }
         _ => {
-            let f64_exp = (exp as u64) - 15 + 1023;
+            let f64_exp = ((exp as i32) - 15 + 1023) as u64;
             let f64_mant = (mant as u64) << 42;
             let f64_bits = (f64_exp << 52) | f64_mant;
             f64::from_bits(f64_bits)
@@ -410,6 +417,7 @@ fn skip_one_depth(data: &[u8], pos: usize, depth: usize) -> Result<usize, CborEr
             }
             (u16::from_be_bytes([data[pos + 1], data[pos + 2]]) as u64, 3)
         }
+        26 | 27 | 31 => return Err(CborError::NotImplemented),
         _ => return Err(CborError::InvalidInput),
     };
     match major {
@@ -457,6 +465,7 @@ fn skip_one_depth(data: &[u8], pos: usize, depth: usize) -> Result<usize, CborEr
         }
         7 => match info {
             20..=23 => Ok(1),
+            24 => Ok(2),
             25 => {
                 if pos + 3 > data.len() {
                     return Err(CborError::InvalidInput);
@@ -483,7 +492,8 @@ fn skip_one_depth(data: &[u8], pos: usize, depth: usize) -> Result<usize, CborEr
 
 /// Decode SenML-CBOR bytes into a fixed-size array of records.
 ///
-/// Returns the number of records decoded. Unknown map keys are skipped.
+/// Returns the number of records decoded. Unknown map keys are skipped;
+/// duplicate known keys within a record return `InvalidInput`.
 /// Returns an error if the data is not a valid CBOR array-of-maps or if
 /// the number of records exceeds `buf.len()`.
 pub fn decode<'a>(data: &'a [u8], buf: &mut [Record<'a>]) -> Result<usize, CborError> {
@@ -509,7 +519,7 @@ pub fn decode<'a>(data: &'a [u8], buf: &mut [Record<'a>]) -> Result<usize, CborE
         for _ in 0..n_kv {
             let (key, adv) = dec_int(data, pos)?;
             pos += adv;
-            if key >= -3 && key <= 6 {
+            if (-3..=6).contains(&key) {
                 let bit = (key + 3) as u32;
                 let mask = 1u16 << bit;
                 if (seen_keys & mask) != 0 {
@@ -701,6 +711,13 @@ mod tests {
     }
 
     #[test]
+    fn decode_rejects_duplicate_keys() {
+        let data = [0x81u8, 0xa3, 0x00, 0x61, b'a', 0x00, 0x61, b'b', 0x02, 0x17];
+        let mut buf = [Record::empty()];
+        assert!(decode(&data, &mut buf).is_err());
+    }
+
+    #[test]
     fn encode_rejects_multiple_value_fields() {
         // RFC 8428 Section 4.2: at most one of value/string_value/bool_value
         let records = [Record {
@@ -778,6 +795,25 @@ mod tests {
     }
 
     #[test]
+    fn decode_skips_unknown_key_with_tag() {
+        // project-LICHEN-z3cf: major type 6 (CBOR tag) as value for unknown map key.
+        // array(1) map(2) [key=99, tag(42, text("x"))] [key=0, text("temp")]
+        // Tag: 0xd8 0x2a (major 6 + additional 24, tag#=42), then text("x")
+        let data = [
+            0x81, // array(1)
+            0xa2, // map(2)
+            0x18, 0x63, // key=99
+            0xd8, 0x2a, 0x61, 0x78, // tag(42, text "x")
+            0x00, // key=0 (n)
+            0x64, b't', b'e', b'm', b'p', // text("temp")
+        ];
+        let mut buf = [Record::empty()];
+        let count = decode(&data, &mut buf).unwrap();
+        assert_eq!(count, 1);
+        assert_eq!(buf[0].name, Some("temp"));
+    }
+
+    #[test]
     fn record_method_encode_parse_roundtrip() {
         let record = Record {
             name: Some("temp"),
@@ -812,6 +848,33 @@ mod tests {
         assert!(matches!(
             Record::parse(&buf[..n]),
             Err(CborError::BufferTooSmall(_))
+        ));
+    }
+
+    #[test]
+    fn decode_rejects_trailing_bytes() {
+        let records = [Record {
+            name: Some("temp"),
+            value: Some(23.5),
+            ..Record::empty()
+        }];
+        let mut buf = [0u8; 64];
+        let n = encode(&records, &mut buf).unwrap();
+        let mut decoded = [Record::empty()];
+        let count = decode(&buf[..n], &mut decoded).unwrap();
+        assert_eq!(count, 1);
+        let mut bad = [0u8; 80];
+        bad[..n].copy_from_slice(&buf[..n]);
+        for b in &mut bad[n..n + 16] {
+            *b = 0xaa;
+        }
+        assert!(matches!(
+            decode(&bad[..n + 16], &mut decoded),
+            Err(CborError::InvalidInput)
+        ));
+        assert!(matches!(
+            Record::parse(&bad[..n + 16]),
+            Err(CborError::InvalidInput)
         ));
     }
 
@@ -949,5 +1012,49 @@ mod tests {
         assert_eq!(buf[0].name, Some("temp"));
         let val = buf[0].value.unwrap();
         assert!((val - 1.5).abs() < 1e-10);
+    }
+
+    #[test]
+    fn dec_f64_half_precision_subnormal() {
+        let data = [0xf9, 0x00, 0x01];
+        let (val, _) = dec_f64(&data, 0).unwrap();
+        assert!((val - 5.960464477539063e-8).abs() < 1e-20);
+
+        let data = [0xf9, 0x03, 0xff];
+        let (val, _) = dec_f64(&data, 0).unwrap();
+        assert!((val - 6.097555160522461e-5).abs() < 1e-15);
+
+        let data = [0xf9, 0x80, 0x01];
+        let (val, _) = dec_f64(&data, 0).unwrap();
+        assert!((val + 5.960464477539063e-8).abs() < 1e-20);
+
+        let data = [0xf9, 0x04, 0x00];
+        let (val, _) = dec_f64(&data, 0).unwrap();
+        assert_eq!(val, 6.103515625e-5);
+    }
+
+    #[test]
+    fn encode_rejects_long_concatenated_name() {
+        let long_suffix = "x".repeat(110);
+        let records = [Record {
+            base_name: Some("urn:dev:mac:0123456789abcdef:"),
+            name: Some(&long_suffix),
+            value: Some(42.0),
+            ..Record::empty()
+        }];
+        let mut buf = [0u8; 512];
+        assert_eq!(encode(&records, &mut buf), Err(CborError::NameTooLong));
+    }
+
+    #[test]
+    fn encode_rejects_long_single_name() {
+        let long_name = "x".repeat(129);
+        let records = [Record {
+            name: Some(&long_name),
+            value: Some(42.0),
+            ..Record::empty()
+        }];
+        let mut buf = [0u8; 512];
+        assert_eq!(encode(&records, &mut buf), Err(CborError::NameTooLong));
     }
 }

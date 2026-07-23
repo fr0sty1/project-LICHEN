@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-iuth",
+  "title": "[kimi-review] 37223cc: [SEVERITY: medium] Unreviewable commit scope: one commit mix",
+  "description": "Commit: 37223ccd5\nMessage: fix: batch zephyr integration, test vectors, renode support and spec updates\n\nFinding: [SEVERITY: medium] Unreviewable commit scope: one commit mixes Zephyr firmware, C subsystems (OSCORE/EDHOC crypto, SCHC, transport), Rust crates, Python sim, Renode peripherals, CI, and 1000+ lines of spec changes (~7k insertions). Security-critical changes (e.g., `edhoc.c`, `hkdf.c`, `oscore.c`, `identity.rs`, `coap_keys.c`) are buried in a batch commit, making meaningful review and bisection nearly impossible. Recommend splitting.",
+  "notes": "Commit: a68834d41",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:21:55.101348997Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:36:01.306211868Z",
+  "started_at": "2026-07-22T22:35:53.22506625Z",
+  "closed_at": "2026-07-22T22:36:01.306211868Z",
+  "close_reason": "Closed"
+}

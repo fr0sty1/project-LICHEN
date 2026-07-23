@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-253m",
+  "title": "RAK2287 LoRaWAN concentrator integration",
+  "description": "Integrate RAK2287 (Pi HAT with SX1302/SX1250 based concentrator) as a high-capacity border router/gateway for LICHEN. Break into sub-issues for hardware abstraction, packet forwarder compatibility, Rust gateway support, testing, and docs. See LICHEN-plan.md phase 7 and spec/17-border-router.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "epic",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:31:33.812176253Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T21:31:52.624736398Z",
+  "started_at": "2026-07-22T21:31:52.624736398Z",
+  "lease_expires_at": "2026-07-22T21:36:52.624736398Z",
+  "heartbeat_at": "2026-07-22T21:31:52.624736398Z"
+}

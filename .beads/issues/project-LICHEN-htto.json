@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-htto",
+  "title": "[spec-compliance] gateway RPL root prefix sets incomplete DODAG ID",
+  "description": "In lichen/apps/gateway/src/rpl_root.c:56-58 and main.c changes from f5b226b12: lichen_rpl_root_set_prefix only memcpy 8 bytes from prefix to dodag.dodag_id when len\u003e=64. Per spec/04-network.md:6.1, DODAGID must be full 128-bit address (root link-local or ULA with IID). Also init sets prefix_len=64 hard-coded while set_prefix allows variable. Violates MUST for correct RPL DIO advertisement and root identification (RFC 6550 §3.2, LICHEN 8.2). Test vectors in test/vectors/rpl_messages.json may fail.",
+  "notes": "Commit: f155cd49b",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:52:27.343519216Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T23:08:38.223785458Z",
+  "started_at": "2026-07-22T23:04:20.365351648Z",
+  "closed_at": "2026-07-22T23:08:38.223785458Z",
+  "close_reason": "Fixed full 16-byte DODAG ID update in set_prefix, synced dao_manager, set prefix_len=128 in init for spec compliance. Updated rpl_root.c"
+}

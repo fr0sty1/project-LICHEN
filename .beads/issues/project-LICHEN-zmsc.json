@@ -2,11 +2,16 @@
   "id": "project-LICHEN-zmsc",
   "title": "KissBridge::handle_kiss_frame does not validate ports 2-15",
   "description": "File: rust/lichen-kiss/src/bridge.rs\nLines: 265-283\n\nThe `handle_kiss_frame` function only rejects PORT_AX25 (0), but treats ports 2-15 the same as PORT_RAW (1):\n\n```rust\nif decoded.port == PORT_AX25 {\n    return Err(BridgeError::UnsupportedPort(PORT_AX25));\n}\n\n// Port 1 (raw): payload is a raw LICHEN frame - parse directly\nlet frame = LichenFrame::from_bytes(decoded.payload)?;\n```\n\nThe module docs only define ports 0 and 1:\n- Port 0: AX.25/APRS wrapped frames\n- Port 1: Raw LICHEN payload\n\nPorts 2-15 have undefined behavior - they will be parsed as raw LICHEN frames which may succeed or fail unpredictably.\n\nFix: Either:\n1. Explicitly reject ports 2-15 with UnsupportedPort error, or\n2. Document that ports 2-15 are treated as raw (like port 1)",
-  "status": "open",
+  "notes": "Commit: 01270e3 (docs updated + port validation for handle_kiss_frame; test now consistent; other changes stashed due to diverged main)",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:34:49.049921Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:34:49.049953Z"
+  "updated_at": "2026-07-22T23:33:20.447880644Z",
+  "started_at": "2026-07-22T23:30:49.351835807Z",
+  "closed_at": "2026-07-22T23:33:20.447880644Z",
+  "close_reason": "Fixed port validation in KissBridge::handle_kiss_frame to reject non-PORT_RAW (including 2-15); updated module docs; tests pass; committed and attempted push"
 }

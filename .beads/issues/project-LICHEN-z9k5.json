@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-z9k5",
+  "title": "[kimi-review] d0fa0ff: [SEVERITY: high] **(conditional — must verify function body)",
+  "description": "Commit: d0fa0ff39\nMessage: fix(meshcore): match _Nonnull return annotation in lichen_meshcore_adapter_get_stats\n\nFinding: [SEVERITY: high] **(conditional — must verify function body)** `_Nonnull` on the return type is a promise the compiler will act on: callers' NULL checks against this return value may be optimized away, and any actual NULL return is undefined behavior. If the body of `lichen_meshcore_adapter_get_stats` has any path that returns `NULL` (e.g., a `if (adapter == NULL) return NULL;` guard, an uninitialized/error path, or returning a pointer derived from a container that may be absent), this annotation makes that a real bug rather than defensive code. If the body is simply `return \u0026adapter-\u003estats;` (non-null by construction since `adapter` is itself `_Nonnull`), the change is correct and this issue does not apply. The body must be checked before merging.",
+  "notes": "Commit: a1978ff",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:46:30.164928577Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:19:03.599978195Z",
+  "started_at": "2026-07-22T22:15:32.198091368Z",
+  "closed_at": "2026-07-22T22:19:03.599978195Z",
+  "close_reason": "Verified function body returns non-null (\u0026embedded stats); added contract comment. Matches _Nonnull annotation."
+}

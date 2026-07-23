@@ -1,12 +1,17 @@
 {
   "id": "project-LICHEN-xjso",
   "title": "[codereview-pass3-2] coap_dtn.c: full OSCORE via helper path and protect_response; build errors resolved by consistent lichen_coap service and lichen_coap_respond impl; global static DTN buf with provider-like init in register",
-  "status": "open",
+  "notes": "Commit: d05b88a85",
+  "status": "closed",
   "priority": 3,
   "issue_type": "chore",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T15:53:25.838282581Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:53:25.838282581Z",
+  "updated_at": "2026-07-22T22:33:18.331470108Z",
+  "started_at": "2026-07-22T22:33:11.976660575Z",
+  "closed_at": "2026-07-22T22:33:18.331470108Z",
+  "close_reason": "Updated COAP_RESOURCE_DEFINE to use lichen_coap_server for consistent service/respond impl and OSCORE path. DTN buf init in register. Build clean.",
   "labels": [
     "codereview"
   ]

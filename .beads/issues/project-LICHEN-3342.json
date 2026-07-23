@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-3342",
+  "title": "[kimi-review] 7e34aa1: [SEVERITY: medium] **Close reason is unverifiable and self-r",
+  "description": "Commit: 7e34aa1a0\nMessage: fix(node): add bounds check for OSCORE PIV extraction\n\nFinding: [SEVERITY: medium] **Close reason is unverifiable and self-referential.** The `close_reason` states \"Already in code. Commit recorded.\" — i.e., the fix is asserted to pre-exist, with no commit hash referencing where it was added, no test demonstrating the malformed-input case, and no evidence of verification. A security fix closing itself with \"already fixed, trust me\" defeats auditability. The reviewer cannot confirm `oscore_opt.len() \u003c 1 + piv_len` actually exists at secure.rs:194.",
+  "notes": "Commit: 3b75415",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:34:39.96323045Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:17:03.636475335Z",
+  "started_at": "2026-07-22T22:14:53.433984382Z",
+  "closed_at": "2026-07-22T22:17:03.636475335Z",
+  "close_reason": "Closed"
+}

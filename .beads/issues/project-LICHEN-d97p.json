@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-d97p",
+  "title": "[kimi-review] d3c9b8b: [SEVERITY: high] The fix as described appears protocol-incor",
+  "description": "Commit: d3c9b8b3a\nMessage: fix(rpl): validate D-flag in Dao::from_bytes Rejects D=0 per RFC 6550 + SCHC. Closes project-LICHEN-hhgv\n\nFinding: [SEVERITY: high] The fix as described appears protocol-incorrect. Per RFC 6550 §6.4.2, the D flag in a DAO base object simply indicates whether the DODAGID field is present (D=1) or elided (D=0); **both values are valid**. Rejecting D=0 would break legitimate DAO messages, and SCHC compression of RPL explicitly relies on eliding the DODAGID — exactly the D=0 case. If the (missing) code does what the message says, it introduces a correctness bug rather than fixing one. A valid concern would be handling D=0 correctly (i.e., not reading a DODAGID field that isn't there), not rejecting the message.",
+  "notes": "Commit: 3db02a4ab",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:36:06.353559886Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:29:30.329245316Z",
+  "closed_at": "2026-07-22T22:29:30.329245316Z",
+  "close_reason": "Closed"
+}

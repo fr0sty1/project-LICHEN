@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-k8mr",
+  "title": "[security] Potential key material leakage in oscore_ctx and EDHOC wipe paths",
+  "description": "oscore_ctx_lookup copies keys to stack; edhoc.c wipe() calls and oscore_ctx_free() must guarantee no residual material (Monocypher crypto_wipe). Recent fixes (project-LICHEN-4b40) touch oscore.c but struct visibility and error paths in protect/unprotect not fully audited for Zephyr constrained mem (STM32WL). Schnorr48 and link key handling in link_ctx.c also at risk. See top risks from review.",
+  "notes": "Commit: 3e2099c60",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T23:04:09.545977295Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T23:32:18.94343012Z",
+  "started_at": "2026-07-22T23:27:55.500424061Z",
+  "closed_at": "2026-07-22T23:32:18.94343012Z",
+  "close_reason": "Closed"
+}

@@ -14,8 +14,6 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/net/coap_service.h>
-#include <zephyr/net/net_mgmt.h>
-#include <zephyr/net/wifi_mgmt.h>
 
 #include <lichen/hal.h>
 #include <lichen/rpl_dodag.h>
@@ -31,11 +29,6 @@
 #include "config_apply.h"
 #include "config_cbor.h"
 #include "status_cbor.h"
-#include <lichen/rpl_dodag.h>
-
-#if IS_ENABLED(CONFIG_LICHEN_L2)
-#include "lora_l2.h"
-#endif
 
 #ifdef CONFIG_LORA_LICHEN_BLE
 #include "ble_uart.h"
@@ -52,10 +45,6 @@
 #include "gateway_identity.h"
 #include "message_contract.h"
 #include "meshcore_adapter.h"
-#endif
-
-#if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
-#include "rpl_root.h"
 #endif
 
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
@@ -111,44 +100,29 @@ BUILD_ASSERT(CONFIG_COAP_SERVER_MESSAGE_SIZE >=
 static int8_t s_tx_power_dbm = 14;
 static struct lichen_gateway_manual_location_config s_manual_location;
 static bool s_has_manual_location;
-static uint16_t s_rank = LICHEN_GATEWAY_STATUS_RANK;
 
+#if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
 static struct lichen_rpl_dodag s_dodag;
-
-static void gateway_rpl_init(void)
-{
-	if (!IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)) {
-		return;
-	}
-	uint8_t dodag_id[16] = {0};
-#if IS_ENABLED(CONFIG_LICHEN_L2)
-	uint8_t eui64[8];
-	if (lichen_lora_l2_copy_eui64(eui64) == 0) {
-		/* Derive DODAG ID from EUI64 per spec 6.1/12 (link-local root addr; primary 02xx preferred per Rust but LL for control) */
-		dodag_id[0] = 0xfe;
-		dodag_id[1] = 0x80;
-		memcpy(&dodag_id[8], eui64, 8);
-		dodag_id[8] ^= 0x02; /* U/L flip for IID */
-	} else 
 #endif
-	{
-		/* fallback fd00::1 per test vectors and isolated mesh */
+static int gateway_rpl_init(void) {
+	int ret = 0;
+#if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
+	uint8_t dodag_id[16] = {0};
+	if (IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)) {
 		dodag_id[0] = 0xfd;
-		dodag_id[15] = 0x01;
-	}
-	int ret = lichen_rpl_dodag_init_root(&s_dodag, 0, dodag_id, 0);
-	if (ret < 0) {
-		LOG_ERR("RPL root init failed: %d", ret);
+		dodag_id[1] = 0x00;
 	} else {
-		LOG_INF("RPL root DODAG initialized from EUI64/prefix");
+		dodag_id[0] = 0xfd;
 	}
-}
-
-static void gateway_rpl_sync_status(void)
-{
-	if (IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)) {
-		s_rank = s_dodag.rank;
+	dodag_id[15] = 0x01;
+	ret = lichen_rpl_dodag_init_root(&s_dodag, 0x00, dodag_id, 0);
+	if (ret == 0) {
+		LOG_INF("RPL DODAG root initialized (rank=%u, role=ROOT)", s_dodag.rank);
+	} else {
+		LOG_ERR("lichen_rpl_dodag_init_root failed: %d", ret);
 	}
+#endif
+	return ret;
 }
 
 /* --------------------------------------------------------------------------
@@ -223,7 +197,8 @@ static size_t encode_status_cbor(uint8_t *buf, size_t buf_size, uint16_t rank,
 		&location_time, &time);
 }
 
-/* Gateway status state (observable) - synced from s_dodag.rank */
+/* Gateway status state (observable) */
+static uint16_t s_rank = LICHEN_GATEWAY_STATUS_RANK;
 
 /*
  * Respond with Block2 slicing (RFC 7959) when the payload will not fit a
@@ -306,17 +281,10 @@ static int status_get(struct coap_resource *resource,
 		      struct coap_packet *request,
 		      struct sockaddr *addr, socklen_t addr_len)
 {
-	gateway_rpl_sync_status();
 	uint8_t cbor_buf[LICHEN_GATEWAY_STATUS_CBOR_MAX_SIZE];
-	uint16_t rank = s_rank;
-	const char *role = LICHEN_GATEWAY_STATUS_ROLE;
-	bool rpl_capable = LICHEN_GATEWAY_STATUS_RPL_CAPABLE;
-	if (IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)) {
-		role = lichen_rpl_dodag_is_root(&s_dodag) ? "root" : "gateway";
-		rpl_capable = lichen_rpl_dodag_is_joined(&s_dodag);
-		rank = s_dodag.rank;
-	}
-	size_t len = encode_status_cbor(cbor_buf, sizeof(cbor_buf), rank, role, rpl_capable);
+	size_t len = encode_status_cbor(cbor_buf, sizeof(cbor_buf), s_rank,
+					LICHEN_GATEWAY_STATUS_ROLE,
+					LICHEN_GATEWAY_STATUS_RPL_CAPABLE);
 
 	/*
 	 * RX1-style response delay (lora_ipv6_mesh-fe1z). The requesting puck is
@@ -356,22 +324,15 @@ static int status_get(struct coap_resource *resource,
 static void status_notify(struct coap_resource *resource,
 			  struct coap_observer *observer)
 {
-	gateway_rpl_sync_status();
 	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
 	uint8_t cbor_buf[LICHEN_GATEWAY_STATUS_CBOR_MAX_SIZE];
 	struct coap_packet notif;
 	size_t cbor_len;
 	int r;
-	uint16_t rank = s_rank;
-	const char *role = LICHEN_GATEWAY_STATUS_ROLE;
-	bool rpl_capable = LICHEN_GATEWAY_STATUS_RPL_CAPABLE;
-	if (IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)) {
-		role = lichen_rpl_dodag_is_root(&s_dodag) ? "root" : "gateway";
-		rpl_capable = lichen_rpl_dodag_is_joined(&s_dodag);
-		rank = s_dodag.rank;
-	}
 
-	cbor_len = encode_status_cbor(cbor_buf, sizeof(cbor_buf), rank, role, rpl_capable);
+	cbor_len = encode_status_cbor(cbor_buf, sizeof(cbor_buf), s_rank,
+				      LICHEN_GATEWAY_STATUS_ROLE,
+				      LICHEN_GATEWAY_STATUS_RPL_CAPABLE);
 	if (cbor_len == 0) {
 		return;
 	}
@@ -755,19 +716,19 @@ int main(void)
 	}
 #endif
 
+	if (gateway_rpl_init() < 0) {
+		LOG_WRN("RPL root init failed - continuing without full DODAG support");
+	}
+
+#if IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)
+	LOG_INF("Prefix delegation enabled - WiFi backhaul stub active");
+#endif
+
 #if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
-	gateway_rpl_init();
-	gateway_rpl_sync_status();
-	LOG_INF("RPL root signalling enabled");
+	LOG_INF("RPL root signalling enabled (DODAG root active)");
 #else
 	LOG_WRN("RPL root signalling disabled - advertising /status rpl=false");
 #endif
-
-#if IS_ENABLED(CONFIG_LICHEN_GATEWAY_WIFI_STATION)
-	wifi_station_init();
-	LOG_INF("WiFi station backhaul initialized");
-#endif
-
 	LOG_INF("CoAP server on port %u (AUTOSTART)", coap_port);
 
 	return 0;

@@ -30,3 +30,4 @@ rust/target/
 # Build artifacts
 .cache/
 lichen/build/
+**/build/

@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-e4el",
+  "title": "Implement duty cycle functions in hal.c to match Rust and ccp13 vectors",
+  "description": "Add static prune, total airtime with proration, remaining_ms, usage_permille, can_transmit, next_available. Use fixed array, shift for prune, saturating math. Match all vectors exactly. No comments.",
+  "notes": "Commit: 9d0ed70e0",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:36:13.897761415Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T23:21:33.136933233Z",
+  "started_at": "2026-07-22T23:17:03.862519386Z",
+  "closed_at": "2026-07-22T23:21:33.136933233Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-e4el",
+      "depends_on_id": "project-LICHEN-l1eb",
+      "type": "parent-child",
+      "created_at": "2026-07-22T22:36:14.013860119Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}

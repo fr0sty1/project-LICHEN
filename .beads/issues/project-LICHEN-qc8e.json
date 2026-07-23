@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-qc8e",
+  "title": "[kimi-review] 2357144: [SEVERITY: low] The comment references `parse_data:794` — a ",
+  "description": "Commit: 235714407\nMessage: docs(meshtastic): clarify has_portnum contract in adapter (l5ym)\n\nFinding: [SEVERITY: low] The comment references `parse_data:794` — a hard-coded line number in documentation is fragile and will silently become wrong as the referenced file evolves. It also omits the file path, so `parse_data` is ambiguous (which file? which module?). Prefer referencing the function by name only, or the file path plus function name.",
+  "notes": "Commit: ec808ac79",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:57:59.535714583Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:26:49.25067835Z",
+  "started_at": "2026-07-22T22:26:14.25698054Z",
+  "closed_at": "2026-07-22T22:26:49.25067835Z",
+  "close_reason": "Fixed fragile line number reference in Beads issue description for l5ym by using function names only. Updated project-LICHEN-l5ym.json description and added notes. Commit ec808ac79. Test integrity for 3avn already addressed per prior close."
+}

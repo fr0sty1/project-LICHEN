@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-iu0t",
+  "title": "[kimi-review] 71999ba: [SEVERITY: medium] The commit contains no actual changes. Th",
+  "description": "Commit: 71999ba63\nMessage: fix(routing): document and enforce mutex ordering in announce.c\n\nFinding: [SEVERITY: medium] The commit contains no actual changes. The diff shows only the commit header — no file modifications, no added documentation, no enforcement code — despite the message claiming to \"document and enforce mutex ordering in announce.c.\" Either the changes were lost/not staged, or the commit message is misleading. An empty \"fix\" commit can mask a regression during bisection and gives false confidence that the issue was addressed.",
+  "notes": "Commit: dcbdec74c",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:56:39.137116959Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:30:26.179139661Z",
+  "started_at": "2026-07-22T22:29:31.174989355Z",
+  "closed_at": "2026-07-22T22:30:26.179139661Z",
+  "close_reason": "Added lock ordering documentation to announce.h (with enforcement note). The prior empty commit 71999ba is now superseded by real change in public header + existing .c comment. Mutex rules (ingest \u003e announce \u003e observer) documented for callers. Fixes the no-changes bug and medium severity review finding."
+}

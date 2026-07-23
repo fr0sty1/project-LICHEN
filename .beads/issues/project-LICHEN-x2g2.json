@@ -2,11 +2,16 @@
   "id": "project-LICHEN-x2g2",
   "title": "[merge-conflict] worker8: lib.rs",
   "description": "Resolve merge conflict in rust/lichen-rpl/src/lib.rs between main and integration/worker8-20260722. Keep BOTH sets of changes.",
-  "status": "open",
+  "notes": "Commit: 4c6b59096",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:52:14.639665568Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T20:52:14.639665568Z"
+  "updated_at": "2026-07-22T21:23:39.070903834Z",
+  "started_at": "2026-07-22T21:23:16.501213875Z",
+  "closed_at": "2026-07-22T21:23:39.070903834Z",
+  "close_reason": "Resolved merge conflict in rust/lichen-rpl/src/lib.rs by combining CCP-16 TDMA/adaptive-SF/multi-channel docs from worker8 with detailed module descriptions from main. Updated crate overview to reflect full RPL+CCP-16 support. Commit 4c6b59096"
 }

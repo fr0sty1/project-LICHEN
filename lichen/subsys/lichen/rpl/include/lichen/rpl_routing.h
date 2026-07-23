@@ -55,7 +55,10 @@ struct lichen_rpl_srh {
 };
 
 /**
- * @brief Encode SRH to wire format.
+ * @brief Encode SRH to RFC 6554 wire format starting at routing-type byte
+ * (matches parse; for use as ExtensionHeader data after NextHdr/HdrLen).
+ *
+ * Caller must set Hdr Ext Len = lichen_rpl_srh_hdr_ext_len(srh->num_addresses).
  *
  * @param srh SRH to encode
  * @param buf Output buffer
@@ -76,6 +79,14 @@ int lichen_rpl_srh_write(const struct lichen_rpl_srh *_Nonnull srh,
 LICHEN_WARN_UNUSED_RESULT
 int lichen_rpl_srh_parse(struct lichen_rpl_srh *_Nonnull srh,
 			 const uint8_t *_Nonnull data, size_t len);
+
+/**
+ * @brief Hdr Ext Len for uncompressed RFC 6554 SRH (n*2).
+ */
+static inline uint8_t lichen_rpl_srh_hdr_ext_len(uint8_t num_addresses)
+{
+	return num_addresses * 2u;
+}
 
 /* ── Routing Table ─────────────────────────────────────────────────────────── */
 
@@ -230,6 +241,10 @@ int lichen_rpl_dao_manager_init_root(struct lichen_rpl_dao_manager *_Nonnull dm,
  */
 int lichen_rpl_dao_manager_build_dao(struct lichen_rpl_dao_manager *_Nonnull dm,
 				     const uint8_t *_Nonnull parent_addr,
+				     uint8_t *_Nonnull buf, size_t len);
+
+int lichen_rpl_dao_manager_build_dao_ack(struct lichen_rpl_dao_manager *_Nonnull dm,
+				     uint8_t dao_sequence, uint8_t status,
 				     uint8_t *_Nonnull buf, size_t len);
 
 /**

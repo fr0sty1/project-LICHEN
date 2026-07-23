@@ -201,7 +201,7 @@ struct lichen_hal_time_sample {
 	enum lichen_hal_time_source_class source_class;
 	const char *source_name;
 	bool unix_time_valid;
-	uint32_t unix_time;
+	uint64_t unix_time;
 	bool observed_uptime_ms_valid;
 	int64_t observed_uptime_ms;
 	bool accuracy_ms_valid;
@@ -230,7 +230,7 @@ struct lichen_hal_location_sample {
 	bool altitude_cm_valid;
 	int32_t altitude_cm;
 	bool fix_time_unix_valid;
-	uint32_t fix_time_unix;
+	uint64_t fix_time_unix;
 	bool satellites_valid;
 	uint8_t satellites;
 };
@@ -348,12 +348,21 @@ int lichen_hal_reset_diagnostics_clear(void);
 int lichen_hal_reboot_status(void);
 int lichen_hal_reset_request(enum lichen_hal_reset_request request);
 
+enum lichen_duty_cycle_limit { LICHEN_DUTY_CYCLE_DEFAULT_PERMILLE = 10, };
+struct lichen_duty_cycle_ctx { uint64_t records[32]; uint32_t durations[32]; uint8_t head; uint8_t len; uint16_t duty_permille; };
+void lichen_duty_cycle_init(struct lichen_duty_cycle_ctx *t, uint16_t permille);
+bool lichen_duty_cycle_record_tx(struct lichen_duty_cycle_ctx *t, uint64_t ts, uint32_t dur);
+uint32_t lichen_duty_cycle_remaining_ms(struct lichen_duty_cycle_ctx *t, uint64_t now);
+uint16_t lichen_duty_cycle_usage_permille(struct lichen_duty_cycle_ctx *t, uint64_t now);
+uint64_t lichen_duty_cycle_next_tx_available_ms(struct lichen_duty_cycle_ctx *t, uint64_t now, uint32_t dur);
+bool lichen_duty_cycle_can_transmit(struct lichen_duty_cycle_ctx *t, uint64_t now, uint32_t dur);
+
 #ifdef CONFIG_ZTEST
 void lichen_hal_location_test_set_uptime_ms(int64_t uptime_ms);
 void lichen_hal_location_test_use_real_uptime(void);
 int64_t lichen_hal_location_test_now_ms(void);
 void lichen_hal_location_time_test_set_snapshot(
-	const struct lichen_hal_location_time_snapshot *_Nonnull snapshot);
+	const struct lichen_hal_location_time_snapshot *_Nullable snapshot);
 bool lichen_hal_power_test_percent_valid(uint8_t percent);
 bool lichen_hal_power_test_charger_status_known(int status);
 bool lichen_hal_power_test_charger_status_is_charging(int status);

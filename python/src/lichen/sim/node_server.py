@@ -308,66 +308,32 @@ class NodeServer:
         await write_message(writer, encode_ok())
         return node_id
 
-    async def _handle_tx(
-        self,
-        node_id: str,
-        data: bytes,
-        writer: asyncio.StreamWriter,
-    ) -> None:
-        """Handle a TX message.
-
-        Checks duty cycle limits, starts the transmission in the simulation,
-        records airtime, and optionally writes to pcap.
-
-        Args:
-            node_id: The transmitting node's ID.
-            data: The complete message bytes (including type byte).
-            writer: The stream writer for responses.
-        """
+    async def _handle_tx(self,node_id: str,data: bytes,writer: asyncio.StreamWriter,) -> None:
         try:
             payload = get_message_payload(data)
-            tx_payload = decode_tx(payload)
+            tx_payload, ch = decode_tx(payload)
         except ProtocolError as e:
             logger.error("Failed to decode TX from %s: %s", node_id, e)
             await write_message(writer, encode_err(1, f"Invalid TX: {e}"))
             return
-
-        # Calculate airtime before checking duty cycle
         tx_airtime_us = airtime_us(len(tx_payload))
         current_time_us = self._simulation.current_time_us
-
-        # Check duty cycle
         tracker = self._duty_trackers.get(node_id)
-        if tracker is not None and not tracker.can_transmit(
-            tx_airtime_us, current_time_us
-        ):
+        if tracker is not None and not tracker.can_transmit(tx_airtime_us, current_time_us):
             logger.warning("Duty cycle exceeded for node %s", node_id)
             await write_message(writer, encode_tx_fail())
             return
-
-        # Start transmission in simulation
         try:
-            self._simulation.start_transmission(node_id, tx_payload)
+            self._simulation.start_transmission(node_id, tx_payload, channel=ch)
         except ValueError as e:
             logger.error("Failed to start TX for %s: %s", node_id, e)
             await write_message(writer, encode_err(6, str(e)))
             return
-
-        # Record airtime in duty cycle tracker
         if tracker is not None:
             tracker.record_tx(tx_airtime_us, current_time_us)
-
-        # Write to pcap if enabled
         if self._pcap_writer is not None:
-            self._pcap_writer.write_packet(
-                timestamp_us=current_time_us,
-                data=tx_payload,
-                src_node=node_id,
-            )
-
-        logger.debug(
-            "TX from %s: %d bytes, airtime %d us", node_id, len(tx_payload), tx_airtime_us
-        )
+            self._pcap_writer.write_packet(timestamp_us=current_time_us,data=tx_payload,src_node=node_id)
+        logger.debug("TX from %s: %d bytes, airtime %d us", node_id, len(tx_payload), tx_airtime_us)
         await write_message(writer, encode_tx_done(tx_airtime_us))
 
     async def _handle_rx(
@@ -463,72 +429,41 @@ class NodeServer:
             # Brief delay before next check to avoid busy loop
             await asyncio.sleep(0.001)  # 1ms polling interval
 
-    async def _handle_rx_enter(
-        self,
-        node_id: str,
-        data: bytes,
-        writer: asyncio.StreamWriter,
-    ) -> None:
-        """Handle an RX_ENTER message (push-based RX mode).
-
-        Enters RX mode with callbacks and waits for a packet or timeout.
-        The background simulation driver task advances time and delivers
-        packets, firing the callbacks when appropriate.
-
-        Args:
-            node_id: The receiving node's ID.
-            data: The complete message bytes (including type byte).
-            writer: The stream writer for responses.
-        """
+    async def _handle_rx_enter(self,node_id: str,data: bytes,writer: asyncio.StreamWriter,) -> None:
         try:
             payload = get_message_payload(data)
-            timeout_us = decode_rx_enter(payload)
+            timeout_us, ch = decode_rx_enter(payload)
         except ProtocolError as e:
             logger.error("Failed to decode RX_ENTER from %s: %s", node_id, e)
             await write_message(writer, encode_err(1, f"Invalid RX_ENTER: {e}"))
             return
-
-        # Result holder for callbacks
         rx_result: list[tuple[bytes, int, int] | None] = [None]
         rx_done = asyncio.Event()
-
         def on_packet(pkt_payload: bytes, rssi: int, snr: int) -> None:
             rx_result[0] = (pkt_payload, rssi, snr)
             rx_done.set()
-
         def on_timeout() -> None:
             rx_done.set()
-
-        # Enter push-based RX mode
+        entered = False
         try:
-            self._simulation.enter_rx_mode(
-                node_id,
-                timeout_us,
-                on_packet,
-                on_timeout,
-            )
+            self._simulation.enter_rx_mode(node_id,timeout_us,ch,on_packet,on_timeout)
+            entered = True
         except ValueError as e:
             logger.error("Failed to enter RX mode for %s: %s", node_id, e)
             await write_message(writer, encode_err(7, str(e)))
             return
-
-        # Wait for callback to fire - simulation driver handles time advancement
-        await rx_done.wait()
-
-        # Send response
-        if rx_result[0] is not None:
-            pkt_payload, rssi, snr = rx_result[0]
-            logger.debug(
-                "RX_ENTER at %s: %d bytes, RSSI %d, SNR %d",
-                node_id,
-                len(pkt_payload),
-                rssi,
-                snr,
-            )
-            await write_message(writer, encode_rx_packet(pkt_payload, rssi, snr))
-        else:
-            logger.debug("RX_ENTER timeout at %s after %d us", node_id, timeout_us)
-            await write_message(writer, encode_rx_timeout_push())
+        try:
+            await rx_done.wait()
+            if rx_result[0] is not None:
+                pkt_payload, rssi, snr = rx_result[0]
+                logger.debug("RX_ENTER at %s: %d bytes, RSSI %d, SNR %d",node_id,len(pkt_payload),rssi,snr)
+                await write_message(writer, encode_rx_packet(pkt_payload, rssi, snr))
+            else:
+                logger.debug("RX_ENTER timeout at %s after %d us", node_id, timeout_us)
+                await write_message(writer, encode_rx_timeout_push())
+        finally:
+            if entered:
+                self._simulation.exit_rx_mode(node_id)
 
     def _handle_rx_exit(self, node_id: str) -> None:
         """Handle an RX_EXIT message.
@@ -556,44 +491,21 @@ class NodeServer:
         logger.debug("TIME query: %d us", time_us)
         await write_message(writer, encode_time_ok(time_us))
 
-    async def _handle_cad(
-        self,
-        node_id: str,
-        data: bytes,
-        writer: asyncio.StreamWriter,
-    ) -> None:
-        """Handle a CAD (Channel Activity Detection) message.
-
-        Checks if any transmission is detectable at the node's position
-        and returns the result.
-
-        Args:
-            node_id: The detecting node's ID.
-            data: The complete message bytes (including type byte).
-            writer: The stream writer for responses.
-        """
+    async def _handle_cad(self,node_id: str,data: bytes,writer: asyncio.StreamWriter,) -> None:
         try:
             payload = get_message_payload(data)
-            _timeout_ms = decode_cad(payload)
+            _, ch = decode_cad(payload)
         except ProtocolError as e:
             logger.error("Failed to decode CAD from %s: %s", node_id, e)
             await write_message(writer, encode_err(1, f"Invalid CAD: {e}"))
             return
-
-        # Get node position
         node = self._simulation.get_node(node_id)
         if node is None:
             logger.error("Node %s not found for CAD", node_id)
             await write_message(writer, encode_err(8, f"Node not found: {node_id}"))
             return
-
-        # Detect activity using the medium
         current_time_us = self._simulation.current_time_us
-        detected = self._simulation.medium.detect_activity(
-            position=node.position,
-            time_us=current_time_us,
-        )
-
+        detected = self._simulation.medium.detect_activity(position=node.position,time_us=current_time_us,channel=ch)
         logger.debug("CAD at %s: detected=%s", node_id, detected)
         await write_message(writer, encode_cad_result(detected))
 

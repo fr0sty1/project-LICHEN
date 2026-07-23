@@ -2,10 +2,15 @@
   "id": "project-LICHEN-nbvg",
   "title": "codereview: dummy timestamp in DAO processing",
   "description": "forward_mesh_to_upstream passes 0 for now_ms to handle_frame_rpl. DAO path ignores it but DIO/trickle would be affected. Use SystemTime or pass clock from main loop. tagged codereview. discovered-from:project-LICHEN-yufp",
-  "status": "open",
+  "notes": "Commit: 5cbe3c2d7",
+  "status": "closed",
   "priority": 3,
   "issue_type": "chore",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T15:58:02.126659977Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:58:02.126659977Z"
+  "updated_at": "2026-07-22T22:37:59.524962195Z",
+  "started_at": "2026-07-22T22:34:56.75960517Z",
+  "closed_at": "2026-07-22T22:37:59.524962195Z",
+  "close_reason": "Closed"
 }

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-3lrr",
+  "title": "[kimi-review] 96a2a2a: [SEVERITY: high] The diff contains no actual code changes — ",
+  "description": "Commit: 96a2a2a1c\nMessage: fix(coap): correct base64_encode buffer check off-by-one Uses strict \u003e to allow exact fits. Closes project-LICHEN-ja8d\n\nFinding: [SEVERITY: high] The diff contains no actual code changes — only commit metadata (hash, author, date, message). The claimed off-by-one fix is absent, so the underlying bug in `base64_encode` (ticket LICHEN-ja8d) is not actually fixed by this commit. Either the change was never staged/committed, or the diff is incomplete. The ticket should not be closed on the basis of this commit.",
+  "notes": "Commit: 413e4613c",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:40:45.110959204Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:29:05.610567654Z",
+  "closed_at": "2026-07-22T22:29:05.610567654Z",
+  "close_reason": "Applied real off-by-one fix to base64_encode buffer check in coap_keys.c (now accounts for NUL terminator); previous commit had no code diff"
+}

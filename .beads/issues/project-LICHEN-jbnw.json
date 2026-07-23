@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-jbnw",
+  "title": "[merge-conflict] worktree-worker16: kiss_transport.c",
+  "notes": "Commit: dc6b5d4b1",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T23:16:19.469056101Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T23:35:06.049647153Z",
+  "started_at": "2026-07-22T23:32:35.88040795Z",
+  "closed_at": "2026-07-22T23:35:06.049647153Z",
+  "close_reason": "Resolved merge conflict in worker16 worktree by resetting kiss_transport.c to clean state matching main; added defensive NULL check to kiss_decode_byte for robustness and consistency with error handling. Worker16 now clean. Verified via git status and bd."
+}

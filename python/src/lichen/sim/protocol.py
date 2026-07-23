@@ -9,19 +9,19 @@ Message types:
     REGISTER (0x01): Node registration with position
     OK (0x00): Generic success response
     ERR (0xFF): Error response with code and message
-    TX (0x10): Transmit request with payload
+    TX (0x10): Transmit with u8 channel after len
     TX_DONE (0x11): Transmit complete with airtime
     TX_FAIL (0x12): Transmit failed
     RX (0x20): Receive request with timeout (poll-based)
     RX_OK (0x21): Receive success with payload, RSSI, SNR (poll-based)
     RX_TIMEOUT (0x22): Receive timeout (poll-based)
-    RX_ENTER (0x24): Renode -> Sim: entering RX mode (push-based)
+    RX_ENTER (0x24): RX enter with timeout_us + u8 channel
     RX_EXIT (0x26): Renode -> Sim: leaving RX mode (push-based)
     RX_PACKET (0x27): Sim -> Renode: packet arrived, unsolicited (push-based)
     RX_TIMEOUT_PUSH (0x28): Sim -> Renode: RX timeout, unsolicited (push-based)
     TIME (0x30): Time query request
     TIME_OK (0x31): Time query response
-    CAD (0x40): Channel Activity Detection request with timeout
+    CAD (0x40): CAD with timeout_ms + u8 channel
     CAD_RESULT (0x41): CAD result (detected/not detected)
 """
 
@@ -170,52 +170,20 @@ def decode_register(data: bytes) -> tuple[str, str, float, float, float]:
     return (sim_id, node_id, x, y, z)
 
 
-def encode_tx(payload: bytes) -> bytes:
-    """Encode a TX message.
-
-    Format:
-        - 1 byte: message type (0x10)
-        - 2 bytes: payload length (uint16, little-endian)
-        - N bytes: payload
-
-    Args:
-        payload: Data to transmit.
-
-    Returns:
-        Encoded message bytes.
-
-    Raises:
-        ProtocolError: If payload exceeds 65535 bytes.
-    """
+def encode_tx(payload: bytes, channel: int = 0) -> bytes:
     if len(payload) > MAX_PAYLOAD_LENGTH:
-        raise ProtocolError(
-            f"payload too long: {len(payload)} > {MAX_PAYLOAD_LENGTH}"
-        )
-
-    return struct.pack("<BH", MSG_TX, len(payload)) + payload
+        raise ProtocolError(f"payload too long: {len(payload)} > {MAX_PAYLOAD_LENGTH}")
+    _check_range("channel", channel, 0, _UINT8_MAX)
+    return struct.pack("<BHB", MSG_TX, len(payload), channel) + payload
 
 
-def decode_tx(data: bytes) -> bytes:
-    """Decode a TX message payload.
-
-    Args:
-        data: Message bytes (excluding message type byte).
-
-    Returns:
-        The payload bytes.
-
-    Raises:
-        ProtocolError: If data is malformed or too short.
-    """
-    if len(data) < 2:
+def decode_tx(data: bytes) -> tuple[bytes, int]:
+    if len(data) < 3:
         raise ProtocolError("TX message too short")
-
-    (payload_len,) = struct.unpack_from("<H", data, 0)
-
-    if len(data) < 2 + payload_len:
+    payload_len, channel = struct.unpack_from("<HB", data, 0)
+    if len(data) < 3 + payload_len:
         raise ProtocolError("TX message truncated at payload")
-
-    return data[2 : 2 + payload_len]
+    return data[3:3+payload_len], channel
 
 
 def encode_tx_done(airtime_us: int) -> bytes:
@@ -382,43 +350,17 @@ def encode_rx_timeout() -> bytes:
     return struct.pack("<B", MSG_RX_TIMEOUT)
 
 
-def encode_rx_enter(timeout_us: int) -> bytes:
-    """Encode an RX_ENTER message (push-based RX mode entry).
-
-    Format:
-        - 1 byte: message type (0x24)
-        - 4 bytes: timeout in microseconds (uint32, little-endian)
-
-    Args:
-        timeout_us: RX timeout in microseconds.
-
-    Returns:
-        Encoded message bytes.
-
-    Raises:
-        ProtocolError: If timeout_us does not fit in a uint32.
-    """
+def encode_rx_enter(timeout_us: int, channel: int = 0) -> bytes:
     _check_range("timeout_us", timeout_us, 0, _UINT32_MAX)
-    return struct.pack("<BI", MSG_RX_ENTER, timeout_us)
+    _check_range("channel", channel, 0, _UINT8_MAX)
+    return struct.pack("<BIB", MSG_RX_ENTER, timeout_us, channel)
 
 
-def decode_rx_enter(data: bytes) -> int:
-    """Decode an RX_ENTER message payload.
-
-    Args:
-        data: Message bytes (excluding message type byte).
-
-    Returns:
-        Timeout in microseconds.
-
-    Raises:
-        ProtocolError: If data is too short.
-    """
-    if len(data) < 4:
+def decode_rx_enter(data: bytes) -> tuple[int, int]:
+    if len(data) < 5:
         raise ProtocolError("RX_ENTER message too short")
-
-    (timeout_us,) = struct.unpack_from("<I", data, 0)
-    return int(timeout_us)
+    timeout_us, channel = struct.unpack_from("<IB", data, 0)
+    return timeout_us, channel
 
 
 def encode_rx_exit() -> bytes:
@@ -554,43 +496,17 @@ def decode_time_ok(data: bytes) -> int:
     return int(time_us)
 
 
-def encode_cad(timeout_ms: int) -> bytes:
-    """Encode a CAD (Channel Activity Detection) message.
-
-    Format:
-        - 1 byte: message type (0x40)
-        - 4 bytes: timeout in milliseconds (uint32, little-endian)
-
-    Args:
-        timeout_ms: CAD timeout in milliseconds.
-
-    Returns:
-        Encoded message bytes.
-
-    Raises:
-        ProtocolError: If timeout_ms does not fit in a uint32.
-    """
+def encode_cad(timeout_ms: int, channel: int = 0) -> bytes:
     _check_range("timeout_ms", timeout_ms, 0, _UINT32_MAX)
-    return struct.pack("<BI", MSG_CAD, timeout_ms)
+    _check_range("channel", channel, 0, _UINT8_MAX)
+    return struct.pack("<BIB", MSG_CAD, timeout_ms, channel)
 
 
-def decode_cad(data: bytes) -> int:
-    """Decode a CAD message payload.
-
-    Args:
-        data: Message bytes (excluding message type byte).
-
-    Returns:
-        Timeout in milliseconds.
-
-    Raises:
-        ProtocolError: If data is too short.
-    """
-    if len(data) < 4:
+def decode_cad(data: bytes) -> tuple[int, int]:
+    if len(data) < 5:
         raise ProtocolError("CAD message too short")
-
-    (timeout_ms,) = struct.unpack_from("<I", data, 0)
-    return int(timeout_ms)
+    timeout_ms, channel = struct.unpack_from("<IB", data, 0)
+    return timeout_ms, channel
 
 
 def encode_cad_result(detected: bool) -> bytes:

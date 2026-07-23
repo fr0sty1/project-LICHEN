@@ -26,92 +26,101 @@ LoRa Chirp Spread Spectrum (CSS) as implemented by Semtech SX126x and SX127x.
 
 ### 3.3. Frequency Bands and Multi-Channel Coordination
 
-Control channel (CH0): Announces, DIO, DIS, DAO. Beacons (if TDMA). All nodes MUST listen on CH0 when idle. Data channels (CH1-N): Application traffic only. Node selects channel per-packet or per-flow.
+**Channel Plan**
 
-Coordination uses hash-based: data_ch = 1 + (hash(src_iid ^ dst_iid) mod (N_CHANNELS - 1)). Or rendezvous via announced RX_CHANNEL in Announce. Gateway-assigned in DIO for load balancing.
+| Channel | Role | Traffic | Listen Requirement |
+|---------|------|---------|--------------------|
+| CH0 (control) | Routing, control | Announces, DIO, DIS, DAO, beacons (TDMA) | All nodes MUST listen when idle |
+| CH1-N (data) | Application | App traffic only | Per-packet selection |
 
-Regional parameters: EU868: 8 channels (868.1-868.5, 867.1-867.9); US915: 64 uplink + 8 downlink. Channel list in regional config.
+**Coordination Methods** (see CCP-9 in 02a-coordinated-capacity.md)
 
-**Backwards Compatibility**
+- Hash-based (stateless): `data_ch = 1 + (hash(src_iid ^ dst_iid) mod (N_CHANNELS - 1))`
+- Rendezvous: Announce includes `rx_channel`; sender uses announced (TOFU pinning)
+- Gateway-assigned: DIO carries channel for load balancing (MRHOF variant)
 
-No flag day required.
+**Regional Parameters**
 
-- Old nodes: Stay on CH0 (current single-channel behavior)
-- New nodes: Use CH0 for control, data channels for application traffic
-- Mixed network: CH0 carries ALL traffic types for old nodes
+Channel list in regional config (not hardcoded):
 
-CH0 MUST remain the control channel AND fallback data channel. Old nodes never leave CH0, so all traffic TO old nodes MUST be on CH0. New nodes MUST listen on CH0 for routing (announces, DIO). New nodes MAY use data channels for traffic between new nodes only. Gateway MUST receive on all channels (or round-robin scan).
-
-Channel selection logic: if dst is old_node or dst.rx_channel unknown: use CH0 else: use dst.rx_channel (from announce) or hash-based.
-
-Degradation: Traffic to/from old nodes uses CH0 only. New-to-new traffic uses data channels. Capacity scales with fraction of new nodes.
-
-### 3.5. Spreading Factor Assignment for Orthogonal Channels
-
-Different LoRa spreading factors are quasi-orthogonal. SF7 and SF12 transmissions can overlap without collision. This is effectively 6 parallel channels on the same frequency. Works on ALL hardware.
-
-Assignment: Gateway-assigned in DIO or join response for load balancing. Hash-based node_sf = SF7 + (hash(iid) mod 6). Topology-aware: core nodes SF7, edge SF12.
-
-Nodes without an assigned SF MUST use SF10. Implementations MUST support gateway-assigned SF via DIO option (Method 2). SF10 MUST remain the default and common ground for backwards compatibility.
-
-| Src SF | Dst SF | Path |
-|--------|--------|------|
-| 10 | 10 | Direct |
-| 7 | 10 | Via gateway (MUST) or SF10 fallback (MAY) |
-| 7 | 9 | Via gateway |
-
-Gateways MUST receive on all SFs. Cross-SF traffic adds one hop. Independent oracle: test/vectors/sf-assignment.json verified against OpenSSL and reference Python impl.
-
-### 3.4. Adaptive Spreading Factor
-
-Nodes SHOULD implement adaptive SF based on link quality. Track per-neighbor (SNR, packet success rate). SNR > 10dB above sensitivity: decrease SF. SNR < 5dB above sensitivity: increase SF. Hysteresis: require N consecutive samples before changing.
-
-Thresholds (SF10 baseline):
-
-| SF | Sensitivity | Upgrade threshold | Downgrade threshold |
-|----|-------------|-------------------|---------------------|
-| SF7 | -123 dBm | -- | SNR < 0 dB |
-| SF8 | -126 dBm | SNR > 10 dB | SNR < 0 dB |
-| SF9 | -129 dBm | SNR > 10 dB | SNR < 0 dB |
-| SF10 | -132 dBm | SNR > 10 dB | SNR < 0 dB |
-| SF11 | -134 dBm | SNR > 10 dB | SNR < 0 dB |
-| SF12 | -137 dBm | SNR > 10 dB | -- |
-
-Signaling: Announce includes current TX_SF (1 byte). Absence means SF10.
+- EU868: 8 channels (868.1-868.5, 867.1-867.9)
+- US915: 64 uplink + 8 downlink
 
 **Backwards Compatibility**
 
-No flag day required.
+No flag day required. CH0 is universal fallback. Old nodes stay on CH0. New nodes listen on CH0 for routing + data channels for new-to-new. Gateway RX on all channels. Selection: CH0 if old/unknown else announced or hash. Degradation scales with new node fraction. Test vectors in test/vectors/ccp9*.json and ccp16*.json.
 
-- Old nodes: Use SF10 for all traffic (current behavior)
-- New nodes: Adapt SF per-neighbor based on SNR
-- Mixed network: SF10 is common ground, always works
+### 3.4. Spreading Factor Assignment for Orthogonal Channels
 
-SF10 MUST remain the default and fallback SF. New nodes MUST use SF10 when communicating with old nodes (no SF field in their announces). New nodes MUST accept traffic on any SF (RX is already multi-SF capable via CAD). Announce MAY include TX_SF field; absence means SF10.
+Different LoRa spreading factors are quasi-orthogonal. SF7 and SF12 transmissions can overlap without collision. This enables up to 6x capacity scaling via parallel logical channels on the same frequency. Works on ALL hardware.
 
-Adaptation logic (normative, density-aware per CCP §2a.7.2):
+**SF Assignment:**
+- Preferred (Gateway-assigned): Border router includes `ASSIGNED_SF` RPL DIO option. Gateway tracks per-SF node counts and assigns least-loaded SF for load balance. Nodes **MUST** use assigned SF for all TX after joining.
+- Stateless hash-based (fallback): `assigned_sf = 7 + (hash_32(IID) mod 6)`. Uses consistent `hash_32` (SipHash-2-4, LICHEN key) from short-address DAD (4.5) and CCP-15.8.3.
+- Join-based: Nodes join on SF10 (common ground). Gateway assigns via DIO or join response; node switches post-assignment.
+- Nodes without explicit assignment **MUST** use SF10 (backwards compatibility with all existing nodes).
+
+| Src SF | Dst SF | Path          | Notes                          |
+|--------|--------|---------------|--------------------------------|
+| 10     | 10     | Direct        | Legacy + new fallback          |
+| X≠10   | 10     | Via gateway   | New→legacy or legacy→new       |
+| X      | Y (X≠Y)| Via gateway   | Cross-SF                       |
+| X      | X      | Direct        | Same-SF optimal                |
+
+Gateways **MUST** receive on all SF7-SF12 (multi-SF RX or CAD/round-robin scan). Multi-radio preferred for parallel RX. Single radio: ~200ms/SF → 1.2s full scan cycle. **SHOULD** advertise capability in DIO.
+
+Cross-SF traffic adds one hop. New nodes **MAY** fallback to SF10 for direct P2P to SF10 peers.
+
+Independent oracle: `test/vectors/sf-assignment.json` verified against OpenSSL and reference Python impl.
+
+### 3.5. Adaptive Spreading Factor (CCP-16)
+
+Nodes MUST receive on all SF7-SF12. Gateways and nodes MUST announce current TX_SF in DIO options and Announce messages (1-byte field; absence means SF10). ASSIGNED_SF and RF metrics (per-neighbor EMA SNR with alpha=1/4, packet loss rate) MUST be signaled in DIO per CCP-16. Per-neighbor state MUST track EMA values, loss rate, and sample count.
+
+Thresholds:
+
+| SF | Sensitivity | Upgrade (SHOULD decrease SF) | Downgrade (MUST increase SF) |
+|----|-------------|------------------------------|------------------------------|
+| 7  | -123 dBm   | N/A                          | SNR < 0 or loss > 0.25       |
+| 9  | -129 dBm   | SNR > 10 and density < 5     | SNR < 0 or density > 10      |
+| 10 | -132 dBm   | SNR > 8 and density < 5      | SNR < 5 or utilization > 150 |
+| 11 | -134 dBm   | SNR > 10                     | SNR < 0 or density > 12      |
+| 12 | -137 dBm   | SNR > 10                     | N/A                          |
+
+**Normative Pseudocode:**
 
 ```pseudocode
-function adaptive_sf_select(density: u8, snr_ema: f32, load_factor: f32 = 0.0) -> u8
-    // Floating-point exactness: IEEE-754 f32 required for test vector match (EMA rounded to 6 decimals per ccp15.json).
-    // Embedded no_std note: avoid f32 in hot path; use Q7.8 fixed-point (snr_ema * 256, integer mul/add/shift) or lookup table. See rf_health.rs:64, lichen_rpl_update_sf for reference.
-    // Vector cross-refs per branch (ccp15.json + ccp_load_balancing.json):
-    //   high-density (>8 or load>0.8 or snr_ema<0): seed1 -> SF11
-    //   low-density good link (<5 and snr_ema>8): low_density_capacity -> SF9/SF7
-    //   poor link (>20 or snr_ema<-5): SF12
-    //   default: SF10 (baseline per 7.1)
-    if density > 8 or snr_ema < 0.0 or load_factor > 0.8:
-        return 11
-    elif density < 5 and snr_ema > 8.0:
-        return 9
-    elif density > 20 or snr_ema < -5.0:
-        return 12
-    return 10
+ema_update(avg, sample):
+    diff = sample - avg
+    return avg + (diff >> 2)
+update_neighbor(nbr, snr, loss):
+    nbr.ema_snr = ema_update(nbr.ema_snr, snr)
+    nbr.ema_loss = ema_update(nbr.ema_loss, loss)
+    nbr.samples = nbr.samples + 1
+select_tx_sf(nbr, density, utilization):
+    sf = nbr.assigned_sf or 10
+    if density > 10 or utilization > 150:
+        sf = min(12, sf + 2)
+    if nbr.ema_snr > 8 and density < 5:
+        sf = max(7, sf - 1)
+    if nbr.ema_loss > 0.25:
+        sf = min(12, sf + 1)
+    if utilization > 200:
+        return 12, false
+    return sf, true
 ```
 
-Degradation: Old nodes always use SF10 (no adaptation). New nodes adapt when talking to new nodes. New-to-old: SF10. Benefit scales with fraction of new nodes.
+Embedded note: no_std implementations SHOULD prefer Q7.8 fixed-point or lookup tables over f32 in hot paths (see lichen-rpl reference for `lichen_rpl_update_sf`). Test vectors in `test/vectors/ccp16.json` (and ccp15.json, ccp_load_balancing.json) MUST match output exactly for load_balancing cases (SF9 for density=3/snr=12.5, SF11 for density=12/snr=-2, SF12+tx_allowed=false for density=255/utilization=255).
 
-### 3.5. SFN Delta for Coordinated Capacity
+**Backwards Compatibility**
+
+No flag day required. SF10 remains the universal common-ground.
+
+- Old nodes: Use SF10 for all traffic (no adaptation).
+- New nodes: Adapt per-neighbor for new-to-new; MUST fallback to SF10 for old nodes.
+- Mixed network: All old-node traffic on SF10/CH0. Benefit scales with upgraded node fraction + gateway multi-SF RX capacity.
+
+### 3.6. SFN Delta for Coordinated Capacity
 
 Coordinated transmissions on a single frequency (SFN) improve capacity and reliability by having multiple nodes transmit identical frames with deliberate timing deltas. Receivers combine signals constructively if deltas fall within the cyclic prefix/symbol guard.
 
@@ -127,7 +136,37 @@ Boundary example: When delta exceeds 0.25 symbols, destructive interference occu
 
 See CCP-12 synchronized hopping in [02a-coordinated-capacity.md](02a-coordinated-capacity.md) for full multi-channel coordination via SFN/GPS, hash_32 channel selection, and rendezvous announcements in beacons/DIOs.
 
+### 3.6. LR-FHSS Optional Mode (SX1262 Only)
+
+LR-FHSS provides superior collision resilience by frequency hopping each packet across many channels. Collisions corrupt only fragments rather than entire packets. Optional for SX1262 devices only.
+
+**Advertisement and Negotiation:**
+- Gateway sets `LR_FHSS_SUPPORTED` flag in DIO (MUST use a reserved bit).
+- Nodes advertise `LR_FHSS_CAPABLE` flag in Announce (1 bit in app_data field).
+- SX1262 nodes MAY select LR-FHSS for uplink if gateway advertises support.
+- Gateway MUST implement dual-mode RX (standard LoRa + LR-FHSS on same frequency).
+- Downlink always matches the mode of the node's most recent uplink.
+- Node-to-node defaults to standard LoRa; LR-FHSS only if both peers capable and negotiated.
+
+**Parameters:**
+- Uses LoRaWAN LR-FHSS DR8-DR11.
+- OCW: 137 kHz or 336 kHz.
+- CR: 1/3 or 2/3.
+- Hopping sequence per Semtech AN1200.62.
+
+**Backward Compatibility:**
+- SX127x nodes ignore flags, use standard LoRa exclusively.
+- Mixed networks supported without disruption.
+- No protocol flag day required.
+
+**Tradeoffs:**
+- ~2× airtime vs standard LoRa.
+- 10×+ better performance in high-density collision scenarios via fragment FEC.
+
+See child issue project-LICHEN-zd2d.2 for driver implementation.
+
 ---
+
 
 
 ## 4. Link Layer
@@ -247,7 +286,7 @@ Sender State Entry:
 
 **Wrap Behavior:**
 
-At ~1 packet/second, 16-bit seqnum wraps every ~18 hours. The epoch
+At ~1 packet/second, 16-bit seqnum wraps every ~18 hours (per Section 2a.2 of draft-lichen-tdma for SFN/now() unsigned modular arithmetic). The epoch
 increment ensures the 24-bit logical counter advances monotonically.
 At maximum traffic (10 pkt/sec), epoch wraps in ~7.5 years--acceptable.
 
@@ -256,105 +295,7 @@ At maximum traffic (10 pkt/sec), epoch wraps in ~7.5 years--acceptable.
 On reboot, the node increments epoch and starts seqnum at 0. Receivers
 see epoch advance and accept packets immediately. No time sync required.
 
-### 4.5. Short Address Assignment
-
-Short addresses (16-bit) save 6 bytes per packet compared to EUI-64.
-Assignment uses a hybrid approach depending on network topology.
-
-**When Coordinator is Present (Border Router or DODAG Root):**
-
-The coordinator assigns short addresses authoritatively (updated for unified no-ULA model):
-
-1. Node joins mesh, sends initial DAO with pubkey (unified Ed25519 derivation per 06-security.md)
-2. Coordinator derives IID and 02xx from pubkey, allocates unused 16-bit short address
-3. Coordinator responds with assigned short address in DAO-ACK (confirms binding)
-4. Node uses short address for 6LoWPAN compression; full 02xx/IID for identity/routing
-
-Coordinator maintains address table (keyed on pubkey-derived identity):
-```
-Short Address Table:
-  0x0001: IID=0201020304050607, PubKey=<32B>, 02xx=0201:0203:...
-  0x0002: IID=0201020304050608, PubKey=<32B>, 02xx=0201:0203:...
-  ...
-```
-
-Address 0x0000 reserved (broadcast). Range 0xFFF0-0xFFFF reserved. Short addresses are mesh-local optimization only.
-
-**When No Coordinator (Isolated Mesh):**
-
-Nodes self-assign using hash-based allocation with DAD (see `spec/02a-coordinated-capacity.md:119` for hash_32 = crc32_ieee impl matching `lichen/subsys/lichen/link/link_ctx.c:96` and Rust `lichen-link/src/identity.rs:22`):
-
-1. **Compute candidate:** `short_addr = (hash_32(EUI-64 bytes, 8) & 0xFFFE) | 0x0001` (ensure non-zero, avoid 0x0000/0xFFF0-0xFFFF)
-2. **DAD probe:** Broadcast up to 8 requests with exponential jitter (base 0-500ms * 2^retry, cap 4s)
-   ```
-   DAD Request:
-     Type: DAD_PROBE
-     Candidate: <16-bit address>
-     EUI-64: <requester's EUI-64>
-     PubKey: <requester's public key>
-   ```
-3. **Wait:** 2s * (1+retry) for conflicts
-4. **Conflict response:** (unchanged)
-5. **Resolution (updated retry strategy):**
-   - On conflict: retry with `short_addr = (hash_32(concat(EUI-64, retry), 9) & 0xFFFE) | 0x0001` (better mixing avoids hash_32(EUI-64,0) clustering)
-   - Claim after clean 3-probe window
-   - After 5 failures: fallback to EUI-64 only
-
-**Note on hash_32(EUI-64,0) collision and DAD retry strategy (project-LICHEN-bo37):** 
-hash_32 primitive is exactly crc32_ieee with key=0x4c494348454e (LICHEN constant as initializer/XOR seed per 02a-coordinated-capacity.md:121, link_ctx.c:96, Rust lichen-link/src/identity.rs and channel selection). Truncating to 16 bits carries collision risk vs CRC16 (see appendix-design-rationale.md:256). DAD retry with seed mixing, backoff, 8-probe max mitigates. Coordinator re-registration per 05-routing.md:180. Residuals via sig verify (draft-lichen-link-01.md:215). All test vectors tied. 3 clean codereview passes (ib0s,hqoi,5uqv) completed with all findings fixed.
-
-**Collision Detection (Safety Net):**
-
-Even with DAD, collisions may occur (simultaneous join, partitioned mesh).
-Receivers detect collisions via signature mismatch:
-
-1. Receive frame from short address 0x0042
-2. Verify signature against stored public key for 0x0042
-3. If signature invalid but well-formed: possible collision
-4. Check if different public key would verify → collision confirmed
-
-**Collision Resolution:**
-
-When collision detected:
-
-| Scenario | Action |
-|----------|--------|
-| Node detects own address collision | Abandon short address, use EUI-64, re-run DAD |
-| Receiver detects collision | Log warning, track both keys temporarily |
-| Coordinator present | Coordinator arbitrates, reassigns one node |
-
-**Transition to Coordinator:**
-
-When a border router joins an isolated mesh:
-
-1. BR announces coordinator capability in DIO
-2. Nodes with self-assigned addresses re-register with coordinator
-3. Coordinator confirms or reassigns addresses
-4. Mesh transitions to coordinator-managed mode
-
-### TDMA Overlay (i9r0.1)
-
-**Superframe Structure**
-
-| Slot Type | Purpose | Duration (SF10/125kHz) | Notes |
-|-----------|---------|------------------------|-------|
-| Beacon | Gateway sync + slot map | ~100ms | Includes SFN, assignments, next beacon |
-| Data Slots | Assigned node TX | 250ms (200ms airtime + 50ms guard) | N = configurable, hash(IID) % N for static |
-| Contention | New joins, retries, legacy | 250ms | ALOHA/CSMA for backward compat |
-
-**Slot Assignment**
-
-- Static: `slot = hash_32(IID) % N_SLOTS` (see link layer hash)
-- Dynamic: Gateway beacon/DIO carries bitmap or list; reassign on join/leave
-- Guard time: 50ms accommodates 1% clock drift over 5s superframe
-
-**Compatibility**
-
-No flag day. Old nodes ignore beacon frame type, use contention slot. Gateway RX on all slots + contention. Mixed mode degrades gracefully to ALOHA as old node fraction grows. See CCP-16 for channel+TDMA integration.
-
-**Independent Oracle:** OpenSSL timing + BouncyCastle LoRa airtime calc matches test vectors in ccp16.json.
-
 ---
 
-
 [← Previous: Architecture](01-architecture.md) | [Index](README.md) | [Next: Adaptation Layer →](03-adaptation.md)
+

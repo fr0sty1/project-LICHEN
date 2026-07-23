@@ -2,11 +2,16 @@
   "id": "project-LICHEN-t0oz",
   "title": "router.c: fwd_stats increments are not atomic, causing race on stats",
   "description": "File: lichen/subsys/lichen/routing/router.c\nLines: 873-876, 898-899, 988-989\n\nIn the forwarding buffer code, statistics are incremented without synchronization:\n\n    router-\u003efwd_stats.packets_dropped_full++;\n    router-\u003efwd_stats.nacks_sent++;\n    ...\n    router-\u003efwd_stats.packets_queued++;\n    ...\n    router-\u003efwd_stats.packets_dropped_deadline++;\n\nIf multiple threads call these functions concurrently (possible in a multi-core Zephyr system), the increments are not atomic, leading to lost increments or torn reads.\n\nFor statistics used for monitoring/debugging, this may be acceptable. But if the stats are used for flow control decisions, inaccurate counts could cause incorrect behavior.\n\nConsider using atomic increments: k_atomic_inc() or __atomic_add_fetch().",
-  "status": "open",
+  "notes": "Commit: 5dbd6ca23",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:51:33.690572Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:51:33.690602Z"
+  "updated_at": "2026-07-22T23:11:03.52789964Z",
+  "started_at": "2026-07-22T23:08:36.97619556Z",
+  "closed_at": "2026-07-22T23:11:03.52789964Z",
+  "close_reason": "Replaced non-atomic ++ with atomic_inc((atomic_t *)\u0026...) in router.c forwarding stats (5 locations) following slip_transport.c pattern. Test still passes. Added zephyr/sys/atomic.h include. Matches bead description."
 }

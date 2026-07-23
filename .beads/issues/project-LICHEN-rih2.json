@@ -1,12 +1,17 @@
 {
   "id": "project-LICHEN-rih2",
   "title": "[codereview-pass3-edgecases] coap_dtn.c service name fixed to lichen_coap for modular non-standalone builds; matches header and CMake conditional compilation",
-  "status": "open",
+  "notes": "Commit: 645436aa9",
+  "status": "closed",
   "priority": 3,
   "issue_type": "chore",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T15:51:38.096387855Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:51:38.096387855Z",
+  "updated_at": "2026-07-22T22:33:42.020144041Z",
+  "started_at": "2026-07-22T22:33:29.645448883Z",
+  "closed_at": "2026-07-22T22:33:42.020144041Z",
+  "close_reason": "Closed",
   "labels": [
     "codereview"
   ]

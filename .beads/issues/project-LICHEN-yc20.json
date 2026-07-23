@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-yc20",
+  "title": "[kimi-review] d9b6c19: [SEVERITY: medium] The commit changes a public struct field ",
+  "description": "Commit: d9b6c19cb\nMessage: fix(app): make lichen_app_status_snapshot.role fixed buffer\n\nFinding: [SEVERITY: medium] The commit changes a public struct field from `const char *` to `char[24]` but only updates the test file. Any other producer code that assigns to `status-\u003erole` (e",
+  "notes": "Commit: 5fc03d2ea",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:39:32.132779024Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:17:09.177946634Z",
+  "started_at": "2026-07-22T22:14:45.878406273Z",
+  "closed_at": "2026-07-22T22:17:09.177946634Z",
+  "close_reason": "Closed"
+}

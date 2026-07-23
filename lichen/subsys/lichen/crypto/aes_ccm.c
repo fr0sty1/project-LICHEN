@@ -58,11 +58,9 @@ int lichen_aes_ccm_encrypt(const uint8_t key[AES_CCM_KEY_LEN],
 		goto cleanup;
 	}
 
-	/* Configure CCM mode.
-	 * Cast: tinycrypt's tc_ccm_config lacks const on nonce param but
-	 * only copies it into the CCM struct—it does not modify the buffer.
-	 */
-	ret = tc_ccm_config(&ccm, &sched, (uint8_t *)nonce, AES_CCM_NONCE_LEN,
+	uint8_t nonce_buf[AES_CCM_NONCE_LEN];
+	memcpy(nonce_buf, nonce, AES_CCM_NONCE_LEN);
+	ret = tc_ccm_config(&ccm, &sched, nonce_buf, AES_CCM_NONCE_LEN,
 			    AES_CCM_TAG_LEN);
 	if (ret != TC_CRYPTO_SUCCESS) {
 		goto cleanup;
@@ -117,11 +115,9 @@ int lichen_aes_ccm_decrypt(const uint8_t key[AES_CCM_KEY_LEN],
 		goto cleanup;
 	}
 
-	/* Configure CCM mode.
-	 * Cast: tinycrypt's tc_ccm_config lacks const on nonce param but
-	 * only copies it into the CCM struct—it does not modify the buffer.
-	 */
-	ret = tc_ccm_config(&ccm, &sched, (uint8_t *)nonce, AES_CCM_NONCE_LEN,
+	uint8_t nonce_buf[AES_CCM_NONCE_LEN];
+	memcpy(nonce_buf, nonce, AES_CCM_NONCE_LEN);
+	ret = tc_ccm_config(&ccm, &sched, nonce_buf, AES_CCM_NONCE_LEN,
 			    AES_CCM_TAG_LEN);
 	if (ret != TC_CRYPTO_SUCCESS) {
 		goto cleanup;

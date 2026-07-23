@@ -174,13 +174,17 @@ impl Addr {
 
     /// Create link-local address from 8-byte node ID (EUI-64).
     ///
-    /// Format: fe80::XX:XX:XX:ff:fe:XX:XX:XX with U/L bit flipped.
+    /// Input is treated as EUI-64 per RFC 4291. U/L bit (LSB of first octet)
+    /// is flipped. No IEEE validation performed (no OUI check, no reserved
+    /// patterns rejected like all-zero or broadcast). Caller responsible for
+    /// valid input. Synthetic node IDs permitted for LICHEN mesh.
+    ///
+    /// See also: link_local_from_mac for 48-bit MACs.
     pub fn link_local_from_eui64(eui64: &[u8; 8]) -> Self {
         let mut addr = [0u8; 16];
         addr[0] = 0xfe;
         addr[1] = 0x80;
-        // bytes 2-7 are zero (link-local prefix)
-        addr[8] = eui64[0] ^ 0x02; // Flip U/L bit
+        addr[8] = eui64[0] ^ 0x02;
         addr[9] = eui64[1];
         addr[10] = eui64[2];
         addr[11] = eui64[3];
@@ -191,7 +195,10 @@ impl Addr {
         Self(addr)
     }
 
-    /// Create link-local address from 6-byte MAC (insert ff:fe).
+    /// Create link-local address from 6-byte MAC by inserting 0xfffe
+    /// to form modified EUI-64 (RFC 4291), then calling link_local_from_eui64.
+    /// No validation on resulting EUI-64 (e.g. all-zero MAC produces
+    /// fe80::ff:fe00:0 which is technically invalid per some strict impls).
     pub fn link_local_from_mac(mac: &[u8; 6]) -> Self {
         let mut eui64 = [0u8; 8];
         eui64[0] = mac[0];
@@ -362,15 +369,16 @@ impl Ipv6Header {
         })
     }
 
-    /// Decrement hop limit per RFC 8200 §3 for forwarding. Returns None if it
-    /// would reach zero (caller must generate ICMPv6 Time Exceeded msg type 3).
-    /// Uses independent test vectors from RFC 8200 examples.
+    /// Decrement hop limit per RFC 8200 §3 for forwarding. Returns `None`
+    /// if decrement would reach zero (caller must generate ICMPv6 Time
+    /// Exceeded type 3/code 0). Test uses independent values per spec.
     pub fn with_decremented_hop_limit(&self) -> Option<Self> {
-        if self.hop_limit == 0 {
+        let new_hop_limit = self.hop_limit.saturating_sub(1);
+        if new_hop_limit == 0 {
             None
         } else {
             let mut hdr = *self;
-            hdr.hop_limit = hdr.hop_limit.saturating_sub(1);
+            hdr.hop_limit = new_hop_limit;
             Some(hdr)
         }
     }
@@ -396,10 +404,15 @@ impl UdpHeader {
         }
     }
 
-    /// Write header to output buffer.
+    /// Write **only the 8-byte UDP header** to `out`.
     ///
-    /// Returns the number of bytes written (always `UDP_HEADER_LEN`).
-    pub fn write_to(
+    /// The `payload` slice is used *only* for IPv6 pseudo-header checksum
+    /// computation. Caller **MUST** copy `payload` to the output buffer
+    /// immediately after these 8 bytes. Checksum will be invalid for the
+    /// transmitted packet if payload is forgotten or differs.
+    ///
+    /// Returns `UDP_HEADER_LEN`.
+    pub fn write_header_to(
         &self,
         src: &Addr,
         dst: &Addr,
@@ -422,8 +435,10 @@ impl UdpHeader {
         out[3] = self.dst_port as u8;
         out[4] = (length >> 8) as u8;
         out[5] = length as u8;
+        out[6] = 0; // checksum placeholder
+        out[7] = 0;
 
-        // Compute checksum over pseudo-header + UDP header + payload
+        // Compute checksum over pseudo-header + UDP header (zeroed) + payload
         let checksum = udp_checksum(src, dst, &out[..UDP_HEADER_LEN], payload);
         out[6] = (checksum >> 8) as u8;
         out[7] = checksum as u8;
@@ -431,16 +446,43 @@ impl UdpHeader {
         Ok(UDP_HEADER_LEN)
     }
 
-    /// Parse header from bytes.
+    /// Write complete UDP datagram (header + payload) to `out`.
+    ///
+    /// Preferred API: places payload in buffer then computes checksum over
+    /// the actual transmitted bytes. Eliminates the header-only footgun.
+    ///
+    /// Returns total bytes written (`UDP_HEADER_LEN + payload.len()`).
+    pub fn write_packet_to(
+        &self,
+        src: &Addr,
+        dst: &Addr,
+        payload: &[u8],
+        out: &mut [u8],
+    ) -> Result<usize, Ipv6Error> {
+        let total = UDP_HEADER_LEN + payload.len();
+        if out.len() < total {
+            return Err(BufferTooSmall::new(total, out.len()).into());
+        }
+
+        let _ = self.write_header_to(src, dst, payload, &mut out[0..UDP_HEADER_LEN])?;
+        out[UDP_HEADER_LEN..total].copy_from_slice(payload);
+
+        Ok(total)
+    }
+
     pub fn from_bytes(buf: &[u8]) -> Result<Self, Ipv6Error> {
         if buf.len() < UDP_HEADER_LEN {
             return Err(TooShort::new(UDP_HEADER_LEN, buf.len()).into());
+        }
+        let length = ((buf[4] as u16) << 8) | (buf[5] as u16);
+        if length < UDP_HEADER_LEN as u16 || length as usize > buf.len() {
+            return Err(TooShort::new(length as usize, buf.len()).into());
         }
 
         Ok(Self {
             src_port: ((buf[0] as u16) << 8) | (buf[1] as u16),
             dst_port: ((buf[2] as u16) << 8) | (buf[3] as u16),
-            length: ((buf[4] as u16) << 8) | (buf[5] as u16),
+            length,
             checksum: ((buf[6] as u16) << 8) | (buf[7] as u16),
         })
     }
@@ -643,25 +685,18 @@ fn icmpv6_checksum(src: &Addr, dst: &Addr, icmpv6_msg: &[u8]) -> u16 {
     for chunk in dst.0.chunks(2) {
         sum += ((chunk[0] as u32) << 8) | (chunk[1] as u32);
     }
-    sum += icmpv6_msg.len() as u32; // Upper-layer length
-    sum += next_header::ICMPV6 as u32; // Next header
+    sum += icmpv6_msg.len() as u32;
+    sum += next_header::ICMPV6 as u32;
 
-    // ICMPv6 message (with checksum field zeroed - caller should have zeros there)
-    let mut i = 0;
-    while i + 1 < icmpv6_msg.len() {
-        // Skip checksum field (bytes 2-3)
+    for i in (0..icmpv6_msg.len()).step_by(2) {
         if i == 2 {
-            i += 2;
             continue;
         }
-        sum += ((icmpv6_msg[i] as u32) << 8) | (icmpv6_msg[i + 1] as u32);
-        i += 2;
-    }
-    if i < icmpv6_msg.len() {
-        sum += (icmpv6_msg[i] as u32) << 8;
+        let high = icmpv6_msg.get(i).copied().unwrap_or(0);
+        let low = icmpv6_msg.get(i + 1).copied().unwrap_or(0);
+        sum += ((high as u32) << 8) | (low as u32);
     }
 
-    // Fold 32-bit sum to 16 bits
     while sum >> 16 != 0 {
         sum = (sum & 0xffff) + (sum >> 16);
     }
@@ -697,17 +732,17 @@ fn udp_checksum(src: &Addr, dst: &Addr, udp_header: &[u8], payload: &[u8]) -> u1
     sum += next_header::UDP as u32;
 
     // UDP header (skip checksum field at bytes 6-7)
-    for i in (0..udp_header.len()).step_by(2) {
+    let mut i = 0;
+    while i + 1 < udp_header.len() {
         if i == 6 {
-            continue; // Skip checksum
+            i += 2;
+            continue;
         }
-        let high = udp_header[i] as u32;
-        let low = if i + 1 < udp_header.len() {
-            udp_header[i + 1] as u32
-        } else {
-            0
-        };
-        sum += (high << 8) | low;
+        sum += ((udp_header[i] as u32) << 8) | (udp_header[i + 1] as u32);
+        i += 2;
+    }
+    if i < udp_header.len() {
+        sum += (udp_header[i] as u32) << 8;
     }
 
     // Payload
@@ -742,7 +777,7 @@ pub fn parse_packet(buf: &[u8]) -> Result<(Ipv6Header, &[u8]), Ipv6Error> {
     let payload_start = IPV6_HEADER_LEN;
     let payload_end = payload_start + header.payload_len as usize;
 
-    if buf.len() < payload_end {
+    if buf.len() != payload_end {
         return Err(TooShort::new(payload_end, buf.len()).into());
     }
 
@@ -789,18 +824,9 @@ pub fn handle_icmpv6(
             let echo = Icmpv6Echo::from_bytes(body)?;
             let data = &body[4..]; // After id+seq
 
-            // Truncate data if it would exceed reply buffer capacity.
-            // MAX_ECHO_DATA (120) + 8 header = 128 byte ICMPv6 reply.
-            // With 40-byte IPv6 header, total is 168 bytes, fits in 256.
-            let truncated_data = if data.len() > MAX_ECHO_DATA {
-                &data[..MAX_ECHO_DATA]
-            } else {
-                data
-            };
-
             // RFC 4443 Section 4.2: reply source SHOULD be the destination of the request.
             // This ensures nodes with multiple addresses reply from the address that was pinged.
-            let reply_icmp = echo.build_reply(&ip_header.dst, &ip_header.src, truncated_data)?;
+            let reply_icmp = echo.build_reply(&ip_header.dst, &ip_header.src, data)?;
             let mut reply_ip = Ipv6Header::new(next_header::ICMPV6, ip_header.dst, ip_header.src);
             reply_ip.hop_limit = 255;
 
@@ -957,10 +983,10 @@ mod tests {
         // Should be IPv6 header + ICMPv6 reply
         assert!(pkt.len() > IPV6_HEADER_LEN);
 
-        // Parse response
         let (resp_ip, resp_payload) = parse_packet(&pkt).unwrap();
         assert_eq!(resp_ip.src, local);
         assert_eq!(resp_ip.dst, remote);
+        assert_eq!(resp_ip.hop_limit, 255);
         assert_eq!(resp_payload[0], icmpv6_type::ECHO_REPLY);
     }
 
@@ -1076,5 +1102,31 @@ mod tests {
             result,
             Err(Ipv6Error::InvalidFlowLabel(0xffffffff))
         ));
+    }
+
+    #[test]
+    fn test_with_decremented_hop_limit() {
+        let src = Addr::link_local_from_mac(&hex!("001122334455"));
+        let dst = Addr::link_local_from_mac(&hex!("665544332211"));
+        let mut hdr = Ipv6Header::new(next_header::ICMPV6, src, dst);
+        hdr.hop_limit = 5;
+        hdr.flow_label = 0x12345;
+
+        // independent test vector per RFC 8200: 5->4, fields preserved
+        let dec = hdr.with_decremented_hop_limit().unwrap();
+        assert_eq!(dec.hop_limit, 4);
+        assert_eq!(dec.flow_label, 0x12345);
+        assert_eq!(dec.src, src);
+        assert_eq!(dec.dst, dst);
+        assert_eq!(dec.next_header, next_header::ICMPV6);
+
+        // hop_limit=1 or 0 reaches zero after decrement -> None (drop + ICMP)
+        let mut one = hdr;
+        one.hop_limit = 1;
+        assert!(one.with_decremented_hop_limit().is_none());
+
+        let mut zero = hdr;
+        zero.hop_limit = 0;
+        assert!(zero.with_decremented_hop_limit().is_none());
     }
 }

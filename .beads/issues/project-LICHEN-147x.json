@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-147x",
+  "title": "[kimi-review] c8e3e51: [SEVERITY: medium] The commit claims to fix OSCORE option fl",
+  "description": "Commit: c8e3e515d\nMessage: fix(oscore): mask piv_len when building option flags\n\nFinding: [SEVERITY: medium] The commit claims to fix OSCORE option flag construction but contains no file modifications. Either the diff was truncated when shared, or this is an empty commit that doesn't implement the stated fix.",
+  "notes": "Commit: 0f4b65624",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:02:05.097277526Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:32:51.091577971Z",
+  "started_at": "2026-07-22T22:31:04.620514181Z",
+  "closed_at": "2026-07-22T22:32:51.091577971Z",
+  "close_reason": "Implemented piv_len mask in oscore_option struct init for request protection (line 1552 in oscore.c). Ensures flag byte uses masked value per RFC 8613 bitfield. Addresses empty-commit review finding. Commit 0f4b65624."
+}

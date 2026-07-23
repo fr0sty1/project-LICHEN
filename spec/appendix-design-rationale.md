@@ -385,14 +385,11 @@ Single channel creates contention hotspot. CCP-16 coordinates capacity. All impl
 
 **TDMA Slots (Zephyr scheduler, Rust sim)**
 - Root includes epoch and `num_slots` (default 8) in extended RPL config option (see draft-lichen-rpl-lora).
-- Slot ID = hash_32(eui64 XOR epoch) % num_slots (consistent hash_32 per CCP-15.8.3 update; see fnv1a32 pseudocode at line 390 and select_channel in 02a:67; no crc16/crc32). Cross-ref spec/02a-coordinated-capacity.md.
+- Slot ID = hash_32(eui64 XOR epoch) % num_slots (consistent hash_32 per CCP-15.8.3; exact C impl is packet_hash fallback in lichen/subsys/lichen/link/lichen_link_rx.c matching FNV-1a32 oracle in python/tests/test_vectors.py:232-235 and test vectors for bit-exact slot/address; samples/lora_ping::crc32_ieee is telemetry-only). Cross-ref spec/02a-coordinated-capacity.md.
 - Slot duration = max_airtime(current_SF) + 100ms guard. Node uses lichen_link_set_slot() in subsys.
 - TX suppressed outside slot (tdma_tx_allowed()).
 
-**Adaptive SF (ADR v2, density aware)**
-- See spec/02a-coordinated-capacity.md:2a.3 for normative pseudocode, density rules, now()/select_channel, and clarified rationale vs SF10 default (SF10 REQUIRED baseline per 7.1; density rules MUST override only on explicit thresholds per RFC 2119 for capacity/robustness layering; matches ccp16.json vectors; no dead code).
-- Base SF10 (Kconfig CONFIG_LICHEN_DEFAULT_SF=10).
-- Zephyr: lichen_rpl_update_sf(density, snr); updates radio cfg. Reported in DIO metric container.
+Normative pseudocode and thresholds are in physical-link:3.4 and 02a-coordinated-capacity:2a.3 (EMA alpha=1/4 from rf_health.rs, per-neighbor state, DIO for ASSIGNED_SF/metrics, RX all SF, TX_SF announcement). Implementations MUST match test/vectors/ccp16.json vectors exactly with RFC 2119 keywords (MUST for SF selection, density/SNR/loss/utilization thresholds; SHOULD for optimizations). SF10 baseline per 7.1; adaptive overrides only on explicit thresholds. Integrates with RPL DIO, TDMA slot hash, and CCP-16 simulator gates. No dead code; all paths exercised by vectors.
 
 **Multi-Channel + Density Balancing**
 - CH0 always for control (DIOs, all listen). Data channels via hash or root-assigned (RPL DAO-ACK carries channel_map).
@@ -432,6 +429,12 @@ The difference is resource budget. Tactical radios have compute, memory, and
 bandwidth to spare. LICHEN has none of that luxury--so the protocol must be
 correspondingly smarter about what it spends.
 
----
+### Frequency Agility Channel Selection
 
+**Rejected alternative (pure random):** Pure random channel selection was considered but rejected because it prevents reliable rendezvous prediction between nodes (receiver cannot compute which channel the sender will use). Hash_32(SFN, EUI) provides deterministic, reproducible selection that enables synchronized hopping and rendezvous announcements while still providing statistical interference avoidance. See CCP-12 and CCP-15 pseudocode in 02a-coordinated-capacity.md.
+
+**now() and clamp():** Defined as monotonic millisecond clock and numeric range limiter respectively (see pseudocode conventions in 02a-coordinated-capacity.md). Floating point thresholds fixed at exactly 0.1/0.5/0.8 for interoperability (normative).
+
+---
 [Index](README.md) | [Architecture](01-architecture.md)
+

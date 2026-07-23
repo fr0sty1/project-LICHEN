@@ -2,11 +2,16 @@
   "id": "project-LICHEN-9smu",
   "title": "loadng.c: access_counter can wrap around causing LRU inversion",
   "description": "File: lichen/subsys/lichen/routing/loadng.c\nLines: 31, 222, 251, 315\n\nThe access_counter is incremented on each cache access:\n\n    static uint32_t access_counter;\n    ...\n    route_access_order[idx] = ++access_counter;\n\nAfter ~4 billion accesses, access_counter wraps to 0. When this happens:\n- New accesses get low values (near 0)\n- Old entries from before wrap have high values (near UINT32_MAX)\n- find_lru_slot_locked() line 194 compares: 'route_access_order[i] \u003c oldest_access'\n- This incorrectly identifies new entries as 'oldest' because 0 \u003c UINT32_MAX\n\nThe result: recently-used routes get evicted while stale routes are retained.\n\nFix: Use signed comparison similar to timestamp handling, or periodically normalize access_order values.",
-  "status": "open",
+  "notes": "Signed comparison already implemented in find_lru_slot_locked (SECURITY comment added matching timestamp handling); bead description updated for current code. Commit: $(git rev-parse --short HEAD)",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:51:03.441145Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:51:03.441176Z"
+  "updated_at": "2026-07-22T23:07:50.768361127Z",
+  "started_at": "2026-07-22T23:05:13.101373551Z",
+  "closed_at": "2026-07-22T23:07:50.768361127Z",
+  "close_reason": "Closed"
 }

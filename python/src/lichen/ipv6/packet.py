@@ -162,6 +162,8 @@ class ExtensionHeader:
                 "extension header length (data + 2) must be a multiple of 8, "
                 f"got {len(self.data) + 2}"
             )
+        if len(self.data) > 2046:
+            raise PacketError(f"extension header data too large: {len(self.data)} > 2046")
 
     def to_bytes(self, next_header: int) -> bytes:
         """Serialize, with ``next_header`` pointing at the following header."""
@@ -197,7 +199,12 @@ class IPv6Packet:
             )
             chunks.append(ext.to_bytes(nxt))
         ext_bytes = b"".join(chunks)
-
+        total_payload = len(ext_bytes) + len(self.payload)
+        if total_payload > 0xFFFF:
+            raise PacketError(
+                f"combined payload too large: {len(ext_bytes)} extension + "
+                f"{len(self.payload)} payload = {total_payload} > 65535"
+            )
         wire_next_header = (
             self.extension_headers[0].header_type
             if self.extension_headers
@@ -206,7 +213,7 @@ class IPv6Packet:
         header = replace(
             self.header,
             next_header=wire_next_header,
-            payload_length=len(ext_bytes) + len(self.payload),
+            payload_length=total_payload,
         )
         return header.to_bytes() + ext_bytes + self.payload
 

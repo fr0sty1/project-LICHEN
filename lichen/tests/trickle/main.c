@@ -178,6 +178,21 @@ static int test_counter_saturates_at_max(void)
 	return 1;
 }
 
+static int test_zero_imin_uses_safe_default(void)
+{
+	struct lichen_trickle t;
+
+	/* imin=0 would cause busy loop; init defends by using 1 (see p00p) */
+	lichen_trickle_init(&t, 0, 4, 10);
+	ASSERT_EQ(t.imin, 1, "imin=0 normalized to 1");
+
+	lichen_trickle_start(&t, 0, 0);
+	ASSERT_EQ(t.interval, 1, "interval set to safe default");
+	ASSERT_TRUE(t.transmit_time >= 0, "timer starts without immediate loop");
+
+	return 1;
+}
+
 /* ─── test runner ─────────────────────────────────────────────────────────── */
 
 #define RUN_TEST(fn) do { \
@@ -203,6 +218,7 @@ int main(void)
 	RUN_TEST(test_rand_offset_shifts_transmit_time);
 	RUN_TEST(test_max_interval_saturates_on_overflow);
 	RUN_TEST(test_counter_saturates_at_max);
+	RUN_TEST(test_zero_imin_uses_safe_default);
 
 	printf("\n%d/%d tests passed\n", tests_passed, tests_run);
 

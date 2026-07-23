@@ -16,8 +16,10 @@ import json
 import re
 import sys
 from collections import defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import DefaultDict
 
 
 @dataclass
@@ -43,10 +45,25 @@ class NodeStats:
     rx_count: int = 0
 
 
-def parse_telemetry(content: str, stats: NodeStats) -> bool:
-    """Parse common JSONL events; return whether any valid event was found."""
+def parse_telemetry(source: str | Iterable[str] | Path, stats: NodeStats) -> bool:
+    """Parse common JSONL events; return whether any valid event was found.
+
+    Supports str (backcompat), iterable of lines, or Path (streams from
+    disk to avoid loading gigabyte logs into memory).
+    """
     found = False
-    for line in content.splitlines():
+    if isinstance(source, Path):
+        try:
+            with source.open(encoding="utf-8", errors="replace") as f:
+                return parse_telemetry(f, stats)
+        except OSError as e:
+            print(f"Warning: skipping {source}: {e}", file=sys.stderr)
+            return False
+    if isinstance(source, str):
+        lines = source.splitlines()
+    else:
+        lines = source
+    for line in lines:
         marker = line.find("TELEMETRY ")
         if marker < 0:
             continue
@@ -57,6 +74,8 @@ def parse_telemetry(content: str, stats: NodeStats) -> bool:
         if event.get("schema") != "lichen.telemetry.v1":
             continue
         direction = event.get("direction")
+        if isinstance(direction, str):
+            direction = direction.lower()
         packet_hash = event.get("packet_hash")
         if direction not in {"tx", "rx"} or not isinstance(packet_hash, str):
             continue
@@ -78,34 +97,36 @@ def parse_python_logs(log_dir: Path) -> dict[str, NodeStats]:
         node_id = log_file.stem  # e.g., "py-1000"
         stats = NodeStats(node_id=node_id, impl="py")
 
+        if parse_telemetry(log_file, stats):
+            if stats.tx_count > 0 or stats.rx_count > 0:
+                nodes[node_id] = stats
+            continue
+
+        # Legacy fallback (no telemetry found)
         try:
             content = log_file.read_text(errors="replace")
         except OSError as e:
             print(f"Warning: skipping {log_file}: {e}", file=sys.stderr)
             continue
 
-        if parse_telemetry(content, stats):
-            if stats.tx_count > 0 or stats.rx_count > 0:
-                nodes[node_id] = stats
-            continue
-
         # Look for [TX] or [RX] with hash=
         # Pattern: [TX] ... hash=abc123 or similar
         for line in content.splitlines():
-            if "[TX]" in line or "TX:" in line.upper():
-                match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
+            line_upper = line.upper()
+            if "[TX]" in line_upper or "TX:" in line_upper:
+                match = re.search(r"hash[=:]?\s*(?:0x)?([a-fA-F0-9]{8,32})", line)
                 if match:
                     stats.tx_hashes.add(match.group(1).lower())
                 stats.tx_count += 1
-            elif "[RX]" in line or "RX:" in line.upper():
-                match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
+            elif "[RX]" in line_upper or "RX:" in line_upper:
+                match = re.search(r"hash[=:]?\s*(?:0x)?([a-fA-F0-9]{8,32})", line)
                 if match:
                     stats.rx_hashes.add(match.group(1).lower())
                 stats.rx_count += 1
 
         # Also look for summary line: "py-1000: TX=5 RX=3"
         for line in content.splitlines():
-            summary = re.search(r"TX=(\d+)\s+RX=(\d+)", line)
+            summary = re.search(r"TX=(\d+)\s+RX=(\d+)", line, re.IGNORECASE)
             if summary:
                 stats.tx_count = max(stats.tx_count, int(summary.group(1)))
                 stats.rx_count = max(stats.rx_count, int(summary.group(2)))
@@ -124,32 +145,34 @@ def parse_rust_logs(log_dir: Path) -> dict[str, NodeStats]:
         node_id = log_file.stem  # e.g., "rust-2000"
         stats = NodeStats(node_id=node_id, impl="rust")
 
+        if parse_telemetry(log_file, stats):
+            if stats.tx_count > 0 or stats.rx_count > 0:
+                nodes[node_id] = stats
+            continue
+
+        # Legacy fallback (no telemetry found)
         try:
             content = log_file.read_text(errors="replace")
         except OSError as e:
             print(f"Warning: skipping {log_file}: {e}", file=sys.stderr)
             continue
 
-        if parse_telemetry(content, stats):
-            if stats.tx_count > 0 or stats.rx_count > 0:
-                nodes[node_id] = stats
-            continue
-
         for line in content.splitlines():
-            if "[TX]" in line or "TX:" in line.upper():
-                match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
+            line_upper = line.upper()
+            if "[TX]" in line_upper or "TX:" in line_upper:
+                match = re.search(r"hash[=:]?\s*(?:0x)?([a-fA-F0-9]{8,32})", line)
                 if match:
                     stats.tx_hashes.add(match.group(1).lower())
                 stats.tx_count += 1
-            elif "[RX]" in line or "RX:" in line.upper():
-                match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
+            elif "[RX]" in line_upper or "RX:" in line_upper:
+                match = re.search(r"hash[=:]?\s*(?:0x)?([a-fA-F0-9]{8,32})", line)
                 if match:
                     stats.rx_hashes.add(match.group(1).lower())
                 stats.rx_count += 1
 
         # Summary line
         for line in content.splitlines():
-            summary = re.search(r"TX=(\d+)\s+RX=(\d+)", line)
+            summary = re.search(r"TX=(\d+)\s+RX=(\d+)", line, re.IGNORECASE)
             if summary:
                 stats.tx_count = max(stats.tx_count, int(summary.group(1)))
                 stats.rx_count = max(stats.rx_count, int(summary.group(2)))
@@ -168,24 +191,25 @@ def parse_zephyr_logs(log_dir: Path) -> dict[str, NodeStats]:
         node_id = log_file.stem  # e.g., "zephyr-3000"
         stats = NodeStats(node_id=node_id, impl="zephyr")
 
+        if parse_telemetry(log_file, stats):
+            if stats.tx_count > 0 or stats.rx_count > 0:
+                nodes[node_id] = stats
+            continue
+
+        # Legacy fallback (no telemetry found)
         try:
             content = log_file.read_text(errors="replace")
         except OSError as e:
             print(f"Warning: skipping {log_file}: {e}", file=sys.stderr)
             continue
 
-        if parse_telemetry(content, stats):
-            if stats.tx_count > 0 or stats.rx_count > 0:
-                nodes[node_id] = stats
-            continue
-
         for line in content.splitlines():
-            if "[TX]" in line or "TX:" in line.upper() or "Send" in line:
+            if re.search(r"(?i)(?:\b(?:SEND|TX)\b|\[TX\]|TX:)", line):
                 match = re.search(r"hash[=:]?\s*(?:0x)?([a-fA-F0-9]{8,32})", line)
                 if match:
                     stats.tx_hashes.add(match.group(1).lower())
                 stats.tx_count += 1
-            elif "[RX]" in line or "RX:" in line.upper() or "Recv" in line:
+            elif re.search(r"(?i)(?:\b(?:RECV|RX)\b|\[RX\]|RX:)", line):
                 match = re.search(r"hash[=:]?\s*(?:0x)?([a-fA-F0-9]{8,32})", line)
                 if match:
                     stats.rx_hashes.add(match.group(1).lower())
@@ -200,27 +224,43 @@ def parse_zephyr_logs(log_dir: Path) -> dict[str, NodeStats]:
 def find_missing_packets(
     all_nodes: dict[str, NodeStats],
 ) -> list[tuple[str, str, str]]:
-    """Find packets sent but never received by any node.
+    """Find packets sent but never received by any node (forwarding-aware).
 
-    Returns list of (hash, sender_node_id, sender_impl).
+<<<<<<< HEAD
+    Supports multiple senders per hash (origin + forwarders) to preserve
+    forwarding information instead of first-wins policy. Fixes skewed
+    statistics and missing-packet detection for forwarded drops.
     """
-    # Collect all sent hashes with sender info
+    sent_by_hash: dict[str, set[tuple[str, str]]] = defaultdict(set)
+=======
+    Uses first-wins for sender attribution (merges worker8 mesh tracking with
+    current JSON telemetry parsing). Returns list of (hash, sender_node_id, sender_impl).
+    """
+    # Collect all sent hashes with sender info (first-wins)
     sent_hashes: dict[str, tuple[str, str]] = {}  # hash -> (node_id, impl)
+>>>>>>> origin/integration/worker5-20260722
     received_hashes: set[str] = set()
 
     for node_id, stats in all_nodes.items():
         for h in stats.tx_hashes:
-            if h not in sent_hashes:
-                sent_hashes[h] = (node_id, stats.impl)
+            sent_by_hash[h].add((node_id, stats.impl))
         received_hashes.update(stats.rx_hashes)
 
-    # Find missing
+    # Find missing - report under ALL senders that transmitted it
     missing = []
-    for h, (node_id, impl) in sent_hashes.items():
+    for h, senders in sent_by_hash.items():
         if h not in received_hashes:
-            missing.append((h, node_id, impl))
+            for node_id, impl in senders:
+                missing.append((h, node_id, impl))
 
-    return sorted(missing, key=lambda x: (x[2], x[1], x[0]))
+    # Deduplicate and sort by impl, node, hash
+    seen: set[tuple[str, str, str]] = set()
+    unique_missing = []
+    for item in sorted(missing, key=lambda x: (x[2], x[1], x[0])):
+        if item not in seen:
+            seen.add(item)
+            unique_missing.append(item)
+    return unique_missing
 
 
 def build_reception_matrix(
@@ -228,26 +268,23 @@ def build_reception_matrix(
 ) -> dict[str, dict[str, int]]:
     """Build matrix showing packet reception between implementation pairs.
 
-    Returns dict[sender_impl][receiver_impl] = count.
-
-    For this to work accurately, we need hash overlap data. Without
-    per-packet sender tracking, we estimate based on overall reception.
+    Uses set of senders per hash to credit forwarding nodes in addition
+    to originators. Fixes first-wins policy that lost forwarding info
+    and skewed cross-implementation statistics.
     """
-    # Group nodes by implementation
     impls = ["py", "rust", "zephyr"]
     impl_nodes: dict[str, list[NodeStats]] = {impl: [] for impl in impls}
 
     for stats in all_nodes.values():
         impl_nodes[stats.impl].append(stats)
 
-    # Build hash -> sender impl mapping
-    hash_to_sender: dict[str, str] = {}
+    # hash -> set of sender impls (preserves forwarding)
+    hash_to_senders: dict[str, set[str]] = defaultdict(set)
     for stats in all_nodes.values():
         for h in stats.tx_hashes:
-            if h not in hash_to_sender:
-                hash_to_sender[h] = stats.impl
+            hash_to_senders[h].add(stats.impl)
 
-    # Count reception by sender impl -> receiver impl
+    # Count reception: credit ALL senders for each RX of their hash
     matrix: dict[str, dict[str, int]] = {
         impl: {impl2: 0 for impl2 in impls} for impl in impls
     }
@@ -255,8 +292,7 @@ def build_reception_matrix(
     for stats in all_nodes.values():
         receiver_impl = stats.impl
         for h in stats.rx_hashes:
-            sender_impl = hash_to_sender.get(h)
-            if sender_impl:
+            for sender_impl in hash_to_senders.get(h, set()):
                 matrix[sender_impl][receiver_impl] += 1
 
     return matrix
@@ -356,15 +392,15 @@ def generate_report(logs_dir: Path, output: Path) -> None:
         lines.append("No interop failures detected (all impl pairs communicated).")
         lines.append("")
 
-    # Missing packets
+    # Missing packets (forwarding-aware: first-wins sender tracking + all-senders for mesh scenarios)
     lines.append("## Missing Packets")
     lines.append("")
-    lines.append(f"**Total missing:** {len(missing)} packets sent but never received.")
+    lines.append(f"**Total missing unique hashes:** {len(missing)} (forwarding-aware with first-wins and all-senders tracking).")
     lines.append("")
 
     if missing:
         # Group by implementation
-        by_impl: dict[str, list[tuple[str, str]]] = defaultdict(list)
+        by_impl: DefaultDict[str, list[tuple[str, str]]] = defaultdict(list)
         for h, node_id, impl in missing:
             by_impl[impl].append((h, node_id))
 
@@ -398,7 +434,7 @@ def generate_report(logs_dir: Path, output: Path) -> None:
     lines.append(f"- **Reception rate:** {rx_rate:.1f}%")
     lines.append(f"- **Unique TX hashes:** {total_tx_hashes}")
     lines.append(f"- **Unique RX hashes:** {total_rx_hashes}")
-    lines.append(f"- **Missing packets:** {len(missing)}")
+    lines.append(f"- **Missing unique packets:** {len(missing)} (supports mesh forwarding scenarios)")
 
     if issues:
         lines.append(f"- **Interop failures:** {len(issues)}")

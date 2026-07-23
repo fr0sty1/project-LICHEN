@@ -1,6 +1,8 @@
 //! RPL routing engine for LICHEN (RFC 6550, Non-Storing Mode) with CCP-16 load balancing.
 //!
-//! Supports TDMA slot assignment, adaptive SF, multi-channel density-aware routing.
+//! Supports TDMA slot assignment, adaptive-SF, multi-channel, density-aware routing and
+//! DIO metrics (see `test/vectors/ccp_load_balancing.json` for canonical test vectors
+//! and independent mathematical oracles).
 //! Modules:
 //! - `message`  — DIO / DAO / DIS / DAO-ACK wire codec + TLV option parser
 //! - `dodag`    — DODAG state machine with MRHOF parent selection

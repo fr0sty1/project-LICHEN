@@ -1,12 +1,17 @@
 {
   "id": "project-LICHEN-8tmw",
   "title": "codereview-pass3: capacity validation added for map_count and ENOBUFS error path prepared in coap_status.c",
-  "status": "open",
+  "notes": "Commit: de2b313",
+  "status": "closed",
   "priority": 3,
   "issue_type": "chore",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:08:02.481503966Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:08:02.481503966Z",
+  "updated_at": "2026-07-22T23:30:45.82857587Z",
+  "started_at": "2026-07-22T23:27:57.173753173Z",
+  "closed_at": "2026-07-22T23:30:45.82857587Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-8tmw",

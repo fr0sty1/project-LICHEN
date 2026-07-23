@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-y701",
+  "title": "Update medium.py resolve_reception for LR-FHSS fragment collisions",
+  "notes": "Commit: 55d952a58",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:57:51.071584954Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T23:01:14.882583337Z",
+  "started_at": "2026-07-22T22:57:59.874903767Z",
+  "closed_at": "2026-07-22T23:01:14.882583337Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-y701",
+      "depends_on_id": "project-LICHEN-zd2d.3",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T22:57:51.187463631Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}

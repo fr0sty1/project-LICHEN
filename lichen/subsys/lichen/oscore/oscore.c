@@ -694,15 +694,7 @@ void oscore_ctx_free(struct oscore_ctx *ctx)
 		replay_clear_pending_context_locked(ctx_idx);
 	}
 
-	/* Secure wipe of key material (crypto_wipe cannot be optimized away) */
-	crypto_wipe(ctx->master_secret, sizeof(ctx->master_secret));
-	crypto_wipe(ctx->master_salt, sizeof(ctx->master_salt));
-	crypto_wipe(ctx->sender_key, sizeof(ctx->sender_key));
-	crypto_wipe(ctx->recipient_key, sizeof(ctx->recipient_key));
-	crypto_wipe(ctx->common_iv, sizeof(ctx->common_iv));
-	crypto_wipe(ctx->id_context, sizeof(ctx->id_context)); /* python-ano.74 */
-	ctx->has_peer_eui64 = false;
-	ctx->active = false;
+	crypto_wipe(ctx, sizeof(*ctx));
 
 	k_mutex_unlock(&s_ctx_mutex);
 }
@@ -952,41 +944,6 @@ int oscore_ctx_persist_ssn(struct oscore_ctx *ctx)
 	return OSCORE_OK;
 }
 
-int oscore_ctx_lookup(const uint8_t *recipient_id,
-		      size_t recipient_id_len,
-		      struct oscore_ctx *ctx_out)
-{
-	struct oscore_ctx *ctx;
-	int ret = OSCORE_ERR_NO_CONTEXT;
-
-	if (ctx_out == NULL) {
-		return OSCORE_ERR_INVALID_PARAM;
-	}
-
-	/* SECURITY: Prevent NULL dereference in ctx_find_by_recipient_locked */
-	if (recipient_id == NULL && recipient_id_len > 0) {
-		return OSCORE_ERR_INVALID_PARAM;
-	}
-
-	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
-
-	ctx = ctx_find_by_recipient_locked(recipient_id, recipient_id_len);
-	if (ctx != NULL) {
-		memcpy(ctx_out, ctx, sizeof(*ctx_out));
-		ret = OSCORE_OK;
-	}
-
-	k_mutex_unlock(&s_ctx_mutex);
-	return ret;
-}
-
-void oscore_ctx_wipe(struct oscore_ctx *ctx)
-{
-	if (ctx != NULL) {
-		crypto_wipe(ctx, sizeof(*ctx));
-	}
-}
-
 int oscore_ctx_get(const uint8_t *recipient_id,
 		   size_t recipient_id_len,
 		   struct oscore_ctx **ctx_out)
@@ -998,7 +955,6 @@ int oscore_ctx_get(const uint8_t *recipient_id,
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
-	/* SECURITY: Prevent NULL dereference in ctx_find_by_recipient_locked */
 	if (recipient_id == NULL && recipient_id_len > 0) {
 		return OSCORE_ERR_INVALID_PARAM;
 	}
@@ -1574,12 +1530,14 @@ cleanup_protect_request:
 }
 
 static size_t find_coap_payload_marker(const uint8_t *data, size_t len)
-
 {
 	size_t pos = 0;
 	while (pos < len) {
 		uint8_t byte = data[pos];
 		if (byte == 0xFF) {
+			if (pos > (size_t)INT_MAX) {
+				return (size_t)-1;
+			}
 			return pos;
 		}
 		uint8_t delta_nibble = (byte >> 4) & 0x0F;
@@ -1610,6 +1568,9 @@ static size_t find_coap_payload_marker(const uint8_t *data, size_t len)
 		}
 		if (pos + opt_len > len) return (size_t)-1;
 		pos += opt_len;
+	}
+	if (len > (size_t)INT_MAX) {
+		return (size_t)-1;
 	}
 	return len;
 }

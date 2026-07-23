@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-rwic",
+  "title": "Add CCP-13 duty cycle test to tests/hal/src/main.c using json vectors as independent oracle",
+  "description": "Add ZTEST for duty cycle that hardcodes vectors from ccp13.json, calls the hal funcs, asserts remaining_ms, usage_permille, can_transmit match expected. Do not weaken existing tests. Use independent math oracle.",
+  "notes": "Commit: 4468f1aa2",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:36:18.289548969Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:49:54.594130947Z",
+  "started_at": "2026-07-22T22:40:39.553124276Z",
+  "closed_at": "2026-07-22T22:49:54.594130947Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-rwic",
+      "depends_on_id": "project-LICHEN-l1eb",
+      "type": "parent-child",
+      "created_at": "2026-07-22T22:36:18.404268543Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}

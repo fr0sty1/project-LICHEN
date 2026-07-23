@@ -29,11 +29,12 @@
 extern "C" {
 #endif
 
-/** RFC 1055 SLIP byte values */
+#ifndef SLIP_END
 #define SLIP_END     0xC0u
 #define SLIP_ESC     0xDBu
 #define SLIP_ESC_END 0xDCu
 #define SLIP_ESC_ESC 0xDDu
+#endif
 
 /** IPv6 minimum MTU (RFC 8200) */
 #define SLIP_LCI_MTU 1280u

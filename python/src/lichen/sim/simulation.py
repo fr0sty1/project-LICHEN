@@ -557,55 +557,19 @@ class Simulation:
         self.process_next_event()
         return True
 
-    def start_transmission(self, node_id: str, payload: bytes) -> str:
-        """Start a transmission from a node.
-
-        If jitter is enabled (jitter_max_us > 0), queues a TxStartDelayedEvent
-        and returns an empty string (tx_id will be assigned when the event fires).
-        Otherwise, starts the transmission immediately.
-
-        Args:
-            node_id: ID of the transmitting node.
-            payload: Raw bytes to transmit.
-
-        Returns:
-            The transmission ID (empty string if transmission is delayed).
-
-        Raises:
-            ValueError: If node doesn't exist or is not connected.
-        """
+    def start_transmission(self, node_id: str, payload: bytes, channel: int = 0) -> str:
         node = self._nodes.get(node_id)
         if node is None:
             raise ValueError(f"Node '{node_id}' does not exist")
         if not node.connected:
             raise ValueError(f"Node '{node_id}' is not connected")
-
         if self._jitter_max_us > 0:
             jitter = self.calculate_tx_jitter()
-            delayed_event = TxStartDelayedEvent(
-                time_us=self._current_time_us + jitter,
-                node_id=node_id,
-                payload=payload,
-                tx_power_dbm=node.tx_power_dbm,
-                position=node.position,
-                channel=node.current_channel,
-            )
+            delayed_event = TxStartDelayedEvent(time_us=self._current_time_us + jitter,node_id=node_id,payload=payload,tx_power_dbm=node.tx_power_dbm,position=node.position,channel=channel)
             self._event_queue.push(delayed_event)
-            self._debug_log(
-                "tx_delayed",
-                sim_id=self._id,
-                node_id=node_id,
-                jitter_us=jitter,
-                fire_at_us=delayed_event.time_us,
-            )
+            self._debug_log("tx_delayed",sim_id=self._id,node_id=node_id,jitter_us=jitter,fire_at_us=delayed_event.time_us)
             return ""
-
-        return self._do_start_transmission(
-            node_id=node_id,
-            payload=payload,
-            tx_power_dbm=node.tx_power_dbm,
-            position=node.position,
-        )
+        return self._do_start_transmission(node_id=node_id,payload=payload,tx_power_dbm=node.tx_power_dbm,position=node.position,channel=channel)
 
     def _do_start_transmission(
         self,
@@ -732,53 +696,20 @@ class Simulation:
         self._event_queue.push(timeout_event)
         self._debug_log("rx_start", sim_id=self._id, node_id=node_id, timeout_us=timeout_us)
 
-    def enter_rx_mode(
-        self,
-        node_id: str,
-        timeout_us: int,
-        on_packet: Callable[[bytes, int, int], None],
-        on_timeout: Callable[[], None],
-    ) -> None:
-        """Enter RX mode with callbacks (non-blocking).
-
-        Puts node in RX_WAIT state so BARRIER_SYNC can advance time.
-        Calls on_packet(payload, rssi, snr) when a packet arrives.
-        Calls on_timeout() if timeout_us expires with no packet.
-
-        Only one callback fires, then node exits RX_WAIT.
-
-        Args:
-            node_id: ID of the receiving node.
-            timeout_us: Receive timeout in microseconds.
-            on_packet: Callback for successful packet reception.
-            on_timeout: Callback for timeout expiry.
-
-        Raises:
-            ValueError: If node doesn't exist or is not connected.
-        """
+    def enter_rx_mode(self,node_id: str,timeout_us: int,channel: int = 0,on_packet: Callable[[bytes, int, int], None],on_timeout: Callable[[], None],) -> None:
         node = self._nodes.get(node_id)
         if node is None:
             raise ValueError(f"Node '{node_id}' does not exist")
         if not node.connected:
             raise ValueError(f"Node '{node_id}' is not connected")
-
         node.state = NodeState.RX_WAIT
+        node.current_channel = channel
         node.rx_callbacks = (on_packet, on_timeout)
-
         timeout_time_us = self._current_time_us + timeout_us
         self._pending_rx_timeouts[node_id] = timeout_time_us
-
-        timeout_event = RxTimeoutEvent(
-            time_us=timeout_time_us,
-            node_id=node_id,
-        )
+        timeout_event = RxTimeoutEvent(time_us=timeout_time_us,node_id=node_id)
         self._event_queue.push(timeout_event)
-        self._debug_log(
-            "enter_rx_mode",
-            sim_id=self._id,
-            node_id=node_id,
-            timeout_us=timeout_time_us,
-        )
+        self._debug_log("enter_rx_mode",sim_id=self._id,node_id=node_id,timeout_us=timeout_time_us)
 
     def exit_rx_mode(self, node_id: str) -> None:
         """Exit RX mode, cancel pending timeout.
@@ -821,7 +752,27 @@ class Simulation:
                 payload, rssi, snr, tx_id, source_node_id = result
                 on_packet = node.rx_callbacks[0]
 
+<<<<<<< HEAD
                 self._metrics.record_reception(node_id, tx_id, self._current_time_us)
+=======
+                rx_log = {
+                    "sim_id": self._id,
+                    "node_id": node_id,
+                    "tx_id": tx_id,
+                    "payload_len": len(payload),
+                    "rssi": rssi,
+                    "snr": snr,
+                    "time_us": self._current_time_us,
+                    "from_node_id": source_node_id,
+                }
+                if self._debug_enabled:
+                    rx_log.update(
+                        node_state=node.state.name,
+                        pending_timeouts=len(self._pending_rx_timeouts),
+                        event_queue_len=len(self._event_queue),
+                    )
+
+>>>>>>> origin/integration/worker5-20260722
                 self._observers.notify(
                     "on_rx_success",
                     sim_id=self._id,
@@ -911,6 +862,12 @@ class Simulation:
                     )
             return None
 
+<<<<<<< HEAD
+=======
+        # Record simulation-wide + per-node metrics for push RX path (used by
+        # deliver_pending_packets). Polling path (get_rx_result) duplicates
+        # this for legacy compatibility. This unifies the core recording logic.
+>>>>>>> origin/integration/worker5-20260722
         self._metrics.record_reception(node_id, tx.id, self._current_time_us)
         packet_hash = hashlib.sha256(tx.payload).digest()[:16].hex()
         node.metrics.record_rx(tx.payload, packet_hash, from_peer=tx.source_node_id)

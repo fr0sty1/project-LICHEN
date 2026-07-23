@@ -428,6 +428,9 @@ SENSITIVE_FIELD_PARTS = (
     "private",
     "nonce",
     "mac",
+    "iv",
+    "cert",
+    "certificate",
 )
 RADIO_CONFIG_FIELDS = frozenset({"freq_mhz", "bw_khz", "sf", "cr", "tx_power_dbm"})
 NODE_CONFIG_FIELDS = frozenset({"name", "role"})
@@ -461,6 +464,24 @@ def _is_sensitive_display_name(name: str) -> bool:
         any(part in lowered for part in SENSITIVE_FIELD_PARTS)
         and "fingerprint" not in lowered
     )
+
+
+def safe_int(value: Any, default: int = 0) -> int:
+    if isinstance(value, bool) or value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def safe_float(value: Any, default: float | None = None) -> float | None:
+    if isinstance(value, bool) or value is None:
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def status_rows(state: DashboardState, width: int = 76) -> tuple[str, ...]:
@@ -2050,6 +2071,8 @@ class NativeClientApp(App[None]):
                 self.client.list_neighbors(),
                 self.client.list_routes(),
             )
+        except asyncio.CancelledError:
+            raise
         except BaseException as exc:
             if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
                 raise
@@ -2072,6 +2095,8 @@ class NativeClientApp(App[None]):
                 self.client.get_radio_config(),
                 self.client.get_identity(),
             )
+        except asyncio.CancelledError:
+            raise
         except BaseException as exc:
             if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
                 raise
@@ -2129,6 +2154,8 @@ class NativeClientApp(App[None]):
             else:
                 self._set_config_error(f"{path} writes are unsupported")
                 return
+        except asyncio.CancelledError:
+            raise
         except BaseException as exc:
             if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
                 raise
@@ -2163,10 +2190,15 @@ class NativeClientApp(App[None]):
                 if raw_available and self.raw_diagnostics_admin_enabled
                 else None
             )
-        except Exception as exc:
+        except asyncio.CancelledError:
+            raise
+        except BaseException as exc:
+            if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             self._set_diagnostics_error(str(exc))
             return
         self._set_diagnostics_state(
+
             DiagnosticsState(
                 rows=flatten_diagnostics(payload),
                 raw_rx_status=raw_rx_status,
@@ -2211,19 +2243,22 @@ class NativeClientApp(App[None]):
             radio_info = status.radio or {}
 
             # Extract duty cycle info from radio status if available
-            duty_usage = float(radio_info.get("duty_cycle_usage_pct") or 0.0)
-            duty_remaining = int(radio_info.get("duty_cycle_remaining_ms") or 36000)
-            duty_refill = int(radio_info.get("duty_cycle_refill_ms") or 0)
+            duty_usage = safe_float(radio_info.get("duty_cycle_usage_pct"), 0.0)
+            duty_remaining = safe_int(radio_info.get("duty_cycle_remaining_ms"), 36000)
+            duty_refill = safe_int(radio_info.get("duty_cycle_refill_ms"), 0)
 
             # Extract TX queue info if available
             queue_info = radio_info.get("tx_queue") or {}
             depth_by_priority = tuple(
-                (int(k or 0), int(v or 0))
-                for k, v in sorted(queue_info.get("depth_by_priority", {}).items())
+                (safe_int(k), safe_int(v))
+                for k, v in sorted(
+                    queue_info.get("depth_by_priority", {}).items(),
+                    key=lambda item: safe_int(item[0]),
+                )
             )
-            total_bytes = int(queue_info.get("total_bytes") or 0)
-            drain_time = int(queue_info.get("drain_time_ms") or 0)
-            oldest_age = int(queue_info.get("oldest_age_ms") or 0)
+            total_bytes = safe_int(queue_info.get("total_bytes"))
+            drain_time = safe_int(queue_info.get("drain_time_ms"))
+            oldest_age = safe_int(queue_info.get("oldest_age_ms"))
 
             self._set_radio_state(
                 RadioTuiState(
@@ -2238,7 +2273,11 @@ class NativeClientApp(App[None]):
                 ),
                 recover_error=True,
             )
-        except Exception as exc:
+        except asyncio.CancelledError:
+            raise
+        except BaseException as exc:
+            if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             self._set_radio_error(str(exc))
 
     async def refresh_rf_health(self) -> None:
@@ -2270,15 +2309,14 @@ class NativeClientApp(App[None]):
             status = await self.client.get_status()
             radio_info = status.radio or {}
 
-            # Extract local RF stats from radio info if available
             rf_info = radio_info.get("rf_health", radio_info.get("local_rf", {}))
             local_rf = LocalRFStats(
-                noise_floor_dbm=rf_info.get("noise_floor_dbm"),
-                channel_busy_pct=rf_info.get("channel_busy_pct"),
-                rx_crc_errors=int(rf_info.get("rx_crc_errors") or 0),
-                rx_timeout_errors=int(rf_info.get("rx_timeout_errors") or 0),
-                rx_header_errors=int(rf_info.get("rx_header_errors") or 0),
-                rx_total=int(rf_info.get("rx_total") or 0),
+                noise_floor_dbm=safe_float(rf_info.get("noise_floor_dbm")),
+                channel_busy_pct=safe_float(rf_info.get("channel_busy_pct")),
+                rx_crc_errors=safe_int(rf_info.get("rx_crc_errors")),
+                rx_timeout_errors=safe_int(rf_info.get("rx_timeout_errors")),
+                rx_header_errors=safe_int(rf_info.get("rx_header_errors")),
+                rx_total=safe_int(rf_info.get("rx_total")),
             )
 
             self._set_rf_health_state(
@@ -2288,7 +2326,11 @@ class NativeClientApp(App[None]):
                 ),
                 recover_error=True,
             )
-        except Exception as exc:
+        except asyncio.CancelledError:
+            raise
+        except BaseException as exc:
+            if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             self._set_rf_health_error(str(exc))
 
     def enable_raw_diagnostics_admin(self, *, enabled: bool = True) -> None:
@@ -2321,7 +2363,11 @@ class NativeClientApp(App[None]):
         try:
             result = await self.client.arm_raw_rx(ttl_s=ttl_s, include_payload=include_payload)
             status = await self.client.get_raw_rx_status()
-        except Exception as exc:
+        except asyncio.CancelledError:
+            raise
+        except BaseException as exc:
+            if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             self._set_diagnostics_error(str(exc))
             return
         self._set_diagnostics_state(
@@ -2352,7 +2398,9 @@ class NativeClientApp(App[None]):
             return
         try:
             result = await self.client.send_raw_tx(frame, wait=wait)
-        except Exception as exc:
+        except BaseException as exc:
+            if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             self._set_diagnostics_error(str(exc))
             return
         self._set_diagnostics_state(
@@ -2494,7 +2542,9 @@ class NativeClientApp(App[None]):
         )
         try:
             messages = tuple(await self.client.inbox(self.inbox_path))
-        except Exception as exc:
+        except BaseException as exc:
+            if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             self._set_messaging(self._messaging_error(str(exc)))
             return
         self._set_messaging(
@@ -2520,7 +2570,9 @@ class NativeClientApp(App[None]):
             return
         try:
             result = await self.client.send_message(draft, self.send_path)
-        except Exception as exc:
+        except BaseException as exc:
+            if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             self._set_messaging(self._messaging_error(str(exc)))
             return
         messages = self.messaging.messages

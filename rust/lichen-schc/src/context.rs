@@ -63,7 +63,10 @@ pub fn rule_matches(rule: &Rule, fields: &[(FieldId, u128)]) -> bool {
                     }
                     Mo::Msb => {
                         if let Some(mo_arg) = fd.mo_arg {
-                            let shift = fd.length_bits.saturating_sub(mo_arg);
+                            if mo_arg > fd.length_bits {
+                                return false; // invalid mo_arg, rule cannot match
+                            }
+                            let shift = fd.length_bits - mo_arg;
                             if (val >> shift) != (fd.target_value >> shift) {
                                 return false;
                             }

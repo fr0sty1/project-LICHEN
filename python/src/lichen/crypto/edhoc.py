@@ -540,14 +540,17 @@ class EdhocResponder:
             )
 
         # Extract and validate METHOD from METHOD_CORR
-        # METHOD_CORR = method * 4 + corr (RFC 9528 Section 3.2)
+        # METHOD_CORR = method * 4 + corr (RFC 9528 Section 3.2, project-LICHEN-g7mt)
         method_corr = items[0]
         received_method = method_corr // 4
+        corr = method_corr % 4
         if received_method != self.method:
             raise ValueError(
                 f"Method mismatch: initiator sent method={received_method}, "
                 f"responder expects method={self.method}"
             )
+        if corr not in (0, 1, 2, 3):
+            raise ValueError(f"Invalid corr value: {corr}")
 
         suites_i = items[1]
         self._g_x = items[2]

@@ -22,6 +22,8 @@ from lichen.crypto.schnorr48 import sign
 from lichen.link.frame import AddrMode, LichenFrame
 from lichen.link.link_layer import (
     PLACEHOLDER_MIC,
+    ReceiveError,
+    RxFrame,
     SIGNATURE_LENGTH,
     LinkLayer,
 )
@@ -223,10 +225,10 @@ class TestLinkLayerRx:
     async def test_receive_rejects_malformed_frame(
         self, link_layer: LinkLayer, mock_radio: MockRadio
     ):
-        """receive returns None for unparseable frames."""
+        """receive returns ReceiveError.MALFORMED for unparseable frames."""
         mock_radio.queue_rx(b"\x00")  # Too short to parse
         result = await link_layer.receive(timeout_ms=100)
-        assert result is None
+        assert result == ReceiveError.MALFORMED
 
     @pytest.mark.asyncio
     async def test_receive_rejects_unsigned_frame(
@@ -244,13 +246,13 @@ class TestLinkLayerRx:
         mock_radio.queue_rx(frame.to_bytes())
 
         result = await link_layer.receive(timeout_ms=100)
-        assert result is None
+        assert result == ReceiveError.UNSIGNED
 
     @pytest.mark.asyncio
     async def test_receive_rejects_truncated_signature(
         self, link_layer: LinkLayer, mock_radio: MockRadio
     ):
-        """receive rejects signed frames with a truncated MIC signature."""
+        """receive rejects signed frames with a truncated MIC signature (parse fails)."""
         frame = LichenFrame(
             epoch=0,
             seqnum=0,
@@ -262,7 +264,7 @@ class TestLinkLayerRx:
         mock_radio.queue_rx(frame.to_bytes()[:-1])
 
         result = await link_layer.receive(timeout_ms=100)
-        assert result is None
+        assert result == ReceiveError.MALFORMED
 
     @pytest.mark.asyncio
     async def test_receive_rejects_bad_signature(
@@ -286,7 +288,7 @@ class TestLinkLayerRx:
         mock_radio.queue_rx(frame.to_bytes())
 
         result = await link_layer.receive(timeout_ms=100)
-        assert result is None
+        assert result == ReceiveError.BAD_SIGNATURE
 
     @pytest.mark.asyncio
     async def test_receive_rejects_replay(
@@ -325,7 +327,7 @@ class TestLinkLayerRx:
         # Second receive (replay) should fail
         mock_radio.queue_rx(frame_bytes)
         result2 = await link_layer.receive(timeout_ms=100)
-        assert result2 is None
+        assert result2 == ReceiveError.REPLAY
 
 
 class TestLinkLayerRoundTrip:
@@ -786,7 +788,7 @@ class TestKeyPinning:
         await peer_ll2.send(b"second")
         mock_radio.queue_rx(peer_ll2.radio.tx_history[0])
         result2 = await node_ll.receive(timeout_ms=100)
-        assert result2 is None
+        assert result2 == ReceiveError.KEY_CHANGE
 
     @pytest.mark.asyncio
     async def test_unpin_allows_key_rotation(

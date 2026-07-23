@@ -2,11 +2,16 @@
   "id": "project-LICHEN-zz83",
   "title": "lichen-kiss: core::error::Error impl requires Rust 1.81+",
   "description": "files: rust/lichen-kiss/src/framing.rs:105, rust/lichen-kiss/src/bridge.rs:64\n\nBoth KissError and BridgeError use:\n```rust\nimpl core::error::Error for KissError {}\nimpl core::error::Error for BridgeError { ... }\n```\n\ncore::error::Error was stabilized in Rust 1.81.0. Projects using older toolchains or targeting no_std without this feature will fail to build.\n\nSame issue as project-LICHEN-nhwc (senml module).\n\nImpact: Build failure on Rust \u003c 1.81.0 toolchains.\n\nFix: Either document MSRV as 1.81+, or use conditional compilation with #[cfg(feature = \"std\")] std::error::Error fallback.",
-  "status": "open",
+  "notes": "Commit: e903acd77",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T17:10:43.496655Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T17:10:43.496689Z"
+  "updated_at": "2026-07-22T22:44:47.774595639Z",
+  "started_at": "2026-07-22T22:43:27.695508255Z",
+  "closed_at": "2026-07-22T22:44:47.774595639Z",
+  "close_reason": "Added rust-version to Cargo.toml to document MSRV 1.81 for core::error::Error impls (matches senml fix)"
 }

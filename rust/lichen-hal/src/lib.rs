@@ -91,43 +91,47 @@ impl<E: core::fmt::Debug + core::error::Error + 'static> core::error::Error for 
 
 impl Default for RadioConfig {
     fn default() -> Self {
-        // ponytail: LICHEN defaults from spec
         Self {
             spreading_factor: 10,
             bandwidth: 125_000,
-            coding_rate: 5, // CR 4/5 -- denominator only (4 is fixed per LoRa spec)
+            coding_rate: 5,
             tx_power: 14,
             frequency: 915_000_000,
         }
     }
 }
 
-/// LoRa radio interface.
+/// LoRa radio interface (CCP-aware for coordinated multi-channel operation per spec 02a).
 ///
 /// Async-first design for Embassy compatibility. Implementations may use
 /// blocking internally on platforms without async (wrapped in executor).
+/// Extended for SX1302 multi-channel CCP support in gateways (mimics
+/// SX126x wrapper patterns in lichen-embassy).
 pub trait Radio {
     /// Error type for radio operations.
     type Error;
 
-    /// Transmit a packet. Returns when transmission completes.
+    /// Transmit a packet on specified channel (CCP-12/15). Returns when transmission completes.
     fn transmit(
         &mut self,
+        channel: u8,
         payload: &[u8],
     ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
 
-    /// CCP-15: Clear Channel Assessment (CAD/CCA) before TX. Returns true if clear.
+    /// CCP-15: Clear Channel Assessment (CAD/CCA) on channel before TX. Returns true if clear.
     fn cca(
         &mut self,
+        channel: u8,
         threshold_dbm: i8,
     ) -> impl core::future::Future<Output = Result<bool, Self::Error>>;
 
-    /// Receive a packet with timeout.
+    /// Receive a packet on specified channel with timeout (CCP rendezvous).
     ///
     /// Writes received data to `buf`, returns `Some(RxPacket)` on success,
     /// `None` on timeout. Buffer must be at least 255 bytes for max LoRa payload.
     fn receive(
         &mut self,
+        channel: u8,
         buf: &mut [u8],
         timeout_ms: u32,
     ) -> impl core::future::Future<Output = Result<Option<RxPacket>, Self::Error>>;
@@ -140,7 +144,16 @@ pub trait Radio {
         &mut self,
         channels: &[ChannelConfig],
     ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
+
+    /// Returns current RX channel for multi-channel gateways (SX1302).
+    /// Defaults to 0 to mimic single-channel SX126x behavior.
+    fn current_channel(&self) -> u8 {
+        0
+    }
 }
+
+/// Minimal ChannelPlan support (u8 index into regional plan per CCP-4).
+pub type ChannelPlan = u8;
 
 /// Monotonic clock source.
 pub trait Clock {
@@ -154,6 +167,36 @@ pub trait Rng {
     fn fill_bytes(&mut self, buf: &mut [u8]);
 }
 
+#[cfg(feature = "rand")]
+use rand_core::{CryptoRng, RngCore};
+
+#[cfg(feature = "rand")]
+impl<T: Rng + ?Sized> RngCore for T {
+    fn next_u32(&mut self) -> u32 {
+        let mut buf = [0u8; 4];
+        self.fill_bytes(&mut buf);
+        u32::from_ne_bytes(buf)
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        let mut buf = [0u8; 8];
+        self.fill_bytes(&mut buf);
+        u64::from_ne_bytes(buf)
+    }
+
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        <Self as Rng>::fill_bytes(self, dest);
+    }
+
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_core::Error> {
+        self.fill_bytes(dest);
+        Ok(())
+    }
+}
+
+#[cfg(feature = "rand")]
+impl<T: Rng + ?Sized> CryptoRng for T {}
+
 /// Non-volatile storage for persistent state.
 ///
 /// Used for identity keys, routing state, etc. Keys are short ASCII strings.
@@ -161,12 +204,12 @@ pub trait NonVolatile {
     /// Error type for storage operations.
     type Error;
 
-    /// Read value for key into buffer. Returns `Some(n)` with bytes copied
-    /// (n = min(stored_len, buf.len())), or `None` if key not found.
+    /// Read value for key into buffer. If key exists, returns `Some(stored_len)`
+    /// (the full original stored length), copying the first `min(stored_len, buf.len())`
+    /// bytes into `buf`. Returns `None` if key not found.
     ///
-    /// NOTE: If stored value exceeds buffer size, it is silently truncated.
-    /// Callers MUST use a buffer of adequate size and verify `n == expected_len`
-    /// to detect truncation or corruption. See load_* functions in storage.rs.
+    /// Callers can detect truncation or size mismatch by comparing the returned
+    /// `stored_len` against `buf.len()` and expected size (see `load_*` in storage.rs).
     fn read(&self, key: &str, buf: &mut [u8]) -> Option<usize>;
 
     /// Write value for key. Returns Err if storage full or key too long.

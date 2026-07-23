@@ -2,11 +2,16 @@
   "id": "project-LICHEN-6snq",
   "title": "[merge-conflict] worker8: CMakeLists.txt",
   "description": "Resolve merge conflict in lichen/subsys/lichen/coap/CMakeLists.txt between main and integration/worker8-20260722. Keep BOTH sets of changes - do not discard work.",
-  "status": "open",
+  "notes": "Commit: 2ee598d6a",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:51:53.511589623Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T20:51:53.511589623Z"
+  "updated_at": "2026-07-22T21:31:54.094293433Z",
+  "started_at": "2026-07-22T21:30:45.4070284Z",
+  "closed_at": "2026-07-22T21:31:54.094293433Z",
+  "close_reason": "Closed"
 }

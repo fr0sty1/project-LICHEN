@@ -112,11 +112,11 @@ def test_replay_accepts_epoch_transition_at_seqnum_wrap():
 )
 def test_schc_coap_rule_roundtrip(msg_type, token_length, code, message_id):
     fields = {
-        "CoAP.Version": 1,
-        "CoAP.Type": msg_type,
-        "CoAP.TKL": token_length,
-        "CoAP.Code": code,
-        "CoAP.MID": message_id,
+        "CoAP.version": 1,
+        "CoAP.type": msg_type,
+        "CoAP.tkl": token_length,
+        "CoAP.code": code,
+        "CoAP.mid": message_id,
     }
     _, decoded = decompress(compress(COAP_RULE, fields), COAP_RULE)
     assert decoded == fields
@@ -124,11 +124,11 @@ def test_schc_coap_rule_roundtrip(msg_type, token_length, code, message_id):
 
 def test_schc_rule_id_is_encoded_as_one_byte():
     fields = {
-        "CoAP.Version": 1,
-        "CoAP.Type": 0,
-        "CoAP.TKL": 0,
-        "CoAP.Code": 0,
-        "CoAP.MID": 0,
+        "CoAP.version": 1,
+        "CoAP.type": 0,
+        "CoAP.tkl": 0,
+        "CoAP.code": 0,
+        "CoAP.mid": 0,
     }
     assert compress(COAP_RULE, fields)[0] == COAP_RULE.rule_id
 

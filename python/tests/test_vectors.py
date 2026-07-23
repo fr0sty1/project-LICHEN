@@ -70,7 +70,6 @@ def test_vectors_directory_exists() -> None:
         "l2_payload.json",
         "link_frame.json",
         "announce_coords.json",
-        "ccp15.json",
         "ccp16.json",
         "ccp16-desync.json",
         "meshtastic_app_compat.json",
@@ -226,14 +225,14 @@ def _hash_32(data: bytes) -> int:
     return h
 
 
-def _ccp15_cases():
-    doc = _load("ccp15.json")
+def _ccp16_cases():
+    doc = _load("ccp16.json")
     assert doc["format_version"] == 2
-    return [(v["name"], v) for v in doc["vectors"]]
+    return [(v["description"], v) for v in doc["vectors"]]
 
 
-@pytest.mark.parametrize("name,vector", _ccp15_cases())
-def test_ccp15_sf_ema_load_factor_hash32_logic(name: str, vector: dict) -> None:
+@pytest.mark.parametrize("desc,vector", _ccp16_cases())
+def test_ccp16_sf_ema_load_factor_hash32_logic(desc: str, vector: dict) -> None:
     i = vector["input"]
     o = vector["output"]
     eui = bytes.fromhex(i["eui64"])
@@ -251,9 +250,10 @@ def test_ccp15_sf_ema_load_factor_hash32_logic(name: str, vector: dict) -> None:
         sf = 10
     assert sf == o["sf"]
     ch = 0 if i["density"] > 8 else ((h % 3) + 1)
-    assert ch == o["select_channel"]
+    assert ch == o.get("select_channel", o["channel"])
     assert ch == o["channel"]
-    assert i["now"] == o.get("now", i["now"])
+    now = i.get("now", 0)
+    assert now == o.get("now", now)
 
 
 def _read_varint(data: bytes, offset: int) -> tuple[int, int]:

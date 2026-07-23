@@ -99,6 +99,17 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		dst_addr_len = 0;
 	}
 
+	/* LLSec byte used for both signing and wire format. Includes full
+	 * MIC selector (LICHEN_MIC_64 only when signature present) so that
+	 * sign/verify use the exact byte that appears on-wire. This fixes
+	 * the no-op commit 7bb6ad2.
+	 */
+	uint8_t llsec = addr_mode & 0x03U;
+	if (ctx->has_key) {
+		llsec |= (1U << 2); /* LICHEN_MIC_64 << LLSEC_MIC_LEN_SHIFT */
+		llsec |= 0x20U; /* LLSEC_SIG_PRESENT */
+	}
+
 	/* Get next nonce tuple using the link context API */
 	int seq_err = lichen_link_next_tx(ctx, &epoch, &seqnum);
 	if (seq_err != 0) {
@@ -122,7 +133,7 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		}
 
 		if (schnorr48_sign_frame((uint8_t)frame_body_len,
-					 (uint8_t)(addr_mode | 0x20),
+					 llsec,
 					 epoch, seqnum,
 					 dst_addr, dst_addr_len,
 					 l2_payload, l2_payload_len,
@@ -170,18 +181,8 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 	/* Length byte (body length, excludes itself) */
 	out_frame[off++] = (uint8_t)frame_body_len;
 
-	/* LLSec byte:
-	 * bits 0-1: AddrMode
-	 * bit 2: MicLength selector (retained when S=0 has no MIC)
-	 * bit 5: signature present
-	 * bit 6: encrypted (unsupported at this layer)
-	 * bit 7: reserved (0)
-	 */
-	out_frame[off] = addr_mode & 0x03;
-	if (ctx->has_key) {
-		out_frame[off] |= 0x20; /* signature present */
-	}
-	off++;
+	/* LLSec byte (computed earlier to ensure signable data matches wire) */
+	out_frame[off++] = llsec;
 
 	/* Epoch */
 	out_frame[off++] = epoch;

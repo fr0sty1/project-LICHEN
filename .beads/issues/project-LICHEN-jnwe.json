@@ -2,11 +2,16 @@
   "id": "project-LICHEN-jnwe",
   "title": "Unbounded Vec\u003cString\u003e growth for error messages",
   "description": "## Location\nrust/lichen-apps/src/bin/hetero_node.rs:25\n\n## Description\nThe `errors: Vec\u003cString\u003e` field grows without bound. If the node experiences persistent errors (e.g., radio interference causing repeated RX/TX failures), error messages accumulate indefinitely. While the duration_s parameter provides some bound, a long-running node with high error rates could accumulate significant memory.\n\n## Failure Scenario\nNode runs for duration_s=86400 (24 hours) in a high-interference environment where 50% of TX/RX operations fail. With ~8640 TX attempts and ~43200 RX attempts, the errors Vec could accumulate ~25000+ String allocations, each containing debug format output of error types. Memory usage grows monotonically without cap.\n\n## Category\nsafety",
-  "status": "open",
+  "notes": "Commit: 009fd87d1",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-13T04:16:51.663039Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-13T04:16:51.663081Z"
+  "updated_at": "2026-07-22T22:39:16.817545704Z",
+  "started_at": "2026-07-22T22:37:51.865488234Z",
+  "closed_at": "2026-07-22T22:39:16.817545704Z",
+  "close_reason": "Replaced unbounded Vec\u003cString\u003e for errors with bounded u32 counter (only length was used in metrics). No memory growth on error floods. Updated struct, new(), error paths, and JSON export. Only staged the hetero_node.rs (Beads metadata included in commit). Conventional commit style used. No cargo available in env; verified manually via reads and git diff."
 }

@@ -99,11 +99,11 @@ def test_default_context_has_registry_rules() -> None:
     # for an ICMPv6-only field set (rule 2 is the whole-packet variant).
     assert ctx.get(66) is not None
     fields = {
-        "ICMPv6.Type": 128,
-        "ICMPv6.Code": 0,
-        "ICMPv6.Checksum": 0,
-        "ICMPv6.Identifier": 0xABCD,
-        "ICMPv6.Sequence": 7,
+        "ICMPv6.type": 128,
+        "ICMPv6.code": 0,
+        "ICMPv6.checksum": 0,
+        "ICMPv6.identifier": 0xABCD,
+        "ICMPv6.sequence": 7,
     }
     rule = ctx.select_rule(fields)
     assert rule is not None and rule.rule_id == 66
@@ -112,19 +112,18 @@ def test_default_context_has_registry_rules() -> None:
 def test_icmpv6_echo_round_trip() -> None:
     ctx = SchcContext()
     fields = {
-        "ICMPv6.Type": 129,
-        "ICMPv6.Code": 0,
-        "ICMPv6.Checksum": 0x1234,
-        "ICMPv6.Identifier": 0xBEEF,
-        "ICMPv6.Sequence": 42,
+        "ICMPv6.type": 129,
+        "ICMPv6.code": 0,
+        "ICMPv6.checksum": 0x1234,
+        "ICMPv6.identifier": 0xBEEF,
+        "ICMPv6.sequence": 42,
     }
     packet = ctx.compress(fields)
     assert packet[0] == 66
-    # Residue: Type(8) + Identifier(16) + Sequence(16) = 40 bits = 5 bytes.
     assert len(packet) == 1 + 5
     rule_id, out = ctx.decompress(packet)
-    assert out["ICMPv6.Type"] == 129
-    assert out["ICMPv6.Code"] == 0  # not-sent, from target value
-    assert out["ICMPv6.Checksum"] is None  # compute
-    assert out["ICMPv6.Identifier"] == 0xBEEF
-    assert out["ICMPv6.Sequence"] == 42
+    assert out["ICMPv6.type"] == 129
+    assert out["ICMPv6.code"] == 0
+    assert out["ICMPv6.checksum"] is None
+    assert out["ICMPv6.identifier"] == 0xBEEF
+    assert out["ICMPv6.sequence"] == 42

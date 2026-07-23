@@ -205,7 +205,7 @@ Unsigned frames SHOULD be limited to:
 - Simulator and test traffic (non-production only)
 - Frames where the payload itself carries authentication (OSCORE)
 
-**RPL Control Requirement:** All RPL control messages (DIO, DAO, DIS; ICMPv6 type 155 after SCHC decompression) MUST be sent with S=1 and valid Schnorr signature. Receivers MUST reject unsigned RPL control frames before any routing state mutation. Permissive mode for unsigned routing-affecting frames is limited exclusively to development simulators and test harnesses; it MUST NOT be enabled in production nodes. This reconciles the link-layer and security specifications (see spec/06-security.md:8.9).
+**RPL Control Requirement:** All RPL control messages (DIO, DAO, DIS; ICMPv6 type 155 after SCHC decompression) MUST be sent with S=1 and valid Schnorr signature. Receivers MUST reject unsigned RPL control frames before any routing state mutation. Permissive mode for unsigned routing-affecting frames is limited exclusively to development simulators and test harnesses; it MUST NOT be enabled in production nodes. This reconciles the link-layer and security specifications (see spec/06-security.md:8.10).
 
 ### 4.3. Key Lookup
 

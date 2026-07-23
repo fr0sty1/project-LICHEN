@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-2doa",
+  "title": "[kimi-review] 074cc10: [SEVERITY: medium] The claimed bound cannot be validated, an",
+  "description": "Commit: 074cc1067\nMessage: fix(coap): bound sync_word hex length in config parser\n\nFinding: [SEVERITY: medium] The claimed bound cannot be validated, and `\u003c= 6` looks suspect on its face: a 32-bit sync word needs up to 8 hex digits, and if the parsed string includes a `0x` prefix the effective digit limit is only 4. Without the code change in the commit (or even a test), there's no way to confirm the bound is correct and doesn't reject valid sync words.",
+  "notes": "Commit: 6230e96a5",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:42:06.723358587Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:57:53.00211618Z",
+  "started_at": "2026-07-22T22:57:02.434042503Z",
+  "closed_at": "2026-07-22T22:57:53.00211618Z",
+  "close_reason": "Closed"
+}

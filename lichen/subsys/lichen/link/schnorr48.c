@@ -207,6 +207,9 @@ bool schnorr48_verify(const uint8_t *pubkey,
 
 #include <stdlib.h>
 
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((noreturn))
+#endif
 static void schnorr48_stub_abort(const char *func)
 {
 	LOG_WRN("FATAL: %s called without Monocypher - aborting\n", func);
@@ -287,6 +290,9 @@ int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 
 	/* Validate: if payload_len > 0, payload must not be NULL */
 	if (payload_len > 0 && payload == NULL) {
+		return -EINVAL;
+	}
+	if (privkey == NULL || pubkey == NULL || sig == NULL) {
 		return -EINVAL;
 	}
 

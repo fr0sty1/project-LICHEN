@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
+from __future__ import annotations
+
 """RPL DAO handling for non-storing mode (RFC 6550, spec section 8.5).
 
 In non-storing mode every node sends a DAO directly to the root advertising
@@ -11,8 +13,6 @@ This module provides the RPL Target (type 5) and Transit Information (type 6)
 option codecs and a :class:`DaoManager` for both sending (non-root) and
 receiving (root) sides.
 """
-
-from __future__ import annotations
 
 from dataclasses import dataclass, field
 from ipaddress import IPv6Address
@@ -40,6 +40,8 @@ class RplTarget:
             raise DaoError(f"prefix_length must be between 0 and 128, got {self.prefix_length}")
 
     def to_option(self) -> RplOption:
+        if not (0 <= self.prefix_length <= 128):
+            raise DaoError(f"prefix_length must be between 0 and 128, got {self.prefix_length}")
         nbytes = (self.prefix_length + 7) // 8
         data = bytes([0, self.prefix_length]) + self.target.packed[:nbytes]
         return RplOption(RplOptionType.RPL_TARGET, data)
@@ -51,6 +53,8 @@ class RplTarget:
         if len(opt.data) < 2:
             raise DaoError("RPL Target option too short")
         prefix_length = opt.data[1]
+        if not (0 <= prefix_length <= 128):
+            raise DaoError(f"prefix_length must be between 0 and 128, got {prefix_length}")
         nbytes = (prefix_length + 7) // 8
         prefix = opt.data[2 : 2 + nbytes]
         if len(prefix) != nbytes:
@@ -151,7 +155,13 @@ class DaoManager:
                 f"DAO instance ID {dao.rpl_instance_id} != {self.rpl_instance_id}"
             )
         if self.dodag_id is not None and dao.dodag_id != self.dodag_id:
+<<<<<<< HEAD
             raise DaoError(f"DAO DODAG ID mismatch: {dao.dodag_id} != {self.dodag_id}")
+=======
+            raise DaoError(
+                f"DAO DODAG ID {dao.dodag_id} != {self.dodag_id}"
+            )
+>>>>>>> origin/integration/worker4-20260722
 
         target, parent = self._extract_edge(dao)
         self._parent_map[target] = parent

@@ -23,6 +23,7 @@ The default unsigned signature is empty; a signed message carries 48 bytes.
 from dataclasses import dataclass, field
 from enum import IntEnum
 from ipaddress import IPv6Address
+from typing import Union
 
 from lichen.ipv6.icmpv6 import Icmpv6Message
 
@@ -33,6 +34,13 @@ SIGNATURE_LENGTH = 48
 
 _RREQ_RREP_PREFIX = 36  # flags(1) hop(1) seq(2) originator(16) destination(16)
 _RERR_PREFIX = 18  # flags(1) error_code(1) unreachable(16)
+
+
+def _parse_signature(data: bytes, offset: int) -> bytes:
+    sig = data[offset:]
+    if len(sig) not in (0, SIGNATURE_LENGTH):
+        raise LoadngError(f"invalid signature length: {len(sig)}, expected 0 or {SIGNATURE_LENGTH}")
+    return sig
 
 
 class LoadngCode(IntEnum):
@@ -88,7 +96,7 @@ class RREQ:
             seq_num=int.from_bytes(data[2:4], "big"),
             originator=IPv6Address(data[4:20]),
             destination=IPv6Address(data[20:36]),
-            signature=signature,
+            signature=_parse_signature(data, 36),
         )
 
 
@@ -146,6 +154,8 @@ class RERR:
     signature: bytes = field(default=b"")
 
     def to_bytes(self) -> bytes:
+        if not 0 <= self.error_code <= 255:
+            raise LoadngError(f"error_code out of range: {self.error_code}")
         return (
             bytes([self.flags & 0xFF, self.error_code & 0xFF])
             + IPv6Address(self.unreachable).packed
@@ -182,7 +192,10 @@ _CLASS_BY_CODE = {
 
 def to_icmpv6(message: LoadngMessage) -> Icmpv6Message:
     """Wrap a LOADng message as an ICMPv6 type-158 message."""
-    code = _CODE_BY_TYPE[type(message)]
+    try:
+        code = _CODE_BY_TYPE[type(message)]
+    except KeyError:
+        raise LoadngError(f"unsupported message type: {type(message).__name__}") from None
     return Icmpv6Message(LOADNG_ICMPV6_TYPE, int(code), message.to_bytes())
 
 

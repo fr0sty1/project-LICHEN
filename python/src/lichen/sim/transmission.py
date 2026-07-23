@@ -61,12 +61,18 @@ def airtime_us(payload_len: int) -> int:
     return int(airtime_s * 1_000_000)
 
 
+def lr_fhss_airtime_us(payload_len: int) -> int:
+    if payload_len < 0:
+        raise ValueError(f"payload_len must be non-negative, got {payload_len}")
+    return airtime_us(payload_len) * 2
+
+
 @dataclass
 class Transmission:
     """A LoRa radio transmission in the simulated channel.
 
     Represents a single transmission from a node, including its timing,
-    power, payload, and channel. Used by the channel simulator to
+    power, payload, channel, and phy_mode. Used by the channel simulator to
     model propagation and interference. Different channels are orthogonal
     (independent collision/propagation oracle).
 
@@ -80,6 +86,9 @@ class Transmission:
         frequency_hz: Carrier frequency in Hz (default 915 MHz).
         channel: Channel index for multi-channel support and rendezvous
             (default 0). RX only sees matching channel.
+        phy_mode: Physical layer mode ("lora" or "lr_fhss"). Determines
+            airtime calculation, sensitivity, and collision resolution
+            behavior (default "lora").
     """
 
     source_node_id: str
@@ -90,3 +99,4 @@ class Transmission:
     id: str = field(default_factory=lambda: str(uuid4()))
     frequency_hz: int = 915_000_000
     channel: int = 0
+    phy_mode: str = "lora"

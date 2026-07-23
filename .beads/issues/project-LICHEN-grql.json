@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-grql",
+  "title": "Python: per-neighbor SF tracking in GradientEntry and sim TX",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:45:53.4204747Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:48:20.005487377Z",
+  "closed_at": "2026-07-22T22:48:20.005487377Z",
+  "close_reason": "Completed as part of parent zrh2.2",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-grql",
+      "depends_on_id": "project-LICHEN-zrh2.2",
+      "type": "blocks",
+      "created_at": "2026-07-22T22:45:53.541213448Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-f434",
+  "title": "[merge-conflict] worktree-worker16: coap_dtn.c",
+  "notes": "Commit: c6d7760",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T23:09:34.802647787Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T23:17:24.382151109Z",
+  "started_at": "2026-07-22T23:14:07.864129042Z",
+  "closed_at": "2026-07-22T23:17:24.382151109Z",
+  "close_reason": "Resolved merge conflict in coap_dtn.c and coap_dtn.h by cleaning conflict markers, using named CoAP response codes, fixing lichen_coap_respond calls with content format, updated header declaration; verified with build and commit c6d7760"
+}

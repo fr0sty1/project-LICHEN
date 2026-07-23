@@ -81,11 +81,15 @@ class LichenFrame:
         epoch: 8-bit epoch counter (spec 4.4).
         seqnum: 16-bit sequence number (replay protection).
         dst_addr: Destination address bytes; length must match ``addr_mode``.
-        payload: Frame payload (typically a SCHC-compressed packet).
-        mic: Message Integrity Code; length must match ``mic_length``.
+        payload: Frame payload (SCHC-compressed packet or app data).
+        mic: MIC or Schnorr-48 signature (48 bytes if signature_present=True,
+            else per mic_length; current profile uses signature in MIC field).
         addr_mode: Destination addressing mode.
-        mic_length: MIC length setting.
-        signature_present: Whether an Ed25519 signature is present.
+        mic_length: MIC length selector (ignored for length when signed).
+        signature_present: Whether Schnorr-48 signature is present in MIC field
+            (LLSec bit 5; see draft-lichen-schnorr-00). Design note: signature
+            reuses mic field for wire compatibility; link_layer.receive strips
+            it from payload visible to upper layers.
         encrypted: Whether the unsupported encrypted-frame flag is set.
     """
 

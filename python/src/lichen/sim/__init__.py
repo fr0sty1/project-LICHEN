@@ -8,6 +8,7 @@ Provides TCP interface for nodes and HTTP REST API for control.
 
 from lichen.sim.node import NodeState, SimNode
 from lichen.sim.pcap import PcapngWriter
+from lichen.sim.tdma import TDMAScheduler, TDMAState, SuperframeClock
 from lichen.sim.propagation import (
     CAPTURE_THRESHOLD_DB,
     PATH_LOSS_FREE_SPACE,
@@ -42,4 +43,7 @@ __all__ = [
     "SENSITIVITY_SF11",
     "SENSITIVITY_SF12",
     "SimNode",
+    "TDMAScheduler",
+    "TDMAState",
+    "SuperframeClock",
 ]

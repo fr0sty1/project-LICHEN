@@ -1,12 +1,17 @@
 {
   "id": "project-LICHEN-ryqa",
   "title": "codereview pass 2 (review #3): blacklist timer comparison and dwell calc now clarified for u32 wrap; no underflow risk since timers reset frequently. No P0-P2 findings in this pass. Vectors update recommended but out of scope for spec-only change.",
-  "status": "open",
+  "notes": "Commit: a954fcc5e",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:46:48.902118522Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:46:48.902118522Z",
+  "updated_at": "2026-07-22T22:37:46.921903451Z",
+  "started_at": "2026-07-22T22:37:19.015256785Z",
+  "closed_at": "2026-07-22T22:37:46.921903451Z",
+  "close_reason": "Clarified u32 wrap for blacklist timer/dwell in 02a; vectors noted; no P0-P2",
   "labels": [
     "codereview",
     "spec"

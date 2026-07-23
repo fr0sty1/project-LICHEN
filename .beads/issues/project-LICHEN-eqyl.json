@@ -2,11 +2,16 @@
   "id": "project-LICHEN-eqyl",
   "title": "Hash-to-sender first-wins policy loses forwarding information",
   "description": "## Location\nscripts/analyze-hetero-fleet.py:167\n\n## Description\nWhen multiple nodes transmit the same hash (common in mesh forwarding), only the first node encountered is recorded as the sender. The reception matrix attributes all receptions of that hash to the first sender's implementation, skewing cross-implementation statistics. The missing packet analysis also fails to detect when a forwarded packet is dropped.\n\n## Failure Scenario\nNode py-1000 sends hash ABC123. Node rust-2000 forwards (retransmits) hash ABC123. Only py-1000 is recorded as sender. If zephyr-3000 receives it, the matrix credits py-\u003ezephyr but not rust-\u003ezephyr. If rust-2000's transmission was the only one received, py-1000's original TX is falsely marked as received.\n\n## Category\ncorrectness",
-  "status": "open",
+  "notes": "Commit: e1292b5f8",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-13T04:16:57.531543Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-13T04:16:57.531588Z"
+  "updated_at": "2026-07-22T22:46:05.23275687Z",
+  "started_at": "2026-07-22T22:43:25.458285825Z",
+  "closed_at": "2026-07-22T22:46:05.23275687Z",
+  "close_reason": "Fixed first-wins hash-to-sender with multi-sender sets for forwarding; updated find_missing_packets and build_reception_matrix; verified syntax, test run, committed and pushed."
 }

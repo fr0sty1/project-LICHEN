@@ -101,6 +101,7 @@ config LICHEN_LINK_EPOCH_TEST_HOOKS
 config LICHEN_LINK_CCP16_LOAD_BALANCING
 	bool "CCP16 density-aware load balancing"
 	depends on LICHEN_RPL
+	depends on LICHEN_LINK_EPOCH_PERSIST
 	select LICHEN_SCHC
 	select LICHEN_LINK_EPOCH_PERSIST
 	help
@@ -111,16 +112,44 @@ config LICHEN_LINK_CCP16_LOAD_BALANCING
 	  link epoch features required for TDMA/multi-channel operation.
 
 config LICHEN_TDMA
-	bool "TDMA gateway-centric mode (beacon-sync, slot assign, spatial reuse)"
-	depends on LICHEN_LINK
+	bool "TDMA slot scheduling / gateway-centric mode (beacon-sync, slot assign, spatial reuse)"
+	depends on LICHEN_LINK_CCP16_LOAD_BALANCING
 	depends on LICHEN_RPL
-	select LICHEN_LINK_CCP16_LOAD_BALANCING
 	select LICHEN_SCHC
 	help
-	  TDMA overlay for gateway-centric deployments per spec/02a-coordinated-capacity.md.
+	  Enable TDMA struct and lichen_tdma_init() after lichen_link_load_key() per
+	  initialization graph in AGENTS.md and spec/02a-coordinated-capacity.md.
 	  Supports beacon sync, GPS sync, dynamic slot assignment from root DIO/beacon,
 	  and spatial reuse based on hash(EUI ^ epoch) % num_slots with RPL integration.
-	  Mimics lichen_link_ctx pattern exactly. Fixes project-LICHEN-5273.
+	  Must not call before key loaded. Mimics lichen_link_ctx pattern exactly.
+	  Fixes project-LICHEN-5273.
+
+config LICHEN_ADAPTIVE_SF_ENABLED
+	bool "Adaptive spreading factor"
+	default y
+	depends on LICHEN_LINK_CCP16_LOAD_BALANCING
+	help
+	  Enable per-neighbor adaptive SF based on SNR EWMA and density per
+	  spec/02a-coordinated-capacity.md. Part of CCP-16. Adds fields to
+	  neighbor/gradient table.
+
+config LICHEN_CCP_TIME_SYNC
+	bool "CCP time synchronization (SFN, beacons, GPS stratum)"
+	default y
+	depends on LICHEN_LINK_CCP16_LOAD_BALANCING
+	select LICHEN_TIME_PROVIDER_GNSS if LICHEN_HAS_GNSS
+	help
+	  Enable time sync for CCP-16 desync recovery, TDMA slots, and RPL
+	  version interactions per spec/02a-coordinated-capacity.md §5. Uses
+	  beacon SFN with GPS stratum-0 priority, local RTC fallback. Matches
+	  ccp16-desync.json vectors exactly. SECURITY: signed beacons only.
+
+config LICHEN_DEFAULT_SF
+	int "Default spreading factor"
+	default 10
+	range 7 12
+	help
+	  Default LoRa spreading factor when adaptive SF is disabled.
 
 config LICHEN_TDMA_BEACON_SYNC
 	bool "Beacon-based TDMA synchronization"
@@ -128,5 +157,23 @@ config LICHEN_TDMA_BEACON_SYNC
 	default y
 	help
 	  Nodes sync time and slots from gateway periodic beacons.
+
+config LICHEN_MULTI_CHANNEL_ENABLED
+	bool "Multi-channel TX/RX coordination (CCP-9/12 da2q)"
+	depends on LICHEN_LINK
+	default y
+	help
+	  Enable multi-channel per bead project-LICHEN-da2q.2. Control on CH0,
+	  data channels 1-N with hash/rendezvous selection, idle listen on control,
+	  dynamic hop for RX. Requires updated radio API and link scheduler.
+
+config LICHEN_N_CHANNELS
+	int "Number of LoRa channels (incl. control)"
+	depends on LICHEN_MULTI_CHANNEL_ENABLED
+	default 8
+	range 1 16
+	help
+	  Matches regional plan (e.g. 8 for EU868). Used for mod N in
+	  select_channel/hash_32 and synchronized_hop_channel(CCP-12).
 
 endif # LICHEN_LINK

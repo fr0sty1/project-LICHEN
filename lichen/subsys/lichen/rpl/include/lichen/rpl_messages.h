@@ -215,6 +215,36 @@ static inline size_t lichen_rpl_dao_options_len(size_t total_len)
 		: 0;
 }
 
+#define LICHEN_RPL_DAO_ACK_BASE_LEN 4
+
+struct lichen_rpl_dao_ack {
+	uint8_t rpl_instance_id;
+	uint8_t flags;
+	uint8_t dao_sequence;
+	uint8_t status;
+	uint8_t dodag_id[16];
+};
+
+LICHEN_WARN_UNUSED_RESULT
+int lichen_rpl_dao_ack_parse(struct lichen_rpl_dao_ack *_Nonnull ack,
+			 const uint8_t *_Nonnull data, size_t len);
+
+int lichen_rpl_dao_ack_write(const struct lichen_rpl_dao_ack *_Nonnull ack,
+			 uint8_t *_Nonnull buf, size_t len);
+
+const uint8_t *_Nullable lichen_rpl_dao_ack_options(const uint8_t *_Nonnull data, size_t len);
+
+static inline size_t lichen_rpl_dao_ack_options_len_ex(const uint8_t *_Nullable data,
+						   size_t total_len)
+{
+	if (data == NULL || total_len < 4) {
+		return 0;
+	}
+	bool d_flag = (data[1] >> 7) & 1;
+	size_t base_len = d_flag ? 20 : 4;
+	return (total_len > base_len) ? (total_len - base_len) : 0;
+}
+
 /* ── DODAG Configuration option (type 4) ──────────────────────────────────── */
 
 /** DODAG Config option data length (excluding type/length bytes) */

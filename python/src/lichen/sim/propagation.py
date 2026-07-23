@@ -19,6 +19,10 @@ Sensitivity thresholds and capture effect parameters are based on:
     Proceedings of the 19th ACM International Conference on
     Modeling, Analysis and Simulation of Wireless and Mobile Systems.
 
+LR-FHSS sensitivity from Semtech AN1200.64 and SX1262 datasheet (varies by CR/OCW;
+-137.0 used for sim consistency with fragment FEC and 2x airtime).
+See beads project-LICHEN-9o94/yd9a for independent test vectors.
+
 SF sensitivity thresholds at 125kHz bandwidth:
     SF7: -123 dBm, SF8: -126 dBm, SF9: -129 dBm,
     SF10: -132 dBm, SF11: -134.5 dBm, SF12: -137 dBm
@@ -29,15 +33,14 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-# Sensitivity thresholds at 125kHz bandwidth (from LoRaSim)
+# Sensitivity thresholds at 125kHz bandwidth (LoRaSim for SFs; AN1200.64 for LR-FHSS)
 SENSITIVITY_SF7 = -123.0
 SENSITIVITY_SF8 = -126.0
 SENSITIVITY_SF9 = -129.0
 SENSITIVITY_SF10 = -132.0
 SENSITIVITY_SF11 = -134.5
 SENSITIVITY_SF12 = -137.0
-
-# Default sensitivity for SF10 (our fixed spreading factor)
+SENSITIVITY_LR_FHSS = -137.0
 SENSITIVITY_DEFAULT = SENSITIVITY_SF10
 
 # Capture effect threshold: stronger signal wins if delta >= 6 dB
@@ -77,6 +80,12 @@ class PropagationModel:
     d0_m: float = 1.0
     n: float = 2.7
     noise_floor_dbm: float = -120.0
+
+    def __post_init__(self) -> None:
+        if self.n <= 0:
+            raise ValueError(f"Path loss exponent n must be positive, got {self.n}")
+        if self.d0_m <= 0:
+            raise ValueError(f"Reference distance d0_m must be positive, got {self.d0_m}")
 
     def path_loss(self, distance_m: float) -> float:
         """Calculate path loss at a given distance.

@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-8ehs",
+  "title": "[kimi-review] 16071f4: [SEVERITY: medium] **Issue record attribution was rewritten.",
+  "description": "Commit: 16071f4c3\nMessage: fix(senml): validate u64 in dec_int for negative CBOR\n\nFinding: [SEVERITY: medium] **Issue record attribution was rewritten.** The assignee was changed from \"Mark Atwood\" to \"AI Agent\" and the original `closed_at`/`updated_at`/`close_reason` (set 2026-07-13) were overwritten. Unless this reflects a genuine re-close workflow, this erases prior history of who owned/closed the issue",
+  "notes": "Commit: 80f7e8699",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:37:06.361689996Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T21:56:32.586413649Z",
+  "started_at": "2026-07-22T21:52:28.336542628Z",
+  "closed_at": "2026-07-22T21:56:32.586413649Z",
+  "close_reason": "Restored original attribution in 65td.json; updated close_reason with details of senml validation fix while preserving Mark Atwood's 2026-07-13 closure record. Workflow note added to prefer --notes for history-preserving updates. Commit 80f7e8699."
+}

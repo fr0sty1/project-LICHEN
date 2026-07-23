@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-sl32.3",
+  "title": "Heltec V3 6LBR: RPL root + upstream prefix delegation integration",
+  "description": "Extend lichen_rpl_dodag_init_root() and gateway_rpl_init() in main.c / subsys/lichen/rpl/ to use prefix learned from WiFi backhaul (via net_if or DHCPv6/ND). Advertise upstream /64 into DODAG via DIOs or 6LoWPAN ND proxy per spec appendix-border-router.md and draft-lichen-rpl-lora. Handle multiple BRs gracefully. Update s_rank and /status. Ensure non-storing mode source routing works with WiFi upstream. Add bridging between LoRa L2 net_if and WiFi net_if. Parent of project-LICHEN-sl32.",
+  "notes": "Commit: 7ffe32c7f",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:17:31.456066802Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:38:55.404191959Z",
+  "started_at": "2026-07-22T22:38:24.857929257Z",
+  "closed_at": "2026-07-22T22:38:55.404191959Z",
+  "close_reason": "Updated gateway_rpl_init() in main.c to set DODAG ID based on CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION (fd00::/64 stub for upstream WiFi prefix). Prepares full net_if/DIO advertisement and bridging per spec. Integrates with sl32.1 Kconfig.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-sl32.3",
+      "depends_on_id": "project-LICHEN-sl32",
+      "type": "parent-child",
+      "created_at": "2026-07-22T22:17:31.568536748Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}

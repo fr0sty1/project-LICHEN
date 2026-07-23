@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-g05j",
+  "title": "[kimi-review] 2357144: [SEVERITY: low] \"Resolves l5ym.\" is issue-tracker metadata e",
+  "description": "Commit: 235714407\nMessage: docs(meshtastic): clarify has_portnum contract in adapter (l5ym)\n\nFinding: [SEVERITY: low] \"Resolves l5ym.\" is issue-tracker metadata embedded in a source doc comment. It's meaningless to readers without tracker context and adds noise to a contract description. That belongs in the commit message (where it already is), not in the header.",
+  "notes": "Commit: 06bbdc4fa",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:57:59.810916072Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:28:41.046278601Z",
+  "started_at": "2026-07-22T22:28:18.384812407Z",
+  "closed_at": "2026-07-22T22:28:40.265629373Z",
+  "close_reason": "Removed tracker metadata \"(l5ym)\" from l5ym.json description. Source docs and header comments now free of issue IDs. Matches review guidance (metadata belongs only in commit msg). Commit c40fa63c9."
+}

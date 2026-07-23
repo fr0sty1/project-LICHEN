@@ -8,6 +8,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/sys/util.h>
+#include <zephyr/sys/atomic.h>
 
 #ifndef CONFIG_LICHEN_LOADNG_ROUTE_CACHE_SIZE
 #define CONFIG_LICHEN_LOADNG_ROUTE_CACHE_SIZE LICHEN_LOADNG_ROUTE_CACHE_SIZE
@@ -34,9 +35,8 @@ static uint32_t access_counter;
 static K_MUTEX_DEFINE(seen_mutex);
 static struct lichen_loadng_seen_rreq seen_table[CONFIG_LICHEN_LOADNG_SEEN_TABLE_SIZE];
 
-/* Prune interval for seen table. */
 #define PRUNE_INTERVAL 16
-static int prune_countdown = PRUNE_INTERVAL;
+static atomic_t prune_countdown = ATOMIC_INIT(PRUNE_INTERVAL);
 
 /*
  * Message codec implementations.
@@ -198,7 +198,7 @@ static size_t find_lru_slot_locked(void)
 			have_active = true;
 			continue;
 		}
-		/* Wrap-safe LRU using signed diff on access stamp. */
+		/* SECURITY: signed comparison handles 32-bit access_counter wraparound safely */
 		if ((int32_t)(route_access_order[i] - oldest_access) < 0) {
 			oldest_access = route_access_order[i];
 			oldest_idx = i;
@@ -370,7 +370,7 @@ void lichen_loadng_seen_init(void)
 {
 	k_mutex_lock(&seen_mutex, K_FOREVER);
 	memset(seen_table, 0, sizeof(seen_table));
-	prune_countdown = PRUNE_INTERVAL;
+	atomic_set(&prune_countdown, PRUNE_INTERVAL);
 	k_mutex_unlock(&seen_mutex);
 }
 
@@ -405,11 +405,9 @@ bool lichen_loadng_seen_check_and_mark(const struct lichen_loadng_rreq *rreq,
 
 	k_mutex_lock(&seen_mutex, K_FOREVER);
 
-	if (prune_countdown <= 1) {
+	if (atomic_dec(&prune_countdown) <= 1) {
 		prune_seen_locked(now_ms);
-		prune_countdown = PRUNE_INTERVAL;
-	} else {
-		prune_countdown--;
+		atomic_set(&prune_countdown, PRUNE_INTERVAL);
 	}
 
 	/* Check if already seen. */
@@ -455,7 +453,7 @@ void lichen_loadng_seen_prune(uint32_t now_ms)
 {
 	k_mutex_lock(&seen_mutex, K_FOREVER);
 	prune_seen_locked(now_ms);
-	prune_countdown = PRUNE_INTERVAL;
+	atomic_set(&prune_countdown, PRUNE_INTERVAL);
 	k_mutex_unlock(&seen_mutex);
 }
 
@@ -496,7 +494,7 @@ int lichen_loadng_discovery_get_rreq(const struct lichen_loadng_discovery *disco
 	memcpy(rreq->originator, discovery->originator, 16);
 	memcpy(rreq->destination, discovery->destination, 16);
 	rreq->seq_num = discovery->seq_num;
-	rreq->hop_limit = expanding_ring[discovery->ring_index];
+	rreq->hop_limit = 0;
 	rreq->flags = 0;
 
 	return 0;
@@ -574,10 +572,9 @@ int lichen_loadng_process_rreq(const uint8_t our_addr[16],
 		return 0;
 	}
 
-	/* Install reverse route back to originator (1 hop via neighbor). */
 	struct lichen_loadng_route reverse = {
-		.hop_count = 1,
-		.metric = 1,
+		.hop_count = rreq->hop_limit + 1,
+		.metric = rreq->hop_limit + 1,
 		.seq_num = rreq->seq_num,
 		.valid_until_ms = now_ms + LICHEN_LOADNG_ROUTE_TIMEOUT_MS,
 		.active = true,
@@ -598,11 +595,10 @@ int lichen_loadng_process_rreq(const uint8_t our_addr[16],
 		return 0;
 	}
 
-	/* Forward RREQ if hop limit > 1. */
-	if (rreq->hop_limit > 1) {
+	if (rreq->hop_limit < 15) {
 		result->has_forward = true;
 		result->forward = *rreq;
-		result->forward.hop_limit = rreq->hop_limit - 1;
+		result->forward.hop_limit = rreq->hop_limit + 1;
 	}
 
 	return 0;

@@ -84,7 +84,8 @@ class NodeMetrics:
         """Return a JSON-serializable dictionary of all metrics.
 
         Returns:
-            Dictionary containing all metrics, with sets converted to sorted lists.
+            Dictionary containing all metrics, with sets converted to sorted lists
+            and errors copied to prevent mutation of internal state.
         """
         return {
             "tx_count": self.tx_count,

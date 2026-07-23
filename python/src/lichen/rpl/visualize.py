@@ -2,7 +2,12 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 from __future__ import annotations
 
-from typing import Optional
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from lichen.rpl.dodag import DodagState
+
 
 """DODAG visualization for the simulation harness (spec section 8).
 
@@ -16,16 +21,7 @@ These are pure functions over a snapshot; the caller decides when to snapshot
 the evolving DODAG during a run.
 """
 
-from __future__ import annotations
-
-from collections.abc import Mapping
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from lichen.rpl.dodag import DodagState
-
-
-Topology = dict[str, Optional[str]]  # noqa: UP045
+Topology = dict[str, Optional[str]]
 
 
 def topology_from_states(states: Mapping[str, DodagState]) -> Topology:
@@ -73,8 +69,6 @@ def to_dot(
     name: str = "DODAG",
 ) -> str:
     """Render the topology as Graphviz DOT (child -> parent edges, root on top)."""
-    def _escape_dot(s: str) -> str:
-        return s.replace("\\", "\\\\").replace('"', '\\"')
     lines = [f"digraph {name} {{", "  rankdir=BT;"]
     for node in sorted(parents):
         label = _dot_escape(node)

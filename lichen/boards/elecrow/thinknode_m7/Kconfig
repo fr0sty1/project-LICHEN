@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+config BOARD_ELECROW_THINKNODE_M7
+	bool
+	select SOC_ESP32S3_FN8
+	select SOC_ESP32S3_PROCPU if BOARD_ELECROW_THINKNODE_M7_ESP32S3_PROCPU
+	select SOC_ESP32S3_APPCPU if BOARD_ELECROW_THINKNODE_M7_ESP32S3_APPCPU
+	select BOARD
+	select NET_L2_ETHERNET
+	select LICHEN_HAS_PMIC
+	help
+	  Elecrow ThinkNode M7 PoE board with LR1110 and SI3402 PoE controller.

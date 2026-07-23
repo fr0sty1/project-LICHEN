@@ -2,11 +2,16 @@
   "id": "project-LICHEN-fss7",
   "title": "senml: skip_one_depth rejects CBOR simple values 32-255",
   "description": "file: rust/lichen-senml/src/cbor.rs:403-424\n\nThe skip_one_depth function handles major type 7 (simple/float) but misses info=24, which encodes simple values 32-255 as a 2-byte sequence (0xf8 0xXX).\n\nCurrent handling:\n- info 20-23: Ok(1) - false, true, null, undefined\n- info 25: Ok(3) - half-precision float\n- info 26: Ok(5) - single-precision float  \n- info 27: Ok(9) - double-precision float\n- other: Err(InvalidInput) \u003c-- includes info=24\n\nCBOR simple values 32-255 are valid (RFC 8949) and would be encoded as `0xf8 0xXX` (2 bytes). If encountered as an unknown map value, skip_one would fail with InvalidInput.\n\nFix: Add case for info=24 returning Ok(2).\n\nImpact: Valid CBOR containing simple values 32-255 in unknown fields would cause decode to fail.",
-  "status": "open",
+  "notes": "Commit: bd76ccafe",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T17:16:46.151928Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T17:16:46.151961Z"
+  "updated_at": "2026-07-22T22:42:40.848332569Z",
+  "started_at": "2026-07-22T22:41:30.85302046Z",
+  "closed_at": "2026-07-22T22:42:40.848332569Z",
+  "close_reason": "Closed"
 }

@@ -2,11 +2,16 @@
   "id": "project-LICHEN-y4u1",
   "title": "hop_limit not decremented for forwarded packets",
   "description": "File: rust/lichen-ipv6/src/lib.rs:259-347\n\nThe Ipv6Header parsing and serialization code preserves hop_limit as-is. While the module explicitly states it doesn't handle routing, any future forwarding use would need to:\n\n1. Decrement hop_limit before forwarding\n2. Drop packets with hop_limit=0 (send ICMPv6 Time Exceeded)\n\nCurrently neither is implemented. If this module is used in a forwarding context without modification, it could create routing loops.\n\nThis is documented as out-of-scope ('no routing tables'), but worth noting for anyone extending the module.\n\nSuggestion: Add a comment in Ipv6Header noting that forwarding implementations MUST decrement hop_limit, or add a decrement_hop_limit() method that returns Option\u003cSelf\u003e (None if already 0).",
-  "status": "open",
+  "notes": "Commit: ef3e8537c",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:34:04.517503Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:34:04.517538Z"
+  "updated_at": "2026-07-22T23:35:36.221074243Z",
+  "started_at": "2026-07-22T23:31:05.045614092Z",
+  "closed_at": "2026-07-22T23:35:36.221074243Z",
+  "close_reason": "Fixed off-by-one in with_decremented_hop_limit (now correctly returns None when decrement reaches zero per RFC 8200 §3); added independent test vector exercising preservation of other header fields, hop=5-\u003e4, and zero/1 cases. Updated doc comment. Only touched specified file. Test and logic verified."
 }

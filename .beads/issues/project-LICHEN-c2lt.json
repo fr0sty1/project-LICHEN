@@ -2,11 +2,16 @@
   "id": "project-LICHEN-c2lt",
   "title": "propagation.py: PropagationModel missing validation for n and d0_m parameters",
   "description": "File: python/src/lichen/sim/propagation.py\nLines: 53-79, 81-100, 156-176\n\nPropagationModel does not validate that n (path loss exponent) and d0_m (reference distance) are positive, leading to ZeroDivisionError in several methods.\n\nIssue 1 - n = 0:\n```python\ndef max_range(self, tx_power_dbm: float, *, sensitivity_dbm: float = SENSITIVITY_SF10) -\u003e float:\n    exponent = (tx_power_dbm - self.pl0_dbm - sensitivity_dbm) / (10.0 * self.n)  # ZeroDivisionError\n    return self.d0_m * math.pow(10.0, exponent)\n```\n\nIssue 2 - d0_m = 0:\n```python\ndef path_loss(self, distance_m: float) -\u003e float:\n    ...\n    return self.pl0_dbm + 10.0 * self.n * math.log10(distance_m / self.d0_m)  # ZeroDivisionError\n```\n\nFailure scenario:\n```python\nmodel = PropagationModel(n=0)\nmodel.max_range(14.0)  # ZeroDivisionError\n\nmodel = PropagationModel(d0_m=0)\nmodel.path_loss(100.0)  # ZeroDivisionError\n```\n\nFix: Add __post_init__ validation:\n```python\ndef __post_init__(self) -\u003e None:\n    if self.n \u003c= 0:\n        raise ValueError(f\"Path loss exponent n must be positive, got {self.n}\")\n    if self.d0_m \u003c= 0:\n        raise ValueError(f\"Reference distance d0_m must be positive, got {self.d0_m}\")\n```",
-  "status": "open",
+  "notes": "Commit: fe6d2bc5e",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T17:05:46.988074Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T17:05:46.988103Z"
+  "updated_at": "2026-07-22T22:47:22.25751132Z",
+  "started_at": "2026-07-22T22:45:01.094786773Z",
+  "closed_at": "2026-07-22T22:47:22.25751132Z",
+  "close_reason": "Closed"
 }

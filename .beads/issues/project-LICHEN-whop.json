@@ -1,12 +1,17 @@
 {
   "id": "project-LICHEN-whop",
   "title": "codereview pass 2 chunk2: now_ts TDMA alignment note added but should specify exact superframe tick relation from LICHEN_TDMA_Slot",
-  "status": "open",
+  "notes": "Commit: 04173d8af",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:41:44.524778535Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:41:44.524778535Z",
+  "updated_at": "2026-07-22T22:30:18.449701516Z",
+  "started_at": "2026-07-22T22:30:12.920659895Z",
+  "closed_at": "2026-07-22T22:30:18.449701516Z",
+  "close_reason": "Closed",
   "labels": [
     "codereview"
   ],

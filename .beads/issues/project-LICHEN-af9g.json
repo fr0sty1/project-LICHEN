@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-af9g",
+  "title": "RAK2287 packet forwarder and 6LBR integration",
+  "description": "Integrate RAK2287 with Rust mesh-gateway for UDP/CoAP forwarding, RPL DODAG root, SCHC adaptation. Support LoRaWAN-to-IPv6 mapping if applicable. Update border router logic per spec section 17.",
+  "notes": "Commit: 96640ae5c",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:31:51.551370948Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:18:31.231149064Z",
+  "started_at": "2026-07-22T22:15:01.021774629Z",
+  "closed_at": "2026-07-22T22:18:31.231149064Z",
+  "close_reason": "Updated Gateway to use RplNode::new_root for 6LBR RPL root support; first step toward full packet forwarder and border router integration per spec",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-af9g",
+      "depends_on_id": "project-LICHEN-253m",
+      "type": "parent-child",
+      "created_at": "2026-07-22T21:31:51.667926895Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}

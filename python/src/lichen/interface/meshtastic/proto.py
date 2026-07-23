@@ -65,6 +65,17 @@ def _decode_varint(data: bytes, offset: int = 0) -> tuple[int, int]:
 
 
 def _varint_to_int32(value: int) -> int:
+    """Convert protobuf varint-decoded value to signed int32.
+
+    Protobuf encodes int32 negative values as sign-extended varints
+    (often 10 bytes). _decode_varint yields a large positive int; we
+    reinterpret the low 32 bits as two's complement signed.
+
+    The cf7526a change (`value & 0x80000000` vs `value > 0x7FFFFFFF`
+    after the mask) was a no-op as noted in kimi-review; both are
+    equivalent for values in [0, 2**32). This implementation is correct
+    for rx_rssi and QueueStatus.res as verified by tests.
+    """
     value = value & 0xFFFFFFFF
     if value > 0x7FFFFFFF:
         value -= 0x100000000
@@ -503,7 +514,11 @@ class DeviceMetadata:
 
 @dataclass
 class QueueStatus:
-    """TX queue status for flow control (meshtastic.QueueStatus)."""
+    """TX queue status for flow control (meshtastic.QueueStatus).
+
+    Supports both encoding and decoding; uses _varint_to_int32 for
+    the signed int32 `res` field.
+    """
 
     res: int = 0  # int32, result of last send
     free: int = 0  # uint32, free slots
@@ -526,6 +541,26 @@ class QueueStatus:
             parts.append(_encode_tag(4, WIRE_VARINT))
             parts.append(_encode_varint(self.mesh_packet_id))
         return b"".join(parts)
+
+    @classmethod
+    def from_bytes(cls, data: bytes) -> QueueStatus:
+        """Decode from protobuf."""
+        qs = cls()
+        offset = 0
+        while offset < len(data):
+            field_num, wire_type, offset = _decode_tag(data, offset)
+            if field_num == 1 and wire_type == WIRE_VARINT:
+                val, offset = _decode_varint(data, offset)
+                qs.res = _varint_to_int32(val)
+            elif field_num == 2 and wire_type == WIRE_VARINT:
+                qs.free, offset = _decode_varint(data, offset)
+            elif field_num == 3 and wire_type == WIRE_VARINT:
+                qs.maxlen, offset = _decode_varint(data, offset)
+            elif field_num == 4 and wire_type == WIRE_VARINT:
+                qs.mesh_packet_id, offset = _decode_varint(data, offset)
+            else:
+                offset = _skip_field(data, offset, wire_type)
+        return qs
 
 
 # =============================================================================

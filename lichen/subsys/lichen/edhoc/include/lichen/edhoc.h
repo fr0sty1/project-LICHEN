@@ -46,7 +46,7 @@ extern "C" {
 #define EDHOC_NONCE_LEN            13   /* AES-CCM nonce */
 #define EDHOC_TAG_LEN              8    /* AES-CCM-16-64-128 tag */
 #define EDHOC_X25519_KEY_LEN       32
-#define EDHOC_ED25519_SIG_LEN      64
+#define EDHOC_SIG_LEN              48 /* Schnorr48 per draft-lichen-schnorr-00.md */
 #define EDHOC_ED25519_PK_LEN       32
 #define EDHOC_ED25519_SK_LEN       32
 
@@ -185,14 +185,14 @@ struct edhoc_responder {
  * @param ctx Initiator context to initialize
  * @param ed_seed Ed25519 seed (32 bytes, copied)
  * @param ed_pubkey Ed25519 public key (32 bytes, copied)
- * @param c_i Connection identifier (copied)
- * @param c_i_len Length of c_i
+ * @param c_i Connection identifier (copied); if NULL, a random 1-byte CID is auto-generated
+ * @param c_i_len Length of c_i (ignored if c_i is NULL)
  * @return 0 on success, negative on error
  */
 int edhoc_initiator_init(struct edhoc_initiator *_Nonnull ctx,
 			 const uint8_t *_Nonnull ed_seed,
 			 const uint8_t *_Nonnull ed_pubkey,
-			 const uint8_t *_Nonnull c_i, size_t c_i_len,
+			 const uint8_t *_Nullable c_i, size_t c_i_len,
 			 uint8_t corr);
 
 /**
@@ -245,14 +245,14 @@ int edhoc_initiator_export_oscore(struct edhoc_initiator *_Nonnull ctx,
  * @param ctx Responder context to initialize
  * @param ed_seed Ed25519 seed (32 bytes)
  * @param ed_pubkey Ed25519 public key (32 bytes)
- * @param c_r Connection identifier (copied)
- * @param c_r_len Length of c_r
+ * @param c_r Connection identifier (copied); if NULL, a random 1-byte CID is auto-generated
+ * @param c_r_len Length of c_r (ignored if c_r is NULL)
  * @return 0 on success, negative on error
  */
 int edhoc_responder_init(struct edhoc_responder *_Nonnull ctx,
 			 const uint8_t *_Nonnull ed_seed,
 			 const uint8_t *_Nonnull ed_pubkey,
-			 const uint8_t *_Nonnull c_r, size_t c_r_len,
+			 const uint8_t *_Nullable c_r, size_t c_r_len,
 			 uint8_t corr);
 
 /**

@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-cwlg",
+  "title": "Integrate acquired prefix with RPL root and LICHEN_GATEWAY_PREFIX_DELEGATION",
+  "notes": "Commit: f5b226b12",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:42:12.534779282Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:51:16.363136345Z",
+  "started_at": "2026-07-22T22:45:07.236765367Z",
+  "closed_at": "2026-07-22T22:51:16.363136345Z",
+  "close_reason": "Implemented prefix extraction from NET_EVENT_IPV6_PREFIX_ADD in wifi_mgmt_event_handler, migrated to lichen_rpl_root + lichen_rpl_root_set_prefix (updates dodag_id for GUA), wired s_root into init/sync/status, added rpl_root.c to CMakeLists, selected NET_MGMT_EVENT_INFO in Kconfig. Matches spec/04-network.md for 6LBR prefix advertisement. Verified changes compile in scope.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-cwlg",
+      "depends_on_id": "project-LICHEN-vsdl",
+      "type": "blocks",
+      "created_at": "2026-07-22T22:42:12.679620213Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}

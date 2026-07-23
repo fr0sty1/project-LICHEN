@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-nsjv",
+  "title": "[kimi-review] 57c611c: [SEVERITY: medium] **Attribution rewrite on a closed issue.*",
+  "description": "Commit: 57c611c5d\nMessage: fix(slip): add stats_mutex synchronization\n\nFinding: [SEVERITY: medium] **Attribution rewrite on a closed issue.** The issue was already closed on 2026-07-13 by \"Mark Atwood\" with reason \"Closed\". This",
+  "notes": "Commit: d32aaecf8",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:07:14.135789573Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:16:37.913509923Z",
+  "started_at": "2026-07-22T22:14:54.358602761Z",
+  "closed_at": "2026-07-22T22:16:37.62471954Z",
+  "close_reason": "Fixed by restoring and documenting proper attribution in closed issue metadata without rewrite. Added notes field to .beads/issues/project-LICHEN-f3z3.json. Commit e0161a0b4"
+}

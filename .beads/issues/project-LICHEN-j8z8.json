@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-j8z8",
+  "title": "[kimi-review] 88bd6bb: [SEVERITY: low] The validation only checks value, not type. ",
+  "description": "Commit: 88bd6bb08\nMessage: fix(schc): validate window_size \u003e 0 in FragmentReceiver\n\nFinding: [SEVERITY: low] The validation only checks value, not type. A non-integer like `1.5` or `True` passes the check but will likely break downstream window/tile arithmetic (e.g., modulo/indexing) in confusing ways. Consider `if not isinstance(window_size, int) or window_size \u003c 1:` (with a `TypeError` for the",
+  "notes": "Commit: 880c8d4f4",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T21:25:10.156678607Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T21:33:12.459278206Z",
+  "started_at": "2026-07-22T21:31:43.877487211Z",
+  "closed_at": "2026-07-22T21:33:12.459278206Z",
+  "close_reason": "Added isinstance checks + range validation for window_size in schc FragmentSender, FragmentReceiver, ReassemblyManager; ruff/mypy/pytest clean"
+}

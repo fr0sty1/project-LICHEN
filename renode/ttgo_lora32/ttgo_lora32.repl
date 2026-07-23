@@ -1,0 +1,24 @@
+using sysbus
+mach create "ttgo_lora32_esp32"
+machine LoadPlatformDescription @esp32_lichen.repl
+
+# SX1276 on SPI3 (per upstream DTS for TTGO LoRa32)
+spi3: SPI.ESP32SPI @ sysbus 0x3c300000
+  IRQ 0->esp32 4
+
+sx1276: Sensors.SX1276 @ spi3 0
+  Frequency 915000000
+  CrystalFrequency 32000000
+
+gpio: GPIO.ESP32GPIO @ sysbus 0x3ff44000
+  5 -> sx1276 CS
+  26 -> sx1276 DIO0
+  18 -> sx1276 SCK
+  19 -> sx1276 MISO
+  23 -> sx1276 MOSI
+
+uart0: UART.ESP32UART @ sysbus 0x3ff40000
+  IRQ 0->esp32 5
+
+sysbus:
+  AttachUART uart0 0

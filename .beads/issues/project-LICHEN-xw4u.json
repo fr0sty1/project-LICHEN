@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-xw4u",
+  "title": "Zephyr: SF assignment Kconfig + radio driver CAD",
+  "description": "Add CONFIG_LICHEN_SF_ASSIGNMENT_ENABLED and CONFIG_LICHEN_GATEWAY_MULTI_SF. Update lora_l2.c, lr1110 driver for SF from DIO or hash(IID), CAD scan for multi-SF on gateway. Parse ASSIGNED_SF option in DIO.",
+  "notes": "Commit: 6db9b1a94",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "feature",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:29:14.409212717Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:34:18.21649993Z",
+  "started_at": "2026-07-22T22:32:02.151855521Z",
+  "closed_at": "2026-07-22T22:34:18.21649993Z",
+  "close_reason": "Added CONFIG_LICHEN_SF_ASSIGNMENT_ENABLED/GATEWAY_MULTI_SF to l2/Kconfig with help. Updated lora_l2.c start() to conditional datarate (SF9 if enabled) + comment for CAD/DIO/ASSIGNED_SF in rx_thread and lr1110 IRQ (per 6mka.2). Prepares full multi-SF/CAD implementation.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-xw4u",
+      "depends_on_id": "project-LICHEN-6mka.2",
+      "type": "blocks",
+      "created_at": "2026-07-22T22:29:14.533343307Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}

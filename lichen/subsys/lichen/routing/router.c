@@ -7,6 +7,7 @@
  */
 
 #include <lichen/routing/router.h>
+#include <zephyr/sys/atomic.h>
 
 #include <errno.h>
 #include <string.h>
@@ -227,7 +228,7 @@ int lichen_router_route(struct lichen_router *router,
 			uint32_t now_ms,
 			struct lichen_route_result *result)
 {
-	if (router == NULL || dst_addr == NULL || dst_iid == NULL || result == NULL) {
+	if (router == NULL || dst_addr == NULL || result == NULL) {
 		return -EINVAL;
 	}
 
@@ -241,13 +242,16 @@ int lichen_router_route(struct lichen_router *router,
 
 	enum lichen_addr_class addr_class = lichen_router_classify(router, dst_addr);
 
+	const uint8_t *iid = dst_iid ? dst_iid : &dst_addr[8];
+
 	switch (addr_class) {
 	case LICHEN_ADDR_LINK_LOCAL:
 		return route_link_local(dst_addr, result);
 
 	case LICHEN_ADDR_MESH_LOCAL:
-		return route_mesh_local(router, dst_iid, now_ms, result);
+		return route_mesh_local(router, iid, now_ms, result);
 
+	case LICHEN_ADDR_YGGDRASIL:
 	case LICHEN_ADDR_EXTERNAL:
 		return route_external(router, result);
 	default:
@@ -853,7 +857,7 @@ static struct lichen_fwd_source *fwd_get_or_alloc_source(
 			for (size_t i = 0; i < CONFIG_LICHEN_ROUTER_MAX_PACKETS_PER_SOURCE; i++) {
 				if (slot->packets[i].valid) {
 					slot->packets[i].valid = false;
-					router->fwd_stats.packets_dropped_full++;
+					atomic_inc((atomic_t *)&router->fwd_stats.packets_dropped_full);
 				}
 			}
 		}
@@ -912,8 +916,8 @@ int lichen_router_fwd_enqueue(struct lichen_router *router,
 	/* SECURITY: Check per-source limit to prevent one chatty source from
 	 * monopolizing relay capacity */
 	if (src->packet_count >= CONFIG_LICHEN_ROUTER_MAX_PACKETS_PER_SOURCE) {
-		router->fwd_stats.packets_dropped_full++;
-		router->fwd_stats.nacks_sent++;
+		atomic_inc((atomic_t *)&router->fwd_stats.packets_dropped_full);
+		atomic_inc((atomic_t *)&router->fwd_stats.nacks_sent);
 		return -ENOBUFS;
 	}
 
@@ -938,7 +942,7 @@ int lichen_router_fwd_enqueue(struct lichen_router *router,
 	slot->valid = true;
 	src->packet_count++;
 	src->last_activity_ms = now_ms;
-	router->fwd_stats.packets_queued++;
+	atomic_inc((atomic_t *)&router->fwd_stats.packets_queued);
 
 	return 0;
 }
@@ -956,7 +960,6 @@ int lichen_router_fwd_dequeue(struct lichen_router *router,
 	/* Find oldest packet across all sources (FIFO) */
 	struct lichen_fwd_source *oldest_src = NULL;
 	struct lichen_fwd_packet *oldest_pkt = NULL;
-	uint32_t oldest_time = 0xFFFFFFFF;
 
 	for (size_t i = 0; i < CONFIG_LICHEN_ROUTER_MAX_FORWARDING_SOURCES; i++) {
 		struct lichen_fwd_source *src = &router->fwd_sources[i];
@@ -971,10 +974,9 @@ int lichen_router_fwd_dequeue(struct lichen_router *router,
 			}
 
 			if (oldest_pkt == NULL ||
-			    (int32_t)(pkt->enqueued_at_ms - oldest_time) < 0) {
+			    (int32_t)(pkt->enqueued_at_ms - oldest_pkt->enqueued_at_ms) < 0) {
 				oldest_src = src;
 				oldest_pkt = pkt;
-				oldest_time = pkt->enqueued_at_ms;
 			}
 		}
 	}
@@ -991,10 +993,10 @@ int lichen_router_fwd_dequeue(struct lichen_router *router,
 	/* Remove from buffer */
 	oldest_pkt->valid = false;
 	oldest_src->packet_count--;
-	router->fwd_stats.packets_forwarded++;
+	atomic_inc((atomic_t *)&router->fwd_stats.packets_forwarded);
 
 	/* Update activity timestamp */
-	oldest_src->last_activity_ms = oldest_time;
+	oldest_src->last_activity_ms = oldest_pkt->enqueued_at_ms;
 
 	/* If source has no more packets, mark it invalid for reuse */
 	if (oldest_src->packet_count == 0) {
@@ -1028,7 +1030,7 @@ int lichen_router_fwd_expire(struct lichen_router *router, uint32_t now_ms)
 			if (age > CONFIG_LICHEN_ROUTER_FORWARDING_DEADLINE_MS) {
 				pkt->valid = false;
 				src->packet_count--;
-				router->fwd_stats.packets_dropped_deadline++;
+				atomic_inc((atomic_t *)&router->fwd_stats.packets_dropped_deadline);
 				expired++;
 			}
 		}

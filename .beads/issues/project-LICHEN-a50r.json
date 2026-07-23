@@ -2,11 +2,16 @@
   "id": "project-LICHEN-a50r",
   "title": "TUI refresh_rf_health has unsafe type conversion from untrusted dict",
   "description": "file: python/src/lichen/tui/native.py:2251-2258\n\nSimilar to the issue in refresh_radio (cs4q), refresh_rf_health extracts values from an untrusted dict without type validation:\n\n  rf_info = radio_info.get('rf_health', radio_info.get('local_rf', {}))\n  local_rf = LocalRFStats(\n      noise_floor_dbm=rf_info.get('noise_floor_dbm'),  # Could be any type\n      channel_busy_pct=rf_info.get('channel_busy_pct'),  # Could be any type\n      rx_crc_errors=int(rf_info.get('rx_crc_errors', 0)),  # Crashes on non-int value\n      rx_timeout_errors=int(rf_info.get('rx_timeout_errors', 0)),  # Crashes on non-int value\n      rx_header_errors=int(rf_info.get('rx_header_errors', 0)),  # Crashes on non-int value\n      rx_total=int(rf_info.get('rx_total', 0)),  # Crashes on non-int value\n  )\n\nIf the server returns unexpected types (e.g., rx_crc_errors='unknown'), int() raises ValueError and crashes the RF Health screen refresh.\n\nShould wrap conversions in try/except and use default values on failure.",
-  "status": "open",
+  "notes": "Commit: 1cedd033c",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T17:07:03.048804Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T17:07:03.048837Z"
+  "updated_at": "2026-07-22T22:44:39.56841395Z",
+  "started_at": "2026-07-22T22:42:31.86962531Z",
+  "closed_at": "2026-07-22T22:44:39.56841395Z",
+  "close_reason": "Closed"
 }

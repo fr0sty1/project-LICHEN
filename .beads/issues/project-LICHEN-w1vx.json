@@ -2,10 +2,15 @@
   "id": "project-LICHEN-w1vx",
   "title": "DTS e-ink codereview pass 2",
   "description": "Pass 2: P3 DTS style mimic - indentation and comment updated to match t_deck/heltec patterns exactly; P4 - yaml supported list order alphabetized? No P0/P1 findings. Tag: codereview",
-  "status": "open",
+  "notes": "Commit: 7631eb3",
+  "status": "closed",
   "priority": 3,
   "issue_type": "chore",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T14:47:54.325112499Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T14:47:54.325112499Z"
+  "updated_at": "2026-07-22T22:42:12.832197498Z",
+  "started_at": "2026-07-22T22:39:32.363873115Z",
+  "closed_at": "2026-07-22T22:42:12.832197498Z",
+  "close_reason": "DTS comment and node label updated to exactly match t_deck/heltec style; overlay cleaned of duplicates and consistent eink0 naming; P3/P4 addressed. No P0/P1."
 }

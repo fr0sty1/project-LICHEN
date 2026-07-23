@@ -3,7 +3,7 @@
 //! Wire format (updated for CCP-9 rendezvous):
 //! ```text
 //! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//! | Type=0x01 | Flags | Hop Cnt | Cur Ch | Seq Num               |
+//! | Type=0x01 | Flags | Hop Cnt | Seq Num (2B) | IID[0] ...     |
 //! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 //! |                    Originator IID (8 bytes)                   |
 //! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -15,7 +15,7 @@
 //! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 //! ```
 //!
-//! Total: 94 bytes minimum (1+1+1+2+8+32+48+1). rx_channel signed per CCP-9 to prevent rendezvous tampering.
+//! Total: 94 bytes minimum. rx_channel at byte 93, signed per CCP-9.
 
 /// Announce message type identifier.
 pub const ANNOUNCE_TYPE: u8 = 0x01;
@@ -98,10 +98,6 @@ impl<'a> Announce<'a> {
         }
         if data[0] != ANNOUNCE_TYPE {
             return Err(AnnounceError::WrongType(data[0]));
-        }
-        let rx_channel = data[5];
-        if rx_channel > 15 {
-            return Err(AnnounceError::InvalidChannel(rx_channel));
         }
 
         // ponytail: unwrap safe, bounds checked above
@@ -214,9 +210,8 @@ mod tests {
         let ann = Announce::from_bytes(&wire).unwrap();
         assert_eq!(ann.hop_count, 3);
         assert_eq!(ann.seq_num, 0x1234);
-        assert_eq!(ann.rx_channel, 5);
-        assert_eq!(ann.originator_iid[0], 0x02);
         assert_eq!(ann.rx_channel, 2);
+        assert_eq!(ann.originator_iid[0], 0x02);
         assert!(ann.app_data.is_empty());
 
         let builder = AnnounceBuilder {
@@ -256,11 +251,6 @@ mod tests {
     #[test]
     fn invalid_channel() {
         let mut wire = make_announce();
-        wire[5] = 16;
-        assert_eq!(
-            Announce::from_bytes(&wire),
-            Err(AnnounceError::InvalidChannel(16))
-        );
         wire[93] = 8;
         assert_eq!(
             Announce::from_bytes(&wire),

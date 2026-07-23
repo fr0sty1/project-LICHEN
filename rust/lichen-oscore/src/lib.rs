@@ -49,6 +49,11 @@ pub const TAG_LEN: usize = 8;
 /// Maximum sender/recipient ID length.
 pub const ID_MAX_LEN: usize = 8;
 
+/// Maximum master salt length (LICHEN-specific; matches EDHOC-derived OSCORE Master Salt
+/// of 8 bytes and internal buffer. RFC 8613/HKDF-SHA256 allow arbitrary length but
+/// we fix for no_std/Zeroize/embedded constraints. See bead project-LICHEN-l3af).
+pub const SALT_MAX_LEN: usize = 8;
+
 /// Maximum Partial IV length.
 pub const PIV_MAX_LEN: usize = 5;
 
@@ -148,27 +153,22 @@ impl core::error::Error for OscoreError {
 ///
 /// Contains cryptographic material and state for one peer.
 ///
-/// # Thread Safety and Cloning
+/// # Thread Safety
 ///
 /// Single-threaded use on embedded targets. Replay window and sender_seq are
 /// **not thread-safe**. Concurrent `protect`/`unprotect` races on seq/replay.
-///
-/// **CLONE WARNING**: Cloning shares `sender_seq` and `replay_window`. Cloned
-/// contexts MUST NOT be used for concurrent encryption (nonce reuse risk). Use
-/// for concurrent decryption only or single-owner handoff. Original and clones
-/// zeroize on drop.
 ///
 /// For multi-threaded, wrap in Mutex.
 ///
 /// # Key Lifecycle
 ///
 /// All key material zeroized on drop via `Zeroize`.
-#[derive(Clone, Zeroize)]
+#[derive(Zeroize)]
 #[zeroize(drop)]
 pub struct Context {
     // Common context
     master_secret: [u8; KEY_LEN],
-    master_salt: [u8; 8],
+    master_salt: [u8; SALT_MAX_LEN],
     master_salt_len: u8,
     common_iv: [u8; NONCE_LEN],
     id_context: [u8; 8],
@@ -215,28 +215,30 @@ impl Context {
     ///
     /// Returns `InvalidParam` if:
     /// - `sender_id` or `recipient_id` exceeds 7 bytes (nonce capacity)
-    /// - `master_salt` exceeds 8 bytes
+    /// - `sender_id == recipient_id` (including both empty)
+    /// - `master_salt` exceeds `SALT_MAX_LEN` bytes (LICHEN-specific restriction)
     pub fn new(
         master_secret: &[u8; KEY_LEN],
         master_salt: Option<&[u8]>,
         sender_id: &[u8],
         recipient_id: &[u8],
     ) -> Result<Self, OscoreError> {
-        // SECURITY: Validate ID length against nonce capacity (7 bytes), not ID_MAX_LEN (8).
-        // RFC 8613 allows IDs up to 8 bytes, but only 7 bytes fit in the nonce layout.
-        // Accepting 8-byte IDs would cause silent truncation in compute_nonce.
         if sender_id.len() > NONCE_ID_LEN || recipient_id.len() > NONCE_ID_LEN {
             return Err(OscoreError::InvalidParam);
         }
 
+        if sender_id == recipient_id {
+            return Err(OscoreError::InvalidParam);
+        }
+
         let salt = master_salt.unwrap_or(&[]);
-        if salt.len() > 8 {
+        if salt.len() > SALT_MAX_LEN {
             return Err(OscoreError::InvalidParam);
         }
 
         let mut ctx = Self {
             master_secret: *master_secret,
-            master_salt: [0u8; 8],
+            master_salt: [0u8; SALT_MAX_LEN],
             master_salt_len: salt.len() as u8,
             common_iv: [0u8; NONCE_LEN],
             id_context: [0u8; 8],
@@ -585,7 +587,6 @@ impl Context {
         // Parse OSCORE option
         let opt = parse_option(oscore_option)?;
 
-        // RFC 8613 Section 5.2: For responses, if PIV is absent, use request_piv for nonce
         let piv = if opt.piv_len > 0 {
             &opt.piv[..opt.piv_len as usize]
         } else {
@@ -595,6 +596,16 @@ impl Context {
             request_piv
         };
 
+        let response_seq = if opt.piv_len > 0 {
+            let seq = OscoreSeqNum::from_piv(piv);
+            if self.is_replay(seq) {
+                return Err(OscoreError::Replay);
+            }
+            Some(seq)
+        } else {
+            None
+        };
+
         let nonce_id = if opt.piv_len > 0 {
             self.recipient_id()
         } else {
@@ -602,13 +613,9 @@ impl Context {
         };
         let nonce = compute_nonce(nonce_id, piv, &self.common_iv);
 
-        // Build AAD per RFC 8613 Section 5.4 using ORIGINAL request's KID and PIV
-        // We (the client) sent the request, so request_kid is our sender_id
         let mut aad_buf = [0u8; 64];
         let aad_len = build_aad_cbor(self.sender_id(), request_piv, &mut aad_buf)?;
 
-        // Decrypt in place using detached API
-        // SECURITY: No replay check for responses - they're correlated with requests
         let tag_start = ciphertext.len() - TAG_LEN;
         let tag = ccm::aead::Tag::<AesCcm>::from_slice(&ciphertext[tag_start..]);
         let cipher =
@@ -622,7 +629,10 @@ impl Context {
             .decrypt_in_place_detached((&nonce).into(), &aad_buf[..aad_len], &mut plaintext, tag)
             .map_err(|_| OscoreError::DecryptFailed)?;
 
-        // Parse plaintext: code || options || 0xFF || payload
+        if let Some(seq) = response_seq {
+            self.update_replay_window(seq);
+        }
+
         if plaintext.is_empty() {
             return Err(OscoreError::InvalidParam);
         }
@@ -888,10 +898,12 @@ fn build_info_cbor(
     if out_len <= 23 {
         buf[off] = out_len as u8;
         off += 1;
-    } else {
+    } else if out_len <= 255 {
         buf[off] = 0x18;
         buf[off + 1] = out_len as u8;
         off += 2;
+    } else {
+        return Err(OscoreError::InvalidParam);
     }
 
     Ok(off)

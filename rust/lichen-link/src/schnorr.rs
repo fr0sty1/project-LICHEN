@@ -41,14 +41,18 @@ pub fn derive_keypair(seed: &Seed) -> (PrivateKey, PublicKey) {
 
 /// Sign `msg`. Returns 48-byte signature `e[16] || s[32]`.
 ///
-/// `privkey` and `pubkey` must come from [`derive_keypair`].
+/// `privkey` and `pubkey` must come from [`derive_keypair`]. Nonce uses
+/// H(privkey || msg) per draft-lichen-schnorr-00 (intentional deviation
+/// from RFC 8032 prefix = H(seed)[32:64] to avoid storing 64-byte expanded
+/// key; only 32-byte clamped scalar is used). Matches Python reference and
+/// all test vectors.
 ///
 /// # Panics
 ///
 /// This function does not panic. Internal `.unwrap()` calls operate on
 /// fixed-size SHA-512 output slices that are provably the correct length.
 pub fn sign(privkey: &PrivateKey, pubkey: &PublicKey, msg: &[u8]) -> [u8; 48] {
-    // 1. Deterministic nonce: r = SHA-512(privkey || msg) mod L
+    // 1. Deterministic nonce: r = SHA-512(privkey || msg) mod L per spec
     let nonce_hash = Sha512::new()
         .chain_update(privkey.as_bytes())
         .chain_update(msg)

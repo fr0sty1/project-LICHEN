@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-sqi2",
+  "title": "[merge-conflict] worktree-worker1: kiss_transport.c",
+  "notes": "Commit: 31528fc2a",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T23:09:33.83855724Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T23:31:38.688547803Z",
+  "started_at": "2026-07-22T23:23:05.931086597Z",
+  "closed_at": "2026-07-22T23:31:38.688547803Z",
+  "close_reason": "Closed"
+}

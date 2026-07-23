@@ -2,11 +2,16 @@
   "id": "project-LICHEN-idtk",
   "title": "codec.rs: Integer overflow in UDP length for large payloads",
   "description": "File: rust/lichen-schc/src/codec.rs\nLines: 203, 557-558, 787-788\n\nCategory: CORRECTNESS\n\nThe UDP length is computed by casting to u16 without overflow checking:\n```rust\nlet udp_len = (8 + payload.len()) as u16;  // line 203\nlet udp_len = (8 + coap_len) as u16;       // line 558\nlet udp_len = (8 + tail.len()) as u16;     // line 787\n```\n\nIf payload/tail length exceeds 65527 bytes, the addition overflows u16 and silently truncates, causing:\n- Incorrect UDP length field in reconstructed packet\n- Wrong checksum calculation\n- Corrupt packets\n\nWhile SCHC is typically used for constrained networks with small packets, the code should handle this edge case safely.\n\nFix: Check for overflow before cast, return BufferTooSmall error if exceeded:\n```rust\nlet total_len = 8usize.saturating_add(payload.len());\nif total_len \u003e u16::MAX as usize {\n    return Err(...);\n}\nlet udp_len = total_len as u16;\n```",
-  "status": "open",
+  "notes": "Commit: 24bd54e33",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:40:15.113332Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:40:15.113376Z"
+  "updated_at": "2026-07-22T23:18:06.639334045Z",
+  "started_at": "2026-07-22T23:14:18.235857983Z",
+  "closed_at": "2026-07-22T23:18:06.639334045Z",
+  "close_reason": "Fixed integer overflow in UDP length computations by adding saturating_add checks and BufferTooSmall errors in rust/lichen-schc/src/codec.rs; updated callers and tests. Commit 8eb5110"
 }
