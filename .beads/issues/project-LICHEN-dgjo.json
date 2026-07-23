@@ -2,15 +2,15 @@
   "id": "project-LICHEN-dgjo",
   "title": "[merge-conflict] worktree-worker23: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: b11c6d800",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:52:04.977086554Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:16:28.015147356Z",
+  "updated_at": "2026-07-23T03:16:32.703896182Z",
   "started_at": "2026-07-23T03:14:31.103584718Z",
-  "lease_expires_at": "2026-07-23T03:19:31.103584718Z",
-  "heartbeat_at": "2026-07-23T03:14:31.103584718Z"
+  "closed_at": "2026-07-23T03:16:32.703896182Z",
+  "close_reason": "Cleaned dead bead references (bd r002, bd 3uhb, worker12/24) from heltec_wifi_lora32_v3_esp32s3_procpu.conf gateway config per no-dead-code rule. Consolidated technical comments only. Committed b11c6d8 in integration/worker14-20260722. Push blocked by divergence (many prior parallel beads); see git status."
 }
