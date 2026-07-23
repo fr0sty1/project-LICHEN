@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-uk36.1.2.1.1",
   "title": "Update edhoc_kdf signature and manual CBOR info builder to match Python/C zcbor encoding exactly (length uint, th bstr(32), label tstr, context bstr)",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:30:07.828406808Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:56:37.057216248Z",
+  "updated_at": "2026-07-23T06:00:59.195626322Z",
   "started_at": "2026-07-23T05:56:37.057216248Z",
-  "lease_expires_at": "2026-07-23T06:01:37.057216248Z",
-  "heartbeat_at": "2026-07-23T05:56:37.057216248Z",
+  "closed_at": "2026-07-23T06:00:59.195626322Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-uk36.1.2.1.1",
