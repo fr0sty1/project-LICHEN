@@ -2,12 +2,16 @@
   "id": "project-LICHEN-77vr",
   "title": "[codereview-P4] test_vectors.py should parametrize ccp vectors with expected_hash verification against independent hash_32 oracle",
   "description": "Review pass 3: No test yet exercises the new expected_hash field. Add to test_vector_file_schema or new test. Opinion on whether P4 or needs P2 test. codereview.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 4,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:47:15.063109032Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:47:15.063109032Z",
+  "updated_at": "2026-07-23T04:14:56.664521363Z",
+  "started_at": "2026-07-23T04:14:56.664521363Z",
+  "lease_expires_at": "2026-07-23T04:19:56.664521363Z",
+  "heartbeat_at": "2026-07-23T04:14:56.664521363Z",
   "labels": [
     "codereview"
   ]
