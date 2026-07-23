@@ -28,12 +28,9 @@ BRIDGE_OBSOLETE_ALIAS_BOARD_FILES = (
     "heltec_t114",
     "lilygo_tdeck",
     "lilygo_techo",
-<<<<<<< HEAD
     "seeed_t1000e",
-=======
-    "heltec_vision_master_e290",
->>>>>>> origin/integration/worker8-20260722
 )
+
 
 
 def _non_comment_cmake_lines() -> list[str]:
