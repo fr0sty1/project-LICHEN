@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-6mij.2.3.3",
   "title": "Remove duplicate ctx lookups and ensure CONFIG_LICHEN_COAP_SERVER_OSCORE is enforced uniformly in deaddrop/confessions handlers",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:26:19.554541251Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T06:11:12.684074904Z",
+  "updated_at": "2026-07-23T06:15:01.438763759Z",
   "started_at": "2026-07-23T06:11:12.684074904Z",
-  "lease_expires_at": "2026-07-23T06:16:12.684074904Z",
-  "heartbeat_at": "2026-07-23T06:11:12.684074904Z",
+  "closed_at": "2026-07-23T06:15:01.438763759Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-6mij.2.3.3",
