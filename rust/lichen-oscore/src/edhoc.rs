@@ -262,9 +262,15 @@ fn edhoc_kdf(
 
     if length <= 23 {
         info.push_err(length as u8)?;
-    } else {
+    } else if length <= 0xff {
         info.push_err(0x18)?;
         info.push_err(length as u8)?;
+    } else if length <= 0xffff {
+        info.push_err(0x19)?;
+        info.push_err((length >> 8) as u8)?;
+        info.push_err((length & 0xff) as u8)?;
+    } else {
+        return Err(EdhocError::BufferTooSmall);
     }
 
     // TH as bstr(32)
