@@ -60,8 +60,8 @@ def is_debug_enabled() -> bool:
 class TimeMode(Enum):
     """Time advancement mode for the simulation."""
 
-    BARRIER_SYNC = auto()  # Deterministic, waits for all nodes to block
-    REALTIME = auto()  # Advances with wall clock
+    BARRIER_SYNC = auto()
+    REALTIME = auto()
 
 
 class Simulation:
@@ -617,11 +617,6 @@ class Simulation:
         """
         node = self._nodes.get(node_id)
 
-        # Half-duplex: a radio emits at most one signal at a time. If the node
-        # is already transmitting, end the previous transmission before starting
-        # the new one so the two never coexist in the medium (which would
-        # otherwise self-collide at receivers). The superseded transmission's
-        # pending TxEndEvent becomes a no-op (see _handle_tx_end).
         previous_tx_id = self._active_transmissions.get(node_id)
         if previous_tx_id is not None:
             self._medium.end_tx(previous_tx_id)

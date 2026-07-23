@@ -1,16 +1,16 @@
 {
   "id": "project-LICHEN-x8s0",
   "title": "[merge-conflict] integration/worker14-20260722: t_deck_esp32s3_procpu.conf",
-  "notes": "Investigating merge conflict in lichen/apps/gateway/boards/t_deck_esp32s3_procpu.conf and related heltec config",
-  "status": "in_progress",
+  "notes": "Commit: 3eeb876d1",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:39:10.37549053Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:41:28.295499019Z",
+  "updated_at": "2026-07-23T00:42:35.222783765Z",
   "started_at": "2026-07-23T00:40:45.610386946Z",
-  "lease_expires_at": "2026-07-23T00:45:45.610386946Z",
-  "heartbeat_at": "2026-07-23T00:40:45.610386946Z"
+  "closed_at": "2026-07-23T00:42:35.222783765Z",
+  "close_reason": "Resolved merge conflict markers in t_deck_esp32s3_procpu.conf and heltec_wifi_lora32_v3_esp32s3_procpu.conf; cleaned comments per reconciliation patterns; committed and pushed"
 }
