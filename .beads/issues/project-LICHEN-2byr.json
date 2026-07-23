@@ -2,15 +2,15 @@
   "id": "project-LICHEN-2byr",
   "title": "[merge-conflict] worktree-worker23: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: f80459989",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:26:13.834946375Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:23:22.4109494Z",
+  "updated_at": "2026-07-23T02:23:25.056415254Z",
   "started_at": "2026-07-23T02:22:07.650232682Z",
-  "lease_expires_at": "2026-07-23T02:27:07.650232682Z",
-  "heartbeat_at": "2026-07-23T02:22:07.650232682Z"
+  "closed_at": "2026-07-23T02:23:25.056415254Z",
+  "close_reason": "Updated heltec_wifi_lora32_v3_esp32s3_procpu.conf resolution comment to reference project-LICHEN-2byr for worker23 merge cleanup. Also resolved incidental rebase conflict in xiao_s3_wio_sx1262.conf by consolidating retired board comment. Committed as f80459989. Push to origin blocked by divergence; see git status."
 }
