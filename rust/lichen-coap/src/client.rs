@@ -179,7 +179,7 @@ fn next_request_id(sequence: &AtomicU64) -> std::io::Result<(u16, [u8; 8])> {
 
 fn request_sequence() -> &'static AtomicU64 {
     REQUEST_SEQUENCE.get_or_init(|| {
-        let seed = RandomState::new().hash_one("LICHEN CoAP request sequence") & (u64::MAX >> 1);
+        let seed = RandomState::new().hash_one("LICHEN CoAP request sequence");
         AtomicU64::new(seed)
     })
 }
