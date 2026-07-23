@@ -8,8 +8,11 @@ on:
     # Run daily at 2am UTC
     - cron: '0 2 * * *'
 
-# This workflow validates that Python, Rust, and Zephyr implementations
-# produce IDENTICAL wire bytes for all protocol vectors.
+permissions:
+  contents: read
+
+# Cross-language vectors plus implementation-specific protocol gates.
+# Every job below must pass for interop-status to succeed.
 
 jobs:
   frame-parser-interop:
@@ -80,8 +83,8 @@ jobs:
           uv run pytest tests/sim/test_cross_impl_interop.py::TestPythonToPythonBaseline -v
 
   vector-compatibility:
-    name: Shared Vector Tests
-    runs-on: ubuntu-latest
+    name: Shared Vector and Zephyr Link Tests
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
 
@@ -140,17 +143,18 @@ jobs:
 
       - name: Install Zephyr deps
         run: |
-          sudo apt-get install -y cmake ninja-build gcc gcc-multilib
-          pip install west
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build gcc device-tree-compiler
+          python -m pip install west
 
       - name: Setup Zephyr workspace
         run: |
           west init -l lichen/
           west update
-          pip install -r zephyr/scripts/requirements.txt
+          python -m pip install -r zephyr/scripts/requirements.txt
           west zephyr-export
 
-      - name: Zephyr vector tests
+      - name: Zephyr link tests
         env:
           ZEPHYR_TOOLCHAIN_VARIANT: host
           SOURCE_DATE_EPOCH: "1700000000"
@@ -267,18 +271,13 @@ jobs:
           uv sync --locked --all-extras --dev
           uv run pytest tests/test_vectors.py -v -k announce
 
-  create-beads-on-failure:
-    name: Create Beads for Interop Failures
+  interop-status:
+    name: Interop Status
     runs-on: ubuntu-latest
     needs: [vector-compatibility, wire-format-python-to-rust, announce-interop]
     if: failure() && github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Create interop failure bead
-        run: |
-          bd create "Cross-implementation interop test failure" \
-            --type bug \
-            --priority P1 \
-            --body "One or more implementations produced different wire bytes. Check the interop workflow logs."
-        continue-on-error: true
+      - name: Require every interop job to succeed
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: jq -e 'all(.[]; .result == "success")' <<<"$RESULTS"
