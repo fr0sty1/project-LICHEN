@@ -2,15 +2,15 @@
   "id": "project-LICHEN-djf1",
   "title": "[merge-conflict] worktree-worker18: lib.rs",
   "notes": "Commit: e84fa25a6",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:30:33.776166802Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:10:17.668887173Z",
+  "updated_at": "2026-07-23T02:10:20.411580536Z",
   "started_at": "2026-07-23T02:05:51.412502829Z",
-  "lease_expires_at": "2026-07-23T02:10:51.412502829Z",
-  "heartbeat_at": "2026-07-23T02:05:51.412502829Z"
+  "closed_at": "2026-07-23T02:10:20.411580536Z",
+  "close_reason": "Resolved all merge conflict markers in spec/drafts/draft-lichen-schc-lora-00.md, cleaned conflicted build artifacts in lichen/tests/senml/build/, ensured consistent SCHC documentation referencing canonical rules.rs and test vectors. Committed and pushed to worktree-worker18 branch."
 }
