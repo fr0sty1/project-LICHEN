@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-chw5",
   "title": "Research SX1302/libloragw integration options for Rust lichen-gateway",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T04:44:25.591461791Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:44:25.591461791Z",
+  "updated_at": "2026-07-23T04:59:40.72524831Z",
+  "started_at": "2026-07-23T04:59:40.72524831Z",
+  "lease_expires_at": "2026-07-23T05:04:40.72524831Z",
+  "heartbeat_at": "2026-07-23T04:59:40.72524831Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-chw5",
