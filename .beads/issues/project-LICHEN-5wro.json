@@ -2,15 +2,15 @@
   "id": "project-LICHEN-5wro",
   "title": "[merge-conflict] worktree-worker24: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: a9fcbc3c9",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:32:45.248707852Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:43:53.374883137Z",
+  "updated_at": "2026-07-23T01:43:56.674263136Z",
   "started_at": "2026-07-23T01:41:55.975137011Z",
-  "lease_expires_at": "2026-07-23T01:46:55.975137011Z",
-  "heartbeat_at": "2026-07-23T01:41:55.975137011Z"
+  "closed_at": "2026-07-23T01:43:56.674263136Z",
+  "close_reason": "Resolved merge conflicts in heltec_wifi_lora32_v3_esp32s3_procpu.conf (gateway and puck variants); removed all markers, eliminated duplicate Kconfig entries, consolidated tuning comment referencing project-LICHEN-5wro and worker24. Verified clean with no remaining conflicts in these files. Commit a9fcbc3c9"
 }
