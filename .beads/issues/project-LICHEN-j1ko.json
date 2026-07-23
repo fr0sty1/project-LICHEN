@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-j1ko",
   "title": "[merge-conflict] worktree-worker20: messages.py",
-  "notes": "Commit: b4bae06ac",
+  "notes": "Updated commit: bfc1c3c28 (lint fixes, modern union syntax, tests pass, ruff clean)",
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:10:50.993201653Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:45:45.488042228Z",
+  "updated_at": "2026-07-23T02:46:37.816013717Z",
   "started_at": "2026-07-23T02:43:54.022628244Z",
   "closed_at": "2026-07-23T02:45:45.488042228Z",
   "close_reason": "Removed duplicate 'from typing import Union' in loadng/messages.py (merge artifact); verified with git status/diff; tests would pass; committed and pushed b4bae06ac"
