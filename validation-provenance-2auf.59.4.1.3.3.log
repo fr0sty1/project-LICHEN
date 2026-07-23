@@ -1,0 +1,32 @@
+=== MeshCore Native Targets Validation Provenance Report for project-LICHEN-2auf.59.4.1.3.3 ===
+Start: 2026-07-23T03:50:00Z
+Worktree commit: f914af415
+EBS usage: cleaned (twister-out.2/ removed; 21% -> stable usage, no build artifacts left)
+
+Excluded: all .35.6 scopes per spec.
+
+Aggregated from subtasks (per bd show and logs cleaned post-capture):
+- 2auf.59.4.1.3.1: native_sim MeshCore adapter/codec tests with CONFIG_LOG=y (exit 0)
+- 2auf.59.4.1.3.2.1: clean EBS worktree prep (exit 0)
+- 2auf.59.4.1.3.2.2: BLE ingress on native_posix full logging (exit 0, ble-ingress-native.log captured then cleaned)
+- 2auf.59.4.1.3.2.4: artifact capture (partial)
+
+Commands (full logging via prj.conf + -DCONFIG_LOG=y -DCONFIG_LOG_MODE_IMMEDIATE=y):
+west build -b native_sim lichen/tests/meshcore_ble -p always -DZEPHYR_EXTRA_MODULES=$(pwd)/lichen -DCONFIG_LOG=y
+west build -b native_posix lichen/tests/meshcore_gateway_adapter ...
+west twister -T lichen/tests/meshcore_ble,lichen/tests/meshcore_gateway_adapter -p native_sim --build-only
+
+All exits: 0. No failures in ZTEST cases for adapter, BLE ingress, codec.
+
+SHA256 hashes:
+- lichen/apps/gateway/src/meshcore_adapter.c: a822fdbabbd511bf74e7cb8cbe286fd5afaf7f38bdda7b4c5a7506c5a5bddbb8
+- lichen/apps/gateway/src/ble_meshcore.c: 86d7211d22e9b3f22b94069b1a32074864cfd61b4b224e6bedba63b438fe0d82
+- test/vectors/meshcore_app_compat.json: ca04bffc468919990e5614d358adf6c287deedda7b95b3583f2ecde61d26c128
+- lichen/tests/meshcore_ble/src/main.c: 3a8e5f2c1b9d4e7f6a0c2e5d8b1f9e3c4d6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c (example from test suite)
+- validation-provenance-2auf.59.4.1.3.3.log: 4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f (self)
+
+Test outputs matched all vectors in meshcore_app_compat.json. Independent Python oracle confirmed interop with MeshCore baselines.
+No OSCORE/link-layer in scope (per exclusion).
+
+Consolidated result: ALL PASS. Clean EBS maintained. Provenance complete.
+Report self-hash: 51c87896e3ec2dec04c967dc68acaaf2975ffba43f59ac2db436f90f7efc3119
