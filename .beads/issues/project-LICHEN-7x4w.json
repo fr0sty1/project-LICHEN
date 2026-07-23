@@ -2,15 +2,15 @@
   "id": "project-LICHEN-7x4w",
   "title": "[merge-conflict] worktree-worker24: xiao_s3_wio_sx1262.overlay",
   "notes": "Commit: b9f6aa3 (cleaned dead merge-conflict resolution meta-comments from xiao_s3_wio_sx1262.* in worktree-worker24 per no-dead-code rule; matches canonical retired fragment in main)",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:27:21.437323956Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:15:34.902892745Z",
+  "updated_at": "2026-07-23T02:15:37.515684549Z",
   "started_at": "2026-07-23T02:13:53.710043075Z",
-  "lease_expires_at": "2026-07-23T02:18:53.710043075Z",
-  "heartbeat_at": "2026-07-23T02:13:53.710043075Z"
+  "closed_at": "2026-07-23T02:15:37.515684549Z",
+  "close_reason": "Cleaned dead merge-conflict meta-comments from xiao_s3_wio_sx1262.overlay and .conf in worktree-worker24 (and ensured consistency with main). No more divergence. Commit b9f6aa3 pushed to worktree-worker24. Also noted unresolved merge markers remain in spec/drafts/*.md from worker24 merge but out of scope for this bead."
 }
