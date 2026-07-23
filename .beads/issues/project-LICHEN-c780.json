@@ -2,11 +2,16 @@
   "id": "project-LICHEN-c780",
   "title": "app_identity: Missing _Nonnull check in eui64_to_iid helper",
   "description": "File: lichen/subsys/lichen/app_identity/app_identity.c:35-41\n\nstatic void eui64_to_iid(\n    const uint8_t eui64[LICHEN_APP_IDENTITY_EUI64_LEN],\n    uint8_t iid[LICHEN_APP_IDENTITY_EUI64_LEN])\n{\n    memcpy(iid, eui64, LICHEN_EUI64_LEN);\n    iid[0] ^= 0x02U;\n}\n\nThis static helper has no NULL checks for either parameter. While currently only called with valid pointers from within the module, defensive coding suggests adding checks or annotations.\n\nThe public API uses _Nonnull annotations, but internal helpers do not. If a future change passes NULL (e.g., from a modified call site), this would cause undefined behavior via NULL dereference.\n\nOptions:\n1. Add __ASSERT_NO_MSG(eui64 \u0026\u0026 iid) at function entry\n2. Add _Nonnull annotations to parameter declarations\n3. Document the assumption in a comment\n\nLow impact since current call sites are safe, but inconsistent with the public API's defensive style.",
-  "status": "open",
+  "notes": "Commit: b3af1d647",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:41:51.999843Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:41:51.999876Z"
+  "updated_at": "2026-07-23T03:59:16.747051179Z",
+  "started_at": "2026-07-23T03:58:15.754538417Z",
+  "closed_at": "2026-07-23T03:59:16.747051179Z",
+  "close_reason": "Closed"
 }
