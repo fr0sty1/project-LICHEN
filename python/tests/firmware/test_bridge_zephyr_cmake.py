@@ -32,13 +32,13 @@ BRIDGE_OBSOLETE_ALIAS_BOARD_FILES = (
 )
 
 
-
 def _non_comment_cmake_lines() -> list[str]:
     return [
         line.strip()
         for line in BRIDGE_CMAKE.read_text(encoding="utf-8").splitlines()
         if line.strip() and not line.lstrip().startswith("#")
     ]
+
 
 
 def test_bridge_zephyr_does_not_compile_vendored_lichen_sources() -> None:
