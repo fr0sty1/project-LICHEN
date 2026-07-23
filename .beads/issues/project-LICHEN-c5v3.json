@@ -2,6 +2,7 @@
   "id": "project-LICHEN-c5v3",
   "title": "SosResource.render_put accepts negative timestamps",
   "description": "File: python/src/lichen/coap/resources.py:435-456\n\nEven with type validation for 't', negative timestamps would be accepted:\n```python\nt = body.get('t')\n...\nself.activate(eui64, t if t is not None else 0.0)\n```\n\nA negative timestamp like -1.0 is semantically invalid for 'time of SOS activation' but would be stored and propagated to observers.\n\nSimilarly, PresenceResource.seen() at line 334-352 and purge_older_than() at line 363-373 accept any float for timestamps, including negative values.\n\nFix: Validate timestamp is non-negative:\n```python\nif t is not None and (not isinstance(t, (int, float)) or t \u003c 0):\n    return Message(code=aiocoap.BAD_REQUEST)\n```",
+  "notes": "Commit: 07077a9",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:19:04.047396Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T03:43:33.116993236Z",
+  "updated_at": "2026-07-23T03:47:08.467751586Z",
   "started_at": "2026-07-23T03:43:33.116993236Z",
   "lease_expires_at": "2026-07-23T03:48:33.116993236Z",
   "heartbeat_at": "2026-07-23T03:43:33.116993236Z"
