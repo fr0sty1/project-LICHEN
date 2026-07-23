@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-aciz",
   "title": "[merge-conflict] worktree-worker18: xiao_s3_wio_sx1262.conf",
-  "notes": "Commit: c92155447",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:49:50.543062774Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:12:36.555662749Z",
+  "updated_at": "2026-07-23T03:10:47.472153462Z",
   "started_at": "2026-07-23T03:10:47.472153462Z",
-  "closed_at": "2026-07-23T03:12:36.555662749Z",
-  "close_reason": "Standardized RETIRED/BLOCKED comment in xiao_s3_wio_sx1262.{conf,overlay} and matrix; removed dead merge-conflict resolution meta-comments per no-dead-code rule and AGENTS.md. Updated with aciz bead. Synced to worker18 worktree. Commit c92155447"
+  "lease_expires_at": "2026-07-23T03:15:47.472153462Z",
+  "heartbeat_at": "2026-07-23T03:10:47.472153462Z"
 }

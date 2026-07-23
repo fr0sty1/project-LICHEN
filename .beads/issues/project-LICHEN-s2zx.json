@@ -2,16 +2,15 @@
   "id": "project-LICHEN-s2zx",
   "title": "[security] non-constant-time pubkey comparison in coap_keys.c TOFU",
   "description": "In lichen/subsys/lichen/coap/coap_keys.c:412, lichen_key_store_put() uses regular memcmp() on 32-byte pubkey for TOFU pinning check. This creates a timing side-channel. Project already has public_key_ct_compare() in replay.c:27-36 for exactly this purpose (constant-time XOR diff). Also affects find_key_locked() on IIDs at line 370. Matches reviewer focus on key handling + crypto timing. OSCORE/EDHOC/Schnorr/MIC not directly touched in last 20 commits (mostly bd auto-commits + one CBOR fix in coap_keys). No obvious issues in Schnorr48 verify or OSCORE ctx from quick scan of recent merges.",
-  "notes": "Commit: 3f829f65a",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T02:54:52.240196008Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:59:03.41199093Z",
+  "updated_at": "2026-07-23T02:57:11.832110516Z",
   "started_at": "2026-07-23T02:57:11.832110516Z",
-  "closed_at": "2026-07-23T02:59:03.41199093Z",
-  "close_reason": "Replaced memcmp() with key_ct_compare() (volatile uint8_t XOR accumulation) in coap_keys.c:379 (IID lookup) and :421 (TOFU pubkey pin). Matches replay.c pattern. Verified via coap_keys ztest (TOFU pinning test passes). Commit 3f829f65a"
+  "lease_expires_at": "2026-07-23T03:02:11.832110516Z",
+  "heartbeat_at": "2026-07-23T02:57:11.832110516Z"
 }

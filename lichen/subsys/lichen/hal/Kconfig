@@ -64,7 +64,8 @@ config LICHEN_HAS_PMIC
 
 config LICHEN_HAS_POE
 	bool "Board has PoE"
-	depends on GPIO || POWER_SUPPLY || REGULATOR
+	depends on REGULATOR
+	depends on ADC
 	help
 	  Enable when devicetree provides an okay poe0 alias or PoE detection
 	  via GPIO/ADC for power source selection. DT binding in

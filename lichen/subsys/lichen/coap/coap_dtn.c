@@ -15,12 +15,16 @@
 #include <lichen/oscore.h>
 #include <lichen/routing/dtn.h>
 #include <lichen/senml.h>
+#include <zcbor_decode.h>
+#include <zephyr/net/net_ip.h>
 
 LOG_MODULE_REGISTER(lichen_coap_dtn, CONFIG_LICHEN_COAP_DEADDROP_LOG_LEVEL);
 
 static const struct lichen_deaddrop_provider *s_provider;
 static struct lichen_dtn_buffer s_dtn_buf;
-static K_MUTEX_DEFINE(s_dtn_mutex);
+static struct senml_pack s_senml_pack;
+static K_MUTEX_DEFINE(s_dtn_buf_mutex);
+static K_MUTEX_DEFINE(s_senml_pack_mutex);
 static struct k_work_delayable s_dtn_expire_work;
 static uint32_t s_last_deaddrop[256] = {0};
 static uint32_t s_last_confession[256] = {0};
@@ -46,15 +50,10 @@ static bool parse_recipient(const uint8_t *payload, size_t len, uint8_t dest_iid
 
 static uint32_t dtn_get_unix_time(void) { return (uint32_t)(k_uptime_get() / 1000); }
 
-static void dtn_expire_work_handler(struct k_work *work) {
-	ARG_UNUSED(work);
-	k_mutex_lock(&s_dtn_mutex, K_FOREVER);
-	lichen_dtn_expire_old(&s_dtn_buf, dtn_get_unix_time());
-	k_mutex_unlock(&s_dtn_mutex);
-	k_work_reschedule(&s_dtn_expire_work, K_SECONDS(30));
-}
+static void dtn_expire_work_handler(struct k_work *work) { ARG_UNUSED(work); k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER); lichen_dtn_expire_old(&s_dtn_buf, dtn_get_unix_time()); k_mutex_unlock(&s_dtn_buf_mutex); k_work_reschedule(&s_dtn_expire_work, K_SECONDS(30)); }
 
 int lichen_coap_deaddrop_register(const struct lichen_deaddrop_provider *provider) {
+	if (provider == NULL) return -EINVAL;
 	int r = oscore_init();
 	if (r < 0) return r;
 	r = lichen_coap_client_init();
@@ -73,24 +72,14 @@ int lichen_coap_deaddrop_register(const struct lichen_deaddrop_provider *provide
 	return 0;
 }
 
-int lichen_coap_dtn_init(void) {
-	return lichen_coap_deaddrop_register(NULL);
-}
-
-static int get_rate_idx(struct sockaddr *addr, socklen_t addr_len) {
-	if (addr_len >= sizeof(struct sockaddr_in6) && addr && addr->sa_family == AF_INET6) {
-		const struct sockaddr_in6 *in6 = (const struct sockaddr_in6 *)addr;
-		return in6->sin6_addr.s6_addr[15];
-	}
-	return 0;
-}
-
 static int deaddrop_post(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len) {
-	uint16_t payload_len = 0;
-	const uint8_t *payload = coap_packet_get_payload(request, &payload_len);
-	uint8_t dest_iid[8] = {0};
-	if (payload && payload_len > 0) {
-		parse_recipient(payload, payload_len, dest_iid);
+	if (s_provider == NULL || s_provider->store == NULL) return COAP_RESPONSE_CODE_NOT_FOUND;
+	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
+	uint32_t now = k_uptime_get();
+	uint8_t idx = 0;
+	if (addr_len >= sizeof(struct sockaddr_in6)) {
+		const struct sockaddr_in6 *in6 = (const struct sockaddr_in6 *)addr;
+		idx = in6->sin6_addr.s6_addr[15];
 	}
 	uint32_t now_ms = k_uptime_get_32();
 	int idx = get_rate_idx(addr, addr_len);
@@ -118,11 +107,12 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 }
 
 static int deaddrop_get(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len) {
-	k_mutex_lock(&s_dtn_mutex, K_FOREVER);
+	if (s_provider == NULL || s_provider->retrieve == NULL) return COAP_RESPONSE_CODE_NOT_FOUND;
+	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
+	uint8_t buf[256];
 	uint16_t pending = lichen_dtn_pending_count(&s_dtn_buf);
-	k_mutex_unlock(&s_dtn_mutex);
-	uint8_t buf[128];
 	int len = senml_encode_deaddrop(NULL, dtn_get_unix_time(), pending, buf, sizeof(buf));
+	k_mutex_unlock(&s_dtn_buf_mutex);
 	if (len < 0) return COAP_RESPONSE_CODE_INTERNAL_ERROR;
 	return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_CONTENT, 112, buf, (size_t)len);
 }
@@ -156,17 +146,3 @@ COAP_RESOURCE_DEFINE(lichen_deaddrop, lichen_coap_server, {
 	.post = deaddrop_post,
 	.path = deaddrop_path,
 });
-
-static const char * const confessions_path[] = { "confessions", NULL };
-COAP_RESOURCE_DEFINE(lichen_confessions, lichen_coap_server, {
-	.get = confessions_get,
-	.post = confessions_post,
-	.path = confessions_path,
-});
-
-uint16_t lichen_dtn_expire_periodic(void) {
-	k_mutex_lock(&s_dtn_mutex, K_FOREVER);
-	uint16_t expired = lichen_dtn_expire_old(&s_dtn_buf, dtn_get_unix_time());
-	k_mutex_unlock(&s_dtn_mutex);
-	return expired;
-}
