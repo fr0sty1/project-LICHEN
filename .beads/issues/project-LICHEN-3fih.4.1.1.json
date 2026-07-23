@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-3fih.4.1.1",
+  "title": "Add bounds checking to snprintf in coap_location.c and coap_msg.c",
+  "description": "Audit snprintf calls, add strict error handling and bounds verification matching routes prefix pattern.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:22:55.644678792Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:22:55.644678792Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-3fih.4.1.1",
+      "depends_on_id": "project-LICHEN-3fih.4.1",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:22:55.794374204Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
