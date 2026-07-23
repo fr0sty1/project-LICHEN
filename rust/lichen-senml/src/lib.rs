@@ -6,6 +6,7 @@
 //! `urn:dev:mac:<EUI-64>:`.
 
 #![no_std]
+#![forbid(unsafe_code)]
 
 pub mod cbor;
 pub mod record;
