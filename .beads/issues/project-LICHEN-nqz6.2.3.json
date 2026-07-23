@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-nqz6.2.3",
+  "title": "Update peer routing (Announce/LOADng/Gradient) and summary sections for Yggdrasil fallback",
+  "description": "Update sections 9-12 in spec/05-routing.md: revise when LOADng/gradient used for 02xx peers, update gradient table, summary diagrams/tables, opportunistic/DTN rules to reflect local-mesh-first for 02xx before Yggdrasil routing. Ensure consistency with 04-network.md single-primary model. Update any remaining off-mesh or external routing examples.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:21:02.382091735Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:21:02.382091735Z",
+  "labels": [
+    "addressing",
+    "spec",
+    "yggdrasil"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-nqz6.2.3",
+      "depends_on_id": "project-LICHEN-nqz6.2",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:21:02.526230393Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
