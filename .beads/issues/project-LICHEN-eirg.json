@@ -2,6 +2,7 @@
   "id": "project-LICHEN-eirg",
   "title": "[cross-impl] hash_32 primitive inconsistent across Rust, C, Python vectors",
   "description": "Review of last 20 commits (mostly bd metadata + test/vectors/generate.py conflict cleanup in f2a77d8aa) revealed persistent mismatch:\n- hash_32.json uses CRC32 initialized with b\"LICHEN\" (zlib.crc32(b\"LICHEN\"+data)), expects 0x77f9adf0 for empty.\n- Rust (lichen-core::lichen_hash_32, lichen-link::identity::hash_32 + tests) and python/tests/test_vectors.py::_hash_32 use FNV-1a32 (basis 0x811c9dc5, prime 0x01000193), expects 0x811c9dc5 for empty.\n- C (lichen/subsys/lichen/link/link_ctx.c:tuple_crc, lora_ping:packet_hash) uses crc32_ieee.\n- Descriptions in README.md, schema.json, ccp*.json conflict on FNV vs keyed-CRC.\n- ccp15_vectors() in generate.py (recently cleaned) uses unrelated 0x9e3779b9 multiplier for load_factor test.\nSame named primitive produces different outputs across Python reference, Rust, Zephyr/C impls. Violates cross-impl consistency requirement for test vectors. See spec/02a-coordinated-capacity.md and epic project-LICHEN-pgzj.",
+  "notes": "Commit: 338c1de7d",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T01:59:01.853497662Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:04:33.357277211Z",
+  "updated_at": "2026-07-23T02:09:29.493891426Z",
   "started_at": "2026-07-23T02:04:33.357277211Z",
   "lease_expires_at": "2026-07-23T02:09:33.357277211Z",
   "heartbeat_at": "2026-07-23T02:04:33.357277211Z"
