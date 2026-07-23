@@ -427,6 +427,7 @@ SENSITIVE_FIELD_PARTS = (
 )
 RADIO_CONFIG_FIELDS = frozenset({"freq_mhz", "bw_khz", "sf", "cr", "tx_power_dbm"})
 NODE_CONFIG_FIELDS = frozenset({"name", "role"})
+MAX_DIAG_ROWS = 100
 
 
 def safe_display_value(name: str, value: object | None) -> str:
@@ -446,6 +447,26 @@ def safe_display_value(name: str, value: object | None) -> str:
     if isinstance(value, list | tuple):
         return ", ".join(safe_display_value(name, item) for item in value) or "--"
     return str(value)
+
+
+def safe_float(value: object | None) -> float | None:
+    """Safely convert to float or None on parse failure."""
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (ValueError, TypeError, OverflowError):
+        return None
+
+
+def safe_int(value: object | None) -> int:
+    """Safely convert to int, defaulting to 0 on parse failure."""
+    if value is None:
+        return 0
+    try:
+        return int(float(value))
+    except (ValueError, TypeError, OverflowError):
+        return 0
 
 
 def _is_sensitive_display_name(name: str) -> bool:
@@ -731,6 +752,9 @@ def flatten_diagnostics(
         for key, value in sorted(payload.items(), key=lambda pair: str(pair[0])):
             name = f"{prefix}.{key}" if prefix else str(key)
             rows.extend(flatten_diagnostics(value, prefix=name, depth=depth + 1))
+            if len(rows) > MAX_DIAG_ROWS:
+                rows = rows[:MAX_DIAG_ROWS] + [DiagnosticRow("...", "truncated")]
+                break
         return tuple(rows) or (DiagnosticRow(prefix or "value", "--"),)
     if isinstance(payload, list | tuple):
         if all(not isinstance(item, Mapping | list | tuple) for item in payload):
@@ -739,6 +763,9 @@ def flatten_diagnostics(
         for index, value in enumerate(payload):
             name = f"{prefix}.{index}" if prefix else str(index)
             rows.extend(flatten_diagnostics(value, prefix=name, depth=depth + 1))
+            if len(rows) > MAX_DIAG_ROWS:
+                rows = rows[:MAX_DIAG_ROWS] + [DiagnosticRow("...", "truncated")]
+                break
         return tuple(rows) or (DiagnosticRow(prefix or "value", "--"),)
     return (DiagnosticRow(prefix or "value", safe_display_value(prefix, payload)),)
 
