@@ -1059,9 +1059,9 @@ impl EdhocResponder {
         let mac_2 = edhoc_kdf(
             &self.state.prk_3e2m,
             &self.state.th_2,
-            2,
+            "MAC_2",
             &context_2,
-            8,
+            32,
         )?;
         let m_2 = build_signature_structure(
             self.pubkey.as_bytes(),
