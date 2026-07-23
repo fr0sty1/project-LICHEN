@@ -128,6 +128,11 @@ def test_parse_link_format_discovers_resources_observe_and_quoted_params() -> No
     assert caps.resource_types["/logs"] == ("log",)
 
 
+def test_parse_link_format_rejects_unclosed_quote() -> None:
+    with pytest.raises(LciClientError, match="unclosed quote"):
+        parse_link_format('</foo>;rt="bar')
+
+
 async def test_lci_client_normalizes_core_resources() -> None:
     transport = FakeResourceTransport(
         {
