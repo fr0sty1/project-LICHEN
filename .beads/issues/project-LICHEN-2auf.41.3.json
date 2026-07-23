@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-2auf.41.3",
+  "title": "Add GPSR coordinate safety validation",
+  "description": "Ensure invalid or stale GPSR coordinates never route. Implement safety checks and test vectors.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:14:18.243298521Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:14:18.243298521Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.41.3",
+      "depends_on_id": "project-LICHEN-2auf.41",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:14:18.38055779Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
