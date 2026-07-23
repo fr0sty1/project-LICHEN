@@ -7,9 +7,8 @@
  * Do not use for builds. See docs/firmware-board-capability-matrix.md for
  * partner-owned long tail policy.
  *
- * Resolved merge conflict for project-LICHEN-pn4o (worktree-worker1).
- * Standardized STALE comment and SPDX header. Matches xcyq/p6z8/nnbt pattern
- * per no-dead-code and AGENTS.md. Cleaned in subsequent passes.
+ * Resolved merge conflict for project-LICHEN-pn4o (worktree-worker1), project-LICHEN-pzbh (worktree-worker17): heltec_wireless_tracker.overlay.
+ * Standardized STALE comment, SPDX header, and consolidated resolution note across parallel worktrees. Matches xiao_s3_wio_sx1262.conf pattern per no-dead-code and AGENTS.md. Cleaned in subsequent passes.
  *
  * Heltec Wireless Tracker V1.1 device tree overlay for LICHEN bridge
  *
