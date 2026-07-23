@@ -2,15 +2,15 @@
   "id": "project-LICHEN-ng7i",
   "title": "[merge-conflict] worktree-worker17: xiao_s3_wio_sx1262.conf",
   "notes": "Commit: ef8b33f",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:49:49.700995047Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:23:41.442934887Z",
+  "updated_at": "2026-07-23T03:23:44.004267166Z",
   "started_at": "2026-07-23T03:22:04.910712531Z",
-  "lease_expires_at": "2026-07-23T03:27:04.910712531Z",
-  "heartbeat_at": "2026-07-23T03:22:04.910712531Z"
+  "closed_at": "2026-07-23T03:23:44.004267166Z",
+  "close_reason": "Resolved merge conflict in xiao_s3_wio_sx1262.conf by standardizing retired board comment and consolidating with parallel worker updates. Updated t_deck configs for consistency. Commit ef8b33f pushed to worktree-worker17."
 }
