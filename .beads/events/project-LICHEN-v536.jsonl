@@ -1,2 +1,2 @@
-{"id":"019f8a4a-b35d-7ee5-adb4-b83c239d7e91","issue_id":"project-LICHEN-v536","event_type":"created","actor":"ec2-user","old_value":"","new_value":"","created_at":"2026-07-22T14:46:19.229977178Z"}
-{"id":"019f8a4c-2b75-7172-968a-bc648bdf6a64","issue_id":"project-LICHEN-v536","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"Fixed with cap in record_hash methods. Clean.","created_at":"2026-07-22T14:47:55.509095591Z"}
+{"id": "019f8a4a-b35d-7ee5-adb4-b83c239d7e91", "issue_id": "project-LICHEN-v536", "event_type": "created", "actor": "ec2-user", "old_value": "", "new_value": "", "created_at": "2026-07-22T14:46:19.229977178Z"}
+{"id": "019f8a4c-2b75-7172-968a-bc648bdf6a64", "issue_id": "project-LICHEN-v536", "event_type": "closed", "actor": "ec2-user", "old_value": "", "new_value": "Fixed with cap in record_hash methods. Clean.", "created_at": "2026-07-22T14:47:55.509095591Z"}

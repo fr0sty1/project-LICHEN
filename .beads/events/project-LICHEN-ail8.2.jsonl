@@ -1,2 +1,2 @@
-{"id":"019f8b6d-5240-7174-96b6-e2e0c0424690","issue_id":"project-LICHEN-ail8.2","event_type":"created","actor":"AI Agent","old_value":"","new_value":"","created_at":"2026-07-22T20:03:45.344095896Z"}
-{"id":"019f8b6d-ee17-74e4-87dc-1f4156c61041","issue_id":"project-LICHEN-ail8.2","event_type":"closed","actor":"AI Agent","old_value":"","new_value":"Completed merge+reviews","created_at":"2026-07-22T20:04:25.239321197Z"}
+{"id": "019f8b6d-5240-7174-96b6-e2e0c0424690", "issue_id": "project-LICHEN-ail8.2", "event_type": "created", "actor": "AI Agent", "old_value": "", "new_value": "", "created_at": "2026-07-22T20:03:45.344095896Z"}
+{"id": "019f8b6d-ee17-74e4-87dc-1f4156c61041", "issue_id": "project-LICHEN-ail8.2", "event_type": "closed", "actor": "AI Agent", "old_value": "", "new_value": "Completed merge+reviews", "created_at": "2026-07-22T20:04:25.239321197Z"}

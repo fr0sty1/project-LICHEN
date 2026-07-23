@@ -1,2 +1,2 @@
-{"id":"019f8aa1-1198-70e8-b40a-a543907ab9a3","issue_id":"project-LICHEN-5y0q","event_type":"created","actor":"ec2-user","old_value":"","new_value":"","created_at":"2026-07-22T16:20:39.448060298Z"}
-{"id":"019f8aa1-119b-769a-b728-423e77719686","issue_id":"project-LICHEN-5y0q","event_type":"label_added","actor":"ec2-user","comment":"Added label: codereview","created_at":"2026-07-22T16:20:39.451433439Z"}
+{"id": "019f8aa1-1198-70e8-b40a-a543907ab9a3", "issue_id": "project-LICHEN-5y0q", "event_type": "created", "actor": "ec2-user", "old_value": "", "new_value": "", "created_at": "2026-07-22T16:20:39.448060298Z"}
+{"id": "019f8aa1-119b-769a-b728-423e77719686", "issue_id": "project-LICHEN-5y0q", "event_type": "label_added", "actor": "ec2-user", "comment": "Added label: codereview", "created_at": "2026-07-22T16:20:39.451433439Z"}

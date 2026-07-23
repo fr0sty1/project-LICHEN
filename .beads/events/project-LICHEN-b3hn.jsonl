@@ -1,2 +1,2 @@
-{"id":"019f8aa0-d995-70a8-aa86-1f9ec66855f5","issue_id":"project-LICHEN-b3hn","event_type":"created","actor":"ec2-user","old_value":"","new_value":"","created_at":"2026-07-22T16:20:25.109052101Z"}
-{"id":"019f8aa2-c719-7f28-b7f0-83432e6cc140","issue_id":"project-LICHEN-b3hn","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"P4: Kconfig clean","created_at":"2026-07-22T16:22:31.449994001Z"}
+{"id": "019f8aa0-d995-70a8-aa86-1f9ec66855f5", "issue_id": "project-LICHEN-b3hn", "event_type": "created", "actor": "ec2-user", "old_value": "", "new_value": "", "created_at": "2026-07-22T16:20:25.109052101Z"}
+{"id": "019f8aa2-c719-7f28-b7f0-83432e6cc140", "issue_id": "project-LICHEN-b3hn", "event_type": "closed", "actor": "ec2-user", "old_value": "", "new_value": "P4: Kconfig clean", "created_at": "2026-07-22T16:22:31.449994001Z"}

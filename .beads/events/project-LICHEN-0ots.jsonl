@@ -1,2 +1,2 @@
-{"id":"019f8a6f-1f03-72c2-b8f4-4a4113b0b796","issue_id":"project-LICHEN-0ots","event_type":"created","actor":"ec2-user","old_value":"","new_value":"","created_at":"2026-07-22T15:26:06.083182431Z"}
-{"id":"019f8a6f-eb55-7638-8271-d32fc2688713","issue_id":"project-LICHEN-0ots","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"net_ip.h included; sockaddr_in6 cast and AF_INET6 check added with addr_len guard","created_at":"2026-07-22T15:26:58.389408373Z"}
+{"id": "019f8a6f-1f03-72c2-b8f4-4a4113b0b796", "issue_id": "project-LICHEN-0ots", "event_type": "created", "actor": "ec2-user", "old_value": "", "new_value": "", "created_at": "2026-07-22T15:26:06.083182431Z"}
+{"id": "019f8a6f-eb55-7638-8271-d32fc2688713", "issue_id": "project-LICHEN-0ots", "event_type": "closed", "actor": "ec2-user", "old_value": "", "new_value": "net_ip.h included; sockaddr_in6 cast and AF_INET6 check added with addr_len guard", "created_at": "2026-07-22T15:26:58.389408373Z"}

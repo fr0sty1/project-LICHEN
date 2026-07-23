@@ -1,2 +1,2 @@
-{"id":"019f8add-0acb-74e8-9c9d-dbf838a15197","issue_id":"project-LICHEN-ojmp","event_type":"created","actor":"ec2-user","old_value":"","new_value":"","created_at":"2026-07-22T17:26:09.867323193Z"}
-{"id":"019f8add-4092-7965-9a6d-7df8fefafd45","issue_id":"project-LICHEN-ojmp","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"Pass 1 complete: no findings","created_at":"2026-07-22T17:26:23.63461621Z"}
+{"id": "019f8add-0acb-74e8-9c9d-dbf838a15197", "issue_id": "project-LICHEN-ojmp", "event_type": "created", "actor": "ec2-user", "old_value": "", "new_value": "", "created_at": "2026-07-22T17:26:09.867323193Z"}
+{"id": "019f8add-4092-7965-9a6d-7df8fefafd45", "issue_id": "project-LICHEN-ojmp", "event_type": "closed", "actor": "ec2-user", "old_value": "", "new_value": "Pass 1 complete: no findings", "created_at": "2026-07-22T17:26:23.63461621Z"}

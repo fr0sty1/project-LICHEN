@@ -1,4 +1,4 @@
-{"id":"019f8aa5-d2d7-7bf5-a044-afd8410ecffd","issue_id":"project-LICHEN-sldu","event_type":"created","actor":"ec2-user","old_value":"","new_value":"","created_at":"2026-07-22T16:25:51.063784152Z"}
-{"id":"019f8aa5-d2da-7d92-a58a-782c71313e5c","issue_id":"project-LICHEN-sldu","event_type":"label_added","actor":"ec2-user","comment":"Added label: codereview","created_at":"2026-07-22T16:25:51.066889814Z"}
-{"id":"019f8aa5-d2dd-796c-ac07-5830339be1a8","issue_id":"project-LICHEN-sldu","event_type":"label_added","actor":"ec2-user","comment":"Added label: opinion","created_at":"2026-07-22T16:25:51.069617833Z"}
-{"id":"019f8aa5-fb6e-7c30-957b-a40727bd2b82","issue_id":"project-LICHEN-sldu","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"Clean pass complete","created_at":"2026-07-22T16:26:01.454799611Z"}
+{"id": "019f8aa5-d2d7-7bf5-a044-afd8410ecffd", "issue_id": "project-LICHEN-sldu", "event_type": "created", "actor": "ec2-user", "old_value": "", "new_value": "", "created_at": "2026-07-22T16:25:51.063784152Z"}
+{"id": "019f8aa5-d2da-7d92-a58a-782c71313e5c", "issue_id": "project-LICHEN-sldu", "event_type": "label_added", "actor": "ec2-user", "comment": "Added label: codereview", "created_at": "2026-07-22T16:25:51.066889814Z"}
+{"id": "019f8aa5-d2dd-796c-ac07-5830339be1a8", "issue_id": "project-LICHEN-sldu", "event_type": "label_added", "actor": "ec2-user", "comment": "Added label: opinion", "created_at": "2026-07-22T16:25:51.069617833Z"}
+{"id": "019f8aa5-fb6e-7c30-957b-a40727bd2b82", "issue_id": "project-LICHEN-sldu", "event_type": "closed", "actor": "ec2-user", "old_value": "", "new_value": "Clean pass complete", "created_at": "2026-07-22T16:26:01.454799611Z"}

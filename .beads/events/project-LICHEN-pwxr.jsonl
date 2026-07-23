@@ -1,2 +1,2 @@
-{"id":"019f8aa1-3c6d-7124-a466-59f118f2389d","issue_id":"project-LICHEN-pwxr","event_type":"created","actor":"ec2-user","old_value":"","new_value":"","created_at":"2026-07-22T16:20:50.413077825Z"}
-{"id":"019f8aa2-d402-71c6-85e7-7d128aa1f4e0","issue_id":"project-LICHEN-pwxr","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"P3: mimic complete","created_at":"2026-07-22T16:22:34.754116912Z"}
+{"id": "019f8aa1-3c6d-7124-a466-59f118f2389d", "issue_id": "project-LICHEN-pwxr", "event_type": "created", "actor": "ec2-user", "old_value": "", "new_value": "", "created_at": "2026-07-22T16:20:50.413077825Z"}
+{"id": "019f8aa2-d402-71c6-85e7-7d128aa1f4e0", "issue_id": "project-LICHEN-pwxr", "event_type": "closed", "actor": "ec2-user", "old_value": "", "new_value": "P3: mimic complete", "created_at": "2026-07-22T16:22:34.754116912Z"}

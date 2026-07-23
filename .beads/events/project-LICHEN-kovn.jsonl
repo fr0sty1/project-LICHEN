@@ -1,2 +1,2 @@
-{"id":"019f8add-172d-732b-91e2-57ccb2f18c4a","issue_id":"project-LICHEN-kovn","event_type":"created","actor":"ec2-user","old_value":"","new_value":"","created_at":"2026-07-22T17:26:13.037208454Z"}
-{"id":"019f8add-42ac-7149-8e56-a467766e33d5","issue_id":"project-LICHEN-kovn","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"Pass 2 complete: no findings","created_at":"2026-07-22T17:26:24.172087725Z"}
+{"id": "019f8add-172d-732b-91e2-57ccb2f18c4a", "issue_id": "project-LICHEN-kovn", "event_type": "created", "actor": "ec2-user", "old_value": "", "new_value": "", "created_at": "2026-07-22T17:26:13.037208454Z"}
+{"id": "019f8add-42ac-7149-8e56-a467766e33d5", "issue_id": "project-LICHEN-kovn", "event_type": "closed", "actor": "ec2-user", "old_value": "", "new_value": "Pass 2 complete: no findings", "created_at": "2026-07-22T17:26:24.172087725Z"}

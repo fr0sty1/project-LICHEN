@@ -1,2 +1,2 @@
-{"id":"019f8a99-85c2-7490-b2b5-30dfc3e0fd2e","issue_id":"project-LICHEN-2yjv","event_type":"created","actor":"ec2-user","old_value":"","new_value":"","created_at":"2026-07-22T16:12:24.898299821Z"}
-{"id":"019f8a99-d8ac-7ad4-bc39-52d1b2e472e5","issue_id":"project-LICHEN-2yjv","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"Clean codereview pass","created_at":"2026-07-22T16:12:46.124710373Z"}
+{"id": "019f8a99-85c2-7490-b2b5-30dfc3e0fd2e", "issue_id": "project-LICHEN-2yjv", "event_type": "created", "actor": "ec2-user", "old_value": "", "new_value": "", "created_at": "2026-07-22T16:12:24.898299821Z"}
+{"id": "019f8a99-d8ac-7ad4-bc39-52d1b2e472e5", "issue_id": "project-LICHEN-2yjv", "event_type": "closed", "actor": "ec2-user", "old_value": "", "new_value": "Clean codereview pass", "created_at": "2026-07-22T16:12:46.124710373Z"}

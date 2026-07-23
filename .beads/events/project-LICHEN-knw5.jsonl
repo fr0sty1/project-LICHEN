@@ -1,2 +1,2 @@
-{"id":"019f8aa0-d952-70e6-8abc-1be7b32409e6","issue_id":"project-LICHEN-knw5","event_type":"created","actor":"ec2-user","old_value":"","new_value":"","created_at":"2026-07-22T16:20:25.04205985Z"}
-{"id":"019f8aa2-c524-78f8-b005-d45378354eab","issue_id":"project-LICHEN-knw5","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"P3: no issues in Kconfig","created_at":"2026-07-22T16:22:30.948588467Z"}
+{"id": "019f8aa0-d952-70e6-8abc-1be7b32409e6", "issue_id": "project-LICHEN-knw5", "event_type": "created", "actor": "ec2-user", "old_value": "", "new_value": "", "created_at": "2026-07-22T16:20:25.04205985Z"}
+{"id": "019f8aa2-c524-78f8-b005-d45378354eab", "issue_id": "project-LICHEN-knw5", "event_type": "closed", "actor": "ec2-user", "old_value": "", "new_value": "P3: no issues in Kconfig", "created_at": "2026-07-22T16:22:30.948588467Z"}

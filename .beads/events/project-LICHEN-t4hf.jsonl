@@ -1,2 +1,2 @@
-{"id":"019f8a7e-1d37-7cc6-9428-10537ffee729","issue_id":"project-LICHEN-t4hf","event_type":"created","actor":"ec2-user","old_value":"","new_value":"","created_at":"2026-07-22T15:42:28.6638378Z"}
-{"id":"019f8a7f-5a7c-7b50-8ed1-925e33bf9524","issue_id":"project-LICHEN-t4hf","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"Fixed wiring of deaddrop resource and register call","created_at":"2026-07-22T15:43:49.884742342Z"}
+{"id": "019f8a7e-1d37-7cc6-9428-10537ffee729", "issue_id": "project-LICHEN-t4hf", "event_type": "created", "actor": "ec2-user", "old_value": "", "new_value": "", "created_at": "2026-07-22T15:42:28.6638378Z"}
+{"id": "019f8a7f-5a7c-7b50-8ed1-925e33bf9524", "issue_id": "project-LICHEN-t4hf", "event_type": "closed", "actor": "ec2-user", "old_value": "", "new_value": "Fixed wiring of deaddrop resource and register call", "created_at": "2026-07-22T15:43:49.884742342Z"}

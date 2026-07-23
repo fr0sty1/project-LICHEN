@@ -1,3 +1,3 @@
-{"id":"019f8aa5-6e42-778d-a191-962680342881","issue_id":"project-LICHEN-umzk","event_type":"created","actor":"ec2-user","old_value":"","new_value":"","created_at":"2026-07-22T16:25:25.314497474Z"}
-{"id":"019f8aa5-6e45-77c6-b6d6-49d7dfdd119e","issue_id":"project-LICHEN-umzk","event_type":"label_added","actor":"ec2-user","comment":"Added label: codereview","created_at":"2026-07-22T16:25:25.317509867Z"}
-{"id":"019f8aa5-f1f4-7883-9020-7188313ef429","issue_id":"project-LICHEN-umzk","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"Fixed in spec edit with explicit MUST, pseudocode, FSM table","created_at":"2026-07-22T16:25:59.028558591Z"}
+{"id": "019f8aa5-6e42-778d-a191-962680342881", "issue_id": "project-LICHEN-umzk", "event_type": "created", "actor": "ec2-user", "old_value": "", "new_value": "", "created_at": "2026-07-22T16:25:25.314497474Z"}
+{"id": "019f8aa5-6e45-77c6-b6d6-49d7dfdd119e", "issue_id": "project-LICHEN-umzk", "event_type": "label_added", "actor": "ec2-user", "comment": "Added label: codereview", "created_at": "2026-07-22T16:25:25.317509867Z"}
+{"id": "019f8aa5-f1f4-7883-9020-7188313ef429", "issue_id": "project-LICHEN-umzk", "event_type": "closed", "actor": "ec2-user", "old_value": "", "new_value": "Fixed in spec edit with explicit MUST, pseudocode, FSM table", "created_at": "2026-07-22T16:25:59.028558591Z"}

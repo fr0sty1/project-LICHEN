@@ -1,2 +1,2 @@
-{"id":"019f8a64-b4fa-751e-8ebb-7c78a3a336c7","issue_id":"project-LICHEN-hho8","event_type":"created","actor":"ec2-user","old_value":"","new_value":"","created_at":"2026-07-22T15:14:43.578335927Z"}
-{"id":"019f8a65-ca86-7c31-a01b-30d2b43c1c65","issue_id":"project-LICHEN-hho8","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"GETs updated with expire+pending","created_at":"2026-07-22T15:15:54.630799979Z"}
+{"id": "019f8a64-b4fa-751e-8ebb-7c78a3a336c7", "issue_id": "project-LICHEN-hho8", "event_type": "created", "actor": "ec2-user", "old_value": "", "new_value": "", "created_at": "2026-07-22T15:14:43.578335927Z"}
+{"id": "019f8a65-ca86-7c31-a01b-30d2b43c1c65", "issue_id": "project-LICHEN-hho8", "event_type": "closed", "actor": "ec2-user", "old_value": "", "new_value": "GETs updated with expire+pending", "created_at": "2026-07-22T15:15:54.630799979Z"}
