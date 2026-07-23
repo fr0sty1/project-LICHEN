@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-ihqs",
   "title": "[merge-conflict] worktree-worker17: messages.py",
-  "notes": "Commit: 6e8e7e2b2",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:47:37.529931747Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:24:17.23325189Z",
+  "updated_at": "2026-07-23T03:22:09.595886948Z",
   "started_at": "2026-07-23T03:22:09.595886948Z",
-  "closed_at": "2026-07-23T03:24:17.23325189Z",
-  "close_reason": "Resolved typing merge conflict in rpl/messages.py by adopting | union syntax consistent with loadng/messages.py, added robust error handling in to_icmpv6, updated from_icmpv6 for consistency; tests and ruff pass (mypy pre-existing)"
+  "lease_expires_at": "2026-07-23T03:27:09.595886948Z",
+  "heartbeat_at": "2026-07-23T03:22:09.595886948Z"
 }
