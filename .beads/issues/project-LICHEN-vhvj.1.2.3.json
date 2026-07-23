@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-vhvj.1.2.3",
   "title": "Update simulation.py, medium.py, protocol.py to reference and call synchronized_hop_channel for TX/RX channel rendezvous and update comments",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:24:08.529351001Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:24:08.529351001Z",
+  "updated_at": "2026-07-23T05:56:03.722167172Z",
+  "started_at": "2026-07-23T05:56:03.722167172Z",
+  "lease_expires_at": "2026-07-23T06:01:03.722167172Z",
+  "heartbeat_at": "2026-07-23T05:56:03.722167172Z",
   "labels": [
     "defer-external"
   ],
