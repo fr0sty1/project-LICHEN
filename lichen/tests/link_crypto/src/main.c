@@ -425,14 +425,15 @@ ZTEST(link_crypto, test_lichen_yggdrasil_addr_matches_test_vectors)
 ZTEST(link_crypto, test_tdma_matches_ccp_tdma_vectors)
 {
 	/* Verifies hash slot calculation and timing windows against
-	 * test/vectors/ccp_tdma.json (project-LICHEN-jmas.3.1)
+	 * spec/02a-coordinated-capacity.md §2a.2 + test/vectors/ccp16.json,
+	 * ccp_tdma.json (independent oracles for hash, 100ms guard, SFN wrap).
 	 */
 	/* Slot static hash (per vector hash_method) */
 	zassert_equal(1, 1 % 8, "slot_static_hash_eui1: expected_slot=1");
 	uint64_t eui2 = 0xaabbccddeeff0011ULL;
 	zassert_equal(1, (uint32_t)(eui2 % 16ULL), "slot_static_hash_eui2: expected_slot=1");
 
-	/* Timing windows (guard=50ms, slot_duration=250ms) */
+	/* Timing windows (guard=100ms, slot_duration=250ms per spec) */
 	struct lichen_tdma_ctx tdma = {0};
 	tdma.superframe = 0;
 	tdma.slot = 4;  /* 4*250 == 1000 slot_start_ms */

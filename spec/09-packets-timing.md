@@ -330,15 +330,15 @@ SFN_delta(curr, last) = (curr - last) mod 2^32
 
 The computation MUST anchor to the time-provider `effective_epoch_floor` (Section 14.6; `docs/firmware-time-provider.md`; Time Stratum and DIO Time Option). SFN derivation or validation from wall-clock time MUST only use samples where `wall_clock_valid=true` and `unix_time >= effective_epoch_floor`. Nodes MUST reject SFN updates derived from timestamps failing epoch_floor validation. This interaction prevents desynchronization from stale GNSS/RTC/network time and ensures consistent slotting across reboots and stratum changes.
 
-All SFN edge cases including wraparound, desynchronization recovery FSM transitions, multi-root beacon conflicts, and RPL version changes during join/drift MUST be covered by test vectors (see `test/vectors/ccp_tdma.json`; updated for new FSM and multi-root cases per draft-lichen-tdma). See 02a-coordinated-capacity.md for full normative FSM table.
+All SFN edge cases including wraparound, desynchronization recovery FSM transitions, multi-root beacon conflicts, and RPL version changes during join/drift MUST be covered by test vectors (see `test/vectors/ccp16.json`, `ccp_tdma.json`). See spec/02a-coordinated-capacity.md §2a.2 and §2a.5 for full normative FSM table.
 
-**FSM for desync/rejoin robustness:** See Section 2a.2 of draft-lichen-tdma (normative content replicated in 02a-coordinated-capacity.md#tdma-frame-structure-and-slot-assignment-project-lichen-i9r01) for complete definition. Nodes MUST follow the initialization dependency graph from AGENTS.md:179 (normative for subsystem ordering to prevent use-before-init crashes) and the `lichen_node_init()` example (AGENTS.md:218). `lichen_link_init()` MUST precede `lichen_link_load_key()`, `lichen_rpl_dodag_init()`, TDMA, oscore_init(), and lichen_coap_client_init() per the graph in AGENTS.md. Rejoin timeout = 10 × superframe length (Kconfig `CONFIG_LICHEN_TDMA_REJOIN_TIMEOUT`, default 10 s).
+**FSM for desync/rejoin robustness:** See spec/02a-coordinated-capacity.md §2a.2 and §2a.5 (normative FSM replicated from prior draft-lichen-tdma) for complete definition. Nodes MUST follow the initialization dependency graph from AGENTS.md:179 (normative for subsystem ordering to prevent use-before-init crashes) and the `lichen_node_init()` example (AGENTS.md:218). `lichen_link_init()` MUST precede `lichen_link_load_key()`, `lichen_rpl_dodag_init()`, TDMA, oscore_init(), and lichen_coap_client_init() per the graph in AGENTS.md. Rejoin timeout = 10 × superframe length (Kconfig `CONFIG_LICHEN_TDMA_REJOIN_TIMEOUT`, default 10 s).
 
 | Current State | Event/Condition | Timer/Timeout | Action | Next State | Reference |
 |---------------|-----------------|---------------|--------|------------|-----------|
 | UNJOINED | Power-on / reset | - | `lichen_node_init(eui64, seed)` per AGENTS.md graph | ACQUIRING | `AGENTS.md:218`, `lichen_link_init():147` |
 | ACQUIRING | Valid beacon (higher stratum/version) | BEACON_TIMEOUT = 3×superframe | Sync SFN, adopt time, DAO confirm, load key | SYNCED | `lichen_rpl_dodag_init():162` |
-| SYNCED | Beacon rx in assigned slot | superframe_timer | TX in slot, update RPL | SYNCED | Guard 50 ms enforced |
+| SYNCED | Beacon rx in assigned slot | superframe_timer | TX in slot, update RPL | SYNCED | Guard 100 ms enforced per §2a.2 |
 | SYNCED | >3 missed beacons or RPL version increment | rejoin_timeout=10*superframe_len | Reset SFN, clear stale state | DRIFTING | desync recovery |
 | DRIFTING | Beacon rx or contention success | REJOIN_TIMEOUT | Re-init DODAG if needed, TOFU key pin | ACQUIRING | `oscore_init()` ordering |
 | REJOINING | DAO-ACK + slot assign | - | Enter assigned slot, report LCI status | SYNCED | `lichen_coap_client_init()` |

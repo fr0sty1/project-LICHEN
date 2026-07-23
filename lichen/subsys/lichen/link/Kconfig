@@ -121,10 +121,10 @@ config LICHEN_TDMA
 	help
 	  Enable TDMA struct and lichen_tdma_init() after lichen_link_load_key() per
 	  AGENTS.md init graph and spec/02a-coordinated-capacity.md §2a.2 (guard=100ms,
-	  slot=hash(EUI64^epoch)%num_slots via lichen_hash_32 FNV-1a32).
-	  Supports beacon sync, GPS sync, dynamic slot assignment from root DIO/beacon,
-	  and spatial reuse based on hash(EUI ^ epoch) % num_slots with RPL integration.
-	  Must not call before key loaded. Mimics lichen_link_ctx pattern exactly.
+	  slot=hash(EUI64^epoch)%num_slots via lichen_hash_32; validated by ccp16.json
+	  + ccp_tdma.json). Supports beacon sync, GPS sync, dynamic slot assignment
+	  from root, spatial reuse, desync FSM per §2a.5. Must not call before key
+	  loaded. Mimics lichen_link_ctx pattern exactly.
 
 config LICHEN_CCP_TIME_SYNC
 	bool "CCP time synchronization (SFN, beacons, GPS stratum)"
@@ -133,9 +133,9 @@ config LICHEN_CCP_TIME_SYNC
 	select LICHEN_TIME_PROVIDER_GNSS if LICHEN_HAS_GNSS
 	help
 	  Enable time sync for CCP-16 desync recovery, TDMA slots, and RPL
-	  version interactions per spec/02a-coordinated-capacity.md §5. Uses
-	  beacon SFN with GPS stratum-0 priority, local RTC fallback. Matches
-	  ccp16-desync.json vectors exactly. SECURITY: signed beacons only.
+	  version interactions per spec/02a-coordinated-capacity.md §2a.4, §2a.5.
+	  Uses beacon SFN with GPS stratum-0 priority, local RTC fallback. Matches
+	  ccp16.json, ccp16-desync.json vectors exactly. SECURITY: signed beacons only.
 
 config LICHEN_TDMA_BEACON_SYNC
 	bool "Beacon-based TDMA synchronization"
