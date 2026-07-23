@@ -770,6 +770,8 @@ def _valid_receipt_timestamp(value: Any) -> bool:
 def _str_or_none(value: Any) -> str | None:
     if value is None:
         return None
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
     return str(value)
 
 
