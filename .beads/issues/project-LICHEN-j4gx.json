@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-j4gx",
   "title": "[merge-conflict] worktree-worker22: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
-  "notes": "Commit in worker22: 124ca7f (heltec_wifi_lora32_v3_esp32s3_procpu.conf resolved to full L2+CoAP version, removed legacy NETWORKING=n)",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:23.532073853Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:27:37.243025601Z",
+  "updated_at": "2026-07-23T03:25:46.148922084Z",
   "started_at": "2026-07-23T03:25:46.148922084Z",
-  "closed_at": "2026-07-23T03:27:37.243025601Z",
-  "close_reason": "Resolved merge conflict in heltec_wifi_lora32_v3_esp32s3_procpu.conf for worktree-worker22 by updating to consolidated full L2/CoAP configuration matching main. Updated comments, removed legacy direct-LoRa disable-networking section and explicit TINYCRYPT."
+  "lease_expires_at": "2026-07-23T03:30:46.148922084Z",
+  "heartbeat_at": "2026-07-23T03:25:46.148922084Z"
 }
