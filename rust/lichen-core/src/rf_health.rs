@@ -1,8 +1,8 @@
 //! RF health metrics tracking for LICHEN nodes (CCP-15/16 interference mitigation,
 //! adaptive SF, load balancing).
 //!
-//! Implements normative adaptive_sf_select from spec/02a-coordinated-capacity.md.
-//! Matches ccp15.json, ccp16.json, ccp_load_balancing.json vectors exactly.
+//! Implements normative adaptive_sf_select (with critical conditions first)
+//! from spec/02a-coordinated-capacity.md pseudocode. Matches ccp*.json vectors.
 //! Tracks packet statistics, signal quality (RSSI/SNR with EMA), density,
 //! load_factor, packet loss. Saturating counters, Q16.16 fixed point.
 //! no_std compatible, #![forbid(unsafe_code)].
@@ -338,16 +338,19 @@ impl PacketLossRate {
 }
 
 impl RfHealthMetrics {
+    /// Adaptive SF selection per spec/02a-coordinated-capacity.md §2a.3
+    /// pseudocode (critical SF12 checked before SF11 for precedence).
+    /// Uses named constants matching the IF conditions exactly.
     #[inline]
     pub fn adaptive_sf(&self) -> u8 {
         let snr_ema = self.snr.avg().unwrap_or(0);
         let load_high = self.load_factor_fp > LOAD_HIGH;
-        if self.density > DENSITY_HIGH || snr_ema < SNR_POOR || load_high {
+        if self.density > DENSITY_CRITICAL || snr_ema < SNR_CRITICAL {
+            12
+        } else if self.density > DENSITY_HIGH || snr_ema < SNR_POOR || load_high {
             11
         } else if self.density < DENSITY_LOW && snr_ema > SNR_GOOD {
             9
-        } else if self.density > DENSITY_CRITICAL || snr_ema < SNR_CRITICAL {
-            12
         } else {
             10
         }
@@ -588,23 +591,28 @@ mod tests {
 
     #[test]
     fn adaptive_sf_and_rebalance_matches_spec() {
+        // Test each branch independently to avoid EMA state carryover.
+        // Matches spec/02a-coordinated-capacity.md pseudocode with critical first.
         let mut m = RfHealthMetrics::new();
         m.record_density(3);
         m.record_rx(-70, 12);
         m.record_load_factor(0);
         assert_eq!(m.adaptive_sf(), 9);
 
+        let mut m = RfHealthMetrics::new();
         m.record_density(12);
         m.record_rx(-70, -3);
         m.record_load_factor((FP_SCALE * 85) / 100);
         assert_eq!(m.adaptive_sf(), 11);
         assert!(m.should_rebalance());
 
+        let mut m = RfHealthMetrics::new();
         m.record_density(3);
         m.record_rx(-70, -10);
         assert_eq!(m.adaptive_sf(), 12);
 
+        let mut m = RfHealthMetrics::new();
         m.record_density(25);
-        assert_eq!(m.adaptive_sf(), 11);
+        assert_eq!(m.adaptive_sf(), 12);
     }
 }
