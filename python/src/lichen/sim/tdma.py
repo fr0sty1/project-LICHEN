@@ -17,13 +17,16 @@ def hash_32(data: bytes) -> int:
 def synchronized_hop_channel(sfn: int, seed: int = 0, num_channels: int = 8) -> int:
     """Compute synchronized hop channel for TX/RX rendezvous (CCP-12).
     Both TX and RX compute identical channel from shared SFN (from beacon/DIO)
-    and optional seed (e.g. from EUI). Matches ccp16-hop.json:
-    synchronized_hop_channel(sfn=0, seed=0, num_channels=8) == 7.
+    and optional seed (e.g. from EUI). Matches ccp16-hop.json vectors
+    for SFN=0 and wraparound using hash_32 from generate.py.
     Used by simulation.py, medium.py, protocol.py for channel rendezvous.
     See spec/02a-coordinated-capacity.md:2a.3.1 SelectChannel pseudocode.
     """
     if num_channels < 1:
         return 0
+    # unsigned 32-bit for SFN wraparound per spec and ccp16-hop.json
+    sfn = sfn & 0xffffffff
+    seed = seed & 0xffffffff
     # low byte of (sfn ^ seed) matches vector (hash_32(b'\x00') % 8 == 7)
     data = bytes([(sfn & 0xFF) ^ (seed & 0xFF)])
     h = hash_32(data)
