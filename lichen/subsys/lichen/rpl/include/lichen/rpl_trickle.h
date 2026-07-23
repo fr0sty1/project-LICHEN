@@ -72,7 +72,7 @@ struct lichen_trickle {
 /**
  * @brief Initialize a Trickle timer.
  *
- * @pre imin_ms > 0 (0 causes infinite busy-loop; see project-LICHEN-p00p)
+ * @pre imin_ms > 0 (0 causes divide-by-zero or infinite loop in next_event/expire polling)
  *
  * @param t              Timer to initialize
  * @param imin_ms        Minimum interval in milliseconds
@@ -155,7 +155,8 @@ void lichen_trickle_expire(struct lichen_trickle *_Nonnull t,
 /**
  * @brief Handle an inconsistency: shrink to imin and restart (RFC 6206 step 6).
  *
- * No-op if the interval is already imin (RFC 6206 section 4.2).
+ * No-op if already at imin (RFC 6206 §4.2). Uses transmit_time==0 sentinel
+ * (set in init) to also start from stopped state (matches Rust reset_from_stopped test).
  *
  * @pre t must be non-NULL and initialized via lichen_trickle_init()
  * @param t           Timer

@@ -5,7 +5,8 @@
  * @file trickle.c
  * @brief Trickle timer (RFC 6206) implementation
  *
- * Ported from rust/lichen-rpl/src/trickle.rs
+ * Caller-driven, deterministic, no_std compatible. Uses interval=0 sentinel
+ * for stopped state to match Rust/Python/RFC behavior.
  */
 
 #include <lichen/rpl_trickle.h>
@@ -26,7 +27,7 @@ static uint32_t sat_mul_u32(uint32_t a, uint32_t b)
 	return result > UINT32_MAX ? UINT32_MAX : (uint32_t)result;
 }
 
-/* Internal: begin a new interval */
+/* Internal: begin a new interval (RFC 6206 §4.1: t uniform in [I/2, I)) */
 static void begin_interval(struct lichen_trickle *t,
 			   uint32_t now,
 			   uint32_t rand_offset)
@@ -35,7 +36,7 @@ static void begin_interval(struct lichen_trickle *t,
 	t->counter = 0;
 	t->transmitted = false;
 
-	uint32_t half = (t->interval + 1) / 2;
+	uint32_t half = (t->interval + 1u) / 2u;
 	uint32_t range = t->interval - half;
 	uint32_t offset = (range > 0) ? (rand_offset % range) : 0;
 	t->transmit_time = sat_add_u32(sat_add_u32(now, half), offset);
@@ -50,17 +51,15 @@ void lichen_trickle_init(struct lichen_trickle *t,
 		return;
 	}
 
-	/* Trickle Imin must be > 0 (RFC 6206); 0 causes infinite busy-loop
-	 * on transmit/expire (see bead project-LICHEN-p00p). Defensive default. */
+	/* Trickle Imin must be > 0 (RFC 6206 §4.1); 0 would cause
+	 * divide-by-zero or infinite polling loop. Defensive default. */
 	if (imin_ms == 0) {
 		imin_ms = 1;
 	}
 	t->imin = imin_ms;
 
 	/* Calculate max_interval = imin << doublings, clamped at UINT32_MAX.
-	 * Overflow occurs if any of the top `doublings` bits are set in imin,
-	 * since those bits would be shifted out. Check before shifting.
-	 * Special case: doublings=0 means no shift, so no overflow possible. */
+	 * Overflow check before shift (top bits of imin would be lost). */
 	if (imax_doublings == 0) {
 		t->max_interval = imin_ms;
 	} else if (imax_doublings >= 32 ||
@@ -71,7 +70,7 @@ void lichen_trickle_init(struct lichen_trickle *t,
 	}
 
 	t->k = k;
-	t->interval = imin_ms;
+	t->interval = 0;  /* stopped sentinel (matches Rust Stopped state) */
 	t->counter = 0;
 	t->interval_start = 0;
 	t->transmit_time = 0;
@@ -122,8 +121,9 @@ void lichen_trickle_reset(struct lichen_trickle *t,
 		return;
 	}
 
-	/* RFC 6206 section 4.2: no-op if already at imin */
-	if (t->interval != t->imin) {
+	/* RFC 6206 §4.2: no-op if already at imin. Also starts if stopped
+	 * (transmit_time == 0 sentinel from init, matching Rust). */
+	if (t->transmit_time == 0 || t->interval != t->imin) {
 		t->interval = t->imin;
 		begin_interval(t, now, rand_offset);
 	}
