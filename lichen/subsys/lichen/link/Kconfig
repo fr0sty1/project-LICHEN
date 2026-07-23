@@ -123,7 +123,6 @@ config LICHEN_TDMA
 	  Supports beacon sync, GPS sync, dynamic slot assignment from root DIO/beacon,
 	  and spatial reuse based on hash(EUI ^ epoch) % num_slots with RPL integration.
 	  Must not call before key loaded. Mimics lichen_link_ctx pattern exactly.
-	  Fixes project-LICHEN-5273.
 
 config LICHEN_CCP_TIME_SYNC
 	bool "CCP time synchronization (SFN, beacons, GPS stratum)"
@@ -144,11 +143,11 @@ config LICHEN_TDMA_BEACON_SYNC
 	  Nodes sync time and slots from gateway periodic beacons.
 
 config LICHEN_MULTI_CHANNEL_ENABLED
-	bool "Multi-channel TX/RX coordination (CCP-9/12 da2q)"
+	bool "Multi-channel TX/RX coordination (CCP-9/12)"
 	depends on LICHEN_LINK
 	default y
 	help
-	  Enable multi-channel per bead project-LICHEN-da2q.2. Control on CH0,
+	  Enable multi-channel operation. Control on CH0,
 	  data channels 1-N with hash/rendezvous selection, idle listen on control,
 	  dynamic hop for RX. Requires updated radio API and link scheduler.
 
