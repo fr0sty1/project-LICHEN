@@ -154,7 +154,9 @@ async def test_transmit_success(mock_server: MockServer) -> None:
     assert len(mock_server.received_messages) == 2
     tx_msg = mock_server.received_messages[1]
     assert get_message_type(tx_msg) == MSG_TX
-    assert decode_tx(tx_msg[1:]) == b"hello world"
+    payload, channel = decode_tx(tx_msg[1:])
+    assert payload == b"hello world"
+    assert channel == 0
 
 
 async def test_transmit_failure(mock_server: MockServer) -> None:
@@ -197,7 +199,9 @@ async def test_receive_success(mock_server: MockServer) -> None:
     # Verify RX_ENTER request (timeout in microseconds: ms -> us)
     rx_msg = mock_server.received_messages[1]
     assert get_message_type(rx_msg) == MSG_RX_ENTER
-    assert decode_rx_enter(rx_msg[1:]) == 5000 * 1000
+    timeout_us, channel = decode_rx_enter(rx_msg[1:])
+    assert timeout_us == 5000 * 1000
+    assert channel == 0
 
 
 async def test_receive_timeout(mock_server: MockServer) -> None:

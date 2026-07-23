@@ -18,6 +18,7 @@ import structlog
 
 from lichen.radio.base import MAX_LORA_PAYLOAD
 from lichen.sim.protocol import (
+    MAX_ID_LENGTH,
     MSG_CAD_RESULT,
     MSG_ERR,
     MSG_OK,
@@ -94,17 +95,21 @@ class SimRadio:
             if not math.isfinite(coord):
                 msg = f"Position coordinates must be finite, got {position}"
                 raise ValueError(msg)
+        if not (1 <= port <= 65535):
+            raise ValueError(f"port must be in range 1-65535, got {port}")
+        if not sim_id or not node_id:
+            raise ValueError("sim_id and node_id cannot be empty")
+        sim_id_bytes = sim_id.encode("utf-8")
+        node_id_bytes = node_id.encode("utf-8")
+        if len(sim_id_bytes) > MAX_ID_LENGTH or len(node_id_bytes) > MAX_ID_LENGTH:
+            raise ValueError(
+                f"sim_id or node_id exceeds {MAX_ID_LENGTH} bytes when UTF-8 encoded"
+            )
         self._host = host
         self._port = port
         self._sim_id = sim_id
         self._node_id = node_id
         self._position = position
-        if not (1 <= port <= 65535):
-            raise ValueError(f"port must be in range 1-65535, got {port}")
-        if not sim_id or not node_id:
-            raise ProtocolError("sim_id and node_id cannot be empty")
-        if len(sim_id.encode("utf-8")) > 255 or len(node_id.encode("utf-8")) > 255:
-            raise ProtocolError("sim_id or node_id exceeds 255 bytes")
         self._stream: SocketStream | None = None
         self._freq_hz: int = 915_000_000
         self._tx_power_dbm: int = 14
