@@ -39,6 +39,8 @@ import contextlib
 import copy
 import ipaddress
 import itertools
+import math
+import string
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -697,10 +699,6 @@ class SosResource(resource.ObservableResource):
     async def render_put(self, request: Message) -> Message:
         if not request.payload:
             return Message(code=aiocoap.BAD_REQUEST)
-        # SECURITY: Validate t is numeric; non-numeric values would violate
-        # the API contract (t: float) and cause type errors in consumers.
-        if t is not None and not isinstance(t, (int, float)):
-            return Message(code=aiocoap.BAD_REQUEST)
         try:
             body = _decode_single_cbor(request.payload)
         except Exception:
@@ -715,9 +713,12 @@ class SosResource(resource.ObservableResource):
             or any(char not in "0123456789abcdefABCDEF" for char in from_hex)
         ):
             return Message(code=aiocoap.BAD_REQUEST)
-        if isinstance(timestamp, bool) or not isinstance(timestamp, int | float):
-            return Message(code=aiocoap.BAD_REQUEST)
-        if (isinstance(timestamp, float) and not math.isfinite(timestamp)) or timestamp < 0:
+        if (
+            isinstance(timestamp, bool)
+            or not isinstance(timestamp, (int, float))
+            or (isinstance(timestamp, float) and not math.isfinite(timestamp))
+            or timestamp < 0
+        ):
             return Message(code=aiocoap.BAD_REQUEST)
         self.activate(bytes.fromhex(from_hex), timestamp)
         return Message(code=aiocoap.CHANGED)
@@ -1441,21 +1442,13 @@ class EdhocResource(resource.Resource):
                 active_session = session
                 break
 
-        if active_session is None:
-            # This is Message 1 - start new session
-            try:
+        try:
+            if active_session is None:
+                # This is Message 1 - start new session
                 return await self._handle_message_1(peer_host, payload)
-            except Exception:
-                return Message(code=BAD_REQUEST)
-        else:
-            # This is Message 3 - complete handshake
-            try:
+            else:
+                # This is Message 3 - complete handshake
                 return await self._handle_message_3(peer_host, payload, active_session)
-            except Exception:
-                # Clean up failed session
-                self._cleanup_session(peer_host)
-                return Message(code=BAD_REQUEST)
-            return await self._handle_message_3(peer_host, payload, session)
         except _EdhocTransientError:
             return Message(code=SERVICE_UNAVAILABLE)
         except ValueError:
