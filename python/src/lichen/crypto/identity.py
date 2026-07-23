@@ -23,7 +23,7 @@ from ipaddress import IPv6Address
 
 from nacl.bindings import crypto_scalarmult_base
 
-from .schnorr48 import derive_keypair
+from .schnorr48 import clamp, derive_keypair
 
 
 @dataclass
@@ -92,12 +92,16 @@ class Identity:
     def x25519_private(self) -> bytes:
         """Derive X25519 private key from Ed25519 seed (for static DH).
 
-        Per spec section 8.8: x25519_private = SHA-512(ed25519_seed)[0:32]
+        x25519_private = clamp(SHA-512(seed)[0:32]) per RFC 7748 §5,
+        standards/crypto.md and draft-lichen-security. Clamping is required
+        to place scalar in correct subgroup (avoids small subgroup attacks
+        in static DH for EDHOC/OSCORE).
 
         Returns:
-            32-byte X25519 private key suitable for ECDH operations.
+            32-byte clamped X25519 private key.
         """
-        return sha512(self.seed).digest()[:32]
+        h = sha512(self.seed).digest()[:32]
+        return clamp(h)
 
     @property
     def x25519_public(self) -> bytes:
