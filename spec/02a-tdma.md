@@ -20,57 +20,64 @@ Slot duration = max_packet_airtime + guard_time.
 
 At SF10/125kHz, 60-byte packet ~200 ms airtime + 50 ms guard = 250 ms slot (4 slots/sec, 240 slots/min for 60 s superframe).
 
-Beacon content:
-- Superframe number (for sync)
-- Slot assignments (compressed bitmap or list)
-- Next beacon time
+Beacon content (normative wire format, SCHC-compressed on CH0):
+- Type (1B): 0xBE (beacon)
+- SFN (u32): superframe number for slot computation and wrap detection
+- Timestamp (u32): reference time for drift compensation and stratum
+- Stratum (u8): time source quality (0=GNSS, 1=mesh, per 09-packets-timing)
+- N_slots (u8): default 8-32
+- Slot bitmap or assigned list (variable)
+- Next beacon delta (u16 ms)
 
-Beacon frame type MUST be distinguishable (different sync word or header flag). Old nodes MUST ignore unknown frame types.
+Beacon uses distinct sync word (0x34 per spec) or LLSec flag. Old nodes MUST ignore (backwards compatible).
 
-## Slot Assignment
+## Rendezvous
 
-### Static (hash-based)
+Priority order (per lichen_coordination_mechanism in link.h:106):
+1. SCHEDULED: gateway-assigned slot from beacon/DIO (preferred for TDMA)
+2. HASH_BASED: slot = hash_32(EUI64, SFN) % n_slots (lichen_hash_32, FNV-1a32 basis 0x811c9dc5; see ccp_tdma.json)
+3. ANNOUNCE_DRIVEN: rx_channel from Announce (CCP-9, ccp9*.json)
+4. FALLBACK: CH0 contention
 
-Node IID hash mod N_SLOTS. Simple, no coordination. Collisions possible if hash collision (rare with good hash).
+Rendezvous enables predictable TX/RX windows without constant listening. Matches ccp9-rendezvous.json and ccp16-hop.json vectors exactly.
 
-### Dynamic (gateway-assigned)
+## Drift Compensation
 
-Gateway tracks active nodes, assigns in beacon or DIO option. Reassigns on join/leave. Preferred for load balancing.
+Linear correction from beacon arrival:
 
-## Guard Time
+```
+delta_ms = local_rx_ms - expected_beacon_ms
+drift_ppm = (delta_ms * 1000000) / beacon_interval_ms
+correction_ms = drift_ppm * future_delta_ms / 1000000
+adjusted_time = local_time + correction_ms
+```
 
-50 ms guard compensates for ~1% clock drift over 5 s superframe. GPS-equipped nodes use absolute time to reduce guard.
+See ccp_tdma.json "drift_compensation" vector (local 123456, expected 123400, ppm=10, correction=56). Nodes MUST apply before slot calculation. GPS stratum reduces guard from 50ms. Threshold >5000ppm triggers desync (per ccp16-desync.json).
 
-## Backwards Compatibility
+## Join Procedure (FSM)
 
-No flag day required.
+See 09-packets-timing.md:14.8 and AGENTS.md init graph (lichen_link_init before tdma_init):
 
-- Old nodes: ignore beacons, use ALOHA/CSMA.
-- New nodes: sync to beacon, use assigned slots.
-- Mixed: contention slot for old nodes and new-node fallback.
-- Gateway receives during all slots + contention.
-- More old nodes = more contention usage = less TDMA benefit, but never worse than pure ALOHA.
+- **UNJOINED**: CH0 listen only, no TX. On power-on or reset.
+- **ACQUIRING**: Valid beacon (stratum >= current, ts >= epoch_floor) → adopt SFN/time, send DAO with slot request.
+- **SYNCED**: DAO-ACK received, TX only in assigned slot, periodic beacon listen. Enforce tdma_tx_allowed().
+- **DRIFTING**: >3 missed beacons or RPL version change or excessive drift → extended CH0 listen, suppress TDMA TX.
+- **RECOVERING**: 3 consecutive valid beacons → re-SYNCED.
 
-**Degradation graceful.**
-
-## Signaling
-
-Announce/DIO includes current SF and slot info. Per-neighbor SF tracking (project-LICHEN-zrh2) integrates with TDMA slot map.
+Rejoin timeout = 10 * superframe (Kconfig default 10s). All transitions, multi-root conflicts, SFN wrap (unsigned u32 per RFC 1982 semantics) covered by ccp_tdma.json and ccp16-desync.json. MUST follow lichen_node_init() ordering to avoid use-before-init.
 
 ## Test Vectors
 
-See test/vectors/tdma-timing.json and ccp_load_balancing.json for exact slot calculation, beacon parsing, and interop with ALOHA nodes.
-
-All implementations MUST produce identical output for vectors.
+All MUST match test/vectors/ccp_tdma.json (slot hash, guard boundaries, drift), ccp_load_balancing.json, ccp9*.json exactly. Independent oracles (external arithmetic, no code-under-test).
 
 ## Appendix A: Constants
 
 - GUARD_TIME_MS = 50
 - SLOT_DURATION_MS (SF10) = 250
-- SUPERFRAME_SLOTS = 240
-- HASH_MOD = N_SLOTS
+- SUPERFRAME_SLOTS = 240 (for 60s at 250ms)
+- HASH_BASIS = 0x811c9dc5 (FNV-1a32)
 
-(Updated from parent project-LICHEN-i9r0.)
+(Updated per project-LICHEN-frdz: beacon format, rendezvous priority, drift formula, FSM join procedure.)
 
 ---
 [← Coordinated Capacity](02a-coordinated-capacity.md) | [Index](README.md)
