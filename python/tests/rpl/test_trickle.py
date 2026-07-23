@@ -113,6 +113,18 @@ def test_reset_is_noop_at_imin() -> None:
     assert t.counter == 1
 
 
+def test_reset_from_uninitialized_starts_timer() -> None:
+    t = _timer(imin=100)
+    # Before start(): _generation==0 is sentinel (interval==imin but triggers)
+    assert t._generation == 0
+    assert t.interval == 100
+    t.reset(now=0)
+    assert t.interval == 100
+    assert t._generation == 1
+    assert t.interval_start == 0
+    assert t.transmit_time == 50  # rng=0.0 -> exactly I/2
+
+
 def test_next_event_transmit_then_expire() -> None:
     t = _timer(rng_value=0.0, imin=100)
     t.start(0)
