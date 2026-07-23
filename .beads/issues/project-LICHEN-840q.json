@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-840q",
   "title": "[merge-conflict] worktree-worker18: coap_config.c",
-  "notes": "Commit: 7b66bb340",
+  "notes": "Commit: a4b6abbad - resolved merge conflict in coap_config.c by aligning resource service name to lichen_coap (per v99p) and hex_len check to \u003e8 for 32-bit support",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:20:41.505170712Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:31:49.752811772Z",
+  "updated_at": "2026-07-23T02:33:36.065632985Z",
   "started_at": "2026-07-23T02:31:49.752811772Z",
   "lease_expires_at": "2026-07-23T02:36:49.752811772Z",
   "heartbeat_at": "2026-07-23T02:31:49.752811772Z"
