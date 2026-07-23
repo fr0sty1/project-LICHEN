@@ -2,15 +2,15 @@
   "id": "project-LICHEN-jpp5",
   "title": "[merge-conflict] worktree-worker19: rf_health.rs",
   "notes": "Commit: 89c300039",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:14:06.803723572Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:38:20.602788319Z",
+  "updated_at": "2026-07-23T02:38:24.154564168Z",
   "started_at": "2026-07-23T02:34:47.050401466Z",
-  "lease_expires_at": "2026-07-23T02:39:47.050401466Z",
-  "heartbeat_at": "2026-07-23T02:34:47.050401466Z"
+  "closed_at": "2026-07-23T02:38:24.154564168Z",
+  "close_reason": "Fixed unreachable code in adaptive_sf(), synchronized FP_SCALE type and removed duplicate/inline comments from merge of worker19 rf_health.rs changes. Updated test coverage. Resolved related conf merge marker."
 }
