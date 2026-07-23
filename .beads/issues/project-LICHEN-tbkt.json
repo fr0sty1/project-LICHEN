@@ -2,15 +2,15 @@
   "id": "project-LICHEN-tbkt",
   "title": "[merge-conflict] worktree-worker20: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: 3931959e8",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:42:22.828128011Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:27:39.351519015Z",
+  "updated_at": "2026-07-23T02:27:43.603922381Z",
   "started_at": "2026-07-23T02:25:18.347865525Z",
-  "lease_expires_at": "2026-07-23T02:30:18.347865525Z",
-  "heartbeat_at": "2026-07-23T02:25:18.347865525Z"
+  "closed_at": "2026-07-23T02:27:43.603922381Z",
+  "close_reason": "Updated heltec_wifi_lora32_v3_esp32s3_procpu.conf puck board config with consolidated merge conflict resolution note referencing project-LICHEN-tbkt (worktree-worker20). Synced comment across project-LICHEN and worker20 worktrees. Fixed divergence in resolution metadata."
 }
