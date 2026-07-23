@@ -508,7 +508,11 @@ pub struct EdhocInitiator {
 
 /// Initiator protocol state.
 ///
-/// Contains PRK secrets that must be zeroized on drop.
+/// PRK derivation chain per python/src/lichen/crypto/edhoc.py:
+/// PRK_2e = HKDF-Extract(salt=TH_2, IKM=G_XY)
+/// PRK_3e2m = PRK_2e for Suite 0 SIGN_SIGN (needed for MAC_2)
+/// PRK_4e3m = PRK_3e2m (needed for MAC_3 and OSCORE export)
+/// All must be zeroized on drop.
 #[derive(Zeroize, ZeroizeOnDrop)]
 struct InitiatorState {
     #[zeroize(skip)]
@@ -712,10 +716,10 @@ impl EdhocInitiator {
             }
             self.state.th_2 = transcript_2(&self.state.g_y, &self.state.msg1)?;
 
-            // PRK_2e = HKDF-Extract(TH_2, G_XY)
-            self.state
-                .prk_2e
-                .copy_from_slice(&hkdf_extract(&self.state.th_2, g_xy.as_bytes())[..]);
+            // PRK_2e = HKDF-Extract(salt=TH_2, IKM=G_XY)
+            let prk_2e_z = hkdf_extract(&self.state.th_2, g_xy.as_bytes());
+            self.state.prk_2e.copy_from_slice(&*prk_2e_z);
+            drop(prk_2e_z);
             drop(g_xy);
 
             // Decrypt CIPHERTEXT_2 with KEYSTREAM_2
@@ -726,7 +730,7 @@ impl EdhocInitiator {
                 plaintext_2.push_err(b ^ keystream_2[i])?;
             }
 
-            // PRK_3e2m = PRK_2e for SIGN_SIGN method
+            // PRK_3e2m = PRK_2e for Suite 0 SIGN_SIGN (needed for MAC_2)
             self.state.prk_3e2m = self.state.prk_2e;
 
             let pt2 = plaintext_2.as_slice();
@@ -803,6 +807,7 @@ impl EdhocInitiator {
             self.state.c_r = pending.c_r.clone();
             self.state.th_3 = transcript_3(&self.state.th_2, &pending.plaintext, peer.credential)?;
 
+            // PRK_4e3m = PRK_3e2m for SIGN_SIGN (needed for MAC_3 and OSCORE export)
             self.state.prk_4e3m = self.state.prk_3e2m;
 
             let mut credential_i = heapless::Vec::<u8, 80>::new();
@@ -899,7 +904,11 @@ pub struct EdhocResponder {
 
 /// Responder protocol state.
 ///
-/// Contains PRK secrets that must be zeroized on drop.
+/// PRK derivation chain per python/src/lichen/crypto/edhoc.py:
+/// PRK_2e = HKDF-Extract(salt=TH_2, IKM=G_XY)
+/// PRK_3e2m = PRK_2e for Suite 0 SIGN_SIGN (needed for MAC_2)
+/// PRK_4e3m = PRK_3e2m (needed for MAC_3 and OSCORE export)
+/// All must be zeroized on drop.
 #[derive(Zeroize, ZeroizeOnDrop)]
 struct ResponderState {
     #[zeroize(skip)]
@@ -1058,13 +1067,13 @@ impl EdhocResponder {
             }
             self.state.th_2 = transcript_2(self.eph_public.as_bytes(), msg1)?;
 
-            // PRK_2e = HKDF-Extract(TH_2, G_XY)
-            self.state
-                .prk_2e
-                .copy_from_slice(&hkdf_extract(&self.state.th_2, g_xy.as_bytes())[..]);
+            // PRK_2e = HKDF-Extract(salt=TH_2, IKM=G_XY)
+            let prk_2e_z = hkdf_extract(&self.state.th_2, g_xy.as_bytes());
+            self.state.prk_2e.copy_from_slice(&*prk_2e_z);
+            drop(prk_2e_z);
             drop(g_xy);
 
-            // PRK_3e2m = PRK_2e for SIGN_SIGN
+            // PRK_3e2m = PRK_2e for Suite 0 SIGN_SIGN (needed for MAC_2)
             self.state.prk_3e2m = self.state.prk_2e;
 
         let mut context_2 = heapless::Vec::<u8, 128>::new();
@@ -1233,6 +1242,7 @@ impl EdhocResponder {
             );
             let peer_verifying_key = strong_verifying_key(peer.public_key)?;
 
+            // PRK_4e3m = PRK_3e2m for SIGN_SIGN (needed for MAC_3 and OSCORE export)
             self.state.prk_4e3m = self.state.prk_3e2m;
             let context_3 = build_context_3(
                 pending.id_cred.as_bytes(),
