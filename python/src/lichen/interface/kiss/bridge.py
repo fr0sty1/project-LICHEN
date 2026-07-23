@@ -19,8 +19,6 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from lichen.l2_payload import L2_DISPATCH_ROUTING, L2_ROUTING_TYPE_ANNOUNCE
-
 from .aprs import (
     AprsAck,
     AprsMessage,
@@ -399,14 +397,6 @@ class KissBridge:
         raw_kiss = self.handler.rx_frame(payload, port=PORT_RAW)
 
         return (ax25_kiss, raw_kiss)
-
-
-def _is_l2_routing_payload(payload: bytes) -> bool:
-    return (
-        len(payload) > 1
-        and payload[0] == L2_DISPATCH_ROUTING
-        and payload[1] == L2_ROUTING_TYPE_ANNOUNCE
-    )
 
 
 def _is_kiss_rej_payload(payload: bytes) -> bool:
