@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-6mij.2.3.1",
   "title": "Refactor deaddrop_post ctx lookup and OSCORE enforcement to match CONFIG_LICHEN_COAP_SERVER_OSCORE policy",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:26:12.001747459Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T06:09:43.642236391Z",
+  "updated_at": "2026-07-23T06:12:52.420914665Z",
   "started_at": "2026-07-23T06:09:43.642236391Z",
-  "lease_expires_at": "2026-07-23T06:14:43.642236391Z",
-  "heartbeat_at": "2026-07-23T06:09:43.642236391Z",
+  "closed_at": "2026-07-23T06:12:52.420914665Z",
+  "close_reason": "Refactored deaddrop_post ctx lookup to remove duplicate oscore_ctx_get_by_eui64 call after payload handling, guarded OSCORE paths with #ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE to match keys/coap_server policy, fixed sender_iid reference to peer_eui64[7], ensured local_admin check only applies to non-OSCORE paths, and preserved protected response paths for rate-limit/store/success cases. Verified structure consistent with confessions_post and keys handlers. No subbeads created.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-6mij.2.3.1",
