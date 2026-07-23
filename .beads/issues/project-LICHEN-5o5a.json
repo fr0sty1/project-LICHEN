@@ -2,15 +2,15 @@
   "id": "project-LICHEN-5o5a",
   "title": "[merge-conflict] worktree-worker23: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: e348b12eb",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:30:36.498641346Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:46:35.534279522Z",
+  "updated_at": "2026-07-23T01:46:38.360434791Z",
   "started_at": "2026-07-23T01:45:02.605697216Z",
-  "lease_expires_at": "2026-07-23T01:50:02.605697216Z",
-  "heartbeat_at": "2026-07-23T01:45:02.605697216Z"
+  "closed_at": "2026-07-23T01:46:38.360434791Z",
+  "close_reason": "Standardized heltec_wifi_lora32_v3_esp32s3_procpu.conf in worktree-worker23 by removing merge resolution meta-comment and aligning comment text + Kconfig with canonical version in main. Fixed divergence from parallel worker merges. Verified file contents now identical. Commit e348b12eb pushed to worktree-worker23 branch."
 }
