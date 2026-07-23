@@ -2,15 +2,15 @@
   "id": "project-LICHEN-wqq2",
   "title": "[merge-conflict] worktree-worker21: messages.py",
   "notes": "Commit: 604d1f6",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:10:51.644109631Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:46:03.641612644Z",
+  "updated_at": "2026-07-23T02:46:06.414008302Z",
   "started_at": "2026-07-23T02:42:31.554186279Z",
-  "lease_expires_at": "2026-07-23T02:47:31.554186279Z",
-  "heartbeat_at": "2026-07-23T02:42:31.554186279Z"
+  "closed_at": "2026-07-23T02:46:06.414008302Z",
+  "close_reason": "Fixed merge conflict and vector-incompatible announce/messages.py in worker21 worktree by adopting canonical CCP-9 rx_channel placement (byte 1 in flags, 93-byte fixed length) matching independent oracle in test/vectors/generate.py and spec. Also resolved leftover merge marker in test_bridge_zephyr_cmake.py by including both obsolete board aliases. Verified with git commit 604d1f6."
 }
