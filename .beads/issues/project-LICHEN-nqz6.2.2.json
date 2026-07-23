@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-nqz6.2.2",
+  "title": "Align RPL/DAO sections (8.x) with no-ULA 02xx model",
+  "description": "Review and update all DODAG, DAO, prefix routing, Target Option, and source routing logic in sections 8.x of spec/05-routing.md. Remove any assumptions about ULA prefixes or GUA. Ensure DAO Origin Signature, generalized targets, and downward routing use primary 02xx addresses consistently. Update examples and tables.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:20:59.183156299Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:20:59.183156299Z",
+  "labels": [
+    "addressing",
+    "spec",
+    "yggdrasil"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-nqz6.2.2",
+      "depends_on_id": "project-LICHEN-nqz6.2",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:20:59.327288553Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
