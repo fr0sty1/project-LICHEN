@@ -159,7 +159,7 @@
 	pinctrl-1 = <&spi2_sleep>;
 	pinctrl-names = "default", "sleep";
 
-	eink0: uc81xx@0 {
+		eink0: uc81xx@0 {
 		compatible = "ultrachip,uc81xx";
 		reg = <0>;
 		status = "disabled";
@@ -168,11 +168,15 @@
 		busy-gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
 		/* EINK_EN on P1.11 powers the panel; mapped via power-gpios */
 		power-gpios = <&gpio1 11 GPIO_ACTIVE_HIGH>;
+		/* 2 MHz (conservative like LoRa SPI): avoids nRF52840 USB/SPIM
+		 * EasyDMA contention per bring-up notes. E-ink traffic is low
+		 * bandwidth; matches RadioLib and codereview P4 opinion. */
 		spi-max-frequency = <2000000>;
 		width = <152>;
 		height = <152>;
 		rotation = <0>;
 	};
+
 };
 
 /*
