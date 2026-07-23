@@ -2,15 +2,15 @@
   "id": "project-LICHEN-vokk",
   "title": "[merge-conflict] worktree-worker16: coap_config.c",
   "notes": "Commit: 285cdc5 (fixed coap_config.c merge in worker16 by using shared lichen_coap_respond and lichen_coap_server)",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:57:26.957742381Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:20:03.203219086Z",
+  "updated_at": "2026-07-23T03:20:05.342206328Z",
   "started_at": "2026-07-23T03:18:44.658966546Z",
-  "lease_expires_at": "2026-07-23T03:23:44.658966546Z",
-  "heartbeat_at": "2026-07-23T03:18:44.658966546Z"
+  "closed_at": "2026-07-23T03:20:05.342206328Z",
+  "close_reason": "Resolved merge conflict by standardizing coap_config.c on shared lichen_coap_respond helper and lichen_coap_server service name; removed duplicated responder code"
 }
