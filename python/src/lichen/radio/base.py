@@ -13,6 +13,13 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable
 
 
+MAX_LORA_PAYLOAD = 255
+"""Maximum LoRa PHY payload size (bytes). All Radio.transmit() implementations
+MUST reject payloads exceeding this with ValueError(f"payload length ... exceeds
+LoRa MTU..."). Matches sim_client.py and real LoRa hardware constraints (SF7-12).
+"""
+
+
 @runtime_checkable
 class Radio(Protocol):
     """Protocol defining the interface for radio implementations.
@@ -25,7 +32,8 @@ class Radio(Protocol):
         """Transmit a payload over the radio on specified channel.
 
         Args:
-            payload: The raw bytes to transmit.
+            payload: The raw bytes to transmit. MUST be <= MAX_LORA_PAYLOAD (255
+                bytes); implementations raise ValueError for larger payloads.
             channel: Channel index (0 = control per CCP-9/da2q.2; default 0).
 
         Returns:

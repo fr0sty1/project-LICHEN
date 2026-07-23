@@ -29,6 +29,7 @@ from nacl.bindings import (
     crypto_sign_ed25519_pk_to_curve25519,
     crypto_sign_ed25519_sk_to_curve25519,
 )
+from nacl.exceptions import BadSignatureError
 from nacl.signing import SigningKey, VerifyKey
 
 if TYPE_CHECKING:
