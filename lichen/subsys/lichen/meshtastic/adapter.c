@@ -933,6 +933,12 @@ static uint32_t peer_node_num(const uint8_t eui64[8])
 	return node_num != 0U ? node_num : 1U;
 }
 
+static uint32_t next_from_radio_id(uint32_t current)
+{
+	uint32_t next = current + 1U;
+	return next != 0U ? next : 1U;
+}
+
 static void peer_eui64_to_iid(const uint8_t eui64[8], uint8_t iid[8])
 {
 	memcpy(iid, eui64, 8U);
@@ -1370,7 +1376,7 @@ static int enqueue_admin_metadata_response(
 		return -EMSGSIZE;
 	}
 
-	from_radio_id = adapter->from_radio_id + 1U;
+	from_radio_id = next_from_radio_id(adapter->from_radio_id);
 	if (pb_write_fixed32_field(mesh_packet, sizeof(mesh_packet), &packet_len,
 				   MESH_PACKET_FROM_FIELD, info.node_num) < 0 ||
 	    pb_write_fixed32_field(mesh_packet, sizeof(mesh_packet), &packet_len,
@@ -1552,7 +1558,7 @@ int lichen_meshtastic_adapter_emit_text(
 		return -ENOTSUP;
 	}
 
-	from_radio_id = adapter->from_radio_id + 1U;
+	from_radio_id = next_from_radio_id(adapter->from_radio_id);
 	packet = (struct lichen_meshtastic_text_packet){
 		.from = event->from,
 		.to = event->to,
@@ -1604,7 +1610,7 @@ int lichen_meshtastic_adapter_emit_status(
 		return -ENOTSUP;
 	}
 
-	from_radio_id = adapter->from_radio_id + 1U;
+	from_radio_id = next_from_radio_id(adapter->from_radio_id);
 	packet = (struct lichen_meshtastic_routing_packet){
 		.from = event->from,
 		.to = event->to,
