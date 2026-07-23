@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-ow3c.1.2",
+  "title": "Implement NVM failure (OSCORE_ERR_NVM_FAILED) handling with SSN rollback or safe advance in oscore_protect_request",
+  "description": "After SSN increment, if oscore_ctx_persist_ssn returns OSCORE_ERR_NVM_FAILED, either decrement sender_seq under mutex to rollback or advance SSN to a safe value (e.g. next power of 2 or max). Prevent nonce reuse risk. Update oscore.c error paths. See persist_ssn and atomic block at 1418-1444.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:18:23.548216925Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:18:23.548216925Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow3c.1.2",
+      "depends_on_id": "project-LICHEN-ow3c.1",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:18:23.684108772Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
