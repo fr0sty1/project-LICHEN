@@ -281,12 +281,17 @@ int lichen_key_pubkey_fingerprint(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKE
 	struct tc_sha256_state_struct sha_state;
 	uint8_t hash[32];
 
-	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS ||
-	    tc_sha256_update(&sha_state, pubkey, LICHEN_KEY_PUBKEY_LEN) != TC_CRYPTO_SUCCESS ||
-	    tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
+	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS) {
+		return -EIO;
+	}
+	if (tc_sha256_update(&sha_state, pubkey, LICHEN_KEY_PUBKEY_LEN) != TC_CRYPTO_SUCCESS) {
+		return -EIO;
+	}
+	if (tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
 		return -EIO;
 	}
 
+	/* Format: "SHA256:<base64>" */
 	memcpy(buf, "SHA256:", 7);
 	size_t b64_len = base64_encode(hash, sizeof(hash), buf + 7, buf_len - 7);
 
@@ -324,9 +329,13 @@ int lichen_key_pubkey_to_iid(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN
 	struct tc_sha256_state_struct sha_state;
 	uint8_t hash[32];
 
-	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS ||
-	    tc_sha256_update(&sha_state, pubkey, LICHEN_KEY_PUBKEY_LEN) != TC_CRYPTO_SUCCESS ||
-	    tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
+	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS) {
+		return -EIO;
+	}
+	if (tc_sha256_update(&sha_state, pubkey, LICHEN_KEY_PUBKEY_LEN) != TC_CRYPTO_SUCCESS) {
+		return -EIO;
+	}
+	if (tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
 		return -EIO;
 	}
 
