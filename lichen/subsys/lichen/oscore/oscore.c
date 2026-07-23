@@ -1602,15 +1602,19 @@ cleanup_protect_request:
 	return ret;
 
 nvm_failed:
-	/* SECURITY: NVM failure path (only from persist_ssn after SSN++ and
-	 * full success of buffer/AAD/encrypt/option steps). Rollback
-	 * sender_seq under mutex to sync with un-updated NVM, preventing
-	 * nonce reuse on subsequent reboot (RFC 8613 §7.2/§8.4; fixes python-ano.41).
-	 * The 6 error paths (param checks ~1466/1471, ctx/seq checks ~1486/
-	 * 1493/1500, buffer too small ~1523/1532/1545/1553, encrypt fail
-	 * ~1562, option build fail ~1579) set proper ret and goto
-	 * cleanup_protect_request (wipes only, no rollback - SSN consumed
-	 * safely as no packet sent). Mutex protects concurrent access.
+	/* SECURITY: NVM failure ONLY on success path after SSN++ (under mutex
+	 * at ~1511), plaintext/AAD/encrypt/option-build all succeeded (~1591).
+	 * Ciphertext and oscore_opt are filled for caller, so SSN increment
+	 * is kept (no rollback) to prevent nonce reuse. Mutex-locked update
+	 * of s_seq_initialized ensures ! "not initialized" guard (~1497) on
+	 * next call (per test_nvm_protect_request_failure). Fixes
+	 * python-ano.41 (nonce reuse on reboot, RFC 8613 §7.2/§8.4).
+	 *
+	 * The 6 error paths (param ~1473/1479, ctx/seq checks ~1490/1497/1504,
+	 * buffers ~1529/1538/1552/1560, encrypt ~1569, option ~1586) set
+	 * proper ret then goto cleanup_protect_request (wipes only; SSN
+	 * consumed safely as error returned before transmission). nvm_failed
+	 * is distinct. Mutex serializes all access; wipes clear sensitive data.
 	 */
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
 	ctx_idx = ctx_get_index(ctx);
