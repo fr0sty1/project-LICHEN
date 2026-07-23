@@ -2,11 +2,15 @@
   "id": "project-LICHEN-hgz7",
   "title": "Inconsistent return type between find_route helper and public lookup",
   "description": "File: lichen/subsys/lichen/rpl/routing.c:166-175, 235-248\n\nThe internal `find_route` helper returns `struct lichen_rpl_route *` (mutable), while the public `lichen_rpl_routing_table_lookup` returns `const struct lichen_rpl_route *`.\n\nWhile the current usage is correct (internal code modifies routes, public API is read-only), this creates a const-correctness inconsistency. The internal function at line 624 casts away const implicitly:\n\n```c\nstruct lichen_rpl_route *route = find_route(\u0026dm-\u003erouting_table, target);\nif (route != NULL) {\n    route-\u003epath_lifetime = lifetime;  // modifies via non-const pointer\n```\n\nSuggested improvement: Add a private `find_route_mut` for internal modification, or document the design decision.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 4,
   "issue_type": "improvement",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:54:22.432461Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:54:22.432516Z"
+  "updated_at": "2026-07-23T04:19:40.681736909Z",
+  "started_at": "2026-07-23T04:19:40.681736909Z",
+  "lease_expires_at": "2026-07-23T04:24:40.681736909Z",
+  "heartbeat_at": "2026-07-23T04:19:40.681736909Z"
 }
