@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-et78.2.4",
+  "title": "Add Non-Storing Mode specific SRH and source routing MUST validations",
+  "description": "Ensure lichen_rpl_srh_parse and routing table fully enforce RFC 6554 + LICHEN Non-Storing profile (no compression, segments_left checks, max hops=8, self-target validation). Update tests/vectors. Reference project-LICHEN-et78.2",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:27:26.300888913Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:27:26.300888913Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-et78.2.4",
+      "depends_on_id": "project-LICHEN-et78.2",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:27:26.440848028Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
