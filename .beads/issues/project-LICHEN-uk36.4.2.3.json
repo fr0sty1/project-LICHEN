@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-uk36.4.2.3",
+  "title": "Add/update interop tests for EDHOC+OSCORE export matching test/vectors/ and Python reference",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:29:37.303123846Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:29:37.303123846Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-uk36.4.2.3",
+      "depends_on_id": "project-LICHEN-uk36.4.2",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:29:37.442015347Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
