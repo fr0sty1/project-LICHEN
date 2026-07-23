@@ -408,7 +408,7 @@ static int find_free_slot_locked(void)
 			return i;
 		}
 	}
-	return -ENOMEM;
+	return -ENOSPC;
 }
 
 static uint32_t get_unix_time(void)
@@ -1050,7 +1050,7 @@ static int keys_single_put(struct coap_resource *resource,
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_CONFLICT, 0, NULL, 0);
 	}
-	if (ret == -ENOMEM) {
+	if (ret == -ENOSPC) {
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_SERVICE_UNAVAILABLE, 0, NULL, 0);
 	}
