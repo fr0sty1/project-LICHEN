@@ -3,10 +3,9 @@
 """Tests for announce message codec.
 """
 
-import pytest
-import json
-import subprocess
 from pathlib import Path
+
+import pytest
 
 from lichen.announce.messages import (
     ANNOUNCE_TYPE,
@@ -15,11 +14,11 @@ from lichen.announce.messages import (
     AnnounceError,
     AnnounceMessage,
 )
-from lichen.l2_payload import L2PayloadKind, classify_l2_payload, l2_payload_body
-
 
 VECTORS_DIR = Path(__file__).resolve().parents[3] / "test" / "vectors"
 
+
+class TestAnnounceMessage:
     def test_valid_minimal_announce(self):
         """A valid announce with minimum required fields."""
         msg = AnnounceMessage(
@@ -156,12 +155,12 @@ class TestSignedData:
         signed = msg.signed_data()
         assert signed[40:42] == bytes([0x12, 0x34])
 
-    def test_signed_data_includes_current_channel_at_offset(self):
+    def test_signed_data_includes_rx_channel_at_offset(self):
         msg = AnnounceMessage(
             originator_iid=b"\x01\x02\x03\x04\x05\x06\x07\x08",
             pubkey=b"\x00" * 32,
             seq_num=0x1234,
-            current_channel=5,
+            rx_channel=5,
         )
         signed = msg.signed_data()
         expected = (
@@ -216,12 +215,12 @@ class TestSignedData:
         )
         assert msg1.signed_data() == msg2.signed_data()
 
-    def test_signed_data_includes_current_channel(self):
+    def test_signed_data_includes_rx_channel(self):
         msg = AnnounceMessage(
             originator_iid=bytes(8),
             pubkey=bytes(32),
             seq_num=0,
-            current_channel=5,
+            rx_channel=5,
         )
         signed = msg.signed_data()
         assert signed[42:43] == bytes([5])
@@ -297,7 +296,7 @@ class TestSerialization:
             pubkey=bytes(32),
             seq_num=0xABCD,
             signature=bytes(SIGNATURE_LENGTH),
-            current_channel=0,
+            rx_channel=0,
         )
         wire = msg.to_bytes()
         assert wire[3:5] == bytes([0xAB, 0xCD])
@@ -308,7 +307,7 @@ class TestSerialization:
             pubkey=bytes(32),
             seq_num=0,
             signature=b"",
-            current_channel=0,
+            rx_channel=0,
         )
         with pytest.raises(AnnounceError, match="cannot serialize unsigned"):
             msg.to_bytes()
@@ -402,7 +401,7 @@ class TestKnownVectors:
             flags=7,
             signature=bytes([0xBB] * SIGNATURE_LENGTH),
             app_data=b"",
-            current_channel=7,
+            rx_channel=7,
         )
         wire = msg.to_bytes()
 
