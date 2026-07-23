@@ -6,6 +6,13 @@ from dataclasses import dataclass
 from enum import Enum, auto
 
 
+def hash_32(data: bytes) -> int:
+    h = 0x811c9dc5
+    for b in data:
+        h = ((h ^ b) * 0x01000193) & 0xffffffff
+    return h
+
+
 @dataclass
 class SuperframeClock:
     sfn: int = 0
