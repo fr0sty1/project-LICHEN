@@ -84,7 +84,7 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 	uint16_t payload_len = 0;
 	uint8_t dest_iid[8] = {0};
 	struct oscore_ctx *ctx = NULL;
-	uint8_t piv[8];
+	uint8_t piv[OSCORE_PIV_MAX_LEN];
 	size_t piv_len = sizeof(piv);
 	bool is_protected = coap_oscore_is_protected(request);
 	if (is_protected) {
@@ -104,6 +104,9 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 		size_t plain_len = sizeof(plain);
 		int r = coap_oscore_unprotect_request(ctx, request, &orig_code, opts, &opt_len, plain, &plain_len, piv, &piv_len);
 		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_BAD_REQUEST;
+		if (orig_code != COAP_METHOD_POST) {
+			return COAP_RESPONSE_CODE_NOT_ALLOWED;
+		}
 		payload = plain;
 		payload_len = (uint16_t)plain_len;
 	} else {
