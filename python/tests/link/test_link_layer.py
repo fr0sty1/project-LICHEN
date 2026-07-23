@@ -29,7 +29,7 @@ from lichen.link.link_layer import (
     SIGNATURE_LENGTH,
     LinkLayer,
 )
-from lichen.link.tx_queue import Priority, QueueFullError
+from lichen.link.tx_queue import Priority, QueueFullError, TxQueue
 
 
 class MockRadio:

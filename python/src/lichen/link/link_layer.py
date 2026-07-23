@@ -207,6 +207,8 @@ class LinkLayer:
     _seqnum: int = field(default=0, repr=False)
     _exhausted: bool = field(default=False, repr=False)
     _pinned_keys: dict[bytes, bytes] = field(default_factory=dict, repr=False)
+    _tx_lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False, repr=False)
+    _sequence_started: bool = field(default=False, init=False, repr=False)
 
 
     def __post_init__(self) -> None:
