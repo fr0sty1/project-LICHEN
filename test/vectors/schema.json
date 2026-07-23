@@ -881,14 +881,14 @@
     },
     "rpl_messages_vector": {
       "type": "object",
-      "required": ["name", "type", "encoded"],
+      "required": ["name"],
       "additionalProperties": false,
-      "description": "RPL control message (RFC 6550) parse/generate vector.",
+      "description": "RPL control message (RFC 6550) parse/generate vector. Supports malformed ICMPv6 cases with wire/expect_error per project-LICHEN-2auf.41.2.3.1.1 (checksum_failure, truncation).",
       "properties": {
         "name": {"type": "string"},
         "type": {
           "type": "string",
-          "enum": ["dio", "dao", "dao_ack", "dis", "option", "dio_with_options", "dao_with_options", "option_chain"],
+          "enum": ["dio", "dao", "dao_ack", "dis", "option", "dio_with_options", "dao_with_options", "option_chain", "malformed"],
           "description": "Message or option type being tested"
         },
         "option_type": {
@@ -910,7 +910,18 @@
         "encoded": {
           "$ref": "#/definitions/hex",
           "description": "Encoded message bytes (excluding ICMPv6 header)"
-        }
+        },
+        "wire": {
+          "$ref": "#/definitions/hex",
+          "description": "Full wire bytes for malformed test cases"
+        },
+        "expect_error": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$",
+          "description": "Expected error category for malformed vectors (checksum_failure, truncation)"
+        },
+        "category": {"type": "string"},
+        "provenance": {"type": "string"}
       }
     },
     "ccp15_vector": {
