@@ -1457,18 +1457,26 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	size_t piv_len;
 	uint8_t plaintext[CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX];
 	size_t pt_len;
+	uint8_t aad[64];
+	int aad_ret;
+	size_t aad_len;
+	size_t required_ct_len;
+	struct oscore_option opt;
+	int opt_len;
 	int ret;
 	int ctx_idx;
 	uint32_t seq;
 
 	if (ctx == NULL || ciphertext == NULL || ciphertext_len == NULL ||
 	    oscore_opt == NULL || oscore_opt_len == NULL) {
-		return OSCORE_ERR_INVALID_PARAM;
+		ret = OSCORE_ERR_INVALID_PARAM;
+		goto cleanup_protect_request;
 	}
 
 	if ((options_len > 0 && options == NULL) ||
 	    (payload_len > 0 && payload == NULL)) {
-		return OSCORE_ERR_INVALID_PARAM;
+		ret = OSCORE_ERR_INVALID_PARAM;
+		goto cleanup_protect_request;
 	}
 
 	/*
@@ -1482,21 +1490,24 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	if (ctx_idx < 0) {
 		k_mutex_unlock(&s_ctx_mutex);
 		LOG_ERR("OSCORE context not in storage array");
-		return OSCORE_ERR_INVALID_PARAM;
+		ret = OSCORE_ERR_INVALID_PARAM;
+		goto cleanup_protect_request;
 	}
 
 	/* Require sender_seq to be explicitly initialized before first use */
 	if (!s_seq_initialized[ctx_idx]) {
 		k_mutex_unlock(&s_ctx_mutex);
 		LOG_ERR("OSCORE sender_seq not initialized - call oscore_ctx_set_sender_seq()");
-		return OSCORE_ERR_INVALID_PARAM;
+		ret = OSCORE_ERR_INVALID_PARAM;
+		goto cleanup_protect_request;
 	}
 
 	/* Check for sender sequence number exhaustion before use */
 	if (ctx->sender_seq == UINT32_MAX) {
 		k_mutex_unlock(&s_ctx_mutex);
 		LOG_ERR("OSCORE sender sequence exhausted - key rotation required");
-		return OSCORE_ERR_SEQ_EXHAUSTED;
+		ret = OSCORE_ERR_SEQ_EXHAUSTED;
+		goto cleanup_protect_request;
 	}
 
 	/* Get and increment sender sequence number atomically */
@@ -1537,17 +1548,16 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	}
 
 	/* Build AAD per RFC 8613 Section 5.4 */
-	uint8_t aad[64];
-	int aad_ret = build_oscore_aad(ctx->sender_id, ctx->sender_id_len,
-				       piv, piv_len, aad, sizeof(aad));
+	aad_ret = build_oscore_aad(ctx->sender_id, ctx->sender_id_len,
+				   piv, piv_len, aad, sizeof(aad));
 	if (aad_ret < 0) {
 		ret = OSCORE_ERR_BUFFER_TOO_SMALL;
 		goto cleanup_protect_request;
 	}
-	size_t aad_len = (size_t)aad_ret;
+	aad_len = (size_t)aad_ret;
 
 	/* Check output buffer size */
-	size_t required_ct_len = pt_len + OSCORE_TAG_LEN;
+	required_ct_len = pt_len + OSCORE_TAG_LEN;
 	if (*ciphertext_len < required_ct_len) {
 		ret = OSCORE_ERR_BUFFER_TOO_SMALL;
 		goto cleanup_protect_request;
@@ -1564,16 +1574,14 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	*ciphertext_len = required_ct_len;
 
 	/* Build OSCORE option */
-	struct oscore_option opt = {
-		.has_piv = true,
-		.piv_len = (uint8_t)(piv_len & 0x07),
-		.has_kid = true,
-		.kid_len = ctx->sender_id_len,
-	};
+	opt.has_piv = true;
+	opt.piv_len = (uint8_t)(piv_len & 0x07);
+	opt.has_kid = true;
+	opt.kid_len = ctx->sender_id_len;
 	memcpy(opt.piv, piv, piv_len);
 	memcpy(opt.kid, ctx->sender_id, ctx->sender_id_len);
 
-	int opt_len = oscore_option_build(&opt, oscore_opt, *oscore_opt_len);
+	opt_len = oscore_option_build(&opt, oscore_opt, *oscore_opt_len);
 	if (opt_len < 0) {
 		ret = opt_len;
 		goto cleanup_protect_request;
