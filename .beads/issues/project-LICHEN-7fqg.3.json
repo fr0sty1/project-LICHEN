@@ -3,17 +3,16 @@
   "title": "Validate and audit convergence",
   "description": "Run complete locked Python, Rust, host C, Zephyr/Twister, canonical-vector, simulator/fleet, and production-board gates on the convergence branch. Perform workspace API review and three independent final reviews, reconcile Beads exports, audit residual branches, and prepare the final merge boundary.",
   "acceptance_criteria": "All required gates pass with zero unexpected skips or stale generated files; three reviews converge; every residual blocker and branch disposition is recorded; worktree is clean except approved artifacts; final branch/commit hashes are documented.",
-  "labels": ["defer-external"],
   "status": "open",
   "priority": 0,
   "issue_type": "task",
-  "assignee": "ec2-user",
   "created_at": "2026-07-21T00:53:11.088851977Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-21T04:10:05.757056404Z",
+  "updated_at": "2026-07-23T04:42:26.299851029Z",
   "started_at": "2026-07-21T04:10:05.757056404Z",
-  "lease_expires_at": "2026-07-21T04:15:05.757056404Z",
-  "heartbeat_at": "2026-07-21T04:10:05.757056404Z",
+  "labels": [
+    "defer-external"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-7fqg.3",
