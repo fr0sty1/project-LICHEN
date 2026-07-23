@@ -1,16 +1,16 @@
 {
   "id": "project-LICHEN-s1i9",
   "title": "[codereview] Spec subagent: draft-lichen-schc-lora-00.md:129 section 4 Rule 0/1 still missing CoAP fields from appendix A.2, Rule 2 description mismatches adaptation.md MQTT-SN vs ICMP",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "created_at": "2026-07-22T14:50:30.564219576Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-23T05:15:04.889619901Z",
+  "updated_at": "2026-07-23T05:16:50.91445785Z",
   "started_at": "2026-07-22T14:50:44.521271964Z",
-  "lease_expires_at": "2026-07-23T05:20:04.889619901Z",
-  "heartbeat_at": "2026-07-23T05:15:04.889619901Z",
+  "closed_at": "2026-07-23T05:16:50.91445785Z",
+  "close_reason": "Updated Rule 0/1 tables with full CoAP fields from rules.rs and appendix A.3; completed Rule 2 table with identifier/sequence and clarified distinction from MQTT-SN Rule 7; synced references and CoAP details section. Tests unaffected as docs-only.",
   "labels": [
     "codereview"
   ],
