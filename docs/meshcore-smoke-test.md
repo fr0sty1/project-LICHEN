@@ -44,10 +44,10 @@ west twister \
   -T lichen/tests/meshcore_ble \
   -T lichen/tests/meshcore_gateway_adapter \
   -T lichen/tests/app_interface \
-  -p native_sim \
+  -p native_sim/native/64 \
   --inline-logs \
   --outdir twister-out-meshcore-smoke-preflight \
-  --extra-args ZEPHYR_EXTRA_MODULES=$PWD/lichen
+  --extra-args ZEPHYR_EXTRA_MODULES="$PWD/lichen"
 
 tools/zephyr-clean-worktree.sh verify-twister "$PWD" \
   twister-out-meshcore-smoke-preflight

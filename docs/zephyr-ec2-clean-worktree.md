@@ -43,6 +43,41 @@ west twister -T lichen/tests/link_crypto -p native_sim \
 tools/zephyr-clean-worktree.sh verify-twister "$PWD" twister-out-link-crypto
 ```
 
+## MeshCore BLE native/64-bit Validation
+
+MeshCore BLE, meshcore_adapter, and related tests require `native_sim/native/64` (32-bit native_sim fails to link BLE HCI device ordinal). Full sequence combining EC2 mount (AGENTS.md), script help, and meshcore-smoke-test:
+
+```bash
+# EC2 mount and env setup (from AGENTS.md AWS Zephyr Builder section)
+aws ec2 attach-volume --profile personal --region us-west-2 \
+  --volume-id vol-0a95eee8d1d8461eb --instance-id <instance-id> --device /dev/sdf
+
+sudo /mnt/lichen-zephyr/scripts/mount-volume.sh vol-0a95eee8d1d8461eb /mnt/lichen-zephyr
+/mnt/lichen-zephyr/scripts/bootstrap-host.sh  # idempotent
+. /mnt/lichen-zephyr/env.sh
+cd /mnt/lichen-zephyr/work/project-LICHEN
+
+# Create isolated clean worktree (exact from zephyr-clean-worktree.sh --help)
+tools/zephyr-clean-worktree.sh create project-LICHEN-meshcore-ble-validate origin/main
+cd /mnt/lichen-zephyr/work/project-LICHEN-meshcore-ble-validate
+# git apply /tmp/change.patch  # if validating uncommitted changes
+
+west twister \
+  -T lichen/tests/meshcore_codec \
+  -T lichen/tests/meshcore_adapter \
+  -T lichen/tests/meshcore_ble \
+  -T lichen/tests/meshcore_gateway_adapter \
+  -T lichen/tests/app_interface \
+  -p native_sim/native/64 \
+  --inline-logs \
+  --outdir twister-out-meshcore-ble \
+  --extra-args ZEPHYR_EXTRA_MODULES="$PWD/lichen"
+
+tools/zephyr-clean-worktree.sh verify-twister "$PWD" twister-out-meshcore-ble
+```
+
+Record full command output, west manifest, Zephyr version, hashes, and verification result in validation beads. Cleanup: `git -C /mnt/lichen-zephyr/work/project-LICHEN worktree remove --force /mnt/lichen-zephyr/work/project-LICHEN-meshcore-ble-validate` (do not commit twister-out/).
+
 ## Why This Matters
 
 The EBS cache keeps `/mnt/lichen-zephyr/work/project-LICHEN` as the primary west
