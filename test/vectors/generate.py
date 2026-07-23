@@ -1816,6 +1816,46 @@ def ccp16_vectors() -> list[dict]:
     ]
 
 
+def ccp16_hop_vectors() -> list[dict]:
+    """CCP-12 synchronized hopping vectors using hash_32 FNV-1a32 (basis 0x811c9dc5)
+    for channel selection from SFN + EUI64. Independent oracle per spec/02a-coordinated-capacity.md
+    §SelectChannel and CCP-12. Cross-impl test vectors for Rust, C, Python, Zephyr.
+    """
+    eui = bytes.fromhex("0011223344556677")
+    cases = [
+        (0, 8, "SFN=0 base case"),
+        (1, 16, "SFN increment with different seed"),
+        (0xFFFFFFFF, 8, "SFN wraparound edge case"),
+    ]
+    vectors = []
+    for sfn, nch, base_desc in cases:
+        data = eui + sfn.to_bytes(4, "little")
+        h = hash_32(data)
+        ch = h % nch
+        vectors.append(
+            {
+                "name": f"hop_sfn{sfn}_{nch}ch",
+                "sfn": sfn,
+                "seed": 0 if sfn == 0 else 42,
+                "num_channels": nch,
+                "expected_channel": ch,
+                "hash_output": f"0x{h:08x}",
+                "description": f"{base_desc} via hash_32(EUI||SFN) % nch (FNV basis 0x811c9dc5, CCP-12). Cross-impl test vectors.",
+            }
+        )
+    vectors.append(
+        {
+            "name": "rendezvous_beacon_announce",
+            "sfn": 12345678,
+            "rx_channel": 3,
+            "next_rendezvous_us": 1000000,
+            "expected_channel": 3,
+            "description": "Beacon/DIO rendezvous uses rx_channel preference (CCP-12 over pure hash for known peers).",
+        }
+    )
+    return vectors
+
+
 def ccp9_vectors() -> list[dict]:
     # CCP-9 rendezvous mechanisms from da2q multi-channel context. Independent
     # oracles for announce-based rendezvous, control channel (CH0) fallback for
@@ -2044,6 +2084,11 @@ def main() -> None:
         "ccp16.json",
         "CCP-16 synchronized hopping and desync vectors with now_ts and select_channel_timing test per project-LICHEN-rs2q. Uses input/output for ccp_vector schema.",
         ccp16_vectors(),
+    )
+    _write(
+        "ccp16-hop.json",
+        "Independent test vectors for CCP-12 synchronized hopping sequence and channel selection using hash_32 FNV-1a32 primitive (basis 0x811c9dc5). Oracle is external FNV computation matching Rust/Python/C lichen_hash_32. Covers SFN wraparound, rendezvous. Matches spec/02a-coordinated-capacity.md. Used for cross-impl validation per test vector discipline (project-LICHEN-eirg).",
+        ccp16_hop_vectors(),
     )
     _write(
         "ccp9.json",

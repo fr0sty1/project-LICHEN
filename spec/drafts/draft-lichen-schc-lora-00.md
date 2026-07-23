@@ -155,7 +155,7 @@ Rule IDs are 8 bits (1 byte):
 
 Most common case for intra-mesh traffic.
 
-**Rule Definition:** (matches spec/03-adaptation.md:5.5 and appendix-schc.md)
+**Rule Definition:** (matches spec/03-adaptation.md:5.5, appendix-schc.md:A.3 CoAP fields, and rust/lichen-schc/src/rules.rs:LINK_LOCAL_COAP_RULE)
 
 | Field | TV | MO | CDA |
 |-------|----|----|-----|
@@ -173,14 +173,19 @@ Most common case for intra-mesh traffic.
 | UDP.DstPort | 5683 | MSB(12) | LSB(4) |
 | UDP.Length | - | ignore | compute |
 | UDP.Checksum | - | ignore | compute |
+| CoAP.Version | 1 | equal | not-sent |
+| CoAP.Type | - | ignore | value-sent |
+| CoAP.TKL | - | ignore | value-sent |
+| CoAP.Code | - | ignore | value-sent |
+| CoAP.MID | - | ignore | value-sent |
 
-**Compressed size:** 4-6 bytes (Rule ID + 4-bit port residues)
+**Compressed size:** 4-6 bytes (Rule ID + 4-bit port residues + CoAP fields; see test vectors)
 
 ### 4.3. Rule 1: Global IPv6 + UDP + CoAP
 
 For traffic using ULA or GUA addresses.
 
-**Rule Definition:** (aligned with appendix-schc.md and 03-adaptation.md:5.5)
+**Rule Definition:** (aligned with appendix-schc.md:A.3, 03-adaptation.md:5.5, and GLOBAL_COAP_RULE)
 
 | Field | TV | MO | CDA |
 |-------|----|----|-----|
@@ -198,8 +203,17 @@ For traffic using ULA or GUA addresses.
 | UDP.DstPort | 5683 | MSB(12) | LSB(4) |
 | UDP.Length | - | ignore | compute |
 | UDP.Checksum | - | ignore | compute |
+| CoAP.Version | 1 | equal | not-sent |
+| CoAP.Type | - | ignore | value-sent |
+| CoAP.TKL | - | ignore | value-sent |
+| CoAP.Code | - | ignore | value-sent |
+| CoAP.MID | - | ignore | value-sent |
 
-**Compressed size:** 12-14 bytes
+**Compressed size:** 12-14 bytes (includes CoAP fields per appendix A.3)
+
+### 4.4. Rule 2: ICMPv6 Echo
+
+For diagnostic and reachability testing (distinct from MQTT-SN Rule 7 per adaptation.md §5.5).
 
 ### 4.4. Rule 2: ICMPv6 Echo
 

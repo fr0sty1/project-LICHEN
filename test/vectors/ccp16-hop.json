@@ -1,4 +1,5 @@
 {
+  "$schema": "./schema.json",
   "format_version": 2,
   "description": "Independent test vectors for CCP-12 synchronized hopping sequence and channel selection using hash_32 FNV-1a32 primitive (basis 0x811c9dc5). Oracle is external FNV computation matching Rust/Python/C lichen_hash_32. Covers SFN wraparound, rendezvous. Matches spec/02a-coordinated-capacity.md. Used for cross-impl validation per test vector discipline (project-LICHEN-eirg).",
   "vectors": [
@@ -7,26 +8,35 @@
       "sfn": 0,
       "seed": 0,
       "num_channels": 8,
-      "expected_channel": 7,
-      "hash_output": "0x811c9dc5",
-      "description": "SFN=0 selects channel via hash_32(0) % 8 (FNV-1a32)"
+      "expected_channel": 5,
+      "hash_output": "0x87645a8d",
+      "description": "SFN=0 base case via hash_32(EUI||SFN) % nch (FNV basis 0x811c9dc5, CCP-12). Cross-impl test vectors."
     },
     {
       "name": "hop_sfn1_16ch",
       "sfn": 1,
       "seed": 42,
       "num_channels": 16,
-      "expected_channel": 5,
-      "hash_output": "computed via FNV-1a32",
-      "description": "Example rendezvous channel selection"
+      "expected_channel": 12,
+      "hash_output": "0x37381b7c",
+      "description": "SFN increment with different seed via hash_32(EUI||SFN) % nch (FNV basis 0x811c9dc5, CCP-12). Cross-impl test vectors."
+    },
+    {
+      "name": "hop_sfn4294967295_8ch",
+      "sfn": 4294967295,
+      "seed": 42,
+      "num_channels": 8,
+      "expected_channel": 1,
+      "hash_output": "0x211a6929",
+      "description": "SFN wraparound edge case via hash_32(EUI||SFN) % nch (FNV basis 0x811c9dc5, CCP-12). Cross-impl test vectors."
     },
     {
       "name": "rendezvous_beacon_announce",
       "sfn": 12345678,
       "rx_channel": 3,
       "next_rendezvous_us": 1000000,
-      "expected_beacon_fields": "SFN + channel + time",
-      "description": "Beacon/DIO rendezvous announcement format"
+      "expected_channel": 3,
+      "description": "Beacon/DIO rendezvous uses rx_channel preference (CCP-12 over pure hash for known peers)."
     }
   ]
 }
