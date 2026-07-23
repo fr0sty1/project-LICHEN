@@ -2,15 +2,15 @@
   "id": "project-LICHEN-plbq",
   "title": "[merge-conflict] worktree-worker24: t_deck_esp32s3_procpu.conf",
   "notes": "Commit: dae7b31b2",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:41:07.633639182Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:14:10.584430906Z",
+  "updated_at": "2026-07-23T04:14:13.370568205Z",
   "started_at": "2026-07-23T04:12:15.035402237Z",
-  "lease_expires_at": "2026-07-23T04:17:15.035402237Z",
-  "heartbeat_at": "2026-07-23T04:12:15.035402237Z"
+  "closed_at": "2026-07-23T04:14:13.370568205Z",
+  "close_reason": "Resolved merge conflict in t_deck_esp32s3_procpu.conf by consolidating header comments from multiple worker branches (plbq, others). Updated gateway board config with merge resolution note, matching worker23 style. Verified no other conflicts. Commit dae7b31b2"
 }
