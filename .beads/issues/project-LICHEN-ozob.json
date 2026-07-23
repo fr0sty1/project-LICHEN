@@ -3,15 +3,17 @@
   "title": "Unbounded _windows dict in ReplayProtector enables memory exhaustion",
   "description": "File: python/src/lichen/link/replay.py:139, 151-152\n\nThe _windows dict in ReplayProtector grows without bound:\n\n    self._windows: dict[bytes | str | int, ReplayWindow] = {}\n    ...\n    window = ReplayWindow(self._window_size)\n    self._windows[sender] = window\n\nEach new sender gets a ReplayWindow entry. An attacker sending frames with unique sender IDs could exhaust memory.\n\nCombined with the MIC stub accepting all frames, this is exploitable.\n\nFix: Add an LRU eviction policy or cap the number of tracked senders. Old/inactive senders should be evicted.",
   "notes": "Commit: 4fb682861",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:21:57.180641Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T03:47:18.076588575Z",
+  "updated_at": "2026-07-23T03:59:44.352674583Z",
   "started_at": "2026-07-23T03:45:49.959287801Z",
   "closed_at": "2026-07-23T03:47:18.076588575Z",
-  "close_reason": "Implemented LRU eviction using OrderedDict in ReplayProtector (max_peers=32 matching Rust impl). Tests, ruff, and mypy all pass. Commit 4fb682861"
+  "close_reason": "Implemented LRU eviction using OrderedDict in ReplayProtector (max_peers=32 matching Rust impl). Tests, ruff, and mypy all pass. Commit 4fb682861",
+  "lease_expires_at": "2026-07-23T04:04:44.352674583Z",
+  "heartbeat_at": "2026-07-23T03:59:44.352674583Z"
 }
