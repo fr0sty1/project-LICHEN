@@ -166,6 +166,8 @@ def insert_source_route(
     hops = [to_ipv6(a) for a in path]
     if not hops:
         raise RoutingError("path must not be empty")
+    if len(hops) > MAX_ROUTE_HOPS:
+        raise RoutingError("source route exceeds maximum hop count")
     if expected_destination is not None:
         expected = to_ipv6(expected_destination)
         if hops[-1] != expected:
