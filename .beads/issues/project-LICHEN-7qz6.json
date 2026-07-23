@@ -2,15 +2,15 @@
   "id": "project-LICHEN-7qz6",
   "title": "[merge-conflict] worktree-worker23: main.c",
   "notes": "Commit: 23b673fbb",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:25.204321994Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:33:52.169727732Z",
+  "updated_at": "2026-07-23T03:33:55.446403056Z",
   "started_at": "2026-07-23T03:30:50.268211185Z",
-  "lease_expires_at": "2026-07-23T03:35:50.268211185Z",
-  "heartbeat_at": "2026-07-23T03:30:50.268211185Z"
+  "closed_at": "2026-07-23T03:33:55.446403056Z",
+  "close_reason": "Added missing SPDX license header to firmware/bridge-zephyr/src/main.c in worktree-worker23 to resolve merge divergence (commit 23b673fbb). File now matches canonical version. Verified with git diff and build readiness."
 }
