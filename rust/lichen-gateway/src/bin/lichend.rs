@@ -450,9 +450,9 @@ async fn forward_mesh_to_upstream<T: TunLike>(
     } else if let Some(ipv6) = gw.mesh_to_upstream(frame) {
         let mut dst = [0u8; 16];
         if ipv6.len() >= IPV6_HEADER_LEN {
-            dst.copy_from_slice(&ipv6[field::DST_OFFSET..IPV6_HEADER_LEN]);
+            dst.copy_from_slice(&ipv6[field::DST_OFFSET..field::DST_OFFSET + 16]);
             if gw.is_local_mesh(&dst) {
-                return None;
+                return gw.mesh_to_mesh(&ipv6);
             }
         }
         if let Some(t) = tun {

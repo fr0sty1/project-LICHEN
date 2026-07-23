@@ -136,7 +136,7 @@ impl Gateway {
         dst.copy_from_slice(&ipv6[field::DST_OFFSET..field::DST_OFFSET + 16]);
         let route = match self.rpl_node.router.lookup_route(&dst) {
             Some(r) => r,
-            None => return Some(ipv6.to_vec()),
+            None => return None,
         };
         let mut routed = vec![0u8; ipv6.len() + 140];
         let to_compress = if route.len() > 1 {
@@ -257,7 +257,7 @@ mod tests {
     }
 
     #[test]
-    fn local_mesh_packet_uses_mesh_to_mesh_path() {
+    fn unknown_route_is_dropped_in_mesh_to_mesh() {
         let mut gw = test_gateway();
         let dst = ll(2);
         assert!(gw.is_local_mesh(&dst.0));
@@ -266,6 +266,6 @@ mod tests {
             0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
         ];
         let result = gw.mesh_to_mesh(&packet);
-        assert!(result.is_some());
+        assert!(result.is_none());
     }
 }
