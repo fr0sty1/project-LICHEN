@@ -9,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:36:15.336059306Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:00:14.927970618Z",
+  "updated_at": "2026-07-23T04:00:12.36471848Z",
   "started_at": "2026-07-23T03:56:20.375227472Z",
   "closed_at": "2026-07-23T04:00:14.927970618Z",
   "close_reason": "Resolved merge conflict by reconciling announce/messages.py wire format with spec/test-vectors (93B packed rx_channel), merged detailed security docstrings from worker4 branch. Updated to_bytes/from_bytes/signed_data docs. Tests pass. Commit 6799d553d"
