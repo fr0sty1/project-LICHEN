@@ -564,6 +564,11 @@ class Simulation:
             raise ValueError(f"Node '{node_id}' does not exist")
         if not node.connected:
             raise ValueError(f"Node '{node_id}' is not connected")
+        if node.hop_schedule and len(node.hop_schedule) > 0:
+            current_sfn = node.tdma_scheduler.clock.sfn
+            channel = node.synchronized_hop_channel(current_sfn)
+        elif channel == 0:
+            channel = node.current_channel
         if self._jitter_max_us > 0:
             jitter = self.calculate_tx_jitter()
             delayed_event = TxStartDelayedEvent(
@@ -603,8 +608,7 @@ class Simulation:
 
         This is the core TX logic, called either immediately from
         start_transmission() or later via TxStartDelayedEvent.
-        Integrates synchronized hopping (CCP-12); RX derives independently
-        via synchronized_hop_channel (enter_rx_mode:722, _get_rx_result_internal:820).
+        Integrates synchronized hopping (CCP-12).
 
         Args:
             node_id: ID of the transmitting node.
@@ -620,15 +624,19 @@ class Simulation:
         node = self._nodes.get(node_id)
         if node is not None and not node.tdma_scheduler.is_tx_allowed(self._current_time_us):
             return ""
+        if node is not None and node.hop_schedule and len(node.hop_schedule) > 0:
+            current_sfn = node.tdma_scheduler.clock.sfn
+            channel = node.synchronized_hop_channel(current_sfn)
         previous_tx_id = self._active_transmissions.get(node_id)
         if previous_tx_id is not None:
             self._medium.end_tx(previous_tx_id)
         if node is not None:
             node.state = NodeState.TX
-            if channel != node.current_channel:
+            if (
+                not (node.hop_schedule and len(node.hop_schedule) > 0)
+                and channel != node.current_channel
+            ):
                 node.current_channel = channel
-        else:
-            channel = synchronized_hop_channel(0)  # rendezvous default
 
         tx = self._medium.start_tx(
             node_id=node_id,
