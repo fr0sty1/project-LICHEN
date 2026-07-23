@@ -51,11 +51,12 @@ config LICHEN_RPL_MAX_ACTIVE_DAO_CANDIDATES
 
 config LICHEN_RPL_TRICKLE_IMIN_MS
 	int "Trickle Imin (ms)"
-	default 4096
+	default 4000
 	range 100 60000
 	help
-	  Minimum Trickle interval in milliseconds (RFC 6206).
-	  Smaller values speed up convergence but increase traffic.
+	  Minimum Trickle interval in milliseconds. Matches spec Imin=4s=4000 ms
+	  (draft-lichen-rpl-lora-00.md:235, RFC 6206). Smaller values speed up
+	  convergence but increase traffic.
 
 config LICHEN_RPL_TRICKLE_IMAX_DOUBLINGS
 	int "Trickle Imax doublings"
