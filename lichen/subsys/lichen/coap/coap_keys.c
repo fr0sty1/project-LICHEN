@@ -28,6 +28,9 @@
 #include <lichen/coap_keys.h>
 #include <lichen/coap_server.h>
 #include <lichen/transport/slip_transport.h>
+#include <lichen/oscore.h>
+#include <lichen/coap_oscore.h>
+#include <lichen/l2/ipv6_addr.h>
 
 #ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
 #include <lichen/oscore.h>
@@ -912,39 +915,24 @@ bool lichen_coap_is_local_admin(const struct sockaddr *addr, socklen_t addr_len)
 
 		return true;
 	}
-
 	return false;
 }
 
-#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
-/*
- * Protected OSCORE response helper for /keys handlers.
- * Symmetric with deaddrop_oscore_respond in coap_dtn.c.
- * Uses coap_oscore_protect_response and falls back on error.
- */
-static int keys_oscore_respond(struct coap_resource *resource,
-			       struct coap_packet *request,
-			       struct sockaddr *addr, socklen_t addr_len,
-			       struct oscore_ctx *ctx,
-			       const uint8_t *piv, size_t piv_len,
-			       uint8_t code)
-{
-	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
-	struct coap_packet resp;
-	int ret = coap_oscore_protect_response(ctx, piv, piv_len, request, code,
-					       NULL, 0, &resp, buf, sizeof(buf));
-	if (ret < 0) {
-		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
+static int lichen_coap_extract_peer_eui64(const struct sockaddr *addr, socklen_t addr_len, uint8_t eui64[LICHEN_KEY_IID_LEN]) {
+	if (addr == NULL || addr_len < sizeof(struct sockaddr_in6) || addr->sa_family != AF_INET6) {
+		memset(eui64, 0, LICHEN_KEY_IID_LEN);
+		return -EINVAL;
 	}
-	ret = coap_resource_send(resource, &resp, addr, addr_len, NULL);
-	return ret;
+	const struct sockaddr_in6 *in6 = (const struct sockaddr_in6 *)addr;
+	memcpy(eui64, &in6->sin6_addr.s6_addr[8], LICHEN_KEY_IID_LEN);
+	lichen_eui64_to_iid(eui64, eui64);
+	return 0;
 }
-#endif /* CONFIG_LICHEN_COAP_SERVER_OSCORE */
 
 /* --------------------------------------------------------------------------
  * CoAP resource handlers
- * -------------------------------------------------------------------------- */
+ * --------------------------------------------------------------------------
+ */
 
 /*
  * GET /keys - List all keys with fingerprints and trust levels
