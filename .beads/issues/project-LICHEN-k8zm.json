@@ -2,7 +2,7 @@
   "id": "project-LICHEN-k8zm",
   "title": "Inconsistent error handling pattern in Trickle non-try methods",
   "description": "File: rust/lichen-rpl/src/trickle.rs\nLines: 136-138, 149-151, 171-172\n\nThe Trickle module has both try_ and non-try versions of methods with inconsistent error handling:\n\n```rust\n// fire_transmit returns bool, swallowing any error\npub fn fire_transmit(\u0026mut self) -\u003e bool {\n    self.try_fire_transmit().unwrap_or(false)\n}\n\n// expire ignores the error entirely\npub fn expire(\u0026mut self, now: u32, rand_offset: u32) {\n    let _ = self.try_expire(now, rand_offset);\n}\n\n// reset also ignores errors\npub fn reset(\u0026mut self, now: u32, rand_offset: u32) {\n    let _ = self.try_reset(now, rand_offset);\n}\n```\n\nImpact:\n1. fire_transmit returns false on error, which is the same as 'suppressed' - caller can't distinguish\n2. expire and reset silently do nothing on error\n3. State machine violations go undetected\n4. Debugging becomes difficult when timer behaves unexpectedly\n\nThis is a design pattern issue rather than a functional bug, but it could mask bugs in callers.\n\nRecommendation: Either:\n1. Remove non-try versions and require explicit error handling\n2. Add debug_assert! or log/defmt in non-try versions\n3. Document clearly that errors are swallowed and when they can occur",
-  "notes": "Commit: 613180ca3",
+  "notes": "Fixed inconsistent error handling by making fire_transmit use .expect() like expire/reset/start. Commit: 730b95f0f",
   "status": "closed",
   "priority": 4,
   "issue_type": "bug",
@@ -10,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:41:31.149857Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:32:31.721747228Z",
+  "updated_at": "2026-07-23T04:32:39.571478546Z",
   "started_at": "2026-07-23T04:30:12.034338372Z",
   "closed_at": "2026-07-23T04:32:31.721747228Z",
   "close_reason": "Fixed inconsistent error handling by making fire_transmit use expect() consistently with other non-try methods. Updated call now panics on invalid state instead of silently returning false. Tests and runtime guards ensure it doesn't trigger in normal operation. Commit: 613180ca3"
