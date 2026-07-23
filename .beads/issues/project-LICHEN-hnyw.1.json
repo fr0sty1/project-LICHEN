@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-hnyw.1",
+  "title": "Fix merge resolution artifacts in lichen-core and lichen-hal",
+  "description": "Remove any duplicated code, incorrect if branches or merged conflicting logic from previous merge in core and hal crates. Ensure #![forbid(unsafe_code)], heapless usage, and compilation.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:21:02.994520267Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:21:02.994520267Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-hnyw.1",
+      "depends_on_id": "project-LICHEN-hnyw",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:21:03.13088082Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
