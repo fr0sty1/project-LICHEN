@@ -389,7 +389,7 @@ Single channel creates contention hotspot. CCP-16 coordinates capacity. All impl
 - Slot duration = max_airtime(current_SF) + 100ms guard. Node uses lichen_link_set_slot() in subsys.
 - TX suppressed outside slot (tdma_tx_allowed()).
 
-Normative pseudocode and thresholds are in physical-link:3.4 and 02a-coordinated-capacity:2a.3 (EMA alpha=1/4 from rf_health.rs, per-neighbor state, DIO for ASSIGNED_SF/metrics, RX all SF, TX_SF announcement). Implementations MUST match test/vectors/ccp16.json vectors exactly with RFC 2119 keywords (MUST for SF selection, density/SNR/loss/utilization thresholds; SHOULD for optimizations). SF10 baseline per 7.1; adaptive overrides only on explicit thresholds. Integrates with RPL DIO, TDMA slot hash, and CCP-16 simulator gates. No dead code; all paths exercised by vectors.
+Normative pseudocode and thresholds are now in 02a-coordinated-capacity:2a.7 (with pure IETF-style definitions for adaptive_sf_select, select_channel, now(); EMA alpha=1/4, per-neighbor state, DIO signaling). SF10 is the REQUIRED baseline for moderate density per section 7.1; density-aware overrides and CH0 fallback apply only on explicit thresholds (density >8 triggers specific SF and control channel rules). Implementations MUST match test/vectors/ccp16.json and ccp_load_balancing.json exactly. No dead code; all paths exercised by vectors.
 
 **Fixed-Point no_std Example (Q16.16 for EMA):** For embedded `no_std` (Zephyr C/Rust lichen-core), avoid f32. Use saturating Q16.16 arithmetic matching rf_health.rs:170,251:
 
@@ -452,7 +452,7 @@ correspondingly smarter about what it spends.
 
 **Rejected alternative (pure random):** Pure random channel selection was considered but rejected because it prevents reliable rendezvous prediction between nodes (receiver cannot compute which channel the sender will use). Hash_32(SFN, EUI) provides deterministic, reproducible selection that enables synchronized hopping and rendezvous announcements while still providing statistical interference avoidance. See CCP-12 and CCP-15 pseudocode in 02a-coordinated-capacity.md.
 
-**now() and clamp():** Defined as monotonic millisecond clock and numeric range limiter respectively (see pseudocode conventions in 02a-coordinated-capacity.md). Floating point thresholds fixed at exactly 0.1/0.5/0.8 for interoperability (normative).
+**now() and clamp():** Defined in 02a-coordinated-capacity:2a.3.1 as monotonic unsigned 32-bit SFN counter (with modular arithmetic for wraparound) and numeric limiter respectively. Density vs SF10 baseline updated per pure pseudocode; thresholds fixed for interoperability (normative).
 
 ---
 [Index](README.md) | [Architecture](01-architecture.md)

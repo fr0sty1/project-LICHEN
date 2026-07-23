@@ -18,12 +18,13 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 1. Abstract
 2. 2a.1. Overview
 3. 2a.2. TDMA Beacon Format, Slots, Hash Selection, and Join (SCHC 0x08, CDDL, byte layout)
-4. CCP-4. Regional Channel Plans
-5. 2a.3. Channel Agility and Adaptive SF
-6. 2a.4. Time Synchronization
-7. 2a.5. Desync Recovery State Machine
-8. Implementation Status
-9. References
+4. 2a.3. Channel Agility (select_channel, now())
+5. 2a.4. Time Synchronization
+6. 2a.5. Desync Recovery State Machine
+7. 2a.6. Regional Channel Plans and CH0 Rules
+8. 2a.7. Adaptive Spreading Factor Selection (adaptive_sf_select)
+9. Implementation Status
+10. References
 
 ## Overview
 
@@ -108,37 +109,48 @@ Remote capability and schedule messages MAY reduce the locally permitted interse
 
 ## 2a.3. Channel Agility and Adaptive SF
 
-CH0 is the control channel; all nodes MUST listen continuously on it for DIOs and beacons (see draft-lichen-schc-lora-00 and draft-lichen-rpl-lora-00). Announce messages carry rx_channel (CCP-9 per spec/05-routing.md:9.2) for rendezvous; data channels selected via select_channel or hash. All implementations MUST produce identical results to test/vectors/ccp16.json and ccp9*.json for CCP-9/14/15/16 vectors.
+CH0 is the control channel; all nodes MUST listen continuously on it for DIOs and beacons (see draft-lichen-schc-lora-00 and draft-lichen-rpl-lora-00). Announce messages carry rx_channel (CCP-9 per spec/05-routing.md:9.2) for rendezvous. Data channels selected via select_channel() or hash. All implementations MUST produce identical results to test vectors in ccp16.json, ccp9*.json, ccp_load_balancing.json.
 
-### synchronized_hop_channel (CCP-12/16 frequency agility)
+### 2a.3.1. Pure Pseudocode Definitions (IETF-style, language agnostic)
 
-```
-function synchronized_hop_channel(eui64, epoch, density, n_channels=3):
-    // Exact algorithm for interference mitigation via hash-based channel
-    // selection + density-aware fallback to CH0. Matches ccp16.json vectors,
-    // Python test oracle, Rust lichen_hash_32, and TDMA slot logic exactly.
-    // Uses byte concatenation (EUI64 BE + epoch LE) per test/vectors/ccp16.json
-    data = eui64_to_bytes(eui64) ++ u32le(epoch)
-    hash = fnv1a32(data)  // lichen_hash_32; see hash_32.json
-    IF density > 8 THEN
-        RETURN 0  // CH0 control for high density (interference mitigation, desync)
-    n = n_channels IF n_channels > 0 ELSE 3
-    RETURN 1 + (hash MOD n)
+Procedure Now():
+   1. RETURN current SFN value.
+   2. All subtractions, comparisons, and MOD operations MUST use unsigned 32-bit modular arithmetic (modulo 2^32) to handle wraparound correctly per test vectors.
 
-function now():
-    RETURN current_sfn()  // monotonic unsigned 32-bit superframe/epoch counter (SFN_MODULUS = 2^32)
-    // All subtractions, comparisons, and modulo operations MUST use unsigned 32-bit arithmetic to handle wraparound correctly.
+Procedure SelectChannel(EUI64, Epoch, Density, NChannels):
+   1. IF Density > 8 THEN RETURN 0
+   2. Data = CONCAT(EUI64 as BE bytes, Epoch as LE u32 bytes)
+   3. Hash = FNV1A32(Data)  // basis 0x811c9dc5; matches hash_32.json and ccp16.json vectors
+   4. N = MAX(NChannels, 3)
+   5. RETURN 1 + (Hash MOD N)
 
-A CCP-capable node is always in exactly one of these states:
+### 2a.7. Adaptive Spreading Factor Selection (per 8gac)
 
-| State    | Meaning                          | Channel Behavior          |
-|----------|----------------------------------|---------------------------|
-| UNJOINED | Never synchronized               | CH0 only; no hopping      |
-| JOINED   | Clock trusted; normal operation  | Hop per schedule/select_channel |
-| DRIFT    | Possible drift; monitoring       | Hop with extended RX windows |
-| RECOVER  | Clock untrusted; seeking beacon  | CH0 only; no data TX      |
+SF10 is the REQUIRED baseline for moderate density (5-20 nodes). Density-aware adaptation and per-neighbor EMA (alpha = 1/4) override only on explicit thresholds. Load_factor from gateway DIOs takes precedence. All paths MUST match ccp16.json and ccp_load_balancing.json exactly (independent oracle).
 
-Join procedure: exact CoAP URI `POST coap://[fe80::/64%iface]/tdma/join` (SCHC rule 0, OSCORE after first beacon) or L2 frame dispatch `0x15` (per draft-lichen-link-01) with msg_type=`0x10` (join-request). Triggers DAO after sync. See test vectors for exact flows. (See full state diagram, timers T_DRIFT_WARN=30s, T_DRIFT_MAX=120s, T_GIVE_UP=600s, transitions, multi-root conflict resolution preferring higher epoch, GPS-capable nodes, SFN wraparound handling, and implementation notes in the detailed description. All transitions MUST match test vectors. Nodes in RECOVER MUST refrain from data TX until re-synchronized.)
+**Thresholds Table:**
+
+| SF | Sensitivity | Upgrade Condition (SHOULD) | Downgrade Condition (MUST) |
+|----|-------------|----------------------------|----------------------------|
+| 7  | -123 dBm   | N/A                        | SNR < 0 OR loss > 0.25    |
+| 9  | -129 dBm   | Density < 5 AND SNR_EMA > 8 | SNR < 0 OR Density > 8    |
+| 10 | -132 dBm   | DEFAULT (moderate density) | SNR < 0 OR load_factor > 0.8 |
+| 11 | -134 dBm   | N/A                        | Density > 8 OR SNR_EMA < 0 OR load > 0.8 |
+| 12 | -137 dBm   | N/A                        | Density > 20 OR SNR_EMA < -5 |
+
+Procedure AdaptiveSFSelect(AssignedSF, Neighbor, Density, Utilization, LoadFactor):
+   1. SF = AssignedSF
+   2. IF SF absent THEN SF = 10
+   3. IF (Density > 10) OR (Utilization > 150) THEN SF = MIN(12, SF + 2)
+   4. IF (Neighbor.EMA_SNR > 8) AND (Density < 5) THEN SF = MAX(7, SF - 1)
+   5. IF (Neighbor.EMA_Loss > 0.25) OR (Utilization > 200) THEN
+         SF = MIN(12, SF + 1)
+         IF Utilization > 200 THEN RETURN (SF, false)  // tx not allowed
+   6. RETURN (SF, true)
+
+EMA_Update(Avg, Sample) = Avg + ((Sample - Avg) right-shift 2). Update per-neighbor state on every RX. Integrate with RPL DIO capability signaling. No dead code.
+
+(The state machine from prior section remains; JOINED uses SelectChannel and AdaptiveSFSelect per schedule.)
 
 ## Regional Channel Plans and CH0 Rules
 
