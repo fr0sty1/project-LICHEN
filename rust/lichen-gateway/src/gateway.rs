@@ -1,5 +1,4 @@
-//! Gateway state and packet forwarding. Propagates CCP-9/15/EMA/rf_health
-//! alignments, FNV-1a32, and dead-code removal from epic l3j5 (project-LICHEN-nafo).
+//! Gateway state and packet forwarding.
 
 #![forbid(unsafe_code)]
 
