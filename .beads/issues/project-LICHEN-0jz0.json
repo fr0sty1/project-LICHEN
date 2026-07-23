@@ -2,15 +2,15 @@
   "id": "project-LICHEN-0jz0",
   "title": "[merge-conflict] worktree-worker20: lichend.rs",
   "notes": "Commit: e50704980",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:59:38.73904118Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:12:33.965772838Z",
+  "updated_at": "2026-07-23T00:12:36.359351896Z",
   "started_at": "2026-07-23T00:06:07.633463213Z",
-  "lease_expires_at": "2026-07-23T00:11:07.633463213Z",
-  "heartbeat_at": "2026-07-23T00:06:07.633463213Z"
+  "closed_at": "2026-07-23T00:12:36.359351896Z",
+  "close_reason": "Resolved merge conflict in lichend.rs and gateway.rs by integrating process_rpl for RPL/DAO handling, cleaned TunLike abstraction, updated forward_mesh_to_upstream, added is_local_mesh test. Merge completed for related Rust components."
 }
