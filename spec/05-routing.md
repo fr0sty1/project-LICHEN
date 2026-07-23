@@ -401,17 +401,20 @@ Announce routing provides zero-latency peer-to-peer paths for active mesh partic
 
 **Key insight:** Most peer-to-peer traffic is between nodes that are actively participating in the mesh. These nodes announce regularly. No discovery needed.
 
-### 9.2. Announce Message
+### 9.2. Announce Message (CCP-9 updated)
 
 Nodes broadcast announces periodically inside the L2 routing/control namespace.
-The authenticated link payload is `0x15 || announce`, where `0x15` is the L2
-routing/control dispatch byte and the announce bytes begin with Type `0x01`.
-Receivers MUST NOT treat an unwrapped link payload beginning with `0x01` as an
-announce because SCHC global CoAP also uses rule ID `0x01`.
+The authenticated link payload is `0x15 || announce` (L2 dispatch `0x15` per
+`test/vectors/l2_payload.json:routing_announce_min`), where the announce bytes
+begin with Type `0x01`. Receivers MUST NOT treat an unwrapped link payload
+beginning with `0x01` as an announce because SCHC global CoAP also uses rule ID
+`0x01`.
 
 ```
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-| Type=ANN  | Flags     | Hop Count   | Seq Num               |
+| Type=0x01   | rx_channel (flags) | Hop Cnt | Seq Num (BE u16)|
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                    Originator IID (8 bytes)                   |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -419,29 +422,32 @@ announce because SCHC global CoAP also uses rule ID `0x01`.
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                    Signature (48 bytes)                       |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                    Optional: App Data (variable)              |
+| Optional: App Data (variable)                                 |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-Total: ~92 bytes minimum.
+Fixed announce size: 93 bytes (type(1)+flags/rx_channel(1)+hop(1)+seq(2)+IID(8)+pubkey(32)+sig(48)); total L2 payload ~94 bytes minimum. `rx_channel` (0-7) packed in flags byte at announce offset 1 (per `_l2_announce_with_channel` oracle in `test/vectors/generate.py` and `ccp9.json`).
 
 **Fields:**
-- **Type:** Announce message identifier
-- **Flags:** Reserved
-- **Hop Count:** Incremented at each relay
-- **Seq Num:** Monotonic, detects duplicates and freshness
-- **Originator IID:** 8-byte Interface Identifier of announcer
-- **Public Key:** Ed25519 public key (32 bytes)
-- **Signature:** Schnorr signature over (IID, pubkey, seq, app_data)
-- **App Data:** Optional application data (node name, capabilities, etc.)
+- **Type:** `0x01` – Announce identifier (inside L2 routing dispatch `0x15`).
+- **rx_channel (flags byte):** Preferred RX channel for da2q rendezvous (0=CH0 control fallback). MUST be <8. Included in signed_data (CCP-9) to prevent tampering.
+- **Hop Count:** Incremented by each relay (MUST NOT be signed).
+- **Seq Num:** 16-bit big-endian monotonic counter per originator (duplicate/freshness).
+- **Originator IID:** 8-byte Interface Identifier of announcer.
+- **Public Key:** 32-byte public key.
+- **Signature:** 48-byte Schnorr signature (draft-lichen-schnorr-00.md).
+- **App Data:** Optional variable-length authenticated application data (node name, capabilities, coordinates per §9.7).
+
+**signed_data (Schnorr profile-specific transcript):** originator_iid(8) || pubkey(32) || seq_num(2) || rx_channel(1) || app_data. Hop excluded (relays increment it). rx_channel signed per CCP-9 to prevent tampering.
+
+> "For different profiles the signed message (`msg` in §4.2) is defined by the using specification" (draft-lichen-schnorr-00.md:5.5 on profile-specific transcripts; here CCP-9 + announce per rust/lichen-core/src/announce.rs:142 and ccp9.json).
 
 ### 9.3. Announce Processing
 
-**On receive announce:**
+**On receive announce (after L2 unwrap + parse):**
 
 ```
 def process_announce(announce, from_neighbor):
-    # Verify signature
     if not verify_schnorr(announce.pubkey, announce.signature, announce.signed_data):
         drop("invalid signature")
         return

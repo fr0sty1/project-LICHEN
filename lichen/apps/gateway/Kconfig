@@ -191,20 +191,16 @@ config LORA_LICHEN_GATEWAY_RPL_ROOT
 	  Initializes per AGENTS.md order after link_ctx. Drives Trickle DIOs
 	  as root for mesh formation. Updates /status to reflect joined root role.
 
-<<<<<<< HEAD
-config LICHEN_GATEWAY_WIFI_SSID
-	string "WiFi SSID for Heltec V3 backhaul"
-	default "LICHEN-TEST"
-	depends on LICHEN_GATEWAY_PREFIX_DELEGATION
+config LICHEN_GATEWAY_RX1_DELAY_MS
+	int "RX1-style delay before answering a CoAP request (ms)"
+	default 0
 	help
-	  SSID for WiFi station mode on Heltec V3 6LBR (used by wifi_mgmt in main.c).
-
-config LICHEN_GATEWAY_WIFI_PSK
-	string "WiFi PSK for Heltec V3 backhaul"
-	default "lichen123"
-	depends on LICHEN_GATEWAY_PREFIX_DELEGATION
-	help
-	  Pre-shared key for WiFi STA. INSECURE default for bench; override per deployment.
+	  Milliseconds to wait after receiving a CoAP request before sending
+	  the response, giving a half-duplex requesting node time to switch
+	  its radio from TX (the request it just sent) to RX. Without it, the
+	  reply can arrive during the requester's TX->RX turnaround and be
+	  missed (lora_ipv6_mesh-fe1z, observed on the T1000-E/LR1110). 0
+	  disables the delay. ~100 ms is a safe LoRa value.
 
 config LICHEN_GATEWAY_PREFIX_DELEGATION
 	bool "Enable IPv6 prefix delegation from WiFi/Ethernet backhaul to RPL mesh"
@@ -220,46 +216,20 @@ config LICHEN_GATEWAY_PREFIX_DELEGATION
 	  WiFi STA + upstream prefix to RPL DODAG for Heltec V3 6LBR (spec/appendix-border-router.md).
 	  Requires main.c event handlers + AGENTS.md init order. Increases heap (see board defconfig).
 
-=======
->>>>>>> origin/worktree-worker24
-config LICHEN_GATEWAY_RX1_DELAY_MS
-	int "RX1-style delay before answering a CoAP request (ms)"
-	default 0
-	help
-	  Milliseconds to wait after receiving a CoAP request before sending
-	  the response, giving a half-duplex requesting node time to switch
-	  its radio from TX (the request it just sent) to RX. Without it, the
-	  reply can arrive during the requester's TX->RX turnaround and be
-	  missed (lora_ipv6_mesh-fe1z, observed on the T1000-E/LR1110). 0
-	  disables the delay. ~100 ms is a safe LoRa value.
-
-<<<<<<< HEAD
-=======
-config LICHEN_GATEWAY_PREFIX_DELEGATION
-	bool "Enable IPv6 prefix delegation from WiFi/Ethernet backhaul to RPL mesh"
-	depends on LICHEN_RPL
-	depends on NET_DHCPV6
-	depends on NET_IPV6_ND
-	default y
-	help
-	  WiFi STA + upstream prefix to RPL DODAG for Heltec V3 6LBR (spec/appendix-border-router.md).
-	  Requires main.c event handlers + AGENTS.md init order. Increases heap (see board defconfig).
-
 config LICHEN_GATEWAY_WIFI_SSID
-	string "WiFi SSID for Heltec V3 backhaul"
-	default "LICHEN-TEST"
+	string "WiFi SSID for backhaul"
+	default "lichen-test"
 	depends on LICHEN_GATEWAY_PREFIX_DELEGATION
 	help
-	  SSID for WiFi station mode on Heltec V3 6LBR (used by wifi_mgmt in main.c).
+	  SSID for WiFi station mode (used by wifi_mgmt in main.c).
 
 config LICHEN_GATEWAY_WIFI_PSK
-	string "WiFi PSK for Heltec V3 backhaul"
+	string "WiFi PSK for backhaul"
 	default "lichen123"
 	depends on LICHEN_GATEWAY_PREFIX_DELEGATION
 	help
-	  Pre-shared key for WiFi STA. INSECURE default for bench; override per deployment.
+	  Pre-shared key for WiFi STA. INSECURE default for bench; override per deployment via CoAP /config.
 
->>>>>>> origin/worktree-worker24
 config LICHEN_GATEWAY_COORDINATION
 	bool "Gateway coordination protocol (TDMA slots, node registry, handoff)"
 	depends on LICHEN_RPL
@@ -311,20 +281,9 @@ config LICHEN_GATEWAY_WIFI_STATION
 	select WIFI
 	select WIFI_NM
 	select ESP_WIFI_ENABLED
+	select LICHEN_GATEWAY_PREFIX_DELEGATION
 	help
 	  Enable WiFi station mode for internet backhaul, prefix acquisition via RA, and LICHEN_GATEWAY_PREFIX_DELEGATION. Uses net_mgmt events for NET_EVENT_WIFI_CONNECT_RESULT and NET_EVENT_IPV6_ADDR_ADD. SSID/PSK from Kconfig or /config CoAP resource. Follows AGENTS.md init order.
-
-config LICHEN_GATEWAY_WIFI_SSID
-	string "WiFi SSID"
-	depends on LICHEN_GATEWAY_WIFI_STATION
-	default "lichen-backhaul"
-
-config LICHEN_GATEWAY_WIFI_PSK
-	string "WiFi PSK"
-	depends on LICHEN_GATEWAY_WIFI_STATION
-	default "lichen123"
-	help
-	  WPA2 PSK for station mode. Override via CoAP /config for production.
 
 endmenu
 

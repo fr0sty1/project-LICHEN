@@ -796,11 +796,20 @@ class Simulation:
                 }
 <<<<<<< HEAD
                 if self._debug_enabled:
-                    rx_log.update(
-                        node_state=node.state.name,
-                        pending_timeouts=len(self._pending_rx_timeouts),
-                        event_queue_len=len(self._event_queue),
-                    )
+                    rx_log = {
+                        "sim_id": self._id,
+                        "node_id": node_id,
+                        "tx_id": tx_id,
+                        "payload_len": len(payload),
+                        "rssi": rssi,
+                        "snr": snr,
+                        "time_us": self._current_time_us,
+                        "from_node_id": source_node_id,
+                        "node_state": node.state.name,
+                        "pending_timeouts": len(self._pending_rx_timeouts),
+                        "event_queue_len": len(self._event_queue),
+                    }
+                    self._debug_log("rx_success", **rx_log)
 
 =======
 >>>>>>> origin/worktree-worker19
