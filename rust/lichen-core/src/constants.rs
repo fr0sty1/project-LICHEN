@@ -9,11 +9,10 @@ pub const LORA_PREAMBLE_SYMBOLS: u8 = 8;
 pub const LORA_MAX_PAYLOAD: usize = 255;
 
 // SCHC (RFC 8724)
-/// Maximum decompressed packet size for SCHC buffers.
-/// Sized to hold IPv6 header (40) + max UDP/ICMPv6 payload that fits in LoRa frame.
-/// Actual limit depends on SCHC rule compression ratio, but this conservative
-/// bound covers all current rules.
-pub const SCHC_MAX_DECOMPRESSED: usize = 1281;
+/// Maximum decompressed packet size for SCHC buffers (updated for SRH/Routing
+/// Header overhead in local_mesh paths per RFC 6554). Covers IPv6 MTU 1280
+/// + max practical SRH (~8+16*8=136 bytes) + margin.
+pub const SCHC_MAX_DECOMPRESSED: usize = 1500;
 
 // Well-known UDP ports (spec Section 9.1)
 pub const PORT_COMPACT_COT: u16 = 5681;
