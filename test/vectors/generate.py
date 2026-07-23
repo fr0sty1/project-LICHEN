@@ -1806,12 +1806,8 @@ def ccp9_vectors() -> list[dict]:
             "expected_channel": 2,
         },
     ]
-<<<<<<< HEAD
- 
-=======
 
 
->>>>>>> origin/integration/worker11-20260722
 def ccp15_vectors() -> list[dict]:
     v = []
     for seed in range(3):

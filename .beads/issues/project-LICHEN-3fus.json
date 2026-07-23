@@ -2,15 +2,15 @@
   "id": "project-LICHEN-3fus",
   "title": "[merge-conflict] worktree-worker1: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: eb5ec60",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:11:54.346273285Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:18:44.254758852Z",
+  "updated_at": "2026-07-23T00:18:46.892976006Z",
   "started_at": "2026-07-23T00:16:50.002102939Z",
-  "lease_expires_at": "2026-07-23T00:21:50.002102939Z",
-  "heartbeat_at": "2026-07-23T00:16:50.002102939Z"
+  "closed_at": "2026-07-23T00:18:46.892976006Z",
+  "close_reason": "Resolved all merge conflicts in worktree-worker1 by adopting canonical clean configs from resolved worker21 (no conflict markers, consolidated WiFi/RPL/battery/stack/heap settings). Updated heltec_wifi_lora32_v3_esp32s3_procpu.conf, t_deck_esp32s3_procpu.conf, gateway main.c, coap_keys.c, trickle.c, and .beads files. Committed eb5ec60 and pushed."
 }
