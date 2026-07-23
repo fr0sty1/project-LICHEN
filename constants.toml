@@ -43,7 +43,7 @@ schc    = 0x14
 routing = 0x15
 
 [rpl]
-# RPL configuration (spec appendix-rpl.md, RFC 6550)
+# RPL configuration (spec/drafts/draft-lichen-rpl-lora-00.md, RFC 6550)
 instance_id          = 0      # Default RPL instance
 mode_of_operation    = 1      # Non-Storing (MOP=1)
 icmpv6_type          = 155    # ICMPv6 type for RPL control messages
