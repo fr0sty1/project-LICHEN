@@ -2,6 +2,7 @@
   "id": "project-LICHEN-3k6w.4",
   "title": "[codereview-pass3] Gateway not integrated with RPL Router/DaoManager for BR downward routing",
   "description": "gateway.rs:14-19 uses simple HashMap routes but epic requires integration with Router/RplNode for classification and source routing (SRH). No DAO processing in lichend RX path to populate routes. No SRH insertion for non-storing mode. lichen-rpl::routing::RoutingTable.lookup not used. P1 correctness+spec compliance. discovered-from:project-LICHEN-3k6w",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",

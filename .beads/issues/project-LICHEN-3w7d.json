@@ -2,6 +2,7 @@
   "id": "project-LICHEN-3w7d",
   "title": "Zephyr linker section duplication in puck vs coap subsys CMake",
   "description": "Commit 98fdb500's changes to puck/CMakeLists.txt (unconditional zephyr_linker_sources + server iterable_section) and sections-ram.ld overlap with subsys/lichen/coap/CMakeLists.txt conditional (CONFIG_LICHEN_COAP_SERVER_STANDALONE) and its sections-ram.ld. Violates Zephyr convention that subsys should own iterable section registration. Risks duplicate sections, link failures, or incorrect symbol lists on puck/T-Echo builds. Discovered in 3 independent codereview passes on the diff. See project-LICHEN-2auf.26.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",

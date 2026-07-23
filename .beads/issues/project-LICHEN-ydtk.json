@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-ydtk",
   "title": "codereview: gateway forwarding always sends to TUN without RPL preference check",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "task",

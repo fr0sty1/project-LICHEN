@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-p70q",
   "title": "[merge-conflict] worktree-worker18: xiao_s3_wio_sx1262.conf",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",

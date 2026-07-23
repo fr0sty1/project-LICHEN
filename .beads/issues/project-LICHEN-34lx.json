@@ -2,6 +2,7 @@
   "id": "project-LICHEN-34lx",
   "title": "[epic] Heltec WiFi LoRa 32 V3 support",
   "description": "Full support for Heltec WiFi LoRa 32 V3 (ESP32-S3 + SX1262, 915MHz). Board definitions exist at lichen/boards/heltec/heltec_wifi_lora32_v3/. Need validation in both simulation and real hardware. User has N30 version with 1100mAh battery.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "epic",

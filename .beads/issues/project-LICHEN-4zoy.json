@@ -2,6 +2,7 @@
   "id": "project-LICHEN-4zoy",
   "title": "puck+coap: duplicate server iterable section registration",
   "description": "Commit 98fdb500 moves zephyr_linker_sources and adds unconditional zephyr_iterable_section for coap_resource_lichen_coap_server in lichen/apps/puck/CMakeLists.txt:19 and sections-ram.ld:7. This duplicates the conditional registration in lichen/subsys/lichen/coap/CMakeLists.txt:23 (under CONFIG_LICHEN_COAP_SERVER_STANDALONE) and sections-ram.ld. Leads to duplicate ITERABLE_SECTION_RAM entries and potential link-time multiple definition or symbol list errors on certain Kconfig combos (e.g. standalone server enabled with puck). Does not fully resolve the original undefined _coap_resource_*_list_start/end in all configurations. Related to project-LICHEN-2auf.26 and lora_ipv6_mesh-93zo CI breakage.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",

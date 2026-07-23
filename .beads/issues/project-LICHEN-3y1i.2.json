@@ -2,6 +2,7 @@
   "id": "project-LICHEN-3y1i.2",
   "title": "P1: piv buffer too small in deaddrop_post unprotect",
   "description": "coap_dtn.c:240 uses fixed piv[OSCORE_PIV_MAX_LEN] but unprotect_request may require larger if MAX is updated. Also, original_code not checked against expected POST. Use constants from oscore.h. #codereview",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "task",

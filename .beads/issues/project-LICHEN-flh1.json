@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-flh1",
   "title": "Add concurrency+cancellation tests for TxQueue reserve/complete and bridge",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "task",

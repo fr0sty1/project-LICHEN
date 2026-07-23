@@ -2,6 +2,7 @@
   "id": "project-LICHEN-2h1i.5",
   "title": "task",
   "description": "## Why Yggdrasil\nGlobal LICHEN mesh needs gateways to find each other. Options:\n\n| Option | Address space | Setup |\n|--------|--------------|-------|\n| Tailscale | 100.x.y.z + fd7a | Easy, requires account |\n| WireGuard | Manual config | Self-hosted, more work |\n| Yggdrasil | 0200::/7 | Zero config, peer-to-peer |\n\n## Yggdrasil fits LICHEN philosophy\n- Addresses from Ed25519 pubkeys (LICHEN already uses these!)\n- No central authority\n- Self-healing routing\n- Works over any transport\n\n## Architecture\n```\n[Mesh A Portland]    [Mesh B Berlin]    [Mesh C Tokyo]\n       |                   |                  |\n   Gateway A           Gateway B          Gateway C\n       |                   |                  |\n       +------- Yggdrasil network -----------+\n```\n\n## Implementation\n1. Gateway runs Yggdrasil peer\n2. Mesh gets /64 from gateway Yggdrasil /128\n3. Or: derive Yggdrasil addresses from same Ed25519 keys\n4. Global routing just works\n\n## Addressing\n- Mesh-internal: ULA fd00:lichen::/32 + IID from Ed25519\n- Global backbone: Yggdrasil 0200::/7\n- Internet access: Tailscale/WG from gateway, or Yggdrasil exit nodes",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "task",

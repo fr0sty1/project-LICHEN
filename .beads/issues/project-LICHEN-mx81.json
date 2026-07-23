@@ -3,6 +3,7 @@
   "title": "transmit() accepts payloads larger than LoRa MTU without warning",
   "description": "**File:** python/src/lichen/radio/sim_client.py\n**Lines:** 154-182\n\n**Issue:** The transmit() method accepts any-sized payload without validation:\n```python\nasync def transmit(self, payload: bytes) -\u003e bool:\n    self._ensure_connected()\n    msg = encode_tx(payload)  # No size check\n    ...\n```\n\n**Problem:** LoRa has a maximum payload size (typically 255 bytes for SF7-SF10 at 125kHz, less for higher SF). The SimRadio implementation does not enforce any MTU:\n\n1. Oversized payloads are accepted and encoded\n2. The simulator may reject them with an error, or silently truncate\n3. Tests pass with oversized payloads but fail on real hardware\n4. The Radio protocol in base.py does not specify an MTU\n\n**Impact:** Code that works in simulation may fail in production due to MTU violations. This is a simulation fidelity issue.\n\n**Fix:** Either:\n1. Add MTU validation in transmit(): `if len(payload) \u003e MAX_LORA_PAYLOAD: raise ValueError`\n2. Or document the MTU in the Radio protocol and let callers handle it\n3. Or have the simulator enforce MTU and return TX_FAIL for oversized payloads",
   "notes": "Commit: 10798591f",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 3,
   "issue_type": "bug",

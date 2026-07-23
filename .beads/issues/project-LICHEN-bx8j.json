@@ -2,6 +2,7 @@
   "id": "project-LICHEN-bx8j",
   "title": "CCP-1: Scope - TDMA time slots and frequency/channel agility",
   "description": "...",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "epic",

@@ -2,6 +2,7 @@
   "id": "project-LICHEN-3v8w",
   "title": "codereview-P2: ccp15_vectors() in generate.py missing density_estimate_high and sf_selection_low_density_capacity present in ccp15.json",
   "description": "Source of truth (generate.py) and generated JSON are out of sync. The 2 density/SF vectors added in b10q not reflected in generator function. Must sync before adding the 6 new SF/EMA/load_factor ones. This would cause test drift. Fix by adding them to function with proper oracle fields.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "bug",

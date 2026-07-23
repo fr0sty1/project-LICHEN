@@ -2,6 +2,7 @@
   "id": "project-LICHEN-qrs6",
   "title": "[codereview-pass1] coap_dtn.c: coap_respond still duplicates location.c:41-79 non-OSCORE path and SENML define",
   "description": "lichen/subsys/lichen/coap/coap_dtn.c:20 and lichen/subsys/lichen/coap/coap_location.c:41 - shared helper needed in coap_server.c to eliminate duplication per task. discovered-from:project-LICHEN-fnj7",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "task",

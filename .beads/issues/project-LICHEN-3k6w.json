@@ -2,6 +2,7 @@
   "id": "project-LICHEN-3k6w",
   "title": "Fix gateway forwarding to prefer RPL local mesh before TUN/Yggdrasil",
   "description": "Per spec/05-routing.md:7.2 and appendix-border-router, BR must classify incoming mesh IPv6 packets: if dst in RPL routes (local mesh), forward downward via RPL source routing or Node router; else inject to TUN (Yggdrasil/kernel). Current forward_mesh_to_upstream unconditionally sends all to TUN (see lichend.rs:350, gateway.rs:34). Update Gateway to integrate Router/RplNode or use routes map for classification. Add mesh_to_mesh forward path that re-compresses and queues to SLIP/sim TX. Update run_sim/run_serial to handle both paths. Update tests. 3 codereview passes required before closing ydtk.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "epic",

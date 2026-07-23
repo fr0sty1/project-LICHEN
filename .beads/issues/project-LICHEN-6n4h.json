@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-6n4h",
   "title": "[merge-conflict] worktree-worker24: Kconfig.defconfig",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",

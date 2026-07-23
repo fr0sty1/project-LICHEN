@@ -2,6 +2,7 @@
   "id": "project-LICHEN-3k6w.1",
   "title": "Gateway mesh_to_mesh forwarding path with is_local_mesh + RPL SRH",
   "description": "Implement the missing mesh-to-mesh forwarding for packets received from mesh whose dst matches local RPL routes. Currently dropped in forward_mesh_to_upstream. Integrate with DaoManager/RoutingTable for path lookup, insert SourceRoutingHeader per RFC6554, re-compress with SCHC rule that supports RPL extension, queue to SLIP/sim TX channel. Update Gateway, lichend.rs run_* functions, tests. Per spec/05-routing.md:7.2 and appendix. Parent epic project-LICHEN-3k6w. 3 codereview passes mandatory.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "task",

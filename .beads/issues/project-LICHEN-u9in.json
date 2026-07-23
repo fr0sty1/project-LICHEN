@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-u9in",
   "title": "coap_dtn.c POST handlers lack oscore_unprotect_request + ctx lookup by IID/EUI64 per coap_client.c and oscore.h pattern",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 0,
   "issue_type": "bug",

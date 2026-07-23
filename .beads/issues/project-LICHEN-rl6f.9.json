@@ -2,6 +2,7 @@
   "id": "project-LICHEN-rl6f.9",
   "title": "Codereview pass 1: Zephyr RPL lacks TDMA Kconfig for CCP-1",
   "description": "Add CONFIG_LICHEN_CCP_TDMA, CONFIG_LICHEN_CHANNEL_AGILITY, CONFIG_LICHEN_ADAPTIVE_SF options to lichen/subsys/lichen/rpl/Kconfig and link layer. File under codereview label. Must fix before closing da2q.16.6",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "task",

@@ -2,6 +2,7 @@
   "id": "project-LICHEN-m1it",
   "title": "Kconfig ranges provide implicit safety but no compile-time coupling",
   "description": "File: lichen/subsys/lichen/meshcore/Kconfig\nLines: 21-28, 30-36\n\nThe Kconfig constrains values:\n```\nconfig LICHEN_MESHCORE_MAX_FRAME\n    range 1 176\n\nconfig LICHEN_MESHCORE_MAX_SERIAL_PAYLOAD\n    range 1 176\n```\n\nThis implicitly ensures values fit in uint16_t (and even uint8_t). However:\n\n1. The code has no BUILD_ASSERT coupling these Kconfig ranges to the uint16_t field sizes in the structs. If someone extends the Kconfig range to \u003e 65535, the code would silently break.\n\n2. The range 176 appears to come from MeshCore protocol constraints but is undocumented in the code.\n\n3. The serial payload range allows 1-176, but the BUILD_ASSERT only checks MAX_SERIAL_PAYLOAD \u003c= MAX_FRAME, not other relationships.\n\nConsider adding BUILD_ASSERTs in adapter.c that explicitly verify the assumptions:\n```c\nBUILD_ASSERT(CONFIG_LICHEN_MESHCORE_MAX_FRAME \u003c= 176, \"Exceeds MeshCore BLE MTU\");\nBUILD_ASSERT(CONFIG_LICHEN_MESHCORE_MAX_FRAME \u003c= UINT16_MAX, \"Exceeds stream_len field\");\n```",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 4,
   "issue_type": "bug",

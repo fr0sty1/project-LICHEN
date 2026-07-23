@@ -2,6 +2,7 @@
   "id": "project-LICHEN-xnsp",
   "title": "Unbounded memory growth in _latencies_us list",
   "description": "## Location\npython/src/lichen/sim/metrics.py:148\n\n## Description\nEvery successful packet delivery appends its latency to _latencies_us. This list grows without bound for the duration of the simulation. The latency_stats() method recomputes min/max/mean from the full list every time, which becomes increasingly expensive as the list grows.\n\n## Failure Scenario\nSimulation runs for hours with thousands of successful deliveries per second. The _latencies_us list grows to hundreds of millions of entries, consuming GB of memory. Additionally, each call to latency_stats() or snapshot() becomes O(n) expensive, degrading API response times.\n\n## Category\nsafety",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "bug",

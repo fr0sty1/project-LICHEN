@@ -3,6 +3,7 @@
   "title": "Normalize link context lock failure semantics",
   "description": "Review during 2auf.35.4 found several pre-existing link_ctx APIs discard seq_unlock or mutex-destroy errors, while cleanup documentation mixes single-owner semantics with claims about synchronized cleanup. Audit next_tx, set_epoch, cleanup, and public docs; return/log failures consistently without creating ambiguous partially successful operations.",
   "acceptance_criteria": "Lock/unlock/destroy failure behavior is explicit and tested on POSIX fault-injection paths; cleanup contract is internally consistent; no key or nonce state is silently reported successful after synchronization failure; three reviews pass.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "bug",

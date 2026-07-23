@@ -2,6 +2,7 @@
   "id": "project-LICHEN-1pbq",
   "title": "[codereview-P1] coap_server.h: missing includes for coap_resource, coap_packet, sockaddr in lichen_coap_respond declaration",
   "description": "The new declaration in coap_server.h uses types from zephyr/net/coap.h and zephyr/net/socket.h without including them. This will cause compile errors in files that include coap_server.h. discovered-from:project-LICHEN-qrs6",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",

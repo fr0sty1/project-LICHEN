@@ -2,6 +2,7 @@
   "id": "project-LICHEN-nqz6.5",
   "title": "codereview-1: remaining fd12:... examples in 12-apps.md and 11-lci.md after addressing update",
   "description": "Some JSON examples and comments still use old fd12 ULA format. Update all to consistent 0200:... or 02xx examples. Also update any 'ula' keys to 'primary'.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "bug",

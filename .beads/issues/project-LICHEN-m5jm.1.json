@@ -2,6 +2,7 @@
   "id": "project-LICHEN-m5jm.1",
   "title": "Implement hash-based channel selection algorithm in Rust (lichen-schc or lichen-core) and Python sim consistent with spec for orthogonal channels/multi-channel coordination",
   "description": "Add function to select channel via hash for coordination to reduce collisions. File child issues if complex. Match test vectors. No dead code. Update Rust and Python. 3 codereview per edit.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "task",

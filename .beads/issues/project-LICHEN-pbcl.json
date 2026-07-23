@@ -2,6 +2,7 @@
   "id": "project-LICHEN-pbcl",
   "title": "[codereview3] coap_dtn.c: GET handler stub does not retrieve using lichen_dtn_retrieve_for or SenML per spec",
   "description": "deaddrop_get must implement retrieval for deaddrop, use callback to SenML encode for response. Confessions resource removed in this pass? P1. File:lichen/subsys/lichen/coap/coap_dtn.c",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "task",

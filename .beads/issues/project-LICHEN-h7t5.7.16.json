@@ -3,6 +3,7 @@
   "title": "Validate partner T-Echo LICHEN Native node_info RF observation",
   "description": "Partner reported that a LilyGO T-Echo is alive and sent a LICHEN Native node_info frame while monitoring for LoRa packets. Treat this as an initial RF observation, not confirmed bidirectional RX/TX. Acceptance: capture the exact firmware commit, board/overlay, radio settings, monitor command/log, decoded node_info payload, peer device identity if any, and a 60s or longer log showing whether packets are one-way or bidirectional. If bidirectional exchange is confirmed, update the relevant RF smoke Beads with evidence; otherwise file the specific RX/TX blocker.",
   "notes": "2026-06-30 partner observation from chat: 'T-Echo IS alive — it sent a LICHEN Native node_info frame. Let me monitor longer (60s) to see both devices exchanging LoRa packets.' Partner also cautioned that this should not be treated as first confirmed LICHEN RF success until bidirectional RX/TX between two nodes is confirmed. Current state: initial unverified one-way node_info RF observation only; no firmware commit, board overlay, radio settings, monitor command/log, decoded payload, peer identity, RSSI/SNR, or 60s bidirectional evidence recorded yet. Created child blocker project-LICHEN-h7t5.7.16.1 to collect durable evidence before closing this validation.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "task",

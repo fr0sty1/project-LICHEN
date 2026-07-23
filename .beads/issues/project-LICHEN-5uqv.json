@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-5uqv",
   "title": "Codereview P2: Verify hash_32 key usage in all short-addr and channel-selection code matches spec",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "task",

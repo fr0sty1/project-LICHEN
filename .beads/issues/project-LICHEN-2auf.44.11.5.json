@@ -3,6 +3,7 @@
   "title": "Run lichend as authenticated RPL root",
   "description": "Replace the legacy bare-SCHC Gateway loop with one production RplStack runtime for simulator and serial transports. Load durable identity/state, apply the approved DAO admission policy, service maintenance and Trickle deadlines, and forward TUN traffic through authenticated link framing and RPL route decisions.",
   "acceptance_criteria": "A production-path test proves lichend constructs an RplStack root, uses one clock epoch, cannot postpone maintenance beyond its configured interval, expires idle routes/neighbors, transmits due DIOs, persists restart state, rejects unsupported instance/MOP and unauthenticated ingress, and passes all gateway/node tests plus three reviews.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "task",

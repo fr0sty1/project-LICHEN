@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-cfcq",
   "title": "[merge-conflict] worktree-worker18: xiao_s3_wio_sx1262.overlay",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",

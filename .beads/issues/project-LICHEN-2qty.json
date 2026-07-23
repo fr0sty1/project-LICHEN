@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-2qty",
   "title": "codereview finding: 04-network.md:6.1 table alignment should match other specs",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 3,
   "issue_type": "bug",

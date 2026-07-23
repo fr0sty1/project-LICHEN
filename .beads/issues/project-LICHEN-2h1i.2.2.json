@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-2h1i.2.2",
   "title": "Flesh out DEF CON Confessions: CoAP /confessions POST for anonymous text, e-ink/big-screen UI, rate limiting, no-logging",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "feature",

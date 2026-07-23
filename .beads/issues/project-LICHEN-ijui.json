@@ -2,6 +2,7 @@
   "id": "project-LICHEN-ijui",
   "title": "codereview-pass2.4: 04-network.md addressing rewrite",
   "description": "Pass 1 (Correctness): Major rewrite of 6.1 for no-ULA/Ed25519-primary model. Table and principles now match zt3c epic notes and parent description. DAO source model reference removed (needs full update in next chunk). Cross-ref to 06-security added. P2: DAO source model paragraph still references old ULA in file (lines ~34-38 still present). file:spec/04-network.md:10",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "bug",

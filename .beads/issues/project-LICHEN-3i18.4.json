@@ -2,6 +2,7 @@
   "id": "project-LICHEN-3i18.4",
   "title": "spec ambiguous on current_channel wire position and scheduler value",
   "description": "The announce wire format in spec/05-routing.md does not include current_channel byte. Placement after seq_num in signed_data is clear from task but wire offset and what value scheduler should announce (current RX channel for CCP-9) is ambiguous without spec update. Also affects LCI, processor, test vectors, cross-impl tests. Human decision needed on exact format, default channel, API for scheduler current_channel.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "task",

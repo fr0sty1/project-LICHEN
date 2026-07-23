@@ -2,6 +2,7 @@
   "id": "project-LICHEN-u8wx",
   "title": "[epic] ELECROW ThinkNode M6 solar relay support",
   "description": "ELECROW ThinkNode M6: nRF52840 + LoRa (chip TBD) + GPS + 6W solar + 7000mAh. Outdoor relay/border router node. Need to identify LoRa chip (SX1262 vs LR1110), GPS chip, pin mapping. If LR1110, blocked by iw00.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "epic",

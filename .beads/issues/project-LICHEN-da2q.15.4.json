@@ -2,6 +2,7 @@
   "id": "project-LICHEN-da2q.15.4",
   "title": "Vectors: CCP-15 requirements from da2q context",
   "description": "Vectors implementation for CCP-15 Interference Mitigation requirements from da2q context.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "task",

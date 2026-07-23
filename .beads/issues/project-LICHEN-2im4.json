@@ -2,6 +2,7 @@
   "id": "project-LICHEN-2im4",
   "title": "[CODEREVIEW-PASS1] coap_status.c:256 uint16_t map_count causes implicit cast in cbor_put_map_header call at 271",
   "description": "coap_status.c:271 - cbor_put_map_header expects uint8_t but map_count is now uint16_t. Potential truncation if \u003e255. Add explicit cast and bounds check per CCP-17. Tag: codereview",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "task",

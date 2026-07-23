@@ -2,6 +2,7 @@
   "id": "project-LICHEN-pgzj.1",
   "title": "Update schema.json for strict v2 enforcement + dedicated ccp15/ccp_load_balancing defs",
   "description": "Migrate schema oneOf and document_base to require format_version=2 only. Add specific *_document and *_vector defs for ccp15.json and ccp_load_balancing.json following pattern of other families (strict required fields, additionalProperties:false, oneOf for variants). Update description. Follow test integrity - independent oracles only. Tag any review findings as codereview.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 0,
   "issue_type": "task",

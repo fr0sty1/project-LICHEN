@@ -2,6 +2,7 @@
   "id": "project-LICHEN-6knv",
   "title": "codereview-pass3-chunk2-hash-call",
   "description": "Reviewed chunk fixing dodag_id vs eui64 (now pure eui64 per short_addr consistency) and param swap in call site. Pass 1/3: no correctness issues, matches link layer intent. discovered-from:project-LICHEN-00ov",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "task",

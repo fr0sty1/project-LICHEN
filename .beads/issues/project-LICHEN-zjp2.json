@@ -2,6 +2,7 @@
   "id": "project-LICHEN-zjp2",
   "title": "[codereview-pass3] draft-lichen-schc-lora-00.md:3/4 tables - ensure sync with appendix-schc.md:17-18 and Python/Rust rule defs; add cross-ref to test/vectors/schc_compression.json for RPL vectors",
   "description": "spec/drafts/draft-lichen-schc-lora-00.md:290 - New RPL note added but appendix-schc.md still uses old summary without Code= MO details. Must keep docs in sync per AGENTS.md. Robustness pass (interop). discovered-from:project-LICHEN-ahmj",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "bug",

@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-ejb2",
   "title": "[merge-conflict] worktree-worker19: Kconfig.defconfig",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",

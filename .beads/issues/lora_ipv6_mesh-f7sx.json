@@ -2,6 +2,7 @@
   "id": "lora_ipv6_mesh-f7sx",
   "title": "Renode multi-node delivery is non-deterministic (time-model sync across independent Renode processes)",
   "description": "After yot8 (async SX1262 RX) + the sim record_reception fix, inter-node LoRa delivery in the Renode mesh WORKS: two t_echo nodes propagate frames and the sim logs deliver_packet abundantly, and sim.metrics.receptions goes \u003e0. BUT it is NON-DETERMINISTIC: across repeated runs of test_mesh_rx (poll up to 60s), some runs see many deliveries (pass in ~15-28s) and others see ZERO over a full minute. Root cause is the bridge/time-model interaction (old r7h4.7): each Renode node is a separate process with its own wall-clock, and lichen-sim advances time / delivers packets across them without a hard sync barrier, so a node's RX window and the other's TX don't always line up. test_mesh_rx is therefore marked xfail(strict=False) - it exercises + documents the path and xpasses when nodes sync, but cannot be a hard CI gate until delivery is made deterministic (e.g., a real time-sync barrier between the Renode nodes and the sim medium, or a lock-step time model). test_mesh_boots + test_mesh_tx (single-node) remain hard-green.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 3,
   "issue_type": "bug",

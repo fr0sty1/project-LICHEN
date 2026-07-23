@@ -3,6 +3,7 @@
   "title": "Grow Zephyr simulator fidelity",
   "description": "Build faithful enough Renode/native simulation backends for board/application combinations that the boot audit could not honestly execute. Model only behavior needed by documented target hardware and retain explicit boundaries where physical validation remains required.",
   "acceptance_criteria": "Each declared simulator backend loads canonical firmware, reaches app-specific late runtime markers, and produces an independent protocol/radio effect; model limitations are documented and never presented as physical RF/electrical proof.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "epic",

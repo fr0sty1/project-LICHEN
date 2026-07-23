@@ -2,6 +2,7 @@
   "id": "project-LICHEN-t4vd",
   "title": "codereview-P1: missing ccp13_vectors definition in generate.py",
   "description": "test/vectors/generate.py:1940 references ccp13.json but no ccp13_vectors() function or _write call; test_vectors.py:78 lists ccp13.json in schema test but file missing. Discovered during review of da2q.13.4 edit (chunk 1). Tagged codereview.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "task",

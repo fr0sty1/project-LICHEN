@@ -2,6 +2,7 @@
   "id": "project-LICHEN-c462",
   "title": "Heltec V3: validate Zephyr build",
   "description": "Build LICHEN firmware for heltec_wifi_lora32_v3/esp32s3/procpu. Verify west build completes, SX1262 driver binds, console works. Requires ESP32-S3 toolchain.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "task",

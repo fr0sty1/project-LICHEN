@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-q08d",
   "title": "[merge-conflict] worktree-worker21: heltec_wireless_tracker.conf",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",

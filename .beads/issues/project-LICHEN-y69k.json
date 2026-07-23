@@ -2,6 +2,7 @@
   "id": "project-LICHEN-y69k",
   "title": "ThinkNode M3: flash and test hardware",
   "description": "Build and flash LICHEN firmware to ThinkNode M3. Test: USB console, LoRa TX/RX, GNSS, WiFi scan if supported.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "task",

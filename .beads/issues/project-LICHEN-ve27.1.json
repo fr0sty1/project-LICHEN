@@ -2,6 +2,7 @@
   "id": "project-LICHEN-ve27.1",
   "title": "[codereview-pass1-correctness] TDMA beacon format in 02a-coordinated-capacity.md:15-60 lacks exact CDDL schema, byte layout, SCHC rule ID, and full test vector reference; join procedure omits exact CoAP URI or L2 frame type",
   "description": "spec/02a-coordinated-capacity.md:57 - Missing precise packet definitions prevents interop between Rust/Zephyr/Python impls. Must match test/vectors/ exactly. Discovered during first correctness review of ve27 update.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",

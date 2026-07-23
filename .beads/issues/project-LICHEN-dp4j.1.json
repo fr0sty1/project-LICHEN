@@ -2,6 +2,7 @@
   "id": "project-LICHEN-dp4j.1",
   "title": "Update spec for rx_channel field name (CCP-9)",
   "description": "Standardize to rx_channel in spec/05-routing.md, spec/02a-coordinated-capacity.md and related docs to match chosen name per epic. Update diagrams, field descriptions, signed_data references.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "task",

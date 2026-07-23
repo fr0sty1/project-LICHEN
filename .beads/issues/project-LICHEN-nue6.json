@@ -2,6 +2,7 @@
   "id": "project-LICHEN-nue6",
   "title": "[codereview-pass-3] draft-lichen-schc-lora-00.md: minor spec style - tables could cross-reference appendix A.1 explicitly; CoAP table now matches A.2 but intro could note alignment with adaptation layer rules P4",
   "description": "Readability improvement. Section 4 now aligns tables with appendix A.1 (ICMP rule 2) and adaptation MQTT-SN rule. Add sentence noting 'These rules supersede prior versions in 03-adaptation.md and appendix-schc.md A.1'. Low priority documentation consistency.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 4,
   "issue_type": "task",

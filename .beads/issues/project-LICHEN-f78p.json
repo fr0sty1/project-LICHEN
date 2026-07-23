@@ -2,6 +2,7 @@
   "id": "project-LICHEN-f78p",
   "title": "[codereview-pass-2] draft-lichen-schc-lora-00.md: Rule 1 global IPv6 sends 32B addresses making 41B total; impractical for LoRa MTU. Appendix A.1 claims 12-14B - reconcile with better prefix/context rules per 03-adaptation.md P2",
   "description": "Global traffic via BR should leverage known mesh prefix for source and perhaps destination prefix info from RPL or BR. Current value-sent for full addresses defeats SCHC benefits. Update table to use equal/not-sent for prefixes where possible and document the compressed size accurately. See SCHC RFC 8724 Section 10 for LPWAN examples.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "bug",

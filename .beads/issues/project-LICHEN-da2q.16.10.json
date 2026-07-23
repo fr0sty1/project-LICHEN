@@ -2,6 +2,7 @@
   "id": "project-LICHEN-da2q.16.10",
   "title": "CCP-16.3: Channel selection and balancing logic",
   "description": "Add load-based channel selection in link layer or PHY (hash or rendezvous method from da2q). Integrate with RPL parent selection preferring low-load parents. Update lora-phy and lichen/link. Add test vectors. Acceptance: multi-channel TX uses balanced channels, capacity improved in sim.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "task",

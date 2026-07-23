@@ -2,6 +2,7 @@
   "id": "project-LICHEN-1r2w",
   "title": "P2: format_ipv6 snprintf return value ignored, potential truncation",
   "description": "format_ipv6 calls snprintf but does not check its return value against buf_size. Although current format fits in 40 bytes, if format changes or buf_size smaller it could truncate without detection. Should check ret \u003e=0 \u0026\u0026 ret \u003c buf_size. Found during comment removal review of coap_status.c. Related to project-LICHEN-2bix.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "bug",

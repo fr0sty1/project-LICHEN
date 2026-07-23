@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-bkk8",
   "title": "codereview-pass2 mq7a chunk1: new baseline SF10 clarification sentence accurate but should also update pseudocode default comment from 'moderate default' sf=9 to sf=10 for full consistency with appendix",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 3,
   "issue_type": "bug",

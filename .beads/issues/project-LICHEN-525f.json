@@ -2,6 +2,7 @@
   "id": "project-LICHEN-525f",
   "title": "[CODEREVIEW-3] lora_l2.c CCA implementation uses compile-time IS_ENABLED but bead requires explicit LICHEN_LORA_CCA_ENABLE runtime read before lora_cad(); mutex held during CAD but busy abort path has duplicate unlocks",
   "description": "lichen/subsys/lichen/l2/lora_l2.c:1250 - No direct read of LICHEN_LORA_CCA_ENABLE (uses IS_ENABLED(CONFIG_...)); CAD inside modem_mutex but abort path unlocks multiple times potentially. firmware/bridge-zephyr version still missing entirely. Busy abort returns -EBUSY correctly but needs verification.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",

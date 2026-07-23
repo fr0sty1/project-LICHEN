@@ -2,6 +2,7 @@
   "id": "project-LICHEN-nqz6.3",
   "title": "Update security and key derivation in spec/06-security.md for Yggdrasil integration",
   "description": "Document how Ed25519 key derives both the IID, signatures, OSCORE contexts, and the 02xx Yggdrasil address. Emphasize single key for all purposes. Update trust model, TOFU, binding sections to reference the new addressing. Remove outdated ULA/GUA references.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "task",

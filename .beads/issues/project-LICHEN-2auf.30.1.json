@@ -3,6 +3,7 @@
   "title": "Route Zephyr fleet through RenodeServer",
   "description": "ec2-hetero-fleet.sh points SX1262.cs Renode nodes at generic SimulatorServer/NodeServer port 5555, which requires REGISTER first, while SX1262.cs sends TX first and is intentionally a no-REGISTER client. Start and assign per-node RenodeServer endpoints as scripts/renode-multinode.py does, preserving shared simulation traffic.",
   "acceptance_criteria": "Every Zephyr/Renode node connects to a documented RenodeServer endpoint; no TX-before-REGISTER rejection occurs; Python, Rust, and Zephyr nodes share one simulation and exchange frames; process failures fail closed; three reviews pass.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",
