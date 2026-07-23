@@ -460,10 +460,11 @@ int oscore_option_build(const struct oscore_option *_Nonnull option,
  * Builds plaintext/AAD, AES-CCM encrypts, builds OSCORE option.
  * oscore_ctx_persist_ssn() is called only on the success path (after option
  * construction). On OSCORE_ERR_NVM_FAILED from persist_ssn(), the
- * nvm_failed path rolls back sender_seq under mutex before wipe on all paths.
- * This ensures SSN is consumed only on successful NVM write, satisfying nonce
- * uniqueness security requirement for (key, nonce) pairs per RFC 8613
- * Appendix D.4, §7.2.1, §8.4 (see detailed security comment in oscore.c).
+ * nvm_failed path performs *conditional* SSN rollback under mutex
+ * (only if no concurrent increment occurred) before wipe. This prevents
+ * SSN regression (uosj), ensures monotonicity, and satisfies nonce
+ * uniqueness per RFC 8613 Appendix D.4, §7.2, §7.2.1 (see detailed
+ * security comment in oscore.c:nvm_failed).
  *
  * @param[in]     ctx          Security context
  * @param[in]     code         CoAP request code
@@ -476,7 +477,8 @@ int oscore_option_build(const struct oscore_option *_Nonnull option,
  * @param[out]    oscore_opt   Output OSCORE option value
  * @param[in,out] oscore_opt_len Input: buffer size, output: option length
  * @return OSCORE_OK on success (with SSN persistence), OSCORE_ERR_NVM_FAILED
- *         on NVM failure (with SSN rollback), or other negative error codes
+ *         on NVM failure (with conditional SSN rollback), or other negative
+ *         error codes
  */
 int oscore_protect_request(struct oscore_ctx *_Nonnull ctx,
 			   uint8_t code,
