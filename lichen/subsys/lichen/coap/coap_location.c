@@ -67,13 +67,8 @@ static int sensors_location_get(struct coap_resource *resource,
 
 	if (lichen_hal_location_time_snapshot_get(&snap) < 0 ||
 	    !snap.latitude_e7_valid || !snap.longitude_e7_valid) {
-<<<<<<< HEAD
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
-=======
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
->>>>>>> origin/integration/worker9-20260722
 	}
 
 	lat = (float)snap.latitude_e7 / 1e7f;
