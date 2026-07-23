@@ -260,7 +260,7 @@ void lichen_rpl_dodag_config_init(struct lichen_rpl_dodag_config *cfg)
 	cfg->ocp = 1;  /* MRHOF */
 	cfg->def_lifetime = 0xFF;
 	cfg->lifetime_unit = 60;
-	cfg->dio_int_min = 3;
+	cfg->dio_int_min = 12;
 	cfg->dio_int_doublings = 8;
 	cfg->dio_redundancy_const = 10;
 	cfg->gateway_centric = false;

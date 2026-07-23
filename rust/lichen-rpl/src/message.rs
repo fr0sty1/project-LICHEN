@@ -388,7 +388,7 @@ impl Default for DodagConfig {
             ocp: 1,
             def_lifetime: 0xFF,
             lifetime_unit: 60,
-            dio_int_min: 3,
+            dio_int_min: 12,
             dio_int_doublings: 8,
             dio_redundancy_const: 10,
         }

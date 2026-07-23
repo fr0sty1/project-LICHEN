@@ -39,9 +39,7 @@ The root advertises `epoch` (u32) and `num_slots` (default 8) in an extended RPL
 
 Slot ID MUST be computed as:
 
-```
-slot_id = (crc32_ieee(eui64, 8) ^ epoch) % num_slots
-```
+Multi-byte integers are unsigned big-endian. Flags bits: 0=scheduled mode, 1=CSMA rendezvous, 2=concurrent CH0 RX, 3=GNSS-PPS, 4-7 reserved (zero). `Setup Window` bounds retune/readiness/CAD. `Occupied Time` bounds data+ACK. `Guard` is separation between occupied envelopes. `RX Chains` is simultaneous receive count (1 for typical single-radio). `Channel Mask` bit 0 = CH0. Receivers compute local intersection. See test/vectors/ccp*.json for format validation.
 
 using `crc32_ieee` (see appendix-design-rationale.md and lichen/subsys/schc/schc.c). The XOR with epoch ensures time-varying slots to prevent persistent collisions. All implementations MUST match ccp16.json vectors exactly. This integrates with `lichen_rpl_dodag_init()`.
 
