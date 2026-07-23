@@ -209,7 +209,8 @@ class BlePacketTransport:
 
     async def send_packet(self, packet: bytes) -> None:
         """SLIP-encode and write one IPv6 packet over the RX characteristic."""
-        if not self._connected or self._client is None:
+        client = self._client
+        if not self._connected or client is None:
             raise BleTransportError("BLE transport is not connected")
         frame = encode(packet)
         chunk_size = self.write_chunk_size
@@ -217,7 +218,7 @@ class BlePacketTransport:
             for offset in range(0, len(frame), chunk_size):
                 chunk = frame[offset : offset + chunk_size]
                 await asyncio.wait_for(
-                    self._client.write_gatt_char(self.profile.rx_uuid, chunk, response=False),
+                    client.write_gatt_char(self.profile.rx_uuid, chunk, response=False),
                     timeout=self._timeout_s,
                 )
         except Exception as exc:
