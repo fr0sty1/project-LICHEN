@@ -63,15 +63,19 @@ impl<const L: usize> NeighborTxLog<L> {
         self.timestamps.push(timestamp_ms).is_ok()
     }
 
+    fn window_start(now_ms: u64) -> u64 {
+        now_ms.saturating_sub(WINDOW_MS)
+    }
+
     /// Evict timestamps outside the rolling window.
     pub fn evict_stale(&mut self, now_ms: u64) {
-        let window_start = now_ms.saturating_sub(WINDOW_MS);
+        let window_start = Self::window_start(now_ms);
         self.timestamps.retain(|&ts| ts >= window_start);
     }
 
     /// Count packets within the current window.
     pub fn packet_count(&self, now_ms: u64) -> usize {
-        let window_start = now_ms.saturating_sub(WINDOW_MS);
+        let window_start = Self::window_start(now_ms);
         self.timestamps
             .iter()
             .filter(|&&ts| ts >= window_start)
