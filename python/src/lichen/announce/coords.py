@@ -257,7 +257,7 @@ def decode_opportunistic_forwarders(data: bytes) -> list[bytes] | None:
             if count > MAX_OPPORTUNISTIC_CANDIDATES:
                 return None
             expected_len = 2 + count * 8
-            if len(data) < i + expected_len:
+            if len(data) - i != expected_len:
                 return None
             iids = []
             for j in range(count):
