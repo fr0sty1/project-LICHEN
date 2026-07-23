@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-et78.3.2",
+  "title": "Add Trickle timer parameter MUST checks (Imin=4s, Imax=17min) and reset triggers in Zephyr RPL",
+  "description": "Implement RFC2119 compliance for Trickle in lichen/subsys/lichen/rpl/trickle.c, rpl_dodag.h, dodag.c per spec/05-routing.md:8.3 and draft-lichen-rpl-lora-00.md:6. Match Rust behavior for interop. Include Kconfig defaults.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:19:55.725023505Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:19:55.725023505Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-et78.3.2",
+      "depends_on_id": "project-LICHEN-et78.3",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:19:55.859486526Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
