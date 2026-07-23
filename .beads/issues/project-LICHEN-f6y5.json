@@ -2,15 +2,15 @@
   "id": "project-LICHEN-f6y5",
   "title": "[merge-conflict] worktree-worker19: analyze-hetero-fleet.py",
   "notes": "Commit: fc713f70f",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:43:27.947626877Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:48:07.586135661Z",
+  "updated_at": "2026-07-23T01:48:10.130663786Z",
   "started_at": "2026-07-23T01:47:35.775750806Z",
-  "lease_expires_at": "2026-07-23T01:52:35.775750806Z",
-  "heartbeat_at": "2026-07-23T01:47:35.775750806Z"
+  "closed_at": "2026-07-23T01:48:10.130663786Z",
+  "close_reason": "Resolved merge conflict in scripts/analyze-hetero-fleet.py by accepting forwarding-aware implementation from worktree-worker19. Verified no conflict markers remain, syntax OK, committed as fc713f70f and pushed."
 }
