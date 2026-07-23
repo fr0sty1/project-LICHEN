@@ -8,20 +8,28 @@ use lichen_core::ipv6::field;
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
-use lichen_node::{RplEvent, RplNode, stack::add_rpl_source_route};
+use lichen_core::rf_health::RfHealthMetrics;
+use lichen_node::{stack::add_rpl_source_route, Node, RplEvent, RplNode, Router};
 use lichen_schc::codec::{compress, decompress, SchcError};
 use tracing::{error, info, warn};
 
 #[derive(Debug)]
 pub struct Gateway {
     rpl_node: RplNode,
+    rf_health: RfHealthMetrics,
 }
 
 impl Gateway {
     pub fn new(node_id: NodeId) -> Self {
         info!(?node_id, "gateway initialising");
+        let addr = node_id.link_local_addr().0;
         Self {
-            rpl_node: RplNode::new_root(node_id),
+            rpl_node: RplNode {
+                node: Node::new(node_id),
+                router: Router::new_root(addr),
+                rf_health: RfHealthMetrics::new(),
+            },
+            rf_health: RfHealthMetrics::new(),
         }
     }
 
@@ -110,6 +118,9 @@ impl Gateway {
     }
 
     pub fn process_rpl(&mut self, frame: &[u8], now_ms: u64) -> (Option<Vec<u8>>, RplEvent) {
+        self.rf_health.record_rx(5);
+        self.rf_health.record_density(4);
+        self.rf_health.record_load_factor(0x40000000);
         let mut reply = vec![0u8; 512];
         let (reply_len, event) = self
             .rpl_node
@@ -250,7 +261,9 @@ mod tests {
         let gw = test_gateway();
         let local = ll(1);
         let ygg_cross = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2];
-        let nat64 = [0x00u8, 0x64, 0xff, 0x9b, 0, 0, 0, 0, 0, 0, 0, 0, 192, 0, 2, 1];
+        let nat64 = [
+            0x00u8, 0x64, 0xff, 0x9b, 0, 0, 0, 0, 0, 0, 0, 0, 192, 0, 2, 1,
+        ];
         assert!(gw.is_local_mesh(&local.0));
         assert!(!gw.is_local_mesh(&ygg_cross));
         assert!(!gw.is_local_mesh(&nat64));
