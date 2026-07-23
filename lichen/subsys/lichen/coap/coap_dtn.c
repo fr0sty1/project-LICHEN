@@ -24,6 +24,7 @@ static K_MUTEX_DEFINE(s_dtn_mutex);
 static struct k_work_delayable s_dtn_expire_work;
 static uint32_t s_last_deaddrop[256] = {0};
 static uint32_t s_last_confession[256] = {0};
+static K_MUTEX_DEFINE(s_rate_mutex);
 
 static bool parse_recipient(const uint8_t *payload, size_t len, uint8_t dest_iid[8]) {
 	if (!payload || len == 0) return false;
@@ -93,12 +94,14 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 	}
 	uint32_t now_ms = k_uptime_get_32();
 	int idx = get_rate_idx(addr, addr_len);
-	k_mutex_lock(&s_dtn_mutex, K_FOREVER);
+	k_mutex_lock(&s_rate_mutex, K_FOREVER);
 	if (s_last_deaddrop[idx] && (now_ms - s_last_deaddrop[idx] < CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS)) {
-		k_mutex_unlock(&s_dtn_mutex);
+		k_mutex_unlock(&s_rate_mutex);
 		return COAP_RESPONSE_CODE_TOO_MANY_REQUESTS;
 	}
 	s_last_deaddrop[idx] = now_ms;
+	k_mutex_unlock(&s_rate_mutex);
+	k_mutex_lock(&s_dtn_mutex, K_FOREVER);
 	if (s_provider && s_provider->store) {
 		int r = s_provider->store(payload, payload_len);
 		if (r < 0) {
@@ -137,13 +140,13 @@ static int confessions_get(struct coap_resource *resource, struct coap_packet *r
 static int confessions_post(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len) {
 	uint32_t now_ms = k_uptime_get_32();
 	int idx = get_rate_idx(addr, addr_len);
-	k_mutex_lock(&s_dtn_mutex, K_FOREVER);
+	k_mutex_lock(&s_rate_mutex, K_FOREVER);
 	if (s_last_confession[idx] && (now_ms - s_last_confession[idx] < CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS)) {
-		k_mutex_unlock(&s_dtn_mutex);
+		k_mutex_unlock(&s_rate_mutex);
 		return COAP_RESPONSE_CODE_TOO_MANY_REQUESTS;
 	}
 	s_last_confession[idx] = now_ms;
-	k_mutex_unlock(&s_dtn_mutex);
+	k_mutex_unlock(&s_rate_mutex);
 	return COAP_RESPONSE_CODE_CHANGED;
 }
 
