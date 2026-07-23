@@ -69,10 +69,6 @@ static inline bool cbor_check_space(struct cbor_ctx *ctx, size_t n)
 
 static void cbor_put_map_header(struct cbor_ctx *ctx, uint8_t count)
 {
-	if (count > 255) {
-		ctx->overflow = true;
-		return;
-	}
 	if (count < 24U) {
 		if (!cbor_check_space(ctx, 1)) {
 			return;
@@ -89,10 +85,6 @@ static void cbor_put_map_header(struct cbor_ctx *ctx, uint8_t count)
 
 static void cbor_put_array_header(struct cbor_ctx *ctx, uint8_t count)
 {
-	if (count > 255) {
-		ctx->overflow = true;
-		return;
-	}
 	if (count < 24U) {
 		if (!cbor_check_space(ctx, 1)) {
 			return;
