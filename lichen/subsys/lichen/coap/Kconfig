@@ -191,6 +191,7 @@ config LICHEN_COAP_KEYS
 	# so this option genuinely requires it (bd a2a2).
 	depends on LICHEN_SLIP_TRANSPORT
 	select COAP_URI_WILDCARD
+	select ZCBOR
 	select TINYCRYPT_SHA256
 	help
 	  Enable CoAP server resources for key store management per LCI spec
@@ -210,10 +211,11 @@ config LICHEN_COAP_KEYS_MAX_ENTRIES
 	int "Maximum key store entries"
 	depends on LICHEN_COAP_KEYS
 	default 16
-	range 4 64
+	range 4 16
 	help
-	  Maximum number of peer keys to store. Each entry requires
-	  approximately 80 bytes of RAM.
+	  Maximum number of peer keys to store (capped at 16 by CBOR
+	  encoder stack usage and BUILD_ASSERT in coap_keys.c; see
+	  encode_keys_list_cbor). Each entry requires ~80 bytes of RAM.
 
 config LICHEN_COAP_KEYS_LOG_LEVEL
 	int "CoAP keys log level"

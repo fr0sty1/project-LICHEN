@@ -40,6 +40,9 @@ LOG_MODULE_REGISTER(lichen_coap_keys, CONFIG_LICHEN_COAP_KEYS_LOG_LEVEL);
 #define CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES 16
 #endif
 
+BUILD_ASSERT(CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES <= 16,
+	     "CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES >16 risks stack overflow in encode_keys_list_cbor");
+
 #define CBOR_CONTENT_FORMAT 60
 
 static struct lichen_key_entry s_keys[CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES];
@@ -276,8 +279,8 @@ static int base64_decode(const char *in, size_t in_len, uint8_t *out, size_t out
 	return (int)out_idx;
 }
 
-int lichen_key_pubkey_to_iid(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
-			     uint8_t iid[LICHEN_KEY_IID_LEN])
+int lichen_key_pubkey_to_iid(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
+			     uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN])
 {
 	if (pubkey == NULL || iid == NULL) {
 		return -EINVAL;
@@ -295,11 +298,11 @@ int lichen_key_pubkey_to_iid(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
 
 	memcpy(iid, hash, LICHEN_KEY_IID_LEN);
 	iid[0] &= ~0x02U;
+	memset(hash, 0, sizeof(hash));  /* clear sensitive intermediate from stack */
 	return 0;
 #else
-	memcpy(iid, pubkey, LICHEN_KEY_IID_LEN);
-	iid[0] &= ~0x02U;
-	return 0;
+	/* Kconfig forces TINYCRYPT_SHA256; this path is unreachable */
+	return -ENOSYS;
 #endif
 }
 
