@@ -501,27 +501,40 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             .receive_timeout(action)
             .map_err(RplRuntimeReceiveError::Action)?;
         let mut wire = [0u8; MAX_FRAME_SIZE];
-        let received = self.stack.radio().receive(&mut wire, timeout_ms).await;
-        let (now_ms, maintenance) = runtime
-            .complete_receive(&mut self.rpl, action, observe_now_ms())
-            .map_err(RplRuntimeReceiveError::Action)?;
-        self.routing_now_ms = self.routing_now_ms.max(now_ms);
-        let packet = received.map_err(|_| {
-            RplRuntimeReceiveError::Receive(RplReceiveError::Receive(RxError::RadioRx))
-        })?;
-        let received = match packet {
-            Some(packet) => {
+        let rx = self.stack.radio().receive(&mut wire, timeout_ms).await;
+        let post_await_ms = observe_now_ms();
+        let received = match rx {
+            Ok(Some(packet)) => {
                 if packet.len > wire.len() {
+                    let (now_ms, _maintenance) = runtime
+                        .complete_receive(&mut self.rpl, action, post_await_ms)
+                        .map_err(RplRuntimeReceiveError::Action)?;
+                    self.routing_now_ms = self.routing_now_ms.max(now_ms);
                     return Err(RplRuntimeReceiveError::Receive(RplReceiveError::Receive(
                         RxError::RadioPacketTooLarge,
                     )));
                 }
-                self.process_received(&wire[..packet.len], packet, now_ms)
+                let outcome = self
+                    .process_received(&wire[..packet.len], packet, post_await_ms)
                     .await
-                    .map_err(RplRuntimeReceiveError::Receive)?
+                    .map_err(RplRuntimeReceiveError::Receive)?;
+                Some(outcome)
             }
-            None => None,
+            Ok(None) => None,
+            Err(_) => {
+                let (now_ms, _maintenance) = runtime
+                    .complete_receive(&mut self.rpl, action, post_await_ms)
+                    .map_err(RplRuntimeReceiveError::Action)?;
+                self.routing_now_ms = self.routing_now_ms.max(now_ms);
+                return Err(RplRuntimeReceiveError::Receive(RplReceiveError::Receive(
+                    RxError::RadioRx,
+                )));
+            }
         };
+        let (now_ms, maintenance) = runtime
+            .complete_receive(&mut self.rpl, action, post_await_ms)
+            .map_err(RplRuntimeReceiveError::Action)?;
+        self.routing_now_ms = self.routing_now_ms.max(now_ms);
         Ok(RplRuntimeReceiveOutcome {
             now_ms,
             maintenance,
