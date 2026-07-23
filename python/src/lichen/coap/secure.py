@@ -2446,6 +2446,15 @@ class SecureDatagramChannel(DatagramChannel):
 
     def close(self) -> None:
         """Close the channel."""
+        for future in list(self._pending_edhoc.values()):
+            if not future.done():
+                future.cancel()
+        self._pending_edhoc.clear()
+        edhoc_ctx = self._edhoc_ctx
+        self._edhoc_ctx = None
+        self._edhoc_channel = None
+        if edhoc_ctx is not None:
+            asyncio.create_task(edhoc_ctx.shutdown())
         error: BaseException | None = None
         teardown_was_started = self._inner_teardown_started
         inner: DatagramChannel | None = None
