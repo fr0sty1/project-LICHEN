@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-g8ah",
   "title": "[merge-conflict] worktree-worker18: test_bridge_zephyr_cmake.py",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:40:10.285567471Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:40:10.285567471Z"
+  "updated_at": "2026-07-23T01:44:03.95165668Z",
+  "started_at": "2026-07-23T01:44:03.95165668Z",
+  "lease_expires_at": "2026-07-23T01:49:03.95165668Z",
+  "heartbeat_at": "2026-07-23T01:44:03.95165668Z"
 }
