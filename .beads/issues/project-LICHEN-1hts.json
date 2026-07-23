@@ -3,15 +3,15 @@
   "title": "route: no validation that packet.header.dst_addr is IPv6Address",
   "description": "File: python/src/lichen/routing/router.py:411-428\n\n```python\ndef route(self, packet: IPv6Packet, now_ms: int) -\u003e tuple[RouteDecision, IPv6Address | None]:\n    dst = packet.header.dst_addr\n    if dst == self.node_address:  # Comparison assumes dst is IPv6Address\n        return RouteDecision.DELIVER_LOCAL, None\n    addr_class = self.classify_address(dst)  # Passes to 'in' operator\n```\n\nWHY IT'S A BUG:\n1. No type validation that dst is actually an IPv6Address\n2. If packet.header.dst_addr is None, string, or malformed, behavior is undefined\n3. IPv6Address comparison with non-IPv6Address may raise or return False unexpectedly\n4. classify_address uses 'addr in prefix' which requires addr to be IPv6Address\n\nThis depends on IPv6Packet validation, but defensive programming suggests validating at boundaries.\n\nIMPACT: Potential TypeError or incorrect routing if malformed packets reach the router.\n\nFIX: Add explicit validation:\n```python\nif not isinstance(dst, IPv6Address):\n    logger.error(\"route: invalid dst_addr type: %s\", type(dst))\n    return RouteDecision.DROP, None\n```",
   "notes": "Commit: 011c779df17f293721a42ad6bc035513b1b79646",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:25:52.718509Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:29:54.764151876Z",
+  "updated_at": "2026-07-23T04:29:56.914896671Z",
   "started_at": "2026-07-23T04:28:18.924461867Z",
-  "lease_expires_at": "2026-07-23T04:33:18.924461867Z",
-  "heartbeat_at": "2026-07-23T04:28:18.924461867Z"
+  "closed_at": "2026-07-23T04:29:56.914896671Z",
+  "close_reason": "Added type validation for dst_addr in Router.route() to prevent TypeError or incorrect routing on malformed packets. Updated python/src/lichen/routing/router.py. Relevant tests in test_router.py pass (GPSR test failure is pre-existing and out of scope)."
 }
