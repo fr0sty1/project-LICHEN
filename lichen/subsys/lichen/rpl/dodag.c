@@ -72,7 +72,7 @@ static bool version_is_newer(uint8_t a, uint8_t b)
 static uint16_t path_cost(const struct lichen_rpl_parent *p, uint16_t mhri)
 {
 	uint32_t increment = ((uint32_t)p->link_etx * mhri) / 256;
-	uint32_t cost = (uint32_t)p->rank + increment;
+	uint32_t cost = (uint32_t)p->rank + increment + ((uint32_t)p->load_factor * 8);
 	return (cost > 0xFFFF) ? 0xFFFF : (uint16_t)cost;
 }
 
@@ -276,6 +276,7 @@ int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 				  const struct lichen_rpl_dio *dio,
 				  const uint8_t *neighbor_addr,
 				  uint16_t link_etx,
+				  uint8_t load_factor,
 				  uint32_t now)
 {
 	if (d == NULL || dio == NULL || neighbor_addr == NULL) {
@@ -344,15 +345,13 @@ int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 			}
 			uint16_t worst_cost = path_cost(worst, d->min_hop_rank_increase);
 			uint32_t new_increment = ((uint32_t)link_etx * d->min_hop_rank_increase) / 256;
-			uint32_t new_cost = (uint32_t)dio->rank + new_increment;
+			uint32_t new_cost = (uint32_t)dio->rank + new_increment + ((uint32_t)load_factor * 8);
 			if (new_cost > 0xFFFF) {
 				new_cost = 0xFFFF;
 			}
 			if (new_cost >= worst_cost) {
-				/* New candidate is not better - ignore it */
 				return ret;
 			}
-			/* Evict the worst and use its slot */
 			p = worst;
 		}
 		memcpy(p->addr, neighbor_addr, 16);
@@ -360,6 +359,7 @@ int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 
 	p->rank = dio->rank;
 	p->link_etx = link_etx;
+	p->load_factor = load_factor;
 	p->last_updated = now;
 	p->valid = true;
 
