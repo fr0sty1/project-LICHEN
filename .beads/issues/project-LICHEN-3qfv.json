@@ -2,15 +2,15 @@
   "id": "project-LICHEN-3qfv",
   "title": "[merge-conflict] worktree-worker23: xiao_s3_wio_sx1262.overlay",
   "notes": "Commit: 7c8ff65f1",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:25:08.053972005Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:11:07.400690605Z",
+  "updated_at": "2026-07-23T02:11:10.803458674Z",
   "started_at": "2026-07-23T02:10:03.347968873Z",
-  "lease_expires_at": "2026-07-23T02:15:03.347968873Z",
-  "heartbeat_at": "2026-07-23T02:10:03.347968873Z"
+  "closed_at": "2026-07-23T02:11:10.803458674Z",
+  "close_reason": "Standardized RETIRED/BLOCKED comment in xiao_s3_wio_sx1262.overlay per no-dead-code rule; removed merge-conflict resolution meta-note; aligned with tbeam_supreme pattern, matrix doc, and prior worker resolutions (2u26.10, m5m1.8). Verified no conflict markers. Commit 7c8ff65"
 }
