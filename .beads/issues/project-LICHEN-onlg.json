@@ -2,15 +2,15 @@
   "id": "project-LICHEN-onlg",
   "title": "[merge-conflict] worktree-worker23: t_deck_esp32s3_procpu.conf",
   "notes": "Commit: 4df66b3f4",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:30:36.293930755Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:36:32.198485721Z",
+  "updated_at": "2026-07-23T00:36:36.02137322Z",
   "started_at": "2026-07-23T00:33:50.723276253Z",
-  "lease_expires_at": "2026-07-23T00:38:50.723276253Z",
-  "heartbeat_at": "2026-07-23T00:33:50.723276253Z"
+  "closed_at": "2026-07-23T00:36:36.02137322Z",
+  "close_reason": "Resolved merge conflicts in t_deck_esp32s3_procpu.conf, analyze-hetero-fleet.py, spec/03-addressing.md, trickle.c and related files from worker23 integration. Consolidated configs, improved packet analysis for forwarding, reconciled spec text, fixed Trickle timer offset calc. Committed and pushed."
 }
