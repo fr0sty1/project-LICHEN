@@ -62,9 +62,13 @@ class AnnounceMessage:
         if not 0 <= self.seq_num <= 0xFFFF:
             raise AnnounceError(f"seq_num out of range: {self.seq_num}")
         if not 0 <= self.hop_count <= 0xFF:
-            raise AnnounceError("hop_count out of range")
+            raise AnnounceError(f"hop_count out of range: {self.hop_count}")
+        if not 0 <= self.flags <= 0xFF:
+            raise AnnounceError(f"flags out of range: {self.flags}")
         if not 0 <= self.rx_channel <= 7:
-            raise AnnounceError("invalid rx_channel")
+            raise AnnounceError(
+                f"invalid rx_channel: {self.rx_channel} (must be 0-7)"
+            )
         if self.signature and len(self.signature) != SIGNATURE_LENGTH:
             raise AnnounceError(
                 f"signature must be 0 or {SIGNATURE_LENGTH} bytes, "
@@ -81,7 +85,7 @@ class AnnounceMessage:
         )
 
     def to_bytes(self) -> bytes:
-        """Serialize per spec 9.2+CCP-9 (type[0], rx[1], hop[2], seq[3:5], iid/pubkey/sig/app)."""
+        """Serialize to wire format per spec 9.2/CCP-9 (type, rx_channel/flags, hop, seq, iid, pubkey, sig, app_data)."""
         if len(self.signature) != SIGNATURE_LENGTH:
             raise AnnounceError(
                 f"cannot serialize unsigned announce (signature len "
