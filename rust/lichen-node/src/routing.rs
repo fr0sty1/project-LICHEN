@@ -318,7 +318,7 @@ impl NeighborTable {
         for slot in self.entries.iter_mut() {
             let is_stale = slot.as_ref().map_or(false, |neighbor| {
                 let age = now_ms.saturating_sub(neighbor.last_seen_ms);
-                age > max_age_ms && heard_consistent < 2
+                !TrickleAwareNeighborLiveness::is_alive(age, max_age_ms, heard_consistent)
             });
             if is_stale {
                 let neighbor = slot.take().expect("stale slot contains a neighbor");
@@ -342,7 +342,7 @@ impl NeighborTable {
             .find(|n| n.addr == *addr)
             .map_or(false, |n| {
                 let age = now_ms.saturating_sub(n.last_seen_ms);
-                age <= max_age_ms || heard_consistent >= 2
+                TrickleAwareNeighborLiveness::is_alive(age, max_age_ms, heard_consistent)
             })
     }
 }
@@ -990,6 +990,9 @@ impl Router {
     }
 
     /// Remove stale neighbors and their corresponding DODAG parent candidates.
+    ///
+    /// Uses `TrickleAwareNeighborLiveness` policy (see its docs for RFC 6206
+    /// suppression-aware logic using `trickle.counter`).
     /// Times use the same monotonic `u64` millisecond timeline as DIO processing.
     pub fn prune_neighbors(&mut self, now_ms: u64, max_age_ms: u64) -> bool {
         let now_ms = self.observe_now(now_ms);
