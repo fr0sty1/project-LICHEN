@@ -135,6 +135,10 @@ static int authenticate_inner_payload(struct lichen_link_rx_ctx *ctx,
 			ret = -LICHEN_EAUTH;
 			goto cleanup;
 		}
+	if (!schnorr48_pubkey_valid(ctx->peer_pubkey)) {
+		ret = -LICHEN_EAUTH;
+		goto cleanup;
+	}
 
 		int verify_result = schnorr48_verify_frame(frame[0], frame[1],
 							   parsed.epoch, parsed.seqnum,
