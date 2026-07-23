@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-7msq.1",
+  "title": "Add s_provider_mutex and lichen_coap_deaddrop_provider_get() getter mimicking coap_config.c",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:19:36.958925796Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:19:36.958925796Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-7msq.1",
+      "depends_on_id": "project-LICHEN-7msq",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:19:37.096510072Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
