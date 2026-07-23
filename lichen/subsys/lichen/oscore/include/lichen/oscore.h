@@ -453,9 +453,18 @@ int oscore_option_build(const struct oscore_option *_Nonnull option,
 /**
  * @brief Protect a CoAP request with OSCORE.
  *
- * Encrypts the request payload and authenticated options.
+ * Encrypts the request payload and authenticated options (Class E).
+ * Atomically increments sender_seq under mutex before crypto. On success
+ * path, calls oscore_ctx_persist_ssn() to persist updated SSN via NVM
+ * callback (if registered). 
  *
- * @param[in]     ctx          Security context
+ * On OSCORE_ERR_NVM_FAILED from persistence, dedicated nvm_failed path
+ * synchronizes internal s_seq_initialized flag (under mutex) so subsequent
+ * calls do not fail with "not initialized" error. SSN increment is NOT
+ * rolled back (packet was prepared/transmitted) to avoid nonce reuse on
+ * reboot per RFC 8613 §7.2/§8.4. See SECURITY comment in oscore.c:1604.
+ *
+ * @param[in]     ctx          Security context (sender_seq must be initialized)
  * @param[in]     code         CoAP request code
  * @param[in]     options      CoAP options to protect (Class E)
  * @param[in]     options_len  Options length
@@ -465,7 +474,10 @@ int oscore_option_build(const struct oscore_option *_Nonnull option,
  * @param[in,out] ciphertext_len Input: buffer size, output: ciphertext length
  * @param[out]    oscore_opt   Output OSCORE option value
  * @param[in,out] oscore_opt_len Input: buffer size, output: option length
- * @return 0 on success, negative error code on failure
+ * @return OSCORE_OK on success, OSCORE_ERR_NVM_FAILED if SSN persistence
+ *         fails, OSCORE_ERR_INVALID_PARAM, OSCORE_ERR_SEQ_EXHAUSTED,
+ *         OSCORE_ERR_BUFFER_TOO_SMALL, OSCORE_ERR_ENCRYPT_FAILED or other
+ *         negative codes on failure
  */
 int oscore_protect_request(struct oscore_ctx *_Nonnull ctx,
 			   uint8_t code,

@@ -738,13 +738,9 @@ impl Context {
         code: u8,
         class_e_options: &[u8],
         payload: &[u8],
-    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, 16>), OscoreError> {
-        // Get and increment sequence number.
-        // SECURITY: Returns SeqExhausted if at u32::MAX to prevent nonce reuse.
-        let seq = self
-            .sender_seq
-            .fetch_increment()
-            .ok_or(OscoreError::SeqExhausted)?;
+    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>), OscoreError> {
+        // Use pre-reserved sequence number (NVM persistence handled by caller
+        // or ReservedSender). SECURITY: SeqExhausted already checked by caller.
 
         // Encode PIV
         let mut piv = [0u8; PIV_MAX_LEN];
@@ -940,7 +936,7 @@ impl Context {
         request_kid: &[u8],
         request_piv: &[u8],
         include_piv: bool,
-    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, 16>), OscoreError> {
+    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>), OscoreError> {
         // Determine PIV for nonce: own sequence if including, else request's PIV
         let (nonce_piv, piv_len, piv_for_option): ([u8; PIV_MAX_LEN], usize, Option<usize>) =
             if include_piv {
@@ -1005,7 +1001,7 @@ impl Context {
 
         // Build OSCORE option
         const OPT_CAP: usize = OSCORE_OPTION_MAX_LEN;
-        let opt = heapless::Vec::<u8, OPT_CAP>::new();
+        let mut opt = heapless::Vec::<u8, OPT_CAP>::new();
 
         if let Some(len) = piv_for_option {
             // Include PIV in option
@@ -1153,11 +1149,11 @@ impl Context {
         let piv = if opt.piv_len > 0 {
             &opt.piv[..opt.piv_len as usize]
         } else {
-            (request_piv, false)
+            request_piv
         };
 
         let response_seq = if opt.piv_len > 0 {
-            let seq = OscoreSeqNum::from_piv(piv);
+            let seq = OscoreSeqNum::from_piv(piv).ok_or(OscoreError::InvalidParam)?;
             if self.is_replay(seq) {
                 return Err(OscoreError::Replay);
             }

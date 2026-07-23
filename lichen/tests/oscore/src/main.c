@@ -340,4 +340,61 @@ ZTEST(oscore_ctx, test_persist_ssn_noop_without_callback)
 	oscore_ctx_free(ctx);
 }
 
+ZTEST(oscore_ctx, test_nvm_protect_request_failure)
+{
+	struct oscore_ctx *ctx = NULL;
+	uint8_t ciphertext[64];
+	size_t ct_len = sizeof(ciphertext);
+	uint8_t oscore_opt[32];
+	size_t opt_len = sizeof(oscore_opt);
+	uint32_t ssn;
+
+	oscore_nvm_register_callbacks(mock_nvm_write, mock_nvm_read);
+
+	zassert_equal(oscore_ctx_create_with_eui64(master_secret, NULL, 0,
+						   sender_id, sizeof(sender_id),
+						   recipient_id, sizeof(recipient_id),
+						   peer_eui64_1, &ctx),
+		      OSCORE_OK);
+	zassert_not_null(ctx);
+
+	/* Initialize SSN successfully first */
+	zassert_equal(oscore_ctx_set_sender_seq(ctx, 1000), OSCORE_OK);
+	zassert_equal(oscore_ctx_get_sender_seq(ctx, &ssn), OSCORE_OK);
+	zassert_equal(ssn, 1000U);
+
+	mock_nvm_set_write_fail(true);
+	mock_nvm_write_count = 0; /* reset for this test's persist call */
+
+	/* protect_request does SSN++ (to 1001), full crypto/option build,
+	 * then persist_ssn fails -> returns OSCORE_ERR_NVM_FAILED.
+	 * nvm_failed path ensures state sync (initialized flag set).
+	 */
+	zassert_equal(oscore_protect_request(ctx, 0x01, NULL, 0, NULL, 0,
+					     ciphertext, &ct_len,
+					     oscore_opt, &opt_len),
+		      OSCORE_ERR_NVM_FAILED);
+	zassert_equal(mock_nvm_write_count, 1);
+
+	/* SSN state correctness: incremented despite NVM failure (no rollback
+	 * since protected message was prepared; prevents nonce reuse on reboot)
+	 */
+	zassert_equal(oscore_ctx_get_sender_seq(ctx, &ssn), OSCORE_OK);
+	zassert_equal(ssn, 1001U);
+
+	/* With mock fixed, subsequent protect succeeds (no INVALID_PARAM) */
+	mock_nvm_set_write_fail(false);
+	ct_len = sizeof(ciphertext);
+	opt_len = sizeof(oscore_opt);
+	zassert_equal(oscore_protect_request(ctx, 0x01, NULL, 0, NULL, 0,
+					     ciphertext, &ct_len,
+					     oscore_opt, &opt_len),
+		      OSCORE_OK);
+	zassert_equal(mock_nvm_write_count, 2);
+
+	oscore_ctx_free(ctx);
+	oscore_nvm_register_callbacks(NULL, NULL);
+	mock_nvm_set_write_fail(false);
+}
+
 ZTEST_SUITE(oscore_ctx, NULL, oscore_ctx_setup, oscore_ctx_before, NULL, NULL);
