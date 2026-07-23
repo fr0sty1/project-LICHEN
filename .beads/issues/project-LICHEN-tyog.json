@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-tyog",
   "title": "[merge-conflict] worktree-worker21: bridge.rs",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:59:40.036756383Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:59:40.036756383Z"
+  "updated_at": "2026-07-23T04:26:16.452968413Z",
+  "started_at": "2026-07-23T04:26:16.452968413Z",
+  "lease_expires_at": "2026-07-23T04:31:16.452968413Z",
+  "heartbeat_at": "2026-07-23T04:26:16.452968413Z"
 }
