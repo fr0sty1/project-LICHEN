@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-3fih.1",
+  "title": "Fix CBOR overflow flag propagation and early abort in encode_*_cbor functions",
+  "description": "Update all cbor_put_* callers to check ctx.overflow immediately after groups of operations. Return 0 on any overflow to prevent partial CBOR output. Make cbor_put functions return success bool for better propagation.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:16:52.177514728Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:16:52.177514728Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-3fih.1",
+      "depends_on_id": "project-LICHEN-3fih",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:16:52.318384105Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
