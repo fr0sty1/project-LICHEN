@@ -492,7 +492,6 @@ fi
 if [[ $RUST_NODES -gt 0 ]]; then
     log_info "Building and starting $RUST_NODES Rust nodes..."
 
-    # Create Rust hetero-node binary if needed
     RUST_BIN="$PROJECT_ROOT/rust/target/release/hetero-node"
     if [[ ! -f "$RUST_BIN" || "$PROJECT_ROOT/rust/lichen-apps/src/bin/hetero_node.rs" -nt "$RUST_BIN" ]]; then
         # Create the binary
@@ -512,91 +511,14 @@ fn main() {
         eprintln!("Usage: hetero-node <node_id> <sim_host> <sim_port> <duration_s>");
         std::process::exit(1);
     }
-
-    let node_id: u32 = args[1].parse().unwrap();
-    let host = &args[2];
-    let port: u16 = args[3].parse().unwrap();
-    let duration_s: u64 = args[4].parse().unwrap();
-
-    // Create identity from node_id
-    let mut seed = [0u8; 32];
-    seed[0] = (node_id & 0xFF) as u8;
-    seed[1] = ((node_id >> 8) & 0xFF) as u8;
-    let identity = Identity::from_seed(&seed);
-
-    println!("rust-{}: connecting to {}:{}", node_id, host, port);
-
-    // Connect to lichen-sim
-    let mut radio = match lichen_embassy::sim::SimRadio::connect(host, port) {
-        Ok(r) => r,
-        Err(e) => {
-            eprintln!("rust-{}: connect failed: {:?}", node_id, e);
-            std::process::exit(1);
-        }
-    };
-
-    let start = Instant::now();
-    let mut tx_count = 0u32;
-    let mut rx_count = 0u32;
-    let mut buf = [0u8; 256];
-
-    while start.elapsed() < Duration::from_secs(duration_s) {
-        // Build and send announce
-        // (simplified - real impl would use full scheduler)
-        let announce_data = format!("RUST-{}-{}", node_id, tx_count);
-
-        if let Err(e) = futures::executor::block_on(
-            lichen_hal::Radio::transmit(&mut radio, announce_data.as_bytes())
-        ) {
-            eprintln!("rust-{}: TX error: {:?}", node_id, e);
-        } else {
-            tx_count += 1;
-        }
-
-        // Listen
-        for _ in 0..5 {
-            match futures::executor::block_on(
-                lichen_hal::Radio::receive(&mut radio, &mut buf, 1000)
-            ) {
-                Ok(Some(_)) => rx_count += 1,
-                Ok(None) => {}
-                Err(e) => eprintln!("rust-{}: RX error: {:?}", node_id, e),
-            }
-        }
-
-        std::thread::sleep(Duration::from_secs(10));
-    }
-
-    println!("rust-{}: TX={} RX={}", node_id, tx_count, rx_count);
-}
-RUSTNODE
-
-        # Add to Cargo.toml
-        if ! grep -q "hetero-node" "$PROJECT_ROOT/rust/lichen-apps/Cargo.toml"; then
-            cat >> "$PROJECT_ROOT/rust/lichen-apps/Cargo.toml" << 'CARGO'
-
-[[bin]]
-name = "hetero-node"
-path = "src/bin/hetero_node.rs"
-CARGO
-        fi
-
-        # Add dependencies
-        if ! grep -q "lichen-embassy" "$PROJECT_ROOT/rust/lichen-apps/Cargo.toml"; then
-            sed -i '' 's/\[dependencies\]/[dependencies]\nlichen-embassy = { path = "..\/lichen-embassy" }\nlichen-hal = { path = "..\/lichen-hal" }\nfutures = "0.3"/' \
-                "$PROJECT_ROOT/rust/lichen-apps/Cargo.toml" 2>/dev/null || true
-        fi
-
-        cd "$PROJECT_ROOT/rust"
-        cargo build --release -p lichen-apps --bin hetero-node 2>/dev/null || {
-            log_warn "Rust build failed - skipping Rust nodes"
-            RUST_NODES=0
-        }
+    if [[ ! -x "$RUST_BIN" ]]; then
+        log_error "Rust hetero-node binary missing after successful build"
+        exit 1
     fi
 
-    if [[ $RUST_NODES -gt 0 ]] && [[ -f "$RUST_BIN" ]]; then
-        for i in $(seq 0 $((RUST_NODES - 1))); do
-            NODE_ID=$((2000 + i))  # Rust nodes: 2000+
+    for i in $(seq 0 $((RUST_NODES - 1))); do
+        NODE_ID=$((2000 + i))  # Rust nodes: 2000+
+        X_POS=$((i * 50))
 
             "$RUST_BIN" "$NODE_ID" "127.0.0.1" 5555 "$X_POS" "$DURATION_S" \
                 > "$RESULTS_DIR/rust-$NODE_ID.log" 2>&1 &
@@ -896,6 +818,7 @@ elif [[ $TOTAL_RX -eq 0 ]]; then
     cd "$PROJECT_ROOT"
     bd create "Hetero mesh: $TOTAL_TX TX but 0 RX - interop failure" \
         --type bug --priority P0 2>/dev/null || true
+    exit 1
 elif [[ $TOTAL_RX -lt $((TOTAL_TX / 10)) ]]; then
     log_warn "Low reception rate - possible interop issues"
     cd "$PROJECT_ROOT"

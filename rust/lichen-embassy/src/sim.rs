@@ -237,10 +237,41 @@ impl Radio for SimRadio {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::net::TcpListener;
+    use std::thread;
 
     #[test]
     fn sim_radio_error_display() {
         let err: SimError = RadioError::Protocol;
         assert!(format!("{:?}", err).contains("Protocol"));
+    }
+
+    #[test]
+    fn connect_registered_sends_register_before_returning() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut length = [0u8; 4];
+            stream.read_exact(&mut length).unwrap();
+            let mut message = vec![0u8; u32::from_le_bytes(length) as usize];
+            stream.read_exact(&mut message).unwrap();
+
+            let mut expected = vec![0x01, 4];
+            expected.extend_from_slice(b"mesh");
+            expected.push(6);
+            expected.extend_from_slice(b"rust-1");
+            expected.extend_from_slice(&1.5f64.to_le_bytes());
+            expected.extend_from_slice(&(-2.0f64).to_le_bytes());
+            expected.extend_from_slice(&3.25f64.to_le_bytes());
+            assert_eq!(message, expected);
+
+            stream.write_all(&1u32.to_le_bytes()).unwrap();
+            stream.write_all(&[0x00]).unwrap();
+        });
+
+        SimRadio::connect_registered("127.0.0.1", port, "mesh", "rust-1", (1.5, -2.0, 3.25))
+            .unwrap();
+        server.join().unwrap();
     }
 }

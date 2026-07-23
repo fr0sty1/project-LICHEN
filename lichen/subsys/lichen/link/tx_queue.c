@@ -16,13 +16,36 @@
 #include <lichen/errno.h>
 #include <string.h>
 
+#ifdef CONFIG_TX_QUEUE_TEST_TIME
+static bool fail_test_time;
+#endif
+
 #ifdef __ZEPHYR__
 #include <zephyr/kernel.h>
-#define TX_QUEUE_NOW_MS() ((uint32_t)k_uptime_get())
+
+static int tx_queue_platform_now_ms(uint32_t *now_ms)
+{
+#ifdef CONFIG_TX_QUEUE_TEST_TIME
+	if (fail_test_time) {
+		return -EIO;
+	}
+#endif
+	*now_ms = (uint32_t)k_uptime_get();
+	return 0;
+}
 #else
 #include <time.h>
 
-static uint32_t tx_queue_posix_now_ms(void)
+#ifdef CONFIG_TX_QUEUE_TEST_TIME
+static int tx_queue_clock_gettime(clockid_t clock_id, struct timespec *ts)
+{
+	return fail_test_time ? -1 : clock_gettime(clock_id, ts);
+}
+#else
+#define tx_queue_clock_gettime(clock_id, ts) clock_gettime(clock_id, ts)
+#endif
+
+static int tx_queue_platform_now_ms(uint32_t *now_ms)
 {
 	struct timespec ts;
 	/* SECURITY: On failure, return 0 to avoid using uninitialized data.
@@ -35,7 +58,13 @@ static uint32_t tx_queue_posix_now_ms(void)
 	return (uint32_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
 }
 
-#define TX_QUEUE_NOW_MS() tx_queue_posix_now_ms()
+	if (tx_queue_clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+		return -EIO;
+	}
+	*now_ms = (uint32_t)ts.tv_sec * 1000U +
+		  (uint32_t)(ts.tv_nsec / 1000000L);
+	return 0;
+}
 #endif
 
 /* For testing: allow overriding the time source */
@@ -47,6 +76,7 @@ void tx_queue_test_set_time(uint32_t time_ms)
 {
 	test_time_ms = time_ms;
 	use_test_time = true;
+	fail_test_time = false;
 }
 
 void tx_queue_test_use_real_time(void)
@@ -54,12 +84,24 @@ void tx_queue_test_use_real_time(void)
 	use_test_time = false;
 }
 
-static uint32_t get_now_ms(void)
+void tx_queue_test_fail_time(bool fail)
 {
-	return use_test_time ? test_time_ms : TX_QUEUE_NOW_MS();
+	fail_test_time = fail;
+}
+
+static int get_now_ms(uint32_t *now_ms)
+{
+	if (fail_test_time) {
+		return tx_queue_platform_now_ms(now_ms);
+	}
+	if (use_test_time) {
+		*now_ms = test_time_ms;
+		return 0;
+	}
+	return tx_queue_platform_now_ms(now_ms);
 }
 #else
-#define get_now_ms() TX_QUEUE_NOW_MS()
+#define get_now_ms(now_ms) tx_queue_platform_now_ms(now_ms)
 #endif
 
 static void lock_queue(struct tx_queue *queue)
@@ -89,7 +131,7 @@ static void unlock_queue(struct tx_queue *queue)
  */
 static bool deadline_expired(uint32_t deadline_ms, uint32_t now_ms)
 {
-	return (int32_t)(now_ms - deadline_ms) >= 0;
+	return now_ms - deadline_ms < UINT32_C(0x80000000);
 }
 
 /**
@@ -182,18 +224,10 @@ int tx_queue_init(struct tx_queue *queue)
 	return 0;
 }
 
-int tx_queue_push(struct tx_queue *queue, const uint8_t *data, uint16_t len,
-		  uint8_t priority, uint32_t deadline_ms)
+static int tx_queue_push_at(struct tx_queue *queue, const uint8_t *data,
+			    uint16_t len, uint8_t priority,
+			    uint32_t deadline_ms, uint32_t now_ms)
 {
-	if (queue == NULL || data == NULL) {
-		return -EINVAL;
-	}
-
-	if (len == 0 || len > TX_QUEUE_MAX_PACKET_SIZE) {
-		return -EINVAL;
-	}
-
-	uint32_t now_ms = get_now_ms();
 	int ret = 0;
 
 	lock_queue(queue);
@@ -235,12 +269,39 @@ out:
 	return ret;
 }
 
+int tx_queue_push(struct tx_queue *queue, const uint8_t *data, uint16_t len,
+		  uint8_t priority, uint32_t deadline_ms)
+{
+	uint32_t now_ms;
+	int ret;
+
+	if (queue == NULL || data == NULL || len == 0 ||
+	    len > TX_QUEUE_MAX_PACKET_SIZE) {
+		return -EINVAL;
+	}
+	ret = get_now_ms(&now_ms);
+	if (ret < 0) {
+		return ret;
+	}
+	return tx_queue_push_at(queue, data, len, priority, deadline_ms, now_ms);
+}
+
 int tx_queue_push_default_deadline(struct tx_queue *queue,
 				   const uint8_t *data, uint16_t len,
 				   uint8_t priority)
 {
-	uint32_t now_ms = get_now_ms();
+	uint32_t now_ms;
+	int ret;
 	uint32_t deadline_ms;
+
+	if (queue == NULL || data == NULL || len == 0 ||
+	    len > TX_QUEUE_MAX_PACKET_SIZE) {
+		return -EINVAL;
+	}
+	ret = get_now_ms(&now_ms);
+	if (ret < 0) {
+		return ret;
+	}
 
 	switch (priority) {
 	case TX_PRIORITY_ROUTING:
@@ -254,7 +315,7 @@ int tx_queue_push_default_deadline(struct tx_queue *queue,
 		break;
 	}
 
-	return tx_queue_push(queue, data, len, priority, deadline_ms);
+	return tx_queue_push_at(queue, data, len, priority, deadline_ms, now_ms);
 }
 
 int tx_queue_pop(struct tx_queue *queue, uint8_t *data, uint16_t *len,
@@ -264,8 +325,13 @@ int tx_queue_pop(struct tx_queue *queue, uint8_t *data, uint16_t *len,
 		return -EINVAL;
 	}
 
-	uint32_t now_ms = get_now_ms();
-	int ret = 0;
+	uint32_t now_ms;
+	int ret = get_now_ms(&now_ms);
+
+	if (ret < 0) {
+		return ret;
+	}
+	ret = 0;
 
 	lock_queue(queue);
 

@@ -25,6 +25,7 @@
 /* Test time control (defined in tx_queue.c when CONFIG_TX_QUEUE_TEST_TIME) */
 extern void tx_queue_test_set_time(uint32_t time_ms);
 extern void tx_queue_test_use_real_time(void);
+extern void tx_queue_test_fail_time(bool fail);
 
 static int tests_run;
 static int tests_passed;
@@ -486,6 +487,7 @@ int main(void)
 	RUN_TEST(test_push_and_pop_single);
 	RUN_TEST(test_pop_empty_returns_eagain);
 	RUN_TEST(test_pop_buffer_too_small);
+	RUN_TEST(test_clock_failure_preserves_queue);
 
 	printf("\nBackpressure tests:\n");
 	RUN_TEST(test_queue_full_returns_enobufs);
@@ -509,6 +511,7 @@ int main(void)
 	printf("\n%d/%d tests passed\n", tests_passed, tests_run);
 
 	tx_queue_test_use_real_time();
+	tx_queue_test_fail_time(false);
 
 	return (tests_passed == tests_run) ? 0 : 1;
 }
