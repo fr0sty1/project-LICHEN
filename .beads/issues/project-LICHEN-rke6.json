@@ -2,15 +2,16 @@
   "id": "project-LICHEN-rke6",
   "title": "payload_fmt.py: _try_utf8 incorrectly accepts binary data with high printable ratio",
   "description": "File: python/src/lichen/interface/kiss/payload_fmt.py\nLines: 64-77\n\nThe _try_utf8 function uses a 90% printable threshold:\n\n```python\ndef _try_utf8(data: bytes) -\u003e str | None:\n    try:\n        text = data.decode('utf-8')\n        printable = sum(1 for c in text if c.isprintable() or c in '\\n\\r\\t')\n        if printable \u003e= len(text) * 0.9:  # 90% printable\n            return text\n    except UnicodeDecodeError:\n        pass\n    return None\n```\n\nThe 90% threshold is too permissive:\n1. A 10-byte payload with 9 printable chars + 1 control char (e.g., null byte) passes\n2. Binary protocols that happen to use mostly ASCII-range bytes could be misdetected\n3. Structured binary data (e.g., protobuf with string fields) often has high printable ratio\n\nImpact: Binary payloads misidentified as text, displayed incorrectly in TNC apps.\n\nFix: Either:\n1. Require 100% printable + whitespace for text classification\n2. Or add additional heuristics (check for common binary markers, require minimum length, etc.)\n3. Or accept the tradeoff and document it",
-  "status": "in_progress",
+  "notes": "Fixed _try_utf8 to require 100% printable chars (was 90%). Updated test_mixed_with_control. Tests and ruff pass. Commit: 7bcda2726",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:19:28.528871Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:23:47.927212133Z",
+  "updated_at": "2026-07-23T04:24:43.971481316Z",
   "started_at": "2026-07-23T04:23:47.927212133Z",
-  "lease_expires_at": "2026-07-23T04:28:47.927212133Z",
-  "heartbeat_at": "2026-07-23T04:23:47.927212133Z"
+  "closed_at": "2026-07-23T04:24:43.971481316Z",
+  "close_reason": "Fixed permissive UTF-8 detection and updated test. All tests pass, ruff clean. Pushed to integration/worker6-20260722"
 }
