@@ -29,6 +29,12 @@
 #include <lichen/coap_server.h>
 #include <lichen/transport/slip_transport.h>
 
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+#include <lichen/oscore.h>
+#include <lichen/coap_oscore.h>
+#include <lichen/l2/ipv6_addr.h>
+#endif
+
 #ifdef CONFIG_TINYCRYPT_SHA256
 #include <tinycrypt/sha256.h>
 #include <tinycrypt/constants.h>
@@ -910,6 +916,31 @@ bool lichen_coap_is_local_admin(const struct sockaddr *addr, socklen_t addr_len)
 	return false;
 }
 
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+/*
+ * Protected OSCORE response helper for /keys handlers.
+ * Symmetric with deaddrop_oscore_respond in coap_dtn.c.
+ * Uses coap_oscore_protect_response and falls back on error.
+ */
+static int keys_oscore_respond(struct coap_resource *resource,
+			       struct coap_packet *request,
+			       struct sockaddr *addr, socklen_t addr_len,
+			       struct oscore_ctx *ctx,
+			       const uint8_t *piv, size_t piv_len,
+			       uint8_t code)
+{
+	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+	struct coap_packet resp;
+	int ret = coap_oscore_protect_response(ctx, piv, piv_len, request, code,
+					       NULL, 0, &resp, buf, sizeof(buf));
+	if (ret < 0) {
+		return lichen_coap_respond(resource, request, addr, addr_len,
+					   COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
+	}
+	ret = coap_resource_send(resource, &resp, addr, addr_len, NULL);
+	return ret;
+}
+#endif /* CONFIG_LICHEN_COAP_SERVER_OSCORE */
 
 /* --------------------------------------------------------------------------
  * CoAP resource handlers
@@ -933,6 +964,7 @@ static int keys_list_get(struct coap_resource *resource,
 	return lichen_coap_respond(resource, request, addr, addr_len,
 			    COAP_RESPONSE_CODE_CONTENT, CBOR_CONTENT_FORMAT, cbor_buf, len);
 }
+
 
 /*
  * GET /keys/{iid} - Get single key with full pubkey
@@ -1076,6 +1108,37 @@ static int keys_single_delete(struct coap_resource *resource,
 	uint8_t iid[LICHEN_KEY_IID_LEN];
 	int ret;
 
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+	struct oscore_ctx *ctx = NULL;
+	uint8_t peer_eui64[8] = {0};
+	uint8_t piv[OSCORE_PIV_MAX_LEN];
+	size_t piv_len = sizeof(piv);
+	bool is_protected = coap_oscore_is_protected(request);
+	if (is_protected) {
+		if (addr_len >= sizeof(struct sockaddr_in6) && addr->sa_family == AF_INET6) {
+			const struct sockaddr_in6 *in6 = (const struct sockaddr_in6 *)addr;
+			memcpy(peer_eui64, &in6->sin6_addr.s6_addr[8], 8);
+			lichen_eui64_to_iid(peer_eui64, peer_eui64);
+		}
+		if (oscore_ctx_get_by_eui64(peer_eui64, &ctx) != OSCORE_OK || ctx == NULL) {
+			return coap_oscore_send_unauthorized(resource, request, addr, addr_len);
+		}
+		uint8_t orig_code;
+		uint8_t opts[32];
+		size_t opt_len = sizeof(opts);
+		uint8_t plain[16]; /* DELETE has no payload */
+		size_t plain_len = sizeof(plain);
+		int r = coap_oscore_unprotect_request(ctx, request, &orig_code, opts, &opt_len,
+						      plain, &plain_len, piv, &piv_len);
+		if (r != OSCORE_OK) {
+			return COAP_RESPONSE_CODE_BAD_REQUEST;
+		}
+		if (orig_code != COAP_METHOD_DELETE) {
+			return COAP_RESPONSE_CODE_NOT_ALLOWED;
+		}
+	}
+#endif
+
 	if (!lichen_coap_is_local_admin(addr, addr_len)) {
 		LOG_WRN("DELETE /keys rejected: not local admin");
 		return lichen_coap_respond(resource, request, addr, addr_len,
@@ -1105,15 +1168,33 @@ static int keys_single_delete(struct coap_resource *resource,
 
 	ret = lichen_key_store_delete(iid);
 	if (ret == -ENOENT) {
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+		if (is_protected && ctx != NULL && piv_len > 0) {
+			return keys_oscore_respond(resource, request, addr, addr_len,
+						   ctx, piv, piv_len, COAP_RESPONSE_CODE_NOT_FOUND);
+		}
+#endif
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
 	}
 	if (ret < 0) {
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+		if (is_protected && ctx != NULL && piv_len > 0) {
+			return keys_oscore_respond(resource, request, addr, addr_len,
+						   ctx, piv, piv_len, COAP_RESPONSE_CODE_INTERNAL_ERROR);
+		}
+#endif
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
 	}
 
 	LOG_INF("Key deleted for IID %s", iid_str);
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+	if (is_protected && ctx != NULL && piv_len > 0) {
+		return keys_oscore_respond(resource, request, addr, addr_len,
+					   ctx, piv, piv_len, COAP_RESPONSE_CODE_DELETED);
+	}
+#endif
 	return lichen_coap_respond(resource, request, addr, addr_len,
 			    COAP_RESPONSE_CODE_DELETED, 0, NULL, 0);
 }
