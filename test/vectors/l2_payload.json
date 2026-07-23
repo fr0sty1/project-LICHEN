@@ -1,6 +1,7 @@
 {
+  "$schema": "./schema.json",
   "format_version": 2,
-  "description": "Authenticated L2 inner-payload dispatch vectors. 'wrapped' is the link inner payload; byte 0 is the dispatch namespace and 'body' is the SCHC packet or routing/control message after that byte.",
+  "description": "L2 inner-payload dispatch vectors.",
   "vectors": [
     {
       "name": "schc_global_coap",

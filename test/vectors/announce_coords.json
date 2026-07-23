@@ -1,6 +1,7 @@
 {
+  "$schema": "./schema.json",
   "format_version": 2,
-  "description": "Announce app_data Type=0x01 geographic coordinate encoding: signed big-endian e7 latitude and longitude. Coordinates are peer-owned announce metadata; receivers do not treat them as local position without explicit NETWORK-source approximation policy.",
+  "description": "Announce coordinate encoding.",
   "vectors": [
     {
       "name": "zero",

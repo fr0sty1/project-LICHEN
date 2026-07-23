@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "SCHC fragmentation vectors (RFC 8724 \u00a78) with independent oracles for single/multi fragment, window, ACK-on-error, MIC fail, OOO, retransmit. See schema for details; all impls must match exactly.",
+  "description": "SCHC fragment vectors. Independent RFC 8724 oracles, no code-under-test.",
   "vectors": [
     {
       "name": "single_fragment",

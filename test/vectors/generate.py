@@ -1624,8 +1624,6 @@ def _write(filename: str, description: str, vectors: list[dict]) -> None:
     print(f"wrote {len(vectors)} vectors to {path.name}")
 
 
-<<<<<<< HEAD
-=======
 def schc_fragment_vectors() -> list[dict]:
     # Independent vectors from RFC 8724 §8 + CRC32 oracle + explicit ACK retry logic.
     # Not derived from any LICHEN impl code. Covers all required cases.
@@ -1796,7 +1794,19 @@ def ccp9_vectors() -> list[dict]:
     ]
 
 
->>>>>>> origin/integration/worker5-20260722
+def ccp9_rendezvous_vectors() -> list[dict]:
+    # Independent oracle matching committed ccp9_rendezvous.json. Hardcoded per spec, no code-under-test.
+    return [{
+        "name": "hash_based_peer_rendezvous",
+        "description": "hash_32(12345, 0xaabbccddeeff0011) % 8 == 7 per independent oracle (fixed from 4)",
+        "sfn": 12345,
+        "eui64_hex": "aabbccddeeff0011",
+        "expected_channel": 7,
+        "n_channels": 8,
+        "hash_output": "0x7b7385e7"
+    }]
+
+
 def ccp15_vectors() -> list[dict]:
     v = []
     for seed in range(3):
@@ -1808,60 +1818,18 @@ def ccp15_vectors() -> list[dict]:
     return v
 
 def main() -> None:
-    _write(
-        "schc_compression.json",
-        "SCHC whole-packet compression vectors (RFC 8724). 'packet' is the full "
-        "uncompressed IPv6 datagram; 'compressed' is compress_packet(packet). "
-        "Round-trip: compress(packet) == compressed and decompress(compressed) "
-        "== packet.",
-        schc_vectors(),
-    )
-    _write(
-        "link_frame.json",
-        "LICHEN link-layer frame vectors (spec section 4). 'fields' are the "
-        "frame inputs; 'encoded' is LichenFrame(**fields).to_bytes().",
-        frame_vectors(),
-    )
-    _write(
-        "l2_payload.json",
-        "Authenticated L2 inner-payload dispatch vectors. 'wrapped' is the "
-        "link inner payload; byte 0 is the dispatch namespace and 'body' is "
-        "the SCHC packet or routing/control message after that byte.",
-        l2_payload_vectors(),
-    )
-    _write(
-        "announce_coords.json",
-        "Announce app_data Type=0x01 geographic coordinate encoding: signed "
-        "big-endian e7 latitude and longitude. Coordinates are peer-owned "
-        "announce metadata; receivers do not treat them as local position "
-        "without explicit NETWORK-source approximation policy.",
-        announce_coords_vectors(),
-    )
-    _write(
-        "ccp9_rendezvous.json",
-        "Independent CCP-9 rendezvous vectors using external hash_32/crc32 "
-        "oracle (hardcoded expected_channel=7 matching computation, not from "
-        "code-under-test). Fixes vector bug.",
-        ccp9_rendezvous_vectors(),
-    )
-    _write(
-        "meshtastic_app_compat.json",
-        "Meshtastic app-compat BLE protobuf exchange vectors. 'encoded' is one "
-        "raw GATT value unless the vector explicitly expects rejection.",
-        meshtastic_app_compat_vectors(),
-    )
-    _write(
-        "meshcore_app_compat.json",
-        "MeshCore app-compat byte-command vectors. 'encoded' is one raw "
-        "MeshCore inner frame for BLE unless transport.framing states serial "
-        "0x3c/0x3e length framing.",
-        meshcore_app_compat_vectors(),
-    )
-    _write(
-        "ccp15.json",
-        "ccp15 vectors for SF EMA load_factor hash_32 congestion control with independent oracle.",
-        ccp15_vectors(),
-    )
+    _write("schc_compression.json", "SCHC whole-packet compression vectors (RFC 8724).", schc_vectors())
+    _write("link_frame.json", "LICHEN link-layer frame vectors (spec section 4).", frame_vectors())
+    _write("l2_payload.json", "L2 inner-payload dispatch vectors.", l2_payload_vectors())
+    _write("announce_coords.json", "Announce coordinate encoding.", announce_coords_vectors())
+    _write("ccp9_rendezvous.json", "CCP-9 rendezvous vectors.", ccp9_rendezvous_vectors())
+    _write("meshtastic_app_compat.json", "Meshtastic app compat vectors.", meshtastic_app_compat_vectors())
+    _write("meshcore_app_compat.json", "MeshCore app compat vectors.", meshcore_app_compat_vectors())
+    _write("ccp15.json", "CCP15 load factor vectors with independent oracle.", ccp15_vectors())
+    _write("schc_fragment.json", "SCHC fragment vectors. Independent RFC 8724 oracles, no code-under-test.", schc_fragment_vectors())
+    _write("ccp_load_balancing.json", "CCP load balancing/TDMA vectors with hash_32 oracle.", ccp_load_balancing_vectors())
+    _write("ccp16.json", "CCP16 synchronized hop vectors with expected_hash per spec.", ccp16_vectors())
+    _write("ccp9.json", "CCP9 rendezvous vectors with _l2_announce_with_channel exact wire format oracle from messages.py/spec.", ccp9_vectors())
 
 
 if __name__ == "__main__":

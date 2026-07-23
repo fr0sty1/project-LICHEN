@@ -1,6 +1,7 @@
 {
+  "$schema": "./schema.json",
   "format_version": 2,
-  "description": "MeshCore app-compat byte-command vectors. 'encoded' is one raw MeshCore inner frame for BLE unless transport.framing states serial 0x3c/0x3e length framing.",
+  "description": "MeshCore app compat vectors.",
   "vectors": [
     {
       "name": "app_start_self_info",
