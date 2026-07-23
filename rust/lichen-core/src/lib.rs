@@ -24,3 +24,12 @@ pub mod udp;
 
 #[cfg(feature = "std")]
 extern crate std;
+
+pub fn lichen_hash_32(data: &[u8]) -> u32 {
+    let mut hash = 0x811c9dc5u32;
+    for &b in data {
+        hash ^= b as u32;
+        hash = hash.wrapping_mul(0x01000193u32);
+    }
+    hash
+}
