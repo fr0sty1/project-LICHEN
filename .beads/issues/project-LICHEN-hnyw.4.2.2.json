@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-hnyw.4.2.2",
+  "title": "Add #![forbid(unsafe_code)] to lichen-ipv6, lichen-rpl and lichen-senml",
+  "description": "Add #![forbid(unsafe_code)] at the crate root of their lib.rs (after no_std line). Ensure it applies to the whole crate. Check for unsafe code. Reference coding guidelines in rust section of AGENTS.md.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:30:01.48505957Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:30:01.48505957Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-hnyw.4.2.2",
+      "depends_on_id": "project-LICHEN-hnyw.4.2",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:30:01.627591929Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
