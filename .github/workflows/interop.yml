@@ -291,6 +291,9 @@ jobs:
           fi
           if ! jq -e 'all(.[]; .result == "success")' <<<"$RESULTS" >/dev/null; then
             echo "FAILURE: Not all interop jobs succeeded:"
+            echo "Failed jobs:"
+            jq -r 'to_entries[] | select(.value.result != "success") | "  \(.key): \(.value.result)"' <<<"$RESULTS"
+            echo "Full JSON:"
             jq . <<<"$RESULTS"
             if [[ "${{ github.ref }}" == 'refs/heads/main' ]]; then
               echo "Creating tracking bead (bd may be missing)..."
