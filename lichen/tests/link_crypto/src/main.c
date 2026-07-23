@@ -449,4 +449,32 @@ ZTEST(link_crypto, test_tdma_matches_ccp_tdma_vectors)
 	zassert_true(true, "ccp_tdma.json vectors validated for hash+timing");
 }
 
+ZTEST(link_crypto, test_lichen_pubkey_to_human_address_matches_node_address_vectors)
+{
+	static const uint8_t pk0[32] = {0};
+	char buf[16];
+	int ret = lichen_pubkey_to_human_address(pk0, buf, sizeof(buf));
+	zassert_equal(ret, 0, "human addr pk0 failed: %d", ret);
+	zassert_equal(strcmp(buf, "68T3-TNQW-65FBQ"), 0, "pk0 human address mismatch");
+
+	static const uint8_t pk1[32] = {1};
+	ret = lichen_pubkey_to_human_address(pk1, buf, sizeof(buf));
+	zassert_equal(ret, 0, "human addr pk1 failed: %d", ret);
+	zassert_equal(strcmp(buf, "71KB-EGGH-C81ZV"), 0, "pk1 human address mismatch");
+
+	static const uint8_t pk4[32] = {4};
+	ret = lichen_pubkey_to_human_address(pk4, buf, sizeof(buf));
+	zassert_equal(ret, 0, "human addr pk4 failed: %d", ret);
+	zassert_equal(strcmp(buf, "9TKX-PHWZ-1VB42"), 0, "pk4 human address mismatch");
+
+	ret = lichen_pubkey_to_human_address(NULL, buf, sizeof(buf));
+	zassert_equal(ret, -EINVAL, "NULL pubkey should return -EINVAL");
+
+	ret = lichen_pubkey_to_human_address(pk0, NULL, sizeof(buf));
+	zassert_equal(ret, -EINVAL, "NULL buf should return -EINVAL");
+
+	ret = lichen_pubkey_to_human_address(pk0, buf, 10);
+	zassert_equal(ret, -EINVAL, "small buffer should return -EINVAL");
+}
+
 ZTEST_SUITE(link_crypto, NULL, NULL, NULL, NULL, NULL);

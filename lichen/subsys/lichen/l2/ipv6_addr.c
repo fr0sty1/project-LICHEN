@@ -319,34 +319,16 @@ int lichen_yggdrasil_addr(const uint8_t pubkey[32], struct in6_addr *addr)
 	return 0;
 }
 
-int lichen_pubkey_to_human_address(const uint8_t *pubkey, char *buf, size_t buflen)
+static int lichen_iid_to_human_address(const uint8_t *iid, char *buf, size_t buflen)
 {
-	int ret;
-	uint8_t iid[8];
-	static const char alphabet[] = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-	if (pubkey == NULL || buf == NULL) {
-		LOG_ERR("pubkey_to_human_address failed (NULL input)");
+	if (iid == NULL || buf == NULL || buflen < 16) {
 		return -EINVAL;
-	}
-	if (buflen < 16) {
-		LOG_ERR("pubkey_to_human_address failed (buffer too small)");
-		if (buflen > 0) {
-			buf[0] = '\0';
-		}
-		return -EINVAL;
-	}
-	ret = lichen_pubkey_to_iid(pubkey, iid);
-	if (ret < 0) {
-		LOG_ERR("pubkey_to_human_address failed (IID derivation %d)", ret);
-		if (buflen > 0) {
-			buf[0] = '\0';
-		}
-		return ret;
 	}
 	uint64_t n = 0;
 	for (int i = 0; i < 8; i++) {
 		n = (n << 8) | iid[i];
 	}
+	const char alphabet[32] = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 	char temp[13];
 	for (int i = 12; i >= 0; i--) {
 		temp[i] = alphabet[n % 32];
@@ -367,7 +349,25 @@ int lichen_pubkey_to_human_address(const uint8_t *pubkey, char *buf, size_t bufl
 	buf[12] = temp[10];
 	buf[13] = temp[11];
 	buf[14] = temp[12];
-	buf[15] = '\0';
-	secure_zero(iid, sizeof(iid));
+	buf[15] = 0;
 	return 0;
+}
+
+int lichen_pubkey_to_human_address(const uint8_t *pubkey, char *buf, size_t buflen)
+{
+	int ret;
+	uint8_t iid[8];
+	if (pubkey == NULL || buf == NULL) {
+		LOG_ERR("pubkey_to_human_address failed (NULL input)");
+		return -EINVAL;
+	}
+	if (buflen < 16) {
+		LOG_ERR("pubkey_to_human_address failed (buffer too small)");
+		return -EINVAL;
+	}
+	ret = lichen_pubkey_to_iid(pubkey, iid);
+	if (ret < 0) {
+		return ret;
+	}
+	return lichen_iid_to_human_address(iid, buf, buflen);
 }
