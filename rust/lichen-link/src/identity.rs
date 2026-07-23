@@ -47,6 +47,30 @@ pub fn yggdrasil_addr_from_pubkey(pubkey: &PublicKey) -> [u8; 16] {
     addr
 }
 
+/// Human-readable Crockford Base32 node address from pubkey (spec 03-addressing).
+pub fn human_address_from_pubkey(pubkey: &PublicKey) -> [u8; 15] {
+    let iid = iid_from_pubkey(pubkey);
+    human_address_from_iid(&iid)
+}
+
+fn human_address_from_iid(iid: &[u8; 8]) -> [u8; 15] {
+    let mut n = u64::from_be_bytes(*iid);
+    let alphabet = *b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+    let mut buf = [0u8; 13];
+    for i in 0..13 {
+        let r = (n % 32) as usize;
+        buf[12 - i] = alphabet[r];
+        n /= 32;
+    }
+    let mut out = [0u8; 15];
+    out[0..4].copy_from_slice(&buf[0..4]);
+    out[4] = b'-';
+    out[5..9].copy_from_slice(&buf[4..8]);
+    out[9] = b'-';
+    out[10..15].copy_from_slice(&buf[8..13]);
+    out
+}
+
 /// Local node identity (seed + derived keypair + IID + Yggdrasil address).
 ///
 /// Unified Ed25519 identity for LICHEN (signatures, OSCORE, IID) and Yggdrasil
@@ -177,5 +201,15 @@ mod tests {
         );
         // deterministic
         assert_eq!(direct, yggdrasil_addr_from_pubkey(&id.pubkey));
+    }
+
+    #[test]
+    fn human_address_from_pubkey_matches_test_vectors() {
+        let pk0 = PublicKey::new([0u8; 32]);
+        assert_eq!(human_address_from_pubkey(&pk0), *b"68T3-TNQW-65FBQ");
+        let pk1 = PublicKey::new([1u8; 32]);
+        assert_eq!(human_address_from_pubkey(&pk1), *b"71KB-EGGH-C81ZV");
+        let pk4 = PublicKey::new([4u8; 32]);
+        assert_eq!(human_address_from_pubkey(&pk4), *b"9TKX-PHWZ-1VB42");
     }
 }
