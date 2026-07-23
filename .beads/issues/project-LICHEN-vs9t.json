@@ -2,11 +2,15 @@
   "id": "project-LICHEN-vs9t",
   "title": "[cross-impl] unresolved merge conflict in schnorr48.c",
   "description": "lichen/subsys/lichen/link/schnorr48.c contains unresolved git merge conflict markers (around lines 271-275, 404-408 for seqnum/header_len comments). This can cause inconsistent build behavior or incorrect transcript construction between Rust/Python and Zephyr C impls. Affects frame signing/verification consistency for same algorithm. Must clean conflicts and verify against schnorr48.json vectors. Related to worker merges in recent commits.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T02:11:15.156403889Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:11:15.156403889Z"
+  "updated_at": "2026-07-23T02:53:51.439994856Z",
+  "started_at": "2026-07-23T02:53:51.439994856Z",
+  "lease_expires_at": "2026-07-23T02:58:51.439994856Z",
+  "heartbeat_at": "2026-07-23T02:53:51.439994856Z"
 }
