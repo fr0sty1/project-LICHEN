@@ -379,7 +379,7 @@ def schc_vectors() -> list[dict]:
 
 def l2_payload_vectors() -> list[dict]:
     schc_global = next(v for v in schc_vectors() if v["name"] == "coap_global")
-    announce_min = bytes([0x01, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF]) + bytes(8 + 32 + 48)  # rx_valid_until_sfn=0xFFFF (human decision on format noted)
+    announce_min = bytes([0x01, 0x00, 0x00, 0x00, 0x01]) + bytes(88)
     schc_body = bytes.fromhex(schc_global["compressed"])
     return [
         {
