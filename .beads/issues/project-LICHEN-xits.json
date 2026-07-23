@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-xits",
+  "title": "Remove dead code, TODOs, worker comments from lichen-rpl and lichen-node",
+  "description": "Scan lichen-rpl/, lichen-node/ for TODO, worker comments, dead code related to trickle/RPL. Remove all. Ensure no_std compliance everywhere.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T02:30:24.898277574Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T02:30:24.898277574Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-xits",
+      "depends_on_id": "project-LICHEN-kkzp",
+      "type": "parent-child",
+      "created_at": "2026-07-23T02:30:25.035439101Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
