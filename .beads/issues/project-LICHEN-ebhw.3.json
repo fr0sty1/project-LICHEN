@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-ebhw.3",
+  "title": "Align C lichen link layer function name with Rust (lichen_eui_from_ed25519_pubkey or update docs)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:18:12.36789586Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:18:12.36789586Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ebhw.3",
+      "depends_on_id": "project-LICHEN-ebhw",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:18:12.504192876Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
