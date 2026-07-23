@@ -17,14 +17,12 @@ use std::sync::{
 use tokio::net::UdpSocket;
 use tokio::time::{timeout, Duration};
 
-use crate::codec::CoapBuilder;
+use crate::codec::{CoapBuilder, CoapPacket};
 use crate::message::{MessageCode, MessageType};
 
 const TIMEOUT_S: u64 = 5;
 /// Content-Format value for CBOR (RFC 7049).
 const CONTENT_FORMAT_CBOR: u16 = 60;
-static REQUEST_SEQUENCE: OnceLock<AtomicU64> = OnceLock::new();
-
 static REQUEST_SEQUENCE: OnceLock<AtomicU64> = OnceLock::new();
 
 /// A decoded CoAP response.
@@ -139,121 +137,35 @@ fn encode(
     Ok(buf)
 }
 
-/// Parse a CoAP response.  Returns code + payload; ignores option values.
-/// SECURITY: Validates response MID and token match expected values per RFC 7252 Section 4.4.
+/// Parse a CoAP response using canonical codec (eliminates duplicated parser).
+/// SECURITY: Validates MID + token match per RFC 7252 §§4.4, 5.3.1. Uses
+/// CoapPacket::from_bytes for version/TKL/option validation + payload offset.
 fn decode(data: &[u8], expected_mid: u16, expected_token: &[u8]) -> std::io::Result<Response> {
-    if data.len() < 4 {
-        return Err(std::io::Error::new(
+    let packet = CoapPacket::from_bytes(data).map_err(|e| {
+        std::io::Error::new(
             std::io::ErrorKind::InvalidData,
-            "response too short",
-        ));
-    }
-    let tkl = (data[0] & 0x0f) as usize;
-    if tkl > 8 {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            "invalid TKL (>8 is reserved)",
-        ));
-    }
-    let code = data[1];
+            format!("CoAP parse error: {}", e),
+        )
+    })?;
 
-    // SECURITY: Validate response MID matches request MID (RFC 7252 Section 4.4).
-    // CON-ACK matching requires both MID and token. Without MID validation, an attacker
-    // with knowledge of the predictable MID could inject spoofed ACK responses.
-    let response_mid = u16::from_be_bytes([data[2], data[3]]);
-    if response_mid != expected_mid {
+    if packet.message_id() != expected_mid {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
             "response MID does not match request MID",
         ));
     }
 
-    if 4 + tkl > data.len() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            "response too short for token",
-        ));
-    }
-
-    // SECURITY: Validate response token matches request token (RFC 7252 Section 5.3.1).
-    // Without this check, an attacker could inject spoofed responses with arbitrary tokens.
-    let response_token = &data[4..4 + tkl];
-    if response_token != expected_token {
+    if packet.token() != expected_token {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
             "response token does not match request token",
         ));
     }
 
-    let payload_start = skip_options(data, 4 + tkl)?;
     Ok(Response {
-        code,
-        payload: data[payload_start..].to_vec(),
+        code: packet.code().0,
+        payload: packet.payload().to_vec(),
     })
-}
-
-/// Walk past CoAP options and return the index of the first payload byte.
-/// Returns `data.len()` if there is no payload marker.
-fn skip_options(data: &[u8], mut i: usize) -> std::io::Result<usize> {
-    while i < data.len() {
-        if data[i] == 0xff {
-            return Ok(i + 1);
-        }
-        let delta_nibble = (data[i] >> 4) & 0x0f;
-        let len_nibble = data[i] & 0x0f;
-        i += 1;
-
-        // Extended delta
-        i += match delta_nibble {
-            13 => {
-                i += 1;
-                0
-            }
-            14 => {
-                i += 2;
-                0
-            }
-            15 => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    "reserved option delta 15",
-                ))
-            }
-            _ => 0,
-        };
-
-        // Extended length
-        let opt_len = match len_nibble {
-            13 => {
-                let v = *data.get(i).ok_or_else(trunc)? as usize + 13;
-                i += 1;
-                v
-            }
-            14 => {
-                let hi = *data.get(i).ok_or_else(trunc)? as usize;
-                let lo = *data.get(i + 1).ok_or_else(trunc)? as usize;
-                i += 2;
-                (hi << 8 | lo) + 269
-            }
-            15 => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    "reserved option length 15",
-                ))
-            }
-            n => n as usize,
-        };
-
-        i = i.checked_add(opt_len).ok_or_else(trunc)?;
-        if i > data.len() {
-            return Err(trunc());
-        }
-    }
-    Ok(data.len())
-}
-
-fn trunc() -> std::io::Error {
-    std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "truncated CoAP option")
 }
 
 fn next_request_id(sequence: &AtomicU64) -> std::io::Result<(u16, [u8; 8])> {
