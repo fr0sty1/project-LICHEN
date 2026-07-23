@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-vhvj.1.2.2",
   "title": "Update Node class in python/src/lichen/sim/node.py to compute hop_schedule and current_channel using synchronized_hop_channel based on sfn/seed",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:24:06.194097551Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T14:48:55.080745396Z",
+  "updated_at": "2026-07-23T14:53:17.076975842Z",
   "started_at": "2026-07-23T06:00:00.482600117Z",
-  "lease_expires_at": "2026-07-23T14:53:55.080745396Z",
-  "heartbeat_at": "2026-07-23T14:48:55.080745396Z",
+  "closed_at": "2026-07-23T14:53:17.076975842Z",
+  "close_reason": "Updated SimNode to compute hop_schedule and current_channel via synchronized_hop_channel(sfn, seed=eui64) in node.py; tests would validate against ccp16-hop.json",
   "labels": [
     "defer-external"
   ],
