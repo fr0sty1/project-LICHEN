@@ -11,6 +11,7 @@ struct lichen_rpl_root {
 	struct lichen_rpl_dodag dodag;
 	struct lichen_trickle trickle;
 	struct lichen_rpl_dao_manager dao_manager;
+	struct lichen_rpl_dao_root_state root_state;
 	uint8_t prefix[16];
 	uint8_t prefix_len;
 };
@@ -22,6 +23,7 @@ int lichen_rpl_root_init(struct lichen_rpl_root *root, const uint8_t *dodag_id, 
 	}
 	lichen_rpl_dodag_init_root(&root->dodag, 0, dodag_id, 0);
 	lichen_rpl_dao_manager_init_root(&root->dao_manager, node_addr, 0, dodag_id);
+	lichen_rpl_dao_manager_bind_root_state(&root->dao_manager, &root->root_state);
 	lichen_trickle_init(&root->trickle, CONFIG_LICHEN_RPL_TRICKLE_IMIN_MS,
 			   CONFIG_LICHEN_RPL_TRICKLE_IMAX_DOUBLINGS,
 			   CONFIG_LICHEN_RPL_TRICKLE_K);
@@ -49,7 +51,10 @@ bool lichen_rpl_root_handle_dao(struct lichen_rpl_root *root, const uint8_t *dat
 
 const struct lichen_rpl_route *lichen_rpl_root_lookup(struct lichen_rpl_root *root, const uint8_t *target)
 {
-	return lichen_rpl_routing_table_lookup(&root->dao_manager.routing_table, target);
+	if (root == NULL || target == NULL) {
+		return NULL;
+	}
+	return lichen_rpl_routing_table_lookup(&root->root_state.routing_table, target);
 }
 
 int lichen_rpl_root_set_prefix(struct lichen_rpl_root *root, const uint8_t *prefix, uint8_t len)
