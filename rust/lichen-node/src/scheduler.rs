@@ -79,7 +79,7 @@ impl core::fmt::Display for SchedulerError {
             Self::NotRunning => write!(f, "scheduler not running"),
             Self::AlreadyRunning => write!(f, "scheduler already running"),
             Self::BufferTooSmall => write!(f, "buffer too small"),
-            Self::InvalidChannel => write!(f, "invalid channel"),
+            Self::InvalidChannel => write!(f, "invalid rx_channel"),
             Self::TransmitFailed => write!(f, "transmit failed"),
         }
     }
