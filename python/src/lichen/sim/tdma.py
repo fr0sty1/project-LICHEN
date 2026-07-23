@@ -69,3 +69,11 @@ class TDMAScheduler:
             in_window = (start - g) <= t <= (start + dur + g)
             return in_window == (not vector.get("expected_in_guard", False))
         return True
+
+
+def synchronized_hop_channel(sfn: int, seed: int = 0, num_channels: int = 8) -> int:
+    sfn = sfn & 0xffffffff
+    data = bytes([(seed ^ sfn) & 0xff])
+    h = hash_32(data)
+    n = max(num_channels, 3)
+    return h % n

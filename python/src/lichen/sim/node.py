@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 
 from lichen.sim.metrics import NodeMetrics
-from lichen.sim.tdma import TDMAScheduler
+from lichen.sim.tdma import TDMAScheduler, synchronized_hop_channel
 from lichen.state_machine import StateMachine
 
 # Type alias for RX callbacks: (on_packet, on_timeout)
@@ -132,10 +132,8 @@ class SimNode:
 
     def synchronized_hop_channel(self) -> int:
         sfn = self.tdma_scheduler.clock.sfn
-        from lichen.sim.protocol import hop_channel
-        eui64 = getattr(self.tdma_scheduler, "eui64", bytes(8))
-        ch = hop_channel(sfn, eui64)
+        ch = synchronized_hop_channel(sfn, self.seed)
         self.current_channel = ch
         if not self.hop_schedule:
-            self.hop_schedule = tuple(hop_channel(i, eui64) for i in range(16))
+            self.hop_schedule = tuple(synchronized_hop_channel(i, self.seed) for i in range(16))
         return ch
