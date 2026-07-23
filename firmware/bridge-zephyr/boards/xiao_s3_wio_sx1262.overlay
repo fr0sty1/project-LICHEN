@@ -1,4 +1,7 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
 /*
+<<<<<<< HEAD
  * RETIRED: Seeed XIAO ESP32-S3 + Wio-SX1262 bridge overlay (project-LICHEN-2u26)
  *
  * No canonical Zephyr board or composite shield mapping; xiao_s3_wio_sx1262 is
@@ -9,6 +12,15 @@
  * Follows tbeam_supreme pattern.
  *
  * Original pin map (for reference):
+=======
+ * STALE/RETIRED per project-LICHEN-2u26.10: no canonical Zephyr composite board+shield target for Seeed XIAO ESP32-S3 + Wio-SX1262.
+ * Fragment retired per 2u26 audit and matrix. Classified FAIL in m5m1.8 bridge audit.
+ * Use heltec_wifi_lora32_v3/esp32s3/procpu proxy instead. Do not present as supported target.
+ * See docs/firmware-board-capability-matrix.md and closed epic project-LICHEN-2u26.
+ * Pin map and DT retained for reference only.
+ *
+ * Original pinout (for reference):
+>>>>>>> origin/worktree-worker24
  * ESP32-S3 + SX1262 LoRa (via B2B connector)
  * SX1262 SPI: SCK=GPIO7, MISO=GPIO8, MOSI=GPIO9, NSS=GPIO41
  * Control: RESET=GPIO42, BUSY=GPIO40, DIO1=GPIO39
@@ -43,7 +55,6 @@
 };
 
 &pinctrl {
-	/* SPI2 for SX1262 */
 	spim2_default: spim2_default {
 		group1 {
 			pinmux = <SPIM2_MISO_GPIO8>,
@@ -71,7 +82,6 @@
 		reset-gpios = <&gpio1 10 GPIO_ACTIVE_LOW>;  /* RESET = GPIO42 */
 		busy-gpios = <&gpio1 8 GPIO_ACTIVE_HIGH>;   /* BUSY = GPIO40 */
 		dio1-gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>;   /* DIO1 = GPIO39 */
-		/* DIO2 controls RF switch internally */
 		dio2-tx-enable;
 	};
 };

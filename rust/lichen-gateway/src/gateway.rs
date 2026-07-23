@@ -10,6 +10,7 @@ use lichen_schc::codec::{compress, decompress, SchcError};
 use std::collections::HashMap;
 use tracing::{info, warn};
 
+<<<<<<< HEAD
 // Reconciled merge from worker20 (rpl field rename + std::HashMap), worker23
 // (Concentrator trait for flexible border router hardware abstraction), worker18/24/
 // integration/worker2 (per project-LICHEN-qfh1 epic). Follows t_deck_esp32s3_procpu.conf
@@ -26,6 +27,8 @@ pub trait Concentrator {
 }
 
 /// Top-level border router state.
+=======
+>>>>>>> origin/worktree-worker24
 #[derive(Debug)]
 pub struct Gateway {
     rpl_node: RplNode,
@@ -53,7 +56,11 @@ impl Gateway {
             return None;
         }
 
+<<<<<<< HEAD
         let mut out = vec![0u8; SCHC_MAX_DECOMPRESSED];
+=======
+        let mut out = vec![0u8; 4096];
+>>>>>>> origin/worktree-worker24
         match decompress(l2_payload_body(l2_payload), &mut out) {
             Ok(n) => {
                 out.truncate(n);
@@ -115,6 +122,10 @@ impl Gateway {
     pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
         self.routes.contains_key(dst)
             || (dst[0] == 0xfe && dst[1] == 0x80)
+<<<<<<< HEAD
+=======
+            || dst[0] == 0xfd
+>>>>>>> origin/worktree-worker24
             || self.rpl_node.router.lookup_route(dst).is_some()
     }
 
@@ -130,6 +141,7 @@ impl Gateway {
             None
         };
         (reply_opt, event)
+<<<<<<< HEAD
 =======
     /// Process RPL control frames from the mesh. Returns (reply_len, event).
     /// `reply_len > 0` means a control-plane reply (e.g. echo, future DIO) was
@@ -150,6 +162,12 @@ impl Gateway {
             || (dst[0] == 0xfe && dst[1] == 0x80) // fe80:: link-local
             || dst[0] == 0xfd // fd00:: ULA
 >>>>>>> origin/worktree-worker20
+=======
+    }
+
+    pub fn mesh_to_mesh(&self, ipv6: &[u8]) -> Option<Vec<u8>> {
+        Some(ipv6.to_vec())
+>>>>>>> origin/worktree-worker24
     }
 }
 
@@ -221,7 +239,6 @@ mod tests {
     #[test]
     fn unknown_schc_rule_is_dropped() {
         let mut gw = test_gateway();
-        // Rule 0xAA is not defined
         assert!(gw
             .mesh_to_upstream(&[L2_DISPATCH_SCHC, 0xAAu8, 0x00])
             .is_none());
@@ -240,5 +257,18 @@ mod tests {
         let ygg_cross = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2];
         assert!(gw.is_local_mesh(&local.0));
         assert!(!gw.is_local_mesh(&ygg_cross));
+<<<<<<< HEAD
+=======
+    }
+
+    #[test]
+    fn local_mesh_packet_uses_mesh_to_mesh_path() {
+        let mut gw = test_gateway();
+        let dst = ll(2);
+        assert!(gw.is_local_mesh(&dst.0));
+        let packet = [0x60, 0, 0, 0, 40, 0, 58, 0, 0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
+        let result = gw.mesh_to_mesh(&packet);
+        assert!(result.is_some());
+>>>>>>> origin/worktree-worker24
     }
 }

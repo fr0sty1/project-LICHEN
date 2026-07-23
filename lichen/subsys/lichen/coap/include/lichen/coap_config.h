@@ -83,7 +83,7 @@ struct lichen_config_identity {
 	uint8_t pubkey[32];                          /* Ed25519 public key */
 	bool pubkey_valid;                           /* True if pubkey is set */
 	char link_local[LICHEN_CONFIG_ADDR_MAX_LEN]; /* fe80::... */
-	char ygg[LICHEN_CONFIG_ADDR_MAX_LEN];        /* primary 02xx Yggdrasil address */
+	char primary[LICHEN_CONFIG_ADDR_MAX_LEN];    /* primary 02xx mesh address */
 	char gua[LICHEN_CONFIG_ADDR_MAX_LEN];        /* GUA address or empty */
 };
 

@@ -1120,6 +1120,10 @@ mod tests {
     #[test]
     fn test_initiator_creation() {
         let seed = [0x01u8; 32];
+<<<<<<< HEAD
+=======
+        let initiator = EdhocInitiator::new(seed, 0x00, &mut rand_core::OsRng);
+>>>>>>> origin/worktree-worker24
         let mut rng = rand_core::OsRng;
         let initiator = EdhocInitiator::new(seed, 0x00, &mut rng);
         assert_eq!(initiator.c_i, 0x00);
@@ -1128,6 +1132,10 @@ mod tests {
     #[test]
     fn test_responder_creation() {
         let seed = [0x01u8; 32];
+<<<<<<< HEAD
+=======
+        let responder = EdhocResponder::new(seed, 0x01, &mut rand_core::OsRng);
+>>>>>>> origin/worktree-worker24
         let mut rng = rand_core::OsRng;
         let responder = EdhocResponder::new(seed, 0x01, &mut rng);
         assert_eq!(responder.c_r, 0x01);
@@ -1136,6 +1144,10 @@ mod tests {
     #[test]
     fn test_message_1_creation() {
         let seed = [0x01u8; 32];
+<<<<<<< HEAD
+=======
+        let mut initiator = EdhocInitiator::new(seed, 0x05, &mut rand_core::OsRng);
+>>>>>>> origin/worktree-worker24
         let mut rng = rand_core::OsRng;
         let mut initiator = EdhocInitiator::new(seed, 0x05, &mut rng);
         let msg1 = initiator.create_message_1().unwrap();
@@ -1157,6 +1169,11 @@ mod tests {
         let responder_seed = [0x22u8; 32];
         let mut rng = rand_core::OsRng;
 
+<<<<<<< HEAD
+=======
+        let mut initiator = EdhocInitiator::new(initiator_seed, 0x00, &mut rand_core::OsRng);
+        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rand_core::OsRng);
+>>>>>>> origin/worktree-worker24
         let mut initiator = EdhocInitiator::new(initiator_seed, 0x00, &mut rng);
         let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng);
 
@@ -1289,6 +1306,10 @@ mod tests {
     #[test]
     fn test_responder_accepts_suites_i_array() {
         let responder_seed = [0x22u8; 32];
+<<<<<<< HEAD
+=======
+        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rand_core::OsRng);
+>>>>>>> origin/worktree-worker24
         let mut rng = rand_core::OsRng;
         let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng);
 
@@ -1319,6 +1340,10 @@ mod tests {
     #[test]
     fn test_responder_rejects_unsupported_suite_in_array() {
         let responder_seed = [0x22u8; 32];
+<<<<<<< HEAD
+=======
+        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rand_core::OsRng);
+>>>>>>> origin/worktree-worker24
         let mut rng = rand_core::OsRng;
         let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng);
 
@@ -1345,6 +1370,10 @@ mod tests {
 
         // Initiator: export_oscore before process_message_2
         let initiator_seed = [0x11u8; 32];
+<<<<<<< HEAD
+=======
+        let mut initiator = EdhocInitiator::new(initiator_seed, 0x00, &mut rand_core::OsRng);
+>>>>>>> origin/worktree-worker24
         let mut rng = rand_core::OsRng;
         let mut initiator = EdhocInitiator::new(initiator_seed, 0x00, &mut rng);
         let _msg1 = initiator.create_message_1().unwrap();
@@ -1356,6 +1385,10 @@ mod tests {
 
         // Responder: export_oscore before process_message_3
         let responder_seed = [0x22u8; 32];
+<<<<<<< HEAD
+=======
+        let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rand_core::OsRng);
+>>>>>>> origin/worktree-worker24
         let mut rng = rand_core::OsRng;
         let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng);
         // Even after process_message_1, handshake is incomplete

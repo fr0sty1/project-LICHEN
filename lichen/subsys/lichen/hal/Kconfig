@@ -64,11 +64,14 @@ config LICHEN_HAS_PMIC
 
 config LICHEN_HAS_POE
 	bool "Board has PoE"
+<<<<<<< HEAD
 	depends on GPIO || POWER_SUPPLY || REGULATOR
+=======
+	depends on REGULATOR
+	depends on ADC
+>>>>>>> origin/worktree-worker24
 	help
-	  Enable when devicetree provides an okay poe0 alias or PoE detection
-	  via GPIO/ADC for power source selection. DT binding in
-	  dts/bindings/power/lichen,poe.yaml.
+	  Enable for thinknode_m7 per existing power subsys.
 
 config LICHEN_HAS_BUTTONS
 	bool "Board has user buttons"

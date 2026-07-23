@@ -23,11 +23,13 @@
               {"$ref": "#/definitions/meshtastic_app_compat_vector"},
               {"$ref": "#/definitions/meshcore_app_compat_vector"},
               {"$ref": "#/definitions/oscore_vector"},
-              {"$ref": "#/definitions/rpl_messages_vector"},
-              {"$ref": "#/definitions/ccp13_vector"},
-              {"$ref": "#/definitions/ccp15_vector"},
-              {"$ref": "#/definitions/ccp_vector"}
-            ]
+               {"$ref": "#/definitions/rpl_messages_vector"},
+               {"$ref": "#/definitions/ccp13_vector"},
+               {"$ref": "#/definitions/ccp15_vector"},
+               {"$ref": "#/definitions/ccp_vector"},
+               {"$ref": "#/definitions/compact_cot_vector"}
+             ]
+
           }
         }
       }
@@ -44,11 +46,13 @@
           {"$ref": "#/definitions/meshtastic_app_compat_vector"},
           {"$ref": "#/definitions/meshcore_app_compat_vector"},
           {"$ref": "#/definitions/oscore_vector"},
-          {"$ref": "#/definitions/rpl_messages_vector"},
-          {"$ref": "#/definitions/ccp13_vector"},
-          {"$ref": "#/definitions/ccp15_vector"},
-          {"$ref": "#/definitions/ccp_vector"}
-        ]
+           {"$ref": "#/definitions/rpl_messages_vector"},
+           {"$ref": "#/definitions/ccp13_vector"},
+           {"$ref": "#/definitions/ccp15_vector"},
+           {"$ref": "#/definitions/ccp_vector"},
+           {"$ref": "#/definitions/compact_cot_vector"}
+         ]
+
       },
       "description": "v2 bare array root support for CCP desync vectors (ccp16-desync.json) and load balancing tests"
     }
@@ -744,6 +748,7 @@
         "tx_ms": {"type": "integer", "minimum": 0},
         "expected_remaining_ms": {"type": "integer", "minimum": 0},
         "expected_usage_permille": {"type": "integer", "minimum": 0, "maximum": 1000},
+<<<<<<< HEAD
         "notes": {"type": "string"},
         "binary_hex": {"$ref": "#/definitions/hex"},
         "decoded_fields": {
@@ -763,6 +768,22 @@
             "expected_hash": {"type": "integer", "description": "hash_32(SFN, key) per spec/02a-coordinated-capacity.md §2a.7.1 (FNV-1a32 primitive, matches C lichen_hash_32 and Python _hash_32)"},
             "hash_32": {"type": "integer"}
           }
+=======
+        "notes": {"type": "string"}
+      }
+    },
+    "compact_cot_vector": {
+      "type": "object",
+      "required": ["name", "description", "binary_hex", "decoded_fields"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "binary_hex": {"$ref": "#/definitions/hex"},
+        "decoded_fields": {
+          "type": "object",
+          "additionalProperties": true
+>>>>>>> origin/worktree-worker24
         }
       }
     },
@@ -789,6 +810,7 @@
           "type": "string",
           "description": "Pass 2 security: no injection or crypto issues in CCP-16 vectors (project-LICHEN-ray3)"
         },
+<<<<<<< HEAD
         "announce": {
           "type": "object",
           "properties": {
@@ -798,6 +820,8 @@
           }
         },
         "hash_32": {"type": "integer"},
+=======
+>>>>>>> origin/worktree-worker24
         "input": {
           "type": "object",
           "properties": {

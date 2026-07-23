@@ -52,7 +52,11 @@ static void track_hash(uint32_t hash)
 	if (metrics.seen_hash_count < ARRAY_SIZE(metrics.seen_hashes)) {
 		metrics.seen_hashes[metrics.seen_hash_count++] = hash;
 		metrics.unique_hashes_seen++;
+<<<<<<< HEAD
 	} else {
+=======
+		} else {
+>>>>>>> origin/worktree-worker24
 		metrics.unique_hashes_dropped++;
 	}
 }

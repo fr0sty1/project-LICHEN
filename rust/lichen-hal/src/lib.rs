@@ -149,7 +149,10 @@ pub trait Radio {
     fn current_channel(&self) -> u8 {
         0
     }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/worktree-worker24
 }
 
 /// Minimal ChannelPlan support (u8 index into regional plan per CCP-4).

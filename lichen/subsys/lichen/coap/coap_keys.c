@@ -333,6 +333,7 @@ int lichen_key_pubkey_to_iid(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN
 		return -EIO;
 	}
 
+<<<<<<< HEAD
 	/* IID = SHA-256(pubkey)[0:8] with U/L bit cleared (bit 1 = 0x02)
 	 * per RFC 4291 (locally-administered) and LICHEN spec (project-LICHEN-zt3c).
 	 * Matches _pubkey_to_iid() in Python and lichen_pubkey_to_iid() in ipv6_addr.c.
@@ -345,13 +346,24 @@ int lichen_key_pubkey_to_iid(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN
 	return 0;
 #else
 	/* Fallback without crypto (insecure, test-only) */
+=======
+	memcpy(iid, hash, LICHEN_KEY_IID_LEN);
+	iid[0] &= ~0x02U;
+	memset(hash, 0, sizeof(hash));
+
+	return 0;
+#else
+>>>>>>> origin/worktree-worker24
 	memcpy(iid, pubkey, LICHEN_KEY_IID_LEN);
 	iid[0] &= ~0x02U;
 	return 0;
 #endif
 }
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/worktree-worker24
 /* --------------------------------------------------------------------------
  * Key store implementation
  * -------------------------------------------------------------------------- */

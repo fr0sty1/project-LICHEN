@@ -18,6 +18,7 @@
 /// Fixed-point scale factor (2^16 = 65536).
 const FP_SCALE: i32 = 1 << 16;
 
+<<<<<<< HEAD
 /// EMA alpha = 1/4 (>> 2) for accelerated response to interference per CCP-15
 /// (da2q multi-channel). Saturating arithmetic prevents overflow in fixed-point math.
 const EMA_ALPHA_SHIFT: u32 = 2;
@@ -25,6 +26,12 @@ const EMA_ALPHA_SHIFT: u32 = 2;
 /// RF health metrics aggregator for CCP-15/16 (interference mitigation,
 /// density estimation, load_factor, adaptive SF selection and channel rebalance).
 
+=======
+/// EMA alpha = 1/4 for faster interference response per CCP-15 (da2q).
+const EMA_ALPHA_SHIFT: u32 = 2;
+
+/// RF health metrics aggregator for CCP-15 interference mitigation.
+>>>>>>> origin/worktree-worker24
 ///
 /// All counters saturate. Uses Q16.16 fixed-point. Matches all ccp*.json vectors.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -166,8 +173,13 @@ impl RssiStats {
         if self.count == 0 {
             self.avg_fp = rssi_fp;
         } else {
+<<<<<<< HEAD
             // saturating EMA (alpha=1/4 via EMA_ALPHA_SHIFT=2): avg += (sample - avg) >> 2
             // per CCP-15 for faster response to intermittent interference (da2q multi-channel, da2q.15.2.1)
+=======
+            // EMA with alpha=1/4 (>>2) per CCP-15 for faster interference response.
+            // Uses saturating arithmetic to prevent overflow in fixed-point math.
+>>>>>>> origin/worktree-worker24
             let diff = rssi_fp.saturating_sub(self.avg_fp);
             self.avg_fp = self.avg_fp.saturating_add(diff >> EMA_ALPHA_SHIFT);
         }
@@ -249,8 +261,13 @@ impl SnrStats {
         if self.count == 0 {
             self.avg_fp = snr_fp;
         } else {
+<<<<<<< HEAD
             // saturating EMA (alpha=1/4 via EMA_ALPHA_SHIFT=2): avg += (sample - avg) >> 2
             // per CCP-15 for faster response to intermittent interference (da2q multi-channel, da2q.15.2.1)
+=======
+            // EMA with alpha=1/4 (>>2) per CCP-15 for faster interference response.
+            // Uses saturating arithmetic to prevent overflow in fixed-point math.
+>>>>>>> origin/worktree-worker24
             let diff = snr_fp.saturating_sub(self.avg_fp);
             self.avg_fp = self.avg_fp.saturating_add(diff >> EMA_ALPHA_SHIFT);
         }

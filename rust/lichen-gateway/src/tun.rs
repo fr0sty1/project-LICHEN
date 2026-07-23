@@ -144,10 +144,14 @@ impl TunDevice {
                         format!("TUN write failed ({} bytes): {e}", buf.len()),
                     ))
                 } else if n as usize != buf.len() {
+<<<<<<< HEAD
                     Err(io::Error::new(
                         io::ErrorKind::Other,
                         "partial TUN write",
                     ))
+=======
+                    Err(io::Error::new(io::ErrorKind::WriteZero, "partial TUN write"))
+>>>>>>> origin/worktree-worker24
                 } else {
                     Ok(())
                 }

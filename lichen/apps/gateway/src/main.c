@@ -127,6 +127,25 @@ static int gateway_rpl_init(void) {
 	return ret;
 }
 
+#if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
+static struct lichen_rpl_dodag s_dodag;
+#endif
+static int gateway_rpl_init(void) {
+	int ret = 0;
+#if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
+	uint8_t dodag_id[16] = {0};
+	dodag_id[0] = 0xfd;
+	dodag_id[15] = 0x01;
+	ret = lichen_rpl_dodag_init_root(&s_dodag, 0x00, dodag_id, 0);
+	if (ret == 0) {
+		LOG_INF("RPL DODAG root initialized (rank=%u, role=ROOT)", s_dodag.rank);
+	} else {
+		LOG_ERR("lichen_rpl_dodag_init_root failed: %d", ret);
+	}
+#endif
+	return ret;
+}
+
 /* --------------------------------------------------------------------------
  * CBOR helpers
  * -------------------------------------------------------------------------- */
@@ -722,10 +741,13 @@ int main(void)
 		LOG_WRN("RPL root init failed - continuing without full DODAG support");
 	}
 
+<<<<<<< HEAD
 #if IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)
 	LOG_INF("Prefix delegation enabled - WiFi backhaul stub active");
 #endif
 
+=======
+>>>>>>> origin/worktree-worker24
 #if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
 	LOG_INF("RPL root signalling enabled (DODAG root active)");
 #else
