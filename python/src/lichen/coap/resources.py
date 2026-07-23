@@ -99,9 +99,6 @@ def _is_mesh_uri(uri: str) -> bool:
     host = parsed.hostname
     if not host:
         return False
-    # Strip brackets from IPv6 literal if present
-    if host.startswith("[") and host.endswith("]"):
-        host = host[1:-1]
     try:
         addr = ipaddress.IPv6Address(host)
     except ValueError:
