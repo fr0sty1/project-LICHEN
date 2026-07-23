@@ -28,6 +28,7 @@ use ccm::{
 };
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use hkdf::Hkdf;
+use hmac::{Hmac, Mac};
 use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest, Sha256};
 use x25519_dalek::{PublicKey, StaticSecret};
@@ -240,11 +241,17 @@ impl<const N: usize> Drop for SecretVec<N> {
     }
 }
 
-/// HKDF-Extract with SHA-256.
+/// HKDF-Extract with SHA-256 (matches python/src/lichen/crypto/edhoc.py:_hkdf_extract exactly).
 fn hkdf_extract(salt: &[u8], ikm: &[u8]) -> Zeroizing<[u8; 32]> {
-    // ponytail: Use hkdf crate which we already depend on
-    let (prk, _) = Hkdf::<Sha256>::extract(Some(salt), ikm);
-    Zeroizing::new(prk.into())
+    let salt = if salt.is_empty() {
+        &[0u8; 32][..]
+    } else {
+        salt
+    };
+    let mut mac = Hmac::<Sha256>::new_from_slice(salt).expect("HMAC-SHA256 key valid");
+    mac.update(ikm);
+    let result = mac.finalize().into_bytes();
+    Zeroizing::new(result.into())
 }
 
 fn edhoc_kdf(
