@@ -45,6 +45,7 @@ VECTORS_DIR = Path(__file__).resolve().parents[2] / "test" / "vectors"
 sys.path.insert(0, str(VECTORS_DIR))
 from generate import (  # noqa: E402
     announce_coords_vectors,
+    ccp9_vectors,
     frame_vectors,
     hash_32,
     l2_payload_vectors,
@@ -87,8 +88,6 @@ def test_vectors_directory_exists() -> None:
     ],
 )
 def test_vector_file_schema(filename: str) -> None:
-    if filename == "ccp9.json":
-        return  # ccp9 uses independent oracle; schema extended in separate bead
     schema = _load("schema.json")
     doc = _load(filename)
     errors = sorted(Draft7Validator(schema).iter_errors(doc), key=lambda e: e.path)
@@ -465,6 +464,11 @@ def test_meshtastic_app_compat_vectors_match_generator() -> None:
 def test_meshcore_app_compat_vectors_match_generator() -> None:
     doc = _load("meshcore_app_compat.json")
     assert doc["vectors"] == meshcore_app_compat_vectors()
+
+
+def test_ccp9_vectors_match_generator() -> None:
+    doc = _load("ccp9.json")
+    assert doc["vectors"] == ccp9_vectors()
 
 
 def _ccp16_cases():
