@@ -116,9 +116,10 @@ config LICHEN_CCP_TDMA
 	help
 	  Enable TDMA integration for CCP-1 (coordinated capacity planning).
 	  Adds support for slot assignment, beacon sync, and tdma_tx_allowed()
-	  checks coordinated with RPL DODAG and DIO options. See
-	  spec/02a-coordinated-capacity.md and AGENTS.md init graph.
-	  Must be enabled before closing da2q.16.6.
+	  checks coordinated with RPL DODAG and DIO options per
+	  spec/02a-coordinated-capacity.md §2a.2, §2a.5 (FSM, desync recovery)
+	  and ccp16.json, ccp_tdma.json. See AGENTS.md init graph.
+	  Must follow lichen_link_init() before tdma_init().
 
 config LICHEN_CHANNEL_AGILITY
 	bool "Channel agility / rendezvous (CCP-1/12)"

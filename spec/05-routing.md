@@ -505,7 +505,7 @@ def process_announce(announce, from_neighbor):
         broadcast(announce)
 ```
 
-`now()` returns current TDMA slot/ASN per Slot struct (see draft-lichen-tdma for SFN interaction).
+`now()` returns current TDMA slot/ASN per Slot struct (see spec/02a-coordinated-capacity.md §2a.2 for SFN interaction and hash-based assignment).
 
 ### 9.4. Announce Parameters
 
@@ -905,8 +905,8 @@ When multiple next-hops have equal hop count:
 
 ```
 def select_next_hop(candidates):
-    # Prefer least-congested path. See Section 2a.2 of draft-lichen-tdma
-    # for TDMA channel selection + now() SFN wrap semantics (unsigned modular arithmetic).
+    # Prefer least-congested path. See spec/02a-coordinated-capacity.md §2a.2
+    # for TDMA channel selection + now() SFN wrap semantics (unsigned modular arithmetic per ccp16.json).
     return min(candidates, key=lambda n: n.queue_depth)
 ```
 
