@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-csdu",
+  "title": "[security] Schnorr48 verification uses vartime operations risking timing attacks",
+  "description": "crypto_eddsa_recover_r in lichen/subsys/lichen/crypto/monocypher.c:3001 uses ge_frombytes_neg_vartime(\u0026minus_A, public_key) and slide_step with data-dependent branches/loops (lines 3028-3034). While public-key verification often tolerates this, combined with LICHEN truncated 48-byte Schnorr (spec/drafts/draft-lichen-schnorr-00.md) and LoRa link layer (MIC verification), it may leak via cache/timing on embedded platforms (nRF52840, ESP32). Monocypher main Ed25519 verify also uses vartime. Recommend constant-time alternatives or constant-time blinding if used in sensitive contexts. Check against test vectors in test/vectors/schnorr48.json.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T06:08:52.299803875Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T06:08:52.299803875Z"
+}
