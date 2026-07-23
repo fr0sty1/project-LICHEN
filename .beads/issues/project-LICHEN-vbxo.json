@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-vbxo",
+  "title": "[cross-impl] synchronized_hop_channel only implemented in Python SimNode",
+  "description": "Commit 798f2fac5 added synchronized_hop_channel() to python/src/lichen/sim/node.py matching ccp16-hop.json and spec/02a-coordinated-capacity.md:120 using SFN % len(hop_schedule). No equivalent in Rust (lichen-node, lichen-core) or Zephyr C (lichen_tdma_compute_slot only does static slot, no dynamic hop_schedule). Leads to different behavior for CCP-12 channel selection across impls. Test vectors in test/vectors/ccp16-hop.json and ccp9.json require all three (Python/Rust/Zephyr) to match exactly. See also lichen/subsys/lichen/link/link_ctx.c:157 TDMA comments.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T14:11:40.367619042Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T14:11:40.367619042Z"
+}
