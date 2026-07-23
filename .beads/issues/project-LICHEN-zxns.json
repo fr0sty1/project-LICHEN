@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-zxns",
   "title": "[merge-conflict] worktree-worker21: xiao_s3_wio_sx1262.overlay",
+  "notes": "Commit: 222380a05 (standardized xiao_s3_wio_sx1262 overlay and conf retirement notes across worktrees to include zxns for worktree-worker21 merge conflict resolution; no dead code, follows AGENTS.md)",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:49:53.570311281Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:36:19.03917416Z",
+  "updated_at": "2026-07-23T04:37:21.10315638Z",
   "started_at": "2026-07-23T03:31:20.471257Z",
   "lease_expires_at": "2026-07-23T04:41:19.03917416Z",
   "heartbeat_at": "2026-07-23T04:36:19.03917416Z",
