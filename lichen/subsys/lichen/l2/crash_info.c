@@ -4,11 +4,15 @@
 
 LOG_MODULE_REGISTER(crash_info, LOG_LEVEL_INF);
 
-#define CRASH_MAGIC 0xDEAD0001
+#define CRASH_MAGIC  0xDEAD0001
+#define CRASH_MAGIC2 0xBEEF0002
 
-/* Retained RAM section - survives warm reset but not power cycle */
+/* Retained RAM section - survives warm reset but not power cycle.
+ * Dual-magic (CRASH_MAGIC + CRASH_MAGIC2) prevents false-positive
+ * crash detection on first power-on when __noinit contains random data. */
 __noinit static struct {
     uint32_t magic;
+    uint32_t magic2;
     uint32_t reason;
     uint32_t location;
     uint32_t extra;
@@ -31,12 +35,14 @@ void crash_info_store(enum crash_reason reason, uint32_t location, uint32_t extr
      * evidence that something crashed.
      */
 
-    /* If magic invalid, this is first crash since power cycle - init count */
-    if (crash_info.magic != CRASH_MAGIC) {
+    /* If either magic invalid, this is first crash since power cycle - init count */
+    if (crash_info.magic != CRASH_MAGIC || crash_info.magic2 != CRASH_MAGIC2) {
         crash_info.magic = CRASH_MAGIC;
+        crash_info.magic2 = CRASH_MAGIC2;
         crash_info.count = 0;
     }
     crash_info.magic = CRASH_MAGIC;
+    crash_info.magic2 = CRASH_MAGIC2;
     crash_info.reason = reason;
     crash_info.location = location;
     crash_info.extra = extra;
@@ -49,7 +55,7 @@ void crash_info_store(enum crash_reason reason, uint32_t location, uint32_t extr
 
 void crash_info_check_and_clear(void)
 {
-    if (crash_info.magic == CRASH_MAGIC) {
+    if (crash_info.magic == CRASH_MAGIC && crash_info.magic2 == CRASH_MAGIC2) {
         if (crash_info.reason <= CRASH_UNKNOWN) {
             LOG_WRN("crash_info: previous crash (reason=%u, loc=%u, extra=%u, count=%u)",
                     crash_info.reason, crash_info.location, crash_info.extra, crash_info.count);
@@ -61,11 +67,15 @@ void crash_info_check_and_clear(void)
         /* Clear crash details after logging. Count is preserved for lifetime
          * tracking - it accumulates across warm resets until power cycle. */
         crash_info.magic = 0;
+        crash_info.magic2 = 0;
         crash_info.reason = CRASH_NONE;
         crash_info.location = 0;
         crash_info.extra = 0;
     } else {
-        /* First boot or power cycle: __noinit RAM contains garbage */
+        /* First boot or power cycle: __noinit RAM contains garbage.
+         * Dual-magic eliminates false-positive risk (was 1-in-2^32). */
+        crash_info.magic = 0;
+        crash_info.magic2 = 0;
         crash_info.count = 0;
     }
 }
