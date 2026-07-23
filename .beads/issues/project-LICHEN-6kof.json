@@ -2,15 +2,15 @@
   "id": "project-LICHEN-6kof",
   "title": "[merge-conflict] worktree-worker18: coap_keys.c",
   "notes": "Commit: 90ca81f",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:54:12.80847153Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:17:56.878842688Z",
+  "updated_at": "2026-07-23T03:17:59.057523724Z",
   "started_at": "2026-07-23T03:16:27.497490823Z",
-  "lease_expires_at": "2026-07-23T03:21:27.497490823Z",
-  "heartbeat_at": "2026-07-23T03:16:27.497490823Z"
+  "closed_at": "2026-07-23T03:17:59.057523724Z",
+  "close_reason": "Cleaned merge conflict tracking tags (project-LICHEN-vw14, project-LICHEN-byge, project-LICHEN-zt3c) from coap_keys.c, Kconfig, and coap_keys.h in worktree-worker18. Matched clean style from main integration branch. Commit 90ca81f18."
 }
