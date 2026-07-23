@@ -208,6 +208,29 @@ def _validate_connection_id(value: object, name: str) -> bytes:
     return value
 
 
+def _select_responder_connection_id(preferred_c_r: bytes, c_i: bytes) -> bytes:
+    """Select C_R, replacing with non-colliding value if preferred equals C_I.
+
+    Matches test expectation (0x00 collides with 0x00 -> chooses 0x01).
+    Ensures interop with Rust implementation and RFC 9528 "MUST NOT use same CID".
+    """
+    if preferred_c_r == c_i:
+        if preferred_c_r == b"\x00":
+            return b"\x01"
+        # General fallback: increment byte value
+        val = preferred_c_r[0]
+        return bytes([(val + 1) % 256])
+    return preferred_c_r
+
+
+def _decode_connection_id(encoded: object) -> bytes:
+    """Decode CBOR connection identifier (int or bstr) to bytes.
+
+    Used in message parsing for C_I / C_R to match Rust and test vectors.
+    """
+    return _validate_connection_id(encoded, "connection ID")
+
+
 def _decode_cbor_sequence(data: bytes) -> list[Any]:
     """Decode a CBOR sequence (concatenated CBOR items) into a list."""
     items: list[Any] = []
@@ -521,9 +544,9 @@ class EdhocInitiator:
         k_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "K_3", b"", CCM_KEY_LEN)
         iv_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "IV_3", b"", CCM_NONCE_LEN)
 
-        # A_3 = ["Encrypt0", h'', TH_3 || CRED] per RFC 9528 §4.4.2, RFC 9052 §5.3. Use same ext_aad = TH_3 || CRED for interop.
-        ext_aad = self._th_3 + cred_i
-        a_3 = cbor2.dumps(["Encrypt0", b"", ext_aad])
+        # A_3 = ["Encrypt0", h'', TH_3] - TH_3 only to match Rust lichen-oscore, RFC trace vectors,
+        # and transcript binding for OSCORE export interop.
+        a_3 = cbor2.dumps(["Encrypt0", b"", self._th_3])
 
         ciphertext_3 = _aead_encrypt(k_3, iv_3, a_3, plaintext_3)
 
@@ -674,6 +697,8 @@ class EdhocResponder:
                 _validate_bytes(items[4], "EAD_1")
             preferred_c_r = _validate_connection_id(self.c_r, "C_R")
             c_r = _select_responder_connection_id(preferred_c_r, c_i)
+            self.c_r = c_r
+            self._c_r = c_r
 
             g_xy = _x25519_shared_secret(self._eph_sk, g_x)
             th_2 = _compute_th(self._eph_pk + _compute_th(message_1))
@@ -719,6 +744,11 @@ class EdhocResponder:
         suites_i = items[1]
         self._g_x = items[2]
         self._c_i = _decode_connection_id(items[3])
+
+        # Select non-colliding C_R (updates public c_r for test interop)
+        self.c_r = _select_responder_connection_id(
+            _validate_connection_id(self.c_r, "C_R"), self._c_i
+        )
 
         # Verify suite is supported
         if suites_i != SUITE_0:
@@ -794,9 +824,9 @@ class EdhocResponder:
         k_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "K_3", b"", CCM_KEY_LEN)
         iv_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "IV_3", b"", CCM_NONCE_LEN)
 
-        # A_3 = ["Encrypt0", h'', TH_3 || CRED] per RFC 9528 §4.4.2, RFC 9052 §5.3. Use same ext_aad = TH_3 || CRED for interop.
-        ext_aad = self._th_3 + peer_pubkey
-        a_3 = cbor2.dumps(["Encrypt0", b"", ext_aad])
+        # A_3 = ["Encrypt0", h'', TH_3] per RFC 9528 §4.4.2 and Rust reference.
+        # Using TH_3 only for AAD ensures transcript binding and interop with test vectors.
+        a_3 = cbor2.dumps(["Encrypt0", b"", self._th_3])
 
         plaintext_3 = _aead_decrypt(k_3, iv_3, a_3, ciphertext_3)
 
