@@ -3,15 +3,15 @@
   "title": "DtnMessage.size: fixed 100-byte header overhead assumption",
   "description": "File: python/src/lichen/routing/router.py:128-130\n\n```python\ndef size(self) -\u003e int:\n    \"\"\"Approximate size in bytes for buffer accounting.\"\"\"\n    return len(self.packet.payload) + 100  # header overhead estimate\n```\n\nWHY IT'S A BUG:\n1. IPv6 header is 40 bytes, not 100\n2. Ignores variable-length extension headers\n3. Ignores actual DtnMessage field sizes (destination_iid=8, expiry_unix=8, buffered_at_ms=8)\n4. The comment says 'approximate' but 100 bytes is way off for most packets\n5. Under-counting wastes buffer space; over-counting (like here) causes premature eviction\n\nWith Python object overhead, actual memory usage per DtnMessage is likely:\n- packet: varies (payload + header)\n- destination_iid: 8 + bytes overhead (~50)\n- expiry_unix: 8 + int overhead (~28)\n- buffered_at_ms: 8 + int overhead (~28)\nTotal overhead: ~150-200 bytes for the DtnMessage object itself, not '100 for headers'\n\nIMPACT: Inaccurate buffer accounting leads to either premature eviction (wasted capacity) or buffer overrun (if estimate is low).\n\nFIX: Calculate actual size:\n```python\ndef size(self) -\u003e int:\n    return (len(self.packet.payload) + 40 +  # IPv6 base header\n            len(self.destination_iid) + 16)   # IID + timestamps\n```",
   "notes": "Commit: de9adaf39",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:25:22.313566Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:31:11.377465794Z",
+  "updated_at": "2026-07-23T04:31:13.410735166Z",
   "started_at": "2026-07-23T04:29:29.303427458Z",
-  "lease_expires_at": "2026-07-23T04:34:29.303427458Z",
-  "heartbeat_at": "2026-07-23T04:29:29.303427458Z"
+  "closed_at": "2026-07-23T04:31:13.410735166Z",
+  "close_reason": "Closed"
 }
