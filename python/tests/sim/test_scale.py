@@ -144,7 +144,7 @@ class TestMeshScale:
             print(f"  Received: {received}/{n_nodes - 1} ({100*received/(n_nodes-1):.1f}%)")
 
             # With 50m spacing, all nodes should be in range (LoRa range > 1km)
-            assert received > n_nodes * 0.8, f"Too few receivers: {received}/{n_nodes-1}"
+            assert received > (n_nodes - 1) * 0.8, f"Too few receivers: {received}/{n_nodes-1}"
 
         finally:
             for radio in radios:
@@ -209,7 +209,7 @@ class TestMeshScale:
             print(f"  Received: {received}/{n_nodes - 1} ({100*received/(n_nodes-1):.1f}%)")
 
             # Grid should have very high reception (center can reach all)
-            assert received > n_nodes * 0.9, f"Too few receivers: {received}/{n_nodes-1}"
+            assert received > (n_nodes - 1) * 0.9, f"Too few receivers: {received}/{n_nodes-1}"
 
         finally:
             for radio in radios:
