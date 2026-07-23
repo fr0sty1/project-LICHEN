@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-4czb.4",
+  "title": "Update header docs, tests, and add bounds check test cases",
+  "description": "Revise doc comments in schnorr48.h for new params, update test vectors and assertions in schnorr48 tests and link_crypto test to test the new length validation (invalid len should fail). Ensure interop with test/vectors/schnorr48.json.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:16:10.96445142Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:16:10.96445142Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-4czb.4",
+      "depends_on_id": "project-LICHEN-4czb",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:16:11.100256134Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
