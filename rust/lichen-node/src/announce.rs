@@ -239,7 +239,6 @@ impl AnnounceProcessor {
         self.access_counter += 1;
         let access = self.access_counter;
 
-        // Update or insert pinned key with LRU eviction
         self.pinned_keys.insert(
             iid,
             PinnedKeyEntry {
@@ -247,9 +246,8 @@ impl AnnounceProcessor {
                 last_access: access,
             },
         );
-        self.evict_pinned_if_needed();
+        let evicted_iid = self.evict_pinned_if_needed();
 
-        // Update or insert seen entry with LRU eviction
         self.seen.insert(
             iid,
             SeenEntry {
@@ -259,16 +257,12 @@ impl AnnounceProcessor {
         );
         self.evict_seen_if_needed();
 
-        // Step 5: Update gradient table.
-        // Build full IPv6 from prefix + IID.
         let mut destination = [0u8; 16];
         destination[..8].copy_from_slice(&self.prefix);
         destination[8..].copy_from_slice(&iid);
 
-        // Parse optional geo coords from app_data.
         let coords = GeoCoords::from_app_data(announce.app_data);
 
-        // Parse optional congestion from app_data (type 0x02).
         let congestion = parse_congestion(announce.app_data);
 
         let entry = GradientEntry {
@@ -282,8 +276,6 @@ impl AnnounceProcessor {
         };
         self.gradient_table.update(entry, now_ms);
 
-        // Step 6: Decide relay.
-        // Why: Propagate announces through the mesh, up to hop limit.
         let should_relay = announce.should_relay();
 
         let peer = PeerIdentity::from_pubkey(pubkey);
