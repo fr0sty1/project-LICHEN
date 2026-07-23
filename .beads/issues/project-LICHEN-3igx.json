@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-3igx",
   "title": "[merge-conflict] worktree-worker24: t_deck_esp32s3_procpu.conf",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:33:51.490665123Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:15:05.582198296Z",
+  "updated_at": "2026-07-23T05:13:45.883651253Z",
   "started_at": "2026-07-23T00:43:21.642369532Z",
-  "closed_at": "2026-07-23T05:15:05.582198296Z",
-  "close_reason": "Synced t_deck_esp32s3_procpu.conf files (gateway, puck, bridge) in worktree-worker24 to latest canonical consolidated merge resolution comment from main. Removed trailing whitespace differences. Matches pattern from prior similar beads (xyx1, 899u, etc.). Commit 596d4024a pushed to worktree-worker24.",
+  "lease_expires_at": "2026-07-23T05:18:45.883651253Z",
+  "heartbeat_at": "2026-07-23T05:13:45.883651253Z",
   "labels": [
     "defer-external"
   ]
