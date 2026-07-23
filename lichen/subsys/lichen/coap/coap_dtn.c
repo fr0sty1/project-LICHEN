@@ -103,18 +103,21 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 		uint8_t plain[512];
 		size_t plain_len = sizeof(plain);
 		int r = coap_oscore_unprotect_request(ctx, request, &orig_code, opts, &opt_len, plain, &plain_len, piv, &piv_len);
-		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_BAD_REQUEST;
+		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_UNAUTHORIZED;
 		if (orig_code != COAP_METHOD_POST) {
 			return COAP_RESPONSE_CODE_NOT_ALLOWED;
 		}
 		payload = plain;
 		payload_len = (uint16_t)plain_len;
 	} else {
+		if (!lichen_coap_is_local_admin(addr, addr_len)) {
+			return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
+		}
 		payload = coap_packet_get_payload(request, &payload_len);
 	}
 	if (!payload || payload_len == 0) return COAP_RESPONSE_CODE_BAD_REQUEST;
 	parse_recipient(payload, payload_len, dest_iid);
-	if (oscore_ctx_get_by_eui64(peer_eui64, &ctx) != OSCORE_OK || ctx == NULL) {
+	if (ctx == NULL && (oscore_ctx_get_by_eui64(peer_eui64, &ctx) != OSCORE_OK || ctx == NULL)) {
 		return COAP_RESPONSE_CODE_UNAUTHORIZED;
 	}
 	uint32_t now_ms = k_uptime_get_32();
@@ -202,7 +205,7 @@ static int confessions_post(struct coap_resource *resource, struct coap_packet *
 		uint8_t oscore_opt[32];
 		size_t oscore_opt_len = sizeof(oscore_opt);
 		int r = coap_oscore_get_option(request, oscore_opt, &oscore_opt_len);
-		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_BAD_REQUEST;
+		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_UNAUTHORIZED;
 		uint16_t ct_len = 0;
 		const uint8_t *ct = coap_packet_get_payload(request, &ct_len);
 		if (!ct || ct_len == 0) return COAP_RESPONSE_CODE_BAD_REQUEST;
@@ -212,10 +215,10 @@ static int confessions_post(struct coap_resource *resource, struct coap_packet *
 		uint8_t plain[64];
 		size_t plain_len = sizeof(plain);
 		r = oscore_unprotect_request(ctx, oscore_opt, oscore_opt_len, ct, ct_len, &orig_code, opts, &opt_len, plain, &plain_len);
-		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_BAD_REQUEST;
+		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_UNAUTHORIZED;
 	} else {
-		if (oscore_ctx_get_by_eui64(sender_iid, &ctx) != 0 || ctx == NULL) {
-			return COAP_RESPONSE_CODE_UNAUTHORIZED;
+		if (!lichen_coap_is_local_admin(addr, addr_len)) {
+			return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
 		}
 	}
 	uint8_t iid7 = sender_iid[7];
