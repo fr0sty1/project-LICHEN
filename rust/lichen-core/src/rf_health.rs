@@ -93,7 +93,7 @@ impl RfHealthMetrics {
     /// Record computed load factor (from hash_32 or utilization metrics).
     #[inline]
     pub fn record_load_factor(&mut self, load_fp: u32) {
-        self.load_factor_fp = load_fp.min(FP_SCALE as u32);
+        self.load_factor_fp = load_fp.min(FP_SCALE);
     }
 
     /// Calculate packet loss rate as a percentage in Q16.16 fixed-point.
