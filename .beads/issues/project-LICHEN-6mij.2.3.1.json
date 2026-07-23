@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-6mij.2.3.1",
+  "title": "Refactor deaddrop_post ctx lookup and OSCORE enforcement to match CONFIG_LICHEN_COAP_SERVER_OSCORE policy",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:26:12.001747459Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:26:12.001747459Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-6mij.2.3.1",
+      "depends_on_id": "project-LICHEN-6mij.2.3",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:26:12.139806222Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
