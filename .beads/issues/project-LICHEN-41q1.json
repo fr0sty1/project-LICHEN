@@ -3,15 +3,15 @@
   "title": "KISS transport: dispatch_frame stats mutex lock/unlock overhead",
   "description": "File: lichen/subsys/lichen/transport/kiss_transport.c\nLines: 279-346\n\nIn dispatch_frame(), the stats mutex is locked/unlocked multiple times:\n\n    k_mutex_lock(\u0026ctx-\u003estats_mutex, K_FOREVER);\n    ctx-\u003estats.rx_frames++;\n    k_mutex_unlock(\u0026ctx-\u003estats_mutex);\n    ...\n    if (port == KISS_PORT_AX25) {\n        k_mutex_lock(\u0026ctx-\u003estats_mutex, K_FOREVER);\n        ctx-\u003estats.rx_data_port0++;\n        k_mutex_unlock(\u0026ctx-\u003estats_mutex);\n        ...\n    }\n\nThis pattern appears 7+ times in the function. Each lock/unlock pair:\n1. Has overhead from context switches\n2. Allows interleaving between stat updates (non-atomic multi-field updates)\n3. Could be consolidated into one lock region\n\nWhile not a bug per se, this creates inconsistent statistics if queried mid-dispatch (rx_frames incremented but rx_data_port0 not yet).\n\nFix: Acquire stats_mutex once at the start of dispatch_frame, update all relevant stats, then unlock once at the end.",
   "notes": "Commit: 0cc88dde3",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:55:35.340747Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T03:57:52.275514353Z",
+  "updated_at": "2026-07-23T03:57:54.171496934Z",
   "started_at": "2026-07-23T03:56:04.849628844Z",
-  "lease_expires_at": "2026-07-23T04:01:04.849628844Z",
-  "heartbeat_at": "2026-07-23T03:56:04.849628844Z"
+  "closed_at": "2026-07-23T03:57:54.171496934Z",
+  "close_reason": "Consolidated stats mutex locking in kiss_rx_thread_fn to reduce lock/unlock pairs and ensure atomic updates of rx_bytes + error counters. dispatch_frame() already used single lock region for all frame stats. Verified via code review and test structure."
 }
