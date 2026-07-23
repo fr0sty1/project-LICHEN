@@ -2,6 +2,7 @@
   "id": "project-LICHEN-ydpn",
   "title": "announce: seq_num increment callback exception silently swallowed",
   "description": "File: python/src/lichen/announce/scheduler.py:144-148\n\nThe _increment_seq method catches and logs exceptions from the persistence callback but continues:\n\n```python\nif self._on_seq_change:\n    try:\n        self._on_seq_change(self._seq_num)\n    except Exception as e:\n        logger.warning('seq_change callback failed: %s', e)\n```\n\nIf the persistence callback fails (e.g., disk full, I/O error), the seq_num has already been incremented in memory but NOT persisted. On node restart, the seq_num could be lower than what was transmitted, causing peers to reject announces as stale (STALE_SEQNUM).\n\nThe failure is logged at WARNING level, which may be missed in production. Should either:\n1. Retry persistence or raise to prevent announce transmission\n2. Log at ERROR level with more context about the consequences\n3. Implement a 'dirty' flag that prevents announces until persistence succeeds",
+  "notes": "Commit: e5c7b4092",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:18:35.034546Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:15:34.795770944Z",
+  "updated_at": "2026-07-23T04:17:08.15456Z",
   "started_at": "2026-07-23T04:15:34.795770944Z",
   "lease_expires_at": "2026-07-23T04:20:34.795770944Z",
   "heartbeat_at": "2026-07-23T04:15:34.795770944Z"
