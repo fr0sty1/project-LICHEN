@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-gw1a",
   "title": "[merge-conflict] worktree-worker21: xiao_s3_wio_sx1262.conf",
+  "notes": "Commit: 6512eaa35 (worker21 xiao_s3_wio_sx1262.conf cleaned of dead resolution meta-comment per no-dead-code rule; matches canonical main version)",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:52:04.129542967Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:37:06.978424196Z",
+  "updated_at": "2026-07-23T03:37:56.611081363Z",
   "started_at": "2026-07-23T03:37:06.978424196Z",
   "lease_expires_at": "2026-07-23T03:42:06.978424196Z",
   "heartbeat_at": "2026-07-23T03:37:06.978424196Z"
