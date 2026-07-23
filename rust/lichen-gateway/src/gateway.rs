@@ -10,9 +10,9 @@ use lichen_core::l2_payload::{
 };
 use lichen_node::{
     runtime::{RplRuntime, RplRuntimeConfig},
-    stack::add_rpl_source_route,
     RplEvent, RplNode,
 };
+use lichen_rpl::routing::SourceRoutingHeader;
 use lichen_schc::codec::{compress, decompress, SchcError};
 use tracing::{error, info, warn};
 
@@ -147,12 +147,31 @@ impl Gateway {
                 None => return None,
             };
             if route.len() > 1 {
-                let srh_overhead = 8 + 16 * (route.len() - 1);
-                let mut routed = vec![0u8; ipv6.len() + srh_overhead];
-                match add_rpl_source_route(ipv6, route, &mut routed) {
-                    Ok(len) => routed[..len].to_vec(),
+                let srh = match SourceRoutingHeader::from_route(route) {
+                    Ok(s) => s,
                     Err(_) => return None,
+                };
+                let num_addrs = srh.addresses.len();
+                let routing_len = 8 + 16 * num_addrs;
+                let total_len = ipv6.len() + routing_len;
+                let mut routed = vec![0u8; total_len];
+                routed[..40].copy_from_slice(&ipv6[..40]);
+                let payload_len = u16::from_be_bytes([ipv6[4], ipv6[5]]) as usize + routing_len;
+                let routed_payload_len = match u16::try_from(payload_len) {
+                    Ok(p) => p,
+                    Err(_) => return None,
+                };
+                routed[4..6].copy_from_slice(&routed_payload_len.to_be_bytes());
+                let transport = ipv6[6];
+                routed[6] = 43;
+                routed[24..40].copy_from_slice(&route[0]);
+                routed[40] = transport;
+                routed[41] = (routing_len / 8 - 1) as u8;
+                if srh.write_to(&mut routed[42..]).is_err() {
+                    return None;
                 }
+                routed[40 + routing_len..].copy_from_slice(&ipv6[40..]);
+                routed
             } else {
                 ipv6.to_vec()
             }
