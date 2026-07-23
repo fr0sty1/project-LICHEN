@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-5pe7",
+  "title": "[security] OSCORE protect_request label inconsistency and incomplete error path cleanup",
+  "description": "In lichen/subsys/lichen/oscore/oscore.c:1493-1531 early error paths (invalid param, uninitialized seq, seq exhausted) still goto cleanup_protect_request which no longer exists (renamed to common_wipe:1619 in 7baadd563). Later paths use common_wipe. nvm_failed:1626 comment references outdated \"cleanup_protect_request\". This prevents compilation and breaks the critical SSN rollback + wipe logic for preventing AES-CCM nonce reuse on NVM failure (RFC 8613 §7.2, §8.4). Affects key/seq handling, OSCORE MIC/tag computation paths. See also oscore.h comments and project-LICHEN-ow3c.1.3.* beads.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T14:28:42.939267661Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T14:28:42.939267661Z"
+}
