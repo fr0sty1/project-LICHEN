@@ -242,10 +242,10 @@ config LICHEN_GATEWAY_COORDINATION
 	depends on LICHEN_COAP_SERVER || LICHEN_COAP_CONFIG
 	default n
 	help
-	  Enable multi-gateway coordination per mugl.3 / spec/05-routing.md:145
-	  (backbone UDP/CoAP to /.well-known/lichen-gw). Supports closed (PSK+OSCORE)
-	  and open (Ed25519 signatures+TOFU) federation modes. Stubs in subsys and
-	  rust/lichen-gateway to follow. Required for >1 gateway deployments.
+	  Enable multi-gateway coordination per mugl.3 / spec/08-gateway-coordination.md
+	  and spec/02a-coordinated-capacity.md §2a.2 (TDMA slot coordination across
+	  gateways). Backbone UDP/CoAP. Supports closed (PSK+OSCORE) and open
+	  (Ed25519+TOFU) modes. Required for multi-BR deployments.
 
 choice LICHEN_GW_FEDERATION_MODE
 	prompt "Gateway federation mode for coordination"

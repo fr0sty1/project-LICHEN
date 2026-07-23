@@ -299,7 +299,7 @@ packet; it MUST NOT be interpreted as sequence-number wrap.
 
 **Wrap Behavior:**
 
-At ~1 packet/second, 16-bit seqnum wraps every ~18 hours (per Section 2a.2 of draft-lichen-tdma for SFN/now() unsigned modular arithmetic). The epoch
+At ~1 packet/second, 16-bit seqnum wraps every ~18 hours (per spec/02a-coordinated-capacity.md §2a.2 for SFN/now() unsigned modular arithmetic validated by ccp16.json). The epoch
 increment ensures the 24-bit logical counter advances monotonically.
 At maximum traffic (10 pkt/sec), epoch wraps in ~7.5 years--acceptable.
 

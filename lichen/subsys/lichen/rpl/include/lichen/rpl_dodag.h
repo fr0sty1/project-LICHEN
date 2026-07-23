@@ -47,9 +47,10 @@ extern "C" {
 #define LICHEN_RPL_DEFAULT_MAX_RANK_INC   2048
 #define LICHEN_RPL_DEFAULT_SWITCH_THRESH  192
 
-/* TDMA constants synced from constants.toml; see test/vectors/ccp_tdma.json
- * for independent vectors on slot assignment (hash), 50ms guard boundaries,
- * and drift compensation. Zephyr tests validate against these (no oracle). */
+/* TDMA constants synced from constants.toml; see spec/02a-coordinated-capacity.md §2a.2
+ * and test/vectors/ccp16.json, ccp_tdma.json for independent vectors on slot
+ * assignment (hash via lichen_hash_32), 100ms guard boundaries, SFN wrap, and
+ * drift compensation. Zephyr tests validate against these (no code oracle). */
 
 #ifndef CONFIG_LICHEN_RPL_MAX_PARENTS
 #define CONFIG_LICHEN_RPL_MAX_PARENTS 4
