@@ -88,8 +88,13 @@ def _point_sub(a: bytes, b: bytes) -> bytes:
     return crypto_core_ed25519_sub(a, b)
 
 
-def _clamp(scalar_bytes: bytes) -> bytes:
-    """Apply Ed25519 clamping to scalar."""
+def clamp(scalar_bytes: bytes) -> bytes:
+    """Apply X25519/Ed25519 scalar clamping per RFC 7748 §5 and RFC 8032.
+
+    Clears bottom 3 bits of first byte, clears bit 255, sets bit 254 of last byte.
+    Required for X25519 private keys to ensure correct subgroup and avoid
+    small-subgroup attacks. Also used for Ed25519 private scalars.
+    """
     s = bytearray(scalar_bytes)
     s[0] &= 248
     s[31] &= 127
@@ -105,7 +110,7 @@ def derive_keypair(seed: bytes) -> tuple[bytes, bytes]:
     if len(seed) != 32:
         raise ValueError("Seed must be 32 bytes")
     h = sha512(seed).digest()
-    privkey = _clamp(h[:32])
+    privkey = clamp(h[:32])
     pubkey = _point_mult_base(_scalar_from_bytes(privkey))
     return privkey, pubkey
 

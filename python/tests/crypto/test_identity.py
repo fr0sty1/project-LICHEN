@@ -21,6 +21,7 @@ import pytest
 from nacl.bindings import crypto_scalarmult, crypto_scalarmult_base
 
 from lichen.crypto.identity import Identity, PeerIdentity, _pubkey_to_iid
+from lichen.crypto.schnorr48 import clamp
 
 
 class TestIdentityConstruction:
@@ -187,17 +188,18 @@ class TestPeerIdentity:
             peer.pubkey = bytes(32)
 
     def test_peer_repr_shows_info(self):
-        """repr() shows useful identification info."""
+        """repr() shows useful identification info (IID + human address)."""
         pubkey = bytes(range(32))
         peer = PeerIdentity.from_pubkey(pubkey)
         r = repr(peer)
 
         assert "PeerIdentity" in r
-        assert pubkey.hex()[:16] in r
+        assert peer.iid.hex()[:8] in r
+        assert peer.human_address in r
 
 
 class TestX25519KeyDerivation:
-    """Tests for Ed25519 to X25519 key derivation (spec section 8.8)."""
+    """Tests for Ed25519 to X25519 key derivation (clamped per RFC 7748)."""
 
     def test_x25519_private_length(self):
         """x25519_private returns 32 bytes."""
@@ -224,17 +226,17 @@ class TestX25519KeyDerivation:
         assert ident1.x25519_public == ident2.x25519_public
 
     def test_x25519_derivation_matches_spec(self):
-        """X25519 derivation matches spec section 8.8 formula.
+        """X25519 derivation matches updated spec (clamped per RFC 7748 §5).
 
-        Spec:
-            x25519_private = SHA-512(ed25519_seed)[0:32]
-            x25519_public  = X25519(x25519_private, basepoint)
+        x25519_private = clamp(SHA-512(ed25519_seed)[0:32])
+        x25519_public  = X25519(x25519_private, basepoint)
         """
         seed = bytes(range(32))
         ident = Identity.from_seed(seed)
 
-        # Verify private key derivation
-        expected_private = sha512(seed).digest()[:32]
+        # Verify private key derivation using clamp (independent oracle)
+        h = sha512(seed).digest()[:32]
+        expected_private = clamp(h)
         assert ident.x25519_private == expected_private
 
         # Verify public key derivation
@@ -257,18 +259,17 @@ class TestX25519KeyDerivation:
         assert len(shared_alice) == 32
 
     def test_x25519_keys_differ_from_ed25519_keys(self):
-        """X25519 keys are different from Ed25519 keys (different curves).
+        """X25519 keys differ from Ed25519 keys (different curves).
 
-        Uses a fixed seed: privkey is clamp(SHA-512(seed)[:32]) while
-        x25519_private is the unclamped hash, so for ~1/32 of random seeds
-        the two are identical and a Identity.generate() here would flake.
+        The private scalar bytes are identical (both clamped SHA-512(seed)[:32]),
+        but interpreted on different curves (Ed25519 vs X25519) so public keys differ.
         """
         ident = Identity.from_seed(bytes(range(32)))
 
-        # Private keys differ (different derivation)
-        assert ident.x25519_private != ident.privkey
+        # Private scalar bytes are the same (unified derivation)
+        assert ident.x25519_private == ident.privkey
 
-        # Public keys differ (Ed25519 vs Curve25519)
+        # Public keys differ (Ed25519 vs Curve25519 basepoint multiplication)
         assert ident.x25519_public != ident.pubkey
 
     def test_different_seeds_produce_different_x25519_keys(self):
@@ -311,24 +312,23 @@ class TestKnownVectors:
         assert len(ident.iid) == 8
 
     def test_zero_seed_x25519_keys(self):
-        """All-zero seed produces specific X25519 keys.
+        """All-zero seed produces specific X25519 keys (clamped).
 
-        Verifies the key derivation per spec section 8.8:
-            x25519_private = SHA-512(seed)[0:32]
+        Verifies clamped derivation per RFC 7748 §5:
+            x25519_private = clamp(SHA-512(seed)[0:32])
             x25519_public  = X25519(x25519_private, basepoint)
         """
         seed = bytes(32)
         ident = Identity.from_seed(seed)
 
-        # SHA-512 of 32 zero bytes, first 32 bytes
-        # Computed via: hashlib.sha512(bytes(32)).digest()[:32].hex()
+        # Clamped SHA-512[:32] for zero seed (last byte 0x96 -> 0x56 after clamp)
         expected_x25519_private = bytes.fromhex(
-            "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f196"
+            "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156"
         )
         assert ident.x25519_private == expected_x25519_private
 
-        # X25519 public key derived from the private key
-        # Computed via: nacl.bindings.crypto_scalarmult_base(expected_x25519_private).hex()
+        # X25519 public key (unchanged by this particular clamp)
+        # Computed via cryptography.x25519 and nacl.crypto_scalarmult_base
         expected_x25519_public = bytes.fromhex(
             "5bf55c73b82ebe22be80f3430667af570fae2556a6415e6b30d4065300aa947d"
         )
