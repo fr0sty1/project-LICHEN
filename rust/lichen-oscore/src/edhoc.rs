@@ -254,7 +254,7 @@ fn hkdf_extract(salt: &[u8], ikm: &[u8]) -> Zeroizing<[u8; 32]> {
 fn edhoc_kdf(
     prk: &[u8; 32],
     th: &[u8],
-    label: u8,
+    label: &str,
     context: &[u8],
     length: usize,
 ) -> Result<heapless::Vec<u8, 128>, EdhocError> {
@@ -290,6 +290,13 @@ fn edhoc_kdf(
         info.push_err(0x18)?;
         info.push_err(label)?;
     }
+    if label_bytes.len() <= 23 {
+        info.push_err(0x60 | label_bytes.len() as u8)?;
+    } else {
+        info.push_err(0x78)?;
+        info.push_err(label_bytes.len() as u8)?;
+    }
+    info.extend_err(label_bytes)?;
 
     if context.is_empty() {
         info.push_err(0x40)?;
@@ -309,7 +316,7 @@ fn edhoc_kdf(
         .map_err(|_| EdhocError::BufferTooSmall)?;
     hk.expand(&info, &mut okm)
         .map_err(|_| EdhocError::KeyDerivation)?;
-    Ok(okm.0)
+    Ok(okm)
 }
 
 fn export_context(
@@ -1064,9 +1071,9 @@ impl EdhocResponder {
         let mac_2 = edhoc_kdf(
             &self.state.prk_3e2m,
             &self.state.th_2,
-            2,
+            "MAC_2",
             &context_2,
-            8,
+            32,
         )?;
         let m_2 = build_signature_structure(
             self.pubkey.as_bytes(),
