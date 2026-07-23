@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-8cdy",
   "title": "[merge-conflict] worktree-worker24: coap_status.c",
+  "labels": ["defer-boardconfig"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",

@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-zqd9",
   "title": "[merge-conflict] worktree-worker20: test_bridge_zephyr_cmake.py",
+  "labels": ["defer-boardconfig"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",

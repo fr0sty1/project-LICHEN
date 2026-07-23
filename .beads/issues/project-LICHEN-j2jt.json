@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-j2jt",
   "title": "[merge-conflict] worktree-worker1: coap_dtn.c",
+  "labels": ["defer-boardconfig"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",

@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-p0wq",
   "title": "[merge-conflict] worktree-worker20: coap_keys.c",
+  "labels": ["defer-boardconfig"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",

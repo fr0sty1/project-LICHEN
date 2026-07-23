@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-vd0c",
   "title": "[merge-conflict] worktree-worker18: messages.py",
+  "labels": ["defer-boardconfig"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",

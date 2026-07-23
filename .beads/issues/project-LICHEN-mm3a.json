@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-mm3a",
   "title": "[merge-conflict] worktree-worker18: main.c",
+  "labels": ["defer-boardconfig"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",

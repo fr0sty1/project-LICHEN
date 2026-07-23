@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-fey7",
   "title": "[merge-conflict] integration/worker14-20260722: coap_dtn.c",
+  "labels": ["defer-boardconfig"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",
