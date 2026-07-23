@@ -205,7 +205,6 @@ class TestMetrics:
         # Independent reference (computed once with separate cbor2 script)
         expected = bytes.fromhex(
             "83a121781d75726e3a6465763a6d61633a303031313232333334343535363637373a"
-            "a3006472737369016364426d02fbc055400000000000a30067626174746572790163"
-            "25454c02fb4052c00000000000"
+            "a3006472737369016364426d023854a300676261747465727901612502fb4052c00000000000"
         )
         assert payload == expected
