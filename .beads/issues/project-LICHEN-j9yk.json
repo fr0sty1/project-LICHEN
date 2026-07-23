@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-j9yk",
   "title": "[merge-conflict] worktree-worker19: sales-playbook.md",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:11:56.849192907Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:11:56.849192907Z"
+  "updated_at": "2026-07-23T00:14:57.222396629Z",
+  "started_at": "2026-07-23T00:14:57.222396629Z",
+  "lease_expires_at": "2026-07-23T00:19:57.222396629Z",
+  "heartbeat_at": "2026-07-23T00:14:57.222396629Z"
 }
