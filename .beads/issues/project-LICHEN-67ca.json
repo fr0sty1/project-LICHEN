@@ -3,15 +3,15 @@
   "title": "[cross-impl] trickle reset() guard inconsistency",
   "description": "Python reset: if generation==0 or interval != imin (trickle.py:96); Rust: state==Stopped or interval!=imin (trickle.rs:181); C: transmit_time==0 or interval!=imin (trickle.c:124). Different edge cases (init, after reset). C comment says ported from Rust but logic diverged. Affects when reset shrinks interval vs no-op. See reset methods in all three impls. Commit 3d2c7ed3c touched these but did not align.",
   "notes": "Commit: 70d0e7c93",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:59:22.992053642Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:10:37.090759319Z",
+  "updated_at": "2026-07-23T00:10:38.986250337Z",
   "started_at": "2026-07-23T00:10:22.114681868Z",
-  "lease_expires_at": "2026-07-23T00:15:22.114681868Z",
-  "heartbeat_at": "2026-07-23T00:10:22.114681868Z"
+  "closed_at": "2026-07-23T00:10:38.986250337Z",
+  "close_reason": "Closed"
 }
