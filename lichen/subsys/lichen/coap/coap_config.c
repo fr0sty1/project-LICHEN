@@ -19,6 +19,7 @@
 #include <zcbor_encode.h>
 
 #include <lichen/coap_config.h>
+#include <lichen/coap_keys.h>
 
 #if IS_ENABLED(CONFIG_SETTINGS)
 #include <zephyr/settings/settings.h>
@@ -469,7 +470,6 @@ int lichen_config_decode_radio_cbor(const uint8_t *buf, size_t len,
 	return 0;
 }
 
-/* Base64 encoding table */
 static const char base64_table[] =
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -493,29 +493,11 @@ static size_t base64_encode(const uint8_t *src, size_t src_len,
 
 		dst[j++] = base64_table[(n >> 18) & 0x3F];
 		dst[j++] = base64_table[(n >> 12) & 0x3F];
-		/* Cast the whole ternary: both char branches promote to int,
-		 * so the ternary's type is int and the store to dst narrows. */
 		dst[j++] = (char)((i + 1 < src_len) ? base64_table[(n >> 6) & 0x3F] : '=');
 		dst[j++] = (char)((i + 2 < src_len) ? base64_table[n & 0x3F] : '=');
 	}
 	dst[j] = '\0';
 	return j;
-}
-
-/* SHA-256 fingerprint computation (simplified - uses first 12 bytes) */
-static void compute_pubkey_fingerprint(const uint8_t pubkey[32],
-				       char *buf, size_t buf_size)
-{
-	if (buf_size < 24) {
-		buf[0] = '\0';
-		return;
-	}
-	/* Simplified: just use "SHA256:" prefix + base64 of first 12 bytes */
-	(void)snprintf(buf, buf_size, "SHA256:");
-	if (base64_encode(pubkey, 12, buf + 7, buf_size - 7) == 0) {
-		buf[0] = '\0';
-		return;
-	}
 }
 
 /* Encode identity information */
@@ -551,9 +533,10 @@ size_t lichen_config_encode_identity_cbor(uint8_t *buf, size_t buf_size,
 			return 0;
 		}
 
-		/* "pubkey_fingerprint": "SHA256:..." */
-		char fp_buf[32];
-		compute_pubkey_fingerprint(identity->pubkey, fp_buf, sizeof(fp_buf));
+		char fp_buf[LICHEN_KEY_FINGERPRINT_STR_LEN];
+		if (lichen_key_pubkey_fingerprint(identity->pubkey, fp_buf, sizeof(fp_buf)) < 0) {
+			return 0;
+		}
 		if (!put_tstr_kv(state, KEY_PUBKEY_FINGERPRINT, fp_buf)) {
 			return 0;
 		}
@@ -567,6 +550,7 @@ size_t lichen_config_encode_identity_cbor(uint8_t *buf, size_t buf_size,
 			return 0;
 		}
 	}
+
 
 	/* "addrs": { "link_local": "...", "primary": "...", "gua": null } */
 	if (!zcbor_tstr_put_lit(state, KEY_ADDRS) ||
