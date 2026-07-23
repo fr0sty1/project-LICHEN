@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-yi5f",
+  "title": "[security] Incorrect EDHOC KDF labels and OSCORE key export in lichen-oscore",
+  "description": "The commit c419d3040 \"project-LICHEN-uk36.1.1: fix\" changed edhoc_kdf() to use string labels (\"OSCORE_Master_Secret\", \"KEYSTREAM_2\" etc.) and restructured export_context() to skip PRK chaining (prk_out -\u003e prk_exporter). This does not match RFC 9528 EDHOC KDF (integer labels, specific info structure) or RFC 8613 OSCORE key derivation from EDHOC exporter. Tests were hacked (prk used as TH param, numeric strings). Leads to wrong keys for OSCORE, breaking security guarantees, interop, and E2E encryption. Affects key handling, OSCORE, EDHOC. See rust/lichen-oscore/src/edhoc.rs:250 (edhoc_kdf), :317 (export_context), and test vectors. Zeroization of moved SecretVec also suspect (potential key material leak).",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:45:48.770990074Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:45:48.770990074Z"
+}
