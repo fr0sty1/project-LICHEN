@@ -4,6 +4,7 @@
 
 from .compact_cot import (
     CompactCotType,
+    DecodeError,
     DestType,
     Team,
     compress_cot_xml,
@@ -15,6 +16,7 @@ from .compact_cot import (
 
 __all__ = [
     "CompactCotType",
+    "DecodeError",
     "DestType",
     "Team",
     "compress_cot_xml",
