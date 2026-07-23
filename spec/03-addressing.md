@@ -3,11 +3,7 @@
 
 # 3. Addressing
 
-<<<<<<< HEAD
-LICHEN nodes have a stable cryptographic identity based on an Ed25519 keypair. The human-readable node address provides a memorable, collision-resistant name for nodes.
-=======
 LICHEN nodes have a stable cryptographic identity based on an Ed25519 keypair. Human-readable node addresses provide short, memorable, collision-resistant identifiers bound to that identity.
->>>>>>> origin/worktree-worker23
 
 ## 3.1. Human-Readable Node Address
 
@@ -23,24 +19,11 @@ LICHEN nodes have a stable cryptographic identity based on an Ed25519 keypair. H
 
 **Example output:** `KCVN-MRPX-QWERT`
 
-<<<<<<< HEAD
-`KCVN-MRPX-QWERT`
+This address is short enough to speak, type, and remember. It has acceptable collision probability up to 5B nodes (~0.5 expected collisions). The binding ensures the address, IPv6 IID, and public key are cryptographically linked. The same IID is used for IPv6 link-local (`fe80::/10`), ULA, and GUA addresses (see 04-network.md).
 
-This address is short enough to speak, type, and remember. It has acceptable collision probability up to 5B nodes (~0.5 expected collisions), is cryptographically bound to the Ed25519 pubkey (used for signatures, OSCORE, and IPv6 IID), and compatible with IPv6 addressing.
+On first contact, nodes exchange the full pubkey; TOFU pins the binding. Collisions are resolved via context, GPS, full key verification (DANE/PKIX optional), or GNSS.
 
-On first contact, nodes exchange the full pubkey; TOFU pins the binding. Collisions are resolved via context, GPS, or full key verification (DANE/PKIX optional).
-
-The derivation is used for both human-readable address and IPv6 IID (see spec/04-network.md).
-
-## Test Vectors
-
-See `test/vectors/node_address.json` and `test/vectors/node-addresses.json`. All implementations MUST match the canonical vectors exactly. Functions like `lichen_pubkey_to_iid` and human address derivation must be consistent across Rust, C, and Python.
-
-Cross-references updated in 04-network.md, 06-security.md, 08-nodes.md, spec/README.md, and related drafts. Updates to referencing sections completed per multi-worker merge.
-
-[← Previous](02-physical-link.md) | [Index](README.md) | [Next →](04-network.md)
-=======
-This binding ensures the address, IPv6 IID, and public key are cryptographically linked. The same IID is used for IPv6 link-local (`fe80::/10`), ULA, and GUA addresses (see 04-network.md). On first contact, full pubkey is exchanged; TOFU pins the binding. Rare collisions are resolved by full key verification, context, or GNSS.
+The derivation is used for both human-readable address and IPv6 IID.
 
 ## 3.2. Usage and Integration
 
@@ -50,9 +33,8 @@ This binding ensures the address, IPv6 IID, and public key are cryptographically
 
 ## 3.3. Test Vectors and Oracles
 
-See `test/vectors/node_address.json` (and node-addresses.json) for canonical test vectors. All implementations (Rust, C, Python, Zephyr) MUST produce identical outputs for given pubkey/seed inputs. Vectors serve as independent oracles; round-trip (human address <-> IID) validation is required where applicable. Cross-references updated in 04-network.md, 06-security.md, draft-lichen-rpl-lora-00.md, and spec/README.md.
+See `test/vectors/node_address.json` and `test/vectors/node-addresses.json`. All implementations (Rust, C, Python, Zephyr) MUST produce identical outputs for given pubkey/seed inputs. Functions like `lichen_pubkey_to_iid` and human address derivation must be consistent across implementations. Vectors serve as independent oracles; round-trip (human address <-> IID) validation is required where applicable.
 
----
+Cross-references updated in 04-network.md, 06-security.md, 08-nodes.md, draft-lichen-rpl-lora-00.md, spec/README.md, and related drafts. Updates to referencing sections completed per multi-worker merge.
+
 [← Previous](02-physical-link.md) | [Index](README.md) | [Next →](04-network.md)
-
->>>>>>> origin/worktree-worker23
