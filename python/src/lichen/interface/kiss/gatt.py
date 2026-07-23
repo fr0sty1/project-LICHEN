@@ -143,9 +143,10 @@ class KissGattService:
             data: KISS-encoded frame bytes.
 
         Returns:
-            List of MTU-sized chunks to send via notify.
+            List of MTU-sized chunks to send via notify. Returns [b""] for
+            empty input so iteration over result always executes at least once.
         """
-        return [data[i : i + self.mtu] for i in range(0, len(data), self.mtu)]
+        return [data[i : i + self.mtu] for i in range(0, len(data) or 1, self.mtu)]
 
 
 # ponytail: real BLE peripheral needs platform-specific code (bless/Zephyr)
