@@ -2,6 +2,7 @@
   "id": "project-LICHEN-hvtm",
   "title": "[merge-conflict] worker8: schema.json",
   "description": "Resolve merge conflict in test/vectors/schema.json between main and integration/worker8-20260722. Keep BOTH sets of changes.",
+  "notes": "Fixed merge conflict in schema.json by combining description and format_version support from worker8 branch with per-family document defs and strict validation from main; fixed ccp_vector allOf conditional to allow vectors without explicit type (e.g. excessive_clock_drift_desync); all vector files now validate. Commit: ff4ae6df5",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:52:16.158508182Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:40:10.388957145Z",
+  "updated_at": "2026-07-23T04:44:17.671523135Z",
   "started_at": "2026-07-22T20:57:26.79842245Z",
   "lease_expires_at": "2026-07-23T04:45:10.388957145Z",
   "heartbeat_at": "2026-07-23T04:40:10.388957145Z"
