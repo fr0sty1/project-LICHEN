@@ -3,11 +3,11 @@
 if BOARD_T_DECK_ESP32S3_PROCPU
 config HEAP_MEM_POOL_ADD_SIZE_BOARD
 	int
+	default 131072 if LVGL
 	default 65535 if WIFI && BT
 	default 51200 if WIFI
 	default 40960 if BT
-<<<<<<< HEAD
-	default 8192
+	default 8192 if !LVGL && !WIFI && !BT
 
 config LICHEN_HAS_DISPLAY
 	default y
@@ -19,15 +19,13 @@ config LICHEN_HAS_DISPLAY
 	select I2C
 	select INPUT_GPIO_KEYS
 
-=======
-	default 4096
 config I2C
 	default y
 config INPUT
 	default y
 config INPUT_GPIO_KEYS
 	default y
->>>>>>> origin/worktree-worker24
+
 config LV_Z
 	default y if LICHEN_HAS_DISPLAY
 endif # BOARD_T_DECK_ESP32S3_PROCPU
