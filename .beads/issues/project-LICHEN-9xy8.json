@@ -2,15 +2,15 @@
   "id": "project-LICHEN-9xy8",
   "title": "[merge-conflict] worktree-worker19: messages.py",
   "notes": "Commit: c3e7badb1",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:47:38.005759336Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:00:15.980377924Z",
+  "updated_at": "2026-07-23T00:00:17.886443423Z",
   "started_at": "2026-07-22T23:53:34.909600889Z",
-  "lease_expires_at": "2026-07-22T23:58:34.909600889Z",
-  "heartbeat_at": "2026-07-22T23:53:34.909600889Z"
+  "closed_at": "2026-07-23T00:00:17.886443423Z",
+  "close_reason": "Resolved merge conflicts in messages.py related files, test vectors, spec, Rust announce/rf_health/gateway for CCP-9/12/15/16 consistency with independent oracles"
 }
