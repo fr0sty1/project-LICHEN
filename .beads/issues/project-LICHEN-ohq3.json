@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-ohq3",
   "title": "[merge-conflict] worktree-worker20: t_deck_esp32s3_procpu.conf",
-  "status": "in_progress",
+  "notes": "Commit: 2f133b95f",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:32:42.912470704Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:35:29.119080821Z",
+  "updated_at": "2026-07-23T00:37:07.435040231Z",
   "started_at": "2026-07-23T00:35:29.119080821Z",
-  "lease_expires_at": "2026-07-23T00:40:29.119080821Z",
-  "heartbeat_at": "2026-07-23T00:35:29.119080821Z"
+  "closed_at": "2026-07-23T00:37:07.435040231Z",
+  "close_reason": "Resolved merge conflict in t_deck_esp32s3_procpu.conf by standardizing header/whitespace and adding reconciliation comment. Committed to worktree-worker23 and pushed. Updated matching configs across puck/bridge/gateway variants."
 }
