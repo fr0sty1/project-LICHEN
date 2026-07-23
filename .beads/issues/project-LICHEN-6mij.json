@@ -2,15 +2,11 @@
   "id": "project-LICHEN-6mij",
   "title": "CoAP Authorization Framework for Mutating LCI Resources",
   "description": "Implement explicit authorization policies for all mutating CoAP resources (/config PUT, /msg/inbox POST, sub-resources in coap_config.c/coap_msg.c, deaddrop, keys) using local-admin (is_local_admin), transport (SLIP/BLE LCI scope check), and OSCORE (ctx lookup + unprotect) at handler dispatch boundaries. Update CONFIG_LICHEN_COAP_SERVER_OSCORE enforcement. Add dedicated tests. Close with 3 security reviews.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "epic",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:00:31.034999528Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:18:56.764992716Z",
-  "started_at": "2026-07-23T05:18:22.837432179Z",
-  "closed_at": "2026-07-23T05:18:56.764992716Z",
-  "close_reason": "Decomposed into subtasks: project-LICHEN-6mij.1 (local-admin+transport), .2 (OSCORE+config), .3 (tests), .4 (security reviews)"
+  "updated_at": "2026-07-23T05:00:31.034999528Z"
 }
