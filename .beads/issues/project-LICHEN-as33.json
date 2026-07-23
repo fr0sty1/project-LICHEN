@@ -3,7 +3,7 @@
   "title": "CoAP client uses predictable time-based Message ID",
   "description": "File: rust/lichen-coap/src/client.rs:228-233\n\nThe mid_from_time() function generates Message IDs from the system clock subsecond nanoseconds:\n\n    fn mid_from_time() -\u003e u16 {\n        use std::time::{SystemTime, UNIX_EPOCH};\n        SystemTime::now()\n            .duration_since(UNIX_EPOCH)\n            .map(|d| d.subsec_nanos() as u16)\n            .unwrap_or(0x1234)\n    }\n\nThis is predictable: an attacker who knows approximately when a request was sent can narrow down the MID to a small range, making spoofed response attacks easier.\n\nImpact: Reduces security margin against response spoofing attacks. When combined with the fixed token and missing MID/token validation, forms a complete attack chain for response injection.\n\nAdditionally, if two requests are made within the same microsecond on fast systems, they will have the same MID, which violates the uniqueness requirement.\n\nFix: Use cryptographically random bytes or a monotonic counter for MID generation.",
   "notes": "Commit: 4540d145b",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

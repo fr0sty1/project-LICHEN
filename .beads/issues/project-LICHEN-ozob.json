@@ -3,7 +3,7 @@
   "title": "Unbounded _windows dict in ReplayProtector enables memory exhaustion",
   "description": "File: python/src/lichen/link/replay.py:139, 151-152\n\nThe _windows dict in ReplayProtector grows without bound:\n\n    self._windows: dict[bytes | str | int, ReplayWindow] = {}\n    ...\n    window = ReplayWindow(self._window_size)\n    self._windows[sender] = window\n\nEach new sender gets a ReplayWindow entry. An attacker sending frames with unique sender IDs could exhaust memory.\n\nCombined with the MIC stub accepting all frames, this is exploitable.\n\nFix: Add an LRU eviction policy or cap the number of tracked senders. Old/inactive senders should be evicted.",
   "notes": "Commit: 4fb682861",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
