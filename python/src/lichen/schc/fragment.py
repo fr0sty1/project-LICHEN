@@ -196,9 +196,9 @@ class Ack:
 class FragmentSender:
     payload: bytes
     rule_id: int = 0x78
+    receiver_limit: int = DEFAULT_RECEIVER_LIMIT
     tile_size: int = TILE_SIZE
     window_size: int = DEFAULT_WINDOW_SIZE
-    receiver_limit: int = DEFAULT_RECEIVER_LIMIT
     _fragments: list[Fragment] = field(init=False, repr=False)
     attempts: int = field(default=0, init=False)
     status: str = field(default="ready", init=False)
@@ -208,8 +208,8 @@ class FragmentSender:
             raise FragmentError("tile_size must be positive integer")
         if not isinstance(self.window_size, int) or not 1 <= self.window_size <= MAX_WINDOW_SIZE:
             raise FragmentError(f"window_size must be integer 1..{MAX_WINDOW_SIZE}")
-        if len(self.payload) > 1280:
-            raise FragmentError(f"payload too large ({len(self.payload)} > 1280)")
+        if len(self.payload) > self.receiver_limit:
+            raise FragmentError(f"payload too large ({len(self.payload)} > {self.receiver_limit})")
         self._fragments = self._build()
 
     def _build(self) -> list[Fragment]:
