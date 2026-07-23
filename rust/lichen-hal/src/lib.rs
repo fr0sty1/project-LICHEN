@@ -226,10 +226,17 @@ pub trait NonVolatile {
 pub trait Concentrator {
     type Error;
     fn reset(&mut self) -> impl core::future::Future<Output = Result<(), Self::Error>>;
-    fn spi_transfer(&mut self, write: &[u8], read: &mut [u8]) -> impl core::future::Future<Output = Result<(), Self::Error>>;
+    fn spi_transfer(
+        &mut self,
+        write: &[u8],
+        read: &mut [u8],
+    ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
     fn irq_status(&mut self) -> impl core::future::Future<Output = Result<u32, Self::Error>>;
     fn pps_timestamp(&self) -> Option<u64>;
-    fn configure(&mut self, config: &RadioConfig) -> impl core::future::Future<Output = Result<(), Self::Error>>;
+    fn configure(
+        &mut self,
+        config: &RadioConfig,
+    ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
 }
 
 #[cfg(test)]

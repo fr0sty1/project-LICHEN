@@ -273,10 +273,7 @@ impl MeshtasticBridge {
         }
     }
 
-    pub fn encapsulate_ipv6(
-        &mut self,
-        ipv6_data: &[u8],
-    ) -> Result<MeshPacket, BridgeError> {
+    pub fn encapsulate_ipv6(&mut self, ipv6_data: &[u8]) -> Result<MeshPacket, BridgeError> {
         if ipv6_data.len() > MAX_TUNNEL_PAYLOAD {
             return Err(BridgeError::PayloadTooLarge);
         }

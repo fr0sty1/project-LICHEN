@@ -219,13 +219,12 @@ fn main() {
                     }
                 }
                 Ok(None) => {} // timeout
-                    Err(e) => {
-                        if metrics.errors.len() < 1000 {
-                            metrics.errors.push(format!("RX error: {:?}", e));
-                        }
-                        eprintln!("rust-{}: RX error: {:?}", node_id, e);
+                Err(e) => {
+                    if metrics.errors.len() < 1000 {
+                        metrics.errors.push(format!("RX error: {:?}", e));
                     }
-
+                    eprintln!("rust-{}: RX error: {:?}", node_id, e);
+                }
             }
         }
 

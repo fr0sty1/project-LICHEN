@@ -210,9 +210,7 @@ impl Radio for SimRadio {
                     snr: Some(snr.clamp(i8::MIN as i16, i8::MAX as i16) as i8),
                 }))
             }
-            0x28 => {
-                Ok(None)
-            }
+            0x28 => Ok(None),
             _ => Err(RadioError::Protocol),
         }
     }
@@ -221,10 +219,7 @@ impl Radio for SimRadio {
         self.config = *config;
     }
 
-    async fn configure_channels(
-        &mut self,
-        _channels: &[ChannelConfig],
-    ) -> Result<(), Self::Error> {
+    async fn configure_channels(&mut self, _channels: &[ChannelConfig]) -> Result<(), Self::Error> {
         Ok(())
     }
 
