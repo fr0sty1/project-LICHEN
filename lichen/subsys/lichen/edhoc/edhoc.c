@@ -44,6 +44,8 @@ BUILD_ASSERT(sizeof(((struct edhoc_responder *)0)->ed_seed) >= EDHOC_ED25519_SK_
 	     "ed_seed too small for EDHOC_ED25519_SK_LEN");
 BUILD_ASSERT(sizeof(((struct edhoc_responder *)0)->ed_pubkey) >= EDHOC_ED25519_PK_LEN,
 	     "ed_pubkey too small for EDHOC_ED25519_PK_LEN");
+BUILD_ASSERT(EDHOC_SIG_LEN == SCHNORR48_SIG_LEN,
+	     "EDHOC_SIG_LEN must match SCHNORR48_SIG_LEN");
 
 /* CBOR encoding buffer size */
 #define CBOR_BUF_SIZE 128
@@ -502,18 +504,20 @@ static int edhoc_verify(const uint8_t *pubkey,
 int edhoc_initiator_init(struct edhoc_initiator *ctx,
 			 const uint8_t *ed_seed,
 			 const uint8_t *ed_pubkey,
-			 const uint8_t *c_i, size_t c_i_len)
+			 const uint8_t *c_i, size_t c_i_len,
+			 uint8_t corr)
 {
 	if (ctx == NULL || ed_seed == NULL || ed_pubkey == NULL) {
 		return -EINVAL;
 	}
-	if (c_i_len > EDHOC_CID_MAX_LEN) {
+	if (c_i_len > EDHOC_CID_MAX_LEN || corr > 3) {
 		return -EINVAL;
 	}
 
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->state = EDHOC_STATE_IDLE;
 	ctx->method = EDHOC_METHOD_SIGN_SIGN;
+	ctx->corr = corr;
 	memcpy(ctx->ed_seed, ed_seed, EDHOC_ED25519_SK_LEN);
 	memcpy(ctx->ed_pubkey, ed_pubkey, EDHOC_ED25519_PK_LEN);
 
@@ -521,15 +525,12 @@ int edhoc_initiator_init(struct edhoc_initiator *ctx,
 		memcpy(ctx->c_i, c_i, c_i_len);
 		ctx->c_i_len = c_i_len;
 	} else {
-		/* SECURITY: Generic error avoids exposing protocol state */
 		if (sys_csrand_get(ctx->c_i, 1) != 0) {
-			LOG_WRN("Initialization failed");
 			return -ENODEV;
 		}
 		ctx->c_i_len = 1;
 	}
 
-	/* Generate ephemeral X25519 keypair */
 	int ret = x25519_keypair(ctx->eph_sk, ctx->eph_pk);
 	if (ret != 0) {
 		return ret;
@@ -549,9 +550,7 @@ int edhoc_initiator_create_msg1(struct edhoc_initiator *ctx,
 		return -EBUSY;
 	}
 
-	/* message_1 = (METHOD_CORR, SUITES_I, G_X, C_I) */
-	/* METHOD_CORR = method * 4 + corr (corr=1 for CoAP) */
-	uint8_t method_corr = ctx->method * 4 + 1;
+	uint8_t method_corr = ctx->method * 4 + ctx->corr;
 
 	ZCBOR_STATE_E(zse, 0, msg1, msg1_size, 0);
 
@@ -963,18 +962,20 @@ wipe:
 int edhoc_responder_init(struct edhoc_responder *ctx,
 			 const uint8_t *ed_seed,
 			 const uint8_t *ed_pubkey,
-			 const uint8_t *c_r, size_t c_r_len)
+			 const uint8_t *c_r, size_t c_r_len,
+			 uint8_t corr)
 {
 	if (ctx == NULL || ed_seed == NULL || ed_pubkey == NULL) {
 		return -EINVAL;
 	}
-	if (c_r_len > EDHOC_CID_MAX_LEN) {
+	if (c_r_len > EDHOC_CID_MAX_LEN || corr > 3) {
 		return -EINVAL;
 	}
 
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->state = EDHOC_STATE_IDLE;
 	ctx->method = EDHOC_METHOD_SIGN_SIGN;
+	ctx->corr = corr;
 	memcpy(ctx->ed_seed, ed_seed, EDHOC_ED25519_SK_LEN);
 	memcpy(ctx->ed_pubkey, ed_pubkey, EDHOC_ED25519_PK_LEN);
 
@@ -982,9 +983,7 @@ int edhoc_responder_init(struct edhoc_responder *ctx,
 		memcpy(ctx->c_r, c_r, c_r_len);
 		ctx->c_r_len = c_r_len;
 	} else {
-		/* SECURITY: Generic error avoids exposing protocol state */
 		if (sys_csrand_get(ctx->c_r, 1) != 0) {
-			LOG_WRN("Initialization failed");
 			return -ENODEV;
 		}
 		ctx->c_r_len = 1;
