@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-mzmb",
   "title": "[merge-conflict] worktree-worker23: 03-addressing.md",
-  "notes": "Commit: 2a476d37e",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:49:54.810905352Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:08:55.620516712Z",
+  "updated_at": "2026-07-23T03:08:01.77877238Z",
   "started_at": "2026-07-23T03:08:01.77877238Z",
-  "closed_at": "2026-07-23T03:08:55.620516712Z",
-  "close_reason": "Closed"
+  "lease_expires_at": "2026-07-23T03:13:01.77877238Z",
+  "heartbeat_at": "2026-07-23T03:08:01.77877238Z"
 }
