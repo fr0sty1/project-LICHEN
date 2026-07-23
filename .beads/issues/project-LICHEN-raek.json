@@ -2,11 +2,15 @@
   "id": "project-LICHEN-raek",
   "title": "PresenceResource concurrent modification during purge",
   "description": "File: python/src/lichen/coap/resources.py:367-372\n\npurge_older_than iterates and modifies _peers without synchronization:\n```python\ndef purge_older_than(self, cutoff_t: float) -\u003e int:\n    stale = [k for k, v in self._peers.items() if v['t'] \u003c cutoff_t]\n    for k in stale:\n        del self._peers[k]\n```\n\nIf purge_older_than runs concurrently with seen() (called from network callbacks), the dictionary may be modified during iteration, causing RuntimeError or inconsistent state. Same issue affects evict().\n\nSince CoAP resources run on the asyncio event loop, this is mostly safe for single-threaded code, but if purge is called from a periodic timer while a request is being processed, a race exists.\n\nFix: Use a lock around _peers modifications, or copy the dict before iteration.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:17:55.549277Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:17:55.549312Z"
+  "updated_at": "2026-07-23T04:00:48.172767107Z",
+  "started_at": "2026-07-23T04:00:48.172767107Z",
+  "lease_expires_at": "2026-07-23T04:05:48.172767107Z",
+  "heartbeat_at": "2026-07-23T04:00:48.172767107Z"
 }
