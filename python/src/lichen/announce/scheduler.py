@@ -115,17 +115,26 @@ class AnnounceScheduler:
     def _increment_seq(self) -> int:
         """Increment and return the new sequence number.
 
-        Why wrap at 0xFFFF: seq_num is 16-bit per spec.
+        Persistence callback runs BEFORE in-memory update. Failure is
+        escalated to prevent transmitting with unpersisted seq_num
+        (avoids STALE_SEQNUM after restart; follows oscore.py pattern).
         """
-        self._seq_num = (self._seq_num + 1) & 0xFFFF
+        new_seq = (self._seq_num + 1) & 0xFFFF
 
-        # Why notify: Allows caller to persist the new value.
         if self._on_seq_change:
             try:
-                self._on_seq_change(self._seq_num)
+                self._on_seq_change(new_seq)
             except Exception as e:
-                logger.warning("seq_change callback failed: %s", e)
+                logger.error(
+                    "seq_change callback failed for seq_num=%d: %s. "
+                    "Aborting announce to prevent desync on restart.",
+                    new_seq,
+                    e,
+                    exc_info=True,
+                )
+                raise RuntimeError(f"seq persistence failed: {new_seq}") from e
 
+        self._seq_num = new_seq
         return self._seq_num
 
     def build_announce(self) -> AnnounceMessage:
