@@ -15,6 +15,7 @@
 //! - 255 uncompressed passthrough
 
 #![no_std]
+#![forbid(unsafe_code)]
 
 pub mod codec;
 pub mod context;

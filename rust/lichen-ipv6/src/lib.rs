@@ -17,6 +17,7 @@
 //! the real IP stack for internet connectivity.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![forbid(unsafe_code)]
 
 #[cfg(test)]
 extern crate std;

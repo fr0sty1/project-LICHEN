@@ -5,6 +5,7 @@
 //! at the repo root.
 
 #![no_std]
+#![forbid(unsafe_code)]
 
 pub mod addr;
 pub mod announce;

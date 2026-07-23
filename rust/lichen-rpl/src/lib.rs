@@ -12,6 +12,7 @@
 //! - `trickle`  — Trickle timer state machine (RFC 6206)
 
 #![no_std]
+#![forbid(unsafe_code)]
 
 pub mod dodag;
 pub mod message;
