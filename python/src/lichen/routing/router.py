@@ -600,10 +600,14 @@ class Router:
         Returns:
             Number of packets cleared.
         """
-        queue = self.pending_queue.pop(dst, [])
+        if dst in self.pending_queue:
+            queue = self.pending_queue.pop(dst)
+            count = len(queue)
+        else:
+            count = 0
         if dst in self._pending_order:
             self._pending_order.remove(dst)
-        return len(queue)
+        return count
 
     def expire_pending(self, now_ms: int, timeout_ms: int) -> int:
         """Remove pending packets older than timeout.
