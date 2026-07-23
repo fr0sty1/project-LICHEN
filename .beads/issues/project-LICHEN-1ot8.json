@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-1ot8",
   "title": "[merge-conflict] integration/worker15-20260722: schema.json",
+  "notes": "Commit: 98f0f3cb7",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:27:09.343220384Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:56:03.215446977Z",
+  "updated_at": "2026-07-23T03:58:54.242551028Z",
   "started_at": "2026-07-23T03:56:03.215446977Z",
   "lease_expires_at": "2026-07-23T04:01:03.215446977Z",
   "heartbeat_at": "2026-07-23T03:56:03.215446977Z"
