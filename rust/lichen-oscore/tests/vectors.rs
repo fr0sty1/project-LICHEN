@@ -165,10 +165,10 @@ fn hex_to_bytes(hex: &str) -> Vec<u8> {
 
 fn hex_to_array<const N: usize>(hex: &str) -> [u8; N] {
     let bytes = hex_to_bytes(hex);
-    let n = bytes.len();
-    bytes
-        .try_into()
-        .expect(&format!("hex_to_array: expected {} bytes, got {}", N, n))
+    bytes.try_into().expect(&format!(
+        "hex_to_array: expected {} bytes, got {}",
+        N, bytes.len()
+    ))
 }
 
 #[test]
