@@ -368,15 +368,21 @@ int lichen_config_decode_radio_cbor(const uint8_t *buf, size_t len,
 		if (key.len == sizeof(KEY_FREQ_MHZ) - 1 &&
 		    memcmp(key.value, KEY_FREQ_MHZ, key.len) == 0) {
 			double val;
-			if (!zcbor_float64_decode(state, &val) || val <= 0) {
+			if (!zcbor_float64_decode(state, &val) || val <= 0.0 || val > 10000.0) {
 				(void)zcbor_list_map_end_force_decode(state);
 				return -EINVAL;
 			}
-			config->freq_khz = (uint32_t)(val * 1000.0 + 0.5);
+			uint32_t freq_khz = (uint32_t)(val * 1000.0 + 0.5);
+			if (freq_khz == 0 || freq_khz > 10000000UL) {
+				(void)zcbor_list_map_end_force_decode(state);
+				return -EINVAL;
+			}
+			config->freq_khz = freq_khz;
 		} else if (key.len == sizeof(KEY_BW_KHZ) - 1 &&
 			   memcmp(key.value, KEY_BW_KHZ, key.len) == 0) {
 			uint32_t val;
-			if (!zcbor_uint32_decode(state, &val)) {
+			if (!zcbor_uint32_decode(state, &val) ||
+			    val == 0 || val > 5000) {
 				(void)zcbor_list_map_end_force_decode(state);
 				return -EINVAL;
 			}
@@ -491,13 +497,16 @@ static size_t base64_encode(const uint8_t *src, size_t src_len,
 static void compute_pubkey_fingerprint(const uint8_t pubkey[32],
 				       char *buf, size_t buf_size)
 {
-	if (buf_size < 20) {
+	if (buf_size < 24) {
 		buf[0] = '\0';
 		return;
 	}
 	/* Simplified: just use "SHA256:" prefix + base64 of first 12 bytes */
 	(void)snprintf(buf, buf_size, "SHA256:");
-	base64_encode(pubkey, 12, buf + 7, buf_size - 7);
+	if (base64_encode(pubkey, 12, buf + 7, buf_size - 7) == 0) {
+		buf[0] = '\0';
+		return;
+	}
 }
 
 /* Encode identity information */
