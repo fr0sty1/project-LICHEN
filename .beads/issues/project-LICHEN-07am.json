@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-07am",
   "title": "[merge-conflict] worktree-worker17: Kconfig",
-  "notes": "Commit: 660c76f34",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:18.276407221Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:28:51.038458538Z",
+  "updated_at": "2026-07-23T03:28:26.403710828Z",
   "started_at": "2026-07-23T03:28:26.403710828Z",
-  "closed_at": "2026-07-23T03:28:51.038458538Z",
-  "close_reason": "Resolved Kconfig merge artifact (removed extraneous blank line after config LICHEN_DEFAULT_SF); committed 660c76f34 to worktree-worker17 branch"
+  "lease_expires_at": "2026-07-23T03:33:26.403710828Z",
+  "heartbeat_at": "2026-07-23T03:28:26.403710828Z"
 }
