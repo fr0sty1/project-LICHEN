@@ -5,7 +5,7 @@
  * @file trickle.c
  * @brief Trickle timer (RFC 6206) implementation
  *
- * Ported from rust/lichen-rpl/src/trickle.rs
+ * Matches bias-corrected python/src/lichen/rpl/trickle.py and rust/lichen-rpl (project-LICHEN-yldc)
  */
 
 #include <lichen/rpl_trickle.h>
