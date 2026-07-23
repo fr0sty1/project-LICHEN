@@ -274,10 +274,21 @@ jobs:
   interop-status:
     name: Interop Status
     runs-on: ubuntu-latest
-    needs: [vector-compatibility, wire-format-python-to-rust, announce-interop]
-    if: failure() && github.ref == 'refs/heads/main'
+    permissions: {}
+    if: ${{ always() }}
+    needs:
+      - frame-parser-interop
+      - multinode-simulator
+      - vector-compatibility
+      - wire-format-python-to-rust
+      - announce-interop
     steps:
+      - name: Install tooling
+        run: sudo apt-get update -q && sudo apt-get install -y jq
       - name: Require every interop job to succeed
         env:
           RESULTS: ${{ toJSON(needs) }}
-        run: jq -e 'all(.[]; .result == "success")' <<<"$RESULTS"
+        run: |
+          echo "Interop job results:"
+          jq . <<<"$RESULTS" || true
+          jq -e 'all(.[]; .result == "success")' <<<"$RESULTS"
