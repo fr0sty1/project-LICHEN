@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-cvp0",
+  "title": "[cross-impl] SCHC + RPL test vector / byte order mismatch",
+  "description": "test/vectors/schc_compression.json updated in 03c1fd4b5 but Rust lichen-rpl/src/routing.rs:214 (DAO D=1, lollipop, SignedDaoEnvelope 48B sig), lichen/schc and python/src/lichen/schc/headers.py:556, Zephyr schc.c and rpl_messages.h diverge on padding, residue, IPv6/ICMP/RPL_DIO/DAO byte ordering and compression rules. Violates identical output requirement. See routing.rs:196, schc_compression.json:10-49. Same algorithm different behavior. P1.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T06:12:56.999812211Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T06:12:56.999812211Z"
+}
