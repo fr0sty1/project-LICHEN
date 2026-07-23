@@ -35,6 +35,7 @@ use log::warn;
 
 use lichen_coap::codec::{CoapBuilder, CoapPacket};
 use lichen_coap::message::{MessageCode, MessageType};
+use lichen_coap::option::content_format::CBOR;
 
 /// Maximum URI path depth.
 pub const MAX_PATH_DEPTH: usize = 4;
@@ -44,7 +45,6 @@ pub mod content_format {
     pub const TEXT_PLAIN: u16 = 0;
     pub const APPLICATION_LINK_FORMAT: u16 = 40;
     pub const APPLICATION_JSON: u16 = 50;
-    pub const APPLICATION_CBOR: u16 = 60;
     pub const APPLICATION_SENML_JSON: u16 = 110;
     pub const APPLICATION_SENML_CBOR: u16 = 112;
 }
@@ -63,7 +63,7 @@ impl Response {
         let payload_len = payload.len().min(256);
         let mut resp = Self {
             code: MessageCode::CONTENT,
-            content_format: Some(content_format::APPLICATION_CBOR),
+            content_format: Some(CBOR),
             payload: [0u8; 256],
             payload_len,
         };
