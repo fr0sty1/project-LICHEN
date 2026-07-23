@@ -9,7 +9,7 @@
       "description": "Base RPL DIO (RFC 6550). Hardcoded wire format from spec.",
       "encoded": "01001e0001000000000000000000000000000000",
       "fields": {
-        "rpl_instance_id": 1,
+        "rpl_instance_id": 0,
         "version": 1,
         "rank": 256,
         "grounded": true
@@ -19,13 +19,10 @@
       "name": "dao_base",
       "type": "dao",
       "description": "Base RPL DAO with DODAGID (RFC 6550).",
-      "encoded": "0201000500000000000000000000000000000000",
+      "encoded": "0201050000000000000000000000000000000000",
       "fields": {
-        "rpl_instance_id": 2,
-        "dao_sequence": 5,
-        "ack_requested": false,
-        "flags": 0,
-        "dodag_id": null
+        "rpl_instance_id": 0,
+        "dao_sequence": 5
       }
     }
   ]

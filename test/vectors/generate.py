@@ -26,6 +26,14 @@ from lichen.rpl.messages import DAO, DIO, to_icmpv6
 from lichen.schc.fragment import FragmentSender, compute_mic
 from lichen.schc.headers import compress_packet
 
+
+def hash_32(data: bytes) -> int:
+    h = 0x811c9dc5
+    for b in data:
+        h = ((h ^ b) * 0x01000193) & 0xffffffff
+    return h
+
+
 VECTORS_DIR = Path(__file__).resolve().parent
 FORMAT_VERSION = 2
 L2_DISPATCH_SCHC = 0x14
