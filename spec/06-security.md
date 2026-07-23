@@ -100,32 +100,25 @@ validity establishes provenance only; `.44.7` accepts exactly one `/128` Target
 whose 16 octets equal the preserved Source Address. General prefix delegation
 remains future `.44.9` work.
 
-### 8.5. Unified Ed25519 Identity Derivation (new model)
+### 8.5. Unified Ed25519 Identity Derivation
 
-All node identity derives from a single Ed25519 keypair. This unifies:
+All node identity derives from **a single Ed25519 keypair**. This unifies link-layer Schnorr-48 signatures, X25519 (for EDHOC/OSCORE per §8.9), stable IID, and primary 02xx::/7 Yggdrasil address. No separate keys or ULA. See normative steps and full key management in §8.7, `rust/lichen-link/src/identity.rs:14-48` (`iid_from_pubkey`, `yggdrasil_addr_from_pubkey`), `python/src/lichen/crypto/identity.py:116-198` (`_pubkey_to_iid`, `yggdrasil_address`), `test/vectors/yggdrasil-derivation.json`, 04-network.md:§6.2, and 03-addressing.md.
 
-- Link-layer signatures (Schnorr-48 over Ed25519 key)
-- OSCORE contexts (key derived from shared secret)
-- IPv6 address (primary unicast IID extracted from Ed25519 pubkey)
-- Yggdrasil global routing (same key yields compatible 02xx:: address)
+**Overview (MUST match §8.7 and test vectors exactly):**
 
-**Derivation (normative):**
+1. 32-byte seed → Ed25519 keypair (deterministic per draft-lichen-schnorr-00).
+2. IID = SHA-256(pubkey)[0:8]; `iid[0] &= 0b1111_1101` (U/L bit **cleared** per RFC 4291; previous `|=0x02` incorrect).
+3. 02xx addr = `[0x02] + SHA-512(pubkey)[0:7] + IID` (lower 64 bits bind key to address; prevents substitution).
+4. X25519 priv = clamp(SHA-512(seed)[0:32]) for OSCORE/EDHOC.
+5. TOFU pins pubkey to derived IID/02xx (cryptographically enforced).
 
-1. Generate Ed25519 keypair (32-byte priv, 32-byte pub)
-2. hash = SHA-256(pubkey) (32 bytes, no truncation beyond IID)
-3. IID = hash[0:8]; IID[0] |= 0x02 (u-bit set per Yggdrasil/RFC4291 for 02xx::/7 interop; exact mapping in appendix and test/vectors/schnorr48.json)
-4. Address = fe80::/10 for link-local or 0200::/7 || IID for global (Yggdrasil-compatible)
-5. Link pubkey = the Ed25519 pubkey
-6. TOFU pins the (IID, PubKey) tuple
-(Appendix A updated with bit positions, hash steps, and vectors for exact interop.)
-
-This eliminates ULA entirely. The 02xx address is used for all routable traffic. Link-local fe80::/10 is reserved exclusively for control traffic (see 04-network.md). See test/vectors/ for canonical derivation examples. Reference implementation in python/src/lichen/crypto/ and rust/lichen-link/.
+Link-local `fe80::/10` for control only. 02xx::/7 primary for all routable traffic (mesh + Yggdrasil interop). See test vectors for exact byte/bit positions and oracles. This binds signatures, OSCORE, addressing into one key, eliminating mismatch attacks.
 
 **Benefits:**
-- No key/address mismatch attacks
-- Single key management
-- Seamless mesh <-> global via Yggdrasil without NAT
-- TOFU binds key to address cryptographically
+- Cryptographic binding across all uses (no key/address divergence)
+- Single key management (self-provisioned or BR)
+- Seamless Yggdrasil global routing without NAT/ULA
+- Strengthened TOFU via verifiable derivation
 
 ### 8.6. Signature Caching
 
