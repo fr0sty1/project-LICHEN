@@ -1,18 +1,14 @@
 {
   "id": "project-LICHEN-ftvd.4",
-  "title": "Synchronize xiao_s3_wio_sx1262 retirement notes in all worker worktrees",
-  "description": "Propagate the canonical RETIRED/BLOCKED comment block (from project-LICHEN-2u26.10) to xiao_s3_wio_sx1262.* files in worker18 and other affected worktrees to prevent future merge conflicts.",
-  "status": "closed",
-  "priority": 1,
+  "title": "Audit worker18 branch for other retired board fragments and apply consistent no-dead-code cleanup",
+  "description": "Scan worker18 for other bridge-zephyr board files that may have stale comments or code from retired targets and clean per no-dead-code policy.",
+  "status": "open",
+  "priority": 3,
   "issue_type": "task",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
-  "created_at": "2026-07-23T05:17:51.512458616Z",
+  "created_at": "2026-07-23T05:30:03.835569074Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:21:54.268377278Z",
-  "started_at": "2026-07-23T05:20:52.393650017Z",
-  "closed_at": "2026-07-23T05:21:54.268377278Z",
-  "close_reason": "Decomposed into subtasks (hj1r + ftvd.4.1 + ftvd.4.2) for parallel synchronization of canonical xiao_s3_wio_sx1262 RETIRED/BLOCKED comments without dead merge-resolution notes across all worker worktrees",
+  "updated_at": "2026-07-23T05:30:03.835569074Z",
   "labels": [
     "defer-external"
   ],
@@ -21,7 +17,7 @@
       "issue_id": "project-LICHEN-ftvd.4",
       "depends_on_id": "project-LICHEN-ftvd",
       "type": "parent-child",
-      "created_at": "2026-07-23T05:17:51.647227257Z",
+      "created_at": "2026-07-23T05:30:03.972608313Z",
       "created_by": "AI Agent",
       "metadata": "{}"
     }
