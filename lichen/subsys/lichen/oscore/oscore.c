@@ -534,6 +534,8 @@ int oscore_init(void)
 	memset(s_contexts, 0, sizeof(s_contexts));
 	memset(s_seq_initialized, 0, sizeof(s_seq_initialized));
 	memset(s_replay_pending, 0, sizeof(s_replay_pending));
+	s_nvm_write_cb = NULL;
+	s_nvm_read_cb = NULL;
 	s_initialized = true;
 	k_mutex_unlock(&s_ctx_mutex);
 
@@ -546,12 +548,13 @@ void oscore_nvm_register_callbacks(oscore_nvm_write_cb write_cb,
 				   oscore_nvm_read_cb read_cb)
 {
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
-	s_nvm_write_cb = write_cb;
-	s_nvm_read_cb = read_cb;
+	if (s_nvm_write_cb != write_cb || s_nvm_read_cb != read_cb) {
+		s_nvm_write_cb = write_cb;
+		s_nvm_read_cb = read_cb;
+		LOG_DBG("NVM callbacks registered (write=%p, read=%p)",
+			(void *)write_cb, (void *)read_cb);
+	}
 	k_mutex_unlock(&s_ctx_mutex);
-
-	LOG_DBG("NVM callbacks registered (write=%p, read=%p)",
-		(void *)write_cb, (void *)read_cb);
 }
 
 int oscore_ctx_create(const uint8_t *_Nonnull master_secret,
