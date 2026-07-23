@@ -2,15 +2,15 @@
   "id": "project-LICHEN-xbjz",
   "title": "[merge-conflict] worktree-worker1: t_deck_esp32s3_procpu.conf",
   "notes": "Commit: d3d8cf084",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:11:54.544742304Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:41:27.564423829Z",
+  "updated_at": "2026-07-23T02:41:29.915944507Z",
   "started_at": "2026-07-23T02:37:16.733415403Z",
-  "lease_expires_at": "2026-07-23T02:42:16.733415403Z",
-  "heartbeat_at": "2026-07-23T02:37:16.733415403Z"
+  "closed_at": "2026-07-23T02:41:29.915944507Z",
+  "close_reason": "Cleaned stale merge-conflict resolution comments from heltec and t_deck board configs per no-dead-code rule in AGENTS.md. Resolved rebase conflicts in t_deck*.conf, test_bridge_zephyr_cmake.py, and spec/03-addressing.md by removing bead-listing meta comments while preserving functional configs, headers, and useful documentation. Matched canonical clean style. Commit d3d8cf084."
 }
