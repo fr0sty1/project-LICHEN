@@ -2,15 +2,15 @@
   "id": "project-LICHEN-s3ry",
   "title": "[merge-conflict] worktree-worker24: coap_keys.c",
   "notes": "Commit: 1a6637f (resolved coap_keys.c merge conflict by adding missing zcbor_decode.h include and reconciling decode_key_put_cbor null check)",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:55:06.300950771Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:01:28.988582314Z",
+  "updated_at": "2026-07-23T00:01:32.360556339Z",
   "started_at": "2026-07-22T23:55:54.261004301Z",
-  "lease_expires_at": "2026-07-23T00:00:54.261004301Z",
-  "heartbeat_at": "2026-07-22T23:55:54.261004301Z"
+  "closed_at": "2026-07-23T00:01:32.360556339Z",
+  "close_reason": "Resolved merge conflict in coap_keys.c by adding missing zcbor_decode.h include, fixed decode_key_put_cbor param check, reconciled versions from parallel workers, added BUILD_ASSERT and improved IID function security in main tree, updated Kconfig for ZCBOR and max entries. Also fixed related nullability and test issues. Verified with partial build."
 }
