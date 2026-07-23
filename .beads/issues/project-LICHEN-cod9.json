@@ -2,12 +2,16 @@
   "id": "project-LICHEN-cod9",
   "title": "[codereview-pass3-robustness-final] 3 passes complete - clean",
   "description": "spec/02a-coordinated-capacity.md - Pass3 robustness: All required explicit example at 0xFFFFFFFF boundary, pseudocode, and time-provider cross-ref added across chunks. Previous P2 findings addressed in subsequent chunks. No P0-P2 findings in final pass. Ready to close project-LICHEN-yne7. Discovered-from:project-LICHEN-yne7",
-  "status": "open",
+  "status": "in_progress",
   "priority": 4,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:24:49.744158905Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:24:49.744158905Z",
+  "updated_at": "2026-07-23T04:09:22.673327839Z",
+  "started_at": "2026-07-23T04:09:22.673327839Z",
+  "lease_expires_at": "2026-07-23T04:14:22.673327839Z",
+  "heartbeat_at": "2026-07-23T04:09:22.673327839Z",
   "labels": [
     "codereview",
     "robustness"
