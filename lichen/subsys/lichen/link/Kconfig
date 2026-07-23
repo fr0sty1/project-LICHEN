@@ -91,7 +91,7 @@ config LICHEN_LINK_CCP16_LOAD_BALANCING
 	  spec/appendix-design-rationale.md. Explicitly selects SCHC and
 	  link epoch features required for TDMA/multi-channel operation.
 
-config LICHEN_TDMA
+	config LICHEN_TDMA
 	bool "TDMA slot scheduling / gateway-centric mode (beacon-sync, slot assign, spatial reuse)"
 	depends on LICHEN_LINK_CCP16_LOAD_BALANCING
 	depends on LICHEN_RPL
@@ -141,3 +141,4 @@ config LICHEN_N_CHANNELS
 	  select_channel/hash_32 and synchronized_hop_channel(CCP-12).
 
 endif # LICHEN_LINK
+

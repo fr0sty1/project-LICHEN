@@ -1823,6 +1823,7 @@ def ccp15_vectors() -> list[dict]:
 
 
 def rpl_messages_vectors() -> list[dict]:
+
     # Independent hardcoded from RFC 6550 §6.3, §6.4. No use of lichen.rpl.messages.
     return [
         {

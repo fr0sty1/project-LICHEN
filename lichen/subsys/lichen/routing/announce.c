@@ -240,7 +240,7 @@ int lichen_announce_parse(const uint8_t *data, size_t len,
 		return -EMSGSIZE;
 	}
 
-	announce->flags = data[1];
+	announce->flags = rx_ch;
 	announce->hop_count = data[2];
 	announce->rx_channel = data[1];
 	announce->wire_seq_num = ((uint16_t)data[3] << 8) | data[4];
@@ -619,6 +619,7 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 	*out_len = pos;
 	return 0;
 }
+
 
 static int send_announce(void)
 {

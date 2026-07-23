@@ -831,15 +831,9 @@ impl Router {
         base_len + config_len
     }
 
-<<<<<<< HEAD
-    /// Look up route for a destination (root only).
-    ///
-    /// Non-root nodes always return `None`.
-=======
     /// Get the route path for a destination (root only).
     ///
-    /// Non-root nodes always return None (routing table is root-only in non-storing RPL mode per spec/05-routing.md). Error handling for invalid dst is delegated to routing_table.lookup.
->>>>>>> origin/integration/worker2-20260722
+    /// Non-root nodes always return `None` (routing table is root-only in non-storing RPL mode per spec/05-routing.md). Error handling for invalid dst is delegated to routing_table.lookup.
     pub fn lookup_route(&self, dst: &[u8; 16]) -> Option<&[[u8; 16]]> {
         if !self.dodag.is_root() {
             return None;
