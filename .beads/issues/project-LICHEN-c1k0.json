@@ -2,11 +2,15 @@
   "id": "project-LICHEN-c1k0",
   "title": "ProxyResource catches CancelledError",
   "description": "File: python/src/lichen/coap/resources.py:228-230\n\nThe proxy exception handler catches all exceptions including asyncio.CancelledError:\n```python\ntry:\n    response = await asyncio.wait_for(\n        self._mesh_ctx.request(fwd).response,\n        timeout=self._timeout,\n    )\nexcept Exception:\n    return Message(code=BAD_GATEWAY)\n```\n\nThis suppresses task cancellation, preventing clean shutdown. When the server is stopping, cancelled proxied requests will return BAD_GATEWAY instead of propagating the cancellation.\n\nFix: Re-raise CancelledError or use except (TimeoutError, aiocoap.error.Error) for more specific handling.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:17:43.643908Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:17:43.643947Z"
+  "updated_at": "2026-07-23T03:58:09.317844404Z",
+  "started_at": "2026-07-23T03:58:09.317844404Z",
+  "lease_expires_at": "2026-07-23T04:03:09.317844404Z",
+  "heartbeat_at": "2026-07-23T03:58:09.317844404Z"
 }
