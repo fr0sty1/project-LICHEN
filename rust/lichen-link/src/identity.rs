@@ -120,21 +120,20 @@ mod tests {
     }
 
     #[test]
-    fn hash_32_keyed_with_lichen() {
-        // Independent oracle computed with Python zlib.crc32(b"LICHEN" + data)
-        // (standard CRC32 with key prefixed as initializer; matches spec and C impl)
-        assert_eq!(hash_32(b""), 0x77f9adf0);
-        assert_eq!(hash_32(b"test"), 0x84a618f3);
-        assert_eq!(hash_32(&[0u8; 32]), 0x922b4f72);
+    fn hash_32_fnv1a32() {
+        // Exact match to Python _hash_32 (test/vectors/test_vectors.py) and C lichen_hash_32.
+        // FNV-1a32 (basis 0x811c9dc5, prime 0x01000193). Matches CCP-9/15/16 vectors.
+        assert_eq!(hash_32(b""), 0x811c9dc5);
+        assert_eq!(hash_32(b"test"), 0xafd071e5);
+        assert_eq!(hash_32(&[0u8; 32]), 0x0b2ae445);
     }
 
     #[test]
     fn iid_u_l_bit_cleared() {
         let pubkey = PublicKey::new([0u8; 32]);
         let iid = iid_from_pubkey(&pubkey);
-        // New derivation per project-LICHEN-swvz: keyed hash_32(pubkey) + hash_32(pubkey+1)
-        // Independent oracle: 0x902b4f721b9ce444 (U/L bit already clear)
-        let expected = [0x90, 0x2b, 0x4f, 0x72, 0x1b, 0x9c, 0xe4, 0x44];
+        // FNV-1a32(pubkey) + FNV-1a32(pubkey+1), U/L bit cleared per RFC 4291.
+        let expected = [0x09, 0x2a, 0xe4, 0x45, 0xd8, 0x85, 0x57, 0x0c];
         assert_eq!(iid, expected);
         assert_eq!(iid[0] & 0x02, 0, "U/L bit must be cleared");
     }

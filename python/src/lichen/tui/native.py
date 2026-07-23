@@ -2311,21 +2311,12 @@ class NativeClientApp(App[None]):
 
             rf_info = radio_info.get("rf_health", radio_info.get("local_rf", {}))
             local_rf = LocalRFStats(
-<<<<<<< HEAD
                 noise_floor_dbm=safe_float(rf_info.get("noise_floor_dbm")),
                 channel_busy_pct=safe_float(rf_info.get("channel_busy_pct")),
                 rx_crc_errors=safe_int(rf_info.get("rx_crc_errors")),
                 rx_timeout_errors=safe_int(rf_info.get("rx_timeout_errors")),
                 rx_header_errors=safe_int(rf_info.get("rx_header_errors")),
                 rx_total=safe_int(rf_info.get("rx_total")),
-=======
-                noise_floor_dbm=rf_info.get("noise_floor_dbm"),
-                channel_busy_pct=rf_info.get("channel_busy_pct"),
-                rx_crc_errors=int(rf_info.get("rx_crc_errors") or 0),
-                rx_timeout_errors=int(rf_info.get("rx_timeout_errors") or 0),
-                rx_header_errors=int(rf_info.get("rx_header_errors") or 0),
-                rx_total=int(rf_info.get("rx_total") or 0),
->>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
             )
 
             self._set_rf_health_state(
