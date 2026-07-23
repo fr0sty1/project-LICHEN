@@ -51,7 +51,20 @@ class RouteErrorManager:
         """Invalidate routes through a failed ``next_hop`` and build RERRs."""
         nh = to_ipv6(next_hop)
         dests = set(self.cache.remove_via(nh)) | set(self.gradient.remove_via(nh))
-        return [self._build_action(dest) for dest in sorted(dests, key=str)]
+        precursor_groups = {}
+        for dest in dests:
+            pset = self._precursors.pop(dest, set())
+            key = frozenset(pset)
+            precursor_groups.setdefault(key, []).append(dest)
+        actions = []
+        for key, g_dests in precursor_groups.items():
+            g_dests = sorted(g_dests, key=str)
+            primary = g_dests[0]
+            action = self._build_action(
+                primary, precursors=set(key), invalidated=g_dests
+            )
+            actions.append(action)
+        return sorted(actions, key=lambda a: str(a.rerr.unreachable))
 
     def process_rerr(
         self, rerr: RERR, from_neighbor: IPv6Address | str, now: int
@@ -74,10 +87,17 @@ class RouteErrorManager:
 
         return self._build_action(dest, error_code=rerr.error_code)
 
-    def _build_action(self, dest: IPv6Address, error_code: int = 0) -> RerrAction:
-        precursors = self._precursors.pop(dest, set())
+    def _build_action(
+        self,
+        dest: IPv6Address,
+        error_code: int = 0,
+        precursors: set[IPv6Address] | None = None,
+        invalidated: list[IPv6Address] | None = None,
+    ) -> RerrAction:
+        if precursors is None:
+            precursors = self._precursors.pop(dest, set())
         return RerrAction(
             rerr=RERR(unreachable=dest, error_code=error_code),
             notify=sorted(precursors, key=str),
-            invalidated=[dest],
+            invalidated=invalidated or [dest],
         )
