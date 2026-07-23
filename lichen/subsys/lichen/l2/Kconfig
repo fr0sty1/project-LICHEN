@@ -250,6 +250,14 @@ config LICHEN_LORA_CCA_TIMEOUT_MS
 	  Timeout for CAD operation. Must be long enough for radio to sample but short
 	  enough for low latency. Matches typical CAD duration ~ few symbol times.
 
+config LICHEN_DUTY_CYCLE
+	bool "LICHEN duty cycle enforcement"
+	depends on LICHEN_LORA_L2
+	default y
+	help
+	  Enable CCP-13 DutyCycleTracker in lichen_lora_l2_tx. Checks before send,
+	  records airtime after successful TX. Returns -EBUSY if cannot transmit.
+
 config LICHEN_LR_FHSS_ENABLED
 	bool "LR-FHSS mode for SX1262 (zd2d.2)"
 	default n

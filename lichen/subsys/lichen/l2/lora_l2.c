@@ -241,9 +241,6 @@ static uint8_t tx_buf[LICHEN_LORA_MAX_PHY_PAYLOAD];
  * Protected by tx_buf_mutex (same mutex as tx_buf since they're used together).
  */
 static struct tx_queue tx_queue;
-#ifdef CONFIG_LICHEN_DUTY_CYCLE
-static struct lichen_duty_cycle_ctx s_duty_ctx;
-#endif
 
 /*
  * Module data (not state - state is managed by current_state atomic).
@@ -699,9 +696,6 @@ int lichen_lora_l2_init(void)
         LOG_ERR("lora_l2: failed to initialize TX queue (%d)", ret);
         goto out;
     }
-#ifdef CONFIG_LICHEN_DUTY_CYCLE
-    lichen_duty_cycle_init(&s_duty_ctx, 10U);
-#endif
 
     if (lora_transition(LORA_STOPPED) != 0) {
         ret = -EIO;
@@ -1271,16 +1265,6 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len, uint8_t channel)
         k_mutex_unlock(&tx_buf_mutex);
         return ret;
     }
-#ifdef CONFIG_LICHEN_DUTY_CYCLE
-    {
-        uint64_t now = (uint64_t)k_uptime_get();
-        if (!lichen_duty_cycle_can_transmit(&s_duty_ctx, now, 100U)) {
-            k_mutex_unlock(&tx_buf_mutex);
-            return -EBUSY;
-        }
-        lichen_duty_cycle_record_tx(&s_duty_ctx, now, 100U);
-    }
-#endif
 
     /*
      * lora_send() follows the same error semantics as lora_config():
