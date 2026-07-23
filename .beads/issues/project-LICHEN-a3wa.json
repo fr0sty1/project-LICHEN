@@ -2,6 +2,7 @@
   "id": "project-LICHEN-a3wa",
   "title": "Resolve merge conflicts in test vector generator and schema",
   "description": "Resolve all merge conflict markers in test/vectors/generate.py and schema.json. Incorporate new vector functions, update main to generate all JSONs, clean schema, remove dead code, ensure ruff compatible and independent oracles. Verify by running generator.",
+  "notes": "Commit: 06f962f6d",
   "status": "in_progress",
   "priority": 0,
   "issue_type": "epic",
@@ -9,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:57:59.918580102Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:11:16.979807687Z",
+  "updated_at": "2026-07-23T00:15:11.873636179Z",
   "started_at": "2026-07-23T00:11:16.979807687Z",
   "lease_expires_at": "2026-07-23T00:16:16.979807687Z",
   "heartbeat_at": "2026-07-23T00:11:16.979807687Z"
