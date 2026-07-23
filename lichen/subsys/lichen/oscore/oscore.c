@@ -1594,15 +1594,15 @@ cleanup_protect_request:
 	return ret;
 
 nvm_failed:
-	/* SECURITY: If persist_ssn() fails after sender_seq++ (packet prepared
-	 * but not transmitted since we return error), rollback sender_seq
-	 * under mutex. This ensures SSN is not consumed on failure, so retry
-	 * reuses the same SSN. On reboot, NVM restore will match rolled-back
-	 * value preventing nonce reuse (RFC 8613 §7.2, §8.4; fixes
-	 * python-ano.41). Mutex protects against concurrent access from
-	 * oscore_unprotect_request() or other threads. Only persist path uses
-	 * NVM error; early errors (buffer/encrypt/AAD) use their own ret
-	 * without SSN rollback.
+	/* SECURITY: NVM failure path (only from persist_ssn after SSN++ and
+	 * full success of buffer/AAD/encrypt/option steps). Rollback
+	 * sender_seq under mutex to sync with un-updated NVM, preventing
+	 * nonce reuse on reboot (RFC 8613 §7.2/§8.4; fixes python-ano.41).
+	 * The 6 error paths (param checks ~1466/1471, ctx/seq checks ~1486/
+	 * 1493/1500, buffer too small ~1523/1532/1545/1553, encrypt fail
+	 * ~1562, option build fail ~1579) set proper ret and goto
+	 * cleanup_protect_request (wipes only, no rollback - SSN consumed
+	 * safely as no packet sent). Mutex protects concurrent access.
 	 */
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
 	ctx_idx = ctx_get_index(ctx);
