@@ -193,6 +193,13 @@ static const struct test_vector invalid_vectors[] = {
 		.valid = 0,
 	},
 	{
+		.description = "Invalid: truncated signature (47 bytes)",
+		.public_key = "9d7725e28403e00e9ee54f9b14c868faf99b4b2fafa936eda28f8ae40207780d",
+		.message = "74657374",
+		.signature = "c9bec10578943fc8d453252fb262fa03ad2220609d98dda4b561d4b02281f1e8706676c26685a806d6e0d74f345e20",
+		.valid = 0,
+	},
+	{
 		.description = "Invalid: all-zero signature",
 		.public_key = "9d7725e28403e00e9ee54f9b14c868faf99b4b2fafa936eda28f8ae40207780d",
 		.message = "74657374",
@@ -321,17 +328,16 @@ static int test_verify_invalid_signatures(void)
 	for (size_t i = 0; i < sizeof(invalid_vectors) / sizeof(invalid_vectors[0]); i++) {
 		const struct test_vector *v = &invalid_vectors[i];
 
-		uint8_t pubkey[32], sig[48];
+		uint8_t pubkey[32], sig[48] = {0};
 		uint8_t message[256];
-		size_t msg_len, n;
+		size_t msg_len, n, expected_sig_len = strlen(v->signature) / 2;
 
 		n = hex_decode(v->public_key, pubkey, 32);
 		ASSERT_TRUE(n == 32, "public_key hex_decode");
 
 		n = hex_decode(v->signature, sig, 48);
-		ASSERT_TRUE(n == 48, "signature hex_decode");
+		ASSERT_TRUE(n == expected_sig_len, "signature hex_decode");
 
-		/* Empty message is valid (strlen == 0) */
 		msg_len = hex_decode(v->message, message, sizeof(message));
 
 		char msg_buf[128];
