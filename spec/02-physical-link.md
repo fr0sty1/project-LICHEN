@@ -75,7 +75,7 @@ Independent oracle: `test/vectors/sf-assignment.json` verified against OpenSSL a
 
 ### 3.5. Adaptive Spreading Factor (CCP-16)
 
-Nodes MUST receive on all SF7-SF12. Gateways and nodes MUST announce current TX_SF in DIO options and Announce messages (1-byte field; absence means SF10). ASSIGNED_SF and RF metrics (per-neighbor EMA SNR with alpha=1/4, packet loss rate) MUST be signaled in DIO per CCP-16. Per-neighbor state MUST track EMA values, loss rate, and sample count.
+SF10 (or ASSIGNED_SF from gateway DIO) is the REQUIRED baseline per appendix-design-rationale.md:7.1 and 02a-coordinated-capacity.md:2a.3. Density-aware rules override this **only** on explicit thresholds (see adaptive_sf_select pseudocode there and table below); otherwise retain baseline. Nodes MUST receive on all SF7-SF12. Gateways and nodes MUST announce current TX_SF in DIO options and Announce messages (1-byte field; absence means SF10). ASSIGNED_SF and RF metrics (per-neighbor EMA SNR with alpha=1/4, packet loss rate) MUST be signaled in DIO per CCP-16. Per-neighbor state MUST track EMA values, loss rate, and sample count.
 
 Thresholds:
 
