@@ -317,48 +317,52 @@ static void coap_response_handler(int16_t code, size_t offset, const uint8_t *pa
 			if (ctx->response_oversized) {
 				ctx->callback(ctx->user_data, LICHEN_COAP_ERR_INVALID_RESPONSE,
 					      0, NULL, 0);
+			} else {
 #ifdef CONFIG_LICHEN_COAP_CLIENT_OSCORE
-			} else if (ctx->oscore_ctx != NULL) {
-				/*
-				 * SECURITY: Unprotect OSCORE response before delivery.
-				 * The accumulated response_buf contains the OSCORE ciphertext.
-				 */
-				uint8_t plain_code;
-				uint8_t plaintext[LICHEN_COAP_MAX_PAYLOAD];
-				size_t plaintext_len = sizeof(plaintext);
-				uint8_t options[64];
-				size_t options_len = sizeof(options);
-				int ret;
+				if (ctx->oscore_ctx != NULL) {
+					/*
+					 * SECURITY: Unprotect OSCORE response before delivery.
+					 * The accumulated response_buf contains the OSCORE ciphertext.
+					 */
+					uint8_t plain_code;
+					uint8_t plaintext[LICHEN_COAP_MAX_PAYLOAD];
+					size_t plaintext_len = sizeof(plaintext);
+					uint8_t options[64];
+					size_t options_len = sizeof(options);
+					int ret;
 
-				/*
-				 * Response OSCORE option (typically empty per RFC 8613 8.4).
-				 * Uses request_piv for nonce/KID binding (checkpoint fixed in oscore.c).
-				 */
-				uint8_t oscore_opt[1] = {0};
-				size_t oscore_opt_len = 0;
+					/*
+					 * Response OSCORE option (typically empty per RFC 8613 8.4).
+					 * Uses request_piv for nonce/KID binding (checkpoint fixed in oscore.c).
+					 */
+					uint8_t oscore_opt[1] = {0};
+					size_t oscore_opt_len = 0;
 
-				ret = oscore_unprotect_response(ctx->oscore_ctx,
-								ctx->request_piv,
-								ctx->request_piv_len,
-								oscore_opt, oscore_opt_len,
-								ctx->response_buf,
-								ctx->response_len,
-								&plain_code,
-								options, &options_len,
-								plaintext, &plaintext_len);
-				if (ret != OSCORE_OK) {
-					LOG_WRN("OSCORE unprotect response failed: %d", ret);
-					ctx->callback(ctx->user_data,
-						      LICHEN_COAP_ERR_OSCORE_UNPROTECT,
-						      0, NULL, 0);
+					ret = oscore_unprotect_response(ctx->oscore_ctx,
+									ctx->request_piv,
+									ctx->request_piv_len,
+									oscore_opt, oscore_opt_len,
+									ctx->response_buf,
+									ctx->response_len,
+									&plain_code,
+									options, &options_len,
+									plaintext, &plaintext_len);
+					if (ret != OSCORE_OK) {
+						LOG_WRN("OSCORE unprotect response failed: %d", ret);
+						ctx->callback(ctx->user_data,
+							      LICHEN_COAP_ERR_OSCORE_UNPROTECT,
+							      0, NULL, 0);
+					} else {
+						ctx->callback(ctx->user_data, LICHEN_COAP_OK,
+							      plain_code, plaintext, plaintext_len);
+					}
 				} else {
-					ctx->callback(ctx->user_data, LICHEN_COAP_OK,
-						      plain_code, plaintext, plaintext_len);
+#endif
+					ctx->callback(ctx->user_data, LICHEN_COAP_OK, (uint8_t)code,
+						      ctx->response_buf, ctx->response_len);
+#ifdef CONFIG_LICHEN_COAP_CLIENT_OSCORE
 				}
 #endif
-			} else {
-				ctx->callback(ctx->user_data, LICHEN_COAP_OK, (uint8_t)code,
-					      ctx->response_buf, ctx->response_len);
 			}
 		}
 		request_ctx_put(ctx);
