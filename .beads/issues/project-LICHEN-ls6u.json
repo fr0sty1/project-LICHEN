@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-ls6u",
+  "title": "[security] Duplicate build_* functions and inconsistent EDHOC helpers in edhoc.rs",
+  "description": "Last 20 commits include e94753c30 which touched lichen-oscore/src/edhoc.rs (EDHOC key handling, MACs for auth, PRK derivation for OSCORE) but left duplicate definitions of build_context_2 (lines 444+ and 470+), build_context_3, build_signature_structure with different implementations (encode_bstr vs append_cbor_bstr, param differences). Causes compile errors, breaks MIC/signature paths in EDHOC-\u003eOSCORE. Also reviewed Schnorr48 in lichen-link/src/schnorr.rs (good: constant-time ct_eq, canonical checks, deterministic nonce, test vectors), keys.rs zeroization, link MIC verify, C link_ctx timing/slot hash. No other P0s but this blocks secure handshake. Matches focus: OSCORE/EDHOC/key handling.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T15:35:13.569139158Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T15:35:13.569139158Z"
+}
