@@ -3,6 +3,7 @@
 // Re-export Addr from lichen-ipv6 as Ipv6Addr for backward compatibility.
 // This eliminates the duplicate type definition while preserving the API.
 pub use lichen_ipv6::Addr as Ipv6Addr;
+use sha2::{Digest, Sha256, Sha512};
 
 /// A 64-bit node identifier (EUI-64 derived from the radio hardware address).
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -59,6 +60,19 @@ impl NodeId {
             e[7],
         ])
     }
+}
+
+pub fn ygg_addr_from_pubkey(pubkey: &[u8; 32]) -> [u8; 16] {
+    let hash512 = Sha512::digest(pubkey);
+    let digest256 = Sha256::digest(pubkey);
+    let mut iid = [0u8; 8];
+    iid.copy_from_slice(&digest256[0..8]);
+    iid[0] &= 0b1111_1101;
+    let mut addr = [0u8; 16];
+    addr[0] = 0x02;
+    addr[1..8].copy_from_slice(&hash512[0..7]);
+    addr[8..16].copy_from_slice(&iid);
+    addr
 }
 
 #[cfg(test)]

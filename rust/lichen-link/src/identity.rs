@@ -4,7 +4,8 @@ extern crate alloc;
 
 use crate::keys::{PrivateKey, PublicKey, Seed};
 use crate::schnorr::derive_keypair;
-use sha2::{Digest, Sha256, Sha512};
+use lichen_core::addr::ygg_addr_from_pubkey;
+use sha2::{Digest, Sha256};
 
 /// Derive a link-local IID from an Ed25519 public key.
 ///
@@ -32,22 +33,8 @@ fn iid_from_pubkey_bytes(pubkey: &[u8; 32]) -> [u8; 8] {
     iid
 }
 
-/// Derive Yggdrasil address bytes (16 bytes) from Ed25519 public key for unified identity.
-///
-/// Uses SHA-512(pubkey) for upper 56 bits (with 0x02 prefix for 0200::/7), and LICHEN
-/// IID for lower 64 bits. This ensures one Ed25519 keypair yields both LICHEN IID
-/// and a deterministic Yggdrasil global address (per project-LICHEN-zt3c.1).
-pub fn yggdrasil_addr_from_pubkey(pubkey: &PublicKey) -> [u8; 16] {
-    let hash = Sha512::digest(pubkey.as_bytes());
-    let iid = iid_from_pubkey(pubkey);
-    let mut addr = [0u8; 16];
-    addr[0] = 0x02;
-    addr[1..8].copy_from_slice(&hash[0..7]);
-    addr[8..16].copy_from_slice(&iid);
-    addr
-}
-
 /// Human-readable Crockford Base32 node address from pubkey (spec 03-addressing).
+
 pub fn human_address_from_pubkey(pubkey: &PublicKey) -> [u8; 15] {
     let iid = iid_from_pubkey(pubkey);
     human_address_from_iid(&iid)
@@ -100,7 +87,7 @@ impl Identity {
     pub fn from_seed(seed: Seed) -> Self {
         let (privkey, pubkey) = derive_keypair(&seed);
         let iid = iid_from_pubkey(&pubkey);
-        let ygg_addr = yggdrasil_addr_from_pubkey(&pubkey);
+        let ygg_addr = ygg_addr_from_pubkey(pubkey.as_bytes());
         Identity {
             seed,
             privkey,
@@ -192,7 +179,7 @@ mod tests {
     fn yggdrasil_addr_unified_with_iid() {
         let seed = Seed::new([0x01u8; 32]);
         let id = Identity::from_seed(seed);
-        let direct = yggdrasil_addr_from_pubkey(&id.pubkey);
+        let direct = ygg_addr_from_pubkey(id.pubkey.as_bytes());
         assert_eq!(direct[0], 0x02, "must start with Yggdrasil prefix");
         assert_eq!(
             &direct[8..],
@@ -200,7 +187,7 @@ mod tests {
             "lower 64 bits must match LICHEN IID"
         );
         // deterministic
-        assert_eq!(direct, yggdrasil_addr_from_pubkey(&id.pubkey));
+        assert_eq!(direct, ygg_addr_from_pubkey(id.pubkey.as_bytes()));
     }
 
     #[test]
