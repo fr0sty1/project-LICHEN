@@ -2,15 +2,15 @@
   "id": "project-LICHEN-gsk4",
   "title": "[merge-conflict] worktree-worker19: messages.py",
   "notes": "Commit: c9997b59e",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:40:10.980268027Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:26:50.492248012Z",
+  "updated_at": "2026-07-23T02:26:53.326360272Z",
   "started_at": "2026-07-23T02:25:51.48046155Z",
-  "lease_expires_at": "2026-07-23T02:30:51.48046155Z",
-  "heartbeat_at": "2026-07-23T02:25:51.48046155Z"
+  "closed_at": "2026-07-23T02:26:53.326360272Z",
+  "close_reason": "Closed"
 }
