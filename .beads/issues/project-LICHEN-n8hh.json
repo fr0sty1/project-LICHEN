@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-n8hh",
   "title": "[merge-conflict] worktree-worker21: lichend.rs",
-  "notes": "Commit: 745eace",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:59:39.629427228Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:58:50.866903582Z",
+  "updated_at": "2026-07-23T02:53:58.506080848Z",
   "started_at": "2026-07-23T02:53:58.506080848Z",
-  "closed_at": "2026-07-23T02:58:50.866903582Z",
-  "close_reason": "Implemented DAO target extraction in process_rpl, cleaned duplicate methods and merge artifacts in gateway.rs and lichend.rs, added error logging for TUN, verified no dead code"
+  "lease_expires_at": "2026-07-23T02:58:58.506080848Z",
+  "heartbeat_at": "2026-07-23T02:53:58.506080848Z"
 }
