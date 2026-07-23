@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-6mij.2.3",
+  "title": "Refactor deaddrop_post and confessions_post to enforce CONFIG_LICHEN_COAP_SERVER_OSCORE consistently with ctx lookup",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:21:15.810744195Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:21:15.810744195Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-6mij.2.3",
+      "depends_on_id": "project-LICHEN-6mij.2",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:21:15.949711369Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
