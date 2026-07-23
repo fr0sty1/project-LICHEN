@@ -465,20 +465,7 @@ mod tests {
         assert!(bridge.mapper_mut().learn_mapping(dst_node, &pubkey));
 
         let mut ipv6_data = [0u8; 48];
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-        ipv6_data[0] = 0x60; // Version 6, destination address set at offset 24 to match mapper
-=======
-        ipv6_data[0] = 0x60; // Version 6
-                             // Set destination address to match mapper (offset 24)
->>>>>>> origin/worktree-worker23
-=======
-        ipv6_data[0] = 0x60; // Version 6, destination address set at offset 24 to match mapper
->>>>>>> origin/worktree-worker20
-=======
-        ipv6_data[0] = 0x60;
->>>>>>> origin/worktree-worker24
+        ipv6_data[0] = 0x60; // Version 6; destination address set at offset 24 to match mapper
         let dst_addr = bridge.mapper().meshtastic_to_ipv6(dst_node);
         ipv6_data[24..40].copy_from_slice(&dst_addr.0);
 
