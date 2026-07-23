@@ -114,7 +114,11 @@ class DIS:
     options: list[RplOption] = field(default_factory=list)
 
     def to_bytes(self) -> bytes:
-        return bytes([self.flags, 0]) + _options_to_bytes(self.options)
+        if not 0 <= self.flags <= 0xFF:
+            raise RplError(f"flags out of range: {self.flags}")
+        if not 0 <= self.reserved <= 0xFF:
+            raise RplError(f"reserved out of range: {self.reserved}")
+        return bytes([self.flags, self.reserved]) + _options_to_bytes(self.options)
 
     @classmethod
     def from_bytes(cls, data: bytes) -> DIS:
@@ -176,7 +180,7 @@ class DIO:
         return (
             bytes([self.rpl_instance_id, self.version])
             + self.rank.to_bytes(2, "big")
-            + bytes([gmop_prf, self.dtsn, self.flags, 0])
+            + bytes([gmop_prf, self.dtsn, self.flags, self.reserved])
             + self.dodag_id.packed
             + _options_to_bytes(self.options)
         )
@@ -237,7 +241,7 @@ class DAO:
             | (int(d_flag) << 6)
             | (self.flags & 0x3F)
         )
-        out = bytes([self.rpl_instance_id, kd, 0, self.dao_sequence])
+        out = bytes([self.rpl_instance_id, kd, self.reserved, self.dao_sequence])
         if self.dodag_id is not None:
             out += self.dodag_id.packed
         return out + _options_to_bytes(self.options)
@@ -247,6 +251,9 @@ class DAO:
         if len(data) < 4:
             raise RplError(f"DAO too short: {len(data)} bytes")
         kd = data[1]
+        reserved = data[2]
+        if reserved != 0:
+            raise RplError(f"DAO reserved field must be zero per RFC 6550 §6.4, got {reserved}")
         d_flag = bool(kd & 0x40)
         offset = 4
         dodag_id = None
@@ -259,7 +266,7 @@ class DAO:
             rpl_instance_id=data[0],
             ack_requested=bool(kd & 0x80),
             flags=kd & 0x3F,
-            reserved=0,
+            reserved=reserved,
             dao_sequence=data[3],
             dodag_id=dodag_id,
             options=_parse_options(data[offset:]),
