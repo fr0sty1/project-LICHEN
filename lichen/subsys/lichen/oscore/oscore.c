@@ -1519,7 +1519,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	}
 	*oscore_opt_len = (size_t)opt_len;
 
-	ret = OSCORE_OK;
+	ret = oscore_ctx_persist_ssn(ctx);
 
 cleanup_protect_request:
 	crypto_wipe(nonce, sizeof(nonce));
