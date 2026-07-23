@@ -1,11 +1,14 @@
 {
   "id": "project-LICHEN-kc4u",
   "title": "[merge-conflict] worktree-worker20: lilygo_tdeck_keyboard.c",
-  "status": "open",
+  "notes": "Commit: f2db7c1 - resolved merge conflict in lilygo_tdeck_keyboard.c by adopting richer poll implementation supporting trackball/joystick and multiple simultaneous keys",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:54:14.550732792Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:54:14.550732792Z"
+  "updated_at": "2026-07-23T00:05:14.048389308Z",
+  "closed_at": "2026-07-23T00:05:14.048389308Z",
+  "close_reason": "fixed merge conflict in lilygo_tdeck_keyboard.c choosing feature-rich version with burst I2C reads, multi-key reporting, relative motion for trackball, mouse button. Removed all conflict markers and duplicate code. Commit f2db7c1"
 }
