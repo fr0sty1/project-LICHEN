@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LICHEN test vector file",
-  "description": "v2-only JSON Schema (draft-07) for LICHEN test vector files. Each file is either an object with format_version=2, description, and vectors array (one kind per file) or a bare array root (e.g. ccp16-desync.json). Per-vector definitions enforce independent oracles and cross-implementation determinism. See README.md for usage.",
+  "description": "Envelope shared by all LICHEN vector files. Supports object envelope with format_version (1 or 2) or v2 bare array root of vectors (for ccp16-desync.json and similar). Each file holds a list of vectors of one kind; see the per-vector definitions. Combined to support all vector types (including ccp15_vector, ccp_vector, compact_cot_vector, schnorr48_vector), descriptions, format_version handling, bare array support, and all definitions from parallel worktrees without losing functionality. Per-vector definitions enforce independent oracles and cross-implementation determinism. See README.md for usage.",
   "oneOf": [
     {
       "type": "object",
@@ -23,13 +23,13 @@
               {"$ref": "#/definitions/meshtastic_app_compat_vector"},
               {"$ref": "#/definitions/meshcore_app_compat_vector"},
               {"$ref": "#/definitions/oscore_vector"},
-               {"$ref": "#/definitions/rpl_messages_vector"},
-               {"$ref": "#/definitions/ccp13_vector"},
-               {"$ref": "#/definitions/ccp15_vector"},
-               {"$ref": "#/definitions/ccp_vector"},
-               {"$ref": "#/definitions/compact_cot_vector"}
-             ]
-
+              {"$ref": "#/definitions/rpl_messages_vector"},
+              {"$ref": "#/definitions/ccp13_vector"},
+              {"$ref": "#/definitions/ccp15_vector"},
+              {"$ref": "#/definitions/ccp_vector"},
+              {"$ref": "#/definitions/compact_cot_vector"},
+              {"$ref": "#/definitions/schnorr48_vector"}
+            ]
           }
         }
       }
@@ -47,13 +47,13 @@
           {"$ref": "#/definitions/meshtastic_app_compat_vector"},
           {"$ref": "#/definitions/meshcore_app_compat_vector"},
           {"$ref": "#/definitions/oscore_vector"},
-           {"$ref": "#/definitions/rpl_messages_vector"},
-           {"$ref": "#/definitions/ccp13_vector"},
-           {"$ref": "#/definitions/ccp15_vector"},
-           {"$ref": "#/definitions/ccp_vector"},
-           {"$ref": "#/definitions/compact_cot_vector"}
-         ]
-
+          {"$ref": "#/definitions/rpl_messages_vector"},
+          {"$ref": "#/definitions/ccp13_vector"},
+          {"$ref": "#/definitions/ccp15_vector"},
+          {"$ref": "#/definitions/ccp_vector"},
+          {"$ref": "#/definitions/compact_cot_vector"},
+          {"$ref": "#/definitions/schnorr48_vector"}
+        ]
       },
       "description": "v2 bare array root support for CCP desync vectors (ccp16-desync.json) and load balancing tests"
     }
