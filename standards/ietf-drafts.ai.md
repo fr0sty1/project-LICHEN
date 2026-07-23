@@ -57,7 +57,7 @@ FRAGMENTATION (ACK-on-Error M=1 N=6 T=0 from constants.toml [schc.fragment], Rul
 MODE = Non-Storing (MOP=1)
 
 TRICKLE: Imin=4s  Imax=2^8*Imin=17min  k=10
-MRHOF: MinHopRankInc=256  ETX_factor=0.5  RTT_factor=0.1  SWITCH_THRESH=384
+MRHOF: MinHopRankInc=256  ETX_factor=0.5  RTT_factor=0.1  SWITCH_THRESH=192
 RANK = Rank(parent) + 256 * (1 + 0.5*ETX + 0.1*RTT)
 
 DAO: Initial=0-2s  Retry=4/8/16s  Refresh=30min  Lifetime=1hr
