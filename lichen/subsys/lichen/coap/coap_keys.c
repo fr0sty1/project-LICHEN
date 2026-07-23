@@ -176,7 +176,7 @@ static size_t base64_encode(const uint8_t *data, size_t len, char *out, size_t o
 	size_t i;
 
 	for (i = 0; i + 2 < len; i += 3) {
-		if (out_idx + 5 > out_len) {
+		if (out_idx + 4 > out_len) {
 			return 0;
 		}
 		out[out_idx++] = base64_chars[(data[i] >> 2) & 0x3f];
@@ -186,7 +186,7 @@ static size_t base64_encode(const uint8_t *data, size_t len, char *out, size_t o
 	}
 
 	if (i < len) {
-		if (out_idx + 5 > out_len) {
+		if (out_idx + 4 > out_len) {
 			return 0;
 		}
 		out[out_idx++] = base64_chars[(data[i] >> 2) & 0x3f];
