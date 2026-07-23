@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-en6p",
   "title": "[merge-conflict] worktree-worker20: xiao_s3_wio_sx1262.conf",
-  "notes": "Commit: 48359ce01",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:11:58.079726289Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:50:41.849428589Z",
+  "updated_at": "2026-07-23T02:48:59.030305456Z",
   "started_at": "2026-07-23T02:48:59.030305456Z",
-  "closed_at": "2026-07-23T02:50:41.849428589Z",
-  "close_reason": "Cleaned dead merge-conflict resolution meta-comment from xiao_s3_wio_sx1262.conf per No Dead Code rule in AGENTS.md. Removed accumulated list of worker beads. Matches canonical retired fragment style from other boards and matrix doc. Commit 48359ce01"
+  "lease_expires_at": "2026-07-23T02:53:59.030305456Z",
+  "heartbeat_at": "2026-07-23T02:48:59.030305456Z"
 }
