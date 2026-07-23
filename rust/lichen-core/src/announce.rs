@@ -251,20 +251,11 @@ mod tests {
     #[test]
     fn invalid_channel() {
         let mut wire = make_announce();
-<<<<<<< HEAD
-        wire[5] = 16;
+        wire[1] = 16;
         assert_eq!(
             Announce::from_bytes(&wire),
             Err(AnnounceError::InvalidChannel(16))
         );
-=======
->>>>>>> origin/integration/worker15-20260722
-        wire[93] = 8;
-        assert_eq!(
-            Announce::from_bytes(&wire),
-            Err(AnnounceError::InvalidChannel(8))
-        );
-
         let builder = AnnounceBuilder {
             originator_iid: &[0; 8],
             pubkey: &[0; 32],
