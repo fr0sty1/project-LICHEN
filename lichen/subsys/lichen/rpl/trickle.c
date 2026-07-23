@@ -5,7 +5,9 @@
  * @file trickle.c
  * @brief Trickle timer (RFC 6206) implementation matching pseudocode in §4.2.
  *
- * Used by lichen_rpl_dodag for DIO pacing per LICHEN RPL profile.
+ * Aligned reset() guard with Rust and Python (project-LICHEN-67ca).
+ * Ported from rust/lichen-rpl/src/trickle.rs with consistent init edge case.
+ * Resolved merge conflict from worktree-worker1 (project-LICHEN-otzx).
  */
 
 #include <lichen/rpl_trickle.h>
@@ -36,7 +38,8 @@ static void begin_interval(struct lichen_trickle *t,
 	t->transmitted = false;
 
 	/* Per RFC 6206 §4.2: t uniform in [I/2, I). Use (interval+1)/2 to avoid
-	 * off-by-one bias in integer division; range = I - half. */
+	 * off-by-one bias in integer division; range = I - half. Worker23 fix
+	 * (project-LICHEN-verh). */
 	uint32_t half = (t->interval + 1u) / 2u;
 	uint32_t range = t->interval - half;
 	uint32_t offset = (range > 0) ? (rand_offset % range) : 0;
