@@ -58,9 +58,9 @@ pub enum RplEvent {
     /// DIO received. `inconsistent = true` → trickle reset (version/rank
     /// change detected).
     DioReceived { inconsistent: bool },
-    /// DAO received (root only). `route_updated = true` → routing table
-    /// was modified.
-    DaoReceived { route_updated: bool },
+    /// DAO received at root. The caller must extract DAO bytes from the
+    /// decompressed IPv6 packet and process via `RplNode::handle_dao`.
+    DaoReceived,
     /// DAO packet forwarded unchanged in source and payload toward the root.
     DaoForwarded { next_hop: [u8; 16] },
     /// DIS received, should send DIO.
@@ -1467,15 +1467,16 @@ mod tests {
         assert_eq!(RplEvent::DisReceived, RplEvent::DisReceived);
 
         let dio_inc = RplEvent::DioReceived { inconsistent: true };
-        let dio_cons = RplEvent::DioReceived { inconsistent: false };
+        let dio_cons = RplEvent::DioReceived {
+            inconsistent: false,
+        };
         assert_eq!(dio_inc, dio_inc);
         assert_ne!(dio_inc, dio_cons);
         assert_ne!(dio_inc, RplEvent::None);
 
-        let dao_up = RplEvent::DaoReceived { route_updated: true };
-        let dao_no = RplEvent::DaoReceived { route_updated: false };
-        assert_eq!(dao_up, dao_up);
-        assert_ne!(dao_up, dao_no);
+        let dao = RplEvent::DaoReceived;
+        assert_eq!(dao, dao);
+        assert_ne!(dao, RplEvent::None);
 
         // Exercises Clone/Copy
         let copied = dao_up; // Copy
