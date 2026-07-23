@@ -1,187 +1,117 @@
 <!-- SPDX-License-Identifier: CC-BY-4.0 -->
 <!-- SPDX-FileCopyrightText: The contributors to the LICHEN project -->
 
-<!-- Part of LICHEN Protocol Specification -->
-
-# Coordinated Capacity Protocol (CCP-16 with CCP-14 Gateway Multi-RX)
+# Coordinated Capacity Protocol (CCP)
 
 ## Abstract
 
-CCP-16 defines mechanisms for coordinated capacity management in LICHEN LoRa meshes including TDMA slot assignment, channel agility, adaptive SF selection, time synchronization, and hash-based selection. CCP-14 specifies Gateway Multi-RX for simultaneous reception across channels (control + data), increasing capacity per da2q multi-channel context. 
+The Coordinated Capacity Protocol (CCP) defines mechanisms for coordinated capacity management in LICHEN LoRa meshes. This includes TDMA slot assignment, channel agility via select_channel with density-aware fallback, adaptive spreading factor selection via adaptive_sf_select (incorporating EMA-smoothed SNR and load_factor), time synchronization via now(), CH0 control channel rules, signed rx_channel for CCP-9 da2q rendezvous, density/load rules, capability signaling in DIOs, and desynchronization recovery.
 
-All implementations MUST produce identical behavior to test vectors in `test/vectors/ccp16.json`:
-- vectors[0-2]: TDMA slot, SF, channel, tx_allowed per CCP-16 (see 2a.2, 2a.3)
-- vectors[3+]: CCP-14 Gateway Multi-RX scheduling, concurrent RX validation, capacity metrics (independent oracle: reference FNV-1a + Semtech SX126x airtime tables + multi-channel sim from external Python oracle, not LICHEN impl).
+All implementations MUST produce identical output to the canonical test vectors in test/vectors/ccp*.json (ccp9.json, ccp9-rendezvous.json, ccp9_rendezvous.json, ccp13.json, ccp15.json, ccp16.json, ccp16-desync.json, ccp16-hop.json, ccp_load_balancing.json, ccp_tdma.json). These cover TDMA/hash slot computation, select_channel, adaptive_sf_select, EMA updates, unsigned SFN wraparound, rx_channel signing/rendezvous, density thresholds, load balancing, desync FSM transitions, and CCP-14 Multi-RX scheduling.
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119].
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119.
 
 ## Table of Contents
 
 1. Abstract
-2. 2a.1. Overview
-3. 2a.2. Channel Agility (TDMA Slots and Hash Selection per draft-lichen-tdma)
-4. CCP-4. Regional Channel Plans
-5. 2a.3. Channel Agility and Adaptive SF
-6. 2a.4. Time Synchronization
-7. 2a.5. Desync Recovery State Machine
-8. Implementation Status
+2. Overview
+3. TDMA Frame Structure, Slot Assignment, now(), and Desync Recovery
+4. Regional Channel Plans and CH0 Rules
+5. Channel Selection (select_channel)
+6. Adaptive Spreading Factor Selection, EMA, and Density Rules
+7. CCP-9 da2q Rendezvous with signed rx_channel
+8. Capability DIO Signaling
 9. References
 
-## 2a.1. Overview
+## Overview
 
-LICHEN networks operate under severe bandwidth and duty-cycle constraints. CCP-16 coordinates access to the shared medium using hash-derived TDMA slots synchronized to a network epoch, density-aware adaptive SF, multi-channel operation (CH0 for control per SCHC-compressed beacons - see draft-lichen-schc-lora-00), and time synchronization via RPL DIOs. 
+LICHEN networks operate under severe bandwidth and duty-cycle constraints. CCP coordinates access to the shared medium using hash-derived TDMA slots synchronized to a network epoch, density-aware adaptive SF selection, multi-channel operation (CH0 dedicated to control per SCHC-compressed beacons and RPL DIOs), deterministic channel agility, time synchronization, signed rx_channel announcements for rendezvous, per-neighbor EMA for RF metrics, and load/density signaling. The root advertises epoch and num_slots. Nodes suppress transmission outside assigned slots. All algorithms are deterministic.
 
-Nodes compute their slot using a deterministic hash of (EUI64 XOR epoch) modulo num_slots (see test vectors for validation). Transmission outside the assigned slot is suppressed by the link layer. This document specifies the algorithms and interoperation with RPL, SCHC, TDMA, and the link layer, incorporating SFN modulo, multi-root conflict, and desync recovery per parent epic. Arbitrary constants (e.g. 100ms guard, 300s density window) are defined in appendix-design-rationale.md and test vectors; implementations MUST match exactly.
+## TDMA Frame Structure, Slot Assignment, now(), and Desync Recovery
 
-## 2a.2. TDMA Slots and Hash Selection
-
-The root advertises `epoch` (u32) and `num_slots` (default 8) in an extended RPL configuration option.
-
-Slot ID MUST be computed as:
-
-Multi-byte integers are unsigned big-endian. Flags bits: 0=scheduled mode, 1=CSMA rendezvous, 2=concurrent CH0 RX, 3=GNSS-PPS, 4-7 reserved (zero). `Setup Window` bounds retune/readiness/CAD. `Occupied Time` bounds data+ACK. `Guard` is separation between occupied envelopes. `RX Chains` is simultaneous receive count (1 for typical single-radio). `Channel Mask` bit 0 = CH0. Receivers compute local intersection. See test/vectors/ccp*.json for format validation.
-
-using `fnv1a32` (lichen_hash_32 primitive, basis 0x811c9dc5; see lichen-core/src/lib.rs, spec/appendix-design-rationale.md). The XOR with epoch ensures time-varying slots to prevent persistent collisions. All implementations MUST match ccp*.json vectors exactly. This integrates with `lichen_rpl_dodag_init()`.
-
-For SFN (superframe number, a u32 epoch counter) wrap-around, all nodes MUST compute using unsigned 32-bit arithmetic (modulo 0x100000000). The time-provider (see `docs/firmware-time-provider.md`) is the canonical source: SFN/epoch updates MUST pass epoch_floor validation, set `wall_clock_valid`, and respect stratum before adoption. RPL version changes or desync MUST reset SFN relative to the new root per the FSM in Section 2a.5.
-
-Delta = (current_sfn - last_sfn) using uint32_t subtraction ensures correct wrap behavior. 
-
-Edge case example (0xFFFFFFFF boundary):
-
-```
-last_sfn = 0xFFFFFFFFu;
-current_sfn = 0x00000002u;
-delta = current_sfn - last_sfn;  /* = 3 in unsigned 32-bit arithmetic */
-```
-
-This MUST be treated as advancement of 3 slots. Signed arithmetic would yield a large negative value, breaking desync detection and slot scheduling. Test vectors in ccp16.json MUST cover this and similar boundaries.
-
-A node MUST only transmit in its assigned slot. Slot duration = max_airtime(current_SF) + 100 ms guard. The link layer MUST enforce via `lichen_link_set_slot()` and `tdma_tx_allowed()` (see lichen/subsys/lichen/link implementation). This integrates with TDMA and SCHC compressed control traffic on CH0.
-
-## CCP-4. Regional Channel Plans
-
-A regional channel plan MUST be provisioned locally. An over-the-air message MUST NOT expand the local plan, increase transmit power, or relax regulatory limits.
-
-Each versioned plan contains:
-- plan identifier and version;
-- ordered channel entries, with CH0 at index zero;
-- center frequency, bandwidth, spreading factors, coding rates, and maximum power allowed for each entry;
-- regulatory accounting group for each channel;
-- applicable duty-cycle, dwell-time, occupancy, and listen-before-talk rules;
-- hardware-specific permitted channel mask.
-
-CCP PHY profile ID `0x01` is fixed as LoRa bandwidth 125 kHz, SF10, coding rate 4/5, eight-symbol preamble, explicit header, payload CRC enabled, and low-data-rate optimization disabled. ADR MUST NOT change these parameters inside a schedule generation. See 2a.3 for normative adaptive SF outside schedules. Future profile IDs require canonical airtime vectors and a new specification revision before use.
-
-Remote capability and schedule messages MAY reduce the locally permitted intersection. Unknown plan identifiers or versions MUST cause CH0 fallback.
-
-## 2a.3. Channel Agility and Adaptive SF
-
-CH0 is the control channel; all nodes MUST listen continuously on it for DIOs and beacons (see draft-lichen-schc-lora-00 and draft-lichen-rpl-lora-00). Announce messages carry rx_channel (CCP-9 per spec/05-routing.md:9.2) for rendezvous; data channels selected via select_channel or hash. All implementations MUST produce identical results to test/vectors/ccp16.json and ccp9*.json for CCP-9/14/15/16 vectors.
-
-### synchronized_hop_channel (CCP-12/16 frequency agility)
-
-```
-function synchronized_hop_channel(eui64, epoch, density, n_channels=3):
-    // Exact algorithm for interference mitigation via hash-based channel
-    // selection + density-aware fallback to CH0. Matches ccp16.json vectors,
-    // Python test oracle, Rust lichen_hash_32, and TDMA slot logic exactly.
-    // Uses byte concatenation (EUI64 BE + epoch LE) per test/vectors/ccp16.json
-    data = eui64_to_bytes(eui64) ++ u32le(epoch)
-    hash = fnv1a32(data)  // lichen_hash_32; see hash_32.json
-    IF density > 8 THEN
-        RETURN 0  // CH0 control for high density (interference mitigation, desync)
-    n = n_channels IF n_channels > 0 ELSE 3
-    RETURN 1 + (hash MOD n)
+Slot ID MUST be computed as fnv1a32(EUI64 XOR epoch) MOD num_slots (lichen_hash_32 primitive, basis 0x811c9dc5; see test/vectors/hash_32.json and all ccp*.json). Slot duration equals maximum airtime(current_SF) plus guard time. The link layer enforces this.
 
 function now():
-    RETURN current_sfn()  // unsigned 32-bit modular arithmetic per 2a.2; SFN_MODULUS=2^32
-```
-
-Note: All operators spelled out (IF, THEN, MOD) for IETF compatibility. blacklist_until comparisons MUST use unsigned 32-bit subtraction for wraparound (see ccp16-desync.json). Density >8 forces CH0 per third test vector (select_channel_timing_test with now near u32 max). Cross-refs: adaptive_sf_select in 2a.3, TDMA in link.h:50 and lichen_tdma_init(), RPL DIO density signaling, SCHC on CH0. Pseudocode produces identical output to all ccp16*.json vectors.
-
-### Density Rules Rationale
-
-SF10 (or gateway-assigned SF) is the REQUIRED baseline per appendix-design-rationale.md §7.1. The density-aware adaptive_sf_select overrides this default **only** when one of the explicit IF thresholds is met; otherwise RETURN 10. Critical conditions (very high density or very poor SNR) take precedence. This matches the table below, pseudocode in 02-physical-link.md:3.5, rf_health.rs:345, and all ccp16.json vectors exactly. Nodes MUST maintain per-neighbor EMA state for SNR (alpha=1/4 via >>2), signal ASSIGNED_SF and RfHealthMetrics in DIOs, and RX on all SFs.
-
-**Density-Aware SF Selection Table:**
-
-| Priority | Condition | SF | Rationale |
-|----------|-----------|----|-----------|
-| Critical | density > 20 OR snr_ema < -5 | 12 | Extreme interference or congestion; maximum robustness |
-| High | density > 8 OR snr_ema < 0 OR load_factor > 0.8 | 11 | High density, poor link, or overload; robustness |
-| Capacity | density < 5 AND snr_ema > 8 | 9 | Low density + excellent link; maximize throughput |
-| Default | otherwise | 10 | Baseline per design rationale §7.1 |
-
-### adaptive_sf_select Pseudocode
-
-```
-function ema_update(avg, sample):
-    diff = sample - avg
-    RETURN avg + (diff >> 2)  // ccp15.json seeds
-
-function adaptive_sf_select(density, snr_ema, load_factor):  // critical-first per rf_health.rs:348 and ccp15.json, ccp_load_balancing.json, Rust adaptive_sf_and_rebalance_matches_spec test
-    IF (density > 20) OR (snr_ema < -5) THEN  // critical: ccp15-seed1, rf-test-snr-critical-density3 (SF12)
-        RETURN 12
-    ELSE IF (density > 8) OR (snr_ema < 0) OR (load_factor > 0.8) THEN  // high: ccp-load-high-util-rebalance, rf-test-density12-snr--3 (SF11)
-        RETURN 11
-    ELSE IF (density < 5) AND (snr_ema > 8) THEN  // low-density good-snr: ccp15-seed0, rf-test-density3-snr12 (SF9)
-        RETURN 9
-    ELSE
-        RETURN 10  // baseline: ccp15-seed2 (SF10)
-```
-
-Per-SF SNR thresholds (normative): SF9: >8dB, SF10: any (baseline), SF11: >-5dB (with density/load), SF12: any (critical). Nodes MUST maintain per-neighbor EMA state, signal ASSIGNED_SF and metrics in DIO, RX on all SF. Pseudocode MUST be followed exactly and produce identical output to test/vectors/ccp*.json. Fixed-point Q16.16 no_std example in appendix-design-rationale.md:7.6. Integrates with TDMA slot enforcement and SCHC. Cross-refs physical-link:3.4 table and link layer primitives.
-
-Boundary example for adaptive_sf_select (density=8 edge case, matching SFN delta unsigned style per 2a.2):
-
-```
-uint32_t density = 8u;      // from beacon count, unsigned
-int16_t snr_ema = 0;
-float load_factor = 0.8f;
-
-// critical-first per pseudocode:
-IF (density > 20) OR (snr_ema < -5)  => false
-ELSE IF (density > 8) OR (snr_ema < 0) OR (load_factor > 0.8) => all false
-ELSE RETURN 10  // default baseline
-```
-
-## 2a.4. Time Synchronization
-
-Time sync provided by DODAG root via epoch in beacons/RPL options (see 2a.2 for time-provider, epoch_floor validation, SFN modulo/wrap independence). Nodes MUST maintain `epoch_floor`, `stratum`, `wall_clock_valid` (see `docs/firmware-time-provider.md`). Root time-provider is authoritative. Adopt lowest DODAG ID root. Drift > threshold triggers desync (2a.5). Integrates with `lichen_rpl_dodag_init()` and lichen_link.
-
-## 2a.5. Desync Recovery State Machine
+    RETURN current_sfn()  // monotonic unsigned 32-bit superframe/epoch counter (SFN_MODULUS = 2^32)
+    // All subtractions, comparisons, and modulo operations MUST use unsigned 32-bit arithmetic to handle wraparound correctly.
 
 A CCP-capable node is always in exactly one of these states:
 
-| State | Meaning | Channel behavior |
-|-------|---------|------------------|
-| UNJOINED | Never successfully synchronized | CH0 only; cannot hop |
-| JOINED | Clock is trusted; normal operation | Hop per schedule |
-| DRIFT | Clock may be drifting; watching | Hop with extended RX windows |
-| RECOVER | Clock is untrusted; seeking beacon | CH0 only; stopped hopping |
+| State    | Meaning                          | Channel Behavior          |
+|----------|----------------------------------|---------------------------|
+| UNJOINED | Never synchronized               | CH0 only; no hopping      |
+| JOINED   | Clock trusted; normal operation  | Hop per schedule/select_channel |
+| DRIFT    | Possible drift; monitoring       | Hop with extended RX windows |
+| RECOVER  | Clock untrusted; seeking beacon  | CH0 only; no data TX      |
 
-(See full state diagram, timers T_DRIFT_WARN=30s, T_DRIFT_MAX=120s, T_GIVE_UP=600s, transitions, multi-root conflict resolution preferring higher epoch, GPS-capable nodes, SFN wraparound handling, and implementation notes in the detailed description. All transitions MUST match test vectors. Nodes in RECOVER MUST refrain from data TX until re-synchronized.)
+Transitions use unsigned SFN delta, epoch_floor validation, multi-root preference (highest epoch), and timers defined by test/vectors/ccp16-desync.json and ccp_tdma.json. RPL version changes reset relative to the new root. Drift > threshold moves to DRIFT or RECOVER. Nodes in RECOVER or UNJOINED MUST refrain from data transmissions.
 
-## Implementation Status
+## Regional Channel Plans and CH0 Rules
 
-- Python simulator, Rust gateway, Zephyr `lichen/subsys/lichen` validate against `test/vectors/ccp16.json`.
-- Kconfig options for CCP16, TDMA_SLOTS, integration with RPL/SCHC/TDMA complete.
-- Adaptive SF, desync FSM, channel plans, Multi-RX gateway support implemented and tested.
-- All codereview passes closed. Capacity gains verified in simulation per independent oracles.
+A regional channel plan MUST be provisioned locally. An over-the-air message MUST NOT expand the local plan, increase power, or relax regulatory limits. Each plan lists ordered channels (CH0 at index 0), frequencies, permitted SFs, coding rates, power, duty-cycle, dwell, and hardware mask. Unknown plan/version causes CH0 fallback.
+
+CH0 is the control channel. All nodes MUST listen continuously on CH0 for DIOs, beacons, announces, DIS, and DAO messages. Control traffic (SCHC-compressed) uses CH0 exclusively. High density forces fallback to CH0 for data as well (interference mitigation and desync recovery). Data channels (1+) are used only when density permits and a valid rx_channel or select_channel result is available. Gateway Multi-RX (CCP-14) enables simultaneous reception across control + data channels.
+
+## Channel Selection (select_channel)
+
+function select_channel(eui64, epoch, density, n_channels):
+    // CCP-12/16 synchronized hopping for frequency agility and interference mitigation.
+    // Uses byte concatenation (EUI64 big-endian + epoch little-endian).
+    data = eui64_to_bytes_big_endian(eui64) concatenated with u32_to_bytes_little_endian(epoch)
+    hash = fnv1a32(data)
+    IF density > 8 THEN
+        RETURN 0  // CH0 control channel
+    n = 3
+    IF n_channels > 0 THEN
+        n = n_channels
+    RETURN 1 + (hash MOD n)
+
+## Adaptive Spreading Factor Selection, EMA, and Density Rules
+
+SF10 (or gateway-assigned SF via DIO) is the REQUIRED baseline. adaptive_sf_select overrides this only on explicit thresholds. Nodes MUST receive on all SF7-SF12. Per-neighbor state tracks EMA-smoothed SNR (and loss rate). Density is the count of unique neighbors (deduplicated by IID) heard in the recent window. load_factor incorporates utilization and pending traffic. These metrics plus current assigned SF are signaled in capability DIO options.
+
+function ema_update(avg, sample):
+    diff = sample - avg
+    RETURN avg + (diff >> 2)  // alpha equivalent to 1/4
+
+function adaptive_sf_select(density, snr_ema, load_factor):
+    // Critical conditions evaluated first.
+    IF (density > 20) OR (snr_ema < -5) THEN
+        RETURN 12
+    ELSE IF (density > 8) OR (snr_ema < 0) OR (load_factor > 0.8) THEN
+        RETURN 11
+    ELSE IF (density < 5) AND (snr_ema > 8) THEN
+        RETURN 9
+    ELSE
+        RETURN 10
+
+**Normative Density Rules Table:**
+
+| Priority | Condition                              | SF | Rationale                     |
+|----------|----------------------------------------|----|-------------------------------|
+| Critical | density > 20 OR snr_ema < -5          | 12 | Extreme congestion or poor link |
+| High     | density > 8 OR snr_ema < 0 OR load_factor > 0.8 | 11 | High density, marginal link, or overload |
+| Capacity | density < 5 AND snr_ema > 8           | 9  | Low density + excellent link  |
+| Default  | otherwise                              | 10 | Baseline                      |
+
+Exact behavior, thresholds, and edge cases (including density=8) are defined by the pseudocode and produce identical output to test/vectors/ccp15.json, ccp16.json, ccp_load_balancing.json.
+
+## CCP-9 da2q Rendezvous with signed rx_channel
+
+Announce messages carry rx_channel (0-7; 0 denotes CH0 fallback). This value is packed in the flags byte (offset 1) and MUST be included in the Schnorr48 signed_data transcript:
+
+signed_data = originator_iid(8) || pubkey(32) || seq_num(2) || rx_channel(1) || app_data
+
+This binding (CCP-9) prevents tampering and enables secure da2q rendezvous. A sender uses the pinned rx_channel from a valid recent Announce when available (TOFU-style pinning); otherwise falls back to select_channel(hash result) or CH0. Hop count is not signed. See test/vectors/ccp9.json, ccp9-rendezvous.json, and ccp9_rendezvous.json for exact formats, signing oracles, L2 dispatch (0x15), round-trip, and rendezvous scheduling.
+
+## Capability DIO Signaling
+
+RPL DIOs on CH0 include a capability option (or extended DAG Metric Container) carrying density, EMA-derived SF recommendation, load_factor/utilization, current TX_SF, and per-neighbor RF metrics. This supports MRHOF parent selection, central rebalancing at the border router, and network-wide coordination. Nodes signal ASSIGNED_SF and metrics; gateways use them for Multi-RX scheduling (CCP-14). Exact option format and integration are defined in 05-routing.md; behavior MUST match test vectors.
 
 ## References
 
-### Normative References
-
-- [RFC 2119] Bradner, S., "Key words for use in RFCs to Indicate Requirement Levels", BCP 14, RFC 2119, DOI 10.17487/RFC2119, March 1997, <https://www.rfc-editor.org/info/rfc2119>.
-
-- `test/vectors/ccp16.json` (authoritative for all MUST-match behavior; all arbitrary constants justified in Appendix A of appendix-design-rationale.md or parameterized via beacon/Kconfig)
-
-- `spec/drafts/draft-lichen-rpl-lora-00.md`
-- `spec/drafts/draft-lichen-schc-lora-00.md`
-- `spec/appendix-design-rationale.md`
-- `lichen/subsys/lichen/link*` (for `lichen_link_set_slot()`, `tdma_tx_allowed()`)
-- `docs/firmware-time-provider.md`
-
-[← Previous](02-physical-link.md) | [Index](README.md) | [Next →](03-adaptation.md)
+- test/vectors/ccp*.json (normative oracles for all algorithms, vectors[0-2] for TDMA/SF/channel/tx_allowed, vectors[3+] for Multi-RX/capacity metrics; independent FNV-1a + airtime + simulation oracles)
+- RFC 2119
+- 05-routing.md (Announce format, capability DIO details)
+- draft-lichen-rpl-lora-00.md (RPL option integration)
+- draft-lichen-schc-lora-00.md (CH0 usage)
