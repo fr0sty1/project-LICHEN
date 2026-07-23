@@ -855,6 +855,7 @@ int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint32_t sender_seq)
 	const uint8_t *eui64 = NULL;
 	int idx;
 	int ret;
+	uint32_t old_seq;
 
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
 
@@ -864,6 +865,7 @@ int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint32_t sender_seq)
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
+	old_seq = ctx->sender_seq;
 	ctx->sender_seq = sender_seq;
 	write_cb = s_nvm_write_cb;
 	if (ctx->has_peer_eui64) {
@@ -877,6 +879,12 @@ int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint32_t sender_seq)
 		ret = write_cb(eui64, sender_seq);
 		if (ret != 0) {
 			LOG_ERR("Failed to persist SSN to NVM: %d", ret);
+			k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+			idx = ctx_get_index(ctx);
+			if (idx >= 0) {
+				ctx->sender_seq = old_seq;
+			}
+			k_mutex_unlock(&s_ctx_mutex);
 			return OSCORE_ERR_NVM_FAILED;
 		}
 	}
@@ -1597,7 +1605,7 @@ nvm_failed:
 	/* SECURITY: NVM failure path (only from persist_ssn after SSN++ and
 	 * full success of buffer/AAD/encrypt/option steps). Rollback
 	 * sender_seq under mutex to sync with un-updated NVM, preventing
-	 * nonce reuse on reboot (RFC 8613 §7.2/§8.4; fixes python-ano.41).
+	 * nonce reuse on subsequent reboot (RFC 8613 §7.2/§8.4; fixes python-ano.41).
 	 * The 6 error paths (param checks ~1466/1471, ctx/seq checks ~1486/
 	 * 1493/1500, buffer too small ~1523/1532/1545/1553, encrypt fail
 	 * ~1562, option build fail ~1579) set proper ret and goto
@@ -1607,12 +1615,12 @@ nvm_failed:
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
 	ctx_idx = ctx_get_index(ctx);
 	if (ctx_idx >= 0) {
-		ctx->sender_seq = seq;
 		s_seq_initialized[ctx_idx] = true;
 	}
 	k_mutex_unlock(&s_ctx_mutex);
 	ret = OSCORE_ERR_NVM_FAILED;
 	goto cleanup_protect_request;
+
 }
 
 static size_t find_coap_payload_marker(const uint8_t *data, size_t len)
