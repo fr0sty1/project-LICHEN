@@ -28,6 +28,9 @@
 #include <lichen/coap_keys.h>
 #include <lichen/coap_server.h>
 #include <lichen/transport/slip_transport.h>
+#include <lichen/oscore.h>
+#include <lichen/coap_oscore.h>
+#include <lichen/l2/ipv6_addr.h>
 
 #ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
 #include <lichen/oscore.h>
@@ -912,7 +915,6 @@ bool lichen_coap_is_local_admin(const struct sockaddr *addr, socklen_t addr_len)
 
 		return true;
 	}
-
 	return false;
 }
 
@@ -944,7 +946,8 @@ static int keys_oscore_respond(struct coap_resource *resource,
 
 /* --------------------------------------------------------------------------
  * CoAP resource handlers
- * -------------------------------------------------------------------------- */
+ * --------------------------------------------------------------------------
+ */
 
 /*
  * GET /keys - List all keys with fingerprints and trust levels
