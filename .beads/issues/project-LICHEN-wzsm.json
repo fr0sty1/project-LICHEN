@@ -2,15 +2,15 @@
   "id": "project-LICHEN-wzsm",
   "title": "[merge-conflict] integration/worker14-20260722: heltec_wireless_tracker.conf",
   "notes": "Commit: ad4c85b27",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:38:23.514776026Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:40:15.134005707Z",
+  "updated_at": "2026-07-23T03:40:20.084902933Z",
   "started_at": "2026-07-23T03:39:00.294080044Z",
-  "lease_expires_at": "2026-07-23T03:44:00.294080044Z",
-  "heartbeat_at": "2026-07-23T03:39:00.294080044Z"
+  "closed_at": "2026-07-23T03:40:20.084902933Z",
+  "close_reason": "Cleaned dead bead references and standardized STALE comment in heltec_wireless_tracker.{conf,overlay} per no-dead-code rule, AGENTS.md, project-LICHEN-2u26 and firmware-board-capability-matrix.md. Matches pattern from similar beads (p6z8, hk03, tw6m etc). Commit ad4c85b27"
 }
