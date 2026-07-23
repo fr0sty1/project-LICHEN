@@ -2,15 +2,15 @@
   "id": "project-LICHEN-qytd",
   "title": "[merge-conflict] worktree-worker18: rf_health.rs",
   "notes": "Commit: b3262cce9",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:14:06.373146325Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:20:05.175085886Z",
+  "updated_at": "2026-07-23T03:20:08.295782824Z",
   "started_at": "2026-07-23T03:18:50.571485467Z",
-  "lease_expires_at": "2026-07-23T03:23:50.571485467Z",
-  "heartbeat_at": "2026-07-23T03:18:50.571485467Z"
+  "closed_at": "2026-07-23T03:20:08.295782824Z",
+  "close_reason": "Aligned rf_health.rs in worktree-worker18 with enhanced CCP-15/16 implementation from main (added density/load_factor/adaptive_sf/should_rebalance, updated comments/constants/tests). Merged via copy of clean 605-line version. Verified identical post-update, committed b3262cce9, pushed."
 }
