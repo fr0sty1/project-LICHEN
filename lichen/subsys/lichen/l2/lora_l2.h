@@ -178,10 +178,11 @@ int lichen_lora_l2_deinit(void);
  *
  * @param data Packet data to send
  * @param len Length of data (max 255 bytes)
+ * @param channel LoRa channel index (0=control)
  *
- * @return 0 on success, negative errno on failure
+ * @return 0 on success, negative errno on failure (-EBUSY on duty cycle violation)
  */
-int lichen_lora_l2_tx(const uint8_t *data, size_t len);
+int lichen_lora_l2_tx(const uint8_t *data, size_t len, uint8_t channel);
 
 /**
  * @brief Set the RX callback
