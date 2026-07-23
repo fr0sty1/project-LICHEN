@@ -2,11 +2,15 @@
   "id": "project-LICHEN-75m0",
   "title": "dtn_buffer_message: accepts far-future expiry without validation",
   "description": "File: python/src/lichen/routing/router.py:645-658\n\nThe DTN buffer only validates that expiry is not in the past:\n\n```python\ndef dtn_buffer_message(self, ..., expiry_unix: int, ...):\n    import time\n    now_unix = int(time.time())\n    if expiry_unix \u003c= now_unix:\n        return False  # Already expired\n    # No upper bound validation\n    ...\n```\n\nWHY IT'S A BUG: An attacker could set expiry_unix to INT_MAX or year 3000, causing messages to never be evicted by dtn_expire_old(). This allows:\n1. DoS via buffer exhaustion with 'permanent' messages\n2. Memory leak as messages accumulate\n3. Eviction of legitimate messages with sane expiries\n\nIMPACT: Resource exhaustion attack; legitimate DTN traffic gets evicted to make room for attacker's 'permanent' messages.\n\nFIX: Add maximum TTL validation:\n```python\nMAX_DTN_TTL_SECONDS = 86400 * 7  # 1 week max\nif expiry_unix \u003e now_unix + MAX_DTN_TTL_SECONDS:\n    logger.warning(\"dtn: rejecting message with excessive TTL\")\n    return False\n```",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:24:15.30273Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:24:15.302759Z"
+  "updated_at": "2026-07-23T04:05:57.421620049Z",
+  "started_at": "2026-07-23T04:05:57.421620049Z",
+  "lease_expires_at": "2026-07-23T04:10:57.421620049Z",
+  "heartbeat_at": "2026-07-23T04:05:57.421620049Z"
 }
