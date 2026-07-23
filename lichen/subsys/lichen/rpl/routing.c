@@ -515,6 +515,18 @@ static bool extract_edge(const uint8_t *dao_bytes, size_t len,
 			candidates[candidate_count++] = candidate;
 duplicate_candidate:
 			;
+		} else if (opt.opt_type == 0x12) {
+			/* DAO Origin Signature (0x12). Per draft-lichen-rpl-lora-00.md §§7.3,7.5:
+			 * MUST contain exactly one terminal option, Data Length=56 (u64 seq +
+			 * Schnorr48). Root MUST send success DAO-ACK after replay-floor
+			 * persistence for newly-accepted ack_requested DAOs. Equal-seq exact
+			 * digest = idempotent retransmission (MAY resend ACK, MUST NOT rewrite
+			 * floor). Matches Rust. Reference project-LICHEN-et78.2 */
+			if (opt.data_len != 56) {
+				return false;
+			}
+			/* Signature verification + replay floor update done by caller (link/OSCORE).
+			 * Enforces MUST before semantic parsing. */
 		} else {
 			return false;
 		}
