@@ -110,7 +110,7 @@ impl<'a> Announce<'a> {
             originator_iid,
             pubkey,
             signature,
-            app_data: &data[94..],
+            app_data: &data[93..],
         })
     }
 
@@ -180,18 +180,15 @@ impl<'a> AnnounceBuilder<'a> {
 mod tests {
     use super::*;
 
-    fn make_announce() -> [u8; 94] {
-        let mut buf = [0u8; 94];
+    fn make_announce() -> [u8; 93] {
+        let mut buf = [0u8; 93];
         buf[0] = ANNOUNCE_TYPE;
-        buf[1] = 2; // flags = rx_channel per CCP-9
-        buf[2] = 3; // hop_count
-        buf[3] = 0x12; // seq_num high
-        buf[4] = 0x34; // seq_num low
-        // iid at 5..13
+        buf[1] = 2;
+        buf[2] = 3;
+        buf[3] = 0x12;
+        buf[4] = 0x34;
         buf[5] = 0x02;
         buf[12] = 0x01;
-        // pubkey at 13..45 (all zeros ok for test)
-        // signature at 45..93 (all zeros ok for test)
         buf
     }
 
@@ -216,17 +213,17 @@ mod tests {
             app_data: ann.app_data,
             flags: ann.flags,
         };
-        let mut out = [0u8; 94];
+        let mut out = [0u8; 93];
         let n = builder.write_to(&mut out).unwrap();
         assert_eq!(n, 93);
-        assert_eq!(&out[..93], &wire[..93]);
+        assert_eq!(&out[..], &wire[..]);
     }
 
     #[test]
     fn too_short() {
         assert_eq!(
-            Announce::from_bytes(&[0u8; 93]),
-            Err(AnnounceError::TooShort(TooShort::new(FIXED_LENGTH, 93)))
+            Announce::from_bytes(&[0u8; 92]),
+            Err(AnnounceError::TooShort(TooShort::new(FIXED_LENGTH, 92)))
         );
     }
 
