@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-pnbc",
+  "title": "[security] EDHOC implementation has duplicate functions, compile errors, and key handling bugs",
+  "description": "Reviewed commits e6e028528 (edhoc.rs HKDF change), 37ed82cc4 (sim), 97aa0c30e (ipv6/rpl/senml), 4cf49c5d8 (empty). The lichen-oscore/src/edhoc.rs contains duplicate definitions of build_context_2, build_context_3, build_signature_structure (lines ~446-507), scope errors (undefined c_i, g_x vars), mismatched return types (Ok() on non-Result fn), and hkdf_extract salt handling that was altered then reverted. This breaks key derivation (PRK_2e/3e2m/4e3m chain for OSCORE export), signature verification paths, and zeroization. Violates crypto policy on key handling and introduces potential timing oracles or DoS via failed handshakes. No review of Schnorr48 MIC in link layer or OSCORE as untouched in last 20 commits. Matches focus areas.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T15:01:53.831943399Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T15:01:53.831943399Z"
+}
