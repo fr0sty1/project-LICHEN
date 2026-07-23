@@ -2,15 +2,15 @@
   "id": "project-LICHEN-1m2i",
   "title": "[merge-conflict] worktree-worker23: hal.c",
   "notes": "Commit: 4835aebb",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:16:20.129864583Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:22:47.834380994Z",
+  "updated_at": "2026-07-23T00:22:50.135289542Z",
   "started_at": "2026-07-23T00:20:38.177637543Z",
-  "lease_expires_at": "2026-07-23T00:25:38.177637543Z",
-  "heartbeat_at": "2026-07-23T00:20:38.177637543Z"
+  "closed_at": "2026-07-23T00:22:50.135289542Z",
+  "close_reason": "Fixed merge conflict in lichen/subsys/lichen/hal/hal.c by restoring Zephyr fuel_gauge.h sign-compare diagnostic suppression pragmas; committed to worktree-worker23 branch and pushed; beads updated"
 }
