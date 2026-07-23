@@ -2,11 +2,15 @@
   "id": "project-LICHEN-xa26",
   "title": "edhoc: _decode_cbor_sequence only catches CBORDecodeEOF",
   "description": "File: python/src/lichen/crypto/edhoc.py\nLines: 189-199\n\nThe _decode_cbor_sequence function catches only CBORDecodeEOF but not other CBOR decoding exceptions:\n\n```python\ndef _decode_cbor_sequence(data: bytes) -\u003e list:\n    items = []\n    fp = io.BytesIO(data)\n    while fp.tell() \u003c len(data):\n        try:\n            item = cbor2.load(fp)\n            items.append(item)\n        except cbor2.CBORDecodeEOF:\n            break\n    return items\n```\n\nMalformed CBOR data (e.g., invalid type indicators, truncated values) will raise CBORDecodeError or other exceptions that propagate uncaught. This causes cryptic error messages instead of clear 'malformed message' errors.\n\nFix: Either catch CBORDecodeError or let exceptions propagate with added context (e.g., 'Failed to decode CBOR sequence').",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:17:09.187132Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:17:09.187174Z"
+  "updated_at": "2026-07-23T04:02:33.591719366Z",
+  "started_at": "2026-07-23T04:02:33.591719366Z",
+  "lease_expires_at": "2026-07-23T04:07:33.591719366Z",
+  "heartbeat_at": "2026-07-23T04:02:33.591719366Z"
 }
