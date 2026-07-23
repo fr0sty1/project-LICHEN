@@ -2,12 +2,16 @@
   "id": "project-LICHEN-gpv6",
   "title": "codereview: module docstring should explicitly reference current_channel in wire format diagram",
   "description": "Top level module docstring mentions current_channel but could include it in the initial description like the Rust version does with ASCII diagram. P4 docs. python/src/lichen/announce/messages.py:3. Related to hjo8 codereview.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 4,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T17:26:25.093629393Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T17:26:25.093629393Z",
+  "updated_at": "2026-07-23T04:02:58.571656899Z",
+  "started_at": "2026-07-23T04:02:58.571656899Z",
+  "lease_expires_at": "2026-07-23T04:07:58.571656899Z",
+  "heartbeat_at": "2026-07-23T04:02:58.571656899Z",
   "labels": [
     "codereview"
   ],
