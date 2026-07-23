@@ -1,16 +1,18 @@
 {
   "id": "project-LICHEN-md37",
   "title": "[merge-conflict] worktree-worker24: trickle.rs",
-  "labels": ["defer-boardconfig"],
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:53:09.121675843Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:00:08.098849988Z",
+  "updated_at": "2026-07-23T05:11:52.562746496Z",
   "started_at": "2026-07-23T00:00:08.098849988Z",
-  "lease_expires_at": "2026-07-23T00:05:08.098849988Z",
-  "heartbeat_at": "2026-07-23T00:00:08.098849988Z"
+  "lease_expires_at": "2026-07-23T05:16:52.562746496Z",
+  "heartbeat_at": "2026-07-23T05:11:52.562746496Z",
+  "labels": [
+    "defer-boardconfig"
+  ]
 }
