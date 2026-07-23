@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-uk36.1.4.1.2",
+  "title": "Implement transcript_3 using CBOR encoding of TH_2, ciphertext/plaintext, credential per Python and RFC",
+  "description": "Add transcript_3(th_2: \u0026[u8; 32], input: \u0026[u8], cred: \u0026[u8]) that builds input with cbor2 equivalent (cbor dumps of each part) then compute_th to match test vectors in edhoc.rs and python/src/lichen/crypto/edhoc.py. Handle both plaintext and ciphertext cases.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:30:26.603918836Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:30:26.603918836Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-uk36.1.4.1.2",
+      "depends_on_id": "project-LICHEN-uk36.1.4.1",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:30:26.744439713Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
