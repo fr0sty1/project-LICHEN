@@ -2,15 +2,15 @@
   "id": "project-LICHEN-rpij",
   "title": "[merge-conflict] worktree-worker20: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: 824940a7b",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:43:28.656575409Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:42:47.955549889Z",
+  "updated_at": "2026-07-23T01:42:51.412168594Z",
   "started_at": "2026-07-23T01:41:33.382212572Z",
-  "lease_expires_at": "2026-07-23T01:46:33.382212572Z",
-  "heartbeat_at": "2026-07-23T01:41:33.382212572Z"
+  "closed_at": "2026-07-23T01:42:51.412168594Z",
+  "close_reason": "Updated heltec_wifi_lora32_v3_esp32s3_procpu.conf puck config in worktree-worker20 with latest resolution comment for project-LICHEN-rpij. Synced canonical L2+CoAP path, TINYCRYPT awareness, battery support. Committed 824940a7b to worktree-worker20 branch and pushed."
 }
