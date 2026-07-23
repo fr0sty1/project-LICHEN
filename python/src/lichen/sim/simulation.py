@@ -608,7 +608,9 @@ class Simulation:
 
         This is the core TX logic, called either immediately from
         start_transmission() or later via TxStartDelayedEvent.
-        Integrates synchronized hopping (CCP-12).
+        Integrates synchronized hopping (CCP-12) using node.synchronized_hop_channel(current_sfn)
+        when hop_schedule present; passes to medium; updates node state without conflicting
+        current_channel for hop nodes. Removes dead code.
 
         Args:
             node_id: ID of the transmitting node.
@@ -728,8 +730,13 @@ class Simulation:
         on_timeout: Callable[[], None],
         channel: int = 0,
     ) -> None:
+<<<<<<< HEAD
         """Enter RX mode. Derives via node.synchronized_hop_channel for hop_schedule
         (CCP-12 rendezvous node.py:131). Sets current_channel only if needed.
+=======
+        """Enter RX mode. Derives via node.get_hop_channel for hop_schedule
+        (CCP-12 rendezvous node.py:132). Sets current_channel only if needed.
+>>>>>>> df5c7ae74079fac89e80ed25859acca760128d34
         """
         node = self._nodes.get(node_id)
         if node is None:
@@ -813,7 +820,11 @@ class Simulation:
 
 
     def _get_rx_result_internal(self, node_id: str) -> tuple[bytes, int, int, str, str] | None:
+<<<<<<< HEAD
         """Unified core RX logic. Uses node.synchronized_hop_channel (node.py:131)
+=======
+        """Unified core RX logic. Uses node.get_hop_channel (node.py:132)
+>>>>>>> df5c7ae74079fac89e80ed25859acca760128d34
         for medium channel when hop_schedule present (CCP-12 per
         ccp16-hop.json spec/02a-coordinated-capacity.md:120). Preserves oracles.
 
@@ -829,7 +840,11 @@ class Simulation:
             return None
 
         if node.hop_schedule and len(node.hop_schedule) > 0:
+<<<<<<< HEAD
             channel = node.synchronized_hop_channel()
+=======
+            channel = node.get_hop_channel()
+>>>>>>> df5c7ae74079fac89e80ed25859acca760128d34
         else:
             channel = node.current_channel
         candidates = self._medium.get_rx_candidates(
