@@ -1612,8 +1612,9 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	if (ret == OSCORE_ERR_NVM_FAILED) {
 		ret = OSCORE_ERR_NVM_FAILED;
 		goto nvm_failed;
+	} else {
+		ret = OSCORE_OK;
 	}
-	ret = OSCORE_OK;
 
 cleanup_protect_request:
 	crypto_wipe(nonce, sizeof(nonce));
