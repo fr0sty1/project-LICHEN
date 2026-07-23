@@ -3,15 +3,15 @@
   "title": "[spec-compliance] SenML Content-Format swapped in 07-transport-app.md",
   "description": "spec/07-transport-app.md:357 lists 110 for application/senml+cbor but RFC 8428+appendix-senml.md+lichen-coap/option.rs:33+SCHC vectors use 112 (and 60 for cbor). codec.rs:482 and tests match correct value. MUST fix table and cross-refs. See subagent review project-LICHEN-eer0.",
   "notes": "Commit: 35f7042ca",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T03:02:34.042342599Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:31:56.967990781Z",
+  "updated_at": "2026-07-23T03:31:59.847016693Z",
   "started_at": "2026-07-23T03:30:20.458314196Z",
-  "lease_expires_at": "2026-07-23T03:35:20.458314196Z",
-  "heartbeat_at": "2026-07-23T03:30:20.458314196Z"
+  "closed_at": "2026-07-23T03:31:59.847016693Z",
+  "close_reason": "Fixed incorrect Content-Format 110 reference for SenML port 5682 translation in spec/07-transport-app.md:56 to use correct 112 per RFC 8428, lichen-coap, appendix-senml.md, constants.toml and codec. Cross-refs now consistent. Table in 10.2.1 already correct for both JSON(110)/CBOR(112)."
 }
