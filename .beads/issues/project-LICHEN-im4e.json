@@ -2,12 +2,16 @@
   "id": "project-LICHEN-im4e",
   "title": "[codereview-pass2] lichen-rpl: CCP-16 doc",
   "description": "Rust idiom pass: doc comment uses correct no_std style, no_std compatible phrasing, follows existing module list pattern. No unsafe, no std leakage. Suggestion to add #[cfg(feature=\"std\")] for gateway-specific balancing logic later is P4. Clean pass. project-LICHEN-da2q.16.7",
-  "status": "open",
+  "status": "in_progress",
   "priority": 4,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:15:19.089819636Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:15:19.089819636Z",
+  "updated_at": "2026-07-23T04:22:21.189590958Z",
+  "started_at": "2026-07-23T04:22:21.189590958Z",
+  "lease_expires_at": "2026-07-23T04:27:21.189590958Z",
+  "heartbeat_at": "2026-07-23T04:22:21.189590958Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-im4e",
