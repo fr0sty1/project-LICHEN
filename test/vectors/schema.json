@@ -860,7 +860,7 @@
         "hash_32": {"type": "string", "pattern": "^[0-9a-f]{8}$"}
       }
     },
-        "ccp13_vector": {
+    "ccp13_vector": {
       "type": "object",
       "required": ["name", "description"],
       "additionalProperties": false,
