@@ -74,7 +74,7 @@ static int deaddrop_get(struct coap_resource *resource, struct coap_packet *requ
 	int len = senml_encode_deaddrop(NULL, dtn_get_unix_time(), pending, buf, sizeof(buf));
 	k_mutex_unlock(&s_dtn_buf_mutex);
 	if (len < 0) return COAP_RESPONSE_CODE_INTERNAL_ERROR;
-	return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_CONTENT, 112, buf, (size_t)len);
+	return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_CONTENT, SENML_CBOR_CONTENT_FORMAT, buf, (size_t)len);
 }
 
 static const char * const deaddrop_path[] = { "deaddrop", NULL };

@@ -15,7 +15,8 @@
  * - /.well-known/core - Resource discovery (GET)
  *
  * Uses Zephyr's CoAP service APIs with static resource definitions.
- * CBOR (content-format 60) is used for all payloads.
+ * CBOR (content-format 60) for most LCI resources; SenML+CBOR (112) for
+ * location and deaddrop per RFC 8428.
  *
  * SECURITY: When CONFIG_LICHEN_COAP_SERVER_OSCORE is enabled, the server
  * can be configured to require OSCORE protection for sensitive resources.
@@ -56,6 +57,11 @@ extern "C" {
 
 /** Maximum CBOR payload size for responses */
 #define LICHEN_COAP_SERVER_MAX_PAYLOAD 256
+
+/** SenML+CBOR content-format (IANA 112, RFC 8428) for /sensors/location
+ * and /deaddrop resources.
+ */
+#define SENML_CBOR_CONTENT_FORMAT 112
 
 /**
  * @brief Node status provider callback
