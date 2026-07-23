@@ -186,8 +186,8 @@ The LICHEN Zephyr subsystems in `lichen/subsys/lichen/` have **implicit initiali
          |                                |
          └─────────────┬──────────────────┘
                        v
-                 lichen_tdma_init() (after link_init, before oscore; see
-                 struct LICHEN_TDMA_Slot in link.h:50 and Kconfig help)
+                  lichen_tdma_init(&tdma_ctx, &link_ctx) (after link_load_key per spec/02a-coordinated-capacity.md and hash-based slot)
+
                        |
                        v
                  oscore_init()
@@ -204,11 +204,9 @@ The LICHEN Zephyr subsystems in `lichen/subsys/lichen/` have **implicit initiali
 | Subsystem | Init Function | Prerequisites | Thread-Safety |
 |-----------|--------------|---------------|---------------|
 | **Link Layer** | `lichen_link_init(ctx, eui64)` | None | Per-context (no global state) |
-| **TDMA** | `lichen_tdma_init(&tdma_ctx, &link_ctx)` | `lichen_link_init()` | Per-context |
+| **TDMA** | `lichen_tdma_init(tdma_ctx, link_ctx)` | `lichen_link_load_key()` | Per-context |
 | **Link Keys** | `lichen_link_load_key(ctx, seed)` | `lichen_link_init()` | Per-context |
-| **TDMA** | `lichen_tdma_init(ctx)` | `lichen_link_load_key()` | Per-context |
 | **RPL DODAG** | `lichen_rpl_dodag_init(d, ...)` | None | Per-DODAG (caller must synchronize) |
-| **TDMA** | `lichen_tdma_init(slot)` | `lichen_link_init()` | Per-context |
 | **OSCORE** | `oscore_init()` | None | Thread-safe (internal mutex) |
 | **OSCORE Contexts** | `oscore_ctx_create(...)` | `oscore_init()` | Thread-safe |
 | **CoAP Client** | `lichen_coap_client_init()` | Network stack up | Thread-safe (auto-init on first use) |
