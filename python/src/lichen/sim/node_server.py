@@ -6,10 +6,6 @@ This module provides a TCP server that accepts connections from SimRadio clients
 and translates wire protocol messages into Simulation calls. Each client
 connection represents a single simulated node.
 
-Push-based RX (RX_ENTER/RX_EXIT) uses a background simulation driver task and
-does not poll. The legacy poll-based MSG_RX handler still uses a 1ms polling
-loop but is deprecated - SimRadio already uses push-based RX.
-
 Long-term, this module should be unified with or replaced by RenodeServer.
 """
 
@@ -26,7 +22,6 @@ from lichen.sim.protocol import (
     MAX_PAYLOAD_LENGTH,
     MSG_CAD,
     MSG_REGISTER,
-    MSG_RX,
     MSG_RX_ENTER,
     MSG_RX_EXIT,
     MSG_TIME,
@@ -34,15 +29,12 @@ from lichen.sim.protocol import (
     ProtocolError,
     decode_cad,
     decode_register,
-    decode_rx,
     decode_rx_enter,
     decode_tx,
     encode_cad_result,
     encode_err,
     encode_ok,
-    encode_rx_ok,
     encode_rx_packet,
-    encode_rx_timeout,
     encode_rx_timeout_push,
     encode_time_ok,
     encode_tx_done,
@@ -218,8 +210,6 @@ class NodeServer:
 
                 if msg_type == MSG_TX:
                     await self._handle_tx(node_id, data, writer)
-                elif msg_type == MSG_RX:
-                    await self._handle_rx(node_id, data, writer)
                 elif msg_type == MSG_RX_ENTER:
                     await self._handle_rx_enter(node_id, data, writer)
                 elif msg_type == MSG_RX_EXIT:
@@ -335,99 +325,6 @@ class NodeServer:
             self._pcap_writer.write_packet(timestamp_us=current_time_us,data=tx_payload,src_node=node_id)
         logger.debug("TX from %s: %d bytes, airtime %d us", node_id, len(tx_payload), tx_airtime_us)
         await write_message(writer, encode_tx_done(tx_airtime_us))
-
-    async def _handle_rx(
-        self,
-        node_id: str,
-        data: bytes,
-        writer: asyncio.StreamWriter,
-    ) -> None:
-        """Handle an RX message (poll-based, deprecated).
-
-        .. deprecated::
-            This method uses a polling loop. New clients should use RX_ENTER
-            (push-based) instead. SimRadio already uses RX_ENTER.
-
-        Starts a receive operation in the simulation and waits for
-        either a packet or timeout.
-
-        Args:
-            node_id: The receiving node's ID.
-            data: The complete message bytes (including type byte).
-            writer: The stream writer for responses.
-        """
-        try:
-            payload = get_message_payload(data)
-            timeout_ms = decode_rx(payload)
-        except ProtocolError as e:
-            logger.error("Failed to decode RX from %s: %s", node_id, e)
-            await write_message(writer, encode_err(1, f"Invalid RX: {e}"))
-            return
-
-        # Start receive in simulation
-        try:
-            self._simulation.start_receive(node_id, timeout_ms)
-        except ValueError as e:
-            logger.error("Failed to start RX for %s: %s", node_id, e)
-            await write_message(writer, encode_err(7, str(e)))
-            return
-
-        result = await self._await_rx_result(node_id, timeout_ms * 1000)
-
-        # Clean up RX state and cancel pending timeout event
-        self._simulation.exit_rx_mode(node_id)
-
-        if result is not None:
-            rx_payload, rssi, snr = result
-            logger.debug(
-                "RX at %s: %d bytes, RSSI %d, SNR %d",
-                node_id,
-                len(rx_payload),
-                rssi,
-                snr,
-            )
-            await write_message(writer, encode_rx_ok(rx_payload, rssi, snr))
-        else:
-            logger.debug("RX timeout at %s after %d ms", node_id, timeout_ms)
-            await write_message(writer, encode_rx_timeout())
-
-    async def _await_rx_result(
-        self,
-        node_id: str,
-        timeout_us: int,
-    ) -> tuple[bytes, int, int] | None:
-        """Wait for a packet or timeout on a node already in RX_WAIT.
-
-        .. deprecated::
-            This method uses a 1ms polling loop. It is used by the deprecated
-            MSG_RX handler. New code should use RX_ENTER with callbacks.
-
-        Checks for a deliverable packet before advancing time so advancing
-        can never skip an in-range reception (see maybe_advance_time).
-
-        Args:
-            node_id: The receiving node's ID.
-            timeout_us: Receive timeout in microseconds.
-
-        Returns:
-            Tuple of (payload, rssi, snr), or None on timeout.
-        """
-        start_time_us = self._simulation.current_time_us
-        while True:
-            # Check for received packet
-            result = self._simulation.get_rx_result(node_id)
-            if result is not None:
-                return result
-
-            self._simulation.maybe_advance_time()
-
-            # Check if we've timed out
-            elapsed_us = self._simulation.current_time_us - start_time_us
-            if elapsed_us >= timeout_us:
-                return None
-
-            # Brief delay before next check to avoid busy loop
-            await asyncio.sleep(0.001)  # 1ms polling interval
 
     async def _handle_rx_enter(self,node_id: str,data: bytes,writer: asyncio.StreamWriter,) -> None:
         try:
