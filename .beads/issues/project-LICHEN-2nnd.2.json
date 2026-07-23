@@ -2,6 +2,7 @@
   "id": "project-LICHEN-2nnd.2",
   "title": "Demo: Live mesh visualization",
   "description": "Build real-time visualization for the demo.\n\n## Displays\n\n### Topology view\n- Graph of all 500 nodes\n- Color by gateway affiliation\n- Animate packet flow\n- Highlight handoffs\n\n### Spectrum view\n- SDR waterfall showing all channels\n- Overlay: which channel is LICHEN using\n- Show TDMA slot activity\n\n### Stats dashboard\n- Nodes online: 500/500\n- Packets/sec: XXX\n- Packet loss: X.X%\n- Gateway load distribution\n\n## Tech stack\n\n- Backend: Python, collect from gateways via CoAP\n- Frontend: Web (D3.js or similar)\n- Display: Large monitor or projector at booth\n\n## Stretch goals\n\n- Mobile app: attendees see their node's stats\n- AR: point phone at node, see its connections",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "task",
