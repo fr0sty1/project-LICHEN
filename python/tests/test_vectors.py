@@ -486,6 +486,8 @@ def test_ccp16_sf_ema_load_factor_hash32_logic(desc: str, vector: dict) -> None:
     eui = bytes.fromhex(i["eui64"])
     h = _hash_32(eui + i["epoch"].to_bytes(4, "little"))
     assert h == o["hash_32"]
+    if "expected_hash" in o:
+        assert h == o["expected_hash"]
     snr_ema = i.get("snr_ema", i["snr_db"])
     load_factor = i.get("load_factor", 0.0)
     if i["density"] > 20 or snr_ema < -5.0:
