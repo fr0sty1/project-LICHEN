@@ -46,6 +46,9 @@ int lichen_rpl_dio_parse(struct lichen_rpl_dio *dio,
 	dio->preference = gmop & 0x7;
 	dio->dtsn = data[5];
 	dio->flags = data[6];
+	if (data[7] != 0) {
+		return LICHEN_RPL_ERR_BAD_OPT;
+	}
 	memcpy(dio->dodag_id, &data[8], 16);
 
 	return LICHEN_RPL_OK;
