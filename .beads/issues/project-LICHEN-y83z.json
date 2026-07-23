@@ -2,15 +2,15 @@
   "id": "project-LICHEN-y83z",
   "title": "[merge-conflict] worktree-worker16: coap_status.c",
   "notes": "Commit: 9685a6d15",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:19:33.226098214Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:19:03.713416407Z",
+  "updated_at": "2026-07-23T02:19:04.413734948Z",
   "started_at": "2026-07-23T02:16:42.016455226Z",
-  "lease_expires_at": "2026-07-23T02:21:42.016455226Z",
-  "heartbeat_at": "2026-07-23T02:16:42.016455226Z"
+  "closed_at": "2026-07-23T02:19:04.413734948Z",
+  "close_reason": "Cleaned duplicate includes, removed dead mutex and duplicate init check, fixed time_fields map count to match spec/Rust test oracle (base=2 for wall+age)"
 }
