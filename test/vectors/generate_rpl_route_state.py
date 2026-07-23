@@ -939,10 +939,10 @@ def build_document() -> dict:
 
     return {
         "vector_type": "rpl_route_state",
-        "format_version": 1,
+        "format_version": 2,
         "description": (
             "Canonical post-provenance RPL DAO route-state transitions from fixed "
-            "RFC 6550 option bytes and LICHEN Section 8.8 semantics."
+            "RFC 6550 option bytes and LICHEN Section 8.8 semantics (v2 schema)."
         ),
         "oracle": {
             "basis": (

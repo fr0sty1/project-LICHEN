@@ -1,8 +1,8 @@
 {
   "$schema": "./schema.json",
-  "format_version": 1,
+  "format_version": 2,
   "name": "deaddrop",
-  "description": "Independent test vectors for /deaddrop store-and-forward (LCI DTN). Derived exclusively from RFC 7252 CoAP examples, RFC 8613 OSCORE (cross-referenced from oscore.json), and RFC 8428 SenML. No LICHEN implementation used as oracle. Validates POST submissions with OSCORE ciphertext, GET pickups, rejection cases, and SenML message payloads.",
+  "description": "Independent test vectors for /deaddrop store-and-forward (LCI DTN). Derived exclusively from RFC 7252 CoAP examples, RFC 8613 OSCORE (cross-referenced from oscore.json), and RFC 8428 SenML. No LICHEN implementation used as oracle. Validates POST submissions with OSCORE ciphertext, GET pickups, rejection cases, and SenML message payloads. (v2 schema)",
   "spec": "https://www.rfc-editor.org/rfc/rfc7252 (CoAP), https://www.rfc-editor.org/rfc/rfc8613 (OSCORE), spec/12-apps.md §18.1.4 and project-LICHEN-2nnd.4.4",
   "vectors": [
     {

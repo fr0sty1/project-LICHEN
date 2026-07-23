@@ -1,7 +1,7 @@
 {
   "vector_type": "rpl_route_state",
-  "format_version": 1,
-  "description": "Canonical post-provenance RPL DAO route-state transitions from fixed RFC 6550 option bytes and LICHEN Section 8.8 semantics.",
+  "format_version": 2,
+  "description": "Canonical post-provenance RPL DAO route-state transitions from fixed RFC 6550 option bytes and LICHEN Section 8.8 semantics (v2 schema).",
   "oracle": {
     "basis": "RFC 6550 Sections 6.7.7-6.7.11, 7.2, and 9.9; spec/05-routing.md Sections 8.8-8.9",
     "scope": "Route-state processing after DAO provenance, authorization, and origin replay acceptance",

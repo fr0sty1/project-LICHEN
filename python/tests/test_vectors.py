@@ -860,7 +860,7 @@ def _rpl_messages_cases():
 
 def _dao_origin_signature_cases():
     doc = _load("dao_origin_signature.json")
-    assert doc["format_version"] in (1, 2)
+    assert doc["format_version"] == 2
     return [(v["name"], v) for v in doc["vectors"]]
 
 
