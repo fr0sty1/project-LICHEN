@@ -3,15 +3,15 @@
   "title": "to_ipv6 raises inconsistent exception types",
   "description": "File: python/src/lichen/ipv6/addr.py:33-47\n\nThe to_ipv6() function raises different exception types for different invalid inputs:\n\n```python\ndef to_ipv6(value: IPv6Address | str | bytes) -\u003e IPv6Address:\n    if isinstance(value, IPv6Address):\n        return value\n    if isinstance(value, bytes) and len(value) != 16:\n        raise AddrError(f'packed IPv6 address must be 16 bytes, got {len(value)}')\n    return IPv6Address(value)\n```\n\n- Invalid bytes length -\u003e AddrError (custom)\n- Invalid string format -\u003e ValueError (from IPv6Address)\n\nThis is inconsistent. Callers expecting to catch AddrError will miss ValueError exceptions from invalid string addresses.\n\nExample:\n```python\ntry:\n    addr = to_ipv6('invalid')\nexcept AddrError:\n    pass  # This won't catch the ValueError!\n```\n\nImpact: Inconsistent error handling makes the API harder to use correctly.\n\nFix: Wrap the IPv6Address constructor call in a try/except to convert ValueError to AddrError:\n```python\ntry:\n    return IPv6Address(value)\nexcept ValueError as e:\n    raise AddrError(str(e)) from e\n```\n\nTags: api, correctness, ipv6",
   "notes": "Commit: bc947f523",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:22:25.454378Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:25:13.379527747Z",
+  "updated_at": "2026-07-23T04:25:15.668103873Z",
   "started_at": "2026-07-23T04:24:19.166124117Z",
-  "lease_expires_at": "2026-07-23T04:29:19.166124117Z",
-  "heartbeat_at": "2026-07-23T04:24:19.166124117Z"
+  "closed_at": "2026-07-23T04:25:15.668103873Z",
+  "close_reason": "Fixed inconsistent exceptions in to_ipv6(); now always raises AddrError. Tests pass."
 }
