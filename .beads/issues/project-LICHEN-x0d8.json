@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-x0d8",
   "title": "[merge-conflict] integration/worker11-20260722: rf_health.rs",
-  "status": "in_progress",
+  "notes": "Commit: baadc2570",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:18:16.75285009Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:19:22.050517319Z",
+  "updated_at": "2026-07-23T00:20:57.537578276Z",
   "started_at": "2026-07-23T00:19:22.050517319Z",
-  "lease_expires_at": "2026-07-23T00:24:22.050517319Z",
-  "heartbeat_at": "2026-07-23T00:19:22.050517319Z"
+  "closed_at": "2026-07-23T00:20:57.537578276Z",
+  "close_reason": "Resolved merge conflict reference in RPL spec by merging CCP-16 RF metrics description with rf_health.rs:19 line reference for EMA alpha. Updated test vectors alignment and spec consistency. Commit baadc2570. All related codereview findings addressed."
 }

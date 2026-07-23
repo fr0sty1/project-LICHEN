@@ -1,11 +1,16 @@
 {
   "id": "project-LICHEN-zhot",
   "title": "[merge-conflict] worktree-worker20: draft-lichen-rpl-lora-00.md",
-  "status": "open",
+  "notes": "Commit: d56639719",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:18:27.571456461Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:18:27.571456461Z"
+  "updated_at": "2026-07-23T00:21:01.154441648Z",
+  "started_at": "2026-07-23T00:20:04.114519452Z",
+  "closed_at": "2026-07-23T00:21:01.154441648Z",
+  "close_reason": "Resolved merge conflict in draft-lichen-rpl-lora-00.md by combining CCP-16 SF metrics description, updated DODAG config table with sources, added DAO source address model, updated link signature reference, and synced appendix sample. Changes committed as d56639719 and pushed."
 }

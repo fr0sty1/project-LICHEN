@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-qz9j",
   "title": "[merge-conflict] worktree-worker16: rf_health.rs",
-  "status": "in_progress",
+  "notes": "Commit: 878574745 (resolved merge conflict markers and deduplicated EMA comments in RssiStats::update and SnrStats::update for CCP-15 consistency)",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:18:24.407397308Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:19:11.815395252Z",
+  "updated_at": "2026-07-23T00:20:25.371680168Z",
   "started_at": "2026-07-23T00:19:11.815395252Z",
-  "lease_expires_at": "2026-07-23T00:24:11.815395252Z",
-  "heartbeat_at": "2026-07-23T00:19:11.815395252Z"
+  "closed_at": "2026-07-23T00:20:25.371680168Z",
+  "close_reason": "Resolved merge conflict in rf_health.rs by unifying EMA documentation comments; committed to worktree-worker16"
 }

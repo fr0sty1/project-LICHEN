@@ -1,11 +1,16 @@
 {
   "id": "project-LICHEN-fyt2",
   "title": "[merge-conflict] worktree-worker19: rf_health.rs",
-  "status": "open",
+  "notes": "Commit: b2d89f2d5",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:18:26.482740747Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:18:26.482740747Z"
+  "updated_at": "2026-07-23T00:21:19.468445512Z",
+  "started_at": "2026-07-23T00:19:37.680726025Z",
+  "lease_expires_at": "2026-07-23T00:24:37.680726025Z",
+  "heartbeat_at": "2026-07-23T00:19:37.680726025Z"
 }

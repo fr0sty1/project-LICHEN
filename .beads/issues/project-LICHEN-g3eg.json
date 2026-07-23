@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-g3eg",
   "title": "[merge-conflict] worktree-worker18: generate.py",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:18:25.969988858Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:18:25.969988858Z"
+  "updated_at": "2026-07-23T00:21:21.312629994Z",
+  "started_at": "2026-07-23T00:21:21.312629994Z",
+  "lease_expires_at": "2026-07-23T00:26:21.312629994Z",
+  "heartbeat_at": "2026-07-23T00:21:21.312629994Z"
 }

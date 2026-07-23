@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-i6gj",
   "title": "[merge-conflict] worktree-worker19: schema.json",
-  "status": "in_progress",
+  "notes": "Commit: bfefcc56f",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:10:50.756898713Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:17:25.796363021Z",
+  "updated_at": "2026-07-23T00:20:24.669965696Z",
   "started_at": "2026-07-23T00:17:25.796363021Z",
-  "lease_expires_at": "2026-07-23T00:22:25.796363021Z",
-  "heartbeat_at": "2026-07-23T00:17:25.796363021Z"
+  "closed_at": "2026-07-23T00:20:24.669965696Z",
+  "close_reason": "Fixed merge conflict in spec/03-addressing.md and reconciled schema.json references for compact_cot_vector and CCP vectors. Cleaned conflict markers, merged addressing text with collision prob and test vector notes. rf_health.rs already fixed in prior commit."
 }
