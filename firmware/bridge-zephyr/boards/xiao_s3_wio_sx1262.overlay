@@ -21,6 +21,7 @@
 		zephyr,shell-uart = &usb_serial;
 	};
 
+
 	aliases {
 		led0 = &yellow_led;
 		lora0 = &lora;
