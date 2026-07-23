@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-9yiu",
   "title": "[merge-conflict] worktree-worker1: heltec_wireless_tracker.overlay",
-  "notes": "Commit: 092994215",
+  "notes": "Commit: 5b122cd",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:41:02.188080186Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:17:08.174795698Z",
+  "updated_at": "2026-07-23T04:18:29.596026563Z",
   "started_at": "2026-07-23T03:45:51.232278257Z",
   "closed_at": "2026-07-23T03:48:03.623815994Z",
   "close_reason": "Synced heltec_wireless_tracker.overlay stale comment to canonical version from project-LICHEN-2u26.4 resolving merge conflict divergence across worktrees. Verified identical to main after edit.",
