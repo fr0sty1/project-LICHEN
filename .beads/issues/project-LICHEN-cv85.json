@@ -2,15 +2,15 @@
   "id": "project-LICHEN-cv85",
   "title": "[merge-conflict] worktree-worker16: coap_status.c",
   "notes": "Commit: 92e7da074",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:20:40.852105704Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:32:48.777387112Z",
+  "updated_at": "2026-07-23T02:32:52.798208265Z",
   "started_at": "2026-07-23T02:31:07.613570505Z",
-  "lease_expires_at": "2026-07-23T02:36:07.613570505Z",
-  "heartbeat_at": "2026-07-23T02:31:07.613570505Z"
+  "closed_at": "2026-07-23T02:32:52.798208265Z",
+  "close_reason": "fixed map_count=5 in lichen_coap_encode_status_cbor (was 6; matches 5 base keys + batteries). coap_status.c:302. Resolves merge conflict from worker16 convergence."
 }
