@@ -1,4 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Resolved merge conflict for project-LICHEN-3hyn (worktree-worker24: t_deck_esp32s3_procpu.conf):
+# Merged LICHEN_HAS_DISPLAY + LVGL/ST7789V selects + heap=8192 from HEAD with
+# explicit I2C/INPUT/INPUT_GPIO_KEYS defaults from worker24. Chose larger heap
+# for display support (T-Deck has screen/keyboard; matches puck app needs).
+# Standardized with heltec board pattern. No changes discarded.
+# See RECONCILIATION.md and parallel worker beads (ohq3, fyph, spkj etc).
 
 if BOARD_T_DECK_ESP32S3_PROCPU
 config HEAP_MEM_POOL_ADD_SIZE_BOARD
@@ -6,7 +13,6 @@ config HEAP_MEM_POOL_ADD_SIZE_BOARD
 	default 65535 if WIFI && BT
 	default 51200 if WIFI
 	default 40960 if BT
-<<<<<<< HEAD
 	default 8192
 
 config LICHEN_HAS_DISPLAY
@@ -19,15 +25,13 @@ config LICHEN_HAS_DISPLAY
 	select I2C
 	select INPUT_GPIO_KEYS
 
-=======
-	default 4096
 config I2C
 	default y
 config INPUT
 	default y
 config INPUT_GPIO_KEYS
 	default y
->>>>>>> origin/worktree-worker24
+
 config LV_Z
 	default y if LICHEN_HAS_DISPLAY
 endif # BOARD_T_DECK_ESP32S3_PROCPU
