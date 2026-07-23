@@ -958,7 +958,7 @@ static int decompress_coap(const uint8_t *data, size_t data_len,
 	 * - Rule 0 (link-local): 8 + 64 + 64 + 16 + 16 + 2 + 4 + 8 + 16 = 198 bits = 25 bytes
 	 * - Rule 1 (global):     8 + 128 + 128 + 16 + 16 + 2 + 4 + 8 + 16 = 326 bits = 41 bytes
 	 */
-	size_t min_residue = (rule_id == SCHC_RULE_LINK_LOCAL_COAP || rule_id == SCHC_RULE_LINK_LOCAL_OSCORE) ? 25 : 41;
+	size_t min_residue = 25;
 	if (data_len < 1 + min_residue) {
 		return SCHC_ERR_TOO_SHORT;
 	}

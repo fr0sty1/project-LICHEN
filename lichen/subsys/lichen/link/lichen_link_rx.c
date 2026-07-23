@@ -178,7 +178,7 @@ static int authenticate_inner_payload(struct lichen_link_rx_ctx *ctx,
 		goto cleanup;
 	}
 
-	if (!parsed.encrypted && !parsed.signature_present) {
+	if (!parsed.encrypted) {
 		ret = verify_mic(ctx, &parsed, frame, frame_len);
 		if (ret < 0) {
 			ret = -LICHEN_EAUTH;
@@ -208,7 +208,7 @@ static int authenticate_inner_payload(struct lichen_link_rx_ctx *ctx,
 	auth->info.addr_mode = parsed.addr_mode;
 	auth->info.signature_present = parsed.signature_present;
 	auth->info.encrypted = parsed.encrypted;
-	auth->replay_eligible = true;
+	auth->replay_eligible = parsed.signature_present;
 	ret = 0;
 
 cleanup:
