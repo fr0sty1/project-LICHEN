@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-d6q7",
   "title": "[merge-conflict] worktree-worker24: lichend.rs",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:59:41.475727515Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:59:41.475727515Z"
+  "updated_at": "2026-07-23T00:11:18.942981067Z",
+  "started_at": "2026-07-23T00:11:18.942981067Z",
+  "lease_expires_at": "2026-07-23T00:16:18.942981067Z",
+  "heartbeat_at": "2026-07-23T00:11:18.942981067Z"
 }

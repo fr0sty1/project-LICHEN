@@ -39,3 +39,4 @@ A: Yes. The 500-node test included mobility, gateway handoff, multi-channel TDMA
 A: Reflash your Meshtastic hardware today. Code, specs, and tests are on GitHub. Join the next event deployment or run a local mesh. All contributions under the project licenses.
 
 **What is a PRFAQ?** A PRFAQ (Press Release / FAQ) is an Amazon-originated product planning technique. It starts with a fictional press release written as if the product has already launched successfully, forcing clarity on customer benefit and desired outcome. The FAQ section then anticipates hard internal and external questions. Writing the press release first ensures the team aligns on what success looks like before committing to implementation.
+

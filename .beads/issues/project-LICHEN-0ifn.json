@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-0ifn",
   "title": "[merge-conflict] worktree-worker20: xiao_s3_wio_sx1262.overlay",
-  "status": "in_progress",
+  "notes": "Commit: 2b1af4f",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:05:09.312399149Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:10:28.944124746Z",
+  "updated_at": "2026-07-23T00:12:23.287295946Z",
   "started_at": "2026-07-23T00:10:28.944124746Z",
-  "lease_expires_at": "2026-07-23T00:15:28.944124746Z",
-  "heartbeat_at": "2026-07-23T00:10:28.944124746Z"
+  "closed_at": "2026-07-23T00:12:23.287295946Z",
+  "close_reason": "Standardized retirement note for xiao_s3_wio_sx1262 overlay/conf to resolve documented merge conflict divergence across worktrees; also resolved EMA update conflict in rf_health.rs using saturating arithmetic consistent with worker20 implementation. Verified no remaining markers in edited files. Commit 2b1af4f"
 }

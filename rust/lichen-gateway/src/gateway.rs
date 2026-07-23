@@ -196,4 +196,13 @@ mod tests {
         let mut gw = test_gateway();
         assert!(gw.mesh_to_upstream(&[0x15, 0x01]).is_none());
     }
+
+    #[test]
+    fn yggdrasil_cross_mesh_routing() {
+        let gw = test_gateway();
+        let local = ll(1);
+        let ygg_cross = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2];
+        assert!(gw.is_local_mesh(&local.0));
+        assert!(!gw.is_local_mesh(&ygg_cross));
+    }
 }

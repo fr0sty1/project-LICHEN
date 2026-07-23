@@ -195,9 +195,10 @@ impl NonVolatile for MockNonVolatile {
     fn read(&self, key: &str, buf: &mut [u8]) -> Option<usize> {
         let data = self.data.lock().unwrap();
         data.get(key).map(|v| {
-            let len = v.len().min(buf.len());
-            buf[..len].copy_from_slice(&v[..len]);
-            len
+            let stored = v.len();
+            let n = stored.min(buf.len());
+            buf[..n].copy_from_slice(&v[..n]);
+            stored
         })
     }
 
