@@ -6,9 +6,10 @@ import asyncio
 import random
 from collections.abc import Awaitable, Callable
 
-"""Trickle timer (RFC 6206) for RPL DIO pacing. Deterministic state machine
-driven by explicit clock (ms). Async run() loop provided for simulator and
-production use with injectable clock.
+"""Trickle timer (RFC 6206) for RPL DIO pacing per appendix-rpl.md
+and constants.toml (imax_doublings=8 for 2^20 ms ceiling). Deterministic
+state machine driven by explicit clock (ms). Async run() loop for simulator
+and production with injectable clock.
 """
 
 # rng() returns a float in [0, 1); now_fn() returns a time in milliseconds.
