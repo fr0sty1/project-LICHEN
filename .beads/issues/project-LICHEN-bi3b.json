@@ -2,6 +2,7 @@
   "id": "project-LICHEN-bi3b",
   "title": "oscore: MemorySecurityContext may not implement all required aiocoap interfaces",
   "description": "File: python/src/lichen/crypto/oscore.py\nLines: 45\n\nMemorySecurityContext inherits from:\n```python\nclass MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):\n```\n\nIt implements:\n- new_sequence_number() - line 136-150\n- post_seqnoincrease() - line 152-154\n- Initializes via derive_keys() from SecurityContextUtils\n\nHowever, depending on aiocoap version, the CanProtect and CanUnprotect protocols may require additional methods or properties that are not explicitly implemented:\n\n1. No protect() or unprotect() methods - relies on SecurityContextUtils\n2. No context_id or kid_context properties\n3. No recipient_key, sender_key, common_iv directly exposed (set by derive_keys)\n\nIf aiocoap updates its OSCORE interfaces, this class may break silently. The class should either:\n1. Document which aiocoap version it's compatible with\n2. Add explicit abstract method implementations to catch interface changes\n\nImpact: Potential silent breakage on aiocoap updates. Hard to diagnose integration failures.",
+  "notes": "Commit: 3a67481c0",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:19:08.895685Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:03:41.00430636Z",
+  "updated_at": "2026-07-23T04:07:13.084359322Z",
   "started_at": "2026-07-23T04:03:41.00430636Z",
   "lease_expires_at": "2026-07-23T04:08:41.00430636Z",
   "heartbeat_at": "2026-07-23T04:03:41.00430636Z"
