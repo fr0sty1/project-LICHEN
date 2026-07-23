@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-pzbh",
   "title": "[merge-conflict] worktree-worker17: heltec_wireless_tracker.overlay",
+  "notes": "Commit: 733bb04 (updated resolution comment in heltec_wireless_tracker.overlay to include pzbh/worktree-worker17 per consolidation pattern; push to origin/integration/worker2-20260722 failed due to divergence (2359 remote commits), local commit only per prior beads)",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:42:09.270610417Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:17:48.120021502Z",
+  "updated_at": "2026-07-23T04:18:18.510209732Z",
   "started_at": "2026-07-23T04:17:48.120021502Z",
   "lease_expires_at": "2026-07-23T04:22:48.120021502Z",
   "heartbeat_at": "2026-07-23T04:17:48.120021502Z"
