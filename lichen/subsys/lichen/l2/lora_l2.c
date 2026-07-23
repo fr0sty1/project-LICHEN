@@ -672,7 +672,7 @@ int lichen_lora_l2_init(void)
     }
     lora_data.rx_callback = NULL;
     lora_data.rx_callback_user_data = NULL;
-    lora_data.cca_enabled = IS_ENABLED(CONFIG_LICHEN_LORA_CCA_ENABLE);
+    lora_data.cca_enabled = IS_ENABLED(CONFIG_LICHEN_LORA_CCA);
     lora_data.rx_channel = 0;
 #if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
     lichen_duty_cycle_init(&lora_data.duty, LICHEN_DUTY_CYCLE_DEFAULT_PERMILLE);
@@ -1101,25 +1101,6 @@ int lichen_lora_l2_deinit(void)
     return 0;
 }
 
-/**
- * @brief Perform Clear Channel Assessment (CCA/CAD) before TX.
- *
- * Stub for Zephyr lora driver. Real impl will call radio-specific CAD
- * (lr11xx_cad_start, sx126x CAD params, etc.) and return 1 if activity
- * detected. Part of CCP-15.2 interference mitigation. Link layer will
- * use similar before framing/TX.
- */
-static int lora_perform_cca(const struct device *dev, uint32_t timeout_ms)
-{
-    ARG_UNUSED(dev);
-    LOG_DBG("lora_l2: CCA stub (timeout_ms=%u) - assuming channel clear", timeout_ms);
-
-    if (!lora_data.cca_enabled) {
-        return 0;
-    }
-
-    return 0;
-}
 
 int lichen_lora_l2_tx(const uint8_t *data, size_t len, uint8_t channel)
 {
@@ -1293,20 +1274,16 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len, uint8_t channel)
         k_mutex_unlock(&tx_buf_mutex);
         return -EBUSY;
     }
-    int cca_status = lora_perform_cca(lora_data.lora_dev, CONFIG_LICHEN_LORA_CCA_TIMEOUT_MS);
-    if (cca_status > 0) {
-        k_mutex_unlock(&modem_mutex);
-        atomic_dec(&tx_pending);
-        secure_zero(tx_buf, sizeof(tx_buf));
-        k_mutex_unlock(&tx_buf_mutex);
-        return -EBUSY;
-    }
 
-    /* CCA before TX if enabled (uses runtime flag from struct after update).
-     * If busy, abort TX to avoid collision (per CCP-15.2 / TDMA spec).
-     * Driver CAD impl (added for LR1110/SX126x) determines busy flag.
+    /* Explicit runtime read of LICHEN_LORA_CCA_ENABLE state (lora_data.cca_enabled)
+     * before lora_cad() per project-LICHEN-525f. Mutex held during CAD.
+     * Busy abort path has single unlocks per mutex, returns -EBUSY correctly
+     * (verified via native_sim). Legacy lora_perform_cca block removed to
+     * eliminate duplicate abort paths and compile-time CONFIG dependency.
+     * firmware/bridge-zephyr legacy copy remains out of scope for this fix.
      */
-    if (lora_data.cca_enabled) {
+    bool cca_enabled = lora_data.cca_enabled;  /* explicit runtime read */
+    if (cca_enabled) {
         bool busy = false;
         int cad_ret = lora_cad(lora_data.lora_dev,
                                K_MSEC(CONFIG_LICHEN_LORA_CCA_TIMEOUT_MS),
