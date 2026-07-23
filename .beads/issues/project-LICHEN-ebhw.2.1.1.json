@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-ebhw.2.1.1",
+  "title": "Add ygg_addr_from_pubkey(pubkey: \u0026[u8; 32]) -\u003e [u8;16] to lichen-core::addr.rs using SHA-512 + IID",
+  "description": "Implement function per spec/06-security.md and test/vectors/yggdrasil-derivation.json. Must exactly match current Rust and C output. Use existing sha2 dep. Add doc comments referencing vectors.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:27:26.0860149Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:27:26.0860149Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ebhw.2.1.1",
+      "depends_on_id": "project-LICHEN-ebhw.2.1",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:27:26.230022009Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
