@@ -44,7 +44,16 @@ class RreqResult:
 
 @dataclass
 class RrepResult:
-    """Outcome of processing an RREP."""
+    """Outcome of processing an RREP.
+
+    Note on forward_next_hop (project-LICHEN-f9mx): The next_hop is snapshotted
+    from cache.lookup() at processing time. Due to the side-effect-free design,
+    between RrepResult return and caller transmission, the route may be removed
+    by expire_old(), RERR processing, or replaced by a better route. Caller
+    should re-validate (via cache.lookup or neighbor liveness) before tx.
+    This is accepted limitation of pull-based architecture prioritizing
+    testability/determinism over atomicity.
+    """
 
     delivered: bool = False
     forward: RREP | None = None
@@ -154,10 +163,8 @@ class LoadngRouter:
         from_neighbor = to_ipv6(from_neighbor)
         install_hops = rrep.hop_count + 1
 
-        # Forward gradient toward the sought node (the RREP's originator).
-        # Only install if no existing gradient or this RREP has newer seq_num.
         existing = self.gradient.lookup(rrep.originator, now)
-        if existing is None or _seq_is_newer(rrep.seq_num, existing.seq_num):
+        if existing is None or _is_seq_fresher(existing.seq_num, rrep.seq_num):
             self.gradient.update(
                 GradientEntry(
                     destination=rrep.originator,
