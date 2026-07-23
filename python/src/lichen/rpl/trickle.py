@@ -87,7 +87,10 @@ class TrickleTimer:
         self._begin_interval(now)
 
     def reset(self, now: int) -> None:
-        if self._generation == 0 or self.interval != self.imin:
+        """Handle inconsistency: if not started or I > Imin set I=Imin
+        and restart (RFC 6206 §4.2 rule 6). No-op if already at Imin.
+        """
+        if self._generation == 0 or self.interval > self.imin:
             self.interval = self.imin
             self._begin_interval(now)
 
