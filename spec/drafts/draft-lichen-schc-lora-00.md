@@ -227,15 +227,28 @@ For diagnostic and reachability testing.
 
 ### 4.5. Rule 3: RPL DIO (link-local)
 
-For DODAG formation, maintenance, and prefix distribution (including PIO). Matches `RPL_DIO_RULE` in `rust/lichen-schc/src/rules.rs:480` and `constants.toml:32` (ICMPv6 type=155, code=1). See appendix-schc.md §A.4 for RPL options (TLV) compression details and FieldDescriptor examples (e.g. Pad1 per RFC 8724 §10).
+For DODAG formation, maintenance, and prefix distribution (including PIO). Matches `RPL_DIO_RULE` in `rust/lichen-schc/src/rules.rs:480` and `constants.toml:32` (ICMPv6 type=155, code=1). 
 
-**Compressed size:** 8 bytes residue + options tail
+RPL options (TLVs) use MATCH_MAPPING on Type (prioritized: Pad1=0, PIO(type=3)=1, DAG Metric=2, Target=5, Transit=6, Origin-Sig, SCHC-Version). For Prefix Info Option (type 3):
+
+| Field | TV | MO | CDA | Notes |
+|-------|----|----|-----|-------|
+| RPL.Option.Type | [0,3,2,5,6,...] | match-mapping | mapping-sent | 3-bit index for common types |
+| RPL.Option.Len | 30 | equal | not-sent | PIO fixed length |
+| PIO.PrefixLen | 64 | equal | not-sent | Common /64 |
+| PIO.Flags | 0xC0 | equal | not-sent | L+A flags |
+| PIO.Valid/Preferred | - | ignore | value-sent | Lifetimes |
+| PIO.Prefix | - | msb(64) | lsb(64) | IID part compressible |
+
+See appendix-schc.md §A.4 and test/vectors/schc_compression.json for full tables. Reduces options from 20-40B to ~8-15B.
+
+**Compressed size:** ~12-20 bytes total (base + compressed options)
 
 ### 4.6. Rule 4: RPL DAO (routable multi-hop)
 
-Uses ULA source (fd00::/8) for end-to-end preservation across relays (RPL Non-Storing mode). Link-local forbidden for forwarded DAO. Matches `RPL_DAO_RULE`. See appendix-schc.md §A.4 for options handling.
+Uses ULA source (fd00::/8) for end-to-end preservation across relays (RPL Non-Storing mode). Link-local forbidden for forwarded DAO. Matches `RPL_DAO_RULE`. Options use same MATCH_MAPPING as DIO.
 
-**Compressed size:** 6 bytes residue + options tail
+**Compressed size:** ~10-18 bytes total (base + compressed options)
 
 ### 4.7. Rule 7: MQTT-SN
 
@@ -351,11 +364,9 @@ parameters, timers, retry limit, and buffer limits listed in Section 5.1.
    8 bit  1b   6 bit   32 bit    1-187 bytes     1 bit
 ```
 
-Rule 255 is REQUIRED for unknown packets, version mismatches, or as fallback. It ensures interoperability during rule set transitions. CoAP header compression follows RFC 8824 for applicable rules (0/1/5/6/7). 
+Rule 255 is REQUIRED for unknown packets, version mismatches, or as fallback. It ensures interoperability during rule set transitions. CoAP header compression follows RFC 8824 for applicable rules (0/1/5/6/7). RPL options use prioritized MATCH_MAPPING on Type (see §4.5 and appendix-schc.md §A.4 for PIO(type=3) example reducing 20-40B overhead).
 
-RPL options compression uses MATCH_MAPPING on the Type field with prioritized mappings for common DIO/DAO options (Pad1, PIO, DAG Metric Container, etc.; see `rust/lichen-schc/src/rules.rs`, `spec/appendix-schc.md`, and `test/vectors/schc_compression.json`). 
-
-The complete normative rule set (including Rules 0-7 and 255), Field Descriptors, matching operators, CDAs, constants (m=1, n=6, RCS=CRC-32, timeouts, WINDOW_SIZE=63, tile sizes), mapping tables, and bit-exact test vectors serving as the canonical independent oracle for all implementations (Rust `lichen-schc`, C/Zephyr, Python) are maintained in `spec/appendix-schc.md` (primary reference), `rust/lichen-schc/src/rules.rs`, `constants.toml`, `lichen/subsys/lichen/schc/`, and `test/vectors/schc_compression.json` / `schc_fragment.json`. All implementations MUST produce identical output to these vectors. (Merge conflicts from worker5, worker8, worker24, worker18 and related parallel worktrees resolved; all duplicates removed; test vector xrefs, interop requirements, cross-references to lichen-schc/lib.rs and rules consolidated. CC-BY-4.0)
+The complete normative rule set (including Rules 0-7 and 255), Field Descriptors, matching operators (MATCH_MAPPING for RPL options), CDAs, constants (m=1, n=6, RCS=CRC-32, timeouts, WINDOW_SIZE=63, tile sizes), mapping tables, and bit-exact test vectors serving as the canonical independent oracle for all implementations (Rust `lichen-schc`, C/Zephyr, Python) are maintained in `spec/appendix-schc.md` (primary reference), `rust/lichen-schc/src/rules.rs`, `constants.toml`, `lichen/subsys/lichen/schc/`, and `test/vectors/schc_compression.json` / `schc_fragment.json`. All implementations MUST produce identical output to these vectors. (Merge conflicts from worker5, worker8, worker24, worker18 and related parallel worktrees resolved; all duplicates removed; test vector xrefs, interop requirements, cross-references to lichen-schc/lib.rs and rules consolidated. CC-BY-4.0)
 
 - **W:** Window bit (alternates 0/1)
 - **FCN:** Fragment Counter (63 down to 0, then All-1)
