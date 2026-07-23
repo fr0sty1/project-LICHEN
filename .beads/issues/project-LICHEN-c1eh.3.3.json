@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-c1eh.3.3",
+  "title": "coap_dtn.c: update confessions_post rate limit to use hash_from_iid(sender_iid) instead of sender_iid[7]",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:19:44.087403651Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:19:44.087403651Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-c1eh.3.3",
+      "depends_on_id": "project-LICHEN-c1eh.3",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:19:44.224724914Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
