@@ -85,7 +85,10 @@ class AnnounceMessage:
         )
 
     def to_bytes(self) -> bytes:
-        """Serialize to wire format per spec 9.2/CCP-9 (type, rx_channel/flags, hop, seq, iid, pubkey, sig, app_data)."""
+        """Serialize to wire format per spec 9.2/CCP-9.
+
+        Layout: type, rx_channel/flags (byte 1), hop, seq, iid, pubkey, sig, app_data.
+        """
         if len(self.signature) != SIGNATURE_LENGTH:
             raise AnnounceError(
                 f"cannot serialize unsigned announce (signature len "
