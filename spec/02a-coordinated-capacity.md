@@ -97,7 +97,7 @@ Note: All operators are spelled out (OR, NOT, MOD, XOR) for language-agnostic IE
 
 ### Density Rules Rationale
 
-SF10 is the REQUIRED default because it balances sensitivity (~ -137 dBm at 125 kHz) and airtime for typical mesh density per appendix-design-rationale.md and independent sim oracle in ccp16.json vectors. Density-aware adaptation prioritizes capacity (SF9 in low density <5 + good SNR >8 dB to reduce airtime) vs robustness (SF11/12 in density >8 or poor SNR or high load_factor to lower PER). EMA on SNR (updated via now()) integrates with load_factor override from gateway DIOs. Updates MUST be propagated in RPL metric container. Root optimizer uses reported neighbor_count and channel_util to minimize collisions.
+SF10 (or gateway-assigned SF) is the REQUIRED baseline per appendix-design-rationale.md §7.1. The density-aware adaptive_sf_select overrides this default **only** when one of the explicit IF thresholds is met (density >8, snr_ema<0, load_factor>0.8 for robustness SF11; density<5+snr>8 for capacity SF9; etc.); otherwise RETURN 10. This resolves the prior rationale contradiction and matches the table/pseudocode in 02-physical-link.md:3.5 and all ccp16.json vectors exactly.
 
 ### adaptive_sf_select Pseudocode
 
