@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-eer0",
+  "title": "CoAP codec vs spec review findings",
+  "description": "Compare rust/lichen-coap/src/codec.rs to spec/07-transport-app.md, appendix-schc.md, drafts/* and RFC 7252. Identified missing error variant, content-format table mismatch, blockwise vs NOT RECOMMENDED, duplicated parser, missing consts. File as task for spec update and codec fix. See summary with line refs.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T03:01:39.074499159Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T03:01:39.074499159Z"
+}
