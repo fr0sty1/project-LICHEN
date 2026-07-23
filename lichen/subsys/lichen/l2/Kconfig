@@ -202,7 +202,7 @@ config LICHEN_SF_ASSIGNMENT_ENABLED
 	depends on LICHEN_LORA_L2
 	default n
 	help
-	  Parse ASSIGNED_SF from DIO (per closed bead 6mka.2). Fall back to
+	  Parse ASSIGNED_SF from DIO. Fall back to
 	  hash(IID) or fixed SF10. Required for multi-SF gateway support.
 
 config LICHEN_GATEWAY_MULTI_SF
@@ -228,7 +228,7 @@ config LICHEN_LORA_CCA
 	default y
 	depends on LICHEN_LORA_L2
 	help
-	  Perform CAD (LoRa CCA) before lora_send() per CCP-15 (project-LICHEN-da2q).
+	  Perform CAD (LoRa CCA) before lora_send() per CCP-15.
 	  Reduces collisions in dense meshes. Requires radio driver CAD support.
 	  Default y but gated by driver capabilities (sim/renode may stub to always-clear).
 
