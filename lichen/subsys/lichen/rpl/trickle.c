@@ -8,6 +8,7 @@
  * Aligned reset() guard with Rust and Python (project-LICHEN-67ca).
  * Ported from rust/lichen-rpl/src/trickle.rs with consistent init edge case.
  * Resolved merge conflict from worktree-worker1 (project-LICHEN-otzx).
+ * Resolved merge conflict from integration/worker2-20260722 (project-LICHEN-h7y8).
  */
 
 #include <lichen/rpl_trickle.h>
