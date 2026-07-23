@@ -2,15 +2,15 @@
   "id": "project-LICHEN-ep0s",
   "title": "[merge-conflict] worktree-worker24: hal.c",
   "notes": "Commit: 3e6499b3c",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:16:21.163195948Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:36:24.499928879Z",
+  "updated_at": "2026-07-23T00:36:26.849311142Z",
   "started_at": "2026-07-23T00:18:58.349781369Z",
-  "lease_expires_at": "2026-07-23T00:23:58.349781369Z",
-  "heartbeat_at": "2026-07-23T00:18:58.349781369Z"
+  "closed_at": "2026-07-23T00:36:26.849311142Z",
+  "close_reason": "Resolved merge conflicts in HAL, rf_health EMA, specs, gateway, and related files across worktrees. Rebased and cleaned markers per CCP-15, PRFAQ, initialization order. Tests pass where run."
 }
