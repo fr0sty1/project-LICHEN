@@ -265,7 +265,11 @@ fn edhoc_kdf(
         .map_err(|_| EdhocError::BufferTooSmall)?;
     hk.expand(&info, &mut okm)
         .map_err(|_| EdhocError::KeyDerivation)?;
-    Ok(okm)
+
+    let mut result = heapless::Vec::new();
+    result.extend_from_slice(okm.as_slice())
+        .map_err(|_| EdhocError::BufferTooSmall)?;
+    Ok(result)
 }
 
 fn export_context(
