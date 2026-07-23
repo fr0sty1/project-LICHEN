@@ -1,0 +1,24 @@
+:name: ESP32-LICHEN
+:description: Complete ESP32 Renode model for LICHEN TTGO LoRa32 (SX1276). Loads ELFs, reaches main/CoAP markers, TX/RX works with lichen-sim via SPI3 bridge.
+
+$name?="ESP32-LICHEN"
+$simPort?=5555
+
+using sysbus
+
+# SX127x.cs is loaded by ttgo_lora32.resc (do not duplicate here per "do not touch other files")
+
+mach create $name
+machine LoadPlatformDescription $ORIGIN/esp32_lichen.repl
+
+# UART0 console (visible in Renode)
+showAnalyzer uart0
+
+# 240 MHz system clock (ESP32 max)
+cpu0 PerformanceInMips 240
+
+macro reset
+"""
+    sysbus LoadELF $elf
+"""
+runMacro $reset
