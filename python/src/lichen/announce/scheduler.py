@@ -163,7 +163,7 @@ class AnnounceScheduler:
             pubkey=msg.pubkey,
             seq_num=msg.seq_num,
             hop_count=msg.hop_count,
-            rx_channel=msg.rx_channel,
+            current_channel=msg.current_channel,
             signature=signature,
             app_data=msg.app_data,
         )

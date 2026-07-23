@@ -156,12 +156,12 @@ class TestSignedData:
         signed = msg.signed_data()
         assert signed[40:42] == bytes([0x12, 0x34])
 
-    def test_signed_data_includes_rx_channel_at_offset(self):
+    def test_signed_data_includes_current_channel_at_offset(self):
         msg = AnnounceMessage(
             originator_iid=b"\x01\x02\x03\x04\x05\x06\x07\x08",
             pubkey=b"\x00" * 32,
             seq_num=0x1234,
-            rx_channel=5,
+            current_channel=5,
         )
         signed = msg.signed_data()
         expected = (
@@ -174,8 +174,6 @@ class TestSignedData:
         assert signed[42] == 5
 
     def test_signed_data_includes_app_data(self):
-        """signed_data() includes app_data."""
-        # Why test: App data must be authenticated to prevent injection.
         app_data = b"capabilities:sensor,relay"
         msg = AnnounceMessage(
             originator_iid=bytes(8),
@@ -218,12 +216,12 @@ class TestSignedData:
         )
         assert msg1.signed_data() == msg2.signed_data()
 
-    def test_signed_data_includes_rx_channel(self):
+    def test_signed_data_includes_current_channel(self):
         msg = AnnounceMessage(
             originator_iid=bytes(8),
             pubkey=bytes(32),
             seq_num=0,
-            rx_channel=5,
+            current_channel=5,
         )
         signed = msg.signed_data()
         assert signed[42:43] == bytes([5])
@@ -299,7 +297,7 @@ class TestSerialization:
             pubkey=bytes(32),
             seq_num=0xABCD,
             signature=bytes(SIGNATURE_LENGTH),
-            rx_channel=0,
+            current_channel=0,
         )
         wire = msg.to_bytes()
         assert wire[3:5] == bytes([0xAB, 0xCD])
@@ -310,7 +308,7 @@ class TestSerialization:
             pubkey=bytes(32),
             seq_num=0,
             signature=b"",
-            rx_channel=0,
+            current_channel=0,
         )
         with pytest.raises(AnnounceError, match="cannot serialize unsigned"):
             msg.to_bytes()
@@ -396,7 +394,6 @@ class TestHopCount:
 
 class TestKnownVectors:
     def test_known_wire_format(self):
-        """Verify exact wire format for a known message (CCP-9 with rx_channel)."""
         msg = AnnounceMessage(
             originator_iid=bytes([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]),
             pubkey=bytes([0xAA] * 32),
@@ -405,23 +402,15 @@ class TestKnownVectors:
             flags=7,
             signature=bytes([0xBB] * SIGNATURE_LENGTH),
             app_data=b"",
-            rx_channel=7,
+            current_channel=7,
         )
         wire = msg.to_bytes()
 
-        # Check header
         assert wire[0] == ANNOUNCE_TYPE
         assert wire[1] == 7
         assert wire[2] == 3
         assert wire[3:5] == bytes([0x12, 0x34])
-
-        # Check IID position
         assert wire[5:13] == bytes([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08])
-
-        # Check pubkey position
         assert wire[13:45] == bytes([0xAA] * 32)
-
-        # Check signature position
         assert wire[45:93] == bytes([0xBB] * SIGNATURE_LENGTH)
-
         assert len(wire) == 93
