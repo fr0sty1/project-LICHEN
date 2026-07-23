@@ -3,15 +3,15 @@
   "title": "crash_info: potential false positive on first power-on boot",
   "description": "File: lichen/subsys/lichen/l2/crash_info.c\nLines: 52-70 (crash_info_check_and_clear function)\n\nOn the very first power-on boot (not warm reset), the __noinit crash_info structure contains uninitialized garbage values. There is a 1-in-2^32 probability that this garbage could match CRASH_MAGIC (0xDEAD0001), causing a false 'previous crash' log message with garbage data.\n\nCurrent behavior:\n1. First boot: __noinit RAM = garbage\n2. crash_info_check_and_clear() checks if crash_info.magic == CRASH_MAGIC\n3. If garbage matches (1 in ~4 billion), logs a false crash warning with garbage reason/location/extra\n\nWhile the probability is extremely low, it could cause confusion during initial deployment debugging.\n\nPotential fix options:\n1. Accept the 1-in-2^32 risk (current behavior, probably acceptable)\n2. Add a secondary magic/checksum over the crash_info fields\n3. Use a pattern like 0xDEADxxxx where xxxx is a CRC of the other fields\n\nSeverity: P4 (Low) - The probability is negligible for most deployments, but documenting this edge case is valuable.",
   "notes": "Commit: 91d54c589",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:47:16.241426Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:24:24.438421595Z",
+  "updated_at": "2026-07-23T04:24:26.309477014Z",
   "started_at": "2026-07-23T04:22:23.93163563Z",
-  "lease_expires_at": "2026-07-23T04:27:23.93163563Z",
-  "heartbeat_at": "2026-07-23T04:22:23.93163563Z"
+  "closed_at": "2026-07-23T04:24:26.309477014Z",
+  "close_reason": "Implemented dual-magic validation for crash_info to prevent false positive on first power-on. Updated lichen/subsys/lichen/l2/crash_info.c. Tests/build verified via cmake test. Pushed commit 91d54c589."
 }
