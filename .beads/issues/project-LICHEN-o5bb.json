@@ -2,15 +2,15 @@
   "id": "project-LICHEN-o5bb",
   "title": "[merge-conflict] worktree-worker19: rpl_root.c",
   "notes": "Commit: f0954f69e",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:25:06.493180468Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:08:50.430497961Z",
+  "updated_at": "2026-07-23T02:08:56.729224819Z",
   "started_at": "2026-07-23T02:07:28.615105795Z",
-  "lease_expires_at": "2026-07-23T02:12:28.615105795Z",
-  "heartbeat_at": "2026-07-23T02:07:28.615105795Z"
+  "closed_at": "2026-07-23T02:08:56.729224819Z",
+  "close_reason": "Resolved merge conflicts in rpl_root related files, gateway main.c duplicate init, test vectors/schema, coap codec, schnorr comment; cleaned 5 files; pushed to worktree-worker19"
 }
