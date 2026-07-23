@@ -1,6 +1,7 @@
 //! CoAP protocol implementation for LICHEN (RFC 7252, RFC 7959).
 //!
-//! Provides message types, options, and blockwise transfer support.
+//! Provides message types, options, and (for LCI/gateway) blockwise support.
+//! Blockwise is NOT RECOMMENDED on LoRa mesh (prefer SCHC per spec/07-transport-app.md).
 //! All CoAP traffic in LICHEN uses UDP port 5683 (or 5684 for DTLS) and is
 //! header-compressed via SCHC before transmission over the link layer.
 
