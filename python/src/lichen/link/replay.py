@@ -25,6 +25,7 @@ handled by advancing to the next epoch, up to the finite epoch limit.
 from __future__ import annotations
 
 import warnings
+from collections import OrderedDict
 
 WINDOW_SIZE = 32  # out-of-order tolerance, in counter positions (spec 4.4)
 
@@ -142,11 +143,14 @@ class ReplayProtector:
     senders never interfere with one another.
     """
 
-    def __init__(self, window_size: int = WINDOW_SIZE) -> None:
+    def __init__(self, window_size: int = WINDOW_SIZE, max_peers: int = 32) -> None:
         if window_size != WINDOW_SIZE:
             raise ValueError(f"window_size must be {WINDOW_SIZE}, got {window_size}")
+        if max_peers < 1:
+            raise ValueError(f"max_peers must be positive, got {max_peers}")
         self._window_size = window_size
-        self._windows: dict[bytes | str | int, ReplayWindow] = {}
+        self._max_peers = max_peers
+        self._windows: OrderedDict[bytes | str | int, ReplayWindow] = OrderedDict()
 
     def check_and_update(
         self, sender: bytes | str | int, epoch: int, seqnum: int
@@ -156,10 +160,15 @@ class ReplayProtector:
         Returns:
             True if fresh (accepted), False if a replay / below the window.
         """
-        window = self._windows.get(sender)
-        if window is None:
+        if sender in self._windows:
+            self._windows.move_to_end(sender)
+            window = self._windows[sender]
+        else:
+            if len(self._windows) >= self._max_peers:
+                self._windows.popitem(last=False)
             window = ReplayWindow(self._window_size)
             self._windows[sender] = window
+            self._windows.move_to_end(sender)
         return window.check_and_update(epoch, seqnum)
 
     def reset(self, sender: bytes | str | int) -> None:
