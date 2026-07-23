@@ -1,15 +1,15 @@
 {
   "id": "project-LICHEN-q7vb",
   "title": "[merge-conflict] worktree-worker18: announce.rs",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:35:58.286496424Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:41:17.63106201Z",
+  "updated_at": "2026-07-23T00:44:41.275376397Z",
   "started_at": "2026-07-23T00:41:17.63106201Z",
-  "lease_expires_at": "2026-07-23T00:46:17.63106201Z",
-  "heartbeat_at": "2026-07-23T00:41:17.63106201Z"
+  "closed_at": "2026-07-23T00:44:41.275376397Z",
+  "close_reason": "Synced announce.rs in worker18 worktree to canonical CCP-9 implementation (rx_channel packed in flags byte at offset 1 matching generate.py oracle, test vectors, and main tree). Updated wire format comments, FIXED_LENGTH=93, from_bytes/write_signed_data/app_data offsets. Commit 5c6ecbef7 on worktree-worker18 branch. Other files (C impl, lichen-node tests) flagged for follow-up beads."
 }
