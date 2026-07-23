@@ -4,8 +4,6 @@
 """
 
 import pytest
-import json
-import subprocess
 from pathlib import Path
 
 from lichen.announce.messages import (
@@ -15,49 +13,50 @@ from lichen.announce.messages import (
     AnnounceError,
     AnnounceMessage,
 )
-from lichen.l2_payload import L2PayloadKind, classify_l2_payload, l2_payload_body
-
 
 VECTORS_DIR = Path(__file__).resolve().parents[3] / "test" / "vectors"
 
-    def test_valid_minimal_announce(self):
-        """A valid announce with minimum required fields."""
-        msg = AnnounceMessage(
-            originator_iid=bytes(8),
+
+def test_valid_minimal_announce():
+    """A valid announce with minimum required fields."""
+    msg = AnnounceMessage(
+        originator_iid=bytes(8),
+        pubkey=bytes(32),
+        seq_num=0,
+        hop_count=0,
+        signature=bytes(SIGNATURE_LENGTH),
+    )
+    assert msg.originator_iid == bytes(8)
+    assert msg.pubkey == bytes(32)
+    assert msg.seq_num == 0
+    assert msg.hop_count == 0
+    assert len(msg.signature) == SIGNATURE_LENGTH
+    assert msg.app_data == b""
+    assert msg.rx_channel == 0
+
+
+def test_valid_announce_with_app_data():
+    """Announce with optional app_data field."""
+    app_data = b"node-name:alice"
+    msg = AnnounceMessage(
+        originator_iid=bytes(8),
+        pubkey=bytes(32),
+        seq_num=42,
+        hop_count=3,
+        signature=bytes(SIGNATURE_LENGTH),
+        app_data=app_data,
+    )
+    assert msg.app_data == app_data
+
+
+def test_rejects_wrong_iid_length():
+    """IID must be exactly 8 bytes."""
+    with pytest.raises(AnnounceError, match="originator_iid must be 8 bytes"):
+        AnnounceMessage(
+            originator_iid=bytes(7),
             pubkey=bytes(32),
             seq_num=0,
-            hop_count=0,
-            signature=bytes(SIGNATURE_LENGTH),
         )
-        assert msg.originator_iid == bytes(8)
-        assert msg.pubkey == bytes(32)
-        assert msg.seq_num == 0
-        assert msg.hop_count == 0
-        assert len(msg.signature) == SIGNATURE_LENGTH
-        assert msg.app_data == b""
-        assert msg.flags == 0
-
-    def test_valid_announce_with_app_data(self):
-        """Announce with optional app_data field."""
-        app_data = b"node-name:alice"
-        msg = AnnounceMessage(
-            originator_iid=bytes(8),
-            pubkey=bytes(32),
-            seq_num=42,
-            hop_count=3,
-            signature=bytes(SIGNATURE_LENGTH),
-            app_data=app_data,
-        )
-        assert msg.app_data == app_data
-
-    def test_rejects_wrong_iid_length(self):
-        """IID must be exactly 8 bytes."""
-        with pytest.raises(AnnounceError, match="originator_iid must be 8 bytes"):
-            AnnounceMessage(
-                originator_iid=bytes(7),  # Too short
-                pubkey=bytes(32),
-                seq_num=0,
-            )
 
         with pytest.raises(AnnounceError, match="originator_iid must be 8 bytes"):
             AnnounceMessage(
@@ -156,12 +155,12 @@ class TestSignedData:
         signed = msg.signed_data()
         assert signed[40:42] == bytes([0x12, 0x34])
 
-    def test_signed_data_includes_current_channel_at_offset(self):
+    def test_signed_data_includes_rx_channel_at_offset(self):
         msg = AnnounceMessage(
             originator_iid=b"\x01\x02\x03\x04\x05\x06\x07\x08",
             pubkey=b"\x00" * 32,
             seq_num=0x1234,
-            current_channel=5,
+            rx_channel=5,
         )
         signed = msg.signed_data()
         expected = (
@@ -216,12 +215,12 @@ class TestSignedData:
         )
         assert msg1.signed_data() == msg2.signed_data()
 
-    def test_signed_data_includes_current_channel(self):
+    def test_signed_data_includes_rx_channel(self):
         msg = AnnounceMessage(
             originator_iid=bytes(8),
             pubkey=bytes(32),
             seq_num=0,
-            current_channel=5,
+            rx_channel=5,
         )
         signed = msg.signed_data()
         assert signed[42:43] == bytes([5])
@@ -249,7 +248,7 @@ class TestSerialization:
         assert parsed.hop_count == original.hop_count
         assert parsed.signature == original.signature
         assert parsed.app_data == original.app_data
-        assert parsed.flags == original.flags
+        assert parsed.rx_channel == original.rx_channel
 
     def test_round_trip_with_app_data(self):
         """Announce with app_data survives round-trip."""
@@ -297,7 +296,7 @@ class TestSerialization:
             pubkey=bytes(32),
             seq_num=0xABCD,
             signature=bytes(SIGNATURE_LENGTH),
-            current_channel=0,
+            rx_channel=0,
         )
         wire = msg.to_bytes()
         assert wire[3:5] == bytes([0xAB, 0xCD])
@@ -308,7 +307,7 @@ class TestSerialization:
             pubkey=bytes(32),
             seq_num=0,
             signature=b"",
-            current_channel=0,
+            rx_channel=0,
         )
         with pytest.raises(AnnounceError, match="cannot serialize unsigned"):
             msg.to_bytes()
@@ -399,10 +398,9 @@ class TestKnownVectors:
             pubkey=bytes([0xAA] * 32),
             seq_num=0x1234,
             hop_count=3,
-            flags=7,
+            rx_channel=7,
             signature=bytes([0xBB] * SIGNATURE_LENGTH),
             app_data=b"",
-            current_channel=7,
         )
         wire = msg.to_bytes()
 

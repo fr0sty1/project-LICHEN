@@ -21,8 +21,7 @@ class AnnounceMessage:
     pubkey: bytes
     seq_num: int
     hop_count: int = 0
-    flags: int = 0
-    current_channel: int = 0
+    rx_channel: int = 0
     signature: bytes = field(default=b"")
     app_data: bytes = field(default=b"")
 
@@ -35,10 +34,8 @@ class AnnounceMessage:
             raise AnnounceError(f"seq_num out of range: {self.seq_num}")
         if not 0 <= self.hop_count <= 0xFF:
             raise AnnounceError(f"hop_count out of range: {self.hop_count}")
-        if not 0 <= self.flags <= 0xFF:
-            raise AnnounceError(f"flags out of range: {self.flags}")
-        if not 0 <= self.current_channel <= 15:
-            raise AnnounceError(f"invalid current_channel: {self.current_channel} (must be 0-15)")
+        if not 0 <= self.rx_channel <= 7:
+            raise AnnounceError(f"invalid rx_channel: {self.rx_channel} (must be 0-7 per CCP-9)")
         if self.signature and len(self.signature) != SIGNATURE_LENGTH:
             raise AnnounceError(
                 f"signature must be 0 or {SIGNATURE_LENGTH} bytes, got {len(self.signature)}"
@@ -49,7 +46,7 @@ class AnnounceMessage:
             self.originator_iid
             + self.pubkey
             + self.seq_num.to_bytes(2, "big")
-            + self.current_channel.to_bytes(1, "big")
+            + self.rx_channel.to_bytes(1, "big")
             + self.app_data
         )
 
@@ -60,7 +57,7 @@ class AnnounceMessage:
                 f"{len(self.signature)}, expected {SIGNATURE_LENGTH})"
             )
         return (
-            bytes([ANNOUNCE_TYPE, self.current_channel, self.hop_count])
+            bytes([ANNOUNCE_TYPE, self.rx_channel, self.hop_count])
             + self.seq_num.to_bytes(2, "big")
             + self.originator_iid
             + self.pubkey
@@ -76,17 +73,15 @@ class AnnounceMessage:
             )
         if data[0] != ANNOUNCE_TYPE:
             raise AnnounceError(f"wrong message type: expected {ANNOUNCE_TYPE}, got {data[0]}")
-        flags = data[1]
-        current_channel = flags
-        if current_channel > 15:
-            raise AnnounceError(f"invalid current_channel: {current_channel} (must be 0-15)")
+        rx_channel = data[1]
+        if rx_channel > 7:
+            raise AnnounceError(f"invalid rx_channel: {rx_channel} (must be 0-7 per CCP-9)")
         return cls(
             originator_iid=data[5:13],
             pubkey=data[13:45],
             seq_num=int.from_bytes(data[3:5], "big"),
             hop_count=data[2],
-            flags=flags,
-            current_channel=current_channel,
+            rx_channel=rx_channel,
             signature=data[45:93],
             app_data=data[93:],
         )
@@ -102,8 +97,7 @@ class AnnounceMessage:
             pubkey=self.pubkey,
             seq_num=self.seq_num,
             hop_count=new_hop_count,
-            flags=self.flags,
-            current_channel=self.current_channel,
+            rx_channel=self.rx_channel,
             signature=self.signature,
             app_data=self.app_data,
         )
