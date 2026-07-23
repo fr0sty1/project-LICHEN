@@ -89,10 +89,6 @@ pub use stack::{ReceivedIpv6, RxError, Stack, TxError};
 #[cfg(feature = "std")]
 pub type PlaintextStack<R> = Stack<R>;
 #[cfg(feature = "std")]
-pub use announce::{
-    seq_gt, AnnounceProcessor, AnnounceRejectReason, AnnounceResult, MAX_TRACKED_ORIGINATORS,
-};
-#[cfg(feature = "std")]
 pub use forward_buffer::{
     ForwardBuffer, ForwardEntry, ForwardError, ForwardStats, MAX_FORWARDING_SOURCES,
     MAX_PACKETS_PER_SOURCE,

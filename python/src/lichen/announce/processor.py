@@ -42,33 +42,16 @@ ANNOUNCE_JITTER_MS = 30_000
 
 
 class AnnounceRejectReason(Enum):
-    """Why an announce was rejected (for logging/debugging)."""
-
     INVALID_SIGNATURE = auto()
-    IID_MISMATCH = auto()       # IID doesn't match pubkey hash
-    STALE_SEQNUM = auto()       # seq_num <= existing
+    IID_MISMATCH = auto()
+    STALE_SEQNUM = auto()
     HOP_LIMIT_EXCEEDED = auto()
     MALFORMED = auto()
-    KEY_CHANGE_DETECTED = auto()  # IID known, pubkey differs from pinned
+    KEY_CHANGE_DETECTED = auto()
 
 
 @dataclass
 class AnnounceResult:
-    """Result of processing an announce message.
-
-    Why a result object: Callers need to know what happened for logging,
-    metrics, and deciding whether to relay. A simple bool loses information.
-
-    Attributes:
-        accepted: Whether the announce was accepted and gradient updated.
-        should_relay: Whether this announce should be broadcast.
-            Why separate from accepted: We accept (update gradient) but might
-            not relay (hop limit reached, or duplicate from better path).
-        reject_reason: Why the announce was rejected, if not accepted.
-        peer: The sender's identity if signature verified.
-        congestion: Queue depth from announce app_data (spec 11.4), or None.
-    """
-
     accepted: bool
     should_relay: bool
     reject_reason: AnnounceRejectReason | None = None
