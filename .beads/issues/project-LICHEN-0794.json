@@ -1,13 +1,18 @@
 {
   "id": "project-LICHEN-0794",
   "title": "codereview-pass-1 final-clean: opinion/P4 - consider adding explicit SenML SCHC rule example in draft if used in apps (per appendix-senml.md)",
-  "status": "open",
+  "status": "in_progress",
   "priority": 4,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T14:49:35.267819304Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T14:49:35.267819304Z",
-  "labels": ["defer-external", 
+  "updated_at": "2026-07-23T04:27:42.459848212Z",
+  "started_at": "2026-07-23T04:27:42.459848212Z",
+  "lease_expires_at": "2026-07-23T04:32:42.459848212Z",
+  "heartbeat_at": "2026-07-23T04:27:42.459848212Z",
+  "labels": [
+    "defer-external",
     "codereview",
     "opinion"
   ],
