@@ -177,6 +177,18 @@ impl core::fmt::Display for EdhocError {
 
 impl core::error::Error for EdhocError {}
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Lifecycle {
+    Created,
+    Message1Created,
+    AwaitingMessage3,
+    PendingMessage2,
+    PendingMessage3,
+    Complete,
+    Failed,
+    Zeroized,
+}
+
 /// Helper trait for heapless::Vec push/extend with error mapping.
 trait VecExt<T, const N: usize> {
     fn push_err(&mut self, item: T) -> Result<(), EdhocError>;
@@ -235,6 +247,10 @@ fn hkdf_extract(salt: &[u8], ikm: &[u8]) -> Zeroizing<[u8; 32]> {
     Zeroizing::new(prk.into())
 }
 
+/// EDHOC-KDF (RFC 9528 Section 4.1.2).
+///
+/// EDHOC-KDF(PRK, TH, label, context, length) = HKDF-Expand(PRK, info, length)
+/// where info = (length, TH, label, context) as a CBOR sequence.
 fn edhoc_kdf(
     prk: &[u8; 32],
     th: &[u8],
@@ -503,6 +519,8 @@ struct InitiatorState {
     th_4: [u8; 32],
     /// True when handshake completed (process_message_2 succeeded).
     completed: bool,
+    #[zeroize(skip)]
+    lifecycle: Lifecycle,
 }
 
 impl Default for InitiatorState {
@@ -518,6 +536,7 @@ impl Default for InitiatorState {
             th_3: [0; 32],
             th_4: [0; 32],
             completed: false,
+            lifecycle: Lifecycle::Created,
         }
     }
 }
@@ -696,7 +715,7 @@ impl EdhocInitiator {
 
             // Decrypt CIPHERTEXT_2 with KEYSTREAM_2
             let keystream_2 =
-                edhoc_kdf(&self.state.prk_2e, 0, &self.state.th_2, ciphertext_2.len())?;
+                edhoc_kdf(&self.state.prk_2e, &self.state.th_2, "KEYSTREAM_2", b"", ciphertext_2.len())?;
             let mut plaintext_2 = SecretVec::<128>::new();
             for (i, &b) in ciphertext_2.iter().enumerate() {
                 plaintext_2.push_err(b ^ keystream_2[i])?;
@@ -759,7 +778,7 @@ impl EdhocInitiator {
                 &self.state.th_2,
                 peer.credential,
             )?;
-            let mac_2 = edhoc_kdf(&self.state.prk_3e2m, 2, &context_2, 32)?;
+            let mac_2 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_2, "MAC_2", &context_2, 32)?;
             let m_2 = build_signature_structure(
                 pending.id_cred.as_bytes(),
                 &self.state.th_2,
@@ -789,7 +808,7 @@ impl EdhocInitiator {
             let mut id_cred_i = heapless::Vec::<u8, 40>::new();
             encode_id_cred(&mut id_cred_i, self.pubkey.as_bytes())?;
             let context_3 = build_context_3(&id_cred_i, &self.state.th_3, &credential_i)?;
-            let mac_3 = edhoc_kdf(&self.state.prk_4e3m, 6, &context_3, 32)?;
+            let mac_3 = edhoc_kdf(&self.state.prk_4e3m, &self.state.th_3, "MAC_3", &context_3, 32)?;
             let m_3 =
                 build_signature_structure(&id_cred_i, &self.state.th_3, &credential_i, &mac_3)?;
             let signature_3 = self.signing_key.sign(&m_3);
@@ -799,8 +818,8 @@ impl EdhocInitiator {
             self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3, &credential_i)?;
 
             // K_3 and IV_3 for AEAD
-            let k_3 = edhoc_kdf(&self.state.prk_3e2m, 3, &self.state.th_3, KEY_LEN)?;
-            let iv_3 = edhoc_kdf(&self.state.prk_3e2m, 4, &self.state.th_3, NONCE_LEN)?;
+            let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", b"", KEY_LEN)?;
+            let iv_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "IV_3", b"", NONCE_LEN)?;
 
             // A_3 (AAD) - simplified Encrypt0 structure
             let mut a_3 = heapless::Vec::<u8, 64>::new();
@@ -822,6 +841,7 @@ impl EdhocInitiator {
             ciphertext_3.extend_err(&tag)?;
 
             self.state.lifecycle = Lifecycle::Complete;
+            self.state.completed = true;
             let mut msg3 = heapless::Vec::new();
             encode_bstr(&mut msg3, &ciphertext_3)?;
             Ok(msg3)
@@ -830,97 +850,7 @@ impl EdhocInitiator {
         if result.is_err() {
             self.poison();
         }
-        th_3_input.extend_err(ciphertext_2)?;
-        // ID_CRED_R as CBOR bstr (pubkey)
-        th_3_input.push_err(0x58)?;
-        th_3_input.push_err(32)?;
-        th_3_input.extend_err(peer_pubkey)?;
-        self.state.th_3 = compute_th(&th_3_input);
-
-        // PRK_4e3m = PRK_3e2m for SIGN_SIGN
-        self.state.prk_4e3m = self.state.prk_3e2m;
-
-        // Create Message 3
-        // PLAINTEXT_3 = (ID_CRED_I, Signature_3)
-
-        // Build M_3 for signature
-        let mut m_3 = heapless::Vec::<u8, 128>::new();
-        // CBOR array header (simplified)
-        m_3.push_err(0x83)?; // array of 3
-                             // ID_CRED_I (pubkey)
-        m_3.push_err(0x58)?;
-        m_3.push_err(32)?;
-        m_3.extend_err(self.pubkey.as_bytes())?;
-        // TH_3
-        m_3.push_err(0x58)?;
-        m_3.push_err(32)?;
-        m_3.extend_err(&self.state.th_3)?;
-        // CRED_I (pubkey)
-        m_3.push_err(0x58)?;
-        m_3.push_err(32)?;
-        m_3.extend_err(self.pubkey.as_bytes())?;
-
-        let signature_3 = self.signing_key.sign(&m_3);
-
-        // PLAINTEXT_3 = ID_CRED_I || Signature_3 as CBOR
-        // Built directly into ciphertext_3 buffer to avoid clone
-        let mut ciphertext_3 = heapless::Vec::<u8, 128>::new();
-        // ID_CRED_I
-        ciphertext_3.push_err(0x58)?;
-        ciphertext_3.push_err(32)?;
-        ciphertext_3.extend_err(self.pubkey.as_bytes())?;
-        // Signature_3
-        ciphertext_3.push_err(0x58)?;
-        ciphertext_3.push_err(64)?;
-        ciphertext_3.extend_err(&signature_3.to_bytes())?;
-
-        // K_3 and IV_3 for AEAD
-        let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", &[], KEY_LEN)?;
-        let iv_3 = edhoc_kdf(
-            &self.state.prk_3e2m,
-            &self.state.th_3,
-            "IV_3",
-            &[],
-            NONCE_LEN,
-        )?;
-
-        // A_3 (AAD) - simplified Encrypt0 structure
-        let mut a_3 = heapless::Vec::<u8, 64>::new();
-        a_3.push_err(0x83)?; // array of 3
-        a_3.push_err(0x68)?; // tstr "Encrypt0"
-        a_3.extend_err(b"Encrypt0")?;
-        a_3.push_err(0x40)?; // empty bstr
-        a_3.push_err(0x58)?; // bstr TH_3
-        a_3.push_err(32)?;
-        a_3.extend_err(&self.state.th_3)?;
-
-        // Encrypt in place (PLAINTEXT_3 -> CIPHERTEXT_3)
-        let cipher = AesCcm::new_from_slice(&k_3).map_err(|_| EdhocError::InvalidState)?;
-        let mut nonce = [0u8; NONCE_LEN];
-        nonce.copy_from_slice(&iv_3);
-        let tag = cipher
-            .encrypt_in_place_detached((&nonce).into(), &a_3, &mut ciphertext_3)
-            .map_err(|_| EdhocError::InvalidState)?;
-        ciphertext_3.extend_err(&tag)?;
-
-        // TH_4 = H(TH_3, CIPHERTEXT_3)
-        let mut th_4_input = heapless::Vec::<u8, 192>::new();
-        th_4_input.push_err(0x58)?;
-        th_4_input.push_err(32)?;
-        th_4_input.extend_err(&self.state.th_3)?;
-        if ciphertext_3.len() <= 23 {
-            th_4_input.push_err(0x40 | ciphertext_3.len() as u8)?;
-        } else {
-            th_4_input.push_err(0x58)?;
-            th_4_input.push_err(ciphertext_3.len() as u8)?;
-        }
-        th_4_input.extend_err(&ciphertext_3)?;
-        self.state.th_4 = compute_th(&th_4_input);
-
-        // Mark handshake as completed - export_oscore now safe to call
-        self.state.completed = true;
-
-        Ok(ciphertext_3)
+        result
     }
 
     /// Export OSCORE security context.
@@ -984,6 +914,8 @@ struct ResponderState {
     th_4: [u8; 32],
     /// True when handshake completed (process_message_3 succeeded).
     completed: bool,
+    #[zeroize(skip)]
+    lifecycle: Lifecycle,
 }
 
 impl Default for ResponderState {
@@ -999,6 +931,7 @@ impl Default for ResponderState {
             th_3: [0; 32],
             th_4: [0; 32],
             completed: false,
+            lifecycle: Lifecycle::Created,
         }
     }
 }
@@ -1157,7 +1090,7 @@ impl EdhocResponder {
 
             // Encrypt with KEYSTREAM_2
             let keystream_2 =
-                edhoc_kdf(&self.state.prk_2e, 0, &self.state.th_2, plaintext_2.len())?;
+                edhoc_kdf(&self.state.prk_2e, &self.state.th_2, "KEYSTREAM_2", b"", plaintext_2.len())?;
             let mut ciphertext_2 = heapless::Vec::<u8, 128>::new();
             for (i, &b) in plaintext_2.iter().enumerate() {
                 ciphertext_2.push_err(b ^ keystream_2[i])?;
@@ -1217,8 +1150,8 @@ impl EdhocResponder {
             }
 
             // K_3 and IV_3 for AEAD decryption
-            let k_3 = edhoc_kdf(&self.state.prk_3e2m, 3, &self.state.th_3, KEY_LEN)?;
-            let iv_3 = edhoc_kdf(&self.state.prk_3e2m, 4, &self.state.th_3, NONCE_LEN)?;
+            let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", b"", KEY_LEN)?;
+            let iv_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "IV_3", b"", NONCE_LEN)?;
 
             // A_3 (AAD)
             let mut a_3 = heapless::Vec::<u8, 64>::new();
@@ -1299,7 +1232,7 @@ impl EdhocResponder {
                 &self.state.th_3,
                 peer.credential,
             )?;
-            let mac_3 = edhoc_kdf(&self.state.prk_4e3m, 6, &context_3, 32)?;
+            let mac_3 = edhoc_kdf(&self.state.prk_4e3m, &self.state.th_3, "MAC_3", &context_3, 32)?;
             let m_3 = build_signature_structure(
                 pending.id_cred.as_bytes(),
                 &self.state.th_3,
