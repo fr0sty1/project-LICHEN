@@ -66,7 +66,7 @@ def _frame_identity_parts(domain: bytes, *parts: bytes) -> bytes:
     return digest.digest()
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class OscoreContextParameters:
     """Serializable inputs needed to reconstruct an OSCORE context."""
 

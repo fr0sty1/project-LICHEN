@@ -146,7 +146,7 @@ class PeerContext:
     inbound_requests: dict[bytes, _RequestCorrelation] = field(default_factory=dict)
 
 
-@dataclass(slots=True)
+@dataclass
 class _RequestCorrelation:
     request_id: object | None
     observe: bool
@@ -160,7 +160,7 @@ class _RequestCorrelation:
     con_mids: set[int] = field(default_factory=set)
 
 
-@dataclass(slots=True)
+@dataclass
 class _ProtectedCon:
     data: bytes
     token: bytes
@@ -169,7 +169,7 @@ class _ProtectedCon:
     plaintext: bytes = b""
 
 
-@dataclass(slots=True)
+@dataclass
 class _SendOperation:
     correlation: _RequestCorrelation
     token: bytes
@@ -177,7 +177,7 @@ class _SendOperation:
     finished: bool = False
 
 
-@dataclass(slots=True)
+@dataclass
 class _UnprotectedDatagram:
     data: bytes
     message: Message
@@ -185,7 +185,7 @@ class _UnprotectedDatagram:
     matched_correlation: _RequestCorrelation | None = None
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class SequenceReservation:
     """A durably committed half-open sender sequence range."""
 
@@ -248,7 +248,7 @@ def _encode_nonnegative_integer(value: int) -> bytes:
     return value.to_bytes(max(1, (value.bit_length() + 7) // 8), "big")
 
 
-@dataclass(slots=True)
+@dataclass
 class _HostRecord:
     peer_pubkey: bytes
     context: PeerContext | None = None
