@@ -109,6 +109,9 @@ impl Dio {
             return Err(TooShort::new(Self::BASE_LEN, data.len()).into());
         }
         let gmop = data[4];
+        if data[7] != 0 {
+            return Err(RplError::InvalidOption);
+        }
         Ok(Self {
             rpl_instance_id: data[0],
             version: data[1],
