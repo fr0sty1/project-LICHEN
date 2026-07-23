@@ -370,7 +370,6 @@ class TestKnownVectors:
             rx_channel=7,
             signature=bytes([0xBB] * SIGNATURE_LENGTH),
             app_data=b"",
-            rx_channel=7,
         )
         wire = msg.to_bytes()
 
