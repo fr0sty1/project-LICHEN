@@ -73,10 +73,12 @@ fn vectors() -> impl Iterator<Item = &'static str> {
 }
 
 fn pinned_announces(identity: &Identity, prefix: [u8; 8], root_id: NodeId) -> AnnounceProcessor {
-    let mut signed = [0u8; 42];
+    let rx_channel = 0;
+    let mut signed = [0u8; 43];
     signed[..8].copy_from_slice(&identity.iid);
     signed[8..40].copy_from_slice(identity.pubkey.as_bytes());
-    signed[40..].copy_from_slice(&1u16.to_be_bytes());
+    signed[40..42].copy_from_slice(&1u16.to_be_bytes());
+    signed[42] = rx_channel;
     let signature = sign(&identity.privkey, &identity.pubkey, &signed);
     let mut wire = [0u8; 128];
     let len = AnnounceBuilder {
@@ -84,9 +86,9 @@ fn pinned_announces(identity: &Identity, prefix: [u8; 8], root_id: NodeId) -> An
         pubkey: identity.pubkey.as_bytes(),
         seq_num: 1,
         hop_count: 0,
+        rx_channel,
         signature: &signature,
         app_data: &[],
-        flags: 0,
     }
     .write_to(&mut wire)
     .unwrap();

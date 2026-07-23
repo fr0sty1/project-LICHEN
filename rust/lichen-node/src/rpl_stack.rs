@@ -2009,10 +2009,12 @@ mod tests {
     }
 
     fn signed_announce(identity: &Identity, sequence: u16) -> Vec<u8> {
+        let rx_channel = 0;
         let mut signed = Vec::new();
         signed.extend_from_slice(&identity.iid);
         signed.extend_from_slice(identity.pubkey.as_bytes());
         signed.extend_from_slice(&sequence.to_be_bytes());
+        signed.push(rx_channel);
         let signature = schnorr::sign(&identity.privkey, &identity.pubkey, &signed);
         let mut wire = vec![0u8; 93];
         let len = AnnounceBuilder {
@@ -2020,9 +2022,9 @@ mod tests {
             pubkey: identity.pubkey.as_bytes(),
             seq_num: sequence,
             hop_count: 0,
+            rx_channel,
             signature: &signature,
             app_data: &[],
-            flags: 0,
         }
         .write_to(&mut wire)
         .unwrap();
