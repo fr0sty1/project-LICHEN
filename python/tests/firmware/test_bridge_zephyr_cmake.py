@@ -29,15 +29,6 @@ BRIDGE_OBSOLETE_ALIAS_BOARD_FILES = (
     "lilygo_tdeck",
     "lilygo_techo",
     "seeed_t1000e",
-    "heltec_vision_master_e290",
-<<<<<<< HEAD
-<<<<<<< HEAD
-    # xiao_s3_wio_sx1262 retired per qfh1 merge from worker18/20/23/24/integration branches;
-    # consistency with t_deck_esp32s3_procpu.conf retirement pattern. No duplicates.
-=======
->>>>>>> origin/worktree-worker24
-=======
->>>>>>> origin/worktree-worker1
 )
 
 
