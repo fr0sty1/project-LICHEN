@@ -5,11 +5,7 @@ use lichen_core::constants::{L2_DISPATCH_SCHC, SCHC_MAX_DECOMPRESSED};
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
-<<<<<<< HEAD
 use lichen_node::{RplEvent, RplNode};
-=======
-use lichen_node::{Node, RplNode};
->>>>>>> origin/integration/worker9-20260722
 use lichen_schc::codec::{compress, decompress, SchcError};
 use std::collections::HashMap;
 use tracing::{info, warn};
@@ -17,11 +13,7 @@ use tracing::{info, warn};
 /// Top-level border router state.
 #[derive(Debug)]
 pub struct Gateway {
-<<<<<<< HEAD
     rpl_node: RplNode,
-=======
-    pub node: RplNode,
->>>>>>> origin/integration/worker9-20260722
     /// Routes installed in the kernel routing table.
     /// Key: mesh IPv6 address (16 bytes, network order); Value: nexthop EUI-64.
     routes: HashMap<[u8; 16], NodeId>,
@@ -31,13 +23,8 @@ impl Gateway {
     pub fn new(node_id: NodeId) -> Self {
         info!(?node_id, "gateway initialising");
         Self {
-<<<<<<< HEAD
             rpl_node: RplNode::new_root(node_id),
             routes: HashMap::new(),
-=======
-            node: RplNode::new_root(node_id),
-            routes: std::collections::HashMap::new(),
->>>>>>> origin/integration/worker9-20260722
         }
     }
 

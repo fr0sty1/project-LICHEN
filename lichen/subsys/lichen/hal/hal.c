@@ -32,7 +32,6 @@
 #pragma GCC diagnostic pop
 #endif
 #endif
-#endif
 #include <zephyr/kernel.h>
 #if IS_ENABLED(CONFIG_REBOOT)
 #include <zephyr/sys/reboot.h>

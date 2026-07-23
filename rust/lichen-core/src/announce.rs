@@ -75,16 +75,7 @@ impl<'a> Announce<'a> {
         if data[0] != ANNOUNCE_TYPE {
             return Err(AnnounceError::WrongType(data[0]));
         }
-<<<<<<< HEAD
-
-        // ponytail: unwrap safe, bounds checked above
-        let originator_iid = data[5..13].try_into().unwrap();
-        let pubkey = data[13..45].try_into().unwrap();
-        let signature = data[45..93].try_into().unwrap();
-        let rx_channel = data[93];
-=======
         let rx_channel = data[1];
->>>>>>> origin/worktree-worker23
         if rx_channel >= 8 {
             return Err(AnnounceError::InvalidChannel(rx_channel));
         }
@@ -210,20 +201,11 @@ mod tests {
     #[test]
     fn invalid_channel() {
         let mut wire = make_announce();
-<<<<<<< HEAD
-        wire[93] = 8;
-        assert_eq!(
-            Announce::from_bytes(&wire),
-            Err(AnnounceError::InvalidChannel(8))
-        );
-
-=======
         wire[1] = 16;
         assert_eq!(
             Announce::from_bytes(&wire),
             Err(AnnounceError::InvalidChannel(16))
         );
->>>>>>> origin/worktree-worker23
         let builder = AnnounceBuilder {
             originator_iid: &[0; 8],
             pubkey: &[0; 32],
