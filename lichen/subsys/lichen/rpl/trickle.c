@@ -5,7 +5,6 @@
  * @file trickle.c
  * @brief Trickle timer (RFC 6206) implementation matching pseudocode in §4.2.
  *
- * Reset guard aligned for cross-impl determinism (project-LICHEN-vsph).
  * Used by lichen_rpl_dodag for DIO pacing per LICHEN RPL profile.
  */
 
@@ -36,9 +35,8 @@ static void begin_interval(struct lichen_trickle *t,
 	t->counter = 0;
 	t->transmitted = false;
 
-	/* Per RFC 6206 §4.2: t uniform in [I/2, I). Use (interval+1)/2 to avoid
-	 * off-by-one bias (Worker23/project-LICHEN-verh); shift form avoids
-	 * u32 overflow at saturated UINT32_MAX (project-LICHEN-jufb merge-conflict). */
+	/* Per RFC 6206 §4.2: t uniform in [I/2, I). Shift form is bias-free
+	 * for odd intervals and safe at UINT32_MAX. */
 	uint32_t half = (t->interval >> 1) + (t->interval & 1u);
 	uint32_t range = t->interval - half;
 	uint32_t offset = (range > 0) ? (rand_offset % range) : 0;
