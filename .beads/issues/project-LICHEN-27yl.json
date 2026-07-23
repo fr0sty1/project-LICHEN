@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-27yl",
   "title": "[merge-conflict] integration/worker15-20260722: sales-playbook.md",
-  "notes": "Commit: 9fa4dd072",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:11:10.623113181Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:09:45.520247642Z",
+  "updated_at": "2026-07-23T03:07:18.828610201Z",
   "started_at": "2026-07-23T03:07:18.828610201Z",
-  "closed_at": "2026-07-23T03:09:45.520247642Z",
-  "close_reason": "Merge conflict resolved in sales-playbook.md with resolution comment; committed as 9fa4dd072. Push blocked by branch divergence requiring further integration."
+  "lease_expires_at": "2026-07-23T03:12:18.828610201Z",
+  "heartbeat_at": "2026-07-23T03:07:18.828610201Z"
 }
