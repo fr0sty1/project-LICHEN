@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-o5bb",
   "title": "[merge-conflict] worktree-worker19: rpl_root.c",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:25:06.493180468Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:25:06.493180468Z"
+  "updated_at": "2026-07-23T02:07:28.615105795Z",
+  "started_at": "2026-07-23T02:07:28.615105795Z",
+  "lease_expires_at": "2026-07-23T02:12:28.615105795Z",
+  "heartbeat_at": "2026-07-23T02:07:28.615105795Z"
 }
