@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "SCHC whole-packet compression vectors (RFC 8724). 'packet' is the full uncompressed IPv6 datagram; 'compressed' is compress_packet(packet). Round-trip: compress(packet) == compressed and decompress(compressed) == packet. Includes UDP malformed cases for cross-layer testing (bad checksum, truncated, length mismatch).",
+  "description": "SCHC whole-packet compression vectors (RFC 8724). 'packet' is the full uncompressed IPv6 datagram; 'compressed' is compress_packet(packet). Round-trip: compress(packet) == compressed and decompress(compressed) == packet. Includes UDP and ICMPv6 malformed cases for cross-layer testing per RFC 4443 (bad checksum, truncated, length mismatch, invalid multicast source address, bad type).",
   "vectors": [
     {
       "name": "coap_linklocal",
@@ -58,6 +58,20 @@
       "provenance": "RFC 768: length field must match datagram size. Mirrors ICMPv6 length validation.",
       "wire": "60000000000c1140fe800000000000000000000000000001fe8000000000000000000000000000021633163300080ee974657374",
       "expect_error": "udp_length_mismatch"
+    },
+    {
+      "name": "icmpv6_invalid_source_multicast",
+      "category": "malformed",
+      "provenance": "RFC 4443 §2.4(e): ICMPv6 messages MUST NOT be sent with multicast source address (ff02::1); silently discarded by handle_icmpv6 and Icmpv6EchoProfile._is_link_local check. Independent oracle.",
+      "wire": "60000000000c3a40ff020000000000000000000000000001fe80000000000000000000000000000280003ab51234567870696e67",
+      "expect_error": "invalid_source_address"
+    },
+    {
+      "name": "icmpv6_bad_type",
+      "category": "malformed",
+      "provenance": "RFC 4443 §2.3 and §3: unrecognized ICMPv6 type (99) is silently discarded; no matching SCHC profile (not echo 128/129 or RPL 155). Independent oracle.",
+      "wire": "6000000000073a40fe800000000000000000000000000001fe8000000000000000000000000000026300d957626164",
+      "expect_error": "bad_icmp_type"
     }
   ]
 }
