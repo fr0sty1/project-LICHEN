@@ -398,8 +398,11 @@ int oscore_ctx_check_freshness(const struct oscore_ctx *_Nonnull ctx,
 /**
  * @brief Persist the current sender sequence number to NVM.
  *
- * Manually triggers NVM write for SSN (critical for nonce uniqueness on
- * restart). Handle OSCORE_ERR_NVM_FAILED by retry or safe SSN bump.
+ * Critical for preventing nonce reuse after reboot (RFC 8613 Section 7.2.1,
+ * 7.5). Implements up to 3 retries with linear backoff on NVM write failure
+ * before returning OSCORE_ERR_NVM_FAILED. On persistent failure, caller
+ * should bump SSN (to avoid reuse) and trigger key rotation per security
+ * requirements.
  *
  * Requires that NVM callbacks have been registered via
  * oscore_nvm_register_callbacks(). If no write callback is registered,
@@ -407,7 +410,7 @@ int oscore_ctx_check_freshness(const struct oscore_ctx *_Nonnull ctx,
  *
  * @param[in] ctx Security context
  * @return 0 on success, OSCORE_ERR_INVALID_PARAM if ctx is NULL,
- *         OSCORE_ERR_NVM_FAILED if NVM write fails
+ *         OSCORE_ERR_NVM_FAILED if all retries fail
  */
 int oscore_ctx_persist_ssn(struct oscore_ctx *_Nonnull ctx);
 
