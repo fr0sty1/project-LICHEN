@@ -249,9 +249,8 @@ fn hkdf_extract(salt: &[u8], ikm: &[u8]) -> Zeroizing<[u8; 32]> {
 
 /// EDHOC-KDF (RFC 9528 Section 4.1.2).
 ///
-/// Matches Python reference: EDHOC-KDF(PRK, TH, label, context, length)
-/// = HKDF-Expand(PRK, info, length) where info = CBOR(length) + CBOR(TH)
-/// + CBOR(label) + CBOR(context).
+/// EDHOC-KDF(PRK, TH, label, context, length) = HKDF-Expand(PRK, info, length)
+/// where info = (length, TH, label, context) as a CBOR sequence.
 fn edhoc_kdf(
     prk: &[u8; 32],
     th: &[u8; 32],
@@ -319,21 +318,15 @@ fn export_context(
     sender_id: &[u8],
     recipient_id: &[u8],
 ) -> Result<Context, OscoreError> {
-    let prk_out_vec = edhoc_kdf(prk, th, "PRK_out", &[], 32).map_err(|_| OscoreError::KeyDerivation)?;
-    let mut prk_out = Zeroizing::new([0u8; 32]);
-    prk_out.copy_from_slice(&prk_out_vec);
-    let prk_exporter_vec =
-        edhoc_kdf(prk_out.as_ref(), th, "exporter", &[], 32).map_err(|_| OscoreError::KeyDerivation)?;
-    let mut prk_exporter = Zeroizing::new([0u8; 32]);
-    prk_exporter.copy_from_slice(&prk_exporter_vec);
-
     let master_secret_vec =
-        edhoc_kdf(prk_exporter.as_ref(), th, "OSCORE_Master_Secret", &[], KEY_LEN).map_err(|_| OscoreError::KeyDerivation)?;
+        edhoc_kdf(prk, th, "OSCORE_Master_Secret", &[], KEY_LEN)
+            .map_err(|_| OscoreError::KeyDerivation)?;
     let mut master_secret = Zeroizing::new([0u8; KEY_LEN]);
     master_secret.copy_from_slice(&master_secret_vec);
 
     let master_salt_vec =
-        edhoc_kdf(prk_exporter.as_ref(), th, "OSCORE_Master_Salt", &[], 8).map_err(|_| OscoreError::KeyDerivation)?;
+        edhoc_kdf(prk, th, "OSCORE_Master_Salt", &[], 8)
+            .map_err(|_| OscoreError::KeyDerivation)?;
     let mut master_salt = Zeroizing::new([0u8; 8]);
     master_salt.copy_from_slice(&master_salt_vec);
     Context::new_fresh(
