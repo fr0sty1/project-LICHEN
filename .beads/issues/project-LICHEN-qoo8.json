@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-qoo8",
+  "title": "Security review of recent EDHOC/OSCORE changes",
+  "description": "Review last 20 commits focusing on OSCORE, EDHOC, Schnorr signatures, MIC verification, key handling, constant-time crypto. Create P0 bugs for any findings in rust/lichen-oscore/src/edhoc.rs and related. Follow review-myoss style.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "epic",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T14:17:36.934587208Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T14:17:36.934587208Z"
+}
