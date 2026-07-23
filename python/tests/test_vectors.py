@@ -23,6 +23,9 @@ from lichen.announce.coords import decode_coords, encode_coords
 from lichen.crypto.identity import Identity
 from lichen.crypto.schnorr48 import sign as schnorr_sign
 from lichen.crypto.schnorr48 import verify as schnorr_verify
+from lichen.ipv6.icmpv6 import Icmpv6Error, Icmpv6Message, handle_icmpv6
+from lichen.ipv6.packet import IPv6Packet, NextHeader, PacketError
+from lichen.ipv6.udp import UdpDatagram, UdpError
 from lichen.l2_payload import L2PayloadKind, classify_l2_payload, l2_payload_body
 from lichen.link.frame import AddrMode, FrameError, LichenFrame, MicLength
 from lichen.rpl.dao import RplTarget, TransitInformation
@@ -44,14 +47,13 @@ VECTORS_DIR = Path(__file__).resolve().parents[2] / "test" / "vectors"
 
 sys.path.insert(0, str(VECTORS_DIR))
 from generate import (  # noqa: E402
+    _hop_hash,
     announce_coords_vectors,
     ccp9_vectors,
     frame_vectors,
-    hash_32,
     l2_payload_vectors,
     meshcore_app_compat_vectors,
     meshtastic_app_compat_vectors,
-    _hop_hash,
 )
 from generate_rpl_route_state import build_document as build_route_state_document  # noqa: E402
 
@@ -1131,12 +1133,28 @@ def test_rpl_messages_vector(name: str, vector: dict) -> None:
     """Validate RPL message encode/decode against cross-implementation vectors."""
     from ipaddress import IPv6Address
 
+    if vector.get("type") == "malformed":
+        wire = bytes.fromhex(vector["wire"])
+        expect_error = vector["expect_error"]
+        if expect_error == "checksum_failure":
+            p = IPv6Packet.from_bytes(wire)
+            s = p.header.src_addr
+            d = p.header.dst_addr
+            if p.header.next_header == NextHeader.ICMPV6:
+                assert not Icmpv6Message.verify_checksum(s, d, p.payload)
+                assert handle_icmpv6(p) is None
+            else:
+                assert not UdpDatagram.verify_checksum(s, d, p.payload)
+        elif expect_error == "truncation":
+            with pytest.raises((PacketError, Icmpv6Error, UdpError)):
+                IPv6Packet.from_bytes(wire)
+        return
+
     encoded = bytes.fromhex(vector["encoded"])
     msg_type = vector["type"]
 
     if msg_type == "dio":
         fields = vector["fields"]
-        # Decode
         dio = DIO.from_bytes(encoded)
         assert dio.rpl_instance_id == fields["rpl_instance_id"], f"{name}: rpl_instance_id"
         assert dio.version == fields["version"], f"{name}: version"
@@ -1146,7 +1164,6 @@ def test_rpl_messages_vector(name: str, vector: dict) -> None:
         assert dio.preference == fields["preference"], f"{name}: preference"
         assert dio.dtsn == fields["dtsn"], f"{name}: dtsn"
         assert str(dio.dodag_id) == fields["dodag_id"], f"{name}: dodag_id"
-        # Encode round-trip
         rebuilt = DIO(
             rpl_instance_id=fields["rpl_instance_id"],
             version=fields["version"],
