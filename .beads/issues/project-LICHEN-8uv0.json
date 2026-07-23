@@ -2,6 +2,7 @@
   "id": "project-LICHEN-8uv0",
   "title": "XML expansion uses 0,0,0 coordinates for chat messages - may confuse ATAK",
   "description": "File: python/src/lichen/gateway/compact_cot.py\nLines: 446-452\n\nWhen expanding a chat message to XML, the point element is hardcoded to 0,0,0:\n```python\npoint = SubElement(event, 'point')\npoint.set('lat', '0.0')\npoint.set('lon', '0.0')\npoint.set('hae', '0.0')\n```\n\nThe location 0,0 is in the Gulf of Guinea off the coast of Africa. While ce/le are set to 9999999 (unknown), some ATAK implementations may:\n1. Display the message source at 0,0 on the map\n2. Calculate incorrect distances/bearings\n3. Treat it as a valid position\n\nImpact: User confusion, incorrect situational awareness.\n\nRecommendation: Either:\n1. Use NaN or omit the point element if allowed by CoT spec\n2. Use a sentinel value that ATAK recognizes as 'unknown'\n3. Track sender position in the compact format and propagate it\n\nThis may be a spec/design limitation rather than a bug, but worth documenting.",
+  "notes": "Commit: 3c6b791b7",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:17:44.268233Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T03:56:02.953747457Z",
+  "updated_at": "2026-07-23T03:58:38.571052494Z",
   "started_at": "2026-07-23T03:56:02.953747457Z",
   "lease_expires_at": "2026-07-23T04:01:02.953747457Z",
   "heartbeat_at": "2026-07-23T03:56:02.953747457Z"
