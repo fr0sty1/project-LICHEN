@@ -120,7 +120,8 @@ config LICHEN_TDMA
 	select LICHEN_SCHC
 	help
 	  Enable TDMA struct and lichen_tdma_init() after lichen_link_load_key() per
-	  initialization graph in AGENTS.md and spec/02a-coordinated-capacity.md.
+	  AGENTS.md init graph and spec/02a-coordinated-capacity.md §2a.2 (guard=100ms,
+	  slot=hash(EUI64^epoch)%num_slots via lichen_hash_32 FNV-1a32).
 	  Supports beacon sync, GPS sync, dynamic slot assignment from root DIO/beacon,
 	  and spatial reuse based on hash(EUI ^ epoch) % num_slots with RPL integration.
 	  Must not call before key loaded. Mimics lichen_link_ctx pattern exactly.
