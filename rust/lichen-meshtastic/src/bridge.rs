@@ -15,6 +15,7 @@ use crate::address::{AddressMapper, MeshtasticNodeId};
 use crate::{mesh_packet, routing, Data, MeshPacket, PortNum, Routing};
 use heapless::Vec;
 use lichen_core::addr::Ipv6Addr;
+use lichen_core::rf_health::RfHealthMetrics;
 
 /// Maximum payload size for IPv6 tunnel packets.
 
@@ -135,6 +136,9 @@ pub struct MeshtasticBridge {
     our_node_id: MeshtasticNodeId,
     /// Next packet ID for outgoing messages.
     next_packet_id: u32,
+    /// RF health metrics tracking RX SNR/RSSI (for EMA), density, load_factor,
+    /// adaptive SF per CCP-16 / rf_health.rs and ccp vectors.
+    rf_health: RfHealthMetrics,
 }
 
 impl MeshtasticBridge {
@@ -144,6 +148,7 @@ impl MeshtasticBridge {
             mapper: AddressMapper::new(),
             our_node_id,
             next_packet_id: 1,
+            rf_health: RfHealthMetrics::new(),
         }
     }
 
@@ -162,12 +167,26 @@ impl MeshtasticBridge {
         self.our_node_id
     }
 
+    /// Get RF health metrics (EMA RSSI/SNR, density, load_factor, adaptive_sf()).
+    pub fn rf_health(&self) -> &RfHealthMetrics {
+        &self.rf_health
+    }
+
+    /// Mutable access for updating from announcements, hash-derived load, or tests.
+    pub fn rf_health_mut(&mut self) -> &mut RfHealthMetrics {
+        &mut self.rf_health
+    }
+
     /// Process an incoming MeshPacket from BLE/serial.
     ///
     /// Returns the extracted payload type or an error.
     pub fn process_incoming(&mut self, packet: &MeshPacket) -> Result<IncomingResult, BridgeError> {
         let from_node = MeshtasticNodeId::new(packet.from);
         let to_node = MeshtasticNodeId::new(packet.to);
+
+        // Record RX signal metrics from Meshtastic radio into EMA for adaptive SF,
+        // density/load_factor updated via hash/announcements per CCP and rf_health.
+        self.rf_health.record_rx(packet.rx_rssi as i16, packet.rx_snr as i8);
 
         // Get decoded data or return error
         let data = match &packet.payload_variant {
