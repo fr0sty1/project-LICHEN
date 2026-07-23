@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-6mij.3",
+  "title": "Add dedicated CoAP LCI authorization tests for mutating resources",
+  "description": "Add unit and integration tests verifying is_local_admin, transport scope, OSCORE unprotect for /config, /msg/inbox, keys, deaddrop. Ensure test vectors coverage.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:18:45.60482924Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:18:45.60482924Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-6mij.3",
+      "depends_on_id": "project-LICHEN-6mij",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:18:45.739231664Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
