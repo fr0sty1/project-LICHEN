@@ -343,63 +343,43 @@ fn compute_th(input: &[u8]) -> [u8; 32] {
     Sha256::digest(input).into()
 }
 
-/// Encode bytes as deterministic CBOR bstr (major type 2) matching zcbor/cbor2.
-fn encode_bstr<const N: usize>(
-    buf: &mut heapless::Vec<u8, N>,
-    data: &[u8],
-) -> Result<(), EdhocError> {
+fn append_cbor_bstr(v: &mut heapless::Vec<u8, 192>, data: &[u8]) -> Result<(), EdhocError> {
     let len = data.len();
     if len <= 23 {
-        buf.push_err(0x40u8 | len as u8)?;
+        v.push_err(0x40 | len as u8)?;
     } else if len <= 0xff {
-        buf.push_err(0x58)?;
-        buf.push_err(len as u8)?;
-    } else if len <= 0xffff {
-        buf.push_err(0x59)?;
-        buf.push_err((len >> 8) as u8)?;
-        buf.push_err((len & 0xff) as u8)?;
+        v.push_err(0x58)?;
+        v.push_err(len as u8)?;
     } else {
-        return Err(EdhocError::BufferTooSmall);
+        v.push_err(0x59)?;
+        v.push_err((len >> 8) as u8)?;
+        v.push_err((len & 0xff) as u8)?;
     }
-    buf.extend_err(data)?;
+    v.extend_err(data)?;
     Ok(())
 }
 
-/// TH_2 = H(G_Y || H(message_1)) per RFC 9528 / test vectors.
-fn transcript_2(g_y: &[u8], msg1: &[u8]) -> Result<[u8; 32], EdhocError> {
-    let h_msg1 = compute_th(msg1);
-    let mut buf = heapless::Vec::<u8, 64>::new();
-    buf.extend_err(g_y).map_err(|_| EdhocError::BufferTooSmall)?;
-    buf.extend_err(&h_msg1).map_err(|_| EdhocError::BufferTooSmall)?;
-    Ok(compute_th(&buf))
+fn transcript_2(g_y: &[u8; 32], msg1: &[u8]) -> Result<[u8; 32], EdhocError> {
+    let h = compute_th(msg1);
+    let mut input = heapless::Vec::<u8, 192>::new();
+    append_cbor_bstr(&mut input, g_y)?;
+    append_cbor_bstr(&mut input, &h)?;
+    Ok(compute_th(&input))
 }
 
-/// TH_3 = H(CBOR(TH_2) || CBOR(input) || CBOR(cred)).
-fn transcript_3(
-    th_2: &[u8; 32],
-    input: &[u8],
-    cred: &[u8],
-) -> Result<[u8; 32], EdhocError> {
-    let mut buf = heapless::Vec::<u8, 1024>::new();
-    encode_bstr(&mut buf, th_2)?;
-    encode_bstr(&mut buf, input)?;
-    encode_bstr(&mut buf, cred)?;
-    Ok(compute_th(&buf))
+fn transcript_3(th_2: &[u8; 32], msg2_part: &[u8], cred: &[u8]) -> Result<[u8; 32], EdhocError> {
+    let mut input = heapless::Vec::<u8, 192>::new();
+    append_cbor_bstr(&mut input, th_2)?;
+    append_cbor_bstr(&mut input, msg2_part)?;
+    append_cbor_bstr(&mut input, cred)?;
+    Ok(compute_th(&input))
 }
 
-/// TH_4 = H(CBOR(TH_3) || CBOR(PLAINTEXT_3) || CBOR(CRED)) per RFC 9528 §4.1.2/4.2.2.
-/// Uses PLAINTEXT_3 (not CIPHERTEXT_3) + full credential for initiator/responder
-/// consistency, matching test vector, C impl, and Python reference (adjusted).
-fn transcript_4(
-    th_3: &[u8; 32],
-    input: &[u8],
-    cred: &[u8],
-) -> Result<[u8; 32], EdhocError> {
-    let mut buf = heapless::Vec::<u8, 1024>::new();
-    encode_bstr(&mut buf, th_3)?;
-    encode_bstr(&mut buf, input)?;
-    encode_bstr(&mut buf, cred)?;
-    Ok(compute_th(&buf))
+fn transcript_4(th_3: &[u8; 32], msg3_part: &[u8], _cred: &[u8]) -> Result<[u8; 32], EdhocError> {
+    let mut input = heapless::Vec::<u8, 192>::new();
+    append_cbor_bstr(&mut input, th_3)?;
+    append_cbor_bstr(&mut input, msg3_part)?;
+    Ok(compute_th(&input))
 }
 
 /// Parse SUITES_I from CBOR per RFC 9528 Section 3.3.2.
@@ -845,7 +825,85 @@ impl EdhocInitiator {
         if result.is_err() {
             self.poison();
         }
-        result
+        th_3_input.extend_err(ciphertext_2)?;
+        // ID_CRED_R as CBOR bstr (pubkey)
+        th_3_input.push_err(0x58)?;
+        th_3_input.push_err(32)?;
+        th_3_input.extend_err(peer_pubkey)?;
+        self.state.th_3 = compute_th(&th_3_input);
+
+        // PRK_4e3m = PRK_3e2m for SIGN_SIGN
+        self.state.prk_4e3m = self.state.prk_3e2m;
+
+        // Create Message 3
+        // PLAINTEXT_3 = (ID_CRED_I, Signature_3)
+
+        // Build M_3 for signature
+        let mut m_3 = heapless::Vec::<u8, 128>::new();
+        // CBOR array header (simplified)
+        m_3.push_err(0x83)?; // array of 3
+                             // ID_CRED_I (pubkey)
+        m_3.push_err(0x58)?;
+        m_3.push_err(32)?;
+        m_3.extend_err(self.pubkey.as_bytes())?;
+        // TH_3
+        m_3.push_err(0x58)?;
+        m_3.push_err(32)?;
+        m_3.extend_err(&self.state.th_3)?;
+        // CRED_I (pubkey)
+        m_3.push_err(0x58)?;
+        m_3.push_err(32)?;
+        m_3.extend_err(self.pubkey.as_bytes())?;
+
+        let signature_3 = self.signing_key.sign(&m_3);
+
+        // PLAINTEXT_3 = ID_CRED_I || Signature_3 as CBOR
+        // Built directly into ciphertext_3 buffer to avoid clone
+        let mut ciphertext_3 = heapless::Vec::<u8, 128>::new();
+        // ID_CRED_I
+        ciphertext_3.push_err(0x58)?;
+        ciphertext_3.push_err(32)?;
+        ciphertext_3.extend_err(self.pubkey.as_bytes())?;
+        // Signature_3
+        ciphertext_3.push_err(0x58)?;
+        ciphertext_3.push_err(64)?;
+        ciphertext_3.extend_err(&signature_3.to_bytes())?;
+
+        // K_3 and IV_3 for AEAD
+        let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", &[], KEY_LEN)?;
+        let iv_3 = edhoc_kdf(
+            &self.state.prk_3e2m,
+            &self.state.th_3,
+            "IV_3",
+            &[],
+            NONCE_LEN,
+        )?;
+
+        // A_3 (AAD) - simplified Encrypt0 structure
+        let mut a_3 = heapless::Vec::<u8, 64>::new();
+        a_3.push_err(0x83)?; // array of 3
+        a_3.push_err(0x68)?; // tstr "Encrypt0"
+        a_3.extend_err(b"Encrypt0")?;
+        a_3.push_err(0x40)?; // empty bstr
+        a_3.push_err(0x58)?; // bstr TH_3
+        a_3.push_err(32)?;
+        a_3.extend_err(&self.state.th_3)?;
+
+        // Encrypt in place (PLAINTEXT_3 -> CIPHERTEXT_3)
+        let cipher = AesCcm::new_from_slice(&k_3).map_err(|_| EdhocError::InvalidState)?;
+        let mut nonce = [0u8; NONCE_LEN];
+        nonce.copy_from_slice(&iv_3);
+        let tag = cipher
+            .encrypt_in_place_detached((&nonce).into(), &a_3, &mut ciphertext_3)
+            .map_err(|_| EdhocError::InvalidState)?;
+        ciphertext_3.extend_err(&tag)?;
+
+        self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3, self.pubkey.as_bytes())?;
+
+        // Mark handshake as completed - export_oscore now safe to call
+        self.state.completed = true;
+
+        Ok(ciphertext_3)
     }
 
     /// Export OSCORE security context.
@@ -1254,7 +1312,41 @@ impl EdhocResponder {
         if result.is_err() {
             self.poison();
         }
-        result
+
+        let sig_start = 2 + 32 + 2;
+        let sig_bytes = &plaintext_3[sig_start..sig_start + 64];
+        let signature = Signature::from_bytes(
+            sig_bytes
+                .try_into()
+                .map_err(|_| EdhocError::InvalidMessage)?,
+        );
+
+        // Build M_3 for verification
+        let mut m_3 = heapless::Vec::<u8, 128>::new();
+        m_3.push_err(0x83)?;
+        m_3.push_err(0x58)?;
+        m_3.push_err(32)?;
+        m_3.extend_err(peer_pubkey)?;
+        m_3.push_err(0x58)?;
+        m_3.push_err(32)?;
+        m_3.extend_err(&self.state.th_3)?;
+        m_3.push_err(0x58)?;
+        m_3.push_err(32)?;
+        m_3.extend_err(peer_pubkey)?;
+
+        peer_verifying_key
+            .verify(&m_3, &signature)
+            .map_err(|_| EdhocError::SignatureVerification)?;
+
+        // PRK_4e3m = PRK_3e2m for SIGN_SIGN
+        self.state.prk_4e3m = self.state.prk_3e2m;
+
+        self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3, self.pubkey.as_bytes())?;
+
+        // Mark handshake as completed - export_oscore now safe to call
+        self.state.completed = true;
+
+        Ok(())
     }
 
     /// Export OSCORE security context.
