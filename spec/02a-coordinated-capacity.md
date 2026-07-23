@@ -116,76 +116,22 @@ Procedure Now():
    1. RETURN current SFN value.
    2. All subtractions, comparisons, and MOD operations MUST use unsigned 32-bit modular arithmetic (modulo 2^32) to handle wraparound correctly per test vectors.
 
-Procedure SelectChannel(EUI64, Epoch, Density, NChannels):
-   1. IF Density > 8 THEN RETURN 0
-   2. Data = CONCAT(EUI64 as BE bytes, Epoch as LE u32 bytes)
-   3. Hash = FNV1A32(Data)  // basis 0x811c9dc5; matches hash_32.json and ccp16.json vectors
-   4. N = MAX(NChannels, 3)
-   5. RETURN 1 + (Hash MOD N)
-
-### 2a.7. Adaptive Spreading Factor Selection (per 8gac)
-
-SF10 is the REQUIRED baseline for moderate density (5-20 nodes). Density-aware adaptation and per-neighbor EMA (alpha = 1/4) override only on explicit thresholds. Load_factor from gateway DIOs takes precedence. All paths MUST match ccp16.json and ccp_load_balancing.json exactly (independent oracle).
-
-**Thresholds Table:**
-
-| SF | Sensitivity | Upgrade Condition (SHOULD) | Downgrade Condition (MUST) |
-|----|-------------|----------------------------|----------------------------|
-| 7  | -123 dBm   | N/A                        | SNR < 0 OR loss > 0.25    |
-| 9  | -129 dBm   | Density < 5 AND SNR_EMA > 8 | SNR < 0 OR Density > 8    |
-| 10 | -132 dBm   | DEFAULT (moderate density) | SNR < 0 OR load_factor > 0.8 |
-| 11 | -134 dBm   | N/A                        | Density > 8 OR SNR_EMA < 0 OR load > 0.8 |
-| 12 | -137 dBm   | N/A                        | Density > 20 OR SNR_EMA < -5 |
-
-Procedure AdaptiveSFSelect(AssignedSF, Neighbor, Density, Utilization, LoadFactor):
-   1. SF = AssignedSF
-   2. IF SF absent THEN SF = 10
-   3. IF (Density > 10) OR (Utilization > 150) THEN SF = MIN(12, SF + 2)
-   4. IF (Neighbor.EMA_SNR > 8) AND (Density < 5) THEN SF = MAX(7, SF - 1)
-   5. IF (Neighbor.EMA_Loss > 0.25) OR (Utilization > 200) THEN
-         SF = MIN(12, SF + 1)
-         IF Utilization > 200 THEN RETURN (SF, false)  // tx not allowed
-   6. RETURN (SF, true)
-
-EMA_Update(Avg, Sample) = Avg + ((Sample - Avg) right-shift 2). Update per-neighbor state on every RX. Integrate with RPL DIO capability signaling. No dead code.
-
-(The state machine from prior section remains; JOINED uses SelectChannel and AdaptiveSFSelect per schedule.)
-
-## Regional Channel Plans and CH0 Rules
-
-Per-SF SNR thresholds (normative): SF9: >8dB, SF10: any (baseline), SF11: >-5dB (with density/load), SF12: any (critical). Nodes MUST maintain per-neighbor EMA state, signal ASSIGNED_SF and metrics in DIO, RX on all SF. Pseudocode MUST be followed exactly and produce identical output to test/vectors/ccp*.json. Fixed-point Q16.16 no_std example in appendix-design-rationale.md:7.6. Integrates with TDMA slot enforcement and SCHC. Cross-refs physical-link:3.4 table and link layer primitives.
-
-Boundary example for adaptive_sf_select (density=8 edge case, matching SFN delta unsigned style per 2a.2):
-
-```
-uint32_t density = 8u;      // from beacon count, unsigned
-int16_t snr_ema = 0;
-float load_factor = 0.8f;
-
-// critical-first per pseudocode:
-IF (density > 20) OR (snr_ema < -5)  => false
-ELSE IF (density > 8) OR (snr_ema < 0) OR (load_factor > 0.8) => all false
-ELSE RETURN 10  // default baseline
-```
-
-## 2a.4. Time Synchronization
-
-Time sync provided by DODAG root via epoch in beacons/RPL options (see 2a.2 for time-provider, epoch_floor validation, SFN modulo/wrap independence). Nodes MUST maintain `epoch_floor`, `stratum`, `wall_clock_valid` (see `docs/firmware-time-provider.md`). Root time-provider is authoritative. Adopt lowest DODAG ID root. Drift > threshold triggers desync (2a.5). Integrates with `lichen_rpl_dodag_init()` and lichen_link.
-
-## 2a.5. Desync Recovery State Machine
+function now():
+    RETURN current_sfn()  // monotonic unsigned 32-bit superframe/epoch counter (SFN_MODULUS = 2^32)
+    // All subtractions, comparisons, and modulo operations MUST use unsigned 32-bit arithmetic to handle wraparound correctly.
 
 A CCP-capable node is always in exactly one of these states:
 
-| State | Meaning | Channel behavior |
-|-------|---------|------------------|
-| UNJOINED | Never successfully synchronized | CH0 only; cannot hop |
-| JOINED | Clock is trusted; normal operation | Hop per schedule |
-| DRIFT | Clock may be drifting; watching | Hop with extended RX windows |
-| RECOVER | Clock is untrusted; seeking beacon | CH0 only; stopped hopping |
+| State    | Meaning                          | Channel Behavior          |
+|----------|----------------------------------|---------------------------|
+| UNJOINED | Never synchronized               | CH0 only; no hopping      |
+| JOINED   | Clock trusted; normal operation  | Hop per schedule/select_channel |
+| DRIFT    | Possible drift; monitoring       | Hop with extended RX windows |
+| RECOVER  | Clock untrusted; seeking beacon  | CH0 only; no data TX      |
 
 Join procedure: exact CoAP URI `POST coap://[fe80::/64%iface]/tdma/join` (SCHC rule 0, OSCORE after first beacon) or L2 frame dispatch `0x15` (per draft-lichen-link-01) with msg_type=`0x10` (join-request). Triggers DAO after sync. See test vectors for exact flows. (See full state diagram, timers T_DRIFT_WARN=30s, T_DRIFT_MAX=120s, T_GIVE_UP=600s, transitions, multi-root conflict resolution preferring higher epoch, GPS-capable nodes, SFN wraparound handling, and implementation notes in the detailed description. All transitions MUST match test vectors. Nodes in RECOVER MUST refrain from data TX until re-synchronized.)
 
-## Implementation Status
+## Regional Channel Plans and CH0 Rules
 
 - Python simulator, Rust gateway, Zephyr `lichen/subsys/lichen` validate against `test/vectors/ccp16.json`, `ccp_tdma.json`, `link_frame.json`, `l2_payload.json`.
 - Kconfig options for CCP16, TDMA_SLOTS, integration with RPL/SCHC/TDMA complete. SCHC Rule 0x08 for TDMA beacon implemented.
