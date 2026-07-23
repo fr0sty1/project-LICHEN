@@ -22,6 +22,7 @@ import asyncio
 import logging
 import random
 import secrets
+from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import IntEnum
@@ -35,7 +36,8 @@ from ..constants import (
 )
 from ..crypto.identity import Identity, PeerIdentity
 from ..crypto.schnorr48 import sign, verify
-from .frame import MAX_FRAME_BODY, AddrMode, FrameError, LichenFrame, MicLength
+from ..gradient import MAX_ENTRIES
+from .frame import AddrMode, FrameError, LichenFrame, MicLength
 from .replay import ReplayProtector
 from .tx_queue import Priority, TxQueue
 
@@ -206,7 +208,9 @@ class LinkLayer:
     _epoch: int = field(default_factory=lambda: secrets.randbelow(128) + 128, repr=False)
     _seqnum: int = field(default=0, repr=False)
     _exhausted: bool = field(default=False, repr=False)
-    _pinned_keys: dict[bytes, bytes] = field(default_factory=dict, repr=False)
+    _pinned_keys: OrderedDict[bytes, bytes] = field(
+        default_factory=OrderedDict, repr=False
+    )
     _tx_lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False, repr=False)
     _sequence_started: bool = field(default=False, init=False, repr=False)
 
@@ -573,6 +577,9 @@ class LinkLayer:
         # from pinning forged keys before the MIC check rejects them.
         if _should_pin_key():
             self._pinned_keys[sender.iid] = sender.pubkey
+            self._pinned_keys.move_to_end(sender.iid)
+            while len(self._pinned_keys) > MAX_ENTRIES:
+                self._pinned_keys.popitem(last=False)
 
         # Step 5: Replay protection
         # Why use pubkey as sender ID: It's the unique identifier for a node.
