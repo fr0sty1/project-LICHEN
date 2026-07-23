@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-nfxx",
   "title": "[merge-conflict] worktree-worker21: rf_health.rs",
+  "notes": "Commit: 2562b8c0c - synced rf_health.rs to canonical CCP-15/16 version with density, load_factor, adaptive_sf_select from main. Matches test vectors. Local commit only due to rebase conflicts in other files.",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:59:39.410739762Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:06:50.570378925Z",
+  "updated_at": "2026-07-23T03:07:34.643781334Z",
   "started_at": "2026-07-23T03:06:50.570378925Z",
   "lease_expires_at": "2026-07-23T03:11:50.570378925Z",
   "heartbeat_at": "2026-07-23T03:06:50.570378925Z"
