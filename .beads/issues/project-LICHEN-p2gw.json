@@ -2,15 +2,15 @@
   "id": "project-LICHEN-p2gw",
   "title": "[merge-conflict] worktree-worker18: schema.json",
   "notes": "Commit: 2bc0d49b0",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:18:26.219951571Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:37:46.354831138Z",
+  "updated_at": "2026-07-23T02:37:49.983379406Z",
   "started_at": "2026-07-23T02:35:49.9253623Z",
-  "lease_expires_at": "2026-07-23T02:40:49.9253623Z",
-  "heartbeat_at": "2026-07-23T02:35:49.9253623Z"
+  "closed_at": "2026-07-23T02:37:49.983379406Z",
+  "close_reason": "Closed"
 }
