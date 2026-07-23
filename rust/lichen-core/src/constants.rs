@@ -70,5 +70,5 @@ pub const SENML_TELEMETRY_PRESSURE: &str = "pressure";
 pub const SENML_TELEMETRY_UNIT_CEL: &str = "Cel";
 pub const SENML_TELEMETRY_UNIT_RH: &str = "%RH";
 pub const SENML_TELEMETRY_UNIT_PA: &str = "Pa";
-pub const TDMA_GUARD_MS: u32 = 50;
+pub const TDMA_GUARD_MS: u32 = 100;
 pub const TDMA_SLOT_MS: u32 = 250;

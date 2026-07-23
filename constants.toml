@@ -107,5 +107,5 @@ telemetry_unit_rh = "%RH"
 telemetry_unit_pa = "Pa"
 
 [tdma]
-guard_ms = 50
+guard_ms = 100
 slot_ms = 250
