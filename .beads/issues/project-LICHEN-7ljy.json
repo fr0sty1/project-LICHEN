@@ -2,15 +2,15 @@
   "id": "project-LICHEN-7ljy",
   "title": "[merge-conflict] worktree-worker23: xiao_s3_wio_sx1262.overlay",
   "notes": "Commit: c3ba7a1",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:26:13.631977622Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:31:35.050697408Z",
+  "updated_at": "2026-07-23T00:31:37.316654275Z",
   "started_at": "2026-07-23T00:30:34.768392741Z",
-  "lease_expires_at": "2026-07-23T00:35:34.768392741Z",
-  "heartbeat_at": "2026-07-23T00:30:34.768392741Z"
+  "closed_at": "2026-07-23T00:31:37.316654275Z",
+  "close_reason": "Removed retired xiao_s3_wio_sx1262 bridge-zephyr board fragments that were triggering merge conflicts in worker worktrees. Matches retirement from project-LICHEN-2u26.10 and m5m1.8 audit. Commit c3ba7a1"
 }
