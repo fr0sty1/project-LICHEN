@@ -1,4 +1,3 @@
-#![no_std]
 use crate::error::{BufferTooSmall, TooShort};
 
 pub const ANNOUNCE_TYPE: u8 = 0x01;
