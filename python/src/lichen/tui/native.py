@@ -794,8 +794,10 @@ def duty_cycle_bar(usage_percent: float, width: int = 20) -> str:
 
     Returns:
         ASCII bar like "[=========>          ] 45.2%"
+
     """
-    ratio = min(usage_percent / 100.0, 1.0)  # Cap at 100% for display
+    width = max(1, width)
+    ratio = min(usage_percent / 100.0, 1.0)
     filled = int(ratio * width)
     empty = width - filled
 
