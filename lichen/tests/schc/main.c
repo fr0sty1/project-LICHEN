@@ -289,8 +289,8 @@ static int test_null_public_args(void)
 
 	ret = lichen_schc_compress((const uint8_t *)null_ptr,
 				    sizeof(packet), out, sizeof(out));
-	if (ret != SCHC_ERR_TOO_SHORT) {
-		printf("  FAIL: compress NULL packet expected SCHC_ERR_TOO_SHORT (got %d)\n", ret);
+	if (ret != SCHC_ERR_INVALID_ARGUMENT) {
+		printf("  FAIL: compress NULL packet expected SCHC_ERR_INVALID_ARGUMENT (got %d)\n", ret);
 		return 0;
 	}
 
