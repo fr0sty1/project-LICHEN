@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-3fih.2",
+  "title": "Add strict runtime capacity validation for txq/fwd/neighbors/routes per CCP-17 and Kconfig MAX",
+  "description": "In status_get callbacks and encoders, validate txq_used \u003c= CONFIG_LICHEN_COAP_STATUS_MAX_TXQ, fwd_used \u003c= MAX_FWD, neighbor/route counts \u003c= their CONFIG_MAX. Return error or truncate safely. Use BUILD_ASSERT where possible. Follow Zephyr Kconfig.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:16:52.683624928Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:16:52.683624928Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-3fih.2",
+      "depends_on_id": "project-LICHEN-3fih",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:16:52.820161781Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
