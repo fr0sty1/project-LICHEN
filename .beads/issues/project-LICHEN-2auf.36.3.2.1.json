@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-2auf.36.3.2.1",
   "title": "Update interop-status jq to list specific failed jobs with status",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:27:05.953882815Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T14:23:56.589609752Z",
+  "updated_at": "2026-07-23T14:24:52.051661029Z",
   "started_at": "2026-07-23T05:29:16.193939896Z",
-  "lease_expires_at": "2026-07-23T14:28:56.589609752Z",
-  "heartbeat_at": "2026-07-23T14:23:56.589609752Z",
+  "closed_at": "2026-07-23T14:24:52.051661029Z",
+  "close_reason": "Updated interop-status jq to explicitly list specific failed jobs with their status in failure reporting; verified jq logic with test JSON; committed and pushed only the workflow change.",
   "labels": [
     "defer-external"
   ],
