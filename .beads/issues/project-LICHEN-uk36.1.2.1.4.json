@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-uk36.1.2.1.4",
   "title": "Update tests in edhoc.rs to match new KDF API, add verification against Python oracle for EDHOC KDF outputs, ensure transcript hashes match",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:30:16.483221002Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:30:16.483221002Z",
+  "updated_at": "2026-07-23T06:09:10.564541071Z",
+  "started_at": "2026-07-23T06:09:10.564541071Z",
+  "lease_expires_at": "2026-07-23T06:14:10.564541071Z",
+  "heartbeat_at": "2026-07-23T06:09:10.564541071Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-uk36.1.2.1.4",
