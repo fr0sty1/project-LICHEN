@@ -1,9 +1,9 @@
 //! Announce message codec (spec section 9.2 + CCP-9).
 //!
-//! Wire format (updated for CCP-9 rendezvous):
+//! Wire format (L2 dispatch 0x15 || announce):
 //! ```text
 //! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//! | Type=0x01 | Flags | Hop Cnt | Seq Num (2B) | IID[0] ...     |
+//! | 0x15 | Type=0x01 | rx_channel (0-7) | Hop Cnt | Seq Num (BE) |
 //! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 //! |                    Originator IID (8 bytes)                   |
 //! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -11,11 +11,14 @@
 //! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 //! |                    Signature (48 bytes)                       |
 //! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//! | rx_channel (u8) | Optional: App Data (variable)         |
+//! | Optional: App Data (variable)                                 |
 //! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 //! ```
 //!
-//! Total: 94 bytes minimum. rx_channel at byte 93, signed per CCP-9.
+//! Fixed announce payload = 93 bytes (type to end of sig). rx_channel at
+//! announce byte 1 (reuses old Flags position), included in signed_data
+//! per CCP-9 to bind rendezvous channel (prevents tampering). Matches
+//! test/vectors/ccp9.json roundtrip vector with expected_flags=channel.
 
 /// Announce message type identifier.
 pub const ANNOUNCE_TYPE: u8 = 0x01;

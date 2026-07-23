@@ -164,7 +164,7 @@ announce because SCHC global CoAP also uses rule ID `0x01`.
 
 ```
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-| Type=ANN  | Flags     | Hop Count   | Seq Num               |
+| 0x15 (L2) | Type=0x01 | rx_channel (0-7) | Hop Cnt | Seq Num (BE) |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                    Originator IID (8 bytes)                   |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -172,21 +172,24 @@ announce because SCHC global CoAP also uses rule ID `0x01`.
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                    Signature (48 bytes)                       |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                    Optional: App Data (variable)              |
+| Optional: App Data (variable)                                 |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-Total: ~92 bytes minimum.
+Fixed announce payload: 93 bytes (type through signature end). rx_channel reuses
+the former Flags byte (per CCP-9 for da2q rendezvous). Signature covers
+IID || pubkey || seq || rx_channel || app_data (prevents tampering with
+rendezvous channel).
 
 **Fields:**
-- **Type:** Announce message identifier
-- **Flags:** Reserved
-- **Hop Count:** Incremented at each relay
-- **Seq Num:** Monotonic, detects duplicates and freshness
+- **Type:** 0x01 = announce
+- **rx_channel:** 0-7 (control/data channel for next RX; signed); old Flags position
+- **Hop Count:** Incremented at each relay (max 15)
+- **Seq Num:** Monotonic u16 BE, detects duplicates/freshness
 - **Originator IID:** 8-byte Interface Identifier of announcer
 - **Public Key:** Ed25519 public key (32 bytes)
-- **Signature:** Schnorr signature over (IID, pubkey, seq, app_data)
-- **App Data:** Optional application data (node name, capabilities, etc.)
+- **Signature:** Schnorr48 (48 bytes) over signed_data (see CCP-9)
+- **App Data:** Optional (coords, name, capabilities, congestion metrics)
 
 ### 9.3. Announce Processing
 
