@@ -2,15 +2,15 @@
   "id": "project-LICHEN-e2jl",
   "title": "[merge-conflict] worktree-worker17: CMakeLists.txt",
   "notes": "Commit: 5da7fc1b4",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:54:11.178660474Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:09:17.040763162Z",
+  "updated_at": "2026-07-23T03:09:19.626504094Z",
   "started_at": "2026-07-23T03:05:00.246502438Z",
-  "lease_expires_at": "2026-07-23T03:10:00.246502438Z",
-  "heartbeat_at": "2026-07-23T03:05:00.246502438Z"
+  "closed_at": "2026-07-23T03:09:19.626504094Z",
+  "close_reason": "Resolved CMakeLists.txt inconsistencies across test builds by restoring CTest registration in affected standalone test CMake files. Synced with main branch conventions. Commit 5da7fc1b4"
 }
