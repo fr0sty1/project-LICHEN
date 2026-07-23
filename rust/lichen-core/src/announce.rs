@@ -1,6 +1,6 @@
 //! Announce message codec (spec section 9.2 + CCP-9).
 //!
-//! Wire format (L2 routing dispatch 0x15 + announce per CCP-9 independent oracle):
+//! Wire format (L2 routing dispatch 0x15 + announce per CCP-9):
 //! ```text
 //! 0x15 (L2 dispatch) | 0x01 (type) | rx_channel (flags) | hop (0) | seq (2B) | IID (8) | pubkey (32) | sig (48) | [app_data]
 //! ```
