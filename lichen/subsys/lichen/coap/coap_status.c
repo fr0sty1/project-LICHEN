@@ -9,11 +9,6 @@
  * CCP-17 capacity validation for CBOR encoders (BUILD_ASSERT + runtime checks).
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <errno.h>
-#include <stdint.h>
-
 #include <errno.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -39,9 +34,16 @@ LOG_MODULE_REGISTER(lichen_coap_status, CONFIG_LICHEN_COAP_STATUS_LOG_LEVEL);
 #define CBOR_UINT16 0x19U
 #define CBOR_UINT32 0x1aU
 
+BUILD_ASSERT(LICHEN_COAP_STATUS_CBOR_MAX_SIZE >= 320U,
+	     "CCP-17: status CBOR buffer insufficient for worst-case (runtime overflow checks)");
+BUILD_ASSERT(CONFIG_LICHEN_COAP_STATUS_MAX_NEIGHBORS <= 16U,
+	     "CONFIG_LICHEN_COAP_STATUS_MAX_NEIGHBORS exceeds CBOR array header + buffer");
+BUILD_ASSERT(CONFIG_LICHEN_COAP_STATUS_MAX_ROUTES <= 16U,
+	     "CONFIG_LICHEN_COAP_STATUS_MAX_ROUTES exceeds CBOR array header + buffer");
+
 static struct lichen_coap_status_config s_config;
 static bool s_initialized;
-static K_MUTEX_DEFINE(s_init_mutex);
+static K_MUTEX_DEFINE(s_mutex);
 
 struct cbor_ctx {
 	uint8_t *buf;
@@ -277,8 +279,6 @@ static const char *trust_level_str(enum lichen_coap_trust_level trust)
 		return "unknown";
 	}
 }
-
-/* ── CBOR encoders ─────────────────────────────────────────────────────────── */
 
 size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 				      const struct lichen_coap_node_status *status)
@@ -847,17 +847,18 @@ struct coap_resource lichen_coap_routes_resource = {
 
 int lichen_coap_status_init(const struct lichen_coap_status_config *config)
 {
+	k_mutex_lock(&s_mutex, K_FOREVER);
+	if (s_initialized) {
+		k_mutex_unlock(&s_mutex);
+		return 0;
+	}
 	if (config == NULL || config->status_get == NULL) {
+		k_mutex_unlock(&s_mutex);
 		return -EINVAL;
 	}
-
-	if (config->status_get == NULL) {
-		return -EINVAL;
-	}
-
 	memcpy(&s_config, config, sizeof(s_config));
 	s_initialized = true;
-
+	k_mutex_unlock(&s_mutex);
 	LOG_INF("CoAP status handlers initialized");
 	return 0;
 }
