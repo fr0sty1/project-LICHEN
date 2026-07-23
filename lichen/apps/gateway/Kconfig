@@ -207,14 +207,19 @@ config LICHEN_GATEWAY_PREFIX_DELEGATION
 	depends on LICHEN_RPL
 	depends on NET_DHCPV6
 	depends on NET_IPV6_ND
+	select NET_MGMT
+	select NET_MGMT_EVENT
+	select NET_MGMT_EVENT_INFO
 	select WIFI
 	select NET_L2_WIFI_MGMT
 	select NET_IPV6_ND6
 	imply NET_DHCPV6_CLIENT
-	default y
+	default n
 	help
-	  WiFi STA + upstream prefix to RPL DODAG for Heltec V3 6LBR (spec/appendix-border-router.md).
-	  Requires main.c event handlers + AGENTS.md init order. Increases heap (see board defconfig).
+	  IPv6 prefix delegation from WiFi STA backhaul (RA via net_mgmt) to RPL DODAG root for 6LBR.
+	  Selected by LICHEN_GATEWAY_WIFI_STATION. Requires wifi_mgmt_event_handler in main.c for
+	  NET_EVENT_WIFI_CONNECT_RESULT/NET_EVENT_IPV6_PREFIX_ADD per AGENTS.md init order and
+	  spec/appendix-border-router.md. Tune heaps in board .conf (see previous beads).
 
 config LICHEN_GATEWAY_WIFI_SSID
 	string "WiFi SSID for backhaul"
@@ -276,14 +281,16 @@ config LICHEN_COAP_SERVER_STANDALONE
 	default n
 
 config LICHEN_GATEWAY_WIFI_STATION
-	bool "WiFi station backhaul (Heltec V3)"
+	bool "WiFi station backhaul"
 	default y if BOARD_HELTEC_WIFI_LORA32_V3_ESP32S3_PROCPU
 	select WIFI
 	select WIFI_NM
 	select ESP_WIFI_ENABLED
 	select LICHEN_GATEWAY_PREFIX_DELEGATION
 	help
-	  Enable WiFi station mode for internet backhaul, prefix acquisition via RA, and LICHEN_GATEWAY_PREFIX_DELEGATION. Uses net_mgmt events for NET_EVENT_WIFI_CONNECT_RESULT and NET_EVENT_IPV6_ADDR_ADD. SSID/PSK from Kconfig or /config CoAP resource. Follows AGENTS.md init order.
+	  WiFi STA backhaul for Heltec V3 / T-Deck gateways (spec/appendix-border-router.md). Enables
+	  LICHEN_GATEWAY_PREFIX_DELEGATION + net_mgmt handlers for connection and prefix events.
+	  SSID/PSK configurable via Kconfig or /config CoAP. Follows AGENTS.md subsystem init order.
 
 endmenu
 
