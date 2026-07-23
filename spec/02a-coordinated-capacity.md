@@ -104,20 +104,20 @@ SF10 (or gateway-assigned SF) is the REQUIRED baseline per appendix-design-ratio
 ```
 function ema_update(avg, sample):
     diff = sample - avg
-    RETURN avg + (diff >> 2)
+    RETURN avg + (diff >> 2)  // ccp15.json seeds
 
-function adaptive_sf_select(density, snr_ema, load_factor):
-    IF (density > 8) OR (snr_ema < 0) OR (load_factor > 0.8) THEN
-        RETURN 11
-    ELSE IF (density < 5) AND (snr_ema > 8) THEN
-        RETURN 9
-    ELSE IF (density > 20) OR (snr_ema < -5) THEN
+function adaptive_sf_select(density, snr_ema, load_factor):  // critical-first per rf_health.rs:348 and ccp15.json, ccp_load_balancing.json, Rust adaptive_sf_and_rebalance_matches_spec test
+    IF (density > 20) OR (snr_ema < -5) THEN  // critical: ccp15-seed1, rf-test-snr-critical-density3 (SF12)
         RETURN 12
+    ELSE IF (density > 8) OR (snr_ema < 0) OR (load_factor > 0.8) THEN  // high: ccp-load-high-util-rebalance, rf-test-density12-snr--3 (SF11)
+        RETURN 11
+    ELSE IF (density < 5) AND (snr_ema > 8) THEN  // low-density good-snr: ccp15-seed0, rf-test-density3-snr12 (SF9)
+        RETURN 9
     ELSE
-        RETURN 10
+        RETURN 10  // baseline: ccp15-seed2 (SF10)
 ```
 
-Per-SF SNR thresholds (normative): SF9: >8dB, SF10: >0dB, SF11: >-5dB, SF12: any. Nodes MUST maintain per-neighbor EMA state, signal ASSIGNED_SF and metrics in DIO, RX on all SF. Pseudocode MUST be followed exactly and produce identical output to test/vectors/ccp16.json. Integrates with TDMA slot enforcement and SCHC.
+Per-SF SNR thresholds (normative): SF9: >8dB, SF10: any (baseline), SF11: >-5dB (with density/load), SF12: any (critical). Nodes MUST maintain per-neighbor EMA state, signal ASSIGNED_SF and metrics in DIO, RX on all SF. Pseudocode MUST be followed exactly and produce identical output to test/vectors/ccp*.json. Integrates with TDMA slot enforcement and SCHC. Cross-refs physical-link:3.4 table and link layer primitives.
 
 ## 2a.4. Time Synchronization
 
