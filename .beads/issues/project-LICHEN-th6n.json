@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-th6n",
   "title": "[merge-conflict] worktree-worker18: Kconfig",
-  "status": "in_progress",
+  "notes": "Commit: eb346de21",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:33:47.916705163Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:10:36.831805096Z",
+  "updated_at": "2026-07-23T02:14:16.640193686Z",
   "started_at": "2026-07-23T02:10:36.831805096Z",
-  "lease_expires_at": "2026-07-23T02:15:36.831805096Z",
-  "heartbeat_at": "2026-07-23T02:10:36.831805096Z"
+  "closed_at": "2026-07-23T02:14:16.640193686Z",
+  "close_reason": "Updated LICHEN_HAS_POE help text in lichen/subsys/lichen/hal/Kconfig:65-71 to consolidated worker18 version with DT poe0 alias and binding reference (replaces stale thinknode_m7 note). Resolved cross-worktree Kconfig drift from parallel merges. Verified no markers/duplicates. Commit eb346de21."
 }
