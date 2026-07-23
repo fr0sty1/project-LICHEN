@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-s7gi",
   "title": "[merge-conflict] worktree-worker19: simulation.py",
+  "notes": "Commit: 83802549c",
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:29:31.137375021Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:35:46.413414908Z",
+  "updated_at": "2026-07-23T00:37:49.207635562Z",
   "started_at": "2026-07-23T00:34:58.68855765Z",
   "closed_at": "2026-07-23T00:35:46.413414908Z",
   "close_reason": "Resolved merge conflict in simulation.py by selecting complete version consistent with test vectors and SenML, removed markers and comments"
