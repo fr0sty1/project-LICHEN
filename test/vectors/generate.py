@@ -1827,16 +1827,16 @@ def ccp9_vectors() -> list[dict]:
         {
             "name": "announce_rendezvous_channel",
             "description": "Announce includes rx_channel=3; receiver schedules next unicast on announced channel per CCP-9 da2q rendezvous. Independent oracle.",
-            "announce_rx_ch": 3,
+            "rx_channel": 3,
             "peer_known": True,
-            "expected_rendezvous_ch": 3,
+            "expected_channel": 3,
             "control_fallback": False,
         },
         {
             "name": "initial_unknown_peer_control_ch0",
             "description": "Initial contact with unknown peer uses CH0 control channel rendezvous. Announce then enables data channel follow-up per da2q CCP-9.",
             "peer_known": False,
-            "expected_rendezvous_ch": 0,
+            "expected_channel": 0,
             "control_fallback": True,
         },
         {
@@ -1845,7 +1845,7 @@ def ccp9_vectors() -> list[dict]:
             "eui64_hex": "0011223344556677",
             "t": 1000,
             "epoch": 0,
-            "expected_rendezvous_ch": 5,
+            "expected_channel": 5,
             "n_channels": 8,
             "uses_sync_hop": True,
         },
