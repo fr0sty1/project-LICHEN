@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-7tno",
   "title": "[merge-conflict] worktree-worker19: trickle.c",
+  "notes": "Commit in worker19: 5dc2d67 (trickle.c synced to match aligned reset guard from project-LICHEN-67ca)",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:28:25.509196654Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:24:12.586764926Z",
+  "updated_at": "2026-07-23T02:26:14.472641856Z",
   "started_at": "2026-07-23T02:24:12.586764926Z",
   "lease_expires_at": "2026-07-23T02:29:12.586764926Z",
   "heartbeat_at": "2026-07-23T02:24:12.586764926Z"
