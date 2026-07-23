@@ -39,7 +39,7 @@ class SimNode:
     """State for a single simulated node in the LICHEN mesh.
 
     Tracks position, radio state, connection status, and synchronized
-    hopping state (get_hop_channel via hop_schedule+SFN for CCP-12,
+    hopping state (synchronized_hop_channel via hop_schedule+SFN for CCP-12,
     current_channel for CCP-9/legacy; rx_channel from Announce per
     simulation.py:713). Position mutable for mobility.
     """
@@ -128,9 +128,10 @@ class SimNode:
         """
         return self.connected
 
-    def get_hop_channel(self, sfn: int | None = None) -> int:
-        """Derive hop channel from hop_schedule+SFN (CCP-12) or current_channel.
-        Matches spec/02a-coordinated-capacity.md:120, ccp16-hop.json:7.
+    def synchronized_hop_channel(self, sfn: int | None = None) -> int:
+        """Compute current hop channel from node's hop_schedule tuple for CCP-12.
+        Matches test vectors in ccp16-hop.json. Uses independent oracle.
+        Reference spec/02a-coordinated-capacity.md. No dead code.
         """
         if sfn is None:
             sfn = self.tdma_scheduler.clock.sfn
