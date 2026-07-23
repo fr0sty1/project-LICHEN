@@ -171,4 +171,6 @@ endif # LICHEN_LINK
 # Fixed whitespace, indentation, dependency ordering from parallel workers.
 # Matches AGENTS.md initialization graph, spec/02a-coordinated-capacity.md
 # and canonical Kconfig style. No dead code.
+# project-LICHEN-rl6f.9: added LICHEN_CCP_TDMA, LICHEN_CHANNEL_AGILITY,
+# LICHEN_ADAPTIVE_SF to rpl/Kconfig (with selects); updated link layer comment.
 
