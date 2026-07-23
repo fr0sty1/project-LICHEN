@@ -2,15 +2,15 @@
   "id": "project-LICHEN-pfks",
   "title": "[merge-conflict] worktree-worker20: coap_status.c",
   "notes": "Commit: b6e89437f",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:19:36.485461916Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:29:43.017495141Z",
+  "updated_at": "2026-07-23T02:29:45.155080539Z",
   "started_at": "2026-07-23T02:28:19.322727091Z",
-  "lease_expires_at": "2026-07-23T02:33:19.322727091Z",
-  "heartbeat_at": "2026-07-23T02:28:19.322727091Z"
+  "closed_at": "2026-07-23T02:29:45.155080539Z",
+  "close_reason": "Updated coap_status.c in worktree-worker20 with latest fixes from main (format_ipv6 using net_addr_ntop, capacity fields, error handling, map counts, mutex); resolved merge divergence; committed and pushed b6e89437f"
 }
