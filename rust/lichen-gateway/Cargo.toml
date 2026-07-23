@@ -16,6 +16,7 @@ lichen-hal = { path = "../lichen-hal", features = ["std"] }
 lichen-kiss = { path = "../lichen-kiss", features = ["kiss"] }
 lichen-link = { path = "../lichen-link", features = ["std"] }
 lichen-node = { path = "../lichen-node", features = ["std"] }
+lichen-rpl = { path = "../lichen-rpl", features = ["std"] }
 lichen-schc = { path = "../lichen-schc", features = ["std"] }
 lichen-sim  = { path = "../lichen-sim" }
 

@@ -574,10 +574,7 @@ pub fn add_rpl_source_route(
     out[41] = (routing_len / 8 - 1) as u8;
     #[cfg(feature = "std")]
     {
-        let srh = SourceRoutingHeader {
-            segments_left: remaining as u8,
-            addresses: route[1..].to_vec(),
-        };
+        let srh = SourceRoutingHeader::from_route(route).map_err(|_| TxError::NoRoute)?;
         let _ = srh.write_to(&mut out[42..]).map_err(|_| TxError::BufferTooSmall)?;
     }
     #[cfg(not(feature = "std"))]
