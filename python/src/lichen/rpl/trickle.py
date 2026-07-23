@@ -50,7 +50,7 @@ class TrickleTimer:
         self._transmitted = False
         self._generation = 0
 
-    def start(self, now: int = 0) -> None:
+    def start(self, now: int) -> None:
         """Begin the first interval at ``now`` (RFC 6206 step 1-2)."""
         self.interval = self.imin
         self._begin_interval(now)
@@ -90,6 +90,8 @@ class TrickleTimer:
     def reset(self, now: int) -> None:
         """Handle inconsistency: if not started or I > Imin set I=Imin
         and restart (RFC 6206 §4.2 rule 6). No-op if already at Imin.
+        ``now`` must be current time (no default) to keep transmit_time
+        in the future; see _lowest_rank tracking analogue in dodag.py.
         """
         if self._generation == 0 or self.interval > self.imin:
             self.interval = self.imin
