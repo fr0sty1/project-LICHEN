@@ -37,9 +37,9 @@ static void begin_interval(struct lichen_trickle *t,
 	t->transmitted = false;
 
 	/* Per RFC 6206 §4.2: t uniform in [I/2, I). Use (interval+1)/2 to avoid
-	 * off-by-one bias in integer division; range = I - half. Worker23 fix
-	 * (project-LICHEN-verh). */
-	uint32_t half = (t->interval + 1u) / 2u;
+	 * off-by-one bias (Worker23/project-LICHEN-verh); shift form avoids
+	 * u32 overflow at saturated UINT32_MAX (project-LICHEN-jufb merge-conflict). */
+	uint32_t half = (t->interval >> 1) + (t->interval & 1u);
 	uint32_t range = t->interval - half;
 	uint32_t offset = (range > 0) ? (rand_offset % range) : 0;
 	t->transmit_time = sat_add_u32(sat_add_u32(now, half), offset);
