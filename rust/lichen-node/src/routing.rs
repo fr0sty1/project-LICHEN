@@ -336,6 +336,44 @@ impl Default for NeighborTable {
     }
 }
 
+#[cfg(feature = "std")]
+impl NeighborTable {
+    /// Trickle-aware liveness policy per RFC 6206 and RPL neighbor timeout.
+    ///
+    /// Factors in TrickleTimer::counter (from heard_consistent) to avoid
+    /// premature eviction of suppressed neighbors in dense networks (when
+    /// counter >= k, transmissions suppressed). Scales effective timeout
+    /// up to 3x under full suppression. Design doc as specified in
+    /// project-LICHEN-2auf.44.11.7.1.1.
+    pub fn is_trickle_aware_live(
+        &self,
+        addr: &[u8; 16],
+        trickle: &TrickleTimer,
+        now_ms: u64,
+        max_age_ms: u64,
+    ) -> bool {
+        let Some(neighbor) = self
+            .entries
+            .iter()
+            .flatten()
+            .find(|n| n.addr == *addr)
+        else {
+            return false;
+        };
+        let age = now_ms.saturating_sub(neighbor.last_seen_ms);
+        if age <= max_age_ms {
+            return true;
+        }
+        let k = u64::from(trickle.k);
+        if k == 0 {
+            return false;
+        }
+        let c = u64::from(trickle.counter.min(trickle.k));
+        let scale = 1 + (2 * c / k);
+        age <= max_age_ms * scale
+    }
+}
+
 /// Unified routing state combining DODAG, trickle, DAO manager, and neighbor table.
 #[cfg(feature = "std")]
 #[derive(Debug)]
