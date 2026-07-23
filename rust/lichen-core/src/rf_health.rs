@@ -1,9 +1,8 @@
-//! RF health metrics tracking for LICHEN nodes (CCP-15 interference mitigation
-//! from da2q multi-channel context).
+//! RF health metrics tracking for LICHEN nodes (CCP-15).
 //!
 //! Tracks packet statistics, signal quality (RSSI/SNR with accelerated EMA for
-//! rapid interference response), channel-busy TX failures, and packet loss rates
-//! using fixed-point arithmetic for no_std compatibility.
+//! rapid interference response per alpha=1/4), channel-busy TX failures, and
+//! packet loss rates using fixed-point arithmetic for no_std compatibility.
 //!
 //! # Fixed-Point Representation
 //!
@@ -16,13 +15,13 @@
 
 /// Fixed-point scale factor (2^16 = 65536).
 const FP_SCALE: i32 = 1 << 16;
+const EMA_ALPHA_SHIFT: u32 = 2;
 
 /// RF health metrics aggregator for CCP-15 interference mitigation.
 ///
 /// Tracks packet counts, TX failures (including channel busy for interference
-/// detection), and accelerated signal quality statistics (EMA alpha=1/4 per
-/// da2q multi-channel requirements). All counters saturate at their maximum
-/// value rather than wrapping.
+/// detection), and accelerated signal quality statistics (EMA alpha=1/4).
+/// All counters saturate at their maximum value rather than wrapping.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct RfHealthMetrics {
     /// Total packets transmitted.
@@ -144,17 +143,8 @@ impl RssiStats {
         if self.count == 0 {
             self.avg_fp = rssi_fp;
         } else {
-<<<<<<< HEAD
-            // EMA: avg = avg + alpha * (sample - avg); alpha=1/4 via EMA_ALPHA_SHIFT
-            // per CCP-15 for faster response to interference (da2q.15.2.1)
-            let diff = rssi_fp - self.avg_fp;
-            // Multiply then shift to maintain precision; alpha=1/4 for faster
-            // response to intermittent interference (CCP-15)
-            self.avg_fp += diff >> 2; // alpha = 1/4
-=======
             let diff = rssi_fp.saturating_sub(self.avg_fp);
             self.avg_fp = self.avg_fp.saturating_add(diff >> EMA_ALPHA_SHIFT);
->>>>>>> origin/integration/worker3-20260722
         }
         self.count = self.count.saturating_add(1);
     }
@@ -234,17 +224,8 @@ impl SnrStats {
         if self.count == 0 {
             self.avg_fp = snr_fp;
         } else {
-<<<<<<< HEAD
-            // EMA: avg = avg + alpha * (sample - avg); alpha=1/4 via EMA_ALPHA_SHIFT
-            // per CCP-15 for faster response to interference (da2q.15.2.1)
-            let diff = snr_fp - self.avg_fp;
-            // alpha=1/4 for faster response to intermittent interference (CCP-15
-            // from da2q multi-channel context: quicker adaptation to busy channels)
-            self.avg_fp += diff >> 2; // alpha = 1/4
-=======
             let diff = snr_fp.saturating_sub(self.avg_fp);
             self.avg_fp = self.avg_fp.saturating_add(diff >> EMA_ALPHA_SHIFT);
->>>>>>> origin/integration/worker3-20260722
         }
         self.count = self.count.saturating_add(1);
     }
@@ -425,13 +406,7 @@ mod tests {
         let mut stats = RssiStats::new();
         stats.update(-80);
         assert_eq!(stats.avg(), Some(-80));
-
-        // Second sample: EMA with alpha=1/4 (CCP-15 interference mitigation
-        // from da2q: faster response to changing RF conditions like channel
-        // busy/interference in multi-channel coordination)
-        // new_avg = -80 + (1/4)*(-60 - (-80)) = -80 + 5 = -75
         stats.update(-60);
-        // The avg should move toward -60 faster than before
         let avg = stats.avg().unwrap();
         assert!(avg > -80 && avg <= -75, "avg was {}", avg);
     }
@@ -564,14 +539,11 @@ mod tests {
 
     #[test]
     fn ema_convergence() {
-        // EMA (alpha=1/4) should converge toward repeated values
         let mut stats = RssiStats::new();
         stats.update(-80);
-        // Feed many samples of -60
         for _ in 0..100 {
             stats.update(-60);
         }
-        // With alpha=1/4 reaches -61 or -60 after 100 samples
         let avg = stats.avg().unwrap();
         assert!((-61..=-60).contains(&avg), "avg was {}", avg);
     }
