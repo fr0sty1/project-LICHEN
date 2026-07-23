@@ -2,9 +2,9 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """Announce message codec (spec section 9.2 + CCP-9).
 
-Wire format (updated for CCP-9 rendezvous):
+Wire format (CCP-9):
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    | Type=ANN  | Flags     | Hop Count   | Seq Num               |
+    | Type=0x01 | rx_ch/Flags | Hop Cnt | Seq Num (2B) |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     |                    Originator IID (8 bytes)                   |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -12,10 +12,10 @@ Wire format (updated for CCP-9 rendezvous):
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     |                    Signature (48 bytes)                       |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    | rx_channel (u8) | Optional: App Data (variable)         |
+    |                    Optional: App Data (variable)              |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-Total: 94 bytes minimum (1+1+1+2+8+32+48+1). rx_channel signed per CCP-9.
+Total: 93 bytes minimum. rx_channel in flags byte, signed per CCP-9.
 """
 
 
@@ -35,8 +35,7 @@ SIGNATURE_LENGTH = 48
 # Why 15: Spec section 9.4. Limits propagation to prevent infinite flooding.
 MAX_ANNOUNCE_HOPS = 15
 
-# Fixed portion: type(1)+flags(1)+hop(1)+seq(2)+iid(8)+pubkey(32)+sig(48)+rx_ch(1) per CCP-9
-_FIXED_LENGTH = 1 + 1 + 1 + 2 + 8 + 32 + 48 + 1
+_FIXED_LENGTH = 1 + 1 + 1 + 2 + 8 + 32 + 48
 
 
 class AnnounceError(Exception):
@@ -57,13 +56,12 @@ class AnnounceMessage:
         pubkey: 32-byte Ed25519 public key of the announcer.
         seq_num: 16-bit monotonic sequence number.
         hop_count: How many hops this announce has traveled.
-            Why NOT signed: Each relay increments it. If signed, relays couldn't
-            update it without breaking the signature.
-        rx_channel: Preferred RX channel for rendezvous (0-7 per CCP-9). Matches Rust/C structs.
+        rx_channel: Preferred RX channel for rendezvous (0-7 per CCP-9).
             Used for rendezvous per CCP-9; signed in signed_data() to prevent tampering.
+            Flags byte holds this value.
         signature: 48-byte Schnorr signature over signed_data().
         app_data: Optional application data (node name, capabilities).
-        flags: Reserved for future use.
+        flags: rx_channel value.
     """
 
     originator_iid: bytes
@@ -131,7 +129,7 @@ class AnnounceMessage:
 
 
     def to_bytes(self) -> bytes:
-        """Serialize to wire format (CCP-9 includes rx_channel after sig).
+        """Serialize to wire format (CCP-9).
 
         Raises:
             AnnounceError: If signature is missing (unsigned message).
@@ -140,18 +138,17 @@ class AnnounceMessage:
             raise AnnounceError("cannot serialize unsigned announce message")
 
         return (
-            bytes([ANNOUNCE_TYPE, self.flags, self.hop_count])
+            bytes([ANNOUNCE_TYPE, self.rx_channel, self.hop_count])
             + self.seq_num.to_bytes(2, "big")
             + self.originator_iid
             + self.pubkey
             + self.signature
-            + bytes([self.rx_channel])
             + self.app_data
         )
 
     @classmethod
     def from_bytes(cls, data: bytes) -> AnnounceMessage:
-        """Parse from wire format (CCP-9 rx_channel at offset 93).
+        """Parse from wire format (CCP-9 rx_channel in flags byte at offset 1).
 
         Args:
             data: Raw bytes from the network.
@@ -171,14 +168,13 @@ class AnnounceMessage:
         if msg_type != ANNOUNCE_TYPE:
             raise AnnounceError(f"wrong message type: expected {ANNOUNCE_TYPE}, got {msg_type}")
 
-        flags = data[1]
+        rx_channel = data[1]
         hop_count = data[2]
         seq_num = int.from_bytes(data[3:5], "big")
         originator_iid = data[5:13]
         pubkey = data[13:45]
         signature = data[45:93]
-        rx_channel = data[93]
-        app_data = data[94:]  # after channel byte
+        app_data = data[93:]
 
         return cls(
             originator_iid=originator_iid,
@@ -188,7 +184,7 @@ class AnnounceMessage:
             rx_channel=rx_channel,
             signature=signature,
             app_data=app_data,
-            flags=flags,
+            flags=rx_channel,
         )
 
     def with_incremented_hop_count(self) -> AnnounceMessage:

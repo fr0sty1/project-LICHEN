@@ -275,7 +275,7 @@ static size_t build_signed_announce(uint8_t *buf, size_t cap,
 	size_t signed_len;
 
 	zassert_true(cap >= GATEWAY_ANNOUNCE_MIN_LEN + app_data_len);
-	zassert_true(sizeof(signed_data) >= 42U + app_data_len);
+	zassert_true(sizeof(signed_data) >= 43U + app_data_len);
 
 	schnorr48_derive_keypair(seed, privkey, pubkey);
 	zassert_ok(lichen_pubkey_to_iid(pubkey, &buf[5]));
@@ -284,16 +284,17 @@ static size_t build_signed_announce(uint8_t *buf, size_t cap,
 	memcpy(&signed_data[8], pubkey, sizeof(pubkey));
 	signed_data[40] = (uint8_t)(seq_num >> 8);
 	signed_data[41] = (uint8_t)seq_num;
+	signed_data[42] = 0U; /* rx_channel in flags byte, bound in signature per CCP-9 */
 	if (app_data_len > 0U) {
-		memcpy(&signed_data[42], app_data, app_data_len);
+		memcpy(&signed_data[43], app_data, app_data_len);
 	}
-	signed_len = 42U + app_data_len;
+	signed_len = 43U + app_data_len;
 	zassert_ok(schnorr48_sign(privkey, pubkey, signed_data, signed_len,
 				  signature));
 
 	buf[0] = GATEWAY_ANNOUNCE_TYPE;
-	buf[1] = 0U;
-	buf[2] = 0U;
+	buf[1] = 0U; /* rx_channel=0 in flags */
+	buf[2] = 0U; /* hop */
 	buf[3] = (uint8_t)(seq_num >> 8);
 	buf[4] = (uint8_t)seq_num;
 	memcpy(&buf[13], pubkey, sizeof(pubkey));
