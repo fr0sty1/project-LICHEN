@@ -1,16 +1,16 @@
 {
   "id": "project-LICHEN-8jee",
   "title": "[merge-conflict] worktree-worker18: dao.py",
-  "notes": "Commit: e681fcaad",
-  "status": "closed",
+  "notes": "Commit: b7b427260",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:28:24.637530108Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:53:59.170480554Z",
+  "updated_at": "2026-07-23T02:49:43.736122252Z",
   "started_at": "2026-07-23T02:49:43.736122252Z",
-  "closed_at": "2026-07-23T02:53:59.170480554Z",
-  "close_reason": "Resolved merge conflict in dao.py by adding missing MAX_ROUTE_HOPS export and updating process_dao compatibility shim to delegate to process_dao_at. Tests now pass more of the DAO manager suite. Pushed to worktree-worker18."
+  "lease_expires_at": "2026-07-23T02:54:43.736122252Z",
+  "heartbeat_at": "2026-07-23T02:49:43.736122252Z"
 }
