@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-nsba",
   "title": "[merge-conflict] worktree-worker23: coap_config.c",
+  "notes": "Commit: 6b3d523b7",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:20:44.951629021Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:40:30.451286599Z",
+  "updated_at": "2026-07-23T02:42:57.99618978Z",
   "started_at": "2026-07-23T02:40:30.451286599Z",
   "lease_expires_at": "2026-07-23T02:45:30.451286599Z",
   "heartbeat_at": "2026-07-23T02:40:30.451286599Z"
