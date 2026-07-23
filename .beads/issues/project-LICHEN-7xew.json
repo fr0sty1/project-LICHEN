@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-7xew",
   "title": "[merge-conflict] worktree-worker23: coap_keys.c",
+  "notes": "Commit: 657ef4b96 - resolved merge conflict by standardizing BUILD_ASSERT message in coap_keys.c to prevent future parallel edit conflicts. Canonical version from worker7 with zcbor, CT compare, and LCI admin checks preferred over worker23 version.",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:58:35.019779738Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:41:10.770716031Z",
+  "updated_at": "2026-07-23T04:44:27.848159211Z",
   "started_at": "2026-07-22T23:59:58.106834891Z",
   "lease_expires_at": "2026-07-23T04:46:10.770716031Z",
   "heartbeat_at": "2026-07-23T04:41:10.770716031Z"

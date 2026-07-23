@@ -1,0 +1,11 @@
+{
+  "id": "project-LICHEN-s3d6",
+  "title": "Implement lichen-hal::Concentrator trait for SX1302 using libloragw FFI",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T04:44:27.871816608Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T04:44:27.871816608Z"
+}
