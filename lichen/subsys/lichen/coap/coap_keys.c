@@ -11,6 +11,10 @@
  * SECURITY: Write operations (PUT/DELETE) require local admin access.
  * The access check verifies the request comes from a local client
  * (loopback or SLIP LCI interface only - NOT the LoRa mesh interface).
+ *
+ * Resolved merge conflict for project-LICHEN-1a45 (integration/worker7-20260722):
+ * coap_keys.c. Aligned CBOR map decoding idiom and IID comments with LICHEN spec
+ * and other coap/*.c files.
  */
 
 #include <errno.h>
@@ -44,6 +48,15 @@ BUILD_ASSERT(CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES <= 16, "CONFIG_LICHEN_COAP_KEYS
 
 /* CBOR content-format code */
 #define CBOR_CONTENT_FORMAT 60
+
+/* String keys for LCI key CBOR (per spec section 17.5.5) - consistent with coap_config.c */
+#define KEY_IID "iid"
+#define KEY_PUBKEY "pubkey"
+#define KEY_PUBKEY_FP "pubkey_fp"
+#define KEY_TRUST "trust"
+#define KEY_FIRST_SEEN "first_seen"
+#define KEY_LAST_SEEN "last_seen"
+#define KEY_KEYS "keys"
 
 /* Key store */
 static struct lichen_key_entry s_keys[CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES];
@@ -673,7 +686,7 @@ static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 
 	/* Outer map: { "keys": [...] } */
 	cbor_put_map_header(buf, &off, 1);
-	cbor_put_key(buf, &off, "keys");
+	cbor_put_key(buf, &off, KEY_KEYS);
 
 	/* Get all keys */
 	struct lichen_key_entry entries[CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES];
@@ -700,19 +713,19 @@ static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 		/* Each key entry: 5 fields */
 		cbor_put_map_header(entry, &entry_off, 5);
 
-		cbor_put_key(entry, &entry_off, "iid");
+		cbor_put_key(entry, &entry_off, KEY_IID);
 		cbor_put_tstr(entry, &entry_off, iid_str);
 
-		cbor_put_key(entry, &entry_off, "pubkey_fp");
+		cbor_put_key(entry, &entry_off, KEY_PUBKEY_FP);
 		cbor_put_tstr(entry, &entry_off, fp_str);
 
-		cbor_put_key(entry, &entry_off, "trust");
+		cbor_put_key(entry, &entry_off, KEY_TRUST);
 		cbor_put_tstr(entry, &entry_off, trust_to_str(entries[i].trust));
 
-		cbor_put_key(entry, &entry_off, "first_seen");
+		cbor_put_key(entry, &entry_off, KEY_FIRST_SEEN);
 		cbor_put_tstr(entry, &entry_off, first_str);
 
-		cbor_put_key(entry, &entry_off, "last_seen");
+		cbor_put_key(entry, &entry_off, KEY_LAST_SEEN);
 		cbor_put_tstr(entry, &entry_off, last_str);
 
 		if (off + entry_off > buf_size) {
@@ -753,22 +766,22 @@ static size_t encode_key_single_cbor(const struct lichen_key_entry *entry,
 	/* 5 fields: iid, pubkey, trust, first_seen, last_seen */
 	cbor_put_map_header(buf, &off, 5);
 
-	cbor_put_key(buf, &off, "iid");
+	cbor_put_key(buf, &off, KEY_IID);
 	cbor_put_tstr(buf, &off, iid_str);
 
 	/* Pubkey as base64 string per spec */
-	cbor_put_key(buf, &off, "pubkey");
+	cbor_put_key(buf, &off, KEY_PUBKEY);
 	char pubkey_b64[48];
 	base64_encode(entry->pubkey, LICHEN_KEY_PUBKEY_LEN, pubkey_b64, sizeof(pubkey_b64));
 	cbor_put_tstr(buf, &off, pubkey_b64);
 
-	cbor_put_key(buf, &off, "trust");
+	cbor_put_key(buf, &off, KEY_TRUST);
 	cbor_put_tstr(buf, &off, trust_to_str(entry->trust));
 
-	cbor_put_key(buf, &off, "first_seen");
+	cbor_put_key(buf, &off, KEY_FIRST_SEEN);
 	cbor_put_tstr(buf, &off, first_str);
 
-	cbor_put_key(buf, &off, "last_seen");
+	cbor_put_key(buf, &off, KEY_LAST_SEEN);
 	cbor_put_tstr(buf, &off, last_str);
 
 	return off;
