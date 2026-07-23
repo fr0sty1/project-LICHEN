@@ -26,7 +26,6 @@
 
 #include <lichen/coap_keys.h>
 #include <lichen/transport/slip_transport.h>
-#include <zcbor_decode.h>
 
 #ifdef CONFIG_TINYCRYPT_SHA256
 #include <tinycrypt/sha256.h>
