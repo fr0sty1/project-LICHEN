@@ -7,6 +7,10 @@
  *
  * Aligned reset() guard with Rust and Python (project-LICHEN-67ca).
  * Ported from rust/lichen-rpl/src/trickle.rs with consistent init edge case.
+ *
+ * Resolved merge conflict for project-LICHEN-l8lg (worktree-worker16): trickle.c.
+ * Consolidated parallel edits from worker rebase; matches Rust/Python/Python reset
+ * guard, bias-free half-interval calc from project-LICHEN-verh.
  */
 
 #include <lichen/rpl_trickle.h>
