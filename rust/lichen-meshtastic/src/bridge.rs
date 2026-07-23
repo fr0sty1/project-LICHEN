@@ -15,10 +15,6 @@ use crate::address::{AddressMapper, MeshtasticNodeId};
 use crate::{mesh_packet, routing, Data, MeshPacket, PortNum, Routing};
 use heapless::Vec;
 use lichen_core::addr::Ipv6Addr;
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/integration/worker5-20260722
 
 /// Maximum payload size for IPv6 tunnel packets.
 /// Meshtastic Data payload is limited to ~237 bytes.
@@ -185,18 +181,12 @@ impl MeshtasticBridge {
 
         match portnum {
             PortNum::IpTunnelApp => {
-<<<<<<< HEAD
-=======
-                // Raw IPv6 packet encapsulated (worker8 simplification: version check + hardcoded offsets)
->>>>>>> origin/integration/worker5-20260722
+                // Raw IPv6 packet encapsulated (version check + hardcoded offsets per LICHEN IPv6 tunnel)
                 if data.payload.len() < 40 || (data.payload[0] >> 4) != 6 {
                     return Err(BridgeError::InvalidPacket);
                 }
 
-<<<<<<< HEAD
-=======
                 // Extract src/dst from IPv6 header (bytes 8-23 src, 24-39 dst)
->>>>>>> origin/integration/worker5-20260722
                 let src_bytes: [u8; 16] = data.payload[8..24]
                     .try_into()
                     .map_err(|_| BridgeError::InvalidPacket)?;
@@ -473,12 +463,7 @@ mod tests {
         assert!(bridge.mapper_mut().learn_mapping(dst_node, &pubkey));
 
         let mut ipv6_data = [0u8; 48];
-<<<<<<< HEAD
-        ipv6_data[0] = 0x60;
-=======
-        ipv6_data[0] = 0x60; // Version 6
-                             // Set destination address to match mapper (offset 24)
->>>>>>> origin/integration/worker5-20260722
+        ipv6_data[0] = 0x60; // IPv6 version
         let dst_addr = bridge.mapper().meshtastic_to_ipv6(dst_node);
         ipv6_data[24..40].copy_from_slice(&dst_addr.0);
 
