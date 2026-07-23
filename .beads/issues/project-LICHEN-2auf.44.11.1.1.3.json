@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-2auf.44.11.1.1.3",
+  "title": "Add PollWithPending rejection and update tests for single-generation runtime binding",
+  "description": "Define new RplRuntimeActionError::PollWithPending variant. Update all poll/complete paths to propagate rejection. Revise lichen-node tests (runtime, DAO vectors, secure_rpl) to exercise new rejection semantics, generation monotonicity, and no-stale-poll guarantees. Ensure no-std, clippy, and fake-clock tests pass.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:19:08.196889733Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:19:08.196889733Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.11.1.1.3",
+      "depends_on_id": "project-LICHEN-2auf.44.11.1.1",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:19:08.338237353Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
