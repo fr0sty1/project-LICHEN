@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-nkm7",
+  "title": "[cross-impl] Python sim/node.py dataclass has duplicate seed field",
+  "description": "node.py:56 and :58 both declare `seed: int = 0`, and __init__ params duplicate it at lines 74 and 77. This is a merge artifact from hnyw/l3j5 CCP-9/TDMA/seed/hop_schedule conflict resolution (see generate.py hash_32 oracle and test_vectors). Prevents importing lichen.sim.*, breaks cross_impl_interop tests, test_gpsr_sim.py, all sim tests. Rust and Zephyr lichen_hash_32 + announce parsing match reference (0x811c9dc5 empty, 0xafd071e5 \"test\", 0x0b2ae445 zero32; announce rx_channel at wire offset 1, signed_data at byte 42). Python side inconsistent due to this syntax error. Last 20 commits (mostly hnyw.*:fix + bd auto + merges) touched announce.rs, identity.rs, neighbor_monitor.rs, rpl_stack.rs, udp.rs, storage.rs, dispatch.rs, Cargo files -- all Rust alignment work but introduced/failed to resolve Python merge residue. Priority 1 as it blocks vector validation and interop testing.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T16:20:56.791936449Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T16:20:56.791936449Z"
+}
