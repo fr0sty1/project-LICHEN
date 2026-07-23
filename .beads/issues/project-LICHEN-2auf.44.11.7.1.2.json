@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-2auf.44.11.7.1.2",
+  "title": "Implement is_likely_alive considering Trickle counter in NeighborEntry",
+  "description": "Add method to NeighborTable or NeighborEntry that returns true for neighbors with high heard_consistent count even if last_seen is old. Must prevent eviction in dense Trickle-suppressed meshes while still timing out truly dead neighbors. Update last_seen on DIO regardless of suppression.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:28:47.494813493Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:28:47.494813493Z",
+  "labels": [
+    "defer-external"
+  ]
+}
