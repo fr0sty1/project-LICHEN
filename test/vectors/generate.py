@@ -1852,6 +1852,11 @@ def main() -> None:
         schc_vectors(),
     )
     _write(
+        "schc_fragment.json",
+        "SCHC fragmentation vectors (RFC 8724 §8) using independent CRC32 oracle from compute_mic and FragmentSender.to_bytes().",
+        schc_fragment_vectors(),
+    )
+    _write(
         "link_frame.json",
         "LICHEN link-layer frame vectors (spec section 4). Complete frames are "
         "at most 255 bytes (LENGTH at most 254). 'fields' are the frame inputs; "

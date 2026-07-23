@@ -103,12 +103,7 @@ impl Default for RadioConfig {
     }
 }
 
-/// LoRa radio interface (CCP-aware for coordinated multi-channel operation per spec 02a).
-///
-/// Async-first design for Embassy compatibility. Implementations may use
-/// blocking internally on platforms without async (wrapped in executor).
-/// Extended for SX1302 multi-channel CCP support in gateways (mimics
-/// SX126x wrapper patterns in lichen-embassy).
+/// LoRa radio interface supporting single and multi-channel gateways.
 pub trait Radio {
     /// Error type for radio operations.
     type Error;

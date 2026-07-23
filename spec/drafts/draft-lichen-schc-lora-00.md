@@ -437,7 +437,15 @@ C=0 for the final window. Because this profile mandates that the final tile is
 in All-1, the sender cannot identify a repairable tile and MUST send
 Sender-Abort.
 
-### 5.5. Maximum Packet Size
+CoAP per RFC 8824 OPTIONAL. RPL options use MATCH_MAPPING with prioritized mapping for Pad1/PadN/PIO/DAG Metric (full set in rust/lichen-schc/src/rules.rs, appendix-schc.md, test/vectors/schc_compression.json).
+
+#### 5.3. Operation
+
+Sender uses FCN countdown per window from constants, sends All-1 with RCS. Receiver tracks via bitmap, sends NACK on missing fragments, verifies RCS. Max practical size ~12 KB/datagram; larger payloads MUST chunk at application layer.
+
+## 6. Rule Versioning
+
+Rule Set Version (8-bit) advertised in DIOs per spec/03-adaptation.md §5.7 (authoritative; this draft provides LoRa context only, no duplication). Version 1 for initial release.
 
 With 63 tiles per window, two windows, and 187-byte tiles:
 - Encoding ceiling: 23,562 bytes

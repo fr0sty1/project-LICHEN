@@ -765,7 +765,8 @@ class Simulation:
 
         Checks all nodes in RX_WAIT with rx_callbacks set, and for each that
         has a receivable packet, calls the on_packet callback and transitions
-        the node to IDLE.
+        the node to IDLE. All core recording, logging, collision handling,
+        and observer notification is now unified in _get_rx_result_internal.
 
         Returns:
             Number of packets delivered.
@@ -844,7 +845,12 @@ class Simulation:
     def _get_rx_result_internal(self, node_id: str) -> tuple[bytes, int, int, str, str] | None:
         """Internal version of get_rx_result for callback delivery.
 
-        Does not raise on missing node, returns None instead.
+        Does not raise on missing node, returns None instead. Unifies core
+        recording logic (simulation + per-node metrics, collision detection,
+        rx_success logging, on_rx_success observer notification) for both
+        the push/callback path (deliver_pending_packets) and polling path.
+        Polling path (get_rx_result) duplicates a subset for legacy
+        compatibility.
         """
         node = self._nodes.get(node_id)
         if node is None:
