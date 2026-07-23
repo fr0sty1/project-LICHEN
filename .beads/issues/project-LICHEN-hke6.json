@@ -2,15 +2,15 @@
   "id": "project-LICHEN-hke6",
   "title": "[merge-conflict] worktree-worker19: codec.rs",
   "notes": "Commit: a02734dfa. Resolved merge conflicts in test/vectors/generate.py, schema.json, sales-playbook.md related to codec test vectors. codec.rs auto-merged during rebase.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:05:08.89152482Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:11:05.406031294Z",
+  "updated_at": "2026-07-23T00:11:07.27205125Z",
   "started_at": "2026-07-23T00:10:43.071888636Z",
-  "lease_expires_at": "2026-07-23T00:15:43.071888636Z",
-  "heartbeat_at": "2026-07-23T00:10:43.071888636Z"
+  "closed_at": "2026-07-23T00:11:07.27205125Z",
+  "close_reason": "Resolved merge conflicts in vector generation and schema for codec tests; committed a02734dfa"
 }
