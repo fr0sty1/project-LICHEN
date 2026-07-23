@@ -56,7 +56,11 @@ class RawDiagnosticState(StrEnum):
 
 @dataclass(frozen=True)
 class CoapResult:
-    """A decoded CoAP response with enough detail for diagnostics."""
+    """A decoded CoAP response with enough detail for diagnostics.
+
+    Special sentinel code="0.00" indicates client-side transport failure
+    (see is_transport_error); never returned by node.
+    """
 
     code: str
     payload: Any | None = None
@@ -68,6 +72,11 @@ class CoapResult:
     def is_success(self) -> bool:
         """Return true for 2.xx response codes."""
         return self.code.startswith("2.")
+
+    @property
+    def is_transport_error(self) -> bool:
+        """True for synthetic results from _raw_request on transport exceptions."""
+        return self.code == "0.00"
 
 
 @dataclass(frozen=True)
