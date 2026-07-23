@@ -18,13 +18,12 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 1. Abstract
 2. 2a.1. Overview
 3. 2a.2. TDMA Beacon Format, Slots, Hash Selection, and Join (SCHC 0x08, CDDL, byte layout)
-4. 2a.3. Channel Agility (select_channel, now())
-5. 2a.4. Time Synchronization
-6. 2a.5. Desync Recovery State Machine
-7. 2a.6. Regional Channel Plans and CH0 Rules
-8. 2a.7. Adaptive Spreading Factor Selection (adaptive_sf_select)
-9. Implementation Status
-10. References
+4. CCP-4. Regional Channel Plans
+5. 2a.3. Channel Agility and Adaptive SF
+6. 2a.4. Time Synchronization
+7. 2a.5. Desync Recovery State Machine
+8. Implementation Status
+9. References
 
 ## Overview
 
@@ -153,6 +152,40 @@ EMA_Update(Avg, Sample) = Avg + ((Sample - Avg) right-shift 2). Update per-neigh
 (The state machine from prior section remains; JOINED uses SelectChannel and AdaptiveSFSelect per schedule.)
 
 ## Regional Channel Plans and CH0 Rules
+
+Per-SF SNR thresholds (normative): SF9: >8dB, SF10: any (baseline), SF11: >-5dB (with density/load), SF12: any (critical). Nodes MUST maintain per-neighbor EMA state, signal ASSIGNED_SF and metrics in DIO, RX on all SF. Pseudocode MUST be followed exactly and produce identical output to test/vectors/ccp*.json. Fixed-point Q16.16 no_std example in appendix-design-rationale.md:7.6. Integrates with TDMA slot enforcement and SCHC. Cross-refs physical-link:3.4 table and link layer primitives.
+
+Boundary example for adaptive_sf_select (density=8 edge case, matching SFN delta unsigned style per 2a.2):
+
+```
+uint32_t density = 8u;      // from beacon count, unsigned
+int16_t snr_ema = 0;
+float load_factor = 0.8f;
+
+// critical-first per pseudocode:
+IF (density > 20) OR (snr_ema < -5)  => false
+ELSE IF (density > 8) OR (snr_ema < 0) OR (load_factor > 0.8) => all false
+ELSE RETURN 10  // default baseline
+```
+
+## 2a.4. Time Synchronization
+
+Time sync provided by DODAG root via epoch in beacons/RPL options (see 2a.2 for time-provider, epoch_floor validation, SFN modulo/wrap independence). Nodes MUST maintain `epoch_floor`, `stratum`, `wall_clock_valid` (see `docs/firmware-time-provider.md`). Root time-provider is authoritative. Adopt lowest DODAG ID root. Drift > threshold triggers desync (2a.5). Integrates with `lichen_rpl_dodag_init()` and lichen_link.
+
+## 2a.5. Desync Recovery State Machine
+
+A CCP-capable node is always in exactly one of these states:
+
+| State | Meaning | Channel behavior |
+|-------|---------|------------------|
+| UNJOINED | Never successfully synchronized | CH0 only; cannot hop |
+| JOINED | Clock is trusted; normal operation | Hop per schedule |
+| DRIFT | Clock may be drifting; watching | Hop with extended RX windows |
+| RECOVER | Clock is untrusted; seeking beacon | CH0 only; stopped hopping |
+
+Join procedure: exact CoAP URI `POST coap://[fe80::/64%iface]/tdma/join` (SCHC rule 0, OSCORE after first beacon) or L2 frame dispatch `0x15` (per draft-lichen-link-01) with msg_type=`0x10` (join-request). Triggers DAO after sync. See test vectors for exact flows. (See full state diagram, timers T_DRIFT_WARN=30s, T_DRIFT_MAX=120s, T_GIVE_UP=600s, transitions, multi-root conflict resolution preferring higher epoch, GPS-capable nodes, SFN wraparound handling, and implementation notes in the detailed description. All transitions MUST match test vectors. Nodes in RECOVER MUST refrain from data TX until re-synchronized.)
+
+## Implementation Status
 
 - Python simulator, Rust gateway, Zephyr `lichen/subsys/lichen` validate against `test/vectors/ccp16.json`, `ccp_tdma.json`, `link_frame.json`, `l2_payload.json`.
 - Kconfig options for CCP16, TDMA_SLOTS, integration with RPL/SCHC/TDMA complete. SCHC Rule 0x08 for TDMA beacon implemented.
