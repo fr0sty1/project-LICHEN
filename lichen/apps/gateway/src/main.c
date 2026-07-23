@@ -14,8 +14,6 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/net/coap_service.h>
-#include <zephyr/net/net_mgmt.h>
-#include <zephyr/net/wifi_mgmt.h>
 
 #include <lichen/hal.h>
 #include <lichen/rpl_dodag.h>
