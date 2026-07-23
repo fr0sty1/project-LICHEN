@@ -1,18 +1,17 @@
 {
   "id": "project-LICHEN-6n4h",
   "title": "[merge-conflict] worktree-worker24: Kconfig.defconfig",
-  "notes": "Commit: 509fe5145 - cleaned tracked build artifacts and updated .gitignore to prevent Kconfig.defconfig merge conflicts",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:42:16.762546577Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:59:28.665887179Z",
+  "updated_at": "2026-07-23T04:56:15.754281681Z",
   "started_at": "2026-07-23T03:46:01.796119063Z",
-  "closed_at": "2026-07-23T04:59:28.665887179Z",
-  "close_reason": "Updated .gitignore to ignore all build artifacts (including generated Kconfig.defconfig files in build-*/ and twister-out*/ dirs that were causing merge conflicts across worktrees); removed 119 tracked build files from index (Kconfig/soc/Kconfig.defconfig etc. no longer pollute repo); committed and pushed to worktree-worker24 branch. .beads/ updated automatically.",
+  "lease_expires_at": "2026-07-23T05:01:15.754281681Z",
+  "heartbeat_at": "2026-07-23T04:56:15.754281681Z",
   "labels": [
     "defer-external"
   ]
