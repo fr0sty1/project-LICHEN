@@ -19,7 +19,7 @@
 LOG_MODULE_REGISTER(lichen_coap_dtn, CONFIG_LICHEN_COAP_DEADDROP_LOG_LEVEL);
 
 static const struct lichen_deaddrop_provider *s_provider;
-static struct lichen_dtn_buffer s_dtn_buf;  /* now tied to SenML status + OSCORE via provider (P4 fixed) */
+static struct lichen_dtn_buffer s_dtn_buf;
 static K_MUTEX_DEFINE(s_dtn_buf_mutex);
 static struct k_work_delayable s_dtn_expire_work;
 static uint32_t s_last_deaddrop[256] = {0};
@@ -50,9 +50,7 @@ static void dtn_expire_work_handler(struct k_work *work) { ARG_UNUSED(work); k_m
 
 int lichen_coap_deaddrop_register(const struct lichen_deaddrop_provider *provider) {
 	if (provider == NULL) return -EINVAL;
-	int r = oscore_init();  /* enables OSCORE for deaddrop per spec */
-	if (r < 0) return r;
-	r = lichen_coap_client_init();
+	int r = lichen_coap_dtn_init();
 	if (r < 0) return r;
 	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
 	s_provider = provider;
@@ -137,7 +135,10 @@ static int confessions_post(struct coap_resource *resource, struct coap_packet *
 }
 
 int lichen_coap_dtn_init(void) {
-	/* ties static DTN buf to SenML GET + OSCORE init per spec and P4 bead */
+	int r = oscore_init();
+	if (r < 0) return r;
+	r = lichen_coap_client_init();
+	if (r < 0) return r;
 	return 0;
 }
 
