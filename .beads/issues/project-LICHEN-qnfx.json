@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-qnfx",
+  "title": "[security] EDHOC duplicate build_context/build_signature functions and scoping bugs in responder",
+  "description": "rust/lichen-oscore/src/edhoc.rs:441-502 contains duplicate fn definitions for build_context_2/3 and build_signature_structure (one using encode_bstr, second append_cbor_bstr which appears undefined). Responder::process_message_1 has unbound vars c_i/g_x in if conditions and state assignment (lines ~1106-1118). This risks incorrect auth, key derivation or compile/runtime errors in key handling. Affects OSCORE context export. See commits 11d4a7a32, ed7ed668b. Priority 0.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T14:17:45.066404563Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T14:17:45.066404563Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-qnfx",
+      "depends_on_id": "project-LICHEN-qoo8",
+      "type": "discovered-from",
+      "created_at": "2026-07-23T14:17:45.208568792Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}

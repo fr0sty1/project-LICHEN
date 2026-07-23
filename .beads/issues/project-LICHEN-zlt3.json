@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-zlt3",
+  "title": "[security] EDHOC/OSCORE key derivation and zeroization gaps post-fix",
+  "description": "Commits ed7ed668b/11d4a7a32 updated export_context to use RFC labels \"7\",\"10\",\"0\",\"1\" and Zeroizing (good), but test vectors changed, intermediate prk copies in state structs not always Zeroizing-wrapped, Zeroize impls reset keys to zeroed SigningKey. No constant-time audit for parsing/KDF paths. MIC/sig verification in finish_process_message_2/3 relies on transcript hashes that could be malleable if CBOR encoding inconsistent. Schnorr48 link layer not integrated here. P0 bug.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T14:17:45.11841369Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T14:17:45.11841369Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zlt3",
+      "depends_on_id": "project-LICHEN-qoo8",
+      "type": "discovered-from",
+      "created_at": "2026-07-23T14:17:45.260401591Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
