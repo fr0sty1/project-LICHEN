@@ -1,0 +1,11 @@
+{
+  "id": "project-LICHEN-r4sn",
+  "title": "Integrate SX1302 concentrator into lichen-gateway for multi-channel RX/TX",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T04:44:28.012541917Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T04:44:28.012541917Z"
+}

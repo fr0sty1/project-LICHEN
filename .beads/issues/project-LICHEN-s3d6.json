@@ -7,5 +7,15 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T04:44:27.871816608Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:44:27.871816608Z"
+  "updated_at": "2026-07-23T04:44:27.871816608Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-s3d6",
+      "depends_on_id": "project-LICHEN-xun7",
+      "type": "discovered-from",
+      "created_at": "2026-07-23T04:44:28.009685172Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
 }
