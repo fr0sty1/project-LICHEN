@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-7msq.4",
+  "title": "Update coap_dtn.h to declare new provider_get function and ensure s_last_* arrays fully protected per codereview",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:19:44.620347921Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:19:44.620347921Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-7msq.4",
+      "depends_on_id": "project-LICHEN-7msq",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:19:44.755956405Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
