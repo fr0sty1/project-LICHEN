@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-hnyw.4.2.1",
+  "title": "Add #![forbid(unsafe_code)] to lichen-link and lichen-schc",
+  "description": "Add the attribute at crate root in lib.rs after #![no_std]. Verify no unsafe blocks. Follow coding guidelines. Parent bead project-LICHEN-hnyw.4.2",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:29:58.403781679Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:29:58.403781679Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-hnyw.4.2.1",
+      "depends_on_id": "project-LICHEN-hnyw.4.2",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:29:58.54561606Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
