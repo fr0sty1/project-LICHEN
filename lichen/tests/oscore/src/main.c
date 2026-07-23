@@ -45,6 +45,9 @@ static int mock_nvm_write(const uint8_t *eui64, uint32_t ssn)
 static int mock_nvm_read(const uint8_t *eui64, uint32_t *ssn)
 {
 	mock_nvm_read_count++;
+	if (ssn == NULL) {
+		return -1;
+	}
 	if (!mock_nvm_has_data) {
 		return -1;
 	}
