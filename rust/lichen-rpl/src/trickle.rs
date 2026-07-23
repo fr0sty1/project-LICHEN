@@ -1,9 +1,11 @@
 //! Trickle timer (RFC 6206) — deterministic state machine, caller-driven clock.
 //!
-//! Port of `python/src/lichen/rpl/trickle.py`. The caller is responsible for:
-//! - Providing a random offset when starting intervals (for reproducible tests).
-//! - Polling `next_event()` and advancing time.
-//! - Calling `expire` / `reset` at the appropriate moments.
+//! Bias-free half/offset per Worker23 fix (project-LICHEN-verh): matches
+//! C (`lichen/subsys/lichen/rpl/trickle.c`) and Python
+//! (`python/src/lichen/rpl/trickle.py`) using `(I+1)/2` + `range = I - half`.
+//! Port of Python version with aligned reset guard (project-LICHEN-67ca).
+//! Caller responsible for random offset (in `[0, range)`), polling
+//! `next_event()`, and calling `expire`/`reset`.
 //!
 //! No async, no allocation, no_std compatible.
 
@@ -44,10 +46,11 @@ pub struct InvalidTrickleTransition {
     pub to: TrickleState,
 }
 
-/// RFC 6206 Trickle timer.
+/// RFC 6206 Trickle timer (bias-free implementation per Worker23 fix).
 ///
-/// All times are integer milliseconds. The caller supplies random offsets so the
-/// timer is deterministic and testable without a live RNG.
+/// All times are integer milliseconds. The caller supplies random offsets (in
+/// `[0, range)`) so the timer is deterministic and testable without a live RNG.
+/// Matches C and Python exactly for `transmit_time` on odd intervals.
 #[derive(Debug)]
 pub struct TrickleTimer {
     pub imin: u32,
@@ -97,7 +100,8 @@ impl TrickleTimer {
 
     /// Begin the first interval (RFC 6206 step 1-2).
     ///
-    /// `rand_offset` is a caller-supplied random value in `[0, imin/2)`.
+    /// `rand_offset` is a caller-supplied random value in `[0, range)` where
+    /// `range = I - (I+1)/2` (≈ I/2). See `begin_interval` for bias-free calc.
     pub fn start(&mut self, now: u64, rand_offset: u32) {
         self.interval = self.imin;
         self.begin_interval(now, rand_offset)
@@ -115,9 +119,13 @@ impl TrickleTimer {
         self.interval_start = now;
         self.counter = 0;
         self.transmitted = false;
-        let half = self.interval / 2;
-        // transmit_time is uniform in [now + half, now + interval)
-        let offset = if half > 0 { rand_offset % half } else { 0 };
+        /* Per RFC 6206 §4.2: t uniform in [I/2, I). Use `(interval + 1) / 2`
+         * to avoid off-by-one bias for odd `I` (e.g. I=5: half=3, range=2;
+         * transmit times now+3 or now+4). range = I - half. This is the
+         * bias-free Worker23 fix (project-LICHEN-verh) matching C and Python. */
+        let half = (self.interval + 1) / 2;
+        let range = self.interval - half;
+        let offset = if range > 0 { rand_offset % range } else { 0 };
         self.transmit_time = now
             .saturating_add(u64::from(half))
             .saturating_add(u64::from(offset));
@@ -152,7 +160,8 @@ impl TrickleTimer {
 
     /// End the current interval: double (capped) and start the next one (step 5).
     ///
-    /// `rand_offset` is a caller-supplied random value in `[0, new_interval/2)`.
+    /// `rand_offset` is a caller-supplied random value in `[0, range)` (see
+    /// `begin_interval` for bias-free `(I+1)/2` calculation per Worker23 fix).
     pub fn expire(&mut self, now: u32, rand_offset: u32) {
         self.try_expire(now, rand_offset)
             .expect("expire only valid after transmit");
@@ -176,6 +185,7 @@ impl TrickleTimer {
     /// Handle an inconsistency: shrink to `imin` and restart (RFC 6206 step 6).
     ///
     /// Starts timer if stopped; no-op if already at `imin` and running (RFC 6206 §4.2).
+    /// Reset guard aligned with C/Python (project-LICHEN-67ca).
     pub fn reset(&mut self, now: u32, rand_offset: u32) {
         self.try_reset(now, rand_offset)
             .expect("invalid trickle timer transition");
@@ -316,8 +326,22 @@ mod tests {
     #[test]
     fn rand_offset_shifts_transmit_time() {
         let mut t = TrickleTimer::new(1000, 4, 10);
-        t.start(0, 200); // rand_offset=200 < 500 → transmit at 700
+        t.start(0, 200); // rand_offset=200 < range=500 → transmit at 700
         assert_eq!(t.transmit_time, 700);
+    }
+
+    #[test]
+    fn odd_interval_bias_free_transmit_time() {
+        // I=5 (odd): half=(5+1)/2=3, range=5-3=2 → transmit in [now+3, now+5)
+        // Matches C/Python; old `/ 2` was biased (only [2,4)).
+        let mut t = TrickleTimer::new(5, 0, 10); // no doublings
+        t.start(0, 0);
+        assert_eq!(t.transmit_time, 3);
+        assert_eq!(t.interval_end(), 5);
+
+        let mut t2 = TrickleTimer::new(5, 0, 10);
+        t2.start(0, 1); // 1 % 2 = 1 → 0+3+1=4
+        assert_eq!(t2.transmit_time, 4);
     }
 
     #[test]
