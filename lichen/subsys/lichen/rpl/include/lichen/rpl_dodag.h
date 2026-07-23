@@ -73,11 +73,12 @@ enum lichen_rpl_role {
  * ETX=256 means perfect link (1.0), ETX=512 means 50% delivery (2.0).
  */
 struct lichen_rpl_parent {
-	uint8_t addr[16];     /**< Full IPv6 link-local address */
-	uint16_t rank;        /**< Advertised rank */
-	uint16_t link_etx;    /**< Fixed-point ETX (1.0 = 256) */
-	uint32_t last_updated; /**< Timestamp when last DIO received (caller-provided) */
-	bool valid;           /**< Slot in use */
+	uint8_t addr[16];
+	uint16_t rank;
+	uint16_t link_etx;
+	uint8_t load_factor;
+	uint32_t last_updated;
+	bool valid;
 };
 
 /**
@@ -158,6 +159,7 @@ int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *_Nonnull d,
 				  const struct lichen_rpl_dio *_Nonnull dio,
 				  const uint8_t *_Nonnull neighbor_addr,
 				  uint16_t link_etx,
+				  uint8_t load_factor,
 				  uint32_t now);
 
 /**
