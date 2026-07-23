@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-wrlw",
+  "title": "[cross-impl] TDMA slot computation differs across Python/Rust/Zephyr",
+  "description": "Python: sim/tdma.py:41 does eui64 + epoch.to_bytes(4,\"little\") then hash_32 % n_slots.\nC/Zephyr: link_ctx.c:642-653 xors low bytes of epoch into eui64 copy then lichen_hash_32(buf,8) % n_slots (see lichen_tdma_compute_slot, tdma_tx_allowed).\nRust: lichen-node/src/tdma_scheduler.rs:7-9 does lichen_hash_32(eui) only, %16, ignores epoch.\nFor eui=0x...01 epoch=1: Python=3, C=7 (verified via python -c). \nRust test hardcodes slot=2 for that eui (epoch=0 only).\nBreaks mesh coordination when epoch advances. \nSee spec/02a-coordinated-capacity.md:2a.2, test/vectors/*tdma*.json (which use Python oracle), commit 9b7b84d45 that updated TDMA but left mismatch.\nViolates \"same algorithm different behavior\" rule and test integrity (no code-under-test as oracle).",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T15:57:18.025461811Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T15:57:18.025461811Z"
+}
