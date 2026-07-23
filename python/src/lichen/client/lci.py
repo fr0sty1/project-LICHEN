@@ -736,6 +736,8 @@ def _split_quoted(value: str, separator: str) -> list[str]:
         else:
             current.append(char)
     parts.append("".join(current))
+    if in_quote:
+        raise LciClientError(f"malformed link-format: unclosed quote in {value!r}")
     return parts
 
 
