@@ -96,7 +96,8 @@ config LICHEN_ROUTER_MAX_MESH_PREFIXES
 	default 4
 	help
 	  Maximum number of IPv6 prefixes that are classified as mesh-local.
-	  Includes ULA (fd00::/8) by default plus GUA prefixes from DIO.
+	  Includes Yggdrasil 02xx::/7 primary addresses by default plus
+	  GUA prefixes from DIO.
 
 config LICHEN_ROUTER_DTN_BUFFER_SIZE
 	int "DTN store-and-forward buffer size (bytes)"

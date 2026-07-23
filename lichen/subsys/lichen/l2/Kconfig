@@ -15,13 +15,12 @@ config LICHEN_IPV6
 	help
 	  Enable LICHEN IPv6 address utilities:
 	  - Link-local fe80::/10 (control plane)
-	  - Yggdrasil-derived 02xx::/64 primary address from Ed25519 pubkey
-	  - GUA optional
+	  - Yggdrasil-derived 02xx::/64 primary mesh address from Ed25519 pubkey
+	  - GUA optional (from DIO)
 
-	  Yggdrasil address is now primary (replaces previous ULA). See
-	  lichen_identity_ygg_addr_from_ed25519 and spec/04-network.md.
-	  Utilities are standalone and can be used with or without
-	  Zephyr's full networking stack.
+	  See lichen_yggdrasil_addr and spec/04-network.md for primary
+	  address derivation. Utilities are standalone and can be used with or
+	  without Zephyr's full networking stack.
 
 config LICHEN_ICMPV6
 	bool "LICHEN ICMPv6 implementation"
