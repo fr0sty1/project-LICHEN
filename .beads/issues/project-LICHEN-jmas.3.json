@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-jmas.3",
+  "title": "Validate TDMA against ccp_tdma.json test vectors and update docs",
+  "description": "Add or update tests in lichen/tests/ or zephyr tests to verify hash slot calc, timing windows, guard=100ms against test/vectors/ccp_tdma.json and ccp16.json. Update comments in link.h, link_ctx.c, Kconfig to reference exact spec sections. Fix any remaining mismatches.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:20:13.321446987Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:20:13.321446987Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-jmas.3",
+      "depends_on_id": "project-LICHEN-jmas",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:20:13.453535308Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
