@@ -1,14 +1,14 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LICHEN test vector file",
-  "description": "v2-only JSON Schema (draft-07); const format_version=2, per-family docs (including dedicated ccp15_document/ccp_load_balancing_document), no legacy envelope. Each file holds one vector family; strict required fields, additionalProperties:false, oneOf/allOf for variants in per-vector defs enforce independent oracles only (test integrity). See README.md.",
+  "description": "Combined envelope from parallel worker branches (incl. worker8) for all LICHEN test vector files. Supports object with format_version enum[1,2] (v2 preferred, const=2 in most files), per-family docs (dedicated ccp15_document, ccp_load_balancing_document etc.), bare array root (for ccp16-desync.json), strict required fields, additionalProperties:false, oneOf/allOf for per-vector variants to enforce independent oracles/test integrity only. See README.md.",
   "oneOf": [
     {
       "type": "object",
       "required": ["format_version", "description", "vectors"],
       "additionalProperties": true,
       "properties": {
-        "format_version": {"const": 2},
+        "format_version": {"type": "integer", "enum": [1, 2]},
         "description": {"type": "string"},
         "$schema": {"type": "string"},
         "vectors": {
@@ -70,7 +70,7 @@
       "required": ["format_version", "description", "vectors"],
       "additionalProperties": false,
       "properties": {
-        "format_version": {"const": 2},
+        "format_version": {"type": "integer", "enum": [1, 2]},
         "name": {"type": "string"},
         "description": {"type": "string"},
         "spec": {"type": "string"},
@@ -1045,7 +1045,10 @@
           "then": {"required": ["input", "output"]}
         },
         {
-          "if": {"properties": {"type": {"enum": ["sfn_wrap", "multi_root", "recovery"]}}},
+          "if": {
+            "properties": {"type": {"enum": ["sfn_wrap", "multi_root", "recovery"]}},
+            "required": ["type"]
+          },
           "then": {"required": ["name", "description", "type", "expected"]}
         }
       ]
