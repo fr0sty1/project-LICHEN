@@ -46,8 +46,15 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		return -EINVAL;
 	}
 
+	if (IS_ENABLED(CONFIG_LICHEN_TDMA)) {
+		struct lichen_tdma_ctx tdma = {0};
+		if (!tdma_tx_allowed(&tdma, 0)) {
+			return -EBUSY;
+		}
+	}
+
 	if (!ctx->has_key) {
-		return -ENOKEY;  /* signatures mandatory (project-LICHEN-rg8t) */
+		return -ENOKEY;
 	}
 
 	/*
