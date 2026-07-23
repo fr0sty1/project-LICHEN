@@ -9,10 +9,10 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:27:41.571890668Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:53:20.066611268Z",
-  "started_at": "2026-07-23T05:49:59.783415128Z",
-  "closed_at": "2026-07-23T05:53:20.066611268Z",
-  "close_reason": "Added bad_udp_checksum and short_udp_packet vectors to rpl_messages.json mirroring the ICMPv6 ones; updated descriptions and schema.json; schema validation passes; committed and pushed (after resolving rebase)",
+  "updated_at": "2026-07-23T06:07:02.285293317Z",
+  "started_at": "2026-07-23T06:00:48.597654244Z",
+  "closed_at": "2026-07-23T06:07:02.285293317Z",
+  "close_reason": "Added UDP malformed test vectors (truncated, bad checksum, length mismatch) to schc_compression.json mirroring ICMPv6 patterns with hex wire, expect_error, category=malformed. Tests pass, cross-layer consistent. Updated description.",
   "labels": [
     "defer-external"
   ],
