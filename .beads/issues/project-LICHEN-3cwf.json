@@ -2,11 +2,15 @@
   "id": "project-LICHEN-3cwf",
   "title": "Direct message dest_iid can be all zeros when None - semantically invalid",
   "description": "File: python/src/lichen/gateway/compact_cot.py\nLines: 635-639\n\nWhen encoding a DIRECT chat message:\n```python\nelif chat.dest_type == DestType.DIRECT:\n    iid = chat.dest_iid or bytes(8)\n    if len(iid) != 8:\n        raise ValueError('dest_iid must be exactly 8 bytes')\n    parts.append(iid)\n```\n\nIf chat.dest_iid is None, this silently substitutes 8 zero bytes as the destination IID.\n\nProblems:\n1. An all-zeros IID (0x0000000000000000) is likely not a valid node identifier\n2. Message would be routed to the wrong recipient or nowhere\n3. Masks a programming error (None IID for DIRECT dest_type)\n\nFix: Raise an error for missing direct destination:\n```python\nelif chat.dest_type == DestType.DIRECT:\n    if chat.dest_iid is None:\n        raise ValueError('dest_iid required when dest_type is DIRECT')\n    if len(chat.dest_iid) != 8:\n        raise ValueError('dest_iid must be exactly 8 bytes')\n    parts.append(chat.dest_iid)\n```",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:17:30.18619Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:17:30.186224Z"
+  "updated_at": "2026-07-23T03:57:49.038578683Z",
+  "started_at": "2026-07-23T03:57:49.038578683Z",
+  "lease_expires_at": "2026-07-23T04:02:49.038578683Z",
+  "heartbeat_at": "2026-07-23T03:57:49.038578683Z"
 }
