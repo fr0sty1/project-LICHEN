@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-zhkz",
   "title": "[merge-conflict] worktree-worker18: main.c",
+  "notes": "Commit: 402744800",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:20:41.304950598Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:33:14.06907487Z",
+  "updated_at": "2026-07-23T02:35:09.076509246Z",
   "started_at": "2026-07-23T02:33:14.06907487Z",
   "lease_expires_at": "2026-07-23T02:38:14.06907487Z",
   "heartbeat_at": "2026-07-23T02:33:14.06907487Z"
