@@ -625,7 +625,6 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 int lichen_peer_add(const uint8_t eui64[LICHEN_EUI64_LEN],
 		    const uint8_t pubkey[LICHEN_L2_PUBKEY_LEN])
 {
-#if HAVE_LICHEN_LINK
 	/*
 	 * SECURITY: Array parameters decay to pointers - no compile-time or
 	 * runtime size enforcement. BUILD_ASSERTs at lines 108-111 verify the
@@ -743,16 +742,10 @@ int lichen_peer_add(const uint8_t eui64[LICHEN_EUI64_LEN],
 		eui64[6], eui64[7]);
 	k_mutex_unlock(&rx_mutex);
 	return 0;
-#else
-	ARG_UNUSED(eui64);
-	ARG_UNUSED(pubkey);
-	return -ENOTSUP;
-#endif
 }
 
 int lichen_peer_remove(const uint8_t eui64[8])
 {
-#if HAVE_LICHEN_LINK
 	if (eui64 == NULL) {
 		return -EINVAL;
 	}
@@ -820,10 +813,6 @@ int lichen_peer_remove(const uint8_t eui64[8])
 
 	k_mutex_unlock(&rx_mutex);
 	return 0;
-#else
-	ARG_UNUSED(eui64);
-	return -ENOTSUP;
-#endif
 }
 
 /* Forward declarations */
@@ -949,7 +938,6 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 
 	LOG_DBG("lichen_l2: TX IPv6 %zu bytes", pkt_len);
 
-#if HAVE_LICHEN_LINK
 	/*
 	 * Use lichen_link_tx() to build the complete frame with proper MIC.
 	 * This handles:
@@ -1000,10 +988,6 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 
 	/* Send via LoRa */
 	ret = lichen_lora_l2_tx(tx_frame_buf, frame_len);
-#else
-	/* No LICHEN link layer - send raw IPv6 (for testing) */
-	ret = lichen_lora_l2_tx(tx_ipv6_buf, pkt_len);
-#endif
 
 	k_mutex_unlock(&tx_mutex);
 
@@ -1071,7 +1055,6 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 			return ret;
 		}
 
-#if HAVE_LICHEN_LINK
 		/*
 		 * Re-initialize link_ctx if it was cleaned up by a prior disable.
 		 * (project-LICHEN-rwio.1)
@@ -1116,7 +1099,6 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		}
 		k_mutex_unlock(&rx_mutex);
 		k_mutex_unlock(&tx_mutex);
-#endif
 		/*
 		 * Re-register RX callback before starting.
 		 * lichen_lora_l2_stop() clears the callback (lora_l2.c:324-325),
@@ -1125,7 +1107,6 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		ret = lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);
 		if (ret != 0) {
 			LOG_ERR("lichen_l2: failed to set RX callback (%d)", ret);
-#if HAVE_LICHEN_LINK
 			k_mutex_lock(&tx_mutex, K_FOREVER);
 			k_mutex_lock(&rx_mutex, K_FOREVER);
 			if (atomic_get(&link_ctx_initialized)) {
@@ -1134,7 +1115,6 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 			}
 			k_mutex_unlock(&rx_mutex);
 			k_mutex_unlock(&tx_mutex);
-#endif
 			return ret;
 		}
 		ret = lichen_lora_l2_start();
@@ -1162,7 +1142,6 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 				LOG_WRN("lichen_l2: failed to clear callback on start failure (%d)", cb_ret);
 			}
 		}
-#if HAVE_LICHEN_LINK
 		/*
 		 * Roll back link_ctx state on start() failure. (project-LICHEN-dq6n.20)
 		 *
@@ -1182,7 +1161,6 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 			k_mutex_unlock(&rx_mutex);
 			k_mutex_unlock(&tx_mutex);
 		}
-#endif
 		return ret;
 	} else {
 		/*
@@ -1222,16 +1200,13 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 				 * The link_ctx contents may be stale, but the next enable()
 				 * will re-initialize it properly since link_ctx_initialized=0.
 				 */
-#if HAVE_LICHEN_LINK
 				atomic_set(&link_ctx_initialized, 0);
-#endif
 			}
 		}
 		/*
 		 * Note: We intentionally do NOT clear lichen_iface here.
 		 * See the invariant comment at the lichen_iface declaration.
 		 */
-#if HAVE_LICHEN_LINK
 		/*
 		 * Clean up link context: wipe keys, reset sequence state.
 		 * Hold both mutexes to prevent races with in-flight TX/RX:
@@ -1313,7 +1288,6 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		}
 		k_mutex_unlock(&rx_mutex);
 		k_mutex_unlock(&tx_mutex);
-#endif
 		return ret;
 	}
 }
@@ -1529,7 +1503,6 @@ void lichen_l2_iface_init(struct net_if *iface)
 		return;
 	}
 
-#if HAVE_LICHEN_LINK
 	/*
 	 * Initialize link context before enabling RX.
 	 *
@@ -1598,7 +1571,6 @@ void lichen_l2_iface_init(struct net_if *iface)
 	 * optimization from eliding the clear on re-init after failed init.
 	 */
 	secure_zero(peer_table, sizeof(peer_table));
-#endif
 
 	/*
 	 * Cache interface for RX callback.
@@ -1630,7 +1602,6 @@ void lichen_l2_iface_init(struct net_if *iface)
 		return;
 	}
 
-#if HAVE_LICHEN_LINK
 	/*
 	 * Mark link_ctx as safe to access.
 	 * Note: Zephyr's atomic_set() does NOT provide release semantics.
@@ -1642,7 +1613,6 @@ void lichen_l2_iface_init(struct net_if *iface)
 	 * (project-LICHEN-q3iy.24)
 	 */
 	atomic_set(&link_ctx_initialized, 1);
-#endif
 
 	/* Derive and log link-local address */
 	ret = lichen_log_link_local_from_eui64(eui64, NULL);
@@ -1651,11 +1621,7 @@ void lichen_l2_iface_init(struct net_if *iface)
 		goto fail_late_init;
 	}
 
-#if HAVE_LICHEN_LINK
 	LOG_INF("lichen_l2: initialized (full framing)");
-#else
-	LOG_WRN("lichen_l2: initialized (RAW MODE - no framing/crypto)");
-#endif
 	return;
 
 fail_late_init:
@@ -1692,7 +1658,6 @@ fail_late_init:
 	 */
 	atomic_set(&iface_init_failed, 1);
 	(void)lichen_lora_l2_set_rx_callback(NULL, NULL);
-#if HAVE_LICHEN_LINK
 	k_mutex_lock(&tx_mutex, K_FOREVER);
 	k_mutex_lock(&rx_mutex, K_FOREVER);
 	atomic_set(&link_ctx_initialized, 0);
@@ -1707,7 +1672,6 @@ fail_late_init:
 	lichen_link_cleanup(&link_ctx);
 	k_mutex_unlock(&rx_mutex);
 	k_mutex_unlock(&tx_mutex);
-#endif
 }
 
 void lichen_l2_reinit_after_abort(void)
@@ -1811,7 +1775,6 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 
 	k_mutex_lock(&rx_mutex, K_FOREVER);
 
-#if HAVE_LICHEN_LINK
 	/*
 	 * Guard against access before initialization.
 	 * This shouldn't happen in normal operation, but could if a packet
@@ -1935,16 +1898,6 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 
 	/* SECURITY: Zero local key copy before any exit (project-LICHEN-1ojj.28) */
 	secure_zero(rx_link_key, sizeof(rx_link_key));
-#else
-	/* No LICHEN link layer - treat as raw IPv6 */
-	if (len > sizeof(rx_ipv6_buf)) {
-		LOG_WRN("lichen_l2: RX packet too large (%zu bytes)", len);
-		k_mutex_unlock(&rx_mutex);
-		return;
-	}
-	memcpy(rx_ipv6_buf, data, len);
-	ipv6_len = len;
-#endif
 
 	/*
 	 * Copy the shared RX buffer before releasing rx_mutex. The copy is small
