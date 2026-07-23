@@ -1,17 +1,16 @@
 {
   "id": "project-LICHEN-16jb",
   "title": "codereview-pass3-chunk2-hash-call pass1: verified hash_32(sfn, eui64) call site and vector now consistent with link layer short_addr computation and spec FNV-1a; no P0-P2 findings; updated expected values prevent test drift",
-  "notes": "Commit: 9f7b8e4da",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 4,
   "issue_type": "task",
   "assignee": "AI Agent",
   "created_at": "2026-07-22T16:55:13.59952432Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-23T04:29:09.058366824Z",
+  "updated_at": "2026-07-23T04:28:34.318356814Z",
   "started_at": "2026-07-23T04:28:34.318356814Z",
-  "closed_at": "2026-07-23T04:29:09.058366824Z",
-  "close_reason": "Verified hash_32(sfn, eui64) consistency with short_addr and FNV-1a per spec; expected values updated to prevent test drift; no P0-P2 findings in pass 1 of codereview-pass3-chunk2; tests consistent; commit 9f7b8e4da",
+  "lease_expires_at": "2026-07-23T04:33:34.318356814Z",
+  "heartbeat_at": "2026-07-23T04:28:34.318356814Z",
   "labels": [
     "defer-external",
     "codereview"
