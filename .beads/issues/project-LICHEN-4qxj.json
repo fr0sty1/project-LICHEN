@@ -2,12 +2,16 @@
   "id": "project-LICHEN-4qxj",
   "title": "[codereview-pass3-robustness-3] Chunk2 clean on boundary handling",
   "description": "spec/02a-coordinated-capacity.md:110-120 - Pass3 robustness: Good addition of time-provider cross-ref and delta MUST. No P0-P2. Example still to be added in final chunk. P4 opinion only. Discovered-from:project-LICHEN-yne7",
-  "status": "open",
+  "status": "in_progress",
   "priority": 4,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:24:36.670471771Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:24:36.670471771Z",
+  "updated_at": "2026-07-23T04:19:42.459630308Z",
+  "started_at": "2026-07-23T04:19:42.459630308Z",
+  "lease_expires_at": "2026-07-23T04:24:42.459630308Z",
+  "heartbeat_at": "2026-07-23T04:19:42.459630308Z",
   "labels": [
     "codereview",
     "robustness"
