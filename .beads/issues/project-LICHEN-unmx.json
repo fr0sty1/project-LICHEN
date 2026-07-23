@@ -1,15 +1,15 @@
 {
   "id": "project-LICHEN-unmx",
   "title": "[merge-conflict] worktree-worker23: main.c",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:19:36.922982134Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:27:20.602471937Z",
+  "updated_at": "2026-07-23T00:31:06.108005934Z",
   "started_at": "2026-07-23T00:27:20.602471937Z",
-  "lease_expires_at": "2026-07-23T00:32:20.602471937Z",
-  "heartbeat_at": "2026-07-23T00:27:20.602471937Z"
+  "closed_at": "2026-07-23T00:31:06.108005934Z",
+  "close_reason": "Resolved all merge conflicts in main.c (worker23), RPL trickle files, Zephyr board configs, Rust gateway/bridge, Python DAO/test, schema, spec updates. Chose most complete consistent code, removed duplicate comments, preserved LICHEN protocol functionality. No dead code added. Verified no markers with grep, git status clean."
 }
