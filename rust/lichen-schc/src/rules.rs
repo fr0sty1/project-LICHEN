@@ -66,6 +66,7 @@ const IPV6_BASE: &[FieldDescriptor] = &[
         cda: Cda::NotSent,
         target_value: 6,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "IPv6.traffic_class",
@@ -74,6 +75,7 @@ const IPV6_BASE: &[FieldDescriptor] = &[
         cda: Cda::NotSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "IPv6.flow_label",
@@ -82,6 +84,7 @@ const IPV6_BASE: &[FieldDescriptor] = &[
         cda: Cda::NotSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "IPv6.payload_length",
@@ -90,6 +93,7 @@ const IPV6_BASE: &[FieldDescriptor] = &[
         cda: Cda::Compute,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "IPv6.hop_limit",
@@ -98,6 +102,7 @@ const IPV6_BASE: &[FieldDescriptor] = &[
         cda: Cda::ValueSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
 ];
 
@@ -109,6 +114,7 @@ const LINK_LOCAL_ADDR: &[FieldDescriptor] = &[
         cda: Cda::Lsb,
         target_value: LINK_LOCAL_PREFIX_TV,
         mo_arg: Some(64),
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "IPv6.dst",
@@ -117,6 +123,7 @@ const LINK_LOCAL_ADDR: &[FieldDescriptor] = &[
         cda: Cda::Lsb,
         target_value: LINK_LOCAL_PREFIX_TV,
         mo_arg: Some(64),
+        mapping: None,
     },
 ];
 
@@ -128,6 +135,7 @@ const GLOBAL_ADDR: &[FieldDescriptor] = &[
         cda: Cda::ValueSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "IPv6.dst",
@@ -136,6 +144,7 @@ const GLOBAL_ADDR: &[FieldDescriptor] = &[
         cda: Cda::ValueSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
 ];
 
@@ -146,6 +155,7 @@ const NEXT_UDP: FieldDescriptor = FieldDescriptor {
     cda: Cda::NotSent,
     target_value: 17,
     mo_arg: None,
+    mapping: None,
 };
 const NEXT_ICMPV6: FieldDescriptor = FieldDescriptor {
     field_id: "IPv6.next_header",
@@ -154,6 +164,7 @@ const NEXT_ICMPV6: FieldDescriptor = FieldDescriptor {
     cda: Cda::NotSent,
     target_value: 58,
     mo_arg: None,
+    mapping: None,
 };
 
 const UDP_FIELDS: &[FieldDescriptor] = &[
@@ -164,6 +175,7 @@ const UDP_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::ValueSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "UDP.dst_port",
@@ -172,6 +184,7 @@ const UDP_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::ValueSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "UDP.length",
@@ -180,6 +193,7 @@ const UDP_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::Compute,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "UDP.checksum",
@@ -188,6 +202,7 @@ const UDP_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::Compute,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
 ];
 
@@ -199,6 +214,7 @@ const COAP_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::NotSent,
         target_value: 1,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "CoAP.type",
@@ -207,6 +223,7 @@ const COAP_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::ValueSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "CoAP.tkl",
@@ -215,6 +232,7 @@ const COAP_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::ValueSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "CoAP.code",
@@ -223,6 +241,7 @@ const COAP_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::ValueSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "CoAP.mid",
@@ -231,6 +250,7 @@ const COAP_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::ValueSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
 ];
 
@@ -242,6 +262,7 @@ const ICMPV6_ECHO_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::ValueSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "ICMPv6.code",
@@ -250,6 +271,7 @@ const ICMPV6_ECHO_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::NotSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "ICMPv6.checksum",
@@ -258,6 +280,7 @@ const ICMPV6_ECHO_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::Compute,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "ICMPv6.identifier",
@@ -266,6 +289,7 @@ const ICMPV6_ECHO_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::ValueSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "ICMPv6.sequence",
@@ -274,6 +298,7 @@ const ICMPV6_ECHO_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::ValueSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
 ];
 
@@ -285,6 +310,7 @@ const ICMPV6_RPL_BASE: &[FieldDescriptor] = &[
         cda: Cda::NotSent,
         target_value: 155,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "ICMPv6.code",
@@ -293,6 +319,7 @@ const ICMPV6_RPL_BASE: &[FieldDescriptor] = &[
         cda: Cda::NotSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     }, // overridden per-rule
     FieldDescriptor {
         field_id: "ICMPv6.checksum",
@@ -301,6 +328,7 @@ const ICMPV6_RPL_BASE: &[FieldDescriptor] = &[
         cda: Cda::Compute,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
 ];
 
@@ -312,6 +340,7 @@ const RPL_DIO_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::ValueSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "RPL.version",
@@ -320,6 +349,7 @@ const RPL_DIO_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::ValueSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "RPL.rank",
@@ -328,6 +358,7 @@ const RPL_DIO_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::ValueSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "RPL.gmop",
@@ -336,6 +367,7 @@ const RPL_DIO_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::ValueSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "RPL.dtsn",
@@ -344,6 +376,7 @@ const RPL_DIO_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::ValueSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "RPL.flags",
@@ -352,6 +385,7 @@ const RPL_DIO_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::NotSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "RPL.reserved",
@@ -360,6 +394,7 @@ const RPL_DIO_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::NotSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "RPL.dodagid",
@@ -368,6 +403,7 @@ const RPL_DIO_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::ValueSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
 ];
 
@@ -379,6 +415,7 @@ const RPL_DAO_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::ValueSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "RPL.flags",
@@ -387,6 +424,7 @@ const RPL_DAO_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::ValueSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "RPL.reserved",
@@ -395,6 +433,7 @@ const RPL_DAO_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::NotSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "RPL.seq",
@@ -403,6 +442,7 @@ const RPL_DAO_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::ValueSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
     FieldDescriptor {
         field_id: "RPL.dodagid",
@@ -411,10 +451,11 @@ const RPL_DAO_FIELDS: &[FieldDescriptor] = &[
         cda: Cda::ValueSent,
         target_value: 0,
         mo_arg: None,
+        mapping: None,
     },
 ];
 
-// Full rules matching Python rules.py and codec.rs logic (RPL_DIO/DAO/OSCORE/MQTT_SN now complete)
+// Full rules matching Python rules.py helpers (_ipv6_header_fields, _coap_fields) and codec (RPL_DIO/DAO/OSCORE/MQTT_SN complete)
 pub const LINK_LOCAL_COAP_RULE: Rule = Rule {
     rule_id: RULE_LINK_LOCAL_COAP,
     fields: &[
@@ -496,6 +537,7 @@ pub const RPL_DIO_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 1,
             mo_arg: None,
+            mapping: None,
         },
         ICMPV6_RPL_BASE[2],
         RPL_DIO_FIELDS[0],
@@ -527,6 +569,7 @@ pub const RPL_DAO_RULE: Rule = Rule {
             cda: Cda::NotSent,
             target_value: 2,
             mo_arg: None,
+            mapping: None,
         },
         ICMPV6_RPL_BASE[2],
         RPL_DAO_FIELDS[0],
@@ -589,13 +632,13 @@ pub const MQTT_SN_RULE: Rule = Rule {
         IPV6_BASE[3],
         NEXT_UDP,
         IPV6_BASE[4],
-        LINK_LOCAL_ADDR[0],
-        LINK_LOCAL_ADDR[1],
+        GLOBAL_ADDR[0],  // use global (Ignore) to support both link-local and global addresses in one rule
+        GLOBAL_ADDR[1],
         UDP_FIELDS[0],
         UDP_FIELDS[1],
         UDP_FIELDS[2],
         UDP_FIELDS[3],
-    ], // port matching handled in codec; full match to Python via IGNORE/VALUE_SENT
+    ], // port matching and direction bit handled in codec; uses IGNORE/VALUE_SENT to match Python helper style
 };
 pub const UNCOMPRESSED_RULE: Rule = Rule {
     rule_id: RULE_UNCOMPRESSED,
