@@ -2,15 +2,15 @@
   "id": "project-LICHEN-o5td",
   "title": "[merge-conflict] worktree-worker24: generate.py",
   "notes": "Commit: 21a60dc",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:18:29.50330609Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:22:25.094519546Z",
+  "updated_at": "2026-07-23T02:22:28.519430436Z",
   "started_at": "2026-07-23T02:19:42.895669977Z",
-  "lease_expires_at": "2026-07-23T02:24:42.895669977Z",
-  "heartbeat_at": "2026-07-23T02:19:42.895669977Z"
+  "closed_at": "2026-07-23T02:22:28.519430436Z",
+  "close_reason": "Fixed merge conflict artifacts in test/vectors/generate.py: removed duplicate schc_fragment _write(), renamed ccp9_rendezvous_vectors() to ccp9_vectors() to match call/README, removed unused imports (Identity, sign), ran ruff --fix for import sort. Lint clean, test collection issue pre-existing (unrelated announce.coords). Commit 21a60dc08. Also resolved incidental rebase conflict in xiao conf but aborted to stay in scope."
 }
