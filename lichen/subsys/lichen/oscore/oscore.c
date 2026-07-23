@@ -855,6 +855,7 @@ int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint32_t sender_seq)
 	const uint8_t *eui64 = NULL;
 	int idx;
 	int ret;
+	uint32_t old_seq;
 
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
 
@@ -864,6 +865,7 @@ int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint32_t sender_seq)
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
+	old_seq = ctx->sender_seq;
 	ctx->sender_seq = sender_seq;
 	write_cb = s_nvm_write_cb;
 	if (ctx->has_peer_eui64) {
@@ -877,6 +879,12 @@ int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint32_t sender_seq)
 		ret = write_cb(eui64, sender_seq);
 		if (ret != 0) {
 			LOG_ERR("Failed to persist SSN to NVM: %d", ret);
+			k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+			idx = ctx_get_index(ctx);
+			if (idx >= 0) {
+				ctx->sender_seq = old_seq;
+			}
+			k_mutex_unlock(&s_ctx_mutex);
 			return OSCORE_ERR_NVM_FAILED;
 		}
 	}
@@ -1643,6 +1651,7 @@ nvm_failed:
 	k_mutex_unlock(&s_ctx_mutex);
 	ret = OSCORE_ERR_NVM_FAILED;
 	goto cleanup_protect_request;
+
 }
 
 static size_t find_coap_payload_marker(const uint8_t *data, size_t len)
