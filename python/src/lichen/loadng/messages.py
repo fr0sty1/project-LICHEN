@@ -180,7 +180,7 @@ class RERR:
 LoadngMessage = RREQ | RREP | RERR
 
 _CODE_BY_TYPE = {RREQ: LoadngCode.RREQ, RREP: LoadngCode.RREP, RERR: LoadngCode.RERR}
-_CLASS_BY_CODE = {
+_CLASS_BY_CODE: dict[LoadngCode, type[LoadngMessage]] = {
     LoadngCode.RREQ: RREQ,
     LoadngCode.RREP: RREP,
     LoadngCode.RERR: RERR,

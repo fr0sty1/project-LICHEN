@@ -337,7 +337,7 @@ _CODE_BY_TYPE = {
     DAO: RplCode.DAO,
     DAOAck: RplCode.DAO_ACK,
 }
-_CLASS_BY_CODE = {
+_CLASS_BY_CODE: dict[RplCode, type[RplMessage]] = {
     RplCode.DIS: DIS,
     RplCode.DIO: DIO,
     RplCode.DAO: DAO,
