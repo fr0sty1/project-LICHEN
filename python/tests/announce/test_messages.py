@@ -4,6 +4,9 @@
 """
 
 import pytest
+import json
+import subprocess
+from pathlib import Path
 
 from lichen.announce.messages import (
     ANNOUNCE_TYPE,
@@ -12,10 +15,10 @@ from lichen.announce.messages import (
     AnnounceError,
     AnnounceMessage,
 )
+from lichen.l2_payload import L2PayloadKind, classify_l2_payload, l2_payload_body
 
 
-class TestAnnounceConstruction:
-    """Tests for AnnounceMessage construction and validation."""
+VECTORS_DIR = Path(__file__).resolve().parents[3] / "test" / "vectors"
 
     def test_valid_minimal_announce(self):
         """A valid announce with minimum required fields."""

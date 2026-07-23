@@ -1,31 +1,34 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 
-from lichen.announce.messages import ANNOUNCE_TYPE
-from lichen.constants import SCHC_RULE_GLOBAL_COAP
+import json
+import pytest
+from pathlib import Path
+
 from lichen.l2_payload import (
     L2PayloadKind,
     classify_l2_payload,
     l2_payload_body,
-    wrap_routing_payload,
-    wrap_schc_payload,
 )
 
 
-def test_dispatch_distinguishes_global_coap_rule_from_announce() -> None:
-    schc = bytes([SCHC_RULE_GLOBAL_COAP, 0x40, 0x20])
-    announce = bytes([ANNOUNCE_TYPE, 0x00, 0x00])
-
-    wrapped_schc = wrap_schc_payload(schc)
-    wrapped_announce = wrap_routing_payload(announce)
-
-    assert classify_l2_payload(wrapped_schc) is L2PayloadKind.SCHC
-    assert l2_payload_body(wrapped_schc) == schc
-    assert classify_l2_payload(wrapped_announce) is L2PayloadKind.ROUTING
-    assert l2_payload_body(wrapped_announce) == announce
-    assert wrapped_schc[1] == wrapped_announce[1] == 0x01
+VECTORS_DIR = Path(__file__).resolve().parents[2] / "test" / "vectors"
 
 
-def test_unwrapped_first_byte_is_unknown() -> None:
-    assert classify_l2_payload(bytes([SCHC_RULE_GLOBAL_COAP, 0x00])) is L2PayloadKind.UNKNOWN
-    assert classify_l2_payload(b"") is L2PayloadKind.UNKNOWN
+def _load_l2_vectors():
+    with open(VECTORS_DIR / "l2_payload.json") as f:
+        return json.load(f)["vectors"]
+
+
+@pytest.mark.parametrize("vector", _load_l2_vectors())
+def test_l2_payload_vector_oracle(vector):
+    """Updated to use only l2_payload.json as oracle. Covers announce routing dispatch per spec."""
+    wrapped = bytes.fromhex(vector["wrapped"])
+    body = bytes.fromhex(vector["body"])
+    expected_kind = {
+        "schc": L2PayloadKind.SCHC,
+        "routing": L2PayloadKind.ROUTING,
+        "unknown": L2PayloadKind.UNKNOWN,
+    }[vector["kind"]]
+    assert classify_l2_payload(wrapped) is expected_kind
+    assert l2_payload_body(wrapped) == body
