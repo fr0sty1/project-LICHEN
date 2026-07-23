@@ -3,15 +3,9 @@
 if BOARD_T_DECK_ESP32S3_PROCPU
 config HEAP_MEM_POOL_ADD_SIZE_BOARD
 	int
-	default 131072 if LVGL
 	default 65535 if WIFI && BT
 	default 51200 if WIFI
 	default 40960 if BT
-<<<<<<< HEAD
-	default 8192
-
-endif
-=======
 	default 4096
 config I2C
 	default y
@@ -22,7 +16,6 @@ config INPUT_GPIO_KEYS
 config LV_Z
 	default y if LICHEN_HAS_DISPLAY
 endif # BOARD_T_DECK_ESP32S3_PROCPU
->>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
 
 if BOARD_T_DECK_ESP32S3_APPCPU
 
