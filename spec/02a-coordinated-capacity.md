@@ -39,10 +39,7 @@ Nodes compute their slot using a deterministic hash (FNV-1a) of (EUI64 XOR epoch
 
 The root advertises `epoch` (u32) and `num_slots` (default 8) in an extended RPL configuration option.
 
-<<<<<<< HEAD
-Slot ID MUST be computed as:
-=======
-CCP supports two compatible modes:
+Slot ID MUST be computed as (merged preferring worker23 completeness for modes and channel plans):
 
 1. **Scheduled mode:** The coordinator assigns leased cells. This is the
    preferred high-density mode and requires GNSS with a hardware PPS signal at

@@ -137,10 +137,6 @@ pub trait Radio {
     ) -> impl core::future::Future<Output = Result<Option<RxPacket>, Self::Error>>;
 
     fn configure(&mut self, config: &RadioConfig);
-<<<<<<< HEAD
-    fn configure_channels(&mut self, channels: &[ChannelConfig]) -> impl core::future::Future<Output = Result<(), Self::Error>>;
-    fn current_channel(&self) -> u8 { 0 }
-=======
 
     /// Configure multiple channels for concentrator mode (SX1302 gateways).
     fn configure_channels(
@@ -153,7 +149,7 @@ pub trait Radio {
     fn current_channel(&self) -> u8 {
         0
     }
->>>>>>> origin/worktree-worker19
+
 }
 
 /// Minimal ChannelPlan support (u8 index into regional plan per CCP-4).
