@@ -31,6 +31,7 @@
 //! ```
 
 #![no_std]
+#![forbid(unsafe_code)]
 
 #[cfg(any(test, feature = "std"))]
 extern crate std;
