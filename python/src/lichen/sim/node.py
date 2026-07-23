@@ -53,6 +53,7 @@ class SimNode:
     rx_callbacks: RxCallbacks | None = field(repr=False)
     metrics: NodeMetrics = field(repr=False)
     current_channel: int = 0
+    seed: int = 0
     hop_schedule: tuple[int, ...] = field(default_factory=tuple, repr=False)
     seed: int = 0
     tdma_scheduler: TDMAScheduler = field(repr=False, default_factory=TDMAScheduler)
@@ -70,6 +71,7 @@ class SimNode:
         rx_callbacks: RxCallbacks | None = None,
         metrics: NodeMetrics | None = None,
         current_channel: int = 0,
+        seed: int = 0,
         hop_schedule: tuple[int, ...] | None = None,
         tdma_scheduler: TDMAScheduler | None = None,
         seed: int = 0,
@@ -86,6 +88,7 @@ class SimNode:
         self.metrics = metrics if metrics is not None else NodeMetrics()
         self.seed = seed
         self.current_channel = current_channel
+        self.seed = seed
         self.hop_schedule = tuple(hop_schedule) if hop_schedule is not None else ()
         self.tdma_scheduler = tdma_scheduler if tdma_scheduler is not None else TDMAScheduler()
         data = seed.to_bytes(8, "big") + ((sfn) & 0xffffffff).to_bytes(4, "little")
