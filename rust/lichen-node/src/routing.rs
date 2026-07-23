@@ -160,6 +160,19 @@ pub type LinkEtx = f32;
 /// Geographic coordinates (latitude, longitude) in decimal degrees.
 pub type GeoCoords = (f64, f64);
 
+pub trait LivenessPolicy {
+    fn is_alive(&self, last_seen_ms: u64, now_ms: u64, timeout_ms: u64) -> bool;
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct TimeoutLiveness;
+
+impl LivenessPolicy for TimeoutLiveness {
+    fn is_alive(&self, last_seen_ms: u64, now_ms: u64, timeout_ms: u64) -> bool {
+        now_ms.saturating_sub(last_seen_ms) <= timeout_ms
+    }
+}
+
 /// Neighbor entry with link quality tracking and optional coordinates.
 #[derive(Clone, Debug)]
 pub struct Neighbor {
@@ -298,13 +311,14 @@ impl NeighborTable {
     ///
     /// Both values use the same monotonic `u64` millisecond timeline as [`Self::update`].
     pub fn prune(&mut self, now_ms: u64, max_age_ms: u64) {
-        self.prune_with_removed(now_ms, max_age_ms, |_| {});
+        self.prune_with_removed(now_ms, max_age_ms, TimeoutLiveness, |_| {});
     }
 
     fn prune_with_removed(
         &mut self,
         now_ms: u64,
         max_age_ms: u64,
+        policy: impl LivenessPolicy,
         mut removed: impl FnMut([u8; 16]),
     ) {
         let now_ms = now_ms.max(self.last_now_ms);
@@ -312,7 +326,7 @@ impl NeighborTable {
         for slot in self.entries.iter_mut() {
             let is_stale = slot
                 .as_ref()
-                .is_some_and(|neighbor| now_ms.saturating_sub(neighbor.last_seen_ms) > max_age_ms);
+                .is_some_and(|neighbor| !policy.is_alive(neighbor.last_seen_ms, now_ms, max_age_ms));
             if is_stale {
                 let neighbor = slot.take().expect("stale slot contains a neighbor");
                 removed(neighbor.addr);
@@ -961,7 +975,7 @@ impl Router {
         let mut removed = [[0u8; 16]; MAX_NEIGHBORS];
         let mut removed_len = 0;
         self.neighbors
-            .prune_with_removed(now_ms, max_age_ms, |addr| {
+            .prune_with_removed(now_ms, max_age_ms, TimeoutLiveness, |addr| {
                 removed[removed_len] = addr;
                 removed_len += 1;
             });
