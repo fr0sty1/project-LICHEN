@@ -46,7 +46,12 @@ _ADDR_LEN_TABLE: tuple[int, ...] = (0, 2, 8, 0)  # indexed by AddrMode value
 
 
 class MicLength(IntEnum):
-    """Message Integrity Code length (LLSec bits 2-4, spec 4.2)."""
+    """MIC length / compatibility selector (LLSec bits 2-4, spec 4.2).
+
+    Only 0 and 1 are valid (both mean no MIC on unsigned frames);
+    values 2-7 are reserved. The enum is the source of truth for
+    valid values (see from_bytes()).
+    """
 
     BITS32 = 0  # compatibility selector; unsigned frames have no MIC
     BITS64 = 1  # compatibility selector; unsigned frames have no MIC
@@ -188,9 +193,10 @@ class LichenFrame:
             raise FrameError("LLSec reserved bit (7) must be 0")
         addr_mode = AddrMode(llsec & _ADDR_MODE_MASK)
         mic_field = (llsec >> _MIC_LEN_SHIFT) & _MIC_LEN_MASK
-        if mic_field > MicLength.BITS64:
-            raise FrameError(f"reserved MIC-length value: {mic_field}")
-        mic_length = MicLength(mic_field)
+        try:
+            mic_length = MicLength(mic_field)
+        except ValueError:
+            raise FrameError(f"reserved MIC-length value: {mic_field}") from None
 
         epoch = body[1]
         seqnum = int.from_bytes(body[2:4], "big")
