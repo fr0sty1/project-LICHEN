@@ -1,18 +1,17 @@
 {
   "id": "project-LICHEN-qcm3",
   "title": "[merge-conflict] integration/worker12-20260722: sim_client.py",
-  "notes": "Commit: 955b1d15a (lint fix for E501 in sim_client.py)",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:31:46.218814838Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:56:39.17479303Z",
+  "updated_at": "2026-07-23T04:54:17.186697204Z",
   "started_at": "2026-07-22T23:37:46.820897243Z",
-  "closed_at": "2026-07-23T04:56:39.17479303Z",
-  "close_reason": "Fixed lint errors (E501 line length) in sim_client.py per ruff; tests and ruff check now pass; committed as 955b1d15a on integration/worker5-20260722",
+  "lease_expires_at": "2026-07-23T04:59:17.186697204Z",
+  "heartbeat_at": "2026-07-23T04:54:17.186697204Z",
   "labels": [
     "defer-boardconfig"
   ]
