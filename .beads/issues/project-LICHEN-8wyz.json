@@ -2,11 +2,15 @@
   "id": "project-LICHEN-8wyz",
   "title": "serial.py: open() sets _loop but doesn't check for concurrent opens",
   "description": "File: python/src/lichen/interface/kiss/serial.py\nLines: 54-68\n\nThe open() method has a race condition when called concurrently:\n\n```python\nasync def open(self) -\u003e None:\n    if self._serial is not None:  # Check\n        return\n    \n    self._loop = asyncio.get_running_loop()  # Not atomic with check\n    \n    def _open():\n        return serial.Serial(...)\n    \n    self._serial = await self._loop.run_in_executor(None, _open)  # Set\n```\n\nIf two coroutines call open() concurrently:\n1. Coroutine A checks _serial is None\n2. Coroutine B checks _serial is None\n3. Both proceed to open the serial port\n4. Second open fails or creates duplicate connection\n\nImpact: Potential resource leak or error when open() is called from multiple async contexts.\n\nFix: Use a lock or async lock around the open operation:\n```python\n_open_lock: asyncio.Lock = field(default_factory=asyncio.Lock)\n\nasync def open(self) -\u003e None:\n    async with self._open_lock:\n        if self._serial is not None:\n            return\n        # ... rest of open logic\n```",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:20:09.641175Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:20:09.641204Z"
+  "updated_at": "2026-07-23T04:28:08.785764515Z",
+  "started_at": "2026-07-23T04:28:08.785764515Z",
+  "lease_expires_at": "2026-07-23T04:33:08.785764515Z",
+  "heartbeat_at": "2026-07-23T04:28:08.785764515Z"
 }
