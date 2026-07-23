@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-jqwp",
   "title": "[merge-conflict] worktree-worker1: coap_config.c",
-  "notes": "Commit: 4ce95c3 (fixed s_provider TOCTOU race by using provider_get() in all 5 handlers)",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:55:18.67237976Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:04:00.963804093Z",
+  "updated_at": "2026-07-23T03:01:11.710701208Z",
   "started_at": "2026-07-23T03:01:11.710701208Z",
-  "closed_at": "2026-07-23T03:04:00.963804093Z",
-  "close_reason": "Fixed unprotected s_provider access (P1 race/TOCTOU) in coap_config.c handlers by calling lichen_coap_config_provider_get() which acquires mutex. Changes in config_*_get/put functions. Matches codereview findings from 7msq/o59x. Build and grep verified. Push pending due to .beads rebase conflicts."
+  "lease_expires_at": "2026-07-23T03:06:11.710701208Z",
+  "heartbeat_at": "2026-07-23T03:01:11.710701208Z"
 }
