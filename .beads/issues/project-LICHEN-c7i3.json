@@ -2,6 +2,7 @@
   "id": "project-LICHEN-c7i3",
   "title": "[spec-compliance] SCHC rule versioning + link replay enforcement gaps",
   "description": "Convergence (c1a0a246b) and lost-recovery-2 (6dbbae8c5) updated SCHC rule versioning in DIO (MUST per draft-lichen-schc-lora-00.md), link replay.c (per-peer epoch/SEQ window), S=1 enforcement for RPL control frames (spec/02-physical-link.md MUST). Multiple small fixes suggest transient non-compliance during integration. Potential desync or security bypass if not uniformly enforced in all SCHC/RPL dispatch paths. Verify against test/vectors/schc*.json, link_frame.json, full interop suite.",
+  "notes": "Commit: 2b5821396",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T01:20:36.19298699Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:13:39.620236938Z",
+  "updated_at": "2026-07-23T02:18:48.849516041Z",
   "started_at": "2026-07-23T02:13:39.620236938Z",
   "lease_expires_at": "2026-07-23T02:18:39.620236938Z",
   "heartbeat_at": "2026-07-23T02:13:39.620236938Z"
