@@ -6,6 +6,7 @@
 use lichen_rpl::trickle::TrickleEvent;
 
 use crate::{RplMaintenanceOutcome, RplNode};
+use crate::routing::TrickleSafeLivenessPolicy;
 
 pub const DEFAULT_MAINTENANCE_INTERVAL_MS: u64 = 1_000;
 pub const DEFAULT_NEIGHBOR_TIMEOUT_MS: u64 = 10_000;
@@ -183,7 +184,7 @@ impl RplRuntime {
             .next_maintenance_ms
             .is_some_and(|deadline| now_ms >= deadline)
         {
-            let outcome = node.maintain(now_ms, self.config.neighbor_timeout_ms);
+            let outcome = node.maintain(now_ms, self.config.neighbor_timeout_ms, &());
             self.next_maintenance_ms = self.next_maintenance_after(now_ms);
             Some(outcome)
         } else {
