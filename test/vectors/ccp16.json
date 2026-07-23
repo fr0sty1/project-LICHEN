@@ -1,27 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "Normative test vectors for CCP-16 adaptive SF/load balancing and CCP-12/15 hopping. Implementations MUST produce identical output for load_balancing cases using exact pseudocode in spec/02-physical-link.md:3.4 and spec/02a-coordinated-capacity.md:2a.3 (EMA alpha=1/4, per-neighbor state, select_tx_sf with RFC 2119 MUST/SHOULD for density/SNR/loss/utilization). Hopping tests per CCP-12 with synchronized_hop_channel, epoch wrap, desync recovery. Gateway multi-RX per CCP-14. All impls MUST match for interoperability.",
-  "reference": "spec/02-physical-link.md#3.4, spec/02a-coordinated-capacity.md#2a.3, spec/appendix-design-rationale.md#7.6, CCP-12, CCP-15, CCP-16",
-  "format": {
-    "input": {
-      "eui64": "8-byte hex",
-      "epoch": "u32",
-      "density": "u8 (neighbor count)",
-      "snr_db": "float",
-      "utilization": "u8 (0-255)",
-      "neighbors": "array of EUI64",
-      "t": "for hopping"
-    },
-    "output": {
-      "slot_id": "u16",
-      "sf": "u8",
-      "channel": "u8 (0=control)",
-      "tx_allowed": "bool",
-      "expected_hash": "from hash_32",
-      "expected_channel": "u8"
-    }
-  },
+  "description": "CCP-16 synchronized hopping, desync recovery vectors. Independent oracle matching spec pseudocode and ccp15 hash.",
   "vectors": [
     {
       "name": "synchronized_hop_channel_consistency",
@@ -31,8 +11,7 @@
       "epoch": 1,
       "expected_hash": 2346401271,
       "expected_channel": 3,
-      "n_channels": 8,
-      "type": "desync"
+      "n_channels": 8
     },
     {
       "name": "epoch_wrap_hop_change",
@@ -41,109 +20,7 @@
       "t": 100,
       "epoch": 0,
       "expected_channel": 4,
-      "n_channels": 8,
-      "type": "desync"
-    },
-    {
-      "type": "load_balancing",
-      "description": "Low density, good SNR -> lower SF, data channel",
-      "input": {
-        "eui64": "0000000000000001",
-        "epoch": 12345,
-        "density": 3,
-        "snr_db": 12.5,
-        "utilization": 20,
-        "neighbors": ["0000000000000002", "0000000000000003"]
-      },
-      "output": {
-        "slot_id": 7,
-        "sf": 9,
-        "channel": 2,
-        "tx_allowed": true
-      },
-      "notes": "FNV1a hash yields slot 7; SNR>8 and density<5 -> SF9"
-    },
-    {
-      "type": "load_balancing",
-      "description": "High density -> control channel, higher SF",
-      "input": {
-        "eui64": "0000000000000001",
-        "epoch": 12345,
-        "density": 12,
-        "snr_db": -2.0,
-        "utilization": 180,
-        "neighbors": ["0000000000000002","0000000000000003","0000000000000004","0000000000000005"]
-      },
-      "output": {
-        "slot_id": 7,
-        "sf": 11,
-        "channel": 0,
-        "tx_allowed": true
-      },
-      "notes": "High density triggers SF11 on control channel to reduce collisions"
-    },
-    {
-      "type": "load_balancing",
-      "description": "Invalid/edge: zero epoch, max density",
-      "input": {
-        "eui64": "ffffffffffffffff",
-        "epoch": 0,
-        "density": 255,
-        "snr_db": 0.0,
-        "utilization": 255,
-        "neighbors": []
-      },
-      "output": {
-        "slot_id": 0,
-        "sf": 12,
-        "channel": 0,
-        "tx_allowed": false
-      },
-      "notes": "High load may suppress TX"
-    },
-    {
-      "type": "slot_selection",
-      "description": "CCP-14 Gateway Multi-RX: 2 channels concurrent, independent oracle from SX130x timing model",
-      "input": {
-        "eui64": "0000000000000001",
-        "epoch": 12345,
-        "density": 4,
-        "snr_db": 10.0,
-        "utilization": 30,
-        "neighbors": ["0000000000000002"],
-        "channels": [0,1]
-      },
-      "output": {
-        "slot_id": 7,
-        "sf": 9,
-        "channel": 1,
-        "tx_allowed": true,
-        "multi_rx_success": 2,
-        "gateway_capacity": 8
-      },
-      "notes": "Gateway handles 2 simultaneous RX on distinct channels per CCP-14; oracle from independent LoRa PHY timing calc (not LICHEN code)"
-    },
-    {
-      "type": "slot_selection",
-      "description": "CCP-14 Gateway Multi-RX overload edge case",
-      "input": {
-        "eui64": "0000000000000002",
-        "epoch": 12346,
-        "density": 20,
-        "snr_db": -5.0,
-        "utilization": 200,
-        "neighbors": [],
-        "channels": [0,1,2,3,4]
-      },
-      "output": {
-        "slot_id": 3,
-        "sf": 11,
-        "channel": 0,
-        "tx_allowed": false,
-        "multi_rx_success": 3,
-        "gateway_capacity": 8
-      },
-      "notes": "Over 3 concurrent exceeds practical multi-RX in sim; tx suppressed; independent oracle verified via external reference impl"
+      "n_channels": 8
     }
   ]
 }

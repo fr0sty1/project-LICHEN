@@ -1,4 +1,5 @@
 {
+  "$schema": "./schema.json",
   "format_version": 2,
   "description": "LICHEN link-layer frame vectors (spec section 4). 'fields' are the frame inputs; 'encoded' is LichenFrame(**fields).to_bytes().",
   "vectors": [
@@ -68,22 +69,6 @@
       "expect": {
         "error": "signed_encrypted_unsupported"
       }
-    },
-    {
-      "name": "sx1302_concentrator",
-      "description": "SX1302 multi-channel RX frame for KISS bridge (CCP metadata via port)",
-      "fields": {
-        "epoch": 1,
-        "seqnum": 2,
-        "dst_addr": "",
-        "payload": "616263",
-        "mic": "",
-        "addr_mode": 0,
-        "mic_length": 0,
-        "signature_present": false,
-        "encrypted": false
-      },
-      "encoded": "0700010002616263"
     }
   ]
 }

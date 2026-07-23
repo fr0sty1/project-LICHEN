@@ -1624,8 +1624,6 @@ def _write(filename: str, description: str, vectors: list[dict]) -> None:
     print(f"wrote {len(vectors)} vectors to {path.name}")
 
 
-<<<<<<< HEAD
-=======
 def schc_fragment_vectors() -> list[dict]:
     # Independent vectors from RFC 8724 §8 + CRC32 oracle + explicit ACK retry logic.
     # Not derived from any LICHEN impl code. Covers all required cases.
@@ -1751,7 +1749,7 @@ def ccp16_vectors() -> list[dict]:
     ]
 
 
-def ccp9_vectors() -> list[dict]:
+def ccp9_rendezvous_vectors() -> list[dict]:
     # CCP-9 rendezvous mechanisms from da2q multi-channel context. Independent
     # oracles for announce-based rendezvous, control channel (CH0) fallback for
     # unknown peers, integration with synchronized_hop_channel (CCP-12 preference),
@@ -1795,8 +1793,6 @@ def ccp9_vectors() -> list[dict]:
         },
     ]
 
-
->>>>>>> origin/integration/worker5-20260722
 def ccp15_vectors() -> list[dict]:
     v = []
     for seed in range(3):
@@ -1843,6 +1839,24 @@ def main() -> None:
         "oracle (hardcoded expected_channel=7 matching computation, not from "
         "code-under-test). Fixes vector bug.",
         ccp9_rendezvous_vectors(),
+    )
+    _write(
+        "schc_fragment.json",
+        "SCHC fragmentation vectors (RFC 8724 §8) with independent CRC32 oracle. "
+        "No dependency on LICHEN implementation.",
+        schc_fragment_vectors(),
+    )
+    _write(
+        "ccp_load_balancing.json",
+        "CCP load balancing, TDMA slot selection, drift compensation vectors "
+        "with independent hash_32 (crc32_ieee) oracle per spec 02a.",
+        ccp_load_balancing_vectors(),
+    )
+    _write(
+        "ccp16.json",
+        "CCP-16 synchronized hopping, desync recovery vectors. Independent "
+        "oracle matching spec pseudocode and ccp15 hash.",
+        ccp16_vectors(),
     )
     _write(
         "meshtastic_app_compat.json",

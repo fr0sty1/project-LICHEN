@@ -1,4 +1,5 @@
 {
+  "$schema": "./schema.json",
   "format_version": 2,
   "description": "ccp15 vectors for SF EMA load_factor hash_32 congestion control with independent oracle.",
   "vectors": [

@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "Independent test vectors for TDMA slot assignment, guard time boundaries, drift compensation per spec section on superframe/250ms slots/50ms guard and CCP-16 load balancing. Values are mathematical oracles independent of implementation code.",
+  "description": "CCP load balancing, TDMA slot selection, drift compensation vectors with independent hash_32 (crc32_ieee) oracle per spec 02a.",
   "vectors": [
     {
       "name": "tdma_slot_assignment_static_hash",
