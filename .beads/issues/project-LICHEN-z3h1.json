@@ -2,15 +2,15 @@
   "id": "project-LICHEN-z3h1",
   "title": "[merge-conflict] worktree-worker20: dao.py",
   "notes": "Commit: b6e89437f",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:28:26.812377626Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:29:46.898517756Z",
+  "updated_at": "2026-07-23T02:29:49.139538564Z",
   "started_at": "2026-07-23T02:28:37.509281074Z",
-  "lease_expires_at": "2026-07-23T02:33:37.509281074Z",
-  "heartbeat_at": "2026-07-23T02:28:37.509281074Z"
+  "closed_at": "2026-07-23T02:29:49.139538564Z",
+  "close_reason": "Updated dao.py to resolve merge divergence with full non-storing mode implementation including freshness tracking, sequence lollipop counters, candidate management, and route assembly. Synced from canonical version. Tree now clean. Also resolved related conf and coap_status updates across workers."
 }
