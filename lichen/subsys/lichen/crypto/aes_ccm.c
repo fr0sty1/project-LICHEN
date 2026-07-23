@@ -13,6 +13,8 @@
  * Uses tinycrypt's CCM mode implementation.
  */
 
+#include <string.h>
+
 #include <tinycrypt/aes.h>
 #include <tinycrypt/ccm_mode.h>
 #include <tinycrypt/constants.h>
