@@ -69,13 +69,25 @@ int lichen_coap_deaddrop_register(const struct lichen_deaddrop_provider *provide
 	return 0;
 }
 
+static int deaddrop_oscore_respond(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len, struct oscore_ctx *ctx, const uint8_t *piv, size_t piv_len, uint8_t code) {
+	uint8_t buf[128];
+	struct coap_packet resp;
+	int ret = coap_oscore_protect_response(ctx, piv, piv_len, request, code, NULL, 0, &resp, buf, sizeof(buf));
+	if (ret < 0) return COAP_RESPONSE_CODE_INTERNAL_ERROR;
+	ret = coap_resource_send(resource, &resp, addr, addr_len, NULL);
+	return ret;
+}
+
 static int deaddrop_post(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len) {
 	if (s_provider == NULL || s_provider->store == NULL) return COAP_RESPONSE_CODE_NOT_FOUND;
 	const uint8_t *payload;
 	uint16_t payload_len = 0;
 	uint8_t dest_iid[8] = {0};
 	struct oscore_ctx *ctx = NULL;
-	if (coap_oscore_is_protected(request)) {
+	uint8_t piv[8];
+	size_t piv_len = sizeof(piv);
+	bool is_protected = coap_oscore_is_protected(request);
+	if (is_protected) {
 		uint8_t peer_eui64[8];
 		if (addr_len >= sizeof(struct sockaddr_in6) && addr->sa_family == AF_INET6) {
 			const struct sockaddr_in6 *in6 = (const struct sockaddr_in6 *)addr;
@@ -95,7 +107,7 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 		uint8_t orig_code;
 		uint8_t opts[32];
 		size_t opt_len = sizeof(opts);
-		uint8_t plain[256];
+		uint8_t plain[512];
 		size_t plain_len = sizeof(plain);
 		r = oscore_unprotect_request(ctx, oscore_opt, oscore_opt_len, ct, ct_len, &orig_code, opts, &opt_len, plain, &plain_len);
 		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_BAD_REQUEST;
@@ -115,40 +127,21 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 	if (oscore_ctx_get_by_eui64(sender_iid, &ctx) != OSCORE_OK || ctx == NULL) {
 		return COAP_RESPONSE_CODE_UNAUTHORIZED;
 	}
-	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
 	uint32_t now_ms = k_uptime_get_32();
 	uint8_t iid7 = dest_iid[7];
 	k_mutex_lock(&s_rate_mutex, K_FOREVER);
 	if (s_last_deaddrop[iid7] && (now_ms - s_last_deaddrop[iid7] < CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS)) {
 		k_mutex_unlock(&s_rate_mutex);
+		if (is_protected && ctx != NULL && piv_len > 0) {
+			return deaddrop_oscore_respond(resource, request, addr, addr_len, ctx, piv, piv_len, COAP_RESPONSE_CODE_TOO_MANY_REQUESTS);
+		}
 		return COAP_RESPONSE_CODE_TOO_MANY_REQUESTS;
 	}
 	s_last_deaddrop[iid7] = now_ms;
 	k_mutex_unlock(&s_rate_mutex);
-	const uint8_t *ct;
-	uint16_t ct_len = 0;
-	ct = coap_packet_get_payload(request, &ct_len);
-	if (!ct || ct_len == 0) return COAP_RESPONSE_CODE_BAD_REQUEST;
-	uint8_t plaintext[512];
-	size_t plaintext_len = sizeof(plaintext);
-	uint8_t oscore_opt[32];
-	size_t oscore_opt_len = sizeof(oscore_opt);
-	uint8_t code;
-	uint8_t opts[64];
-	size_t opts_len = sizeof(opts);
-	int ret = coap_oscore_get_option(request, oscore_opt, &oscore_opt_len);
-	if (ret == 0) {
-		ret = oscore_unprotect_request(ctx, oscore_opt, oscore_opt_len, ct, ct_len, &code, opts, &opts_len, plaintext, &plaintext_len);
-		if (ret != OSCORE_OK) return COAP_RESPONSE_CODE_BAD_REQUEST;
-	} else {
-		memcpy(plaintext, ct, ct_len);
-		plaintext_len = ct_len;
-	}
-	uint8_t dest_iid[8] = {0};
-	parse_recipient(plaintext, plaintext_len, dest_iid);
 	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
 	if (s_provider && s_provider->store) {
-		int r = s_provider->store(plaintext, plaintext_len);
+		int r = s_provider->store(payload, payload_len);
 		if (r < 0) {
 			k_mutex_unlock(&s_dtn_buf_mutex);
 			return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
@@ -156,7 +149,7 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 	}
 	uint32_t now = dtn_get_unix_time();
 	uint32_t expiry = now + LICHEN_DTN_DEFAULT_TTL_SEC;
-	bool ok = lichen_dtn_buffer_message(&s_dtn_buf, plaintext, plaintext_len, dest_iid, expiry, now, now_ms);
+	bool ok = lichen_dtn_buffer_message(&s_dtn_buf, payload, payload_len, dest_iid, expiry, now, now_ms);
 	k_mutex_unlock(&s_dtn_buf_mutex);
 	uint8_t resp_code = ok ? COAP_RESPONSE_CODE_CHANGED : COAP_RESPONSE_CODE_BAD_REQUEST;
 	if (coap_oscore_is_protected(request)) {
@@ -228,6 +221,10 @@ static int confessions_post(struct coap_resource *resource, struct coap_packet *
 		size_t plain_len = sizeof(plain);
 		r = oscore_unprotect_request(ctx, oscore_opt, oscore_opt_len, ct, ct_len, &orig_code, opts, &opt_len, plain, &plain_len);
 		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_BAD_REQUEST;
+	} else {
+		if (oscore_ctx_get_by_eui64(sender_iid, &ctx) != 0 || ctx == NULL) {
+			return COAP_RESPONSE_CODE_UNAUTHORIZED;
+		}
 	}
 	uint8_t iid7 = sender_iid[7];
 	k_mutex_lock(&s_rate_mutex, K_FOREVER);
