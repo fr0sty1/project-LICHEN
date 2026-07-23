@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-va3y",
+  "title": "[spec-compliance] Uninitialized vars and parser bugs in EdhocResponder::process_message_1",
+  "description": "rust/lichen-oscore/src/edhoc.rs:1100-1123: c_i/g_x uninitialized in process_message_1, scoping errors vs Python and RFC 9528 §3.3. Breaks EDHOC handshake per spec/06-security.md:324-335. Recent fixes insufficient. See ses_07076286effeyM9Bu5Zr6pa6rl",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T15:14:59.674663297Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T15:14:59.674663297Z"
+}
