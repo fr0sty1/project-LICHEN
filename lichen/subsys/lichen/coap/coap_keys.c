@@ -857,7 +857,7 @@ static int decode_key_put_cbor(const uint8_t *payload, size_t payload_len,
  * NOT from the LoRa mesh interface. This prevents mesh neighbors from
  * modifying the key store via PUT/DELETE /keys/{iid}.
  */
-static bool is_local_admin(const struct sockaddr *addr, socklen_t addr_len)
+bool lichen_coap_is_local_admin(const struct sockaddr *addr, socklen_t addr_len)
 {
 	if (addr == NULL) {
 		/* Unit test context */
@@ -1004,7 +1004,7 @@ static int keys_single_put(struct coap_resource *resource,
 	int ret;
 
 	/* SECURITY: Require local admin access for write operations */
-	if (!is_local_admin(addr, addr_len)) {
+	if (!lichen_coap_is_local_admin(addr, addr_len)) {
 		LOG_WRN("PUT /keys rejected: not local admin");
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
@@ -1073,7 +1073,7 @@ static int keys_single_delete(struct coap_resource *resource,
 	uint8_t iid[LICHEN_KEY_IID_LEN];
 	int ret;
 
-	if (!is_local_admin(addr, addr_len)) {
+	if (!lichen_coap_is_local_admin(addr, addr_len)) {
 		LOG_WRN("DELETE /keys rejected: not local admin");
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);

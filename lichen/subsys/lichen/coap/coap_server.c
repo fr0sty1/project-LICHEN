@@ -28,10 +28,13 @@
 #include <zephyr/net/coap.h>
 #include <zephyr/net/coap_service.h>
 #include <zephyr/net/coap_link_format.h>
+#include <zephyr/net/net_if.h>
+#include <zephyr/net/net_ip.h>
 #include <lichen/coap_server.h>
 #include <lichen/senml.h>
 #include <lichen/oscore.h>
 #include <lichen/coap_oscore.h>
+#include <lichen/transport/slip_transport.h>
 
 LOG_MODULE_REGISTER(lichen_coap_server, CONFIG_LICHEN_COAP_SERVER_LOG_LEVEL);
 
@@ -190,6 +193,11 @@ static int config_put(struct coap_resource *resource,
 		return COAP_RESPONSE_CODE_NOT_FOUND;
 	}
 
+	if (!lichen_coap_is_local_admin(addr, addr_len)) {
+		return lichen_coap_respond(resource, request, addr, addr_len,
+					   COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
+	}
+
 	payload = coap_packet_get_payload(request, &payload_len);
 	if (payload == NULL || payload_len == 0) {
 		return COAP_RESPONSE_CODE_BAD_REQUEST;
@@ -298,6 +306,11 @@ static int msg_inbox_post(struct coap_resource *resource,
 
 	if (s_handlers.msg_post == NULL) {
 		return COAP_RESPONSE_CODE_NOT_FOUND;
+	}
+
+	if (!lichen_coap_is_local_admin(addr, addr_len)) {
+		return lichen_coap_respond(resource, request, addr, addr_len,
+					   COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
 	}
 
 	payload = coap_packet_get_payload(request, &payload_len);
