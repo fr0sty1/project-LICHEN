@@ -2,15 +2,15 @@
   "id": "project-LICHEN-92xa",
   "title": "[merge-conflict] worktree-worker23: trickle.rs",
   "notes": "Commit: 975ce1c",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:53:08.879657883Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:01:11.253635157Z",
+  "updated_at": "2026-07-23T00:01:13.553588022Z",
   "started_at": "2026-07-22T23:58:06.90488265Z",
-  "lease_expires_at": "2026-07-23T00:03:06.90488265Z",
-  "heartbeat_at": "2026-07-22T23:58:06.90488265Z"
+  "closed_at": "2026-07-23T00:01:13.553588022Z",
+  "close_reason": "Resolved merge conflict in trickle.rs for worker23 worktree by integrating HAL updates, saturation fixes, and CCP-9 current_channel support across Rust impls. Tests and interop verified. Commit 975ce1c"
 }
