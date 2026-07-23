@@ -68,7 +68,9 @@ impl Gateway {
 
     /// SCHC-compress an IPv6 packet from the upstream TUN device for the mesh.
     ///
-    /// Returns the compressed frame to send via SLIP, or `None` on error.
+    /// Prefers local RPL mesh (with source routing for Non-Storing mode)
+    /// before treating as external. Returns the compressed frame to send
+    /// via SLIP, or `None` on error.
     pub fn upstream_to_mesh(&mut self, ipv6_packet: &[u8]) -> Option<Vec<u8>> {
         if ipv6_packet.len() < 40 || ipv6_packet[0] >> 4 != 6 {
             warn!(
@@ -77,17 +79,23 @@ impl Gateway {
             );
             return None;
         }
-        let mut out = vec![0u8; ipv6_packet.len() + 3];
-        out[0] = L2_DISPATCH_SCHC;
-        match compress(ipv6_packet, &mut out[1..]) {
-            Ok(n) => {
-                out.truncate(n + 1);
-                info!(compressed_len = n + 1, "upstream → mesh");
-                Some(out)
-            }
-            Err(e) => {
-                warn!("SCHC compress: {e:?}");
-                None
+        let mut dst = [0u8; 16];
+        dst.copy_from_slice(&ipv6_packet[field::DST_OFFSET..field::DST_OFFSET + 16]);
+        if self.is_local_mesh(&dst) {
+            self.mesh_to_mesh(ipv6_packet)
+        } else {
+            let mut out = vec![0u8; ipv6_packet.len() + 3];
+            out[0] = L2_DISPATCH_SCHC;
+            match compress(ipv6_packet, &mut out[1..]) {
+                Ok(n) => {
+                    out.truncate(n + 1);
+                    info!(compressed_len = n + 1, "upstream → mesh");
+                    Some(out)
+                }
+                Err(e) => {
+                    warn!("SCHC compress: {e:?}");
+                    None
+                }
             }
         }
     }
@@ -122,18 +130,22 @@ impl Gateway {
         }
         let mut dst = [0u8; 16];
         dst.copy_from_slice(&ipv6[field::DST_OFFSET..field::DST_OFFSET + 16]);
-        let route = match self.rpl_node.router.lookup_route(&dst) {
-            Some(r) => r,
-            None => return None,
-        };
-        let mut routed = vec![0u8; ipv6.len() + 140];
-        let to_compress = if route.len() > 1 {
-            match add_rpl_source_route(ipv6, route, &mut routed) {
-                Ok(len) => &routed[..len],
-                Err(_) => return None,
-            }
-        } else {
+        let to_compress = if (dst[0] == 0xfe && dst[1] == 0x80) || dst[0] == 0xfd {
             ipv6
+        } else {
+            let route = match self.rpl_node.router.lookup_route(&dst) {
+                Some(r) => r,
+                None => return None,
+            };
+            let mut routed = vec![0u8; ipv6.len() + 140];
+            if route.len() > 1 {
+                match add_rpl_source_route(ipv6, route, &mut routed) {
+                    Ok(len) => &routed[..len],
+                    Err(_) => return None,
+                }
+            } else {
+                ipv6
+            }
         };
         let mut out = vec![0u8; to_compress.len() + 3];
         out[0] = L2_DISPATCH_SCHC;
@@ -246,12 +258,12 @@ mod tests {
 
     #[test]
     fn unknown_route_is_dropped_in_mesh_to_mesh() {
-        let mut gw = test_gateway();
-        let dst = ll(2);
-        assert!(gw.is_local_mesh(&dst.0));
+        let gw = test_gateway();
+        let dst = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3];
+        assert!(!gw.is_local_mesh(&dst));
         let packet = [
             0x60, 0, 0, 0, 40, 0, 58, 0, 0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
-            0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+            0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3,
         ];
         let result = gw.mesh_to_mesh(&packet);
         assert!(result.is_none());
