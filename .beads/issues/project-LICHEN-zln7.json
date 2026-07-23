@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-zln7",
+  "title": "[spec-compliance] hop_channel does not implement Density \u003e 8 MUST return 0 from spec/02a-coordinated-capacity.md:121",
+  "description": "The hop_channel() in python/src/lichen/sim/protocol.py:547 and synchronized_hop_channel in tdma.py do not check \"IF Density \u003e 8 THEN RETURN 0\" per the normative pseudocode in spec/02a-coordinated-capacity.md:120-125. The node.py:131 update and test vectors require exact match. Also EUI64 byte order (BE per spec) vs impl and Epoch vs SFN usage differs from SelectChannel params. This violates MUST for identical results to ccp16.json vectors. Rust side may also be affected in lichen-rpl or link.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T15:02:39.473237976Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T15:02:39.473237976Z"
+}
