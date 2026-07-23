@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-2auf.41.2.3.1.2",
+  "title": "Add invalid source address and bad type ICMPv6 malformed vectors",
+  "description": "Create test vectors for invalid IPv6 source (e.g. multicast) and bad ICMP type. Follow schema with category:malformed, expect_error, hex wire format. Reference RFC 4443 independent oracles.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:27:40.926882822Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:27:40.926882822Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.41.2.3.1.2",
+      "depends_on_id": "project-LICHEN-2auf.41.2.3.1",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:27:41.070885492Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
