@@ -127,3 +127,12 @@ class SimNode:
             True if the node is connected, False otherwise.
         """
         return self.connected
+
+    def synchronized_hop_channel(self) -> int:
+        """Compute current hop channel from hop_schedule tuple using SFN for CCP-12.
+        Matches ccp16-hop.json vectors. spec/02a-coordinated-capacity.md:120
+        """
+        if not self.hop_schedule:
+            return self.current_channel
+        sfn = self.tdma_scheduler.clock.sfn
+        return self.hop_schedule[sfn % len(self.hop_schedule)]
