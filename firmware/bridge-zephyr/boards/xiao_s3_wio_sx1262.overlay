@@ -1,18 +1,8 @@
 /*
-<<<<<<< HEAD
- * STALE/RETIRED per project-LICHEN-2u26.10: no canonical Zephyr composite board+shield target.
- * Fragment retired; do not use for bridge builds. Support claims removed per 2u26 audit.
- * Seeed XIAO ESP32S3 + Wio-SX1262 device tree overlay for LICHEN bridge
-=======
- * BLOCKED/RETIRED: Seeed XIAO ESP32-S3 + Wio-SX1262 bridge overlay
- * (project-LICHEN-2u26.10 / project-LICHEN-2u26 / m5m1.8)
->>>>>>> origin/integration/worker5-20260722
- *
- * No canonical Zephyr board/composite (seeed_xiao_esp32s3 + Wio-SX1262
- * shield not in tree or upstream; xiao_s3_wio_sx1262 not a valid -b target).
- * Closest proxies: heltec_wifi_lora32_v3/esp32s3/procpu.
- * Classified FAIL (no canonical board) in bridge audit; orphaned fragment.
- * Do not present as supported. Follows tbeam_supreme pattern (w8rd).
+ * RETIRED per project-LICHEN-2u26.10: no canonical Zephyr composite board+shield target for
+ * Seeed XIAO ESP32-S3 + Wio-SX1262. Fragment retired; support claims removed.
+ * Do not use for bridge builds. Closest proxy: heltec_wifi_lora32_v3_esp32s3_procpu.
+ * See docs/firmware-board-capability-matrix.md , closed epic 2u26, and m5m1.8 audit.
  * Pin map retained for reference only.
  *
  * Original:
