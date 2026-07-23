@@ -122,8 +122,10 @@ void lichen_trickle_reset(struct lichen_trickle *t,
 		return;
 	}
 
-	/* RFC 6206 section 4.2: no-op if already at imin */
-	if (t->interval != t->imin) {
+	/* RFC 6206 §4.2: no-op if already at imin *and running*.
+	 * transmit_time==0 proxies for Stopped state (see Rust TrickleState,
+	 * worker1 version, and reset_from_stopped_starts_timer test). */
+	if (t->transmit_time == 0 || t->interval != t->imin) {
 		t->interval = t->imin;
 		begin_interval(t, now, rand_offset);
 	}
