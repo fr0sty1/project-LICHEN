@@ -242,8 +242,8 @@ impl<const N: usize> Drop for SecretVec<N> {
 
 /// HKDF-Extract with SHA-256.
 fn hkdf_extract(salt: &[u8], ikm: &[u8]) -> Zeroizing<[u8; 32]> {
-    // ponytail: Use hkdf crate which we already depend on
-    let (prk, _) = Hkdf::<Sha256>::extract(Some(salt), ikm);
+    let salt_opt = if salt.is_empty() { None } else { Some(salt) };
+    let (prk, _) = Hkdf::<Sha256>::extract(salt_opt, ikm);
     Zeroizing::new(prk.into())
 }
 
