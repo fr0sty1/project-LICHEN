@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.59.4.1.3.2.3",
   "title": "Validate non-link MeshCore rows on 64-bit targets with full logging",
   "description": "Execute builds/tests for 64-bit targets (e.g. x86_64, qemu) focusing on MeshCore non-link integration. Exclude link layer .35.6 components. Capture complete logs, commands, SHA256 of binaries and test outputs.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
