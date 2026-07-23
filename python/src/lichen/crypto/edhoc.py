@@ -29,7 +29,6 @@ from nacl.bindings import (
     crypto_sign_ed25519_pk_to_curve25519,
     crypto_sign_ed25519_sk_to_curve25519,
 )
-from nacl.exceptions import BadSignatureError
 from nacl.signing import SigningKey, VerifyKey
 
 if TYPE_CHECKING:
@@ -213,10 +212,12 @@ def _decode_cbor_sequence(data: bytes) -> list[Any]:
     """Decode a CBOR sequence (concatenated CBOR items) into a list."""
     items: list[Any] = []
     fp = io.BytesIO(data)
-    while fp.tell() < len(data):
+    while True:
         try:
             item = cbor2.load(fp)
             items.append(item)
+        except cbor2.CBORDecodeEOF:
+            break
         except cbor2.CBORDecodeError as exc:
             raise ValueError("truncated or malformed CBOR sequence") from exc
     return items
