@@ -424,14 +424,8 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 		header_len += dst_addr_len;
 	}
 
-	/*
-	 * 1. Check s is non-zero (constant-time OR accumulator)
-	 */
-	uint8_t s_nonzero_acc = 0;
-	for (int i = 0; i < 32; i++) {
-		s_nonzero_acc |= s[i];
-	}
-	if (s_nonzero_acc == 0) {
+	static const uint8_t zero[32] = {0};
+	if (crypto_verify32(s, zero) == 0) {
 		return 0;
 	}
 
