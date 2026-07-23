@@ -59,13 +59,8 @@ class AnnounceMessage:
         hop_count: How many hops this announce has traveled.
             Why NOT signed: Each relay increments it. If signed, relays couldn't
             update it without breaking the signature.
-<<<<<<< HEAD
         rx_channel: Preferred RX channel for rendezvous (0-7 per CCP-9). Matches Rust/C structs.
             Used for rendezvous per CCP-9; signed in signed_data() to prevent tampering.
-=======
-        current_channel: Preferred RX channel (0-15) for rendezvous per CCP-9.
-            Included in signed_data() after seq_num to cryptographically bind announced channel (prevents tampering/injection per vectors).
->>>>>>> origin/integration/worker9-20260722
         signature: 48-byte Schnorr signature over signed_data().
         app_data: Optional application data (node name, capabilities).
         flags: Reserved for future use.
@@ -75,11 +70,7 @@ class AnnounceMessage:
     pubkey: bytes
     seq_num: int
     hop_count: int = 0
-<<<<<<< HEAD
     rx_channel: int = 0
-=======
-    current_channel: int = 0
->>>>>>> origin/integration/worker9-20260722
     signature: bytes = field(default=b"")
     app_data: bytes = field(default=b"")
     flags: int = 0
@@ -95,15 +86,10 @@ class AnnounceMessage:
             raise AnnounceError(f"seq_num out of range: {self.seq_num}")
         if not 0 <= self.hop_count <= 0xFF:
             raise AnnounceError(f"hop_count out of range: {self.hop_count}")
-<<<<<<< HEAD
         if not 0 <= self.rx_channel <= 15:
             raise AnnounceError(
                 f"rx_channel must be 0-15 for CCP-9, got {self.rx_channel}"
             )
-=======
-        if not 0 <= self.current_channel <= 15:
-            raise AnnounceError(f"current_channel out of range: {self.current_channel}")
->>>>>>> origin/integration/worker9-20260722
         if not 0 <= self.flags <= 0xFF:
             raise AnnounceError(f"flags out of range: {self.flags}")
         if self.signature and len(self.signature) != SIGNATURE_LENGTH:

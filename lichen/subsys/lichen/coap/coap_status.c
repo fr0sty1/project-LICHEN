@@ -17,7 +17,6 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/net/coap.h>
 #include <zephyr/net/coap_service.h>
-#include <zephyr/net/net_ip.h>
 
 #include <lichen/coap_status.h>
 
@@ -240,6 +239,12 @@ static int format_ipv6(const uint8_t addr[16], char *buf, size_t buf_size)
 		return -ENOBUFS;
 	}
 	return r;
+}
+
+int lichen_coap_format_ipv6(const uint8_t *addr, char *buf, size_t buf_size)
+{
+	int r = format_ipv6(addr, buf, buf_size);
+	return r < 0 ? r : 0;
 }
 
 static const char *trust_level_str(enum lichen_coap_trust_level trust)
