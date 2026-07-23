@@ -1,8 +1,8 @@
 /*
- * RETIRED per project-LICHEN-2u26.10: no canonical Zephyr composite board+shield target for
+ * RETIRED per project-LICHEN-2u26.10 + m5m1.8 audit beads (80ju,irj9,7qaj) + project-LICHEN-lon7 (worker24 merge-conflict): no canonical Zephyr composite board+shield target for
  * Seeed XIAO ESP32-S3 + Wio-SX1262. Fragment retired; support claims removed.
- * Do not use for bridge builds. Closest proxy: heltec_wifi_lora32_v3_esp32s3_procpu.
- * See docs/firmware-board-capability-matrix.md , closed epic 2u26, and m5m1.8 audit.
+ * Do not use for bridge builds. Closest proxy: heltec_wifi_lora32_v3/esp32s3/procpu.
+ * See docs/firmware-board-capability-matrix.md, closed epic 2u26, and m5m1.8 audit.
  * Pin map retained for reference only.
  *
  * Original:
