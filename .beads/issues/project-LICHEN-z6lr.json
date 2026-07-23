@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-z6lr",
   "title": "[merge-conflict] worktree-worker20: xiao_s3_wio_sx1262.overlay",
-  "notes": "Commit: bbc0de0",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:16:18.41915664Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:48:07.594363438Z",
+  "updated_at": "2026-07-23T02:46:46.062200463Z",
   "started_at": "2026-07-23T02:46:46.062200463Z",
-  "closed_at": "2026-07-23T02:48:07.594363438Z",
-  "close_reason": "Cleaned dead merge-conflict resolution meta-comment (lines referencing prior beads like dxzk/o8gh) from xiao_s3_wio_sx1262.overlay in worktree-worker20 per No Dead Code rule. Standardized to canonical RETIRED/BLOCKED comment matching main tree. Verified no markers left. Commit bbc0de0 pushed to origin/worktree-worker20."
+  "lease_expires_at": "2026-07-23T02:51:46.062200463Z",
+  "heartbeat_at": "2026-07-23T02:46:46.062200463Z"
 }
