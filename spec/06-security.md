@@ -150,7 +150,8 @@ A single 32-byte seed produces all material for signatures, X25519 (EDHOC), stab
 1. **Keypair**: `privkey, pubkey = derive_keypair(seed)` per draft-lichen-schnorr-00.md:97 (h=SHA-512(seed); privkey=clamp(h[0:32]); pubkey=basepoint_mult). Matches schnorr48.py:107 and Rust exactly.
 2. **IID**: `hash=SHA-256(pubkey); iid=hash[0:8]; iid[0] &= 0b1111_1101` (U/L bit clear per RFC 4291). See 04-network.md:53, identity.rs:22.
 3. **02xx Address**: `addr=[0x02] + SHA-512(pubkey)[0:7] + IID` (MUST: lower 64 bits == IID to bind key to address and prevent substitution; upper from SHA-512(pubkey) for Yggdrasil 0200::/7 dispersion). No ULA. See identity.rs:34 (yggdrasil_addr_from_pubkey), test/vectors/yggdrasil.json.
-4. **X25519**: `x25519_priv=SHA-512(seed)[0:32]` (raw hash slice before clamp; X25519 clamps internally) for EDHOC (see 8.9).
+ 4. **X25519**: `x25519_priv=clamp(SHA-512(seed)[0:32])` per RFC 7748 §5 for EDHOC static DH (see 8.9). Matches Python identity.py:109, standards/crypto.md:79.
+
 
 Self-provisioned (RECOMMENDED) or BR-provisioned nodes derive identically. TOFU pins pubkey to derived IID/02xx (cryptographic consistency per 04/05). Mismatch rejects (MITM protection).
 
@@ -318,8 +319,10 @@ exchange for establishing OSCORE security contexts.
 
 Each node derives an X25519 keypair from its Ed25519 seed (RFC 8032 compatible):
 ```
-x25519_private = SHA-512(ed25519_seed)[0:32]
+x25519_private = clamp(SHA-512(ed25519_seed)[0:32])
 x25519_public  = X25519(x25519_private, basepoint)
+```
+Clamping per RFC 7748 §5 is REQUIRED for security (subgroup confinement).
 ```
 
 EDHOC uses these for ephemeral-static or ephemeral-ephemeral DH.
