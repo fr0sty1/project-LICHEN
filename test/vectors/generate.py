@@ -1807,10 +1807,6 @@ def ccp9_vectors() -> list[dict]:
         },
     ]
 
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/integration/worker13-20260722
 def ccp15_vectors() -> list[dict]:
     v = []
     for seed in range(3):
@@ -1903,6 +1899,6 @@ def main() -> None:
         rpl_messages_vectors(),
     )
 
+
 if __name__ == "__main__":
     main()
-

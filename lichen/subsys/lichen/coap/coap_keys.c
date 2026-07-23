@@ -269,6 +269,53 @@ static int base64_decode(const char *in, size_t in_len, uint8_t *out, size_t out
 	return (int)out_idx;
 }
 
+int lichen_key_pubkey_fingerprint(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
+				  char *_Nonnull buf, size_t buf_len)
+{
+	if (pubkey == NULL || buf == NULL || buf_len < LICHEN_KEY_FINGERPRINT_STR_LEN) {
+		return -EINVAL;
+	}
+
+#ifdef CONFIG_TINYCRYPT_SHA256
+	struct tc_sha256_state_struct sha_state;
+	uint8_t hash[32];
+
+	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS) {
+		return -EIO;
+	}
+	if (tc_sha256_update(&sha_state, pubkey, LICHEN_KEY_PUBKEY_LEN) != TC_CRYPTO_SUCCESS) {
+		return -EIO;
+	}
+	if (tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
+		return -EIO;
+	}
+
+	/* Format: "SHA256:<base64>" */
+	memcpy(buf, "SHA256:", 7);
+	size_t b64_len = base64_encode(hash, sizeof(hash), buf + 7, buf_len - 7);
+
+	if (b64_len == 0) {
+		return -ENOMEM;
+	}
+
+	return 7 + (int)b64_len;
+#else
+	/* Fallback: truncated hex of pubkey (not a real fingerprint) */
+	memcpy(buf, "SHA256:", 7);
+	size_t pos = 7;
+
+	for (int i = 0; i < 8 && pos + 2 < buf_len; i++) {
+		buf[pos++] = hex_chars[(pubkey[i] >> 4) & 0x0f];
+		buf[pos++] = hex_chars[pubkey[i] & 0x0f];
+	}
+	buf[pos++] = '.';
+	buf[pos++] = '.';
+	buf[pos++] = '.';
+	buf[pos] = '\0';
+	return (int)pos;
+#endif
+}
+
 int lichen_key_pubkey_to_iid(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
 			     uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN])
 {
@@ -304,48 +351,6 @@ int lichen_key_pubkey_to_iid(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN
 #endif
 }
 
-int lichen_key_pubkey_fingerprint(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
-				  char *_Nonnull buf, size_t buf_len)
-{
-	if (pubkey == NULL || buf == NULL || buf_len < LICHEN_KEY_FINGERPRINT_STR_LEN) {
-		return -EINVAL;
-	}
-
-#ifdef CONFIG_TINYCRYPT_SHA256
-	struct tc_sha256_state_struct sha_state;
-	uint8_t hash[32];
-
-	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS ||
-	    tc_sha256_update(&sha_state, pubkey, LICHEN_KEY_PUBKEY_LEN) != TC_CRYPTO_SUCCESS ||
-	    tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
-		return -EIO;
-	}
-
-	memcpy(buf, "SHA256:", 7);
-	size_t b64_len = base64_encode(hash, sizeof(hash), buf + 7, buf_len - 7);
-
-	memset(hash, 0, sizeof(hash));
-
-	if (b64_len == 0) {
-		return -ENOMEM;
-	}
-
-	return 7 + (int)b64_len;
-#else
-	memcpy(buf, "SHA256:", 7);
-	size_t pos = 7;
-
-	for (int i = 0; i < 8 && pos + 2 < buf_len; i++) {
-		buf[pos++] = hex_chars[(pubkey[i] >> 4) & 0x0f];
-		buf[pos++] = hex_chars[pubkey[i] & 0x0f];
-	}
-	buf[pos++] = '.';
-	buf[pos++] = '.';
-	buf[pos++] = '.';
-	buf[pos] = '\0';
-	return (int)pos;
-#endif
-}
 
 /* --------------------------------------------------------------------------
  * Key store implementation
@@ -484,7 +489,8 @@ size_t lichen_key_store_count(void)
 	return count;
 }
 
-size_t lichen_key_store_list(struct lichen_key_entry *entries, size_t max_entries)
+size_t lichen_key_store_list(struct lichen_key_entry *_Nonnull entries,
+			     size_t max_entries)
 {
 	size_t count = 0;
 
@@ -697,7 +703,7 @@ static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 }
 
 #ifdef CONFIG_LICHEN_COAP_KEYS_TEST_HOOKS
-size_t lichen_key_store_test_encode_list(uint8_t *buf, size_t buf_size)
+size_t lichen_key_store_test_encode_list(uint8_t *_Nonnull buf, size_t buf_size)
 {
 	return encode_keys_list_cbor(buf, buf_size);
 }

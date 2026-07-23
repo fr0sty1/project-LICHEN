@@ -1,16 +1,16 @@
 {
   "id": "project-LICHEN-ytwn",
   "title": "[merge-conflict] worktree-worker19: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
-  "notes": "Commit: c429db2e6",
-  "status": "in_progress",
+  "notes": "Commit: c429db2e6 (synced heltec_wifi_lora32_v3_esp32s3_procpu.conf in worker19 to eliminate duplicate gateway CONFIG lines from incomplete prior merge resolution)",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:26:11.699815743Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:33:22.54093135Z",
+  "updated_at": "2026-07-23T00:34:18.71525213Z",
   "started_at": "2026-07-23T00:31:44.89090003Z",
-  "lease_expires_at": "2026-07-23T00:36:44.89090003Z",
-  "heartbeat_at": "2026-07-23T00:31:44.89090003Z"
+  "closed_at": "2026-07-23T00:34:18.71525213Z",
+  "close_reason": "Synced heltec_wifi_lora32_v3_esp32s3_procpu.conf (puck+gateway) in worker19 worktree to latest resolved version without duplicate CONFIG lines; cleaned merge conflict markers from 11 .beads/events/*.jsonl files"
 }

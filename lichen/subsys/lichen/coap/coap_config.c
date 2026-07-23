@@ -718,14 +718,12 @@ static int config_put(struct coap_resource *resource,
 				    COAP_RESPONSE_CODE_BAD_REQUEST, NULL, 0);
 	}
 
-	/* Get current config for partial update */
 	ret = s_provider->node_get(&node_cfg);
 	if (ret < 0) {
 		return coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
 	}
 
-	/* Decode update (merges with current values) */
 	ret = lichen_config_decode_node_cbor(payload, payload_len, &node_cfg);
 	if (ret < 0) {
 		LOG_WRN("Invalid config CBOR");
@@ -733,7 +731,6 @@ static int config_put(struct coap_resource *resource,
 				    COAP_RESPONSE_CODE_BAD_REQUEST, NULL, 0);
 	}
 
-	/* Apply update */
 	ret = s_provider->node_set(&node_cfg);
 	if (ret < 0) {
 		LOG_WRN("Config validation failed: %d", ret);

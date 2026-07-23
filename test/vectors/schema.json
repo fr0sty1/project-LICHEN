@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LICHEN test vector file",
-  "description": "v2-only JSON Schema (draft-07) for LICHEN test vector files. Each file is either an object with format_version=2, description, and vectors array (one kind per file) or a bare array root (e.g. ccp16-desync.json). Per-vector definitions enforce independent oracles and cross-implementation determinism. See README.md for usage.",
+  "description": "Envelope shared by all LICHEN vector files. Supports object envelope with format_version (1 or 2) or v2 bare array root of vectors (for ccp16-desync.json and similar). Each file holds a list of vectors of one kind; see the per-vector definitions. Combined to support all vector types (including ccp15_vector and ccp_vector), descriptions, format_version handling, bare array support, and all definitions from both sides without losing functionality.",
   "oneOf": [
     {
       "type": "object",
@@ -26,8 +26,7 @@
               {"$ref": "#/definitions/rpl_messages_vector"},
               {"$ref": "#/definitions/ccp13_vector"},
               {"$ref": "#/definitions/ccp15_vector"},
-              {"$ref": "#/definitions/ccp_vector"},
-              {"$ref": "#/definitions/compact_cot_vector"}
+              {"$ref": "#/definitions/ccp_vector"}
             ]
           }
         }
@@ -735,7 +734,7 @@
     },
     "ccp13_vector": {
       "type": "object",
-      "required": ["name", "description"],
+      "required": ["name", "description", "limit_permille", "window_ms", "expected_remaining_ms"],
       "additionalProperties": false,
       "properties": {
         "name": {"type": "string"},
@@ -746,45 +745,39 @@
         "expected_remaining_ms": {"type": "integer", "minimum": 0},
         "expected_usage_permille": {"type": "integer", "minimum": 0, "maximum": 1000},
         "notes": {"type": "string"},
-        "now_ms": {"type": "integer"},
-        "remaining_ms": {"type": "integer"},
-        "usage_permille": {"type": "integer"},
-        "can_transmit": {"type": "boolean"},
-        "can_transmit_100ms": {"type": "boolean"},
-        "duration_ms": {"type": "integer"},
-        "next_available_ms": {"type": "integer"},
-        "txs": {
-          "type": "array",
-          "items": {"type": "object"}
-        }
-      }
-    },
-    "compact_cot_vector": {
-      "type": "object",
-      "required": ["name", "description", "binary_hex", "decoded_fields"],
-      "additionalProperties": false,
-      "properties": {
-        "name": {"type": "string"},
-        "description": {"type": "string"},
         "binary_hex": {"$ref": "#/definitions/hex"},
         "decoded_fields": {
           "type": "object",
-          "additionalProperties": true
+          "additionalProperties": true,
+          "properties": {
+            "subtype": {"type": "integer"},
+            "subtype_name": {"type": "string"},
+            "latitude_microdegrees": {"type": "integer"},
+            "longitude_microdegrees": {"type": "integer"},
+            "altitude_decimeters": {"type": "integer"},
+            "course_centidegrees": {"type": "integer"},
+            "speed_cm_s": {"type": "integer"},
+            "team": {"type": "integer"},
+            "team_name": {"type": "string"},
+            "role": {"type": "integer"},
+            "expected_hash": {"type": "integer", "description": "hash_32(SFN, key) per spec/02a-coordinated-capacity.md §2a.7.1 (FNV-1a32 primitive, matches C lichen_hash_32 and Python _hash_32)"},
+            "hash_32": {"type": "integer"}
+          }
         }
       }
     },
     "ccp_vector": {
       "type": "object",
-      "required": ["name", "description"],
+      "required": ["description"],
       "additionalProperties": true,
       "properties": {
-        "name": {"type": "string"},
-        "description": {"type": "string"},
         "type": {
           "type": "string",
           "enum": ["slot_selection", "load_balancing", "density_estimation", "desync"],
           "description": "CCP-16 vector type (added for schema completeness per codereview)"
         },
+        "description": {"type": "string"},
+        "name": {"type": "string"},
         "rssi_dbm": {"type": "number", "minimum": -140, "maximum": 0},
         "per": {"type": "number", "minimum": 0, "maximum": 1},
         "snr_samples": {
@@ -792,21 +785,10 @@
           "items": {"type": "number"}
         },
         "hash_32_example": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
-<<<<<<< HEAD
-        "eui64_hex": {"$ref": "#/definitions/hex"},
-        "t": {"type": "integer"},
-        "epoch": {"type": "integer"},
-        "expected_hash": {"type": "integer"},
-        "expected_channel": {"type": "integer"},
-        "n_channels": {"type": "integer"},
-=======
->>>>>>> origin/integration/worker13-20260722
         "security_review": {
           "type": "string",
           "description": "Pass 2 security: no injection or crypto issues in CCP-16 vectors (project-LICHEN-ray3)"
         },
-<<<<<<< HEAD
-=======
         "announce": {
           "type": "object",
           "properties": {
@@ -816,7 +798,6 @@
           }
         },
         "hash_32": {"type": "integer"},
->>>>>>> origin/integration/worker13-20260722
         "input": {
           "type": "object",
           "properties": {

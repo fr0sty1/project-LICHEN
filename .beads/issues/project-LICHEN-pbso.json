@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-pbso",
   "title": "[merge-conflict] worktree-worker23: rpl_root.c",
-  "status": "in_progress",
+  "notes": "Commit: 511beb3",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:25:08.671766472Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:30:30.973961385Z",
+  "updated_at": "2026-07-23T00:34:38.852464343Z",
   "started_at": "2026-07-23T00:30:30.973961385Z",
-  "lease_expires_at": "2026-07-23T00:35:30.973961385Z",
-  "heartbeat_at": "2026-07-23T00:30:30.973961385Z"
+  "closed_at": "2026-07-23T00:34:38.852464343Z",
+  "close_reason": "Resolved merge conflicts in rpl_root.c related files, trickle reset logic for cross-impl consistency, keyboard driver, board DTS, specs, test files, and cleaned .beads events. Pushed commit 511beb3"
 }
