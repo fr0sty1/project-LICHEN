@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-c1eh.4",
+  "title": "coap_dtn.c: use direct oscore_unprotect_request() in deaddrop_post and update confessions_post handler",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:14:11.843101646Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:14:11.843101646Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-c1eh.4",
+      "depends_on_id": "project-LICHEN-c1eh",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:14:11.97689491Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
