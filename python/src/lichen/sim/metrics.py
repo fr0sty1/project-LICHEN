@@ -42,7 +42,7 @@ class NodeMetrics:
     tx_bytes: int = 0
     rx_bytes: int = 0
     unique_peers: set[str] = field(default_factory=set)
-    errors: list[str] = field(default_factory=list)
+    errors: set[str] = field(default_factory=set)
     packet_hashes_sent: set[str] = field(default_factory=set)
     packet_hashes_received: set[str] = field(default_factory=set)
 
@@ -80,7 +80,7 @@ class NodeMetrics:
             error: Description of the error.
         """
         if len(self.errors) < self._MAX_ERRORS:
-            self.errors.append(error)
+            self.errors.add(error)
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable dictionary of all metrics.
@@ -94,7 +94,7 @@ class NodeMetrics:
             "tx_bytes": self.tx_bytes,
             "rx_bytes": self.rx_bytes,
             "unique_peers": sorted(self.unique_peers),
-            "errors": self.errors.copy(),
+            "errors": sorted(self.errors),
             "packet_hashes_sent": sorted(self.packet_hashes_sent),
             "packet_hashes_received": sorted(self.packet_hashes_received),
         }
