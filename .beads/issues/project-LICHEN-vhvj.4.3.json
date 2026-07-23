@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-vhvj.4.3",
+  "title": "Wire synchronized_hop_channel into Medium.get_rx_candidates and detect_activity",
+  "description": "Import from lichen.sim.protocol and compute hop channel from sfn=time//slot_duration, eui64. Update comments and ensure rendezvous logic uses it for channel selection per CCP-12. Match test vectors.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:18:01.836842617Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:18:01.836842617Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-vhvj.4.3",
+      "depends_on_id": "project-LICHEN-vhvj.4",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:18:01.971308176Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}

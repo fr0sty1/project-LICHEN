@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-uk36.3.1",
+  "title": "Update edhoc_kdf to match Python _edhoc_kdf signature and CBOR encoding",
+  "description": "Make edhoc_kdf(prk, th, label: \u0026str, context, length) consistent with python/src/lichen/crypto/edhoc.py:116 using cbor2-style encoding for length+TH+bstr+label+tstr+context. Fix manual CBOR builder bugs (undefined th, wrong label type).",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:18:01.993108056Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:18:01.993108056Z"
+}

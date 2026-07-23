@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-vhvj.4.4",
+  "title": "Update test_vectors.py and generate.py for synchronized_hop_channel tests using independent oracle",
+  "description": "Ensure tests call the new function, use _hash_32 from generate.py as oracle only, verify against ccp16-hop.json and ccp16.json vectors. Remove any duplicated hash logic. Add docstring refs.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:18:01.862875048Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:18:01.862875048Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-vhvj.4.4",
+      "depends_on_id": "project-LICHEN-vhvj.4",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:18:01.998414657Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
