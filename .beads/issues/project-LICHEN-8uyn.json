@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-8uyn",
+  "title": "[cross-impl] Duplicate lichen_hash_32 impl in lichen_util.c and link_ctx.c",
+  "description": "Commit 37563ab77 added lichen_hash_32 to l2/lichen_util.c matching test/vectors/hash_32.json and Rust/Python. Commit 63e9319f9 added identical copy in link/link_ctx.c (lines 615-623). This violates DRY, risks divergence (note C mul without explicit wrap like Python \u00260xffffffff or Rust wrapping_mul), and may cause link errors. Cross-impl consistency broken before full integration. See spec/02a-coordinated-capacity.md:76 and AGENTS.md test integrity.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T06:24:20.166121885Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T06:24:20.166121885Z"
+}
