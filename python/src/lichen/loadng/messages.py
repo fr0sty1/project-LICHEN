@@ -24,6 +24,12 @@ B2.3 the default metric is hop count, so no separate metric field is carried
 The default unsigned signature is empty; a signed message carries 48 bytes.
 """
 
+from dataclasses import dataclass, field
+from enum import IntEnum
+from ipaddress import IPv6Address
+
+from lichen.ipv6.icmpv6 import Icmpv6Message
+
 LOADNG_ICMPV6_TYPE = 158
 INITIAL_HOP_LIMIT = 4
 MAX_HOP_LIMIT = 15
