@@ -9,16 +9,13 @@
 #include <lichen/oscore.h>
 #include <lichen/routing/dtn.h>
 #include <lichen/senml.h>
-#include <zcbor_decode.h>
 #include <zephyr/net/net_ip.h>
 
 LOG_MODULE_REGISTER(lichen_coap_dtn, CONFIG_LICHEN_COAP_DEADDROP_LOG_LEVEL);
 
 static const struct lichen_deaddrop_provider *s_provider;
 static struct lichen_dtn_buffer s_dtn_buf;
-static struct senml_pack s_senml_pack;
 static K_MUTEX_DEFINE(s_dtn_buf_mutex);
-static K_MUTEX_DEFINE(s_senml_pack_mutex);
 static struct k_work_delayable s_dtn_expire_work;
 static uint32_t s_last_deaddrop[16] = {0};
 
@@ -35,11 +32,6 @@ int lichen_coap_deaddrop_register(const struct lichen_deaddrop_provider *provide
 	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
 	s_provider = provider;
 	r = lichen_dtn_init(&s_dtn_buf);
-	if (r < 0) {
-		k_mutex_unlock(&s_dtn_buf_mutex);
-		return r;
-	}
-	r = senml_pack_init(&s_senml_pack, "", 0);
 	if (r < 0) {
 		k_mutex_unlock(&s_dtn_buf_mutex);
 		return r;
@@ -91,3 +83,12 @@ COAP_RESOURCE_DEFINE(lichen_deaddrop, lichen_coap_server, {
 	.post = deaddrop_post,
 	.path = deaddrop_path,
 });
+
+int lichen_coap_dtn_init(void) { return 0; }
+
+uint16_t lichen_dtn_expire_periodic(void) {
+	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
+	uint16_t expired = lichen_dtn_expire_old(&s_dtn_buf, dtn_get_unix_time());
+	k_mutex_unlock(&s_dtn_buf_mutex);
+	return expired;
+}
