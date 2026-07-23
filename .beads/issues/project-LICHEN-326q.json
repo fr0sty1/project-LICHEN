@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-326q",
   "title": "[merge-conflict] worktree-worker24: draft-lichen-rpl-lora-00.md",
+  "notes": "Commit: 7e4885e4a",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:18:29.289362627Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:40:23.098478716Z",
+  "updated_at": "2026-07-23T02:42:05.645157397Z",
   "started_at": "2026-07-23T02:40:23.098478716Z",
   "lease_expires_at": "2026-07-23T02:45:23.098478716Z",
   "heartbeat_at": "2026-07-23T02:40:23.098478716Z"
