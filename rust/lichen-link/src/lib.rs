@@ -42,6 +42,7 @@
 //!   bit  7   : reserved (must be 0)
 
 #![no_std]
+#![forbid(unsafe_code)]
 
 pub mod frame;
 pub mod keys;
