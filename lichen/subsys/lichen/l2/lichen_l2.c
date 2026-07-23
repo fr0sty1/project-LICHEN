@@ -2139,7 +2139,7 @@ void lichen_l2_iface_init(struct net_if *iface)
 
 	/* Derive and add primary Yggdrasil address (project-LICHEN-p8i6)
 	 * as NET_ADDR_PREFERRED. Key may not be loaded yet in all paths;
-	 * address added when identity available. Replaces ULA. */
+	 * address added when identity available. */
 	uint8_t pubkey[32];
 	bool has_key = false;
 	ret = lichen_link_copy_identity(&link_ctx, NULL, pubkey, &has_key);

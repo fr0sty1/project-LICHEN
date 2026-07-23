@@ -7,12 +7,12 @@
  *
  * Standalone IPv6 address construction utilities:
  * - Link-local: fe80::<IID>
- * - ULA: fd00::/8 prefix + IID
- * - GUA: 2000::/3 prefix + IID
+ * - Yggdrasil primary: 02xx::/64 from Ed25519 pubkey (spec 6.1)
+ * - ULA/GUA for compatibility and prefix delegation
  *
  * IID derivation (spec 6.2):
- * - From EUI-64: flip the U/L bit per RFC 4291 (universal MAC -> local IID)
- * - From Ed25519 pubkey: first 8 bytes with U/L=0, G=0 (locally-administered unicast)
+ * - From EUI-64: flip the U/L bit per RFC 4291
+ * - From Ed25519 pubkey: SHA-512/SHA-256 derived per Yggdrasil
  *
  * This module does not depend on Zephyr's networking stack.
  */
@@ -210,7 +210,7 @@ int lichen_make_gua(const uint8_t *prefix, const uint8_t *iid,
  * - byte 0 = 0x02
  * - bytes 1-7 = SHA-512(pubkey)[0:7]
  * - bytes 8-15 = IID from SHA-256(pubkey)[0:8] with U/L bit cleared
- * This is now the primary address (replaces ULA).
+ * This is the primary mesh address.
  *
  * @param pubkey 32-byte Ed25519 public key
  * @param addr Output struct in6_addr for the Yggdrasil address
