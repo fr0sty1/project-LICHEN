@@ -198,7 +198,7 @@ def _derive_uid_from_cot(cot: CompactCot) -> str:
 # -- Data classes --
 
 
-@dataclass(slots=True)
+@dataclass
 class PliPayload:
     """Position Location Information payload."""
 
@@ -249,7 +249,7 @@ class PliPayload:
         return role_to_name(self.role)
 
 
-@dataclass(slots=True)
+@dataclass
 class ChatPayload:
     """Chat message payload."""
 
