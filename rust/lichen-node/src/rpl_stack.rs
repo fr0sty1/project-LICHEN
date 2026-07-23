@@ -649,12 +649,6 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             .await
     }
 
-    /// Send a non-CoAP IPv6 diagnostic using the current routing state.
-    #[deprecated(note = "use send_ipv6(ipv6, now_ms) to provide the routing timestamp")]
-    pub async fn send_ipv6_raw(&mut self, ipv6: &[u8]) -> Result<(), TxError> {
-        self.send_ipv6(ipv6, self.routing_now_ms).await
-    }
-
     /// Authenticate and decrypt a response received through this owner.
     pub async fn decrypt_response(
         &mut self,

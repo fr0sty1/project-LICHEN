@@ -61,21 +61,6 @@ fn trickle_from_config(config: &DodagConfig) -> Option<TrickleTimer> {
     ))
 }
 
-#[cfg(feature = "std")]
-fn trickle_from_config(config: &DodagConfig) -> Option<TrickleTimer> {
-    let imin_ms = 1u32
-        .checked_shl(u32::from(config.dio_int_min))
-        .unwrap_or(0);
-    if imin_ms == 0 || config.dio_redundancy_const == 0 {
-        return None;
-    }
-    Some(TrickleTimer::new(
-        imin_ms,
-        u32::from(config.dio_int_doublings),
-        u32::from(config.dio_redundancy_const),
-    ))
-}
-
 /// Maximum neighbors tracked.
 pub const MAX_NEIGHBORS: usize = 16;
 
