@@ -179,7 +179,7 @@ Most common case for intra-mesh traffic.
 | CoAP.Code | - | ignore | value-sent |
 | CoAP.MID | - | ignore | value-sent |
 
-**Compressed size:** 4-6 bytes (Rule ID + 4-bit port residues + CoAP fields; see test vectors)
+**Compressed size:** ~26 bytes residue + tail (Rule ID + Hop Limit + endpoint IIDs + ports + CoAP type/TKL/code/MID; CoAP token + options + payload as tail per RFC 8824; see test vectors)
 
 ### 4.3. Rule 1: Global IPv6 + UDP + CoAP
 
@@ -209,7 +209,7 @@ For traffic using ULA or GUA addresses.
 | CoAP.Code | - | ignore | value-sent |
 | CoAP.MID | - | ignore | value-sent |
 
-**Compressed size:** 12-14 bytes (includes CoAP fields per appendix A.3)
+**Compressed size:** ~42 bytes residue + tail (Rule ID + Hop Limit + full source/destination addresses + ports + CoAP type/TKL/code/MID; see test vectors)
 
 ### 4.4. Rule 2: ICMPv6 Echo
 
@@ -276,7 +276,7 @@ IPv6 + UDP to port 10883 (exact). Matches `RULE_MQTT_SN`. See appendix-schc.md a
 
 Rule 5 (link-local) and Rule 6 (global) reuse base fields from Rules 0/1 plus OSCORE option. Encrypted payload as tail. Matches `LINK_LOCAL_OSCORE_RULE` / `GLOBAL_OSCORE_RULE`.
 
-**Compressed size:** ~6-14 bytes residue + OSCORE tail (per appendix-schc.md)
+**Compressed size:** ~26-42 bytes residue + OSCORE tail (reuses Rule 0/1 fields; see appendix-schc.md)
 
 ### 4.9. Rule 255: No Compression (Fallback)
 
@@ -559,8 +559,8 @@ Example summary (normative values and full descriptors in the references above):
 
 | Rule ID | Name                  | Primary Use                          | Compressed Size |
 |---------|-----------------------|--------------------------------------|-----------------|
-| 0       | LINK_LOCAL_COAP       | Link-local IPv6+UDP+CoAP             | 4-6 bytes       |
-| 1-7     | GLOBAL_COAP, ICMP, RPL_DIO/DAO, OSCORE, MQTT-SN | As named                   | 3-40+ bytes     |
+| 0       | LINK_LOCAL_COAP       | Link-local IPv6+UDP+CoAP             | ~26 bytes residue |
+| 1-7     | GLOBAL_COAP, ICMP, RPL_DIO/DAO, OSCORE, MQTT-SN | As named                   | 3-42+ bytes     |
 | 255     | UNCOMPRESSED          | Fallback for mismatches/version errors | Full header  |
 
 Rule versioning is advertised in DIOs. OSCORE treats the payload as opaque. RPL options use prioritized MATCH_MAPPING.
