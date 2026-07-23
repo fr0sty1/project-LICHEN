@@ -2,17 +2,18 @@
 
 use lichen_core::addr::NodeId;
 use lichen_core::constants::L2_DISPATCH_SCHC;
+use lichen_core::ipv6::field;
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
-use lichen_node::Node;
+use lichen_node::{Node, RplEvent, RplNode};
 use lichen_schc::codec::{compress, decompress, SchcError};
 use tracing::{info, warn};
 
 /// Top-level border router state.
 #[derive(Debug)]
 pub struct Gateway {
-    pub node: Node,
+    pub rpl: RplNode,
     /// Routes installed in the kernel routing table.
     /// Key: mesh IPv6 address (16 bytes, network order); Value: nexthop EUI-64.
     routes: std::collections::HashMap<[u8; 16], NodeId>,
@@ -22,9 +23,31 @@ impl Gateway {
     pub fn new(node_id: NodeId) -> Self {
         info!(?node_id, "gateway initialising");
         Self {
-            node: Node::new(node_id),
+            rpl: RplNode::new_root(node_id),
             routes: std::collections::HashMap::new(),
         }
+    }
+
+    /// Process RPL control messages (DIO/DAO/DIS) from mesh frames and handle
+    /// echo requests. Returns reply to send (if any) and event for DAO route updates.
+    pub fn process_rpl(&mut self, frame: &[u8], now_ms: u32) -> (Option<Vec<u8>>, RplEvent) {
+        let mut reply_buf = [0u8; 256];
+        let (reply_len, event) = self.rpl.handle_frame_rpl(frame, &mut reply_buf, now_ms);
+        let reply = if reply_len > 0 {
+            Some(reply_buf[..reply_len].to_vec())
+        } else {
+            None
+        };
+        if let RplEvent::DaoReceived { route_updated: true } = event {
+            // Route table updated in RplNode; sync to our map if target known.
+            // Full target extraction left for follow-up bead.
+        }
+        (reply, event)
+    }
+
+    /// Whether the destination is in our local RPL mesh (link-local, ULA, or routed).
+    pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
+        (dst[0] == 0xfe && dst[1] == 0x80) || dst[0] == 0xfd || self.routes.contains_key(dst)
     }
 
     /// SCHC-decompress a frame received from the mesh via SLIP.
