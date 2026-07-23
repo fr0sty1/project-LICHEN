@@ -2,12 +2,19 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 from __future__ import annotations
 
+import json
+import time
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from ipaddress import IPv6Address
+from pathlib import Path
+from typing import Any
 
 from lichen.ipv6 import to_ipv6
 from lichen.rpl.messages import DAO, DAOAck, RplOption, RplOptionType
-from lichen.rpl.routing import RoutingTable
+from lichen.rpl.routing import MAX_ROUTE_HOPS, RoutingError, RoutingTable
+
+_TARGET_DESCRIPTOR = 9  # RPL Target Descriptor option type (RFC 6550 §6.7.9)
 
 """RPL DAO handling for non-storing mode (RFC 6550, spec section 8.5).
 
@@ -22,6 +29,9 @@ receiving (root) sides.
 """
 
 _MAX_CHAIN = 64  # loop / runaway guard when assembling source routes
+
+_DEFAULT_FRESHNESS_RETENTION_SECONDS = 3600.0
+_MAX_ROUTE_HOPS = MAX_ROUTE_HOPS  # alias for vector oracle compatibility
 
 
 class DaoError(Exception):
