@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-uyjf",
+  "title": "[cross-impl] OSCORE SSN width mismatch across impls",
+  "description": "Python (40-bit: (1\u003c\u003c40)-1) and Rust (OscoreSeqNum MAX=(1\u003c\u003c40)-1, 5-byte PIV) vs Zephyr C (uint32_t sender_seq + OSCORE_SSN_MAX=UINT32_MAX). Leads to different exhaustion points (~4B vs ~1T msgs), PIV encoding, replay logic, and interop failures for long-lived sessions. Commits reviewed: ad37f4d3f (oscore.h, seqnum.rs, tests), dd794057c/87f90bc7b (oscore.c), others touching python sim/crypto. Same RFC 8613 algorithm implemented with divergent behavior.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T13:49:05.574272033Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T13:49:05.574272033Z"
+}
