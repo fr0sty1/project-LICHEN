@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-rb1o",
   "title": "[merge-conflict] worktree-worker1: xiao_s3_wio_sx1262.conf",
-  "notes": "Commit: 2c9c84d (cleaned merge-conflict resolution meta-comments from xiao_s3_wio_sx1262.conf and .overlay per no-dead-code rule across main, worker1, and worker16)",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:27:15.80797059Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:13:31.25830255Z",
+  "updated_at": "2026-07-23T02:13:34.291682389Z",
   "started_at": "2026-07-23T02:11:13.183442874Z",
-  "lease_expires_at": "2026-07-23T02:16:13.183442874Z",
-  "heartbeat_at": "2026-07-23T02:11:13.183442874Z"
+  "closed_at": "2026-07-23T02:13:34.291682389Z",
+  "close_reason": "Cleaned dead merge-conflict resolution meta-comments from xiao_s3_wio_sx1262.conf and overlay in main and affected worktrees (including worker1). Matches no-dead-code policy from prior similar beads (e.g. jlr1). Commit 2c9c84d3f. Verified files have consistent clean retirement documentation."
 }
