@@ -2,15 +2,15 @@
   "id": "project-LICHEN-fd2v",
   "title": "[merge-conflict] worktree-worker23: t_deck_esp32s3_procpu.conf",
   "notes": "Commit: 0c5b8e5",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:33:50.202878753Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:13:36.498197179Z",
+  "updated_at": "2026-07-23T02:13:39.094485955Z",
   "started_at": "2026-07-23T02:08:57.099724989Z",
-  "lease_expires_at": "2026-07-23T02:13:57.099724989Z",
-  "heartbeat_at": "2026-07-23T02:08:57.099724989Z"
+  "closed_at": "2026-07-23T02:13:39.094485955Z",
+  "close_reason": "Fixed t_deck_esp32s3_procpu.conf merge conflict by updating board configs with consolidated resolution notes across puck, gateway, and bridge; cleaned related driver, Rust HAL, Python simulation, test, and addressing spec. Resolved multiple parallel worker merge artifacts. Commit 0c5b8e5."
 }
