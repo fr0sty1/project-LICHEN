@@ -87,33 +87,7 @@ class AnnounceProcessor:
                 reject_reason=AnnounceRejectReason.IID_MISMATCH,
             )
 
-        signable = announce.signed_data()
-        if not verify(announce.pubkey, signable, announce.signature):
-            logger.warning(
-                "announce signature invalid: originator=%s",
-                announce.originator_iid.hex(),
-            )
-            return AnnounceResult(
-                accepted=False,
-                should_relay=False,
-                reject_reason=AnnounceRejectReason.INVALID_SIGNATURE,
-            )
-
         iid = announce.originator_iid
-        pinned_pubkey = self._pinned_keys.get(iid)
-        if pinned_pubkey is not None and pinned_pubkey != announce.pubkey:
-            logger.error(
-                "KEY CHANGE DETECTED for IID %s: pinned=%s got=%s — rejecting",
-                iid.hex(),
-                pinned_pubkey.hex()[:16],
-                announce.pubkey.hex()[:16],
-            )
-            return AnnounceResult(
-                accepted=False,
-                should_relay=False,
-                reject_reason=AnnounceRejectReason.KEY_CHANGE_DETECTED,
-            )
-
         existing_seq = self._seen.get(iid)
         if existing_seq is not None and not seq_gt(announce.seq_num, existing_seq):
             logger.debug(
@@ -126,6 +100,32 @@ class AnnounceProcessor:
                 accepted=False,
                 should_relay=False,
                 reject_reason=AnnounceRejectReason.STALE_SEQNUM,
+            )
+
+        signable = announce.signed_data()
+        if not verify(announce.pubkey, signable, announce.signature):
+            logger.warning(
+                "announce signature invalid: originator=%s",
+                announce.originator_iid.hex(),
+            )
+            return AnnounceResult(
+                accepted=False,
+                should_relay=False,
+                reject_reason=AnnounceRejectReason.INVALID_SIGNATURE,
+            )
+
+        pinned_pubkey = self._pinned_keys.get(iid)
+        if pinned_pubkey is not None and pinned_pubkey != announce.pubkey:
+            logger.error(
+                "KEY CHANGE DETECTED for IID %s: pinned=%s got=%s — rejecting",
+                iid.hex(),
+                pinned_pubkey.hex()[:16],
+                announce.pubkey.hex()[:16],
+            )
+            return AnnounceResult(
+                accepted=False,
+                should_relay=False,
+                reject_reason=AnnounceRejectReason.KEY_CHANGE_DETECTED,
             )
 
         destination = self.address_builder(iid)
