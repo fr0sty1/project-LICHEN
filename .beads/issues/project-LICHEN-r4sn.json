@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-r4sn",
   "title": "Integrate SX1302 concentrator into lichen-gateway for multi-channel RX/TX",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T04:44:28.012541917Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:59:25.794623069Z",
+  "updated_at": "2026-07-23T05:09:59.135253478Z",
   "started_at": "2026-07-23T04:59:25.794623069Z",
-  "lease_expires_at": "2026-07-23T05:04:25.794623069Z",
-  "heartbeat_at": "2026-07-23T04:59:25.794623069Z",
+  "closed_at": "2026-07-23T05:09:59.135253478Z",
+  "close_reason": "Minimal viable Sx1302Concentrator integration complete: added --hat rak2287 flag and config option, init in new run_hat path mirroring sim/serial patterns. Fixed type/scope issues. No new files added.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-r4sn",
