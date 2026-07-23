@@ -1481,8 +1481,9 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 
 	/*
 	 * Atomically check initialization, sequence exhaustion, and increment.
-	 * This fixes python-ano.2 (race on sender_seq++) and python-ano.41
-	 * (nonce reuse if sender_seq not restored after reboot).
+	 * Fixes python-ano.2 (race on sender_seq++) and python-ano.41 (nonce
+	 * reuse on NVM failure+reboot). See full analysis in
+	 * project-LICHEN-ow3c.1.3.2.1 and nvm_failed label.
 	 */
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
 
@@ -1602,14 +1603,23 @@ cleanup_protect_request:
 	return ret;
 
 nvm_failed:
-	/* SECURITY: SSN must not be left incremented on NVM failure after
-	 * sender_seq++ (see oscore.c:1524 for original cleanup_protect_request).
-	 * If left advanced but persist failed, reboot would restore stale SSN
-	 * from NVM while prepared packet used advanced value, enabling AES-CCM
-	 * nonce reuse attack vector (RFC 8613 §7.2). Rollback under mutex here
-	 * ensures retry reuses same SSN and NVM state matches on reboot. Mutex
-	 * also serializes with oscore_unprotect_request() and other threads.
-	 * Early errors bypass this path.
+	/* SECURITY ANALYSIS (project-LICHEN-ow3c.1.3.2.1):
+	 * Per RFC 8613 §7.2 (Sequence Numbers), §7.5 (Losing Context State),
+	 * and Appendix D.4 (Uniqueness of (key, nonce)), AES-CCM requires
+	 * unique (key, nonce) pairs; SSN must never repeat for a context.
+	 * python-ano.41 identified nonce reuse on NVM failure+reboot.
+	 * oscore_ctx_persist_ssn() (which copies sender_seq under mutex then
+	 * calls NVM write_cb) can fail transiently.
+	 *
+	 * Rollback (ctx->sender_seq = seq) chosen over safe-advance (+256 or
+	 * 2^8 boundary under re-lock):
+	 * - Maintains exact match between in-memory SSN and NVM on reboot.
+	 * - Allows safe retry of identical request (same SSN/nonce).
+	 * - Safe-advance risks desync: advanced in-memory but stale NVM on
+	 *   reboot leads to reuse of values "skipped" but never persisted.
+	 * - Frequent NVM errors would exhaust SSN faster with advance.
+	 * Mutex re-lock serializes with unprotect/other threads. Early errors
+	 * bypass this path. See oscore_protect_request() and header.
 	 */
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
 	ctx_idx = ctx_get_index(ctx);

@@ -454,13 +454,13 @@ int oscore_option_build(const struct oscore_option *_Nonnull option,
  * @brief Protect a CoAP request with OSCORE.
  *
  * Performs atomic SSN increment under mutex (to prevent races and nonce
- * reuse), builds plaintext/AAD, encrypts with AES-CCM, builds OSCORE option,
- * then calls oscore_ctx_persist_ssn() on the success path. All paths (success,
- * error, or NVM failure) ensure crypto_wipe() of sensitive buffers (nonce,
- * piv, plaintext, seq). On OSCORE_ERR_NVM_FAILED from persist, rolls back
- * sender_seq under mutex before wipe (see nvm_failed: label in oscore.c and
- * security comment there). This prevents SSN consumption on persistence
- * failure, avoiding nonce reuse on reboot per RFC 8613 §7.2.1, §8.4.
+ * reuse per python-ano.41), builds plaintext/AAD, encrypts with AES-CCM,
+ * builds OSCORE option, then calls oscore_ctx_persist_ssn() on success path.
+ * All paths ensure crypto_wipe(). On OSCORE_ERR_NVM_FAILED, rolls back
+ * sender_seq under mutex (see nvm_failed: in oscore.c:1604 and full
+ * security analysis in project-LICHEN-ow3c.1.3.2.1). Rollback chosen over
+ * safe-advance for NVM/memory consistency and to avoid SSN reuse on reboot
+ * (RFC 8613 §7.2, §7.5, App. D.4).
  *
  * @param[in]     ctx          Security context
  * @param[in]     code         CoAP request code
