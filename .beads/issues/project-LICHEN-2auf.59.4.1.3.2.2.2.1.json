@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.59.4.1.3.2.2.2.1",
   "title": "Research Kconfig and overlays for native_posix BLE ingress excluding link layer",
   "description": "Analyze existing prj.conf in lichen/tests/ble_ingress/, lichen/apps/gateway/, ble_ipsp_transport and determine what needs to be enabled/disabled for native_posix target without link.35.6. List required CONFIG_ options for BLE, IPSP, native_posix simulation.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",
