@@ -1,0 +1,40 @@
+=== Artifact manifest for bead project-LICHEN-2auf.59.4.1.3.2.2.2.4 ===
+Generated: Thu Jul 23 18:26:51 UTC 2026
+Worktree: /mnt/lichen-zephyr/work/project-LICHEN-worker1 (primary worker tree, HEAD 0af295b3864d7ff06872a8ebc361d0b122221bb3)
+Build dir: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final6
+Board: native_sim/native/64 (Zephyr 3.7 successor to native_posix; native_posix deprecated, 32-bit-only, unusable on aarch64 host)
+App: lichen/apps/gateway
+Config: -DDTC_OVERLAY_FILE=boards/native_posix_ble_ingress.overlay -DEXTRA_CONF_FILE=boards/native_posix_ble_ingress.conf -DZEPHYR_EXTRA_MODULES=$PWD/lichen -DLICHEN_RELEASE_EPOCH_UNIX=1722470400
+Merged Kconfig: native_sim_64_defconfig + prj.conf + boards/native_sim_native_64.conf + boards/native_posix_ble_ingress.conf + generated lichen/build_epoch.conf
+Command: SOURCE_DATE_EPOCH=$(git log -1 --format=%ct) west build -b native_sim/native/64 --pristine=always lichen/apps/gateway -d build/ble-native-posix-ingress-59-4-final6 -- <cmake opts>
+Build exit code: 0
+Build steps: 187/187 completed; zephyr.elf + zephyr.exe (native runner) produced; no zephyr.bin/hex on host-native target
+
+=== SHA256 of generated artifacts ===
+ee06d7f021a1bd205fa0d3d981fc932e099cbffc531fbcc373df4c1eed21772e  zephyr/zephyr.elf
+643ac72fed002db8d5ae8dcfebb4f5e849df8002414713ed515043b560dbfacc  zephyr/zephyr.exe
+e38101026bb4821a633b1f8c208b4df10330181d9799b07f958d768acd4202cb  zephyr/.config
+e71b936dd6ee4932df174d26797dc87c224416e3868c9c3b07346a3644dd32e9  zephyr/zephyr.dts
+7e09015b36d72372b0fd3ab18708a7c816278ead238356779b17195413d9f67d  zephyr/zephyr.map
+d5b5e284e0c891f937486c17488cce5d9caceabd86920b3fd68aa865879d1259  zephyr/zephyr.stat
+146ed5133286b37bfc19c85b6326356397328caa131d2e3bcccb7d7a2900f6f1  CMakeCache.txt
+7d207d19b663266c6b91bc0e21435179d30769487efb0d9da385a7176a7b9307  zephyr_modules.txt
+
+=== Artifact sizes (bytes) ===
+ 9263784 zephyr/zephyr.elf
+ 4335456 zephyr/zephyr.exe
+   79461 zephyr/.config
+    4233 zephyr/zephyr.dts
+  790601 zephyr/zephyr.map
+  426927 zephyr/zephyr.stat
+   23827 CMakeCache.txt
+    5002 zephyr_modules.txt
+
+=== SHA256 of captured build/test logs and exit-code file ===
+9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa  build-exit-2auf.59.4.1.3.2.2.2.4.txt
+9e6c7b56f9aae20ec622608d87b28de6dc129660cf3f2c1cf8ebeb07a6e2e455  build-logs-2auf.59.4.1.3.2.2.2.4-final6.log
+0e20c0f0ea3945219283f46787227dd1e7c2ea3c0b24a59a3da4bd59059fee9e  test-logs-2auf.59.4.1.3.2.2.2.4-twister.log
+9dc9a0e60ef6ec3f84bfabdb327e4cc50a47cb2fadd806cc2cb3d07819bc6efa  test-logs-2auf.59.4.1.3.2.2.2.4-ble-ingress-run.log
+49c624035e2c615d2df90bd1b2d88a06fdbcec7052b8fb50ba09fc39eb2450c1  test-logs-2auf.59.4.1.3.2.2.2.4-ble-ingress.log
+6665a42f85a7d1f2a5ed12a8a0445d33d4de3473bea4bc05134e764c1cbb4eb0  test-logs-2auf.59.4.1.3.2.2.2.4-app-interface.log
+fb02708d79549e64a8c3430bf1b204530d71dfeea4a7377dcb5dc9d4ec74efb5  test-logs-2auf.59.4.1.3.2.2.2.4-app-interface-final.log

@@ -1,0 +1,43 @@
+-- west build: generating a build system
+Loading Zephyr default modules (Zephyr base).
+-- Application: /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway
+-- CMake version: 3.30.0
+-- Found Python3: /mnt/lichen-zephyr/venv/bin/python3 (found suitable version "3.9.25", minimum required is "3.8") found components: Interpreter
+-- Cache files will be written to: /home/ec2-user/.cache/zephyr
+-- Zephyr version: 3.7.0 (/mnt/lichen-zephyr/work/zephyr)
+-- Found west (found suitable version "1.5.0", minimum required is "0.14.0")
+-- Board: native_sim, qualifiers: native
+-- Found host-tools: zephyr 0.16.8 (/mnt/lichen-zephyr/zephyr-sdk-0.16.8)
+-- Found toolchain: host (gcc/ld)
+-- Found Dtc: /mnt/lichen-zephyr/zephyr-sdk-0.16.8/sysroots/aarch64-pokysdk-linux/usr/bin/dtc (found suitable version "1.6.0", minimum required is "1.4.6")
+-- Found BOARD.dts: /mnt/lichen-zephyr/work/zephyr/boards/native/native_sim/native_sim.dts
+-- Found devicetree overlay: boards/native_posix_ble_ingress.overlay
+-- Generated zephyr.dts: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-6/zephyr/zephyr.dts
+-- Generated devicetree_generated.h: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-6/zephyr/include/generated/zephyr/devicetree_generated.h
+-- Including generated dts.cmake file: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-6/zephyr/dts.cmake
+Parsing /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/Kconfig
+Loaded configuration '/mnt/lichen-zephyr/work/zephyr/boards/native/native_sim/native_sim_defconfig'
+Merged configuration '/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/prj.conf'
+Merged configuration '/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_sim.conf'
+Merged configuration '/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.conf'
+Merged configuration '/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-6/lichen/build_epoch.conf'
+Configuration saved to '/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-6/zephyr/.config'
+Kconfig header saved to '/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-6/zephyr/include/generated/zephyr/autoconf.h'
+-- Found GnuLd: /usr/bin/ld.bfd (found version "")
+-- The C compiler identification is GNU 11.5.0
+-- The CXX compiler identification is GNU 11.5.0
+-- The ASM compiler identification is GNU
+-- Found assembler: /usr/bin/gcc
+CMake Error at /mnt/lichen-zephyr/work/zephyr/arch/posix/Linux.aarch64.cmake:28 (message):
+  CONFIG_64BIT=n but this Aarch64 machine has a 64-bit userspace.
+
+  If you were targeting native_sim, target native_sim/native/64 instead.
+
+  Otherwise, be sure to define CONFIG_64BIT appropriately.
+
+Call Stack (most recent call first):
+  /mnt/lichen-zephyr/work/zephyr/arch/posix/CMakeLists.txt:44 (include)
+
+
+-- Configuring incomplete, errors occurred!
+FATAL ERROR: command exited with status 1: /mnt/lichen-zephyr/venv/bin/cmake -DWEST_PYTHON=/mnt/lichen-zephyr/venv/bin/python3 -B/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-6 -GNinja -DBOARD=native_sim -DDTC_OVERLAY_FILE=boards/native_posix_ble_ingress.overlay -DEXTRA_CONF_FILE=boards/native_posix_ble_ingress.conf -DZEPHYR_EXTRA_MODULES=/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen -DLICHEN_RELEASE_EPOCH_UNIX=1722470400 -S/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway

@@ -1,0 +1,98 @@
+-- west build: generating a build system
+Loading Zephyr default modules (Zephyr base).
+-- Application: /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway
+-- CMake version: 3.30.0
+-- Found Python3: /mnt/lichen-zephyr/venv/bin/python3 (found suitable version "3.9.25", minimum required is "3.8") found components: Interpreter
+-- Cache files will be written to: /home/ec2-user/.cache/zephyr
+-- Zephyr version: 3.7.0 (/mnt/lichen-zephyr/work/zephyr)
+-- Found west (found suitable version "1.5.0", minimum required is "0.14.0")
+-- Board: native_sim, qualifiers: native
+-- Found host-tools: zephyr 0.16.8 (/mnt/lichen-zephyr/zephyr-sdk-0.16.8)
+-- Found toolchain: host (gcc/ld)
+-- Found Dtc: /mnt/lichen-zephyr/zephyr-sdk-0.16.8/sysroots/aarch64-pokysdk-linux/usr/bin/dtc (found suitable version "1.6.0", minimum required is "1.4.6")
+-- Found BOARD.dts: /mnt/lichen-zephyr/work/zephyr/boards/native/native_sim/native_sim.dts
+-- Found devicetree overlay: /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_sim.overlay
+-- Generated zephyr.dts: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-4/zephyr/zephyr.dts
+-- Generated devicetree_generated.h: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-4/zephyr/include/generated/zephyr/devicetree_generated.h
+-- Including generated dts.cmake file: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-4/zephyr/dts.cmake
+
+warning: the choice symbol LICHEN_TIME_PROVIDER_GNSS (defined at /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/zephyr/../subsys/lichen/hal/Kconfig:195) is selected by the following symbols, but select/imply has no effect on choice symbols
+ - LICHEN_CCP_TIME_SYNC (defined at /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/zephyr/../subsys/lichen/link/Kconfig:128)
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.overlay:1: warning: ignoring malformed line '/*'
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.overlay:2: warning: ignoring malformed line ' * SPDX-License-Identifier: GPL-3.0-or-later'
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.overlay:3: warning: ignoring malformed line ' * SPDX-FileCopyrightText: The contributors to the LICHEN project'
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.overlay:4: warning: ignoring malformed line ' *'
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.overlay:5: warning: ignoring malformed line ' * Dedicated DTC overlay for native_posix BLE ingress / LCI build.'
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.overlay:6: warning: ignoring malformed line ' * Enables BLE paths (IPSP transport, LCI netif) while stubbing'
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.overlay:7: warning: ignoring malformed line ' * link layer (no lichen,lora-loopback, no full radio). Used with'
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.overlay:8: warning: ignoring malformed line ' * native_posix or native_sim board to produce clean build without'
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.overlay:9: warning: ignoring malformed line ' * link.35.6 dependencies.'
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.overlay:10: warning: ignoring malformed line ' */'
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.overlay:12: warning: ignoring malformed line ' / {'
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.overlay:13: warning: ignoring malformed line ' 	/* No LoRa device to prevent LICHEN_LINK / LORA_L2 activation */'
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.overlay:14: warning: ignoring malformed line ' 	/delete-node/ lora_sim;'
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.overlay:16: warning: ignoring malformed line ' 	aliases {'
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.overlay:17: warning: ignoring malformed line ' 		/* Explicitly no lora alias for ingress-only build */'
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.overlay:18: warning: ignoring malformed line ' 	};'
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.overlay:20: warning: ignoring malformed line ' 	chosen {'
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.overlay:21: warning: ignoring malformed line ' 		/* No zephyr,lora chosen node - LCI uses dummy BLE netif */'
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.overlay:22: warning: ignoring malformed line ' 	};'
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.overlay:24: warning: ignoring malformed line ' 	/* BLE LCI is code-driven via NET_DEVICE_INIT(ble_lci...) in ble_lci_netif.c */'
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.overlay:25: warning: ignoring malformed line ' };'
+
+warning: POSIX_ARCH_CONSOLE (defined at boards/native/native_sim/Kconfig.defconfig:27, drivers/console/Kconfig:246) has direct dependencies (CONSOLE && BOARD_NATIVE_SIM) || (ARCH_POSIX && CONSOLE) with value n, but is currently being y-selected by the following symbols:
+ - BOARD_NATIVE_SIM (defined at boards/Kconfig.v2:9, boards/native/native_sim/Kconfig.native_sim:4, boards/native/native_sim/Kconfig:4), with value y, direct dependencies y (value: y)
+
+warning: LICHEN_TDMA (defined at /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/zephyr/../subsys/lichen/link/Kconfig:115) has direct dependencies LICHEN_LINK_CCP16_LOAD_BALANCING && LICHEN_RPL && LICHEN_LINK && LICHEN with value n, but is currently being y-selected by the following symbols:
+ - LICHEN_CCP_TDMA (defined at /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/zephyr/../subsys/lichen/rpl/Kconfig:110), with value y, direct dependencies LICHEN_RPL && LICHEN_RPL && LICHEN (value: y), and select condition LICHEN_RPL && LICHEN_RPL && LICHEN (value: y)
+
+warning: LICHEN_CCP_TIME_SYNC (defined at /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/zephyr/../subsys/lichen/link/Kconfig:128) has direct dependencies LICHEN_LINK_CCP16_LOAD_BALANCING && LICHEN_LINK && LICHEN with value n, but is currently being y-selected by the following symbols:
+ - LICHEN_CCP_TDMA (defined at /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/zephyr/../subsys/lichen/rpl/Kconfig:110), with value y, direct dependencies LICHEN_RPL && LICHEN_RPL && LICHEN (value: y), and select condition LICHEN_RPL && LICHEN_RPL && LICHEN (value: y)
+
+warning: LICHEN_MULTI_CHANNEL_ENABLED (defined at /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/zephyr/../subsys/lichen/link/Kconfig:146) has direct dependencies LICHEN_LINK && LICHEN_LINK && LICHEN with value n, but is currently being y-selected by the following symbols:
+ - LICHEN_CHANNEL_AGILITY (defined at /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/zephyr/../subsys/lichen/rpl/Kconfig:123), with value y, direct dependencies LICHEN_RPL && LICHEN_RPL && LICHEN (value: y), and select condition LICHEN_RPL && LICHEN_RPL && LICHEN (value: y)
+
+warning: LICHEN_ADAPTIVE_SF_ENABLED (defined at /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/zephyr/../subsys/lichen/Kconfig:31) has direct dependencies LICHEN_LINK_CCP16_LOAD_BALANCING && LICHEN with value n, but is currently being y-selected by the following symbols:
+ - LICHEN_ADAPTIVE_SF (defined at /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/zephyr/../subsys/lichen/rpl/Kconfig:133), with value y, direct dependencies LICHEN_RPL && LICHEN_RPL && LICHEN (value: y), and select condition LICHEN_RPL && LICHEN_RPL && LICHEN (value: y)
+Parsing /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/Kconfig
+Loaded configuration '/mnt/lichen-zephyr/work/zephyr/boards/native/native_sim/native_sim_defconfig'
+Merged configuration '/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/prj.conf'
+Merged configuration '/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_sim.conf'
+Merged configuration '/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.conf'
+Merged configuration '/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-4/lichen/build_epoch.conf'
+Merged configuration '/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.overlay'
+
+error: Aborting due to Kconfig warnings
+
+CMake Error at /mnt/lichen-zephyr/work/zephyr/cmake/modules/kconfig.cmake:389 (message):
+  command failed with return code: 1
+Call Stack (most recent call first):
+  /mnt/lichen-zephyr/work/zephyr/cmake/modules/zephyr_default.cmake:132 (include)
+  /mnt/lichen-zephyr/work/zephyr/share/zephyr-package/cmake/ZephyrConfig.cmake:66 (include)
+  /mnt/lichen-zephyr/work/zephyr/share/zephyr-package/cmake/ZephyrConfig.cmake:92 (include_boilerplate)
+  CMakeLists.txt:4 (find_package)
+
+
+-- Configuring incomplete, errors occurred!
+FATAL ERROR: command exited with status 1: /mnt/lichen-zephyr/venv/bin/cmake -DWEST_PYTHON=/mnt/lichen-zephyr/venv/bin/python3 -B/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-4 -GNinja -DBOARD=native_sim -DOVERLAY_CONFIG=boards/native_posix_ble_ingress.overlay -DEXTRA_CONF_FILE=boards/native_posix_ble_ingress.conf -DZEPHYR_EXTRA_MODULES=/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen -DLICHEN_RELEASE_EPOCH_UNIX=1722470400 -S/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway

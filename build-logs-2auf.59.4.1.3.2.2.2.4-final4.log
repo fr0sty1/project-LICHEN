@@ -1,0 +1,506 @@
+-- west build: generating a build system
+Loading Zephyr default modules (Zephyr base).
+-- Application: /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway
+-- CMake version: 3.30.0
+-- Found Python3: /mnt/lichen-zephyr/venv/bin/python3 (found suitable version "3.9.25", minimum required is "3.8") found components: Interpreter
+-- Cache files will be written to: /home/ec2-user/.cache/zephyr
+-- Zephyr version: 3.7.0 (/mnt/lichen-zephyr/work/zephyr)
+-- Found west (found suitable version "1.5.0", minimum required is "0.14.0")
+-- Board: native_sim, qualifiers: native/64
+-- Found host-tools: zephyr 0.16.8 (/mnt/lichen-zephyr/zephyr-sdk-0.16.8)
+-- Found toolchain: host (gcc/ld)
+-- Found Dtc: /mnt/lichen-zephyr/zephyr-sdk-0.16.8/sysroots/aarch64-pokysdk-linux/usr/bin/dtc (found suitable version "1.6.0", minimum required is "1.4.6")
+-- Found BOARD.dts: /mnt/lichen-zephyr/work/zephyr/boards/native/native_sim/native_sim_64.dts
+-- Found devicetree overlay: boards/native_posix_ble_ingress.overlay
+-- Generated zephyr.dts: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final4/zephyr/zephyr.dts
+-- Generated devicetree_generated.h: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final4/zephyr/include/generated/zephyr/devicetree_generated.h
+-- Including generated dts.cmake file: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final4/zephyr/dts.cmake
+Parsing /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/Kconfig
+Loaded configuration '/mnt/lichen-zephyr/work/zephyr/boards/native/native_sim/native_sim_64_defconfig'
+Merged configuration '/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/prj.conf'
+Merged configuration '/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_sim_native_64.conf'
+Merged configuration '/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.conf'
+Merged configuration '/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final4/lichen/build_epoch.conf'
+Configuration saved to '/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final4/zephyr/.config'
+Kconfig header saved to '/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final4/zephyr/include/generated/zephyr/autoconf.h'
+-- Found GnuLd: /usr/bin/ld.bfd (found version "")
+-- The C compiler identification is GNU 11.5.0
+-- The CXX compiler identification is GNU 11.5.0
+-- The ASM compiler identification is GNU
+-- Found assembler: /usr/bin/gcc
+CMake Warning at /mnt/lichen-zephyr/work/zephyr/CMakeLists.txt:915 (message):
+  No SOURCES given to Zephyr library: drivers__net
+
+  Excluding target from build.
+
+
+CMake Warning at /mnt/lichen-zephyr/work/zephyr/CMakeLists.txt:915 (message):
+  No SOURCES given to Zephyr library: drivers__spi
+
+  Excluding target from build.
+
+
+CMake Warning at /mnt/lichen-zephyr/work/zephyr/CMakeLists.txt:915 (message):
+  No SOURCES given to Zephyr library: lichen_native
+
+  Excluding target from build.
+
+
+CMake Warning at /mnt/lichen-zephyr/work/zephyr/CMakeLists.txt:2094 (message):
+  __ASSERT() statements are globally ENABLED
+
+
+-- Configuring done (3.2s)
+-- Generating done (0.1s)
+-- Build files have been written to: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final4
+-- west build: building application
+[1/195] Preparing syscall dependency handling
+
+[2/195] Generating include/generated/zephyr/version.h
+-- Zephyr version: 3.7.0 (/mnt/lichen-zephyr/work/zephyr), build: v3.7.0
+[3/195] Generating misc/generated/syscalls_subdirs.trigger
+[4/195] Generating misc/generated/syscalls.json, misc/generated/struct_tags.json
+[5/195] Generating include/generated/zephyr/syscall_dispatch.c, include/generated/zephyr/syscall_list.h
+[6/195] Generating include/generated/zephyr/driver-validation.h
+[7/195] Generating include/generated/zephyr/kobj-types-enum.h, include/generated/zephyr/otype-to-str.h, include/generated/zephyr/otype-to-size.h
+[8/195] Building C object zephyr/CMakeFiles/offsets.dir/arch/posix/core/offsets/offsets.c.obj
+[9/195] Generating include/generated/zephyr/offsets.h
+[10/195] Building C object CMakeFiles/app.dir/src/config_apply.c.obj
+[11/195] Building C object zephyr/CMakeFiles/zephyr.dir/lib/os/sem.c.obj
+[12/195] Building C object CMakeFiles/app.dir/src/inbound_events.c.obj
+[13/195] Building C object zephyr/CMakeFiles/zephyr.dir/lib/os/thread_entry.c.obj
+[14/195] Building C object zephyr/CMakeFiles/zephyr.dir/lib/os/printk.c.obj
+[15/195] Building C object CMakeFiles/app.dir/src/ble_ingress.c.obj
+[16/195] Building C object CMakeFiles/app.dir/src/ble_lci_netif.c.obj
+[17/195] Building C object zephyr/CMakeFiles/zephyr.dir/lib/os/cbprintf.c.obj
+[18/195] Building C object CMakeFiles/app.dir/src/inbound_coap.c.obj
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/src/inbound_coap.c: In function ‘gateway_inbound_location_post’:
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/src/inbound_coap.c:233:49: warning: passing argument 4 of ‘inbound_location_read_u32’ from incompatible pointer type [-Wincompatible-pointer-types]
+  233 |                                                 &location.fix_time_unix);
+      |                                                 ^~~~~~~~~~~~~~~~~~~~~~~
+      |                                                 |
+      |                                                 int64_t * {aka long int *}
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/src/inbound_coap.c:127:48: note: expected ‘uint32_t *’ {aka ‘unsigned int *’} but argument is of type ‘int64_t *’ {aka ‘long int *’}
+  127 |                                      uint32_t *out)
+      |                                      ~~~~~~~~~~^~~
+[19/195] Building C object CMakeFiles/app.dir/src/config_cbor.c.obj
+[20/195] Building C object CMakeFiles/app.dir/src/ble_uart.c.obj
+[21/195] Building C object CMakeFiles/app.dir/src/network_location.c.obj
+[22/195] Building C object zephyr/CMakeFiles/zephyr.dir/lib/utils/dec.c.obj
+[23/195] Building C object CMakeFiles/app.dir/src/ble_app_owner.c.obj
+[24/195] Building C object CMakeFiles/app.dir/src/main.c.obj
+[25/195] Building C object CMakeFiles/app.dir/src/status_cbor.c.obj
+[26/195] Building C object zephyr/CMakeFiles/zephyr.dir/lib/utils/hex.c.obj
+[27/195] Building C object zephyr/CMakeFiles/zephyr.dir/lib/heap/heap.c.obj
+[28/195] Building C object zephyr/CMakeFiles/zephyr.dir/lib/os/cbprintf_complete.c.obj
+[29/195] Building C object zephyr/CMakeFiles/zephyr.dir/misc/generated/configs.c.obj
+[30/195] Building C object zephyr/CMakeFiles/zephyr.dir/lib/os/cbprintf_packaged.c.obj
+[31/195] Building C object zephyr/CMakeFiles/zephyr.dir/subsys/tracing/tracing_none.c.obj
+[32/195] Building C object zephyr/CMakeFiles/zephyr.dir/lib/os/assert.c.obj
+[33/195] Building C object zephyr/CMakeFiles/zephyr.dir/lib/utils/timeutil.c.obj
+[34/195] Building C object zephyr/CMakeFiles/zephyr.dir/mnt/lichen-zephyr/work/modules/crypto/tinycrypt/lib/source/utils.c.obj
+[35/195] Building C object zephyr/CMakeFiles/zephyr.dir/lib/os/fdtable.c.obj
+[36/195] Building C object zephyr/CMakeFiles/zephyr.dir/mnt/lichen-zephyr/work/modules/crypto/tinycrypt/lib/source/aes_encrypt.c.obj
+[37/195] Building C object zephyr/CMakeFiles/zephyr.dir/subsys/logging/log_cache.c.obj
+[38/195] Building C object zephyr/CMakeFiles/zephyr.dir/mnt/lichen-zephyr/work/modules/crypto/tinycrypt/lib/source/hmac.c.obj
+[39/195] Building C object zephyr/CMakeFiles/zephyr.dir/mnt/lichen-zephyr/work/modules/crypto/tinycrypt/lib/source/cmac_mode.c.obj
+[40/195] Building C object zephyr/CMakeFiles/zephyr.dir/subsys/logging/backends/log_backend_native_posix.c.obj
+[41/195] Building C object zephyr/CMakeFiles/zephyr.dir/mnt/lichen-zephyr/work/modules/crypto/tinycrypt/lib/source/sha256.c.obj
+[42/195] Building C object zephyr/CMakeFiles/zephyr.dir/subsys/logging/log_msg.c.obj
+[43/195] Building C object zephyr/CMakeFiles/zephyr.dir/mnt/lichen-zephyr/work/modules/crypto/tinycrypt/lib/source/hmac_prng.c.obj
+[44/195] Building C object zephyr/CMakeFiles/zephyr.dir/subsys/net/lib/utils/addr_utils.c.obj
+[45/195] Building C object zephyr/CMakeFiles/zephyr.dir/lib/utils/rb.c.obj
+[46/195] Building C object zephyr/CMakeFiles/zephyr.dir/subsys/net/lib/coap/coap_link_format.c.obj
+[47/195] Building C object zephyr/CMakeFiles/zephyr.dir/subsys/logging/log_output.c.obj
+[48/195] Building C object zephyr/CMakeFiles/zephyr.dir/mnt/lichen-zephyr/work/modules/crypto/tinycrypt/lib/source/aes_decrypt.c.obj
+[49/195] Generating linker_zephyr_pre0.cmd
+[50/195] Building C object zephyr/arch/arch/posix/core/CMakeFiles/arch__posix__core.dir/irq.c.obj
+[51/195] Building C object zephyr/soc/soc/native/CMakeFiles/soc__native__inf_clock.dir/native_tasks.c.obj
+[52/195] Building C object zephyr/arch/arch/posix/core/CMakeFiles/arch__posix__core.dir/posix_core_nsi.c.obj
+[53/195] Building C object zephyr/arch/arch/posix/core/CMakeFiles/arch__posix__core.dir/fatal.c.obj
+[54/195] Building C object zephyr/arch/arch/posix/core/CMakeFiles/arch__posix__core.dir/cpuhalt.c.obj
+[55/195] Building C object zephyr/boards/native/native_sim/CMakeFiles/boards__native__native_sim.dir/misc.c.obj
+[56/195] Building C object zephyr/subsys/bluetooth/common/CMakeFiles/subsys__bluetooth__common.dir/addr.c.obj
+[57/195] Building C object zephyr/CMakeFiles/zephyr.dir/subsys/logging/log_mgmt.c.obj
+[58/195] Building C object zephyr/arch/arch/posix/core/CMakeFiles/arch__posix__core.dir/thread.c.obj
+[59/195] Building C object zephyr/boards/native/native_sim/CMakeFiles/boards__native__native_sim.dir/cmdline.c.obj
+[60/195] Building C object zephyr/arch/arch/posix/core/CMakeFiles/arch__posix__core.dir/swap.c.obj
+[61/195] Building C object zephyr/CMakeFiles/zephyr.dir/subsys/logging/log_core.c.obj
+[62/195] Building C object zephyr/boards/native/native_sim/CMakeFiles/boards__native__native_sim.dir/nsi_if.c.obj
+[63/195] Building C object zephyr/boards/native/native_sim/CMakeFiles/boards__native__native_sim.dir/posix_arch_if.c.obj
+[64/195] Building C object zephyr/soc/soc/native/CMakeFiles/soc__native__inf_clock.dir/soc.c.obj
+[65/195] Building C object zephyr/subsys/random/CMakeFiles/subsys__random.dir/random_entropy_device.c.obj
+[66/195] Building C object zephyr/boards/native/native_sim/CMakeFiles/boards__native__native_sim.dir/cpu_wait.c.obj
+[67/195] Building C object zephyr/subsys/bluetooth/host/CMakeFiles/subsys__bluetooth__host.dir/addr.c.obj
+[68/195] Building C object zephyr/subsys/bluetooth/common/CMakeFiles/subsys__bluetooth__common.dir/rpa.c.obj
+[69/195] Building C object zephyr/CMakeFiles/zephyr.dir/lib/utils/bitarray.c.obj
+[70/195] Building C object zephyr/CMakeFiles/zephyr.dir/subsys/net/lib/coap/coap_server.c.obj
+[71/195] Building C object zephyr/boards/native/native_sim/CMakeFiles/boards__native__native_sim.dir/irq_handler.c.obj
+[72/195] Building C object zephyr/subsys/bluetooth/common/CMakeFiles/subsys__bluetooth__common.dir/dummy.c.obj
+[73/195] Building C object zephyr/subsys/bluetooth/common/CMakeFiles/subsys__bluetooth__common.dir/bt_str.c.obj
+[74/195] Building C object zephyr/subsys/bluetooth/host/CMakeFiles/subsys__bluetooth__host.dir/long_wq.c.obj
+[75/195] Building C object zephyr/subsys/bluetooth/host/CMakeFiles/subsys__bluetooth__host.dir/uuid.c.obj
+[76/195] Building C object zephyr/subsys/bluetooth/host/CMakeFiles/subsys__bluetooth__host.dir/hci_common.c.obj
+[77/195] Building C object zephyr/subsys/bluetooth/host/CMakeFiles/subsys__bluetooth__host.dir/data.c.obj
+[78/195] Building C object zephyr/subsys/bluetooth/host/CMakeFiles/subsys__bluetooth__host.dir/buf.c.obj
+[79/195] Building C object zephyr/subsys/bluetooth/host/CMakeFiles/subsys__bluetooth__host.dir/crypto_tc.c.obj
+[80/195] Building C object zephyr/subsys/bluetooth/host/CMakeFiles/subsys__bluetooth__host.dir/ecc.c.obj
+[81/195] Building C object zephyr/subsys/bluetooth/crypto/CMakeFiles/subsys__bluetooth__crypto.dir/bt_crypto_tc.c.obj
+[82/195] Building C object zephyr/subsys/bluetooth/host/CMakeFiles/subsys__bluetooth__host.dir/keys.c.obj
+[83/195] Building C object zephyr/subsys/net/CMakeFiles/subsys__net.dir/lib/sockets/getaddrinfo.c.obj
+[84/195] Building C object zephyr/subsys/bluetooth/crypto/CMakeFiles/subsys__bluetooth__crypto.dir/bt_crypto.c.obj
+[85/195] Building C object zephyr/CMakeFiles/zephyr.dir/subsys/net/lib/coap/coap.c.obj
+[86/195] Building C object zephyr/subsys/bluetooth/host/CMakeFiles/subsys__bluetooth__host.dir/id.c.obj
+[87/195] Building C object zephyr/subsys/bluetooth/host/CMakeFiles/subsys__bluetooth__host.dir/l2cap.c.obj
+[88/195] Building C object zephyr/subsys/net/CMakeFiles/subsys__net.dir/buf.c.obj
+[89/195] Building C object zephyr/subsys/bluetooth/host/CMakeFiles/subsys__bluetooth__host.dir/adv.c.obj
+[90/195] Building C object zephyr/subsys/net/CMakeFiles/subsys__net.dir/lib/sockets/getnameinfo.c.obj
+[91/195] Building C object zephyr/subsys/net/CMakeFiles/subsys__net.dir/lib/sockets/sockets_select.c.obj
+[92/195] Building C object zephyr/subsys/net/CMakeFiles/subsys__net.dir/lib/sockets/sockets_misc.c.obj
+[93/195] Building C object zephyr/subsys/net/l2/dummy/CMakeFiles/subsys__net__l2__dummy.dir/dummy.c.obj
+[94/195] Building C object zephyr/subsys/net/CMakeFiles/subsys__net.dir/buf_simple.c.obj
+[95/195] Building C object zephyr/subsys/net/ip/CMakeFiles/subsys__net__ip.dir/net_timeout.c.obj
+[96/195] Building C object zephyr/subsys/net/CMakeFiles/subsys__net.dir/lib/sockets/socketpair.c.obj
+[97/195] Building C object zephyr/subsys/net/ip/CMakeFiles/subsys__net__ip.dir/net_mgmt.c.obj
+[98/195] Building C object zephyr/subsys/net/ip/CMakeFiles/subsys__net__ip.dir/net_core.c.obj
+[99/195] Building C object zephyr/subsys/net/ip/CMakeFiles/subsys__net__ip.dir/net_tc.c.obj
+[100/195] Building C object zephyr/subsys/net/l2/ethernet/CMakeFiles/subsys__net__l2__ethernet.dir/ethernet.c.obj
+[101/195] Building C object zephyr/subsys/net/ip/CMakeFiles/subsys__net__ip.dir/icmp.c.obj
+[102/195] Building C object zephyr/subsys/bluetooth/host/CMakeFiles/subsys__bluetooth__host.dir/conn.c.obj
+[103/195] Building C object zephyr/subsys/net/ip/CMakeFiles/subsys__net__ip.dir/icmpv6.c.obj
+[104/195] Building C object zephyr/subsys/bluetooth/host/CMakeFiles/subsys__bluetooth__host.dir/gatt.c.obj
+[105/195] Building C object zephyr/subsys/net/ip/CMakeFiles/subsys__net__ip.dir/utils.c.obj
+[106/195] Building C object zephyr/subsys/bluetooth/host/CMakeFiles/subsys__bluetooth__host.dir/hci_core.c.obj
+[107/195] Building C object zephyr/subsys/net/ip/CMakeFiles/subsys__net__ip.dir/connection.c.obj
+[108/195] Building C object zephyr/subsys/net/ip/CMakeFiles/subsys__net__ip.dir/nbr.c.obj
+[109/195] Building C object zephyr/drivers/console/CMakeFiles/drivers__console.dir/posix_arch_console.c.obj
+[110/195] Building C object zephyr/drivers/entropy/CMakeFiles/drivers__entropy.dir/fake_entropy_native_posix.c.obj
+[111/195] Building C object zephyr/subsys/net/CMakeFiles/subsys__net.dir/lib/sockets/sockets.c.obj
+[112/195] Building C object zephyr/subsys/net/ip/CMakeFiles/subsys__net__ip.dir/ipv6_mld.c.obj
+[113/195] Building C object zephyr/subsys/bluetooth/host/CMakeFiles/subsys__bluetooth__host.dir/att.c.obj
+[114/195] Building C object zephyr/subsys/bluetooth/host/CMakeFiles/subsys__bluetooth__host.dir/smp.c.obj
+[115/195] Building C object zephyr/subsys/net/ip/CMakeFiles/subsys__net__ip.dir/net_context.c.obj
+[116/195] Building C object zephyr/subsys/net/ip/CMakeFiles/subsys__net__ip.dir/net_pkt.c.obj
+[117/195] Building C object zephyr/subsys/net/ip/CMakeFiles/subsys__net__ip.dir/ipv6.c.obj
+[118/195] Building C object zephyr/drivers/timer/CMakeFiles/drivers__timer.dir/sys_clock_init.c.obj
+[119/195] Building C object zephyr/drivers/timer/CMakeFiles/drivers__timer.dir/native_posix_timer.c.obj
+[120/195] Building C object zephyr/subsys/net/ip/CMakeFiles/subsys__net__ip.dir/udp.c.obj
+[121/195] Building C object zephyr/drivers/bluetooth/CMakeFiles/drivers__bluetooth.dir/hci/userchan.c.obj
+[122/195] Building C object zephyr/drivers/ethernet/CMakeFiles/drivers__ethernet.dir/eth_native_posix.c.obj
+[123/195] Building C object zephyr/subsys/net/ip/CMakeFiles/subsys__net__ip.dir/route.c.obj
+[124/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/busy_wait.c.obj
+[125/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/banner.c.obj
+[126/195] Building C object modules/zcbor/CMakeFiles/modules__zcbor.dir/mnt/lichen-zephyr/work/modules/lib/zcbor/src/zcbor_common.c.obj
+[127/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/main_weak.c.obj
+[128/195] Building C object modules/lichen/subsys/lichen/app_interface/CMakeFiles/..__project-LICHEN-worker1__lichen__subsys__lichen__app_interface.dir/hal_bridge.c.obj
+In file included from /mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/atomic.h:18,
+                 from /mnt/lichen-zephyr/work/zephyr/include/zephyr/kernel_includes.h:25,
+                 from /mnt/lichen-zephyr/work/zephyr/include/zephyr/kernel.h:17,
+                 from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/app_interface/hal_bridge.c:8:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/util.h: In function ‘bcd2bin’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/util.h:577:35: warning: conversion from ‘int’ to ‘uint8_t’ {aka ‘unsigned char’} may change value [-Wconversion]
+  577 |         return ((10 * (bcd >> 4)) + (bcd & 0x0F));
+      |                ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~
+[129/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/errno.c.obj
+[130/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/init_static.c.obj
+[131/195] Building C object modules/zcbor/CMakeFiles/modules__zcbor.dir/mnt/lichen-zephyr/work/modules/lib/zcbor/src/zcbor_encode.c.obj
+[132/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/version.c.obj
+[133/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/fatal.c.obj
+[134/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/device.c.obj
+[135/195] Building C object modules/lichen/subsys/lichen/app_interface/CMakeFiles/..__project-LICHEN-worker1__lichen__subsys__lichen__app_interface.dir/app_interface.c.obj
+In file included from /mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/atomic.h:18,
+                 from /mnt/lichen-zephyr/work/zephyr/include/zephyr/kernel_includes.h:25,
+                 from /mnt/lichen-zephyr/work/zephyr/include/zephyr/kernel.h:17,
+                 from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/app_interface/app_interface.c:10:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/util.h: In function ‘bcd2bin’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/util.h:577:35: warning: conversion from ‘int’ to ‘uint8_t’ {aka ‘unsigned char’} may change value [-Wconversion]
+  577 |         return ((10 * (bcd >> 4)) + (bcd & 0x0F));
+      |                ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~
+[136/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/init.c.obj
+[137/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/float.c.obj
+[138/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/idle.c.obj
+[139/195] Building C object modules/lichen/subsys/lichen/transport/CMakeFiles/lichen_transport.dir/ble_ipsp_transport.c.obj
+In file included from /mnt/lichen-zephyr/work/zephyr/include/zephyr/devicetree.h:26,
+                 from /mnt/lichen-zephyr/work/zephyr/include/zephyr/device.h:12,
+                 from /mnt/lichen-zephyr/work/zephyr/include/zephyr/net/net_if.h:22,
+                 from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/transport/include/lichen/transport/slip_transport.h:26,
+                 from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/transport/include/lichen/transport/ble_ipsp_transport.h:31,
+                 from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/transport/ble_ipsp_transport.c:12:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/util.h: In function ‘bcd2bin’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/util.h:577:35: warning: conversion from ‘int’ to ‘uint8_t’ {aka ‘unsigned char’} may change value [-Wconversion]
+  577 |         return ((10 * (bcd >> 4)) + (bcd & 0x0F));
+      |                ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~
+In file included from /mnt/lichen-zephyr/work/zephyr/include/zephyr/logging/log_msg.h:11,
+                 from /mnt/lichen-zephyr/work/zephyr/include/zephyr/logging/log_core.h:9,
+                 from /mnt/lichen-zephyr/work/zephyr/include/zephyr/logging/log.h:11,
+                 from /mnt/lichen-zephyr/work/zephyr/include/zephyr/net/net_core.h:19,
+                 from /mnt/lichen-zephyr/work/zephyr/include/zephyr/net/net_if.h:25,
+                 from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/transport/include/lichen/transport/slip_transport.h:26,
+                 from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/transport/include/lichen/transport/ble_ipsp_transport.h:31,
+                 from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/transport/ble_ipsp_transport.c:12:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/cbprintf.h: In function ‘z_cbprintf_cpy’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/cbprintf.h:545:16: warning: conversion from ‘size_t’ {aka ‘long unsigned int’} to ‘int’ may change value [-Wconversion]
+  545 |         return len;
+      |                ^~~
+In file included from /mnt/lichen-zephyr/work/zephyr/include/zephyr/devicetree.h:26,
+                 from /mnt/lichen-zephyr/work/zephyr/include/zephyr/device.h:12,
+                 from /mnt/lichen-zephyr/work/zephyr/include/zephyr/net/net_if.h:22,
+                 from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/transport/include/lichen/transport/slip_transport.h:26,
+                 from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/transport/include/lichen/transport/ble_ipsp_transport.h:31,
+                 from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/transport/ble_ipsp_transport.c:12:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/logging/log_msg.h: In function ‘log_msg_get_total_wlen’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/util.h:336:45: warning: conversion from ‘long unsigned int’ to ‘uint32_t’ {aka ‘unsigned int’} may change value [-Wconversion]
+  336 | #define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
+      |                            ~~~~~~~~~~~~~~~~~^~~~~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/logging/log_msg.h:217:9: note: in expansion of macro ‘DIV_ROUND_UP’
+  217 |         DIV_ROUND_UP(ROUND_UP(Z_LOG_MSG_LEN(pkg_len, data_len), \
+      |         ^~~~~~~~~~~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/logging/log_msg.h:732:16: note: in expansion of macro ‘Z_LOG_MSG_ALIGNED_WLEN’
+  732 |         return Z_LOG_MSG_ALIGNED_WLEN(desc.package_len, desc.data_len);
+      |                ^~~~~~~~~~~~~~~~~~~~~~
+In file included from /mnt/lichen-zephyr/work/zephyr/include/zephyr/logging/log.h:11,
+                 from /mnt/lichen-zephyr/work/zephyr/include/zephyr/net/net_core.h:19,
+                 from /mnt/lichen-zephyr/work/zephyr/include/zephyr/net/net_if.h:25,
+                 from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/transport/include/lichen/transport/slip_transport.h:26,
+                 from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/transport/include/lichen/transport/ble_ipsp_transport.h:31,
+                 from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/transport/ble_ipsp_transport.c:12:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/logging/log_core.h: In function ‘log_const_source_id’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/logging/log_core.h:467:82: warning: conversion from ‘long unsigned int’ to ‘uint32_t’ {aka ‘unsigned int’} may change value [-Wconversion]
+  467 |         return ((const uint8_t *)data - (uint8_t *)TYPE_SECTION_START(log_const))/
+      |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+  468 |                         sizeof(struct log_source_const_data);
+      |                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                      
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/logging/log_core.h: In function ‘log_dynamic_source_id’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/logging/log_core.h:492:78: warning: conversion from ‘long unsigned int’ to ‘uint32_t’ {aka ‘unsigned int’} may change value [-Wconversion]
+  492 |         return ((uint8_t *)data - (uint8_t *)TYPE_SECTION_START(log_dynamic))/
+      |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+  493 |                         sizeof(struct log_source_dynamic_data);
+      |                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                
+In file included from /mnt/lichen-zephyr/work/zephyr/include/zephyr/net/net_ip.h:27,
+                 from /mnt/lichen-zephyr/work/zephyr/include/zephyr/net/net_if.h:28,
+                 from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/transport/include/lichen/transport/slip_transport.h:26,
+                 from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/transport/include/lichen/transport/ble_ipsp_transport.h:31,
+                 from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/transport/ble_ipsp_transport.c:12:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h: In function ‘sys_put_be16’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h:323:18: warning: conversion from ‘int’ to ‘uint8_t’ {aka ‘unsigned char’} may change value [-Wconversion]
+  323 |         dst[0] = val >> 8;
+      |                  ^~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h:324:18: warning: conversion from ‘uint16_t’ {aka ‘short unsigned int’} to ‘uint8_t’ {aka ‘unsigned char’} may change value [-Wconversion]
+  324 |         dst[1] = val;
+      |                  ^~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h: In function ‘sys_put_be24’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h:338:18: warning: conversion from ‘uint32_t’ {aka ‘unsigned int’} to ‘uint8_t’ {aka ‘unsigned char’} may change value [-Wconversion]
+  338 |         dst[0] = val >> 16;
+      |                  ^~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h:339:22: warning: conversion from ‘uint32_t’ {aka ‘unsigned int’} to ‘uint16_t’ {aka ‘short unsigned int’} may change value [-Wconversion]
+  339 |         sys_put_be16(val, &dst[1]);
+      |                      ^~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h: In function ‘sys_put_be32’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h:353:26: warning: conversion from ‘uint32_t’ {aka ‘unsigned int’} to ‘uint16_t’ {aka ‘short unsigned int’} may change value [-Wconversion]
+  353 |         sys_put_be16(val >> 16, dst);
+      |                      ~~~~^~~~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h:354:22: warning: conversion from ‘uint32_t’ {aka ‘unsigned int’} to ‘uint16_t’ {aka ‘short unsigned int’} may change value [-Wconversion]
+  354 |         sys_put_be16(val, &dst[2]);
+      |                      ^~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h: In function ‘sys_put_be40’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h:367:18: warning: conversion from ‘uint64_t’ {aka ‘long unsigned int’} to ‘uint8_t’ {aka ‘unsigned char’} may change value [-Wconversion]
+  367 |         dst[0] = val >> 32;
+      |                  ^~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h:368:22: warning: conversion from ‘uint64_t’ {aka ‘long unsigned int’} to ‘uint32_t’ {aka ‘unsigned int’} may change value [-Wconversion]
+  368 |         sys_put_be32(val, &dst[1]);
+      |                      ^~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h: In function ‘sys_put_be48’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h:382:26: warning: conversion from ‘uint64_t’ {aka ‘long unsigned int’} to ‘uint16_t’ {aka ‘short unsigned int’} may change value [-Wconversion]
+  382 |         sys_put_be16(val >> 32, dst);
+      |                      ~~~~^~~~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h:383:22: warning: conversion from ‘uint64_t’ {aka ‘long unsigned int’} to ‘uint32_t’ {aka ‘unsigned int’} may change value [-Wconversion]
+  383 |         sys_put_be32(val, &dst[2]);
+      |                      ^~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h: In function ‘sys_put_be64’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h:397:26: warning: conversion from ‘uint64_t’ {aka ‘long unsigned int’} to ‘uint32_t’ {aka ‘unsigned int’} may change value [-Wconversion]
+  397 |         sys_put_be32(val >> 32, dst);
+      |                      ~~~~^~~~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h:398:22: warning: conversion from ‘uint64_t’ {aka ‘long unsigned int’} to ‘uint32_t’ {aka ‘unsigned int’} may change value [-Wconversion]
+  398 |         sys_put_be32(val, &dst[4]);
+      |                      ^~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h: In function ‘sys_put_le16’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h:412:18: warning: conversion from ‘uint16_t’ {aka ‘short unsigned int’} to ‘uint8_t’ {aka ‘unsigned char’} may change value [-Wconversion]
+  412 |         dst[0] = val;
+      |                  ^~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h:413:18: warning: conversion from ‘int’ to ‘uint8_t’ {aka ‘unsigned char’} may change value [-Wconversion]
+  413 |         dst[1] = val >> 8;
+      |                  ^~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h: In function ‘sys_put_le24’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h:427:22: warning: conversion from ‘uint32_t’ {aka ‘unsigned int’} to ‘uint16_t’ {aka ‘short unsigned int’} may change value [-Wconversion]
+  427 |         sys_put_le16(val, dst);
+      |                      ^~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h:428:18: warning: conversion from ‘uint32_t’ {aka ‘unsigned int’} to ‘uint8_t’ {aka ‘unsigned char’} may change value [-Wconversion]
+  428 |         dst[2] = val >> 16;
+      |                  ^~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h: In function ‘sys_put_le32’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h:442:22: warning: conversion from ‘uint32_t’ {aka ‘unsigned int’} to ‘uint16_t’ {aka ‘short unsigned int’} may change value [-Wconversion]
+  442 |         sys_put_le16(val, dst);
+      |                      ^~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h:443:26: warning: conversion from ‘uint32_t’ {aka ‘unsigned int’} to ‘uint16_t’ {aka ‘short unsigned int’} may change value [-Wconversion]
+  443 |         sys_put_le16(val >> 16, &dst[2]);
+      |                      ~~~~^~~~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h: In function ‘sys_put_le40’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h:457:22: warning: conversion from ‘uint64_t’ {aka ‘long unsigned int’} to ‘uint32_t’ {aka ‘unsigned int’} may change value [-Wconversion]
+  457 |         sys_put_le32(val, dst);
+      |                      ^~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h:458:18: warning: conversion from ‘uint64_t’ {aka ‘long unsigned int’} to ‘uint8_t’ {aka ‘unsigned char’} may change value [-Wconversion]
+  458 |         dst[4] = val >> 32;
+      |                  ^~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h: In function ‘sys_put_le48’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h:472:22: warning: conversion from ‘uint64_t’ {aka ‘long unsigned int’} to ‘uint32_t’ {aka ‘unsigned int’} may change value [-Wconversion]
+  472 |         sys_put_le32(val, dst);
+      |                      ^~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h:473:26: warning: conversion from ‘uint64_t’ {aka ‘long unsigned int’} to ‘uint16_t’ {aka ‘short unsigned int’} may change value [-Wconversion]
+  473 |         sys_put_le16(val >> 32, &dst[4]);
+      |                      ~~~~^~~~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h: In function ‘sys_put_le64’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h:487:22: warning: conversion from ‘uint64_t’ {aka ‘long unsigned int’} to ‘uint32_t’ {aka ‘unsigned int’} may change value [-Wconversion]
+  487 |         sys_put_le32(val, dst);
+      |                      ^~~
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/byteorder.h:488:26: warning: conversion from ‘uint64_t’ {aka ‘long unsigned int’} to ‘uint32_t’ {aka ‘unsigned int’} may change value [-Wconversion]
+  488 |         sys_put_le32(val >> 32, &dst[4]);
+      |                      ~~~~^~~~~
+In file included from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/transport/ble_ipsp_transport.c:20:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/bluetooth/gatt.h: In function ‘bt_gatt_err_to_str’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/bluetooth/gatt.h:421:63: warning: conversion from ‘int’ to ‘uint8_t’ {aka ‘unsigned char’} may change value [-Wconversion]
+  421 |         return bt_att_err_to_str((gatt_err) < 0 ? -(gatt_err) : (gatt_err));
+      |                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/transport/ble_ipsp_transport.c: In function ‘lichen_ble_slip_send’:
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/transport/ble_ipsp_transport.c:547:39: warning: conversion from ‘size_t’ {aka ‘long unsigned int’} to ‘uint16_t’ {aka ‘short unsigned int’} may change value [-Wconversion]
+  547 |                 nus_svc.attrs, nus_svc.attr_count, BT_UUID_NUS_TX);
+      |                                ~~~~~~~^~~~~~~~~~~
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/transport/ble_ipsp_transport.c:570:32: warning: conversion from ‘size_t’ {aka ‘long unsigned int’} to ‘short unsigned int’ may change value [-Wconversion]
+  570 |                         .len = send_len,
+      |                                ^~~~~~~~
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/transport/ble_ipsp_transport.c:598:51: warning: conversion from ‘size_t’ {aka ‘long unsigned int’} to ‘uint32_t’ {aka ‘unsigned int’} may change value [-Wconversion]
+  598 |                 transport_state.stats.tx_bytes += len;
+      |                                                   ^~~
+[140/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/kheap.c.obj
+[141/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/mem_slab.c.obj
+[142/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/sem.c.obj
+[143/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/system_work_q.c.obj
+[144/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/mailbox.c.obj
+[145/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/stack.c.obj
+[146/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/msg_q.c.obj
+[147/195] Building C object zephyr/subsys/net/lib/dhcpv6/CMakeFiles/subsys__net__lib__dhcpv6.dir/dhcpv6.c.obj
+[148/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/mutex.c.obj
+[149/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/priority_queues.c.obj
+[150/195] Building C object modules/lichen/subsys/lichen/hal/CMakeFiles/..__project-LICHEN-worker1__lichen__subsys__lichen__hal.dir/hal.c.obj
+In file included from /mnt/lichen-zephyr/work/zephyr/include/zephyr/devicetree.h:26,
+                 from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/hal/hal.c:8:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/util.h: In function ‘bcd2bin’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/util.h:577:35: warning: conversion from ‘int’ to ‘uint8_t’ {aka ‘unsigned char’} may change value [-Wconversion]
+  577 |         return ((10 * (bcd >> 4)) + (bcd & 0x0F));
+      |                ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~
+In file included from /mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:30,
+                 from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/hal/hal.c:13:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/rtio/rtio.h: In function ‘z_impl_rtio_cqe_copy_out’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/rtio/rtio.h:1396:16: warning: conversion from ‘size_t’ {aka ‘long unsigned int’} to ‘int’ may change value [-Wconversion]
+ 1396 |         return copied;
+      |                ^~~~~~
+In file included from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/hal/hal.c:13:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h: In function ‘sensor_ms2_to_g’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1157:51: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1157 |                 return (micro_ms2 + SENSOR_G / 2) / SENSOR_G;
+      |                                                   ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1159:51: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1159 |                 return (micro_ms2 - SENSOR_G / 2) / SENSOR_G;
+      |                                                   ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h: In function ‘sensor_g_to_ms2’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1171:21: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1171 |         ms2->val1 = ((int64_t)g * SENSOR_G) / 1000000LL;
+      |                     ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1172:21: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1172 |         ms2->val2 = ((int64_t)g * SENSOR_G) % 1000000LL;
+      |                     ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h: In function ‘sensor_ms2_to_ug’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1187:40: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1187 |         return (micro_ms2 * 1000000LL) / SENSOR_G;
+      |                                        ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h: In function ‘sensor_ug_to_ms2’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1198:21: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1198 |         ms2->val1 = ((int64_t)ug * SENSOR_G / 1000000LL) / 1000000LL;
+      |                     ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1199:21: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1199 |         ms2->val2 = ((int64_t)ug * SENSOR_G / 1000000LL) % 1000000LL;
+      |                     ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h: In function ‘sensor_rad_to_degrees’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1214:62: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1214 |                 return (micro_rad_s * 180LL + SENSOR_PI / 2) / SENSOR_PI;
+      |                                                              ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1216:62: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1216 |                 return (micro_rad_s * 180LL - SENSOR_PI / 2) / SENSOR_PI;
+      |                                                              ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h: In function ‘sensor_degrees_to_rad’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1228:21: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1228 |         rad->val1 = ((int64_t)d * SENSOR_PI / 180LL) / 1000000LL;
+      |                     ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1229:21: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1229 |         rad->val2 = ((int64_t)d * SENSOR_PI / 180LL) % 1000000LL;
+      |                     ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h: In function ‘sensor_rad_to_10udegrees’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1247:49: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1247 |         return (micro_rad_s * 180LL * 100000LL) / SENSOR_PI;
+      |                                                 ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h: In function ‘sensor_10udegrees_to_rad’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1258:21: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1258 |         rad->val1 = ((int64_t)d * SENSOR_PI / 180LL / 100000LL) / 1000000LL;
+      |                     ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1259:21: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1259 |         rad->val2 = ((int64_t)d * SENSOR_PI / 180LL / 100000LL) % 1000000LL;
+      |                     ^
+[151/195] Building C object zephyr/subsys/net/ip/CMakeFiles/subsys__net__ip.dir/ipv6_nbr.c.obj
+[152/195] Linking C static library app/libapp.a
+[153/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/spinlock_validate.c.obj
+[154/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/condvar.c.obj
+[155/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/compiler_stack_protect.c.obj
+[156/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/queue.c.obj
+[157/195] Linking C static library zephyr/soc/soc/native/libsoc__native__inf_clock.a
+[158/195] Linking C static library zephyr/arch/arch/posix/core/libarch__posix__core.a
+[159/195] Linking C static library zephyr/subsys/random/libsubsys__random.a
+[160/195] Building C object zephyr/CMakeFiles/zephyr_pre0.dir/misc/empty_file.c.obj
+[161/195] Linking C static library zephyr/boards/native/native_sim/libboards__native__native_sim.a
+[162/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/mempool.c.obj
+[163/195] Linking C static library zephyr/libzephyr.a
+[164/195] Linking C static library zephyr/subsys/bluetooth/crypto/libsubsys__bluetooth__crypto.a
+[165/195] Building C object modules/zcbor/CMakeFiles/modules__zcbor.dir/mnt/lichen-zephyr/work/modules/lib/zcbor/src/zcbor_decode.c.obj
+[166/195] Linking C static library zephyr/subsys/bluetooth/common/libsubsys__bluetooth__common.a
+[167/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/thread.c.obj
+[168/195] Linking C static library zephyr/subsys/net/libsubsys__net.a
+[169/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/timeslicing.c.obj
+[170/195] Linking C static library zephyr/subsys/net/l2/dummy/libsubsys__net__l2__dummy.a
+[171/195] Linking C static library zephyr/subsys/net/l2/ethernet/libsubsys__net__l2__ethernet.a
+[172/195] Linking C static library zephyr/drivers/bluetooth/libdrivers__bluetooth.a
+[173/195] Linking C static library zephyr/subsys/net/lib/dhcpv6/libsubsys__net__lib__dhcpv6.a
+[174/195] Linking C static library zephyr/drivers/entropy/libdrivers__entropy.a
+[175/195] Linking C static library zephyr/drivers/ethernet/libdrivers__ethernet.a
+[176/195] Linking C static library zephyr/drivers/timer/libdrivers__timer.a
+[177/195] Linking C static library zephyr/drivers/console/libdrivers__console.a
+[178/195] Linking C static library modules/lichen/subsys/lichen/hal/lib..__project-LICHEN-worker1__lichen__subsys__lichen__hal.a
+[179/195] Linking C static library modules/lichen/subsys/lichen/app_interface/lib..__project-LICHEN-worker1__lichen__subsys__lichen__app_interface.a
+[180/195] Linking C static library modules/zcbor/libmodules__zcbor.a
+[181/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/timer.c.obj
+[182/195] Linking C static library modules/lichen/subsys/lichen/transport/liblichen_transport.a
+[183/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/dynamic_disabled.c.obj
+[184/195] Linking C static library zephyr/subsys/bluetooth/host/libsubsys__bluetooth__host.a
+[185/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/timeout.c.obj
+[186/195] Building C object zephyr/subsys/net/ip/CMakeFiles/subsys__net__ip.dir/net_if.c.obj
+[187/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/pipes.c.obj
+[188/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/poll.c.obj
+[189/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/work.c.obj
+[190/195] Linking C static library zephyr/subsys/net/ip/libsubsys__net__ip.a
+[191/195] Building C object zephyr/kernel/CMakeFiles/kernel.dir/sched.c.obj
+[192/195] Linking C static library zephyr/kernel/libkernel.a
+[193/195] Linking C executable zephyr/zephyr.elf
+FAILED: [code=1] zephyr/zephyr.elf zephyr/zephyr_pre0.map zephyr/zephyr.map zephyr/zephyr.stat /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final4/zephyr/zephyr_pre0.map /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final4/zephyr/zephyr.map /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final4/zephyr/zephyr.stat 
+: && /usr/bin/gcc  -gdwarf-4 zephyr/CMakeFiles/zephyr_pre0.dir/misc/empty_file.c.obj -o zephyr/zephyr.elf  zephyr/CMakeFiles/offsets.dir/./arch/posix/core/offsets/offsets.c.obj  -fuse-ld=bfd  -T  zephyr/linker_zephyr_pre0.cmd  -Wl,-Map=/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final4/zephyr/zephyr_pre0.map  -Wl,--whole-archive  app/libapp.a  zephyr/libzephyr.a  zephyr/arch/arch/posix/core/libarch__posix__core.a  zephyr/soc/soc/native/libsoc__native__inf_clock.a  zephyr/boards/native/native_sim/libboards__native__native_sim.a  zephyr/subsys/random/libsubsys__random.a  zephyr/subsys/bluetooth/common/libsubsys__bluetooth__common.a  zephyr/subsys/bluetooth/host/libsubsys__bluetooth__host.a  zephyr/subsys/bluetooth/crypto/libsubsys__bluetooth__crypto.a  zephyr/subsys/net/libsubsys__net.a  zephyr/subsys/net/l2/dummy/libsubsys__net__l2__dummy.a  zephyr/subsys/net/l2/ethernet/libsubsys__net__l2__ethernet.a  zephyr/subsys/net/ip/libsubsys__net__ip.a  zephyr/subsys/net/lib/dhcpv6/libsubsys__net__lib__dhcpv6.a  zephyr/drivers/bluetooth/libdrivers__bluetooth.a  zephyr/drivers/console/libdrivers__console.a  zephyr/drivers/entropy/libdrivers__entropy.a  zephyr/drivers/ethernet/libdrivers__ethernet.a  zephyr/drivers/timer/libdrivers__timer.a  modules/zcbor/libmodules__zcbor.a  modules/lichen/subsys/lichen/app_interface/lib..__project-LICHEN-worker1__lichen__subsys__lichen__app_interface.a  modules/lichen/subsys/lichen/hal/lib..__project-LICHEN-worker1__lichen__subsys__lichen__hal.a  modules/lichen/subsys/lichen/transport/liblichen_transport.a  -Wl,--no-whole-archive  zephyr/kernel/libkernel.a  -L/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final4/zephyr  -r  -Wl,--gc-sections  -Wl,--build-id=none  -Wl,--sort-common=descending  -Wl,--sort-section=alignment  -Wl,-u,_OffsetAbsSyms  -Wl,-u,_ConfigAbsSyms  -Wl,--unresolved-symbols=ignore-all && cd /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final4/zephyr && /mnt/lichen-zephyr/venv/lib/python3.9/site-packages/cmake/data/bin/cmake -E true && cd /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final4/zephyr && /mnt/lichen-zephyr/venv/lib/python3.9/site-packages/cmake/data/bin/cmake -E echo Generating\ files\ from\ /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final4/zephyr/zephyr.elf\ for\ board:\ native_sim && /mnt/lichen-zephyr/venv/lib/python3.9/site-packages/cmake/data/bin/cmake -E copy zephyr_pre0.map zephyr.map && /usr/bin/readelf -e zephyr.elf > zephyr.stat
+/usr/bin/ld.bfd: modules/lichen/subsys/lichen/transport/liblichen_transport.a(ble_ipsp_transport.c.obj):/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/transport/ble_ipsp_transport.c:342: multiple definition of `nus_svc'; app/libapp.a(ble_uart.c.obj):/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/src/ble_uart.c:230: first defined here
+/usr/bin/ld.bfd: modules/lichen/subsys/lichen/transport/liblichen_transport.a(ble_ipsp_transport.c.obj):/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/transport/ble_ipsp_transport.c:342: multiple definition of `attr_nus_svc'; app/libapp.a(ble_uart.c.obj):/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/src/ble_uart.c:230: first defined here
+collect2: error: ld returned 1 exit status
+ninja: build stopped: subcommand failed.
+FATAL ERROR: command exited with status 1: /mnt/lichen-zephyr/venv/bin/cmake --build /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final4
