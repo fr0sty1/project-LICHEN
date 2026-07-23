@@ -1,10 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
-<<<<<<< HEAD
-
-#define DT_DRV_COMPAT lilygo_tdeck_keyboard
-=======
->>>>>>> origin/worktree-worker24
 
 #include <zephyr/device.h>
 #include <zephyr/drivers/i2c.h>
@@ -69,16 +64,13 @@ static int lilygo_tdeck_keyboard_init(const struct device *dev)
 	if (!device_is_ready(config->i2c.bus)) {
 		return -ENODEV;
 	}
-<<<<<<< HEAD
+
 	i2c_reg_write_byte_dt(&config->i2c, 0x01, 0xFF);
-	k_thread_create(&((struct lilygo_tdeck_keyboard_data *)dev->data)->thread, lilygo_tdeck_keyboard_stack, K_KERNEL_STACK_SIZEOF(lilygo_tdeck_keyboard_stack), lilygo_tdeck_keyboard_thread, (void *)dev, NULL, NULL, 6, 0, K_NO_WAIT);
-=======
 	k_thread_create(&((struct lilygo_tdeck_keyboard_data *)dev->data)->thread,
 			lilygo_tdeck_keyboard_stack,
 			K_KERNEL_STACK_SIZEOF(lilygo_tdeck_keyboard_stack),
 			lilygo_tdeck_keyboard_thread, (void *)dev, NULL, NULL,
 			6, 0, K_NO_WAIT);
->>>>>>> origin/worktree-worker24
 	return 0;
 }
 
@@ -88,10 +80,6 @@ static const struct lilygo_tdeck_keyboard_config lilygo_tdeck_keyboard_config = 
 
 static struct lilygo_tdeck_keyboard_data lilygo_tdeck_keyboard_data;
 
-<<<<<<< HEAD
-DEVICE_DT_INST_DEFINE(0, lilygo_tdeck_keyboard_init, NULL, &lilygo_tdeck_keyboard_data, &lilygo_tdeck_keyboard_config, POST_KERNEL, CONFIG_INPUT_INIT_PRIORITY, NULL);
-=======
 DEVICE_DT_INST_DEFINE(0, lilygo_tdeck_keyboard_init, NULL,
 		      &lilygo_tdeck_keyboard_data, &lilygo_tdeck_keyboard_config,
 		      POST_KERNEL, CONFIG_INPUT_INIT_PRIORITY, NULL);
->>>>>>> origin/worktree-worker24
