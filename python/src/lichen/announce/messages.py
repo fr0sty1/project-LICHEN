@@ -31,6 +31,7 @@ class AnnounceError(Exception):
     """Raised when an announce message is malformed."""
 
 
+
 @dataclass
 class AnnounceMessage:
     """An announce message advertising presence in the mesh (spec 9.2 + CCP-9).
