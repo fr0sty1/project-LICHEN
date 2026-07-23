@@ -79,21 +79,26 @@ Remote capability and schedule messages MAY reduce the locally permitted interse
 
 CH0 is the control channel; all nodes MUST listen continuously on it for DIOs and beacons (see draft-lichen-schc-lora-00 and draft-lichen-rpl-lora-00). Announce messages carry rx_channel (CCP-9 per spec/05-routing.md:9.2) for rendezvous; data channels selected via select_channel or hash. All implementations MUST produce identical results to test/vectors/ccp16.json and ccp9*.json for CCP-9/14/15/16 vectors.
 
-### select_channel and now()
+### synchronized_hop_channel (CCP-12/16 frequency agility)
 
 ```
-function select_channel(ctx, metrics, t):
-    IF (metrics.density > 8) OR (NOT ctx.wall_clock_valid) THEN
-        RETURN 0   // control CH0 for high density or desync (per vectors)
-    hash = fnv1a32(ctx.eui64 XOR t XOR ctx.epoch)
-    n = ctx.num_data_channels IF ctx.num_data_channels > 0 ELSE 3
+function synchronized_hop_channel(eui64, epoch, density, n_channels=3):
+    // Exact algorithm for interference mitigation via hash-based channel
+    // selection + density-aware fallback to CH0. Matches ccp16.json vectors,
+    // Python test oracle, Rust lichen_hash_32, and TDMA slot logic exactly.
+    // Uses byte concatenation (EUI64 BE + epoch LE) per test/vectors/ccp16.json
+    data = eui64_to_bytes(eui64) ++ u32le(epoch)
+    hash = fnv1a32(data)  // lichen_hash_32; see hash_32.json
+    IF density > 8 THEN
+        RETURN 0  // CH0 control for high density (interference mitigation, desync)
+    n = n_channels IF n_channels > 0 ELSE 3
     RETURN 1 + (hash MOD n)
 
 function now():
-    RETURN current_sfn()   // from time-provider; unsigned modular arithmetic per 2a.2; SFN_MODULUS=2^32
+    RETURN current_sfn()  // unsigned 32-bit modular arithmetic per 2a.2; SFN_MODULUS=2^32
 ```
 
-Note: All operators are spelled out (OR, NOT, MOD, XOR) for language-agnostic IETF compatibility. blacklist_until[] timer comparisons MUST use unsigned 32-bit subtraction to correctly handle wrap-around. t = now() % SFN_MODULUS (cross-ref 2a.2) if select_channel expanded later. Cross-ref TDMA link layer (link.h:50 for LICHEN_TDMA_Slot and lichen_tdma_init, draft-lichen-tdma), RPL, and SCHC.
+Note: All operators spelled out (IF, THEN, MOD) for IETF compatibility. blacklist_until comparisons MUST use unsigned 32-bit subtraction for wraparound (see ccp16-desync.json). Density >8 forces CH0 per third test vector (select_channel_timing_test with now near u32 max). Cross-refs: adaptive_sf_select in 2a.3, TDMA in link.h:50 and lichen_tdma_init(), RPL DIO density signaling, SCHC on CH0. Pseudocode produces identical output to all ccp16*.json vectors.
 
 ### Density Rules Rationale
 

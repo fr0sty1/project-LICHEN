@@ -1786,10 +1786,10 @@ def ccp16_vectors() -> list[dict]:
             },
             "output": {
                 "hash_32": _h(eui + (0).to_bytes(4, "little")),
-                "channel": 1,
-                "expected_channel": 1,
+                "channel": 2,
+                "expected_channel": 2,
                 "sf": 10,
-                "select_channel": 1,
+                "select_channel": 2,
                 "now": 100
             }
         },
