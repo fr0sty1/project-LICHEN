@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-s1dn",
   "title": "[merge-conflict] worktree-worker22: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
+  "notes": "Commit: 6c6fc2990 (added SPDX headers to heltec_wifi_lora32_v3_esp32s3_procpu.conf in puck and bridge-zephyr to resolve merge conflict)",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:41:05.497273895Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:24:09.561124934Z",
+  "updated_at": "2026-07-23T03:26:06.115604231Z",
   "started_at": "2026-07-23T03:24:09.561124934Z",
   "lease_expires_at": "2026-07-23T03:29:09.561124934Z",
   "heartbeat_at": "2026-07-23T03:24:09.561124934Z"
