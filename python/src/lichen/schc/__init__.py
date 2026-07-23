@@ -1,13 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-"""SCHC (RFC 8724) header compression for LICHEN.
-
-Public API:
-    - Rule model: ``Rule``, ``FieldDescriptor``, ``MO``, ``CDA``
-    - Rule registry: ``RULES``, ``COAP_RULE``, ``UDP_PORT_RULE``
-    - Engine: ``compress``, ``decompress``, ``SchcError``
-"""
-
 from lichen.schc.codec import (
     BitReader,
     BitWriter,

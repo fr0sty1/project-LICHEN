@@ -24,7 +24,6 @@ from lichen.schc.rules import (
 
 
 def rule_matches(rule: Rule, fields: dict[str, int]) -> bool:
-    """Whether ``fields`` satisfy every descriptor of ``rule``."""
     for fd in rule.fields:
         value = fields.get(fd.field_id)
         if value is None:
@@ -47,19 +46,14 @@ def rule_matches(rule: Rule, fields: dict[str, int]) -> bool:
 
 
 class SchcContext:
-    """An ordered set of SCHC rules with pattern-based selection."""
-
     def __init__(self, rules: dict[int, Rule] | None = None) -> None:
         source = RULES if rules is None else rules
-        # Keep rules ordered by ascending rule ID for deterministic selection.
         self._rules: dict[int, Rule] = dict(sorted(source.items()))
 
     def get(self, rule_id: int) -> Rule | None:
-        """Look up a rule by ID."""
         return self._rules.get(rule_id)
 
     def select_rule(self, fields: dict[str, int]) -> Rule | None:
-        """The first matching compression rule, or None if none matches."""
         for rule in self._rules.values():
             if rule.rule_id == RULE_ID_UNCOMPRESSED:
                 continue
@@ -68,14 +62,12 @@ class SchcContext:
         return None
 
     def compress(self, fields: dict[str, int]) -> bytes:
-        """Select a matching rule and compress; raises if none matches."""
         rule = self.select_rule(fields)
         if rule is None:
             raise NoMatchingRuleError("no SCHC rule matches the given fields")
         return compress(rule, fields)
 
     def decompress(self, data: bytes) -> tuple[int, dict[str, int | None]]:
-        """Decompress using the rule named by the packet's leading Rule ID."""
         if not data:
             raise NoMatchingRuleError("empty SCHC packet")
         rule = self._rules.get(data[0])
@@ -92,4 +84,4 @@ class SchcContext:
 
 
 class NoMatchingRuleError(Exception):
-    """Raised when no rule in the context matches and there is no fallback."""
+    pass
