@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-lug0.2.2.2",
   "title": "Construct SourceRoutingHeader from route in mesh_to_mesh logic",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:27:50.460412929Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:27:50.460412929Z",
+  "updated_at": "2026-07-23T06:06:35.921156081Z",
+  "started_at": "2026-07-23T06:06:35.921156081Z",
+  "lease_expires_at": "2026-07-23T06:11:35.921156081Z",
+  "heartbeat_at": "2026-07-23T06:06:35.921156081Z",
   "labels": [
     "codereview"
   ],
