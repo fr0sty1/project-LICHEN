@@ -2,12 +2,16 @@
   "id": "project-LICHEN-6ctw",
   "title": "codereview: update __post_init__ error message style for current_channel",
   "description": "The error message uses f'current_channel out of range' but others use consistent formatting. Minor P4 style. Also ensure all references updated before tests run. Tagged codereview.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 4,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T17:21:42.547596802Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T17:21:42.547596802Z",
+  "updated_at": "2026-07-23T04:09:52.195132028Z",
+  "started_at": "2026-07-23T04:09:52.195132028Z",
+  "lease_expires_at": "2026-07-23T04:14:52.195132028Z",
+  "heartbeat_at": "2026-07-23T04:09:52.195132028Z",
   "labels": [
     "codereview"
   ],
