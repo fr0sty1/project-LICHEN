@@ -2,11 +2,15 @@
   "id": "project-LICHEN-vcjj",
   "title": "_find_sender checks peer before peer_lookup_all, may miss correct peer",
   "description": "File: python/src/lichen/link/link_layer.py:562-574\n\nAfter re-analysis, this is NOT a bug but subtle code worth documenting.\n\nThe condition '(peer is None or candidate.pubkey != peer.pubkey)' is an optimization to avoid re-verifying a pubkey that was already tried. If peer_lookup(b'') returned a peer and verify() failed, we skip that peer in brute-force since we already know it doesn't verify.\n\nDowngrading to P4 (documentation). The logic is correct but the interaction between peer_lookup and peer_lookup_all callbacks is subtle and should be documented.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 4,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:22:47.329386Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:23:03.770487Z"
+  "updated_at": "2026-07-23T04:29:39.468662683Z",
+  "started_at": "2026-07-23T04:29:39.468662683Z",
+  "lease_expires_at": "2026-07-23T04:34:39.468662683Z",
+  "heartbeat_at": "2026-07-23T04:29:39.468662683Z"
 }
