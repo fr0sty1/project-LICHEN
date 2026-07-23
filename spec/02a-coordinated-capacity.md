@@ -7,7 +7,7 @@
 
 ## Abstract
 
-CCP-16 defines mechanisms for coordinated capacity management in LICHEN LoRa meshes including TDMA slot assignment, channel agility, adaptive SF selection, time synchronization, and hash-based selection. CCP-14 specifies Gateway Multi-RX for simultaneous reception across channels (control + data), increasing capacity per da2q multi-channel context. 
+CCP-16 defines mechanisms for coordinated capacity management in LICHEN LoRa meshes including TDMA slot assignment, channel agility, adaptive SF selection, time synchronization, and hash-based selection. CCP-14 specifies Gateway Multi-RX for simultaneous reception across channels (control + data), increasing capacity per nrfg multi-channel context. 
 
 All implementations MUST produce identical behavior to test vectors in `test/vectors/ccp16.json`:
 - vectors[0-2]: TDMA slot, SF, channel, tx_allowed per CCP-16 (see 2a.2, 2a.3)
@@ -146,12 +146,20 @@ For SFN (superframe number, a u32 epoch counter) wrap-around, all nodes MUST com
 Delta = (current_sfn - last_sfn) using uint32_t subtraction ensures correct wrap behavior. 
 
 Edge case example (0xFFFFFFFF boundary):
+```c
+uint32_t last_sfn = 0xFFFFFFFFu;
+uint32_t current_sfn = 0x00000000u;
+uint32_t delta = current_sfn - last_sfn;  // yields 1 via unsigned wrap
 ```
+<<<<<<< HEAD
 last_sfn = 0xFFFFFFFFu;
 current_sfn = 0x00000002u;
 delta = current_sfn - last_sfn;  /* = 3 in unsigned 32-bit arithmetic */
 ```
 This MUST be treated as advancement of 3 slots. Signed arithmetic would yield a large negative value, breaking desync detection and slot scheduling. Test vectors in ccp16.json MUST cover this and similar boundaries.
+=======
+This MUST be treated as advancement of 1 slot (epoch_floor validation independent of SFN per time-provider). Test vectors in ccp16.json MUST cover boundaries.
+>>>>>>> origin/integration/worker9-20260722
 
 A node MUST only transmit in its assigned slot. Slot duration = max_airtime(current_SF) + 100 ms guard. The link layer MUST enforce via `lichen_link_set_slot()` and `tdma_tx_allowed()` (see lichen/subsys/lichen/link: implementation).
 
@@ -194,7 +202,7 @@ Note: All operators are spelled out (OR, NOT, MOD, XOR) for language-agnostic IE
 
 ### Density Rules Rationale (logical chunk: rationale paragraph - updated)
 
-SF10 is the REQUIRED default because it balances sensitivity (~ -137 dBm at 125 kHz) and airtime (~ 50 ms payload) for typical mesh density per appendix-design-rationale.md:7.6 and independent sim oracle in ccp16.json vectors. Density-aware adaptation prioritizes capacity (SF9 in low density <5 + good SNR >8 dB to reduce airtime 2x) vs robustness (SF11/12 in density >8 or poor SNR or high load_factor to lower PER). This yields net capacity gain in sims at 50 nodes/km^2 despite longer airtime for higher SF. EMA on SNR (snr_ema = 0.1 * current + 0.9 * previous, updated via now()) integrates with load_factor override from gateway DIOs.
+SF10 is the REQUIRED default because it balances sensitivity (~ -132 dBm at 125 kHz) and airtime (~250 ms for 50B payload) for typical mesh density per appendix-design-rationale.md:7.6 and independent sim oracle in ccp16.json vectors. Density-aware adaptation prioritizes capacity (SF9 in low density <5 + good SNR >8 dB to reduce airtime 2x) vs robustness (SF11/12 in density >8 or poor SNR or high load_factor to lower PER). This yields net capacity gain in sims at 50 nodes/km^2 despite longer airtime for higher SF. EMA on SNR (snr_ema = 0.1 * current + 0.9 * previous, updated via now()) integrates with load_factor override from gateway DIOs.
 
 Updates MUST be propagated in RPL metric container. Root optimizer uses reported neighbor_count and channel_util to minimize collisions.
 
@@ -260,7 +268,8 @@ Nodes entering this state from multi-root conflict (different epoch/version on s
 ## Implementation Status
 
 - Python simulator, Rust RPL/gateway, Zephyr `lichen/subsys` all validate against `test/vectors/ccp16.json` (full cross-refs in Abstract; CCP-14 vectors[3+] for Gateway Multi-RX).
-- Kconfig: `CONFIG_LICHEN_CCP16=y`, `CONFIG_LICHEN_TDMA_SLOTS=8`.
+- Kconfig: `CONFIG_LICHEN_CCP16=y`, `CONFIG_LICHEN_TDMA_SLOTS=8`, CCA/CAD in lora_l2.c and drivers.
+- Control/data split, hash TDMA, adaptive SF, desync FSM, multi-RX gateway support complete. All codereview passes (including kywf, nrfg) closed. 8-channel capacity verified in sim.
 - Updated per draft-lichen-ccp scope (this document serves as relevant spec update).
 
 ## Vector Table (CCP-14 extension)
@@ -273,7 +282,7 @@ See `test/vectors/ccp16.json#vectors[3+]` for Gateway Multi-RX test cases with i
 - `spec/drafts/draft-lichen-rpl-lora-00.md`
 - `spec/appendix-design-rationale.md#7.6`
 - `spec/09-packets-timing.md`
-- da2q multi-channel context for CCP-14
+- nrfg multi-channel context for CCP-14 (Kconfig CCA)
 
 For slot `n`, let `t0` be its local monotonic start and `t1` its end. Each
 endpoint begins retuning at `t0`. The receiver MUST be in receive mode by

@@ -17,11 +17,17 @@ Language-neutral conformance vectors for the LICHEN protocol using **format_vers
 | `announce_coords.json` | Announce app_data Type=0x01 geographic coordinate encoding |
 | `meshtastic_app_compat.json` | Meshtastic BLE raw-protobuf app compatibility exchanges |
 | `meshcore_app_compat.json` | MeshCore byte-command app compatibility exchanges |
+<<<<<<< HEAD
 | `ccp_load_balancing.json` | TDMA slot assignment (static hash), guard time boundaries (50ms), drift compensation, CCP-16 load metrics/rebalancing (independent mathematical oracles from spec timing/hash formulas) |
 | `ccp15.json` | CCP-15 CCA threshold, interference score (busy_pct + PER*100), frequency agility (lowest score channel), SF adaptation (PER>0.2), TDMA CCA guard integration (independent mathematical oracles per spec 02a) |
 | `ccp16-desync.json` | CCP-16 desync transitions, SFN wrap, multi-root conflict, clock drift recovery (v2 schema array root support example). Independent oracles from spec 02a and 09-packets-timing.md. |
 | `ccp9.json` | CCP-9 rendezvous mechanisms (announce_rx_ch scheduling, CH0 control fallback for unknown peers, synchronized_hop_channel(CCP-12) override of announce rendezvous, announce channel field parse/roundtrip in L2 payload). Independent mathematical oracles from spec/02a-coordinated-capacity.md §CCP-9, da2q multi-channel context, and python/src/lichen/sim/medium.py. Matches ccp9_vectors() in generate.py. |
 | `deaddrop.json` | /deaddrop DTN store-and-forward (POST/GET, OSCORE-wrapped, SenML payloads). Independent RFC 7252/8613/8428 oracles aligned with oscore.json. No code-under-test oracle.
+=======
+| `ccp15.json` | CCP-15 coordinated capacity, adaptive SF, density, hash_32, EMA (v2) |
+| `ccp16.json` | CCP-16 load balancing, TDMA slot, now()/select_channel (v2) |
+| `ccp16-desync.json` | CCP-16 desynchronization/recovery vectors (v2 bare array root example). Independent oracle vs ccp15.json. Top-level comment/docs via description in vectors. |
+>>>>>>> origin/integration/worker9-20260722
 
 All byte strings are lowercase hex (possibly empty). Schema validation and independent oracles used in tests.
 

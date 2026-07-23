@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-5gby",
+  "title": "[merge-conflict] worktree-worker24: coap_location.c",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T00:16:20.965411176Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T00:17:06.921387506Z",
+  "started_at": "2026-07-23T00:17:06.921387506Z",
+  "lease_expires_at": "2026-07-23T00:22:06.921387506Z",
+  "heartbeat_at": "2026-07-23T00:17:06.921387506Z"
+}

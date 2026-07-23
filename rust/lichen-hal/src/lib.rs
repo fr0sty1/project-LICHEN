@@ -320,6 +320,16 @@ pub trait Power {
     fn set_backlight(&mut self, level: u8);
 }
 
+/// Concentrator interface for RAK2287/SX130x multi-channel (reset, SPI, IRQ, PPS).
+pub trait Concentrator {
+    type Error;
+    fn reset(&mut self) -> impl core::future::Future<Output = Result<(), Self::Error>>;
+    fn spi_transfer(&mut self, write: &[u8], read: &mut [u8]) -> impl core::future::Future<Output = Result<(), Self::Error>>;
+    fn irq_status(&mut self) -> impl core::future::Future<Output = Result<u32, Self::Error>>;
+    fn pps_timestamp(&self) -> Option<u64>;
+    fn configure(&mut self, config: &RadioConfig) -> impl core::future::Future<Output = Result<(), Self::Error>>;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

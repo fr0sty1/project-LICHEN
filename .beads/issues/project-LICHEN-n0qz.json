@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-n0qz",
   "title": "[merge-conflict] worktree-worker16: dao.py",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:10:48.647670102Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:10:48.647670102Z"
+  "updated_at": "2026-07-23T00:16:19.422489595Z",
+  "started_at": "2026-07-23T00:16:19.422489595Z",
+  "lease_expires_at": "2026-07-23T00:21:19.422489595Z",
+  "heartbeat_at": "2026-07-23T00:16:19.422489595Z"
 }

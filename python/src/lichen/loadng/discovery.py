@@ -155,17 +155,20 @@ class LoadngRouter:
         install_hops = rrep.hop_count + 1
 
         # Forward gradient toward the sought node (the RREP's originator).
-        self.gradient.update(
-            GradientEntry(
-                destination=rrep.originator,
-                next_hop=from_neighbor,
-                hop_count=install_hops,
-                seq_num=rrep.seq_num,
-                source=GradientSource.RREP,
-                expires=now + GRADIENT_TIMEOUT_MS,
-            ),
-            now=now,
-        )
+        # Only install if no existing gradient or this RREP has newer seq_num.
+        existing = self.gradient.lookup(rrep.originator, now)
+        if existing is None or _seq_is_newer(rrep.seq_num, existing.seq_num):
+            self.gradient.update(
+                GradientEntry(
+                    destination=rrep.originator,
+                    next_hop=from_neighbor,
+                    hop_count=install_hops,
+                    seq_num=rrep.seq_num,
+                    source=GradientSource.RREP,
+                    expires=now + GRADIENT_TIMEOUT_MS,
+                ),
+                now=now,
+            )
         self.cache.add(
             RouteEntry(
                 destination=rrep.originator,

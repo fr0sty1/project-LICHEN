@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-57ry",
   "title": "[merge-conflict] worktree-worker17: xiao_s3_wio_sx1262.overlay",
-  "status": "in_progress",
+  "notes": "Commit: 9a264cf5a",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:11:55.190776279Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:15:02.043874504Z",
+  "updated_at": "2026-07-23T00:17:10.229073472Z",
   "started_at": "2026-07-23T00:15:02.043874504Z",
-  "lease_expires_at": "2026-07-23T00:20:02.043874504Z",
-  "heartbeat_at": "2026-07-23T00:15:02.043874504Z"
+  "closed_at": "2026-07-23T00:17:10.229073472Z",
+  "close_reason": "Applied BLOCKED/RETIRED header comments to xiao_s3_wio_sx1262.{conf,overlay} to resolve merge conflict between worker branches (matches commit 3c31576fb from 2u26.10). Updated via project-LICHEN-57ry. Commit 9a264cf5a"
 }

@@ -9,18 +9,10 @@
  * CCP-17 capacity validation for CBOR encoders (BUILD_ASSERT + runtime checks).
  */
 
-<<<<<<< HEAD
 #include <errno.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-=======
-#include <stdio.h>
-#include <string.h>
-#include <errno.h>
-#include <stdint.h>
-
->>>>>>> origin/worktree-worker23
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/net/coap.h>
@@ -264,8 +256,6 @@ static const char *trust_level_str(enum lichen_coap_trust_level trust)
 	}
 }
 
-/* ── CBOR encoders ─────────────────────────────────────────────────────────── */
-
 size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 				      const struct lichen_coap_node_status *status)
 {
@@ -301,7 +291,7 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 	cbor_put_uint(&ctx, status->mem_free_kb);
 
 	cbor_put_key(&ctx, "time");
-	uint8_t time_fields = 4;
+	uint8_t time_fields = 2;
 	if (status->time.wall_clock_valid) time_fields++;
 	if (status->time.source_class) time_fields++;
 	if (status->time.source_name) time_fields++;
