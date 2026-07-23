@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.16",
   "title": "MockRng uses static mut without SAFETY comment",
   "description": "lichen-embassy/src/mock.rs:146 uses `unsafe { SEED ^= ... }` to mutate a static mutable.\n\nThe use of static mut for PRNG state is deliberately simple (ponytail comment present), but the unsafe block itself lacks a SAFETY comment documenting thread-safety assumptions (mock is single-threaded test code).",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

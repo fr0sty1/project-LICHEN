@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.19",
   "title": "[lichen_l2.c:437-446] peer_find_locked uses memcmp for timing-safe comparison",
   "description": "What: peer_find_locked() uses memcmp() to compare EUI-64 addresses. memcmp is not constant-time - it returns early on first mismatching byte.\n\nWhy it matters: An attacker measuring function timing could potentially infer information about which peer entries exist by observing how quickly lookups fail. However:\n1. EUI-64 addresses are 8 bytes, limiting timing difference to ~8 memory accesses\n2. EUI-64 is not secret material (it's broadcast in IPv6 headers)\n3. The real security boundary is signature verification, not address lookup\n\nThis is low priority because EUI-64 is public information.\n\nEvidence:\n```c\nif (peer_table[i].active \u0026\u0026\n    memcmp(peer_table[i].eui64, eui64, LICHEN_EUI64_LEN) == 0) {\n    return \u0026peer_table[i];\n}\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

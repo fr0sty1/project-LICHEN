@@ -2,7 +2,7 @@
   "id": "project-LICHEN-aet9",
   "title": "app_identity: s_has_self not cleared if set_self is called again",
   "description": "File: lichen/subsys/lichen/app_identity/app_identity.c:94-135\n\nIn lichen_app_identity_set_self:\n1. Validation runs (lines 100-109)\n2. Normalization happens (lines 111-127) \n3. Mutex lock, copy, set flag (lines 129-133)\n\nIf set_self has been called before, s_has_self is already true. The function replaces s_self but the flag remains true. This is correct behavior.\n\nHowever, if validation fails (lines 100-109 return early), s_has_self and s_self remain unchanged from a previous successful call. This is also correct - failed updates don't clear existing state.\n\nNot a bug, just documenting the behavior for clarity. The API semantics are:\n- First successful set_self: s_has_self becomes true\n- Subsequent successful set_self: replaces identity, s_has_self stays true\n- Failed set_self: no change to existing state\n\nThis is good idempotent design. Closing as not-a-bug but leaving for documentation.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "cleanup",
   "owner": "me@mark.atwood.name",

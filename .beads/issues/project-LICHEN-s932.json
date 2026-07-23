@@ -2,7 +2,7 @@
   "id": "project-LICHEN-s932",
   "title": "task",
   "description": "rust/lichen-coap/src/client.rs:137,185. Reserved TKL values accepted.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

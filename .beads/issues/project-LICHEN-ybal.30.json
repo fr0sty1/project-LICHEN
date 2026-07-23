@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.30",
   "title": "C and Python pubkey_to_iid use different derivation algorithms",
   "description": "The C and Python implementations of pubkey-to-IID derivation differ:\n\n- C (ipv6_addr.c): Uses first 8 bytes of Ed25519 pubkey directly\n- Python (identity.py): Uses SHA-256(pubkey)[:8]\n\nThis means the same pubkey will produce different IIDs depending on which implementation is used, breaking interoperability.\n\nFiles:\n- firmware/bridge-zephyr/subsys/lichen/ipv6_addr.c:49-50\n- python/src/lichen/crypto/identity.py:202-206\n\nThe Python approach (SHA-256 truncation) is safer because raw Ed25519 pubkey bytes have structure that could leak information. However, both implementations must agree.\n\nDecision needed: which algorithm should be canonical, and update the other to match.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

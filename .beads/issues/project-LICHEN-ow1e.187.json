@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.187",
   "title": "Codereview pass 3: Python OSCORE seqnum - style and docs",
   "description": "Review of code style and documentation for sender_sequence_number overflow fix.\n\n**Findings:**\n- Docstring properly updated with Raises section per Google style\n- SECURITY: prefix used per CLAUDE.md guidelines for security-critical code\n- Comment explains what MAX_SEQNO is (2^40-1) and why\n- Import alphabetization maintained in aiocoap.oscore imports\n- Test file imports also properly organized\n\n**Status:** Style and documentation are appropriate.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.31",
   "title": "LICHEN_MIN_FRAME_LEN comment references frame.c but no BUILD_ASSERT validates it",
   "description": "Location: lichen_l2.c:82-92\n\n**What goes wrong:** The comment says \"This matches lichen_frame_parse() in frame.c which rejects frames \u003c 9 bytes\", but there's no compile-time or runtime assertion linking these two constants. If frame.c changes its minimum, lichen_l2.c will silently accept frames that frame.c rejects, or vice versa.\n\n**Impact:** Frame parsing fails deep in lichen_link_rx() with a generic error instead of being caught early with a descriptive log at line 588.\n\n**Fix:** Add a BUILD_ASSERT that LICHEN_MIN_FRAME_LEN equals the constant from frame.c, or import the constant from a shared header.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

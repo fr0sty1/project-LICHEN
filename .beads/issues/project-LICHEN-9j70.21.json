@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.21",
   "title": "Good: ipv6_addr.h struct in6_addr detection cascade",
   "description": "Location: ipv6_addr.h:42-62\n\nThe header uses a multi-stage detection strategy for struct in6_addr:\n1. LICHEN_HAVE_IN6_ADDR user override\n2. IN6ADDR_ANY_INIT (POSIX-defined macro)\n3. Zephyr-specific: CONFIG_NET_IPV6\n4. Various platform header guards\n5. Fallback definition\n\nWhy this is good: Cross-platform IPv6 code notoriously breaks on 'struct in6_addr already defined' or 'struct in6_addr not defined'. This cascade handles the common cases (POSIX, Zephyr, standalone) and provides escape hatches (LICHEN_HAVE_IN6_ADDR) for edge cases. The comment explaining each detection method aids debugging when porting to a new platform.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

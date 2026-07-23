@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-0tt",
   "title": "Spec: Define time synchronization mechanism",
   "description": "Time sync is listed as 'open question' but is critical for: replay protection (SeqNum wrapping), SenML timestamps, message TTL expiration, scheduled check-ins, OSCORE sequence numbers. Options mentioned: NTP over CoAP, GPS, DIO piggyback. Need to pick one and specify protocol.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

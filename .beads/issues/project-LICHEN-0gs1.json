@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0gs1",
   "title": "Parity: link (Rust/Zephyr/Python)",
   "description": "Policy: three-impl parity. Module: link. Rust: complete (2501 LoC). Zephyr: complete (3059 LoC). Python: partial (904 LoC). Gap: Python missing schnorr signatures, identity management, full link-layer security. Need to port Rust/Zephyr link features to Python.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

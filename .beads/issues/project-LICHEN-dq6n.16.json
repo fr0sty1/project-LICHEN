@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dq6n.16",
   "title": "[lora_l2.c:469] deinit() TOCTOU race with start()",
   "description": "Contract violation: lichen_lora_l2_deinit() checks 'running' state without holding lora_mutex (line 469), then proceeds to reinitialize the mutex (line 542). Between the check and reinit, another thread could call start(), which acquires lora_mutex and spawns a new thread. The subsequent k_thread_join() in deinit() would then block on the newly-spawned thread, and mutex reinit would corrupt a held mutex.\n\nImpact: If caller violates the implicit 'serialize start/deinit calls' contract, mutex corruption or unexpected delays occur.\n\nFix: Either (a) document in header that deinit() must not be called concurrently with start(), or (b) add mutex protection that gracefully handles the aborted-thread case by using k_mutex_lock_interruptible() with timeout.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

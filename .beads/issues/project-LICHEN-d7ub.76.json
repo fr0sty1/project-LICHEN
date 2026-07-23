@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.76",
   "title": "lichen_l2.c:155 LICHEN_FRAME_MIN_MIC uses link.h constant but no include guard",
   "description": "Completeness check: Round 1-2 missed header dependency issue.\n\nWHAT: Line 155 uses LICHEN_MIC_32_LEN from link.h:\n```c\n#define LICHEN_FRAME_MIN_MIC      LICHEN_MIC_32_LEN  /* Use authoritative constant from link.h */\n```\n\nBut link.h is included conditionally at line 73:\n```c\n#if defined(CONFIG_LICHEN_LINK)\n#include \u003clichen/link.h\u003e\n```\n\nWHY BUG: If CONFIG_LICHEN_LINK is not defined, the code would fail at line 155 because LICHEN_MIC_32_LEN is undefined. Currently this is protected by BUILD_ASSERT at line 94 which requires HAVE_LICHEN_LINK, but:\n1. The BUILD_ASSERT fires with a message about 'raw IPv6-over-LoRa'\n2. The actual compile error (undefined LICHEN_MIC_32_LEN) fires first\n3. The error message doesn't explain the real issue\n\nIMPACT: Confusing compile error if someone disables CONFIG_LICHEN_LINK. The BUILD_ASSERT should ideally be placed BEFORE any code that depends on link.h symbols.\n\nFIX: Either:\n1. Move the LICHEN_MIC_32_LEN usage inside #if HAVE_LICHEN_LINK guards\n2. Provide a fallback definition: #ifndef LICHEN_MIC_32_LEN #define LICHEN_MIC_32_LEN 4 #endif\n3. Reorder so BUILD_ASSERT(HAVE_LICHEN_LINK) appears before any link.h symbol usage",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

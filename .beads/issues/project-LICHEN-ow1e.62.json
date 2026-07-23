@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.62",
   "title": "scheduled_send returns Task but does not handle task exceptions",
   "description": "**Location:** python/src/lichen/node.py:492-525\n\n**Bug:** The `scheduled_send()` method creates an asyncio Task for delayed transmission but does not attach an exception handler. If the task raises (e.g., radio error), the exception is never logged or handled.\n\n**Trigger:** Radio failure during a scheduled send (e.g., CAD timeout, hardware disconnect).\n\n**Bad behavior:** The exception is silently swallowed (unless caller awaits the returned task). Python logs 'Task exception was never retrieved' at garbage collection time, but this is easy to miss and may happen long after the error.\n\n**Pattern:** This is a common asyncio pitfall. The caller receives a Task but may not await it if they just want fire-and-forget semantics.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

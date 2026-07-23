@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1jd9",
   "title": "task",
   "description": "rust/lichen-oscore/src/edhoc.rs:677-688. Responder signs different data than initiator verifies; signature verification always fails.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

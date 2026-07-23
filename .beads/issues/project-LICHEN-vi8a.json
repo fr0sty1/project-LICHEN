@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vi8a",
   "title": "EDHOC: TH_4 computation mismatch between initiator and responder",
   "description": "CRITICAL PROTOCOL BUG: TH_4 (transcript hash 4) is computed differently between initiator and responder, causing OSCORE key derivation to produce different keys.\n\nInitiator (line 711): compute_th(ctx-\u003eth_4, ctx-\u003eth_3, 32, plaintext_3, pt3_len, ctx-\u003eed_pubkey, 32)\nComputes: H(CBOR(TH_3) || CBOR(PLAINTEXT_3) || CBOR(CRED_I))\n\nResponder (lines 1122-1129):\nmemcpy(th4_input + th4_len, ctx-\u003eth_3, 32); memcpy(th4_input + th4_len, msg3, msg3_len); sha256_hash(...)\nComputes: H(TH_3 || CIPHERTEXT_3) - raw concat, no CBOR, uses ciphertext not plaintext, missing CRED_I\n\nPer RFC 9528 Section 4.2.2: TH_4 = H(TH_3, PLAINTEXT_3, CRED_I) for both parties.\n\nImpact: Initiator and responder will derive different OSCORE master secrets, breaking E2E encryption.\n\nFile: lichen/subsys/lichen/edhoc/edhoc.c:1122-1129",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

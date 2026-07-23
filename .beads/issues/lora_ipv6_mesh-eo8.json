@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-eo8",
   "title": "Wire CoAP through SCHC + Node for multi-hop mesh delivery",
   "description": "The aiocoap transport binding (coap/transport.py, schc_channel.py, resources.py) and the Node (node.py) both exist and are tested in isolation, but they are not connected: node.send() goes straight to the link layer (comment: 'would go through SCHC compression first'), and no CoAP path runs over the multi-hop mesh. Needed to finish 1a0/ijj: (1) route node.send() through SCHC compress_packet before the link layer; (2) expose a CoAP datagram path that uses the Node's Router for multi-hop (not just the in-memory loopback channel); (3) an integration test: CoAP request/response between non-adjacent nodes across a relay. Blocks 1a0 and the ijj validation gate.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Frost",

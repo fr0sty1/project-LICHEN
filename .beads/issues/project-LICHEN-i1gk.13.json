@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.13",
   "title": "[ipv6_addr.c:72-127] lichen_pubkey_to_iid: missing pubkey length validation",
   "description": "Contract violation: precondition\n\n**Issue:** The function documents that pubkey must be 32 bytes (LICHEN_ED25519_PUBKEY_LEN) but only validates pubkey != NULL. If a caller passes a shorter buffer, the lichen_sha256() call will read beyond the buffer (undefined behavior).\n\n**Header doc (ipv6_addr.h:126):**\n```\n * @param pubkey Ed25519 public key (32 bytes)\n```\n\n**Implementation:**\n```c\nif (pubkey == NULL || iid == NULL) {\n    return -EINVAL;\n}\n// No length validation - uses hardcoded LICHEN_ED25519_PUBKEY_LEN (32)\nret = lichen_sha256(pubkey, LICHEN_ED25519_PUBKEY_LEN, hash);\n```\n\n**Impact:** Buffer overread if caller passes a shorter buffer. This is a SECURITY issue (potential information leak or crash).\n\n**Mitigation:** C cannot validate array lengths passed as pointers. The current approach (document the contract, use array[N] syntax in declaration) is the standard C pattern. Add a BUILD_ASSERT similar to lichen_l2.c lines 108-111 to validate the constant matches expected size.\n\n**Fix:** Add comment documenting this is caller's responsibility, similar to the SECURITY comment in the header. The function is correctly implementing the C idiom - no code change needed but consider adding a note about buffer size contract.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

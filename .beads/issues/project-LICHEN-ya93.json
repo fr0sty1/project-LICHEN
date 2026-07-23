@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ya93",
   "title": "CoAP client does not validate response Message ID",
   "description": "File: rust/lichen-coap/src/client.rs:134-161\n\nThe decode() function does not verify that the response Message ID matches the request. RFC 7252 Section 4.4 requires CON requests to be matched by both MID and token.\n\nThe code extracts the MID from responses but never validates it:\n    // MID is at bytes 2-3, extracted but not checked\n    let code = data[1];\n    // ... no MID validation\n\nImpact (SECURITY): Combined with missing token validation and predictable MID generation, an attacker can craft valid-looking responses. They can predict the MID (time-based, see line 228-233) and know the token ('LICH').\n\nThis enables response spoofing where malicious packets are accepted as legitimate server responses.\n\nFix: Store the request MID and verify the response MID matches before accepting the response.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

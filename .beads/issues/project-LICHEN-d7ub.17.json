@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.17",
   "title": "lichen_l2.c:566-567 found_ret shadows loop variable causing silent logic error",
   "description": "In peer_try_all_pubkeys(), the constant-time iteration stores results in found_idx/found_ret/found_out_len (lines 539-541, 567-571). However, examining the logic more closely:\n\nAt line 580, when ret != -LICHEN_EAUTH (non-auth error), the function returns ret immediately. This breaks constant-time guarantees for non-auth errors, but the comment at lines 577-579 acknowledges this is intentional ('These don't leak peer identity').\n\nThe actual constant-time loop for auth errors correctly stores found_idx on first match and continues checking all peers.\n\nSEVERITY: P4 - code is correct as designed. The comment documents the intentional early-return for non-auth errors.\n\nNO ACTION NEEDED.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "note",
   "assignee": "Mark Atwood",

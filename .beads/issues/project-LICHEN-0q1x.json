@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0q1x",
   "title": "Ipv6Header::write_to accepts invalid flow_label values",
   "description": "File: rust/lichen-ipv6/src/lib.rs:288-312\n\nThe flow_label field is a u32 but only the low 20 bits are valid per RFC 6437. write_to() silently masks the value:\n\n```rust\nout[1] = (self.traffic_class \u003c\u003c 4) | ((self.flow_label \u003e\u003e 16) as u8 \u0026 0x0f);\nout[2] = (self.flow_label \u003e\u003e 8) as u8;\nout[3] = self.flow_label as u8;\n```\n\nLine 295 masks with 0x0f, so only 20 bits are used, but:\n1. The upper 12 bits of flow_label are silently ignored\n2. No validation in the constructor or write_to\n\nThis could mask bugs where a caller accidentally sets flow_label to a 32-bit value expecting it to be used.\n\nFix: Either:\n- Validate flow_label \u003c= 0xFFFFF in new() and return error\n- Document that only low 20 bits are used\n- Change type to a newtype that enforces 20-bit limit",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

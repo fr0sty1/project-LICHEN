@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kqma.10",
   "title": "Wipe EDHOC ephemeral private keys on successful handshake paths",
   "description": "Trigger: successful EDHOC initiator or responder handshake. lichen/subsys/lichen/edhoc/edhoc.c sets state to completed/sent at lines 710 and 997 after deriving the shared secret, but ctx-\u003eeph_sk remains in the long-lived context. Impact: ephemeral X25519 private keys remain resident after they are no longer needed, increasing exposure if memory is later disclosed. Wipe ctx-\u003eeph_sk once G_XY and the required PRKs have been derived, while preserving any material needed for OSCORE export.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

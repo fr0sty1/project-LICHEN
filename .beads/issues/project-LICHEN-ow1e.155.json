@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.155",
   "title": "sim/events.py Protocol methods missing -\u003e None annotation",
   "description": "Eight `SimulatorObserver` Protocol methods in `src/lichen/sim/events.py` are missing `-\u003e None` return type annotations:\n\n- Line 185: `on_tx_start()`\n- Line 204: `on_tx_complete()`\n- Line 221: `on_rx_start()`\n- Line 246: `on_rx_complete()`\n- Line 261: `on_collision()`\n- Line 278: `on_drop()`\n- Line 297: `on_node_state_change()`\n- Line 351: `ObserverBus.notify()`",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

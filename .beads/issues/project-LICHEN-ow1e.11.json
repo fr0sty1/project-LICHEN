@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.11",
   "title": "mypy: 6 no-any-return errors (returning Any from typed functions)",
   "description": "6 no-any-return errors:\n- src/lichen/announce/coords.py:162 - returning Any as int|None\n- src/lichen/interface/tcp.py:45,162 - returning Any as tuple[str,int]|None\n- src/lichen/rpl/messages.py:318 - from_bytes returning Any\n- src/lichen/loadng/messages.py:173 - from_bytes returning Any\n- src/lichen/sim/renode_server.py:109 - returning Any as int\n\nFix: Add explicit type annotations or casts to the return values.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

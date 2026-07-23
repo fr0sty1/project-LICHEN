@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9nrr.12",
   "title": "schc: document compression design decisions inline",
   "description": "User-requested documentation/code-clarity task. Add inline comments or compile-time constants near the SCHC implementation that fully detail the compression decisions made for LICHEN: rule scope, fallback behavior, packet-header accessor policy, vector compatibility, and the boundary between generic RFC 8724 SCHC and LICHEN-specific profiles. Acceptance: comments live in the SCHC source/header where maintainers see them while editing; any constants introduced are compile-time constants; no behavioral change unless required for clarity; existing SCHC tests still pass or are explicitly not run.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

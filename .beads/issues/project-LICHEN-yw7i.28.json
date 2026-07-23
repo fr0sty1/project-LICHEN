@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yw7i.28",
   "title": "RX callback not re-registered after disable/enable cycle",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c lines 248-265, lora_l2.c lines 324-325\n\nWhen the L2 interface is disabled via `lichen_l2_enable(false)`, `lichen_lora_l2_stop()` clears the RX callback (lora_l2.c line 324-325). However, when re-enabled via `lichen_l2_enable(true)`, the callback is never re-registered:\n- `lichen_l2_enable(true)` only re-initializes `link_ctx` and calls `lichen_lora_l2_start()`\n- `lichen_lora_l2_start()` configures the radio and starts the RX thread but does not touch the callback\n\nAfter a disable/enable cycle:\n1. RX thread is running (created by `lichen_lora_l2_start()`)\n2. `lora_state.rx_callback` is NULL (cleared by prior stop, never restored)\n3. Packets are received and pass all checks in `rx_thread()`\n4. But the callback check (`if (cb)` at lora_l2.c line 204) silently drops them\n\nWhat breaks: After any disable/enable cycle, the node silently stops receiving packets. TX still works. No errors are logged. This is a silent data loss bug that would be very difficult to debug in the field.\n\nFix: Either:\n1. Re-register the RX callback in `lichen_l2_enable(true)`:\n   `lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);`\n2. Or do not clear the callback in `lichen_lora_l2_stop()` (but this has other implications for cleanup semantics)",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

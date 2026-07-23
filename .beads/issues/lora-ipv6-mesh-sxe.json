@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-sxe",
   "title": "Multi-node simulation integration test",
   "description": "Integration test: run multiple LICHEN nodes in simulation.\n\nTest scenario:\n1. Start simulator server\n2. Create 5 nodes in a line topology (A-B-C-D-E)\n3. Configure node A as DODAG root\n4. Wait for DODAG formation (DIOs propagate, DAOs return)\n5. Verify: all nodes have routes, ranks increase away from root\n6. Send CoAP request from E to A\n7. Verify: request arrives, response returns\n\nValidation:\n- All nodes joined DODAG\n- Routing table at A has entries for B, C, D, E\n- Packet from E traverses B, C, D to reach A\n- Response follows source route back\n\nUse pytest-asyncio, simulator fixtures.\n\nThis is the key validation that the stack works end-to-end.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

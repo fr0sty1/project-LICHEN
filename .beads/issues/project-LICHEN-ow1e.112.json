@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.112",
   "title": "Rust EDHOC state structs missing zeroize",
   "description": "In edhoc.rs, InitiatorState (lines 153-163) and ResponderState (lines 451-476) contain PRK secrets (prk_2e, prk_3e2m, prk_4e3m) but do not derive Zeroize. These PRKs are used to derive OSCORE keys. Add Zeroize derive with zeroize(drop). Affects confidentiality.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

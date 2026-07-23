@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.107",
   "title": "Mock tests use .unwrap() without context which is fine for test code",
   "description": "lichen-embassy/src/mock.rs tests (lines 225-255) use .unwrap() consistently.\n\nThis is **correct** for test code. Noting for completeness — no action needed. Tests should use .unwrap() for brevity; stack traces identify failure points.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

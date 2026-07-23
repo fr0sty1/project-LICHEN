@@ -2,7 +2,7 @@
   "id": "project-LICHEN-z38x.4",
   "title": "lora_l2.c: replace deinit state corruption panic",
   "description": "Replace k_panic() at line 863 (state corrupted during deinit).\n\nCurrent:\n  if (lora_transition_from(LORA_DEINITING, LORA_UNINIT) != 0) {\n      LOG_ERR(\"State corrupted during deinit\");\n      k_panic();\n  }\n\nTarget:\n  if (lora_transition_from(LORA_DEINITING, LORA_UNINIT) != 0) {\n      LOG_ERR(\"lora_l2: deinit state corrupted, forcing ABORTED\");\n      atomic_set(\u0026current_state, LORA_ABORTED);\n      return -EIO;\n  }\n\nCallers already handle deinit() failure - they just won't be able to reinit without another deinit attempt.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

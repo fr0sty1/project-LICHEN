@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.79",
   "title": "[lichen_l2.c:1654-1656] net_pkt_rx_alloc_with_buffer timeout is fixed, not adaptive",
   "description": "Completeness: Resource management category.\n\nAt line 1654-1656, net_pkt_rx_alloc_with_buffer uses a fixed timeout from CONFIG_LICHEN_L2_RX_ALLOC_TIMEOUT_MS.\n\nThe existing finding project-LICHEN-tvfm.99 (referenced at line 1640) documents that memory pressure causes frame drops. However:\n\n1. The timeout is static - no adaptive backoff under sustained pressure\n2. No metrics/counter to observe allocation failures\n3. No flow control signal back to the sender\n\nFor LoRa mesh, frame loss is expected and handled by upper layers. However, observability is missing - there's no way to know if packets are being dropped due to memory pressure vs other causes.\n\nConsider adding a k_uptime_get() based throttle log (e.g., log at most once per minute) when allocation fails, or increment a statistic counter for monitoring.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "feature",
   "assignee": "Mark Atwood",

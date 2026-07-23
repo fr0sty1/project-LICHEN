@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.4",
   "title": "mypy: 10 import-untyped errors (missing stubs)",
   "description": "10 import-untyped errors from missing type stubs:\n- aiocoap (6 occurrences in coap/transport.py, coap/resources.py, coap/udp_server.py, dashboard/app.py, crypto/oscore.py)\n- serial/pyserial (2 in interface/serial.py, interface/kiss/serial.py)\n\nFix: pip install types-pyserial (for serial), and add # type: ignore[import-untyped] with explanation for aiocoap (no official stubs).",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.32",
   "title": "Idempotent init functions with clear documentation",
   "description": "Both lichen_lora_l2_init() and lichen_lora_l2_start() are idempotent:\n\n**lichen_lora_l2_init (lora_l2.c:276-286):**\n```c\n/* Idempotent: if already initialized, return success immediately.\n * This prevents EUI-64 regeneration on double-init (e.g., from both\n * main.c and NET_DEVICE_INIT calling this function).\n * SECURITY: Check under mutex to prevent TOCTOU race where two threads\n * both pass the check and generate different EUI-64 values. */\nif (atomic_get(\u0026lora_state.initialized)) {\n    k_mutex_unlock(\u0026lora_mutex);\n    return 0;\n}\n```\n\n**lichen_lora_l2_start (lora_l2.c:336-339):**\n```c\nif (atomic_get(\u0026lora_state.running)) {\n    k_mutex_unlock(\u0026lora_mutex);\n    return 0;  /* Already running */\n}\n```\n\n**lichen_lora_l2_stop (lora_l2.c:393-396):**\n```c\nif (!atomic_get(\u0026lora_state.running)) {\n    k_mutex_unlock(\u0026lora_mutex);\n    return 0;\n}\n```\n\nThis is the correct pattern for system services that may be called from multiple initialization paths. The comments explain both the what (idempotent) and the why (prevents EUI-64 regeneration, TOCTOU races).",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

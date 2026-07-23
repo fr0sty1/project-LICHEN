@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dq6n.11",
   "title": "[ipv6_addr.c:267-272] Return success even when address formatting fails",
   "description": "In lichen_log_link_local_from_eui64(), when lichen_ipv6_addr_to_str() fails, the function logs a warning but still returns success:\n\n```c\nret = lichen_ipv6_addr_to_str(\u0026ll_addr, addr_str, sizeof(addr_str));\nif (ret \u003c 0) {\n    LOG_WRN(\"Failed to format link-local address: %d\", ret);\n    /* Non-fatal - address is still valid, just can't log it */\n} else {\n    LOG_INF(\"Link-local: %s\", addr_str);\n}\n\nif (ll_addr_out != NULL) {\n    memcpy(ll_addr_out, \u0026ll_addr, sizeof(ll_addr));\n}\n\nreturn 0;  // Returns success even if formatting failed\n```\n\nThe comment says 'Non-fatal - address is still valid', which is correct. The address derivation succeeded; only the logging failed. The function's contract is to derive and optionally log the address, and it fulfills that contract.\n\nHowever, the function name includes 'log' - if logging is part of its purpose, failure to log could be considered a partial failure.\n\nImpact: P3 - design question rather than bug. Current behavior is arguably correct (address derivation succeeded).",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

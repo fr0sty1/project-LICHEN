@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.58",
   "title": "[lichen_l2.c:565-566] net_pkt_cursor_init + net_pkt_read pattern assumes single fragment",
   "description": "Gap found: net_pkt fragment handling not reviewed.\n\nWhy this was missed: Zephyr net_pkt API usage assumed correct.\n\nThe actual bug: Lines 565-566 use net_pkt_cursor_init() followed by net_pkt_read() to linearize the packet into tx_ipv6_buf. This pattern works correctly for fragmented packets - net_pkt_read() handles multi-fragment packets internally.\n\nHowever, the check at line 553 'pkt_len \u003e sizeof(tx_ipv6_buf)' uses net_pkt_get_len() which returns total length across all fragments. This is correct.\n\nThe subtle concern: if net_pkt_read() fails mid-way through a fragmented packet (e.g., corrupted fragment pointer), tx_ipv6_buf contains partial data. The error is propagated (lines 567-570) but tx_ipv6_buf is not zeroed on failure. If HAVE_LICHEN_LINK is false (raw mode), this could leak partial packet data on retry.\n\nActually, on failure we return error and don't use the buffer. No leak. Priority 4 - verified correct.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

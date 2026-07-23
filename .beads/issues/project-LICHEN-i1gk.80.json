@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.80",
   "title": "[lichen_l2.c:482-565] SECURITY: peer_try_all_pubkeys has empty peer table - accepts nothing",
   "description": "Security finding: peer_table is initialized empty (memset line 1319) and no API provisions peers during normal operation.\n\nAttack scenario is actually REVERSED from typical - this is TOO restrictive:\n- peer_table starts empty\n- peer_try_all_pubkeys() iterates 0 active peers\n- Every RX frame returns -LICHEN_EAUTH at line 564\n- No frames are ever accepted\n\nParadoxically, this is a denial-of-service by design: the node cannot receive ANY authenticated traffic until lichen_peer_add() is called externally.\n\nCurrent state: The node is deaf to all traffic. Comments mention EDHOC (line 290, 617, 1561) but EDHOC is not implemented in this firmware.\n\nImpact: Complete receive failure. Node can TX (unsigned) but cannot RX anything.\n\nMitigation: Either:\n1. Implement EDHOC key exchange (proper solution)\n2. Add a bootstrap mode that accepts CRC-only frames before first peer\n3. Provide external peer provisioning mechanism\n4. Document this limitation clearly at startup with LOG_WRN",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

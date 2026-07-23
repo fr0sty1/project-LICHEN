@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.47",
   "title": "[lichen_util.h:119-176] lichen_link_strerror missing ESRCH ENOBUFS common errors",
   "description": "Gap found: Error code coverage not verified.\n\nWhy this was missed: String function not matched against all possible callers.\n\nThe actual bug: The lichen_link_strerror() inline function maps error codes to strings. It covers common errors but is missing several codes that could be returned by Zephyr or LICHEN code:\n- ESRCH: Could be returned by thread operations\n- ENOBUFS: Returned by net_pkt_alloc when pool exhausted\n- ETIMEDOUT: Returned by k_mutex_lock with timeout\n- ENOSPC: Returned by lichen_peer_add when table full\n\nThe default case returns 'unknown error' which is fine, but for debugging, having specific strings for all expected errors improves log clarity. Compare Round 1 finding about -ENOSPC in peer_add. Priority 4 as fallback exists.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

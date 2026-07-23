@@ -2,7 +2,7 @@
   "id": "project-LICHEN-61q1",
   "title": "task",
   "description": "rust/lichen-oscore/src/edhoc.rs:660 - After computing the DH shared secret, the responder stores the ephemeral secret back: self.eph_secret = Some(eph_secret). This defeats single-use semantics. If process_message_1 is called multiple times (e.g., due to retransmission handling bug), the same ephemeral key would be reused, potentially leading to cryptographic weaknesses. The initiator correctly consumes its ephemeral via take() without storing back.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yw7i.23",
   "title": "LICHEN_LINK_KEY_LEN used but not defined in reviewed files",
   "description": "lichen_l2.c:536 uses LICHEN_LINK_KEY_LEN without a visible definition in the reviewed files. Presumably defined in \u003clichen/link.h\u003e. Add a comment noting where this constant comes from, or define locally with static_assert checking equality.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

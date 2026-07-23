@@ -2,7 +2,7 @@
   "id": "project-LICHEN-p57b",
   "title": "task",
   "description": "rust/lichen-ipv6/src/lib.rs:695-756. Missing checksum enables amplification attacks.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

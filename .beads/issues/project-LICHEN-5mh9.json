@@ -2,7 +2,7 @@
   "id": "project-LICHEN-5mh9",
   "title": "[codereview] spec/02a-coordinated-capacity.md:18 scope update misses appendix and drift constant",
   "description": "After edit to add cross-refs, appendix for vectors not added. 'identical within 1 tick' in drift still arbitrary (see ccp vector slot_adjust_ticks=8). Tag codereview. Discovered-from:project-LICHEN-finm",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

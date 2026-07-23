@@ -2,7 +2,7 @@
   "id": "project-LICHEN-28q5",
   "title": "Python: schc/headers.py removed minimum length checks before parsing",
   "description": "In python/src/lichen/schc/headers.py, explicit length checks were removed from multiple profile matchers:\n\n    # Removed from _CoapUdpProfile.matches():\n    # if len(raw) \u003c HEADER_LENGTH + UDP_HEADER_LENGTH + _COAP_FIXED_HEADER:\n    #     return False\n\n    # Removed from _RplProfile.matches():\n    # if len(raw) \u003c HEADER_LENGTH + _ICMPV6_HEADER + self.base_length:\n    #     return False\n\nThese were replaced by relying on IPv6Header.from_bytes() to raise an exception. However, this changes the semantics: before, a too-short buffer would return False (no match); now it raises an exception that is caught and returns False.\n\nLocation: python/src/lichen/schc/headers.py:110, 200, 322\nRisk: If IPv6Header.from_bytes() raises a different exception type, the catch-all may mask bugs.\nFix: Either keep explicit length checks, or narrow the exception handling to only the expected exception type.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

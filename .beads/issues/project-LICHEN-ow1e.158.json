@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.158",
   "title": "sim/chaos.py apply() methods missing return type annotations",
   "description": "Nine `apply()` methods in `src/lichen/sim/chaos.py` are missing return type annotations (all return `RxCandidate | None`):\n\n- Line 45: `JammerEffect.apply()`\n- Line 87: `DropEffect.apply()`\n- Line 133: `CorruptEffect.apply()`\n- Line 177: `DelayEffect.apply()`\n- Line 207: `RssiOffsetEffect.apply()`\n- Line 245: `SnrOffsetEffect.apply()`\n- Line 298: `PacketLossEffect.apply()`\n- Line 348: `BitErrorEffect.apply()`\n- Line 416: `ChaosEngine.apply_all()`",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

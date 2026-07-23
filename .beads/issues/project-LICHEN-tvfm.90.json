@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.90",
   "title": "[lichen_l2.h:64] lichen_peer_add array parameter syntax gives false size safety",
   "description": "Gap found: API signature review for header.\n\nWhy this was missed: Round 1 noted array decay but didn't flag header specifically.\n\nThe actual bug: The declaration at line 64:\n  int lichen_peer_add(const uint8_t eui64[8], const uint8_t pubkey[32]);\n\nThe [8] and [32] in the parameter declarations provide no compile-time size checking - they decay to pointers. A caller can pass any buffer without warning:\n  uint8_t bad[4];\n  lichen_peer_add(bad, NULL);  // Compiles, causes UB\n\nThis is a known C limitation, but the header gives a false sense of type safety.\n\nOptions:\n1. Change to pointer syntax to make decay explicit: (const uint8_t *eui64)\n2. Add static analysis annotations: __attribute__((nonnull(1,2)))\n3. Document clearly that size is not checked\n\nThe implementation does have runtime NULL checks but cannot verify buffer sizes.\n\nPriority 3 - API clarity for security-sensitive interface.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

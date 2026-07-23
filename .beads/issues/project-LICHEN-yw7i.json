@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yw7i",
   "title": "Review: zephyr-firmware 2026-06-27",
   "notes": "Review confidence: 15% chance of missed bug.\nLeast confident areas: \n- LoRa driver interaction (external APIs not in scope)\n- Full enable/disable cycle testing (behavioral, not static)\n- Edge cases in net_pkt handling with Zephyr internals\nWould raise confidence if: integration tests covering disable/enable cycle, fuzzing protocol boundaries.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

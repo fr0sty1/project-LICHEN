@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.26",
   "title": "lichen_l2_iface_init has no error propagation",
   "description": "lichen_l2_iface_init() is a void function that cannot report initialization failures to its caller (NET_DEVICE_INIT). Errors are logged but the interface appears initialized even on failure.\n\nLocation:\n- lichen_l2.c:326-384 (lichen_l2_iface_init)\n\nWhat goes wrong: If lichen_lora_l2_init() fails (line 334) or lichen_lora_l2_get_eui64() returns NULL (line 341), the function returns early but:\n- lichen_iface may be left NULL or partially set\n- link_ctx_initialized stays 0\n- RX callback is not registered\n- The net_if appears valid to the IPv6 stack\n\nSubsequent calls to lichen_l2_send() or lichen_l2_enable() will encounter undefined states. The IPv6 stack may try to send packets to an interface that silently drops them.\n\nFix: Zephyr's net_if_api.init is void, so error reporting is limited. Options:\n1. Set an internal error flag checked by enable/send\n2. Fail more loudly (LOG_ERR + panic in debug builds)\n3. Document that lichen_lora_l2_is_running() must be checked before use",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

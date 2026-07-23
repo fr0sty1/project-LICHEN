@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.36",
   "title": "lichen_l2_recv function exists comment could be clearer",
   "description": "In lichen_l2.c:259-269, the comment explains why lichen_l2_recv exists:\n\n```c\n/*\n * WHY THIS EXISTS (even though it just returns NET_CONTINUE):\n * Zephyr's net_if_recv_data() unconditionally calls iface-\u003el2-\u003erecv() without\n * a NULL check. If we omit this callback from NET_L2_INIT, any packet injection\n * via net_recv_data() would dereference NULL and crash. This function must exist\n * even when it performs no L2-specific processing. Compare Zephyr's dummy L2\n * (subsys/net/l2/dummy/dummy.c) which follows the same pattern.\n */\n```\n\nThis is good defensive documentation. However, the function name `lichen_l2_recv` could mislead readers into thinking it does receiving, when actually it is the callback invoked AFTER a packet has been received and before it goes to the IP layer.\n\nWhat goes wrong: Someone searching for \"where does RX happen\" might look at this function and be confused when the actual RX path is in `lichen_l2_input`.\n\nSuggested fix: Consider renaming to `lichen_l2_rx_filter` or `lichen_l2_pkt_intercept`, or add a one-liner clarifying the call context: \"Called by net_recv_data() after lichen_l2_input() injects a packet.\"",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.151",
   "title": "crypto/edhoc.py factory methods missing return type annotations",
   "description": "Two factory methods in `src/lichen/crypto/edhoc.py` are missing return type annotations:\n\n- Line 227: `EdhocInitiator.create()` - returns `EdhocInitiator`\n- Line 450: `EdhocResponder.create()` - returns `EdhocResponder`",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

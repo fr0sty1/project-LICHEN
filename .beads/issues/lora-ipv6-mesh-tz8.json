@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-tz8",
   "title": "Implement link layer in Python",
   "description": "Python implementation of spec section 4: frame format (Length+LLSec+SeqNum+DstAddr+Payload+Sig), Ed25519 signatures (use PyNaCl), replay protection with sliding window. Generate test vectors.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

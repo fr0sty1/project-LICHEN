@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70",
   "title": "Review: Zephyr C code 2026-06-27",
   "notes": "## Confidence Calibration\n\nReview confidence: 15% chance of missed bug.\n\nLeast confident areas:\n- lichen_link_tx/rx integration (external library, not reviewed)\n- Zephyr net_l2 contract compliance (L2 edge cases)\n- Thread abort behavior under rare timing windows\n\nWould raise confidence if:\n- Integration tests with actual LoRa hardware\n- Fuzz testing of lichen_l2_input with malformed frames\n- Review of lichen/link.h implementation\n\n## Review Summary\n- Language: C\n- Mode: my-oss  \n- Supplements: crypto (no crypto issues found)\n- C-safety: clean (previously reviewed code)\n- 5 'What's Good' findings documented",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

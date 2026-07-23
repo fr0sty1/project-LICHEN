@@ -2,7 +2,7 @@
   "id": "project-LICHEN-7krt",
   "title": "task",
   "description": "rust/lichen-gateway/src/aprs_is.rs:435 - If altitude field '/A=NNNNNN' contains a number that overflows i32 (e.g., '/A=9999999999'), the parse().ok()? returns None, rejecting the entire APRS packet. An optional field parse failure should not reject a valid position packet. Should use unwrap_or(0) or clamp the value instead of propagating None.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "assignee": "Mark Atwood",

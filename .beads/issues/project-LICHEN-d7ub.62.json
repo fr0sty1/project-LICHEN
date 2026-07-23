@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.62",
   "title": "main.c:100-108 init_standalone_lora leaks init resources on partial failure",
   "description": "Gap found: Round 1 missed cleanup path issue. In init_standalone_lora(), if set_rx_callback (line 100) or start (line 107) fails, the function returns without calling lichen_lora_l2_deinit(), leaving the LoRa L2 layer initialized but in an inconsistent state. While this leads to a fatal error loop in standalone mode (which is acceptable), it violates the init/deinit pairing contract and could matter if this pattern were reused. HOW TO FIX: Add a cleanup label before each early return that calls lichen_lora_l2_deinit() when init had succeeded.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

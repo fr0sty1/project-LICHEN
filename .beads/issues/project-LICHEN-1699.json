@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1699",
   "title": "Compliance: python/src/lichen/dashboard/app.py HTMX polling",
   "description": "Policy: No-polling. Status: ACCEPTABLE. HTMX browser auto-refresh is standard web UI pattern. Document as intentional exception.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

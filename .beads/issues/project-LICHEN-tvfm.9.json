@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.9",
   "title": "[lichen_util.h:53] secure_zero silent NULL return in release",
   "description": "Function: secure_zero. Contract violation: The function silently returns on NULL pointer in release builds (line 58: if (ptr == NULL || len == 0) return) but only asserts in debug builds. This inconsistent behavior means callers won't notice a programming error in production. A misused secure_zero could leave sensitive data unzeroed. Consider always returning an error code or using a compiler warning attribute. Priority 2 because this is a security-sensitive function where silent failures are problematic.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

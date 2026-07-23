@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.11",
   "title": "lora_rx_callback checks lichen_iface==NULL but cannot distinguish init-failure vs never-initialized",
   "description": "In lichen_l2.c lora_rx_callback() (line 352), the NULL check on lichen_iface protects against crashes, but lichen_iface can be NULL for two distinct reasons:\n1. Callback invoked before iface_init completed (race during startup)\n2. iface_init failed partway through (iface_init_failed=true, but lichen_iface still NULL)\n\nThe current warning 'No interface registered' is correct for case 1 but misleading for case 2 - the interface was registered but initialization failed.\n\nTrigger: LoRa packet arrives after iface_init failed (e.g., due to lichen_lora_l2_init failure or EUI-64 fetch failure).\n\nBad behavior: Log says 'No interface registered' when the real problem is 'interface initialization failed'. Debugging requires correlating with earlier init error logs.\n\nConsider: checking iface_init_failed first and logging a more specific message.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c lines 352-355",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

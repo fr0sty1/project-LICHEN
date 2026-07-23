@@ -2,7 +2,7 @@
   "id": "project-LICHEN-iu1q",
   "title": "STM32WL: verify SubGHz RX uses RFBUSY/interrupt not polling",
   "description": "firmware/bridge-stm32wl mentions busy polling in iv.rs. STM32WL has dedicated SUBGHZ_IRQn interrupt. Verify RX path uses interrupt, not polling. If polling, convert to interrupt-driven.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

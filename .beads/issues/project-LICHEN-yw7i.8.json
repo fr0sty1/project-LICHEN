@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yw7i.8",
   "title": "Unreachable return in main() after infinite loop",
   "description": "main.c:173 has 'return 0;' after 'while (1) { ... }'. This is harmless but unreachable code that may confuse readers or trigger static analysis warnings. Remove the return statement or mark with __UNREACHABLE.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

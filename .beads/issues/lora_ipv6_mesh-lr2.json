@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-lr2",
   "title": "NodeId::ula_addr + Node::handle_frame (ICMPv6 Echo responder)",
   "description": "Two small additions to close the 7ry exit criteria. (1) NodeId::ula_addr(prefix: [u8;8]) -\u003e Ipv6Addr — derives a node's ULA/GUA address from a /64 prefix (prefix || EUI-64-IID), satisfying 'ULA addresses work'. (2) Node::handle_frame(schc_frame, reply) -\u003e usize — decompresses an incoming SCHC frame, detects ICMPv6 Echo Request addressed to this node, builds and compresses an Echo Reply into the caller's buffer, satisfying 'nodes can ping'.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Frost",

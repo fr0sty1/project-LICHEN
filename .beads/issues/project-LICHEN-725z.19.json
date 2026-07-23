@@ -2,7 +2,7 @@
   "id": "project-LICHEN-725z.19",
   "title": "Inline lichen_dev_iface_init is unnecessary wrapper",
   "description": "lichen_l2.c:346-349 — One-line wrapper that calls lichen_l2_iface_init(iface). The net_if_api struct could reference lichen_l2_iface_init directly. Extra indirection obscures call chain.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

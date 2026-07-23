@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-e0e",
   "title": "node_server start_node_server() kwargs filtering is fragile",
   "description": "**Code Quality**\n\nIn node_server.py:438-444:\n```python\nnode_server_kwargs = {}\nif 'pcap_writer' in kwargs:\n    node_server_kwargs['pcap_writer'] = kwargs['pcap_writer']\nif 'duty_cycle_limit' in kwargs:\n    node_server_kwargs['duty_cycle_limit'] = kwargs['duty_cycle_limit']\n\nnode_server = NodeServer(simulation, **node_server_kwargs)\n```\n\nProblems:\n1. If caller passes invalid kwargs, they're silently ignored\n2. If NodeServer gains new parameters, this code needs updating\n3. No validation that kwargs values are correct types\n\nBetter pattern:\n```python\nasync def start_node_server(\n    simulation: Simulation,\n    host: str = '127.0.0.1',\n    port: int = 4444,\n    pcap_writer: PcapngWriter | None = None,\n    duty_cycle_limit: float = 1.0,\n) -\u003e asyncio.Server:\n    node_server = NodeServer(simulation, pcap_writer, duty_cycle_limit)\n    ...\n```\n\nExplicit parameters make the API clear and type-checkable.\n\nFiles: node_server.py:409-454",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

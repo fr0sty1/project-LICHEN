@@ -3,7 +3,7 @@
   "title": "Set Meshtastic gateway payload to 200",
   "description": "Boot failure discovered by project-LICHEN-m5m1.5. meshtastic_gateway_adapter fails on Native64 and QEMU because CONFIG_LICHEN_APP_INTERFACE_MAX_PAYLOAD resolves to the subsystem default 176 before the gateway conditional default 200, triggering the required static assertion. Make the test/feature configuration select 200 explicitly and remove or correct the misleading ineffective default without weakening the assertion.",
   "acceptance_criteria": "1. Meshtastic adapter effective payload is 200 on native and QEMU tests. 2. The compile-time assertion remains. 3. Ineffective Kconfig default is corrected or no longer claims enforcement. 4. Both firmware scenarios boot and pass. 5. Three independent review passes complete.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

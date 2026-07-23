@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gs4g",
   "title": "FragmentSender generates empty tile for empty payload",
   "description": "File: python/src/lichen/schc/fragment.py:160-163\n\nFragmentSender._build() handles empty payloads:\n  tiles = [\n      self.payload[i : i + self.tile_size]\n      for i in range(0, max(len(self.payload), 1), self.tile_size)\n  ]\n\nFor empty payload (b''), max(0, 1) = 1, so we get range(0, 1, tile_size) = [0].\ntiles = [self.payload[0:tile_size]] = [b'']\n\nThis creates one empty tile. The fragment would be:\n- rule_id, window/FCN header (2 bytes)\n- MIC (4 bytes, since it's All-1)\n- Empty payload (0 bytes)\n\nTotal: 6 bytes for an empty datagram.\n\nRFC 8724 section 8.1.1 says 'The Datagram can be empty'. So this behavior appears correct, but it's worth documenting that an empty input produces a 6-byte fragment (header + MIC + empty tile).\n\nOn the receiver side, this would reassemble to b''. The MIC of b'' is computed and verified.\n\nThis is expected behavior, not a bug. But the max(len(payload), 1) pattern is non-obvious and should be documented.\n\nCategory: PROTOCOL",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3z6d.3",
   "title": "from_piv panics on PIV longer than 4 bytes",
   "description": "Location: rust/lichen-oscore/src/seqnum.rs:127-129\nIssue: from_piv() folds arbitrary-length input into u32. For PIV \u003e 4 bytes, high bits are silently lost due to left-shift overflow. If called with 5-byte PIV containing a value \u003e u32::MAX, it wraps silently.\nTrigger: Malformed OSCORE option with n=5 and PIV bytes exceeding u32 capacity.\nImpact: Sequence number interpreted incorrectly, could bypass replay protection.\nFix: Either return Result and validate len \u003c= 4, or saturate at u32::MAX, or assert len \u003c= 4 since PIV_MAX_LEN=5 allows this edge case.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

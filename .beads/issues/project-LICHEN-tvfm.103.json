@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.103",
   "title": "[prj.conf:19-20] CONFIG_TEST_RANDOM_GENERATOR enabled in production config",
   "description": "Category not checked: Build configuration safety\n\nBug found: prj.conf line 20 enables CONFIG_TEST_RANDOM_GENERATOR=y. The Zephyr documentation says:\n\n'This option signifies that the kernel's random number APIs are permitted to return values that are not truly random. This is for testing purposes only and should not be used in a production build.'\n\nHowever this is in the main prj.conf, not a test-specific overlay. Any firmware built with this config will have a TEST random generator enabled.\n\nFor a security-sensitive application (LICHEN uses crypto for signatures), this is dangerous. The EUI-64 generation at lora_l2.c:127 uses hardware ID (good), but if any path uses sys_rand_get() or similar, it will be non-random.\n\nThe comment at prj.conf:18 says 'fallback for EUI-64 if no hwinfo' but the code at lora_l2.c:135-139 refuses to start if no hwinfo is available - there IS no random fallback path. So this config is both unnecessary and dangerous.\n\nImpact: P2 - Test-only random generator in production config for crypto-using application.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

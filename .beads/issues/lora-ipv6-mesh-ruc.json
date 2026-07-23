@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-ruc",
   "title": "Spec: Define truncated Ed25519 algorithm",
   "description": "The spec says 'we use a deterministic scheme where the second half is derived from the first' for truncated Ed25519 signatures but provides no concrete algorithm. This is non-standard cryptography with no security analysis. Need to either: (1) specify exact derivation algorithm with security proof, or (2) switch to standard ECDSA approach mentioned in 8.4. Violates 'no hand-rolled crypto' principle.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kqma.8",
   "title": "Handle RPL DAO lifetime-zero as immediate route removal",
   "description": "Trigger: the root processes a DAO Transit Information option with path_lifetime == 0 for an existing target. lichen/subsys/lichen/rpl/routing.c installs or keeps the target/edge around line 610 instead of applying No-Path semantics. Impact: stale downward routes can persist until a later expiry pass, so traffic may be sent along routes the child explicitly withdrew. Treat lifetime zero as immediate removal of the matching route/edge.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

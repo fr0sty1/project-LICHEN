@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.38",
   "title": "EUI-64 generation uses SHA-256 hash of hwid with clear rationale",
   "description": "In lora_l2.c:109-177, the EUI-64 generation explains why hashing is necessary:\n\n```c\n/**\n * @brief Generate stable EUI-64 from hardware device ID\n *\n * Hashes the full hardware ID using SHA-256 to produce a collision-resistant\n * EUI-64. This avoids issues with MCU-specific hwid layouts:\n * - STM32: 12-byte UID where bytes 0-3 are lot/wafer (shared across chips)\n * - ESP32: 6-byte MAC (would leave 2 bytes unfilled)\n * - nRF52: 8-byte unique ID\n *\n * By hashing the full hwid, we mix all available entropy bits uniformly.\n */\n```\n\nAnd includes security comments:\n\n```c\n/* SECURITY: SHA-256 provides collision resistance - two different\n * hwids will produce different EUI-64s with overwhelming probability. */\n\n/*\n * SECURITY: Using first 64 bits of SHA-256 for EUI-64 derivation.\n * This is safe for identifier derivation (not key material) because:\n * 1. Birthday collision requires 2^32 attempts (4B devices) for 50% collision\n * 2. Preimage resistance remains at 2^64 (sufficient for device identity)\n * 3. Matches RFC 7343 (ORCHID) approach for cryptographic identifiers\n */\n```\n\nThis is excellent: it explains why the obvious approach (just use hwid bytes directly) does not work, provides concrete examples of problematic MCU layouts, and quantifies the security properties of the chosen approach.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

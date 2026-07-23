@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3eak",
   "title": "BLE transport: mutex zeroed by memset after initialization",
   "description": "File: lichen/subsys/lichen/transport/ble_ipsp_transport.c\nLines: 360-369\n\nIn lichen_ble_slip_init(), k_mutex_init() is called at line 360, then memset() zeros the entire transport_state at line 368, destroying the initialized mutex. The mutex is re-initialized at line 369 which masks the issue on most runs, but the first init is wasted and this pattern could cause subtle bugs if the memset were moved.\n\nMore critically, between lines 360 and 368, if any code were to use the mutex, the memset would corrupt it. This is a latent correctness bug.\n\nFix: Move memset before all initialization, or remove the redundant first k_mutex_init() call.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -3,7 +3,7 @@
   "title": "SCHC decompression implementation",
   "description": "Implement SCHC decompression per RFC 8724.\n\ndecompress(context, rule_id, residue) -\u003e packet\n\nAlgorithm:\n1. Look up rule by rule_id\n2. For each field descriptor:\n   a. Apply decompression action\n   b. Consume bits from residue as needed\n   c. Reconstruct field value\n3. Assemble full packet\n\nDecompression actions:\n- not-sent: use target value from rule\n- value-sent: read full field from residue\n- mapping-sent: read index, lookup in mapping\n- LSB(n): combine with MSB from target value\n- compute-checksum: calculate from reconstructed packet\n\nBitReader class for consuming bits from residue.\n\nVerify round-trip: decompress(compress(packet)) == packet",
   "notes": "Partially addressed: decompress() implemented + tested in schc/codec.py. Needs full-header rules + reassembly (e2m).",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

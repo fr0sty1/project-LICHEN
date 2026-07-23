@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.1",
   "title": "lichen_l2.c:799 logs zeroed EUI-64 after secure_zero",
   "description": "In lichen_peer_remove(), the LOG_INF at line 799 logs eui64[6] and eui64[7] AFTER secure_zero(entry-\u003eeui64) at line 797 has already zeroed the entry. The log will always show '..00:00'.\n\nFIX: Move the LOG_INF before the secure_zero calls, or use a local copy for logging:\n```c\nLOG_INF(\"lichen_l2: peer removed ..%02x:%02x\", eui64[6], eui64[7]);\nsecure_zero(entry-\u003epubkey, sizeof(entry-\u003epubkey));\nsecure_zero(entry-\u003eeui64, sizeof(entry-\u003eeui64));\nentry-\u003eactive = false;\n```\n\nNote: the parameter 'eui64' (the search key) still has the original value, so logging eui64[6], eui64[7] from the parameter is correct.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

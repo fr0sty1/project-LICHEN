@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.103",
   "title": "[lora_l2.c:366] 1-second backoff on RX error does not account for thread abort timing",
   "description": "Final pass: This was missed because reviewers focused on the consecutive_errors counter and warning threshold, not the sleep interaction with abort.\n\nRoot cause: When lora_recv() returns a non-timeout error, the thread sleeps for 1 second:\n  k_sleep(K_MSEC(1000));\n\nThe stop() function at line 602-616 uses RX_THREAD_QUICK_JOIN_MS (100ms) + RX_TIMEOUT_MS as join timeout. If the thread is in this 1-second backoff sleep when stop() is called:\n1. Thread is sleeping for 1000ms\n2. stop() waits 100ms + RX_TIMEOUT_MS (default 1000ms)\n3. Total potential wait: up to 1100ms after state change\n4. But backoff can last full 1000ms, which is within timeout - close margin\n\nIf RX_TIMEOUT_MS is configured lower (e.g., 100ms for fast response), the join timeout becomes 200ms and the 1000ms backoff will cause forced abort.\n\nImpact: On persistent LoRa errors, stop() may force-abort the thread unnecessarily because the backoff sleep exceeds the join timeout. This triggers the ABORTED state and requires full deinit/init cycle.\n\nFix: Either:\n1. Make backoff interruptible (use k_sleep with cancellation or poll state in backoff loop)\n2. Add backoff duration to join timeout calculation\n3. Document the RX_TIMEOUT_MS must be \u003e= 1000ms when error backoff is possible",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

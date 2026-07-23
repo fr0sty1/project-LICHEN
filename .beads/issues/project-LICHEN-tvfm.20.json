@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.20",
   "title": "[lichen_l2.c:441] lichen_peer_remove void return hides errors",
   "description": "Function: lichen_peer_remove. Contract violation: The function returns void but can fail in multiple ways: NULL eui64 (line 444), lora_l2_needs_reinit() (lines 457-460), or peer not found (silent). Callers cannot distinguish between 'peer removed' and 'removal failed due to aborted state'. The peer_add() counterpart returns int with error codes. Consider returning int for symmetry: 0 on success, -EINVAL for NULL, -ECANCELED for needs_reinit, -ENOENT if peer not found. Priority 3 because current callers don't check the result.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

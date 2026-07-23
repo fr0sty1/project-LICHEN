@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvj0",
   "title": "task",
   "description": "rust/lichen-coap/src/block.rs:341. Mid-transfer szx change causes gaps.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

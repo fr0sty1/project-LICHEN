@@ -2,7 +2,7 @@
   "id": "project-LICHEN-4t1j",
   "title": "task",
   "description": "rust/lichen-rpl/src/dodag.rs:155. Version 255-\u003e0 rejected.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

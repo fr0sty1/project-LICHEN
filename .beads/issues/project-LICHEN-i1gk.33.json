@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.33",
   "title": "[lora_l2.c:934-941] lichen_lora_l2_get_eui64: DEINITING state returns valid pointer to about-to-be-invalidated data",
   "description": "Contract violation: thread safety - race with deinit\n\n**Issue:** lichen_lora_l2_get_eui64() returns a pointer to internal lora_data.eui64 when state is NOT LORA_UNINIT. However, in LORA_DEINITING state, the data is about to be invalidated.\n\n**Code:**\n```c\nconst uint8_t *lichen_lora_l2_get_eui64(void)\n{\n    if (lora_get_state() == LORA_UNINIT) {\n        LOG_ERR(\"LoRa L2 not initialized\");\n        return NULL;\n    }\n    return lora_data.eui64;  // Returns in DEINITING state\n}\n```\n\n**Header doc (lora_l2.h:187-190):**\n```\n * @warning Thread safety: Caller must ensure no concurrent deinit() while\n *          using the returned pointer.\n```\n\n**Assessment:** The documentation correctly warns about this. The function cannot protect against all races - that's the caller's responsibility per the documented contract.\n\n**No fix needed** - the doc clearly states the caller's thread safety responsibility.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

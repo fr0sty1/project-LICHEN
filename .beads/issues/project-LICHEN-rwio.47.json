@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.47",
   "title": "lichen_pubkey_to_iid() hardcodes 32-byte pubkey length without compile-time assertion",
   "description": "In ipv6_addr.c:64, tc_sha256_update() is called with hardcoded length 32:\ntc_sha256_update(\u0026sha_state, pubkey, 32);\n\nLocation: firmware/bridge-zephyr/subsys/lichen/ipv6_addr.c:64\n\nThe header declares pubkey as 'const uint8_t *' without size information. If a caller passes a shorter buffer, this causes an out-of-bounds read. The function relies entirely on caller discipline.\n\nImpact: If a future caller passes less than 32 bytes, out-of-bounds read occurs. Ed25519 public keys are 32 bytes, so this is correct for intended usage, but the interface provides no protection.\n\nRecommendation: \n1. Add a compile-time static_assert or BUILD_ASSERT for Ed25519 key size\n2. Document the 32-byte requirement prominently in the header\n3. Consider passing length parameter for defensive coding\n\nLower priority as this is an API design issue rather than a bug in current code.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

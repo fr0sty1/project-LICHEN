@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.79",
   "title": "[cross-file] lichen_lora_l2_get_eui64 pointer used after start() in standalone mode",
   "description": "Interaction: main.c:init_standalone_lora \u003c-\u003e lora_l2.c:lichen_lora_l2_get_eui64\n\nBug: In main.c init_standalone_lora() (lines 87-131):\n  Line 100: lichen_lora_l2_start()\n  Line 106: eui64 = lichen_lora_l2_get_eui64()\n  Lines 112-114: Use eui64 pointer for LOG_INF\n\nAfter start(), the RX thread is running. The RX thread could theoretically trigger a state change to ABORTED if overflow is detected (lora_l2.c line 447). However, in ABORTED state, the EUI-64 is still valid (not cleared).\n\nActually, Round 1 already filed project-LICHEN-0li1.35 about this exact issue. Not filing duplicate.\n\nLooking for other interactions...",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

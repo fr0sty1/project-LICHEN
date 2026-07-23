@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.12",
   "title": "[lichen_l2.c:1004-1006] tx_mutex re-acquire impossible after enable fails",
   "description": "What: In lichen_l2_enable()'s enable path, if start() fails and link_ctx was initialized (link_ctx_initialized_here == true), the rollback code at lines 1079-1086 re-acquires both mutexes. However, tx_mutex and rx_mutex were already released at lines 1050-1051.\n\nWhy it matters: This is NOT a bug. The code correctly re-acquires the mutexes for the rollback. I was mistaken. The flow is:\n1. Lines 1004-1005: Lock both mutexes\n2. Lines 1006-1048: Initialize link_ctx if needed\n3. Lines 1050-1051: Unlock both mutexes\n4. Line 1059: start() called\n5. If start() fails and link_ctx_initialized_here:\n6. Lines 1080-1081: Re-lock both mutexes (this is correct)\n7. Line 1082-1083: Reset link_ctx\n8. Lines 1084-1085: Unlock both mutexes\n\nThis is actually correct. Closing.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

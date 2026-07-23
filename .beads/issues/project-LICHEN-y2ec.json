@@ -2,7 +2,7 @@
   "id": "project-LICHEN-y2ec",
   "title": "Enable simulated flash/NVS for native_sim persistence testing",
   "description": "Enable persistent storage simulation in native_sim builds (NO HARDWARE REQUIRED).\n\nProblem: Current native_sim builds use RAM for settings/NVS, so epoch persistence, key storage, config persistence, and reboot-and-recover scenarios are untested.\n\nSolution: Zephyr native_sim supports simulated flash via CONFIG_FLASH_SIMULATOR=y. Flash contents persist to a file between runs.\n\nImplementation:\n1. Add prj.conf overlay with CONFIG_FLASH_SIMULATOR, CONFIG_NVS, CONFIG_SETTINGS_NVS\n2. Create lichen/tests/persistence ztest: write epoch, restart binary, verify restored; same for keys and config\n3. Flash file: native_sim uses /tmp/flash.bin by default\n\nAcceptance: native_sim persists and restores epoch across restarts; test demonstrates reboot-recovery.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

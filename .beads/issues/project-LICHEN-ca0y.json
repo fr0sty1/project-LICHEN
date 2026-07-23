@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ca0y",
   "title": "task",
   "description": "Policy: appendix-c-safety.md. Grep for strcpy/strcat/sprintf/gets. Check buffer ops have explicit sizes. Fix violations.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

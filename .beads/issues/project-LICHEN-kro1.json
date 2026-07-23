@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kro1",
   "title": "Missing observer notifications in callback RX path",
   "description": "## Location\npython/src/lichen/sim/simulation.py:781\n\n## Description\nThe _get_rx_result_internal method does not call self._observers.notify() for 'on_rx_success' or 'on_collision' events. Observers registered via add_observer() will not receive callbacks for receptions or collisions that occur through the callback-based RX path (deliver_pending_packets).\n\n## Failure Scenario\nTest harness registers a SimulationObserver to count RX events via on_rx_success callback. Node receives packets through enter_rx_mode/deliver_pending_packets. Observer's on_rx_success is never called, causing the test harness to report 0 receptions even though packets were delivered. Visualization tools or event loggers miss events.\n\n## Category\ncorrectness",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

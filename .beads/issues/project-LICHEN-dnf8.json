@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dnf8",
   "title": "task",
   "description": "rust/lichen-senml/src/cbor.rs:318-331. Deeply nested CBOR causes crash.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

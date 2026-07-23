@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3z6d.1",
   "title": "Missing #[non_exhaustive] on public OscoreError enum",
   "description": "Location: rust/lichen-oscore/src/lib.rs:64\nIssue: OscoreError is a public enum without #[non_exhaustive]. Adding new error variants would be a breaking change.\nImpact: Callers using exhaustive match will break if new variants added.\nFix: Add #[non_exhaustive] attribute to OscoreError.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

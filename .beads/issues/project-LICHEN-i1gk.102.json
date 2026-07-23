@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.102",
   "title": "[lichen_l2.c:830] frame_len initialized but lichen_link_tx may not write it on error",
   "description": "Final pass: This was missed because reviewers checked the frame_len validation after lichen_link_tx, but not whether frame_len is undefined on error paths.\n\nRoot cause: At line 830:\n  size_t frame_len = sizeof(tx_frame_buf);\nThen at line 845:\n  ret = lichen_link_tx(\u0026link_ctx, tx_ipv6_buf, pkt_len, NULL, tx_frame_buf, \u0026frame_len);\n\nIf lichen_link_tx() returns an error early (before modifying frame_len), frame_len retains its initial value of sizeof(tx_frame_buf) = 255. The code at line 856 then checks:\n  if (frame_len \u003e sizeof(tx_frame_buf))\n\nThis check will always pass (255 \u003e 255 is false) even if frame_len was never actually set to a meaningful value.\n\nThis is defense-in-depth paranoia, but the check provides false confidence - it only catches lichen_link_tx writing an invalid value, not lichen_link_tx failing to write a value at all.\n\nFix: Zero-initialize frame_len, or skip the bounds check on error paths entirely (since we return early anyway).",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

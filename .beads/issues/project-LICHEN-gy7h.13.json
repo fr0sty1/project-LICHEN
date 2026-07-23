@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.13",
   "title": "lichen_l2_input may leak net_pkt if net_pkt_write partially succeeds then fails",
   "description": "Location: lichen_l2.c:687-693\n\n**What goes wrong:** net_pkt_write() can fail partway through copying ipv6_len bytes. The code correctly calls net_pkt_unref() on failure, but the pkt may have partial data written. If net_recv_data() is ever changed to accept packets with NET_PKT_DATA_ACCESS_CONTIGUOUS requirement, or if the IPv6 stack processes partial headers, this could cause issues.\n\nActually on re-reading: net_pkt_unref() is called, so there's no leak. The partial data is freed with the packet. This is not a bug.\n\nRetracting.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

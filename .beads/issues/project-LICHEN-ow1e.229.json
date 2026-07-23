@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-ow1e.229",
   "title": "Codereview pass 2: LOADng seqnum - good wrap-around and half-space coverage",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

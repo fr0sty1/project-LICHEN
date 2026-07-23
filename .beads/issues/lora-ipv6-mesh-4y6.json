@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-4y6",
   "title": "Spec: Harden isolated mesh root election",
   "description": "'Lowest EUI-64 wins' is deterministic but exploitable. Attacker can manufacture nodes with low EUI-64. No mechanism to demote misbehaving roots. No re-election on root failure. Consider: randomized election with proof-of-work, reputation system, election timeout, demotion protocol.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

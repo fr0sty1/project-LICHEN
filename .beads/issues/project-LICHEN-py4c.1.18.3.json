@@ -3,7 +3,7 @@
   "title": "Clarify historical spec/lichen-native titles and legacy guarantees",
   "description": "Decision follow-up from project-LICHEN-py4c.1.18. The spec/lichen-native directory is marked historical, but headings and body text still say LICHEN Native Protocol and transport-agnostic device interface in ways that can be quoted out of context. Tighten historical wording without deleting the canonical legacy reference.",
   "acceptance_criteria": "Spec docs state that legacy CBOR framing is frozen/prototype-only, has no new-feature guarantee, and must not be called the native LCI contract. Contract tests cover the wording and existing historical legacy tests still pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

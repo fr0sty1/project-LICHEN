@@ -2,7 +2,7 @@
   "id": "project-LICHEN-r6r8",
   "title": "task",
   "description": "Python rpl/ has dao.py (~100+ lines) for Destination Advertisement Object handling. Rust lichen-rpl has dodag.rs, routing.rs, trickle.rs, message.rs but DAO appears less complete. Verify DAO parity or port Python implementation.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

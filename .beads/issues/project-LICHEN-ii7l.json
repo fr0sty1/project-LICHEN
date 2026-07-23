@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ii7l",
   "title": "task",
   "description": "dodag.rs:88-91 - ParentCandidate::path_cost() casts (link_etx * mhri as f32).round() as u16 without validating link_etx for NaN. In Rust, NaN as u16 produces 0, so path_cost returns just self.rank, treating a bad/invalid link as perfect (ETX=0). Failure: if link quality measurement produces NaN (e.g., div by zero in ETX calculation), the node may select a broken link as preferred parent because its path_cost is artificially low.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

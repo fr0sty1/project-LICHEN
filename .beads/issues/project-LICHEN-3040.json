@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3040",
   "title": "task",
   "description": "python/src/lichen/interface/translate.py:220-221. Wrong encoding.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

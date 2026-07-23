@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.34",
   "title": "lichen_util.c:15 lichen_sha256 conflated error handling loses detail",
   "description": "Contract violation: lichen_sha256() - Lines 27-30 conflate tc_sha256_init, update, and final failures into single -EIO. TinyCrypt can fail if output is NULL (checked earlier) or internal state corruption. The conflation is documented as intentional (line 25) but loses debug info. WHY: Different failures have different root causes (init vs update vs final). HOW to fix: If debug info desired, log which stage failed before returning -EIO. Current behavior is acceptable for production.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

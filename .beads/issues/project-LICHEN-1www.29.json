@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.29",
   "title": "memcpy to iface_link_addr uses hardcoded source size",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:586\n\nmemcpy(iface_link_addr, eui64, sizeof(iface_link_addr)) copies sizeof(iface_link_addr) bytes from eui64. The source buffer eui64 comes from lichen_lora_l2_get_eui64() which returns a pointer to lora_state.eui64[8].\n\nWhat goes wrong: sizeof(iface_link_addr) is 8, matching the source. However, if LICHEN_L2_ADDR_LEN changes without updating lora_state.eui64 size, or vice versa, buffer overread would occur. The BUILD_ASSERT for MTU exists but theres no compile-time check that LICHEN_L2_ADDR_LEN == sizeof(lora_state.eui64).\n\nRecommendation: Add BUILD_ASSERT(LICHEN_L2_ADDR_LEN == LICHEN_LORA_L2_ADDR_LEN) and reference the constant in both definitions.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

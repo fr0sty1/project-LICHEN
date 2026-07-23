@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-mq7a",
   "title": "codereview-pass2: Density rules rationale contradicts appendix-design-rationale.md SF10 default; clarify when density-aware overrides default SF10",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

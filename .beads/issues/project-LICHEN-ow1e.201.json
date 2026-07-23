@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.201",
   "title": "Codereview pass 1: SCHC decompress",
   "description": "Review confidence: 10% chance of missed bug.\nLeast confident areas: None - this is a straightforward exception type addition.\nWould raise confidence if: N/A - changes are minimal and well-scoped.\n\nSummary:\n- P2: 1 finding (incomplete docstring)\n- P3: 2 findings (formatting, positive finding)\n- No correctness bugs found.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

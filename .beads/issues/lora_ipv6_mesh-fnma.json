@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-fnma",
   "title": "Phase 8: Messaging CoAP resource (/messages)",
   "description": "Add /messages to the Python node CoAP server. POST to send a text message (CBOR: {from, to, text, t}). GET returns recent inbox. Observable for push delivery. 'to' can be a peer EUI-64 or the broadcast address. Messages are forwarded over RPL if the destination is not a direct neighbour.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "feature",
   "owner": "mark.frost@gmail.com",

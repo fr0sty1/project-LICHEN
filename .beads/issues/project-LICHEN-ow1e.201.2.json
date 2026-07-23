@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.201.2",
   "title": "decompress_packet docstring incomplete: missing truncated residue case",
   "description": "The Raises: section documents SchcError for empty data only. But decompress() can also raise SchcError for truncated residue (residue underrun). Should document: 'SchcError: If data is empty or residue is truncated.'",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

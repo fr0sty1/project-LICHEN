@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.31",
   "title": "[ipv6_addr.c:70] lichen_pubkey_to_iid cleanup label only zeros on failure",
   "description": "Function: lichen_pubkey_to_iid. Resource cleanup: The 'cleanup' label (line 117) always zeros the hash buffer via secure_zero. This is correct - the hash is zeroed on both success and failure paths (goto cleanup happens for error at line 89, and falls through for success). Verified correct behavior. However, the 'ret' variable is used before initialized if goto cleanup happens before assignment. Actually, 'ret' is assigned at line 86, so this is fine. Priority 3 - verified correct, no issue.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "issue",
   "assignee": "Mark Atwood",

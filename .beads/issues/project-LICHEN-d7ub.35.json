@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.35",
   "title": "lora_l2.c:261 generate_eui64 no NULL check for eui64 output",
   "description": "Contract violation: generate_eui64() - Static internal function does not check if eui64 output parameter is NULL. The caller (lichen_lora_l2_init at line 579) passes lora_data.eui64 which is never NULL (static allocation). However, defensive programming suggests validating output parameter. WHY: If function were ever called with NULL (future code change), it would crash in memcpy at line 327. HOW to fix: Add 'if (eui64 == NULL) return -EINVAL;' at function start. Low priority as function is static and single caller is correct.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

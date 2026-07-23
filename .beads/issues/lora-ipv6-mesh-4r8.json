@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-4r8",
   "title": "Implement metrics collection system in Simulation class",
   "description": "Integrate the detailed metrics collection implementation plan into the Simulation class. Add metrics tracking variables, modify start_transmission and get_rx_result methods, and add metrics summary methods as documented in metrics_plan.md.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

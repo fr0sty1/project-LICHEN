@@ -2,7 +2,7 @@
   "id": "project-LICHEN-cg1m",
   "title": "task",
   "description": "Integrate coap2oscore() and oscore2coap() functions into the LICHEN link layer TX/RX paths.\n\nTX path (lichen_l2_send):\n1. Detect CoAP packets (UDP port 5683/5684)\n2. Look up peer OSCORE context by destination\n3. Call coap2oscore() to encrypt payload\n4. Continue with SCHC compression and framing\n\nRX path (lichen_l2_input):\n1. After SCHC decompression, detect OSCORE-protected packets\n2. Look up sender OSCORE context\n3. Call oscore2coap() to decrypt and verify\n4. Deliver plaintext CoAP to application\n\nError handling:\n- OSCORE context not found -\u003e lazy EDHOC establishment\n- Decryption failure -\u003e drop frame (log at WRN level)\n- SSN overflow -\u003e trigger re-keying\n\nDependencies:\n- project-LICHEN-c9th (SCHC rule for OSCORE)\n- project-LICHEN-bt34 (context management)\n\nParent: project-LICHEN-r6fu.2",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

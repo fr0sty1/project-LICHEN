@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2vo1",
   "title": "task",
   "description": "lichen/subsys/lichen/link/lichen_link_tx.c:130-135 - When schnorr48_sign_frame() fails, the early return wipes payload_buf and compressed but not l2_payload. The l2_payload buffer contains SCHC-compressed packet data (dispatch byte + compressed payload). While not secret material, this is inconsistent with the thorough wiping at the cleanup label (lines 270-274) which wipes all three buffers. Low impact since the data is not cryptographic secrets.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "assignee": "Mark Atwood",

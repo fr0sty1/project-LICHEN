@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tkze",
   "title": "task",
   "description": "python/src/lichen/sim/chaos.py:117 - LossRule stores loss decisions in _loss_cache keyed by transmission UUID. Each transmission gets a unique UUID, but the cache is never cleared. Over a long-running simulation with many transmissions, this accumulates unbounded entries (~100 bytes each). Fix: Either clear cache periodically, use an LRU cache with bounded size, or clear entries when transmissions complete.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "assignee": "Mark Atwood",

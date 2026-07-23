@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.201.3",
   "title": "Good: specific exception type with diagnostic attribute",
   "description": "UnknownRuleIdError stores the offending rule_id as an attribute, enabling callers to log/report which rule was missing without parsing the exception message. This is genuinely useful for protocol debugging.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

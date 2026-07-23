@@ -3,7 +3,7 @@
   "title": "gateway: inject BLE UART IPv6 packets into mesh",
   "description": "Feature-completeness gap found during Zephyr firmware status audit. The BLE UART path currently accepts IPv6-looking bytes but does not inject them into the Zephyr net_pkt/L2 path or mesh; it only logs that mesh injection is deferred. This leaves the Local Client Interface/BLE ingress incomplete. Evidence: lichen/apps/gateway/src/ble_uart.c:80 has TODO to inject the IPv6 packet into the mesh via Zephyr net_pkt and logs 'mesh injection deferred' at :84. Acceptance: convert valid BLE UART IPv6 frames into the same ingress path used by local/network packets, preserve ownership/lifetime rules for net_pkt buffers, reject malformed packets with useful logs, and add focused tests or a native_sim scenario proving a BLE-originated IPv6 packet reaches the mesh/L2 path.",
   "acceptance_criteria": "After implementation, run the relevant tests/builds and then complete two separate code-review passes before closing. Each review pass should inspect the produced code against this Bead's acceptance criteria and file follow-up Beads for any discovered issues.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

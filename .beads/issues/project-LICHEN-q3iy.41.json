@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.41",
   "title": "RX path passes NULL replay table, disabling replay protection",
   "description": "In lichen_l2_input(), lichen_link_rx() is called with replay = NULL, which disables replay protection.\n\n## Location\n- /firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:795\n\n## Security Impact\nWhat goes wrong: An attacker can capture valid LICHEN frames and replay them indefinitely. Without a replay window, the receiver has no way to detect that a frame was previously processed. This enables replay attacks, resource exhaustion, and protocol state confusion.\n\nCombined with issue project-LICHEN-q3iy.37 (CRC32-only mode), an attacker can both forge and replay frames.\n\n## Priority\nP1 - Replay protection is a fundamental security control.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

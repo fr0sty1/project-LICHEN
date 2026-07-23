@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.4",
   "title": "Review and repair inherited fixes",
   "description": "Review the inherited fixes for correctness and regressions, especially security-sensitive C/Rust/Python changes. Fix confirmed issues with independent tests and close the corresponding Beads only after verification.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

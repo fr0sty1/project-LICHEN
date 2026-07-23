@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.64",
   "title": "[ipv6_addr.c:186-191] BUILD_ASSERT vs _Static_assert conditional compilation",
   "description": "Gap found: Cross-platform assertion pattern not reviewed.\n\nWhy this was missed: Preprocessor patterns for portability not examined.\n\nThe actual bug: Lines 186-191 use BUILD_ASSERT for Zephyr and _Static_assert for non-Zephyr (host tests). Both check LICHEN_IPV6_ADDR_STR_LEN \u003e= 40.\n\nPotential issue: The _Static_assert path (line 189-190) is C11. If compiled with an older C standard (C99), this would fail to compile. The comment doesn't indicate C11 requirement.\n\nThe actual check itself is redundant with line 97 '#define LICHEN_IPV6_ADDR_STR_LEN 40' - we're asserting \u003e= 40 when the value IS 40. This is defensive but could be simplified to 'LICHEN_IPV6_ADDR_STR_LEN == 40' to catch both increases and decreases.\n\nPriority 4 - defensive programming, current code correct for C11+ builds.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

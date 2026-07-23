@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.72",
   "title": "[lichen_l2.c:728-729] RX callback re-registration happens before start() return check",
   "description": "Gap found: Callback registration timing in enable path not reviewed.\n\nWhy this was missed: Enable path analyzed but callback timing not examined.\n\nThe actual bug: In lichen_l2_enable() enable path (lines 728-729):\n1. lichen_lora_l2_set_rx_callback() is called\n2. lichen_lora_l2_start() is called (line 729)\n3. On start() failure, callback remains registered (rollback at lines 739-746 handles link_ctx but NOT callback)\n\nIf start() fails after callback is registered, the callback points to lora_rx_callback which expects a valid link_ctx. If link_ctx is rolled back, the next successful start() will invoke lora_rx_callback which checks link_ctx_initialized (line 1109), so this is safe.\n\nHowever, the callback registration before start() means the callback is set even if start() fails. This is wasteful but not incorrect. The rollback should include:\n  lichen_lora_l2_set_rx_callback(NULL, NULL);\n\nPriority 3 - minor resource leak on start failure.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

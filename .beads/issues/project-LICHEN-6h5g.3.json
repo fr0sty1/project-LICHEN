@@ -2,7 +2,7 @@
   "id": "project-LICHEN-6h5g.3",
   "title": "Renode board definition: Heltec WiFi LoRa32 v3",
   "description": "Renode board for Heltec v3 (ESP32-S3 + SX1262 + OLED). Simpler than T-Deck. OLED as log stub. Good minimal ESP32-S3 + LoRa reference.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

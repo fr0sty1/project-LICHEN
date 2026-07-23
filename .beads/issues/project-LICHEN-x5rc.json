@@ -2,7 +2,7 @@
   "id": "project-LICHEN-x5rc",
   "title": "NULL dereference in oscore_unprotect_response when request_piv NULL but len \u003e 0",
   "description": "File: lichen/subsys/lichen/oscore/oscore.c\nLines: 1886-1899\n\nThe oscore_unprotect_response function validates that request_piv_len \u003c= OSCORE_PIV_MAX_LEN but does NOT check if request_piv is NULL when request_piv_len \u003e 0.\n\nCode path:\n```c\nif (request_piv_len \u003e OSCORE_PIV_MAX_LEN) {  // Only checks max\n    return OSCORE_ERR_INVALID_PARAM;\n}\n\n/* Response uses request's PIV for nonce */\ncompute_nonce(ctx-\u003esender_id, ctx-\u003esender_id_len,\n              request_piv, request_piv_len, ctx-\u003ecommon_iv, nonce);  // request_piv used\n```\n\nInside compute_nonce (line 1187-1191):\n```c\nif (piv_len \u003e 0 \u0026\u0026 piv_len \u003c= 5) {\n    size_t piv_start = OSCORE_NONCE_LEN - piv_len;\n    for (size_t i = 0; i \u003c piv_len; i++) {\n        nonce[piv_start + i] ^= piv[i];  // NULL dereference if piv is NULL\n    }\n}\n```\n\nImpact: If caller passes (NULL, 5) for request_piv, the code crashes.\n\nFix: Add validation at line 1893:\n```c\nif (request_piv_len \u003e OSCORE_PIV_MAX_LEN ||\n    (request_piv_len \u003e 0 \u0026\u0026 request_piv == NULL)) {\n    return OSCORE_ERR_INVALID_PARAM;\n}\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

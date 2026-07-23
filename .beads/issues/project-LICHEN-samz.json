@@ -2,7 +2,7 @@
   "id": "project-LICHEN-samz",
   "title": "GPS/GNSS Renode peripheral stub",
   "description": "C# peripheral model for GPS receiver. Expose NMEA sentences or UBX protocol over UART. Configurable position, time, fix state. Enables testing CoT position flows, time sync, location providers without hardware. Software-only.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

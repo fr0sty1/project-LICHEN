@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.24",
   "title": "main.c uses label before declaration - goto main_loop skips variable init",
   "description": "File: firmware/bridge-zephyr/src/main.c:98-141\n\nWhen standalone LoRa mode fails (CONFIG_LICHEN_LORA_L2 \u0026\u0026 !CONFIG_LICHEN_L2), the code does:\n  goto main_loop;\n\nBut main_loop label is after variable declarations (lines 123-125):\n  uint8_t iid[8];\n  struct in6_addr ll_addr;\n  char addr_str[LICHEN_IPV6_ADDR_STR_LEN];\n\nIn C, jumping over a declaration is undefined behavior if the variable is used after the label. Currently these variables are only used before the goto, so this is technically safe but fragile.\n\nTrigger: Add code after main_loop that uses these variables.\n\nBad behavior: UB - uninitialized stack variables read.\n\nFix: Move variable declarations before any goto targets, or restructure to avoid goto.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kqma.3",
   "title": "Make link TX sequence allocation atomic per context",
   "description": "Trigger: two threads call lichen_link_tx()/lichen_link_next_seq() on the same lichen_link_ctx. lichen/subsys/lichen/link/link_ctx.c updates ctx-\u003etx_seq and ctx-\u003eepoch without synchronization around line 163. Impact: concurrent TX can allocate duplicate (epoch, seqnum) pairs. When ctx-\u003ehas_link_key is true, duplicate pairs reuse the AES-CCM nonce built from eui64, epoch, and seqnum, breaking link-layer authentication guarantees. Add per-context locking or an atomic sequence allocation contract.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

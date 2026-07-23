@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.9",
   "title": "rx_thread continues after lora_recv buffer overflow detection",
   "description": "lora_l2.c:181-185: When lora_recv returns more bytes than buffer size (ret \u003e sizeof(rx_buf)), the code logs 'CRITICAL: driver bug' but continues the receive loop.\n\nWhat goes wrong: If a Zephyr LoRa driver has a bug returning corrupt length, this corruption has already occurred - the stack-allocated rx_buf[255] was overwritten. The memory corruption is not contained, only logged. Continuing may cause undefined behavior in subsequent iterations.\n\nWhile this is defensive detection (the corruption already happened), a contributor might assume 'continue' means the situation is recoverable.\n\nFix: Consider adding a note that crash/abort might be appropriate here, or at minimum increment an error counter and eventually abort after repeated occurrences. The current 'continue' is acceptable only because there's no recovery possible from prior corruption.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

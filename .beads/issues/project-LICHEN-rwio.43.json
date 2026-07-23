@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.43",
   "title": "GOOD: Header ipv6_addr.h provides fallback struct in6_addr when CONFIG_NET_IPV6 unavailable",
   "description": "ipv6_addr.h lines 35-47: When Zephyr networking is not enabled, defines its own compatible struct in6_addr. This allows the address utilities to be used in standalone mode (testing, non-networked builds). The conditional is clear and the comment explains the purpose.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

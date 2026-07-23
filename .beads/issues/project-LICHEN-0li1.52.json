@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.52",
   "title": "[main.c:72-79] lora_rx_handler data parameter unused but passed to callback",
   "description": "Gap: The standalone LoRa RX handler receives data but does nothing with it beyond logging the length.\n\nWhat: Lines 72-79 define lora_rx_handler which marks both user_data AND data as ARG_UNUSED, but only logs the length. While the comment says 'RX processing not implemented', the data pointer is received and could be used for timing attacks if an attacker can influence when frames arrive.\n\nWhy it matters: This is a ponytail comment acknowledging incomplete implementation, but the function signature implies data processing occurs. An auditor might miss that no actual processing happens. Either implement minimal validation or add a more prominent comment that this is a no-op stub.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

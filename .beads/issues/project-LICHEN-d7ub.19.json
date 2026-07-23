@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.19",
   "title": "lichen_util.h:54 secure_zero returns early on len==0 without barrier",
   "description": "Contract violation: secure_zero() - Returns at line 63 if len==0 without executing compiler_barrier(). This is technically correct (nothing to zero) but inconsistent with the function's security contract. A zero-length call could theoretically be used as a timing-safe marker for 'something was zeroed', and skipping the barrier changes timing. WHY: Inconsistent behavior. HOW to fix: Move compiler_barrier() after len==0 check, or add barrier before early return. Very minor, P3.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

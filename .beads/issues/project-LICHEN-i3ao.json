@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i3ao",
   "title": "Compliance: rust/lichen-hal/src/lib.rs poll_* functions",
   "description": "Policy: No-polling. Status: ACCEPTABLE. poll_buttons/poll_encoder/poll_touch are hardware input polling - necessary when no interrupt available. Document as intentional exception.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

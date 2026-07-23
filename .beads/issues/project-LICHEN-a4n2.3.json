@@ -2,7 +2,7 @@
   "id": "project-LICHEN-a4n2.3",
   "title": "C/Zephyr: Implement TX queue with priority",
   "description": "lichen/subsys/lichen/link/ has no TX queue - direct frame transmission.\n\nRequired:\n- Add tx_queue.h/c with:\n  - #define TX_QUEUE_SIZE 4\n  - struct tx_queue_entry { uint8_t data[MAX_PACKET_SIZE]; uint16_t len; uint32_t deadline_ms; uint8_t priority; }\n  - tx_queue_push() - expire oldest, preempt if higher priority, return -ENOBUFS if full\n  - tx_queue_pop() - return highest priority item\n  - Deadline defaults: 5s routing, 10s ACK, 60s app\n- Integrate into lichen_link_tx.c\n- Add tests\n\nSee spec/appendix-bufferbloat.md §3 TX Queue for implementation example.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

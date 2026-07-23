@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3z6d",
   "title": "Review: OSCORE seqnum fix 2026-07-06",
   "description": "Review confidence: 15% chance of missed bug.\nLeast confident areas: EDHOC module (not reviewed), replay window edge cases.\nWould raise confidence if: full lib.rs crypto operations reviewed for side-channel safety.\n\nSummary: 5 findings filed\n- P1: 3 issues (1 bug in from_piv overflow, 2 API contract)\n- P2: 1 issue (SeqExhausted non_exhaustive)\n- P3: 1 positive finding (well-designed fix)",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

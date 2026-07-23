@@ -2,7 +2,7 @@
   "id": "project-LICHEN-sdct",
   "title": "Python DodagState: Parent switch hysteresis logic may need verification",
   "description": "In python/src/lichen/rpl/dodag.py lines 156-158, the hysteresis check was refactored from 'if best_cost \u003e current_cost - threshold' to 'improvement = current_cost - best_cost; if improvement \u003c threshold'. Both should be mathematically equivalent (improvement \u003c threshold means current_cost - best_cost \u003c threshold, i.e., best_cost \u003e current_cost - threshold). However, the comment 'switch only if improvement exceeds threshold' suggests the opposite intent. If improvement=56 and threshold=192, improvement \u003c threshold is TRUE, so we DON'T switch and stick with current - which matches RFC 6550. The code appears correct but the comment should say 'stick with current unless improvement exceeds threshold'.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

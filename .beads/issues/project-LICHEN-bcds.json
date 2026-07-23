@@ -2,7 +2,7 @@
   "id": "project-LICHEN-bcds",
   "title": "task",
   "description": "Zephyr SCHC (lichen/subsys/schc/) only has basic compression via bitstream.c and schc.c (~950 lines total). Missing fragmentation and reassembly that Python and Rust both have. Python has fragment.py + reassembly.py (~400 lines), Rust has fragment.rs (~800 lines). Implement or port fragmentation/reassembly to Zephyr.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

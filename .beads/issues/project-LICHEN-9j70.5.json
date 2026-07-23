@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.5",
   "title": "hwid buffer not zeroed after use in generate_eui64",
   "description": "lora_l2.c:90 allocates hwid[32] to hold hardware device ID. The buffer is populated at line 90 and hashed at line 105, but never zeroed before function return.\n\nWhat goes wrong: The hardware ID persists on stack after function returns. While not secret (it's hardware-derived), this is inconsistent with the pattern established at line 131 where hash is zeroed. A contributor adding sensitive data to this function might assume stack cleanup is automatic.\n\nAlso inconsistent with the secure_zero pattern used elsewhere for sensitive buffers.\n\nFix: Add secure_zero(hwid, sizeof(hwid)) in the cleanup section alongside the hash zeroing.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

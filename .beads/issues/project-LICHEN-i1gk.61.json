@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.61",
   "title": "[lichen_l2.c:507-528] peer_try_all_pubkeys constant-time claim is weak",
   "description": "Round 2 gap analysis: Missed because the constant-time comment looked plausible.\n\nAt lines 498-528:\n```c\n/*\n * SECURITY: Constant-time peer iteration to prevent timing side-channel.\n *\n * Always iterate through ALL peers even after finding a match. This\n * prevents an attacker from inferring which peer index matched based\n * on how quickly the function returns.\n */\nint found_idx = -1;\nint found_ret = -LICHEN_EAUTH;\n\nfor (size_t i = 0; i \u003c CONFIG_LICHEN_LINK_MAX_NEIGHBORS; i++) {\n    if (!peer_table[i].active) {\n        continue;  // \u003c-- NOT constant-time: skip inactive peers\n    }\n    ...\n```\n\nThe comment claims constant-time iteration, but:\n1. Inactive peers are skipped (line 508-510), making iteration time depend on active peer count\n2. lichen_link_rx() itself is NOT constant-time (signature verification has data-dependent timing)\n3. Non-auth errors abort early (line 536)\n\nThe 'constant-time' claim is only partially true - it's constant relative to WHICH peer matches (index position), but NOT constant relative to total active peers or signature verification cost.\n\nThis isn't necessarily a vulnerability (L2 timing attacks over LoRa are impractical), but the SECURITY comment overstates the protection. A more accurate description would be 'peer-index-independent iteration'.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

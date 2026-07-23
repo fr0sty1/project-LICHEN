@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.33",
   "title": "[lichen_l2.c:244] peer_table static with CONFIG_LICHEN_LINK_MAX_NEIGHBORS",
   "description": "Function: peer_table (module static). Thread safety: The peer_table array (line 244) is sized by CONFIG_LICHEN_LINK_MAX_NEIGHBORS which defaults to 16 (line 41). If Kconfig is changed to a very large value, this consumes significant BSS space (each entry is 8+32+1=41 bytes minimum, so 16 entries = 656 bytes). Not a contract violation per se, but a capacity design decision. Additionally, the peer iteration in peer_try_all_pubkeys is O(n) which could be slow with many peers. Priority 3 - design note for scalability.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "issue",
   "assignee": "Mark Atwood",

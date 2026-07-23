@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.78",
   "title": "lichen_l2.c:442-450 peer_find_locked uses memcmp which is not constant-time",
   "description": "Completeness check: Round 1-2 missed this memcmp even though comment at line 437 acknowledges non-constant-time is OK.\n\nWHAT: peer_find_locked() uses memcmp to compare EUI-64 addresses:\n```c\nif (peer_table[i].active \u0026\u0026\n    memcmp(peer_table[i].eui64, eui64, LICHEN_EUI64_LEN) == 0) {\n    return \u0026peer_table[i];\n}\n```\n\nThe comment says 'Uses memcmp (not constant-time) because EUI-64 addresses are public identifiers, not secrets.'\n\nWHY NOT A BUG (but worth documenting): The comment is correct - EUI-64 addresses ARE public (they're in the IPv6 link-local address). However:\n\n1. The comment says 'Timing-safe comparison is done in peer_table_try_all_peers_locked()' - but this function doesn't exist. The actual function is peer_try_all_pubkeys().\n\n2. peer_try_all_pubkeys does NOT do timing-safe comparison - it iterates through all peers but uses lichen_link_rx() for signature verification. The signature verification (Schnorr-48) in the link layer should be constant-time, but this module doesn't verify that.\n\nIMPACT: Documentation bug, not code bug. The security analysis is correct but the function name is stale.\n\nFIX: Update comment to reference peer_try_all_pubkeys() and verify lichen_link_rx() signature verification is actually constant-time.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

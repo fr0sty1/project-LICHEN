@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.49",
   "title": "[lichen_util.h:141] lichen_link_strerror returns 'success' for positive values",
   "description": "Round 2 gap analysis: Missed because the function looks reasonable at first glance.\n\nAt lines 140-143:\n```c\nstatic inline const char *lichen_link_strerror(int err)\n{\n    if (err \u003e= 0) {\n        return \"success\";\n    }\n```\n\nThe function is documented as 'Convert LICHEN link error code to human-readable string'. However, returning 'success' for any positive value is technically incorrect - positive values from lichen_link_rx/tx indicate byte counts, not success status.\n\nIn practice this is harmless because callers only call strerror on error paths (ret \u003c 0). But the function contract is misleading - it should document that the function is only meaningful for negative values.\n\nVery minor documentation issue.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "feature",
   "assignee": "Mark Atwood",

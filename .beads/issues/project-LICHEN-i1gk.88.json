@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.88",
   "title": "[lora_l2.c:225-301] SECURITY: EUI-64 derived from hardware ID only - no key binding",
   "description": "Security finding: The EUI-64 is derived from hwinfo_get_device_id() via SHA-256, but has no cryptographic binding to the node's identity keypair.\n\nAttack scenario:\n1. Two nodes with different hardware IDs have different EUI-64s\n2. But their Ed25519 keypairs are independent of the EUI-64\n3. An attacker with the victim's private key can sign frames with victim's EUI-64\n4. Or: an attacker could claim any EUI-64 if they have ANY valid keypair\n\nThe LICHEN spec section 6.2 mentions deriving IID from Ed25519 pubkey, but generate_eui64() uses hardware ID instead.\n\nImpact: Identity spoofing is possible if private keys are compromised. The EUI-64 provides no independent authentication.\n\nCurrent state: Not immediately exploitable because keys aren't provisioned.\n\nMitigation:\n1. Consider deriving EUI-64 from Ed25519 pubkey as spec section 6.2 suggests\n2. Or: bind the hardware ID to the keypair during provisioning\n3. Document that EUI-64 is NOT a cryptographic identity - pubkey is",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

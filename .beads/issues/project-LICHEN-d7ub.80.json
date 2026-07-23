@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.80",
   "title": "lichen_l2.c:1079 link_ctx_initialized_here flag may mask re-init bugs",
   "description": "Completeness check: Round 1-2 missed subtle control flow issue in enable path.\n\nWHAT: In lichen_l2_enable(true), the code uses a local flag to track whether link_ctx was initialized in this call:\n```c\nbool link_ctx_initialized_here = false;\n...\nif (!atomic_get(\u0026link_ctx_initialized)) {\n    ...\n    atomic_set(\u0026link_ctx_initialized, 1);\n    link_ctx_initialized_here = true;\n}\n...\nif (ret != 0 \u0026\u0026 link_ctx_initialized_here) {\n    // cleanup\n}\n```\n\nWHY BUG: If link_ctx_initialized was ALREADY true when enable() is called, but the underlying state is corrupted, the rollback won't happen:\n\nSCENARIO:\n1. First enable() succeeds, link_ctx_initialized = 1\n2. Crash corrupts link_ctx internals (keys, replay state)\n3. Second enable() called\n4. atomic_get(\u0026link_ctx_initialized) returns 1, so init is skipped\n5. lichen_lora_l2_start() fails for unrelated reason\n6. Rollback skipped because link_ctx_initialized_here is false\n7. System continues with corrupted link_ctx\n\nIMPACT: After a crash that corrupts static state but not the flag, subsequent operations use corrupted cryptographic state.\n\nFIX: The recovery here depends on the disable path correctly clearing link_ctx_initialized. Add defensive validation: if link_ctx_initialized but start() fails, should we re-validate link_ctx state?",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

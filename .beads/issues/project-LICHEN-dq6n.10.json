@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dq6n.10",
   "title": "[lora_l2.c:509] rx_callback cleared without holding rx_mutex",
   "description": "In lichen_lora_l2_deinit(), rx_callback and rx_callback_user_data are cleared without holding any mutex:\n\n```c\n/* Clear initialized flag first - this blocks any concurrent operations */\natomic_set(\u0026lora_state.initialized, 0);\n\n/* Clear aborted flag - module is now in clean uninitialized state */\natomic_set(\u0026lora_state.aborted, 0);\n\n/* Clear state - defensive, init will overwrite anyway */\nlora_state.rx_callback = NULL;           // Line 509 - no mutex!\nlora_state.rx_callback_user_data = NULL; // Line 510 - no mutex!\n```\n\nWhile the comment says 'We do NOT acquire lora_mutex here' due to the aborted state potentially leaving it locked, the rx_thread reads these fields under mutex. If the thread is still terminating (join_ret == -EAGAIN path), writing these without the mutex creates a data race.\n\nImpact: P2 - potential data race during recovery path. In practice, the initialized flag being cleared should prevent the RX thread from invoking the callback, but the write itself is technically racy.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

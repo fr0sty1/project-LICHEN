@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0qmh",
   "title": "oscore: No protection against nonce reuse across context reinstantiation",
   "description": "File: python/src/lichen/crypto/oscore.py\nLines: 97\n\nThe sender_sequence_number is initialized to 0 on every new MemorySecurityContext:\n\n```python\nself.sender_sequence_number = 0  # Line 97\n```\n\nIf an EDHOC handshake produces the same master_secret and master_salt (e.g., due to ephemeral key reuse in testing, or replay attack on EDHOC), and a new MemorySecurityContext is created, the sequence numbers restart at 0. This causes nonce reuse, breaking AEAD security.\n\nRFC 8613 Section 7.2.1 requires that sequence numbers never repeat for the same (key, nonce) pair across the context's lifetime. But 'lifetime' is ambiguous for in-memory contexts that can be recreated.\n\nMitigations:\n1. Document that MemorySecurityContext must never be reinstantiated with the same EDHOC context\n2. Add optional starting_sequence_number parameter for state recovery\n3. Consider persisting sequence number to prevent reuse\n\nImpact: Potential nonce reuse leading to plaintext recovery in AEAD. Critical security issue if contexts are recreated.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

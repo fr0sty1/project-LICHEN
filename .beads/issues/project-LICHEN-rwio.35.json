@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.35",
   "title": "HAVE_LICHEN_LINK macro duplicates CONFIG_LICHEN_LINK check",
   "description": "lichen_l2.c lines 28-35: Defines HAVE_LICHEN_LINK as 1 or 0 based on CONFIG_LICHEN_LINK, then uses #if HAVE_LICHEN_LINK throughout. The indirection adds no value - could use #if defined(CONFIG_LICHEN_LINK) directly.\n\nHowever, the current pattern does enable writing 'if (HAVE_LICHEN_LINK)' in regular C code (not just preprocessor), which can be useful for avoiding #ifdef in function bodies. Mild style preference, not a bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

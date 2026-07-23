@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-1www.62",
   "title": "lichen_sha256 allows NULL input with inlen\u003e0 due to condition order",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

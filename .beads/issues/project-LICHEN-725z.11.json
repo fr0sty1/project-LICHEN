@@ -2,7 +2,7 @@
   "id": "project-LICHEN-725z.11",
   "title": "Forward reference to static function lora_rx_callback",
   "description": "lichen_l2.c:272 — lora_rx_callback() called in lichen_l2_enable() but not defined until line 379. C99+ allows this but older standards and static analyzers require forward declaration.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

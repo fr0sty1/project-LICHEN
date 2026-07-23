@@ -3,7 +3,7 @@
   "title": "Gate and rename Zephyr legacy CBOR native surfaces",
   "description": "Decision follow-up from project-LICHEN-py4c.1.18. CONFIG_LICHEN_NATIVE, lichen/lib/native, lichen_native symbols, and lichen,native-uart devicetree naming currently refer to the historical CBOR protocol and serial-local HAL path. Preserve board compatibility while making legacy CBOR status explicit and preventing new LCI firmware work from depending on ambiguous native names.",
   "acceptance_criteria": "No-hardware Zephyr/native_sim or qemu builds/tests verify existing native_init/native_parse coverage, board configs that currently enable CONFIG_LICHEN_NATIVE, and any compatibility aliases or deprecation warnings. EC2 Twister evidence recorded; no physical boards required.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

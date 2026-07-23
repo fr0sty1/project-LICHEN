@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.36",
   "title": "[lichen_l2.h:70] function signature array parameters provide no bounds checking",
   "description": "The function lichen_peer_add(const uint8_t eui64[8], const uint8_t pubkey[32]) uses array syntax in parameters, but C arrays decay to pointers, so there's no compile-time or runtime size enforcement. The comment at lines 57-62 documents this, and BUILD_ASSERTs at lines 108-111 verify constants match. However, a caller passing a 7-byte buffer for eui64 would cause buffer overread. Consider using a struct wrapper (struct lichen_eui64 { uint8_t bytes[8]; }) to get type safety, or at minimum document in the header that these MUST be exactly the specified sizes.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

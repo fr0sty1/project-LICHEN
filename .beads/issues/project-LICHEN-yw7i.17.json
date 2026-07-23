@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yw7i.17",
   "title": "Good: RX thread error backoff prevents log flooding",
   "description": "lora_l2.c:181-183 backs off 1 second after consecutive RX errors. This prevents log flooding and CPU starvation when hardware fails. The warning threshold (line 177) gives a single actionable alert rather than repeated spam.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

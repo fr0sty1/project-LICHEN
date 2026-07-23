@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.29",
   "title": "lora_l2.c: memcpy used without string.h include",
   "description": "firmware/bridge-zephyr/subsys/lichen/lora_l2.c uses memcpy at lines 75 and 265 but does not include \u003cstring.h\u003e. Currently compiles because \u003czephyr/kernel.h\u003e transitively includes it, but relying on transitive includes violates header self-containment. If Zephyr's internal include structure changes, this file will fail to compile.\n\nAdd: #include \u003cstring.h\u003e",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

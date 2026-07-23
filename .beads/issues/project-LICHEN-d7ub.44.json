@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.44",
   "title": "lichen_l2.c:1867 peer_try_all_pubkeys modifies ctx without restore on all paths",
   "description": "Contract violation: peer_try_all_pubkeys() - On success path (lines 589-600), ctx-\u003epeer_pubkey and ctx-\u003epeer_eui64 are set to the matched peer. On -LICHEN_EAUTH failure (line 606), they are restored to saved values. But on non-auth errors (line 580-585), the ctx is restored. Actually, looking closely: lines 581-583 restore before return. This is correct. On success, ctx is intentionally modified. No bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

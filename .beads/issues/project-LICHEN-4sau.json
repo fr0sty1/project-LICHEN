@@ -2,7 +2,7 @@
   "id": "project-LICHEN-4sau",
   "title": "task",
   "description": "address.rs:214-215 - Test module uses 'use alloc::vec' and 'use alloc::format' but the test module is not gated by #[cfg(feature = \"alloc\")]. The known_nodes() method is also alloc-gated but called unconditionally in test_known_nodes. This causes compilation failure when running 'cargo test' without --features alloc.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

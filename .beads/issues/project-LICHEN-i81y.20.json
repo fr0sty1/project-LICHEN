@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i81y.20",
   "title": "Fix LICHEN Zephyr module bridge subdirectory path",
   "description": "While validating project-LICHEN-i81y.14, Zephyr configure for both lichen/tests/oscore and firmware/bridge-zephyr reached lichen/zephyr/CMakeLists.txt and failed at add_subdirectory(../../../firmware/bridge-zephyr/subsys): the relative source path does not exist from the module CMake location. This blocks narrow Zephyr configure checks before EDHOC subsystem CMake can be fully validated. Investigate and replace the hard-coded relative path with a robust path or app-owned inclusion pattern.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

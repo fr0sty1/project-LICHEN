@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-9iq",
   "title": "Continue implementing simulation harness features",
   "description": "Implement the remaining simulation harness features including visualization of DODAG formation and support for reproducible runs (seeded RNG).",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

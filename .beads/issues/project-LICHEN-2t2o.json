@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2t2o",
   "title": "callsign.py: _decode_base36 raises ValueError for invalid characters not validated by caller",
   "description": "File: python/src/lichen/interface/kiss/callsign.py\nLines: 62-74\n\nThe _decode_base36() function calls B36_ALPHABET.index(c) which raises ValueError if c is not in the alphabet:\n\n```python\ndef _decode_base36(s: str) -\u003e int:\n    s = s.upper()\n    result = 0\n    for c in s:\n        result = result * 36 + B36_ALPHABET.index(c)  # ValueError if c not in alphabet\n    return result\n```\n\nWhile callsign_to_suffix() validates characters before calling this, the function is exposed and could be called directly from other code paths (it's a module-level function, not underscore-prefixed enough to signal truly private).\n\nImpact: Unexpected ValueError crash if passed invalid input from a new call site.\n\nFix: Either:\n1. Rename to __decode_base36 to indicate truly private\n2. Add validation in the function itself and raise a descriptive error\n3. Document that input must be pre-validated\n\nLower priority since current call sites validate first.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

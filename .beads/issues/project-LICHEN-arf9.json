@@ -2,7 +2,7 @@
   "id": "project-LICHEN-arf9",
   "title": "Rust: RPL dodag.rs removed DodagMembershipState typestate without migration path",
   "description": "In rust/lichen-rpl/src/dodag.rs, the entire DodagMembershipState\u003cS\u003e typestate implementation was removed (lines 55-94 in the diff), including:\n- DodagMembership trait\n- Unjoined, Joined, Root marker types\n- DodagMembershipState struct and its transition methods\n\nThe test dodag_membership_typestate_join_leave_root_paths was also removed.\n\nWhile the runtime DodagState still exists, the compile-time safety of the typestate pattern is lost. If any external code was using DodagMembershipState\u003cS\u003e, it will break.\n\nLocation: rust/lichen-rpl/src/dodag.rs:55-94 (removed)\nRisk: Breaking change; loss of compile-time transition safety.\nFix: Document the removal in release notes; explain why DodagState suffices.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

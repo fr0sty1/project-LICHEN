@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tcmn",
   "title": "task",
   "description": "python/src/lichen/schc/reassembly.py:61-72 - The _abs_window() method assumes fragments arrive in order, always computing abs_window as either _current_window or _current_window + 1. This breaks when fragments arrive out of order (e.g., retransmissions from earlier windows arriving after the receiver has advanced).\n\nFailure scenario:\n1. Receiver gets fragment from window 0 (W=0), sets _current_window=0\n2. Receiver gets fragment from window 1 (W=1), sets _current_window=1\n3. Fragment from window 0 is retransmitted (W=0)\n4. _abs_window() computes: W=0 != 1%2=1, so return _current_window+1=2\n5. Tile is stored at window 2 position instead of window 0\n\nThis causes:\n- Tiles stored at wrong indices\n- Contiguity check fails\n- Reassembly never completes\n- Protocol stuck in NACK loop\n\nFix: Track which windows are complete vs pending. When a fragment's W bit doesn't match current%2, check if it could belong to a previous incomplete window before assuming it's the next window. This requires remembering which windows have been NACKed or are pending retransmission.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

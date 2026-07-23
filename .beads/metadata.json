@@ -1,1 +1,7 @@
-{"backend":"flatfile","project_id":"c18ed9c1-b2b8-46a8-8dc3-ca790e4b0b79"}
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "beads",
+  "project_id": "c18ed9c1-b2b8-46a8-8dc3-ca790e4b0b79"
+}

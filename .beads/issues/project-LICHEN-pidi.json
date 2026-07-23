@@ -2,7 +2,7 @@
   "id": "project-LICHEN-pidi",
   "title": "Missing simulation-level reception metrics in callback RX path",
   "description": "## Location\npython/src/lichen/sim/simulation.py:781\n\n## Description\nThe _get_rx_result_internal method (used by deliver_pending_packets for callback-based RX mode) updates per-node metrics via node.metrics.record_rx() at line 787, but does NOT call self._metrics.record_reception() like get_rx_result does at line 867. This causes simulation-level metrics (receptions count, delivery_rate, latency_stats) to be incorrect when using callback-based RX mode.\n\n## Failure Scenario\nTest creates two nodes A and B. Node A transmits, Node B receives via enter_rx_mode/deliver_pending_packets (callback path). After test completes, simulation.metrics.receptions returns 0 and delivery_rate returns 0.0, even though the packet was successfully delivered and node B's per-node rx_count is 1. Any analysis relying on simulation.metrics.delivery_rate or latency_stats() will have incorrect data.\n\n## Category\ncorrectness",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

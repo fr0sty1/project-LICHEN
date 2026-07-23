@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.17",
   "title": "[lichen_l2.c:1806] rx_mutex held during potentially-blocking allocation",
   "description": "What: lichen_l2_input() holds rx_mutex from line 1656 until line 1832, including during net_pkt_rx_alloc_with_buffer() which can block for CONFIG_LICHEN_L2_RX_ALLOC_TIMEOUT_MS (default 50ms).\n\nWhy it matters: If the system is under memory pressure:\n1. RX callback enters, acquires rx_mutex\n2. net_pkt allocation blocks for up to 50ms\n3. Any other operation needing rx_mutex (peer_add, peer_remove, enable/disable) blocks\n\nAt LoRa data rates, this is unlikely to cause starvation, but the design holds the mutex longer than necessary.\n\nEvidence: k_mutex_lock at 1656, net_pkt_rx_alloc at 1806-1808, k_mutex_unlock at 1832.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

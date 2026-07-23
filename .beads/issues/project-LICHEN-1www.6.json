@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.6",
   "title": "ssize_t to int cast truncation in generate_eui64 log",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:111,133\n\nhwid_len is ssize_t but is cast to int for logging:\n- Line 111: LOG_ERR(\"hwinfo returned invalid length: %d\", (int)hwid_len)\n- Line 133: LOG_DBG(\"EUI-64 from hashed hardware ID (%d bytes)\", (int)hwid_len)\n\nWhat goes wrong: ssize_t can be 64-bit on some platforms while int is 32-bit. Values \u003e INT_MAX would wrap, displaying incorrect values in logs. The actual hwid_len is bounded by sizeof(hwid)=32, so no actual bug here, but the pattern is incorrect.\n\nFix: Use %zd format specifier with (ssize_t)hwid_len or cast to (long) with %ld for maximum portability.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

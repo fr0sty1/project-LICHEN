@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.3",
   "title": "lichen_sha256 error handling conflates init/update/final failures",
   "description": "## Location\nfirmware/bridge-zephyr/subsys/lichen/lichen_util.c:21-24\n\n## Finding\nThe SHA-256 helper chains `tc_sha256_init`, `tc_sha256_update`, and `tc_sha256_final` in a single `if` statement:\n```c\nif (tc_sha256_init(\u0026state) != TC_CRYPTO_SUCCESS ||\n    tc_sha256_update(\u0026state, input, inlen) != TC_CRYPTO_SUCCESS ||\n    tc_sha256_final(output, \u0026state) != TC_CRYPTO_SUCCESS) {\n    ret = -EIO;\n}\n```\n\nAll failures return `-EIO`, making it impossible to distinguish which step failed during debugging.\n\n## What goes wrong\nWhen debugging a crypto failure, the log message provides no indication of which step failed. In practice, `tc_sha256_*` functions rarely fail (they check for NULL internally and the state is valid), so this is low-impact.\n\n## Recommendation\nFor debugging, consider separating into individual calls with distinct error codes or LOG_ERR messages. Example:\n```c\nif (tc_sha256_init(\u0026state) != TC_CRYPTO_SUCCESS) {\n    LOG_ERR(\"SHA-256 init failed\");\n    ret = -EIO; goto cleanup;\n}\n// etc.\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

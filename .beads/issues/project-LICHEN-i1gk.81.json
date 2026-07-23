@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.81",
   "title": "[lichen_l2.c:284] replay_table not cleared before lichen_link_init at line 1309",
   "description": "Completeness: Initialization ordering category.\n\nAt line 1309, lichen_replay_table_init(\u0026replay_table) is called AFTER lichen_link_init(\u0026link_ctx, eui64) at line 1308.\n\nThe link_ctx initialization does not depend on replay_table, so the order is functionally correct. However:\n\n1. In the re-init path (lines 1295-1306), cleanup happens before re-init\n2. But replay_table_init at 1309 happens outside the mutex-protected cleanup block\n\nIf there were any async access to replay_table between link_ctx init (1308) and replay_table init (1309), it could see partially-initialized state. This is unlikely given the initialization ordering, but the asymmetry with the cleanup path (which holds mutexes) is notable.\n\nThis is informational - the code is correct, but the initialization sequence could be made more obviously safe by initializing replay_table while still holding mutexes if any are held.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "feature",
   "assignee": "Mark Atwood",

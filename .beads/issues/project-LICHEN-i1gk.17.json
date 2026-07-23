@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.17",
   "title": "[lora_l2.c:602-616] thread join timeout may be insufficient if lora_recv just started",
   "description": "The RX thread join at lines 602-616 uses RX_THREAD_QUICK_JOIN_MS (100ms) then RX_TIMEOUT_MS. The comment at line 608 says 'worst-case lora_recv() just started when we set the stop flag'. But if RX_TIMEOUT_MS is the max, and lora_recv just started, it needs the full timeout. The code adds RX_THREAD_QUICK_JOIN_MS + RX_TIMEOUT_MS which is correct for worst case. However, the log message at line 614 says the thread timed out after the sum, but k_thread_abort is only called if BOTH timeouts fail. This is correct but the message could be clearer. No actual bug here, just noting the timing is tight.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

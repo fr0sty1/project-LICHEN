@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-tb6",
   "title": "EventQueue destructive __iter__ violates principle of least surprise",
   "description": "events.py EventQueue.__iter__ pops all events, emptying the queue. Standard Python iterators don't modify collections. Contributors debugging with 'for e in queue: print(e)' will accidentally empty it. Consider rename to drain() or make non-destructive.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

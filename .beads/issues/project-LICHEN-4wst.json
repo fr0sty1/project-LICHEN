@@ -2,7 +2,7 @@
   "id": "project-LICHEN-4wst",
   "title": "[policy] Link-layer signature compliance",
   "description": "Policy: spec/06-security.md §8.3-8.5. MUST: (1) All TX packets signed with Ed25519/Schnorr48, (2) All RX packets verified before processing, (3) Signature covers non-mutable fields only, (4) Signature cache for relay efficiency. When executing: grep for sign/verify calls in TX/RX paths, create compliance bead per code section.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

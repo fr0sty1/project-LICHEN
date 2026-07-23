@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2okc",
   "title": "task",
   "description": "Rust lichen-oscore lib.rs has 'ponytail: empty AAD for now, proper AAD structure in RFC 8613 Section 5.4' comment in protect_request. Zephyr oscore.c has full build_oscore_aad implementation. Port the RFC 8613 Section 5.4 AAD structure to Rust for protocol compliance.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

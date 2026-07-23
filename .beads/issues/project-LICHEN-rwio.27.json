@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.27",
   "title": "net_pkt_read return value check may miss partial reads",
   "description": "In lichen_l2.c line 163-168, net_pkt_read() is called to linearize the packet:\n\n    int bytes_read = net_pkt_read(pkt, tx_ipv6_buf, pkt_len);\n    if (bytes_read \u003c 0 || (size_t)bytes_read != pkt_len) {\n        LOG_ERR(\"Failed to linearize packet\");\n        ...\n    }\n\n**VERIFY AGAINST YOUR ZEPHYR VERSION**: The standard Zephyr net_pkt_read() API returns 0 on success and negative errno on error - it does NOT return bytes read. If this is the case:\n\nTrigger: Any TX attempt with non-empty packet.\n\nBad behavior: net_pkt_read() returns 0 (success), the check '(size_t)bytes_read != pkt_len' evaluates to true (0 != pkt_len), causing TX to fail with 'Failed to linearize packet' even though linearization succeeded.\n\n**However**: If the code compiles and has been tested at all, this would have been caught immediately. Either:\n1. The API returns bytes read (different Zephyr version or custom API)\n2. net_pkt_read is a different function\n3. This code path has never been exercised\n\n**Action**: Check the Zephyr version's net_pkt.h and verify actual behavior. If API returns 0/negative, this is a P0 correctness bug. If API returns bytes read, close this issue.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c lines 163-168",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ze6p",
   "title": "TUI RFHealthState.cheater_count does not handle None correctly",
   "description": "File: python/src/lichen/tui/native.py\nLines: 319-322\n\nThe cheater_count property checks for True explicitly:\n\n    @property\n    def cheater_count(self) -\u003e int:\n        return sum(1 for n in self.neighbors if n.is_cheater is True)\n\nUsing 'is True' means it only counts when is_cheater is exactly the True singleton. If is_cheater is:\n- 1 (truthy int): not counted\n- 'true' (truthy string): not counted\n- True: counted\n\nThis is actually correct defensive coding - it ensures only boolean True is counted. However, if the Neighbor class or device returns non-boolean truthy values for is_cheater, they'd be silently ignored.\n\nThis might be intentional strict behavior. Let me withdraw this issue - it's not a bug, it's defensive coding.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

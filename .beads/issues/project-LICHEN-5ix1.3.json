@@ -4,7 +4,7 @@
   "description": "The canonical Nucleo WL55JC puck target does not enable CONFIG_LICHEN_COAP even though selected puck sources require lichen/coap_client.h. Enforce the dependency through board/app Kconfig so no audit-only command-line override is needed.",
   "acceptance_criteria": "west build -b nucleo_wl55jc lichen/apps/puck compiles from canonical configuration without EXTRA_CONF overrides; a configuration test guards the dependency; no unrelated board behavior regresses.",
   "notes": "FIXED: nucleo_wl55jc puck board config now enables CONFIG_LICHEN_COAP=y and CONFIG_SPI=y. SPI is required for Zephyr to retain CONFIG_LORA_STM32WL_SUBGHZ_RADIO and instantiate the chosen physical radio; CoAP is required by puck L2 sources. Added canonical Nucleo puck row to .github/workflows/ci.yml. Validation: SOURCE_DATE_EPOCH=$(git log -1 --format=%ct) west build -p always -b nucleo_wl55jc -s lichen/apps/puck -d \u003ctemp\u003e/fix-now-puck-nucleo-physical -- -DZEPHYR_EXTRA_MODULES=$PWD/lichen completed and linked. Resolved config: SPI=y, SPI_STM32=y, LORA_STM32WL_SUBGHZ_RADIO=y, LICHEN_L2=y, LICHEN_COAP=y, LICHEN_COAP_CLIENT=y. Memory: flash 133340 B/256 KB, RAM 50228 B/64 KB. ELF SHA-256 7c527d92f1af10e5dbd66b67c0434703b9cc032778709ebc615c4a29e75a7648. CI YAML parse and git diff --check passed; two independent reviews found no issues.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.89",
   "title": "[lichen_util.h:73-77] secure_zero word-write only reads back first byte",
   "description": "Gap found: secure_zero verification not complete.\n\nWhy this was missed: Algorithm analyzed but read-back pattern not verified.\n\nThe actual bug: Lines 73-77 write a zero word using memcpy, then read back via volatile:\n  __builtin_memcpy((void *)p, \u0026zero_word, sizeof(unsigned long));\n  (void)*(volatile uint8_t *)p;  // Read-back\n  \nThe read-back only reads 1 byte (uint8_t), not the full word. On a platform where:\n1. memcpy might be optimized away\n2. The compiler observes only 1 byte is read\n\nA sophisticated optimizer could theoretically recognize that only 1 byte matters and optimize the word write to a byte write. The subsequent bytes in the word might not be zeroed.\n\nThis is highly theoretical - no known compiler does this. But for maximum security, the read-back should match the write size:\n  (void)*(volatile unsigned long *)p;\n\nOr read back all bytes individually.\n\nPriority 3 - theoretical optimization escape.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

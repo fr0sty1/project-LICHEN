@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-j4a",
   "title": "Consider using match statements for event/rule dispatch",
   "description": "**Idiomatic Python (3.10+)**\n\nThe codebase targets Python 3.11+ but uses isinstance chains for dispatch:\n\nsimulation.py:177-186:\n```python\nif isinstance(event, TxEndEvent):\n    self._handle_tx_end(event)\nelif isinstance(event, RxTimeoutEvent):\n    self._handle_rx_timeout(event)\n```\n\napi.py:51-69 has similar pattern for ChaosRule types.\n\nWith Python 3.10+ match statements:\n```python\nmatch event:\n    case TxEndEvent():\n        self._handle_tx_end(event)\n    case RxTimeoutEvent():\n        self._handle_rx_timeout(event)\n```\n\nBenefits:\n- More readable\n- Exhaustiveness checking (with type: ignore or _ case)\n- Pythonic for 3.10+\n\nThis is a style preference, not a bug. Low priority.\n\nFiles: simulation.py:177-186, api.py:51-69",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "assignee": "Mark Frost",

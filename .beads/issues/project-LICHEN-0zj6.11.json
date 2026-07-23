@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0zj6.11",
   "title": "lichen_make_ula/gua share identical structure - consider unifying",
   "description": "ipv6_addr.c:132-168: lichen_make_ula() and lichen_make_gua() have identical structure differing only in the prefix validation predicate. Could be:\n\nstatic int make_prefixed_addr(const uint8_t *prefix, const uint8_t *iid, struct in6_addr *addr, bool (*validate)(uint8_t))\n\nOr keep both for API clarity - the current form is not wrong, just slightly redundant. Low priority since the functions are small.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

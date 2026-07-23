@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.15",
   "title": "LICHEN_IPV6_ADDR_STR_LEN=40 is exactly right, but callers may not realize uppercase hex or compressed form requires different handling",
   "description": "In ipv6_addr.h line 52, LICHEN_IPV6_ADDR_STR_LEN is 40 (39 chars + null). The lichen_ipv6_addr_to_str() function at ipv6_addr.c line 146 uses lowercase hex and no compression. This works, but contributors may assume standard tools (like Zephyr's net_addr_ntop() or POSIX inet_ntop()) can interop. Those produce compressed forms like 'fe80::1' which are shorter but may not round-trip through any LICHEN parser expecting full-form. Document that LICHEN uses uncompressed lowercase hex, so callers don't mix formats when logging or parsing.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

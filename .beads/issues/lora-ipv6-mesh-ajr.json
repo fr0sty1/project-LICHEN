@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-ajr",
   "title": "Create test vector framework",
   "description": "Set up test/vectors/ with JSON schema for test vectors. Create initial vectors for: link layer frames, SCHC compression. Both Rust and C implementations must validate against these vectors.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

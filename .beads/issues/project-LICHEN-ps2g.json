@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ps2g",
   "title": "task",
   "description": "compact_cot.py:778-786 - Input values from XML are converted to wire format integers without range validation. Malformed or extreme values cause struct.error during encoding rather than clear validation errors during parsing. Example: lat=999 produces lat_microdeg=999_000_000 which exceeds int32 max. Course=400 produces course_cdeg=40000 (valid for uint16 but semantically wrong for 0-359.99 degrees). The error surfaces late (at encode time) with cryptic struct.error instead of early clear ValueError during parse.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

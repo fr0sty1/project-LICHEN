@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.96",
   "title": "[lora_l2.c:517-525] LoRa config parameters not validated against board capabilities",
   "description": "Completeness: Build configuration category.\n\nAt lines 517-525, the lora_modem_config uses fixed values:\n- bandwidth = BW_125_KHZ\n- datarate = SF_10  \n- coding_rate = CR_4_5\n- frequency = CONFIG_LICHEN_LORA_FREQUENCY\n- tx_power = CONFIG_LICHEN_LORA_TX_POWER\n\nCONFIG values are Kconfig-validated, but the hardcoded SF10/BW125/CR4-5 are not.\n\nDifferent LoRa modules have different capabilities:\n- sx1276/77/78/79: SF6-12, BW7.8-500kHz\n- sx1261/62: SF5-12, BW7.8-500kHz\n- llcc68: SF5-11 only (no SF12)\n\nIf a board uses llcc68 and this code requests SF12, lora_config() will fail. But the error message at line 529 just says 'LoRa config failed' without indicating which parameter was rejected.\n\nConsider adding BUILD_ASSERT or Kconfig constraints to validate SF/BW compatibility with selected radio, or provide more specific error handling.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

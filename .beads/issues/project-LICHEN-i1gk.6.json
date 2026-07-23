@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.6",
   "title": "[lora_l2.c:909-911] lichen_lora_l2_set_rx_callback: silent failure without return value",
   "description": "Contract violation: postcondition\n\n**Issue:** The function returns void but silently fails (just logs and returns) when state is LORA_UNINIT. Callers have no way to detect the failure.\n\n**Code:**\n```c\nvoid lichen_lora_l2_set_rx_callback(lichen_lora_rx_cb_t cb, void *user_data)\n{\n    if (lora_get_state() == LORA_UNINIT) {\n        LOG_WRN(\"Cannot set RX callback: LoRa L2 not initialized\");\n        return;  // Silent failure\n    }\n    ...\n}\n```\n\n**Impact:** If a caller registers a callback before init(), they will never be notified the callback was not registered. RX packets silently won't invoke the callback.\n\n**Fix:** Change return type to int, return -EINVAL when uninitialized, or document that callers must call init() first AND verify is_running() before trusting callback registration.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

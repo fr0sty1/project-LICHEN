@@ -2,7 +2,7 @@
   "id": "project-LICHEN-jxam",
   "title": "task",
   "description": "python/src/lichen/radio/sim_client.py:128-134 - If registration fails (MSG_ERR or unexpected response), the TCP stream is not closed before raising. The stream remains connected but unusable, leaking the socket until GC.\n\nFailure scenario: When the simulator rejects registration (e.g., duplicate node_id, invalid sim_id), connect() raises SimRadioError but leaves self._stream set to the open socket. The caller cannot use the SimRadio instance (registration failed) but the socket remains open, consuming OS resources until garbage collection.\n\nFix: Close the stream before raising in error paths.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

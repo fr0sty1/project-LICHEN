@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.5",
   "title": "[lora_l2.c:361-362] Device pointer captured once but deinit may invalidate",
   "description": "What: rx_thread() captures lora_data.lora_dev once at startup (line 361) under mutex, then uses this cached pointer throughout its lifetime. However, deinit() does not clear lora_data.lora_dev.\n\nWhy it matters: If deinit() + init() happens with a different device (e.g., hot-swappable radio on some hypothetical hardware), the RX thread would use a stale device pointer. In practice this is low risk because:\n1. deinit() requires stop() first, which terminates the RX thread\n2. Subsequent init() would generate a new thread with fresh pointer\n3. LICHEN targets fixed-radio embedded systems\n\nThis is a theoretical concern rather than practical bug given current architecture.\n\nEvidence:\n```c\n// rx_thread startup\nk_mutex_lock(\u0026lora_mutex, K_FOREVER);\nconst struct device *dev = lora_data.lora_dev;  // captured once\nk_mutex_unlock(\u0026lora_mutex);\n// ... uses 'dev' for all lora_recv() calls\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

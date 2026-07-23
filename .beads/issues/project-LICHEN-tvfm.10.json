@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.10",
   "title": "[ipv6_addr.c:235] snprintf truncation check uses ret as size_t comparison",
   "description": "In lichen_ipv6_addr_to_str() line 235, '(size_t)ret \u003e= buflen' checks for truncation. This is correct but the cast is needed because ret is int. However, we already know ret \u003e= 0 from line 226 check, so the cast is safe. The real issue is that snprintf returns the number of characters that WOULD have been written, not the actual count. If buflen is 39 and ret is 39, we wrote 39 chars but no null terminator (truncation). The \u003e= check is correct but a clarifying comment would help future readers understand why \u003e= not \u003e.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

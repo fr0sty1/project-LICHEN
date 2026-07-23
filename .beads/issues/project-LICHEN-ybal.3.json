@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.3",
   "title": "lichen_l2_send returns 0 unconditionally on success - missing packet unref",
   "description": "File: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:97-182\n\nlichen_l2_send() returns 0 on success but does NOT call net_pkt_unref(pkt). \n\nPer Zephyr net_l2 contract: if send returns 0, L2 took ownership and must free the packet. The caller (IPv6 stack) will not free it.\n\nTrigger: Any successful TX.\n\nBad behavior: Memory leak of net_pkt structures. Eventually exhausts the packet pool, causing net_pkt_rx_alloc_with_buffer failures and dropped packets.\n\nFix: Add net_pkt_unref(pkt) before returning 0 in success path (line 181).",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

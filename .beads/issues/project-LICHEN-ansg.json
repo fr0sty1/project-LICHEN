@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ansg",
   "title": "Compliance: Rust stack.rs replay protection",
   "description": "Policy: 02-physical-link.md §4.4. File: rust/lichen-node/src/stack.rs. Status: VIOLATION. Lines 121-135 default epoch to 0 instead of random [128,255]. Has set_epoch() at line 174 but requires caller to invoke. Spec requires automatic init on reboot to [128,255] without persistence.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

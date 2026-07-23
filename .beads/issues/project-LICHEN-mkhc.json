@@ -2,7 +2,7 @@
   "id": "project-LICHEN-mkhc",
   "title": "Unbounded growth of packet_hashes_received set",
   "description": "## Location\npython/src/lichen/sim/metrics.py:38\n\n## Description\nThe packet_hashes_received set grows without bound as record_rx() is called. Same unbounded accumulation issue as packet_hashes_sent, but potentially larger as each node can receive from multiple senders.\n\n## Failure Scenario\nA mesh network simulation with 100 nodes runs for 12 hours. Each node receives broadcasts from all others, accumulating millions of hash entries per node. Combined memory footprint across all NodeMetrics instances exhausts available memory.\n\n## Category\nsafety",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.18",
   "title": "SHA-256 state struct not zeroed after use in generate_eui64",
   "description": "In lora_l2.c generate_eui64(), the hash output buffer is zeroed (line 119), but the tc_sha256_state_struct containing intermediate hash state is not zeroed.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:98, 119\n\nCode:\n- Line 98: struct tc_sha256_state_struct sha_state; (on stack)\n- Line 119: memset(hash, 0, sizeof(hash)); (zeroes output, not state)\n\nWhat goes wrong: The sha_state structure contains intermediate hash values that could theoretically be used in a side-channel attack to recover information about the hardware ID. On embedded systems with limited memory protection, stack contents may persist and be observable.\n\nThis is defense-in-depth for cryptographic hygiene. The risk is low since hwid is not high-entropy secret material, but the pattern differs from ipv6_addr.c:lichen_pubkey_to_iid() which does zero its hash buffer.\n\nFix: Add memset(\u0026sha_state, 0, sizeof(sha_state)) after tc_sha256_final().",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

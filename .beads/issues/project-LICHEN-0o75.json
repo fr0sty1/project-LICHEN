@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0o75",
   "title": "DTN methods: time module imported inside functions",
   "description": "File: python/src/lichen/routing/router.py:656, 717\n\n```python\ndef dtn_buffer_message(...):\n    import time\n    now_unix = int(time.time())\n    ...\n\ndef dtn_expire_old(...):\n    import time\n    now_unix = int(time.time())\n```\n\nWHY IT'S A BUG (minor):\n1. Repeated import overhead on every call\n2. Makes the dependency non-obvious at module level\n3. Harder to mock for testing (must patch inside the method)\n4. Inconsistent with the rest of the codebase which imports at top\n\nIMPACT: Minor performance overhead; testing difficulty; code style inconsistency.\n\nFIX: Move import to top of file and use consistently:\n```python\nimport time  # at top of file\n...\ndef dtn_buffer_message(...):\n    now_unix = int(time.time())\n```\n\nOr better, accept now_unix as a parameter for testability:\n```python\ndef dtn_expire_old(self, now_unix: int | None = None) -\u003e int:\n    if now_unix is None:\n        import time\n        now_unix = int(time.time())\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-a728",
   "title": "Linker error: lichen_l2_reinit_after_abort undefined",
   "description": "Build fails with undefined reference to lichen_l2_reinit_after_abort in lora_l2.c:684. This function is called in lichen_lora_l2_deinit but appears to not be defined. Pre-existing issue discovered during build verification.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hstr",
   "title": "task",
   "description": "python/src/lichen/schc/reassembly.py:113-119. Missing tiles from earlier windows cause wrong NACK.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

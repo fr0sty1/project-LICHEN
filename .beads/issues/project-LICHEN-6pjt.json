@@ -3,7 +3,7 @@
   "title": "Implement BLE IPSP transport binding for LCI",
   "description": "Implement BLE transport per LCI spec 17.3.2: Internet Protocol Support Profile (IPSP) for IPv6 over BLE (RFC 7668). Enables standard IPv6 stack on phone/laptop to talk CoAP to node. Requires Zephyr BLE + IPSP config. Test with Linux BLE + ping6/coap-client.",
   "acceptance_criteria": "Phone or laptop can ping6 and coap-client to node over BLE IPSP",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "grinder",

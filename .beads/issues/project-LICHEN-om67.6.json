@@ -2,7 +2,7 @@
   "id": "project-LICHEN-om67.6",
   "title": "Rust/Zephyr: Missing GPSR geographic forwarding (spec 9.7)",
   "description": "Python Router.gpsr_forward() uses haversine distance to select neighbor closest to destination. Neither Rust nor Zephyr implement GPSR. Reference: python/src/lichen/routing/router.py gpsr_forward()",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.197",
   "title": "Codereview pass 2: haversine edge cases verified",
   "description": "**Edge case analysis:**\n- Identical points: a=0, sqrt(0)=0, asin(0)=0, returns 0m - CORRECT\n- Antipodal points: a slightly \u003e 1 due to FP, clamped to 1.0, asin(1)=pi/2, returns ~20015km - CORRECT\n- Normal points: 0 \u003c a \u003c 1, no clamping needed, haversine formula works - CORRECT\n\n**Verdict:** All edge cases handled correctly. No issues found.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

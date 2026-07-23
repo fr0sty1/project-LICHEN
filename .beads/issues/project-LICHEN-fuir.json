@@ -2,7 +2,7 @@
   "id": "project-LICHEN-fuir",
   "title": "task",
   "description": "python/src/lichen/schc/reassembly.py:96 - The FragmentReceiver.receive() method computes pos = window_size - 1 - fcn without validating that fcn \u003c window_size (for non-ALL_1 fragments). Out-of-range FCN values cause negative position calculations, leading to tiles being stored at negative indices in the _tiles dict.\n\nFailure scenario: A malicious sender crafts fragments with large FCN values (e.g., fcn=10 with window_size=3). The receiver stores these at negative indices like -8. While the contiguity check prevents corrupted output, the garbage tiles waste memory and could enable DoS by filling the receiver's memory with useless entries.\n\nFix: Before line 97, validate fcn \u003c self.window_size and discard/ignore fragments with invalid FCN values. Example: if frag.fcn \u003e= self.window_size: return ReceiverResult()",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

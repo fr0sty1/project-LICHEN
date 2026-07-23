@@ -2,7 +2,7 @@
   "id": "project-LICHEN-mqy2",
   "title": "task",
   "description": "python/src/lichen/client/lci.py:668-671. Wrong exception type.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

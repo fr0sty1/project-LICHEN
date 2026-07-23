@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.82",
   "title": "[lichen_l2.c:568-649] SECURITY: lichen_peer_add lacks authentication - peer table poisoning",
   "description": "Security finding: lichen_peer_add() has no authentication mechanism - any caller can add arbitrary peer entries.\n\nAttack scenario:\n1. If lichen_peer_add() is called from application layer without authentication\n2. Attacker could inject malicious pubkeys that correspond to attacker-controlled private keys\n3. Attacker's frames would then be accepted as legitimate\n\nCurrent state: Not exploitable because no code calls lichen_peer_add() yet.\n\nFuture risk: When EDHOC or other key exchange is added, the path from network to lichen_peer_add() must be authenticated end-to-end.\n\nImpact: P2 because requires authenticated application-layer access.\n\nMitigation:\n1. Document that lichen_peer_add() MUST only be called after cryptographic verification of the peer's identity\n2. Consider adding a flag/mode to prevent runtime peer additions (factory-provisioned only)\n3. Audit all future callers of lichen_peer_add() for proper authentication",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-z3zp.7",
   "title": "OSCORE protect rejects plaintexts that exactly fill the buffer",
   "description": "The plaintext bounds checks use \u003e= instead of \u003e before copying options or payload. Trigger: a request/response whose code+options exactly fills CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX, or whose code+options+marker+payload exactly fills it. Bad behavior: valid maximum-size inputs are rejected with OSCORE_ERR_BUFFER_TOO_SMALL even though the copy would fit exactly, causing an avoidable interop/MTU failure at the configured boundary. Locations: lichen/subsys/lichen/oscore/oscore.c:1152-1168 and :1476-1492.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-pqui",
   "title": "task",
   "description": "rust/lichen-gateway/src/bin/lichend.rs:385. Slices past end.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

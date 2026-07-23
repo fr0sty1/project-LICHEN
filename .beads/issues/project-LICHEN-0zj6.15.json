@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0zj6.15",
   "title": "ipv6_addr.h struct in6_addr detection heuristic could use a comment",
   "description": "ipv6_addr.h:43-56 detects whether struct in6_addr is already defined via header guard macros. The list of guards (_NETINET_IN_H, _NETINET_IN_H_, etc.) is correct but non-obvious. Add a one-line comment: '/* Common header guards indicating struct in6_addr already exists */'. This prevents a future maintainer from wondering why these specific macros.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

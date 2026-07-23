@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2chn",
   "title": "Silent failure in DaoManager::build_dao with unwrap_or(0)",
   "description": "File: rust/lichen-rpl/src/routing.rs\nLines: 314, 321-322, 331\n\nThe build_dao() method uses unwrap_or(0) for write operations:\n```rust\nlet mut pos = dao.write_to(\u0026mut buf).unwrap_or(0);\n...\nlet n = target.write_to(\u0026mut tmp).unwrap_or(0);\n...\npos += transit.write_to(\u0026mut buf[pos..]).unwrap_or(0);\n```\n\nImpact: If any write fails (which shouldn't happen with correctly sized buffers, but could during future refactoring), the code silently continues:\n1. dao.write_to failing returns pos=0, meaning options overwrite the DAO base\n2. target.write_to failing means no target bytes are copied\n3. transit.write_to failing means no transit info is added\n\nAll these would produce malformed DAOs that would be rejected by receivers or cause routing failures.\n\nWhile the current buffer sizes are correct (64 bytes \u003e 62 needed), this pattern is fragile and hides errors.\n\nFix: Propagate errors or use expect() with clear message:\n```rust\nlet mut pos = dao.write_to(\u0026mut buf).expect(\"DAO base fits in 64-byte buffer\");\n```\nOr return Result\u003cVec\u003cu8\u003e, RplError\u003e from build_dao().",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

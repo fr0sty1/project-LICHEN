@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.147",
   "title": "Serial connection uses blocking I/O with executor, can starve event loop",
   "description": "**Location:** python/src/lichen/interface/serial.py:105-131\n\n**Risk:** The `recv()` method uses `run_in_executor()` for blocking serial reads. If the serial port hangs (device disconnected, hardware frozen), the executor thread is blocked indefinitely, potentially exhausting the thread pool.\n\n**Trigger:** Serial device disconnects or freezes mid-read.\n\n**Bad behavior:** The `_read()` function blocks forever in the executor. After enough hung reads, the default executor (sized to 5*num_CPUs) becomes exhausted and other executor tasks hang.\n\n**Mitigation:** The serial port has `timeout=0.1` (line 63), but this only applies to read() calls, not to the initial read(1) on line 113.\n\n**Pattern:** Consider pyserial-asyncio or a watchdog that cancels hung reads.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

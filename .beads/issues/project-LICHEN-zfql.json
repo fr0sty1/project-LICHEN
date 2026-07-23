@@ -2,7 +2,7 @@
   "id": "project-LICHEN-zfql",
   "title": "announce: send_now increments seq_num even when scheduler not running",
   "description": "File: python/src/lichen/announce/scheduler.py:283-298\n\nThe send_now() method has a logic issue:\n\n```python\nasync def send_now(self) -\u003e bool:\n    if not self._running:\n        logger.warning('cannot send announce: scheduler not running')\n        return False\n\n    announce = self.build_announce()  # \u003c-- This increments seq_num!\n    data = announce.to_bytes()\n    return await self.transmitter.transmit_announce(data)\n```\n\nWhile send_now() correctly returns False when not running, the check happens BEFORE build_announce(). However, there is no race condition in the current code.\n\nBUT: If a caller ignores the return value and calls send_now() repeatedly when scheduler is stopped, the pattern would:\n1. Return False (correct)\n2. NOT increment seq_num (correct, build_announce not reached)\n\nActually looking at this more carefully - the check IS before build_announce, so this is fine. Let me reconsider... \n\nThe actual issue is different: send_now() and the _loop() both call build_announce() which increments seq_num. If called concurrently:\n- send_now() builds announce with seq=N\n- _loop() builds announce with seq=N+1 \n- Both transmitted, but in opposite order due to network timing\n\nThis could cause out-of-order seq_nums at receivers, but since receivers use seq_gt() for comparison, this is handled correctly. NOT a bug.\n\nCANCELLING THIS BEAD - analysis was incorrect.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

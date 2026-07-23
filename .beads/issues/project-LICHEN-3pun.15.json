@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-3pun.15",
   "title": "Cross-file: fail_late_init cleanup races with in-flight RX callback",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

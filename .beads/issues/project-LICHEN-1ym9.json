@@ -3,7 +3,7 @@
   "title": "Implement SLIP transport binding for LCI",
   "description": "Implement Serial/USB transport per LCI spec 17.3.1: SLIP framing (RFC 1055) over UART/USB-CDC, IPv6 packets in SLIP frames, link-local addressing, MTU handling. Should work with standard SLIP tools (slattach, etc). Test with native_sim serial PTY.",
   "acceptance_criteria": "IPv6/CoAP packets flow over SLIP; ping6 and coap-client work against native_sim node",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "grinder",

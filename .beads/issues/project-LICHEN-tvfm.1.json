@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.1",
   "title": "[lichen_l2.c:339-378] peer_try_all_pubkeys O(n) search timing side-channel",
   "description": "The peer_try_all_pubkeys() function iterates through all registered peers trying signature verification until one succeeds. This creates a timing side-channel: an attacker can distinguish between 'no peers registered' (fast return), 'peer 1 matched' (1 verify attempt), 'peer N matched' (N verify attempts). While the comment acknowledges the O(n) complexity (line 315), it doesn't address that this leaks information about peer table structure and which peer authenticated a given frame. For mesh networks with sensitive peer relationships, this could be exploited. Consider constant-time peer enumeration or rate limiting responses.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

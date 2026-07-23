@@ -4,7 +4,7 @@
   "description": "Review of 2auf.35 found unchanged Rust KISS code still emits four-byte MICs for unsigned frames and both Zephyr L2 implementations reject newly valid 5-8 byte unsigned frames. Audit and minimally adapt all direct frame callers, including Puck beacon emission if required, so the wire migration can land without knowingly breaking workspace or firmware behavior.",
   "acceptance_criteria": "Rust KISS tests pass with zero-MIC unsigned frames; both Zephyr L2 paths admit the new fixed-header minimum; Puck and direct callers emit valid migrated frames; focused workspace/firmware tests and three reviews pass.",
   "notes": "Caller migration implemented: Rust KISS emits zero-MIC unsigned frames and enforces 255-byte LoRa ingress/egress; both Zephyr L2 copies use authoritative 5-byte fixed header; Puck emits 5-byte unsigned beacon with LENGTH=4; observational L2 beacon exception migrated; retained MIC sizing helpers/constants and stale CRC/AES docs removed; three Rust firmware queues reject instead of truncating \u003e255 bytes; C KISS raw port rejects \u003e255 RX/TX while AX.25 retains 1024; vector/docs selector terminology updated. Gates passed: Rust lichen-link 34 unit + 2 shared vectors + 1 doc; lichen-kiss all-features 58 unit + 5 doc; clippy -D warnings; Python focused 224 passed/10 environment skips; fail-closed Python-Rust interop 2/2; C frame and Schnorr CTest 1/1 each; Ruff; deterministic vector regeneration; git diff --check; three final independent reviews no findings. Remaining required firmware builds are blocked by expired AWS session requiring interactive 'aws login'; local Zephyr and Docker unavailable.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

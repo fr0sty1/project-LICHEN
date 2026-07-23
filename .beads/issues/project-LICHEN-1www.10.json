@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.10",
   "title": "secure_zero word-aligned path assumes pointer alignment",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lichen_util.h:40-51\n\nThe word-aligned write path casts volatile uint8_t* to volatile unsigned long* and writes. This assumes the pointer becomes aligned after the byte-by-byte prefix loop. The alignment check (uintptr_t)p \u0026 (sizeof(unsigned long) - 1) is correct, but the volatile cast sequence may cause issues:\n\n1. The loop increments p (volatile uint8_t*) but then casts to (volatile unsigned long*)\n2. If sizeof(unsigned long) differs between compile time and runtime (unlikely but possible with some toolchains), alignment could be wrong\n\nWhat goes wrong: On architectures that require strict alignment (ARM Cortex-M without unaligned access), misaligned word writes would cause a HardFault. The alignment loop should prevent this, but the code path is subtle.\n\nRecommendation: Add a compile-time assert that sizeof(unsigned long) is 4 or 8, matching common MCU word sizes.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

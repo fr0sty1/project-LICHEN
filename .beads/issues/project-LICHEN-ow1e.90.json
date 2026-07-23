@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.90",
   "title": "good: core/tx_queue incremental statistics tracking",
   "description": "In tx_queue.rs:156-207, statistics (bytes_pending, by_priority) are maintained incrementally on push/pop rather than computed on demand. O(1) stats lookup instead of O(n) iteration over the heap.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

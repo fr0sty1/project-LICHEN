@@ -2,7 +2,7 @@
   "id": "project-LICHEN-fpmq",
   "title": "task",
   "description": "tun.rs:123-148 - The send() method calls libc::write() once and returns Ok(()) regardless of how many bytes were actually written. If the write returns fewer bytes than requested (common on slow/congested devices), data is silently truncated. Failure scenario: Under load, TUN write returns partial write of N \u003c buf.len() bytes, but send() returns success. The truncated packet is injected into the kernel, causing IPv6 checksum failures or protocol errors. Fix: Loop until all bytes are written or return error.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

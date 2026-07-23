@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yw7i.9",
   "title": "Unused label main_loop in main.c",
   "description": "main.c:165 defines 'main_loop:' label but it's never used as a jump target. The LED setup uses 'led_off:' correctly, but main_loop appears to be vestigial. Remove the unused label.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

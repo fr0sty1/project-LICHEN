@@ -3,7 +3,7 @@
   "title": "Align Python Meshtastic portnum oracle with Position support",
   "description": "Why this exists: after project-LICHEN-zte2.7 added Zephyr support for Meshtastic POSITION_APP, the Python interface oracle still expected portnum 3 in the runtime unsupported set. What needs to be done: update the oracle and run the Meshtastic interface test so full Python suites reflect the current no-hardware adapter behavior.",
   "notes": "Implemented in python/tests/interface/meshtastic/test_zephyr_unsupported_portnums.py: added POSITION_APP_PORTNUM=3, split catalog-supported (TEXT_MESSAGE_APP, POSITION_APP) from runtime-supported (POSITION_APP, ADMIN_APP), and assert the pinned proto values explicitly. Evidence: cd python \u0026\u0026 uv run pytest tests/interface/meshtastic/test_zephyr_unsupported_portnums.py -q =\u003e 1 passed in 0.02s. Broader affected slice: cd python \u0026\u0026 uv run pytest tests/tui/test_native.py tests/dashboard/test_dashboard.py tests/client/test_ip_coap.py tests/coap/test_transport.py tests/coap/test_udp_server.py tests/sim/test_api.py tests/sim/test_server.py tests/test_packaging.py tests/interface/meshtastic/test_zephyr_unsupported_portnums.py -q =\u003e 176 passed, 1 StarletteDeprecationWarning in 10.37s.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

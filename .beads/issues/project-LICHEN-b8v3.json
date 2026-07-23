@@ -2,7 +2,7 @@
   "id": "project-LICHEN-b8v3",
   "title": "Parity: coap (Rust/Zephyr/Python)",
   "description": "Policy: three-impl parity. Module: coap. Rust: complete (1732 LoC). Zephyr: partial (601 LoC). Python: complete (1305 LoC). Gap: Zephyr CoAP is thin wrapper around native Zephyr CoAP, lacking standalone block transfer and message builder that Rust/Python have.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.37",
   "title": "[lichen_util.h:62-80] secure_zero word-aligned path may not work on all platforms",
   "description": "Function: secure_zero. Portability: The word-aligned optimization (lines 62-80) assumes unsigned long is the optimal word size and that reading back via volatile uint8_t* after memcpy is sufficient. On some architectures with weak memory ordering, the read-back may not guarantee the memcpy completed. The compiler_barrier() at line 86 only affects compiler reordering, not CPU reordering. For ARM Cortex-M (single-core, in-order), this is fine. For multi-core ARMv8 or other architectures, memory barriers might be needed. Priority 3 - Zephyr targets are primarily single-core Cortex-M.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "issue",
   "assignee": "Mark Atwood",

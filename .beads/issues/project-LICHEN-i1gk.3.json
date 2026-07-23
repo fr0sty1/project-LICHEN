@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.3",
   "title": "[lichen_l2.c:1586] src_eui64 initialization may hide authentication bugs",
   "description": "src_eui64 is defensively initialized to all zeros at line 1586. However, on success of peer_try_all_pubkeys, src_eui64 should be filled by lichen_link_rx(). If there's a bug where src_eui64 is NOT filled on success, the defensive initialization means we'll log/use a zero address without detecting the bug. Consider removing the initialization and adding an explicit check that src_eui64 is not all-zeros after successful authentication, or at least a debug assertion.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

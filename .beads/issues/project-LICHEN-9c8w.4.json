@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9c8w.4",
   "title": "Remove severity words from log messages",
   "description": "Remove redundant severity indicators from message text.\n\nCurrent:\n  LOG_ERR(\"CRITICAL: lora_recv returned %d \u003e buffer\");\n  LOG_ERR(\"FATAL: Cannot continue without LoRa\");\n  LOG_ERR(\"SECURITY: lichen_l2_reinit_after_abort called while...\");\n\nTarget:\n  LOG_ERR(\"lora_l2: recv overflow (%d \u003e %d)\", ret, max);\n  LOG_ERR(\"main: LoRa init failed, entering error state\");\n  k_panic() for true SECURITY violations, or LOG_ERR without prefix\n\nNote: SECURITY: comments in code are fine, just not in log output.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

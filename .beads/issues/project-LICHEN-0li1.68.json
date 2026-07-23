@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.68",
   "title": "[cross-file] lichen_l2_enable disable path clears peer_table but not during stop-only",
   "description": "Interaction: lichen_l2.c:lichen_l2_enable \u003c-\u003e lora_l2.c:lichen_lora_l2_stop\n\nBug: When lichen_l2_enable(false) is called:\n1. Line 1101: lichen_lora_l2_stop() is called\n2. If stop returns -ECANCELED (line 1108), deinit is called\n3. Lines 1172-1176: peer_table is cleared with secure_zero\n\nBut if lichen_lora_l2_stop() is called directly (not via enable), peer_table is NOT cleared. The lora_l2 module has no knowledge of peer_table (it's in lichen_l2.c).\n\nThis creates inconsistency:\n- After enable(false): peer_table cleared, replay_table cleared\n- After stop() alone: peer_table preserved, replay_table preserved\n\nIf application calls stop() + start() without going through enable(), peer_table retains stale entries. This might be intentional (avoid re-EDHOC on stop/start), but it's asymmetric with the enable/disable path.\n\nThe real issue: main.c standalone mode (lines 127-128) calls lichen_lora_l2_stop() and lichen_lora_l2_deinit() directly. These don't clear peer_table. If the application tries to restart later, peer_table has stale entries.\n\nActually, in standalone mode there's no lichen_l2 layer at all (CONFIG_LICHEN_L2 not defined), so peer_table doesn't exist. False positive for that case.\n\nBut in CONFIG_LICHEN_L2 mode, if application calls stop/deinit/init/start without going through enable/disable, peer_table persists incorrectly.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

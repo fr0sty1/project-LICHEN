@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.93",
   "title": "[lichen_l2.c:507-543] SECURITY: Constant-time iteration leaks via lichen_link_rx timing",
   "description": "Security finding: The constant-time peer iteration (lines 507-543) is undermined by lichen_link_rx() itself.\n\nCode analysis:\n- Lines 494-500 document intent: 'Always iterate through ALL peers even after finding a match'\n- But lichen_link_rx() (lines 517-528) performs crypto operations with variable timing:\n  - SCHC decompression (data-dependent)\n  - AES-CCM verification (fixed time, good)\n  - Schnorr-48 verify (depends on pubkey/signature values)\n\nAttack scenario:\n1. Attacker sends frames and measures response time\n2. Even with all peers checked, lichen_link_rx() timing varies\n3. The FIRST successful verification adds SCHC decompression time\n4. Subsequent iterations call lichen_link_rx() with wrong pubkeys (faster fail)\n5. Total time varies based on WHICH peer index matched\n\nNote: The existing issue project-LICHEN-i1gk.61 mentions weak constant-time claim but doesn't detail the lichen_link_rx() timing leak.\n\nImpact: P2 - requires precise timing measurement, but could reveal peer ordering.\n\nMitigation:\n1. Parse frame ONCE before signature loop (already decompressed doesn't help)\n2. Use constant-time comparison in Schnorr-48 verify\n3. Or accept timing leak as low-risk for constrained devices",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

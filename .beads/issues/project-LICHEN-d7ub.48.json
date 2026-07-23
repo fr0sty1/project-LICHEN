@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.48",
   "title": "lora_l2.c:920 k_mutex_init return value logged but not acted upon",
   "description": "Contract violation: lichen_lora_l2_deinit() - Lines 920-926 and 931-935 log errors from k_mutex_init() but continue without returning error. If mutex init fails, subsequent operations will use corrupted mutex. WHY: Module left in unstable state. HOW to fix: Return -EIO after k_mutex_init failure, or document that best-effort recovery proceeds despite mutex init failure.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

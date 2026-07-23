@@ -4,7 +4,7 @@
   "description": "During Renode nRF52840 validation (project-LICHEN-r7h4.5), LoRa TX to lichen-sim was confirmed working (transmissions recorded with correct airtime), but firmware never receives frames. Root cause: SX1262.cs PollRx() is only invoked when the firmware issues the SetRx (0x82) opcode. The loramac-node/sx126x driver issues SetRx once to enter continuous RX, then waits for a DIO1 RxDone interrupt. SX1262.cs never polls lichen-sim again, so any packet arriving after the single SetRx poll is never delivered and no RxDone IRQ is raised. Fix: while the radio is in RX mode, poll the sim periodically (Renode timer / IHasOwnLife background loop) and raise the RxDone IRQ (DIO1) when a packet arrives, then stop on ClearIrqStatus/SetStandby. Must handle the sim time-model interaction (see sibling bead).",
   "acceptance_criteria": "2-node Renode mesh in REALTIME sim mode shows receptions\u003e0 and the receiving firmware logs/processes an inbound frame; RX validated with 3 codereview passes.",
   "notes": "Superseded by push-based RX design in r7h4.7. The polling approach (continuous RX poll loop in SX1262.cs) is no longer needed - interrupt-driven push from sim handles RX correctly and matches real hardware behavior. Close this bead once r7h4.7 lands.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

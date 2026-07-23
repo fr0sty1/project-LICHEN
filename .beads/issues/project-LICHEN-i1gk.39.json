@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.39",
   "title": "[lichen_l2.c:947,1245] get_eui64 pointer used without mutex protection after callback-modifiable state",
   "description": "Cross-file analysis: lichen_l2_enable() at line 947 and lichen_l2_iface_init() at line 1245 both call lichen_lora_l2_get_eui64() to get a pointer to internal lora_data.eui64, then use that pointer for lichen_link_init(). However, lora_l2.c documents at line 929-933 that 'caller must ensure no concurrent deinit() while using the pointer'. In lichen_l2_enable(), the code holds tx_mutex+rx_mutex but NOT lora_mutex, so a concurrent lichen_lora_l2_deinit() could reinitialize lora_data while the pointer is in use. The deinit would transition state to DEINITING (not RUNNING), so lichen_lora_l2_get_eui64() would still return the pointer. The fix is either to copy the eui64 immediately before releasing any locks, or to hold lora_mutex during the use. In practice, the timing window is narrow since deinit requires stop first, but the contract is violated.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

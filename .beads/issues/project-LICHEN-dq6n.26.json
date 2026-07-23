@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dq6n.26",
   "title": "[Kconfig:36-40] RX thread priority has no range constraint",
   "description": "Round 4: CONFIG_LICHEN_LORA_L2_RX_PRIORITY has no 'range' constraint in Kconfig. A user could set priority to any int value (e.g., -1 or 256). Zephyr thread priorities have valid ranges (typically 0 to CONFIG_NUM_PREEMPT_PRIORITIES-1 for preemptible threads). Setting an invalid priority passed to k_thread_create() at lora_l2.c:388 could cause undefined scheduler behavior - thread may not run, scheduler may corrupt internal state, or kernel panic on debug builds.\n\nFix: Add 'range 0 \u003cmax\u003e' to Kconfig where max depends on scheduler config. Common safe max is 14 or 15. Example:\n  range 0 14",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

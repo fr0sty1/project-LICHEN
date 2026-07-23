@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.148",
   "title": "lichen-node DispatchError::PayloadTooShort should use lichen_core::error::TooShort",
   "description": "lichen-node/src/port_dispatch.rs defines:\n  pub enum DispatchError {\n      UnknownPort(u16),\n      PayloadTooShort,  // unit variant\n      ReservedPort,\n  }\n\nPayloadTooShort is semantically identical to lichen_core::error::TooShort but doesn't wrap it or carry the expected/actual size information.\n\nCompare to lichen-coap which wraps the shared type:\n  pub enum CoapError {\n      TooShort(TooShort),  // wraps with diagnostic info\n      ...\n  }\n\nWhat goes wrong: When dispatch fails due to payload being too short, callers cannot determine how many bytes were expected vs received. Error handling code cannot use a unified pattern across DispatchError and other protocol errors.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

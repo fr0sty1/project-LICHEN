@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.58",
   "title": "[lora_l2.c:676-678 vs lichen_l2.c:1003-1008] deinit acquires tx_buf_mutex but enable() rollback doesn't",
   "description": "Cross-file analysis: lora_l2.c:deinit() at lines 676-678 acquires tx_buf_mutex before cleanup to ensure no TX is in-flight. However, lichen_l2_enable()'s rollback path at lines 1003-1008 calls lichen_link_cleanup() after a failed start() without acquiring tx_buf_mutex. This is safe ONLY because start() failed, meaning no TX thread is running and tx cannot proceed (state != RUNNING check in lora_l2_tx). But there's a race window: between start() returning failure and the rollback cleanup, another thread could call lichen_l2_send() which checks lichen_lora_l2_is_running() at line 786. If start() transiently set RUNNING then failed during radio config, is_running() could return true briefly. Examining start(): it sets RUNNING at line 534 BEFORE lora_config at 527... wait, no, line 534 is AFTER 527. So if lora_config fails, state is still STOPPED. Safe. Close as not-a-bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "not-a-bug",
   "assignee": "Mark Atwood",

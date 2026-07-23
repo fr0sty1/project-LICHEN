@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.18",
   "title": "[lora_l2.c:1038] lichen_lora_l2_get_eui64 returns internal pointer without mutex",
   "description": "Contract: lichen_lora_l2_get_eui64 returns alias to internal eui64 array. Thread safety contract documented in header (lines 197-200).\nViolation: The function reads lora_get_state() atomically but returns a pointer to lora_data.eui64 without holding lora_mutex. If deinit() runs concurrently and reinitializes lora_data, the caller could read partial/stale data.\nImpact: Medium - The documented contract requires caller to 'copy immediately if persistent access is needed' and 'ensure no concurrent deinit', but this is easy to violate. Callers like lichen_l2_enable() and lichen_l2_iface_init() do copy immediately, but the API is error-prone.\nMitigation: Consider changing to lichen_lora_l2_copy_eui64(uint8_t *out, size_t len) which copies under mutex and is inherently safe.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

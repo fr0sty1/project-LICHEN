@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ejlu",
   "title": "Rust: OSCORE Context Debug impl redacts secrets but may still leak timing",
   "description": "In rust/lichen-oscore/src/lib.rs:165-179, a manual Debug impl was added that redacts secrets:\n\n    impl core::fmt::Debug for Context {\n        fn fmt(\u0026self, f: \u0026mut core::fmt::Formatter\u003c'_\u003e) -\u003e core::fmt::Result {\n            f.debug_struct('Context')\n                .field('master_secret', \u0026'[REDACTED]')\n                // ...\n\nWhile the Debug output is safe, the Context struct still derives Clone and its fields are accessible. If Debug is used in error messages or logs at different code paths based on field values, timing side channels could still exist.\n\nLocation: rust/lichen-oscore/src/lib.rs:165-179\nRisk: Low - primarily a defense-in-depth concern.\nFix: Consider making secret fields private and only accessible through methods that take appropriate care.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

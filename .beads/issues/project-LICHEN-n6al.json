@@ -2,7 +2,7 @@
   "id": "project-LICHEN-n6al",
   "title": "task",
   "description": "rust/lichen-rpl/src/dodag.rs:177 - The condition 'version_is_newer(dio.version, self.version) || !self.is_joined()' allows a node that lost all parents (became Unjoined) to accept a DIO with an older DODAG version. This violates RFC 6550 Section 8.2.2.6 which states 'A node MUST NOT rejoin an older version of a DODAG'.\n\nFailure scenario:\n1. Node joins DODAG version 5\n2. All parents fail, node becomes Unjoined (but version=5 is retained)\n3. Stale DIO arrives with version=3\n4. version_is_newer(3,5)=false, but !self.is_joined()=true\n5. Node adopts version 3, regressing to stale network state\n\nFix: Remove '|| !self.is_joined()' from the condition. A fresh node with version=0 will still join because version_is_newer(X,0)=true for any X\u003e0 in the linear region, or the versions will be equal and the node will proceed to add the parent normally.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

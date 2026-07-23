@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.91",
   "title": "[ipv6_addr.c:99] pubkey_to_iid uses first 64 bits without MAC formatting",
   "description": "Gap found: IID derivation output format not verified.\n\nWhy this was missed: Focus was on security of SHA-256 truncation, not format.\n\nThe actual bug: Line 99 copies first 8 bytes of SHA-256 hash to IID:\n  memcpy(iid, hash, 8);\n\nThen line 115 clears the U/L bit:\n  iid[0] \u0026= ~UL_BIT;\n\nThis produces a valid IID, but the comment about 'RFC 7343 (ORCHID) approach' (line 98) may not be accurate. RFC 7343 ORCHIDs use a specific format with hash-prefix and hash-index bits.\n\nThe actual derivation is simpler:\n1. SHA-256(pubkey)\n2. Take first 8 bytes\n3. Clear U/L bit (locally administered)\n\nThis is valid for LICHEN but calling it 'ORCHID approach' is misleading. ORCHID has more structure.\n\nThe derivation IS safe for IID generation - just the reference is imprecise.\n\nPriority 4 - documentation accuracy.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

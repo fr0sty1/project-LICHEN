@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.20",
   "title": "[lichen_l2.c:547] last_seen updated even if signature verification fails on second+ match",
   "description": "In peer_try_all_pubkeys constant-time iteration, when found_idx \u003e= 0 (line 545), last_seen is updated at line 547. But the constant-time loop continues and may overwrite ctx state. If a SECOND peer's pubkey also verifies (which shouldn't happen normally but could with key reuse or bugs), the code at line 524-528 only updates found_idx if found_idx \u003c 0 (first match). So last_seen is updated for the first match only, but the overwrite of found_idx is prevented. This is correct but subtle - the code handles multi-match correctly by using first match, but a code reader might think last_seen could be updated multiple times.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

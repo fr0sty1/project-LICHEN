@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.7",
   "title": "rx_thread re-enters lora_recv immediately on non-EAGAIN errors",
   "description": "In lora_l2.c rx_thread() (lines 152-158), when lora_recv() returns a negative value other than -EAGAIN, the error is logged but the loop immediately retries without any delay.\n\nTrigger: Persistent LoRa driver error (e.g., -EIO from misconfigured SPI, hardware failure, or driver bug).\n\nBad behavior: Tight retry loop floods logs with 'LoRa RX error: -X' messages at maximum rate, starving other threads (priority 7 is relatively high), and potentially masking the root cause in the log buffer. On battery-powered devices, this also drains power rapidly.\n\nConsider: exponential backoff on repeated non-EAGAIN errors, or stopping after N consecutive failures.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lora_l2.c lines 152-158",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-i2b",
   "title": "Inconsistent Protocol vs ABC usage for interfaces",
   "description": "**Code Style / Contributor Guidance**\n\nThe codebase uses two different patterns for interface definitions:\n\n1. `typing.Protocol` with @runtime_checkable (base.py:10-53):\n```python\n@runtime_checkable\nclass Radio(Protocol):\n    async def transmit(self, payload: bytes) -\u003e bool: ...\n```\n\n2. `abc.ABC` with @abstractmethod (chaos.py:19-56):\n```python\nclass ChaosRule(ABC):\n    @abstractmethod\n    def matches(self, tx: Transmission, rx_node_id: str) -\u003e bool: ...\n```\n\nBoth are valid but serve different purposes:\n- Protocol: structural subtyping ('duck typing'), no inheritance required\n- ABC: nominal subtyping, must explicitly inherit\n\nFor contributor clarity, the project should either:\n1. Document when to use each pattern in CONTRIBUTING.md\n2. Standardize on one pattern where possible\n3. Add comments explaining the choice at each usage\n\nRadio uses Protocol because SimRadio doesn't need to inherit it.\nChaosRule uses ABC because all rules must inherit from it.\n\nThese choices are reasonable but should be documented.\n\nFiles: base.py, chaos.py, CONTRIBUTING.md",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "assignee": "Mark Frost",

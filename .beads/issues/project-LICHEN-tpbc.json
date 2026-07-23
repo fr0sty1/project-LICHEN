@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tpbc",
   "title": "Compliance: rust gateway.rs dispatch byte",
   "description": "Policy: 02-physical-link.md §4.1. File: rust/lichen-gateway/src/gateway.rs. Status: COMPLIANT. Line 35 checks classify_l2_payload != L2PayloadKind::Schc before SCHC decompression.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

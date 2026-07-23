@@ -2,7 +2,7 @@
   "id": "project-LICHEN-725z.12",
   "title": "lichen_l2.h has transitive dependency on lora_l2.h for MTU",
   "description": "lichen_l2.h:29,48 — Header includes lora_l2.h solely to define LICHEN_L2_MTU as LICHEN_LORA_MTU. Consumers pull in lora_l2.h types even if only needing L2 interface types.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

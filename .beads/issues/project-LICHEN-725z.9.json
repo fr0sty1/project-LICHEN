@@ -2,7 +2,7 @@
   "id": "project-LICHEN-725z.9",
   "title": "lichen_l2_enable re-init may use stale key material",
   "description": "lichen_l2.c:257-264 — If disable failed partway through cleanup, link_ctx may contain stale key material overwritten without secure zeroing. Init path should defensive-zero struct first.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

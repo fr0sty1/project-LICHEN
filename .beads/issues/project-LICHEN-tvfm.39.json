@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.39",
   "title": "[lora_l2.c:306] lora_l2_init callback not cleared, may be stale",
   "description": "Function: lichen_lora_l2_init. Initialization: Line 306 sets rx_callback = NULL, but if init is called after a stop() without deinit(), the callback from a previous session might linger until this NULL assignment. Actually, looking more carefully: init sets it to NULL (line 306), and set_rx_callback() is typically called after init, so this is correct. The check at line 298-300 makes init idempotent, so on double-init the callback isn't touched. This could preserve a stale callback across restart. But init() is only called once after deinit(), so this is fine. Priority 3 - verified correct.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "issue",
   "assignee": "Mark Atwood",

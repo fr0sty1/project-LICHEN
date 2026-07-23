@@ -3,7 +3,7 @@
   "title": "Make native_sim L2 packet-path proof the firmware gate",
   "description": "Why this exists: before hardware bring-up, the active Zephyr L2 path must prove actual packet movement, not just compile and boot. What needs to be done: complete project-LICHEN-kxbj or equivalent so IPv6/UDP/CoAP traverses LICHEN_L2 TX, LoRa loopback, LICHEN link RX, SCHC decompression, and Zephyr networking ingress. Acceptance criteria: automated Linux/native_sim test exists; test fails if raw bypass paths are used; EC2 builder instructions are documented if local host cannot run native_sim; three independent codereview subagents run after code changes and findings are recorded.",
   "notes": "Completed via project-LICHEN-kxbj. Native_sim gate now runs with CONFIG_LICHEN_L2=y and CONFIG_LORA_LOOPBACK=y, rejects dummy L2, provisions deterministic test signing/link keys, sends a checksum-correct IPv6/ICMPv6 packet through the LICHEN_L2 send callback, loops through the LoRa loopback driver, verifies LICHEN link RX/SCHC decompression and net_recv_data injection, and compares exact reinjected IPv6 bytes. EC2 verification on Linux builder with Zephyr EBS cache: west build/run passed and west twister -T lichen/tests/ping_l2 -p native_sim --inline-logs --verbose passed 1/1. Three independent codereview passes after implementation found issues that were fixed: L2 send byte-count return, exact packet correlation, loopback queue drain, test hook mutex, native_sim size_t assert, loopback MTU, and documentation scope. Residual limitation is app-level UDP/CoAP delivery after IP processing; follow-up project-LICHEN-ev5b.12 filed.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "Mark Atwood",

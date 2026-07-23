@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hhub",
   "title": "Gateway nRF52840 build lacks zephyr,uart-pipe chosen node",
   "description": "After fixing the LICHEN Zephyr module bridge subdirectory path, west build -p always -b nrf52840dk/nrf52840 lichen/apps/gateway -d build_gateway_i81y20_path_check passes CMake configure and then fails compiling zephyr/drivers/serial/uart_pipe.c because DT_CHOSEN(zephyr_uart_pipe) has no device. Decide whether the gateway board overlay should define zephyr,uart-pipe or whether CONFIG_UART_PIPE should be disabled/conditioned for this board.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

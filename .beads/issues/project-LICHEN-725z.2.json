@@ -2,7 +2,7 @@
   "id": "project-LICHEN-725z.2",
   "title": "main.c prints Ready message after init failure",
   "description": "main.c:138-146 — When LoRa init/start/EUI-64 fails, code jumps to led_off but still logs 'Ready - LICHEN IPv6/LoRa mesh' at line 145, falsely indicating operational state.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

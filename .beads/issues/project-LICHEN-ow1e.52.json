@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.52",
   "title": "Public functions that can panic lack ## Panics documentation",
   "description": "Several public functions contain .unwrap() or .expect() calls that could panic but lack `## Panics` documentation in their doc comments:\n\n**lichen-link/src/schnorr.rs:**\n- `derive_keypair` (line 25): .unwrap() on try_into for hash slice\n- `sign` (line 54): .unwrap() on try_into for e_hash slice\n- `verify` (lines 85-86): .unwrap() on try_into for sig slices\n\n**lichen-link/src/identity.rs:**\n- `iid_from_pubkey_bytes` (line 19): .unwrap() on try_into\n\n**lichen-link/src/frame.rs:**\n- `from_bytes` (lines 267-315): multiple .expect() calls in state machine transitions\n\nWhile these are documented as SAFETY comments (slice bounds are provably correct), the public API documentation should note that malformed input can trigger internal expects in the state machine transitions.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

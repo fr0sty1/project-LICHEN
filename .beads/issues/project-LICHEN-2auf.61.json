@@ -5,7 +5,7 @@
   "design": "Recover as a separate Python-only slice after comparing checkpoint intent with current main. Reject whole-file transplant because link_layer.py also contains the atomic wire migration.",
   "acceptance_criteria": "Each hunk has explicit ownership and behavior rationale; entropy failure, queue-full sequence preservation, and CAD-busy queue preservation have independent tests; no wire-format changes are duplicated; focused Python tests, Ruff, mypy, and three independent reviews pass.",
   "notes": "Recovered only three non-wire Python link hardening hunks: secrets-backed epoch generation with failure propagation, sequence advancement after successful queue insertion, and CAD-before-pop queue preservation. Added independent entropy, queue-full counter, and full same-priority CAD-busy tests. Gates: tests/link 147 passed/4 skipped, focused 33 passed, Ruff changed files, strict mypy changed source, diff check, three hash-bound reviews. Full suite is blocked by pre-existing tests/test_hypothesis.py import of nonexistent InvalidFrame; project-wide mypy has unrelated baseline errors. Radio failure queue loss tracked separately as project-LICHEN-050u.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

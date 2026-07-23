@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.5",
   "title": "lichen_l2_enable(false): cleanup destroys link_ctx while lora_rx_callback may still invoke lichen_l2_input",
   "description": "In lichen_l2.c:lichen_l2_enable(false) lines 237-242, the code locks tx_mutex and rx_mutex, then calls lichen_link_cleanup(\u0026link_ctx). However, lichen_lora_l2_stop() was called at line 217 BEFORE acquiring these mutexes. The RX thread (lora_l2.c) may still be running and invoke lora_rx_callback() between stop() and mutex acquisition. lora_rx_callback() calls lichen_l2_input() which reads link_ctx under rx_mutex. Race window: stop() sets running=0, RX thread exits recv loop but hasn't completed callback yet, cleanup wipes link_ctx while RX callback is mid-flight. Fix: acquire mutexes before calling lichen_lora_l2_stop(), or join the RX thread before cleanup.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

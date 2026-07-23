@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.14",
   "title": "net_pkt_rx_alloc_with_buffer timeout hardcoded",
   "description": "lichen_l2.c:606-608: net_pkt_rx_alloc_with_buffer uses K_MSEC(10) hardcoded timeout with comment 'Use short timeout to allow memory reclaim under pressure.'\n\nWhat goes wrong: 10ms is arbitrary. Under actual memory pressure, 10ms may be too short (allocation fails when a slightly longer wait would succeed) or too long (stalls RX processing for real-time requirements). There's no Kconfig option to tune this.\n\nContributors may copy this pattern without understanding the tradeoff.\n\nFix: Consider extracting to a CONFIG_ option or at least a named constant with documented rationale.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-c6d8",
   "title": "Compliance: firmware/bridge-stm32wl/src/iv.rs polling",
   "description": "Policy: No-polling. Status: CHECK NEEDED. Has RFBUSY polling. Verify if SUBGHZ_IRQn interrupt is used for RX, or if polling (iu1q).",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

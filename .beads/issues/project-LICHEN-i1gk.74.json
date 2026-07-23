@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.74",
   "title": "[lichen_l2.c:958-969] enable path re-init clears replay_table but peers may have valid replay state",
   "description": "Completeness: State consistency category.\n\nIn lichen_l2_enable() enable path (line 958-969), when link_ctx is re-initialized:\n1. Line 957: secure_zero(\u0026link_ctx, ...) clears key material\n2. Line 958: lichen_link_init() re-initializes link context\n3. Line 969: lichen_replay_table_init() clears entire replay table\n\nHowever, the peer_table is NOT cleared in the enable path (only in disable path at 1071-1075).\n\nThis creates a state inconsistency: after disable/enable cycle:\n- peer_table still has peer entries (unless cleared by disable)\n- replay_table is cleared\n- Peers that were mid-communication will fail replay checks until their sequence numbers exceed the cleared replay window\n\nThis is arguably correct (replay protection resets = secure), but the asymmetry between peer_table preservation and replay_table clearing may be surprising.\n\nDocument this behavior or consider clearing both together for consistency.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "feature",
   "assignee": "Mark Atwood",

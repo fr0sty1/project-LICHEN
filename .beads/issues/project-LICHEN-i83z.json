@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i83z",
   "title": "task",
   "description": "rust/lichen-link/src/identity.rs:107-110 - The test identity_from_seed_consistent() calls Identity::from_seed(seed) twice, but Seed does not implement Copy (due to ZeroizeOnDrop), so the second call uses a moved value.\n\nFailure scenario: cargo test -p lichen-link --features schnorr,std fails to compile with E0382 'use of moved value'.\n\nFix: Clone the seed for the second call: Identity::from_seed(seed.clone())",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

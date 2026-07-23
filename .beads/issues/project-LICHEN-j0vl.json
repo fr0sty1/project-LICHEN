@@ -3,7 +3,7 @@
   "title": "Initialize SLIP oversized test buffer",
   "description": "Boot failure discovered by project-LICHEN-m5m1.5. slip_transport firmware fails -Werror=maybe-uninitialized because its oversized payload array is passed to slip_transport_send without initialization. Initialize the test vector deterministically and retain the oversized rejection oracle.",
   "acceptance_criteria": "1. Oversized payload has deterministic independent contents. 2. Rejection expectation remains unchanged. 3. Native64 SLIP firmware boots and all ztests pass. 4. Three independent review passes complete.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

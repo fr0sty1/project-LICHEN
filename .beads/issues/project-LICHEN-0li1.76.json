@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.76",
   "title": "[cross-file] standalone mode doesn't call lichen_l2_reinit_after_abort",
   "description": "Interaction: main.c:init_standalone_lora \u003c-\u003e lora_l2.c:lichen_lora_l2_deinit\n\nBug: In main.c (CONFIG_LICHEN_LORA_L2 \u0026\u0026 !CONFIG_LICHEN_L2), the cleanup path at lines 127-128 calls:\n  lichen_lora_l2_stop();\n  lichen_lora_l2_deinit();\n\nIn lora_l2.c, lichen_lora_l2_deinit() at lines 872-874 has:\n  #if defined(CONFIG_LICHEN_L2)\n    lichen_l2_reinit_after_abort();\n  #endif\n\nWhen CONFIG_LICHEN_L2 is not defined (standalone mode), lichen_l2_reinit_after_abort() is not called. This is correct because rx_mutex doesn't exist without CONFIG_LICHEN_L2.\n\nBut the conditional is slightly wrong: it checks CONFIG_LICHEN_L2 at deinit time, but the rx_mutex exists whenever lichen_l2.c is compiled (which requires CONFIG_LICHEN_L2).\n\nThis is actually correct behavior - just checking that the cross-file interaction is intentional.\n\nActually this is NOT a bug. The guard is correct. When CONFIG_LICHEN_L2 is not defined, lichen_l2.c is not compiled, so there's no rx_mutex to reinit. The lora_l2.c code correctly guards the call.\n\nClosing this as not a bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-d7s",
   "title": "DODAG state machine and parent selection",
   "description": "Implement RPL DODAG formation and parent selection.\n\nDODAG state:\n- RPLInstanceID, DODAGID, Version\n- Rank (16-bit, lower = closer to root)\n- Preferred parent\n- Parent set (backup parents)\n- DODAG root flag\n\nState machine:\n- UNJOINED: send DIS, listen for DIO\n- JOINED: have parent, can forward\n- ROOT: I am the root (configured or elected)\n\nParent selection (MRHOF with ETX):\n1. Receive DIO from neighbor\n2. Calculate path cost = neighbor.rank + link_cost\n3. If path cost \u003c current rank - threshold: switch parent\n4. Maintain parent set for redundancy\n\nLink cost estimation:\n- ETX (Expected Transmissions) from packet loss\n- Initially estimate from RSSI/SNR\n- Refine with actual TX success rate\n\nClass DodagState:\n- join(dio) -\u003e None\n- process_dio(dio, neighbor) -\u003e None\n- select_parent() -\u003e None\n- get_rank() -\u003e int\n- is_root() -\u003e bool",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

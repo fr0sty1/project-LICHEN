@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.241",
   "title": "[CR] compact_cot.rs: PLI_TOTAL_SIZE is 17 but aprs_is.rs expects 18 bytes",
   "description": "File: rust/lichen-core/src/compact_cot.rs vs rust/lichen-gateway/src/aprs_is.rs\n\nIssue: compact_cot.rs defines PLI_TOTAL_SIZE = 17 (1 byte subtype + 16 bytes payload). However, aprs_is.rs::CompactCot::from_bytes() expects 18 bytes and reads data[17] as reserved. The to_bytes() method also writes 18 bytes with out[17] = 0.\n\nThis is a wire format mismatch between two modules in the same project. One says PLI is 17 bytes, the other says 18 bytes.\n\nFix: Reconcile the two definitions. Either both should use 17 bytes or both should use 18 bytes (with reserved field).",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

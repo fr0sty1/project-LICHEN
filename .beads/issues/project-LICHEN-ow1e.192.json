@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.192",
   "title": "Codereview pass 3: relay_seen needs unit test for LRU eviction",
   "description": "No unit test exists for the relay_seen LRU eviction behavior. Consider adding a test that: (1) adds 129 unique payloads, (2) verifies the oldest payload is no longer in the cache, (3) verifies the newest 128 remain. This would prevent regression of the bulk-clear bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

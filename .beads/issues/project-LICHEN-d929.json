@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d929",
   "title": "task",
   "description": "lichen/drivers/lora/lora_sim.c:265,312. fd=0 wrongly invalid.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

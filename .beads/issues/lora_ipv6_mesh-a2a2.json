@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-a2a2",
   "title": "LICHEN_COAP_KEYS is dead code: enabling it breaks the build (missing transport include path)",
   "description": "coap_keys.c includes lichen/transport/slip_transport.h but the coap zephyr_library never adds the transport include dir, so -DCONFIG_LICHEN_COAP_KEYS=y fails at compile (fatal error: lichen/transport/slip_transport.h: No such file). No app or test config enables LICHEN_COAP_KEYS, so the file is compiled nowhere - its cppcheck uninitvar (day, fixed in the 2mla curation commit) survived because of this. Either wire the include (and question why a CoAP resource module depends on a transport header at all) plus add a native_sim build of it to twister, or drop the module until the /keys LCI work needs it.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Frost",

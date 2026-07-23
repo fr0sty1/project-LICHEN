@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.8",
   "title": "GOOD: Idempotent init with TOCTOU protection in lichen_lora_l2_init",
   "description": "lora_l2.c lines 184-194: Double-init is caught under the mutex, not before. The comment explains why: if checked outside the lock, two threads could both pass the check and generate different EUI-64s. This is correct security-conscious coding that looks 'wasteful' but prevents a real race.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

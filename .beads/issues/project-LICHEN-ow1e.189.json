@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.189",
   "title": "Codereview pass 2: relay_seen no time-based expiration",
   "description": "The relay_seen LRU cache has no time-based expiration. In low-traffic scenarios, very old packet hashes could remain indefinitely until pushed out by new traffic. Consider adding optional TTL-based cleanup if replay protection requirements demand it. Minor finding - P3.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

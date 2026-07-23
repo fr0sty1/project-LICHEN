@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.82",
   "title": "Return clone rather than return Err(e.clone())",
   "description": "lichen-tui/src/main.rs:147 returns:\n```rust\nreturn Err(e.clone());\n```\n\nIf the error type is Clone but the original `e` is owned, the clone is unnecessary. Check if `e` can be returned directly without cloning.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

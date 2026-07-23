@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0l6u",
   "title": "task",
   "description": "rust/lichen-node/src/secure.rs:87,285,288 - Stack::new was changed to require epoch:u8 parameter but call sites weren't updated, causing compile errors",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

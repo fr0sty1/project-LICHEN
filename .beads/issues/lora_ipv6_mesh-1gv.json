@@ -3,7 +3,7 @@
   "title": "SLIP framing codec (RFC 1055)",
   "description": "Implement RFC 1055 SLIP encoder/decoder in Python (python/src/lichen/slip/codec.py). SLIP wraps IPv6 packets for transport over serial UART — the link between a local client (phone, desktop) and the gateway node. Encode: insert END (0xC0) byte at packet boundaries, escape ESC (0xDB) and END bytes inside payload. Decode: buffer incoming bytes, yield complete packets on END. Tests: round-trip, edge cases (empty payload, ESC sequences, consecutive END bytes). This is the foundation for the SLIP bridge in the gateway firmware.",
   "acceptance_criteria": "slip.encode/decode round-trip is bijective; escaped bytes produce valid packets; a StreamDecoder yields packets correctly from partial reads",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Frost",

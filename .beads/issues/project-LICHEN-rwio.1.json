@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.1",
   "title": "lichen_l2_enable(true) after disable fails: link_ctx not re-initialized",
   "description": "lichen_l2_enable(false) calls lichen_link_cleanup() and sets link_ctx_initialized=0 (line 273-274). But lichen_l2_enable(true) only calls lichen_lora_l2_start() - it does NOT re-initialize link_ctx. lichen_link_init() is only called in lichen_l2_iface_init() during interface creation.\n\nTrigger: disable then re-enable the interface (e.g., via net shell 'net iface down 1' then 'net iface up 1').\n\nBad behavior: After re-enable, both TX and RX paths check link_ctx_initialized and reject all packets with 'TX attempted before link_ctx initialized' or 'RX before link_ctx initialized'. The interface appears up but cannot send or receive.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c lines 228-280",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

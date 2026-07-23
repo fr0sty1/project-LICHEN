@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.174",
   "title": "good: tui/message handles UTF-8 boundaries correctly",
   "description": "message.rs:87-108 uses char_indices() for UTF-8-safe truncation. Lines 244-260 (type_char, backspace, cursor movement) correctly handle UTF-8 character boundaries.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

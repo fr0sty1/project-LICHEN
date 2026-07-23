@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.13",
   "title": "[lora_l2.c:723] lichen_lora_l2_deinit has TOCTOU race in state check",
   "description": "Contract: lichen_lora_l2_deinit should atomically transition from STOPPED/ABORTED to DEINITING.\nViolation: Lines 725-753 read state, then check various conditions with if/else-if chain, creating a window between state read and lora_transition_from() calls. A concurrent thread could change state in this window (though unlikely in embedded context).\nImpact: Low in practice - embedded systems typically single-threaded for this type of operation. The CAS in lora_transition_from() catches most races. However, the pattern is not consistent with the atomic discipline used elsewhere.\nMitigation: The existing lora_transition_from() CAS provides sufficient protection. Document that concurrent deinit() calls are not supported.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

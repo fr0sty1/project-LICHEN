@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yw7i.24",
   "title": "Good: atomic_t guards with explicit memory semantics comments",
   "description": "lichen_l2.c:71-75 and :444-445 document the acquire/release semantics of atomic_set/get for link_ctx_initialized. This explains why the atomics are sufficient without a full mutex - important for future maintainers who might question the pattern.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

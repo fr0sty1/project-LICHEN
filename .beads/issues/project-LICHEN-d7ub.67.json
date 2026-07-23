@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.67",
   "title": "lora_l2.c + lichen_l2.c: error code space collision between modules",
   "description": "Cross-file interaction issue: lora_l2.c uses standard errno (EINVAL, EAGAIN, ECANCELED, etc.) while lichen_l2.c passes through both standard errno AND LICHEN-specific codes (LICHEN_EAUTH=200).\n\nlora_l2.c:602-617 returns -EINVAL, -ECANCELED, -EBUSY, etc.\nlichen_l2.c:540,580,606 uses -LICHEN_EAUTH (value 200)\n\nWhen lichen_l2_send() at line 956 calls lichen_link_tx() and it fails:\n  ret = lichen_link_tx(\u0026link_ctx, ...);\n  if (ret \u003c 0) {\n    LOG_ERR('... frame build failed: %s (%d)', lichen_link_strerror(ret), ret);\n    return ret;  // Returns LICHEN-specific error to Zephyr\n\nZephyr's net_l2 send callback returns int, but Zephyr only expects standard errno values. LICHEN_EAUTH (200) may confuse Zephyr's error handling.\n\nSimilarly lichen_l2_input() at line 1869 logs lichen_link_strerror(ret) but returns void.\n\nFIX: Either translate LICHEN errors to standard errno at module boundary, or document that LICHEN_EAUTH can be returned from L2 send. Safest is to map LICHEN_EAUTH to -EPERM or -EACCES at the lichen_l2.c boundary.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

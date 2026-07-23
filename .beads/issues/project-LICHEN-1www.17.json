@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.17",
   "title": "Good: Idempotent init/start/stop functions with clear pre/postconditions",
   "description": "lora_l2.c implements idempotent lifecycle functions with explicit state checks:\n\n1. lora_l2.c:243-246 - lichen_lora_l2_init() returns 0 immediately if already initialized, under mutex to prevent TOCTOU\n2. lora_l2.c:296-299 - lichen_lora_l2_start() returns 0 if already running\n3. lora_l2.c:345-348 - lichen_lora_l2_stop() returns 0 if not running\n4. lora_l2.c:408-411 - lichen_lora_l2_deinit() rejects call if still running with actionable error message\n\n5. lora_l2.c:287-293 - start() checks aborted flag BEFORE mutex, explaining that module requires re-init after forced abort\n\nWhat goes right: Callers can safely call init/start multiple times without tracking state themselves. Error messages tell the caller what to do ('call stop() first'). The aborted state is handled as a distinct failure mode requiring explicit recovery.\n\nWorth defending: This idempotent design makes the API resilient to double-init bugs from multiple callers (main.c vs NET_DEVICE_INIT). The explicit error states prevent silent failures.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

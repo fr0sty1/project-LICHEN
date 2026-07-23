@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.19",
   "title": "Empty lichen_l2_ctx struct serves no purpose",
   "description": "lichen_l2.c:268-270 defines struct lichen_l2_ctx as empty with comment 'all state is static in this module', then line 273 defines NET_L2_GET_CTX_TYPE_LICHEN_L2 to use it.\n\nWhat goes wrong as-is: The empty struct exists solely to satisfy NET_DEVICE_INIT's requirements. A reader unfamiliar with Zephyr's net_if internals may wonder why it exists.\n\nSuggestion: Add a brief comment explaining this is a Zephyr API requirement, not a design choice. Something like: '/* Required by NET_DEVICE_INIT macro; unused because LICHEN state is static */'.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

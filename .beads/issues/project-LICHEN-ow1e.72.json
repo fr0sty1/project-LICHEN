@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.72",
   "title": "core/compact_cot: repetitive PLI encode/decode branches",
   "description": "In compact_cot.rs:441-520, four PLI variants (Friendly, Hostile, Neutral, Unknown) have identical encode/decode logic. Extract a helper that handles PLI generically: match s if s.is_pli() =\u003e { ... Ok(match s { FriendlyPli =\u003e CompactCot::FriendlyPli(payload), ... }) }",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

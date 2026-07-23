@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.104",
   "title": "[lichen_l2.c:328-378] peer_try_all_pubkeys saves/restores ctx but out_len restoration is redundant",
   "description": "Category not checked: Code complexity hiding bugs\n\nBug found: In peer_try_all_pubkeys(), lines 335-337 save three values:\n  size_t saved_out_len = *out_len;\n  const uint8_t *saved_peer_pubkey = ctx-\u003epeer_pubkey;\n  const uint8_t *saved_peer_eui64 = ctx-\u003epeer_eui64;\n\nOn success (line 351), we return immediately without restoring anything - correct, we want to keep the ctx modifications.\n\nOn auth failure continuing loop (implicit after line 365), we restore *out_len at line 347 but NOT peer_pubkey/peer_eui64. These get overwritten at lines 345-346 on next iteration anyway.\n\nOn non-auth error (lines 366-370), we restore all three values. But wait - why?\n- ctx-\u003epeer_pubkey and ctx-\u003epeer_eui64 were NULL on entry (per line 1156-1157)\n- We restore them to NULL (saved values)\n- Then caller receives the error and doesn't use ctx\n\nThis is harmless defensive coding, but the asymmetry between success/non-auth-error paths suggests incomplete reasoning about invariants.\n\nImpact: P4 - Code complexity, no functional bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

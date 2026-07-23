@@ -3,7 +3,7 @@
   "title": "Add Renode to CI pipeline",
   "description": "Run Renode-based firmware tests in GitHub Actions. Build for renode targets, spin up lichen-sim + Renode instances, run multi-node mesh tests. Validates firmware without hardware in CI. Software-only: workflow YAML, test harness scripts.",
   "notes": "Can start with existing STM32WL (nucleo_wl55jc) target. Expand to nRF52/ESP32 boards as they become available.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

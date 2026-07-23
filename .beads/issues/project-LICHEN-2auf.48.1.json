@@ -3,7 +3,7 @@
   "title": "Implement 40-bit OSCORE sequences",
   "description": "Rust OSCORE stores sender/replay sequence state as u32 even though RFC 8613 permits 40-bit Partial IVs. Five-byte PIVs above u32::MAX saturate/collapse, breaking replay ordering and interoperability. Convert sequence representation and vector consumers to bounded u64 (0..2^40-1), reject overlong/out-of-range values, and preserve terminal exhaustion without mutation.",
   "acceptance_criteria": "Literal boundaries 0xff,0x100,u32::MAX,u32::MAX+1,2^40-1 roundtrip; 2^40 and \u003e5-byte PIV reject; five-byte replay ordering and duplicates work; request/response terminal exhaustion never wraps; debug/release/no_std/all-feature tests, Clippy, and three reviews pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-v1zg",
   "title": "task",
   "description": "dao.py:186 - If a DAO is received with the root's own address as the RPL Target, _assemble_path() returns [] (empty list) instead of None. The check 'if path is not None' passes, then add_route() raises RoutingError on the empty path. This corrupts the routing table: routes iterated before the failure are present, ones after are missing. The bad entry persists in _parent_map causing repeated failures.\n\nFailure scenario: Attacker sends DAO with target=root address. Root's route table rebuild crashes partway through, leaving downstream nodes permanently unreachable until the bad entry is manually removed.\n\nFix: Either validate in process_dao() that target != self.node_address, or change line 186 to 'if path' instead of 'if path is not None'.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

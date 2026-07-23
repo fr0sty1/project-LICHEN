@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-d5c",
   "title": "Phase 4: RPL Routing",
   "description": "Mesh formation with MRHOF objective function. Exit criteria: 5-node mesh forms DODAG, upward and downward routing work, parent switching on link failure.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "Mark Frost",

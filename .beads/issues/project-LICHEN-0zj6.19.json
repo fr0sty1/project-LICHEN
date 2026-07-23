@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0zj6.19",
   "title": "Hardcoded 915MHz frequency violates regional regulations",
   "description": "Location: lora_l2.c:271-279. The LoRa config hardcodes .frequency = 915000000 (US ISM band). Devices in EU (868MHz), Japan (920MHz), or other regions would violate local RF regulations. This will generate user issue reports from non-US users. Either make frequency configurable via Kconfig or document that this code only supports US region.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

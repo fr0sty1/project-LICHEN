@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i81y.12",
   "title": "SenML string length constants are not enforced by add APIs",
   "description": "API contract review finding. Public header lichen/subsys/lichen/senml/include/lichen/senml.h:43-47 defines SENML_MAX_NAME_LEN=32 and SENML_MAX_UNIT_LEN=8, and senml_encode_cbor() documents -EMSGSIZE for strings too long at lines 96-143. The add APIs store raw name/unit pointers without checking lengths in lichen/subsys/lichen/senml/senml.c:61-77, 85-101, and 108-123, while encode_record() later encodes base_name/name/unit with zcbor_tstr_put_term(..., 256) at senml.c:148-175. Impact: callers see public max constants but cannot rely on add-time validation; invalid names/units are accepted into a pack and may only fail later as a generic CBOR/buffer error, and strings between the advertised max and 255 bytes may be emitted successfully despite the published limits. This forces callers to duplicate length checks and makes SENML_MAX_* non-contractual. Fix direction: validate base_name/name/unit lengths when initializing/adding records and return -EMSGSIZE for violations, or update the header constants/docs to match the actual accepted limit and encode failure behavior.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

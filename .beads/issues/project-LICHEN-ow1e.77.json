@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.77",
   "title": "Silent except Exception: passes suppress errors without logging",
   "description": "Multiple locations catch Exception but silently pass or return None with no logging.\n\n**Critical locations (silent swallow in non-parser code):**\n- `src/lichen/interface/tcp.py:116-117`: `except Exception: pass` in close() silently swallows all errors during writer cleanup\n- `src/lichen/interface/tcp.py:46-47`: `except Exception: return None` in peername property silently hides errors\n- `src/lichen/client/packet_coap.py:367-368`: `except Exception: return` silently drops malformed packets with no logging\n\n**Recommended fix:** Add at minimum debug-level logging before suppressing, or catch specific exception types.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

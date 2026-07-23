@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.36",
   "title": "lora_l2.c:569-571 lora_dev not validated before use",
   "description": "In lichen_lora_l2_init() at lines 569-573:\n```c\nlora_data.lora_dev = LORA_DEV;\nlora_data.rx_callback = NULL;\nlora_data.rx_callback_user_data = NULL;\n\nif (!device_is_ready(lora_data.lora_dev)) {\n    LOG_ERR(\"lora_l2: device not ready\");\n    ret = -ENODEV;\n    goto out;\n}\n```\n\nLORA_DEV is defined as DEVICE_DT_GET(DT_ALIAS(lora0)). The BUILD_ASSERT at line 181-183 ensures the device tree node exists. device_is_ready() checks if the device is actually ready to use.\n\nIf device_is_ready() returns false, we return -ENODEV. But we've already set lora_data.lora_dev to LORA_DEV. On failure path, lora_data.lora_dev retains the (potentially unready) device pointer.\n\nSince we stay in LORA_UNINIT state (lora_transition is never called on this error path), subsequent calls to init() will re-enter and overwrite these values. The is_running() check at lines 564-567 returns early if state != UNINIT.\n\nWait, line 564-567:\n```c\nif (lora_get_state() != LORA_UNINIT) {\n    k_mutex_unlock(\u0026lora_mutex);\n    return 0;\n}\n```\n\nIf init failed (stayed in UNINIT), next init() call will retry. The lora_data fields will be re-written. No leaked state.\n\nNO BUG - idempotent retry is handled correctly.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "note",
   "assignee": "Mark Atwood",

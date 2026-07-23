@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.55",
   "title": "Good: state_machine.py provides clean lifecycle enforcement",
   "description": "src/lichen/state_machine.py is well-designed:\n- Generic StateMachine class with explicit transition table validation\n- @requires_state decorator for declarative state checks on methods\n- Frozen dataclass prevents mutation bugs\n- Clear error messages with context (name, expected, actual)\n- Logging on transitions for debuggability\n\nWorth defending against over-engineering criticism: the complexity is justified by preventing subtle lifecycle bugs in async code.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.7",
   "title": "Well-done: atomic_t with acquire/release semantics for link_ctx_initialized",
   "description": "lichen_l2.c:129-131 uses atomic_t for link_ctx_initialized flag with explicit acquire/release semantics commentary. This prevents torn reads under aggressive optimization and ensures link_ctx stores complete before the flag is visible. For a security-critical context with crypto keys, this level of care is warranted. The SECURITY comment explains why - keep both the code and the comment.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

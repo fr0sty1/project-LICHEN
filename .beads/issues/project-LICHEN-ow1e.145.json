@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.145",
   "title": "Public functions in loadng/ missing return type annotations",
   "description": "Three public methods in `src/lichen/loadng/` are missing return type annotations:\n\n**loadng/discovery.py:**\n- Line 78: `Discovery.originate_rreq()` - returns `RREQ`\n- Line 95: `Discovery.process_rreq()` - returns `RreqResult`\n- Line 142: `Discovery.process_rrep()` - returns `RrepResult`\n\n**loadng/cache.py:**\n- Line 64: `RouteCache.lookup()` - returns `RouteEntry | None`\n\n**loadng/error.py:**\n- Line 47: `ErrorHandler.record_flow()` - returns `None`\n- Line 59: `ErrorHandler.process_rerr()` - returns `RerrAction | None`",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

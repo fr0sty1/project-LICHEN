@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.76",
   "title": "[ipv6_addr.c:28-33] LOG macro fallbacks are no-ops, could hide errors",
   "description": "Gap found: Logging abstraction in non-Zephyr builds not reviewed.\n\nWhy this was missed: Host test infrastructure not examined.\n\nThe actual bug: Lines 28-33 define LOG_ERR, LOG_WRN, LOG_INF, LOG_DBG as ((void)0) for non-Zephyr builds. This allows the module to compile for host-side unit tests.\n\nThe issue: if a host test triggers an error condition (e.g., NULL pointer), the LOG_ERR is silently discarded. Tests won't see the error message.\n\nSolutions:\n1. Use fprintf(stderr, ...) in non-Zephyr builds\n2. Use assert() for critical errors in test builds\n3. Provide a test hook to capture log messages\n\nThis is a test infrastructure quality issue, not a production bug. The production (Zephyr) code logs correctly.\n\nPriority 4 - test infrastructure improvement.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

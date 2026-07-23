@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.107",
   "title": "[lichen_l2.c:160-165] LICHEN_FRAME_BASE_OVERHEAD excludes signature but includes in lora_l2.h",
   "description": "Category not checked: Constant definition consistency\n\nBug found: There are TWO frame overhead calculations that don't align:\n\n1. lichen_l2.c line 160-165:\n   #define LICHEN_FRAME_BASE_OVERHEAD      (LICHEN_FRAME_LENGTH_FIELD + ... + LICHEN_FRAME_MIN_MIC)\n   = 1 + 1 + 1 + 2 + 4 = 9 bytes (NO signature)\n\n2. lora_l2.h line 70:\n   #define LICHEN_LORA_FRAME_OVERHEAD 55\n   = 5 (header) + 4 (MIC) + 48 (signature) - 2 (margin) = 55 bytes (WITH signature)\n\nThese constants are used for different purposes:\n- LICHEN_FRAME_BASE_OVERHEAD: validates minimum frame size (9 bytes)\n- LICHEN_LORA_FRAME_OVERHEAD: calculates MTU (255 - 55 = 200 bytes)\n\nThe naming is confusing:\n- 'BASE_OVERHEAD' sounds like it should be the foundation\n- 'FRAME_OVERHEAD' sounds like the same thing\n\nBetter names would be:\n- LICHEN_FRAME_MIN_HEADER_SIZE (9 bytes, for validation)\n- LICHEN_FRAME_MAX_OVERHEAD (57 bytes, for MTU calculation)\n\nImpact: P4 - Naming confusion, could lead to incorrect use of constants.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

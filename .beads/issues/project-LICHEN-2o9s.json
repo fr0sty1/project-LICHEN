@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2o9s",
   "title": "BLE transport: bt_conn_ref without matching unref on error paths",
   "description": "File: lichen/subsys/lichen/transport/ble_ipsp_transport.c\nLines: 106-111\n\nIn connected_cb(), when a connection is rejected because one already exists:\n\n    if (transport_state.conn != NULL) {\n        LOG_WRN(\"Already have connection, rejecting new one\");\n        k_mutex_unlock(\u0026transport_state.lock);\n        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);\n        return;\n    }\n\n    transport_state.conn = bt_conn_ref(conn);  // Ref taken here\n\nThe bt_conn_ref() increments the reference count. If the connection establishment fails after this point, we rely on disconnected_cb() to call bt_conn_unref().\n\nHowever, if bt_enable() or other BLE operations fail during init (lines 362-365), or if the transport is deinitialized while a connection exists, the reference may not be properly released.\n\nIn lichen_ble_transport_stop():\n    if (transport_state.conn) {\n        bt_conn_disconnect(transport_state.conn, ...);\n    }\n\nThis triggers a disconnect but doesn't unref. The unref happens in disconnected_cb(), but if the callback doesn't fire (e.g., BLE stack shutdown), we leak the reference.\n\nFix: In lichen_ble_transport_stop(), also call bt_conn_unref() after disconnect, or ensure the reference is cleaned up in deinit.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-e2m",
   "title": "SCHC reassembly and state machine",
   "description": "Implement SCHC reassembly state machine.\n\nReassembly state per (src, dst, dtag):\n- fragments: dict[window][fcn] -\u003e bytes\n- windows_complete: set of complete windows\n- all1_received: bool\n- timer: reassembly timeout\n\nState transitions:\n- IDLE -\u003e RECEIVING on first fragment\n- RECEIVING -\u003e COMPLETE when all fragments received\n- RECEIVING -\u003e TIMEOUT if timer expires\n- COMPLETE -\u003e IDLE after yielding packet\n\nMemory management:\n- Limit concurrent reassemblies (max 4?)\n- Evict oldest on overflow\n- Clear on completion or timeout\n\nIntegration with FragmentReceiver class.\n\nTest: fragment large packet, drop some fragments, verify retransmit and reassembly.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

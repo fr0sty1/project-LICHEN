@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i81y.14",
   "title": "EDHOC subdirectory adds sources without creating a Zephyr library",
   "description": "lichen/subsys/lichen/CMakeLists.txt:8 enables the edhoc subdirectory when CONFIG_LICHEN_EDHOC is set, but lichen/subsys/lichen/edhoc/CMakeLists.txt:4-6 only calls zephyr_include_directories(include) and zephyr_library_sources_ifdef(CONFIG_LICHEN_EDHOC edhoc.c). Unlike coap/link/oscore/rpl/schc/senml, it never calls zephyr_library().\\n\\nImpact: selective builds that enable CONFIG_LICHEN_EDHOC have no EDHOC Zephyr library context for edhoc.c, so the subsystem is either not attached consistently or fails CMake/library setup while every analogous LICHEN subsystem uses its own zephyr_library(). Add the missing zephyr_library() and keep the include/source wiring consistent with sibling subsystems.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

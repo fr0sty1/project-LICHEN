@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.98",
   "title": "[lichen_l2.c:430-432] peer table full returns -ENOSPC but no mechanism to evict stale peers",
   "description": "Category not checked: Resource exhaustion handling\n\nBug found: When the peer_table is full (CONFIG_LICHEN_LINK_MAX_NEIGHBORS reached), lichen_peer_add() returns -ENOSPC with a LOG_WRN but provides no way to recover:\n\n1. No LRU eviction of stale peers\n2. No API to query how many peers are active\n3. No API to iterate peers for application-level eviction\n4. No aging mechanism to remove inactive peers\n\nIn a mesh network, peers may join and leave. With default CONFIG_LICHEN_LINK_MAX_NEIGHBORS=16, the table fills quickly and cannot accept new legitimate peers.\n\nThe replay_table comment (lines 213-223) discusses a poisoning attack where 'an attacker floods spoofed source addresses to evict legitimate peers' - but currently there's NO eviction at all, which is worse: first 16 peers fill the table permanently.\n\nImpact: P3 - Mesh network eventually becomes unable to accept new peers after 16 are registered.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

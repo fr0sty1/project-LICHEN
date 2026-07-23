@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.8",
   "title": "lichen_ipv6_addr_to_str does not detect truncation",
   "description": "snprintf return value is checked for encoding failure (ret \u003c 0) but not for truncation. If ret \u003e= buflen, output was truncated. The current code returns 0 (success) when truncation occurs.\n\nLocation:\n- ipv6_addr.c:145-166 (lichen_ipv6_addr_to_str)\n\nWhat goes wrong: If a caller passes a buffer smaller than documented (LICHEN_IPV6_ADDR_STR_LEN) but larger than 0, the function returns success with a truncated, potentially malformed IPv6 address string. Downstream code parsing or logging this string gets garbage.\n\nNote: The buflen \u003c LICHEN_IPV6_ADDR_STR_LEN check at line 137 prevents most practical cases, but the snprintf return check should be complete for defense in depth. Header doc also promises -ENOSPC on truncation.\n\nFix: Add check 'if (ret \u003e= (int)buflen) { return -ENOSPC; }' after line 158.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

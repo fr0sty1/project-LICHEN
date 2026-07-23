@@ -3,7 +3,7 @@
   "title": "Normalize unsigned MIC semantics",
   "description": "Make the draft and Python/Rust/C implementations agree that S=0 frames have no MIC regardless of MicLength, with exact parser/serializer behavior and updated canonical vectors/tests. Preserve signed 48-byte MIC behavior.",
   "notes": "Implemented S=0 unsigned MIC semantics across Python, Rust, C, C TX/RX, L2 dispatch, and puck neighbor beacon paths. Unsigned frames now serialize/parse with mic length 0 regardless of MicLength; signed frames retain full 48-byte MICs. Updated draft wording, shared vectors, KISS bridge, and independent tests. Verification: Python uv run pytest tests/link: 147 passed, 5 skipped. Rust cargo test --all-features -p lichen-link: 64 unit + 2 shared-vector + 1 doctest passed. Rust cargo test --all-features -p lichen-kiss: 58 unit + 5 doctests passed. Standalone C frame test: 8/8 passed using build-only -Wno-error=nonnull for intentional NULL tests. JSON syntax and targeted git diff --check passed. Zephyr link_crypto was attempted with west native_sim but cannot configure on macOS: Zephyr POSIX architecture only works on Linux; requires EC2 Linux validation. Workspace cargo fmt --check remains blocked by pre-existing unrelated formatting drift and was not applied.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

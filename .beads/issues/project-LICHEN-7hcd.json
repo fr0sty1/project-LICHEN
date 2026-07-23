@@ -2,7 +2,7 @@
   "id": "project-LICHEN-7hcd",
   "title": "task",
   "description": "cbor.rs:246 - dec_f64() rejects 0xf9 (half-precision float), only accepting 0xfa (single) and 0xfb (double). RFC 8428 Section 12.3 says implementations SHOULD support half-precision. A peer sending a value encoded as f16 (e.g., small sensor reading) will cause decode to fail with InvalidInput. Fix: add 0xf9 case that reads 2 bytes and converts to f64.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

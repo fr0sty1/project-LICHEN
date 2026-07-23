@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hm3t",
   "title": "Develop batch flashing and initial provisioning process for 500x T-Echo",
   "description": "Create tooling/scripts for flashing LICHEN firmware (UF2 via bootloader or serial DFU) on 500 units. Include battery charging test, GNSS/e-ink validation, key provisioning, initial config (EUI, keys). Consider jigs, parallel flashing stations, OTA SMP for production. Document in docs/bench-operations.md if appropriate. Link to procurement. Acceptance: process documented with scripts or SOP, tested on 1-5 units.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

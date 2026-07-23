@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.23",
   "title": "[ipv6_addr.c:193] lichen_ipv6_addr_to_str truncation check after snprintf",
   "description": "Function: lichen_ipv6_addr_to_str. Contract violation: The function checks buflen \u003c LICHEN_IPV6_ADDR_STR_LEN at line 200 but then checks for truncation again at line 235. The first check should prevent the second from ever triggering, but the second check exists 'defensively'. The issue is that if snprintf returns a value \u003e= buflen (truncation), the buffer contains truncated output which the function then reports as an error. A caller might have already logged the partial output. Consider zeroing buf on truncation error (currently only zeroed on ret \u003c 0). Priority 3 - defensive code, minor inconsistency.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "issue",
   "assignee": "Mark Atwood",

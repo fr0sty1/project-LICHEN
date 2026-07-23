@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-1zq",
   "title": "Spec: Resolve RPL secure mode contradiction",
   "description": "Design principle: 'No pre-shared network keys'. Section 8.7: 'Recommended: Preinstalled mode with network-wide key'. These contradict. Either: (1) drop RPL secure mode recommendation, (2) use Authenticated mode with per-node keys, (3) clarify that control plane PSK is acceptable while data plane is per-peer.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

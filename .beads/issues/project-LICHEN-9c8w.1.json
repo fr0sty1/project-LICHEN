@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9c8w.1",
   "title": "lora_l2.c: add subsystem prefix to all log messages",
   "description": "Add 'lora_l2:' prefix to all LOG_* calls that lack it.\n\nCurrent:\n  LOG_ERR(\"LoRa device not ready\");\n  LOG_INF(\"LoRa L2 RX thread started\");\n\nTarget:\n  LOG_ERR(\"lora_l2: device not ready\");\n  LOG_INF(\"lora_l2: RX thread started\");\n\n~40 log statements to update.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

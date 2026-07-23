@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.16",
   "title": "size_t used in LOG format without portable specifier",
   "description": "Locations:\n- firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:285,300,322,331,659,660,737,787\n- firmware/bridge-zephyr/subsys/lichen/lora_l2.c:212,475,504\n\nMultiple LOG_* calls use %zu for size_t, which is correct C99, but Zephyr logging may not support %zu on all platforms. Zephyr recommends casting to unsigned long and using %lu for maximum portability.\n\nWhat goes wrong: On platforms where size_t is different width than printf expects for %zu (some embedded toolchains), log output would show garbage values, hindering debugging.\n\nNote: Modern Zephyr (3.x+) with printk supports %zu, but older versions may not. Check Zephyr version compatibility.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

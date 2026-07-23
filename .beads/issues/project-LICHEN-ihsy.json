@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ihsy",
   "title": "Add GNSS stub for simulation and native_sim testing",
   "description": "Add GNSS stub for native_sim (Renode already done).\n\nRenode: GPS.cs already exists - emits NMEA GGA/RMC at 1Hz over UART. Done.\n\nnative_sim remaining work:\n1. PTY or pipe as UART endpoint\n2. Script or helper to feed NMEA sentences\n3. Or: use Zephyr UART_PIPE with stdin/stdout for test injection\n\nTest scenarios:\n- Fixed position: feed same NMEA repeatedly\n- No fix: feed sentences with fix quality 0\n\nAcceptance: native_sim GNSS works with NMEA injection; position appears in /status.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

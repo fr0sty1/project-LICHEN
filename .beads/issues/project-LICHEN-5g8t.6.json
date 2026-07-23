@@ -2,7 +2,7 @@
   "id": "project-LICHEN-5g8t.6",
   "title": "TUI: RF health and neighbors tab",
   "description": "New TUI tab showing: neighbor table (callsign, RSSI, SNR, last heard, packet success rate, duty % observed), local RF stats (noise floor, channel busy, RX errors). Flag cheaters. Depends on 5g8t.2 and 5g8t.4.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

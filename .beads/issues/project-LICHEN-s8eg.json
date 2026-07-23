@@ -2,7 +2,7 @@
   "id": "project-LICHEN-s8eg",
   "title": "Compliance: crypto/edhoc.py OSCORE",
   "description": "Policy: 06-security.md §8.7 and §8.8. File: python/src/lichen/crypto/edhoc.py. Status: COMPLIANT. Full EDHOC RFC 9528 Suite 0 implementation. EdhocInitiator and EdhocResponder classes with X25519 + Ed25519 + AES-CCM. export_oscore() derives master secret/salt per RFC 9528 Section 7.2.1.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

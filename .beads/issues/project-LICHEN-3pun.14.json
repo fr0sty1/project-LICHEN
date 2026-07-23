@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3pun.14",
   "title": "main.c:105: init_standalone_lora() does not stop LoRa L2 on late failure",
   "description": "**Location:** main.c:99-109\n\n**Issue:** If lichen_lora_l2_start() succeeds (line 99) but lichen_lora_l2_get_eui64() returns NULL (line 105), the function returns -ENODATA without calling lichen_lora_l2_stop().\n\n**Current code:**\n```c\nret = lichen_lora_l2_start();\nif (ret \u003c 0) {\n    LOG_ERR(\"LoRa L2 start failed: %d\", ret);\n    return ret;\n}\n\neui64 = lichen_lora_l2_get_eui64();\nif (eui64 == NULL) {\n    LOG_ERR(\"Failed to get EUI-64 address\");\n    return -ENODATA;  // LoRa L2 still running!\n}\n```\n\n**Problem:** After returning -ENODATA:\n1. The LoRa L2 RX thread continues running\n2. RX callbacks may still fire (to lora_rx_handler which does nothing)\n3. Radio power is consumed unnecessarily\n4. Subsequent init attempts may conflict with the orphaned thread\n\n**Fix:** Add `lichen_lora_l2_stop();` before `return -ENODATA;`\n\n**Severity:** P2 - In practice, get_eui64() only fails if init() wasn't called, which can't happen here since start() succeeded. But the error path is technically incorrect and violates RAII principles.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

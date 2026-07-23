@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.37",
   "title": "lichen_l2_enable() re-registration path duplicates init() code",
   "description": "lichen_l2.c:lichen_l2_enable(true) at lines 383-410 duplicates code from lichen_l2_iface_init():\n\nEnable path (383-403):\n```c\nk_mutex_lock(\u0026tx_mutex, K_FOREVER);\nk_mutex_lock(\u0026rx_mutex, K_FOREVER);\nif (!atomic_get(\u0026link_ctx_initialized)) {\n    const uint8_t *eui64 = lichen_lora_l2_get_eui64();\n    // error handling\n    secure_zero(\u0026link_ctx, sizeof(link_ctx));\n    lichen_link_init(\u0026link_ctx, eui64);\n    atomic_set(\u0026link_ctx_initialized, 1);\n}\nk_mutex_unlock(\u0026rx_mutex);\nk_mutex_unlock(\u0026tx_mutex);\nlichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);\nreturn lichen_lora_l2_start();\n```\n\nInit path (591-606):\n```c\nlichen_link_init(\u0026link_ctx, eui64);\natomic_set(\u0026link_ctx_initialized, 1);\nlichen_iface = iface;\nlichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);\n```\n\nThe enable path has additional mutex handling because it runs post-init. Both paths register the same callback.\n\nWhat goes wrong: A change to link_ctx initialization (e.g., adding a new field) must be made in two places. The enable path's comment references project-LICHEN-rwio.1 but a reader must find that issue to understand why duplication exists.\n\nRewrite: Extract a static helper `init_link_ctx_locked(eui64)` called by both paths.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

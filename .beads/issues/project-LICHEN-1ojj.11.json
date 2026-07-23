@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.11",
   "title": "ipv6_addr_to_str does not use zero compression",
   "description": "ipv6_addr.c:145-155 formats IPv6 addresses without RFC 5952 zero compression. A link-local like fe80::1234:5678:abcd:ef01 is printed as fe80:0000:0000:0000:1234:5678:abcd:ef01 (39 chars).\n\nWhat goes wrong as-is: Log messages are harder to read, copy-paste into other tools may confuse users expecting standard format. For LICHEN's link-local addresses (fe80:: prefix with 4 zero hextets), this is noticeable.\n\nNote: Implementing RFC 5952 compression is more code and not urgent. If a fix is desired, Zephyr provides net_addr_ntop() when CONFIG_NET_IPV6 is enabled, which already implements compression.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

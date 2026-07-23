@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.140",
   "title": "DTN buffer uses time.time() instead of monotonic clock",
   "description": "**Location:** python/src/lichen/routing/router.py:434-436, 475-478\n\n**Bug:** The DTN buffer expiration uses `time.time()` (wall clock) for expiry comparison. If the system clock jumps (NTP sync, manual change, DST), messages may expire immediately or live forever.\n\n**Trigger:** System clock jumps backward (messages never expire) or forward (messages expire prematurely).\n\n**Bad behavior:**\n- Clock jump backward: DTN buffer fills up with 'unexpired' messages that should have been removed\n- Clock jump forward: Valid messages are discarded before their intended lifetime\n\n**Pattern:** The spec likely intends expiry to be monotonic. Use `time.monotonic()` and convert Unix timestamps to monotonic offsets at message insertion.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

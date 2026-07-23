@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.48",
   "title": "[lora_l2/lichen_l2] tx in flight during deinit is not waited",
   "description": "Cross-file bug: lichen_lora_l2_deinit() checks that running==0 but does not wait for in-flight TX operations to complete.\n\nRace scenario:\n1. Thread A calls lichen_lora_l2_tx() and acquires tx_buf_mutex\n2. Thread A enters lora_send() which blocks for ~500ms\n3. Thread B calls lichen_lora_l2_stop() - sets running=0, joins RX thread\n4. Thread B calls lichen_lora_l2_deinit() - running==0 check passes\n5. deinit() reinitializes lora_mutex\n6. Thread A's lora_send() completes, TX path continues with potentially corrupted state\n\nThe TX path doesn't hold lora_mutex during the actual lora_send() call (intentionally, to avoid starving RX), but this means deinit can race.\n\nLocation: lora_l2.c:479-616 (deinit) and lora_l2.c:618-698 (tx)\n\nMitigation: deinit should acquire and release tx_buf_mutex before reinitializing lora_mutex, to ensure no TX is in flight.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

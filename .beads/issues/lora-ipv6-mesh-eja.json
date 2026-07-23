@@ -3,7 +3,7 @@
   "title": "Implement RPL routing in Python",
   "description": "Python implementation of RFC 6550 RPL. DIO/DIS/DAO/DAO-ACK messages. Trickle timer. MRHOF objective function with ETX. DODAG formation. Non-storing mode with source routing. Test with 5+ node topology.",
   "notes": "All listed deliverables DONE \u0026 tested in lichen.rpl (DIO/DIS/DAO/DAO-ACK, Trickle, MRHOF+ETX, DODAG formation, non-storing source routing, 5-node topology test). Not closed only because the epic-track dependency zev is still open (its remaining item is the IPv6\u003c-\u003eSCHC extraction glue); close once that chain is reconciled.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

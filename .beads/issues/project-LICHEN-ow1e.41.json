@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.41",
   "title": "coap/codec: content_format() has convoluted slice building",
   "description": "In codec.rs:443-451, content_format() builds a temporary slice with complex branching. Rewrite to: let bytes = format.to_be_bytes(); let value = match format { 0 =\u003e \u0026bytes[2..2], 1..=0xFF =\u003e \u0026bytes[1..2], _ =\u003e \u0026bytes[0..2] }; self.option(OptionNumber::ContentFormat as u16, value)",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -3,7 +3,7 @@
   "title": "Preserve Python TX queue on radio failure",
   "description": "LinkLayer.drain_tx_queue pops before radio.transmit; a False result or exception loses the frame and TxQueue increments transmitted stats before hardware success. Redesign queue acknowledgement/removal so radio failure preserves priority/deadline/order and stats reflect confirmed transmission, with focused False/exception tests.",
   "notes": "Implemented radio-confirmed two-phase dequeue, coarse TX serialization, False/exception/cancellation retention, byte-identical retry, confirmed-only stats/latency, own-frame send result, post-CAD expiry recheck, concurrent send/drain serialization, and startup-only sequence restoration preserving frame-byte uniqueness. Link tests 159 passed/4 skipped; Ruff and strict mypy changed sources pass; three direct hash-bound reviews have no in-scope blockers. Entry reservations/high-priority admission tracked 2452; capacity validation tracked separately.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

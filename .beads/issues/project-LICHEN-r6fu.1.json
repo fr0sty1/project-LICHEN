@@ -2,7 +2,7 @@
   "id": "project-LICHEN-r6fu.1",
   "title": "OSCORE integration missing in Python CoAP transport",
   "description": "VIOLATION of spec/06-security.md 8.7: Python CoAP transport (transport.py, node_channel.py) sends plaintext datagrams without OSCORE protection. The OSCORE library exists (lichen.crypto.oscore.MemorySecurityContext) but is not integrated.\n\nFIX REQUIRED:\n1. Modify LichenTransport.send() to protect messages with OSCORE before encoding\n2. Modify LichenTransport._on_datagram() to unprotect OSCORE messages\n3. NodeChannel needs similar integration\n4. EDHOC handshake must run before first protected message exchange\n\nFiles to modify:\n- python/src/lichen/coap/transport.py\n- python/src/lichen/coap/node_channel.py\n\nReference implementation: rust/lichen-node/src/secure.rs",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

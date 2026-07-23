@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj",
   "title": "Review: bridge-zephyr 2026-06-26",
   "notes": "Review confidence: ~20% chance of missed bug.\nLeast confident areas: lichen_link_tx/rx behavior (external module not reviewed), SCHC compression correctness, Zephyr net_pkt lifetime edge cases.\nWould raise confidence if: reviewed lichen/link.h API and SCHC rules, ran static analysis (cppcheck, clang-tidy), fuzztested frame parsing paths.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

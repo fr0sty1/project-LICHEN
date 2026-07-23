@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.26",
   "title": "main.c led_set inline function defined but only used conditionally",
   "description": "In main.c:43-51, led_set() is defined as static inline inside #if DT_NODE_EXISTS(DT_ALIAS(led0)). If LED is present but led_configured is never set true (GPIO init fails), all led_set calls become no-ops. The function is well-designed but depends on global state (led_configured) that may not be obvious to callers. Consider documenting this dependency or logging when led_set is called before configuration.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

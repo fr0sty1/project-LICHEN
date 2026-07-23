@@ -2,7 +2,7 @@
   "id": "project-LICHEN-z3zp.4",
   "title": "OSCORE protect paths dereference unchecked length pointers",
   "description": "oscore_protect_request() and oscore_protect_response() validate ctx/ciphertext/oscore_opt, but then dereference ciphertext_len and oscore_opt_len without checking them. Trigger: a caller passes a NULL length pointer while probing or handling an error path. Bad behavior: NULL dereference in security code instead of OSCORE_ERR_INVALID_PARAM. Locations: lichen/subsys/lichen/oscore/oscore.c:1088-1103, :1181-1208, :1447-1461, and :1506-1525.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

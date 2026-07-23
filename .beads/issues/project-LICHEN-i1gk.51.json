@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.51",
   "title": "[lichen_l2.c:1237 vs lora_l2.c:421-432] init race: lora_l2_init idempotency allows partial state",
   "description": "Cross-file analysis: lichen_l2_iface_init() calls lichen_lora_l2_init() at line 1237. lora_l2.c:init() is idempotent (lines 421-423, 429-432), returning 0 if already initialized. However, if a PREVIOUS partial init left the state machine in STOPPED (init succeeded but start failed later), a new lichen_l2_iface_init() would see init() return 0, but lora_data.eui64 is valid from the first init while lora_data.rx_callback may be stale. This is actually handled correctly because init() only transitions UNINIT-\u003eSTOPPED, and STOPPED means the first init completed successfully. The concern is if init() could leave state UNINIT with partial lora_data populated - examining the code shows it sets lora_data fields before transition, so failure after setting fields but before transition would leave state UNINIT with partial data. However, the fields are re-set on next init attempt, so this is safe. Downgrade to documentation: the idempotency guarantee should note that partial state is reset on retry.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "docs",
   "assignee": "Mark Atwood",

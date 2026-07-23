@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.11",
   "title": "lichen_l2_input logs src_eui64 even on failed rx",
   "description": "lichen_l2.c:586-589: LOG_DBG prints src_eui64 after lichen_link_rx() succeeds. But if lichen_link_rx() fails at line 579, src_eui64 is uninitialized (stack garbage).\n\nLooking more carefully: the fail path returns at line 583, so line 586 is only reached on success. This is actually correct.\n\nCancel - false positive.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

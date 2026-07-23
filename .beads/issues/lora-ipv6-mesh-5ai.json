@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-5ai",
   "title": "SimulatorServer.get_app() creates new Starlette on each call",
   "description": "**Bug / Code Quality**\n\nIn server.py:218-226:\n```python\ndef get_app(self) -\u003e Starlette | None:\n    if self._api is None:\n        return None\n    return self._api.create_app()  # Creates new instance each time!\n```\n\nEach call to get_app() creates a fresh Starlette application instance via create_app(). This is:\n1. Wasteful (new Route objects each time)\n2. Potentially buggy if caller expects the same instance\n3. Inconsistent with start() which caches the app for uvicorn\n\nFix: Cache the Starlette app in SimulatorServer, or have SimulatorAPI cache it internally.\n\nFiles: server.py:218-226, api.py:557-587",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

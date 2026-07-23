@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.10",
   "title": "lora_l2.c: init idempotence check has TOCTOU race",
   "description": "In lichen_lora_l2_init() (lora_l2.c:145-147), the idempotence check uses atomic_get() without CAS, so two concurrent calls could both see initialized==0 and proceed to reinitialize.\n\nWhat goes wrong: If two threads call init() concurrently (e.g., NET_DEVICE_INIT + main.c both triggering), the EUI-64 could be regenerated mid-use by another thread, causing address inconsistency. The code comment says 'prevents EUI-64 regeneration on double-init' but the implementation doesn't guarantee it.\n\nThe fix is straightforward but this review is read-only: use atomic_cas() or hold a mutex for the initialization sequence.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:145-147",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

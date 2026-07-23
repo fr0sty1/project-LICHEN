@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q4zb",
   "title": "Python: sim API token not validated for minimum entropy",
   "description": "In python/src/lichen/sim/auth.py and server.py, the --api-token option accepts any string:\n\n    api_token = args.api_token or os.environ.get('LICHEN_SIM_API_TOKEN')\n    if api_token == 'generate':\n        api_token = generate_token()  # 24 bytes = 192 bits entropy\n\nWhile generate_token() produces strong tokens, users can provide weak tokens like 'password123'. There's no validation of token strength when a user-provided token is used.\n\nLocation: python/src/lichen/sim/server.py:351-355, auth.py\nRisk: Weak user-provided tokens may be vulnerable to brute-force.\nFix: Add minimum length check (e.g., 16 characters) for user-provided tokens, or warn if entropy is low.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

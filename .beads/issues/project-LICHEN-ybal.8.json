@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.8",
   "title": "lichen_l2.c: Linearization loop reimplements net_pkt_read()",
   "description": "In lichen_l2_send() (lichen_l2.c:116-132), manual iteration over pkt-\u003efrags with boundary checking reimplements what net_pkt_read() does. The manual loop is ~15 lines of code including error handling.\n\nWhat goes wrong: Maintenance burden -- if net_buf semantics change, this code must be audited. The manual loop also duplicates the size check in a way that could diverge.\n\nRewrite:\n  if (net_pkt_read(pkt, tx_ipv6_buf, pkt_len) \u003c 0) {\n      LOG_ERR(\"Failed to linearize packet\");\n      k_mutex_unlock(\u0026tx_mutex);\n      return -EIO;\n  }\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:116-132",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

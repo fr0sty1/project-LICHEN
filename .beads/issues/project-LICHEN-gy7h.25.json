@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.25",
   "title": "in6_addr detection ifdef cascade is fragile",
   "description": "ipv6_addr.h:43-62 has an ifdef cascade to detect if struct in6_addr is already defined:\n```c\n#if defined(LICHEN_HAVE_IN6_ADDR) \u0026\u0026 LICHEN_HAVE_IN6_ADDR\n#elif defined(IN6ADDR_ANY_INIT)\n#elif defined(CONFIG_NET_IPV6) \u0026\u0026 defined(__ZEPHYR__)\n#elif defined(_NETINET_IN_H) || defined(_NETINET_IN_H_) || ...\n#else\nstruct in6_addr { ... };\n#endif\n```\n\nWhat goes wrong: New platforms with different guard macros will silently get the fallback definition, which may conflict with the system's struct in6_addr if it's later included, causing redefinition errors or subtle ABI mismatches.\n\nThe code already has LICHEN_HAVE_IN6_ADDR as an escape hatch, which is good. Consider making the fallback definition more defensive:\n```c\n#else\n/* Fallback definition - if this conflicts with your platform's in6_addr,\n * define LICHEN_HAVE_IN6_ADDR=1 before including this header */\nstruct in6_addr {\n    uint8_t s6_addr[16];\n};\n#endif\n```\n\nThe existing comment at line 40-42 partially addresses this but could be more visible at the definition site.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

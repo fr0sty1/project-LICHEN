@@ -3,7 +3,7 @@
   "title": "task",
   "description": "Policy: appendix-c-safety.md. Coverity Scan is free for open source. Add weekly scan, fail on new high-severity issues.",
   "notes": "Partial: Weekly Coverity Scan submission is implemented (.github/workflows/coverity.yml with cron schedule). However, 'fail on new high-severity issues' is NOT implemented — free Coverity Scan does not provide synchronous results for CI gating. Options: (1) poll Coverity API in a follow-up job, (2) use GitHub status checks webhook from Coverity, or (3) accept manual review of weekly scan results.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

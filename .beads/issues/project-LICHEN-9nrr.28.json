@@ -3,7 +3,7 @@
   "title": "lr1110: propagate HAL command failures through Zephyr driver",
   "description": "Review follow-up from project-LICHEN-9nrr.19. The pinned Semtech LR1110 driver revision exposes many radio/system/regmem command helpers as void and internally discards lr1110_hal_write/read/write_read status. The Zephyr LR1110 driver now compiles against that API, but runtime SPI/BUSY/reset failures can only be logged in the HAL and generally cannot be returned from lora config/send/recv. Investigate the least invasive pattern for preserving vendor compatibility while surfacing command failures to Zephyr callers, such as a per-device last_error in the HAL context or local command wrappers around the generated vendor helpers. Keep the T1000-E gateway build passing and avoid changing unrelated LoRa drivers.",
   "acceptance_criteria": "T1000-E LR1110 gateway build still passes; LR1110 config/send/recv can return -EIO or a more specific errno when HAL SPI/BUSY operations fail; existing successful command behavior remains unchanged.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

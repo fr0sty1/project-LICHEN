@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.71",
   "title": "headers.py: duplicated length validation in _CoapUdpProfile.matches()",
   "description": "src/lichen/schc/headers.py:108-123 performs header length checks that IPv6Header.from_bytes() will also perform internally (caught via exception). The pre-checks are defensive but add redundant complexity.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

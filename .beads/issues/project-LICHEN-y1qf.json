@@ -2,7 +2,7 @@
   "id": "project-LICHEN-y1qf",
   "title": "task",
   "description": "icmpv6.py:230 - handle_icmpv6() parses and responds to Echo Requests without calling verify_checksum(). RFC 4443 Section 2.4 requires: 'Every ICMPv6 message MUST have its checksum field verified before being processed.'\n\nFailure scenario: An attacker or network corruption produces an ICMPv6 Echo Request with an invalid checksum. The handler processes it anyway, generating a reply to a malformed/spoofed packet.\n\nFix: Add checksum verification at the start of handle_icmpv6:\n  if not Icmpv6Message.verify_checksum(packet.header.src_addr, packet.header.dst_addr, packet.payload):\n      return None  # or raise Icmpv6Error('checksum failed')",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

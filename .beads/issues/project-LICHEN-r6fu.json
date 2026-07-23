@@ -2,7 +2,7 @@
   "id": "project-LICHEN-r6fu",
   "title": "[policy] OSCORE end-to-end encryption compliance",
   "description": "Policy: spec/06-security.md §8.7. Application payloads MUST be OSCORE encrypted for E2E security. Link signatures provide hop-by-hop auth but not confidentiality. When executing: grep for CoAP/application payload handling, verify OSCORE encryption, create compliance bead per code section.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

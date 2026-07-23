@@ -2,7 +2,7 @@
   "id": "project-LICHEN-e7qu",
   "title": "task",
   "description": "python/src/lichen/sim/api.py:213. KeyError.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

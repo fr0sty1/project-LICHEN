@@ -3,7 +3,7 @@
   "title": "Migrate Python SCHC fragmentation",
   "description": "Replace private Python fragmentation/ACK format and unlimited parity windows with the approved RFC profile and shared vectors. Preserve bounded manager behavior and add ACK-on-Error state tests.",
   "acceptance_criteria": "Python passes shared vectors, focused tests, Ruff/mypy, full suite, and three independent reviews.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

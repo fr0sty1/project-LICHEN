@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3jif",
   "title": "DaoManager._assemble_path returns empty list for root-adjacent nodes",
   "description": "File: python/src/lichen/rpl/dao.py:189-209\n\nThe _assemble_path() method returns an empty list when the target's parent is the root:\n\n```python\ndef _assemble_path(self, target: IPv6Address) -\u003e list[IPv6Address] | None:\n    chain: list[IPv6Address] = []\n    node = target\n    while node != self.node_address:  # stops when reaching root\n        ...\n        chain.append(node)\n        node = parent\n    return list(reversed(chain))\n```\n\nFor a node directly connected to root:\n- target=A, parent_map[A]=root\n- chain=[A], node=parent=root\n- Loop exits since node == self.node_address\n- Returns reversed([A]) = [A]\n\nThis is correct. But looking at _rebuild_routes():\n```python\npath = self._assemble_path(target)\nif path:  # Skip None (incomplete chain) and [] (target is root)\n    self.routing_table.add_route(target, path)\n```\n\nThe comment says [] means \"target is root\", but _assemble_path returns [] only if target == self.node_address from the start (immediate loop exit before any append). \n\nActually, looking more carefully, if target == root (node_address), the while loop never executes, chain stays [], and reversed([]) is []. This case represents \"the root is trying to route to itself\" which would be pathological.\n\nThe \"if path:\" check filters out both None and [], which is correct. But it doesn't distinguish between \"incomplete\" (None) and \"target is root\" ([]) for logging/debugging.\n\nThis is more of a code clarity issue than a bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

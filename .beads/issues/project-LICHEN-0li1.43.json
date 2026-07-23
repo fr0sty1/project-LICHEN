@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.43",
   "title": "[lichen_util.h:54] secure_zero returns without zeroing if ptr is NULL",
   "description": "Contract: secure_zero should securely wipe memory.\nViolation: Lines 58-62 check for NULL, print warning, and return early. The warning goes to printk but there is no error return value (void function). Caller cannot know the wipe failed.\nImpact: If called with NULL, sensitive data is not wiped. The ASSERT and printk provide some visibility but are not programmatic. However, the __ASSERT macro may halt in debug builds.\nMitigation: Return type is void, so cannot return error. The printk warning is best-effort. Callers should never pass NULL - this is defensive code for bug detection.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

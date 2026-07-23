@@ -2,7 +2,7 @@
   "id": "project-LICHEN-725z.8",
   "title": "MTU derivation chain undocumented and brittle",
   "description": "lora_l2.h:54, lichen_l2.h:47-48 — LICHEN_LORA_MTU=200 references SCHNORR48_SIG_LEN (48 bytes) from header not in this tree. If frame format changes, MTU must be manually updated. Derive programmatically.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

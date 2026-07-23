@@ -3,7 +3,7 @@
   "title": "Protocol: add RX_ENTER/RX_EXIT/RX_PACKET/RX_TIMEOUT message types",
   "description": "Add new message types to python/src/lichen/sim/protocol.py for push-based RX:\n\n```python\n# New message types\nMSG_RX_ENTER = 0x24    # Renode → Sim: entering RX mode\nMSG_RX_EXIT = 0x26     # Renode → Sim: leaving RX mode  \nMSG_RX_PACKET = 0x27   # Sim → Renode: packet arrived (unsolicited)\nMSG_RX_TIMEOUT = 0x28  # Sim → Renode: RX timeout (unsolicited)\n\ndef encode_rx_enter(timeout_us: int) -\u003e bytes:\n    \"\"\"Encode RX_ENTER: 1-byte type + 4-byte LE timeout.\"\"\"\n    return struct.pack(\"\u003cBI\", MSG_RX_ENTER, timeout_us)\n\ndef decode_rx_enter(payload: bytes) -\u003e int:\n    \"\"\"Decode RX_ENTER, return timeout_us.\"\"\"\n    return struct.unpack(\"\u003cI\", payload)[0]\n\ndef encode_rx_packet(payload: bytes, rssi: int, snr: int) -\u003e bytes:\n    \"\"\"Encode RX_PACKET for push to Renode.\"\"\"\n    # Same format as RX_OK but different message type\n    ...\n\ndef encode_rx_timeout() -\u003e bytes:\n    \"\"\"Encode RX_TIMEOUT.\"\"\"\n    return struct.pack(\"\u003cB\", MSG_RX_TIMEOUT)\n```\n\nKeep RX_POLL/RX_OK/RX_EMPTY for now (removed in separate bead).",
   "acceptance_criteria": "New encode/decode functions exist and pass unit tests",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "grinder",

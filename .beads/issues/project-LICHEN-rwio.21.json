@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.21",
   "title": "sha_state struct not zeroized after SHA-256 operations",
   "description": "In lora_l2.c:98 and ipv6_addr.c:57, tc_sha256_state_struct (sha_state) is allocated on the stack but never cleared after use. This struct contains internal SHA-256 state including intermediate hash values.\n\nLocations:\n- firmware/bridge-zephyr/subsys/lichen/lora_l2.c:98 (generate_eui64)\n- firmware/bridge-zephyr/subsys/lichen/ipv6_addr.c:57 (lichen_pubkey_to_iid)\n\nImpact: Tinycrypt's SHA-256 state includes partial hash computations. While not directly exposing input data, the residue could theoretically aid cryptanalytic attacks if an adversary can read stack memory repeatedly. Defense in depth requires clearing all crypto state.\n\nFix: Add memset(\u0026sha_state, 0, sizeof(sha_state)) (or explicit_bzero) after tc_sha256_final() in both functions.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-6w6r",
   "title": "coap_keys.c: is_local_admin accepts all link-local addresses as admin",
   "description": "File: lichen/subsys/lichen/coap/coap_keys.c\nLines: 850-856\n\nSECURITY: The admin access check is too permissive:\n```c\n/* Link-local addresses on BLE LCI interface are local */\nif (net_ipv6_is_ll_addr(\u0026in6-\u003esin6_addr)) {\n    return true;\n}\n```\n\nAny link-local address is accepted as local admin. This allows any neighbor on the same link to modify the key store via PUT/DELETE /keys/{iid}. Should additionally check:\n1. The interface index (sin6_scope_id) matches the BLE LCI interface\n2. Or use OSCORE authentication for admin operations\n\nImpact: Unauthorized key modification by any mesh neighbor.\n\nCategory: SECURITY - authentication bypass",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

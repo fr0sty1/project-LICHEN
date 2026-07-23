@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.109",
   "title": "[lichen_l2.c:517] lichen_link_rx may write to out_ipv6 even on failure",
   "description": "Final pass: This was missed because reviewers assumed lichen_link_rx follows the pattern of 'don't modify output on failure'.\n\nRoot cause: At line 517-518:\n  ret = lichen_link_rx(ctx, replay, frame, frame_len, out_ipv6, out_len, src_eui64);\n\nThe peer_try_all_pubkeys function iterates through peers, calling lichen_link_rx for each. When signature verification fails (-LICHEN_EAUTH), the code continues to the next peer.\n\nHowever, lichen_link_rx may have already performed partial work before failing:\n1. Parsed the frame header\n2. Attempted MIC verification (which failed)\n3. Partially decompressed SCHC data into out_ipv6\n\nIf lichen_link_rx writes to out_ipv6 before verifying the signature/MIC, then on failure:\n- out_ipv6 contains partially decompressed (unauthenticated) data\n- On the next peer iteration, out_len is restored but out_ipv6 is NOT zeroed\n\nThis means if peer[0] fails with partial data written, and peer[1] succeeds, the success path uses the correctly decompressed data. But if ALL peers fail, out_ipv6 contains unauthenticated data from the last attempted decompression.\n\nThe caller (lichen_l2_input) only uses out_ipv6 on success, so this isn't exploitable. But it's a latent risk if the API contract changes.\n\nFix: Either document that out_ipv6 is undefined on failure, or have peer_try_all_pubkeys zero it on final failure.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

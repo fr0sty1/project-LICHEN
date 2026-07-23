@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.33",
   "title": "[lora_l2.c:507-509] lora_dev captured without null check",
   "description": "What: After generate_eui64() succeeds, the code assumes lora_data.lora_dev is valid because device_is_ready() passed earlier. However, lora_dev is set at line 507 BEFORE device_is_ready() check at line 511.\n\nWait, let me re-read this:\n```c\nlora_data.lora_dev = LORA_DEV;  // line 507\n// ...\nif (!device_is_ready(lora_data.lora_dev)) {  // line 511\n    LOG_ERR(\"lora_l2: device not ready\");\n    ret = -ENODEV;\n    goto out;\n}\n```\n\nThis is correct - the check happens after assignment. Not a bug.\n\nClosing this as false positive.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

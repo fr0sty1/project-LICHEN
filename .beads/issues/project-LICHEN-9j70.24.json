@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.24",
   "title": "Good: lichen_l2.c link_ctx cleanup holds both mutexes in consistent order",
   "description": "Location: lichen_l2.c:312-318\n\nThe disable path locks tx_mutex then rx_mutex before cleaning up link_ctx. The comment explicitly states the lock order: 'Lock order: tx_mutex first to avoid deadlock (consistent ordering)'.\n\nWhy this is good: Acquiring multiple mutexes is a classic deadlock source. The code not only uses consistent ordering but documents it. This prevents future refactors that might accidentally reverse the order in a new code path. The comment about why (in-flight TX/RX must complete before cleanup) further aids understanding.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

@@ -3,7 +3,7 @@
   "title": "Exhaustive Review: bridge-zephyr 2026-06-27",
   "description": "Multi-round exhaustive code review of Zephyr C code in firmware/bridge-zephyr. Target: convergence (0 new findings for 2 rounds).",
   "notes": "## Convergence Report\n\n**Rounds to converge:** 5\n**Total unique findings:** 95\n\n| Priority | Count |\n|----------|-------|\n| P0 | 1 (deadlock in disable path) |\n| P1 | 4 (peer_try_all_pubkeys, re-init peer_table, unsigned TX, rejected RX) |\n| P2 | 25 |\n| P3 | 35 |\n| P4 | 30 |\n\n**Confidence:** 90% that a follow-up review finds 0 new P0-P1 bugs.\n\n**Least confident areas:**\n- lichen_link library assumptions (external code not reviewed)\n- SCHC decompression edge cases (external code not reviewed)\n- Timing side channels in crypto operations (needs hardware testing)\n- Key provisioning flow (not implemented yet)",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

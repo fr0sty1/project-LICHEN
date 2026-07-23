@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.70",
   "title": "[lichen_link_rx.c:237-240] Zero EUI-64 returned on peer_pubkey=NULL allows frame processing with unidentified source",
   "description": "Gap: When peer_pubkey is NULL, src_eui64 is zeroed but the function may still return success.\n\nWhat: Lines 237-240 set src_eui64 to all zeros if peer_pubkey is NULL. However, the function can still succeed (if signature_present is false and replay/MIC checks pass). The caller receives a valid IPv6 packet but with an all-zeros source EUI-64.\n\nWhy it matters: An all-zeros EUI-64 is a valid address (00:00:00:00:00:00:00:00) that could collide with other unidentified sources. This could pollute routing tables, replay windows, or peer tables. The function should probably return an error if the source cannot be determined, rather than silently returning an indeterminate source.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

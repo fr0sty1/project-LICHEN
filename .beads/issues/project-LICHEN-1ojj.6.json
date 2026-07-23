@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.6",
   "title": "RX callback snapshot prevents early mutex release",
   "description": "lora_l2.c:148-151 locks lora_mutex just to snapshot the callback pointer, then immediately unlocks. This is correct but inefficient: the mutex is held only for the snapshot, yet the callback is invoked outside the mutex anyway.\n\nWhat goes wrong as-is: Nothing breaks, but on every RX packet the thread acquires/releases a mutex purely to copy two pointers. At SF10 with 5s timeout, this is not a hot path, but the pattern obscures intent.\n\nAlternative: Use atomic pointer exchange or a single atomic containing both pointers (RCU-style) to avoid the mutex on the read path. Or accept the mutex as documenting the invariant that cb+user_data are always updated together.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

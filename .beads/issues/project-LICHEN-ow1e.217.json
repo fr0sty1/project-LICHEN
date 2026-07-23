@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.217",
   "title": "Codereview pass 3: DTN monotonic",
   "description": "Review of DTN buffer monotonic time fix (potential issues and improvements focus):\n\n**Findings:**\n\n1. **Minor race condition:** dtn_buffer_message calls time.time() internally but now_mono_ms is passed as argument. Consider passing now_unix alongside now_mono_ms to keep them synchronized.\n\n2. **Consistency:** Approach is consistent with codebase. Other time-sensitive code (expire_pending, gradient_table.lookup) uses passed-in now_ms parameter.\n\n3. **Performance:** Conversion is trivial integer ops. No concern.\n\n4. **Edge case (32-bit systems):** Very large TTL values could overflow on 32-bit. Python handles big integers, but worth documenting for C/Rust port.\n\n5. **Tests:** Correctly construct DtnMessage directly to test monotonic expiry logic.\n\n**Verdict:** Fix is sound. Only actionable improvement is passing now_unix alongside now_mono_ms to eliminate internal time.time() call.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

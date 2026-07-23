@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-w82",
   "title": "Implement TCP node server",
   "description": "Create python/src/lichen/sim/node_server.py. asyncio TCP server on port 4444. On connect: read REGISTER message, create/lookup Simulation by sim_id, add node, send OK/ERR. Handle TX: validate, create Transmission in medium, schedule TxEndEvent, send TX_DONE with airtime. Handle RX: set node state to RX_WAIT, create RxTimeoutEvent, await packet delivery or timeout, send RX_OK or RX_TIMEOUT. Handle TIME: return current_time_us. Track connection -\u003e node_id mapping. Clean up on disconnect.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

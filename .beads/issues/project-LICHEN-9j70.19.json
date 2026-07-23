@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.19",
   "title": "lora_l2.c: k_thread_join timeout sequence comment doesn't explain the 100+5000ms strategy",
   "description": "Location: lora_l2.c:329-341\n\nThe stop() function joins with a 100ms timeout, then RX_TIMEOUT_MS (5000ms), then aborts. The comment says 'short initial timeout for the common case where the thread exits quickly'.\n\nWhat goes wrong: Why 100ms specifically? Is it based on lora_recv() internal timing, expected worst-case for the running-flag check, or arbitrary? Without this context, a future maintainer might change it to 50ms (faster shutdown!) or 500ms (more margin!) without understanding the tradeoff.\n\nSuggested fix: Add one sentence: '100ms is ample time for a thread that checked running between lora_recv() calls; if still blocked, it's inside lora_recv() and needs up to RX_TIMEOUT_MS to return.'",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

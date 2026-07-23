@@ -2,7 +2,7 @@
   "id": "project-LICHEN-7ax6",
   "title": "python: add strict generic type arguments in node.py",
   "description": "Why this exists: while validating project-LICHEN-42j7, mypy on python/src/lichen/node.py no longer reported the Meshtastic import or start/stop attr-defined errors, but still failed under strict mode on unrelated missing type arguments for asyncio.Task and dict/list return/update types in node.py. What needs to be done: add precise generic annotations for the Node task fields/returns and status/config/neighbor dictionaries, then rerun mypy on node.py without suppressions.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

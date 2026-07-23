@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1lbq",
   "title": "DaoManager.process_dao doesn't validate RPL instance ID",
   "description": "File: python/src/lichen/rpl/dao.py:123-137\n\nThe process_dao() method accepts and processes any DAO without validating that the DAO's rpl_instance_id matches the DaoManager's configured rpl_instance_id.\n\nCurrent code:\n```python\ndef process_dao(self, dao: DAO) -\u003e DAOAck | None:\n    if not self.is_root:\n        raise DaoError(\"process_dao is only valid on the root\")\n    \n    target, parent = self._extract_edge(dao)  # No instance ID check\n    self._parent_map[target] = parent\n    ...\n```\n\nImpact: A malicious or misconfigured node could send a DAO for a different RPL instance, and the root would accept it and potentially corrupt its routing table with edges from a different routing domain.\n\nPer RFC 6550 Section 9.5, the root MUST filter DAOs by RPL Instance ID.\n\nFix: Add validation before processing:\n```python\nif dao.rpl_instance_id != self.rpl_instance_id:\n    raise DaoError(f\"DAO instance ID {dao.rpl_instance_id} != {self.rpl_instance_id}\")\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

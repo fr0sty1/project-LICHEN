@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.28",
   "title": "lichen_l2_input: missing NULL parameter validation",
   "description": "firmware/bridge-zephyr/subsys/lichen/lichen_l2.c line 343:\n\nvoid lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len, ...)\n\nThis public API does not validate that iface or data are non-NULL before use. If called with NULL data:\n- Line 384 (lichen_link_rx) or line 403 (memcpy) will dereference NULL\n- Undefined behavior / crash\n\nIf called with NULL iface:\n- Line 408 (net_pkt_rx_alloc_with_buffer) passes NULL iface\n- Line 437 (net_recv_data) passes NULL iface\n\nCurrent internal caller (lora_rx_callback at line 291) guards lichen_iface but external callers are unprotected. Add early NULL checks and return -EINVAL (or void with LOG_ERR).",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

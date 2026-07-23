@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9c8w.3",
   "title": "Normalize error code format to (%d) suffix",
   "description": "Standardize error code formatting across all files.\n\nCurrent variations:\n  LOG_ERR(\"failed: %d\", ret);\n  LOG_ERR(\"err=%d\", ret);\n  LOG_ERR(\"error code %d\", ret);\n  LOG_ERR(\": %d\", ret);\n\nTarget:\n  LOG_ERR(\"lora_l2: config failed (%d)\", ret);\n\nFiles: lora_l2.c, lichen_l2.c, ipv6_addr.c, main.c",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

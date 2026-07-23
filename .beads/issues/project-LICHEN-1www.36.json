@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.36",
   "title": "lichen_l2_input does not validate len against MAX_LORA_FRAME before lichen_link_rx",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:639-743 (lichen_l2_input)\n\nBug: The function validates minimum frame length (LICHEN_MIN_FRAME_LEN = 9) at line 659, but does not validate maximum length against MAX_LORA_FRAME (255). If lichen_link_rx() does not perform its own bounds check, a malformed frame larger than 255 bytes could cause buffer overflows.\n\nAdditionally, the code at line 736-741 (non-LICHEN_LINK path) does check len \u003e sizeof(rx_ipv6_buf), but this is 240 bytes - smaller than MAX_LORA_FRAME. For LICHEN_LINK path, lichen_link_rx() receives the raw len without explicit upper bound validation in this function.\n\nImpact: Depends on whether lichen_link_rx() has its own bounds checking. If not, potential buffer overflow. At minimum, clearer code to check explicit maximum at entry point.\n\nFix: Add explicit check: if (len \u003e MAX_LORA_FRAME) return; after the minimum length check.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

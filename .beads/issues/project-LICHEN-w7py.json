@@ -2,7 +2,7 @@
   "id": "project-LICHEN-w7py",
   "title": "lichen_app_interface_get_status zeroes output on each retry attempt",
   "description": "File: lichen/subsys/lichen/app_interface/app_interface.c:387-400\n\n  for (size_t i = 0U; i \u003c sink_count; i++) {\n      int ret;\n\n      memset(status, 0, sizeof(*status));  // zeroes before EACH attempt\n      ret = snapshot[i].get_status(status, snapshot[i].user_data);\n\n      if (ret == 0) {\n          return 0;\n      }\n      if (first_error == 0) {\n          first_error = ret;\n      }\n  }\n  return first_error;\n\nThe memset inside the loop zeroes the status struct before each provider attempt. This is correct for ensuring clean state per attempt.\n\nHowever, if ALL providers fail, the caller receives:\n- first_error indicating failure\n- status struct zeroed from the last failed attempt\n\nIf any provider partially populated status before failing, that data is lost. The caller cannot distinguish between:\n1. Provider returned error before writing anything\n2. Provider wrote partial data then failed\n\nThis may be intentional design, but consider:\n- Moving memset before the loop (single zero, preserve partial data from last attempt)\n- Or document that status is undefined on error return",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

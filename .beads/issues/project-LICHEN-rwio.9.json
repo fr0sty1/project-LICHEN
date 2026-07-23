@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.9",
   "title": "main.c: ret variable uninitialized on some code paths",
   "description": "In main.c, the variable 'ret' declared at line 62 may be used uninitialized when CONFIG_USB_DEVICE_STACK is not defined and HAS_LED is not defined.\n\nLocation: firmware/bridge-zephyr/src/main.c:62\n\nCode path:\n- Line 62: int ret; (declared, uninitialized)\n- Line 66-75: HAS_LED block (only runs if LED exists) - sets ret\n- Line 77-86: USB block (only runs if CONFIG_USB_DEVICE_STACK) - sets ret\n- Line 93+: CONFIG_LICHEN_LORA_L2 block - uses ret (line 105, 115, etc.)\n\nWhat goes wrong: If neither HAS_LED nor CONFIG_USB_DEVICE_STACK is defined, but CONFIG_LICHEN_LORA_L2 is defined, ret is used uninitialized on line 105. In practice this is benign because lichen_lora_l2_init() returns a fresh value, but the pattern violates C best practices and triggers compiler warnings with -Wuninitialized.\n\nFix: Initialize ret to 0 at declaration.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

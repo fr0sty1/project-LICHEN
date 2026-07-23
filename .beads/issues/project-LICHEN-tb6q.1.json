@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tb6q.1",
   "title": "test_unpin_allows_key_rotation is broken: tests wrong IID",
   "description": "The test claims to verify that unpin() allows key rotation, but it:\n1. Unpins identity.iid\n2. Then submits announce from other_identity (which has other_identity.iid)\n3. The unpin() call has zero effect on the test outcome\n\nThe test passes whether or not unpin() is called because other_identity has a completely different IID.\n\nLocation: python/tests/announce/test_processor.py lines 562-582\n\nWhat goes wrong: The test provides false confidence that unpin() serves a purpose for key rotation. It does not actually test any real functionality.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

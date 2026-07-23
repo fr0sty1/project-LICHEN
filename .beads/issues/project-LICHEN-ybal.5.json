@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.5",
   "title": "link_ctx_initialized bool not atomic - torn read possible under optimizer",
   "description": "File: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:67,207,321,359\n\nlink_ctx_initialized is a plain bool checked in TX (line 143) and RX (line 359) paths under their respective mutexes, but set in init (line 321) without any mutex and cleared in disable (line 207) under both mutexes.\n\nThe init path sets it without holding any mutex:\n  link_ctx_initialized = true;  // line 321\n\nIf the compiler reorders stores, link_ctx_initialized could become true before link_ctx fields are written.\n\nTrigger: Aggressive optimization (-O2) reorders initialization; RX callback sees initialized=true but link_ctx fields are stale.\n\nBad behavior: lichen_link_rx() called with partially initialized link_ctx, causing signature verification failures or memory corruption.\n\nFix: Use atomic_t for link_ctx_initialized, or hold tx_mutex/rx_mutex during init before setting the flag.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

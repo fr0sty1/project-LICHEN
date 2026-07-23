@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.18",
   "title": "lichen_sha256 inline in header causes code bloat",
   "description": "lichen_util.h:41-54: lichen_sha256() is static inline in a header. It's 14 lines including struct allocation, three function calls, and secure_zero.\n\nWhat goes wrong:\n1. Every translation unit that includes lichen_util.h and calls lichen_sha256 gets its own copy\n2. Currently called from: lora_l2.c (generate_eui64), ipv6_addr.c (lichen_pubkey_to_iid)\n3. Each call site gets ~100+ bytes of code (SHA init/update/final + cleanup)\n4. Embedded systems are flash-constrained\n\nThe secure_zero() inline is appropriate (few bytes, called from many places). But lichen_sha256() should be in a .c file.\n\nFix: Move lichen_sha256() to lichen_util.c (may need to create it) and declare extern in header.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

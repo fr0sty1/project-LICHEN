@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.106",
   "title": "frame.py: addr_len property creates dict on every access",
   "description": "src/lichen/link/frame.py:38-42 AddrMode.addr_len property creates a new dict on every property access:\n    {AddrMode.NONE: 0, AddrMode.SHORT: 2, ...}[self]\n\nFor a property called during frame parsing, this is wasteful. Should be a module-level constant or class attribute.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

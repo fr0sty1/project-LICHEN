@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-1www.45",
   "title": "lichen_l2_enable disable path returns stop result but stop never errors on valid state",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

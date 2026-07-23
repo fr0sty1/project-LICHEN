@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.15",
   "title": "OSCORE sender_sequence_number has no overflow check or wrap-around handling",
   "description": "**Location:** python/src/lichen/crypto/oscore.py:131-135\n\n**Bug:** The `new_sequence_number()` method increments `sender_sequence_number` without bounds checking. Per RFC 8613, the sender sequence number is a non-negative integer that, when approaching its maximum value, should trigger key renegotiation or session termination.\n\n**Trigger:** After sending ~2^53 messages (float precision limit) or potentially 2^32 (depending on protocol constraints), the sequence number becomes non-monotonic or wraps, breaking replay protection on the receiver side.\n\n**Bad behavior:** Receiver accepts replayed old messages as fresh because sequence numbers wrap and collide with previously-used values.\n\n**Spec reference:** RFC 8613 Section 7.2.1 requires implementations to 'ensure that the Sender Sequence Number does not wrap.'",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

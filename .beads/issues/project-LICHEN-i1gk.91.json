@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.91",
   "title": "[lichen_l2.c:846] lichen_link_tx called without checking frame_len output parameter",
   "description": "Completeness: Output parameter validation category.\n\nAt line 845-846:\nret = lichen_link_tx(\u0026link_ctx, tx_ipv6_buf, pkt_len, NULL, tx_frame_buf, \u0026frame_len);\n\nBefore the call, frame_len = sizeof(tx_frame_buf) (line 831).\nAfter the call, frame_len contains the actual frame size.\n\nThe validation at lines 855-859 checks frame_len \u003e sizeof(tx_frame_buf), which catches overflow.\n\nHowever, there's no check for frame_len == 0. If lichen_link_tx() succeeds (ret == 0) but sets frame_len = 0 due to a bug, the subsequent lora_send at line 864 would send an empty frame.\n\nWhile lichen_link_tx() should never return success with zero frame_len, defensive code should check: if (frame_len == 0) { LOG_ERR(..); return -EINVAL; }\n\nThis pairs with the existing underflow check already filed for the RX path.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.186",
   "title": "Codereview pass 2: Python OSCORE seqnum - test coverage",
   "description": "Review of test coverage for sender_sequence_number overflow fix.\n\n**Findings:**\n- test_sequence_number_overflow_raises tests the boundary at MAX_SEQNO\n- Uses pytest.raises with match='exhausted' to verify correct exception\n- Test directly sets sender_sequence_number to MAX_SEQNO rather than incrementing 2^40 times (appropriate for unit test)\n- Imports MAX_SEQNO from aiocoap to ensure test stays in sync with library\n\n**Minor observation:** Test could additionally verify that seqno == MAX_SEQNO - 1 still succeeds before failure. However, this is a minor enhancement, not a defect.\n\n**Status:** Test coverage is adequate for the fix.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

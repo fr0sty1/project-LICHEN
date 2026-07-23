@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9nrr.18",
   "title": "native: add permanent TX concurrency test scaffolding",
   "description": "Why this exists: project-LICHEN-9nrr.1 fixed the native shared TX scratch buffer race by serializing encode+send, but the repo does not yet have a permanent native protocol unit/test harness that can exercise public send APIs without real UART hardware. Temporary validation used a board build with CONFIG_LICHEN_NATIVE enabled. What needs to be done: add a durable native test scaffold that can drive lichen_native_send_hello(), lichen_native_send_node_info(), lichen_native_send_message_received(), and lichen_native_send_log_entry() with a fake or test UART path, then add a concurrency regression that proves frames cannot interleave or corrupt the CBOR payload under concurrent senders. Keep this separate from CBOR parser work; do not add magic byte walkers. Acceptance: the test is part of normal Zephyr/twister or repo test invocation, fails against the pre-fix shared-buffer race or equivalent injected interleaving, passes with encode+send serialization, and after implementation/tests completes two separate code-review passes with follow-up Beads for findings.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

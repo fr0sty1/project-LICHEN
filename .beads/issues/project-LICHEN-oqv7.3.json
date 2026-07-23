@@ -4,7 +4,7 @@
   "description": "Align the Nucleo WL55JC Renode devicetree overlay, zephyr,lora selection, lichen,lora-renode node, HAL lookup, and SubGHz model so canonical gateway and puck builds no longer reference missing device ordinal __device_dts_ord_87.",
   "acceptance_criteria": "Canonical gateway and puck Nucleo builds link without undefined device ordinals and reach their late runtime oracle plus simulator-observed radio effect; lora_ping remains passing; physical Nucleo configuration is unchanged.",
   "notes": "Completed after dependencies: RNG model unblocked full apps. Gateway reaches full L2 startup and CoAP AUTOSTART; puck reaches main, arms 4000 ms watchdog, enters L2/CoAP mode, and produces four simulator-observed transmissions; lora_ping independently produces one 4-byte TX. Clean physical gateway/puck builds retain STM32WL model. Runtime logs and artifact hashes are recorded in linked project-LICHEN-5ix1.5 and project-LICHEN-oqv7.8 notes.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

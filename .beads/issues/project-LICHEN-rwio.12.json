@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.12",
   "title": "GOOD: Thread join with timeout + abort fallback in lichen_lora_l2_stop",
   "description": "lora_l2.c lines 299-307: stop() tries graceful join with timeout, then aborts if the RX thread is stuck in lora_recv(). Abort + k_thread_join(K_FOREVER) guarantees thread struct is safe to reuse on next start(). This handles the real-world case where radio drivers can hang, without leaking thread resources.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

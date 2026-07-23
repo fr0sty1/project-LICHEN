@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-aj0",
   "title": "Hybrid routing decision logic (RPL + LOADng)",
   "description": "Implement the routing decision logic that selects between RPL and LOADng.\n\nPer spec section 7.2:\n\ndef route_packet(dst_addr):\n    if is_link_local(dst_addr):\n        # fe80::/10 - direct neighbor\n        return send_to_neighbor(dst_addr)\n    \n    elif is_mesh_local(dst_addr):\n        # ULA (fd00::/8) or mesh GUA - peer in mesh\n        route = loadng_cache.lookup(dst_addr)\n        if route:\n            return forward_via(route.next_hop)\n        else:\n            # Initiate discovery, queue packet\n            loadng_discover(dst_addr)\n            return queue_pending(dst_addr, packet)\n    \n    else:\n        # External destination - use RPL toward BR\n        return forward_to_rpl_parent()\n\nis_mesh_local():\n- Check if dst matches our ULA prefix\n- Check if dst matches any GUA prefix from DIO\n- If neither, it's external\n\nFallback:\n- If LOADng discovery fails after timeout\n- MAY forward to RPL parent as last resort\n- Log warning (inefficient path)\n\nRouter class integration:\n- Owns both RplEngine and LoadngEngine\n- route() method implements decision logic\n- Handles packet queueing for pending discoveries",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

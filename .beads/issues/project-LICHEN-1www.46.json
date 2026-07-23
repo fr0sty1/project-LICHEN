@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.46",
   "title": "lichen_iface set-once invariant enforced only by comment not by code",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:201 (lichen_iface declaration) and line 603 (assignment)\n\nRisk: The comment at line 197-200 states INVARIANT: Set once, never cleared. However:\n1. Nothing prevents a second call to lichen_l2_iface_init() from overwriting it\n2. The fail_late_init path at line 622-636 explicitly does NOT clear it per the invariant, but a future contributor might not understand why\n3. If NET_DEVICE_INIT were called twice (unlikely but possible in some Zephyr configs), this would silently overwrite\n\nPattern contributors may misunderstand: Thinking they can reset the interface by calling init again, or not understanding why fail_late_init does not clear lichen_iface.\n\nSuggested fix: Add a check at the start of lichen_l2_iface_init(): \n  if (lichen_iface != NULL) { LOG_ERR(...); return; }\n\nOr use a static bool already_initialized flag that triggers a BUILD_ASSERT-like runtime panic on second call.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

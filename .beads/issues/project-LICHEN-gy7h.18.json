@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.18",
   "title": "secure_zero byte-by-byte loop may be slower than necessary",
   "description": "lichen_util.h:31-38 implements secure_zero with a byte-by-byte volatile write loop. On most embedded platforms, this is fine for small buffers (16-32 bytes). However, the link_ctx cleanup (project-LICHEN-rwio.1) calls secure_zero on the entire link_ctx struct which may be 100+ bytes.\n\nWhat goes wrong: On larger structures, byte-by-byte writes are measurably slower than word-aligned volatile writes. In a disable path (lichen_l2_enable with state=false), this adds latency while holding both tx_mutex and rx_mutex.\n\nConsider:\n```c\nstatic inline void secure_zero(void *ptr, size_t len)\n{\n    volatile uint8_t *p = ptr;\n    /* Word-aligned bulk zeroing for larger buffers */\n    while (len \u003e= sizeof(unsigned long) \u0026\u0026 \n           ((uintptr_t)p \u0026 (sizeof(unsigned long) - 1)) == 0) {\n        *(volatile unsigned long *)p = 0;\n        p += sizeof(unsigned long);\n        len -= sizeof(unsigned long);\n    }\n    /* Byte cleanup for remainder */\n    while (len--) {\n        *p++ = 0;\n    }\n    compiler_barrier();\n}\n```\n\nThis is only worth doing if profiling shows disable latency is a problem. Current implementation is correct, just potentially slower.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

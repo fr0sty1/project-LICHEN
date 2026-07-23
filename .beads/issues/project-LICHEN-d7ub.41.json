@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.41",
   "title": "crash_info.c:49 crash_info_check_and_clear does not validate magic values",
   "description": "Contract violation: crash_info_check_and_clear() - Only checks for CRASH_MAGIC at line 51. Does not validate that reason, location, or extra are within sensible bounds before logging. If retained RAM is corrupted (e.g., power glitch during write), logged values could be garbage. WHY: Misleading debug output from corrupted crash info. HOW to fix: Add bounds check for reason (\u003c CRASH_UNKNOWN) before logging, or log raw values with disclaimer that they may be corrupted.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

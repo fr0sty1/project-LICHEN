@@ -2,7 +2,7 @@
   "id": "project-LICHEN-bis0.1",
   "title": "Rust: Add queue latency metrics to TxQueueStats",
   "description": "TxQueueStats in rust/lichen-core/src/tx_queue.rs needs:\n- packets_queued (cumulative counter, not just depth snapshot)\n- packets_dropped_deadline\n- packets_dropped_full\n- max_latency_ms\n- avg_latency_ms\n\nRequires:\n1. Store enqueue timestamp on each TxItem\n2. Track max/avg latency on dequeue\n3. Add separate counters for deadline vs full drops\n4. Expose via stats() method\n\nReference: spec/appendix-bufferbloat.md lines 138-152",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

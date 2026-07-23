@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.29",
   "title": "[ipv6_addr.c:75] Uninitialized hash buffer on SHA-256 failure",
   "description": "What: lichen_pubkey_to_iid() declares hash[32] on stack, calls lichen_sha256(), and if that fails, goes to cleanup which zeros hash. But if lichen_sha256 returns an error, hash may be uninitialized (never written to).\n\nWhy it matters: The cleanup path calls secure_zero(hash, sizeof(hash)) regardless of whether hash was written. This is actually SAFE - zeroing uninitialized memory is well-defined. The concern is if the compiler optimizes away the zero because hash was never 'used'.\n\nThe volatile access in secure_zero() should prevent this optimization. Not a bug.\n\nEvidence:\n```c\nuint8_t hash[TC_SHA256_DIGEST_SIZE];  // uninitialized\nret = lichen_sha256(pubkey, LICHEN_ED25519_PUBKEY_LEN, hash);\nif (ret != 0) {\n    LOG_ERR(...);\n    goto cleanup;  // hash may be uninitialized here\n}\n// ...\ncleanup:\n    secure_zero(hash, sizeof(hash));  // zeros possibly-uninitialized buffer - OK\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

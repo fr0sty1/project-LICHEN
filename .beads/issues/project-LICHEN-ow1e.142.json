@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.142",
   "title": "Public functions in routing/router.py missing return type annotations",
   "description": "Six public methods in `src/lichen/routing/router.py` are missing return type annotations:\n\n- Line 183: `Router.route()` - returns `tuple[RouteDecision, IPv6Address | None]`\n- Line 388: `Router.on_route_discovered()` - returns `list[PendingPacket]`\n- Line 405: `Router.update_neighbor_coords()` - returns `None`\n- Line 411: `Router.update_neighbor_queue_depth()` - returns `None`\n- Line 423: `Router.dtn_buffer_message()` - returns `bool`\n- Line 500: `Router.gpsr_forward()` - missing return type",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

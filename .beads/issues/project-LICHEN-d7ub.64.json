@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.64",
   "title": "lora_l2.c + lichen_l2.c: lock ordering violation possible in enable path",
   "description": "Cross-file interaction bug: Lock ordering documentation says tx_mutex before rx_mutex, but some paths may violate this.\n\nlichen_l2.c:255-262 documents lock order: tx_mutex (1st) before rx_mutex (2nd).\n\nCode paths that acquire both:\n- lichen_l2_enable(true) lines 1059-1060: tx_mutex then rx_mutex CORRECT\n- lichen_l2_enable(false) lines 1251-1252: tx_mutex then K_MSEC(100) rx_mutex CORRECT\n- fail_late_init lines 1674-1675: tx_mutex then rx_mutex CORRECT\n- re-init check lines 1547-1548: tx_mutex then rx_mutex CORRECT\n- callback rollback lines 1118-1119: tx_mutex then rx_mutex CORRECT\n- start failure rollback lines 1163-1164: tx_mutex then rx_mutex CORRECT\n\nNow check lora_l2.c mutex patterns:\n- lora_mutex and tx_buf_mutex are separate from lichen_l2's tx_mutex/rx_mutex\n\nCross-module call: lora_l2.c:959 calls lichen_l2_reinit_after_abort() during deinit().\nAt that point, lora_l2.c:907-910 tried trylock on lora_mutex.\nlichen_l2_reinit_after_abort() reinits rx_mutex.\n\nNo cross-module lock ordering issue because:\n- lora_l2.c uses lora_mutex + tx_buf_mutex\n- lichen_l2.c uses tx_mutex + rx_mutex\n- These are 4 different mutexes, no ordering between them documented\n\nHOWEVER: lichen_l2_input() holds rx_mutex while calling lichen_link_rx() which... actually doesn't call back into lora_l2.c.\n\nWITHDRAW: After thorough analysis, no lock ordering violation found between modules.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

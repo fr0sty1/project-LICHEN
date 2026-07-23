@@ -2,7 +2,7 @@
   "id": "project-LICHEN-o10a",
   "title": "task",
   "description": "lr1110_hal.c:239 - lr1110_hal_wakeup() directly accesses lr1110_bus.config.cs.gpio to toggle the CS pin for wake-from-sleep. If the devicetree node does not specify cs-gpios (hardware CS), the gpio.port field will be NULL, and gpio_pin_set_dt() will crash with a NULL pointer dereference. Should check if cs.gpio.port is non-NULL before attempting manual CS control, or document that cs-gpios is required in the binding.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

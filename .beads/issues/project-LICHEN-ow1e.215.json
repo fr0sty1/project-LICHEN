@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.215",
   "title": "Codereview pass 1: DTN monotonic",
   "description": "Review of DTN buffer monotonic time fix (correctness focus):\n\n**Findings:**\n\n1. **Conversion logic is correct.** TTL calculation and monotonic deadline conversion are properly implemented.\n\n2. **API consistency is good.** Parameter rename from now_ms to now_mono_ms is consistently applied.\n\n3. **Minor race condition (low severity):** dtn_buffer_message() calls time.time() internally, but receives now_mono_ms from caller. If there's latency between captures, TTL calculation could be slightly off. Sub-second drift in practice.\n\n4. **Edge case noted:** Messages with exactly-now expiry (expiry_mono_ms == now_mono_ms) are considered expired. Matches implementation.\n\n**Verdict:** No correctness bugs found. Implementation is sound.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

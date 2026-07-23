@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-1cg",
   "title": "RX operation returns immediately without waiting for simulation time",
   "description": "In node_server.py _handle_rx(), after start_receive() the code immediately calls get_rx_result(). But start_receive just schedules a timeout event - it doesn't wait for time to advance. Result: almost always times out unless TX already in flight. Need async coordination or blocking wait for barrier sync.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

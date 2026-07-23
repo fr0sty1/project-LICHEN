@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.83",
   "title": "[lora_l2.c:379-387] lora_modem_config.tx=true set but not used for half-duplex",
   "description": "Gap found: LoRa modem configuration not reviewed for half-duplex semantics.\n\nWhy this was missed: Config struct considered straightforward.\n\nThe actual bug: The lora_modem_config at lines 379-387 sets '.tx = true'. According to Zephyr's lora.h, this flag indicates the radio should be configured for TX mode.\n\nFor half-duplex LoRa operation:\n- Set tx=true before TX\n- Radio switches to RX mode for lora_recv()\n\nThe LICHEN code sets tx=true once at start() and then expects both TX and RX to work. This works because:\n1. lora_send() configures TX mode internally\n2. lora_recv() configures RX mode internally\n\nThe '.tx = true' in the config is just the INITIAL state preference, not a lock.\n\nVerified correct. The Zephyr LoRa driver handles mode switching. Priority 4 - documentation note.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

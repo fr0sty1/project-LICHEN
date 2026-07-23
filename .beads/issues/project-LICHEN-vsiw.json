@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vsiw",
   "title": "Specify SCHC compression Rules 5 and 6",
   "description": "Rule Set Version 2 assigns compression Rules 5 and 6 but provides no complete field descriptors or vectors, while Rules 0-4 have examples only. Independent implementations cannot derive matching, residue, or decompression behavior. Complete normative definitions and vectors before profile adoption.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

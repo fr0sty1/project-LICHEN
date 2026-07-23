@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.90",
   "title": "[lichen_l2.c:845] SECURITY: TX with dst_eui64=NULL always broadcasts - no L2 unicast",
   "description": "Security finding: lichen_link_tx() is called with dst_eui64=NULL (line 843-845), meaning all TX frames are broadcast with no L2 destination address.\n\nDesign decision documented at lines 836-843: 'LICHEN always transmits broadcast frames at L2'\n\nSecurity implications:\n1. All nodes in RF range receive every frame\n2. No L2-level access control or filtering\n3. Increases attack surface - malicious nodes see all traffic\n4. Energy impact - all nodes must process all frames\n\nThe design comment claims this is intentional for mesh routing, but:\n- It enables passive eavesdropping of all frame metadata\n- Replay attacks are easier (attacker sees all traffic)\n- DoS by flooding is more effective (all nodes process all frames)\n\nImpact: P2 - architectural design decision with security tradeoffs. Not a bug per se, but should be documented as a security consideration.\n\nMitigation:\n1. Document security implications in design docs\n2. Consider optional unicast mode for point-to-point links\n3. Ensure OSCORE (E2E encryption) is mandatory for sensitive payloads",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

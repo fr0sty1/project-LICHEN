@@ -3,7 +3,7 @@
   "title": "task",
   "description": "Policy: appendix-c-safety.md. Create libFuzzer harness for schnorr48_verify(). Run 1M iterations, fix crashes.",
   "notes": "Partial: Harness created at lichen/tests/fuzz/fuzz_schnorr48.c but not yet compiled/run. Remaining: compile with libFuzzer, run 1M iterations, fix any crashes found.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

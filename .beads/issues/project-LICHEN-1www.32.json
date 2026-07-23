@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.32",
   "title": "rx_link_key not zeroed on early returns in lichen_l2_input",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:701-733\n\nrx_link_key is declared and potentially copied (line 704) before lichen_link_rx(). If lichen_link_rx fails (line 719), secure_zero is called (line 722). However, if earlier returns happen (lines 653-662 before mutex, lines 674-677 before link_rx), the key copy doesnt exist yet.\n\nThe current code is CORRECT - secure_zero is called on line 722 after the only path where rx_link_key contains key material (when has_link_key is true and we reach line 704). Line 732 also zeros on success path.\n\nThis is a non-finding after analysis. CLOSE THIS ISSUE.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

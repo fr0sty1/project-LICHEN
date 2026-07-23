@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.2",
   "title": "Missing cleanup on USB enable failure in main.c",
   "description": "Location: firmware/bridge-zephyr/src/main.c:127-148\n\nWhen usb_enable() fails, the LED blink pattern runs but the function continues execution past the failure. The code logs an error but does not propagate it or halt.\n\nWhat goes wrong: If USB CDC init fails, the system continues normally but console output is invisible. The LED pattern provides visual feedback, but the return value is ignored and main() proceeds as if USB is functional.\n\nThis is arguably intentional (degrade gracefully without USB console), but the behavior should be explicit via comment or the ret variable should be cleared after LED blink to indicate intentional continuation.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

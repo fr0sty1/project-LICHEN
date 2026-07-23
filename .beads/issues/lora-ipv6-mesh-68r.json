@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-68r",
   "title": "Phase 2: SCHC Compression",
   "description": "RFC 8724 SCHC for IPv6/UDP/CoAP compression. Exit criteria: all rules implemented and tested, fragmentation working, Rust and C produce identical output.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "Mark Frost",

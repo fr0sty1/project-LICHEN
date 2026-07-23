@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.30",
   "title": "Conditional in6_addr definition for standalone use",
   "description": "ipv6_addr.h:35-47 defines struct in6_addr only when CONFIG_NET_IPV6 is not defined. This allows the module to work standalone (without Zephyr networking) while remaining compatible when networking is enabled.\n\nWorth defending because:\n1. Enables testing ipv6_addr.c without full Zephyr net stack\n2. Avoids redefinition conflict when net_ip.h is included\n3. Comment explains the dual-use design\n\nIf someone suggests 'simplifying' by always including Zephyr's definition, push back: this breaks the standalone use case documented in the header comment ('does not depend on Zephyr's networking stack').",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

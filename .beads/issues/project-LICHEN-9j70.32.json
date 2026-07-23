@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.32",
   "title": "main.c standalone mode RX callback logs but doesn't process packets",
   "description": "main.c:47-58: lora_rx_handler() in standalone mode logs 'RX: %zu bytes' but the comment says 'Future: Parse LICHEN frame, verify signature, check replay, decompress SCHC, inject into IPv6 stack.'\n\nWhat goes wrong: In standalone mode (CONFIG_LICHEN_LORA_L2 without CONFIG_LICHEN_L2), received packets are silently discarded after logging. A user testing this mode will see RX log messages and assume the stack is working, but no actual packet processing occurs.\n\nThe mode is explicitly for 'testing/debugging without the full IPv6 stack' per the comment at line 33-41, but the behavior difference is subtle.\n\nFix: Make the log message clearer: 'RX: %zu bytes (STANDALONE MODE - packet discarded)' or similar.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

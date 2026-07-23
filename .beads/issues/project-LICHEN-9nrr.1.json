@@ -3,7 +3,7 @@
   "title": "native: shared TX buffer can be corrupted by concurrent senders",
   "description": "Code review finding from unreviewed Zephyr/C paths. lichen/lib/native/native.c uses global s_tx_buf for all public send APIs. The mutex in native_send_frame() only covers UART output after the payload has already been encoded, while lichen_native_send_hello(), lichen_native_send_node_info(), lichen_native_send_message_received(), and lichen_native_send_log_entry() all encode into s_tx_buf without holding that mutex. Concurrent senders from the RX thread, main loop, LoRa RX path, or log streaming can interleave CBOR encoding and emit corrupted native frames. Evidence: s_tx_mutex/s_tx_buf at native.c:196-197, lock only in native_send_frame() at native.c:213-222, public encoders write s_tx_buf at native.c:404-602. Acceptance: serialize the full encode+send critical section or move encoding to per-call buffers; add a concurrency regression test or other focused verification.",
   "acceptance_criteria": "After implementation, run the relevant tests/builds and then complete two separate code-review passes before closing. Each review pass should inspect the produced code against this Bead's acceptance criteria and file follow-up Beads for any discovered issues.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

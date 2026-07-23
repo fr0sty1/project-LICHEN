@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.240",
   "title": "compact_cot.rs: ChatPayload::decode trusts caller verified subtype but no assert",
   "description": "ChatPayload::decode() comment says 'data[0] is subtype (0x01), already verified by caller' but there's no debug_assert! to catch misuse. Either add the assertion or remove the comment (prefer the assertion for defense in depth).\n\nFile: rust/lichen-core/src/compact_cot.rs line 296",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

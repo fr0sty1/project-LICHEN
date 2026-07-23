@@ -2,7 +2,7 @@
   "id": "project-LICHEN-57os",
   "title": "task",
   "description": "ip_coap.py:189-206 - In _next_observation_or_close(), when the close event wins the race, the cancelled next_task is not awaited before returning None. Per asyncio best practices, cancelled tasks should be awaited to allow cleanup.\n\nFailure scenario: When a subscription is closed while waiting for the next notification, the next_task is cancelled but not awaited. This can cause 'Task was destroyed but it is pending!' warnings and potential resource leaks if the underlying iterator has cleanup code.\n\nFix: Add 'with suppress(asyncio.CancelledError): await next_task' after cancelling when close_task wins.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

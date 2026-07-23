@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.72",
   "title": "[lichen_util.h:93-96] word-aligned loop uses unsigned long which varies by platform",
   "description": "Completeness: Platform portability category.\n\nIn secure_zero() (lichen_util.h:93-96), the word-aligned loop uses 'unsigned long' for word size:\n- Line 93: volatile unsigned long *wp\n- Line 94: while (len \u003e= sizeof(unsigned long))\n- Line 95: len -= sizeof(unsigned long)\n\n'unsigned long' is:\n- 4 bytes on 32-bit platforms (ARM Cortex-M, ILP32)\n- 8 bytes on 64-bit Linux (LP64)\n- 4 bytes on 64-bit Windows (LLP64)\n\nThis isn't a bug (the code is correct on all platforms), but the threshold at line 85 (len \u003e= 32) assumes word size optimization is worthwhile at 32 bytes. On 64-bit LP64, 32 bytes / 8 = 4 word writes, which is fine. On 32-bit, 32 bytes / 4 = 8 word writes.\n\nHowever, the comment at line 48 mentions 'structures like lichen_link_ctx (~100 bytes)' so 32 is reasonable.\n\nThe finding is informational: consider using uint32_t for consistent 4-byte words across all platforms, or document that performance varies by platform.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "feature",
   "assignee": "Mark Atwood",

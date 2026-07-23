@@ -3,7 +3,7 @@
   "title": "Phase 5: Security Layer",
   "description": "TOFU trust model, OSCORE encryption. Exit criteria: TOFU key exchange works, OSCORE-protected CoAP works, key pinning with change detection.",
   "notes": "Rust: schnorr.rs+identity.rs+link_layer.rs (35 tests, clippy clean). Python: crypto/schnorr48.py+crypto/identity.py+link/link_layer.py (103 tests). Both implementations validated against shared test vectors in test/vectors/. OSCORE deferred (not in Python reference). Key pinning via TOFU in LinkLayer._find_sender + ReplayProtector. Committed: 680350f.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",

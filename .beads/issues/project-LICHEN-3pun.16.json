@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-3pun.16",
   "title": "Cross-file: lichen_l2_enable deadlocks if lora_l2 thread was aborted while holding rx_mutex",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

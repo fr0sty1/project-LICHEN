@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.69",
   "title": "[lora_l2.c:434-436] rx_callback cleared but rx_callback_user_data may have allocated resources",
   "description": "Completeness: Resource leak category was not checked.\n\nIn lichen_lora_l2_init() (line 434-436), rx_callback and rx_callback_user_data are initialized to NULL. However, the API contract for user_data ownership is not documented.\n\nIf a caller passes heap-allocated user_data to set_rx_callback(), then:\n- stop() at line 583-584 sets both to NULL\n- deinit() at line 765-766 sets both to NULL\n\nNeither function provides a mechanism for the caller to clean up their user_data before it's orphaned.\n\nSeverity is P4 because callers should track their own allocations, but the API documentation should clarify ownership.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "doc",
   "assignee": "Mark Atwood",

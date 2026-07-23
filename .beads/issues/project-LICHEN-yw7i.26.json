@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yw7i.26",
   "title": "lichen_l2_recv is a trivial pass-through",
   "description": "lichen_l2.c:122-129 lichen_l2_recv() just returns NET_CONTINUE with a comment that the packet is already IPv6. Consider whether this callback is required by the L2 API or could be NULL. If required, the comment adequately explains the no-op.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

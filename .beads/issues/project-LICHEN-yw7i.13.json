@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yw7i.13",
   "title": "ipv6_addr.h struct in6_addr detection is fragile",
   "description": "ipv6_addr.h:42-59 attempts to detect if struct in6_addr is already defined using multiple guard macros (_NETINET_IN_H, _NETINET_IN_H_, __NETINET_IN_H__, etc). This is inherently fragile across platforms. Comment could acknowledge this is best-effort and may need extension for new platforms.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

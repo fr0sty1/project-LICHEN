@@ -3,7 +3,7 @@
   "title": "Port Zephyr LICHEN L2 into active west module",
   "description": "Move/adapt the reviewed L2 network interface from firmware/bridge-zephyr into lichen/subsys/lichen, wire Kconfig/CMake, and validate gateway builds with CONFIG_LICHEN_L2=y.",
   "notes": "Ported reviewed Zephyr L2 network-interface code into active lichen/subsys/lichen/l2 component; removed bridge-zephyr cross-tree Kconfig/CMake inclusion; added native_sim-only synthetic hardware ID fallback so CONFIG_LICHEN_L2 can initialize without hardware hwinfo; validated gateway native_sim build on EC2 Linux and smoke-ran zephyr.exe until LICHEN_L2 initialized, enabled, configured LoRa loopback, and started RX thread. Also updated lichen/tests/util to use active l2/lichen_util.c. Review pass 1: integration/build hygiene checked with git diff --check and active-module bridge-reference search. Review pass 2: runtime identity/security assumptions checked; synthetic hardware ID is gated to CONFIG_BOARD_NATIVE_SIM and hardware builds still fail without stable hwinfo identity.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

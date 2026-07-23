@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.71",
   "title": "[main.c/lora_l2] standalone init doesn't check start() error before calling get_eui64",
   "description": "Cross-file error handling: In main.c init_standalone_lora() (lines 86-125):\n\n    ret = lichen_lora_l2_init();   // line 91\n    ...\n    lichen_lora_l2_set_rx_callback(...);  // line 97 - no return value\n    \n    ret = lichen_lora_l2_start();  // line 99\n    if (ret \u003c 0) { return ret; }   // line 100-103\n    \n    eui64 = lichen_lora_l2_get_eui64();  // line 105\n    if (eui64 == NULL) {           // line 106\n        lichen_lora_l2_stop();     // line 108\n        return -ENODATA;\n    }\n\nThe get_eui64() call at line 105 happens AFTER start() succeeds. If get_eui64() returns NULL (which it does when not initialized), the code calls stop() and returns -ENODATA.\n\nHowever: start() only succeeds if init() succeeded (line 332-335 checks initialized). So if start() passed, init() must have succeeded, and get_eui64() shouldn't return NULL.\n\nThe only way get_eui64() can return NULL after start() succeeds is:\n1. A concurrent deinit() call (which sets initialized=0)\n2. Memory corruption\n\nSo the NULL check is defensive but the cleanup (calling stop()) is correct.\n\nActually this is NOT a bug - the code correctly handles the edge case. The only issue is that if a concurrent thread calls deinit() between start() and get_eui64(), we call stop() on a module that may already be stopped/deinitialized.\n\nPriority: P4 - the scenario is extremely unlikely and the code handles it gracefully.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

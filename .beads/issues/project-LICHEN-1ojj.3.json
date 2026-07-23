@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.3",
   "title": "lichen_lora_l2_stop: rx_thread_data reuse after join may race with double-start",
   "description": "In lora_l2.c, lichen_lora_l2_stop() calls k_thread_join(\u0026rx_thread_data) at line 263, and lichen_lora_l2_start() calls k_thread_create() on the same static rx_thread_data at line 235. After stop() completes, calling start() again reuses rx_thread_data. However, if stop() times out on join (RX_TIMEOUT_MS + 1000), the thread may still be winding down while start() reinitializes rx_thread_data, causing undefined behavior. The k_thread_join() return value is not checked - if it returns non-zero (e.g., -EAGAIN on timeout), the subsequent start() corrupts an active thread.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

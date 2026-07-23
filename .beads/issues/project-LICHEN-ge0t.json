@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ge0t",
   "title": "task",
   "description": "compact_cot.py:785 - speed_cm_s is packed as unsigned 16-bit int (struct '\u003eH'), limiting speed to 655.35 m/s (2359 km/h). Fast military/supersonic aircraft exceed this. struct.pack raises error for speed_cm_s \u003e 65535. Failure scenario: Fighter jet PLI with speed 700 m/s -\u003e speed_cm_s=70000 -\u003e struct.pack fails. Lower priority than altitude since most LICHEN use cases are ground/slow-moving assets.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

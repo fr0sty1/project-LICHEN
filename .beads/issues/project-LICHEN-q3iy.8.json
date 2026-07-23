@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.8",
   "title": "lichen_l2.c: lichen_link_tx NULL destination semantics undocumented at call site",
   "description": "## Location\nfirmware/bridge-zephyr/subsys/lichen/lichen_l2.c:364\n\n## Issue\nThe call to lichen_link_tx() passes NULL as the fourth parameter (destination):\n\n```c\nret = lichen_link_tx(\u0026link_ctx, tx_ipv6_buf, pkt_len, NULL,\n                     tx_frame_buf, \u0026frame_len);\n```\n\nThe call site has no comment explaining what NULL means for the destination parameter. The reader must go to lichen/link.h to understand that NULL means broadcast mode.\n\n## What goes wrong\n- A contributor modifying this code may not realize NULL triggers broadcast mode\n- If lichen_link_tx() semantics change (e.g., NULL becomes an error), this will silently break without any call-site indication of intent\n- Pattern will be copied without understanding - future unicast TX code may incorrectly pass NULL\n\n## Fix\nAdd a comment at the call site:\n```c\nret = lichen_link_tx(\u0026link_ctx, tx_ipv6_buf, pkt_len,\n                     NULL,  /* dst_eui64: NULL = broadcast */\n                     tx_frame_buf, \u0026frame_len);\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

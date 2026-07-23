@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3p51",
   "title": "Implement Comprehensive Simulation Validation Tests",
   "description": "Implement Comprehensive Simulation Validation Tests - Create and implement complete simulation validation test suite covering core simulation components, cross-platform capability, metrics export, and distributed testing scenarios. Ensure all key simulation functionalities are validated before hardware testing. This work supports the broader Epic: Complete Simulation Infrastructure Enhancement Epic.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

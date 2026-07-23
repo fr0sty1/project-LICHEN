@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.160",
   "title": "NonVolatile::read returns Option\u003cusize\u003e while write returns Result - asymmetric error handling",
   "description": "lichen-hal/src/lib.rs NonVolatile trait:\n  pub trait NonVolatile {\n      type Error;\n      fn read(\u0026self, key: \u0026str, buf: \u0026mut [u8]) -\u003e Option\u003cusize\u003e;  // Option\n      fn write(\u0026mut self, key: \u0026str, data: \u0026[u8]) -\u003e Result\u003c(), Self::Error\u003e;  // Result\n      fn delete(\u0026mut self, key: \u0026str) -\u003e bool;  // bool\n  }\n\nread() returns None for both 'key not found' and 'read error', losing error information.\ndelete() returns bool without error reporting.\nOnly write() has proper error propagation.\n\nWhat goes wrong: Callers cannot distinguish between 'key does not exist' and 'storage failure' for reads. Error handling patterns differ between read and write operations on the same trait.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

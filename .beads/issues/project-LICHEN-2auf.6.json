@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.6",
   "title": "Rust RPL: remove or update stale inadmissible parents",
   "description": "Review found that dodag.rs returns on an inbound rank that is no longer admissible without removing or invalidating an existing parent entry, leaving stale lower rank data usable by hysteresis. Update parent state consistently and add an inbound rank regression test.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

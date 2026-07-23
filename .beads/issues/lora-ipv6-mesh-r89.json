@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-r89",
   "title": "Evaluate LOADng for peer-to-peer mesh routing",
   "description": "Evaluate LOADng (Lightweight Ad hoc On-Demand - Next Generation) as alternative/complement to RPL for peer-to-peer mesh traffic.\n\nProblem with RPL-only:\n- Lateral routing goes through common ancestor (inefficient)\n- Two adjacent leaf nodes route up and back down\n- At LoRa duty cycles, this wastes precious airtime\n- Thread (Google/Apple/Amazon) rejected RPL for this reason\n\nProposed hybrid:\n- RPL: traffic to/from border router (tree-shaped, RPL's strength)\n- LOADng: peer-to-peer within mesh (reactive, efficient lateral paths)\n\nLOADng overview (draft-clausen-lln-loadng):\n- Reactive routing (routes built on demand)\n- RREQ/RREP/RERR messages\n- Designed for LLNs (Low-power Lossy Networks)\n- Simpler than AODV, optimized for constrained devices\n- Bidirectional route discovery\n\nEvaluation tasks:\n1. Read LOADng draft thoroughly\n2. Analyze message overhead vs RPL DAO overhead  \n3. Consider route discovery latency (first packet delay)\n4. Evaluate memory requirements (route cache vs routing table)\n5. Prototype in Python simulator\n6. Compare: RPL-only vs LOADng-only vs hybrid\n\nRouting decision logic for hybrid:\n- if dst in mesh_prefix: use LOADng\n- else: use RPL toward border router\n\nQuestions to answer:\n- Can LOADng and RPL coexist cleanly?\n- How do we handle the case where LOADng route doesn't exist but RPL can reach it via root?\n- What's the RREQ/RREP overhead at LoRa rates?\n\nReferences:\n- draft-clausen-lln-loadng\n- RFC 3561 (AODV)\n- Thread MLE specification (for comparison)",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

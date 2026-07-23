@@ -2,7 +2,7 @@
   "id": "project-LICHEN-px3v",
   "title": "task",
   "description": "rust/lichen-schc/src/codec.rs:557,611,673,720. DoS via crafted packet.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

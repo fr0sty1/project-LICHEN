@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.31",
   "title": "CRC32 fallback provides no integrity against adversaries",
   "description": "In lichen_l2.c, comments indicate CRC32 is used as MIC fallback when no link key is configured:\n\nLine 171: 'AES-CCM-64 MIC if has_link_key, else CRC32 fallback'\nLine 444: 'peer_eui64 = NULL,   /* Unknown sender - CRC32 mode only */'\n\nCRC32 is a checksum for detecting random bit errors, not a cryptographic MAC. An attacker can trivially compute valid CRC32 values for forged frames.\n\nImpact: Without a link key established, any node can inject forged frames that will pass CRC32 verification. This enables:\n- Frame injection (spoofed source addresses)\n- Replay attacks (no MIC binding to sender identity)\n- Network disruption via malformed but CRC-valid frames\n\nNote: This may be intentional for bootstrapping/discovery phases before key establishment. If so, document the threat model explicitly and ensure the CRC32 path cannot be used after keys are established.\n\nFix: Add a SECURITY: comment at both locations documenting:\n1. CRC32 provides NO integrity protection against active attackers\n2. Frames received in CRC32 mode MUST NOT be trusted for routing decisions, key derivation, or state changes\n3. The conditions under which CRC32 mode is used and when it transitions to authenticated mode\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:171, 444",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-e0q3",
   "title": "task",
   "description": "rust/lichen-embassy/src/mock.rs:144. Undefined behavior.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

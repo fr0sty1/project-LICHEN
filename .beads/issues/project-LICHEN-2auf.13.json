@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.13",
   "title": "Unify direct and callback RX telemetry",
   "description": "Make callback-based RX update global reception/collision metrics and emit the same rx_success schema as direct RX. Preserve reception state in debug fields by logging before cleanup or carrying the state snapshot. Add parity tests for metrics and logs.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

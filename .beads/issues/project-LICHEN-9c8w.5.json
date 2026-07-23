@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9c8w.5",
   "title": "Normalize units format (space before unit)",
   "description": "Ensure consistent unit formatting with space before unit.\n\nCurrent:\n  LOG_INF(\"started: SF10, BW125, %uMHz\");  // no space\n  LOG_DBG(\"RX %d bytes, RSSI=%d dBm\");     // inconsistent\n\nTarget:\n  LOG_INF(\"lora_l2: started (915 MHz, 14 dBm, SF10)\");\n  LOG_DBG(\"lora_l2: RX %d bytes (RSSI %d dBm, SNR %d dB)\");\n\nUnits: MHz, kHz, dBm, dB, bytes, ms, us",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "assignee": "Mark Atwood",

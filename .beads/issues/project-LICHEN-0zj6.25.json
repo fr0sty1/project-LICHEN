@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-0zj6.25",
   "title": "struct in6_addr fallback may conflict with POSIX headers",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

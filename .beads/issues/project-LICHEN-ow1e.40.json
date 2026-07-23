@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.40",
   "title": "Resource struct missing Debug derive",
   "description": "lichen-node/src/dispatch.rs:178 defines:\n```rust\n#[derive(Clone, Copy)]\npub struct Resource {\n    pub path: \u0026'static [\u0026'static [u8]],\n    pub get: Option\u003cHandler\u003e,\n    ...\n}\n```\n\nMissing `Debug` derive. The `Handler` type alias (`fn(\u0026Request) -\u003e Response`) is Debug-printable (shows function pointer address), so deriving Debug would work and aid debugging dispatch table configuration.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

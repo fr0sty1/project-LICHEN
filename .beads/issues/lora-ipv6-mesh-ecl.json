@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-ecl",
   "title": "Duty cycle pruning discards transmissions spanning window boundary",
   "description": "duty_cycle.py:47 prunes with 't \u003e cutoff' which only considers start time. A 10-second TX starting 1 second before cutoff contributes 9 seconds within window but is counted as 0. Fix: keep TXs where t + duration \u003e cutoff, or prorate contribution.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

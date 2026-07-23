@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.94",
   "title": "good: core/loadng typestate for route discovery",
   "description": "In loadng.rs:145-303, RouteDiscovery\u003cIdle\u003e, RouteDiscovery\u003cSearching\u003e, etc. encode the state machine in the type system. Invalid transitions are compile-time errors. This prevents bugs like calling receive_rrep on an Idle discovery.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

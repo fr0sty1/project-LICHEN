@@ -2,7 +2,7 @@
   "id": "project-LICHEN-23fv",
   "title": "senml: skip_one_depth arithmetic overflow on 16-bit platforms",
   "description": "file: rust/lichen-senml/src/cbor.rs:382\n\nThe calculation `pos + adv + val as usize` in skip_one_depth can overflow on 16-bit platforms when val is large (up to 65535 from 2-byte length encoding). This is the same class of bug as k1wt (dec_text truncation) but in skip_one_depth.\n\nOn 16-bit platforms where usize is 16 bits:\n- If val=65535, adv=3, pos=10, then 10+3+65535=65548 wraps to 12\n- The bounds check `end \u003e data.len()` would pass incorrectly\n- Returns wrong advancement count, corrupting subsequent parsing\n\nImpact: Incorrect CBOR parsing on 16-bit embedded targets when processing byte/text strings with 2-byte lengths.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

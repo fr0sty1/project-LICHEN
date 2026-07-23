@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i81y.9",
   "title": "lichen_rpl_dodag_expire_parents has undocumented NULL precondition",
   "description": "API contract review finding. Public header lichen/subsys/lichen/rpl/include/lichen/rpl_dodag.h:165-177 documents lichen_rpl_dodag_expire_parents() but does not state that d must be non-NULL or that NULL is undefined. Sibling public APIs in lichen/subsys/lichen/rpl/dodag.c are defensive: remove_parent() returns on NULL at lines 354-359 and parent_count() returns 0 on NULL at lines 368-372. expire_parents() dereferences d immediately at dodag.c:383-389. Impact: callers cannot infer which DODAG APIs tolerate NULL and a timer/maintenance path that passes an uninitialized DODAG pointer will crash instead of matching neighboring API behavior. Fix direction: either add the same NULL guard and return 0, or document the non-NULL precondition explicitly in the header and make the RPL API family consistent.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

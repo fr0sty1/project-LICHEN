@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.29",
   "title": "[lichen_l2.c:528] lichen_l2_send missing init state check",
   "description": "Function: lichen_l2_send (static L2 callback). Precondition: The function checks iface_init_failed (line 539) and lichen_lora_l2_is_running() (line 544) but does not check lichen_lora_l2_needs_reinit(). If the module is in aborted state but L2 enable was not called (so running could still be true from a prior start), this path might proceed with a corrupted mutex. The iface_init_failed check covers initialization failures but not post-abort state. Compare with lichen_l2_enable (line 664) which checks needs_reinit. Priority 2 - could lead to deadlock after forced abort.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

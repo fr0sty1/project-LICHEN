@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-z21u",
   "title": "Phase 9: CoAP Resource Directory (RFC 9176)",
   "description": "Add a CoAP Resource Directory resource to the Python node CoAP server. Nodes POST to /rd with their endpoint name and link-format resources to register. GET /rd returns all registrations. DELETE /rd/\u003cid\u003e removes one. This lets a gateway or controller discover all resources in the mesh without querying each node directly. Exit criterion: node registers itself on startup; GET /rd returns the registration.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "feature",
   "owner": "mark.frost@gmail.com",

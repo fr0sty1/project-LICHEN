@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2ofo",
   "title": "RouteEntry hop_count not bounded during construction",
   "description": "File: python/src/lichen/loadng/cache.py\nLines: 25-38\n\nThe RouteEntry dataclass accepts any int for hop_count but the wire protocol limits it to 0-255 (single byte):\n```python\n@dataclass\nclass RouteEntry:\n    destination: IPv6Address\n    next_hop: IPv6Address\n    hop_count: int  # No bounds check\n    metric: int     # No bounds check\n    seq_num: int    # No bounds check\n    valid_until: int\n```\n\nProblem: The messages.py validates seq_num at serialization time, but RouteEntry stores these values without validation. This can lead to:\n1. Inconsistent data in the cache\n2. Logic errors when comparing metrics (negative values)\n3. Serialization failures when cache entries are converted to messages\n\nImpact: Invalid values can propagate through the routing system and cause unexpected behavior during path selection or message generation.\n\nFix: Add validation in __post_init__:\n```python\ndef __post_init__(self) -\u003e None:\n    self.destination = to_ipv6(self.destination)\n    self.next_hop = to_ipv6(self.next_hop)\n    if not 0 \u003c= self.hop_count \u003c= 255:\n        raise ValueError(f'hop_count out of range: {self.hop_count}')\n    if not 0 \u003c= self.metric \u003c= 0xFFFF:\n        raise ValueError(f'metric out of range: {self.metric}')\n    if not 0 \u003c= self.seq_num \u003c= 0xFFFF:\n        raise ValueError(f'seq_num out of range: {self.seq_num}')\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.109",
   "title": "[ipv6_addr.h:64-87] struct in6_addr detection cascade order can cause false positives",
   "description": "Category not checked: Preprocessor detection reliability\n\nBug found: The in6_addr detection at ipv6_addr.h lines 64-87 has a potential issue:\n\nLine 72 checks for __APPLE__ \u0026\u0026 _STRUCT_IN6_ADDR. The _STRUCT_IN6_ADDR macro is defined BY Apple's headers when struct in6_addr is defined. But if someone includes ipv6_addr.h BEFORE including Apple's netinet/in.h:\n\n1. __APPLE__ is defined (it's a compiler predefined)\n2. _STRUCT_IN6_ADDR is NOT yet defined (netinet/in.h not included)\n3. Check at line 72 fails (__APPLE__ true but _STRUCT_IN6_ADDR false)\n4. Falls through to line 74 (none of the above)\n5. Defines fallback struct in6_addr\n6. Later, user includes netinet/in.h\n7. Apple's netinet/in.h defines struct in6_addr again\n8. COMPILE ERROR: redefinition\n\nThe fix would be to check __APPLE__ alone (without _STRUCT_IN6_ADDR) and always include the system header on Apple platforms. Or require users to include netinet/in.h first.\n\nImpact: P3 - Compile error on macOS if headers included in wrong order.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-6lkq",
   "title": "EDHOC: CBOR encoding errors silently ignored in build_sig_structure",
   "description": "SECURITY/CORRECTNESS: build_sig_structure() ignores all CBOR encoding return values. If encoding fails (e.g., buffer too small), the function continues with corrupted data and cannot report failure.\n\nLocation: lichen/subsys/lichen/edhoc/edhoc.c:222-252\n\nIssues:\n- Line 231: zcbor_bstr_encode_ptr(zse_ext, th, 32) - no error check\n- Line 232: zcbor_bstr_encode_ptr(zse_ext, cred, cred_len) - no error check\n- Line 238: zcbor_bstr_encode_ptr(zse_bp, id_cred, id_cred_len) - no error check\n- Line 243: zcbor_list_start_encode - no error check\n- Lines 244-248: multiple zcbor calls without checks\n\nImpact: Signature verification may operate on malformed data, potentially causing:\n1. Signature verification to fail unexpectedly\n2. Security bypass if malformed structures happen to verify\n\nFix: Check all zcbor return values, return error if any encoding fails.\n\nFile: lichen/subsys/lichen/edhoc/edhoc.c:222-252",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

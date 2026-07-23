@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.52",
   "title": "lichen_l2.c:799 uses wrong variable for logging after peer removal",
   "description": "In lichen_peer_remove() at lines 795-802:\n```c\n/* SECURITY: Zero pubkey before marking inactive */\nsecure_zero(entry-\u003epubkey, sizeof(entry-\u003epubkey));\nsecure_zero(entry-\u003eeui64, sizeof(entry-\u003eeui64));\nentry-\u003eactive = false;\nLOG_INF(\"lichen_l2: peer removed ..%02x:%02x\",\n        eui64[6], eui64[7]);\n```\n\nThe LOG_INF at line 799-800 logs eui64[6] and eui64[7], where eui64 is the FUNCTION PARAMETER (const uint8_t eui64[8] at line 735).\n\nentry-\u003eeui64 was zeroed at line 797, but the function parameter eui64 still contains the original search key. The log output is CORRECT.\n\nRe-examining line 799: it says eui64[6], not entry-\u003eeui64[6]. These are different variables:\n- eui64: function parameter (the key we searched for)\n- entry-\u003eeui64: peer_table entry's address field (now zeroed)\n\nNO BUG - the code correctly logs the parameter, not the zeroed entry.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "note",
   "assignee": "Mark Atwood",

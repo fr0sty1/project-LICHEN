@@ -2,7 +2,7 @@
   "id": "project-LICHEN-pzto",
   "title": "Compliance: rust lichen-core/l2_payload.rs dispatch byte",
   "description": "Policy: 02-physical-link.md §4.1. File: rust/lichen-core/src/l2_payload.rs. Status: COMPLIANT. Lines 15-21 use pattern matching on L2_DISPATCH_SCHC (0x14) and L2_DISPATCH_ROUTING (0x15) dispatch bytes before payload classification.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

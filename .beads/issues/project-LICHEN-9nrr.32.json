@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9nrr.32",
   "title": "zephyr: add SCHC ACK/MIC/DTag fragmentation semantics",
   "description": "Follow-up from project-LICHEN-9nrr.31 review. The generic SCHC fragmentation engine now emits and reassembles bounded ordered RuleID/W/FCN tile fragments, but ACK_ALWAYS and ACK_ON_ERROR currently share the No-ACK fragment wire format and there is no ACK bitmap generation/parsing, DTag field, or MIC carried/validated in All-1 fragments. Implement the remaining RFC 8724 fragmentation semantics needed for reliable LoRa operation: ACK request/response API, receiver bitmap state, retransmission hooks, DTag handling if used by the profile, and MIC generation/verification for complete packets. Add tests for missing tiles, ACK-on-error bitmap contents, retransmission, MIC mismatch rejection, and out-of-order fragments that should not complete without all prior tiles.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

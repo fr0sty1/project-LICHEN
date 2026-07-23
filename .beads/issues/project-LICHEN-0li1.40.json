@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.40",
   "title": "[main.c:109] Missing LoRa deinit on cleanup path",
   "description": "What: init_standalone_lora() calls lichen_lora_l2_stop() and lichen_lora_l2_deinit() on the eui64==NULL error path, but if lichen_lora_l2_start() fails (line 100-104), it only returns the error without cleanup.\n\nWhy it matters: After start() fails:\n1. lichen_lora_l2_init() has succeeded (EUI-64 generated, device configured)\n2. State is STOPPED (init transitions UNINIT-\u003eSTOPPED)\n3. Subsequent retry of init_standalone_lora() would succeed at init() (idempotent) but might have stale state\n\nThis is minor because the error path leads to main() entering an infinite error-blink loop (lines 196-215), so there's no retry. But the asymmetric cleanup is a code smell.\n\nEvidence:\n```c\nret = lichen_lora_l2_start();\nif (ret \u003c 0) {\n    LOG_ERR(\"main: LoRa L2 start failed (%d)\", ret);\n    return ret;  // No cleanup, unlike cleanup: path at line 127\n}\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.24",
   "title": "main.c:133 inconsistent error return path",
   "description": "Grep pattern: return with computed error code. In init_standalone_lora() at lines 130-133, the cleanup label returns '(ret \u003c 0) ? ret : -ENODATA'. However, the only path to cleanup (line 113) is when eui64 == NULL, which means ret was not set to an error by the preceding lichen_log_link_local_from_eui64() call. If lichen_lora_l2_get_eui64() returns NULL, ret is still 0 from the successful lichen_lora_l2_start() call, so the return is -ENODATA. This is correct behavior but the ternary is misleading - it implies ret might be negative when reaching cleanup from line 113, but it cannot be. Simplify to 'return -ENODATA' after cleanup, or set ret = -ENODATA before goto. P3 minor clarity issue.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

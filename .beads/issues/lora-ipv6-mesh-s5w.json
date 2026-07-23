@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-s5w",
   "title": "REST API has no authentication or rate limiting",
   "description": "**Security / Production Readiness**\n\nThe REST API (api.py) accepts any request without authentication:\n- POST /sim creates simulations (resource allocation)\n- DELETE /sim deletes simulations\n- POST /chaos/* modifies simulation behavior\n\nFor a development/testing tool this might be acceptable, but:\n1. If exposed on a network, anyone can disrupt simulations\n2. No rate limiting means DoS via rapid simulation creation\n3. No audit trail of who made changes\n\nIf the simulator is intended to be multi-tenant or network-accessible:\n- Add optional API key authentication\n- Add rate limiting (e.g., via slowapi)\n- Add request logging\n\nIf single-user only:\n- Document that it should only bind to localhost\n- Consider adding --bind-address CLI flag that defaults to 127.0.0.1\n\nCurrently it only binds to 127.0.0.1 (good default), but this should be documented.\n\nFiles: api.py, server.py",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "assignee": "Mark Frost",

@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-6fe",
   "title": "lichen-tui: Terminal user interface",
   "description": "Rust TUI for LICHEN using ratatui.\n\nFeatures:\n- Split pane: contacts/channels left, messages right\n- Real-time message updates\n- Position map (ASCII art or sixel if supported)\n- Node status bar\n- Keyboard-driven navigation\n\nImplementation:\n- Rust with ratatui + crossterm\n- Async (tokio) for CoAP and UI\n- Same CoAP client as CLI\n- Config file for keybindings, colors\n\nTarget: terminal users, SSH access, low-bandwidth remote.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Frost",

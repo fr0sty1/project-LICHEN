@@ -2,7 +2,7 @@
   "id": "project-LICHEN-m3dj",
   "title": "gatt.py (meshtastic): build_from_radio_response uses wrong pack format for header",
   "description": "File: python/src/lichen/interface/meshtastic/gatt.py\nLines: 270-282\n\nThe build_from_radio_response function packs the header incorrectly:\n\n```python\ndef build_from_radio_response(data: bytes) -\u003e bytes:\n    if len(data) \u003e 0xFFFF:\n        raise GattError(f\"Message too large for header: {len(data)}\")\n    header = struct.pack(\"\u003cHBB\", len(data), 0, 0)  # len_lo, len_hi, reserved, reserved\n    return header + data\n```\n\nThe comment says 'len_lo, len_hi, reserved, reserved' but \"\u003cHBB\" packs:\n- H: unsigned short (2 bytes) - this is the complete length, not just low byte\n- B: unsigned char (1 byte) - reserved\n- B: unsigned char (1 byte) - reserved\n\nSo the actual format is [length_16bit_LE][0][0], which is correct for the wire format.\n\nBUT: The comment is misleading. 'len_lo, len_hi' suggests two separate bytes, but 'H' packs them as a single 16-bit value. The code is correct but the comment is wrong.\n\nActually wait - let me check the Meshtastic BLE spec... The format is indeed [len_lo][len_hi][0][0], so \"\u003cHBB\" is correct (little-endian 16-bit length followed by two zero bytes).\n\nImpact: Comment is misleading but code is correct. Low priority.\n\nFix: Update comment to be clearer:\n```python\nheader = struct.pack(\"\u003cHBB\", len(data), 0, 0)  # 16-bit LE length + 2 reserved bytes\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

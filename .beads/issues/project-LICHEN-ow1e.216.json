@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.216",
   "title": "Codereview pass 2: DTN monotonic",
   "description": "Review of DTN buffer monotonic time fix (test coverage and API contract focus):\n\n**Test Coverage Gaps:**\n\n1. No test for clock skew/NTP jump scenario - would require mocking time.time().\n\n2. No test verifying message with 1-hour TTL expires after 1 hour of monotonic time regardless of wall clock drift.\n\n**API Contract Issues:**\n\n1. Breaking change: dataclass field rename from expiry_unix to expiry_mono_ms.\n\n2. Mixed time domains in signature: dtn_buffer_message takes expiry_unix (wall clock) and now_mono_ms (monotonic). Consider having caller pass TTL instead.\n\n3. time.time() called internally - if system clock is wrong when buffering, TTL calculation will be wrong.\n\n**Recommendation:** Add a test that mocks time.time to jump backward after insertion, then verifies dtn_expire_old still expires correctly based on monotonic elapsed time.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

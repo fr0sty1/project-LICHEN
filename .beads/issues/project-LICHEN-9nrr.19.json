@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9nrr.19",
   "title": "t1000_e gateway build fails on missing LR1110 source",
   "description": "Why this exists: while validating project-LICHEN-9nrr.1, a focused build of lichen/apps/gateway for board t1000_e/nrf52840 reached CMake generation but failed before compiling the app because lichen/drivers/lora/lr1110/CMakeLists.txt references modules/lib/loramac-node/src/radio/lr1110/lr1110_driver/src/lr1110_radio.c, which is absent in the local module checkout. This blocks using the T1000-E native gateway configuration as a validation target. What needs to be done: verify the intended LoRaMac-node revision or vendor source layout, update the module pin or LR1110 driver CMake source list accordingly, and add/restore a build check for the T1000-E gateway target. Acceptance: west build -b t1000_e/nrf52840 lichen/apps/gateway configures and compiles, preserving LR1110 support; after implementation/tests complete two separate code-review passes and file follow-up Beads for findings.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

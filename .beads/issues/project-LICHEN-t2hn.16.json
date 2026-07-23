@@ -3,7 +3,7 @@
   "title": "Add Android and iOS Meshtastic mobile smoke scripts",
   "description": "Why this exists: app compatibility cannot be proven by unit tests alone; Android and iOS clients have different BLE sync behavior. What needs to be done: write smoke scripts/checklists for connect, pairing mode, FromNum subscription, config sync, DB sync, send text, receive text/status, and disconnect. Acceptance criteria: scripts identify app versions, required device settings, expected logs/events, and failure triage steps; hardware access dependency is explicit.",
   "notes": "Completed no-hardware smoke-script work. Added docs/meshtastic-smoke-test.md and linked it from docs/meshtastic-compat-dev.md. Created and blocked hardware/client execution follow-ups project-LICHEN-t2hn.16.1 (Android) and project-LICHEN-t2hn.16.2 (iOS) with exact physical requirements. Checks: git diff --check passed. No Zephyr build run for this docs/Beads slice; the doc mandates future EC2 Twister preflight for meshtastic_codec, meshtastic_adapter, meshtastic_ble, meshtastic_gateway_adapter, app_interface, app_identity plus Python vector/prototype drift checks before hardware execution. Reviews: Heisenberg found post-sync ADMIN_APP and ToRadio/FromNum issues; fixed. Helmholtz found child AC and false-pass gaps; fixed. Einstein, Hubble, Jason, and Parfit final re-reviews found no remaining P0/P1/P2 false-pass risks after fixes. Commit pushed: a39c22b0.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

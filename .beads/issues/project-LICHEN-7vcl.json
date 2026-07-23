@@ -2,7 +2,7 @@
   "id": "project-LICHEN-7vcl",
   "title": "Ambiguous chatroom parsing: 16-char hex team names parsed as direct message IID",
   "description": "File: python/src/lichen/gateway/compact_cot.py\nLines: 832-837\n\nThe XML parser uses a heuristic to detect direct messages: if chatroom is exactly 16 hex characters, treat it as an IID (8 bytes):\n```python\nif len(chat_group) == 16:\n    try:\n        dest_iid = bytes.fromhex(chat_group)\n        dest_type = DestType.DIRECT\n    except ValueError:\n        pass\n```\n\nProblem: A team name that happens to be 16 hex characters (e.g., 'a1b2c3d4e5f67890' used as a custom chatroom name) would be incorrectly parsed as a direct message IID.\n\nImpact:\n1. Message routing broken - sent to wrong recipient\n2. Silent data corruption in roundtrip\n3. Potential security issue if messages are misdirected\n\nFix: The protocol should use explicit markers. Short term, check if it matches a known team name first:\n```python\n# Check team names first before falling back to IID parsing\nteam_name = chat_group.lower()\nif team_name.startswith('team '):\n    team_name = team_name[5:]\nteam = TEAM_BY_NAME.get(team_name)\nif team:\n    dest_type = DestType.TEAM\n    dest_team = team\nelif len(chat_group) == 16:\n    # Only try IID parsing if not a team\n    ...\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.44",
   "title": "[lora_l2.h:73-75] LICHEN_LORA_FRAME_OVERHEAD comment says 57 rounded to 55",
   "description": "Round 2 gap analysis: Missed because it's a documentation issue, not code.\n\nAt lines 73-75:\n```c\n#define LICHEN_LORA_MAX_PHY_PAYLOAD 255\n#define LICHEN_LORA_FRAME_OVERHEAD   55  /* 57 (header+MIC+sig) rounded to 55 for SCHC rule ID headroom */\n#define LICHEN_LORA_MTU (LICHEN_LORA_MAX_PHY_PAYLOAD - LICHEN_LORA_FRAME_OVERHEAD)\n```\n\nThe comment says '57 rounded to 55' but 57 rounded down is 57. The actual explanation is in lichen_l2.c lines 62-69 which explains the 2-byte difference is for SCHC rule ID headroom, not 'rounding'.\n\nThe comment in lichen_l2.c at lines 62-69 is clearer. The header comment is misleading - it's not rounding, it's an optimization based on expected SCHC rule ID overhead.\n\nDocumentation bug - the comment should say '57 minus 2 for SCHC rule ID headroom' not 'rounded to 55'.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

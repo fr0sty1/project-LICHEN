@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-xly",
   "title": "Create simulator Python project structure",
   "description": "Set up python/src/lichen/sim/ directory structure with pyproject.toml. Dependencies: anyio, starlette, uvicorn, pynacl, structlog. Dev deps: pytest, pytest-asyncio, httpx. Create empty __init__.py files for: sim/, radio/, link/. This is the foundation for all simulator work.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.92",
   "title": "Duplicate Ipv6Error types in lichen-ipv6 and lichen-core with incompatible variants",
   "description": "Two different Ipv6Error enums exist:\n\nlichen-ipv6/src/lib.rs:\n  pub enum Ipv6Error {\n      TooShort,  // unit variant\n      WrongVersion(u8),\n      BufferTooSmall { needed: usize, available: usize },  // inline struct\n  }\n\nlichen-core/src/ipv6.rs:\n  pub enum Ipv6Error {\n      TooShort(TooShort),  // wraps core error type\n      WrongVersion(u8),\n      InvalidExtensionLength,\n      FragmentNotSupported,\n      BufferTooSmall(BufferTooSmall),  // wraps core error type\n  }\n\nThe lichen-core version is richer (more variants, wraps structured errors) while lichen-ipv6 has simpler inline variants.\n\nWhat goes wrong: Code that handles Ipv6Error cannot work across both crates. lichen-core depends on lichen-ipv6 but defines its own incompatible error type. This suggests one should be consolidated or one should be internal-only.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

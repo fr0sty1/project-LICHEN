@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-t64",
   "title": "Basic CoAP resources (/.well-known/core, /status)",
   "description": "Implement basic CoAP resources for LICHEN node.\n\nResources:\n\n/.well-known/core (RFC 6690):\n- GET returns link-format list of resources\n- Required for CoAP discovery\n- Format: \u003c/resource\u003e;rt=\"type\";ct=0\n\n/status:\n- GET returns node status (JSON or CBOR)\n- Includes: uptime, neighbors, rank, parent, battery\n\n/config:\n- GET/PUT node configuration\n- Radio params, identity, network settings\n\n/neighbors:\n- GET returns neighbor table\n- Address, rank, ETX, last seen\n\nImplementation:\n- Use aiocoap.resource.Resource base class\n- Register with aiocoap.resource.Site\n- Return appropriate content-format\n\nCBOR encoding for efficiency (ct=60).",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

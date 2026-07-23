@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-zn3",
   "title": "lichen-rpl: DODAG state machine with MRHOF parent selection",
   "description": "dodag.rs: port of Python dodag.py. DodagState tracks role (UNJOINED/JOINED/ROOT), rank, preferred_parent, candidates map. process_dio updates candidates and calls select_parent (MRHOF with hysteresis). remove_parent triggers re-selection. Tests: 5-node join sequence, parent switch on link failure.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "mark.frost@gmail.com",

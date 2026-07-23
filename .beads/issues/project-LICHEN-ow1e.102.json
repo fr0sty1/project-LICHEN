@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.102",
   "title": "edhoc.py: peer_pubkey parameter in process_message_2 is unused",
   "description": "src/lichen/crypto/edhoc.py:273 process_message_2(self, msg2: bytes, peer_pubkey: bytes) accepts peer_pubkey but never uses it.\n\nComment says signature verification is 'simplified' but this is misleading - callers think they're providing the peer's key for verification but it's silently ignored.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

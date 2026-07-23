@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.252",
   "title": "SCHC codec: decompress buffer 256 changed to SCHC_MAX_DECOMPRESSED without verifying constant value",
   "description": "Several decompress functions changed from hardcoded 256-byte buffers to SCHC_MAX_DECOMPRESSED constant. Need to verify that SCHC_MAX_DECOMPRESSED \u003e= 256 to avoid introducing buffer overflow. If the constant is smaller, this is a P0 security issue.\n\nFiles: rust/lichen-schc/src/codec.rs lines 538, 588, 644, 695\n\nRequires: check value of lichen_core::constants::SCHC_MAX_DECOMPRESSED",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

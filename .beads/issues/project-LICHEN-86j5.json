@@ -3,7 +3,7 @@
   "title": "Native LCI integration test: end-to-end CoAP client flows",
   "description": "End-to-end test of native LCI interface: (1) start native_sim node with SLIP, (2) use coap-client or Python aiocoap to exercise all resources: discovery, config read/write, status read/observe, keys CRUD, message send/receive. Verify CBOR encoding matches spec. Can be pytest orchestrating native_sim.",
   "acceptance_criteria": "Test script exercises all LCI resources; passes on native_sim; CI-ready",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "grinder",

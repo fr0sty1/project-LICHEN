@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.94",
   "title": "[lichen_l2.c:1609-1621] SECURITY: DEBUG logging exposes full EUI-64 addresses",
   "description": "Security finding: At DEBUG log level, full peer EUI-64 addresses are logged (lines 1609-1621, 552-556).\n\nThe comment at lines 1607-1617 justifies this as acceptable because:\n1. DEBUG requires CONFIG_LICHEN_L2_LOG_LEVEL=4\n2. EUI-64 is 'already exposed in IEEE 802.15.4-style link-layer addresses'\n\nHowever:\n1. Production builds may accidentally enable DEBUG level\n2. Log files may be exfiltrated or stored insecurely\n3. Correlating EUI-64 to physical device location enables tracking\n4. Mesh topology can be reconstructed from DEBUG logs\n\nImpact: P2 - privacy leak, not direct security exploit. Requires DEBUG level enabled.\n\nMitigation:\n1. Consider truncating EUI-64 in logs (first 4 bytes only)\n2. Add compile-time warning when DEBUG level is enabled\n3. Or: keep current behavior but document privacy implications",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -4,7 +4,7 @@
   "description": "Prevent OSCORE export before EDHOC completion, zeroize handshake state, and replace unsafe checkpoint SUITES_I parsing with complete bounded CBOR handling.",
   "acceptance_criteria": "Premature export fails; full exchange succeeds; malformed CBOR rejects without overread; secrets zeroize on all paths; tests/feature tree/clippy and three reviews pass.",
   "notes": "Implemented groundwork on integration/oscore-recovery over daacfc358. Current three-file patch provides complete deterministic SUITES_I parsing with selected-last rules, completion-gated consuming export, dalek zeroize features, stored/raw transient wiping, failed-session poisoning, fallible injected RNG constructors, and std-gated OsRng convenience. Gates pass: edhoc 46 tests, all-features 47 tests, thumbv7em-none-eabi/eabihf checks, library Clippy, feature tree without getrandom for bare edhoc, diff check. Final reviewed hashes: edhoc.rs 92b59e9a12cd6edd026fe19ffcc1ca2e7cb6c9572aa04b221af1bd777b0a317c; Cargo.toml 7e370893713496222a8ef584c262d0e1875b450adae12639584cd044261ec52e; Cargo.lock 517e0f950f271fab12f2e8ceaaaa6c0109478f5fddf5297d0e32205a0df6eabc. Remaining blockers: .49.1 RFC 9528 message wire-format rewrite against RFC 9529; .49.3 third-party HKDF/AES schedule zeroization. OSCORE context lifecycle is separately .48.2. No AWS required.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

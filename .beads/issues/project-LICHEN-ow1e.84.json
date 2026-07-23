@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.84",
   "title": "Rust Seed/PrivateKey/Identity derive Copy",
   "description": "In keys.rs, Seed and PrivateKey derive Copy, allowing implicit secret copying. Same for Identity struct. This violates key lifecycle hygiene. Remove Copy derive and consider secrecy::Secret wrapper.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

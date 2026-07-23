@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.7",
   "title": "[lichen_l2.c:1141-1144] Mutex reinit inside lock is undefined behavior",
   "description": "What: In lichen_l2_enable() disable path, if k_mutex_lock(\u0026rx_mutex, K_MSEC(100)) times out, the code calls k_mutex_init(\u0026rx_mutex) then k_mutex_lock(\u0026rx_mutex, K_FOREVER) on the same mutex. This reinitializes a mutex that may be held by another thread.\n\nWhy it matters: POSIX and Zephyr semantics state that reinitializing a held mutex is undefined behavior. If the timeout occurred because another thread holds rx_mutex (e.g., lichen_l2_input in progress), calling k_mutex_init() corrupts the mutex state while that thread is still using it.\n\nThe code comment mentions 'possible aborted thread' but the check at line 979 (lichen_lora_l2_needs_reinit()) should have caught true abort scenarios. This timeout path suggests a non-abort deadlock or slow operation, not an aborted thread.\n\nEvidence:\n```c\nif (k_mutex_lock(\u0026rx_mutex, K_MSEC(100)) != 0) {\n    LOG_DBG(\"lichen_l2: rx_mutex timeout, reinitializing (possible aborted thread)\");\n    k_mutex_init(\u0026rx_mutex);  // UB if mutex is legitimately held\n    k_mutex_lock(\u0026rx_mutex, K_FOREVER);\n}\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

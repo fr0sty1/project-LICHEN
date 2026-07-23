@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.87",
   "title": "crash_info.c missing from CMakeLists.txt causes link failure",
   "description": "The file subsys/lichen/crash_info.c exists and is referenced by lora_l2.c and main.c, but is not included in target_sources() in CMakeLists.txt. This causes link failures:\n\n```\nundefined reference to 'crash_info_check_and_clear'\nundefined reference to 'crash_info_store'\n```\n\nFix: Add crash_info.c to the target_sources() list in firmware/bridge-zephyr/CMakeLists.txt",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

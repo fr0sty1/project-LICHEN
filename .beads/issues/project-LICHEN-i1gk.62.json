@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.62",
   "title": "[lichen_l2.c:1654-1656] net_pkt_rx_alloc_with_buffer timeout is config-driven but default may be suboptimal",
   "description": "Round 2 gap analysis: Missed because config-driven values weren't scrutinized.\n\nAt lines 1654-1656:\n```c\nstruct net_pkt *pkt = net_pkt_rx_alloc_with_buffer(\n    iface, ipv6_len, AF_INET6, 0,\n    K_MSEC(CONFIG_LICHEN_L2_RX_ALLOC_TIMEOUT_MS));\n```\n\nThe allocation timeout is configurable via Kconfig. The code comment at lines 1639-1652 explains the tradeoffs. However, the comment mentions 'default 50ms' but doesn't validate this is appropriate for all use cases.\n\nAt SF10/BW125, one 255-byte frame takes ~2.6 seconds airtime. A 50ms allocation timeout means we could retry ~52 times during one frame period. This seems reasonable for transient memory pressure but may be too short for sustained allocation failures.\n\nThe comment is thorough and documents the tradeoffs well. This is more of a 'worth revisiting under real-world load' item than a bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "feature",
   "assignee": "Mark Atwood",

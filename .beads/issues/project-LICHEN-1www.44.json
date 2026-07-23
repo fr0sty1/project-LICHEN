@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.44",
   "title": "NET_L2_MULTICAST_SKIP_JOIN_SOLICIT_NODE requires LoRa broadcast knowledge",
   "description": "lichen_l2.c lines 459-476 return NET_L2_MULTICAST | NET_L2_MULTICAST_SKIP_JOIN_SOLICIT_NODE:\n\n```c\n/*\n * NET_L2_MULTICAST: Tells Zephyr this L2 can deliver IP multicast frames.\n * LoRa is inherently broadcast - all transmissions reach all receivers,\n * so multicast delivery works by default.\n *\n * NET_L2_MULTICAST_SKIP_JOIN_SOLICIT_NODE: Skip joining solicited-node\n * multicast groups (ff02::1:ffXX:XXXX). In a broadcast medium, all nodes\n * receive all Neighbor Solicitation messages regardless of multicast group\n * membership, making solicited-node optimization pointless. Skipping the\n * join avoids MLD report traffic that would waste precious LoRa airtime.\n * OpenThread uses the same pattern for similar reasons.\n */\n```\n\nThis comment is well-written but assumes the reader knows:\n1. What solicited-node multicast groups are\n2. What MLD is\n3. Why LoRa airtime is 'precious'\n\nWhat goes wrong: A reader without IPv6 NDP knowledge cannot evaluate if the flag is correct.\n\nImprovement: Add a one-line summary before the detail: 'LoRa is broadcast, so multicast filtering happens in software not hardware; we skip multicast group join protocol traffic since all nodes receive all frames anyway.'",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

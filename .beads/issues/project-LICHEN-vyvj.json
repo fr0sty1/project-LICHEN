@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vyvj",
   "title": "task",
   "description": "rust/lichen-core/src/tx_queue.rs:194 - The sequence counter uses wrapping_add(1). When it wraps from u32::MAX to 0, the Ord comparison (other.sequence.cmp(\u0026self.sequence)) will incorrectly order items: a new item with seq=0 will be dequeued before an older item with seq~u32::MAX, breaking FIFO within priority. Practically impossible to trigger (requires 4 billion+ operations with max 32-entry queue), but theoretically incorrect.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "assignee": "Mark Atwood",

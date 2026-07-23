@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.20",
   "title": "lora_l2.c:596 lichen_lora_l2_start checks UNINIT but not is_running",
   "description": "Contract violation: lichen_lora_l2_start() - The state switch at lines 600-618 handles all states correctly, but the initial lora_get_state() at line 598 is done without mutex. The double-check at line 623 is under mutex but creates a window where concurrent start() could pass. Both attempts to transition to RUNNING could race through lora_transition(). WHY: lora_transition() uses atomic_set not CAS, so concurrent starts could both succeed causing undefined thread behavior. HOW to fix: Use lora_transition_from(LORA_STOPPED, LORA_RUNNING) instead of lora_transition() at line 672.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

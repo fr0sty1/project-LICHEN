@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.35",
   "title": "[lora_l2.c:329] lichen_lora_l2_start radio config struct local to function",
   "description": "Function: lichen_lora_l2_start. Resource ownership: The lora_modem_config struct (lines 379-387) is stack-allocated and passed to lora_config(). If lora_config() stores a pointer to this struct rather than copying it, subsequent radio operations would access invalid stack memory. Zephyr's lora_config() should copy the config, but this is driver-dependent. The sx126x and sx127x drivers in Zephyr do copy. Priority 3 - driver contract assumption, verified correct for known drivers.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "issue",
   "assignee": "Mark Atwood",

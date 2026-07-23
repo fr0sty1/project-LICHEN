@@ -2,7 +2,7 @@
   "id": "project-LICHEN-5zdq",
   "title": "task",
   "description": "rust/lichen-schc/src/codec.rs:342,384,427. Panics on empty buffer.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yw7i.3",
   "title": "Good: EUI-64 derivation via SHA-256 hash",
   "description": "lora_l2.c:generate_eui64() hashes the full hardware ID through SHA-256 rather than directly using hwid bytes. This avoids MCU-specific layout issues (STM32's 12-byte UID has shared lot/wafer bytes) and distributes entropy uniformly. The comment explains the rationale well.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.86",
   "title": "Missing module docstrings in package __init__.py files",
   "description": "Several package __init__.py files lack module-level docstrings:\n\n- `src/lichen/dashboard/__init__.py`: Web dashboard package\n- `src/lichen/senml/__init__.py`: SenML codec package  \n- `src/lichen/slip/__init__.py`: SLIP framing package\n\nOther packages (crypto, link, announce, rpl, loadng, coap, schc, sim, radio) have proper module docstrings.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

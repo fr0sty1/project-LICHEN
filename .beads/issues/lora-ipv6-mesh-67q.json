@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-67q",
   "title": "Spec: Add store-and-forward limits and back-pressure",
   "description": "Store-and-forward has 'implementation-defined' limits — no interop guarantees. Attack: exhaust node storage with messages to offline targets. Need: mandatory minimum/maximum limits, back-pressure signaling (e.g., 5.03 Service Unavailable), memory reservation policy.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

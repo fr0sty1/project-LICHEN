@@ -2,7 +2,7 @@
   "id": "project-LICHEN-725z.4",
   "title": "HAVE_LICHEN_LINK ifdef creates two divergent untested paths",
   "description": "lichen_l2.c lines 30-37, 67-76, 182-217, 291-309, etc — The else path (raw IPv6) lacks framing, replay protection, signatures, SCHC. No indication at runtime which mode is active. Contributors will file bugs for one path that don't reproduce on other.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

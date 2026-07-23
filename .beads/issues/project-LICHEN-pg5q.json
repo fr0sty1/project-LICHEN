@@ -2,7 +2,7 @@
   "id": "project-LICHEN-pg5q",
   "title": "app_identity: has_nul validation is one-sided in set_self vs upsert_peer",
   "description": "File: lichen/subsys/lichen/app_identity/app_identity.c\n\nInconsistent validation between lichen_app_identity_set_self and lichen_app_identity_upsert_peer:\n\nIn lichen_app_identity_set_self (lines 106-109):\n  if (!has_nul(identity-\u003edisplay_name, sizeof(identity-\u003edisplay_name)) ||\n      !has_nul(identity-\u003efirmware_name, sizeof(identity-\u003efirmware_name))) {\n      return -ENAMETOOLONG;\n  }\nBoth display_name AND firmware_name are validated.\n\nIn lichen_app_identity_upsert_peer (lines 197-199):\n  if (!has_nul(peer-\u003edisplay_name, sizeof(peer-\u003edisplay_name))) {\n      return -ENAMETOOLONG;\n  }\nOnly display_name is validated.\n\nThis is correct because lichen_app_identity_peer has no firmware_name field - only lichen_app_identity_self has it. So this is NOT a bug, just asymmetric by design.\n\nActually, reviewing again - this is NOT a bug. The peer struct doesn't have firmware_name. Closing as invalid.\n\nEDIT: Actually wait, I should not have created this bead. The struct definitions differ. Let me verify...",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

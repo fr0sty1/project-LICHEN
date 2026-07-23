@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.6",
   "title": "lora_l2.c: TX copies packet twice unnecessarily",
   "description": "In lichen_lora_l2_tx() (lora_l2.c:263-265), the data is copied into a stack buffer tx_buf[256] only because Zephyr's lora_send() takes a non-const pointer. However, the caller lichen_l2_send() already holds a mutex and uses its own tx_frame_buf[].\n\nWhat goes wrong: Every TX pays ~200 bytes of memcpy + 256 bytes of stack pressure. At SF10 the radio is the bottleneck, but on memory-constrained boards the stack could fragment or hit limits during deep call stacks.\n\nFix: Pass tx_frame_buf directly from lichen_l2_send() to lora_send() by removing the const from lichen_lora_l2_tx() signature. The caller owns the buffer under mutex, so mutation is safe.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:263-265",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

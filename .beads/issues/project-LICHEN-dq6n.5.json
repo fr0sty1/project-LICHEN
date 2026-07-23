@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dq6n.5",
   "title": "[lora_l2.c:139-142] hwid_len bounds check after buffer access",
   "description": "In generate_eui64(), the bounds check for hwid_len happens AFTER hwinfo_get_device_id() has already written to the buffer:\n\n```c\nhwid_len = hwinfo_get_device_id(hwid, sizeof(hwid));\nif (hwid_len \u003c= 0) {\n    ...\n    return -ENODEV;\n}\nif ((size_t)hwid_len \u003e sizeof(hwid)) {\n    LOG_ERR(\"hwinfo returned invalid length: %d\", (int)hwid_len);\n    return -EINVAL;\n}\n```\n\nIf hwinfo_get_device_id() returns a length greater than sizeof(hwid), it indicates the driver has ALREADY overflowed the buffer. The bounds check detects the condition but cannot undo the corruption.\n\nImpact: This is defense-in-depth logging, not a fix. The actual bug would be in the hwinfo driver. The check is correct to have, but the damage (if any) has already occurred.\n\nThis is a detection-only guard, which is the right thing to do. The code cannot prevent a misbehaving driver from overwriting the buffer - it can only detect the condition and refuse to proceed. The existing code is correct.\n\nClosing as no action needed - the code correctly handles this edge case by refusing to continue.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

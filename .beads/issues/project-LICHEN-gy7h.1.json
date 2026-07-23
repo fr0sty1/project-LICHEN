@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.1",
   "title": "lichen_lora_l2_start() races with concurrent start calls",
   "description": "Location: lora_l2.c:261-325\n\n**What goes wrong:** Two threads calling lichen_lora_l2_start() concurrently can both pass the running check at line 283 (before either sets the atomic), then both call lora_config() and k_thread_create(). The second k_thread_create() reuses rx_thread_data while the first RX thread is still running, corrupting thread state.\n\n**Trigger:** Application code that calls start() from multiple threads or contexts (e.g., network stack init + application init both trying to start LoRa).\n\n**Fix:** Move the atomic_set(running, 1) inside the mutex-protected section, or use atomic_cas to claim the running state atomically before proceeding.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

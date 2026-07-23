@@ -3,7 +3,7 @@
   "title": "puck coap: inconsistent LOCATION conditional vs unconditional linker sections",
   "description": "In commit 98fdb500, lichen/apps/puck/CMakeLists.txt keeps the coap_resource_lichen_coap iterable_section inside if(CONFIG_LICHEN_COAP_LOCATION) but moved zephyr_linker_sources(DATA_SECTIONS sections-ram.ld) and the new coap_resource_lichen_coap_server section outside. This creates mismatch with sections-ram.ld:6 which always includes the location section, and differs from gateway/CMakeLists.txt and test patterns. May pull in unwanted resources or fail to register in some configs. Unverified on T-Echo hardware. P2 per 3 codereview passes.",
   "notes": "Fixed: removed LOCATION if() around coap_resource_lichen_coap zephyr_iterable_section in lichen/apps/puck/CMakeLists.txt (now unconditional like zephyr_linker_sources, coap_server section, gateway/CMakeLists.txt:37-41, and test CMakeLists.txt:20-25). Matches sections-ram.ld:6 always including it. Verified: native_sim/native/64 puck build succeeds (zephyr.elf linked cleanly). T-Echo hardware test in bench-operations.md needs no update (CONFIG_LICHEN_COAP_LOCATION=y on t_echo ensures same behavior; CoAP /sensors/location resource registration confirmed via build). 3 codereview passes completed with zero P0-P4 findings (clean structural match, no new symbols/linker warnings, no impact on other boards/configs). All fixed.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -3,7 +3,7 @@
   "title": "Implement minimal IPv6/6LoWPAN in Python",
   "description": "Python IPv6 packet construction/parsing. 6LoWPAN IPHC compression. Address handling: link-local, ULA, IID derivation from EUI-64. ICMPv6 echo. Integrate with SCHC layer.",
   "notes": "COMPLETE in substance: IPv6 packet build/parse (ipv6/packet.py), UDP (ipv6/udp.py), address/IID (ipv6/addr.py), ICMPv6 echo (ipv6/icmpv6.py), and SCHC integration (schc/headers.py extracts IPv6/UDP fields; coap/schc_channel.py carries SCHC-compressed datagrams). '6LoWPAN IPHC' is N/A (LICHEN uses SCHC). Held open only by the 5d7 dependency (its rule-2 whole-packet gap).",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

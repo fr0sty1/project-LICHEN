@@ -3,7 +3,7 @@
   "title": "Code review LICHEN Zephyr C code",
   "description": "Review LICHEN-owned Zephyr C code for correctness, safety, and test gaps. Scope excludes vendored upstream Zephyr sources.",
   "notes": "Review confidence: ~35% chance of missed bug. Least confident areas: complete RFC-level correctness of EDHOC/OSCORE transcripts, hardware-only LR1110 behavior, and Zephyr net integration paths not compiled locally. Would raise confidence by running full native_sim/target Zephyr builds, fuzzing SCHC/RPL/OSCORE parsers, and hardware RX/TX tests.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

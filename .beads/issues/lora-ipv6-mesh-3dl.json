@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-3dl",
   "title": "aiocoap transport binding for LICHEN",
   "description": "Create custom aiocoap transport that uses LICHEN stack.\n\naiocoap supports custom transports via MessageInterface.\n\nLichenTransport class:\n- Implements aiocoap.interfaces.MessageInterface\n- Sends CoAP messages through LICHEN stack (SCHC compression, link layer)\n- Receives from LICHEN stack, passes to aiocoap\n\nIntegration points:\n- UDP socket replacement: instead of real UDP, use our IPv6/SCHC layer\n- Address mapping: CoAP addresses are IPv6 addresses\n- Message serialization: aiocoap handles, we just transport\n\nClass LichenTransport(MessageInterface):\n- async send(message) -\u003e None\n- Receive callback registration\n- Shutdown handling\n\nReference: aiocoap generic transport documentation.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

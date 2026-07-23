@@ -2,7 +2,7 @@
   "id": "project-LICHEN-j3mo",
   "title": "Expose lichen native library in Zephyr module build",
   "description": "Why this issue exists: a native-enabled puck build using the t1000_e board config aborts because CONFIG_LICHEN_NATIVE is undefined. lichen/zephyr/Kconfig and lichen/zephyr/CMakeLists.txt include drivers and subsys but not lichen/lib, so lichen/lib/native is not visible to that app build. What needs to be done: decide whether lichen/lib should be part of the Zephyr module extension and, if so, wire lib/Kconfig and lib/CMakeLists.txt into the module build so CONFIG_LICHEN_NATIVE can be enabled by app board configs.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-zi75",
   "title": "task",
   "description": "rust/lichen-sim/src/client.rs:219-220. Unbounded allocation DoS.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

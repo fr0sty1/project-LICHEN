@@ -2,7 +2,7 @@
   "id": "project-LICHEN-p32r",
   "title": "Compliance: python/src/lichen/link/link_layer.py link signatures",
   "description": "Policy: 06-security.md §8.3-8.5. File: python/src/lichen/link/link_layer.py. Status: COMPLIANT. TX path (send L206-275): Signs with sign() at L239 before building frame, appends signature to payload, sets signature_present=True. RX path (receive L326-460): Parses frame, checks signature_present, verifies via _find_sender() which calls verify(), implements key pinning (L402-411), performs replay check (L421-430).",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

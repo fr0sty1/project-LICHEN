@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.18",
   "title": "lichen_sha256 output parameter not bounds-checked",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lichen_util.c:11-28, lichen_util.h:69-70\n\nlichen_sha256() signature declares output as uint8_t output[TC_SHA256_DIGEST_SIZE] but this is just syntactic sugar - it decays to uint8_t*. The function does not verify the caller provided a buffer of at least TC_SHA256_DIGEST_SIZE bytes.\n\nWhat goes wrong: A caller passing a smaller buffer would have a buffer overflow when tc_sha256_final writes 32 bytes. The array parameter syntax provides false safety assurance.\n\nOptions:\n1. Document clearly that caller MUST provide 32 bytes\n2. Add a size parameter and check it\n3. Use a struct wrapper to enforce size at compile time\n\nCurrent callers (ipv6_addr.c, lora_l2.c) all use correctly-sized buffers, so no immediate bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

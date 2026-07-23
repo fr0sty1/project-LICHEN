@@ -2,7 +2,7 @@
   "id": "project-LICHEN-a4n2.2",
   "title": "Python: Implement TX queue with priority",
   "description": "python/src/lichen/link/link_layer.py has no TX queue - sends directly to radio.\n\nRequired:\n- Add TxQueue class with:\n  - 4 packets max capacity\n  - 4 priority levels (0=routing, 1=ACK, 2=urgent, 3=bulk)\n  - deadline_ms per entry (default: 5s routing, 10s ACK, 60s app)\n  - expire_stale() method to drop expired packets before TX\n  - preemption when full (evict lowest priority)\n  - Explicit backpressure (raise QueueFull error, not silent drop)\n- Integrate into LinkLayer.send()\n- Add tests in python/tests/link/\n\nSee spec/appendix-bufferbloat.md §3 TX Queue for requirements.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

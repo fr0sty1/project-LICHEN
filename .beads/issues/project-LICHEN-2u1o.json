@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2u1o",
   "title": "SLIP StreamDecoder has no maximum buffer size, enabling memory exhaustion",
   "description": "File: python/src/lichen/slip/codec.py\nLine: 116 (and class design)\n\nThe StreamDecoder class accumulates bytes in self._buf without any limit. If a malicious or faulty peer sends a continuous stream of bytes without END delimiters, the buffer will grow indefinitely until memory is exhausted.\n\n```python\nelse:\n    self._buf.append(byte)  # No size check\n```\n\nAttack scenario:\n1. Attacker opens serial/USB connection to gateway\n2. Attacker sends megabytes of non-END bytes\n3. Gateway OOMs and crashes\n\nIPv6 MTU is typically 1280-1500 bytes. A SLIP implementation should reject packets exceeding a reasonable maximum (e.g., 2048 bytes to allow for escape expansion).\n\nFix: Add a max_size parameter to __init__ and check before appending:\n```python\nif len(self._buf) \u003e= self._max_size:\n    self._buf.clear()  # or raise, depending on policy\n    continue\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

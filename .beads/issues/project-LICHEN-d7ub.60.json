@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.60",
   "title": "lora_l2.c + lichen_l2.c: lichen_l2_send state check has TOCTOU with lora_l2 state",
   "description": "Cross-file interaction bug: lichen_l2_send() checks is_running() but lora_l2.c state can change before TX completes.\n\nlichen_l2.c:891 checks lichen_lora_l2_is_running() before proceeding\nlichen_l2.c:980 calls lichen_lora_l2_tx() which checks state again at lora_l2.c:1032-1039\n\nRACE SCENARIO:\n1. Thread A: lichen_l2_send() checks is_running()=true at line 891\n2. Thread B: lichen_lora_l2_stop() transitions RUNNING-\u003eSTOPPED\n3. Thread A: Proceeds to line 980, calls lichen_lora_l2_tx()\n4. lora_l2.c:1037 checks state != RUNNING, returns -ENETDOWN\n5. lichen_l2.c:988 returns the error\n\nThis is actually HANDLED CORRECTLY - the double-check in tx() catches the race. But the L2 send has already done work (linearizing packet, SCHC compression) that is wasted.\n\nThe dual check creates redundancy: lichen_l2.c checks is_running(), then lora_l2.c checks state again. The first check is an optimization to fail-fast.\n\nP4: Not a correctness bug, just inefficiency on stop/send race. Document that the early check is optimization only.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

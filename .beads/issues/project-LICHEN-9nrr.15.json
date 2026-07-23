@@ -3,7 +3,7 @@
   "title": "bridge-zephyr: implement standalone LoRa RX processing or remove mode",
   "description": "Feature-completeness gap found during Zephyr firmware status audit. The legacy/standalone bridge-zephyr main path supports CONFIG_LICHEN_LORA_L2 without CONFIG_LICHEN_L2, but RX processing is explicitly not implemented. That mode can transmit/be configured enough to look real while dropping inbound radio traffic. Evidence: firmware/bridge-zephyr/src/main.c:58-68 describes standalone LoRa mode, and :78 says RX processing not implemented. Acceptance: either implement the standalone RX path through frame parse, SCHC decompression, and IPv6 injection/logging as appropriate, or remove/disable this configuration path so builds use the full CONFIG_LICHEN_L2 integration instead.",
   "acceptance_criteria": "After implementation, run the relevant tests/builds and then complete two separate code-review passes before closing. Each review pass should inspect the produced code against this Bead's acceptance criteria and file follow-up Beads for any discovered issues.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

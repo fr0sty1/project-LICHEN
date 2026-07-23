@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.92",
   "title": "[lora_l2.c:650-658] TX checks initialized/running but not deiniting",
   "description": "Gap found: TX state machine checks incomplete.\n\nWhy this was missed: Round 1 found missing needs_reinit but not deiniting check.\n\nThe actual bug: In lichen_lora_l2_tx() lines 650-658, the function checks:\n- !initialized -\u003e return -ENODEV\n- !running -\u003e return -ENETDOWN\n\nBut does NOT check:\n- deiniting flag\n- aborted flag (Round 1 already noted this as project-LICHEN-tvfm.29)\n\nIf deinit() is in progress, the initialized flag is still 1 (cleared at line 540 in deinit), and running is 0 (cleared by stop before deinit). So !running check catches the deinit case.\n\nActually, deinit requires stop first, and stop sets running=0. So during deinit:\n- initialized=1 (until line 540)\n- running=0 (from stop)\n- deiniting=1 (from line 490)\n\nTX would fail at line 656: !running -\u003e -ENETDOWN. This is correct.\n\nThe gap: if start() is called during deinit (between lines 490 and 540), start() has the deiniting check (line 358) and rejects. TX during this window fails with -ENETDOWN which is the right error.\n\nVerified correct. Priority 4 - state machine analysis confirms correctness.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

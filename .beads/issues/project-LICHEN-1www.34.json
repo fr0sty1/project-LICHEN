@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.34",
   "title": "lora_state struct mixes atomics with non-atomics requiring different access patterns",
   "description": "lora_l2.c:69-77 defines lora_state with mixed access semantics:\n\n```c\nstatic struct {\n    const struct device *lora_dev;      // Protected by lora_mutex\n    atomic_t running;                    // Atomic, no mutex needed\n    atomic_t initialized;                // Atomic, no mutex needed\n    atomic_t aborted;                    // Atomic, no mutex needed\n    uint8_t eui64[8];                    // Set once under mutex, then read-only\n    lichen_lora_rx_cb_t rx_callback;     // Protected by lora_mutex\n    void *rx_callback_user_data;         // Protected by lora_mutex\n} lora_state;\n```\n\nThe comment at line 68 says 'access running under lora_mutex or use atomic read for polling' which is imprecise - it implies mutex is optional for atomics.\n\nWhat goes wrong: A future maintainer must infer which fields need mutex and which don't. The TX path (lines 479-503) has a lengthy comment explaining why it's safe to read atomics without mutex - this complexity is a symptom of the mixed design.\n\nRewrite: Split into two separate static declarations:\n```c\nstatic struct { ... } lora_state;           // All fields protected by lora_mutex\nstatic struct { atomic_t running, initialized, aborted; } lora_flags;  // Lock-free\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

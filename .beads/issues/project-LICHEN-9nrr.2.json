@@ -3,7 +3,7 @@
   "title": "native: CBOR message type parser rejects valid maps unless key 0 is first",
   "description": "Code review finding from unreviewed Zephyr/C paths. The native protocol spec models messages as CBOR maps containing key 0 for message_type, but CBOR maps are not ordered by default and the spec examples do not define key order as a validity requirement. parse_msg_type() in lichen/lib/native/native.c expects the map header immediately followed by key 0 and drops otherwise valid frames with key 0 later in the map. This should not be fixed with another magic-byte stride parser: Zephyr already has zcbor available elsewhere in this tree (EDHOC uses zcbor_decode.h), and this protocol is not so code-space constrained that inbound CBOR needs hand-peeking. Evidence: spec/lichen-native/02-common.md defines message = {0: message_type, * uint =\u003e any}; lichen/lib/native/native.c:264-291 requires byte 1 to be 0x00; rx_thread_fn drops parse failures at native.c:332-334; lichen/subsys/lichen/edhoc/edhoc.c already uses zcbor decode APIs. Acceptance: use decoder-backed CBOR parsing (prefer zcbor or a shared generated decoder) to find key 0 regardless of map order, with bounded input handling and tests for key 0 not first.",
   "acceptance_criteria": "After implementation, run the relevant tests/builds and then complete two separate code-review passes before closing. Each review pass should inspect the produced code against this Bead's acceptance criteria and file follow-up Beads for any discovered issues.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

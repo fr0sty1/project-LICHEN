@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-fxi",
   "title": "Build simulation harness",
   "description": "Python simulation runner. Features: (1) Topology definition (node positions, links), (2) Event-driven simulation loop, (3) Packet capture/logging, (4) Metrics collection (latency, delivery rate, collisions), (5) Visualization of DODAG formation. Support for reproducible runs (seeded RNG).",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.73",
   "title": "lichen_l2.c:1949 rx_mutex held during blocking allocation may cause watchdog timeout",
   "description": "Completeness check: Round 1-2 missed watchdog interaction with mutex-held allocation.\n\nWHAT: lichen_l2_input() holds rx_mutex while calling net_pkt_rx_alloc_with_buffer() with a configurable timeout (default 50ms). The RX thread runs periodically (every 1000ms timeout), and if allocation consistently blocks near the timeout, the watchdog may not be fed.\n\nWHY BUG: The code mentions 'let watchdog reset if needed' in lora_l2.c:492, indicating a watchdog is expected. However:\n1. No explicit watchdog feeding anywhere in the RX path\n2. If memory pressure causes repeated 50ms allocation delays\n3. Each RX callback takes: frame processing + 50ms alloc timeout\n4. Combined with the 1000ms lora_recv timeout, total loop time could exceed typical watchdog timeouts (2-10s) under sustained load\n\nSCENARIO:\n- CONFIG_LICHEN_L2_RX_ALLOC_TIMEOUT_MS=1000 (max allowed)\n- Memory pressure causes allocation to always timeout\n- Each RX iteration: 1000ms lora_recv + 1000ms alloc_timeout = 2s\n- Repeat without feeding watchdog -\u003e reset\n\nIMPACT: System reset under memory pressure, preventing graceful degradation.\n\nFIX: Either:\n1. Add watchdog kick in RX loop\n2. Add BUILD_ASSERT that RX_TIMEOUT + RX_ALLOC_TIMEOUT \u003c WDT_TIMEOUT\n3. Document watchdog configuration requirements",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

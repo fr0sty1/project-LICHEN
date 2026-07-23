@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.6",
   "title": "crash_info.c:18 crash_info_store lacks enum bounds check",
   "description": "Contract violation: crash_info_store() - The 'reason' parameter is enum crash_reason but no bounds check ensures it's a valid enum value. If caller passes an out-of-range value (e.g., from cast or memory corruption), the stored value will be garbage. WHY this is a bug: Crash info is for post-mortem debugging; invalid reason codes make debugging harder. HOW to fix: Add 'if (reason \u003e= CRASH_UNKNOWN) reason = CRASH_UNKNOWN;' at the start, or use CRASH_UNKNOWN as the default upper bound.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

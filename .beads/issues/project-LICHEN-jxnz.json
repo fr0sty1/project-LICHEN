@@ -2,7 +2,7 @@
   "id": "project-LICHEN-jxnz",
   "title": "task",
   "description": "Policy: appendix-c-safety.md. Add cppcheck as secondary static analyzer. Run on all C files in CI.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

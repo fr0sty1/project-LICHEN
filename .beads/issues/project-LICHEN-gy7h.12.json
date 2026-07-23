@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.12",
   "title": "lichen_link_strerror switch structure is awkward",
   "description": "lichen_util.h:60-90 negates err, then switches on the positive value. The 'Make err positive' comment is misleading since err itself is not modified.\n\nWhat goes wrong: Future maintainers may add cases with wrong sign, causing silent fall-through to 'unknown error'.\n\nRewrite:\n```c\nstatic inline const char *lichen_link_strerror(int err)\n{\n    if (err \u003e= 0) {\n        return \"success\";\n    }\n    switch (err) {\n    case -EINVAL:\n        return \"invalid argument\";\n    case -ENOMEM:\n        return \"buffer too small\";\n    case -EMSGSIZE:\n        return \"frame too large\";\n#ifdef EOVERFLOW\n    case -EOVERFLOW:\n        return \"nonce exhausted\";\n#endif\n#ifdef EALREADY\n    case -EALREADY:\n        return \"replay detected\";\n#endif\n#if HAVE_LICHEN_ERRNO\n    case -LICHEN_EAUTH:\n        return \"authentication failed\";\n#endif\n    default:\n        return \"unknown error\";\n    }\n}\n```\n\nThis is simpler, the cases match the actual values passed, and there's no mental translation required.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

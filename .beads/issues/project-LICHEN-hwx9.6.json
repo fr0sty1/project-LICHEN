@@ -3,7 +3,7 @@
   "title": "Migrate Rust SCHC fragmentation",
   "description": "Align lichen-schc fragmentation sender/receiver and ACK wire format with the approved profile and shared vectors; remove private bitmap-length and unlimited-window behavior.",
   "acceptance_criteria": "Rust shared-vector, unit, fmt, and strict Clippy gates pass with no unsafe code.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

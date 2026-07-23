@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.98",
   "title": "[lichen_l2.c:272-284] SECURITY: No API to clear/wipe link_ctx keys at runtime",
   "description": "Security finding: link_ctx contains sensitive key material (ed25519_sk, link_key) but there's no public API to wipe keys at runtime.\n\nAnalysis:\n- lichen_link_cleanup() exists in link_ctx.h and is called during disable/deinit\n- But there's no API to wipe keys in response to a compromise detection\n- If an application detects a security event, it cannot quickly revoke keys\n\nAttack scenario:\n1. Node detects potential compromise (e.g., unauthorized physical access)\n2. Application wants to immediately invalidate all key material\n3. No API exists - must call lichen_l2_enable(false) which also stops network\n4. Or call lichen_link_cleanup() directly - but that's not exposed\n\nImpact: P2 - incident response limitation, not immediate vulnerability.\n\nMitigation:\n1. Add lichen_l2_wipe_keys() API that clears key material but keeps network up\n2. Or document that lichen_l2_enable(false) is the key revocation mechanism\n3. Consider hardware secure element integration for key storage",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

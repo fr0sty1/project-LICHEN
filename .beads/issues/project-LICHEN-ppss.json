@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ppss",
   "title": "task",
   "description": "rust/lichen-oscore/src/edhoc.rs:655-661. Second call computes wrong DH.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

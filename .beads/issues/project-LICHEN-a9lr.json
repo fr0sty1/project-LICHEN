@@ -2,7 +2,7 @@
   "id": "project-LICHEN-a9lr",
   "title": "task",
   "description": "rust/lichen-rpl/src/trickle.rs:65. Incorrect timer behavior on overflow.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

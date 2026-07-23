@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-ss4",
   "title": "[epic] Border Router Implementation",
   "description": "6LBR (6LoWPAN Border Router) connecting LICHEN mesh to IPv6 internet.\n\nArchitecture options:\n\n**Option A: Puck + PC (primary, start here)**\n- LoRa puck (T-Beam, RAK4631) runs link layer + SCHC\n- Linux PC (Pi, NUC, server) runs IPv6 routing + RPL root\n- SLIP over USB serial between them\n- PC has internet uplink (Ethernet, WiFi, LTE)\n\n**Option B: Standalone (future)**\n- Single device with LoRa + Ethernet/WiFi\n- RAK WisGate, custom hardware, or ESP32+W5500\n- Runs full stack on embedded Linux (OpenWRT/Buildroot)\n- PoE for remote deployment\n\nCore functions:\n- RPL DODAG root (advertises routes into mesh)\n- IPv6 ND proxy (mesh nodes get addresses)\n- Prefix delegation from upstream\n- NAT64/DNS64 if upstream is IPv4-only (optional)\n- Resource Directory (RFC 9176) for CoAP discovery\n- NTP/NTS time source for mesh\n\nComponents to build:\n1. SLIP interface driver (Zephyr side)\n2. SLIP interface driver (Linux side, use existing)\n3. Border router daemon (RPL root, ND proxy)\n4. Integration with Linux networking (ip6tables, routing)\n5. systemd service files\n6. Configuration management\n\nDependencies:\n- Full LICHEN stack working on puck\n- RPL implementation complete\n- Local client interface defined (for SLIP framing)\n\nTesting:\n- Internet host pings mesh node\n- Mesh node pings internet host\n- CoAP request from internet to mesh resource\n- Mesh node registers with Resource Directory",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "Mark Frost",

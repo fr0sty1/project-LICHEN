@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.50",
   "title": "[lora_l2] get_eui64 returns pointer that can become invalid during concurrent deinit",
   "description": "Cross-file bug: lichen_lora_l2_get_eui64() returns a pointer to lora_state.eui64 after checking the initialized atomic. However, a concurrent deinit can race:\n\nRace scenario:\n1. Thread A calls lichen_lora_l2_get_eui64()\n2. Thread A passes the atomic_get(\u0026lora_state.initialized) check (line 715)\n3. Thread B calls lichen_lora_l2_deinit()\n4. Thread B clears initialized (line 540)\n5. Thread A returns pointer to lora_state.eui64\n6. Thread A uses the returned pointer\n7. Thread B reinitializes lora_mutex, clears state\n8. Thread A reads potentially inconsistent data\n\nCurrently the eui64 field is not zeroed during deinit, so this is a low-severity race. However, if deinit is changed to zero the eui64 for security, callers would read zeros.\n\nLocation: lora_l2.c:713-720\n\nThe API contract says 'Contents are stable after init() completes' but doesn't address concurrent deinit.\n\nImpact: Low - eui64 is not currently cleared in deinit, but the API contract is violated.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

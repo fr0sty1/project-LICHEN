@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.46",
   "title": "[cross-file] link_ctx_initialized vs lora_l2 ABORTED state desync",
   "description": "Interaction: lichen_l2.c:link_ctx_initialized \u003c-\u003e lora_l2.c:current_state\n\nBug: When lichen_lora_l2_stop() returns -ECANCELED (RX thread aborted), the lora_l2 module enters ABORTED state. However, lichen_l2.c's link_ctx_initialized atomic remains set to 1. The lichen_l2_enable() code (line 979) checks lichen_lora_l2_needs_reinit() BEFORE checking link_ctx_initialized.\n\nThe code at line 1006 re-initializes link_ctx only if !atomic_get(\u0026link_ctx_initialized). But after an abort, link_ctx_initialized is still 1 (never cleared), so the re-init is skipped. This means lichen_l2_enable() will call lichen_lora_l2_start() on a potentially corrupted link_ctx.\n\nThe only path that clears link_ctx_initialized on abort is the disable path (line 1146), but if the abort happened during enable(), the caller may not call disable() before retry.\n\nTrigger:\n1. lichen_l2_enable(true) called\n2. RX thread started\n3. RX thread hangs in lora_recv()\n4. lichen_lora_l2_stop() times out and aborts thread -\u003e returns -ECANCELED\n5. Caller sees error, waits, then calls lichen_l2_enable(true) again\n6. needs_reinit() returns true -\u003e fails at line 980\n7. Caller calls deinit() which clears state\n8. Caller calls init() then enable(true)\n9. link_ctx_initialized is still 1 from step 2\n10. Re-init of link_ctx is skipped",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

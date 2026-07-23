@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.56",
   "title": "No documentation on when to use LICHEN_L2_MTU vs LICHEN_LORA_MTU",
   "description": "Locations:\n- firmware/bridge-zephyr/subsys/lichen/lichen_l2.h:49 - LICHEN_L2_MTU = 200\n- firmware/bridge-zephyr/subsys/lichen/lora_l2.h:55-57 - LICHEN_LORA_MTU = 200\n\nRisk: Two identical MTU constants exist in separate headers with different names. A BUILD_ASSERT at lichen_l2.c:33-34 verifies they match, but:\n\n1. A contributor adding new code may not know which constant to use\n2. The header comments explain the purpose differently (L2_MTU focuses on IPv6, LORA_MTU focuses on framing overhead)\n3. If a contributor uses LICHEN_LORA_MTU in L2 code or vice versa, it works but creates confusion\n\nPattern contributors will misuse: Using the wrong constant because it works but does not match semantic intent.\n\nSuggested fix: Either:\n1. Document clearly in both headers when to use which (L2_MTU for application-facing code, LORA_MTU for driver-facing code)\n2. Or unify to a single constant in a shared header that both files include",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

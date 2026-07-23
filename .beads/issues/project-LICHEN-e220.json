@@ -3,7 +3,7 @@
   "title": "Consume Python tuples after signing",
   "description": "Python LinkLayer signs using the current epoch/sequence but advances only after successful queue insertion; post-sign serialization/queue failure can retry an already-used tuple. Its epoch also wraps after 2^24 attempts. Preflight deterministic failures, consume every attempted signing tuple, and fail closed at tuple exhaustion/key rotation.",
   "notes": "Implementation complete in integration/wip-recovery-20260716 dirty atomic migration worktree. Added non-mutating queue admission, pre-sign tuple allocation, terminal exhaustion latch, initialization-only restore, and regression tests. Validation: all Python link/vector/interop tests 303 passed, 11 intentional skips; Ruff and diff checks clean; three current-file reviews no findings. Must commit atomically with project-LICHEN-2auf.35 because link_layer.py contains wire migration changes.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

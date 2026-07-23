@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9nrr.26",
   "title": "puck: set explicit USB VID/PID for RAK4631 board config",
   "description": "Why this exists: while validating project-LICHEN-9nrr.21, west build -b rak4631/nrf52840 lichen/apps/puck succeeded but Zephyr warned that CONFIG_USB_DEVICE_VID and CONFIG_USB_DEVICE_PID are still default test values. The RAK4631 puck config enables the USB device stack for CDC-ACM/SLIP, so product USB identifiers should be explicit like nearby bridge/native configs. What needs to be done: choose appropriate LICHEN puck USB VID/PID/product/manufacturer settings for lichen/apps/puck/boards/rak4631_nrf52840.conf, preserving CDC-ACM behavior, and verify the RAK4631 puck build is warning-clean apart from separately tracked non-native unused state warnings. As a code-generation/fix Bead, run two review passes before closing.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

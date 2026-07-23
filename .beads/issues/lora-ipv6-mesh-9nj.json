@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-9nj",
   "title": "Implement replay protection",
   "description": "16-bit sequence number with 32-entry sliding window per sender. Track per-sender SeqNum state. Reject if SeqNum \u003c= last_seen (accounting for window).",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Frost",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-bis0",
   "title": "Implement: Queue latency metrics (all implementations)",
   "description": "Policy: spec/appendix-bufferbloat.md §Measuring Queue Latency. Add: packets_queued, packets_dropped_deadline, packets_dropped_full, max_latency_ms, avg_latency_ms. Expose via /status/queues CoAP.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

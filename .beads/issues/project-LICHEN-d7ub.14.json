@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.14",
   "title": "lichen_l2.c:1010 lichen_l2_enable missing initialization check",
   "description": "Contract violation: lichen_l2_enable() - Does not verify that link_ctx_initialized OR lichen_lora_l2_get_eui64() returns non-NULL before proceeding when state=true. The needs_reinit check at line 1034 catches ABORTED state, but if called before any init (UNINIT state), lichen_lora_l2_start() at line 1128 will fail with -EINVAL. The error is returned but the function could provide a more specific check. WHY: Clearer error handling before attempting start(). HOW to fix: Check lichen_lora_l2_get_eui64() != NULL before re-registering callback at line 1113.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

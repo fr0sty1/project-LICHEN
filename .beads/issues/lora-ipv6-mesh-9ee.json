@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-9ee",
   "title": "No logging in Simulation core - hard to debug event processing",
   "description": "**Observability / Maintainer Burden**\n\nThe Simulation class (simulation.py) has no logging at all. The only logging is in NodeServer for connection handling.\n\nWhen debugging timing issues or event processing:\n1. No visibility into when events fire\n2. No record of time advancement decisions  \n3. No trace of which transmissions collide\n4. Hard to understand barrier_sync behavior\n\nThe project uses structlog (in dependencies), so adding logging would be consistent.\n\nSuggested log points:\n- DEBUG: Event pushed/popped, time advanced\n- INFO: Node added/removed, transmission started/completed\n- WARNING: Events for disconnected nodes, time going backwards attempt\n\nFiles: simulation.py",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

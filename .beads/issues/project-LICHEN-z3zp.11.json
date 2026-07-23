@@ -2,7 +2,7 @@
   "id": "project-LICHEN-z3zp.11",
   "title": "oscore_ctx_create misses ctx_out and zero-length ID pointer validation",
   "description": "oscore_ctx_create() validates master_secret and nonzero ID pointer pairs, but never checks ctx_out before writing *ctx_out. It also calls memcmp()/memcpy() with sender_id or recipient_id even when the corresponding length is zero, which is undefined for NULL pointers in portable C. Trigger: caller creates a context with ctx_out=NULL, or uses empty sender/recipient IDs represented as NULL,0. Bad behavior: NULL dereference or undefined behavior in OSCORE context setup instead of OSCORE_ERR_INVALID_PARAM / clean empty-ID handling. Locations: lichen/subsys/lichen/oscore/oscore.c:460-507 and :536-540.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

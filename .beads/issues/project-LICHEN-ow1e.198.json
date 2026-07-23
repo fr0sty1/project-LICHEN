@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.198",
   "title": "Codereview pass 3: haversine fix final review - no issues",
   "description": "**Final review:**\n- Fix is minimal: single line change with explanatory comment\n- No unnecessary complexity added\n- Test coverage verified via manual testing and existing test suite (40 routing tests pass)\n- Linter passes (ruff check)\n\n**Verdict:** Fix is complete and correct. Ready to close parent issue.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-f632",
   "title": "task",
   "description": "Follow-up to project-LICHEN-57un. Remaining headers need nullability annotations:\n\nHAL: hal.h (many functions)\nRPL: rpl.h, rpl_trickle.h, rpl_messages.h, rpl_dodag.h, rpl_routing.h, rpl_addr.h\nCoAP: coap_client.h, coap_oscore.h\nSenML: senml.h\nApp: app_identity.h, app_interface.h, hal_bridge.h\nMesh adapters: meshcore/adapter.h, meshcore/codec.h, meshtastic/adapter.h, meshtastic/codec.h\n\nCore link-layer and crypto headers were annotated in project-LICHEN-57un.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

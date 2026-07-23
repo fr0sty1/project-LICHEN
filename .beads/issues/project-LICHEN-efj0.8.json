@@ -2,7 +2,7 @@
   "id": "project-LICHEN-efj0.8",
   "title": "lichen-gateway: review tracing spans and structured fields",
   "description": "rust/lichen-gateway uses tracing well but could benefit from review: ensure error! includes error context, use spans for request lifecycle, add metrics-friendly fields (bytes, latency_us) where useful.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

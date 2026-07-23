@@ -2,7 +2,7 @@
   "id": "project-LICHEN-4my1",
   "title": "task",
   "description": "rust/lichen-ipv6/src/lib.rs:719 - verify_icmpv6_checksum uses local_addr instead of ip_header.dst. When packets are sent to multicast addresses (e.g. solicited-node multicast ff02::1:ffXX:XXXX for Neighbor Solicitation), checksum verification fails because the sender computed checksum with multicast dst but we verify with unicast local_addr. This breaks Neighbor Discovery when NS is sent to solicited-node multicast. Fix: change local_addr to \u0026ip_header.dst on line 719.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-8i3",
   "title": "RPL message types (DIO, DIS, DAO, DAO-ACK)",
   "description": "Implement RPL control messages per RFC 6550.\n\nICMPv6 type 155 (RPL), codes:\n- 0x00: DIS (DODAG Information Solicitation)\n- 0x01: DIO (DODAG Information Object)\n- 0x02: DAO (Destination Advertisement Object)\n- 0x03: DAO-ACK\n\nDIO fields:\n- RPLInstanceID, Version, Rank, Flags (G, MOP, Prf)\n- DTSN, DODAGID\n- Options: DODAG Configuration, Prefix Information, Route Information\n\nDAO fields:\n- RPLInstanceID, Flags (K, D), DAOSequence\n- DODAGID (if D flag)\n- Options: RPL Target, Transit Information\n\nDIS fields:\n- Flags, Reserved\n- Options: Solicited Information\n\nDataclasses for each message type with to_bytes/from_bytes.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

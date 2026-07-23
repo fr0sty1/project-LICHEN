@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.74",
   "title": "core: icmpv6.rs and udp.rs duplicate checksum code",
   "description": "In icmpv6.rs:106-151 and udp.rs:171-224, oc_add(), sum_words(), and checksum computation are copy-pasted. The only difference is the Next Header constant (58 vs 17). Factor into a shared checksum module with generic upper_layer_checksum(src, dst, next_header, payload).",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

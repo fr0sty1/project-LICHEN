@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kmxm",
   "title": "Review Zephyr C code",
   "description": "Review project-owned Zephyr C implementation for correctness, safety, initialization, and protocol issues. Report findings with file and line references.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

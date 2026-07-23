@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.117",
   "title": "HAL storage uses .expect() with peer key encoding",
   "description": "lichen-hal/src/storage.rs:48:\n```rust\n.expect(\"peer key always fits in 16 bytes\");\n```\n\nThis assumes the peer key format will never exceed 16 bytes. If key formats change, this will panic silently. Consider returning a Result or using a const assertion on the key size.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

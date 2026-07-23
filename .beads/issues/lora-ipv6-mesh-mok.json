@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-mok",
   "title": "Write draft-lichen-link-01.md",
   "description": "IETF-style Internet-Draft for link layer. Cover: frame format, LLSec byte, addressing modes, sequence numbers, Ed25519 truncated signatures. Use RFC 2119 keywords.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Frost",

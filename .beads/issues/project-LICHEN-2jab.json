@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2jab",
   "title": "pb_skip_value does not handle unknown wire types safely",
   "description": "File: lichen/subsys/lichen/meshtastic/adapter.c:372-401\nFile: lichen/subsys/lichen/meshtastic/codec.c:271-300\n\npb_skip_value handles wire types 0,1,2,5 but returns -EINVAL for others:\n  default:\n      return -EINVAL;\n\nWire type 3 and 4 are deprecated start/end group markers from proto2. A malicious input using wire type 3 or 4 would cause parse failure even if otherwise valid.\n\nMore critically, wire type 6 and 7 are reserved/undefined. The current code correctly rejects them, but the comment should document WHY they're rejected (undefined behavior in protobuf spec).\n\nPROTOCOL: Rejecting unknown wire types is correct per protobuf spec, but adding a comment would improve maintainability.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

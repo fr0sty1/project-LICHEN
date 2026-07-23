@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.34",
   "title": "main.c LED blink patterns could use helper",
   "description": "In main.c, LED blink patterns are implemented inline with repeated code:\n\n**USB init failure (lines 157-163):**\n```c\nfor (int i = 0; i \u003c 3; i++) {\n    led_set(1);\n    k_sleep(K_MSEC(100));\n    led_set(0);\n    k_sleep(K_MSEC(100));\n}\n```\n\n**LoRa init failure (lines 188-193):**\n```c\nwhile (1) {\n    led_set(1);\n    k_sleep(K_MSEC(200));\n    led_set(0);\n    k_sleep(K_MSEC(200));\n}\n```\n\nWhat goes wrong: If a third error pattern is added, the pattern continues. Minor issue since main.c is small and patterns are documented in header comment.\n\nSuggested fix (optional, low priority): Extract `led_blink(int on_ms, int off_ms, int count)` helper. `count=-1` for infinite. But this is borderline bikeshedding given the file size.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

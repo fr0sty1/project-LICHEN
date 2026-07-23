@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.49",
   "title": "lichen_l2.c line 239 lichen_l2_recv comment 'Required:' lacks alternative explanation",
   "description": "lichen_l2.c lines 237-240:\n\n```c\n/**\n * @brief L2 receive handler\n *\n * Called by net_recv_data() to let L2 process the packet before\n * passing it up to the IP layer.\n *\n * Required: Zephyr's net_if_recv_data() dereferences -\u003erecv without NULL\n * check (net_if.c:5034), so this callback MUST be provided. Cannot be NULL.\n * Compare dummy L2 which also returns NET_CONTINUE when no processing needed.\n */\nstatic enum net_verdict lichen_l2_recv(...)\n{\n    ...\n    return NET_CONTINUE;\n}\n```\n\nThe comment explains why the function exists (NULL deref prevention) but the body is trivial - it returns NET_CONTINUE immediately. The comment does not explain why no processing is needed.\n\nWhat goes wrong: A reader wonders if the function is incomplete or if processing was deliberately skipped.\n\nImprovement: Add one sentence: 'No L2 processing is needed here because lichen_l2_input() already decompressed the packet before injecting it via net_recv_data().'",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

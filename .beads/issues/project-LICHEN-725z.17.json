@@ -2,7 +2,7 @@
   "id": "project-LICHEN-725z.17",
   "title": "goto led_off label placement confuses static analyzers",
   "description": "main.c:138 — led_off label appears after CONFIG_LICHEN_LORA_L2 block but is only jumped to from within that block. When ifdef disabled, led_off is dead label. Move inside ifdef or restructure.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

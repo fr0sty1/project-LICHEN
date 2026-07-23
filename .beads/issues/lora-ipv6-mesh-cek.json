@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-cek",
   "title": "Build wireless channel simulator",
   "description": "Python module simulating LoRa radio propagation. Features: (1) Distance-based path loss model, (2) SF/BW impact on range and data rate, (3) Packet collision detection (simultaneous TX), (4) Configurable packet loss/BER, (5) Propagation delay, (6) Duty cycle tracking per node, (7) SNR/RSSI calculation. Should support multiple nodes in a topology.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

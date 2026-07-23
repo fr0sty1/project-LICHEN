@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.6",
   "title": "[lichen_l2.c:791-795] peer_table clearing loop may leave holes if interrupted",
   "description": "In lichen_l2_enable() disable path (lines 791-795), the peer_table clearing loop uses secure_zero for each entry then sets active=false. If the system is interrupted mid-loop (e.g., power failure, watchdog), some entries may be zeroed while others are not, leaving the table in an inconsistent state on restart. While the mutexes are held, hardware interruptions don't respect mutexes. Consider using a generation counter or atomic flag to mark the entire table invalid before clearing entries.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

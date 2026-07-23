@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.20",
   "title": "Good: Mutex lock ordering documented to prevent deadlock",
   "description": "In lichen_l2_enable() (lichen_l2.c:198-210), the cleanup path acquires tx_mutex then rx_mutex, with explicit comment explaining the lock order prevents deadlock. This is defensive programming done right -- the invariant is documented where it's enforced.\n\nWorth preserving if someone refactors the locking.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:198-210",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.11",
   "title": "lora_l2.c:284 ssize_t hwid_len compared to size_t without cast",
   "description": "In generate_eui64() at line 284:\n```c\nif ((size_t)hwid_len \u003e sizeof(hwid)) {\n```\n\nThe hwid_len variable is ssize_t. At line 269, it's assigned from hwinfo_get_device_id() which returns ssize_t (negative on error). Lines 270-277 check for hwid_len \u003c 0, and line 278-283 checks for hwid_len == 0.\n\nBy line 284, hwid_len is known to be positive, so the cast to size_t is safe. However, hwinfo_get_device_id() could theoretically return a value larger than INT_MAX on some exotic platform, though this is extremely unlikely for a device ID (typically 4-32 bytes).\n\nSEVERITY: P4 - no practical bug on embedded targets where sizeof(hwid) is 32 bytes.\n\nNO ACTION NEEDED - the check is defensive and correct.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "note",
   "assignee": "Mark Atwood",

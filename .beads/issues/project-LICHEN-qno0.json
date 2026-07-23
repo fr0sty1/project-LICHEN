@@ -2,7 +2,7 @@
   "id": "project-LICHEN-qno0",
   "title": "Python visualize.py: topology_from_states converts IPv6Address to string inconsistently",
   "description": "In python/src/lichen/rpl/visualize.py, topology_from_states() now converts preferred_parent (IPv6Address) to string via 'str(state.preferred_parent) if state.preferred_parent else None'. This creates a Topology (dict[str, str | None]) where parents are strings. However, callers using to_ascii() or other visualization functions now get string parents instead of IPv6Address objects. The type annotation Topology = dict[str, str | None] was already string-based, so this may be correct, but verify that all callers expect string format.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

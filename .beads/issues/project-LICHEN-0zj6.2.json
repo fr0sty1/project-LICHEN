@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0zj6.2",
   "title": "EUI-64 derivation via SHA-256 hashing is well-designed",
   "description": "lora_l2.c:generate_eui64() correctly hashes the full hardware ID rather than directly slicing MCU-specific byte layouts. This is the right approach: STM32/ESP32/nRF52 all have different hwid sizes and entropy distributions. Hashing normalizes the input and spreads entropy uniformly. The U/L bit handling is correct per IEEE. Worth defending if someone suggests 'just take the first 8 bytes'.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1kxm",
   "title": "task",
   "description": "rust/lichen-link/src/schnorr.rs:186-201. build_signable uses fixed buffer, panics on large payloads.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

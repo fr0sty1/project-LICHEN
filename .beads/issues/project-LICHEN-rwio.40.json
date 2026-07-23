@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.40",
   "title": "lora_l2.h tx function takes non-const data pointer despite not needing mutation",
   "description": "lora_l2.h line 114: int lichen_lora_l2_tx(uint8_t *data, size_t len) - the data pointer is non-const. The comment says 'may be mutated by driver' but the actual implementation (lora_send) in Zephyr should not require mutation. If mutation is truly possible, the comment is correct; if not, the signature should be const uint8_t *data for caller clarity.\n\nVerify: Check Zephyr's lora_send() signature. If it takes const, change this to const.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

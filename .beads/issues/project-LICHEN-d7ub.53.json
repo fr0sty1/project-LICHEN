@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.53",
   "title": "lichen_util.h:27-28 tc_sha256_init return not checked separately",
   "description": "In lichen_sha256() at lines 27-31:\n```c\nif (tc_sha256_init(\u0026state) != TC_CRYPTO_SUCCESS ||\n    tc_sha256_update(\u0026state, input, inlen) != TC_CRYPTO_SUCCESS ||\n    tc_sha256_final(output, \u0026state) != TC_CRYPTO_SUCCESS) {\n    ret = -EIO;\n}\n```\n\nThe short-circuit evaluation means if init() fails, update() and final() are never called. This is correct behavior - no point continuing after init failure.\n\nThe TinyCrypt SHA-256 functions only fail on NULL arguments:\n- tc_sha256_init: returns 0 if state is NULL\n- tc_sha256_update: returns 0 if state or data is NULL  \n- tc_sha256_final: returns 0 if digest or state is NULL\n\nAll pointers are checked before this call (lines 21-23), so these can't fail in practice. The -EIO return is for defensive completeness.\n\nNO BUG - defensive error handling is correct.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "note",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.57",
   "title": "[lora_l2.c:81] tx_buf not zeroed after use, may leak payload to next TX",
   "description": "Gap found: TX buffer lifecycle not reviewed.\n\nWhy this was missed: Buffer security focus was on RX path and key material.\n\nThe actual bug: The tx_buf at line 81 is used to copy data before lora_send() (lines 678-679). After transmission, the buffer is not zeroed. If the next TX is shorter, stale bytes from the previous TX remain in the buffer. This is not a security issue in the current code because:\n\n1. memcpy only copies 'len' bytes\n2. lora_send takes len parameter and only transmits that many bytes\n\nHowever, if a future bug causes len to be larger than intended, stale data could leak. Consider:\n- secure_zero(tx_buf, len) after successful lora_send\n- Or document that tx_buf may contain stale data\n\nPriority 4 because current code is correct and data is not sensitive (already transmitted).",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

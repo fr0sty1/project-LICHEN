@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yu2d",
   "title": "CRITICAL: build_oscore_aad missing request_piv bytes copy",
   "description": "File: lichen/subsys/lichen/oscore/oscore.c\nLines: 375-385\n\nThe build_oscore_aad function writes the CBOR bstr header for request_piv but NEVER copies the actual PIV bytes. Compare with request_kid handling (lines 358-369) which correctly copies the bytes after the header.\n\nCurrent code (broken):\n```c\n/* request_piv: bstr (RFC 8613 Section 5.4, fourth element) */\nif (request_piv_len \u003c= 23) {\n    inner[inner_off++] = 0x40 | (uint8_t)request_piv_len;\n} else {\n    return -1;\n}\n/* MISSING: memcpy of request_piv bytes! */\n/* options: empty bstr ... */\ninner[inner_off++] = 0x40;\n```\n\nThis causes incorrect AAD computation for ALL OSCORE messages, meaning:\n1. Encryption produces wrong ciphertext\n2. Decryption verification fails against correctly-implementing peers\n3. Security guarantees are broken (AAD binds PIV to ciphertext)\n\nFix: Add the memcpy after the header, like request_kid:\n```c\nif (request_piv_len \u003e 0) {\n    if (inner_off + request_piv_len \u003e sizeof(inner)) {\n        return -1;\n    }\n    memcpy(inner + inner_off, request_piv, request_piv_len);\n    inner_off += request_piv_len;\n}\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.21",
   "title": "Good: Panic on driver buffer overflow - correct response to stack corruption",
   "description": "lora_l2.c:198-214 panics when lora_recv() returns more bytes than the buffer size:\n\n```c\nif (ret \u003e (int)sizeof(rx_buf)) {\n    LOG_ERR(\"CRITICAL: lora_recv returned %d \u003e buffer size %zu - \"\n            \"stack corruption likely, aborting\", ret, sizeof(rx_buf));\n    k_panic();\n}\n```\n\nThe preceding comment (lines 199-208) explains the reasoning: rx_buf is stack-allocated, so if the driver wrote beyond it, corruption has ALREADY happened. Continuing would risk exploiting corrupted return addresses or saved registers.\n\nWhat goes right: This is the correct response to detected stack corruption. The log message is actionable - it identifies the specific driver bug. The comment explains why k_panic() is appropriate rather than return/ignore.\n\nWorth defending: Returning an error here would be wrong - it would continue executing on a corrupted stack. Recovery is impossible; restart is the only safe option.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

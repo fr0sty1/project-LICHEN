@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.124",
   "title": "router.py: DTN retrieve creates two full list copies",
   "description": "src/lichen/routing/router.py:467-468 retrieves matching messages with two list comprehensions:\n    matching = [m for m in self.dtn_buffer if m.destination_iid == destination_iid]\n    self.dtn_buffer = [m for m in self.dtn_buffer if m.destination_iid != destination_iid]\n\nTwo passes over the buffer, allocating two new lists. Fix: single pass with partition or accumulate indices.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

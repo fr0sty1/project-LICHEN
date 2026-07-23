@@ -4,7 +4,7 @@
   "description": "Review of 2auf.35 found python/tests/sim/test_cross_impl_interop.py requires Rust frame_parser to exit zero for every vector, while the migrated canonical set includes expected-error vectors and frame_parser correctly exits nonzero. Update the harness to assert expected success/failure and intended error category without weakening positive comparisons.",
   "acceptance_criteria": "Python-to-Rust interop covers positive and negative canonical frame vectors; expected failures require nonzero parser status and matching error category; unexpected failures still fail; CI-focused test passes; three reviews pass.",
   "notes": "Completed after signed-oracle dependency closed. Harness independently reconstructs every vector field boundary, invokes Python serialization/rejection, requires exact Rust exit/category/all parsed fields, validates exact live simulator bytes, fails CI on missing prerequisites, and checks generated vector freshness including untracked recreations. Canonical set includes unsigned address modes, elided mode, valid signed plaintext oracle, and both encrypted negative forms. Exact CI class with LICHEN_RUN_CROSS_IMPL=1: 2 passed, 0 skipped. Multiple independent reviews converged after signed oracle landed; unrelated workflow false-green paths tracked by 2auf.36.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-sz52",
   "title": "Simulation validation gate before hardware smoke tests",
   "description": "Gate: complete simulation coverage before hardware smoke tests.\n\nPurpose: Ensure firmware logic is validated in simulation before burning time on hardware debugging. Hardware tests should only find physical issues (RF tuning, electrical timing, flash layout), not logic bugs.\n\nRequired before hardware (ev5b.5, h7t5.7.10, etc):\n- [ ] RX path simulation working (r7h4.7 chain complete)\n- [ ] Meshtastic native_sim harness passing (t2hn.10)\n- [ ] Flash/NVS persistence simulation (y2ec)\n- [ ] 2-node TX/RX integration test in Renode (pfqv)\n\nNOT required (these are hardware-only by design):\n- GNSS electrical validation (63mu)\n- Reset pin timing (ev5b.9)\n- Bootloader/UF2 layout (ev5b.10)\n- RF tuning, antenna matching\n\nAcceptance: simulation tests pass; hardware tests can focus on physical validation.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "gate",
   "owner": "me@mark.atwood.name",

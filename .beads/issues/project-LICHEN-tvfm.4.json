@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.4",
   "title": "[lora_l2.c:228] consecutive_errors increment could theoretically overflow",
   "description": "In rx_thread() line 228-229, consecutive_errors is incremented with INT_MAX check. While this is defensive, the condition 'consecutive_errors \u003c INT_MAX' followed by increment means the counter saturates at INT_MAX rather than wrapping. However, with the LOG_WRN at line 232-234 only firing when 'consecutive_errors % RX_ERROR_WARN_THRESHOLD == 0', at INT_MAX the modulo check may not trigger as expected (INT_MAX % 5 != 0 on most platforms). The saturation is good but the logging condition should handle the saturated case.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

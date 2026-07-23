@@ -2,7 +2,7 @@
   "id": "project-LICHEN-z38x.5",
   "title": "lichen_l2.c: replace reinit_after_abort panics",
   "description": "Replace k_panic() calls in lichen_l2_reinit_after_abort().\n\nLocations: lines 1626, 1638\n\nCase 1 (line 1626): Called while module is running\nCurrent:\n  if (lichen_lora_l2_is_running()) {\n      LOG_ERR(\"SECURITY: ... refusing to corrupt mutex\");\n      k_panic();\n  }\n\nTarget:\n  if (lichen_lora_l2_is_running()) {\n      LOG_ERR(\"lichen_l2: reinit_after_abort called while running (caller bug)\");\n      return;  // Just don't reinit - better than corrupting\n  }\n\nCase 2 (line 1638): k_mutex_init failed\nCurrent:\n  if (ret != 0) {\n      LOG_ERR(\"rx_mutex reinit failed\");\n      k_panic();\n  }\n\nTarget: k_mutex_init cannot fail in Zephyr kernel mode (only in userspace).\nRemove the check or leave LOG_ERR but don't panic. If it ever does fail,\nreturning leaves us in broken state, but watchdog will reset.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

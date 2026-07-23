@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.136",
   "title": "ReceivedIpv6::sender_iid uses raw [u8; 8] instead of NodeId newtype",
   "description": "lichen-core defines NodeId([u8; 8]) for EUI-64 identifiers. However:\n\nlichen-node/src/stack.rs ReceivedIpv6 struct:\n  pub struct ReceivedIpv6 {\n      pub sender_iid: [u8; 8],  // raw array\n      ...\n  }\n\nNodeId is used elsewhere in the crate:\n- Node::new(node_id: NodeId)\n- Stack::node_id() -\u003e NodeId\n- RplNode::new(node_id: NodeId, ...)\n\nWhat goes wrong: The raw [u8; 8] cannot use NodeId::link_local_addr() or other methods. Callers must manually convert via NodeId(sender_iid) to use the newtype's functionality. This defeats the purpose of having a newtype.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.27",
   "title": "ipv6_addr.c includes zephyr/logging/log.h but has no LOG_MODULE_REGISTER guard",
   "description": "ipv6_addr.c:17 includes zephyr/logging/log.h and line 21 does LOG_MODULE_REGISTER.\n\nThis file is documented as 'does not depend on Zephyr's networking stack' (ipv6_addr.h:17-18) but it unconditionally uses Zephyr logging.\n\nWhat goes wrong: The ipv6_addr module cannot be used in a non-Zephyr build (e.g., host-side unit tests) without stubbing the logging system. The header comment implies portability that doesn't exist in the implementation.\n\nFix: Either (1) update the header comment to note Zephyr dependency, or (2) make logging conditional with fallback to printf/noop for non-Zephyr builds.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

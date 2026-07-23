@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.50",
   "title": "[main.c:134] ret initialized to 0 but may be overwritten by unrelated code",
   "description": "Round 2 gap analysis: Missed in Round 1 focus on USB/LoRa error paths.\n\nAt line 134:\n```c\nint main(void)\n{\n    int ret = 0;\n    ...\n    #if defined(HAS_LED)\n        ret = gpio_pin_configure_dt(\u0026led, GPIO_OUTPUT_ACTIVE);\n        if (ret \u003c 0) {\n            LOG_ERR(\"Failed to configure LED GPIO: %d\", ret);\n        } else { ... }\n    #endif\n\n    #if defined(CONFIG_USB_DEVICE_STACK)\n        ret = usb_enable(NULL);  // Overwrites LED configure result\n        ...\n    #endif\n```\n\nThe 'ret' variable is reused for multiple independent operations. If LED configuration fails (ret \u003c 0), the USB enable call overwrites ret. The LED failure is logged but the ret value is lost.\n\nThis isn't really a bug because:\n1. LED failure is non-fatal (logged and continues)\n2. Each #if block handles its own ret value independently\n3. The final ret state only matters for LoRa init (the critical path)\n\nHowever, it could be cleaner to use separate variables or scope ret more tightly to each block. Low priority.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "feature",
   "assignee": "Mark Atwood",

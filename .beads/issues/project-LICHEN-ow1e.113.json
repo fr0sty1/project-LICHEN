@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.113",
   "title": "DutyCycleTracker next_tx_available returns record start instead of end, allowing early TX",
   "description": "In rust/lichen-core/src/duty_cycle.rs:185, the code returns record.timestamp_ms + WINDOW_MS as when TX becomes available. But a record with duration D occupies the window until timestamp+D+WINDOW_MS. For a 200ms TX at t=0, current code says TX allowed at t=WINDOW_MS, but should be t=WINDOW_MS+200. This allows exceeding duty cycle by record.duration_ms worth of overlap. The eviction logic (line 211-212) correctly uses tx_end, but next_tx_available_ms doesn't match.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

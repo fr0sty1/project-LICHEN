@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1wc7",
   "title": "headers.rs: coap_buf fixed buffer limits CoAP payload to 252 bytes",
   "description": "File: rust/lichen-schc/src/headers.rs\nLines: 406-413 (build_coap_udp)\n\nCategory: CORRECTNESS\n\nThe build_coap_udp function uses a 256-byte fixed buffer for CoAP reconstruction:\n```rust\nlet mut coap_buf = [0u8; 256];\ncoap_buf[0] = coap_b0;\ncoap_buf[1] = coap_code;\ncoap_buf[2] = (coap_mid \u003e\u003e 8) as u8;\ncoap_buf[3] = coap_mid as u8;\ncoap_buf[COAP_FIXED_HEADER..COAP_FIXED_HEADER + tail.len()].copy_from_slice(tail);\n```\n\nWith COAP_FIXED_HEADER = 4, maximum tail size is 252 bytes before panic.\n\nThis is a lower limit than typical CoAP block transfers (RFC 7959 defines blocks up to 1024 bytes) and much lower than CoAP over TCP (RFC 8323) which has no inherent size limit.\n\nFor LoRa/SCHC context, 252 bytes may be sufficient given airtime constraints, but:\n1. After SCHC decompression, packets could be larger\n2. This limit should be documented or enforced at API level\n\nImpact: Building packets with CoAP payloads \u003e 252 bytes causes panic.\n\nFix: Either increase buffer size, use dynamic allocation, or add explicit validation with descriptive error before the copy.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

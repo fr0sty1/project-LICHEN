@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.141",
   "title": "Replay window tests use .expect() for state transitions",
   "description": "lichen-link/src/replay.rs:90,108,127:\n```rust\n.expect(\"empty replay window can start tracking\");\n.expect(\"tracking replay window can keep tracking\");\n```\n\nThese test state machine behavior but the .expect() messages document invariants. The replay window state machine could benefit from making invalid transitions unrepresentable.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

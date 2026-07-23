@@ -2,7 +2,7 @@
   "id": "project-LICHEN-a1z4",
   "title": "Rust lichen-coap: CoapBuilder content_format uses invalid byte slicing",
   "description": "In rust/lichen-coap/src/codec.rs at the content_format() method, the code creates 'let bytes = format.to_be_bytes()' (a [u8; 2]) then slices it as \u0026bytes[2..2] for format==0, \u0026bytes[1..2] for 1..=0xFF, and \u0026bytes[0..2] otherwise. The slice \u0026bytes[2..2] for format==0 is problematic: a [u8; 2] array only has indices 0 and 1, so bytes[2..2] is out of bounds. This will panic at runtime when encoding Content-Format 0.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3pun.3",
   "title": "lichen_peer_lookup_pubkey(): thread safety contract not enforced",
   "description": "**Location:** firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:444\n\n**Contract violation:** The documentation states the function is 'Thread-safe: returns a pointer to static storage that is valid while rx_mutex is held.' However, the implementation does NOT acquire rx_mutex - it explicitly states in a comment that it assumes the caller already holds the mutex.\n\nThis is a documentation/implementation mismatch:\n- Header says thread-safe\n- Implementation requires caller to hold mutex\n- Function calls peer_find_locked() which assumes mutex is held\n\n**Impact (P2):** External callers who trust the 'Thread-safe' claim in the header may call this without holding rx_mutex, leading to TOCTOU race or use-after-free if peer table is modified concurrently.\n\n**Current mitigations:**\n1. The function is only called from within RX paths that already hold rx_mutex\n2. The implementation comment warns against external use\n\n**Recommendation:**\n1. Update header documentation to remove 'Thread-safe' claim and note caller must hold rx_mutex, OR\n2. Add mutex acquisition inside the function for external callers\n3. Consider making the function static if only internal use is intended",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -3,7 +3,7 @@
   "title": "SCHC compression implementation",
   "description": "Implement SCHC compression per RFC 8724.\n\ncompress(context, packet) -\u003e (rule_id, residue)\n\nAlgorithm:\n1. Match packet against rules in priority order\n2. For matching rule:\n   a. For each field descriptor:\n      - Apply matching operator\n      - Apply compression action\n      - Accumulate sent bits into residue\n3. Return rule_id + residue bitstring\n\nCompression actions implementation:\n- not-sent: emit nothing\n- value-sent: emit full field\n- mapping-sent: emit mapping index\n- LSB(n): emit n least significant bits\n- compute-checksum: compute at decompression\n\nBit-level operations:\n- BitWriter class for accumulating bits\n- Handle non-byte-aligned fields\n\nTest with all rules from spec Appendix A.",
   "notes": "Partially addressed: compress() implemented + tested in schc/codec.py for fixed-length fields. Needs full-header rules + fragmentation.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

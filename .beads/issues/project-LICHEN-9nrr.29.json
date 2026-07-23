@@ -3,7 +3,7 @@
   "title": "dev-env: restore local Zephyr Twister pkg_resources dependency",
   "description": "Review follow-up from project-LICHEN-9nrr.18. The native_parse test builds and runs directly with west build -t run, but local Twister invocation fails before test discovery because the Python environment used by west/python3 cannot import pkg_resources. Commands tried: west twister -T lichen/tests/native_parse -p qemu_x86 --inline-logs, and python3 zephyr/scripts/twister -T lichen/tests/native_parse -p qemu_x86 --inline-logs. Both fail with ModuleNotFoundError: No module named 'pkg_resources'. Decide whether the project should document/install setuptools for the local Zephyr test environment or provide a repo bootstrap check so Twister works consistently.",
   "acceptance_criteria": "west twister -T lichen/tests/native_parse -p qemu_x86 --inline-logs reaches test discovery/execution in the documented local dev environment, or the required Python dependency/bootstrap step is documented in AGENTS/developer setup.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "chore",
   "assignee": "Mark Atwood",

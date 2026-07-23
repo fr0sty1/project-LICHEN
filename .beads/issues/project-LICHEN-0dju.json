@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0dju",
   "title": "EdhocResource uses dummy key for unknown peers in Message 1",
   "description": "File: python/src/lichen/coap/resources.py:919-923\n\nSECURITY: When peer_pubkey is None (unknown peer), the code passes a dummy all-zeros key to process_message_1:\n```python\npeer_pubkey = await self._peer_resolver.get_peer_pubkey(peer_host)\nmsg2 = responder.process_message_1(msg1, peer_pubkey or b'\\x00' * 32)\n```\n\nProblems:\n1. The all-zeros key is a valid Ed25519 public key. An attacker could craft signatures that verify against it.\n2. Code is inconsistent: Message 1 uses dummy key, but Message 3 (line 948-952) rejects if peer_pubkey is None.\n3. The EDHOC responder may have already performed crypto operations with the wrong key before rejection.\n\nFix: Reject unknown peers early in _handle_message_1 if TOFU is not enabled, or implement proper TOFU that defers key verification until Message 3 arrives.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

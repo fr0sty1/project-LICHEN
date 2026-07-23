@@ -2,7 +2,7 @@
   "id": "project-LICHEN-725z.6",
   "title": "Buffer overflow check after lora_recv already wrote to buffer",
   "description": "lora_l2.c:191-194 — Check 'ret \u003e sizeof(rx_buf)' occurs AFTER lora_recv at line 167 already wrote data. If driver misbehaves and writes \u003e255 bytes, overflow already occurred. Defense-in-depth gap.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

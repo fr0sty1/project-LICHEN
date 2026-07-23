@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.11",
   "title": "lichen_l2.c: lichen_l2_recv validates iface then ignores it via ARG_UNUSED",
   "description": "## Location\nfirmware/bridge-zephyr/subsys/lichen/lichen_l2.c:274-281\n\n## Issue\nThe lichen_l2_recv() function validates the iface parameter for NULL, then immediately marks it as unused:\n\n```c\nstatic enum net_verdict lichen_l2_recv(struct net_if *iface,\n                                       struct net_pkt *pkt)\n{\n    /* Validate iface parameter (project-LICHEN-1www.25) */\n    if (iface == NULL) {\n        LOG_ERR(\"lichen_l2_recv: iface is NULL\");\n        return NET_DROP;\n    }\n\n    ARG_UNUSED(iface);\n    ARG_UNUSED(pkt);\n    ...\n```\n\nThe NULL check suggests the code expects to use iface, but then ARG_UNUSED indicates it is not used. This is contradictory.\n\n## What goes wrong\n- Confuses future maintainers: is the parameter used or not?\n- If Zephyr guarantees iface is never NULL for L2 recv callbacks, the check is dead code\n- If Zephyr does NOT guarantee non-NULL, then ARG_UNUSED is misleading documentation\n- Similar pattern appears in lichen_l2_enable() (lines 403-409)\n\n## Fix\nEither:\n1. Remove the NULL check if Zephyr guarantees non-NULL iface, and keep ARG_UNUSED\n2. Keep the NULL check and remove ARG_UNUSED, with a comment explaining why we validate but dont use\n3. Add a comment explaining the NULL check is defensive against future Zephyr API changes",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

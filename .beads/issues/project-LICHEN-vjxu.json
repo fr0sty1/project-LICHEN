@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vjxu",
   "title": "task",
   "description": "Policy: appendix-c-safety.md. CMake must use -Werror. CI must fail on any clang-tidy or cppcheck warning. No suppressions without code comment justification.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

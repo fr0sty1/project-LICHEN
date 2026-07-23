@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-p4w",
   "title": "Implement Radio abstraction trait",
   "description": "Create Radio trait with: configure(), transmit(), receive(), cad(), rssi(), snr(). Implement for sx126x, sx127x, and simulated backends. Per spec section 3.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

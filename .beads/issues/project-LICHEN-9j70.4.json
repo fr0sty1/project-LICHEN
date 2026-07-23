@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.4",
   "title": "lichen_l2.c: LICHEN_MIN_FRAME_LEN defined inside function body",
   "description": "Location: lichen_l2.c:518\n\nThe macro LICHEN_MIN_FRAME_LEN is defined inside lichen_l2_input() using #define, which is unusual placement for a constant.\n\nWhat goes wrong: Reader expects #defines at file scope. When scanning the file for constants, this one is invisible. Harder to audit the frame format logic when the relevant constant is buried mid-function.\n\nSuggested fix: Move to file scope near MAX_LORA_FRAME (line 40) with a comment explaining derivation: length(1) + flags(1) + src_eui64(8) + mic(4) = 14.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

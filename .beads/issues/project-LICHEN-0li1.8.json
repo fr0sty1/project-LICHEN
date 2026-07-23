@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.8",
   "title": "[lora_l2.c:834] Mutex reinit without owning it is UB",
   "description": "What: lichen_lora_l2_deinit() calls k_mutex_init(\u0026lora_mutex) without holding the mutex. The code explicitly avoids acquiring the mutex (comment at line 795: 'We do NOT acquire lora_mutex here') but reinitializing a mutex that might be held by another thread is undefined behavior.\n\nWhy it matters: While the comment acknowledges this is 'best-effort recovery', the scenario is dangerous:\n1. If an in-flight operation holds lora_mutex\n2. deinit() reinitializes it, corrupting the mutex state\n3. The holding thread later unlocks, corrupting kernel structures\n4. Subsequent lock attempts may crash or deadlock\n\nThe code does document this risk extensively (lines 803-833), but it remains a real UB path that could cause system instability.\n\nEvidence:\n```c\n// Line 795 comment: 'We do NOT acquire lora_mutex here'\nint mutex_ret = k_mutex_init(\u0026lora_mutex);  // line 834\nif (mutex_ret != 0) {\n    LOG_ERR(\"lora_l2: k_mutex_init failed...\");\n}\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

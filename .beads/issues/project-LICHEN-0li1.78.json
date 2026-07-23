@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.78",
   "title": "[cross-file] lichen_link_cleanup() called without corresponding lichen_replay_table_init()",
   "description": "Interaction: lichen/link_ctx.h:lichen_link_cleanup \u003c-\u003e lichen_l2.c:replay_table\n\nBug: lichen_link_cleanup() (link_ctx.h:148-156) clears ed25519_sk, link_key, and resets has_key/has_link_key/tx_seq. But it doesn't clear or notify the replay table.\n\nIn lichen_l2.c, cleanup is called in multiple places:\n1. fail_late_init (line 1559): lichen_link_cleanup() called, but replay_table not explicitly cleared (though it may be zero from init)\n2. lichen_l2_enable disable path (line 1147): lichen_link_cleanup() called, then lichen_replay_table_init() at line 1157 - CORRECT\n3. lichen_l2_iface_init re-init path (line 1430): cleanup called, but replay_table_init at line 1440 - CORRECT\n\nActually, checking the re-init path more carefully:\n- Line 1416 checks if link_ctx_initialized\n- Lines 1427-1430: acquire mutexes, clear link_ctx_initialized, clear peer_table, cleanup link_ctx\n- Line 1439-1440: init link_ctx, init replay_table\n\nThe replay_table_init happens AFTER the mutexes are released (line 1431-1432). But wait, in the re-init block the mutexes ARE held (1427-1430). Then 1431-1432 releases. Then 1439-1440 does the init without holding mutexes.\n\nThis is a race: between lines 1432 and 1440, another thread could access the replay_table (via RX callback that somehow got registered). But at this point link_ctx_initialized is 0, so lichen_l2_input would bail early at line 1664.\n\nActually the code is safe. Not a bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

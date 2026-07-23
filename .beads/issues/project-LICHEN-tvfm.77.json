@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.77",
   "title": "[lichen_l2] net_pkt leak on lichen_link_rx buffer overflow check",
   "description": "Cross-file resource ownership bug: In lichen_l2_input(), if lichen_link_rx() returns success but ipv6_len \u003e sizeof(rx_ipv6_buf), the code returns early without freeing any net_pkt.\n\nWait - actually at this point in the code (lines 1174-1180), no net_pkt has been allocated yet. The allocation happens at lines 1205-1208, AFTER the ipv6_len validation.\n\nSo this is NOT a leak. The function correctly validates ipv6_len before allocating the net_pkt.\n\nClosing as not-a-bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

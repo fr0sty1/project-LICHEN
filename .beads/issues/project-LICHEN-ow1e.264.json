@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.264",
   "title": "[CR] aprs_is.rs: recv() returns None for server comments instead of continuing",
   "description": "File: rust/lichen-gateway/src/aprs_is.rs:256-259\n\nIssue: The recv() method returns None when it encounters a server comment (line starting with #):\n    if line.starts_with('#') {\n        return Ok(None);\n    }\n\nThis treats server comments the same as EOF or timeout. Callers cannot distinguish between 'no packet available' and 'server sent a comment we skipped'.\n\nMore importantly, if the server sends multiple comments in a row (common after login), the caller would need to call recv() multiple times to get the first real packet.\n\nSuggestion: Change to loop internally to skip comments and return the first real packet, or add a separate return variant to indicate 'comment skipped, try again'.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

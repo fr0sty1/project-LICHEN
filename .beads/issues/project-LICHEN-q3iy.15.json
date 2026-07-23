@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.15",
   "title": "lora_l2.c: deinit mutex reinit is documented UB but performed anyway",
   "description": "## Location\nfirmware/bridge-zephyr/subsys/lichen/lora_l2.c:499-535\n\n## Issue\nThe lichen_lora_l2_deinit() function reinitializes a mutex that may still be held by a dead thread. The code explicitly documents this as undefined behavior in a long SECURITY comment (lines 499-528) but proceeds anyway.\n\nWhile the rationale is sound (refusing to deinit leaves module permanently unusable), this creates maintainer burden:\n1. The 30-line comment explaining why UB is acceptable is itself a code smell\n2. Contributors may copy the pattern without understanding the tradeoffs\n3. Debug builds with mutex assertions will catch this and fail\n4. The only truly safe path (system reboot) is mentioned but not enforced\n\n## What goes wrong\n- In debug/assertion-enabled Zephyr builds, k_mutex_init() on a held mutex will trigger OOPS\n- Contributors adding similar recovery paths may copy this pattern incorrectly\n- Static analysis tools flag this as a defect\n- If Zephyr changes k_mutex_init() behavior, silent corruption becomes likely\n\n## Fix\nConsider:\n1. Add a Kconfig option (e.g., CONFIG_LICHEN_LORA_STRICT_RECOVERY) that calls k_sys_reboot() instead of proceeding with UB\n2. Document the deinit recovery limitations in lora_l2.h header comment\n3. Add a LOG_WRN when taking the UB path (currently only logs if k_mutex_init fails, not that were taking the risky path)",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.89",
   "title": "Fix rak4631 bridge overlay duplicate lora label",
   "description": "Why: building firmware/bridge-zephyr for board rak4631/nrf52840 now gets past the SX1262 TCXO binding check, but devicetree generation fails because both the upstream rak4631 board DTS and firmware/bridge-zephyr/boards/rak4631_nrf52840.overlay define label lora. What: reconcile the bridge overlay with the board DTS so the real rak4631/nrf52840 bridge build configures cleanly without duplicate labels.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

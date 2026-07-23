@@ -2,7 +2,7 @@
   "id": "project-LICHEN-7lef",
   "title": "task",
   "description": "replay.py:79-90 - After the 24-bit counter wraps from 0xFFFFFF to 0x000000, frames from the 'forward half' of counter space become replayable. The half-space arithmetic at line 81 treats counters 0x000001-0x7FFFFF as 'forward' relative to 0x000000, but those counters were legitimately used ~8M-16M frames ago. Attack: (1) capture frame with counter 0x400000, (2) wait for ~12M more frames until counter wraps to 0x000000, (3) replay captured frame - it passes replay check because diff=0x400000 \u003c 0x800000. Mitigation options: (a) error/warn when counter approaches 0xFFFFFF, (b) require re-keying before wraparound, (c) use larger counter space, (d) document 16M frame limit prominently.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

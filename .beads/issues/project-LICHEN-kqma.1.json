@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kqma.1",
   "title": "Reject all-zero X25519 shared secrets in EDHOC",
   "description": "Trigger: a peer sends a small-order X25519 public key in EDHOC message_2 or message_1. lichen/subsys/lichen/edhoc/edhoc.c computes g_xy at lines 527 and 882 and feeds it into HKDF without checking for the all-zero shared secret, despite having is_all_zeros() available. Impact: violates RFC 7748 contributory behavior checks and can put attacker-controlled predictable input into the EDHOC key schedule. Reject all-zero shared secrets before deriving PRK material.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

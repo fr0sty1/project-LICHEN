@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.37",
   "title": "[lichen_l2.c:1141] rx_mutex trylock timeout recovery reinitializes potentially-held mutex",
   "description": "Contract: If rx_mutex lock times out, assume RX thread was aborted holding it.\nViolation: Lines 1141-1144 try to lock rx_mutex with 100ms timeout. If it fails, they reinitialize the mutex and lock forever. This is explicitly noted as 'defense-in-depth' but k_mutex_init() on a held mutex is undefined behavior.\nImpact: The comment (lines 1135-1138) acknowledges this is for edge cases not caught by -ECANCELED check. In practice, if -ECANCELED was returned above, deinit() should have already reinitialized the mutex. This path catches 'kernel bugs or hardware faults'.\nMitigation: This is intentional UB-in-recovery-path tradeoff. Document that if this log message appears, system state is questionable.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

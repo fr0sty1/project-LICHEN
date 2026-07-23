@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.27",
   "title": "Magic numbers in LoRa config struct",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:301-310\n\nlora_modem_config struct uses named constants for most fields (BW_125_KHZ, SF_10, CR_4_5) but preamble_len = 8 is a magic number.\n\nWhat goes wrong: If preamble length needs to change or its meaning is unclear during maintenance, theres no named constant explaining the choice. Other fields reference Kconfig (CONFIG_LICHEN_LORA_FREQUENCY, CONFIG_LICHEN_LORA_TX_POWER) but preamble_len does not.\n\nConsider adding CONFIG_LICHEN_LORA_PREAMBLE_LEN or a named constant with comment explaining the choice of 8.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

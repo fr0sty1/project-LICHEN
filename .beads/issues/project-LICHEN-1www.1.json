@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.1",
   "title": "snprintf truncation unchecked in lichen_ipv6_addr_to_str",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/ipv6_addr.c:189-199\n\nsnprintf() return value is checked for negative (encoding error) but NOT for truncation. When ret \u003e= buflen, output is truncated but function returns success (0).\n\nWhat goes wrong: If buflen shrinks or format changes, truncated addresses would be logged/used without error. The pre-check (buflen \u003c LICHEN_IPV6_ADDR_STR_LEN) mitigates for well-behaved callers, but function contract should be robust.\n\nFix: Add check for (size_t)ret \u003e= buflen and return -ENOSPC.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-5uef",
   "title": "Rust: CoapBuilder content_format uses incorrect byte slice indexing",
   "description": "In rust/lichen-coap/src/codec.rs:456-462, the content_format() method was refactored to use byte array slicing:\n\n    let bytes = format.to_be_bytes();\n    let value = match format {\n        0 =\u003e \u0026bytes[2..2],      // BUG: bytes is [u8; 2], not [u8; 3]\n        1..=0xFF =\u003e \u0026bytes[1..2],\n        _ =\u003e \u0026bytes[0..2],\n    };\n\nformat.to_be_bytes() returns [u8; 2], not [u8; 3]. The slice \u0026bytes[2..2] is always empty (which is correct for format=0), and \u0026bytes[1..2] is the low byte (correct), but the indices are confusing.\n\nLocation: rust/lichen-coap/src/codec.rs:456-462\nRisk: Code is correct but misleading; future maintainers may misread the intent.\nFix: Either use explicit indexing (\u0026[bytes[1]]) or add a comment clarifying the slice semantics.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

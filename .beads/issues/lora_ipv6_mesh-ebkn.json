@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-ebkn",
   "title": "SenML codec — RFC 8428 CBOR pack/unpack",
   "description": "Implement lichen/senml/codec.py: RFC 8428 SenML records with CBOR encoding (Content-Format 112). Needs: SenmlRecord dataclass with fields (bn, bt, bu, n, u, v, vs, vb, t, s, vd) using numeric CBOR keys per RFC 8428 Table 4; pack(records) -\u003e bytes and unpack(data) -\u003e list[SenmlRecord] using cbor2; base name pattern urn:dev:mac:\u003cEUI-64\u003e: and relative timestamp support.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "owner": "mark.frost@gmail.com",

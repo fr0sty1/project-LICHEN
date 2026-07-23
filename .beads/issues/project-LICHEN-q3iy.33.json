@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.33",
   "title": "Error recovery with forced abort handles undefined state explicitly",
   "description": "lora_l2.c:428-443 handles the case where the RX thread does not exit gracefully:\n\n```c\nLOG_WRN(\"RX thread join timed out after %dms, aborting thread. \"\n        \"Any in-flight packet processing was terminated.\",\n        RX_THREAD_QUICK_JOIN_MS + RX_TIMEOUT_MS);\nk_thread_abort(\u0026rx_thread_data);\nk_thread_join(\u0026rx_thread_data, K_FOREVER);\n/*\n * Mark module as requiring re-initialization. k_thread_abort()\n * may have terminated the thread while it held lora_mutex or\n * while inside a callback. The callback may hold its own locks\n * or have allocated resources that are now leaked. Safe restart\n * requires full de-init/re-init cycle.\n */\natomic_set(\u0026lora_state.aborted, 1);\nLOG_WRN(\"Module requires lichen_lora_l2_deinit() before restart\");\n```\n\nAnd lichen_lora_l2_deinit() (lines 450-538) includes an extensive comment explaining that mutex reinitialization after abort is undefined behavior, but proceeds anyway because:\n1. Alternative (refusing to deinit) leaves module permanently unusable\n2. In practice, aborts usually happen outside critical sections\n3. The aborted flag forces full deinit/init cycle\n\nThis is honest engineering: acknowledging the undefined behavior, explaining why recovery is attempted anyway, and documenting the only truly safe recovery (system reboot).",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.35",
   "title": "Packet ownership semantics clearly documented",
   "description": "The codebase consistently documents packet ownership semantics:\n\n**lichen_l2.h header comment (lines 15-20):**\n```c\n/*\n * Packet ownership (Zephyr net_l2 contract):\n * - TX (L2 send): On success (return 0), L2 takes ownership of net_pkt and\n *   calls net_pkt_unref(). On error (return \u003c 0), caller retains ownership.\n * - RX (lichen_l2_input): Allocates a new net_pkt and passes ownership to\n *   the network stack via net_recv_data().\n */\n```\n\n**lichen_l2_send (lines 298-301):**\n```c\n/*\n * Ownership: Per Zephyr net_l2 contract, on success (return 0) this function\n * takes ownership of @p pkt and calls net_pkt_unref(). On error (return \u003c 0),\n * caller retains ownership and is responsible for cleanup.\n */\n```\n\n**lichen_l2_input (lines 848-856):**\n```c\n/*\n * Inject into the network stack.\n *\n * Ownership semantics:\n * - On success (ret \u003e= 0): net_recv_data takes ownership of pkt.\n *   The network stack will unref the packet when processing completes.\n *   We MUST NOT access or unref pkt after this point.\n * - On failure (ret \u003c 0): We retain ownership and must unref pkt.\n */\n```\n\nThis documentation prevents use-after-free and double-free bugs that are notoriously hard to debug in networking code.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.26",
   "title": "lora_l2.c:672 start uses lora_transition not lora_transition_from",
   "description": "Contract violation: lichen_lora_l2_start() - Uses lora_transition(LORA_RUNNING) at line 672, not lora_transition_from(LORA_STOPPED, LORA_RUNNING). Between double-check at 623 and transition at 672, state could change if another thread bypasses mutex (impossible with current code, but violates defensive programming). Also, lora_transition() forces ABORTED on invalid transition - if state changed, both transitions would fail, creating orphan state. WHY: Using _from variant is more robust. HOW to fix: Replace lora_transition(LORA_RUNNING) with lora_transition_from(LORA_STOPPED, LORA_RUNNING), handling -EAGAIN appropriately.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

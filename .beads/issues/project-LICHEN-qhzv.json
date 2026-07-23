@@ -2,7 +2,7 @@
   "id": "project-LICHEN-qhzv",
   "title": "task",
   "description": "lichen-node/src/secure.rs:87 - Stack::new now requires 3 arguments (radio, identity, epoch) but secure.rs only passes 2. This breaks compilation of lichen-gateway tests.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

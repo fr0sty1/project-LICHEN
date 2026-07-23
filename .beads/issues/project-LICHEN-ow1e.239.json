@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.239",
   "title": "[CR] aprs_is.rs: lat_min/lon_min conversion loses precision from fract",
   "description": "File: rust/lichen-gateway/src/aprs_is.rs:289-294\n\nIssue: The lat_min/lon_min calculation uses (lat.abs().fract() * 60.0) as f64 but lat is already f64. The cast is redundant but the real issue is that the result is assigned to a plain f64 variable and then used in format! with :05.2 precision. The calculation itself is correct but the intermediate truncation when extracting the integer degrees via trunc() is lossy.\n\nMore importantly, line 290 uses (lat.abs().fract() * 60.0) as f64 but fract() already returns f64 and 60.0 is f64, so the as f64 is a no-op. This is just redundant code.\n\nIdiomatic fix: Remove the redundant as f64 casts.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

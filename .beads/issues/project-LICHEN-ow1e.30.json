@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.30",
   "title": "schc/codec: repetitive decompress_* functions share boilerplate",
   "description": "In codec.rs, decompress_coap(), decompress_icmpv6_echo(), decompress_rpl_dio(), decompress_rpl_dao(), decompress_mqtt_sn() all share the same IPv6 header construction pattern (lines 526-536, 586-597, 658-669, etc). Consider extracting a helper like 'fn write_ipv6_header(out: \u0026mut [u8], payload_len: u16, next_header: u8, hop_limit: u8, src: \u0026[u8; 16], dst: \u0026[u8; 16])' to reduce duplication.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.25",
   "title": "[lichen_l2.c:640] lichen_l2_enable acquires both mutexes with nested locking",
   "description": "Function: lichen_l2_enable. Thread safety: The function acquires tx_mutex then rx_mutex (lines 695-696 enable path, 778-779 disable path). The comment at lines 687-692 documents this ordering. However, if any future code acquires rx_mutex then tx_mutex (ABBA pattern), deadlock would occur. The code currently maintains consistent ordering but no static analysis enforces this. Consider adding a comment at mutex definitions or using Zephyr's lock ordering annotations if available. Priority 3 - correctly ordered, documentation improvement.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "issue",
   "assignee": "Mark Atwood",

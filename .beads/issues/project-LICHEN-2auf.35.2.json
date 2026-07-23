@@ -4,7 +4,7 @@
   "description": "Review of 2auf.35 found C rejects every encrypted frame while Python/Rust and spec/test-vectors/frame.json accept unsigned E=1 frames; C also rejects canonical maximum unsigned payloads above LICHEN_MAX_PAYLOAD. Align C/Python/Rust/spec/vectors on rejecting all E=1 frames, permit any payload whose complete frame fits the 255-byte body limit, and assert canonical error categories rather than any generic parse failure.",
   "acceptance_criteria": "C/Python/Rust accept and reject the same positive/negative vectors; unsigned and signed E=1 both reject as unsupported encryption; canonical maximum unsigned frame serializes in C; negative vectors assert intended error categories; focused tests and three reviews pass.",
   "notes": "Completed in clean integration worktree. Unified all E=1 handling as encryption_unsupported across C/Python/Rust/spec/vectors; added exact negative categories; made C frame sizing subtraction-first and overflow-safe; accepted 251-byte maximum and rejected 252/SIZE_MAX; expanded RX capacity to 251; rejected MIC selectors 2..7; corrected LLSec/LENGTH/empty-payload spec contradictions; added pre-allocation guards and mutation-resistant tests. Final gates: C frame 14/14; Python focused 64 passed, 7 expected skips, Ruff clean; Rust lichen-link 68 unit + 2 integration + 1 doctest, fmt/clippy clean. Final three closure reviews: no findings.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

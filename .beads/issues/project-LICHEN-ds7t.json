@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ds7t",
   "title": "task",
   "description": "python/src/lichen/rpl/routing.py:51-64. No validation.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

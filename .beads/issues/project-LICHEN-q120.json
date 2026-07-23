@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q120",
   "title": "State machine verification: Rust lichen-rpl",
   "description": "Add state machine verification to RPL routing implementation.\n\nRPL has complex state machines:\n- DODAG state (joined, root, leaf, floating)\n- Trickle timer state\n- Route entry state (fresh, stale, expired)\n\nFiles: rust/lichen-rpl/src/*.rs\n\nUse typestate for DODAG membership, runtime checks for route entries.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

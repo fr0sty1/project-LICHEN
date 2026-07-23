@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.65",
   "title": "lichen_pubkey_to_iid and lichen_eui64_to_iid U/L bit handling differs without explanation",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/ipv6_addr.c\n\n- lichen_eui64_to_iid (lines 46-57): XORs U/L bit (iid[0] ^= 0x02)\n- lichen_pubkey_to_iid (lines 59-104): Clears U/L bit (iid[0] \u0026= ~0x02)\n\nRisk: The two functions handle the U/L bit differently:\n1. eui64_to_iid: Flips the bit (per RFC 4291 for MAC-derived IIDs)\n2. pubkey_to_iid: Clears the bit (marks as locally-administered)\n\nThe comments explain this but a contributor may not understand WHY they differ. Both approaches are semantically correct but for different reasons:\n- EUI-64 from MAC: Flip U/L because MAC universal bit has opposite meaning from IID\n- Pubkey-derived: Clear U/L because it is not a globally-unique address\n\nPattern contributors may misunderstand: Copying one function style when writing the other, or not understanding why the bit manipulation differs.\n\nSuggested fix: Add a block comment at the start of the file explaining U/L bit semantics across all IID derivation methods in this module.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

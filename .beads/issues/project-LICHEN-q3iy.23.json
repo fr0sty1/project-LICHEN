@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.23",
   "title": "lichen_l2.c lichen_l2_recv validates iface but not pkt",
   "description": "The lichen_l2_recv function checks iface for NULL (with ARG_UNUSED immediately after) but does not check pkt. Either both should be checked for consistency, or neither (trust Zephyr contract). See lichen_l2.c:274-281. Reference: project-LICHEN-1www.25.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

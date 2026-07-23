@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.2",
   "title": "lora_l2_tx holds mutex during blocking lora_send - potential RX starvation",
   "description": "File: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:253-269\n\nlichen_lora_l2_tx() holds lora_mutex while calling lora_send(), which blocks until TX completes. At SF10/125kHz, a 255-byte packet takes ~500ms airtime.\n\nMeanwhile, the RX thread also acquires lora_mutex (line 127) to snapshot the callback. If TX is in progress, the RX thread blocks waiting for mutex, but it cannot deliver packets until TX releases.\n\nTrigger: Transmit a large packet while another node is sending.\n\nBad behavior: Received packets are delayed by TX airtime (~500ms). In half-duplex LoRa radios, this may cause packet loss if radio switches to TX during incoming reception.\n\nNote: The mutex protects running state, but the lora_send itself does not need serialization if the driver handles it. Consider narrowing the critical section to just the state check.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

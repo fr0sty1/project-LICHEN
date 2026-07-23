@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.10",
   "title": "Repair Rust link signed receive and frame validation",
   "description": "Fix Rust lichen-link defects found after protocol alignment: signed receive checks payload instead of 48-byte MIC; parser accepts trailing bytes; serializer lacks address/MIC invariant validation; signed MIC flag combinations need explicit validation. Add malformed/short-payload tests and run all-features link tests.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

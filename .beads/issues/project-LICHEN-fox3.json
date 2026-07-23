@@ -3,7 +3,7 @@
   "title": "Evaluate build-time firmware timestamp as GNSS/time epoch seed",
   "description": "User suggested using build-time stamps in firmware or board metadata to epoch GNSS/time. Evaluate software-only design: how build epoch is embedded, trust/freshness limits, interaction with GNSS cold start and network/manual time sources, and what hardware validation remains for RTC/GNSS behavior. Create implementation follow-ups if accepted.",
   "notes": "User clarified the build-time timestamp idea: use build-time stamps in firmware or board metadata to epoch GNSS/time. Evaluation should compare immutable firmware build epoch, board/provisioning metadata epoch, and trust/staleness interactions with GNSS cold start, RTC, network/manual time, and rollback risk.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

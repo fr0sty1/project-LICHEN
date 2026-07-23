@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.42",
   "title": "lichen_l2.c:1867-1868 peer_try_all_pubkeys modifies rx_ctx even on success",
   "description": "In lichen_l2_input() at lines 1845-1868:\n```c\nstruct lichen_link_rx_ctx rx_ctx = {\n    .peer_pubkey = NULL,\n    .peer_eui64 = NULL,\n    ...\n};\nuint8_t src_eui64[8] = {0};\n\nret = peer_try_all_pubkeys(\u0026rx_ctx, \u0026replay_table, data, len,\n                           rx_ipv6_buf, \u0026ipv6_len, src_eui64);\n```\n\npeer_try_all_pubkeys() modifies rx_ctx.peer_pubkey and rx_ctx.peer_eui64 on success (lines 593-595 in peer_try_all_pubkeys). These are set to point into peer_table entries.\n\nAfter peer_try_all_pubkeys() returns, rx_ctx.peer_pubkey and rx_ctx.peer_eui64 point into peer_table. But rx_ctx is a local variable that goes out of scope at the end of lichen_l2_input(). The pointers are never dereferenced after peer_try_all_pubkeys() returns.\n\nActually, looking at the code after line 1868:\n- Line 1870-1874: error handling returns early\n- Line 1877-1883: validate ipv6_len, may return early\n- Line 1896-1897: LOG_DBG uses src_eui64, not rx_ctx\n- Line 1900: secure_zero(rx_link_key)\n\nrx_ctx is never accessed after line 1868. The dangling pointers are harmless because rx_ctx goes out of scope.\n\nNO BUG - rx_ctx is not used after the call.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "note",
   "assignee": "Mark Atwood",

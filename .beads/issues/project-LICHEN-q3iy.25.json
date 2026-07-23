@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.25",
   "title": "lichen_sha256 output buffer has no runtime bounds check",
   "description": "## Summary\n\n`lichen_sha256()` in `lichen_util.h` takes an output buffer declared as `uint8_t output[TC_SHA256_DIGEST_SIZE]` but C array parameter syntax decays to a pointer with no bounds checking. A caller passing a buffer smaller than 32 bytes causes a buffer overflow.\n\n## Locations\n\n- `/firmware/bridge-zephyr/subsys/lichen/lichen_util.h:79-80`\n- `/firmware/bridge-zephyr/subsys/lichen/lichen_util.c:11-12`\n\n## Security Impact\n\n**What goes wrong:** If a caller passes a buffer smaller than TC_SHA256_DIGEST_SIZE (32 bytes), `tc_sha256_final()` will write beyond the buffer boundary, corrupting adjacent memory. This could lead to:\n- Stack corruption if output is stack-allocated\n- Heap metadata corruption if heap-allocated  \n- Potential code execution via controlled overflow\n\nThe existing SECURITY comment documents this risk but relies on callers to get it right. Current callers (`generate_eui64`, `lichen_pubkey_to_iid`) correctly use 32-byte buffers, but the API is fragile.\n\n## Recommendation\n\nAdd a `buflen` parameter and runtime check:\n\n```c\nint lichen_sha256(const uint8_t *input, size_t inlen,\n                  uint8_t *output, size_t outlen)\n{\n    if (outlen \u003c TC_SHA256_DIGEST_SIZE) {\n        return -ENOMEM;\n    }\n    ...\n}\n```\n\nThis is a breaking API change but catches misuse at runtime.\n\n## Priority\n\nP1 - The function is internal and current callers are correct, but the API design invites future bugs.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

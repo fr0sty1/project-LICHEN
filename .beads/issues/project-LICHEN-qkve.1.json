@@ -2,7 +2,7 @@
   "id": "project-LICHEN-qkve.1",
   "title": "Rust announce processor (gradient tracking, sig verification)",
   "description": "Port the announce processor from Python/Zephyr to Rust.\n\nPython reference: python/src/lichen/announce/processor.py (305 LoC)\nZephyr reference: lichen/subsys/lichen/routing/announce.c (peer tracking, sig verification portion)\n\nRequired functionality:\n- Signature verification (schnorr48)\n- IID-to-pubkey validation\n- Sequence number tracking (RFC 1982 serial arithmetic)\n- Duplicate detection\n- Key pinning (TOFU)\n- Gradient table updates\n\nThis is the RX path that processes incoming announces.\n",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

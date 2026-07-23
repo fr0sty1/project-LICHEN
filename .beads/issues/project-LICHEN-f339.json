@@ -2,7 +2,7 @@
   "id": "project-LICHEN-f339",
   "title": "announce.c: Race condition between frame_len calculation and app_data copy",
   "description": "File: lichen/subsys/lichen/routing/announce.c\nLines: 544, 552, 571-574\n\nIn build_announce_frame(), the mutex is unlocked at line 544, then sched.app_data_len is read without the lock at line 552 to calculate frame_len, then the mutex is re-acquired at line 571 and app_data is copied.\n\nIf lichen_announce_sched_set_app_data() is called by another thread between lines 552 and 571, app_data_len could increase, causing memcpy at line 572 to write beyond the buffer size calculated at line 552. This is a buffer overflow vulnerability.\n\nThe fix should either:\n1. Keep the mutex held while calculating frame_len, OR\n2. Re-check that app_data_len hasn't increased after re-acquiring the lock",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

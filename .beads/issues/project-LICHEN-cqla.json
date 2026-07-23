@@ -2,7 +2,7 @@
   "id": "project-LICHEN-cqla",
   "title": "Rust lichen-node dispatch_udp: NotUdp vs UnknownPort distinction may be surprising",
   "description": "In rust/lichen-node/src/node.rs, dispatch_udp() was changed from returning Option\u003cResult\u003c...\u003e\u003e to Result\u003c..., UdpDispatchError\u003e. The new UdpDispatchError::NotUdp variant combines multiple cases: wrong IPv6 version, wrong next header, and truncated headers. This is a semantic improvement but callers expecting None for non-UDP packets now need to match on Err(UdpDispatchError::NotUdp). The change is correct but could benefit from documenting the migration path for existing callers.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

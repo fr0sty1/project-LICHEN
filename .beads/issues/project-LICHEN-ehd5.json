@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ehd5",
   "title": "task",
   "description": "rust/lichen-cli/src/commands.rs:159-160. IID derived from private seed leaks key bits in IPv6 address.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

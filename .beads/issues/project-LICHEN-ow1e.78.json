@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.78",
   "title": "Frame signature field parsed but not used in from_bytes path",
   "description": "In rust/lichen-link/src/frame.rs:324-327, the Signature field is set based on SIGNATURE_BIT, but the frame parser doesn't verify signatures itself - that's done in LinkLayer. The LichenFrame struct thus contains unverified signature presence. A caller who gets a LichenFrame from from_bytes might assume signature.is_present() means the signature verified. Document prominently that LichenFrame is a parsed-but-not-verified structure, or rename to UnverifiedLichenFrame.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

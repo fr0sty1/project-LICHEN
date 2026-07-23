@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.38",
   "title": "[lora_l2.c:555-556] LOG_INF frequency in Hz but comment says MHz",
   "description": "Round 2 gap analysis: Missed because it's a cosmetic issue.\n\nAt line 555-556:\n```c\nLOG_INF(\"LoRa L2 started: SF10, BW125, %uMHz, %ddBm\",\n        CONFIG_LICHEN_LORA_FREQUENCY / 1000000, CONFIG_LICHEN_LORA_TX_POWER);\n```\n\nIf CONFIG_LICHEN_LORA_FREQUENCY is 915000000, dividing by 1000000 gives 915, and the log says '915MHz' which is correct. However, this integer division truncates - if the frequency were 915500000 (915.5 MHz), the log would say '915MHz' losing the fractional MHz.\n\nVery minor - most LoRa frequencies are whole MHz values. But if fractional MHz support is ever needed, this logging would be misleading.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "feature",
   "assignee": "Mark Atwood",

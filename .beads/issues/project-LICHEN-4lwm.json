@@ -2,7 +2,7 @@
   "id": "project-LICHEN-4lwm",
   "title": "address.py: TOFU key mismatch raises ValueError causing service disruption",
   "description": "File: python/src/lichen/interface/meshtastic/address.py\nLines: 163-170\n\nThe AddressMapper.learn() method raises ValueError when receiving a different pubkey for an already-known IID:\n\n```python\nif existing_pubkey is not None and existing_pubkey != pubkey:\n    raise ValueError(\n        f\"TOFU violation: pubkey mismatch for IID {iid.hex()} ...\"\n    )\n```\n\nWhile TOFU key pinning is correct security behavior, raising an exception is the wrong response. A malicious peer could repeatedly send messages with conflicting keys to crash the service.\n\nImpact: Denial of service - attacker sends crafted messages claiming different identities for the same IID, crashing the Meshtastic adapter.\n\nFix: Log the violation and silently ignore the new key (keeping the pinned one), or return a boolean/enum indicating the outcome instead of raising. The caller should decide how to handle the untrusted message (drop it) without crashing.\n\n```python\nif existing_pubkey is not None and existing_pubkey != pubkey:\n    log.warning(\"TOFU violation: pubkey mismatch for IID %s\", iid.hex())\n    return False  # or raise only if caller explicitly wants strict mode\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.1",
   "title": "[lichen_l2.c:557] peer_try_all_pubkeys out_len not restored on success",
   "description": "When peer_try_all_pubkeys finds a match (found_idx \u003e= 0), it restores ctx-\u003epeer_pubkey and ctx-\u003epeer_eui64 but does NOT restore *out_len. The saved_out_len is overwritten on each iteration (line 515), but on success the function returns without restoring out_len to what lichen_link_rx() produced for the matched peer. The value in *out_len after the loop corresponds to the LAST peer tried, not the matched peer. Fix: save out_len when found_idx is set and restore it before returning.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

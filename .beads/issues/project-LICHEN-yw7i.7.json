@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yw7i.7",
   "title": "Good: Clear net_pkt ownership documentation",
   "description": "lichen_l2.h and lichen_l2.c:144 document Zephyr net_l2 ownership semantics: L2 takes ownership on success, caller retains on error. The TX path follows this correctly with net_pkt_unref() on success path only. RX path documents ownership transfer to net_recv_data().",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

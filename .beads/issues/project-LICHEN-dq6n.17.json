@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dq6n.17",
   "title": "[lichen_l2.c:1103] Missing secure_zero on net_pkt alloc failure",
   "description": "Gap analysis: Round 1 focused on ctx modifications but missed error paths after line 1081.\n\nBUG: If net_pkt_rx_alloc_with_buffer() fails at line 1098-1100, the function returns at line 1103-1104 WITHOUT calling secure_zero(rx_link_key, sizeof(rx_link_key)).\n\nrx_link_key contains a copy of the session link key (line 1027-1031). When the function returns without zeroing, this sensitive key material remains on the stack until overwritten by subsequent function calls. An attacker with memory access (e.g., via a separate vulnerability, JTAG, or cold boot attack) could recover the key.\n\nThe fix is to add secure_zero(rx_link_key, sizeof(rx_link_key)) before the return at line 1104.\n\nSimilar issue exists at line 1112 in the net_pkt_write failure path.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

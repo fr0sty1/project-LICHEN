@@ -3,7 +3,7 @@
   "title": "SX1262.cs: send RX_ENTER on SetRx opcode",
   "description": "Modify renode/peripherals/SX1262.cs to send RX_ENTER when firmware issues SetRx.\n\nSetRx opcode is 0x82, followed by 3 bytes for timeout (24-bit, 15.625us steps).\n\n```csharp\nprivate void HandleSetRx(byte[] args)\n{\n    // Parse timeout: 3 bytes, 15.625us per step\n    uint timeoutSteps = (uint)(args[0] \u003c\u003c 16 | args[1] \u003c\u003c 8 | args[2]);\n    uint timeoutUs = timeoutSteps * 15625 / 1000;  // convert to microseconds\n    \n    // Special case: 0xFFFFFF = continuous RX (no timeout)\n    if (timeoutSteps == 0xFFFFFF)\n        timeoutUs = 0xFFFFFFFF;  // max uint = \"infinite\"\n    \n    rxMode = true;\n    \n    // Send RX_ENTER to simulation\n    SendToSim(EncodeRxEnter(timeoutUs));\n    \n    this.Log(LogLevel.Debug, \"SetRx: timeout {0} us\", timeoutUs);\n}\n\nprivate byte[] EncodeRxEnter(uint timeoutUs)\n{\n    // MSG_RX_ENTER (0x24) + 4-byte LE timeout\n    var msg = new byte[5];\n    msg[0] = 0x24;\n    msg[1] = (byte)(timeoutUs \u0026 0xFF);\n    msg[2] = (byte)((timeoutUs \u003e\u003e 8) \u0026 0xFF);\n    msg[3] = (byte)((timeoutUs \u003e\u003e 16) \u0026 0xFF);\n    msg[4] = (byte)((timeoutUs \u003e\u003e 24) \u0026 0xFF);\n    return msg;\n}\n```\n\nNote: SetRx is already partially handled (sets internal state). This adds the sim notification.",
   "acceptance_criteria": "SetRx (0x82) triggers RX_ENTER message to sim; Wireshark/log shows message on TCP connection",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "grinder",

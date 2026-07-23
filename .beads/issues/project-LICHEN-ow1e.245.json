@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.245",
   "title": "Python EDHOC: VerifyKey.verify argument order",
   "description": "File: python/src/lichen/crypto/edhoc.py\nLine: 342\n\nPyNaCl VerifyKey.verify() expects (signed_message, signature) but the signature is already detached. The call should be verify_key.verify(signature + m_2) for combined format or use verify_detached. This may cause signature verification to fail or accept invalid signatures.\n\nThe nacl library verify() combines the message and signature, so the current call 'verify_key.verify(m_2, signature_2)' passes m_2 as the signed message and signature_2 as the second positional arg, which is not the correct API usage for detached signatures.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3pun.1",
   "title": "lichen_l2.c:444: lichen_peer_lookup_pubkey thread-safety mismatch",
   "description": "The function lichen_peer_lookup_pubkey() at line 444 has a thread-safety API design issue:\n\n1. The docstring says 'Thread-safe: returns a pointer to static storage that is valid while rx_mutex is held'\n2. But the function does NOT acquire rx_mutex itself\n3. External callers have no way to acquire rx_mutex (it's static)\n4. The internal comment (line 451-455) says 'does NOT lock the mutex because it is intended for use within code paths that already hold rx_mutex'\n\nThis creates a documentation/API mismatch:\n- The public header (lichen_l2.h line 80-85) claims 'Thread-safe' but it's NOT thread-safe for external callers\n- External callers cannot safely use this function because they cannot acquire the required mutex\n- If an external caller uses this while peer_remove runs, use-after-free is possible\n\nOptions:\n1. Make function internal-only (static) and remove from header\n2. Add mutex locking to the function for external safety\n3. Fix documentation to say 'NOT thread-safe, internal use only'\n\nThe current state allows external callers to believe the function is safe when it is not.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

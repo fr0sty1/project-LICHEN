@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.19",
   "title": "Good: Explicit ownership semantics in net_recv_data comment",
   "description": "The comment block at lichen_l2.c:429-436 explicitly documents ownership transfer semantics for net_pkt after net_recv_data():\n- Success: stack takes ownership, caller must not touch pkt\n- Failure: caller retains ownership, must unref\n\nThis is exactly the kind of comment that saves hours of debugging. Worth defending if someone tries to 'simplify' by removing comments.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:429-436",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

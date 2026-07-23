@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.89",
   "title": "Missing docstring on L2PayloadKind enum",
   "description": "The `L2PayloadKind` enum class in `src/lichen/l2_payload.py:14` lacks a docstring. This is a public API surface that would benefit from a brief description of what payload kinds it represents.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

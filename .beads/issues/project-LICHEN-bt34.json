@@ -2,7 +2,7 @@
   "id": "project-LICHEN-bt34",
   "title": "task",
   "description": "Implement per-peer OSCORE security context storage and management. Each peer requires its own sender/recipient context derived from EDHOC key establishment.\n\nRequired components:\n1. Security context storage (struct context from uoscore-uedhoc)\n2. Context lookup by peer EUI-64\n3. Sender sequence number (SSN) management and NVM persistence\n4. Context freshness checking per RFC 8613 section 7.2.1\n5. Replay protection via the library's server_replay_window_t\n\nUse uoscore-uedhoc library (modules/lib/uoscore-uedhoc/):\n- oscore_context_init() for context setup\n- check_context_freshness() for SSN overflow detection\n\nParent: project-LICHEN-r6fu.2",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

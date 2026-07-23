@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.208",
   "title": "Codereview pass 2: Add test for window poisoning resistance",
   "description": "The replay window fix lacks a regression test that specifically verifies window poisoning is prevented.\n\nSuggested test outline:\n1. Create sender_ctx and recipient_ctx with same master_secret\n2. Create attacker_ctx with different master_secret but same IDs\n3. attacker sends packet with seq=5 (valid seq, wrong key)\n4. recipient_ctx.unprotect_request() returns DecryptFailed\n5. legitimate sender sends packet with seq=5 (same seq, correct key)\n6. recipient_ctx.unprotect_request() succeeds (window wasn't poisoned)\n\nThis would catch regressions if someone accidentally reverts to check-and-update-before-decrypt.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

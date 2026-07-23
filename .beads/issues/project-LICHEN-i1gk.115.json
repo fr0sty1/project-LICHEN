@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.115",
   "title": "[lichen_l2.c:1258-1261] net_if_set_link_addr called without checking iface validity",
   "description": "Final pass: This was missed because reviewers trusted the Zephyr contract, but the trust comment is missing for this call.\n\nRoot cause: At lines 1260-1261:\n  ret = net_if_set_link_addr(iface, iface_link_addr, LICHEN_L2_ADDR_LEN,\n                             NET_LINK_IEEE802154);\n\nThe iface parameter comes from Zephyr's NET_DEVICE_INIT callback. The code at line 1223 comments:\n  /* iface guaranteed non-NULL by Zephyr NET_DEVICE_INIT */\n\nThis is correct - Zephyr guarantees a valid iface pointer.\n\nHowever, net_if_set_link_addr() can fail for other reasons:\n- Link address already set (some Zephyr versions)\n- Interface lock contention\n- Memory allocation failure (in some configurations)\n\nThe return value is checked at line 1262-1266, so failures are handled. But the error path doesn't differentiate between 'failed to set' and 'already set with different value'.\n\nActually, looking at Zephyr's net_if_set_link_addr implementation, it simply copies the address - no failure modes beyond mutex lock (which can't fail with K_FOREVER semantics implied).\n\nThis is not a bug - the code is correct.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "doc",
   "assignee": "Mark Atwood",

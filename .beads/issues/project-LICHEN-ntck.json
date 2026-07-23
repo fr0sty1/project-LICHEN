@@ -3,7 +3,7 @@
   "title": "Implement /status resource handlers per LCI spec",
   "description": "Implement /status, /status/neighbors, /status/routes CoAP resources per LCI spec 17.5.3. GET returns current state as CBOR. /status and /status/neighbors support Observe (RFC 7641) for push notifications on change. Include RF stats, location, time, neighbor list with link quality, routing table.",
   "acceptance_criteria": "coap-client GET on /status/* returns valid CBOR; Observe on /status gets notifications on state change",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "grinder",

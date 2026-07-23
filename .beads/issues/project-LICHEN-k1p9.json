@@ -2,7 +2,7 @@
   "id": "project-LICHEN-k1p9",
   "title": "task",
   "description": "Rust lichen-coap has block.rs implementing CoAP block-wise transfers (RFC 7959). Python coap/ relies on aiocoap which has this, but Python lichen.coap modules (schc_channel.py, transport.py, etc.) may need explicit block handling for the LICHEN stack. Verify parity.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

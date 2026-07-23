@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.75",
   "title": "[lichen_l2.c:497-512] lichen_l2_recv returns NET_CONTINUE unconditionally",
   "description": "Gap found: L2 receive callback semantics not reviewed.\n\nWhy this was missed: Considered boilerplate, not analyzed.\n\nThe actual bug: The lichen_l2_recv() callback (lines 498-513) always returns NET_CONTINUE. The comment (lines 486-496) explains why: 'Packet is already an IPv6 packet (decompressed in lichen_l2_input). Let the IP layer handle it.'\n\nThis is correct for LICHEN's design. However, the callback could return:\n- NET_DROP: to reject the packet at L2 (e.g., invalid L2 checksum)\n- NET_OK: to indicate L2 consumed the packet (not applicable here)\n- NET_CONTINUE: pass to IP layer\n\nSince all L2 validation happens in lichen_l2_input() before the packet reaches net_recv_data(), returning NET_CONTINUE is correct. The L2 recv callback is only called for packets that already passed L2 validation.\n\nVerified correct. Priority 4 - documentation note.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

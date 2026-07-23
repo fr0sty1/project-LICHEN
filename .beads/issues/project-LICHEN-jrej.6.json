@@ -2,7 +2,7 @@
   "id": "project-LICHEN-jrej.6",
   "title": "Gateway: XML CoT to compact CoT compression",
   "description": "Parse incoming CoT XML from ATAK, compress to compact binary for mesh transmission. Extract lat/lon/alt/course/speed/team/role from XML structure. Software-only: pure parsing/encoding.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

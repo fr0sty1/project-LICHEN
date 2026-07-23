@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.196",
   "title": "Codereview pass 3: MockRng SAFETY - defense-in-depth documentation is appropriate",
   "description": "Location: rust/lichen-embassy/src/mock.rs:115-138, 146-151\n\nThe SAFETY comment addition satisfies the requirement from rust-review.md that every unsafe block have a SAFETY comment. Combined with the existing defense-in-depth:\n\n1. Module-level doc warns 'DO NOT USE FOR CRYPTOGRAPHIC OPERATIONS'\n2. Type-level doc explains deterministic seed and xorshift insecurity\n3. #[deprecated] attribute fires in release builds\n4. Feature flag separation (mock feature)\n\nThe new SAFETY comment completes the documentation chain. While the justification could be stronger (per project-LICHEN-ow1e.191), the overall approach of documenting test-only crypto mocks thoroughly is correct.\n\nThis is the right pattern: mock crypto implementations should be loud about their limitations at every level (module, type, function, unsafe block).",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

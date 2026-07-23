@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.21",
   "title": "lora_l2.c tx_buf_mutex held during entire lora_send blocking call",
   "description": "## Location\nfirmware/bridge-zephyr/subsys/lichen/lora_l2.c:590-608\n\n## Finding\nThe `tx_buf_mutex` is held for the entire duration of `lora_send()`:\n```c\nk_mutex_lock(\u0026tx_buf_mutex, K_FOREVER);\nmemcpy(tx_buf, data, len);\nint ret = lora_send(lora_state.lora_dev, tx_buf, len);\nk_mutex_unlock(\u0026tx_buf_mutex);\n```\n\nAt SF10/255 bytes, `lora_send()` blocks for ~500ms (documented in comments). This serializes all TX operations.\n\n## What goes wrong\nThis is **intentional and correct** - the comment explicitly states \"the radio can only transmit one packet at a time anyway.\" The code is clear about this tradeoff.\n\nHowever, the mutex acquisition uses `K_FOREVER`, meaning a caller blocked waiting for TX can never be interrupted or timed out. If the radio becomes unresponsive during a transmit, all TX threads will block indefinitely.\n\n## Recommendation\nConsider using a timeout on tx_buf_mutex acquisition:\n```c\nint lock_ret = k_mutex_lock(\u0026tx_buf_mutex, K_MSEC(TX_TIMEOUT_MS));\nif (lock_ret != 0) {\n    return -ETIMEDOUT;\n}\n```\nThis would allow callers to implement their own retry/abort logic.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

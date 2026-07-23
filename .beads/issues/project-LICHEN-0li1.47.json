@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.47",
   "title": "[lichen_link_rx.c:232-236] SHA state not zeroed on all paths",
   "description": "Gap: sha_state and hash buffers are not zeroed after use in the EUI-64 derivation code.\n\nWhat: Lines 229-236 create a tc_sha256_state_struct on the stack and a 32-byte hash buffer. Neither is zeroed after use. The lichen_sha256() helper in lichen_util.c explicitly zeros the state with secure_zero(\u0026state, sizeof(state)), but lichen_link_rx.c does not follow this pattern.\n\nWhy it matters: While the hash of a public key is not secret, the sha_state struct contains internal hash state that could aid cryptanalysis if leaked. Defense-in-depth suggests zeroing cryptographic state consistently, matching the pattern in lichen_util.c.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

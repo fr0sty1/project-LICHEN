@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dq6n.19",
   "title": "[lichen_l2.c:659-672 + lora_l2.c] enable(true) doesn't init replay_table on re-init",
   "description": "Cross-file bug: When lichen_l2_enable(true) re-initializes link_ctx (lines 670-672), it does NOT call lichen_replay_table_init(\u0026replay_table). Compare to lichen_l2_iface_init() which calls both lichen_link_init() at line 885 AND lichen_replay_table_init() at line 886.\n\nSequence:\n1. iface_init() runs - inits link_ctx + replay_table\n2. enable(false) runs - clears link_ctx_initialized, cleans up link_ctx, reinits replay_table (line 721)\n3. enable(true) runs - link_ctx_initialized is false, re-inits link_ctx but NOT replay_table\n\nThe disable path at line 721 calls lichen_replay_table_init() to clear stale windows. But if the table's init function does more than zeroing (e.g., sets magic values), using the table without proper init could cause undefined behavior.\n\nFix: Add lichen_replay_table_init(\u0026replay_table) after lichen_link_init() at line 672, matching the init path.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

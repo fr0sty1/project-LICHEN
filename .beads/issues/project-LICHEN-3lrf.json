@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3lrf",
   "title": "Compliance: rust stack.rs dispatch byte",
   "description": "Policy: 02-physical-link.md §4.1. File: rust/lichen-node/src/stack.rs. Status: COMPLIANT. Line 368 checks classify_l2_payload != L2PayloadKind::Schc before calling SCHC decompress.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

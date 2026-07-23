@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.25",
   "title": "Compiler may optimize away memset() of rx_link_key in lichen_l2_input()",
   "description": "In lichen_l2.c:496 and lichen_l2.c:507, memset(rx_link_key, 0, sizeof(rx_link_key)) is used to clear a local copy of the link encryption key. This memset may be optimized away by the compiler because 'rx_link_key' is a local variable that is never read after the memset.\n\nLocations:\n- firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:496 (error path)\n- firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:507 (success path)\n\nImpact: The 16-byte AES link key remains in stack memory after lichen_l2_input() returns. This is actual key material used for AES-CCM-64 MIC computation. If an attacker can read process memory (via a separate vulnerability, debugging interface, or crash dump), they can recover the link key and forge/decrypt link-layer frames.\n\nFix: Use explicit_bzero(), memset_s(), or Zephyr's secure_memzero() if available.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

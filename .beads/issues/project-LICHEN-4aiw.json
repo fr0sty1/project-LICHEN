@@ -2,7 +2,7 @@
   "id": "project-LICHEN-4aiw",
   "title": "Rust: lichen-ipv6 error types duplicated from lichen-core",
   "description": "The TooShort and BufferTooSmall error types are now defined in rust/lichen-ipv6/src/lib.rs (lines 23-59) and re-exported from rust/lichen-core/src/error.rs:\n\n    // lichen-core/src/error.rs\n    pub use lichen_ipv6::{BufferTooSmall, TooShort};\n\nThis creates a dependency where lichen-core depends on lichen-ipv6 for error types. While this consolidates the definitions, it may create circular dependency issues if lichen-ipv6 ever needs types from lichen-core.\n\nLocation: rust/lichen-ipv6/src/lib.rs:23-59, rust/lichen-core/src/error.rs\nRisk: Low - architecture concern rather than bug.\nFix: Document the dependency direction; ensure lichen-ipv6 remains a leaf crate.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -3,7 +3,7 @@
   "title": "[policy] Bufferbloat avoidance compliance",
   "description": "Ensure all code sections comply with spec/appendix-bufferbloat.md. Covers: bounded queues, time-based expiry, priority queuing, explicit backpressure, no silent drops. Each queue location needs a compliance check bead.",
   "notes": "Bounded queues verified compliant (2026-07-11): KISS 8-frame limit w/ error return, GATT 8-msg limit w/ QueueFull, Python adapter 64-msg limit w/ False return. Remaining work tracked in children: time-based expiry and priority queuing.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.27",
   "title": "Security comments throughout with clear rationale",
   "description": "The codebase uses SECURITY: comments to flag security-critical code paths with clear explanations. Examples:\n\n**lora_l2.c:134-138 (EUI-64 derivation):**\n```c\n/* SECURITY: Refusing to start without stable identity. A random EUI-64\n * would change on each reboot, breaking IPv6 NDP and mesh routing. */\n```\n\n**lora_l2.c:239-254 (buffer overflow detection):**\n```c\n/*\n * SECURITY: If driver returned more than buffer size, stack corruption\n * has ALREADY occurred. rx_buf is stack-allocated, so out-of-bounds\n * writes may have corrupted the return address...\n */\n```\n\n**lichen_l2.c:82-96 (require LICHEN_LINK):**\n```c\n/*\n * SECURITY: Require LICHEN_LINK for production builds...\n * Without CONFIG_LICHEN_LINK, packets are sent as raw IPv6 over LoRa with:\n * - No MIC/CRC protection (corruption goes undetected)\n * - No SCHC compression (40-byte IPv6 header wastes MTU)\n * - No replay protection\n */\n```\n\n**lichen_l2.c:765-774 (key material handling):**\n```c\n/*\n * SECURITY: Copy link_key into a local buffer rather than capturing a\n * pointer to link_ctx.link_key. This ensures rx_ctx remains valid even\n * if a future refactor moves lichen_link_cleanup() outside the rx_mutex.\n */\n```\n\nEach SECURITY comment explains what the threat is, not just what the code does. This is defensive documentation that prevents well-meaning refactors from introducing vulnerabilities.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

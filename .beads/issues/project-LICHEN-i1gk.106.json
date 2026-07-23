@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.106",
   "title": "[lichen_l2.c:1588] ipv6_len used before being set on success path",
   "description": "Final pass: This was missed because reviewers focused on the error paths, not the flow from ipv6_len assignment to use.\n\nRoot cause: At line 1588:\n  ipv6_len = sizeof(rx_ipv6_buf);  // Set to buffer size\n  ret = peer_try_all_pubkeys(..., \u0026ipv6_len, ...);\n\nIf peer_try_all_pubkeys succeeds, ipv6_len is modified by lichen_link_rx() to contain the actual decompressed packet length. This is correct.\n\nHowever, the code at line 1599-1604:\n  if (ipv6_len \u003e sizeof(rx_ipv6_buf)) {\n      LOG_ERR(...);\n      ...\n      return;\n  }\n\nThis check happens AFTER peer_try_all_pubkeys returns. If peer_try_all_pubkeys (via lichen_link_rx) wrote more than rx_ipv6_buf holds, the buffer overflow has ALREADY occurred - this check only detects it after the fact.\n\nWAIT - re-reading line 1588, ipv6_len = sizeof(rx_ipv6_buf) is the INPUT size telling lichen_link_rx the buffer capacity. lichen_link_rx should validate this internally. The post-check is defense in depth against a buggy lichen_link_rx.\n\nThis is by design - ipv6_len is an in-out parameter. Not a bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

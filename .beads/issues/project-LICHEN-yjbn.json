@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yjbn",
   "title": "[policy] No-polling compliance",
   "description": "Push-based event handling over polling. Policy: use interrupts/callbacks instead of sleep loops. Each code section with potential polling needs a compliance check.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

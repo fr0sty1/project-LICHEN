@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.22",
   "title": "[lichen_l2.c:1300-1306] re-init path does not clear peer_table before lichen_link_init",
   "description": "In lichen_l2_iface_init, when link_ctx_initialized is true (re-initialization path), the code at lines 1301-1306 acquires mutexes and calls lichen_link_cleanup(), but does NOT clear peer_table. The peer_table is only cleared at line 1319 with memset AFTER the mutexes are released. This means during re-init, stale peer entries could be accessed between lines 1304 (cleanup) and 1319 (memset). Also, line 1319 uses memset instead of secure_zero, unlike the disable path at lines 1071-1074 which uses secure_zero for pubkeys. Security inconsistency.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

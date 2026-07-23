@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.75",
   "title": "fragment.py: Ack.to_bytes() bit packing is non-obvious, needs comment",
   "description": "src/lichen/schc/fragment.py:106-113 has shift-accumulate bit packing for the ACK bitmap that is correct but hard to follow. A comment explaining the bit layout would help maintainability.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

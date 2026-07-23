@@ -2,7 +2,7 @@
   "id": "project-LICHEN-mahy",
   "title": "epic",
   "description": "Policy: spec/appendix-c-safety.md. All C code must meet compiler hardening, Zephyr safety config, sanitizers, static analysis, fuzzing, CERT C rules, and cross-validation requirements.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

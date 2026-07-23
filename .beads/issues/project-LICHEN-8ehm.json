@@ -2,7 +2,7 @@
   "id": "project-LICHEN-8ehm",
   "title": "task",
   "description": "edhoc.py: Multiple locations access CBOR sequence items without validating minimum length, causing IndexError on malformed inputs instead of clear protocol errors.\n\nLocations:\n- Line 297-299: process_message_2() accesses items[0], items[1] without checking len(items) \u003e= 2\n- Line 326-327: Falls back to empty bytes for missing PLAINTEXT_2 fields, leading to confusing signature verification errors downstream\n- Line 507-511: process_message_1() accesses items[1], items[2], items[3] without checking len(items) \u003e= 4  \n- Line 593-595: process_message_3() accesses pt3_items[0], pt3_items[1] without checking len(pt3_items) \u003e= 2\n\nFailure scenario: A malformed or truncated EDHOC message causes IndexError ('list index out of range') instead of a clear ValueError('Malformed EDHOC message - missing required fields'). This obscures the real problem during debugging and could affect error handling in callers.\n\nFix: Add explicit length checks before accessing sequence items, raise ValueError with descriptive messages.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

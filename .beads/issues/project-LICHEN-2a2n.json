@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2a2n",
   "title": "No bounds check for Echo::from_bytes data access",
   "description": "File: rust/lichen-ipv6/src/lib.rs:749\n\nIn handle_icmpv6(), after parsing Echo header:\n```rust\nlet echo = Icmpv6Echo::from_bytes(body)?;\nlet data = \u0026body[4..]; // After id+seq\n```\n\nThe from_bytes() at line 492-500 only validates that body has at least 4 bytes:\n```rust\nif buf.len() \u003c 4 {\n    return Err(TooShort::new(4, buf.len()).into());\n}\n```\n\nThen line 749 accesses body[4..], which is safe (empty slice if exactly 4 bytes).\n\nHowever, the comment says 'After id+seq' which is misleading - the Echo header parsed by from_bytes is id+seq (4 bytes total), so body[4..] is the echo data, not 'after id+seq'.\n\nWait, let me re-read. from_bytes receives 'body' which is:\n- body = icmpv6_payload[ICMPV6_HEADER_LEN..] = icmpv6_payload[4..]\n- So body already has type/code/checksum stripped\n- body[0..4] = id (2) + seq (2)  \n- body[4..] = echo data\n\nSo 'After id+seq' is correct. This is not a bug.\n\nLet me cancel this bead.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

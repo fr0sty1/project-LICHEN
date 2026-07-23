@@ -2,7 +2,7 @@
   "id": "project-LICHEN-z38x",
   "title": "Remove k_panic from firmware",
   "description": "Replace all k_panic() calls with graceful error handling per docs/LOGGING_STYLE.md 'No Panic Policy'.\n\nCurrent k_panic locations:\n- lora_l2.c: 8 calls (state machine, driver bug detection)\n- lichen_l2.c: 2 calls (reinit_after_abort)\n\nPattern: LOG_ERR + set needs_reinit flag + return error, or store crash info and let watchdog reset.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

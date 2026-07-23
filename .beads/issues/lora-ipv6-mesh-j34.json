@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-j34",
   "title": "Add seeded RNG support for reproducible simulations",
   "description": "Implement support for reproducible simulation runs by adding seeded random number generator support. Should allow setting a seed for deterministic behavior across simulation runs.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

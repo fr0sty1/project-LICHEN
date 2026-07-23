@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-mgq",
   "title": "LOADng route discovery (RREQ/RREP handling)",
   "description": "Implement LOADng route discovery per spec section 9.4-9.5.\n\nRREQ Originator:\n- Check cache first, skip discovery if route exists\n- Generate RREQ with seq_num, hop_limit\n- Broadcast to neighbors\n- Start RREQ_WAIT_TIME timer\n- On timeout: retry with expanded hop_limit (expanding ring)\n- After RREQ_RETRIES: fail\n\nRREQ Forwarder:\n- Check if I am destination -\u003e send RREP\n- Check if RREQ already seen (by originator+seq) -\u003e drop (suppression)\n- Record reverse route to originator\n- Decrement hop_limit, rebroadcast if \u003e 0\n\nRREP Handler:\n- Follow reverse path to originator\n- At each hop: install forward route to destination\n- At originator: route ready, send queued packets\n\nRouteDiscovery class:\n- async discover(destination) -\u003e RouteEntry | None\n- pending_discoveries: dict[dest, Future]\n- rreq_seen: set[(originator, seq)] for suppression\n\nExpanding ring search: start HL=4, then 8, then 15.\nRate limit: RREQ_RATELIMIT = 10/min.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

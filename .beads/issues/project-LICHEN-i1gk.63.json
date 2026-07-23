@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.63",
   "title": "[lichen_l2.c:1234 vs lora_l2.c:421] iface_init clears failure flag before lora_l2_init, but lora_l2_init is idempotent",
   "description": "Cross-file analysis: lichen_l2_iface_init() clears iface_init_failed at line 1234 BEFORE calling lichen_lora_l2_init() at line 1237. If a previous iface_init() failed, the flag is cleared optimistically. lora_l2_init() is idempotent (returns 0 if already initialized). This creates a potential issue: if the FIRST iface_init() succeeded in lora_l2_init() but failed later (e.g., at line 1246 get_eui64), iface_init_failed would be set. A SECOND iface_init() attempt clears the flag at 1234, calls lora_l2_init() which returns 0 (already initialized), then proceeds. But lichen_iface is already set from the first attempt, so line 1337 catches this and re-sets the flag. Safe, but the control flow is confusing: flag cleared optimistically, then re-set on invariant violation. The flag should only be cleared if the full init succeeds, not at the start.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "improvement",
   "assignee": "Mark Atwood",

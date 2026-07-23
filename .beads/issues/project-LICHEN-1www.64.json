@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-1www.64",
   "title": "lichen_l2_input uses src_eui64 output after lichen_link_rx failure",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

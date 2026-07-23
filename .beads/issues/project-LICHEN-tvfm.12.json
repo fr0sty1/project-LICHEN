@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.12",
   "title": "[lora_l2.c:700] lichen_lora_l2_set_rx_callback no state check",
   "description": "Function: lichen_lora_l2_set_rx_callback. Contract violation: The function modifies callback state under mutex but does not check if the module is initialized or in the 'aborted' state. If called after k_thread_abort(), the lora_mutex may be corrupted and acquiring it could deadlock. While unlikely in normal use, the other functions (start, stop, tx) all check for aborted state before mutex acquisition - this function should too for consistency. Priority 3 because the function is typically only called during setup when races are unlikely.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

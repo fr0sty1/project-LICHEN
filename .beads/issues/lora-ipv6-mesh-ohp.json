@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-ohp",
   "title": "No upper bound on message length in SimRadio._recv()",
   "description": "Reads 4-byte length prefix and allocates buffer without validation. Malicious server could send 4GB length causing memory exhaustion. Add MAX_MESSAGE_LENGTH check similar to protocol.py MAX_PAYLOAD_LENGTH.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Frost",

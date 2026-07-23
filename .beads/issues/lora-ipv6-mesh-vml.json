@@ -3,7 +3,7 @@
   "title": "lichen-cli: Command-line interface",
   "description": "Rust CLI for LICHEN node interaction.\n\nFeatures:\n- Node status and info\n- Send/receive messages\n- Contact management (list, add, remove, trust)\n- Position sharing (send location, view peers)\n- Waypoint management\n- Group operations\n- Key management (view fingerprints, pin/unpin)\n- Configuration\n\nImplementation:\n- Rust with clap for argument parsing\n- CoAP client (coap-lite or custom)\n- Connects via SLIP serial or Unix socket\n- JSON output mode for scripting\n- Completions for bash/zsh/fish\n\nTarget: power users, scripting, headless operation.",
   "notes": "lichen CLI scaffolded: clap subcommands (status/neighbors/send/key/config/position), human+JSON output, async command dispatch. CoAP transport is a stub — commands print structured output but do not yet send real CoAP requests (lichen-coap needs network I/O layer).",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Frost",

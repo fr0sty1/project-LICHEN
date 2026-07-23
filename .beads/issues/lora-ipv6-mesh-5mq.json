@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-5mq",
   "title": "LOADng message types (RREQ, RREP, RERR)",
   "description": "Implement LOADng control messages per spec section 9.\n\nICMPv6 type 158, codes:\n- 0: RREQ (Route Request)\n- 1: RREP (Route Reply)\n- 2: RERR (Route Error)\n- 3: RACK (Route Acknowledgment)\n\nRREQ fields:\n- Hop Limit, Seq Num, Metric, Flags\n- Originator Address (128 bits)\n- Destination Address (128 bits)\n\nRREP fields:\n- Hop Count, Seq Num, Metric, Flags\n- Originator Address\n- Destination Address\n\nRERR fields:\n- Flags, Error Code\n- Unreachable Address\n\nDataclasses for each message type with to_bytes/from_bytes.\nUse ICMPv6 framing.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

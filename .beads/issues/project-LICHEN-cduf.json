@@ -2,7 +2,7 @@
   "id": "project-LICHEN-cduf",
   "title": "task",
   "description": "framing.rs:391-394 - KissReader::try_read_frame skips inter-frame FEND padding with 'while buffer[start] == FEND'. But CMD byte 0xC0 (port 12, cmd 0) equals FEND. This causes the loop to skip over the CMD byte, then fail to find the frame, returning None. Frames on port 12 with command Data are silently dropped. Failure scenario: feed [FEND, 0xC0, FEND] to KissReader, call try_read_frame -\u003e returns None instead of the frame.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

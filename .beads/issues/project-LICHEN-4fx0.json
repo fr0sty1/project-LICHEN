@@ -2,7 +2,7 @@
   "id": "project-LICHEN-4fx0",
   "title": "task",
   "description": "The /status/queues CoAP endpoint (project-LICHEN-bis0.2) is implemented but returns placeholder zeros. This task integrates actual queue statistics from the L2 tx_queue into the endpoint.\n\nWork required:\n1. Add lichen_hal_queue_stats_get() or similar HAL function to expose tx_queue stats\n2. The L2 layer needs to either use tx_queue or expose its internal queue stats\n3. Update get_queue_stats() in gateway main.c to fetch real stats\n4. avg_latency_ms is not tracked by tx_queue - need to add or omit\n\nReference: spec/appendix-bufferbloat.md, tx_queue.h struct tx_queue_stats",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

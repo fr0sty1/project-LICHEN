@@ -2,7 +2,7 @@
   "id": "project-LICHEN-bbnw",
   "title": "task",
   "description": "python/src/lichen/interface/kiss/bridge.py:233-254 - When receiving a raw LICHEN message and auto-acking, the bridge generates a local msg_id (via next_msg_id()) but the sender tracked a different msg_id from their APRS app. The sender's tracker won't match, so handle_ack returns False and APRSDroid users never see delivery checkmarks. Flow: Sender sends APRS message with msg_id=123, bridge strips msg_id and sends raw text. Receiver formats for local app with local msg_id=1, acks with msg_id=1. Sender receives ack for msg_id=1 but tracker has msg_id=123 - no match. Fix: Either send msg_id through LICHEN frame, or don't auto-ack raw text messages.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

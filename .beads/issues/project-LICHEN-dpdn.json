@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dpdn",
   "title": "sim_client.py: convert to push-based RX",
   "description": "python/src/lichen/radio/sim_client.py still uses poll-based RX (MSG_RX_OK, decode_rx_ok). Convert to push-based: send RX_ENTER, block for RX_PACKET/RX_TIMEOUT. This is the Python radio client equivalent of what was done for SX1262.cs.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

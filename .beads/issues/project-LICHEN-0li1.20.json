@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.20",
   "title": "[lichen_l2.c:1565] lichen_l2_reinit_after_abort precondition check uses wrong API",
   "description": "Contract: lichen_l2_reinit_after_abort should only be called from deinit() when module is in DEINITING state.\nViolation: The precondition check (line 1612) uses is_running() which returns false for STOPPED, DEINITING, ABORTED, and UNINIT states. It cannot distinguish between valid calls (DEINITING) and invalid calls (STOPPED, UNINIT). The comment (lines 1597-1610) acknowledges this as an 'architectural limitation'.\nImpact: Medium - Calling from STOPPED state would reinitialize a valid mutex (harmless but wasteful). Calling from UNINIT would reinitialize an uninitialized mutex (undefined, but k_mutex_init on static mutex is likely safe). The only dangerous case (RUNNING) is correctly rejected.\nMitigation: The comment documents the limitation adequately. Could add lora_l2 API to query exact state if stricter checking needed.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

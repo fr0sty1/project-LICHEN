@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.50",
   "title": "main.c:147 led_configured may be used uninitialized",
   "description": "In main() at lines 146-154:\n```c\nif (gpio_is_ready_dt(\u0026led)) {\n    ret = gpio_pin_configure_dt(\u0026led, GPIO_OUTPUT_ACTIVE);\n    if (ret \u003c 0) {\n        LOG_ERR(...);\n    } else {\n        led_configured = true;\n        led_set(1);\n    }\n}\n```\n\nled_configured is declared at line 37 as a static bool, so it's zero-initialized (false) by C rules.\n\nIf gpio_is_ready_dt() returns false, led_configured remains false, and led_set() becomes a no-op (correct).\nIf gpio_is_ready_dt() returns true but configure fails, led_configured remains false, and led_set() is a no-op (correct).\nIf both succeed, led_configured = true and led_set works.\n\nNO BUG - static initialization to false is correct behavior.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "note",
   "assignee": "Mark Atwood",

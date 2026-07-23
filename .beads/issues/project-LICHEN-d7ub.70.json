@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.70",
   "title": "lora_l2.c + lichen_l2.c: double-init via NET_DEVICE_INIT and explicit call",
   "description": "Cross-file interaction issue: lichen_lora_l2_init() is idempotent but the net_if init path expects to be the only initializer.\n\nlora_l2.c:546-594 (lichen_lora_l2_init):\n  Line 564: if state != UNINIT, return 0 (idempotent)\n\nlichen_l2.c:1473: calls lichen_lora_l2_init()\nlichen_l2.c:1596: checks lichen_iface != NULL to prevent double net_if init\n\nSCENARIO:\n1. main() calls lichen_lora_l2_init() directly before NET_DEVICE_INIT runs\n2. lora_l2.c initializes, transitions UNINIT-\u003eSTOPPED\n3. NET_DEVICE_INIT runs lichen_l2_iface_init()\n4. Line 1473: lichen_lora_l2_init() returns 0 (already init'd)\n5. Line 1487: get_eui64() returns valid pointer\n6. Everything works\n\nThis is CORRECT but potentially confusing. Someone might call init() explicitly thinking it's required, when NET_DEVICE_INIT handles it.\n\nHowever, calling start() explicitly before NET_DEVICE_INIT WOULD break:\n1. main() calls lichen_lora_l2_start() before init\n2. start() fails with -EINVAL (state==UNINIT)\n3. Or: main() calls init() then start() before NET_DEVICE_INIT\n4. lichen_l2_iface_init() hasn't run, link_ctx_initialized=0\n5. If packets arrive, lichen_l2_input() drops them (line 1791)\n\nP4: Document that explicit start() before NET_DEVICE_INIT will result in dropped packets until iface_init completes.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

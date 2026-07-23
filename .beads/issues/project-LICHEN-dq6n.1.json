@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dq6n.1",
   "title": "[lichen_l2.c:432-433] Log message uses stale eui64 after secure_zero",
   "description": "In lichen_peer_remove(), the LOG_INF statement at line 432 attempts to log the eui64 AFTER secure_zero() has zeroed it at line 430-431:\n\n```c\nsecure_zero(entry-\u003epubkey, sizeof(entry-\u003epubkey));\nsecure_zero(entry-\u003eeui64, sizeof(entry-\u003eeui64));\nentry-\u003eactive = false;\nLOG_INF(\"Peer removed: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\",\n    eui64[0], eui64[1], eui64[2], eui64[3],\n    eui64[4], eui64[5], eui64[6], eui64[7]);\n```\n\nThe log will show the INPUT eui64 parameter (which is correct), not entry-\u003eeui64 (which would show zeros). This is actually NOT a bug - the LOG_INF uses the function parameter 'eui64' not 'entry-\u003eeui64'. On closer inspection, this is fine.\n\nActually, reviewing again - the code logs 'eui64' (the parameter) not 'entry-\u003eeui64' (the cleared field), so this is correct behavior. Canceling this finding.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

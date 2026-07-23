@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.30",
   "title": "[lichen_l2.c:1325] lichen_l2_iface_init cannot return errors to Zephyr",
   "description": "Contract: lichen_l2_iface_init should initialize the L2 layer.\nViolation: Zephyr's net_if_api.init callback is void(*)(struct net_if*), so errors cannot be returned. The function sets iface_init_failed atomic and returns early on any failure. While this is handled correctly (all operations check iface_init_failed), it means Zephyr's network stack believes init succeeded.\nImpact: Medium - The net_if will appear operational to the IPv6 stack even though L2 is broken. Packets sent to this interface will fail at lichen_l2_send() with -ENODEV, which is correct behavior but may confuse upper layers.\nMitigation: This is a Zephyr API limitation. The current approach (iface_init_failed flag) is the correct workaround. Consider using a Zephyr hook to mark interface as DOWN if init fails.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

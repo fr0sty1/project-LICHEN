@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ubub",
   "title": "OptionIterator: OptionNumberOverflow still allows first 60000 options to parse",
   "description": "In rust/lichen-coap/src/codec.rs OptionIterator, the new OptionNumberOverflow error correctly rejects cumulative delta \u003e u16::MAX. However, the test shows that the first option (delta=60000) parses successfully before the second overflows. This means a malicious packet can still deliver a valid option with an extremely high option number (60000) before the overflow is detected. While not a security issue per se (60000 is a valid CoAP option number), the behavior may be surprising - callers should be aware that some options may be valid before an overflow error.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

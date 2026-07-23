@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.67",
   "title": "SCHC codec hardcodes buffer sizes, contributors will copy wrong limits",
   "description": "Throughout rust/lichen-schc/src/codec.rs, various functions use hardcoded buffer sizes like 256, 1500 without constants. E.g. line 510: 'let mut coap_buf = [0u8; 256]' with comment 'max LoRa frame payload (255 bytes)'. But the actual max depends on MTU configuration. A contributor copying this pattern for a different transport will get silent truncation. Consider: define SCHC_MAX_DECOMPRESSED_SIZE constant that matches actual deployment MTU, use it consistently.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

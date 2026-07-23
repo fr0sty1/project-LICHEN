@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.17",
   "title": "lichen_l2.c: 'python-xxx' comment references are opaque",
   "description": "Comments in lichen_l2.c reference 'python-ano.27', 'python-t7j5.1', 'python-t7j5.4', 'python-qhvc.3' (lines 67, 139-141, 203-204, 321, 357) without explanation. These appear to be internal tracking IDs from a review or issue tracker, but they're not actionable without access to that system.\n\nWhat goes wrong: A reader cannot understand what these references mean or why the code exists without external context. If the tracking system is lost, these comments become meaningless cruft.\n\nFix: Replace the IDs with inline rationale (e.g., 'Guards against access before initialization' instead of just the ID), or add a top-of-file comment explaining how to look up the IDs.\n\nLocations:\n- firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:67\n- firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:139-141\n- firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:203-204\n- firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:321\n- firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:357",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

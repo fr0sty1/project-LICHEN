@@ -3,7 +3,7 @@
   "title": "Phase 1: Physical \u0026 Link Layer",
   "description": "Transmit and receive authenticated frames over LoRa. Exit criteria: two nodes exchange authenticated frames, replay attack blocked, test vectors for link layer.",
   "notes": "Two-node authenticated frame exchange test complete (two_node_frame_exchange): Node A signs, Node B verifies full wire-format frame, tampered payload/wrong pubkey/truncated payload all rejected, replay blocked by ReplayWindow. sign_frame/verify_frame helpers in schnorr.rs. Remaining: test vector export for link layer (ijj).",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "Mark Frost",

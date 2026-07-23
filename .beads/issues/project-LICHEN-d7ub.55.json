@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.55",
   "title": "lora_l2.c + lichen_l2.c: lora_transition ABORTED can corrupt lichen_l2 state",
   "description": "Cross-file interaction bug: lora_l2.c can transition to ABORTED from multiple places while lichen_l2.c is mid-operation.\n\nSCENARIO (distinct from project-LICHEN-d7ub.29 which is about reinit cleanup):\n1. lichen_l2_input() at line 1782 acquires rx_mutex\n2. lora_l2.c rx_thread at line 491 detects driver overflow, calls atomic_set(ABORTED)\n3. The RX callback is still running in lichen_l2_input()\n4. lichen_l2_input() continues processing with potentially corrupt state\n5. Meanwhile ABORTED state means needs_reinit()=true\n6. Another thread calls lichen_l2_enable(false), sees needs_reinit(), calls deinit()\n7. deinit() reinitializes rx_mutex via lichen_l2_reinit_after_abort() while input() holds it\n\nKEY POINT: lichen_l2_input() checks link_ctx_initialized (line 1790) but does NOT check needs_reinit(). If lora_l2.c sets ABORTED after the callback is dispatched but before input() acquires rx_mutex, processing continues on a module flagged for reinit.\n\nLines in lora_l2.c that can set ABORTED: 95, 102, 124, 130, 491, 616, 775, 820, 971\n\nFIX: Add 'if (lichen_lora_l2_needs_reinit()) { k_mutex_unlock(\u0026rx_mutex); return; }' after line 1782 in lichen_l2_input().",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

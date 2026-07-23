@@ -2,7 +2,7 @@
   "id": "project-LICHEN-x8g5",
   "title": "task",
   "description": "rust/lichen-embassy/src/mock.rs:67 - MockRadio.rx_queue uses Vec::pop() which pops from the end (LIFO). If you feed_rx(A) then feed_rx(B), receive() returns B first, not A. This violates FIFO ordering expected for a receive queue. Should use VecDeque::pop_front() or Vec::remove(0) for correct ordering.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

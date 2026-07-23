@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dq6n.22",
   "title": "[lichen_l2.c:994 + lora_l2.c:506] rx_mutex not reinitialized after thread abort leads to deadlock",
   "description": "Cross-file bug: After a forced RX thread abort, lora_l2's deinit() reinitializes lora_mutex (line 542) but lichen_l2.c's rx_mutex is NOT reinitialized. If the abort occurred while the thread held rx_mutex (inside lichen_l2_input at line 994), subsequent operations will deadlock.\n\nSequence:\n1. RX thread receives packet, enters lichen_l2_input(), acquires rx_mutex (line 994)\n2. Thread hangs (e.g., lichen_link_rx blocks)\n3. stop() times out, calls k_thread_abort()\n4. Thread killed while holding rx_mutex\n5. User calls lichen_lora_l2_deinit() - clears aborted flag, reinits lora_mutex\n6. User calls lichen_lora_l2_init() - succeeds\n7. User calls lichen_l2_enable(true)\n8. needs_reinit() returns false (cleared by deinit)\n9. enable() registers callback, starts new RX thread\n10. New thread receives packet, calls callback -\u003e lichen_l2_input()\n11. lichen_l2_input() tries k_mutex_lock(\u0026rx_mutex) - DEADLOCK\n\nRoot cause: lora_l2.c and lichen_l2.c are tightly coupled but handle recovery independently. lora_l2 can recover its own state (lora_mutex), but lichen_l2's rx_mutex requires separate handling.\n\nFix options:\nA) lichen_l2 needs its own deinit() function that reinitializes rx_mutex and tx_mutex, called before lichen_lora_l2_deinit()\nB) lora_l2.c's needs_reinit() flag should NOT be cleared by deinit() - require a full module reinitialization that includes lichen_l2\nC) Document that thread abort requires full system reboot (already hinted at line 535)",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

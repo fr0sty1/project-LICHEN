@@ -2,7 +2,7 @@
   "id": "project-LICHEN-qbi6",
   "title": "Implement: Forwarding buffer with backpressure (all implementations)",
   "description": "Policy: spec/appendix-bufferbloat.md Forwarding Buffer. Currently MISSING in all implementations.\n\nSpec requires:\n- MAX_FORWARDING_SOURCES = 8\n- MAX_PACKETS_PER_SOURCE = 2\n- Total forwarding buffer: 16 packets max\n- NACK upstream when source exceeds limit\n\nAudit (2026-07-11): Confirmed MISSING. Decomposed into:\n- project-LICHEN-qbi6.1: Python implementation\n- project-LICHEN-qbi6.2: Rust implementation\n- project-LICHEN-qbi6.3: C/Zephyr implementation",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kmxm.2",
   "title": "LoRa drivers accept RX calls with NULL buffers",
   "description": "Why this issue exists: lr1110_lora_recv and lora_sim_recv dereference caller-provided receive buffers without validating dev/data/size, unlike lora_loopback_recv. A bad caller or test can crash the driver instead of receiving -EINVAL. What needs to be done: add consistent NULL and zero-size validation to project LoRa recv implementations.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

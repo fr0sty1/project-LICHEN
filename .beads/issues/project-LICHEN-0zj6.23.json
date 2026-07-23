@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-0zj6.23",
   "title": "ssize_t to size_t cast after bounds check is order-dependent",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

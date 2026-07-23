@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9nrr.33",
   "title": "puck: set non-default USB VID/PID for T1000-E board config",
   "description": "Why this exists: while validating project-LICHEN-9nrr.25 with west build -b t1000_e/nrf52840 lichen/apps/puck, Zephyr warned that CONFIG_USB_DEVICE_VID=0x2FE3 and CONFIG_USB_DEVICE_PID=0x0100 are default test values even though the board config sets them explicitly. The T1000-E puck config enables USB CDC-ACM for LICHEN Native and MCUmgr, so product USB identifiers should not use Zephyr's testing defaults. What needs to be done: choose appropriate LICHEN puck USB VID/PID/product/manufacturer settings for lichen/apps/puck/boards/t1000_e_nrf52840.conf, preserving CDC-ACM Native and MCUmgr behavior, and verify the T1000-E puck build no longer emits the default VID/PID warnings. As a code-generation/fix Bead, run two review passes before closing.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

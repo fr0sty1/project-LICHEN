@@ -2,7 +2,7 @@
   "id": "project-LICHEN-s2k9",
   "title": "Python to_ipv6() should handle bytes input",
   "description": "In python/src/lichen/ipv6/addr.py, the new to_ipv6() function accepts IPv6Address | str | bytes per its type signature, but IPv6Address(bytes) only works if the bytes are exactly 16 bytes. The docstring says 'or 16 bytes of packed address data' but doesn't validate the length. If passed wrong-length bytes, the error message from IPv6Address will be confusing. Consider adding explicit length validation with a clear error message.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

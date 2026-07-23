@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rh18",
   "title": "CoapBuilder content_format: out-of-bounds slice on format value",
   "description": "In rust/lichen-coap/src/codec.rs CoapBuilder::content_format(), the code creates bytes = format.to_be_bytes() which is [u8; 2], then tries to slice \u0026bytes[0..2], \u0026bytes[1..2], or \u0026bytes[2..2]. The slice \u0026bytes[2..2] is an empty slice at the end bound, which is technically valid, but the pattern is confusing. More importantly, the match arms reference indices that don't match the created array: bytes[1..2] and bytes[0..2] are correct, but the code logic for format=0 case tries \u0026bytes[2..2] which works but is semantically odd (should just use \u0026[]).",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

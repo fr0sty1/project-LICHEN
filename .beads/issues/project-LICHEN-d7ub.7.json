@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.7",
   "title": "lichen_l2.c:1550 double-zeroing peer_table on re-init path",
   "description": "In lichen_l2_iface_init(), when link_ctx_initialized is true (re-initialization path):\n1. Line 1550: secure_zero(peer_table, sizeof(peer_table)) is called under mutexes\n2. Line 1578: secure_zero(peer_table, sizeof(peer_table)) is called again unconditionally\n\nThe second secure_zero at line 1578 is redundant on the re-init path. The comment at lines 1571-1577 acknowledges this: 'On re-init, peer_table was already cleared with secure_zero above while holding mutexes. This secure_zero is redundant in that case but harmless.'\n\nSEVERITY: P4 - minor inefficiency, no correctness bug. The code is correct, just slightly wasteful of CPU cycles on the re-init path.\n\nNO ACTION NEEDED - documented and intentional for code clarity.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "note",
   "assignee": "Mark Atwood",

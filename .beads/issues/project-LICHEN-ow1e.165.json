@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.165",
   "title": "FrameReader.max_size not enforced during buffer growth",
   "description": "**Location:** python/src/lichen/interface/framing.py:78-80\n\n**Risk:** The `FrameReader` stores a `max_size` parameter but the `feed()` method extends the buffer without checking total size. A slow sender could feed bytes one at a time, growing the buffer past max_size before a length field is parsed.\n\n**Trigger:** Slow-drip attack: send bytes slowly, never completing a frame, growing the buffer indefinitely.\n\n**Bad behavior:** Memory exhaustion as buffer grows without bound.\n\n**Note:** The max_size check on line 103 only applies after parsing the length field from a complete header. The buffer can grow arbitrarily large with partial headers.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-m0rn",
   "title": "Identify personal AWS LICHEN EBS cache",
   "description": "Identify the copied LICHEN Zephyr EBS cache in personal AWS account 210337117346. Verified vol-0a95eee8d1d8461eb, 400 GiB gp3, available in us-west-2c, created from snap-07fc9c823c5dfdec7, Name=lichen-zephyr-arm64. No AWS resources or tags changed. Stale references remain in AGENTS.md, CLAUDE.md, scripts/ec2-claude.sh, scripts/ec2-hetero-fleet.sh, scripts/ec2-renode-fleet.sh, scripts/ec2-renode-fleet-simple.sh, and Beads memory; remediation exceeds three files and requires an approved epic.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

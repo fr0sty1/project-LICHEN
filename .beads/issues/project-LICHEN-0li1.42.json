@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.42",
   "title": "[lichen_util.h:141] lichen_link_strerror returns static string without bounds check",
   "description": "What: lichen_link_strerror() is defined as inline in the header. Multiple compilation units including this header will each get their own copy of the string literals.\n\nWhy it matters: This is a code size issue, not a correctness bug. Each .c file that includes lichen_util.h will have its own copy of all the string literals ('invalid argument', 'buffer too small', etc.). For embedded systems with limited flash, this bloat adds up.\n\nSolution: Mark the function as 'static inline' (already done) and ensure the linker merges identical strings, OR move implementation to lichen_util.c and make it a regular function.\n\nSince it's already 'static inline' and compilers typically merge identical string literals, this is low priority.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.259",
   "title": "[CR] CoAP client.rs: content_format encoding creates stack arrays that are immediately dropped",
   "description": "File: rust/lichen-coap/src/codec.rs:453-460\n\nIssue: The content_format() method creates a local array and slices it:\n    let bytes = format.to_be_bytes();\n    let value = match format {\n        0 =\u003e \u0026bytes[2..2],\n        1..=0xFF =\u003e \u0026bytes[1..2],\n        _ =\u003e \u0026bytes[0..2],\n    };\n    self.option(OptionNumber::ContentFormat as u16, value)\n\nThis is idiomatic Rust but could be slightly clearer. The bytes array lives long enough because the method call happens in the same expression.\n\nActually this is fine - the borrow checker ensures the slice is valid for the option() call. No issue here.\n\nClosing as non-issue.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

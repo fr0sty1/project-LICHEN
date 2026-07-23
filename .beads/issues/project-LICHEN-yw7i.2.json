@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yw7i.2",
   "title": "Good: Thread-safe callback snapshot pattern",
   "description": "lora_l2.c:199-202 snapshots rx_callback and user_data under mutex before invoking. This ensures the callback/userdata pair is consistent even if another thread calls set_rx_callback() concurrently. Clean pattern for decoupling callback registration from invocation.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

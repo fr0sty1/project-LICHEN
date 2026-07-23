@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-ow1e.219",
   "title": "gradient.py: seq_ge and DATA_GRADIENT_TIMEOUT_MS are dead code",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

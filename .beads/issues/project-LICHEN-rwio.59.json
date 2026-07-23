@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.59",
   "title": "lora_recv() return value used as buffer length without upper bound validation",
   "description": "In lora_l2.c:149-150, lora_recv() returns the number of bytes received, which is used directly as the length parameter to the RX callback:\n\nret = lora_recv(lora_state.lora_dev, rx_buf, sizeof(rx_buf), ...);\n...\ncb(rx_buf, ret, rssi, snr, cb_user_data);  // line 173\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:149-173\n\nThe code checks ret \u003c 0 (error) and ret == 0 (empty), but does not validate that ret \u003c= sizeof(rx_buf). If the Zephyr LoRa driver misbehaves and returns a length exceeding the buffer size, the callback receives an incorrect length that could cause out-of-bounds access in downstream handlers.\n\nImpact: Out-of-bounds read if Zephyr LoRa driver returns invalid length. Defense-in-depth issue - requires driver bug.\n\nFix: Add check after ret \u003e 0:\nif ((size_t)ret \u003e sizeof(rx_buf)) {\n    LOG_ERR(\"LoRa driver returned invalid length: %d \u003e %zu\", ret, sizeof(rx_buf));\n    continue;\n}",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-0zj6.5",
   "title": "Error swallowed: usb_enable failure in main.c continues execution",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

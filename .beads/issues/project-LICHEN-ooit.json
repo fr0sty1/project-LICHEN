@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ooit",
   "title": "task",
   "description": "link_layer.rs:336 - build_frame() takes dst_addr parameter and includes it in signature, but hardcodes addr_mode: AddrMode::None. When dst_addr is non-empty, the LLSec byte incorrectly encodes 0 address bytes while dst_addr bytes are still written to wire. Receiver parses dst_addr bytes as payload, causing signature verification to fail. Failure scenario: Any call to build_frame() with non-empty dst_addr produces a frame that will always be rejected by receiver as UnknownSender.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

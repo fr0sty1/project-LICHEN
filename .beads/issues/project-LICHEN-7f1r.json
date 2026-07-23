@@ -2,7 +2,7 @@
   "id": "project-LICHEN-7f1r",
   "title": "Fix link_crypto test for l2_payload API changes",
   "description": "link_crypto/src/main.c uses undeclared functions lichen_l2_payload_classify and lichen_l2_payload_body. These API functions either need to be added to lichen/subsys/lichen/include or the test needs updating to use current APIs.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

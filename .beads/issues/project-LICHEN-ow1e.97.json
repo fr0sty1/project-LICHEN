@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.97",
   "title": "Rust keys.rs missing zeroize on drop",
   "description": "In keys.rs, Seed and PrivateKey do not derive Zeroize or use zeroize(drop). Secret key material remains in memory after drop until overwritten. Add zeroize dependency and derive Zeroize with zeroize(drop) attribute. Affects confidentiality.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

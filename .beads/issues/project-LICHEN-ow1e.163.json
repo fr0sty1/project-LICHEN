@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.163",
   "title": "decode_message trusts CBOR input without size limits",
   "description": "**Location:** python/src/lichen/interface/messages.py:585\n\n**Risk:** The `decode_message()` function calls `cbor2.loads(data)` without any size constraints. A malicious or buggy sender can send a deeply nested or very large CBOR structure that exhausts memory.\n\n**Trigger:** Receive a CBOR message with megabytes of data or deeply nested arrays.\n\n**Bad behavior:** Memory exhaustion, process crash, or Python recursion limit hit.\n\n**Mitigation:** cbor2 has some limits but they're generous. Consider adding explicit size limits or using `cbor2.CBORDecoder` with `immutable=True`.\n\n**Note:** This is in deprecated code (legacy CBOR protocol), but it's still importable and usable.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.31",
   "title": "[lichen_util.c:27-29] TinyCrypt SHA-256 returns only on NULL which is pre-checked",
   "description": "At lines 27-29, the code checks tc_sha256_init/update/final return values, with a comment saying 'TinyCrypt's SHA-256 functions only fail on NULL (checked above)'. But the NULL check is at line 21. If tc_sha256_* functions can ONLY fail on NULL, and we check NULL first, then the checks at lines 27-29 are dead code. The comment acknowledges this. Either trust the library (remove the checks) or don't trust it (keep them). Current code is defensive but the comment reveals it's paranoid defensive. This is fine for crypto code - paranoia is good.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

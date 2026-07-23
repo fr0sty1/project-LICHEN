@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.72",
   "title": "[lichen_link_rx.c:196-205] schnorr48_verify_frame return value semantics unclear",
   "description": "Gap: schnorr48_verify_frame returns 1/0/-1 but the check only tests for '!= 1'.\n\nWhat: Lines 196-205 call schnorr48_verify_frame and check 'if (verify_result != 1)' to reject. The comment says it returns '1=valid, 0=invalid signature, -1=invalid parameters'. The check correctly rejects both 0 and -1, but the distinction between 'invalid signature' (forgery attempt) and 'invalid parameters' (programming error) is lost.\n\nWhy it matters: An invalid parameter error (e.g., malformed public key in peer_table) is a different class of error than a forgery attempt. The current code treats both as -LICHEN_EAUTH, preventing distinguishing between 'someone tried to forge' vs 'our peer table is corrupted'. Consider logging the specific schnorr48 error code.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

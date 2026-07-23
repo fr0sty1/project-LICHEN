@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.19",
   "title": "[lora_l2.c:618] lichen_lora_l2_tx length type mismatch with lora_send",
   "description": "Function: lichen_lora_l2_tx. Contract violation: The function takes 'size_t len' but lora_send() takes 'uint32_t len'. On 64-bit platforms, size_t is 64 bits while uint32_t is 32 bits. The check 'len \u003e LICHEN_LORA_MAX_PHY_PAYLOAD' (255) prevents overflow in practice, but there's no explicit cast at the lora_send() call site (line 688). If LICHEN_LORA_MAX_PHY_PAYLOAD ever increased above UINT32_MAX (impossible in practice), truncation would occur. Priority 3 - theoretical concern, not a real bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "issue",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.10",
   "title": "ipv6_addr.c:269 ll_addr_out zeroed inconsistently on error",
   "description": "Contract violation: lichen_log_link_local_from_eui64() - On success path (line 310-311), ll_addr_out is filled with the result. However, the function documents that on error ll_addr_out is zeroed, but on success after format error (line 302-307), the function still returns 0 (success) even though logging failed. The postcondition is correct but the documentation should clarify that format error during logging is non-fatal. WHY this is relevant: Callers may be confused about what 'success' means. HOW to fix: Document that return 0 means address derivation succeeded; logging is best-effort.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

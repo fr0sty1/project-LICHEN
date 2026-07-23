@@ -2,7 +2,7 @@
   "id": "project-LICHEN-8mar",
   "title": "task",
   "description": "routing.rs:25-27 - seq_is_newer() uses simple signed wrap-around ((new.wrapping_sub(old) as i8) \u003e 0) but RFC 6550 Section 9.1 says DAOSequence is a lollipop counter like DODAG version. The version_is_newer() in dodag.rs correctly handles linear/circular regions, but seq_is_newer does not. Failure: when last_seq=128 (circular) and new_seq=127 (linear restart), seq_is_newer(127,128) returns false (127-128=-1 as i8), but lollipop semantics says linear is always newer than circular, so it should return true. Stale routes could overwrite fresh ones during sequence restart.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

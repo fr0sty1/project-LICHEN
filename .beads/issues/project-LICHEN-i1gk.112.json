@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.112",
   "title": "[lichen_l2.c:812-813] net_pkt_read cursor not checked after initialization",
   "description": "Final pass: This was missed because reviewers assumed Zephyr API calls always succeed when parameters are valid.\n\nRoot cause: At lines 812-813:\n  net_pkt_cursor_init(pkt);\n  ret = net_pkt_read(pkt, tx_ipv6_buf, pkt_len);\n\nnet_pkt_cursor_init() is declared void in Zephyr (zephyr/net/net_pkt.h) and cannot fail. However, if the packet structure is corrupted (e.g., invalid fragment chain from a bug in the IP stack), net_pkt_read() may fail.\n\nThe code correctly checks ret \u003c 0 at line 814-817. But there's an implicit assumption that pkt_len (from net_pkt_get_len at line 792) accurately reflects the available data in the packet.\n\nIf net_pkt_get_len returns a value larger than the actual data in the fragment chain (a Zephyr bug or corruption), net_pkt_read would attempt to read past the fragments and fail or read uninitialized memory.\n\nThis is a defect in Zephyr's net_pkt abstraction, not this code. But the assumption that pkt_len == actual readable data is not validated.\n\nImpact: Unlikely in practice unless Zephyr's networking stack has bugs. Defense-in-depth would be to trust net_pkt_read's return value and use that as the actual length rather than pkt_len.\n\nFix (optional): After net_pkt_read, use ret (if \u003e= 0) as the actual read length rather than assuming pkt_len bytes were read.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "doc",
   "assignee": "Mark Atwood",

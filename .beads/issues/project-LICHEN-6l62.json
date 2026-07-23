@@ -2,7 +2,7 @@
   "id": "project-LICHEN-6l62",
   "title": "task",
   "description": "duty_cycle.py:177-217 - If requested airtime_us exceeds total duty cycle budget (max_airtime = window_us * limit_ratio), function cannot find valid time and falls back to time_until_budget_refill_ms(). But refill won't help if TX is always too large. Returns wait time that won't actually enable transmission.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.36",
   "title": "[lichen_l2.c:651] pubkey update without replay window reset",
   "description": "What: When lichen_peer_add() finds an existing peer, it updates the pubkey (line 651) but does NOT reset/clear the replay window for that peer.\n\nWhy it matters: If a peer's pubkey changes (key rotation, compromise recovery, or provisioning error), the replay window state may become inconsistent:\n1. Old sequence numbers from previous key may still be in window\n2. New key's sequence numbers might collide with old window state\n3. Could cause legitimate packets to be rejected as replays\n\nThe current design assumes pubkey updates are rare (key rotation) and that sequence numbers would naturally advance past the old window. But if the new key starts from seq=0, frames could be rejected.\n\nEvidence:\n```c\nif (existing != NULL) {\n    memcpy(existing-\u003epubkey, pubkey, LICHEN_L2_PUBKEY_LEN);\n    existing-\u003elast_seen = k_uptime_get();\n    LOG_INF(\"lichen_l2: peer updated ...\");\n    // No lichen_replay_remove() or replay window reset\n    k_mutex_unlock(\u0026rx_mutex);\n    return 0;\n}\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

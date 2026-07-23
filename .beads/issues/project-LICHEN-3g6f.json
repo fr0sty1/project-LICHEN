@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3g6f",
   "title": "Missing ID_CRED_I verification in process_message_3",
   "description": "File: rust/lichen-oscore/src/edhoc.rs\nLines: 876-882\n\nIn process_message_3, the responder parses PLAINTEXT_3 to extract ID_CRED_I and Signature_3:\n```rust\n// Parse PLAINTEXT_3 = ID_CRED_I || Signature_3\n// ID_CRED_I: 0x58 0x20 [32 bytes]\n// Signature_3: 0x58 0x40 [64 bytes]\nif plaintext_3.len() \u003c 2 + 32 + 2 + 64 {\n    return Err(EdhocError::InvalidMessage);\n}\n\nlet sig_start = 2 + 32 + 2;\n```\n\nThe code extracts the signature at a fixed offset but does NOT verify that:\n1. ID_CRED_I in the message matches peer_pubkey\n2. The CBOR structure is valid (assumes exact format)\n\nIf ID_CRED_I in the message differs from peer_pubkey passed to the function, the signature verification will still use peer_pubkey, but there's no explicit check that they match. This could allow an attacker to claim a different identity (though signature would fail).\n\nImpact: Confusing security model - caller provides expected key but message claims different identity.\n\nFix: Parse ID_CRED_I and verify it matches peer_pubkey before signature verification.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

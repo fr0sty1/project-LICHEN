@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.67",
   "title": "[lichen_util.h:85-100] secure_zero word-size path assumes unsigned long alignment works",
   "description": "Gap: The word-aligned write path assumes all platforms handle word writes correctly.\n\nWhat: Lines 85-100 perform word-sized writes for performance. The cast on line 93 assumes that after alignment, writing an unsigned long is safe and will be atomic/correct on all target platforms.\n\nWhy it matters: On some exotic architectures (not typical ARM Cortex-M), word-aligned writes may still not be atomic, or the volatile qualifier may not behave as expected. While the comment at line 77-83 discusses strict aliasing, it doesn't address potential issues on architectures where sizeof(unsigned long) is not the native word size. Low priority since LICHEN targets Cortex-M where this is safe.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

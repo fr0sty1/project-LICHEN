@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.61",
   "title": "Justified .unwrap() calls have SAFETY comments not documenting panics",
   "description": "Several .unwrap() calls are justified with SAFETY comments explaining why they cannot fail, but SAFETY is semantically for unsafe code. Consider using a different comment prefix (e.g., `// Infallible:` or `// PANIC: unreachable because...`) for documentation clarity:\n\n- lichen-link/src/schnorr.rs:25,54 — `// SAFETY: hash is 64 bytes, so...`\n- lichen-link/src/identity.rs:18 — `// SAFETY: SHA-256 output is 32 bytes...`\n- lichen-link/src/schnorr.rs:84,161 — `// SAFETY: sig is exactly 48 bytes...`\n- lichen-rpl/src/message.rs:88,152,321 — `// SAFETY: length check above ensures...`\n\nThese are not unsafe code blocks; they are infallibility arguments. Using SAFETY for non-unsafe code may confuse reviewers looking for actual unsafe blocks.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

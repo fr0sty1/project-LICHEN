@@ -3,7 +3,7 @@
   "title": "Add Meshtastic app-visibility smoke harness for inbound events",
   "description": "Why this exists: project-LICHEN-t2hn.8 acceptance requires app display behavior to be smoke-testable, but current qemu tests only validate encoded FromRadio bytes and adapter queue semantics. What needs to be done: add a no-hardware smoke harness or scripted fixture that feeds incoming message/status events through the compatibility path and verifies a Meshtastic-app-compatible client view without physical BLE phones or radios.",
   "notes": "Implementation evidence 2026-07-01: added no-hardware Meshtastic app-visibility smoke tests in lichen/tests/meshtastic_gateway_adapter. The harness feeds gateway_inbound_emit_text/status events through the Meshtastic compatibility path, reads fake BLE FromRadio output, decodes FromRadio.packet -\u003e MeshPacket.decoded -\u003e Data as a client view, and asserts from/to/id, portnum 1 text payload, and portnum 5 routing request_id. Review evidence: Planck and Plato found no remaining P0/P1/P2; P1 request_id field bug fixed to Data field 6, P3 duplicate packet/payload/count assertions tightened. Validation: local git diff --check PASS; EC2 us-east-2a builder i-05e27e074db786e22 with EBS vol-0875d0df8bdf82a58, clean worktree /mnt/lichen-zephyr/work/project-LICHEN-t2hn65-validate: initial native_sim run caught request_id field bug; after fix, west twister -T lichen/tests/meshtastic_gateway_adapter -p native_sim ... PASS 1/1, 22 cases; west twister -T lichen/tests/meshtastic_adapter -p qemu_x86 ... PASS 1/1, 65 cases; final native_sim rerun after queue-count assertions PASS 1/1, 22 cases.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

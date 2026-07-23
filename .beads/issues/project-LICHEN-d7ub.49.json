@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.49",
   "title": "lora_l2.c:848 deinit RX thread join failure logged but ignored",
   "description": "Contract observation: lichen_lora_l2_deinit() - Lines 848-858 log RX thread join failure but proceed with cleanup. This is documented as best-effort recovery. The code is intentionally accepting the risk. However, this could leave the RX thread accessing freed/reinitialized resources after deinit returns. WHY: Potential use-after-free if thread didn't actually terminate. HOW to fix: Document that callers should reboot if deinit logs this warning, or return error code to indicate incomplete deinit.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

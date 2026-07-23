@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-cy1",
   "title": "No __all__ exports defined in package __init__.py files",
   "description": "**API Stability / Maintainer Burden**\n\nNone of the `__init__.py` files define `__all__`:\n- src/lichen/__init__.py\n- src/lichen/radio/__init__.py  \n- src/lichen/sim/__init__.py\n- src/lichen/link/__init__.py\n\nWithout explicit `__all__`:\n1. `from lichen.sim import *` imports everything including private helpers\n2. Contributors might accidentally break public API by renaming internal functions\n3. Documentation tools may include too much or too little\n4. No clear contract about what's public vs private\n\nFix: Define `__all__` in each __init__.py listing the public API explicitly.\n\nExample for sim/__init__.py:\n```python\n__all__ = ['Simulation', 'TimeMode', 'SimNode', 'NodeState', 'Medium', ...]\n```\n\nFiles: all __init__.py files",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.18",
   "title": "k_thread_join return value not checked",
   "description": "k_thread_join() can return error codes including -EBUSY, -EDEADLK, or -EAGAIN, but the return value is ignored.\n\nLocation:\n- lora_l2.c:263 (lichen_lora_l2_stop)\n\nWhat goes wrong: If the RX thread does not exit within the timeout (RX_TIMEOUT_MS + 1000), k_thread_join returns -EAGAIN and the thread continues running. The function then logs 'LoRa L2 stopped' and returns 0 (success), but the RX thread is still alive and may:\n- Continue invoking callbacks after stop() returns\n- Access driver state that the caller expects to be quiescent\n- Race with a subsequent start() creating a second RX thread\n\nFix: Check return value; if join fails, either return error or forcibly abort the thread with k_thread_abort() (with appropriate documentation of the behavior).",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

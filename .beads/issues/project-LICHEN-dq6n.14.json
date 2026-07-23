@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dq6n.14",
   "title": "[lichen_util.h:50] secure_zero NULL check returns silently instead of asserting",
   "description": "In secure_zero(), the function silently returns when given NULL or zero length:\n\n```c\nstatic inline void secure_zero(void *ptr, size_t len)\n{\n    if (ptr == NULL || len == 0) return;\n    ...\n}\n```\n\nFor a security-critical function, silently accepting invalid input could mask bugs in calling code. If a caller passes NULL expecting memory to be zeroed, the bug goes undetected.\n\nOptions:\n1. Current: Silent return (caller error masked)\n2. Assert: __ASSERT(ptr != NULL, ...) - crashes in debug, silent in release\n3. Log warning: Still safe but alerts to bug\n\nlen == 0 is debatable - it's valid to ask to zero zero bytes. But ptr == NULL is always a bug.\n\nImpact: P2 - could mask security bugs in callers. A caller might think sensitive data was zeroed when it wasn't.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

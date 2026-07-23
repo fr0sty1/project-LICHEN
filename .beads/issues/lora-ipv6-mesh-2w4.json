@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-2w4",
   "title": "Spec: Design 6LoWPAN over LoRa adaptation layer",
   "description": "Listed as 'open question' but foundational. LoRa is not 802.15.4 — Zephyr's 6LoWPAN assumes 802.15.4 MAC semantics (ACKs, CSMA-CA timing, frame formats). Need concrete adaptation layer design covering: frame format mapping, ACK handling, timing parameters, integration with SCHC.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

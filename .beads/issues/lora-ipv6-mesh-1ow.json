@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-1ow",
   "title": "No CI configuration - tests not run automatically on PRs",
   "description": "**Ease of Contribution / Quality Gates**\n\nThe README documents test commands but there's no CI configuration:\n- No .github/workflows/\n- No .gitlab-ci.yml\n- No tox.ini for multi-python testing\n\nWithout CI:\n1. PRs can't be validated automatically\n2. Contributors don't know if their changes break things\n3. Main branch can accumulate breakage\n4. No enforcement of mypy/ruff passing\n\nRecommended: Add GitHub Actions workflow that:\n- Runs on PR and push to main\n- Tests Python 3.11 and 3.12\n- Runs: ruff check, mypy, pytest\n- Optionally: coverage reporting\n\nExample workflow file provided in description or linked.\n\nFiles: .github/workflows/ci.yml (new)",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

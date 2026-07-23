@@ -3,7 +3,7 @@
   "title": "Compliance: rust/lichen-cli/src/commands.rs key storage",
   "description": "Policy: 06-security.md §15.2. File: rust/lichen-cli/src/commands.rs. Status: CONCERN. Lines 188-190: key generate without -o prints seed to stdout. Has warning but allows it. Seed bytes zeroized after hex conversion (line 163). Hex string zeroized before drop (line 195).",
   "notes": "Links to epic: echd (Security Compliance Audit)",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

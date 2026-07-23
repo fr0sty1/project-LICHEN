@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dhzm",
   "title": "task",
   "description": "rust/lichen-kiss/src/framing.rs:421-424. Reader stuck permanently.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

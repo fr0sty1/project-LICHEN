@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.31",
   "title": "lichen_link_tx and lichen_link_rx error codes not documented",
   "description": "lichen_l2.c:209-215 and 577-584: lichen_link_tx() and lichen_link_rx() return negative values on failure, but the error codes are not documented. The L2 layer logs 'Frame build failed: %d' or 'Frame RX failed: %d' without interpreting the code.\n\nWhat goes wrong: When debugging, users see error numbers like -22 or -74 with no context. They must grep the LICHEN link library source to understand what failed.\n\nFix: Either (1) document lichen_link_tx/rx return codes in their header, or (2) interpret common errors in the log message (e.g., 'Frame build failed: MIC computation error' instead of just the number).",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

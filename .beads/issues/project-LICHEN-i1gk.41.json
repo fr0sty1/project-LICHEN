@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.41",
   "title": "[lora_l2.c:782-784] lichen_l2_reinit_after_abort unconditionally called even in standalone mode",
   "description": "Cross-file analysis: lora_l2.c:deinit() calls lichen_l2_reinit_after_abort() at line 783, guarded by #if defined(CONFIG_LICHEN_L2). However, the guard is correct. Upon closer inspection, the actual issue is different: the comment at line 769-780 mentions reinitializing rx_mutex 'which lives in lichen_l2.c', but if lora_l2.c is compiled without lichen_l2.c (standalone mode), this function would be undefined. The #if guard handles this, but the header lichen_l2.h always declares the function. If someone includes lichen_l2.h in standalone mode and calls the function, it would fail at link time. This is acceptable (linker error is clear), so downgrade to documentation issue: the header should note the function is only defined when CONFIG_LICHEN_L2 is enabled.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "docs",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.30",
   "title": "lichen_util.h:93 casting volatile uint8_t* to volatile unsigned long* may cause alignment fault",
   "description": "In secure_zero() at lines 92-93:\n```c\n/* Word-sized writes for the bulk (p is now word-aligned).\n * Cast through uintptr_t to get word-aligned volatile pointer. */\nvolatile unsigned long *wp = (volatile unsigned long *)(uintptr_t)p;\n```\n\nThe code aligns p to a word boundary before this cast (lines 86-90). However, if the original buffer was NOT aligned to begin with, and len \u003c 32 (the threshold for word-aligned writes), the byte loop at lines 103-105 handles it.\n\nFor len \u003e= 32, the alignment loop at lines 87-90 advances p until it's word-aligned. But what if the original pointer was, say, aligned to 2 bytes but not to 4 bytes on a 32-bit system? The alignment loop handles this - it writes bytes until p is word-aligned.\n\nHOWEVER: The original ptr could be at an address where even after the alignment loop, the REMAINING len is less than sizeof(unsigned long). In this case, the while loop at line 94 would not execute, and we'd fall through to the byte cleanup.\n\nLooking more carefully: After the alignment loop (lines 87-90), 'len' is decremented for each byte written. So if we started with len=32 but were 7 bytes off alignment on a 64-bit system (sizeof(unsigned long)=8), after 7 iterations, len=25. Then the word loop writes 25/8 = 3 words (24 bytes), leaving len=1 for byte cleanup.\n\nThe logic is correct. The cast is safe because p is guaranteed word-aligned when the word loop executes.\n\nNO BUG.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "note",
   "assignee": "Mark Atwood",

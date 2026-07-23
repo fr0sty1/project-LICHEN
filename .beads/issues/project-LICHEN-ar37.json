@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ar37",
   "title": "task",
   "description": "rust/lichen-embassy/src/sim.rs:149. Caller reads stale data.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

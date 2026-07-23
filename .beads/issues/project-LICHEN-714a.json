@@ -2,7 +2,7 @@
   "id": "project-LICHEN-714a",
   "title": "bridge-zephyr nRF52840 build lacks lora0 devicetree alias",
   "description": "After fixing the LICHEN Zephyr module bridge subdirectory path, west build -p always -b nrf52840dk/nrf52840 firmware/bridge-zephyr -d build_bridge_i81y20_nrf_path_check passes CMake configure and then fails compiling firmware/bridge-zephyr/subsys/lichen/lora_l2.c because DT_ALIAS(lora0) is missing. Add an appropriate board overlay/alias for supported LoRa hardware or gate CONFIG_LICHEN_LORA_L2 on boards without lora0.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

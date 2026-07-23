@@ -2,7 +2,7 @@
   "id": "project-LICHEN-6cq9",
   "title": "task",
   "description": "python/src/lichen/routing/router.py:553-555. Silent failure.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -3,7 +3,7 @@
   "title": "Declare Hypothesis test dependency",
   "description": "The full Python suite cannot collect tests because tests/test_hypothesis.py imports hypothesis, but python/pyproject.toml dev dependencies omit it. Add a bounded Hypothesis dev dependency and refresh the lockfile, then run the full suite.",
   "notes": "2026-07-16 clean-main trial: transplanted pyproject.toml, uv.lock, and test_hypothesis.py from 8e02a7ae9. uv run --locked --extra dev pytest tests/test_hypothesis.py -q produced 12 passed, 1 failed. Failure: test_integer_seqnum_frame_roundtrip constructs mic=b'' but main frame validation requires BITS32/4-byte MIC. This is an intentional dependency on the unsigned-MIC wire migration tracked by 2auf.35, not a reason to weaken the test. Candidate diff was removed from the temporary integration worktree pending 2auf.35.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

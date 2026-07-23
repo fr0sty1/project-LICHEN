@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.225",
   "title": "AnnounceProcessor._seen duplicate check uses simple comparison, fails after seq_num wrap",
   "description": "**Location:** python/src/lichen/announce/processor.py:177\n\n**Bug:** The AnnounceProcessor.process() method uses simple comparison for duplicate detection:\n```python\nif existing_seq is not None and announce.seq_num \u003c= existing_seq:\n```\n\nThis will incorrectly reject fresh announces after seq_num wraps from 65535 to 0. The gradient table was fixed to use RFC 1982 serial number arithmetic (seq_gt/seq_ge in gradient.py), but the duplicate detection in AnnounceProcessor still uses naive comparison.\n\n**Trigger:** Node receives 65536+ announces from the same originator, causing seq_num to wrap.\n\n**Bad behavior:** After wrap, fresh announces with seq_num near 0 are rejected as 'stale' because 100 \u003c= 65000 evaluates to True, even though seq_num 100 is actually fresher than 65000.\n\n**Fix:** Import seq_gt from gradient module and change the check to:\n```python\nif existing_seq is not None and not seq_gt(announce.seq_num, existing_seq):\n```\n\n**Related:** This is the same class of bug as project-LICHEN-ow1e.154 but in a different code path. The gradient table fix (RFC 1982 seq_gt) was applied but not propagated to the announce duplicate detection.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

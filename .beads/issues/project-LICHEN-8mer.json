@@ -2,7 +2,7 @@
   "id": "project-LICHEN-8mer",
   "title": "Define EOVERFLOW in portable link errno header",
   "description": "Host/non-Zephyr syntax checking of lichen/subsys/lichen/link/link_ctx.c fails because lichen/subsys/lichen/link/include/lichen/errno.h documents EOVERFLOW as POSIX value 75 but does not define it in the non-Zephyr block. Add the missing portable definition or otherwise make -EOVERFLOW available consistently without relying on external headers.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

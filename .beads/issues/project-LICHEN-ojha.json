@@ -3,7 +3,7 @@
   "title": "Implement /config resource handlers per LCI spec",
   "description": "Implement /config, /config/radio, /config/identity CoAP resources per LCI spec 17.5.2. GET returns current config as CBOR, PUT updates config. Include validation, persistence hooks, and restart-required signaling. Integrate with existing Zephyr settings subsystem if applicable.",
   "acceptance_criteria": "coap-client GET/PUT on /config/* works; changes persist across reboot; invalid config rejected with 4.00",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "grinder",

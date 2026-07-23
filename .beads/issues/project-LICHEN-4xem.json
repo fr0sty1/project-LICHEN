@@ -2,7 +2,7 @@
   "id": "project-LICHEN-4xem",
   "title": "Compliance: C announce.c dispatch byte",
   "description": "Policy: 02-physical-link.md §4.1. File: lichen/subsys/lichen/routing/announce.c. Status: COMPLIANT. Line 350 checks lichen_l2_payload_classify == LICHEN_L2_PAYLOAD_ROUTING before parsing routing message.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -1,0 +1,35 @@
+=== Artifact manifest for bead project-LICHEN-2auf.59.4.1.3.2.2.2.3 ===
+Generated: Thu Jul 23 18:05:49 UTC 2026
+Worktree (clean EBS): /mnt/lichen-zephyr/work/project-LICHEN-ble-ingress-v2223 (detached at 2cf6d9f49ae22ccacdd9b9352cd42140e13f7711 + determined-config patch from worker1)
+Build dir: /mnt/lichen-zephyr/work/project-LICHEN-ble-ingress-v2223/build/ble-native-posix-ingress-verbose-2223
+Board: native_sim/native/64 (Zephyr 3.7 successor to native_posix)
+App: lichen/apps/gateway
+Config: -DDTC_OVERLAY_FILE=boards/native_posix_ble_ingress.overlay -DEXTRA_CONF_FILE=boards/native_posix_ble_ingress.conf -DZEPHYR_EXTRA_MODULES=$WT/lichen -DLICHEN_RELEASE_EPOCH_UNIX=1722470400
+Command: SOURCE_DATE_EPOCH=$(git log -1 --format=%ct) west -v build -b native_sim/native/64 --pristine=always <app> -d <builddir> -- <cmake opts>
+Build exit code: 0
+Clean-worktree module isolation: VERIFIED via tools/zephyr-clean-worktree.sh verify
+Build steps: 187/187 completed; zephyr.elf + zephyr.exe (native runner) produced; no zephyr.bin/hex on host-native target
+
+=== SHA256 of generated artifacts ===
+93a2e22ec58fc893ce0576c0651cccc3f8e6a69fd2388b5b3a5f71a35eb6d278  zephyr/zephyr.elf
+abd769cd3048b3d1c5fa0065637e9ad83a553d5565038d61e245ebd9780c3787  zephyr/zephyr.exe
+b53c4b1891ae6aaba83fdb6bdc20eec93d09ef6d02dcd2b3f3dbc436f54398e4  zephyr/.config
+e71b936dd6ee4932df174d26797dc87c224416e3868c9c3b07346a3644dd32e9  zephyr/zephyr.dts
+9131e34a8d2434f50389b8dc58c59805e1e99e46c3fe878597d2ff7a7205bff6  zephyr/zephyr.map
+c69ec274e9d9846fcc94efdd6c7615fb8a0cf80121afe3300df774fd98581058  zephyr/zephyr.stat
+81565677685875a91657a91bac84b911e44e3533a4e4f56027bcc4b9b5efb92f  CMakeCache.txt
+c64dd82eff54e90a6e073297ef2f71859ddf1be18247ae9e8cd386e5029d82b9  zephyr_modules.txt
+
+=== Artifact sizes (bytes) ===
+9266216 zephyr/zephyr.elf
+4336360 zephyr/zephyr.exe
+79481 zephyr/.config
+4233 zephyr/zephyr.dts
+792051 zephyr/zephyr.map
+426927 zephyr/zephyr.stat
+24298 CMakeCache.txt
+5022 zephyr_modules.txt
+
+=== SHA256 of captured build log and exit-code file ===
+ecd7ca795ff5c70e411855199fb8febfcac3879d0037aa52bc9566e8a939fcfa  build-logs-2auf.59.4.1.3.2.2.2.3-verbose.log
+418a5c17f33c70e99b0cc0a07fce69191489cfedc94164bfa903785777c5bd4b  build-exit-2auf.59.4.1.3.2.2.2.3.txt

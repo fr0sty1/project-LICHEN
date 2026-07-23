@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.47",
   "title": "LICHEN_LORA_FRAME_OVERHEAD derivation not fully shown",
   "description": "lora_l2.h lines 44-56 define LICHEN_LORA_FRAME_OVERHEAD as 55 with a comment:\n\n```c\n/**\n * @brief MTU for LICHEN LoRa interface\n *\n * Derivation (must match lichen/schnorr48.h and frame format):\n *   Max LoRa payload at SF10/BW125:     255 bytes\n *   LICHEN frame overhead:               ~10 bytes (length, flags, epoch, seqnum, addr, mic)\n *   Schnorr-48 signature:                 48 bytes (SCHNORR48_SIG_LEN)\n *   Margin for SCHC rule ID:               ~2 bytes\n *   ----------------------------------------\n *   Available for IPv6 payload:          ~195 bytes, rounded to 200\n */\n#define LICHEN_LORA_MAX_PHY_PAYLOAD 255\n#define LICHEN_LORA_FRAME_OVERHEAD   55  /* 10 + 48 - margin rounded */\n#define LICHEN_LORA_MTU (LICHEN_LORA_MAX_PHY_PAYLOAD - LICHEN_LORA_FRAME_OVERHEAD)\n```\n\nThe inline comment '10 + 48 - margin rounded' = 58 - margin, which doesn't equal 55. The derivation shows ~10 + 48 + ~2 = ~60, not 55.\n\nlichen_l2.c lines 132-153 attempt to validate this with BUILD_ASSERTs but use LICHEN_FRAME_BASE_OVERHEAD (9 bytes, not 10) plus signature (48), totaling 57, still not 55.\n\nWhat goes wrong: The claimed derivation doesn't match the constant. A maintainer cannot verify correctness.\n\nImprovement: Either fix the derivation arithmetic to show how 55 is actually computed, or adjust the constant to match the derivation.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

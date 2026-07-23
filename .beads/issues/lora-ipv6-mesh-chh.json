@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-chh",
   "title": "Create Python project structure",
   "description": "Set up python/ directory with: pyproject.toml, src/lichen/, tests/, uv or poetry for deps. Dependencies: pynacl, aiocoap, asyncio. Type hints throughout. pytest for testing.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3qrz",
   "title": "task",
   "description": "lichen/drivers/lora/lr1110/lr1110_hal.c:75-85. Error ignored.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

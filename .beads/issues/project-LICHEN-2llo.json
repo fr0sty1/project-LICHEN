@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2llo",
   "title": "LichenFrame.from_bytes allows zero-length payload",
   "description": "File: python/src/lichen/link/frame.py:183-188\n\nThe frame parsing allows zero-length payload:\n\n    if length \u003c offset + addr_len + mic_len:\n        raise FrameError('frame too short for declared address/MIC sizes')\n    \n    dst_addr = body[offset : offset + addr_len]\n    offset += addr_len\n    payload = body[offset : len(body) - mic_len]\n\nIf length == offset + addr_len + mic_len exactly, payload will be empty bytes.\n\nWhile the spec may allow this, link_layer.py:431-436 requires payload to contain at least SIGNATURE_LENGTH (48) bytes when signature_present is True:\n\n    if len(frame.payload) \u003c SIGNATURE_LENGTH:\n        logger.warning(...)\n        return None\n\nThis is handled at runtime, but the frame parser should validate based on signature_present flag.\n\nFix: Add validation in from_bytes() that payload length is sufficient for signature if signature_present bit is set.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

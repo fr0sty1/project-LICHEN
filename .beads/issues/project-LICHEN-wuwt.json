@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wuwt",
   "title": "task",
   "description": "rust/lichen-node/src/secure.rs:149-152. Overflows u8 cast.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

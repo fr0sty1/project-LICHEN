@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0zj6.31",
   "title": "main.c error gotos skip LED turn-off leaving it lit",
   "description": "Location: main.c:106-126,142-146. When LoRa init fails (goto main_loop), the code skips the gpio_pin_set_dt(led, 0) at line 144. The LED remains lit, giving users a false indication that initialization succeeded. Since LED is set to 1 on startup and 0 on ready, the lit LED incorrectly signals ready state even though LoRa failed. Either turn off LED before goto, or move LED-off before the error-prone section.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

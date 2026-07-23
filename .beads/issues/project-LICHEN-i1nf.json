@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1nf",
   "title": "task",
   "description": "lichen/subsys/schc/schc.c:370. fcn_bits=7 allows all_1=127.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

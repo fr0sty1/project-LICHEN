@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.65",
   "title": "lora_l2.c + lichen_l2.c: iface_init can't recover from partial init via reboot policy",
   "description": "Cross-file interaction bug: lichen_l2_iface_init() sets lichen_iface before all initialization completes, preventing recovery.\n\nlichen_l2.c:1596-1601:\n  if (lichen_iface != NULL) {\n    LOG_ERR('...init requires reboot after failure');\n    atomic_set(\u0026iface_init_failed, 1);\n    return;\n  }\n  lichen_iface = iface;\n\nlichen_l2.c:1604-1608 (after setting lichen_iface):\n  ret = lichen_lora_l2_set_rx_callback(...);\n  if (ret != 0) {\n    atomic_set(\u0026iface_init_failed, 1);\n    return;\n  }\n\nSCENARIO:\n1. First boot, lichen_lora_l2_init() succeeds (line 1473)\n2. get_eui64() succeeds, memcpy succeeds\n3. net_if_set_link_addr() succeeds\n4. link_ctx initialized\n5. lichen_iface set at line 1601\n6. lichen_lora_l2_set_rx_callback() FAILS (e.g., lora module suddenly in UNINIT state due to bug)\n7. iface_init_failed set, return\n8. System tries to recover by calling init again somehow\n9. Line 1596 check fails because lichen_iface is already set\n10. No recovery possible without reboot\n\nThis is DOCUMENTED and INTENTIONAL (line 1597 message says 'requires reboot').\n\nHowever, the write-once invariant for lichen_iface (project-LICHEN-ybal.4) is violated if init can fail AFTER setting lichen_iface. The invariant says 'set exactly once... never cleared' but init can fail after setting it.\n\nFIX: Move lichen_iface assignment to AFTER all init checks succeed, just before atomic_set(\u0026link_ctx_initialized, 1).",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

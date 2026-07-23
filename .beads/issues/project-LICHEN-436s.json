@@ -2,7 +2,7 @@
   "id": "project-LICHEN-436s",
   "title": "pending_pop not called when enqueue returns positive value",
   "description": "File: lichen/subsys/lichen/meshcore/adapter.c\nLine: 386-389\n\nThe code only pops the pending event when enqueue() returns exactly 0:\n```c\nret = enqueue(adapter, out, (size_t)ret);\nif (ret == 0) {\n    pending_pop(adapter);\n}\n```\n\nIf the enqueue_tx callback returns a positive value to indicate success (e.g., number of bytes enqueued), the pending event is never popped. This causes the same event to be re-delivered on the next SYNC_NEXT_MESSAGE command, leading to duplicate message delivery.\n\nFix: Change condition to `if (ret \u003e= 0)` to handle both success conventions.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -5,7 +5,7 @@
   "design": "Reservation storage owns CAS(expected,next) or an exclusive lease. In-memory Context state alone cannot coordinate multiple processes or prove key material is fresh.",
   "acceptance_criteria": "Two simulated processes restoring the same expected sequence race and exactly one reserves/transmits; all public request/fresh-PIV response paths require reservation capability; blind-write callbacks reject; crashes after reserve cause gaps not reuse; ordinary response state is persisted or disabled; SecureStack cannot bypass OSCORE through mutable plaintext stack; no_std tests and three security reviews pass.",
   "notes": "Completed atomic context-bound CAS reservations, explicit fresh registration versus restore-only loading, crash-safe sequence gaps, transactional ordinary response replay commits, strict RFC option/KID/context handling, authenticated secure ingress, CoAP correlation/ACK handling, and C.4-C.8 vectors. Observe deferred to linked follow-up. Gates: OSCORE all/no-default/Cortex-M, node std, scoped strict Clippy, and three hash-bound security reviews.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

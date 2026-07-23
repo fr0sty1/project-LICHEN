@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.2",
   "title": "lichen_lora_l2_tx missing initialized check",
   "description": "lora_l2.c:371 checks running but not initialized before accessing lora_state.lora_dev at line 378.\n\nWhat goes wrong: If init() fails (returns error but sets running=0), a later tx() call passes the running check (still 0, so returns -ENETDOWN). However, if code is restructured or a race occurs where running is set before init completes, tx() could use uninitialized lora_dev (NULL dereference or garbage pointer).\n\nCurrent code is safe because start() checks initialized and sets running. But this is an implicit invariant - a future refactor could break it.\n\nFix: Add initialized check at lora_l2.c:371 alongside the running check for defense-in-depth.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

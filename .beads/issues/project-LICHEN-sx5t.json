@@ -3,7 +3,7 @@
   "title": "Compliance: rust/lichen-hal/src/storage.rs key storage",
   "description": "Policy: 06-security.md §15.2. File: rust/lichen-hal/src/storage.rs. Status: COMPLIANT. Seed persisted via NonVolatile trait abstraction (allows HSE or flash with readout protection). load_seed/save_seed use proper encapsulation.",
   "notes": "Links to epic: echd (Security Compliance Audit)",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

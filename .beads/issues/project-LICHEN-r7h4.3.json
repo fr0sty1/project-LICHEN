@@ -2,7 +2,7 @@
   "id": "project-LICHEN-r7h4.3",
   "title": "Renode board definition: LilyGO T-Echo",
   "description": "Renode board for T-Echo (nRF52840 + SX1262 + EPD + GPS). DTS overlay, board.cmake, renode.conf. EPD and GPS can be stubs initially. Focus on MCU + LoRa for firmware testing.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

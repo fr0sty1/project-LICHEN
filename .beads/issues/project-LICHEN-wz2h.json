@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wz2h",
   "title": "Rust: lichen-ipv6 SRH from_bytes error message computes incorrect expected length",
   "description": "In rust/lichen-rpl/src/routing.rs:67, when address bytes don't divide evenly by 16:\n\n    if !addr_bytes.len().is_multiple_of(16) {\n        return Err(TooShort::new(data.len() + (16 - addr_bytes.len() % 16), data.len()).into());\n    }\n\nThis error message is misleading. TooShort is meant for 'buffer too short' errors, but here the buffer has extra trailing bytes that don't form a complete address. The error type is correct but the 'expected' value calculation is confusing - it suggests padding to the next 16-byte boundary, which isn't the actual requirement.\n\nLocation: rust/lichen-rpl/src/routing.rs:67\nRisk: Confusing error messages during debugging.\nFix: Use a different error variant (e.g., InvalidLength) or clarify the error message.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

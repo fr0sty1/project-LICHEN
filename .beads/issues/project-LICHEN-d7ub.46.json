@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.46",
   "title": "ipv6_addr.c:219 lichen_ipv6_addr_to_str truncation check is redundant",
   "description": "Contract observation: lichen_ipv6_addr_to_str() - Line 261 checks for truncation after snprintf, but this is already prevented by the buflen check at line 226. The check at 261 is defensive (catches impossible condition). This is good defensive programming, not a bug. However, the error message says 'need %d got %zu' which is confusing - should say 'would need %d+1, have %zu'. Minor documentation issue.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

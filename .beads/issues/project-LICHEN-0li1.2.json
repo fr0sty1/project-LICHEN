@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.2",
   "title": "[lichen_l2.c:556-588] Double signature verification on constant-time iteration",
   "description": "What: peer_try_all_pubkeys() attempts constant-time iteration for security, but on finding a match it saves the index and continues. If a SECOND peer also matches, it overwrites found_idx only if found_idx\u003c0 (line 556). However, the final code at lines 582-586 uses peer_table[found_idx], not the original matched values - which is correct.\n\nWhy it matters: This is actually NOT a bug. On re-read, the code correctly:\n1. Records only the FIRST match (if found_idx \u003c 0)\n2. Continues checking remaining peers (constant time)\n3. Uses the first matched peer's values at the end\n\nThe code is correct. Closing this as not-a-bug.\n\nEvidence: Line 556 'if (found_idx \u003c 0)' ensures only first match is recorded.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

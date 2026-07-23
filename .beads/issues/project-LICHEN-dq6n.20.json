@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dq6n.20",
   "title": "[lichen_l2.c:683 + lora_l2.c:327] start() failure leaves link_ctx in inconsistent state",
   "description": "Cross-file bug: If lichen_lora_l2_start() fails at line 683, lichen_l2_enable(true) returns the error but leaves the module in an inconsistent state:\n\n- link_ctx_initialized = 1 (set at line 672)\n- RX callback registered (line 682)\n- LoRa NOT running (start failed)\n\nThis state is problematic because:\n1. TX via lichen_l2_send() will fail at is_running() check (line 507) - OK\n2. But link_ctx and callback are ready for an RX thread that isn't running\n\nIf the user later retries enable(true):\n1. link_ctx_initialized is already 1, so re-init is skipped (line 659)\n2. callback is re-registered (harmless)\n3. start() is called again\n\nThe inconsistent state isn't directly exploitable but violates the invariant that 'link_ctx_initialized implies LoRa is ready to start'. If start() fails, the enable(true) path should clean up link_ctx state to match the disabled state.\n\nFix: On start() failure, clear link_ctx_initialized and optionally clean up link_ctx:\n  ret = lichen_lora_l2_start();\n  if (ret \u003c 0) {\n    lichen_lora_l2_set_rx_callback(NULL, NULL);\n    k_mutex_lock(\u0026tx_mutex, K_FOREVER);\n    k_mutex_lock(\u0026rx_mutex, K_FOREVER);\n    atomic_set(\u0026link_ctx_initialized, 0);\n    lichen_link_cleanup(\u0026link_ctx);\n    k_mutex_unlock(\u0026rx_mutex);\n    k_mutex_unlock(\u0026tx_mutex);\n  }\n  return ret;",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-c0b",
   "title": "Evaluate libschc for SCHC implementation",
   "description": "Evaluate libschc (imec-idlab/libschc) for use in LICHEN.\n\nTasks:\n1. Clone and review libschc code structure\n2. Check RFC 8724 coverage - what's implemented vs missing\n3. Review fragmentation support (ACK-on-Error mode we need)\n4. Assess memory footprint and malloc-free operation\n5. Test with our SCHC rules (Appendix A of spec)\n6. Compare with CSCHC (Orange, MIT license) as alternative\n\nIntegration paths to evaluate:\n- Python: Can we use libschc via cffi/ctypes, or reimplement in pure Python?\n- Zephyr: Port as module (RIOT OS has done this already)\n- Rust: FFI bindings or reimplement in Rust\n\nDeliverables:\n- Summary of libschc capabilities and gaps\n- Recommendation: use libschc, use CSCHC, or write our own\n- If using libschc: integration plan for Python simulator and Zephyr\n\nReferences:\n- https://github.com/imec-idlab/libschc\n- https://github.com/quentinlampin/cschc\n- https://doc.riot-os.org/group__pkg__libschc.html (RIOT integration)",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

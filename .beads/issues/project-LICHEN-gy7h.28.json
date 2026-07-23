@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.28",
   "title": "main.c standalone mode does not check init_standalone_lora return in main loop",
   "description": "Location: main.c:152-154\n\n**What goes wrong:** When CONFIG_LICHEN_LORA_L2 is set but CONFIG_LICHEN_L2 is not, main() calls init_standalone_lora() and stores the result in ret. But then the code falls through to the \"Ready\" log at line 163 regardless of whether init failed. The ret variable is reused but never checked after line 153.\n\n**Trigger:** Hardware fault or misconfiguration causing lichen_lora_l2_init() to fail in standalone mode.\n\n**Impact:** Device logs \"Ready - LICHEN IPv6/LoRa mesh\" even though LoRa is not actually initialized. User thinks device is working but it's not.\n\n**Fix:** Add early return or infinite error loop if init_standalone_lora() returns \u003c 0.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

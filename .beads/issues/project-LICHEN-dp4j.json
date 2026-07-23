@@ -3,7 +3,7 @@
   "title": "Standardize AnnounceMessage channel field name for CCP-9 consistency",
   "description": "Epic to choose and apply consistent name (rx_channel or current_channel) across Python AnnounceMessage, Rust announce.rs, C announce.h/c, spec/05-routing.md, spec/02a-coordinated-capacity.md, all tests, vectors, and comments. Must match wire format byte 3 and signed_data position. Chosen name: rx_channel per spec terminology. Break into per-language tasks. Related to project-LICHEN-3i18 and CCP-9.",
   "notes": "Commits: 8044359d4, 351311266 - standardized rx_channel in vectors and fixed duplicate kwarg in test_messages.py (lint error from prior renames). All tests pass, ruff clean for announce module.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "AI Agent",

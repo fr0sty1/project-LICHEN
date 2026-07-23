@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.193",
   "title": "Codereview pass 2: Identity.__del__ - Consider try/except alternative",
   "description": "Alternative to hasattr() guards: A try/except AttributeError pattern would also work and may be more Pythonic for __del__ methods. However, the current hasattr() approach is explicit and readable. The existing implementation is acceptable - no change required. This is a style observation, not a defect.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

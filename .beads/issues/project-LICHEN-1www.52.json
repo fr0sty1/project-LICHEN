@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.52",
   "title": "Good: Early rejection of runt frames with SECURITY comment",
   "description": "lichen_l2.c lines 79-94 define LICHEN_MIN_FRAME_LEN with a detailed SECURITY comment:\n\n```c\n/*\n * Minimum valid LICHEN frame size.\n *\n * Wire format (spec section 4, python/src/lichen/link/frame.py):\n *   Length(1) + LLSec(1) + Epoch(1) + SeqNum(2) + DstAddr(0-8) + Payload + MIC(4-8)\n *\n * Absolute minimum (broadcast, 32-bit MIC, empty payload):\n *   1 + 1 + 1 + 2 + 0 + 0 + 4 = 9 bytes\n *\n * SECURITY: Early rejection of runt frames prevents out-of-bounds reads\n * in lichen_link_rx() before MIC validation can occur.\n */\n#define LICHEN_MIN_FRAME_LEN 9\n```\n\nThe check is performed at lichen_l2.c:659-662 before taking the rx_mutex, preventing denial-of-service via runt frame spam that would otherwise contend for the mutex.\n\nWhat goes right: The constant derivation is fully documented with reference to the spec. The SECURITY comment explains the defensive purpose. The check happens early in the code path. The BUILD_ASSERT at lines 109-116 validates the derivation.\n\nWorth defending: This is defense-in-depth. Even if lichen_link_rx() also checks, catching bad frames earlier is better.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

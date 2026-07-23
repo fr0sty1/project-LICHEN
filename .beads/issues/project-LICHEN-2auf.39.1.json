@@ -4,7 +4,7 @@
   "description": "Recover exactly-once token correlation and TOFU-before-context publication in Python secure CoAP. Separate inbound/outbound token namespaces, preserve valid correlations on authentication/send failure, retire final response correlations only after successful delivery, and never replace context/trust state when pinning rejects a key.",
   "acceptance_criteria": "Opposite-direction equal tokens do not collide; forged/failed responses do not consume valid correlation; successful final responses consume exactly once; failed sends leave no orphan outbound correlation; TOFU mismatch publishes no replacement context; focused tests, Ruff, mypy, and three reviews pass.",
   "notes": "Paused by user scope correction. Current uncommitted implementation in lichen-mainline-integration expanded beyond checkpoint recovery into new secure-CoAP lifecycle hardening. Preserve it untouched; do not commit or discard. Resume later under .65/.66 and review findings. Lost-work recovery continues in a fresh clean worktree from 40dcb4c2f.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

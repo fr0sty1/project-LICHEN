@@ -3,7 +3,7 @@
   "title": "Compliance: lichen/subsys/lichen/link/link_ctx.c key storage",
   "description": "Policy: 06-security.md §15.2. File: lichen/subsys/lichen/link/link_ctx.c. Status: COMPLIANT. lichen_link_load_key uses secure_wipe after derivation. lichen_link_generate_key wipes seed after use. lichen_link_cleanup secure wipes all key material. SECURITY comment documents ESP32 HW RNG weakness.",
   "notes": "Links to epic: echd (Security Compliance Audit)",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.125",
   "title": "CoAP block.rs uses .expect() for block number bounds",
   "description": "lichen-coap/src/block.rs:273,374:\n```rust\n.expect(\"block number within bounds\");\n```\n\nBlock numbers are caller-provided. If validation is incomplete upstream, these expects become runtime bombs. Either document the bounds requirement in the function signature or return a Result.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dq6n.15",
   "title": "[lora_l2.c:302] atomic_set(running, 0) inside mutex may be redundant",
   "description": "In lichen_lora_l2_init(), running is set to 0 while already holding the mutex:\n\n```c\nk_mutex_lock(\u0026lora_mutex, K_FOREVER);\n\nif (atomic_get(\u0026lora_state.initialized)) {\n    k_mutex_unlock(\u0026lora_mutex);\n    return 0;\n}\n\nlora_state.lora_dev = LORA_DEV;\natomic_set(\u0026lora_state.running, 0);  // Line 302\natomic_set(\u0026lora_state.aborted, 0);  // Line 303\n```\n\nThis is not a bug - it's correct initialization. The atomic operations ensure proper memory ordering even though we hold the mutex. The mutex protects against concurrent init calls; the atomics ensure visibility to threads that might read without the mutex (like the TX fast path).\n\nClosing - not a bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

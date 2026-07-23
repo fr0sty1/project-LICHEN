@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.74",
   "title": "[lichen_l2] lichen_iface set-once invariant violated on double-init",
   "description": "Cross-file state machine bug: lichen_l2_iface_init() has a check at line 970-974 to enforce the set-once invariant for lichen_iface:\n\n    if (lichen_iface != NULL) {\n        LOG_ERR('lichen_iface already set (set-once invariant violated)');\n        atomic_set(\u0026iface_init_failed, 1);\n        return;\n    }\n\nHowever, NET_DEVICE_INIT calls lichen_l2_iface_init() only once during system startup. The scenario where lichen_iface could already be non-NULL is:\n\n1. First iface_init() call sets lichen_iface, then fails later (e.g., at lichen_log_link_local_from_eui64)\n2. fail_late_init does NOT clear lichen_iface (explicitly noted in comment at line 1013-1014)\n3. If iface_init() is somehow called again (shouldn't happen with NET_DEVICE_INIT), the check triggers\n\nThis is correct defensive code. However, the invariant comment says 'set exactly once during initialization and never cleared' but the code DOES fail and set iface_init_failed while leaving lichen_iface non-NULL.\n\nA subsequent lichen_l2_enable(true) call would:\n1. Check iface_init_failed (line 649) - returns -ENODEV\n2. Never reaches the point where lichen_iface would be used\n\nSo this is correctly handled. Closing as not-a-bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

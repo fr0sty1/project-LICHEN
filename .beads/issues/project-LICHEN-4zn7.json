@@ -2,7 +2,7 @@
   "id": "project-LICHEN-4zn7",
   "title": "proto.py: Enum conversion raises ValueError on unknown protocol values",
   "description": "File: python/src/lichen/interface/meshtastic/proto.py\nLines: 141, 376\n\nThe protobuf decoder raises ValueError when encountering unknown enum values:\n1. Line 141: RoutingError(val) for unknown routing error codes\n2. Line 376: PacketPriority(val) for unknown priority values\n\nProtocol buffers are designed to be forward-compatible - unknown enum values should be preserved or handled gracefully, not cause exceptions. This will crash the decoder when a newer Meshtastic client sends messages with new enum values.\n\nImpact: Receiving messages from newer Meshtastic clients with new priority or routing error codes will crash the parser, causing DoS.\n\nFix: Wrap enum construction in try/except and use a default value (e.g., RoutingError.NONE, PacketPriority.DEFAULT) or store the raw integer and add is_unknown() method.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

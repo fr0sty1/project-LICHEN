@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.53",
   "title": "[lichen_l2.c:568-649 vs lora_l2.c:942-946] peer_add checks needs_reinit but uses rx_mutex; deinit resets rx_mutex",
   "description": "Cross-file analysis: lichen_peer_add() at line 578-587 checks lichen_lora_l2_needs_reinit() before acquiring rx_mutex. If true, it returns -ECANCELED. This is correct because the RX thread may have been aborted while holding rx_mutex. However, after lichen_lora_l2_deinit() completes (which reinitializes rx_mutex via lichen_l2_reinit_after_abort), needs_reinit() returns false (state is UNINIT), but a subsequent peer_add() call BEFORE lichen_lora_l2_init() would see state==UNINIT, fail the needs_reinit() check (state != ABORTED), proceed to acquire rx_mutex (which is valid now), but operate on potentially stale peer_table data. The peer_table is not cleared by deinit(). Should peer_add() also check for UNINIT state and return -ENODEV? Current behavior: peer_add succeeds, populating peer_table before init. Next init does memset on peer_table (line 1319), wiping the peer. Data loss is silent.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

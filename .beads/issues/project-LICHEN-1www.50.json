@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.50",
   "title": "main.c LED diagnostic patterns documented only in file header",
   "description": "main.c lines 5-10 document LED diagnostic patterns:\n\n```c\n/*\n * LED diagnostic patterns (led0 alias, if present):\n * - Solid on during init: normal startup in progress\n * - 3 rapid blinks (100ms on/off): USB CDC initialization failed\n * - Continuous 200ms blink (forever): standalone LoRa init failed\n * - Off after init: ready, normal operation\n */\n```\n\nBut the implementation at lines 137-144 (USB failure) and lines 164-175 (LoRa failure) have no inline comments referencing this pattern table.\n\nWhat goes wrong: A maintainer changing the blink pattern must remember to update both locations. The patterns are also not visible to a user debugging a device - they'd need the source code.\n\nImprovement: Add inline comments at each LED code block referencing the header comment, e.g., '/* USB CDC failure: 3 rapid blinks (see file header) */'. Consider also logging the pattern meaning before entering the blink loop.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

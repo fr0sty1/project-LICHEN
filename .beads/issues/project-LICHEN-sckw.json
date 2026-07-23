@@ -2,7 +2,7 @@
   "id": "project-LICHEN-sckw",
   "title": "docs: replace legacy remote Zephyr build guidance with AWS EC2",
   "description": "User requested removing the old SSH-host remote build guidance from AGENTS.md and Beads persistent memories, and using AWS EC2 instead for remote/Linux-only Zephyr builds. Scope: update AGENTS.md to direct agents to AWS EC2 when local builds cannot run; update Beads memories so no persistent memory recommends the old SSH host; verify with searches in AGENTS.md and Beads memories.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "chore",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.3",
   "title": "gpio_pin_set_dt return value unchecked in main.c",
   "description": "Location: firmware/bridge-zephyr/src/main.c:121,137,139,141,143,165,167,180\n\nAll calls to gpio_pin_set_dt() ignore the return value. gpio_pin_set_dt() can fail if the GPIO controller is not ready or the pin configuration is invalid.\n\nWhat goes wrong: Silent LED control failure. If the GPIO controller fails mid-execution, LED patterns would not display, providing no visual feedback to operators. Given LEDs are used for diagnostic patterns (USB failure, LoRa failure), silent GPIO failure means diagnostics are unreliable.\n\nLow severity since LED is non-critical, but inconsistent with the rest of the codebase which checks return values.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-n80",
   "title": "Link layer frame format dataclasses",
   "description": "Define Python dataclasses for link layer frames per spec section 4.\n\nClasses:\n- LLSecByte: flags for addressing mode, security level\n- FrameHeader: length, llsec, seqnum, dst_addr\n- Frame: header + payload + signature\n\nAddress modes:\n- 0: implicit (broadcast)\n- 1: short (2 bytes)\n- 2: extended (8 bytes)\n\nMethods:\n- Frame.to_bytes() -\u003e bytes\n- Frame.from_bytes(data) -\u003e Frame\n- Frame.max_payload_size(addr_mode) -\u003e int\n\nUse @dataclass(frozen=True) for immutability where appropriate.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Frost",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.72",
   "title": "lichen_l2.c:464 peer_find_oldest_locked INT64_MAX comparison with k_uptime_get",
   "description": "Completeness check: Round 1-2 missed potential k_uptime_get overflow timing issue.\n\nWHAT: peer_find_oldest_locked() compares peer_table[i].last_seen (int64_t) against INT64_MAX to find the oldest peer for LRU eviction. The last_seen field is set via k_uptime_get() which returns int64_t milliseconds since boot.\n\nWHY BUG: On a system running for ~292 million years, k_uptime_get() would overflow int64_t. This is practically impossible, BUT the comparison uses INT64_MAX as a sentinel value. If a peer's last_seen were somehow set to INT64_MAX (via bug or corruption), it would NEVER be evicted since it would appear to be the 'newest' peer forever. This violates the LRU invariant.\n\nIMPACT: Theoretical only - k_uptime_get() cannot return INT64_MAX during normal operation. However, defensive coding would use a different sentinel or skip checking last_seen if it equals INT64_MAX.\n\nFIX: Either:\n1. Use -1 as sentinel (impossible from k_uptime_get which starts at 0)\n2. Add guard: if (peer_table[i].last_seen == INT64_MAX) continue;\n3. Document why INT64_MAX is safe (it is, practically)",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

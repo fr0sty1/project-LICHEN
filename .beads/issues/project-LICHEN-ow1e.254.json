@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.254",
   "title": "[CR] Rust EDHOC edhoc_kdf: .expect() calls marked INFALLIBLE but should use unwrap_unchecked or const assert",
   "description": "File: rust/lichen-oscore/src/edhoc.rs:147-152\n\nIssue: The code has several .expect() calls with comments saying they are INFALLIBLE:\n    let hk = Hkdf::\u003cSha256\u003e::from_prk(prk).expect(\"PRK is 32 bytes...\");\n    okm.resize(length, 0).expect(\"output Vec\u003cu8, 32\u003e...\");\n    hk.expand(\u0026info, \u0026mut okm).expect(\"requested length \u003c= 32...\");\n\nWhile the comments explain why these cannot fail, using .expect() still generates panic code. For no_std embedded targets, this bloats the binary.\n\nIdiomatic improvement:\n1. Use const assertions or static_assert! macros where possible\n2. Consider using unsafe { .unwrap_unchecked() } for truly infallible cases (with safety comment)\n3. Or accept the .expect() with good comments (current approach is fine for non-size-critical builds)",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

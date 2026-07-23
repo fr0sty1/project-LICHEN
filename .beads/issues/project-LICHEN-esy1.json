@@ -2,7 +2,7 @@
   "id": "project-LICHEN-esy1",
   "title": "task",
   "description": "python/src/lichen/announce/processor.py:122-123. Memory leak.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

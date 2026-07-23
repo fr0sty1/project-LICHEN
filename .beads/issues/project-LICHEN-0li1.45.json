@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.45",
   "title": "[lichen_link_rx.c:229-236] tc_sha256 return values silently ignored",
   "description": "Gap: lichen_link_rx.c uses tc_sha256 functions but ignores their return values, unlike the centralized lichen_sha256 in lichen_util.c.\n\nWhat: Lines 229-236 call tc_sha256_init, tc_sha256_update, and tc_sha256_final with (void) casts, ignoring any errors. While TinyCrypt's SHA-256 functions typically only fail on NULL pointers (which cannot happen here), the inconsistency with lichen_sha256() creates two different error handling patterns.\n\nWhy it matters: If TinyCrypt behavior changes (e.g., internal state corruption detection), errors would be silently swallowed. The EUI-64 derivation would produce garbage hash data used for peer identification, potentially allowing frames to appear as from a different peer.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

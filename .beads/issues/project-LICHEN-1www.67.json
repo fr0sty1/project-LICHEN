@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.67",
   "title": "CONFIG_LICHEN_L2 has implicit dependency on LICHEN_LINK not enforced in Kconfig",
   "description": "Location:\n- firmware/bridge-zephyr/subsys/lichen/Kconfig:48-61 (CONFIG_LICHEN_L2 definition)\n- firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:71-74 (BUILD_ASSERT requiring HAVE_LICHEN_LINK)\n\nRisk: The Kconfig for LICHEN_L2 does not list CONFIG_LICHEN_LINK as a dependency, but the code has a BUILD_ASSERT that requires HAVE_LICHEN_LINK (which maps to CONFIG_LICHEN_LINK).\n\nThis means:\n1. A user can enable LICHEN_L2 without LICHEN_LINK via menuconfig\n2. Build fails with an unclear BUILD_ASSERT message about CONFIG_LICHEN_LINK is required\n3. User does not understand why their menuconfig selection does not work\n\nPattern generating user issue reports: Why does enabling LICHEN_L2 in menuconfig cause a build error about LICHEN_LINK?\n\nSuggested fix: Add depends on LICHEN_LINK to the CONFIG_LICHEN_L2 Kconfig entry. This makes the dependency visible in menuconfig and prevents invalid configurations.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

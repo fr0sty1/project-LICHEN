@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.86",
   "title": "[lora_l2] tx_buf_mutex not reinitialized in deinit",
   "description": "Cross-file race condition: lichen_lora_l2_deinit() reinitializes lora_mutex (line 575) but NOT tx_buf_mutex.\n\nIf the module is deinitialized while a TX is in progress (see issue about TX in flight during deinit), and tx_buf_mutex was left locked by crashed/aborted code, subsequent init()+start()+tx() calls would deadlock on the corrupted tx_buf_mutex.\n\nThe scenario:\n1. TX thread holds tx_buf_mutex, calls lora_send()\n2. System issue causes need to deinit\n3. deinit() called - reinitializes lora_mutex but not tx_buf_mutex\n4. tx_buf_mutex is left in locked state (or corrupted)\n5. Module reinitialized via init()\n6. Next TX call blocks forever on tx_buf_mutex\n\nThis parallels the existing handling where deinit() reinitializes lora_mutex for the same reason (to recover from aborted state). tx_buf_mutex should receive the same treatment.\n\nLocation: lora_l2.c:575 (should also reinitialize tx_buf_mutex)",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

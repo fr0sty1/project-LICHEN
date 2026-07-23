@@ -3,7 +3,7 @@
   "title": "task",
   "description": "Policy: appendix-c-safety.md. Create libFuzzer harness for schc_decompress(). Run 1M iterations, fix crashes.",
   "notes": "Partial: libFuzzer harness created (fuzz_schc.c) but: (1) not committed, (2) not in CMakeLists.txt, (3) no 1M iteration run performed, (4) no crash artifacts or fixes. Needs: commit harness, add to CMakeLists.txt, run fuzzer 1M iterations, fix any crashes.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

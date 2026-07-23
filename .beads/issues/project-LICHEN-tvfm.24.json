@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.24",
   "title": "[lora_l2.c:127] generate_eui64 relies on hwinfo_get_device_id positive for length",
   "description": "Function: generate_eui64 (static helper). Contract violation: The function checks 'hwid_len \u003c= 0' at line 135 but hwinfo_get_device_id() returns ssize_t. If the function returned exactly 0 (empty device ID), the code would reject it (-ENODEV), which is correct. However, if it returned a very large positive value that exceeds sizeof(hwid), the check at line 141 'hwid_len \u003e sizeof(hwid)' catches this. The cast to size_t at line 149 is safe because the check at 141 ensures hwid_len fits. This is correct code. Priority 3 - verified correct, no issue.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "issue",
   "assignee": "Mark Atwood",

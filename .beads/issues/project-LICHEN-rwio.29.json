@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.29",
   "title": "lichen_l2.c empty struct lichen_l2_ctx exists only to satisfy NET_DEVICE_INIT macro",
   "description": "lichen_l2.c lines 302-304: Empty struct with comment 'all state is static in this module'. This is not dead code - NET_DEVICE_INIT requires a context type. The comment documents why it exists. No change needed - Zephyr's macro system forces this boilerplate.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

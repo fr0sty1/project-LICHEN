@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0zj6.21",
   "title": "Hardcoded tx_power=22 may exceed legal limits or radio capability",
   "description": "Location: lora_l2.c:277. tx_power = 22 dBm is hardcoded. This may: (1) exceed legal limits in some regions (EU max is 14 dBm EIRP), (2) exceed specific radio module capability, (3) cause undefined behavior if radio driver doesnt validate. Should be Kconfig with region-appropriate defaults and documented limits.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.75",
   "title": "lora_l2.c:267 hash_input stack buffer sized for max hwid but overflow possible",
   "description": "Completeness check: Round 1-2 missed potential buffer overflow in EUI-64 generation.\n\nWHAT: generate_eui64() allocates hash_input on stack:\n```c\nuint8_t hash_input[EUI64_DOMAIN_PREFIX_LEN + sizeof(hwid)];  // 15 + 32 = 47 bytes\n```\n\nThe code later uses hwid_len (from hwinfo_get_device_id) to copy into this buffer.\n\nWHY BUG: hwinfo_get_device_id() is documented to return 'up to the supplied buffer length', but there's no guarantee it won't return a value larger than sizeof(hwid) on some implementations. The check at line 284:\n```c\nif ((size_t)hwid_len \u003e sizeof(hwid)) {\n    LOG_ERR(...);\n    ret = -EINVAL;\n    goto cleanup;\n}\n```\nprotects against overflow in the hwid buffer, BUT hash_input is already allocated before this check. If Zephyr's hwinfo API changed to report the ACTUAL hardware ID size (rather than clamping to buffer size), and that size exceeded 32 bytes, the check would fail safely... but the code structure is fragile.\n\nIMPACT: Currently safe because hwinfo_get_device_id() is bounded by its buffer argument. However, the defensive check is placed AFTER buffer allocation, which is atypical defensive coding style.\n\nFIX: \n1. Add BUILD_ASSERT that sizeof(hwid) \u003e= largest expected hwinfo size\n2. Move the \u003esizeof(hwid) check earlier or document why current ordering is safe",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

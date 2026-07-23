@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.48",
   "title": "[cross-file] replay window allocated before signature verified",
   "description": "Interaction: lichen_l2.c:peer_try_all_pubkeys \u003c-\u003e lichen_link_rx.c\n\nBug: In peer_try_all_pubkeys() (lichen_l2.c:538-576), lichen_link_rx() is called inside the loop. Inside lichen_link_rx() (lichen_link_rx.c:256-261), lichen_replay_get() allocates a replay window entry BEFORE Step 5 (MIC verification) and Step 7 (replay check commit).\n\nThe comment in replay.h:100-120 explicitly warns about replay window poisoning attacks. The comment at lichen_l2.c:287-293 says 'Replay windows are only allocated AFTER peer authentication succeeds.'\n\nHowever, looking at the actual flow:\n1. peer_try_all_pubkeys sets ctx-\u003epeer_pubkey to a candidate\n2. Calls lichen_link_rx()\n3. lichen_link_rx Step 2 verifies signature (succeeds or fails)\n4. Step 3 derives src_eui64 from peer_pubkey\n5. Step 4 calls lichen_replay_get(replay, src_eui64) - ALLOCATES ENTRY\n6. Step 5 verifies MIC (may fail)\n7. If MIC fails, replay entry is already allocated/touched\n\nSo the comment at lichen_l2.c:287-293 is incorrect. Replay windows ARE allocated before full authentication (MIC verification) succeeds. This allows the poisoning attack described in replay.h.\n\nTrigger: Attacker sends frames with valid signature but invalid MIC. Each distinct pubkey (from peer_table) that signature-verifies will allocate a replay window entry before MIC fails.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

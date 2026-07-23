@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3hsn",
   "title": "Rust lichen-coap block.rs: size_to_szx edge case at size=16",
   "description": "In rust/lichen-coap/src/block.rs, size_to_szx() was refactored from a match statement to 'if size \u003c 16 { return 0; } ((size.ilog2() as u8).saturating_sub(4)).min(6)'. For size=16: ilog2(16)=4, 4-4=0, min(6)=0. This is correct (SZX 0 = 16 bytes). For size=15: returns 0. For size=17: ilog2(17)=4, 4-4=0. This means sizes 16-31 all return SZX 0, same as the original. The refactor is correct but added a test would verify this.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

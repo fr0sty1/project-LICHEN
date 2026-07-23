@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.56",
   "title": "lora_l2.c + lichen_l2.c: tx_mutex not reinitialized by reinit_after_abort",
   "description": "Cross-file interaction bug: lichen_l2_reinit_after_abort() only reinitializes rx_mutex, not tx_mutex.\n\nlora_l2.c:931 reinitializes tx_buf_mutex in deinit().\nlichen_l2.c:1747 only reinitializes rx_mutex.\n\nSCENARIO:\n1. RX thread abort while lichen_l2_send() holds tx_mutex (tx_mutex is in lichen_l2.c, separate from tx_buf_mutex)\n2. Abort happens during lora_rx_callback -\u003e lichen_l2_input\n3. Stop/deinit sequence runs\n4. deinit() calls lichen_l2_reinit_after_abort() which reinits rx_mutex only\n5. tx_mutex in lichen_l2.c is NOT reinitialized\n6. If tx_mutex was held by a thread that got killed (via k_thread_abort propagation), it remains corrupted\n\nActually reviewing more carefully: tx_mutex is NOT held by the RX thread path. The RX thread only holds rx_mutex via lichen_l2_input(). TX goes through lichen_l2_send() which is a separate thread.\n\nREVISED: This is NOT a bug - tx_mutex cannot be held by the aborted RX thread. However, the asymmetry is confusing and should be documented. The deinit path reinits tx_mutex in lora_l2.c but lichen_l2.c's tx_mutex is separate and unaffected by RX abort.\n\nDowngrading to P3: Document that lichen_l2.c tx_mutex is NOT at risk during RX abort because send() runs in application thread, not RX thread.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

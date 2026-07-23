@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.22",
   "title": "[lichen_l2.c:328] peer_try_all_pubkeys modifies ctx then restores on error",
   "description": "Function: peer_try_all_pubkeys (static helper). Contract violation: The function modifies ctx-\u003epeer_pubkey and ctx-\u003epeer_eui64 during iteration (lines 345-346), then restores them on failure (lines 367-368, 373-375). If lichen_link_rx() crashes or throws an exception (not possible in C, but if called from C++ wrapper), the context would remain in a modified state. More importantly, if lichen_link_rx() has side effects beyond the output parameters, those aren't rolled back. The saved_out_len restoration (line 347, 369) is correct. Priority 3 - theoretical concern in exception-free C code.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "issue",
   "assignee": "Mark Atwood",

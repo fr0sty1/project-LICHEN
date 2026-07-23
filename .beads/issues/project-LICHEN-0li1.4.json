@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.4",
   "title": "[lichen_l2.c:599] lichen_peer_add array decay - no runtime size enforcement",
   "description": "Contract: lichen_peer_add(const uint8_t eui64[8], const uint8_t pubkey[32]) documents that eui64 MUST be 8 bytes and pubkey MUST be 32 bytes.\nViolation: C arrays decay to pointers, providing no runtime bounds checking. The memcpy on lines 687-688 copies exactly LICHEN_EUI64_LEN (8) and LICHEN_L2_PUBKEY_LEN (32) bytes unconditionally. A caller passing a smaller buffer causes buffer overread.\nImpact: Undefined behavior (memory access beyond buffer bounds) if caller passes undersized buffers. Defense relies entirely on caller discipline.\nMitigation: This is a language limitation. The existing BUILD_ASSERTs (lines 108-111) verify constant consistency but cannot validate caller buffer sizes. Document prominently that this is a SECURITY boundary that callers must respect.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

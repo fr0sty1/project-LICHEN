@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.79",
   "title": "[lichen_l2] secure_zero of rx_link_key can be skipped on early return",
   "description": "Cross-file security bug: In lichen_l2_input(), the rx_link_key local buffer is not zeroed on ALL return paths.\n\nThe rx_link_key buffer (line 1134) contains a copy of the link key. It is zeroed:\n1. On lichen_link_rx failure (line 1169)  \n2. On ipv6_len overflow check (line 1177)\n3. On successful path completion (line 1188)\n\nBut if the link_ctx_initialized check fails (line 1109), the function returns early at line 1112 WITHOUT zeroing rx_link_key.\n\nWait - at line 1109, rx_link_key hasn't been declared yet! The declaration is at line 1134, which is AFTER the link_ctx_initialized check.\n\nSo this is NOT a bug - the early returns at lines 1109-1112 happen before rx_link_key is even declared/initialized.\n\nClosing as not-a-bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

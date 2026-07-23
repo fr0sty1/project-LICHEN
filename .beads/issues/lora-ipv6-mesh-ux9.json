@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-ux9",
   "title": "Implement simulated radio interface",
   "description": "Python Radio class matching the trait from spec. Methods: configure(), transmit(), receive(), cad(), rssi(), snr(). Backed by wireless channel simulator. Async/event-driven design.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

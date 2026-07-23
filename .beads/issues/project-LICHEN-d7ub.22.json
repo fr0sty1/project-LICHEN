@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.22",
   "title": "ipv6_addr.c:91 goto cleanup without setting ret on success path",
   "description": "In lichen_pubkey_to_iid(), at line 127 there's a 'return ret;' that follows the cleanup label. Looking at the success path:\n\n1. lichen_sha256() succeeds (line 88-92) - ret is set to 0 on success\n2. memcpy and U/L bit clearing (lines 105-121) - no ret modification\n3. Falls through to cleanup (line 123)\n4. secure_zero() the hash (line 125)\n5. return ret (line 126)\n\nActually ret is initialized to 0 (via the int ret declaration and the success return from lichen_sha256). If sha256 returns 0, ret stays 0 through cleanup.\n\nWait, looking at line 88-92:\n```c\nret = lichen_sha256(pubkey, LICHEN_ED25519_PUBKEY_LEN, hash);\nif (ret != 0) {\n    LOG_ERR(...);\n    goto cleanup;\n}\n```\n\nIf sha256 succeeds, ret == 0. Then lines 105-121 execute, then cleanup runs, and ret (still 0) is returned. This is correct.\n\nNO BUG.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "note",
   "assignee": "Mark Atwood",

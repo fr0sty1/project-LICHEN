@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-1tn",
   "title": "Implement REST control API",
   "description": "Create python/src/lichen/sim/api.py using Starlette. Endpoints: POST /sim (create simulation), DELETE /sim/{id}, GET /sim/{id} (status), POST /sim/{id}/tick (advance time). Node management: POST /sim/{id}/node, DELETE /sim/{id}/node/{nid}, PATCH /sim/{id}/node/{nid} (move). Chaos: POST /sim/{id}/chaos/drop, /partition, /degrade, /jam, DELETE /sim/{id}/chaos. Observe: GET /sim/{id}/packets, GET /sim/{id}/topology, WebSocket /sim/{id}/stream for live events. JSON request/response. Return appropriate HTTP status codes.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9sx4",
   "title": "edhoc_kdf: .expect() calls on HKDF operations could panic on edge cases",
   "description": "In rust/lichen-oscore/src/edhoc.rs edhoc_kdf(), the code uses .expect() on Hkdf::from_prk() and hk.expand(). While the comments say these are infallible for the given inputs, using .expect() in a cryptographic protocol implementation is risky. A subtle bug in the PRK derivation or an unexpected input could cause a panic. Consider propagating these as EdhocError instead of panicking, especially since the function already returns Result.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

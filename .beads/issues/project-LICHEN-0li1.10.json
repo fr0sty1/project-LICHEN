@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.10",
   "title": "[crash_info.c:24] Integer overflow check is ineffective",
   "description": "What: crash_info_store() checks if (crash_info.count \u003c UINT32_MAX) before incrementing. But crash_info is in __noinit RAM, meaning it contains arbitrary garbage on first boot (power cycle).\n\nWhy it matters: The count field could start at any value including UINT32_MAX-1 or close to it. The check prevents overflow but doesn't prevent the count from being meaningless garbage. This is not a security issue but a correctness issue - the 'lifetime tracking' mentioned in the comment won't work reliably across power cycles.\n\nEvidence:\n```c\n__noinit static struct {\n    uint32_t magic;\n    // ...\n    uint32_t count;  // uninitialized on power-up\n} crash_info;\n\nvoid crash_info_store(...) {\n    // ...\n    if (crash_info.count \u003c UINT32_MAX) {\n        crash_info.count++;  // increments garbage\n    }\n}\n```\n\nNote: The magic field guards against interpreting uninitialized data during check_and_clear(), but count is still incremented in crash_info_store() without first checking magic.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

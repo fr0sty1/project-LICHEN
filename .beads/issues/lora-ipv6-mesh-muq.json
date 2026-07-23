@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-muq",
   "title": "Link layer transmit/receive logic",
   "description": "Implement link layer TX/RX integration.\n\nLinkLayer class:\n- __init__(radio: Radio, identity: Identity)\n- async send(dst_addr, payload, security_level) -\u003e bool\n- async receive(timeout_ms) -\u003e Frame | None\n- Uses Schnorr signer for outgoing frames\n- Uses ReplayProtector for incoming frames\n- Tracks own sequence numbers\n\nTX flow:\n1. Build frame header\n2. Sign frame (header + payload)\n3. Call radio.transmit()\n4. Increment seqnum\n\nRX flow:\n1. Call radio.receive()\n2. Parse frame\n3. Verify signature\n4. Check replay protection\n5. Return payload\n\nIntegration with SimRadio for testing.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

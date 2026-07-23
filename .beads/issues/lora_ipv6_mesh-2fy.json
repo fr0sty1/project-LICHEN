@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-2fy",
   "title": "Rust lichen-schc: real compress/decompress (rules 0-4, vector tests)",
   "description": "Replace codec.rs stubs with real RFC 8724 BitWriter/BitReader and per-rule compress_packet/decompress_packet. Rules 0-4 match Python reference exactly. Tests validate against test/vectors/schc_compression.json data.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Frost",

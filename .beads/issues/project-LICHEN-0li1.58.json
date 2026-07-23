@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.58",
   "title": "[cross-file] EUI-64 derivation inconsistency between lora_l2 and lichen_link_rx",
   "description": "Interaction: lora_l2.c:generate_eui64 \u003c-\u003e lichen_link_rx.c:228-236\n\nBug: There are two different EUI-64 derivation methods used:\n\n1. lora_l2.c:generate_eui64 (lines 252-327):\n   - Input: hardware ID from hwinfo_get_device_id()\n   - Method: SHA-256(hwid)[0:8] then set U/L bit, clear I/G bit\n\n2. lichen_link_rx.c:228-236:\n   - Input: Ed25519 public key (peer_pubkey)\n   - Method: SHA-256(pubkey)[0:8] (no U/L or I/G bit manipulation)\n\nThe spec comment at lora_l2.c:244-247 says 'Future work: LICHEN spec section 6.2 suggests deriving IID from Ed25519 public key.'\n\nInconsistency: Local node's EUI-64 (from hwid) has U/L=1, I/G=0. Remote peer's EUI-64 (from pubkey) has raw hash bits (no U/L or I/G manipulation).\n\nConsequences:\n1. If both methods were used on the same device, the EUI-64 would differ depending on whether you asked the device itself (hwid-derived) or computed from its pubkey.\n\n2. The peer_table stores EUI-64s derived from pubkeys. But if a node ever looked up its own EUI-64 in peer_table (self-send), the match would fail because hwid-EUI-64 != pubkey-EUI-64.\n\n3. IPv6 link-local addresses are derived from hwid-EUI-64 (via iface_link_addr). But Schnorr signatures use pubkey-EUI-64 in the replay table.\n\nThis isn't strictly a bug if the two EUI-64 spaces are kept separate, but it's an architectural inconsistency that could cause confusion.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

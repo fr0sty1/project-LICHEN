@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.28",
   "title": "Missing zeroization of rx_link_key in lichen_l2.c",
   "description": "In lichen_l2_input() at lichen_l2.c:435-439, a 16-byte link key is copied to a stack buffer:\n\n    uint8_t rx_link_key[LICHEN_LINK_KEY_LEN];\n    if (link_ctx.has_link_key) {\n        memcpy(rx_link_key, link_ctx.link_key, LICHEN_LINK_KEY_LEN);\n        rx_link_key_ptr = rx_link_key;\n    }\n\nAfter lichen_link_rx() completes, rx_link_key is never zeroized. The key remains on the stack until overwritten.\n\nImpact: The link key is a symmetric key used for AES-CCM-64 MIC generation. An attacker with stack read capability (debugger, stack overflow read, memory corruption) could recover the link key and forge authenticated frames.\n\nFix: Add explicit_bzero(rx_link_key, sizeof(rx_link_key)) before each return path after line 439, or use a cleanup label/goto pattern.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:435-439, with fix needed before returns at lines 455-457, 479-480, 487-490",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

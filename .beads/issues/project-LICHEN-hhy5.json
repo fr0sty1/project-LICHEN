@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hhy5",
   "title": "Decoder does not validate geographic coordinate ranges",
   "description": "File: python/src/lichen/gateway/compact_cot.py\nLines: 250-256\n\nThe _decode_pli() function decodes lat/lon microdegrees from binary but does not validate they fall within valid geographic ranges:\n- Latitude: [-90, 90] degrees -\u003e [-90000000, 90000000] microdegrees\n- Longitude: [-180, 180] degrees -\u003e [-180000000, 180000000] microdegrees\n\nThe XML parser DOES validate these ranges (lines 753-756), but the binary decoder does not.\n\nImpact: A malformed or malicious compact CoT message could contain out-of-range coordinates that would:\n1. Produce semantically invalid position data\n2. Be accepted silently and propagated to ATAK systems\n3. Potentially cause issues in downstream consumers expecting valid coordinates\n\nFix: Add validation after decoding:\n```python\nif not (-90_000_000 \u003c= lat \u003c= 90_000_000):\n    raise DecodeError(f'Latitude {lat} out of range')\nif not (-180_000_000 \u003c= lon \u003c= 180_000_000):\n    raise DecodeError(f'Longitude {lon} out of range')\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

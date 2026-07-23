@@ -3,7 +3,7 @@
   "title": "senml zcbor stub encodes large uint64 values as negative CBOR",
   "description": "Code review finding from unreviewed Zephyr/C paths. The standalone SenML zcbor stub implements zcbor_uint64_put() by casting the uint64_t to int64_t and calling encode_int(). Values above INT64_MAX become negative before encoding, so they are emitted as CBOR major type 1 rather than unsigned major type 0. SenML base_time is uint64_t and is encoded through this stub in standalone tests, so tests can miss or generate incorrect high timestamp encodings. Evidence: lichen/tests/senml/zcbor_stub/zcbor_encode.c:112-115; lichen/subsys/lichen/senml/include/lichen/senml.h:79; lichen/subsys/lichen/senml/senml.c:201-203. Acceptance: encode uint64_t directly as CBOR unsigned integer without signed casts and add a test vector/value above INT64_MAX.",
   "acceptance_criteria": "After implementation, run the relevant tests/builds and then complete two separate code-review passes before closing. Each review pass should inspect the produced code against this Bead's acceptance criteria and file follow-up Beads for any discovered issues.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

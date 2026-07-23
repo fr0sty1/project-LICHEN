@@ -2,7 +2,7 @@
   "id": "project-LICHEN-a2ql",
   "title": "task",
   "description": "slip.rs:177-183 - The TX ring buffer only resets tx_write when the queue is completely empty. If packets are queued and dequeued without fully emptying the queue, tx_write grows monotonically until it hits TX_BUFFER_SIZE, causing PacketTooLarge errors even when most of the buffer is unused. Failure scenario: Gateway under steady load queues and dequeues packets but never fully empties queue. After ~4KB of cumulative traffic, all new packets are rejected with PacketTooLarge even though actual queue depth is low. Fix: Compact buffer when dequeuing, or use a true ring buffer with wrap-around.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

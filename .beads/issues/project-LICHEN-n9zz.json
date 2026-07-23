@@ -3,7 +3,7 @@
   "title": "Simulation: add enter_rx_mode() with callback",
   "description": "Add non-blocking RX mode entry to python/src/lichen/sim/simulation.py:\n\n```python\ndef enter_rx_mode(\n    self,\n    node_id: str,\n    timeout_us: int,\n    on_packet: Callable[[bytes, int, int], None],  # payload, rssi, snr\n    on_timeout: Callable[[], None],\n) -\u003e None:\n    \"\"\"Enter RX mode with callbacks (non-blocking).\n    \n    Puts node in RX_WAIT state so BARRIER_SYNC can advance time.\n    Calls on_packet(payload, rssi, snr) when a packet arrives.\n    Calls on_timeout() if timeout_us expires with no packet.\n    \n    Only one callback fires, then node exits RX_WAIT.\n    \"\"\"\n    node = self._get_node(node_id)\n    node.state = NodeState.RX_WAIT\n    node.rx_callbacks = (on_packet, on_timeout)  # store for event processing\n    \n    # Queue timeout event\n    self._event_queue.push(RxTimeoutEvent(\n        time_us=self._current_time_us + timeout_us,\n        node_id=node_id,\n    ))\n\ndef exit_rx_mode(self, node_id: str) -\u003e None:\n    \"\"\"Exit RX mode, cancel pending timeout.\"\"\"\n    node = self._get_node(node_id)\n    node.state = NodeState.IDLE\n    node.rx_callbacks = None\n    # Remove pending RxTimeoutEvent for this node\n```\n\nModify event processing to call the callbacks when RxTimeoutEvent fires or when a packet is delivered to the node.",
   "acceptance_criteria": "enter_rx_mode() puts node in RX_WAIT; callbacks fire on packet/timeout; unit test confirms BARRIER_SYNC advances time",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "grinder",

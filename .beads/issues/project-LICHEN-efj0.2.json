@@ -3,7 +3,7 @@
   "title": "bridge-esp32: replace 2 unwrap() calls with error handling",
   "description": "firmware/bridge-esp32/src/main.rs has 2 unwrap() calls (lines 159, 175). These will panic the device on failure. Replace with proper error handling.",
   "notes": "Development firmware uses esp_backtrace for debug info. Init failures genuinely should stop the device. For production: add LED error patterns and optional watchdog recovery.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

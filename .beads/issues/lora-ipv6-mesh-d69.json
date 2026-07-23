@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-d69",
   "title": "Integration test: collision and capture effect",
   "description": "Test: three nodes A, B, C. A and B transmit simultaneously to C. Case 1: equal power, both lost. Case 2: A is 10dB stronger, A wins (capture effect). Case 3: A is 4dB stronger, both lost (below 6dB threshold). Verify packet delivery matches expected behavior.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

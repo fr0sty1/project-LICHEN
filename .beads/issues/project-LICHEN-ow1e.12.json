@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.12",
   "title": "Unsafe blocks in tun.rs missing SAFETY comments",
   "description": "10 unsafe blocks in lichen-gateway/src/tun.rs lack // SAFETY: comments.\n\nLines 40, 62, 65, 73, 74, 76, 83, 96, 121.\n\nAll perform libc FFI (open, ioctl, close, fcntl, read, write) but do not document the safety invariants being upheld (e.g., valid fd, correct buffer bounds, alignment requirements).",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

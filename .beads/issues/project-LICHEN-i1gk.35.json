@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.35",
   "title": "[main.c:152-178] usb_enable error handling continues despite USB failure",
   "description": "At line 153, usb_enable() can fail with ret != 0. The code logs the error and blinks the LED, but then continues execution. While this is documented as intentional (console may go to UART, LoRa still works), the variable 'ret' is reused later at line 192 for init_standalone_lora(). If USB failed, ret is non-zero, but the code at line 192 checks 'ret \u003c 0'. USB errors are typically negative errno, so this should work, but if USB returned a positive error code, it would be ignored. Check that usb_enable always returns negative on error.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

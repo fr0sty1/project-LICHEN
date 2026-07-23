@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.6",
   "title": "[lichen_util.c:20] lichen_sha256 output buffer size unchecked",
   "description": "Contract: lichen_sha256 declares output[TC_SHA256_DIGEST_SIZE] but this decays to pointer.\nViolation: The function writes 32 bytes to output via tc_sha256_final() without runtime validation that the buffer is large enough. The header comment warns about this (lines 114-116 of lichen_util.h) but there is no runtime defense.\nImpact: Buffer overflow if caller passes buffer \u003c 32 bytes. This is called from generate_eui64() and lichen_pubkey_to_iid() which use correctly-sized local buffers, but any future caller could trigger overflow.\nMitigation: Document more prominently, or add explicit length parameter for defense-in-depth (would change API).",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

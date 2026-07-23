@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vie0",
   "title": "task",
   "description": "python/src/lichen/interface/meshtastic/translate.py:130-137 - Position.from_bytes handles wire types 0, 2, and 5 but breaks on unknown wire types including 1 (fixed64). If a Position protobuf contains a fixed64 field (even one we ignore), parsing stops early and later fields are missed. Failure scenario: Meshtastic sends Position with precision_bits or extension using fixed64, latitude/longitude not parsed.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

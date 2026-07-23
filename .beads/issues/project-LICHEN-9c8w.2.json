@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9c8w.2",
   "title": "lichen_l2.c: add subsystem prefix to all log messages",
   "description": "Add 'lichen_l2:' prefix to all LOG_* calls that lack it.\n\nCurrent:\n  LOG_ERR(\"TX rejected: interface initialization failed\");\n  LOG_WRN(\"TX attempted before link_ctx initialized\");\n\nTarget:\n  LOG_ERR(\"lichen_l2: TX rejected (init failed)\");\n  LOG_WRN(\"lichen_l2: TX rejected (link_ctx not ready)\");\n\n~50 log statements to update.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

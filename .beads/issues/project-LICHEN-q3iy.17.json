@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.17",
   "title": "ipv6_addr.h struct in6_addr detection cascade lacks summary",
   "description": "In ipv6_addr.h:31-79, there is a long preprocessor cascade for detecting struct in6_addr. The rationale comments are excellent (lines 36-54), but the actual #if/#elif chain spans 23 lines with no summary of what each branch does.\n\nWhat goes wrong: When adding support for a new platform, a developer must trace through each condition to understand where their platform falls. The block would benefit from a summary table.\n\nSuggested fix: Add a brief structured comment before the cascade:\n```c\n/*\n * Detection order:\n *   1. LICHEN_HAVE_IN6_ADDR       - explicit user override\n *   2. IN6ADDR_ANY_INIT           - POSIX-compliant header included\n *   3. CONFIG_NET_IPV6 + Zephyr   - include zephyr/net/net_ip.h\n *   4. Platform header guards     - system in6_addr already defined\n *   5. Fallback                   - provide our own\n */\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-nj9m.1",
   "title": "Update AWS project documentation",
   "description": "Update AGENTS.md and CLAUDE.md with personal profile/account, us-west-2/us-west-2c, copied EBS ID, and current resource-isolation guidance.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.23",
   "title": "[lora_l2.c:255-277] EUI-64 generation lacks hwid entropy validation",
   "description": "What: generate_eui64() hashes the hardware ID to produce an EUI-64 but does not validate the entropy of the hwid. It only checks hwid_len \u003e 0 and hwid_len \u003c= sizeof(hwid).\n\nWhy it matters: Some MCUs return low-entropy hardware IDs:\n1. Development boards may have all-zeros or sequential IDs\n2. Flash-based hwids could be erased/corrupted\n3. Very short hwids (e.g., 2 bytes) provide minimal collision resistance\n\nThe code relies on SHA-256 for collision resistance, but garbage-in-garbage-out applies. Multiple devices with same hwid would get same EUI-64, breaking mesh routing.\n\nEvidence:\n```c\nhwid_len = hwinfo_get_device_id(hwid, sizeof(hwid));\nif (hwid_len \u003c 0) { ... }\nif (hwid_len == 0) { ... }\nif ((size_t)hwid_len \u003e sizeof(hwid)) { ... }\n// No entropy/quality check on hwid contents\nret = lichen_sha256(hwid, (size_t)hwid_len, hash);\n```\n\nRecommendation: Log a warning if hwid appears to be all-zeros or all-ones pattern.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

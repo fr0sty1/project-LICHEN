@@ -2,7 +2,7 @@
   "id": "project-LICHEN-v8bb",
   "title": "EDHOC test accesses private Context fields",
   "description": "File: rust/lichen-oscore/src/edhoc.rs\nLines: 1032-1045\n\nThe test_full_handshake test tries to access private fields of Context struct:\n- initiator_ctx.sender_key\n- responder_ctx.recipient_key\n- initiator_ctx.recipient_key\n- responder_ctx.sender_key\n- initiator_ctx.common_iv\n- responder_ctx.common_iv\n\nThese fields are private (no pub modifier in lib.rs:165-188). The edhoc module is a sibling module, not a descendant, so it cannot access private fields of Context defined in the parent crate module.\n\nThis test should fail to compile. Either:\n1. The test is dead code that never runs\n2. There's a visibility issue that needs fixing\n3. Public accessors need to be added for testing\n\nTo fix: Either add pub(crate) test accessors to Context, or restructure the test to use public APIs only (e.g., test roundtrip encryption/decryption instead of comparing raw keys).",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

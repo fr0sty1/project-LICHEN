@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.89",
   "title": "[lora_l2.c:602-616] thread join fallback to K_FOREVER after abort may hang on driver bug",
   "description": "Completeness: Timeout handling category.\n\nAt lines 602-616, after k_thread_abort():\n\n\nThe K_FOREVER join assumes that after abort, the thread will immediately become joinable. This is normally true, but:\n\n1. If the thread is stuck in a driver call that doesn't respond to abort (e.g., DMA wait), K_FOREVER could hang\n2. Zephyr's abort is not guaranteed to interrupt all blocking operations\n\nThe comment at line 612 acknowledges 'typically immediate', but there's no timeout on the post-abort join.\n\nConsider using a finite timeout even after abort (e.g., K_MSEC(100)), and if that fails, log a critical error and potentially k_panic() since the system is in an unrecoverable state.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

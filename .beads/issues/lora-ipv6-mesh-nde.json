@@ -3,7 +3,7 @@
   "title": "LatencyRule exists but is dead code - not exposed via API",
   "description": "**Dead Code / Incomplete Feature**\n\nchaos.py defines LatencyRule (lines 225-253) with the docstring 'for future use', but:\n1. It's not exposed through any REST API endpoint\n2. The apply() method just returns the candidate unchanged\n3. No test coverage for the rule type\n4. No simulator logic to actually apply the latency\n\nEither:\n- Remove it (it's dead code that confuses contributors)\n- Complete it (add /chaos/latency endpoint, integrate with event timing)\n- Mark it clearly as TODO/WIP with an issue reference\n\nFiles: chaos.py:225-253, api.py",
   "notes": "Investigated during tech-debt sweep: LatencyRule is NOT untested — tests/sim/test_chaos.py has a full TestLatencyRule class (5 cases). So this is a judgment call, not a clean delete: (a) remove the class + its tests as dead/no-op code, or (b) complete it by wiring a /chaos/latency endpoint AND adding real delivery-delay logic to the timing model (non-trivial in the current poll-based RX). Left open for that decision rather than guessing.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

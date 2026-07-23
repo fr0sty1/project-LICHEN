@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-8rd",
   "title": "Announce scheduler and transmission",
   "description": "Implement periodic announce transmission.\n\nAnnounceScheduler class:\n- __init__(node_identity, interval=300)\n- async start() -\u003e None\n- async stop() -\u003e None\n- build_announce() -\u003e AnnounceMessage\n- async announce_loop()\n\nBehavior:\n- Wait ANNOUNCE_INTERVAL + random jitter\n- Build announce with current seq_num\n- Sign with node's private key\n- Broadcast to neighbors\n- Increment seq_num\n\nSeq_num persistence:\n- Persist to flash on increment\n- Load on startup\n- Ensure monotonic across reboots\n\nIntegration with Node class main loop.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

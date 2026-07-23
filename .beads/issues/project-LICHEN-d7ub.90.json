@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.90",
   "title": "Fix t_echo bridge LoRa device symbol build failure",
   "description": "Why: building firmware/bridge-zephyr for board t_echo/nrf52840 with LoRa enabled configures devicetree cleanly, then lora_l2.c fails to compile with DEVICE_DT_GET(DT_ALIAS(lora0)) referencing an undeclared __device_dts_ord_* symbol. What: investigate the t_echo LoRa node/driver enablement so the real t_echo/nrf52840 bridge build compiles after devicetree generation.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

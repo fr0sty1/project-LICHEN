@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.74",
   "title": "crash_info.c:35-37 count initialization before magic check creates race window",
   "description": "Completeness check: Round 1-2 missed subtle ordering issue in crash_info.\n\nWHAT: In crash_info_store(), the code first checks if magic is invalid and sets count=0, then sets magic. There's a timing window where:\n1. crash_info.count = 0 is written\n2. Interrupt occurs, system resets\n3. On next boot, crash_info.magic is still garbage\n4. count value is lost (was set to 0 but magic never confirmed it)\n\nCODE:\n```c\nif (crash_info.magic != CRASH_MAGIC) {\n    crash_info.count = 0;  // Write happens...\n}\ncrash_info.magic = CRASH_MAGIC;  // ...but this might never execute\n```\n\nWHY BUG: On Cortex-M, each 32-bit write is atomic, but there's no guarantee both writes complete before an interrupt/reset. The count field could be written (zeroing previous crash count) while magic remains invalid, losing crash history.\n\nIMPACT: Low - the primary purpose (recording crash reason/location/extra) is unaffected. Only the cumulative count across boots could be lost.\n\nFIX: Set magic BEFORE modifying count, or use a two-phase commit:\n```c\nif (crash_info.magic != CRASH_MAGIC) {\n    crash_info.magic = CRASH_MAGIC;  // First, claim the struct\n    crash_info.count = 0;            // Then, initialize fields\n}\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

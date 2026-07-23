@@ -2,7 +2,7 @@
   "id": "project-LICHEN-fy89",
   "title": "task",
   "description": "compact_cot.py:784 - alt_dm is packed as signed 16-bit int (struct '\u003eh'), limiting altitude to -3276.8m to +3276.7m. Real-world altitudes exceed this: aircraft at 10000m, high mountain terrain. When _encode_pli calls struct.pack('\u003eh', pli.alt_dm), it raises struct.error for values outside int16 range. Failure scenario: PLI with altitude 5000m -\u003e alt_dm=50000 -\u003e struct.pack fails -\u003e entire message encoding crashes.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

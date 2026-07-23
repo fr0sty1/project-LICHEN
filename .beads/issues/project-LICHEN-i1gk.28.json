@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.28",
   "title": "[lora_l2.c:906-926] lichen_lora_l2_set_rx_callback: ABORTED state not checked, may succeed in broken state",
   "description": "Contract violation: precondition - operation succeeds in invalid state\n\n**Issue:** The function only checks for LORA_UNINIT state (line 908), but allows callback registration in LORA_ABORTED state where the module is in an undefined state requiring reinit.\n\n**Code:**\n```c\nvoid lichen_lora_l2_set_rx_callback(lichen_lora_rx_cb_t cb, void *user_data)\n{\n    if (lora_get_state() == LORA_UNINIT) {  // Only checks UNINIT\n        LOG_WRN(\"Cannot set RX callback: LoRa L2 not initialized\");\n        return;\n    }\n    // Allows ABORTED state - callback is registered but RX thread is dead\n    ...\n}\n```\n\n**Impact:** In ABORTED state, the callback is registered but the RX thread is dead, so it will never be invoked. This silently fails.\n\n**Fix:** Also check for LORA_ABORTED and log a warning or return early.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

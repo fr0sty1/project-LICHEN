@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.84",
   "title": "ipv6_addr.c:247 snprintf with 16 %02x args risks format string size overflow",
   "description": "Completeness check: Round 1-2 missed potential format string stack usage concern.\n\nWHAT: lichen_ipv6_addr_to_str() uses a long format string:\n```c\nint ret = snprintf(buf, buflen,\n         \"%02x%02x:%02x%02x:%02x%02x:%02x%02x:\"\n         \"%02x%02x:%02x%02x:%02x%02x:%02x%02x\",\n         addr-\u003es6_addr[0], addr-\u003es6_addr[1],\n         ...\n         addr-\u003es6_addr[14], addr-\u003es6_addr[15]);\n```\n\nThis passes 16 uint8_t arguments to snprintf.\n\nWHY CONCERN: On embedded systems with small stacks:\n1. Each variadic argument takes at least 4 bytes (ARM EABI promotes to int)\n2. 16 arguments = 64 bytes minimum\n3. Plus format string parsing overhead\n4. This function could be called from interrupt context or low-stack threads\n\nIMPACT: Unlikely stack overflow, but the function's stack footprint could be reduced.\n\nFIX: Either:\n1. Use a loop with snprintf for each byte pair (more code, less stack)\n2. Add function attribute __attribute__((warn_unused_result)) to catch errors\n3. Document stack requirements (est. 100-150 bytes)\n4. Current code is correct, just potentially expensive",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

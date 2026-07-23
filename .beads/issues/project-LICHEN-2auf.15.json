@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.15",
   "title": "Fix C 64-bit MIC LLSec encoding",
   "description": "C frame serialization currently ORs the full MIC mask for 64-bit MICs, producing reserved LLSec bits and frames rejected by parsers. Encode the MIC-length enum value correctly and add a valid 64-bit write/parse round-trip test.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

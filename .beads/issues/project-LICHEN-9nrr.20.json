@@ -3,7 +3,7 @@
   "title": "bridge-zephyr: clean lichen_l2 peer API nonnull warnings",
   "description": "Review follow-up from project-LICHEN-9nrr.15. Enabling the full CONFIG_LICHEN_L2 bridge path on rak4631/nrf52840 compiles firmware/bridge-zephyr/subsys/lichen/lichen_l2.c and emits -Wnonnull-compare warnings in lichen_peer_add() and lichen_peer_remove(): array-typed public parameters are compared against NULL after the compiler has inferred nonnull. This does not block the current build, but it leaves warning noise in the full L2 path. Scope: adjust the public/internal API signatures or validation pattern so null handling is explicit without triggering compiler nonnull warnings; preserve peer table behavior and existing error returns.",
   "acceptance_criteria": "rak4631/nrf52840 bridge-zephyr build no longer emits -Wnonnull-compare warnings from lichen_peer_add() or lichen_peer_remove(); peer add/remove null-argument behavior is documented or tested; no unrelated L2 behavior changes.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

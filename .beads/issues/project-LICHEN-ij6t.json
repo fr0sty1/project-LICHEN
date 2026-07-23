@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ij6t",
   "title": "[policy] Three-implementation parity compliance",
   "description": "Policy: Rust/Zephyr/Python are co-equal implementations. When they disagree, spec decides. MUST: shared test vectors (gbuw), feature matrix (k5zk), CI that tests all three against same vectors. When executing: compare feature coverage across implementations, create compliance bead per module.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

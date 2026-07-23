@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.180",
   "title": "Codereview pass 2: tun.rs SAFETY",
   "description": "Review findings from codereview pass 2\n\nDeeper review of SAFETY comments for correctness:\n\n**Findings:**\n1. libc::open SAFETY comment is accurate - path is null-terminated c-string literal\n2. libc::ioctl SAFETY comment correctly notes repr(C) and 40-byte layout\n3. libc::close SAFETY comments correctly note fd validity and single-close guarantee\n4. libc::fcntl SAFETY comments accurately describe F_GETFL/F_SETFL semantics\n5. OwnedFd::from_raw_fd SAFETY correctly describes ownership transfer\n6. libc::read/write SAFETY comments accurately describe buffer validity and non-blocking handling\n\n**Potential improvement (minor):**\n- The ioctl SAFETY comment could mention that ifr is stack-allocated and outlives the call, but this is implicit from Rust's borrow rules.\n\n**No bugs or incorrect claims found in pass 2.**",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

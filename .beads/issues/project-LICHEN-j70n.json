@@ -2,7 +2,7 @@
   "id": "project-LICHEN-j70n",
   "title": "Implement peer table for RX signature verification",
   "description": "The RX path in lichen_l2.c passes peer_pubkey=NULL to lichen_link_rx(), which skips Schnorr-48 signature verification. The Python reference implementation (link_layer.py:363-391) requires signature verification and REJECTS frames from unknown senders.\n\nRequired work:\n1. Design peer table structure (pubkey + EUI-64 per neighbor)\n2. Implement peer registration API (called after EDHOC handshake or provisioning)\n3. Implement peer lookup in lichen_l2_input() - try known peers' pubkeys\n4. REJECT frames when no matching peer found (security-critical)\n\nThe replay.h API pattern (lichen_replay_table with LRU eviction) may serve as a template.\n\nSee SECURITY comment in lichen_l2.c around line 798.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -4,7 +4,7 @@
   "description": "Review of 2auf.35 found no canonical cryptographically valid signed frame. Existing signed examples use arbitrary or zero MIC bytes, and each implementation otherwise signs/verifies itself. Add a fixed frame-specific vector with seed/public key, exact signing preimage, deterministic Schnorr-48 signature, and complete wire bytes, cross-validated by independent C/Python/Rust implementations.",
   "acceptance_criteria": "A fixed valid signed-frame vector records key material, exact preimage, signature, and wire bytes; C/Python/Rust independently reproduce or verify it byte-for-byte; tampered LENGTH, LLSec, destination, payload, and signature reject; vector provenance is documented; three reviews pass.",
   "notes": "Added signed_plaintext_oracle with fixed seed/private/public key, exact LENGTH||LLSec||EPO||SEQ||DST||PLD preimage, deterministic Schnorr-48 signature, and complete wire bytes. Python, Rust, and C independently reproduce keys/signature/wire and reject mutations to length, LLSec, epoch, sequence, destination, payload, and signature. Schema enforces state/length constraints. CI runs Python vectors, Rust no-default/all-features, and fail-closed C frame/Schnorr CTest. Gates: Python 131; Rust 68 unit + 2 vector + 1 doc; C frame and Schnorr CTest 1/1 each. Final three reviews: no findings.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

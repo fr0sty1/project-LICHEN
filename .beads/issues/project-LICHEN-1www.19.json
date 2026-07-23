@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.19",
   "title": "Good: Clear ownership semantics documented at interface boundaries",
   "description": "Explicit ownership documentation at critical handoff points:\n\n1. lichen_l2.h:15-19 - Header comment documents packet ownership for both TX and RX paths\n2. lichen_l2.c:262-265 - lichen_l2_send() comment states ownership contract\n3. lichen_l2.c:347-352 - net_pkt_unref() call explains why L2 must free on success\n4. lichen_l2.c:771-778 - net_recv_data() call documents that success transfers ownership, failure requires unref\n\n5. lora_l2.h:154-156 - lichen_lora_l2_get_eui64() warning that returned pointer aliases internal state\n\nWhat goes right: The ownership model is documented where it matters - at the interface boundary. Comments explain the 'why' (Zephyr contract) not just the 'what'. The warning on get_eui64() prevents use-after-free if caller stores the pointer.\n\nWorth defending: These comments should not be removed. Ownership bugs in network stacks cause memory leaks (if unref forgotten) or use-after-free (if double unref). The explicit documentation prevents these.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

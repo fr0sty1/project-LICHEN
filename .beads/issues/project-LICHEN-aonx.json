@@ -2,7 +2,7 @@
   "id": "project-LICHEN-aonx",
   "title": "task",
   "description": "lichen/drivers/lora/lr1110/lr1110.c:302-305. Radio state inconsistent.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",
