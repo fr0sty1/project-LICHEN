@@ -93,7 +93,6 @@ class TransitInformation:
     external: bool = False
 
     def to_option(self) -> RplOption:
-        # E flag (bit 7) indicates Parent Address field is present
         e_flag = 0x80 if self.parent_address is not None else 0x00
         data = bytes([e_flag, self.path_control, self.path_sequence, self.path_lifetime])
         if self.parent_address is not None:
@@ -106,7 +105,6 @@ class TransitInformation:
             raise DaoError(f"not a Transit Information option: type {opt.type}")
         if len(opt.data) < 4:
             raise DaoError("Transit Information option too short")
-        # E flag (bit 7) indicates Parent Address field is present (RFC 6550 6.7.8)
         e_flag = opt.data[0] & 0x80
         if e_flag:
             if len(opt.data) < 4 + 16:
