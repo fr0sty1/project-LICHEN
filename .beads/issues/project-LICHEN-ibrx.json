@@ -2,16 +2,15 @@
   "id": "project-LICHEN-ibrx",
   "title": "Implement DutyCycleTracker logic in hal.c matching ccp13.json vectors",
   "description": "Implement prune, total_tx, remaining, usage, can_transmit with fixed N=32 array, static funcs, prorate boundary, independent of test. Verify math matches Rust total_tx_in_window and evict_stale.",
-  "notes": "Commit: 9e02ddec5 - updated prune/total_tx to use defines, renamed for Rust parity, fixed default permille and window calc for prorate boundary match. Tests verified via vector match.",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T22:36:06.478581139Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:08:44.802962139Z",
+  "updated_at": "2026-07-23T05:02:49.808557089Z",
   "started_at": "2026-07-22T22:40:04.284411762Z",
-  "closed_at": "2026-07-23T05:08:44.802962139Z",
-  "close_reason": "Implemented fixed-N=32 DutyCycleTracker with static prune/total_tx/remaining/usage/can_transmit matching ccp13.json, Rust total_tx_in_window and evict_stale. No test changes needed as vectors now satisfied."
+  "lease_expires_at": "2026-07-23T05:07:49.808557089Z",
+  "heartbeat_at": "2026-07-23T05:02:49.808557089Z"
 }
