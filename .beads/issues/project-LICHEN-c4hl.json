@@ -2,11 +2,15 @@
   "id": "project-LICHEN-c4hl",
   "title": "float32_bits relies on IEEE 754 representation assumption",
   "description": "File: lichen/subsys/lichen/meshtastic/codec.c:392-398\n\n  static uint32_t float32_bits(float value)\n  {\n      uint32_t bits;\n      memcpy(\u0026bits, \u0026value, sizeof(bits));\n      return bits;\n  }\n\nThis function assumes:\n1. sizeof(float) == sizeof(uint32_t) == 4\n2. float uses IEEE 754 binary32 format\n\nWhile these assumptions hold on virtually all modern embedded platforms (ARM, x86, RISC-V), they are not guaranteed by the C standard.\n\nAdd a static assertion:\n  BUILD_ASSERT(sizeof(float) == sizeof(uint32_t), 'float must be 32-bit');\n\nAnd document that IEEE 754 is assumed (or reject non-IEEE platforms at compile time).",
-  "status": "open",
+  "status": "in_progress",
   "priority": 4,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:49:42.548662Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:49:42.548697Z"
+  "updated_at": "2026-07-23T04:22:23.342847163Z",
+  "started_at": "2026-07-23T04:22:23.342847163Z",
+  "lease_expires_at": "2026-07-23T04:27:23.342847163Z",
+  "heartbeat_at": "2026-07-23T04:22:23.342847163Z"
 }
