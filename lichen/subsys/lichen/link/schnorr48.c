@@ -270,6 +270,7 @@ int 	schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 {
 	/* length(1) + LLSec(1) + epoch(1) + seqnum(2) + dst_addr_len(1) + dst_addr(up to 8) */
 	uint8_t header[14];
+
 	size_t header_len = 0;
 	uint8_t nonce_hash[64];
 	uint8_t r_scalar[32];
