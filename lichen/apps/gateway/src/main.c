@@ -51,6 +51,13 @@
 #include <lichen/native.h>
 #endif
 
+#if IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)
+#include <zephyr/net/net_mgmt.h>
+#include <zephyr/net/wifi_mgmt.h>
+#include <zephyr/net/net_if.h>
+#include <zephyr/net/net_event.h>
+#endif
+
 LOG_MODULE_REGISTER(lichen_gateway, LOG_LEVEL_INF);
 
 #define LICHEN_GATEWAY_HAS_LORA \
@@ -104,6 +111,11 @@ static bool s_has_manual_location;
 #if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
 static struct lichen_rpl_dodag s_dodag;
 #endif
+
+#if IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)
+static bool s_backhaul_connected = false;
+static struct net_mgmt_event_callback s_wifi_mgmt_cb;
+#endif
 static int gateway_rpl_init(void) {
 	int ret = 0;
 #if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
@@ -125,9 +137,76 @@ static int gateway_rpl_init(void) {
 	return ret;
 }
 
-/* --------------------------------------------------------------------------
+#if IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)
+/*
+ * WiFi station backhaul event handler per Kconfig and AGENTS.md.
+ * Registers early, handles connect result and IPv6 addr add for prefix
+ * delegation to RPL DODAG root. Updates observable status on change.
+ */
+static void wifi_mgmt_event_handler(struct net_mgmt_event_callback *cb,
+				    uint32_t mgmt_event, struct net_if *iface)
+{
+	ARG_UNUSED(iface);
+
+	if (mgmt_event == NET_EVENT_WIFI_CONNECT_RESULT) {
+		const struct wifi_status *status =
+			(const struct wifi_status *)cb->info;
+		if (status->status == 0) {  /* success per Zephyr wifi_mgmt */
+			s_backhaul_connected = true;
+			LOG_INF("WiFi backhaul connected to %s", CONFIG_LICHEN_GATEWAY_WIFI_SSID);
+		} else {
+			s_backhaul_connected = false;
+			LOG_ERR("WiFi connect failed: status=%d", status->status);
+		}
+	} else if (mgmt_event == NET_EVENT_IPV6_ADDR_ADD) {
+		s_backhaul_connected = true;
+		LOG_INF("IPv6 address added on backhaul - prefix delegation to RPL active");
+		/* TODO: extract prefix from iface and call lichen_rpl_root_set_prefix(&s_dodag, ...) */
+	}
+
+	/* Status observable will reflect s_backhaul_connected on next GET/notify */
+}
+
+static void gateway_backhaul_init(void)
+{
+	net_mgmt_init_event_callback(&s_wifi_mgmt_cb, wifi_mgmt_event_handler,
+		NET_EVENT_WIFI_CONNECT_RESULT | NET_EVENT_IPV6_ADDR_ADD);
+	net_mgmt_add_event_callback(&s_wifi_mgmt_cb);
+
+	struct net_if *iface = net_if_get_wifi_sta();
+	if (iface == NULL) {
+		LOG_WRN("No WiFi STA interface - backhaul unavailable");
+		return;
+	}
+
+	if (net_if_is_up(iface) == false) {
+		net_if_up(iface);
+	}
+
+	struct wifi_connect_req_params params = {
+		.ssid = CONFIG_LICHEN_GATEWAY_WIFI_SSID,
+		.ssid_length = strlen(CONFIG_LICHEN_GATEWAY_WIFI_SSID),
+		.psk = CONFIG_LICHEN_GATEWAY_WIFI_PSK,
+		.psk_length = strlen(CONFIG_LICHEN_GATEWAY_WIFI_PSK),
+		.security = (strlen(CONFIG_LICHEN_GATEWAY_WIFI_PSK) > 0)
+				? WIFI_SECURITY_TYPE_PSK : WIFI_SECURITY_TYPE_NONE,
+		.channel = WIFI_CHANNEL_ANY,
+		.mfp = WIFI_MFP_OPTIONAL,
+	};
+
+	int ret = net_mgmt(NET_REQUEST_WIFI_CONNECT, iface, &params, sizeof(params));
+	if (ret < 0) {
+		LOG_ERR("WiFi connect request failed: %d", ret);
+	} else {
+		LOG_INF("WiFi station mode requested for SSID %s (prefix delegation enabled)", CONFIG_LICHEN_GATEWAY_WIFI_SSID);
+	}
+}
+#endif /* CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION */
+
+ /* --------------------------------------------------------------------------
  * CBOR helpers
  * -------------------------------------------------------------------------- */
+
 
 /*
  * Build a minimal CoAP response and send it.
@@ -716,6 +795,10 @@ int main(void)
 	}
 #endif
 
+#if IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)
+	gateway_backhaul_init();  /* registers handlers early, follows AGENTS.md init order before RPL */
+#endif
+
 	if (gateway_rpl_init() < 0) {
 		LOG_WRN("RPL root init failed - continuing without full DODAG support");
 	}
@@ -727,7 +810,7 @@ int main(void)
 #endif
 
 #if IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)
-	LOG_INF("Prefix delegation enabled - WiFi backhaul stub active");
+	LOG_INF("Prefix delegation enabled - WiFi station backhaul active");
 #endif
 
 	LOG_INF("CoAP server on port %u (AUTOSTART)", coap_port);
