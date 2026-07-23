@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-4flt",
+  "title": "[spec-compliance] TDMA slot hash input mixing (XOR vs concat) mismatches vectors",
+  "description": "Commits touching lichen/subsys/lichen/link/* (9b7b84d45) and rust/lichen-node/src/tdma_scheduler.rs implement inconsistent slot=hash(EUI^epoch) vs concat per ccp_tdma.json and spec/02a-coordinated-capacity.md. C/Rust/Python differ for epoch !=0; violates MUST match test vectors. Priority 1 bug.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T15:40:36.780901158Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T15:40:36.780901158Z"
+}
