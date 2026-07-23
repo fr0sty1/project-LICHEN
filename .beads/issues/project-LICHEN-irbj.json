@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-irbj",
   "title": "[merge-conflict] worktree-worker23: coap_status.c",
-  "notes": "Commit: 454bc13a4",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:57:31.18941484Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:53:36.925281795Z",
+  "updated_at": "2026-07-23T02:50:55.300257455Z",
   "started_at": "2026-07-23T02:50:55.300257455Z",
-  "closed_at": "2026-07-23T02:53:36.925281795Z",
-  "close_reason": "Resolved merge conflict in coap_status.c by fixing implicit int-to-uint8_t conversions in CBOR map/array count calculations for CCP-17 compliance; resolved related conflicts in coap_config.c and coap_keys.c during rebase"
+  "lease_expires_at": "2026-07-23T02:55:55.300257455Z",
+  "heartbeat_at": "2026-07-23T02:50:55.300257455Z"
 }
