@@ -2,15 +2,15 @@
   "id": "project-LICHEN-1a45",
   "title": "[merge-conflict] integration/worker7-20260722: coap_keys.c",
   "notes": "Commit: 854678569",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:52:30.576570642Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:04:31.658832623Z",
+  "updated_at": "2026-07-23T03:04:35.547298524Z",
   "started_at": "2026-07-23T03:00:09.641457045Z",
-  "lease_expires_at": "2026-07-23T03:05:09.641457045Z",
-  "heartbeat_at": "2026-07-23T03:00:09.641457045Z"
+  "closed_at": "2026-07-23T03:04:35.547298524Z",
+  "close_reason": "Resolved merge conflict in coap_keys.c by cleaning documentation and CBOR handling consistency from worker7 integration. Added resolution note. Verified with coap_keys test build. Commit 854678569"
 }
