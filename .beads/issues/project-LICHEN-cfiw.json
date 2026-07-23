@@ -2,15 +2,15 @@
   "id": "project-LICHEN-cfiw",
   "title": "[merge-conflict] worktree-worker20: xiao_s3_wio_sx1262.overlay",
   "notes": "Commit: ed4e4e151",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:42:22.350702113Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:33:25.364281162Z",
+  "updated_at": "2026-07-23T04:33:27.139120565Z",
   "started_at": "2026-07-23T00:44:41.465218685Z",
-  "lease_expires_at": "2026-07-23T04:37:55.132431728Z",
-  "heartbeat_at": "2026-07-23T04:32:55.132431728Z"
+  "closed_at": "2026-07-23T04:33:27.139120565Z",
+  "close_reason": "Fixed merge conflict by syncing xiao_s3_wio_sx1262.overlay and heltec conf to canonical versions"
 }
