@@ -49,7 +49,7 @@ RPL_DEFAULT_LIFETIME_S: int = 1800    # 30 minutes
 RPL_LIFETIME_UNIT_S: int = 60
 
 # RPL Trickle timer parameters (RFC 6206)
-RPL_TRICKLE_IMIN_MS: int = 4096       # ~4 seconds
+RPL_TRICKLE_IMIN_MS: int = 4000       # 4 seconds per spec (draft-lichen-rpl-lora-00.md)
 RPL_TRICKLE_IMAX_DOUBLINGS: int = 8   # max = imin * 2^8 = 2^20 ms (~17 min)
 RPL_TRICKLE_K: int = 10               # Redundancy constant
 

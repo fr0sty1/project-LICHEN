@@ -56,8 +56,8 @@ lifetime_unit_s       = 60    # Lifetime field unit
 
 [rpl.trickle]
 # Trickle timer parameters (RFC 6206)
-imin_ms         = 4096  # ~4 seconds
-imax_doublings  = 8     # imax_doublings so max = imin * 2^8 = 2^20 ms (~17 min)
+imin_ms         = 4000  # 4 seconds (spec Imin=4000 ms)
+imax_doublings  = 8     # Imax = 4000 * 2^8 = 1_024_000 ms (~17.07 min); see spec §6.2
 k               = 10    # Redundancy constant
 
 [schc.fragment]
