@@ -18,7 +18,6 @@
 /* Zephyr 3.7's fuel_gauge.h inline helpers loop a signed index against
  * a size_t bound, which trips LICHEN's -Werror=sign-compare.
  */
-<<<<<<< HEAD
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wsign-compare"
@@ -32,12 +31,6 @@
 #elif defined(__GNUC__)
 #pragma GCC diagnostic pop
 #endif
-=======
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
-#include <zephyr/drivers/fuel_gauge.h>
-#pragma GCC diagnostic pop
->>>>>>> origin/worktree-worker20
 #endif
 #include <zephyr/kernel.h>
 #if IS_ENABLED(CONFIG_REBOOT)

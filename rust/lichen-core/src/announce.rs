@@ -2,9 +2,8 @@
 //!
 //! Wire format (L2 routing dispatch 0x15 + announce per CCP-9 independent oracle):
 //! ```text
-<<<<<<< HEAD
 //! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//! | Type=0x01 | Flags | Hop Cnt | Seq Num (2B) | IID[0] ...     |
+//! | Type=0x01 | Flags (rx_channel) | Hop Cnt | Seq Num (2B) | IID... |
 //! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 //! |                    Originator IID (8 bytes)                   |
 //! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -12,21 +11,14 @@
 //! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 //! |                    Signature (48 bytes)                       |
 //! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//! | rx_channel (u8) | Optional: App Data (variable)         |
+//! | Optional: App Data (variable)                                 |
 //! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 //! ```
 //!
-//! Total: 94 bytes minimum. rx_channel at byte 93, signed per CCP-9.
-=======
-//! 0x15 (L2 dispatch) | 0x01 (type) | rx_channel (flags) | hop (0) | seq (2B) | IID (8) | pubkey (32) | sig (48) | [app_data]
-//! ```
-//!
-//! rx_channel (0-7) packed in flags byte (offset 1 of announce) and signed (CCP-9) to
-//! prevent tampering. Matches _l2_announce_with_channel oracle in generate.py exactly.
-//! Total fixed: 94 bytes (dispatch+93).
->>>>>>> origin/worktree-worker24
-
-/// Announce message type identifier.
+//! rx_channel (0-7) packed into flags byte at offset 1 and signed per CCP-9 to
+//! prevent tampering with rendezvous channel. Matches _l2_announce_with_channel
+//! oracle in generate.py exactly. Total fixed header 93 bytes + app_data.
+//! Saturating ops and exact vector match enforced in tests.
 pub const ANNOUNCE_TYPE: u8 = 0x01;
 
 /// Schnorr48 signature length.
@@ -108,21 +100,13 @@ impl<'a> Announce<'a> {
         if data[0] != ANNOUNCE_TYPE {
             return Err(AnnounceError::WrongType(data[0]));
         }
-<<<<<<< HEAD
 
-        // ponytail: unwrap safe, bounds checked above
-        let originator_iid = data[5..13].try_into().unwrap();
-        let pubkey = data[13..45].try_into().unwrap();
-        let signature = data[45..93].try_into().unwrap();
-        let rx_channel = data[93];
-=======
         let rx_channel = data[1];
->>>>>>> origin/worktree-worker24
         if rx_channel >= 8 {
             return Err(AnnounceError::InvalidChannel(rx_channel));
         }
 
-        // bounds checked above; unwrap safe for fixed sizes
+        // bounds checked above; unwrap safe for fixed sizes (ponytail comment from prior version)
         let originator_iid = data[5..13].try_into().unwrap();
         let pubkey = data[13..45].try_into().unwrap();
         let signature = data[45..93].try_into().unwrap();
@@ -227,10 +211,7 @@ mod tests {
         assert_eq!(ann.hop_count, 3);
         assert_eq!(ann.seq_num, 0x1234);
         assert_eq!(ann.rx_channel, 2);
-<<<<<<< HEAD
-=======
-        assert_eq!(ann.flags, 2);
->>>>>>> origin/worktree-worker24
+        assert_eq!(ann.flags, 2);  // both track the packed rx_channel per CCP-9
         assert_eq!(ann.originator_iid[0], 0x02);
         assert!(ann.app_data.is_empty());
 
@@ -271,19 +252,12 @@ mod tests {
     #[test]
     fn invalid_channel() {
         let mut wire = make_announce();
-<<<<<<< HEAD
-        wire[1] = 16;
-=======
-        wire[1] = 16; // rx_channel/flags >=8
->>>>>>> origin/worktree-worker24
+        wire[1] = 16; // rx_channel/flags >=8 per CCP-9
         assert_eq!(
             Announce::from_bytes(&wire),
             Err(AnnounceError::InvalidChannel(16))
         );
-<<<<<<< HEAD
-=======
 
->>>>>>> origin/worktree-worker24
         let builder = AnnounceBuilder {
             originator_iid: &[0; 8],
             pubkey: &[0; 32],
