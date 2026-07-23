@@ -432,12 +432,15 @@ where
     }
 }
 
+// ── packet forwarding ─────────────────────────────────────────────────────────
+
 async fn forward_mesh_to_upstream<T: TunLike>(
     gw: &mut Gateway,
     frame: &[u8],
     tun: &Option<T>,
 ) -> Option<Vec<u8>> {
-    let (reply_opt, event) = gw.process_rpl(frame, 0);
+    let now_ms = 0; // TODO: real monotonic time (e.g. Instant::now().elapsed().as_millis() as u32)
+    let (reply_opt, event) = gw.process_rpl(frame, now_ms);
     if let RplEvent::DaoReceived { route_updated: true } = event {
         info!("DAO event: route updated");
     }
@@ -453,17 +456,16 @@ async fn forward_mesh_to_upstream<T: TunLike>(
             }
         }
         if let Some(t) = tun {
-            let _ = t.send_pkt(&ipv6).await;
+            if let Err(e) = t.send_pkt(&ipv6).await {
+                error!("TUN write: {e}");
+            }
         }
         None
     } else {
         None
     }
 }
-        None
-    }
-    None
-}
+
 // ── TunLike trait (abstracts TunDevice vs. no-op placeholder) ─────────────────
 
 trait TunLike {
