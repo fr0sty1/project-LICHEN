@@ -191,7 +191,6 @@ config LORA_LICHEN_GATEWAY_RPL_ROOT
 	  Initializes per AGENTS.md order after link_ctx. Drives Trickle DIOs
 	  as root for mesh formation. Updates /status to reflect joined root role.
 
-<<<<<<< HEAD
 config LICHEN_GATEWAY_WIFI_SSID
 	string "WiFi SSID for Heltec V3 backhaul"
 	default "LICHEN-TEST"
@@ -220,8 +219,6 @@ config LICHEN_GATEWAY_PREFIX_DELEGATION
 	  WiFi STA + upstream prefix to RPL DODAG for Heltec V3 6LBR (spec/appendix-border-router.md).
 	  Requires main.c event handlers + AGENTS.md init order. Increases heap (see board defconfig).
 
-=======
->>>>>>> origin/worktree-worker24
 config LICHEN_GATEWAY_RX1_DELAY_MS
 	int "RX1-style delay before answering a CoAP request (ms)"
 	default 0
@@ -233,33 +230,12 @@ config LICHEN_GATEWAY_RX1_DELAY_MS
 	  missed (lora_ipv6_mesh-fe1z, observed on the T1000-E/LR1110). 0
 	  disables the delay. ~100 ms is a safe LoRa value.
 
-<<<<<<< HEAD
-=======
-config LICHEN_GATEWAY_PREFIX_DELEGATION
-	bool "Enable IPv6 prefix delegation from WiFi/Ethernet backhaul to RPL mesh"
-	depends on LICHEN_RPL
-	depends on NET_DHCPV6
-	depends on NET_IPV6_ND
-	default y
-	help
-	  WiFi STA + upstream prefix to RPL DODAG for Heltec V3 6LBR (spec/appendix-border-router.md).
-	  Requires main.c event handlers + AGENTS.md init order. Increases heap (see board defconfig).
+# Force modular CoAP (lichen_coap service + LICHEN_COAP_CONFIG) for
+# gateway; legacy standalone server (lichen_coap_server) would duplicate
+# lichen_config ownership and lacks linker bounds on nucleo_wl55jc/r1_neo.
+config LICHEN_COAP_SERVER_STANDALONE
+	default n
 
-config LICHEN_GATEWAY_WIFI_SSID
-	string "WiFi SSID for Heltec V3 backhaul"
-	default "LICHEN-TEST"
-	depends on LICHEN_GATEWAY_PREFIX_DELEGATION
-	help
-	  SSID for WiFi station mode on Heltec V3 6LBR (used by wifi_mgmt in main.c).
-
-config LICHEN_GATEWAY_WIFI_PSK
-	string "WiFi PSK for Heltec V3 backhaul"
-	default "lichen123"
-	depends on LICHEN_GATEWAY_PREFIX_DELEGATION
-	help
-	  Pre-shared key for WiFi STA. INSECURE default for bench; override per deployment.
-
->>>>>>> origin/worktree-worker24
 config LICHEN_GATEWAY_COORDINATION
 	bool "Gateway coordination protocol (TDMA slots, node registry, handoff)"
 	depends on LICHEN_RPL

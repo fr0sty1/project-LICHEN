@@ -741,24 +741,15 @@ int main(void)
 		LOG_WRN("RPL root init failed - continuing without full DODAG support");
 	}
 
-<<<<<<< HEAD
 #if IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)
 	LOG_INF("Prefix delegation enabled - WiFi backhaul stub active");
 #endif
 
-=======
->>>>>>> origin/worktree-worker24
 #if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
 	LOG_INF("RPL root signalling enabled (DODAG root active)");
 #else
 	LOG_WRN("RPL root signalling disabled - advertising /status rpl=false");
 #endif
-
-#if IS_ENABLED(CONFIG_LICHEN_GATEWAY_WIFI_STATION)
-	wifi_station_init();
-	LOG_INF("WiFi station backhaul initialized");
-#endif
-
 	LOG_INF("CoAP server on port %u (AUTOSTART)", coap_port);
 
 	return 0;
