@@ -9,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:10:52.953227775Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:37:28.954847399Z",
+  "updated_at": "2026-07-23T03:37:35.312153453Z",
   "started_at": "2026-07-23T03:31:30.402915178Z",
   "closed_at": "2026-07-23T03:35:08.283736622Z",
   "close_reason": "Fixed rx_channel handling in to_bytes() of AnnounceMessage to ensure consistency with signed_data(), from_bytes(), and spec wire format (byte 1 = rx_channel). Updated docstring, verified with pytest (30/30 passed), ruff lint clean. Commit a6af42a34."
