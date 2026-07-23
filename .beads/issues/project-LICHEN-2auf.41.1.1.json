@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-2auf.41.1.1",
+  "title": "Add RFC1982 SeqNum type to lichen-core for LOADng freshness",
+  "description": "Implement modular arithmetic SeqNum struct mirroring Python gradient.SeqNum with __lt__, wrapping_add, bounds. Use in loadng.rs and gradient.rs. Include unit tests for wrap behavior (0xFFFF-\u003e0, 0x7FFF edge cases).",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:17:29.997961538Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:17:29.997961538Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.41.1.1",
+      "depends_on_id": "project-LICHEN-2auf.41.1",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:17:30.133899401Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
