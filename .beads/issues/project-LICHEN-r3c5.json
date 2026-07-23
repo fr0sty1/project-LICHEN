@@ -2,11 +2,15 @@
   "id": "project-LICHEN-r3c5",
   "title": "No validation on negative reconnect_attempts parameter",
   "description": "File: python/src/lichen/client/ble.py, line 131-132, 172\n\nThe reconnect_attempts parameter is not validated:\n\n```python\ndef __init__(\n    self,\n    ...\n    reconnect_attempts: int = 0,  # No validation\n) -\u003e None:\n    ...\n    self._reconnect_attempts = reconnect_attempts\n\nasync def connect(self) -\u003e None:\n    for _ in range(self._reconnect_attempts + 1):  # -1 + 1 = 0 iterations\n        ...\n```\n\nImpact: If a caller passes reconnect_attempts=-1, the range becomes range(0) which loops zero times. The method returns without any connection attempt or error.\n\nThis is a silent failure that could be hard to debug.\n\nFix: Validate in __init__:\n```python\nif reconnect_attempts \u003c 0:\n    raise ValueError('reconnect_attempts must be non-negative')\n```",
-  "status": "open",
+  "status": "in_progress",
   "priority": 4,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:17:53.868204Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:17:53.868242Z"
+  "updated_at": "2026-07-23T04:24:57.688347573Z",
+  "started_at": "2026-07-23T04:24:57.688347573Z",
+  "lease_expires_at": "2026-07-23T04:29:57.688347573Z",
+  "heartbeat_at": "2026-07-23T04:24:57.688347573Z"
 }
