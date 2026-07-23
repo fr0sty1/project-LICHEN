@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-3wmt.2",
+  "title": "Audit all other #pragma GCC diagnostic usages across Zephyr lichen/ and tests/ for consistent __GNUC__/__clang__ guards",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:14:39.952761174Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:14:39.952761174Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-3wmt.2",
+      "depends_on_id": "project-LICHEN-3wmt",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:14:40.082684937Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
