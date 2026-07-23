@@ -2,15 +2,15 @@
   "id": "project-LICHEN-7qi7",
   "title": "[merge-conflict] worktree-worker1: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: 832bfa069 (worktree-worker1: synced heltec_wifi_lora32_v3_esp32s3_procpu.conf to consolidated merge resolution including project-LICHEN-7qi7)",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:19:31.26036586Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:23:18.597314689Z",
+  "updated_at": "2026-07-23T02:23:21.17724097Z",
   "started_at": "2026-07-23T02:22:54.660747601Z",
-  "lease_expires_at": "2026-07-23T02:27:54.660747601Z",
-  "heartbeat_at": "2026-07-23T02:22:54.660747601Z"
+  "closed_at": "2026-07-23T02:23:21.17724097Z",
+  "close_reason": "Synced lichen/apps/puck/boards/heltec_wifi_lora32_v3_esp32s3_procpu.conf in worktree-worker1 to match consolidated main version with updated resolution comment referencing project-LICHEN-7qi7. Removed divergence in merge resolution meta-comment. Commit 832bfa069 pushed to worktree-worker1 branch. Follows pattern from project-LICHEN-6jxf, project-LICHEN-b7o1 etc. No dead code, no duplicate entries."
 }
