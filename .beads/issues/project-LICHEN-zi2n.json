@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-zi2n",
+  "title": "[cross-impl] RPL lollipop version comparison inconsistent across Python/Rust/Zephyr",
+  "description": "Reviewed last 20 commits (mostly bd updates + merges; relevant: 563015ff9 rust/lichen-rpl/src/dodag.rs, e9938e3d2 rust/lichen-oscore/src/edhoc.rs). Python/src/lichen/rpl/dodag.py uses full 128-window modular diff for circular region per RFC 6550 §7.2. Rust uses simplified lollipop_cmp (\u003c=16 window + different linear/circular rules). Zephyr lichen/subsys/lichen/rpl/dodag.c (ported from Rust) uses 16-window \u00260x7F diff. Same algorithm produces different behavior on version rollovers/edge cases. Breaks cross-impl test vectors and DODAG stability. Python should be oracle.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:50:11.068134431Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:50:11.068134431Z"
+}
