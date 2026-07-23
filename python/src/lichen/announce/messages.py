@@ -11,7 +11,7 @@ _FIXED_LENGTH = 93
 
 
 class AnnounceError(Exception):
-    pass
+    """Raised when an announce message is malformed."""
 
 
 @dataclass
