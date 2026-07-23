@@ -3,15 +3,15 @@
   "title": "Clean announce packet formats across Rust/Python",
   "description": "Examine and align rust/lichen-core/src/announce.rs, rust/lichen-node/src/announce.rs, python/src/lichen/announce/*.py with spec/05-routing.md:9, test/vectors/ccp9*.json, l2_payload.json. Remove merge artifacts/TODOs/dead code/worker comments ('Why:'). Ensure no_std compliance. Match pseudocode exactly. Use test vector oracles only for tests. Break into issues for codec, processor, tests, verification.",
   "notes": "Commit: 7fd9bae19",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 0,
   "issue_type": "epic",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T02:30:47.199699846Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:45:09.959213083Z",
+  "updated_at": "2026-07-23T02:45:12.537571319Z",
   "started_at": "2026-07-23T02:40:46.764452815Z",
-  "lease_expires_at": "2026-07-23T02:45:46.764452815Z",
-  "heartbeat_at": "2026-07-23T02:40:46.764452815Z"
+  "closed_at": "2026-07-23T02:45:12.537571319Z",
+  "close_reason": "Fixed merge artifacts, removed worker comments and dead reexports, fixed evicted_iid bug in processor, cleaned scheduler and init. Child issues created for further alignment."
 }
