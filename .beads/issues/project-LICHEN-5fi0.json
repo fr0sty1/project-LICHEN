@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-5fi0",
+  "title": "[spec-compliance] EDHOC OSCORE exporter labels and derivation in 06-security.md differ from code",
+  "description": "spec/06-security.md:349 uses EDHOC-Exporter(\"OSCORE Master Secret\", h'' , 16) and similar for salt. However, rust/lichen-oscore/src/edhoc.rs:321 (updated in ed7ed668b) and python/src/lichen/crypto/edhoc.py:464 use the standard EDHOC KDF labels 7 (PRK_out), 10 (PRK_exporter), 0 (master secret), 1 (master salt) per RFC 9528 §4.2 and test vectors. This is a MUST violation for interop. Code was aligned to Python reference but spec was not updated. See export_context() and _edhoc_kdf calls. Test vectors in test/vectors/ should be checked for consistency.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T14:18:07.047002527Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T14:18:07.047002527Z"
+}
