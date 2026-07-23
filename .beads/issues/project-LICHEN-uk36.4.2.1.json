@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-uk36.4.2.1",
   "title": "Fix CBOR encoding in context_3, sig_structure, and AAD for MAC_2/MAC_3 and AEAD in lichen edhoc to match Python cbor2",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:29:16.82734269Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:29:16.82734269Z",
+  "updated_at": "2026-07-23T05:56:31.696140806Z",
+  "started_at": "2026-07-23T05:56:31.696140806Z",
+  "lease_expires_at": "2026-07-23T06:01:31.696140806Z",
+  "heartbeat_at": "2026-07-23T05:56:31.696140806Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-uk36.4.2.1",
