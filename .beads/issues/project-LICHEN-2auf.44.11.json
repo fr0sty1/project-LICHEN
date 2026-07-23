@@ -11,9 +11,9 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-18T18:39:40.44155Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T05:19:58.228733813Z",
+  "updated_at": "2026-07-23T05:20:43.125040575Z",
   "started_at": "2026-07-21T00:04:37.593619898Z",
-  "closed_at": "2026-07-23T05:19:58.228733813Z",
+  "closed_at": "2026-07-23T05:20:43.125040575Z",
   "close_reason": "Decomposed into subtasks",
   "labels": [
     "defer-external"
