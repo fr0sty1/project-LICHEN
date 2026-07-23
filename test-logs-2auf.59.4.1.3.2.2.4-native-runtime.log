@@ -1,0 +1,13 @@
+WARNING: Using a test - not safe - entropy source
+Warning: Bluetooth device missing.
+Specify either a local hci interface --bt-dev=hciN
+or a valid hci tcp server --bt-dev=ip_address:port
+[00:00:00.000,000] [1;31m<err> eth_posix: Cannot create zeth (-1)[0m
+*** Booting Zephyr OS build v3.7.0 ***
+[00:00:00.000,000] [0m<inf> lichen_gateway: LICHEN gateway starting[0m
+[00:00:00.000,000] [0m<inf> lichen_gateway: No LoRa radio configured - CoAP/local-client only[0m
+[00:00:00.000,000] [1;31m<err> bt_hci_core: HCI driver is not ready[0m
+[00:00:00.000,000] [1;31m<err> ble_app_owner: bt_enable failed: -19[0m
+[00:00:00.000,000] [1;33m<wrn> lichen_gateway: BLE UART init failed — BLE unavailable[0m
+[00:00:00.000,000] [1;33m<wrn> lichen_gateway: RPL root signalling disabled - advertising /status rpl=false[0m
+[00:00:00.000,000] [0m<inf> lichen_gateway: CoAP server on port 5683 (AUTOSTART)[0m

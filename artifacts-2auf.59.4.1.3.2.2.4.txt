@@ -1,0 +1,31 @@
+=== Artifact manifest for bead project-LICHEN-2auf.59.4.1.3.2.2.4 ===
+Generated: Thu Jul 23 20:09:26 UTC 2026
+Worktree: /mnt/lichen-zephyr/work/project-LICHEN-worker1 (HEAD a57625b076640ac3a628d61736c559dd47b52353)
+Build dir: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-224
+Board: native_sim/native/64 (Zephyr 3.7 successor to deprecated native_posix)
+App: lichen/apps/gateway
+Config: -DDTC_OVERLAY_FILE=boards/native_posix_ble_ingress.overlay -DEXTRA_CONF_FILE=boards/native_posix_ble_ingress.conf -DZEPHYR_EXTRA_MODULES=$PWD/lichen -DLICHEN_RELEASE_EPOCH_UNIX=1722470400
+Conf change vs prior bead: CONFIG_STACK_CANARIES=n (native_sim canary guard re-seed crash; see summary md)
+Build exit code: BUILD_EXIT=0
+Runtime: 15 s timeout run, exit 124 (healthy idle, SIGINT by timeout), 0 fatal errors, 0 link-layer log lines
+
+=== SHA256 of generated artifacts ===
+de31c7e9abf672216e89a49cbb73f22a6f605cc8d022dc67c5eda4826ede3947  zephyr/zephyr.elf
+a5a73f19226ee558d4edb862c9d0f8630abb294b47b92872dfd64841751ef811  zephyr/zephyr.exe
+cbebdd8e73812b77bb4aa2c23ad96100eafa23b3aba73d1d486ecfb68ce2fbac  zephyr/.config
+e71b936dd6ee4932df174d26797dc87c224416e3868c9c3b07346a3644dd32e9  zephyr/zephyr.dts
+79252947182fa94368a1f5659f3e24e701cc6593a05c711c3ab46791d53b5ccc  zephyr/zephyr.map
+b98db74023d9068f8019070a81dc22cd82c6f6cb81bfa8f579e24238fb706415  CMakeCache.txt
+7d207d19b663266c6b91bc0e21435179d30769487efb0d9da385a7176a7b9307  zephyr_modules.txt
+
+=== Artifact sizes (bytes) ===
+ 8898624 build/ble-native-posix-ingress-59-4-224/zephyr/zephyr.elf
+ 4149696 build/ble-native-posix-ingress-59-4-224/zephyr/zephyr.exe
+
+=== SHA256 of captured logs and exit-code files ===
+ce706d40b6f9b1b9add553f35b5b482d4812f773d13013fb4cd667e1d78c7ab5  build-exit-2auf.59.4.1.3.2.2.4.txt
+1822d20f373a23dd1689ec383ae5f6d21fc654c4aa54d9f98e936105ae76a5ae  build-logs-2auf.59.4.1.3.2.2.4.log
+4a6385eaef96692348b001946fb937ab1acb357032ff6925d65c0424948c36c9  test-exit-2auf.59.4.1.3.2.2.4.txt
+675a3e8cf09996803449f8270036d205ced13c3684ffd4aad6538720a35832ad  test-logs-2auf.59.4.1.3.2.2.4-native-runtime.log
+e64273bbe0cdb8d122370728244f50d9252930ce65f4383d40683d011a245667  test-logs-2auf.59.4.1.3.2.2.4-twister.log
+1d842ba35914c2f34d89edb7952fa1fcca84911456d4a5458f7bf1d1942c959b  test-logs-2auf.59.4.1.3.2.2.4-ble-ingress-qemu.log
