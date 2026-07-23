@@ -806,13 +806,7 @@ int main(void)
 	}
 
 #if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
-<<<<<<< HEAD
-	gateway_rpl_init();
-	gateway_rpl_sync_status();
-	LOG_INF("RPL root signalling enabled");
-=======
 	LOG_INF("RPL root signalling enabled (DODAG root active)");
->>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
 #else
 	LOG_WRN("RPL root signalling disabled - advertising /status rpl=false");
 #endif

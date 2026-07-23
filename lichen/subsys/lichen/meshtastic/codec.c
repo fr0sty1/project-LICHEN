@@ -10,9 +10,6 @@
 
 #include <lichen/meshtastic/codec.h>
 
-<<<<<<< HEAD
-#include <lichen/meshtastic/pb_internal.h>
-=======
 BUILD_ASSERT(LICHEN_MESHTASTIC_FROM_RADIO_MAX <= INT_MAX,
 	     "max must fit in int");
 
@@ -28,7 +25,6 @@ BUILD_ASSERT(LICHEN_MESHTASTIC_FROM_RADIO_MAX <= INT_MAX,
 #define PB_MAX_FIELD_NUMBER 536870911ULL
 #define LICHEN_BRAND "LICHEN"
 #define MESHTASTIC_BRAND "meshtastic"
->>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
 
 #define TORADIO_PACKET_FIELD 1U
 #define TORADIO_WANT_CONFIG_ID_FIELD 3U

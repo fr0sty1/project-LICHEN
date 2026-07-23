@@ -273,10 +273,6 @@ static int encode_record(zcbor_state_t *state,
 	case SENML_VALUE_STRING:
 	case SENML_VALUE_DATA:
 		return -ENOTSUP;
-<<<<<<< HEAD
-
-=======
->>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
 	default:
 		return -EINVAL;
 	}

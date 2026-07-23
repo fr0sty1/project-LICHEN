@@ -629,11 +629,7 @@ void lichen_app_interface_test_reset(void)
 void lichen_app_interface_test_fail_next_location_submit(int ret)
 {
 	k_mutex_lock(&s_mutex, K_FOREVER);
-<<<<<<< HEAD
-	s_test_next_location_submit_ret = ret;
-=======
 	s_test_next_location_submit_ret = ret != 0 ? ret : 0;
->>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
 	k_mutex_unlock(&s_mutex);
 }
 
@@ -641,11 +637,7 @@ void lichen_app_interface_test_fail_next_location_submit(int ret)
 void lichen_app_interface_test_fail_next_clear_network(int ret)
 {
 	k_mutex_lock(&s_mutex, K_FOREVER);
-<<<<<<< HEAD
-	s_test_next_clear_network_ret = ret;
-=======
 	s_test_next_clear_network_ret = ret != 0 ? ret : 0;
->>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
 	k_mutex_unlock(&s_mutex);
 }
 
