@@ -2,15 +2,15 @@
   "id": "project-LICHEN-lgp1",
   "title": "[merge-conflict] worktree-worker17: xiao_s3_wio_sx1262.conf",
   "notes": "Commit: 3e1f22a (canonicalized xiao_s3_wio_sx1262.conf in worker17 worktree; resolved parallel edit divergence per 2u26/80ju audit)",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:11:54.993621187Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:21:24.259041469Z",
+  "updated_at": "2026-07-23T00:21:33.521541099Z",
   "started_at": "2026-07-23T00:18:40.47869171Z",
-  "lease_expires_at": "2026-07-23T00:23:40.47869171Z",
-  "heartbeat_at": "2026-07-23T00:18:40.47869171Z"
+  "closed_at": "2026-07-23T00:21:33.521541099Z",
+  "close_reason": "Canonical xiao_s3_wio_sx1262.conf and overlay synchronized to main version across worktrees; no remaining conflict markers. Part of project-LICHEN-2u26 retirement audit."
 }
