@@ -17,12 +17,11 @@ use std::sync::{
 use tokio::net::UdpSocket;
 use tokio::time::{timeout, Duration};
 
-use crate::codec::{CoapBuilder, CoapPacket};
+use crate::codec::{CoapBuilder, CoapPacket, ACK_HEADER, CON_GET_HEADER};
 use crate::message::{MessageCode, MessageType};
+use crate::option::content_format;
 
 const TIMEOUT_S: u64 = 5;
-/// Content-Format value for CBOR (RFC 7049).
-const CONTENT_FORMAT_CBOR: u16 = 60;
 static REQUEST_SEQUENCE: OnceLock<AtomicU64> = OnceLock::new();
 
 /// A decoded CoAP response.
@@ -120,10 +119,10 @@ fn encode(
         }
     }
 
-    // Add Content-Format (CBOR) and payload when body is present
+    // Add Content-Format (CBOR) and payload when body is present (RFC 7252 §12.3)
     if let Some(p) = payload {
         if !p.is_empty() {
-            builder.content_format(CONTENT_FORMAT_CBOR).map_err(|e| {
+            builder.content_format(content_format::CBOR).map_err(|e| {
                 std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string())
             })?;
             builder.payload(p).map_err(|e| {
@@ -192,12 +191,12 @@ mod tests {
     use std::sync::Arc;
     use std::thread;
 
-    /// Build a minimal CoAP response: Ver=1, Type=ACK, TKL, Code, MID, Token, optional payload.
+    /// Build a minimal CoAP response: Ver=1, Type=ACK, TKL, Code, MID, Token, optional payload (RFC 7252).
     fn build_response(code: u8, mid: u16, token: &[u8], payload: Option<&[u8]>) -> Vec<u8> {
         let tkl = token.len() as u8;
         assert!(tkl <= 8, "token too long");
         // Ver=1 (bits 7-6), Type=ACK=2 (bits 5-4), TKL (bits 3-0)
-        let byte0 = 0x60 | tkl; // Ver=1, T=2 (ACK), TKL
+        let byte0 = ACK_HEADER | tkl;
         let mid_bytes = mid.to_be_bytes();
         let mut data = vec![byte0, code, mid_bytes[0], mid_bytes[1]];
         data.extend_from_slice(token);
@@ -214,11 +213,11 @@ mod tests {
     fn decode_accepts_matching_mid_and_token() {
         let sequence = AtomicU64::new(0x1234);
         let (mid, token) = next_request_id(&sequence).unwrap();
-        let resp_data = build_response(0x45, mid, &token, Some(b"hello")); // 2.05 Content
+        let resp_data = build_response(MessageCode::CONTENT.0, mid, &token, Some(b"hello")); // 2.05 Content (RFC 7252)
         let result = decode(&resp_data, mid, &token);
         assert!(result.is_ok());
         let resp = result.unwrap();
-        assert_eq!(resp.code, 0x45);
+        assert_eq!(resp.code, MessageCode::CONTENT.0);
         assert_eq!(resp.payload, b"hello");
     }
 
@@ -228,7 +227,7 @@ mod tests {
         let attacker_mid = 0xDEAD;
         let token = [0x4c, 0x49, 0x43, 0x48]; // "LICH"
                                               // Attacker knows token but guesses wrong MID
-        let spoofed_resp = build_response(0x45, attacker_mid, &token, Some(b"fake"));
+        let spoofed_resp = build_response(MessageCode::CONTENT.0, attacker_mid, &token, Some(b"fake"));
         let result = decode(&spoofed_resp, request_mid, &token);
         assert!(result.is_err());
         let err = result.unwrap_err();
@@ -241,7 +240,7 @@ mod tests {
         let mid = 0x1234;
         let request_token = [0x4c, 0x49, 0x43, 0x48]; // "LICH"
         let attacker_token = [0x45, 0x56, 0x49, 0x4c]; // "EVIL"
-        let spoofed_resp = build_response(0x45, mid, &attacker_token, Some(b"fake"));
+        let spoofed_resp = build_response(MessageCode::CONTENT.0, mid, &attacker_token, Some(b"fake"));
         let result = decode(&spoofed_resp, mid, &request_token);
         assert!(result.is_err());
         let err = result.unwrap_err();
@@ -254,7 +253,7 @@ mod tests {
         let mid = 0x1234;
         let request_token = [0x4c, 0x49, 0x43, 0x48]; // 4 bytes
         let short_token = [0x4c, 0x49]; // 2 bytes
-        let spoofed_resp = build_response(0x45, mid, &short_token, None);
+        let spoofed_resp = build_response(MessageCode::CONTENT.0, mid, &short_token, None);
         let result = decode(&spoofed_resp, mid, &request_token);
         assert!(result.is_err());
         let err = result.unwrap_err();
@@ -265,7 +264,7 @@ mod tests {
     fn decode_accepts_empty_token_when_expected() {
         let mid = 0x5678;
         let empty_token: [u8; 0] = [];
-        let resp_data = build_response(0x45, mid, &empty_token, Some(b"data"));
+        let resp_data = build_response(MessageCode::CONTENT.0, mid, &empty_token, Some(b"data"));
         let result = decode(&resp_data, mid, &empty_token);
         assert!(result.is_ok());
         let resp = result.unwrap();
@@ -277,7 +276,7 @@ mod tests {
         let mid = 0xABCD;
         let empty_token: [u8; 0] = [];
         let nonempty_token = [0x41, 0x42];
-        let resp_data = build_response(0x45, mid, &nonempty_token, None);
+        let resp_data = build_response(MessageCode::CONTENT.0, mid, &nonempty_token, None);
         let result = decode(&resp_data, mid, &empty_token);
         assert!(result.is_err());
     }
@@ -289,7 +288,7 @@ mod tests {
         let request_token = [0x4c, 0x49, 0x43, 0x48]; // "LICH"
         let attacker_mid = 0xBEEF;
         let attacker_token = [0x45, 0x56, 0x49, 0x4c]; // "EVIL"
-        let spoofed_resp = build_response(0x45, attacker_mid, &attacker_token, Some(b"pwned"));
+        let spoofed_resp = build_response(MessageCode::CONTENT.0, attacker_mid, &attacker_token, Some(b"pwned"));
         let result = decode(&spoofed_resp, request_mid, &request_token);
         assert!(result.is_err());
         // Should fail on MID check first
