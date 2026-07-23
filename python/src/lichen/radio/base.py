@@ -8,8 +8,6 @@ This module defines the Radio protocol that all radio implementations must satis
 The protocol supports LoRa radio operations: transmission, reception, and configuration.
 """
 
-from __future__ import annotations
-
 from typing import Protocol, runtime_checkable
 
 
