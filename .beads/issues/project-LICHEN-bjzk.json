@@ -3,15 +3,15 @@
   "title": "[cross-impl] unresolved merge conflicts in lichen-core/src/announce.rs",
   "description": "rust/lichen-core/src/announce.rs contains git conflict markers (\u003c\u003c\u003c\u003c\u003c\u003c\u003c HEAD, =======, \u003e\u003e\u003e\u003e\u003e\u003e\u003e origin/worktree-worker24) from CCP-9 rx_channel integration. Python announce/messages.py puts rx_channel at wire offset 93 (post-sig) and signs iid+pubkey+seq+rx+appdata. Rust has conflicting from_bytes() (data[1] flags vs data[93]) and signed_data(). Breaks interop and same-algorithm behavior across Python/Rust/Zephyr. Discovered during crossimpl review of recent integration merges (convergence-20260721, interop-fail-closed).",
   "notes": "Commit: 7c30a1f",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T01:05:20.580652334Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:27:58.581015009Z",
+  "updated_at": "2026-07-23T02:28:02.536201163Z",
   "started_at": "2026-07-23T02:25:01.916945303Z",
-  "lease_expires_at": "2026-07-23T02:30:01.916945303Z",
-  "heartbeat_at": "2026-07-23T02:25:01.916945303Z"
+  "closed_at": "2026-07-23T02:28:02.536201163Z",
+  "close_reason": "Fixed from_bytes app_data slice (93 not 94), updated tests and make_announce array size for exact match to Python/C/spec/CCP-9 (rx_channel in flags byte at offset 1, signed_data identical). Removed merge artifacts. Interop restored."
 }
