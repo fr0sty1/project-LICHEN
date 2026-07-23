@@ -3,6 +3,7 @@
 
 #include "status_cbor.h"
 
+#include <zephyr/sys/util.h>
 #include <string.h>
 
 static void cbor_put_map_header(uint8_t *buf, size_t *off, uint8_t count)
@@ -229,6 +230,9 @@ size_t lichen_gateway_encode_status_cbor(
 	map_count += time->rejection_source_class_valid ? 1U : 0U;
 	map_count += time->rejection_source_name[0] != '\0' ? 1U : 0U;
 	map_count += time->rejection_source_class_valid ? 1U : 0U;
+#if IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)
+	map_count += 1U; /* backhaul state */
+#endif
 
 	cbor_put_map_header(buf, &off, map_count);
 
@@ -371,6 +375,11 @@ size_t lichen_gateway_encode_status_cbor(
 		cbor_put_key(buf, &off, "time_reject_passed_epoch_floor");
 		cbor_put_bool(buf, &off, time->rejection_passed_epoch_floor);
 	}
+
+#if IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)
+	cbor_put_key(buf, &off, "backhaul");
+	cbor_put_bool(buf, &off, false); /* wired from main.c s_backhaul_connected in follow-up bead */
+#endif
 
 	return off;
 }
