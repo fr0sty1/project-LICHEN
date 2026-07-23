@@ -2,15 +2,11 @@
   "id": "project-LICHEN-c0rb",
   "title": "Implement transcript_2, transcript_3, transcript_4 helpers matching python edhoc.py and RFC 9528",
   "description": "Define compute_th-based functions that produce identical output to Python _compute_th(th_input) using proper CBOR encoding for TH_2 = H(G_Y || H(msg1)), TH_3 = H(CBOR(TH_2) || CBOR(CIPHERTEXT_2) || CBOR(ID_CRED_R)), TH_4 = H(CBOR(TH_3) || CBOR(CIPHERTEXT_3)). Use test vectors from test/vectors/. --parent=project-LICHEN-y80q",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
-  "issue_type": "epic",
-  "assignee": "AI Agent",
+  "issue_type": "task",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:28:55.673426594Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:30:42.044708086Z",
-  "started_at": "2026-07-23T05:29:29.063336217Z",
-  "closed_at": "2026-07-23T05:30:42.044708086Z",
-  "close_reason": "Decomposed into subtasks c0rb.1-4 for transcript helpers. Epic complete."
+  "updated_at": "2026-07-23T05:28:55.673426594Z"
 }
