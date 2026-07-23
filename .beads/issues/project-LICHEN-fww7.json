@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-fww7",
+  "title": "[spec-compliance] Incomplete SUITES_I and CBOR parsing in edhoc.rs",
+  "description": "rust/lichen-oscore/src/edhoc.rs:516-576 parse_suites_i incomplete for array/int CBOR per RFC 9528 §3.3.2 and spec/06-security.md:361-364 (Suite 0). Risks malformed msgs. Matches other parser issues. See ses_07076286effeyM9Bu5Zr6pa6rl",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T15:15:06.126912455Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T15:15:06.126912455Z"
+}
