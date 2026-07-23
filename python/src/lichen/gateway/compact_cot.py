@@ -19,7 +19,7 @@ import struct
 import uuid
 import warnings
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from enum import IntEnum
 from xml.etree.ElementTree import Element, SubElement, tostring
 
@@ -436,7 +436,7 @@ def expand_cot_to_xml(
         # Derive deterministic UID from message content for idempotent expansion
         sender_uid = _derive_uid_from_cot(cot)
 
-    stale = datetime.fromtimestamp(now.timestamp() + stale_seconds, tz=UTC)
+    stale = now + timedelta(seconds=stale_seconds)
 
     # Format timestamps as ISO 8601 with Z suffix
     time_str = now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z"
