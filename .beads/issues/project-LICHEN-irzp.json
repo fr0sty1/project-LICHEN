@@ -2,10 +2,14 @@
   "id": "project-LICHEN-irzp",
   "title": "codereview pass 3: coap_status.c Zephyr style and capacity",
   "description": "Final independent codereview pass 3. No P0 or P1 findings in encode_status_cbor after map_count fix. Comments were not added per 'No comments, Zephyr style'. Function now correctly encodes all fields from updated struct. Ready for Zephyr build/test and bd close of project-LICHEN-p0cd after verification.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 4,
   "issue_type": "chore",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:02:14.457678191Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:02:14.457678191Z"
+  "updated_at": "2026-07-23T04:31:55.721921986Z",
+  "started_at": "2026-07-23T04:31:55.721921986Z",
+  "lease_expires_at": "2026-07-23T04:36:55.721921986Z",
+  "heartbeat_at": "2026-07-23T04:31:55.721921986Z"
 }
