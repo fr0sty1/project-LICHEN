@@ -6,6 +6,9 @@
  * Classified FAIL; support removed. Retain fragment for reference only. See docs/firmware-board-capability-matrix.md.
  * Proxies: heltec_wifi_lora32_v3_esp32s3_procpu or t1000_e_nrf52840.
  *
+ * Resolved merge conflict for project-LICHEN-7nuz (integration/worker2-20260722): xiao_s3_wio_sx1262.overlay.
+ * Standardized retirement comment across parallel worker integration branches per 2u26 audit.
+ *
  * Original pin map (B2B connector, reference only):
  * SX1262 SPI: SCK=GPIO7, MISO=GPIO8, MOSI=GPIO9, NSS=GPIO41
  * Control: RESET=GPIO42, BUSY=GPIO40, DIO1=GPIO39
