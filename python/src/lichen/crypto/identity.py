@@ -181,18 +181,19 @@ def iid_to_human_address(iid: bytes) -> str:
 
 
 def yggdrasil_address(pubkey: bytes) -> IPv6Address:
-    """Derive Yggdrasil 02xx address from Ed25519 pubkey.
+    """Derive Yggdrasil 02xx::/7 address from Ed25519 pubkey.
 
-    SHA-512(pubkey), format per Yggdrasil spec: addr[0]=0x02,
-    addr[1]=0x02, addr[2:9]=hash[0:7], lower 64 bits zero.
-    Matches Rust and C implementations bit-exactly. Used as primary
-    unicast address (replaces ULA).
+    Matches Rust `yggdrasil_addr_from_pubkey` and spec/06-security.md:152
+    (section 8.6 derivation): addr[0]=0x02, addr[1:8]=SHA-512(pubkey)[0:7],
+    addr[8:16]=IID from _pubkey_to_iid (MUST bind lower 64 bits to prevent
+    key substitution). See test/vectors/yggdrasil-derivation.json.
     """
     if len(pubkey) != 32:
         raise ValueError(f"pubkey must be 32 bytes, got {len(pubkey)}")
     h = sha512(pubkey).digest()
+    iid = _pubkey_to_iid(pubkey)
     addr_bytes = bytearray(16)
     addr_bytes[0] = 0x02
-    addr_bytes[1] = 0x02
-    addr_bytes[2:9] = h[0:7]
+    addr_bytes[1:8] = h[0:7]
+    addr_bytes[8:16] = iid
     return IPv6Address(bytes(addr_bytes))
