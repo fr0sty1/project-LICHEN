@@ -1,13 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: The contributors to the LICHEN project
 //
-// Resolved merge conflict for project-LICHEN-5tc5 (worktree-worker24): rust/lichen-kiss/src/bridge.rs
-// Synced to canonical main version. Includes SPDX, MAX_FRAME_LEN instead of hardcoded 256,
-// SECURITY: epoch validation asserts per spec 4.4 in with_epoch/set_epoch/default,
-// payload_len check in decode_kiss_frame, deprecated new(), comprehensive tests covering
-// port validation for LCI ports and cross-port injection rejection, wire size boundary,
-// epoch bounds. No dead code, follows coding guidelines. Verified with cargo test in context.
-//
 //! KISS to LICHEN link layer bridge.
 //!
 //! Connects KISS framing to the LICHEN link layer, enabling TNC app
