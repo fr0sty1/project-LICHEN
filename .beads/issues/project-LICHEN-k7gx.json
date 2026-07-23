@@ -2,15 +2,15 @@
   "id": "project-LICHEN-k7gx",
   "title": "[merge-conflict] worktree-worker18: trickle.c",
   "notes": "Commit: 865d6618b",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:28:24.433314206Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:17:31.995536623Z",
+  "updated_at": "2026-07-23T02:17:40.898291126Z",
   "started_at": "2026-07-23T02:16:17.258273984Z",
-  "lease_expires_at": "2026-07-23T02:21:17.258273984Z",
-  "heartbeat_at": "2026-07-23T02:16:17.258273984Z"
+  "closed_at": "2026-07-23T02:17:40.898291126Z",
+  "close_reason": "Updated trickle.c in worktree-worker18 to latest bias-free implementation matching Rust, header, and other workers (project-LICHEN-verh, project-LICHEN-67ca). Synced begin_interval, init, comments. Verified via code review against reference."
 }
