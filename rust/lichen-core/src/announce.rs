@@ -110,7 +110,7 @@ impl<'a> Announce<'a> {
             originator_iid,
             pubkey,
             signature,
-            app_data: &data[93..],
+            app_data: &data[94..],
         })
     }
 
@@ -225,8 +225,8 @@ mod tests {
     #[test]
     fn too_short() {
         assert_eq!(
-            Announce::from_bytes(&[0u8; 92]),
-            Err(AnnounceError::TooShort(TooShort::new(FIXED_LENGTH, 92)))
+            Announce::from_bytes(&[0u8; 93]),
+            Err(AnnounceError::TooShort(TooShort::new(FIXED_LENGTH, 93)))
         );
     }
 
