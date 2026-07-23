@@ -2,15 +2,15 @@
   "id": "project-LICHEN-dwj5",
   "title": "[merge-conflict] worktree-worker20: xiao_s3_wio_sx1262.conf",
   "notes": "Commit: b5f5592",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:43:28.199150804Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:47:50.670540104Z",
+  "updated_at": "2026-07-23T01:47:53.290118094Z",
   "started_at": "2026-07-23T01:44:26.560508101Z",
-  "lease_expires_at": "2026-07-23T01:49:26.560508101Z",
-  "heartbeat_at": "2026-07-23T01:44:26.560508101Z"
+  "closed_at": "2026-07-23T01:47:53.290118094Z",
+  "close_reason": "Standardized xiao_s3_wio_sx1262.conf and .overlay retirement comments across worker20 and main worktree to resolve merge conflict. Updated with SPDX, full bead references, proxy guidance, and matrix link. Also resolved incidental rebase conflicts in coap/ and gateway board configs. Commit b5f5592"
 }
