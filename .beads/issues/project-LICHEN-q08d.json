@@ -2,15 +2,15 @@
   "id": "project-LICHEN-q08d",
   "title": "[merge-conflict] worktree-worker21: heltec_wireless_tracker.conf",
   "notes": "Commit: f98855bd7",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:41:03.975736053Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:34:16.582494985Z",
+  "updated_at": "2026-07-23T03:34:19.000181159Z",
   "started_at": "2026-07-23T03:31:24.55252948Z",
-  "lease_expires_at": "2026-07-23T03:36:24.55252948Z",
-  "heartbeat_at": "2026-07-23T03:31:24.55252948Z"
+  "closed_at": "2026-07-23T03:34:19.000181159Z",
+  "close_reason": "Closed"
 }
