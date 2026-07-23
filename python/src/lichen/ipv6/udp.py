@@ -80,15 +80,24 @@ class UdpDatagram:
         return without_checksum[:6] + checksum.to_bytes(2, "big") + self.payload
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> UdpDatagram:
+    def from_bytes(cls, data: bytes, src: IPv6Address | None = None) -> UdpDatagram:
         if len(data) < UDP_HEADER_LENGTH:
             raise UdpError(f"UDP datagram too short: {len(data)} bytes")
         src_port = int.from_bytes(data[0:2], "big")
         dst_port = int.from_bytes(data[2:4], "big")
         length = int.from_bytes(data[4:6], "big")
         checksum = int.from_bytes(data[6:8], "big")
+        for name, port in (("src_port", src_port), ("dst_port", dst_port)):
+            if not 0 <= port <= 0xFFFF:
+                raise UdpError(f"{name} out of range: {port}")
+        if length < UDP_HEADER_LENGTH:
+            raise UdpError(f"UDP length {length} too small (minimum 8 per RFC 768)")
         if length != len(data):
             raise UdpError(f"UDP length {length} != {len(data)} bytes present")
+        if checksum == 0:
+            raise UdpError("checksum is zero (mandatory for IPv6 per RFC 8200 8.1)")
+        if src is not None and (src.is_unspecified or src.is_multicast):
+            raise UdpError(f"malformed source: {src}")
         return cls(src_port, dst_port, data[UDP_HEADER_LENGTH:], checksum)
 
     @staticmethod
