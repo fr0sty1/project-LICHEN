@@ -2,15 +2,15 @@
   "id": "project-LICHEN-ei6e",
   "title": "[merge-conflict] worktree-worker18: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: 8f21ace06",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:40:09.844087687Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:51:31.301606082Z",
+  "updated_at": "2026-07-23T01:51:34.47547493Z",
   "started_at": "2026-07-23T01:49:07.815069508Z",
-  "lease_expires_at": "2026-07-23T01:54:07.815069508Z",
-  "heartbeat_at": "2026-07-23T01:49:07.815069508Z"
+  "closed_at": "2026-07-23T01:51:34.47547493Z",
+  "close_reason": "Cleaned stale merge-resolution comments and duplicate Kconfig settings (stack sizes, NET_L2_WIFI_MGMT=y) from lichen/apps/{puck,gateway}/boards/heltec_wifi_lora32_v3_esp32s3_procpu.conf per no-dead-code rule. Synced to worker18 worktree. Commit 8f21ace06 on integration/worker14-20260722."
 }
