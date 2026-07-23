@@ -20,9 +20,9 @@ Typical usage::
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass, fields
 from decimal import Decimal
+from math import isfinite
 from typing import Any
 
 import cbor2
@@ -75,13 +75,13 @@ def _validate_field_type(name: str, value: object) -> None:
                 f"SenML field '{name}' must be a string, got {type(value).__name__}"
             )
     elif expected == "num":
-        # Accept int or float, but not bool (bool is subclass of int in Python)
-        if isinstance(value, bool) or not isinstance(value, (int, float)):
+        if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
             raise ValueError(
                 f"SenML field '{name}' must be a number, got {type(value).__name__}"
             )
+        if not isfinite(value):
+            raise ValueError(f"SenML field '{name}' must be finite, got {value}")
     elif expected == "int":
-        # Must be int, not float, not bool
         if isinstance(value, bool) or not isinstance(value, int) or isinstance(value, float):
             raise ValueError(
                 f"SenML field '{name}' must be an integer, got {type(value).__name__}"
@@ -98,7 +98,7 @@ def _validate_field_type(name: str, value: object) -> None:
             f"SenML field '{name}' must be bytes, got {type(value).__name__}"
         )
 
-    if name == "bver" and not (1 <= value <= 10):
+    if name == "bver" and (not isinstance(value, int) or not (1 <= value <= 10)):
         raise ValueError(
             f"SenML field 'bver' must be in range [1,10] per RFC 8428 §4.4, got {value}"
         )
@@ -173,11 +173,11 @@ class SenmlRecord:
         """
         kwargs: dict[str, Any] = {}
         for label, val in m.items():
-            if type(label) is str:
+            if isinstance(label, str):
                 if label.endswith("_"):
                     raise ValueError(f"unknown mandatory SenML label '{label}'")
                 continue
-            if type(label) is not int:
+            if not isinstance(label, int):
                 raise ValueError(
                     f"SenML label must be an integer or string, got {type(label).__name__}"
                 )

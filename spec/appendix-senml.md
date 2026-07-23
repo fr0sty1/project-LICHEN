@@ -72,7 +72,7 @@ Resource: `/sensors/battery`
 
 | Name | Unit | Description |
 |------|------|-------------|
-| pct | %RH | State of charge (0-100) |
+| pct | % | State of charge (0-100) |
 | mv | mV | Battery voltage |
 | charging | (bool) | Currently charging |
 | mah | mAh | Remaining capacity (optional) |
@@ -184,9 +184,10 @@ Resource: `/sensors`
   {"n": "lat", "u": "lat", "v": 37.774929},
   {"n": "lon", "u": "lon", "v": -122.419416},
   {"n": "temp", "u": "Cel", "v": 23.5},
-  {"n": "rh", "u": "%RH", "v": 65.2},
-  {"n": "batt/pct", "u": "%RH", "v": 87}
+   {"n": "rh", "u": "%RH", "v": 65.2},
+   {"n": "batt/pct", "u": "%", "v": 87}
 ]
+
 ```
 
 Use hierarchical names (e.g., `batt/pct`) for namespacing.
@@ -286,14 +287,14 @@ Combines network telemetry (RSSI, node count, packet rate, collision rate) and b
   {"n": "rssi", "u": "dBm", "v": -85},
   {"n": "nodecount", "v": 12},
   {"n": "pps", "u": "1/s", "v": 2.3},
-  {"n": "battery", "u": "%EL", "v": 75},
-  {"n": "collision-rate", "u": "%", "v": 0.1}
+   {"n": "battery", "u": "%", "v": 75},
+   {"n": "collision-rate", "u": "%", "v": 0.1}
 ]
 ```
 
-Independent test vector (CBOR hex, 81 bytes with bn):
+Independent test vector (CBOR hex, 72 bytes with bn):
 
-`83a121781d75726e3a6465763a6d61633a303031313232333334343535363637373aa3006472737369016364426d02fbc055400000000000a3006762617474657279016325454c02fb4052c00000000000`
+`83a121781d75726e3a6465763a6d61633a303031313232333334343535363637373aa3006472737369016364426d023854a300676261747465727901612502fb4052c00000000000`
 
 (Computed independently using cbor2; matches `pack([SenmlRecord(bn=...), *metrics(...)])`).
 
@@ -302,8 +303,9 @@ Independent test vector (CBOR hex, 81 bytes with bn):
 | rssi | dBm | Received signal strength |
 | nodecount | - | Number of mesh nodes seen |
 | pps | 1/s | Packets per second |
-| battery | %EL | Battery state of charge |
+| battery | % | Battery state of charge |
 | collision-rate | % | Packet collision rate |
+
 
 Use with CoAP Observe for live telemetry streaming. SCHC compresses well.
 
