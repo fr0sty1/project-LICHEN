@@ -460,6 +460,9 @@ class Router:
             (decision, next_hop) tuple. next_hop is None for QUEUE/DROP/DELIVER_LOCAL.
         """
         dst = packet.header.dst_addr
+        if not isinstance(dst, IPv6Address):
+            logger.error("route: invalid dst_addr type: %s", type(dst))
+            return RouteDecision.DROP, None
 
         # Why check for local first: Don't route packets addressed to us.
         if dst == self.node_address:
