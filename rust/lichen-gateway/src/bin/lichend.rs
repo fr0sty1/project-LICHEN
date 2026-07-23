@@ -437,7 +437,7 @@ async fn forward_mesh_to_upstream<T: TunLike>(
     frame: &[u8],
     tun: &Option<T>,
 ) -> Option<Vec<u8>> {
-    let (reply_opt, event) = gw.process_rpl(frame, 0);
+    let (reply_opt, event) = gw.process_rpl(frame, 0u64);
     if let RplEvent::DaoReceived { route_updated: true } = event {
         info!("DAO event: route updated");
     }
