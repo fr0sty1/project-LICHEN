@@ -333,13 +333,15 @@ void oscore_ctx_free(struct oscore_ctx *_Nullable ctx);
 /**
  * @brief Set the sender sequence number for nonce persistence.
  *
- * IMPORTANT: AES-CCM requires unique nonces per key. MUST restore to value
- * > any prior use after reboot or NVM failure to prevent reuse. Persist
- * via oscore_ctx_persist_ssn().
+ * If NVM write callback registered, persists SSN before marking context
+ * initialized. On NVM failure returns OSCORE_ERR_NVM_FAILED without setting
+ * initialized flag (ensures protect_request fails). MUST call before
+ * oscore_protect_request() to avoid nonce reuse on reboot.
  *
  * @param[in] ctx       Security context
  * @param[in] sender_seq New sender sequence number (must be > any previously used)
- * @return 0 on success, OSCORE_ERR_INVALID_PARAM if ctx is NULL
+ * @return OSCORE_OK on success, OSCORE_ERR_INVALID_PARAM if ctx NULL,
+ *         OSCORE_ERR_NVM_FAILED on NVM write error
  */
 int oscore_ctx_set_sender_seq(struct oscore_ctx *_Nonnull ctx, uint32_t sender_seq);
 

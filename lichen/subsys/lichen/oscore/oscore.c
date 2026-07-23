@@ -843,11 +843,15 @@ int oscore_ctx_get_by_eui64(const uint8_t peer_eui64[OSCORE_EUI64_LEN],
 
 int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint32_t sender_seq)
 {
-	int idx;
-
 	if (ctx == NULL) {
 		return OSCORE_ERR_INVALID_PARAM;
 	}
+
+	oscore_nvm_write_cb write_cb;
+	uint8_t eui64_copy[OSCORE_EUI64_LEN];
+	const uint8_t *eui64 = NULL;
+	int idx;
+	int ret;
 
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
 
@@ -858,8 +862,27 @@ int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint32_t sender_seq)
 	}
 
 	ctx->sender_seq = sender_seq;
-	s_seq_initialized[idx] = true;
+	write_cb = s_nvm_write_cb;
+	if (ctx->has_peer_eui64) {
+		memcpy(eui64_copy, ctx->peer_eui64, OSCORE_EUI64_LEN);
+		eui64 = eui64_copy;
+	}
 
+	k_mutex_unlock(&s_ctx_mutex);
+
+	if (write_cb != NULL) {
+		ret = write_cb(eui64, sender_seq);
+		if (ret != 0) {
+			LOG_ERR("Failed to persist SSN to NVM: %d", ret);
+			return OSCORE_ERR_NVM_FAILED;
+		}
+	}
+
+	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+	idx = ctx_get_index(ctx);
+	if (idx >= 0) {
+		s_seq_initialized[idx] = true;
+	}
 	k_mutex_unlock(&s_ctx_mutex);
 
 	LOG_DBG("Set sender_seq to %u for nonce persistence", sender_seq);
