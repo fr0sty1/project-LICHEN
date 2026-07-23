@@ -1,21 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: The contributors to the LICHEN project
 //
-// SX1262 LoRa radio peripheral for Renode - magic SPI interface.
-// ponytail: no real register emulation, just intercept TX/RX commands.
+// SX127x LoRa radio peripheral for Renode - register-based SPI (SX1276).
+// Adapted from SX127x.cs and LR1110.cs. No full register map; intercepts
+// key registers for FIFO, mode, IRQs and bridges to lichen-sim via TCP.
+// Config ignored where possible. FIFO read/write, mode changes trigger
+// sim protocol. IRQ on DIO0 for TxDone/RxDone.
 //
-// Intercepts SX1262 opcodes and bridges to lichen-sim via TCP.
-// Config commands (SetPacketParams, SetModulationParams, etc.) are
-// acknowledged but ignored - simulation doesn't need RF config.
+// Key registers/opcodes:
+//   RegFifo (0x00)     - FIFO read/write burst
+//   RegOpMode (0x01)   - Sleep (0), Standby (1), TX (3), RX (5) etc.
+//   RegIrqFlags (0x12) - TxDone (bit 3=0x08), RxDone (bit 6=0x40); write-1-to-clear
+//   RegDioMapping1 (0x40) - DIO0 mapping for Tx/Rx done
 //
-// Key opcodes:
-//   0x0E WriteBuffer(offset, data...) - write to TX buffer
-//   0x1E ReadBuffer(offset) -> data... - read from RX buffer
-//   0x83 SetTx(timeout) - trigger transmit
-//   0x82 SetRx(timeout) - enter receive mode
-//   0xC0 GetStatus -> status byte
-//   0x17 GetIrqStatus -> IRQ flags
-//   0x02 ClearIrqStatus(flags)
+// Mimics style of other peripherals exactly.
 
 using System;
 using System.Net.Sockets;
@@ -26,9 +24,9 @@ using Antmicro.Renode.Peripherals.SPI;
 
 namespace Antmicro.Renode.Peripherals.Wireless
 {
-    public class SX1262 : ISPIPeripheral, IGPIOReceiver
+    public class SX127x : ISPIPeripheral, IGPIOReceiver
     {
-        public SX1262(IMachine machine, string simHost = "127.0.0.1", int simPort = 5555)
+        public SX127x(IMachine machine, string simHost = "127.0.0.1", int simPort = 5555)
         {
             this.machine = machine;
             this.simHost = simHost;
@@ -156,7 +154,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     }
                     else if (byteIndex == 1)
                     {
-                        // NOP byte per SX1262 protocol
+                        // NOP byte per SX127x protocol
                         byteIndex++;
                     }
                     else
@@ -192,7 +190,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     break;
 
                 case State.SetRx:
-                    // Collect 3 timeout bytes (24-bit big-endian from SX1262)
+                    // Collect 3 timeout bytes (24-bit big-endian from SX127x)
                     if (byteIndex < 3)
                     {
                         rxTimeoutBytes[byteIndex] = data;
@@ -243,7 +241,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     {
                         lock (stateLock)
                         {
-                            result = (byte)((-rxRssi / 2) & 0xFF); // SX1262 RSSI format
+                            result = (byte)((-rxRssi / 2) & 0xFF); // SX127x RSSI format
                         }
                         byteIndex++;
                     }
@@ -251,7 +249,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     {
                         lock (stateLock)
                         {
-                            result = (byte)((rxSnr / 4) & 0xFF); // SX1262 SNR format
+                            result = (byte)((rxSnr / 4) & 0xFF); // SX127x SNR format
                         }
                         byteIndex++;
                     }
@@ -382,7 +380,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 this.Log(LogLevel.Warning, "TX failed: not connected to lichen-sim");
                 lock (stateLock)
                 {
-                    irqFlags |= 0x0040; // TxDone with implicit error
+                        irqFlags |= 0x0008; // TxDone (bit 3 for SX1276)
                     IRQ.Set(true);
                 }
                 return;
@@ -426,7 +424,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 return;
             }
 
-            // Convert SX1262 24-bit timeout (big-endian, 15.625us steps) to microseconds
+            // Convert SX127x 24-bit timeout (big-endian, 15.625us steps) to microseconds
             uint timeoutSteps = (uint)((rxTimeoutBytes[0] << 16) | (rxTimeoutBytes[1] << 8) | rxTimeoutBytes[2]);
             uint timeoutUs;
             if (timeoutSteps == 0xFFFFFF)
@@ -614,7 +612,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 {
                     case 0x11: // TX_DONE
                         this.Log(LogLevel.Debug, "TX done (async)");
-                        irqFlags |= 0x0001; // TxDone
+                        irqFlags |= 0x0008; // TxDone (RegIrqFlags bit 3)
                         IRQ.Set(true);
                         break;
 
@@ -637,7 +635,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                         rxSnr = (short)ReadLE16(resp, payloadEnd + 2);
                         rxMode = false;
                         this.Log(LogLevel.Debug, "RX_PACKET {0} bytes (async)", rxLen);
-                        irqFlags |= 0x0002; // RxDone
+                        irqFlags |= 0x0040; // RxDone (RegIrqFlags bit 6)
                         IRQ.Set(true);
                         break;
                     }
