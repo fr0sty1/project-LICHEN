@@ -2,11 +2,15 @@
   "id": "project-LICHEN-ro7y",
   "title": "Gateway downward SRH for non-storing RPL",
   "description": "Analyze and update Gateway::mesh_to_mesh in lichen-gateway to use lookup_route from lichen-rpl/lichen-node Router to insert SourceRoutingHeader (or via add_rpl_source_route) before SCHC compress for downward traffic from upstream or mesh-to-mesh forwarding, per spec/05-routing.md:147 and draft-lichen-rpl-lora-00.md:7.4. Update related tests, check TxQueue integration. Break into issues for parse/lookup/build/compress/error handling.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "epic",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T04:10:58.225244321Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:10:58.225244321Z"
+  "updated_at": "2026-07-23T04:27:31.019515946Z",
+  "started_at": "2026-07-23T04:27:31.019515946Z",
+  "lease_expires_at": "2026-07-23T04:32:31.019515946Z",
+  "heartbeat_at": "2026-07-23T04:27:31.019515946Z"
 }
