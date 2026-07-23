@@ -97,7 +97,16 @@ Note: All operators are spelled out (OR, NOT, MOD, XOR) for language-agnostic IE
 
 ### Density Rules Rationale
 
-SF10 (or gateway-assigned SF) is the REQUIRED baseline per appendix-design-rationale.md §7.1. The density-aware adaptive_sf_select overrides this default **only** when one of the explicit IF thresholds is met (density >8, snr_ema<0, load_factor>0.8 for robustness SF11; density<5+snr>8 for capacity SF9; etc.); otherwise RETURN 10. This resolves the prior rationale contradiction and matches the table/pseudocode in 02-physical-link.md:3.5 and all ccp16.json vectors exactly.
+SF10 (or gateway-assigned SF) is the REQUIRED baseline per appendix-design-rationale.md §7.1. The density-aware adaptive_sf_select overrides this default **only** when one of the explicit IF thresholds is met; otherwise RETURN 10. Critical conditions (very high density or very poor SNR) take precedence. This matches the table below, pseudocode in 02-physical-link.md:3.5, rf_health.rs:345, and all ccp16.json vectors exactly. Nodes MUST maintain per-neighbor EMA state for SNR (alpha=1/4 via >>2), signal ASSIGNED_SF and RfHealthMetrics in DIOs, and RX on all SFs.
+
+**Density-Aware SF Selection Table:**
+
+| Priority | Condition | SF | Rationale |
+|----------|-----------|----|-----------|
+| Critical | density > 20 OR snr_ema < -5 | 12 | Extreme interference or congestion; maximum robustness |
+| High | density > 8 OR snr_ema < 0 OR load_factor > 0.8 | 11 | High density, poor link, or overload; robustness |
+| Capacity | density < 5 AND snr_ema > 8 | 9 | Low density + excellent link; maximize throughput |
+| Default | otherwise | 10 | Baseline per design rationale §7.1 |
 
 ### adaptive_sf_select Pseudocode
 
