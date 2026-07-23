@@ -2,15 +2,15 @@
   "id": "project-LICHEN-rz90",
   "title": "[merge-conflict] worktree-worker24: coap_keys.c",
   "notes": "Commit: 9e5d0d5",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:54:18.026734021Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:45:43.194939548Z",
+  "updated_at": "2026-07-23T03:45:46.724563879Z",
   "started_at": "2026-07-23T03:42:57.638657384Z",
-  "lease_expires_at": "2026-07-23T03:47:57.638657384Z",
-  "heartbeat_at": "2026-07-23T03:42:57.638657384Z"
+  "closed_at": "2026-07-23T03:45:46.724563879Z",
+  "close_reason": "Resolved merge conflict markers in test_vectors.py for format_version asserts (supports v1+v2 vectors); cleaned related beads divergence. Commit 9e5d0d5. Test collection now clean."
 }
