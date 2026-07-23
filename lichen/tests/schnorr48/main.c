@@ -5,7 +5,9 @@
  * @file main.c
  * @brief Schnorr-48 unit tests using vectors from test/vectors/schnorr48.json
  *
- * Tests keypair derivation, signing, and verification against known vectors.
+ * Full cross-implementation coverage matching Rust/Python: all 5 valid + all
+ * invalid cases (including low-order points, non-canonical scalars, identity,
+ * zero-s, etc.).
  */
 
 #include <lichen/schnorr48.h>
@@ -195,6 +197,34 @@ static const struct test_vector invalid_vectors[] = {
 		.public_key = "9d7725e28403e00e9ee54f9b14c868faf99b4b2fafa936eda28f8ae40207780d",
 		.message = "74657374",
 		.signature = "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+		.valid = 0,
+	},
+	{
+		.description = "Invalid: identity point as public key",
+		.public_key = "0100000000000000000000000000000000000000000000000000000000000000",
+		.message = "74657374",
+		.signature = "c9bec10578943fc8d453252fb262fa03ad2220609d98dda4b561d4b02281f1e8706676c26685a806d6e0d74f345e2009",
+		.valid = 0,
+	},
+	{
+		.description = "Invalid: low-order (8-torsion) point as public key",
+		.public_key = "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a",
+		.message = "74657374",
+		.signature = "c9bec10578943fc8d453252fb262fa03ad2220609d98dda4b561d4b02281f1e8706676c26685a806d6e0d74f345e2009",
+		.valid = 0,
+	},
+	{
+		.description = "Invalid: non-canonical s (s = L, curve order)",
+		.public_key = "9d7725e28403e00e9ee54f9b14c868faf99b4b2fafa936eda28f8ae40207780d",
+		.message = "74657374",
+		.signature = "c9bec10578943fc8d453252fb262fa03edd3f55c1a631258d69cf7a2def9de1400000000000000000000000000000010",
+		.valid = 0,
+	},
+	{
+		.description = "Invalid: zero scalar s",
+		.public_key = "9d7725e28403e00e9ee54f9b14c868faf99b4b2fafa936eda28f8ae40207780d",
+		.message = "74657374",
+		.signature = "c9bec10578943fc8d453252fb262fa030000000000000000000000000000000000000000000000000000000000000000",
 		.valid = 0,
 	},
 };
