@@ -2,6 +2,10 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 from __future__ import annotations
 
+import asyncio
+import random
+from collections.abc import Awaitable, Callable
+
 """Trickle timer (RFC 6206), used by RPL to pace DIO transmissions.
 
 The timer is a deterministic state machine driven by an explicit clock (all
@@ -17,10 +21,6 @@ exponent instead. We follow the RFC: pass ``imax_doublings``. To get the spec's
 intended ~17 min ceiling from ``Imin = 4096`` ms (2**12), use
 ``imax_doublings = 8`` (2**12 * 2**8 = 2**20 ms).
 """
-
-import asyncio
-import random
-from collections.abc import Awaitable, Callable
 
 # rng() returns a float in [0, 1); now_fn() returns a time in milliseconds.
 RngFn = Callable[[], float]

@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "SCHC fragmentation vectors (RFC 8724 §8) with independent CRC32 oracle from zlib matching FragmentSender implementation. Updated for 6-bit FCN, real MICs, tile/window params.",
+  "description": "SCHC fragmentation vectors (RFC 8724 \u00a78) with independent CRC32 oracle from zlib matching FragmentSender implementation. Updated for 6-bit FCN, real MICs, tile/window params.",
   "vectors": [
     {
       "name": "single_fragment",
@@ -50,13 +50,13 @@
         "2a3f8bb986130203"
       ],
       "mode": "ack_on_error",
+      "mic": "8bb98613",
       "expect": {
         "out_of_order": true,
         "retransmits": [
           0
         ]
-      },
-      "mic": "8bb98613"
+      }
     }
   ]
 }

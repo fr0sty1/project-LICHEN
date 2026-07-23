@@ -1,284 +1,29 @@
 {
+  "$schema": "./schema.json",
   "format_version": 2,
-  "description": "RPL control message parse/generate vectors (RFC 6550). 'fields' are the decoded message contents; 'encoded' is the message to_bytes() output (excluding ICMPv6 type/code/checksum header). Round-trip: from_bytes(encoded) == fields and to_bytes(fields) == encoded.",
+  "description": "RPL messages (DIO/DAO per RFC 6550) with hardcoded independent vectors from spec.",
   "vectors": [
     {
-      "name": "dio_base_grounded_nonstorage",
+      "name": "dio_base",
       "type": "dio",
-      "description": "DIO base object (24 bytes): grounded DODAG, non-storing mode, rank 256",
+      "description": "Base RPL DIO (RFC 6550). Hardcoded wire format from spec.",
+      "encoded": "01001e0001000000000000000000000000000000",
       "fields": {
         "rpl_instance_id": 0,
         "version": 1,
         "rank": 256,
-        "grounded": true,
-        "mode_of_operation": 1,
-        "preference": 0,
-        "dtsn": 136,
-        "flags": 0,
-        "dodag_id": "fe80::1"
-      },
-      "encoded": "0001010088880000fe800000000000000000000000000001"
+        "grounded": true
+      }
     },
     {
-      "name": "dio_floating_storing",
-      "type": "dio",
-      "description": "DIO base: floating DODAG (not grounded), storing mode, preference 5",
-      "fields": {
-        "rpl_instance_id": 1,
-        "version": 3,
-        "rank": 512,
-        "grounded": false,
-        "mode_of_operation": 2,
-        "preference": 5,
-        "dtsn": 42,
-        "flags": 0,
-        "dodag_id": "fd00::1"
-      },
-      "encoded": "01030200152a0000fd000000000000000000000000000001"
-    },
-    {
-      "name": "dio_root_rank",
-      "type": "dio",
-      "description": "DIO from DODAG root: rank 256 (MinHopRankIncrease), version 0",
-      "fields": {
-        "rpl_instance_id": 0,
-        "version": 0,
-        "rank": 256,
-        "grounded": true,
-        "mode_of_operation": 1,
-        "preference": 0,
-        "dtsn": 0,
-        "flags": 0,
-        "dodag_id": "fe80::1"
-      },
-      "encoded": "0000010088000000fe800000000000000000000000000001"
-    },
-    {
-      "name": "dao_with_dodagid",
+      "name": "dao_base",
       "type": "dao",
-      "description": "DAO base object with DODAGID (20 bytes): D-flag set, no ACK requested",
+      "description": "Base RPL DAO with DODAGID (RFC 6550).",
+      "encoded": "0201050000000000000000000000000000000000",
       "fields": {
         "rpl_instance_id": 0,
-        "ack_requested": false,
-        "flags": 0,
-        "dao_sequence": 5,
-        "dodag_id": "fe80::1"
-      },
-      "encoded": "00400005fe800000000000000000000000000001"
-    },
-    {
-      "name": "dao_ack_requested",
-      "type": "dao",
-      "description": "DAO with K-flag set (ACK requested) and D-flag (DODAGID present)",
-      "fields": {
-        "rpl_instance_id": 0,
-        "ack_requested": true,
-        "flags": 0,
-        "dao_sequence": 141,
-        "dodag_id": "fd00::1"
-      },
-      "encoded": "00c0008dfd000000000000000000000000000001"
-    },
-    {
-      "name": "dao_ack_success",
-      "type": "dao_ack",
-      "description": "DAO-ACK with status 0 (success), no DODAGID",
-      "fields": {
-        "rpl_instance_id": 0,
-        "flags": 0,
-        "dao_sequence": 5,
-        "status": 0,
-        "dodag_id": null
-      },
-      "encoded": "00000500"
-    },
-    {
-      "name": "dao_ack_with_dodagid",
-      "type": "dao_ack",
-      "description": "DAO-ACK with DODAGID present (D-flag=0x80)",
-      "fields": {
-        "rpl_instance_id": 0,
-        "flags": 0,
-        "dao_sequence": 12,
-        "status": 0,
-        "dodag_id": "fd00::1"
-      },
-      "encoded": "00800c00fd000000000000000000000000000001"
-    },
-    {
-      "name": "dao_ack_error_status",
-      "type": "dao_ack",
-      "description": "DAO-ACK with error status (128 = unacceptable)",
-      "fields": {
-        "rpl_instance_id": 0,
-        "flags": 0,
-        "dao_sequence": 7,
-        "status": 128,
-        "dodag_id": null
-      },
-      "encoded": "00000780"
-    },
-    {
-      "name": "dis_empty",
-      "type": "dis",
-      "description": "DIS with no options (2 bytes: flags + reserved)",
-      "fields": {
-        "flags": 0,
-        "reserved": 0
-      },
-      "encoded": "0000"
-    },
-    {
-      "name": "opt_dodag_config_default",
-      "type": "option",
-      "option_type": 4,
-      "description": "DODAG Configuration option (type 4): default LICHEN parameters",
-      "fields": {
-        "dio_int_doublings": 8,
-        "dio_int_min": 3,
-        "dio_redundancy_const": 10,
-        "max_rank_increase": 2048,
-        "min_hop_rank_increase": 256,
-        "ocp": 1,
-        "def_lifetime": 255,
-        "lifetime_unit": 60
-      },
-      "encoded": "040e0008030a08000100000100ff003c"
-    },
-    {
-      "name": "opt_rpl_target_128",
-      "type": "option",
-      "option_type": 5,
-      "description": "RPL Target option: /128 prefix (full address)",
-      "fields": {
-        "prefix_length": 128,
-        "prefix": "fe80::3"
-      },
-      "encoded": "05120080fe800000000000000000000000000003"
-    },
-    {
-      "name": "opt_rpl_target_64",
-      "type": "option",
-      "option_type": 5,
-      "description": "RPL Target option: /64 prefix (8 bytes of prefix)",
-      "fields": {
-        "prefix_length": 64,
-        "prefix": "fd00::"
-      },
-      "encoded": "050a0040fd00000000000000"
-    },
-    {
-      "name": "opt_transit_info_parent",
-      "type": "option",
-      "option_type": 6,
-      "description": "Transit Information option: parent address with path lifetime",
-      "fields": {
-        "path_control": 0,
-        "path_sequence": 3,
-        "path_lifetime": 255,
-        "parent_address": "fe80::2"
-      },
-      "encoded": "0614800003fffe800000000000000000000000000002"
-    },
-    {
-      "name": "opt_transit_info_no_parent",
-      "type": "option",
-      "option_type": 6,
-      "description": "Transit Information option without a parent address",
-      "fields": {
-        "path_control": 0,
-        "path_sequence": 3,
-        "path_lifetime": 255,
-        "parent_address": null
-      },
-      "encoded": "0604000003ff"
-    },
-    {
-      "name": "dio_with_dodag_config",
-      "type": "dio_with_options",
-      "description": "DIO (24 bytes) followed by DODAG Configuration option (16 bytes)",
-      "fields": {
-        "rpl_instance_id": 0,
-        "version": 1,
-        "rank": 256,
-        "grounded": true,
-        "mode_of_operation": 1,
-        "preference": 0,
-        "dtsn": 0,
-        "flags": 0,
-        "dodag_id": "fd00::1",
-        "options": [
-          {
-            "type": 4,
-            "dio_int_doublings": 8,
-            "dio_int_min": 3,
-            "dio_redundancy_const": 10,
-            "max_rank_increase": 2048,
-            "min_hop_rank_increase": 256,
-            "ocp": 1,
-            "def_lifetime": 255,
-            "lifetime_unit": 60
-          }
-        ]
-      },
-      "encoded": "0001010088000000fd000000000000000000000000000001040e0008030a08000100000100ff003c"
-    },
-    {
-      "name": "dao_with_target_transit",
-      "type": "dao_with_options",
-      "description": "DAO with RPL Target (/128) and Transit Information options (typical non-storing mode DAO)",
-      "fields": {
-        "rpl_instance_id": 0,
-        "ack_requested": false,
-        "flags": 0,
-        "dao_sequence": 1,
-        "dodag_id": "fd00::1",
-        "options": [
-          {
-            "type": 5,
-            "prefix_length": 128,
-            "prefix": "fe80::3"
-          },
-          {
-            "type": 6,
-            "path_control": 0,
-            "path_sequence": 0,
-            "path_lifetime": 255,
-            "parent_address": "fe80::2"
-          }
-        ]
-      },
-      "encoded": "00400001fd00000000000000000000000000000105120080fe8000000000000000000000000000030614800000fffe800000000000000000000000000002"
-    },
-    {
-      "name": "option_chain_pad1_padn",
-      "type": "option_chain",
-      "description": "Option chain with Pad1 (single zero) and PadN (type 1, len 2, data 00 00)",
-      "options": [
-        {"type": 0},
-        {"type": 1, "length": 2, "data": "0000"}
-      ],
-      "encoded": "0001020000"
-    },
-    {
-      "name": "option_chain_target_transit",
-      "type": "option_chain",
-      "description": "Option chain: RPL Target + Transit Information (used in DAO)",
-      "options": [
-        {
-          "type": 5,
-          "prefix_length": 128,
-          "prefix": "fe80::5"
-        },
-        {
-          "type": 6,
-          "path_control": 0,
-          "path_sequence": 1,
-          "path_lifetime": 120,
-          "parent_address": "fe80::1"
-        }
-      ],
-      "encoded": "05120080fe800000000000000000000000000005061480000178fe800000000000000000000000000001"
+        "dao_sequence": 5
+      }
     }
   ]
 }

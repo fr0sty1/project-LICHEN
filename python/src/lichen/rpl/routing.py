@@ -1,5 +1,15 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
+from __future__ import annotations
+
+from collections.abc import Sequence
+from dataclasses import dataclass, field, replace
+from ipaddress import IPv6Address
+
+from lichen.ipv6 import to_ipv6
+from lichen.ipv6.packet import ExtensionHeader, IPv6Packet, NextHeader
+from lichen.rpl.dodag import DodagState
+
 """RPL non-storing routing table and source-routed forwarding (spec section 8.5).
 
 In non-storing mode only the root holds a routing table; it learns each node's
@@ -11,15 +21,6 @@ RFC 8200 section 4.4. Upward packets simply go to the preferred parent.
 The SRH here is uncompressed (CmprI = CmprE = 0); on-air 6LoRH compression is a
 SCHC-layer concern.
 """
-
-from __future__ import annotations
-
-from dataclasses import dataclass, field, replace
-from ipaddress import IPv6Address
-
-from lichen.ipv6 import to_ipv6
-from lichen.ipv6.packet import ExtensionHeader, IPv6Packet, NextHeader
-from lichen.rpl.dodag import DodagState
 
 ROUTING_TYPE_SOURCE_ROUTE = 3
 _SRH_FIELDS_LENGTH = 6  # routing_type, segments_left, CmprI/E, 3-byte pad/reserved
@@ -89,7 +90,7 @@ class RoutingTable:
     _routes: dict[IPv6Address, list[IPv6Address]] = field(default_factory=dict)
 
     def add_route(
-        self, target: IPv6Address | str, path: list[IPv6Address | str]
+        self, target: IPv6Address | str, path: Sequence[IPv6Address | str]
     ) -> None:
         if not path:
             raise RoutingError("route path must not be empty")
@@ -129,7 +130,7 @@ def next_hop_upward(dodag: DodagState) -> IPv6Address | None:
 
 def insert_source_route(
     packet: IPv6Packet,
-    path: list[IPv6Address | str],
+    path: Sequence[IPv6Address | str],
     *,
     expected_destination: IPv6Address | str | None = None,
 ) -> tuple[IPv6Packet, IPv6Address]:

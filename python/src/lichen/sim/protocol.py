@@ -178,12 +178,18 @@ def encode_tx(payload: bytes, channel: int = 0) -> bytes:
 
 
 def decode_tx(data: bytes) -> tuple[bytes, int]:
-    if len(data) < 3:
+    if len(data) < 2:
         raise ProtocolError("TX message too short")
-    payload_len, channel = struct.unpack_from("<HB", data, 0)
-    if len(data) < 3 + payload_len:
+    payload_len = struct.unpack_from("<H", data, 0)[0]
+    if len(data) >= 3 + payload_len:
+        channel = data[2]
+        payload_start = 3
+    else:
+        channel = 0
+        payload_start = 2
+    if len(data) < payload_start + payload_len:
         raise ProtocolError("TX message truncated at payload")
-    return data[3:3+payload_len], channel
+    return data[payload_start:payload_start + payload_len], channel
 
 
 def encode_tx_done(airtime_us: int) -> bytes:
@@ -357,9 +363,13 @@ def encode_rx_enter(timeout_us: int, channel: int = 0) -> bytes:
 
 
 def decode_rx_enter(data: bytes) -> tuple[int, int]:
-    if len(data) < 5:
+    if len(data) < 4:
         raise ProtocolError("RX_ENTER message too short")
-    timeout_us, channel = struct.unpack_from("<IB", data, 0)
+    timeout_us = struct.unpack_from("<I", data, 0)[0]
+    if len(data) >= 5:
+        channel = data[4]
+    else:
+        channel = 0
     return timeout_us, channel
 
 
