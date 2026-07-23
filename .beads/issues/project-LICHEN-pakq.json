@@ -2,18 +2,17 @@
   "id": "project-LICHEN-pakq",
   "title": "project-LICHEN-w6e9: fix security issues in link layer and oscore",
   "description": "Implement the fixes for P0 security issues in key handling, replay protection, and MIC verification as discovered in project-LICHEN-lw4f. Break down into tasks for each finding.",
-  "notes": "Commit: 13687488a - Security fixes for link layer key handling, replay protection, MIC verification verified compliant per lw4f review. No additional code changes needed. Epic closed as addressed in prior passes.",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "epic",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:04:41.996945029Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:57:44.868769571Z",
+  "updated_at": "2026-07-23T04:56:52.679436108Z",
   "started_at": "2026-07-23T00:05:27.316570103Z",
-  "closed_at": "2026-07-23T04:57:44.868769571Z",
-  "close_reason": "Security review (lw4f) confirmed constant-time ops, key wiping, replay counters, MIC verification all compliant. No code changes required beyond prior fixes. Tests pass. Commit 13687488a",
+  "lease_expires_at": "2026-07-23T05:01:52.679436108Z",
+  "heartbeat_at": "2026-07-23T04:56:52.679436108Z",
   "labels": [
     "defer-external"
   ]
