@@ -2,15 +2,15 @@
   "id": "project-LICHEN-yfyy",
   "title": "[merge-conflict] worktree-worker1: xiao_s3_wio_sx1262.overlay",
   "notes": "Commit: 1239b472b (worktree-worker1 xiao_s3_wio_sx1262.overlay standardized to canonical retired comment)",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:27:16.023159841Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:08:38.398242225Z",
+  "updated_at": "2026-07-23T02:08:40.329325714Z",
   "started_at": "2026-07-23T02:07:14.332656257Z",
-  "lease_expires_at": "2026-07-23T02:12:14.332656257Z",
-  "heartbeat_at": "2026-07-23T02:07:14.332656257Z"
+  "closed_at": "2026-07-23T02:08:40.329325714Z",
+  "close_reason": "Updated xiao_s3_wio_sx1262.overlay comment in worktree-worker1 to match canonical retired fragment from main; resolved merge conflict by consolidating worker updates; committed 1239b472b and pushed to worktree-worker1 branch"
 }
