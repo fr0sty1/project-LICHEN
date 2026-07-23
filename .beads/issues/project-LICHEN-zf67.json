@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-zf67",
   "title": "[merge-conflict] worktree-worker21: lib.rs",
-  "status": "in_progress",
+  "notes": "Commit: 754937f8a",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:59:39.833502468Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:55:58.831478082Z",
+  "updated_at": "2026-07-23T03:00:20.215001272Z",
   "started_at": "2026-07-23T02:55:58.831478082Z",
-  "lease_expires_at": "2026-07-23T03:00:58.831478082Z",
-  "heartbeat_at": "2026-07-23T02:55:58.831478082Z"
+  "closed_at": "2026-07-23T03:00:20.215001272Z",
+  "close_reason": "Aligned lichen-core::lichen_hash_32 (FNV-1a32) and lichen-link::identity (SHA256 IID + matching tests) across worktree-worker21 merge conflict. Updated comments, removed divergent CRC impl and test values. Also cleaned merge markers in generate.py, sales-playbook.md, rpl draft. Commit 754937f8a"
 }
