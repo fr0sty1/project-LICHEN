@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-2auf.44.11.7.2.3",
+  "title": "Update Router::prune_neighbors_at, maintain, and related methods for Trickle-safe policy",
+  "description": "Inject or use default TrickleSafeLivenessPolicy in prune_neighbors_at. Eviction only after policy confirmation AND \u003e10s. Keep topology change detection and trickle.reset exactly as-is. Update maintain to pass policy. Ensure monotonic clock.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:30:07.526227628Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:30:07.526227628Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.11.7.2.3",
+      "depends_on_id": "project-LICHEN-2auf.44.11.7.2",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:30:07.671083534Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
