@@ -94,12 +94,6 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 	size_t piv_len = sizeof(piv);
 	bool is_protected = coap_oscore_is_protected(request);
 	if (is_protected) {
-		uint8_t peer_eui64[8];
-		if (addr_len >= sizeof(struct sockaddr_in6) && addr->sa_family == AF_INET6) {
-			const struct sockaddr_in6 *in6 = (const struct sockaddr_in6 *)addr;
-			memcpy(peer_eui64, &in6->sin6_addr.s6_addr[8], 8);
-			lichen_eui64_to_iid(peer_eui64, peer_eui64);
-		}
 		if (oscore_ctx_get_by_eui64(peer_eui64, &ctx) != OSCORE_OK || ctx == NULL) {
 			return coap_oscore_send_unauthorized(resource, request, addr, addr_len);
 		}
@@ -124,7 +118,7 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 		return COAP_RESPONSE_CODE_UNAUTHORIZED;
 	}
 	uint32_t now_ms = k_uptime_get_32();
-	uint8_t iid7 = sender_iid[7];
+	uint8_t iid7 = peer_eui64[7];
 	k_mutex_lock(&s_rate_mutex, K_FOREVER);
 	if (s_last_deaddrop[iid7] && (now_ms - s_last_deaddrop[iid7] < CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS)) {
 		k_mutex_unlock(&s_rate_mutex);
