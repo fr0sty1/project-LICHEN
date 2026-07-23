@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-vhvj.2.4.3",
+  "title": "Remove dead/unused channel and frequency logic from medium.py and tests",
+  "description": "Identify and eliminate any dead code related to old channel logic, unused rx_frequency_hz paths, LR-FHSS frequency filtering if not tied to hop rendezvous, or other unused vars/imports. Update docstrings. Ensure no breakage to existing tests.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:23:04.434199191Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:23:04.434199191Z",
+  "labels": [
+    "defer-external"
+  ]
+}
