@@ -435,6 +435,7 @@ where
 <<<<<<< HEAD
 // ── packet forwarding ─────────────────────────────────────────────────────────
 
+<<<<<<< HEAD
 =======
 >>>>>>> origin/worktree-worker19
 async fn forward_mesh_to_upstream<T: TunLike>(
@@ -450,6 +451,26 @@ async fn forward_mesh_to_upstream<T: TunLike>(
 >>>>>>> origin/worktree-worker19
     if let RplEvent::DaoReceived { route_updated: true } = event {
         info!("DAO event: route updated");
+=======
+async fn forward_mesh_to_upstream<T: TunLike>(gw: &mut Gateway, frame: &[u8], tun: &Option<T>) {
+    let (reply_opt, event) = gw.process_rpl(frame, 1000); // TODO: real monotonic ms for trickle
+    if let RplEvent::DaoReceived {
+        target,
+        route_updated: true,
+    } = event
+    {
+        let node_id = NodeId::from_ipv6(&target);
+        gw.add_route(target, node_id);
+        info!("DAO event: route updated");
+    }
+
+    if let Some(reply) = reply_opt {
+        info!(
+            len = reply.len(),
+            "reply ready for SLIP TX queue"
+        );
+        // TODO: queue via slip or concentrator send
+>>>>>>> origin/worktree-worker23
     }
     if let Some(reply) = reply_opt {
 <<<<<<< HEAD

@@ -203,10 +203,18 @@ def find_missing_packets(
 ) -> list[tuple[str, str, str]]:
     """Find packets sent but never received by any node.
 
+<<<<<<< HEAD
     Returns list of (hash, sender_node_id, sender_impl).
     """
     # Collect all sent hashes with sender info
     sent_hashes: dict[str, tuple[str, str]] = {}  # hash -> (node_id, impl)
+=======
+    Supports multiple senders per hash (origin + forwarders) to preserve
+    forwarding information instead of first-wins policy. Fixes skewed
+    statistics and missing-packet detection for forwarded drops.
+    """
+    sent_by_hash: dict[str, set[tuple[str, str]]] = defaultdict(set)
+>>>>>>> origin/worktree-worker23
     received_hashes: set[str] = set()
 
     for node_id, stats in all_nodes.items():

@@ -37,7 +37,11 @@ LOG_MODULE_REGISTER(lichen_coap_keys, CONFIG_LICHEN_COAP_KEYS_LOG_LEVEL);
 #ifndef CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES
 #define CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES 16
 #endif
+<<<<<<< HEAD
 BUILD_ASSERT(CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES <= 16, "CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES >16 risks stack overflow in encode_keys_list_cbor (project-LICHEN-vw14)");
+=======
+BUILD_ASSERT(CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES <= 16, "CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES >16 risks stack overflow in encode_keys_list_cbor");
+>>>>>>> origin/worktree-worker23
 
 /* CBOR content-format code */
 #define CBOR_CONTENT_FORMAT 60
@@ -269,8 +273,6 @@ static int base64_decode(const char *in, size_t in_len, uint8_t *out, size_t out
 	return (int)out_idx;
 }
 
-<<<<<<< HEAD
-=======
 int lichen_key_pubkey_to_iid(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
 			     uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN])
 {
@@ -288,17 +290,24 @@ int lichen_key_pubkey_to_iid(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN
 		return -EIO;
 	}
 
+	/* IID = SHA-256(pubkey)[0:8] with U/L bit cleared (bit 1 = 0x02)
+	 * per RFC 4291 (locally-administered) and LICHEN spec (project-LICHEN-zt3c).
+	 * Matches _pubkey_to_iid() in Python and lichen_pubkey_to_iid() in ipv6_addr.c.
+	 * This enables unified identity across LCI, mesh, and backbone.
+	 */
 	memcpy(iid, hash, LICHEN_KEY_IID_LEN);
-	iid[0] &= ~0x02U;
-	memset(hash, 0, sizeof(hash));  /* clear sensitive intermediate from stack */
+	iid[0] &= ~0x02U;  /* Clear U/L bit */
+	memset(hash, 0, sizeof(hash));  /* scrub sensitive material */
+
 	return 0;
 #else
-	/* Kconfig forces TINYCRYPT_SHA256; this path is unreachable */
-	return -ENOSYS;
+	/* Fallback without crypto (insecure, test-only) */
+	memcpy(iid, pubkey, LICHEN_KEY_IID_LEN);
+	iid[0] &= ~0x02U;
+	return 0;
 #endif
 }
 
->>>>>>> origin/integration/worker13-20260722
 int lichen_key_pubkey_fingerprint(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
 				  char *_Nonnull buf, size_t buf_len)
 {
