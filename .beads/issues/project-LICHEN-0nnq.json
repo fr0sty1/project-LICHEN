@@ -3,15 +3,15 @@
   "title": "Resolve all merge conflicts from rebase in C/Kconfig/DTS/main.c files for lichen/apps/gateway/* boards/* samples/* subsys/lichen/*",
   "description": "Merge changes from both sides in conflicted files following LICHEN C guidelines (prefixes LICHEN_*/SCHC_*/etc, init order from AGENTS.md, BUILD_ASSERT, no dead code/comments, robustness, test vector match). Resolve without losing functionality. Then west build and git add.",
   "notes": "Commit: 024b662",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 0,
   "issue_type": "epic",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:28:33.099870699Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:36:17.193432662Z",
+  "updated_at": "2026-07-23T00:36:23.787017105Z",
   "started_at": "2026-07-23T00:31:10.424726272Z",
-  "lease_expires_at": "2026-07-23T00:36:10.424726272Z",
-  "heartbeat_at": "2026-07-23T00:31:10.424726272Z"
+  "closed_at": "2026-07-23T00:36:23.787017105Z",
+  "close_reason": "Closed"
 }
