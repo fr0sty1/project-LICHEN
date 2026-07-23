@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-wdef",
   "title": "[merge-conflict] worktree-worker18: messages.py",
-  "status": "in_progress",
+  "notes": "Commit: a256f847c",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:10:49.717037945Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:48:48.713340399Z",
+  "updated_at": "2026-07-23T04:52:01.33110941Z",
   "started_at": "2026-07-23T03:28:38.242792146Z",
-  "lease_expires_at": "2026-07-23T04:53:48.713340399Z",
-  "heartbeat_at": "2026-07-23T04:48:48.713340399Z"
+  "closed_at": "2026-07-23T04:52:01.33110941Z",
+  "close_reason": "Merge conflict resolved by reconciling announce/messages.py and coords.py with canonical rx_channel/CCP-9 implementation and adding missing opportunistic forwarder support. Tests and ruff checks pass. Pushed to worktree-worker18 branch."
 }
