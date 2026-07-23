@@ -319,7 +319,7 @@ mod tests {
         assert_eq!(t2.max_interval, u32::MAX);
 
         // Verify non-overflowing case still works
-        let t3 = TrickleTimer::new(1000, 4, 10); // 1000 * 16 = 16000
+        let t3 = TrickleTimer::new(1000, 4, 10);
         assert_eq!(t3.max_interval, 16000);
     }
 

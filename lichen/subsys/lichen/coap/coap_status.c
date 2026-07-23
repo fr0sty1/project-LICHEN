@@ -874,16 +874,24 @@ int lichen_coap_status_init(const struct lichen_coap_status_config *config)
 
 void lichen_coap_status_notify(void)
 {
+<<<<<<< HEAD
 	if (!s_initialized || !s_config.status_get) {
 		return;
 	}
 	coap_resource_notify(&lichen_coap_status_resource);
+=======
+	coap_resource_notify((struct coap_resource *)&lichen_coap_status_resource);
+>>>>>>> origin/integration/worker2-20260722
 }
 
 void lichen_coap_status_neighbors_notify(void)
 {
+<<<<<<< HEAD
 	if (!s_initialized || !s_config.neighbors_get) {
 		return;
 	}
 	coap_resource_notify(&lichen_coap_neighbors_resource);
+=======
+	coap_resource_notify((struct coap_resource *)&lichen_coap_status_resource);
+>>>>>>> origin/integration/worker2-20260722
 }

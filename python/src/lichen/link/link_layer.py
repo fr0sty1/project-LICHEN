@@ -251,8 +251,9 @@ class LinkLayer:
         function documents exactly what is signed, preventing subtle bugs
         where fields are added but not covered by the signature.
 
-        Signed fields follow the draft exactly:
-        LENGTH || LLSec || EPO || SEQ || DST || PLD.
+        Signed fields follow the draft exactly with dst_addr_len domain
+        separation (per j7rk): LENGTH || LLSec || EPO || SEQ || DST_LEN(1)
+        || DST || PLD.
 
         Returns:
             Bytes to be signed.
@@ -264,6 +265,7 @@ class LinkLayer:
         return (
             bytes([length, llsec, epoch])
             + seqnum.to_bytes(2, "big")
+            + bytes([len(dst_addr)])
             + dst_addr
             + payload
         )

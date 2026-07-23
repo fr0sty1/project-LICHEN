@@ -125,8 +125,8 @@ bool schnorr48_verify(const uint8_t *_Nonnull pubkey,
 /**
  * @brief Sign a LICHEN link-layer frame.
  *
- * Builds the signable data (length || LLSec || epoch || seqnum || dst_addr || payload)
- * and produces a 48-byte signature.
+ * Builds the signable data (length || LLSec || epoch || seqnum || dst_addr_len(1)
+ * || dst_addr || payload) for domain separation and produces a 48-byte signature.
  *
  * @param[in]  length        Frame body length byte
  * @param[in]  llsec         Wire LLSec byte

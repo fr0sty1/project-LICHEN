@@ -231,6 +231,16 @@ mod tests {
         );
     }
     #[test]
+    fn invalid_channel() {
+        let mut wire = make_announce();
+        wire[1] = 0x10; // channel = 16 invalid
+        assert_eq!(
+            Announce::from_bytes(&wire),
+            Err(AnnounceError::InvalidChannel(16))
+        );
+    }
+
+    #[test]
     fn should_relay() {
         let mut wire = make_announce();
         wire[2] = 14;

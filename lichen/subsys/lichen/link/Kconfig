@@ -117,6 +117,7 @@ config LICHEN_TDMA
 	depends on LICHEN_RPL
 	select LICHEN_SCHC
 	help
+<<<<<<< HEAD
 	  Enable TDMA struct and lichen_tdma_init() after lichen_link_load_key() per
 	  initialization graph in AGENTS.md and spec/02a-coordinated-capacity.md.
 	  Supports beacon sync, GPS sync, dynamic slot assignment from root DIO/beacon,
@@ -159,5 +160,10 @@ config LICHEN_N_CHANNELS
 	help
 	  Matches regional plan (e.g. 8 for EU868). Used for mod N in
 	  select_channel/hash_32 and synchronized_hop_channel(CCP-12).
+=======
+	  Enable TDMA struct and lichen_tdma_init() (link_ctx.c:508) after
+	  lichen_link_load_key() per initialization graph in AGENTS.md and
+	  spec/02a-coordinated-capacity.md §3. Must not call before key loaded.
+>>>>>>> origin/integration/worker2-20260722
 
 endif # LICHEN_LINK

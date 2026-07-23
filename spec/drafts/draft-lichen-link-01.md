@@ -187,10 +187,11 @@ When S=1, the MIC field contains the full 48-byte Schnorr signature as defined i
 [draft-lichen-schnorr-00]. The signature is computed over:
 
 ```
-signed_data = LENGTH || LLSec || EPO || SEQ || DST || PLD
+signed_data = LENGTH || LLSec || EPO || SEQ || DST_LEN(1) || DST || PLD
 ```
 
-(All fields before the MIC, in wire order, excluding the MIC itself.)
+(DST_LEN provides domain separation for variable-length DST field; all fields
+before the MIC, in wire order, excluding the MIC itself.)
 
 The signing key is the sender's long-term Ed25519 private key. The
 corresponding public key is distributed via the LICHEN announce protocol or

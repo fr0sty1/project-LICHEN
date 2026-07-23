@@ -149,7 +149,8 @@ pub const SIGNATURE_LENGTH: usize = 48;
 
 /// Sign a link-layer frame. The returned 48 bytes occupy the MIC field.
 ///
-/// Signed data layout: length || LLSec || epoch || seqnum || dst_addr || payload.
+/// Signed data layout: length || LLSec || epoch || seqnum || dst_addr_len(1)
+/// || dst_addr || payload (domain separation per j7rk).
 #[allow(clippy::too_many_arguments)]
 pub fn sign_frame(
     length: u8,
@@ -187,6 +188,10 @@ pub fn verify_frame(
     verify(sender_pubkey, &msg, &sig)
 }
 
+<<<<<<< HEAD
+=======
+// LENGTH || LLSec || epoch || seqnum || dst_addr_len(1) || dst_addr || inner_payload
+>>>>>>> origin/integration/worker2-20260722
 fn build_signable(
     length: u8,
     llsec: u8,
