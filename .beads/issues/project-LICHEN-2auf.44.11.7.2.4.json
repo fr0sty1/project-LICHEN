@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-2auf.44.11.7.2.4",
+  "title": "Update RplRuntime, tests, and integration points for new liveness policy",
+  "description": "Revise runtime_prunes_neighbor_only_after_literal_timeout test and RplRuntimeConfig/maintenance to use the new policy with 10s default. Ensure no Trickle violation on eviction. Update any other callers in rpl_stack.rs, node.rs. Add test for policy preventing eviction of active trickle neighbors.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:30:14.109217785Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:30:14.109217785Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.11.7.2.4",
+      "depends_on_id": "project-LICHEN-2auf.44.11.7.2",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:30:14.255384282Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
