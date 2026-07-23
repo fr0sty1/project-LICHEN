@@ -2,12 +2,16 @@
   "id": "project-LICHEN-tmnr",
   "title": "[codereview-pass3] mesh_to_mesh should eventually insert SourceRoutingHeader using lookup_route path before SCHC compress per RPL non-storing mode",
   "description": "Current stub compresses raw IPv6; full impl needs SRH per lichen-rpl::routing::SourceRoutingHeader and spec/05-routing.md for downward traffic from root. Opinion/P4 (enhancement, tracked in epic). discovered-from:project-LICHEN-3k6w.3",
-  "status": "open",
+  "status": "in_progress",
   "priority": 4,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T15:45:58.829481263Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:45:58.829481263Z",
+  "updated_at": "2026-07-23T04:08:51.978643521Z",
+  "started_at": "2026-07-23T04:08:51.978643521Z",
+  "lease_expires_at": "2026-07-23T04:13:51.978643521Z",
+  "heartbeat_at": "2026-07-23T04:08:51.978643521Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-tmnr",
