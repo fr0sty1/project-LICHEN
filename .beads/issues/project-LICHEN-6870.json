@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-6870",
   "title": "[merge-conflict] integration/worker7-20260722: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
+  "notes": "Commit: 5ca7868f9",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:52:30.382365162Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:22:40.29300145Z",
+  "updated_at": "2026-07-23T03:23:24.796155899Z",
   "started_at": "2026-07-23T03:22:40.29300145Z",
   "lease_expires_at": "2026-07-23T03:27:40.29300145Z",
   "heartbeat_at": "2026-07-23T03:22:40.29300145Z"
