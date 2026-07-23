@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-eyqx",
+  "title": "[security] EDHOC signature length and scheme mismatch between Rust (64B Ed25519) and C (48B Schnorr48)",
+  "description": "Rust/lichen-oscore/src/edhoc.rs uses SIG_LEN=64 with ed25519_dalek::Signature and verify_strict. C/lichen/subsys/lichen/edhoc/edhoc.c and edhoc.h define EDHOC_SIG_LEN=48 with schnorr48_sign/verify from link layer (per draft-lichen-schnorr-00.md). Recent uk36/ow3c/hnyw fixes to edhoc.rs, edhoc.c, oscore.c did not align implementations. This breaks interop, test vectors (schnorr48.json), OSCORE context export after EDHOC, and authentication. Affects key handling, MIC/signature verification. See commits touching edhoc.rs (402298f95, a3f724ba7, 40f1a5205, ed7ed668b, 11d4a7a32) and edhoc.c (296bd6c4d), oscore.c (7baadd563). Priority 0 as it invalidates security properties.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T14:50:55.294588943Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T14:50:55.294588943Z"
+}
