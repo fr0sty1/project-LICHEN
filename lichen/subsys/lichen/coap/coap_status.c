@@ -293,7 +293,7 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 
 	cbor_ctx_init(&ctx, buf, buf_size);
 
-	map_count = 5;
+	map_count = 6;
 	if (status->battery_pct_valid) map_count++;
 	if (status->battery_mv_valid) map_count++;
 	cbor_put_map_header(&ctx, map_count);
@@ -468,7 +468,7 @@ size_t lichen_coap_encode_neighbors_cbor(uint8_t *buf, size_t buf_size,
 	return ctx.off;
 }
 
-	size_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
+size_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
 				      const struct lichen_coap_route *routes,
 				      size_t count,
 				      const uint8_t *default_route)
