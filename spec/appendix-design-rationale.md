@@ -391,6 +391,25 @@ Single channel creates contention hotspot. CCP-16 coordinates capacity. All impl
 
 Normative pseudocode and thresholds are in physical-link:3.4 and 02a-coordinated-capacity:2a.3 (EMA alpha=1/4 from rf_health.rs, per-neighbor state, DIO for ASSIGNED_SF/metrics, RX all SF, TX_SF announcement). Implementations MUST match test/vectors/ccp16.json vectors exactly with RFC 2119 keywords (MUST for SF selection, density/SNR/loss/utilization thresholds; SHOULD for optimizations). SF10 baseline per 7.1; adaptive overrides only on explicit thresholds. Integrates with RPL DIO, TDMA slot hash, and CCP-16 simulator gates. No dead code; all paths exercised by vectors.
 
+**Fixed-Point no_std Example (Q16.16 for EMA):** For embedded `no_std` (Zephyr C/Rust lichen-core), avoid f32. Use saturating Q16.16 arithmetic matching rf_health.rs:170,251:
+
+```rust
+const EMA_ALPHA_SHIFT: u32 = 2;  // alpha = 1/4
+const FP_SCALE: u32 = 1 << 16;
+
+fn ema_update_fp(avg_fp: i32, sample_fp: i32) -> i32 {
+    let diff = sample_fp.saturating_sub(avg_fp);
+    avg_fp.saturating_add(diff >> EMA_ALPHA_SHIFT)
+}
+
+// Usage (SNR scaled <<16):
+let snr_fp = (snr as i32) << 16;
+nbr.ema_snr_fp = ema_update_fp(nbr.ema_snr_fp, snr_fp);
+let snr_ema = (nbr.ema_snr_fp + (1<<15)) >> 16;  // round to int
+```
+
+This produces identical results to the floating-point pseudocode for the test vectors while fitting constrained MCUs. See lichen-core/src/rf_health.rs for full impl (saturating ops, constants matching DENSITY_* and SNR_* thresholds).
+
 **Multi-Channel + Density Balancing**
 - CH0 always for control (DIOs, all listen). Data channels via hash or root-assigned (RPL DAO-ACK carries channel_map).
 - Nodes report neighbor_count (u8), channel_util (percent*2.55) in DIO option.

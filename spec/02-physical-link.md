@@ -110,7 +110,7 @@ select_tx_sf(nbr, density, utilization):
     return sf, true
 ```
 
-Embedded note: no_std implementations SHOULD prefer Q7.8 fixed-point or lookup tables over f32 in hot paths (see lichen-rpl reference for `lichen_rpl_update_sf`). Test vectors in `test/vectors/ccp16.json` (and ccp15.json, ccp_load_balancing.json) MUST match output exactly for load_balancing cases (SF9 for density=3/snr=12.5, SF11 for density=12/snr=-2, SF12+tx_allowed=false for density=255/utilization=255).
+Embedded note: no_std implementations SHOULD prefer Q16.16 fixed-point (see appendix-design-rationale.md:7.6 example and lichen-core::rf_health). Test vectors in `test/vectors/ccp16.json` (and ccp15.json, ccp_load_balancing.json) MUST match output exactly for load_balancing cases (SF9 for density=3/snr=12.5, SF11 for density=12/snr=-2, SF12+tx_allowed=false for density=255/utilization=255).
 
 **Backwards Compatibility**
 
