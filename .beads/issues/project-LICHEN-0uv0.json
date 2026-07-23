@@ -2,6 +2,7 @@
   "id": "project-LICHEN-0uv0",
   "title": "[spec-compliance] LLSec byte mismatch in C tx vs spec example and Rust",
   "description": "C lichen_link_tx.c:100 computes llsec=(addr_mode \u0026 0x03U) | (1U \u003c\u003c 2) | 0x20U producing 0x25/0x26 while spec/09-packets-timing.md:48 example uses 0x21 and Rust link_layer.rs:486 + frame.rs produces 0x21/0x22. Breaks interop. Also C schnorr48.c:159-161,201-204 zero/low-order checks not strictly constant-time vs MUST in spec §5.3. From review of commits 7e57bdfbb,91b456fad touching lichen/subsys/lichen/link/schnorr48.c and link_layer.rs. See explore task ses_072d7b821ffedqrbywVW3J4DFq for details. --priority 1 --type bug",
+  "notes": "Commit: ab09c1b7c LLSec fixed in tx.c + CT in schnorr48.c; interop now matches spec/Rust 0x2x bytes. Push conflicted due to bead history divergence (rebase aborted to avoid .beads merge issues)",
   "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
@@ -9,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T04:09:30.748321691Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:14:08.601173043Z",
+  "updated_at": "2026-07-23T04:18:57.883625129Z",
   "started_at": "2026-07-23T04:14:08.601173043Z",
   "lease_expires_at": "2026-07-23T04:19:08.601173043Z",
   "heartbeat_at": "2026-07-23T04:14:08.601173043Z"
