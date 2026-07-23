@@ -124,7 +124,8 @@ struct lichen_replay_window *lichen_replay_get(struct lichen_replay_table *table
 		}
 	}
 
-	/* Forgetting replay history would permit old authenticated frames again. */
+	/* SECURITY: full table fails closed (project-LICHEN-bbti). Forgetting
+	 * replay history would permit old authenticated frames again. No LRU. */
 	if (free_slot == CONFIG_LICHEN_LINK_MAX_NEIGHBORS) {
 		return NULL;
 	}

@@ -368,13 +368,12 @@ static struct lichen_link_ctx link_ctx;
 /*
  * Replay protection table for received frames.
  *
- * SECURITY (replay.h:100-120): Replay windows are only allocated AFTER peer
- * authentication succeeds. This prevents a poisoning attack where an attacker
- * floods spoofed source addresses to evict legitimate peers' replay windows
- * via LRU eviction. Currently, signature verification is not yet implemented
- * (peer_pubkey=NULL), so this table will accept windows for any source. Once
- * peer authentication is wired up (project-LICHEN-j70n), replay_get() should
- * only be called for authenticated peers.
+ * SECURITY (project-LICHEN-bbti, replay.h:117): Replay windows allocated ONLY
+ * after Schnorr-48 verification succeeds in peer_try_all_pubkeys() (constant-time
+ * full scan of peer_table) + authenticate_inner_payload() + commit_replay().
+ * No unauthenticated path to lichen_replay_get() or table mutation. Full table
+ * fails closed (no LRU eviction of legitimate state). Old LRU poisoning via
+ * distinct EUIs + weak MIC fixed by mandatory signatures (project-LICHEN-rg8t).
  */
 static struct lichen_replay_table replay_table;
 
@@ -680,7 +679,10 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 		ctx->peer_pubkey = peer_table[found_idx].pubkey;
 		ctx->peer_eui64 = peer_table[found_idx].eui64;
 		*out_len = saved_out_len;
-		ret = lichen_link_rx(ctx, replay, frame, frame_len,
+		/* Final call skips replay commit (already done in probe path) to
+		 * avoid duplicate replay_check failure. Fixes double-update and
+		 * pre-auth mutation for project-LICHEN-bbti. */
+		ret = lichen_link_rx(ctx, NULL, frame, frame_len,
 				     out_ipv6, out_len, src_eui64);
 		if (ret < 0) {
 			ctx->peer_pubkey = saved_peer_pubkey;
