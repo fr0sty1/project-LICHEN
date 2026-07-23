@@ -25,6 +25,7 @@ int lichen_rpl_root_init(struct lichen_rpl_root *root, const uint8_t *dodag_id, 
 	lichen_trickle_init(&root->trickle, CONFIG_LICHEN_RPL_TRICKLE_IMIN_MS,
 			   CONFIG_LICHEN_RPL_TRICKLE_IMAX_DOUBLINGS,
 			   CONFIG_LICHEN_RPL_TRICKLE_K);
+	lichen_trickle_start(&root->trickle, 0, 0);  /* ensure not Stopped; now/rand provided by tick() in production */
 	memcpy(root->prefix, dodag_id, 16);
 	root->prefix_len = 128;
 	return 0;
