@@ -90,7 +90,7 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 	const uint8_t *payload;
 	uint16_t payload_len = 0;
 	struct oscore_ctx *ctx = NULL;
-	uint8_t piv[8];
+	uint8_t piv[OSCORE_PIV_MAX_LEN];
 	size_t piv_len = sizeof(piv);
 	bool is_protected = coap_oscore_is_protected(request);
 	if (is_protected) {
