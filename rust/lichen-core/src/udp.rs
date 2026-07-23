@@ -262,7 +262,7 @@ mod tests {
         let n = write_datagram(&src, &dst, 5683, 5683, &[], &mut buf).unwrap();
         assert_eq!(n, 8);
         let hdr = UdpHeader::from_bytes(&buf).unwrap();
-        assert_eq!(hdr.payload(), &[]);
+        assert_eq!(hdr.payload(), &[] as &[u8]);
         assert!(hdr.verify_checksum(&src, &dst));
     }
 }

@@ -19,7 +19,7 @@ tbeam = []   # T-Beam: SSD1306, buttons
 twatch = []  # T-Watch: ST7789, touch
 
 [dependencies]
-heapless = "0.8"
+heapless = { version = "0.8", default-features = false }
 lichen-link = { path = "../lichen-link" }
 rand_core = { version = "0.6", default-features = false, optional = true }
 
