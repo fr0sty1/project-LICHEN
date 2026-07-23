@@ -323,6 +323,44 @@ int lichen_key_pubkey_fingerprint(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
 #endif
 }
 
+int lichen_key_pubkey_to_iid(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
+			     uint8_t iid[LICHEN_KEY_IID_LEN])
+{
+	if (pubkey == NULL || iid == NULL) {
+		return -EINVAL;
+	}
+
+#ifdef CONFIG_TINYCRYPT_SHA256
+	struct tc_sha256_state_struct sha_state;
+	uint8_t hash[32];
+
+	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS) {
+		return -EIO;
+	}
+	if (tc_sha256_update(&sha_state, pubkey, LICHEN_KEY_PUBKEY_LEN) != TC_CRYPTO_SUCCESS) {
+		return -EIO;
+	}
+	if (tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
+		return -EIO;
+	}
+
+	/* IID = SHA-256(pubkey)[0:8] with U/L bit cleared (bit 1 = 0x02)
+	 * per RFC 4291 (locally-administered) and LICHEN spec (project-LICHEN-zt3c).
+	 * Matches _pubkey_to_iid() in Python and lichen_pubkey_to_iid() in ipv6_addr.c.
+	 * This enables unified identity across LCI, mesh, and backbone.
+	 */
+	memcpy(iid, hash, LICHEN_KEY_IID_LEN);
+	iid[0] &= ~0x02U;  /* Clear U/L bit */
+
+	return 0;
+#else
+	/* Fallback without crypto (insecure, test-only) */
+	memcpy(iid, pubkey, LICHEN_KEY_IID_LEN);
+	iid[0] &= ~0x02U;
+	return 0;
+#endif
+}
+
 /* --------------------------------------------------------------------------
  * Key store implementation
  * -------------------------------------------------------------------------- */
