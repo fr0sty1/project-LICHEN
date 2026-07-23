@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-t33b",
   "title": "[merge-conflict] worktree-worker20: rf_health.rs",
-  "notes": "Commit: acc5fb25e - resolved merge conflict in rf_health.rs using saturating EMA update and EMA_ALPHA_SHIFT=2",
+  "notes": "Commit: 224ac00",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:59:38.528357906Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:11:57.358634341Z",
+  "updated_at": "2026-07-23T00:14:03.210048362Z",
   "started_at": "2026-07-23T00:11:25.943442712Z",
   "lease_expires_at": "2026-07-23T00:16:25.943442712Z",
   "heartbeat_at": "2026-07-23T00:11:25.943442712Z"
