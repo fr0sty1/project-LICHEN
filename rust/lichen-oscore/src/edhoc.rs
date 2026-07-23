@@ -31,7 +31,7 @@ use hkdf::Hkdf;
 use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest, Sha256};
 use x25519_dalek::{PublicKey, StaticSecret};
-use zeroize::{Zeroize, ZeroizeOnDrop};
+use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 use rand_core::{CryptoRng, RngCore};
 
 /// AES-CCM for Suite 0.
