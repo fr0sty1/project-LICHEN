@@ -182,7 +182,7 @@ static int test_zero_imin_uses_safe_default(void)
 {
 	struct lichen_trickle t;
 
-	/* imin=0 would cause busy loop; init defends by using 1 (see p00p) */
+	/* imin=0 would cause divide-by-zero or busy loop; init defends by using 1 */
 	lichen_trickle_init(&t, 0, 4, 10);
 	ASSERT_EQ(t.imin, 1, "imin=0 normalized to 1");
 

@@ -27,7 +27,7 @@ static uint32_t sat_mul_u32(uint32_t a, uint32_t b)
 	return result > UINT32_MAX ? UINT32_MAX : (uint32_t)result;
 }
 
-/* Internal: begin a new interval */
+/* Internal: begin a new interval (RFC 6206 §4.1: t uniform in [I/2, I)) */
 static void begin_interval(struct lichen_trickle *t,
 			   uint32_t now,
 			   uint32_t rand_offset)

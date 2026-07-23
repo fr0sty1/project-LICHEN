@@ -1765,7 +1765,7 @@ def ccp16_vectors() -> list[dict]:
     ]
 
 
-def ccp9_vectors() -> list[dict]:
+def ccp9_rendezvous_vectors() -> list[dict]:
     # CCP-9 rendezvous mechanisms from da2q multi-channel context. Independent
     # oracles for announce-based rendezvous, control channel (CH0) fallback for
     # unknown peers, integration with synchronized_hop_channel (CCP-12 preference),

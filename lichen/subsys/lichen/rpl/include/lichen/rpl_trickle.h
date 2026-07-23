@@ -72,7 +72,7 @@ struct lichen_trickle {
 /**
  * @brief Initialize a Trickle timer.
  *
- * @pre imin_ms > 0 (0 causes infinite busy-loop; see project-LICHEN-p00p)
+ * @pre imin_ms > 0 (0 causes divide-by-zero or infinite loop in next_event/expire polling)
  *
  * @param t              Timer to initialize
  * @param imin_ms        Minimum interval in milliseconds

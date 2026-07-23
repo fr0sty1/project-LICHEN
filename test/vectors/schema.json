@@ -856,9 +856,9 @@
         "hash_32": {"type": "string", "pattern": "^[0-9a-f]{8}$"}
       }
     },
-    "ccp13_vector": {
+        "ccp13_vector": {
       "type": "object",
-      "required": ["name", "description", "limit_permille", "window_ms", "expected_remaining_ms"],
+      "required": ["name", "description"],
       "additionalProperties": false,
       "properties": {
         "name": {"type": "string"},
@@ -904,15 +904,18 @@
         }
       }
     },
+
     "ccp_vector": {
       "type": "object",
-      "required": ["description"],
-      "additionalProperties": true,
+      "required": ["name", "description"],
+      "additionalProperties": false,
       "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
         "type": {
           "type": "string",
           "enum": ["slot_selection", "load_balancing", "density_estimation", "desync"],
-          "description": "CCP-16 vector type (added for schema completeness per codereview)"
+          "description": "CCP-16 vector type"
         },
         "description": {"type": "string"},
         "name": {"type": "string"},
@@ -962,6 +965,29 @@
             }
           }
         },
+        "output": {
+          "type": "object",
+          "properties": {
+            "slot_id": {"type": "integer"},
+            "sf": {"type": "integer", "minimum": 7, "maximum": 12},
+            "channel": {"type": "integer", "minimum": 0},
+            "expected_channel": {"type": "integer", "minimum": 0},
+            "tx_allowed": {"type": "boolean"},
+            "expected_sf": {"type": "integer"},
+            "snr_ema": {"type": "number"},
+            "load_factor": {"type": "number"},
+            "hash_32_example": {"type": "integer"},
+            "expected_hash": {
+              "type": "integer",
+              "description": "Output of hash_32 primitive (FNV-1a with basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:254; see Rust lichen_link_rx.c:packet_hash and Python generate.py for exact match. Matches Rust no_std style)"
+            },
+            "multi_rx_success": {"type": "integer"},
+            "gateway_capacity": {"type": "integer"}
+          }
+        },
+        "notes": {"type": "string"}
+      }
+    },
         "output": {
           "type": "object",
           "properties": {
