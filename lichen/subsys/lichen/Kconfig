@@ -56,10 +56,10 @@ config LICHEN_DUTY_CYCLE
 
 endif # LICHEN
 
-# Resolved merge conflict project-LICHEN-cbvp (worktree-worker23:Kconfig), project-LICHEN-98r7 (integration/worker3-20260722:Kconfig), project-LICHEN-2y4e (worktree-worker20:Kconfig).
+# Resolved merge conflict project-LICHEN-cbvp (worktree-worker23:Kconfig), project-LICHEN-98r7 (integration/worker3-20260722:Kconfig), project-LICHEN-2y4e (worktree-worker20:Kconfig), project-LICHEN-8nhx (worktree-worker24:Kconfig).
 # Consolidated LICHEN_*_SF and LICHEN_DUTY_CYCLE definitions to top-level
 # lichen/subsys/lichen/Kconfig; removed duplicates from hal/l2/link per prior fixes
-# (a0yn/syn6/48xu/9nq6/z4oj/nm65/07am). Cleaned stale bead refs (zrh2/da2q/5273) from
+# (a0yn/syn6/48xu/9nq6/z4oj/nm65/07am/8nhx). Cleaned stale bead refs (zrh2/da2q/5273) from
 # adaptive-SF/CCA/TDMA/multi-channel help texts per worker20. Fixed whitespace/indent from
 # parallel workers. Matches canonical style. No dead code.
 
