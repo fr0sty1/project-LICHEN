@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-mbxk",
+  "title": "[security] EDHOC zeroization, poison() gaps, timing leaks in edhoc.rs",
+  "description": "Reviewed commits e94753c30 (edhoc.rs:327-1511+), cda09e846, b3705f1b0 + meta bd commits. Findings: missing Zeroizing/SecretVec on MAC/keystream (lines ~694,758,1160,1242), inconsistent poison() on msg1 parse errors (1098-1120) allowing key reuse, non-CT error paths/timing on verify/MIC (755-929,1118), seed handling in Responder::new (1034), partial state before validation. Affects key handling, OSCORE export, EDHOC handshake. No Schnorr changes. See explore task ses_07058325affe7kkA6A6QHEX2SZ for full details. P0.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T15:47:40.206669531Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T15:47:40.206669531Z"
+}
