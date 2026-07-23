@@ -188,10 +188,7 @@ pub fn verify_frame(
     verify(sender_pubkey, &msg, &sig)
 }
 
-<<<<<<< HEAD
-=======
-// LENGTH || LLSec || epoch || seqnum || dst_addr_len(1) || dst_addr || inner_payload
->>>>>>> origin/integration/worker2-20260722
+    // LENGTH || LLSec || epoch || seqnum || dst_addr_len(1) || dst_addr || inner_payload
 fn build_signable(
     length: u8,
     llsec: u8,
