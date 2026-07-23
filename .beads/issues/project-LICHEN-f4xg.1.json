@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-f4xg.1",
+  "title": "Replace hardcoded Content-Format values with lichen-coap::content_format constants",
+  "description": "Update rust/lichen-coap/src/client.rs, codec.rs tests, lichen-client, and any other Rust code using literal 60/112 instead of content_format::CBOR or SENML_CBOR per spec/07-transport-app.md and appendix-senml.md. Ensure all tests pass.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:14:19.562715682Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:14:19.562715682Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-f4xg.1",
+      "depends_on_id": "project-LICHEN-f4xg",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:14:19.695580951Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
