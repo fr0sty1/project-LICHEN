@@ -2,15 +2,15 @@
   "id": "project-LICHEN-on5i",
   "title": "[merge-conflict] worktree-worker1: coap_status.c",
   "notes": "Commit: d5e5df6bc",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:20:39.72302975Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:29:46.978212828Z",
+  "updated_at": "2026-07-23T02:29:50.818752355Z",
   "started_at": "2026-07-23T02:27:10.231295669Z",
-  "lease_expires_at": "2026-07-23T02:32:10.231295669Z",
-  "heartbeat_at": "2026-07-23T02:27:10.231295669Z"
+  "closed_at": "2026-07-23T02:29:50.818752355Z",
+  "close_reason": "Fixed merge conflict artifacts and added capacity BUILD_ASSERTs for CBOR buffers vs CoAP message size in coap_status.c; verified identical across worktrees; committed and pushed"
 }
