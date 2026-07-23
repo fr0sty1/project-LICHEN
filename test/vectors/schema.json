@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LICHEN test vector file",
-  "description": "Envelope shared by all LICHEN vector files. Supports object envelope with format_version (1 or 2) or v2 bare array root of vectors (for ccp16-desync.json and similar). Each file holds a list of vectors of one kind; see the per-vector definitions. Combined to support all vector types (including ccp15_vector, ccp_vector, compact_cot_vector, schnorr48_vector), descriptions, format_version handling, bare array support, and all definitions from parallel worktrees without losing functionality. Per-vector definitions enforce independent oracles and cross-implementation determinism. See README.md for usage.",
+  "description": "Envelope shared by all LICHEN vector files. Supports object envelope with format_version (1 or 2) or v2 bare array root of vectors (for ccp16-desync.json and similar). Each file holds a list of vectors of one kind; see the per-vector definitions. Combined to support all vector types from parallel worktrees (including ccp15_vector, ccp_vector, compact_cot_vector, schnorr48_vector, hash_32_vector, ccp_load_balancing_vector), descriptions, format_version handling, bare array support, and all definitions without losing functionality. Per-vector definitions enforce independent oracles and cross-implementation determinism. See README.md for usage.",
   "oneOf": [
     {
       "type": "object",
@@ -23,42 +23,46 @@
               {"$ref": "#/definitions/meshtastic_app_compat_vector"},
               {"$ref": "#/definitions/meshcore_app_compat_vector"},
               {"$ref": "#/definitions/oscore_vector"},
-              {"$ref": "#/definitions/rpl_messages_vector"},
-              {"$ref": "#/definitions/ccp13_vector"},
-              {"$ref": "#/definitions/ccp15_vector"},
-              {"$ref": "#/definitions/ccp_vector"},
-              {"$ref": "#/definitions/compact_cot_vector"},
-              {"$ref": "#/definitions/schnorr48_vector"}
-            ]
-          }
-        }
-      }
-    },
-    {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "oneOf": [
-          {"$ref": "#/definitions/schc_vector"},
-          {"$ref": "#/definitions/schc_fragmentation_vector"},
-          {"$ref": "#/definitions/l2_payload_vector"},
-          {"$ref": "#/definitions/frame_vector"},
-          {"$ref": "#/definitions/announce_coords_vector"},
-          {"$ref": "#/definitions/meshtastic_app_compat_vector"},
-          {"$ref": "#/definitions/meshcore_app_compat_vector"},
-          {"$ref": "#/definitions/oscore_vector"},
-          {"$ref": "#/definitions/rpl_messages_vector"},
-          {"$ref": "#/definitions/ccp13_vector"},
-          {"$ref": "#/definitions/ccp15_vector"},
-          {"$ref": "#/definitions/ccp_vector"},
-          {"$ref": "#/definitions/compact_cot_vector"},
-          {"$ref": "#/definitions/schnorr48_vector"}
-        ]
-      },
-      "description": "v2 bare array root support for CCP desync vectors (ccp16-desync.json) and load balancing tests"
-    }
-  ],
-  "definitions": {
+               {"$ref": "#/definitions/rpl_messages_vector"},
+               {"$ref": "#/definitions/ccp13_vector"},
+               {"$ref": "#/definitions/ccp15_vector"},
+               {"$ref": "#/definitions/ccp_vector"},
+               {"$ref": "#/definitions/compact_cot_vector"},
+               {"$ref": "#/definitions/schnorr48_vector"},
+               {"$ref": "#/definitions/hash_32_vector"},
+               {"$ref": "#/definitions/ccp_load_balancing_vector"}
+             ]
+           }
+         }
+       }
+     },
+     {
+       "type": "array",
+       "minItems": 1,
+       "items": {
+         "oneOf": [
+           {"$ref": "#/definitions/schc_vector"},
+           {"$ref": "#/definitions/schc_fragmentation_vector"},
+           {"$ref": "#/definitions/l2_payload_vector"},
+           {"$ref": "#/definitions/frame_vector"},
+           {"$ref": "#/definitions/announce_coords_vector"},
+           {"$ref": "#/definitions/meshtastic_app_compat_vector"},
+           {"$ref": "#/definitions/meshcore_app_compat_vector"},
+           {"$ref": "#/definitions/oscore_vector"},
+           {"$ref": "#/definitions/rpl_messages_vector"},
+           {"$ref": "#/definitions/ccp13_vector"},
+           {"$ref": "#/definitions/ccp15_vector"},
+           {"$ref": "#/definitions/ccp_vector"},
+           {"$ref": "#/definitions/compact_cot_vector"},
+           {"$ref": "#/definitions/schnorr48_vector"},
+           {"$ref": "#/definitions/hash_32_vector"},
+           {"$ref": "#/definitions/ccp_load_balancing_vector"}
+         ]
+       },
+       "description": "v2 bare array root support for CCP desync vectors (ccp16-desync.json) and load balancing tests"
+     }
+   ],
+   "definitions": {
     "document_base": {
       "type": "object",
       "required": ["format_version", "description", "vectors"],
@@ -996,6 +1000,51 @@
           "then": {"required": ["input", "output"]}
         }
       ]
+    },
+    "hash_32_vector": {
+      "type": "object",
+      "required": ["name", "output"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+        "input": {"$ref": "#/definitions/hex"},
+        "input_hex": {"$ref": "#/definitions/hex"},
+        "output": {"type": "string", "pattern": "^0x[0-9a-f]{8}$"},
+        "description": {"type": "string"}
+      }
+    },
+    "ccp_load_balancing_vector": {
+      "type": "object",
+      "required": ["name", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "eui64_hex": {"$ref": "#/definitions/hex"},
+        "num_slots": {"type": "integer"},
+        "expected_slot": {"type": "integer"},
+        "slot_ms": {"type": "integer"},
+        "guard_ms": {"type": "integer"},
+        "drift_ppm": {"type": "integer"},
+        "superframe_ms": {"type": "integer"},
+        "observed_ms": {"type": "array", "items": {"type": "integer"}},
+        "expected_ppm": {"type": "integer"},
+        "slot_adjust_ticks": {"type": "integer"}
+      }
+    },
+    "schnorr48_vector": {
+      "type": "object",
+      "required": ["description", "public_key", "message", "signature", "valid"],
+      "additionalProperties": false,
+      "properties": {
+        "description": {"type": "string"},
+        "seed": {"$ref": "#/definitions/hex"},
+        "private_key": {"$ref": "#/definitions/hex"},
+        "public_key": {"$ref": "#/definitions/hex"},
+        "message": {"$ref": "#/definitions/hex"},
+        "signature": {"$ref": "#/definitions/hex"},
+        "valid": {"type": "boolean"}
+      }
     }
   }
 }
