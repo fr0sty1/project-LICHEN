@@ -1,29 +1,30 @@
 //! Gateway state and packet forwarding.
 
 use lichen_core::addr::NodeId;
-use lichen_core::constants::L2_DISPATCH_SCHC;
+use lichen_core::constants::{L2_DISPATCH_SCHC, SCHC_MAX_DECOMPRESSED};
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
-use lichen_node::Node;
+use lichen_node::{RplEvent, RplNode};
 use lichen_schc::codec::{compress, decompress, SchcError};
+use std::collections::HashMap;
 use tracing::{info, warn};
 
 /// Top-level border router state.
 #[derive(Debug)]
 pub struct Gateway {
-    pub node: Node,
+    rpl_node: RplNode,
     /// Routes installed in the kernel routing table.
     /// Key: mesh IPv6 address (16 bytes, network order); Value: nexthop EUI-64.
-    routes: std::collections::HashMap<[u8; 16], NodeId>,
+    routes: HashMap<[u8; 16], NodeId>,
 }
 
 impl Gateway {
     pub fn new(node_id: NodeId) -> Self {
         info!(?node_id, "gateway initialising");
         Self {
-            node: Node::new(node_id),
-            routes: std::collections::HashMap::new(),
+            rpl_node: RplNode::new_root(node_id),
+            routes: HashMap::new(),
         }
     }
 
