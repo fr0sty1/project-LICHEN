@@ -2,16 +2,20 @@
   "id": "project-LICHEN-o94g",
   "title": "[merge-conflict] worktree-worker17: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: 0e8d52064",
-  "labels": ["defer-external"],
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:16:15.327611422Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:35:28.30679114Z",
+  "updated_at": "2026-07-23T05:15:02.118257482Z",
   "started_at": "2026-07-23T02:33:57.64502534Z",
   "closed_at": "2026-07-23T02:35:30.950423498Z",
-  "close_reason": "Updated heltec_wifi_lora32_v3_esp32s3_procpu.conf in worker17 worktree with SPDX headers, consolidated comment referencing this bead, and matching canonical style from main. Committed as 0e8d52064 and force-with-lease pushed to origin/worktree-worker17."
+  "close_reason": "Updated heltec_wifi_lora32_v3_esp32s3_procpu.conf in worker17 worktree with SPDX headers, consolidated comment referencing this bead, and matching canonical style from main. Committed as 0e8d52064 and force-with-lease pushed to origin/worktree-worker17.",
+  "lease_expires_at": "2026-07-23T05:20:02.118257482Z",
+  "heartbeat_at": "2026-07-23T05:15:02.118257482Z",
+  "labels": [
+    "defer-external"
+  ]
 }
