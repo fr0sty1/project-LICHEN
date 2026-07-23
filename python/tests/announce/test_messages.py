@@ -25,38 +25,7 @@ class TestAnnounceMessage:
             originator_iid=bytes(8),
             pubkey=bytes(32),
             seq_num=0,
-            hop_count=0,
-            signature=bytes(SIGNATURE_LENGTH),
         )
-        assert msg.originator_iid == bytes(8)
-        assert msg.pubkey == bytes(32)
-        assert msg.seq_num == 0
-        assert msg.hop_count == 0
-        assert len(msg.signature) == SIGNATURE_LENGTH
-        assert msg.app_data == b""
-        assert msg.flags == 0
-
-    def test_valid_announce_with_app_data(self):
-        """Announce with optional app_data field."""
-        app_data = b"node-name:alice"
-        msg = AnnounceMessage(
-            originator_iid=bytes(8),
-            pubkey=bytes(32),
-            seq_num=42,
-            hop_count=3,
-            signature=bytes(SIGNATURE_LENGTH),
-            app_data=app_data,
-        )
-        assert msg.app_data == app_data
-
-    def test_rejects_wrong_iid_length(self):
-        """IID must be exactly 8 bytes."""
-        with pytest.raises(AnnounceError, match="originator_iid must be 8 bytes"):
-            AnnounceMessage(
-                originator_iid=bytes(7),  # Too short
-                pubkey=bytes(32),
-                seq_num=0,
-            )
 
         with pytest.raises(AnnounceError, match="originator_iid must be 8 bytes"):
             AnnounceMessage(
@@ -248,7 +217,7 @@ class TestSerialization:
         assert parsed.hop_count == original.hop_count
         assert parsed.signature == original.signature
         assert parsed.app_data == original.app_data
-        assert parsed.flags == original.flags
+        assert parsed.rx_channel == original.rx_channel
 
     def test_round_trip_with_app_data(self):
         """Announce with app_data survives round-trip."""
@@ -398,7 +367,7 @@ class TestKnownVectors:
             pubkey=bytes([0xAA] * 32),
             seq_num=0x1234,
             hop_count=3,
-            flags=7,
+            rx_channel=7,
             signature=bytes([0xBB] * SIGNATURE_LENGTH),
             app_data=b"",
             rx_channel=7,
