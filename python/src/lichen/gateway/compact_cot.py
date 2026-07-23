@@ -171,15 +171,17 @@ def _derive_uid_from_cot(cot: CompactCot) -> str:
     parts: list[str | bytes] = [str(cot.subtype.value)]
     if isinstance(cot.payload, PliPayload):
         pli = cot.payload
-        parts.extend([
-            str(pli.lat_microdeg),
-            str(pli.lon_microdeg),
-            str(pli.alt_dm),
-            str(pli.course_cdeg),
-            str(pli.speed_cm_s),
-            str(pli.team),
-            str(pli.role),
-        ])
+        parts.extend(
+            [
+                str(pli.lat_microdeg),
+                str(pli.lon_microdeg),
+                str(pli.alt_dm),
+                str(pli.course_cdeg),
+                str(pli.speed_cm_s),
+                str(pli.team),
+                str(pli.role),
+            ]
+        )
     elif isinstance(cot.payload, ChatPayload):
         chat = cot.payload
         parts.append(str(chat.dest_type.value))
@@ -404,7 +406,10 @@ def expand_cot_to_xml(
         CoT XML string.
 
     Raises:
-        ValueError: If message type cannot be expanded.
+        ValueError: If unknown subtype cannot be expanded.
+
+    MARKER and ALERT return minimal placeholder XML (0,0,0 coords,
+    generic detail) as compact format has no payload for them yet.
     """
     if now is None:
         now = datetime.now(UTC)
@@ -595,7 +600,7 @@ def _expand_marker_to_xml(
 
     detail = SubElement(event, "detail")
     contact = SubElement(detail, "contact")
-    contact.set("callsign", "Marker")
+    contact.set("callsign", uid)
 
     return _xml_to_string(event)
 
@@ -626,7 +631,7 @@ def _expand_alert_to_xml(
 
     detail = SubElement(event, "detail")
     contact = SubElement(detail, "contact")
-    contact.set("callsign", "ALERT")
+    contact.set("callsign", uid)
 
     return _xml_to_string(event)
 
