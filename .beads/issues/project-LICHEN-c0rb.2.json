@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-c0rb.2",
+  "title": "Implement transcript_3 helper with proper CBOR encoding for TH_3",
+  "description": "Add fn transcript_3(th_2: \u0026[u8; 32], ciphertext_2_or_plaintext: \u0026[u8], id_cred_r: \u0026[u8]) -\u003e Result\u003c[u8; 32], EdhocError\u003e that builds H(CBOR(TH_2) || CBOR(CIPHERTEXT_2) || CBOR(ID_CRED_R)) using canonical CBOR. Match Python edhoc.py and test vectors. Update callsites in EdhocInitiator and EdhocResponder.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:30:25.230665819Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:30:25.230665819Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-c0rb.2",
+      "depends_on_id": "project-LICHEN-c0rb",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:30:25.371395436Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
