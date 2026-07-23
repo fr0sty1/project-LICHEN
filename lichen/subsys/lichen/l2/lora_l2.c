@@ -522,9 +522,11 @@ static void rx_thread(void *arg1, void *arg2, void *arg3)
             }
             if (consecutive_errors < INT_MAX) {
                 consecutive_errors++;
+            } else {
+                consecutive_errors = RX_ERROR_WARN_THRESHOLD;
             }
             LOG_ERR("lora_l2: RX error (%d)", ret);
-            if (consecutive_errors > 0 && consecutive_errors % RX_ERROR_WARN_THRESHOLD == 0) {
+            if (consecutive_errors % RX_ERROR_WARN_THRESHOLD == 0) {
                 LOG_WRN("lora_l2: %d consecutive RX errors, check hardware",
                         consecutive_errors);
             }

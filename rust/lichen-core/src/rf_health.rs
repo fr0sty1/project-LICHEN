@@ -311,7 +311,6 @@ mod tests {
         assert_eq!(m.packets_rx, u32::MAX);
     }
 
-
     #[test]
     fn snr_min_max_tracking() {
         let mut stats = SnrStats::new();
@@ -460,8 +459,15 @@ mod tests {
             let input = v.get("input").unwrap_or(v);
             let output = v.get("output").unwrap_or(v);
             let density = input.get("density").and_then(|x| x.as_u64()).unwrap_or(0) as u8;
-            let snr = input.get("snr_db").or_else(|| input.get("snr_ema")).and_then(|x| x.as_i64()).unwrap_or(5) as i8;
-            let load_f = input.get("load_factor").and_then(|x| x.as_f64()).unwrap_or(0.0);
+            let snr = input
+                .get("snr_db")
+                .or_else(|| input.get("snr_ema"))
+                .and_then(|x| x.as_i64())
+                .unwrap_or(5) as i8;
+            let load_f = input
+                .get("load_factor")
+                .and_then(|x| x.as_f64())
+                .unwrap_or(0.0);
             let load_fp = ((load_f * FP_SCALE as f64) as u32).min(FP_SCALE);
             let mut m = RfHealthMetrics::new();
             m.record_density(density);

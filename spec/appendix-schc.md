@@ -9,13 +9,13 @@ See draft-lichen-schc-lora-00.md §4 for rules, §5 for fragmentation (M=1 N=6 T
 
 | Rule ID | Use Case | Compressed Size | Notes |
 |---------|----------|-----------------|-------|
-| 0 | Link-local IPv6 + UDP + CoAP | 4-6 bytes | MSB(64) IIDs; ports MSB(12)/LSB(4) for CoAP/SenML range |
-| 1 | Global IPv6 + UDP + CoAP | 12-14 bytes | ULA/GUA source, full dst as needed |
+| 0 | Link-local IPv6 + UDP + CoAP | ~26 bytes residue | + CoAP tail; IIDs value-sent (64 bit each) |
+| 1 | Global IPv6 + UDP + CoAP | ~42 bytes residue | + CoAP tail; full addresses value-sent (128 bit each) |
 | 2 | ICMPv6 Echo | 3 bytes | Type 128/129, Code=0 not-sent |
 | 3 | RPL DIO (link-local) | 8 bytes | ICMPv6 type=155/code=0 + options |
 | 4 | RPL DAO (routable ULA source for multi-hop) | 6 bytes | Multi-hop source preservation |
-| 5 | Link-local IPv6 + UDP + OSCORE | ~6 bytes residue | + OSCORE tail |
-| 6 | Global IPv6 + UDP + OSCORE | ~14 bytes residue | + OSCORE tail |
+| 5 | Link-local IPv6 + UDP + OSCORE | ~26 bytes residue | + OSCORE tail |
+| 6 | Global IPv6 + UDP + OSCORE | ~42 bytes residue | + OSCORE tail |
 | 7 | MQTT-SN (port 10883) | ~6 bytes | Exact port match |
 | 255 | No compression | Full headers | Version mismatch or unknown rule fallback |
 

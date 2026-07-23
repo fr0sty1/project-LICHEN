@@ -192,7 +192,12 @@ mod tests {
     use std::thread;
 
     /// Build a minimal CoAP response: Ver=1, Type=ACK, TKL, Code, MID, Token, optional payload (RFC 7252).
-    fn build_response(code: MessageCode, mid: u16, token: &[u8], payload: Option<&[u8]>) -> Vec<u8> {
+    fn build_response(
+        code: MessageCode,
+        mid: u16,
+        token: &[u8],
+        payload: Option<&[u8]>,
+    ) -> Vec<u8> {
         let tkl = token.len() as u8;
         assert!(tkl <= 8, "token too long");
         // Ver=1 (bits 7-6), Type=ACK=2 (bits 5-4), TKL (bits 3-0)
@@ -227,7 +232,8 @@ mod tests {
         let attacker_mid = 0xDEAD;
         let token = [0x4c, 0x49, 0x43, 0x48]; // "LICH"
                                               // Attacker knows token but guesses wrong MID
-        let spoofed_resp = build_response(MessageCode::CONTENT, attacker_mid, &token, Some(b"fake"));
+        let spoofed_resp =
+            build_response(MessageCode::CONTENT, attacker_mid, &token, Some(b"fake"));
         let result = decode(&spoofed_resp, request_mid, &token);
         assert!(result.is_err());
         let err = result.unwrap_err();
@@ -240,7 +246,8 @@ mod tests {
         let mid = 0x1234;
         let request_token = [0x4c, 0x49, 0x43, 0x48]; // "LICH"
         let attacker_token = [0x45, 0x56, 0x49, 0x4c]; // "EVIL"
-        let spoofed_resp = build_response(MessageCode::CONTENT, mid, &attacker_token, Some(b"fake"));
+        let spoofed_resp =
+            build_response(MessageCode::CONTENT, mid, &attacker_token, Some(b"fake"));
         let result = decode(&spoofed_resp, mid, &request_token);
         assert!(result.is_err());
         let err = result.unwrap_err();
@@ -288,7 +295,12 @@ mod tests {
         let request_token = [0x4c, 0x49, 0x43, 0x48]; // "LICH"
         let attacker_mid = 0xBEEF;
         let attacker_token = [0x45, 0x56, 0x49, 0x4c]; // "EVIL"
-        let spoofed_resp = build_response(MessageCode::CONTENT, attacker_mid, &attacker_token, Some(b"pwned"));
+        let spoofed_resp = build_response(
+            MessageCode::CONTENT,
+            attacker_mid,
+            &attacker_token,
+            Some(b"pwned"),
+        );
         let result = decode(&spoofed_resp, request_mid, &request_token);
         assert!(result.is_err());
         // Should fail on MID check first

@@ -185,8 +185,10 @@ BUILD_ASSERT(LICHEN_EUI64_LEN == 8,
 BUILD_ASSERT(LICHEN_L2_PUBKEY_LEN == 32,
 	     "lichen_peer_add() pubkey[32] size mismatch: update API if LICHEN_L2_PUBKEY_LEN changed");
 
-/* Maximum frame size for LoRa */
-#define MAX_LORA_FRAME 255
+/* Maximum frame size for LoRa (derived from lora_l2.h) */
+#define MAX_LORA_FRAME LICHEN_LORA_MAX_PHY_PAYLOAD
+BUILD_ASSERT(MAX_LORA_FRAME == 255,
+             "MAX_LORA_FRAME must be 255 if LICHEN_LORA_MAX_PHY_PAYLOAD changes");
 
 /*
  * Minimum valid LICHEN frame size.

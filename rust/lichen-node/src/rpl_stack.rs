@@ -608,7 +608,13 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
     ) -> Result<Option<RplMaintenanceOutcome>, RplRuntimeTrickleError> {
         self.routing_now_ms = self.routing_now_ms.max(observed_now_ms);
         runtime
-            .complete_trickle_expire(&mut self.rpl, action, observed_now_ms, rand_offset, self.generation)
+            .complete_trickle_expire(
+                &mut self.rpl,
+                action,
+                observed_now_ms,
+                rand_offset,
+                self.generation,
+            )
             .map_err(RplRuntimeTrickleError::Action)
     }
 

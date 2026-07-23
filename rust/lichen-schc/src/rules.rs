@@ -632,7 +632,7 @@ pub const MQTT_SN_RULE: Rule = Rule {
         IPV6_BASE[3],
         NEXT_UDP,
         IPV6_BASE[4],
-        GLOBAL_ADDR[0],  // use global (Ignore) to support both link-local and global addresses in one rule
+        GLOBAL_ADDR[0], // use global (Ignore) to support both link-local and global addresses in one rule
         GLOBAL_ADDR[1],
         UDP_FIELDS[0],
         UDP_FIELDS[1],
