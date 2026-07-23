@@ -154,6 +154,8 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
 
 	/* ponytail: random epoch in [128,255] for reboot resilience without flash.
 	 * Half-space arithmetic treats upper-half counters as "ahead" of lower-half.
+	 * Used for TDMA slot = hash(EUI64 ^ epoch) % n_slots per
+	 * spec/02a-coordinated-capacity.md §2a.2 and ccp_tdma.json.
 	 * Callers with persisted epoch should call lichen_link_set_epoch() after init.
 	 *
 	 * SECURITY: ESP32 HW RNG produces weak/predictable output before WiFi/BT radio
