@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-8xx5.3",
+  "title": "Test build of gateway and puck apps with t_deck_esp32s3_procpu.conf in worker17 worktree",
+  "description": "After syncing configs, run west build for lichen/apps/gateway and lichen/apps/puck with the T-Deck board in the worker17 worktree. Verify no Kconfig warnings or conflicts. Use appropriate -b esp32s3_devkitm or t_deck equivalent.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:18:02.878759412Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:18:02.878759412Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-8xx5.3",
+      "depends_on_id": "project-LICHEN-8xx5",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:18:03.01599514Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
