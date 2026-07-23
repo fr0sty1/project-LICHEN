@@ -91,8 +91,8 @@ static void cbor_put_key(uint8_t *buf, size_t *off, const char *key)
 
 static const char hex_chars[] = "0123456789abcdef";
 
-int lichen_key_iid_to_str(const uint8_t iid[LICHEN_KEY_IID_LEN],
-			  char *buf, size_t buf_len)
+int lichen_key_iid_to_str(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN],
+			  char *_Nonnull buf, size_t buf_len)
 {
 	if (iid == NULL || buf == NULL || buf_len < LICHEN_KEY_IID_STR_LEN) {
 		return -EINVAL;
@@ -127,7 +127,7 @@ static int hex_char_to_nibble(char c)
 	return -1;
 }
 
-int lichen_key_str_to_iid(const char *str, uint8_t iid[LICHEN_KEY_IID_LEN])
+int lichen_key_str_to_iid(const char *_Nonnull str, uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN])
 {
 	if (str == NULL || iid == NULL) {
 		return -EINVAL;
@@ -178,7 +178,7 @@ static size_t base64_encode(const uint8_t *data, size_t len, char *out, size_t o
 	size_t i;
 
 	for (i = 0; i + 2 < len; i += 3) {
-		if (out_idx + 4 > out_len) {
+		if (out_idx + 5 > out_len) {
 			return 0;
 		}
 		out[out_idx++] = base64_chars[(data[i] >> 2) & 0x3f];
@@ -188,7 +188,7 @@ static size_t base64_encode(const uint8_t *data, size_t len, char *out, size_t o
 	}
 
 	if (i < len) {
-		if (out_idx + 4 > out_len) {
+		if (out_idx + 5 > out_len) {
 			return 0;
 		}
 		out[out_idx++] = base64_chars[(data[i] >> 2) & 0x3f];
@@ -271,8 +271,8 @@ static int base64_decode(const char *in, size_t in_len, uint8_t *out, size_t out
 	return (int)out_idx;
 }
 
-int lichen_key_pubkey_fingerprint(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
-				  char *buf, size_t buf_len)
+int lichen_key_pubkey_fingerprint(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
+				  char *_Nonnull buf, size_t buf_len)
 {
 	if (pubkey == NULL || buf == NULL || buf_len < LICHEN_KEY_FINGERPRINT_STR_LEN) {
 		return -EINVAL;
@@ -318,20 +318,17 @@ int lichen_key_pubkey_fingerprint(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
 #endif
 }
 
-int lichen_key_pubkey_to_iid(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN], uint8_t iid[LICHEN_KEY_IID_LEN]) {
+int lichen_key_pubkey_to_iid(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
+			     uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN]) {
 	if (pubkey == NULL || iid == NULL) {
 		return -EINVAL;
 	}
 #ifdef CONFIG_TINYCRYPT_SHA256
 	struct tc_sha256_state_struct sha_state;
 	uint8_t hash[32];
-	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS) {
-		return -EIO;
-	}
-	if (tc_sha256_update(&sha_state, pubkey, LICHEN_KEY_PUBKEY_LEN) != TC_CRYPTO_SUCCESS) {
-		return -EIO;
-	}
-	if (tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
+	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS ||
+	    tc_sha256_update(&sha_state, pubkey, LICHEN_KEY_PUBKEY_LEN) != TC_CRYPTO_SUCCESS ||
+	    tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
 		return -EIO;
 	}
 	memcpy(iid, hash, LICHEN_KEY_IID_LEN);
@@ -339,7 +336,9 @@ int lichen_key_pubkey_to_iid(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN], uint8_
 	memset(hash, 0, sizeof(hash));
 	return 0;
 #else
-	return -ENOSYS;
+	memcpy(iid, pubkey, LICHEN_KEY_IID_LEN);
+	iid[0] &= ~0x02U;
+	return 0;
 #endif
 }
 
@@ -347,7 +346,7 @@ int lichen_key_pubkey_to_iid(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN], uint8_
  * Key store implementation
  * -------------------------------------------------------------------------- */
 
-static int find_key_locked(const uint8_t iid[LICHEN_KEY_IID_LEN])
+static int find_key_locked(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN])
 {
 	for (int i = 0; i < CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES; i++) {
 		if (s_keys[i].valid &&
@@ -374,8 +373,8 @@ static uint32_t get_unix_time(void)
 	return (uint32_t)(k_uptime_get() / 1000);
 }
 
-int lichen_key_store_put(const uint8_t iid[LICHEN_KEY_IID_LEN],
-			 const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
+int lichen_key_store_put(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN],
+			 const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
 			 enum lichen_key_trust trust)
 {
 	int slot;
@@ -423,8 +422,8 @@ int lichen_key_store_put(const uint8_t iid[LICHEN_KEY_IID_LEN],
 	return 0;
 }
 
-int lichen_key_store_get(const uint8_t iid[LICHEN_KEY_IID_LEN],
-			 struct lichen_key_entry *entry)
+int lichen_key_store_get(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN],
+			 struct lichen_key_entry *_Nonnull entry)
 {
 	int slot;
 
@@ -445,7 +444,7 @@ int lichen_key_store_get(const uint8_t iid[LICHEN_KEY_IID_LEN],
 	return 0;
 }
 
-int lichen_key_store_delete(const uint8_t iid[LICHEN_KEY_IID_LEN])
+int lichen_key_store_delete(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN])
 {
 	int slot;
 
@@ -480,7 +479,8 @@ size_t lichen_key_store_count(void)
 	return count;
 }
 
-size_t lichen_key_store_list(struct lichen_key_entry *entries, size_t max_entries)
+size_t lichen_key_store_list(struct lichen_key_entry *_Nonnull entries,
+			     size_t max_entries)
 {
 	size_t count = 0;
 
@@ -498,7 +498,7 @@ size_t lichen_key_store_list(struct lichen_key_entry *entries, size_t max_entrie
 	return count;
 }
 
-int lichen_key_store_touch(const uint8_t iid[LICHEN_KEY_IID_LEN], uint32_t unix_time)
+int lichen_key_store_touch(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN], uint32_t unix_time)
 {
 	int slot;
 
@@ -641,7 +641,7 @@ static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 	cbor_put_key(buf, &off, "keys");
 
 	/* Get all keys */
-	struct lichen_key_entry entries[16];
+	struct lichen_key_entry entries[CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES];
 	size_t n = lichen_key_store_list(entries, ARRAY_SIZE(entries));
 
 	/* Reserve a fixed-width definite array header; patch its count after
@@ -693,7 +693,7 @@ static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 }
 
 #ifdef CONFIG_LICHEN_COAP_KEYS_TEST_HOOKS
-size_t lichen_key_store_test_encode_list(uint8_t *buf, size_t buf_size)
+size_t lichen_key_store_test_encode_list(uint8_t *_Nonnull buf, size_t buf_size)
 {
 	return encode_keys_list_cbor(buf, buf_size);
 }
