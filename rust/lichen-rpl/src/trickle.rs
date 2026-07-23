@@ -105,8 +105,11 @@ impl TrickleTimer {
         self.interval_start = now;
         self.counter = 0;
         self.transmitted = false;
-        // RFC 6206 §4.2 rule 2: t uniform in [I/2, I). (interval+1)/2 avoids bias.
-        let half = (self.interval + 1) / 2;
+        // RFC 6206 §4.2 rule 2: t uniform in [I/2, I). Bitwise form bias-free for
+        // odd I and safe at u32::MAX (avoids overflow panic; cf. C impl,
+        // project-LICHEN-jufb merge-conflict, Worker23 bias fix). Matches all
+        // tests and Python.
+        let half = (self.interval >> 1) + (self.interval & 1);
         let range = self.interval - half;
         let offset = if range > 0 { rand_offset % range } else { 0 };
         self.transmit_time = now
@@ -312,8 +315,8 @@ mod tests {
 
     #[test]
     fn odd_interval_bias_free_transmit_time() {
-        // I=5 (odd): half=(5+1)/2=3, range=5-3=2 → transmit in [now+3, now+5)
-        // Matches C/Python; old `/ 2` was biased (only [2,4)).
+        // I=5 (odd): half=(5>>1)+(5&1)=3, range=2 → transmit in [now+3, now+5)
+        // Matches C/Python; old `/ 2` was biased (only [2,4)). Safe at u32::MAX.
         let mut t = TrickleTimer::new(5, 0, 10); // no doublings
         t.start(0, 0);
         assert_eq!(t.transmit_time, 3);
