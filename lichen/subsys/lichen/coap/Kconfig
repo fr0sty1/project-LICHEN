@@ -96,6 +96,7 @@ config LICHEN_COAP_CONFIG
 	bool "LCI /config resource handlers"
 	depends on LICHEN_COAP_SERVER
 	select ZCBOR
+	select LICHEN_COAP_KEYS
 	help
 	  Enable CoAP server resources for node configuration per LCI spec
 	  section 17.5.2:
