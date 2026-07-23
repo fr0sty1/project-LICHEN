@@ -199,7 +199,9 @@ class SimRadio:
     async def transmit(self, payload: bytes, channel: int = 0) -> bool:
         self._ensure_connected()
         if len(payload) > MAX_LORA_PAYLOAD:
-            raise ValueError(f"payload length {len(payload)} exceeds LoRa MTU ({MAX_LORA_PAYLOAD} bytes)")
+            raise ValueError(
+                f"payload length {len(payload)} exceeds LoRa MTU ({MAX_LORA_PAYLOAD} bytes)"
+            )
         msg = encode_tx(payload, channel)
         async with self._lock:
             await self._send(msg)
@@ -224,7 +226,9 @@ class SimRadio:
         if timeout_ms < 0:
             raise ValueError("timeout_ms must be non-negative")
         if not (0 <= timeout_ms <= MAX_TIMEOUT_MS):
-            raise ValueError(f"timeout_ms must be <= {MAX_TIMEOUT_MS} (~71 minutes), got {timeout_ms}")
+            raise ValueError(
+                f"timeout_ms must be <= {MAX_TIMEOUT_MS} (~71 minutes), got {timeout_ms}"
+            )
         timeout_us = timeout_ms * 1000
         msg = encode_rx_enter(timeout_us, channel)
         async with self._lock:
