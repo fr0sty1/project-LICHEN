@@ -118,7 +118,7 @@ impl Gateway {
     }
 
     pub fn process_rpl(&mut self, frame: &[u8], now_ms: u64) -> (Option<Vec<u8>>, RplEvent) {
-        let _ = self.runtime.poll(&mut self.rpl_node, now_ms);
+        self.maintain(now_ms);
         let mut reply = vec![0u8; 512];
         let (reply_len, event) = self
             .rpl_node
@@ -130,6 +130,13 @@ impl Gateway {
             None
         };
         (reply_opt, event)
+    }
+
+    /// Run periodic RPL maintenance (prune_neighbors, DAO expiry) using
+    /// monotonic time from Instant::elapsed(). Respects defer-external;
+    /// does not auto-admit by TOFU (admission requires explicit pin).
+    pub fn maintain(&mut self, now_ms: u64) {
+        let _ = self.runtime.poll(&mut self.rpl_node, now_ms);
     }
 
     pub fn mesh_to_mesh(&self, ipv6: &[u8]) -> Option<Vec<u8>> {
