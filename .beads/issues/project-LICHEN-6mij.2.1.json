@@ -1,17 +1,13 @@
 {
   "id": "project-LICHEN-6mij.2.1",
   "title": "Add OSCORE context lookup + unprotect to msg_inbox_post handler",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:21:10.203843995Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:29:24.874660747Z",
-  "started_at": "2026-07-23T05:29:24.874660747Z",
-  "lease_expires_at": "2026-07-23T05:34:24.874660747Z",
-  "heartbeat_at": "2026-07-23T05:29:24.874660747Z",
+  "updated_at": "2026-07-23T05:21:10.203843995Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-6mij.2.1",
