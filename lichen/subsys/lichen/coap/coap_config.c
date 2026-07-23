@@ -190,7 +190,10 @@ static int eui64_to_hex(const uint8_t eui64[8], char *buf, size_t buf_size)
 	buf[0] = '0';
 	buf[1] = 'x';
 	for (int i = 0; i < 8; i++) {
-		(void)snprintf(&buf[2 + i * 2], 3, "%02x", eui64[i]);
+		int pr = snprintf(&buf[2 + i * 2], 3, "%02x", eui64[i]);
+		if (pr < 0 || (size_t)pr >= 3) {
+			return -EINVAL;
+		}
 	}
 	return 0;
 }
@@ -338,7 +341,10 @@ size_t lichen_config_encode_radio_cbor(uint8_t *buf, size_t buf_size,
 
 	/* "sync_word": as hex string "0x34" */
 	char sync_buf[8];
-	(void)snprintf(sync_buf, sizeof(sync_buf), "0x%02x", config->sync_word);
+	int pr = snprintf(sync_buf, sizeof(sync_buf), "0x%02x", config->sync_word);
+	if (pr < 0 || (size_t)pr >= sizeof(sync_buf)) {
+		return 0;
+	}
 	if (!put_tstr_kv(state, KEY_SYNC_WORD, sync_buf)) {
 		return 0;
 	}
