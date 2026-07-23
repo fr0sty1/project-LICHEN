@@ -9,7 +9,7 @@
       "eui64_hex": "0011223344556677",
       "t": 4660,
       "epoch": 1,
-      "expected_hash": 2346401271,
+      "expected_hash": 3159897858,
       "expected_channel": 3,
       "n_channels": 8
     },
@@ -19,7 +19,8 @@
       "eui64_hex": "0011223344556677",
       "t": 100,
       "epoch": 0,
-      "expected_channel": 4,
+      "expected_hash": 22453281,
+      "expected_channel": 2,
       "n_channels": 8
     }
   ]

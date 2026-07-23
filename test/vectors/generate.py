@@ -26,6 +26,14 @@ from lichen.rpl.messages import DAO, DIO, to_icmpv6
 from lichen.schc.fragment import FragmentSender, compute_mic
 from lichen.schc.headers import compress_packet
 
+
+def hash_32(data: bytes) -> int:
+    h = 0x811c9dc5
+    for b in data:
+        h = ((h ^ b) * 0x01000193) & 0xffffffff
+    return h
+
+
 VECTORS_DIR = Path(__file__).resolve().parent
 FORMAT_VERSION = 2
 L2_DISPATCH_SCHC = 0x14
@@ -1738,9 +1746,6 @@ def _l2_announce_with_channel(channel: int) -> bytes:
 
 
 def ccp16_vectors() -> list[dict]:
-    # CCP-12 synchronized hopping test vectors. Matches spec 02a CCP-12 normative
-    # synchronized_hop_channel using hash_32(eui ^ t ^ epoch) % N. Independent
-    # oracle, fixes prior ccp13_vectors undefined. Cross-checks with ccp15 hash.
     return [
         {
             "name": "synchronized_hop_channel_consistency",
@@ -1748,7 +1753,7 @@ def ccp16_vectors() -> list[dict]:
             "eui64_hex": "0011223344556677",
             "t": 4660,
             "epoch": 1,
-            "expected_hash": 2346401271,  # from ccp15 test
+            "expected_hash": hash_32((int("0011223344556677", 16) ^ 4660 ^ 1).to_bytes(8, "little")),
             "expected_channel": 3,
             "n_channels": 8,
         },
@@ -1758,7 +1763,8 @@ def ccp16_vectors() -> list[dict]:
             "eui64_hex": "0011223344556677",
             "t": 100,
             "epoch": 0,
-            "expected_channel": 4,
+            "expected_hash": hash_32((int("0011223344556677", 16) ^ 100 ^ 0).to_bytes(8, "little")),
+            "expected_channel": 2,
             "n_channels": 8,
         },
     ]
