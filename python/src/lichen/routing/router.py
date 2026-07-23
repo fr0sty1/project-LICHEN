@@ -132,7 +132,7 @@ class DtnMessage:
     def __post_init__(self) -> None:
         if len(self.destination_iid) != 8:
             raise ValueError(f"destination_iid must be 8 bytes, got {len(self.destination_iid)}")
-        self._cached_size = len(self.packet.to_bytes()) + 48
+        self._cached_size = len(self.packet.to_bytes()) + len(self.destination_iid) + 32
 
     def size(self) -> int:
         return self._cached_size
