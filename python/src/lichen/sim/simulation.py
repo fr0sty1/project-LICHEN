@@ -815,7 +815,8 @@ class Simulation:
             rx_node_id=node_id,
             rx_position=node.position,
             time_us=self._current_time_us,
-            rx_frequency_hz=None,  # explicit None; hash(SFN,EUI) per CCP-9
+            channel=node.current_channel,
+            rx_frequency_hz=None,
         )
 
         # Apply chaos rules to filter/modify candidates
