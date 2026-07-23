@@ -31,6 +31,7 @@ class AnnounceError(Exception):
     """Raised when an announce message is malformed."""
 
 
+
 @dataclass
 class AnnounceMessage:
     """An announce message advertising presence in the mesh (spec 9.2 + CCP-9).
@@ -52,28 +53,21 @@ class AnnounceMessage:
 
     def __post_init__(self) -> None:
         if len(self.originator_iid) != 8:
-            raise AnnounceError(
-                f"originator_iid must be 8 bytes, got {len(self.originator_iid)}"
-            )
+            raise AnnounceError("originator_iid must be 8 bytes")
         if len(self.pubkey) != 32:
-            raise AnnounceError(
-                f"pubkey must be 32 bytes, got {len(self.pubkey)}"
-            )
+            raise AnnounceError("pubkey must be 32 bytes")
         if not 0 <= self.seq_num <= 0xFFFF:
             raise AnnounceError(f"seq_num out of range: {self.seq_num}")
         if not 0 <= self.hop_count <= 0xFF:
-            raise AnnounceError(f"hop_count out of range: {self.hop_count}")
+            raise AnnounceError("hop_count out of range")
         if not 0 <= self.flags <= 0xFF:
-            raise AnnounceError(f"flags out of range: {self.flags}")
+            raise AnnounceError("flags out of range")
         if not 0 <= self.rx_channel <= 7:
             raise AnnounceError(
                 f"invalid rx_channel: {self.rx_channel} (must be 0-7)"
             )
         if self.signature and len(self.signature) != SIGNATURE_LENGTH:
-            raise AnnounceError(
-                f"signature must be 0 or {SIGNATURE_LENGTH} bytes, "
-                f"got {len(self.signature)}"
-            )
+            raise AnnounceError("signature must be 0 or 48 bytes")
 
     def signed_data(self) -> bytes:
         return (
@@ -108,9 +102,7 @@ class AnnounceMessage:
                 f"need at least {_FIXED_LENGTH}"
             )
         if data[0] != ANNOUNCE_TYPE:
-            raise AnnounceError(
-                f"wrong message type: expected {ANNOUNCE_TYPE}, got {data[0]}"
-            )
+            raise AnnounceError("wrong message type")
         flags = data[1]
         rx_channel = flags
         if rx_channel >= 8:
@@ -129,10 +121,7 @@ class AnnounceMessage:
     def with_incremented_hop_count(self) -> AnnounceMessage:
         new_hop_count = self.hop_count + 1
         if new_hop_count > MAX_ANNOUNCE_HOPS:
-            raise AnnounceError(
-                f"hop_count would exceed MAX_ANNOUNCE_HOPS: "
-                f"{new_hop_count} > {MAX_ANNOUNCE_HOPS}"
-            )
+            raise AnnounceError("hop_count would exceed MAX_ANNOUNCE_HOPS")
         return AnnounceMessage(
             originator_iid=self.originator_iid,
             pubkey=self.pubkey,
