@@ -2,15 +2,15 @@
   "id": "project-LICHEN-80h3",
   "title": "[merge-conflict] worktree-worker18: coap_config.c",
   "notes": "Commit: f4d2f6dec",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:54:12.613768005Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:20:50.798223821Z",
+  "updated_at": "2026-07-23T03:20:54.451975619Z",
   "started_at": "2026-07-23T03:17:12.870250902Z",
-  "lease_expires_at": "2026-07-23T03:22:12.870250902Z",
-  "heartbeat_at": "2026-07-23T03:17:12.870250902Z"
+  "closed_at": "2026-07-23T03:20:54.451975619Z",
+  "close_reason": "Closed"
 }
