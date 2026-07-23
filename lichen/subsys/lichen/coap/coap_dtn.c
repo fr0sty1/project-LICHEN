@@ -13,6 +13,7 @@
 #include <lichen/coap_client.h>
 #include <lichen/coap_dtn.h>
 #include <lichen/oscore.h>
+#include <lichen/coap_oscore.h>
 #include <lichen/routing/dtn.h>
 #include <lichen/senml.h>
 
@@ -68,25 +69,45 @@ int lichen_coap_deaddrop_register(const struct lichen_deaddrop_provider *provide
 
 static int deaddrop_post(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len) {
 	if (s_provider == NULL || s_provider->store == NULL) return COAP_RESPONSE_CODE_NOT_FOUND;
-	const uint8_t *payload;
-	uint16_t payload_len = 0;
-	payload = coap_packet_get_payload(request, &payload_len);
-	if (!payload || payload_len == 0) return COAP_RESPONSE_CODE_BAD_REQUEST;
-	uint8_t dest_iid[8] = {0};
-	parse_recipient(payload, payload_len, dest_iid);
-	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
+	if (addr == NULL || addr_len < sizeof(struct sockaddr_in6) || addr->sa_family != AF_INET6) return COAP_RESPONSE_CODE_BAD_REQUEST;
+	const struct sockaddr_in6 *in6 = (const struct sockaddr_in6 *)addr;
+	uint8_t sender_eui64[8];
+	memcpy(sender_eui64, &in6->sin6_addr.s6_addr[8], 8);
+	struct oscore_ctx *ctx = NULL;
+	if (oscore_ctx_get_by_eui64(sender_eui64, &ctx) != OSCORE_OK || ctx == NULL) return COAP_RESPONSE_CODE_UNAUTHORIZED;
+	uint8_t rate_idx = sender_eui64[7];
 	uint32_t now_ms = k_uptime_get_32();
-	int idx = 0; /* simplified; full IID-hash rate limit in future */
 	k_mutex_lock(&s_rate_mutex, K_FOREVER);
-	if (s_last_deaddrop[idx] && (now_ms - s_last_deaddrop[idx] < CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS)) {
+	if (s_last_deaddrop[rate_idx] && (now_ms - s_last_deaddrop[rate_idx] < CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS)) {
 		k_mutex_unlock(&s_rate_mutex);
-		k_mutex_unlock(&s_dtn_buf_mutex);
 		return COAP_RESPONSE_CODE_TOO_MANY_REQUESTS;
 	}
-	s_last_deaddrop[idx] = now_ms;
+	s_last_deaddrop[rate_idx] = now_ms;
 	k_mutex_unlock(&s_rate_mutex);
+	const uint8_t *ct;
+	uint16_t ct_len = 0;
+	ct = coap_packet_get_payload(request, &ct_len);
+	if (!ct || ct_len == 0) return COAP_RESPONSE_CODE_BAD_REQUEST;
+	uint8_t plaintext[512];
+	size_t plaintext_len = sizeof(plaintext);
+	uint8_t oscore_opt[32];
+	size_t oscore_opt_len = sizeof(oscore_opt);
+	uint8_t code;
+	uint8_t opts[64];
+	size_t opts_len = sizeof(opts);
+	int ret = coap_oscore_get_option(request, oscore_opt, &oscore_opt_len);
+	if (ret == 0) {
+		ret = oscore_unprotect_request(ctx, oscore_opt, oscore_opt_len, ct, ct_len, &code, opts, &opts_len, plaintext, &plaintext_len);
+		if (ret != OSCORE_OK) return COAP_RESPONSE_CODE_BAD_REQUEST;
+	} else {
+		memcpy(plaintext, ct, ct_len);
+		plaintext_len = ct_len;
+	}
+	uint8_t dest_iid[8] = {0};
+	parse_recipient(plaintext, plaintext_len, dest_iid);
+	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
 	if (s_provider && s_provider->store) {
-		int r = s_provider->store(payload, payload_len);
+		int r = s_provider->store(plaintext, plaintext_len);
 		if (r < 0) {
 			k_mutex_unlock(&s_dtn_buf_mutex);
 			return COAP_RESPONSE_CODE_INTERNAL_ERROR;
@@ -94,7 +115,7 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 	}
 	uint32_t now = dtn_get_unix_time();
 	uint32_t expiry = now + LICHEN_DTN_DEFAULT_TTL_SEC;
-	bool ok = lichen_dtn_buffer_message(&s_dtn_buf, payload, payload_len, dest_iid, expiry, now, now_ms);
+	bool ok = lichen_dtn_buffer_message(&s_dtn_buf, plaintext, plaintext_len, dest_iid, expiry, now, now_ms);
 	k_mutex_unlock(&s_dtn_buf_mutex);
 	if (!ok) return COAP_RESPONSE_CODE_BAD_REQUEST;
 	return COAP_RESPONSE_CODE_CHANGED;
@@ -122,14 +143,20 @@ static int confessions_get(struct coap_resource *resource, struct coap_packet *r
 }
 
 static int confessions_post(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len) {
+	if (addr == NULL || addr_len < sizeof(struct sockaddr_in6) || addr->sa_family != AF_INET6) return COAP_RESPONSE_CODE_BAD_REQUEST;
+	const struct sockaddr_in6 *in6 = (const struct sockaddr_in6 *)addr;
+	uint8_t sender_eui64[8];
+	memcpy(sender_eui64, &in6->sin6_addr.s6_addr[8], 8);
+	struct oscore_ctx *ctx = NULL;
+	if (oscore_ctx_get_by_eui64(sender_eui64, &ctx) != OSCORE_OK || ctx == NULL) return COAP_RESPONSE_CODE_UNAUTHORIZED;
+	uint8_t rate_idx = sender_eui64[7];
 	uint32_t now_ms = k_uptime_get_32();
-	int idx = 0; /* simplified rate limit */
 	k_mutex_lock(&s_rate_mutex, K_FOREVER);
-	if (s_last_confession[idx] && (now_ms - s_last_confession[idx] < CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS)) {
+	if (s_last_confession[rate_idx] && (now_ms - s_last_confession[rate_idx] < CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS)) {
 		k_mutex_unlock(&s_rate_mutex);
 		return COAP_RESPONSE_CODE_TOO_MANY_REQUESTS;
 	}
-	s_last_confession[idx] = now_ms;
+	s_last_confession[rate_idx] = now_ms;
 	k_mutex_unlock(&s_rate_mutex);
 	return COAP_RESPONSE_CODE_CHANGED;
 }
