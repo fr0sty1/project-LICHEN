@@ -167,6 +167,11 @@ static bool is_global(const uint8_t addr[16])
 	return (addr[0] >> 5) == 0x01; /* 001x xxxx = 2000::/3 */
 }
 
+static bool is_ula(const uint8_t addr[16])
+{
+	return addr[0] == 0xFD;
+}
+
 static uint16_t read_be16(const uint8_t *p)
 {
 	return ((uint16_t)p[0] << 8) | p[1];
@@ -1286,7 +1291,8 @@ static int lichen_rule_compress_icmpv6_echo(const struct schc_rule *rule,
 	if ((type != ICMPV6_TYPE_ECHO_REQUEST &&
 	     type != ICMPV6_TYPE_ECHO_REPLY) ||
 	    icmpv6_code(icmp) != 0 ||
-	    !is_link_local(src) || !is_link_local(dst)) {
+	    !is_link_local(src) ||
+	    (!is_link_local(dst) && !is_ula(dst) && !is_global(dst))) {
 		return SCHC_ERR_NO_MATCHING_RULE;
 	}
 

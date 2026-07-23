@@ -78,6 +78,13 @@ class TestSenmlRecord:
         with pytest.raises(ValueError, match="'bver' must be an integer"):
             SenmlRecord.from_cbor_map({-1: 10.5})
 
+    def test_from_cbor_map_rejects_invalid_bver_range(self) -> None:
+        # bver must be in [1,10] per RFC 8428 §4.4
+        with pytest.raises(ValueError, match="bver.*range.*1.*10"):
+            SenmlRecord.from_cbor_map({-1: 0})
+        with pytest.raises(ValueError, match="bver.*range.*1.*10"):
+            SenmlRecord.from_cbor_map({-1: 11})
+
     def test_from_cbor_map_rejects_bool_for_numeric_field(self) -> None:
         # v (label 2) must be a number, not a boolean (bool is subclass of int)
         with pytest.raises(ValueError, match="'v' must be a number"):

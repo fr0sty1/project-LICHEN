@@ -1290,3 +1290,4 @@ COAP_RESOURCE_DEFINE(keys_single, lichen_coap_server, {
 });
 
 #endif /* CONFIG_LICHEN_COAP_KEYS */
+

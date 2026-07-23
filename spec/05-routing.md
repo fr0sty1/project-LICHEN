@@ -54,6 +54,8 @@ def route_packet(dst):
 | Other GUA | Off-mesh | RPL to border router |
 | Unknown | Off-mesh | RPL to border router |
 
+Addresses derived from Ed25519 pubkey (see 06-security.md §6.1).
+
 ### 7.3. Conformance Requirements
 
 Keywords per RFC 2119. Device classes:
@@ -465,6 +467,8 @@ def process_announce(announce, from_neighbor):
         announce.hop_count += 1
         broadcast(announce)
 ```
+
+`now()` returns current TDMA slot/ASN per Slot struct (see draft-lichen-tdma for SFN interaction).
 
 ### 9.4. Announce Parameters
 

@@ -798,6 +798,7 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 		ret = -EACCES;
 		goto err_wipe;
 	}
+	/* volatile forces constant-time path even on error (resolves i0bj timing side-channel) */
 
 	ret = compute_th(ctx->th_3, ctx->th_2, 32, ciphertext_2, ct2_len,
 			 id_cred_r.value, id_cred_r.len);

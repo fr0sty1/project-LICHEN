@@ -87,7 +87,7 @@ and auto-detected by Zephyr.
 - **T-Echo puck** (MCUboot + signed app): `./build-t_echo.sh`
   → `build_mcuboot_t_echo/zephyr/zephyr.bin` + `build_t_echo_puck/zephyr/zephyr.slot0.signed.bin`
 - **T1000-E puck**: `./build-t1000e.sh` → `build_t1000e_puck/zephyr/zephyr.slot0.signed.bin`
-- **Heltec gateway**: `west build -b heltec_wifi_lora32_v3/esp32s3/procpu lichen/apps/gateway -d build_gw`
+- **Heltec gateway (WiFi 6LBR)**: `west build -b heltec_wifi_lora32_v3/esp32s3/procpu lichen/apps/gateway -d build_gw`. Verify prefix delegation, RPL root RA, CoAP bridging to upstream, /status backhaul field. See §8 for full test procedure.
 
 ---
 
@@ -227,3 +227,21 @@ wrap is far beyond that. Watchdog-recovery correctness (bd `gald`) is also *not*
 exercised unless a crash occurs — a clean soak proves stability but leaves the
 recovery path untested. Plan wrap/recovery coverage as targeted tests, not as a
 longer soak.
+
+## 8. WiFi backhaul 6LBR validation (Heltec V3)
+
+**Build/Flash:** `west build -b heltec_wifi_lora32_v3/esp32s3/procpu lichen/apps/gateway -d build_gw_6lbr`; flash via esptool. Configure WiFi STA in overlay or Kconfig (SSID, PSK, upstream prefix delegation via RA).
+
+**Unit (prefix delegation):** Rust lichen-gateway tests in `rust/lichen-gateway/tests/` for TUN prefix handling, RPL root RA/DAO. Match test/vectors for SCHC-compressed IPv6.
+
+**Integration (mesh-sim/Renode):** Extend `lichen/tests/meshcore_gateway_adapter/` or Renode sim with WiFi emulation; verify mesh CoAP reaches upstream IPv6, status reports backhaul/prefix.
+
+**Hardware test procedure:**
+1. Connect Heltec V3 to WiFi AP with internet (verify log: "WiFi connected, prefix fd00::/64 delegated").
+2. Join T1000-E/T-Echo puck to DODAG (RPL root on gateway).
+3. From puck: CoAP GET to external host via gateway (bridging works if response received).
+4. Query /status from local client: confirm RPL root, backhaul active, prefix in response.
+5. Interop: Rust `lichend` receives forwarded packets, /status reflects WiFi metrics.
+6. Verify no prefix leakage, correct 6LoRH source routing for downward traffic.
+
+Update `build-t1000e.sh` pattern to `./build-gateway-heltec.sh` if added. Close when all pass + CI green. (See beads sl32.* for details.)

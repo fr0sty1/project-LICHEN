@@ -884,7 +884,9 @@ impl EdhocInitiator {
         if !self.state.completed {
             return Err(OscoreError::NoContext);
         }
-        // OSCORE Master Secret = EDHOC-KDF(PRK_4e3m, TH_4, "OSCORE_Master_Secret", h'', 16)
+        if self.state.prk_4e3m.iter().all(|&b| b == 0) {
+            return Err(OscoreError::NoContext);
+        }
         let master_secret_vec = edhoc_kdf(
             &self.state.prk_4e3m,
             &self.state.th_4,
@@ -1336,7 +1338,9 @@ impl EdhocResponder {
         if !self.state.completed {
             return Err(OscoreError::NoContext);
         }
-
+        if self.state.prk_4e3m.iter().all(|&b| b == 0) {
+            return Err(OscoreError::NoContext);
+        }
         let master_secret_vec = edhoc_kdf(
             &self.state.prk_4e3m,
             &self.state.th_4,

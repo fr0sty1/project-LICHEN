@@ -482,7 +482,7 @@ impl<R: Radio> SecureStack<R> {
 
         let piv_len = (oscore_opt[0] & 0x07) as usize;
         if oscore_opt.len() < 1 + piv_len {
-            return Err(SecureError::CoapEncode);
+            return Err(SecureError::MalformedOscore);
         }
         let request_piv = oscore_opt[1..1 + piv_len].to_vec();
 

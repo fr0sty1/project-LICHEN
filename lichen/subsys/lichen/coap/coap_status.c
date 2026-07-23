@@ -14,6 +14,10 @@
 #include <errno.h>
 #include <stdint.h>
 
+#include <errno.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/net/coap.h>
@@ -26,9 +30,18 @@
 LOG_MODULE_REGISTER(lichen_coap_status, CONFIG_LICHEN_COAP_STATUS_LOG_LEVEL);
 
 #define CBOR_CONTENT_FORMAT 60
+#define CBOR_MAP_BASE 0xa0U
+#define CBOR_ARRAY_BASE 0x80U
+#define CBOR_TEXT_BASE 0x60U
+#define CBOR_TRUE 0xf5U
+#define CBOR_FALSE 0xf4U
+#define CBOR_UINT8 0x18U
+#define CBOR_UINT16 0x19U
+#define CBOR_UINT32 0x1aU
 
 static struct lichen_coap_status_config s_config;
 static bool s_initialized;
+static K_MUTEX_DEFINE(s_init_mutex);
 
 struct cbor_ctx {
 	uint8_t *buf;
@@ -56,11 +69,15 @@ static inline bool cbor_check_space(struct cbor_ctx *ctx, size_t n)
 
 static void cbor_put_map_header(struct cbor_ctx *ctx, uint8_t count)
 {
+	if (count > 255) {
+		ctx->overflow = true;
+		return;
+	}
 	if (count < 24U) {
 		if (!cbor_check_space(ctx, 1)) {
 			return;
 		}
-		ctx->buf[ctx->off++] = 0xa0U | count;
+		ctx->buf[ctx->off++] = CBOR_MAP_BASE | count;
 	} else {
 		if (!cbor_check_space(ctx, 2)) {
 			return;
@@ -72,11 +89,15 @@ static void cbor_put_map_header(struct cbor_ctx *ctx, uint8_t count)
 
 static void cbor_put_array_header(struct cbor_ctx *ctx, uint8_t count)
 {
+	if (count > 255) {
+		ctx->overflow = true;
+		return;
+	}
 	if (count < 24U) {
 		if (!cbor_check_space(ctx, 1)) {
 			return;
 		}
-		ctx->buf[ctx->off++] = 0x80U | count;
+		ctx->buf[ctx->off++] = CBOR_ARRAY_BASE | count;
 	} else {
 		if (!cbor_check_space(ctx, 2)) {
 			return;
@@ -94,6 +115,7 @@ static void cbor_put_tstr(struct cbor_ctx *ctx, const char *value)
 		return;
 	}
 	size_t header_len;
+
 	if (len < 24U) {
 		header_len = 1;
 	} else if (len <= UINT8_MAX) {
@@ -107,11 +129,13 @@ static void cbor_put_tstr(struct cbor_ctx *ctx, const char *value)
 		ctx->overflow = true;
 		return;
 	}
+
 	if (!cbor_check_space(ctx, header_len + len)) {
 		return;
 	}
+
 	if (len < 24U) {
-		ctx->buf[ctx->off++] = 0x60U | (uint8_t)len;
+		ctx->buf[ctx->off++] = CBOR_TEXT_BASE | (uint8_t)len;
 	} else if (len <= UINT8_MAX) {
 		ctx->buf[ctx->off++] = 0x78;
 		ctx->buf[ctx->off++] = (uint8_t)len;
@@ -142,7 +166,7 @@ static void cbor_put_bool(struct cbor_ctx *ctx, bool value)
 	if (!cbor_check_space(ctx, 1)) {
 		return;
 	}
-	ctx->buf[ctx->off++] = value ? 0xf5 : 0xf4;
+	ctx->buf[ctx->off++] = value ? CBOR_TRUE : CBOR_FALSE;
 }
 
 static void cbor_put_uint(struct cbor_ctx *ctx, uint32_t value)
@@ -254,7 +278,9 @@ static const char *trust_level_str(enum lichen_coap_trust_level trust)
 	}
 }
 
-	size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
+/* ── CBOR encoders ─────────────────────────────────────────────────────────── */
+
+size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 				      const struct lichen_coap_node_status *status)
 {
 	struct cbor_ctx ctx;
@@ -821,7 +847,7 @@ struct coap_resource lichen_coap_routes_resource = {
 
 int lichen_coap_status_init(const struct lichen_coap_status_config *config)
 {
-	if (config == NULL) {
+	if (config == NULL || config->status_get == NULL) {
 		return -EINVAL;
 	}
 

@@ -98,6 +98,11 @@ def _validate_field_type(name: str, value: object) -> None:
             f"SenML field '{name}' must be bytes, got {type(value).__name__}"
         )
 
+    if name == "bver" and not (1 <= value <= 10):
+        raise ValueError(
+            f"SenML field 'bver' must be in range [1,10] per RFC 8428 §4.4, got {value}"
+        )
+
 
 @dataclass
 class SenmlRecord:
