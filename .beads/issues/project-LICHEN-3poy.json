@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-3poy",
   "title": "[merge-conflict] worktree-worker17: Kconfig.defconfig",
-  "notes": "Commit: 0f2724173",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:18.844279966Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:25:25.531914983Z",
+  "updated_at": "2026-07-23T03:23:52.625266277Z",
   "started_at": "2026-07-23T03:23:52.625266277Z",
-  "closed_at": "2026-07-23T03:25:25.531914983Z",
-  "close_reason": "Resolved Kconfig.defconfig merge conflict by adopting comprehensive version with LVGL/display support for T-Deck; updated t_deck Kconfig.defconfig, committed and pushed to worktree-worker17 branch"
+  "lease_expires_at": "2026-07-23T03:28:52.625266277Z",
+  "heartbeat_at": "2026-07-23T03:23:52.625266277Z"
 }
