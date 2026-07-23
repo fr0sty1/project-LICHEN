@@ -184,7 +184,7 @@ int lichen_key_pubkey_fingerprint(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKE
 /**
  * @brief Derive 64-bit IID from Ed25519 public key (SHA-256 first 8 bytes)
  *
- * Implements node IPv6 address format per project-LICHEN-zt3c:
+ * Implements node IPv6 address format:
  * link-local fe80::/10 (control plane only), primary 02xx::/iid (Yggdrasil-derived,
  * works for both local mesh and global backbone). Drop ULA. IID = first 8 bytes
  * of SHA-256(pubkey). Matches Yggdrasil crypto addressing for unified identity.

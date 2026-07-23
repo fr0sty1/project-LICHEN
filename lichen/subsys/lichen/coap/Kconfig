@@ -215,7 +215,7 @@ config LICHEN_COAP_KEYS
 	help
 	  Maximum number of peer keys to store. Capped at 16 by CBOR encoder
 	  stack usage in encode_keys_list_cbor() and the BUILD_ASSERT in
-	  coap_keys.c (project-LICHEN-vw14). Each entry requires ~60 bytes of RAM.
+	  coap_keys.c. Each entry requires ~60 bytes of RAM.
 
 config LICHEN_COAP_KEYS_LOG_LEVEL
 	int "CoAP keys log level"
