@@ -779,43 +779,6 @@ class Simulation:
             if result is not None:
                 payload, rssi, snr, tx_id, source_node_id = result
                 on_packet = node.rx_callbacks[0]
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/worktree-worker19
-                self._metrics.record_reception(node_id, tx_id, self._current_time_us)
-                rx_log = {
-                    "sim_id": self._id,
-                    "node_id": node_id,
-                    "tx_id": tx_id,
-                    "payload_len": len(payload),
-                    "rssi": rssi,
-                    "snr": snr,
-                    "time_us": self._current_time_us,
-                    "from_node_id": source_node_id,
-                }
-<<<<<<< HEAD
-                if self._debug_enabled:
-                    rx_log.update(
-                        node_state=node.state.name,
-                        pending_timeouts=len(self._pending_rx_timeouts),
-                        event_queue_len=len(self._event_queue),
-                    )
-
-=======
->>>>>>> origin/worktree-worker19
-                self._observers.notify(
-                    "on_rx_success",
-                    sim_id=self._id,
-                    node_id=node_id,
-                    tx_id=tx_id,
-                    from_node_id=source_node_id,
-                    payload_len=len(payload),
-                    rssi=rssi,
-                    snr=snr,
-                    time_us=self._current_time_us,
-                )
-
                 node.state = NodeState.IDLE
                 node.rx_callbacks = None
                 self._pending_rx_timeouts.pop(node_id, None)
@@ -834,6 +797,7 @@ class Simulation:
                 delivered += 1
 
         return delivered
+
 
     def _get_rx_result_internal(self, node_id: str) -> tuple[bytes, int, int, str, str] | None:
         """Internal version of get_rx_result for callback delivery.
@@ -893,25 +857,21 @@ class Simulation:
                     )
             return None
 
-<<<<<<< HEAD
-        # Record simulation-wide + per-node metrics for push RX path (used by
-        # deliver_pending_packets). Polling path (get_rx_result) duplicates
-        # this for legacy compatibility. This unifies the core recording logic.
-=======
->>>>>>> origin/worktree-worker19
         self._metrics.record_reception(node_id, tx.id, self._current_time_us)
         packet_hash = hashlib.sha256(tx.payload).digest()[:16].hex()
         node.metrics.record_rx(tx.payload, packet_hash, from_peer=tx.source_node_id)
 
         for candidate in candidates:
             if candidate.transmission is tx:
+                rssi = int(candidate.rssi)
+                snr = int(candidate.snr)
                 rx_log = {
                     "sim_id": self._id,
                     "node_id": node_id,
                     "tx_id": tx.id,
                     "payload_len": len(tx.payload),
-                    "rssi": int(candidate.rssi),
-                    "snr": int(candidate.snr),
+                    "rssi": rssi,
+                    "snr": snr,
                     "time_us": self._current_time_us,
                     "from_node_id": tx.source_node_id,
                     "node_state": node.state.name,
@@ -920,10 +880,21 @@ class Simulation:
                     "pending_rx_timeouts": len(self._pending_rx_timeouts),
                 }
                 self._debug_log("rx_success", **rx_log)
+                self._observers.notify(
+                    "on_rx_success",
+                    sim_id=self._id,
+                    node_id=node_id,
+                    tx_id=tx.id,
+                    from_node_id=tx.source_node_id,
+                    payload_len=len(tx.payload),
+                    rssi=rssi,
+                    snr=snr,
+                    time_us=self._current_time_us,
+                )
                 return (
                     tx.payload,
-                    int(candidate.rssi),
-                    int(candidate.snr),
+                    rssi,
+                    snr,
                     tx.id,
                     tx.source_node_id,
                 )
@@ -950,103 +921,11 @@ class Simulation:
         if node is None:
             raise ValueError(f"Node '{node_id}' does not exist")
 
-        candidates = self._medium.get_rx_candidates(
-            rx_node_id=node_id,
-            rx_position=node.position,
-            time_us=self._current_time_us,
-            rx_frequency_hz=None,  # explicit CCP-9; hash(SFN,EUI) for rendezvous
-        )
-
-        # Apply chaos rules to filter/modify candidates
-        if self._chaos_engine is not None:
-            filtered_candidates = []
-            for candidate in candidates:
-                result = self._chaos_engine.apply_all(
-                    candidate=candidate,
-                    rx_node_id=node_id,
-                    rx_position=node.position,
-                )
-                if result is not None:
-                    filtered_candidates.append(result)
-            candidates = filtered_candidates
-
-        # Drop candidates whose LatencyRule-added delivery delay hasn't elapsed.
-        candidates = [
-            c
-            for c in candidates
-            if c.added_latency_us == 0
-            or self._current_time_us >= c.transmission.end_time_us + c.added_latency_us
-        ]
-
-        tx = self._medium.resolve_reception(candidates)
-        if tx is None:
-            # Two or more overlapping signals that failed the capture check
-            # are a collision (deduplicated inside record_collision).
-            if len(candidates) >= 2:
-                tx_ids = [c.transmission.id for c in candidates]
-                if self._metrics.record_collision(node_id, tx_ids):
-                    self._debug_log(
-                        "collision",
-                        sim_id=self._id,
-                        node_id=node_id,
-                        time_us=self._current_time_us,
-                        tx_ids=tx_ids,
-                    )
-                    # Notify observers
-                    self._observers.notify(
-                        "on_collision",
-                        sim_id=self._id,
-                        node_id=node_id,
-                        tx_ids=tx_ids,
-                        time_us=self._current_time_us,
-                    )
+        result = self._get_rx_result_internal(node_id)
+        if result is None:
             return None
-
-        self._metrics.record_reception(node_id, tx.id, self._current_time_us)
-
-        # Record per-node metrics
-        packet_hash = hashlib.sha256(tx.payload).digest()[:16].hex()
-        node.metrics.record_rx(tx.payload, packet_hash, from_peer=tx.source_node_id)
-
-        # Find the candidate to get RSSI/SNR
-        for candidate in candidates:
-            if candidate.transmission is tx:
-                rx_log = {
-                    "sim_id": self._id,
-                    "node_id": node_id,
-                    "tx_id": tx.id,
-                    "payload_len": len(tx.payload),
-                    "rssi": int(candidate.rssi),
-                    "snr": int(candidate.snr),
-                    "time_us": self._current_time_us,
-                    "from_node_id": tx.source_node_id,
-                }
-                if self._debug_enabled:
-                    rx_log.update(
-                        node_state=node.state.name,
-                        pending_rx_timeouts=len(self._pending_rx_timeouts),
-                        queue_size=len(self._event_queue),
-                    )
-                self._debug_log("rx_success", **rx_log)
-                # Notify observers
-                self._observers.notify(
-                    "on_rx_success",
-                    sim_id=self._id,
-                    node_id=node_id,
-                    tx_id=tx.id,
-                    from_node_id=tx.source_node_id,
-                    payload_len=len(tx.payload),
-                    rssi=int(candidate.rssi),
-                    snr=int(candidate.snr),
-                    time_us=self._current_time_us,
-                )
-                return (
-                    tx.payload,
-                    int(candidate.rssi),
-                    int(candidate.snr),
-                )
-
-        return None
+        payload, rssi, snr, tx_id, source_node_id = result
+        return payload, rssi, snr
 
     def get_connected_node_count(self) -> int:
         """Return the number of connected nodes.
