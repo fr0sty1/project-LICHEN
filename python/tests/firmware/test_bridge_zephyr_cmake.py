@@ -17,11 +17,18 @@ BRIDGE_KCONFIG = ROOT / "firmware" / "bridge-zephyr" / "Kconfig"
 L2_KCONFIG = ROOT / "lichen" / "subsys" / "lichen" / "l2" / "Kconfig"
 BRIDGE_BOARDS = ROOT / "firmware" / "bridge-zephyr" / "boards"
 BRIDGE_AUTO_MERGE_BOARD_FILES = (
+    "heltec_vision_master_e213",
+    "heltec_vision_master_e290",
     "heltec_wifi_lora32_v3_esp32s3_procpu",
+    "heltec_wireless_tracker",
+    "lilygo_tbeam",
+    "rak19007_wisblock",
+    "rak4631_nrf52840",
+    "station_g2",
+    "t1000_e_nrf52840",
     "t_deck_esp32s3_procpu",
     "t_echo_nrf52840",
-    "rak4631_nrf52840",
-    "t1000_e_nrf52840",
+    "xiao_s3_wio_sx1262",
 )
 BRIDGE_OBSOLETE_ALIAS_BOARD_FILES = (
     "heltec_lora32_v3",
