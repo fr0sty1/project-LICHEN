@@ -1,10 +1,9 @@
 //! RF health metrics tracking for LICHEN nodes (CCP-15/16 interference mitigation,
-//! adaptive SF, load balancing from da2q multi-channel context).
+//! adaptive SF, load balancing).
 //!
-//! Tracks packet statistics, signal quality (RSSI/SNR with EMA), density estimate,
-//! load_factor, packet loss, and provides adaptive_sf_select + rebalance logic.
-//! Matches ccp15.json, ccp16.json, ccp_load_balancing.json vectors exactly.
-//! no_std, heapless-compatible, #![forbid(unsafe_code)].
+//! Tracks packet statistics, signal quality (RSSI/SNR with EMA), density,
+//! load_factor, packet loss. Saturating counters, Q16.16 fixed point.
+//! no_std compatible, #![forbid(unsafe_code)].
 //!
 //! # Fixed-Point Representation
 //!
@@ -17,8 +16,15 @@
 
 const FP_SCALE: u32 = 1 << 16;
 const EMA_ALPHA_SHIFT: u32 = 2;
+const DENSITY_CRITICAL: u8 = 20;
+const DENSITY_HIGH: u8 = 8;
+const DENSITY_LOW: u8 = 5;
+const SNR_CRITICAL: i8 = -5;
+const SNR_POOR: i8 = 0;
+const SNR_GOOD: i8 = 8;
+const LOAD_HIGH: u32 = FP_SCALE * 4 / 5;
+const LOAD_REBALANCE: u32 = FP_SCALE * 2 / 5;
 
-/// All counters saturate. Uses Q16.16 fixed-point. Matches all ccp*.json vectors.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct RfHealthMetrics {
     /// Total packets transmitted.
@@ -333,12 +339,12 @@ impl RfHealthMetrics {
     #[inline]
     pub fn adaptive_sf(&self) -> u8 {
         let snr_ema = self.snr.avg().unwrap_or(0);
-        let load_high = self.load_factor_fp > (FP_SCALE * 4 / 5);
-        if self.density > 20 || snr_ema < -5 {
+        let load_high = self.load_factor_fp > LOAD_HIGH;
+        if self.density > DENSITY_CRITICAL || snr_ema < SNR_CRITICAL {
             12
-        } else if self.density > 8 || snr_ema < 0 || load_high {
+        } else if self.density > DENSITY_HIGH || snr_ema < SNR_POOR || load_high {
             11
-        } else if self.density < 5 && snr_ema > 8 {
+        } else if self.density < DENSITY_LOW && snr_ema > SNR_GOOD {
             9
         } else {
             10
@@ -347,8 +353,8 @@ impl RfHealthMetrics {
 
     #[inline]
     pub fn should_rebalance(&self) -> bool {
-        self.density > 8
-            || self.load_factor_fp > (FP_SCALE * 2 / 5)
+        self.density > DENSITY_HIGH
+            || self.load_factor_fp > LOAD_REBALANCE
             || self.packet_loss_rate_fp().as_percent() > 40
     }
 }
@@ -579,7 +585,7 @@ mod tests {
     }
 
     #[test]
-    fn adaptive_sf_and_rebalance_matches_ccp_vectors() {
+    fn adaptive_sf_and_rebalance() {
         let mut m = RfHealthMetrics::new();
         m.record_density(3);
         m.record_rx(-70, 12);
