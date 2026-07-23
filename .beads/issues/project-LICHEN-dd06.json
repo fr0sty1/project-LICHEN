@@ -3,15 +3,15 @@
   "title": "announce: decode_opportunistic_forwarders silently truncates malformed data",
   "description": "File: python/src/lichen/announce/coords.py:248-252\n\nThe decode function checks count \u003e MAX_OPPORTUNISTIC_CANDIDATES but not count == 0:\n\n```python\nif count \u003e MAX_OPPORTUNISTIC_CANDIDATES:\n    return None\nexpected_len = 2 + count * 8\nif len(data) \u003c expected_len:\n    return None\n```\n\nIf count=0, expected_len=2, and we return an empty list. This is probably fine.\n\nHowever, the bigger issue is that if data contains EXTRA bytes beyond expected_len (e.g., 34 bytes when expected is 18), those bytes are silently ignored. This could mask protocol errors or versioning issues.\n\nConsider either:\n1. Strict validation: reject if len(data) != expected_len\n2. Return remaining bytes along with parsed data for higher layers to process\n3. Log a warning when extra data is present",
   "notes": "Commit: 8dcb40b4e",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:19:16.353004Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T03:46:30.853728602Z",
+  "updated_at": "2026-07-23T03:46:32.455716129Z",
   "started_at": "2026-07-23T03:44:59.466947213Z",
-  "lease_expires_at": "2026-07-23T03:49:59.466947213Z",
-  "heartbeat_at": "2026-07-23T03:44:59.466947213Z"
+  "closed_at": "2026-07-23T03:46:32.455716129Z",
+  "close_reason": "Closed"
 }
