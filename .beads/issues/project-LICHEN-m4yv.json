@@ -2,15 +2,15 @@
   "id": "project-LICHEN-m4yv",
   "title": "[merge-conflict] worktree-worker24: xiao_s3_wio_sx1262.overlay",
   "notes": "Commit: ed7a44c8c",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:34:56.104437041Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:39:57.540949797Z",
+  "updated_at": "2026-07-23T00:40:01.150825464Z",
   "started_at": "2026-07-23T00:36:56.036242357Z",
-  "lease_expires_at": "2026-07-23T00:41:56.036242357Z",
-  "heartbeat_at": "2026-07-23T00:36:56.036242357Z"
+  "closed_at": "2026-07-23T00:40:01.150825464Z",
+  "close_reason": "Resolved merge conflict in xiao_s3_wio_sx1262.overlay and .conf by syncing to clean version from worker24 worktree; staged all resolved merge paths and completed merge commit"
 }
