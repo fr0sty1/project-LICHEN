@@ -603,18 +603,8 @@ class Simulation:
 
         This is the core TX logic, called either immediately from
         start_transmission() or later via TxStartDelayedEvent.
-        For TX/RX rendezvous, channel should be from synchronized_hop_channel(sfn)
-        or node.tdma_scheduler.get_hop_channel(sfn) (CCP-12). Updates node.current_channel.
-
-        Args:
-            node_id: ID of the transmitting node.
-            payload: Raw bytes to transmit.
-            tx_power_dbm: Transmit power in dBm.
-            position: Node position (x, y, z) in meters.
-            channel: Channel from synchronized_hop_channel (overrides node.current_channel).
-
-        Returns:
-            The transmission ID.
+        Uses node's hop_schedule populated from SFN/EUI hash for CCP-12
+        synchronized channel selection. Updates node.current_channel.
         """
         node = self._nodes.get(node_id)
 
@@ -624,10 +614,21 @@ class Simulation:
 
         if node is not None:
             node.state = NodeState.TX
-            if channel != node.current_channel:
-                node.current_channel = channel  # update for synchronized hopping
-        else:
-            channel = synchronized_hop_channel(0)  # rendezvous default
+            if not node.hop_schedule:
+                seed = int.from_bytes(
+                    hashlib.sha256(node.id.encode()).digest()[:4], "big"
+                )
+                node.hop_schedule = tuple(
+                    synchronized_hop_channel(i, seed, 8) for i in range(32)
+                )
+            sfn = node.tdma_scheduler.clock.sfn
+            if node.hop_schedule:
+                channel = node.hop_schedule[sfn % len(node.hop_schedule)]
+            elif channel == 0:
+                channel = synchronized_hop_channel(0)
+            node.current_channel = channel
+        elif channel == 0:
+            channel = synchronized_hop_channel(0)
 
         tx = self._medium.start_tx(
             node_id=node_id,
