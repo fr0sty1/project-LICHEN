@@ -3,13 +3,14 @@
   "title": "Implement Zephyr prefix DAO parity",
   "description": "Add bounded canonical prefix keys, owner paths, grouped DAO processing, longest-prefix lookup, lifecycle, capacity, and authorization to Zephyr C with native tests and shared vectors.",
   "acceptance_criteria": "Zephyr C passes canonical prefix routing vectors with bounded memory and atomic rejection.",
+  "notes": "THE RIGHT THING:\n1. Read spec/05-routing.md section on prefix DAO\n2. Reference impl: rust/lichen-rpl/src/routing.rs (already passes vectors)\n3. Python impl: python/src/lichen/rpl/routing.py\n4. Zephyr target: lichen/subsys/lichen/rpl/\n5. Key: bounded prefix keys (no malloc), longest-prefix lookup, lifecycle\n6. Build: west build -b native_sim lichen/apps/puck -- -DCONFIG_LICHEN_RPL_TEST=y",
   "status": "open",
   "priority": 1,
   "issue_type": "feature",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-18T20:27:34.155966Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-18T20:27:34.155966Z",
+  "updated_at": "2026-07-23T04:24:45.729376021Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-2auf.44.9.5",
