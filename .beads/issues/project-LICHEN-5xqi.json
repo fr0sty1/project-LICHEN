@@ -2,15 +2,15 @@
   "id": "project-LICHEN-5xqi",
   "title": "[merge-conflict] worktree-worker16: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: b75720e77",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:55:19.119645136Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:10:39.263443994Z",
+  "updated_at": "2026-07-23T03:10:43.390650057Z",
   "started_at": "2026-07-23T03:08:04.536565575Z",
-  "lease_expires_at": "2026-07-23T03:13:04.536565575Z",
-  "heartbeat_at": "2026-07-23T03:08:04.536565575Z"
+  "closed_at": "2026-07-23T03:10:43.390650057Z",
+  "close_reason": "Updated heltec_wifi_lora32_v3_esp32s3_procpu.conf in worktree-worker16 to match consolidated main version with added resolution note for this bead. Cleaned duplicate comments per no-dead-code rule. Commit b75720e77"
 }
