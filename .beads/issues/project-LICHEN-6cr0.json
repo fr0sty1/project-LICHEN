@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-6cr0",
+  "title": "[cross-impl] EDHOC transcript hash mismatch Python/Rust/Zephyr",
+  "description": "Recent edhoc.c:53iv and lichen-hal:s3d6 changes expose TH_2/TH_3 divergence: C uses ZCBOR bstr(H(msg1)||G_Y||C_R) vs Python cbor2(G_Y||H(msg1)) and Rust transcript_*. Causes divergent PRK/MAC/Sig in Suite 0. See explore task ses_072afe61fffedksMoRqF2nDFZ4. Matches neither RFC 9528 exact profile nor shared vectors. Affects all interop.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T04:52:56.903711501Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T04:52:56.903711501Z"
+}
