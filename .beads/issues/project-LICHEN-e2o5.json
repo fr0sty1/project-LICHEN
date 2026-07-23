@@ -2,15 +2,17 @@
   "id": "project-LICHEN-e2o5",
   "title": "[codereview-pass3] coap_dtn.c: no GET handler implemented yet for deaddrop retrieval per task spec",
   "description": "lichen/subsys/lichen/coap/coap_dtn.c:100 - missing .get = deaddrop_get in resource def and handler func using DTN retrieve. discovered-from:project-LICHEN-fnj7",
-  "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",
   "created_at": "2026-07-22T15:19:41.378200856Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:19:47.02703979Z",
+  "updated_at": "2026-07-23T05:24:21.702025767Z",
   "started_at": "2026-07-22T15:19:47.02703979Z",
-  "lease_expires_at": "2026-07-22T15:24:47.02703979Z",
-  "heartbeat_at": "2026-07-22T15:19:47.02703979Z"
+  "closed_at": "2026-07-23T05:24:21.702025767Z",
+  "close_reason": "Decomposed into subtasks project-LICHEN-e2o5.1 project-LICHEN-e2o5.2 project-LICHEN-e2o5.3",
+  "labels": [
+    "defer-external"
+  ]
 }
