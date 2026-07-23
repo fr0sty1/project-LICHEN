@@ -274,12 +274,20 @@ fn export_context(
     sender_id: &[u8],
     recipient_id: &[u8],
 ) -> Result<Context, OscoreError> {
-    let master_secret_vec =
-        edhoc_kdf(prk, th, "OSCORE_Master_Secret", &[], KEY_LEN).map_err(|_| OscoreError::KeyDerivation)?;
+    let prk_out_vec = edhoc_kdf(prk, th, "7", th, 32)
+        .map_err(|_| OscoreError::KeyDerivation)?;
+    let mut prk_out = Zeroizing::new([0u8; 32]);
+    prk_out.copy_from_slice(&prk_out_vec[0..32]);
+    let prk_exporter_vec = edhoc_kdf(&prk_out, th, "10", b"", 32)
+        .map_err(|_| OscoreError::KeyDerivation)?;
+    let mut prk_exporter = Zeroizing::new([0u8; 32]);
+    prk_exporter.copy_from_slice(&prk_exporter_vec);
+    let master_secret_vec = edhoc_kdf(&prk_exporter, th, "0", b"", KEY_LEN)
+        .map_err(|_| OscoreError::KeyDerivation)?;
     let mut master_secret = Zeroizing::new([0u8; KEY_LEN]);
     master_secret.copy_from_slice(&master_secret_vec);
-    let master_salt_vec =
-        edhoc_kdf(prk, th, "OSCORE_Master_Salt", &[], 8).map_err(|_| OscoreError::KeyDerivation)?;
+    let master_salt_vec = edhoc_kdf(&prk_exporter, th, "1", b"", 8)
+        .map_err(|_| OscoreError::KeyDerivation)?;
     let mut master_salt = Zeroizing::new([0u8; 8]);
     master_salt.copy_from_slice(&master_salt_vec);
     Context::new_fresh(
@@ -613,31 +621,6 @@ impl EdhocInitiator {
     ///
     /// message_1 = (METHOD, SUITES_I, G_X, C_I, ? EAD_1)
     pub fn create_message_1(&mut self) -> Result<heapless::Vec<u8, 64>, EdhocError> {
-        // METHOD_CORR = method * 4 + corr (method=0, corr=1 for CoAP)
-        let method_corr: u8 = 1;
-
-        // Build message_1 as CBOR sequence
-        let mut msg1 = heapless::Vec::<u8, 64>::new();
-
-        // method_corr as CBOR uint
-        msg1.push_err(method_corr)?;
-
-        // SUITES_I = 0 (Suite 0)
-        msg1.push_err(SUITE_0)?;
-
-        // G_X as CBOR bstr (32 bytes)
-        msg1.push_err(0x58)?;
-        msg1.push_err(32)?;
-        msg1.extend_err(self.eph_public.as_bytes())?;
-
-        // C_I - encode as int if 0-23, else as bstr
-        if self.c_i <= 23 {
-            msg1.push_err(self.c_i)?;
-        } else {
-            msg1.push_err(0x41)?;
-            msg1.push_err(self.c_i)?;
-        }
-
         let mut msg1 = heapless::Vec::<u8, 64>::new();
         msg1.push_err(0)?; // METHOD = 0 (signature/signature)
         msg1.push_err(SUITE_0)?;
@@ -1076,28 +1059,30 @@ impl EdhocResponder {
             // PRK_3e2m = PRK_2e for Suite 0 SIGN_SIGN (needed for MAC_2)
             self.state.prk_3e2m = self.state.prk_2e;
 
-        let mut context_2 = heapless::Vec::<u8, 128>::new();
-        context_2.push_err(0x58)?;
-        context_2.push_err(32)?;
-        context_2.extend_err(self.pubkey.as_bytes())?;
-        context_2.push_err(0x58)?;
-        context_2.push_err(32)?;
-        context_2.extend_err(self.pubkey.as_bytes())?;
-        let mac_2 = edhoc_kdf(
-            &self.state.prk_3e2m,
-            &self.state.th_2,
-            "MAC_2",
-            &context_2,
-            32,
-        )?;
-        let m_2 = build_signature_structure(
-            self.pubkey.as_bytes(),
-            &self.state.th_2,
-            self.pubkey.as_bytes(),
-            &mac_2,
-        )?;
-        let signature_2 = self.signing_key.sign(&m_2);
-        let credential_r = self.pubkey.as_bytes();
+            let mut id_cred_r = heapless::Vec::<u8, 40>::new();
+            encode_id_cred(&mut id_cred_r, self.pubkey.as_bytes())?;
+            let mut credential_r = heapless::Vec::<u8, 80>::new();
+            encode_credential(&mut credential_r, self.pubkey.as_bytes())?;
+            let context_2 = build_context_2(
+                &ConnectionId::new(&[self.c_r]).map_err(|_| EdhocError::BufferTooSmall)?,
+                &id_cred_r,
+                &self.state.th_2,
+                &credential_r,
+            )?;
+            let mac_2 = edhoc_kdf(
+                &self.state.prk_3e2m,
+                &self.state.th_2,
+                "MAC_2",
+                &context_2,
+                32,
+            )?;
+            let m_2 = build_signature_structure(
+                &id_cred_r,
+                &self.state.th_2,
+                &credential_r,
+                &mac_2,
+            )?;
+            let signature_2 = self.signing_key.sign(&m_2);
 
             let mut plaintext_2 = SecretVec::<128>::new();
             encode_identifier(&mut plaintext_2, &self.c_r)?;
