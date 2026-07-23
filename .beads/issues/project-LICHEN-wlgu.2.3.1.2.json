@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-wlgu.2.3.1.2",
+  "title": "Add ccp_hop_vectors() returning list of dicts with computed hash_output for sfn/seed cases",
+  "description": "Implement ccp_hop_vectors() using the _hop_hash or existing hash_32(_h) helper. Cover SFN=0/1, different num_channels, rendezvous cases. Match expected_channel from current ccp16-hop.json but with real hash_output instead of placeholder strings. Follow test vector discipline: independent oracle only. Reference spec:120-125 and generate.py existing ccp16_vectors pattern.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:28:35.298874002Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:28:35.298874002Z",
+  "labels": [
+    "defer-boardconfig"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-wlgu.2.3.1.2",
+      "depends_on_id": "project-LICHEN-wlgu.2.3.1",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:28:35.445593574Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
