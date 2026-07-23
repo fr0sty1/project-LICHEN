@@ -2,15 +2,15 @@
   "id": "project-LICHEN-87co",
   "title": "[merge-conflict] worktree-worker18: coap_config.c",
   "notes": "Commit: 563bee1e3",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:57:28.264597018Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:13:27.114004384Z",
+  "updated_at": "2026-07-23T00:13:29.933087757Z",
   "started_at": "2026-07-23T00:11:53.187360804Z",
-  "lease_expires_at": "2026-07-23T00:16:53.187360804Z",
-  "heartbeat_at": "2026-07-23T00:11:53.187360804Z"
+  "closed_at": "2026-07-23T00:13:29.933087757Z",
+  "close_reason": "Aligned lichen_config_identity.primary field and KEY_PRIMARY with spec LCI /config/identity CBOR (primary addr); fixed merge conflict residue between ygg/ula naming in coap_config.{h,c}"
 }
