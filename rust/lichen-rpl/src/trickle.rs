@@ -105,10 +105,9 @@ impl TrickleTimer {
         self.interval_start = now;
         self.counter = 0;
         self.transmitted = false;
-        // RFC 6206 §4.2 rule 2: t uniform in [I/2, I). Bitwise form bias-free for
-        // odd I and safe at u32::MAX (avoids overflow panic; cf. C impl,
-        // project-LICHEN-jufb merge-conflict, Worker23 bias fix). Matches all
-        // tests and Python.
+        // RFC 6206 §4.2 rule 2: t uniform in [I/2, I). Bitwise form is
+        // bias-free for odd I and safe at u32::MAX (avoids overflow). Matches
+        // C impl, tests, and Python equivalent.
         let half = (self.interval >> 1) + (self.interval & 1);
         let range = self.interval - half;
         let offset = if range > 0 { rand_offset % range } else { 0 };
