@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-fey7",
   "title": "[merge-conflict] integration/worker14-20260722: coap_dtn.c",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:39:10.583781079Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:39:10.583781079Z"
+  "updated_at": "2026-07-23T00:41:28.695269566Z",
+  "started_at": "2026-07-23T00:41:28.695269566Z",
+  "lease_expires_at": "2026-07-23T00:46:28.695269566Z",
+  "heartbeat_at": "2026-07-23T00:41:28.695269566Z"
 }
