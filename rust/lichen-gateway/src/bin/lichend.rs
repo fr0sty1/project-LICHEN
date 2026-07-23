@@ -24,7 +24,7 @@ use lichen_link::identity::Identity;
 use lichen_link::keys::Seed;
 use lichen_sim::SimClient;
 
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::OnceLock, time::Instant};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     signal,
@@ -71,8 +71,11 @@ struct Args {
     log: String,
 }
 
+static START_TIME: OnceLock<Instant> = OnceLock::new();
+
 #[tokio::main]
 async fn main() {
+
     let args = Args::parse();
     fmt().with_env_filter(EnvFilter::new(&args.log)).init();
 
@@ -437,7 +440,11 @@ async fn forward_mesh_to_upstream<T: TunLike>(
     frame: &[u8],
     tun: &Option<T>,
 ) -> Option<Vec<u8>> {
-    let (reply_opt, event) = gw.process_rpl(frame, 0u64);
+    let now_ms = {
+        let start = START_TIME.get_or_init(Instant::now);
+        start.elapsed().as_millis() as u64
+    };
+    let (reply_opt, event) = gw.process_rpl(frame, now_ms);
     if let RplEvent::DaoReceived {
         route_updated: true,
     } = event
