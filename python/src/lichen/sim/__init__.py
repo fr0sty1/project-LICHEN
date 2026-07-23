@@ -23,7 +23,7 @@ from lichen.sim.propagation import (
     PropagationModel,
 )
 from lichen.sim.renode_server import RenodeServer, start_renode_server
-from lichen.sim.tdma import SuperframeClock, TDMAScheduler, TDMAState
+from lichen.sim.tdma import SuperframeClock, TDMAScheduler, TDMAState, hash_32
 
 __all__ = [
     "CAPTURE_THRESHOLD_DB",
@@ -46,4 +46,5 @@ __all__ = [
     "TDMAScheduler",
     "TDMAState",
     "SuperframeClock",
+    "hash_32",
 ]
