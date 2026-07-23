@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-puvz",
+  "title": "[spec-compliance] rf_health adaptive_sf and EMA implementation differs from 02a-coordinated-capacity.md",
+  "description": "Reviewed commits ce62ddffe (meshtastic bridge rf_health integration), b3705f1b0 (rf_health.rs + test using ccp16.json), cda09e846 (forbid(unsafe_code)). \n\nIssues found:\n1. RfHealthMetrics uses aggregate EMA/stats (single rssi/snr/density) but spec §2a.3 requires *per-neighbor* EMA (alpha=1/4) integrated with RPL DIOs. record_rx() called without neighbor context in bridge.rs:184.\n2. adaptive_sf() logic uses hardcoded thresholds (DENSITY_CRITICAL=20, DENSITY_HIGH=8 etc.) and returns only {9,10,11,12}; does not fully implement AdaptiveSFSelect pseudocode (uses AssignedSF, Utilization\u003e150/200, Neighbor.EMA_Loss\u003e0.25, can downgrade to SF7).\n3. should_rebalance() uses loss\u003e40% but spec table/pseudocode uses loss\u003e0.25. Constants like LOAD_HIGH=0.8*FP match table but pseudocode has different Density\u003e10 trigger.\n4. Test only exercises ccp16.json subset; ccp_load_balancing.json, ccp15.json not fully validated against independent oracle.\nMUST match test vectors exactly and follow normative pseudocode/table. Code differs from spec.\n\nSee spec/02a-coordinated-capacity.md:129-152 and test/vectors/ccp*.json. Priority 1 bug.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T15:51:57.56205858Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T15:51:57.56205858Z"
+}
