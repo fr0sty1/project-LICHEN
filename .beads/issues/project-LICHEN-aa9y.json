@@ -2,15 +2,15 @@
   "id": "project-LICHEN-aa9y",
   "title": "[merge-conflict] worktree-worker20: trickle.c",
   "notes": "Commit: c3eb5d312",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:28:26.60850139Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:38:14.849844438Z",
+  "updated_at": "2026-07-23T00:38:49.177489059Z",
   "started_at": "2026-07-23T00:32:03.467119787Z",
-  "lease_expires_at": "2026-07-23T00:37:03.467119787Z",
-  "heartbeat_at": "2026-07-23T00:32:03.467119787Z"
+  "closed_at": "2026-07-23T00:38:49.177489059Z",
+  "close_reason": "Fixed merge conflict in trickle.c by reconciling init with Rust sentinel (interval=0 post-init for consistent reset/start from stopped), removed redundant NULL checks per header _Nonnull annotations. Tests pass, behavior now consistent. Commit c3eb5d312"
 }
