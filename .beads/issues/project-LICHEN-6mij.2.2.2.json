@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-6mij.2.2.2",
+  "title": "Update keys_single_put handler: OSCORE ctx lookup by peer_eui64, conditional unprotect, CONFIG_LICHEN_COAP_SERVER_OSCORE enforcement",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:27:42.507922857Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:27:42.507922857Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-6mij.2.2.2",
+      "depends_on_id": "project-LICHEN-6mij.2.2",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:27:42.647804052Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
