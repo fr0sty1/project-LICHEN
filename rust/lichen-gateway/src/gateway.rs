@@ -3,15 +3,16 @@
 
 #![forbid(unsafe_code)]
 
-use lichen_core::addr::NodeId;
+use lichen_core::addr::{Ipv6Addr, NodeId};
 use lichen_core::constants::{L2_DISPATCH_SCHC, SCHC_MAX_DECOMPRESSED};
+use lichen_core::ipv6::field;
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
 use lichen_node::{RplEvent, RplNode};
 use lichen_schc::codec::{compress, decompress, SchcError};
 use std::collections::HashMap;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 #[derive(Debug)]
 pub struct Gateway {
