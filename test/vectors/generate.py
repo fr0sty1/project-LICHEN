@@ -1624,8 +1624,6 @@ def _write(filename: str, description: str, vectors: list[dict]) -> None:
     print(f"wrote {len(vectors)} vectors to {path.name}")
 
 
-<<<<<<< HEAD
-=======
 def schc_fragment_vectors() -> list[dict]:
     # Independent vectors from RFC 8724 §8 + CRC32 oracle + explicit ACK retry logic.
     # Not derived from any LICHEN impl code. Covers all required cases.
@@ -1796,7 +1794,6 @@ def ccp9_vectors() -> list[dict]:
     ]
 
 
->>>>>>> origin/integration/worker5-20260722
 def ccp15_vectors() -> list[dict]:
     v = []
     for seed in range(3):
@@ -1838,11 +1835,24 @@ def main() -> None:
         announce_coords_vectors(),
     )
     _write(
-        "ccp9_rendezvous.json",
-        "Independent CCP-9 rendezvous vectors using external hash_32/crc32 "
-        "oracle (hardcoded expected_channel=7 matching computation, not from "
-        "code-under-test). Fixes vector bug.",
-        ccp9_rendezvous_vectors(),
+        "schc_fragment.json",
+        "SCHC fragmentation vectors (RFC 8724 §8 + independent CRC32 oracles). Covers single/multi, ACK-on-error, MIC fail, OOO retransmit. Test integrity: not derived from impl code.",
+        schc_fragment_vectors(),
+    )
+    _write(
+        "ccp_load_balancing.json",
+        "CCP TDMA slot assignment (hash_32), guard times, drift compensation, load rebalance vectors with independent mathematical oracles per spec.",
+        ccp_load_balancing_vectors(),
+    )
+    _write(
+        "ccp16.json",
+        "CCP-16 synchronized hopping, epoch wrap, desync recovery vectors with independent hash oracle.",
+        ccp16_vectors(),
+    )
+    _write(
+        "ccp9.json",
+        "CCP-9 rendezvous vectors (announce scheduling, CH0 fallback, sync-hop override, L2 parse roundtrip). Independent oracles per spec/02a.",
+        ccp9_vectors(),
     )
     _write(
         "meshtastic_app_compat.json",
@@ -1862,6 +1872,7 @@ def main() -> None:
         "ccp15 vectors for SF EMA load_factor hash_32 congestion control with independent oracle.",
         ccp15_vectors(),
     )
+
 
 
 if __name__ == "__main__":

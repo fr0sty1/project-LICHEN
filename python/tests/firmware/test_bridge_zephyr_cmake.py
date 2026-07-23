@@ -30,9 +30,7 @@ BRIDGE_OBSOLETE_ALIAS_BOARD_FILES = (
     "lilygo_techo",
 <<<<<<< HEAD
     "seeed_t1000e",
-=======
     "heltec_vision_master_e290",
->>>>>>> origin/integration/worker8-20260722
 )
 
 
