@@ -506,13 +506,16 @@ static size_t base64_encode(const uint8_t *src, size_t src_len,
 static void compute_pubkey_fingerprint(const uint8_t pubkey[32],
 				       char *buf, size_t buf_size)
 {
-	if (buf_size < 25) {
+	if (buf_size < 24) {
 		buf[0] = '\0';
 		return;
 	}
 	/* Simplified: just use "SHA256:" prefix + base64 of first 12 bytes */
 	(void)snprintf(buf, buf_size, "SHA256:");
-	base64_encode(pubkey, 12, buf + 7, buf_size - 7);
+	if (base64_encode(pubkey, 12, buf + 7, buf_size - 7) == 0) {
+		buf[0] = '\0';
+		return;
+	}
 }
 
 /* Encode identity information */
