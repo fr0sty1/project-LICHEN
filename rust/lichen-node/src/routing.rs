@@ -173,6 +173,20 @@ impl LivenessPolicy for TimeoutLiveness {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default)]
+pub struct TrickleSafeLiveness;
+
+impl LivenessPolicy for TrickleSafeLiveness {
+    fn is_alive(&self, last_seen_ms: u64, now_ms: u64, timeout_ms: u64) -> bool {
+        let age = now_ms.saturating_sub(last_seen_ms);
+        if age <= 10000 {
+            true
+        } else {
+            TimeoutLiveness.is_alive(last_seen_ms, now_ms, timeout_ms)
+        }
+    }
+}
+
 /// Neighbor entry with link quality tracking and optional coordinates.
 #[derive(Clone, Debug)]
 pub struct Neighbor {
@@ -975,7 +989,7 @@ impl Router {
         let mut removed = [[0u8; 16]; MAX_NEIGHBORS];
         let mut removed_len = 0;
         self.neighbors
-            .prune_with_removed(now_ms, max_age_ms, TimeoutLiveness, |addr| {
+            .prune_with_removed(now_ms, max_age_ms, TrickleSafeLiveness, |addr| {
                 removed[removed_len] = addr;
                 removed_len += 1;
             });
