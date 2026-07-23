@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-8b8u.4.2",
+  "title": "Rust: update lichen-link identity tests to load and validate all vectors from test/vectors/node_address.json",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:21:04.013116182Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:21:04.013116182Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-8b8u.4.2",
+      "depends_on_id": "project-LICHEN-8b8u.4",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:21:04.149029596Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
