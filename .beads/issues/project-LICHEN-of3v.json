@@ -2,15 +2,15 @@
   "id": "project-LICHEN-of3v",
   "title": "[merge-conflict] worktree-worker19: dao.py",
   "notes": "Commit: 1abe8e2",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:21:48.941209628Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:10:12.35834163Z",
+  "updated_at": "2026-07-23T02:10:14.416868308Z",
   "started_at": "2026-07-23T02:09:13.746675344Z",
-  "lease_expires_at": "2026-07-23T02:14:13.746675344Z",
-  "heartbeat_at": "2026-07-23T02:09:13.746675344Z"
+  "closed_at": "2026-07-23T02:10:14.416868308Z",
+  "close_reason": "Resolved merge conflict in dao.py by making DODAG ID error message consistent with RPL instance ID error message. Updated python/src/lichen/rpl/dao.py, tests pass, ruff clean. Commit 1abe8e2"
 }
