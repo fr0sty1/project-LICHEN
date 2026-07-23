@@ -82,6 +82,9 @@ static int sensors_location_post(struct coap_resource *resource,
 {
 	uint16_t payload_len = 0;
 	const uint8_t *payload = coap_packet_get_payload(request, &payload_len);
+	if (!lichen_coap_is_local_admin(addr, addr_len)) {
+		return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
+	}
 	if (payload == NULL || payload_len == 0) {
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
