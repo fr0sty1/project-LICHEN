@@ -3,14 +3,14 @@
   "title": "[codereview pass 1 clean] ccp16-desync.json + schema + test + README updates",
   "description": "All P0-P2 fixed. Schema now accepts the new fields. Test schema passes for new file. No additionalProperties violations. v2 array root support prepared via description and structure. 3 clean passes achieved. Tagged codereview. Ready to close project-LICHEN-pgzj.2",
   "notes": "Commit: 8f51d432d",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 4,
   "issue_type": "task",
   "assignee": "AI Agent",
   "created_at": "2026-07-22T17:03:22.391511371Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-23T04:10:23.127246055Z",
+  "updated_at": "2026-07-23T04:10:25.745955252Z",
   "started_at": "2026-07-23T04:05:28.625100193Z",
-  "lease_expires_at": "2026-07-23T04:10:28.625100193Z",
-  "heartbeat_at": "2026-07-23T04:05:28.625100193Z"
+  "closed_at": "2026-07-23T04:10:25.745955252Z",
+  "close_reason": "Schema fixed with anyOf for vector discriminator overlap, conditional requireds for type in ccp_vector, added fields to ccp_load_balancing_vector, converted ccp16-desync.json to bare array root, updated descriptions in schema and README. All vector schema tests now PASS."
 }
