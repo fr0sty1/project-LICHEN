@@ -191,20 +191,6 @@ config LORA_LICHEN_GATEWAY_RPL_ROOT
 	  Initializes per AGENTS.md order after link_ctx. Drives Trickle DIOs
 	  as root for mesh formation. Updates /status to reflect joined root role.
 
-config LICHEN_GATEWAY_WIFI_SSID
-	string "WiFi SSID for Heltec V3 backhaul"
-	default "LICHEN-TEST"
-	depends on LICHEN_GATEWAY_PREFIX_DELEGATION
-	help
-	  SSID for WiFi station mode on Heltec V3 6LBR (used by wifi_mgmt in main.c).
-
-config LICHEN_GATEWAY_WIFI_PSK
-	string "WiFi PSK for Heltec V3 backhaul"
-	default "lichen123"
-	depends on LICHEN_GATEWAY_PREFIX_DELEGATION
-	help
-	  Pre-shared key for WiFi STA. INSECURE default for bench; override per deployment.
-
 config LICHEN_GATEWAY_PREFIX_DELEGATION
 	bool "Enable IPv6 prefix delegation from WiFi/Ethernet backhaul to RPL mesh"
 	depends on LICHEN_RPL
@@ -274,12 +260,6 @@ config LICHEN_GW_PSK
 	help
 	  Shared secret for OSCORE in closed federation. Must match on all
 	  cooperating gateways in closed mode. 32+ bytes recommended.
-
-# Force modular CoAP (lichen_coap service + LICHEN_COAP_CONFIG) for
-# gateway; legacy standalone server (lichen_coap_server) would duplicate
-# lichen_config ownership and lacks linker bounds on nucleo_wl55jc/r1_neo.
-config LICHEN_COAP_SERVER_STANDALONE
-	default n
 
 config LICHEN_GATEWAY_WIFI_STATION
 	bool "WiFi station backhaul (Heltec V3)"
