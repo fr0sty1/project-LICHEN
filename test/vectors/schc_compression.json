@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "SCHC whole-packet compression vectors (RFC 8724). 'packet' is the full uncompressed IPv6 datagram; 'compressed' is compress_packet(packet). Round-trip: compress(packet) == compressed and decompress(compressed) == packet.",
+  "description": "SCHC whole-packet compression vectors (RFC 8724). 'packet' is the full uncompressed IPv6 datagram; 'compressed' is compress_packet(packet). Round-trip: compress(packet) == compressed and decompress(compressed) == packet. Includes UDP malformed cases for cross-layer testing (bad checksum, truncated, length mismatch).",
   "vectors": [
     {
       "name": "coap_linklocal",
@@ -37,6 +37,27 @@
       "description": "Link-local RPL DAO with DODAGID",
       "packet": "6000000000183a40fe800000000000000000000000000001fe8000000000000000000000000000029b0268df00400005fe800000000000000000000000000001",
       "compressed": "044000000000000000010000000000000002004005fe800000000000000000000000000001"
+    },
+    {
+      "name": "udp_truncated",
+      "category": "malformed",
+      "provenance": "RFC 768 §3.1: UDP header is 8 bytes minimum. Mirrors ICMPv6 too-short handling (project-LICHEN-2auf.41.2.3.1.1).",
+      "wire": "6000000000041140fe800000000000000000000000000001fe80000000000000000000000000000216331633",
+      "expect_error": "udp_too_short"
+    },
+    {
+      "name": "udp_bad_checksum",
+      "category": "malformed",
+      "provenance": "RFC 8200 §8.1, RFC 4443 §2.3: invalid UDP checksum must drop silently. Mirrors bad ICMPv6 checksum.",
+      "wire": "60000000000c1140fe800000000000000000000000000001fe80000000000000000000000000000216331633000cffff74657374",
+      "expect_error": "bad_udp_checksum"
+    },
+    {
+      "name": "udp_length_mismatch",
+      "category": "malformed",
+      "provenance": "RFC 768: length field must match datagram size. Mirrors ICMPv6 length validation.",
+      "wire": "60000000000c1140fe800000000000000000000000000001fe8000000000000000000000000000021633163300080ee974657374",
+      "expect_error": "udp_length_mismatch"
     }
   ]
 }
