@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-8b8u.4.1",
+  "title": "Python: add comprehensive test for node_address.json vectors in test_vectors.py using Identity and iid_to_human_address",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:20:59.829002071Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:20:59.829002071Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-8b8u.4.1",
+      "depends_on_id": "project-LICHEN-8b8u.4",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:20:59.965921094Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
