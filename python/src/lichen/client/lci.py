@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import contextlib
 from collections.abc import AsyncIterator, Mapping
-from typing import Any, Protocol
+from typing import Any, Protocol, Self
 
 import cbor2
 
@@ -64,20 +64,20 @@ class ResourceTransport(Protocol):
     async def observe(self, path: str, *, method: str = "GET") -> ResourceSubscription:
         """Open an Observe subscription for a resource.
 
-        The caller MUST call close() on the returned ResourceSubscription
-        (or use it as an async context manager if implemented) to cancel the
-        Observe and release resources. If observe() raises, no subscription
-        is returned and no cleanup is required. close() is idempotent and
-        safe to call from exception handlers.
+        The caller MUST use `async with (await self._transport.observe(path)) as sub:`
+        (preferred, RAII) or explicitly await sub.close() exactly once. If observe()
+        raises, no subscription is returned and no cleanup is required. close() is
+        idempotent and safe to call from exception handlers.
         """
 
 
 class ResourceSubscription(Protocol):
     """Handle for a CoAP Observe relationship.
 
-    Caller owns lifecycle: MUST await close() exactly once after results()
-    iteration completes or is cancelled. close() is idempotent. Implementations
-    should suppress expected errors during close().
+    Caller owns lifecycle: MUST use as async context manager (preferred) or
+    await close() exactly once after results() iteration completes or is
+    cancelled. close() is idempotent. Implementations suppress expected errors
+    during close().
     """
 
     def results(self) -> AsyncIterator[CoapResult]:
@@ -86,9 +86,20 @@ class ResourceSubscription(Protocol):
     async def close(self) -> None:
         """Cancel the Observe relationship and release resources."""
 
+    async def __aenter__(self) -> Self:
+        ...
+
+    async def __aexit__(
+        self, exc_type: Any | None, exc_val: Any | None, exc_tb: Any | None
+    ) -> None:
+        ...
+
 
 class MessageSubscription:
-    """Typed message updates from an inbox Observe relationship."""
+    """Typed message updates from an inbox Observe relationship.
+
+    Use as `async with subscription:` for automatic close().
+    """
 
     def __init__(self, subscription: ResourceSubscription, path: str) -> None:
         self._subscription = subscription
@@ -102,6 +113,15 @@ class MessageSubscription:
         """Cancel the inbox Observe relationship."""
         with contextlib.suppress(Exception):
             await self._subscription.close()
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(
+        self, exc_type: Any | None, exc_val: Any | None, exc_tb: Any | None
+    ) -> None:
+        with contextlib.suppress(Exception):
+            await self.close()
 
     async def _messages(self) -> AsyncIterator[list[MessageRecord]]:
         async for result in self._subscription.results():
@@ -117,7 +137,10 @@ class MessageSubscription:
 
 
 class RawRxSubscription:
-    """Typed raw RX diagnostic Observe notifications."""
+    """Typed raw RX diagnostic Observe notifications.
+
+    Use as `async with subscription:` for automatic close().
+    """
 
     def __init__(self, subscription: ResourceSubscription, path: str) -> None:
         self._subscription = subscription
@@ -131,6 +154,15 @@ class RawRxSubscription:
         """Cancel the raw RX Observe relationship."""
         with contextlib.suppress(Exception):
             await self._subscription.close()
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(
+        self, exc_type: Any | None, exc_val: Any | None, exc_tb: Any | None
+    ) -> None:
+        with contextlib.suppress(Exception):
+            await self.close()
 
     async def _events(self) -> AsyncIterator[RawRxEvent]:
         async for result in self._subscription.results():
