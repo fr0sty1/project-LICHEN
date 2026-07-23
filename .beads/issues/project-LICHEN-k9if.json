@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-k9if",
   "title": "[merge-conflict] integration/worker12-20260722: Kconfig",
+  "notes": "Commit: 2bb3c38ae",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:31:44.78891996Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:42:40.786474276Z",
+  "updated_at": "2026-07-23T03:46:57.46278718Z",
   "started_at": "2026-07-23T03:42:40.786474276Z",
   "lease_expires_at": "2026-07-23T03:47:40.786474276Z",
   "heartbeat_at": "2026-07-23T03:42:40.786474276Z"
