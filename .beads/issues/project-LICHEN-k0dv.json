@@ -2,15 +2,15 @@
   "id": "project-LICHEN-k0dv",
   "title": "[merge-conflict] worktree-worker24: rpl_root.c",
   "notes": "Commit: 78db6ea69",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:26:15.31680041Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:16:49.867886165Z",
+  "updated_at": "2026-07-23T02:16:53.046480158Z",
   "started_at": "2026-07-23T02:13:40.993836151Z",
-  "lease_expires_at": "2026-07-23T02:18:40.993836151Z",
-  "heartbeat_at": "2026-07-23T02:13:40.993836151Z"
+  "closed_at": "2026-07-23T02:16:53.046480158Z",
+  "close_reason": "Updated rpl_root.c with prefix_len=128 in init and len \u003e= 64 in set_prefix for full 128-bit DODAGID per spec/04-network.md:6.1 and previous htto fix. Merged best of worker24 and worker7 implementations (trickle start + full event handling). Resolved related merge comment in xiao_s3 board conf during rebase attempt."
 }
