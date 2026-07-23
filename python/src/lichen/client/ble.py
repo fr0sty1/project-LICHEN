@@ -224,11 +224,18 @@ class BlePacketTransport:
             raise BleTransportError(f"BLE write failed for {self.address}: {exc}") from exc
 
     async def packets(self) -> AsyncIterator[bytes]:
-        """Yield decoded IPv6 packets received from TX notifications."""
-        queue = self._packets
+        """Yield decoded IPv6 packets received from TX notifications.
+
+        The iterator survives reconnection. If a sentinel None is received
+        from a queue no longer current (replaced by connect()), switch to
+        the new queue rather than stopping.
+        """
         while True:
+            queue = self._packets
             packet = await queue.get()
             if packet is None:
+                if queue is not self._packets:
+                    continue  # reconnection: switch to new queue
                 return
             yield packet
 
