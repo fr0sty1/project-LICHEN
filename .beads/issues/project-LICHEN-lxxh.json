@@ -2,15 +2,15 @@
   "id": "project-LICHEN-lxxh",
   "title": "[merge-conflict] worktree-worker1: trickle.py",
   "notes": "Commit: 9f5981cea",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:48:41.069741836Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:01:00.289702779Z",
+  "updated_at": "2026-07-23T00:01:02.346136892Z",
   "started_at": "2026-07-22T23:56:00.255740883Z",
-  "lease_expires_at": "2026-07-23T00:01:00.255740883Z",
-  "heartbeat_at": "2026-07-22T23:56:00.255740883Z"
+  "closed_at": "2026-07-23T00:01:02.346136892Z",
+  "close_reason": "Merge conflicts in trickle.py, generate.py, schema.json, and RPL spec resolved; consistent half-interval calculation and CCP-16 text merged across worker branches"
 }
