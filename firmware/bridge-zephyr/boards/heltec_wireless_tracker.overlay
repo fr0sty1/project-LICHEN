@@ -1,8 +1,9 @@
 /*
  * STALE bridge fragment: heltec_wireless_tracker has no canonical Zephyr
  * board target (no matching board in Zephyr tree, lichen/boards/, or HWMv2
- * selector). Retired per project-LICHEN-2u26.4 / 2u26 (bridge mapping scoped).
- * Do not use for builds. See docs/firmware-board-capability-matrix.md.
+ * selector). Retired per 2u26 bridge audit (scoped to canonical targets only).
+ * Do not use for builds. See docs/firmware-board-capability-matrix.md for
+ * partner-owned long tail policy.
  *
  * Heltec Wireless Tracker V1.1 device tree overlay for LICHEN bridge
  *
