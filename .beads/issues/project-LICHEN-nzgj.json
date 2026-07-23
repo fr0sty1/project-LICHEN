@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-nzgj",
+  "title": "[cross-impl] Add full OSCORE vector interop test between Python and C/Zephyr",
+  "description": "C implementation in lichen/subsys/lichen/oscore/ (oscore.c, hkdf.c, coap_oscore.c) lacks byte-exact roundtrip tests against test/vectors/oscore.json that Python (python/src/lichen/crypto/oscore.py + test_oscore_vectors.py) fully exercises. Manual CBOR construction for HKDF info, AAD, Enc_structure may diverge on edge cases (empty IDs, null id_context, long values). Add C test that loads JSON vectors, runs protect/unprotect and asserts exact match to Python/aiocoap outputs. Priority 1 to ensure consistency before Phase 5 security.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T13:38:10.846369346Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T13:38:10.846369346Z"
+}
