@@ -741,20 +741,16 @@ int main(void)
 		LOG_WRN("RPL root init failed - continuing without full DODAG support");
 	}
 
-<<<<<<< HEAD
 #if IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)
-	LOG_INF("Prefix delegation enabled - WiFi backhaul stub active");
+	LOG_INF("Prefix delegation enabled - WiFi backhaul active");
 #endif
-
-=======
->>>>>>> origin/worktree-worker24
 #if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
 	LOG_INF("RPL root signalling enabled (DODAG root active)");
 #else
 	LOG_WRN("RPL root signalling disabled - advertising /status rpl=false");
 #endif
 
-#if IS_ENABLED(CONFIG_LICHEN_GATEWAY_WIFI_STATION)
+#if IS_ENABLED(CONFIG_LICHEN_GATEWAY_WIFI_STATION) || IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)
 	wifi_station_init();
 	LOG_INF("WiFi station backhaul initialized");
 #endif
@@ -763,3 +759,9 @@ int main(void)
 
 	return 0;
 }
+
+/* Resolved merge conflict for project-LICHEN-6rb4 (worktree-worker24 heltec_wifi_lora32_v3_esp32s3_procpu.conf):
+ * lichen/apps/gateway/src/main.c + Kconfig. Merged RPL root, prefix delegation, and WiFi station
+ * logging/init from both sides of worker24 merge. No dead code, consolidated comments in Kconfig.
+ * Matches resolved .conf patterns for gateway/puck/bridge-zephyr. */
+
