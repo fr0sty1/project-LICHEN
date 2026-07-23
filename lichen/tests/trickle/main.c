@@ -5,7 +5,8 @@
  * @file main.c
  * @brief Trickle timer (RFC 6206) tests
  *
- * Test vectors ported from rust/lichen-rpl/src/trickle.rs
+ * Tests ported from and kept in sync with rust/lichen-rpl/src/trickle.rs
+ * (including odd-interval bias-free test per Worker23 fix in C/Python).
  */
 
 #include <lichen/rpl_trickle.h>
@@ -143,9 +144,27 @@ static int test_rand_offset_shifts_transmit_time(void)
 	struct lichen_trickle t;
 
 	lichen_trickle_init(&t, 1000, 4, 10);
-	lichen_trickle_start(&t, 0, 200); /* rand_offset=200 < 500 -> transmit at 700 */
+	lichen_trickle_start(&t, 0, 200); /* rand_offset=200 < range=500 -> transmit at 700 */
 
 	ASSERT_EQ(t.transmit_time, 700, "transmit_time with rand_offset");
+
+	return 1;
+}
+
+static int test_odd_interval_bias_free_transmit_time(void)
+{
+	/* I=5 (odd): half=(5+1)/2=3, range=2 per Worker23 bias-free fix.
+	 * transmit times: 3 or 4 (covers [2.5,5) uniformly). Matches Rust+Python. */
+	struct lichen_trickle t, t2;
+
+	lichen_trickle_init(&t, 5, 0, 10);
+	lichen_trickle_start(&t, 0, 0);
+	ASSERT_EQ(t.transmit_time, 3, "odd I=5 rand=0");
+	ASSERT_EQ(lichen_trickle_interval_end(&t), 5, "interval_end");
+
+	lichen_trickle_init(&t2, 5, 0, 10);
+	lichen_trickle_start(&t2, 0, 1);
+	ASSERT_EQ(t2.transmit_time, 4, "odd I=5 rand=1");
 
 	return 1;
 }
@@ -216,6 +235,7 @@ int main(void)
 	RUN_TEST(test_reset_shrinks_to_imin);
 	RUN_TEST(test_reset_noop_when_already_at_imin);
 	RUN_TEST(test_rand_offset_shifts_transmit_time);
+	RUN_TEST(test_odd_interval_bias_free_transmit_time);
 	RUN_TEST(test_max_interval_saturates_on_overflow);
 	RUN_TEST(test_counter_saturates_at_max);
 	RUN_TEST(test_zero_imin_uses_safe_default);

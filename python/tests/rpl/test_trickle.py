@@ -39,6 +39,19 @@ def test_transmit_time_within_half_to_full_interval() -> None:
     assert 50 <= t.transmit_time < 100
 
 
+def test_odd_interval_bias_free() -> None:
+    # I=5 odd: half=(5+1)//2=3, range=2; transmit in [3,5). Matches Rust/C.
+    # rng=0.0 -> + int(0*2)=3; rng=0.6 -> int(1.2)=1 -> 4
+    t = _timer(rng_value=0.0, imin=5)
+    t.start(0)
+    assert t.transmit_time == 3
+    assert t.interval_end == 5
+
+    t2 = _timer(rng_value=0.6, imin=5)
+    t2.start(0)
+    assert t2.transmit_time == 4
+
+
 def test_should_transmit_when_below_redundancy() -> None:
     t = _timer(k=2)
     t.start(0)
