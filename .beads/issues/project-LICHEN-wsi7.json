@@ -2,15 +2,15 @@
   "id": "project-LICHEN-wsi7",
   "title": "[merge-conflict] worktree-worker22: main.c",
   "notes": "Commit: 4a94b8b",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:42:14.588790335Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:43:04.810741388Z",
+  "updated_at": "2026-07-23T03:43:12.578039005Z",
   "started_at": "2026-07-23T03:39:20.210299334Z",
-  "lease_expires_at": "2026-07-23T03:44:20.210299334Z",
-  "heartbeat_at": "2026-07-23T03:39:20.210299334Z"
+  "closed_at": "2026-07-23T03:43:12.578039005Z",
+  "close_reason": "Resolved all merge conflicts in worktree-worker22 (lichend.rs, bridge.rs, simulation.py, test files, vectors schema and generate.py); cleaned markers, merged fields from parallel branches, updated to consistent main implementation where possible; committed 4a94b8b and pushed"
 }
