@@ -21,6 +21,7 @@
 
 #include <lichen/coap_msg.h>
 #include <lichen/coap_status.h>
+#include <lichen/coap_server.h>
 
 LOG_MODULE_REGISTER(lichen_coap_msg, CONFIG_LICHEN_COAP_MSG_LOG_LEVEL);
 
@@ -415,6 +416,11 @@ int lichen_msg_sent_post(struct coap_resource *resource,
 	uint32_t msg_id = 0;
 	int ret;
 
+	if (!lichen_coap_is_local_admin(addr, addr_len)) {
+		return coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_UNAUTHORIZED, NULL, 0);
+	}
+
 	if (payload == NULL || payload_len == 0) {
 		return coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_BAD_REQUEST, NULL, 0);
@@ -749,6 +755,11 @@ int lichen_msg_ack_post(struct coap_resource *resource,
 	uint32_t msg_id = 0;
 	bool found_id = false;
 	int ret;
+
+	if (!lichen_coap_is_local_admin(addr, addr_len)) {
+		return coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_UNAUTHORIZED, NULL, 0);
+	}
 
 	if (payload == NULL || payload_len == 0) {
 		return coap_respond(resource, request, addr, addr_len,
