@@ -12,11 +12,12 @@
 //   0x83 SetTx(timeout) - trigger transmit
 //   0x82 SetRx(timeout) - enter receive mode
 //   0xC0 GetStatus -> status byte
-//   0x17 GetIrqStatus -> IRQ flags
+//   0x12 GetIrqStatus -> IRQ flags
 //   0x02 ClearIrqStatus(flags)
 
 using System;
 using System.Net.Sockets;
+using System.Threading;
 using Antmicro.Renode.Core;
 using Antmicro.Renode.Logging;
 using Antmicro.Renode.Peripherals.SPI;
@@ -62,6 +63,17 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 Disconnect();
                 simPort = value;
                 this.Log(LogLevel.Info, "SimPort set to {0}", value);
+            }
+        }
+
+        public string SimHost
+        {
+            get => simHost;
+            set
+            {
+                Disconnect();
+                simHost = value;
+                this.Log(LogLevel.Info, "SimHost set to {0}", value);
             }
         }
 
@@ -707,7 +719,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
         }
 
         private readonly IMachine machine;
-        private readonly string simHost;
+        private string simHost;
         private int simPort;
         private bool loopbackMode;
         private readonly byte[] txBuffer;
