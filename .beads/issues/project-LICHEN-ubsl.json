@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-ubsl",
   "title": "[merge-conflict] integration/worker14-20260722: lichend.rs",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:59:30.656391354Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:59:30.656391354Z"
+  "updated_at": "2026-07-23T02:51:11.026394108Z",
+  "started_at": "2026-07-23T02:51:11.026394108Z",
+  "lease_expires_at": "2026-07-23T02:56:11.026394108Z",
+  "heartbeat_at": "2026-07-23T02:51:11.026394108Z"
 }
