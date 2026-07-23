@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-2auf.36.3.2.3",
   "title": "Handle git index.lock and rebase conflicts on .beads after interop workflow edits",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:27:12.418121751Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T06:01:45.232448355Z",
+  "updated_at": "2026-07-23T06:05:17.107177901Z",
   "started_at": "2026-07-23T06:01:45.232448355Z",
-  "lease_expires_at": "2026-07-23T06:06:45.232448355Z",
-  "heartbeat_at": "2026-07-23T06:01:45.232448355Z",
+  "closed_at": "2026-07-23T06:05:17.107177901Z",
+  "close_reason": "Updated .beads/.gitignore to ignore transient lock and counter files; simplified interop.yml to remove ineffective bd create calls that were causing .beads updates, rebase conflicts, and potential index.lock issues in CI and dev workflows. Verified no bd in interop-status.",
   "labels": [
     "defer-external"
   ],
