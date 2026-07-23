@@ -1,0 +1,25 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-FileCopyrightText: The contributors to the LICHEN project
+ *
+ * Dedicated DTC overlay for native_posix BLE ingress / LCI build.
+ * Enables BLE paths (IPSP transport, LCI netif) while stubbing
+ * link layer (no lichen,lora-loopback, no full radio). Used with
+ * native_posix or native_sim board to produce clean build without
+ * link.35.6 dependencies.
+ */
+
+ / {
+ 	/* No LoRa device to prevent LICHEN_LINK / LORA_L2 activation */
+ 	/delete-node/ lora_sim;
+
+ 	aliases {
+ 		/* Explicitly no lora alias for ingress-only build */
+ 	};
+
+ 	chosen {
+ 		/* No zephyr,lora chosen node - LCI uses dummy BLE netif */
+ 	};
+
+ 	/* BLE LCI is code-driven via NET_DEVICE_INIT(ble_lci...) in ble_lci_netif.c */
+ };
