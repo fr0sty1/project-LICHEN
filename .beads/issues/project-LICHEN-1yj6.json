@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-1yj6",
   "title": "[merge-conflict] worktree-worker23: bridge.rs",
+  "notes": "Commit: 57b830763",
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:59:40.969462584Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:01:48.422604492Z",
+  "updated_at": "2026-07-23T03:02:28.910674979Z",
   "started_at": "2026-07-23T02:59:09.538627316Z",
   "closed_at": "2026-07-23T03:01:48.422604492Z",
   "close_reason": "Resolved comment inconsistency in IPv6 header parsing comments between main workspace and worker23 worktree. Standardized on comprehensive comment referencing worker5/8 patterns and IPv6 spec. Removed duplicate comment line. Code behavior unchanged; matches schc crate patterns for [8..24]/[24..40] offsets. No merge markers present. Other bridge (kiss) already had resolved-merge header."
