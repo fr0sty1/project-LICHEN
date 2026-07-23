@@ -3,6 +3,8 @@
 use lichen_core::constants::L2_DISPATCH_SCHC;
 #[cfg(feature = "std")]
 use lichen_core::constants::RPL_ICMPV6_TYPE;
+#[cfg(all(feature = "std", test))]
+use lichen_core::constants::RPL_INSTANCE_ID;
 #[cfg(feature = "std")]
 use lichen_core::constants::RPL_INSTANCE_ID;
 #[cfg(feature = "std")]
@@ -63,6 +65,8 @@ pub enum RplEvent {
     /// DAO received (root only). `route_updated = true` → routing table
     /// was modified.
     DaoReceived { route_updated: bool },
+    /// DAO packet forwarded unchanged in source and payload toward the root.
+    DaoForwarded { next_hop: [u8; 16] },
     /// DIS received, should send DIO.
     DisReceived,
 }

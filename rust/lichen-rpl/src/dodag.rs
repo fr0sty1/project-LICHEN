@@ -340,7 +340,11 @@ impl DodagState {
         if self.rank != INFINITE_RANK && dio.rank >= self.rank {
             self.parents.remove(&neighbor_addr);
             self.select_parent();
-            return;
+            return if removed {
+                DioOutcome::Removed
+            } else {
+                DioOutcome::Rejected
+            };
         }
 
         let candidate = ParentCandidate {

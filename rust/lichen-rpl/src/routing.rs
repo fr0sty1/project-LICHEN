@@ -1785,7 +1785,7 @@ impl DaoManager {
         buf[..pos].to_vec()
     }
 
-    /// Process a received DAO on the root. Returns `true` if a route was installed.
+    /// Process a received DAO on the root. Returns `true` if route state changed.
     ///
     /// `dao_bytes` is the raw DAO wire bytes (base object + options).
     ///

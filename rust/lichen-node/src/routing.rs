@@ -847,6 +847,12 @@ impl Router {
         self.dao_manager.routing_table.lookup(dst)
     }
 
+    /// Expire finite routes and look up a destination using monotonic time.
+    pub fn lookup_route_at(&mut self, dst: &[u8; 16], now_ms: u64) -> Option<&[[u8; 16]]> {
+        self.expire_routes_at(now_ms);
+        self.lookup_route(dst)
+    }
+
     /// Check trickle timer and return pending event.
     pub fn poll_trickle(&self) -> TrickleEvent {
         self.trickle.next_event()
