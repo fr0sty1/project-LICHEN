@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 """Announce message codec (spec section 9.2 + CCP-9).
 
-Wire format:
+Wire format (final per spec/05-routing.md, CCP-9 rendezvous, and test vectors):
     0: Type = 0x01
     1: rx_channel (0-7) / Flags
     2: Hop Cnt
@@ -16,14 +16,19 @@ Wire format:
 45-92: Signature (48B Schnorr)
  93+: Optional App Data
 
-Total fixed: 93 bytes. rx_channel signed to prevent relay tampering (CCP-9).
-Signature covers signed_data() excluding hop_count.
+Total fixed: 93 bytes. rx_channel packed at byte 1 (flags) and included in signed_data()
+to prevent relay tampering per CCP-9. Matches Rust/C/Zephyr, ccp9*.json vectors,
+and _l2_announce_with_channel oracle in generate.py.
+
+Why 0x01: unique identifier in routing/control namespace (follows L2_DISPATCH_ROUTING=0x15
+at link layer). Other types: 0x02=RREQ, 0x03=RREP, 0x04=RERR.
 """
 
 ANNOUNCE_TYPE = 0x01
 SIGNATURE_LENGTH = 48
 MAX_ANNOUNCE_HOPS = 15
-# Calculated from wire format for maintainability (matches test vectors)
+# Fixed portion per wire format (type+flags+hop+seq+iid+pubkey+sig = 93 bytes).
+# Matches test vectors exactly; rx_channel packed into byte 1 (CCP-9).
 _FIXED_LENGTH = 1 + 1 + 1 + 2 + 8 + 32 + 48
 
 
@@ -35,10 +40,22 @@ class AnnounceError(Exception):
 class AnnounceMessage:
     """An announce message advertising presence in the mesh (spec 9.2 + CCP-9).
 
-    Security model: Schnorr48 signature over signed_data() (originator_iid +
-    pubkey + seq_num + rx_channel + app_data) provides authenticity and binds
-    the key to the IID. TOFU or DANE for key pinning. Hop count is NOT signed
-    (relays increment it).
+    Security model (spec 9.6, draft-lichen-schnorr-00):
+    - Schnorr48 signature proves sender holds private key for the pubkey.
+    - TOFU (or DANE/PKIX) binds pubkey to originator_iid.
+    - Cannot forge announce for another node's address.
+    - Hop count is NOT signed (relays MUST increment it without breaking sig).
+    - rx_channel is signed (CCP-9) to prevent tampering with rendezvous info.
+
+    Attributes:
+        originator_iid: 8-byte IID of announcer.
+        pubkey: 32-byte public key (Ed25519).
+        seq_num: 16-bit monotonic sequence (anti-replay).
+        hop_count: hops traveled (0-15).
+        flags: reserved for future use (currently rx_channel value).
+        rx_channel: preferred RX channel 0-7 for rendezvous (CCP-9).
+        signature: 48-byte Schnorr48 sig over signed_data().
+        app_data: optional authenticated payload.
     """
 
     originator_iid: bytes
@@ -69,6 +86,28 @@ class AnnounceMessage:
             )
 
     def signed_data(self) -> bytes:
+        """Data covered by the Schnorr48 signature (exact for interop).
+
+        Concatenation order (bit-exact with Rust lichen-core, C/Zephyr, test vectors):
+            originator_iid (8B) + pubkey (32B) + seq_num (u16 BE, 2B) +
+            rx_channel (u8, 1B per CCP-9) + app_data (variable)
+
+        rx_channel is signed to bind the announced rendezvous channel.
+        Value 0 = CH0 (control/fallback).
+
+        Why these fields only:
+        - originator_iid, pubkey: identity/TOFU binding.
+        - seq_num: anti-replay protection.
+        - rx_channel: prevents tampering with rendezvous info (CCP-9).
+        - app_data: authenticated application payload.
+
+        Why NOT included:
+        - hop_count: incremented by every relay.
+        - flags/signature: not security-relevant for transcript.
+
+        See draft-lichen-schnorr-00.md Appendix A for test vectors.
+        Must match python/src/lichen/crypto/schnorr48.py and Rust equivalent.
+        """
         return (
             self.originator_iid
             + self.pubkey
@@ -78,9 +117,11 @@ class AnnounceMessage:
         )
 
     def to_bytes(self) -> bytes:
-        """Serialize to wire format per spec 9.2/CCP-9.
+        """Serialize to wire format per spec 9.2 + CCP-9.
 
-        Layout: type, rx_channel/flags (byte 1), hop, seq, iid, pubkey, sig, app_data.
+        Layout: [type, rx_channel/flags, hop, seq_BE, iid, pubkey, sig, app_data...].
+        rx_channel placed in byte 1 (as per final spec and vectors). Raises if
+        no signature (all announces on wire MUST be signed).
         """
         if len(self.signature) != SIGNATURE_LENGTH:
             raise AnnounceError(
@@ -98,6 +139,14 @@ class AnnounceMessage:
 
     @classmethod
     def from_bytes(cls, data: bytes) -> AnnounceMessage:
+        """Parse wire format per spec (CCP-9 layout with rx_channel in byte 1).
+
+        Validates type, minimum length, rx_channel range. Offsets:
+        - byte 0: type
+        - byte 1: flags/rx_channel
+        - byte 2: hop
+        - 3:5 seq, 5:13 iid, 13:45 pubkey, 45:93 sig, 93+: app_data
+        """
         if len(data) < _FIXED_LENGTH:
             raise AnnounceError(
                 f"announce message too short: {len(data)} bytes, need at least {_FIXED_LENGTH}"
