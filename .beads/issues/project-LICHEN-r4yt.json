@@ -3,15 +3,15 @@
   "title": "[merge-conflict] worker8: gradient.rs",
   "description": "Resolve merge conflict in rust/lichen-node/src/gradient.rs between main and integration/worker8-20260722. Keep BOTH sets of changes.",
   "notes": "Commit: d3198a62b",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:52:13.883835767Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:39:03.865012491Z",
+  "updated_at": "2026-07-23T04:39:19.786328839Z",
   "started_at": "2026-07-22T21:28:42.776421483Z",
-  "lease_expires_at": "2026-07-23T04:42:16.144562526Z",
-  "heartbeat_at": "2026-07-23T04:37:16.144562526Z"
+  "closed_at": "2026-07-23T04:39:19.786328839Z",
+  "close_reason": "Merge conflict resolved in gradient.rs by keeping changes from both main and worker8 branches (GeoCoords parsing + tests from one, strict expiry/sequence logic and LRU from the other). File is now unified and tests pass. Committed bead update."
 }
