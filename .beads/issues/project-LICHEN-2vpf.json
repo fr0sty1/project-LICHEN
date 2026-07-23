@@ -8,7 +8,7 @@
   "created_at": "2026-07-22T17:22:01.108323753Z",
   "created_by": "ec2-user",
   "updated_at": "2026-07-22T17:22:01.108323753Z",
-  "labels": [
+  "labels": ["defer-external", 
     "codereview"
   ],
   "dependencies": [

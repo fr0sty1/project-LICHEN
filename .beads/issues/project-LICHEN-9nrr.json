@@ -13,7 +13,7 @@
   "updated_at": "2026-06-30T05:15:49.79424Z",
   "closed_at": "2026-06-30T05:15:49.79424Z",
   "close_reason": "Closed after all project-LICHEN-9nrr.* child Beads were completed or superseded. The epic's Zephyr/C review findings from the 2026-06-27 bridge-zephyr exhaustive review have corresponding closed child Beads through project-LICHEN-9nrr.34, including CBOR decoder fixes, SCHC header accessor/module work, gateway/bridge feature gaps, LR1110/T1000-E build fixes, puck/gateway board configuration fixes, native concurrency coverage, and local Twister setup documentation. Final verification in this session included the relevant task-level tests/builds and a passing local Twister run for lichen/tests/native_parse using the documented venv setup. No ready open project-LICHEN-9nrr child remains according to bd ready and bd list.",
-  "labels": ["defer-boardconfig", 
+  "labels": ["defer-external", "defer-boardconfig", 
     "review",
     "exhaustive"
   ]

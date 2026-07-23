@@ -9,7 +9,7 @@
   "created_at": "2026-06-30T17:54:40.445778Z",
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-30T17:54:43.060834Z",
-  "labels": [
+  "labels": ["defer-external", 
     "docs",
     "lilygo",
     "hardware",

@@ -13,7 +13,7 @@
   "updated_at": "2026-07-02T05:36:44.76463Z",
   "closed_at": "2026-07-02T05:36:44.76463Z",
   "close_reason": "Closed",
-  "labels": [
+  "labels": ["defer-external", 
     "python",
     "tui",
     "status",

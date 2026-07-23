@@ -8,7 +8,7 @@
   "created_at": "2026-07-22T16:28:43.545253447Z",
   "created_by": "ec2-user",
   "updated_at": "2026-07-22T16:28:43.545253447Z",
-  "labels": ["defer-boardconfig", 
+  "labels": ["defer-external", "defer-boardconfig", 
     "codereview"
   ]
 }

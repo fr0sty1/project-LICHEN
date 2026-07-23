@@ -13,7 +13,7 @@
   "updated_at": "2026-07-02T04:58:15.529016Z",
   "closed_at": "2026-07-02T04:56:13.769613Z",
   "close_reason": "Completed no-hardware native_sim/T-Deck build matrix on EC2 with evidence recorded; remaining physical validation is tracked in existing hardware-blocked Beads.",
-  "labels": ["defer-boardconfig", 
+  "labels": ["defer-external", "defer-boardconfig", 
     "zephyr",
     "lilygo",
     "build",

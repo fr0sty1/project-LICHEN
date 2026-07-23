@@ -13,7 +13,7 @@
   "updated_at": "2026-07-02T03:28:10.199386Z",
   "closed_at": "2026-07-02T03:28:10.199386Z",
   "close_reason": "Completed Python TUI UX/screen map: screens, navigation, status bar, connection states, per-screen loading/empty/error states, 80x24/narrow budgets, CoAP/LCI resource mapping, unsupported-feature presentation, and final review outcomes recorded. Follow-ups created for stale native draft/raw diagnostics, messaging resource path split, and mesh proxy ambiguity.",
-  "labels": [
+  "labels": ["defer-external", 
     "ux",
     "tui",
     "client-app",
