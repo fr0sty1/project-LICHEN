@@ -2,15 +2,15 @@
   "id": "project-LICHEN-gusn",
   "title": "[merge-conflict] worktree-worker17: xiao_s3_wio_sx1262.conf",
   "notes": "Commit: bf7819695",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:16:14.932267698Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:30:43.630875634Z",
+  "updated_at": "2026-07-23T02:30:54.331998719Z",
   "started_at": "2026-07-23T02:29:51.531720615Z",
-  "lease_expires_at": "2026-07-23T02:34:51.531720615Z",
-  "heartbeat_at": "2026-07-23T02:29:51.531720615Z"
+  "closed_at": "2026-07-23T02:30:54.331998719Z",
+  "close_reason": "Standardized xiao_s3_wio_sx1262.conf retirement comment with SPDX and full bead refs in worktree-worker17 to resolve merge conflict divergence. Commit bf7819695. Push blocked by divergence (442 ahead / 2 behind); see prior similar beads."
 }
