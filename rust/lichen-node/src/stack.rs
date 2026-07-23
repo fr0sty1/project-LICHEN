@@ -19,9 +19,9 @@ use lichen_hal::Radio;
 use lichen_ipv6::{next_header, Addr, Ipv6Header, UdpHeader, IPV6_HEADER_LEN, UDP_HEADER_LEN};
 use lichen_link::seqnum::LinkSeqNum;
 use lichen_link::{frame::FrameError, link_layer::LinkRxError};
-use lichen_schc::codec;
 #[cfg(feature = "std")]
 use lichen_rpl::routing::SourceRoutingHeader;
+use lichen_schc::codec;
 
 use crate::forward_buffer::{ForwardBuffer, ForwardError};
 use crate::Node;
@@ -254,6 +254,14 @@ impl<R: Radio> Stack<R> {
         self.send_coap_raw_to(&src, dst, coap, &[], &[]).await
     }
 
+    pub(crate) async fn send_coap_raw_to(
+        &mut self,
+        src: &Addr,
+        dst: &Addr,
+        coap: &[u8],
+        _l2_destination: &[u8],
+        source_route: &[[u8; 16]],
+    ) -> Result<(), TxError> {
         // Build IPv6 + UDP + CoAP packet
         let udp_total = UDP_HEADER_LEN + coap.len();
         let mut ipv6 = [0u8; 256];
@@ -268,7 +276,7 @@ impl<R: Radio> Stack<R> {
         let udp_hdr = UdpHeader::new(PORT_COAP, PORT_COAP);
         udp_hdr
             .write_packet_to(
-                &src,
+                src,
                 dst,
                 coap,
                 &mut ipv6[IPV6_HEADER_LEN..IPV6_HEADER_LEN + udp_total],
@@ -363,7 +371,7 @@ impl<R: Radio> Stack<R> {
         let mut wire = [0u8; MAX_FRAME_SIZE];
         let wire_len = self
             .link
-            .build_frame(self.epoch, seqnum, &[], l2_data, &mut wire)
+            .build_frame(self.epoch, seqnum, &[], l2_payload, &mut wire)
             .map_err(|e| match e {
                 FrameError::BufferTooSmall => TxError::BufferTooSmall,
                 _ => TxError::FrameEncode,

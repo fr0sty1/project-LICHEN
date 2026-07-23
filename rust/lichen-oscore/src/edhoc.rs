@@ -30,10 +30,10 @@ use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use hkdf::Hkdf;
 use hmac::{Hmac, Mac};
 use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest, Sha256};
 use x25519_dalek::{PublicKey, StaticSecret};
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
-use rand_core::{CryptoRng, RngCore};
 
 /// AES-CCM for Suite 0.
 type AesCcm = Ccm<Aes128, U8, U13>;
@@ -415,17 +415,15 @@ fn encode_tstr<const N: usize>(
 fn transcript_2(g_y: &[u8], msg1: &[u8]) -> Result<[u8; 32], EdhocError> {
     let h_msg1 = compute_th(msg1);
     let mut buf = heapless::Vec::<u8, 64>::new();
-    buf.extend_err(g_y).map_err(|_| EdhocError::BufferTooSmall)?;
-    buf.extend_err(&h_msg1).map_err(|_| EdhocError::BufferTooSmall)?;
+    buf.extend_err(g_y)
+        .map_err(|_| EdhocError::BufferTooSmall)?;
+    buf.extend_err(&h_msg1)
+        .map_err(|_| EdhocError::BufferTooSmall)?;
     Ok(compute_th(&buf))
 }
 
 /// TH_3 = H(CBOR(TH_2) || CBOR(input) || CBOR(cred)).
-fn transcript_3(
-    th_2: &[u8; 32],
-    input: &[u8],
-    cred: &[u8],
-) -> Result<[u8; 32], EdhocError> {
+fn transcript_3(th_2: &[u8; 32], input: &[u8], cred: &[u8]) -> Result<[u8; 32], EdhocError> {
     let mut buf = heapless::Vec::<u8, 1024>::new();
     encode_bstr(&mut buf, th_2)?;
     encode_bstr(&mut buf, input)?;
@@ -879,7 +877,13 @@ impl EdhocInitiator {
             let mut id_cred_i = heapless::Vec::<u8, 40>::new();
             encode_id_cred(&mut id_cred_i, self.pubkey.as_bytes())?;
             let context_3 = build_context_3(&id_cred_i, &self.state.th_3, &credential_i)?;
-            let mac_3 = edhoc_kdf(&self.state.prk_4e3m, &self.state.th_3, "MAC_3", &context_3, 32)?;
+            let mac_3 = edhoc_kdf(
+                &self.state.prk_4e3m,
+                &self.state.th_3,
+                "MAC_3",
+                &context_3,
+                32,
+            )?;
             let m_3 =
                 build_signature_structure(&id_cred_i, &self.state.th_3, &credential_i, &mac_3)?;
             let signature_3 = self.signing_key.sign(&m_3);
@@ -1091,13 +1095,16 @@ impl EdhocResponder {
         if msg1[g_x_start] != 0x58 || msg1[g_x_start + 1] != 32 {
             return Err(EdhocError::InvalidMessage);
         }
-        self.state
-            .g_x
-            .copy_from_slice(&msg1[g_x_start + 2..g_x_start + 2 + 32]);
+        let g_x = {
+            let mut gx = [0u8; 32];
+            gx.copy_from_slice(&msg1[g_x_start + 2..g_x_start + 2 + 32]);
+            gx
+        };
+        self.state.g_x = g_x;
 
         // Parse C_I
         let rest = &msg1[g_x_start + 2 + 32..];
-        self.state.c_i = if !rest.is_empty() {
+        let c_i = if !rest.is_empty() {
             if rest[0] <= 23 {
                 rest[0]
             } else if rest[0] == 0x41 && rest.len() > 1 {
@@ -1107,7 +1114,7 @@ impl EdhocResponder {
             }
         } else {
             return Err(EdhocError::InvalidMessage);
-        }
+        };
         if c_i == self.c_r {
             self.poison();
             return Err(EdhocError::InvalidMessage);
@@ -1120,7 +1127,7 @@ impl EdhocResponder {
         drop(eph_secret);
         self.state.msg1 = stored_msg1;
         self.state.g_x = g_x;
-        self.state.c_i = c_i;
+        self.state.c_i = c_i.into();
         // SECURITY: eph_secret is intentionally NOT stored back - single-use semantics
         // prevent cryptographic weakness from ephemeral key reuse if this function
         // is called multiple times (e.g., due to retransmission handling bugs).
@@ -1315,7 +1322,13 @@ impl EdhocResponder {
                 &self.state.th_3,
                 peer.credential,
             )?;
-            let mac_3 = edhoc_kdf(&self.state.prk_4e3m, &self.state.th_3, "MAC_3", &context_3, 32)?;
+            let mac_3 = edhoc_kdf(
+                &self.state.prk_4e3m,
+                &self.state.th_3,
+                "MAC_3",
+                &context_3,
+                32,
+            )?;
             let m_3 = build_signature_structure(
                 pending.id_cred.as_bytes(),
                 &self.state.th_3,
@@ -1577,7 +1590,9 @@ mod tests {
             "c8419a8f1cae45674cf4c7ba021a110538c7fa2639ae70f316e8c3c34a0faf5dbf68cf835ec76f8f532fda302c647b303f02397f72710d072bd962118e35c6fe6d3f0a46a4160fba02a12eeec59e54135c3d"
         );
         assert_eq!(
-            edhoc_kdf(&prk_2e, &th_2, "KEYSTREAM_2", &[], 82).unwrap().as_slice(),
+            edhoc_kdf(&prk_2e, &th_2, "KEYSTREAM_2", &[], 82)
+                .unwrap()
+                .as_slice(),
             keystream_2
         );
 
@@ -2474,7 +2489,10 @@ mod tests {
     #[test]
     fn test_prk_oscore_interop_vectors() {
         let v = edhoc_vector("rfc9529_trace_prk_export");
-        assert_eq!(v["master_secret"].as_str().unwrap(), "6dd8bfb559c311377364fd583db800f8");
+        assert_eq!(
+            v["master_secret"].as_str().unwrap(),
+            "6dd8bfb559c311377364fd583db800f8"
+        );
         assert_eq!(v["master_salt"].as_str().unwrap(), "39b3ec8bfae98a3e");
         // Loads test/vectors/edhoc.json and verifies PRK-derived OSCORE outputs match reference.
         // test_full_handshake exercises the full EDHOC -> OSCORE path for interop with Python.

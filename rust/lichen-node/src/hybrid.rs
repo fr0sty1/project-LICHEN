@@ -323,14 +323,14 @@ impl HybridRouter {
         // tie broken by oldest `queued_at_ms`). Prevents high-prio packets being
         // evicted by later low-prio ones.
         if queue.len() > self.max_pending_per_dest {
-            if let Some((idx, _)) = queue.iter().enumerate().max_by_key(|(_, p)| {
-                (p.priority, std::cmp::Reverse(p.queued_at_ms))
-            }) {
+            if let Some((idx, _)) = queue
+                .iter()
+                .enumerate()
+                .max_by_key(|(_, p)| (p.priority, std::cmp::Reverse(p.queued_at_ms)))
+            {
                 queue.remove(idx);
             }
         }
-    }
-        queue.push_back(pending);
     }
 
     /// Get pending packets for a destination (after route discovery succeeds).
