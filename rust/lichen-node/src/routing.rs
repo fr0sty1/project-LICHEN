@@ -186,6 +186,56 @@ impl TrickleAwareNeighborLiveness {
     }
 }
 
+/// TrickleSafeLivenessPolicy trait.
+///
+/// Determines neighbor liveness in a Trickle-safe manner to prevent premature
+/// eviction of suppressed neighbors in dense networks (per bead and parent
+/// issue project-LICHEN-2auf.44.11.7.*).
+///
+/// **Design (from existing struct docs, RFC 6206, RPL RFC 6550 §6.5.1):**
+/// - Factors in TrickleTimer::counter (heard_consistent from heard_consistent()).
+/// - RFC 6206 §4.2: counter >= k suppresses DIO tx (default k=10); dense mesh
+///   means long periods without tx from a live neighbor.
+/// - RPL neighbor table must not timeout participating nodes prematurely.
+/// - Policy: alive if age <= max_age OR heard_consistent >= 2 (hysteresis;
+///   threshold=2 avoids waiting for full k).
+/// - Used by NeighborTable::prune_with_removed, is_likely_alive, prune_neighbors_at.
+/// - Enables extensibility (configurable thresholds, alternative policies,
+///   no-std, test mocks).
+///
+/// Tests: neighbor_table_prune_stale, router_joins_on_dio and other routing
+/// tests exercise the liveness via prune/is_likely_alive. All must continue
+/// to pass after full refactor.
+///
+/// Places needing update in full refactor (but not done here per bead):
+/// - NeighborTable::prune_with_removed (add policy: impl TrickleSafeLivenessPolicy
+///   param or generic P: TrickleSafeLivenessPolicy + use policy.is_alive(...) 
+///   instead of direct struct call; update is_stale calc to pass last_seen_ms,
+///   now, max_age, heard_consistent)
+/// - NeighborTable::prune (update wrapper to pass default policy)
+/// - NeighborTable::is_likely_alive (update to use policy)
+/// - Router::prune_neighbors_at (pass TrickleAwareNeighborLiveness or default()
+///   and the heard_consistent = self.trickle.counter )
+/// - Router::maintain, prune_neighbors, and test helpers
+/// - Re-exports in lichen-node/src/lib.rs
+/// - Any integration tests or other uses of NeighborTable
+/// - Update docs/comments referencing the old struct directly.
+pub trait TrickleSafeLivenessPolicy {
+    /// Returns whether the neighbor should be considered alive.
+    fn is_alive(&self, last_seen_ms: u64, now_ms: u64, max_age_ms: u64, heard_consistent: u32) -> bool;
+}
+
+/// Default implementation delegates to the existing TrickleAware logic.
+/// (This satisfies the bead requirement for trait + default impl. Full wiring
+/// in prune_*/is_likely_alive left for follow-up beads which this one forbids
+/// creating.)
+impl TrickleSafeLivenessPolicy for TrickleAwareNeighborLiveness {
+    fn is_alive(&self, last_seen_ms: u64, now_ms: u64, max_age_ms: u64, heard_consistent: u32) -> bool {
+        let age_ms = now_ms.saturating_sub(last_seen_ms);
+        Self::is_alive(age_ms, max_age_ms, heard_consistent)
+    }
+}
+
 /// Neighbor entry with link quality tracking and optional coordinates.
 #[derive(Clone, Debug)]
 pub struct Neighbor {
