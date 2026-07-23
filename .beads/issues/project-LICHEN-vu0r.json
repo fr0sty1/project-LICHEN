@@ -2,6 +2,7 @@
   "id": "project-LICHEN-vu0r",
   "title": "Post-review protocol spec/code alignment audit (last 20 commits)",
   "description": "Analyze recent commits touching lichen/subsys/lichen/link/, rust/lichen-core/src/announce.rs, rust/lichen-coap/, schnorr48 etc. vs spec/drafts/draft-lichen-schnorr-00.md, spec/05-routing.md:9.2 announce format, spec/02a-coordinated-capacity.md CCP-9, test/vectors/ccp9.json, draft-lichen-link-01.md frame formats. Found critical mismatches. Epic for fixes.",
+  "notes": "Commit: 63e9c3559",
   "status": "in_progress",
   "priority": 0,
   "issue_type": "epic",
@@ -9,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T01:43:36.443934056Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:52:37.580313155Z",
+  "updated_at": "2026-07-23T01:58:42.540599438Z",
   "started_at": "2026-07-23T01:52:37.580313155Z",
   "lease_expires_at": "2026-07-23T01:57:37.580313155Z",
   "heartbeat_at": "2026-07-23T01:52:37.580313155Z"
