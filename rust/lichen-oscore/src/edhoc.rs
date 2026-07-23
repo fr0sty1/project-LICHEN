@@ -459,6 +459,43 @@ fn build_signature_structure(id_cred: &[u8], th: &[u8; 32], cred: &[u8], mac: &[
     Ok(buf)
 }
 
+fn build_context_2(
+    id_cred: &[u8],
+    cred: &[u8],
+) -> Result<heapless::Vec<u8, 128>, EdhocError> {
+    let mut ctx = heapless::Vec::<u8, 128>::new();
+    append_cbor_bstr(&mut ctx, id_cred)?;
+    append_cbor_bstr(&mut ctx, cred)?;
+    Ok(ctx)
+}
+
+fn build_context_3(
+    id_cred: &[u8],
+    _th: &[u8; 32],
+    cred: &[u8],
+) -> Result<heapless::Vec<u8, 128>, EdhocError> {
+    let mut ctx = heapless::Vec::<u8, 128>::new();
+    append_cbor_bstr(&mut ctx, id_cred)?;
+    append_cbor_bstr(&mut ctx, cred)?;
+    Ok(ctx)
+}
+
+fn build_signature_structure(
+    id_cred: &[u8],
+    th: &[u8; 32],
+    cred: &[u8],
+    mac: &[u8],
+) -> Result<heapless::Vec<u8, 128>, EdhocError> {
+    let mut m = heapless::Vec::<u8, 128>::new();
+    m.push_err(0x85)?;
+    m.extend_err(b"\x6bSignature1")?;
+    append_cbor_bstr(&mut m, id_cred)?;
+    append_cbor_bstr(&mut m, th)?;
+    append_cbor_bstr(&mut m, cred)?;
+    append_cbor_bstr(&mut m, mac)?;
+    Ok(m)
+}
+
 /// Parse SUITES_I from CBOR per RFC 9528 Section 3.3.2.
 ///
 /// SUITES_I can be either:
@@ -803,12 +840,7 @@ impl EdhocInitiator {
         let result = (|| {
             validate_peer_credential(peer)?;
             let signature_bytes = parse_bstr(&pending.plaintext[pending.signature_offset..])?.0;
-            let context_2 = build_context_2(
-                &pending.c_r,
-                pending.id_cred.as_bytes(),
-                &self.state.th_2,
-                peer.credential,
-            )?;
+            let context_2 = build_context_2(pending.id_cred.as_bytes(), peer.credential)?;
             let mac_2 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_2, "MAC_2", &context_2, 32)?;
             let m_2 = build_signature_structure(
                 pending.id_cred.as_bytes(),
@@ -1098,28 +1130,23 @@ impl EdhocResponder {
             // PRK_3e2m = PRK_2e for Suite 0 SIGN_SIGN (needed for MAC_2)
             self.state.prk_3e2m = self.state.prk_2e;
 
-        let mut context_2 = heapless::Vec::<u8, 128>::new();
-        context_2.push_err(0x58)?;
-        context_2.push_err(32)?;
-        context_2.extend_err(self.pubkey.as_bytes())?;
-        context_2.push_err(0x58)?;
-        context_2.push_err(32)?;
-        context_2.extend_err(self.pubkey.as_bytes())?;
-        let mac_2 = edhoc_kdf(
-            &self.state.prk_3e2m,
-            &self.state.th_2,
-            "MAC_2",
-            &context_2,
-            32,
-        )?;
-        let m_2 = build_signature_structure(
-            self.pubkey.as_bytes(),
-            &self.state.th_2,
-            self.pubkey.as_bytes(),
-            &mac_2,
-        )?;
-        let signature_2 = self.signing_key.sign(&m_2);
-        let credential_r = self.pubkey.as_bytes();
+            let id_cred_r = self.pubkey.as_bytes();
+            let credential_r = self.pubkey.as_bytes();
+            let context_2 = build_context_2(id_cred_r, credential_r)?;
+            let mac_2 = edhoc_kdf(
+                &self.state.prk_3e2m,
+                &self.state.th_2,
+                "MAC_2",
+                &context_2,
+                32,
+            )?;
+            let m_2 = build_signature_structure(
+                id_cred_r,
+                &self.state.th_2,
+                credential_r,
+                &mac_2,
+            )?;
+            let signature_2 = self.signing_key.sign(&m_2);
 
             let mut plaintext_2 = SecretVec::<128>::new();
             encode_identifier(&mut plaintext_2, &self.c_r)?;
