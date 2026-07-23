@@ -39,6 +39,5 @@ Implementations must:
 - Support round-trip: human address parsing to IID must recover the original bytes (recommended)
 
 Cross-references to this section: 04-network.md, 06-security.md, 08-nodes.md, spec/README.md and related I-Ds. Align with `human_address_from_pubkey` (Rust), `lichen_pubkey_to_human_address` (C), and `lichen_pubkey_to_iid()`.
-(Note: node-addresses.json reconciliation tracked under oxul epic.)
 
 [← Previous](02-physical-link.md) | [Index](README.md) | [Next →](04-network.md)
