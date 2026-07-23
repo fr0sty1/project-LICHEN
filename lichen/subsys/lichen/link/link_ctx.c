@@ -242,20 +242,7 @@ int lichen_link_load_key(struct lichen_link_ctx *ctx,
 	new_epoch = 128 + (new_epoch & 0x7F);
 
 #ifdef CONFIG_LICHEN_CRYPTO_MONOCYPHER
-	uint8_t hash[64];
-
-	/* h = SHA-512(seed) */
-	crypto_sha512(hash, seed, 32);
-
-	/* sk = clamp(h[0:32]) */
-	memcpy(new_sk, hash, sizeof(new_sk));
-	schnorr48_clamp_scalar(new_sk);
-
-	/* pk = sk * B */
-	crypto_eddsa_scalarbase(new_pk, new_sk);
-
-	/* Wipe sensitive intermediate data */
-	crypto_wipe(hash, sizeof(hash));
+	schnorr48_derive_keypair(seed, new_sk, new_pk);
 #else
 #ifdef CONFIG_LICHEN_LINK_SCHNORR
 #error "CONFIG_LICHEN_LINK_SCHNORR requires CONFIG_LICHEN_CRYPTO_MONOCYPHER for secure key derivation"
@@ -276,14 +263,13 @@ int lichen_link_load_key(struct lichen_link_ctx *ctx,
 		secure_wipe(new_pk, sizeof(new_pk));
 		return -EIO;
 	}
-	bool rotating_key = ctx->has_key &&
-		(crypto_verify32(ctx->ed25519_pk, new_pk) != 0);
 	if (ctx->has_key) {
 		secure_wipe(ctx->ed25519_sk, LICHEN_SK_LEN);
 	}
 	memcpy(ctx->ed25519_sk, new_sk, LICHEN_SK_LEN);
 	memcpy(ctx->ed25519_pk, new_pk, LICHEN_PK_LEN);
 	ctx->has_key = true;
+	ctx->epoch = new_epoch;
 	ctx->tx_seq = 0;
 	ctx->nonce_exhausted = false;
 #ifdef CONFIG_NVS
@@ -362,16 +348,9 @@ int lichen_link_derive_pubkey(const uint8_t seed[LICHEN_SEED_LEN],
 	}
 
 #ifdef CONFIG_LICHEN_CRYPTO_MONOCYPHER
-	uint8_t hash[64];
-	uint8_t sk[LICHEN_SK_LEN];
-
-	/* Must match lichen_link_load_key(): pk = clamp(SHA-512(seed)[0:32]) * B */
-	crypto_sha512(hash, seed, LICHEN_SEED_LEN);
-	memcpy(sk, hash, sizeof(sk));
-	schnorr48_clamp_scalar(sk);
-	crypto_eddsa_scalarbase(out_pk, sk);
-	crypto_wipe(hash, sizeof(hash));
-	crypto_wipe(sk, sizeof(sk));
+	uint8_t dummy_sk[LICHEN_SK_LEN];
+	schnorr48_derive_keypair(seed, dummy_sk, out_pk);
+	crypto_wipe(dummy_sk, sizeof(dummy_sk));
 #else
 	/* Stub matches the lichen_link_load_key() stub pubkey */
 	memset(out_pk, 0, LICHEN_PK_LEN);
