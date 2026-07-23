@@ -1,4 +1,4 @@
-{"id":"019f8ab1-3a56-7e1f-a4ee-c45820543fb6","issue_id":"project-LICHEN-sqau","event_type":"created","actor":"ec2-user","old_value":"","new_value":"","created_at":"2026-07-22T16:38:18.454926166Z"}
-{"id":"019f8ab1-3a58-77ee-868d-80ac58cd3a18","issue_id":"project-LICHEN-sqau","event_type":"label_added","actor":"ec2-user","comment":"Added label: codereview","created_at":"2026-07-22T16:38:18.456520129Z"}
-{"id":"019f8ab1-3a5a-70a2-8bcb-a60c9583ecd4","issue_id":"project-LICHEN-sqau","event_type":"label_added","actor":"ec2-user","comment":"Added label: ccp","created_at":"2026-07-22T16:38:18.458042422Z"}
-{"id":"019f8ab2-a7a0-74d5-8e46-6d1e39c2ad84","issue_id":"project-LICHEN-sqau","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"Appendix A and cross-refs updated in last edit","created_at":"2026-07-22T16:39:51.96831731Z"}
+{"id": "019f8ab1-3a56-7e1f-a4ee-c45820543fb6", "issue_id": "project-LICHEN-sqau", "event_type": "created", "actor": "ec2-user", "old_value": "", "new_value": "", "created_at": "2026-07-22T16:38:18.454926166Z"}
+{"id": "019f8ab1-3a58-77ee-868d-80ac58cd3a18", "issue_id": "project-LICHEN-sqau", "event_type": "label_added", "actor": "ec2-user", "comment": "Added label: codereview", "created_at": "2026-07-22T16:38:18.456520129Z"}
+{"id": "019f8ab1-3a5a-70a2-8bcb-a60c9583ecd4", "issue_id": "project-LICHEN-sqau", "event_type": "label_added", "actor": "ec2-user", "comment": "Added label: ccp", "created_at": "2026-07-22T16:38:18.458042422Z"}
+{"id": "019f8ab2-a7a0-74d5-8e46-6d1e39c2ad84", "issue_id": "project-LICHEN-sqau", "event_type": "closed", "actor": "ec2-user", "old_value": "", "new_value": "Appendix A and cross-refs updated in last edit", "created_at": "2026-07-22T16:39:51.96831731Z"}

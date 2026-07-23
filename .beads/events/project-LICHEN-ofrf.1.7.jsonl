@@ -1,2 +1,2 @@
-{"id":"019f8aa5-6bc3-7cf4-829c-2b0373e45d05","issue_id":"project-LICHEN-ofrf.1.7","event_type":"created","actor":"ec2-user","old_value":"","new_value":"","created_at":"2026-07-22T16:25:24.675849788Z"}
-{"id":"019f8aa5-a47e-728b-b63d-099318cd916c","issue_id":"project-LICHEN-ofrf.1.7","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"Closed","created_at":"2026-07-22T16:25:39.198167421Z"}
+{"id": "019f8aa5-6bc3-7cf4-829c-2b0373e45d05", "issue_id": "project-LICHEN-ofrf.1.7", "event_type": "created", "actor": "ec2-user", "old_value": "", "new_value": "", "created_at": "2026-07-22T16:25:24.675849788Z"}
+{"id": "019f8aa5-a47e-728b-b63d-099318cd916c", "issue_id": "project-LICHEN-ofrf.1.7", "event_type": "closed", "actor": "ec2-user", "old_value": "", "new_value": "Closed", "created_at": "2026-07-22T16:25:39.198167421Z"}

@@ -1,2 +1,2 @@
-{"id":"019f8aa1-3a4d-75a4-82b6-09325d26fdfa","issue_id":"project-LICHEN-zqih","event_type":"created","actor":"ec2-user","old_value":"","new_value":"","created_at":"2026-07-22T16:20:49.869370484Z"}
-{"id":"019f8aa2-d204-7415-856b-8bec73173595","issue_id":"project-LICHEN-zqih","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"P4: graph updated no P0","created_at":"2026-07-22T16:22:34.244268271Z"}
+{"id": "019f8aa1-3a4d-75a4-82b6-09325d26fdfa", "issue_id": "project-LICHEN-zqih", "event_type": "created", "actor": "ec2-user", "old_value": "", "new_value": "", "created_at": "2026-07-22T16:20:49.869370484Z"}
+{"id": "019f8aa2-d204-7415-856b-8bec73173595", "issue_id": "project-LICHEN-zqih", "event_type": "closed", "actor": "ec2-user", "old_value": "", "new_value": "P4: graph updated no P0", "created_at": "2026-07-22T16:22:34.244268271Z"}

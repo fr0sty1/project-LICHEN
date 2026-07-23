@@ -1,2 +1,2 @@
-{"id":"019f8ab1-ef68-7f09-a7aa-9bb0e4ea0a86","issue_id":"project-LICHEN-oi2j","event_type":"created","actor":"ec2-user","old_value":"","new_value":"","created_at":"2026-07-22T16:39:04.808985901Z"}
-{"id":"019f8ab2-a943-7cfa-a050-ebb4bf41df52","issue_id":"project-LICHEN-oi2j","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"Out of scope for this bead; density handled in adaptive SF section","created_at":"2026-07-22T16:39:52.387851247Z"}
+{"id": "019f8ab1-ef68-7f09-a7aa-9bb0e4ea0a86", "issue_id": "project-LICHEN-oi2j", "event_type": "created", "actor": "ec2-user", "old_value": "", "new_value": "", "created_at": "2026-07-22T16:39:04.808985901Z"}
+{"id": "019f8ab2-a943-7cfa-a050-ebb4bf41df52", "issue_id": "project-LICHEN-oi2j", "event_type": "closed", "actor": "ec2-user", "old_value": "", "new_value": "Out of scope for this bead; density handled in adaptive SF section", "created_at": "2026-07-22T16:39:52.387851247Z"}

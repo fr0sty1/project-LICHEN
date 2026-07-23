@@ -1,4 +1,4 @@
-{"id":"019f8ab4-dd00-74d2-8be3-d85094802699","issue_id":"project-LICHEN-ay1z","event_type":"created","actor":"ec2-user","old_value":"","new_value":"","created_at":"2026-07-22T16:42:16.704317085Z"}
-{"id":"019f8ab4-dd03-7929-abd4-9966fb78fcf4","issue_id":"project-LICHEN-ay1z","event_type":"label_added","actor":"ec2-user","comment":"Added label: codereview","created_at":"2026-07-22T16:42:16.70760086Z"}
-{"id":"019f8ab4-dd06-77f6-b415-86773f4f6221","issue_id":"project-LICHEN-ay1z","event_type":"label_added","actor":"ec2-user","comment":"Added label: opinion","created_at":"2026-07-22T16:42:16.710522124Z"}
-{"id":"019f8ab5-269b-70ce-82da-51107a47ab23","issue_id":"project-LICHEN-ay1z","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"Addressed in table polish edit with vector notes","created_at":"2026-07-22T16:42:35.547053531Z"}
+{"id": "019f8ab4-dd00-74d2-8be3-d85094802699", "issue_id": "project-LICHEN-ay1z", "event_type": "created", "actor": "ec2-user", "old_value": "", "new_value": "", "created_at": "2026-07-22T16:42:16.704317085Z"}
+{"id": "019f8ab4-dd03-7929-abd4-9966fb78fcf4", "issue_id": "project-LICHEN-ay1z", "event_type": "label_added", "actor": "ec2-user", "comment": "Added label: codereview", "created_at": "2026-07-22T16:42:16.70760086Z"}
+{"id": "019f8ab4-dd06-77f6-b415-86773f4f6221", "issue_id": "project-LICHEN-ay1z", "event_type": "label_added", "actor": "ec2-user", "comment": "Added label: opinion", "created_at": "2026-07-22T16:42:16.710522124Z"}
+{"id": "019f8ab5-269b-70ce-82da-51107a47ab23", "issue_id": "project-LICHEN-ay1z", "event_type": "closed", "actor": "ec2-user", "old_value": "", "new_value": "Addressed in table polish edit with vector notes", "created_at": "2026-07-22T16:42:35.547053531Z"}

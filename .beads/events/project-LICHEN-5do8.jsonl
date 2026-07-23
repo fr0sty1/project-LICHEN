@@ -1,2 +1,2 @@
-{"id":"019f8a4a-c1a8-736a-91f3-c43b662fb41d","issue_id":"project-LICHEN-5do8","event_type":"created","actor":"ec2-user","old_value":"","new_value":"","created_at":"2026-07-22T14:46:22.888225875Z"}
-{"id":"019f8a4c-2cd1-73a2-9334-701e265b3887","issue_id":"project-LICHEN-5do8","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"Fixed with full sorted lists in METRICS JSON. All reviews now clean.","created_at":"2026-07-22T14:47:55.857238714Z"}
+{"id": "019f8a4a-c1a8-736a-91f3-c43b662fb41d", "issue_id": "project-LICHEN-5do8", "event_type": "created", "actor": "ec2-user", "old_value": "", "new_value": "", "created_at": "2026-07-22T14:46:22.888225875Z"}
+{"id": "019f8a4c-2cd1-73a2-9334-701e265b3887", "issue_id": "project-LICHEN-5do8", "event_type": "closed", "actor": "ec2-user", "old_value": "", "new_value": "Fixed with full sorted lists in METRICS JSON. All reviews now clean.", "created_at": "2026-07-22T14:47:55.857238714Z"}

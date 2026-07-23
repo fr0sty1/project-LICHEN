@@ -1,2 +1,2 @@
-{"id":"019f8a65-759e-7cb7-b3a0-aac1b7185845","issue_id":"project-LICHEN-ksbc","event_type":"created","actor":"ec2-user","old_value":"","new_value":"","created_at":"2026-07-22T15:15:32.894835202Z"}
-{"id":"019f8a65-cbf8-765c-bc89-6e039c73584d","issue_id":"project-LICHEN-ksbc","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"hal time deferred","created_at":"2026-07-22T15:15:55.000417495Z"}
+{"id": "019f8a65-759e-7cb7-b3a0-aac1b7185845", "issue_id": "project-LICHEN-ksbc", "event_type": "created", "actor": "ec2-user", "old_value": "", "new_value": "", "created_at": "2026-07-22T15:15:32.894835202Z"}
+{"id": "019f8a65-cbf8-765c-bc89-6e039c73584d", "issue_id": "project-LICHEN-ksbc", "event_type": "closed", "actor": "ec2-user", "old_value": "", "new_value": "hal time deferred", "created_at": "2026-07-22T15:15:55.000417495Z"}
