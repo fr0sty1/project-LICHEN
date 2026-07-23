@@ -50,6 +50,9 @@ void lichen_trickle_init(struct lichen_trickle *t,
 		return;
 	}
 
+	if (imin_ms == 0) {
+		imin_ms = 1;
+	}
 	t->imin = imin_ms;
 
 	/* Calculate max_interval = imin << doublings, clamped at UINT32_MAX.
