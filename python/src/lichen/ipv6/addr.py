@@ -37,14 +37,17 @@ def to_ipv6(value: IPv6Address | str | bytes) -> IPv6Address:
     or 16 bytes of packed address data.
 
     Raises:
-        AddrError: If bytes input is not exactly 16 bytes.
-        ValueError: If string input is not a valid IPv6 address.
+        AddrError: for any invalid input (wrong-length bytes, malformed string,
+        or other values that cannot be converted).
     """
     if isinstance(value, IPv6Address):
         return value
     if isinstance(value, bytes) and len(value) != 16:
         raise AddrError(f"packed IPv6 address must be 16 bytes, got {len(value)}")
-    return IPv6Address(value)
+    try:
+        return IPv6Address(value)
+    except ValueError as e:
+        raise AddrError(str(e)) from e
 
 
 class AddrError(Exception):
