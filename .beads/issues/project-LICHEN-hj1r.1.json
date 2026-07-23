@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-hj1r.1",
+  "title": "Clean dead merge-resolution comments from xiao_s3_wio_sx1262.{conf,overlay} in worker17 worktree",
+  "description": "Replace polluted RETIRED comment block containing resolved merge conflict references with canonical clean version from project-LICHEN-2u26.10 / worker12. Matches AGENTS.md no-dead-code rule.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:23:18.540837938Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:23:18.540837938Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-hj1r.1",
+      "depends_on_id": "project-LICHEN-hj1r",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:23:18.678132971Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
