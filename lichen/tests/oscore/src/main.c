@@ -285,7 +285,6 @@ ZTEST(oscore_ctx, test_persist_ssn_noop_without_callback)
 {
 	struct oscore_ctx *ctx = NULL;
 
-	/* Ensure no callbacks registered */
 	oscore_nvm_register_callbacks(NULL, NULL);
 
 	zassert_equal(oscore_ctx_create(master_secret, NULL, 0,
@@ -295,10 +294,47 @@ ZTEST(oscore_ctx, test_persist_ssn_noop_without_callback)
 		      OSCORE_OK);
 	zassert_not_null(ctx);
 
-	/* Should succeed as no-op */
 	zassert_equal(oscore_ctx_persist_ssn(ctx), OSCORE_OK);
 
 	oscore_ctx_free(ctx);
+}
+
+ZTEST(oscore_ctx, test_nvm_read_failure_fallback_to_zero)
+{
+	struct oscore_ctx *ctx = NULL;
+	uint32_t ssn;
+	enum oscore_freshness status;
+	oscore_nvm_register_callbacks(mock_nvm_write, mock_nvm_read);
+	zassert_equal(oscore_ctx_create_with_eui64(master_secret, NULL, 0,
+						   sender_id, sizeof(sender_id),
+						   recipient_id, sizeof(recipient_id),
+						   peer_eui64_1, &ctx),
+		      OSCORE_OK);
+	zassert_not_null(ctx);
+	zassert_equal(mock_nvm_read_count, 1);
+	zassert_equal(oscore_ctx_get_sender_seq(ctx, &ssn), OSCORE_OK);
+	zassert_equal(ssn, 0U);
+	zassert_equal(oscore_ctx_check_freshness(ctx, &status), OSCORE_OK);
+	zassert_equal(status, OSCORE_FRESHNESS_OK);
+	uint8_t ciphertext[32];
+	size_t ciphertext_len = sizeof(ciphertext);
+	uint8_t oscore_opt[16];
+	size_t oscore_opt_len = sizeof(oscore_opt);
+	zassert_equal(oscore_protect_request(ctx, 0x01, NULL, 0, NULL, 0,
+					     ciphertext, &ciphertext_len,
+					     oscore_opt, &oscore_opt_len),
+		      OSCORE_ERR_INVALID_PARAM);
+	zassert_equal(oscore_ctx_set_sender_seq(ctx, 0), OSCORE_OK);
+	ciphertext_len = sizeof(ciphertext);
+	oscore_opt_len = sizeof(oscore_opt);
+	zassert_equal(oscore_protect_request(ctx, 0x01, NULL, 0, NULL, 0,
+					     ciphertext, &ciphertext_len,
+					     oscore_opt, &oscore_opt_len),
+		      OSCORE_OK);
+	zassert_equal(oscore_ctx_get_sender_seq(ctx, &ssn), OSCORE_OK);
+	zassert_equal(ssn, 1U);
+	oscore_ctx_free(ctx);
+	oscore_nvm_register_callbacks(NULL, NULL);
 }
 
 ZTEST_SUITE(oscore_ctx, NULL, oscore_ctx_setup, oscore_ctx_before, NULL, NULL);
