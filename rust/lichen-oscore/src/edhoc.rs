@@ -878,25 +878,17 @@ impl EdhocInitiator {
     /// Returns `OscoreError::NoContext` if called before handshake completes
     /// (i.e., before `process_message_2` succeeds).
     pub fn export_oscore(&self) -> Result<Context, OscoreError> {
-        // SECURITY: Reject export before handshake completes. Without this check,
-        // keys would be derived from zeroed PRK/TH state, producing deterministic
-        // but wrong keys that won't match the peer's keys.
-        if !self.state.completed {
+        if !self.state.completed || self.state.prk_4e3m.iter().all(|&b| b == 0) {
             return Err(OscoreError::NoContext);
         }
-        if self.state.prk_4e3m.iter().all(|&b| b == 0) {
-            return Err(OscoreError::NoContext);
-        }
-        let master_secret_vec = edhoc_kdf(
+        // Use dedicated exporter for full master_secret/salt derivation + new_fresh.
+        // IDs: local c_i as sender_id for initiator context.
+        export_context(
             &self.state.prk_4e3m,
             &self.state.th_4,
-            self.state.c_r.as_bytes(),
             self.c_i.as_bytes(),
-        );
-        if result.is_err() {
-            self.poison();
-        }
-        result
+            self.c_r.as_bytes(),
+        )
     }
 }
 
@@ -1332,25 +1324,17 @@ impl EdhocResponder {
     /// Returns `OscoreError::NoContext` if called before handshake completes
     /// (i.e., before `process_message_3` succeeds).
     pub fn export_oscore(&self) -> Result<Context, OscoreError> {
-        // SECURITY: Reject export before handshake completes. Without this check,
-        // keys would be derived from zeroed PRK/TH state, producing deterministic
-        // but wrong keys that won't match the peer's keys.
-        if !self.state.completed {
+        if !self.state.completed || self.state.prk_4e3m.iter().all(|&b| b == 0) {
             return Err(OscoreError::NoContext);
         }
-        if self.state.prk_4e3m.iter().all(|&b| b == 0) {
-            return Err(OscoreError::NoContext);
-        }
-        let master_secret_vec = edhoc_kdf(
+        // Use dedicated exporter for full master_secret/salt derivation + new_fresh.
+        // IDs: local c_r as sender_id for responder context.
+        export_context(
             &self.state.prk_4e3m,
             &self.state.th_4,
-            self.state.c_i.as_bytes(),
             self.c_r.as_bytes(),
-        );
-        if result.is_err() {
-            self.poison();
-        }
-        result
+            self.c_i.as_bytes(),
+        )
     }
 }
 

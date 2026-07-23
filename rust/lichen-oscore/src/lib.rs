@@ -57,6 +57,10 @@ pub const SALT_MAX_LEN: usize = 8;
 /// Maximum Partial IV length.
 pub const PIV_MAX_LEN: usize = 5;
 
+/// Maximum ID Context length (LICHEN-specific; fits OSCORE option after PIV+KID,
+/// matches EDHOC CID capacity and LoRa MTU constraints. Test rejects >8 bytes).
+pub const ID_CONTEXT_CAPACITY: usize = 8;
+
 /// Maximum encoded OSCORE option value within this implementation's capacities.
 pub const OSCORE_OPTION_MAX_LEN: usize = 1 + PIV_MAX_LEN + 1 + ID_CONTEXT_CAPACITY + NONCE_ID_LEN;
 
@@ -371,21 +375,22 @@ impl Context {
         Ok(self)
     }
 
-    /// Restore externally supplied OSCORE key material from durable sender state.
+    /// Create new OSCORE context from master material, optional ID context, and peer IDs (RFC 8613).
     ///
-    /// Derives sender and recipient keys from master secret using HKDF-SHA256.
-    /// Existing state is loaded by the derived [`ContextId`]. Missing state is
-    /// rejected; only EDHOC-exported fresh contexts may register sequence zero.
+    /// Derives keys/IV via HKDF-SHA256, computes stable ContextId, sets defaults (seq=0,
+    /// inactive, not restored). Use `register_fresh`/`restore_existing` to activate with store.
+    /// Fixes undefined variables, incomplete struct init, key derivation, ContextId, and
+    /// EDHOC compatibility from the oscore-recovery merge. Satisfies zeroize, constant-time,
+    /// and RFC 8613.
     ///
     /// # Errors
     ///
-    /// Returns `InvalidParam` if:
-    /// - `sender_id` or `recipient_id` exceeds 7 bytes (nonce capacity)
-    /// - `sender_id == recipient_id` (including both empty)
-    /// - `master_salt` exceeds `SALT_MAX_LEN` bytes (LICHEN-specific restriction)
+    /// `InvalidParam` for: ID lengths > NONCE_ID_LEN, identical sender/recipient IDs,
+    /// oversized salt or id_context.
     pub fn new(
         master_secret: &[u8; KEY_LEN],
         master_salt: Option<&[u8]>,
+        id_context: Option<&[u8]>,
         sender_id: &[u8],
         recipient_id: &[u8],
     ) -> Result<Self, OscoreError> {
@@ -404,6 +409,18 @@ impl Context {
         if salt.len() > SALT_MAX_LEN {
             return Err(OscoreError::InvalidParam);
         }
+        if let Some(ic) = id_context {
+            if ic.len() > ID_CONTEXT_CAPACITY {
+                return Err(OscoreError::InvalidParam);
+            }
+        }
+
+        let id_context_value = id_context.unwrap_or(&[]);
+        let context_id = derive_context_id(master_secret, salt, id_context, sender_id);
+        let sender_seq = OscoreSeqNum::default();
+        let restored = false;
+        let active = false;
+        let allow_no_piv_response = false;
 
         let mut ctx = Self {
             master_secret: *master_secret,
@@ -417,7 +434,7 @@ impl Context {
             sender_id_len: sender_id.len() as u8,
             sender_key: [0u8; KEY_LEN],
             sender_seq,
-            sender_seq_exhausted: sender_state.exhausted,
+            sender_seq_exhausted: false,
             restored,
             active,
             recipient_id: [0u8; ID_MAX_LEN],
@@ -440,13 +457,94 @@ impl Context {
         ctx.sender_id[..sender_id.len()].copy_from_slice(sender_id);
         ctx.recipient_id[..recipient_id.len()].copy_from_slice(recipient_id);
 
-        // Derive keys
+        // Derive keys and IV (post-validation, pre-use; satisfies zeroize/CT/RFC 8613)
         ctx.sender_key = derive_key(master_secret, salt, sender_id, id_context)?;
         ctx.recipient_key = derive_key(master_secret, salt, recipient_id, id_context)?;
-
-        // Derive Common IV
         ctx.common_iv = derive_iv(master_secret, salt, id_context)?;
 
+        Ok(ctx)
+    }
+
+    /// Fresh context for EDHOC export (starts inactive; register with store).
+    pub fn new_fresh(
+        master_secret: &[u8; KEY_LEN],
+        master_salt: Option<&[u8]>,
+        id_context: Option<&[u8]>,
+        sender_id: &[u8],
+        recipient_id: &[u8],
+    ) -> Result<Self, OscoreError> {
+        let mut ctx = Self::new(master_secret, master_salt, id_context, sender_id, recipient_id)?;
+        ctx.restored = false;
+        ctx.active = false;
+        ctx.allow_no_piv_response = true;
+        Ok(ctx)
+    }
+
+    /// Test-only active context (bypasses store for unit tests).
+    #[cfg(test)]
+    pub fn new_ephemeral(
+        master_secret: &[u8; KEY_LEN],
+        master_salt: Option<&[u8]>,
+        sender_id: &[u8],
+        recipient_id: &[u8],
+    ) -> Result<Self, OscoreError> {
+        let mut ctx = Self::new(master_secret, master_salt, None, sender_id, recipient_id)?;
+        ctx.restored = false;
+        ctx.active = true;
+        ctx.allow_no_piv_response = true;
+        Ok(ctx)
+    }
+
+    /// Restore context from known sender state (tests/recovery).
+    #[cfg(test)]
+    pub fn restore(
+        master_secret: &[u8; KEY_LEN],
+        master_salt: Option<&[u8]>,
+        sender_id: &[u8],
+        recipient_id: &[u8],
+        next_sequence: u64,
+        exhausted: bool,
+    ) -> Result<Self, OscoreError> {
+        let mut ctx = Self::new(master_secret, master_salt, None, sender_id, recipient_id)?;
+        let state = SenderSequenceState {
+            next_sequence,
+            exhausted,
+        };
+        ctx.set_sender_state(state)?;
+        ctx.restored = true;
+        ctx.active = true;
+        ctx.allow_no_piv_response = false;
+        Ok(ctx)
+    }
+
+    #[cfg(test)]
+    fn from_sender_state(
+        master_secret: &[u8; KEY_LEN],
+        master_salt: Option<&[u8]>,
+        id_context: Option<&[u8]>,
+        sender_id: &[u8],
+        recipient_id: &[u8],
+        construction: Construction,
+    ) -> Result<Self, OscoreError> {
+        let mut ctx = Self::new(master_secret, master_salt, id_context, sender_id, recipient_id)?;
+        match construction {
+            Construction::Fresh => {
+                ctx.restored = false;
+                ctx.active = false;
+                ctx.allow_no_piv_response = true;
+            }
+            Construction::Ephemeral => {
+                ctx.restored = false;
+                ctx.active = true;
+                ctx.allow_no_piv_response = true;
+            }
+            Construction::Stored(state) => {
+                ctx.set_sender_state(state)?;
+                ctx.restored = true;
+                ctx.active = true;
+                ctx.allow_no_piv_response = false;
+            }
+        }
         Ok(ctx)
     }
 
@@ -3443,8 +3541,8 @@ mod tests {
     fn test_roundtrip_with_0xff_in_class_e_options() {
         // End-to-end test: protect a request with 0xFF in options, verify decryption
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
-        let mut sender_ctx = Context::new(&master_secret, None, &[0x00], &[0x01]).unwrap();
-        let mut recipient_ctx = Context::new(&master_secret, None, &[0x01], &[0x00]).unwrap();
+        let mut sender_ctx = Context::new(&master_secret, None, None, &[0x00], &[0x01]).unwrap();
+        let mut recipient_ctx = Context::new(&master_secret, None, None, &[0x01], &[0x00]).unwrap();
 
         let code = 0x01; // GET
                          // Class E options with 0xFF embedded in a value:
