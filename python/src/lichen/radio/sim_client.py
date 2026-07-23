@@ -415,8 +415,9 @@ class SimRadio:
         while remaining > 0:
             chunk = await stream.receive(remaining)
             if not chunk:
+                received = n - remaining
                 raise SimRadioError(
-                    f"Connection closed: expected {n} bytes, got {n - remaining}"
+                    f"Connection closed unexpectedly: received {received}/{n} bytes"
                 )
             chunks.append(chunk)
             remaining -= len(chunk)
