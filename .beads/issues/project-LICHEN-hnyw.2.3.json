@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-hnyw.2.3",
   "title": "Ensure L2 dispatch byte (0x15) stripping before Announce::from_bytes and SCHC rule updates for CCP-9 announce payloads",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:29:27.186827999Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T06:26:31.07211197Z",
+  "updated_at": "2026-07-23T15:52:36.780048971Z",
   "started_at": "2026-07-23T06:26:31.07211197Z",
-  "lease_expires_at": "2026-07-23T06:31:31.07211197Z",
-  "heartbeat_at": "2026-07-23T06:26:31.07211197Z",
+  "lease_expires_at": "2026-07-23T15:57:36.780048971Z",
+  "heartbeat_at": "2026-07-23T15:52:36.780048971Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-hnyw.2.3",
