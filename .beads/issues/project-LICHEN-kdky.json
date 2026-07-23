@@ -2,6 +2,7 @@
   "id": "project-LICHEN-kdky",
   "title": "[spec-compliance] outdated Imax comment in trickle.py",
   "description": "python/src/lichen/rpl/trickle.py:14-18 references old spec appendix B.3 with Imax=20; current appendix-rpl.md and constants.toml use imax_doublings=8 for 2^20 ms ceiling. Comment must be updated to match current spec.",
+  "notes": "Commit: 5bdb9d8",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:59:54.85541048Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:36:40.504411502Z",
+  "updated_at": "2026-07-23T03:38:04.677213946Z",
   "started_at": "2026-07-23T03:36:40.504411502Z",
   "lease_expires_at": "2026-07-23T03:41:40.504411502Z",
   "heartbeat_at": "2026-07-23T03:36:40.504411502Z"
