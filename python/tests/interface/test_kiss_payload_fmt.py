@@ -28,12 +28,12 @@ class TestFormatPayloadText:
         assert "Hello" in result
         assert "世界" in result
 
-    def test_mostly_printable(self):
-        # 90% printable threshold
+    def test_mixed_with_control(self):
+        # Strict 100% printable required (was 90%); control chars now force non-text
         data = b"Hello world!" + bytes([0x01])  # One control char
+        assert not is_printable_text(data)
         result = format_payload(data)
-        # Should still be treated as text
-        assert "Hello" in result
+        assert "<" in result or "B:" in result  # CBOR or hex
 
 
 class TestFormatPayloadJson:

@@ -64,13 +64,13 @@ def format_payload(data: bytes, max_len: int = 200) -> str:
 def _try_utf8(data: bytes) -> str | None:
     """Try to decode as UTF-8 text.
 
-    Only accepts if it looks like intentional text (printable + whitespace).
+    Only accepts if 100% of chars are printable or allowed whitespace.
+    Rejects binary data with high printable ratio.
     """
     try:
         text = data.decode("utf-8")
-        # Check if it's mostly printable
         printable = sum(1 for c in text if c.isprintable() or c in "\n\r\t")
-        if printable >= len(text) * 0.9:  # 90% printable
+        if printable == len(text):  # 100% printable
             return text
     except UnicodeDecodeError:
         pass
