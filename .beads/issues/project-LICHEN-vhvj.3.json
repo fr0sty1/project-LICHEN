@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-vhvj.3",
+  "title": "Update tests and vectors validation for hop sequence; ensure independent oracle, match ccp16-hop.json exactly",
+  "description": "Add test in test_medium.py or test_simulation_validation.py using ccp16-hop.json vectors. Verify cross-impl with Rust. Run python tests. Tag with codereview.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:15:10.225784638Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:15:10.225784638Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-vhvj.3",
+      "depends_on_id": "project-LICHEN-vhvj",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:15:10.356984129Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
