@@ -240,6 +240,8 @@ def make_time_exceeded(
 
 def make_packet_too_big(invoking_packet: bytes, mtu: int) -> Icmpv6ErrorMessage:
     """Build a Packet Too Big error advertising ``mtu``."""
+    if not 0 <= mtu <= 0xFFFFFFFF:
+        raise Icmpv6Error(f"mtu out of range: {mtu}")
     return Icmpv6ErrorMessage(
         Icmpv6Type.PACKET_TOO_BIG, 0, invoking_packet, mtu=mtu
     )
