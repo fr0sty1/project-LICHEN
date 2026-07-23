@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-uk36.1.2.1.2",
   "title": "Update all old numeric label callsites in export_context, begin_process_message_2, process_message_2_with_credential and tests to new edhoc_kdf(prk, th, \"LABEL\", context, len) format",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:30:11.283578132Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:30:11.283578132Z",
+  "updated_at": "2026-07-23T05:43:50.793156051Z",
+  "started_at": "2026-07-23T05:43:50.793156051Z",
+  "lease_expires_at": "2026-07-23T05:48:50.793156051Z",
+  "heartbeat_at": "2026-07-23T05:43:50.793156051Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-uk36.1.2.1.2",
