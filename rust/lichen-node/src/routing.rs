@@ -356,6 +356,23 @@ impl NeighborTable {
     pub fn count(&self) -> usize {
         self.entries.iter().filter(|e| e.is_some()).count()
     }
+
+    /// Determines if neighbor is alive per Trickle-suppression-safe policy.
+    /// Protects against premature eviction when `heard_consistent()` suppresses
+    /// transmits in dense networks (RFC 6206 rule 3 + this bead's requirement).
+    pub fn is_alive(
+        &self,
+        addr: &[u8; 16],
+        now_ms: u64,
+        timeout_ms: u64,
+    ) -> bool {
+        let now_ms = now_ms.max(self.last_now_ms);
+        let policy = TrickleSafeLiveness;
+        self.entries
+            .iter()
+            .flatten()
+            .any(|n| n.addr == *addr && policy.is_alive(n.last_seen_ms, now_ms, timeout_ms))
+    }
 }
 
 impl Default for NeighborTable {
