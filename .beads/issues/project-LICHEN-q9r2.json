@@ -2,15 +2,15 @@
   "id": "project-LICHEN-q9r2",
   "title": "[merge-conflict] worktree-worker22: t_deck_esp32s3_procpu.conf",
   "notes": "Commit: cf9f241dd",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:42:14.402587595Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:58:38.885585981Z",
+  "updated_at": "2026-07-23T03:58:42.259785092Z",
   "started_at": "2026-07-23T03:57:25.470767612Z",
-  "lease_expires_at": "2026-07-23T04:02:25.470767612Z",
-  "heartbeat_at": "2026-07-23T03:57:25.470767612Z"
+  "closed_at": "2026-07-23T03:58:42.259785092Z",
+  "close_reason": "Updated t_deck_esp32s3_procpu.conf in puck, gateway, and bridge-zephyr to latest canonical versions with SPDX headers, L2 configs, tuned stacks, WiFi buffers, and comments. Synced across worktree-worker22 to resolve merge divergence. Committed cf9f241dd and pushed to origin/worktree-worker22."
 }
