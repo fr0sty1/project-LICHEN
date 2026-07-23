@@ -64,6 +64,7 @@ pub enum RplRuntimeActionError {
     ExpectedTrickleTransmit,
     ExpectedTrickleExpire,
     ActionNotPending,
+    PollWithPending,
     TrickleEventChanged,
 }
 
@@ -94,16 +95,26 @@ impl RplRuntime {
     }
 
     /// Observe the clock once, run due maintenance, and return the next loop action.
-    pub fn poll(&mut self, node: &mut RplNode, observed_now_ms: u64) -> RplRuntimePoll {
+    ///
+    /// Returns `PollWithPending` if a prior poll's action has not yet been completed.
+    /// This enforces single-generation binding and no-stale-poll guarantees.
+    pub fn poll(
+        &mut self,
+        node: &mut RplNode,
+        observed_now_ms: u64,
+    ) -> Result<RplRuntimePoll, RplRuntimeActionError> {
+        if self.pending_action.is_some() {
+            return Err(RplRuntimeActionError::PollWithPending);
+        }
         let (now_ms, maintenance) = self.observe(node, observed_now_ms);
         let action = self.next_action(node, now_ms);
         self.pending_action = Some(action);
 
-        RplRuntimePoll {
+        Ok(RplRuntimePoll {
             now_ms,
             maintenance,
             action,
-        }
+        })
     }
 
     pub(crate) fn complete_receive(
@@ -288,14 +299,14 @@ mod tests {
         node.trickle_start(100, 0);
         let mut runtime = RplRuntime::new(RplRuntimeConfig::default(), 100);
 
+        let p1 = runtime.poll(&mut node, 100).unwrap();
         assert_eq!(
-            runtime.poll(&mut node, 100).action,
+            p1.action,
             RplRuntimeAction::Receive { timeout_ms: 4 }
         );
-        assert_eq!(
-            runtime.poll(&mut node, 104).action,
-            RplRuntimeAction::TrickleTransmit
-        );
+        let _ = runtime.complete_receive(&mut node, p1.action, 104).unwrap();
+        let p2 = runtime.poll(&mut node, 104).unwrap();
+        assert_eq!(p2.action, RplRuntimeAction::TrickleTransmit);
     }
 
     #[test]
@@ -304,7 +315,7 @@ mod tests {
         let config = RplRuntimeConfig::new(1_000, 10_000).unwrap();
         let mut runtime = RplRuntime::new(config, 5_000);
 
-        let poll = runtime.poll(&mut node, 4_000);
+        let poll = runtime.poll(&mut node, 4_000).unwrap();
         assert_eq!(poll.now_ms, 5_000);
         assert_eq!(poll.maintenance, None);
         assert_eq!(poll.action, RplRuntimeAction::Receive { timeout_ms: 1_000 });
@@ -316,12 +327,18 @@ mod tests {
         let config = RplRuntimeConfig::new(1_000, 10_000).unwrap();
         let mut runtime = RplRuntime::new(config, 0);
 
-        assert_eq!(runtime.poll(&mut node, 999).maintenance, None);
+        let p1 = runtime.poll(&mut node, 999).unwrap();
+        assert_eq!(p1.maintenance, None);
+        let _ = runtime.complete_receive(&mut node, p1.action, 999).unwrap();
+
+        let p2 = runtime.poll(&mut node, 1_000).unwrap();
         assert_eq!(
-            runtime.poll(&mut node, 1_000).maintenance,
+            p2.maintenance,
             Some(RplMaintenanceOutcome::default())
         );
-        let delayed = runtime.poll(&mut node, 2_500);
+        let _ = runtime.complete_receive(&mut node, p2.action, 1_000).unwrap();
+
+        let delayed = runtime.poll(&mut node, 2_500).unwrap();
         assert_eq!(delayed.maintenance, Some(RplMaintenanceOutcome::default()));
         assert_eq!(
             delayed.action,
@@ -335,12 +352,18 @@ mod tests {
         let config = RplRuntimeConfig::new(10, 10).unwrap();
         let mut runtime = RplRuntime::new(config, u64::MAX - 20);
 
+        let p1 = runtime.poll(&mut node, u64::MAX - 11).unwrap();
         assert_eq!(
-            runtime.poll(&mut node, u64::MAX - 11).action,
+            p1.action,
             RplRuntimeAction::Receive { timeout_ms: 1 }
         );
-        assert!(runtime.poll(&mut node, u64::MAX - 10).maintenance.is_some());
-        let terminal = runtime.poll(&mut node, u64::MAX);
+        let _ = runtime.complete_receive(&mut node, p1.action, u64::MAX - 11).unwrap();
+
+        let p2 = runtime.poll(&mut node, u64::MAX - 10).unwrap();
+        assert!(p2.maintenance.is_some());
+        let _ = runtime.complete_receive(&mut node, p2.action, u64::MAX - 10).unwrap();
+
+        let terminal = runtime.poll(&mut node, u64::MAX).unwrap();
         assert!(terminal.maintenance.is_some());
         assert_eq!(
             terminal.action,
@@ -348,7 +371,8 @@ mod tests {
                 timeout_ms: u32::MAX
             }
         );
-        let repeated = runtime.poll(&mut node, u64::MAX);
+        let _ = runtime.complete_receive(&mut node, terminal.action, u64::MAX).unwrap();
+        let repeated = runtime.poll(&mut node, u64::MAX).unwrap();
         assert_eq!(repeated.maintenance, None);
         assert_eq!(repeated.action, terminal.action);
     }
@@ -367,15 +391,14 @@ mod tests {
         assert!(node.router.process_dao_at_ms(&dao, target, target, 1_000));
         let mut runtime = RplRuntime::new(RplRuntimeConfig::new(1_000, 10_000).unwrap(), 1_000);
 
-        assert_eq!(runtime.poll(&mut node, 1_999).maintenance, None);
+        let p1 = runtime.poll(&mut node, 1_999).unwrap();
+        assert_eq!(p1.maintenance, None);
+        let _ = runtime.complete_receive(&mut node, p1.action, 1_999).unwrap();
         assert!(node.router.lookup_route(&target).is_some());
-        assert!(
-            runtime
-                .poll(&mut node, 2_000)
-                .maintenance
-                .unwrap()
-                .routes_expired
-        );
+
+        let p2 = runtime.poll(&mut node, 2_000).unwrap();
+        assert!(p2.maintenance.unwrap().routes_expired);
+        let _ = runtime.complete_receive(&mut node, p2.action, 2_000).unwrap();
         assert!(node.router.lookup_route(&target).is_none());
     }
 
@@ -399,21 +422,13 @@ mod tests {
         assert!(node.router.process_dio(&dio, &wire, root_addr, -40, 0));
         let mut runtime = RplRuntime::new(RplRuntimeConfig::new(1, 10_000).unwrap(), 0);
 
-        assert!(
-            !runtime
-                .poll(&mut node, 10_000)
-                .maintenance
-                .unwrap()
-                .neighbors_pruned
-        );
+        let p1 = runtime.poll(&mut node, 10_000).unwrap();
+        assert!(!p1.maintenance.unwrap().neighbors_pruned);
+        let _ = runtime.complete_receive(&mut node, p1.action, 10_000).unwrap();
         assert_eq!(node.router.neighbors().count(), 1);
-        assert!(
-            runtime
-                .poll(&mut node, 10_001)
-                .maintenance
-                .unwrap()
-                .neighbors_pruned
-        );
+        let p2 = runtime.poll(&mut node, 10_001).unwrap();
+        assert!(p2.maintenance.unwrap().neighbors_pruned);
+        let _ = runtime.complete_receive(&mut node, p2.action, 10_001).unwrap();
         assert_eq!(node.router.neighbors().count(), 0);
     }
 }
