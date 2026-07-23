@@ -2,6 +2,7 @@
   "id": "project-LICHEN-gpx6",
   "title": "[spec-compliance] Trickle/RPL state machine divergence risk",
   "description": "Multiple post-convergence fix commits (c489e110c, 659974465, b0ccfed71 etc) on lichen/subsys/lichen/rpl/trickle.c, rust/lichen-rpl/src/trickle.rs, rpl_messages.h. Edge cases in init, interval doubling, counter reset, consistency checks risk Rust vs C divergence. Violates \"identical output for test vectors\" MUST (test/vectors/rpl_route_state.json), RFC 6206 ordering in spec/05-routing.md and draft-lichen-rpl-lora-00.md. Requires full cross-impl validation pass on all Trickle transitions.",
+  "notes": "Commit: 007c4ea1c (push blocked by unrelated rebase conflict in coap_keys.c; scope limited to trickle alignment)",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T01:20:33.75549361Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:44:04.620284109Z",
+  "updated_at": "2026-07-23T01:47:04.841427612Z",
   "started_at": "2026-07-23T01:44:04.620284109Z",
   "lease_expires_at": "2026-07-23T01:49:04.620284109Z",
   "heartbeat_at": "2026-07-23T01:44:04.620284109Z"
