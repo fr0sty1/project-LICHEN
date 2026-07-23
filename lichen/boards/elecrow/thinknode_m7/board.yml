@@ -2,9 +2,6 @@ board:
   name: thinknode_m7
   vendor: elecrow
   socs:
-    - name: esp32s3
-      variants:
-        - name: procpu
-          cpucluster: esp32s3_procpu
-        - name: appcpu
-          cpucluster: esp32s3_appcpu
+  - name: esp32s3
+    variants:
+    - name: esp32s3_procpu
