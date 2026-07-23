@@ -2,15 +2,15 @@
   "id": "project-LICHEN-4n6s",
   "title": "[merge-conflict] worktree-worker16: kiss_transport.c",
   "notes": "Commit: 6c734a60b",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:09:35.080106381Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:42:15.462171433Z",
+  "updated_at": "2026-07-23T03:42:17.578877755Z",
   "started_at": "2026-07-23T03:38:22.156764856Z",
-  "lease_expires_at": "2026-07-23T03:43:22.156764856Z",
-  "heartbeat_at": "2026-07-23T03:38:22.156764856Z"
+  "closed_at": "2026-07-23T03:42:17.578877755Z",
+  "close_reason": "Fixed handle_sethardware response port to always use 0 per KA9Q spec and header docs (reconciled merge from worker16 changes); verified no double-unlock, updated integration."
 }
