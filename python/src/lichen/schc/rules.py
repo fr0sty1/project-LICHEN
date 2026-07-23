@@ -114,6 +114,8 @@ class FieldDescriptor:
                     )
             if len(set(self.mapping)) != len(self.mapping):
                 raise ValueError(f"{self.field_id}: mapping values must be unique")
+            if len(self.mapping) < 2:
+                raise ValueError(f"{self.field_id}: mapping must have >=2 elements (use NOT_SENT for single values)")
 
     def lsb_bits(self) -> int:
         """Number of residue bits for an LSB action (length_bits - MSB length)."""
@@ -127,7 +129,7 @@ class FieldDescriptor:
         return self.length_bits - self.mo_arg
 
     def mapping_bits(self) -> int:
-        """Number of residue bits for a MAPPING_SENT index (ceil(log2(n)))."""
+        """Number of residue bits for a MAPPING_SENT index (ceil(log2(n)) for n>=2)."""
         if not self.mapping:
             raise ValueError(f"{self.field_id}: mapping action requires a mapping")
         return (len(self.mapping) - 1).bit_length()
