@@ -1043,7 +1043,7 @@ def log_rows_from_payload(payload: Any) -> tuple[LogRow, ...]:
 def _log_row_from_map(item: Mapping[str, Any]) -> LogRow:
     level = safe_display_value("level", item.get("level", item.get("severity", "info")))
     module = safe_display_value("module", item.get("module", item.get("source", "device")))
-    message = safe_display_value("message", item.get("message", item.get("msg", item)))
+    message = safe_display_value("message", item.get("message", item.get("msg", "--")))
     return LogRow(level=level, module=module, message=message)
 
 
