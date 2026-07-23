@@ -57,7 +57,6 @@ pub struct Announce<'a> {
     pub rx_channel: u8,
     pub signature: &'a [u8; 48],
     pub app_data: &'a [u8],
-    pub flags: u8,
 }
 
 impl<'a> Announce<'a> {
@@ -83,7 +82,6 @@ impl<'a> Announce<'a> {
             rx_channel,
             signature,
             app_data: &data[93..],
-            flags: data[1],
         })
     }
     pub fn signed_data_len(&self) -> usize {
@@ -115,7 +113,6 @@ pub struct AnnounceBuilder<'a> {
     pub rx_channel: u8,
     pub signature: &'a [u8; 48],
     pub app_data: &'a [u8],
-    pub flags: u8,
 }
 
 impl<'a> AnnounceBuilder<'a> {
@@ -148,7 +145,7 @@ mod tests {
         let wire = [1,2,3,0x12,0x34,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
         let ann = Announce::from_bytes(&wire[..93]).unwrap();
         let mut out = [0;93];
-        let b = AnnounceBuilder{originator_iid:ann.originator_iid,pubkey:ann.pubkey,seq_num:ann.seq_num,hop_count:ann.hop_count,rx_channel:ann.rx_channel,signature:ann.signature,app_data:ann.app_data,flags:ann.flags};
+        let b = AnnounceBuilder{originator_iid:ann.originator_iid,pubkey:ann.pubkey,seq_num:ann.seq_num,hop_count:ann.hop_count,rx_channel:ann.rx_channel,signature:ann.signature,app_data:ann.app_data};
         let n = b.write_to(&mut out).unwrap();
         assert_eq!(n,93);
     }

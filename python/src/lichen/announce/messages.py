@@ -19,7 +19,6 @@ class AnnounceMessage:
     rx_channel: int = 0
     signature: bytes = field(default=b"")
     app_data: bytes = field(default=b"")
-    flags: int = 0
 
     def __post_init__(self) -> None:
         if len(self.originator_iid) != 8:
@@ -32,8 +31,6 @@ class AnnounceMessage:
             raise AnnounceError("hop_count out of range")
         if not 0 <= self.rx_channel <= 7:
             raise AnnounceError("invalid rx_channel")
-        if not 0 <= self.flags <= 0xFF:
-            raise AnnounceError("invalid flags")
         if self.signature and len(self.signature) != SIGNATURE_LENGTH:
             raise AnnounceError("invalid signature length")
 
@@ -75,7 +72,6 @@ class AnnounceMessage:
             rx_channel=rx_channel,
             signature=data[45:93],
             app_data=data[93:],
-            flags=rx_channel,
         )
 
     def with_incremented_hop_count(self) -> AnnounceMessage:
@@ -90,7 +86,6 @@ class AnnounceMessage:
             rx_channel=self.rx_channel,
             signature=self.signature,
             app_data=self.app_data,
-            flags=self.flags,
         )
 
     def should_relay(self) -> bool:
