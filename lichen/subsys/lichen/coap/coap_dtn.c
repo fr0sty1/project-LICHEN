@@ -50,9 +50,12 @@ static void dtn_expire_work_handler(struct k_work *work) { ARG_UNUSED(work); k_m
 
 int lichen_coap_deaddrop_register(const struct lichen_deaddrop_provider *provider) {
 	if (provider == NULL) return -EINVAL;
-	int r = lichen_coap_dtn_init();
-	if (r < 0) return r;
 	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
+	int r = lichen_coap_dtn_init();
+	if (r < 0) {
+		k_mutex_unlock(&s_dtn_buf_mutex);
+		return r;
+	}
 	s_provider = provider;
 	r = lichen_dtn_init(&s_dtn_buf);
 	if (r < 0) {
