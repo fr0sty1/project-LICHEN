@@ -1666,27 +1666,21 @@ int lichen_hal_location_time_snapshot_get(
 #ifdef CONFIG_LICHEN_DUTY_CYCLE
 static void prune(struct lichen_duty_cycle_ctx *t, uint64_t now) {
 	uint64_t ws = now > 3600000ULL ? now - 3600000ULL : 0ULL;
-	uint8_t to_remove = 0;
-	while (to_remove < t->len) {
-		uint64_t e = t->records[to_remove] + (uint64_t)t->durations[to_remove];
-		if (e <= ws) to_remove++;
-		else break;
+	while (t->len > 0) {
+		uint8_t idx = t->head;
+		uint64_t e = t->records[idx] + (uint64_t)t->durations[idx];
+		if (e <= ws) {
+			t->head = (t->head + 1U) % 32U;
+			t->len--;
+		} else break;
 	}
-	if (to_remove > 0) {
-		uint8_t n = t->len - to_remove;
-		if (n > 0) {
-			memmove(t->records, t->records + to_remove, n * sizeof(uint64_t));
-			memmove(t->durations, t->durations + to_remove, n * sizeof(uint32_t));
-		}
-		t->len = n;
-	}
-	t->head = 0;
 }
 
 static uint32_t total_airtime_with_proration(const struct lichen_duty_cycle_ctx *t, uint64_t now) {
 	uint64_t ws = now > 3600000ULL ? now - 3600000ULL : 0ULL;
 	uint32_t tot = 0;
-	for (uint8_t k = 0; k < t->len; k++) {
+	for (uint8_t i = 0; i < t->len; i++) {
+		uint8_t k = (t->head + i) % 32U;
 		uint64_t ts = t->records[k];
 		uint32_t d = t->durations[k];
 		if (ts >= ws) {
@@ -1711,8 +1705,9 @@ void lichen_duty_cycle_init(struct lichen_duty_cycle_ctx *t, uint16_t permille) 
 bool lichen_duty_cycle_record_tx(struct lichen_duty_cycle_ctx *t, uint64_t ts, uint32_t dur) {
 	prune(t, ts);
 	if (t->len == 32) return false;
-	t->records[t->len] = ts;
-	t->durations[t->len] = dur;
+	uint8_t idx = (t->head + t->len) % 32U;
+	t->records[idx] = ts;
+	t->durations[idx] = dur;
 	t->len++;
 	return true;
 }
@@ -1737,7 +1732,8 @@ uint64_t lichen_duty_cycle_next_tx_available_ms(struct lichen_duty_cycle_ctx *t,
 	if ((uint64_t)u + (uint64_t)dur <= (uint64_t)m) return now;
 	uint32_t need = (uint32_t)((uint64_t)u + (uint64_t)dur - (uint64_t)m);
 	uint32_t f = 0;
-	for (uint8_t k = 0; k < t->len; k++) {
+	for (uint8_t i = 0; i < t->len; i++) {
+		uint8_t k = (t->head + i) % 32U;
 		uint32_t d = t->durations[k];
 		if (f > UINT32_MAX - d) f = UINT32_MAX; else f += d;
 		if (f >= need) return t->records[k] + 3600000ULL;
