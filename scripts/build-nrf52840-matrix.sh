@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Build matrix for project-LICHEN-2auf.31.1 nRF52840 rows
+# Build matrix for nRF52840 + native_posix BLE (project-LICHEN-2auf.59.4.1.3.2.2.3)
 # SPDX-License-Identifier: GPL-3.0-only
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 
 set -euo pipefail
 
-LOG="build-provenance-2auf.31.1.log"
-BUILD_LOG_DIR="build-logs-2auf.31.1"
+LOG="build-provenance-2auf.59.log"
+BUILD_LOG_DIR="build-logs-2auf.59"
 mkdir -p "$BUILD_LOG_DIR"
 
-echo "=== nRF52840 Build Matrix for project-LICHEN-2auf.31.1 ===" | tee -a "$LOG"
+echo "=== nRF + native_posix BLE Build Matrix for project-LICHEN-2auf.59 ===" | tee -a "$LOG"
 echo "Start: $(date -u)" | tee -a "$LOG"
 echo "Worktree commit: $(git rev-parse --short HEAD)" | tee -a "$LOG"
 
@@ -75,7 +75,7 @@ for entry in "${BUILDS[@]}"; do
     -DZEPHYR_EXTRA_MODULES="$(pwd)/lichen" \
     -DBOARD_ROOT="$(pwd)/lichen" \
     $extra_overlay 2>&1 | tee "$log_file"
-  EXIT_CODE=$?
+  EXIT_CODE=${PIPESTATUS[0]}
   set -e
   
   echo "Exit code: $EXIT_CODE" | tee -a "$LOG"
@@ -116,6 +116,60 @@ for entry in "${BUILDS[@]}"; do
   
   echo "Build $build_name completed successfully." | tee -a "$LOG"
 done
+
+# Native_posix BLE ingress build + test with full provenance capture
+# per project-LICHEN-2auf.59.4.1.3.2.2.3
+echo "" | tee -a "$LOG"
+echo "=== Building native_sim for BLE IPSP (native_posix BLE artifacts) ===" | tee -a "$LOG"
+build_name="native_sim_ble_ipsp"
+build_dir="build/${build_name}"
+log_file="$BUILD_LOG_DIR/${build_name}.log"
+
+echo "Command: west build -b native_sim lichen/tests/ble_ipsp_transport -d $build_dir -p always -- -DZEPHYR_EXTRA_MODULES=$(pwd)/lichen" | tee -a "$LOG"
+
+set +e
+west build -b native_sim lichen/tests/ble_ipsp_transport -d "$build_dir" -p always -- \
+  -DZEPHYR_EXTRA_MODULES="$(pwd)/lichen" 2>&1 | tee "$log_file"
+EXIT_CODE=${PIPESTATUS[0]}
+set -e
+
+echo "Exit code: $EXIT_CODE" | tee -a "$LOG"
+echo "Log: $log_file" | tee -a "$LOG"
+
+if [ $EXIT_CODE -ne 0 ]; then
+  echo "BUILD FAILED for $build_name" | tee -a "$LOG"
+  cat "$log_file" >> "$LOG"
+  SUCCESS=1
+else
+  # Compute SHA256s of key artifacts
+  if [ -f "$build_dir/zephyr/zephyr.elf" ]; then
+    ELF="$build_dir/zephyr/zephyr.elf"
+    echo "ELF size: $(stat -c %s "$ELF") bytes" | tee -a "$LOG"
+    echo "ELF hash: $(sha256sum "$ELF" | cut -d' ' -f1)" | tee -a "$LOG"
+  fi
+  if [ -f "$build_dir/zephyr/zephyr.bin" ]; then
+    BIN="$build_dir/zephyr/zephyr.bin"
+    echo "BIN size: $(stat -c %s "$BIN") bytes" | tee -a "$LOG"
+    echo "BIN hash: $(sha256sum "$BIN" | cut -d' ' -f1)" | tee -a "$LOG"
+  fi
+
+  # Run the ztest suite for validation
+  echo "Running ztest for BLE ingress..." | tee -a "$LOG"
+  set +e
+  "$build_dir/zephyr/zephyr.elf" > "$build_dir/test.log" 2>&1
+  TEST_EXIT=$?
+  set -e
+  echo "Test exit code: $TEST_EXIT" | tee -a "$LOG"
+  if [ $TEST_EXIT -ne 0 ]; then
+    echo "TEST FAILED for $build_name" | tee -a "$LOG"
+    cat "$build_dir/test.log" >> "$LOG"
+    SUCCESS=1
+  else
+    echo "Test PASSED" | tee -a "$LOG"
+  fi
+
+  echo "Build $build_name completed successfully with full provenance." | tee -a "$LOG"
+fi
 
 echo "" | tee -a "$LOG"
 if [ $SUCCESS -eq 0 ]; then

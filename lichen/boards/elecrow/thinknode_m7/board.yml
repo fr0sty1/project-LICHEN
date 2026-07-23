@@ -1,20 +1,7 @@
 board:
   name: elecrow_thinknode_m7
   vendor: elecrow
-  full_name: Elecrow ThinkNode M7 PoE
   socs:
-    - name: esp32s3
-  variants:
+  - name: esp32s3
+    variants:
     - name: esp32s3_procpu
-      cpucluster: esp32s3_procpu
-      toolchain:
-        - zephyr
-        - espressif
-    - name: esp32s3_appcpu
-      cpucluster: esp32s3_appcpu
-      toolchain:
-        - zephyr
-        - espressif
-  dt:
-    compatible:
-      - elecrow,thinknode-m7-poe
