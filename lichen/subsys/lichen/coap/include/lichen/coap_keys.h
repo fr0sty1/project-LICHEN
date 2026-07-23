@@ -181,6 +181,17 @@ int lichen_key_str_to_iid(const char *_Nonnull str,
 int lichen_key_pubkey_fingerprint(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
 				  char *_Nonnull buf, size_t buf_len);
 
+/**
+ * @brief Derive 64-bit IID from Ed25519 public key (SHA-256 first 8 bytes)
+ *
+ * Implements node IPv6 address format per project-LICHEN-zt3c and
+ * unified identity across LCI/mesh/backbone (matches ipv6_addr.c,
+ * Python _pubkey_to_iid, and Yggdrasil-style 02xx::/iid).
+ * Clears U/L bit per RFC 4291 for locally-administered IID.
+ */
+int lichen_key_pubkey_to_iid(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
+			     uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN]);
+
 #ifdef CONFIG_LICHEN_COAP_KEYS_TEST_HOOKS
 /**
  * @brief Reset key store for testing
