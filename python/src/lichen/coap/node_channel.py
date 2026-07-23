@@ -53,8 +53,10 @@ class NodeChannel(DatagramChannel):
         *,
         src_port: int = DEFAULT_COAP_PORT,
         dst_port: int = DEFAULT_COAP_PORT,
+        metrics: Any | None = None,
     ) -> None:
         self._node: Any | None = node
+        self._metrics: Any | None = metrics
         local = parse_channel_endpoint(local_host, default_port=src_port)
         local_address = IPv6Address(local.host)
         if local_address.scope_id is not None and not local_address.is_link_local:
@@ -100,27 +102,58 @@ class NodeChannel(DatagramChannel):
         task.add_done_callback(self._on_send_done)
 
     def _on_send_done(self, task: asyncio.Task[None]) -> None:
+        self._tasks.discard(task)
         if task.cancelled():
             return
         exc = task.exception()
         if exc is not None:
             logger.warning("NodeChannel: send failed: %s", exc)
 
-    def _on_node_receive(self, payload: bytes, _sender: object) -> None:
+    def _on_node_receive(self, payload: bytes, sender: object) -> None:
         if self._closed:
             return
         try:
             if classify_l2_payload(payload) is not L2PayloadKind.SCHC:
-                logger.debug("NodeChannel: ignoring non-SCHC L2 payload")
+                logger.info(
+                    "NodeChannel: dropped non-SCHC L2 payload from %s", sender
+                )
+                if self._metrics is not None:
+                    self._metrics.record_error("dropped non-SCHC L2 payload")
                 return
             ipv6_bytes = decompress_packet(l2_payload_body(payload))
             packet = IPv6Packet.from_bytes(ipv6_bytes)
+            if (
+                packet.header.src_addr.is_unspecified
+                or packet.header.src_addr.is_multicast
+            ):
+                logger.warning(
+                    "NodeChannel: dropped malformed source from %s", sender
+                )
+                if self._metrics is not None:
+                    self._metrics.record_error("dropped malformed source")
+                return
             if packet.header.next_header != NextHeader.UDP:
+                logger.info(
+                    "NodeChannel: dropped non-UDP IPv6 from %s", sender
+                )
+                if self._metrics is not None:
+                    self._metrics.record_error("dropped non-UDP IPv6")
                 return
             udp = UdpDatagram.from_bytes(packet.payload)
             if packet.header.dst_addr.packed != self._local.packed:
+                logger.info(
+                    "NodeChannel: dropped IPv6 for wrong dst from %s", sender
+                )
+                if self._metrics is not None:
+                    self._metrics.record_error("dropped wrong destination")
                 return
             if udp.dst_port != self._src_port or udp.checksum == 0:
+                logger.info(
+                    "NodeChannel: dropped invalid UDP: bad port or checksum from %s",
+                    sender,
+                )
+                if self._metrics is not None:
+                    self._metrics.record_error("dropped invalid UDP: bad port or checksum")
                 return
             if (
                 udp_checksum(
@@ -130,6 +163,9 @@ class NodeChannel(DatagramChannel):
                 )
                 != 0
             ):
+                logger.warning("NodeChannel: dropped invalid UDP: bad checksum from %s", sender)
+                if self._metrics is not None:
+                    self._metrics.record_error("dropped invalid UDP: bad checksum")
                 return
             coap = udp.payload
             src = self.normalize_endpoint(
@@ -137,6 +173,8 @@ class NodeChannel(DatagramChannel):
             ).authority
         except Exception as exc:
             logger.warning("NodeChannel: failed to unwrap received packet: %s", exc)
+            if self._metrics is not None:
+                self._metrics.record_error(f"unwrap failed: {type(exc).__name__}")
             return
         if self._receiver is not None:
             self._receiver(coap, src)
