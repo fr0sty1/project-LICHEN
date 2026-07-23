@@ -247,10 +247,6 @@ fn hkdf_extract(salt: &[u8], ikm: &[u8]) -> Zeroizing<[u8; 32]> {
     Zeroizing::new(prk.into())
 }
 
-/// EDHOC-KDF (RFC 9528 Section 4.1.2).
-///
-/// EDHOC-KDF(PRK, TH, label, context, length) = HKDF-Expand(PRK, info, length)
-/// where info = (length, TH, label, context) as CBOR sequence.
 fn edhoc_kdf(
     prk: &[u8; 32],
     th: &[u8],
@@ -259,57 +255,10 @@ fn edhoc_kdf(
     length: usize,
 ) -> Result<heapless::Vec<u8, 128>, EdhocError> {
     let mut info = heapless::Vec::<u8, 128>::new();
-
-    if length <= 23 {
-        info.push_err(length as u8)?;
-    } else {
-        info.push_err(0x18)?;
-        info.push_err(length as u8)?;
-    }
-
-    // TH as CBOR bstr
-    if th.len() > 255 {
-        return Err(EdhocError::BufferTooSmall);
-    }
-    if th.len() <= 23 {
-        info.push_err(0x40 | th.len() as u8)?;
-    } else {
-        info.push_err(0x58)?;
-        info.push_err(th.len() as u8)?;
-    }
-    info.extend_err(th)?;
-
-    // label as CBOR tstr
-    let label_bytes = label.as_bytes();
-    if label_bytes.len() > 255 {
-        return Err(EdhocError::BufferTooSmall);
-    }
-    if label_bytes.len() <= 23 {
-        info.push_err(0x60 | label_bytes.len() as u8)?;
-    } else {
-        info.push_err(0x18)?;
-        info.push_err(label)?;
-    }
-    if label_bytes.len() <= 23 {
-        info.push_err(0x60 | label_bytes.len() as u8)?;
-    } else {
-        info.push_err(0x78)?;
-        info.push_err(label_bytes.len() as u8)?;
-    }
-    info.extend_err(label_bytes)?;
-
-    if context.is_empty() {
-        info.push_err(0x40)?;
-    } else if context.len() <= 23 {
-        info.push_err(0x40 | context.len() as u8)?;
-        info.extend_err(context)?;
-    } else {
-        info.push_err(0x58)?;
-        info.push_err(context.len() as u8)?;
-        info.extend_err(context)?;
-    }
-
-    // HKDF-Expand
+    encode_uint(&mut info, length)?;
+    encode_bstr(&mut info, th)?;
+    encode_tstr(&mut info, label)?;
+    encode_bstr(&mut info, context)?;
     let hk = Hkdf::<Sha256>::from_prk(prk).map_err(|_| EdhocError::KeyDerivation)?;
     let mut okm = heapless::Vec::<u8, 128>::new();
     okm.resize(length, 0)
@@ -366,6 +315,40 @@ fn encode_bstr<const N: usize>(
         return Err(EdhocError::BufferTooSmall);
     }
     buf.extend_err(data)?;
+    Ok(())
+}
+
+fn encode_uint<const N: usize>(
+    buf: &mut heapless::Vec<u8, N>,
+    val: usize,
+) -> Result<(), EdhocError> {
+    if val <= 23 {
+        buf.push_err(val as u8)?;
+    } else if val <= 0xff {
+        buf.push_err(0x18)?;
+        buf.push_err(val as u8)?;
+    } else {
+        return Err(EdhocError::BufferTooSmall);
+    }
+    Ok(())
+}
+
+fn encode_tstr<const N: usize>(
+    buf: &mut heapless::Vec<u8, N>,
+    s: &str,
+) -> Result<(), EdhocError> {
+    let bytes = s.as_bytes();
+    let len = bytes.len();
+    if len > 255 {
+        return Err(EdhocError::BufferTooSmall);
+    }
+    if len <= 23 {
+        buf.push_err(0x60 | len as u8)?;
+    } else {
+        buf.push_err(0x78)?;
+        buf.push_err(len as u8)?;
+    }
+    buf.extend_err(bytes)?;
     Ok(())
 }
 
