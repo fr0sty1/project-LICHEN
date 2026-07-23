@@ -287,24 +287,6 @@ jobs:
           jq -r 'to_entries[] | "  \(.key): \(.value.result)"' <<<"$RESULTS"
           if ! jq -e 'all(.[]; .result == "success")' <<<"$RESULTS" >/dev/null; then
             echo "FAILURE: Not all interop jobs succeeded (see statuses above)."
-            if [[ "${{ github.ref }}" == 'refs/heads/main' ]]; then
-              echo "Creating tracking bead..."
-              bd create "Interop status failure: dependent job failed" \
-                --type=bug \
-                --priority=1 \
-                --body="interop-status job failed. See workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-See job status list above for specific failed jobs." || echo "bd unavailable (expected in minimal runners); failure reported by job status."
-            fi
             exit 1
           fi
           echo "All interop jobs succeeded."
-
-      - name: Create tracking bead (on main failure)
-        if: failure() && github.ref == 'refs/heads/main'
-        run: |
-          echo "Creating tracking bead for interop failure..."
-          bd create "Interop status failure: dependent job failed" \
-            --type=bug \
-            --priority=1 \
-            --body="interop-status job failed. See workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}. Jobs: frame-parser-interop, multinode-simulator, vector-compatibility, wire-format-python-to-rust, announce-interop. See .github/workflows/interop.yml for details." || echo "bd unavailable (expected in minimal runners); failure reported by job status."
-        continue-on-error: true
