@@ -2,6 +2,7 @@
   "id": "project-LICHEN-oc24",
   "title": "announce: AnnounceProcessor allows hop_count \u003e MAX_ANNOUNCE_HOPS in gradient table",
   "description": "File: python/src/lichen/announce/processor.py:235-244\n\nThe processor accepts announces with any hop_count (0-255) and installs them in the gradient table:\n\n```python\nentry = GradientEntry(\n    destination=destination,\n    next_hop=from_neighbor,\n    hop_count=announce.hop_count,  # Could be \u003e MAX_ANNOUNCE_HOPS (15)\n    ...\n)\nself.gradient_table.update(entry, now=now_ms)\n```\n\nWhile the signature check prevents spoofing other nodes' announces, a node could legitimately send its own announce with hop_count=255 (e.g., a buggy implementation or testing tool). This would install a route with unrealistic hop count.\n\nThe should_relay() check prevents propagation, but the route is still installed.\n\nRecommend adding validation:\n```python\nif announce.hop_count \u003e MAX_ANNOUNCE_HOPS:\n    return AnnounceResult(accepted=False, should_relay=False, \n                          reject_reason=AnnounceRejectReason.HOP_LIMIT_EXCEEDED)\n```",
+  "notes": "Commit: 04cc5fe60",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:19:03.217644Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:12:55.616553093Z",
+  "updated_at": "2026-07-23T04:15:01.588724345Z",
   "started_at": "2026-07-23T04:12:55.616553093Z",
   "lease_expires_at": "2026-07-23T04:17:55.616553093Z",
   "heartbeat_at": "2026-07-23T04:12:55.616553093Z"
