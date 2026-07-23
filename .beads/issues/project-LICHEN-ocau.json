@@ -3,15 +3,15 @@
   "title": "coap_msg.c: strtoul error checking incomplete",
   "description": "File: lichen/subsys/lichen/coap/coap_msg.c\nLines: 577-584\n\nMessage ID parsing from URI path uses strtoul:\n```c\nchar *endptr;\nunsigned long val = strtoul(id_buf, \u0026endptr, 10);\n\nif (*endptr != '\\0' || val \u003e UINT32_MAX) {\n    return coap_respond(..., COAP_RESPONSE_CODE_NOT_FOUND, ...);\n}\nmsg_id = (uint32_t)val;\n```\n\nMissing checks:\n1. strtoul sets errno on overflow but errno is not checked\n2. If id_buf is empty string, strtoul returns 0 with endptr==id_buf; *endptr is '\\0', so empty string parses as valid ID 0\n3. Leading whitespace is silently accepted by strtoul\n\nShould check errno == ERANGE, and that endptr != id_buf.\n\nCategory: CORRECTNESS - incomplete input validation",
   "notes": "Commit: d96883707",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:44:02.24136Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T03:45:35.349350882Z",
+  "updated_at": "2026-07-23T03:45:37.708022426Z",
   "started_at": "2026-07-23T03:43:30.52743847Z",
-  "lease_expires_at": "2026-07-23T03:48:30.52743847Z",
-  "heartbeat_at": "2026-07-23T03:43:30.52743847Z"
+  "closed_at": "2026-07-23T03:45:37.708022426Z",
+  "close_reason": "Fixed incomplete strtoul validation by adding errno check, empty/non-numeric string rejection, leading whitespace rejection via isdigit, updated parsing logic in lichen_msg_sent_id_get. Removed outdated comment. Verified with git diff."
 }
