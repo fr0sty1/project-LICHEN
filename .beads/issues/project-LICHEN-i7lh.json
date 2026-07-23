@@ -2,15 +2,15 @@
   "id": "project-LICHEN-i7lh",
   "title": "[merge-conflict] worktree-worker19: coap_dtn.c",
   "notes": "Commit: 06a41b810",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:57:29.08803288Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:13:52.848422218Z",
+  "updated_at": "2026-07-23T03:13:55.519918403Z",
   "started_at": "2026-07-23T03:12:39.607850567Z",
-  "lease_expires_at": "2026-07-23T03:17:39.607850567Z",
-  "heartbeat_at": "2026-07-23T03:12:39.607850567Z"
+  "closed_at": "2026-07-23T03:13:55.519918403Z",
+  "close_reason": "Updated coap_dtn.c in worktree-worker19 to resolve merge conflict: added s_provider support, used CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS, senml_encode_deaddrop, consistent lichen_coap_respond with content-format 112, confessions resource, fixed init and rate limiting per codereview patterns and spec. Verified with commit 06a41b810. Matches canonical impl from main."
 }
