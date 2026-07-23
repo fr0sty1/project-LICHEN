@@ -21,10 +21,10 @@ use lichen_gateway::{
 };
 use lichen_hal::storage::fs::FileStorage;
 use lichen_hal::storage::{load_epoch, load_seed, save_epoch, save_seed};
+use lichen_hal::{Concentrator, RadioConfig, Sx1302Concentrator};
 use lichen_link::identity::Identity;
 use lichen_link::keys::Seed;
 use lichen_sim::SimClient;
-use lichen_hal::{Concentrator, RadioConfig, Sx1302Concentrator};
 
 use std::{path::PathBuf, sync::OnceLock, time::Instant};
 use tokio::{
@@ -81,7 +81,6 @@ static START_TIME: OnceLock<Instant> = OnceLock::new();
 
 #[tokio::main]
 async fn main() {
-
     let args = Args::parse();
     fmt().with_env_filter(EnvFilter::new(&args.log)).init();
 
@@ -148,7 +147,13 @@ async fn main() {
     let _ = save_epoch(&mut storage, safe_epoch);
 
     let use_sim = use_sim_mode && !use_hat;
-    let backend = if use_hat { hat.as_deref().unwrap_or("hat") } else if use_sim { args.sim_addr.as_str() } else { config.mesh.interface.as_str() };
+    let backend = if use_hat {
+        hat.as_deref().unwrap_or("hat")
+    } else if use_sim {
+        args.sim_addr.as_str()
+    } else {
+        config.mesh.interface.as_str()
+    };
 
     info!(
         backend,
@@ -159,6 +164,10 @@ async fn main() {
         auto_peer = ?config.yggdrasil.auto_peer,
         "lichend starting"
     );
+    if config.rpl.mode != "non-storing" || config.rpl.instance_id != 1 {
+        error!("unsupported RPL instance/MOP");
+        std::process::exit(1);
+    }
 
     // Open TUN device unless --no-tun or non-Linux.
     #[cfg(target_os = "linux")]
