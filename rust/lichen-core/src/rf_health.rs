@@ -146,8 +146,13 @@ impl RssiStats {
         if self.count == 0 {
             self.avg_fp = rssi_fp;
         } else {
+<<<<<<< HEAD
             // saturating EMA: avg = avg + alpha * (sample - avg); alpha=1/4
             // per CCP-15 for faster response to interference (da2q.15.2.1)
+=======
+            // EMA: avg = avg + alpha * (sample - avg); alpha=1/4 via EMA_ALPHA_SHIFT=2
+            // per CCP-15 for faster response to intermittent interference (da2q multi-channel).
+>>>>>>> origin/worktree-worker16
             let diff = rssi_fp.saturating_sub(self.avg_fp);
             self.avg_fp = self.avg_fp.saturating_add(diff >> EMA_ALPHA_SHIFT);
         }
@@ -229,8 +234,13 @@ impl SnrStats {
         if self.count == 0 {
             self.avg_fp = snr_fp;
         } else {
+<<<<<<< HEAD
             // saturating EMA: avg = avg + alpha * (sample - avg); alpha=1/4
             // per CCP-15 for faster response to interference (da2q.15.2.1)
+=======
+            // EMA: avg = avg + alpha * (sample - avg); alpha=1/4 via EMA_ALPHA_SHIFT=2
+            // per CCP-15 for faster response to intermittent interference (da2q multi-channel).
+>>>>>>> origin/worktree-worker16
             let diff = snr_fp.saturating_sub(self.avg_fp);
             self.avg_fp = self.avg_fp.saturating_add(diff >> EMA_ALPHA_SHIFT);
         }
