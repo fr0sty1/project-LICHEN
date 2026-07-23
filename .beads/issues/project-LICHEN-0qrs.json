@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-0qrs",
   "title": "[merge-conflict] worktree-worker16: coap_dtn.c",
-  "notes": "Commit: e7fed80bf",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:57:27.160469322Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:59:20.836174643Z",
+  "updated_at": "2026-07-23T02:58:18.175514078Z",
   "started_at": "2026-07-23T02:58:18.175514078Z",
-  "closed_at": "2026-07-23T02:59:20.836174643Z",
-  "close_reason": "Removed obsolete duplicate coap_deaddrop.c that was causing merge conflict with coap_dtn.c implementation; committed cleanup"
+  "lease_expires_at": "2026-07-23T03:03:18.175514078Z",
+  "heartbeat_at": "2026-07-23T02:58:18.175514078Z"
 }
