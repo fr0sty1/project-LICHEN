@@ -1,17 +1,13 @@
 {
   "id": "project-LICHEN-ebhw.2",
   "title": "Update lichen-link identity.rs to use lichen_core::addr for ygg address derivation",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:18:09.882296585Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:21:54.203170945Z",
-  "started_at": "2026-07-23T05:20:33.551543632Z",
-  "closed_at": "2026-07-23T05:21:54.203170945Z",
-  "close_reason": "Decomposed into subtasks",
+  "updated_at": "2026-07-23T05:18:09.882296585Z",
   "labels": [
     "defer-external"
   ],
