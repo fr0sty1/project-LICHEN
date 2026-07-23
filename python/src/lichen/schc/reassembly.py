@@ -14,6 +14,7 @@ from lichen.schc.fragment import (
     MAX_ACK_REQUESTS,
     MAX_PACKET_SIZE,
     RULE_IDS,
+    TILE_SIZE,
     WINDOW_SIZE,
     Ack,
     Fragment,
@@ -100,8 +101,6 @@ class FragmentReceiver:
         3. Otherwise map to current window (same parity) or next window.
         """
         if not frag.is_all_1:
-            pos = self.window_size - 1 - frag.fcn
-
             # Determine most-recent same-parity previous window to scan from.
             if frag.window == self._current_window % 2:
                 start_window = self._current_window - 2 if self._current_window >= 2 else -1
@@ -110,10 +109,10 @@ class FragmentReceiver:
 
             older = start_window
             while older >= 0:
-                older_idx = older * self.window_size + pos
+                older_key = (older, frag.fcn)
                 if older not in self._completed_windows:
-                    if older_idx in self._tiles:
-                        if self._tiles[older_idx] == frag.payload:
+                    if older_key in self._tiles:
+                        if self._tiles[older_key] == frag.payload:
                             # Duplicate retransmit/reorder for already-filled
                             # slot in incomplete window; treat as stale.
                             return older
@@ -122,7 +121,7 @@ class FragmentReceiver:
                     else:
                         # Gap in incomplete older window: retransmission to fill.
                         return older
-                elif older_idx in self._tiles and self._tiles[older_idx] == frag.payload:
+                elif older_key in self._tiles and self._tiles[older_key] == frag.payload:
                     # Completed window with exact payload match: stale duplicate.
                     return older
                 older -= 2
@@ -131,25 +130,6 @@ class FragmentReceiver:
         if frag.window == self._current_window % 2:
             return self._current_window
         return self._current_window + 1
-
-    def _window_full(self, abs_window: int) -> bool:
-        base = abs_window * self.window_size
-        return all(base + p in self._tiles for p in range(self.window_size))
-
-    def _window_bitmap(self, abs_window: int) -> tuple[bool, ...]:
-        base = abs_window * self.window_size
-        return tuple(base + p in self._tiles for p in range(self.window_size))
-
-    def _window_bitmap_with_all1(self, abs_window: int, all1_pos: int) -> tuple[bool, ...]:
-        """Compute bitmap including the All-1 position.
-
-        Only call after MIC verification confirms the All-1's position.
-        """
-        base = abs_window * self.window_size
-        bitmap = [base + p in self._tiles for p in range(self.window_size)]
-        if 0 <= all1_pos < self.window_size:
-            bitmap[all1_pos] = True
-        return tuple(bitmap)
 
     def _bitmap(self, window: int) -> tuple[bool, ...]:
         bits = [False] * WINDOW_SIZE
@@ -207,9 +187,8 @@ class FragmentReceiver:
             )
         self.reassembled = data
         self.done = True
-        bitmap = self._bitmap(self._all1.window)
         return self._respond(
-            Ack(self._all1.rule_id, self._all1.window, bitmap, complete=True),
+            Ack(self._all1.rule_id, self._all1.window, complete=True),
             packet=data,
             mic_ok=True,
         )
@@ -224,6 +203,8 @@ class FragmentReceiver:
         # Reject fragments with FCN >= window_size (except ALL_1 which has special FCN)
         if not frag.is_all_1 and frag.fcn >= self.window_size:
             return ReceiverResult()
+        if not frag.is_all_1 and len(frag.payload) != TILE_SIZE:
+            return self._abort(frag.rule_id)
         abs_window = self._abs_window(frag)
 
         # SECURITY: Reject stale retransmissions from completed windows to
@@ -279,7 +260,7 @@ class FragmentReceiver:
             return ReceiverResult(aborted=True)
         window = data[1] >> 7
         if data == ack_request(rule_id, window):
-            if self._rule_id is None:
+            if self._rule_id == 0:
                 self._rule_id = rule_id
             elif self._rule_id != rule_id:
                 return self._abort(self._rule_id)
@@ -315,16 +296,18 @@ class ReassemblyManager:
         context_key = (key, rule_id)
         receiver = self._contexts.get(context_key)
         if receiver is None and len(self._contexts) < self.max_contexts:
-            receiver = FragmentReceiver(self.max_size)
+            receiver = FragmentReceiver(max_size=self.max_size)
             self._contexts[context_key] = receiver
         return receiver
 
     def receive(self, key: Hashable, frag: Fragment) -> ReceiverResult:
+        if frag.rule_id not in RULE_IDS:
+            raise FragmentError(f"unsupported fragmentation rule: {frag.rule_id:#x}")
         receiver = self._receiver(key, frag.rule_id)
         if receiver is None:
             return ReceiverResult(response=receiver_abort(frag.rule_id), aborted=True)
         result = receiver.receive(frag)
-        if result.reassembled is not None:
+        if result.reassembled is not None or result.aborted:
             self._contexts.pop((key, frag.rule_id), None)
         return result
 
