@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-d4u4",
+  "title": "[cross-impl] OSCORE uses uint32_t seqnums in Zephyr C vs 40-bit in Python/Rust",
+  "description": "OSCORE per RFC 8613 uses sequence numbers up to 2^40-1 (40 bits). Python (lichen.crypto.oscore: _MAX_SEQUENCE_NUMBER = (1\u003c\u003c40)-1) and Rust (lichen-oscore::SeqNum 40-bit) enforce this. Zephyr C (lichen/subsys/lichen/oscore/oscore.c:43,49,920,1506) uses uint32_t sender_seq/recipient_seq, UINT32_MAX checks, encode_piv(uint32_t). This causes different exhaustion behavior, replay window limits, and PIV encoding (C max 4 bytes vs up to 5 bytes). Commits touching oscore.c (9eedf57b9) and test vectors did not align this. See python-ano.* comments in oscore.c. Test vectors/oscore.json must be updated if behavior changes.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T06:00:58.865965821Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T06:00:58.865965821Z"
+}
