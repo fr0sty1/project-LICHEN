@@ -7,6 +7,7 @@
  * Fragment, DT fragment, and pin map retained for reference only. See docs/firmware-board-capability-matrix.md.
  *
  * Original pin map (for reference):
+
  * ESP32-S3 + SX1262 LoRa (via B2B connector)
  * SX1262 SPI: SCK=GPIO7, MISO=GPIO8, MOSI=GPIO9, NSS=GPIO41
  * Control: RESET=GPIO42, BUSY=GPIO40, DIO1=GPIO39
