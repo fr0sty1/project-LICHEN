@@ -713,8 +713,8 @@ pub fn icmpv6_checksum(
     for chunk in dst.0.chunks(2) {
         add_checksum_word(&mut sum, u16::from_be_bytes([chunk[0], chunk[1]]));
     }
-    sum += icmpv6_msg.len() as u32;
-    sum += next_header::ICMPV6 as u32;
+    sum += u64::from(length);
+    sum += u64::from(next_header::ICMPV6);
 
     for i in (0..icmpv6_msg.len()).step_by(2) {
         if i == 2 {
@@ -722,7 +722,8 @@ pub fn icmpv6_checksum(
         }
         let high = icmpv6_msg.get(i).copied().unwrap_or(0);
         let low = icmpv6_msg.get(i + 1).copied().unwrap_or(0);
-        sum += ((high as u32) << 8) | (low as u32);
+        let word = ((high as u16) << 8) | (low as u16);
+        sum += u64::from(word);
     }
 
     while sum >> 16 != 0 {
