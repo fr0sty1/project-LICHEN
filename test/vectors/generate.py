@@ -1809,11 +1809,8 @@ def ccp9_vectors() -> list[dict]:
         },
     ]
 
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/worktree-worker19
 def ccp15_vectors() -> list[dict]:
+
 
     v = []
     for seed in range(3):
