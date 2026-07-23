@@ -1520,6 +1520,10 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	*oscore_opt_len = (size_t)opt_len;
 
 	ret = oscore_ctx_persist_ssn(ctx);
+	if (ret == OSCORE_ERR_NVM_FAILED) {
+		goto nvm_failed;
+	}
+	ret = OSCORE_OK;
 
 cleanup_protect_request:
 	crypto_wipe(nonce, sizeof(nonce));
@@ -1527,6 +1531,10 @@ cleanup_protect_request:
 	crypto_wipe(plaintext, sizeof(plaintext));
 	crypto_wipe(&seq, sizeof(seq));
 	return ret;
+
+nvm_failed:
+	ret = OSCORE_ERR_NVM_FAILED;
+	goto cleanup_protect_request;
 }
 
 static size_t find_coap_payload_marker(const uint8_t *data, size_t len)
