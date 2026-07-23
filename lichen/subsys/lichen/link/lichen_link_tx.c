@@ -95,9 +95,10 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		dst_addr_len = 0;
 	}
 
-	/* LLSec byte for signing and wire (includes MIC selector + SIG_PRESENT).
-	 * Signatures are mandatory (early -ENOKEY if !has_key). */
-	uint8_t llsec = (addr_mode & 0x03U) | (1U << 2) | 0x20U;
+	/* LLSec byte: S=1 (bit 5), MicLength=0 (bits 2-4 cleared per spec and
+	 * Rust). Matches frame.c:162, link_layer.rs:486, 09-packets-timing.md:48
+	 * (0x21 example). LLSec included in signed_data; fixes interop. */
+	uint8_t llsec = (addr_mode & 0x03U) | 0x20U;
 
 	/* Preflight size checks BEFORE consuming nonce (deterministic TX
 	 * requirement; matches Python/Rust frame_length calc). */
