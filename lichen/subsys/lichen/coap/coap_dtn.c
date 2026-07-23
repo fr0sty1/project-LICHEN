@@ -1,6 +1,3 @@
-/* SPDX-License-Identifier: GPL-3.0-or-later */
-/* SPDX-FileCopyrightText: The contributors to the LICHEN project */
-
 #include <errno.h>
 #include <string.h>
 #include <zephyr/kernel.h>
@@ -23,11 +20,11 @@ LOG_MODULE_REGISTER(lichen_coap_dtn, CONFIG_LICHEN_COAP_DEADDROP_LOG_LEVEL);
 
 static const struct lichen_deaddrop_provider *s_provider;
 static struct lichen_dtn_buffer s_dtn_buf;
-static K_MUTEX_DEFINE(s_dtn_buf_mutex);
+static struct k_mutex s_dtn_buf_mutex;
 static struct k_work_delayable s_dtn_expire_work;
 static uint32_t s_last_deaddrop[256] = {0};
 static uint32_t s_last_confession[256] = {0};
-static K_MUTEX_DEFINE(s_rate_mutex);
+static struct k_mutex s_rate_mutex;
 
 static bool parse_recipient(const uint8_t *payload, size_t len, uint8_t dest_iid[8]) {
 	if (!payload || len == 0) return false;
@@ -97,19 +94,12 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 		if (oscore_ctx_get_by_eui64(peer_eui64, &ctx) != OSCORE_OK || ctx == NULL) {
 			return coap_oscore_send_unauthorized(resource, request, addr, addr_len);
 		}
-		uint8_t oscore_opt[32];
-		size_t oscore_opt_len = sizeof(oscore_opt);
-		int r = coap_oscore_get_option(request, oscore_opt, &oscore_opt_len);
-		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_BAD_REQUEST;
-		uint16_t ct_len = 0;
-		const uint8_t *ct = coap_packet_get_payload(request, &ct_len);
-		if (!ct || ct_len == 0) return COAP_RESPONSE_CODE_BAD_REQUEST;
 		uint8_t orig_code;
 		uint8_t opts[32];
 		size_t opt_len = sizeof(opts);
 		uint8_t plain[512];
 		size_t plain_len = sizeof(plain);
-		r = oscore_unprotect_request(ctx, oscore_opt, oscore_opt_len, ct, ct_len, &orig_code, opts, &opt_len, plain, &plain_len);
+		int r = coap_oscore_unprotect_request(ctx, request, &orig_code, opts, &opt_len, plain, &plain_len, piv, &piv_len);
 		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_BAD_REQUEST;
 		payload = plain;
 		payload_len = (uint16_t)plain_len;
@@ -128,7 +118,7 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 		return COAP_RESPONSE_CODE_UNAUTHORIZED;
 	}
 	uint32_t now_ms = k_uptime_get_32();
-	uint8_t iid7 = dest_iid[7];
+	uint8_t iid7 = sender_iid[7];
 	k_mutex_lock(&s_rate_mutex, K_FOREVER);
 	if (s_last_deaddrop[iid7] && (now_ms - s_last_deaddrop[iid7] < CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS)) {
 		k_mutex_unlock(&s_rate_mutex);
@@ -144,6 +134,9 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 		int r = s_provider->store(payload, payload_len);
 		if (r < 0) {
 			k_mutex_unlock(&s_dtn_buf_mutex);
+			if (is_protected && ctx != NULL && piv_len > 0) {
+				return deaddrop_oscore_respond(resource, request, addr, addr_len, ctx, piv, piv_len, COAP_RESPONSE_CODE_INTERNAL_ERROR);
+			}
 			return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
 		}
 	}
@@ -152,17 +145,8 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 	bool ok = lichen_dtn_buffer_message(&s_dtn_buf, payload, payload_len, dest_iid, expiry, now, now_ms);
 	k_mutex_unlock(&s_dtn_buf_mutex);
 	uint8_t resp_code = ok ? COAP_RESPONSE_CODE_CHANGED : COAP_RESPONSE_CODE_BAD_REQUEST;
-	if (coap_oscore_is_protected(request)) {
-		uint8_t resp_buf[64];
-		struct coap_packet resp;
-		int pr = coap_oscore_protect_response(ctx, piv, piv_len, request,
-						      resp_code, NULL, 0,
-						      &resp, resp_buf, sizeof(resp_buf));
-		if (pr != 0) {
-			LOG_ERR("OSCORE protect_response failed: %d", pr);
-			return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
-		}
-		return coap_resource_send(resource, &resp, addr, addr_len, NULL);
+	if (is_protected && ctx != NULL && piv_len > 0) {
+		return deaddrop_oscore_respond(resource, request, addr, addr_len, ctx, piv, piv_len, resp_code);
 	}
 	return lichen_coap_respond(resource, request, addr, addr_len, resp_code, 0, NULL, 0);
 }
@@ -244,6 +228,8 @@ int lichen_coap_dtn_init(void) {
 	if (r < 0) return r;
 	r = lichen_coap_client_init();
 	if (r < 0) return r;
+	k_mutex_init(&s_dtn_buf_mutex);
+	k_mutex_init(&s_rate_mutex);
 	return 0;
 }
 
