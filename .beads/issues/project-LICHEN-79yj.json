@@ -2,6 +2,7 @@
   "id": "project-LICHEN-79yj",
   "title": "SCHC: Semantic error code mismatch for NULL packet",
   "description": "File: lichen/subsys/lichen/schc/schc.c\nLines: 1495-1497\n\nThe function returns SCHC_ERR_TOO_SHORT when packet is NULL:\n\n```c\nif (packet == NULL) {\n    return SCHC_ERR_TOO_SHORT;\n}\n```\n\nSCHC_ERR_TOO_SHORT semantically means 'input data is too short to be valid'. A NULL pointer is not 'too short' - it's an invalid argument. This makes error handling harder for callers who want to distinguish between 'forgot to pass a packet' vs 'packet is truncated'.\n\nNote: The base schc.c library has the same pattern, so this may be intentional consistency.\n\nFix: Return SCHC_ERR_INVALID_ARGUMENT for NULL pointers:\n```c\nif (packet == NULL) {\n    return SCHC_ERR_INVALID_ARGUMENT;\n}\n```\n\nSeverity is very low - functional behavior is correct, only error semantics are affected.",
+  "notes": "Commit: d7918d594",
   "status": "in_progress",
   "priority": 4,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:55:18.70362Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:25:32.848030192Z",
+  "updated_at": "2026-07-23T04:27:11.738649703Z",
   "started_at": "2026-07-23T04:25:32.848030192Z",
   "lease_expires_at": "2026-07-23T04:30:32.848030192Z",
   "heartbeat_at": "2026-07-23T04:25:32.848030192Z"
