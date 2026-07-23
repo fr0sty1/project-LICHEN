@@ -408,7 +408,7 @@ def _apply_dao(state: dict[str, dict], vector: dict, oracle: dict) -> tuple[dict
 
 def validate(document: dict) -> None:
     assert document["vector_type"] == "rpl_route_state"
-    assert document["format_version"] == 1
+    assert document["format_version"] == 2
     names = [vector["name"] for vector in document["vectors"]]
     assert set(names) == REQUIRED_CASES
     assert len(names) == len(set(names))

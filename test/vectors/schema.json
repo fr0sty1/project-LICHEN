@@ -1,14 +1,14 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LICHEN test vector file",
-  "description": "Envelope shared by all LICHEN vector files. Supports object envelope with format_version (1 or 2) or v2 bare array root of vectors (ccp16-desync.json uses bare array). Each file holds a list of vectors of one kind; see the per-vector definitions. Combined to support all vector types from parallel worktrees (including ccp15_vector, ccp_vector, compact_cot_vector, schnorr48_vector, hash_32_vector, ccp_load_balancing_vector), descriptions, format_version handling, bare array support, and all definitions without losing functionality. Per-vector definitions enforce independent oracles and cross-implementation determinism. See README.md for usage.",
+  "description": "v2-only JSON Schema (draft-07); const format_version=2, per-family docs (including dedicated ccp15_document/ccp_load_balancing_document), no legacy envelope. Each file holds one vector family; strict required fields, additionalProperties:false, oneOf/allOf for variants in per-vector defs enforce independent oracles only (test integrity). See README.md.",
   "oneOf": [
     {
       "type": "object",
       "required": ["format_version", "description", "vectors"],
       "additionalProperties": true,
       "properties": {
-        "format_version": {"type": "integer", "enum": [1, 2]},
+        "format_version": {"const": 2},
         "description": {"type": "string"},
         "$schema": {"type": "string"},
         "vectors": {
@@ -172,6 +172,30 @@
           "properties": {
             "vectors": {
               "items": {"$ref": "#/definitions/rpl_messages_vector"}
+            }
+          }
+        }
+      ]
+    },
+    "ccp15_document": {
+      "allOf": [
+        {"$ref": "#/definitions/document_base"},
+        {
+          "properties": {
+            "vectors": {
+              "items": {"$ref": "#/definitions/ccp15_vector"}
+            }
+          }
+        }
+      ]
+    },
+    "ccp_load_balancing_document": {
+      "allOf": [
+        {"$ref": "#/definitions/document_base"},
+        {
+          "properties": {
+            "vectors": {
+              "items": {"$ref": "#/definitions/ccp_load_balancing_vector"}
             }
           }
         }

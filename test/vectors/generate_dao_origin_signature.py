@@ -618,8 +618,8 @@ def generate() -> dict:
 
     return {
         "vector_type": "dao_origin_signature",
-        "format_version": 1,
-        "description": "Independent shared DAO Origin Signature conformance vectors.",
+        "format_version": 2,
+        "description": "Independent shared DAO Origin Signature conformance vectors (v2 schema).",
         "oracle_provenance": {
             "digest": "test/vectors/dao_origin_signature_oracle.c using Monocypher SHA-512",
             "signature_generation": (
