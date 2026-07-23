@@ -9,11 +9,6 @@
  * CCP-17 capacity validation for CBOR encoders (BUILD_ASSERT + runtime checks).
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <errno.h>
-#include <stdint.h>
-
 #include <errno.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -41,7 +36,6 @@ LOG_MODULE_REGISTER(lichen_coap_status, CONFIG_LICHEN_COAP_STATUS_LOG_LEVEL);
 
 static struct lichen_coap_status_config s_config;
 static bool s_initialized;
-static K_MUTEX_DEFINE(s_init_mutex);
 
 struct cbor_ctx {
 	uint8_t *buf;
@@ -293,7 +287,7 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 
 	cbor_ctx_init(&ctx, buf, buf_size);
 
-	map_count = 6;
+	map_count = 5;
 	if (status->battery_pct_valid) map_count++;
 	if (status->battery_mv_valid) map_count++;
 	cbor_put_map_header(&ctx, map_count);
@@ -315,7 +309,7 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 	cbor_put_uint(&ctx, status->mem_free_kb);
 
 	cbor_put_key(&ctx, "time");
-	uint8_t time_fields = 4;
+	uint8_t time_fields = 2;
 	if (status->time.wall_clock_valid) time_fields++;
 	if (status->time.source_class) time_fields++;
 	if (status->time.source_name) time_fields++;
@@ -848,10 +842,6 @@ struct coap_resource lichen_coap_routes_resource = {
 int lichen_coap_status_init(const struct lichen_coap_status_config *config)
 {
 	if (config == NULL || config->status_get == NULL) {
-		return -EINVAL;
-	}
-
-	if (config->status_get == NULL) {
 		return -EINVAL;
 	}
 
