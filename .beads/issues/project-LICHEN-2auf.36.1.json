@@ -10,7 +10,7 @@
   "created_at": "2026-07-17T19:32:15.748942Z",
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-17T19:32:15.748942Z",
-  "labels": [
+  "labels": ["defer-external", 
     "linux",
     "validation"
   ],
