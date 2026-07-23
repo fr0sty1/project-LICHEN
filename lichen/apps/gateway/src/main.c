@@ -22,8 +22,9 @@
 #include "lora_l2.h"
 #endif
 
-#if IS_ENABLED(CONFIG_LICHEN_L2_DEV_PROVISIONING)
+#if IS_ENABLED(CONFIG_LICHEN_L2)
 #include "lichen_l2.h"
+#include <lichen/coap_client.h>
 #endif
 
 #include "config_apply.h"
@@ -700,23 +701,22 @@ int main(void)
 	LOG_INF("LICHEN gateway starting");
 
 #if IS_ENABLED(CONFIG_LICHEN_L2)
-	/*
-	 * When LICHEN L2 is enabled, the L2 layer handles LoRa initialization
-	 * and RX automatically via NET_DEVICE_INIT. The L2 interface will be
-	 * available to the IPv6 stack for sending/receiving packets over LoRa.
-	 */
 	LOG_INF("LICHEN L2 enabled - LoRa handled by network stack");
 
 #if IS_ENABLED(CONFIG_LICHEN_L2_DEV_PROVISIONING)
-	/* SECURITY: bench-only fixed key + static peer; see Kconfig warning. */
-	{
-		int prov = lichen_l2_dev_provision(NULL);
-
-		if (prov != 0) {
-			LOG_ERR("L2 dev provisioning failed: %d", prov);
+	int prov = -EAGAIN;
+	for (int i = 0; i < 50 && prov == -EAGAIN; i++) {
+		prov = lichen_l2_dev_provision(NULL);
+		if (prov == -EAGAIN) {
+			k_sleep(K_MSEC(100));
 		}
 	}
+	if (prov != 0) {
+		LOG_ERR("L2 dev provisioning failed: %d", prov);
+	}
 #endif
+	lichen_l2_publish_app_identity("gateway", NULL);
+	lichen_coap_client_init();
 #elif LICHEN_GATEWAY_HAS_LORA
 	int ret;
 
@@ -762,6 +762,13 @@ int main(void)
 	 * CONFIG_NET_SLIP_TAP).  native_sim uses the lichen-sim driver
 	 * instead.  No app-level init required in either case. */
 
+	/* Common message contract for BLE adapters (idempotent) */
+#if defined(CONFIG_LORA_LICHEN_MESHTASTIC_BLE) || defined(CONFIG_LORA_LICHEN_MESHCORE_BLE)
+	if (gateway_message_contract_init() < 0) {
+		LOG_WRN("Message contract init failed — BLE apps unavailable");
+	}
+#endif
+
 	/* BLE UART (NUS) — optional, enabled on boards with a BLE radio */
 #ifdef CONFIG_LORA_LICHEN_BLE
 	if (ble_uart_init() < 0) {
@@ -771,9 +778,7 @@ int main(void)
 
 	/* Meshtastic-compatible BLE GATT — optional app compatibility surface */
 #ifdef CONFIG_LORA_LICHEN_MESHTASTIC_BLE
-	if (gateway_message_contract_init() < 0) {
-		LOG_WRN("Message contract init failed — Meshtastic app unavailable");
-	} else if (ble_meshtastic_init() < 0) {
+	if (ble_meshtastic_init() < 0) {
 		LOG_WRN("Meshtastic BLE init failed — Meshtastic app unavailable");
 	} else if (gateway_meshtastic_adapter_init() < 0) {
 		LOG_WRN("Meshtastic adapter init failed — Meshtastic app unavailable");
@@ -786,9 +791,7 @@ int main(void)
 	    gateway_identity_publish_self() < 0) {
 		LOG_WRN("MeshCore app identity using degraded SELF_INFO until key is published");
 	}
-	if (gateway_message_contract_init() < 0) {
-		LOG_WRN("Message contract init failed — MeshCore app unavailable");
-	} else if (ble_meshcore_init() < 0) {
+	if (ble_meshcore_init() < 0) {
 		LOG_WRN("MeshCore BLE init failed — MeshCore app unavailable");
 	} else if (gateway_meshcore_adapter_init() < 0) {
 		LOG_WRN("MeshCore adapter init failed — MeshCore app unavailable");
