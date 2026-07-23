@@ -3,15 +3,15 @@
   "title": "router.py: DtnMessage.size uses hardcoded 100-byte overhead estimate",
   "description": "file: python/src/lichen/routing/router.py:128-130\n\nDtnMessage.size() returns len(self.packet.payload) + 100, using a hardcoded 100-byte overhead estimate. This approximation could cause:\n\n1. Buffer under-utilization if actual overhead is less\n2. Unexpected eviction behavior if actual overhead varies significantly\n\nSimilar to project-LICHEN-7exy (Rust version). Should either:\n- Calculate actual size from IPv6 header + extension headers + transport overhead\n- Or document the approximation tolerance and ensure it's conservative",
   "notes": "Commit: 4bad2d6",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T17:02:54.773571Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:25:20.723646083Z",
+  "updated_at": "2026-07-23T04:25:22.584937969Z",
   "started_at": "2026-07-23T04:22:22.011576601Z",
-  "lease_expires_at": "2026-07-23T04:27:22.011576601Z",
-  "heartbeat_at": "2026-07-23T04:22:22.011576601Z"
+  "closed_at": "2026-07-23T04:25:22.584937969Z",
+  "close_reason": "Closed"
 }
