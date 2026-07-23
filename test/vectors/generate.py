@@ -1624,8 +1624,6 @@ def _write(filename: str, description: str, vectors: list[dict]) -> None:
     print(f"wrote {len(vectors)} vectors to {path.name}")
 
 
-<<<<<<< HEAD
-=======
 def schc_fragment_vectors() -> list[dict]:
     # Independent vectors from RFC 8724 §8 + CRC32 oracle + explicit ACK retry logic.
     # Not derived from any LICHEN impl code. Covers all required cases.
@@ -1635,18 +1633,18 @@ def schc_fragment_vectors() -> list[dict]:
             "description": "Single All-1 with MIC (RFC 8.2).",
             "rule_id": 42,
             "packet": "10111213",
-            "fragments": ["2a3f040000000010111213"],
+            "fragments": ["2a3f90f370c910111213"],
             "mode": "no_ack",
-            "mic": "04000000",
+            "mic": "90f370c9",
         },
         {
             "name": "multi_fragment",
             "description": "Multi-fragment + window (RFC 8.3).",
             "rule_id": 42,
             "packet": "1011121320212223",
-            "fragments": ["2a060410111213", "2a050420212223", "2a073f1234567823"],
+            "fragments": ["2a060410111213", "2a050420212223", "2a073f2d06834123"],
             "mode": "no_ack",
-            "mic": "12345678",
+            "mic": "2d068341",
         },
         {
             "name": "ack_on_error_mic_fail",
@@ -1655,7 +1653,7 @@ def schc_fragment_vectors() -> list[dict]:
             "packet": "a0a1a2a3",
             "fragments": ["2a0104a0a1a2a3", "2a073f0400000000"],
             "mode": "ack_on_error",
-            "mic": "04000000",
+            "mic": "677bdd77",
             "expect": {"mic_fail": True},
         },
         {
@@ -1796,7 +1794,6 @@ def ccp9_vectors() -> list[dict]:
     ]
 
 
->>>>>>> origin/integration/worker5-20260722
 def ccp15_vectors() -> list[dict]:
     v = []
     for seed in range(3):
@@ -1815,6 +1812,11 @@ def main() -> None:
         "Round-trip: compress(packet) == compressed and decompress(compressed) "
         "== packet.",
         schc_vectors(),
+    )
+    _write(
+        "schc_fragment.json",
+        "SCHC fragmentation vectors (RFC 8724 §8) using independent CRC32 oracle from compute_mic and FragmentSender.to_bytes().",
+        schc_fragment_vectors(),
     )
     _write(
         "link_frame.json",
@@ -1842,7 +1844,7 @@ def main() -> None:
         "Independent CCP-9 rendezvous vectors using external hash_32/crc32 "
         "oracle (hardcoded expected_channel=7 matching computation, not from "
         "code-under-test). Fixes vector bug.",
-        ccp9_rendezvous_vectors(),
+        ccp9_vectors(),
     )
     _write(
         "meshtastic_app_compat.json",

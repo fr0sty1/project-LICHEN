@@ -1,15 +1,41 @@
 {
+  "$schema": "./schema.json",
   "format_version": 2,
   "description": "Independent CCP-9 rendezvous vectors using external hash_32/crc32 oracle (hardcoded expected_channel=7 matching computation, not from code-under-test). Fixes vector bug.",
   "vectors": [
     {
-      "name": "hash_based_peer_rendezvous",
-      "description": "hash_32(12345, 0xaabbccddeeff0011) % 8 == 7 per independent oracle (fixed from 4)",
-      "sfn": 12345,
-      "eui64_hex": "aabbccddeeff0011",
-      "expected_channel": 7,
+      "name": "announce_rendezvous_channel",
+      "description": "Announce includes rx_channel=3; receiver schedules next unicast on announced channel per CCP-9 da2q rendezvous. Independent oracle.",
+      "announce_rx_ch": 3,
+      "peer_known": true,
+      "expected_rendezvous_ch": 3,
+      "control_fallback": false
+    },
+    {
+      "name": "initial_unknown_peer_control_ch0",
+      "description": "Initial contact with unknown peer uses CH0 control channel rendezvous. Announce then enables data channel follow-up per da2q CCP-9.",
+      "peer_known": false,
+      "expected_rendezvous_ch": 0,
+      "control_fallback": true
+    },
+    {
+      "name": "known_peer_synchronized_hop_preference",
+      "description": "For known peers, synchronized_hop_channel(eui=..., t=1000) =5 overrides pure announce rendezvous (CCP-12 normative over CCP-9).",
+      "eui64_hex": "0011223344556677",
+      "t": 1000,
+      "epoch": 0,
+      "expected_rendezvous_ch": 5,
       "n_channels": 8,
-      "hash_output": "0x7b7385e7"
+      "uses_sync_hop": true
+    },
+    {
+      "name": "announce_channel_parse_roundtrip",
+      "description": "Announce packet with channel field encodes/decodes consistently. Tests L2 payload dispatch for rendezvous metadata. Independent oracle bytes from spec L2 dispatch + wire format (no code-under-test as oracle).",
+      "channel": 2,
+      "l2_dispatch": 21,
+      "encoded": "15010200000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "expected_flags": 2,
+      "expected_channel": 2
     }
   ]
 }

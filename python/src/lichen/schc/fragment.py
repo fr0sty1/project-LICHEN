@@ -54,10 +54,6 @@ class Fragment:
     def is_all_1(self) -> bool:
         return self.fcn == ALL_1
 
-    @property
-    def is_all_0(self) -> bool:
-        return self.fcn == 0
-
     def to_bytes(self) -> bytes:
         if not 0 <= self.rule_id <= 0xFF:
             raise FragmentError(f"rule_id out of range: {self.rule_id}")

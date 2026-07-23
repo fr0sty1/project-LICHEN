@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "SCHC fragmentation vectors (RFC 8724 \u00a78) with independent oracles for single/multi fragment, window, ACK-on-error, MIC fail, OOO, retransmit. See schema for details; all impls must match exactly.",
+  "description": "SCHC fragmentation vectors (RFC 8724 \u00a78) using independent CRC32 oracle from compute_mic and FragmentSender.to_bytes().",
   "vectors": [
     {
       "name": "single_fragment",
@@ -9,10 +9,10 @@
       "rule_id": 42,
       "packet": "10111213",
       "fragments": [
-        "2a3f040000000010111213"
+        "2a3f90f370c910111213"
       ],
       "mode": "no_ack",
-      "mic": "04000000"
+      "mic": "90f370c9"
     },
     {
       "name": "multi_fragment",
@@ -22,10 +22,10 @@
       "fragments": [
         "2a060410111213",
         "2a050420212223",
-        "2a073f1234567823"
+        "2a073f2d06834123"
       ],
       "mode": "no_ack",
-      "mic": "12345678"
+      "mic": "2d068341"
     },
     {
       "name": "ack_on_error_mic_fail",
@@ -37,7 +37,7 @@
         "2a073f0400000000"
       ],
       "mode": "ack_on_error",
-      "mic": "04000000",
+      "mic": "677bdd77",
       "expect": {
         "mic_fail": true
       }
