@@ -94,7 +94,6 @@ void lichen_trickle_expire(struct lichen_trickle *t,
 	t->interval = (doubled < t->max_interval) ? doubled : t->max_interval;
 	begin_interval(t, now, rand_offset);
 }
-
 void lichen_trickle_reset(struct lichen_trickle *t,
 			  uint32_t now,
 			  uint32_t rand_offset)
@@ -104,6 +103,7 @@ void lichen_trickle_reset(struct lichen_trickle *t,
 		begin_interval(t, now, rand_offset);
 	}
 }
+
 
 void lichen_trickle_next_event(const struct lichen_trickle *t,
 			       struct lichen_trickle_event *out)

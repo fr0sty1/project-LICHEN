@@ -219,7 +219,6 @@ def find_missing_packets(
             sent_by_hash[h].add((node_id, stats.impl))
         received_hashes.update(stats.rx_hashes)
 
-    # Find missing
     missing = []
     for h, senders in sent_by_hash.items():
         if h not in received_hashes:
