@@ -55,7 +55,10 @@ impl OscoreSeqNum {
     #[inline]
     #[must_use = "returns a new value; does not modify self"]
     pub const fn increment(self) -> Option<Self> {
-        self.0.checked_add(1).map(Self)
+        match self.0.checked_add(1) {
+            Some(v) if v <= Self::MAX => Some(Self(v)),
+            _ => None,
+        }
     }
 
     /// Increment in place, returning the old value.
@@ -161,6 +164,9 @@ mod tests {
         assert_eq!(seq.increment().unwrap().get(), 1);
     }
 
+    #[test]
+    fn fetch_increment() {
+        let mut seq = OscoreSeqNum::new(0).unwrap();
         let old = seq.fetch_increment().expect("should not overflow from 0");
         assert_eq!(old.get(), 0);
         assert_eq!(seq.get(), 1);

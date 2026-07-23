@@ -485,7 +485,13 @@ int oscore_option_build(const struct oscore_option *_Nonnull option,
  * uniqueness per RFC 8613 Appendix D.4, §7.2, §7.2.1 (see detailed
  * security comment in oscore.c:nvm_failed).
  *
- * @param[in]     ctx          Security context
+ * On OSCORE_ERR_NVM_FAILED from persistence, dedicated nvm_failed path
+ * synchronizes internal s_seq_initialized flag (under mutex) so subsequent
+ * calls do not fail with "not initialized" error. SSN increment is NOT
+ * rolled back (packet was prepared/transmitted) to avoid nonce reuse on
+ * reboot per RFC 8613 §7.2/§8.4. See SECURITY comment in oscore.c:1604.
+ *
+ * @param[in]     ctx          Security context (sender_seq must be initialized)
  * @param[in]     code         CoAP request code
  * @param[in]     options      CoAP options to protect (Class E)
  * @param[in]     options_len  Options length
