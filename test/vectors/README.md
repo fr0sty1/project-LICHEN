@@ -19,7 +19,7 @@ Language-neutral conformance vectors for the LICHEN protocol using **format_vers
 | `meshcore_app_compat.json` | MeshCore byte-command app compatibility exchanges |
 | `ccp_load_balancing.json` | TDMA slot assignment (static hash), guard time boundaries (50ms), drift compensation, CCP-16 load metrics/rebalancing (independent mathematical oracles from spec timing/hash formulas) |
 | `ccp15.json` | CCP-15 CCA threshold, interference score (busy_pct + PER*100), frequency agility (lowest score channel), SF adaptation (PER>0.2), TDMA CCA guard integration (independent mathematical oracles per spec 02a) |
-| `ccp16-desync.json` | CCP-16 desync transitions, SFN wrap, multi-root conflict, clock drift recovery (v2 schema array root support example). Independent oracles from spec 02a and 09-packets-timing.md. |
+| `ccp16-desync.json` | CCP-16 desync transitions, SFN wrap, multi-root conflict, clock drift recovery using bare array root (v2 schema). Independent oracles from spec 02a and 09-packets-timing.md. |
 | `ccp9.json` | CCP-9 rendezvous mechanisms (announce_rx_ch scheduling, CH0 control fallback for unknown peers, synchronized_hop_channel(CCP-12) override of announce rendezvous, announce channel field parse/roundtrip in L2 payload). Independent mathematical oracles from spec/02a-coordinated-capacity.md §CCP-9, da2q multi-channel context, and python/src/lichen/sim/medium.py. Matches ccp9_vectors() in generate.py. |
 | `deaddrop.json` | /deaddrop DTN store-and-forward (POST/GET, OSCORE-wrapped, SenML payloads). Independent RFC 7252/8613/8428 oracles aligned with oscore.json. No code-under-test oracle.
 
@@ -93,7 +93,7 @@ All byte strings are lowercase hex (possibly empty). Schema validation and indep
 - Incoming app-event vectors include `MSG_WAITING`, `CHANNEL_MSG_RECV_V3`, and `PUSH_SEND_CONFIRMED` frames used with
   `SYNC_NEXT_MESSAGE`.
 
-**CCP-16 vectors** (`ccp*.json`): for coordinated capacity planning, density, TDMA slot selection, load balancing, desync recovery. Uses `hash_32` (FNV-1a) primitive. Supports both object envelope (format_version 2) and bare array root (for ccp16-desync.json). Schema updated with `type`, `expected_hash`, allOf conditionals, and Rust no_std compatible notes. Caps and SCALE_NODES parameterized in test_scale.py for flexibility. Cleanup of magic numbers and features completed.
+**CCP-16 vectors** (`ccp*.json`): for coordinated capacity planning, density, TDMA slot selection, load balancing, desync recovery. Uses `hash_32` (FNV-1a) primitive. ccp16-desync.json uses bare array root for v2 schema; others use object envelope. Schema updated with `type`, `expected_hash`, fixed allOf conditionals for type discriminator, ccp_load_balancing_vector fields, and Rust no_std compatible notes. Cleanup of magic numbers and features completed.
 
 **RAK2287 vectors** (`rak2287*.json`): test fixtures for packet formats, UDP forwarder protocol, multi-channel demod. Ensures cross-impl interop with SX126x paths in mesh-gateway, Python sim, and Rust tests. Updated schema and generate.py.
 
