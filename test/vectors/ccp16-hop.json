@@ -17,7 +17,7 @@
       "seed": 42,
       "num_channels": 16,
       "expected_channel": 5,
-      "hash_output": "computed via FNV-1a32",
+      "hash_output": "0x37381b7c",
       "description": "Example rendezvous channel selection"
     },
     {
