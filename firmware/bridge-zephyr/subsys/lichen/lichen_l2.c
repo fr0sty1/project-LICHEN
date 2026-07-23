@@ -71,46 +71,14 @@ LOG_MODULE_REGISTER(lichen_l2, CONFIG_LICHEN_L2_LOG_LEVEL);
 
 #include "lichen_util.h"
 
-/*
- * Include LICHEN link layer if available.
- *
- * Required symbols from these headers (must stay inside HAVE_LICHEN_LINK guards):
- *   link.h:     lichen_link_tx(), lichen_link_rx(), lichen_link_frame_overhead(),
- *               struct lichen_link_rx_ctx, struct lichen_link_tx_ctx
- *   link_ctx.h: LICHEN_LINK_KEY_LEN, struct lichen_link_ctx, lichen_link_init(),
- *               lichen_link_cleanup()
- *   schc.h:     lichen_schc_compress(), lichen_schc_decompress() (stateless - no init)
- */
-#if defined(CONFIG_LICHEN_LINK)
 #include <lichen/link.h>
 #include <lichen/link_ctx.h>
 #include <lichen/replay.h>
 #include <lichen/schc.h>
-#define HAVE_LICHEN_LINK 1
-#else
-#define HAVE_LICHEN_LINK 0
-#endif
 
-#if !HAVE_LICHEN_LINK
-#error "CONFIG_LICHEN_LINK is required before lichen_l2.c can use LICHEN link constants"
+#if !IS_ENABLED(CONFIG_LICHEN_LINK)
+#error "CONFIG_LICHEN_LINK is required: raw IPv6-over-LoRa provides no security, compression, or interoperability."
 #endif
-
-/*
- * SECURITY: Require LICHEN_LINK for production builds (project-LICHEN-9j70.16).
- *
- * Without CONFIG_LICHEN_LINK, packets are sent as raw IPv6 over LoRa with:
- * - No MIC/CRC protection (corruption goes undetected)
- * - No SCHC compression (40-byte IPv6 header wastes MTU)
- * - No replay protection
- * - No interoperability with LICHEN-framed nodes
- *
- * The raw mode was useful for early bring-up but is not suitable for any
- * deployment. If you hit this error, enable CONFIG_LICHEN_LINK in your prj.conf.
- */
-BUILD_ASSERT(HAVE_LICHEN_LINK,
-	     "CONFIG_LICHEN_LINK is required: raw IPv6-over-LoRa provides no "
-	     "security, compression, or interoperability. Enable LICHEN_LINK "
-	     "in prj.conf or menuconfig.");
 
 static int lichen_l2_to_zephyr_errno(int ret)
 {
@@ -324,7 +292,6 @@ static uint8_t rx_ipv6_buf[LICHEN_L2_MTU + IPV6_BASE_HDR_LEN + OSCORE_MAX_OVERHE
 static K_MUTEX_DEFINE(rx_mutex);  /* Lock order: 2nd (after tx_mutex) */
 
 /* Link context for framing */
-#if HAVE_LICHEN_LINK
 static struct lichen_link_ctx link_ctx;
 /*
  * Replay protection table for received frames.
@@ -422,7 +389,6 @@ BUILD_ASSERT(0, "LICHEN L2 requires single-core: atomic_t usage lacks memory bar
 		"Disable CONFIG_SMP or ensure CONFIG_MP_MAX_NUM_CPUS == 1.");
 #endif
 static atomic_t link_ctx_initialized;
-#endif
 
 /*
  * Cached interface pointer for RX callback.
@@ -473,7 +439,6 @@ static uint8_t iface_link_addr[LICHEN_L2_ADDR_LEN];
 
 /* ─── Peer table management ──────────────────────────────────────────────── */
 
-#if HAVE_LICHEN_LINK
 /**
  * @brief Find peer entry by EUI-64 (internal, caller must hold rx_mutex).
  *
@@ -654,7 +619,6 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 	*out_len = saved_out_len;
 	return -LICHEN_EAUTH;
 }
-#endif /* HAVE_LICHEN_LINK */
 
 int lichen_peer_add(const uint8_t eui64[LICHEN_EUI64_LEN],
 		    const uint8_t pubkey[LICHEN_L2_PUBKEY_LEN])
