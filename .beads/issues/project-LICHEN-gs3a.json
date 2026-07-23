@@ -2,6 +2,7 @@
   "id": "project-LICHEN-gs3a",
   "title": "schnorr48: redundant length check on s_bytes is dead code",
   "description": "File: python/src/lichen/crypto/schnorr48.py\nLines: 134-135\n\nThe check `if len(s_bytes) != 32: return False` is dead code:\n\n```python\nif len(pubkey) != 32 or len(sig) != 48:  # Line 126-127\n    return False\n...\ns_bytes = sig[16:48]  # Line 134\nif len(s_bytes) != 32:  # Line 135 - ALWAYS FALSE\n    return False\n```\n\nSince len(sig) == 48 is already verified on line 126-127, sig[16:48] will always be exactly 32 bytes. The check on line 135 can never be True.\n\nImpact: Minor dead code, no functional bug. Remove for clarity.",
+  "notes": "The redundant len(s_bytes) check has already been removed in current code (see verify():174). No change needed for this cleanup.",
   "status": "in_progress",
   "priority": 4,
   "issue_type": "cleanup",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:17:24.900282Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:25:36.091471618Z",
+  "updated_at": "2026-07-23T04:26:05.191367177Z",
   "started_at": "2026-07-23T04:25:36.091471618Z",
   "lease_expires_at": "2026-07-23T04:30:36.091471618Z",
   "heartbeat_at": "2026-07-23T04:25:36.091471618Z"
