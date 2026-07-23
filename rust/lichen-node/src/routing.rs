@@ -403,6 +403,26 @@ impl NeighborTable {
         let scale = 1 + (2 * c / k);
         age <= max_age_ms * scale
     }
+
+    pub fn prune_trickle_safe(
+        &mut self,
+        now_ms: u64,
+        max_age_ms: u64,
+        trickle: &TrickleTimer,
+        mut removed: impl FnMut([u8; 16]),
+    ) {
+        let now_ms = now_ms.max(self.last_now_ms);
+        self.last_now_ms = now_ms;
+        for slot in self.entries.iter_mut() {
+            let is_stale = slot.as_ref().is_some_and(|neighbor| {
+                !self.is_trickle_aware_live(&neighbor.addr, trickle, now_ms, max_age_ms)
+            });
+            if is_stale {
+                let neighbor = slot.take().expect("stale slot contains a neighbor");
+                removed(neighbor.addr);
+            }
+        }
+    }
 }
 
 /// Unified routing state combining DODAG, trickle, DAO manager, and neighbor table.
