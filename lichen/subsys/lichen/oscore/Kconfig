@@ -10,7 +10,7 @@ menuconfig LICHEN_OSCORE
 	select LICHEN_CRYPTO_MONOCYPHER
 	select TINYCRYPT_SHA256
 	select TINYCRYPT_SHA256_HMAC
-	select ZCBOR
+	imply ZCBOR
 	help
 	  Enable OSCORE (RFC 8613) for end-to-end CoAP security.
 	  Uses AES-CCM-16-64-128 for encryption and authentication.

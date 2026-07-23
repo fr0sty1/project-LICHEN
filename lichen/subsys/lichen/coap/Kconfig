@@ -95,7 +95,7 @@ config LICHEN_COAP_SERVER_OSCORE
 config LICHEN_COAP_CONFIG
 	bool "LCI /config resource handlers"
 	depends on LICHEN_COAP_SERVER
-	select ZCBOR
+	imply ZCBOR
 	select LICHEN_COAP_KEYS
 	help
 	  Enable CoAP server resources for node configuration per LCI spec
@@ -160,7 +160,7 @@ config LICHEN_COAP_MSG
 	bool "LCI /msg/* resource handlers"
 	depends on LICHEN_COAP_SERVER
 	select LICHEN_COAP_STATUS
-	select ZCBOR
+	imply ZCBOR
 	select COAP_URI_WILDCARD
 	help
 	  Enable CoAP server resources for application-level messaging per
@@ -193,8 +193,8 @@ config LICHEN_COAP_KEYS
 	# so this option genuinely requires it (bd a2a2).
 	depends on LICHEN_SLIP_TRANSPORT
 	select COAP_URI_WILDCARD
-	select ZCBOR
-	select TINYCRYPT_SHA256
+	imply ZCBOR
+	imply TINYCRYPT_SHA256
 	help
 	  Enable CoAP server resources for key store management per LCI spec
 	  section 17.5.5:
@@ -263,7 +263,7 @@ config LICHEN_COAP_DEADDROP
 	depends on LICHEN_OSCORE
 	depends on LICHEN_DTN
 	select COAP_URI_WILDCARD
-	select ZCBOR
+	imply ZCBOR
 	help
 	  LCI /deaddrop (POST to store encrypted msg for recipient, GET?node=IID to pickup pending)
 	  and /confessions for anonymous rate-limited broadcast. Per spec 18.11 and 18.9,

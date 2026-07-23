@@ -6,7 +6,7 @@
 menuconfig LICHEN_SENML
 	bool "SenML CBOR encoder"
 	depends on LICHEN
-	select ZCBOR
+	imply ZCBOR
 	help
 	  Enable SenML (RFC 8428) CBOR encoding for sensor data.
 	  Content-Format: application/senml+cbor (112)
