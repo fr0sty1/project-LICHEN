@@ -2,17 +2,19 @@
   "id": "project-LICHEN-3se7",
   "title": "[merge-conflict] worktree-worker18: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: 3500debca",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:52:02.430527295Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:15:30.598629561Z",
+  "updated_at": "2026-07-23T05:14:42.665738559Z",
   "started_at": "2026-07-23T03:19:41.535181573Z",
-  "closed_at": "2026-07-23T05:15:30.598629561Z",
-  "close_reason": "Already resolved in commit 3500debca: cleaned merge conflict comments across 3 heltec conf files per no-dead-code rule. Current state clean, no further changes needed.",
+  "closed_at": "2026-07-23T03:21:29.126416713Z",
+  "close_reason": "Synced heltec_wifi_lora32_v3_esp32s3_procpu.conf (puck/gateway/bridge) in worktree-worker18 to consolidated main version with updated resolution comment including project-LICHEN-3se7. Removed duplicate explanatory comments per no-dead-code rule and AGENTS.md. Verified clean git state post-merge. Commit 3500debca pushed to origin/worktree-worker18.",
+  "lease_expires_at": "2026-07-23T05:19:42.665738559Z",
+  "heartbeat_at": "2026-07-23T05:14:42.665738559Z",
   "labels": [
     "defer-external"
   ]
