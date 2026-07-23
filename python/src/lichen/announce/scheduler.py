@@ -131,32 +131,24 @@ class AnnounceScheduler:
     def build_announce(self) -> AnnounceMessage:
         """Build a signed announce message.
 
-        Why separate method: Allows testing without running the loop.
-        Also useful for manual announce triggers.
-
         Returns:
             A fully signed AnnounceMessage ready for transmission.
         """
-        seq = self._increment_seq()
-
-        # Why build unsigned first: Need signed_data() before signing.
+        seq = (self._seq_num + 1) & 0xFFFF
         msg = AnnounceMessage(
             originator_iid=self.identity.iid,
             pubkey=self.identity.pubkey,
             seq_num=seq,
-            hop_count=0,  # We're the originator
-            rx_channel=0,  # CCP-9: control channel until hopping implemented
+            hop_count=0,
+            rx_channel=0,
             app_data=self.app_data,
         )
-
-        # Why sign with our key: Proves we own this IID/pubkey.
         signature = sign(
             self.identity.privkey,
             self.identity.pubkey,
             msg.signed_data(),
         )
-
-        # Why create new message with signature: AnnounceMessage is immutable-ish.
+        self._increment_seq()
         return AnnounceMessage(
             originator_iid=msg.originator_iid,
             pubkey=msg.pubkey,
