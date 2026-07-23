@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-rk3v",
   "title": "[merge-conflict] worktree-worker19: t_deck_esp32s3_procpu.conf",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:26:11.905655212Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:26:11.905655212Z"
+  "updated_at": "2026-07-23T02:19:09.986606187Z",
+  "started_at": "2026-07-23T02:19:09.986606187Z",
+  "lease_expires_at": "2026-07-23T02:24:09.986606187Z",
+  "heartbeat_at": "2026-07-23T02:19:09.986606187Z"
 }
