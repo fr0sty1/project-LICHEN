@@ -6,10 +6,10 @@
     {
       "name": "single_fragment",
       "description": "Single All-1 with MIC (RFC 8.2).",
-      "rule_id": 42,
+      "rule_id": 120,
       "packet": "10111213",
       "fragments": [
-        "2a3f90f370c910111213"
+        "787f21e6e19220222426"
       ],
       "mode": "no_ack",
       "mic": "90f370c9"
@@ -17,11 +17,11 @@
     {
       "name": "multi_fragment",
       "description": "Multi-fragment + window (RFC 8.3).",
-      "rule_id": 42,
+      "rule_id": 120,
       "packet": "1011121320212223",
       "fragments": [
-        "2a0610111213",
-        "2a3f2d06834120212223"
+        "780c20222426",
+        "787e5a0d068240424446"
       ],
       "mode": "no_ack",
       "mic": "2d068341"
@@ -29,10 +29,10 @@
     {
       "name": "ack_on_error_mic_fail",
       "description": "ACK-on-error, MIC mismatch triggers error (RFC 8.4.3).",
-      "rule_id": 42,
+      "rule_id": 120,
       "packet": "a0a1a2a3",
       "fragments": [
-        "2a3f677bdd77a0a1a2a3"
+        "787ecef7baef41434546"
       ],
       "mode": "ack_on_error",
       "mic": "677bdd77",
@@ -43,11 +43,11 @@
     {
       "name": "ooo_retransmit",
       "description": "OOO + retransmit on NACK bitmap (RFC 8.4.2).",
-      "rule_id": 42,
+      "rule_id": 120,
       "packet": "00010203",
       "fragments": [
-        "2a060001",
-        "2a3f8bb986130203"
+        "780c0002",
+        "787f17730c260406"
       ],
       "mode": "ack_on_error",
       "mic": "8bb98613",

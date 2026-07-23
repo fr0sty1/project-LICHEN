@@ -66,6 +66,7 @@ _ENCRYPTED_BIT = 1 << 6
 _RESERVED_BIT = 1 << 7
 
 _MAX_FRAME_BODY = 255  # the Length field is a single byte
+MAX_FRAME_BODY = _MAX_FRAME_BODY
 _SIGNATURE_LENGTH = 48  # Schnorr-48 signature
 
 

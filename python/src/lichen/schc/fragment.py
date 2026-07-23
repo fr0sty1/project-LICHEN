@@ -11,7 +11,7 @@ ALL_1 = (1 << N_FCN_BITS) - 1
 MAX_WINDOW_SIZE = ALL_1 - 1
 DEFAULT_WINDOW_SIZE = 7
 MIC_LENGTH = 4
-RULE_IDS = (0x78, 0x79)
+RULE_IDS = (0x2a, 0x78, 0x79)
 TILE_SIZE = 187
 MAX_PACKET_SIZE = 1281
 DEFAULT_RECEIVER_LIMIT = 1281
@@ -75,15 +75,15 @@ class Fragment:
                 raise FragmentError("All-1 final tile must contain 1..187 bytes")
             content = self.mic + self.payload
         else:
-            if len(self.payload) != TILE_SIZE:
-                raise FragmentError("Regular Fragment tile must contain 187 bytes")
+            if len(self.payload) < 1 or len(self.payload) > TILE_SIZE:
+                raise FragmentError("Regular Fragment tile must contain 1..187 bytes")
             if self.window == 1 and self.is_all_0:
                 raise FragmentError("the final tile must be carried in All-1")
             if self.mic:
                 raise FragmentError("Regular Fragment cannot carry an RCS")
             content = self.payload
         body = (
-            ((self.window << 6) | self.fcn) << (8 * len(content)) | int.from_bytes(content)
+            ((self.window << 6) | self.fcn) << (8 * len(content)) | int.from_bytes(content, "big")
         ) << 1
         return bytes([self.rule_id]) + body.to_bytes(len(content) + 1, "big")
 
@@ -183,6 +183,8 @@ class Ack:
 class FragmentSender:
     payload: bytes
     rule_id: int = 0x78
+    tile_size: int = TILE_SIZE
+    window_size: int = DEFAULT_WINDOW_SIZE
     receiver_limit: int = DEFAULT_RECEIVER_LIMIT
     _fragments: list[Fragment] = field(init=False, repr=False)
     attempts: int = field(default=0, init=False)

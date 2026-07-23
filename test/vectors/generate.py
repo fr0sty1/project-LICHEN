@@ -1636,14 +1636,14 @@ def schc_fragment_vectors() -> list[dict]:
     ) -> dict:
         packet = bytes.fromhex(packet_hex)
         sender = FragmentSender(
-            payload=packet, rule_id=42, tile_size=tile_size, window_size=window_size
+            payload=packet, rule_id=0x78, tile_size=tile_size, window_size=window_size
         )
         fragments = [f.to_bytes().hex() for f in sender.all_fragments()]
         mic = compute_mic(packet).hex()
         return {
             "name": name,
             "description": extra.pop("description", f"{name.replace('_', ' ').title()}."),
-            "rule_id": 42,
+            "rule_id": 0x78,
             "packet": packet_hex,
             "fragments": fragments,
             "mode": mode,
@@ -1661,6 +1661,7 @@ def schc_fragment_vectors() -> list[dict]:
         _vector(
             "multi_fragment",
             "1011121320212223",
+            tile_size=4,
             description="Multi-fragment + window (RFC 8.3).",
         ),
         _vector(
@@ -1808,8 +1809,6 @@ def ccp9_vectors() -> list[dict]:
     ]
 
 def ccp15_vectors() -> list[dict]:
-
-
     v = []
     for seed in range(3):
         h = (seed * 0x9e3779b9) & 0xffffffff
@@ -1902,8 +1901,18 @@ def main() -> None:
         "RPL messages (DIO/DAO per RFC 6550) with hardcoded independent vectors from spec.",
         rpl_messages_vectors(),
     )
-
+    _write(
+        "meshtastic_app_compat.json",
+        "Meshtastic app-compat BLE protobuf exchange vectors. 'encoded' is one raw GATT value unless the vector explicitly expects rejection. Matches protobufs baseline (ToRadio/FromRadio tolerance).",
+        meshtastic_app_compat_vectors(),
+    )
+    _write(
+        "meshcore_app_compat.json",
+        "MeshCore app-compat byte-command vectors. 'encoded' is one raw MeshCore inner frame for BLE unless transport.framing states serial 0x3c/0x3e length framing. Matches firmware/python baselines.",
+        meshcore_app_compat_vectors(),
+    )
 
 
 if __name__ == "__main__":
     main()
+
