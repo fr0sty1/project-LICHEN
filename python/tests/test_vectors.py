@@ -496,12 +496,12 @@ def test_ccp16_sf_ema_load_factor_hash32_logic(desc: str, vector: dict) -> None:
     assert h == o["hash_32"]
     snr_ema = i.get("snr_ema", i["snr_db"])
     load_factor = i.get("load_factor", 0.0)
-    if i["density"] > 8 or snr_ema < 0 or load_factor > 0.8:
+    if i["density"] > 20 or snr_ema < -5.0:
+        sf = 12
+    elif i["density"] > 8 or snr_ema < 0 or load_factor > 0.8:
         sf = 11
     elif i["density"] < 5 and snr_ema > 8.0:
         sf = 9
-    elif i["density"] > 20 or snr_ema < -5.0:
-        sf = 12
     else:
         sf = 10
     assert sf == o["sf"]

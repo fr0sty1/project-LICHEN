@@ -1,8 +1,8 @@
 //! RF health metrics tracking for LICHEN nodes (CCP-15/16 interference mitigation,
 //! adaptive SF, load balancing).
 //!
-//! Implements normative adaptive_sf_select (with critical conditions first)
-//! from spec/02a-coordinated-capacity.md pseudocode. Matches ccp*.json vectors.
+//! Implements normative adaptive_sf_select from spec/02a-coordinated-capacity.md
+//! (critical conditions first per table and pseudocode). Matches ccp*.json vectors.
 //! Tracks packet statistics, signal quality (RSSI/SNR with EMA), density,
 //! load_factor, packet loss. Saturating counters, Q16.16 fixed point.
 //! no_std compatible, #![forbid(unsafe_code)].
@@ -339,8 +339,8 @@ impl PacketLossRate {
 
 impl RfHealthMetrics {
     /// Adaptive SF selection per spec/02a-coordinated-capacity.md §2a.3
-    /// pseudocode (critical SF12 checked before SF11 for precedence).
-    /// Uses named constants matching the IF conditions exactly.
+    /// table and pseudocode (critical conditions first). Uses named constants
+    /// matching the IF conditions exactly. See also 02-physical-link.md:3.5.
     #[inline]
     pub fn adaptive_sf(&self) -> u8 {
         let snr_ema = self.snr.avg().unwrap_or(0);
@@ -592,7 +592,7 @@ mod tests {
     #[test]
     fn adaptive_sf_and_rebalance_matches_spec() {
         // Test each branch independently to avoid EMA state carryover.
-        // Matches spec/02a-coordinated-capacity.md pseudocode with critical first.
+        // Matches spec/02a-coordinated-capacity.md table+pseudocode (critical first).
         let mut m = RfHealthMetrics::new();
         m.record_density(3);
         m.record_rx(-70, 12);
