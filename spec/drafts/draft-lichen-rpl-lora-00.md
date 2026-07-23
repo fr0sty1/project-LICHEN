@@ -644,15 +644,10 @@ Provides time synchronization for replay protection.
   TBD      1        1 (0-3)
 ```
 
-<<<<<<< HEAD
 Advertises node congestion for routing decisions (0-3 scale).
-=======
-Advertises node congestion for routing decisions.
 
-**Adaptive SF and RF Metrics Option (CCP-16):** The DAG Metric Container MUST include current SF per-neighbor EMA-derived recommendation, density, utilization, and metrics per CCP-16 in spec/02a-coordinated-capacity.md (sections 4.1-4.2). Nodes MUST compute TX_SF and adaptive_sf_select via the spelled-out normative pseudocode there. Thresholds, EMA (alpha 0.1-0.25), and load_factor integration are normative. DIOs on CH0 provide announcements; RX scanning on control channel REQUIRED. Test vectors in test/vectors/ccp16.json are the independent oracle; all implementations MUST match exactly for interop.
->>>>>>> origin/worktree-worker24
+**Adaptive SF and RF Metrics Option (CCP-16):** The DAG Metric Container MUST include current SF per-neighbor EMA-derived recommendation, density, utilization, and metrics per CCP-16 in spec/02a-coordinated-capacity.md (sections 4.1-4.2). Nodes MUST compute TX_SF and adaptive_sf_select via the normative pseudocode there. Thresholds, EMA (alpha 0.1-0.25), and load_factor integration are normative. DIOs on CH0 provide announcements; RX scanning on control channel REQUIRED. Test vectors in test/vectors/ccp16*.json, ccp_load_balancing.json and ccp16-desync.json are the independent oracles; all implementations MUST match exactly for interop. Cross-reference capability DIO option and section 4.2 in spec/02a-coordinated-capacity.md for thresholds and EMA update.
 
-**Capability and Adaptive SF Option (CCP-16):** The DAG Metric Container and DIO options MUST carry ASSIGNED_SF (or current SF recommendation), per-neighbor EMA (SNR/loss), density, utilization, and load_factor per normative pseudocode in spec/02a-coordinated-capacity.md (adaptive_sf_select, ema_update, select_channel, now(), physical-link:3.4). DIOs on CH0 control channel. Selected SF signaled for TX; nodes RX on all SFs and scan on CH0. Test vectors in test/vectors/ccp16*.json, ccp_load_balancing.json and ccp16-desync.json are the independent oracles; all impls MUST match exactly. Cross-reference capability DIO option and section 4.2 in spec/02a-coordinated-capacity.md for thresholds and EMA update.
 ### 9.3. Prefix Information Option
 
 When DODAG root advertises prefix:
