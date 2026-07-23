@@ -2,6 +2,7 @@
   "id": "project-LICHEN-fjcf",
   "title": "[merge-conflict] worker8: status.rs",
   "description": "Resolve merge conflict in rust/lichen-client/src/status.rs between main and integration/worker8-20260722. Keep BOTH sets of changes.",
+  "notes": "Commit: be4e5ea0b",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:52:05.108290323Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:38:28.578662548Z",
+  "updated_at": "2026-07-23T04:39:48.204379186Z",
   "started_at": "2026-07-22T21:28:42.801592368Z",
   "lease_expires_at": "2026-07-23T04:43:28.578662548Z",
   "heartbeat_at": "2026-07-23T04:38:28.578662548Z"
