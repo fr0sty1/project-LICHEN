@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-hnyw.3",
+  "title": "Update lichen-gateway, lichen-meshtastic for EMA/load_factor/density and rf_health.rs",
+  "description": "Integrate EMA, load_factor, density calculations for adaptive SF/rebalance in rf_health. Ensure perfect match for ccp9/ccp16 vectors. No dead code.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:21:09.086122743Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:21:09.086122743Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-hnyw.3",
+      "depends_on_id": "project-LICHEN-hnyw",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:21:09.217417779Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
