@@ -2,15 +2,15 @@
   "id": "project-LICHEN-zhkz",
   "title": "[merge-conflict] worktree-worker18: main.c",
   "notes": "Commit: 402744800",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:20:41.304950598Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:35:09.076509246Z",
+  "updated_at": "2026-07-23T02:35:17.381595194Z",
   "started_at": "2026-07-23T02:33:14.06907487Z",
-  "lease_expires_at": "2026-07-23T02:38:14.06907487Z",
-  "heartbeat_at": "2026-07-23T02:33:14.06907487Z"
+  "closed_at": "2026-07-23T02:35:17.381595194Z",
+  "close_reason": "Updated gateway main.c resolution comment for zhkz (worker18 main.c sync) and cleaned xiao_s3_wio_sx1262.conf merge artifact. No dead code left. Pushed commit 4027448 after rebase resolution."
 }
