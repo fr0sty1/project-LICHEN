@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-2auf.41.4",
+  "title": "Recover RPL DAO/DODAG/source-route validation",
+  "description": "Restore validation for RPL DAO, DODAG, and source routes. Cover E flag, lollipop sequence boundaries. Focused tests and reviews.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:14:20.451787031Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:14:20.451787031Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.41.4",
+      "depends_on_id": "project-LICHEN-2auf.41",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:14:20.583588201Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
