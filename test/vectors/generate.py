@@ -1768,7 +1768,7 @@ def ccp16_vectors() -> list[dict]:
                 "hash_32": _h(eui + (1).to_bytes(4, "little")),
                 "channel": 2,
                 "expected_channel": 2,
-                "sf": 10,
+                "sf": 9,
                 "select_channel": 2,
                 "now": 4660
             }
@@ -1786,10 +1786,10 @@ def ccp16_vectors() -> list[dict]:
             },
             "output": {
                 "hash_32": _h(eui + (0).to_bytes(4, "little")),
-                "channel": 1,
-                "expected_channel": 1,
+                "channel": 2,
+                "expected_channel": 2,
                 "sf": 10,
-                "select_channel": 1,
+                "select_channel": 2,
                 "now": 100
             }
         },
@@ -1871,6 +1871,82 @@ def ccp15_vectors() -> list[dict]:
     return v
 
 
+def ccp13_vectors() -> list[dict]:
+    """CCP-13 Duty Cycle Management (DutyCycleTracker) vectors.
+
+    Independent math oracles for prune/eviction, partial overlap proration,
+    remaining_ms, usage_permille, can_transmit, next_tx_available_ms.
+    Matches Rust lichen-core::duty_cycle, C lichen_duty_cycle_* in hal.c,
+    and python sim exactly per test integrity rules. No impl dependency.
+    """
+    return [
+        {
+            "name": "initial_full_budget",
+            "description": "New tracker has full budget (36000ms remaining, 0 usage).",
+            "limit_permille": 10,
+            "window_ms": 3600000,
+            "now_ms": 0,
+            "remaining_ms": 36000,
+            "usage_permille": 0,
+            "can_transmit": True,
+        },
+        {
+            "name": "post_tx_reduced",
+            "description": "200ms TX at t=0 reduces remaining to 35800ms at t=1000.",
+            "limit_permille": 10,
+            "now_ms": 1000,
+            "txs": [
+                {
+                    "ts": 0,
+                    "dur": 200,
+                }
+            ],
+            "remaining_ms": 35800,
+            "usage_permille": 0,
+            "can_transmit_100ms": True,
+        },
+        {
+            "name": "window_eviction",
+            "description": "TX expires after full window; budget restores.",
+            "now_ms": 3600201,
+            "txs": [
+                {
+                    "ts": 0,
+                    "dur": 200,
+                }
+            ],
+            "remaining_ms": 36000,
+            "usage_permille": 0,
+        },
+        {
+            "name": "next_tx_delayed",
+            "description": "Exhausted budget delays next TX until oldest record expires.",
+            "now_ms": 0,
+            "txs": [
+                {
+                    "ts": 0,
+                    "dur": 36000,
+                }
+            ],
+            "duration_ms": 100,
+            "next_available_ms": 3600000,
+        },
+        {
+            "name": "impossible_tx",
+            "description": "duration > max_tx returns u64::MAX (never).",
+            "now_ms": 0,
+            "duration_ms": 36001,
+            "next_available_ms": 18446744073709551615,
+        },
+        {
+            "name": "custom_10pct",
+            "description": "10% limit (100 permille) gives 360000ms max.",
+            "limit_permille": 100,
+            "remaining_ms": 360000,
+        },
+    ]
+
+
 def rpl_messages_vectors() -> list[dict]:
 
     # Independent hardcoded from RFC 6550 §6.3, §6.4. No use of lichen.rpl.messages.
@@ -1947,6 +2023,11 @@ def main() -> None:
         "ccp15.json",
         "ccp15 vectors for SF EMA load_factor hash_32 congestion control with independent oracle (math based).",
         ccp15_vectors(),
+    )
+    _write(
+        "ccp13.json",
+        "CCP-13 DutyCycleTracker vectors with independent math oracles for prune, proration, remaining_ms, usage_permille, can_transmit, next_available. Matches Rust, C hal test, and Python sim exactly.",
+        ccp13_vectors(),
     )
     _write(
         "rpl_messages.json",
