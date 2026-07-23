@@ -2,6 +2,7 @@
   "id": "project-LICHEN-vdmo",
   "title": "config_sync.py: next_message recursively calls itself without depth limit",
   "description": "File: python/src/lichen/interface/meshtastic/config_sync.py\nLines: 130-162\n\nThe next_message() method recursively calls itself:\n\n```python\nelif self.state == ConfigSyncState.SENDING_NODE_INFO:\n    if self._node_info_iter is not None:\n        try:\n            node_info_bytes = next(self._node_info_iter)\n            return FromRadio(id=self._next_id(), node_info=node_info_bytes)\n        except StopIteration:\n            self._node_info_iter = None\n    self.state = ConfigSyncState.SENDING_COMPLETE\n    return self.next_message()  # RECURSIVE CALL\n```\n\nWhile the current state machine has a finite number of states, if a bug causes an infinite state loop (e.g., state machine modified to go back instead of forward), this would cause a stack overflow.\n\nImpact: Potential stack overflow if state machine logic is modified incorrectly in the future.\n\nFix: Use iterative approach:\n```python\ndef next_message(self) -\u003e FromRadio | None:\n    while True:\n        if self.state == ConfigSyncState.SENDING_MY_INFO:\n            self.state = ConfigSyncState.SENDING_METADATA\n            return self._build_my_info()\n        # ... other states that return ...\n        elif self.state == ConfigSyncState.SENDING_NODE_INFO:\n            if self._node_info_iter is not None:\n                try:\n                    return FromRadio(...)\n                except StopIteration:\n                    self._node_info_iter = None\n            self.state = ConfigSyncState.SENDING_COMPLETE\n            continue  # Loop instead of recurse\n        # ...\n```",
+  "notes": "Commit: 6c452e333",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:18:20.980528Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:12:23.956533922Z",
+  "updated_at": "2026-07-23T04:13:40.637167902Z",
   "started_at": "2026-07-23T04:12:23.956533922Z",
   "lease_expires_at": "2026-07-23T04:17:23.956533922Z",
   "heartbeat_at": "2026-07-23T04:12:23.956533922Z"
