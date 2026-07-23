@@ -2405,7 +2405,8 @@ class NativeClientApp(App[None]):
                         recover_error=True,
                     )
             finally:
-                await subscription.close()
+                with suppress(Exception):
+                    await subscription.close()
         except asyncio.CancelledError:
             raise
         except Exception as exc:
@@ -2440,7 +2441,8 @@ class NativeClientApp(App[None]):
                         recover_error=True,
                     )
             finally:
-                await subscription.close()
+                with suppress(Exception):
+                    await subscription.close()
         except asyncio.CancelledError:
             raise
         except Exception as exc:
@@ -2563,7 +2565,8 @@ class NativeClientApp(App[None]):
                     self._sync_compose_from_inputs_if_available()
                     self.apply_inbound_messages(tuple(messages))
             finally:
-                await subscription.close()
+                with suppress(Exception):
+                    await subscription.close()
         except asyncio.CancelledError:
             raise
         except Exception as exc:
