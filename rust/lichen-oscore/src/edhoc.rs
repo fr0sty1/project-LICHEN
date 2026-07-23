@@ -878,7 +878,7 @@ impl EdhocInitiator {
     /// Returns `OscoreError::NoContext` if called before handshake completes
     /// (i.e., before `process_message_2` succeeds).
     pub fn export_oscore(&self) -> Result<Context, OscoreError> {
-        if !self.state.completed || self.state.prk_4e3m.iter().all(|&b| b == 0) {
+        if !self.state.completed || self.state.prk_4e3m.iter().fold(0u8, |acc, &b| acc | b) == 0 {
             return Err(OscoreError::NoContext);
         }
         // Use dedicated exporter for full master_secret/salt derivation + new_fresh.
@@ -1324,7 +1324,7 @@ impl EdhocResponder {
     /// Returns `OscoreError::NoContext` if called before handshake completes
     /// (i.e., before `process_message_3` succeeds).
     pub fn export_oscore(&self) -> Result<Context, OscoreError> {
-        if !self.state.completed || self.state.prk_4e3m.iter().all(|&b| b == 0) {
+        if !self.state.completed || self.state.prk_4e3m.iter().fold(0u8, |acc, &b| acc | b) == 0 {
             return Err(OscoreError::NoContext);
         }
         // Use dedicated exporter for full master_secret/salt derivation + new_fresh.
