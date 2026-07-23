@@ -1,13 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """Announce message processing (spec section 9.3).
-
-Processes incoming announces: verifies signatures, detects duplicates,
-updates gradients, decides whether to relay.
-
-Why separate from messages.py: Messages are pure codecs. Processing involves
-state (gradient table, seen announces, peer database) and crypto operations.
-Separation keeps the codec testable without crypto dependencies.
 """
 
 from __future__ import annotations
@@ -35,32 +28,17 @@ from lichen.gradient import (
 
 logger = logging.getLogger(__name__)
 
-# Why 16-bit: Announce seq_num is 16 bits (spec section 9.3).
 SEQ_BITS = 16
-SEQ_HALF = 1 << (SEQ_BITS - 1)  # 32768
+SEQ_HALF = 1 << (SEQ_BITS - 1)
 
 
 def seq_gt(a: int, b: int) -> bool:
-    """RFC 1982 serial number arithmetic: return True if a > b (wrap-aware).
-
-    Why: 16-bit sequence numbers wrap around. Simple comparison fails when
-    seq_num wraps from 65535 to 0. RFC 1982 defines "greater than" as:
-    a > b iff (a != b) and ((a - b) mod 2^N) < 2^(N-1)
-
-    This means a is "ahead" of b if the unsigned distance (a - b) is less than
-    half the sequence space. Works correctly across wrap boundaries.
-    """
-    diff = (a - b) & 0xFFFF  # mod 2^16
+    diff = (a - b) & 0xFFFF
     return a != b and diff < SEQ_HALF
 
 
-# Why 300_000: Spec section 9.4. 300 seconds between announces.
 ANNOUNCE_INTERVAL_MS = 300_000
-
-# Why 30_000: Spec section 9.4. Random jitter 0-30 seconds prevents collision.
 ANNOUNCE_JITTER_MS = 30_000
-
-# GRADIENT_TIMEOUT_MS imported from lichen.gradient (spec section 9.4).
 
 
 class AnnounceRejectReason(Enum):

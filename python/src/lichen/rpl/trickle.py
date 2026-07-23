@@ -6,20 +6,9 @@ import asyncio
 import random
 from collections.abc import Awaitable, Callable
 
-"""Trickle timer (RFC 6206), used by RPL to pace DIO transmissions.
-
-The timer is a deterministic state machine driven by an explicit clock (all
-times are integer milliseconds) rather than being bound to the asyncio wall
-clock. This keeps it testable and lets the simulator drive it in logical time.
-An async :meth:`TrickleTimer.run` loop is provided for production use with an
-injectable clock and sleep.
-
-Note on parameters: RFC 6206 defines ``Imax`` as the maximum number of
-*doublings* of ``Imin`` (max interval = ``Imin * 2**Imax``). Spec appendix B.3
-lists ``Imax = 20`` alongside "2**20 ms", which reads ``Imax`` as an absolute
-exponent instead. We follow the RFC: pass ``imax_doublings``. To get the spec's
-intended ~17 min ceiling from ``Imin = 4096`` ms (2**12), use
-``imax_doublings = 8`` (2**12 * 2**8 = 2**20 ms).
+"""Trickle timer (RFC 6206) for RPL DIO pacing. Deterministic state machine
+driven by explicit clock (ms). Async run() loop provided for simulator and
+production use with injectable clock.
 """
 
 # rng() returns a float in [0, 1); now_fn() returns a time in milliseconds.
@@ -61,8 +50,7 @@ class TrickleTimer:
         self._begin_interval(now)
 
     def _begin_interval(self, now: int) -> None:
-        # RFC 6206 §4.2: t uniform in [I/2, I). Bias-free using (interval+1)//2
-        # + range = I - half (Worker23 fix project-LICHEN-verh). Matches Rust/C.
+        # RFC 6206 §4.2: t uniform in [I/2, I). Bias-free using (interval+1)//2.
         self.interval_start = now
         self.counter = 0
         self._transmitted = False

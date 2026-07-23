@@ -23,16 +23,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-# Why 0x01: Needs a unique type identifier inside the routing/control
-# namespace. At the authenticated link layer this byte follows
-# L2_DISPATCH_ROUTING (0x15), so it cannot collide with SCHC rule 0x01.
-# Other types: 0x02=RREQ, 0x03=RREP, 0x04=RERR.
 ANNOUNCE_TYPE = 0x01
-
-# Why 48: Schnorr48 signature length (16-byte challenge + 32-byte response).
 SIGNATURE_LENGTH = 48
-
-# Why 15: Spec section 9.4. Limits propagation to prevent infinite flooding.
 MAX_ANNOUNCE_HOPS = 15
 
 _FIXED_LENGTH = 1 + 1 + 1 + 2 + 8 + 32 + 48
@@ -98,27 +90,6 @@ class AnnounceMessage:
 
 
     def signed_data(self) -> bytes:
-        """Data covered by the signature (spec 9.2 + CCP-9).
-
-        Concatenation (exact order for bit-exact interop):
-            originator_iid (8B) + pubkey (32B) + seq_num (u16 BE, 2B) +
-            rx_channel (u8, 1B per CCP-9) + app_data (variable)
-
-        rx_channel inclusion binds the announced rendezvous RX channel
-        against tampering (CCP-9). Value 0=CH0 control/fallback.
-
-        Why these fields: Security-relevant; must not be modifiable by relays.
-        - originator_iid, pubkey: identity binding/TOFU
-        - seq_num: anti-replay
-        - rx_channel: rendezvous channel pinning
-        - app_data: authenticated payload
-
-        Why NOT hop_count: incremented by relays.
-        Why NOT flags/signature: not part of signed content.
-
-        Returns:
-            bytes: exact input to schnorr48_sign/verify.
-        """
         return (
             self.originator_iid
             + self.pubkey

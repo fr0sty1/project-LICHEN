@@ -364,11 +364,7 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
     }
 }
 
-/// Generate a random u64 in the range [min, max].
-///
-/// Uses a simple LCG with AtomicU64 state (project-LICHEN-nee4).
-/// Seeded once from time + PID for per-node uniqueness. Prevents identical
-/// jitter within same millisecond. Good enough for scheduling; not crypto.
+/// Generate a random u64 in the range [min, max] using LCG for jitter.
 fn random_range(min: u64, max: u64) -> u64 {
     use std::sync::atomic::{AtomicU64, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};

@@ -1,13 +1,6 @@
-//! Trickle timer (RFC 6206) — deterministic state machine, caller-driven clock.
-//!
-//! Bias-free half/offset per Worker23 fix (project-LICHEN-verh): matches
-//! C (`lichen/subsys/lichen/rpl/trickle.c`) and Python
-//! (`python/src/lichen/rpl/trickle.py`) using `(I+1)/2` + `range = I - half`.
-//! Port of Python version with aligned reset guard (project-LICHEN-67ca).
-//! Caller responsible for random offset (in `[0, range)`), polling
-//! `next_event()`, and calling `expire`/`reset`.
-//!
-//! No async, no allocation, no_std compatible.
+//! Trickle timer (RFC 6206) for RPL DIO pacing. Deterministic, caller-driven
+//! clock with no_std compatibility. Caller supplies random offsets and polls
+//! for next_event.
 
 /// The next scheduled timer event.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -46,11 +39,8 @@ pub struct InvalidTrickleTransition {
     pub to: TrickleState,
 }
 
-/// RFC 6206 Trickle timer (bias-free implementation per Worker23 fix).
-///
-/// All times are integer milliseconds. The caller supplies random offsets (in
-/// `[0, range)`) so the timer is deterministic and testable without a live RNG.
-/// Matches C and Python exactly for `transmit_time` on odd intervals.
+/// RFC 6206 Trickle timer. All times in integer milliseconds. Caller supplies
+/// random offset in `[0, range)` for deterministic behavior without RNG.
 #[derive(Debug)]
 pub struct TrickleTimer {
     pub imin: u32,
@@ -99,9 +89,6 @@ impl TrickleTimer {
     }
 
     /// Begin the first interval (RFC 6206 step 1-2).
-    ///
-    /// `rand_offset` is a caller-supplied random value in `[0, range)` where
-    /// `range = I - (I+1)/2` (≈ I/2). See `begin_interval` for bias-free calc.
     pub fn start(&mut self, now: u64, rand_offset: u32) {
         self.interval = self.imin;
         self.begin_interval(now, rand_offset)
@@ -119,10 +106,8 @@ impl TrickleTimer {
         self.interval_start = now;
         self.counter = 0;
         self.transmitted = false;
-        /* Per RFC 6206 §4.2: t uniform in [I/2, I). Use `(interval + 1) / 2`
-         * to avoid off-by-one bias for odd `I` (e.g. I=5: half=3, range=2;
-         * transmit times now+3 or now+4). range = I - half. This is the
-         * bias-free Worker23 fix (project-LICHEN-verh) matching C and Python. */
+        // Per RFC 6206 §4.2: t uniform in [I/2, I). Use (interval + 1) / 2
+        // to avoid off-by-one bias for odd I. range = I - half.
         let half = (self.interval + 1) / 2;
         let range = self.interval - half;
         let offset = if range > 0 { rand_offset % range } else { 0 };
@@ -159,10 +144,7 @@ impl TrickleTimer {
     }
 
     /// End the current interval: double (capped) and start the next one (step 5).
-    ///
-    /// `rand_offset` is a caller-supplied random value in `[0, range)` (see
-    /// `begin_interval` for bias-free `(I+1)/2` calculation per Worker23 fix).
-    pub fn expire(&mut self, now: u32, rand_offset: u32) {
+    pub fn expire(&mut self, now: u64, rand_offset: u32) {
         self.try_expire(now, rand_offset)
             .expect("expire only valid after transmit");
     }
@@ -184,9 +166,8 @@ impl TrickleTimer {
 
     /// Handle an inconsistency: shrink to `imin` and restart (RFC 6206 step 6).
     ///
-    /// Starts timer if stopped; no-op if already at `imin` and running (RFC 6206 §4.2).
-    /// Reset guard aligned with C/Python (project-LICHEN-67ca).
-    pub fn reset(&mut self, now: u32, rand_offset: u32) {
+    /// Starts timer if stopped; no-op if already at `imin` and running.
+    pub fn reset(&mut self, now: u64, rand_offset: u32) {
         self.try_reset(now, rand_offset)
             .expect("invalid trickle timer transition");
     }
@@ -368,6 +349,7 @@ mod tests {
 
     #[test]
     fn interval_end_saturates_near_u32_max() {
+        const WRAP: u64 = 0x1_0000_0000;
         // Test that interval_end uses saturating_add to avoid wraparound
         let mut t = TrickleTimer::new(1000, 4, 10);
         let near_max = WRAP - 500;
