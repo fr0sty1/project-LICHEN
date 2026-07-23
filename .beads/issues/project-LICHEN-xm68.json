@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-xm68",
   "title": "[merge-conflict] integration/worker13-20260722: coap_keys.c",
+  "notes": "Commit: 3520e15b8",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:29:57.22110067Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:36:34.151012101Z",
+  "updated_at": "2026-07-23T02:38:50.881088908Z",
   "started_at": "2026-07-23T02:36:34.151012101Z",
   "lease_expires_at": "2026-07-23T02:41:34.151012101Z",
   "heartbeat_at": "2026-07-23T02:36:34.151012101Z"
