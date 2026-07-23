@@ -158,7 +158,7 @@ class SchcChannel(DatagramChannel):
                 return
             source = Endpoint(source_endpoint.host, udp.src_port).authority
         except Exception as exc:
-            logger.debug("SchcChannel: failed to decompress/unwrap packet: %s", exc)
+            logger.warning("SchcChannel: failed to decompress/unwrap packet: %s", exc)
             return
         if self._receiver is not None:
             self._receiver(coap, source)
