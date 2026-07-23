@@ -1,38 +1,33 @@
-{
-  "$schema": "./schema.json",
-  "format_version": 2,
-  "description": "CCP-16 desync test vectors demonstrating v2 schema array root support readiness (can be converted to bare array root). Covers SFN wrap desync, multi-root conflict, clock drift desync recovery per spec/02a-coordinated-capacity.md and 09-packets-timing.md. Independent mathematical oracles; no code-under-test dependency. Compare to ccp15.json and ccp_load_balancing.json structure.",
-  "vectors": [
-    {
-      "name": "desync_on_sfn_wrap",
-      "description": "Unsigned 32-bit arithmetic for (current - last) on SFN wrap per spec. Triggers desync recovery state machine. Independent oracle from 02a-coordinated-capacity.md:325 and 09-packets-timing.md:250.",
-      "type": "sfn_wrap",
-      "current_sfn": 0,
-      "last_sfn": 65535,
-      "expected": "desync_recovery"
-    },
-    {
-      "name": "multi_root_version_conflict_desync",
-      "description": "Conflicting DIO version from secondary root forces desync to avoid routing loops (RPL non-storing mode).",
-      "type": "multi_root",
-      "version": 0,
-      "alternate_version": 1,
-      "expected": "desync"
-    },
-    {
-      "name": "excessive_clock_drift_desync",
-      "description": "Drift exceeding guard after beacon arrival triggers desync_recovery() and epoch_floor revalidation per spec timing rules.",
-      "drift_ppm": 12000,
-      "guard_ppm": 5000,
-      "superframe_ms": 5000,
-      "expected": "enter_desync_recovery"
-    },
-    {
-      "name": "desync_recovery_beacon_revalidate",
-      "description": "After desync, first valid beacon resets state; test vector for recovery transition.",
-      "type": "recovery",
-      "sfn": 100,
-      "expected": "joined"
-    }
-  ]
-}
+[
+  {
+    "name": "desync_on_sfn_wrap",
+    "description": "Unsigned 32-bit arithmetic for (current - last) on SFN wrap per spec. Triggers desync recovery state machine. Independent oracle from 02a-coordinated-capacity.md:325 and 09-packets-timing.md:250.",
+    "type": "sfn_wrap",
+    "current_sfn": 0,
+    "last_sfn": 65535,
+    "expected": "desync_recovery"
+  },
+  {
+    "name": "multi_root_version_conflict_desync",
+    "description": "Conflicting DIO version from secondary root forces desync to avoid routing loops (RPL non-storing mode).",
+    "type": "multi_root",
+    "version": 0,
+    "alternate_version": 1,
+    "expected": "desync"
+  },
+  {
+    "name": "excessive_clock_drift_desync",
+    "description": "Drift exceeding guard after beacon arrival triggers desync_recovery() and epoch_floor revalidation per spec timing rules.",
+    "drift_ppm": 12000,
+    "guard_ppm": 5000,
+    "superframe_ms": 5000,
+    "expected": "enter_desync_recovery"
+  },
+  {
+    "name": "desync_recovery_beacon_revalidate",
+    "description": "After desync, first valid beacon resets state; test vector for recovery transition.",
+    "type": "recovery",
+    "sfn": 100,
+    "expected": "joined"
+  }
+]

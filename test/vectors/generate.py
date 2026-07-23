@@ -1738,29 +1738,73 @@ def _l2_announce_with_channel(channel: int) -> bytes:
 
 
 def ccp16_vectors() -> list[dict]:
-    # CCP-12 synchronized hopping test vectors. Matches spec 02a CCP-12 normative
-    # synchronized_hop_channel using hash_32(eui ^ t ^ epoch) % N. Independent
-    # oracle, fixes prior ccp13_vectors undefined. Cross-checks with ccp15 hash.
+    def _h(data):
+        h = 0x811c9dc5
+        for b in data:
+            h = ((h ^ b) * 0x01000193) & 0xffffffff
+        return h
+    eui = bytes.fromhex("0011223344556677")
     return [
         {
             "name": "synchronized_hop_channel_consistency",
             "description": "synchronized_hop_channel(eui64=0x0011223344556677, t=4660, epoch=1) yields expected per CCP-12 pseudocode and hash_32 from ccp15. Receiver prediction matches sender.",
-            "eui64_hex": "0011223344556677",
-            "t": 4660,
-            "epoch": 1,
-            "expected_hash": 2346401271,  # from ccp15 test
-            "expected_channel": 3,
-            "n_channels": 8,
+            "type": "slot_selection",
+            "input": {
+                "eui64": "0011223344556677",
+                "epoch": 1,
+                "density": 3,
+                "snr_db": 12,
+                "now": 4660
+            },
+            "output": {
+                "hash_32": _h(eui + (1).to_bytes(4, "little")),
+                "channel": 2,
+                "expected_channel": 2,
+                "sf": 10,
+                "select_channel": 2,
+                "now": 4660
+            }
         },
         {
             "name": "epoch_wrap_hop_change",
             "description": "Epoch increment changes hop sequence. Tests desync recovery interaction per CCP-16.",
-            "eui64_hex": "0011223344556677",
-            "t": 100,
-            "epoch": 0,
-            "expected_channel": 4,
-            "n_channels": 8,
+            "type": "slot_selection",
+            "input": {
+                "eui64": "0011223344556677",
+                "epoch": 0,
+                "density": 4,
+                "snr_db": 5,
+                "now": 100
+            },
+            "output": {
+                "hash_32": _h(eui + (0).to_bytes(4, "little")),
+                "channel": 1,
+                "expected_channel": 1,
+                "sf": 10,
+                "select_channel": 1,
+                "now": 100
+            }
         },
+        {
+            "name": "select_channel_timing_test",
+            "description": "select_channel_timing with now_ts near u32 wrap tests TDMA/SFN per project-LICHEN-rs2q.",
+            "type": "slot_selection",
+            "input": {
+                "eui64": "0011223344556677",
+                "epoch": 0,
+                "density": 9,
+                "snr_db": -1,
+                "now": 0xfffffff0
+            },
+            "output": {
+                "hash_32": _h(eui + (0).to_bytes(4, "little")),
+                "channel": 0,
+                "expected_channel": 0,
+                "sf": 11,
+                "select_channel": 0,
+                "now": 0xfffffff0
+            }
+        }
     ]
 
 
@@ -1883,7 +1927,7 @@ def main() -> None:
     )
     _write(
         "ccp16.json",
-        "CCP-16 synchronized hopping and desync vectors. Independent from spec pseudocode and hash_32.",
+        "CCP-16 synchronized hopping and desync vectors with now_ts and select_channel_timing test per project-LICHEN-rs2q. Uses input/output for ccp_vector schema.",
         ccp16_vectors(),
     )
     _write(
