@@ -2,15 +2,15 @@
   "id": "project-LICHEN-20ts",
   "title": "[merge-conflict] worktree-worker23: xiao_s3_wio_sx1262.conf",
   "notes": "Commit: 0b35c5459",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:27:20.122002603Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:56:59.948362999Z",
+  "updated_at": "2026-07-23T01:57:03.186411018Z",
   "started_at": "2026-07-23T01:56:06.346426205Z",
-  "lease_expires_at": "2026-07-23T02:01:06.346426205Z",
-  "heartbeat_at": "2026-07-23T01:56:06.346426205Z"
+  "closed_at": "2026-07-23T01:57:03.186411018Z",
+  "close_reason": "Standardized merge conflict resolution comment referencing project-LICHEN-20ts in firmware/bridge-zephyr/boards/xiao_s3_wio_sx1262.conf (updated nnx9 reference). Verified with git status clean post-commit. Commit 0b35c5459 pushed to integration/worker14-20260722."
 }
