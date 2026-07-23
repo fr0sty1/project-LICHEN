@@ -2,15 +2,15 @@
   "id": "project-LICHEN-mg3m",
   "title": "[merge-conflict] worktree-worker16: draft-lichen-rpl-lora-00.md",
   "notes": "Commit: 841648475",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:18:24.689818515Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:37:11.496678661Z",
+  "updated_at": "2026-07-23T02:37:13.491871135Z",
   "started_at": "2026-07-23T02:33:50.724741013Z",
-  "lease_expires_at": "2026-07-23T02:38:50.724741013Z",
-  "heartbeat_at": "2026-07-23T02:33:50.724741013Z"
+  "closed_at": "2026-07-23T02:37:13.491871135Z",
+  "close_reason": "Synced PARENT_SWITCH_THRESHOLD to 192 in draft to resolve spec/code drift from parallel worker merges; committed and pushed"
 }
