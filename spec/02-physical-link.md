@@ -82,10 +82,10 @@ Thresholds:
 | SF | Sensitivity | Upgrade (SHOULD decrease SF) | Downgrade (MUST increase SF) |
 |----|-------------|------------------------------|------------------------------|
 | 7  | -123 dBm   | N/A                          | SNR < 0 or loss > 0.25       |
-| 9  | -129 dBm   | SNR > 10 and density < 5     | SNR < 0 or density > 10      |
-| 10 | -132 dBm   | SNR > 8 and density < 5      | SNR < 5 or utilization > 150 |
-| 11 | -134 dBm   | SNR > 10                     | SNR < 0 or density > 12      |
-| 12 | -137 dBm   | SNR > 10                     | N/A                          |
+| 9  | -129 dBm   | density < 5 AND snr_ema > 8 (low-density only) | SNR < 0 or density > 8       |
+| 10 | -132 dBm   | **DEFAULT** (moderate density 5-20) | SNR < 0 or load_factor > 0.8 |
+| 11 | -134 dBm   | N/A                          | density > 8 or snr_ema < 0 or load > 0.8 |
+| 12 | -137 dBm   | N/A                          | density > 20 or snr_ema < -5 |
 
 **Normative Pseudocode:**
 
