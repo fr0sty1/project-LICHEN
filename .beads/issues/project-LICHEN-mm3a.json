@@ -1,16 +1,18 @@
 {
   "id": "project-LICHEN-mm3a",
   "title": "[merge-conflict] worktree-worker18: main.c",
-  "labels": ["defer-boardconfig"],
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:19.671013174Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:26:45.986259494Z",
+  "updated_at": "2026-07-23T04:56:57.886813152Z",
   "started_at": "2026-07-23T03:26:45.986259494Z",
-  "lease_expires_at": "2026-07-23T03:31:45.986259494Z",
-  "heartbeat_at": "2026-07-23T03:26:45.986259494Z"
+  "lease_expires_at": "2026-07-23T05:01:57.886813152Z",
+  "heartbeat_at": "2026-07-23T04:56:57.886813152Z",
+  "labels": [
+    "defer-boardconfig"
+  ]
 }
