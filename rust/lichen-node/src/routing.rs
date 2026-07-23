@@ -315,12 +315,14 @@ impl NeighborTable {
     }
 
     pub fn prune(&mut self, now_ms: u64, max_age_ms: u64) {
-        self.prune_with_removed(now_ms, max_age_ms, 0, |_| {});
+        let policy = TrickleAwareNeighborLiveness::default();
+        self.prune_with_removed(&policy, now_ms, max_age_ms, 0, |_| {});
     }
 
     #[cfg(feature = "std")]
     fn prune_with_removed<P: TrickleSafeLivenessPolicy>(
         &mut self,
+        policy: &P,
         now_ms: u64,
         max_age_ms: u64,
         heard_consistent: u32,
@@ -331,8 +333,12 @@ impl NeighborTable {
         self.last_now_ms = now_ms;
         for slot in self.entries.iter_mut() {
             let is_stale = slot.as_ref().map_or(false, |neighbor| {
-                let age = now_ms.saturating_sub(neighbor.last_seen_ms);
-                !TrickleAwareNeighborLiveness::is_alive(age, max_age_ms, heard_consistent)
+                !policy.is_alive(
+                    neighbor.last_seen_ms,
+                    now_ms,
+                    max_age_ms,
+                    heard_consistent,
+                )
             });
             if is_stale {
                 let neighbor = slot.take().expect("stale slot contains a neighbor");
@@ -349,14 +355,20 @@ impl NeighborTable {
         self.entries.iter().filter(|e| e.is_some()).count()
     }
 
-    pub fn is_likely_alive(&self, addr: &[u8; 16], now_ms: u64, max_age_ms: u64, heard_consistent: u32) -> bool {
+    pub fn is_likely_alive<P: TrickleSafeLivenessPolicy>(
+        &self,
+        policy: &P,
+        addr: &[u8; 16],
+        now_ms: u64,
+        max_age_ms: u64,
+        heard_consistent: u32,
+    ) -> bool {
         self.entries
             .iter()
             .flatten()
             .find(|n| n.addr == *addr)
             .map_or(false, |n| {
-                let age = now_ms.saturating_sub(n.last_seen_ms);
-                TrickleAwareNeighborLiveness::is_alive(age, max_age_ms, heard_consistent)
+                policy.is_alive(n.last_seen_ms, now_ms, max_age_ms, heard_consistent)
             })
     }
 }
@@ -1041,6 +1053,7 @@ impl Router {
     pub fn maintain(&mut self, now_ms: u64, neighbor_timeout_ms: u64) -> RplMaintenanceOutcome {
         let now_ms = self.observe_now(now_ms);
         let routes_expired = self.dao_manager.expire_routes(now_ms / 1_000);
+        let policy = TrickleAwareNeighborLiveness::default();
         let (neighbors_pruned, topology_changed) =
             self.prune_neighbors_at(now_ms, neighbor_timeout_ms, policy);
         RplMaintenanceOutcome {
@@ -1063,7 +1076,7 @@ impl Router {
         let mut removed = [[0u8; 16]; MAX_NEIGHBORS];
         let mut removed_len = 0;
         self.neighbors
-            .prune_with_removed(now_ms, max_age_ms, heard_consistent, |addr| {
+            .prune_with_removed(policy, now_ms, max_age_ms, heard_consistent, |addr| {
                 removed[removed_len] = addr;
                 removed_len += 1;
             }, policy);
