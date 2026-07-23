@@ -313,7 +313,7 @@ fn f16_to_f64(bits: u16) -> f64 {
         _ => {
             let f64_exp = ((exp as i32) - 15 + 1023) as u64;
             let f64_mant = (mant as u64) << 42;
-            let f64_bits = (f64_exp << 52) | f64_mant;
+            let f64_bits = ((sign as u64) << 63) | (f64_exp << 52) | f64_mant;
             f64::from_bits(f64_bits)
         }
     };
