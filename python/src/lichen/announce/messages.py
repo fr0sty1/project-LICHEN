@@ -62,13 +62,9 @@ class AnnounceMessage:
         if not 0 <= self.seq_num <= 0xFFFF:
             raise AnnounceError(f"seq_num out of range: {self.seq_num}")
         if not 0 <= self.hop_count <= 0xFF:
-            raise AnnounceError(f"hop_count out of range: {self.hop_count}")
-        if not 0 <= self.flags <= 0xFF:
-            raise AnnounceError(f"flags out of range: {self.flags}")
+            raise AnnounceError("hop_count out of range")
         if not 0 <= self.rx_channel <= 7:
-            raise AnnounceError(
-                f"invalid rx_channel: {self.rx_channel} (must be 0-7)"
-            )
+            raise AnnounceError("invalid rx_channel")
         if self.signature and len(self.signature) != SIGNATURE_LENGTH:
             raise AnnounceError(
                 f"signature must be 0 or {SIGNATURE_LENGTH} bytes, "
