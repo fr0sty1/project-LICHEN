@@ -48,9 +48,7 @@ class RouteErrorManager:
         self.cache = cache
         self._precursors: dict[IPv6Address, set[IPv6Address]] = {}
 
-    def record_flow(
-        self, destination: IPv6Address | str, upstream: IPv6Address | str
-    ) -> None:
+    def record_flow(self, destination: IPv6Address | str, upstream: IPv6Address | str) -> None:
         """Note that ``upstream`` forwards traffic to ``destination`` through us."""
         self._precursors.setdefault(to_ipv6(destination), set()).add(to_ipv6(upstream))
 
@@ -71,9 +69,7 @@ class RouteErrorManager:
         for key, g_dests in precursor_groups.items():
             g_dests = sorted(g_dests, key=str)
             primary = g_dests[0]
-            action = self._build_action(
-                primary, precursors=set(key), invalidated=g_dests
-            )
+            action = self._build_action(primary, precursors=set(key), invalidated=g_dests)
             actions.append(action)
         return sorted(actions, key=lambda a: str(a.rerr.unreachable))
 
