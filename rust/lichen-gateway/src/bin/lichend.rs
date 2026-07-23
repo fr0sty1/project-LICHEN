@@ -440,7 +440,6 @@ async fn forward_mesh_to_upstream<T: TunLike>(
     let (reply_opt, event) = gw.process_rpl(frame, 0);
     if let RplEvent::DaoReceived { route_updated: true } = event {
         info!("DAO event: route updated");
-        // Route updated in router.process_dao(); add_route handled internally per LICHEN spec
     }
     if let Some(reply) = reply_opt {
         info!(len = reply.len(), "mesh reply ready for SLIP TX queue");

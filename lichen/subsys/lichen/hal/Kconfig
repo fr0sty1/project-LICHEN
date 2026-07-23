@@ -64,12 +64,7 @@ config LICHEN_HAS_PMIC
 
 config LICHEN_HAS_POE
 	bool "Board has PoE"
-<<<<<<< HEAD
 	depends on GPIO || POWER_SUPPLY || REGULATOR
-=======
-	depends on REGULATOR
-	depends on ADC
->>>>>>> origin/worktree-worker24
 	help
 	  Enable for thinknode_m7 per existing power subsys.
 

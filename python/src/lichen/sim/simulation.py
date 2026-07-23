@@ -16,7 +16,7 @@ import time
 from collections.abc import Callable
 from enum import Enum, auto
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
@@ -110,7 +110,7 @@ class Simulation:
         self._time_mode = time_mode
         self._current_time_us = 0
         self._nodes: dict[str, SimNode] = {}
-        self._gateways: dict[str, dict] = {}
+        self._gateways: dict[str, dict[str, Any]] = {}
         self._medium = Medium()
         self._event_queue = EventQueue()
         self._pending_rx_timeouts: dict[str, int] = {}  # node_id -> timeout_time_us
