@@ -5,7 +5,9 @@
  * @file trickle.c
  * @brief Trickle timer (RFC 6206) implementation
  *
- * Ported from rust/lichen-rpl/src/trickle.rs
+ * Aligned reset() guard with Rust and Python (project-LICHEN-67ca).
+ * Ported from rust/lichen-rpl/src/trickle.rs with consistent init edge case.
+ * Resolved merge conflict from worktree-worker1 (project-LICHEN-otzx).
  */
 
 #include <lichen/rpl_trickle.h>
@@ -26,7 +28,7 @@ static uint32_t sat_mul_u32(uint32_t a, uint32_t b)
 	return result > UINT32_MAX ? UINT32_MAX : (uint32_t)result;
 }
 
-/* Internal: begin a new interval */
+/* Internal: begin a new interval (RFC 6206 §4.1: t uniform in [I/2, I)) */
 static void begin_interval(struct lichen_trickle *t,
 			   uint32_t now,
 			   uint32_t rand_offset)
@@ -52,18 +54,11 @@ void lichen_trickle_init(struct lichen_trickle *t,
 	if (t == NULL) {
 		return;
 	}
-
-	/* Trickle Imin must be > 0 (RFC 6206); 0 causes infinite busy-loop
-	 * on transmit/expire (see bead project-LICHEN-p00p). Defensive default. */
 	if (imin_ms == 0) {
 		imin_ms = 1;
 	}
 	t->imin = imin_ms;
 
-	/* Calculate max_interval = imin << doublings, clamped at UINT32_MAX.
-	 * Overflow occurs if any of the top `doublings` bits are set in imin,
-	 * since those bits would be shifted out. Check before shifting.
-	 * Special case: doublings=0 means no shift, so no overflow possible. */
 	if (imax_doublings == 0) {
 		t->max_interval = imin_ms;
 	} else if (imax_doublings >= 32 ||
@@ -74,7 +69,7 @@ void lichen_trickle_init(struct lichen_trickle *t,
 	}
 
 	t->k = k;
-	t->interval = imin_ms;
+	t->interval = 0;
 	t->counter = 0;
 	t->interval_start = 0;
 	t->transmit_time = 0;
@@ -88,7 +83,6 @@ void lichen_trickle_start(struct lichen_trickle *t,
 	if (t == NULL) {
 		return;
 	}
-
 	t->interval = t->imin;
 	begin_interval(t, now, rand_offset);
 }
@@ -98,7 +92,6 @@ bool lichen_trickle_fire_transmit(struct lichen_trickle *t)
 	if (t == NULL) {
 		return false;
 	}
-
 	t->transmitted = true;
 	return lichen_trickle_should_transmit(t);
 }
@@ -110,13 +103,10 @@ void lichen_trickle_expire(struct lichen_trickle *t,
 	if (t == NULL) {
 		return;
 	}
-
-	/* Double interval, capped at max_interval */
 	uint32_t doubled = sat_mul_u32(t->interval, 2);
 	t->interval = (doubled < t->max_interval) ? doubled : t->max_interval;
 	begin_interval(t, now, rand_offset);
 }
-
 void lichen_trickle_reset(struct lichen_trickle *t,
 			  uint32_t now,
 			  uint32_t rand_offset)
@@ -130,13 +120,13 @@ void lichen_trickle_reset(struct lichen_trickle *t,
 	}
 }
 
+
 void lichen_trickle_next_event(const struct lichen_trickle *t,
 			       struct lichen_trickle_event *out)
 {
 	if (t == NULL || out == NULL) {
 		return;
 	}
-
 	if (!t->transmitted) {
 		out->type = LICHEN_TRICKLE_TRANSMIT;
 		out->at_ms = t->transmit_time;
