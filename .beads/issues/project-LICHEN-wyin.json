@@ -2,15 +2,15 @@
   "id": "project-LICHEN-wyin",
   "title": "[merge-conflict] worktree-worker23: rpl_root.c",
   "notes": "Commit: 73debc324",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:26:14.243684332Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:30:35.513758287Z",
+  "updated_at": "2026-07-23T02:30:38.683337338Z",
   "started_at": "2026-07-23T02:28:32.686184063Z",
-  "lease_expires_at": "2026-07-23T02:33:32.686184063Z",
-  "heartbeat_at": "2026-07-23T02:28:32.686184063Z"
+  "closed_at": "2026-07-23T02:30:38.683337338Z",
+  "close_reason": "Cleaned up dead code in rpl_root_tick (empty if block), synced prefix_len=128 and set_prefix logic to worker23 worktree for spec compliance and cross-impl consistency with trickle events. Matches previous htto/3rfh fixes."
 }
