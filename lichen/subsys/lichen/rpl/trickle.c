@@ -35,10 +35,9 @@ static void begin_interval(struct lichen_trickle *t,
 	t->counter = 0;
 	t->transmitted = false;
 
-	uint32_t half = (t->interval + 1) / 2;
-	uint32_t range = t->interval - half;
-	/* transmit_time is uniform in [now + half, now + interval) per RFC 6206 */
-	uint32_t offset = (range > 0) ? (rand_offset % range) : 0;
+	uint32_t half = t->interval / 2;
+	/* transmit_time is uniform in [now + half, now + interval) */
+	uint32_t offset = (half > 0) ? (rand_offset % half) : 0;
 	t->transmit_time = sat_add_u32(sat_add_u32(now, half), offset);
 }
 
@@ -50,6 +49,7 @@ void lichen_trickle_init(struct lichen_trickle *t,
 	if (t == NULL) {
 		return;
 	}
+
 
 	/* Trickle Imin must be > 0 (RFC 6206); 0 causes infinite busy-loop
 	 * on transmit/expire (see bead project-LICHEN-p00p). Defensive default. */
@@ -122,10 +122,6 @@ void lichen_trickle_reset(struct lichen_trickle *t,
 	if (t == NULL) {
 		return;
 	}
-
-	/* RFC 6206 §4.2: no-op if already at imin *and running*.
-	 * transmit_time==0 proxies for Stopped state (see Rust TrickleState,
-	 * worker1 version, and reset_from_stopped_starts_timer test). */
 	if (t->transmit_time == 0 || t->interval != t->imin) {
 		t->interval = t->imin;
 		begin_interval(t, now, rand_offset);
