@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-ff7z",
+  "title": "[cross-impl] synchronized_hop_channel seed encoding and schedule vs on-the-fly mismatch",
+  "description": "Python node.py:96 uses seed.to_bytes(8,\"big\") + (sfn+i).to_bytes(4,\"little\") for hop_schedule precompute; tdma.py:16 uses seed.to_bytes(4,\"little\") + sfn.to_bytes(4,\"little\"). New synchronized_hop_channel() in node.py:142 (from 798f2fac5) uses schedule but validate_vector uses tdma func. Vectors in ccp16-hop.json expect specific hash_32(FNV) results per spec/02a:120. Rust lichen_hash_32 matches Python hash but no unified select_channel impl. Zephyr C lichen_hash_32 must match. Different behavior for same CCP-12 algo. See test/vectors/generate.py:1750 and ccp16-hop.json:7. Priority 1 for interop.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T14:00:20.346161422Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T14:00:20.346161422Z"
+}
