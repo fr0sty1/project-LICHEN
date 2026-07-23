@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-aiez",
+  "title": "[spec-compliance] MAX_RANK_INCREASE mismatch between spec and code",
+  "description": "spec/drafts/draft-lichen-rpl-lora-00.md:181 specifies MAX_RANK_INCREASE=1024 (with rationale to limit rank inflation). However, rust/lichen-rpl/src/dodag.rs:25 sets 2048, lichen/subsys/lichen/rpl/include/lichen/rpl_dodag.h:47 defines LICHEN_RPL_DEFAULT_MAX_RANK_INC=2048, and Kconfig default is also 2048. The commit 563015ff9 (and 96aa8f883 touching rpl) did not align this. This is a wrong constant vs spec. Also check if other params like Trickle match MUSTs.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:50:20.390072657Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:50:20.390072657Z"
+}
