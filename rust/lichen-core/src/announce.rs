@@ -21,7 +21,7 @@ impl core::fmt::Display for AnnounceError {
             Self::TooShort(e) => core::fmt::Display::fmt(e, f),
             Self::WrongType(t) => write!(f, "wrong type: {}", t),
             Self::BufferTooSmall(e) => core::fmt::Display::fmt(e, f),
-            Self::InvalidChannel(c) => write!(f, "invalid channel: {}", c),
+            Self::InvalidChannel(c) => write!(f, "invalid current_channel: {} (must be 0-7 per CCP-9)", c),
         }
     }
 }
