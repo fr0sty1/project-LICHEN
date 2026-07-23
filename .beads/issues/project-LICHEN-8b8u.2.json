@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-8b8u.2",
+  "title": "Add unit tests for lichen_pubkey_to_human_address against node_address.json vectors",
+  "description": "Add test in lichen/tests/ or appropriate test file that loads test/vectors/node_address.json and verifies lichen_pubkey_to_human_address produces exact matches for all vectors. Use Zephyr test framework or host test. Ensure C implementation passes all 10 vectors.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:15:41.49755193Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:15:41.49755193Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-8b8u.2",
+      "depends_on_id": "project-LICHEN-8b8u",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:15:41.62560176Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
