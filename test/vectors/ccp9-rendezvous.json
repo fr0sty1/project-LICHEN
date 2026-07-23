@@ -1,6 +1,6 @@
 {
   "format_version": 2,
-  "description": "CCP-9 Rendezvous Mechanisms vectors from da2q context (updated per project-LICHEN-3i18.4). Includes scheduler current_channel (default 0/control, from select_channel(); wire byte 3, in signed_data after seq_num at signed offset 42). Hash-based, scheduled, announce-driven (last_announce.current_channel), fallback. Independent oracle; Python sim is source of truth. Matches updated 02a.3 and 05-routing.9.2.",
+  "description": "CCP-9 Rendezvous Mechanisms vectors from da2q context (updated per project-LICHEN-3i18.4). Includes scheduler rx_channel (default 0/control, from select_channel(); wire byte at offset 1 in L2 announce, signed_data offset 42 after seq_num). Hash-based, scheduled, announce-driven (last_announce.rx_channel), fallback. Independent oracle; Python sim is source of truth. Matches updated 02a.3 and 05-routing.9.2.",
   "vectors": [
     {
       "name": "hash_based_peer_rendezvous",
