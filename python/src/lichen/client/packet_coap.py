@@ -27,8 +27,8 @@ from lichen.coap.transport import (
     parse_channel_endpoint,
     unscoped_ipv6,
 )
-from lichen.ipv6.packet import IPv6Packet, NextHeader
-from lichen.ipv6.udp import UdpDatagram, udp_checksum
+from lichen.ipv6.packet import IPv6Packet, NextHeader, PacketError
+from lichen.ipv6.udp import UdpDatagram, UdpError, udp_checksum
 
 logger = logging.getLogger(__name__)
 _SEND_SCOPE: contextvars.ContextVar[Any] = contextvars.ContextVar(
