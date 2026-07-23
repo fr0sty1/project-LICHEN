@@ -2,6 +2,7 @@
   "id": "project-LICHEN-ev6h",
   "title": "SecureDatagramChannel EDHOC context not closed on shutdown",
   "description": "File: python/src/lichen/coap/secure.py:568-570\n\nclose() only closes the inner channel:\n```python\ndef close(self) -\u003e None:\n    self._inner.close()\n```\n\nBut _edhoc_ctx (aiocoap.Context for EDHOC exchange) created at line 511 is never shut down. This leaks:\n1. aiocoap internal state\n2. The _EdhocChannel wrapper\n3. Any in-progress EDHOC futures in _pending_edhoc\n\nFix: Properly shutdown all resources:\n```python\ndef close(self) -\u003e None:\n    for future in self._pending_edhoc.values():\n        future.cancel()\n    self._pending_edhoc.clear()\n    if self._edhoc_ctx is not None:\n        # Schedule async shutdown\n        asyncio.create_task(self._edhoc_ctx.shutdown())\n    self._inner.close()\n```",
+  "notes": "Commit: f8362ad7e",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:19:08.296376Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T03:58:29.058592968Z",
+  "updated_at": "2026-07-23T04:00:36.084201617Z",
   "started_at": "2026-07-23T03:58:29.058592968Z",
   "lease_expires_at": "2026-07-23T04:03:29.058592968Z",
   "heartbeat_at": "2026-07-23T03:58:29.058592968Z"
