@@ -128,10 +128,10 @@ int lichen_app_identity_set_self(
 	if (ret < 0) {
 		return ret;
 	}
+	eui64_to_iid(normalized.eui64, normalized.iid);
 
 	k_mutex_lock(&s_mutex, K_FOREVER);
 	s_self = normalized;
-	eui64_to_iid(s_self.eui64, s_self.iid);
 	s_has_self = true;
 	k_mutex_unlock(&s_mutex);
 	return 0;
@@ -236,11 +236,12 @@ int lichen_app_identity_upsert_peer(
 		return slot;
 	}
 
-	s_peers[slot].peer = *peer;
+	struct lichen_app_identity_peer normalized = *peer;
 	size_t len = strlen(peer->display_name);
-	memset(s_peers[slot].peer.display_name + len + 1, 0,
-	       sizeof(s_peers[slot].peer.display_name) - len - 1);
-	eui64_to_iid(s_peers[slot].peer.eui64, s_peers[slot].peer.iid);
+	memset(normalized.display_name + len + 1, 0,
+	       sizeof(normalized.display_name) - len - 1);
+	eui64_to_iid(normalized.eui64, normalized.iid);
+	s_peers[slot].peer = normalized;
 	s_peers[slot].used = true;
 	k_mutex_unlock(&s_mutex);
 	return 0;
