@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 
 Wire format (final per spec/05-routing.md, CCP-9 rendezvous, and test vectors):
     0: Type = 0x01
-    1: rx_channel (0-7) / Flags
+    1: current_channel (0-7 packed in flags per CCP-9) / Flags
     2: Hop Cnt
   3-4: Seq Num (BE)
   5-12: Originator IID (8B)
@@ -16,9 +16,9 @@ Wire format (final per spec/05-routing.md, CCP-9 rendezvous, and test vectors):
 45-92: Signature (48B Schnorr)
  93+: Optional App Data
 
-Total fixed: 93 bytes. rx_channel packed at byte 1 (flags) and included in signed_data()
-to prevent relay tampering per CCP-9. Matches Rust/C/Zephyr, ccp9*.json vectors,
-and _l2_announce_with_channel oracle in generate.py.
+Total fixed: 93 bytes. current_channel (rx_channel) packed at byte 1 (flags byte) and
+included in signed_data() to prevent relay tampering per CCP-9. Matches Rust/C/Zephyr,
+ccp9*.json vectors, and _l2_announce_with_channel oracle in generate.py.
 
 Why 0x01: unique identifier in routing/control namespace (follows L2_DISPATCH_ROUTING=0x15
 at link layer). Other types: 0x02=RREQ, 0x03=RREP, 0x04=RERR.
