@@ -17,7 +17,7 @@ from lichen.client.ip_coap import AiocoapResourceTransport, CoapTransportError, 
 from lichen.client.lci import ResourceSubscription, ResourceTransport
 from lichen.client.model import CoapResult
 from lichen.client.transport import PacketTransport
-from lichen.coap.schc_channel import DEFAULT_COAP_PORT, unwrap_coap, wrap_coap
+from lichen.coap.schc_channel import DEFAULT_COAP_PORT, wrap_coap
 from lichen.coap.transport import (
     DatagramChannel,
     Endpoint,
@@ -477,7 +477,7 @@ class PacketDatagramChannel(DatagramChannel):
             source = self.normalize_endpoint(
                 Endpoint(str(parsed.header.src_addr), udp.src_port)
             ).authority
-            coap = unwrap_coap(packet)
+            coap = udp.payload
         except Exception:
             logger.debug("failed to parse packet", exc_info=True)
             return
