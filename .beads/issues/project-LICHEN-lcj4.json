@@ -2,15 +2,16 @@
   "id": "project-LICHEN-lcj4",
   "title": "TUI outbound_record stores coap_code which may contain internal protocol details",
   "description": "File: python/src/lichen/tui/native.py\nLines: 403-415\n\nThe outbound_record function stores protocol details in the raw dict:\n\n    def outbound_record(draft: MessageDraft, result: SendResult) -\u003e MessageRecord:\n        return MessageRecord(\n            raw={\n                \"to\": draft.to,\n                \"body\": draft.body,\n                \"state\": result.state.value,\n                \"coap_code\": result.coap_code,  # Protocol detail\n            },\n            ...\n        )\n\nThe coap_code (e.g., \"2.01\", \"4.04\") is internal CoAP protocol information. Storing it in the message raw dict:\n1. Leaks protocol implementation details to the user-facing layer\n2. Creates coupling between the TUI and CoAP transport\n\nIf the transport layer changes (e.g., to HTTP or custom protocol), this code would need updating.\n\nImpact: Minor layering violation - not a correctness bug but makes future refactoring harder.\n\nFix: Store only user-facing status information, not protocol-level codes.",
-  "status": "in_progress",
+  "notes": "Commit: 1ca3ad271",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:31:13.600002Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:24:55.587504975Z",
+  "updated_at": "2026-07-23T04:25:59.439967928Z",
   "started_at": "2026-07-23T04:24:55.587504975Z",
-  "lease_expires_at": "2026-07-23T04:29:55.587504975Z",
-  "heartbeat_at": "2026-07-23T04:24:55.587504975Z"
+  "closed_at": "2026-07-23T04:25:59.439967928Z",
+  "close_reason": "Fixed by removing coap_code from synthetic MessageRecord.raw in outbound_record; tests and lint pass; committed and pushed"
 }

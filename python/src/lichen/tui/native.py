@@ -407,7 +407,6 @@ def outbound_record(draft: MessageDraft, result: SendResult) -> MessageRecord:
             "to": draft.to,
             "body": draft.body,
             "state": result.state.value,
-            "coap_code": result.coap_code,
         },
         recipient=draft.to,
         body=draft.body,
