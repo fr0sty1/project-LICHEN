@@ -8,8 +8,7 @@ This module defines the Radio protocol that all radio implementations must satis
 The protocol supports LoRa radio operations: transmission, reception, and configuration.
 """
 
-from typing import Protocol, runtime_checkable
-
+from typing import Protocol, runtime_checkable  # noqa: E402
 
 MAX_LORA_PAYLOAD = 255
 """Maximum LoRa PHY payload size (bytes). All Radio.transmit() implementations
@@ -87,7 +86,10 @@ class Radio(Protocol):
             channel: Channel for CAD (default 0 = control).
 
         Returns:
-            True if channel activity (LoRa preamble) was detected,
-            False if the channel appears clear or timeout expired without detection.
+            True if channel activity (LoRa preamble) was detected.
+            False if the channel is clear (no activity detected within timeout).
+            Note: Current protocol (P4 design) conflates timeout with clear into False.
+            Hardware implementations should raise on error; link_layer treats False
+            as safe-to-TX (per project-LICHEN-b4pw).
         """
         ...
