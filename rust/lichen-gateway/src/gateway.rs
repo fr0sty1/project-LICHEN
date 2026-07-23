@@ -74,9 +74,11 @@ impl Gateway {
 
     /// SCHC-compress an IPv6 packet from the upstream TUN device for the mesh.
     ///
-    /// Prefers local RPL mesh (with source routing for Non-Storing mode)
-    /// before treating as external. Returns the compressed frame to send
-    /// via SLIP, or `None` on error.
+    /// Prefers local RPL mesh (with source routing for Non-Storing mode per
+    /// RFC 6554 SRH insertion in local_mesh path). Post-SRH size is accounted
+    /// for in buffers and SCHC rules (see lichen-schc and SCHC profile in
+    /// spec/drafts/draft-lichen-schc-lora-00.md). Returns the compressed
+    /// frame to send via SLIP, or `None` on error.
     pub fn upstream_to_mesh(&mut self, ipv6_packet: &[u8]) -> Option<Vec<u8>> {
         if ipv6_packet.len() < 40 || ipv6_packet[0] >> 4 != 6 {
             warn!(
@@ -138,25 +140,26 @@ impl Gateway {
         let mut dst = [0u8; 16];
         dst.copy_from_slice(&ipv6[field::DST_OFFSET..field::DST_OFFSET + 16]);
         let to_compress = if (dst[0] == 0xfe && dst[1] == 0x80) || dst[0] == 0xfd {
-            ipv6
+            ipv6.to_vec()
         } else {
             let route = match self.rpl_node.router.lookup_route(&dst) {
                 Some(r) => r,
                 None => return None,
             };
-            let mut routed = vec![0u8; ipv6.len() + 140];
             if route.len() > 1 {
+                let srh_overhead = 8 + 16 * (route.len() - 1);
+                let mut routed = vec![0u8; ipv6.len() + srh_overhead];
                 match add_rpl_source_route(ipv6, route, &mut routed) {
-                    Ok(len) => &routed[..len],
+                    Ok(len) => routed[..len].to_vec(),
                     Err(_) => return None,
                 }
             } else {
-                ipv6
+                ipv6.to_vec()
             }
         };
-        let mut out = vec![0u8; to_compress.len() + 3];
+        let mut out = vec![0u8; to_compress.len() + 20];
         out[0] = L2_DISPATCH_SCHC;
-        match compress(to_compress, &mut out[1..]) {
+        match compress(&to_compress, &mut out[1..]) {
             Ok(n) => {
                 out.truncate(n + 1);
                 info!(compressed_len = n + 1, "mesh → mesh");
