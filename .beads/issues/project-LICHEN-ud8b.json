@@ -2,15 +2,15 @@
   "id": "project-LICHEN-ud8b",
   "title": "[merge-conflict] worktree-worker20: simulation.py",
   "notes": "Commit: ba5f6239a",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:43:28.870251309Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:07:50.373738263Z",
+  "updated_at": "2026-07-23T02:07:52.237464806Z",
   "started_at": "2026-07-23T02:06:50.129645779Z",
-  "lease_expires_at": "2026-07-23T02:11:50.129645779Z",
-  "heartbeat_at": "2026-07-23T02:06:50.129645779Z"
+  "closed_at": "2026-07-23T02:07:52.237464806Z",
+  "close_reason": "Closed"
 }
