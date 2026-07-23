@@ -2,15 +2,15 @@
   "id": "project-LICHEN-s3t5",
   "title": "Spec Compliance Review of Recent Commits",
   "description": "Review last 20 commits for MUST/SHOULD violations per RFC2119, deviations from spec in spec/ directory, and incorrect constants. Focus on lichen protocol implementation in rust/ and zephyr/. Create [spec-compliance] bug beads for any issues found. Priority 0 for this epic.",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "epic",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T04:41:25.064581601Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:54:42.117962391Z",
+  "updated_at": "2026-07-23T04:54:32.823630689Z",
   "started_at": "2026-07-23T04:54:32.823630689Z",
-  "closed_at": "2026-07-23T04:54:42.117962391Z",
-  "close_reason": "Reviewed last 20 commits (c9f92bd41,88a4f501c,a42b97e6f,4da6d3836,1fbb881b5,10660c792 and merges). Examined diffs to spec/drafts/*.md (schnorr, link, schc-lora,rpl-lora), spec/02a,03,05,11,appendix-*.md. Confirmed adherence to MUST match test/vectors/* exactly, sync_word=0x34 (via public_network flag+LR1110_NETWORK_PUBLIC), SCHNORR48_SIG_LEN=48 (LICHEN_SIG_LEN), LLSec frame format (LENGTH+LLSec+EPO+SEQ+DST+PLD+MIC), IPv6 IID derivation, SCHC rules, CBOR/SenML encoders, CCP pseudocode, unsigned modular arith. Fixes improved compliance; no deviations found. No new [spec-compliance] bugs filed. Epic complete."
+  "lease_expires_at": "2026-07-23T04:59:32.823630689Z",
+  "heartbeat_at": "2026-07-23T04:54:32.823630689Z"
 }
