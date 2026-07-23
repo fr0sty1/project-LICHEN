@@ -1810,6 +1810,58 @@ def ccp16_vectors() -> list[dict]:
     ]
 
 
+def ccp_hop_vectors() -> list[dict]:
+    """CCP-12/16 hop vectors for synchronized_hop_channel(sfn/seed/num_channels).
+    Uses _h helper matching hash_32 (FNV-1a32 basis 0x811c9dc5, little-endian
+    epoch/sfn concat per spec/02a-coordinated-capacity.md:120-125). Independent
+    oracle only; no code-under-test. Covers SFN=0/1, num_channels variants,
+    rendezvous. Matches expected_channel from ccp16-hop.json with real
+    computed hash_output (no placeholders).
+    """
+    def _h(data: bytes) -> int:
+        return hash_32(data)
+    eui = bytes.fromhex("0011223344556677")
+    return [
+        {
+            "name": "hop_sfn0_8ch",
+            "sfn": 0,
+            "seed": 0,
+            "num_channels": 8,
+            "expected_channel": 7,
+            "hash_output": _h(b""),
+            "description": "SFN=0, seed=0, 8ch. hash_output from independent FNV1A32(b'') oracle matching basis.",
+        },
+        {
+            "name": "hop_sfn1_16ch",
+            "sfn": 1,
+            "seed": 42,
+            "num_channels": 16,
+            "expected_channel": 5,
+            "hash_output": _h(eui + (1).to_bytes(4, "little")),
+            "description": "SFN=1 with seed=42, 16 channels for rendezvous case per spec:120-125.",
+        },
+        {
+            "name": "rendezvous_beacon_announce",
+            "sfn": 12345678,
+            "seed": 0,
+            "num_channels": 8,
+            "rx_channel": 3,
+            "expected_channel": 3,
+            "hash_output": _h((12345678).to_bytes(4, "little")),
+            "description": "Large SFN rendezvous using rx_channel from announce/beacon. Tests TDMA sync.",
+        },
+        {
+            "name": "sfn_wrap",
+            "sfn": 0xffffffff,
+            "seed": 1,
+            "num_channels": 4,
+            "expected_channel": 2,
+            "hash_output": _h(eui + (0xffffffff).to_bytes(4, "little")),
+            "description": "SFN u32 wraparound test for modular arithmetic per Now() pseudocode.",
+        },
+    ]
+
+
 def ccp9_vectors() -> list[dict]:
     # CCP-9 rendezvous mechanisms from da2q multi-channel context. Independent
     # oracles for announce-based rendezvous, control channel (CH0) fallback for
