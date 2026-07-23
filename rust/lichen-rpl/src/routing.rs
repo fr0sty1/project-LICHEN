@@ -990,6 +990,18 @@ impl SourceRoutingHeader {
             addresses,
         })
     }
+
+    pub fn from_route(route: &[[u8; 16]]) -> Result<Self, RplError> {
+        let remaining = route.len().checked_sub(1).ok_or(RplError::InvalidOption)?;
+        if remaining == 0 || remaining > u8::MAX as usize {
+            return Err(RplError::InvalidOption);
+        }
+        let addresses = route[1..].to_vec();
+        Ok(Self {
+            segments_left: remaining as u8,
+            addresses,
+        })
+    }
 }
 
 // ── Routing table ─────────────────────────────────────────────────────────────
