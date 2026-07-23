@@ -124,6 +124,15 @@ extern "C" {
  */
 #define OSCORE_SSN_ROTATION_CRITICAL 10000
 
+/**
+ * Safety margin added to sender_seq on final NVM persist failure (after
+ * retries). Prevents nonce reuse on reboot if NVM holds stale value.
+ * Per RFC 8613 Section 7.2: implementations MUST ensure SSN used after
+ * reboot is larger than any previously used SSN. 1024 provides ample
+ * margin for multiple failures without excessive sequence waste.
+ */
+#define OSCORE_SSN_SAFETY_MARGIN 1024
+
 /** OSCORE CoAP option number */
 #define COAP_OPTION_OSCORE 9
 
@@ -485,11 +494,10 @@ int oscore_option_build(const struct oscore_option *_Nonnull option,
  * uniqueness per RFC 8613 Appendix D.4, §7.2, §7.2.1 (see detailed
  * security comment in oscore.c:nvm_failed).
  *
- * On OSCORE_ERR_NVM_FAILED from persistence, dedicated nvm_failed path
- * synchronizes internal s_seq_initialized flag (under mutex) so subsequent
- * calls do not fail with "not initialized" error. SSN increment is NOT
- * rolled back (packet was prepared/transmitted) to avoid nonce reuse on
- * reboot per RFC 8613 §7.2/§8.4. See SECURITY comment in oscore.c:1604.
+ * On OSCORE_ERR_NVM_FAILED from persistence (after retries+bump in
+ * oscore_ctx_persist_ssn), nvm_failed path synchronizes s_seq_initialized.
+ * SSN is advanced by safety margin in persist_ssn (no rollback) to avoid
+ * nonce reuse on reboot per RFC 8613 §7.2. See SECURITY comment.
  *
  * @param[in]     ctx          Security context (sender_seq must be initialized)
  * @param[in]     code         CoAP request code
