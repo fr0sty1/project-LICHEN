@@ -2,15 +2,15 @@
   "id": "project-LICHEN-kzdy",
   "title": "[merge-conflict] worktree-worker23: coap_config.c",
   "notes": "Commit: c2e9553bd",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:19:37.122645983Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:15:02.835417278Z",
+  "updated_at": "2026-07-23T02:15:05.665618558Z",
   "started_at": "2026-07-23T02:13:17.363428726Z",
-  "lease_expires_at": "2026-07-23T02:18:17.363428726Z",
-  "heartbeat_at": "2026-07-23T02:13:17.363428726Z"
+  "closed_at": "2026-07-23T02:15:05.665618558Z",
+  "close_reason": "Fixed merge conflict in coap_config.c and coap_config.h by aligning struct field to 'primary', correcting sync_word hex parsing guard condition and comment for robustness and case-insensitivity. Verified across worktrees."
 }
