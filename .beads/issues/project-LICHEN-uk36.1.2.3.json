@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-uk36.1.2.3",
+  "title": "Remove broken duplicate code blocks (lines ~782-872) in finish_process_message_2 and ensure consistent transcript_* usage",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:25:08.523440374Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:25:08.523440374Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-uk36.1.2.3",
+      "depends_on_id": "project-LICHEN-uk36.1.2",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:25:08.664572636Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
