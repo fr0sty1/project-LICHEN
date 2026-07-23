@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-2auf.44.11.1.4",
+  "title": "Update literal fake-clock tests for exact timeout boundaries, idle expiry, and bounded receive",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:15:53.146719299Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:15:53.146719299Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.11.1.4",
+      "depends_on_id": "project-LICHEN-2auf.44.11.1",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:15:53.282964255Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
