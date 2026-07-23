@@ -152,19 +152,12 @@ class FragmentSender:
     _fragments: list[Fragment] = field(default_factory=list, init=False)
 
     def __post_init__(self) -> None:
-<<<<<<< HEAD
-        if self.tile_size <= 0:
-            raise FragmentError("tile_size must be positive")
-        if not 1 <= self.window_size <= MAX_WINDOW_SIZE:
-            raise FragmentError(f"window_size must be 1..{MAX_WINDOW_SIZE}")
-        if len(self.payload) > 1280:
-            raise FragmentError(f"payload too large ({len(self.payload)} > 1280)")
-=======
         if not isinstance(self.tile_size, int) or self.tile_size <= 0:
             raise FragmentError("tile_size must be positive integer")
         if not isinstance(self.window_size, int) or not 1 <= self.window_size <= MAX_WINDOW_SIZE:
             raise FragmentError(f"window_size must be integer 1..{MAX_WINDOW_SIZE}")
->>>>>>> origin/integration/worker4-20260722
+        if len(self.payload) > 1280:
+            raise FragmentError(f"payload too large ({len(self.payload)} > 1280)")
         self._fragments = self._build()
 
     def _build(self) -> list[Fragment]:

@@ -752,9 +752,7 @@ class Simulation:
                 payload, rssi, snr, tx_id, source_node_id = result
                 on_packet = node.rx_callbacks[0]
 
-<<<<<<< HEAD
                 self._metrics.record_reception(node_id, tx_id, self._current_time_us)
-=======
                 rx_log = {
                     "sim_id": self._id,
                     "node_id": node_id,
@@ -772,7 +770,6 @@ class Simulation:
                         event_queue_len=len(self._event_queue),
                     )
 
->>>>>>> origin/integration/worker5-20260722
                 self._observers.notify(
                     "on_rx_success",
                     sim_id=self._id,
@@ -862,12 +859,9 @@ class Simulation:
                     )
             return None
 
-<<<<<<< HEAD
-=======
         # Record simulation-wide + per-node metrics for push RX path (used by
         # deliver_pending_packets). Polling path (get_rx_result) duplicates
         # this for legacy compatibility. This unifies the core recording logic.
->>>>>>> origin/integration/worker5-20260722
         self._metrics.record_reception(node_id, tx.id, self._current_time_us)
         packet_hash = hashlib.sha256(tx.payload).digest()[:16].hex()
         node.metrics.record_rx(tx.payload, packet_hash, from_peer=tx.source_node_id)

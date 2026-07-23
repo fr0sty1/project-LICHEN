@@ -319,23 +319,13 @@ impl EdhocInitiator {
     /// or a wrapper around `lichen_hal::Rng` / hardware TRNG on embedded).
     ///
     /// # Arguments
-<<<<<<< HEAD
     /// * `seed` - Ed25519 seed (32 bytes) for long-term signing key
     /// * `c_i` - Connection identifier (1 byte, typically 0-23)
     /// * `rng` - CSPRNG implementing `RngCore + CryptoRng`
-=======
-    /// * `seed` - Ed25519 seed (32 bytes)
-    /// * `c_i` - Connection identifier (1 byte)
-    /// * `rng` - RNG implementing RngCore + CryptoRng for ephemeral key
->>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
     pub fn new<R: RngCore + CryptoRng>(seed: [u8; 32], c_i: u8, rng: &mut R) -> Self {
         let signing_key = SigningKey::from_bytes(&seed);
         let pubkey = signing_key.verifying_key();
 
-<<<<<<< HEAD
-        // Generate fresh ephemeral X25519 key pair. Consumed after first use.
-=======
->>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
         let eph_secret = StaticSecret::random_from_rng(rng);
         let eph_public = PublicKey::from(&eph_secret);
 
@@ -771,15 +761,8 @@ impl Default for ResponderState {
 impl EdhocResponder {
     /// Create a new EDHOC responder.
     ///
-<<<<<<< HEAD
     /// See `EdhocInitiator::new` for RNG parameter rationale (no_std
     /// compatibility, fresh ephemerals per handshake).
-=======
-    /// # Arguments
-    /// * `seed` - Ed25519 seed (32 bytes)
-    /// * `c_r` - Connection identifier (1 byte)
-    /// * `rng` - RNG implementing RngCore + CryptoRng for ephemeral key
->>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
     pub fn new<R: RngCore + CryptoRng>(seed: [u8; 32], c_r: u8, rng: &mut R) -> Self {
         let signing_key = SigningKey::from_bytes(&seed);
         let pubkey = signing_key.verifying_key();

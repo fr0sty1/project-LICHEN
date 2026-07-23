@@ -160,13 +160,7 @@ fn main() {
                 seq_num = seq_num.wrapping_add(1);
             }
             Err(e) => {
-<<<<<<< HEAD
                 metrics.error_count = metrics.error_count.saturating_add(1);
-=======
-                if metrics.errors.len() < 1000 {
-                    metrics.errors.push(format!("TX error: {:?}", e));
-                }
->>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
                 eprintln!("rust-{}: TX error: {:?}", node_id, e);
             }
         }
@@ -226,20 +220,10 @@ fn main() {
                     }
                 }
                 Ok(None) => {} // timeout
-<<<<<<< HEAD
                 Err(e) => {
                     metrics.error_count = metrics.error_count.saturating_add(1);
                     eprintln!("rust-{}: RX error: {:?}", node_id, e);
                 }
-=======
-                    Err(e) => {
-                        if metrics.errors.len() < 1000 {
-                            metrics.errors.push(format!("RX error: {:?}", e));
-                        }
-                        eprintln!("rust-{}: RX error: {:?}", node_id, e);
-                    }
-
->>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
             }
         }
 
