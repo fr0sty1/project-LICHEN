@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-3wmt.1",
   "title": "Fix unguarded #pragma GCC diagnostic push/ignored/pop in lichen/tests/hal/src/main.c for fuel_gauge include",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:14:37.510201502Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:14:37.510201502Z",
+  "updated_at": "2026-07-23T05:16:56.539490204Z",
+  "started_at": "2026-07-23T05:16:56.539490204Z",
+  "lease_expires_at": "2026-07-23T05:21:56.539490204Z",
+  "heartbeat_at": "2026-07-23T05:16:56.539490204Z",
   "labels": [
     "defer-external"
   ],

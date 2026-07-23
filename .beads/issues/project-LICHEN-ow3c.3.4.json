@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-ow3c.3.4",
+  "title": "Add NVM read integration to oscore_ctx_set_sender_seq for non-EUI64 contexts and reboot safety",
+  "description": "If read_cb available and context not yet initialized, attempt to load latest SSN from NVM in set_sender_seq (fallback for contexts without EUI64). Bump sender_seq safely if NVM read fails or to prevent reuse. Update oscore_init and context creation accordingly.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:16:56.438511419Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:16:56.438511419Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow3c.3.4",
+      "depends_on_id": "project-LICHEN-ow3c.3",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:16:56.573908777Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
