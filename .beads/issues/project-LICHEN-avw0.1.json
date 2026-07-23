@@ -2,7 +2,6 @@
   "id": "project-LICHEN-avw0.1",
   "title": "Audit and remove dead code in fragment.py and related",
   "description": "Identify and remove any dead code, unused functions/vars in fragment.py, reassembly.py etc. Ensure FragmentSender, compute_mic, Ack etc remain functional.",
-<<<<<<< HEAD
   "notes": "Commit: 017e232",
   "status": "closed",
   "priority": 1,
@@ -15,15 +14,6 @@
   "started_at": "2026-07-23T00:09:48.829770524Z",
   "closed_at": "2026-07-23T00:11:02.647782619Z",
   "close_reason": "Closed",
-=======
-  "status": "open",
-  "priority": 1,
-  "issue_type": "task",
-  "owner": "agent@lichen-project.dev",
-  "created_at": "2026-07-23T00:02:46.564675648Z",
-  "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:02:46.564675648Z",
->>>>>>> origin/integration/worker14-20260722
   "dependencies": [
     {
       "issue_id": "project-LICHEN-avw0.1",
