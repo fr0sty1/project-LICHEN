@@ -67,6 +67,7 @@ pub enum RplRuntimeActionError {
     ActionNotPending,
     PollWithPending,
     TrickleEventChanged,
+    StaleGeneration,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -74,6 +75,7 @@ pub struct RplRuntimePoll {
     pub now_ms: u64,
     pub maintenance: Option<RplMaintenanceOutcome>,
     pub action: RplRuntimeAction,
+    pub generation: u64,
 }
 
 /// Deadline state for a loop that keeps exclusive ownership of one RPL stack.
@@ -83,6 +85,7 @@ pub struct RplRuntime {
     last_now_ms: u64,
     next_maintenance_ms: Option<u64>,
     pending_action: Option<RplRuntimeAction>,
+    bound_generation: u64,
 }
 
 impl RplRuntime {
@@ -92,21 +95,28 @@ impl RplRuntime {
             last_now_ms: now_ms,
             next_maintenance_ms: now_ms.checked_add(config.maintenance_interval_ms),
             pending_action: None,
+            bound_generation: 0,
         }
     }
 
     /// Observe the clock once, run due maintenance, and return the next loop action.
     ///
-    /// Returns `PollWithPending` if a prior poll's action has not yet been completed.
-    /// This enforces single-generation binding and no-stale-poll guarantees.
+    /// Returns `PollWithPending` if a prior poll's action has not yet been completed,
+    /// or `StaleGeneration` if the provided stack generation does not match the bound one.
+    /// This enforces single-owner by tying RplRuntime validity to current RplStack generation.
     pub fn poll(
         &mut self,
         node: &mut RplNode,
         observed_now_ms: u64,
+        stack_generation: u64,
     ) -> Result<RplRuntimePoll, RplRuntimeActionError> {
         if self.pending_action.is_some() {
             return Err(RplRuntimeActionError::PollWithPending);
         }
+        if self.bound_generation != 0 && self.bound_generation != stack_generation {
+            return Err(RplRuntimeActionError::StaleGeneration);
+        }
+        self.bound_generation = stack_generation;
         let (now_ms, maintenance) = self.observe(node, observed_now_ms);
         let action = self.next_action(node, now_ms);
         self.pending_action = Some(action);
@@ -115,6 +125,7 @@ impl RplRuntime {
             now_ms,
             maintenance,
             action,
+            generation: stack_generation,
         })
     }
 
@@ -123,7 +134,11 @@ impl RplRuntime {
         node: &mut RplNode,
         action: RplRuntimeAction,
         observed_now_ms: u64,
+        stack_generation: u64,
     ) -> Result<(u64, Option<RplMaintenanceOutcome>), RplRuntimeActionError> {
+        if self.bound_generation != 0 && self.bound_generation != stack_generation {
+            return Err(RplRuntimeActionError::StaleGeneration);
+        }
         if !matches!(action, RplRuntimeAction::Receive { .. }) {
             return Err(RplRuntimeActionError::ExpectedReceive);
         }
@@ -134,7 +149,11 @@ impl RplRuntime {
     pub(crate) fn receive_timeout(
         &self,
         action: RplRuntimeAction,
+        stack_generation: u64,
     ) -> Result<u32, RplRuntimeActionError> {
+        if self.bound_generation != 0 && self.bound_generation != stack_generation {
+            return Err(RplRuntimeActionError::StaleGeneration);
+        }
         let RplRuntimeAction::Receive { timeout_ms } = action else {
             return Err(RplRuntimeActionError::ExpectedReceive);
         };
@@ -149,7 +168,11 @@ impl RplRuntime {
         node: &mut RplNode,
         action: RplRuntimeAction,
         observed_now_ms: u64,
+        stack_generation: u64,
     ) -> Result<(Option<RplMaintenanceOutcome>, bool), RplRuntimeActionError> {
+        if self.bound_generation != 0 && self.bound_generation != stack_generation {
+            return Err(RplRuntimeActionError::StaleGeneration);
+        }
         if action != RplRuntimeAction::TrickleTransmit {
             return Err(RplRuntimeActionError::ExpectedTrickleTransmit);
         }
@@ -167,7 +190,11 @@ impl RplRuntime {
         action: RplRuntimeAction,
         observed_now_ms: u64,
         rand_offset: u32,
+        stack_generation: u64,
     ) -> Result<Option<RplMaintenanceOutcome>, RplRuntimeActionError> {
+        if self.bound_generation != 0 && self.bound_generation != stack_generation {
+            return Err(RplRuntimeActionError::StaleGeneration);
+        }
         if action != RplRuntimeAction::TrickleExpire {
             return Err(RplRuntimeActionError::ExpectedTrickleExpire);
         }
@@ -300,13 +327,13 @@ mod tests {
         node.trickle_start(100, 0);
         let mut runtime = RplRuntime::new(RplRuntimeConfig::default(), 100);
 
-        let p1 = runtime.poll(&mut node, 100).unwrap();
+        let p1 = runtime.poll(&mut node, 100, 1).unwrap();
         assert_eq!(
             p1.action,
             RplRuntimeAction::Receive { timeout_ms: 4 }
         );
-        let _ = runtime.complete_receive(&mut node, p1.action, 104).unwrap();
-        let p2 = runtime.poll(&mut node, 104).unwrap();
+        let _ = runtime.complete_receive(&mut node, p1.action, 104, 1).unwrap();
+        let p2 = runtime.poll(&mut node, 104, 1).unwrap();
         assert_eq!(p2.action, RplRuntimeAction::TrickleTransmit);
     }
 
@@ -316,7 +343,7 @@ mod tests {
         let config = RplRuntimeConfig::new(1_000, 10_000).unwrap();
         let mut runtime = RplRuntime::new(config, 5_000);
 
-        let poll = runtime.poll(&mut node, 4_000).unwrap();
+        let poll = runtime.poll(&mut node, 4_000, 1).unwrap();
         assert_eq!(poll.now_ms, 5_000);
         assert_eq!(poll.maintenance, None);
         assert_eq!(poll.action, RplRuntimeAction::Receive { timeout_ms: 1_000 });
@@ -328,18 +355,18 @@ mod tests {
         let config = RplRuntimeConfig::new(1_000, 10_000).unwrap();
         let mut runtime = RplRuntime::new(config, 0);
 
-        let p1 = runtime.poll(&mut node, 999).unwrap();
+        let p1 = runtime.poll(&mut node, 999, 1).unwrap();
         assert_eq!(p1.maintenance, None);
-        let _ = runtime.complete_receive(&mut node, p1.action, 999).unwrap();
+        let _ = runtime.complete_receive(&mut node, p1.action, 999, 1).unwrap();
 
-        let p2 = runtime.poll(&mut node, 1_000).unwrap();
+        let p2 = runtime.poll(&mut node, 1_000, 1).unwrap();
         assert_eq!(
             p2.maintenance,
             Some(RplMaintenanceOutcome::default())
         );
-        let _ = runtime.complete_receive(&mut node, p2.action, 1_000).unwrap();
+        let _ = runtime.complete_receive(&mut node, p2.action, 1_000, 1).unwrap();
 
-        let delayed = runtime.poll(&mut node, 2_500).unwrap();
+        let delayed = runtime.poll(&mut node, 2_500, 1).unwrap();
         assert_eq!(delayed.maintenance, Some(RplMaintenanceOutcome::default()));
         assert_eq!(
             delayed.action,
@@ -353,18 +380,18 @@ mod tests {
         let config = RplRuntimeConfig::new(10, 10).unwrap();
         let mut runtime = RplRuntime::new(config, u64::MAX - 20);
 
-        let p1 = runtime.poll(&mut node, u64::MAX - 11).unwrap();
+        let p1 = runtime.poll(&mut node, u64::MAX - 11, 1).unwrap();
         assert_eq!(
             p1.action,
             RplRuntimeAction::Receive { timeout_ms: 1 }
         );
-        let _ = runtime.complete_receive(&mut node, p1.action, u64::MAX - 11).unwrap();
+        let _ = runtime.complete_receive(&mut node, p1.action, u64::MAX - 11, 1).unwrap();
 
-        let p2 = runtime.poll(&mut node, u64::MAX - 10).unwrap();
+        let p2 = runtime.poll(&mut node, u64::MAX - 10, 1).unwrap();
         assert!(p2.maintenance.is_some());
-        let _ = runtime.complete_receive(&mut node, p2.action, u64::MAX - 10).unwrap();
+        let _ = runtime.complete_receive(&mut node, p2.action, u64::MAX - 10, 1).unwrap();
 
-        let terminal = runtime.poll(&mut node, u64::MAX).unwrap();
+        let terminal = runtime.poll(&mut node, u64::MAX, 1).unwrap();
         assert!(terminal.maintenance.is_some());
         assert_eq!(
             terminal.action,
@@ -372,8 +399,8 @@ mod tests {
                 timeout_ms: u32::MAX
             }
         );
-        let _ = runtime.complete_receive(&mut node, terminal.action, u64::MAX).unwrap();
-        let repeated = runtime.poll(&mut node, u64::MAX).unwrap();
+        let _ = runtime.complete_receive(&mut node, terminal.action, u64::MAX, 1).unwrap();
+        let repeated = runtime.poll(&mut node, u64::MAX, 1).unwrap();
         assert_eq!(repeated.maintenance, None);
         assert_eq!(repeated.action, terminal.action);
     }
@@ -392,14 +419,14 @@ mod tests {
         assert!(node.router.process_dao_at_ms(&dao, target, target, 1_000));
         let mut runtime = RplRuntime::new(RplRuntimeConfig::new(1_000, 10_000).unwrap(), 1_000);
 
-        let p1 = runtime.poll(&mut node, 1_999).unwrap();
+        let p1 = runtime.poll(&mut node, 1_999, 1).unwrap();
         assert_eq!(p1.maintenance, None);
-        let _ = runtime.complete_receive(&mut node, p1.action, 1_999).unwrap();
+        let _ = runtime.complete_receive(&mut node, p1.action, 1_999, 1).unwrap();
         assert!(node.router.lookup_route(&target).is_some());
 
-        let p2 = runtime.poll(&mut node, 2_000).unwrap();
+        let p2 = runtime.poll(&mut node, 2_000, 1).unwrap();
         assert!(p2.maintenance.unwrap().routes_expired);
-        let _ = runtime.complete_receive(&mut node, p2.action, 2_000).unwrap();
+        let _ = runtime.complete_receive(&mut node, p2.action, 2_000, 1).unwrap();
         assert!(node.router.lookup_route(&target).is_none());
     }
 
@@ -423,13 +450,13 @@ mod tests {
         assert!(node.router.process_dio(&dio, &wire, root_addr, -40, 0));
         let mut runtime = RplRuntime::new(RplRuntimeConfig::new(1, 10_000).unwrap(), 0);
 
-        let p1 = runtime.poll(&mut node, 10_000).unwrap();
+        let p1 = runtime.poll(&mut node, 10_000, 1).unwrap();
         assert!(!p1.maintenance.unwrap().neighbors_pruned);
-        let _ = runtime.complete_receive(&mut node, p1.action, 10_000).unwrap();
+        let _ = runtime.complete_receive(&mut node, p1.action, 10_000, 1).unwrap();
         assert_eq!(node.router.neighbors().count(), 1);
-        let p2 = runtime.poll(&mut node, 10_001).unwrap();
+        let p2 = runtime.poll(&mut node, 10_001, 1).unwrap();
         assert!(p2.maintenance.unwrap().neighbors_pruned);
-        let _ = runtime.complete_receive(&mut node, p2.action, 10_001).unwrap();
+        let _ = runtime.complete_receive(&mut node, p2.action, 10_001, 1).unwrap();
         assert_eq!(node.router.neighbors().count(), 0);
     }
 }

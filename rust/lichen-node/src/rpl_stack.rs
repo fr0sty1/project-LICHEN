@@ -110,6 +110,7 @@ pub struct RplRuntimeReceiveOutcome {
     pub now_ms: u64,
     pub maintenance: Option<RplMaintenanceOutcome>,
     pub received: Option<RplReceiveOutcome>,
+    pub generation: u64,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -307,6 +308,7 @@ pub struct RplStack<R: Radio, S: NonVolatile> {
     bootstrap_peers: VecDeque<[u8; 8]>,
     dao_admissions: Option<DaoAdmissionState>,
     routing_now_ms: u64,
+    generation: u64,
     direct_neighbors: HashSet<[u8; 8]>,
 }
 
@@ -344,6 +346,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             bootstrap_peers: VecDeque::new(),
             dao_admissions: None,
             routing_now_ms: 0,
+            generation: 1,
             direct_neighbors: HashSet::new(),
         })
     }
@@ -380,6 +383,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             bootstrap_peers: VecDeque::new(),
             dao_admissions: None,
             routing_now_ms: 0,
+            generation: 1,
             direct_neighbors: HashSet::new(),
         })
     }
@@ -415,6 +419,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             bootstrap_peers: VecDeque::new(),
             dao_admissions: Some(admissions),
             routing_now_ms: 0,
+            generation: 1,
             direct_neighbors: HashSet::new(),
         })
     }
@@ -460,12 +465,23 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             bootstrap_peers: VecDeque::new(),
             dao_admissions: Some(admissions),
             routing_now_ms: 0,
+            generation: 1,
             direct_neighbors: HashSet::new(),
         })
     }
 
     pub fn rpl_node(&self) -> &RplNode {
         &self.rpl
+    }
+
+    /// Current generation of this stack instance. RplRuntime bindings are tied to
+    /// this value; reprovision or reset increments it to invalidate stale runtimes.
+    pub fn generation(&self) -> u64 {
+        self.generation
+    }
+
+    fn bump_generation(&mut self) {
+        self.generation = self.generation.wrapping_add(1);
     }
 
     /// Run DAO-route and neighbor maintenance from one monotonic observation.
@@ -484,15 +500,15 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
 
     /// Advance an executor-neutral runtime using this stack as the single owner.
     ///
-    /// Returns `Err(RplRuntimeActionError::PollWithPending)` if a prior poll's
-    /// action remains uncompleted. This enforces single-generation runtime binding.
+    /// Binds the runtime to this stack's current generation (incremented on
+    /// construction/reset/provision). Returns `PollWithPending` or `StaleGeneration`.
     pub fn runtime_poll(
         &mut self,
         runtime: &mut RplRuntime,
         observed_now_ms: u64,
     ) -> Result<RplRuntimePoll, RplRuntimeActionError> {
         self.routing_now_ms = self.routing_now_ms.max(observed_now_ms);
-        runtime.poll(&mut self.rpl, observed_now_ms)
+        runtime.poll(&mut self.rpl, observed_now_ms, self.generation)
     }
 
     /// Complete a planned receive using a clock sampled after the radio await.
@@ -506,7 +522,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         F: FnOnce() -> u64,
     {
         let timeout_ms = runtime
-            .receive_timeout(action)
+            .receive_timeout(action, self.generation)
             .map_err(RplRuntimeReceiveError::Action)?;
         let mut wire = [0u8; MAX_FRAME_SIZE];
         let rx = self.stack.radio().receive(&mut wire, timeout_ms).await;
@@ -553,6 +569,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             now_ms,
             maintenance,
             received,
+            generation: self.generation,
         })
     }
 
@@ -565,7 +582,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
     ) -> Result<RplTrickleTransmitOutcome, RplRuntimeTrickleError> {
         self.routing_now_ms = self.routing_now_ms.max(observed_now_ms);
         let (_, should_transmit) = runtime
-            .complete_trickle_transmit(&mut self.rpl, action, observed_now_ms)
+            .complete_trickle_transmit(&mut self.rpl, action, observed_now_ms, self.generation)
             .map_err(RplRuntimeTrickleError::Action)?;
         if !should_transmit {
             return Ok(RplTrickleTransmitOutcome::Suppressed);
@@ -586,7 +603,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
     ) -> Result<Option<RplMaintenanceOutcome>, RplRuntimeTrickleError> {
         self.routing_now_ms = self.routing_now_ms.max(observed_now_ms);
         runtime
-            .complete_trickle_expire(&mut self.rpl, action, observed_now_ms, rand_offset)
+            .complete_trickle_expire(&mut self.rpl, action, observed_now_ms, rand_offset, self.generation)
             .map_err(RplRuntimeTrickleError::Action)
     }
 
@@ -867,18 +884,21 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
 
     /// Low-level Trickle initialization for callers that own timer state.
     pub fn trickle_start(&mut self, now_ms: u64, rand_offset: u32) {
+        self.bump_generation();
         self.routing_now_ms = self.routing_now_ms.max(now_ms);
         self.rpl.trickle_start(now_ms, rand_offset);
     }
 
     /// Low-level Trickle reset for callers that own timer state.
     pub fn trickle_reset(&mut self, now_ms: u64, rand_offset: u32) {
+        self.bump_generation();
         self.routing_now_ms = self.routing_now_ms.max(now_ms);
         self.rpl.trickle_reset(now_ms, rand_offset);
     }
 
     /// Prefer [`Self::runtime_complete_trickle_expire`] in production loops.
     pub fn trickle_expire(&mut self, now_ms: u64, rand_offset: u32) {
+        self.bump_generation();
         self.routing_now_ms = self.routing_now_ms.max(now_ms);
         self.rpl.trickle_expire(now_ms, rand_offset);
     }
@@ -1335,9 +1355,9 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                         self.rpl.router.poll_trickle(),
                         lichen_rpl::trickle::TrickleEvent::Stopped
                     ) {
-                        self.rpl.trickle_start(now_ms, jitter);
+                        self.trickle_start(now_ms, jitter);
                     } else {
-                        self.rpl.trickle_reset(now_ms, jitter);
+                        self.trickle_reset(now_ms, jitter);
                     }
                     return Ok(RplReceiveOutcome::Rpl(RplEvent::DisReceived));
                 }
