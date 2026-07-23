@@ -640,6 +640,10 @@ static int write_lora_config(uint8_t *buf, size_t buflen, size_t *pos,
 				   info->tx_power_dbm :
 				   MESHTASTIC_DEFAULT_TX_POWER_DBM;
 
+	if (tx_power < 0) {
+		tx_power = 0;
+	}
+
 	if (pb_write_varint_field(buf, buflen, pos, LORA_CONFIG_USE_PRESET_FIELD,
 				  1U) < 0 ||
 	    pb_write_varint_field(buf, buflen, pos, LORA_CONFIG_MODEM_PRESET_FIELD,
@@ -651,7 +655,7 @@ static int write_lora_config(uint8_t *buf, size_t buflen, size_t *pos,
 	    pb_write_varint_field(buf, buflen, pos, LORA_CONFIG_TX_ENABLED_FIELD,
 				  (info == NULL || info->has_lora) ? 1U : 0U) < 0 ||
 	    pb_write_varint_field(buf, buflen, pos, LORA_CONFIG_TX_POWER_FIELD,
-				  (uint64_t)(int64_t)tx_power) < 0 ||
+				  (uint64_t)tx_power) < 0 ||
 	    pb_write_varint_field(buf, buflen, pos, LORA_CONFIG_CHANNEL_NUM_FIELD,
 				  0U) < 0 ||
 	    pb_write_varint_field(buf, buflen, pos, LORA_CONFIG_IGNORE_MQTT_FIELD,
