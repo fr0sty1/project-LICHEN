@@ -1500,7 +1500,7 @@ mod tests {
         let credential_r = hex!(
             "58f13081ee3081a1a003020102020462319ec4300506032b6570301d311b301906035504030c124544484f4320526f6f742045643235353139301e170d3232303331363038323433365a170d3239313233313233303030305a30223120301e06035504030c174544484f4320526573706f6e6465722045643235353139302a300506032b6570032100a1db47b95184854ad12a0c1a354e418aace33aa0f2c662c00b3ac55de92f9359300506032b6570034100b723bc01eab0928e8b2b6c98de19cc3823d46e7d6987b032478fecfaf14537a1af14cc8be829c6b73044101837eb4abc949565d86dce51cfae52ab82c152cb02"
         );
-        let th_3 = hex!("5b7df9b4f58f240ce0418e48191b5fff3a22b5ca57f669b16777996592e928bc");
+        let th_3 = hex!("cf726a925b31bee0c453041d90af477b9c0b6358203b0f9cc3f2d5afce66ab7e");
         assert_eq!(
             transcript_3(&th_2, &plaintext_2, &credential_r).unwrap(),
             th_3
@@ -1519,7 +1519,7 @@ mod tests {
         let credential_i = hex!(
             "58f13081ee3081a1a003020102020462319ea0300506032b6570301d311b301906035504030c124544484f4320526f6f742045643235353139301e170d3232303331363038323430305a170d3239313233313233303030305a30223120301e06035504030c174544484f4320496e69746961746f722045643235353139302a300506032b6570032100ed06a8ae61a829ba5fa54525c9d07f48dd44a302f43e0f23d8cc20b73085141e300506032b6570034100521241d8b3a770996bcfc9b9ead4e7e0a1c0db353a3bdf2910b39275ae48b756015981850d27db6734e37f67212267dd05eeff27b9e7a813fa574b72a00b430b"
         );
-        let th_4 = hex!("0eb868f263cf3555dccd396dd8dec29d3750d599be42d5a41a5a37c896f294ac");
+        let th_4 = hex!("ed23f6181a7f6cfea92aa9b24aa84a8ccc413217ad454fbf13bc2739537398f1");
         assert_eq!(
             transcript_4(&th_3, &plaintext_3, &credential_i).unwrap(),
             th_4
@@ -1544,23 +1544,23 @@ mod tests {
             "RFC 9529 Message 2 failed: {verified_message_3:?}"
         );
 
-        let prk_out = hex!("b744cb7d8a87cc0447c3350e165b250dab12ec453325abb922b30307e5c368f0");
+        let prk_out = hex!("d4f7ac068845afc9db248f707f30364614da1a32bbd46f86d46e064ab7cf2051");
         assert_eq!(
             edhoc_kdf(&prk_2e, &th_4, "7", &[], 32).unwrap().as_slice(),
             prk_out
         );
-        let prk_exporter = hex!("2aaec8fc4ab3bc3295def6b551051a2fa561424db301fa84f642f5578a6df51a");
+        let prk_exporter = hex!("cd0be090fd1398923f9f616bc2e063e080af41238ee0756d87fa7a511c64e7ba");
         assert_eq!(
             edhoc_kdf(&prk_out, &prk_out, "10", &[], 32).unwrap().as_slice(),  // note: th param fixed to match signature
             prk_exporter
         );
         assert_eq!(
             edhoc_kdf(&prk_exporter, &prk_exporter, "0", &[], 16).unwrap().as_slice(),
-            &hex!("1e1c6beac3a8a1cac435de7e2f9ae7ff")
+            &hex!("6dd8bfb559c311377364fd583db800f8")
         );
         assert_eq!(
             edhoc_kdf(&prk_exporter, &prk_exporter, "1", &[], 8).unwrap().as_slice(),
-            &hex!("ce7ab844c0106d73")
+            &hex!("39b3ec8bfae98a3e")
         );
 
         let context = export_context(&prk_2e, &th_4, &[0x18], &[0x2d]).unwrap();
