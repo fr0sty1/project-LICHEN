@@ -26,7 +26,7 @@ use lichen_link::identity::Identity;
 use lichen_link::keys::Seed;
 use lichen_sim::SimClient;
 
-use std::{path::PathBuf, sync::OnceLock, time::Instant};
+use std::{collections::VecDeque, path::PathBuf, sync::OnceLock, time::Instant};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     signal,
@@ -547,6 +547,7 @@ where
     let _ = conc.reset().await;
     let _ = conc.configure(&RadioConfig::default()).await;
     let mut tun_buf = vec![0u8; 1500];
+    let mut tx_queue: VecDeque<Vec<u8>> = VecDeque::new();
     loop {
         tokio::select! {
             result = async { match &tun {
@@ -555,13 +556,21 @@ where
             }} => {
                 if let Ok(n) = result {
                     if let Some(schc) = gw.upstream_to_mesh(&tun_buf[..n]) {
-                        info!(len = schc.len(), "hat TX");
+                        tx_queue.push_back(schc);
+                        info!(len = schc.len(), "hat TX queued");
                     }
                 }
             }
             _ = signal::ctrl_c() => {
                 info!("shutting down");
                 break;
+            }
+        }
+        while let Some(payload) = tx_queue.pop_front() {
+            if let Err(e) = conc.transmit(&payload).await {
+                warn!("concentrator transmit failed: {:?}", e);
+            } else {
+                info!(len = payload.len(), "hat TX");
             }
         }
     }

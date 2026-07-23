@@ -237,6 +237,10 @@ pub trait Concentrator {
         &mut self,
         config: &RadioConfig,
     ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
+    fn transmit(
+        &mut self,
+        payload: &[u8],
+    ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
 }
 
 #[cfg(feature = "std")]
@@ -263,6 +267,10 @@ impl Concentrator for Sx1302Concentrator {
     }
 
     async fn configure(&mut self, _config: &RadioConfig) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    async fn transmit(&mut self, _payload: &[u8]) -> Result<(), Self::Error> {
         Ok(())
     }
 }
