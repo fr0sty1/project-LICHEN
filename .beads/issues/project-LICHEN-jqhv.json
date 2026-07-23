@@ -2,15 +2,15 @@
   "id": "project-LICHEN-jqhv",
   "title": "[merge-conflict] worktree-worker19: simulation.py",
   "notes": "Commit: b4752231c",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:43:27.740374402Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:02:39.716369194Z",
+  "updated_at": "2026-07-23T02:02:45.147394748Z",
   "started_at": "2026-07-23T02:00:15.089186177Z",
-  "lease_expires_at": "2026-07-23T02:05:15.089186177Z",
-  "heartbeat_at": "2026-07-23T02:00:15.089186177Z"
+  "closed_at": "2026-07-23T02:02:45.147394748Z",
+  "close_reason": "Resolved merge conflicts in python/src/lichen/sim/simulation.py by removing git markers; verified with ruff, mypy (pre-existing issues only), and pytest test_callback_reception_updates_metrics_and_observer"
 }
