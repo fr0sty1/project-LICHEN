@@ -124,6 +124,7 @@ static inline void secure_zero(void *ptr, size_t len)
  */
 int lichen_sha256(const uint8_t *input, size_t inlen,
                   uint8_t output[TC_SHA256_DIGEST_SIZE]);
+uint32_t lichen_hash_32(const uint8_t *data, size_t len);
 
 /**
  * @brief Convert LICHEN link error code to human-readable string.

@@ -48,4 +48,14 @@ ZTEST(lichen_util, test_sha256_rejects_null_output)
 		      "sha256 rejects NULL output");
 }
 
+ZTEST(lichen_util, test_lichen_hash_32)
+{
+	static const uint8_t test_data[] = { 't', 'e', 's', 't' };
+	static const uint8_t zeros[32] = { 0 };
+
+	zassert_equal(lichen_hash_32(NULL, 0), 0x811c9dc5u, "");
+	zassert_equal(lichen_hash_32(test_data, 4), 0xafd071e5u, "");
+	zassert_equal(lichen_hash_32(zeros, 32), 0x0b2ae445u, "");
+}
+
 ZTEST_SUITE(lichen_util, NULL, NULL, NULL, NULL, NULL);

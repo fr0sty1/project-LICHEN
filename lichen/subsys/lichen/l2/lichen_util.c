@@ -33,3 +33,13 @@ int lichen_sha256(const uint8_t *input, size_t inlen,
     secure_zero(&state, sizeof(state));
     return ret;
 }
+
+uint32_t lichen_hash_32(const uint8_t *data, size_t len)
+{
+    uint32_t h = 0x811c9dc5u;
+    for (size_t i = 0; i < len; ++i) {
+        h ^= (uint32_t)data[i];
+        h = h * 0x01000193u;
+    }
+    return h;
+}
