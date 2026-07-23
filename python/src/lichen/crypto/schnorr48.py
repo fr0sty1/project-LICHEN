@@ -129,8 +129,6 @@ def sign(privkey: bytes, pubkey: bytes, msg: bytes) -> bytes:
     if len(privkey) != 32 or len(pubkey) != 32:
         raise ValueError("Keys must be 32 bytes")
 
-    # 1. Deterministic nonce: r = H(privkey || msg) mod L
-    # Use the full privkey for nonce derivation (not just scalar)
     _, r = _hash_to_scalar(privkey + msg)
 
     # 2. Commitment: R = r * B
