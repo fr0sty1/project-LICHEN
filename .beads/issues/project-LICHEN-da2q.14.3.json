@@ -2,6 +2,7 @@
   "id": "project-LICHEN-da2q.14.3",
   "title": "Zephyr: CCP-14 requirements from da2q context",
   "description": "Zephyr implementation for CCP-14 Gateway Multi-RX requirements from da2q context.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "task",

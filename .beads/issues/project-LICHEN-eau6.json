@@ -2,6 +2,7 @@
   "id": "project-LICHEN-eau6",
   "title": "[epic] ELECROW ThinkNode M3 tracker support",
   "description": "ELECROW ThinkNode M3 card tracker: nRF52840 + LR1110 (915MHz). IP66 waterproof. Similar platform to T1000-E. Need board definition, pin mapping from manufacturer/Meshtastic, simulation, hardware validation.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "epic",

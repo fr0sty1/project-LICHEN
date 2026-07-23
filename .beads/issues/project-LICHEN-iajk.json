@@ -2,6 +2,7 @@
   "id": "project-LICHEN-iajk",
   "title": "ThinkNode M3: create board definition",
   "description": "Create Zephyr board definition for ELECROW ThinkNode M3. Get pin mapping from manufacturer or reverse-engineer from Meshtastic. Similar to T1000-E: nRF52840 + LR1110.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "task",

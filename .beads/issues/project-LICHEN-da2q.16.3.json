@@ -2,6 +2,7 @@
   "id": "project-LICHEN-da2q.16.3",
   "title": "Zephyr: CCP-16 requirements from da2q context",
   "description": "Zephyr implementation for CCP-16 Load Balancing requirements from da2q context.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "task",

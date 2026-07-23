@@ -2,6 +2,7 @@
   "id": "project-LICHEN-sl32.2",
   "title": "Heltec V3: WiFi station mode and net_if event handling in main.c",
   "description": "Implement WiFi station connection logic in lichen/apps/gateway/src/main.c (or new wifi_backhaul.c). Use wifi_mgmt API or net_mgmt events to connect to configured SSID (from Kconfig or /config CoAP), handle NET_EVENT_WIFI_CONNECT_RESULT, NET_EVENT_IPV6_ADDR_ADD, acquire upstream prefix. Register handlers early in main(). Integrate with LICHEN_GATEWAY_PREFIX_DELEGATION. Log connection status. Follow AGENTS.md subsystem init order. Update status CBOR to reflect backhaul state. Parent of project-LICHEN-sl32.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "task",

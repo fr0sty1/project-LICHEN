@@ -2,6 +2,7 @@
   "id": "lora_ipv6_mesh-9ia2",
   "title": "Heltec gateway console monitoring is reset-destructive (CP2102 auto-reset fires on port open)",
   "description": "Opening the Heltec WiFi LoRa 32 V3 gateway's CP2102 port resets the ESP32-S3 even with DTR/RTS deasserted before open — the auto-reset circuit fires during the open itself, before line state can be cleared (evidence: fresh boot banner at uptime 00:00:00.264 immediately after a read-only port open, 2026-07-14 bench sweep). Consequence: any host-side observation of the gateway console reboots the gateway, so log monitoring during soaks is destructive. Options: (a) move the Zephyr console to a spare UART off the auto-reset pins via overlay and tap it with an external USB-UART; (b) accept observe=reset on this board and document it; (c) investigate CP2102 gpio/latch settings. Board recovers fully and unattended after the reset. Cosmetic co-finding: every boot prints ROM-loader 'SHA-256 comparison failed ... Attempting to boot anyway' — ESP Simple Boot image without appended hash, benign.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 3,
   "issue_type": "bug",

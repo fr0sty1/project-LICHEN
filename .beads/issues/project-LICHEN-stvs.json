@@ -2,6 +2,7 @@
   "id": "project-LICHEN-stvs",
   "title": "Add full now() and select_channel test coverage in vector",
   "description": "Expand ccp16_vectors() in test/vectors/generate.py with comprehensive test cases covering all branches of the select_channel pseudocode (blacklist, hysteresis, dwell, PER blacklist, switch interval, score calc, defaults) and now() TDMA time interactions. Match pseudocode in spec/02a-coordinated-capacity.md exactly. This is project-LICHEN-hw6w codereview-p2. AFTER EVERY chunk run /codereview 3x filing codereview beads. Do not close bead until 3 clean passes. End with bd ready --limit 5.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "task",

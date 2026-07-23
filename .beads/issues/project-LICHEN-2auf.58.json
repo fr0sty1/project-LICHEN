@@ -3,6 +3,7 @@
   "title": "Reconcile Beads exports after recovery",
   "description": "Regenerate deterministic tracker exports from canonical local Beads state after recovery without bulk-staging machine-local counters, events, version, or host metadata.",
   "acceptance_criteria": "Recovery issue statuses/notes survive; every added/deleted issue ID is reviewed; closed issues stay closed; local metadata/events are excluded; deterministic exports commit with their slices.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "task",

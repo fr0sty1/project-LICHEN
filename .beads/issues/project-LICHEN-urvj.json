@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-urvj",
   "title": "codereview pass 1: missing impl for lichen_coordination_negotiate in link_ctx.c after enum addition; Kconfig select not wired to CMake",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "bug",

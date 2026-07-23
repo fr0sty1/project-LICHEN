@@ -2,6 +2,7 @@
   "id": "project-LICHEN-8uly",
   "title": "codereview: rpl_routing_lookup Yggdrasil TUN fallback lacks explicit prefix check in is_local_mesh",
   "description": "In gateway.rs:94 is_local_mesh relies on rpl.lookup_route or routes map. For 02xx::/7 Ygg addresses not in local RPL, it falls through to TUN but without explicit is_yggdrasil guard or classification per spec/05-routing.md. Could misroute if cache has overlapping entries. Update lookup_route or add classify in lichen-rpl::routing and use in gateway. File as codereview P2. Tests pass but logic incomplete.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "bug",

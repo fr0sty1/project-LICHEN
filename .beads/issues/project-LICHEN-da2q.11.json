@@ -2,6 +2,7 @@
   "id": "project-LICHEN-da2q.11",
   "title": "CCP-11: Dynamic Channel Selection",
   "description": "Coordinated Capacity Profile section detailing Dynamic Channel Selection from da2q multi-channel coordination context.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "epic",

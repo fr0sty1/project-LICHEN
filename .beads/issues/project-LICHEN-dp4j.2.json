@@ -2,6 +2,7 @@
   "id": "project-LICHEN-dp4j.2",
   "title": "Update Python AnnounceMessage to use rx_channel",
   "description": "Rename current_channel to rx_channel in python/src/lichen/announce/messages.py, all tests, node.py, scheduler, processor, and update test vectors if needed. Ensure dataclass, validation, serialization, signed_data all consistent. Match wire format byte 3.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "task",

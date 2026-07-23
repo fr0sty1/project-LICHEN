@@ -2,6 +2,7 @@
   "id": "project-LICHEN-da2q.13.1",
   "title": "Python: CCP-13 requirements from da2q context",
   "description": "Python implementation for CCP-13 Duty Cycle Management requirements from da2q context.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "task",

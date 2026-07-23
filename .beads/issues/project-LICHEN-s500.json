@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-s500",
   "title": "codereview: identity.py missing yggdrasil derivation matching Rust and spec 8.6",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",

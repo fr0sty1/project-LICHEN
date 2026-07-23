@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-3ano",
   "title": "codereview: router.c classify does not handle Yggdrasil 0200::/7 prefix",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "task",

@@ -2,6 +2,7 @@
   "id": "project-LICHEN-fxft",
   "title": "[epic] ELECROW ThinkNode M7 PoE gateway support",
   "description": "ELECROW ThinkNode M7: ESP32-S3 + LR1110 + PoE + WiFi/BLE. Indoor border router/gateway. PoE = single cable deployment. Shares LR1110 driver (iw00) with T1000-E/M3, ESP32-S3 platform with Heltec V3. Need: pin mapping, PoE controller ID, board definition. 915MHz.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "epic",

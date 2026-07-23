@@ -2,6 +2,7 @@
   "id": "project-LICHEN-da2q.5.4",
   "title": "Vectors: coordination mechanism negotiation",
   "description": "Test vectors for CCP-5 coordination mechanisms.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "task",

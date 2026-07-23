@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-z1n2",
   "title": "coap_dtn.c init: senml_pack_init and expire_old now under s_dtn_mutex but senml_pack_mutex not locked during init",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "task",

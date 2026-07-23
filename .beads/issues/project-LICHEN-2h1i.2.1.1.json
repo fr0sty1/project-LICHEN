@@ -2,6 +2,7 @@
   "id": "project-LICHEN-2h1i.2.1.1",
   "title": "CoAP /position SenML location profile for crowd map + test vectors",
   "description": "Shared SenML profile for location (lat/lon/alt/speed etc) optimized for crowd map use per RFC 8428. Add to appendix-senml.md, update Rust/C/Python if needed, independent test vectors using known GeoJSON cross-check. Basic CoAP handler. Docs only for UI.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "feature",

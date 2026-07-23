@@ -2,6 +2,7 @@
   "id": "project-LICHEN-m5jm.3",
   "title": "Add test vectors for coordination mechanism negotiation (JSON in test/vectors/, cross Python/Rust/C validation)",
   "description": "Extend test/vectors/ with JSON for negotiation. Ensure cross-impl validation in tests. Match all 3 impls. Run cargo test, pytest, ruff. 3 codereview passes. No dead code.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "task",

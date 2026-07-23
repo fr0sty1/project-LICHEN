@@ -2,6 +2,7 @@
   "id": "project-LICHEN-da2q.16.2",
   "title": "Rust: CCP-16 requirements from da2q context",
   "description": "Rust implementation for CCP-16 Load Balancing requirements from da2q context.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "task",

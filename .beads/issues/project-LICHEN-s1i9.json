@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-s1i9",
   "title": "[codereview] Spec subagent: draft-lichen-schc-lora-00.md:129 section 4 Rule 0/1 still missing CoAP fields from appendix A.2, Rule 2 description mismatches adaptation.md MQTT-SN vs ICMP",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",

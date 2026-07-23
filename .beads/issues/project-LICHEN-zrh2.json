@@ -2,6 +2,7 @@
   "id": "project-LICHEN-zrh2",
   "title": "PHY: Adaptive spreading factor",
   "description": "## Problem\n\nLICHEN uses SF10 for all traffic. But nearby nodes could use SF7 (10x faster airtime), freeing channel capacity.\n\nSF10 60-byte packet: ~500ms airtime\nSF7 60-byte packet: ~50ms airtime\n\n## Hardware requirement\n\n**Works on ALL hardware.** Any LoRa chip supports SF7-SF12.\n\n## Solution\n\nAdapt SF based on link quality:\n1. Start at SF10 (safe default)\n2. If SNR is high (link is strong), try lower SF\n3. If packets fail, increase SF\n4. Per-neighbor SF tracking\n\n## Algorithm\n\non_rx(packet, snr):\n  if snr \u003e SNR_THRESHOLD_HIGH:\n    neighbor_sf[src] = max(SF7, neighbor_sf[src] - 1)\n  elif snr \u003c SNR_THRESHOLD_LOW:\n    neighbor_sf[src] = min(SF12, neighbor_sf[src] + 1)\n\non_tx(packet, dst):\n  sf = neighbor_sf.get(dst, SF10)  # default SF10\n  transmit(packet, sf)\n\n## Tradeoffs\n\n- Receiver must know which SF to listen on\n- Solution: RX window scans all SFs, or announce includes TX SF\n- More complexity but potentially 10x capacity for nearby nodes\n\n## Acceptance criteria\n\n- Spec defines adaptive SF algorithm and signaling\n- Implementations track per-neighbor SF\n- Dense deployment shows reduced airtime",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "epic",

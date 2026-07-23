@@ -2,6 +2,7 @@
   "id": "project-LICHEN-da2q.15.8",
   "title": "Algorithm: Interference mitigation via frequency agility, density-aware adaptive SF and TDMA",
   "description": "Define exact algorithm, pseudocode, match test vectors in ccp16.json. File as child of project-LICHEN-da2q.15",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "epic",

@@ -2,6 +2,7 @@
   "id": "project-LICHEN-ddtb",
   "title": "[codereview-P1 pass3] Verified ccp16_vectors_match_generator and full schema test pass. hash_32 matches previously hardcoded value exactly. Update to tests/generate complete. No findings. Ready to close main bead after 3 passes.",
   "description": "Final pass: full test run clean, no regression to other ccp vectors or schema. Independent oracle satisfies test integrity rule. All chunks followed workflow.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 3,
   "issue_type": "task",

@@ -2,6 +2,7 @@
   "id": "project-LICHEN-uiw6",
   "title": "Implement per-neighbor SF tracking, SNR EMA, lichen_rpl_update_sf, dynamic radio reconfig",
   "description": "Implement per-neighbor SF tracking with SNR EMA in link/l2/rpl/drivers. Integrate RX callback, DIO metrics, Kconfig. Match ccp16.json exactly. No comments. Focus lichen/subsys/lichen/ and drivers. Run tests. Return key code changes.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "epic",

@@ -2,6 +2,7 @@
   "id": "project-LICHEN-ev5b.7",
   "title": "Document R1 MVP support and Meshtastic app limitations",
   "description": "Why this exists: users and future agents need exact support boundaries. What needs to be done: document hardware revision assumptions, build/flash commands, BLE pairing flow, supported Meshtastic app screens/actions, unsupported app features, known issues, and troubleshooting logs. Acceptance criteria: docs match verified hardware behavior; unsupported features are explicit; follow-up Beads exist for every known gap.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "task",

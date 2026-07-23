@@ -2,6 +2,7 @@
   "id": "project-LICHEN-abpx",
   "title": "codereview-p8i6-2a: include path for link_ctx.h may be incorrect in ipv6_addr.c",
   "description": "Added #include \u003clichen/link_ctx.h\u003e but may need full path or CMake update for include dirs. Check build. tagged codereview",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",

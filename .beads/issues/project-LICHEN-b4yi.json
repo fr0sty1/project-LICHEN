@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-b4yi",
   "title": "Kconfig for LICHEN_GATEWAY_PREFIX_DELEGATION and WiFi station",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "task",

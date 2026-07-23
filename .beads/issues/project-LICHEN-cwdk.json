@@ -2,6 +2,7 @@
   "id": "project-LICHEN-cwdk",
   "title": "codereview: FIXED_LENGTH comment updated but const not yet changed - will cause parse failures",
   "description": "rust/lichen-core/src/announce.rs:30 - const FIXED_LENGTH still 93 but comment says 94. Signature mismatch root cause if not fixed together. P1 correctness. codereview pass1",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",

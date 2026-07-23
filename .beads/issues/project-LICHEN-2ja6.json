@@ -2,6 +2,7 @@
   "id": "project-LICHEN-2ja6",
   "title": "[codereview-pass3] coap_dtn.c handlers and register lack full DTN/SenML provider callback and include for COAP codes",
   "description": "deaddrop_post/confessions_post still have some paths returning without coap_respond in all cases; register returns oscore_init() which may be 0 but handlers should consistently use respond. Missing #include for full COAP_RESPONSE_CODE_* like in coap_location.c. discovered-from:project-LICHEN-9wd9",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 2,
   "issue_type": "task",

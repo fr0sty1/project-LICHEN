@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-u1qv",
   "title": "[merge-conflict] worktree-worker23: t_deck_esp32s3_procpu.conf",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",

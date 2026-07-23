@@ -2,6 +2,7 @@
   "id": "project-LICHEN-2j8z",
   "title": "[codereview-pass2] opinion: add_route now mutates RoutingTable; consider separating concerns or using single source of truth",
   "description": "P4 opinion on architecture. discovered-from:project-LICHEN-fy9q",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 4,
   "issue_type": "chore",

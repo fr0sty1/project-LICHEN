@@ -2,6 +2,7 @@
   "id": "project-LICHEN-5wku",
   "title": "rules.rs: All rule definitions have empty fields arrays (incomplete implementation)",
   "description": "File: rust/lichen-schc/src/rules.rs\nLines: 59-96\n\nCategory: CORRECTNESS / API MISUSE\n\nAll the rule constants (LINK_LOCAL_COAP_RULE, GLOBAL_COAP_RULE, ICMPV6_ECHO_RULE, RPL_DIO_RULE, RPL_DAO_RULE, LINK_LOCAL_OSCORE_RULE, GLOBAL_OSCORE_RULE, MQTT_SN_RULE) have empty `fields: \u0026[]` arrays:\n```rust\npub const LINK_LOCAL_COAP_RULE: Rule = Rule {\n    rule_id: RULE_LINK_LOCAL_COAP,\n    fields: \u0026[],  // Empty!\n};\n```\n\nThe actual compression/decompression in codec.rs has inline implementations that don't use these rules. This causes:\n1. The context.rs rule_matches() function will always match any fields against these rules (empty fields = no constraints)\n2. The PacketProfile implementations reference these rules but they have no field descriptors\n3. Maintenance hazard: two parallel implementations of the same compression logic\n\nImpact: The SchcContext::select_rule() cannot properly select rules based on field matching since all rules have no field constraints. Anyone using the rule model directly gets incorrect behavior.\n\nFix: Either populate the field descriptors to match the inline codec.rs logic, or remove the rules model if it's not being used.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 3,
   "issue_type": "bug",

@@ -2,6 +2,7 @@
   "id": "project-LICHEN-da2q.16.14",
   "title": "Codereview pass 2: Python sim missing TDMA model for CCP-16",
   "description": "Extend python/src/lichen/sim/medium.py and simulation.py with TDMA slot simulation, density estimation, SNR-based SF adaptation, multi-channel support. Update test vectors in test/vectors/. Parallel with Rust/Zephyr. codereview tagged.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "task",

@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-frdz",
   "title": "Define TDMA rendezvous and sync in spec (beacon format, drift compensation, join procedure)",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "task",

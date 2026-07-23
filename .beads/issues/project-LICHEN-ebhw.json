@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-ebhw",
   "title": "[codereview-pass3.2] Rust/C alignment incomplete: no ygg_addr_from_pubkey in lichen-core::addr.rs yet and no matching lichen_eui_from_ed25519_pubkey in C link layer. Notes reference non-existent functions.",
+  "labels": ["defer-external"],
   "status": "open",
   "priority": 1,
   "issue_type": "bug",
