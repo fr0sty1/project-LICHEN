@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-dpke",
   "title": "[merge-conflict] worktree-worker20: lichend.rs",
+  "notes": "Commit: 371d60679",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:30:35.280049944Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:49:13.95255362Z",
+  "updated_at": "2026-07-23T01:51:49.634470795Z",
   "started_at": "2026-07-23T01:49:13.95255362Z",
   "lease_expires_at": "2026-07-23T01:54:13.95255362Z",
   "heartbeat_at": "2026-07-23T01:49:13.95255362Z"
