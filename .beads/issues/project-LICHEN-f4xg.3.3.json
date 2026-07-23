@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-f4xg.3.3",
+  "title": "Update rust/lichen-client/src/pos.rs and lichen-core constants for SenML Content-Format 112 consistency",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:19:06.465704927Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:19:06.465704927Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-f4xg.3.3",
+      "depends_on_id": "project-LICHEN-f4xg.3",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:19:06.601766866Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
