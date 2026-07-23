@@ -303,7 +303,7 @@ class DaoManager:
             )
         if self.dodag_id is not None and dao.dodag_id != self.dodag_id:
             raise DaoError(
-                f"DAO DODAG ID mismatch: {dao.dodag_id} != {self.dodag_id}"
+                f"DAO DODAG ID {dao.dodag_id} != {self.dodag_id}"
             )
 
         target, parent = self._extract_edge(dao)
