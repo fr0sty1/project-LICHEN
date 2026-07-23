@@ -2,15 +2,15 @@
   "id": "project-LICHEN-9eo0",
   "title": "[merge-conflict] worktree-worker18: lib.rs",
   "notes": "Commit: 1f77b3742",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:59:37.093409772Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:00:53.808332596Z",
+  "updated_at": "2026-07-23T00:00:55.494957298Z",
   "started_at": "2026-07-23T00:00:21.188279132Z",
-  "lease_expires_at": "2026-07-23T00:05:21.188279132Z",
-  "heartbeat_at": "2026-07-23T00:00:21.188279132Z"
+  "closed_at": "2026-07-23T00:00:55.494957298Z",
+  "close_reason": "Closed"
 }
