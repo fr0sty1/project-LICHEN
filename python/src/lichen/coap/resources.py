@@ -609,9 +609,16 @@ class PresenceResource(resource.ObservableResource):
         Args:
             eui64: 8-byte EUI-64 identifier of the peer.
             rank:  RPL rank of the peer node.
-            t:     Unix timestamp of the observation.
+            t:     Unix timestamp of the observation (>= 0).
             rssi:  Received signal strength in dBm, or ``None`` if unknown.
         """
+        if (
+            isinstance(t, bool)
+            or not isinstance(t, (int, float))
+            or (isinstance(t, float) and not math.isfinite(t))
+            or t < 0
+        ):
+            raise ValueError("timestamp must be non-negative finite number")
         entry: dict[str, Any] = {"id": eui64.hex(), "rank": rank, "t": t}
         if rssi is not None:
             entry["rssi"] = rssi
@@ -629,8 +636,17 @@ class PresenceResource(resource.ObservableResource):
     def purge_older_than(self, cutoff_t: float) -> int:
         """Remove entries with ``t < cutoff_t`` and notify if any were removed.
 
+        cutoff_t must be non-negative.
+
         Returns the number of entries evicted.
         """
+        if (
+            isinstance(cutoff_t, bool)
+            or not isinstance(cutoff_t, (int, float))
+            or (isinstance(cutoff_t, float) and not math.isfinite(cutoff_t))
+            or cutoff_t < 0
+        ):
+            raise ValueError("cutoff timestamp must be non-negative finite number")
         peers = dict(self._peers)
         stale = [k for k, v in peers.items() if v["t"] < cutoff_t]
         for k in stale:
