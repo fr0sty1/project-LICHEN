@@ -45,11 +45,6 @@ int lichen_coap_deaddrop_register(const struct lichen_deaddrop_provider *provide
 		k_mutex_unlock(&s_dtn_mutex);
 		return r;
 	}
-	r = senml_pack_init(&s_senml_pack, "", 0);
-	if (r < 0) {
-		k_mutex_unlock(&s_dtn_buf_mutex);
-		return r;
-	}
 	k_work_init_delayable(&s_dtn_expire_work, dtn_expire_work_handler);
 	lichen_dtn_expire_old(&s_dtn_buf, dtn_get_unix_time());
 	k_work_schedule(&s_dtn_expire_work, K_SECONDS(30));
