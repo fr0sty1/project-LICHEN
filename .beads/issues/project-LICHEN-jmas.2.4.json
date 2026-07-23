@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-jmas.2.4",
+  "title": "Add verification/tests for TDMA hash slot assignment against ccp_tdma.json and hash_32.json",
+  "description": "Update Zephyr tests or add in test/vectors/generate.py if needed, ensure C impl matches Rust/Python/Python sim. Run west build -t run or equivalent. No test weakening.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:24:38.426751126Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:24:38.426751126Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-jmas.2.4",
+      "depends_on_id": "project-LICHEN-jmas.2",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:24:38.564401431Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
