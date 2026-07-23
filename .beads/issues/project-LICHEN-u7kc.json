@@ -2,15 +2,15 @@
   "id": "project-LICHEN-u7kc",
   "title": "[merge-conflict] worktree-worker19: bridge.rs",
   "notes": "Commit: b355891b5",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:59:38.215029758Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:13:36.766767687Z",
+  "updated_at": "2026-07-23T00:13:39.035208718Z",
   "started_at": "2026-07-23T00:11:48.044616378Z",
-  "lease_expires_at": "2026-07-23T00:16:48.044616378Z",
-  "heartbeat_at": "2026-07-23T00:11:48.044616378Z"
+  "closed_at": "2026-07-23T00:13:39.035208718Z",
+  "close_reason": "Resolved merge conflicts in rust/lichen-meshtastic/src/bridge.rs: removed conflict markers, kept simplified IPv6 parsing with version check, hardcoded header offsets, updated test comments. Verified with git commit b355891b5 pushed to worktree-worker19."
 }
