@@ -230,7 +230,7 @@ config LICHEN_GATEWAY_WIFI_PSK
 	help
 	  Pre-shared key for WiFi STA. INSECURE default for bench; override per deployment.
 
-# Resolved merge conflict for project-LICHEN-6rb4 (worktree-worker24: heltec_wifi_lora32_v3_esp32s3_procpu.conf): lichen/apps/gateway/Kconfig. Consolidated prefix delegation + RX1_DELAY configs from parallel workers (19/23/24/gdgn/qfh1/verh epic). Removed all duplicate blocks, conflict markers, dead code. Matched board .conf defaults (lowercase SSID). Follows Kconfig style from other resolved files.
+# Resolved merge conflict for project-LICHEN-ds5e (worktree-worker24: heltec_wifi_lora32_v3_esp32s3_procpu.conf), project-LICHEN-6rb4: lichen/apps/gateway/Kconfig. Consolidated prefix delegation + RX1_DELAY configs from parallel workers (19/23/24/gdgn/qfh1/verh epic). Removed all duplicate blocks, conflict markers, dead code. Matched board .conf defaults (lowercase SSID). Follows Kconfig style from other resolved files.
 
 config LICHEN_GATEWAY_COORDINATION
 	bool "Gateway coordination protocol (TDMA slots, node registry, handoff)"
