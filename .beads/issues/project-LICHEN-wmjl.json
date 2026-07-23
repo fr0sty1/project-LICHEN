@@ -3,15 +3,15 @@
   "title": "Redundant forward declarations after function definitions",
   "description": "File: lichen/subsys/lichen/meshcore/adapter.c\nLine: 563-565\n\n```c\nstatic int preflight_tx_slots(struct lichen_meshcore_adapter *adapter,\n                  uint32_t needed);\nstatic uint8_t meshcore_error_from_errno(int err);\n```\n\nThese are forward declarations, but meshcore_error_from_errno was already defined at line 420-443. The forward declaration of preflight_tx_slots is valid (defined later at line 840), but having a mix of pre-definition and post-definition forward declarations suggests disorganized code structure.\n\nWhile not a runtime bug, this is confusing and violates the single-definition-per-entity principle. The forward declaration of meshcore_error_from_errno is dead code.\n\nFix: Remove the redundant forward declaration of meshcore_error_from_errno at line 565.",
   "notes": "Commit: 163b9d366",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:46:16.030877Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:27:44.568057728Z",
+  "updated_at": "2026-07-23T04:27:46.668769954Z",
   "started_at": "2026-07-23T04:26:38.209308557Z",
-  "lease_expires_at": "2026-07-23T04:31:38.209308557Z",
-  "heartbeat_at": "2026-07-23T04:26:38.209308557Z"
+  "closed_at": "2026-07-23T04:27:46.668769954Z",
+  "close_reason": "Redundant forward declaration removed; code conventions followed; change verified"
 }
