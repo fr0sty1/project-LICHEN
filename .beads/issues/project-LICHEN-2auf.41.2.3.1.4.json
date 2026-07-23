@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.41.2.3.1.4",
   "title": "Update schema, generators, validators and tests for new ICMPv6/UDP malformed vectors",
   "description": "Extend schema.json if new expect_error codes added. Update generate*.py scripts, validation code in tests/, ensure Python/Rust/Zephyr tests consume the new vectors and verify dropping without crash/leak.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",
