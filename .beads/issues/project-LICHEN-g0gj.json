@@ -3,15 +3,15 @@
   "title": "Clean conflict markers in rust/lichen-core/src/rf_health.rs, lichen-link/src/schnorr.rs, lichen-node/src/routing.rs, lichen-meshtastic/src/bridge.rs",
   "description": "Resolve all remaining \u003c\u003c\u003c\u003c === \u003e\u003e\u003e\u003e markers. Prefer complete recent versions with test vectors where applicable. Ensure passes style, no dead code.",
   "notes": "Commit: 86026cc97",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:36:58.063761173Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:33:18.438428844Z",
+  "updated_at": "2026-07-23T02:33:19.161846013Z",
   "started_at": "2026-07-23T02:28:28.654524339Z",
-  "lease_expires_at": "2026-07-23T02:33:28.654524339Z",
-  "heartbeat_at": "2026-07-23T02:28:28.654524339Z"
+  "closed_at": "2026-07-23T02:33:19.161846013Z",
+  "close_reason": "Cleaned conflict markers and removed dead comments per bead; verified recent versions with tests; style and no dead code enforced"
 }
