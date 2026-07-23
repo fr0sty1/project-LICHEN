@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-ahrf",
   "title": "[merge-conflict] worktree-worker18: coap_status.c",
+  "notes": "Commit: 0dcd29e55",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:57:28.659324503Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:39:30.854647442Z",
+  "updated_at": "2026-07-23T04:41:47.983913068Z",
   "started_at": "2026-07-23T00:02:02.661781956Z",
   "lease_expires_at": "2026-07-23T04:44:30.854647442Z",
   "heartbeat_at": "2026-07-23T04:39:30.854647442Z"
