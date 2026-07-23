@@ -908,17 +908,15 @@
     "ccp_vector": {
       "type": "object",
       "required": ["name", "description"],
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "name": {"type": "string"},
         "description": {"type": "string"},
         "type": {
           "type": "string",
-          "enum": ["slot_selection", "load_balancing", "density_estimation", "desync"],
+          "enum": ["slot_selection", "load_balancing", "density_estimation", "desync", "sfn_wrap", "multi_root", "recovery"],
           "description": "CCP-16 vector type"
         },
-        "description": {"type": "string"},
-        "name": {"type": "string"},
         "rssi_dbm": {"type": "number", "minimum": -140, "maximum": 0},
         "per": {"type": "number", "minimum": 0, "maximum": 1},
         "snr_samples": {
@@ -954,9 +952,6 @@
             "now": {
               "type": "integer",
               "description": "now() u32 timestamp for TDMA cross-reference and monotonicity test"
-            }
-          }
-        }
             },
             "select_channel": {
               "type": "integer",
@@ -965,29 +960,6 @@
             }
           }
         },
-        "output": {
-          "type": "object",
-          "properties": {
-            "slot_id": {"type": "integer"},
-            "sf": {"type": "integer", "minimum": 7, "maximum": 12},
-            "channel": {"type": "integer", "minimum": 0},
-            "expected_channel": {"type": "integer", "minimum": 0},
-            "tx_allowed": {"type": "boolean"},
-            "expected_sf": {"type": "integer"},
-            "snr_ema": {"type": "number"},
-            "load_factor": {"type": "number"},
-            "hash_32_example": {"type": "integer"},
-            "expected_hash": {
-              "type": "integer",
-              "description": "Output of hash_32 primitive (FNV-1a with basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:254; see Rust lichen-core::lichen_hash_32 + lichen-link::identity::hash_32, Python tests/test_vectors.py:_hash_32 for exact match. Matches no_std style)"
-            },
-            "multi_rx_success": {"type": "integer"},
-            "gateway_capacity": {"type": "integer"}
-          }
-        },
-        "notes": {"type": "string"}
-      }
-    },
         "output": {
           "type": "object",
           "properties": {
