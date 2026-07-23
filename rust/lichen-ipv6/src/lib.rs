@@ -739,15 +739,28 @@ fn add_checksum_word(sum: &mut u64, word: u16) {
     *sum = (*sum & 0xffff) + (*sum >> 16);
 }
 
-/// Verify ICMPv6 checksum.
-///
-/// Returns true if the checksum in the message is valid.
 fn verify_icmpv6_checksum(src: &Addr, dst: &Addr, icmpv6_msg: &[u8]) -> bool {
     if icmpv6_msg.len() < ICMPV6_HEADER_LEN {
         return false;
     }
     let received = ((icmpv6_msg[2] as u16) << 8) | (icmpv6_msg[3] as u16);
     icmpv6_checksum(src, dst, icmpv6_msg).is_ok_and(|computed| received == computed)
+}
+
+fn verify_udp_checksum(src: &Addr, dst: &Addr, udp_datagram: &[u8]) -> bool {
+    if udp_datagram.len() < UDP_HEADER_LEN {
+        return false;
+    }
+    let received = u16::from_be_bytes([udp_datagram[6], udp_datagram[7]]);
+    if received == 0 {
+        return false;
+    }
+    let mut header = [0; UDP_HEADER_LEN];
+    header.copy_from_slice(&udp_datagram[0..UDP_HEADER_LEN]);
+    header[6] = 0;
+    header[7] = 0;
+    let computed = udp_checksum(src, dst, &header, &udp_datagram[UDP_HEADER_LEN..]);
+    received == computed
 }
 
 /// Compute UDP checksum over pseudo-header + UDP header + payload.
@@ -1039,21 +1052,29 @@ mod tests {
     fn test_reject_bad_checksum() {
         let local = Addr::link_local_from_mac(&hex!("001122334455"));
         let remote = Addr::link_local_from_mac(&hex!("665544332211"));
-
-        // Build a valid ping request
-        let echo = Icmpv6Echo { id: 42, seq: 1 };
-        let mut icmp_req = echo.build_request(&remote, &local, b"test").unwrap();
-
-        // Corrupt the checksum (bytes 2-3)
-        icmp_req[2] ^= 0xFF;
-
+        let icmp_req = hex!("8000070eabcd000770696e67");
         let ip_hdr = Ipv6Header::new(next_header::ICMPV6, remote, local);
-
-        // Should reject due to bad checksum (returns Ok(None), not an error)
         let response = handle_icmpv6(&local, &ip_hdr, &icmp_req).unwrap();
-        assert!(response.is_none(), "should reject packet with bad checksum");
+        assert!(response.is_none());
     }
 
+    #[test]
+    fn malformed_ingress_vectors() {
+        let w1 = hex!("60000000000c3a40fe800000000000000000000000000001fe8000000000000000000000000000028000070eabcd000770696e67");
+        let h1 = Ipv6Header::from_bytes(&w1).unwrap();
+        let p1 = &w1[40..];
+        assert!(handle_icmpv6(&h1.dst, &h1, p1).unwrap().is_none());
+        let w2 = hex!("60000000000c3a40fe800000000000000000000000000001fe8000000000000000000000000000028000");
+        let h2 = Ipv6Header::from_bytes(&w2).unwrap();
+        let p2 = &w2[40..];
+        assert!(handle_icmpv6(&h2.dst, &h2, p2).unwrap().is_none());
+        let w3 = hex!("6000000000131140fe800000000000000000000000000001fe800000000000000000000000000002163316330013000040011234ff737461747573");
+        let h3 = Ipv6Header::from_bytes(&w3).unwrap();
+        let u3 = &w3[40..];
+        assert!(!verify_udp_checksum(&h3.src, &h3.dst, u3));
+        let w4 = hex!("6000000000081140fe800000000000000000000000000001fe8000000000000000000000000000021633");
+        assert!(UdpHeader::from_bytes(&w4[40..]).is_err());
+    }
     #[test]
     fn test_echo_data_too_large() {
         let src = Addr::link_local_from_mac(&hex!("001122334455"));
