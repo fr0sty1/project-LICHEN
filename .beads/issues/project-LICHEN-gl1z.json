@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-gl1z",
+  "title": "[cross-impl] EDHOC sig len/alg mismatch (Python/Rust 64B Ed25519 vs C 48B Schnorr48)",
+  "description": "Python (edhoc.py:402,436 uses full 64B Ed25519 via nacl.signing), Rust (edhoc.rs:44 SIG_LEN=64, ed25519-dalek), and test/vectors/edhoc.json (Python oracle, msg2/msg3 lengths assume 64B sigs) vs Zephyr C (edhoc.h:49 EDHOC_SIG_LEN=48 with Schnorr48 include in edhoc.c). Causes divergent transcript hashes, MAC_2/MAC_3, message sizes, and interop. Recent fixes (402298f95, a3f724ba7, 40f1a5205, 296bd6c4d) aligned Rust+test but not C. Violates cross-impl consistency rule for same algorithm.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T14:44:35.470118518Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T14:44:35.470118518Z"
+}
