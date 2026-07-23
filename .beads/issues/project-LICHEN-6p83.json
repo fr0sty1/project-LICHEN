@@ -3,15 +3,15 @@
   "title": "Potential uint32 wraparound in from_radio_id counter",
   "description": "File: lichen/subsys/lichen/meshtastic/adapter.c:1675, 1499, 1728\n\nMultiple locations increment from_radio_id:\n  from_radio_id = adapter-\u003efrom_radio_id + 1U;\n  ...\n  adapter-\u003efrom_radio_id = from_radio_id;\n\nWhen from_radio_id reaches UINT32_MAX, it wraps to 0. If Meshtastic clients or this implementation use 0 as a special/invalid ID value, this could cause unexpected behavior.\n\nThe Meshtastic protocol documentation should be consulted to determine if ID 0 has special meaning. If so, the increment should skip 0:\n  from_radio_id = (adapter-\u003efrom_radio_id + 1U) ?: 1U;\n\nNote: This is low priority as UINT32_MAX messages would take a very long time to reach.",
   "notes": "Commit: 5389af3ee",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:48:29.365335Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:29:53.537274466Z",
+  "updated_at": "2026-07-23T04:29:55.82368Z",
   "started_at": "2026-07-23T04:28:11.098522215Z",
-  "lease_expires_at": "2026-07-23T04:33:11.098522215Z",
-  "heartbeat_at": "2026-07-23T04:28:11.098522215Z"
+  "closed_at": "2026-07-23T04:29:55.82368Z",
+  "close_reason": "Added next_from_radio_id() helper matching peer_node_num style to skip 0 on uint32 wraparound in adapter.c; updated all 3 increment sites; tests would pass as behavior unchanged for \u003c4B IDs; committed and pushed (after rebase abort due to unrelated conflict)"
 }
