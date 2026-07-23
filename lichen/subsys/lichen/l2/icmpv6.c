@@ -9,6 +9,7 @@
 #include "icmpv6.h"
 
 #include <string.h>
+#include <limits.h>
 
 /*
  * Logging abstraction: use Zephyr logging when available, otherwise
@@ -310,6 +311,9 @@ static int build_echo(uint8_t type,
     icmpv6[ICMPV6_CHECKSUM_OFFSET] = (checksum >> 8) & 0xFF;
     icmpv6[ICMPV6_CHECKSUM_OFFSET + 1] = checksum & 0xFF;
 
+    if (total_len > (size_t)INT_MAX) {
+        return -EOVERFLOW;
+    }
     return (int)total_len;
 }
 
@@ -409,6 +413,9 @@ static int build_error(uint8_t type,
     icmpv6[ICMPV6_CHECKSUM_OFFSET] = (checksum >> 8) & 0xFF;
     icmpv6[ICMPV6_CHECKSUM_OFFSET + 1] = checksum & 0xFF;
 
+    if (total_len > (size_t)INT_MAX) {
+        return -EOVERFLOW;
+    }
     return (int)total_len;
 }
 
