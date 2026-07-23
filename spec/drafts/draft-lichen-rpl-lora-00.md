@@ -139,13 +139,12 @@ minimizes RAM requirements at routers.
 
 ### 4.2. DODAG Configuration
 
-| Parameter | Value | Rationale |
-|-----------|-------|-----------|
-| RPLInstanceID | 0 | Single instance |
-| Mode | Non-Storing | Memory efficiency |
-| MOP | 1 | Non-Storing, no multicast |
-| Grounded | Yes (if BR) | Internet connectivity |
-| DAG Metric Container | Yes | Required for MRHOF |
+| Parameter | Value | Rationale | Source |
+|-----------|-------|-----------|--------|
+| RPLInstanceID | 0 | Single instance | constants.toml:46, lichen-core::constants::RPL_INSTANCE_ID |
+| Mode | Non-Storing (MOP=1) | Memory efficiency (root holds routes) | constants.toml:47, RPL_MODE_OF_OPERATION |
+| Grounded | Yes (if BR) | Internet connectivity via 6LBR | draft-lichen-border-router |
+| DAG Metric Container | Yes | Required for MRHOF ETX | RFC 6550 |
 
 ### 4.3. Multiple DODAGs
 
@@ -274,6 +273,8 @@ To prevent DIS storms:
 | DAO refresh | Every 30 minutes (before lifetime expires) |
 | DAO on parent change | Immediate (with jitter 0-500ms) |
 
+**DAO Source Address Model:** DAO packets use routable ULA source (DODAG-root derived prefix) for multi-hop forwarding. Relays preserve the original IPv6 source end-to-end (see spec/04-network.md and SCHC Rule 4). This satisfies security requirements for source binding.
+
 ### 7.2. DAO Lifetime
 
 ```
@@ -325,8 +326,7 @@ security mechanism, not RPL's built-in security modes.
 
 ### 8.2. Link-Layer Signature Protection
 
-All RPL control messages (DIO, DAO, DIS) are link-layer frames
-carrying Schnorr signatures (draft-lichen-schnorr-00).
+All RPL control messages (DIO, DAO, DIS) are link-layer frames that MUST carry Schnorr signatures per draft-lichen-link-01:4.2 (unsigned RPL control frames MUST be rejected by receivers; permissive mode is test-only). See spec/06-security.md:8.10 for full requirements.
 
 This provides:
 - Sender authentication
@@ -392,6 +392,8 @@ Provides time synchronization for replay protection.
 ```
 
 Advertises node congestion for routing decisions.
+
+**CCP-16 SF and RF Metrics Option:** MUST be carried in RPL DIO options per CCP-16 (see spec/02a-coordinated-capacity.md:4.2). Nodes MUST compute TX_SF via the pseudocode in physical-link:3.4 and 02a:2a.3. The DAG Metric Container includes per-neighbor EMA-derived SF recommendation, density, utilization and load_factor. DIOs on control channel (CH0) announce recommendations. RX scanning on CH0 is REQUIRED. Test vectors (ccp16.json, ccp16-desync.json) MUST validate interop.
 
 ### 9.3. Prefix Information Option
 
@@ -509,7 +511,7 @@ Specific values TBD.
 
 ```
 RPLInstanceID: 0
-DODAGID: 0201:0203:0405:0607::1
+DODAGID: 0200:1234:5678:9abc::1
 Version: 1
 Rank: 256 (root)
 Mode: Non-Storing
@@ -522,7 +524,9 @@ Trickle:
   Imax: 8 doublings (17 min)
   k: 10
 
-# No ULA prefix advertised (no-ULA model); nodes use self-derived 02xx addresses
+# No prefix advertisement (02xx addresses are self-derived from key)
+Valid Lifetime: 86400s (1 day)
+Preferred Lifetime: 43200s (12 hours)
 ```
 
 ## Appendix B. Parent Selection Example
