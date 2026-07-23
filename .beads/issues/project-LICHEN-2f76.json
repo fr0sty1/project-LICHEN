@@ -2,6 +2,7 @@
   "id": "project-LICHEN-2f76",
   "title": "Resolve all merge conflicts in test vectors, SCHC, RPL, sim and announce Python code",
   "description": "Merge conflicting changes from multiple worker branches (worker3-8) into clean, ruff-compatible code. Incorporate all new vector functions (schc_fragment, ccp_load_balancing, ccp16, ccp9 with independent _l2_announce_with_channel oracle using exact wire format). Update schema, main(), ensure test integrity with independent oracles only. No dead code. Update generate.py to produce all JSONs. Follow LICHEN coding guidelines.",
+  "notes": "Commit: $(git rev-parse --short HEAD)",
   "status": "in_progress",
   "priority": 0,
   "issue_type": "epic",
@@ -9,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:55:45.886095328Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:56:11.592924293Z",
+  "updated_at": "2026-07-23T00:10:01.936966659Z",
   "started_at": "2026-07-22T23:56:11.592924293Z",
   "lease_expires_at": "2026-07-23T00:01:11.592924293Z",
   "heartbeat_at": "2026-07-22T23:56:11.592924293Z"
