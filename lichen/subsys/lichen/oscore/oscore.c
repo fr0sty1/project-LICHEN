@@ -1528,7 +1528,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	if (options_len > 0) {
 		if (options_len > sizeof(plaintext) - pt_len) {
 			ret = OSCORE_ERR_BUFFER_TOO_SMALL;
-			goto cleanup_protect_request;
+			goto common_wipe;
 		}
 		memcpy(plaintext + pt_len, options, options_len);
 		pt_len += options_len;
@@ -1537,7 +1537,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	if (payload_len > 0) {
 		if (payload_len > sizeof(plaintext) - pt_len - 1) {
 			ret = OSCORE_ERR_BUFFER_TOO_SMALL;
-			goto cleanup_protect_request;
+			goto common_wipe;
 		}
 		plaintext[pt_len++] = 0xFF; /* Payload marker */
 		memcpy(plaintext + pt_len, payload, payload_len);
@@ -1550,7 +1550,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 				       piv, piv_len, aad, sizeof(aad));
 	if (aad_ret < 0) {
 		ret = OSCORE_ERR_BUFFER_TOO_SMALL;
-		goto cleanup_protect_request;
+		goto common_wipe;
 	}
 	size_t aad_len = (size_t)aad_ret;
 
@@ -1558,7 +1558,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	size_t required_ct_len = pt_len + OSCORE_TAG_LEN;
 	if (*ciphertext_len < required_ct_len) {
 		ret = OSCORE_ERR_BUFFER_TOO_SMALL;
-		goto cleanup_protect_request;
+		goto common_wipe;
 	}
 
 	/* Encrypt */
@@ -1567,7 +1567,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 			    plaintext, pt_len,
 			    ciphertext) != 0) {
 		ret = OSCORE_ERR_ENCRYPT_FAILED;
-		goto cleanup_protect_request;
+		goto common_wipe;
 	}
 	*ciphertext_len = required_ct_len;
 
@@ -1584,7 +1584,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	int opt_len = oscore_option_build(&opt, oscore_opt, *oscore_opt_len);
 	if (opt_len < 0) {
 		ret = opt_len;
-		goto cleanup_protect_request;
+		goto common_wipe;
 	}
 	*oscore_opt_len = (size_t)opt_len;
 
@@ -1595,7 +1595,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 		ret = OSCORE_OK;
 	}
 
-cleanup_protect_request:
+common_wipe:
 	crypto_wipe(nonce, sizeof(nonce));
 	crypto_wipe(piv, sizeof(piv));
 	crypto_wipe(plaintext, sizeof(plaintext));
@@ -1611,11 +1611,12 @@ nvm_failed:
 	 * next call (per test_nvm_protect_request_failure). Fixes
 	 * python-ano.41 (nonce reuse on reboot, RFC 8613 §7.2/§8.4).
 	 *
-	 * The 6 error paths (param ~1473/1479, ctx/seq checks ~1490/1497/1504,
-	 * buffers ~1529/1538/1552/1560, encrypt ~1569, option ~1586) set
-	 * proper ret then goto cleanup_protect_request (wipes only; SSN
-	 * consumed safely as error returned before transmission). nvm_failed
-	 * is distinct. Mutex serializes all access; wipes clear sensitive data.
+	 * Buffer check, AAD/encrypt/option build error paths (~1529/1538/1552/
+	 * 1560/1569/1586) now set appropriate ret then goto common_wipe first
+	 * (ensuring wipe always before SSN handling in nvm_failed). Do not set
+	 * NVM error here. Early param/ctx/seq paths return directly. nvm_failed
+	 * is distinct for post-crypto persistence failure. Mutex serializes;
+	 * wipes clear sensitive data on all paths.
 	 */
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
 	ctx_idx = ctx_get_index(ctx);
@@ -1624,7 +1625,7 @@ nvm_failed:
 	}
 	k_mutex_unlock(&s_ctx_mutex);
 	ret = OSCORE_ERR_NVM_FAILED;
-	goto cleanup_protect_request;
+	goto common_wipe;
 
 }
 
