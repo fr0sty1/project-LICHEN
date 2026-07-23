@@ -182,31 +182,13 @@ impl MeshtasticBridge {
 
         match portnum {
             PortNum::IpTunnelApp => {
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
                 // Raw IPv6 packet encapsulated; version check + extract src/dst from IPv6 header
-                // (bytes 8-23 src, 24-39 dst per worker5/8 patterns)
-=======
-                // Raw IPv6 packet encapsulated (worker8 simplification: version check + hardcoded offsets)
->>>>>>> origin/worktree-worker23
-=======
-                // Raw IPv6 packet encapsulated; version check + extract src/dst from IPv6 header
-                // (bytes 8-23 src, 24-39 dst per worker5/8 patterns)
->>>>>>> origin/worktree-worker20
-=======
->>>>>>> origin/worktree-worker24
+                // (bytes 8-23 src, 24-39 dst per worker5/8 patterns, consistent with CCP and test vectors)
                 if data.payload.len() < 40 || (data.payload[0] >> 4) != 6 {
                     return Err(BridgeError::InvalidPacket);
                 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
                 // Extract src/dst from IPv6 header (bytes 8-23 src, 24-39 dst)
-=======
->>>>>>> origin/worktree-worker20
-=======
->>>>>>> origin/worktree-worker24
                 let src_bytes: [u8; 16] = data.payload[8..24]
                     .try_into()
                     .map_err(|_| BridgeError::InvalidPacket)?;

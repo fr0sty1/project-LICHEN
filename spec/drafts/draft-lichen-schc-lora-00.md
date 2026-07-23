@@ -288,7 +288,6 @@ This minimizes overhead for the common case (no loss).
    8 bit  1b   6 bit   32 bit   variable
 ```
 
-<<<<<<< HEAD
 Rule 255 is REQUIRED as fallback for unknown packets, rule version mismatches, or uncompressed frames. It ensures interoperability during rule set transitions.
 
 RPL options (per RFC 6550 §6.7) are compressed using MATCH_MAPPING on Option Type with 2-bit index via MAPPING_SENT CDA. Prioritized mapping for common DIO options (Pad1, PadN, PIO, DAG Metric Container). CoAP compression per RFC 8824 supported in rules 0/1/5/6. Full rule set, field descriptors, matching logic, and parameters (m=1, n=6, RCS=CRC-32, timeouts) defined in spec/03-adaptation.md §5.7, appendix-schc.md, rust/lichen-schc/src/rules.rs, constants.toml.
@@ -410,13 +409,7 @@ Future versions of this document may request:
 
 ## Appendix A. SCHC Rule Set (Version 1)
 
-<<<<<<< HEAD
-Rule Set Version 1 is defined in spec/03-adaptation.md §5.7 (authoritative), with LoRa-specific context here. Full field descriptors, matching operators (MATCH_MAPPING etc.), CDA, and constants are in rust/lichen-schc/src/rules.rs, lichen/subsys/lichen/schc/, constants.toml, and appendix-schc.md. Avoids duplication per I-D practice.
-
-Example rules (normative values in test vectors):
-=======
 Complete SCHC rules, Field Descriptors, constants, test vectors, and implementation details are maintained in `spec/appendix-schc.md` (canonical reference), `constants.toml`, `rust/lichen-schc/src/rules.rs`, `lichen/subsys/lichen/schc/`, and `test/vectors/schc_compression.json` / `schc_fragment.json`. Rule 255 REQUIRED for fallback. All implementations MUST match these bit-exact oracles for interop. Rule versioning via DIO per spec/03-adaptation.md §5.7. This document avoids duplicating the full table per I-D best practices. CoAP/OSCORE rules follow RFC 8824/8613.
->>>>>>> origin/worktree-worker24
 
 | Rule ID | Name | Primary Use | Compressed Size |
 |---------|------|-------------|-----------------|
