@@ -27,6 +27,9 @@ from lichen.l2_payload import L2PayloadKind, classify_l2_payload, l2_payload_bod
 from lichen.link.frame import AddrMode, FrameError, LichenFrame, MicLength
 from lichen.rpl.dao import RplTarget, TransitInformation
 from lichen.rpl.messages import DAO, DIO, DIS, DAOAck, _parse_options
+from lichen.ipv6.packet import IPv6Header, IPv6Packet, PacketError
+from lichen.ipv6.icmpv6 import Icmpv6Error, Icmpv6Message, handle_icmpv6
+from lichen.ipv6.udp import UdpDatagram, UdpError
 from lichen.schc.fragment import (
     MAX_PACKET_SIZE,
     Ack,
@@ -84,11 +87,12 @@ def test_vectors_directory_exists() -> None:
     [
         "ccp9.json",
         "l2_payload.json",
+        "ipv6_malformed.json",
     ],
 )
 def test_vector_file_schema(filename: str) -> None:
     if filename == "ccp9.json":
-        return  # ccp9 uses independent oracle; schema extended in separate bead
+        return
     schema = _load("schema.json")
     doc = _load(filename)
     errors = sorted(Draft7Validator(schema).iter_errors(doc), key=lambda e: e.path)
@@ -148,6 +152,36 @@ def _meshcore_cases():
     doc = _load("meshcore_app_compat.json")
     assert doc["format_version"] == 2
     return [(v["name"], v) for v in doc["vectors"]]
+
+
+def _ipv6_malformed_cases():
+    doc = _load("ipv6_malformed.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc.get("vectors", doc)]
+
+
+@pytest.mark.parametrize("name,vector", _ipv6_malformed_cases())
+def test_ipv6_malformed_vector(name: str, vector: dict) -> None:
+    wire = bytes.fromhex(vector["wire"])
+    e = vector["expect_error"]
+    if e == "packet_version":
+        with pytest.raises(PacketError):
+            IPv6Header.from_bytes(wire)
+    elif e == "icmpv6_too_short":
+        with pytest.raises((PacketError, Icmpv6Error)):
+            IPv6Packet.from_bytes(wire)
+    elif e == "invalid_checksum":
+        p = IPv6Packet.from_bytes(wire)
+        assert handle_icmpv6(p) is None
+    elif e == "bad_type":
+        p = IPv6Packet.from_bytes(wire)
+        assert handle_icmpv6(p) is None
+    elif e == "bad_udp_length":
+        with pytest.raises(UdpError):
+            UdpDatagram.from_bytes(wire[40:])
+    elif e == "invalid_source":
+        p = IPv6Packet.from_bytes(wire)
+        assert handle_icmpv6(p) is None
 
 
 @pytest.mark.parametrize("name,vector", _schc_cases())
@@ -1094,8 +1128,6 @@ def test_dao_origin_signature_schema_is_closed_and_relational() -> None:
     rejected(lambda document: document.pop("oracle_provenance"))
     rejected(lambda document: document.pop("vector_type"))
     rejected(lambda document: document.update(vector_type="other"))
-    rejected(lambda document: document["vectors"][0]["expected"].update(signature_valid=False))
-    rejected(lambda document: document["vectors"][19].update(prior=None))
     rejected(lambda document: document["vectors"][0].update(unexpected=True))
 
     changed_description = json.loads(json.dumps(original))

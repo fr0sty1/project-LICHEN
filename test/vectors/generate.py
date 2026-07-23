@@ -1948,8 +1948,6 @@ def ccp13_vectors() -> list[dict]:
 
 
 def rpl_messages_vectors() -> list[dict]:
-
-    # Independent hardcoded from RFC 6550 §6.3, §6.4. No use of lichen.rpl.messages.
     return [
         {
             "name": "dio_base",
@@ -1965,6 +1963,39 @@ def rpl_messages_vectors() -> list[dict]:
             "encoded": "0201050000000000000000000000000000000000",
             "fields": {"rpl_instance_id": 0, "dao_sequence": 5},
         },
+    ]
+
+
+def ipv6_malformed_vectors() -> list[dict]:
+    ll_src = IPv6Address("fe80::1")
+    ll_dst = IPv6Address("fe80::2")
+    good = _icmpv6_ipv6(ll_src, ll_dst, EchoRequest(0x1234, 1, b"test").to_message())
+    bad_csum = bytearray(good)
+    bad_csum[42] ^= 0xff
+    bad_ver = bytearray(good)
+    bad_ver[0] = 0x40
+    short = good[:30]
+    bad_t = bytearray(good)
+    bad_t[40] = 0
+    udp_good = _udp_ipv6(ll_src, ll_dst, b"data")
+    bad_u = bytearray(udp_good)
+    bad_u[44] = 0
+    cases = [
+        ("packet_version", bytes(bad_ver), "packet_version"),
+        ("icmpv6_too_short", short, "icmpv6_too_short"),
+        ("invalid_checksum", bytes(bad_csum), "invalid_checksum"),
+        ("bad_type", bytes(bad_t), "bad_type"),
+        ("bad_udp_length", bytes(bad_u), "bad_udp_length"),
+        ("invalid_source", _icmpv6_ipv6(IPv6Address("::"), ll_dst, EchoRequest(0, 0, b"").to_message()), "invalid_source"),
+    ]
+    return [
+        {
+            "name": n,
+            "category": "malformed",
+            "wire": d.hex(),
+            "expect_error": e,
+        }
+        for n, d, e in cases
     ]
 
 
@@ -2033,6 +2064,11 @@ def main() -> None:
         "rpl_messages.json",
         "RPL messages (DIO/DAO per RFC 6550) with hardcoded independent vectors from spec.",
         rpl_messages_vectors(),
+    )
+    _write(
+        "ipv6_malformed.json",
+        "Malformed IPv6 ICMPv6 UDP vectors per RFC 8200 RFC 4443 RFC 768.",
+        ipv6_malformed_vectors(),
     )
     _write(
         "meshtastic_app_compat.json",

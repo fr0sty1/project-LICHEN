@@ -41,7 +41,8 @@
               {"$ref": "#/definitions/compact_cot_vector"},
               {"$ref": "#/definitions/schnorr48_vector"},
               {"$ref": "#/definitions/hash_32_vector"},
-              {"$ref": "#/definitions/ccp_load_balancing_vector"}
+              {"$ref": "#/definitions/ccp_load_balancing_vector"},
+              {"$ref": "#/definitions/ipv6_malformed_vector"}
             ]
           }
         }
@@ -911,6 +912,18 @@
           "$ref": "#/definitions/hex",
           "description": "Encoded message bytes (excluding ICMPv6 header)"
         }
+      }
+    },
+    "ipv6_malformed_vector": {
+      "type": "object",
+      "required": ["name", "category", "wire", "expect_error"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+        "category": {"const": "malformed"},
+        "description": {"type": "string"},
+        "wire": {"$ref": "#/definitions/hex"},
+        "expect_error": {"type": "string", "pattern": "^[a-z0-9_]+$"}
       }
     },
     "ccp15_vector": {
