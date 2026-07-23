@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-vhvj.2.3.4",
+  "title": "Update SimNode docs, remove conflicting current_channel usage, add hop_schedule population helper",
+  "description": "In node.py update SimNode docstring and init for synchronized_hop_channel priority over current_channel for CCP-12. Add helper to populate hop_schedule from SFN/EUI if missing. Ensure all current_channel updates respect no-dead-code rule. Update tests if broken.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:24:52.428830591Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:24:52.428830591Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-vhvj.2.3.4",
+      "depends_on_id": "project-LICHEN-vhvj.2.3",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:24:52.572628434Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
