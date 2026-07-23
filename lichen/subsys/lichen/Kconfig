@@ -56,10 +56,10 @@ config LICHEN_DUTY_CYCLE
 
 endif # LICHEN
 
-# Resolved merge conflict project-LICHEN-cbvp (worktree-worker23:Kconfig).
+# Resolved merge conflict project-LICHEN-cbvp (worktree-worker23:Kconfig), project-LICHEN-98r7 (integration/worker3-20260722:Kconfig).
 # Consolidated LICHEN_*_SF and LICHEN_DUTY_CYCLE definitions to top-level
-# lichen/Kconfig; removed duplicates from hal/l2/link per prior fixes
-# (a0yn/syn6/48xu). Fixed whitespace/indentation from parallel workers.
+# lichen/subsys/lichen/Kconfig; removed duplicates from hal/l2/link per prior fixes
+# (a0yn/syn6/48xu/9nq6/z4oj/nm65/07am). Fixed whitespace/indentation from parallel workers.
 # Matches canonical style. No dead code.
 
 
