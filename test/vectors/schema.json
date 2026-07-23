@@ -986,7 +986,17 @@
             "gateway_capacity": {"type": "integer"}
           }
         },
-        "notes": {"type": "string"}
+        "notes": {"type": "string"},
+        "current_sfn": {"type": "integer"},
+        "last_sfn": {"type": "integer"},
+        "sfn": {"type": "integer"},
+        "expected": {"type": "string"},
+        "version": {"type": "integer"},
+        "alternate_version": {"type": "integer"},
+        "drift_ppm": {"type": "integer"},
+        "guard_ppm": {"type": "integer"},
+        "superframe_ms": {"type": "integer"},
+        "slot_adjust_ticks": {"type": "integer"}
       },
       "allOf": [
         {
@@ -1009,6 +1019,10 @@
             "required": ["type"]
           },
           "then": {"required": ["input", "output"]}
+        },
+        {
+          "if": {"properties": {"type": {"enum": ["sfn_wrap", "multi_root", "recovery"]}}},
+          "then": {"required": ["name", "description", "type", "expected"]}
         }
       ]
     },
