@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-uk36.1.4.2",
+  "title": "Fix build_context_* and build_signature_structure in edhoc.rs",
+  "description": "Update build_context_2, build_context_3, build_signature_structure helpers to align with new KDF signature from uk36.1 and Python reference. Fix any CBOR or parameter mismatches for signature structures and context for MACs. Match RFC9528 exactly.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:25:51.968927401Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:25:51.968927401Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-uk36.1.4.2",
+      "depends_on_id": "project-LICHEN-uk36.1.4",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:25:52.107358757Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
