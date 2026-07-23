@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-uk36.1.2.1",
   "title": "Update edhoc_kdf implementation to accept (prk, th, label_str, context, len) and fix CBOR info construction",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:25:03.570860643Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:30:23.259684724Z",
+  "updated_at": "2026-07-23T05:29:13.975586547Z",
   "started_at": "2026-07-23T05:29:13.975586547Z",
-  "closed_at": "2026-07-23T05:30:23.259684724Z",
-  "close_reason": "Decomposed into subtasks project-LICHEN-uk36.1.2.1.1-.4",
+  "lease_expires_at": "2026-07-23T05:34:13.975586547Z",
+  "heartbeat_at": "2026-07-23T05:29:13.975586547Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-uk36.1.2.1",
