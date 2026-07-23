@@ -51,8 +51,10 @@ def format_time_us(time_us: int) -> str:
         time_us: Time in microseconds.
 
     Returns:
-        Formatted string like "1.234s" or "123.456ms".
+        Formatted string like "1.234s" or "123.456ms", or "--" for negative values.
     """
+    if time_us < 0:
+        return "--"
     if time_us >= 1_000_000:
         return f"{time_us / 1_000_000:.3f}s"
     elif time_us >= 1_000:
