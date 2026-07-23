@@ -159,24 +159,6 @@ impl AnnounceProcessor {
         self.access_counter += 1;
         let access = self.access_counter;
 
-        self.pinned_keys.insert(
-            iid,
-            PinnedKeyEntry {
-                pubkey: *announce.pubkey,
-                last_access: access,
-            },
-        );
-        let evicted_iid = self.evict_pinned_if_needed();
-
-        self.seen.insert(
-            iid,
-            SeenEntry {
-                seq_num: announce.seq_num,
-                last_access: access,
-            },
-        );
-        self.evict_seen_if_needed();
-
         let mut destination = [0u8; 16];
         destination[..8].copy_from_slice(&self.prefix);
         destination[8..].copy_from_slice(&iid);
@@ -195,6 +177,24 @@ impl AnnounceProcessor {
             coords,
         };
         self.gradient_table.update(entry, now_ms);
+
+        self.pinned_keys.insert(
+            iid,
+            PinnedKeyEntry {
+                pubkey: *announce.pubkey,
+                last_access: access,
+            },
+        );
+        let evicted_iid = self.evict_pinned_if_needed();
+
+        self.seen.insert(
+            iid,
+            SeenEntry {
+                seq_num: announce.seq_num,
+                last_access: access,
+            },
+        );
+        self.evict_seen_if_needed();
 
         let should_relay = announce.should_relay();
 
