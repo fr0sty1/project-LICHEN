@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-au5j",
+  "title": "[security] OSCORE: contradictory SSN rollback docs in oscore.h vs code/test",
+  "description": "Reviewed last 20 commits (git log --oneline -20). Relevant changes in 87f90bc7b (oscore.c SECURITY comment update) and ad37f4d3f (oscore.h update, test_nvm_*, Rust lichen-oscore seqnum/protect changes for NVM/SSN handling).\n\nCurrent state (post-fixes):\n- oscore.c:1629-1634 SECURITY comment: MUST rollback SSN on NVM_FAILED to prevent nonce reuse on reboot (conditional rollback under mutex if sender_seq still matches seq+1; sets initialized=true).\n- Test in tests/oscore/src/main.c:356-359 expects rollback (ssn remains 100 after failure).\n- But oscore.h:488-492 (and 480-486) contains outdated paragraph claiming \"SSN increment is NOT rolled back (packet was prepared/transmitted)\" and references old line 1604. Contradicts code, test, and other header para at 482-486 which mentions rollback.\n\nThis is a P0 security doc bug: incorrect security analysis in public API header for critical nonce-uniqueness property (RFC 8613 §7.2, OSCORE AEAD nonce reuse = catastrophic). Misleads implementers/reviewers about replay/nonce guarantees. Also stale line refs.\n\nNo other obvious issues found in MIC, key zeroization, EDHOC, Schnorr, or timing in these commits (Rust uses Zeroizing, replay-before-decrypt, SeqExhausted guards). Rust seqnum::increment now explicitly \u003c= MAX.\n\nNo EDHOC/Schnorr changes in last 20.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T13:43:28.515162978Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T13:43:28.515162978Z"
+}
