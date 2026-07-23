@@ -446,7 +446,9 @@ class NodeServer:
             rx_done.set()
         entered = False
         try:
-            self._simulation.enter_rx_mode(node_id,timeout_us,ch,on_packet,on_timeout)
+            self._simulation.enter_rx_mode(
+                node_id, timeout_us, on_packet, on_timeout, channel=ch
+            )
             entered = True
         except ValueError as e:
             logger.error("Failed to enter RX mode for %s: %s", node_id, e)

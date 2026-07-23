@@ -696,7 +696,22 @@ class Simulation:
         self._event_queue.push(timeout_event)
         self._debug_log("rx_start", sim_id=self._id, node_id=node_id, timeout_us=timeout_us)
 
-    def enter_rx_mode(self,node_id: str,timeout_us: int,channel: int = 0,on_packet: Callable[[bytes, int, int], None],on_timeout: Callable[[], None],) -> None:
+    def enter_rx_mode(
+        self,
+        node_id: str,
+        timeout_us: int,
+        on_packet: Callable[[bytes, int, int], None],
+        on_timeout: Callable[[], None],
+        channel: int = 0,
+    ) -> None:
+        """Enter RX mode with callbacks (non-blocking, callback-based RX).
+
+        Puts node in RX_WAIT (enables BARRIER_SYNC time advance), stores
+        callbacks, sets channel (for synchronized hopping), and queues a
+        timeout event. The on_packet callback is invoked by
+        deliver_pending_packets(); on_timeout by _handle_rx_timeout().
+        Only one callback fires; node returns to IDLE afterward.
+        """
         node = self._nodes.get(node_id)
         if node is None:
             raise ValueError(f"Node '{node_id}' does not exist")
@@ -707,9 +722,16 @@ class Simulation:
         node.rx_callbacks = (on_packet, on_timeout)
         timeout_time_us = self._current_time_us + timeout_us
         self._pending_rx_timeouts[node_id] = timeout_time_us
-        timeout_event = RxTimeoutEvent(time_us=timeout_time_us,node_id=node_id)
+        timeout_event = RxTimeoutEvent(
+            time_us=timeout_time_us, node_id=node_id
+        )
         self._event_queue.push(timeout_event)
-        self._debug_log("enter_rx_mode",sim_id=self._id,node_id=node_id,timeout_us=timeout_time_us)
+        self._debug_log(
+            "enter_rx_mode",
+            sim_id=self._id,
+            node_id=node_id,
+            timeout_us=timeout_time_us,
+        )
 
     def exit_rx_mode(self, node_id: str) -> None:
         """Exit RX mode, cancel pending timeout.
@@ -737,7 +759,8 @@ class Simulation:
 
         Checks all nodes in RX_WAIT with rx_callbacks set, and for each that
         has a receivable packet, calls the on_packet callback and transitions
-        the node to IDLE.
+        the node to IDLE. All core recording, logging, collision handling,
+        and observer notification is now unified in _get_rx_result_internal.
 
         Returns:
             Number of packets delivered.
@@ -751,39 +774,6 @@ class Simulation:
             if result is not None:
                 payload, rssi, snr, tx_id, source_node_id = result
                 on_packet = node.rx_callbacks[0]
-
-<<<<<<< HEAD
-                self._metrics.record_reception(node_id, tx_id, self._current_time_us)
-=======
-                rx_log = {
-                    "sim_id": self._id,
-                    "node_id": node_id,
-                    "tx_id": tx_id,
-                    "payload_len": len(payload),
-                    "rssi": rssi,
-                    "snr": snr,
-                    "time_us": self._current_time_us,
-                    "from_node_id": source_node_id,
-                }
-                if self._debug_enabled:
-                    rx_log.update(
-                        node_state=node.state.name,
-                        pending_timeouts=len(self._pending_rx_timeouts),
-                        event_queue_len=len(self._event_queue),
-                    )
-
->>>>>>> origin/integration/worker5-20260722
-                self._observers.notify(
-                    "on_rx_success",
-                    sim_id=self._id,
-                    node_id=node_id,
-                    tx_id=tx_id,
-                    from_node_id=source_node_id,
-                    payload_len=len(payload),
-                    rssi=rssi,
-                    snr=snr,
-                    time_us=self._current_time_us,
-                )
 
                 node.state = NodeState.IDLE
                 node.rx_callbacks = None
@@ -807,7 +797,12 @@ class Simulation:
     def _get_rx_result_internal(self, node_id: str) -> tuple[bytes, int, int, str, str] | None:
         """Internal version of get_rx_result for callback delivery.
 
-        Does not raise on missing node, returns None instead.
+        Does not raise on missing node, returns None instead. Unifies core
+        recording logic (simulation + per-node metrics, collision detection,
+        rx_success logging, on_rx_success observer notification) for both
+        the push/callback path (deliver_pending_packets) and polling path.
+        Polling path (get_rx_result) duplicates a subset for legacy
+        compatibility.
         """
         node = self._nodes.get(node_id)
         if node is None:
@@ -862,25 +857,24 @@ class Simulation:
                     )
             return None
 
-<<<<<<< HEAD
-=======
         # Record simulation-wide + per-node metrics for push RX path (used by
         # deliver_pending_packets). Polling path (get_rx_result) duplicates
         # this for legacy compatibility. This unifies the core recording logic.
->>>>>>> origin/integration/worker5-20260722
         self._metrics.record_reception(node_id, tx.id, self._current_time_us)
         packet_hash = hashlib.sha256(tx.payload).digest()[:16].hex()
         node.metrics.record_rx(tx.payload, packet_hash, from_peer=tx.source_node_id)
 
         for candidate in candidates:
             if candidate.transmission is tx:
+                rssi = int(candidate.rssi)
+                snr = int(candidate.snr)
                 rx_log = {
                     "sim_id": self._id,
                     "node_id": node_id,
                     "tx_id": tx.id,
                     "payload_len": len(tx.payload),
-                    "rssi": int(candidate.rssi),
-                    "snr": int(candidate.snr),
+                    "rssi": rssi,
+                    "snr": snr,
                     "time_us": self._current_time_us,
                     "from_node_id": tx.source_node_id,
                     "node_state": node.state.name,
@@ -889,10 +883,24 @@ class Simulation:
                     "pending_rx_timeouts": len(self._pending_rx_timeouts),
                 }
                 self._debug_log("rx_success", **rx_log)
+
+                # Notify observers (fixes callback-path observer gap from merge)
+                self._observers.notify(
+                    "on_rx_success",
+                    sim_id=self._id,
+                    node_id=node_id,
+                    tx_id=tx.id,
+                    from_node_id=tx.source_node_id,
+                    payload_len=len(tx.payload),
+                    rssi=rssi,
+                    snr=snr,
+                    time_us=self._current_time_us,
+                )
+
                 return (
                     tx.payload,
-                    int(candidate.rssi),
-                    int(candidate.snr),
+                    rssi,
+                    snr,
                     tx.id,
                     tx.source_node_id,
                 )
