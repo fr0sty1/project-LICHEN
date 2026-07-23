@@ -460,6 +460,7 @@ async fn forward_mesh_to_upstream<T: TunLike>(
     } else {
         None
     }
+    None
 }
         None
     }

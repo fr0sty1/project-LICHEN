@@ -35,7 +35,11 @@ void lichen_rpl_root_tick(struct lichen_rpl_root *root, uint32_t now)
 {
 	struct lichen_trickle_event ev;
 	lichen_trickle_next_event(&root->trickle, &ev);
-	if (ev.type == LICHEN_TRICKLE_TRANSMIT && lichen_trickle_fire_transmit(&root->trickle)) {
+	if (ev.type == LICHEN_TRICKLE_TRANSMIT) {
+		if (lichen_trickle_fire_transmit(&root->trickle)) {
+		}
+	} else if (ev.type == LICHEN_TRICKLE_EXPIRE) {
+		lichen_trickle_expire(&root->trickle, now, 0);
 	}
 }
 
