@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-6mij.2.2.4",
+  "title": "Update coap_keys tests and Kconfig to cover OSCORE-protected /keys PUT/DELETE paths",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:27:48.778555449Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:27:48.778555449Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-6mij.2.2.4",
+      "depends_on_id": "project-LICHEN-6mij.2.2",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:27:48.918243409Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
