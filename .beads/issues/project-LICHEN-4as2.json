@@ -2,11 +2,15 @@
   "id": "project-LICHEN-4as2",
   "title": "announce: AnnounceMessage dataclass allows mutation despite immutable-ish comment",
   "description": "File: python/src/lichen/announce/messages.py:78-86, scheduler.py:179\n\nThe AnnounceMessage is a plain @dataclass without frozen=True, making all fields mutable:\n\n```python\n@dataclass\nclass AnnounceMessage:\n    originator_iid: bytes  # Mutable\n    pubkey: bytes          # Mutable\n    ...\n```\n\nThe comment in scheduler.py says 'AnnounceMessage is immutable-ish' but this is not enforced:\n\n```python\n# Why create new message with signature: AnnounceMessage is immutable-ish.\nreturn AnnounceMessage(...)\n```\n\nThis creates a subtle bug risk: if code mutates a message after signature verification, the signature becomes invalid but the object doesn't indicate this.\n\nExample:\n```python\nmsg = AnnounceMessage.from_bytes(data)\n# Signature verified\nmsg.app_data = b'modified'  # Now signature is invalid but msg doesn't know\n```\n\nFix: Add frozen=True to the dataclass decorator:\n```python\n@dataclass(frozen=True)\nclass AnnounceMessage:\n```",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:19:27.717363Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:19:27.717396Z"
+  "updated_at": "2026-07-23T03:41:13.649406376Z",
+  "started_at": "2026-07-23T03:41:13.649406376Z",
+  "lease_expires_at": "2026-07-23T03:46:13.649406376Z",
+  "heartbeat_at": "2026-07-23T03:41:13.649406376Z"
 }
