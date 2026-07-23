@@ -110,6 +110,16 @@ class RoutingTable:
     def clear(self) -> None:
         self._routes.clear()
 
+    def routes(self) -> dict[IPv6Address, list[IPv6Address]]:
+        return dict(self._routes)
+
+    def replace_routes(
+        self, routes: dict[IPv6Address, list[IPv6Address]]
+    ) -> None:
+        self.clear()
+        for target, path in routes.items():
+            self.add_route(target, path)
+
     def lookup(self, target: IPv6Address | str) -> list[IPv6Address] | None:
         path = self._routes.get(to_ipv6(target))
         return list(path) if path is not None else None

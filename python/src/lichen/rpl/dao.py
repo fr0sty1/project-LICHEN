@@ -485,7 +485,7 @@ class DaoManager:
             bool(changed)
             or parents != self._parent_map
             or expiry != self._edge_expiry
-            or routes != self.routing_table._routes
+            or routes != self.routing_table.routes()
         )
 
         self._parent_map = parents
@@ -495,7 +495,7 @@ class DaoManager:
         self._path_sequences = path_sequences
         self._freshness = freshness
         self._edge_expiry = expiry
-        self.routing_table._routes = routes
+        self.routing_table.replace_routes(routes)
         return DaoOutcome(True, state_changed, False, reason)
 
     def expire_routes(self, now_seconds: float | None = None) -> bool:
@@ -511,11 +511,11 @@ class DaoManager:
         changed = (
             parents != self._parent_map
             or expiry != self._edge_expiry
-            or routes != self.routing_table._routes
+            or routes != self.routing_table.routes()
         )
         self._parent_map = parents
         self._edge_expiry = expiry
-        self.routing_table._routes = routes
+        self.routing_table.replace_routes(routes)
         return changed
 
     def remove_edge(self, target: IPv6Address | str) -> bool:
@@ -528,7 +528,8 @@ class DaoManager:
         self._edge_expiry = {
             edge: deadline for edge, deadline in self._edge_expiry.items() if edge[0] != target
         }
-        self.routing_table._routes = self._build_routes(self._parent_map, self._candidate_map)
+        routes = self._build_routes(self._parent_map, self._candidate_map)
+        self.routing_table.replace_routes(routes)
         current = self._freshness.get(target)
         if current is not None:
             self._freshness[target] = _Freshness(
@@ -577,7 +578,7 @@ class DaoManager:
                 }
             )
         route_records: list[dict[str, Any]] = []
-        for target in sorted(self.routing_table._routes):
+        for target in sorted(self.routing_table.routes()):
             selected = self._select_path(target, self._parent_map, self._candidate_map, set())
             if selected is None:
                 raise AssertionError("installed route has no selected candidate")
@@ -602,7 +603,7 @@ class DaoManager:
         """Return exact installed complete paths keyed by target hex."""
         return {
             target.packed.hex(): [hop.packed.hex() for hop in path]
-            for target, path in sorted(self.routing_table._routes.items())
+            for target, path in sorted(self.routing_table.routes().items())
         }
 
     def build_dao_ack(self, dao: DAO, status: int = 0) -> DAOAck:
