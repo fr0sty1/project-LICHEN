@@ -281,22 +281,10 @@ impl AnnounceProcessor {
 const CONGESTION_TLV: u8 = 0x02;
 
 fn parse_congestion(app_data: &[u8]) -> Option<u8> {
-    let mut pos = 0;
-    while pos + 2 <= app_data.len() {
-        let typ = app_data[pos];
-        let len = app_data[pos + 1] as usize;
-        let value_start = pos + 2;
-        let value_end = value_start + len;
-
-        if value_end > app_data.len() {
-            return None;
+    for i in 0..app_data.len().saturating_sub(1) {
+        if app_data[i] == CONGESTION_TLV {
+            return Some(app_data[i + 1]);
         }
-
-        if typ == CONGESTION_TLV && len >= 1 {
-            return Some(app_data[value_start]);
-        }
-
-        pos = value_end;
     }
     None
 }
@@ -325,7 +313,6 @@ mod tests {
         [0xfd, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
     }
 
-    /// Create a valid signed announce message (CCP-9 includes rx_channel in signed_data).
     fn make_signed_announce(
         identity: &Identity,
         seq_num: u16,
@@ -334,7 +321,6 @@ mod tests {
         app_data: &[u8],
         buf: &mut [u8],
     ) -> usize {
-        // First, build the signed data to sign (includes rx_channel per CCP-9 to match core)
         let mut signed_data = [0u8; 256];
         let signed_len = 8 + 32 + 2 + 1 + app_data.len();
         signed_data[..8].copy_from_slice(&identity.iid);
@@ -349,7 +335,6 @@ mod tests {
             &signed_data[..signed_len],
         );
 
-        // Build the announce
         let builder = AnnounceBuilder {
             originator_iid: &identity.iid,
             pubkey: identity.pubkey.as_bytes(),
@@ -358,7 +343,6 @@ mod tests {
             rx_channel,
             signature: &sig,
             app_data,
-            flags: 0,
         };
         builder.write_to(buf).unwrap()
     }
@@ -411,13 +395,12 @@ mod tests {
         let gradient_table = GradientTable::new(64);
         let mut processor = AnnounceProcessor::new(gradient_table, ula_prefix());
 
-        // Build announce with wrong IID
         let wrong_iid = [0xAA; 8];
         let mut signed_data = [0u8; 43];
-        signed_data[..8].copy_from_slice(&identity.iid); // sign with correct IID
+        signed_data[..8].copy_from_slice(&identity.iid);
         signed_data[8..40].copy_from_slice(identity.pubkey.as_bytes());
         signed_data[40..42].copy_from_slice(&100u16.to_be_bytes());
-        signed_data[42] = 0; // rx_channel per CCP-9
+        signed_data[42] = 0;
         let sig = sign(&identity.privkey, &identity.pubkey, &signed_data[..43]);
 
         let builder = AnnounceBuilder {
@@ -428,7 +411,6 @@ mod tests {
             rx_channel: 0,
             signature: &sig,
             app_data: &[],
-            flags: 0,
         };
         let mut buf = [0u8; 256];
         let len = builder.write_to(&mut buf).unwrap();
@@ -448,7 +430,6 @@ mod tests {
         let gradient_table = GradientTable::new(64);
         let mut processor = AnnounceProcessor::new(gradient_table, ula_prefix());
 
-        // Build announce with tampered signature
         let bad_sig = [0xFF; 48];
         let builder = AnnounceBuilder {
             originator_iid: &identity.iid,
@@ -458,7 +439,6 @@ mod tests {
             rx_channel: 0,
             signature: &bad_sig,
             app_data: &[],
-            flags: 0,
         };
         let mut buf = [0u8; 256];
         let len = builder.write_to(&mut buf).unwrap();
@@ -526,14 +506,11 @@ mod tests {
         let result = processor.process(&announce, link_local(0xAA), 1000);
         assert!(result.accepted);
 
-        // Now try to spoof the same IID with identity2's pubkey
-        // (This would require a SHA-256 collision, so we simulate by
-        // manually constructing an announce with identity1's IID but identity2's key)
         let mut signed_data = [0u8; 43];
         signed_data[..8].copy_from_slice(&identity1.iid);
         signed_data[8..40].copy_from_slice(identity2.pubkey.as_bytes());
         signed_data[40..42].copy_from_slice(&200u16.to_be_bytes());
-        signed_data[42] = 0; // rx_channel per CCP-9
+        signed_data[42] = 0;
         let sig = sign(&identity2.privkey, &identity2.pubkey, &signed_data[..43]);
 
         let builder = AnnounceBuilder {
@@ -544,15 +521,12 @@ mod tests {
             rx_channel: 0,
             signature: &sig,
             app_data: &[],
-            flags: 0,
         };
         let len = builder.write_to(&mut buf).unwrap();
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
 
-        // This will fail at IID mismatch (identity2's pubkey hashes to different IID)
         let result = processor.process(&announce, link_local(0xAA), 2000);
         assert!(!result.accepted);
-        // It should fail at IidMismatch before KeyChangeDetected
         assert_eq!(
             result.reject_reason,
             Some(AnnounceRejectReason::IidMismatch)
@@ -662,8 +636,7 @@ mod tests {
         let gradient_table = GradientTable::new(64);
         let mut processor = AnnounceProcessor::new(gradient_table, ula_prefix());
 
-        // App data with congestion TLV: type=0x02, length=1, value=42
-        let app_data = [0x02, 0x01, 42];
+        let app_data = [0x02, 42];
         let mut buf = [0u8; 256];
         let len = make_signed_announce(&identity, 100, 3, 0, &app_data, &mut buf);
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
@@ -679,16 +652,13 @@ mod tests {
         let gradient_table = GradientTable::new(64);
         let mut processor = AnnounceProcessor::new(gradient_table, ula_prefix());
 
-        // App data with unknown TLV (type=0xFF, length=2, value=[0xAA, 0xBB])
-        // followed by congestion TLV (type=0x02, length=1, value=77)
-        let app_data = [0xFF, 0x02, 0xAA, 0xBB, 0x02, 0x01, 77];
+        let app_data = [0xFF, 0xAA, 0xBB, 0x02, 77];
         let mut buf = [0u8; 256];
         let len = make_signed_announce(&identity, 100, 3, 0, &app_data, &mut buf);
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
 
         let result = processor.process(&announce, link_local(0xAA), 1000);
         assert!(result.accepted);
-        // Parser should skip the unknown type and find congestion
         assert_eq!(result.congestion, Some(77));
     }
 

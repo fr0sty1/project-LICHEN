@@ -16,12 +16,10 @@ class AnnounceError(Exception):
 
 @dataclass(frozen=True)
 class AnnounceMessage:
-
     originator_iid: bytes
     pubkey: bytes
     seq_num: int
     hop_count: int = 0
-    flags: int = 0
     rx_channel: int = 0
     signature: bytes = field(default=b"")
     app_data: bytes = field(default=b"")
@@ -35,10 +33,8 @@ class AnnounceMessage:
             raise AnnounceError(f"seq_num out of range: {self.seq_num}")
         if not 0 <= self.hop_count <= 0xFF:
             raise AnnounceError(f"hop_count out of range: {self.hop_count}")
-        if not 0 <= self.flags <= 0xFF:
-            raise AnnounceError(f"flags out of range: {self.flags}")
         if not 0 <= self.rx_channel <= 7:
-            raise AnnounceError(f"invalid rx_channel: {self.rx_channel} (must be 0-7 per CCP-9)")
+            raise AnnounceError(f"invalid rx_channel: {self.rx_channel} (must be 0-7)")
         if self.signature and len(self.signature) != SIGNATURE_LENGTH:
             raise AnnounceError(
                 f"signature must be 0 or {SIGNATURE_LENGTH} bytes, got {len(self.signature)}"
@@ -76,16 +72,14 @@ class AnnounceMessage:
             )
         if data[0] != ANNOUNCE_TYPE:
             raise AnnounceError(f"wrong message type: expected {ANNOUNCE_TYPE}, got {data[0]}")
-        flags = data[1]
-        rx_channel = flags
+        rx_channel = data[1]
         if rx_channel >= 8:
-            raise AnnounceError(f"invalid rx_channel: {rx_channel} (must be 0-7 per CCP-9)")
+            raise AnnounceError(f"invalid rx_channel: {rx_channel} (must be 0-7)")
         return cls(
             originator_iid=data[5:13],
             pubkey=data[13:45],
             seq_num=int.from_bytes(data[3:5], "big"),
             hop_count=data[2],
-            flags=flags,
             rx_channel=rx_channel,
             signature=data[45:93],
             app_data=data[93:],
@@ -102,7 +96,6 @@ class AnnounceMessage:
             pubkey=self.pubkey,
             seq_num=self.seq_num,
             hop_count=new_hop_count,
-            flags=self.flags,
             rx_channel=self.rx_channel,
             signature=self.signature,
             app_data=self.app_data,
