@@ -1,17 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """Announce scheduler for periodic transmission (spec section 9.4).
-
-Manages the announce loop: waits interval + jitter, builds signed announces,
-transmits via link layer, increments sequence number.
-
-Why separate from Node: Single responsibility. The scheduler owns timing and
-sequence number management. Node owns lifecycle and layer integration.
-
-Why sequence number persistence matters: If seq_num resets on reboot, peers
-may reject our new announces as "stale" (lower than what they've seen).
-For the prototype, we don't persist to flash. Production implementations
-MUST persist seq_num to non-volatile storage.
 """
 
 from __future__ import annotations
@@ -30,19 +19,12 @@ from lichen.crypto.schnorr48 import sign
 
 logger = logging.getLogger(__name__)
 
-# Why 300_000: Spec section 9.4. 5 minutes between announces.
 DEFAULT_INTERVAL_MS = 300_000
-
-# Why 30_000: Spec section 9.4. Random jitter 0-30 seconds prevents collision.
 DEFAULT_JITTER_MS = 30_000
 
 
 class AnnounceTransmitter(Protocol):
-    """Protocol for transmitting announces.
-
-    Why a protocol: Decouples scheduler from link layer. Allows testing
-    with mocks and different transmission strategies.
-    """
+    """Protocol for transmitting announces."""
 
     async def transmit_announce(self, data: bytes) -> bool:
         """Transmit announce data. Returns True on success."""
@@ -51,17 +33,7 @@ class AnnounceTransmitter(Protocol):
 
 @dataclass
 class SchedulerConfig:
-    """Configuration for the announce scheduler.
-
-    Why separate config: Makes construction clear, allows runtime changes.
-
-    Attributes:
-        interval_ms: Time between announces in milliseconds.
-        jitter_ms: Maximum random jitter to add.
-        initial_delay_ms: Delay before first announce.
-            Why: Allows node to receive announces from others first,
-            building gradients before advertising ourselves.
-    """
+    """Configuration for the announce scheduler."""
 
     interval_ms: int = DEFAULT_INTERVAL_MS
     jitter_ms: int = DEFAULT_JITTER_MS

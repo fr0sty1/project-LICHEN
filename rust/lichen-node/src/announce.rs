@@ -1,12 +1,3 @@
-//! Announce message processor (spec section 9.3).
-//!
-//! Processes incoming announces: verifies signatures, detects duplicates,
-//! updates gradients, decides whether to relay.
-//!
-//! Why separate from lichen-core/announce.rs: That crate provides the pure codec.
-//! Processing involves state (gradient table, seen announces, peer database) and
-//! crypto operations. Separation keeps the codec testable without crypto deps.
-
 #[cfg(feature = "std")]
 extern crate std;
 
@@ -24,65 +15,32 @@ use crate::gradient::{
     GeoCoords, GradientEntry, GradientSource, GradientTable, GRADIENT_TIMEOUT_MS,
 };
 
-/// Maximum tracked originators (LRU eviction when exceeded).
 pub const MAX_TRACKED_ORIGINATORS: usize = 64;
-
-/// Sequence number half-space for RFC 1982 comparison.
 const SEQ_HALF: u16 = 1 << 15;
 
-/// RFC 1982 serial number arithmetic: return true if `a` > `b` (wrap-aware).
-///
-/// Why: 16-bit sequence numbers wrap around. Simple comparison fails when
-/// seq_num wraps from 65535 to 0. RFC 1982 defines "greater than" as:
-/// a > b iff (a != b) and ((a - b) mod 2^N) < 2^(N-1)
-///
-/// This means `a` is "ahead" of `b` if the unsigned distance (a - b) is less
-/// than half the sequence space. Works correctly across wrap boundaries.
 #[inline]
 pub fn seq_gt(a: u16, b: u16) -> bool {
     a != b && a.wrapping_sub(b) < SEQ_HALF
 }
 
-/// Why an announce was rejected (for logging/debugging).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum AnnounceRejectReason {
-    /// Schnorr48 signature verification failed.
     InvalidSignature,
-    /// IID in announce doesn't match SHA-256(pubkey)\[0:8\].
     IidMismatch,
-    /// seq_num <= existing (RFC 1982 serial arithmetic).
     StaleSeqNum,
-    /// hop_count >= MAX_ANNOUNCE_HOPS.
     HopLimitExceeded,
-    /// Announce failed to parse.
     Malformed,
-    /// IID known, but pubkey differs from pinned key.
-    /// SECURITY: This indicates either hash collision (cryptographically
-    /// implausible) or a bug in key derivation. Hard reject.
     KeyChangeDetected,
 }
 
-/// Result of processing an announce message.
-///
-/// Why a result object: Callers need to know what happened for logging,
-/// metrics, and deciding whether to relay. A simple bool loses information.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnnounceResult {
-    /// Whether the announce was accepted and gradient updated.
     pub accepted: bool,
-    /// Whether this announce should be broadcast to neighbors.
-    ///
-    /// Why separate from accepted: We accept (update gradient) but might
-    /// not relay (hop limit reached, or duplicate from better path).
     pub should_relay: bool,
-    /// Why the announce was rejected, if not accepted.
     pub reject_reason: Option<AnnounceRejectReason>,
-    /// The sender's identity if signature verified.
     pub peer: Option<PeerIdentity>,
-    /// Queue depth from announce app_data (spec 11.4), or None.
     pub congestion: Option<u8>,
-    /// Pin evicted by the bounded LRU while accepting this announce.
     pub evicted_iid: Option<[u8; 8]>,
 }
 
@@ -115,59 +73,33 @@ impl AnnounceResult {
     }
 }
 
-/// LRU entry for tracking seen originators.
 #[cfg(feature = "std")]
 #[derive(Debug, Clone)]
 struct SeenEntry {
     seq_num: u16,
-    /// Monotonically increasing counter for LRU ordering.
     last_access: u64,
 }
 
-/// LRU entry for key pinning (TOFU).
 #[cfg(feature = "std")]
 #[derive(Debug, Clone)]
 struct PinnedKeyEntry {
     pubkey: [u8; 32],
-    /// Monotonically increasing counter for LRU ordering.
     last_access: u64,
 }
 
-/// Processes incoming announce messages (spec 9.3).
-///
-/// Why a struct: Needs state across invocations:
-/// - gradient_table: Where to install/update routes
-/// - seen: Per-originator seq_num for duplicate detection
-/// - pinned_keys: IID -> pubkey (TOFU trust anchors)
-/// - address_builder: How to convert IID to full IPv6 (prefix is context)
 #[cfg(feature = "std")]
 #[derive(Clone)]
 pub struct AnnounceProcessor {
-    /// Unified routing table (spec section 11).
     gradient_table: GradientTable,
-    /// IPv6 prefix for building full addresses from IIDs.
     prefix: [u8; 8],
-    /// Per-originator highest seq_num seen (LRU-bounded).
-    /// IID is the key, SeenEntry contains seq_num and LRU timestamp.
     seen: HashMap<[u8; 8], SeenEntry>,
-    /// IID -> pinned pubkey (TOFU trust anchors, LRU-bounded).
-    /// SECURITY: Even though IID = hash(pubkey) makes silent substitution
-    /// cryptographically infeasible, we maintain an explicit pin table as
-    /// defence-in-depth.
     pinned_keys: HashMap<[u8; 8], PinnedKeyEntry>,
-    /// Monotonically increasing counter for LRU ordering.
     access_counter: u64,
-    /// Maximum tracked originators.
     max_entries: usize,
 }
 
 #[cfg(feature = "std")]
 impl AnnounceProcessor {
-    /// Create a new announce processor.
-    ///
-    /// # Arguments
-    /// * `gradient_table` - The unified gradient table to update.
-    /// * `prefix` - The first 8 bytes of the IPv6 address prefix (e.g., ULA or GUA).
     pub fn new(gradient_table: GradientTable, prefix: [u8; 8]) -> Self {
         Self {
             gradient_table,
@@ -195,16 +127,12 @@ impl AnnounceProcessor {
         from_neighbor: [u8; 16],
         now_ms: u32,
     ) -> AnnounceResult {
-        // Step 1: Verify IID matches pubkey hash.
-        // Why first: This is a cheap check before expensive crypto.
         let pubkey = PublicKey::new(*announce.pubkey);
         let expected_iid = iid_from_pubkey(&pubkey);
         if *announce.originator_iid != expected_iid {
             return AnnounceResult::rejected(AnnounceRejectReason::IidMismatch);
         }
 
-        // Step 2: Verify signature.
-        // SECURITY: Proves the announce was created by the holder of this pubkey.
         let mut signed_buf = [0u8; 256];
         let signed_len = announce.write_signed_data(&mut signed_buf).unwrap_or(0);
         if signed_len == 0 {
@@ -216,46 +144,20 @@ impl AnnounceProcessor {
 
         let iid = *announce.originator_iid;
 
-        // Step 3: Key pinning - TOFU anchor + change detection.
-        // SECURITY: Even though IID = hash(pubkey) makes silent substitution
-        // cryptographically infeasible, we maintain an explicit pin table as
-        // defence-in-depth. A pin mismatch means either hash collision or a
-        // bug in key derivation - both warrant a hard reject.
         if let Some(entry) = self.pinned_keys.get(&iid) {
             if entry.pubkey != *announce.pubkey {
                 return AnnounceResult::rejected(AnnounceRejectReason::KeyChangeDetected);
             }
         }
 
-        // Step 4: Check for stale/duplicate (RFC 1982 serial arithmetic).
-        // Why: Prevents processing old announces that were delayed in the network.
         if let Some(entry) = self.seen.get(&iid) {
             if !seq_gt(announce.seq_num, entry.seq_num) {
                 return AnnounceResult::rejected(AnnounceRejectReason::StaleSeqNum);
             }
         }
 
-        // Accept: pin pubkey (TOFU first-contact), update seen, update gradient.
         self.access_counter += 1;
         let access = self.access_counter;
-
-        self.pinned_keys.insert(
-            iid,
-            PinnedKeyEntry {
-                pubkey: *announce.pubkey,
-                last_access: access,
-            },
-        );
-        let evicted_iid = self.evict_pinned_if_needed();
-
-        self.seen.insert(
-            iid,
-            SeenEntry {
-                seq_num: announce.seq_num,
-                last_access: access,
-            },
-        );
-        self.evict_seen_if_needed();
 
         let mut destination = [0u8; 16];
         destination[..8].copy_from_slice(&self.prefix);
@@ -276,30 +178,38 @@ impl AnnounceProcessor {
         };
         self.gradient_table.update(entry, now_ms);
 
+        self.pinned_keys.insert(
+            iid,
+            PinnedKeyEntry {
+                pubkey: *announce.pubkey,
+                last_access: access,
+            },
+        );
+        let evicted_iid = self.evict_pinned_if_needed();
+
+        self.seen.insert(
+            iid,
+            SeenEntry {
+                seq_num: announce.seq_num,
+                last_access: access,
+            },
+        );
+        self.evict_seen_if_needed();
+
         let should_relay = announce.should_relay();
 
         let peer = PeerIdentity::from_pubkey(pubkey);
         AnnounceResult::accepted(should_relay, peer, congestion, evicted_iid)
     }
 
-    /// Forget the seq_num for an originator (e.g., on key rotation).
-    ///
-    /// Why: If a node rotates keys, their seq_num may reset. Forgetting
-    /// allows accepting announces from their new identity.
     pub fn reset_seen(&mut self, iid: &[u8; 8]) {
         self.seen.remove(iid);
     }
 
-    /// Remove the key pin for an IID (use only for intentional key rotation).
-    ///
-    /// Why: Administrators who rotate a node's key must unpin the old binding
-    /// or all future announces from the new key will be rejected as key changes.
-    /// This is an intentional administrative action - not automatic.
     pub fn unpin(&mut self, iid: &[u8; 8]) {
         self.pinned_keys.remove(iid);
     }
 
-    /// Return the pinned pubkey for an IID, or None if not yet seen.
     pub fn pinned_pubkey_for(&self, iid: &[u8; 8]) -> Option<PublicKey> {
         self.pinned_keys
             .get(iid)
@@ -318,19 +228,10 @@ impl AnnounceProcessor {
         );
     }
 
-    /// Return IIDs of all originators we've seen announces from.
-    ///
-    /// Why: For debugging/monitoring. Not for production routing logic.
     pub fn known_originators(&self) -> Vec<[u8; 8]> {
         self.seen.keys().copied().collect()
     }
 
-    /// Get the relay message with incremented hop count.
-    ///
-    /// Returns None if the announce shouldn't be relayed (hop limit exceeded).
-    ///
-    /// Why separate method: process() returns a result, not a modified message.
-    /// Caller calls this if should_relay is true and needs the incremented data.
     pub fn build_relay_hop_count(&self, announce: &Announce<'_>) -> Option<u8> {
         if announce.should_relay() {
             Some(announce.hop_count + 1)
@@ -339,21 +240,17 @@ impl AnnounceProcessor {
         }
     }
 
-    /// Access the gradient table.
     pub fn gradient_table(&self) -> &GradientTable {
         &self.gradient_table
     }
 
-    /// Access the gradient table mutably.
     pub fn gradient_table_mut(&mut self) -> &mut GradientTable {
         &mut self.gradient_table
     }
 
-    /// Evict oldest pinned key entry if over capacity.
     fn evict_pinned_if_needed(&mut self) -> Option<[u8; 8]> {
         let mut evicted = None;
         while self.pinned_keys.len() > self.max_entries {
-            // Find oldest entry (lowest last_access)
             let oldest_iid = self
                 .pinned_keys
                 .iter()
@@ -367,10 +264,8 @@ impl AnnounceProcessor {
         evicted
     }
 
-    /// Evict oldest seen entry if over capacity.
     fn evict_seen_if_needed(&mut self) {
         while self.seen.len() > self.max_entries {
-            // Find oldest entry (lowest last_access)
             let oldest_iid = self
                 .seen
                 .iter()
