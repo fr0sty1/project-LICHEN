@@ -124,15 +124,6 @@ config LICHEN_TDMA
 	  Must not call before key loaded. Mimics lichen_link_ctx pattern exactly.
 	  Fixes project-LICHEN-5273.
 
-config LICHEN_ADAPTIVE_SF_ENABLED
-	bool "Adaptive spreading factor"
-	default y
-	depends on LICHEN_LINK_CCP16_LOAD_BALANCING
-	help
-	  Enable per-neighbor adaptive SF based on SNR EWMA and density per
-	  spec/02a-coordinated-capacity.md. Part of CCP-16. Adds fields to
-	  neighbor/gradient table.
-
 config LICHEN_CCP_TIME_SYNC
 	bool "CCP time synchronization (SFN, beacons, GPS stratum)"
 	default y
@@ -143,13 +134,6 @@ config LICHEN_CCP_TIME_SYNC
 	  version interactions per spec/02a-coordinated-capacity.md §5. Uses
 	  beacon SFN with GPS stratum-0 priority, local RTC fallback. Matches
 	  ccp16-desync.json vectors exactly. SECURITY: signed beacons only.
-
-config LICHEN_DEFAULT_SF
-	int "Default spreading factor"
-	default 10
-	range 7 12
-	help
-	  Default LoRa spreading factor when adaptive SF is disabled.
 
 config LICHEN_TDMA_BEACON_SYNC
 	bool "Beacon-based TDMA synchronization"

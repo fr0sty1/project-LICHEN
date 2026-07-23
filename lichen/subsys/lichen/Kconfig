@@ -24,16 +24,16 @@ rsource "l2/Kconfig"
 rsource "oscore/Kconfig"
 rsource "schc/Kconfig"
 rsource "senml/Kconfig"
- rsource "rpl/Kconfig"
- rsource "routing/Kconfig"
- rsource "transport/Kconfig"
+rsource "rpl/Kconfig"
+rsource "routing/Kconfig"
+rsource "transport/Kconfig"
 
 # Adaptive SF configuration (centralized here to prevent duplicate definitions
 # across link/, routing/, and main Kconfig per codereview project-LICHEN-5273.*)
 config LICHEN_ADAPTIVE_SF_ENABLED
 	bool "Adaptive spreading factor selection (per-neighbor SNR/CCP16)"
 	default y
-	depends on LICHEN
+	depends on LICHEN_LINK_CCP16_LOAD_BALANCING
 	help
 	  Enable dynamic selection of LoRa spreading factor per neighbor based on
 	  SNR measurements and density signals from CCP16. Improves network
