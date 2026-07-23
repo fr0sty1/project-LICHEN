@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-afbk.1.4.2",
+  "title": "Implement real SPI/libloragw backend for Sx1302Concentrator",
+  "description": "Replace no-op stub in lichen-hal/src/lib.rs Sx1302Concentrator impl with actual SPI communication or FFI to libloragw (per research in chw5/s3d6). Support reset, configure_channels, packet RX. Add build deps if needed. Ensure no_std compatibility where possible.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:18:50.826297544Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:18:50.826297544Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-afbk.1.4.2",
+      "depends_on_id": "project-LICHEN-afbk.1.4",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:18:50.961776658Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
