@@ -616,7 +616,6 @@ static int parse_data(const uint8_t *data, size_t len,
 				return -EINVAL;
 			}
 			info->payload_len = payload_len;
-<<<<<<< HEAD
 			if (payload_len > 0U && payload_len <= LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX) {
 				memcpy(info->payload_buf, payload, payload_len);
 				info->payload_buf[payload_len] = '\0';
@@ -624,15 +623,6 @@ static int parse_data(const uint8_t *data, size_t len,
 			} else if (payload_len > 0U) {
 				info->payload = NULL;
 				info->payload_len = 0U;
-=======
-			if (payload != NULL && payload_len > 0 &&
-			    payload_len <= LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX) {
-				memcpy(info->payload_buf, payload, payload_len);
-				info->payload = info->payload_buf;
-			} else {
-				info->payload = NULL;
-				info->payload_len = 0;
->>>>>>> origin/integration/worker9-20260722
 			}
 			break;
 		default:
