@@ -131,7 +131,7 @@ impl<'a> CoapPacket<'a> {
             Some(off) => {
                 let ps = options_start + off + 1;
                 if ps == data.len() {
-                    return Err(TooShort::new(1, 0).into());
+                    return Err(CoapError::InvalidPayloadMarker);
                 }
                 (options_start + off, ps)
             }
