@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-pehw",
+  "title": "[spec-compliance] EDHOC signature length mismatch between Rust (64B Ed25519) and C (48B Schnorr48)",
+  "description": "Rust/lichen-oscore/src/edhoc.rs:44 uses SIG_LEN=64 and ed25519_dalek::Signature (full RFC8032). C/lichen/subsys/lichen/edhoc/ uses EDHOC_SIG_LEN=48 per draft-lichen-schnorr-00.md and schnorr48.h. Violates \"All implementations MUST produce identical output for test vectors\" (AGENTS.md, spec/appendix-schc.md, draft-lichen-schnorr-00.md:46-52). test/vectors/edhoc.json claims \"Matches Rust byte-for-byte\" but conflicts with Schnorr48 requirement for LICHEN link+EDHOC. See commits touching edhoc.rs, edhoc.c, edhoc.json. MUST fix for interop.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T14:40:19.363296966Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T14:40:19.363296966Z"
+}
