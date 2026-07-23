@@ -2,15 +2,15 @@
   "id": "project-LICHEN-g3eg",
   "title": "[merge-conflict] worktree-worker18: generate.py",
   "notes": "Commit: 512786a (resolved merge conflicts in generate.py, schema.json, coap_keys.c, announce.rs, trickle.c, tx_queue.py, messages.py)",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:18:25.969988858Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:24:01.164988672Z",
+  "updated_at": "2026-07-23T00:24:03.280609446Z",
   "started_at": "2026-07-23T00:21:21.312629994Z",
-  "lease_expires_at": "2026-07-23T00:26:21.312629994Z",
-  "heartbeat_at": "2026-07-23T00:21:21.312629994Z"
+  "closed_at": "2026-07-23T00:24:03.280609446Z",
+  "close_reason": "Resolved all merge conflicts in worktree-worker18 including generate.py, schema, coap_keys, Rust/Python tests and RPL; committed fixes"
 }
