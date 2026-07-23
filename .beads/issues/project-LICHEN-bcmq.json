@@ -2,6 +2,7 @@
   "id": "project-LICHEN-bcmq",
   "title": "announce: No rate limiting on signature verification - CPU exhaustion vector",
   "description": "File: python/src/lichen/announce/processor.py:169-179\n\nThe processor performs signature verification on EVERY incoming announce before checking the seen table:\n\n```python\n# Step 1: Verify IID matches pubkey hash (cheap)\nexpected_iid = _pubkey_to_iid(announce.pubkey)\n...\n# Step 2: Verify signature (EXPENSIVE - crypto operation)\nsignable = announce.signed_data()\nif not verify(announce.pubkey, signable, announce.signature):\n    ...\n# Step 4: Check for stale/duplicate (cheap, could be done earlier)\nexisting_seq = self._seen.get(iid)\n```\n\nAn attacker can flood the node with announces containing:\n1. Valid IID/pubkey pairs (their own keys or generated ones)\n2. Invalid signatures\n\nEach announce triggers a full signature verification (expensive crypto) before being rejected.\n\nMitigations to consider:\n1. Rate-limit announce processing per source IP\n2. Check seen table BEFORE signature verification for known originators\n3. Implement a 'recently seen invalid signature' cache to fast-reject repeat offenders\n\nNote: The IID derivation check (Step 1) is cheap and does run first, providing some protection.",
+  "notes": "Commit: 79fb52aa6",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:19:47.628211Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T03:56:05.482348966Z",
+  "updated_at": "2026-07-23T03:57:56.387868636Z",
   "started_at": "2026-07-23T03:56:05.482348966Z",
   "lease_expires_at": "2026-07-23T04:01:05.482348966Z",
   "heartbeat_at": "2026-07-23T03:56:05.482348966Z"
