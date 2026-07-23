@@ -406,6 +406,9 @@ impl DodagConfig {
         let flags = data[0];
         let pcs = flags & 0x07;
         let a_flag = (flags & 0x10) != 0;
+        if data[10] != 0 {
+            return Err(RplError::InvalidOption); // reserved field per RFC 6550 §6.7.6
+        }
         Ok(Self {
             pcs,
             a_flag,
@@ -415,6 +418,7 @@ impl DodagConfig {
             max_rank_increase: u16::from_be_bytes([data[4], data[5]]),
             min_hop_rank_increase: u16::from_be_bytes([data[6], data[7]]),
             ocp: u16::from_be_bytes([data[8], data[9]]),
+            // data[10] is reserved (checked above); def_lifetime follows
             def_lifetime: data[11],
             lifetime_unit: u16::from_be_bytes([data[12], data[13]]),
         })
@@ -869,6 +873,16 @@ mod tests {
         assert_eq!(decoded.min_hop_rank_increase, 256);
         assert_eq!(decoded.max_rank_increase, 2048);
         assert_eq!(decoded.ocp, 1);
+    }
+
+    #[test]
+    fn dodag_config_rejects_nonzero_reserved() {
+        let mut data = [0u8; DODAG_CONFIG_DATA_LEN];
+        data[10] = 1; // nonzero reserved
+        assert!(matches!(
+            DodagConfig::from_bytes(&data),
+            Err(RplError::InvalidOption)
+        ));
     }
 
     // ── Option iterator ───────────────────────────────────────────────────────
