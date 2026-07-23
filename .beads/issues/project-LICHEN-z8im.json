@@ -2,15 +2,16 @@
   "id": "project-LICHEN-z8im",
   "title": "Stale timestamp calculation loses microsecond precision",
   "description": "File: python/src/lichen/gateway/compact_cot.py\nLine: 349\n\nThe stale timestamp is calculated via float conversion:\n```python\nstale = datetime.fromtimestamp(now.timestamp() + stale_seconds, tz=UTC)\n```\n\ndatetime.timestamp() returns a float, and floating-point arithmetic can lose microsecond precision. This can cause subtle timing inconsistencies.\n\nFix: Use timedelta for precise datetime arithmetic:\n```python\nfrom datetime import timedelta\nstale = now + timedelta(seconds=stale_seconds)\n```\n\nSeverity: Low - unlikely to cause practical issues with 120-second stale windows, but incorrect as a matter of precision.",
-  "status": "in_progress",
+  "notes": "Commit: 8dc942372",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:17:07.897555Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:22:27.815134537Z",
+  "updated_at": "2026-07-23T04:23:27.85995035Z",
   "started_at": "2026-07-23T04:22:27.815134537Z",
-  "lease_expires_at": "2026-07-23T04:27:27.815134537Z",
-  "heartbeat_at": "2026-07-23T04:22:27.815134537Z"
+  "closed_at": "2026-07-23T04:23:27.85995035Z",
+  "close_reason": "Fixed timestamp precision using timedelta; tests, ruff, and mypy pass"
 }
