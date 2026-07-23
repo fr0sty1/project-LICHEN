@@ -1659,18 +1659,53 @@ common_wipe:
 	return ret;
 
 nvm_failed:
-	/* SECURITY: NVM failure on success path (after SSN++ under mutex,
-	 * full crypto/option-build succeeded). persist_ssn() already bumped
-	 * sender_seq by OSCORE_SSN_SAFETY_MARGIN on final failure after
-	 * its retries (see oscore_ctx_persist_ssn). Here we only sync
-	 * s_seq_initialized flag under mutex to avoid "not initialized"
-	 * error on next protect (per test). Ciphertext/oscore_opt are valid
-	 * for caller so packet can be sent. Prevents nonce reuse on reboot
-	 * per RFC 8613 §7.2. Wipes happen via common_wipe.
+	/*
+	 * SECURITY: NVM SSN persistence failed on the success path - the
+	 * ciphertext and OSCORE option are fully built and returned to
+	 * the caller, so the packet consuming sequence number seq may
+	 * still be transmitted. ctx->sender_seq is handled under mutex.
+	 * Two options were considered:
+	 *
+	 * a) Rollback by decrement (sender_seq--) - REJECTED. The packet
+	 *    is transmittable, so decrementing would let a subsequent
+	 *    protect_request reuse the same (key, nonce) pair. RFC 8613
+	 *    Section 7.2: "An AEAD nonce MUST NOT be used more than once
+	 *    per AEAD key." Nonce reuse is catastrophic for AEAD
+	 *    security; a consumed sequence number must never be reissued.
+	 *
+	 * b) Safe advance - CHOSEN. oscore_ctx_persist_ssn() already
+	 *    advanced ctx->sender_seq by OSCORE_SSN_SAFETY_MARGIN after
+	 *    its final retry failure, so a reboot restoring a stale NVM
+	 *    value can never collide with in-flight sequence numbers.
+	 *    Verify the advance took effect; if the margin is missing
+	 *    (defensive: e.g. context lookup failed inside persist_ssn),
+	 *    advance now, clamped at OSCORE_SSN_MAX. The clamp follows
+	 *    the maximum Sender Sequence Number rule of RFC 8613
+	 *    Section 7.2.1: once the maximum is reached the endpoint
+	 *    MUST NOT process more messages with this Sender Context,
+	 *    so exhaustion is logged to force key rotation.
+	 *
+	 * Also sync s_seq_initialized so the next protect_request does
+	 * not fail with "not initialized". ret is set to
+	 * OSCORE_ERR_NVM_FAILED and control proceeds to common_wipe,
+	 * which destroys nonce, PIV, plaintext and seq.
 	 */
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
 	ctx_idx = ctx_get_index(ctx);
 	if (ctx_idx >= 0) {
+		if (seq > OSCORE_SSN_MAX - OSCORE_SSN_SAFETY_MARGIN) {
+			if (ctx->sender_seq < OSCORE_SSN_MAX) {
+				ctx->sender_seq = OSCORE_SSN_MAX;
+				LOG_ERR("SSN exhausted after NVM failure - "
+					"key rotation required (RFC 8613 7.2.1)");
+			}
+		} else if (ctx->sender_seq < seq + OSCORE_SSN_SAFETY_MARGIN) {
+			ctx->sender_seq = seq + OSCORE_SSN_SAFETY_MARGIN;
+			LOG_WRN("Advanced sender_seq to %u (+%u safety margin) "
+				"in nvm_failed path - prevents nonce reuse "
+				"(RFC 8613 7.2)",
+				ctx->sender_seq, OSCORE_SSN_SAFETY_MARGIN);
+		}
 		s_seq_initialized[ctx_idx] = true;
 	}
 	k_mutex_unlock(&s_ctx_mutex);
