@@ -46,7 +46,11 @@ impl Gateway {
             return None;
         }
 
+<<<<<<< HEAD
         let mut out = vec![0u8; 1280];
+=======
+        let mut out = vec![0u8; 4096];
+>>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
         match decompress(l2_payload_body(l2_payload), &mut out) {
             Ok(n) => {
                 out.truncate(n);

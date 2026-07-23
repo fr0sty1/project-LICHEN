@@ -125,7 +125,11 @@ impl TunDevice {
         if buf.len() > 1500 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
+<<<<<<< HEAD
                 format!("packet exceeds MTU of 1500 (IPv6 min {})", IPV6_MIN_MTU),
+=======
+                "packet exceeds MTU",
+>>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
             ));
         }
         loop {
@@ -145,7 +149,14 @@ impl TunDevice {
                         format!("TUN write failed ({} bytes): {e}", buf.len()),
                     ))
                 } else if n as usize != buf.len() {
+<<<<<<< HEAD
                     Err(io::Error::other("partial TUN write"))
+=======
+                    Err(io::Error::new(
+                        io::ErrorKind::Other,
+                        "partial TUN write",
+                    ))
+>>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
                 } else {
                     Ok(())
                 }

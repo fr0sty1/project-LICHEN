@@ -34,7 +34,12 @@ class NodeMetrics:
 
     # Maximum entries in packet_hashes_sent and packet_hashes_received.
     # Prevents unbounded memory growth in long-running simulations.
+<<<<<<< HEAD
     _PACKET_HASH_SET_MAX_SIZE: ClassVar[int] = 10000
+=======
+    _PACKET_HASH_SET_MAX_SIZE: int = field(default=10000, repr=False)
+    _MAX_ERRORS: int = field(default=1000, repr=False)
+>>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
 
     tx_count: int = 0
     rx_count: int = 0
@@ -78,7 +83,8 @@ class NodeMetrics:
         Args:
             error: Description of the error.
         """
-        self.errors.append(error)
+        if len(self.errors) < self._MAX_ERRORS:
+            self.errors.append(error)
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable dictionary of all metrics.
@@ -93,7 +99,11 @@ class NodeMetrics:
             "tx_bytes": self.tx_bytes,
             "rx_bytes": self.rx_bytes,
             "unique_peers": sorted(self.unique_peers),
+<<<<<<< HEAD
             "errors": list(self.errors),
+=======
+            "errors": self.errors.copy(),
+>>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
             "packet_hashes_sent": sorted(self.packet_hashes_sent),
             "packet_hashes_received": sorted(self.packet_hashes_received),
         }

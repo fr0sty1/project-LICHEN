@@ -192,9 +192,13 @@ function now():
     RETURN current_sfn()
 ```
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 Note: All operators are spelled out (OR, NOT, MOD, XOR) for language-agnostic IETF compatibility. No Rust 'or', no C types or structs, no dead code. now_ts TDMA alignment uses LICHEN_TDMA_Slot relation for slot calc.
 >>>>>>> origin/integration/worker8-20260722
+=======
+Note: All operators are spelled out (OR, NOT, MOD, XOR) for language-agnostic IETF compatibility. No Rust 'or', no C types or structs, no dead code. now() and t parameter use unsigned u32 modular arithmetic per 2a.2; blacklist_until[] timer comparisons (in extended channel agility) MUST use `((now_ts - blacklist_until[ch]) & 0xFFFFFFFFu)` or equivalent uint32_t subtraction to correctly handle wrap-around without underflow. Cross-ref draft-lichen-tdma and Section 2a.2.
+>>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
 
 ### Density Rules Rationale (logical chunk: rationale paragraph - updated)
 

@@ -382,7 +382,11 @@ int lichen_router_clear_pending(struct lichen_router *router,
 			cleared++;
 		}
 	}
-	router->pending_count -= (size_t)cleared;
+	if ((size_t)cleared > router->pending_count) {
+		router->pending_count = 0;
+	} else {
+		router->pending_count -= (size_t)cleared;
+	}
 	return cleared;
 }
 
@@ -404,7 +408,11 @@ int lichen_router_expire_pending(struct lichen_router *router, uint32_t now_ms)
 			expired++;
 		}
 	}
-	router->pending_count -= (size_t)expired;
+	if ((size_t)expired > router->pending_count) {
+		router->pending_count = 0;
+	} else {
+		router->pending_count -= (size_t)expired;
+	}
 	return expired;
 }
 

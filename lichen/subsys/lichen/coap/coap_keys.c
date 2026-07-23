@@ -92,8 +92,8 @@ static void cbor_put_key(uint8_t *buf, size_t *off, const char *key)
 
 static const char hex_chars[] = "0123456789abcdef";
 
-int lichen_key_iid_to_str(const uint8_t iid[LICHEN_KEY_IID_LEN],
-			  char *buf, size_t buf_len)
+int lichen_key_iid_to_str(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN],
+			  char *_Nonnull buf, size_t buf_len)
 {
 	if (iid == NULL || buf == NULL || buf_len < LICHEN_KEY_IID_STR_LEN) {
 		return -EINVAL;
@@ -128,7 +128,7 @@ static int hex_char_to_nibble(char c)
 	return -1;
 }
 
-int lichen_key_str_to_iid(const char *str, uint8_t iid[LICHEN_KEY_IID_LEN])
+int lichen_key_str_to_iid(const char *_Nonnull str, uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN])
 {
 	if (str == NULL || iid == NULL) {
 		return -EINVAL;
@@ -276,8 +276,8 @@ static int base64_decode(const char *in, size_t in_len, uint8_t *out, size_t out
 	return (int)out_idx;
 }
 
-int lichen_key_pubkey_fingerprint(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
-				  char *buf, size_t buf_len)
+int lichen_key_pubkey_fingerprint(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
+				  char *_Nonnull buf, size_t buf_len)
 {
 	if (pubkey == NULL || buf == NULL || buf_len < LICHEN_KEY_FINGERPRINT_STR_LEN) {
 		return -EINVAL;
@@ -327,7 +327,7 @@ int lichen_key_pubkey_fingerprint(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
  * Key store implementation
  * -------------------------------------------------------------------------- */
 
-static int find_key_locked(const uint8_t iid[LICHEN_KEY_IID_LEN])
+static int find_key_locked(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN])
 {
 	for (int i = 0; i < CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES; i++) {
 		if (s_keys[i].valid &&
@@ -354,8 +354,8 @@ static uint32_t get_unix_time(void)
 	return (uint32_t)(k_uptime_get() / 1000);
 }
 
-int lichen_key_store_put(const uint8_t iid[LICHEN_KEY_IID_LEN],
-			 const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
+int lichen_key_store_put(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN],
+			 const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
 			 enum lichen_key_trust trust)
 {
 	int slot;
@@ -403,8 +403,8 @@ int lichen_key_store_put(const uint8_t iid[LICHEN_KEY_IID_LEN],
 	return 0;
 }
 
-int lichen_key_store_get(const uint8_t iid[LICHEN_KEY_IID_LEN],
-			 struct lichen_key_entry *entry)
+int lichen_key_store_get(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN],
+			 struct lichen_key_entry *_Nonnull entry)
 {
 	int slot;
 
@@ -425,7 +425,7 @@ int lichen_key_store_get(const uint8_t iid[LICHEN_KEY_IID_LEN],
 	return 0;
 }
 
-int lichen_key_store_delete(const uint8_t iid[LICHEN_KEY_IID_LEN])
+int lichen_key_store_delete(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN])
 {
 	int slot;
 
@@ -478,7 +478,7 @@ size_t lichen_key_store_list(struct lichen_key_entry *entries, size_t max_entrie
 	return count;
 }
 
-int lichen_key_store_touch(const uint8_t iid[LICHEN_KEY_IID_LEN], uint32_t unix_time)
+int lichen_key_store_touch(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN], uint32_t unix_time)
 {
 	int slot;
 
@@ -693,7 +693,7 @@ static size_t encode_key_single_cbor(const struct lichen_key_entry *entry,
 	char last_str[24];
 
 	if (entry == NULL || buf == NULL || buf_size < 100) {
-		return 0;
+		return 0; /* prevents underflow in offset checks (project-LICHEN-byge) */
 	}
 
 	lichen_key_iid_to_str(entry->iid, iid_str, sizeof(iid_str));
@@ -729,10 +729,14 @@ static size_t encode_key_single_cbor(const struct lichen_key_entry *entry,
  * -------------------------------------------------------------------------- */
 
 static int decode_key_put_cbor(const uint8_t *payload, size_t payload_len,
-			       uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
-			       enum lichen_key_trust *trust)
+			       uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
+			       enum lichen_key_trust *_Nonnull trust)
 {
+<<<<<<< HEAD
 	if (payload == NULL || payload_len == 0 || trust == NULL) {
+=======
+	if (payload == NULL || pubkey == NULL || trust == NULL || payload_len < 5) {
+>>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
 		return -EINVAL;
 	}
 

@@ -6,10 +6,29 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include <limits.h>
 
 #include <lichen/meshtastic/codec.h>
 
+<<<<<<< HEAD
 #include <lichen/meshtastic/pb_internal.h>
+=======
+BUILD_ASSERT(LICHEN_MESHTASTIC_FROM_RADIO_MAX <= INT_MAX,
+	     "max must fit in int");
+
+/* Protobuf wire types per https://protobuf.dev/programming-guides/encoding/ */
+#define PB_WT_VARINT 0U
+#define PB_WT_64BIT 1U
+#define PB_WT_LEN 2U
+#define PB_WT_SGROUP 3U  /* Deprecated: proto2 start group marker */
+#define PB_WT_EGROUP 4U  /* Deprecated: proto2 end group marker */
+#define PB_WT_32BIT 5U
+/* Wire types 6 and 7 are reserved/undefined per protobuf spec */
+
+#define PB_MAX_FIELD_NUMBER 536870911ULL
+#define LICHEN_BRAND "LICHEN"
+#define MESHTASTIC_BRAND "meshtastic"
+>>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
 
 #define TORADIO_PACKET_FIELD 1U
 #define TORADIO_WANT_CONFIG_ID_FIELD 3U
