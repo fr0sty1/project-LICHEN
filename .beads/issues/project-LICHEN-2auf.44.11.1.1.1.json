@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.44.11.1.1.1",
   "title": "Add monotonic generation to RplRuntime; bind to poll/complete methods",
   "description": "Extend RplRuntime with u64 generation (incremented on new() or reset). Update RplRuntimePoll and actions to carry/validate generation. Modify poll() to check pending_action and reject with new error if present. Update take_pending, observe, next_action, complete_* helpers.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",
