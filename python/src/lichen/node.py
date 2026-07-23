@@ -27,7 +27,7 @@ from collections import OrderedDict
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from ipaddress import IPv6Address
+from ipaddress import IPv6Address, IPv6Network
 from typing import Protocol, cast
 
 from lichen.announce.messages import AnnounceMessage
@@ -35,6 +35,7 @@ from lichen.announce.processor import AnnounceProcessor
 from lichen.announce.scheduler import AnnounceScheduler, SchedulerConfig
 from lichen.crypto.identity import Identity, PeerIdentity
 from lichen.gradient import GradientTable
+from lichen.ipv6 import make_ula
 from lichen.ipv6.packet import IPv6Packet
 from lichen.l2_payload import (
     L2_ROUTING_TYPE_ANNOUNCE,
@@ -54,8 +55,8 @@ logger = logging.getLogger(__name__)
 
 
 def _build_address(iid: bytes) -> IPv6Address:
-    prefix = bytes([0xfd, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
-    return IPv6Address(prefix + iid)
+    prefix = IPv6Network("fd00::/64")
+    return make_ula(prefix, iid)
 
 
 class MeshtasticAdapterProtocol(Protocol):
