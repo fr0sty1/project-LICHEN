@@ -2,15 +2,15 @@
   "id": "project-LICHEN-2rvt",
   "title": "[merge-conflict] worktree-worker20: t_deck_esp32s3_procpu.conf",
   "notes": "Commit: b80be6fa6",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:01:47.823942865Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:37:06.682256079Z",
+  "updated_at": "2026-07-23T03:37:10.627153837Z",
   "started_at": "2026-07-23T03:35:19.869492136Z",
-  "lease_expires_at": "2026-07-23T03:40:19.869492136Z",
-  "heartbeat_at": "2026-07-23T03:35:19.869492136Z"
+  "closed_at": "2026-07-23T03:37:10.627153837Z",
+  "close_reason": "Cleaned merge artifact comments listing specific workers/beads from lichen/apps/gateway/boards/t_deck_esp32s3_procpu.conf per AGENTS.md no-dead-code rule. Header now canonical. Commit b80be6fa6"
 }
