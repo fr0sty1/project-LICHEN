@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-vhvj.1.2.1",
   "title": "Implement synchronized_hop_channel(sfn: int, seed: int=0, num_channels: int=8) -\u003e int in python/src/lichen/sim/tdma.py using hash_32 from test/vectors/generate.py matching ccp16-hop.json vectors for SFN=0 and wraparound",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:24:02.738122996Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T06:00:19.802270339Z",
+  "updated_at": "2026-07-23T06:03:01.166929865Z",
   "started_at": "2026-07-23T06:00:19.802270339Z",
-  "lease_expires_at": "2026-07-23T06:05:19.802270339Z",
-  "heartbeat_at": "2026-07-23T06:00:19.802270339Z",
+  "closed_at": "2026-07-23T06:03:01.166929865Z",
+  "close_reason": "Implemented synchronized_hop_channel with u32 wraparound handling for SFN using hash_32; matches ccp16-hop.json for SFN=0 and wraparound (verified via isolated test); updated docstring. Committed and pushed. No subbeads created. Tests verified via direct function calls.",
   "labels": [
     "defer-external"
   ],
