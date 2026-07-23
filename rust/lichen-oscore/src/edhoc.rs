@@ -773,8 +773,6 @@ impl EdhocInitiator {
                 peer.credential,
                 &mac_2,
             )?;
-
-            // Verify Signature_2
             let peer_verifying_key = strong_verifying_key(peer.public_key)?;
             let signature_2 = Signature::from_bytes(
                 signature_bytes
@@ -788,7 +786,6 @@ impl EdhocInitiator {
             self.state.c_r = pending.c_r.clone();
             self.state.th_3 = transcript_3(&self.state.th_2, &pending.plaintext, peer.credential)?;
 
-            // PRK_4e3m = PRK_3e2m for SIGN_SIGN
             self.state.prk_4e3m = self.state.prk_3e2m;
 
             let mut credential_i = heapless::Vec::<u8, 80>::new();
@@ -809,17 +806,15 @@ impl EdhocInitiator {
             let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", b"", KEY_LEN)?;
             let iv_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "IV_3", b"", NONCE_LEN)?;
 
-            // A_3 (AAD) - simplified Encrypt0 structure
             let mut a_3 = heapless::Vec::<u8, 64>::new();
-            a_3.push_err(0x83)?; // array of 3
-            a_3.push_err(0x68)?; // tstr "Encrypt0"
+            a_3.push_err(0x83)?;
+            a_3.push_err(0x68)?;
             a_3.extend_err(b"Encrypt0")?;
-            a_3.push_err(0x40)?; // empty bstr
-            a_3.push_err(0x58)?; // bstr TH_3
+            a_3.push_err(0x40)?;
+            a_3.push_err(0x58)?;
             a_3.push_err(32)?;
             a_3.extend_err(&self.state.th_3)?;
 
-            // Encrypt in place (PLAINTEXT_3 -> CIPHERTEXT_3)
             let cipher = AesCcm::new_from_slice(&k_3).map_err(|_| EdhocError::InvalidState)?;
             let mut nonce = Zeroizing::new([0u8; NONCE_LEN]);
             nonce.copy_from_slice(&iv_3);
@@ -828,6 +823,7 @@ impl EdhocInitiator {
                 .map_err(|_| EdhocError::InvalidState)?;
             ciphertext_3.extend_err(&tag)?;
 
+            self.state.completed = true;
             self.state.lifecycle = Lifecycle::Complete;
             self.state.completed = true;
             let mut msg3 = heapless::Vec::new();
