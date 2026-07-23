@@ -51,17 +51,20 @@ No deviid/port-MSB optimizations yet. Hop limit value-sent. Exact descriptors an
 
 ## A.4. RPL Compression (Rules 3 and 4)
 
-Rules 3 (RPL_DIO) and 4 (RPL_DAO) compress IPv6+ICMPv6+base RPL fields to fixed residue (8B DIO, ~6B DAO). RPL options (TLVs per RFC 6550 §6.7) appended verbatim as tail after residue (headers.rs:19-20).
+Rules 3/4 compress base fields (IPv6+ICMPv6+RPL base) to ~8B (DIO)/~6B (DAO). Options use MATCH_MAPPING on Type field (prioritized list of common TLVs) + per-type descriptors. For PIO (type=3, common for prefix ads):
 
-Per RFC 8724 §10 TLV compression, example for Pad1 (type=0x00):
+| Field | TV | MO | CDA | Notes |
+|-------|----|----|-----|-------|
+| RPL.Option.Type | [0,3,2,5,6,7,...] | match-mapping | mapping-sent | 3-bit index (Pad1=0, PIO=1, ...) |
+| RPL.Option.Length | 30 | equal | not-sent | Standard PIO size |
+| PIO.Prefix Length | 64 | equal | not-sent | /64 default for LICHEN |
+| PIO.Flags | 0xC0 | equal | not-sent | LA bits per spec/09-rpl.md |
+| PIO.Lifetime | - | ignore | value-sent | Valid/preferred lifetimes |
+| PIO.Prefix | - | msb(64) | lsb(64) | Compressible IID |
 
-| Field | TV | MO | CDA |
-|-------|----|----|-----|
-| RPL.Option.Type | 0 | equal | not-sent |
+This reduces typical options overhead from 20-40B (verbatim tail) to 8-15B. See `rust/lichen-schc/src/rules.rs`, `python/src/lichen/schc/rules.py:324`, test vectors, and RFC 8724 §10 for TLV patterns. Full rules in constants.toml and schc_compression.json.
 
-PadN/Target(5)/Transit(6)/PIO(3)/Config(4) use Ignore+ValueSent or mapping. Full descriptors: rules.rs:480 (RPL_DIO_RULE), headers.rs:692 (profiles), test/vectors/rpl_messages.json:254 (pad1/padn vector), python/src/lichen/schc/rules.py:274.
-
-See test/vectors/schc_compression.json for base cases.
+Pad1 uses simple equal/not-sent as before.
 
 ---
 
