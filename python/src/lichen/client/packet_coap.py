@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import contextvars
 import logging
+import struct
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import suppress
 from dataclasses import dataclass
@@ -478,7 +479,7 @@ class PacketDatagramChannel(DatagramChannel):
                 Endpoint(str(parsed.header.src_addr), udp.src_port)
             ).authority
             coap = udp.payload
-        except Exception:
+        except (PacketError, UdpError, struct.error, ValueError):
             logger.debug("failed to parse packet", exc_info=True)
             return
         receiver(coap, source)
