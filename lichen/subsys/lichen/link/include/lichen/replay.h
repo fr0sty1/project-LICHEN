@@ -112,10 +112,11 @@ void lichen_replay_table_init(struct lichen_replay_table *_Nonnull table);
  *
  * Looks up the replay window for the authenticated public key. If no entry
  * exists and there's room in the table, creates a new entry. A full table
- * fails closed instead of evicting replay history.
+ * fails closed instead of evicting replay history (prevents poisoning).
  *
- * Callers MUST verify that the frame was authenticated by public_key before
- * calling this function.
+ * Callers MUST verify Schnorr-48 authentication (via peer_try_all_pubkeys +
+ * schnorr48_verify_frame) before calling. Fixed unauthenticated LRU eviction
+ * and EUI flooding attack (project-LICHEN-bbti).
  *
  * @param[in,out] table Replay table
  * @param[in]     public_key Authenticated peer public key (32 bytes)
