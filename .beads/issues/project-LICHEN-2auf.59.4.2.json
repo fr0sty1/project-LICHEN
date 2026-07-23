@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-2auf.59.4.2",
+  "title": "Validate Meshtastic integration rows across QEMU/host targets",
+  "description": "From fresh clean worktree per .59.4 spec, apply recovery patch, run full Meshtastic declared matrix (native_sim, qemu, etc.). Collect exact commands, west manifest, versions, artifacts, log hashes. Fail closed on any skip, dirty tree, or missing evidence. AWS_PROFILE=personal, vol-0a95eee8d1d8461eb only.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:14:53.458254913Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:14:53.458254913Z",
+  "labels": [
+    "aws",
+    "validation"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.59.4.2",
+      "depends_on_id": "project-LICHEN-2auf.59.4",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:14:53.589654817Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
