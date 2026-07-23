@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-1425",
   "title": "[merge-conflict] worktree-worker20: hal.c",
+  "notes": "Commit: 32efeab69",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:16:19.03826409Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:17:57.395674564Z",
+  "updated_at": "2026-07-23T00:19:22.721620938Z",
   "started_at": "2026-07-23T00:17:57.395674564Z",
   "lease_expires_at": "2026-07-23T00:22:57.395674564Z",
   "heartbeat_at": "2026-07-23T00:17:57.395674564Z"
