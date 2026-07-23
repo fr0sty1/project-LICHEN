@@ -207,7 +207,7 @@ static int test_zero_imin_uses_safe_default(void)
 
 	lichen_trickle_start(&t, 0, 0);
 	ASSERT_EQ(t.interval, 1, "interval set to safe default");
-	ASSERT_TRUE(t.transmit_time >= 0, "timer starts without immediate loop");
+	ASSERT_TRUE(t.transmit_time > 0, "timer starts without immediate loop");
 
 	return 1;
 }
