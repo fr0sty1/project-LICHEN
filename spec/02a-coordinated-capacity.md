@@ -97,27 +97,27 @@ Note: All operators are spelled out (OR, NOT, MOD, XOR) for language-agnostic IE
 
 ### Density Rules Rationale
 
-SF10 is the REQUIRED default because it balances sensitivity (~ -137 dBm at 125 kHz) and airtime for typical mesh density per appendix-design-rationale.md and independent sim oracle in ccp16.json vectors. Density-aware adaptation prioritizes capacity (SF9 in low density <5 + good SNR >8 dB to reduce airtime) vs robustness (SF11/12 in density >8 or poor SNR or high load_factor to lower PER). EMA on SNR (updated via now()) integrates with load_factor override from gateway DIOs. Updates MUST be propagated in RPL metric container. Root optimizer uses reported neighbor_count and channel_util to minimize collisions.
+SF10 is the REQUIRED default because it balances sensitivity (~ -137 dBm at 125 kHz) and airtime for typical mesh density per appendix-design-rationale.md and independent sim oracle in ccp16.json vectors. Density-aware adaptation prioritizes capacity (SF9 in low density <5 + good SNR >8 dB) vs robustness (SF12 critical first for snr<-5 or density>20, then SF11 for density>8/poor snr/load>0.8). EMA on SNR (updated via now()) integrates with load_factor override from gateway DIOs. Updates MUST be propagated in RPL metric container. Root optimizer uses reported neighbor_count and channel_util to minimize collisions.
 
 ### adaptive_sf_select Pseudocode
 
 ```
 function ema_update(avg, sample):
     diff = sample - avg
-    RETURN avg + (diff >> 2)
+    RETURN avg + (diff >> 2)  // ccp15.json seeds
 
-function adaptive_sf_select(density, snr_ema, load_factor):
-    IF (density > 8) OR (snr_ema < 0) OR (load_factor > 0.8) THEN
-        RETURN 11
-    ELSE IF (density < 5) AND (snr_ema > 8) THEN
-        RETURN 9
-    ELSE IF (density > 20) OR (snr_ema < -5) THEN
+function adaptive_sf_select(density, snr_ema, load_factor):  // critical-first per rf_health.rs:348 and ccp15.json, ccp_load_balancing.json, Rust adaptive_sf_and_rebalance_matches_spec test
+    IF (density > 20) OR (snr_ema < -5) THEN  // critical: ccp15-seed1, rf-test-snr-critical-density3 (SF12)
         RETURN 12
+    ELSE IF (density > 8) OR (snr_ema < 0) OR (load_factor > 0.8) THEN  // high: ccp-load-high-util-rebalance, rf-test-density12-snr--3 (SF11)
+        RETURN 11
+    ELSE IF (density < 5) AND (snr_ema > 8) THEN  // low-density good-snr: ccp15-seed0, rf-test-density3-snr12 (SF9)
+        RETURN 9
     ELSE
-        RETURN 10
+        RETURN 10  // baseline: ccp15-seed2 (SF10)
 ```
 
-Per-SF SNR thresholds (normative): SF9: >8dB, SF10: >0dB, SF11: >-5dB, SF12: any. Nodes MUST maintain per-neighbor EMA state, signal ASSIGNED_SF and metrics in DIO, RX on all SF. Pseudocode MUST be followed exactly and produce identical output to test/vectors/ccp16.json. Integrates with TDMA slot enforcement and SCHC.
+Per-SF SNR thresholds (normative): SF9: >8dB, SF10: any (baseline), SF11: >-5dB (with density/load), SF12: any (critical). Nodes MUST maintain per-neighbor EMA state, signal ASSIGNED_SF and metrics in DIO, RX on all SF. Pseudocode MUST be followed exactly and produce identical output to test/vectors/ccp*.json. Integrates with TDMA slot enforcement and SCHC. Cross-refs physical-link:3.4 table and link layer primitives.
 
 ## 2a.4. Time Synchronization
 
