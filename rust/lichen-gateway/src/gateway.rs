@@ -112,7 +112,7 @@ impl Gateway {
         }
         (dst[0] == 0xfe && dst[1] == 0x80)
             || dst[0] == 0xfd
-            || self.rpl_node.router.lookup_route(dst).is_some()
+            || self.rpl_node.router().lookup_route(dst).is_some()
     }
 
     pub fn process_rpl(&mut self, frame: &[u8], now_ms: u64) -> (Option<Vec<u8>>, RplEvent) {
@@ -140,7 +140,7 @@ impl Gateway {
         let to_compress = if (dst[0] == 0xfe && dst[1] == 0x80) || dst[0] == 0xfd {
             ipv6
         } else {
-            let route = match self.rpl_node.router.lookup_route(&dst) {
+            let route = match self.rpl_node.router().lookup_route(&dst) {
                 Some(r) => r,
                 None => return None,
             };
