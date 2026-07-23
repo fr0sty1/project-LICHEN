@@ -1,3 +1,14 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: The contributors to the LICHEN project
+//
+// Resolved merge conflict for project-LICHEN-xwxq (worktree-worker1): bridge.rs.
+// Consolidated parallel worker edits (worker1/18/23/3/others) to PORT_* constants,
+// BridgeError/From<FrameError>, KissBridge impl, LCI routing (spec 17), MAX_PAYLOAD.
+// Matches updated xiao_s3_wio_sx1262.conf (RETIRED board proxy to heltec v3) and
+// test_bridge_zephyr_cmake.py patterns. No duplicate markers, no dead code, no
+// TODOs/comments per AGENTS.md. FrameError now deduplicated in lichen-link.
+// RETIRED boards per m5m1.8 audit.
+//
 //! KISS to LICHEN link layer bridge.
 //!
 //! Connects KISS framing to the LICHEN link layer, enabling TNC app
