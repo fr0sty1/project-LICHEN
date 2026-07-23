@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-f4xg.3",
+  "title": "Update Zephyr CoAP/SenML paths and constants to match spec",
+  "description": "In lichen/subsys/lichen/coap and related Zephyr code, replace magic numbers for CoAP paths, Content-Formats (esp. 112 for SenML), ports (5683 etc.) with constants from headers or core. Align with spec/07-transport-app.md, appendix-senml.md.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:14:25.255957916Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:14:25.255957916Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-f4xg.3",
+      "depends_on_id": "project-LICHEN-f4xg",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:14:25.389135686Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
