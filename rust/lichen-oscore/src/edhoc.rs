@@ -379,9 +379,6 @@ fn transcript_3(
     Ok(compute_th(&buf))
 }
 
-/// TH_4 = H(CBOR(TH_3) || CBOR(PLAINTEXT_3) || CBOR(CRED)) per RFC 9528 §4.1.2/4.2.2.
-/// Uses PLAINTEXT_3 (not CIPHERTEXT_3) + full credential for initiator/responder
-/// consistency, matching test vector, C impl, and Python reference (adjusted).
 fn transcript_4(
     th_3: &[u8; 32],
     input: &[u8],
@@ -392,6 +389,32 @@ fn transcript_4(
     encode_bstr(&mut buf, input)?;
     encode_bstr(&mut buf, cred)?;
     Ok(compute_th(&buf))
+}
+
+fn build_context_2(_c_r: &ConnectionId, id_cred: &[u8], _th: &[u8; 32], cred: &[u8]) -> Result<heapless::Vec<u8, 128>, EdhocError> {
+    let mut buf = heapless::Vec::<u8, 128>::new();
+    encode_bstr(&mut buf, id_cred)?;
+    encode_bstr(&mut buf, cred)?;
+    Ok(buf)
+}
+
+fn build_context_3(id_cred: &[u8], _th: &[u8; 32], cred: &[u8]) -> Result<heapless::Vec<u8, 128>, EdhocError> {
+    let mut buf = heapless::Vec::<u8, 128>::new();
+    encode_bstr(&mut buf, id_cred)?;
+    encode_bstr(&mut buf, cred)?;
+    Ok(buf)
+}
+
+fn build_signature_structure(id_cred: &[u8], th: &[u8; 32], cred: &[u8], mac: &[u8]) -> Result<heapless::Vec<u8, 128>, EdhocError> {
+    let mut buf = heapless::Vec::<u8, 128>::new();
+    buf.push_err(0x85)?;
+    buf.push_err(0x6a)?;
+    buf.extend_err(b"Signature1")?;
+    encode_bstr(&mut buf, id_cred)?;
+    encode_bstr(&mut buf, th)?;
+    encode_bstr(&mut buf, cred)?;
+    encode_bstr(&mut buf, mac)?;
+    Ok(buf)
 }
 
 /// Parse SUITES_I from CBOR per RFC 9528 Section 3.3.2.
