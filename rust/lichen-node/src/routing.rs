@@ -198,7 +198,7 @@ impl Router {
     pub fn new(node_addr: [u8; 16], dodag_id: [u8; 16]) -> Self {
         Self {
             dodag: DodagState::new(RPL_INSTANCE_ID, dodag_id, 0),
-            trickle: TrickleTimer::new(256, 8, 10), // Imin=256ms, doublings=8, k=10
+            trickle: TrickleTimer::new(4096, 8, 10), // Imin=4096ms (2^12), doublings=8, k=10
             dao_manager: DaoManager::new(node_addr, RPL_INSTANCE_ID, dodag_id),
             neighbors: NeighborTable::new(),
             node_addr,
@@ -212,7 +212,7 @@ impl Router {
         let dodag_id = node_addr; // Root's address is DODAG ID
         Self {
             dodag: DodagState::as_root(RPL_INSTANCE_ID, dodag_id, 0),
-            trickle: TrickleTimer::new(256, 8, 10),
+            trickle: TrickleTimer::new(4096, 8, 10),
             dao_manager: DaoManager::as_root(node_addr, RPL_INSTANCE_ID, dodag_id),
             neighbors: NeighborTable::new(),
             node_addr,
