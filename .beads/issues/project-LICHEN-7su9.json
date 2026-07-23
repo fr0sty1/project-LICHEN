@@ -2,15 +2,15 @@
   "id": "project-LICHEN-7su9",
   "title": "[merge-conflict] worktree-worker21: trickle.rs",
   "notes": "Commit: b35850a6e (resolved trickle merge conflicts matching Rust impl + saturating math, stopped-state reset, clean code)",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:53:08.634679627Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:10:44.926552633Z",
+  "updated_at": "2026-07-23T00:10:48.038870338Z",
   "started_at": "2026-07-23T00:04:35.212390648Z",
-  "lease_expires_at": "2026-07-23T00:09:35.212390648Z",
-  "heartbeat_at": "2026-07-23T00:04:35.212390648Z"
+  "closed_at": "2026-07-23T00:10:48.038870338Z",
+  "close_reason": "Resolved merge conflicts in trickle.rs/C impl, rpl_trickle.h, rpl_root.c, rf_health.rs, gateway.rs, Kconfigs, addressing.md by reconciling to match robust Rust version (saturating_add, proper reset-from-stopped, no dead comments). Merge committed in main. Tests and interop preserved. Matches dual-impl discipline."
 }
