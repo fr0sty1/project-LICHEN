@@ -16,8 +16,14 @@ pub const MIN_HEADER_LEN: usize = 4;
 /// Maximum token length (8 bytes per RFC 7252).
 pub const MAX_TOKEN_LEN: usize = 8;
 
-/// Payload marker byte (0xFF).
+/// Payload marker byte (0xFF per RFC 7252 §4.1).
 pub const PAYLOAD_MARKER: u8 = 0xFF;
+
+/// Common header bytes for test vectors (RFC 7252 §3).
+/// CON GET with TKL=0: Ver=1, Type=0 (CON), TKL=0.
+pub const CON_GET_HEADER: u8 = 0x40;
+/// ACK with TKL=0: Ver=1, Type=2 (ACK), TKL=0.
+pub const ACK_HEADER: u8 = 0x60;
 
 /// CoAP parse error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -598,12 +604,13 @@ fn write_option(out: &mut [u8], delta: u16, value: &[u8]) -> usize {
 mod tests {
     extern crate std;
     use super::*;
+    use crate::option::content_format;
     use std::vec::Vec;
 
     #[test]
     fn parse_minimal_message() {
-        // CON GET with empty token, no options, no payload
-        let data = [0x40, 0x01, 0x00, 0x01]; // Ver=1, T=CON, TKL=0, Code=0.01, MID=1
+        // CON GET with empty token, no options, no payload (RFC 7252 §3)
+        let data = [CON_GET_HEADER, MessageCode::GET.0, 0x00, 0x01];
         let pkt = CoapPacket::from_bytes(&data).unwrap();
         assert_eq!(pkt.msg_type(), MessageType::Confirmable);
         assert_eq!(pkt.code(), MessageCode::GET);
@@ -626,8 +633,8 @@ mod tests {
 
     #[test]
     fn parse_with_payload() {
-        // ACK 2.05 Content with payload
-        let data = [0x60, 0x45, 0x00, 0x01, 0xFF, 0x48, 0x65, 0x6C, 0x6C, 0x6F];
+        // ACK 2.05 Content with payload (RFC 7252 §3, §5.2)
+        let data = [ACK_HEADER, MessageCode::CONTENT.0, 0x00, 0x01, 0xFF, 0x48, 0x65, 0x6C, 0x6C, 0x6F];
         let pkt = CoapPacket::from_bytes(&data).unwrap();
         assert_eq!(pkt.msg_type(), MessageType::Acknowledgement);
         assert_eq!(pkt.code(), MessageCode::CONTENT);
@@ -637,10 +644,10 @@ mod tests {
 
     #[test]
     fn parse_with_options() {
-        // GET /test with Uri-Path option (11)
+        // GET /test with Uri-Path option (11) (RFC 7252 §5.4)
         // Option: delta=11, len=4, value="test"
         let data = [
-            0x40, 0x01, 0x00, 0x01, // header
+            CON_GET_HEADER, MessageCode::GET.0, 0x00, 0x01, // header
             0xB4, b't', b'e', b's', b't', // Uri-Path "test"
         ];
         let pkt = CoapPacket::from_bytes(&data).unwrap();
@@ -654,9 +661,9 @@ mod tests {
 
     #[test]
     fn parse_extended_delta() {
-        // Option with delta=13 (extended 1 byte): delta nibble=13, ext=0 => delta=13
+        // Option with delta=13 (extended 1 byte): delta nibble=13, ext=0 => delta=13 (RFC 7252 §5.4)
         let data = [
-            0x40, 0x01, 0x00, 0x01, // header
+            CON_GET_HEADER, MessageCode::GET.0, 0x00, 0x01, // header
             0xD0, 0x00, // delta=13, len=0
         ];
         let pkt = CoapPacket::from_bytes(&data).unwrap();
@@ -707,7 +714,7 @@ mod tests {
         .unwrap();
         builder.uri_path("sensors").unwrap();
         builder.uri_path("temp").unwrap();
-        builder.content_format(60).unwrap(); // CBOR
+        builder.content_format(content_format::CBOR).unwrap(); // RFC 7252 §12.3
         builder.payload(b"{\"v\":25}").unwrap();
         let n = builder.finish();
 
@@ -720,7 +727,7 @@ mod tests {
         assert_eq!(opts[0].value, b"sensors");
         assert_eq!(opts[1].value, b"temp");
         assert_eq!(opts[2].number, OptionNumber::ContentFormat as u16);
-        assert_eq!(opts[2].as_uint().unwrap(), 60);
+        assert_eq!(opts[2].as_uint().unwrap(), content_format::CBOR);
     }
 
     #[test]
@@ -777,7 +784,7 @@ mod tests {
     fn invalid_payload_marker() {
         // Payload marker (0xFF) with no bytes after it per RFC 7252 §4.1
         // MUST be rejected as malformed.
-        let data = [0x40, 0x01, 0x00, 0x01, 0xFF];
+        let data = [CON_GET_HEADER, MessageCode::GET.0, 0x00, 0x01, 0xFF];
         assert_eq!(
             CoapPacket::from_bytes(&data),
             Err(CoapError::InvalidPayloadMarker)
@@ -795,8 +802,8 @@ mod tests {
         // option iteration. This prevents any options from being returned before
         // the overflow is detected.
         let mut data = Vec::new();
-        // Header: CON GET, TKL=0, MID=1
-        data.extend_from_slice(&[0x40, 0x01, 0x00, 0x01]);
+        // Header: CON GET, TKL=0, MID=1 (RFC 7252 §3)
+        data.extend_from_slice(&[CON_GET_HEADER, MessageCode::GET.0, 0x00, 0x01]);
         // Option 1: delta=60000 (nibble 14), length=0
         // Extended delta = 60000 - 269 = 59731 = 0xE953
         data.push(0xE0); // delta nibble=14, len nibble=0
@@ -817,10 +824,10 @@ mod tests {
 
     #[test]
     fn option_near_max_valid() {
-        // Verify that option numbers up to u16::MAX are still valid
+        // Verify that option numbers up to u16::MAX are still valid (RFC 7252 §5.4)
         let mut data = Vec::new();
         // Header: CON GET, TKL=0, MID=1
-        data.extend_from_slice(&[0x40, 0x01, 0x00, 0x01]);
+        data.extend_from_slice(&[CON_GET_HEADER, MessageCode::GET.0, 0x00, 0x01]);
         // Option with delta=65535 (u16::MAX)
         // Extended delta = 65535 - 269 = 65266 = 0xFEF2
         data.push(0xE0); // delta nibble=14, len nibble=0
@@ -836,10 +843,10 @@ mod tests {
 
     #[test]
     fn option_overflow_at_exact_boundary() {
-        // Two options that overflow exactly at u16::MAX + 1
+        // Two options that overflow exactly at u16::MAX + 1 (RFC 7252 §5.4)
         let mut data = Vec::new();
         // Header: CON GET, TKL=0, MID=1
-        data.extend_from_slice(&[0x40, 0x01, 0x00, 0x01]);
+        data.extend_from_slice(&[CON_GET_HEADER, MessageCode::GET.0, 0x00, 0x01]);
         // Option 1: delta=65535 (u16::MAX)
         // Extended delta = 65535 - 269 = 65266 = 0xFEF2
         data.push(0xE0); // delta nibble=14, len nibble=0
