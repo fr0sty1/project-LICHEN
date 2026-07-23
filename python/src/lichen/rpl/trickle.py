@@ -33,7 +33,12 @@ class TrickleTimer:
             raise ValueError("imax_doublings must be non-negative")
         self.imin = imin_ms
         self.imax_doublings = imax_doublings
-        self.max_interval = imin_ms << imax_doublings
+        if imax_doublings == 0:
+            self.max_interval = imin_ms
+        elif imax_doublings >= 32 or (imin_ms >> (32 - imax_doublings)) > 0:
+            self.max_interval = (1 << 32) - 1
+        else:
+            self.max_interval = imin_ms << imax_doublings
         self.k = k
         self._rng: RngFn = rng if rng is not None else random.random
 
@@ -42,7 +47,7 @@ class TrickleTimer:
         self.interval_start = 0
         self.transmit_time = 0
         self._transmitted = False
-        self._generation = 0  # Incremented on each interval start to detect resets
+        self._generation = 0
 
     def start(self, now: int = 0) -> None:
         """Begin the first interval at ``now`` (RFC 6206 step 1-2)."""
