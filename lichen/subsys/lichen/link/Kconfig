@@ -105,7 +105,6 @@ config LICHEN_LINK_CCP16_LOAD_BALANCING
 	depends on LICHEN_RPL
 	depends on LICHEN_LINK_EPOCH_PERSIST
 	select LICHEN_SCHC
-	select LICHEN_LINK_EPOCH_PERSIST
 	help
 	  Enable CCP-16 coordinated load balancing for high-density
 	  (DEFCON-scale) deployments. References density tracking, adaptive
@@ -130,7 +129,6 @@ config LICHEN_CCP_TIME_SYNC
 	bool "CCP time synchronization (SFN, beacons, GPS stratum)"
 	default y
 	depends on LICHEN_LINK_CCP16_LOAD_BALANCING
-	select LICHEN_TIME_PROVIDER_GNSS if LICHEN_HAS_GNSS
 	help
 	  Enable time sync for CCP-16 desync recovery, TDMA slots, and RPL
 	  version interactions per spec/02a-coordinated-capacity.md §5. Uses

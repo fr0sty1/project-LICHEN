@@ -138,7 +138,6 @@ int lichen_eui64_to_iid(const uint8_t *eui64, uint8_t *iid);
  * @return 0 on success, -EINVAL if NULL pointer
  */
 int lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid);
-int lichen_yggdrasil_addr(const uint8_t *pubkey, struct in6_addr *out);
 
 /**
  * @brief Derive 13-character human-readable Crockford base32 node address

@@ -5,7 +5,6 @@ menuconfig LICHEN_APP_IDENTITY
 	bool "LICHEN local app identity provider"
 	depends on LICHEN
 	depends on LICHEN_LINK
-	select LICHEN_LINK
 	help
 	  Enable a copy-only public identity provider for local app
 	  compatibility surfaces. This exposes self EUI/IID/public key and a

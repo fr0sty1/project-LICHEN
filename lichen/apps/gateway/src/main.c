@@ -16,7 +16,9 @@
 #include <zephyr/net/coap_service.h>
 
 #include <lichen/hal.h>
+#if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
 #include <lichen/rpl_dodag.h>
+#endif
 
 #if IS_ENABLED(CONFIG_LICHEN_LORA_L2)
 #include "lora_l2.h"
@@ -820,4 +822,3 @@ int main(void)
 
 	return 0;
 }
-

@@ -241,10 +241,12 @@ int lichen_app_location_time_from_hal(
 		.vertical_accuracy_mm_valid = hal->vertical_accuracy_mm_valid,
 		.vertical_accuracy_mm = hal->vertical_accuracy_mm,
 	};
-	size_t name_len = strnlen(hal->source_name, sizeof(app->source_name));
-	if (name_len == sizeof(app->source_name)) {
+	const char *name_end = memchr(hal->source_name, '\0',
+				      sizeof(app->source_name));
+	if (name_end == NULL) {
 		return -EINVAL;
 	}
+	size_t name_len = (size_t)(name_end - hal->source_name);
 	memcpy(app->source_name, hal->source_name, name_len);
 	app->source_name[name_len] = '\0';
 	return 0;
@@ -283,16 +285,20 @@ int lichen_app_time_from_hal(struct lichen_app_time_snapshot *app,
 		.provision_epoch_valid = hal->provision_epoch_valid,
 		.provision_epoch = hal->provision_epoch,
 	};
-	size_t name_len = strnlen(hal->source_name, sizeof(app->source_name));
-	if (name_len == sizeof(app->source_name)) {
+	const char *name_end = memchr(hal->source_name, '\0',
+				      sizeof(app->source_name));
+	if (name_end == NULL) {
 		return -EINVAL;
 	}
+	size_t name_len = (size_t)(name_end - hal->source_name);
 	memcpy(app->source_name, hal->source_name, name_len);
 	app->source_name[name_len] = '\0';
-	name_len = strnlen(hal->rejection_source_name, sizeof(app->rejection_source_name));
-	if (name_len == sizeof(app->rejection_source_name)) {
+	name_end = memchr(hal->rejection_source_name, '\0',
+			  sizeof(app->rejection_source_name));
+	if (name_end == NULL) {
 		return -EINVAL;
 	}
+	name_len = (size_t)(name_end - hal->rejection_source_name);
 	memcpy(app->rejection_source_name, hal->rejection_source_name, name_len);
 	app->rejection_source_name[name_len] = '\0';
 	return 0;
