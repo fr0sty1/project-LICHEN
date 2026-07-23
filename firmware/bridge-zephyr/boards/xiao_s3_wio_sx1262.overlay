@@ -1,11 +1,11 @@
 /*
- * RETIRED per project-LICHEN-2u26.10, project-LICHEN-80ju (m5m1.8 bridge audit): Seeed XIAO ESP32-S3 + Wio-SX1262 bridge overlay (project-LICHEN-2u26.10 / project-LICHEN-80ju / m5m1.8).
- * No canonical Zephyr board or composite shield mapping; xiao_s3_wio_sx1262 not a valid -b target / valid target.
- * FAIL in m5m1.8 bridge audit. Use heltec_wifi_lora32_v3_esp32s3_procpu proxy instead.
- * Support/claims removed. Fragment retained for reference only. See docs/firmware-board-capability-matrix.md and epic 2u26.
+ * RETIRED per project-LICHEN-2u26.10, project-LICHEN-80ju (m5m1.8 bridge audit): Seeed XIAO ESP32-S3 + Wio-SX1262 bridge overlay.
+ * No canonical Zephyr board or composite shield mapping; xiao_s3_wio_sx1262 not a valid -b target.
+ * FAIL in bridge audit. Use heltec_wifi_lora32_v3_esp32s3_procpu proxy instead.
+ * Support removed. Fragment retained for reference only. See docs/firmware-board-capability-matrix.md and epic 2u26.
  * Follows tbeam_supreme pattern.
  *
- * Original pinout (B2B connector) / pin map (for reference):
+ * Original pin map (for reference):
  * SX1262 SPI: SCK=GPIO7, MISO=GPIO8, MOSI=GPIO9, NSS=GPIO41
  * Control: RESET=GPIO42, BUSY=GPIO40, DIO1=GPIO39
  * LED: GPIO21 yellow active-low
