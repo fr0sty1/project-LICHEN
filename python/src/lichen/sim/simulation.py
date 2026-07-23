@@ -780,8 +780,6 @@ class Simulation:
             if result is not None:
                 payload, rssi, snr, tx_id, source_node_id = result
                 on_packet = node.rx_callbacks[0]
-
->>>>>>> origin/worktree-worker19
                 self._metrics.record_reception(node_id, tx_id, self._current_time_us)
                 rx_log = {
                     "sim_id": self._id,
