@@ -10,6 +10,20 @@ Key insight: Most peer-to-peer traffic is between nodes that actively
 participate in the mesh. These nodes announce regularly. No discovery needed.
 """
 
+from lichen.announce.coords import (
+    APP_DATA_TYPE_CONGESTION,
+    APP_DATA_TYPE_COORDS,
+    APP_DATA_TYPE_DTN_EXPIRY,
+    APP_DATA_TYPE_DTN_PENDING,
+    decode_congestion,
+    decode_coords,
+    decode_dtn_expiry,
+    decode_dtn_pending,
+    encode_congestion,
+    encode_coords,
+    encode_dtn_expiry,
+    encode_dtn_pending,
+)
 from lichen.announce.messages import (
     ANNOUNCE_TYPE,
     MAX_ANNOUNCE_HOPS,
@@ -29,20 +43,6 @@ from lichen.announce.scheduler import (
     AnnounceScheduler,
     AnnounceTransmitter,
     SchedulerConfig,
-)
-from lichen.announce.coords import (
-    APP_DATA_TYPE_COORDS,
-    APP_DATA_TYPE_CONGESTION,
-    APP_DATA_TYPE_DTN_EXPIRY,
-    APP_DATA_TYPE_DTN_PENDING,
-    decode_congestion,
-    decode_coords,
-    decode_dtn_expiry,
-    decode_dtn_pending,
-    encode_congestion,
-    encode_coords,
-    encode_dtn_expiry,
-    encode_dtn_pending,
 )
 from lichen.gradient import GRADIENT_TIMEOUT_MS
 

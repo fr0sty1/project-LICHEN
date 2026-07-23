@@ -1,20 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """Tests for announce scheduler.
-
-Why these tests: The scheduler controls announce timing and sequence numbers.
-Bugs here mean:
-- Announces not sent (routing failure - nodes become unreachable)
-- Wrong timing (bandwidth waste or stale gradients)
-- Sequence number issues (replays accepted or valid announces rejected)
-- Memory leaks (tasks not cleaned up)
-
-Test categories:
-1. Lifecycle (start/stop)
-2. Sequence number management
-3. Announce building and signing
-4. Timing behavior
-5. Persistence callbacks
 """
 
 import asyncio
