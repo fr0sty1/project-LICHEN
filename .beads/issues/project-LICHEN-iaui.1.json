@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-iaui.1",
+  "title": "Make oscore_ctx struct opaque with accessor functions only",
+  "description": "oscore.h:206-234 currently exposes all key material in public struct. Follow the existing comment block: hide definition in .c, provide only oscore_ctx_create(), oscore_ctx_free(), oscore_ctx_get() etc. Update all call sites. P0 security. Parent of project-LICHEN-iaui",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:20:10.565441822Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:20:10.565441822Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-iaui.1",
+      "depends_on_id": "project-LICHEN-iaui",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:20:10.70174921Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
