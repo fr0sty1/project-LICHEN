@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-ow3c.4.3",
+  "title": "Add test coverage for SSN persistence across simulated reboot with NVM error recovery",
+  "description": "Implement mock that fails first write then succeeds on retry. Test oscore_ctx_persist_ssn retry logic if any, SSN monotonicity post-failure, no nonce reuse on protect after reboot simulation. Update main.c test suite.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:19:18.615483025Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:19:18.615483025Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow3c.4.3",
+      "depends_on_id": "project-LICHEN-ow3c.4",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:19:18.74942039Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
