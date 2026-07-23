@@ -437,6 +437,8 @@ class ProxyResource(resource.Resource):
                 self._mesh_ctx.request(fwd).response,
                 timeout=self._timeout,
             )
+        except asyncio.CancelledError:
+            raise
         except Exception:
             return Message(code=BAD_GATEWAY)
 
