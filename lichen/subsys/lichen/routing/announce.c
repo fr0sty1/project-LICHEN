@@ -14,6 +14,7 @@
 
 #include <lichen/l2_payload.h>
 #include <lichen/schnorr48.h>
+#include <monocypher.h>
 
 #define ANNOUNCE_SIGNED_PREFIX_LEN \
 	(LICHEN_ANNOUNCE_IID_LEN + LICHEN_ANNOUNCE_PUBKEY_LEN + 2U + 1U)
@@ -304,8 +305,7 @@ int lichen_announce_ingest_authenticated(
 	k_mutex_lock(&announce_mutex, K_FOREVER);
 	peer = find_peer_locked(announce.originator_iid);
 	if (peer != NULL) {
-		if (memcmp(peer->pubkey, announce.pubkey,
-			   LICHEN_ANNOUNCE_PUBKEY_LEN) != 0) {
+		if (crypto_verify32(peer->pubkey, announce.pubkey) != 0) {
 			k_mutex_unlock(&announce_mutex);
 			k_mutex_unlock(&ingest_mutex);
 			return -EKEYREJECTED;

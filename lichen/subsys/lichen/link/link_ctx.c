@@ -277,7 +277,7 @@ int lichen_link_load_key(struct lichen_link_ctx *ctx,
 		return -EIO;
 	}
 	bool rotating_key = ctx->has_key &&
-		memcmp(ctx->ed25519_pk, new_pk, LICHEN_PK_LEN) != 0;
+		(crypto_verify32(ctx->ed25519_pk, new_pk) != 0);
 	if (ctx->has_key) {
 		secure_wipe(ctx->ed25519_sk, LICHEN_SK_LEN);
 	}

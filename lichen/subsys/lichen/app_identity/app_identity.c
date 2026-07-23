@@ -16,6 +16,7 @@
 #define ENOKEY ENOENT
 #endif
 #include <lichen/link_ctx.h>
+#include <monocypher.h>
 
 BUILD_ASSERT(LICHEN_APP_IDENTITY_EUI64_LEN == LICHEN_EUI64_LEN,
 	     "app identity EUI-64 length must match link context");
@@ -215,8 +216,7 @@ int lichen_app_identity_upsert_peer(
 		 * Silent key changes are rejected to prevent impersonation.
 		 */
 		if (s_peers[slot].peer.has_public_key &&
-		    memcmp(s_peers[slot].peer.public_key, peer->public_key,
-			   LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN) != 0) {
+		    crypto_verify32(s_peers[slot].peer.public_key, peer->public_key) != 0) {
 			k_mutex_unlock(&s_mutex);
 			return -EEXIST;  /* TOFU violation: pubkey mismatch */
 		}
