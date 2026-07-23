@@ -2,6 +2,7 @@
   "id": "project-LICHEN-avw0",
   "title": "Clean python SCHC modules and update schc_fragment vectors",
   "description": "Review python/src/lichen/schc/*.py (esp. fragment.py) for merge artifacts, dead code, ruff issues, comments. Remove all comments/docstrings per guidelines. Ensure schc_fragment.json vectors use independent CRC32 oracle matching FragmentSender.compute_mic and to_bytes(). Make ruff clean. Update generate.py and vectors if needed. No comments in final code. Close all related issues.",
+  "notes": "Commit: 11f9a7030",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "epic",
@@ -9,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:02:42.579053878Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:10:12.606371354Z",
+  "updated_at": "2026-07-23T00:18:10.353182633Z",
   "started_at": "2026-07-23T00:10:12.606371354Z",
   "lease_expires_at": "2026-07-23T00:15:12.606371354Z",
   "heartbeat_at": "2026-07-23T00:10:12.606371354Z"
