@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-5nop",
   "title": "[merge-conflict] worktree-worker23: Kconfig",
-  "status": "in_progress",
+  "notes": "Commit: 706838283",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:42:15.006458036Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:22:14.172910377Z",
+  "updated_at": "2026-07-23T03:26:39.340171951Z",
   "started_at": "2026-07-23T03:22:14.172910377Z",
-  "lease_expires_at": "2026-07-23T03:27:14.172910377Z",
-  "heartbeat_at": "2026-07-23T03:22:14.172910377Z"
+  "closed_at": "2026-07-23T03:26:39.340171951Z",
+  "close_reason": "Synced Kconfig and board .conf files across worker23 worktree and main; removed duplicate CONFIG_CRC from prj.conf, updated heap defaults in t_deck Kconfig.defconfig, added resolution note for this bead in heltec conf. Verified no markers or divergences. Commit 7068382 pushed."
 }
