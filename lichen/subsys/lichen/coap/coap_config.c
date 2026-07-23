@@ -48,7 +48,7 @@ LOG_MODULE_REGISTER(lichen_coap_config, CONFIG_LICHEN_COAP_CONFIG_LOG_LEVEL);
 #define KEY_PUBKEY_FINGERPRINT "pubkey_fingerprint"
 #define KEY_ADDRS "addrs"
 #define KEY_LINK_LOCAL "link_local"
-#define KEY_ULA "ula"
+#define KEY_PRIMARY "primary"
 #define KEY_GUA "gua"
 
 /* Role string constants */
@@ -560,7 +560,7 @@ size_t lichen_config_encode_identity_cbor(uint8_t *buf, size_t buf_size,
 		}
 	}
 
-	/* "addrs": { "link_local": "...", "ula": "...", "gua": null } */
+	/* "addrs": { "link_local": "...", "primary": "...", "gua": null } */
 	if (!zcbor_tstr_put_lit(state, KEY_ADDRS) ||
 	    !zcbor_map_start_encode(state, 3)) {
 		return 0;
@@ -570,12 +570,12 @@ size_t lichen_config_encode_identity_cbor(uint8_t *buf, size_t buf_size,
 		return 0;
 	}
 
-	if (identity->ula[0] != '\0') {
-		if (!put_tstr_kv(state, KEY_ULA, identity->ula)) {
+	if (identity->ygg[0] != '\0') {
+		if (!put_tstr_kv(state, KEY_PRIMARY, identity->ygg)) {
 			return 0;
 		}
 	} else {
-		if (!zcbor_tstr_put_lit(state, KEY_ULA) ||
+		if (!zcbor_tstr_put_lit(state, KEY_PRIMARY) ||
 		    !zcbor_nil_put(state, NULL)) {
 			return 0;
 		}

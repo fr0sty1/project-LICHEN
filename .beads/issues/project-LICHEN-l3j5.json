@@ -2,15 +2,16 @@
   "id": "project-LICHEN-l3j5",
   "title": "Fix merge conflicts and align LICHEN Rust components with CCP-9 test vectors",
   "description": "Resolve all merge conflicts in rust/ crates. Align announce.rs parsing/builder with CCP-9 rx_channel offset per independent oracle in generate.py. Implement exact FNV-1a32 lichen_hash_32 matching vectors. Integrate EMA/load_factor/density for adaptive SF/rebalance in rf_health.rs. Ensure no_std+heapless compliance, #![forbid(unsafe_code)], clippy-clean, perfect vector match for ccp9/ccp16. Fix related files. No dead code.",
-  "status": "in_progress",
+  "notes": "Commit: 52db55d37",
+  "status": "closed",
   "priority": 0,
   "issue_type": "epic",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:55:30.030923585Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:58:28.597216606Z",
+  "updated_at": "2026-07-23T00:04:21.580971437Z",
   "started_at": "2026-07-22T23:58:28.597216606Z",
-  "lease_expires_at": "2026-07-23T00:03:28.597216606Z",
-  "heartbeat_at": "2026-07-22T23:58:28.597216606Z"
+  "closed_at": "2026-07-23T00:04:21.580971437Z",
+  "close_reason": "Closed"
 }
