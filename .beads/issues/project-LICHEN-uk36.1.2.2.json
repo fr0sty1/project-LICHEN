@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-uk36.1.2.2",
+  "title": "Update EdhocInitiator callsites for new edhoc_kdf in begin_process_message_2, finish_process_message_2, process_message_2_with_credential",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:25:05.9938914Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:25:05.9938914Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-uk36.1.2.2",
+      "depends_on_id": "project-LICHEN-uk36.1.2",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:25:06.131309341Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
