@@ -3,14 +3,14 @@
   "title": "DTS e-ink codereview pass 3",
   "description": "Pass 3: All P0/P1 cleared. P4 opinion on spi-max-frequency value (2MHz conservative like lora); no other findings. DTS style fully mimicked, resolution confirmed 152x152, compatible fixed to ultrachip,uc81xx, enable-gpios retained as binding-accepted via MIPI include. Ready to close original bead. Tag: codereview",
   "notes": "Implemented P4 opinion fix by adding detailed comment on spi-max-frequency=2MHz (addresses codereview finding). Commit: ebe279cfb",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 4,
   "issue_type": "chore",
   "assignee": "AI Agent",
   "created_at": "2026-07-22T14:47:56.491582611Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-23T04:30:00.214079615Z",
+  "updated_at": "2026-07-23T04:30:05.229082419Z",
   "started_at": "2026-07-23T04:28:08.481455017Z",
-  "lease_expires_at": "2026-07-23T04:33:08.481455017Z",
-  "heartbeat_at": "2026-07-23T04:28:08.481455017Z"
+  "closed_at": "2026-07-23T04:30:05.229082419Z",
+  "close_reason": "P4 opinion addressed with comment update; DTS codereview pass 3 complete; original e-ink bead closed via this chain. Build validated via prior passes."
 }
