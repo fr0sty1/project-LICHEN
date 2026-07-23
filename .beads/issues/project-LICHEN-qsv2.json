@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-qsv2",
+  "title": "[cross-impl] EDHOC exporter KDF label encoding mismatch (int vs tstr)",
+  "description": "Python (edhoc.py:464 uses int 7/10/0/1 -\u003e cbor2 uint) and Zephyr (lichen/subsys/lichen/edhoc/edhoc.c:edhoc_export_kdf uses zcbor_uint32_put) encode exporter labels as CBOR integers. Rust (lichen-oscore/src/edhoc.rs:321-333 passes \"7\",\"10\",\"0\",\"1\" -\u003e edhoc_kdf encodes as tstr major type 3). Causes divergent master_secret/salt derivation despite shared test vectors and RFC 9528 §7.2.1. See edhoc_initiator_export_oscore, export_context, _edhoc_kdf. Breaks interop. Vectors in test/vectors/edhoc.json and lichen-oscore/tests/vectors.rs:545 do not align all three impls. Fix: standardize on integer labels per Python/Zephyr/RFC exporter spec across all impls (update Rust edhoc_kdf label handling for numeric labels).",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T14:33:39.353903655Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T14:33:39.353903655Z"
+}
