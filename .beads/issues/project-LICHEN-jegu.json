@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-jegu",
+  "title": "[cross-impl] SelectChannel density\u003e8 and EUI/seed concat mismatch Python/Rust/Zephyr",
+  "description": "Reviewed commits e6e0285 (edhoc.rs hkdf_extract now matches Python exactly - good), 37ed82cc4 (node.py synchronized_hop_channel update to use protocol.hop_channel and eui64). However, protocol.py:547 hop_channel omits spec/02a-coordinated-capacity.md:121 IF Density \u003e 8 THEN RETURN 0; tdma.py:15 uses 4-byte seed vs node.py precompute 8-byte BE EUI; Rust lichen_hash_32 matches FNV but no unified SelectChannel; C lichen_hash_32 in link_ctx.c:615 lacks full CCP-12 SelectChannel. Different behavior for same algorithm (ccp16-hop.json vectors, test/vectors/generate.py:1750). Vectors must match exactly across impls. P1 bug.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T15:06:57.429711846Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T15:06:57.429711846Z"
+}
