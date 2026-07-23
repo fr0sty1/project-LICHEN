@@ -2,15 +2,15 @@
   "id": "project-LICHEN-sx3n",
   "title": "[merge-conflict] worktree-worker20: coap_keys.c",
   "notes": "Commit: 455753a5b (removed unused zcbor_decode.h include from coap_keys.c to reconcile worker20 changes; retained BUILD_ASSERT, pubkey_to_iid, _Nonnull checks, manual CBOR parser per conventions and prior fixes)",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:20:43.976321049Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:20:12.908217539Z",
+  "updated_at": "2026-07-23T02:20:15.252983079Z",
   "started_at": "2026-07-23T02:17:15.375672195Z",
-  "lease_expires_at": "2026-07-23T02:22:15.375672195Z",
-  "heartbeat_at": "2026-07-23T02:17:15.375672195Z"
+  "closed_at": "2026-07-23T02:20:15.252983079Z",
+  "close_reason": "Reconciled coap_keys.c merge conflict from worker20 by removing unused zcbor_decode.h include (manual CBOR parsing only). Kept all safety assertions, security null checks, pubkey_to_iid impl for tests/spec compliance, and test vectors compatibility. Verified with west build -b native_sim lichen/tests/coap_keys. Commit 455753a5b"
 }
