@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-vhvj.1.2.4",
+  "title": "Add/update unit tests for synchronized_hop_channel in test_vectors.py and regenerate ccp16-hop.json if needed to cover SFN wrap, rendezvous cases matching spec pseudocode",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:24:10.872066654Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:24:10.872066654Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-vhvj.1.2.4",
+      "depends_on_id": "project-LICHEN-vhvj.1.2",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:24:11.015459684Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
