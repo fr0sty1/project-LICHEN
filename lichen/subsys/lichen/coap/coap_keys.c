@@ -38,6 +38,12 @@
 #include <lichen/l2/ipv6_addr.h>
 #endif
 
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+#include <lichen/oscore.h>
+#include <lichen/coap_oscore.h>
+#include <lichen/l2/ipv6_addr.h>
+#endif
+
 #ifdef CONFIG_TINYCRYPT_SHA256
 #include <tinycrypt/sha256.h>
 #include <tinycrypt/constants.h>
