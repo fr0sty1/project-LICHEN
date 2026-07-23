@@ -2,11 +2,15 @@
   "id": "project-LICHEN-yj45",
   "title": "Resolve merge conflicts \u0026 CCP vector compatibility in python/src/lichen/sim/",
   "description": "Resolve merge conflicts in simulation.py. Ensure sim/medium.py, tdma.py, simulation.py etc support load balancing, ccp16, ccp9 rendezvous, TDMA vectors. Remove dead code/duplication between get_rx_result and _get_rx_result_internal. Ruff clean, use independent oracles only for tests. Support all vector functions from test/vectors/ccp*.json. Follow test integrity rules. Create child tasks for each major file.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "epic",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:02:36.306610283Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:02:36.306610283Z"
+  "updated_at": "2026-07-23T02:52:04.209195492Z",
+  "started_at": "2026-07-23T02:52:04.209195492Z",
+  "lease_expires_at": "2026-07-23T02:57:04.209195492Z",
+  "heartbeat_at": "2026-07-23T02:52:04.209195492Z"
 }
