@@ -55,25 +55,6 @@ config LICHEN_LINK_MIC_SKIP_VERIFY
 	  When enabled, a warning is logged for every received frame to
 	  make the insecure state obvious.
 
-config LICHEN_LINK_INSECURE_CRC32_MIC
-	bool "Allow CRC32 MIC fallback (INSECURE)"
-	default n
-	help
-	  DANGER: Allows CRC32 to be used as the MIC when no link key is
-	  configured. CRC32 provides error detection ONLY — it provides NO
-	  cryptographic authentication. Any attacker can compute valid CRC32
-	  values and forge frames.
-
-	  This option exists ONLY for:
-	  - Development and testing
-	  - Networks with higher-layer authentication (e.g., OSCORE)
-
-	  For production deployments requiring link-layer security, configure
-	  a link key to enable AES-CCM-64 MIC instead of enabling this option.
-
-	  When enabled, a compile-time warning is emitted to ensure the
-	  insecure configuration is visible in build logs.
-
 config LICHEN_LINK_EPOCH_PERSIST
 	bool "Persist the link TX epoch across reboots"
 	depends on SETTINGS

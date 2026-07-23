@@ -45,6 +45,10 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		return -EINVAL;
 	}
 
+	if (!ctx->has_key) {
+		return -ENOKEY;  /* signatures mandatory (project-LICHEN-rg8t) */
+	}
+
 	/*
 	 * Validate IPv6 packet length (python-ano.11):
 	 * - Must be > 0 (empty packets are invalid)
@@ -55,17 +59,8 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 	}
 
 	/*
-	 * Minimum output buffer size check:
-	 * - 1 byte length
-	 * - 1 byte LLSec
-	 * - 1 byte epoch
-	 * - 2 bytes seqnum
-	 * - 0-8 bytes dst_addr (variable)
-	 * - at least 1 byte payload
-	 * - 0 bytes for unsigned or 48-byte signature
-	 *
-	 * Absolute minimum: 1+1+1+2+1+4 = 10 bytes (broadcast, CRC32, 1-byte payload)
-	 * Practical minimum: 16 bytes handles most cases
+	 * Minimum output buffer size check (assumes signature):
+	 * 1+1+1+2+(0-8)+payload+48
 	 */
 	if (*out_len < 16) {
 		return -ENOMEM;
@@ -99,16 +94,10 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		dst_addr_len = 0;
 	}
 
-	/* LLSec byte used for both signing and wire format. Includes full
-	 * MIC selector (LICHEN_MIC_64 only when signature present) so that
-	 * sign/verify use the exact byte that appears on-wire. This fixes
-	 * the no-op commit 7bb6ad2.
-	 */
+	/* LLSec byte used for both signing and wire format. Signatures mandatory. */
 	uint8_t llsec = addr_mode & 0x03U;
-	if (ctx->has_key) {
-		llsec |= (1U << 2); /* LICHEN_MIC_64 << LLSEC_MIC_LEN_SHIFT */
-		llsec |= 0x20U; /* LLSEC_SIG_PRESENT */
-	}
+	llsec |= (1U << 2); /* LICHEN_MIC_64 << LLSEC_MIC_LEN_SHIFT */
+	llsec |= 0x20U; /* LLSEC_SIG_PRESENT */
 
 	/* Get next nonce tuple using the link context API */
 	int seq_err = lichen_link_next_tx(ctx, &epoch, &seqnum);
@@ -117,57 +106,34 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		return seq_err;
 	}
 
-	/* Step 2: A signature occupies the MIC field, not the payload. */
-	if (ctx->has_key) {
-		if (l2_payload_len > sizeof(payload_buf)) {
-			return -EMSGSIZE;
-		}
+	/* Step 2: Always sign with Schnorr-48 (MIC field). No unsigned/CRC32 path. */
+	if (l2_payload_len > sizeof(payload_buf)) {
+		return -EMSGSIZE;
+	}
 
-		memcpy(payload_buf, l2_payload, l2_payload_len);
-		payload_len = l2_payload_len;
-		mic_len = SCHNORR48_SIG_LEN;
-		frame_body_len = (LICHEN_FRAME_PAYLOAD_OFFSET(dst_addr_len) -
-				  LICHEN_FRAME_LEN_FIELD_LEN) + payload_len + mic_len;
-		if (frame_body_len > 255) {
-			return -EMSGSIZE;
-		}
+	memcpy(payload_buf, l2_payload, l2_payload_len);
+	payload_len = l2_payload_len;
+	mic_len = SCHNORR48_SIG_LEN;
+	frame_body_len = (LICHEN_FRAME_PAYLOAD_OFFSET(dst_addr_len) -
+			  LICHEN_FRAME_LEN_FIELD_LEN) + payload_len + mic_len;
+	if (frame_body_len > 255) {
+		return -EMSGSIZE;
+	}
 
-		if (schnorr48_sign_frame((uint8_t)frame_body_len,
-					 llsec,
-					 epoch, seqnum,
-					 dst_addr, dst_addr_len,
-					 l2_payload, l2_payload_len,
-					 ctx->ed25519_sk, ctx->ed25519_pk,
-					 signature) != 0) {
-			ret = -EINVAL;
-			goto cleanup;
-		}
-	} else {
-		/* No signature */
-		if (l2_payload_len > sizeof(payload_buf)) {
-			return -EMSGSIZE;
-		}
-		memcpy(payload_buf, l2_payload, l2_payload_len);
-		payload_len = l2_payload_len;
+	if (schnorr48_sign_frame((uint8_t)frame_body_len,
+				 llsec,
+				 epoch, seqnum,
+				 dst_addr, dst_addr_len,
+				 l2_payload, l2_payload_len,
+				 ctx->ed25519_sk, ctx->ed25519_pk,
+				 signature) != 0) {
+		ret = -EINVAL;
+		goto cleanup;
 	}
 
 	/* CCP-15: CCA before every TX (project-LICHEN-bwmc / ccp15.json). Threshold from Kconfig. */
 	/* Stubbed pending full impl in lichen_lora_l2_tx and Kconfig (fixed per codereview). */
 	(void)ctx;
-
-	/* S=0 frames have no MIC. */
-	if (!ctx->has_key) {
-		mic_len = 0U;
-	}
-
-	/* Calculate frame body length (everything after the length byte). */
-	frame_body_len = (LICHEN_FRAME_PAYLOAD_OFFSET(dst_addr_len) -
-			  LICHEN_FRAME_LEN_FIELD_LEN) + payload_len + mic_len;
-
-	if (frame_body_len > 255) {
-		ret = -EMSGSIZE;
-		goto cleanup;
-	}
 
 	/* Total frame = length byte + body */
 	if (1 + frame_body_len > *out_len) {
@@ -197,13 +163,11 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		off += dst_addr_len;
 	}
 
-	/* Append plaintext payload before the signature (if any). */
+	/* Append payload + mandatory Schnorr-48 signature. */
 	memcpy(&out_frame[off], payload_buf, payload_len);
 	off += payload_len;
-	if (ctx->has_key) {
-		memcpy(&out_frame[off], signature, SCHNORR48_SIG_LEN);
-		off += SCHNORR48_SIG_LEN;
-	}
+	memcpy(&out_frame[off], signature, SCHNORR48_SIG_LEN);
+	off += SCHNORR48_SIG_LEN;
 
 	*out_len = off;
 	ret = 0;

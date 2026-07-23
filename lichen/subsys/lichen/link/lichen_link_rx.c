@@ -19,15 +19,14 @@
 #include <string.h>
 #include <stdint.h>
 
-/* CRC32 for non-crypto MIC fallback */
+	/* SHA-256 for EUI-64 derivation from pubkey */
+	#include <tinycrypt/sha256.h>
+	#include <tinycrypt/constants.h>
 
-/* SHA-256 for fallback EUI-64 derivation (when peer_eui64 not provided) */
-#include <tinycrypt/sha256.h>
-#include <tinycrypt/constants.h>
+	/* Replay table functions are in replay.c */
 
-/* Replay table functions are in replay.c */
+	#define LICHEN_PROTECTED_PAYLOAD_MAX (LICHEN_MAX_PAYLOAD + LICHEN_SIG_LEN)
 
-#define LICHEN_PROTECTED_PAYLOAD_MAX (LICHEN_MAX_PAYLOAD + LICHEN_SIG_LEN)
 
 /* Maximum decompressed IPv6 packet size: MTU payload (200) + base header (40) */
 #define LICHEN_MAX_IPV6_LEN (LICHEN_MAX_PAYLOAD + 40)
@@ -49,68 +48,33 @@ LOG_MODULE_REGISTER(lichen_link_rx, CONFIG_LICHEN_LINK_LOG_LEVEL);
 #define LOG_WRN(...) fprintf(stderr, "WRN: " __VA_ARGS__)
 #endif
 
-/* ─── MIC verification ────────────────────────────────────────────────────── */
+/* ─── Signature verification ──────────────────────────────────────────────── */
 
 /**
- * Verify the frame MIC.
+ * Verify frame signature (Schnorr-48). Unsigned frames are rejected.
  *
- * MIC verification is ENABLED by default. To disable for testing, set
- * CONFIG_LICHEN_LINK_MIC_SKIP_VERIFY=y — this is a dangerous option that
- * should NEVER be used in production as it allows frame forgery.
+ * Signatures are now MANDATORY on every frame per spec/06-security.md.
+ * The former CRC32 MIC fallback and unsigned (mic_len==0) paths have been
+ * removed to eliminate forgery/spoofing attacks (project-LICHEN-rg8t).
  *
- * For unsigned frames (mic_len == 0):
- * - No MIC verification is performed.
+ * CONFIG_LICHEN_LINK_MIC_SKIP_VERIFY remains for test-only use but is
+ * strongly discouraged.
  */
 static int verify_mic(const struct lichen_link_rx_ctx *ctx,
 		      const struct lichen_frame *frame,
 		      const uint8_t *raw_frame, size_t raw_len)
 {
-	/*
-	 * Compile-time warning if MIC verification is disabled.
- * This makes the insecure configuration visible in build logs.
- */
+	(void)ctx; (void)raw_frame; (void)raw_len;
 #ifdef CONFIG_LICHEN_LINK_MIC_SKIP_VERIFY
-#warning "CONFIG_LICHEN_LINK_MIC_SKIP_VERIFY is enabled - MIC verification DISABLED, frames can be forged!"
-	(void)ctx;
-	(void)frame;
-	(void)raw_frame;
-	(void)raw_len;
-	/*
-	 * DANGER: MIC verification is disabled — frames can be forged.
-	 * This option exists ONLY for testing. Never enable in production.
-	 */
-	LOG_WRN("MIC verification DISABLED — accepting unverified frame\n");
+#warning "CONFIG_LICHEN_LINK_MIC_SKIP_VERIFY is enabled - signatures DISABLED, frames can be forged!"
+	LOG_WRN("signature verification DISABLED — accepting unverified frame\n");
 	return 0;
 #else
-	(void)ctx;
-	(void)raw_frame;
-	(void)raw_len;
-	if (frame->mic_len == 0U) {
-		/* S=0 frames deliberately carry no MIC. */
-		return 0;
-	} else if (frame->mic_len == 8) {
-		/*
-		 * SECURITY: Non-encrypted frames MUST NOT use 64-bit MIC.
-		 *
-		 * Link-layer encryption is unsupported, so a non-encrypted frame
-		 * claiming a 64-bit MIC is either:
-		 *   1. Malformed (from a buggy implementation)
-		 *   2. An attack attempting to exploit MIC verification logic
-		 *
-		 * verify_mic() is only called for non-encrypted frames. The MIC
-		 * computation below (AAD = header + payload, no plaintext) does not
-		 * match how TX computes the MIC for encrypted frames (AAD = header,
-		 * plaintext = payload authenticated via CCM). Accepting this invalid
-		 * combination could enable forgery by computing a MIC against a
-		 * method no legitimate sender uses.
-		 *
-		 * Reject outright to eliminate the attack surface.
-		 */
-		LOG_WRN("64-bit MIC on non-encrypted frame rejected (invalid combination)\n");
-		return -LICHEN_EAUTH;
-	} else {
+	if (!frame->signature_present || frame->mic_len != LICHEN_SIG_LEN) {
+		LOG_WRN("unsigned frame or invalid MIC len rejected (signatures mandatory)\n");
 		return -LICHEN_EAUTH;
 	}
+	return 0;
 #endif
 }
 

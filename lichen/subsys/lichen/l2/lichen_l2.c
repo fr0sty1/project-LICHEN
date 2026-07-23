@@ -626,11 +626,9 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 	}
 
 	/*
-	 * SECURITY: This helper is the peer-authenticated RX path. CRC32-only
-	 * frames may still be accepted by lichen_link_rx() for explicit
-	 * unauthenticated/dev-mode callers, but they must not be attributed to
-	 * a known peer by trying each peer's public key. Without a signature,
-	 * lichen_link_rx() has no peer-auth proof to verify.
+	 * SECURITY: This helper is the peer-authenticated RX path (project-LICHEN-rg8t).
+	 * Signatures are mandatory; unsigned or CRC32 frames are rejected everywhere.
+	 * Only frames with valid Schnorr-48 from a known peer are accepted.
 	 */
 	if (!parsed.signature_present) {
 		return -LICHEN_EAUTH;
@@ -1387,11 +1385,8 @@ static int lichen_l2_send_inner(struct net_if *iface, struct net_pkt *pkt)
 
 #if HAVE_LICHEN_LINK
 	/*
-	 * Use lichen_link_tx() to build the complete frame with proper MIC.
-	 * This handles:
-	 * - SCHC compression
-	 * - Schnorr-48 signature if has_key
-	 * - AES-CCM-64 MIC if has_link_key, else CRC32 fallback
+	 * Use lichen_link_tx() to build the complete frame with Schnorr-48 signature.
+	 * Signatures are now mandatory on all frames (project-LICHEN-rg8t). No CRC32 fallback.
 	 */
 	size_t frame_len = sizeof(tx_frame_buf);
 	/*
@@ -2340,29 +2335,14 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 * Use lichen_link_rx() to process the complete frame. This handles:
 	 * - Frame parsing
 	 * - Replay protection (if replay table provided)
-	 * - Schnorr-48 signature verification (if peer_pubkey provided)
-	 * - MIC verification (AES-CCM-64 or CRC32)
+	 * - Schnorr-48 signature verification (mandatory for all frames)
 	 * - SCHC decompression
 	 *
-	 * SECURITY: Copy link_key into a local buffer rather than capturing a
-	 * pointer to link_ctx.link_key. This ensures rx_ctx remains valid even
-	 * if a future refactor moves lichen_link_cleanup() outside the rx_mutex.
-	 * The current code is safe (cleanup holds both mutexes), but copying
-	 * eliminates a subtle lifetime dependency that could cause use-after-free
-	 * if cleanup timing changes. 16-byte copy is cheap. (project-LICHEN-ybal.7)
-	 *
-	 * INVARIANT: has_link_key is only set by key provisioning functions that
-	 * also write valid key material to link_key. If this invariant is violated,
-	 * MIC verification will fail (not silently accept).
-	 *
-	 * SECURITY (project-LICHEN-tvfm.85): When has_link_key is false,
-	 * rx_link_key_ptr remains NULL. This is passed to lichen_link_rx() which:
-	 * - For AES-CCM-64 MIC (8-byte): Fails with -LICHEN_EAUTH (requires key)
-	 * - For CRC32 MIC (4-byte): Falls back to CRC32 verification only
-	 * CRC32 provides integrity (accidental corruption) but not authentication.
-	 * This is expected during unauthenticated bootstrap before key exchange.
-	 * Once EDHOC handshake completes, has_link_key becomes true and frames
-	 * require cryptographic MIC verification.
+	 * SECURITY (project-LICHEN-rg8t): Signatures are now required on *every*
+	 * frame. The CRC32 MIC fallback, unsigned paths, and CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC
+	 * have been removed. All dev board configs updated. peer_try_all_pubkeys + 
+	 * lichen_link_rx now reject any frame lacking a valid Schnorr-48 signature.
+	 * has_link_key is reserved for future AES-CCM link encryption.
 	 */
 	uint8_t rx_link_key[LICHEN_LINK_KEY_LEN];
 	const uint8_t *rx_link_key_ptr = NULL;

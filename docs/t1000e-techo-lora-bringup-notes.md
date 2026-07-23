@@ -239,7 +239,7 @@ fixing each unmasked the next. Worth remembering as a debugging sequence:
 
 1. **No MIC method → every L2 TX failed `-22`** (`2a1d102`): no AES-CCM link key
    and CRC32 fallback compiled out → `lichen_link_tx()` had no way to build any
-   frame. Bench fix: `CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC=y`.
+    frame. (Signatures now mandatory; no insecure CRC32 option.)
 2. **TX/RX modem arbitration** (`lora_l2.c`): the sx12xx `modem_acquire()` is
    non-blocking; the RX thread re-arms `lora_recv()` back-to-back so TX almost
    never wins, and RX logged the collision `-EBUSY` as a hardware error with a
