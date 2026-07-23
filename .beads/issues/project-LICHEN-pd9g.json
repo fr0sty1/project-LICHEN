@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-pd9g",
   "title": "[merge-conflict] worktree-worker24: rpl_trickle.h",
+  "notes": "Commit: 87e2d7a21",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:42:25.666516598Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:20:00.495857334Z",
+  "updated_at": "2026-07-23T02:21:58.307037084Z",
   "started_at": "2026-07-23T02:20:00.495857334Z",
   "lease_expires_at": "2026-07-23T02:25:00.495857334Z",
   "heartbeat_at": "2026-07-23T02:20:00.495857334Z"
