@@ -2,6 +2,7 @@
   "id": "project-LICHEN-z8r8",
   "title": "schnorr48: sign() uses privkey directly in nonce hash instead of RFC 8032 prefix",
   "description": "File: python/src/lichen/crypto/schnorr48.py\nLines: 95-97\n\nThe sign function derives the nonce as:\n```python\n# 1. Deterministic nonce: r = H(privkey || msg) mod L\n_, r = _hash_to_scalar(privkey + msg)\n```\n\nThis uses the clamped private scalar (32 bytes) concatenated with the message.\n\nStandard Ed25519 (RFC 8032) uses:\n```\nr = H(prefix || msg) where prefix = H(seed)[32:64]\n```\n\nThe difference:\n- RFC 8032: Uses the second half of H(seed), never the scalar itself\n- schnorr48: Uses the clamped scalar (derived from first half of H(seed))\n\nWhile both are deterministic and secure, using the actual private scalar in hash input is unusual. If there's ever a hash collision or related-message attack, the attacker gains information about the private scalar directly rather than just the nonce prefix.\n\nThis may be intentional for the LICHEN design, but should be documented as a deviation from standard Ed25519 nonce derivation.\n\nImpact: Non-standard nonce derivation. Security analysis may not apply standard Ed25519 security proofs directly.",
+  "notes": "Commit: 3d63ec2f5",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:18:56.220301Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:01:35.819188878Z",
+  "updated_at": "2026-07-23T04:03:49.214192489Z",
   "started_at": "2026-07-23T04:01:35.819188878Z",
   "lease_expires_at": "2026-07-23T04:06:35.819188878Z",
   "heartbeat_at": "2026-07-23T04:01:35.819188878Z"
