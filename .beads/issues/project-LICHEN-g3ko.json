@@ -2,15 +2,15 @@
   "id": "project-LICHEN-g3ko",
   "title": "[merge-conflict] worktree-worker21: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: dfe362295 - synced puck/heltec_wifi_lora32_v3_esp32s3_procpu.conf to canonical consolidated version (added explicit L2/COAP/heap configs, cleaned stale 3lye merge comment per no-dead-code). Push skipped: rebase conflicts in 20+ unrelated files outside bead scope (per AGENTS.md 'only touch files within task scope').",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:42:13.240746491Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:43:18.951669649Z",
+  "updated_at": "2026-07-23T03:43:22.196412943Z",
   "started_at": "2026-07-23T03:41:35.198962742Z",
-  "lease_expires_at": "2026-07-23T03:46:35.198962742Z",
-  "heartbeat_at": "2026-07-23T03:41:35.198962742Z"
+  "closed_at": "2026-07-23T03:43:22.196412943Z",
+  "close_reason": "Synced lichen/apps/puck/boards/heltec_wifi_lora32_v3_esp32s3_procpu.conf in worktree-worker21 to canonical main version with explicit LICHEN_L2/COAP/heap settings and cleaned stale project-LICHEN-3lye merge comment per no-dead-code rule. Commit dfe362295. Rebase/push skipped due to extensive conflicts in unrelated files (Kconfig, gateway, coap_*, rust, python etc.) outside this bead's scope."
 }
