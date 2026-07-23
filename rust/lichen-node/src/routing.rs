@@ -1084,12 +1084,6 @@ fn is_valid_coords(coords: GeoCoords) -> bool {
     (-90.0..=90.0).contains(&lat) && (-180.0..=180.0).contains(&lon)
 }
 
-// --- DTN Store-and-Forward (spec 9.8) ---
-//
-// Border routers MAY buffer messages for unreachable destinations,
-// delivering when a path appears. Uses absolute TTL (Unix timestamp)
-// and oldest-first eviction when buffer is full.
-
 #[cfg(feature = "std")]
 use std::collections::VecDeque;
 
