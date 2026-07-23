@@ -106,7 +106,7 @@ class TxQueueEntry:
     data: bytes
     priority: Priority
     deadline_ms: int
-    enqueue_time_ms: int = field(default_factory=lambda: int(time.monotonic() * 1000))
+    enqueue_time_ms: int
     reservation: TxReservation | None = field(default=None, repr=False)
 
 
@@ -259,7 +259,6 @@ class TxQueue:
         )
 
         if len(self._entries) < self._capacity:
-            # Room available - just insert
             self._insert_sorted(entry)
             self.stats.packets_queued += 1
             logger.debug(
@@ -270,11 +269,7 @@ class TxQueue:
             )
             return reservation
 
-        # Queue is full - check if we can preempt
-        # Find lowest-priority (highest numeric value) packet
         lowest = max(self._entries, key=lambda e: e.priority)
-
-        # ensure_can_push() established that a full queue is preemptible.
         self._entries.remove(lowest)
         self.stats.packets_dropped_preempt += 1
         logger.debug(
@@ -284,6 +279,7 @@ class TxQueue:
         )
         self._insert_sorted(entry)
         self.stats.packets_queued += 1
+        return reservation
 
     def ensure_can_push(self, priority: Priority) -> None:
         """Reject a non-preemptible full queue without mutating live entries."""
@@ -293,20 +289,7 @@ class TxQueue:
             return
 
         lowest = max(active_entries, key=lambda entry: entry.priority)
-        if priority < lowest.priority:
-            # New packet is higher priority - preempt
-            self._entries.remove(lowest)
-            self.stats.packets_dropped_preempt += 1
-            logger.debug(
-                "TX queue preempt: evicted priority=%s for priority=%s",
-                Priority(lowest.priority).name,
-                priority.name,
-            )
-            self._insert_sorted(entry)
-            self.stats.packets_queued += 1
-            return reservation
-        else:
-            # Cannot preempt - raise backpressure error
+        if priority >= lowest.priority:
             self.stats.packets_dropped_full += 1
             logger.warning(
                 "TX queue full: rejected priority=%s (lowest queued=%s)",
