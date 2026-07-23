@@ -65,6 +65,10 @@ class Fragment:
     def is_all_1(self) -> bool:
         return self.fcn == ALL_1
 
+    @property
+    def is_all_0(self) -> bool:
+        return self.fcn == 0
+
     def to_bytes(self) -> bytes:
         _check_rule(self.rule_id)
         if self.window not in (0, 1) or not 0 <= self.fcn <= ALL_1:

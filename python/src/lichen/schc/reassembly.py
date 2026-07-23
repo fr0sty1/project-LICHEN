@@ -13,7 +13,6 @@ from lichen.schc.fragment import (
     DEFAULT_RECEIVER_LIMIT,
     MAX_ACK_REQUESTS,
     MAX_PACKET_SIZE,
-    MAX_WINDOW_SIZE,
     RULE_IDS,
     WINDOW_SIZE,
     Ack,
@@ -49,29 +48,18 @@ class FragmentReceiver:
     the final correctness guard.
     """
 
-    def __init__(self, window_size: int) -> None:
-        if not isinstance(window_size, int) or not 1 <= window_size <= MAX_WINDOW_SIZE:
-            raise FragmentError(f"window_size must be integer 1..{MAX_WINDOW_SIZE}")
-        self.window_size = window_size
-        self._tiles: dict[int, bytes] = {}
-        self._current_window = 0
-        self._completed_windows: set[int] = set()
-        self._all1_seen = False
-        self._all1_window = 0
-        self._all1_payload = b""
-        self._mic: bytes | None = None
-        self._rule_id = 0
-        self.reassembled: bytes | None = None
-        self.done = False
-
-    def __init__(self, window_size: int = WINDOW_SIZE, max_size: int = DEFAULT_RECEIVER_LIMIT) -> None:
+    def __init__(
+        self,
+        window_size: int = WINDOW_SIZE,
+        max_size: int = DEFAULT_RECEIVER_LIMIT,
+    ) -> None:
         if not 1 <= window_size <= ALL_1:
             raise FragmentError(f"window_size must be integer 1..{ALL_1}")
         if not 1 <= max_size <= MAX_PACKET_SIZE:
             raise ValueError("max_size out of range")
         self.window_size = window_size
         self.max_size = max_size
-        self._tiles: dict[int, bytes] = {}
+        self._tiles: dict[tuple[int, int], bytes] = {}
         self._current_window = 0
         self._completed_windows: set[int] = set()
         self._all1_seen = False
@@ -93,6 +81,13 @@ class FragmentReceiver:
     def _abort(self, rule_id: int) -> ReceiverResult:
         self._release()
         return ReceiverResult(response=receiver_abort(rule_id), aborted=True)
+
+    def expire(self) -> bytes | None:
+        if self.done or self._rule_id == 0:
+            return None
+        rule_id = self._rule_id
+        self._release()
+        return receiver_abort(rule_id)
 
     def _abs_window(self, frag: Fragment) -> int:
         """Map the 1-bit wire window to the monotonic absolute window number.
@@ -203,7 +198,12 @@ class FragmentReceiver:
         data = b"".join(tile for _, tile in regular) + self._all1.payload
         if compute_mic(data) != self._all1.mic:
             return self._respond(
-                Ack(self._all1.rule_id, self._all1.window, self._bitmap(self._all1.window)), mic_ok=False
+                Ack(
+                    self._all1.rule_id,
+                    self._all1.window,
+                    self._bitmap(self._all1.window),
+                ),
+                mic_ok=False,
             )
         self.reassembled = data
         self.done = True
@@ -293,27 +293,6 @@ class FragmentReceiver:
             return self.receive(Fragment.from_bytes(data, window_size=self.window_size))
         except FragmentError:
             return self._abort(rule_id)
-
-        data = b"".join(self._tiles[i] for i in regular_indices) + self._all1_payload
-        if compute_mic(data) == self._mic:
-            # MIC passed: All-1's position is confirmed at len(regular_indices).
-            # Include it in the bitmap for accurate reporting.
-            base = self._all1_window * self.window_size
-            all1_pos = len(regular_indices) - base
-            bitmap = self._window_bitmap_with_all1(self._all1_window, all1_pos)
-            self.reassembled = data
-            self.done = True
-            return ReceiverResult(
-                ack=Ack(self._rule_id, self._all1_window % 2, bitmap, complete=True),
-                reassembled=data,
-                mic_ok=True,
-            )
-        # MIC mismatch: NACK the final window (a tile there may be missing or corrupt).
-        # Don't include All-1 position here since we can't be certain about it without
-        # MIC verification - there could be missing tiles we don't know about.
-        bitmap = self._window_bitmap(self._all1_window)
-        nack = Ack(self._rule_id, self._all1_window % 2, bitmap, complete=False)
-        return ReceiverResult(ack=nack, mic_ok=False)
 
 
 class ReassemblyManager:
