@@ -18,8 +18,8 @@ __pycache__/
 /zephyr/
 /modules/
 /bootloader/
-/build/
-/twister-out/
+/build*/
+/twister-out*/
 /tools/edtt/
 /tools/net-tools/
 
@@ -30,4 +30,7 @@ rust/target/
 # Build artifacts
 .cache/
 lichen/build/
-**/build/
+**/build*/
+build_*/
+twister-out*/
+build-*/
