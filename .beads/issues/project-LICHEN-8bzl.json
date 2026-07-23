@@ -2,11 +2,15 @@
   "id": "project-LICHEN-8bzl",
   "title": "PliPayload and ChatPayload dataclasses missing __slots__ - memory overhead",
   "description": "File: python/src/lichen/gateway/compact_cot.py\nLines: 137-148, 186-193\n\nThe PliPayload and ChatPayload dataclasses don't use __slots__:\n```python\n@dataclass\nclass PliPayload:\n    lat_microdeg: int\n    lon_microdeg: int\n    ...\n```\n\nImpact:\n1. Each instance has a __dict__, adding ~100+ bytes overhead\n2. For high-volume mesh gateways processing many PLI messages, this adds up\n3. Slower attribute access compared to slots\n\nFix: Add slots=True (Python 3.10+):\n```python\n@dataclass(slots=True)\nclass PliPayload:\n    ...\n```\n\nOr for pre-3.10 compatibility:\n```python\n@dataclass\nclass PliPayload:\n    __slots__ = ('lat_microdeg', 'lon_microdeg', 'alt_dm', \n                 'course_cdeg', 'speed_cm_s', 'team', 'role')\n    ...\n```\n\nSeverity: Low - optimization, not correctness.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 4,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:18:20.993344Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:18:20.993404Z"
+  "updated_at": "2026-07-23T04:25:48.0998572Z",
+  "started_at": "2026-07-23T04:25:48.0998572Z",
+  "lease_expires_at": "2026-07-23T04:30:48.0998572Z",
+  "heartbeat_at": "2026-07-23T04:25:48.0998572Z"
 }
