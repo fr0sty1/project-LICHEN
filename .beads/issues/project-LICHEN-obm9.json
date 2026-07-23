@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-obm9",
   "title": "[merge-conflict] worktree-worker1: lichend.rs",
-  "notes": "Commit: 1768c49",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:30:32.689516629Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:46:20.006807103Z",
+  "updated_at": "2026-07-23T02:44:27.179242095Z",
   "started_at": "2026-07-23T02:44:27.179242095Z",
-  "closed_at": "2026-07-23T02:46:20.006807103Z",
-  "close_reason": "Resolved merge conflict during rebase in xiao_s3_wio_sx1262 board files by removing duplicate resolution markers and dead code comments. Standardized RETIRED comment per AGENTS.md and prior patterns (no duplicate markers, no dead code). Skipped conflicting .beads metadata commits. Commit 1768c49"
+  "lease_expires_at": "2026-07-23T02:49:27.179242095Z",
+  "heartbeat_at": "2026-07-23T02:44:27.179242095Z"
 }
