@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-c0rb.4",
+  "title": "Refactor edhoc.rs to use new transcript helpers and remove duplicate/inline TH computations",
+  "description": "Update all calls to transcript_2/3/4, remove legacy inline th_3_input/th_4_input code blocks (lines ~782-787, ~855-867 etc), ensure consistent use across Initiator/Responder, fix any remaining TH_4 plaintext vs ciphertext mismatch. Run cargo test --features edhoc and verify vectors match Python.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:30:32.760651869Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:30:32.760651869Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-c0rb.4",
+      "depends_on_id": "project-LICHEN-c0rb",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:30:32.901510138Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
