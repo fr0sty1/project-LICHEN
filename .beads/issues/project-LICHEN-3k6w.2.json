@@ -2,17 +2,13 @@
   "id": "project-LICHEN-3k6w.2",
   "title": "[codereview-pass1] add_route never called; routes map always empty → is_local_mesh always false",
   "description": "lichen-gateway/src/gateway.rs:90 and lichend.rs:354. No calls to gw.add_route anywhere in codebase (grep confirmed). Local mesh classification never triggers. discovered-from:project-LICHEN-3k6w. Must populate from DAO processing in RplNode or Router. P0 correctness.",
-  "labels": ["defer-external"],
   "status": "open",
   "priority": 0,
   "issue_type": "bug",
-  "assignee": "ec2-user",
   "created_at": "2026-07-22T15:31:55.118840082Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:41:36.71613497Z",
+  "updated_at": "2026-07-23T04:42:05.211944108Z",
   "started_at": "2026-07-22T15:41:36.71613497Z",
-  "lease_expires_at": "2026-07-22T15:46:36.71613497Z",
-  "heartbeat_at": "2026-07-22T15:41:36.71613497Z",
   "labels": [
     "codereview"
   ],
