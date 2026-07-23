@@ -16,7 +16,7 @@ import time
 from collections.abc import Callable
 from enum import Enum, auto
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
@@ -110,7 +110,7 @@ class Simulation:
         self._time_mode = time_mode
         self._current_time_us = 0
         self._nodes: dict[str, SimNode] = {}
-        self._gateways: dict[str, dict] = {}
+        self._gateways: dict[str, dict[str, Any]] = {}
         self._medium = Medium()
         self._event_queue = EventQueue()
         self._pending_rx_timeouts: dict[str, int] = {}  # node_id -> timeout_time_us
@@ -779,31 +779,7 @@ class Simulation:
             if result is not None:
                 payload, rssi, snr, tx_id, source_node_id = result
                 on_packet = node.rx_callbacks[0]
-<<<<<<< HEAD
-=======
 
->>>>>>> origin/worktree-worker19
-                self._metrics.record_reception(node_id, tx_id, self._current_time_us)
-                rx_log = {
-                    "sim_id": self._id,
-                    "node_id": node_id,
-                    "tx_id": tx_id,
-                    "payload_len": len(payload),
-                    "rssi": rssi,
-                    "snr": snr,
-                    "time_us": self._current_time_us,
-                    "from_node_id": source_node_id,
-                }
-<<<<<<< HEAD
-                if self._debug_enabled:
-                    rx_log.update(
-                        node_state=node.state.name,
-                        pending_timeouts=len(self._pending_rx_timeouts),
-                        event_queue_len=len(self._event_queue),
-                    )
-
-=======
->>>>>>> origin/worktree-worker19
                 self._observers.notify(
                     "on_rx_success",
                     sim_id=self._id,
@@ -893,12 +869,9 @@ class Simulation:
                     )
             return None
 
-<<<<<<< HEAD
         # Record simulation-wide + per-node metrics for push RX path (used by
         # deliver_pending_packets). Polling path (get_rx_result) duplicates
         # this for legacy compatibility. This unifies the core recording logic.
-=======
->>>>>>> origin/worktree-worker19
         self._metrics.record_reception(node_id, tx.id, self._current_time_us)
         packet_hash = hashlib.sha256(tx.payload).digest()[:16].hex()
         node.metrics.record_rx(tx.payload, packet_hash, from_peer=tx.source_node_id)
