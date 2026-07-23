@@ -2,15 +2,15 @@
   "id": "project-LICHEN-snrm",
   "title": "[merge-conflict] worktree-worker24: analyze-hetero-fleet.py",
   "notes": "Commit: a8e859576",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:43:31.354772272Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:24:12.641375694Z",
+  "updated_at": "2026-07-23T02:24:14.771765Z",
   "started_at": "2026-07-23T02:20:11.057341837Z",
-  "lease_expires_at": "2026-07-23T02:25:11.057341837Z",
-  "heartbeat_at": "2026-07-23T02:20:11.057341837Z"
+  "closed_at": "2026-07-23T02:24:14.771765Z",
+  "close_reason": "Merged worker24 parser improvements resolving merge conflicts in analyze-hetero-fleet.py; improved streaming, regex, forwarding-aware missing packet and matrix logic"
 }
