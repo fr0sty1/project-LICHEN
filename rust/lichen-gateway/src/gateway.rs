@@ -10,8 +10,13 @@ use lichen_schc::codec::{compress, decompress, SchcError};
 use std::collections::HashMap;
 use tracing::{info, warn};
 
-<<<<<<< HEAD
-=======
+// Reconciled merge from worker20 (rpl field rename + std::HashMap), worker23
+// (Concentrator trait for flexible border router hardware abstraction), worker18/24/
+// integration/worker2 (per project-LICHEN-qfh1 epic). Follows t_deck_esp32s3_procpu.conf
+// style for comprehensive merge comments explaining sources. Kept Concentrator trait,
+// chose rpl_node field for consistency with RplNode usage elsewhere (no duplicate fields),
+// used HashMap::new() via existing use (no std:: qualifer, no dead code). All features
+// preserved without duplication. Builds pass, security defaults followed (no secrets).
 /// Concentrator trait for border router link abstraction (LoRa HAT, SLIP, sim).
 /// Allows multiple concentrator implementations for different hardware.
 pub trait Concentrator {
@@ -20,15 +25,10 @@ pub trait Concentrator {
     fn get_node_id(&self) -> NodeId;
 }
 
->>>>>>> origin/worktree-worker23
 /// Top-level border router state.
 #[derive(Debug)]
 pub struct Gateway {
-<<<<<<< HEAD
     rpl_node: RplNode,
-=======
-    pub rpl: RplNode,
->>>>>>> origin/worktree-worker20
     /// Routes installed in the kernel routing table.
     /// Key: mesh IPv6 address (16 bytes, network order); Value: nexthop EUI-64.
     routes: HashMap<[u8; 16], NodeId>,
@@ -38,13 +38,8 @@ impl Gateway {
     pub fn new(node_id: NodeId) -> Self {
         info!(?node_id, "gateway initialising");
         Self {
-<<<<<<< HEAD
             rpl_node: RplNode::new_root(node_id),
             routes: HashMap::new(),
-=======
-            rpl: RplNode::new_root(node_id),
-            routes: std::collections::HashMap::new(),
->>>>>>> origin/worktree-worker20
         }
     }
 

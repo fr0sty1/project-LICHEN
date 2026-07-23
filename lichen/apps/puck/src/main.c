@@ -584,9 +584,12 @@ int main(void)
 				    K_MSEC(RX_WINDOW_MS), &rssi, &snr);
 
 		if (len > 0) {
-			LOG_INF("RX %d B rssi=%d snr=%d [%02x %02x]",
-				len, rssi, snr,
+			static uint32_t rx_count = 0;
+			rx_count++;
+			LOG_INF("RX %d B rssi=%d snr=%d pkt#%u [%02x %02x]",
+				len, rssi, snr, rx_count,
 				buf[0], len > 1 ? buf[1] : 0u);
+			LOG_HEXDUMP_DBG(buf, MIN(len, 32), "RX payload");
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 			s_radio_stats.rx_pkts++;
 			/* Forward to connected host.
