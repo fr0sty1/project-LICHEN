@@ -2,15 +2,15 @@
   "id": "project-LICHEN-szx4",
   "title": "[merge-conflict] worktree-worker20: lib.rs",
   "notes": "Commit: c175732ea",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:30:35.482702637Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:54:56.888133659Z",
+  "updated_at": "2026-07-23T01:54:59.978876675Z",
   "started_at": "2026-07-23T01:53:01.528836107Z",
-  "lease_expires_at": "2026-07-23T01:58:01.528836107Z",
-  "heartbeat_at": "2026-07-23T01:53:01.528836107Z"
+  "closed_at": "2026-07-23T01:54:59.978876675Z",
+  "close_reason": "Resolved merge conflict markers in lichen-meshtastic/src/bridge.rs (the lib.rs bridge module affected by worktree-worker20); cleaned comments and IPv6 packet handling; rebased and pushed"
 }
