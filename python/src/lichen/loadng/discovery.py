@@ -165,8 +165,6 @@ class LoadngRouter:
         from_neighbor = to_ipv6(from_neighbor)
         install_hops = rrep.hop_count + 1
 
-        # Forward gradient toward the sought node (the RREP's originator).
-        # Only install if no existing gradient or this RREP has newer seq_num.
         existing = self.gradient.lookup(rrep.originator, now)
         if existing is None or _is_seq_fresher(existing.seq_num, rrep.seq_num):
             self.gradient.update(
