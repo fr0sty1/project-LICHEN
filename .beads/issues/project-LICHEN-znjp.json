@@ -2,15 +2,15 @@
   "id": "project-LICHEN-znjp",
   "title": "[merge-conflict] worktree-worker20: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: 9c5aa2f33",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:25:07.170414219Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:04:15.223348751Z",
+  "updated_at": "2026-07-23T02:04:17.564011465Z",
   "started_at": "2026-07-23T02:03:10.855599986Z",
-  "lease_expires_at": "2026-07-23T02:08:10.855599986Z",
-  "heartbeat_at": "2026-07-23T02:03:10.855599986Z"
+  "closed_at": "2026-07-23T02:04:17.564011465Z",
+  "close_reason": "Updated resolution comment in worker20 puck board config to reference current bead ID znjp and committed/pushed the change to worktree-worker20 branch. Verified no merge markers and consistency with other workers."
 }
