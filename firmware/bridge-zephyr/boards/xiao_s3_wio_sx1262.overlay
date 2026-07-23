@@ -1,15 +1,11 @@
 /*
- * BLOCKED/RETIRED: Seeed XIAO ESP32-S3 + Wio-SX1262 bridge overlay
- * (project-LICHEN-2u26.10 / project-LICHEN-2u26 / m5m1.8)
+ * STALE/RETIRED per project-LICHEN-2u26.10: no canonical Zephyr composite board+shield target for Seeed XIAO ESP32-S3 + Wio-SX1262.
+ * Fragment retired per 2u26 audit and matrix. Classified FAIL in m5m1.8 bridge audit.
+ * Use heltec_wifi_lora32_v3/esp32s3/procpu proxy instead. Do not present as supported target.
+ * See docs/firmware-board-capability-matrix.md and closed epic project-LICHEN-2u26.
+ * Pin map and DT retained for reference only.
  *
- * No canonical Zephyr board or composite shield mapping (seeed_xiao_esp32s3
- * + custom Wio-SX1262 shield not defined). xiao_s3_wio_sx1262 not a valid -b
- * target. Classified FAIL in m5m1.8 bridge audit. Use heltec_wifi_lora32_v3/
- * esp32s3/procpu proxy instead. See docs/firmware-board-capability-matrix.md
- * and closed epic 2u26. Support claims removed; fragment retained for reference
- * only. Follows tbeam_supreme pattern (w8rd).
- *
- * Original pin map (for reference):
+ * Original pinout (for reference):
  * ESP32-S3 + SX1262 LoRa (via B2B connector)
  * SX1262 SPI: SCK=GPIO7, MISO=GPIO8, MOSI=GPIO9, NSS=GPIO41
  * Control: RESET=GPIO42, BUSY=GPIO40, DIO1=GPIO39
