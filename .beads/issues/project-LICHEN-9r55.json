@@ -1,15 +1,15 @@
 {
   "id": "project-LICHEN-9r55",
   "title": "[merge-conflict] worktree-worker20: schema.json",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:10:51.408113151Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:48:35.186099462Z",
+  "updated_at": "2026-07-23T04:48:01.240002201Z",
   "started_at": "2026-07-23T03:48:35.186099462Z",
-  "lease_expires_at": "2026-07-23T03:53:35.186099462Z",
-  "heartbeat_at": "2026-07-23T03:48:35.186099462Z"
+  "lease_expires_at": "2026-07-23T04:53:01.240002201Z",
+  "heartbeat_at": "2026-07-23T04:48:01.240002201Z"
 }
