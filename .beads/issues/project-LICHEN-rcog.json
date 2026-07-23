@@ -2,15 +2,15 @@
   "id": "project-LICHEN-rcog",
   "title": "[merge-conflict] worktree-worker23: t_deck_esp32s3_procpu.conf",
   "notes": "Commit: eddca9380 (cleaned merge conflict markers from 11 .beads/events/*.jsonl files in worktree-worker23; resolved t_deck_esp32s3_procpu.conf integration conflicts)",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:52:05.166111314Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:12:05.063844756Z",
+  "updated_at": "2026-07-23T03:12:07.714005298Z",
   "started_at": "2026-07-23T03:10:35.679333328Z",
-  "lease_expires_at": "2026-07-23T03:15:35.679333328Z",
-  "heartbeat_at": "2026-07-23T03:10:35.679333328Z"
+  "closed_at": "2026-07-23T03:12:07.714005298Z",
+  "close_reason": "Cleaned all git merge conflict markers (\u003c\u003c\u003c\u003c\u003c\u003c\u003c, =======, \u003e\u003e\u003e\u003e\u003e\u003e\u003e) from .beads/events JSONL files in worktree-worker23 (11 files affected). This resolves the parallel-worker merge conflicts associated with t_deck_esp32s3_procpu.conf updates. Committed eddca9380 and pushed to worktree-worker23 branch. Beads DB consistent."
 }
