@@ -2,6 +2,7 @@
   "id": "project-LICHEN-h115",
   "title": "coap_client.c: request timeout race after coap_client_req success",
   "description": "File: lichen/subsys/lichen/coap/coap_client.c\nLines: 535-542\n\nAfter coap_client_req succeeds, there's a race window:\n```c\nif (atomic_get(\u0026ctx-\u003ecompleted) == 0) {\n    request_ctx_get(ctx);\n    atomic_set(\u0026ctx-\u003etimeout_ref_held, 1);\n    k_work_schedule(\u0026ctx-\u003etimeout_work, K_MSEC(timeout_ms * 2));\n    if (atomic_get(\u0026ctx-\u003ecompleted) != 0) {\n        request_ctx_cancel_timeout_sync(ctx);\n    }\n}\n```\n\nBetween line 535 (check completed==0) and line 536 (get ref), the response callback could fire and complete the request. Then:\n- Line 536 increments refs (refs now 2 if callback already decremented)\n- Line 537 sets timeout_ref_held = 1\n- Line 538 schedules work\n- Line 539 sees completed != 0\n- Line 540 cancels and releases timeout ref\n\nThis is mostly safe due to the double-check pattern, but there's a subtle issue: if the callback completes AND frees ctx between lines 535-536, we're accessing freed memory. However, the callback path doesn't free until refs==0, and initial refs==2, so this should be safe.\n\nActually, re-examining: initial refs=2, callback path does request_ctx_put (refs-\u003e1), then after the full if block, line 544 does request_ctx_put (refs-\u003e0, freed). So the ctx stays alive during this block.\n\nDowngrading to P3 - the logic is complex but appears correct after careful analysis. The issue is just the complexity making it hard to verify correctness.\n\nCategory: CONCURRENCY - complex lifetime management",
+  "notes": "Commit: 85ef6ab",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:43:16.954327Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T03:34:33.888984797Z",
+  "updated_at": "2026-07-23T03:38:59.207872229Z",
   "started_at": "2026-07-23T03:34:33.888984797Z",
   "lease_expires_at": "2026-07-23T03:39:33.888984797Z",
   "heartbeat_at": "2026-07-23T03:34:33.888984797Z"
