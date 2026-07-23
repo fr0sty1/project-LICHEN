@@ -136,30 +136,31 @@ class ConfigSync:
         if self.config_id is None:
             return None
 
-        if self.state == ConfigSyncState.SENDING_MY_INFO:
-            self.state = ConfigSyncState.SENDING_METADATA
-            return self._build_my_info()
+        while True:
+            if self.state == ConfigSyncState.SENDING_MY_INFO:
+                self.state = ConfigSyncState.SENDING_METADATA
+                return self._build_my_info()
 
-        elif self.state == ConfigSyncState.SENDING_METADATA:
-            self.state = ConfigSyncState.SENDING_NODE_INFO
-            self._node_info_iter = self._iter_node_info()
-            return self._build_metadata()
+            elif self.state == ConfigSyncState.SENDING_METADATA:
+                self.state = ConfigSyncState.SENDING_NODE_INFO
+                self._node_info_iter = self._iter_node_info()
+                return self._build_metadata()
 
-        elif self.state == ConfigSyncState.SENDING_NODE_INFO:
-            if self._node_info_iter is not None:
-                try:
-                    node_info_bytes = next(self._node_info_iter)
-                    return FromRadio(id=self._next_id(), node_info=node_info_bytes)
-                except StopIteration:
-                    self._node_info_iter = None
-            self.state = ConfigSyncState.SENDING_COMPLETE
-            return self.next_message()  # Recurse to send complete
+            elif self.state == ConfigSyncState.SENDING_NODE_INFO:
+                if self._node_info_iter is not None:
+                    try:
+                        node_info_bytes = next(self._node_info_iter)
+                        return FromRadio(id=self._next_id(), node_info=node_info_bytes)
+                    except StopIteration:
+                        self._node_info_iter = None
+                self.state = ConfigSyncState.SENDING_COMPLETE
+                continue
 
-        elif self.state == ConfigSyncState.SENDING_COMPLETE:
-            self.state = ConfigSyncState.DONE
-            return self._build_config_complete()
+            elif self.state == ConfigSyncState.SENDING_COMPLETE:
+                self.state = ConfigSyncState.DONE
+                return self._build_config_complete()
 
-        return None
+            return None
 
     def _build_my_info(self) -> FromRadio:
         """Build MyNodeInfo message."""
