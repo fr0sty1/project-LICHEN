@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.59.4.1.3.2.2.2.4",
   "title": "Compute SHA256s of artifacts, document build exit code, and produce validation summary for native_posix BLE ingress",
   "description": "After successful build, compute sha256sum of key artifacts (zephyr/zephyr.elf, zephyr/zephyr.bin if present, logs). Record exit code. Create summary report of configuration used and any observed issues with BLE ingress paths on native_posix (no link.35.6). Update related beads.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
