@@ -35,15 +35,8 @@ static void begin_interval(struct lichen_trickle *t,
 	t->counter = 0;
 	t->transmitted = false;
 
-<<<<<<< HEAD
-	uint32_t half = (t->interval + 1) / 2;
-	uint32_t range = t->interval - half;
-	/* transmit_time is uniform in [now + half, now + interval) per RFC 6206 */
-	uint32_t offset = (range > 0) ? (rand_offset % range) : 0;
-=======
-	uint32_t half = (t->interval + 1u) / 2u;
-	uint32_t offset = (half > 0) ? (rand_offset % (t->interval - half)) : 0;
->>>>>>> origin/worktree-worker23
+	uint32_t half = t->interval / 2u;
+	uint32_t offset = (half > 0) ? (rand_offset % half) : 0u;
 	t->transmit_time = sat_add_u32(sat_add_u32(now, half), offset);
 }
 
