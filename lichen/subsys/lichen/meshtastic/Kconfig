@@ -48,7 +48,7 @@ config LICHEN_MESHTASTIC_NODEDB_MAX_PEERS
 	  The default gateway FromRadio queue can hold one queued heartbeat plus
 	  a full static-and-NodeDB sync at this cap.
 
-	config LICHEN_MESHTASTIC_POSITION_EPOCH_FLOOR_UNIX
+config LICHEN_MESHTASTIC_POSITION_EPOCH_FLOOR_UNIX
 	int "Meshtastic Position timestamp epoch floor"
 	default LICHEN_TIME_BUILD_EPOCH_UNIX if LICHEN_HAL
 	default 1700000000
@@ -60,7 +60,7 @@ config LICHEN_MESHTASTIC_NODEDB_MAX_PEERS
 	  HAL time-provider Kconfig. Adapter-only builds use the deterministic
 	  fallback so protobuf policy tests remain stable without selecting HAL.
 
-	config LICHEN_MESHTASTIC_POSITION_MAX_FUTURE_SKEW
+config LICHEN_MESHTASTIC_POSITION_MAX_FUTURE_SKEW
 	int "Meshtastic Position max future skew seconds"
 	default 630720000
 	range 3600 2147483647
