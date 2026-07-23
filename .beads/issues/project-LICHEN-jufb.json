@@ -2,15 +2,15 @@
   "id": "project-LICHEN-jufb",
   "title": "[merge-conflict] worktree-worker1: trickle.c",
   "notes": "Commit: beef4921a",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:48:40.87161164Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:16:34.522377674Z",
+  "updated_at": "2026-07-23T04:16:38.738310899Z",
   "started_at": "2026-07-23T04:07:43.977299764Z",
-  "lease_expires_at": "2026-07-23T04:12:43.977299764Z",
-  "heartbeat_at": "2026-07-23T04:07:43.977299764Z"
+  "closed_at": "2026-07-23T04:16:38.738310899Z",
+  "close_reason": "Fixed u32 overflow in half calculation for saturated interval=UINT32_MAX in begin_interval() using bit-shift equivalent. Updated comment. Tests pass. Matches Rust/Python cross-impl. Commit beef4921a"
 }
