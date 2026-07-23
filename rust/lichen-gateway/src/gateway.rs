@@ -100,6 +100,9 @@ impl Gateway {
     }
 
     pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
+        if dst[0] == 0x00 && dst[1] == 0x64 && dst[2] == 0xff && dst[3] == 0x9b {
+            return false;
+        }
         self.routes.contains_key(dst)
             || (dst[0] == 0xfe && dst[1] == 0x80)
             || dst[0] == 0xfd
@@ -207,8 +210,10 @@ mod tests {
         let gw = test_gateway();
         let local = ll(1);
         let ygg_cross = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2];
+        let nat64 = [0x00u8, 0x64, 0xff, 0x9b, 0, 0, 0, 0, 0, 0, 0, 0, 192, 0, 2, 1];
         assert!(gw.is_local_mesh(&local.0));
         assert!(!gw.is_local_mesh(&ygg_cross));
+        assert!(!gw.is_local_mesh(&nat64));
     }
 
     #[test]
