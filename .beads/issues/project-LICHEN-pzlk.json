@@ -2,17 +2,17 @@
   "id": "project-LICHEN-pzlk",
   "title": "[merge-conflict] worktree-worker18: xiao_s3_wio_sx1262.conf",
   "notes": "Commit: a8b3faae3",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:33:46.969462845Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:59:04.322702514Z",
+  "updated_at": "2026-07-23T04:59:07.556090687Z",
   "started_at": "2026-07-23T00:43:14.216597519Z",
-  "lease_expires_at": "2026-07-23T05:02:56.339051486Z",
-  "heartbeat_at": "2026-07-23T04:57:56.339051486Z",
+  "closed_at": "2026-07-23T04:59:07.556090687Z",
+  "close_reason": "Standardized xiao_s3_wio_sx1262.conf retirement comment in worktree-worker18 to canonical version including pzlk reference. Synced with main tree comment, added ESP32-S3 note. No merge markers. Commit a8b3faae3 pushed to worktree-worker18 branch.",
   "labels": [
     "defer-external"
   ]
