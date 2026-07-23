@@ -123,6 +123,27 @@ fn context_at(
     (context, store)
 }
 
+fn context_at(
+    master_secret: &[u8; 16],
+    master_salt: Option<&[u8]>,
+    id_context: Option<&[u8]>,
+    sender_id: &[u8],
+    recipient_id: &[u8],
+    sequence: u64,
+) -> (Context, TestStore) {
+    let mut store = TestStore::existing(sequence);
+    let context = Context::load_existing(
+        master_secret,
+        master_salt,
+        id_context,
+        sender_id,
+        recipient_id,
+        &mut store,
+    )
+    .unwrap();
+    (context, store)
+}
+
 fn load_vectors() -> VectorFile {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
