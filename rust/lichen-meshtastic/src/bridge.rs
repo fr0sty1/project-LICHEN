@@ -182,31 +182,12 @@ impl MeshtasticBridge {
 
         match portnum {
             PortNum::IpTunnelApp => {
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-                // Raw IPv6 packet encapsulated; version check + extract src/dst from IPv6 header
-                // (bytes 8-23 src, 24-39 dst per worker5/8 patterns)
-=======
-                // Raw IPv6 packet encapsulated (worker8 simplification: version check + hardcoded offsets)
->>>>>>> origin/worktree-worker23
-=======
-                // Raw IPv6 packet encapsulated; version check + extract src/dst from IPv6 header
-                // (bytes 8-23 src, 24-39 dst per worker5/8 patterns)
->>>>>>> origin/worktree-worker20
-=======
->>>>>>> origin/worktree-worker24
+                // Raw IPv6 packet tunneled via Meshtastic IP Tunnel app (portnum); 
+                // standard IPv6 header: version(0), src addr bytes 8..23, dst 24..39.
                 if data.payload.len() < 40 || (data.payload[0] >> 4) != 6 {
                     return Err(BridgeError::InvalidPacket);
                 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-                // Extract src/dst from IPv6 header (bytes 8-23 src, 24-39 dst)
-=======
->>>>>>> origin/worktree-worker20
-=======
->>>>>>> origin/worktree-worker24
                 let src_bytes: [u8; 16] = data.payload[8..24]
                     .try_into()
                     .map_err(|_| BridgeError::InvalidPacket)?;
@@ -483,20 +464,7 @@ mod tests {
         assert!(bridge.mapper_mut().learn_mapping(dst_node, &pubkey));
 
         let mut ipv6_data = [0u8; 48];
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-        ipv6_data[0] = 0x60; // Version 6, destination address set at offset 24 to match mapper
-=======
-        ipv6_data[0] = 0x60; // Version 6
-                             // Set destination address to match mapper (offset 24)
->>>>>>> origin/worktree-worker23
-=======
-        ipv6_data[0] = 0x60; // Version 6, destination address set at offset 24 to match mapper
->>>>>>> origin/worktree-worker20
-=======
-        ipv6_data[0] = 0x60;
->>>>>>> origin/worktree-worker24
+        ipv6_data[0] = 0x60; // IPv6 version
         let dst_addr = bridge.mapper().meshtastic_to_ipv6(dst_node);
         ipv6_data[24..40].copy_from_slice(&dst_addr.0);
 
