@@ -5,6 +5,7 @@
  * @file trickle.c
  * @brief Trickle timer (RFC 6206) implementation matching pseudocode in §4.2.
  *
+ * Reset guard aligned for cross-impl determinism (project-LICHEN-vsph).
  * Used by lichen_rpl_dodag for DIO pacing per LICHEN RPL profile.
  */
 
