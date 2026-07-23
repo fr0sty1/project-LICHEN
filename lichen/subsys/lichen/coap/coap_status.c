@@ -299,7 +299,7 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 
 	cbor_ctx_init(&ctx, buf, buf_size);
 
-	map_count = 5;
+	map_count = 5u;
 	if (status->battery_pct_valid) map_count++;
 	if (status->battery_mv_valid) map_count++;
 	cbor_put_map_header(&ctx, map_count);
@@ -321,7 +321,7 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 	cbor_put_uint(&ctx, status->mem_free_kb);
 
 	cbor_put_key(&ctx, "time");
-	uint8_t time_fields = 2;
+	uint8_t time_fields = 2u;
 	if (status->time.wall_clock_valid) time_fields++;
 	if (status->time.source_class) time_fields++;
 	if (status->time.source_name) time_fields++;
@@ -349,9 +349,9 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 	cbor_put_uint(&ctx, status->time.age_s);
 
 	cbor_put_key(&ctx, "dodag");
-	uint8_t dodag_fields = 2;
-	dodag_fields += status->dodag.has_parent ? 1 : 0;
-	dodag_fields += status->dodag.has_root ? 1 : 0;
+	uint8_t dodag_fields = 2u;
+	dodag_fields += status->dodag.has_parent ? 1u : 0u;
+	dodag_fields += status->dodag.has_root ? 1u : 0u;
 	cbor_put_map_header(&ctx, dodag_fields);
 
 	cbor_put_key(&ctx, "joined");
@@ -429,11 +429,11 @@ size_t lichen_coap_encode_neighbors_cbor(uint8_t *buf, size_t buf_size,
 
 	cbor_ctx_init(&ctx, buf, buf_size);
 
-	cbor_put_map_header(&ctx, 1);
+	cbor_put_map_header(&ctx, 1u);
 	cbor_put_key(&ctx, "neighbors");
 
 	if (neighbors == NULL || count == 0) {
-		cbor_put_array_header(&ctx, 0);
+		cbor_put_array_header(&ctx, 0u);
 		return ctx.overflow ? 0 : ctx.off;
 	}
 
@@ -482,7 +482,7 @@ size_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
 	struct cbor_ctx ctx;
 	char ipv6_buf[LICHEN_CONFIG_ADDR_MAX_LEN];
 	char prefix_buf[48];
-	uint8_t map_count = 1;
+	uint8_t map_count = 1u;
 
 	if (buf == NULL || buf_size == 0) {
 		return 0;
@@ -494,13 +494,13 @@ size_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
 
 	cbor_ctx_init(&ctx, buf, buf_size);
 
-	map_count += default_route ? 1 : 0;
+	map_count += default_route ? 1u : 0u;
 	cbor_put_map_header(&ctx, map_count);
 
 	cbor_put_key(&ctx, "routes");
 
 	if (routes == NULL || count == 0) {
-		cbor_put_array_header(&ctx, 0);
+		cbor_put_array_header(&ctx, 0u);
 	} else {
 		cbor_put_array_header(&ctx, (uint8_t)count);
 
