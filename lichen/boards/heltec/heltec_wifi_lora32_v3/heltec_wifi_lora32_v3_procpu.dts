@@ -32,9 +32,9 @@
 
 	vbatt: vbatt {
 		compatible = "voltage-divider";
-		io-channels = <&adc1 0>; /* GPIO1 = ADC1_CH0 per Meshtastic variant.h */
+		io-channels = <&adc1 0>;
 		output-ohms = <10000>;
-		full-ohms = <49000>; /* ~4.9x multiplier for typical Heltec divider */
+		full-ohms = <49000>;
 		status = "okay";
 	};
 

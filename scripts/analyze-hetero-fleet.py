@@ -201,8 +201,12 @@ def parse_zephyr_logs(log_dir: Path) -> dict[str, NodeStats]:
 def find_missing_packets(
     all_nodes: dict[str, NodeStats],
 ) -> list[tuple[str, str, str]]:
+<<<<<<< HEAD
     """Find packets sent but never received by any node.
 
+=======
+    """Find packets sent but never received by any node (forwarding-aware).
+>>>>>>> origin/worktree-worker19
     Supports multiple senders per hash (origin + forwarders) to preserve
     forwarding information instead of first-wins policy. Fixes skewed
     statistics and missing-packet detection for forwarded drops.

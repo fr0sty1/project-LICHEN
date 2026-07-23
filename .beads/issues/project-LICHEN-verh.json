@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-verh",
   "title": "[merge-conflict] worktree-worker23: t_deck_esp32s3_procpu.conf",
-  "status": "in_progress",
+  "notes": "Commit: cf2383a64",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:32:43.980541581Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:41:06.761795711Z",
+  "updated_at": "2026-07-23T00:43:56.898016864Z",
   "started_at": "2026-07-23T00:41:06.761795711Z",
-  "lease_expires_at": "2026-07-23T00:46:06.761795711Z",
-  "heartbeat_at": "2026-07-23T00:41:06.761795711Z"
+  "closed_at": "2026-07-23T00:43:56.898016864Z",
+  "close_reason": "Resolved merge conflict in t_deck_esp32s3_procpu.conf and related RPL trickle timer implementation for worker23. Updated comments, fixed off-by-one in interval calculation, cleaned doc comments. Pushed in cf2383a64"
 }

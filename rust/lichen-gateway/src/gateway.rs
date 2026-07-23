@@ -205,8 +205,6 @@ mod tests {
         let ygg_cross = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2];
         assert!(gw.is_local_mesh(&local.0));
         assert!(!gw.is_local_mesh(&ygg_cross));
-<<<<<<< HEAD
-=======
     }
 
     #[test]
@@ -217,6 +215,5 @@ mod tests {
         let packet = [0x60, 0, 0, 0, 40, 0, 58, 0, 0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
         let result = gw.mesh_to_mesh(&packet);
         assert!(result.is_some());
->>>>>>> origin/worktree-worker24
     }
 }
