@@ -672,6 +672,15 @@ class LinkLayer:
 
         # Brute-force: try each known peer until signature verifies.
         # O(n) is unavoidable without sender IID in frame format.
+        #
+        # Subtle optimization in the condition below: '(peer is None or
+        # candidate.pubkey != peer.pubkey)'. If peer_lookup(b'') returned a
+        # candidate that failed verification above, we skip re-verifying it
+        # here. This avoids redundant (expensive) signature checks.
+        #
+        # Correct interaction between peer_lookup (hint-based, often first
+        # match) and peer_lookup_all (exhaustive list). The logic ensures
+        # we don't miss valid senders while optimizing common cases.
         if self.peer_lookup_all is not None:
             for candidate in self.peer_lookup_all():
                 if (peer is None or candidate.pubkey != peer.pubkey) and verify(
