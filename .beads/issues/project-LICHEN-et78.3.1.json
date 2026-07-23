@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-et78.3.1",
+  "title": "Implement MRHOF objective function MUST compliance (ETX, rank hysteresis) in Rust lichen-rpl",
+  "description": "Add RFC6719 MRHOF with LoRa ETX adaptations per draft §5.1 in rust/lichen-rpl/src/routing.rs and dodag.rs. Include rank calculation checks and tests.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:19:37.789518657Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:19:37.789518657Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-et78.3.1",
+      "depends_on_id": "project-LICHEN-et78.3",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:19:37.923998659Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
