@@ -20,7 +20,6 @@ use core::cmp::Ordering;
 use crate::message::Dio;
 
 pub const INFINITE_RANK: u16 = 0xFFFF;
-pub const ROOT_RANK: u16 = 256;
 pub const MIN_HOP_RANK_INCREASE: u16 = 256;
 pub const ROOT_RANK: u16 = MIN_HOP_RANK_INCREASE;
 pub const MAX_RANK_INCREASE: u16 = 2048;
@@ -28,44 +27,29 @@ pub const PARENT_SWITCH_THRESHOLD: u16 = 192;
 pub const MAX_PARENT_CANDIDATES: usize = 16;
 
 #[cfg(feature = "std")]
-const LOLLIPOP_CIRCULAR_BIT: u8 = 128;
-#[cfg(feature = "std")]
-const LOLLIPOP_SEQUENCE_WINDOW: u8 = 16;
-
-#[cfg(feature = "std")]
-fn version_is_newer(new_ver: u8, old_ver: u8) -> bool {
-    match (
-        new_ver < LOLLIPOP_CIRCULAR_BIT,
-        old_ver < LOLLIPOP_CIRCULAR_BIT,
-    ) {
-        (true, true) => new_ver > old_ver,
-        (false, false) => {
-            let diff = new_ver.wrapping_sub(old_ver) & 0x7F;
-            diff > 0 && diff <= LOLLIPOP_SEQUENCE_WINDOW
+fn lollipop_cmp(a: u8, b: u8) -> Option<core::cmp::Ordering> {
+    if a == b {
+        return Some(core::cmp::Ordering::Equal);
+    }
+    let a_linear = a < 128;
+    let b_linear = b < 128;
+    if a_linear == b_linear {
+        let diff = a.abs_diff(b);
+        if diff <= 16 {
+            Some(a.cmp(&b))
+        } else {
+            None
         }
-        (true, false) => true,
-        (false, true) => false,
-    }
-    if (a < LOLLIPOP_CIRCULAR_BIT) == (b < LOLLIPOP_CIRCULAR_BIT) {
-        return (a.abs_diff(b) <= LOLLIPOP_SEQUENCE_WINDOW).then(|| a.cmp(&b));
-    }
-
-    let (linear, circular, a_is_linear) = if a >= LOLLIPOP_CIRCULAR_BIT {
-        (a, b, true)
+    } else if a_linear {
+        Some(core::cmp::Ordering::Greater)
     } else {
-        (b, a, false)
-    };
-    let circular_is_newer =
-        256u16 + u16::from(circular) - u16::from(linear) <= u16::from(LOLLIPOP_SEQUENCE_WINDOW);
-    Some(match (a_is_linear, circular_is_newer) {
-        (true, true) | (false, false) => Ordering::Less,
-        (true, false) | (false, true) => Ordering::Greater,
-    })
+        Some(core::cmp::Ordering::Less)
+    }
 }
 
 #[cfg(feature = "std")]
 fn version_is_newer(new_ver: u8, old_ver: u8) -> bool {
-    (new_ver, old_ver) == (0, 127) || lollipop_cmp(new_ver, old_ver) == Some(Ordering::Greater)
+    (new_ver, old_ver) == (0, 127) || lollipop_cmp(new_ver, old_ver) == Some(core::cmp::Ordering::Greater)
 }
 
 #[cfg(feature = "std")]
