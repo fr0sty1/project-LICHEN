@@ -74,9 +74,18 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 	if (!payload || payload_len == 0) return COAP_RESPONSE_CODE_BAD_REQUEST;
 	uint8_t dest_iid[8] = {0};
 	parse_recipient(payload, payload_len, dest_iid);
+	uint8_t sender_iid[8] = {0};
+	if (addr_len >= sizeof(struct sockaddr_in6) && addr->sa_family == AF_INET6) {
+		const struct sockaddr_in6 *in6 = (const struct sockaddr_in6 *)addr;
+		memcpy(sender_iid, &in6->sin6_addr.s6_addr[8], 8);
+	}
+	struct oscore_ctx *ctx = NULL;
+	if (oscore_ctx_get_by_eui64(sender_iid, &ctx) != 0 || ctx == NULL) {
+		return COAP_RESPONSE_CODE_UNAUTHORIZED;
+	}
 	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
 	uint32_t now_ms = k_uptime_get_32();
-	int idx = 0; /* simplified; full IID-hash rate limit in future */
+	int idx = sender_iid[7];
 	k_mutex_lock(&s_rate_mutex, K_FOREVER);
 	if (s_last_deaddrop[idx] && (now_ms - s_last_deaddrop[idx] < CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS)) {
 		k_mutex_unlock(&s_rate_mutex);
@@ -122,8 +131,17 @@ static int confessions_get(struct coap_resource *resource, struct coap_packet *r
 }
 
 static int confessions_post(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len) {
+	uint8_t sender_iid[8] = {0};
+	if (addr_len >= sizeof(struct sockaddr_in6) && addr->sa_family == AF_INET6) {
+		const struct sockaddr_in6 *in6 = (const struct sockaddr_in6 *)addr;
+		memcpy(sender_iid, &in6->sin6_addr.s6_addr[8], 8);
+	}
+	struct oscore_ctx *ctx = NULL;
+	if (oscore_ctx_get_by_eui64(sender_iid, &ctx) != 0 || ctx == NULL) {
+		return COAP_RESPONSE_CODE_UNAUTHORIZED;
+	}
 	uint32_t now_ms = k_uptime_get_32();
-	int idx = 0; /* simplified rate limit */
+	int idx = sender_iid[7];
 	k_mutex_lock(&s_rate_mutex, K_FOREVER);
 	if (s_last_confession[idx] && (now_ms - s_last_confession[idx] < CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS)) {
 		k_mutex_unlock(&s_rate_mutex);
