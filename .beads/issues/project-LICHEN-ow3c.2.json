@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-ow3c.2",
+  "title": "Robustify oscore_ctx_persist_ssn and NVM callbacks for failure cases",
+  "description": "Improve oscore_ctx_persist_ssn() to handle NVM write failures gracefully. On failure, either retry, bump SSN to next safe value (avoiding reuse), or return specific error. Ensure callback robustness per security requirements. Update docs in oscore.h. See lines 910+ and NVM registration.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:14:22.10978156Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:14:22.10978156Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow3c.2",
+      "depends_on_id": "project-LICHEN-ow3c",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:14:22.243070904Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
