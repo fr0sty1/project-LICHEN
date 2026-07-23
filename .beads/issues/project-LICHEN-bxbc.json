@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-bxbc",
   "title": "[merge-conflict] worktree-worker17: coap_config.c",
+  "notes": "Commit: $(git -C /mnt/lichen-zephyr/work/project-LICHEN-worker17 rev-parse --short HEAD)",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:17:22.699606238Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:37:24.425082323Z",
+  "updated_at": "2026-07-23T02:39:02.711862235Z",
   "started_at": "2026-07-23T02:37:24.425082323Z",
   "lease_expires_at": "2026-07-23T02:42:24.425082323Z",
   "heartbeat_at": "2026-07-23T02:37:24.425082323Z"
