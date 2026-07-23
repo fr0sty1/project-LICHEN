@@ -15,13 +15,9 @@ from lichen.sim.propagation import (
     CAPTURE_THRESHOLD_DB,
     SENSITIVITY_DEFAULT,
     SENSITIVITY_LR_FHSS,
-    SENSITIVITY_SF9,
     SENSITIVITY_SF10,
-    SENSITIVITY_SF11,
-    SENSITIVITY_SF12,
     PropagationModel,
 )
-from lichen.sim.tdma import synchronized_hop_channel
 from lichen.sim.transmission import Transmission, airtime_us, lr_fhss_airtime_us
 
 
@@ -47,10 +43,10 @@ class Medium:
     """Radio medium that tracks transmissions and handles propagation.
 
     Supports multi-channel operation with independent collision/propagation
-    oracles per channel. RX uses rendezvous logic: get_rx_candidates and
-    detect_activity only consider TX on the expected hop channel computed
-    by calling synchronized_hop_channel(current_sfn, seed=0, num_channels=8).
-    start_tx tags TX with the rendezvous channel from synchronized_hop_channel.
+    oracles per channel. For CCP-12 rendezvous, get_rx_candidates,
+    detect_activity, and start_tx use hop channel computed from SFN/EUI
+    (via node's hop_schedule or synchronized_hop_channel helper). Keeps
+    LR-FHSS support via rx_frequency_hz filter.
 
     Attributes:
         propagation: The propagation model used for path loss calculations.
@@ -85,17 +81,13 @@ class Medium:
         channel: int = 0,
         phy_mode: str = "lora",
     ) -> Transmission:
+        """Tag transmission with hop channel computed from SFN/EUI (via
+        hop_schedule or helper per CCP-12). Keeps LR-FHSS airtime support.
+        """
         if phy_mode == "lr_fhss":
             duration_us = lr_fhss_airtime_us(len(payload))
         else:
             duration_us = airtime_us(len(payload))
-        snr_db = float((time_us % 1000) / 100 - 5)
-        if snr_db > 10:
-            sens = SENSITIVITY_SF9
-        elif snr_db > 0:
-            sens = SENSITIVITY_SF10
-        else:
-            sens = SENSITIVITY_SF11
         tx = Transmission(
             source_node_id=node_id,
             payload=payload,
@@ -148,11 +140,10 @@ class Medium:
     ) -> list[RxCandidate]:
         """Get all decodable transmissions for a receiver on given channel.
 
-        Implements rendezvous: only considers transmissions on the expected
-        hop channel computed via synchronized_hop_channel(sfn, seed=0, num_channels=8)
-        (called in simulation.py before passing channel here). Provides independent
-        oracle for collision/propagation per channel. Supports LR-FHSS by optional
-        frequency filter for hopping fragments.
+        Uses hop channel computed from SFN/EUI via node's hop_schedule or
+        synchronized_hop_channel helper per CCP-12. Only considers TX on
+        matching channel. Independent oracle per channel. Supports LR-FHSS
+        via optional rx_frequency_hz filter.
 
         For each active transmission on matching channel (excluding self),
         calculates distance, RSSI, and SNR. Only includes decodable ones.
@@ -161,7 +152,7 @@ class Medium:
             rx_node_id: ID of the receiving node.
             rx_position: (x, y, z) position of the receiver in meters.
             time_us: Current simulation time in microseconds.
-            channel: Expected hop channel for rendezvous from synchronized_hop_channel (default 0).
+            channel: Hop channel from SFN/EUI (default 0).
             rx_frequency_hz: Optional frequency filter for LR-FHSS hops.
 
         Returns:
@@ -260,17 +251,16 @@ class Medium:
         """Detect if any transmission is active and detectable at a position
         on the specified channel.
 
-        Implements per-channel CAD for multi-channel support and rendezvous.
-        The channel param should be from synchronized_hop_channel(sfn, seed=0, num_channels=8)
-        for TX/RX rendezvous. Supports LR-FHSS frequency hopping via optional rx_frequency_hz.
-        Independent oracle per channel.
+        Uses hop channel from SFN/EUI via node's hop_schedule or helper per
+        CCP-12 for rendezvous. Supports LR-FHSS via rx_frequency_hz.
+        Independent per-channel oracle.
 
         Args:
             position: (x, y, z) position of the detector in meters.
             time_us: Current simulation time in microseconds.
             sensitivity_dbm: Receiver sensitivity threshold in dBm.
                 Defaults to SF10 sensitivity (-132 dBm).
-            channel: Channel for CAD from synchronized_hop_channel (default 0, matches rendezvous hop).
+            channel: Hop channel computed from SFN/EUI (default 0).
             rx_frequency_hz: Optional frequency filter for LR-FHSS hops.
 
         Returns:
@@ -304,9 +294,3 @@ class Medium:
                 return True
 
         return False
-
-def synchronized_hop_channel(eui64, time_us, epoch=0, density=1, snr_db=0.0):
-    h = 0x811c9dc5
-    for b in eui64 + epoch.to_bytes(4, "little"):
-        h = ((h ^ b) * 0x01000193) & 0xffffffff
-    return (h % (density + 7)) % 8
