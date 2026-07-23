@@ -3,15 +3,15 @@
   "title": "SenML battery profile uses incorrect unit %EL instead of %",
   "description": "File: python/src/lichen/senml/profiles.py\nLine: 73\n\nThe battery() function uses unit '%EL' for state of charge percentage:\n  SenmlRecord(n='battery', u='%EL', v=percent)\n\nPer IANA SenML Units registry, '%EL' is defined as 'Ratio (Electric)' specifically for electric loss ratios, not general battery state of charge.\n\nFor battery percentage/state of charge, the appropriate unit should be:\n- '%' (general percentage, ratio to 1)\n- '/1' (ratio, less common)\n\nUsing '%EL' may cause interoperability issues:\n1. Other SenML implementations may not recognize '%EL' as valid for SoC\n2. Semantic confusion: is this a loss ratio or charge level?\n3. IANA compliance: using a unit outside its defined scope\n\nFix: Change line 73 from u='%EL' to u='%' or document why %EL was chosen if intentional.",
   "notes": "Commit: 120b7d6d6",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:26:48.895616Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T03:43:54.796948906Z",
+  "updated_at": "2026-07-23T03:43:56.708123329Z",
   "started_at": "2026-07-23T03:39:03.918752316Z",
-  "lease_expires_at": "2026-07-23T03:44:03.918752316Z",
-  "heartbeat_at": "2026-07-23T03:39:03.918752316Z"
+  "closed_at": "2026-07-23T03:43:56.708123329Z",
+  "close_reason": "Closed"
 }
