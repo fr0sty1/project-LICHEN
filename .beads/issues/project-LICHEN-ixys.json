@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-ixys",
   "title": "[merge-conflict] worktree-worker23: xiao_s3_wio_sx1262.overlay",
+  "notes": "Commit: f3172ceec (worker23); 9ef42cb9b (main merge resolution for overlay conflict)",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:32:43.566112475Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:35:51.537557676Z",
+  "updated_at": "2026-07-23T00:37:42.159850984Z",
   "started_at": "2026-07-23T00:35:51.537557676Z",
   "lease_expires_at": "2026-07-23T00:40:51.537557676Z",
   "heartbeat_at": "2026-07-23T00:35:51.537557676Z"
