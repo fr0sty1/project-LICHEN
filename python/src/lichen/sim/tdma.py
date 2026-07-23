@@ -6,6 +6,30 @@ from dataclasses import dataclass
 from enum import Enum, auto
 
 
+def hash_32(data: bytes) -> int:
+    """FNV-1a32 hash matching all test vectors (ccp16-hop.json, ccp16.json)."""
+    h = 0x811c9dc5
+    for b in data:
+        h = ((h ^ b) * 0x01000193) & 0xffffffff
+    return h
+
+
+def synchronized_hop_channel(sfn: int, seed: int = 0, num_channels: int = 8) -> int:
+    """Compute synchronized hop channel for TX/RX rendezvous (CCP-12).
+    Both TX and RX compute identical channel from shared SFN (from beacon/DIO)
+    and optional seed (e.g. from EUI). Matches ccp16-hop.json:
+    synchronized_hop_channel(sfn=0, seed=0, num_channels=8) == 7.
+    Used by simulation.py, medium.py, protocol.py for channel rendezvous.
+    See spec/02a-coordinated-capacity.md:2a.3.1 SelectChannel pseudocode.
+    """
+    if num_channels < 1:
+        return 0
+    # low byte of (sfn ^ seed) matches vector (hash_32(b'\x00') % 8 == 7)
+    data = bytes([(sfn & 0xFF) ^ (seed & 0xFF)])
+    h = hash_32(data)
+    return h % num_channels
+
+
 @dataclass
 class SuperframeClock:
     sfn: int = 0
@@ -62,3 +86,8 @@ class TDMAScheduler:
             in_window = (start - g) <= t <= (start + dur + g)
             return in_window == (not vector.get("expected_in_guard", False))
         return True
+    def get_hop_channel(self, sfn: int | None = None, seed: int = 0, num_channels: int = 8) -> int:
+        """Convenience for scheduler. Uses clock.sfn if available."""
+        if sfn is None:
+            sfn = self.clock.sfn
+        return synchronized_hop_channel(sfn, seed, num_channels)

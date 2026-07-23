@@ -32,6 +32,7 @@ from lichen.sim.events import (
 from lichen.sim.medium import Medium
 from lichen.sim.metrics import Metrics
 from lichen.sim.node import NodeState, SimNode
+from lichen.sim.tdma import synchronized_hop_channel
 
 if TYPE_CHECKING:
     from lichen.sim.chaos import ChaosEngine
@@ -602,15 +603,15 @@ class Simulation:
 
         This is the core TX logic, called either immediately from
         start_transmission() or later via TxStartDelayedEvent.
-        Integrates synchronized hopping by using provided channel from
-        node's hop_schedule/SFN or current_channel.
+        For TX/RX rendezvous, channel should be from synchronized_hop_channel(sfn)
+        or node.tdma_scheduler.get_hop_channel(sfn) (CCP-12). Updates node.current_channel.
 
         Args:
             node_id: ID of the transmitting node.
             payload: Raw bytes to transmit.
             tx_power_dbm: Transmit power in dBm.
             position: Node position (x, y, z) in meters.
-            channel: Channel from synchronized hopping (overrides node.current_channel).
+            channel: Channel from synchronized_hop_channel (overrides node.current_channel).
 
         Returns:
             The transmission ID.
@@ -626,7 +627,7 @@ class Simulation:
             if channel != node.current_channel:
                 node.current_channel = channel  # update for synchronized hopping
         else:
-            channel = 0
+            channel = synchronized_hop_channel(0)  # rendezvous default
 
         tx = self._medium.start_tx(
             node_id=node_id,
@@ -723,6 +724,9 @@ class Simulation:
             raise ValueError(f"Node '{node_id}' does not exist")
         if not node.connected:
             raise ValueError(f"Node '{node_id}' is not connected")
+        if channel == 0:
+            # Use synchronized_hop_channel for TX/RX rendezvous per CCP-12
+            channel = synchronized_hop_channel(0)
         node.state = NodeState.RX_WAIT
         node.current_channel = channel
         node.rx_callbacks = (on_packet, on_timeout)
