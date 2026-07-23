@@ -15,7 +15,22 @@
 #include <zephyr/drivers/charger.h>
 #endif
 #if IS_ENABLED(CONFIG_FUEL_GAUGE)
+/* Zephyr 3.7's fuel_gauge.h inline helpers loop a signed index against
+ * a size_t bound, which trips LICHEN's -Werror=sign-compare.
+ */
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-compare"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#endif
 #include <zephyr/drivers/fuel_gauge.h>
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 #endif
 #include <zephyr/kernel.h>
 #if IS_ENABLED(CONFIG_REBOOT)
