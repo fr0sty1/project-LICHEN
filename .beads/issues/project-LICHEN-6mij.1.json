@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-6mij.1",
+  "title": "Add is_local_admin and transport LCI scope checks to CoAP handler dispatch",
+  "description": "Implement explicit auth policies using local-admin (is_local_admin), SLIP/BLE LCI scope checks at boundaries for mutating resources like /config PUT. Update coap_config.c",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:18:35.318516267Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:18:35.318516267Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-6mij.1",
+      "depends_on_id": "project-LICHEN-6mij",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:18:35.452158709Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
