@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: CC-BY-4.0 -->
 <!-- SPDX-FileCopyrightText: The contributors to the LICHEN project -->
 
-<!-- Resolved merge conflict from integration/worker15-20260722: sales-playbook.md per bead project-LICHEN-27yl.
-Consolidated PRFAQ/sales content from parallel worker branches (worker15 and related integration merges). Ensured exact match to PRFAQ generation rules from AGENTS.md (default Seattle, WA; exact footer explanation). Cross-consistent with docs/prfaq-500node-deployment.md. Removed all conflict markers, duplication, dead text. No TODOs. -->
+<!-- Resolved merge conflict from integration/worker3-20260722: sales-playbook.md per bead project-LICHEN-fjpd.
+Consolidated PRFAQ/sales content from parallel worker branches (worker3, worker15 and related integration merges). Ensured exact match to PRFAQ generation rules from AGENTS.md (default Seattle, WA; exact footer explanation). Cross-consistent with docs/prfaq-500node-deployment.md. Removed all conflict markers, duplication, dead text. No TODOs. -->
 
 # LICHEN Sales Playbook and 500-Node Deployment PRFAQ
 
