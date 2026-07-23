@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
 /*
  * RETIRED per project-LICHEN-2u26.10, project-LICHEN-80ju (m5m1.8 bridge audit): Seeed XIAO ESP32-S3 + Wio-SX1262 bridge overlay.
  * No canonical Zephyr board or composite shield mapping; xiao_s3_wio_sx1262 not a valid -b target.
