@@ -2,16 +2,15 @@
   "id": "project-LICHEN-bk6z",
   "title": "[cross-impl] Trickle max_interval saturation Python vs Rust/Zephyr",
   "description": "The recent fix in python/src/lichen/rpl/trickle.py:70 (commit 68e8b8209) aligned the half/range bias-free transmit_time calc to match Rust (lichen-rpl/src/trickle.rs:126) and C (lichen/subsys/lichen/rpl/trickle.c:43). However, max_interval computation still differs:\n\n- Python: self.max_interval = imin_ms \u003c\u003c imax_doublings (arbitrary precision, no cap)\n- Rust: checked_shl+checked_mul .unwrap_or(u32::MAX)\n- C: explicit check for imax_doublings\u003e=32 or overflow → UINT32_MAX\n\nThis can cause different doubling behavior for imax_doublings\u003e=30 on typical Imin. See Rust tests for 31/32 doublings and C saturation logic. Same algorithm, different behavior on edge cases. Test vectors / interop affected.\n\nReferences: project-LICHEN-verh, project-LICHEN-67ca, RFC 6206 §4.2.",
-  "notes": "Commit: bff8c4bf7",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T02:22:46.257914399Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:54:52.091465774Z",
+  "updated_at": "2026-07-23T02:51:30.952835194Z",
   "started_at": "2026-07-23T02:51:30.952835194Z",
-  "closed_at": "2026-07-23T02:54:52.091465774Z",
-  "close_reason": "Python max_interval now saturates at (1\u003c\u003c32)-1 for imax_doublings\u003e=30 or overflow using same logic as C/Rust; test updated to cover saturation cases; cross-impl consistent (verified); commit bff8c4bf7"
+  "lease_expires_at": "2026-07-23T02:56:30.952835194Z",
+  "heartbeat_at": "2026-07-23T02:51:30.952835194Z"
 }
