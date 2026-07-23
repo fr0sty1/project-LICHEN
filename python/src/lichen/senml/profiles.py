@@ -29,27 +29,17 @@ from lichen.senml.codec import SenmlRecord
 
 
 def location(
-    lat: float, lon: float, alt: float | None = None
+    lat: float, lon: float, alt: float | None = None, speed: float | None = None
 ) -> list[SenmlRecord]:
-    """Geographic position as SenML records.
-
-    Uses IANA-registered SenML names "lat", "lon", "alt" with unit "deg" or
-    "m" (RFC 8428, IANA SenML Units).
-
-    Args:
-        lat: Latitude in decimal degrees (WGS-84).
-        lon: Longitude in decimal degrees (WGS-84).
-        alt: Altitude in metres above WGS-84 ellipsoid, or None to omit.
-
-    Returns:
-        List of SenML records: lat, lon, and optionally alt.
-    """
+    """Geographic position per spec appendix-senml (u=lat/lon)."""
     records = [
-        SenmlRecord(n="lat", u="deg", v=lat),
-        SenmlRecord(n="lon", u="deg", v=lon),
+        SenmlRecord(n="lat", u="lat", v=lat),
+        SenmlRecord(n="lon", u="lon", v=lon),
     ]
     if alt is not None:
         records.append(SenmlRecord(n="alt", u="m", v=alt))
+    if speed is not None:
+        records.append(SenmlRecord(n="speed", u="m/s", v=speed))
     return records
 
 

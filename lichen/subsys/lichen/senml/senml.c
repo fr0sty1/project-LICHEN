@@ -331,19 +331,18 @@ int senml_encode_location(const char *base_name, uint64_t base_time,
 		return ret;
 	}
 
-	/* RFC 8428 uses "deg" (degrees) as the SenML unit for lat/lon */
-	ret = senml_add_float(&pack, "lat", "deg", lat);
+	ret = senml_add_float(&pack, SENML_LOCATION_LAT, SENML_LOCATION_LAT, lat);
 	if (ret < 0) {
 		return ret;
 	}
 
-	ret = senml_add_float(&pack, "lon", "deg", lon);
+	ret = senml_add_float(&pack, SENML_LOCATION_LON, SENML_LOCATION_LON, lon);
 	if (ret < 0) {
 		return ret;
 	}
 
 	if (!isnan(alt)) {
-		ret = senml_add_float(&pack, "alt", "m", alt);
+		ret = senml_add_float(&pack, SENML_LOCATION_ALT, SENML_LOCATION_UNIT_M, alt);
 		if (ret < 0) {
 			return ret;
 		}
