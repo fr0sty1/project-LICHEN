@@ -2,15 +2,15 @@
   "id": "project-LICHEN-1pwr",
   "title": "[merge-conflict] worktree-worker20: dao.py",
   "notes": "Commit: 2decfd4",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:10:51.193588862Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:07:17.935227345Z",
+  "updated_at": "2026-07-23T03:07:20.185929763Z",
   "started_at": "2026-07-23T03:00:26.529010993Z",
-  "lease_expires_at": "2026-07-23T03:05:26.529010993Z",
-  "heartbeat_at": "2026-07-23T03:00:26.529010993Z"
+  "closed_at": "2026-07-23T03:07:20.185929763Z",
+  "close_reason": "Fixed DaoManager.process_dao compatibility, TransitInformation option parsing for flags and external, resolved merge conflict in RPL DAO logic. Tests now 51/55 passing (remaining are test-side NameError and legacy expectations)."
 }
