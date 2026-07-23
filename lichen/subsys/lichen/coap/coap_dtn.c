@@ -25,7 +25,6 @@ static uint32_t s_last_deaddrop[16] = {0};
 	}
 	return coap_resource_send(resource, &resp, addr, addr_len, piv);
 }
->>>>>>> origin/integration/worker11-20260722
 
 static uint32_t dtn_get_unix_time(void) { return (uint32_t)(k_uptime_get() / 1000); }
 
