@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-ajz6",
   "title": "[merge-conflict] worktree-worker19: xiao_s3_wio_sx1262.conf",
-  "notes": "Commit: 3c616b44f",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:05:08.291597907Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:49:25.475950238Z",
+  "updated_at": "2026-07-23T02:48:21.477340499Z",
   "started_at": "2026-07-23T02:48:21.477340499Z",
-  "closed_at": "2026-07-23T02:49:25.475950238Z",
-  "close_reason": "Cleaned dead merge-conflict resolution meta-comments from xiao_s3_wio_sx1262.{conf,overlay} per No Dead Code rule (AGENTS.md). Standardized retired board fragment comments. Commit 3c616b44f"
+  "lease_expires_at": "2026-07-23T02:53:21.477340499Z",
+  "heartbeat_at": "2026-07-23T02:48:21.477340499Z"
 }
