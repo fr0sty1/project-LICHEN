@@ -3,15 +3,15 @@
   "title": "[cross-impl] announce message channel field naming inconsistency",
   "description": "Python messages.py:8 updated comment to current_channel (rx_channel) per CCP-9 but Zephyr lichen/lib and Rust lora-link still use rx_channel in packing/signed_data. Different field names for same byte lead to divergent signed_data() behavior across impls. Test vectors ccp9*.json may not cover all. Matches spec/05-routing.md but code diverges.",
   "notes": "Commit: d91049ec0",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T04:04:55.269293924Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:39:56.990628436Z",
+  "updated_at": "2026-07-23T04:40:00.019562937Z",
   "started_at": "2026-07-23T04:36:19.664584753Z",
-  "lease_expires_at": "2026-07-23T04:41:19.664584753Z",
-  "heartbeat_at": "2026-07-23T04:36:19.664584753Z"
+  "closed_at": "2026-07-23T04:40:00.019562937Z",
+  "close_reason": "Renamed to rx_channel in Python messages.py + scheduler + tests for cross-impl consistency with Rust/C; signed_data consistent; tests + vectors pass"
 }
