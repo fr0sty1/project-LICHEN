@@ -2,15 +2,15 @@
   "id": "project-LICHEN-f0h5",
   "title": "[merge-conflict] worktree-worker18: tx_queue.py",
   "notes": "Commit: 2984998b1",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:35:58.045240302Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:42:09.23002118Z",
+  "updated_at": "2026-07-23T00:42:12.320237631Z",
   "started_at": "2026-07-23T00:38:27.09872131Z",
-  "lease_expires_at": "2026-07-23T00:43:27.09872131Z",
-  "heartbeat_at": "2026-07-23T00:38:27.09872131Z"
+  "closed_at": "2026-07-23T00:42:12.320237631Z",
+  "close_reason": "Resolved merge conflict in tx_queue.py (files now identical across worktrees); fixed related identity.py yggdrasil function rename remnant in both worker1 and worker18 (updated call to yggdrasil_address(...).packed + import); tx_queue tests pass (34/34); identity fix unblocks broader test suite"
 }
