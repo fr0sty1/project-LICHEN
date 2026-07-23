@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-wlgu.2.1",
+  "title": "Add ccp12_synchronized_hop_vectors() to generate.py matching spec 02a:120 SelectChannel pseudocode + hash_32",
+  "description": "Port the CCP-12 vectors logic from worker23, use shared hash_32(FNV), independent oracle per test integrity rules. Include SFN wrap, multi-channel (8/16), rendezvous examples.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:19:50.538425181Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:19:50.538425181Z",
+  "labels": [
+    "defer-boardconfig"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-wlgu.2.1",
+      "depends_on_id": "project-LICHEN-wlgu.2",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:19:50.67021729Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
