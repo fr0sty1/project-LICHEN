@@ -24,11 +24,11 @@ rsource "l2/Kconfig"
 rsource "oscore/Kconfig"
 rsource "schc/Kconfig"
 rsource "senml/Kconfig"
-rsource "rpl/Kconfig"
-rsource "routing/Kconfig"
-rsource "transport/Kconfig"
+ rsource "rpl/Kconfig"
+ rsource "routing/Kconfig"
+ rsource "transport/Kconfig"
 
-config LICHEN_ADAPTIVE_SF_ENABLED
+	config LICHEN_ADAPTIVE_SF_ENABLED
 	bool "Adaptive spreading factor selection (per-neighbor SNR/CCP16)"
 	default y
 	depends on LICHEN_LINK_CCP16_LOAD_BALANCING
@@ -49,5 +49,11 @@ config LICHEN_DEFAULT_SF
 	  SF7 = highest bitrate/shortest range; SF12 = lowest bitrate/longest range.
 	  Must match regional regulations and link budget.
 
+config LICHEN_DUTY_CYCLE
+	bool "Duty cycle tracker (CCP-13)"
+	default y
+	depends on LICHEN
+
 endif # LICHEN
+
 
