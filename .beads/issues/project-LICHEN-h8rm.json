@@ -2,15 +2,15 @@
   "id": "project-LICHEN-h8rm",
   "title": "[merge-conflict] worktree-worker23: Kconfig",
   "notes": "Commit: c8337879d",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:34:55.610154655Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:37:52.726012251Z",
+  "updated_at": "2026-07-23T00:37:54.605034967Z",
   "started_at": "2026-07-23T00:35:46.14888545Z",
-  "lease_expires_at": "2026-07-23T00:40:46.14888545Z",
-  "heartbeat_at": "2026-07-23T00:35:46.14888545Z"
+  "closed_at": "2026-07-23T00:37:54.605034967Z",
+  "close_reason": "Closed"
 }
