@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-kudc.6",
+  "title": "Zephyr C lichen/subsys/lichen: review/fix TDMA init, tdma_tx_allowed, link_set_slot, metrics against spec/02a and AGENTS.md init graph",
+  "description": "Audit lichen/subsys/lichen/link*.c, tdma implementation for exact match to spec/02a-coordinated-capacity.md (TDMA beacon parsing, slot enforcement, desync recovery FSM, lichen_tdma_init order per AGENTS.md). Update if metrics/thresholds/CBOR don't match tables or test vectors. Verify with Zephyr tests.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:22:41.877817279Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:22:41.877817279Z",
+  "labels": [
+    "ccp",
+    "conformance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-kudc.6",
+      "depends_on_id": "project-LICHEN-kudc",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:22:42.024796623Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
