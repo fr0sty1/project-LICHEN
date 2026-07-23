@@ -1,18 +1,27 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "SCHC fragmentation vectors (RFC 8724 \u00a78) with independent CRC32 oracle from zlib matching FragmentSender implementation. Updated for 6-bit FCN, real MICs, tile/window params.",
+  "description": "SCHC fragmentation vectors (RFC 8724 §8) using CRC-32/ISO-HDLC over (packet || 0x00) matching Python compute_mic, Rust lichen_schc, and C schc_crc32_iso_hdlc.",
   "vectors": [
+    {
+      "name": "canonical_crc32",
+      "description": "Standard test vector for CRC-32/ISO-HDLC(\"123456789\" || 0x00).",
+      "mic": "00c49e49"
+    },
+    {
+      "name": "7tiles",
+      "mic": "16cefd3c"
+    },
     {
       "name": "single_fragment",
       "description": "Single All-1 with MIC (RFC 8.2).",
       "rule_id": 120,
       "packet": "10111213",
       "fragments": [
-        "787f21e6e19220222426"
+        "787e6054cdd220222426"
       ],
       "mode": "no_ack",
-      "mic": "90f370c9"
+      "mic": "302a66e9"
     },
     {
       "name": "multi_fragment",
@@ -21,10 +30,10 @@
       "packet": "1011121320212223",
       "fragments": [
         "780c20222426",
-        "787e5a0d068240424446"
+        "787fa7e930102022242640424446"
       ],
       "mode": "no_ack",
-      "mic": "2d068341"
+      "mic": "d3f49808"
     },
     {
       "name": "ack_on_error_mic_fail",
@@ -35,7 +44,7 @@
         "787ecef7baef41434546"
       ],
       "mode": "ack_on_error",
-      "mic": "677bdd77",
+      "mic": "1c0470cf",
       "expect": {
         "mic_fail": true
       }
@@ -47,10 +56,10 @@
       "packet": "00010203",
       "fragments": [
         "780c0002",
-        "787f17730c260406"
+        "787eac6e2faa00020406"
       ],
       "mode": "ack_on_error",
-      "mic": "8bb98613",
+      "mic": "563717d5",
       "expect": {
         "out_of_order": true,
         "retransmits": [

@@ -27,7 +27,8 @@ class FragmentError(Exception):
 
 
 def compute_mic(payload: bytes) -> bytes:
-    return zlib.crc32(payload).to_bytes(MIC_LENGTH, "big")
+    """CRC-32/ISO-HDLC (RFC 8724 §8.1) over payload || 0x00. Matches Rust impl."""
+    return zlib.crc32(payload + b"\0").to_bytes(MIC_LENGTH, "big")
 
 
 def _check_rule(rule_id: int) -> None:
