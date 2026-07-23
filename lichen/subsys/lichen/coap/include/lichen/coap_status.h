@@ -11,6 +11,7 @@
  * - GET /status/routes - Routing table
  *
  * All resources support RFC 7641 Observe for push notifications.
+ * CCP-17: capacity validation for CBOR encoders (BUILD_ASSERT + runtime checks).
  */
 
 #ifndef LICHEN_COAP_STATUS_H_
@@ -25,7 +26,7 @@ extern "C" {
 #endif
 
 /* Maximum CBOR payload sizes */
-#define LICHEN_COAP_STATUS_CBOR_MAX_SIZE    256U
+#define LICHEN_COAP_STATUS_CBOR_MAX_SIZE    512U
 #define LICHEN_COAP_NEIGHBORS_CBOR_MAX_SIZE 512U
 #define LICHEN_COAP_ROUTES_CBOR_MAX_SIZE    512U
 
@@ -36,6 +37,14 @@ extern "C" {
 
 #ifndef CONFIG_LICHEN_COAP_STATUS_MAX_ROUTES
 #define CONFIG_LICHEN_COAP_STATUS_MAX_ROUTES 8
+#endif
+
+#ifndef CONFIG_LICHEN_COAP_STATUS_MAX_TXQ
+#define CONFIG_LICHEN_COAP_STATUS_MAX_TXQ 4
+#endif
+
+#ifndef CONFIG_LICHEN_COAP_STATUS_MAX_FWD
+#define CONFIG_LICHEN_COAP_STATUS_MAX_FWD 8
 #endif
 
 /**
@@ -84,6 +93,10 @@ struct lichen_coap_node_status {
 	struct lichen_coap_time_state time;
 	struct lichen_coap_dodag_state dodag;
 	struct lichen_coap_radio_stats radio;
+	uint8_t txq_used;
+	uint8_t txq_cap;
+	uint8_t fwd_used;
+	uint8_t fwd_cap;
 };
 
 /**
@@ -149,12 +162,14 @@ typedef int (*lichen_coap_neighbors_get_cb)(struct lichen_coap_neighbor *neighbo
  *
  * @param[out] routes Array to fill with route entries
  * @param[in]  max_routes Maximum number of entries to return
- * @param[out] default_route Default route next-hop (16-byte IPv6 addr, or NULL if none)
+ * @param[out] default_route Default route next-hop IPv6 (filled only if *has_default_route)
+ * @param[out] has_default_route Set to true if default_route was populated (non-fragile, no byte scan)
  * @return Number of routes written, or negative errno on error
  */
 typedef int (*lichen_coap_routes_get_cb)(struct lichen_coap_route *routes,
 					 size_t max_routes,
-					 uint8_t default_route[16]);
+					 uint8_t default_route[16],
+					 bool *has_default_route);
 
 /**
  * @brief Status resource configuration
@@ -226,6 +241,19 @@ size_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
 				      const struct lichen_coap_route *routes,
 				      size_t count,
 				      const uint8_t *default_route);
+
+/**
+ * @brief Shared helper to format IPv6 address to string
+ *
+ * Used by both coap_status.c and coap_msg.c. Uses net_addr_ntop for
+ * standard compressed IPv6 format (no snprintf truncation issues).
+ *
+ * @param addr 16-byte IPv6 address
+ * @param buf Output buffer (recommend >=46 bytes)
+ * @param buf_size Size of buf
+ * @return 0 on success, -ENOBUFS on buffer error
+ */
+int lichen_coap_format_ipv6(const uint8_t *addr, char *buf, size_t buf_size);
 
 #ifdef __cplusplus
 }
