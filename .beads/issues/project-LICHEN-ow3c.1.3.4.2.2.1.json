@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow3c.1.3.4.2.2.1",
   "title": "Add nvm_failed: label and OSCORE_ERR_NVM_FAILED return in oscore_protect_request",
   "description": "Implement dedicated nvm_failed label after cleanup_protect_request or integrate with it. Set ret = OSCORE_ERR_NVM_FAILED; ensure sensitive data wipe happens before return. Reference oscore.c and security requirements for nonce uniqueness.",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",
