@@ -2,12 +2,16 @@
   "id": "project-LICHEN-udej",
   "title": "[codereview-pass3] coap_dtn.c DTN init order",
   "description": "Init order matches subsystem graph per AGENTS.md. Tests pass after OSCORE addition using oscore_ctx. P4 opinion.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 4,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T15:08:27.832243859Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:08:27.832243859Z",
+  "updated_at": "2026-07-23T04:22:22.373378263Z",
+  "started_at": "2026-07-23T04:22:22.373378263Z",
+  "lease_expires_at": "2026-07-23T04:27:22.373378263Z",
+  "heartbeat_at": "2026-07-23T04:22:22.373378263Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-udej",
