@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-c1eh.2",
   "title": "coap_dtn.c: fix deaddrop_post IID lookup from sockaddr per coap_client.c pattern",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:14:06.400602196Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:14:06.400602196Z",
+  "updated_at": "2026-07-23T05:15:05.651913984Z",
+  "started_at": "2026-07-23T05:15:05.651913984Z",
+  "lease_expires_at": "2026-07-23T05:20:05.651913984Z",
+  "heartbeat_at": "2026-07-23T05:15:05.651913984Z",
   "labels": [
     "codereview"
   ],
