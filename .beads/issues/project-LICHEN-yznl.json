@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-yznl",
   "title": "[merge-conflict] worktree-worker23: main.c",
+  "notes": "Commit: 0827090fa",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:42:15.583488841Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:34:53.40807968Z",
+  "updated_at": "2026-07-23T04:35:37.557750843Z",
   "started_at": "2026-07-23T04:34:53.40807968Z",
   "lease_expires_at": "2026-07-23T04:39:53.40807968Z",
   "heartbeat_at": "2026-07-23T04:34:53.40807968Z"
