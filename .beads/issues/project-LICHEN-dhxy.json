@@ -1,15 +1,15 @@
 {
   "id": "project-LICHEN-dhxy",
   "title": "[merge-conflict] worktree-worker23: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:30:36.091612334Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:51:53.513919413Z",
+  "updated_at": "2026-07-23T01:53:19.775986893Z",
   "started_at": "2026-07-23T01:51:53.513919413Z",
-  "lease_expires_at": "2026-07-23T01:56:53.513919413Z",
-  "heartbeat_at": "2026-07-23T01:51:53.513919413Z"
+  "closed_at": "2026-07-23T01:53:19.775986893Z",
+  "close_reason": "Updated the three heltec_wifi_lora32_v3_esp32s3_procpu.conf files (puck, gateway, bridge-zephyr) in worktree-worker23 to the canonical consolidated merge-resolved versions from main. Synced comments referencing worker23 and epic merges. Committed as 9320aff86 and pushed to origin/worktree-worker23. Verified with git status and diff."
 }
