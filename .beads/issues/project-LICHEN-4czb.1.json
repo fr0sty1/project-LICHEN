@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-4czb.1",
+  "title": "Add sig_len param + bounds check to schnorr48_verify",
+  "description": "Update schnorr48_verify() in schnorr48.h and .c to take size_t sig_len, add if (sig_len != SCHNORR48_SIG_LEN) return false; before pointer arithmetic. Update doc comment. Match Rust defense-in-depth.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:15:56.461651158Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:15:56.461651158Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-4czb.1",
+      "depends_on_id": "project-LICHEN-4czb",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:15:56.594041722Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
