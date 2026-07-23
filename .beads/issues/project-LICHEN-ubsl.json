@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-ubsl",
   "title": "[merge-conflict] integration/worker14-20260722: lichend.rs",
-  "notes": "Commit: f621ffbf7",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:59:30.656391354Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:55:39.703560194Z",
+  "updated_at": "2026-07-23T02:51:11.026394108Z",
   "started_at": "2026-07-23T02:51:11.026394108Z",
-  "closed_at": "2026-07-23T02:55:39.703560194Z",
-  "close_reason": "Fixed merge conflict by removing duplicate process_rpl and is_local_mesh methods in gateway.rs, corrected handle_frame_rpl call with sender_iid and u64 timestamp"
+  "lease_expires_at": "2026-07-23T02:56:11.026394108Z",
+  "heartbeat_at": "2026-07-23T02:51:11.026394108Z"
 }
