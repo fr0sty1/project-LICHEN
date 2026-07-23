@@ -1,10 +1,12 @@
-//! Hardware abstraction traits for LICHEN.
+//! Hardware abstraction traits for LICHEN (Radio, Clock, Rng, NonVolatile, storage).
 //!
-//! Defines the minimal interface between protocol code (lichen-core, lichen-node)
-//! and hardware. Implementations live in lichen-embassy (embedded) or use std
-//! directly (Linux border router).
+//! UI section (Display, Input, Power, ButtonState etc.) removed as dead code
+//! per project-LICHEN-nafo (aligns with rf_health EMA/adaptive-SF minimalism,
+//! CCP-9 announce changes, and lichen-tui using ratatui instead). Only core
+//! radio traits remain. #![forbid(unsafe_code)] added to match core style from epic.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![forbid(unsafe_code)]
 
 #[cfg(feature = "std")]
 extern crate std;
@@ -150,102 +152,8 @@ pub trait NonVolatile {
     fn delete(&mut self, key: &str) -> bool;
 }
 
-// ============================================================================
-// Device UI traits
-// ============================================================================
-
-/// Display error types.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum DisplayError {
-    /// Display not initialized or initialization failed.
-    NotInitialized,
-    /// Communication error with display hardware.
-    BusError,
-    /// Coordinates out of bounds.
-    OutOfBounds,
-}
-
-impl core::fmt::Display for DisplayError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            Self::NotInitialized => write!(f, "display not initialized"),
-            Self::BusError => write!(f, "display bus error"),
-            Self::OutOfBounds => write!(f, "coordinates out of bounds"),
-        }
-    }
-}
-
-impl core::error::Error for DisplayError {}
-
-/// Display interface for rendering UI.
-///
-/// Supports text, primitives, and double-buffered flush. Coordinate system
-/// is top-left origin, x increasing right, y increasing down.
-pub trait Display {
-    /// Initialize the display hardware.
-    fn init(&mut self) -> Result<(), DisplayError>;
-
-    /// Clear the display (fill with background color).
-    fn clear(&mut self);
-
-    /// Draw text at position.
-    fn draw_text(&mut self, x: u16, y: u16, text: &str);
-
-    /// Draw a rectangle outline or filled.
-    fn draw_rect(&mut self, x: u16, y: u16, w: u16, h: u16, filled: bool);
-
-    /// Flush the framebuffer to the display.
-    fn flush(&mut self);
-}
-
-/// Button state flags.
-///
-/// Bitflags for physical buttons. Hardware variants map their inputs
-/// to these logical buttons.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct ButtonState {
-    /// Primary action button (enter/select).
-    pub primary: bool,
-    /// Secondary/back button.
-    pub secondary: bool,
-    /// Up navigation.
-    pub up: bool,
-    /// Down navigation.
-    pub down: bool,
-    /// Left navigation.
-    pub left: bool,
-    /// Right navigation.
-    pub right: bool,
-}
-
-/// Input interface for buttons, encoders, and touch.
-///
-/// Poll-based interface. Implementations should debounce as needed.
-pub trait Input {
-    /// Poll current button state.
-    fn poll_buttons(&mut self) -> ButtonState;
-
-    /// Poll rotary encoder. Returns delta since last poll, or None if no encoder.
-    fn poll_encoder(&mut self) -> Option<i8>;
-
-    /// Poll touch screen. Returns (x, y) if touched, None otherwise.
-    fn poll_touch(&mut self) -> Option<(u16, u16)>;
-}
-
-/// Power management interface.
-///
-/// Battery status, charging state, and backlight control.
-pub trait Power {
-    /// Battery charge level as percentage (0-100).
-    fn battery_percent(&self) -> u8;
-
-    /// Whether device is currently charging.
-    fn is_charging(&self) -> bool;
-
-    /// Set backlight brightness (0 = off, 255 = max).
-    fn set_backlight(&mut self, level: u8);
-}
+// Device UI traits removed (dead code; superseded by ratatui in lichen-tui and
+// not wired to any HAL impl post-CCP-9/15/epic l3j5).
 
 #[cfg(test)]
 mod tests {

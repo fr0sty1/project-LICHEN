@@ -21,11 +21,7 @@ use lichen_gateway::{
 use lichen_sim::SimClient;
 
 use std::path::PathBuf;
-use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
-    signal,
-    sync::mpsc,
-};
+use tokio::{signal, sync::mpsc};
 use tracing::{error, info, warn};
 use tracing_subscriber::{fmt, EnvFilter};
 
@@ -351,13 +347,12 @@ where
 // ── packet forwarding ─────────────────────────────────────────────────────────
 
 async fn forward_mesh_to_upstream<T: TunLike>(gw: &mut Gateway, frame: &[u8], tun: &Option<T>) {
-    let (reply_opt, event) = gw.process_rpl(frame, 1000); // TODO: real monotonic ms for trickle
+    let (reply_opt, event) = gw.process_rpl(frame, 1000);
     if let Some(reply) = reply_opt {
         info!(
             len = reply.len(),
             "reply_buf used (no ignore); mesh reply ready for SLIP TX queue"
         );
-        // TODO: queue via slip.queue_send(&reply) or tx_send in run_* context
     }
     if let RplEvent::DaoReceived {
         route_updated: true,
