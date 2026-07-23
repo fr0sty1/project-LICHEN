@@ -883,10 +883,9 @@ pub fn compress(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
             if let Ok(n) = compress_coap(packet, out, RULE_LINK_LOCAL_COAP) {
                 return Ok(n);
             }
-        } else if is_global(src) && is_global(dst) {
-            if let Ok(n) = compress_coap(packet, out, RULE_GLOBAL_COAP) {
-                return Ok(n);
-            }
+        }
+        if let Ok(n) = compress_coap(packet, out, RULE_GLOBAL_COAP) {
+            return Ok(n);
         }
     } else if nh == 58 && packet.len() >= 40 + 4 {
         // ICMPv6
