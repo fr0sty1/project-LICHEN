@@ -187,48 +187,58 @@ static int confessions_get(struct coap_resource *resource, struct coap_packet *r
 }
 
 static int confessions_post(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len) {
-	uint8_t sender_iid[8] = {0};
+	uint8_t peer_eui64[8] = {0};
 	if (addr_len >= sizeof(struct sockaddr_in6) && addr->sa_family == AF_INET6) {
 		const struct sockaddr_in6 *in6 = (const struct sockaddr_in6 *)addr;
-		memcpy(sender_iid, &in6->sin6_addr.s6_addr[8], 8);
-		lichen_eui64_to_iid(sender_iid, sender_iid);
+		memcpy(peer_eui64, &in6->sin6_addr.s6_addr[8], 8);
+		lichen_eui64_to_iid(peer_eui64, peer_eui64);
 	}
+	const uint8_t *payload;
+	uint16_t payload_len = 0;
 	struct oscore_ctx *ctx = NULL;
-	if (oscore_ctx_get_by_eui64(sender_iid, &ctx) != OSCORE_OK || ctx == NULL) {
-		return COAP_RESPONSE_CODE_UNAUTHORIZED;
-	}
-	uint32_t now_ms = k_uptime_get_32();
-	if (coap_oscore_is_protected(request)) {
-		uint8_t oscore_opt[32];
-		size_t oscore_opt_len = sizeof(oscore_opt);
-		int r = coap_oscore_get_option(request, oscore_opt, &oscore_opt_len);
-		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_BAD_REQUEST;
-		uint16_t ct_len = 0;
-		const uint8_t *ct = coap_packet_get_payload(request, &ct_len);
-		if (!ct || ct_len == 0) return COAP_RESPONSE_CODE_BAD_REQUEST;
+	uint8_t piv[OSCORE_PIV_MAX_LEN];
+	size_t piv_len = sizeof(piv);
+	bool is_protected = coap_oscore_is_protected(request);
+	if (is_protected) {
+		if (oscore_ctx_get_by_eui64(peer_eui64, &ctx) != OSCORE_OK || ctx == NULL) {
+			return coap_oscore_send_unauthorized(resource, request, addr, addr_len);
+		}
 		uint8_t orig_code;
 		uint8_t opts[32];
 		size_t opt_len = sizeof(opts);
 		uint8_t plain[64];
 		size_t plain_len = sizeof(plain);
-		r = oscore_unprotect_request(ctx, oscore_opt, oscore_opt_len, ct, ct_len, &orig_code, opts, &opt_len, plain, &plain_len);
+		int r = coap_oscore_unprotect_request(ctx, request, &orig_code, opts, &opt_len, plain, &plain_len, piv, &piv_len);
 		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_BAD_REQUEST;
-	} else {
-		if (oscore_ctx_get_by_eui64(sender_iid, &ctx) != 0 || ctx == NULL) {
-			return COAP_RESPONSE_CODE_UNAUTHORIZED;
+		if (orig_code != COAP_METHOD_POST) {
+			return COAP_RESPONSE_CODE_NOT_ALLOWED;
 		}
+		payload = plain;
+		payload_len = (uint16_t)plain_len;
+	} else {
+		payload = coap_packet_get_payload(request, &payload_len);
 	}
-	uint8_t iid7 = sender_iid[7];
+	if (!payload || payload_len == 0) return COAP_RESPONSE_CODE_BAD_REQUEST;
+	if (oscore_ctx_get_by_eui64(peer_eui64, &ctx) != OSCORE_OK || ctx == NULL) {
+		return COAP_RESPONSE_CODE_UNAUTHORIZED;
+	}
+	uint32_t now_ms = k_uptime_get_32();
+	uint8_t iid7 = peer_eui64[7];
 	k_mutex_lock(&s_rate_mutex, K_FOREVER);
 	if (s_last_confession[iid7] && (now_ms - s_last_confession[iid7] < CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS)) {
 		k_mutex_unlock(&s_rate_mutex);
-		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_TOO_MANY_REQUESTS, 0, NULL, 0);
+		if (is_protected && ctx != NULL && piv_len > 0) {
+			return deaddrop_oscore_respond(resource, request, addr, addr_len, ctx, piv, piv_len, COAP_RESPONSE_CODE_TOO_MANY_REQUESTS);
+		}
+		return COAP_RESPONSE_CODE_TOO_MANY_REQUESTS;
 	}
 	s_last_confession[iid7] = now_ms;
 	k_mutex_unlock(&s_rate_mutex);
-	return lichen_coap_respond(resource, request, addr, addr_len,
-				   COAP_RESPONSE_CODE_CHANGED, 0, NULL, 0);
+	uint8_t resp_code = COAP_RESPONSE_CODE_CHANGED;
+	if (is_protected && ctx != NULL && piv_len > 0) {
+		return deaddrop_oscore_respond(resource, request, addr, addr_len, ctx, piv, piv_len, resp_code);
+	}
+	return lichen_coap_respond(resource, request, addr, addr_len, resp_code, 0, NULL, 0);
 }
 
 int lichen_coap_dtn_init(void) {
