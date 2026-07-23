@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-x8gt",
   "title": "[merge-conflict] worktree-worker24: Kconfig.defconfig",
+  "notes": "Commit: 861f08651 (synced Kconfig.defconfig in worker24 worktree to resolve merge conflict with LICHEN_HAS_DISPLAY and heap defaults)",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:26.023562323Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:19:05.511658031Z",
+  "updated_at": "2026-07-23T03:21:39.585575976Z",
   "started_at": "2026-07-23T03:19:05.511658031Z",
   "lease_expires_at": "2026-07-23T03:24:05.511658031Z",
   "heartbeat_at": "2026-07-23T03:19:05.511658031Z"
