@@ -19,7 +19,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 1. Abstract
 2. 2a.1. Overview
-3. 2a.2. TDMA Slots and Hash Selection
+3. 2a.2. Channel Agility (TDMA Slots and Hash Selection per draft-lichen-tdma)
 4. CCP-4. Regional Channel Plans
 5. 2a.3. Channel Agility and Adaptive SF
 6. 2a.4. Time Synchronization
