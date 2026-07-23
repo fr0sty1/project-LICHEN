@@ -33,7 +33,7 @@ from lichen.crypto.identity import Identity
 from lichen.gradient import GradientTable
 from lichen.ipv6.packet import IPv6Header, IPv6Packet
 from lichen.radio.sim_client import SimRadio
-from lichen.routing.router import DtnMessage, Router
+from lichen.routing.router import MAX_DTN_TTL_SECONDS, DtnMessage, Router
 from lichen.sim.server import SimulatorServer
 from lichen.sim.simulation import Simulation, TimeMode
 
@@ -340,6 +340,32 @@ class TestDtnBufferManagement:
 
         # PARANOID: Verify rejection
         assert result is False, "must reject expired message"
+        assert len(router.dtn_buffer) == 0, "buffer must remain empty"
+
+    @pytest.mark.asyncio
+    async def test_dtn_buffer_rejects_excessive_ttl(self) -> None:
+        """dtn_buffer_message rejects excessive future TTL.
+        Prevents buffer exhaustion DoS from permanent messages.
+        """
+        router = Router(
+            node_address=IPv6Address("fe80::1"),
+            gradient_table=GradientTable(),
+        )
+
+        packet = make_test_packet(
+            IPv6Address("fd00::1"),
+            IPv6Address("fd00::2"),
+            b"excessive ttl payload",
+        )
+
+        destination_iid = bytes([0xDE, 0xAD] + [0] * 6)
+        now_unix = int(time.time())
+        expiry_unix = now_unix + MAX_DTN_TTL_SECONDS + 86400
+        now_ms = 1000
+
+        result = router.dtn_buffer_message(packet, destination_iid, expiry_unix, now_ms)
+
+        assert result is False, "must reject excessive TTL"
         assert len(router.dtn_buffer) == 0, "buffer must remain empty"
 
     @pytest.mark.asyncio
