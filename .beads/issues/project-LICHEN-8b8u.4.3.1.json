@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-8b8u.4.3.1",
   "title": "Implement missing lichen_pubkey_to_human_address in lichen/subsys/lichen/l2/ipv6_addr.c matching spec and test vectors",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:22:32.481153774Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T06:05:02.29519806Z",
+  "updated_at": "2026-07-23T06:07:59.765646443Z",
   "started_at": "2026-07-23T06:05:02.29519806Z",
-  "lease_expires_at": "2026-07-23T06:10:02.29519806Z",
-  "heartbeat_at": "2026-07-23T06:05:02.29519806Z",
+  "closed_at": "2026-07-23T06:07:59.765646443Z",
+  "close_reason": "Implemented lichen_pubkey_to_human_address matching Rust, Python, and node_address.json test vectors. Verified derivation logic with SHA-256 + Crockford Base32 + dash formatting.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-8b8u.4.3.1",
