@@ -10,7 +10,9 @@ matching local route and propagates further upstream.
 Like the discovery handler this is a deterministic, action-returning class: it
 mutates the route cache / gradient table and returns the RERRs to transmit; the
 caller owns the radio and clock. Precursors must be recorded via
-:meth:`record_flow` as data is forwarded so failures can be attributed.
+:meth:`record_flow` as data is forwarded so failures can be attributed. Call
+:meth:`clear_precursors` after successful transmission of returned
+RerrActions.
 """
 
 from __future__ import annotations
@@ -34,7 +36,12 @@ class RerrAction:
 
 
 class RouteErrorManager:
-    """Tracks route precursors and handles link failures / RERRs for one node."""
+    """Tracks route precursors and handles link failures / RERRs for one node.
+
+    Call :meth:`clear_precursors` after successfully transmitting an RerrAction
+    (or deciding not to retry) to avoid losing precursor data on transmission
+    failure.
+    """
 
     def __init__(self, gradient: GradientTable, cache: RouteCache) -> None:
         self.gradient = gradient
@@ -46,6 +53,10 @@ class RouteErrorManager:
     ) -> None:
         """Note that ``upstream`` forwards traffic to ``destination`` through us."""
         self._precursors.setdefault(to_ipv6(destination), set()).add(to_ipv6(upstream))
+
+    def clear_precursors(self, dest: IPv6Address | str) -> None:
+        """Clear precursor tracking for ``dest`` after successful RERR transmission."""
+        self._precursors.pop(to_ipv6(dest), None)
 
     def on_link_failure(self, next_hop: IPv6Address | str) -> list[RerrAction]:
         """Invalidate routes through a failed ``next_hop`` and build RERRs."""
@@ -95,7 +106,7 @@ class RouteErrorManager:
         invalidated: list[IPv6Address] | None = None,
     ) -> RerrAction:
         if precursors is None:
-            precursors = self._precursors.pop(dest, set())
+            precursors = self._precursors.get(dest, set()).copy()
         return RerrAction(
             rerr=RERR(unreachable=dest, error_code=error_code),
             notify=sorted(precursors, key=str),
