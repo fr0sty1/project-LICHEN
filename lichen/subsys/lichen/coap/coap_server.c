@@ -34,6 +34,7 @@
 #include <lichen/senml.h>
 #include <lichen/oscore.h>
 #include <lichen/coap_oscore.h>
+#include <lichen/l2/ipv6_addr.h>
 #include <lichen/transport/slip_transport.h>
 
 LOG_MODULE_REGISTER(lichen_coap_server, CONFIG_LICHEN_COAP_SERVER_LOG_LEVEL);
@@ -303,14 +304,27 @@ static int msg_inbox_post(struct coap_resource *resource,
 	uint16_t payload_len;
 	uint32_t msg_id = 0;
 	int ret;
+	uint8_t peer_eui64[8] = {0};
+	struct oscore_ctx *ctx = NULL;
+
+	/* Extract peer EUI64/IID from sockaddr for oscore_ctx_get_by_eui64()
+	 * (similar to deaddrop_post/confessions_post). Allows OSCORE mesh peers
+	 * in addition to local_admin for /msg/inbox POST per LCI spec. */
+	if (addr_len >= sizeof(struct sockaddr_in6) && addr->sa_family == AF_INET6) {
+		const struct sockaddr_in6 *in6 = (const struct sockaddr_in6 *)addr;
+		memcpy(peer_eui64, &in6->sin6_addr.s6_addr[8], 8);
+		lichen_eui64_to_iid(peer_eui64, peer_eui64);
+	}
+
+	if (oscore_ctx_get_by_eui64(peer_eui64, &ctx) != OSCORE_OK || ctx == NULL) {
+		if (!lichen_coap_is_local_admin(addr, addr_len)) {
+			return lichen_coap_respond(resource, request, addr, addr_len,
+						   COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
+		}
+	}
 
 	if (s_handlers.msg_post == NULL) {
 		return COAP_RESPONSE_CODE_NOT_FOUND;
-	}
-
-	if (!lichen_coap_is_local_admin(addr, addr_len)) {
-		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
 	}
 
 	payload = coap_packet_get_payload(request, &payload_len);
