@@ -2,15 +2,15 @@
   "id": "project-LICHEN-syn6",
   "title": "[merge-conflict] worktree-worker18: Kconfig.defconfig",
   "notes": "Commit: f8d76c670",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:27:17.748977436Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:13:57.426013553Z",
+  "updated_at": "2026-07-23T02:13:59.919644102Z",
   "started_at": "2026-07-23T02:09:48.159215589Z",
-  "lease_expires_at": "2026-07-23T02:14:48.159215589Z",
-  "heartbeat_at": "2026-07-23T02:09:48.159215589Z"
+  "closed_at": "2026-07-23T02:13:59.919644102Z",
+  "close_reason": "Removed duplicate LICHEN_DUTY_CYCLE config definitions from hal/Kconfig and l2/Kconfig to resolve multiple-location Kconfig merge conflict from parallel worker edits. Kept single definition in top-level lichen/Kconfig. This addresses the Kconfig.defconfig reconciliation pattern from related beads (xo6r, e3k8, xeeg). Verified with git status and diff."
 }
