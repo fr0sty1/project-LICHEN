@@ -3,7 +3,7 @@
   "title": "[cross-impl] C/Zephyr schnorr48 lacks full test vector coverage vs Rust/Python",
   "description": "Reviewed last 20 commits (mostly bd auto + merges of worker fixes to schnorr files in 39c26b888 etc). Python (schnorr48.py:174-196) and Rust (schnorr.rs:289-455) run all JSON vectors incl. invalid low-order, non-canonical, truncated. C (schnorr48.c:155-195 + link_crypto/main.c:345) only does integration/frame tests, no unit test against full test/vectors/schnorr48.json. Risks undetected behavior diffs on edge cases. See existing project-LICHEN-ijsr for validation gaps. --priority 1 --type bug",
   "notes": "THE RIGHT THING:\n- All 3 impls MUST pass identical test vectors in test/vectors/schnorr*.json\n- Python: python/src/lichen/crypto/schnorr48.py (full coverage)\n- Rust: rust/lichen-crypto/src/schnorr.rs (full coverage)  \n- Zephyr C: lichen/subsys/lichen/crypto/schnorr48.c (MISSING some vectors)\n\nFIX:\n1. Add ALL vector cases to Zephyr native test\n2. Run: west build -b native_sim lichen/tests/crypto -- \u0026\u0026 ./build/zephyr/zephyr.exe\n3. Vectors must include invalid low-order point, wrong length, etc.\n4. Byte-exact output for valid signatures",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

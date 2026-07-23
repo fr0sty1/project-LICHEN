@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.59.4.1.3.2",
   "title": "Validate BLE ingress, non-link MeshCore rows on native and 64-bit targets with full logging",
   "description": "Build/test BLE ingress and remaining non-link integration (excluding all .35.6) on native_posix and 64-bit targets. Capture commands, full logs, exit codes, SHA256 of all outputs/artifacts. Use clean EBS worktree only.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "AI Agent",

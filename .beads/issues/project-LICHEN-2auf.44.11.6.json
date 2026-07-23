@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.44.11.6",
   "title": "Add literal integration test for idle DAO route expiry and neighbor pruning",
   "description": "Add test in lichen-node or lichen-rpl that verifies stale neighbors and finite DAO routes expire via periodic maintain() without inbound RPL traffic. Use test vectors for route state. Must pass with RplRuntime.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

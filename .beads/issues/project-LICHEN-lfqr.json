@@ -2,7 +2,7 @@
   "id": "project-LICHEN-lfqr",
   "title": "adapter.py: create_adapter accesses private Node attribute _on_receive",
   "description": "File: python/src/lichen/interface/meshtastic/adapter.py\nLines: 414-424\n\nThe create_adapter function accesses a private attribute:\n\n```python\noriginal_callback = getattr(node, \"_on_receive\", None)\n\ndef on_receive(payload: bytes, sender: object) -\u003e None:\n    if original_callback:\n        original_callback(payload, sender)\n    adapter.on_message_received(payload, iid)\n\nnode.set_on_receive(on_receive)\n```\n\nThis pattern has several issues:\n1. Accesses _on_receive which is private (underscore prefix)\n2. If Node changes its implementation, this breaks silently\n3. The wrapper doesn't preserve the original callback's signature properly\n\nImpact: Fragile coupling to Node implementation details. Changes to Node class could break Meshtastic adapter silently.\n\nFix: Either:\n1. Node should expose a public way to add multiple callbacks (callback chain/list)\n2. Or document that _on_receive is semi-public and part of the adapter contract\n3. Or use a decorator pattern that doesn't rely on private attributes",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

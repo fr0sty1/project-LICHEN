@@ -2,7 +2,7 @@
   "id": "project-LICHEN-b4lw",
   "title": "[codereview-pass1-final] spec/02a-coordinated-capacity.md and ccp15.json: all P0-P2 fixed (pure pseudocode, full SF fn+table+EMA+load_factor, select_channel+now()+draft-lichen-tdma xref, hash_32 consistency, density rationale clarified vs SF10 default). No remaining correctness issues. Vectors updated with 6 new cases. Clean.",
   "description": "Pass 1 after all chunks and fixes. Only P4 formatting notes (consistent markdown tables). All original findings from e70b/8gac/r80h/9qjs/mq7a addressed. codereview-tagged.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "AI Agent",

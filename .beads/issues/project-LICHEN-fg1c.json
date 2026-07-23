@@ -2,7 +2,7 @@
   "id": "project-LICHEN-fg1c",
   "title": "Parse dst and perform lookup_route in mesh_to_mesh",
   "description": "In rust/lichen-gateway/src/gateway.rs:130 update mesh_to_mesh to extract dst using field::DST_OFFSET (lichen-core/src/ipv6.rs:16), call self.rpl_node.router.lookup_route(\u0026dst) (lichen-node/src/routing.rs:857 delegating to lichen-rpl/src/routing.rs:1254 RoutingTable::lookup). Handle None as drop. Reference spec/05-routing.md:147.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

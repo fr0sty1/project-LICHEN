@@ -2,7 +2,7 @@
   "id": "project-LICHEN-el24",
   "title": "Heltec V3 + T-Echo: 2-node mesh interop test",
   "description": "Test Heltec V3 \u003c-\u003e T-Echo interop: announcements, bidirectional messaging, link quality.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hnyw.3.2",
   "title": "Integrate RfHealthMetrics into lichen-meshtastic bridge for RX SNR/RSSI recording and density",
   "description": "Update MeshtasticBridge and related structs to hold RfHealthMetrics, record rx_rssi/rx_snr from incoming MeshPackets into EMA, compute/update load_factor and density from hash or announcements, expose metrics for adaptive SF. Ensure no_std compatible where possible. Match ccp vectors.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

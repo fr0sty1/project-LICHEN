@@ -2,7 +2,7 @@
   "id": "project-LICHEN-fhn6",
   "title": "lichen_meshtastic_adapter_emit_text allows zero-length from_radio_id",
   "description": "File: lichen/subsys/lichen/meshtastic/adapter.c:1675-1680\n\n  from_radio_id = adapter-\u003efrom_radio_id + 1U;\n  packet = (struct lichen_meshtastic_text_packet){\n      .from = event-\u003efrom,\n      .to = event-\u003eto,\n      .id = event-\u003ehas_id ? event-\u003eid : from_radio_id,\n      ...\n  };\n\nIf adapter-\u003efrom_radio_id starts at 0 (initial state), from_radio_id becomes 1, which is fine.\n\nBut the packet.id is set to either event-\u003eid (if provided) or from_radio_id. If event-\u003ehas_id is false and from_radio_id is used, then adapter-\u003efrom_radio_id is incremented (line 1700):\n  adapter-\u003efrom_radio_id = from_radio_id;\n\nBut if event-\u003ehas_id is TRUE, from_radio_id is computed but not used, and adapter-\u003efrom_radio_id is STILL incremented.\n\nThis means from_radio_id counter always increments even when the value isn't used, causing unnecessary ID consumption. Not a functional bug, but wasteful.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "AI Agent",

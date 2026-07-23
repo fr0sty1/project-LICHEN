@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2j8r.2.3.2",
   "title": "coap_dtn.c: fix piv/ctx capture in deaddrop_post success path",
   "description": "Ensure success path (after dtn_buffer_message) correctly captures/uses piv from unprotect_request and calls deaddrop_oscore_respond with proper ctx/piv_len for all protected cases including piv_len==0. Fix any missing protected response cases.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

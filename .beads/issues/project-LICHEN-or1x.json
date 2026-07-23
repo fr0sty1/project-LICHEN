@@ -2,7 +2,7 @@
   "id": "project-LICHEN-or1x",
   "title": "[cross-impl] duty_cycle algorithm removed from Zephyr",
   "description": "Commit fc8b0114a deleted lichen/lib/hal/hal.c containing duty_cycle_* functions with circular buffer + overlap calc for tx window. Rust lora-phy or mesh-gateway retains equivalent logic. Python reference vectors assume specific behavior. Results in divergent transmit scheduling behavior across impls for same regulatory algorithm. No replacement found in lichen/lib.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

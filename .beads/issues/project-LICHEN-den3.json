@@ -2,7 +2,7 @@
   "id": "project-LICHEN-den3",
   "title": "announce: build_announce always increments seq_num before potential serialization failure",
   "description": "File: python/src/lichen/announce/scheduler.py:161-187\n\nThe build_announce() method increments seq_num first, then performs operations that could fail:\n\n```python\ndef build_announce(self) -\u003e AnnounceMessage:\n    seq = self._increment_seq()  # seq_num committed\n\n    msg = AnnounceMessage(...)  # Could raise AnnounceError if identity invalid\n    signature = sign(...)       # Could raise if crypto fails\n    return AnnounceMessage(...)  # Second construction\n```\n\nIf sign() or the AnnounceMessage constructor fails after seq_num was incremented:\n1. Seq_num is 'burned' (skipped)\n2. If persistence callback succeeded before failure, the persisted value is ahead\n3. On retry, new seq_num is used\n\nImpact: Seq_num gaps. While gaps are tolerated by seq_gt(), persistent failures could rapidly exhaust the 16-bit sequence space (65536 values).\n\nConsider: Build and validate message BEFORE incrementing seq_num, then increment only when ready to transmit.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

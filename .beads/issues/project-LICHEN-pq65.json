@@ -2,7 +2,7 @@
   "id": "project-LICHEN-pq65",
   "title": "senml: Record derives Copy but contains references",
   "description": "File: rust/lichen-senml/src/record.rs\nLine: 20\n\nThe Record struct derives Copy:\n```rust\n#[derive(Debug, Clone, Copy, PartialEq)]\npub struct Record\u003c'a\u003e {\n```\n\nWhile this is technically valid because all fields are either Option\u003c\u0026str\u003e or Option\u003cf64\u003e/Option\u003cbool\u003e (all Copy), it has subtle implications:\n\n1. Copy semantics mean users might not realize they're working with shared references\n2. Modifying the copied Record's references still points to the original data\n3. This is confusing API design - a borrowed type that implements Copy\n\nThe struct design is correct for zero-copy parsing, but Copy is unusual for a type containing references. Clone alone would be more idiomatic.\n\nImpact: API confusion; developers might expect Copy to create independent data.\n\nRecommendation: Consider removing Copy derive, keeping only Clone. Document that the struct borrows from input data.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-cxkd",
   "title": "edhoc: Connection ID encoding may not match RFC 9528 for edge cases",
   "description": "File: python/src/lichen/crypto/edhoc.py\nLines: 165-187\n\nThe _encode_connection_id and _decode_connection_id functions handle the RFC 9528 compact integer encoding for one-byte values, but there's an edge case issue:\n\n```python\ndef _encode_connection_id(c_x: bytes) -\u003e bytes:\n    if len(c_x) == 1:\n        val = c_x[0]\n        if val \u003c= 23:\n            return cbor2.dumps(val)\n        if val \u003e= 232:  # -24 in two's complement\n            return cbor2.dumps(val - 256)\n    return cbor2.dumps(c_x)\n```\n\nIssue: Values 24-231 are not compacted and fall through to bstr encoding. This is correct per RFC 9528 (only -24..23 get integer encoding), but the comment '# -24 in two's complement' is misleading.\n\nMore critically, the decode side at lines 180-186 assumes:\n```python\ndef _decode_connection_id(data: bytes | int) -\u003e bytes:\n    if isinstance(data, int):\n        if data \u003e= 0:\n            return bytes([data])\n        return bytes([data + 256])\n    return data\n```\n\nIf data is a negative integer \u003c -24 or \u003e 255, bytes([...]) will raise ValueError. RFC 9528 says connection IDs should be small, but we should validate or handle gracefully.\n\nImpact: Could crash on malformed peer messages with out-of-range connection IDs.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

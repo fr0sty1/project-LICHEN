@@ -3,7 +3,7 @@
   "title": "Missing validation for speed value 0xFFFF - may indicate sensor error",
   "description": "File: python/src/lichen/gateway/compact_cot.py\nLines: 254, 796\n\nSpeed is stored as uint16 (0-65535 cm/s = 0-655.35 m/s). The value 0xFFFF (65535) is commonly used in sensor protocols to indicate 'invalid' or 'unknown' readings.\n\nCurrently:\n- Decoder accepts 65535 and converts to 655.35 m/s (faster than speed of sound)\n- Encoder clamps to UINT16_MAX but doesn't warn about implausible values\n\nImpact:\n- A sensor sending 0xFFFF to mean 'no fix' would appear as supersonic speed\n- Downstream systems may cache or propagate this invalid data\n\nRecommendation: Either:\n1. Document 0xFFFF as 'invalid/unknown' sentinel value and handle it\n2. Add validation rejecting physically implausible speeds (e.g., \u003e 100 m/s for ground units)\n\n```python\n# Option 1: Sentinel value\nSPEED_INVALID = 0xFFFF\n\n# In decoder:\nif speed == SPEED_INVALID:\n    speed_m_s = None  # or raise DecodeError\n\n# Option 2: Validation\nMAX_PLAUSIBLE_SPEED_CM_S = 10000  # 100 m/s\nif speed \u003e MAX_PLAUSIBLE_SPEED_CM_S and speed != SPEED_INVALID:\n    # Log warning or reject\n```",
   "notes": "Added validation + warnings for implausible speeds (0xFFFF sentinel); updated docs/constants/property. Tests pass (with expected warning on max vector). Commit: b4fa86c",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

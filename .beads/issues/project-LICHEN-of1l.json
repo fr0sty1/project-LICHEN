@@ -2,7 +2,7 @@
   "id": "project-LICHEN-of1l",
   "title": "Unbounded _pinned_keys dict enables memory exhaustion",
   "description": "File: python/src/lichen/link/link_layer.py:141, 480\n\nThe _pinned_keys dict grows without bound:\n\n    _pinned_keys: dict[bytes, bytes] = field(default_factory=dict, repr=False)\n    ...\n    self._pinned_keys[sender.iid] = sender.pubkey\n\nEvery new sender IID gets an entry (8-byte IID + 32-byte pubkey = 40 bytes per entry). In a long-running mesh or under attack, an adversary could send frames with many different IIDs to exhaust memory.\n\nWith MIC stub always accepting, this is trivially exploitable.\n\nFix: Add an LRU eviction policy or cap the dict size. Consider using a TTL-based cache.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

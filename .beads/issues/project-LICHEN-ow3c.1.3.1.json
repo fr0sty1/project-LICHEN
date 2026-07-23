@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow3c.1.3.1",
   "title": "Split cleanup_protect_request into common_wipe and nvm_error paths",
   "description": "Refactor the single cleanup_protect_request label (oscore.c:1524) into distinct paths: one for standard errors that just wipe sensitive data, and a specific path for OSCORE_ERR_NVM_FAILED that also manages SSN state (rollback or safe advance under mutex). This distinguishes NVM persistence errors per security requirements. Reference recent hardening in oscore_protect_request.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

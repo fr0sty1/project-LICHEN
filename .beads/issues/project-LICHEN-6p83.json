@@ -2,7 +2,7 @@
   "id": "project-LICHEN-6p83",
   "title": "Potential uint32 wraparound in from_radio_id counter",
   "description": "File: lichen/subsys/lichen/meshtastic/adapter.c:1675, 1499, 1728\n\nMultiple locations increment from_radio_id:\n  from_radio_id = adapter-\u003efrom_radio_id + 1U;\n  ...\n  adapter-\u003efrom_radio_id = from_radio_id;\n\nWhen from_radio_id reaches UINT32_MAX, it wraps to 0. If Meshtastic clients or this implementation use 0 as a special/invalid ID value, this could cause unexpected behavior.\n\nThe Meshtastic protocol documentation should be consulted to determine if ID 0 has special meaning. If so, the increment should skip 0:\n  from_radio_id = (adapter-\u003efrom_radio_id + 1U) ?: 1U;\n\nNote: This is low priority as UINT32_MAX messages would take a very long time to reach.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "AI Agent",

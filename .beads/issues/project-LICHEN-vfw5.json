@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vfw5",
   "title": "DTS e-ink codereview pass 3",
   "description": "Pass 3: All P0/P1 cleared. P4 opinion on spi-max-frequency value (2MHz conservative like lora); no other findings. DTS style fully mimicked, resolution confirmed 152x152, compatible fixed to ultrachip,uc81xx, enable-gpios retained as binding-accepted via MIPI include. Ready to close original bead. Tag: codereview",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "chore",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-o2ql",
   "title": "InMemoryChannel.send_datagram silently drops if no loop",
   "description": "File: python/src/lichen/coap/transport.py:87-89\n\nsend_datagram calls asyncio.get_running_loop() without try/except:\n```python\ndef send_datagram(self, data: bytes, dest: str) -\u003e None:\n    loop = asyncio.get_running_loop()\n    loop.call_soon(self._network._deliver, self._host, dest, data)\n```\n\nIf called outside an event loop (e.g., during setup or cleanup), this raises RuntimeError. Unlike other transport operations that are expected to be async, send_datagram appears sync but requires a running loop.\n\nThis could cause confusing errors during testing or initialization.\n\nFix: Document the requirement clearly, or use asyncio.get_event_loop() with DeprecationWarning handling for broader compatibility.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

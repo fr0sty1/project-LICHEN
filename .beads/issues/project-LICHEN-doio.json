@@ -2,7 +2,7 @@
   "id": "project-LICHEN-doio",
   "title": "TUI clip function has wrong behavior at boundary widths",
   "description": "File: python/src/lichen/tui/native.py\nLines: 356-364\n\nThe clip function has an edge case:\n\n    def clip(value: str, width: int) -\u003e str:\n        if width \u003c= 0:\n            return \"\"\n        if len(value) \u003c= width:\n            return value\n        if width \u003c= 3:\n            return value[:width]  # No ellipsis for very small widths\n        return f\"{value[: width - 3]}...\"\n\nWhen width=4 and value has length 5+:\n- Returns value[:1] + \"...\" = 1 char + 3 dots = 4 chars. Correct.\n\nWhen width=3 and value has length 4+:\n- Returns value[:3] with no ellipsis. This truncates without indication.\n\nWhen width=2 and value has length 3+:\n- Returns value[:2] with no ellipsis.\n\nThe behavior at width\u003c=3 silently truncates without ellipsis, which could mislead users into thinking they're seeing the full value.\n\nImpact: User confusion when terminal is very narrow - text truncated without visual indicator.\n\nFix: Either show \"..\" for width=3, \".\" for width=2, or don't truncate at all for very narrow widths (return \"\" or the full value and let the terminal handle it).",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "AI Agent",

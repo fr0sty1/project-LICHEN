@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-m15g",
   "title": "codereview finding: DAO source model should cross-ref f9x1 explicitly in text",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

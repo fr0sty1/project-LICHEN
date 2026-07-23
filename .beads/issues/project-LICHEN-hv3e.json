@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hv3e",
   "title": "senml: f32 to f64 conversion may lose precision for special values",
   "description": "File: rust/lichen-senml/src/cbor.rs\nLines: 308-313 (dec_f64 f32 case)\n\nThe f32 decoding path converts to f64 via Rust's built-in 'as f64' cast:\n```rust\nOk((f32::from_bits(u32::from_be_bytes(b)) as f64, 5))\n```\n\nThis is generally correct, but has subtle edge cases:\n1. f32 NaN payloads are not preserved (NaN payload bits differ between f32/f64)\n2. f32 signaling NaN may be converted to quiet NaN on some platforms\n\nFor SenML sensor data, NaN values are rare but valid (e.g., sensor failure indication). The loss of NaN payload could affect debugging or diagnostics.\n\nImpact: Very low - NaN payloads are rarely used in practice. This is an edge case for completeness.\n\nNote: This is consistent with how most CBOR libraries handle f32-\u003ef64 conversion.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vnzm",
   "title": "observe method in ResourceTransport protocol missing proper cleanup contract",
   "description": "File: python/src/lichen/client/lci.py, lines 63-64\n\nThe ResourceTransport protocol defines observe() but doesn't specify cleanup requirements:\n\n```python\nclass ResourceTransport(Protocol):\n    async def observe(self, path: str, *, method: str = 'GET') -\u003e ResourceSubscription:\n        '''Open an Observe subscription for a resource.'''\n```\n\nIssue: The protocol doesn't document who is responsible for closing the ResourceSubscription:\n1. If observe() fails partway through setup, is the subscription already closed?\n2. Must the caller always call close() even if iteration raises an exception?\n3. What happens if close() is called while results() is being iterated?\n\nThe implementations (AiocoapResourceSubscription, PacketCoapResourceSubscription) handle these differently:\n- AiocoapResourceSubscription: close() sets a flag, results() checks it\n- PacketCoapResourceSubscription: close() delegates to inner, no special handling\n\nImpact: Callers may not clean up properly, leading to resource leaks. Different implementations have different semantics.\n\nFix: Document the contract explicitly in the protocol docstring, and ideally make ResourceSubscription an async context manager for RAII-style cleanup.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "AI Agent",

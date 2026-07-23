@@ -3,7 +3,7 @@
   "title": "app_identity: eui64_to_iid modifies iid in-place after struct copy",
   "description": "File: lichen/subsys/lichen/app_identity/app_identity.c\n\nIID (Interface Identifier) is computed in three places:\n1. Line 131: eui64_to_iid(s_self.eui64, s_self.iid) - in set_self after struct copy\n2. Line 229: eui64_to_iid(s_peers[slot].peer.eui64, s_peers[slot].peer.iid) - in upsert_peer after struct copy\n\nIn both cases, the input struct's iid field is ignored because:\n1. Struct is copied (including iid from input)\n2. eui64_to_iid overwrites iid based on eui64\n\nThis is correct behavior (IID is always derived, never taken from input), but the struct contains an iid field that:\n- Is always computed, never read from input\n- Takes up 8 bytes in every struct\n- Could confuse callers who set iid expecting it to be used\n\nConsider either:\n1. Adding a comment explaining iid is computed, input ignored\n2. Using __ASSERT to verify input iid matches computed iid (catch caller bugs)\n3. Remove iid from input structs and only have it in stored structs\n\nLow priority since behavior is correct, just could be clearer.",
   "notes": "Commit: 2543c982c",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "cleanup",
   "assignee": "AI Agent",

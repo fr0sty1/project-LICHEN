@@ -2,7 +2,7 @@
   "id": "project-LICHEN-f4xg.2",
   "title": "[oscore] Replace magic numbers with constants per RFC8613 and spec",
   "description": "Audit and update rust/oscore (or lichen-coap/oscore integration) for OSCORE option numbers, ID context, etc. Ensure no hardcoded values; align with spec/07-transport-app.md and test/vectors/oscore.json. Reference project-LICHEN-f4xg and project-LICHEN-s3t5.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

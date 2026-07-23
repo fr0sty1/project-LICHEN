@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vhvj.2.1",
   "title": "Update SimNode to populate hop_schedule from SFN/EUI deterministic hash",
   "description": "Add method or logic in SimNode to compute and set hop_schedule using SFN, EUI64, and independent oracle (e.g. from test vectors or external hash ref). Update __init__ and add helper if needed. Reference parent vhvj for CCP-12. No dead code.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

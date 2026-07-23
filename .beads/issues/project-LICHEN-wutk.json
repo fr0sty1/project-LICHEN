@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-wutk",
+  "title": "Spec compliance review: recent commits 2026-07-23",
+  "description": "Review recent commits (HEAD~12..HEAD, feature work: KISS transport, SLIP transport, CoAP LCI handlers, OSCORE, link crypto, Meshtastic interface) against spec/*.md. Findings filed as children of this epic.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T17:57:56.616786938Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T17:57:56.616786938Z"
+}

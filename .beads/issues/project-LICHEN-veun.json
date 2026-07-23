@@ -2,7 +2,7 @@
   "id": "project-LICHEN-veun",
   "title": "[spec-compliance] incomplete duty cycle enforcement in lichen_l2 after g817 fix",
   "description": "Spec/07-transport-app.md:397 and 09-packets-timing.md:14.4 require: \"Nodes MUST track duty cycle usage and throttle transmissions accordingly.\" CCP-16 (02a-coordinated-capacity.md) and TDMA slot enforcement also depend on it. Commit d7ce48ebe (project-LICHEN-g817:fix) added CONFIG_LICHEN_DUTY_CYCLE Kconfig + updated tx signature and docs but deleted the s_duty_ctx init, can_transmit check, and record_tx calls from lora_l2_tx() and lichen_lora_l2_init() (lines ~696, ~1265 in patch). This leaves enforcement non-functional despite default=y. Recent merges (worker15, worker5 etc.) and other *fix commits touching l2/, link/, rpl/ should be audited for similar MUST violations, wrong constants (sync=0x34, sig=48B, SCHC rules, SenML 112), or RFC2119 deviations. Test vectors in test/vectors/ccp*.json not re-validated post-change. Violates \"MUST produce identical output to test vectors\".",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

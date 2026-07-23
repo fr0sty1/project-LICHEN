@@ -2,7 +2,7 @@
   "id": "project-LICHEN-pfzz",
   "title": "build.rs does not handle missing proto files gracefully",
   "description": "File: rust/lichen-meshtastic/build.rs:6-18\n\nThe build.rs compiles proto files but will produce a cryptic error if any proto file is missing:\n\n```rust\nprost_build::Config::new().out_dir(\"src/\").compile_protos(\n    \u0026[\n        \"proto/meshtastic/mesh.proto\",\n        \"proto/meshtastic/portnums.proto\",\n        // ...\n    ],\n    \u0026[proto_dir],\n)?;\n```\n\nIf a proto file is missing or the proto directory doesn't exist, prost_build returns an error, but the error message may not clearly indicate which file is missing.\n\nAdditionally, line 20:\n```rust\nprintln!(\"cargo:rerun-if-changed={}\", proto_dir);\n```\n\nThis only watches the proto directory, not individual proto files. If a proto file is deleted and the directory mtime doesn't change, the build might use stale generated code.\n\nFIX OPTIONS:\n1. Add explicit file existence checks with clear error messages\n2. List each proto file for cargo:rerun-if-changed:\n   ```rust\n   for proto in \u0026proto_files {\n       println!(\"cargo:rerun-if-changed={}\", proto);\n   }\n   ```",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "AI Agent",

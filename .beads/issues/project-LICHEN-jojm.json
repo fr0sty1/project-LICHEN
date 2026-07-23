@@ -2,7 +2,7 @@
   "id": "project-LICHEN-jojm",
   "title": "[codereview-pass3] Kconfig addition for LICHEN_CCP_TIME_SYNC",
   "description": "New config not yet wired to any code or CMakeLists. Follow-up chunk needed for implementation. No test coverage added.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "AI Agent",

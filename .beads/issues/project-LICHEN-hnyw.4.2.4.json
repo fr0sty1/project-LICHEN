@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hnyw.4.2.4",
   "title": "Add #![forbid(unsafe_code)] to remaining no_std crates (kiss, meshtastic, node, hal check) and audit all unsafe blocks",
   "description": "Scan all no_std public crates in rust/ for missing #![forbid(unsafe_code)] at crate root. Add where missing (lichen-kiss, lichen-meshtastic, lichen-node etc.). Verify only unsafe is in gateway/tun.rs (std). Update Cargo.toml or other files if needed for consistency. Close related beads.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",
