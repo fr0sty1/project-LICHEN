@@ -1517,7 +1517,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	if (options_len > 0) {
 		if (options_len > sizeof(plaintext) - pt_len) {
 			ret = OSCORE_ERR_BUFFER_TOO_SMALL;
-			goto cleanup_protect_request;
+			goto common_wipe;
 		}
 		memcpy(plaintext + pt_len, options, options_len);
 		pt_len += options_len;
@@ -1526,7 +1526,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	if (payload_len > 0) {
 		if (payload_len > sizeof(plaintext) - pt_len - 1) {
 			ret = OSCORE_ERR_BUFFER_TOO_SMALL;
-			goto cleanup_protect_request;
+			goto common_wipe;
 		}
 		plaintext[pt_len++] = 0xFF; /* Payload marker */
 		memcpy(plaintext + pt_len, payload, payload_len);
@@ -1539,7 +1539,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 				       piv, piv_len, aad, sizeof(aad));
 	if (aad_ret < 0) {
 		ret = OSCORE_ERR_BUFFER_TOO_SMALL;
-		goto cleanup_protect_request;
+		goto common_wipe;
 	}
 	size_t aad_len = (size_t)aad_ret;
 
@@ -1547,7 +1547,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	size_t required_ct_len = pt_len + OSCORE_TAG_LEN;
 	if (*ciphertext_len < required_ct_len) {
 		ret = OSCORE_ERR_BUFFER_TOO_SMALL;
-		goto cleanup_protect_request;
+		goto common_wipe;
 	}
 
 	/* Encrypt */
@@ -1556,7 +1556,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 			    plaintext, pt_len,
 			    ciphertext) != 0) {
 		ret = OSCORE_ERR_ENCRYPT_FAILED;
-		goto cleanup_protect_request;
+		goto common_wipe;
 	}
 	*ciphertext_len = required_ct_len;
 
@@ -1573,7 +1573,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	int opt_len = oscore_option_build(&opt, oscore_opt, *oscore_opt_len);
 	if (opt_len < 0) {
 		ret = opt_len;
-		goto cleanup_protect_request;
+		goto common_wipe;
 	}
 	*oscore_opt_len = (size_t)opt_len;
 	ret = oscore_ctx_persist_ssn(ctx);
@@ -1585,11 +1585,33 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	}
 	ret = OSCORE_OK;
 
-cleanup_protect_request:
+common_wipe:
 	crypto_wipe(nonce, sizeof(nonce));
 	crypto_wipe(piv, sizeof(piv));
 	crypto_wipe(plaintext, sizeof(plaintext));
 	crypto_wipe(&seq, sizeof(seq));
+
+	if (ret == OSCORE_OK) {
+		int persist_ret = oscore_ctx_persist_ssn(ctx);
+		if (persist_ret != OSCORE_OK) {
+			ret = persist_ret;
+			goto nvm_failed;
+		}
+	}
+	return ret;
+
+nvm_failed:
+	/* SECURITY: On NVM failure after sender_seq++, rollback under lock to
+	 * prevent nonce reuse on reboot (RFC 8613 7.2). Do not set NVM error
+	 * in buffer/AAD/encrypt/option paths.
+	 */
+	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+	ctx_idx = ctx_get_index(ctx);
+	if (ctx_idx >= 0) {
+		ctx->sender_seq = seq;
+		s_seq_initialized[ctx_idx] = true;
+	}
+	k_mutex_unlock(&s_ctx_mutex);
 	return ret;
 
 nvm_failed:
