@@ -2,11 +2,15 @@
   "id": "project-LICHEN-p29b",
   "title": "Inconsistent boolean handling in _int_or_none implementations",
   "description": "File: python/src/lichen/client/ip_coap.py line 267-270 vs lci.py lines 761-767\n\nTwo different implementations of _int_or_none exist with inconsistent boolean handling:\n\nip_coap.py (does NOT filter booleans):\n```python\ndef _int_or_none(value: Any) -\u003e int | None:\n    if value is None:\n        return None\n    return int(value)  # True becomes 1, False becomes 0\n```\n\nlci.py (filters booleans):\n```python\ndef _int_or_none(value: Any) -\u003e int | None:\n    if isinstance(value, bool) or value is None:\n        return None  # Booleans return None\n    try:\n        return int(value)\n    except (TypeError, ValueError):\n        return None\n```\n\nImpact: In Python, bool is a subclass of int. If a CoAP response contains a boolean where an integer is expected:\n- ip_coap.py will convert True to 1\n- lci.py will return None\n\nThis inconsistency could cause subtle bugs if the same data flows through both code paths.\n\nFix: Standardize on the lci.py behavior (filter booleans) since semantic True/False values shouldn't silently become 1/0.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:17:44.251928Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:17:44.251957Z"
+  "updated_at": "2026-07-23T04:30:32.127045845Z",
+  "started_at": "2026-07-23T04:30:32.127045845Z",
+  "lease_expires_at": "2026-07-23T04:35:32.127045845Z",
+  "heartbeat_at": "2026-07-23T04:30:32.127045845Z"
 }
