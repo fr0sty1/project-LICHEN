@@ -979,7 +979,7 @@
             "hash_32_example": {"type": "integer"},
             "expected_hash": {
               "type": "integer",
-              "description": "Output of hash_32 primitive (FNV-1a with basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:254; see Rust lichen_link_rx.c:packet_hash and Python generate.py for exact match. Matches Rust no_std style)"
+              "description": "Output of hash_32 primitive (FNV-1a with basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:254; see Rust lichen-core::lichen_hash_32 + lichen-link::identity::hash_32, Python tests/test_vectors.py:_hash_32 for exact match. Matches no_std style)"
             },
             "multi_rx_success": {"type": "integer"},
             "gateway_capacity": {"type": "integer"}
@@ -1002,7 +1002,7 @@
             "hash_32_example": {"type": "integer"},
             "expected_hash": {
               "type": "integer",
-              "description": "Output of hash_32 primitive (FNV-1a with basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:254; see Rust lichen_link_rx.c:packet_hash and Python generate.py for exact match. Matches Rust no_std style)"
+              "description": "Output of hash_32 primitive (FNV-1a with basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:254; see Rust lichen-core::lichen_hash_32 + lichen-link::identity::hash_32, Python tests/test_vectors.py:_hash_32 for exact match. Matches no_std style)"
             },
             "multi_rx_success": {"type": "integer"},
             "gateway_capacity": {"type": "integer"}

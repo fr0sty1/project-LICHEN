@@ -1688,10 +1688,10 @@ def ccp_load_balancing_vectors() -> list[dict]:
     return [
         {
             "name": "tdma_slot_assignment_static_hash",
-            "description": "Static slot from EUI-64 hash_32 (crc32_ieee) mod num_slots per TDMA spec (CCP-15.8.3, project-LICHEN-d17f).",
+            "description": "Static slot from EUI-64 hash_32(FNV-1a32) mod num_slots per TDMA spec (CCP-15.8.3, project-LICHEN-eirg).",
             "eui64_hex": "0011223344556677",
             "num_slots": 16,
-            "expected_slot": 7,
+            "expected_slot": 13,
         },
         {
             "name": "guard_time_boundary_sf10",

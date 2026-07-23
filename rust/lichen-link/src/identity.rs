@@ -8,13 +8,9 @@ use sha2::{Digest, Sha256, Sha512};
 
 /// Derive a link-local IID from an Ed25519 public key.
 ///
-/// Updated per project-LICHEN-swvz to use keyed hash_32 (twice for 64 bits)
-/// with key b"LICHEN" instead of plain SHA-256. U/L bit cleared per RFC 4291.
-/// This ensures consistency with coordinated capacity channel/short-addr hashes.
-///
-/// # Panics
-///
-/// This function does not panic.
+/// Uses lichen_hash_32 (FNV-1a32) twice for 64 bits (pubkey, pubkey+0x01).
+/// U/L bit cleared per RFC 4291. Ensures consistency with TDMA/CCP hash_32
+/// (project-LICHEN-eirg).
 pub fn iid_from_pubkey(pubkey: &PublicKey) -> [u8; 8] {
     iid_from_pubkey_bytes(pubkey.as_bytes())
 }
@@ -27,7 +23,7 @@ pub fn hash_32(data: &[u8]) -> u32 {
     h
 }
 
-/// Derive a link-local IID from raw public key bytes using keyed hash_32.
+/// Derive a link-local IID from raw public key bytes using lichen_hash_32 (FNV-1a32).
 fn iid_from_pubkey_bytes(pubkey: &[u8; 32]) -> [u8; 8] {
     let h1 = hash_32(pubkey);
     let mut buf2 = [0u8; 33];
@@ -121,8 +117,8 @@ mod tests {
 
     #[test]
     fn hash_32_fnv1a32() {
-        // Exact match to Python _hash_32 (test/vectors/test_vectors.py) and C lichen_hash_32.
-        // FNV-1a32 (basis 0x811c9dc5, prime 0x01000193). Matches CCP-9/15/16 vectors.
+        // Exact match to Python _hash_32, Rust lichen-core::lichen_hash_32.
+        // FNV-1a32 (basis 0x811c9dc5, prime 0x01000193). Matches all vectors.
         assert_eq!(hash_32(b""), 0x811c9dc5);
         assert_eq!(hash_32(b"test"), 0xafd071e5);
         assert_eq!(hash_32(&[0u8; 32]), 0x0b2ae445);
@@ -132,7 +128,7 @@ mod tests {
     fn iid_u_l_bit_cleared() {
         let pubkey = PublicKey::new([0u8; 32]);
         let iid = iid_from_pubkey(&pubkey);
-        // FNV-1a32(pubkey) + FNV-1a32(pubkey+1), U/L bit cleared per RFC 4291.
+        // Matches updated hash_32.json iid_derivation_zero and FNV primitive.
         let expected = [0x09, 0x2a, 0xe4, 0x45, 0xd8, 0x85, 0x57, 0x0c];
         assert_eq!(iid, expected);
         assert_eq!(iid[0] & 0x02, 0, "U/L bit must be cleared");
