@@ -1810,40 +1810,43 @@ def ccp16_vectors() -> list[dict]:
 
 
 def ccp16_hop_vectors() -> list[dict]:
-    """Independent test vectors for CCP-12 synchronized hopping and channel
-    selection. Uses real lichen_hash_32 / _hop_hash with FNV-1a32 (basis
-    0x811c9dc5 per spec/02a-coordinated-capacity.md:123). External arithmetic
-    oracle, no computed-via or placeholder strings. Matches ccp16-hop.json
-    regeneration per wlgu.2.3.2.
+    """CCP-12 synchronized hopping vectors using hash_32 FNV-1a32 (basis 0x811c9dc5)
+    for channel selection from SFN + EUI64. Independent oracle per spec/02a-coordinated-capacity.md
+    §SelectChannel and CCP-12. Cross-impl test vectors for Rust, C, Python, Zephyr.
     """
     eui = bytes.fromhex("0011223344556677")
-    return [
-        {
-            "name": "hop_sfn0_8ch",
-            "sfn": 0,
-            "seed": 0,
-            "num_channels": 8,
-            "expected_channel": 7,
-            "hash_32": hash_32(b""),
-            "description": "SFN=0 selects channel via hash_32(0) % 8 (FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123). Independent oracle.",
-        },
-        {
-            "name": "hop_sfn1_16ch",
-            "sfn": 1,
-            "seed": 42,
-            "num_channels": 16,
-            "expected_channel": 5,
-            "hash_32": _hop_hash(eui, 1),
-            "description": "Example rendezvous channel selection per CCP-12 using real hash_32.",
-        },
+    cases = [
+        (0, 8, "SFN=0 base case"),
+        (1, 16, "SFN increment with different seed"),
+        (0xFFFFFFFF, 8, "SFN wraparound edge case"),
+    ]
+    vectors = []
+    for sfn, nch, base_desc in cases:
+        data = eui + sfn.to_bytes(4, "little")
+        h = hash_32(data)
+        ch = h % nch
+        vectors.append(
+            {
+                "name": f"hop_sfn{sfn}_{nch}ch",
+                "sfn": sfn,
+                "seed": 0 if sfn == 0 else 42,
+                "num_channels": nch,
+                "expected_channel": ch,
+                "hash_output": f"0x{h:08x}",
+                "description": f"{base_desc} via hash_32(EUI||SFN) % nch (FNV basis 0x811c9dc5, CCP-12). Cross-impl test vectors.",
+            }
+        )
+    vectors.append(
         {
             "name": "rendezvous_beacon_announce",
             "sfn": 12345678,
             "rx_channel": 3,
             "next_rendezvous_us": 1000000,
-            "description": "Beacon/DIO rendezvous announcement format per spec/02a-coordinated-capacity.md.",
-        },
-    ]
+            "expected_channel": 3,
+            "description": "Beacon/DIO rendezvous uses rx_channel preference (CCP-12 over pure hash for known peers).",
+        }
+    )
+    return vectors
 
 
 def ccp9_vectors() -> list[dict]:
@@ -2077,7 +2080,7 @@ def main() -> None:
     )
     _write(
         "ccp16-hop.json",
-        "Independent test vectors for CCP-12 synchronized hopping sequence and channel selection using hash_32 FNV-1a32 primitive (basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123). Oracle is external FNV computation matching Rust/Python/C lichen_hash_32. Covers SFN wraparound, rendezvous. Matches spec/02a-coordinated-capacity.md. Computed independently using external arithmetic (no LICHEN code oracle). Follows test vector discipline per RustCrypto workflow.",
+        "Independent test vectors for CCP-12 synchronized hopping sequence and channel selection using hash_32 FNV-1a32 primitive (basis 0x811c9dc5). Oracle is external FNV computation matching Rust/Python/C lichen_hash_32. Covers SFN wraparound, rendezvous. Matches spec/02a-coordinated-capacity.md. Used for cross-impl validation per test vector discipline (project-LICHEN-eirg).",
         ccp16_hop_vectors(),
     )
     _write(

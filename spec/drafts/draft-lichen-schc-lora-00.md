@@ -179,13 +179,13 @@ Most common case for intra-mesh traffic.
 | CoAP.Code | - | ignore | value-sent |
 | CoAP.MID | - | ignore | value-sent |
 
-**Compressed size:** 4-8 bytes (Rule ID + port residues + packed CoAP fields; token/options/payload as tail)
+**Compressed size:** 4-6 bytes (Rule ID + 4-bit port residues + CoAP fields; see test vectors)
 
 ### 4.3. Rule 1: Global IPv6 + UDP + CoAP
 
 For traffic using ULA or GUA addresses.
 
-**Rule Definition:** (aligned with appendix-schc.md:A.3, 03-adaptation.md:5.5, and rust/lichen-schc/src/rules.rs:GLOBAL_COAP_RULE)
+**Rule Definition:** (aligned with appendix-schc.md:A.3, 03-adaptation.md:5.5, and GLOBAL_COAP_RULE)
 
 | Field | TV | MO | CDA |
 |-------|----|----|-----|
@@ -209,7 +209,11 @@ For traffic using ULA or GUA addresses.
 | CoAP.Code | - | ignore | value-sent |
 | CoAP.MID | - | ignore | value-sent |
 
-**Compressed size:** 12-16 bytes (Rule ID + address/port/CoAP residues)
+**Compressed size:** 12-14 bytes (includes CoAP fields per appendix A.3)
+
+### 4.4. Rule 2: ICMPv6 Echo
+
+For diagnostic and reachability testing (distinct from MQTT-SN Rule 7 per adaptation.md §5.5).
 
 ### 4.4. Rule 2: ICMPv6 Echo
 
