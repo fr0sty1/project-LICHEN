@@ -155,13 +155,9 @@ class DaoManager:
                 f"DAO instance ID {dao.rpl_instance_id} != {self.rpl_instance_id}"
             )
         if self.dodag_id is not None and dao.dodag_id != self.dodag_id:
-<<<<<<< HEAD
             raise DaoError(
                 f"DAO DODAG ID mismatch: {dao.dodag_id} != {self.dodag_id}"
             )
-=======
-            raise DaoError(f"DAO DODAG ID mismatch: {dao.dodag_id} != {self.dodag_id}")
->>>>>>> origin/worktree-worker24
 
         target, parent = self._extract_edge(dao)
         self._parent_map[target] = parent
