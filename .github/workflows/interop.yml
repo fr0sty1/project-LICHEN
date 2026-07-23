@@ -285,6 +285,8 @@ jobs:
         run: |
           echo "Interop job statuses:"
           jq -r 'to_entries[] | "  \(.key): \(.value.result)"' <<<"$RESULTS"
+          echo "Specific failed jobs with status:"
+          jq -r 'to_entries[] | select(.value.result != "success") | "  \(.key): \(.value.result)"' <<<"$RESULTS" || echo "  (no failures or jq parse error)"
           if ! jq -e 'all(.[]; .result == "success")' <<<"$RESULTS" >/dev/null; then
             echo "FAILURE: Not all interop jobs succeeded (see statuses above)."
             exit 1
