@@ -1,16 +1,18 @@
 {
   "id": "project-LICHEN-98r7",
   "title": "[merge-conflict] integration/worker3-20260722: Kconfig",
-  "labels": ["defer-external"],
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:34:01.310119079Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:36:03.494408596Z",
+  "updated_at": "2026-07-23T04:42:00.525502237Z",
   "started_at": "2026-07-22T23:36:03.494408596Z",
-  "lease_expires_at": "2026-07-22T23:41:03.494408596Z",
-  "heartbeat_at": "2026-07-22T23:36:03.494408596Z"
+  "lease_expires_at": "2026-07-23T04:47:00.525502237Z",
+  "heartbeat_at": "2026-07-23T04:42:00.525502237Z",
+  "labels": [
+    "defer-external"
+  ]
 }
