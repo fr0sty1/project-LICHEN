@@ -3,15 +3,15 @@
   "title": "_recv_exact incorrectly detects connection close with partial data",
   "description": "**File:** python/src/lichen/radio/sim_client.py\n**Lines:** 401-406\n\n**Issue:** The _recv_exact method checks for empty chunks to detect connection closure:\n```python\nwhile remaining \u003e 0:\n    chunk = await stream.receive(remaining)\n    if not chunk:\n        raise SimRadioError(\n            f\"Connection closed: expected {n} bytes, got {n - remaining}\"\n        )\n```\n\n**Problem:** The anyio SocketStream.receive() returns an empty bytes object when the connection is closed cleanly. However:\n\n1. If receive() returns b'' mid-message (after some bytes received), the error message says \"expected N bytes, got M\" but M might not be clear to the caller\n2. More critically, if `remaining == 0`, we never enter the loop, so we never check if the connection was closed during a zero-byte read (edge case)\n3. The error message format \"got {n - remaining}\" is confusing - it shows bytes received, but `n - remaining` gives the number received so far, not a clear indication of what happened\n\n**Impact:** When connections close unexpectedly mid-receive, the error message could be clearer. The logic is correct but the UX is suboptimal.\n\n**Suggested fix:**\n```python\nreceived = n - remaining\nraise SimRadioError(\n    f\"Connection closed unexpectedly: received {received}/{n} bytes\"\n)\n```",
   "notes": "Commit: 3632e57",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:23:07.089726Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T03:44:12.215928649Z",
+  "updated_at": "2026-07-23T03:44:13.847183487Z",
   "started_at": "2026-07-23T03:42:36.320590939Z",
-  "lease_expires_at": "2026-07-23T03:47:36.320590939Z",
-  "heartbeat_at": "2026-07-23T03:42:36.320590939Z"
+  "closed_at": "2026-07-23T03:44:13.847183487Z",
+  "close_reason": "Closed"
 }
