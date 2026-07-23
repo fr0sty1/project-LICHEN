@@ -3,15 +3,15 @@
   "title": "Decoder accepts extra trailing bytes without warning",
   "description": "File: python/src/lichen/gateway/compact_cot.py\nLines: 246-247, 296-299\n\nThe decoder checks for minimum length but accepts extra trailing bytes:\n\nPLI decoder (line 246-247):\n```python\nif len(data) \u003c PLI_TOTAL_SIZE:\n    raise DecodeError(f'PLI too short: {len(data)} \u003c {PLI_TOTAL_SIZE}')\n# Accepts len(data) \u003e 17 without warning\n```\n\nChat decoder (line 296-299):\n```python\nif len(data) \u003c total_size:\n    raise DecodeError(f'Chat message truncated: {len(data)} \u003c {total_size}')\n# Accepts len(data) \u003e total_size without warning\n```\n\nImpact:\n1. Corrupted messages with garbage suffix accepted silently\n2. Protocol version mismatches go undetected (new format has extra fields)\n3. Buffer reuse bugs in callers not caught\n\nRecommendation: Either:\n1. Warn on trailing bytes (preferred for debugging):\n```python\nif len(data) \u003e PLI_TOTAL_SIZE:\n    warnings.warn(f'PLI has {len(data) - PLI_TOTAL_SIZE} trailing bytes')\n```\n\n2. Strict reject:\n```python\nif len(data) != PLI_TOTAL_SIZE:\n    raise DecodeError(f'PLI wrong size: {len(data)} != {PLI_TOTAL_SIZE}')\n```",
   "notes": "Commit: e521e4412",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:17:59.67298Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:02:02.635212299Z",
+  "updated_at": "2026-07-23T04:02:04.980514969Z",
   "started_at": "2026-07-23T04:00:28.074356409Z",
-  "lease_expires_at": "2026-07-23T04:05:28.074356409Z",
-  "heartbeat_at": "2026-07-23T04:00:28.074356409Z"
+  "closed_at": "2026-07-23T04:02:04.980514969Z",
+  "close_reason": "Added warnings for trailing bytes in PLI and chat decoders per bead recommendation (preferred debugging approach); lint (ruff) and tests pass; commit e521e4412"
 }
