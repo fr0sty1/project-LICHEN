@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-uxq1",
   "title": "[merge-conflict] worktree-worker20: Kconfig.defconfig",
-  "status": "in_progress",
+  "notes": "Commit: 13a7c2730 - resolved multiple merge conflicts in Python sim, announce messages, tx_queue, meshtastic adapter, and cleaned .beads/events",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:27:19.87077354Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:30:08.193396217Z",
+  "updated_at": "2026-07-23T00:33:07.674398412Z",
   "started_at": "2026-07-23T00:30:08.193396217Z",
-  "lease_expires_at": "2026-07-23T00:35:08.193396217Z",
-  "heartbeat_at": "2026-07-23T00:30:08.193396217Z"
+  "closed_at": "2026-07-23T00:33:07.674398412Z",
+  "close_reason": "Resolved merge conflicts in Python simulation, announce messages, tx_queue, meshtastic adapter C code, and cleaned .beads event files with merge markers. Fixed Kconfig-related integration issues across worktrees. Commit 13a7c2730"
 }

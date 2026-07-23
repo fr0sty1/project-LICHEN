@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-8gvo",
   "title": "[merge-conflict] worktree-worker1: rpl_trickle.h",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:28:23.014404876Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:28:23.014404876Z"
+  "updated_at": "2026-07-23T00:33:13.054547166Z",
+  "started_at": "2026-07-23T00:33:13.054547166Z",
+  "lease_expires_at": "2026-07-23T00:38:13.054547166Z",
+  "heartbeat_at": "2026-07-23T00:33:13.054547166Z"
 }

@@ -24,7 +24,11 @@ pub trait Concentrator {
 /// Top-level border router state.
 #[derive(Debug)]
 pub struct Gateway {
+<<<<<<< HEAD
     rpl_node: RplNode,
+=======
+    pub rpl: RplNode,
+>>>>>>> origin/worktree-worker20
     /// Routes installed in the kernel routing table.
     /// Key: mesh IPv6 address (16 bytes, network order); Value: nexthop EUI-64.
     routes: HashMap<[u8; 16], NodeId>,
@@ -34,8 +38,13 @@ impl Gateway {
     pub fn new(node_id: NodeId) -> Self {
         info!(?node_id, "gateway initialising");
         Self {
+<<<<<<< HEAD
             rpl_node: RplNode::new_root(node_id),
             routes: HashMap::new(),
+=======
+            rpl: RplNode::new_root(node_id),
+            routes: std::collections::HashMap::new(),
+>>>>>>> origin/worktree-worker20
         }
     }
 
@@ -107,6 +116,7 @@ impl Gateway {
         self.routes.insert(addr, node_id);
     }
 
+<<<<<<< HEAD
     pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
         self.routes.contains_key(dst)
             || (dst[0] == 0xfe && dst[1] == 0x80)
@@ -125,6 +135,26 @@ impl Gateway {
             None
         };
         (reply_opt, event)
+=======
+    /// Process RPL control frames from the mesh. Returns (reply_len, event).
+    /// `reply_len > 0` means a control-plane reply (e.g. echo, future DIO) was
+    /// written to the buffer and should be queued for transmission.
+    pub fn handle_frame_rpl(
+        &mut self,
+        l2_payload: &[u8],
+        reply: &mut [u8],
+        now_ms: u32,
+    ) -> (usize, RplEvent) {
+        self.rpl.handle_frame_rpl(l2_payload, reply, now_ms)
+    }
+
+    /// Returns true if the IPv6 destination is local to our mesh (link-local,
+    /// ULA, or in our routing table). Prevents echoing local traffic to TUN.
+    pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
+        self.routes.contains_key(dst)
+            || (dst[0] == 0xfe && dst[1] == 0x80) // fe80:: link-local
+            || dst[0] == 0xfd // fd00:: ULA
+>>>>>>> origin/worktree-worker20
     }
 }
 

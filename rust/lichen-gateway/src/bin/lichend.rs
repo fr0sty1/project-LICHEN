@@ -433,16 +433,20 @@ where
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 // ── packet forwarding ─────────────────────────────────────────────────────────
 
 <<<<<<< HEAD
 =======
 >>>>>>> origin/worktree-worker19
+=======
+>>>>>>> origin/worktree-worker20
 async fn forward_mesh_to_upstream<T: TunLike>(
     gw: &mut Gateway,
     frame: &[u8],
     tun: &Option<T>,
 ) -> Option<Vec<u8>> {
+<<<<<<< HEAD
 <<<<<<< HEAD
     let now_ms = 0; // TODO: real monotonic time (e.g. Instant::now().elapsed().as_millis() as u32)
     let (reply_opt, event) = gw.process_rpl(frame, now_ms);
@@ -479,6 +483,15 @@ async fn forward_mesh_to_upstream<T: TunLike>(gw: &mut Gateway, frame: &[u8], tu
     } else if let Some(ipv6) = gw.mesh_to_upstream(frame) {
 =======
         return Some(reply);
+=======
+    let mut reply_buf = [0u8; 256];
+    let (reply_len, event) = gw.handle_frame_rpl(frame, &mut reply_buf, 0);
+    if let RplEvent::DaoReceived { route_updated: true } = event {
+        info!("DAO event: route updated");
+    }
+    if reply_len > 0 {
+        return Some(reply_buf[..reply_len].to_vec());
+>>>>>>> origin/worktree-worker20
     }
     if let Some(ipv6) = gw.mesh_to_upstream(frame) {
 >>>>>>> origin/worktree-worker19
@@ -491,12 +504,16 @@ async fn forward_mesh_to_upstream<T: TunLike>(gw: &mut Gateway, frame: &[u8], tu
         }
         if let Some(t) = tun {
 <<<<<<< HEAD
+<<<<<<< HEAD
             if let Err(e) = t.send_pkt(&ipv6).await {
                 error!("TUN write: {e}");
             }
 =======
             let _ = t.send_pkt(&ipv6).await;
 >>>>>>> origin/worktree-worker19
+=======
+            let _ = t.send_pkt(&ipv6).await;
+>>>>>>> origin/worktree-worker20
         }
         None
     } else {
@@ -504,7 +521,6 @@ async fn forward_mesh_to_upstream<T: TunLike>(gw: &mut Gateway, frame: &[u8], tu
     }
     None
 }
-
 // ── TunLike trait (abstracts TunDevice vs. no-op placeholder) ─────────────────
 
 trait TunLike {
