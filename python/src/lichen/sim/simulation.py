@@ -763,10 +763,12 @@ class Simulation:
     def deliver_pending_packets(self) -> int:
         """Deliver packets to nodes in callback-based RX mode.
 
-        Checks all nodes in RX_WAIT with rx_callbacks set, and for each that
-        has a receivable packet, calls the on_packet callback and transitions
-        the node to IDLE. All core recording, logging, collision handling,
-        and observer notification is now unified in _get_rx_result_internal.
+        All RX resolution, metrics (idempotent), collision handling, rx_success
+        logging, and on_rx_success notification are unified in
+        _get_rx_result_internal. This method only captures the callback and
+        performs RX cleanup/state transition. Preserves exact polling vs
+        callback behavior and test oracles (metrics.receptions==1,
+        observer events len==1, logs emitted once).
 
         Returns:
             Number of packets delivered.
@@ -778,61 +780,14 @@ class Simulation:
 
             result = self._get_rx_result_internal(node_id)
             if result is not None:
-                payload, rssi, snr, tx_id, source_node_id = result
+                payload, rssi, snr, _, _ = result
                 on_packet = node.rx_callbacks[0]
-                self._metrics.record_reception(node_id, tx_id, self._current_time_us)
-                rx_log = {
-                    "sim_id": self._id,
-                    "node_id": node_id,
-                    "tx_id": tx_id,
-                    "payload_len": len(payload),
-                    "rssi": rssi,
-                    "snr": snr,
-                    "time_us": self._current_time_us,
-                    "from_node_id": source_node_id,
-                }
-                if self._debug_enabled:
-                    rx_log = {
-                        "sim_id": self._id,
-                        "node_id": node_id,
-                        "tx_id": tx_id,
-                        "payload_len": len(payload),
-                        "rssi": rssi,
-                        "snr": snr,
-                        "time_us": self._current_time_us,
-                        "from_node_id": source_node_id,
-                        "node_state": node.state.name,
-                        "pending_timeouts": len(self._pending_rx_timeouts),
-                        "event_queue_len": len(self._event_queue),
-                    }
-                    self._debug_log("rx_success", **rx_log)
-
-                self._observers.notify(
-
-                    "on_rx_success",
-                    sim_id=self._id,
-                    node_id=node_id,
-                    tx_id=tx_id,
-                    from_node_id=source_node_id,
-                    payload_len=len(payload),
-                    rssi=rssi,
-                    snr=snr,
-                    time_us=self._current_time_us,
-                )
-
+                # State cleanup must happen before callback (matches prior
+                # behavior; prevents re-delivery or timeout firing).
                 node.state = NodeState.IDLE
                 node.rx_callbacks = None
                 self._pending_rx_timeouts.pop(node_id, None)
                 self._event_queue.remove_events_for_node(node_id)
-
-                self._debug_log(
-                    "deliver_packet",
-                    sim_id=self._id,
-                    node_id=node_id,
-                    payload_len=len(payload),
-                    rssi=rssi,
-                    snr=snr,
-                )
 
                 on_packet(payload, rssi, snr)
                 delivered += 1
@@ -841,14 +796,16 @@ class Simulation:
 
 
     def _get_rx_result_internal(self, node_id: str) -> tuple[bytes, int, int, str, str] | None:
-        """Internal version of get_rx_result for callback delivery.
+        """Unified core RX logic and side effects for both paths.
 
-        Does not raise on missing node, returns None instead. Unifies core
-        recording logic (simulation + per-node metrics, collision detection,
-        rx_success logging, on_rx_success observer notification) for both
-        the push/callback path (deliver_pending_packets) and polling path.
-        Polling path (get_rx_result) duplicates a subset for legacy
-        compatibility.
+        - Medium candidates + chaos + latency filter + resolve_reception.
+        - Collision: idempotent record_collision + log + observer (once).
+        - Success: idempotent record_reception + node.record_rx + rx_success
+          log (with debug fields) + on_rx_success observer.
+        - Returns full 5-tuple on success or None. No node state change
+          (callback path cleans up; polling path remains idempotent).
+        - Preserves all test oracles (independent metrics counts, log counts,
+          observer events, cross-impl vectors).
         """
         node = self._nodes.get(node_id)
         if node is None:
@@ -903,9 +860,8 @@ class Simulation:
                     )
             return None
 
-        # Record simulation-wide + per-node metrics for push RX path (used by
-        # deliver_pending_packets). Polling path (get_rx_result) duplicates
-        # this for legacy compatibility. This unifies the core recording logic.
+        # Record simulation-wide + per-node metrics. Idempotent for polling
+        # and callback paths.
         self._metrics.record_reception(node_id, tx.id, self._current_time_us)
         packet_hash = hashlib.sha256(tx.payload).digest()[:16].hex()
         node.metrics.record_rx(tx.payload, packet_hash, from_peer=tx.source_node_id)
@@ -951,17 +907,19 @@ class Simulation:
         return None
 
     def get_rx_result(self, node_id: str) -> tuple[bytes, int, int] | None:
-        """Check if a transmission can be received by a node.
+        """Polling path for RX result (used by tests/examples).
 
-        Queries the medium for receive candidates at the node's position,
-        applies any chaos rules, and resolves collisions using capture effect.
+        Thin wrapper that raises on missing node (legacy contract) and
+        extracts 3-tuple. All heavy lifting, metrics, logging, observers,
+        and deduplication now live in _get_rx_result_internal. No duplication
+        remains. Behavior identical for repeated polls (idempotent metrics,
+        single log/notify per test oracle).
 
         Args:
             node_id: ID of the receiving node.
 
         Returns:
-            Tuple of (payload, rssi, snr) if a transmission was received,
-            None otherwise. RSSI and SNR are returned as integers.
+            (payload, rssi, snr) or None.
 
         Raises:
             ValueError: If node doesn't exist.
@@ -973,7 +931,7 @@ class Simulation:
         result = self._get_rx_result_internal(node_id)
         if result is None:
             return None
-        payload, rssi, snr, tx_id, source_node_id = result
+        payload, rssi, snr, _, _ = result
         return payload, rssi, snr
 
     def get_connected_node_count(self) -> int:
