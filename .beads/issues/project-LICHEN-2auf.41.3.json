@@ -1,14 +1,14 @@
 {
   "id": "project-LICHEN-2auf.41.3",
-  "title": "Add GPSR coordinate safety validation",
-  "description": "Ensure invalid or stale GPSR coordinates never route. Implement safety checks and test vectors.",
+  "title": "Implement GPSR coordinate safety validation",
+  "description": "Ensure invalid/stale/null-island/out-of-range coordinates are never used for routing in gpsr_forward() and update_neighbor_coords(). Reject NaN/inf, enforce ranges, add epsilon for (0,0). Update tests in test_coords.py and sim gpsr tests. Never route on bad coords.",
   "status": "open",
   "priority": 1,
-  "issue_type": "bug",
+  "issue_type": "task",
   "owner": "agent@lichen-project.dev",
-  "created_at": "2026-07-23T05:14:18.243298521Z",
+  "created_at": "2026-07-23T05:21:40.966105384Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:14:18.243298521Z",
+  "updated_at": "2026-07-23T05:21:40.966105384Z",
   "labels": [
     "defer-external"
   ],
@@ -17,7 +17,7 @@
       "issue_id": "project-LICHEN-2auf.41.3",
       "depends_on_id": "project-LICHEN-2auf.41",
       "type": "parent-child",
-      "created_at": "2026-07-23T05:14:18.38055779Z",
+      "created_at": "2026-07-23T05:21:41.101546677Z",
       "created_by": "AI Agent",
       "metadata": "{}"
     }
