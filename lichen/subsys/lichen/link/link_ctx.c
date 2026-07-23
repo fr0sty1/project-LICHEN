@@ -295,19 +295,21 @@ int lichen_link_load_key(struct lichen_link_ctx *ctx,
 int lichen_link_generate_key(struct lichen_link_ctx *ctx)
 {
 	uint8_t seed[LICHEN_SEED_LEN];
-	int ret;
+	int ret = -EINVAL;
 
 	if (ctx == NULL) {
-		return -EINVAL;
+		goto wipe;
 	}
 
 #ifdef __ZEPHYR__
 	if (sys_csrand_get(seed, sizeof(seed)) != 0) {
-		return -EIO;
+		ret = -EIO;
+		goto wipe;
 	}
 #elif defined(__linux__) || defined(__APPLE__)
 	if (getentropy(seed, sizeof(seed)) != 0) {
-		return -EIO;
+		ret = -EIO;
+		goto wipe;
 	}
 #else
 	return -EIO;
@@ -315,9 +317,8 @@ int lichen_link_generate_key(struct lichen_link_ctx *ctx)
 
 	ret = lichen_link_load_key(ctx, seed);
 
-	/* Wipe seed from stack */
+wipe:
 	secure_wipe(seed, sizeof(seed));
-
 	return ret;
 }
 

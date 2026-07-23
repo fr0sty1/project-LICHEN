@@ -10,6 +10,7 @@
 if BOARD_T_DECK_ESP32S3_PROCPU
 config HEAP_MEM_POOL_ADD_SIZE_BOARD
 	int
+	default 131072 if LVGL
 	default 65535 if WIFI && BT
 	default 51200 if WIFI
 	default 40960 if BT
@@ -41,4 +42,4 @@ if BOARD_T_DECK_ESP32S3_APPCPU
 config HEAP_MEM_POOL_ADD_SIZE_BOARD
 	default 256
 
-endif # BOARD_T_DECK_ESP32S3_APPCPU
+endif

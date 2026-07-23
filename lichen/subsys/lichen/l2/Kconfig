@@ -278,3 +278,4 @@ config LICHEN_LR_FHSS_CR
 	default 1
 	range 1 2
 	depends on LICHEN_LR_FHSS_ENABLED
+

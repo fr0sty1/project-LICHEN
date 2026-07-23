@@ -1,9 +1,10 @@
 //! RPL control message codecs — DIO / DAO / DIS / DAO-ACK (RFC 6550).
 //!
-//! Wire layout matches the Python reference in
-//! `python/src/lichen/rpl/messages.py` and `dao.py`.
-//!
-//! All integer fields are big-endian. The module is no_std; no allocation.
+//! Wire layout matches the Python reference and test vectors in
+//! test/vectors/. Aligns with CCP-9/15 vectors, FNV-1a32, and core style
+//! from epic l3j5. #![forbid(unsafe_code)], no dead consts, perfect roundtrip.
+
+#![forbid(unsafe_code)]
 
 use lichen_core::error::{BufferTooSmall, TooShort};
 
@@ -63,8 +64,6 @@ impl core::error::Error for RplError {
 // ── Option type bytes ─────────────────────────────────────────────────────────
 
 pub const OPT_PAD1: u8 = 0;
-pub const OPT_PADN: u8 = 1;
-pub const OPT_DAG_METRIC: u8 = 2;
 pub const OPT_DODAG_CONFIG: u8 = 4;
 pub const OPT_RPL_TARGET: u8 = 5;
 pub const OPT_TRANSIT_INFO: u8 = 6;

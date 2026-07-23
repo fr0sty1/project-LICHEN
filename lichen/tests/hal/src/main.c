@@ -1287,6 +1287,31 @@ ZTEST(hal, test_duty_cycle_ccp13)
 	struct lichen_duty_cycle_ctx t; uint32_t m; lichen_duty_cycle_init(&t,10); m=3600*10; zassert_equal(lichen_duty_cycle_remaining_ms(&t,0),m); zassert_equal(lichen_duty_cycle_usage_permille(&t,0),0); lichen_duty_cycle_record_tx(&t,0,200); zassert_equal(lichen_duty_cycle_remaining_ms(&t,1000),m-200); zassert_equal(lichen_duty_cycle_usage_permille(&t,1000),0); lichen_duty_cycle_init(&t,10); lichen_duty_cycle_record_tx(&t,0,200); zassert_equal(lichen_duty_cycle_remaining_ms(&t,3600201),m); lichen_duty_cycle_init(&t,10); lichen_duty_cycle_record_tx(&t,0,36000); zassert_equal(lichen_duty_cycle_next_tx_available_ms(&t,0,100),3600000); zassert_equal(lichen_duty_cycle_next_tx_available_ms(&t,0,36001),(uint64_t)-1); lichen_duty_cycle_init(&t,100); zassert_equal(lichen_duty_cycle_remaining_ms(&t,0),3600*100); zassert_true(lichen_duty_cycle_can_transmit(&t,0,100));
 }
 
+ZTEST(hal, test_duty_cycle_tracker_matches_ccp13_vectors)
+{
+#ifdef CONFIG_LICHEN_DUTY_CYCLE
+	struct lichen_duty_cycle_ctx ctx;
+	lichen_duty_cycle_init(&ctx, 10);
+	zassert_equal(lichen_duty_cycle_remaining_ms(&ctx, 0), 36000U);
+	zassert_equal(lichen_duty_cycle_usage_permille(&ctx, 0), 0U);
+	lichen_duty_cycle_record_tx(&ctx, 0, 200);
+	zassert_equal(lichen_duty_cycle_remaining_ms(&ctx, 1000), 35800U);
+	zassert_equal(lichen_duty_cycle_usage_permille(&ctx, 1000), 0U);
+	zassert_true(lichen_duty_cycle_can_transmit(&ctx, 1000, 100));
+	lichen_duty_cycle_init(&ctx, 10);
+	lichen_duty_cycle_record_tx(&ctx, 0, 200);
+	zassert_equal(lichen_duty_cycle_remaining_ms(&ctx, 3600201), 36000U);
+	lichen_duty_cycle_init(&ctx, 10);
+	lichen_duty_cycle_record_tx(&ctx, 0, 36000);
+	zassert_equal(lichen_duty_cycle_next_tx_available_ms(&ctx, 0, 100), 3600000ULL);
+	zassert_equal(lichen_duty_cycle_next_tx_available_ms(&ctx, 0, 36001), 18446744073709551615ULL);
+	lichen_duty_cycle_init(&ctx, 100);
+	zassert_equal(lichen_duty_cycle_remaining_ms(&ctx, 0), 360000U);
+#else
+	ztest_test_skip();
+#endif
+}
+
 static void hal_after(void *fixture)
 {
 	ARG_UNUSED(fixture);

@@ -1670,6 +1670,84 @@ int lichen_hal_location_time_snapshot_get(
 	return 0;
 }
 
+#ifdef CONFIG_LICHEN_DUTY_CYCLE
+static void lichen_duty_prune(struct lichen_duty_cycle_ctx *ctx, uint64_t now_ms)
+{
+	uint64_t ws = now_ms > 3600000ULL ? now_ms - 3600000ULL : 0;
+	while (ctx->len > 0) {
+		uint64_t e = ctx->ts[0] + ctx->dur[0];
+		if (e <= ws) {
+			for (uint8_t j = 0; j + 1 < ctx->len; ++j) {
+				ctx->ts[j] = ctx->ts[j + 1];
+				ctx->dur[j] = ctx->dur[j + 1];
+			}
+			--ctx->len;
+		} else {
+			break;
+		}
+	}
+}
+static uint32_t lichen_duty_total(const struct lichen_duty_cycle_ctx *ctx, uint64_t now_ms)
+{
+	uint64_t ws = now_ms > 3600000ULL ? now_ms - 3600000ULL : 0;
+	uint32_t t = 0;
+	for (uint8_t i = 0; i < ctx->len; ++i) {
+		if (ctx->ts[i] >= ws) {
+			t += ctx->dur[i];
+		} else {
+			uint64_t e = ctx->ts[i] + ctx->dur[i];
+			if (e > ws) t += (uint32_t)(e - ws);
+		}
+	}
+	return t;
+}
+void lichen_duty_cycle_init(struct lichen_duty_cycle_ctx *ctx, uint16_t permille)
+{
+	ctx->len = 0;
+	ctx->permille = (permille > 0 && permille <= 1000) ? permille : 10U;
+}
+bool lichen_duty_cycle_record_tx(struct lichen_duty_cycle_ctx *ctx, uint64_t now_ms, uint32_t dur_ms)
+{
+	lichen_duty_prune(ctx, now_ms);
+	if (ctx->len >= LICHEN_DUTY_N) return false;
+	ctx->ts[ctx->len] = now_ms;
+	ctx->dur[ctx->len] = dur_ms;
+	++ctx->len;
+	return true;
+}
+uint32_t lichen_duty_cycle_remaining_ms(struct lichen_duty_cycle_ctx *ctx, uint64_t now_ms)
+{
+	lichen_duty_prune(ctx, now_ms);
+	uint32_t m = 3600U * (uint32_t)ctx->permille;
+	uint32_t u = lichen_duty_total(ctx, now_ms);
+	return m > u ? m - u : 0U;
+}
+uint16_t lichen_duty_cycle_usage_permille(struct lichen_duty_cycle_ctx *ctx, uint64_t now_ms)
+{
+	lichen_duty_prune(ctx, now_ms);
+	uint32_t u = lichen_duty_total(ctx, now_ms);
+	return (uint16_t)(((uint64_t)u * 1000ULL) / 3600000ULL);
+}
+bool lichen_duty_cycle_can_transmit(struct lichen_duty_cycle_ctx *ctx, uint64_t now_ms, uint32_t dur_ms)
+{
+	return lichen_duty_cycle_remaining_ms(ctx, now_ms) >= dur_ms;
+}
+uint64_t lichen_duty_cycle_next_tx_available_ms(struct lichen_duty_cycle_ctx *ctx, uint64_t now_ms, uint32_t dur_ms)
+{
+	lichen_duty_prune(ctx, now_ms);
+	uint32_t m = 3600U * (uint32_t)ctx->permille;
+	uint32_t u = lichen_duty_total(ctx, now_ms);
+	if (u + dur_ms <= m) return now_ms;
+	uint32_t need = u + dur_ms - m;
+	uint32_t f = 0;
+	for (uint8_t i = 0; i < ctx->len; ++i) {
+		f += ctx->dur[i];
+		if (f >= need) return ctx->ts[i] + 3600000ULL;
+	}
+	return 18446744073709551615ULL;
+}
+#endif
+
 #ifdef CONFIG_ZTEST
 void lichen_hal_location_test_set_uptime_ms(int64_t uptime_ms)
 {

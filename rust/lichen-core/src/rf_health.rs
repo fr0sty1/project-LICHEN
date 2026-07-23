@@ -17,6 +17,7 @@
 
 /// Fixed-point scale factor (2^16 = 65536).
 const FP_SCALE: i32 = 1 << 16;
+const EMA_ALPHA_SHIFT: i32 = 2;
 
 <<<<<<< HEAD
 /// EMA alpha = 1/4 (>> 2) for accelerated response to interference per CCP-15
@@ -622,7 +623,6 @@ mod tests {
         // EMA (alpha=1/4) should converge toward repeated values
         let mut stats = RssiStats::new();
         stats.update(-80);
-        // Feed many samples of -60
         for _ in 0..100 {
             stats.update(-60);
         }

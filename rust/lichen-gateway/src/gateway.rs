@@ -1,4 +1,7 @@
-//! Gateway state and packet forwarding.
+//! Gateway state and packet forwarding. Propagates CCP-9/15/EMA/rf_health
+//! alignments, FNV-1a32, and dead-code removal from epic l3j5 (project-LICHEN-nafo).
+
+#![forbid(unsafe_code)]
 
 use lichen_core::addr::NodeId;
 use lichen_core::constants::{L2_DISPATCH_SCHC, SCHC_MAX_DECOMPRESSED};

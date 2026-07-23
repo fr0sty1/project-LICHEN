@@ -49,6 +49,11 @@ config LICHEN_DEFAULT_SF
 	  SF7 = highest bitrate/shortest range; SF12 = lowest bitrate/longest range.
 	  Must match regional regulations and link budget.
 
+config LICHEN_DUTY_CYCLE
+	bool "Duty cycle tracker (CCP-13)"
+	default y
+	depends on LICHEN
+
 endif # LICHEN
 
 
