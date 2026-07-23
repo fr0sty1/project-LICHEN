@@ -612,3 +612,21 @@ int lichen_tdma_init(struct lichen_tdma_slot *_Nonnull s)
 	s->next = 0;
 	return 0;
 }
+int lichen_link_set_slot(struct lichen_link_ctx *ctx, struct lichen_tdma_ctx *tdma, uint8_t slot_id, uint8_t n_slots, uint32_t sfn)
+{
+	if (tdma == NULL) return -EINVAL;
+	tdma->slot = slot_id;
+	tdma->n_slots = n_slots ? n_slots : 8;
+	tdma->superframe = sfn;
+	tdma->slot_duration = 250;
+	tdma->synced = true;
+	return 0;
+}
+bool tdma_tx_allowed(const struct lichen_tdma_ctx *tdma, uint32_t now_ms)
+{
+	if (tdma == NULL || !tdma->synced) return true;
+	uint32_t d = tdma->slot_duration;
+	uint32_t slot_start = tdma->superframe * (uint32_t)tdma->n_slots * d + (uint32_t)tdma->slot * d;
+	uint32_t g = 50;
+	return (slot_start - g <= now_ms) && (now_ms <= slot_start + d + g);
+}
