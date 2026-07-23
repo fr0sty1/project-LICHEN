@@ -2,11 +2,13 @@
   "id": "project-LICHEN-58kz",
   "title": "[merge-conflict] worktree-worker20: bridge.rs",
   "notes": "Commit: 94b2b28",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:59:39.144217571Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:05:31.932080717Z"
+  "updated_at": "2026-07-23T00:05:33.703312146Z",
+  "closed_at": "2026-07-23T00:05:33.703312146Z",
+  "close_reason": "Closed"
 }
