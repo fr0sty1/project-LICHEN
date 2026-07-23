@@ -1,21 +1,21 @@
 {
   "format_version": 2,
-  "description": "Independent test vectors for TDMA slot assignment (static hash(EUI64) % N using lichen_hash_32 FNV-1a32 per spec), guard time boundaries (100ms guard before/after slot), and drift compensation (beacon timestamp based linear correction). Computed independently using external arithmetic (no LICHEN code oracle). Vectors must be used by Python, Rust, and Zephyr tests for cross-validation. Follows test vector discipline per RustCrypto workflow. Matches spec/02a-coordinated-capacity.md and 09-packets-timing.md.",
+  "description": "Independent test vectors for TDMA slot assignment using hash_32(eui64 + epoch) % N per spec/02a-coordinated-capacity.md, guard time boundaries, and drift compensation. Matches Python TDMAScheduler, Rust TdmaScheduler::slot_for, ccp16-hop.json. Independent oracle. Cross-validation with Rust/C.",
   "vectors": [
     {
       "name": "slot_static_hash_eui1",
       "eui64_hex": "0000000000000001",
       "n_slots": 8,
-      "expected_slot": 1,
-      "hash_method": "int.from_bytes(eui64, 'big') % n_slots",
+      "expected_slot": 2,
+      "hash_method": "hash_32(eui64 + epoch.to_bytes(4, 'little')) % n_slots",
       "description": "Slot assignment test vector 1"
     },
     {
       "name": "slot_static_hash_eui2",
       "eui64_hex": "aabbccddeeff0011",
       "n_slots": 16,
-      "expected_slot": 1,
-      "hash_method": "int.from_bytes(eui64, 'big') % n_slots",
+      "expected_slot": 13,
+      "hash_method": "hash_32(eui64 + epoch.to_bytes(4, 'little')) % n_slots",
       "description": "Slot assignment test vector 2"
     },
     {

@@ -39,11 +39,7 @@ class SimNode:
     """State for a single simulated node in the LICHEN mesh.
 
     Tracks position, radio state, connection status, and synchronized
-<<<<<<< HEAD
     hopping state (synchronized_hop_channel via hop_schedule+SFN for CCP-12,
-=======
-    hopping state (get_hop_channel via hop_schedule+SFN for CCP-12,
->>>>>>> df5c7ae74079fac89e80ed25859acca760128d34
     current_channel for CCP-9/legacy; rx_channel from Announce per
     simulation.py:713). Position mutable for mobility.
     """

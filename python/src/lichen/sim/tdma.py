@@ -38,8 +38,9 @@ class TDMAScheduler:
         self.guard_ms = 50
         self.clock = SuperframeClock()
         self.eui64 = bytes(8)
-    def hash_slot(self, eui64: bytes, n_slots: int = 8) -> int:
-        return int.from_bytes(eui64, "big") % n_slots
+    def hash_slot(self, eui64: bytes, n_slots: int = 8, epoch: int = 0) -> int:
+        data = eui64 + epoch.to_bytes(4, "little")
+        return hash_32(data) % n_slots
     def sync_from_beacon(self, rx_time_us: int, sfn: int, assigned: int = -1) -> None:
         self.clock.sfn = sfn
         self.clock.last_sync_us = rx_time_us
@@ -65,8 +66,12 @@ class TDMAScheduler:
     def validate_vector(self, vector: dict) -> bool:
         if "eui64_hex" in vector:
             eui = bytes.fromhex(vector["eui64_hex"])
-            computed = self.hash_slot(eui, vector.get("n_slots", 8))
+            computed = self.hash_slot(eui, vector.get("n_slots", 8), vector.get("epoch", 0))
             return computed == vector.get("expected_slot", 0)
+        if "sfn" in vector or "expected_channel" in vector:
+            sfn = vector.get("sfn", 0)
+            computed = synchronized_hop_channel(sfn, vector.get("seed", 0), vector.get("num_channels", 8))
+            return computed == vector.get("expected_channel", 0)
         if "slot_start_ms" in vector:
             t = vector["current_ms"] * 1000
             start = vector["slot_start_ms"] * 1000
