@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-dzem",
   "title": "[merge-conflict] worktree-worker24: CMakeLists.txt",
-  "status": "in_progress",
+  "notes": "Commit: b88b88962",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:14:11.487060286Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:15:59.616240643Z",
+  "updated_at": "2026-07-23T03:17:55.691647431Z",
   "started_at": "2026-07-23T03:15:59.616240643Z",
-  "lease_expires_at": "2026-07-23T03:20:59.616240643Z",
-  "heartbeat_at": "2026-07-23T03:15:59.616240643Z"
+  "closed_at": "2026-07-23T03:17:55.691647431Z",
+  "close_reason": "Resolved merge conflict in lichen/drivers/input/CMakeLists.txt by standardizing on zephyr_library_named(lichen_input) with SPDX header across affected worktrees (worker2, worker4, worker22). Verified no remaining conflict markers."
 }
