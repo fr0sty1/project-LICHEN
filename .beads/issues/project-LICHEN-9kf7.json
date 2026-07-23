@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-9kf7",
+  "title": "[cross-impl] EDHOC sig len: Schnorr48(48B) in C vs Ed25519(64B) in Rust/Python",
+  "description": "Zephyr oscore/edhoc uses Schnorr48 (EDHOC_SIG_LEN=48, schnorr48_sign in edhoc_sign) while Rust lichen-oscore/edhoc.rs and Python edhoc.py use full 64B Ed25519. Breaks msg2/msg3 parsing, TH computation, MAC verification, OSCORE export. edhoc.json vectors only match Ed25519 path. See explore analysis. Affects interop. Last commits (8f3440cc8, ab7d8ca0e, 40f1a5205 etc) to oscore.c/edhoc.rs did not align this.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T15:20:13.959886284Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T15:20:13.959886284Z"
+}
