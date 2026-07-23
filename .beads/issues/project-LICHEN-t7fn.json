@@ -2,15 +2,15 @@
   "id": "project-LICHEN-t7fn",
   "title": "[merge-conflict] worktree-worker21: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: ecfd0635d",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:41:04.539975529Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:33:59.608348374Z",
+  "updated_at": "2026-07-23T03:34:02.72578128Z",
   "started_at": "2026-07-23T03:31:06.622873644Z",
-  "lease_expires_at": "2026-07-23T03:36:06.622873644Z",
-  "heartbeat_at": "2026-07-23T03:31:06.622873644Z"
+  "closed_at": "2026-07-23T03:34:02.72578128Z",
+  "close_reason": "Cleaned merge conflict comments and bead references from heltec_wifi_lora32_v3_esp32s3_procpu.conf in worker21 and synced to main; removed specific internal refs like bd r002, project-LICHEN-*, w9wn per no-dead-code and code-style rules"
 }
