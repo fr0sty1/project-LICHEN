@@ -9,18 +9,10 @@
  * CCP-17 capacity validation for CBOR encoders (BUILD_ASSERT + runtime checks).
  */
 
-<<<<<<< HEAD
 #include <errno.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-=======
-#include <stdio.h>
-#include <string.h>
-#include <errno.h>
-#include <stdint.h>
-
->>>>>>> origin/worktree-worker23
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/net/coap.h>
