@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow3c.1.3.4.2.2.2.1",
   "title": "Add nvm_failed: label with SSN management and security comment in oscore_protect_request",
   "description": "Implement nvm_failed label after the common cleanup_protect_request. Under mutex, handle sender_seq (rollback by decrement or safe advance), set ret = OSCORE_ERR_NVM_FAILED, then proceed to wipe. Add detailed comment on preventing nonce reuse per RFC 8613 §7.2.1. Reference oscore.c:1524 and project-LICHEN-ow3c.1.3.4.2.2.2.",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
