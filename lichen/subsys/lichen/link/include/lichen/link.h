@@ -336,6 +336,7 @@ int lichen_tdma_init(struct lichen_tdma_slot *_Nonnull s);
 int lichen_link_set_slot(struct lichen_link_ctx *ctx, struct lichen_tdma_ctx *tdma, uint8_t slot_id, uint8_t n_slots, uint32_t sfn);
 bool tdma_tx_allowed(const struct lichen_tdma_ctx *tdma, uint32_t now_ms);
 uint32_t lichen_hash_32(const uint8_t *data, size_t len);
+uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots);
 
 #ifdef __cplusplus
 }

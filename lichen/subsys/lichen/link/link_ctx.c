@@ -621,3 +621,17 @@ uint32_t lichen_hash_32(const uint8_t *data, size_t len)
 	}
 	return hash;
 }
+
+uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots)
+{
+	if (num_slots == 0) num_slots = 8;
+	uint8_t buf[8];
+	memcpy(buf, eui64, 8);
+	uint32_t e = epoch;
+	for (size_t i = 0; i < 8; i++) {
+		buf[i] ^= (uint8_t)e;
+		e >>= 8;
+	}
+	uint32_t h = lichen_hash_32(buf, 8);
+	return (uint8_t)(h % num_slots);
+}
