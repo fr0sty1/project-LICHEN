@@ -302,25 +302,24 @@ impl NeighborTable {
         }
     }
 
-    /// Remove stale entries older than `max_age_ms`.
-    ///
-    /// Both values use the same monotonic `u64` millisecond timeline as [`Self::update`].
     pub fn prune(&mut self, now_ms: u64, max_age_ms: u64) {
-        self.prune_with_removed(now_ms, max_age_ms, |_| {});
+        self.prune_with_removed(now_ms, max_age_ms, 0, |_| {});
     }
 
     fn prune_with_removed(
         &mut self,
         now_ms: u64,
         max_age_ms: u64,
+        heard_consistent: u32,
         mut removed: impl FnMut([u8; 16]),
     ) {
         let now_ms = now_ms.max(self.last_now_ms);
         self.last_now_ms = now_ms;
         for slot in self.entries.iter_mut() {
-            let is_stale = slot
-                .as_ref()
-                .is_some_and(|neighbor| now_ms.saturating_sub(neighbor.last_seen_ms) > max_age_ms);
+            let is_stale = slot.as_ref().map_or(false, |neighbor| {
+                let age = now_ms.saturating_sub(neighbor.last_seen_ms);
+                age > max_age_ms && heard_consistent < 2
+            });
             if is_stale {
                 let neighbor = slot.take().expect("stale slot contains a neighbor");
                 removed(neighbor.addr);
@@ -328,13 +327,23 @@ impl NeighborTable {
         }
     }
 
-    /// Iterate over valid neighbors.
     pub fn iter(&self) -> impl Iterator<Item = &Neighbor> {
         self.entries.iter().flatten()
     }
 
     pub fn count(&self) -> usize {
         self.entries.iter().filter(|e| e.is_some()).count()
+    }
+
+    pub fn is_likely_alive(&self, addr: &[u8; 16], now_ms: u64, max_age_ms: u64, heard_consistent: u32) -> bool {
+        self.entries
+            .iter()
+            .flatten()
+            .find(|n| n.addr == *addr)
+            .map_or(false, |n| {
+                let age = now_ms.saturating_sub(n.last_seen_ms);
+                age <= max_age_ms || heard_consistent >= 2
+            })
     }
 }
 
@@ -987,7 +996,6 @@ impl Router {
         self.prune_neighbors_at(now_ms, max_age_ms).1
     }
 
-    /// Expire finite DAO routes and prune stale neighbors using one clock observation.
     pub fn maintain(&mut self, now_ms: u64, neighbor_timeout_ms: u64) -> RplMaintenanceOutcome {
         let now_ms = self.observe_now(now_ms);
         let routes_expired = self.dao_manager.expire_routes(now_ms / 1_000);
@@ -1004,10 +1012,11 @@ impl Router {
         let was_joined = self.dodag.is_joined();
         let old_parent = self.dodag.preferred_parent;
         let old_rank = self.dodag.rank;
+        let heard_consistent = self.trickle.counter;
         let mut removed = [[0u8; 16]; MAX_NEIGHBORS];
         let mut removed_len = 0;
         self.neighbors
-            .prune_with_removed(now_ms, max_age_ms, |addr| {
+            .prune_with_removed(now_ms, max_age_ms, heard_consistent, |addr| {
                 removed[removed_len] = addr;
                 removed_len += 1;
             });
