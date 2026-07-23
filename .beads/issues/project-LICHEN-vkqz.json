@@ -2,15 +2,15 @@
   "id": "project-LICHEN-vkqz",
   "title": "[merge-conflict] worktree-worker19: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: 2da8378",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:34:53.938377305Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:40:58.821175951Z",
+  "updated_at": "2026-07-23T00:41:03.302620322Z",
   "started_at": "2026-07-23T00:38:54.820690329Z",
-  "lease_expires_at": "2026-07-23T00:43:54.820690329Z",
-  "heartbeat_at": "2026-07-23T00:38:54.820690329Z"
+  "closed_at": "2026-07-23T00:41:03.302620322Z",
+  "close_reason": "Cleaned stale multi-way merge conflict comment and removed duplicate Kconfig entries (RPL_ROOT, gateway prefix/SSID/PSK/WIFI) in lichen/apps/gateway/boards/heltec_wifi_lora32_v3_esp32s3_procpu.conf. Updated to consolidated tuning comment referencing worker24 and xn60 SenML fix. Verified via git status/diff. Commit 2da8378"
 }
