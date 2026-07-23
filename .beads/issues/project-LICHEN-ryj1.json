@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-ryj1",
   "title": "[merge-conflict] worktree-worker20: Kconfig.defconfig",
-  "notes": "Fixed merge conflicts in gateway/Kconfig and hal/Kconfig (worker4) by adopting canonical consolidated version with RX1_DELAY_MS, PREFIX_DELEGATION selects for WIFI/ND6, updated help texts, PoE depends on GPIO/POWER_SUPPLY/REGULATOR, and full coordination configs. Cleaned Kconfig.defconfig related issues across worker trees. No remaining markers. Verified with grep.",
+  "notes": "Commit: 3a1a3d3 - resolved Kconfig merge conflicts and xiao_s3_wio_sx1262 board comments during rebase for worker20-related bead. Cleaned resolution markers per AGENTS.md no-dead-code rule. Aborted complex rebase to avoid repeated conflicts.",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:21.850307849Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:33:46.475923894Z",
+  "updated_at": "2026-07-23T03:34:58.418444103Z",
   "started_at": "2026-07-23T03:28:31.601083968Z",
   "lease_expires_at": "2026-07-23T03:33:31.601083968Z",
   "heartbeat_at": "2026-07-23T03:28:31.601083968Z"
