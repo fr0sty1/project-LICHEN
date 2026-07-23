@@ -19,6 +19,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from hashlib import sha256, sha512
+from ipaddress import IPv6Address
 
 from nacl.bindings import crypto_scalarmult_base
 
@@ -70,7 +71,7 @@ class Identity:
 
         privkey, pubkey = derive_keypair(seed)
         iid = _pubkey_to_iid(pubkey)
-        ygg_addr = yggdrasil_addr_from_pubkey(pubkey)
+        ygg_addr = yggdrasil_address(pubkey).packed
 
         return cls(seed=seed, privkey=privkey, pubkey=pubkey, iid=iid, ygg_addr=ygg_addr)
 
