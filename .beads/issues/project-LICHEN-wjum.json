@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-wjum",
+  "title": "[spec-compliance] duplicate TrickleSafeLivenessPolicy trait in routing.rs after recent fixes",
+  "description": "The last 20 commits (esp. 197af20f4 and related worker fixes to rust/lichen-node/src/routing.rs) left duplicate trait definitions for TrickleSafeLivenessPolicy (one under cfg(feature=\"std\"), another at L175). This violates clean code/spec implementation. Also verify liveness policy against draft-lichen-rpl-lora-00.md:689 link timeout=10s (DEFAULT_NEIGHBORS_TIMEOUT_MS matches) and RFC6206 Trickle suppression rules. Reviewed git log --oneline -20, routing changes, spec/05-routing.md, spec/drafts/draft-lichen-rpl-lora-00.md. No other MUST violations found in constants (MAX_NEIGHBORS=16, MOP=1, MRHOF_OCP=1).",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T13:56:15.873591227Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T13:56:15.873591227Z"
+}
