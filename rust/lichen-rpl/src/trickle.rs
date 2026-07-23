@@ -132,7 +132,7 @@ impl TrickleTimer {
 
     /// Mark the transmit point reached; returns `true` if a DIO should be sent.
     pub fn fire_transmit(&mut self) -> bool {
-        self.try_fire_transmit().unwrap_or(false)
+        self.try_fire_transmit().expect("fire_transmit only valid in WaitingTransmit state")
     }
 
     pub fn try_fire_transmit(&mut self) -> Result<bool, InvalidTrickleTransition> {
