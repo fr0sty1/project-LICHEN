@@ -2,15 +2,15 @@
   "id": "project-LICHEN-zcog",
   "title": "[merge-conflict] worktree-worker23: xiao_s3_wio_sx1262.overlay",
   "notes": "Commit: 2b3daded5",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:34:54.934730758Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:48:32.298275039Z",
+  "updated_at": "2026-07-23T01:48:36.90312421Z",
   "started_at": "2026-07-23T01:46:41.385327825Z",
-  "lease_expires_at": "2026-07-23T01:51:41.385327825Z",
-  "heartbeat_at": "2026-07-23T01:46:41.385327825Z"
+  "closed_at": "2026-07-23T01:48:36.90312421Z",
+  "close_reason": "Standardized RETIRED/BLOCKED comment + resolved note in firmware/bridge-zephyr/boards/xiao_s3_wio_sx1262.overlay (worktree-worker23) matching main/canon from project-LICHEN-2u26/w8rd/matrix; consolidated parallel edits. Also staged related heltec conf change. Commit 2b3daded5 pushed to worktree-worker23 branch. Verified with git status clean post-commit."
 }
