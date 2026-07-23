@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-3fih.4.2",
+  "title": "Ensure lichen_coap_format_ipv6 prevents stack overflow and updates ipv6_buf sizes per Kconfig",
+  "description": "Review lichen_coap_format_ipv6 for stack safety (in6_addr, net_addr_ntop), ensure all callers use sufficient buf_size \u003e LICHEN_CONFIG_ADDR_MAX_LEN if needed, update buffers in coap_status.c if required. Prevent any partial string writes.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:22:05.624312355Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:22:05.624312355Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-3fih.4.2",
+      "depends_on_id": "project-LICHEN-3fih.4",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:22:05.764561876Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
