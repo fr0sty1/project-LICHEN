@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-9gqx",
   "title": "[merge-conflict] worktree-worker21: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
-  "notes": "Commit: f387384",
+  "notes": "Commit: d2e9fb3",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:50:58.547009466Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:12:06.997415973Z",
+  "updated_at": "2026-07-23T04:14:24.907589473Z",
   "started_at": "2026-07-23T03:44:12.070476013Z",
   "closed_at": "2026-07-23T03:48:15.205436443Z",
   "close_reason": "Updated heltec_wifi_lora32_v3_esp32s3_procpu.conf in worker21 with canonical SPDX header, consolidated comments, and stack tuning from main tree. Resolved merge artifacts in gateway and bridge configs. Committed as f387384.",
