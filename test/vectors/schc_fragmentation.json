@@ -1,5 +1,5 @@
 {
-  "format_version": 1,
+  "format_version": 2,
   "description": "LICHEN Rule Set Version 2 SCHC ACK-on-Error fragmentation vectors. Expected bytes were independently derived from RFC 8724 and verified with CRC-32/ISO-HDLC and SHA-256 implementations outside the LICHEN SCHC code.",
   "vectors": [
     {
