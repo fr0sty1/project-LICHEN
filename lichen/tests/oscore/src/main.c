@@ -324,7 +324,6 @@ ZTEST(oscore_ctx, test_persist_ssn_noop_without_callback)
 {
 	struct oscore_ctx *ctx = NULL;
 
-	/* Ensure no callbacks registered */
 	oscore_nvm_register_callbacks(NULL, NULL);
 
 	zassert_equal(oscore_ctx_create(master_secret, NULL, 0,
@@ -334,10 +333,37 @@ ZTEST(oscore_ctx, test_persist_ssn_noop_without_callback)
 		      OSCORE_OK);
 	zassert_not_null(ctx);
 
-	/* Should succeed as no-op */
 	zassert_equal(oscore_ctx_persist_ssn(ctx), OSCORE_OK);
 
 	oscore_ctx_free(ctx);
+}
+
+ZTEST(oscore_ctx, test_nvm_protect_request_nvm_failure)
+{
+	struct oscore_ctx *ctx = NULL;
+	uint8_t ciphertext[64];
+	size_t ct_len = sizeof(ciphertext);
+	uint8_t oscore_opt[32];
+	size_t opt_len = sizeof(oscore_opt);
+	uint32_t ssn;
+	oscore_nvm_register_callbacks(mock_nvm_write, mock_nvm_read);
+	zassert_equal(oscore_ctx_create_with_eui64(master_secret, NULL, 0, sender_id, sizeof(sender_id), recipient_id, sizeof(recipient_id), peer_eui64_1, &ctx), OSCORE_OK);
+	zassert_not_null(ctx);
+	zassert_equal(oscore_ctx_set_sender_seq(ctx, 100), OSCORE_OK);
+	zassert_equal(oscore_ctx_get_sender_seq(ctx, &ssn), OSCORE_OK);
+	zassert_equal(ssn, 100U);
+	mock_nvm_set_write_fail(true);
+	zassert_equal(oscore_protect_request(ctx, 0x01, NULL, 0, NULL, 0, ciphertext, &ct_len, oscore_opt, &opt_len), OSCORE_ERR_NVM_FAILED);
+	zassert_equal(mock_nvm_write_count, 1);
+	zassert_equal(oscore_ctx_get_sender_seq(ctx, &ssn), OSCORE_OK);
+	zassert_equal(ssn, 100U);
+	mock_nvm_set_write_fail(false);
+	ct_len = sizeof(ciphertext); opt_len = sizeof(oscore_opt);
+	zassert_equal(oscore_protect_request(ctx, 0x01, NULL, 0, NULL, 0, ciphertext, &ct_len, oscore_opt, &opt_len), OSCORE_OK);
+	zassert_equal(oscore_ctx_get_sender_seq(ctx, &ssn), OSCORE_OK);
+	zassert_equal(ssn, 101U);
+	oscore_ctx_free(ctx);
+	oscore_nvm_register_callbacks(NULL, NULL);
 }
 
 ZTEST_SUITE(oscore_ctx, NULL, oscore_ctx_setup, oscore_ctx_before, NULL, NULL);
