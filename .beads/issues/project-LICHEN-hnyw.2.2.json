@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-hnyw.2.2",
   "title": "Update lichen-rpl and lichen-schc tests to fully cover CCP-9 vectors, rx_channel non-zero cases, and generate.py oracle matching",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:29:16.808324924Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T15:58:57.311306497Z",
+  "updated_at": "2026-07-23T16:04:07.557989896Z",
   "started_at": "2026-07-23T06:25:07.302734453Z",
-  "lease_expires_at": "2026-07-23T16:03:57.311306497Z",
-  "heartbeat_at": "2026-07-23T15:58:57.311306497Z",
+  "closed_at": "2026-07-23T16:04:07.557989896Z",
+  "close_reason": "Updated tests for CCP-9 vectors and rx_channel non-zero cases in announce.rs and removed duplicate hash fn; tests now match generate.py oracle; committed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-hnyw.2.2",
