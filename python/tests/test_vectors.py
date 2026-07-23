@@ -104,7 +104,7 @@ def _schc_cases():
 
 def _fragmentation_cases():
     doc = _load("schc_fragmentation.json")
-    assert doc["format_version"] in (1, 2)
+    assert doc["format_version"] == 2
     return [(v["name"], v) for v in doc["vectors"]]
 
 
@@ -475,8 +475,8 @@ def _ccp16_cases():
 
 @pytest.mark.parametrize("desc,vector", _ccp16_cases())
 def test_ccp16_sf_ema_load_factor_hash32_logic(desc: str, vector: dict) -> None:
-    i = vector
-    o = vector
+    i = vector.get("input") or vector
+    o = vector.get("output") or vector
     eui_hex = i.get("eui64") or i.get("eui64_hex", "")
     if isinstance(eui_hex, (int, float)):
         eui = int(eui_hex).to_bytes(8, "big")
@@ -495,13 +495,13 @@ def test_ccp16_sf_ema_load_factor_hash32_logic(desc: str, vector: dict) -> None:
         sf = 12
     elif i["density"] > 8 or snr_ema < 0 or load_factor > 0.8:
         sf = 11
-    elif density < 5 and snr_ema > 8.0:
+    elif i["density"] < 5 and snr_ema > 8.0:
         sf = 9
     else:
         sf = 10
     assert sf == o.get("sf", 10)
     n = i.get("n_channels", 3)
-    ch = 0 if density > 8 else (1 + (h % n))
+    ch = 0 if i["density"] > 8 else (1 + (h % n))
     assert ch == o.get("select_channel", o.get("expected_channel", o.get("channel", ch)))
     assert ch == o.get("channel", ch)
     now = i.get("now", 0)
