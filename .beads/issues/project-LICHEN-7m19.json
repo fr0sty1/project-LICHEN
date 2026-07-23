@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-7m19",
   "title": "Port non-blocking reader thread, locks, and rxOneShot from LICHEN SX1262.cs into extracted standalone version",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T04:06:23.247935386Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:06:23.247935386Z",
+  "updated_at": "2026-07-23T04:06:25.019557962Z",
+  "started_at": "2026-07-23T04:06:25.019557962Z",
+  "lease_expires_at": "2026-07-23T04:11:25.019557962Z",
+  "heartbeat_at": "2026-07-23T04:06:25.019557962Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-7m19",
