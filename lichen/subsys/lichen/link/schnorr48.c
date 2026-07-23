@@ -268,11 +268,7 @@ int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 			 const uint8_t *pubkey,
 			 uint8_t *sig)
 {
-<<<<<<< HEAD
-	/* length(1) + LLSec(1) + epoch(1) + seqnum(2) + addr_len(1) + dst_addr(up to 8) */
-=======
 	/* length(1) + LLSec(1) + epoch(1) + seqnum(2) + dst_addr_len(1) + dst_addr(up to 8) */
->>>>>>> origin/integration/worker2-20260722
 	uint8_t header[14];
 	size_t header_len = 0;
 	uint8_t nonce_hash[64];
@@ -401,11 +397,7 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 	const uint8_t *e_received = sig;
 	const uint8_t *s = sig + 16;
 
-<<<<<<< HEAD
-	/* length(1) + LLSec(1) + epoch(1) + seqnum(2) + addr_len(1) + dst_addr(up to 8) */
-=======
 	/* length(1) + LLSec(1) + epoch(1) + seqnum(2) + dst_addr_len(1) + dst_addr(up to 8) */
->>>>>>> origin/integration/worker2-20260722
 	uint8_t header[14];
 	size_t header_len = 0;
 	uint8_t e_extended[32];
