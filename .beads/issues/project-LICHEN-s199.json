@@ -2,6 +2,7 @@
   "id": "project-LICHEN-s199",
   "title": "Potential memory leak in AiocoapResourceSubscription on timeout",
   "description": "File: python/src/lichen/client/ip_coap.py, lines 176-187\n\nWhen the Observe subscription times out or fails, resources may not be fully cleaned up:\n\n```python\nasync def _results(self) -\u003e AsyncIterator[CoapResult]:\n    try:\n        first = await asyncio.wait_for(self._handle.response, timeout=self._timeout_s)\n        yield first\n        iterator = self._handle.observation.__aiter__()\n        while not self._closed:\n            response = await self._next_observation_or_close(iterator)\n            if response is None:\n                return\n            yield _coap_result(response)\n    except Exception as exc:\n        raise CoapTransportError(f'{self._method} {self._path} observe failed: {exc}') from exc\n        # Note: close() is never called on exception path\n```\n\nIssue: When an exception is raised (timeout, network error, etc.), the method raises without calling close(). This means:\n1. self._handle.observation.cancel() is never called\n2. The aiocoap observation relationship is not properly terminated\n3. The server may continue sending notifications\n\nImpact: Resource leak in both client (pending observation handle) and potentially server (continued multicast/observe traffic).\n\nFix: Use try/finally or contextlib.aclosing to ensure cleanup:\n```python\nasync def _results(self) -\u003e AsyncIterator[CoapResult]:\n    try:\n        # ... existing code ...\n    except Exception as exc:\n        await self.close()  # Clean up before re-raising\n        raise CoapTransportError(...) from exc\n```",
+  "notes": "Commit: 4df66e1e3",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:18:20.980599Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:28:08.645691713Z",
+  "updated_at": "2026-07-23T04:30:22.279367849Z",
   "started_at": "2026-07-23T04:28:08.645691713Z",
   "lease_expires_at": "2026-07-23T04:33:08.645691713Z",
   "heartbeat_at": "2026-07-23T04:28:08.645691713Z"
