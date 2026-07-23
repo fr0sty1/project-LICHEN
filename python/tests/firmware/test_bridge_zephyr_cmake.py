@@ -1,11 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-#
-# Resolved merge conflict for project-LICHEN-g8ah (worktree-worker18), project-LICHEN-xwxq (bridge.rs): test_bridge_zephyr_cmake.py.
-# Consolidated board fragment lists (AUTO_MERGE and OBSOLETE_ALIAS), retired board comments,
-# and bridge.rs/FrameError fixes from all parallel workers per m5m1.8 audit and
-# firmware-board-capability-matrix.md. No dead code/duplicates per AGENTS.md.
-# Test passes with current canonical targets only.
 
 from __future__ import annotations
 
