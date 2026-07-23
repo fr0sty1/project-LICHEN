@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-uk36.2",
+  "title": "Fix edhoc_kdf implementation, signature, CBOR encoding per RFC 9528",
+  "description": "rust/lichen-oscore/src/edhoc.rs:248-302. Function references undefined 'th', has wrong info construction order (should follow EDHOC-KDF spec for HKDF-Expand info). Make it match python/src/lichen/crypto/edhoc.py:_edhoc_kdf exactly. Add proper TH param.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:15:13.216530615Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:15:13.216530615Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-uk36.2",
+      "depends_on_id": "project-LICHEN-uk36",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:15:13.353779572Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
