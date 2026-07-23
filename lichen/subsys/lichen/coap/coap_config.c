@@ -368,16 +368,21 @@ int lichen_config_decode_radio_cbor(const uint8_t *buf, size_t len,
 		if (key.len == sizeof(KEY_FREQ_MHZ) - 1 &&
 		    memcmp(key.value, KEY_FREQ_MHZ, key.len) == 0) {
 			double val;
-			if (!zcbor_float64_decode(state, &val) || val <= 0 || val > 4294967.295) {
+			if (!zcbor_float64_decode(state, &val) || val <= 0.0 || val > 10000.0) {
 				(void)zcbor_list_map_end_force_decode(state);
 				return -EINVAL;
 			}
-			config->freq_khz = (uint32_t)(val * 1000.0 + 0.5);
+			uint32_t freq_khz = (uint32_t)(val * 1000.0 + 0.5);
+			if (freq_khz == 0 || freq_khz > 10000000UL) {
+				(void)zcbor_list_map_end_force_decode(state);
+				return -EINVAL;
+			}
+			config->freq_khz = freq_khz;
 		} else if (key.len == sizeof(KEY_BW_KHZ) - 1 &&
 			   memcmp(key.value, KEY_BW_KHZ, key.len) == 0) {
 			uint32_t val;
 			if (!zcbor_uint32_decode(state, &val) ||
-			    val == 0 || val > 65535) {
+			    val == 0 || val > 5000) {
 				(void)zcbor_list_map_end_force_decode(state);
 				return -EINVAL;
 			}
@@ -416,18 +421,9 @@ int lichen_config_decode_radio_cbor(const uint8_t *buf, size_t len,
 				(void)zcbor_list_map_end_force_decode(state);
 				return -EINVAL;
 			}
-			/* Parse "0x34" format. Bound <=10 allows "0x" + up to 8 hex
-			 * digits (32-bit sync word). Stores low 16 bits in uint16_t.
-			 * Prevents shift UB on maliciously long strings. Accepts
-			 * "0x34", "0x0034", "0x12345678" etc. (latter truncated).
-			 */
-			if (val.len >= 2 && val.len <= 10 && val.value[0] == '0' &&
+			/* Parse "0x34" format - max 4 hex digits for uint16_t */
+			if (val.len >= 2 && val.len <= 6 && val.value[0] == '0' &&
 			    (val.value[1] == 'x' || val.value[1] == 'X')) {
-				size_t hex_len = val.len - 2;
-				if (hex_len > 4) {
-					(void)zcbor_list_map_end_force_decode(state);
-					return -EINVAL;
-				}
 				unsigned long v = 0;
 				for (size_t i = 2; i < val.len; i++) {
 					char c = (char)val.value[i];
@@ -501,13 +497,16 @@ static size_t base64_encode(const uint8_t *src, size_t src_len,
 static void compute_pubkey_fingerprint(const uint8_t pubkey[32],
 				       char *buf, size_t buf_size)
 {
-	if (buf_size < 25) {
+	if (buf_size < 24) {
 		buf[0] = '\0';
 		return;
 	}
 	/* Simplified: just use "SHA256:" prefix + base64 of first 12 bytes */
 	(void)snprintf(buf, buf_size, "SHA256:");
-	base64_encode(pubkey, 12, buf + 7, buf_size - 7);
+	if (base64_encode(pubkey, 12, buf + 7, buf_size - 7) == 0) {
+		buf[0] = '\0';
+		return;
+	}
 }
 
 /* Encode identity information */
@@ -839,21 +838,21 @@ static int config_identity_get(struct coap_resource *resource,
 #if IS_ENABLED(CONFIG_LICHEN_COAP_CONFIG)
 
 static const char * const config_path[] = { "config", NULL };
-COAP_RESOURCE_DEFINE(lichen_config, lichen_coap, {
+COAP_RESOURCE_DEFINE(lichen_config, lichen_coap_server, {
 	.get  = config_get,
 	.put  = config_put,
 	.path = config_path,
 });
 
 static const char * const config_radio_path[] = { "config", "radio", NULL };
-COAP_RESOURCE_DEFINE(lichen_config_radio, lichen_coap, {
+COAP_RESOURCE_DEFINE(lichen_config_radio, lichen_coap_server, {
 	.get  = config_radio_get,
 	.put  = config_radio_put,
 	.path = config_radio_path,
 });
 
 static const char * const config_identity_path[] = { "config", "identity", NULL };
-COAP_RESOURCE_DEFINE(lichen_config_identity, lichen_coap, {
+COAP_RESOURCE_DEFINE(lichen_config_identity, lichen_coap_server, {
 	.get  = config_identity_get,
 	.path = config_identity_path,
 });
