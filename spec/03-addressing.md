@@ -74,7 +74,6 @@ See `test/vectors/node_address.json` (or node-addresses.json) for canonical vect
 Cross-references: spec/04-network.md §12 (IPv6 construction), lichen_pubkey_to_iid(), human_address_from_pubkey(), updates to README.md TOC, 04-network.md, 06-security.md, 08-nodes.md.
 >>>>>>> origin/worktree-worker24
 
----
 [← Previous](02-physical-link.md) | [Index](README.md) | [Next →](04-network.md)
 
 <<<<<<< HEAD
