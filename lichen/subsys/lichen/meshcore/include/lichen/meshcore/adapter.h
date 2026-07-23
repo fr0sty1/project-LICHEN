@@ -110,18 +110,18 @@ struct lichen_meshcore_adapter_ops {
 };
 
 struct lichen_meshcore_adapter_stats {
-	uint32_t raw_count;
-	uint32_t stream_frame_count;
-	uint32_t supported_count;
-	uint32_t unsupported_count;
-	uint32_t malformed_count;
-	uint32_t enqueue_fail_count;
-	uint32_t incoming_text_count;
-	uint32_t incoming_status_count;
-	uint32_t submitted_text_count;
-	uint32_t pending_full_count;
-	uint32_t pending_drop_count;
-	uint32_t waiting_push_fail_count;
+	uint64_t raw_count;
+	uint64_t stream_frame_count;
+	uint64_t supported_count;
+	uint64_t unsupported_count;
+	uint64_t malformed_count;
+	uint64_t enqueue_fail_count;
+	uint64_t incoming_text_count;
+	uint64_t incoming_status_count;
+	uint64_t submitted_text_count;
+	uint64_t pending_full_count;
+	uint64_t pending_drop_count;
+	uint64_t waiting_push_fail_count;
 };
 
 enum lichen_meshcore_pending_kind {
