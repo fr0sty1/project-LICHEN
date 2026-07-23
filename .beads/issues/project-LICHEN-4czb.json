@@ -2,15 +2,11 @@
   "id": "project-LICHEN-4czb",
   "title": "[security] Missing sig buffer bounds check in schnorr48_verify",
   "description": "lichen/subsys/lichen/link/schnorr48.c:140-141,406 (s = sig+16; crypto_verify32(s,zero)) lacks explicit 48-byte length check on caller sig buf (unlike Rust). Risk of OOB if frame parser bypassed. Though callers usually check, add defensive len param or assert. P1. Matches focus on MIC verification.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:12:41.251345804Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:16:15.606362166Z",
-  "started_at": "2026-07-23T05:15:17.094976084Z",
-  "closed_at": "2026-07-23T05:16:15.606362166Z",
-  "close_reason": "Decomposed into subtasks"
+  "updated_at": "2026-07-23T05:12:41.251345804Z"
 }
