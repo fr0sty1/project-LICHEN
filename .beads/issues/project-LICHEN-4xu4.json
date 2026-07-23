@@ -2,6 +2,7 @@
   "id": "project-LICHEN-4xu4",
   "title": "ReplayWindow accepts frame at counter 0 on wrap-around edge case",
   "description": "File: python/src/lichen/link/replay.py:97-106\n\nAfter re-analysis: This is NOT a bug. The half-space arithmetic is correct by design.\n\nThe boundary at diff=0x800000 treats frames exactly 8,388,608 positions 'ahead' as old/replay. This is intentional: frames more than half the counter space away could be either very old OR very far ahead, so the conservative choice is to reject.\n\nThe WRAPAROUND_WARNING_THRESHOLD at 0xFF0000 ensures re-keying happens before we get near this ambiguous zone. This is defense in depth.\n\nDowngrading to P4 (documentation). The threshold behavior should be documented for implementers.",
+  "notes": "Commit: a1ea92cee",
   "status": "in_progress",
   "priority": 4,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:23:15.835482Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:31:16.23667677Z",
+  "updated_at": "2026-07-23T04:33:02.741061501Z",
   "started_at": "2026-07-23T04:31:16.23667677Z",
   "lease_expires_at": "2026-07-23T04:36:16.23667677Z",
   "heartbeat_at": "2026-07-23T04:31:16.23667677Z"
