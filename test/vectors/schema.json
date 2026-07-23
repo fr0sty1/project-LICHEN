@@ -810,7 +810,6 @@
           "type": "string",
           "description": "Pass 2 security: no injection or crypto issues in CCP-16 vectors (project-LICHEN-ray3)"
         },
-<<<<<<< HEAD
         "announce": {
           "type": "object",
           "properties": {
@@ -820,8 +819,6 @@
           }
         },
         "hash_32": {"type": "integer"},
-=======
->>>>>>> origin/worktree-worker24
         "input": {
           "type": "object",
           "properties": {
@@ -837,6 +834,9 @@
             "now": {
               "type": "integer",
               "description": "now() u32 timestamp for TDMA cross-reference and monotonicity test"
+            }
+          }
+        }
             },
             "select_channel": {
               "type": "integer",
