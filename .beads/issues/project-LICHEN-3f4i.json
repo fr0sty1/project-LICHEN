@@ -2,15 +2,15 @@
   "id": "project-LICHEN-3f4i",
   "title": "[merge-conflict] worktree-worker19: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: e787563fc",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:40:10.754340887Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:05:34.091259653Z",
+  "updated_at": "2026-07-23T02:05:37.91912974Z",
   "started_at": "2026-07-23T02:03:38.561383107Z",
-  "lease_expires_at": "2026-07-23T02:08:38.561383107Z",
-  "heartbeat_at": "2026-07-23T02:03:38.561383107Z"
+  "closed_at": "2026-07-23T02:05:37.91912974Z",
+  "close_reason": "Cleaned merge resolution comments from heltec_wifi_lora32_v3_esp32s3_procpu.conf (puck and gateway) and synced to worker19 worktree; removed dead meta-comments per no-dead-code rule; also resolved markers in schnorr.rs, schema.json and related conf/Kconfig files. Commit e787563fc in worktree-worker19."
 }
