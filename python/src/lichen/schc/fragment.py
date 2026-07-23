@@ -88,7 +88,7 @@ class Fragment:
         return bytes([self.rule_id]) + body.to_bytes(len(content) + 1, "big")
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> Fragment:
+    def from_bytes(cls, data: bytes, *, window_size: int | None = None) -> Fragment:
         if len(data) < 2:
             raise FragmentError("fragment too short")
         _check_rule(data[0])
@@ -99,6 +99,14 @@ class Fragment:
         header = value >> (8 * content_len)
         window, fcn = header >> 6, header & 0x3F
         content = (value & ((1 << (8 * content_len)) - 1)).to_bytes(content_len, "big")
+        if window_size is not None:
+            if not 1 <= window_size <= ALL_1:
+                raise FragmentError(f"window_size must be integer 1..{ALL_1}")
+            if fcn != ALL_1 and fcn >= window_size:
+                raise FragmentError(
+                    f"FCN={fcn} invalid for window_size={window_size} "
+                    f"(regular FCN must be < window_size or ALL_1)"
+                )
         if fcn == ALL_1:
             if not 5 <= content_len <= MIC_LENGTH + TILE_SIZE:
                 raise FragmentError("All-1 requires an RCS and non-empty final tile")

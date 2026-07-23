@@ -290,7 +290,7 @@ class FragmentReceiver:
                 window = 1
             return self._respond(Ack(rule_id, window, self._bitmap(window)))
         try:
-            return self.receive(Fragment.from_bytes(data))
+            return self.receive(Fragment.from_bytes(data, window_size=self.window_size))
         except FragmentError:
             return self._abort(rule_id)
 
@@ -368,7 +368,7 @@ class ReassemblyManager:
         is_ack_request = data == ack_request(rule_id, window)
         if not is_ack_request:
             try:
-                fragment = Fragment.from_bytes(data)
+                fragment = Fragment.from_bytes(data, window_size=WINDOW_SIZE)
             except FragmentError:
                 self._contexts.pop(context_key, None)
                 return ReceiverResult(response=receiver_abort(rule_id), aborted=True)
