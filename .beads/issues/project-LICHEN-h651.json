@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-h651",
   "title": "[merge-conflict] worktree-worker20: coap_config.c",
-  "notes": "Commit: 086aa15f4 (removed duplicate coap_respond helper; now uses centralized lichen_coap_respond from coap_server.c; resolved related merge conflicts in beads and board conf)",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:54:14.757529018Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:14:11.434604355Z",
+  "updated_at": "2026-07-23T03:09:35.143828054Z",
   "started_at": "2026-07-23T03:09:35.143828054Z",
-  "closed_at": "2026-07-23T03:14:11.434604355Z",
-  "close_reason": "Fixed merge conflict in coap_config.c by removing duplicate local coap_respond() helper (now uses shared lichen_coap_respond() with proper content-format param). Updated 5 handlers, added include, resolved beads/board-conf rebase conflicts during integration. Verified with grep and build prep. Matches TOCTOU/codereview from jqwp."
+  "lease_expires_at": "2026-07-23T03:14:35.143828054Z",
+  "heartbeat_at": "2026-07-23T03:09:35.143828054Z"
 }
