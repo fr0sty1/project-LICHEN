@@ -428,6 +428,9 @@ static int msg_inbox_post(struct coap_resource *resource,
 
 	char id_str[12];
 	int id_len = snprintf(id_str, sizeof(id_str), "%u", msg_id);
+	if (id_len < 0 || (size_t)id_len >= sizeof(id_str)) {
+		return -EINVAL;
+	}
 
 	ret = coap_packet_append_option(&response, COAP_OPTION_LOCATION_PATH,
 					id_str, id_len);
