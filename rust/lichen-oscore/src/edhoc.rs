@@ -609,33 +609,8 @@ impl EdhocInitiator {
     ///
     /// message_1 = (METHOD, SUITES_I, G_X, C_I, ? EAD_1)
     pub fn create_message_1(&mut self) -> Result<heapless::Vec<u8, 64>, EdhocError> {
-        // METHOD_CORR = method * 4 + corr (method=0, corr=1 for CoAP)
-        let method_corr: u8 = 1;
-
-        // Build message_1 as CBOR sequence
         let mut msg1 = heapless::Vec::<u8, 64>::new();
-
-        // method_corr as CBOR uint
-        msg1.push_err(method_corr)?;
-
-        // SUITES_I = 0 (Suite 0)
-        msg1.push_err(SUITE_0)?;
-
-        // G_X as CBOR bstr (32 bytes)
-        msg1.push_err(0x58)?;
-        msg1.push_err(32)?;
-        msg1.extend_err(self.eph_public.as_bytes())?;
-
-        // C_I - encode as int if 0-23, else as bstr
-        if self.c_i <= 23 {
-            msg1.push_err(self.c_i)?;
-        } else {
-            msg1.push_err(0x41)?;
-            msg1.push_err(self.c_i)?;
-        }
-
-        let mut msg1 = heapless::Vec::<u8, 64>::new();
-        msg1.push_err(0)?; // METHOD = 0 (signature/signature)
+        msg1.push_err(0)?;
         msg1.push_err(SUITE_0)?;
         encode_bstr(&mut msg1, self.eph_public.as_bytes())?;
         encode_identifier(&mut msg1, &self.c_i)?;
