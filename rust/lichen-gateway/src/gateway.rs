@@ -5,14 +5,14 @@ use lichen_core::constants::L2_DISPATCH_SCHC;
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
-use lichen_node::Node;
+use lichen_node::{RplEvent, RplNode};
 use lichen_schc::codec::{compress, decompress, SchcError};
 use tracing::{info, warn};
 
 /// Top-level border router state.
 #[derive(Debug)]
 pub struct Gateway {
-    pub node: Node,
+    pub rpl: RplNode,
     /// Routes installed in the kernel routing table.
     /// Key: mesh IPv6 address (16 bytes, network order); Value: nexthop EUI-64.
     routes: std::collections::HashMap<[u8; 16], NodeId>,
@@ -22,7 +22,7 @@ impl Gateway {
     pub fn new(node_id: NodeId) -> Self {
         info!(?node_id, "gateway initialising");
         Self {
-            node: Node::new(node_id),
+            rpl: RplNode::new_root(node_id),
             routes: std::collections::HashMap::new(),
         }
     }
@@ -90,12 +90,24 @@ impl Gateway {
     pub fn add_route(&mut self, addr: [u8; 16], node_id: NodeId) {
         self.routes.insert(addr, node_id);
     }
+
+    pub fn process_rpl(&mut self, frame: &[u8], now_ms: u32) -> (Option<Vec<u8>>, RplEvent) {
+        let mut reply = vec![0u8; 512];
+        let (reply_len, event) = self.rpl.handle_frame_rpl(frame, &mut reply, now_ms);
+        let reply_opt = if reply_len > 0 {
+            reply.truncate(reply_len);
+            Some(reply)
+        } else {
+            None
+        };
+        (reply_opt, event)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lichen_core::{addr::Ipv6Addr, icmpv6};
+    use lichen_core::{addr::{Ipv6Addr, NodeId}, icmpv6};
 
     fn ll(iid: u8) -> Ipv6Addr {
         Ipv6Addr([0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0x02, 0, 0, 0, 0, 0, 0, iid])
