@@ -578,8 +578,8 @@ size_t lichen_config_encode_identity_cbor(uint8_t *buf, size_t buf_size,
 		return 0;
 	}
 
-	if (identity->ygg[0] != '\0') {
-		if (!put_tstr_kv(state, KEY_PRIMARY, identity->ygg)) {
+	if (identity->primary[0] != '\0') {
+		if (!put_tstr_kv(state, KEY_PRIMARY, identity->primary)) {
 			return 0;
 		}
 	} else {
@@ -852,21 +852,21 @@ static int config_identity_get(struct coap_resource *resource,
 #if IS_ENABLED(CONFIG_LICHEN_COAP_CONFIG)
 
 static const char * const config_path[] = { "config", NULL };
-COAP_RESOURCE_DEFINE(lichen_config, lichen_coap_server, {
+COAP_RESOURCE_DEFINE(lichen_config, lichen_coap, {
 	.get  = config_get,
 	.put  = config_put,
 	.path = config_path,
 });
 
 static const char * const config_radio_path[] = { "config", "radio", NULL };
-COAP_RESOURCE_DEFINE(lichen_config_radio, lichen_coap_server, {
+COAP_RESOURCE_DEFINE(lichen_config_radio, lichen_coap, {
 	.get  = config_radio_get,
 	.put  = config_radio_put,
 	.path = config_radio_path,
 });
 
 static const char * const config_identity_path[] = { "config", "identity", NULL };
-COAP_RESOURCE_DEFINE(lichen_config_identity, lichen_coap_server, {
+COAP_RESOURCE_DEFINE(lichen_config_identity, lichen_coap, {
 	.get  = config_identity_get,
 	.path = config_identity_path,
 });
