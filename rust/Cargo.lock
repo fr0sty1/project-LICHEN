@@ -1881,6 +1881,7 @@ dependencies = [
  "lichen-kiss",
  "lichen-link",
  "lichen-node",
+ "lichen-rpl",
  "lichen-schc",
  "lichen-sim",
  "serde",
