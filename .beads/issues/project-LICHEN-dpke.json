@@ -2,15 +2,15 @@
   "id": "project-LICHEN-dpke",
   "title": "[merge-conflict] worktree-worker20: lichend.rs",
   "notes": "Commit: 371d60679",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:30:35.280049944Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:51:49.634470795Z",
+  "updated_at": "2026-07-23T01:51:52.033413034Z",
   "started_at": "2026-07-23T01:49:13.95255362Z",
-  "lease_expires_at": "2026-07-23T01:54:13.95255362Z",
-  "heartbeat_at": "2026-07-23T01:49:13.95255362Z"
+  "closed_at": "2026-07-23T01:51:52.033413034Z",
+  "close_reason": "Resolved merge conflict by updating lichend.rs and gateway.rs to use consolidated process_rpl API, cleaned forwarding logic, removed dead handle_frame_rpl wrapper. Matches pattern from similar beads (th59, 0jz0). Code clean, no stray lines."
 }
