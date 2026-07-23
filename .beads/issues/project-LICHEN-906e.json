@@ -3,7 +3,7 @@
   "title": "Remove deprecated RX_POLL from protocol and servers",
   "description": "Delete polling code after ALL callers converted: (1) sim_client.py uses MSG_RX_OK/decode_rx_ok, (2) node_server.py uses MSG_RX/encode_rx_ok. Cannot remove from protocol.py until these are converted. Premature removal reverted.",
   "acceptance_criteria": "No RX_POLL references remain; 2-node test still passes with push-based RX",
-  "notes": "2026-07-11: Verified still blocked. node_server.py is actively used by server.py and 10+ test files (test_server.py, test_integration.py, test_multinode.py, etc.). Polling functions (decode_rx, encode_rx_ok, encode_rx_timeout) in protocol.py cannot be removed until project-LICHEN-4t5u (Deprecate node_server.py) is completed.\nAnalysis: sim_client.py is FULLY converted to push-based RX (uses encode_rx_enter, MSG_RX_PACKET, MSG_RX_TIMEOUT_PUSH only). No poll-based imports remain.\n\nDependency chain:\n- sim_client.py (push-based) -\u003e node_server.py (supports both) -\u003e server.py\n- server.py imports start_node_server from node_server.py\n- 12 test files reference NodeServer: test_node_server.py, test_server.py, test_integration.py, test_multinode.py, test_dtn_sim.py, test_gpsr_sim.py, test_backpressure_sim.py, test_topology_change.py, test_topology_scenarios.py, test_renode_integration.py, test_renode_server.py, test_opportunistic_sim.py\n\nPoll-based functions to remove from protocol.py:\n- MSG_RX (0x20), MSG_RX_OK (0x21), MSG_RX_TIMEOUT (0x22)\n- encode_rx(), decode_rx()\n- encode_rx_ok(), decode_rx_ok()\n- encode_rx_timeout()\n\nPush-based functions to KEEP:\n- MSG_RX_ENTER (0x24), MSG_RX_EXIT (0x26), MSG_RX_PACKET (0x27), MSG_RX_TIMEOUT_PUSH (0x28)\n- encode_rx_enter(), decode_rx_enter(), encode_rx_exit()\n- encode_rx_packet(), decode_rx_packet()\n- encode_rx_timeout_push()\n\nnode_server.py uses poll-based at lines 363 (decode_rx), 391 (encode_rx_ok), 394 (encode_rx_timeout). test_protocol.py has ~20 test lines exercising poll-based functions.\n\nMigration path:\n1. [BLOCKED] Wait for project-LICHEN-4t5u (Deprecate node_server.py) to complete\n2. Remove poll-based constants and functions from protocol.py\n3. Remove poll-based tests from test_protocol.py (lines 360-473 approx)\n4. Verify 2-node test passes with push-based RX\n\nrenode_server.py is already pure push-based (no poll imports), so the replacement path is clear.",
+  "notes": "Commit: 1a287d33b",
   "status": "open",
   "priority": 3,
   "issue_type": "task",
@@ -11,7 +11,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T18:01:38.2542Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T05:15:40.402706Z",
+  "updated_at": "2026-07-23T04:16:51.720469739Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-906e",
