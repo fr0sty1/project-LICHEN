@@ -95,10 +95,10 @@ class TrickleTimer:
     def reset(self, now: int = 0) -> None:
         """Handle an inconsistency: shrink to Imin and restart (step 6).
 
-        Per RFC 6206 this is a no-op if the interval is already Imin, to avoid
-        needlessly short-cycling the timer.
+        No-op if already at Imin after start (generation > 0); starts on
+        initial state (generation==0). Aligns cross-impl guard with Rust/C.
         """
-        if self.interval != self.imin:
+        if self._generation == 0 or self.interval != self.imin:
             self.interval = self.imin
             self._begin_interval(now)
 

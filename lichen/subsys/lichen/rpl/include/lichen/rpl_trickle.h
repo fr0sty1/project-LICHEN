@@ -153,7 +153,8 @@ void lichen_trickle_expire(struct lichen_trickle *_Nonnull t,
 /**
  * @brief Handle an inconsistency: shrink to imin and restart (RFC 6206 step 6).
  *
- * No-op if the interval is already imin (RFC 6206 section 4.2).
+ * No-op if already at imin after start; starts timer on initial state
+ * (transmit_time==0). Aligned across C/Rust/Python per project-LICHEN-67ca.
  *
  * @pre t must be non-NULL and initialized via lichen_trickle_init()
  * @param t           Timer

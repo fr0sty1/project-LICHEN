@@ -5,7 +5,8 @@
  * @file trickle.c
  * @brief Trickle timer (RFC 6206) implementation
  *
- * Ported from rust/lichen-rpl/src/trickle.rs
+ * Aligned reset() guard with Rust and Python (project-LICHEN-67ca).
+ * Ported from rust/lichen-rpl/src/trickle.rs with consistent init edge case.
  */
 
 #include <lichen/rpl_trickle.h>
@@ -117,8 +118,11 @@ void lichen_trickle_reset(struct lichen_trickle *t,
 		return;
 	}
 
-	/* RFC 6206 section 4.2: no-op if already at imin */
-	if (t->interval != t->imin) {
+	/* Initial (transmit_time==0) or RFC 6206 §4.2 no-op if already at imin.
+	 * Aligns with Rust (state==Stopped) and Python (generation==0) for
+	 * init vs post-start edge cases. Commit 3d2c7ed3c left inconsistent.
+	 */
+	if (t->transmit_time == 0 || t->interval != t->imin) {
 		t->interval = t->imin;
 		begin_interval(t, now, rand_offset);
 	}
