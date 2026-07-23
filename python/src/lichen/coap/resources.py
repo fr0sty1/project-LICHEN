@@ -632,9 +632,10 @@ class PresenceResource(resource.ObservableResource):
 
         Returns the number of entries evicted.
         """
-        stale = [k for k, v in self._peers.items() if v["t"] < cutoff_t]
+        peers = dict(self._peers)
+        stale = [k for k, v in peers.items() if v["t"] < cutoff_t]
         for k in stale:
-            del self._peers[k]
+            self._peers.pop(k, None)
         if stale:
             self.updated_state()
         return len(stale)
