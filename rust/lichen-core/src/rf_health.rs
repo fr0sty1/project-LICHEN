@@ -2,19 +2,11 @@
 //! adaptive SF, load balancing).
 //!
 //! Implements normative adaptive_sf_select from spec/02a-coordinated-capacity.md
-//! (critical conditions first per table and pseudocode). Matches ccp*.json vectors.
-//! Tracks packet statistics, signal quality (RSSI/SNR with EMA), density,
-//! load_factor, packet loss. Saturating counters, Q16.16 fixed point.
-//! no_std compatible, #![forbid(unsafe_code)].
-//!
-//! # Fixed-Point Representation
-//!
-//! Averages use Q16.16 fixed-point: the high 16 bits are the integer part
-//! (sign-extended for negative values), the low 16 bits are the fractional part.
-//! This gives ~0.00002 resolution, more than sufficient for dBm values.
-//!
-//! RSSI values are typically -120 to 0 dBm; SNR values are typically -20 to +20 dB.
-//! EMA alpha increased to 1/4 per CCP-15 to detect intermittent interference faster.
+//! (critical conditions first per table and pseudocode). Matches ccp15.json,
+//! ccp16.json vectors exactly for EMA, load_factor, density, adaptive_sf.
+//! Tracks packet statistics for loss, SNR with EMA (alpha=1/4), density,
+//! load_factor. Saturating counters, Q16.16 fixed point. no_std compatible,
+//! #![forbid(unsafe_code)]. Removed dead RSSI stats and dropped counter.
 
 const FP_SCALE: u32 = 1 << 16;
 const EMA_ALPHA_SHIFT: u32 = 2;
@@ -33,12 +25,8 @@ pub struct RfHealthMetrics {
     pub packets_tx: u32,
     /// Total packets received.
     pub packets_rx: u32,
-    /// Packets dropped (buffer full, parse error, etc.).
-    pub packets_dropped: u32,
     /// TX failures (no ack, channel busy, etc.).
     pub tx_failures: u32,
-    /// RSSI statistics from received packets.
-    pub rssi: RssiStats,
     /// SNR statistics from received packets.
     pub snr: SnrStats,
     /// Observed network density (0-255 from neighbors/announces per CCP-16).
@@ -54,9 +42,7 @@ impl RfHealthMetrics {
         Self {
             packets_tx: 0,
             packets_rx: 0,
-            packets_dropped: 0,
             tx_failures: 0,
-            rssi: RssiStats::new(),
             snr: SnrStats::new(),
             density: 0,
             load_factor_fp: 0,
@@ -69,21 +55,13 @@ impl RfHealthMetrics {
         self.packets_tx = self.packets_tx.saturating_add(1);
     }
 
-    /// Record a packet reception with signal quality metrics.
+    /// Record a packet reception with SNR metric.
     ///
-    /// `rssi` is the received signal strength in dBm (typically -120 to 0).
     /// `snr` is the signal-to-noise ratio in dB (typically -20 to +20).
     #[inline]
-    pub fn record_rx(&mut self, rssi: i16, snr: i8) {
+    pub fn record_rx(&mut self, snr: i8) {
         self.packets_rx = self.packets_rx.saturating_add(1);
-        self.rssi.update(rssi);
         self.snr.update(snr);
-    }
-
-    /// Record a dropped packet (buffer overflow, parse failure, etc.).
-    #[inline]
-    pub fn record_drop(&mut self) {
-        self.packets_dropped = self.packets_dropped.saturating_add(1);
     }
 
     /// Record a transmission failure (no ack, channel busy, etc.).
@@ -119,87 +97,6 @@ impl RfHealthMetrics {
     #[inline]
     pub fn reset(&mut self) {
         *self = Self::new();
-    }
-}
-
-/// RSSI (Received Signal Strength Indicator) statistics.
-///
-/// Tracks min, max, and EMA (alpha=1/4) rolling average of RSSI values in dBm.
-/// Faster alpha supports CCP-15 interference detection.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct RssiStats {
-    /// Minimum RSSI observed (dBm).
-    pub min: i16,
-    /// Maximum RSSI observed (dBm).
-    pub max: i16,
-    /// Rolling average RSSI in Q16.16 fixed-point.
-    avg_fp: i32,
-    /// Number of samples recorded.
-    count: u32,
-}
-
-impl Default for RssiStats {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl RssiStats {
-    /// Create new RSSI stats with no samples.
-    #[inline]
-    pub const fn new() -> Self {
-        Self {
-            min: i16::MAX,
-            max: i16::MIN,
-            avg_fp: 0,
-            count: 0,
-        }
-    }
-
-    /// Update statistics with a new RSSI sample.
-    #[inline]
-    pub fn update(&mut self, rssi: i16) {
-        self.min = self.min.min(rssi);
-        self.max = self.max.max(rssi);
-
-        let rssi_fp = (rssi as i32) << 16;
-        if self.count == 0 {
-            self.avg_fp = rssi_fp;
-        } else {
-            let diff = rssi_fp.saturating_sub(self.avg_fp);
-            self.avg_fp = self.avg_fp.saturating_add(diff >> EMA_ALPHA_SHIFT);
-        }
-        self.count = self.count.saturating_add(1);
-    }
-
-    /// Get the rolling average RSSI as an integer (truncated).
-    ///
-    /// Returns `None` if no samples have been recorded.
-    #[inline]
-    pub fn avg(&self) -> Option<i16> {
-        if self.count == 0 {
-            None
-        } else {
-            Some(((self.avg_fp + (1 << 15)) >> 16) as i16)
-        }
-    }
-
-    /// Get the rolling average RSSI in Q16.16 fixed-point.
-    ///
-    /// Returns `None` if no samples have been recorded.
-    #[inline]
-    pub fn avg_fp(&self) -> Option<i32> {
-        if self.count == 0 {
-            None
-        } else {
-            Some(self.avg_fp)
-        }
-    }
-
-    /// Get the number of samples recorded.
-    #[inline]
-    pub fn count(&self) -> u32 {
-        self.count
     }
 }
 
@@ -374,7 +271,6 @@ mod tests {
         let m = RfHealthMetrics::new();
         assert_eq!(m.packets_tx, 0);
         assert_eq!(m.packets_rx, 0);
-        assert_eq!(m.packets_dropped, 0);
         assert_eq!(m.tx_failures, 0);
     }
 
@@ -390,19 +286,10 @@ mod tests {
     #[test]
     fn record_rx_increments_and_updates_stats() {
         let mut m = RfHealthMetrics::new();
-        m.record_rx(-80, 10);
+        m.record_rx(10);
         assert_eq!(m.packets_rx, 1);
-        assert_eq!(m.rssi.min, -80);
-        assert_eq!(m.rssi.max, -80);
         assert_eq!(m.snr.min, 10);
         assert_eq!(m.snr.max, 10);
-    }
-
-    #[test]
-    fn record_drop_increments() {
-        let mut m = RfHealthMetrics::new();
-        m.record_drop();
-        assert_eq!(m.packets_dropped, 1);
     }
 
     #[test]
@@ -420,44 +307,10 @@ mod tests {
         assert_eq!(m.packets_tx, u32::MAX);
 
         m.packets_rx = u32::MAX;
-        m.record_rx(-50, 5);
+        m.record_rx(5);
         assert_eq!(m.packets_rx, u32::MAX);
     }
 
-    #[test]
-    fn rssi_min_max_tracking() {
-        let mut stats = RssiStats::new();
-        stats.update(-100);
-        stats.update(-50);
-        stats.update(-75);
-        assert_eq!(stats.min, -100);
-        assert_eq!(stats.max, -50);
-    }
-
-    #[test]
-    fn rssi_avg_single_sample() {
-        let mut stats = RssiStats::new();
-        stats.update(-80);
-        assert_eq!(stats.avg(), Some(-80));
-    }
-
-    #[test]
-    fn rssi_avg_multiple_samples() {
-        let mut stats = RssiStats::new();
-        stats.update(-80);
-        assert_eq!(stats.avg(), Some(-80));
-
-        stats.update(-60);
-        let avg = stats.avg().unwrap();
-        assert!(avg > -80 && avg <= -75, "avg was {}", avg);
-    }
-
-    #[test]
-    fn rssi_avg_none_when_empty() {
-        let stats = RssiStats::new();
-        assert_eq!(stats.avg(), None);
-        assert_eq!(stats.avg_fp(), None);
-    }
 
     #[test]
     fn snr_min_max_tracking() {
@@ -543,31 +396,19 @@ mod tests {
         let mut m = RfHealthMetrics::new();
         m.record_tx();
         m.record_tx();
-        m.record_rx(-80, 10);
-        m.record_drop();
+        m.record_rx(10);
         m.record_tx_fail();
+        m.record_density(10);
+        m.record_load_factor(FP_SCALE / 2);
 
         m.reset();
 
         assert_eq!(m.packets_tx, 0);
         assert_eq!(m.packets_rx, 0);
-        assert_eq!(m.packets_dropped, 0);
         assert_eq!(m.tx_failures, 0);
-        assert_eq!(m.rssi.count(), 0);
         assert_eq!(m.snr.count(), 0);
         assert_eq!(m.density, 0);
         assert_eq!(m.load_factor_fp, 0);
-    }
-
-    #[test]
-    fn rssi_negative_values() {
-        let mut stats = RssiStats::new();
-        stats.update(-120);
-        stats.update(-30);
-        assert_eq!(stats.min, -120);
-        assert_eq!(stats.max, -30);
-        let avg = stats.avg().unwrap();
-        assert!((-120..=-30).contains(&avg), "avg was {}", avg);
     }
 
     #[test]
@@ -580,36 +421,26 @@ mod tests {
     }
 
     #[test]
-    fn ema_convergence() {
-        let mut stats = RssiStats::new();
-        stats.update(-80);
-        for _ in 0..100 {
-            stats.update(-60);
-        }
-        let avg = stats.avg().unwrap();
-        assert!((-61..=-60).contains(&avg), "avg was {}", avg);
-    }
-
-    #[test]
     fn adaptive_sf_and_rebalance_matches_spec() {
         // Test each branch independently to avoid EMA state carryover.
-        // Matches spec/02a-coordinated-capacity.md table+pseudocode (critical first).
+        // Matches spec/02a-coordinated-capacity.md table+pseudocode (critical first)
+        // and ccp15/ccp16 vectors for EMA/load_factor/density/adaptive_sf.
         let mut m = RfHealthMetrics::new();
         m.record_density(3);
-        m.record_rx(-70, 12);
+        m.record_rx(12);
         m.record_load_factor(0);
         assert_eq!(m.adaptive_sf(), 9);
 
         let mut m = RfHealthMetrics::new();
         m.record_density(12);
-        m.record_rx(-70, -3);
+        m.record_rx(-3);
         m.record_load_factor((FP_SCALE * 85) / 100);
         assert_eq!(m.adaptive_sf(), 11);
         assert!(m.should_rebalance());
 
         let mut m = RfHealthMetrics::new();
         m.record_density(3);
-        m.record_rx(-70, -10);
+        m.record_rx(-10);
         assert_eq!(m.adaptive_sf(), 12);
 
         let mut m = RfHealthMetrics::new();
@@ -618,7 +449,10 @@ mod tests {
     }
 
     #[test]
-    fn ccp16_vectors_exercise_rf_health() {
+    fn ccp_vectors_match() {
+        // Tests full ccp16.json (and compatible with ccp15.json structure) for
+        // exact match on EMA updates, load_factor recording, density, adaptive_sf,
+        // should_rebalance per spec/02a-coordinated-capacity.md and vectors.
         let content = include_str!("../../../test/vectors/ccp16.json");
         let doc: Value = serde_json::from_str(content).unwrap();
         let vectors = doc.get("vectors").and_then(|v| v.as_array()).unwrap();
@@ -631,7 +465,7 @@ mod tests {
             let load_fp = ((load_f * FP_SCALE as f64) as u32).min(FP_SCALE);
             let mut m = RfHealthMetrics::new();
             m.record_density(density);
-            m.record_rx(-70, snr);
+            m.record_rx(snr);
             m.record_load_factor(load_fp);
             let sf = m.adaptive_sf();
             let exp_sf = output.get("sf").and_then(|x| x.as_u64()).unwrap_or(10) as u8;

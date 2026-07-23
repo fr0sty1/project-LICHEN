@@ -25,6 +25,7 @@ pub struct Gateway {
 impl Gateway {
     pub fn new(node_id: NodeId) -> Self {
         info!(?node_id, "gateway initialising");
+        let addr = node_id.link_local_addr().0;
         Self {
             rpl_node: RplNode::new_root(node_id),
             runtime: RplRuntime::new(RplRuntimeConfig::default(), 0),

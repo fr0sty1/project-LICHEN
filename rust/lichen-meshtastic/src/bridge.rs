@@ -184,9 +184,9 @@ impl MeshtasticBridge {
         let from_node = MeshtasticNodeId::new(packet.from);
         let to_node = MeshtasticNodeId::new(packet.to);
 
-        // Record RX signal metrics from Meshtastic radio into EMA for adaptive SF,
-        // density/load_factor updated via hash/announcements per CCP and rf_health.
-        self.rf_health.record_rx(packet.rx_rssi as i16, packet.rx_snr as i8);
+        // Record RX SNR into EMA for adaptive SF per rf_health.rs (rssi ignored
+        // after dead code removal). Density/load_factor updated via hash/announcements.
+        self.rf_health.record_rx(packet.rx_snr as i8);
 
         // Get decoded data or return error
         let data = match &packet.payload_variant {
