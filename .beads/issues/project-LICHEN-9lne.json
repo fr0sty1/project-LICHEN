@@ -2,6 +2,7 @@
   "id": "project-LICHEN-9lne",
   "title": "handler.py: KissHandler._handle_data return type mismatch with handle() dispatcher",
   "description": "File: python/src/lichen/interface/kiss/handler.py\nLines: 102-134, 136-140\n\nThe handle() method returns the result of _handle_* methods:\n\n```python\ndef handle(self, frame: KissFrame) -\u003e bytes | None:\n    if cmd == KissCommand.DATA:\n        return self._handle_data(frame)  # Returns None always\n    elif cmd == KissCommand.TXDELAY:\n        return self._handle_txdelay(frame)\n    # ...\n```\n\nBut _handle_data() is typed as returning None:\n```python\ndef _handle_data(self, frame: KissFrame) -\u003e None:\n    if self.on_tx_frame is not None:\n        self.on_tx_frame(frame.port, frame.data)\n    return None\n```\n\nThe explicit `return None` combined with `-\u003e None` type hint suggests the methods should return something (bytes | None for response), but they don't. The handle() method is typed to return `bytes | None` for acknowledgment, but none of the handlers actually return bytes.\n\nImpact: Confusing API - callers checking for a return value will always get None. The return type suggests handlers could respond with bytes, but none do.\n\nFix: Either:\n1. Change all _handle_* to return `bytes | None` and document when bytes would be returned\n2. Or change handle() return type to None if responses aren't supported\n3. Or remove the redundant `return None` statements and keep -\u003e None hints",
+  "notes": "Implemented fix: changed handle() to -\u003e None, removed redundant returns and response promise from docstring. Commit: 3aa06472c",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:18:53.377003Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:23:49.215739225Z",
+  "updated_at": "2026-07-23T04:25:27.889457414Z",
   "started_at": "2026-07-23T04:23:49.215739225Z",
   "lease_expires_at": "2026-07-23T04:28:49.215739225Z",
   "heartbeat_at": "2026-07-23T04:23:49.215739225Z"
