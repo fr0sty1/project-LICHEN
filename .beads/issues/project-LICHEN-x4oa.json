@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-x4oa",
+  "title": "[security] hand-rolled CBOR parser in coap_keys.c for key management",
+  "description": "The decode_key_put_cbor() implements custom CBOR parsing instead of zcbor (include was removed in f4918152b). Complex manual map/string parsing with many branches risks buffer overruns, incorrect key extraction, or bypass of TOFU/admin checks. Key handling (pubkeys for Schnorr/OSCORE/EDHOC) should use vetted decoder. See lines 761-940. Recommend replace with zcbor_decode or tinycbor.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T02:22:00.237285866Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T02:22:00.237285866Z"
+}
