@@ -1461,7 +1461,7 @@ static int dispatch_packet(struct lichen_meshtastic_adapter *adapter,
 	}
 
 	switch (packet.kind) {
-		case LICHEN_MESHTASTIC_ADAPTER_PACKET_TEXT_MESSAGE_APP:
+	case LICHEN_MESHTASTIC_ADAPTER_PACKET_TEXT_MESSAGE_APP:
 		adapter->stats.text_packet_count++;
 		if (!text_packet_supported(adapter, &packet)) {
 			adapter->stats.unsupported_packet_count++;
@@ -1475,23 +1475,23 @@ static int dispatch_packet(struct lichen_meshtastic_adapter *adapter,
 		if (ret < 0) {
 			adapter->stats.unsupported_packet_count++;
 			return queue_status(adapter, QUEUE_STATUS_UNSUPPORTED, &packet);
-			}
-			return queue_status(adapter, QUEUE_STATUS_OK, &packet);
-		case LICHEN_MESHTASTIC_ADAPTER_PACKET_POSITION_APP:
-			adapter->stats.position_packet_count++;
-			if (adapter->ops.handle_location == NULL) {
-				adapter->stats.unsupported_packet_count++;
-				return queue_status(adapter, QUEUE_STATUS_UNSUPPORTED,
-						    &packet);
-			}
-			ret = adapter->ops.handle_location(&packet,
-							   adapter->ops.user_data);
-			if (ret < 0) {
-				adapter->stats.unsupported_packet_count++;
-				return queue_status(adapter, QUEUE_STATUS_UNSUPPORTED,
-						    &packet);
-			}
-			return queue_status(adapter, QUEUE_STATUS_OK, &packet);
+		}
+		return queue_status(adapter, QUEUE_STATUS_OK, &packet);
+	case LICHEN_MESHTASTIC_ADAPTER_PACKET_POSITION_APP:
+		adapter->stats.position_packet_count++;
+		if (adapter->ops.handle_location == NULL) {
+			adapter->stats.unsupported_packet_count++;
+			return queue_status(adapter, QUEUE_STATUS_UNSUPPORTED,
+					    &packet);
+		}
+		ret = adapter->ops.handle_location(&packet,
+						   adapter->ops.user_data);
+		if (ret < 0) {
+			adapter->stats.unsupported_packet_count++;
+			return queue_status(adapter, QUEUE_STATUS_UNSUPPORTED,
+					    &packet);
+		}
+		return queue_status(adapter, QUEUE_STATUS_OK, &packet);
 	case LICHEN_MESHTASTIC_ADAPTER_PACKET_ADMIN_GET_DEVICE_METADATA:
 		return enqueue_admin_metadata_response(adapter, &packet);
 	case LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED:
