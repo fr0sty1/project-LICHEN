@@ -1518,7 +1518,13 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 		goto cleanup_protect_request;
 	}
 	*oscore_opt_len = (size_t)opt_len;
-
+	ret = oscore_ctx_persist_ssn(ctx);
+	if (ret == OSCORE_ERR_NVM_FAILED) {
+		oscore_ctx_set_sender_seq(ctx, seq);
+	}
+	if (ret != OSCORE_OK) {
+		goto cleanup_protect_request;
+	}
 	ret = OSCORE_OK;
 
 cleanup_protect_request:
