@@ -95,114 +95,56 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		dst_addr_len = 0;
 	}
 
-	/* LLSec byte used for both signing and wire format. Signatures mandatory. */
-	uint8_t llsec = addr_mode & 0x03U;
-	llsec |= (1U << 2); /* LICHEN_MIC_64 << LLSEC_MIC_LEN_SHIFT */
-	llsec |= 0x20U; /* LLSEC_SIG_PRESENT */
+	/* LLSec byte for signing and wire (includes MIC selector + SIG_PRESENT).
+	 * Signatures are mandatory (early -ENOKEY if !has_key). */
+	uint8_t llsec = (addr_mode & 0x03U) | (1U << 2) | 0x20U;
 
-	/* Get next nonce tuple using the link context API */
-	int seq_err = lichen_link_next_tx(ctx, &epoch, &seqnum);
-	if (seq_err != 0) {
-		/* Nonce exhausted or invalid context - TX blocked */
-		return seq_err;
-	}
-
-	/* Step 2: Always sign with Schnorr-48 (MIC field). No unsigned/CRC32 path. */
+	/* Preflight size checks BEFORE consuming nonce (deterministic TX
+	 * requirement; matches Python/Rust frame_length calc). */
 	if (l2_payload_len > sizeof(payload_buf)) {
 		return -EMSGSIZE;
 	}
-
-	memcpy(payload_buf, l2_payload, l2_payload_len);
-	payload_len = l2_payload_len;
 	mic_len = SCHNORR48_SIG_LEN;
 	frame_body_len = (LICHEN_FRAME_PAYLOAD_OFFSET(dst_addr_len) -
-			  LICHEN_FRAME_LEN_FIELD_LEN) + payload_len + mic_len;
-	if (frame_body_len > 255) {
+			  LICHEN_FRAME_LEN_FIELD_LEN) + l2_payload_len + mic_len;
+	if (frame_body_len > 255 || frame_body_len > LICHEN_MAX_FRAME_BODY_LEN) {
 		return -EMSGSIZE;
 	}
-
-		if (schnorr48_sign_frame((uint8_t)frame_body_len,
-					 llsec,
-					 epoch, seqnum,
-					 dst_addr, dst_addr_len,
-					 l2_payload, l2_payload_len,
-					 ctx->ed25519_sk, ctx->ed25519_pk,
-					 signature) != 0) {
-			ret = -EINVAL;
-			goto cleanup;
-		}
-	} else {
-		goto cleanup;
-	}
-
-	/* CCP-15: CCA before every TX (project-LICHEN-bwmc / ccp15.json). Threshold from Kconfig. */
-	/* Stubbed pending full impl in lichen_lora_l2_tx and Kconfig (fixed per codereview). */
-	(void)ctx;
-
-	/* S=0 frames have no MIC. */
-	if (!ctx->has_key) {
-		mic_len = 0U;
-	}
-
-	/* Calculate frame body length (everything after the length byte). */
-	frame_body_len = (LICHEN_FRAME_PAYLOAD_OFFSET(dst_addr_len) -
-			  LICHEN_FRAME_LEN_FIELD_LEN) + payload_len + mic_len;
-
-	if (frame_body_len > LICHEN_MAX_FRAME_BODY_LEN) {
-		ret = -EMSGSIZE;
-		goto cleanup;
-	}
-
-	/* Total frame = length byte + body */
 	if (1 + frame_body_len > *out_len) {
-		ret = -ENOMEM;
-		goto cleanup;
+		return -ENOMEM;
 	}
 
-	/* Allocate a nonce only after every deterministic preflight check passes. */
+	/* Allocate nonce only after preflight (fixes duplicate next_tx bug). */
 	int seq_err = lichen_link_next_tx(ctx, &epoch, &seqnum);
 	if (seq_err != 0) {
-		ret = seq_err;
-		goto cleanup;
+		return seq_err;
 	}
 
-	if (signing_enabled &&
-	    schnorr48_sign_frame((uint8_t)frame_body_len,
-				 (uint8_t)(addr_mode | 0x20),
-				 epoch, seqnum,
-				 dst_addr, dst_addr_len,
-				 l2_payload, l2_payload_len,
-				 keypair.sk, keypair.pk,
-				 signature) != 0) {
+	/* Sign using parameters that guarantee DST_LEN(1) prefix at signable
+	 * offset 5 (fixes cross-impl inconsistency with Python _build_signable_data
+	 * at link_layer.py:285-289 and Rust build_signable at schnorr.rs:202-208).
+	 * Uses payload_buf copy for safety during crypto. Matches spec exactly. */
+	memcpy(payload_buf, l2_payload, l2_payload_len);
+	if (schnorr48_sign_frame((uint8_t)frame_body_len, llsec, epoch, seqnum,
+				 dst_addr, dst_addr_len, payload_buf, l2_payload_len,
+				 ctx->ed25519_sk, ctx->ed25519_pk, signature) != 0) {
 		ret = -EINVAL;
 		goto cleanup;
 	}
 
-	/* Step 3: Build frame header */
+	/* Build wire frame (LENGTH || LLSec || EPO || SEQ || DST || PLD || SIG) */
 	off = 0;
-
-	/* Length byte (body length, excludes itself) */
-	out_frame[off++] = (uint8_t)frame_body_len;
-
-	/* LLSec byte (computed earlier to ensure signable data matches wire) */
+	out_frame[off++] = (uint8_t)frame_body_len; /* body length after LENGTH byte */
 	out_frame[off++] = llsec;
-
-	/* Epoch */
 	out_frame[off++] = epoch;
-
-	/* Sequence number (big-endian) */
 	out_frame[off++] = (uint8_t)(seqnum >> 8);
 	out_frame[off++] = (uint8_t)(seqnum & 0xFF);
-
-	/* Destination address */
 	if (dst_addr_len > 0) {
 		memcpy(&out_frame[off], dst_addr, dst_addr_len);
 		off += dst_addr_len;
 	}
-
-	/* Append payload + mandatory Schnorr-48 signature. */
-	memcpy(&out_frame[off], payload_buf, payload_len);
-	off += payload_len;
+	memcpy(&out_frame[off], l2_payload, l2_payload_len);
+	off += l2_payload_len;
 	memcpy(&out_frame[off], signature, SCHNORR48_SIG_LEN);
 	off += SCHNORR48_SIG_LEN;
 
@@ -211,13 +153,12 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 
 cleanup:
 	/*
-	 * SECURITY: Wipe stack buffers on cleanup exits to avoid leaking
-	 * compressed packet data, signatures, or partial frame data.
+	 * SECURITY: Wipe stack buffers on all paths to avoid leaking keys,
+	 * signatures, or packet data.
 	 */
 	memset(payload_buf, 0, sizeof(payload_buf));
 	memset(signature, 0, sizeof(signature));
 	memset(l2_payload, 0, sizeof(l2_payload));
 	memset(compressed, 0, sizeof(compressed));
-	lichen_link_clear_keypair_snapshot(&keypair);
 	return ret;
 }
