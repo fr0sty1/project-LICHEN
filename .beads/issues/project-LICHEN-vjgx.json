@@ -3,17 +3,15 @@
   "title": "_is_mesh_uri redundant bracket stripping",
   "description": "File: python/src/lichen/coap/resources.py:81-82\n\nThe mesh URI validation strips IPv6 brackets manually:\n```python\nif host.startswith('[') and host.endswith(']'):\n    host = host[1:-1]\n```\n\nBut urlparse().hostname already returns IPv6 addresses without brackets per RFC 3986. This code path is unreachable and adds dead code.\n\nExample: urlparse('coap://[fe80::1]/path').hostname returns 'fe80::1', not '[fe80::1]'.\n\nFix: Remove the redundant bracket stripping. If keeping for defensive coding, add a comment explaining why.",
   "notes": "Commit: 202e900e5; fix already applied in previous pass, tests pass, no further changes needed",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:18:14.594764Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:11:32.432766064Z",
+  "updated_at": "2026-07-23T04:11:34.554922409Z",
   "started_at": "2026-07-23T03:47:57.227415103Z",
-  "closed_at": "2026-07-23T03:48:33.293358812Z",
-  "close_reason": "Removed dead bracket-stripping code in _is_mesh_uri(); urlparse().hostname already strips per RFC 3986. Tests in test_proxy.py pass. Followed bead exactly.",
-  "lease_expires_at": "2026-07-23T04:16:10.723035024Z",
-  "heartbeat_at": "2026-07-23T04:11:10.723035024Z"
+  "closed_at": "2026-07-23T04:11:34.554922409Z",
+  "close_reason": "Fix verified: no bracket stripping remains in _is_mesh_uri (resources.py:101 uses parsed.hostname directly); urlparse behavior confirmed; proxy tests pass. Followed bead workflow."
 }
