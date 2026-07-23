@@ -283,7 +283,7 @@ static void handle_sethardware(struct kiss_transport_ctx *ctx,
 		size_t resp_frame_len;
 		uint8_t resp_cmd = KISS_CMD_SETHARDWARE | 0x80u;
 
-		if (kiss_encode(port, resp_cmd, response, (size_t)resp_len,
+		if (kiss_encode(0, resp_cmd, response, (size_t)resp_len,
 				resp_frame, sizeof(resp_frame), &resp_frame_len) == 0) {
 			k_mutex_lock(&ctx->tx_mutex, K_FOREVER);
 			if (ctx->uart_dev != NULL) {
