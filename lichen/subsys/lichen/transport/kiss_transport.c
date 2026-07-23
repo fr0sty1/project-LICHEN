@@ -416,24 +416,28 @@ static void kiss_rx_thread_fn(void *p1, void *p2, void *p3)
 			break;
 		}
 		while (atomic_get(&ctx->shutdown) == 0 && (n = ring_buf_get(&ctx->rx_ring, buf, sizeof(buf))) > 0) {
-			k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
-			ctx->stats.rx_bytes += n;
-			k_mutex_unlock(&ctx->stats_mutex);
+			uint32_t overflow_count = 0;
+			uint32_t frame_error_count = 0;
+
 			for (uint32_t i = 0; atomic_get(&ctx->shutdown) == 0 && i < n; i++) {
 				int ret = kiss_decode_byte(&ctx->rx_ctx, buf[i]);
 				if (ret == 1) {
 					dispatch_frame(ctx);
 					kiss_decode_init(&ctx->rx_ctx);
 				} else if (ret < 0) {
-					k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 					if (ret == -EOVERFLOW) {
-						ctx->stats.overflow_errors++;
+						overflow_count++;
 					} else {
-						ctx->stats.frame_errors++;
+						frame_error_count++;
 					}
-					k_mutex_unlock(&ctx->stats_mutex);
 				}
 			}
+
+			k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
+			ctx->stats.rx_bytes += n;
+			ctx->stats.overflow_errors += overflow_count;
+			ctx->stats.frame_errors += frame_error_count;
+			k_mutex_unlock(&ctx->stats_mutex);
 		}
 	}
 
