@@ -1,0 +1,88 @@
+/*
+ * STALE bridge fragment: heltec_wireless_tracker has no canonical Zephyr
+ * board target (no matching board in Zephyr tree, lichen/boards/, or HWMv2
+ * selector). Retired per project-LICHEN-2u26.4 / 2u26 (bridge mapping scoped).
+ * Do not use for builds. See docs/firmware-board-capability-matrix.md.
+ *
+ * Heltec Wireless Tracker V1.1 device tree overlay for LICHEN bridge
+ *
+ * ESP32-S3 + SX1262 LoRa + UC6580 GNSS + ST7735 TFT
+ *
+ * SX1262 SPI pins:
+ *   SCK  = GPIO9
+ *   MISO = GPIO11
+ *   MOSI = GPIO10
+ *   NSS  = GPIO8
+ *
+ * SX1262 control pins:
+ *   RESET = GPIO12
+ *   BUSY  = GPIO13
+ *   DIO1  = GPIO14
+ *
+ * Display (ST7735, active but unused by bridge):
+ *   MOSI = GPIO42, SCK = GPIO41, DC = GPIO40
+ *   RST = GPIO39, CS = GPIO38, BL = GPIO21
+ *
+ * GNSS UC6580 (active but unused by bridge):
+ *   RX = GPIO33, TX = GPIO34, PWR_EN = GPIO3 (HIGH to enable)
+ */
+
+#include <zephyr/dt-bindings/pinctrl/esp32s3-pinctrl.h>
+
+/ {
+	chosen {
+		zephyr,console = &uart0;
+		zephyr,shell-uart = &uart0;
+	};
+
+	aliases {
+		lora0 = &lora;
+	};
+};
+
+&pinctrl {
+	/* SPI2 for SX1262 */
+	spim2_default: spim2_default {
+		group1 {
+			pinmux = <SPIM2_MISO_GPIO11>,
+				 <SPIM2_SCLK_GPIO9>;
+		};
+		group2 {
+			pinmux = <SPIM2_MOSI_GPIO10>;
+			output-low;
+		};
+	};
+};
+
+&spi2 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	pinctrl-0 = <&spim2_default>;
+	pinctrl-names = "default";
+	cs-gpios = <&gpio0 8 GPIO_ACTIVE_LOW>;  /* NSS = GPIO8 */
+
+	lora: sx1262@0 {
+		compatible = "semtech,sx1262";
+		reg = <0>;
+		spi-max-frequency = <8000000>;
+		reset-gpios = <&gpio0 12 GPIO_ACTIVE_LOW>;  /* RESET = GPIO12 */
+		busy-gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;  /* BUSY = GPIO13 */
+		dio1-gpios = <&gpio0 14 GPIO_ACTIVE_HIGH>;  /* DIO1 = GPIO14 */
+		/* DIO2 controls RF switch internally */
+		dio2-tx-enable;
+	};
+};
+
+&uart0 {
+	status = "okay";
+	current-speed = <115200>;
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
