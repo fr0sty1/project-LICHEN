@@ -1,6 +1,5 @@
-//! Trickle timer (RFC 6206) for RPL DIO pacing. Deterministic, caller-driven
-//! clock with no_std compatibility. Caller supplies random offsets and polls
-//! for next_event.
+//! Trickle timer per RFC 6206 for RPL DIO pacing. Matches the 6-rule
+//! pseudocode exactly (rules 1-6 in §4.2). Deterministic, caller-driven.
 
 /// The next scheduled timer event.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -39,8 +38,8 @@ pub struct InvalidTrickleTransition {
     pub to: TrickleState,
 }
 
-/// RFC 6206 Trickle timer. All times in integer milliseconds. Caller supplies
-/// random offset in `[0, range)` for deterministic behavior without RNG.
+/// Trickle timer matching RFC 6206 §4.2 pseudocode exactly. All times in ms.
+/// Caller supplies random offset for deterministic tests (no RNG).
 #[derive(Debug)]
 pub struct TrickleTimer {
     pub imin: u32,
@@ -88,7 +87,7 @@ impl TrickleTimer {
         }
     }
 
-    /// Begin the first interval (RFC 6206 step 1-2).
+    /// Begin the first interval per RFC 6206 §4.2 rule 1 (I chosen in [Imin, Imax]).
     pub fn start(&mut self, now: u64, rand_offset: u32) {
         self.interval = self.imin;
         self.begin_interval(now, rand_offset)
@@ -106,8 +105,7 @@ impl TrickleTimer {
         self.interval_start = now;
         self.counter = 0;
         self.transmitted = false;
-        // Per RFC 6206 §4.2: t uniform in [I/2, I). Use (interval + 1) / 2
-        // to avoid off-by-one bias for odd I. range = I - half.
+        // RFC 6206 §4.2 rule 2: t uniform in [I/2, I). (interval+1)/2 avoids bias.
         let half = (self.interval + 1) / 2;
         let range = self.interval - half;
         let offset = if range > 0 { rand_offset % range } else { 0 };
@@ -122,12 +120,12 @@ impl TrickleTimer {
         self.interval_start.saturating_add(u64::from(self.interval))
     }
 
-    /// Record a consistent transmission seen from a neighbour (RFC 6206 step 3).
+    /// Record a consistent transmission (RFC 6206 §4.2 rule 3).
     pub fn heard_consistent(&mut self) {
         self.counter = self.counter.saturating_add(1);
     }
 
-    /// Whether a DIO should be sent at transmit time (c < k, RFC 6206 step 4).
+    /// Whether to transmit at t (counter < k per RFC 6206 §4.2 rule 4).
     pub fn should_transmit(&self) -> bool {
         self.counter < self.k
     }
@@ -143,7 +141,7 @@ impl TrickleTimer {
         Ok(self.should_transmit())
     }
 
-    /// End the current interval: double (capped) and start the next one (step 5).
+    /// End the current interval: double I (capped at Imax) and start next per RFC 6206 §4.2 rule 5.
     pub fn expire(&mut self, now: u64, rand_offset: u32) {
         self.try_expire(now, rand_offset)
             .expect("expire only valid after transmit");
@@ -164,9 +162,9 @@ impl TrickleTimer {
         self.begin_interval(now, rand_offset)
     }
 
-    /// Handle an inconsistency: shrink to `imin` and restart (RFC 6206 step 6).
+    /// Handle an inconsistency: if I > Imin set I = Imin and restart per RFC 6206 §4.2 rule 6.
     ///
-    /// Starts timer if stopped; no-op if already at `imin` and running.
+    /// Starts if stopped; no-op if I == Imin and running.
     pub fn reset(&mut self, now: u64, rand_offset: u32) {
         self.try_reset(now, rand_offset)
             .expect("invalid trickle timer transition");
@@ -177,7 +175,7 @@ impl TrickleTimer {
         now: u64,
         rand_offset: u32,
     ) -> Result<(), InvalidTrickleTransition> {
-        if self.state == TrickleState::Stopped || self.interval != self.imin {
+        if self.state == TrickleState::Stopped || self.interval > self.imin {
             self.interval = self.imin;
             self.begin_interval(now, rand_offset)?;
         }
