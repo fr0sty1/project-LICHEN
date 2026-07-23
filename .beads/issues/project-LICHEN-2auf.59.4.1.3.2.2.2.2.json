@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.59.4.1.3.2.2.2.2",
   "title": "Create dedicated overlay and prj.conf for native_posix BLE ingress build",
   "description": "Develop prj.conf and .overlay file (or EXTRA_CONF_FILE/EXTRA_DTC_OVERLAY_FILE) that enables BLE ingress paths (ble_ipsp_transport, LCI, etc.) on native_posix while disabling or stubbing link layer components (no link.35.6). Ensure it builds cleanly for -b native_posix.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
