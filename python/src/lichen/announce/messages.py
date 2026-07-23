@@ -31,7 +31,7 @@ class AnnounceError(Exception):
     """Raised when an announce message is malformed."""
 
 
-@dataclass(frozen=True)
+@dataclass
 class AnnounceMessage:
     """An announce message advertising presence in the mesh (spec 9.2 + CCP-9).
 
@@ -85,7 +85,7 @@ class AnnounceMessage:
         )
 
     def to_bytes(self) -> bytes:
-        """Serialize per spec 9.2+CCP-9 (type[0], rx[1], hop[2], seq[3:5], iid/pubkey/sig/app)."""
+        """Serialize to wire format per spec 9.2/CCP-9 (type, rx_channel/flags, hop, seq, iid, pubkey, sig, app_data)."""
         if len(self.signature) != SIGNATURE_LENGTH:
             raise AnnounceError(
                 f"cannot serialize unsigned announce (signature len "
