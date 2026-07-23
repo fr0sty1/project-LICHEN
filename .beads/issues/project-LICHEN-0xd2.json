@@ -2,15 +2,15 @@
   "id": "project-LICHEN-0xd2",
   "title": "[merge-conflict] worktree-worker24: simulation.py",
   "notes": "Commit: 5b32b9358",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:43:31.144845353Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:53:24.137351551Z",
+  "updated_at": "2026-07-23T01:53:27.481413094Z",
   "started_at": "2026-07-23T01:46:59.528110537Z",
-  "lease_expires_at": "2026-07-23T01:51:59.528110537Z",
-  "heartbeat_at": "2026-07-23T01:46:59.528110537Z"
+  "closed_at": "2026-07-23T01:53:27.481413094Z",
+  "close_reason": "Resolved merge conflict in simulation.py by cleaning conflict markers, unifying RX recording logic in _get_rx_result_internal, adopting clean enter_rx_mode signature from main, and updating caller. Tests pass. Commit 5b32b9358"
 }
