@@ -1,14 +1,40 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LICHEN test vector file",
-  "description": "Envelope shared by all LICHEN vector files. Each file holds a list of vectors of one kind; see the per-vector definitions.",
-  "type": "object",
-  "required": ["format_version", "description", "vectors"],
-  "properties": {
-    "format_version": {"type": "integer", "const": 2},
-    "description": {"type": "string"},
-    "vectors": {
+  "description": "Envelope shared by all LICHEN vector files. Supports object envelope with format_version (1 or 2) or v2 bare array root of vectors (for ccp16-desync.json and similar). Each file holds a list of vectors of one kind; see the per-vector definitions. Combined to support all vector types (including ccp15_vector and ccp_vector), descriptions, format_version handling, bare array support, and all definitions from both sides without losing functionality.",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["format_version", "description", "vectors"],
+      "additionalProperties": true,
+      "properties": {
+        "format_version": {"type": "integer", "enum": [1, 2]},
+        "description": {"type": "string"},
+        "$schema": {"type": "string"},
+        "vectors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "oneOf": [
+              {"$ref": "#/definitions/schc_vector"},
+              {"$ref": "#/definitions/l2_payload_vector"},
+              {"$ref": "#/definitions/frame_vector"},
+              {"$ref": "#/definitions/announce_coords_vector"},
+              {"$ref": "#/definitions/meshtastic_app_compat_vector"},
+              {"$ref": "#/definitions/meshcore_app_compat_vector"},
+              {"$ref": "#/definitions/oscore_vector"},
+              {"$ref": "#/definitions/rpl_messages_vector"},
+              {"$ref": "#/definitions/ccp13_vector"},
+              {"$ref": "#/definitions/ccp15_vector"},
+              {"$ref": "#/definitions/ccp_vector"}
+            ]
+          }
+        }
+      }
+    },
+    {
       "type": "array",
+      "minItems": 1,
       "items": {
         "oneOf": [
           {"$ref": "#/definitions/schc_vector"},
@@ -19,12 +45,151 @@
           {"$ref": "#/definitions/meshcore_app_compat_vector"},
           {"$ref": "#/definitions/oscore_vector"},
           {"$ref": "#/definitions/rpl_messages_vector"},
-          {"$ref": "#/definitions/ccp15_vector"}
+          {"$ref": "#/definitions/ccp13_vector"},
+          {"$ref": "#/definitions/ccp15_vector"},
+          {"$ref": "#/definitions/ccp_vector"}
         ]
-      }
+      },
+      "description": "v2 bare array root support for CCP desync vectors (ccp16-desync.json) and load balancing tests"
     }
-  },
+  ],
   "definitions": {
+    "document_base": {
+      "type": "object",
+      "required": ["format_version", "description", "vectors"],
+      "additionalProperties": false,
+      "properties": {
+        "format_version": {"const": 2},
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "spec": {"type": "string"},
+        "$schema": {"type": "string"},
+        "vectors": {
+          "type": "array",
+          "minItems": 1
+        }
+      }
+    },
+    "schc_document": {
+      "allOf": [
+        {"$ref": "#/definitions/document_base"},
+        {
+          "properties": {
+            "vectors": {
+              "items": {"$ref": "#/definitions/schc_vector"}
+            }
+          }
+        }
+      ]
+    },
+    "l2_payload_document": {
+      "allOf": [
+        {"$ref": "#/definitions/document_base"},
+        {
+          "properties": {
+            "vectors": {
+              "items": {"$ref": "#/definitions/l2_payload_vector"}
+            }
+          }
+        }
+      ]
+    },
+    "link_frame_document": {
+      "allOf": [
+        {"$ref": "#/definitions/document_base"},
+        {
+          "properties": {
+            "vectors": {
+              "items": {"$ref": "#/definitions/frame_vector"}
+            }
+          }
+        }
+      ]
+    },
+    "announce_coords_document": {
+      "allOf": [
+        {"$ref": "#/definitions/document_base"},
+        {
+          "properties": {
+            "vectors": {
+              "items": {"$ref": "#/definitions/announce_coords_vector"}
+            }
+          }
+        }
+      ]
+    },
+    "meshtastic_app_compat_document": {
+      "allOf": [
+        {"$ref": "#/definitions/document_base"},
+        {
+          "properties": {
+            "vectors": {
+              "items": {"$ref": "#/definitions/meshtastic_app_compat_vector"}
+            }
+          }
+        }
+      ]
+    },
+    "meshcore_app_compat_document": {
+      "allOf": [
+        {"$ref": "#/definitions/document_base"},
+        {
+          "properties": {
+            "vectors": {
+              "items": {"$ref": "#/definitions/meshcore_app_compat_vector"}
+            }
+          }
+        }
+      ]
+    },
+    "oscore_document": {
+      "allOf": [
+        {"$ref": "#/definitions/document_base"},
+        {
+          "properties": {
+            "vectors": {
+              "items": {"$ref": "#/definitions/oscore_vector"}
+            }
+          }
+        }
+      ]
+    },
+    "rpl_messages_document": {
+      "allOf": [
+        {"$ref": "#/definitions/document_base"},
+        {
+          "properties": {
+            "vectors": {
+              "items": {"$ref": "#/definitions/rpl_messages_vector"}
+            }
+          }
+        }
+      ]
+    },
+    "compact_cot_document": {
+      "allOf": [
+        {"$ref": "#/definitions/document_base"},
+        {
+          "properties": {
+            "vectors": {
+              "items": {"$ref": "#/definitions/compact_cot_vector"}
+            }
+          }
+        }
+      ]
+    },
+    "schnorr48_document": {
+      "allOf": [
+        {"$ref": "#/definitions/document_base"},
+        {
+          "properties": {
+            "vectors": {
+              "items": {"$ref": "#/definitions/schnorr48_vector"}
+            }
+          }
+        }
+      ]
+    },
     "hex": {
       "type": "string",
       "pattern": "^([0-9a-f][0-9a-f])*$",
@@ -157,12 +322,12 @@
         {
           "if": {
             "properties": {
-              "name": {
-                "enum": [
-                  "want_config_stage_69420",
-                  "legacy_full_sync_unknown_nonce"
-                ]
-              }
+                "name": {
+                  "enum": [
+                    "want_config_stage_69420",
+                    "legacy_full_sync_unknown_nonce"
+                  ]
+                }
             }
           },
           "then": {
@@ -439,6 +604,7 @@
     "oscore_vector": {
       "type": "object",
       "required": ["name", "type"],
+      "additionalProperties": false,
       "description": "OSCORE (RFC 8613) test vector for key derivation, request/response protection, replay detection, or invalid input.",
       "properties": {
         "name": {"type": "string"},
@@ -523,6 +689,7 @@
     "rpl_messages_vector": {
       "type": "object",
       "required": ["name", "type", "encoded"],
+      "additionalProperties": false,
       "description": "RPL control message (RFC 6550) parse/generate vector.",
       "properties": {
         "name": {"type": "string"},
@@ -564,6 +731,104 @@
         "load_factor": {"type": "number"},
         "hash_32": {"type": "string", "pattern": "^[0-9a-f]{8}$"}
       }
+    },
+    "ccp13_vector": {
+      "type": "object",
+      "required": ["name", "description", "limit_permille", "window_ms", "expected_remaining_ms"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "limit_permille": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "window_ms": {"type": "integer", "minimum": 1000},
+        "tx_ms": {"type": "integer", "minimum": 0},
+        "expected_remaining_ms": {"type": "integer", "minimum": 0},
+        "expected_usage_permille": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "notes": {"type": "string"}
+      }
+    },
+    "ccp_vector": {
+      "type": "object",
+      "required": ["description"],
+      "additionalProperties": true,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["slot_selection", "load_balancing", "density_estimation", "desync"],
+          "description": "CCP-16 vector type (added for schema completeness per codereview)"
+        },
+        "description": {"type": "string"},
+        "name": {"type": "string"},
+        "rssi_dbm": {"type": "number", "minimum": -140, "maximum": 0},
+        "per": {"type": "number", "minimum": 0, "maximum": 1},
+        "snr_samples": {
+          "type": "array",
+          "items": {"type": "number"}
+        },
+        "hash_32_example": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
+        "security_review": {
+          "type": "string",
+          "description": "Pass 2 security: no injection or crypto issues in CCP-16 vectors (project-LICHEN-ray3)"
+        },
+        "input": {
+          "type": "object",
+          "properties": {
+            "eui64": {"$ref": "#/definitions/hex"},
+            "epoch": {"type": "integer"},
+            "density": {"type": "integer", "minimum": 0},
+            "snr_db": {"type": "number"},
+            "utilization": {"type": "integer", "minimum": 0, "maximum": 255},
+            "neighbors": {
+              "type": "array",
+              "items": {"$ref": "#/definitions/hex"}
+            },
+            "now": {
+              "type": "integer",
+              "description": "now() u32 timestamp for TDMA cross-reference and monotonicity test"
+            },
+            "select_channel": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Channel selected via hash_32(now() ^ iid) % num_channels"
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "properties": {
+            "slot_id": {"type": "integer"},
+            "sf": {"type": "integer", "minimum": 7, "maximum": 12},
+            "channel": {"type": "integer", "minimum": 0},
+            "expected_channel": {"type": "integer", "minimum": 0},
+            "tx_allowed": {"type": "boolean"},
+            "expected_sf": {"type": "integer"},
+            "snr_ema": {"type": "number"},
+            "load_factor": {"type": "number"},
+            "hash_32_example": {"type": "integer"},
+            "expected_hash": {
+              "type": "integer",
+              "description": "Output of hash_32 primitive (FNV-1a with basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:254; see Rust lichen_link_rx.c:packet_hash and Python generate.py for exact match. Matches Rust no_std style)"
+            },
+            "multi_rx_success": {"type": "integer"},
+            "gateway_capacity": {"type": "integer"}
+          }
+        },
+        "notes": {"type": "string"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"type": {"const": "slot_selection"}}},
+          "then": {"required": ["input", "output"]}
+        },
+        {
+          "if": {"properties": {"type": {"const": "load_balancing"}}},
+          "then": {"required": ["input", "output"]}
+        },
+        {
+          "if": {"properties": {"type": {"const": "desync"}}},
+          "then": {"required": ["input", "output"]}
+        }
+      ]
     }
   }
 }
