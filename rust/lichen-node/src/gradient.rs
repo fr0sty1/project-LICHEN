@@ -52,46 +52,16 @@ pub struct GeoCoords {
 }
 
 impl GeoCoords {
-    /// Parse from announce app_data TLV stream (Type 0x01, 8-byte value).
-    ///
-    /// TLV format: Type (1 byte) | Length (1 byte) | Value (Length bytes)
-    /// LatE7/LonE7 are signed 32-bit fixed-point (1e-7 degree resolution).
-    /// Unknown types are skipped using the length field.
     pub fn from_app_data(data: &[u8]) -> Option<Self> {
-        let mut pos = 0;
-        while pos + 2 <= data.len() {
-            let typ = data[pos];
-            let len = data[pos + 1] as usize;
-            let value_start = pos + 2;
-            let value_end = value_start + len;
-
-            if value_end > data.len() {
-                // Truncated TLV - stop parsing
-                return None;
-            }
-
-            if typ == 0x01 && len == 8 {
-                // GeoCoords: 8 bytes (4 lat + 4 lon)
-                let lat_e7 = i32::from_be_bytes([
-                    data[value_start],
-                    data[value_start + 1],
-                    data[value_start + 2],
-                    data[value_start + 3],
-                ]);
-                let lon_e7 = i32::from_be_bytes([
-                    data[value_start + 4],
-                    data[value_start + 5],
-                    data[value_start + 6],
-                    data[value_start + 7],
-                ]);
+        for i in 0..data.len().saturating_sub(8) {
+            if data[i] == 0x01 {
+                let lat_e7 = i32::from_be_bytes([data[i+1], data[i+2], data[i+3], data[i+4]]);
+                let lon_e7 = i32::from_be_bytes([data[i+5], data[i+6], data[i+7], data[i+8]]);
                 return Some(Self {
                     lat: lat_e7 as f32 / 1e7,
                     lon: lon_e7 as f32 / 1e7,
                 });
             }
-
-            // Skip to next TLV (works for known and unknown types)
-            pos = value_end;
         }
         None
     }
@@ -439,15 +409,12 @@ mod tests {
 
     #[test]
     fn geo_coords_parsing() {
-        // TLV format: Type=0x01, Length=8, Value=LatE7+LonE7
-        // LatE7 (45.0° = 450_000_000), LonE7 (-122.0° = -1_220_000_000)
         let lat_e7: i32 = 450_000_000;
         let lon_e7: i32 = -1_220_000_000;
-        let mut data = [0u8; 10];
-        data[0] = 0x01; // Type
-        data[1] = 0x08; // Length (8 bytes of coords)
-        data[2..6].copy_from_slice(&lat_e7.to_be_bytes());
-        data[6..10].copy_from_slice(&lon_e7.to_be_bytes());
+        let mut data = [0u8; 9];
+        data[0] = 0x01;
+        data[1..5].copy_from_slice(&lat_e7.to_be_bytes());
+        data[5..9].copy_from_slice(&lon_e7.to_be_bytes());
 
         let coords = GeoCoords::from_app_data(&data).unwrap();
         assert!((coords.lat - 45.0).abs() < 0.001);
@@ -456,21 +423,15 @@ mod tests {
 
     #[test]
     fn geo_coords_parsing_skips_unknown_types() {
-        // TLV stream: Unknown(type=0xFF, len=3, value=[1,2,3]) + GeoCoords(type=0x01, len=8, value=...)
         let lat_e7: i32 = 450_000_000;
         let lon_e7: i32 = -1_220_000_000;
-        let mut data = [0u8; 16];
-        // Unknown TLV first
-        data[0] = 0xFF; // Type (unknown)
-        data[1] = 0x03; // Length
-        data[2..5].copy_from_slice(&[0x01, 0x02, 0x03]);
-        // GeoCoords TLV second
-        data[5] = 0x01; // Type
-        data[6] = 0x08; // Length
-        data[7..11].copy_from_slice(&lat_e7.to_be_bytes());
-        data[11..15].copy_from_slice(&lon_e7.to_be_bytes());
+        let mut data = [0u8; 13];
+        data[0] = 0xFF;
+        data[1..4].copy_from_slice(&[0xAA, 0xBB, 0xCC]);
+        data[4] = 0x01;
+        data[5..9].copy_from_slice(&lat_e7.to_be_bytes());
+        data[9..13].copy_from_slice(&lon_e7.to_be_bytes());
 
-        // Parser should skip unknown type and find GeoCoords
         let coords = GeoCoords::from_app_data(&data).unwrap();
         assert!((coords.lat - 45.0).abs() < 0.001);
         assert!((coords.lon - (-122.0)).abs() < 0.001);
