@@ -9,6 +9,7 @@
  */
 
 #include <errno.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 #include <zephyr/kernel.h>
@@ -555,22 +556,27 @@ int lichen_msg_sent_id_get(struct coap_resource *resource,
 				    COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
 	}
 
-	/* Parse the message ID from third path component */
 	{
 		char id_buf[12];
 		size_t id_len = opts[2].len;
 
-		if (id_len >= sizeof(id_buf)) {
+		if (id_len >= sizeof(id_buf) || id_len == 0) {
 			return coap_respond(resource, request, addr, addr_len,
 					    COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
 		}
 		memcpy(id_buf, opts[2].value, id_len);
 		id_buf[id_len] = '\0';
 
+		if (!isdigit((unsigned char)id_buf[0])) {
+			return coap_respond(resource, request, addr, addr_len,
+					    COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
+		}
+
 		char *endptr;
+		errno = 0;
 		unsigned long val = strtoul(id_buf, &endptr, 10);
 
-		if (*endptr != '\0' || val > UINT32_MAX) {
+		if (errno == ERANGE || endptr == id_buf || *endptr != '\0' || val > UINT32_MAX) {
 			return coap_respond(resource, request, addr, addr_len,
 					    COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
 		}
