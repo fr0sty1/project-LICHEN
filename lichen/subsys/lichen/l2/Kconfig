@@ -115,25 +115,6 @@ config LICHEN_LORA_TX_POWER
 	  LoRa transmit power in dBm. Default 14 dBm is safe worldwide.
 	  Higher values may violate regional regulations.
 
-config LICHEN_LORA_CCA_ENABLE
-	bool "Enable Clear Channel Assessment (CCA/CAD) before TX"
-	depends on LICHEN_LORA_L2
-	default n
-	help
-	  Perform CAD (Channel Activity Detection) before each TX to reduce
-	  collisions. Reads radio state and aborts TX if channel is busy.
-	  Required for dense mesh scalability (see CCP-15). Only effective
-	  on radios with CAD support (LR1110, SX126x). Sim/loopback ignore it.
-
-config LICHEN_LORA_CCA_TIMEOUT_MS
-	int "CCA timeout / max CAD attempts in ms"
-	depends on LICHEN_LORA_CCA_ENABLE
-	default 500
-	range 100 5000
-	help
-	  Maximum time to spend on CCA before giving up on TX. Maps to number
-	  of CAD symbols depending on SF. See spec appendix for algorithm.
-
 config LICHEN_L2
 	bool "LICHEN Zephyr L2 network interface"
 	depends on LICHEN_LORA_L2
