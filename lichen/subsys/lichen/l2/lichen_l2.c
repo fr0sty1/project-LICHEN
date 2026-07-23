@@ -23,6 +23,7 @@
 #include <zephyr/sys/util.h>
 
 #include <lichen/hal.h>
+#include <monocypher.h>
 #if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
 #include <lichen/app_identity/app_identity.h>
 #endif
@@ -770,7 +771,7 @@ int lichen_peer_add(const uint8_t eui64[LICHEN_EUI64_LEN],
 		 * followed by re-add. Silent key changes are rejected to
 		 * prevent impersonation attacks.
 		 */
-		if (memcmp(existing->pubkey, pubkey, LICHEN_L2_PUBKEY_LEN) != 0) {
+		if (crypto_verify32(existing->pubkey, pubkey) != 0) {
 			LOG_WRN("lichen_l2: TOFU violation for ..%02x:%02x "
 				"(pubkey mismatch)", eui64[6], eui64[7]);
 			k_mutex_unlock(&rx_mutex);
