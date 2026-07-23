@@ -446,7 +446,9 @@ class NodeServer:
             rx_done.set()
         entered = False
         try:
-            self._simulation.enter_rx_mode(node_id,timeout_us,ch,on_packet,on_timeout)
+            self._simulation.enter_rx_mode(
+                node_id, timeout_us, on_packet, on_timeout, channel=ch
+            )
             entered = True
         except ValueError as e:
             logger.error("Failed to enter RX mode for %s: %s", node_id, e)
@@ -456,7 +458,13 @@ class NodeServer:
             await rx_done.wait()
             if rx_result[0] is not None:
                 pkt_payload, rssi, snr = rx_result[0]
-                logger.debug("RX_ENTER at %s: %d bytes, RSSI %d, SNR %d",node_id,len(pkt_payload),rssi,snr)
+                logger.debug(
+                    "RX_ENTER at %s: %d bytes, RSSI %d, SNR %d",
+                    node_id,
+                    len(pkt_payload),
+                    rssi,
+                    snr,
+                )
                 await write_message(writer, encode_rx_packet(pkt_payload, rssi, snr))
             else:
                 logger.debug("RX_ENTER timeout at %s after %d us", node_id, timeout_us)
@@ -505,7 +513,9 @@ class NodeServer:
             await write_message(writer, encode_err(8, f"Node not found: {node_id}"))
             return
         current_time_us = self._simulation.current_time_us
-        detected = self._simulation.medium.detect_activity(position=node.position,time_us=current_time_us,channel=ch)
+        detected = self._simulation.medium.detect_activity(
+            position=node.position, time_us=current_time_us, channel=ch
+        )
         logger.debug("CAD at %s: detected=%s", node_id, detected)
         await write_message(writer, encode_cad_result(detected))
 

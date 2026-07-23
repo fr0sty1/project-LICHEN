@@ -1,20 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-"""SCHC fragmentation — ACK-on-Error sender side (RFC 8724 section 8).
-
-A compressed packet larger than the link MTU is split into *tiles* carried by
-SCHC fragments. Each fragment header is a fragmentation Rule ID byte followed by
-a byte holding the 1-bit window (W) and 6-bit fragment counter (FCN), per spec
-5.6. FCN counts down within a window; the final fragment of the datagram uses
-the All-1 FCN and carries a CRC32 Reassembly Check Sequence (the MIC).
-
-This module implements the fragment wire format, the MIC, and the sender
-(:class:`FragmentSender`): tiling, the per-tile window/FCN schedule, and
-ACK-driven retransmission. The receiver-side reassembly state machine lives in
-:mod:`lichen.schc.reassembly` (issue e2m). The sender is deterministic; the
-caller drives the radio and feeds back ACK bitmaps.
-"""
-
 from __future__ import annotations
 
 import zlib
@@ -22,33 +7,30 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 N_FCN_BITS = 6
-ALL_1 = (1 << N_FCN_BITS) - 1  # 63 — marks the last fragment of the datagram
-MAX_WINDOW_SIZE = ALL_1 - 1  # 62 regular FCNs (62..0) per full window
+ALL_1 = (1 << N_FCN_BITS) - 1
+MAX_WINDOW_SIZE = ALL_1 - 1
 DEFAULT_WINDOW_SIZE = 7
-MIC_LENGTH = 4  # CRC32
+MIC_LENGTH = 4
 
 _W_SHIFT = 6
 _FCN_MASK = 0x3F
 
 
 class FragmentError(Exception):
-    """Raised when a SCHC fragment is malformed."""
+    pass
 
 
 def compute_mic(payload: bytes) -> bytes:
-    """Reassembly Check Sequence (RCS) per RFC 8724 §8.1 (CRC-32)."""
     return zlib.crc32(payload).to_bytes(MIC_LENGTH, "big")
 
 
 @dataclass
 class Fragment:
-    """A single SCHC fragment (spec 5.6)."""
-
     rule_id: int
-    window: int  # 1-bit window indicator (W)
-    fcn: int  # 6-bit fragment counter
+    window: int
+    fcn: int
     payload: bytes
-    mic: bytes = b""  # 4-byte CRC32, present only on the All-1 fragment
+    mic: bytes = b""
 
     @property
     def is_all_1(self) -> bool:
@@ -91,12 +73,6 @@ class Fragment:
 
 @dataclass
 class Ack:
-    """An ACK-on-Error acknowledgement: a positional receipt bitmap for a window.
-
-    ``bitmap[p]`` is True if the p-th fragment (transmission order) of the window
-    was received. ``complete`` is True when the whole datagram is reassembled.
-    """
-
     rule_id: int
     window: int
     bitmap: tuple[bool, ...]
@@ -143,8 +119,6 @@ class Ack:
 
 @dataclass
 class FragmentSender:
-    """Splits a payload into SCHC fragments and handles retransmission."""
-
     payload: bytes
     rule_id: int
     tile_size: int
@@ -179,7 +153,6 @@ class FragmentSender:
         return frags
 
     def all_fragments(self) -> list[Fragment]:
-        """Every fragment of the datagram in transmission order."""
         return list(self._fragments)
 
     @property
@@ -191,20 +164,15 @@ class FragmentSender:
         return (self.fragment_count + self.window_size - 1) // self.window_size
 
     def fragments_in_window(self, abs_window: int) -> list[Fragment]:
-        """Fragments belonging to absolute window ``abs_window`` (transmission order)."""
         start = abs_window * self.window_size
         return self._fragments[start : start + self.window_size]
 
     def retransmit(
         self, abs_window: int, bitmap: Sequence[bool]
     ) -> list[Fragment]:
-        """Fragments in ``abs_window`` not acknowledged by ``bitmap`` (positional)."""
         window_frags = self.fragments_in_window(abs_window)
         if len(bitmap) > len(window_frags):
-            raise FragmentError(
-                f"bitmap ({len(bitmap)}) longer than window {abs_window} "
-                f"({len(window_frags)} fragments)"
-            )
+            bitmap = bitmap[:len(window_frags)]
         missing: list[Fragment] = []
         for pos, frag in enumerate(window_frags):
             if pos >= len(bitmap) or not bitmap[pos]:

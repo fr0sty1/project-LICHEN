@@ -2,6 +2,13 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+from ipaddress import IPv6Address
+
+from lichen.ipv6 import to_ipv6
+from lichen.rpl.messages import DAO, DAOAck, RplOption, RplOptionType
+from lichen.rpl.routing import RoutingTable
+
 """RPL DAO handling for non-storing mode (RFC 6550, spec section 8.5).
 
 In non-storing mode every node sends a DAO directly to the root advertising
@@ -13,13 +20,6 @@ This module provides the RPL Target (type 5) and Transit Information (type 6)
 option codecs and a :class:`DaoManager` for both sending (non-root) and
 receiving (root) sides.
 """
-
-from dataclasses import dataclass, field
-from ipaddress import IPv6Address
-
-from lichen.ipv6 import to_ipv6
-from lichen.rpl.messages import DAO, DAOAck, RplOption, RplOptionType
-from lichen.rpl.routing import RoutingTable
 
 _MAX_CHAIN = 64  # loop / runaway guard when assembling source routes
 
@@ -155,9 +155,13 @@ class DaoManager:
                 f"DAO instance ID {dao.rpl_instance_id} != {self.rpl_instance_id}"
             )
         if self.dodag_id is not None and dao.dodag_id != self.dodag_id:
+<<<<<<< HEAD
             raise DaoError(
                 f"DAO DODAG ID {dao.dodag_id} != {self.dodag_id}"
             )
+=======
+            raise DaoError(f"DAO DODAG ID mismatch: {dao.dodag_id} != {self.dodag_id}")
+>>>>>>> origin/worktree-worker16
 
         target, parent = self._extract_edge(dao)
         self._parent_map[target] = parent

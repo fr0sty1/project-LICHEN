@@ -38,7 +38,7 @@ impl Gateway {
             return None;
         }
 
-        let mut out = vec![0u8; 4096];
+        let mut out = vec![0u8; SCHC_MAX_DECOMPRESSED];
         match decompress(l2_payload_body(l2_payload), &mut out) {
             Ok(n) => {
                 out.truncate(n);
@@ -49,6 +49,10 @@ impl Gateway {
                 let payload_len = u16::from_be_bytes([out[4], out[5]]);
                 info!(payload_len, "mesh → upstream");
                 Some(out)
+            }
+            Err(SchcError::BufferTooSmall(e)) => {
+                warn!(required = e.required, provided = e.provided, "SCHC decompress buffer too small for jumbo packet");
+                None
             }
             Err(SchcError::UnknownRuleId(id)) => {
                 warn!(rule_id = id, "SCHC: unknown rule — dropping");
@@ -90,6 +94,26 @@ impl Gateway {
     /// Record that `node_id` is reachable via `addr`.
     pub fn add_route(&mut self, addr: [u8; 16], node_id: NodeId) {
         self.routes.insert(addr, node_id);
+    }
+
+    pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
+        self.routes.contains_key(dst)
+            || (dst[0] == 0xfe && dst[1] == 0x80)
+            || self.rpl_node.router.lookup_route(dst).is_some()
+    }
+
+    /// Process RPL control messages from mesh frames. Returns (reply, event).
+    /// Used by root to handle DAOs for route updates and trickle timing.
+    pub fn process_rpl(&mut self, frame: &[u8], now_ms: u32) -> (Option<Vec<u8>>, RplEvent) {
+        let mut reply = vec![0u8; 512];
+        let (reply_len, event) = self.rpl_node.handle_frame_rpl(frame, &mut reply, now_ms);
+        let reply_opt = if reply_len > 0 {
+            reply.truncate(reply_len);
+            Some(reply)
+        } else {
+            None
+        };
+        (reply_opt, event)
     }
 }
 

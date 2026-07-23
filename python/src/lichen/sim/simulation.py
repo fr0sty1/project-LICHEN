@@ -565,11 +565,30 @@ class Simulation:
             raise ValueError(f"Node '{node_id}' is not connected")
         if self._jitter_max_us > 0:
             jitter = self.calculate_tx_jitter()
-            delayed_event = TxStartDelayedEvent(time_us=self._current_time_us + jitter,node_id=node_id,payload=payload,tx_power_dbm=node.tx_power_dbm,position=node.position,channel=channel)
+            delayed_event = TxStartDelayedEvent(
+                time_us=self._current_time_us + jitter,
+                node_id=node_id,
+                payload=payload,
+                tx_power_dbm=node.tx_power_dbm,
+                position=node.position,
+                channel=channel,
+            )
             self._event_queue.push(delayed_event)
-            self._debug_log("tx_delayed",sim_id=self._id,node_id=node_id,jitter_us=jitter,fire_at_us=delayed_event.time_us)
+            self._debug_log(
+                "tx_delayed",
+                sim_id=self._id,
+                node_id=node_id,
+                jitter_us=jitter,
+                fire_at_us=delayed_event.time_us,
+            )
             return ""
-        return self._do_start_transmission(node_id=node_id,payload=payload,tx_power_dbm=node.tx_power_dbm,position=node.position,channel=channel)
+        return self._do_start_transmission(
+            node_id=node_id,
+            payload=payload,
+            tx_power_dbm=node.tx_power_dbm,
+            position=node.position,
+            channel=channel,
+        )
 
     def _do_start_transmission(
         self,
@@ -696,7 +715,14 @@ class Simulation:
         self._event_queue.push(timeout_event)
         self._debug_log("rx_start", sim_id=self._id, node_id=node_id, timeout_us=timeout_us)
 
-    def enter_rx_mode(self,node_id: str,timeout_us: int,channel: int = 0,on_packet: Callable[[bytes, int, int], None],on_timeout: Callable[[], None],) -> None:
+    def enter_rx_mode(
+        self,
+        node_id: str,
+        timeout_us: int,
+        on_packet: Callable[[bytes, int, int], None],
+        on_timeout: Callable[[], None],
+        channel: int = 0,
+    ) -> None:
         node = self._nodes.get(node_id)
         if node is None:
             raise ValueError(f"Node '{node_id}' does not exist")
@@ -707,9 +733,16 @@ class Simulation:
         node.rx_callbacks = (on_packet, on_timeout)
         timeout_time_us = self._current_time_us + timeout_us
         self._pending_rx_timeouts[node_id] = timeout_time_us
-        timeout_event = RxTimeoutEvent(time_us=timeout_time_us,node_id=node_id)
+        timeout_event = RxTimeoutEvent(
+            time_us=timeout_time_us, node_id=node_id
+        )
         self._event_queue.push(timeout_event)
-        self._debug_log("enter_rx_mode",sim_id=self._id,node_id=node_id,timeout_us=timeout_time_us)
+        self._debug_log(
+            "enter_rx_mode",
+            sim_id=self._id,
+            node_id=node_id,
+            timeout_us=timeout_time_us,
+        )
 
     def exit_rx_mode(self, node_id: str) -> None:
         """Exit RX mode, cancel pending timeout.

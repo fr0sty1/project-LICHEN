@@ -36,6 +36,7 @@ from lichen.sim.protocol import (
 from lichen.sim.transmission import airtime_us
 
 if TYPE_CHECKING:
+    from collections.abc import Coroutine
     from lichen.sim.simulation import Simulation
 
 logger = logging.getLogger(__name__)
@@ -228,37 +229,35 @@ class RenodeServer:
             writer.close()
 
     async def _handle_tx(self, data: bytes, writer: asyncio.StreamWriter) -> None:
-        """Handle TX request from Renode."""
         try:
-            payload = decode_tx(get_message_payload(data))
+            tx_payload, ch = decode_tx(get_message_payload(data))
         except Exception as e:
             logger.error("Bad TX message: %s", e)
             await _write_message(writer, encode_tx_fail())
             return
 
         try:
-            self._simulation.start_transmission(self._node_id, payload)
+            self._simulation.start_transmission(
+                self._node_id, tx_payload, channel=ch
+            )
         except ValueError as e:
             logger.error("TX failed: %s", e)
             await _write_message(writer, encode_tx_fail())
             return
 
-        tx_airtime = airtime_us(len(payload))
-        logger.debug("Renode TX: %d bytes, airtime %d us", len(payload), tx_airtime)
+        tx_airtime = airtime_us(len(tx_payload))
+        logger.debug(
+            "Renode TX: %d bytes, airtime %d us, ch=%d", len(tx_payload), tx_airtime, ch
+        )
         await _write_message(writer, encode_tx_done(tx_airtime))
 
     def _handle_rx_enter(self, data: bytes, writer: asyncio.StreamWriter) -> None:
-        """Handle RX_ENTER - enter push-based RX mode.
-
-        Enters RX mode with callbacks. The background simulation driver task
-        handles time advancement and packet delivery.
-
-        Args:
-            data: Complete message bytes including type byte.
-        """
-        timeout_us = decode_rx_enter(get_message_payload(data))
+        timeout_us, ch = decode_rx_enter(get_message_payload(data))
         logger.debug(
-            "Renode RX_ENTER: node=%s timeout_us=%d", self._node_id, timeout_us
+            "Renode RX_ENTER: node=%s timeout_us=%d ch=%d",
+            self._node_id,
+            timeout_us,
+            ch,
         )
         self._simulation.enter_rx_mode(
             self._node_id,
@@ -267,6 +266,7 @@ class RenodeServer:
                 writer, payload, rssi, snr
             ),
             lambda: self._on_rx_timeout(writer),
+            channel=ch,
         )
 
     def _handle_rx_exit(self) -> None:
@@ -294,7 +294,7 @@ class RenodeServer:
         if self._writer is writer:
             await _write_message(writer, data)
 
-    def _create_background_task(self, coro: asyncio.Coroutine[None, None, None]) -> None:
+    def _create_background_task(self, coro: Coroutine[None, None, None]) -> None:
         """Create a tracked background task with exception handling.
 
         The task is added to _pending_tasks and automatically removed when done.

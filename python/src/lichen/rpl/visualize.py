@@ -43,8 +43,8 @@ def ranks_from_states(states: Mapping[str, DodagState]) -> dict[str, int]:
     return {node_id: state.rank for node_id, state in states.items()}
 
 
-def _children_of(parents: Topology) -> dict[str | None, list[str]]:
-    children: dict[str | None, list[str]] = {}
+def _children_of(parents: Topology) -> dict[Optional[str], list[str]]:
+    children: dict[Optional[str], list[str]] = {}
     for node, parent in parents.items():
         children.setdefault(parent, []).append(node)
     return children

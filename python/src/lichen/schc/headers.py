@@ -309,8 +309,6 @@ class OscoreUdpLinkLocalProfile(_OscoreUdpProfile):
 
 
 class OscoreUdpGlobalProfile(_OscoreUdpProfile):
-    """Global IPv6 + UDP + OSCORE-protected CoAP (SCHC rule 6)."""
-
     rule = GLOBAL_OSCORE_RULE
 
     def _addr_ok(self, addr: int) -> bool:
@@ -318,13 +316,10 @@ class OscoreUdpGlobalProfile(_OscoreUdpProfile):
 
 
 class _RplProfile(PacketProfile):
-    """RPL control message over routable IPv6 (link-local or ULA) for multi-hop DAO support (type 155)."""
-
     code: int
     base_length: int
 
     def matches(self, raw: bytes) -> bool:
-        # Minimum length: IPv6 header + ICMPv6 header + RPL base fields
         if len(raw) < HEADER_LENGTH + _ICMPV6_HEADER + self.base_length:
             return False
         try:

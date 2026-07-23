@@ -89,7 +89,11 @@ class AnnounceMessage:
             raise AnnounceError(f"hop_count out of range: {self.hop_count}")
         if not 0 <= self.rx_channel <= 15:
             raise AnnounceError(
+<<<<<<< HEAD
                 f"rx_channel must be 0-15, got {self.rx_channel}"
+=======
+                f"rx_channel must be 0-15 for CCP-9, got {self.rx_channel}"
+>>>>>>> origin/worktree-worker16
             )
         if not 0 <= self.flags <= 0xFF:
             raise AnnounceError(f"flags out of range: {self.flags}")
