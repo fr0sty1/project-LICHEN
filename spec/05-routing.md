@@ -27,21 +27,45 @@ LICHEN uses a three-tier routing architecture optimized for different traffic pa
 
 ### 7.2. Routing Decision
 
+Routing prefers **local mesh first** for 02xx addresses (gradient, LOADng, RPL) before Yggdrasil fallback. Link-local is always direct. `is_off_mesh()` reflects the single-primary 02xx model (no ULA/GUA).
+
 ```
 def route_packet(dst):
     if is_02xx_off_mesh(dst):
         # 02xx destination not in local mesh routes (use Yggdrasil via BR)
         return forward_to_rpl_parent()
 
-    gradient = gradient_table.lookup(dst)
-    if gradient and not gradient.expired:
-        # Known peer - follow gradient
-        return forward_to(gradient.next_hop)
+    if is_02xx(dst):  # Yggdrasil-derived primary (per 04-network.md §6.1, 06-security.md)
+        # Local mesh first
+        gradient = gradient_table.lookup(dst)
+        if gradient and not gradient.expired:
+            # Known peer via announce/LOADng/RPL
+            return forward_to(gradient.next_hop)
 
+        if rpl_route := rpl_lookup(dst):
+            return forward_via_rpl(rpl_route)
+
+        # No local route: Yggdrasil fallback (via BR TUN for off-mesh 02xx)
+        return yggdrasil_forward(dst)
     else:
-        # Unknown peer - reactive discovery
-        loadng_discover(dst)
-        return queue_pending(dst, packet)
+        # Non-02xx: off-mesh via RPL/BR
+        return forward_to_rpl_parent()
+```
+
+**Updated `is_off_mesh()`:**
+
+```
+def is_off_mesh(dst):
+    """True if destination cannot use local mesh (gradient/LOADng/RPL).
+    For 02xx: only after local-mesh-first check fails (then Yggdrasil).
+    Link-local: always False. Non-02xx: True. Removed GUA/ULA refs.
+    """
+    if is_link_local(dst):
+        return False
+    if not is_02xx(dst):
+        return True
+    # 02xx local-mesh-first
+    return (gradient_table.lookup(dst) is None and not has_rpl_route(dst))
 ```
 
 **Address classification:**
