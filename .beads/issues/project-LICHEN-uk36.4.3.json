@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-uk36.4.3",
+  "title": "Update and expand EDHOC interop tests between Rust lichen-oscore and Python reference using test/vectors/",
+  "description": "Add or update tests that run Python edhoc.py and Rust implementation against all vectors in test/vectors/edhoc*.json. Ensure byte-for-byte identical outputs for PRK, OSCORE context, keys.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:18:17.497364952Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:18:17.497364952Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-uk36.4.3",
+      "depends_on_id": "project-LICHEN-uk36.4",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:18:17.640671603Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
