@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-ryj1",
   "title": "[merge-conflict] worktree-worker20: Kconfig.defconfig",
-  "notes": "Commit: 3a1a3d3 - resolved Kconfig merge conflicts and xiao_s3_wio_sx1262 board comments during rebase for worker20-related bead. Cleaned resolution markers per AGENTS.md no-dead-code rule. Aborted complex rebase to avoid repeated conflicts.",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:21.850307849Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:35:01.06317643Z",
+  "updated_at": "2026-07-23T03:28:31.601083968Z",
   "started_at": "2026-07-23T03:28:31.601083968Z",
-  "closed_at": "2026-07-23T03:35:01.06317643Z",
-  "close_reason": "Resolved Kconfig.defconfig and related merge conflicts from parallel worker20 and other workers by cleaning resolution comments in retired xiao board files, consolidating configs in gateway and hal Kconfigs. Fixed rebase conflicts. Commit 3a1a3d3. Verified no markers with grep. All similar beads addressed via pattern."
+  "lease_expires_at": "2026-07-23T03:33:31.601083968Z",
+  "heartbeat_at": "2026-07-23T03:28:31.601083968Z"
 }
