@@ -1,21 +1,14 @@
 //! Announce message codec (spec section 9.2 + CCP-9).
 //!
-//! Wire format (updated for CCP-9 rendezvous):
+//! Wire format (CCP-9 da2q rendezvous, rx_channel early):
 //! ```text
-//! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//! | Type=0x01 | Flags | Hop Cnt | Seq Num (2B) | IID[0] ...     |
-//! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//! |                    Originator IID (8 bytes)                   |
-//! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//! |                    Public Key (32 bytes)                      |
-//! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//! |                    Signature (48 bytes)                       |
-//! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//! | rx_channel (u8) | Optional: App Data (variable)         |
-//! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+//!  0     1         2       3-4      5-12      13-44     45-92      93...
+//! +-----+---------+-------+--------+---------+---------+----------+-----
+//! |0x01 |rx_chan |hops | seq_be | originator_iid | pubkey | sig(48B) | app_data...
 //! ```
 //!
-//! Total: 94 bytes minimum. rx_channel at byte 93, signed per CCP-9.
+//! FIXED_LENGTH=93 (to end of signature). rx_channel included in signed_data
+//! at offset 42 (after iid+pubkey+seq). See test/vectors for full vectors.
 
 /// Announce message type identifier.
 pub const ANNOUNCE_TYPE: u8 = 0x01;
@@ -75,19 +68,12 @@ impl<'a> Announce<'a> {
         if data[0] != ANNOUNCE_TYPE {
             return Err(AnnounceError::WrongType(data[0]));
         }
-<<<<<<< HEAD
 
-        // ponytail: unwrap safe, bounds checked above
-        let originator_iid = data[5..13].try_into().unwrap();
-        let pubkey = data[13..45].try_into().unwrap();
-        let signature = data[45..93].try_into().unwrap();
-        let rx_channel = data[93];
-=======
         let rx_channel = data[1];
->>>>>>> origin/worktree-worker23
         if rx_channel >= 8 {
             return Err(AnnounceError::InvalidChannel(rx_channel));
         }
+        // ponytail: unwrap safe, bounds checked above
         let originator_iid = data[5..13].try_into().unwrap();
         let pubkey = data[13..45].try_into().unwrap();
         let signature = data[45..93].try_into().unwrap();
@@ -210,20 +196,12 @@ mod tests {
     #[test]
     fn invalid_channel() {
         let mut wire = make_announce();
-<<<<<<< HEAD
-        wire[93] = 8;
-        assert_eq!(
-            Announce::from_bytes(&wire),
-            Err(AnnounceError::InvalidChannel(8))
-        );
-
-=======
         wire[1] = 16;
         assert_eq!(
             Announce::from_bytes(&wire),
             Err(AnnounceError::InvalidChannel(16))
         );
->>>>>>> origin/worktree-worker23
+
         let builder = AnnounceBuilder {
             originator_iid: &[0; 8],
             pubkey: &[0; 32],

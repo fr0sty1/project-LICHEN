@@ -345,21 +345,9 @@ class TxQueue:
     def peek(self) -> tuple[bytes, Priority] | None:
         """Peek at the highest-priority packet without removing it.
 
-<<<<<<< HEAD
-        Expires stale packets first (for consistency with pop() and push()),
-        then returns the highest-priority packet's data and priority tuple
-        without removing it. If the front packet was stale, it is dropped
-        and the next valid one (if any) is returned.
-
-        Returns:
-            (data, priority) tuple or None if queue empty after expiry.
-=======
-        Expires stale packets first (like pop()) for consistency. This
-        ensures peek() never returns a packet that would be expired by pop().
-
-        Returns:
-            (data, priority) tuple or None if queue empty (after expiry).
->>>>>>> origin/integration/worker7-20260722
+        Expires stale packets first for consistency with pop(). Returns the
+        highest-priority valid packet's data and priority or None if queue empty
+        after expiry.
         """
         self.expire_stale()
 

@@ -215,13 +215,8 @@ impl Context {
     ///
     /// Returns `InvalidParam` if:
     /// - `sender_id` or `recipient_id` exceeds 7 bytes (nonce capacity)
-<<<<<<< HEAD
     /// - `sender_id == recipient_id` (including both empty)
     /// - `master_salt` exceeds `SALT_MAX_LEN` bytes (LICHEN-specific restriction)
-=======
-    /// - both `sender_id` and `recipient_id` are empty
-    /// - `master_salt` exceeds 8 bytes
->>>>>>> origin/integration/worker9-20260722
     pub fn new(
         master_secret: &[u8; KEY_LEN],
         master_salt: Option<&[u8]>,

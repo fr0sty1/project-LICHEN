@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 {
   "$schema": "./schema.json",
   "format_version": 2,
@@ -37,27 +36,3 @@
     }
   ]
 }
-=======
-[
-  {
-    "description": "Desync recovery test case - node with time offset from DODAG root epoch. Independent oracle computed from ccp15.json low-density SF10 case adjusted for 1-slot desync (hash_32 delta). Matches select_channel pseudocode in spec/02a-coordinated-capacity.md",
-    "input": {
-      "eui64": "0000000000000001",
-      "epoch": 12346,
-      "density": 4,
-      "snr_db": 9.0,
-      "utilization": 25,
-      "now": 12346
-    },
-    "output": {
-      "slot_id": 8,
-      "sf": 10,
-      "channel": 3,
-      "tx_allowed": true,
-      "snr_ema": 9.0,
-      "load_factor": 0.25
-    },
-    "notes": "format_version=2 bare array root (per schema oneOf array branch for ccp16-desync.json). Compare to ccp15.json and ccp16.json for consistency in v2 migration. Tests desync tolerance in TDMA/CCP-16."
-  }
-]
->>>>>>> origin/integration/worker9-20260722
