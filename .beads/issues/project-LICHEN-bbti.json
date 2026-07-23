@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-bbti",
+  "title": "[security] Replay table poisoning via unauthenticated LRU eviction (P0)",
+  "description": "lichen/subsys/lichen/link/replay.c:233-238 (WARNING comment) + lichen_replay_get() called before full Schnorr auth in some paths (lichen_link_rx.c:122,243). Attacker floods distinct EUIs to evict legitimate peers from 16-slot table, enabling replay of captured frames (bypasses sliding window on seq/epoch). Combined with weak MIC = catastrophic. Even with constant-time EUI compare, no pre-auth gate. discovered-from:project-LICHEN-lw4f",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T00:00:42.420917045Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T00:00:42.420917045Z"
+}
