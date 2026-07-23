@@ -23,17 +23,15 @@ BRIDGE_AUTO_MERGE_BOARD_FILES = (
     "rak4631_nrf52840",
     "t1000_e_nrf52840",
 )
-BRIDGE_OBSOLETE_ALIAS_BOARD_FILES = (
-    "heltec_lora32_v3",
-    "heltec_t114",
-    "lilygo_tdeck",
-    "lilygo_techo",
-    "seeed_t1000e",
-<<<<<<< HEAD
-=======
-    "heltec_vision_master_e290",
->>>>>>> origin/worktree-worker23
-)
+    BRIDGE_OBSOLETE_ALIAS_BOARD_FILES = (
+        "heltec_lora32_v3",
+        "heltec_t114",
+        "lilygo_tdeck",
+        "lilygo_techo",
+        "seeed_t1000e",
+        "heltec_vision_master_e290",
+    )
+
 
 
 
