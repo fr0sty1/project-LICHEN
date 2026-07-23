@@ -2,15 +2,15 @@
   "id": "project-LICHEN-5kg4",
   "title": "[merge-conflict] worktree-worker23: xiao_s3_wio_sx1262.conf",
   "notes": "Commit: 958d3fa",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:14:09.853910163Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:40:11.276967171Z",
+  "updated_at": "2026-07-23T02:40:13.427592853Z",
   "started_at": "2026-07-23T02:38:51.492446519Z",
-  "lease_expires_at": "2026-07-23T02:43:51.492446519Z",
-  "heartbeat_at": "2026-07-23T02:38:51.492446519Z"
+  "closed_at": "2026-07-23T02:40:13.427592853Z",
+  "close_reason": "Resolved merge conflict in worker23 worktree for xiao_s3_wio_sx1262.conf and cleaned rpl_root.c formatting/updated logic to match canonical"
 }
