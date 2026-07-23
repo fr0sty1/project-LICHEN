@@ -444,42 +444,35 @@ def _expand_pli_to_xml(
         raise TypeError(f"Expected PliPayload, got {type(cot.payload).__name__}")
     pli = cot.payload
 
-    # Build event element
     event = Element("event")
     event.set("version", "2.0")
     event.set("type", cot.subtype.to_cot_type())
     event.set("uid", uid)
-    event.set("how", "m-g")  # machine-generated
+    event.set("how", "m-g")
     event.set("time", time_str)
     event.set("start", time_str)
     event.set("stale", stale_str)
 
-    # Point element
     point = SubElement(event, "point")
     point.set("lat", f"{pli.lat_deg:.6f}")
     point.set("lon", f"{pli.lon_deg:.6f}")
     point.set("hae", f"{pli.alt_m:.1f}")
-    point.set("ce", "9999999")  # Circular error unknown
-    point.set("le", "9999999")  # Linear error unknown
+    point.set("ce", "9999999")
+    point.set("le", "9999999")
 
-    # Detail element
     detail = SubElement(event, "detail")
 
-    # Contact with callsign
     contact = SubElement(detail, "contact")
     contact.set("callsign", uid)
 
-    # __group element for team/role
     group = SubElement(detail, "__group")
     group.set("name", pli.team_name)
     group.set("role", pli.role_name)
 
-    # Track element for course/speed
     track = SubElement(detail, "track")
     track.set("course", f"{pli.course_deg:.2f}")
     track.set("speed", f"{pli.speed_m_s:.2f}")
 
-    # precisionlocation for ATAK
     prec = SubElement(detail, "precisionlocation")
     prec.set("altsrc", "DTED0")
     prec.set("geopointsrc", "GPS")
@@ -513,15 +506,6 @@ def _expand_chat_to_xml(
     event.set("start", time_str)
     event.set("stale", stale_str)
 
-    # Point element (sender location unknown, use 0,0,0)
-    point = SubElement(event, "point")
-    point.set("lat", "0.0")
-    point.set("lon", "0.0")
-    point.set("hae", "0.0")
-    point.set("ce", "9999999")
-    point.set("le", "9999999")
-
-    # Detail element
     detail = SubElement(event, "detail")
 
     # __chat element
@@ -578,20 +562,12 @@ def _expand_marker_to_xml(
     """Expand marker to CoT XML (minimal, no location data in compact format)."""
     event = Element("event")
     event.set("version", "2.0")
-    event.set("type", "b-m-p-w")  # waypoint marker
+    event.set("type", "b-m-p-w")
     event.set("uid", uid)
     event.set("how", "m-g")
     event.set("time", time_str)
     event.set("start", time_str)
     event.set("stale", stale_str)
-
-    # Point element (unknown location)
-    point = SubElement(event, "point")
-    point.set("lat", "0.0")
-    point.set("lon", "0.0")
-    point.set("hae", "0.0")
-    point.set("ce", "9999999")
-    point.set("le", "9999999")
 
     detail = SubElement(event, "detail")
     contact = SubElement(detail, "contact")
@@ -615,14 +591,6 @@ def _expand_alert_to_xml(
     event.set("time", time_str)
     event.set("start", time_str)
     event.set("stale", stale_str)
-
-    # Point element (unknown location)
-    point = SubElement(event, "point")
-    point.set("lat", "0.0")
-    point.set("lon", "0.0")
-    point.set("hae", "0.0")
-    point.set("ce", "9999999")
-    point.set("le", "9999999")
 
     detail = SubElement(event, "detail")
     contact = SubElement(detail, "contact")
