@@ -9,6 +9,8 @@
 #include <zcbor_decode.h>
 #include <zephyr/net/net_ip.h>
 #include <lichen/coap_server.h>
+#include <lichen/coap_client.h>
+#include <lichen/coap_dtn.h>
 #include <lichen/oscore.h>
 #include <lichen/routing/dtn.h>
 #include <lichen/senml.h>
