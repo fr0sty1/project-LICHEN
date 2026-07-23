@@ -2,11 +2,15 @@
   "id": "project-LICHEN-vsph",
   "title": "[cross-impl] Trickle reset guard uses divergent proxies across Rust/Python/C",
   "description": "Reviewed last 20 commits (bd auto-updates + a50ae4188 trickle.c alignment). Rust uses state==Stopped || interval!=imin; Python uses _generation==0 || interval!=imin; C uses transmit_time==0 || interval!=imin (post a50ae4188). Same RFC 6206 reset algorithm but different sentinel values risk divergent behavior on time=0, overflow, or init edge cases (see project-LICHEN-67ca). Test vectors in test/vectors/ and rpl tests should be extended for cross-impl determinism. Matches focus on \"same algorithm different behavior\".",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T02:44:44.007322901Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:44:44.007322901Z"
+  "updated_at": "2026-07-23T03:05:45.404553376Z",
+  "started_at": "2026-07-23T03:05:45.404553376Z",
+  "lease_expires_at": "2026-07-23T03:10:45.404553376Z",
+  "heartbeat_at": "2026-07-23T03:05:45.404553376Z"
 }
