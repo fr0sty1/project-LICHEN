@@ -11,6 +11,12 @@ ALL_1 = (1 << N_FCN_BITS) - 1
 MAX_WINDOW_SIZE = ALL_1 - 1
 DEFAULT_WINDOW_SIZE = 7
 MIC_LENGTH = 4
+RULE_IDS = (0x78, 0x79)
+TILE_SIZE = 187
+MAX_PACKET_SIZE = 1281
+DEFAULT_RECEIVER_LIMIT = 1281
+MAX_ACK_REQUESTS = 4
+WINDOW_SIZE = 63
 
 _W_SHIFT = 6
 _FCN_MASK = 0x3F
@@ -22,6 +28,28 @@ class FragmentError(Exception):
 
 def compute_mic(payload: bytes) -> bytes:
     return zlib.crc32(payload).to_bytes(MIC_LENGTH, "big")
+
+
+def _check_rule(rule_id: int) -> None:
+    if rule_id not in RULE_IDS:
+        raise FragmentError(f"unsupported fragmentation rule: {rule_id:#x}")
+
+
+def ack_request(rule_id: int, window: int) -> bytes:
+    _check_rule(rule_id)
+    if window not in (0, 1):
+        raise FragmentError("ACK REQ window out of range")
+    return bytes([rule_id, window << 7])
+
+
+def sender_abort(rule_id: int) -> bytes:
+    _check_rule(rule_id)
+    return bytes([rule_id, 0xFE])
+
+
+def receiver_abort(rule_id: int) -> bytes:
+    _check_rule(rule_id)
+    return bytes([rule_id, 0xFF, 0xFF])
 
 
 @dataclass(frozen=True)
@@ -90,42 +118,65 @@ class Ack:
     complete: bool = False
 
     def to_bytes(self) -> bytes:
-        byte1 = ((self.window & 1) << _W_SHIFT) | (0x01 if self.complete else 0)
+        _check_rule(self.rule_id)
+        if self.window not in (0, 1):
+            raise FragmentError("ACK window out of range")
         if self.complete:
-            return bytes([self.rule_id, byte1])
-        bits = 0
-        for received in self.bitmap:
-            bits = (bits << 1) | (1 if received else 0)
-        n = len(self.bitmap)
-        pad = (-n) % 8
-        body = (bits << pad).to_bytes((n + pad) // 8, "big") if n else b""
-        return bytes([self.rule_id, byte1, n]) + body
+            if self.bitmap:
+                raise FragmentError("C=1 ACK cannot carry a bitmap")
+            return bytes([self.rule_id, (self.window << 7) | 0x40])
+        if len(self.bitmap) != WINDOW_SIZE:
+            raise FragmentError("C=0 ACK requires a 63-bit bitmap")
+        bits = list(self.bitmap)
+        trailing = 0
+        for bit in reversed(bits):
+            if not bit:
+                break
+            trailing += 1
+        if trailing:
+            kept = WINDOW_SIZE - trailing
+            restored = (-(2 + kept)) % 8
+            encoded = bits[:kept] + [True] * restored
+            padding = 0
+        else:
+            encoded = bits
+            padding = (-(2 + len(encoded))) % 8
+        value = self.window << 1  # W followed by C=0
+        for bit in encoded:
+            value = (value << 1) | bit
+        value <<= padding
+        return bytes([self.rule_id]) + value.to_bytes((2 + len(encoded) + padding) // 8, "big")
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> Ack:
+    def from_bytes(cls, data: bytes, *, assigned_fcns: Iterable[int] | None = None) -> Ack:
         if len(data) < 2:
             raise FragmentError("ACK too short")
-        rule_id = data[0]
-        window = (data[1] >> _W_SHIFT) & 1
-        complete = bool(data[1] & 0x01)
+        _check_rule(data[0])
+        window = data[1] >> 7
+        complete = bool(data[1] & 0x40)
         if complete:
-            return cls(rule_id, window, (), complete)
-        if len(data) < 3:
-            raise FragmentError("ACK too short")
-        n = data[2]
-        if n > MAX_WINDOW_SIZE:
-            raise FragmentError(f"bitmap size {n} exceeds maximum {MAX_WINDOW_SIZE}")
-        body = data[3:]
-        required_bytes = (n + 7) // 8
-        if len(body) < required_bytes:
-            raise FragmentError(
-                f"ACK bitmap truncated: need {required_bytes} bytes, got {len(body)}"
-            )
-        bitmap = []
-        for i in range(n):
-            byte = body[i // 8]
-            bitmap.append(bool((byte >> (7 - (i % 8))) & 1))
-        return cls(rule_id, window, tuple(bitmap), complete)
+            if len(data) != 2 or data[1] & 0x3F:
+                raise FragmentError("malformed C=1 ACK or control")
+            return cls(data[0], window, (), True)
+        bit_count = len(data[1:]) * 8 - 2
+        raw = int.from_bytes(data[1:], "big") & ((1 << bit_count) - 1)
+        if bit_count >= WINDOW_SIZE:
+            padding = bit_count - WINDOW_SIZE
+            if padding > 7 or raw & ((1 << padding) - 1):
+                raise FragmentError("invalid ACK padding")
+            raw >>= padding
+            bitmap = tuple(bool(raw & (1 << (WINDOW_SIZE - 1 - i))) for i in range(WINDOW_SIZE))
+        else:
+            prefix = tuple(bool(raw & (1 << (bit_count - 1 - i))) for i in range(bit_count))
+            bitmap = prefix + (True,) * (WINDOW_SIZE - bit_count)
+        ack = cls(data[0], window, bitmap)
+        if ack.to_bytes() != data:
+            raise FragmentError("non-canonical compressed ACK")
+        if assigned_fcns is not None:
+            assigned = {62 - fcn if fcn != ALL_1 else 62 for fcn in assigned_fcns}
+            if any(bit and i not in assigned for i, bit in enumerate(bitmap)):
+                raise FragmentError("unassigned bitmap bit is set")
+        return ack
 
 
 @dataclass
