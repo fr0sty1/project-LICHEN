@@ -40,6 +40,7 @@ impl MessageCode {
     // 5.xx Server Error
     pub const INTERNAL_ERROR: Self = Self(0xA0); // 5.00
     pub const NOT_IMPLEMENTED: Self = Self(0xA1); // 5.01
+    pub const SERVICE_UNAVAILABLE: Self = Self(0xA3); // 5.03
 
     pub fn class(self) -> u8 {
         self.0 >> 5
@@ -90,6 +91,8 @@ mod tests {
         // 5.xx Server Error
         assert_eq!(MessageCode::INTERNAL_ERROR.class(), 5);
         assert_eq!(MessageCode::INTERNAL_ERROR.detail(), 0);
+        assert_eq!(MessageCode::SERVICE_UNAVAILABLE.class(), 5);
+        assert_eq!(MessageCode::SERVICE_UNAVAILABLE.detail(), 3);
     }
 
     #[test]

@@ -11,6 +11,7 @@ pub enum OptionNumber {
     Observe = 6,
     UriPort = 7,
     LocationPath = 8,
+    Oscore = 9,
     UriPath = 11,
     ContentFormat = 12,
     MaxAge = 14,

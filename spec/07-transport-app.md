@@ -354,8 +354,8 @@ CoAP's Content-Format option identifies payload type:
 |-------|------------|-----|
 | 0 | text/plain | Simple text |
 | 60 | application/cbor | Generic CBOR |
-| 110 | application/senml+cbor | SenML sensors |
-| 112 | application/senml+json | SenML (JSON) |
+| 110 | application/senml+json | SenML (JSON) |
+| 112 | application/senml+cbor | SenML sensors |
 | 11542 | application/vnd.ocf+cbor | OCF/IoTivity |
 
 IPSO Smart Objects, LwM2M, and similar frameworks use CoAP with standard
