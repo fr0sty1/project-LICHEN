@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-j2jt",
   "title": "[merge-conflict] worktree-worker1: coap_dtn.c",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:09:33.497468391Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:09:33.497468391Z"
+  "updated_at": "2026-07-23T03:34:30.417837091Z",
+  "started_at": "2026-07-23T03:34:30.417837091Z",
+  "lease_expires_at": "2026-07-23T03:39:30.417837091Z",
+  "heartbeat_at": "2026-07-23T03:34:30.417837091Z"
 }
