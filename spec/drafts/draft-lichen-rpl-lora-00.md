@@ -177,7 +177,7 @@ Step = MinHopRankIncrease × (1 + ETX_factor × ETX + Latency_factor × RTT)
 | MinHopRankIncrease | 256 | Standard |
 | ETX_factor | 0.5 | Reduce ETX sensitivity |
 | Latency_factor | 0.1 | Mild preference for lower latency |
-| PARENT_SWITCH_THRESHOLD | 384 | ~1.5 hops hysteresis |
+| PARENT_SWITCH_THRESHOLD | 192 | 0.75 × MinHopRankIncrease hysteresis |
 | MAX_RANK_INCREASE | 1024 | Limit rank inflation |
 
 ### 5.2. Link Metrics
@@ -701,7 +701,7 @@ When DODAG root advertises prefix:
 #define RPL_DAO_LIFETIME_UNIT    60            // seconds
 #define RPL_DAO_LIFETIME         30            // 30 minutes
 #define RPL_DEFAULT_PARENT_COUNT 3             // max parents to track
-#define RPL_MRHOF_THRESHOLD      384           // parent switch hysteresis
+#define LICHEN_RPL_PARENT_SWITCH_THRESHOLD 192 // parent switch hysteresis (0.75 × MinHopRankIncrease)
 ```
 
 ### 10.4. Implementation Status
@@ -798,7 +798,7 @@ Preferred Lifetime: 43200s (12 hours)
 
 ## Appendix B. Parent Selection Example
 
-MRHOF parent selection uses the DAG Metric Container (including SF, density, EMA from CCP-16) with hysteresis (RPL_MRHOF_THRESHOLD=384 default). Worked examples are validated against test vectors in ccp16.json.
+MRHOF parent selection uses the DAG Metric Container (including SF, density, EMA from CCP-16 per spec/02a-coordinated-capacity.md) with hysteresis (LICHEN_RPL_PARENT_SWITCH_THRESHOLD=192 default per rpl_dodag.h and lichen-rpl). Worked examples are validated against test vectors in ccp16.json and rpl_route_state_vectors.rs.
 
 ## Authors' Address
 
