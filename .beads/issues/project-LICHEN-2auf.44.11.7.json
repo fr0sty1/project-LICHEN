@@ -1,14 +1,14 @@
 {
   "id": "project-LICHEN-2auf.44.11.7",
-  "title": "Integrate RplRuntime into lichend for periodic RPL maintenance",
-  "description": "Update lichen-gateway bin/lichend.rs to use RplStack::open_root with RplRuntime in the main event loop. Feed monotonic u64 from Instant.elapsed(). Ensure bounded maintenance calls prune_neighbors and DAO expiry. Respect defer-external and do not auto-admit by TOFU.",
+  "title": "Use Trickle-suppression-safe neighbor liveness policy before 10s eviction",
+  "description": "Implement a neighbor liveness policy that is safe with Trickle suppression. Ensure eviction only happens after 10s timeout using the policy before pruning stale neighbors.",
   "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
-  "created_at": "2026-07-23T05:19:43.196832018Z",
+  "created_at": "2026-07-23T05:20:35.741581099Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:19:43.196832018Z",
+  "updated_at": "2026-07-23T05:20:35.741581099Z",
   "labels": [
     "defer-external"
   ],
@@ -17,7 +17,7 @@
       "issue_id": "project-LICHEN-2auf.44.11.7",
       "depends_on_id": "project-LICHEN-2auf.44.11",
       "type": "parent-child",
-      "created_at": "2026-07-23T05:19:43.332118547Z",
+      "created_at": "2026-07-23T05:20:35.886697578Z",
       "created_by": "AI Agent",
       "metadata": "{}"
     }
