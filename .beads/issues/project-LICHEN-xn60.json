@@ -1,14 +1,14 @@
 {
   "id": "project-LICHEN-xn60",
   "title": "[merge-conflict] worktree-worker21: coap_dtn.c",
-  "notes": "Commit: dd37261a6",
+  "notes": "Commit: caefe205e",
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:57:30.35986694Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:10:57.958636944Z",
+  "updated_at": "2026-07-23T00:14:38.75939774Z",
   "closed_at": "2026-07-23T00:10:57.958636944Z",
   "close_reason": "Resolved merge conflict in coap_dtn.c by implementing SenML pending count response for /deaddrop, added senml_encode_deaddrop helper, fixed buffer handling and error paths; matches worker21 intent and spec; builds and lints clean"
 }
