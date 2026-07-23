@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-k37k",
   "title": "[merge-conflict] worktree-worker23: xiao_s3_wio_sx1262.overlay",
-  "notes": "Commit: 0e645bd02",
+  "notes": "Commit: eaee79547 (amended with conf cleanup for no-dead-code compliance)",
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:05:10.984579078Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:22:50.537347741Z",
+  "updated_at": "2026-07-23T03:23:24.466761971Z",
   "started_at": "2026-07-23T03:21:19.760136927Z",
   "closed_at": "2026-07-23T03:22:50.537347741Z",
   "close_reason": "Standardized RETIRED/BLOCKED comment in firmware/bridge-zephyr/boards/xiao_s3_wio_sx1262.overlay per no-dead-code (AGENTS.md); included full m5m1.8 audit beads (2u26.10,80ju,irj9,7qaj,ndbx,aciz) from matrix.md; aligned with tbeam_supreme (w8rd) and clean worker24 version; no resolution meta-notes. Verified no conflict markers or dead code via grep. Commit 0e645bd02"
