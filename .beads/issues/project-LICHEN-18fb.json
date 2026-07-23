@@ -3,15 +3,15 @@
   "title": "[merge-conflict] worker8: routing.py",
   "description": "Resolve merge conflict in python/src/lichen/rpl/routing.py between main and integration/worker8-20260722. Keep BOTH sets of changes.",
   "notes": "Fixed merge conflict resolution in routing.py by adding missing MAX_ROUTE_HOPS check in insert_source_route (kept both length validation and expected_destination validation). Commit: d009099ad",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:52:04.354173093Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:40:45.785101358Z",
+  "updated_at": "2026-07-23T04:40:48.051778585Z",
   "started_at": "2026-07-22T21:25:12.892157222Z",
-  "lease_expires_at": "2026-07-23T04:43:00.942546717Z",
-  "heartbeat_at": "2026-07-23T04:38:00.942546717Z"
+  "closed_at": "2026-07-23T04:40:48.051778585Z",
+  "close_reason": "Resolved merge conflict by incorporating both length check for MAX_ROUTE_HOPS in insert_source_route and expected_destination validation; tests now pass."
 }
