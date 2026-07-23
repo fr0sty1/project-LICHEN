@@ -260,7 +260,7 @@ bool schnorr48_verify(const uint8_t *pubkey,
  */
 #ifdef CONFIG_LICHEN_CRYPTO_MONOCYPHER
 
-int 	schnorr48_sign_frame(uint8_t length, uint8_t llsec,
+int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 			 uint8_t epoch, uint16_t seqnum,
 			 const uint8_t *dst_addr, size_t dst_addr_len,
 			 const uint8_t *payload, size_t payload_len,
@@ -268,7 +268,6 @@ int 	schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 			 const uint8_t *pubkey,
 			 uint8_t *sig)
 {
-	/* length(1) + LLSec(1) + epoch(1) + seqnum(2) + dst_addr_len(1) + dst_addr(up to 8) */
 	uint8_t header[14];
 
 	size_t header_len = 0;
@@ -297,9 +296,6 @@ int 	schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 		return -EINVAL;
 	}
 
-	/* Build the exact wire prefix, excluding the signature MIC.
-	 * addr_len prefix provides domain separation (prevents addr/payload
-	 * ambiguity per project-LICHEN-j7rk). */
 	header[header_len++] = length;
 	header[header_len++] = llsec;
 	header[header_len++] = epoch;
@@ -398,7 +394,6 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 	const uint8_t *e_received = sig;
 	const uint8_t *s = sig + 16;
 
-	/* length(1) + LLSec(1) + epoch(1) + seqnum(2) + dst_addr_len(1) + dst_addr(up to 8) */
 	uint8_t header[14];
 	size_t header_len = 0;
 	uint8_t e_extended[32];
@@ -406,9 +401,6 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 	uint8_t e_hash[64];
 	crypto_sha512_ctx ctx;
 
-	/* Build the exact wire prefix, excluding the signature MIC.
-	 * addr_len prefix provides domain separation (prevents addr/payload
-	 * ambiguity per project-LICHEN-j7rk). */
 	header[header_len++] = length;
 	header[header_len++] = llsec;
 	header[header_len++] = epoch;
