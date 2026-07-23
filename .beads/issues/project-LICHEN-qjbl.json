@@ -2,15 +2,15 @@
   "id": "project-LICHEN-qjbl",
   "title": "[merge-conflict] worktree-worker20: rpl_trickle.h",
   "notes": "Commit: 0daa0c6db",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:28:26.389470262Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:32:04.223730958Z",
+  "updated_at": "2026-07-23T00:32:04.859620614Z",
   "started_at": "2026-07-23T00:30:52.15808843Z",
-  "lease_expires_at": "2026-07-23T00:35:52.15808843Z",
-  "heartbeat_at": "2026-07-23T00:30:52.15808843Z"
+  "closed_at": "2026-07-23T00:32:04.859620614Z",
+  "close_reason": "Merged defensive imin_ms=0 handling and @pre doc from worker20 worktree into rpl_trickle.h and trickle.c; tests pass with gcc -Wall -Wextra -Werror"
 }
