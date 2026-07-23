@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-c0rb.3",
+  "title": "Implement transcript_4 helper matching TH_4 computation per RFC 9528",
+  "description": "Add fn transcript_4(th_3: \u0026[u8; 32], input: \u0026[u8], cred: \u0026[u8]) -\u003e Result\u003c[u8; 32], EdhocError\u003e for TH_4 = H(CBOR(TH_3) || CBOR(PLAINTEXT_3 or CIPHERTEXT_3)) resolving initiator/responder consistency. Ensure matches test vector and Python reference. Fix TH_4 usage in export.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:30:28.322145834Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:30:28.322145834Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-c0rb.3",
+      "depends_on_id": "project-LICHEN-c0rb",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:30:28.463739985Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
