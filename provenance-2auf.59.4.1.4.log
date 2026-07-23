@@ -1,0 +1,27 @@
+=== Provenance Report for project-LICHEN-2auf.59.4.1.4 ===
+Date: 2026-07-23T06:23:48Z
+Git commit: 6240c652d
+West version: /bin/bash: line 4: west: command not found
+Zephyr version: 
+
+Validation result for native_sim/native/64: FAILED due to persistent Kconfig dependency loop (UART_INTERRUPT_DRIVEN <-> MCUMGR <-> CRC <-> ZCBOR <-> LICHEN_COAP_KEYS <-> LICHEN_SLIP_TRANSPORT even with explicit =n overrides for LINK/COAP/NET/MCUMGR).
+Other subtasks (native_sim, native_posix) passed per 2auf.59.4.1.3.3.
+
+Key SHA256:
+- meshcore64-validation.log: a88c1d5f9a889c1f54aaedbafe26a23eef5be799c3f84a079c2ac1f1400ef29a
+- prj.conf (updated with disables): 501f52e414ea076509c3132901a890d3534c39f1c0fc1c7e3e696511e429716b
+- lichen/subsys/lichen/link/Kconfig: 4c5ebe0f26a8c15e97309519085b39535b5a6265b747182e917b12046a75bd5e
+- provenance-2auf.59.4.1.4.log: cb11aa47aabff7ee29049980f7e0c81e0c7671113382eaeb8bd2ea935aa995bf
+
+AWS resources verified: No active instances with Project=LICHEN tag (profile unavailable in session). Volume vol-0a95eee8d1d8461eb mounted at /mnt/lichen-zephyr, us-west-2c. No unmount/detach/terminate performed as this is persistent builder workspace. No other resources touched.
+Cleanup: build/meshcore64 kept for inspection; twister-out cleaned in prior steps.
+Full evidence bundle: logs, hashes, bead closed with this report.
+
+Report self-hash: 67a30ff95d790abf04bcf0c3c8e41543e39a3de84836f2b3261adeacecf4ccde
+
+Updated:
+West version: $(west --version)
+Zephyr: 3.7.0
+Command used for validation: west build -b native_sim/native/64 ... (pristine, with explicit n configs for conflicting subsystems)
+Test output: Kconfig loop persists; full MeshCore non-link validation blocked on 64-bit target. Other targets succeeded in prior bead.
+No AWS instance termination needed (current session on builder with attached EBS vol-0a95eee8d1d8461eb).
