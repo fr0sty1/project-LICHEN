@@ -284,9 +284,8 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 
 	cbor_ctx_init(&ctx, buf, buf_size);
 
-	map_count = 5u;
-	if (status->battery_pct_valid) map_count++;
-	if (status->battery_mv_valid) map_count++;
+	map_count = 5U + (status->battery_pct_valid ? 1U : 0U)
+		    + (status->battery_mv_valid ? 1U : 0U);
 	cbor_put_map_header(&ctx, map_count);
 
 	cbor_put_key(&ctx, "uptime_s");
@@ -306,10 +305,9 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 	cbor_put_uint(&ctx, status->mem_free_kb);
 
 	cbor_put_key(&ctx, "time");
-	uint8_t time_fields = 2u;
-	if (status->time.wall_clock_valid) time_fields++;
-	if (status->time.source_class) time_fields++;
-	if (status->time.source_name) time_fields++;
+	uint8_t time_fields = 2U + (status->time.wall_clock_valid ? 1U : 0U)
+			     + (status->time.source_class ? 1U : 0U)
+			     + (status->time.source_name ? 1U : 0U);
 	cbor_put_map_header(&ctx, time_fields);
 
 	cbor_put_key(&ctx, "wall_clock_valid");
@@ -334,9 +332,8 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 	cbor_put_uint(&ctx, status->time.age_s);
 
 	cbor_put_key(&ctx, "dodag");
-	uint8_t dodag_fields = 2u;
-	dodag_fields += status->dodag.has_parent ? 1u : 0u;
-	dodag_fields += status->dodag.has_root ? 1u : 0u;
+	uint8_t dodag_fields = 2U + (status->dodag.has_parent ? 1U : 0U)
+			     + (status->dodag.has_root ? 1U : 0U);
 	cbor_put_map_header(&ctx, dodag_fields);
 
 	cbor_put_key(&ctx, "joined");
@@ -467,7 +464,6 @@ size_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
 	struct cbor_ctx ctx;
 	char ipv6_buf[LICHEN_CONFIG_ADDR_MAX_LEN];
 	char prefix_buf[48];
-	uint8_t map_count = 1u;
 
 	if (buf == NULL || buf_size == 0) {
 		return 0;
@@ -479,7 +475,7 @@ size_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
 
 	cbor_ctx_init(&ctx, buf, buf_size);
 
-	map_count += default_route ? 1u : 0u;
+	uint8_t map_count = 1U + (default_route ? 1U : 0U);
 	cbor_put_map_header(&ctx, map_count);
 
 	cbor_put_key(&ctx, "routes");
@@ -622,7 +618,7 @@ static void status_notify(struct coap_resource *resource,
 		return;
 	}
 
-	r = coap_packet_append_payload(&notif, cbor_buf, cbor_len);
+	r = coap_packet_append_payload(&notif, cbor_buf, (uint16_t)cbor_len);
 	if (r < 0) {
 		return;
 	}
@@ -730,7 +726,7 @@ static void neighbors_notify(struct coap_resource *resource,
 		return;
 	}
 
-	r = coap_packet_append_payload(&notif, cbor_buf, cbor_len);
+	r = coap_packet_append_payload(&notif, cbor_buf, (uint16_t)cbor_len);
 	if (r < 0) {
 		return;
 	}
