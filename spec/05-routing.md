@@ -413,7 +413,7 @@ beginning with `0x01` as an announce because SCHC global CoAP also uses rule ID
  0                   1                   2                   3
  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-| Type=0x01   | rx_channel (flags) | Hop Cnt | Seq Num (BE u16)|
+| Type=0x01   | rx_channel         | Hop Cnt | Seq Num (BE u16)|
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                    Originator IID (8 bytes)                   |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -429,7 +429,7 @@ Fixed announce size: 93 bytes (type(1)+flags/rx_channel(1)+hop(1)+seq(2)+IID(8)+
 
 **Fields:**
 - **Type:** `0x01` – Announce identifier (inside L2 routing dispatch `0x15`).
-- **rx_channel (flags byte):** Preferred RX channel for da2q rendezvous (0=CH0 control fallback). MUST be <8. Included in signed_data (CCP-9) to prevent tampering.
+- **rx_channel:** Preferred RX channel for da2q rendezvous (0=CH0 control fallback, packed in flags byte at offset 1). MUST be <8. Included in signed_data (CCP-9) to prevent tampering.
 - **Hop Count:** Incremented by each relay (MUST NOT be signed).
 - **Seq Num:** 16-bit big-endian monotonic counter per originator (duplicate/freshness).
 - **Originator IID:** 8-byte Interface Identifier of announcer.
@@ -437,7 +437,7 @@ Fixed announce size: 93 bytes (type(1)+flags/rx_channel(1)+hop(1)+seq(2)+IID(8)+
 - **Signature:** 48-byte Schnorr signature (draft-lichen-schnorr-00.md).
 - **App Data:** Optional variable-length authenticated application data (node name, capabilities, coordinates per §9.7).
 
-**signed_data (Schnorr profile-specific transcript):** originator_iid(8) || pubkey(32) || seq_num(2) || rx_channel(1) || app_data. Hop excluded (relays increment it). rx_channel signed per CCP-9 to prevent tampering.
+**signed_data (Schnorr profile-specific transcript):** originator_iid(8) || pubkey(32) || seq_num(2) || rx_channel(1) || app_data (see rust/lichen-core/src/announce.rs:90 and lichen/subsys/lichen/routing/announce.c:129). Hop excluded (relays increment it). rx_channel signed per CCP-9.
 
 > "For different profiles the signed message (`msg` in §4.2) is defined by the using specification" (draft-lichen-schnorr-00.md:5.5 on profile-specific transcripts; here CCP-9 + announce per rust/lichen-core/src/announce.rs:142 and ccp9.json).
 

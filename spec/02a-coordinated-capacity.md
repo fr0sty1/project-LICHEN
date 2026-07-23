@@ -77,7 +77,7 @@ Remote capability and schedule messages MAY reduce the locally permitted interse
 
 ## 2a.3. Channel Agility and Adaptive SF
 
-CH0 is the control channel; all nodes MUST listen continuously on it for DIOs and beacons (see draft-lichen-schc-lora-00 and draft-lichen-rpl-lora-00). Data channels are selected via select_channel. All implementations MUST produce identical results to test/vectors/ccp16.json for CCP-14/15/16 vectors.
+CH0 is the control channel; all nodes MUST listen continuously on it for DIOs and beacons (see draft-lichen-schc-lora-00 and draft-lichen-rpl-lora-00). Announce messages carry rx_channel (CCP-9 per spec/05-routing.md:9.2) for rendezvous; data channels selected via select_channel or hash. All implementations MUST produce identical results to test/vectors/ccp16.json and ccp9*.json for CCP-9/14/15/16 vectors.
 
 ### select_channel and now()
 
