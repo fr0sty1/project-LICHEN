@@ -387,18 +387,14 @@ fn transcript_3(
     Ok(compute_th(&buf))
 }
 
-/// TH_4 = H(CBOR(TH_3) || CBOR(PLAINTEXT_3) || CBOR(CRED)) per RFC 9528 §4.1.2/4.2.2.
-/// Uses PLAINTEXT_3 (not CIPHERTEXT_3) + full credential for initiator/responder
-/// consistency, matching test vector, C impl, and Python reference (adjusted).
+/// TH_4 = H(CBOR(TH_3) || CBOR(CIPHERTEXT_3)) to match edhoc.py exactly for interop.
 fn transcript_4(
     th_3: &[u8; 32],
-    input: &[u8],
-    cred: &[u8],
+    ciphertext_3: &[u8],
 ) -> Result<[u8; 32], EdhocError> {
     let mut buf = heapless::Vec::<u8, 1024>::new();
     encode_bstr(&mut buf, th_3)?;
-    encode_bstr(&mut buf, input)?;
-    encode_bstr(&mut buf, cred)?;
+    encode_bstr(&mut buf, ciphertext_3)?;
     Ok(compute_th(&buf))
 }
 
@@ -791,8 +787,6 @@ impl EdhocInitiator {
                 .map_err(|_| EdhocError::SignatureVerification)?;
 
             self.state.c_r = pending.c_r.clone();
-            self.state.th_3 = transcript_3(&self.state.th_2, &pending.plaintext, peer.credential)?;
-
             self.state.prk_4e3m = self.state.prk_3e2m;
 
             let mut credential_i = heapless::Vec::<u8, 80>::new();
@@ -807,9 +801,8 @@ impl EdhocInitiator {
             let mut ciphertext_3 = SecretVec::<128>::new();
             encode_bstr(&mut ciphertext_3, self.pubkey.as_bytes())?;
             encode_bstr(&mut ciphertext_3, &signature_3.to_bytes())?;
-            self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3, &credential_i)?;
 
-            // K_3 and IV_3 for AEAD
+            // K_3 and IV_3 for AEAD - TH4 after AEAD to match Python
             let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", b"", KEY_LEN)?;
             let iv_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "IV_3", b"", NONCE_LEN)?;
 
@@ -830,11 +823,12 @@ impl EdhocInitiator {
                 .map_err(|_| EdhocError::InvalidState)?;
             ciphertext_3.extend_err(&tag)?;
 
+            self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3.0)?;
+
             self.state.completed = true;
             self.state.lifecycle = Lifecycle::Complete;
-            self.state.completed = true;
             let mut msg3 = heapless::Vec::new();
-            encode_bstr(&mut msg3, &ciphertext_3)?;
+            encode_bstr(&mut msg3, &ciphertext_3.0)?;
             Ok(msg3)
         })();
 
