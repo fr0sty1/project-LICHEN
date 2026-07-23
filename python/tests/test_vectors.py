@@ -474,6 +474,33 @@ def test_announce_coords_vector(name: str, vector: dict) -> None:
     assert int.from_bytes(encoded[5:9], "big", signed=True) == vector["longitude_e7"]
 
 
+def test_node_address_vectors_match_python_implementation() -> None:
+    """Validate all 10 node_address vectors against the Python Identity module.
+
+    Cross-language oracle: Rust, C, and Python must all produce the same
+    human-readable addresses from the canonical test vectors.
+    """
+    doc = _load("node_address.json")
+    for v in doc["vectors"]:
+        pubkey = bytes.fromhex(v["pubkey"])
+        expected_iid = bytes.fromhex(v["iid"])
+        expected_human = v["human_address"]
+
+        from lichen.crypto.identity import _pubkey_to_iid, iid_to_human_address
+
+        iid = _pubkey_to_iid(pubkey)
+        assert iid == expected_iid, (
+            f"IID mismatch for {v['name']}: "
+            f"got {iid.hex()}, expected {expected_iid.hex()}"
+        )
+
+        human = iid_to_human_address(iid)
+        assert human == expected_human, (
+            f"human_address mismatch for {v['name']}: "
+            f"got {human}, expected {expected_human}"
+        )
+
+
 def test_all_schc_rules_covered() -> None:
     rule_ids = {v["rule_id"] for _, v in _schc_cases()}
     assert {0, 1, 2, 3, 4} <= rule_ids  # every whole-packet rule has a vector
