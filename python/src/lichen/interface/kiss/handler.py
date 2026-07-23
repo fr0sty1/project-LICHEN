@@ -99,82 +99,71 @@ class KissHandler:
         """True if RETURN command was received."""
         return self._exited
 
-    def handle(self, frame: KissFrame) -> bytes | None:
+    def handle(self, frame: KissFrame) -> None:
         """Process a KISS frame.
 
         Args:
             frame: Decoded KISS frame from KissReader.
-
-        Returns:
-            Response frame bytes if command requires acknowledgment, else None.
         """
         if self._exited:
-            return None
+            return
 
         if self.port_filter is not None and frame.port != self.port_filter:
-            return None
+            return
 
         cmd = frame.command
 
         if cmd == KissCommand.DATA:
-            return self._handle_data(frame)
+            self._handle_data(frame)
         elif cmd == KissCommand.TXDELAY:
-            return self._handle_txdelay(frame)
+            self._handle_txdelay(frame)
         elif cmd == KissCommand.PERSISTENCE:
-            return self._handle_persistence(frame)
+            self._handle_persistence(frame)
         elif cmd == KissCommand.SLOTTIME:
-            return self._handle_slottime(frame)
+            self._handle_slottime(frame)
         elif cmd == KissCommand.TXTAIL:
-            return self._handle_txtail(frame)
+            self._handle_txtail(frame)
         elif cmd == KissCommand.FULLDUPLEX:
-            return self._handle_fullduplex(frame)
+            self._handle_fullduplex(frame)
         elif cmd == KissCommand.RETURN:
-            return self._handle_return(frame)
+            self._handle_return(frame)
         # ponytail: unknown commands silently ignored per KISS spec
-        return None
 
     def _handle_data(self, frame: KissFrame) -> None:
         """Forward data frame to TX callback."""
         if self.on_tx_frame is not None:
             self.on_tx_frame(frame.port, frame.data)
-        return None
 
     def _handle_txdelay(self, frame: KissFrame) -> None:
         """Set TX delay (10ms units)."""
         if frame.data:
             self.config.txdelay_ms = frame.data[0]
-        return None
 
     def _handle_persistence(self, frame: KissFrame) -> None:
         """Set CSMA persistence."""
         if frame.data:
             self.config.persistence = frame.data[0]
-        return None
 
     def _handle_slottime(self, frame: KissFrame) -> None:
         """Set CSMA slot time (10ms units)."""
         if frame.data:
             self.config.slottime_ms = frame.data[0]
-        return None
 
     def _handle_txtail(self, frame: KissFrame) -> None:
         """Set TX tail time (10ms units)."""
         if frame.data:
             self.config.txtail_ms = frame.data[0]
-        return None
 
     def _handle_fullduplex(self, frame: KissFrame) -> None:
         """Set half/full duplex mode."""
         if frame.data:
             self.config.fullduplex = frame.data[0] != 0
-        return None
 
     def _handle_return(self, frame: KissFrame) -> None:
         """Exit KISS mode."""
         self._exited = True
         if self.on_exit is not None:
             self.on_exit()
-        return None
 
     def rx_frame(self, payload: bytes, port: int = 0) -> bytes:
         """Encode a received frame to send to the KISS host.
