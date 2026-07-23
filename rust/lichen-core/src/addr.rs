@@ -62,6 +62,11 @@ impl NodeId {
     }
 }
 
+/// Derive 16-byte Yggdrasil 02xx::/7 address from Ed25519 pubkey per spec/06-security.md §8.5
+/// and test/vectors/yggdrasil-derivation.json. Uses SHA-512(pubkey)[0:7] for bytes 1-7
+/// and IID = SHA-256(pubkey)[0:8] with U/L bit cleared (`iid[0] &= 0b1111_1101`) for bytes 8-15.
+/// Lower 64 bits bind key to address. Must match C `lichen_identity_ygg_addr_from_ed25519`
+/// and previous `yggdrasil_addr_from_pubkey`.
 pub fn ygg_addr_from_pubkey(pubkey: &[u8; 32]) -> [u8; 16] {
     let hash512 = Sha512::digest(pubkey);
     let digest256 = Sha256::digest(pubkey);
