@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-2auf.41.2.3.1",
+  "title": "Add malformed ICMPv6/UDP vectors to test/vectors/",
+  "description": "Create JSON test vectors in test/vectors/ for bad ICMPv6 checksum, short packet, invalid source address, bad type, and equivalent UDP cases. Follow existing patterns (expect_error, category:malformed, independent oracles from RFCs/Python). Update schema and generators if needed. Use hex bytes.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:25:26.377625059Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:25:26.377625059Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.41.2.3.1",
+      "depends_on_id": "project-LICHEN-2auf.41.2.3",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:25:26.521767198Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
