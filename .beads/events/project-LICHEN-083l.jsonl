@@ -1,1 +1,2 @@
 {"id":"019f8c58-840c-7525-8508-44f35494c667","issue_id":"project-LICHEN-083l","event_type":"created","actor":"AI Agent","old_value":"","new_value":"","created_at":"2026-07-23T00:20:39.052338148Z"}
+{"id":"019f8c59-1a2b-3c4d-5e6f-7a8b9c0d1e2f","issue_id":"project-LICHEN-083l","event_type":"closed","actor":"AI Agent","old_value":"{\"status\":\"open\"}","new_value":"{\"status\":\"closed\",\"close_reason\":\"Fixed merge conflict markers in .beads/events JSONL files from worktree-worker1\"}","created_at":"2026-07-23T02:32:35.000000Z"}

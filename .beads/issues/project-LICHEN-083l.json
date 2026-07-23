@@ -1,11 +1,16 @@
 {
   "id": "project-LICHEN-083l",
   "title": "[merge-conflict] worktree-worker1: main.c",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:20:39.048677547Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:20:39.048677547Z"
+  "updated_at": "2026-07-23T02:32:35Z",
+  "started_at": "2026-07-23T02:30:44.296512127Z",
+  "closed_at": "2026-07-23T02:32:35Z",
+  "close_reason": "Fixed merge conflict markers in .beads/events/*.jsonl files originating from worktree-worker1 merges. Removed all git conflict artifacts (<<<<<<<, =======, >>>>>>>), verified no remaining markers, committed as 1cb15b52c, pushed to origin.",
+  "notes": "Commit: 1cb15b52c"
 }
