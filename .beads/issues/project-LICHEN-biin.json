@@ -2,15 +2,15 @@
   "id": "project-LICHEN-biin",
   "title": "[merge-conflict] worktree-worker16: main.c",
   "notes": "Commit: 3459fadc6",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:19:32.598285677Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:24:34.096466453Z",
+  "updated_at": "2026-07-23T00:24:35.931682551Z",
   "started_at": "2026-07-23T00:21:53.82167648Z",
-  "lease_expires_at": "2026-07-23T00:26:53.82167648Z",
-  "heartbeat_at": "2026-07-23T00:21:53.82167648Z"
+  "closed_at": "2026-07-23T00:24:35.931682551Z",
+  "close_reason": "Resolved all merge conflict markers across specs, coap, rpl, rust, python, and beads event logs. Chose coherent normative text and deduplicated events. Verified clean with no remaining markers."
 }
