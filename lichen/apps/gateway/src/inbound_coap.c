@@ -228,12 +228,15 @@ int gateway_inbound_location_post(struct coap_resource *resource,
 		}
 	}
 	if ((flags & INBOUND_LOCATION_FLAG_FIX_TIME) != 0U) {
+		uint32_t fix_time_unix;
+
 		location.fix_time_unix_valid = true;
 		ret = inbound_location_read_u32(payload, payload_len, &pos,
-						&location.fix_time_unix);
+						&fix_time_unix);
 		if (ret < 0) {
 			return COAP_RESPONSE_CODE_BAD_REQUEST;
 		}
+		location.fix_time_unix = fix_time_unix;
 	}
 	if ((flags & INBOUND_LOCATION_FLAG_SATELLITES) != 0U) {
 		if (pos >= payload_len) {

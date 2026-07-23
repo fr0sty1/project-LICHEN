@@ -4,13 +4,17 @@ lichen_configure_time_build_epoch()
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(lichen_gateway)
 
+target_include_directories(app PRIVATE
+  ../../subsys/lichen/transport/include)
+
 target_sources(app PRIVATE
-  src/announce_ingest.c
   src/main.c
   src/config_apply.c
   src/config_cbor.c
   src/network_location.c
   src/status_cbor.c)
+target_sources_ifdef(CONFIG_LICHEN_ROUTING app PRIVATE
+  src/announce_ingest.c)
 target_sources_ifdef(CONFIG_LORA_LICHEN_BLE app PRIVATE
   src/ble_app_owner.c
   src/ble_uart.c

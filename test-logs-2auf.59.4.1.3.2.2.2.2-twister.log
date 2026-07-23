@@ -1,0 +1,20 @@
+/mnt/lichen-zephyr/work/zephyr/scripts/pylib/twister/twisterlib/environment.py:9: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+INFO    - Using Ninja..
+INFO    - Zephyr version: v3.7.0
+INFO    - Using 'zephyr' toolchain.
+INFO    - Building initial testsuite list...
+INFO    - Writing JSON report build/twister-ble-ingress-2222/testplan.json
+INFO    - JOBS: 16
+INFO    - Adding tasks to the queue...
+INFO    - Added initial list of jobs to queue
+INFO    - Total complete:    1/   1  100%  skipped:    0, failed:    0, error:    0
+INFO    - 1 test scenarios (1 test instances) selected, 0 configurations skipped (0 by static filter, 0 at runtime).
+INFO    - 1 of 1 test configurations passed (100.00%), 0 failed, 0 errored, 0 skipped with 0 warnings in 7.19 seconds
+INFO    - In total 4 test cases were executed, 0 skipped on 1 out of total 10 platforms (10.00%)
+INFO    - 1 test configurations executed on platforms, 0 test configurations were only built.
+INFO    - Saving reports...
+INFO    - Writing JSON report /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-ble-ingress-2222/twister.json
+INFO    - Writing xunit report /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-ble-ingress-2222/twister.xml...
+INFO    - Writing xunit report /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-ble-ingress-2222/twister_report.xml...
+INFO    - Run completed

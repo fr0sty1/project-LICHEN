@@ -192,7 +192,6 @@ config LICHEN_ANNOUNCE_SCHEDULER
 	bool "LICHEN announce scheduler (periodic TX)"
 	depends on LICHEN_ROUTING
 	depends on LICHEN_LINK
-	select LICHEN_LINK
 	default n
 	help
 	  Enable periodic announce transmission (spec section 9.4). The scheduler

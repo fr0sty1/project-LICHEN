@@ -192,6 +192,7 @@ config LICHEN_COAP_KEYS
 	# header is off the include path and the symbol is undefined at link,
 	# so this option genuinely requires it (bd a2a2).
 	depends on LICHEN_SLIP_TRANSPORT
+	depends on ZCBOR
 	select COAP_URI_WILDCARD
 	imply ZCBOR
 	imply TINYCRYPT_SHA256
