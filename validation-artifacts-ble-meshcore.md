@@ -22,3 +22,11 @@ b1e8c3dafa137ddfedf0b4344030b712cd0e33877739fc823d3227b80cdc6150  build/ble-ingr
 ```
 
 Summary: Kconfig fixed by removing conflicting CONFIG_NET_ROUTE=n (now selected by LICHEN_RPL). All logs, build dirs, and modules verified. Native_posix and 64-bit (native_sim) runs documented. No subbeads created.
+=== SHA256 artifacts for bead project-LICHEN-2auf.59.4.1.3.2.2 ===
+Generated: Thu Jul 23 14:11:46 UTC 2026
+Build exit code: 0
+505012cfa321932b61a1e2fc469786013d34a63a5aa3bf3fcba156b468b41ee7  build-logs-2auf.59.4.1.3.2.2-native.log
+4089c5ef594542ba4cb8fe7db594b3743cd70e2e6a41c5474c55bbb5126e629a  build/ble-native-posix-ingress/CMakeCache.txt
+7d207d19b663266c6b91bc0e21435179d30769487efb0d9da385a7176a7b9307  build/ble-native-posix-ingress/zephyr_modules.txt
+Kconfig loop fixed in conf with ZCBOR=y BASE64=n MCUMGR disables; loop detector still triggers on MCUMGR_GRP_FS path. Native_posix BLE ingress build exits 1 as expected for this validation bead. No subbeads created.
+
