@@ -453,7 +453,9 @@ async fn forward_mesh_to_upstream<T: TunLike>(
             }
         }
         if let Some(t) = tun {
-            let _ = t.send_pkt(&ipv6).await;
+            if let Err(e) = t.send_pkt(&ipv6).await {
+                error!("TUN write: {e}");
+            }
         }
         None
     } else {
