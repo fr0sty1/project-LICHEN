@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-2auf.41.2.3.3",
+  "title": "Ensure Rust cross-impl tests for ICMPv6/UDP malformed ingress",
+  "description": "Add or extend vector tests in Rust crates (lichen-core/src/ipv6.rs tests, lichen-rpl, lichen-node tests, or fuzz targets) to match Python vectors for malformed ICMPv6/UDP cases. Verify specific error returns (Ipv6Error, drop without panic/leak). Update any dispatch/ingress paths if validation missing.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:25:34.629363013Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:25:34.629363013Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.41.2.3.3",
+      "depends_on_id": "project-LICHEN-2auf.41.2.3",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:25:34.773523412Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
