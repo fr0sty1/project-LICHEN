@@ -2,7 +2,11 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 from __future__ import annotations
 
-from typing import Union
+from dataclasses import dataclass, field
+from enum import IntEnum
+from ipaddress import IPv6Address
+
+from lichen.ipv6.icmpv6 import Icmpv6Message
 
 """LOADng control message codecs (spec section 10, appendix B2).
 
@@ -19,13 +23,6 @@ B2.3 the default metric is hop count, so no separate metric field is carried
 
 The default unsigned signature is empty; a signed message carries 48 bytes.
 """
-
-from dataclasses import dataclass, field
-from enum import IntEnum
-from ipaddress import IPv6Address
-from typing import Union
-
-from lichen.ipv6.icmpv6 import Icmpv6Message
 
 LOADNG_ICMPV6_TYPE = 158
 INITIAL_HOP_LIMIT = 4
@@ -180,7 +177,7 @@ class RERR:
         )
 
 
-LoadngMessage = Union[RREQ, RREP, RERR]
+LoadngMessage = RREQ | RREP | RERR
 
 _CODE_BY_TYPE = {RREQ: LoadngCode.RREQ, RREP: LoadngCode.RREP, RERR: LoadngCode.RERR}
 _CLASS_BY_CODE = {
