@@ -6,12 +6,16 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 #include <lichen/rpl.h>
 
+struct net_if;
 struct lichen_rpl_root;
 
-int lichen_rpl_root_init(struct lichen_rpl_root *root, const uint8_t *dodag_id, const uint8_t *node_addr);
+struct lichen_rpl_root *lichen_rpl_root_init(struct lichen_rpl_root *root, struct net_if *iface,
+					     const uint8_t *dodag_id, const uint8_t *node_addr);
 void lichen_rpl_root_tick(struct lichen_rpl_root *root, uint32_t now);
+bool lichen_rpl_root_send_dio(struct lichen_rpl_root *root);
 bool lichen_rpl_root_handle_dao(struct lichen_rpl_root *root, const uint8_t *data, size_t len, uint32_t now);
 const struct lichen_rpl_route *lichen_rpl_root_lookup(struct lichen_rpl_root *root, const uint8_t *target);
 int lichen_rpl_root_set_prefix(struct lichen_rpl_root *root, const uint8_t *prefix, uint8_t len);
