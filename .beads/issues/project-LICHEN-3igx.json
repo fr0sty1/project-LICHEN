@@ -1,16 +1,18 @@
 {
   "id": "project-LICHEN-3igx",
   "title": "[merge-conflict] worktree-worker24: t_deck_esp32s3_procpu.conf",
-  "labels": ["defer-external"],
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:33:51.490665123Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:43:21.642369532Z",
+  "updated_at": "2026-07-23T05:13:45.883651253Z",
   "started_at": "2026-07-23T00:43:21.642369532Z",
-  "lease_expires_at": "2026-07-23T00:48:21.642369532Z",
-  "heartbeat_at": "2026-07-23T00:43:21.642369532Z"
+  "lease_expires_at": "2026-07-23T05:18:45.883651253Z",
+  "heartbeat_at": "2026-07-23T05:13:45.883651253Z",
+  "labels": [
+    "defer-external"
+  ]
 }
