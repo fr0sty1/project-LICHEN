@@ -3,15 +3,15 @@
   "title": "senml: base_time and time as f64 may lose precision for far-future timestamps",
   "description": "File: rust/lichen-senml/src/record.rs\nLines: 25-26, 29\n\nThe base_time and time fields use f64:\n```rust\npub base_time: Option\u003cf64\u003e,\npub time: Option\u003cf64\u003e,\n```\n\nf64 has 53 bits of mantissa, giving microsecond precision until ~year 2255. However:\n1. RFC 8428 allows nanosecond precision timestamps\n2. f64 loses nanosecond precision for dates after ~year 2000\n3. Some IoT applications track sub-microsecond events\n\nCurrent Unix timestamp (2026): ~1.8e9 seconds\nf64 precision at 1e9: ~1e-7 seconds (100ns) - already insufficient for nanosecond precision\n\nImpact: Timestamps may lose sub-microsecond precision. This affects high-frequency sensor data.\n\nNote: This matches RFC 8428 which uses JSON number for time (also ~53-bit precision). The issue is inherent to the spec, not this implementation specifically. However, documenting this limitation would help users.\n\nRecommendation: Document the precision limitation in the struct documentation.",
   "notes": "Updated Record::base_time and time docs with f64 precision details per RFC 8428. Commit: def65802a",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:40:23.769394Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:33:32.106513449Z",
+  "updated_at": "2026-07-23T04:33:34.49281521Z",
   "started_at": "2026-07-23T04:32:10.448130153Z",
-  "lease_expires_at": "2026-07-23T04:37:10.448130153Z",
-  "heartbeat_at": "2026-07-23T04:32:10.448130153Z"
+  "closed_at": "2026-07-23T04:33:34.49281521Z",
+  "close_reason": "Documented f64 timestamp precision limits in Record struct (rust/lichen-senml/src/record.rs:29). Verified via edit and commit. Tests n/a for doc-only change. Pushed def65802a."
 }
