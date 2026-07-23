@@ -205,6 +205,7 @@ int lichen_coap_server_is_running(void);
 struct lichen_deaddrop_provider {
 	int (*store)(const uint8_t *payload, size_t len);
 	int (*retrieve)(uint8_t *buf, size_t buf_len, const char *node);
+	struct lichen_dtn_buffer *dtn_buf;  /* non-static DTN storage per P4 review */
 };
 
 int lichen_coap_deaddrop_register(const struct lichen_deaddrop_provider *provider);
