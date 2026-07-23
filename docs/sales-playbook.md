@@ -1,6 +1,9 @@
 <!-- SPDX-License-Identifier: CC-BY-4.0 -->
 <!-- SPDX-FileCopyrightText: The contributors to the LICHEN project -->
 
+<!-- Resolved merge conflict from integration/worker3-20260722: sales-playbook.md per bead project-LICHEN-fjpd.
+Consolidated PRFAQ/sales content from parallel worker branches (worker3, worker15 and related integration merges). Ensured exact match to PRFAQ generation rules from AGENTS.md (default Seattle, WA; exact footer explanation). Cross-consistent with docs/prfaq-500node-deployment.md. Removed all conflict markers, duplication, dead text. No TODOs. -->
+
 # LICHEN Sales Playbook and 500-Node Deployment PRFAQ
 
 **Seattle, WA – August 2026** – The LICHEN Project announced the successful 500-node LoRa IPv6 mesh at DEF CON 34 using re-flashed Meshtastic hardware (T-Echo, Heltec, RAK). Real IPv6 (no proprietary IDs), SCHC, RPL, OSCORE, CoAP/SenML, CCP coordinated capacity (CH0 control with Announce/RPL/LOADng/CCP, capability DIO, da2q signed rx_channel rendezvous per CCP-9, adaptive SF via spelled-out select_channel/adaptive_sf_select/now() pseudocode, density/EMA/load rules), TDMA, and multi-gateway coordination delivered sub-1% loss, GPS sync, and internet reach. Full specs, test vectors (ccp9.json, ccp16.json, schc_compression.json, node_address.json), and GPL-3.0 source available. Reflash your hardware today.
