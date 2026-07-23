@@ -2,15 +2,15 @@
   "id": "project-LICHEN-yznl",
   "title": "[merge-conflict] worktree-worker23: main.c",
   "notes": "Commit: 0827090fa",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:42:15.583488841Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:35:37.557750843Z",
+  "updated_at": "2026-07-23T04:35:40.69632351Z",
   "started_at": "2026-07-23T04:34:53.40807968Z",
-  "lease_expires_at": "2026-07-23T04:39:53.40807968Z",
-  "heartbeat_at": "2026-07-23T04:34:53.40807968Z"
+  "closed_at": "2026-07-23T04:35:40.69632351Z",
+  "close_reason": "Cleaned dead merge-conflict resolution comments referencing worker23 and old beads from xiao and t_deck board configs (tied to main.c merge fixes). Removed no-dead-code violations per AGENTS.md. Changes committed as 0827090fa and pushed. No tests needed for config. git status clean."
 }
