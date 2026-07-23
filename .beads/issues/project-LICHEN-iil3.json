@@ -1,12 +1,16 @@
 {
   "id": "project-LICHEN-iil3",
   "title": "codereview pass 2 (review #2): inline draft-lichen-tdma cross-ref now present; now() clarification addresses SFN wrap per 2a.2 but TOC should explicitly list 2a.2 as Channel Agility subsection for clarity (P3 opinion)",
-  "status": "open",
+  "status": "in_progress",
   "priority": 4,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:46:48.30462341Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:46:48.30462341Z",
+  "updated_at": "2026-07-23T04:08:29.295833904Z",
+  "started_at": "2026-07-23T04:08:29.295833904Z",
+  "lease_expires_at": "2026-07-23T04:13:29.295833904Z",
+  "heartbeat_at": "2026-07-23T04:08:29.295833904Z",
   "labels": [
     "codereview",
     "spec",
