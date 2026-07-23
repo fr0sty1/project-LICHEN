@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-1xoj",
+  "title": "[cross-impl] duplicated IID derivation in lichen-core::addr and lichen-link::identity",
+  "description": "The ygg_addr_from_pubkey in rust/lichen-core/src/addr.rs:65 duplicates the SHA-256 + U/L bit clear logic from iid_from_pubkey_bytes in rust/lichen-link/src/identity.rs:28. Python _pubkey_to_iid and C lichen_identity_* also implement it. Risk of divergent behavior on future changes (e.g. different hash or bit ops). Must consolidate to single source of truth per cross-impl rules. Matches test/vectors/yggdrasil-derivation.json currently but fragile. See commits ce284558b, 7d084405c.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:39:22.679156336Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:39:22.679156336Z"
+}
