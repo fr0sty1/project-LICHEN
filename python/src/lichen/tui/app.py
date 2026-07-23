@@ -64,7 +64,10 @@ def format_time_us(time_us: int) -> str:
 
 
 def format_payload(data: bytes) -> str:
-    """Format payload for display, showing hex and printable ASCII.
+    """Format payload for display, showing hex and printable text.
+
+    Uses UTF-8 decode and accepts printable chars plus common whitespace
+    (\n, \r, \t) to avoid misclassifying text payloads with control chars.
 
     Args:
         data: Raw bytes to format.
@@ -74,8 +77,8 @@ def format_payload(data: bytes) -> str:
     """
     hex_str = data.hex()
     try:
-        text = data.decode("ascii")
-        if all(32 <= ord(c) < 127 for c in text):
+        text = data.decode("utf-8")
+        if all(c.isprintable() or c in "\n\r\t" for c in text):
             return f"{hex_str} ({text})"
     except (UnicodeDecodeError, ValueError):
         pass
