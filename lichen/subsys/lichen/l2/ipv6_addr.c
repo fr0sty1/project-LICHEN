@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include "lichen_util.h"
+#include <lichen/link_ctx.h>
 
 /*
  * Logging abstraction: use Zephyr logging when available, otherwise
@@ -299,4 +300,21 @@ int lichen_log_link_local_from_eui64(const uint8_t *eui64, struct in6_addr *ll_a
     }
 
     return 0;
+}
+
+int lichen_yggdrasil_addr(const uint8_t pubkey[32], struct in6_addr *addr)
+{
+	int ret;
+	uint8_t ygg[16];
+	if (pubkey == NULL || addr == NULL) {
+		LOG_ERR("yggdrasil_addr failed (NULL input)");
+		return -EINVAL;
+	}
+	ret = lichen_identity_ygg_addr_from_ed25519(pubkey, ygg);
+	if (ret < 0) {
+		LOG_ERR("yggdrasil_addr failed (identity error %d)", ret);
+		return ret;
+	}
+	memcpy(addr->s6_addr, ygg, 16);
+	return 0;
 }
