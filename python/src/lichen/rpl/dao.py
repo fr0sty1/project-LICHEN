@@ -93,6 +93,8 @@ class TransitInformation:
     external: bool = False
 
     def to_option(self) -> RplOption:
+        if self.external:
+            raise DaoError("external encoding not supported")
         e_flag = 0x80 if self.parent_address is not None else 0x00
         data = bytes([e_flag, self.path_control, self.path_sequence, self.path_lifetime])
         if self.parent_address is not None:
@@ -105,10 +107,12 @@ class TransitInformation:
             raise DaoError(f"not a Transit Information option: type {opt.type}")
         if len(opt.data) < 4:
             raise DaoError("Transit Information option too short")
+        if (opt.data[0] & 0x7F) != 0:
+            raise DaoError("flags must be zero")
         e_flag = opt.data[0] & 0x80
         if e_flag:
             if len(opt.data) < 4 + 16:
-                raise DaoError("Transit Information option missing parent address")
+                raise DaoError("Transit Information option must contain parent address")
             parent = IPv6Address(opt.data[4:20])
         else:
             parent = None
@@ -303,20 +307,8 @@ class DaoManager:
         """
         if not self.is_root:
             raise DaoError("process_dao is only valid on the root")
-        # SECURITY: RFC 6550 Section 9.5 requires filtering DAOs by RPL Instance ID.
-        # Accepting DAOs from a different instance could corrupt the routing table.
-        if dao.rpl_instance_id != self.rpl_instance_id:
-            raise DaoError(
-                f"DAO instance ID {dao.rpl_instance_id} != {self.rpl_instance_id}"
-            )
-        if self.dodag_id is not None and dao.dodag_id != self.dodag_id:
-            raise DaoError(
-                f"DAO DODAG ID {dao.dodag_id} != {self.dodag_id}"
-            )
-
-        target, parent = self._extract_edge(dao)
-        self._parent_map[target] = parent
-        self._rebuild_routes()
+        now = self.clock()
+        return self.process_dao_at(dao, now)
 
     def process_dao_at(self, dao: DAO, now_seconds: float) -> DAOAck | None:
         """Validate and atomically apply a DAO at a deterministic monotonic time."""
