@@ -17,7 +17,10 @@
 
 #include <lichen/hal.h>
 #if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
-#include <lichen/rpl_dodag.h>
+#include "rpl_root.h"
+#include <lichen/l2/ipv6_addr.h>
+#include <lichen/l2/lora_l2.h>
+#include <zephyr/net/net_if.h>
 #endif
 
 #if IS_ENABLED(CONFIG_LICHEN_LORA_L2)
@@ -112,17 +115,30 @@ static struct lichen_gateway_manual_location_config s_manual_location;
 static bool s_has_manual_location;
 
 #if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
-static struct lichen_rpl_dodag s_dodag;
+static struct lichen_rpl_root s_rpl_root;
+static struct k_work_delayable s_rpl_tick_work;
+
+static void rpl_tick_handler(struct k_work *work)
+{
+	ARG_UNUSED(work);
+	lichen_rpl_root_tick(&s_rpl_root, k_uptime_get_32());
+	k_work_schedule(&s_rpl_tick_work, K_MSEC(CONFIG_LICHEN_RPL_TRICKLE_IMIN_MS / 4));
+}
 #endif
 
 #if IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)
 static bool s_backhaul_connected = false;
 static struct net_mgmt_event_callback s_wifi_mgmt_cb;
 #endif
+
 static int gateway_rpl_init(void) {
 	int ret = 0;
 #if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
 	uint8_t dodag_id[16] = {0};
+	uint8_t self_eui64[8];
+	uint8_t iid[8];
+	struct in6_addr ll_addr;
+
 	if (IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)) {
 		dodag_id[0] = 0xfd;
 		dodag_id[1] = 0x00;
@@ -130,12 +146,31 @@ static int gateway_rpl_init(void) {
 		dodag_id[0] = 0xfd;
 	}
 	dodag_id[15] = 0x01;
-	ret = lichen_rpl_dodag_init_root(&s_dodag, 0x00, dodag_id, 0);
-	if (ret == 0) {
-		LOG_INF("RPL DODAG root initialized (rank=%u, role=ROOT)", s_dodag.rank);
-	} else {
-		LOG_ERR("lichen_rpl_dodag_init_root failed: %d", ret);
+
+	ret = lichen_lora_l2_copy_eui64(self_eui64);
+	if (ret != 0) {
+		LOG_ERR("failed to read self EUI64: %d", ret);
+		return ret;
 	}
+	ret = lichen_eui64_to_iid(self_eui64, iid);
+	if (ret != 0) {
+		return ret;
+	}
+	ret = lichen_make_link_local(iid, &ll_addr);
+	if (ret != 0) {
+		return ret;
+	}
+
+	struct lichen_rpl_root *rp = lichen_rpl_root_init(
+		&s_rpl_root, net_if_get_default(), dodag_id, ll_addr.s6_addr);
+	if (rp == NULL) {
+		LOG_ERR("lichen_rpl_root_init failed");
+		return -EINVAL;
+	}
+	LOG_INF("RPL DODAG root initialized (rank=%u, role=ROOT)", s_rpl_root.dodag.rank);
+
+	k_work_init_delayable(&s_rpl_tick_work, rpl_tick_handler);
+	k_work_schedule(&s_rpl_tick_work, K_MSEC(CONFIG_LICHEN_RPL_TRICKLE_IMIN_MS / 4));
 #endif
 	return ret;
 }
@@ -806,11 +841,12 @@ int main(void)
 
 	if (gateway_rpl_init() < 0) {
 		LOG_WRN("RPL root init failed - continuing without full DODAG support");
+	} else if (IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)) {
+		LOG_INF("RPL root signalling enabled (DODAG root active, Trickle Imin=%ums)",
+			CONFIG_LICHEN_RPL_TRICKLE_IMIN_MS);
 	}
 
-#if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
-	LOG_INF("RPL root signalling enabled (DODAG root active)");
-#else
+#if !IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
 	LOG_WRN("RPL root signalling disabled - advertising /status rpl=false");
 #endif
 

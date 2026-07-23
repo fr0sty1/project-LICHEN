@@ -742,6 +742,71 @@ static void neighbors_notify(struct coap_resource *resource,
 				 &observer->addr, sizeof(observer->addr), NULL);
 }
 
+static void routes_notify(struct coap_resource *resource,
+			  struct coap_observer *observer)
+{
+	static uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+	uint8_t cbor_buf[LICHEN_COAP_ROUTES_CBOR_MAX_SIZE];
+	struct coap_packet notif;
+	struct lichen_coap_route routes[CONFIG_LICHEN_COAP_STATUS_MAX_ROUTES];
+	uint8_t default_route[16];
+	bool has_default = false;
+	size_t cbor_len;
+	int count;
+	int r;
+
+	if (!s_initialized || !s_config.routes_get) {
+		return;
+	}
+
+	count = s_config.routes_get(routes, ARRAY_SIZE(routes), default_route, &has_default);
+	if (count < 0) {
+		count = 0;
+	}
+	if (count > (int)ARRAY_SIZE(routes)) {
+		count = (int)ARRAY_SIZE(routes);
+	}
+
+	cbor_len = lichen_coap_encode_routes_cbor(cbor_buf, sizeof(cbor_buf),
+						  routes, (size_t)count,
+						  has_default ? default_route : NULL);
+	if (cbor_len == 0) {
+		return;
+	}
+
+	r = coap_packet_init(&notif, buf, sizeof(buf), COAP_VERSION_1,
+			     COAP_TYPE_NON_CON,
+			     observer->tkl, observer->token,
+			     COAP_RESPONSE_CODE_CONTENT, 0);
+	if (r < 0) {
+		return;
+	}
+
+	r = coap_append_option_int(&notif, COAP_OPTION_OBSERVE, resource->age);
+	if (r < 0) {
+		return;
+	}
+
+	r = coap_append_option_int(&notif, COAP_OPTION_CONTENT_FORMAT,
+				   CBOR_CONTENT_FORMAT);
+	if (r < 0) {
+		return;
+	}
+
+	r = coap_packet_append_payload_marker(&notif);
+	if (r < 0) {
+		return;
+	}
+
+	r = coap_packet_append_payload(&notif, cbor_buf, (uint16_t)cbor_len);
+	if (r < 0) {
+		return;
+	}
+
+	(void)coap_resource_send(resource, &notif,
+				 &observer->addr, sizeof(observer->addr), NULL);
+}
+
 static int routes_get(struct coap_resource *resource,
 		      struct coap_packet *request,
 		      struct sockaddr *addr, socklen_t addr_len)
@@ -802,8 +867,9 @@ struct coap_resource lichen_coap_neighbors_resource = {
 };
 
 struct coap_resource lichen_coap_routes_resource = {
-	.get  = routes_get,
-	.path = routes_path,
+	.get    = routes_get,
+	.notify = routes_notify,
+	.path   = routes_path,
 };
 
 int lichen_coap_status_init(const struct lichen_coap_status_config *config)
@@ -838,4 +904,12 @@ void lichen_coap_status_neighbors_notify(void)
 		return;
 	}
 	coap_resource_notify(&lichen_coap_neighbors_resource);
+}
+
+void lichen_coap_status_routes_notify(void)
+{
+	if (!s_initialized || !s_config.routes_get) {
+		return;
+	}
+	coap_resource_notify(&lichen_coap_routes_resource);
 }

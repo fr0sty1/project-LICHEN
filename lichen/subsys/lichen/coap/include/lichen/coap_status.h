@@ -204,6 +204,11 @@ void lichen_coap_status_notify(void);
 void lichen_coap_status_neighbors_notify(void);
 
 /**
+ * @brief Trigger route table notification to observers
+ */
+void lichen_coap_status_routes_notify(void);
+
+/**
  * @brief Encode node status to CBOR
  *
  * @param[out] buf Output buffer
