@@ -2,15 +2,15 @@
   "id": "project-LICHEN-oozw",
   "title": "[merge-conflict] worktree-worker18: coap_config.c",
   "notes": "Commit: 6bb49c162",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:19:33.883463365Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:50:45.947838312Z",
+  "updated_at": "2026-07-23T02:50:48.126870847Z",
   "started_at": "2026-07-23T02:49:20.608060018Z",
-  "lease_expires_at": "2026-07-23T02:54:20.608060018Z",
-  "heartbeat_at": "2026-07-23T02:49:20.608060018Z"
+  "closed_at": "2026-07-23T02:50:48.126870847Z",
+  "close_reason": "Fixed incorrect frequency bound in coap_config.c (4294967.295 -\u003e 4294.967295) to prevent uint32_t overflow in freq_khz; resolved merge conflict from worker18 worktree. Verified in both worktrees."
 }
