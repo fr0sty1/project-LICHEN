@@ -57,6 +57,11 @@ static int validate_unit(const char *unit)
 	return string_too_long(unit, SENML_MAX_UNIT_LEN) ? -EMSGSIZE : 0;
 }
 
+static int validate_string(const char *str)
+{
+	return string_too_long(str, SENML_MAX_STRING_LEN) ? -EMSGSIZE : 0;
+}
+
 int senml_pack_init(struct senml_pack *pack,
 		    const char *base_name,
 		    uint64_t base_time)
@@ -164,14 +169,42 @@ int senml_add_bool(struct senml_pack *pack,
 	return 0;
 }
 
-/*
- * Encode a single SenML record as a CBOR map.
- * Returns: 0 on success, -ENOTSUP for unsupported types, -ENOMEM on CBOR error
- */
+int senml_add_string(struct senml_pack *pack,
+		    const char *name,
+		    const char *value)
+{
+	if (pack == NULL || name == NULL) {
+		return -EINVAL;
+	}
+
+	if (validate_name(name) < 0 || (value != NULL && validate_string(value) < 0)) {
+		return -EMSGSIZE;
+	}
+
+	if (pack->record_count >= SENML_MAX_RECORDS) {
+		return -ENOMEM;
+	}
+
+	struct senml_record *rec = &pack->records[pack->record_count++];
+	rec->name = name;
+	rec->unit = NULL;
+	rec->type = SENML_VALUE_STRING;
+	rec->value.s = value;
+	rec->time_offset = 0;
+	rec->has_time = false;
+
+	return 0;
+}
+
+ /*
+  * Encode a single SenML record as a CBOR map.
+  * Returns: 0 on success, -ENOTSUP for unsupported types, -ENOMEM on CBOR error
+  */
 static int encode_record(zcbor_state_t *state,
 			 const struct senml_record *rec,
 			 const struct senml_pack *pack,
 			 bool is_first)
+
 {
 	/* Count map entries */
 	size_t entries = 1; /* value always present */
@@ -183,7 +216,9 @@ static int encode_record(zcbor_state_t *state,
 
 	if ((is_first && validate_name(pack->base_name) < 0) ||
 	    validate_name(rec->name) < 0 ||
-	    validate_unit(rec->unit) < 0) {
+	    validate_unit(rec->unit) < 0 ||
+	    (rec->type == SENML_VALUE_STRING && rec->value.s != NULL &&
+	     validate_string(rec->value.s) < 0)) {
 		return -EMSGSIZE;
 	}
 
@@ -240,8 +275,14 @@ static int encode_record(zcbor_state_t *state,
 		break;
 
 	case SENML_VALUE_STRING:
+		if (rec->value.s == NULL ||
+		    !zcbor_int32_put(state, SENML_LABEL_VS) ||
+		    !zcbor_tstr_put_term(state, rec->value.s, 256)) {
+			return -ENOMEM;
+		}
+		break;
+
 	case SENML_VALUE_DATA:
-		/* String and binary data types not yet implemented */
 		return -ENOTSUP;
 	default:
 		return -EINVAL;
