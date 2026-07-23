@@ -2,15 +2,15 @@
   "id": "project-LICHEN-9hyb",
   "title": "[merge-conflict] worktree-worker24: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: 18ef8f7e5",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:12:01.349882561Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:14:02.438107068Z",
+  "updated_at": "2026-07-23T00:14:04.905397337Z",
   "started_at": "2026-07-23T00:12:51.223242052Z",
-  "lease_expires_at": "2026-07-23T00:17:51.223242052Z",
-  "heartbeat_at": "2026-07-23T00:12:51.223242052Z"
+  "closed_at": "2026-07-23T00:14:04.905397337Z",
+  "close_reason": "Resolved merge conflict markers in lichen/apps/gateway/boards/heltec_wifi_lora32_v3_esp32s3_procpu.conf by consolidating WiFi/ESP buffer, stack sizes, battery, and heap settings with merged tuning comment. Verified no duplicate Kconfig entries. Commit 18ef8f7e5 pushed to integration/worker13-20260722. Matches clean resolution from worker24 worktree."
 }
