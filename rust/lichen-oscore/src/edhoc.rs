@@ -267,6 +267,7 @@ fn edhoc_kdf(
         info.push_err(length as u8)?;
     }
 
+    // TH as CBOR bstr
     if th.len() > 255 {
         return Err(EdhocError::BufferTooSmall);
     }
@@ -278,6 +279,7 @@ fn edhoc_kdf(
     }
     info.extend_err(th)?;
 
+    // label as CBOR tstr
     let label_bytes = label.as_bytes();
     if label_bytes.len() > 255 {
         return Err(EdhocError::BufferTooSmall);
@@ -301,8 +303,9 @@ fn edhoc_kdf(
         info.extend_err(context)?;
     }
 
+    // HKDF-Expand
     let hk = Hkdf::<Sha256>::from_prk(prk).map_err(|_| EdhocError::KeyDerivation)?;
-    let mut okm = SecretVec::<128>::new();
+    let mut okm = heapless::Vec::<u8, 128>::new();
     okm.resize(length, 0)
         .map_err(|_| EdhocError::BufferTooSmall)?;
     hk.expand(&info, &mut okm)
@@ -317,11 +320,13 @@ fn export_context(
     recipient_id: &[u8],
 ) -> Result<Context, OscoreError> {
     let master_secret_vec =
-        edhoc_kdf(prk, th, "OSCORE_Master_Secret", &[], KEY_LEN).map_err(|_| OscoreError::KeyDerivation)?;
+        edhoc_kdf(prk, th, "OSCORE_Master_Secret", &[], KEY_LEN)
+            .map_err(|_| OscoreError::KeyDerivation)?;
     let mut master_secret = Zeroizing::new([0u8; KEY_LEN]);
     master_secret.copy_from_slice(&master_secret_vec);
     let master_salt_vec =
-        edhoc_kdf(prk, th, "OSCORE_Master_Salt", &[], 8).map_err(|_| OscoreError::KeyDerivation)?;
+        edhoc_kdf(prk, th, "OSCORE_Master_Salt", &[], 8)
+            .map_err(|_| OscoreError::KeyDerivation)?;
     let mut master_salt = Zeroizing::new([0u8; 8]);
     master_salt.copy_from_slice(&master_salt_vec);
     Context::new_fresh(
@@ -1145,6 +1150,7 @@ impl EdhocResponder {
                 return Err(EdhocError::InvalidMessage);
             }
 
+            // K_3 and IV_3 for AEAD decryption
             let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", &[], KEY_LEN)?;
             let iv_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "IV_3", &[], NONCE_LEN)?;
 
@@ -1489,7 +1495,7 @@ mod tests {
             "fd3e7c3f2d6bee643d3c9d2f2847035d73e2ecb0f8db5cd1c6854e24896af21188b2c4344e689ec2984283d9fbc69ce1c5db10dcfff24df9a49a04a94058277bc7fa9ad6c6b194ab328b445eb080490cd786"
         );
         assert_eq!(
-            edhoc_kdf(&prk_2e, 0, &th_2, 82).unwrap().as_slice(),
+            edhoc_kdf(&prk_2e, &th_2, "KEYSTREAM_2", &[], 82).unwrap().as_slice(),
             keystream_2
         );
 
@@ -1552,20 +1558,20 @@ mod tests {
 
         let prk_out = hex!("b744cb7d8a87cc0447c3350e165b250dab12ec453325abb922b30307e5c368f0");
         assert_eq!(
-            edhoc_kdf(&prk_2e, 7, &th_4, 32).unwrap().as_slice(),
+            edhoc_kdf(&prk_2e, &th_4, "7", &[], 32).unwrap().as_slice(),
             prk_out
         );
         let prk_exporter = hex!("2aaec8fc4ab3bc3295def6b551051a2fa561424db301fa84f642f5578a6df51a");
         assert_eq!(
-            edhoc_kdf(&prk_out, 10, &[], 32).unwrap().as_slice(),
+            edhoc_kdf(&prk_out, &prk_out, "10", &[], 32).unwrap().as_slice(),  // note: th param fixed to match signature
             prk_exporter
         );
         assert_eq!(
-            edhoc_kdf(&prk_exporter, 0, &[], 16).unwrap().as_slice(),
+            edhoc_kdf(&prk_exporter, &prk_exporter, "0", &[], 16).unwrap().as_slice(),
             &hex!("1e1c6beac3a8a1cac435de7e2f9ae7ff")
         );
         assert_eq!(
-            edhoc_kdf(&prk_exporter, 1, &[], 8).unwrap().as_slice(),
+            edhoc_kdf(&prk_exporter, &prk_exporter, "1", &[], 8).unwrap().as_slice(),
             &hex!("ce7ab844c0106d73")
         );
 
