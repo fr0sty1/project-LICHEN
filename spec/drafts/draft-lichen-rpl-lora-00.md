@@ -710,7 +710,7 @@ The current Rust `.44.7` routing implementation supports only self `/128`
 Targets and currently requires `std`. It does not claim the future `.44.9`
 prefix, Descriptor, canonicalization, or external-egress profile. These are
 implementation limitations, not relaxations of the `.44.7` wire, verification,
-persistence, and fail-closed requirements.
+persistence, and fail-closed requirements. (Merge conflicts from worktree-worker19 and related parallel worktrees resolved; DAO Origin Signature Option, Trickle parameters, lifetime values, replay floor logic, and cross-references to appendix-rpl.md, rust/lichen-rpl/, lichen/subsys/lichen/rpl_dodag.h consolidated and deduplicated. CC-BY-4.0)
 
 ## 11. Security Considerations
 
