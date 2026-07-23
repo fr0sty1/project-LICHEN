@@ -10,7 +10,7 @@ Language-neutral conformance vectors for the LICHEN protocol using **format_vers
 | File | Covers |
 |------|--------|
 | `schema.json` | v2-only JSON Schema (draft-07); const format_version=2, per-family docs, no legacy envelope |
-| `schc_compression.json` | SCHC whole-packet compression (RFC 8724), rules 0–4 |
+| `schc_compression.json` | SCHC whole-packet compression (RFC 8724), rules 0–4 + ICMPv6/UDP malformed (invalid source, bad type, checksum, length; RFC 4443) |
 | `schc_fragment.json` | SCHC fragmentation (RFC 8724 §8): single/multi, window, ACK-on-error, MIC fail, OOO, retransmit (independent RFC oracles) |
 | `l2_payload.json` | Authenticated L2 inner-payload dispatch wrapping SCHC and routing/control bodies |
 | `link_frame.json` | LICHEN link-layer frame encoding (spec section 4) |
