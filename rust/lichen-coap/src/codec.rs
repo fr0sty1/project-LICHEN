@@ -61,7 +61,9 @@ impl core::fmt::Display for CoapError {
             Self::InvalidOptionDelta => write!(f, "invalid option delta 15"),
             Self::InvalidOptionLength => write!(f, "invalid option length 15"),
             Self::TruncatedOption => write!(f, "option runs past end of message"),
-            Self::InvalidPayloadMarker => write!(f, "payload marker followed by zero-length payload"),
+            Self::InvalidPayloadMarker => {
+                write!(f, "payload marker followed by zero-length payload")
+            }
             Self::BufferTooSmall(e) => write!(f, "CoAP {}", e),
             Self::InvalidBlockOption => write!(f, "invalid Block option value"),
             Self::UintOptionTooLong => write!(f, "uint option value too long (>4 bytes)"),

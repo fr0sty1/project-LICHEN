@@ -54,7 +54,11 @@ impl Gateway {
                 Some(out)
             }
             Err(SchcError::BufferTooSmall(e)) => {
-                warn!(required = e.required, provided = e.provided, "SCHC decompress buffer too small for jumbo packet");
+                warn!(
+                    required = e.required,
+                    provided = e.provided,
+                    "SCHC decompress buffer too small for jumbo packet"
+                );
                 None
             }
             Err(SchcError::UnknownRuleId(id)) => {
@@ -111,7 +115,9 @@ impl Gateway {
 
     pub fn process_rpl(&mut self, frame: &[u8], now_ms: u64) -> (Option<Vec<u8>>, RplEvent) {
         let mut reply = vec![0u8; 512];
-        let (reply_len, event) = self.rpl_node.handle_frame_rpl(frame, [0u8; 8], &mut reply, now_ms);
+        let (reply_len, event) = self
+            .rpl_node
+            .handle_frame_rpl(frame, [0u8; 8], &mut reply, now_ms);
         let reply_opt = if reply_len > 0 {
             reply.truncate(reply_len);
             Some(reply)
@@ -129,7 +135,10 @@ impl Gateway {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lichen_core::{addr::{Ipv6Addr, NodeId}, icmpv6};
+    use lichen_core::{
+        addr::{Ipv6Addr, NodeId},
+        icmpv6,
+    };
 
     fn ll(iid: u8) -> Ipv6Addr {
         Ipv6Addr([0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0x02, 0, 0, 0, 0, 0, 0, iid])
@@ -221,7 +230,10 @@ mod tests {
         let mut gw = test_gateway();
         let dst = ll(2);
         assert!(gw.is_local_mesh(&dst.0));
-        let packet = [0x60, 0, 0, 0, 40, 0, 58, 0, 0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
+        let packet = [
+            0x60, 0, 0, 0, 40, 0, 58, 0, 0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+            0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+        ];
         let result = gw.mesh_to_mesh(&packet);
         assert!(result.is_some());
     }

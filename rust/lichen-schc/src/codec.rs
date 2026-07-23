@@ -201,10 +201,20 @@ fn finalize(sum: u32) -> u16 {
         s = (s & 0xFFFF) + (s >> 16);
     }
     let c = !(s as u16);
-    if c == 0 { 0xFFFF } else { c }
+    if c == 0 {
+        0xFFFF
+    } else {
+        c
+    }
 }
 
-fn udp_checksum(src: &[u8], dst: &[u8], src_port: u16, dst_port: u16, payload: &[u8]) -> Result<u16, SchcError> {
+fn udp_checksum(
+    src: &[u8],
+    dst: &[u8],
+    src_port: u16,
+    dst_port: u16,
+    payload: &[u8],
+) -> Result<u16, SchcError> {
     let total_len = 8usize.saturating_add(payload.len());
     if total_len > u16::MAX as usize {
         return Err(BufferTooSmall::new(total_len, u16::MAX as usize).into());
