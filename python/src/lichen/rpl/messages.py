@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import IntEnum
 from ipaddress import IPv6Address
-from typing import Union
 
 from lichen.ipv6.icmpv6 import Icmpv6Message
 
@@ -323,7 +322,7 @@ class DAOAck:
         )
 
 
-RplMessage = Union[DIS, DIO, DAO, DAOAck]
+RplMessage = DIS | DIO | DAO | DAOAck
 
 _CODE_BY_TYPE = {
     DIS: RplCode.DIS,
@@ -339,18 +338,21 @@ _CLASS_BY_CODE = {
 }
 
 
-def to_icmpv6(message: DIS | DIO | DAO | DAOAck) -> Icmpv6Message:
+def to_icmpv6(message: RplMessage) -> Icmpv6Message:
     """Wrap an RPL message as an ICMPv6 type-155 message."""
-    code = _CODE_BY_TYPE[type(message)]
+    try:
+        code = _CODE_BY_TYPE[type(message)]
+    except KeyError:
+        raise RplError(f"unsupported message type: {type(message).__name__}") from None
     return Icmpv6Message(RPL_ICMPV6_TYPE, int(code), message.to_bytes())
 
 
-def from_icmpv6(msg: Icmpv6Message) -> DIS | DIO | DAO | DAOAck:
+def from_icmpv6(msg: Icmpv6Message) -> RplMessage:
     """Parse an ICMPv6 type-155 message into the matching RPL message."""
     if msg.type != RPL_ICMPV6_TYPE:
         raise RplError(f"not an RPL message: ICMPv6 type {msg.type}")
     try:
         cls = _CLASS_BY_CODE[RplCode(msg.code)]
-    except ValueError as exc:
-        raise RplError(f"unknown RPL code: {msg.code}") from exc
+    except (ValueError, KeyError) as exc:
+        raise RplError(f"unsupported RPL code: {msg.code}") from exc
     return cls.from_bytes(msg.body)
