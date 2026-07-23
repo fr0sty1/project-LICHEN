@@ -429,11 +429,11 @@ int lichen_config_decode_radio_cbor(const uint8_t *buf, size_t len,
 			 */
 			if (val.len >= 2 && val.len <= 10 && val.value[0] == '0' &&
 			    (val.value[1] == 'x' || val.value[1] == 'X')) {
-				size_t hex_len = val.len - 2;
-				if (hex_len > 4) {
-					(void)zcbor_list_map_end_force_decode(state);
-					return -EINVAL;
-				}
+			size_t hex_len = val.len - 2;
+			if (hex_len > 8) {
+				(void)zcbor_list_map_end_force_decode(state);
+				return -EINVAL;
+			}
 				unsigned long v = 0;
 				for (size_t i = 2; i < val.len; i++) {
 					char c = (char)val.value[i];
