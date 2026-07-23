@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-lprb.1",
+  "title": "Audit lib.rs files in worker1 worktree and main for merge artifacts from boardconfig changes",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:14:32.385472938Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:14:32.385472938Z",
+  "labels": [
+    "defer-boardconfig"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-lprb.1",
+      "depends_on_id": "project-LICHEN-lprb",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:14:32.521820493Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}

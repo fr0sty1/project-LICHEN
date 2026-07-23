@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-lprb.2",
+  "title": "Reconcile RadioConfig and any deferred BoardConfig traits in lichen-hal/src/lib.rs and dependents",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:14:32.521373745Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:14:32.521373745Z",
+  "labels": [
+    "defer-boardconfig"
+  ]
+}
