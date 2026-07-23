@@ -73,7 +73,9 @@ static int deaddrop_oscore_respond(struct coap_resource *resource, struct coap_p
 	uint8_t buf[128];
 	struct coap_packet resp;
 	int ret = coap_oscore_protect_response(ctx, piv, piv_len, request, code, NULL, 0, &resp, buf, sizeof(buf));
-	if (ret < 0) return COAP_RESPONSE_CODE_INTERNAL_ERROR;
+	if (ret < 0) {
+		return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
+	}
 	ret = coap_resource_send(resource, &resp, addr, addr_len, NULL);
 	return ret;
 }
@@ -91,8 +93,10 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 	uint16_t payload_len = 0;
 	struct oscore_ctx *ctx = NULL;
 	uint8_t piv[OSCORE_PIV_MAX_LEN];
-	size_t piv_len = sizeof(piv);
+	size_t piv_len = 0;
 	bool is_protected = coap_oscore_is_protected(request);
+	uint8_t plain[512];
+	size_t plain_len = 0;
 	if (is_protected) {
 		if (oscore_ctx_get_by_eui64(peer_eui64, &ctx) != OSCORE_OK || ctx == NULL) {
 			return coap_oscore_send_unauthorized(resource, request, addr, addr_len);
@@ -100,8 +104,7 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 		uint8_t orig_code;
 		uint8_t opts[32];
 		size_t opt_len = sizeof(opts);
-		uint8_t plain[512];
-		size_t plain_len = sizeof(plain);
+		plain_len = sizeof(plain);
 		int r = coap_oscore_unprotect_request(ctx, request, &orig_code, opts, &opt_len, plain, &plain_len, piv, &piv_len);
 		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_UNAUTHORIZED;
 		if (orig_code != COAP_METHOD_POST) {
@@ -137,7 +140,7 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 		int r = s_provider->store(payload, payload_len);
 		if (r < 0) {
 			k_mutex_unlock(&s_dtn_buf_mutex);
-			if (is_protected && ctx != NULL && piv_len > 0) {
+			if (is_protected && ctx != NULL) {
 				return deaddrop_oscore_respond(resource, request, addr, addr_len, ctx, piv, piv_len, COAP_RESPONSE_CODE_INTERNAL_ERROR);
 			}
 			return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
