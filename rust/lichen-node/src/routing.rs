@@ -61,6 +61,30 @@ fn trickle_from_config(config: &DodagConfig) -> Option<TrickleTimer> {
     ))
 }
 
+#[cfg(feature = "std")]
+fn version_cmp(a: u8, b: u8) -> Option<core::cmp::Ordering> {
+    if a == b {
+        Some(core::cmp::Ordering::Equal)
+    } else if (a, b) == (0, 127) {
+        Some(core::cmp::Ordering::Greater)
+    } else {
+        let a_linear = a < 128;
+        let b_linear = b < 128;
+        if a_linear == b_linear {
+            let diff = a.abs_diff(b);
+            if diff <= 16 {
+                Some(a.cmp(&b))
+            } else {
+                None
+            }
+        } else if a_linear {
+            Some(core::cmp::Ordering::Greater)
+        } else {
+            Some(core::cmp::Ordering::Less)
+        }
+    }
+}
+
 /// Maximum neighbors tracked.
 pub const MAX_NEIGHBORS: usize = 16;
 
