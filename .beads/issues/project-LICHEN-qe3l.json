@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-qe3l",
+  "title": "Announce verification and cross-impl alignment",
+  "description": "Run full verification: cargo test, pytest for announce components. Ensure Rust no_std, Python/Rust produce identical bytes for all vectors. Fix any remaining divergences in processor ordering to exactly follow spec/05-routing.md pseudocode. Remove all worker comments, dead code, merge artifacts across files.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T02:42:53.895699699Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T02:42:53.895699699Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-qe3l",
+      "depends_on_id": "project-LICHEN-ha9s",
+      "type": "discovered-from",
+      "created_at": "2026-07-23T02:42:54.029686905Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
