@@ -1,18 +1,17 @@
 {
   "id": "project-LICHEN-8nhx",
   "title": "[merge-conflict] worktree-worker24: Kconfig",
-  "notes": "Commit: 299523b7f",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:25.443038094Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:10:25.698670708Z",
+  "updated_at": "2026-07-23T05:07:11.241539751Z",
   "started_at": "2026-07-23T00:10:48.438911276Z",
-  "closed_at": "2026-07-23T05:10:25.698670708Z",
-  "close_reason": "Updated lichen/subsys/lichen/Kconfig resolved merge conflict comment to include project-LICHEN-8nhx (worktree-worker24:Kconfig) and prior fixes list. Matches canonical style from similar beads (07am, ln8x etc). No dead code, no conflict markers. Commit 299523b7f",
+  "lease_expires_at": "2026-07-23T05:12:11.241539751Z",
+  "heartbeat_at": "2026-07-23T05:07:11.241539751Z",
   "labels": [
     "defer-external"
   ]
