@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-s2c6",
   "title": "[merge-conflict] worktree-worker23: CMakeLists.txt",
-  "notes": "Commit: 6421bbf (worker23 CMakeLists reconciliation for tests and drivers)",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:14:10.453401787Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:06:04.153004812Z",
+  "updated_at": "2026-07-23T03:01:38.384215272Z",
   "started_at": "2026-07-23T03:01:38.384215272Z",
-  "closed_at": "2026-07-23T03:06:04.153004812Z",
-  "close_reason": "Reconciled CMakeLists.txt across worker23 and main: restored CTest integration, vector generation in schc_generic test, fuel gauge warning suppression in hal test, consistent library naming in input driver, and cleaned stale build artifacts. Fixed merge divergence from parallel worktrees. Verified with edits to 4 files + build cleanup. Commit 6421bbf6a in worktree-worker23."
+  "lease_expires_at": "2026-07-23T03:06:38.384215272Z",
+  "heartbeat_at": "2026-07-23T03:01:38.384215272Z"
 }
