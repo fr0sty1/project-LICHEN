@@ -419,19 +419,62 @@ class InMemoryOscoreContextStore:
             record = self._records.get(self._normalize_key(host))
             return None if record is None or record.generation == 0 else record.generation
 
-    async def put(self, host: str, oscore_ctx: MemorySecurityContext, peer_pubkey: bytes) -> None:
+    async def put(
+        self,
+        host: str,
+        oscore_ctx: MemorySecurityContext,
+        peer_pubkey: bytes,
+        *,
+        expected_generation: int | None = None,
+    ) -> PeerContext:
         """Store OSCORE context for a peer."""
+        self.check_process()
+        key = self._normalize_key(host)
         async with self._get_lock():
-            return self._put_locked(
-                self._normalize_key(host), oscore_ctx, bytes(peer_pubkey), expected_generation
+            record = self._records.get(key)
+            if record is None:
+                record = _HostRecord(bytes(peer_pubkey))
+                self._records[key] = record
+            if record.peer_pubkey != bytes(peer_pubkey):
+                raise PeerKeyConflictError(f"peer {key} is already bound to a different key")
+            if expected_generation is not None and record.generation != expected_generation:
+                raise ContextGenerationError(f"context generation changed for {key}")
+            context = PeerContext(
+                oscore=oscore_ctx,
+                peer_pubkey=bytes(peer_pubkey),
+                generation=record.generation + 1 if record.generation else 1,
             )
+            record.context = context
+            record.generation = context.generation
+            return context
 
-    def put_sync(self, host: str, oscore_ctx: MemorySecurityContext, peer_pubkey: bytes) -> None:
+    def put_sync(
+        self,
+        host: str,
+        oscore_ctx: MemorySecurityContext,
+        peer_pubkey: bytes,
+        *,
+        expected_generation: int | None = None,
+    ) -> PeerContext:
         """Store OSCORE context (synchronous)."""
-        self._contexts[host] = PeerContext(
+        self.check_process()
+        key = self._normalize_key(host)
+        record = self._records.get(key)
+        if record is None:
+            record = _HostRecord(bytes(peer_pubkey))
+            self._records[key] = record
+        if record.peer_pubkey != bytes(peer_pubkey):
+            raise PeerKeyConflictError(f"peer {key} is already bound to a different key")
+        if expected_generation is not None and record.generation != expected_generation:
+            raise ContextGenerationError(f"context generation changed for {key}")
+        context = PeerContext(
             oscore=oscore_ctx,
-            peer_pubkey=peer_pubkey,
+            peer_pubkey=bytes(peer_pubkey),
+            generation=record.generation + 1 if record.generation else 1,
         )
+        record.context = context
+        record.generation = context.generation
+        return context
 
     async def reserve_sender_sequences(
         self, host: str, generation: int, count: int
@@ -1925,19 +1968,14 @@ class SecureDatagramChannel(DatagramChannel):
                 logger.warning("No OSCORE context for %s, dropping message", source)
                 return None
 
-            # For responses, we need the request_id from when we sent the request.
-            # Use atomic pop(key, None) to avoid race between concurrent tasks.
-            request_id = None
-            if is_response:
-                request_id = peer_ctx.pending_requests.pop(msg.token, None)
+            try:
+                request_id: object | None = None
+                correlation: _RequestCorrelation | None = None
+                if msg.code.is_response():
+                    correlation = peer_ctx.outbound_requests.get(msg.token)
+                    if correlation is not None:
+                        request_id = correlation.request_id
 
-                # For responses, we need the request_id from when we sent the request
-                request_id = None
-                correlation = peer_ctx.outbound_requests.get(msg.token) if is_response else None
-                if correlation is not None:
-                    request_id = correlation.request_id
-
-                # Unprotect using aiocoap's OSCORE
                 expected_replay_index, expected_replay_bitfield = (
                     peer_ctx.oscore.export_replay_window()
                 )
@@ -1961,10 +1999,6 @@ class SecureDatagramChannel(DatagramChannel):
                         expected_replay_index, expected_replay_bitfield
                     )
                     raise
-                # OSCORE creates a new message but doesn't preserve mtype/mid/remote.
-                # Copy them from the outer message for proper encoding.
-                # SECURITY: These are outer CoAP header fields, copied from the
-                # protected message to allow re-encoding the plaintext.
                 if unprotected_msg.mtype is None:
                     unprotected_msg.mtype = msg.mtype
                 if unprotected_msg.mid is None:
@@ -1972,16 +2006,11 @@ class SecureDatagramChannel(DatagramChannel):
                 if unprotected_msg.remote is None:
                     unprotected_msg.remote = msg.remote
                 unprotected_msg.token = msg.token
-                # aiocoap's encode() asserts direction == OUTGOING. This message is
-                # semantically INCOMING, but we must set OUTGOING to satisfy encode().
-                # This is safe because we return bytes (not this Message object), so
-                # the semantically-incorrect direction is never exposed to callers.
-                # The Message object is discarded after encoding.
                 unprotected_msg.direction = Direction.OUTGOING
 
                 encoded = cast(bytes, unprotected_msg.encode())
                 added_correlation = None
-                if not is_response and new_request_id is not None:
+                if not msg.code.is_response() and new_request_id is not None:
                     added_correlation = _RequestCorrelation(
                         new_request_id, observe=unprotected_msg.opt.observe == 0
                     )
@@ -1993,7 +2022,6 @@ class SecureDatagramChannel(DatagramChannel):
                     added_correlation,
                     correlation,
                 )
-
             except Exception as e:
                 logger.warning("OSCORE unprotection failed for %s: %r", source, e)
                 return None
@@ -2034,8 +2062,8 @@ class SecureDatagramChannel(DatagramChannel):
                 )
                 return
         else:
-            operation = self._operation_for_lifecycle(message, key)
-            if operation is None and hasattr(message, "_lichen_lifecycle_id"):
+            operation = None
+            if hasattr(message, "_lichen_lifecycle_id"):
                 return
             if operation is None:
                 operation = self._prepare_send_operation(data, dest, key)
@@ -2057,11 +2085,6 @@ class SecureDatagramChannel(DatagramChannel):
             )
             return
         self._schedule_send(data, dest, key, operation)
-
-            # Determine request_id for responses (stored during _unprotect of the request)
-            request_id = None
-            if msg.code.is_response():
-                request_id = peer_ctx.pending_requests.pop(msg.token, None)
 
     def _schedule_send(
         self,
@@ -2316,7 +2339,6 @@ class SecureDatagramChannel(DatagramChannel):
             return
 
         await self._peer_resolver.ensure_bound()
-        expected_generation = await self._context_store.get_generation(key)
 
         # Get peer's public key
         peer_pubkey = await self._peer_resolver.get_peer_pubkey(key)

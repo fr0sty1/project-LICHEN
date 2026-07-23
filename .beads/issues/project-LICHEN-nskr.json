@@ -2,15 +2,16 @@
   "id": "project-LICHEN-nskr",
   "title": "SecureDatagramChannel tasks not tracked on close",
   "description": "File: python/src/lichen/coap/secure.py:288-289\n\nWhen datagrams arrive, tasks are created but not tracked:\n```python\ndef _on_datagram(self, data: bytes, source: str) -\u003e None:\n    loop = asyncio.get_running_loop()\n    loop.create_task(self._process_incoming(data, source))\n```\n\nIf close() is called while tasks are running, they become orphaned and may:\n1. Access closed resources\n2. Log confusing errors\n3. Prevent clean shutdown\n\nSimilarly in send_datagram (line 383-384) and _establish_context (line 452).\n\nFix: Track active tasks and cancel them in close(), or use TaskGroup in Python 3.11+.",
-  "status": "in_progress",
+  "notes": "Commit: efac2e468",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:17:37.37061Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T03:56:43.016580705Z",
+  "updated_at": "2026-07-23T04:00:34.835443266Z",
   "started_at": "2026-07-23T03:56:43.016580705Z",
-  "lease_expires_at": "2026-07-23T04:01:43.016580705Z",
-  "heartbeat_at": "2026-07-23T03:56:43.016580705Z"
+  "closed_at": "2026-07-23T04:00:34.835443266Z",
+  "close_reason": "Fixed task tracking in SecureDatagramChannel, cleaned up broken request_id logic in _unprotect_datagram and related methods, fixed InMemory store put/put_sync, resolved lint and type errors"
 }
