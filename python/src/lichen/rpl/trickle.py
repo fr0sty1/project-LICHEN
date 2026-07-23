@@ -50,7 +50,6 @@ class TrickleTimer:
         self._begin_interval(now)
 
     def _begin_interval(self, now: int) -> None:
-        # RFC 6206 §4.2: t uniform in [I/2, I). Bias-free using (interval+1)//2.
         self.interval_start = now
         self.counter = 0
         self._transmitted = False
