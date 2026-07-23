@@ -258,6 +258,7 @@ LICHEN_WARN_UNUSED_RESULT
 int senml_encode_temperature(const char *_Nullable base_name, uint64_t base_time,
 			     float temp_c,
 			     uint8_t *_Nonnull buf, size_t buflen);
+LICHEN_WARN_UNUSED_RESULT
 int senml_encode_deaddrop(const char *_Nullable base_name, uint64_t base_time,
 			  uint16_t pending,
 			  uint8_t *_Nonnull buf, size_t buflen);
