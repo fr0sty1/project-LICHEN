@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-glwj",
   "title": "[merge-conflict] worktree-worker21: CMakeLists.txt",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:54:15.3770135Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:54:15.3770135Z"
+  "updated_at": "2026-07-23T03:12:23.053689606Z",
+  "started_at": "2026-07-23T03:12:23.053689606Z",
+  "lease_expires_at": "2026-07-23T03:17:23.053689606Z",
+  "heartbeat_at": "2026-07-23T03:12:23.053689606Z"
 }
