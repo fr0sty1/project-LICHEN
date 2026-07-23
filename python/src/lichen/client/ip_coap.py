@@ -288,6 +288,9 @@ def _decode_payload(message: Message) -> Any | None:
 
 
 def _int_or_none(value: Any) -> int | None:
-    if value is None:
+    if isinstance(value, bool) or value is None:
         return None
-    return int(value)
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
