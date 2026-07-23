@@ -183,7 +183,7 @@ int coap_oscore_protect_response(struct oscore_ctx *ctx,
 	type = (coap_header_get_type(original_request) == COAP_TYPE_CON)
 	       ? COAP_TYPE_ACK : COAP_TYPE_NON_CON;
 
-	ret = coap_packet_init(response, resp_buf, resp_buf_len,
+	ret = coap_packet_init(response, resp_buf, (uint16_t)resp_buf_len,
 			       COAP_VERSION_1, type, tkl, token,
 			       COAP_RESPONSE_CODE_CHANGED, /* Outer code for OSCORE */
 			       coap_header_get_id(original_request));
@@ -204,7 +204,7 @@ int coap_oscore_protect_response(struct oscore_ctx *ctx,
 		return coap_err_to_oscore(ret);
 	}
 
-	ret = coap_packet_append_payload(response, ciphertext, ciphertext_len);
+	ret = coap_packet_append_payload(response, ciphertext, (uint16_t)ciphertext_len);
 	if (ret < 0) {
 		return coap_err_to_oscore(ret);
 	}
@@ -225,7 +225,7 @@ int coap_oscore_send_unauthorized(struct coap_resource *resource,
 		       ? COAP_TYPE_ACK : COAP_TYPE_NON_CON;
 	int ret;
 
-	ret = coap_packet_init(&resp, buf, sizeof(buf),
+	ret = coap_packet_init(&resp, buf, (uint16_t)sizeof(buf),
 			       COAP_VERSION_1, type, tkl, token,
 			       COAP_RESPONSE_CODE_UNAUTHORIZED,
 			       coap_header_get_id(request));
