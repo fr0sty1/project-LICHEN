@@ -14,130 +14,44 @@
 - Multiple border routers MUST be tolerated
 - No central address authority required
 
-**Address Types (Layered):**
+**Address Types:**
 
-| Type | Prefix | When Available | Routable To |
-|------|--------|----------------|-------------|
-| Link-local | fe80::/10 | After lichen_link_init() | Direct neighbors (control only) |
-| 02xx (Yggdrasil) | 0200::/7 | Always (self-derived from pubkey) | Mesh peers and internet gateways (Ed25519 per 06-security) |
-| GUA | 2000::/3 | BR with upstream prefix | Internet |
-| ULA | fd00::/8 | Optional (legacy) | Mesh (if configured) |
+| Type | Prefix | Availability | Purpose |
+|------|--------|--------------|---------|
+| Link-local | fe80::/10 | After `lichen_link_init()` | Control traffic only (NDP, RPL control, neighbor discovery) |
+| Primary (Yggdrasil) | 0200::/7 | Always (self-derived from Ed25519 pubkey) | All routable traffic (mesh, inter-mesh, BR forwarding). Cryptographically bound to key per 06-security.md §8.5 |
 
-All addresses share a stable IID derived from the node's Ed25519 public key using the unified derivation normatively specified in 06-security.md §8.5 (and draft-lichen-schnorr-00 once stabilized; see also 03-addressing.md and test/vectors/). This binds identity cryptographically with no new secrets or key exposure. Link-local addresses are restricted to after `lichen_link_init()` per the subsystem initialization dependency graph in AGENTS.md. Mesh peer routing uses Ed25519-derived IID consistent with the address classification table in 05-routing.md.
-**1. Link-Local -- Control Traffic (post-init)**
+All addresses use stable IID derived from Ed25519 public key (unified derivation in 06-security.md §8.5, test/vectors/yggdrasil-derivation.json, 03-addressing.md). This provides cryptographic identity binding with no additional secrets. Link-local restricted to post-`lichen_link_init()` per AGENTS.md initialization graph. Single-primary model eliminates ULA/GUA layering, scope selection bugs, and prefix advertisement complexity while preserving isolated-mesh and multi-BR behavior via Yggdrasil.
 
-Every node has a link-local address after `lichen_link_init()`:
+**Isolated Meshes (No BR):**
+
+Mesh self-organizes without infrastructure. Nodes derive primary 02xx address independently from their Ed25519 key (no prefix advertisement needed). Root election (lowest EUI-64) establishes RPL DODAG for control and routing using primary addresses. Full peer-to-peer, announce, LOADng, and application functionality works offline.
+
+**Root Election, Failure, Demotion:**
+
+Unchanged mechanics (lowest EUI-64 deterministic election, DIO monitoring, >50% vote demotion with Schnorr-signed DEMOTION_REQUEST). Root no longer generates/advertises ULA prefix. Demotion limitations and protocol remain as documented above (EUI-64 gaming requires hardware compromise; Byzantine threshold applies).
+
+**Multiple Border Routers & Yggdrasil:**
+
+BRs attach LICHEN meshes to Yggdrasil overlay using nodes' native 02xx addresses. 
+
+- Local traffic stays on LoRa (RPL/gradient/LOADng on primary addresses)
+- Off-mesh 02xx traffic forwards to BR Yggdrasil TUN
+- Yggdrasil provides global routing tree connecting meshes without coordination between BRs
+- Multi-BR redundancy via Yggdrasil anycast/failover
+
+**LICHEN-on-Yggdrasil Tree Metaphor (P4):**
+
 ```
-fe80::<IID>
-```
-Works without any infrastructure. Sufficient for single-hop communication
-and mesh formation. RPL control messages use link-local.
-
-**2. ULA -- Mesh-Routable (Default)**
-
-When a DODAG root is present, it advertises a ULA /64 prefix via RPL DIO:
-```
-fd<40-bit random>:<16-bit subnet>::<IID>
-```
-
-ULA prefix generation (at DODAG root):
-- Generate 40-bit random value per RFC 4193
-- Persist across reboots (stable prefix)
-- 16-bit subnet ID: 0x0001 for primary mesh
-
-Nodes derive their ULA address from the advertised prefix + their IID.
-Traffic is routable throughout the mesh but not to the internet.
-
-**3. GUA -- Internet-Routable (Optional)**
-
-When a border router has an upstream prefix, it advertises a GUA /64:
-```
-<delegated prefix>::<IID>
+               Yggdrasil Global Backbone (trunk)
+                       /          |          \
+               LICHEN-MeshA     LICHEN-MeshB    Internet
+                 (BR1)            (BR2)
+                       \          /
+                        LICHEN-MeshC (multi-BR)
 ```
 
-Sources of GUA prefix:
-- DHCPv6-PD from upstream ISP
-- Static configuration
-- Tunnel broker (e.g., Hurricane Electric)
-- Own PI space
-
-Nodes MAY have both ULA and GUA addresses simultaneously.
-
-**Isolated Meshes (No Border Router):**
-
-When no border router is present, the mesh self-organizes:
-
-**Root Election:**
-- Any router MAY elect itself as DODAG root
-- Election: lowest EUI-64 wins (deterministic, no negotiation)
-- Self-elected root generates and advertises ULA prefix
-- If a "real" border router appears, nodes prefer it (lower rank)
-
-**Root Failure Detection:**
-
-Nodes monitor root health via DIO reception:
-
-| Condition | Action |
-|-----------|--------|
-| No DIO from root for 3× Imax | Declare root unreachable |
-| Root unreachable + no alternate path | Initiate re-election |
-
-Re-election process:
-1. Node with next-lowest EUI-64 waits random delay (0-5 seconds)
-2. If no DIO received during delay, self-elect as root
-3. Generate new ULA prefix (or reuse if known)
-4. Advertise DIO; other candidates stand down
-
-**Root Demotion:**
-
-Nodes MAY vote to demote a misbehaving root:
-
-| Misbehavior | Evidence |
-|-------------|----------|
-| Selective forwarding | Packets dropped, detected via E2E ACKs |
-| Rank manipulation | Advertised rank inconsistent with topology |
-| Resource exhaustion | Root stops responding to DAO |
-
-Demotion protocol:
-1. Detecting node broadcasts DEMOTION_REQUEST with evidence hash
-2. Other nodes validate evidence independently
-3. If >50% of mesh (by node count) agree, root is demoted
-4. Demoted node MUST NOT self-elect for 1 hour
-5. Next-lowest EUI-64 becomes root
-
-DEMOTION_REQUEST format (ICMPv6 RPL Control Message):
-```
-+--------+--------+--------+--------+
-| Type   | Code   | Checksum        |
-+--------+--------+--------+--------+
-| Target EUI-64 (8 bytes)           |
-+--------+--------+--------+--------+
-| Evidence Hash (16 bytes, SHA-256 truncated) |
-+--------+--------+--------+--------+
-| Signature (48 bytes, Schnorr)     |
-+--------+--------+--------+--------+
-```
-
-Nodes track demotion votes per-target. Votes expire after 10 minutes.
-
-**Limitations:**
-
-- EUI-64 gaming requires hardware access; if attacker controls hardware,
-  network is already compromised
-- Demotion requires >50% honest nodes (Byzantine assumption)
-- Small meshes (<5 nodes) should use manual root configuration
-
-**Multiple Border Routers:**
-
-Multiple BRs are supported. Each BR:
-- Advertises its own prefix(es) via RPL DIO
-- Forms its own DODAG (same or different RPL Instance)
-- Nodes may join multiple DODAGs or pick the best one
-
-Coordination between BRs is NOT required. Nodes handle multiple prefixes:
-- May have multiple addresses (one per prefix)
-- Route selection based on destination prefix
-- Default route via any BR with GUA prefix
+Each LICHEN LoRa mesh is a leaf cluster. Primary 02xx addresses enable seamless end-to-end IPv6 across the tree. See parent epic project-LICHEN-zt3c for full diagram.
 
 ### 6.2. Interface Identifier (IID) Derivation
 
@@ -301,25 +215,23 @@ Standard ICMPv6 (RFC 4443) for:
 
 ### 12.1. Address Structure
 
-See Section 6.1 for full addressing design (unified Ed25519 IID per 06-security.md §8.5). Summary:
+See Section 6.1 for single-primary model (unified Ed25519 derivation per 06-security.md §8.5 and test/vectors/yggdrasil-derivation.json). Summary:
 
 ```
-Link-local:  fe80::<IID>                    (control, post-lichen_link_init)
-02xx:        02xx::[derived-from-pubkey]   (primary mesh routable, Ed25519 per 06-security)
-GUA:         <delegated prefix>::<IID>      (internet optional)
+Link-local:  fe80::<IID>                    (control only)
+Primary:     02xx::[Yggdrasil-derived + IID] (all routable traffic)
 ```
 
-IID is derived from Ed25519 pubkey (see Section 6.2 and 06-security.md), ensuring cryptographic binding. ULA optional in some deployments.
+IID and full 02xx address derived from same Ed25519 pubkey (MUST: lower 64 bits of primary address == IID for binding; see 06-security.md). No ULA or layered GUA model.
 
 ### 12.2. Example Addresses
 
 | Type | Example | Routable To |
 |------|---------|-------------|
 | Link-local | fe80::0211:22ff:fe33:4455 | Direct neighbors (control) |
-| 02xx (primary) | 0201:0203:0405:0607:0211:22ff:fe33:4455 | Mesh peers (Ed25519 per 06-security) |
-| GUA | 2001:db8:1234:1::0211:22ff:fe33:4455 | Internet |
+| Primary (02xx) | 0201:0203:0405:0607:0211:22ff:fe33:4455 | Mesh, inter-mesh via Yggdrasil, internet |
 
-A node typically has link-local + primary 02xx address; GUA when BR provides upstream prefix. Consistent with 05-routing.md table.
+Node uses link-local for control + single primary 02xx for everything else. Consistent with updated 05-routing.md and 06-security.md. Matches all test vectors.
 
 ### 12.3. Short Address Assignment
 
