@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-hnyw.4.2",
+  "title": "Add #![forbid(unsafe_code)] to all no_std public crates where missing",
+  "description": "Per coding guidelines, ensure lichen-core, lichen-link, lichen-schc, lichen-ipv6, lichen-rpl, lichen-senml, lichen-oscore, lichen-coap etc. have #![forbid(unsafe_code)] at crate root (except FFI). Check for any unsafe blocks.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:22:44.988059168Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:22:44.988059168Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-hnyw.4.2",
+      "depends_on_id": "project-LICHEN-hnyw.4",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:22:45.129165952Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
