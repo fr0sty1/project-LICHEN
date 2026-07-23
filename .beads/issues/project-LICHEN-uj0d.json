@@ -3,15 +3,15 @@
   "title": "Fragment.from_bytes does not validate FCN against ALL_1 semantics",
   "description": "File: python/src/lichen/schc/fragment.py:78-89\n\nFragment.from_bytes() parses FCN and checks for ALL_1:\n  fcn = data[1] \u0026 _FCN_MASK\n  rest = data[2:]\n  if fcn == ALL_1:\n      if len(rest) \u003c MIC_LENGTH:\n          raise FragmentError('All-1 fragment missing MIC')\n      return cls(rule_id, window, fcn, rest[MIC_LENGTH:], rest[:MIC_LENGTH])\n\nHowever, it does not validate that:\n1. FCN values between window_size and ALL_1-1 are invalid (receiver rejects these, but parser accepts)\n2. ALL_0 (fcn=0) fragments should not have MIC\n\nThis allows parsing malformed fragments that would be rejected later by FragmentReceiver, but could cause confusion in debugging or when fragments are inspected before delivery to a receiver.\n\nFor example, a fragment with fcn=60 and window_size=7 would parse successfully but be silently dropped by receive() at line 119-120.\n\nFix: Consider adding an optional window_size parameter to from_bytes() for validation, or document that validation happens at the receiver level.\n\nCategory: PROTOCOL",
   "notes": "Commit: defd8ddd9",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:29:32.356358Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T03:47:54.748091605Z",
+  "updated_at": "2026-07-23T03:47:56.663151099Z",
   "started_at": "2026-07-23T03:44:34.320341038Z",
-  "lease_expires_at": "2026-07-23T03:49:34.320341038Z",
-  "heartbeat_at": "2026-07-23T03:44:34.320341038Z"
+  "closed_at": "2026-07-23T03:47:56.663151099Z",
+  "close_reason": "Closed"
 }
