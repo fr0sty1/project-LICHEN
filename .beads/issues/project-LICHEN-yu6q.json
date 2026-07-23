@@ -2,12 +2,16 @@
   "id": "project-LICHEN-yu6q",
   "title": "[codereview-pass2-final] spec/02a and vectors: clean after 3 edit chunks + vector parallel update. No P0-P2. P4: add explicit SFN_MODULUS cross-ref in select_channel if expanded later. All findings filed and fixed. codereview.",
   "description": "Pass 2 clean. EMA formula, load_factor override, density rationale vs appendix SF10 all clarified and consistent. hash_32 used uniformly. Vectors cover all new paths. Ready to close originals e70b 8gac r80h 9qjs mq7a + children.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 4,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:42:40.162305669Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:42:40.162305669Z",
+  "updated_at": "2026-07-23T04:17:13.831671715Z",
+  "started_at": "2026-07-23T04:17:13.831671715Z",
+  "lease_expires_at": "2026-07-23T04:22:13.831671715Z",
+  "heartbeat_at": "2026-07-23T04:17:13.831671715Z",
   "labels": [
     "codereview"
   ]
