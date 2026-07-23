@@ -72,6 +72,8 @@ class SchedulerConfig:
             raise ValueError(f"interval_ms must be > 0, got {self.interval_ms}")
         if self.jitter_ms < 0:
             raise ValueError(f"jitter_ms must be >= 0, got {self.jitter_ms}")
+        if self.initial_delay_ms < 0:
+            raise ValueError(f"initial_delay_ms must be >= 0, got {self.initial_delay_ms}")
 
 
 @dataclass
@@ -203,6 +205,12 @@ class AnnounceScheduler:
         """
         if self._running:
             raise RuntimeError("scheduler already running")
+
+        SchedulerConfig(
+            interval_ms=self.config.interval_ms,
+            jitter_ms=self.config.jitter_ms,
+            initial_delay_ms=self.config.initial_delay_ms,
+        )
 
         self._task = asyncio.create_task(
             self._loop(),
