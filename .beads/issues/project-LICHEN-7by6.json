@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-7by6",
+  "title": "[spec-compliance] SenML location uses wrong unit string vs spec",
+  "description": "spec/appendix-senml.md:33-45 specifies u:\"lat\" for latitude record and u:\"lon\" for longitude (per RFC 8428 unit registry for geographic coordinates). However, lichen/subsys/lichen/senml/senml.c:335-340 hardcodes \"deg\" in senml_add_float(..., \"deg\", ...) for both. senml.h:57-62 defines SENML_LOCATION_LAT=\"lat\", SENML_LOCATION_LON=\"lon\", SENML_LOCATION_UNIT_DEG=\"deg\" but these are not used in encode_location(). coap_location.c:60 calls it. This is a code/spec mismatch on constants. Last touched in project-LICHEN-rgpx:fix (7740e390f) and related bridge-zephyr board configs. MUST align implementation with published spec example and test vectors.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T02:27:48.030452803Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T02:27:48.030452803Z"
+}
