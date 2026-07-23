@@ -56,7 +56,7 @@ Different LoRa spreading factors are quasi-orthogonal. SF7 and SF12 transmission
 
 **SF Assignment:**
 - Preferred (Gateway-assigned): Border router includes `ASSIGNED_SF` RPL DIO option. Gateway tracks per-SF node counts and assigns least-loaded SF for load balance. Nodes **MUST** use assigned SF for all TX after joining.
-- Stateless hash-based (fallback): `assigned_sf = 7 + (hash_32(IID) mod 6)`. Uses consistent `hash_32` (SipHash-2-4, LICHEN key) from short-address DAD (4.5) and CCP-15.8.3.
+- Stateless hash-based (fallback): `assigned_sf = 7 + (hash_32(IID) mod 6)`. Uses consistent `hash_32` (FNV-1a32 per project-LICHEN-eirg) from short-address DAD and CCP-15.8.3.
 - Join-based: Nodes join on SF10 (common ground). Gateway assigns via DIO or join response; node switches post-assignment.
 - Nodes without explicit assignment **MUST** use SF10 (backwards compatibility with all existing nodes).
 

@@ -385,7 +385,7 @@ Single channel creates contention hotspot. CCP-16 coordinates capacity. All impl
 
 **TDMA Slots (Zephyr scheduler, Rust sim)**
 - Root includes epoch and `num_slots` (default 8) in extended RPL config option (see draft-lichen-rpl-lora).
-- Slot ID = hash_32(eui64 XOR epoch) % num_slots (consistent hash_32 per CCP-15.8.3; exact C impl is packet_hash fallback in lichen/subsys/lichen/link/lichen_link_rx.c matching FNV-1a32 oracle in python/tests/test_vectors.py:232-235 and test vectors for bit-exact slot/address; samples/lora_ping::crc32_ieee is telemetry-only). Cross-ref spec/02a-coordinated-capacity.md.
+- Slot ID = hash_32(eui64 XOR epoch) % num_slots using lichen_hash_32 FNV-1a32 (consistent per CCP-15.8.3 and project-LICHEN-eirg; matches Rust lichen-core::lichen_hash_32, Python _hash_32, C impl). samples/lora_ping::packet_hash uses crc32_ieee for telemetry only. Cross-ref spec/02a-coordinated-capacity.md.
 - Slot duration = max_airtime(current_SF) + 100ms guard. Node uses lichen_link_set_slot() in subsys.
 - TX suppressed outside slot (tdma_tx_allowed()).
 

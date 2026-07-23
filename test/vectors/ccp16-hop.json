@@ -1,6 +1,6 @@
 {
   "format_version": 2,
-  "description": "Independent test vectors for CCP-12 synchronized hopping sequence and channel selection using hash_32 (keyed CRC32 with 'LICHEN' prefix). Oracle is external CRC32 computation, not derived from LICHEN sim or node code. Covers SFN wraparound, rendezvous announcement parsing, freq selection for 8/16 channels. Matches Rust identity::hash_32, C tuple_crc, Python sim. Used for cross-impl validation per RustCrypto discipline.",
+  "description": "Independent test vectors for CCP-12 synchronized hopping sequence and channel selection using hash_32 FNV-1a32 primitive (basis 0x811c9dc5). Oracle is external FNV computation matching Rust/Python/C lichen_hash_32. Covers SFN wraparound, rendezvous. Matches spec/02a-coordinated-capacity.md. Used for cross-impl validation per test vector discipline (project-LICHEN-eirg).",
   "vectors": [
     {
       "name": "hop_sfn0_8ch",
@@ -8,8 +8,8 @@
       "seed": 0,
       "num_channels": 8,
       "expected_channel": 7,
-      "hash_output": "0x77f9adf0",
-      "description": "SFN=0 selects channel via hash_32(0) % 8"
+      "hash_output": "0x811c9dc5",
+      "description": "SFN=0 selects channel via hash_32(0) % 8 (FNV-1a32)"
     },
     {
       "name": "hop_sfn1_16ch",
@@ -17,7 +17,7 @@
       "seed": 42,
       "num_channels": 16,
       "expected_channel": 5,
-      "hash_output": "computed via prefix CRC32",
+      "hash_output": "computed via FNV-1a32",
       "description": "Example rendezvous channel selection"
     },
     {
