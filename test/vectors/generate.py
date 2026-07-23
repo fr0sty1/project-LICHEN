@@ -18,15 +18,13 @@ import json
 from ipaddress import IPv6Address
 from pathlib import Path
 
-from lichen.crypto.identity import Identity
-from lichen.crypto.schnorr48 import sign
 from lichen.ipv6.icmpv6 import EchoRequest
 from lichen.ipv6.packet import IPv6Header, NextHeader
 from lichen.ipv6.udp import UdpDatagram
 from lichen.link.frame import AddrMode, LichenFrame, MicLength
 from lichen.rpl.messages import DAO, DIO, to_icmpv6
-from lichen.schc.headers import compress_packet
 from lichen.schc.fragment import FragmentSender, compute_mic
+from lichen.schc.headers import compress_packet
 
 VECTORS_DIR = Path(__file__).resolve().parent
 FORMAT_VERSION = 2
@@ -1765,7 +1763,7 @@ def ccp16_vectors() -> list[dict]:
     ]
 
 
-def ccp9_rendezvous_vectors() -> list[dict]:
+def ccp9_vectors() -> list[dict]:
     # CCP-9 rendezvous mechanisms from da2q multi-channel context. Independent
     # oracles for announce-based rendezvous, control channel (CH0) fallback for
     # unknown peers, integration with synchronized_hop_channel (CCP-12 preference),
@@ -1851,11 +1849,6 @@ def main() -> None:
         "Round-trip: compress(packet) == compressed and decompress(compressed) "
         "== packet.",
         schc_vectors(),
-    )
-    _write(
-        "schc_fragment.json",
-        "SCHC fragmentation vectors (RFC 8724 §8) using independent CRC32 oracle from compute_mic and FragmentSender.to_bytes().",
-        schc_fragment_vectors(),
     )
     _write(
         "link_frame.json",
