@@ -2,15 +2,15 @@
   "id": "project-LICHEN-zlye",
   "title": "[merge-conflict] worktree-worker17: Kconfig",
   "notes": "Commit: 8adffac7f",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:42:09.460338031Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:08:29.126062915Z",
+  "updated_at": "2026-07-23T04:08:33.879647146Z",
   "started_at": "2026-07-23T04:08:14.872291899Z",
-  "lease_expires_at": "2026-07-23T04:13:14.872291899Z",
-  "heartbeat_at": "2026-07-23T04:08:14.872291899Z"
+  "closed_at": "2026-07-23T04:08:33.879647146Z",
+  "close_reason": "Fixed merge conflict remnant in Kconfig help text for worker17 worktree by cleaning up bead reference. Committed as 8adffac7f and pushed."
 }
