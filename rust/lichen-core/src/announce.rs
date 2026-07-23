@@ -256,19 +256,18 @@ mod tests {
     #[test]
     fn invalid_channel() {
         let mut wire = make_announce();
-<<<<<<< HEAD
+        // Test Cur Ch field > 15 (offset 5, per wire format and first parse check)
         wire[5] = 16;
-=======
-        wire[21] = 16; // current_channel > 15
->>>>>>> origin/integration/worker8-20260722
         assert_eq!(
             Announce::from_bytes(&wire),
             Err(AnnounceError::InvalidChannel(16))
         );
-<<<<<<< HEAD
-        wire[93] = 8;
+
+        // Test rx_channel >= 8 (offset 93 per CCP-9)
+        let mut wire2 = make_announce();
+        wire2[93] = 8;
         assert_eq!(
-            Announce::from_bytes(&wire),
+            Announce::from_bytes(&wire2),
             Err(AnnounceError::InvalidChannel(8))
         );
 
@@ -287,8 +286,6 @@ mod tests {
             builder.write_to(&mut out),
             Err(AnnounceError::InvalidChannel(9))
         );
-=======
->>>>>>> origin/integration/worker8-20260722
     }
 
     #[test]
