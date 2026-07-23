@@ -603,7 +603,7 @@ class Simulation:
         This is the core TX logic, called either immediately from
         start_transmission() or later via TxStartDelayedEvent.
         Integrates synchronized hopping (CCP-12); RX derives independently
-        via get_hop_channel (enter_rx_mode:713, _get_rx_result_internal:812).
+        via synchronized_hop_channel (enter_rx_mode:722, _get_rx_result_internal:820).
 
         Args:
             node_id: ID of the transmitting node.
@@ -719,8 +719,8 @@ class Simulation:
         on_timeout: Callable[[], None],
         channel: int = 0,
     ) -> None:
-        """Enter RX mode. Derives via node.get_hop_channel for hop_schedule
-        (CCP-12 rendezvous node.py:132). Sets current_channel only if needed.
+        """Enter RX mode. Derives via node.synchronized_hop_channel for hop_schedule
+        (CCP-12 rendezvous node.py:131). Sets current_channel only if needed.
         """
         node = self._nodes.get(node_id)
         if node is None:
@@ -801,7 +801,7 @@ class Simulation:
 
 
     def _get_rx_result_internal(self, node_id: str) -> tuple[bytes, int, int, str, str] | None:
-        """Unified core RX logic. Uses node.get_hop_channel (node.py:132)
+        """Unified core RX logic. Uses node.synchronized_hop_channel (node.py:131)
         for medium channel when hop_schedule present (CCP-12 per
         ccp16-hop.json spec/02a-coordinated-capacity.md:120). Preserves oracles.
 
@@ -817,7 +817,7 @@ class Simulation:
             return None
 
         if node.hop_schedule and len(node.hop_schedule) > 0:
-            channel = node.get_hop_channel()
+            channel = node.synchronized_hop_channel()
         else:
             channel = node.current_channel
         candidates = self._medium.get_rx_candidates(

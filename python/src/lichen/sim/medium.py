@@ -45,7 +45,7 @@ class Medium:
     Supports multi-channel operation with independent collision/propagation
     oracles per channel. RX uses rendezvous logic: get_rx_candidates and
     detect_activity only consider TX on the expected hop channel (computed
-    from SFN/time via synchronized_hop_channel). start_tx tags TX with
+    from SFN/time via SimNode.synchronized_hop_channel node.py:131). start_tx tags TX with
     channel.
 
     Attributes:
@@ -136,8 +136,8 @@ class Medium:
         """Get all decodable transmissions for a receiver on given channel.
 
         Implements rendezvous: only considers transmissions on the expected
-        hop channel (computed from SFN/time via synchronized_hop_channel).
-        Provides independent oracle for collision/propagation per channel.
+        hop channel (computed from SFN/time via SimNode.synchronized_hop_channel
+        node.py:131). Provides independent oracle for collision/propagation per channel.
         Supports LR-FHSS by optional frequency filter for hopping fragments.
 
         For each active transmission on matching channel (excluding self),
