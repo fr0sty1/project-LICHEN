@@ -1622,11 +1622,9 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	if (ret == OSCORE_ERR_NVM_FAILED) {
 		ret = OSCORE_ERR_NVM_FAILED;
 		goto nvm_failed;
+	} else {
+		ret = OSCORE_OK;
 	}
-	if (ret != OSCORE_OK) {
-		goto common_wipe;
-	}
-	ret = OSCORE_OK;
 
 common_wipe:
 	/*
