@@ -194,6 +194,24 @@ class Icmpv6ErrorMessage:
     invoking_packet: bytes
     mtu: int = 0
 
+    def __post_init__(self) -> None:
+        if self.type not in (
+            Icmpv6Type.DEST_UNREACHABLE,
+            Icmpv6Type.PACKET_TOO_BIG,
+            Icmpv6Type.TIME_EXCEEDED,
+        ):
+            raise Icmpv6Error(f"invalid error message type: {self.type}")
+        if self.type == Icmpv6Type.DEST_UNREACHABLE and self.code not in range(5):
+            raise Icmpv6Error(f"invalid code for DEST_UNREACHABLE: {self.code}")
+        if self.type == Icmpv6Type.PACKET_TOO_BIG and self.code != 0:
+            raise Icmpv6Error(f"PACKET_TOO_BIG must use code 0, got {self.code}")
+        if self.type == Icmpv6Type.TIME_EXCEEDED and self.code not in range(2):
+            raise Icmpv6Error(f"invalid code for TIME_EXCEEDED: {self.code}")
+        if not isinstance(self.invoking_packet, bytes):
+            raise Icmpv6Error("invoking_packet must be bytes")
+        if not 0 <= self.mtu <= 0xFFFFFFFF:
+            raise Icmpv6Error(f"mtu out of range: {self.mtu}")
+
     def to_message(self) -> Icmpv6Message:
         rest = (
             self.mtu.to_bytes(4, "big")

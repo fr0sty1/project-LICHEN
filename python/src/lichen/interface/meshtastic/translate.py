@@ -107,10 +107,11 @@ class Position:
         return b"".join(parts)
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> Position:
+    def from_bytes(cls, data: bytes, strict: bool = False) -> Position:
         """Decode from protobuf.
 
-        Returns partial result if data is malformed or truncated.
+        If strict=True, raises TranslationError on malformed input.
+        Otherwise returns partial result (default).
         """
         pos = cls()
         i = 0
@@ -136,8 +137,6 @@ class Position:
                 elif wire_type == 0:  # varint
                     val, consumed = _decode_varint(data[i:])
                     if field_num == _POS_ALTITUDE:
-                        # int32 can be negative - protobuf sign-extends to 64-bit,
-                        # so mask to 32 bits first, then reinterpret as signed
                         val &= 0xFFFFFFFF
                         if val > 0x7FFFFFFF:
                             val -= 0x100000000
@@ -153,10 +152,10 @@ class Position:
                     length, consumed = _decode_varint(data[i:])
                     i += consumed + length
                 else:
-                    # Unknown wire type (3, 4 deprecated groups; 6, 7 reserved)
                     break
         except TranslationError:
-            # Malformed varint; return partial result
+            if strict:
+                raise
             pass
 
         return pos
@@ -194,10 +193,11 @@ class User:
         return b"".join(parts)
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> User:
+    def from_bytes(cls, data: bytes, strict: bool = False) -> User:
         """Decode from protobuf.
 
-        Returns partial result if data is malformed or truncated.
+        If strict=True, raises TranslationError on malformed input.
+        Otherwise returns partial result (default).
         """
         user = cls()
         i = 0
@@ -210,7 +210,7 @@ class User:
                 wire_type = tag_byte & 0x07
                 i += 1
 
-                if wire_type == 2:  # length-delimited
+                if wire_type == 2:
                     if i >= len(data):
                         break
                     length, consumed = _decode_varint(data[i:])
@@ -225,23 +225,24 @@ class User:
                     elif field_num == _USER_SHORT_NAME:
                         user.short_name = value.decode("utf-8", errors="replace")
                     i += length
-                elif wire_type == 0:  # varint
+                elif wire_type == 0:
                     val, consumed = _decode_varint(data[i:])
                     if field_num == _USER_HW_MODEL:
                         user.hw_model = val
                     i += consumed
-                elif wire_type == 5:  # fixed32 (skip)
+                elif wire_type == 5:
                     if i + 4 > len(data):
                         break
                     i += 4
-                elif wire_type == 1:  # fixed64 (skip)
+                elif wire_type == 1:
                     if i + 8 > len(data):
                         break
                     i += 8
                 else:
                     break
         except TranslationError:
-            # Malformed varint; return partial result
+            if strict:
+                raise
             pass
 
         return user
@@ -329,7 +330,7 @@ class Translator:
         Returns:
             Type 0x01 position app_data for announce
         """
-        pos = Position.from_bytes(payload)
+        pos = Position.from_bytes(payload, strict=True)
         if pos.latitude is None or pos.longitude is None:
             return b""
         return encode_coords(pos.latitude, pos.longitude)
@@ -386,5 +387,5 @@ class Translator:
         Returns:
             Tuple of (long_name, short_name)
         """
-        user = User.from_bytes(payload)
+        user = User.from_bytes(payload, strict=True)
         return user.long_name, user.short_name
