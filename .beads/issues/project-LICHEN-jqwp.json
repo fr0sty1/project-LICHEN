@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-jqwp",
   "title": "[merge-conflict] worktree-worker1: coap_config.c",
+  "notes": "Commit: 4ce95c3 (fixed s_provider TOCTOU race by using provider_get() in all 5 handlers)",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:55:18.67237976Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:01:11.710701208Z",
+  "updated_at": "2026-07-23T03:04:00.270323882Z",
   "started_at": "2026-07-23T03:01:11.710701208Z",
   "lease_expires_at": "2026-07-23T03:06:11.710701208Z",
   "heartbeat_at": "2026-07-23T03:01:11.710701208Z"
