@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-q08d",
   "title": "[merge-conflict] worktree-worker21: heltec_wireless_tracker.conf",
+  "notes": "Restored canonical STALE heltec_wireless_tracker.conf in worktree-worker21 per project-LICHEN-2u26.4 and board matrix; resolved merge conflict. Commit: ba09d9bfb (push blocked by divergence with remote as seen in parallel worker beads). Matches pattern from 451x, hk03 etc. No tests applicable for stale config marker.",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:41:03.975736053Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:34:58.013150525Z",
+  "updated_at": "2026-07-23T04:36:16.808313377Z",
   "started_at": "2026-07-23T03:31:24.55252948Z",
   "lease_expires_at": "2026-07-23T04:39:58.013150525Z",
   "heartbeat_at": "2026-07-23T04:34:58.013150525Z",
