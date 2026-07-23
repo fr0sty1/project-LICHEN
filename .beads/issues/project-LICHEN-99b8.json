@@ -2,15 +2,15 @@
   "id": "project-LICHEN-99b8",
   "title": "[merge-conflict] worktree-worker18: coap_status.c",
   "notes": "Commit: 5653432",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:20:41.911911908Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:26:17.679491221Z",
+  "updated_at": "2026-07-23T02:26:20.166483031Z",
   "started_at": "2026-07-23T02:22:43.870631567Z",
-  "lease_expires_at": "2026-07-23T02:27:43.870631567Z",
-  "heartbeat_at": "2026-07-23T02:22:43.870631567Z"
+  "closed_at": "2026-07-23T02:26:20.166483031Z",
+  "close_reason": "Fixed map_count=6 in encode_status_cbor to match CBOR structure with capacity key (uptime+mem+time+dodag+radio+capacity=6 base + batteries); cleaned leading whitespace on routes encoder; resolved merge divergence from worker18 branch. Rust oracle tests and CBOR roundtrip now match. No dead code added."
 }
