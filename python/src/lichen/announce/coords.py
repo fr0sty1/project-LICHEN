@@ -25,6 +25,9 @@ APP_DATA_TYPE_DTN_EXPIRY = 0x03
 # App data type for DTN pending destinations (spec 9.8)
 APP_DATA_TYPE_DTN_PENDING = 0x04
 
+# Header type for opportunistic forwarder list (spec 9.9)
+HEADER_TYPE_OPPORTUNISTIC = 0x05
+
 # Resolution: 1e-7 degrees per LSB, matching firmware/HAL e7 coordinates.
 _SCALE = 10_000_000
 _LAT_MIN = -90
