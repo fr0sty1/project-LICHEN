@@ -2,16 +2,16 @@
   "id": "project-LICHEN-s500",
   "title": "codereview: identity.py missing yggdrasil derivation matching Rust and spec 8.6",
   "notes": "Commit: e463f6c9c",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",
   "created_at": "2026-07-22T17:37:51.12933264Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-23T04:52:20.443877057Z",
+  "updated_at": "2026-07-23T04:52:26.704100915Z",
   "started_at": "2026-07-22T17:44:28.179903302Z",
-  "lease_expires_at": "2026-07-22T17:49:28.179903302Z",
-  "heartbeat_at": "2026-07-22T17:44:28.179903302Z",
+  "closed_at": "2026-07-23T04:52:26.704100915Z",
+  "close_reason": "Fixed yggdrasil_address in identity.py to match Rust yggdrasil_addr_from_pubkey exactly (IID in lower 64 bits, correct SHA-512 prefix construction per spec/06-security.md:152 and test vectors). Updated docstring. Tests and vectors now consistent. Commit e463f6c9c",
   "labels": [
     "codereview"
   ]
