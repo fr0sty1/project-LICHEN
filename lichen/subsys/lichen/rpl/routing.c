@@ -922,7 +922,7 @@ bool lichen_rpl_dao_manager_process_dao(struct lichen_rpl_dao_manager *dm,
 {
 	bool installed = false;
 
-	if (dm == NULL) {
+	if (dm == NULL || dao_bytes == NULL) {
 		return false;
 	}
 	k_mutex_lock(&dm->lock, K_FOREVER);
@@ -935,7 +935,7 @@ enum lichen_rpl_dao_process_result lichen_rpl_dao_manager_process_dao_ex(
 	struct lichen_rpl_dao_manager *dm, const uint8_t *dao_bytes, size_t len,
 	uint32_t now)
 {
-	if (dm == NULL) {
+	if (dm == NULL || dao_bytes == NULL) {
 		return LICHEN_RPL_DAO_REJECTED;
 	}
 	k_mutex_lock(&dm->lock, K_FOREVER);
