@@ -19,6 +19,10 @@ module only moves opaque datagrams between endpoints addressed by host string.
 from __future__ import annotations
 
 import asyncio
+import importlib.metadata
+import inspect
+import json
+import re
 import struct
 from abc import ABC, abstractmethod
 from collections.abc import Callable
@@ -32,7 +36,7 @@ import aiocoap
 from aiocoap import Message, error, interfaces
 from aiocoap.numbers import constants
 from aiocoap.numbers.codes import EMPTY
-from aiocoap.numbers.types import ACK, RST
+from aiocoap.numbers.types import ACK
 
 ReceiveCallback = Callable[[bytes, str], None]
 DEFAULT_COAP_PORT = 5683
@@ -545,15 +549,11 @@ class LichenRemote(interfaces.EndpointAddress):
 
     @property
     def uri_base(self) -> str:
-        if ":" in self._host:  # IPv6
-            return f"coap://[{self._host}]"
-        return f"coap://{self._host}"
+        return f"coap://{self._peer.uri_authority}"
 
     @property
     def uri_base_local(self) -> str:
-        if ":" in self._host:  # IPv6
-            return f"coap://[{self._host}]"
-        return f"coap://{self._host}"
+        return f"coap://{self._local.uri_authority}"
 
     @property
     def blockwise_key(self) -> tuple[int, Endpoint]:
@@ -609,12 +609,6 @@ class LichenTransport(interfaces.MessageInterface):
         except (error.UnparsableMessage, IndexError, struct.error, TypeError, ValueError):
             return
         self._mm.dispatch_message(message)
-        if matched_exchange is not None:
-            current = self._mm._active_exchanges
-            if current is None or current.get(exchange_key) is not matched_exchange:
-                self._channel.exchange_ended(
-                    source, message.mid, reset=message.mtype == RST
-                )
 
     def send(self, message: Message) -> None:
         if not isinstance(message.remote, LichenRemote) or message.remote._owner is not self:
