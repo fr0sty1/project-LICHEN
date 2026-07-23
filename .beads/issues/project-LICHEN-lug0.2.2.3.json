@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-lug0.2.2.3",
   "title": "Implement IPv6 packet modification using SourceRoutingHeader::write_to for SRH insertion",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:27:51.082474533Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:40:18.631365844Z",
+  "updated_at": "2026-07-23T05:45:23.176676285Z",
   "started_at": "2026-07-23T05:40:18.631365844Z",
-  "lease_expires_at": "2026-07-23T05:45:18.631365844Z",
-  "heartbeat_at": "2026-07-23T05:40:18.631365844Z",
+  "closed_at": "2026-07-23T05:45:23.176676285Z",
+  "close_reason": "Implemented IPv6 packet modification with SourceRoutingHeader::write_to in add_rpl_source_route for std builds; preserves no_std path and all test vectors/byte compatibility",
   "labels": [
     "codereview"
   ],
