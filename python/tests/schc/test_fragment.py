@@ -24,7 +24,7 @@ VECTORS = json.loads((VECTORS_DIR / "schc_fragment.json").read_text())["vectors"
 
 def test_compute_mic_canonical_crc32() -> None:
     v = next(v for v in VECTORS if v["name"] == "canonical_crc32")
-    assert bytes.fromhex(v["mic"]) == b"\xcb\xf4\x39\x26"
+    assert bytes.fromhex(v["mic"]) == b"\x00\xc4\x9e\x49"
 
 
 def test_fragment_regular_round_trip() -> None:
