@@ -11,6 +11,7 @@
 //! - `std`: Enable std (automatically enabled by mock/sim)
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![forbid(unsafe_code)]
 
 /// Mock HAL implementation for host-side testing.
 #[cfg(feature = "mock")]
