@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # LICHEN Sales Playbook for Hacker Conferences
 
 ## Vision
