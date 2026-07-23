@@ -1044,18 +1044,63 @@ static int keys_single_put(struct coap_resource *resource,
 	uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN];
 	enum lichen_key_trust trust;
 	uint16_t payload_len = 0;
-	const uint8_t *payload;
+	const uint8_t *payload = NULL;
 	int ret;
+
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+	struct oscore_ctx *ctx = NULL;
+	uint8_t peer_eui64[8] = {0};
+	uint8_t piv[OSCORE_PIV_MAX_LEN];
+	size_t piv_len = sizeof(piv);
+	bool is_protected = coap_oscore_is_protected(request);
+	if (is_protected) {
+		if (addr_len >= sizeof(struct sockaddr_in6) && addr->sa_family == AF_INET6) {
+			const struct sockaddr_in6 *in6 = (const struct sockaddr_in6 *)addr;
+			memcpy(peer_eui64, &in6->sin6_addr.s6_addr[8], 8);
+			lichen_eui64_to_iid(peer_eui64, peer_eui64);
+		}
+		if (oscore_ctx_get_by_eui64(peer_eui64, &ctx) != OSCORE_OK || ctx == NULL) {
+			return coap_oscore_send_unauthorized(resource, request, addr, addr_len);
+		}
+		uint8_t orig_code;
+		uint8_t opts[32];
+		size_t opt_len = sizeof(opts);
+		uint8_t plain[LICHEN_COAP_SERVER_MAX_PAYLOAD];
+		size_t plain_len = sizeof(plain);
+		int r = coap_oscore_unprotect_request(ctx, request, &orig_code, opts, &opt_len,
+						      plain, &plain_len, piv, &piv_len);
+		if (r != OSCORE_OK) {
+			return COAP_RESPONSE_CODE_BAD_REQUEST;
+		}
+		if (orig_code != COAP_METHOD_PUT) {
+			return COAP_RESPONSE_CODE_NOT_ALLOWED;
+		}
+		payload = plain;
+		payload_len = (uint16_t)plain_len;
+	}
+#endif
 
 	/* SECURITY: Require local admin access for write operations */
 	if (!lichen_coap_is_local_admin(addr, addr_len)) {
 		LOG_WRN("PUT /keys rejected: not local admin");
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+		if (is_protected && ctx != NULL && piv_len > 0) {
+			return keys_oscore_respond(resource, request, addr, addr_len,
+						   ctx, piv, piv_len, COAP_RESPONSE_CODE_UNAUTHORIZED);
+		}
+#endif
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
 	}
 
 	opt_count = coap_find_options(request, COAP_OPTION_URI_PATH, options, ARRAY_SIZE(options));
 	if (opt_count < 2) {
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+		if (is_protected && ctx != NULL && piv_len > 0) {
+			return keys_oscore_respond(resource, request, addr, addr_len,
+						   ctx, piv, piv_len, COAP_RESPONSE_CODE_BAD_REQUEST);
+		}
+#endif
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
 	}
@@ -1063,6 +1108,12 @@ static int keys_single_put(struct coap_resource *resource,
 	char iid_str[LICHEN_KEY_IID_STR_LEN];
 
 	if (options[1].len >= LICHEN_KEY_IID_STR_LEN) {
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+		if (is_protected && ctx != NULL && piv_len > 0) {
+			return keys_oscore_respond(resource, request, addr, addr_len,
+						   ctx, piv, piv_len, COAP_RESPONSE_CODE_BAD_REQUEST);
+		}
+#endif
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
 	}
@@ -1071,19 +1122,39 @@ static int keys_single_put(struct coap_resource *resource,
 
 	ret = lichen_key_str_to_iid(iid_str, iid);
 	if (ret < 0) {
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+		if (is_protected && ctx != NULL && piv_len > 0) {
+			return keys_oscore_respond(resource, request, addr, addr_len,
+						   ctx, piv, piv_len, COAP_RESPONSE_CODE_BAD_REQUEST);
+		}
+#endif
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
 	}
 
-	/* Parse payload */
-	payload = coap_packet_get_payload(request, &payload_len);
+	/* Parse payload - from unprotect if OSCORE-protected, else from CoAP packet */
+	if (payload == NULL) {
+		payload = coap_packet_get_payload(request, &payload_len);
+	}
 	if (payload == NULL || payload_len == 0) {
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+		if (is_protected && ctx != NULL && piv_len > 0) {
+			return keys_oscore_respond(resource, request, addr, addr_len,
+						   ctx, piv, piv_len, COAP_RESPONSE_CODE_BAD_REQUEST);
+		}
+#endif
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
 	}
 
 	ret = decode_key_put_cbor(payload, payload_len, pubkey, &trust);
 	if (ret < 0) {
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+		if (is_protected && ctx != NULL && piv_len > 0) {
+			return keys_oscore_respond(resource, request, addr, addr_len,
+						   ctx, piv, piv_len, COAP_RESPONSE_CODE_BAD_REQUEST);
+		}
+#endif
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
 	}
@@ -1091,19 +1162,43 @@ static int keys_single_put(struct coap_resource *resource,
 	/* Store key */
 	ret = lichen_key_store_put(iid, pubkey, trust);
 	if (ret == -EEXIST) {
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+		if (is_protected && ctx != NULL && piv_len > 0) {
+			return keys_oscore_respond(resource, request, addr, addr_len,
+						   ctx, piv, piv_len, COAP_RESPONSE_CODE_CONFLICT);
+		}
+#endif
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_CONFLICT, 0, NULL, 0);
 	}
 	if (ret == -ENOSPC) {
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+		if (is_protected && ctx != NULL && piv_len > 0) {
+			return keys_oscore_respond(resource, request, addr, addr_len,
+						   ctx, piv, piv_len, COAP_RESPONSE_CODE_SERVICE_UNAVAILABLE);
+		}
+#endif
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_SERVICE_UNAVAILABLE, 0, NULL, 0);
 	}
 	if (ret < 0) {
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+		if (is_protected && ctx != NULL && piv_len > 0) {
+			return keys_oscore_respond(resource, request, addr, addr_len,
+						   ctx, piv, piv_len, COAP_RESPONSE_CODE_INTERNAL_ERROR);
+		}
+#endif
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
 	}
 
 	LOG_INF("Key added/updated for IID %s", iid_str);
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+	if (is_protected && ctx != NULL && piv_len > 0) {
+		return keys_oscore_respond(resource, request, addr, addr_len,
+					   ctx, piv, piv_len, COAP_RESPONSE_CODE_CHANGED);
+	}
+#endif
 	return lichen_coap_respond(resource, request, addr, addr_len,
 			    COAP_RESPONSE_CODE_CHANGED, 0, NULL, 0);
 }
