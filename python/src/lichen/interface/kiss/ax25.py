@@ -58,7 +58,7 @@ def callsign_to_bytes(callsign: str, is_last: bool = False) -> bytes:
     # Shift each char left 1 bit
     result = bytearray()
     for c in call:
-        if c.isalnum():
+        if c.isalnum() and ord(c) < 128:
             result.append(ord(c) << 1)
         else:
             result.append(ord(" ") << 1)
