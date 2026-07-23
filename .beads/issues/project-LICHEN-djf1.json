@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-djf1",
   "title": "[merge-conflict] worktree-worker18: lib.rs",
+  "notes": "Commit: e84fa25a6",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:30:33.776166802Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:05:51.412502829Z",
+  "updated_at": "2026-07-23T02:10:17.668887173Z",
   "started_at": "2026-07-23T02:05:51.412502829Z",
   "lease_expires_at": "2026-07-23T02:10:51.412502829Z",
   "heartbeat_at": "2026-07-23T02:05:51.412502829Z"
