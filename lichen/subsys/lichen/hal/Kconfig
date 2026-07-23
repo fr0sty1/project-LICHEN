@@ -66,7 +66,9 @@ config LICHEN_HAS_POE
 	bool "Board has PoE"
 	depends on GPIO || POWER_SUPPLY || REGULATOR
 	help
-	  Enable for thinknode_m7 per existing power subsys.
+	  Enable when devicetree provides an okay poe0 alias or PoE detection
+	  via GPIO/ADC for power source selection. DT binding in
+	  dts/bindings/power/lichen,poe.yaml.
 
 config LICHEN_HAS_BUTTONS
 	bool "Board has user buttons"
