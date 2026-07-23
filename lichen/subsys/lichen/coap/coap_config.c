@@ -68,20 +68,26 @@ LOG_MODULE_REGISTER(lichen_coap_config, CONFIG_LICHEN_COAP_CONFIG_LOG_LEVEL);
 
 /* Provider registration */
 static const struct lichen_config_provider *s_provider;
+static K_MUTEX_DEFINE(s_provider_mutex);
 
 int lichen_coap_config_register(const struct lichen_config_provider *provider)
 {
 	if (provider == NULL) {
 		return -EINVAL;
 	}
+	k_mutex_lock(&s_provider_mutex, K_FOREVER);
 	s_provider = provider;
+	k_mutex_unlock(&s_provider_mutex);
 	LOG_INF("Config provider registered");
 	return 0;
 }
 
 const struct lichen_config_provider *lichen_coap_config_provider_get(void)
 {
-	return s_provider;
+	k_mutex_lock(&s_provider_mutex, K_FOREVER);
+	const struct lichen_config_provider *p = s_provider;
+	k_mutex_unlock(&s_provider_mutex);
+	return p;
 }
 
 /* CBOR encoding helpers - use zcbor_tstr_put_term for keys since they are

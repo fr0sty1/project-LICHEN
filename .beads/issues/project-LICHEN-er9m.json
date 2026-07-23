@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-er9m",
   "title": "[merge-conflict] worktree-worker19: t_deck_esp32s3_procpu.conf",
+  "notes": "Commit: 25a907d (t_deck_esp32s3_procpu.conf merge artifact cleanup in worker21; canonicalized gateway config with worker19 resolution comment, fixed duplicate SPDX headers, updated stacks/buffers to prevent overflows)",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:11:57.650656936Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:14:12.158221578Z",
+  "updated_at": "2026-07-23T00:17:50.062737511Z",
   "started_at": "2026-07-23T00:14:12.158221578Z",
   "lease_expires_at": "2026-07-23T00:19:12.158221578Z",
   "heartbeat_at": "2026-07-23T00:14:12.158221578Z"
