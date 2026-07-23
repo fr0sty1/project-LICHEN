@@ -1699,7 +1699,7 @@ def ccp_load_balancing_vectors() -> list[dict]:
     return [
         {
             "name": "tdma_slot_assignment_static_hash",
-            "description": "Static slot from EUI-64 hash_32(FNV-1a32) mod num_slots per TDMA spec (CCP-15.8.3, project-LICHEN-eirg).",
+            "description": "Static slot from EUI-64 hash_32(FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) mod num_slots per TDMA spec (CCP-15.8.3). Independent external arithmetic oracle.",
             "eui64_hex": "0011223344556677",
             "num_slots": 16,
             "expected_slot": 13,
@@ -1748,7 +1748,7 @@ def ccp16_vectors() -> list[dict]:
     return [
         {
             "name": "synchronized_hop_channel_consistency",
-            "description": "synchronized_hop_channel(eui64=0x0011223344556677, t=4660, epoch=1) yields expected per CCP-12 pseudocode and hash_32 from ccp15. Receiver prediction matches sender.",
+            "description": "synchronized_hop_channel(eui64=0x0011223344556677, t=4660, epoch=1) yields expected per CCP-12 pseudocode and independent hash_32(FNV-1a32 basis 0x811c9dc5) oracle per spec/02a-coordinated-capacity.md:123. Receiver prediction matches sender.",
             "type": "slot_selection",
             "input": {
                 "eui64": "0011223344556677",
@@ -1788,7 +1788,7 @@ def ccp16_vectors() -> list[dict]:
         },
         {
             "name": "select_channel_timing_test",
-            "description": "select_channel_timing with now_ts near u32 wrap tests TDMA/SFN per project-LICHEN-rs2q.",
+            "description": "select_channel_timing with now_ts near u32 wrap tests TDMA/SFN per spec/02a-coordinated-capacity.md:123 and 09-packets-timing.md. Independent oracle.",
             "type": "slot_selection",
             "input": {
                 "eui64": "0011223344556677",
@@ -1806,6 +1806,43 @@ def ccp16_vectors() -> list[dict]:
                 "now": 0xfffffff0
             }
         }
+    ]
+
+
+def ccp16_hop_vectors() -> list[dict]:
+    """Independent test vectors for CCP-12 synchronized hopping and channel
+    selection. Uses real lichen_hash_32 / _hop_hash with FNV-1a32 (basis
+    0x811c9dc5 per spec/02a-coordinated-capacity.md:123). External arithmetic
+    oracle, no computed-via or placeholder strings. Matches ccp16-hop.json
+    regeneration per wlgu.2.3.2.
+    """
+    eui = bytes.fromhex("0011223344556677")
+    return [
+        {
+            "name": "hop_sfn0_8ch",
+            "sfn": 0,
+            "seed": 0,
+            "num_channels": 8,
+            "expected_channel": 7,
+            "hash_32": hash_32(b""),
+            "description": "SFN=0 selects channel via hash_32(0) % 8 (FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123). Independent oracle.",
+        },
+        {
+            "name": "hop_sfn1_16ch",
+            "sfn": 1,
+            "seed": 42,
+            "num_channels": 16,
+            "expected_channel": 5,
+            "hash_32": _hop_hash(eui, 1),
+            "description": "Example rendezvous channel selection per CCP-12 using real hash_32.",
+        },
+        {
+            "name": "rendezvous_beacon_announce",
+            "sfn": 12345678,
+            "rx_channel": 3,
+            "next_rendezvous_us": 1000000,
+            "description": "Beacon/DIO rendezvous announcement format per spec/02a-coordinated-capacity.md.",
+        },
     ]
 
 
@@ -2004,8 +2041,13 @@ def main() -> None:
     )
     _write(
         "ccp16.json",
-        "CCP-16 synchronized hopping and desync vectors with now_ts and select_channel_timing test per project-LICHEN-rs2q. Uses input/output for ccp_vector schema.",
+        "CCP-16 synchronized hopping and desync vectors with now_ts and select_channel_timing test. Uses hash_32(FNV-1a32, basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) with independent external arithmetic oracle (no LICHEN code). Matches input/output ccp_vector schema.",
         ccp16_vectors(),
+    )
+    _write(
+        "ccp16-hop.json",
+        "Independent test vectors for CCP-12 synchronized hopping sequence and channel selection using hash_32 FNV-1a32 primitive (basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123). Oracle is external FNV computation matching Rust/Python/C lichen_hash_32. Covers SFN wraparound, rendezvous. Matches spec/02a-coordinated-capacity.md. Computed independently using external arithmetic (no LICHEN code oracle). Follows test vector discipline per RustCrypto workflow.",
+        ccp16_hop_vectors(),
     )
     _write(
         "ccp9.json",
@@ -2014,12 +2056,12 @@ def main() -> None:
     )
     _write(
         "ccp15.json",
-        "ccp15 vectors for SF EMA load_factor hash_32 congestion control with independent oracle (math based).",
+        "ccp15 vectors for SF EMA load_factor hash_32(FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) congestion control with independent external arithmetic oracle (math based, no code under test).",
         ccp15_vectors(),
     )
     _write(
         "ccp13.json",
-        "CCP-13 DutyCycleTracker vectors with independent math oracles for prune, proration, remaining_ms, usage_permille, can_transmit, next_available. Matches Rust, C hal test, and Python sim exactly.",
+        "CCP-13 DutyCycleTracker vectors with independent math oracles for prune, proration, remaining_ms, usage_permille, can_transmit, next_available. Matches Rust, C, Python sim exactly. No code-under-test dependency.",
         ccp13_vectors(),
     )
     _write(

@@ -1,6 +1,7 @@
 {
+  "$schema": "./schema.json",
   "format_version": 2,
-  "description": "Independent test vectors for CCP-12 synchronized hopping sequence and channel selection using hash_32 FNV-1a32 primitive (basis 0x811c9dc5). Oracle is external FNV computation matching Rust/Python/C lichen_hash_32. Covers SFN wraparound, rendezvous. Matches spec/02a-coordinated-capacity.md. Used for cross-impl validation per test vector discipline (project-LICHEN-eirg).",
+  "description": "Independent test vectors for CCP-12 synchronized hopping sequence and channel selection using hash_32 FNV-1a32 primitive (basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123). Oracle is external FNV computation matching Rust/Python/C lichen_hash_32. Covers SFN wraparound, rendezvous. Matches spec/02a-coordinated-capacity.md. Computed independently using external arithmetic (no LICHEN code oracle). Follows test vector discipline per RustCrypto workflow.",
   "vectors": [
     {
       "name": "hop_sfn0_8ch",
@@ -8,8 +9,8 @@
       "seed": 0,
       "num_channels": 8,
       "expected_channel": 7,
-      "hash_output": "0x811c9dc5",
-      "description": "SFN=0 selects channel via hash_32(0) % 8 (FNV-1a32)"
+      "hash_32": 2166136261,
+      "description": "SFN=0 selects channel via hash_32(0) % 8 (FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123). Independent oracle."
     },
     {
       "name": "hop_sfn1_16ch",
@@ -17,16 +18,15 @@
       "seed": 42,
       "num_channels": 16,
       "expected_channel": 5,
-      "hash_output": "0x37381b7c",
-      "description": "Example rendezvous channel selection"
+      "hash_32": 926423932,
+      "description": "Example rendezvous channel selection per CCP-12 using real hash_32."
     },
     {
       "name": "rendezvous_beacon_announce",
       "sfn": 12345678,
       "rx_channel": 3,
       "next_rendezvous_us": 1000000,
-      "expected_beacon_fields": "SFN + channel + time",
-      "description": "Beacon/DIO rendezvous announcement format"
+      "description": "Beacon/DIO rendezvous announcement format per spec/02a-coordinated-capacity.md."
     }
   ]
 }
