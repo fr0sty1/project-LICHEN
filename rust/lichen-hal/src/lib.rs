@@ -239,6 +239,38 @@ pub trait Concentrator {
     ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
 }
 
+#[cfg(feature = "std")]
+pub struct Sx1302Concentrator;
+
+#[cfg(feature = "std")]
+impl Concentrator for Sx1302Concentrator {
+    type Error = RadioError<std::convert::Infallible>;
+
+    async fn reset(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    async fn spi_transfer(
+        &mut self,
+        _write: &[u8],
+        _read: &mut [u8],
+    ) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    async fn irq_status(&mut self) -> Result<u32, Self::Error> {
+        Ok(0)
+    }
+
+    fn pps_timestamp(&self) -> Option<u64> {
+        None
+    }
+
+    async fn configure(&mut self, _config: &RadioConfig) -> Result<(), Self::Error> {
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
