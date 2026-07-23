@@ -2,11 +2,15 @@
   "id": "project-LICHEN-xzma",
   "title": "make_packet_too_big lacks MTU validation",
   "description": "File: python/src/lichen/ipv6/icmpv6.py:223-227\n\nThe make_packet_too_big() function accepts an MTU parameter without validating that it is a positive integer within reasonable bounds.\n\n```python\ndef make_packet_too_big(invoking_packet: bytes, mtu: int) -\u003e Icmpv6ErrorMessage:\n    return Icmpv6ErrorMessage(\n        Icmpv6Type.PACKET_TOO_BIG, 0, invoking_packet, mtu=mtu\n    )\n```\n\nWhen to_message() is called (line 199), a negative MTU would be serialized as a large unsigned value (Python's to_bytes will raise OverflowError for negative values with unsigned representation, or produce unexpected results).\n\nPer RFC 8200, the minimum IPv6 MTU is 1280. MTU values below this or negative values are invalid.\n\nImpact: Invalid MTU values could cause exceptions during serialization or produce malformed packets.\n\nFix: Add validation: `if not 0 \u003c= mtu \u003c= 0xFFFFFFFF: raise Icmpv6Error(...)` and optionally warn for MTU \u003c 1280.\n\nTags: correctness, ipv6",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:21:03.455442Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:21:03.455477Z"
+  "updated_at": "2026-07-23T04:11:00.408075287Z",
+  "started_at": "2026-07-23T04:11:00.408075287Z",
+  "lease_expires_at": "2026-07-23T04:16:00.408075287Z",
+  "heartbeat_at": "2026-07-23T04:11:00.408075287Z"
 }
