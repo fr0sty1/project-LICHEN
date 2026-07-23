@@ -1,12 +1,16 @@
 {
   "id": "project-LICHEN-b7a3",
   "title": "codereview pass 3: all prior findings addressed across 3 chunks; 3 full passes complete with only P4 left. Ready to close project-LICHEN-r80h.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 4,
   "issue_type": "chore",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:42:04.331127624Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:42:04.331127624Z",
+  "updated_at": "2026-07-23T04:19:40.14093992Z",
+  "started_at": "2026-07-23T04:19:40.14093992Z",
+  "lease_expires_at": "2026-07-23T04:24:40.14093992Z",
+  "heartbeat_at": "2026-07-23T04:19:40.14093992Z",
   "labels": [
     "codereview"
   ],
