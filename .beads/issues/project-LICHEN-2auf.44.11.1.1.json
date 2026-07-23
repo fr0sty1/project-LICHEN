@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-2auf.44.11.1.1",
+  "title": "Bind runtime and actions to single RplStack generation; reject poll with pending actions",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:15:46.545825885Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:15:46.545825885Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.11.1.1",
+      "depends_on_id": "project-LICHEN-2auf.44.11.1",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:15:46.682189787Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
