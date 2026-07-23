@@ -2,15 +2,15 @@
   "id": "project-LICHEN-inbx",
   "title": "[merge-conflict] worktree-worker24: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: 4192f561c",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:49:55.468787134Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:02:45.854760232Z",
+  "updated_at": "2026-07-23T00:02:49.049160102Z",
   "started_at": "2026-07-22T23:59:24.05984958Z",
-  "lease_expires_at": "2026-07-23T00:04:24.05984958Z",
-  "heartbeat_at": "2026-07-22T23:59:24.05984958Z"
+  "closed_at": "2026-07-23T00:02:49.049160102Z",
+  "close_reason": "Updated heltec_wifi_lora32_v3_esp32s3_procpu.conf with SPDX, full L2+CoAP config to resolve legacy NETWORKING=n override and merge conflicts across workers. Also incorporated related rust identity changes and cleaned 29 files. Pushed as 4192f561c"
 }
