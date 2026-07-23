@@ -2,15 +2,15 @@
   "id": "project-LICHEN-k5fr",
   "title": "[merge-conflict] worktree-worker19: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: a3fb709",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:30:34.01613488Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:06:01.809446341Z",
+  "updated_at": "2026-07-23T02:06:03.63357992Z",
   "started_at": "2026-07-23T01:55:06.584557043Z",
-  "lease_expires_at": "2026-07-23T02:00:06.584557043Z",
-  "heartbeat_at": "2026-07-23T01:55:06.584557043Z"
+  "closed_at": "2026-07-23T02:06:03.63357992Z",
+  "close_reason": "Closed"
 }
