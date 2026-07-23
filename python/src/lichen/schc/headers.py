@@ -1,27 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-"""Whole-packet SCHC compression: packet bytes <-> field dicts (RFC 8724).
-
-Bridges parsed protocol headers and the field-dict the SCHC codec consumes. A
-:class:`PacketProfile` flattens a raw packet of a particular shape into
-``{field_id: value}`` (plus a variable tail the rule does not model) and rebuilds
-the bytes from decompressed fields. :func:`compress_packet` /
-:func:`decompress_packet` drive a profile end to end, falling back to the
-uncompressed rule (255) when nothing matches.
-
-Profiles implemented (spec appendix A.1):
-- rule 0 / 1: link-local / global IPv6 + UDP + CoAP
-- rule 2: ICMPv6 Echo Request/Reply over link-local IPv6
-- rule 3 / 4: RPL DIO / DAO over link-local ICMPv6
-- rule 5 / 6: link-local / global IPv6 + UDP + OSCORE-protected CoAP (RFC 8613)
-
-The variable trailer (CoAP token/options/payload, or RPL options) travels
-verbatim after the byte-aligned residue. Lengths and checksums are recomputed on
-decompression. Address note: link-local /64 prefixes are elided but the 64-bit
-IID is carried; global addresses are carried in full (prefix/IID context elision
-needs the link layer and is deferred — correct but larger than spec A.1 sizes).
-"""
-
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -43,13 +21,13 @@ from lichen.schc.rules import (
     Rule,
 )
 
-_LINK_LOCAL_PREFIX64 = 0xFE80_0000_0000_0000  # top 64 bits of fe80::/64
+_LINK_LOCAL_PREFIX64 = 0xFE80_0000_0000_0000
 _COAP_FIXED_HEADER = 4
-_COAP_OPTION_OSCORE = 9  # RFC 8613 Object-Security option
+_COAP_OPTION_OSCORE = 9
 _ICMPV6_RPL_TYPE = 155
-_ICMPV6_ECHO_TYPES = (128, 129)  # Echo Request / Reply
-_ICMPV6_HEADER = 4  # type, code, checksum
-_ICMPV6_ECHO_BASE = 8  # type, code, checksum, identifier, sequence
+_ICMPV6_ECHO_TYPES = (128, 129)
+_ICMPV6_HEADER = 4
+_ICMPV6_ECHO_BASE = 8
 _DIO_BASE = 24
 _DAO_BASE_WITH_DODAGID = 20
 
@@ -59,87 +37,56 @@ def _is_link_local(addr: int) -> bool:
 
 
 def _is_global(addr: int) -> bool:
-    return addr >> 125 == 0b001  # 2000::/3
+    return addr >> 125 == 0b001
 
 
 def _coap_has_oscore_option(coap: bytes) -> bool:
-    """Check if a CoAP packet contains the OSCORE option (option 9).
-
-    OSCORE-protected CoAP packets (RFC 8613) have the Object-Security option
-    present in the option list. This function scans the CoAP options to detect it.
-
-    Args:
-        coap: Raw CoAP packet bytes (header + options + payload).
-
-    Returns:
-        True if the OSCORE option is present, False otherwise.
-    """
     if len(coap) < _COAP_FIXED_HEADER:
         return False
-
     tkl = coap[0] & 0x0F
-    if tkl > 8:  # Reserved values 9-15
+    if tkl > 8:
         return False
-
     offset = _COAP_FIXED_HEADER + tkl
     option_number = 0
-
     while offset < len(coap):
         byte = coap[offset]
-
-        # Payload marker (0xFF)
         if byte == 0xFF:
             break
-
-        # Parse option delta
         delta = (byte >> 4) & 0x0F
         length = byte & 0x0F
         offset += 1
-
         if delta == 13:
             if offset >= len(coap):
                 return False
-            delta = coap[offset] + 13
+            delta = 13 + coap[offset]
             offset += 1
         elif delta == 14:
             if offset + 1 >= len(coap):
                 return False
-            delta = int.from_bytes(coap[offset : offset + 2], "big") + 269
+            delta = 269 + int.from_bytes(coap[offset:offset+2], "big")
             offset += 2
         elif delta == 15:
-            # Reserved
             return False
-
-        # Parse option length
         if length == 13:
             if offset >= len(coap):
                 return False
-            length = coap[offset] + 13
+            length = 13 + coap[offset]
             offset += 1
         elif length == 14:
             if offset + 1 >= len(coap):
                 return False
-            length = int.from_bytes(coap[offset : offset + 2], "big") + 269
+            length = 269 + int.from_bytes(coap[offset:offset+2], "big")
             offset += 2
         elif length == 15:
-            # Reserved
             return False
-
         option_number += delta
-
-        # Check if this is the OSCORE option
         if option_number == _COAP_OPTION_OSCORE:
             return True
-
-        # Options are ordered by number; if we've passed 9, stop
         if option_number > _COAP_OPTION_OSCORE:
             return False
-
-        # Skip option value, checking bounds first
         if offset + length > len(coap):
-            return False  # Malformed: declared length exceeds remaining bytes
+            return False
         offset += length
-
     return False
 
 

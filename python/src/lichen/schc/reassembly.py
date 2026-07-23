@@ -1,20 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-"""SCHC reassembly state machine — ACK-on-Error receiver (RFC 8724 section 8).
-
-Pairs with :class:`lichen.schc.fragment.FragmentSender`. :class:`FragmentReceiver`
-collects fragments for one datagram, emits an ACK (positional bitmap) at each
-window boundary and after the All-1 fragment, and reassembles once every tile is
-present and the CRC32 MIC verifies. Missing tiles produce a NACK bitmap that the
-sender turns into retransmissions; the MIC is the final correctness guard.
-
-:class:`ReassemblyManager` holds a bounded number of concurrent receivers keyed
-by sender, evicting the oldest on overflow (the wire fragment header carries no
-DTag, so datagrams are distinguished by transport key, not in-band tag).
-
-Times are caller-supplied integer milliseconds; nothing reads a wall clock.
-"""
-
 from __future__ import annotations
 
 from collections import OrderedDict
@@ -28,29 +13,17 @@ DEFAULT_MAX_CONTEXTS = 4
 
 @dataclass
 class ReceiverResult:
-    """Outcome of feeding one fragment to a receiver."""
-
     ack: Ack | None = None
     reassembled: bytes | None = None
     mic_ok: bool | None = None
 
 
 class FragmentReceiver:
-    """Reassembles a single datagram from ACK-on-Error fragments.
-
-    Regular tiles are stored by their global index (window * window_size +
-    position, position = window_size - 1 - FCN). The All-1 tile (the datagram's
-    last tile) is stored separately so its unknown in-window position can never
-    collide with a regular slot; completeness is checked by requiring the
-    regular tiles to form a contiguous run from index 0, with the CRC32 MIC as
-    the final correctness guard.
-    """
-
     def __init__(self, window_size: int) -> None:
         self.window_size = window_size
-        self._tiles: dict[int, bytes] = {}  # regular tiles: global index -> bytes
+        self._tiles: dict[int, bytes] = {}
         self._current_window = 0
-        self._completed_windows: set[int] = set()  # windows fully received and ACKed
+        self._completed_windows: set[int] = set()
         self._all1_seen = False
         self._all1_window = 0
         self._all1_payload = b""
@@ -60,48 +33,21 @@ class FragmentReceiver:
         self.done = False
 
     def _abs_window(self, frag: Fragment) -> int:
-        """Map the 1-bit wire window to the monotonic absolute window number.
-
-        SCHC ACK-on-Error uses a single W bit on the wire that alternates 0/1
-        as windows advance. Internally, _current_window is a monotonically
-        increasing counter (0, 1, 2, ...).
-
-        To handle late retransmissions correctly, we scan backwards through
-        older windows with matching parity (same W bit value):
-        1. If an older window is INCOMPLETE, the fragment fills a gap there
-        2. If payload exactly matches an older completed window's tile, it's a
-           stale duplicate and receive() will filter it out
-        3. Otherwise, the fragment belongs to the current (same parity) or
-           next (different parity) window
-        """
         if not frag.is_all_1:
             pos = self.window_size - 1 - frag.fcn
-
-            # Determine starting window for backward scan based on parity.
-            # We check windows with the same parity as the fragment's W bit.
             if frag.window == self._current_window % 2:
-                # Same parity: check from current-2 back (current could be target)
                 start_window = self._current_window - 2 if self._current_window >= 2 else -1
             else:
-                # Different parity: check from current-1 back
                 start_window = self._current_window - 1 if self._current_window >= 1 else -1
-
             older = start_window
             while older >= 0:
                 older_idx = older * self.window_size + pos
                 if older not in self._completed_windows:
-                    # Incomplete window with matching parity. Only assign here
-                    # if the specific tile slot is empty (gap to fill). If the
-                    # slot is already filled, this is a new fragment, not a
-                    # retransmission for this window.
                     if older_idx not in self._tiles:
                         return older
                 elif older_idx in self._tiles and self._tiles[older_idx] == frag.payload:
-                    # Window complete; exact payload match - stale retransmission
                     return older
                 older -= 2
-
-        # No incomplete or stale-duplicate window found
         if frag.window == self._current_window % 2:
             return self._current_window
         return self._current_window + 1
@@ -115,10 +61,6 @@ class FragmentReceiver:
         return tuple(base + p in self._tiles for p in range(self.window_size))
 
     def _window_bitmap_with_all1(self, abs_window: int, all1_pos: int) -> tuple[bool, ...]:
-        """Compute bitmap including the All-1 position.
-
-        Only call after MIC verification confirms the All-1's position.
-        """
         base = abs_window * self.window_size
         bitmap = [base + p in self._tiles for p in range(self.window_size)]
         if 0 <= all1_pos < self.window_size:
@@ -128,42 +70,26 @@ class FragmentReceiver:
     def receive(self, frag: Fragment) -> ReceiverResult:
         if self.done:
             return ReceiverResult()
-        # Reject fragments with FCN >= window_size (except ALL_1 which has special FCN)
         if not frag.is_all_1 and frag.fcn >= self.window_size:
             return ReceiverResult()
         self._rule_id = frag.rule_id
         abs_window = self._abs_window(frag)
-
-        # SECURITY: Reject stale retransmissions from completed windows to
-        # prevent delayed duplicates from corrupting current window data.
         if abs_window in self._completed_windows:
             return ReceiverResult()
-
-        # Never regress _current_window; only advance or stay the same.
         if abs_window > self._current_window:
             self._current_window = abs_window
-
         if frag.is_all_1:
             self._all1_seen = True
             self._all1_window = abs_window
             self._all1_payload = frag.payload
             self._mic = frag.mic
             return self._finalize()
-
         pos = self.window_size - 1 - frag.fcn
         idx = abs_window * self.window_size + pos
-        # SECURITY: Don't overwrite existing tiles. A corrupted retransmission
-        # from an older window (with different payload) could bypass the payload
-        # comparison in _abs_window() and be mapped to the current window. By
-        # refusing to overwrite, we prevent it from corrupting already-received
-        # data. If the existing tile is itself corrupt, MIC will fail and we'll
-        # NACK for retransmission.
         if idx not in self._tiles:
             self._tiles[idx] = frag.payload
-
         if self._all1_seen:
             return self._finalize()
-
         if frag.is_all_0 or self._window_full(abs_window):
             ack = Ack(
                 self._rule_id, abs_window % 2, self._window_bitmap(abs_window),
@@ -179,7 +105,6 @@ class FragmentReceiver:
         regular_indices = sorted(self._tiles)
         contiguous = regular_indices == list(range(len(regular_indices)))
         if not contiguous:
-            # Find first missing tile and NACK its window (may be earlier than all1_window)
             present = set(regular_indices)
             first_missing = 0
             while first_missing in present:
@@ -188,11 +113,8 @@ class FragmentReceiver:
             bitmap = self._window_bitmap(gap_window)
             nack = Ack(self._rule_id, gap_window % 2, bitmap, complete=False)
             return ReceiverResult(ack=nack)
-
         data = b"".join(self._tiles[i] for i in regular_indices) + self._all1_payload
         if compute_mic(data) == self._mic:
-            # MIC passed: All-1's position is confirmed at len(regular_indices).
-            # Include it in the bitmap for accurate reporting.
             base = self._all1_window * self.window_size
             all1_pos = len(regular_indices) - base
             bitmap = self._window_bitmap_with_all1(self._all1_window, all1_pos)
@@ -203,17 +125,12 @@ class FragmentReceiver:
                 reassembled=data,
                 mic_ok=True,
             )
-        # MIC mismatch: NACK the final window (a tile there may be missing or corrupt).
-        # Don't include All-1 position here since we can't be certain about it without
-        # MIC verification - there could be missing tiles we don't know about.
         bitmap = self._window_bitmap(self._all1_window)
         nack = Ack(self._rule_id, self._all1_window % 2, bitmap, complete=False)
         return ReceiverResult(ack=nack, mic_ok=False)
 
 
 class ReassemblyManager:
-    """Bounded set of concurrent reassembly contexts keyed by sender."""
-
     def __init__(
         self, window_size: int, max_contexts: int = DEFAULT_MAX_CONTEXTS
     ) -> None:
@@ -229,15 +146,14 @@ class ReassemblyManager:
             receiver = FragmentReceiver(self.window_size)
             self._contexts[key] = receiver
             while len(self._contexts) > self.max_contexts:
-                self._contexts.popitem(last=False)  # evict oldest
+                self._contexts.popitem(last=False)
         self._contexts.move_to_end(key)
         result = receiver.receive(frag)
         if result.reassembled is not None:
-            self._contexts.pop(key, None)  # clear on completion
+            self._contexts.pop(key, None)
         return result
 
     def drop(self, key: Hashable) -> None:
-        """Discard a reassembly context (e.g. on timeout)."""
         self._contexts.pop(key, None)
 
     def __len__(self) -> int:

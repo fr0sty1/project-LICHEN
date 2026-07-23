@@ -1,22 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-"""SCHC rule definitions for LICHEN (RFC 8724).
-
-A SCHC *rule* describes, field by field, how a header is compressed. Each field
-carries a Matching Operator (MO) that decides whether the rule applies to a
-given value, and a Compression/Decompression Action (CDA) that decides what (if
-anything) is placed in the compression residue.
-
-This module implements the rule *model* and a small registry of rules drawn
-from the LICHEN specification (spec/03-adaptation.md and spec/appendix-schc.md).
-The compression engine lives in :mod:`lichen.schc.codec`.
-
-Scope: fixed-bit-length fields with the operators the LICHEN rules use
-(EQUAL / IGNORE / MSB and NOT_SENT / VALUE_SENT / LSB / COMPUTE). Variable-length
-fields (e.g. a CoAP token) and fragmentation (RFC 8724 section 8) are not
-handled here.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -24,41 +7,22 @@ from enum import Enum
 
 
 class MO(Enum):
-    """Matching Operator — decides whether a rule applies to a field value."""
-
-    EQUAL = "equal"  # value must equal the target value
-    IGNORE = "ignore"  # always matches
-    MSB = "msb"  # the top `mo_arg` bits must equal the target value's top bits
-    MATCH_MAPPING = "match-mapping"  # value must be one of `mapping`
+    EQUAL = "equal"
+    IGNORE = "ignore"
+    MSB = "msb"
+    MATCH_MAPPING = "match-mapping"
 
 
 class CDA(Enum):
-    """Compression/Decompression Action — what goes in the residue."""
-
-    NOT_SENT = "not-sent"  # nothing sent; reconstructed from the target value
-    VALUE_SENT = "value-sent"  # the whole field is sent in the residue
-    LSB = "lsb"  # only the least-significant (length - MSB) bits are sent
-    COMPUTE = "compute"  # nothing sent; recomputed by an upper layer
-    MAPPING_SENT = "mapping-sent"  # the index of the value within `mapping`
+    NOT_SENT = "not-sent"
+    VALUE_SENT = "value-sent"
+    LSB = "lsb"
+    COMPUTE = "compute"
+    MAPPING_SENT = "mapping-sent"
 
 
 @dataclass(frozen=True)
 class FieldDescriptor:
-    """One field's compression behaviour within a rule.
-
-    Attributes:
-        field_id: Stable identifier for the field (e.g. "CoAP.MID").
-        length_bits: Field width in bits.
-        mo: Matching Operator.
-        cda: Compression/Decompression Action.
-        target_value: Target value used by EQUAL / MSB matching and NOT_SENT
-            reconstruction.
-        mo_arg: For MSB, the number of most-significant bits to match. Also
-            determines the LSB residue width (length_bits - mo_arg).
-        mapping: For MATCH_MAPPING / MAPPING_SENT, the ordered list of allowed
-            values; the residue carries the index into this list.
-    """
-
     field_id: str
     length_bits: int
     mo: MO
@@ -68,7 +32,6 @@ class FieldDescriptor:
     mapping: tuple[int, ...] | None = None
 
     def lsb_bits(self) -> int:
-        """Number of residue bits for an LSB action (length_bits - MSB length)."""
         if self.mo_arg is None:
             raise ValueError(f"{self.field_id}: LSB requires mo_arg (MSB length)")
         if self.mo_arg > self.length_bits:
@@ -79,18 +42,11 @@ class FieldDescriptor:
         return self.length_bits - self.mo_arg
 
     def mapping_bits(self) -> int:
-        """Number of residue bits for a MAPPING_SENT index (ceil(log2(n)))."""
         if not self.mapping:
             raise ValueError(f"{self.field_id}: mapping action requires a mapping")
         return (len(self.mapping) - 1).bit_length()
 
     def requires_value(self) -> bool:
-        """Whether this field requires a value for compression/matching.
-
-        A value is required if the matching operator needs to compare against it
-        (EQUAL, MSB, MATCH_MAPPING) or if the compression action emits data
-        derived from it (VALUE_SENT, LSB, MAPPING_SENT).
-        """
         return self.mo in (MO.EQUAL, MO.MSB, MO.MATCH_MAPPING) or self.cda in (
             CDA.VALUE_SENT,
             CDA.LSB,
@@ -100,25 +56,13 @@ class FieldDescriptor:
 
 @dataclass(frozen=True)
 class Rule:
-    """A SCHC rule: an ordered set of field descriptors keyed by a rule ID.
-
-    Rule IDs 0-127 are compression rules; 255 is the uncompressed fallback
-    (spec section 5.5). The rule ID is encoded as a single leading byte.
-    """
-
     rule_id: int
     fields: tuple[FieldDescriptor, ...]
 
 
-# Rule ID reserved for the uncompressed fallback (spec sections 5.5 / 5.7).
 RULE_ID_UNCOMPRESSED = 255
 
 
-# CoAP header compression (spec appendix A.2), fixed part (no variable token).
-# Version is a constant; the rest are carried verbatim in the residue.
-# IDs 64+ are used for these standalone building-block rules to avoid colliding
-# with the spec's reserved top-level rules 0-4 (which additionally require IPv6
-# header parsing that is not yet implemented).
 COAP_RULE = Rule(
     rule_id=64,
     fields=(
@@ -131,8 +75,6 @@ COAP_RULE = Rule(
 )
 
 
-# UDP port compression (spec section 5.5): well-known CoAP port 5683 with
-# MSB(12)/LSB(4), so only the low nibble of each port travels in the residue.
 UDP_PORT_RULE = Rule(
     rule_id=65,
     fields=(

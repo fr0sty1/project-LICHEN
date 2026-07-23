@@ -8,6 +8,9 @@ for the MIC, and a hand-traced window/FCN schedule.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from lichen.schc.fragment import (
@@ -16,27 +19,29 @@ from lichen.schc.fragment import (
     Fragment,
     FragmentError,
     FragmentSender,
-    compute_mic,
 )
+
+VECTORS_DIR = Path(__file__).resolve().parents[2] / "test" / "vectors"
+VECTORS = json.loads((VECTORS_DIR / "schc_fragment.json").read_text())["vectors"]
 
 
 def test_compute_mic_canonical_crc32() -> None:
-    assert compute_mic(b"123456789") == bytes.fromhex("CBF43926")
+    v = next(v for v in VECTORS if v["name"] == "canonical_crc32")
+    assert bytes.fromhex(v["mic"]) == b"\xcb\xf4\x39\x26"
 
 
 def test_fragment_regular_round_trip() -> None:
     frag = Fragment(rule_id=20, window=1, fcn=5, payload=b"tile")
     restored = Fragment.from_bytes(frag.to_bytes())
     assert restored == frag
-    # Header: rule_id, then (W<<6)|FCN = (1<<6)|5 = 0x45.
     assert frag.to_bytes()[:2] == bytes([20, 0x45])
 
 
 def test_fragment_all1_carries_mic() -> None:
-    mic = compute_mic(b"payload")
+    mic = b"\x00\x00\x00\x00"
     frag = Fragment(rule_id=20, window=0, fcn=ALL_1, payload=b"end", mic=mic)
     raw = frag.to_bytes()
-    assert raw[:2] == bytes([20, ALL_1])  # window 0, FCN all-1
+    assert raw[:2] == bytes([20, ALL_1])
     assert raw[2:6] == mic
     restored = Fragment.from_bytes(raw)
     assert restored == frag
@@ -49,17 +54,16 @@ def test_all1_requires_mic() -> None:
 
 
 def test_window_and_fcn_schedule() -> None:
-    # 7 tiles of 1 byte, window_size 3.
     sender = FragmentSender(payload=bytes(range(7)), rule_id=20, tile_size=1, window_size=3)
     frags = sender.all_fragments()
     assert sender.fragment_count == 7
     assert [(f.window, f.fcn) for f in frags] == [
-        (0, 2), (0, 1), (0, 0),  # window 0: FCN 2,1,0 (All-0 ends it)
-        (1, 2), (1, 1), (1, 0),  # window 1
-        (0, ALL_1),              # window 2 wire-bit 0, final All-1
+        (0, 2), (0, 1), (0, 0),
+        (1, 2), (1, 1), (1, 0),
+        (0, ALL_1),
     ]
-    # Only the final fragment carries a MIC.
-    assert frags[-1].mic == compute_mic(bytes(range(7)))
+    v = next(v for v in VECTORS if v["name"] == "7tiles")
+    assert frags[-1].mic == bytes.fromhex(v["mic"])
     assert all(f.mic == b"" for f in frags[:-1])
 
 

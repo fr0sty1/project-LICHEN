@@ -1,0 +1,62 @@
+{
+  "format_version": 1,
+  "description": "SCHC fragment vectors with independent CRC32 oracle from zlib.crc32.",
+  "vectors": [
+    {
+      "name": "canonical_crc32",
+      "payload": "313233343536373839",
+      "mic": "cbf43926",
+      "fragment_count": 3,
+      "fragments": [
+        "140231323334",
+        "140135363738",
+        "143fcbf4392639"
+      ]
+    },
+    {
+      "name": "short",
+      "payload": "6869",
+      "mic": "d8932aac",
+      "fragment_count": 1,
+      "fragments": [
+        "143fd8932aac6869"
+      ]
+    },
+    {
+      "name": "7tiles",
+      "payload": "00010203040506",
+      "mic": "ad5809f9",
+      "fragment_count": 7,
+      "fragments": [
+        "140200",
+        "140101",
+        "140002",
+        "144203",
+        "144104",
+        "144005",
+        "143fad5809f906"
+      ]
+    },
+    {
+      "name": "50tiles",
+      "payload": "00070e151c232a31383f464d545b626970777e858c939aa1a8afb6bdc4cbd2d9e0e7eef5fc030a11181f262d343b42495057",
+      "mic": "76952ebe",
+      "fragment_count": 13,
+      "fragments": [
+        "140200070e15",
+        "14011c232a31",
+        "1400383f464d",
+        "1442545b6269",
+        "144170777e85",
+        "14408c939aa1",
+        "1402a8afb6bd",
+        "1401c4cbd2d9",
+        "1400e0e7eef5",
+        "1442fc030a11",
+        "1441181f262d",
+        "1440343b4249",
+        "143f76952ebe5057"
+      ]
+    }
+  ]
+}

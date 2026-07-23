@@ -13,6 +13,7 @@ implementation drifts from the committed files.
 from __future__ import annotations
 
 import json
+import zlib
 from ipaddress import IPv6Address
 from pathlib import Path
 
@@ -22,6 +23,7 @@ from lichen.ipv6.udp import UdpDatagram
 from lichen.link.frame import AddrMode, LichenFrame, MicLength
 from lichen.rpl.messages import DAO, DIO, to_icmpv6
 from lichen.schc.headers import compress_packet
+from lichen.schc.fragment import FragmentSender
 
 VECTORS_DIR = Path(__file__).resolve().parent
 FORMAT_VERSION = 1
@@ -1562,6 +1564,29 @@ def _write(filename: str, description: str, vectors: list[dict]) -> None:
     print(f"wrote {len(vectors)} vectors to {path.name}")
 
 
+def schc_fragment_vectors() -> list[dict]:
+    def crc32(d):
+        return zlib.crc32(d).to_bytes(4, "big")
+    cases = [
+        ("canonical_crc32", b"123456789", 4),
+        ("short", b"hi", 10),
+        ("7tiles", bytes(range(7)), 1),
+        ("50tiles", bytes((i * 7) % 256 for i in range(50)), 4),
+    ]
+    vectors = []
+    for name, p, ts in cases:
+        m = crc32(p)
+        s = FragmentSender(payload=p, rule_id=20, tile_size=ts, window_size=3)
+        vectors.append({
+            "name": name,
+            "payload": p.hex(),
+            "mic": m.hex(),
+            "fragment_count": s.fragment_count,
+            "fragments": [f.to_bytes().hex() for f in s.all_fragments()],
+        })
+    return vectors
+
+
 def main() -> None:
     _write(
         "schc_compression.json",
@@ -1604,6 +1629,11 @@ def main() -> None:
         "MeshCore inner frame for BLE unless transport.framing states serial "
         "0x3c/0x3e length framing.",
         meshcore_app_compat_vectors(),
+    )
+    _write(
+        "schc_fragment.json",
+        "SCHC fragment vectors with independent CRC32 oracle from zlib.crc32.",
+        schc_fragment_vectors(),
     )
 
 

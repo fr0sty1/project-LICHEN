@@ -52,7 +52,7 @@
     },
     {
       "name": "signed_encrypted",
-       "description": "Unsupported signature + encrypted combination",
+      "description": "Unsupported signature + encrypted combination",
       "fields": {
         "epoch": 3,
         "seqnum": 4,
@@ -64,8 +64,10 @@
         "signature_present": true,
         "encrypted": true
       },
-        "encoded": "356003000478000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-        "expect": {"error": "signed_encrypted_unsupported"}
+      "encoded": "356003000478000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "expect": {
+        "error": "signed_encrypted_unsupported"
+      }
     }
   ]
 }
