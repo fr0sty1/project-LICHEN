@@ -1,18 +1,17 @@
 {
   "id": "project-LICHEN-sjbg",
   "title": "[merge-conflict] worktree-worker19: test_bridge_zephyr_cmake.py",
-  "notes": "Commit: a85052377 - expanded board fragment test to prevent future merge conflicts; defer-boardconfig addressed via comprehensive list",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:40:11.189002181Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:07:35.673387496Z",
+  "updated_at": "2026-07-23T05:00:04.633402994Z",
   "started_at": "2026-07-23T00:43:49.166807577Z",
-  "closed_at": "2026-07-23T05:07:35.673387496Z",
-  "close_reason": "Updated test to cover all target-qualified board fragments with matching .conf+.overlay pairs; resolved merge-conflict source in worker19 and related boardconfig drift; tests pass",
+  "lease_expires_at": "2026-07-23T05:05:04.633402994Z",
+  "heartbeat_at": "2026-07-23T05:00:04.633402994Z",
   "labels": [
     "defer-boardconfig"
   ]
