@@ -13,6 +13,7 @@
 
 #include <lichen/coap_status.h>
 #include <lichen/coap_config.h>
+#include <lichen/coap_server.h>
 
 LOG_MODULE_REGISTER(lichen_coap_status, CONFIG_LICHEN_COAP_STATUS_LOG_LEVEL);
 
@@ -544,45 +545,6 @@ size_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
 	return ctx.off;
 }
 
-static int coap_respond(struct coap_resource *resource,
-			struct coap_packet *request,
-			struct sockaddr *addr, socklen_t addr_len,
-			uint8_t resp_code,
-			const uint8_t *payload, size_t payload_len)
-{
-	static uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
-	struct coap_packet resp;
-	uint8_t token[COAP_TOKEN_MAX_LEN];
-	uint8_t tkl = coap_header_get_token(request, token);
-	uint8_t type = (coap_header_get_type(request) == COAP_TYPE_CON)
-		       ? COAP_TYPE_ACK : COAP_TYPE_NON_CON;
-	int r;
-
-	r = coap_packet_init(&resp, buf, sizeof(buf), COAP_VERSION_1,
-			     type, tkl, token, resp_code,
-			     coap_header_get_id(request));
-	if (r < 0) {
-		return r;
-	}
-
-	if (payload && payload_len > 0) {
-		r = coap_append_option_int(&resp, COAP_OPTION_CONTENT_FORMAT,
-					   CBOR_CONTENT_FORMAT);
-		if (r < 0) {
-			return r;
-		}
-		r = coap_packet_append_payload_marker(&resp);
-		if (r < 0) {
-			return r;
-		}
-		r = coap_packet_append_payload(&resp, payload, payload_len);
-		if (r < 0) {
-			return r;
-		}
-	}
-
-	return coap_resource_send(resource, &resp, addr, addr_len, NULL);
-}
 
 static int status_get(struct coap_resource *resource,
 		      struct coap_packet *request,
@@ -599,25 +561,25 @@ static int status_get(struct coap_resource *resource,
 	}
 
 	if (!s_initialized || !s_config.status_get) {
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+					   COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
 	}
 
 	r = s_config.status_get(&status);
 	if (r < 0) {
 		LOG_WRN("status_get callback failed: %d", r);
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+					   COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
 	}
 
 	len = lichen_coap_encode_status_cbor(cbor_buf, sizeof(cbor_buf), &status);
 	if (len == 0) {
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_SERVICE_UNAVAILABLE, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+					   COAP_RESPONSE_CODE_SERVICE_UNAVAILABLE, 0, NULL, 0);
 	}
 
-	return coap_respond(resource, request, addr, addr_len,
-			    COAP_RESPONSE_CODE_CONTENT, cbor_buf, len);
+	return lichen_coap_respond(resource, request, addr, addr_len,
+				   COAP_RESPONSE_CODE_CONTENT, CBOR_CONTENT_FORMAT, cbor_buf, len);
 }
 
 static void status_notify(struct coap_resource *resource,
@@ -695,32 +657,32 @@ static int neighbors_get(struct coap_resource *resource,
 	if (!s_initialized || !s_config.neighbors_get) {
 		len = lichen_coap_encode_neighbors_cbor(cbor_buf, sizeof(cbor_buf),
 							NULL, 0);
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_CONTENT, cbor_buf, len);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+					   COAP_RESPONSE_CODE_CONTENT, CBOR_CONTENT_FORMAT, cbor_buf, len);
 	}
 
 	count = s_config.neighbors_get(neighbors, ARRAY_SIZE(neighbors));
 	if (count < 0) {
 		LOG_WRN("neighbors_get callback failed: %d", count);
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+					   COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
 	}
 	if (count > (int)ARRAY_SIZE(neighbors)) {
 		LOG_ERR("neighbors_get returned too many entries: %d > %zu",
 			count, ARRAY_SIZE(neighbors));
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+					   COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
 	}
 
 	len = lichen_coap_encode_neighbors_cbor(cbor_buf, sizeof(cbor_buf),
 						neighbors, (size_t)count);
 	if (len == 0) {
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_SERVICE_UNAVAILABLE, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+					   COAP_RESPONSE_CODE_SERVICE_UNAVAILABLE, 0, NULL, 0);
 	}
 
-	return coap_respond(resource, request, addr, addr_len,
-			    COAP_RESPONSE_CODE_CONTENT, cbor_buf, len);
+	return lichen_coap_respond(resource, request, addr, addr_len,
+				   COAP_RESPONSE_CODE_CONTENT, CBOR_CONTENT_FORMAT, cbor_buf, len);
 }
 
 static void neighbors_notify(struct coap_resource *resource,
@@ -799,33 +761,33 @@ static int routes_get(struct coap_resource *resource,
 	if (!s_initialized || !s_config.routes_get) {
 		len = lichen_coap_encode_routes_cbor(cbor_buf, sizeof(cbor_buf),
 						     NULL, 0, NULL);
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_CONTENT, cbor_buf, len);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+					   COAP_RESPONSE_CODE_CONTENT, CBOR_CONTENT_FORMAT, cbor_buf, len);
 	}
 
 	count = s_config.routes_get(routes, ARRAY_SIZE(routes), default_route, &has_default);
 	if (count < 0) {
 		LOG_WRN("routes_get callback failed: %d", count);
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+					   COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
 	}
 	if (count > (int)ARRAY_SIZE(routes)) {
 		LOG_ERR("routes_get returned too many entries: %d > %zu",
 			count, ARRAY_SIZE(routes));
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+					   COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
 	}
 
 	len = lichen_coap_encode_routes_cbor(cbor_buf, sizeof(cbor_buf),
 					     routes, (size_t)count,
 					     has_default ? default_route : NULL);
 	if (len == 0) {
-		return coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_SERVICE_UNAVAILABLE, NULL, 0);
+		return lichen_coap_respond(resource, request, addr, addr_len,
+					   COAP_RESPONSE_CODE_SERVICE_UNAVAILABLE, 0, NULL, 0);
 	}
 
-	return coap_respond(resource, request, addr, addr_len,
-			    COAP_RESPONSE_CODE_CONTENT, cbor_buf, len);
+	return lichen_coap_respond(resource, request, addr, addr_len,
+				   COAP_RESPONSE_CODE_CONTENT, CBOR_CONTENT_FORMAT, cbor_buf, len);
 }
 
 static const char * const status_path[] = { "status", NULL };
