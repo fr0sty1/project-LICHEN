@@ -143,8 +143,11 @@ class KissGattService:
             data: KISS-encoded frame bytes.
 
         Returns:
-            List of MTU-sized chunks to send via notify.
+            List of MTU-sized chunks. Returns [b""] for empty input so
+            callers always get at least one chunk.
         """
+        if not data:
+            return [b""]
         return [data[i : i + self.mtu] for i in range(0, len(data), self.mtu)]
 
 
