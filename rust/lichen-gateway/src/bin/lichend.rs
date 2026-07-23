@@ -459,7 +459,6 @@ async fn forward_mesh_to_upstream<T: TunLike>(
     } else {
         None
     }
-    reply
 }
 // ── TunLike trait (abstracts TunDevice vs. no-op placeholder) ─────────────────
 

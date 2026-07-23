@@ -147,7 +147,7 @@ impl Gateway {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lichen_core::{addr::Ipv6Addr, icmpv6};
+    use lichen_core::{addr::{Ipv6Addr, NodeId}, icmpv6};
 
     fn ll(iid: u8) -> Ipv6Addr {
         Ipv6Addr([0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0x02, 0, 0, 0, 0, 0, 0, iid])
