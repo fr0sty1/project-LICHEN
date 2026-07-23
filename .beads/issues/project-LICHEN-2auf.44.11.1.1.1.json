@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-2auf.44.11.1.1.1",
+  "title": "Add monotonic generation to RplRuntime; bind to poll/complete methods",
+  "description": "Extend RplRuntime with u64 generation (incremented on new() or reset). Update RplRuntimePoll and actions to carry/validate generation. Modify poll() to check pending_action and reject with new error if present. Update take_pending, observe, next_action, complete_* helpers.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:19:00.466007708Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:19:00.466007708Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.11.1.1.1",
+      "depends_on_id": "project-LICHEN-2auf.44.11.1.1",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:19:00.602914654Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
