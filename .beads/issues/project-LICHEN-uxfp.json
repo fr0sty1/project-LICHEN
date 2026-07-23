@@ -2,15 +2,15 @@
   "id": "project-LICHEN-uxfp",
   "title": "[merge-conflict] worktree-worker23: xiao_s3_wio_sx1262.conf",
   "notes": "Commit: 216777784",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:49:54.202545761Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:07:02.287237055Z",
+  "updated_at": "2026-07-23T03:07:04.230804971Z",
   "started_at": "2026-07-23T03:06:01.231608078Z",
-  "lease_expires_at": "2026-07-23T03:11:01.231608078Z",
-  "heartbeat_at": "2026-07-23T03:06:01.231608078Z"
+  "closed_at": "2026-07-23T03:07:04.230804971Z",
+  "close_reason": "Updated xiao_s3_wio_sx1262.conf retired board comment with merge conflict resolution for project-LICHEN-uxfp in worktree-worker23; committed and pushed 216777784"
 }
