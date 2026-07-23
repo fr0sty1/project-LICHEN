@@ -1,15 +1,13 @@
 {
   "id": "project-LICHEN-fqjj",
   "title": "tdma.py: implement all CCP TDMA vectors with independent oracles",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T02:52:49.118251219Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:57:12.248189921Z",
-  "closed_at": "2026-07-23T02:57:12.248189921Z",
-  "close_reason": "TDMA vector partial support; full CCP/ load balance in child epics",
+  "updated_at": "2026-07-23T02:52:49.118251219Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-fqjj",
