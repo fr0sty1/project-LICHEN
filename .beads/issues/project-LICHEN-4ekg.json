@@ -2,7 +2,7 @@
   "id": "project-LICHEN-4ekg",
   "title": "task",
   "description": "lichen/subsys/lichen/meshcore/include/lichen/meshcore/adapter.h:129-131. Compile-time check missing.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tb6q",
   "title": "Review: project-LICHEN 2026-07-06",
   "description": "Review of key rotation fix in python/src/lichen/announce/processor.py.\n\n**The fix is correct and secure.** It changes Step 3 from rejecting pin mismatches to accepting them with a warning, which is appropriate because Step 1 already cryptographically verifies IID = hash(pubkey). A pin mismatch would require a SHA-256 collision.\n\n**Findings:**\n- 2 issues filed (both P1)\n- 0 correctness bugs in the fix itself\n- 1 broken test (tests wrong IID)\n- 1 dead code concern (unpin/KEY_CHANGE_DETECTED serve no purpose)\n\n**Review confidence:** 15% chance of missed bug.\n**Least confident areas:** Interaction with link_layer.py which has identical pin logic.\n**Would raise confidence if:** Also reviewed link_layer.py key pinning behavior.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.6",
   "title": "lichen_l2_enable: duplicated link_ctx init logic",
   "description": "In lichen_l2.c:443-456 (enable path) and lichen_l2.c:656-662 (iface_init), identical link_ctx initialization logic is duplicated:\n\n```c\n// In enable (lines 443-457):\nif (!atomic_get(\u0026link_ctx_initialized)) {\n    const uint8_t *eui64 = lichen_lora_l2_get_eui64();\n    if (eui64 == NULL) { ... }\n    secure_zero(\u0026link_ctx, sizeof(link_ctx));\n    lichen_link_init(\u0026link_ctx, eui64);\n    atomic_set(\u0026link_ctx_initialized, 1);\n}\n\n// In iface_init (lines 655-662):\nlichen_link_init(\u0026link_ctx, eui64);\natomic_set(\u0026link_ctx_initialized, 1);\n```\n\nThe comment in enable explains why extraction is avoided (mutex considerations), and this is a defensible choice. However, the iface_init path is missing the secure_zero() call that enable has. This creates an inconsistency where enable defensively zeros before init, but iface_init does not.\n\nWhat goes wrong: If lichen_link_init() does not zero all fields (relying on caller to provide clean memory), stale data could persist in the init path but not the enable path - inconsistent security posture.\n\nSuggested fix: Either add secure_zero() to iface_init for consistency, or document that lichen_link_init() guarantees full zeroing.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

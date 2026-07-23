@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.111",
   "title": "[lora_l2.c:433-436] init clears rx_callback but thread may have snapshotted old value",
   "description": "Final pass: This was missed because reviewers focused on start/stop paths, not the init path.\n\nRoot cause: At lines 433-436 in lichen_lora_l2_init():\n  k_mutex_lock(\u0026lora_mutex, K_FOREVER);\n  ...\n  lora_data.lora_dev = LORA_DEV;\n  lora_data.rx_callback = NULL;\n  lora_data.rx_callback_user_data = NULL;\n\nThis clears the callback during init. However, lichen_lora_l2_init() is documented as idempotent (line 420-422):\n  /* Idempotent: if already initialized, return success immediately. */\n  if (lora_get_state() != LORA_UNINIT) {\n      return 0;\n  }\n\nIf init() is called while the module is already STOPPED (e.g., after stop() but before start()), it returns 0 without modifying state. This is correct.\n\nBut if init() is called on a completely fresh module (UNINIT state), the callback clearing happens BEFORE the thread is created (thread is created in start()).\n\nWait - the RX thread is only created in start(), not init(). So during init(), no thread exists to snapshot the callback. And the callback can only be set after init() via lichen_lora_l2_set_rx_callback(), which checks for UNINIT state.\n\nActually, lichen_lora_l2_set_rx_callback at lines 906-925:\n  if (lora_get_state() == LORA_UNINIT) {\n      LOG_WRN(...);\n      return;\n  }\n\nSo callbacks cannot be set before init completes. No race exists. Closing as invalid.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

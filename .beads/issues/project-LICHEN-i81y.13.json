@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i81y.13",
   "title": "lichen_coap_request doubles timeout_ms without overflow check",
   "description": "Trigger: a caller supplies req-\u003etimeout_ms greater than UINT32_MAX / 2 to lichen_coap_request(). The function copies the user-provided timeout into uint32_t timeout_ms at lichen/subsys/lichen/coap/coap_client.c:371, then schedules the fallback timeout with K_MSEC(timeout_ms * 2) at lichen/subsys/lichen/coap/coap_client.c:376. The multiplication is performed in 32-bit unsigned arithmetic, so large values wrap to a much smaller delay. Impact: a request that was configured for a long timeout can time out almost immediately, invoking the callback with LICHEN_COAP_ERR_TIMEOUT while Zephyr's CoAP request may still be in flight. This is a correctness/resource-lifetime risk in the async request path. Fix: reject timeout_ms \u003e UINT32_MAX / 2, clamp to a documented maximum, or compute in a wider type and range-check before K_MSEC().",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-dry",
   "title": "ICMPv6 Echo packet builder + gateway SCHC round-trip test",
   "description": "Add lichen_core::icmpv6 with echo_request/echo_reply builders (no_std). Add a gateway test that builds an ICMPv6 Echo Request, SCHC-compresses it (rule 2), decompresses it, and verifies the result matches the original — proving the full link-local ping path works without needing TUN or root.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Frost",

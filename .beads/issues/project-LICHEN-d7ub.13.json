@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.13",
   "title": "lora_l2.c:428 consecutive_errors increment can overflow silently",
   "description": "In rx_thread() at lines 428-429:\n```c\nif (consecutive_errors \u003c INT_MAX) {\n    consecutive_errors++;\n}\n```\n\nThe check prevents overflow, which is good. However, INT_MAX is 2147483647. At LoRa data rates and 1000ms backoff, reaching INT_MAX would take ~68 years of continuous errors. This is effectively impossible.\n\nSEVERITY: P4 - the overflow protection is unnecessary but harmless. The code is correct.\n\nNO ACTION NEEDED - defensive coding, correct behavior.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "note",
   "assignee": "Mark Atwood",

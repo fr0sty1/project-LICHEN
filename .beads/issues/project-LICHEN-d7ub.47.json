@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.47",
   "title": "ipv6_addr.c:261 snprintf truncation check may be wrong for exact fit",
   "description": "In lichen_ipv6_addr_to_str() at lines 239-264:\n```c\nint ret = snprintf(buf, buflen, ...);\n\nif (ret \u003c 0) {\n    // handle encoding error\n    return -EIO;\n}\n\nif ((size_t)ret \u003e= buflen) {\n    LOG_ERR(\"truncated, need %d got %zu\", ret, buflen);\n    return -EINVAL;\n}\n```\n\nsnprintf returns the number of characters that WOULD have been written (excluding null terminator). If buflen is exactly 40 (LICHEN_IPV6_ADDR_STR_LEN), and the formatted string is exactly 39 characters:\n- snprintf returns 39\n- 39 \u003e= 40 is FALSE\n- We return 0 (success)\n\nThis is correct. The formatted IPv6 string is always exactly 39 characters (8 groups * 4 hex + 7 colons = 39). With buflen=40, snprintf writes 39 chars + null = 40 bytes total, using exactly buflen.\n\nThe check at lines 226-231 ensures buflen \u003e= LICHEN_IPV6_ADDR_STR_LEN (40). So we'll never truncate.\n\nNO BUG - the logic is correct.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "note",
   "assignee": "Mark Atwood",

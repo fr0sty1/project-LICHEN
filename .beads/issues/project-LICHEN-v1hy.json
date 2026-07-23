@@ -2,7 +2,7 @@
   "id": "project-LICHEN-v1hy",
   "title": "task",
   "description": "rust/lichen-core/src/tx_queue.rs:130-141 - TxItem::cmp uses raw sequence number comparison for FIFO within same priority. After u32 sequence counter wraps (via wrapping_add), older items have high sequences near MAX while newer have low near 0. The comparison other.sequence.cmp(\u0026self.sequence) would make newer items appear 'greater' and be popped first, breaking FIFO. Fix: use wrapping subtraction for relative comparison, e.g., (self.sequence.wrapping_sub(other.sequence) as i32).cmp(\u00260).",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

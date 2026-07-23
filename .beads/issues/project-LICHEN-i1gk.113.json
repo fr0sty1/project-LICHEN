@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.113",
   "title": "[main.c:201-206] Fatal error LED blink loop prevents watchdog kick",
   "description": "Final pass: This was missed because reviewers focused on whether the loop was infinite, not its interaction with hardware watchdogs.\n\nRoot cause: At lines 201-206:\n  while (1) {\n      led_set(1);\n      k_sleep(K_MSEC(200));\n      led_set(0);\n      k_sleep(K_MSEC(200));\n  }\n\nThis infinite loop blinks the LED to indicate fatal LoRa failure. However:\n1. Many embedded systems have hardware watchdogs (enabled via CONFIG_WATCHDOG)\n2. The Zephyr idle thread typically kicks the watchdog\n3. k_sleep yields to other threads, so the idle thread can run\n\nBut if CONFIG_WDT_DISABLE_AT_BOOT is false and the watchdog timeout is short (e.g., 500ms), and this is the only running application thread, the system may reset unexpectedly.\n\nActually, k_sleep allows other threads (including the idle thread) to run, so the watchdog should be kicked. The issue only arises if:\n1. Watchdog is not kicked by idle thread (custom configuration)\n2. Watchdog timeout is less than 400ms (two LED cycles)\n3. No other threads are running\n\nThis is a configuration-dependent edge case, not a code bug. But worth documenting.\n\nImpact: On systems with aggressive watchdog configuration, the 'fatal error' LED pattern may be interrupted by watchdog reset.\n\nFix: Either feed the watchdog explicitly in the loop, or document the assumption that default Zephyr watchdog handling is active.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "doc",
   "assignee": "Mark Atwood",

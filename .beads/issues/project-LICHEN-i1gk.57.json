@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.57",
   "title": "[lora_l2.c:197-205] lora_data struct fields have inconsistent mutex documentation",
   "description": "Round 2 gap analysis: Missed because the mutex usage appeared consistent.\n\nAt lines 197-205:\n```c\nstatic struct {\n    /* Mutex-protected: device pointer set once during init */\n    const struct device *lora_dev;\n    /* Mutex-protected: stable after init; alias returned by get_eui64() */\n    uint8_t eui64[8];\n    /* Mutex-protected: callback + user_data updated as a pair */\n    lichen_lora_rx_cb_t rx_callback;\n    void *rx_callback_user_data;\n} lora_data;\n```\n\nThe comments say all fields are 'Mutex-protected', but:\n1. lora_dev is 'set once during init' - suggests write-once-read-many, no mutex needed for reads\n2. eui64 is 'stable after init' - same, no mutex needed for reads after init\n3. callback pair needs mutex for atomic update\n\nThe actual code:\n- get_eui64() at line 936-940 checks state but does NOT hold mutex for the return\n- rx_thread captures lora_dev at line 334 under mutex (correct)\n- rx_thread captures callback pair at lines 403-406 under mutex (correct)\n\nThe comments overstate mutex requirements - lora_dev and eui64 are effectively immutable after init and could be safely read without mutex (as get_eui64 does). Minor documentation inconsistency.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "feature",
   "assignee": "Mark Atwood",

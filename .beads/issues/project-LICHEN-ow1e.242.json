@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.242",
   "title": "meshcore_adapter.c: compat_valid_utf8 missing test for 0xc0-0xc1 range (overlong)",
   "description": "The UTF-8 validation function compat_valid_utf8() correctly handles most edge cases but allows bytes 0xc0 and 0xc1 which are overlong encodings (they would encode ASCII chars \u003c 0x80 using 2 bytes). RFC 3629 explicitly forbids these. The check 'c \u003e= 0xc2U' is correct for the start, but the else branch falls through to return false which catches this. Confirmed correct - no issue.\n\nActually, reviewing again: the code has 'else if (c \u003e= 0xc2U \u0026\u0026 c \u003c= 0xdfU)' which correctly skips 0xc0-0xc1 (they fall through to the final 'return false'). Closing as not-a-bug.\n\nFile: lichen/apps/gateway/src/meshcore_adapter.c lines 105-140",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

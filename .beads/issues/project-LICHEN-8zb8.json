@@ -2,7 +2,7 @@
   "id": "project-LICHEN-8zb8",
   "title": "Rust lichen-oscore: Context Debug impl exposes key presence in logs",
   "description": "In rust/lichen-oscore/src/lib.rs, the new Debug impl for Context shows [REDACTED] for sensitive fields, which is good. However, showing id_context_len, sender_id_len, recipient_id_len etc. may still leak information about the context structure. Consider whether even the length fields should be redacted, or document that these lengths are not security-sensitive.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

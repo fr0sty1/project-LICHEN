@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.39",
   "title": "ipv6_addr.c logging abstraction enables host-side testing",
   "description": "In ipv6_addr.c:20-33, a simple logging abstraction is used:\n\n```c\n/*\n * Logging abstraction: use Zephyr logging when available, otherwise\n * fall back to no-ops. This allows the module to be used in host-side\n * unit tests without stubbing the logging system.\n */\n#ifdef __ZEPHYR__\n#include \u003czephyr/logging/log.h\u003e\nLOG_MODULE_REGISTER(lichen_ipv6, LOG_LEVEL_INF);\n#else\n#define LOG_ERR(...)  ((void)0)\n#define LOG_WRN(...)  ((void)0)\n#define LOG_INF(...)  ((void)0)\n#define LOG_DBG(...)  ((void)0)\n#endif\n```\n\nThis is a clean way to make the module testable in host unit tests without pulling in Zephyr dependencies or requiring complex mocking. The no-op macros are cast to (void)0 which silences unused-expression warnings if used in expression context.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.24",
   "title": "Uncompressed IPv6 address format in lichen_ipv6_addr_to_str logs 39 chars vs 10-20",
   "description": "ipv6_addr.c lines 157-167: Always formats as 'fe80:0000:0000:0000:...' (39 chars) instead of RFC 5952 compressed 'fe80::...' (~15 chars). Not an efficiency issue (logging path, not hot), but worth noting the header documents this as intentional (line 54-56). No change needed - the explicit uncompressed format is arguably easier to parse visually in logs.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

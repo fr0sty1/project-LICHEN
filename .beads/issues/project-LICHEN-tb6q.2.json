@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tb6q.2",
   "title": "Dead code: unpin() and KEY_CHANGE_DETECTED have no valid use",
   "description": "Since IID = hash(pubkey), changing a node's keypair necessarily changes its IID. The concept of 'key rotation for the same IID' is cryptographically impossible without a SHA-256 collision.\n\nAffected code:\n1. processor.py:50 - KEY_CHANGE_DETECTED enum value is defined but never used\n2. processor.py:253-260 - unpin() method exists but has no valid use case\n3. processor.py:245-251 - reset_seen() may also be dead for the same reason\n\nThe docstrings and comments reference 'key rotation' which misleads readers into thinking this is possible. The spec section 8.6 describes key rotation with signed handoff (old key signs new key), but that would create a new IID anyway.\n\nWhat goes wrong: Dead code creates maintenance burden and misleads developers about protocol semantics. The test_unpin_allows_key_rotation test (separate issue) provides false confidence.\n\nRecommendation: Either remove dead code, or document why it exists (e.g., future protocol extension for delegated identity that allows key rotation without IID change).",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

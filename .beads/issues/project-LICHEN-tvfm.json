@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm",
   "title": "Exhaustive Review: bridge-zephyr 2026-06-27",
   "notes": "## Convergence Report\n\n**Rounds to converge:** 4\n- Round 1 (4 parallel agents): 41 findings, 4 closed as duplicates → 37 unique\n- Round 2 (2 adversarial agents): 47 new findings  \n- Round 3 (completeness critic): 18 new findings\n- Round 4 (final sweep): 0 new findings, 1 escalated P2→P1\n\n**Total unique findings:** 102 open\n\n**By priority:**\n- P0: 0\n- P1: 1 (CONFIG_TEST_RANDOM_GENERATOR - cryptographic security risk)\n- P2: 13 (race conditions, state machine bugs, cleanup gaps)\n- P3: 47 (potential bugs, contract violations)\n- P4: 41 (code smells, documentation)\n\n**Confidence:** 90% that a follow-up review finds 0 new P0-P1 bugs.\n\n**Least confident areas:**\n1. Cross-module state machine interactions (enable/disable races)\n2. Mutex reinitialization in recovery paths\n3. Replay window lifecycle management\n\n**Note:** The codebase shows evidence of prior thorough reviews (SECURITY: comments, BUILD_ASSERTs, documented edge cases). Most findings are P3-P4 code smells rather than exploitable bugs.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

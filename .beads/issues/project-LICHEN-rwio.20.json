@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.20",
   "title": "GOOD: Explicit net_pkt ownership semantics documented in lichen_l2_send/input",
   "description": "lichen_l2.c lines 217-222 and 540-557: Both TX and RX paths have explicit comments documenting who owns the net_pkt and when ownership transfers. TX: 'return 0 means we took ownership, must unref'. RX: 'on success net_recv_data takes ownership, on failure we retain and must unref'. These comments prevent double-free bugs that are common in Zephyr net_pkt code.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

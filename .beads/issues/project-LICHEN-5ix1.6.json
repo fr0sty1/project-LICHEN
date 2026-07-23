@@ -4,7 +4,7 @@
   "description": "Discovered during review of project-LICHEN-5ix1.5. s_last_progress_ms stores k_uptime_get() in signed 32-bit atomic_val_t; after INT32_MAX ms, subtraction as int64_t interprets the heartbeat as negative and withholds feeds, resetting a healthy node around 24.9 days. Use wrap-safe 32-bit elapsed-time arithmetic with a focused independent-oracle test.",
   "acceptance_criteria": "Healthy puck watchdog feeding remains correct across the 32-bit uptime wrap; stale progress still withholds feeds; a focused test uses fixed timestamps around wrap and does not use the implementation as its oracle.",
   "notes": "Final 2026-07-16: watchdog heartbeat now stores k_uptime_get_32 and uses uint32 modulo subtraction through the production WDT_PROGRESS_FRESH predicate. BUILD_ASSERT vectors independently fix expected outcomes across wrap: 32 ms fresh, 3999 ms fresh, 4000 ms stale. Clean physical ELF/config SHA-256 c0c197c6277d1b9c67738d88bb1a223f53eb04b1775535e8c80a2efd6c615ebe / 54a4377810313dd469ff856f6dab3a4bbf899e41bc6a7e8bda3f95200dff602e. Clean Renode ELF/config 092c0ce0216596e02c0bcf43d2e70789a3a911a5c03dbbe188f9f19b92fceaad / 06bd6165d04ccc4fcbe92c2c7f512a4d7352b66dce6754c6ed3a7e7c984efc9e. Renode runtime reached puck main, RNG, watchdog armed, L2/CoAP mode, and four simulator transmissions without reset. Three independent reviews found no correctness defects.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

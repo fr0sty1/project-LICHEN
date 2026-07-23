@@ -3,7 +3,7 @@
   "title": "Enforce atomic Rust Path Sequence snapshots",
   "description": "In Rust DaoManager, retain canonical per-target candidate snapshots (parent, Path Control, Path Lifetime) through freshness tombstones. A newer Path Sequence atomically replaces the complete set; equal sequence accepts only semantic equality without refreshing deadlines or target freshness; changed/older/incomparable updates reject before DAOSequence mutation. Keep non-/128 wire rejection.",
   "acceptance_criteria": "Exact equal-sequence copies accept unchanged with newer DAOSequence but do not refresh route deadlines; additions/removals/lifetime/Path Control/withdrawal changes reject atomically; newer grouped multiparent snapshots replace fully; expiry/withdrawal tombstones prevent revival; Rust tests, clippy, and three reviews pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

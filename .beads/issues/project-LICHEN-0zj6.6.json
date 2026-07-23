@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0zj6.6",
   "title": "secure_zero() implementation is correct for its purpose",
   "description": "The volatile-pointer secure_zero() pattern (lora_l2.c:44-50, ipv6_addr.c:32-37, lichen_l2.c:32-38) is the standard approach for preventing dead-store elimination. While it could be consolidated into a shared header, the duplication is acceptable for static-inline functions in embedded code where call-site inlining is important.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

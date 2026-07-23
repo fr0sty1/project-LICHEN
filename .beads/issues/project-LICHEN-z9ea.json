@@ -2,7 +2,7 @@
   "id": "project-LICHEN-z9ea",
   "title": "Python interface/__init__.py: Deprecation warning removed from import",
   "description": "In python/src/lichen/interface/__init__.py, the deprecation warning that was emitted on module import was removed. The module docstring still says it's deprecated. The comment says 'Deprecation warnings are emitted when deprecated functions are called, not on import' but no code was added to emit warnings on function calls. Either add @deprecated decorators to the exported functions or restore some form of deprecation notice.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

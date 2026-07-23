@@ -2,7 +2,7 @@
   "id": "project-LICHEN-725z.3",
   "title": "secure_zero may not survive LTO or provide memory barrier",
   "description": "lichen_util.h:20-26 — volatile pointer trick is not guaranteed by C standard. LTO could remove the loop. Also lacks memory barrier for reordering. Used at lora_l2.c:144-145, ipv6_addr.c:103-104, lichen_l2.c:560,571. Consider Zephyr's memset or explicit_bzero/memset_s.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

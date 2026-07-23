@@ -2,7 +2,7 @@
   "id": "project-LICHEN-y9pt",
   "title": "Python: visualize.py topology_from_states returns str for parent but DodagState uses IPv6Address",
   "description": "In python/src/lichen/rpl/visualize.py:24-28, topology_from_states() was updated to call str(state.preferred_parent) because DodagState.preferred_parent is now IPv6Address.\n\nHowever, this creates an inconsistency: the Topology type alias is dict[str, str | None], but other parts of the visualization code may expect the parent values to be the same type as the node_id keys. The test at test_visualize.py:49 now compares topo['child'] to str(root_addr) rather than the original pattern.\n\nLocation: python/src/lichen/rpl/visualize.py:24-28\nRisk: Downstream code using Topology may break if it expects consistent types.\nFix: Either update Topology type alias to show this asymmetry, or normalize all identifiers to the same type.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

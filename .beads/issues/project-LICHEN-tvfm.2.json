@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.2",
   "title": "[lichen_l2.c:1062] k_mutex_init return ignored after documented failure",
   "description": "In lichen_l2_reinit_after_abort() line 1062-1064, k_mutex_init() return value is checked but on failure, only a LOG_ERR is emitted and the function continues. The function is documented as best-effort recovery, but the comment 'RX may deadlock' suggests this could leave the system in a worse state than before. Consider adding a return value to propagate the error, or documenting more clearly that callers should reboot if this fails.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

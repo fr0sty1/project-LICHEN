@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.22",
   "title": "lichen_lora_l2_tx takes non-const data pointer - unclear mutation semantics",
   "description": "In lora_l2.h line 114, lichen_lora_l2_tx() takes 'uint8_t *data' (non-const). The docstring (lines 108-109) says 'caller must ensure buffer remains valid and unmodified during transmission; may be mutated by driver'.\n\nThis 'may be mutated' comment is concerning:\n1. Does lora_send() actually mutate the buffer? Zephyr's lora_send() takes const uint8_t*.\n2. If mutation is possible, callers using stack buffers may see corruption if TX is interrupted.\n3. The signature differs from lora_send() which takes const, suggesting this was intentional - but why?\n\nThe current callers (lichen_l2_send, main.c standalone) use static buffers protected by mutex, so mutation would be visible but not immediately dangerous. However, a contributor adding a new TX call site with a stack buffer could hit subtle bugs.\n\nTrigger: Future code calls lichen_lora_l2_tx() with a stack buffer while the driver mutates it.\n\nRisk: The non-const signature without clear documentation of whether/why mutation occurs is a footgun.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lora_l2.h line 114, lora_l2.c line 313",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.105",
   "title": "[lichen_l2.c:240-241] peer_entry struct has no padding/alignment specification",
   "description": "Category not checked: Memory layout for cryptographic data\n\nBug found: struct lichen_peer_entry is defined at lines 238-242:\n  struct lichen_peer_entry {\n    uint8_t eui64[LICHEN_EUI64_LEN];      // 8 bytes\n    uint8_t pubkey[LICHEN_L2_PUBKEY_LEN]; // 32 bytes\n    bool active;                           // 1 byte (typically)\n  };\n\nTotal: 8 + 32 + 1 = 41 bytes, likely padded to 44 or 48 bytes by compiler.\n\nFor an array of peer_table[16], this is 656-768 bytes of static RAM.\n\nIssues:\n1. No __attribute__((packed)) or similar to control layout\n2. The 'active' flag at the end means padding bytes exist that may leak information\n3. secure_zero() at lines 467-469 zeros pubkey and eui64 separately, but not the padding between them\n\nWhen a peer is removed, the padding bytes between fields are NOT zeroed. This is unlikely to leak meaningful data (padding is typically not initialized from security-sensitive sources), but it's inconsistent with the explicit secure_zero() calls.\n\nImpact: P4 - Minor hygiene issue, padding bytes not zeroed.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

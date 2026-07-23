@@ -3,7 +3,7 @@
   "title": "[codereview-P2 pass2] test_vectors.py schema test does not cover ccp16-desync.json",
   "description": "Add \"ccp16-desync.json\" to parametrized test_vector_file_schema list. Also add handler for array root in case functions. Tagged codereview. Related to project-LICHEN-pgzj.2",
   "notes": "Commit: 7876babb3",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

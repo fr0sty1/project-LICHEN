@@ -3,7 +3,7 @@
   "title": "SCHC rule definition and context",
   "description": "Define SCHC rules per RFC 8724 and spec Appendix A.\n\nRule structure:\n- rule_id: int (variable length based on rule count)\n- field_descriptors: list of (field, target_value, matching_op, comp_decom_action, sent_bits)\n\nMatching operators:\n- equal, ignore, MSB(x), match-mapping\n\nCompression/Decompression actions:\n- not-sent, value-sent, mapping-sent, LSB, compute-*\n\nRules for LICHEN (from spec):\n- Rule 0: Full IPv6 (fallback)\n- Rule 1: Link-local ICMPv6\n- Rule 2: ULA CoAP to root\n- Rule 3: ULA CoAP from root  \n- Rule 4: Multicast\n\nClasses:\n- FieldDescriptor\n- Rule\n- SchcContext (holds all rules, lookup by packet pattern)\n\nParse rules from YAML/JSON config for flexibility.",
   "notes": "Partially addressed: SCHC rule model (FieldDescriptor/Rule, MO/CDA enums) + registry implemented in schc/rules.py with two example rules. Full LICHEN rule set 0-4 still needs IPv6/UDP/CoAP field parsing.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

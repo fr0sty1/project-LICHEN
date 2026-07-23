@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.161",
   "title": "TcpServer type: ignore masks actual initialization bug",
   "description": "**Location:** python/src/lichen/interface/tcp.py:215\n\n**Bug:** The line `tcp_server = TcpServer(server=None, handler=handler)  # type: ignore` initializes TcpServer with `server=None`, but the dataclass field `server` is typed as `asyncio.Server` (not `Optional`). The `# type: ignore` hides this.\n\n**Trigger:** Any code that accesses `tcp_server.server.sockets` before line 222 (where server is assigned).\n\n**Bad behavior:** AttributeError: 'NoneType' object has no attribute 'sockets'\n\n**Current safety:** The `address` property (line 158-162) does check `sockets` before accessing, but the pattern is fragile.\n\n**Fix:** Make the field `server: asyncio.Server | None = None` and remove the type ignore.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

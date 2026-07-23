@@ -3,7 +3,7 @@
   "title": "Add SCHC fragmentation vectors",
   "description": "Add independently derived shared fragmentation vectors and schema coverage for regular, All-0, All-1, RCS, ACK C=0/C=1, bitmap compression/order, missing tiles, retransmission, malformed messages, capacity, and aborts. Never generate expected bytes with code under test.",
   "acceptance_criteria": "Python, Rust, and C consume identical committed literal vectors with independent provenance documented.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -3,7 +3,7 @@
   "title": "Compliance: python/src/lichen/crypto/identity.py key storage",
   "description": "Policy: 06-security.md §15.2. File: python/src/lichen/crypto/identity.py. Status: COMPLIANT. Uses mutable bytearray for seed/privkey with zeroing. Explicit security note about Python limitations. Debug repr shows REDACTED. wipe() method and __del__ zeroing.",
   "notes": "Links to epic: echd (Security Compliance Audit)\nRemoved wipe() - out of threat model (Python can't securely erase memory)",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

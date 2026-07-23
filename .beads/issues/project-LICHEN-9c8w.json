@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9c8w",
   "title": "Logging style guide",
   "description": "Refactor Zephyr firmware logging for consistency per docs/LOGGING_STYLE.md",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

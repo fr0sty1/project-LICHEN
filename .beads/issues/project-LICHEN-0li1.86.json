@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.86",
   "title": "[Kconfig:145-148] CONFIG_LICHEN_IPV6_ULA_PREFIX string not validated for fd00::/8 format",
   "description": "Critic: Input validation gap. What: CONFIG_LICHEN_IPV6_ULA_PREFIX is an arbitrary string with default 'fd00:lich:en00::' - no compile-time or runtime format validation at Kconfig level. Why it matters: Malformed prefixes (wrong length, invalid chars, non-fd00::/8) cause runtime -EINVAL in lichen_make_ula() but silently compile. Users might set invalid values unaware. A Kconfig string cannot enforce prefix format, so lichen_make_ula() is the validator, but error is delayed until runtime. Consider: Add BUILD_ASSERT or early boot validation of configured prefix.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

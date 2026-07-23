@@ -2,7 +2,7 @@
   "id": "project-LICHEN-77a4",
   "title": "Document border router hardware options",
   "description": "Add to docs: border router hardware recommendations. (1) Heltec V3 / T-Deck for home/dev (WiFi+LoRa), (2) RPi + RAK HAT for serious deployment (Ethernet, full Linux), (3) Custom cellular for remote solar sites. Include power budget, backhaul options, antenna considerations.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

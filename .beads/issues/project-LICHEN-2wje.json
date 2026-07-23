@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2wje",
   "title": "task",
   "description": "rust/lichen-cli/src/output.rs:61-64. \u003e2^53 loses precision.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-39z",
   "title": "Rust lichen-schc: fragmentation sender + receiver (RFC 8724 §8)",
   "description": "Implement FragmentSender (tile/FCN schedule, CRC32 MIC) and FragmentReceiver (bitmap reassembly) in no_std Rust, matching Python fragment.py/reassembly.py.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "mark.frost@gmail.com",

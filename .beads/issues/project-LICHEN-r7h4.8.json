@@ -3,7 +3,7 @@
   "title": "Add Renode nRF52840 boot+TX validation to CI matrix",
   "description": "Bead project-LICHEN-r7h4.5 validated Renode nRF52840 boot, SPI, L2 init and LoRa TX end-to-end on Renode 1.16.1 (linux-arm64). Add a CI job that builds the T-Echo puck firmware with the Renode console overlay and runs a headless boot+TX smoke test. Current .github/workflows/renode.yml only validates that .repl/.resc parse and runs the no-firmware bridge tests; it uses the x86_64 portable Renode and does not build firmware. Extend it (or add a job) to: install matching Renode, install the Zephyr SDK/west workspace, build t_echo with the renode_console overlay/conf (needs -DBOARD_ROOT, -DZEPHYR_EXTRA_MODULES=lichen, SOURCE_DATE_EPOCH), and assert boot + transmissions\u003e0. Hold RX assertions until project-LICHEN-r7h4.6/.7 land.",
   "acceptance_criteria": "CI job builds t_echo firmware and asserts Renode boot + LoRa TX to lichen-sim; green on main.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

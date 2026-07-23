@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.79",
   "title": "core/loadng: redundant debug_asserts for typestate transitions",
   "description": "In loadng.rs:231-294, debug_assert!(RouteDiscoveryState::Idle.can_transition_to(...)) inside typed state machine methods. These assertions are redundant - the type system already prevents invalid transitions. Remove or convert to documentation comments.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

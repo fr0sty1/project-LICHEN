@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1e0x",
   "title": "task",
   "description": "secure.rs:239 - decrypt_response() calls ctx.unprotect_request() to decrypt OSCORE responses, but OSCORE responses have different AAD construction than requests per RFC 8613 Section 5.4. The function should call an unprotect_response() method (or equivalent). Failure scenario: (1) Legitimate OSCORE responses from peers will fail authentication because the AAD verification uses request-format AAD instead of response-format AAD, causing DecryptFailed errors. (2) If the underlying OSCORE implementation doesn't properly distinguish request/response AAD, this could be a security vulnerability allowing AAD confusion attacks.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

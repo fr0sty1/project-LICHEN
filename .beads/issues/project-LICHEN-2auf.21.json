@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.21",
   "title": "Reject link-layer encrypted payloads consistently",
   "description": "C currently AES-encrypts E=1 frames and cannot receive its own unsigned encrypted output; Python/Rust reject encrypted frames and the draft treats E as opaque upper-layer encryption. Make all link boundaries reject E=1 until a coordinated encryption design exists, update C tests, and remove contradictory C AES behavior from the active path.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

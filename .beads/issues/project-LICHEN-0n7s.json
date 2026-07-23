@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0n7s",
   "title": "Uninitialized time_offset field in non-timed records",
   "description": "File: lichen/subsys/lichen/senml/senml.c\nLines: 100-106, 155-161\n\nCATEGORY: MEMORY - Uninitialized Read (Latent)\n\nIn senml_add_float() and senml_add_bool(), the record struct is not zeroed before use:\n\n  struct senml_record *rec = \u0026pack-\u003erecords[pack-\u003erecord_count++];\n  rec-\u003ename = name;\n  rec-\u003eunit = unit;\n  rec-\u003etype = SENML_VALUE_FLOAT;\n  rec-\u003evalue.f = value;\n  rec-\u003ehas_time = false;  // time_offset NOT initialized\n\nThe time_offset field contains garbage from whatever was in the array slot before.\n\nWhile has_time=false should prevent encode_record() from reading time_offset (line 247-251), this is fragile:\n1. If logic ever changes to check time_offset first, it reads uninitialized memory\n2. Static analyzers and sanitizers may flag this\n3. Defense in depth requires zeroing unused fields\n\nNote: senml_add_float_t() correctly initializes time_offset (line 133).\n\nFIX: Either zero the record before use, or explicitly set time_offset = 0:\n  rec-\u003etime_offset = 0;\n  rec-\u003ehas_time = false;",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

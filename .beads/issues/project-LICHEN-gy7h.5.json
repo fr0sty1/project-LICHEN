@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.5",
   "title": "Well-done: Secure key copy in lichen_l2_input",
   "description": "lichen_l2.c:628-632 copies link_key into a local buffer before use rather than capturing a pointer to link_ctx.link_key. The comment explains this is defensive against future refactors that might change cleanup timing. This is a 16-byte copy (cheap) that eliminates a subtle lifetime dependency. If someone suggests 'simplifying' by using the pointer directly, push back - the current code is more robust against maintenance errors.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

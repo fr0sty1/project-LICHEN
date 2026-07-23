@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.42",
   "title": "[lora_l2.h:70] LICHEN_LORA_FRAME_OVERHEAD derivation comment arithmetic incorrect",
   "description": "Gap found: lora_l2.h macro constants not reviewed in Round 1.\n\nWhy this was missed: Focus was on .c files; header macros not systematically checked.\n\nThe actual bug: Line 70 comment says '5 (header) + 4 (MIC) + 48 (signature) - 2 (margin) = 55'. But 5+4+48-2 = 55 only if we subtract 2 for margin. The comment structure is confusing - it describes the overhead as 55 bytes but the formula doesn't directly yield 55 without explanation of what 'margin' means. The actual derivation in the comment block (lines 46-66) is correct: 255 max payload, subtract 57 fixed overhead (5 header + 4 MIC + 48 sig), but then says 'rounding down to 55 provides 2 bytes margin'. This means OVERHEAD is 55, leaving 200 bytes for MTU. The line 70 formula should read '5 + 4 + 48 = 57 true overhead, using 55 (57-2) for margin' to match the prose. Minor documentation bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

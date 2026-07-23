@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2775",
   "title": "Review Zephyr C code",
   "description": "Perform a code review of all Zephyr C code and report defects, risks, and test gaps with file and line references.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

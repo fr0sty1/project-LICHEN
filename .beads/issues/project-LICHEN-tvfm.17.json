@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.17",
   "title": "[ipv6_addr.c:136] lichen_make_ula only checks first byte of prefix",
   "description": "Function: lichen_make_ula. Contract violation: The function validates that prefix[0] == 0xfd (line 152) but does not check that prefix is actually an 8-byte buffer. The array parameter 'const uint8_t *prefix' provides no bounds checking. A caller passing a 1-byte buffer would pass the check but memcpy(addr-\u003es6_addr, prefix, 8) would read out of bounds. This applies to all address construction functions. Priority 3 because current callers provide correct buffers.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

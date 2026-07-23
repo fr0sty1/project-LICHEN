@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-1bh",
   "title": "Implement chaos rules framework",
   "description": "Create python/src/lichen/sim/chaos.py. ChaosRule ABC with matches(tx, rx_node) -\u003e bool and apply(tx) -\u003e Transmission | None. Concrete rules: DropRule(node_id, direction='tx|rx|both', count), PartitionRule(groups: list[set[str]]), DegradeRule(node_id, rssi_penalty_db), JammerRule(x, y, z, radius_m, power_dbm), LatencyRule(node_id, added_us). ChaosEngine class: add_rule(rule), remove_rule(rule_id), clear(), apply_all(tx, rx_node) -\u003e Transmission | None. Unit tests for each rule type.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-6h5g.1",
   "title": "ESP32-S3 Renode platform with virtual interfaces",
   "description": "Create .repl for ESP32-S3 with virtual SPI/I2C/UART buses. Don't fight Xtensa emulation edge cases - use virtual peripherals that respond correctly. Wire up SX126x model (from r7h4.1) via SPI stub.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-ow1e.228",
   "title": "Codereview pass 2: LOADng seqnum - missing boundary tests for 0/65535 edge",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

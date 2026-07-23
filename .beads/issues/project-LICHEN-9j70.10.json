@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.10",
   "title": "main.c: nested #if blocks make init_ok state transitions hard to follow",
   "description": "Location: main.c:96-144\n\nThe standalone LoRa init block has nested conditionals:\n- Outer: #if CONFIG_LICHEN_LORA_L2 \u0026\u0026 !CONFIG_LICHEN_L2\n- Inner: runtime checks (ret \u003c 0, eui64 == NULL)\n- Innermost: #if CONFIG_LICHEN_IPV6\n\ninit_ok is set in two different places depending on CONFIG_LICHEN_IPV6, but the LED turnoff happens unconditionally after the block, not gated by init_ok.\n\nWhat goes wrong: Reader must mentally track which preprocessor paths are active to understand when init_ok becomes true. The LED logic being outside the success path suggests LED should turn off even on failure - but the comment says 'Turn off busy LED' implying success.\n\nSuggested fix: Extract the init sequence into a static helper returning int (0 on success). Clearer structure: ret = init_standalone_lora(); if (ret == 0) { LOG_INF(...); }. LED logic becomes explicit.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

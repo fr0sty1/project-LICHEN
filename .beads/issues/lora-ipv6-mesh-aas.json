@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-aas",
   "title": "pcapng custom options undocumented - no Wireshark dissector",
   "description": "**Documentation / Usability**\n\npcap.py defines custom pcapng options:\n```python\n_OPT_CUSTOM_RSSI = 0x8000\n_OPT_CUSTOM_SNR = 0x8001\n_OPT_CUSTOM_SRC_NODE = 0x8002\n_OPT_CUSTOM_DST_NODE = 0x8003\n```\n\nThese are in the private use range (0x8000+) which is correct, but:\n1. No documentation on what they contain or format\n2. Wireshark won't know how to display them\n3. No Lua dissector provided to parse them\n4. Other tools won't understand the capture files\n\nOptions:\n- Document the option format in the module docstring\n- Provide a Wireshark Lua dissector (tools/wireshark/lichen.lua)\n- Use standard pcapng options where possible (e.g., EPB_FLAGS for direction)\n- Consider LINKTYPE_USER0 documentation for the frame format\n\nFiles: pcap.py, tools/wireshark/ (new)",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "assignee": "Mark Frost",

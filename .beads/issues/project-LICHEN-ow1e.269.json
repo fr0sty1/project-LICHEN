@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.269",
   "title": "APRS-IS: altitude conversion loses precision",
   "description": "File: rust/lichen-gateway/src/aprs_is.rs\nLine: 141\n\nThe altitude conversion from decimeters to feet uses integer arithmetic:\n  (self.alt_dm as i32 * 328084) / 1_000_000\n\nThis loses precision. For alt_dm = 1 (0.1 meters), the result is 328084 / 1000000 = 0 feet instead of 0.328 feet.\n\nWhile APRS position reports typically use whole feet, this could accumulate errors for low altitudes. Consider using: ((self.alt_dm as i64 * 328084 + 500000) / 1_000_000) as i32 for rounding, or document that sub-foot precision is intentionally lost.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

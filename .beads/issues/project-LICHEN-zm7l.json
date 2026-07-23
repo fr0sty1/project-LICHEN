@@ -2,7 +2,7 @@
   "id": "project-LICHEN-zm7l",
   "title": "stream_header_len not reset on header parsing failure",
   "description": "File: lichen/subsys/lichen/meshcore/adapter.c\nLine: 1143-1150\n\nWhen a frame header is parsed with invalid length (0 or \u003e MAX_SERIAL_PAYLOAD), the code resets stream_expected but not stream_header_len:\n```c\nadapter-\u003estream_expected =\n    sys_get_le16(\u0026adapter-\u003estream_header[1]);\nadapter-\u003estream_header_len = 0U;  // This is set...\nadapter-\u003estream_len = 0U;\nif (adapter-\u003estream_expected == 0U ||\n    adapter-\u003estream_expected \u003e\n    CONFIG_LICHEN_MESHCORE_MAX_SERIAL_PAYLOAD) {\n    adapter-\u003estats.malformed_count++;\n    adapter-\u003estream_expected = 0U;  // ...but here stream_header_len is already 0\n    continue;\n}\n```\n\nActually, looking more carefully: stream_header_len IS reset to 0 at line 1142 before the check. This is correct. The reset happens before the validity check. This is NOT a bug.\n\nActually wait, let me re-read the flow more carefully. The sequence is:\n1. Line 1135: stream_header[stream_header_len++] = byte\n2. Line 1136-1138: if \u003c sizeof(stream_header), continue\n3. Line 1140-1142: parse expected length, reset header_len to 0\n4. Line 1143-1149: if invalid, reset expected and continue\n\nSo stream_header_len is always 0 when we reach line 1143. This is correct.\n\nLet me cancel this bead and look for other issues.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

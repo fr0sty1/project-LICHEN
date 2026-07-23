@@ -2,7 +2,7 @@
   "id": "project-LICHEN-v1wq",
   "title": "task",
   "description": "Increase buffer sizes in lichen_l2.c and lora_l2.h to accommodate OSCORE overhead (~20+ bytes for Object-Security option). Update LICHEN_L2_MTU and tx/rx buffer sizes. This is a prerequisite for OSCORE integration.\n\nFiles to update:\n- lichen/subsys/lichen/l2/lora_l2.h (LICHEN_LORA_FRAME_OVERHEAD)\n- lichen/subsys/lichen/l2/lichen_l2.c (tx_ipv6_buf, rx_ipv6_buf sizing)\n- firmware/bridge-zephyr/subsys/lichen/ (parallel copy)\n\nReference: FIXME(OSCORE) comments at lichen_l2.c:279 and firmware/bridge-zephyr version\n\nParent: project-LICHEN-r6fu.2",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

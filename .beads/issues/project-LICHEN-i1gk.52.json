@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.52",
   "title": "[lichen_l2.c:1139-1141] Empty struct lichen_l2_ctx may cause compiler warnings",
   "description": "Round 2 gap analysis: Missed because focus was on runtime behavior, not compiler warnings.\n\nAt lines 1139-1141:\n```c\nstruct lichen_l2_ctx {\n    /* Empty by design - see comment above */\n};\n```\n\nAn empty struct has size 0 in C (unlike C++ where it has size 1). While the comment explains why it's empty, some compilers emit warnings for zero-size structures. GCC -Wpedantic or -Wempty-struct may warn about this.\n\nThe code works correctly - NET_DEVICE_INIT just needs a type name, not actual data. But it could cause spurious warnings in strict build configurations.\n\nFix: Add a dummy uint8_t field if warnings are observed, or suppress the warning for this file.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "feature",
   "assignee": "Mark Atwood",

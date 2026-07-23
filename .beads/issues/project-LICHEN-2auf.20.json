@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.20",
   "title": "Reject unsupported signed-encrypted link frames",
   "description": "Align Python/Rust/C and the draft on signed+encrypted link behavior. Since Python/Rust do not implement encrypted link payloads, reject S=1,E=1 frames consistently rather than allowing C to emit frames with mismatched signature coverage. Document the unsupported status and add parser/TX tests.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

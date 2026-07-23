@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.61",
   "title": "lichen_l2.c:720 peer eviction does not secure_zero old pubkey",
   "description": "Gap found: Round 1 missed SECURITY defense-in-depth issue. On LRU peer eviction (lines 715-720), the old peer's pubkey is overwritten via memcpy without first being secure_zero'd. While the window is extremely narrow (a few instructions), defense-in-depth suggests zeroing key material before overwriting. Compare with peer_remove at line 796 which correctly calls secure_zero. HOW TO FIX: Add secure_zero(peer_table[slot].pubkey, sizeof(peer_table[slot].pubkey)) before line 720 and same for eui64.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

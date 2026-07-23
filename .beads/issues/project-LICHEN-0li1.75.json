@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.75",
   "title": "[ipv6_addr.c:88-91] lichen_sha256 error handling hides error code details",
   "description": "Gap: The lichen_sha256 call at line 88 returns a negative errno, but the error message only logs %d which doesn't distinguish failure modes.\n\nWhat: Line 88-91 check lichen_sha256 return value. The error is logged as 'SHA-256 error %d' but lichen_sha256 only returns 0 or -EIO (per lichen_util.c). The caller cannot distinguish between init/update/final failure.\n\nWhy it matters: If SHA-256 fails during pubkey-to-IID derivation, debugging requires knowing which stage failed. The conflated error handling in lichen_sha256() (lines 27-30 in lichen_util.c) returns -EIO for any failure. Adding context to the log message or returning more specific errors would improve debuggability.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

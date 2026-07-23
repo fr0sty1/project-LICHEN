@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-z85",
   "title": "Wire lichend --sim to async SimClient (REGISTER on connect, TX/RX loop)",
   "description": "After fixing the SimClient protocol, update lichend --sim in lichend.rs to: REGISTER on connect (using node ID from config), use TX to send SCHC frames, use RX to receive them, replacing the old raw-SLIP-over-TCP approach.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Frost",

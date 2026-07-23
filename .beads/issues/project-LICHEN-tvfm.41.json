@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.41",
   "title": "[lichen_l2.c:806] lichen_l2_flags returns flags without checking interface state",
   "description": "Function: lichen_l2_flags (static L2 callback). Precondition: The function ignores the iface parameter (ARG_UNUSED) and returns fixed flags without checking if the interface is initialized. If called on a failed-init interface, it would still report NET_L2_MULTICAST. Zephyr's net stack probably doesn't call l2-\u003eflags() for failed interfaces, but this differs from lichen_l2_send/lichen_l2_enable which check iface_init_failed. Consistency would suggest checking here too. Priority 3 - minor inconsistency, unlikely to cause issues.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "issue",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kad6",
   "title": "task",
   "description": "rust/lichen-embassy/src/esp32s3.rs:15-25 - Uses `lora_phy::{RadioError, InterfaceVariant}` but these are private in lora-phy 3.x. Correct imports: `lora_phy::mod_params::RadioError` and `lora_phy::mod_traits::InterfaceVariant`. Module fails to compile with feature `esp32s3`.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

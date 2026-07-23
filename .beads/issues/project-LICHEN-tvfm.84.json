@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.84",
   "title": "[lichen_l2/lora_l2] iface_init_failed not cleared on successful re-init",
   "description": "Cross-file state machine bug: The iface_init_failed atomic is set to 1 when lichen_l2_iface_init() fails (lines 922, 931, 946, 1035). However, there is no code path that sets it back to 0.\n\nNET_DEVICE_INIT calls lichen_l2_iface_init() only once at system startup. If it fails:\n1. iface_init_failed is set to 1\n2. All subsequent L2 operations (send, enable, RX callback) are rejected\n3. The system is permanently in a failed state\n\nThere is no recovery mechanism:\n- lichen_l2_enable(true) checks iface_init_failed and returns -ENODEV\n- There's no 'lichen_l2_deinit()' or 'lichen_l2_reinit()' function\n\nThis may be intentional (init failure = system startup failure = reboot required), but it's not documented.\n\nLocation: lichen_l2.c (iface_init_failed declaration and all set sites)\n\nImpact: If init fails, the only recovery is reboot. Should be documented.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

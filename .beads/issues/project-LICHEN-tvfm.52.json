@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.52",
   "title": "[lichen_l2] replay_table not cleared in enable disable cycle",
   "description": "Cross-file state machine bug: lichen_l2_enable(false) clears replay_table (line 786), but if enable(true) fails at lichen_lora_l2_start() (line 729), the rollback path clears link_ctx_initialized but does NOT clear replay_table.\n\nState inconsistency:\n1. Interface running, replay_table has peer windows\n2. lichen_l2_enable(false) called - clears link_ctx, replay_table, peer_table\n3. lichen_l2_enable(true) called\n4. link_ctx_initialized set to 1, replay_table re-init (line 716)\n5. lichen_lora_l2_start() fails (e.g., lora_config returns error)\n6. Rollback sets link_ctx_initialized=0, calls lichen_link_cleanup()\n7. But replay_table is left initialized with empty windows\n\nThis is actually NOT a bug - the replay_table being initialized with empty windows is fine for the next enable(true) attempt. The init path doesn't depend on replay_table being in any particular state.\n\nActually, re-reading: the rollback at lines 739-746 does NOT call lichen_replay_table_init(). But since replay_table was just initialized at line 716, it's already empty. No actual bug here.\n\nCancel this - not a real bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

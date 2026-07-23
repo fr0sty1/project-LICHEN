@@ -3,7 +3,7 @@
   "title": "Research: audit LCI spec vs current Zephyr implementation gaps",
   "description": "Compare spec/11-lci.md section 17 against current Zephyr CoAP server implementation. Document: (1) which resources exist and match spec, (2) which resources are missing, (3) which transports are implemented (SLIP, BLE IPSP, BLE NUS, SPP), (4) gaps in CBOR encoding vs spec, (5) Observe support status. Output: gap matrix with file:line references for existing code, list of missing pieces as input for child beads.",
   "acceptance_criteria": "Gap matrix exists; each gap has enough detail to create a focused implementation bead",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "grinder",

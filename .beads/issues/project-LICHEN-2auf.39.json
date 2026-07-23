@@ -3,7 +3,7 @@
   "title": "Recover Python secure CoAP ordering",
   "description": "Recover atomic request-token consumption, EDHOC TOFU-before-context publication, fail-closed config writes, SOS type validation, and bounded sent-message retention.",
   "acceptance_criteria": "Tokens consume exactly once under concurrency; TOFU mismatch stores no context; config writes default deny; malformed SOS rejects; retention is bounded; focused tests, Ruff, mypy, and three reviews pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

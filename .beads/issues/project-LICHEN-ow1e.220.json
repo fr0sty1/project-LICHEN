@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-ow1e.220",
   "title": "GRADIENT_TIMEOUT_MS duplicated between gradient.py and processor.py",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.13",
   "title": "Good: lora_l2.c generates EUI-64 via SHA-256 hash of full hardware ID",
   "description": "Location: lora_l2.c:83-133\n\ngenerate_eui64() hashes the full hardware ID rather than using raw bytes. The comment at lines 69-76 explains why: MCU-specific layouts vary (STM32 has shared lot/wafer bytes, ESP32 is only 6 bytes, nRF52 is 8 bytes). Hashing mixes all entropy uniformly.\n\nWhy this is good: A naive implementation would use raw hwid bytes, which works until you encounter an MCU where bytes 0-3 are shared across production batches. The defensive hash-based approach prevents subtle collisions that would only manifest at manufacturing scale. The SECURITY comments explaining collision probability (2^32 for 50%) are also valuable for reviewers assessing the tradeoff.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

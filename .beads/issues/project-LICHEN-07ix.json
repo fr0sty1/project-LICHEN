@@ -2,7 +2,7 @@
   "id": "project-LICHEN-07ix",
   "title": "No validation of ICMPv6 code field",
   "description": "File: rust/lichen-ipv6/src/lib.rs:740-741\n\nThe ICMPv6 code field is parsed but ignored:\n```rust\nlet msg_type = icmpv6_payload[0];\nlet _code = icmpv6_payload[1];\n```\n\nPer RFC 4443:\n- Echo Request/Reply: code MUST be 0\n- Per RFC 4861, NS: code MUST be 0\n- Per RFC 4861, NA: code MUST be 0\n\nProcessing packets with invalid code values could:\n1. Accept malformed packets that should be rejected\n2. Create interoperability issues with strict implementations\n3. Make debugging harder (invalid packets accepted silently)\n\nFix: Validate code == 0 for the handled message types and return Ok(None) for invalid codes.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

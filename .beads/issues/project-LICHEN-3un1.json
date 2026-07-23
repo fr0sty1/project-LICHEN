@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3un1",
   "title": "Kconfig ordering fix for gateway tests",
   "description": "Tests that rsource gateway Kconfig fail via twister because LICHEN subsystem symbols (LICHEN_MESHTASTIC_CODEC, LICHEN_LINK, etc.) are not defined when gateway Kconfig's depends on clauses are evaluated. Fixed by adding rsource subsys/Kconfig before rsource gateway/Kconfig in affected tests. Affected: meshtastic_ble, meshtastic_adapter, meshtastic_gateway_adapter, meshcore_gateway_adapter, inbound_lci_location.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

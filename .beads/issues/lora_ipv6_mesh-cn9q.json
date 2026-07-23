@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-cn9q",
   "title": "Web status dashboard (FastAPI + HTMX)",
   "description": "Lightweight web dashboard that proxies the node's CoAP resources into a browser UI. FastAPI server makes CoAP requests to a local node and renders status/neighbors/presence/messages. Single-file Python app with embedded HTML template using HTMX for auto-refresh.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "owner": "mark.frost@gmail.com",

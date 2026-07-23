@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-gb3",
   "title": "Phase 6: Local Client Interface",
   "description": "IPv6+CoAP interface for phone apps and local clients. Exit criteria: SLIP framing works over serial, BLE UART works, CoAP resources implemented, client can address mesh nodes through local node.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",

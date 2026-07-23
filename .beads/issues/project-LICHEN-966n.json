@@ -2,7 +2,7 @@
   "id": "project-LICHEN-966n",
   "title": "task",
   "description": "python/src/lichen/interface/kiss/serial.py:109-114 - TOCTOU race in _read() closure. Between checking 'if self._serial is None' and accessing 'self._serial.in_waiting', the main thread running close() can set self._serial = None. The executor thread could then get AttributeError: 'NoneType' object has no attribute 'in_waiting'. Failure scenario: recv() called, close() called concurrently, _read runs after _serial set to None.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

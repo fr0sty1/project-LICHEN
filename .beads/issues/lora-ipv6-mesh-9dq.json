@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-9dq",
   "title": "Define shared constants",
   "description": "Create shared header/module with: frequencies per region, sync word 0x34, CoAP ports (5683, 5684), MQTT-SN port (10883), SCHC rule IDs, RPL parameters. Must be usable from both Rust and C.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Frost",

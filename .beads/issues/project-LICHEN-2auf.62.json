@@ -5,7 +5,7 @@
   "design": "Keep this as a one-file hardening slice rather than coupling it to link wire-format recovery.",
   "acceptance_criteria": "Clock acquisition failure returns a deterministic error without consuming or corrupting queued frames; success behavior remains unchanged; a host fault-injection test covers the failure; sanitizer-compatible C tests and three independent reviews pass.",
   "notes": "Implemented fallible POSIX/Zephyr time acquisition returning -EIO before lock or mutation; default-deadline push validates first and uses one timestamp; uint32 wrap arithmetic is defined and half-range constraint documented. Host fault injection traverses platform helper and verifies queue count, full stats, output length/bytes, queued payload, invalid-argument precedence, and recovery. Plain and UBSan -Werror builds pass 18/18; AppleClang ASan hangs before main. Three direct hash-bound reviews found no in-scope blockers. Existing read concurrency/mutex lifecycle tracked as project-LICHEN-5ku5.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-q0p",
   "title": "LICHEN Node class (main integration)",
   "description": "Main Node class that integrates all protocol layers.\n\nNode class:\n- __init__(identity, radio, config)\n- Owns all layer instances\n- Manages lifecycle (start, stop)\n\nLayer instances:\n- radio: Radio (SimRadio or real)\n- link: LinkLayer\n- schc: SchcContext\n- ipv6: IPv6Layer\n- rpl: RplEngine\n- coap: aiocoap Site + LichenTransport\n\nPacket flow (RX):\nradio.receive() -\u003e link.receive() -\u003e schc.decompress() -\u003e\nipv6.process() -\u003e rpl.process() or coap.process()\n\nPacket flow (TX):\ncoap/app -\u003e ipv6.send() -\u003e schc.compress() -\u003e\nlink.send() -\u003e radio.transmit()\n\nAsync main loop:\n- Receive task: continuously receive and process\n- Trickle task: RPL DIO transmission\n- Application tasks: CoAP server, periodic beacons\n\nMethods:\n- async start() -\u003e None\n- async stop() -\u003e None\n- async send_message(dst, payload) -\u003e bool\n- get_status() -\u003e NodeStatus\n\nThis is the main entry point for running a LICHEN node.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

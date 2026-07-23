@@ -3,7 +3,7 @@
   "title": "RenodeServer\u003c-\u003eSimulation time-model mismatch (BARRIER_SYNC stalls at t=0; duplicate RX delivery)",
   "description": "## Problem\n\nRenodeServer uses non-blocking RX_POLL, which never puts the node into RX_WAIT state. In BARRIER_SYNC mode, `maybe_advance_time()` only advances when a node is in RX_WAIT, so sim time stays at 0. Result: transmissions never expire, same packet re-delivered 80+ times.\n\n## Solution: Interrupt-driven push\n\nReplace polling with push-based RX that matches real SX1262 hardware:\n\n```\n# Firmware issues SetRx (0x82) → SX1262.cs sends:\nRenode → Sim: RX_ENTER (0x24) + timeout_us\n\n# Sim puts node in RX_WAIT, BARRIER_SYNC can advance time\n# When packet arrives (or timeout), sim pushes:\nSim → Renode: RX_PACKET (0x27) + payload + rssi + snr\n         -or- RX_TIMEOUT (0x28)\n\n# SX1262.cs raises DIO1 → firmware ISR fires\n# Firmware issues SetStandby (0x80) → SX1262.cs sends:\nRenode → Sim: RX_EXIT (0x26)\n```\n\n## Why this works\n\n1. RX_ENTER puts node in RX_WAIT → BARRIER_SYNC unblocked\n2. Sim pushes exactly once per packet (no duplicates)  \n3. DIO1 interrupt matches real hardware behavior\n4. No polling = no wasted cycles = battery-friendly model\n\n## Acceptance Criteria\n\n- 2-node Renode mesh in BARRIER_SYNC mode delivers each frame exactly once\n- Receiving firmware logs inbound frame via DIO1 ISR path\n- No RX_POLL in protocol (deleted)",
   "acceptance_criteria": "Documented time-model choice for the Renode bridge; a 2-node Renode run delivers each frame exactly once to the receiving firmware.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

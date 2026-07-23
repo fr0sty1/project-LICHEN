@@ -2,7 +2,7 @@
   "id": "project-LICHEN-asgo",
   "title": "task",
   "description": "edhoc.rs tests - Only unit tests exist (test_initiator_creation, test_responder_creation, test_message_1_creation). No test exercises a full initiator\u003c-\u003eresponder handshake, which would have caught the context_2 mismatch bug. Need a test that: creates initiator and responder, exchanges message_1/message_2/message_3, and verifies both can export_oscore() successfully with matching keys.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

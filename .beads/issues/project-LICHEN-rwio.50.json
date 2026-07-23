@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.50",
   "title": "lichen_l2_send linearizes packet before checking HAVE_LICHEN_LINK",
   "description": "lichen_l2.c lines 162-170: The packet is linearized into tx_ipv6_buf before checking if LICHEN link layer is available. If HAVE_LICHEN_LINK is 0, the raw IPv6 is sent anyway, so linearization is still needed. Not an inefficiency - just noting the ordering is correct.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-6vy",
   "title": "Implement Transmission and airtime calculation",
   "description": "Create python/src/lichen/sim/transmission.py. Transmission dataclass: id (uuid), source_node_id, payload (bytes), tx_power_dbm, start_time_us, end_time_us, frequency_hz. Function airtime_us(payload_len: int) -\u003e int using fixed SF10/125kHz/CR4-5 parameters. Formula: T = (2^SF / BW) * (preamble + 4.25 + 8 + max(ceil((8*PL - 4*SF + 28 + 16) / (4*SF)) * CR, 0)). Preamble=8 symbols. Unit tests with known payload sizes.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

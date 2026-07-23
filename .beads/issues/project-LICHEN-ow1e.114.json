@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.114",
   "title": "node/secure: unprotect_request called on response lacks comment",
   "description": "In secure.rs:214, ctx.unprotect_request(...) is called to decrypt what's semantically a response. This is presumably correct for OSCORE's symmetric handling, but deserves a comment explaining why unprotect_request applies to responses.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

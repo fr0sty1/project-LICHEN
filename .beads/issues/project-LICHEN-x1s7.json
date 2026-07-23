@@ -2,7 +2,7 @@
   "id": "project-LICHEN-x1s7",
   "title": "TUI position parsing accepts malformed input with trailing commas",
   "description": "File: python/src/lichen/tui/app.py\nLines: 543-547\n\nThe position argument parsing:\n\n    try:\n        x, y, z = (float(v.strip()) for v in args.position.split(\",\"))\n        position = (x, y, z)\n    except ValueError:\n        parser.error(f\"Invalid position format: {args.position}\")\n\nThis correctly rejects wrong number of values, but allows:\n- Leading/trailing spaces (intended, using strip())\n- Empty strings after split if input is like \"1,,2\" - split produces ['1', '', '2'], float('') raises ValueError. This is handled.\n- But \"1,2,3,\" splits to ['1','2','3',''], which has 4 elements, causing ValueError on unpack. Also handled.\n\nActually this is fine. Let me check for real issues...\n\nActually wait, the issue is that if someone passes \"1.0,2.0,\" (trailing comma), split gives ['1.0', '2.0', ''], the generator tries float('') which raises ValueError. So this is caught.\n\nBut if they pass \"1.0,2.0,3.0,4.0\", the generator produces 4 floats, and unpacking to 3 variables raises ValueError. Caught.\n\nThis seems correct actually. I'll skip this one.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

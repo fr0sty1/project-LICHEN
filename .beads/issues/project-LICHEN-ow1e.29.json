@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.29",
   "title": "SimError wraps String in Server variant",
   "description": "lichen-sim/src/client.rs:32-43 defines:\n```rust\npub enum SimError {\n    Server { code: u8, message: String },\n    ...\n}\n```\n\nThe `message` field wraps a `String` instead of structured fields. This is fine for a binary crate (lichen-sim), but if the type is ever exported as a library API, consider replacing with typed error codes or Cow\u003c'static, str\u003e.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

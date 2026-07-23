@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2qo2",
   "title": "schnorr48: verify() does not reject low-order public keys",
   "description": "File: python/src/lichen/crypto/schnorr48.py\nLines: 129\n\nThe verify function checks if pubkey is a valid curve point:\n\n```python\nif not crypto_core_ed25519_is_valid_point(pubkey):\n    return False\n```\n\nHowever, crypto_core_ed25519_is_valid_point only checks that the point is on the Ed25519 curve. It does NOT reject low-order points (points with small order like the identity element, or points of order 2, 4, 8).\n\nLow-order points can be used in signature forgery attacks:\n- If pubkey is the identity point, then ePK = 0 for any e\n- This means R' = sB - 0 = sB\n- An attacker can forge signatures by choosing s such that H(sB || 0 || msg)[0:16] = e_received\n\nPyNaCl's nacl.bindings should provide crypto_core_ed25519_is_valid_point but this function may not check for low-order points in all libsodium versions.\n\nFix: Explicitly check for the 8 low-order points or use a cofactor-clearing verification. Alternatively, verify that the public key has order L (the main group order).",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -3,7 +3,7 @@
   "title": "gateway: PUT /config accepts arbitrary payload without CBOR decoding",
   "description": "Code review finding from the map/list and magic-byte audit. The Zephyr gateway advertises /config as a CBOR resource and GET returns a CBOR map, but config_put() does not decode or validate the request body; it returns 2.04 Changed for any payload and does not update s_tx_power_dbm. This means malformed CBOR, a valid CBOR list instead of the expected map, or an unrelated map all look successful. The project already uses zcbor in Zephyr subsystems and the t1000_e gateway config enables CONFIG_ZCBOR, so this should use a real decoder rather than byte peeking or accepting raw bytes. Evidence: lichen/apps/gateway/src/main.c:262-292 hand-encodes {\"tx_power_dbm\": \u003cval\u003e} for GET; lichen/apps/gateway/src/main.c:305-311 says CBOR body parsing deferred and unconditionally returns CHANGED; lichen/apps/gateway/boards/t1000_e_nrf52840.conf:27 enables CONFIG_ZCBOR. Acceptance: decode PUT bodies as a bounded CBOR map, reject malformed CBOR and non-map payloads with Bad Request, apply only recognized keys such as tx_power_dbm with range checks, and add tests for malformed CBOR, list payload, unknown-only map, and valid map in arbitrary key order.",
   "acceptance_criteria": "After implementation, run the relevant tests/builds and then complete two separate code-review passes before closing. Each review pass should inspect the produced code against this Bead's acceptance criteria and file follow-up Beads for any discovered issues.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

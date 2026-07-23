@@ -2,7 +2,7 @@
   "id": "project-LICHEN-4z0d",
   "title": "Silent OSError handling hides file access failures",
   "description": "## Location\nscripts/analyze-hetero-fleet.py:54\n\n## Description\nWhen read_text() raises OSError, the exception is caught and the file is silently skipped via 'continue'. No warning is logged. Users won't know why a node is missing from the report, especially if the file exists but has permission issues.\n\n## Failure Scenario\nA log file py-1000.log exists but has mode 000 (no read permission). The OSError is caught and silently ignored. The final report shows 0 Python nodes, and the user assumes no Python nodes participated in the test, when actually the data exists but couldn't be read.\n\n## Category\nerror-handling",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

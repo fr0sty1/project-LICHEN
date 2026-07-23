@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.44",
   "title": "hwinfo_get_device_id return value bounds not validated before cast to size_t",
   "description": "In lora_l2.c:87-93, hwinfo_get_device_id() returns ssize_t. The code checks if hwid_len \u003c= 0, but does not check if hwid_len exceeds the buffer size (16 bytes). While hwinfo_get_device_id() SHOULD respect the sizeof(hwid) argument, defensive coding requires validating the return value does not exceed the buffer.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:87-93\n\nCode flow:\nhwid_len = hwinfo_get_device_id(hwid, sizeof(hwid));  // hwid is 16 bytes\nif (hwid_len \u003c= 0) { ... }\n// hwid_len cast to size_t on line 105\ntc_sha256_update(\u0026sha_state, hwid, (size_t)hwid_len);\n\nIf hwinfo_get_device_id() misbehaves and returns a value \u003e 16 (due to driver bug), tc_sha256_update() would read past the hwid buffer, causing an out-of-bounds read.\n\nImpact: Out-of-bounds read if Zephyr hwinfo driver misbehaves. Defense-in-depth issue. The attacker cannot control hwinfo_get_device_id() return value remotely.\n\nFix: Add check: if (hwid_len \u003e sizeof(hwid)) { LOG_ERR(...); return -EINVAL; }",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

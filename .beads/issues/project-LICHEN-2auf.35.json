@@ -5,7 +5,7 @@
   "design": "Transplant only the 33 inventoried link migration paths from 8e02a7ae9 into the clean integration worktree. Validate vectors and each implementation before committing. Keep transport, routing, simulation, and tracker metadata out except where compilation proves a direct API dependency.",
   "acceptance_criteria": "C, Python, and Rust implementations match independent canonical vectors byte-for-byte; focused link/Schnorr tests pass; malformed/trailing/encrypted/maximum-frame/elided-destination cases pass; cross-language interop passes; three independent reviews report no unresolved correctness findings.",
   "notes": "Discovered during recovery inventory. A trial of child 2auf.25 on clean main failed only because test_integer_seqnum_frame_roundtrip expects the migrated unsigned-MIC format; main still requires a 4-byte MIC. Therefore 2auf.25 must follow this migration.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

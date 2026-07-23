@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.91",
   "title": "Router.gpsr_forward accepts None coords without validation",
   "description": "**Location:** python/src/lichen/routing/router.py:500-528\n\n**Risk:** The `gpsr_forward()` method accepts `dst_coords: tuple[float, float]` but several callers pass coords from gradient entries that may be None. The method does check `self.node_coords is None` (line 507) but not `dst_coords`.\n\n**Trigger:** Call `gpsr_forward(None)` or `gpsr_forward((float('nan'), 0))`.\n\n**Bad behavior:** TypeError or unpredictable haversine calculation with NaN values producing unexpected routing decisions.\n\n**Pattern:** Geographic coordinates need validation (lat in [-90,90], lon in [-180,180]). NaN/inf values should be rejected.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

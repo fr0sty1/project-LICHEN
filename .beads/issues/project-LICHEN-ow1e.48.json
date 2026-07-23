@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.48",
   "title": "OSCORE Context struct missing Debug derive (needs sensitive data redaction)",
   "description": "lichen-oscore/src/lib.rs:104-127 defines:\n```rust\n#[derive(Clone, Zeroize)]\n#[zeroize(drop)]\npub struct Context {\n    master_secret: [u8; KEY_LEN],\n    sender_key: [u8; KEY_LEN],\n    recipient_key: [u8; KEY_LEN],\n    ...\n}\n```\n\nMissing Debug derive. However, a manual Debug impl is needed to redact sensitive fields (keys). The keys.rs module shows how: `write!(f, \"Context{{ master_secret: [REDACTED], ... }}\")`.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

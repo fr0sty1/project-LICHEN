@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.9",
   "title": "ipv6_addr.h: unnecessary stdio.h include",
   "description": "firmware/bridge-zephyr/subsys/lichen/ipv6_addr.h includes \u003cstdio.h\u003e at line 26, but the header does not use any stdio functions. snprintf is used in ipv6_addr.c, which already includes the header. Remove \u003cstdio.h\u003e from ipv6_addr.h to reduce transitive dependencies and improve compile times.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

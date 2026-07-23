@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.66",
   "title": "lora_l2.c + lichen_l2.c: lichen_lora_l2_start idempotent but enable path may double-register callback",
   "description": "Cross-file interaction inconsistency: lichen_lora_l2_start() is idempotent (returns 0 if already running), but lichen_l2_enable(true) unconditionally registers RX callback.\n\nlora_l2.c:610-611: start() returns 0 immediately if state==RUNNING\n\nlichen_l2.c:1113: ret = lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);\nlichen_l2.c:1128: ret = lichen_lora_l2_start();\n\nSCENARIO:\n1. System running, link_ctx_initialized=1, callback registered\n2. Something calls lichen_l2_enable(true) again\n3. Line 1061 checks link_ctx_initialized, it's already 1, skips init block\n4. Line 1113 registers callback again (idempotent, just overwrites)\n5. Line 1128 calls start(), returns 0 (already running)\n\nThis is SAFE but wasteful. The set_rx_callback at line 1113 is unconditional even when already running.\n\nP4: Not a bug, just minor inefficiency. Could add 'if (!is_running())' guard around callback registration.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

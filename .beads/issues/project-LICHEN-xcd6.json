@@ -2,7 +2,7 @@
   "id": "project-LICHEN-xcd6",
   "title": "Create LICHEN multi-runtime fleet AMI",
   "description": "Build and validate an ARM64 us-west-2 AMI in personal AWS account 210337117346 for Zephyr-in-Renode plus native Rust and Python fleet nodes. Bake runtimes and dependencies only; exclude repository state and credentials. Tag all temporary and resulting resources Project=LICHEN.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

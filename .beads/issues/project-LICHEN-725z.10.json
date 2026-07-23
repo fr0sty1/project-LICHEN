@@ -2,7 +2,7 @@
   "id": "project-LICHEN-725z.10",
   "title": "Potential use of uninitialized link_key in lichen_l2_input",
   "description": "lichen_l2.c:541-544 — When has_link_key is true, link_key is copied. But only flag is checked, not whether key was actually initialized with valid material. Could use uninitialized memory as AES-CCM key.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

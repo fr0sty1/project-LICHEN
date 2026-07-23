@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1v5t",
   "title": "task",
   "description": "Policy: appendix-c-safety.md. Enable -fsanitize=memtag (ARM MTE) or -fcf-protection=full (Intel CET) for Linux border router builds.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

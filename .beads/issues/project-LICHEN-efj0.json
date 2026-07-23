@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-efj0",
   "title": "Rust code quality: panic removal and logging review",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

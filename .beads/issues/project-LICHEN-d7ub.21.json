@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.21",
   "title": "crash_info.c:35 uninitialized __noinit read",
   "description": "Grep pattern: __noinit without initialization check. At line 35, crash_info_store() reads crash_info.magic without first checking if the __noinit section contains valid data. On first boot after power cycle, __noinit memory contains garbage, not zero. While the code handles magic != CRASH_MAGIC by initializing count, the comparison itself reads uninitialized memory which is technically undefined behavior. The fix is to explicitly initialize crash_info.count = 0 unconditionally when magic is invalid, which the code does, but the comparison itself should be treated as potentially reading garbage. This is P3 because in practice the code works (garbage != CRASH_MAGIC with very high probability) and the behavior is correct.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

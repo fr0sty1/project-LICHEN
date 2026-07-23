@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.71",
   "title": "[ipv6_addr.c:88] lichen_sha256 output not validated against buffer size",
   "description": "Completeness: Buffer bounds checking category.\n\nIn lichen_pubkey_to_iid() at line 88, lichen_sha256() writes to hash[TC_SHA256_DIGEST_SIZE] (32 bytes), then line 105 copies 8 bytes to iid.\n\nThe code is correct, but relies on implicit coupling:\n1. hash is declared as uint8_t hash[TC_SHA256_DIGEST_SIZE]\n2. TC_SHA256_DIGEST_SIZE is validated to be 32 at lichen_util.c:12\n3. memcpy copies 8 bytes which is \u003c 32\n\nHowever, there is no BUILD_ASSERT in ipv6_addr.c verifying TC_SHA256_DIGEST_SIZE \u003e= 8. If a future refactor changed the hash algorithm to something smaller, the memcpy would overflow.\n\nFix: Add BUILD_ASSERT(TC_SHA256_DIGEST_SIZE \u003e= 8) in ipv6_addr.c near line 75.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

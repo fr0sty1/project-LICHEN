@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.77",
   "title": "[lora_l2.c:507-509] lora_data.eui64 written without zeroing first",
   "description": "Gap: generate_eui64 writes directly to lora_data.eui64 on success, but on failure the buffer may contain partial/stale data.\n\nWhat: Lines 507-509 set lora_data fields. Line 517 calls generate_eui64(lora_data.eui64). On failure, generate_eui64 zeros its output (line 325), but lora_data.eui64 is never explicitly pre-zeroed before the call.\n\nWhy it matters: If generate_eui64 is modified to remove its cleanup code, or if lora_data.eui64 was partially written by a previous failed init attempt (since init is idempotent), stale EUI-64 data could persist. While current code is safe due to generate_eui64's cleanup, the defensive approach would be to zero lora_data.eui64 before the call.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

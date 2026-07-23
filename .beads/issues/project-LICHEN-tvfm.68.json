@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.68",
   "title": "[lichen_l2.c:1161] src_eui64 initialized to zero but may be partially filled",
   "description": "Gap found: Output parameter initialization in lichen_l2_input.\n\nWhy this was missed: Focus was on rx_ctx, not src_eui64 handling.\n\nThe actual bug: Line 1161 initializes src_eui64 to all zeros: 'uint8_t src_eui64[8] = {0}'. Then peer_try_all_pubkeys() fills it on success. However, if peer_try_all_pubkeys() fails (line 1166-1171), src_eui64 remains zeroed and is not used. This is fine.\n\nBut consider: if lichen_link_rx() partially fills src_eui64 before failing (e.g., parses source address field, then fails MIC check), the array would contain partial data. Since we initialize to zero and don't use it on failure, this is not a security issue.\n\nThe LOG_DBG at lines 1182-1185 only runs on success, so partial data never gets logged.\n\nVerified correct. Priority 4 - defensive initialization is good practice.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

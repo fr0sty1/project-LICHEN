@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1s84",
   "title": "task",
   "description": "rust/lichen-ipv6/src/lib.rs:459-471 - The build() method uses 'let _ = pkt.push(...)' and 'let _ = pkt.extend_from_slice(data)' which silently ignores capacity errors from the heapless Vec\u003cu8, 128\u003e. If echo data exceeds 120 bytes (128 minus 8-byte header), data is silently truncated. The checksum is then computed over incomplete data, producing a malformed packet. Fix: return Result and propagate errors, or cap input data size with explicit check.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

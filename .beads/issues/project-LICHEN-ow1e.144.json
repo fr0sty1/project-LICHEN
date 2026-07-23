@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.144",
   "title": "rpl/dodag.py: hysteresis logic is inverted and confusing",
   "description": "src/lichen/rpl/dodag.py:151-158 has parent selection hysteresis logic:\n    if best_cost \u003e current_cost - self.parent_switch_threshold:\n        best, best_cost = current, current_cost\n\nThe conditional reads 'if best is worse than current minus threshold, keep current.' The subtraction direction is non-obvious. RFC 6550 MRHOF phrases this as 'switch only if improvement exceeds threshold.'\n\nFix: Rewrite as: improvement = current_cost - best_cost; if improvement \u003c self.parent_switch_threshold: best = current. Add comment citing RFC 6550 section 3.6.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

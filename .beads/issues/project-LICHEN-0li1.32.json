@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.32",
   "title": "[lichen_l2.c:548-549] lichen_link_rx called multiple times for same frame",
   "description": "What: peer_try_all_pubkeys() iterates through all peers and calls lichen_link_rx() for each one to try signature verification. This means lichen_link_rx() is called N times for each incoming frame, where N is the number of active peers.\n\nWhy it matters: This is the intended design (documented in comment at line 475), but has performance implications:\n1. Each call to lichen_link_rx() performs SCHC decompression\n2. Each call performs MIC verification (AES-CCM or CRC32)\n3. Only signature verification differs between iterations\n\nThe performance impact is bounded by CONFIG_LICHEN_LINK_MAX_NEIGHBORS (max 64). At LoRa speeds, this overhead is acceptable, but it's not optimal.\n\nAlternative design: Parse frame once, extract signature, try pubkeys against signature only. This would reduce redundant work.\n\nMarking as code smell/optimization opportunity rather than bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

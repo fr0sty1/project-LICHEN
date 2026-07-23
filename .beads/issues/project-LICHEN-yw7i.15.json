@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yw7i.15",
   "title": "Thread abort adds unnecessary timeout on clean stop",
   "description": "lora_l2.c:339-344 waits RX_TIMEOUT_MS + 1000ms before aborting thread. In normal stop scenarios, the thread exits quickly after running flag clears. The 6-second total wait (5s timeout + 1s) is excessive for the common case. Consider: k_thread_join(..., K_MSEC(100)) then abort, or signal via semaphore for faster response.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.24",
   "title": "mypy: misc remaining errors (operator, call-arg, assignment, index)",
   "description": "8 remaining mypy errors:\n- 2 operator errors: src/lichen/schc/headers.py:152 (None \u0026 int), src/lichen/interface/handler.py:211 (object * int)\n- 2 call-arg errors: src/lichen/sim/events.py:337,347 (unexpected 'observer' kwarg to Logger.debug)\n- 2 assignment errors: src/lichen/interface/kiss/bridge.py:340 (AprsRej vs AprsAck), src/lichen/tui/native.py:2344 (transport type mismatch)\n- 1 index error: src/lichen/interface/handler.py:127 (int index on dict[ConfigKey, str])\n- 1 unused-ignore: src/lichen/sim/api.py:427 (stale type: ignore comment)\n\nFix each individually based on error type.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

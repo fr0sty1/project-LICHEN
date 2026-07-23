@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.23",
   "title": "lora_l2.c:701 lichen_lora_l2_stop first state check without mutex",
   "description": "Contract violation: lichen_lora_l2_stop() - Line 705 checks state without mutex, then double-checks under mutex at 712. However, between lines 705 and 709 (mutex lock), concurrent stop() could acquire mutex first, complete, and release. When this thread gets mutex at 712, state is STOPPED, it returns 0, but callback was cleared by the first stop(). This is benign (idempotent behavior) but the early return at 706 could miss this. WHY: Two concurrent stops return 0 with one doing work, other returning early. This is actually correct behavior but confusing. HOW to fix: No fix needed, but add comment explaining concurrent stop() is intentionally idempotent.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

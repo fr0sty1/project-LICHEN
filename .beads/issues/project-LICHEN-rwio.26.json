@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.26",
   "title": "main.c goto-based error handling could use early-return pattern instead",
   "description": "main.c lines 106-127: Uses goto main_loop for error cases. The function is short and each error path just logs and continues, so early-return with if-else chains would be equivalent and avoid the goto. However, this is a minor style preference - the current code is readable and the goto is clearly labeled. No strong recommendation to change.\n\nLocations: main.c lines 106-109, 115-119, 123-127",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

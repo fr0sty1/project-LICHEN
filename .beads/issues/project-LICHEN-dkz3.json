@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dkz3",
   "title": "docs: require EC2 Zephyr builds to use prepared EBS cache",
   "description": "User clarified that the prepared Zephyr EBS builder cache should be used whenever EC2 is used for Zephyr builds/tests. Scope: update AGENTS.md and Beads persistent memory to make the EBS cache the default/required EC2 path, not merely a preference; verify the wording and searches.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "chore",
   "assignee": "Mark Atwood",

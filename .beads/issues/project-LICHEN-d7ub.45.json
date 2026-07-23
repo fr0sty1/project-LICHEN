@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.45",
   "title": "lichen_l2.c:1252 rx_mutex lock timeout could leave module in inconsistent state",
   "description": "In lichen_l2_enable() disable path at lines 1251-1266:\n```c\nk_mutex_lock(\u0026tx_mutex, K_FOREVER);\nif (k_mutex_lock(\u0026rx_mutex, K_MSEC(100)) != 0) {\n    LOG_ERR(...);\n    atomic_set(\u0026link_ctx_initialized, 0);\n    k_mutex_unlock(\u0026tx_mutex);\n    return -EBUSY;\n}\natomic_set(\u0026link_ctx_initialized, 0);\nlichen_link_cleanup(\u0026link_ctx);\n...\n```\n\nIf the rx_mutex lock times out (line 1252), the code:\n1. Sets link_ctx_initialized = 0 (line 1263)\n2. Returns -EBUSY without calling lichen_link_cleanup()\n\nThis means link_ctx is NOT cleaned up. It still contains:\n- Potentially valid link_key\n- Sequence number state\n- Other context\n\nThe next enable() will see link_ctx_initialized == 0 and call lichen_link_init() which will re-initialize link_ctx. But lichen_link_init() may not zero all fields if it assumes the struct was previously clean.\n\nLooking at line 1082 in the enable path:\n```c\nsecure_zero(\u0026link_ctx, sizeof(link_ctx));\nlichen_link_init(\u0026link_ctx, eui64_copy);\n```\n\nThe enable path does call secure_zero before init. So stale data will be cleared.\n\nHOWEVER: The comment at lines 1258-1262 acknowledges this:\n'This ensures the next enable() will re-initialize link_ctx rather than use stale state.'\n\nAnd the enable path at lines 1081-1083 does secure_zero(\u0026link_ctx) before lichen_link_init(). So the stale key material WILL be cleared on next enable.\n\nNO BUG - the recovery path handles this correctly.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "note",
   "assignee": "Mark Atwood",

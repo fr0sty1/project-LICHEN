@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.71",
   "title": "lichen_util.c:21 lichen_sha256 NULL+0 handling inconsistent with TinyCrypt",
   "description": "Gap found: Round 1 missed API edge case. lichen_sha256() at line 21 allows input==NULL when inlen==0, intending to support 'hash nothing'. However, TinyCrypt's tc_sha256_update() rejects NULL data even with datalen==0 (it checks data==NULL before checking datalen==0). Result: lichen_sha256(NULL, 0, output) passes the EINVAL check but then fails with -EIO when TinyCrypt rejects it. This is inconsistent: caller expects success for zero-length input but gets I/O error. HOW TO FIX: Either (a) reject NULL input entirely (change line 21 to 'input == NULL' without the inlen check), or (b) handle zero-length specially before calling TinyCrypt. Very minor - unlikely to be called in practice.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

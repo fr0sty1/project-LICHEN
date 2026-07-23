@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.68",
   "title": "[lichen_l2.c:1071-1075] peer_table clear loop does not zero last_seen or padding",
   "description": "Completeness: Memory safety category - secure_zero not applied to all fields.\n\nIn lichen_l2_enable() disable path (line 1071-1075), the peer_table clear loop zeros pubkey and eui64 via secure_zero(), but does not clear:\n1. last_seen (int64_t) - contains timing information that could leak peer activity\n2. Potential padding bytes between fields\n\nWhile last_seen is not cryptographic material, it leaks when peers were last active, which is timing side-channel information. The enable path at line 1319 uses memset(peer_table, 0, sizeof(peer_table)) which does clear everything but is not secure_zero().\n\nFix: Use secure_zero on entire entry, or add last_seen = 0 after setting active = false.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

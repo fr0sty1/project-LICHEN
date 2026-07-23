@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.108",
   "title": "[lichen_l2.c:780-781] atomic_set(link_ctx_initialized, 0) before lichen_link_cleanup timing",
   "description": "Category not checked: Atomic ordering and memory barriers\n\nBug found: In lichen_l2_enable() disable path, lines 780-781:\n  atomic_set(\u0026link_ctx_initialized, 0);\n  lichen_link_cleanup(\u0026link_ctx);\n\nThe atomic_set happens BEFORE cleanup. This means:\n1. Thread A (disable): sets flag to 0\n2. Thread B (RX callback): reads flag as 0, skips processing\n3. Thread A (disable): calls cleanup\n\nThis is correct - the flag gates access, so clearing it first prevents new accesses.\n\nBUT: What if Thread B already passed the flag check at line 1109 and is in the middle of lichen_link_rx() when Thread A clears the flag and starts cleanup?\n\nAnswer: This is handled by holding both tx_mutex and rx_mutex (lines 778-779) - Thread B must be holding rx_mutex to call lichen_link_rx(), so Thread A blocks until Thread B finishes.\n\nActually the sequence is:\n1. Thread A: acquires tx_mutex, rx_mutex (lines 778-779)\n2. Thread A: clears flag, calls cleanup\n3. Thread A: releases mutexes\n\nSo any in-flight RX completes before cleanup. The code is correct.\n\nWithdrawing this finding - the mutex acquisition makes the sequence safe.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

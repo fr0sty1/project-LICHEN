@@ -2,7 +2,7 @@
   "id": "project-LICHEN-16vy",
   "title": "SLIP StreamDecoder drops byte after invalid ESC instead of passing it through",
   "description": "File: python/src/lichen/slip/codec.py\nLine: 107\n\nRFC 1055 states: 'If the SLIP code receives a SLIP ESC character that is not followed by either a SLIP ESC_END or SLIP ESC_ESC character, there has been a framing error in the line and the byte should be passed on as is.'\n\nCurrent code in StreamDecoder.feed():\n```python\nif self._escaped:\n    self._escaped = False\n    if byte == ESC_END:\n        self._buf.append(END)\n    elif byte == ESC_ESC:\n        self._buf.append(ESC)\n    # else: invalid escape — silently drop (best-effort on lossy links)\n```\n\nWhen ESC is followed by an invalid byte (not ESC_END or ESC_ESC), the byte is dropped entirely. Per RFC 1055, the ESC should be ignored but the following byte should be passed through as data.\n\nExample: If input is `ESC 0x50`:\n- Current behavior: 0x50 is dropped\n- RFC behavior: 0x50 should be appended to the buffer\n\nFix: Add `self._buf.append(byte)` in the else branch.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

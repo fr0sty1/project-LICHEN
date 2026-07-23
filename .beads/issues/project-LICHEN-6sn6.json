@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-6sn6",
   "title": "codereview-pass-2: TOC lists '6. Rule Versioning' but section duplicates content from 03-adaptation.md:5.7; should reference or remove to avoid duplication in draft-lichen-schc-lora-00.md:39,400",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

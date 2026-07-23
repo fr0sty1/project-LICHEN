@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.31",
   "title": "[lora_l2.c:484] lichen_lora_l2_init idempotency check outside mutex creates observation window",
   "description": "Contract: lichen_lora_l2_init is documented as idempotent.\nViolation: The function acquires mutex (line 498) then checks state (line 502). A caller that doesn't hold the mutex could observe intermediate states. For example, thread A is inside init() generating EUI-64, thread B calls init(), acquires mutex, sees state != UNINIT (because A already transitioned), returns success - but A hasn't finished generating EUI-64 yet. Wait, no - A holds the mutex, so B blocks until A releases. Let me re-read...\nActually: The current implementation IS correct. Thread A holds mutex through the entire init. Thread B blocks at mutex acquisition. When A releases, B sees final state and returns correctly. The comment at lines 488-497 explains this correctly.\nImpact: None - this is not actually a bug. The implementation is correct.\nMitigation: No action needed - closing as false positive.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

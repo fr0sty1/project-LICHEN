@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.29",
   "title": "lichen_lora_l2_tx takes non-const pointer implying buffer may be modified",
   "description": "Location: lora_l2.h:130-141, lora_l2.c:431\n\n**What goes wrong:** The function signature is `int lichen_lora_l2_tx(uint8_t *data, size_t len)` with a comment warning that the buffer may be modified by DMA or in-place encryption. However, lichen_l2_send() at line 273 passes tx_frame_buf which is static. If lora_send() modifies the buffer, the next TX might start with corrupted data if frame building reuses portions.\n\nActually, looking at lichen_l2_send: lichen_link_tx() builds a fresh frame into tx_frame_buf each time, overwriting any previous contents. So even if lora_send() modifies it, the next TX rebuilds from scratch.\n\nNot a bug in current code. But the API contract is a footgun for future callers who might pass a buffer they expect to remain unchanged.\n\nThis is more of a documentation issue / API design concern. Worth noting but P1 not P0.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

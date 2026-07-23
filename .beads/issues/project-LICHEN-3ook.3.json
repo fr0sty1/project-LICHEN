@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3ook.3",
   "title": "Validate and hand off builder",
   "description": "Verify SSH, OpenCode binary, Zephyr environment, repository revision, Rust/Python/Renode tooling, then provide the SSH command and leave the instance running.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

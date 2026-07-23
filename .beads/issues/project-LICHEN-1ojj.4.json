@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.4",
   "title": "tinycrypt SHA-256 return values not checked",
   "description": "tinycrypt functions return TC_CRYPTO_SUCCESS (1) on success and TC_CRYPTO_FAIL (0) on failure. The return values of tc_sha256_init(), tc_sha256_update(), and tc_sha256_final() are not checked.\n\nLocations:\n- ipv6_addr.c:60-62 (lichen_pubkey_to_iid)\n- lora_l2.c:90-93 (generate_eui64)\n\nWhat goes wrong: If tinycrypt encounters an internal error (e.g., NULL internal state), the hash output is undefined. The code would then use garbage bytes as the IID or EUI-64, potentially causing:\n- Duplicate addresses across nodes (collision)\n- Non-deterministic addresses across reboots\n- Silent cryptographic failure\n\nFix: Check return values and return -EIO or fall back appropriately on failure.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

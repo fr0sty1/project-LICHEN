@@ -2,7 +2,7 @@
   "id": "project-LICHEN-17g0",
   "title": "IPv6Header reconstruction uses wrong case for field names",
   "description": "File: python/src/lichen/schc/headers.py:160-168\n\n_ipv6_header() accesses fields with specific case:\n  hop_limit=fields['IPv6.hop_limit'],\n  traffic_class=fields['IPv6.traffic_class'],\n  flow_label=fields['IPv6.flow_label'],\n\nBut _ipv6_fields() at lines 144-154 populates the dict with the same case:\n  'IPv6.traffic_class': header.traffic_class,\n  'IPv6.flow_label': header.flow_label,\n  ...\n  'IPv6.hop_limit': header.hop_limit,\n\nAnd the rules use:\n  FieldDescriptor('IPv6.hop_limit', 8, MO.IGNORE, CDA.VALUE_SENT),\n\nAll use lowercase, so this is consistent. However, decompress() returns field IDs from the rule definitions. The codec reads 'IPv6.hop_limit' from the rule and uses it as the dict key.\n\nBut wait - the rules use 'IPv6.hop_limit' (lowercase), _ipv6_fields uses 'IPv6.hop_limit' (lowercase), and _ipv6_header uses 'IPv6.hop_limit' (lowercase). This should be consistent.\n\nLet me verify... Actually this looks OK. Let me check if there are any other field name mismatches.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

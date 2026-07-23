@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kqma.2",
   "title": "Use synchronous cancellation for CoAP request timeout work",
   "description": "Trigger: lichen/subsys/lichen/coap/coap_client.c response and send-failure paths call k_work_cancel_delayable() at lines 195 and 292, then immediately k_free(ctx). If the delayable timeout work is already queued or running, Zephyr may still enter request_timeout_handler with the freed request_ctx. Impact: timing-dependent use-after-free in the CoAP client under response/timeout races or immediate send failures. Fix by synchronously cancelling/flushing the delayable work before freeing, or by moving ownership to a refcounted/lifetime-safe context.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

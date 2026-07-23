@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.51",
   "title": "TUN device error messages obscure actual failure cause",
   "description": "In rust/lichen-gateway/src/tun.rs:47-51, the error message always says 'requires CAP_NET_ADMIN or root' even when the actual error might be /dev/net/tun missing (macOS, container without device, tun module not loaded), fd limit exhausted, etc. Users will waste time checking permissions when the problem is elsewhere. Fix: show actual error code first, then suggest most common cause.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

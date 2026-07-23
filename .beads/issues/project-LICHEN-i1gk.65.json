@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.65",
   "title": "[lichen_l2.c:769-784 vs lora_l2.c:842-850] TX while DEINITING: state machine allows but behavior undefined",
   "description": "Cross-file analysis: lichen_l2_send() checks iface_init_failed (line 770), link_ctx_initialized (line 781), and lichen_lora_l2_is_running() (line 786). If all pass, TX proceeds. lora_l2_tx() at line 842-850 checks state: UNINIT returns -ENODEV, state != RUNNING returns -ENETDOWN. DEINITING is not RUNNING, so TX returns -ENETDOWN. Safe. However, there's a TOCTOU: lichen_l2_send() checks is_running() at 786 (returns true), then calls lora_l2_tx() at 864, but between these, stop() could be called, transitioning to STOPPED. lora_l2_tx() then returns -ENETDOWN. This is handled correctly - the error propagates. But if stop() transitions to ABORTED (thread abort), lora_l2_tx() still returns -ENETDOWN (state != RUNNING). The tx_buf_mutex could be acquired by TX while deinit is waiting for it at line 676. Deinit waits K_FOREVER, so this is a priority inversion but not a deadlock. Acceptable but document the interaction.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "docs",
   "assignee": "Mark Atwood",

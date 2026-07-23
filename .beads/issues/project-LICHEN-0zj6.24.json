@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0zj6.24",
   "title": "NET_LINK_UNKNOWN may cause issues with IPv6 stack features",
   "description": "Location: lichen_l2.c:444-445. net_if_set_link_addr uses NET_LINK_UNKNOWN. Zephyrs IPv6 stack may use link type for NDP, SLAAC, or packet framing decisions. Should verify whether NET_LINK_IEEE802154 or a custom type is more appropriate for EUI-64 addressing, or document that NET_LINK_UNKNOWN is intentional and tested.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

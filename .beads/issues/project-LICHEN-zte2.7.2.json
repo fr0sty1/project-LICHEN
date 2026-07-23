@@ -3,7 +3,7 @@
   "title": "Update Meshtastic compatibility docs for Position support",
   "description": "Why this exists: project-LICHEN-zte2.7 implemented Meshtastic POSITION_APP local-client location ingestion, but docs/meshtastic-compat-dev.md still describes Position as unsupported/deferred. What needs to be done: update the compatibility documentation to describe the implemented local-client Position behavior, test coverage, and remaining metadata/epoch limitations tracked in project-LICHEN-zte2.7.1.",
   "notes": "No-hardware docs update completed in docs/meshtastic-compat-dev.md: position_flags remains 0 because Position support is exposed through NodeDB Position records; POSITION_APP is documented as local-client location ingestion through the shared adapter snapshot and LOCAL_CLIENT app-interface path; malformed payload behavior, below-build-epoch timestamp stripping, metadata limitations, and software-only ztest coverage are documented; physical phone/BLE smoke and RF validation remain separate. Validation: git diff --check passed locally. Runtime tests not run because this slice is documentation-only and reflects previously tested implementation behavior. Independent codereviews after final diff: 019f25ad-0890-7153-8a63-c74513c8a344 no P0/P1/P2, ran git diff --check; 019f25ad-0be5-71f1-a594-195e7f75769d no P0/P1/P2, ran git diff --check; 019f25ad-0f34-7f12-a35e-68d019b15432 no P0/P1/P2, ran git diff --check.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.153",
   "title": "lichen-node TxError::BufferTooSmall should wrap lichen_core::error::BufferTooSmall",
   "description": "lichen-node/src/stack.rs defines:\n  pub enum TxError {\n      CoapEncode,\n      SchcCompress,\n      FrameEncode,\n      RadioTx,\n      BufferTooSmall,  // unit variant\n  }\n\nThis is the same pattern as the other error inconsistencies. BufferTooSmall is a unit variant without size information.\n\nlichen-schc properly wraps the core type:\n  pub enum SchcError {\n      BufferTooSmall(BufferTooSmall),  // wraps with required/provided sizes\n      ...\n  }\n\nWhat goes wrong: TX failures due to buffer size cannot report how large a buffer was needed. This makes debugging difficult since callers must guess the required size rather than being told exactly.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.78",
   "title": "[lora_l2.h:95-97] rx callback signature exposes raw rssi/snr without range validation",
   "description": "Completeness: API contract validation category.\n\nThe lichen_lora_rx_cb_t typedef at line 95-97 passes rssi (int16_t) and snr (int8_t) directly from lora_recv() to callbacks.\n\nThe Zephyr lora_recv() API does not document valid ranges for these values. Different radio drivers may return:\n- rssi: typically -120 to 0 dBm, but some drivers return positive values or sentinels\n- snr: typically -20 to +10 dB, but varies by driver\n\nCallbacks that assume rssi \u003c 0 (e.g., for display or threshold logic) may misbehave with non-conforming drivers.\n\nThe existing code in lichen_l2.c just logs these values, which is safe. However, the API exposes them to external callback implementers who may make assumptions.\n\nConsider documenting expected ranges in the typedef comment, or adding validation/clamping before callback invocation.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "doc",
   "assignee": "Mark Atwood",

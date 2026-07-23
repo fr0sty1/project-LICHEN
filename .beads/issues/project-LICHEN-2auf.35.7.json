@@ -4,7 +4,7 @@
   "description": "Post-commit review of b4ebb84af found Python interface protocols and a LinkLayer helper still describe or implement Schnorr-48 as payload-appended data. The migrated wire format stores the 48-byte signature in MIC. Remove stale payload stripping/contract semantics and add focused regression coverage so public consumers receive the complete authenticated payload.",
   "acceptance_criteria": "Python interface contracts state signatures reside in MIC; no receive path strips 48 payload bytes for signatures; focused tests prove signed payloads are delivered intact; Python link tests and three independent reviews pass.",
   "notes": "Completed in 8e62f5cbc. Updated Python public contracts and frame docs for Schnorr-48-in-MIC semantics; made RxFrame satisfy exported RxResult via read-only forwarding properties; added independent receive assertions for intact payload/MIC and flattened metadata. Validation: 306 link/vector/interop tests passed with 11 skips; focused 96 passed with 8 skips; Ruff and targeted mypy clean; three final current-marker reviews found no issues.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

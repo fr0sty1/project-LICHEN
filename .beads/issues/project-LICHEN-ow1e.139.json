@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.139",
   "title": "router.py: DodagState.preferred_parent is str but should be IPv6Address",
   "description": "src/lichen/routing/router.py:285-291 converts preferred_parent from str to IPv6Address with try/except. The comment acknowledges this is awkward.\n\nDodagState.preferred_parent is typed as str|None but actually stores an IPv6 address string. The 'flexibility' mentioned is illusory since it must always be a valid IPv6 address.\n\nFix: Change DodagState.preferred_parent to IPv6Address|None and update all call sites.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

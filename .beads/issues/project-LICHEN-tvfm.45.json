@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.45",
   "title": "[lichen_l2] replay window not cleared when peer removed",
   "description": "Cross-file bug: lichen_peer_remove() clears the peer_table entry but does NOT clear the corresponding replay window in replay_table. \n\nHow it manifests:\n1. Peer A with pubkey PK1 is added and communicates (replay window tracks seqnums)\n2. Peer A is removed via lichen_peer_remove()\n3. Peer A is re-added with a different pubkey PK2 (e.g., after key rotation)\n4. The old replay window persists - frames with old seqnums are rejected even from the new key, or frames from the attacker with the old key could have their seqnums 'pre-burned'\n\nLocation: lichen_l2.c:441-479 (peer_remove) should call lichen_replay_remove(\u0026replay_table, eui64)\n\nImpact: Security/correctness - stale replay state affects new peer sessions",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

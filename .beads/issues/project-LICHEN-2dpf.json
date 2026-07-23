@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2dpf",
   "title": "task",
   "description": "rust/lichen-coap/src/block.rs:173-182. Values \u003e= 256 encode as 0.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

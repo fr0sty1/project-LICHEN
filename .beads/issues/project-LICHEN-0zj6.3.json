@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0zj6.3",
   "title": "Thread-safety model in lichen_l2_enable() is well-reasoned",
   "description": "lichen_l2.c:247-314: The shutdown sequence (clear callback -\u003e signal thread -\u003e release mutex -\u003e join -\u003e reacquire mutexes -\u003e cleanup) correctly handles the race between in-flight callbacks and cleanup. The comment at lines 279-288 explaining the ordering is accurate. Worth defending if someone proposes 'simplifying' by removing the double-mutex acquisition or moving cleanup earlier.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

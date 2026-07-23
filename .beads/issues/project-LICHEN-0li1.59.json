@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.59",
   "title": "[lichen_link_rx.c:282-290] SCHC decompression error codes conflated",
   "description": "Gap: SCHC decompression errors are mapped to generic error codes, losing diagnostic information.\n\nWhat: Lines 282-290 check the return from lichen_schc_decompress. SCHC_ERR_BUFFER_TOO_SMALL maps to -ENOMEM, but all other errors map to -EINVAL. This loses the specific SCHC error code (malformed rule ID, truncated data, unsupported rule, etc.).\n\nWhy it matters: Debugging SCHC decompression failures requires knowing the specific failure mode. Mapping all non-buffer errors to -EINVAL makes it impossible to distinguish between 'invalid rule ID' and 'corrupted compressed data' without code inspection. The original SCHC error code should be logged or a more specific error returned.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

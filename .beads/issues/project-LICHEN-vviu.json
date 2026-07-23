@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vviu",
   "title": "aprs_synth.py: _get_key attempts lowercase fallback incorrectly",
   "description": "File: python/src/lichen/interface/kiss/aprs_synth.py\nLines: 371-379\n\nThe _get_key helper function has a bug in its lowercase fallback:\n\n```python\ndef _get_key(obj: dict, keys: tuple[str, ...]) -\u003e Any:\n    for k in keys:\n        if k in obj:\n            return obj[k]\n        # Try lowercase\n        if k.lower() in obj:\n            return obj[k.lower()]  # BUG: should be obj[k.lower()] \n    return None\n```\n\nWait, actually looking again - the code says `return obj[k.lower()]` which IS correct. Let me re-read...\n\nActually the issue is different. If `k` is already lowercase (e.g., 'temp'), then `k.lower()` is the same as `k`, so we check the same key twice. Not a bug per se, just redundant.\n\nLet me look for other issues instead...",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

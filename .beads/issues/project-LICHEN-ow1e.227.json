@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-ow1e.227",
   "title": "Codereview pass 2: LOADng seqnum - seq_ge function has no direct tests",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

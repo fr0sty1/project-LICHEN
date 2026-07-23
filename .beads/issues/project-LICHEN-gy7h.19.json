@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.19",
   "title": "iface_link_addr copy could use sizeof instead of constant",
   "description": "lichen_l2.c:513 uses:\n```c\nmemcpy(iface_link_addr, eui64, LICHEN_L2_ADDR_LEN);\n```\n\nBut iface_link_addr is declared as:\n```c\nstatic uint8_t iface_link_addr[LICHEN_L2_ADDR_LEN];\n```\n\nWhat goes wrong: If someone changes the array size but not the memcpy, silent truncation or buffer overread occurs.\n\nRewrite:\n```c\nmemcpy(iface_link_addr, eui64, sizeof(iface_link_addr));\n```\n\nThis ties the copy size to the actual buffer, preventing mismatch.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

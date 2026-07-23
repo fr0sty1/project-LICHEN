@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-snq",
   "title": "ICMPv6 implementation (echo, errors)",
   "description": "Implement ICMPv6 messages for basic diagnostics.\n\nMessage types:\n- Echo Request (type 128)\n- Echo Reply (type 129)\n- Destination Unreachable (type 1)\n- Packet Too Big (type 2)\n- Time Exceeded (type 3)\n\nICMPv6 header:\n- type (1 byte)\n- code (1 byte)\n- checksum (2 bytes)\n- message body\n\nChecksum calculation:\n- Pseudo-header (src, dst, length, next_header=58)\n- ICMPv6 header + body\n\nClasses:\n- ICMPv6Message base class\n- EchoRequest, EchoReply\n- DestinationUnreachable, etc.\n\nHandler:\n- async handle_icmpv6(packet) -\u003e response | None\n- Respond to echo requests\n- Generate errors when needed",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

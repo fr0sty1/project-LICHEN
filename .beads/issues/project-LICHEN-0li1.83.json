@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.83",
   "title": "[cross-file] net_recv_data called outside rx_mutex allows double-free on error",
   "description": "Interaction: lichen_l2.c:lichen_l2_input \u003c-\u003e Zephyr net stack\n\nBug: In lichen_l2_input() (lines 1832-1848):\n  Line 1832: k_mutex_unlock(\u0026rx_mutex);\n  Line 1843: ret = net_recv_data(iface, pkt);\n  Line 1845-1847: if (ret \u003c 0) { ... net_pkt_unref(pkt); }\n\nThe rx_mutex is released at line 1832, then net_recv_data() is called at line 1843. If net_recv_data() fails:\n  Line 1846: net_pkt_unref(pkt);\n\nBut between lines 1832 and 1843, another thread could call lichen_l2_enable(false) which:\n1. Stops the RX thread (waits for current callback to complete)\n2. But wait - stop() was already called if we got here, or the thread is still running...\n\nActually, re-examining: lichen_l2_input() is called from lora_rx_callback(), which is invoked by the RX thread. The RX thread checks LORA_RUNNING state in its loop. If stop() is called, the state changes to STOPPED, and after the current callback completes, the thread exits.\n\nSo while lichen_l2_input() is executing (after rx_mutex release but before return), the RX thread might see STOPPED and exit after this iteration. That's fine - pkt is a local variable, and net_recv_data either takes ownership or we unref.\n\nActually there's no cross-thread issue here because pkt is stack-allocated and the ownership semantics are clear. Not a bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

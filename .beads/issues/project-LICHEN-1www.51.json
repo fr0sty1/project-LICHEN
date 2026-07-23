@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-1www.51",
   "title": "HAVE_LICHEN_LINK guards incomplete - link.h defines used outside guards",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

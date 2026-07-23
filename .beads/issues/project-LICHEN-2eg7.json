@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2eg7",
   "title": "State machine verification: Rust lichen-core",
   "description": "Add compile-time + runtime state machine verification to lichen-core Rust crate.\n\nRust options:\n1. typestate pattern (compile-time, zero-cost)\n2. enum + match exhaustiveness (compile-time)\n3. runtime transition table (like C, but with debug_assert)\n\nFiles: rust/lichen-core/src/*.rs\n\nPrefer typestate where practical (e.g., connection states), runtime for dynamic state (e.g., routing tables).",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

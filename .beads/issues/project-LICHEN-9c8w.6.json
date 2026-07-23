@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9c8w.6",
   "title": "Review LOG_ERR vs k_panic for impossible states",
   "description": "Audit LOG_ERR calls for invariant violations that should panic.\n\nExamples to review:\n  LOG_ERR(\"Unknown state: %d\", state);           // -\u003e k_panic?\n  LOG_ERR(\"Peer table inconsistent: full but no eviction\");  // -\u003e __ASSERT?\n  LOG_ERR(\"State corrupted during deinit\");      // already followed by k_panic\n\nCriteria:\n- If state is impossible due to programming error -\u003e __ASSERT or k_panic\n- If state is recoverable or due to external input -\u003e LOG_ERR + return",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.3",
   "title": "mypy: 31 misc errors (subclassing Any/untyped bases)",
   "description": "31 misc errors from mypy --strict. Mostly 'Class cannot subclass X (has type Any)' in:\n- src/lichen/coap/resources.py (13 classes: Resource, ObservableResource)\n- src/lichen/coap/transport.py (EndpointAddress, MessageInterface)\n- src/lichen/tui/app.py (Static, App)\n- src/lichen/tui/native.py (9 classes: Static, App)\n- src/lichen/crypto/oscore.py (CanProtect, CanUnprotect, SecurityContextUtils)\n\nFix: Add type: ignore[misc] comments with explanation (external libs without py.typed) or create local protocol stubs.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

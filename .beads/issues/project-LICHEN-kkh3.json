@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kkh3",
   "title": "task",
   "description": "python/src/lichen/crypto/oscore.py:131-135. Nonce reuse after 2^40 messages.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

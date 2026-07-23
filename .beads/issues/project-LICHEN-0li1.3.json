@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.3",
   "title": "[lora_l2.c:893] lichen_lora_l2_tx len cast overflow for size_t \u003e UINT32_MAX",
   "description": "Contract: lichen_lora_l2_tx receives size_t len parameter\nViolation: On line 988, len is cast to uint32_t for lora_send(). While the code validates len \u003c= 255, on 64-bit platforms where size_t \u003e 32 bits, if len validation were ever bypassed or changed, the cast could silently truncate.\nImpact: Currently low (len is capped at 255), but the cast relies on implicit contract that LICHEN_LORA_MAX_PHY_PAYLOAD fits in uint32_t. A compile-time assertion would make this explicit.\nMitigation: Add BUILD_ASSERT(LICHEN_LORA_MAX_PHY_PAYLOAD \u003c= UINT32_MAX)",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

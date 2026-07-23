@@ -5,7 +5,7 @@
   "design": "Use RFC 9529 published vectors as the independent oracle. Do not use Rust initiator/responder self-roundtrip as proof of interoperability.",
   "acceptance_criteria": "RFC 9529 message_1/message_2/message_3 and transcript/key vectors match byte-for-byte; METHOD=0 SIGN/SIGN; C_R is authenticated inside PLAINTEXT_2; message 2/3 CDDL and connection identifiers are canonical; malformed/trailing EAD rejects or is explicitly supported; error-code-2 negotiation works; host and Cortex-M checks, three independent reviews pass.",
   "notes": "Implemented on integration/oscore-recovery after bc657b335. Rust EDHOC now follows RFC 9528 message_1/2/3 CDDL, METHOD=0, authenticated C_R, canonical bstr envelopes/connection IDs, integer KDF labels, PRK_out/PRK_exporter chain, correct OSCORE ID mapping, strict X25519/Ed25519 checks, bounded multi-form credentials, two-phase ID_CRED lookup, suite error handling, EAD/trailing rejection, and RFC 9528 ID_CRED unsorted-map exception. Independent RFC 9529 literals cover messages, TH_2/3/4, PRKs, Master Secret/Salt, and endpoint IDs. Final gates: 69 host tests including vectors/doctest, no_std tests, thumbv7em-none-eabi/eabihf checks, strict library Clippy, diff check; repeated review cycles converged with no unresolved in-scope correctness findings. No AWS required.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

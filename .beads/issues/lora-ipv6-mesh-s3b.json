@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-s3b",
   "title": "Spec: Define OSCORE key derivation from Ed25519",
   "description": "TOFU trust model binds Ed25519 pubkeys to nodes, but OSCORE requires symmetric master secrets. How are OSCORE contexts derived from Ed25519 keypairs? Options: ECDH-style key agreement, HKDF from shared secret, pre-shared context. Must specify concrete algorithm for trust model to work end-to-end.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

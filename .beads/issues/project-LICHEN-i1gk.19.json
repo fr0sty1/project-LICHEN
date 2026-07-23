@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.19",
   "title": "[lichen_l2.c:568-649] lichen_peer_add: doc says -ENOSPC on full but LRU eviction means that's impossible",
   "description": "Contract violation: documentation vs implementation\n\n**Issue:** The header documentation says the function returns -ENOSPC if the peer table is full, but the implementation uses LRU eviction to always find a slot. The only way -ENOSPC is returned is in the defensive 'should not happen' case (line 625).\n\n**Header doc (lichen_l2.h:68):**\n```\n *         -ENOSPC if peer table is full\n```\n\n**Implementation (lines 619-626):**\n```c\nif (slot \u003c 0) {\n    slot = peer_find_oldest_locked();  // LRU eviction\n    if (slot \u003c 0) {\n        // Should not happen: table full but no oldest entry found\n        LOG_ERR(\"Peer table inconsistent...\");\n        return -ENOSPC;  // Only returned on internal error\n    }\n}\n```\n\n**Impact:** Documentation is misleading - callers might expect -ENOSPC as a normal condition, but it only happens on internal inconsistency.\n\n**Fix:** Update header doc to clarify that -ENOSPC indicates internal error (peer table corrupted), not normal 'table full' condition. The table uses LRU eviction so it's never truly full.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

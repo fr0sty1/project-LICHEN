@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.257",
   "title": "Rust SCHC: MQTT-SN compress/decompress may panic on short UDP",
   "description": "File: rust/lichen-schc/src/codec.rs\nLine: 454\n\ncompress_mqtt_sn checks 'packet.len() \u003c 40 + 8' but then accesses packet[40..42] for port extraction. If packet is exactly 48 bytes (header only, no payload), tail would be empty which is fine. But the u16::from_be_bytes calls could panic if the slice is wrong length - actually they use try_into which returns Result. However, the indexing packet[40], packet[41] is safe given the length check. No bug here on closer inspection.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

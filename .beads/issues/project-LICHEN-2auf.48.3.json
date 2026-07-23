@@ -3,7 +3,7 @@
   "title": "Fix RFC 8613 nonce and option encoding",
   "description": "Rust OSCORE nonce construction XORs Sender ID length with PIV length instead of encoding Sender ID length, no-PIV responses use responder identity instead of the request's complete nonce, empty response OSCORE options encode as 0x00 instead of empty, and parser accepts reserved bits/trailing bytes. Correct these RFC 8613 interoperability defects with independent published-vector or literal formula tests.",
   "acceptance_criteria": "Nonce formula matches RFC 8613 Section 5.2 literals; no-PIV response reuses request nonce identity; empty option is zero bytes; reserved bits 5-7 and trailing bytes with k=0 reject; existing RFC vectors and roundtrips pass; no_std/release/all-feature tests, Clippy, and three reviews pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

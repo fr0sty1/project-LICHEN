@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.60",
   "title": "[lichen_l2.c:1344-1345 vs lora_l2.c:906-925] callback registration order: iface_init registers before start, enable re-registers before start",
   "description": "Cross-file analysis: In lichen_l2_iface_init() at line 1345, the RX callback is registered BEFORE lichen_lora_l2_start() is called (start happens later via Zephyr net_if_up -\u003e lichen_l2_enable). In lichen_l2_enable() at line 981, callback is registered BEFORE start() at line 982. Both are correct because the RX thread only starts running after start() succeeds, so there's no race. However, lora_l2_set_rx_callback() at line 908-910 logs a warning if state is UNINIT but doesn't error. After iface_init(), state is STOPPED (init succeeded), so callback registration succeeds. But if iface_init() partially fails after lora_l2_init() but before setting callback, retry init could see state=STOPPED (from first init) and skip callback registration... no, retry is blocked by lichen_iface != NULL check. Pattern is safe. No bug found.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "not-a-bug",
   "assignee": "Mark Atwood",

@@ -4,7 +4,7 @@
   "description": "Add canonical RouteTarget and bounded longest-prefix RoutingTable lookup in Rust while preserving all current host APIs and retaining non-/128 DAO wire rejection. DAO rebuild/expiry must preserve internal prefix routes under one MAX_ROUTES budget; returned paths remain egress paths.",
   "acceptance_criteria": "Canonical /0,/64,/127,/128 keys and \u003e128 rejection; deterministic LPM and expired fallback; exact host mutation APIs; DAO rebuild preservation; mixed capacity atomicity; all non-/128 wire DAOs still reject without mutation; tests, clippy, and three reviews pass.",
   "notes": "Implemented safe internal Rust prefix model without wire enablement. RouteTarget canonicalizes /0,/64,/127,/128 and rejects \u003e128; RoutingTable uses bounded LPM with O(1) host-only fast path, explicit egress validation, exact host lifecycle APIs, combined MAX_ROUTES accounting, and DAO rebuild preservation. All wire DAO prefixes 0..127 still reject before replay/topology/route mutation. Validation: lichen-rpl 100 unit + 5 integration; lichen-node 157 unit plus doctests; strict scoped Clippy; lichen-rpl no-default check; rustfmt/diff checks; three final reviews no findings.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "feature",
   "assignee": "Mark Atwood",

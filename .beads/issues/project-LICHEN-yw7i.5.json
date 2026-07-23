@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yw7i.5",
   "title": "Good: Consistent mutex lock ordering prevents deadlock",
   "description": "lichen_l2.c:295-300 documents tx_mutex then rx_mutex lock order for cleanup. Consistent lock ordering across all paths prevents deadlock in the dual-mutex cleanup scenario.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.38",
   "title": "[lichen_l2.c:1204-1207] net_pkt_rx_alloc timeout configurable but default may be too long",
   "description": "Function: lichen_l2_input. Resource allocation: The net_pkt allocation uses CONFIG_LICHEN_L2_RX_ALLOC_TIMEOUT_MS (line 1207). If this timeout is long (e.g., seconds), the RX thread blocks while holding rx_mutex, preventing other operations. The mutex is released only after allocation completes or times out. If the packet pool is exhausted and timeout is long, this could cause significant delays. The Kconfig should document the tradeoff. Priority 3 - configuration guidance, not a bug in default values.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "issue",
   "assignee": "Mark Atwood",

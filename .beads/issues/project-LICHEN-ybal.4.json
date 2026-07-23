@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.4",
   "title": "Static lichen_iface pointer without thread-safety creates race with disable",
   "description": "Files: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:71,286,325\n\nThe lichen_iface global is set in lichen_l2_iface_init() (line 325) and read in lora_rx_callback() (line 286) without synchronization.\n\nIf lichen_l2_enable(false) is called while the RX thread is mid-callback, the sequence could be:\n1. RX callback reads lichen_iface (non-NULL)\n2. L2 disable clears lichen_iface (not currently done, but logical cleanup)\n3. RX callback calls lichen_l2_input with stale interface\n\nCurrently disable does not clear lichen_iface, but:\n- A maintainer adding cleanup will create a race\n- The pattern will be copied to similar state variables\n\nRisk: Future maintainer adds 'lichen_iface = NULL' in disable path, causing null dereference in concurrent RX callback.\n\nFix: Document invariant (iface is never cleared once set) or protect with mutex.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

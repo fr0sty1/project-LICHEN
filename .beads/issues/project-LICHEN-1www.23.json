@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.23",
   "title": "tx_buf shared without mutex allows data corruption on concurrent TX",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:467-513 (lichen_lora_l2_tx)\n\nBug: The function copies data into a static tx_buf and passes it to lora_send() without holding any mutex. If two threads call lichen_lora_l2_tx() concurrently:\n1. Thread A copies 50 bytes into tx_buf\n2. Thread B copies 100 bytes into tx_buf (overwriting A data)\n3. Thread A calls lora_send() with len=50, but tx_buf now contains B data\n\nThe code comment claims this is safe because lora_send() is thread-safe, but the race is in the memcpy to the shared buffer, not in lora_send().\n\nImpact: Silent data corruption - a packet with wrong contents is transmitted.\n\nFix: Hold a mutex around the memcpy + lora_send() pair, or use a stack buffer.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

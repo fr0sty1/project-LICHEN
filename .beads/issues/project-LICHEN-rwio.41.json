@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.41",
   "title": "lichen_l2_input accepts oversized frames in non-LICHEN_LINK mode",
   "description": "In lichen_l2.c lines 510-516 (non-LICHEN_LINK path):\n\n    if (len \u003e sizeof(rx_ipv6_buf)) {\n        LOG_WRN(\"Packet too large: %zu\", len);\n        k_mutex_unlock(\u0026rx_mutex);\n        return;\n    }\n    memcpy(rx_ipv6_buf, data, len);\n\nrx_ipv6_buf is sized as LICHEN_L2_MTU + IPV6_BASE_HDR_LEN = 200 + 40 = 240 bytes.\n\nThe LoRa RX buffer in lora_l2.c is 256 bytes (line 142). A malformed/hostile packet of 241-255 bytes would pass lora_recv but be rejected here with a warning.\n\nThis is correct defensive coding - the bounds check prevents buffer overflow. However, the LOG_WRN message could be more informative about the actual limit (240 bytes) for debugging.\n\nThis is informational - no actual bug, just noting the implicit size dependency between LICHEN_L2_MTU + IPV6_BASE_HDR_LEN (240) and MAX_LORA_FRAME (255).\n\n**NOT A BUG** - marking as closed, filed for documentation only.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

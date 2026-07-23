@@ -2,7 +2,7 @@
   "id": "project-LICHEN-mqio",
   "title": "task",
   "description": "rust/lichen-gateway/src/aprs_is.rs:397-420. Non-ASCII APRS packets crash.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

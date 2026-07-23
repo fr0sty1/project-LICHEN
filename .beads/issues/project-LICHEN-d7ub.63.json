@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.63",
   "title": "lora_l2.c + lichen_l2.c: peer_table cleared by disable but not by deinit",
   "description": "Cross-file interaction inconsistency: peer_table is cleared in lichen_l2_enable(false) at lines 1293-1297, but NOT in lichen_l2_reinit_after_abort() or during iface re-init after failure.\n\nlichen_l2.c:1293-1297 during disable:\n  for (i=0; i \u003c MAX_NEIGHBORS; i++) {\n    secure_zero(peer_table[i].pubkey, ...);\n    peer_table[i].active = false;\n  }\n\nBut lichen_l2_reinit_after_abort() at line 1691 only reinits rx_mutex, does not clear peer_table.\n\nSCENARIO:\n1. Peers added to peer_table\n2. RX thread abort occurs\n3. lichen_lora_l2_deinit() calls lichen_l2_reinit_after_abort()\n4. lichen_lora_l2_init() called again\n5. lichen_l2_iface_init() runs, checks lichen_iface != NULL (line 1596), sets iface_init_failed\n6. Init fails but peer_table still has old entries with pubkeys\n\nACTUAL: Line 1596 check prevents re-init after first init, so this scenario requires reboot anyway.\n\nBETTER SCENARIO:\n1. lichen_l2_enable(true) after abort recovery\n2. needs_reinit() was true, deinit() called (line 1192)\n3. deinit() calls reinit_after_abort() which does NOT clear peer_table\n4. But deinit() returns, disable path continues at line 1219 with HAVE_LICHEN_LINK cleanup\n5. Actually line 1267-1297 DOES clear peer_table after reinit_after_abort()\n\nWITHDRAW: Following the code paths, peer_table IS cleared by the disable path that calls deinit(). The cleanup happens AFTER reinit_after_abort().",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

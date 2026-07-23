@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.73",
   "title": ".expect() chains in frame.rs obscure failure location",
   "description": "lichen-link/src/frame.rs:267-315 uses a state machine with .expect() calls:\n\n```rust\ntransition_frame_state(\u0026mut state, FrameProcessingState::Failed)\n    .expect(\"empty input can fail before length read\");\n```\n\nWhile the expect messages are descriptive, this pattern:\n1. Mixes error handling (returning Err) with state tracking (the state machine)\n2. Uses expect for transitions that should be infallible by construction\n\nConsider either:\n- Removing the state machine (it adds overhead but the parsing is straightforward)\n- Using debug_assert! for state transition invariants instead of expect\n\nThe state machine pattern seems like over-engineering for a linear parser.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

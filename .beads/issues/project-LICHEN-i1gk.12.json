@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.12",
   "title": "[lichen_l2.c:1319] memset on peer_table after lichen_link_init may be redundant",
   "description": "At line 1319, memset(peer_table, 0, sizeof(peer_table)) is called. The comment says it's defensive for static storage. But lichen_link_init() is called at line 1308 which may access link_ctx. If peer_table has any relationship with link_ctx initialization, this ordering could be wrong. Also, if this is a re-init path (link_ctx_initialized was true), the peer_table wasn't cleared in the cleanup block above (lines 1301-1306). On first init this is fine (static is zero), but on re-init after failed init, old peer entries could persist. The BUILD_ASSERT at lines 1295-1307 handles this case differently than disable path cleanup at lines 1071-1075 which uses secure_zero.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

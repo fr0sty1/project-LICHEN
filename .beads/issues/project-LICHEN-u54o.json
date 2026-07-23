@@ -2,7 +2,7 @@
   "id": "project-LICHEN-u54o",
   "title": "task",
   "description": "Zephyr only has ipv6_addr.c/h for address handling. Python has full ipv6/ module with icmpv6.py, packet.py, udp.py. Rust has icmpv6.rs, ipv6.rs, udp.rs in lichen-core. Zephyr needs ICMPv6 for neighbor discovery, ping, and error handling.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

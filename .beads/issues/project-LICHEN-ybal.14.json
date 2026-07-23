@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.14",
   "title": "ipv6_addr.h: Unnecessary stdio.h include",
   "description": "The header ipv6_addr.h includes \u003cstdio.h\u003e (line 27) but uses nothing from it. The .c file does use snprintf, but that include belongs there, not in the public header.\n\nWhat goes wrong: Transitive include bloat. Every file that includes ipv6_addr.h pulls in stdio.h unnecessarily, which can slow builds and increase coupling.\n\nFix: Remove '#include \u003cstdio.h\u003e' from ipv6_addr.h.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/ipv6_addr.h:27",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

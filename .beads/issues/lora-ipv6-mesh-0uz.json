@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-0uz",
   "title": "SCHC fragmentation (ACK-on-Error)",
   "description": "Implement SCHC ACK-on-Error fragmentation per RFC 8724.\n\nUsed when compressed packet \u003e link MTU.\n\nFragment format:\n- Rule ID (same as compression rule)\n- DTAG (datagram tag, identifies fragment set)\n- W (window number)\n- FCN (fragment counter within window)\n- Payload\n\nSender:\n- Split packet into fragments\n- Send fragments in windows\n- Wait for ACK after each window\n- Retransmit missing fragments from ACK bitmap\n- Send All-1 fragment to indicate end\n\nReceiver:\n- Collect fragments by DTAG\n- Track received FCNs per window\n- Send ACK with bitmap of missing fragments\n- Reassemble when All-1 received and complete\n\nClasses:\n- FragmentSender(packet, mtu) -\u003e async iterator of fragments\n- FragmentReceiver() -\u003e async collect fragments, yield reassembled\n\nTimeout handling for lost ACKs.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

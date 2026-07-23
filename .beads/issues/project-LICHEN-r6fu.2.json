@@ -2,7 +2,7 @@
   "id": "project-LICHEN-r6fu.2",
   "title": "OSCORE not implemented in C firmware",
   "description": "VIOLATION of spec/06-security.md 8.7: C firmware has FIXME(OSCORE) comments indicating OSCORE support is not yet implemented. Application payloads over the C stack are unprotected.\n\nFIXME locations found:\n- firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:272\n- lichen/subsys/lichen/l2/lichen_l2.c:279\n\nRequired work:\n1. Add SCHC rule for OSCORE extension headers\n2. Increase buffer sizes for OSCORE overhead (~20+ bytes)\n3. Implement OSCORE protect/unprotect in C using uoscore-uedhoc library\n4. Integrate EDHOC for key establishment\n\nReference: modules/lib/uoscore-uedhoc/ library is available",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

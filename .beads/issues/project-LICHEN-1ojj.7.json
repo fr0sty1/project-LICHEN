@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.7",
   "title": "lichen_l2_input: len=0 passed to lichen_link_rx may cause undefined behavior",
   "description": "In lichen_l2.c:lichen_l2_input() line 451, lichen_link_rx() is called with the raw 'len' parameter from the callback. If len=0 (empty packet), the behavior depends on lichen_link_rx() implementation. The lora_l2.c RX thread filters len==0 at line 141 before invoking the callback, but lichen_l2_input() is also a public API (declared in header). A direct caller could pass len=0, and the function does not validate len\u003e0 before processing.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

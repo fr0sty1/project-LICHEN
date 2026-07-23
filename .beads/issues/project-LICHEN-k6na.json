@@ -2,7 +2,7 @@
   "id": "project-LICHEN-k6na",
   "title": "task",
   "description": "lichen/subsys/lichen/link/link_ctx.c:345 - lichen_link_cleanup() calls pthread_mutex_destroy(\u0026ctx-\u003eseq_lock) unconditionally on non-Zephyr builds, even if seq_lock() failed to acquire the lock at line 324. Per POSIX, destroying a locked mutex results in undefined behavior. Failure scenario: Thread A holds seq_lock, thread B calls cleanup, B fails to acquire lock (or blocks and gets it after A releases), B destroys mutex. While this is partly a caller misuse scenario (cleanup shouldn't race with active use), the code should be defensive. Fix: either (1) assert that cleanup is only called on idle contexts, or (2) document the requirement that callers must ensure no concurrent access during cleanup, or (3) track mutex ownership and handle gracefully.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

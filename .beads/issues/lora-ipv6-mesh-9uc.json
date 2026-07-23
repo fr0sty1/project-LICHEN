@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-9uc",
   "title": "Integration test: chaos monkey operations",
   "description": "Test: set up 3-node network, verify baseline connectivity. Apply DropRule: verify packets dropped. Apply PartitionRule: verify cross-partition packets blocked. Apply DegradeRule: verify RSSI reduced. Apply JammerRule: verify nodes in radius can't communicate. Clear chaos, verify connectivity restored. Use REST API to apply/clear rules.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

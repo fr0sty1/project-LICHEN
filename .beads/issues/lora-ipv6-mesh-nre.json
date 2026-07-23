@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-nre",
   "title": "Phase 8: Applications",
   "description": "Tactical radio features: messaging, position sharing, waypoints, SOS, presence, check-in, range testing, groups. Exit criteria: all P0 applications working, SOS priority handling works, group messaging works.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",

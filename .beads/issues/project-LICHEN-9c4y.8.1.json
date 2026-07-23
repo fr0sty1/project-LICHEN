@@ -3,7 +3,7 @@
   "title": "Add canonical MeshCore incoming app-event frame vectors",
   "description": "Why this exists: the MeshCore incoming text/status event frames added for app compatibility are now asserted in Zephyr ztests but do not yet have canonical JSON vectors under test/vectors/. What needs to be done: add machine-readable vectors for MSG_WAITING, CHANNEL_MSG_RECV_V3 text, PUSH_SEND_CONFIRMED status, and NO_MORE_MESSAGES sync behavior, then wire at least one no-hardware test/harness to consume them or document why the Zephyr ztests are the canonical consumer.",
   "acceptance_criteria": "test/vectors/ contains MeshCore incoming app-event vectors; no-hardware tests or documented harness validation consume or cross-check them; vector semantics match the adapter ztests.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

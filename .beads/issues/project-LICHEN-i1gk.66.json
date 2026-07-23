@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.66",
   "title": "[lichen_l2.c:1055-1056 vs lora_l2.c:782-784] disable path clears replay but doesn't call lichen_l2_reinit_after_abort",
   "description": "Cross-file analysis: In lichen_l2_enable() disable path (lines 1043-1078), replay_table is cleared via lichen_replay_table_init() at line 1056, and peer_table is cleared in the loop at 1071-1075. However, if the disable path is entered because stop() returned -ECANCELED (abort occurred), rx_mutex may be corrupted. The disable path acquires rx_mutex at line 1044 BEFORE checking stop()'s return value. If the abort happened during a previous stop() call, rx_mutex is already corrupted. But wait: the flow is stop() at 1024, THEN mutex acquisition at 1043-1044. If stop() detected abort and returned -ECANCELED, should we attempt to acquire rx_mutex? The abort check at line 909-922 prevents enable from proceeding at all if needs_reinit() is true. So this path (disable after abort) is unreachable... unless abort happens DURING the current stop() call. In that case, stop() returns -ECANCELED, but we still proceed to acquire rx_mutex at 1043. If abort happened while rx_thread held rx_mutex, deadlock.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

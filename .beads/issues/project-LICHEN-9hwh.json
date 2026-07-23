@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9hwh",
   "title": "task",
   "description": "rust/lichen-cli/src/output.rs:8 - The print_kv function uses Rust Debug formatting ({key:?}, {value:?}) for JSON output. Rust's Debug escapes unicode as \\u{XXXX} but JSON requires \\uXXXX (without braces). If a key or value contains control characters or non-ASCII unicode that needs escaping, the output will be malformed JSON that parsers will reject. Fix: use serde_json to properly serialize the key/value instead of Debug formatting.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

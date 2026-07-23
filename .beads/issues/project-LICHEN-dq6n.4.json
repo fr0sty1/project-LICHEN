@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dq6n.4",
   "title": "[lichen_l2.c:1057-1058] peer_try_all_pubkeys modifies ctx fields on all peers",
   "description": "In peer_try_all_pubkeys(), the function sets ctx-\u003epeer_pubkey and ctx-\u003epeer_eui64 for every peer in the table, including when verification fails:\n\n```c\nfor (size_t i = 0; i \u003c CONFIG_LICHEN_LINK_MAX_NEIGHBORS; i++) {\n    if (!peer_table[i].active) {\n        continue;\n    }\n    ctx-\u003epeer_pubkey = peer_table[i].pubkey;  // Set for this peer\n    ctx-\u003epeer_eui64 = peer_table[i].eui64;\n    ...\n    ret = lichen_link_rx(ctx, ...);\n    if (ret == 0) {\n        return 0;  // Success - ctx has correct peer info\n    }\n    if (ret != -LICHEN_EAUTH) {\n        return ret;  // ctx-\u003epeer_pubkey/eui64 point to wrong peer!\n    }\n}\nreturn -LICHEN_EAUTH;  // ctx-\u003epeer_pubkey/eui64 point to last tried peer\n```\n\nWhen the function returns -LICHEN_EAUTH (all peers failed), the ctx contains pointers to the LAST peer tried, not any meaningful value. The caller (lichen_l2_input) doesn't use these values on failure paths, but this is a subtle contract violation.\n\nImpact: Benign - the caller doesn't access ctx on error. P3 code quality.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

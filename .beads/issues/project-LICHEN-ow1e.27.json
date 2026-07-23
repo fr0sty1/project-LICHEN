@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.27",
   "title": "OSCORE seqnum increment wraps in release, violating security invariant",
   "description": "# Problem\nIn `rust/lichen-oscore/src/seqnum.rs:52-55`:\n\n```rust\npub fn increment(self) -\u003e Self {\n    debug_assert!(self.0 \u003c u32::MAX, \"OSCORE sequence number overflow - context must be renegotiated\");\n    Self(self.0.wrapping_add(1))\n}\n```\n\nThe assertion only fires in debug builds. In release, wrapping proceeds silently.\n\n## What goes wrong\nOSCORE sequence number wraparound causes nonce reuse, which is a critical security violation (RFC 8613 Section 7.2.1). An attacker who observes two messages encrypted with the same nonce can XOR the ciphertexts to recover plaintext.\n\nWhile `protect_request` in `lib.rs` does check for `u32::MAX` before calling `fetch_increment`, a direct caller of `OscoreSeqNum::increment()` will get silent wraparound.\n\n## Trigger\n- Call `OscoreSeqNum::new(u32::MAX).increment()` in release mode\n- Result: Returns `OscoreSeqNum(0)` instead of erroring\n\n## Fix\nOption 1: Return `Option\u003cSelf\u003e` from `increment()` to force callers to handle exhaustion\nOption 2: Mark `increment` unsafe/deprecated and direct callers to `protect_request` only\nOption 3: Change to `checked_add()` and panic on overflow even in release (fail-safe \u003e fail-secure for crypto)",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

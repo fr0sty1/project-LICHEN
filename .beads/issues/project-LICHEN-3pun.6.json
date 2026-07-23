@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3pun.6",
   "title": "lichen_lora_l2_stop(): always returns 0 despite signature",
   "description": "**Location:** firmware/bridge-zephyr/subsys/lichen/lora_l2.c:402\n\n**Contract issue:** The function signature is `int lichen_lora_l2_stop(void)` with documented return `0 on success, negative errno on failure`, but the function ALWAYS returns 0. It never returns an error code.\n\n**Analysis:**\n```c\nint lichen_lora_l2_stop(void)\n{\n    // ...\n    if (!atomic_get(\u0026lora_state.running)) {\n        k_mutex_unlock(\u0026lora_mutex);\n        return 0;  // Already stopped - success\n    }\n    // ... thread join, possibly with abort ...\n    LOG_INF(\"LoRa L2 stopped\");\n    return 0;  // Always 0\n}\n```\n\nThe function logs warnings about abort scenarios but still returns 0. The aborted flag is set internally but not returned.\n\n**Impact (P2):** Callers (lichen_l2_enable disable path) cannot distinguish between clean stop and forced abort. However:\n1. The lichen_lora_l2_needs_reinit() function provides this information\n2. Current callers check needs_reinit() separately\n\n**Recommendation:** Either:\n1. Return a distinct code (-ECANCELED?) when forced abort occurs\n2. Update documentation to state it always returns 0 and point to needs_reinit() for abort status\n3. Leave as-is since callers use needs_reinit() appropriately",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

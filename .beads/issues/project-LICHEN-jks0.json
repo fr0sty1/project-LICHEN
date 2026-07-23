@@ -2,7 +2,7 @@
   "id": "project-LICHEN-jks0",
   "title": "task",
   "description": "framing.rs:391-398 - When CMD byte equals FEND (0xC0, port 12), the inter-frame padding skip loop incorrectly treats CMD as another FEND delimiter. For frame [FEND, 0xC0, 0x41, FEND] (port 12, cmd 0, data 'A'), the reader parses as port=4, cmd=1, data=[] instead. Affects all port 12 frames. kiss_decode() handles this correctly by only skipping trailing FENDs; KissReader needs similar fix to distinguish opening FEND + CMD from inter-frame FEND padding.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.7",
   "title": "[lora_l2.c:421-423] TOCTOU race between state check and mutex lock",
   "description": "lichen_lora_l2_init() checks lora_get_state() != LORA_UNINIT at line 421, then acquires the mutex at line 425, then re-checks at line 429. The issue is the first check at 421 returns early if not UNINIT, but two threads could both pass this check simultaneously (both see UNINIT), then both try to acquire the mutex. This is handled correctly by the double-check pattern, but the early return at line 423 creates a window where init() returns success without actually initializing if another thread is currently inside the mutex doing the real init. This is probably harmless since the init is idempotent, but the first caller might get success before eui64 is generated.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

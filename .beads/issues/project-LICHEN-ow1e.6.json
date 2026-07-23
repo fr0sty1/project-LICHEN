@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.6",
   "title": "mypy: 11 no-untyped-def errors (missing return types)",
   "description": "11 no-untyped-def errors for functions missing type annotations:\n- src/lichen/interface/serial.py: lines 58, 83, 105, 164\n- src/lichen/interface/kiss/serial.py: lines 61, 86, 105, 154\n- src/lichen/interface/kiss/payload_fmt.py: line 104\n- src/lichen/coap/udp_server.py: line 25\n- src/lichen/coap/node_channel.py: line 40\n\nFix: Add return type annotations (most are -\u003e None or -\u003e bytes).",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.11",
   "title": "lichen_l2_input accepts frames with src_eui64 from untrusted parser output without validation",
   "description": "Location: lichen_l2.c:641-657\n\n**What goes wrong:** The lichen_link_rx() call writes to src_eui64[8] (line 645), but this buffer is stack-allocated and the return value only indicates success/failure. If lichen_link_rx() has a bug where it returns success but doesn't fully populate src_eui64, the LOG_DBG at line 654 prints uninitialized stack data.\n\n**Impact:** Minor - just log garbage. But if src_eui64 is used for routing decisions in future (comment says \"Unknown sender\" today), uninitialized values could cause misdirected packets.\n\n**Fix:** Zero-initialize src_eui64 before passing to lichen_link_rx(), or add explicit validation that it was populated on success.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

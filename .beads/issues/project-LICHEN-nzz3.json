@@ -2,7 +2,7 @@
   "id": "project-LICHEN-nzz3",
   "title": "task",
   "description": "python/src/lichen/rpl/dodag.py:148-152. Rank \u003e 0xFFFF crashes.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.2",
   "title": "lichen_l2_enable re-init races with concurrent TX/RX",
   "description": "Location: lichen_l2.c:311-329\n\n**What goes wrong:** When lichen_l2_enable(true) re-initializes link_ctx (lines 317-328), it does so without holding tx_mutex or rx_mutex. A concurrent lichen_l2_send() or lora_rx_callback() could read partially-initialized link_ctx state. The atomic_get(link_ctx_initialized) check at lines 247 and 601 uses acquire semantics, but the re-init path does:\n1. Check atomic (false) \n2. Get EUI-64\n3. secure_zero()\n4. lichen_link_init()\n5. atomic_set(true)\n\nBetween steps 3 and 5, a concurrent path could see initialized=false, wait, then retry and see initialized=true but read partially-constructed link_ctx.\n\n**Fix:** Acquire both mutexes before re-initializing link_ctx in the enable(true) path, mirroring the cleanup in enable(false).",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

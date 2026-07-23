@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9vtp",
   "title": "Compliance: lichen/subsys/lichen/link/schnorr48.c Schnorr48 implementation",
   "description": "Policy: 06-security.md §8.3. File: lichen/subsys/lichen/link/schnorr48.c. Status: COMPLIANT. Implements Schnorr48 per spec using Monocypher: schnorr48_sign() (L58-133) produces 48-byte signature with deterministic nonce. schnorr48_verify() (L135-194) performs R' recovery via crypto_eddsa_recover_r(), constant-time comparison via crypto_verify16(). Frame helpers correctly validate inputs and build signable data.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

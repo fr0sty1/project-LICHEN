@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-xl11",
   "title": "Wireshark Lua dissector for LICHEN link frames",
   "description": "Write a Wireshark Lua dissector plugin (lichen.lua) that decodes LICHEN link-layer frames captured over UDP/serial. Fields: Length, LLSec byte (Encrypted/Sig/MIClen/AddrMode), Epoch, SeqNum, DstAddr (variable width per AddrMode), SCHC payload, MIC. Should work with DLT_USER captures from the simulator.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "owner": "mark.frost@gmail.com",

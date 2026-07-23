@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.238",
   "title": "aprs_is.rs: cot_to_aprs uses f64 trunc/fract which may lose precision for edge latitudes",
   "description": "In cot_to_aprs(), converting microdegrees to APRS DDMM.mm format uses f64 intermediate values. For latitudes very close to 90 degrees (e.g., 89.999999), trunc() and fract() may produce unexpected results due to floating point representation. Consider using integer arithmetic for the conversion to avoid potential precision loss.\n\nFile: rust/lichen-gateway/src/aprs_is.rs lines 284-295",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i81y",
   "title": "Review: project-LICHEN Zephyr C code 2026-06-29",
   "notes": "Review confidence: ~30% chance of missed bug. Least confident areas: hardware-only LR1110 behavior, Zephyr coap_client internal lifetime semantics, full Kconfig/CMake module resolution under west, and protocol-level EDHOC/OSCORE transcript correctness. Would raise confidence by running full native_sim/target Zephyr builds, fuzzing SCHC/RPL/CoAP/OSCORE parsers, and doing hardware RX/TX tests.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

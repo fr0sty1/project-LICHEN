@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ox2",
   "title": "State machine verification: Python simulator",
   "description": "Add strict runtime state machine verification to the Python simulator code. Python gets the hardass treatment:\n\n1. **Raise exceptions, not assertions** - assertions can be disabled with -O\n2. **Custom StateError exception** - clear error type for state violations\n3. **Frozen dataclass for state enum** - prevent monkey-patching\n4. **Transition decorator** - @requires_state(State.RUNNING) on methods\n5. **Logging on every transition** - audit trail\n\nPattern:\n```python\nclass StateError(Exception):\n    pass\n\n@dataclass(frozen=True)\nclass StateMachine:\n    TRANSITIONS: ClassVar[dict[State, set[State]]] = {\n        State.UNINIT: {State.STOPPED},\n        State.STOPPED: {State.RUNNING, State.UNINIT},\n        ...\n    }\n    \n    def transition(self, new: State) -\u003e None:\n        if new not in self.TRANSITIONS.get(self._state, set()):\n            raise StateError(f'Invalid: {self._state} -\u003e {new}')\n        logger.debug(f'State: {self._state} -\u003e {new}')\n        self._state = new\n```\n\nFiles to audit:\n- python/src/lichen/*.py (find stateful classes)\n\nNo silent failures. No assertions. Exceptions that cannot be ignored.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

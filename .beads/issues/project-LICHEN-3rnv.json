@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3rnv",
   "title": "Radio::receive silently truncates packets larger than buffer",
   "description": "File: rust/lichen-hal/src/loopback.rs:98-99\nAlso: rust/lichen-embassy/src/mock.rs:68-69\n\nWhen a received packet is larger than the provided buffer, data is silently truncated. The returned RxPacket.len reflects the truncated length, not the original packet size. Callers have no way to detect that data was lost.\n\nExample:\n- Packet arrives with 200 bytes\n- Caller passes 100-byte buffer\n- len = 200.min(100) = 100\n- Caller gets 100 bytes, thinks it is the complete packet\n\nWhile the Radio trait doc says 'Buffer must be at least 255 bytes', this is not enforced. A protocol could receive corrupted/incomplete frames without any error indication.\n\nFix options:\n1. Return error if buf.len() \u003c pkt.len()\n2. Return both truncated_len and original_len in RxPacket\n3. Add debug_assert!(buf.len() \u003e= 255) to catch contract violations",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

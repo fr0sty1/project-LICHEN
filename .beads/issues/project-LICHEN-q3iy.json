@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy",
   "title": "Review: bridge-zephyr 2026-06-27",
   "notes": "Review confidence: 20% chance of missed bug.\nLeast confident areas: Link library crypto (out of scope), L2 callback error handling, replay protection integration.\nWould raise confidence if: reviewed lichen_link library source, fuzz-tested frame parsing, ran under ThreadSanitizer.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

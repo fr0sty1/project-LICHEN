@@ -2,7 +2,7 @@
   "id": "project-LICHEN-xazj",
   "title": "Compliance: python/meshtastic/address.py TOFU",
   "description": "Policy: 06-security.md §8.6. File: python/src/lichen/interface/meshtastic/address.py. Status: VIOLATION. AddressMapper.learn() silently overwrites existing peer pubkey (line 161) without TOFU key change detection. Spec requires: pin on first contact, reject subsequent changes. Fix: check _peers.get(iid) before overwrite, reject if different.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

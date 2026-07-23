@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.25",
   "title": "[lichen_l2.c:970] callback roll-back on start() failure may race",
   "description": "At line 990-991, when lichen_lora_l2_start() fails, the callback is cleared with lichen_lora_l2_set_rx_callback(NULL, NULL). But this happens AFTER the enable path already registered the callback at line 981. Between lines 981 and 990, the RX thread could theoretically start (if start() partially succeeded before failing) and invoke the callback. The callback would then be cleared while potentially in-flight. The comment says 'start() fails, the RX thread isn't running' but if start() fails AFTER creating the thread and BEFORE configuring the radio, the thread IS running. Check lora_l2_start() to verify thread isn't created if config fails.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

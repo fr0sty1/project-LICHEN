@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.2",
   "title": "generate_eui64() leaks SHA-256 state on error paths",
   "description": "In lora_l2.c generate_eui64(), the tc_sha256_state_struct is stack-allocated (line 98) and contains internal hash state. If tc_sha256_init, tc_sha256_update, or tc_sha256_final fails (lines 101-112), the function returns early without zeroing sha_state.\n\nTrigger: SHA-256 library failure (rare but possible on constrained devices or library misconfiguration).\n\nBad behavior: Stack frame containing partial SHA state remains until overwritten by subsequent function calls. While the entropy leakage is limited (only affects the hwid hash, not long-term secrets), it violates defense-in-depth: sensitive cryptographic state should be zeroed on all exit paths.\n\nNote: hash[] buffer IS zeroed on success (line 119), but neither hash[] nor sha_state are zeroed on error.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lora_l2.c lines 98-112",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

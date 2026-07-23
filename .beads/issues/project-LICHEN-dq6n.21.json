@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dq6n.21",
   "title": "[lichen_l2.c:379,425 + lora_l2.c:454] peer_add/remove can deadlock after thread abort",
   "description": "Cross-file bug: lichen_peer_add() and lichen_peer_remove() acquire rx_mutex (lines 379, 425) without checking lichen_lora_l2_needs_reinit() first.\n\nIf the lora_l2 RX thread was forcibly aborted while holding rx_mutex (during lichen_l2_input() callback processing), the mutex is left locked. Any subsequent call to lichen_peer_add() or lichen_peer_remove() will deadlock forever on k_mutex_lock(\u0026rx_mutex, K_FOREVER).\n\nCompare to lichen_l2_enable() which checks needs_reinit() BEFORE acquiring any mutex (line 627).\n\nSequence:\n1. RX thread receives packet, calls callback -\u003e lichen_l2_input()\n2. lichen_l2_input() acquires rx_mutex (line 994)\n3. User calls lichen_lora_l2_stop()\n4. stop() waits for thread, times out, calls k_thread_abort()\n5. Thread is killed while holding rx_mutex\n6. aborted flag is set (lora_l2.c:454)\n7. stop() returns\n8. Application calls lichen_peer_add() - DEADLOCKS on rx_mutex (line 379)\n\nFix: Add needs_reinit() check at the start of lichen_peer_add() and lichen_peer_remove():\n\nint lichen_peer_add(...) {\n    if (lichen_lora_l2_needs_reinit()) {\n        LOG_ERR(\"Peer add rejected: LoRa L2 requires re-initialization\");\n        return -ECANCELED;\n    }\n    k_mutex_lock(\u0026rx_mutex, K_FOREVER);\n    ...\n}",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

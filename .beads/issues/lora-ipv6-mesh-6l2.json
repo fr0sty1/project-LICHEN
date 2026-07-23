@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-6l2",
   "title": "Implement metrics collection for simulation harness",
   "description": "Add metrics collection capabilities to the simulation harness including latency, delivery rate, and collision statistics. Should track per-node and aggregate metrics with time-based reporting.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

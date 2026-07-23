@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.97",
   "title": "[lichen_util.h:54-107] SECURITY: secure_zero may not be optimized-barrier on all compilers",
   "description": "Security finding: secure_zero() uses volatile pointer and compiler_barrier() to prevent optimization.\n\nAnalysis:\n1. volatile uint8_t *p prevents stores from being optimized away (good)\n2. compiler_barrier() prevents reordering (good for GCC/Clang)\n3. BUT: volatile alone doesn't guarantee memory is actually zeroed\n\nIssues:\n1. On some platforms, volatile may go to cache only, not main memory\n2. Under heavy memory pressure, pages may be swapped with secret data\n3. Speculatively executed loads may leave secrets in CPU cache\n4. The word-aligned path (lines 85-100) may not be constant-time\n\nImpact: P2 - defense-in-depth concern. The current implementation is reasonable for embedded MCUs without swap/speculation.\n\nCurrent mitigations in code:\n- Uses volatile to prevent optimization\n- Uses compiler_barrier() for ordering\n- Correctly handles alignment\n\nNote: For Cortex-M without cache or speculation, this is likely sufficient. For more complex CPUs, additional measures would be needed.\n\nMitigation: Document target platform assumptions. Consider using platform-specific secure clear (e.g., explicit_bzero where available).",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

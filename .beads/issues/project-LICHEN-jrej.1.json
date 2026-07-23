@@ -2,7 +2,7 @@
   "id": "project-LICHEN-jrej.1",
   "title": "Implement SCHC Rule 2 for MQTT-SN port 10883",
   "description": "Add Rule 2 to SCHC implementation per spec/03-adaptation.md. Exact port match (10883), not-sent encoding. Test with MQTT-SN packets. Software-only: pure codec work against spec.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

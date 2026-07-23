@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.113",
   "title": "[lora_l2.c:379-387] lora_modem_config.tx=true has no effect for half-duplex radios",
   "description": "Category not checked: Hardware abstraction correctness\n\nBug found: At line 386, the LoRa config sets .tx = true. Looking at the comment at line 383:\n  .tx_power = CONFIG_LICHEN_LORA_TX_POWER,\n  .tx = true,\n\nThe .tx field in struct lora_modem_config is documented in Zephyr as:\n'Set to true for TX mode, false for RX mode. Some radios need this hint.'\n\nFor half-duplex LoRa radios (which is all of them - SX127x, SX126x), the radio is either in TX or RX mode, not both. Setting .tx = true during configuration doesn't enable simultaneous TX/RX; it just tells the radio 'prepare for TX'.\n\nBut immediately after lora_config(), we start the RX thread which calls lora_recv(). The radio will switch to RX mode for lora_recv(), making the .tx = true meaningless.\n\nThe .tx = true is harmless but misleading. Better would be to set .tx = false since we're primarily an RX listener, or omit it (defaults to false).\n\nImpact: P4 - Misleading config, no functional impact.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

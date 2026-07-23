@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.38",
   "title": "lichen_l2.c:864 lichen_l2_send does not check net_pkt is IPv6",
   "description": "Contract violation: lichen_l2_send() - Trusts caller (Zephyr net_l2) to pass an IPv6 packet but does not validate. Line 905 checks pkt_len \u003e= IPV6_BASE_HDR_LEN but does not verify the packet actually contains an IPv6 header (version field = 6). WHY: Malformed packet could be processed, compressed incorrectly, and transmitted. However, L2 contract with Zephyr guarantees IPv6, and checking version would add overhead on every TX. HOW to fix: Optional DEBUG-only check: verify (buf[0] \u003e\u003e 4) == 6 after linearization. Low priority - Zephyr guarantees valid packets.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

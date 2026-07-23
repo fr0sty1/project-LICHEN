@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.43",
   "title": "[main.c:126-127] standalone cleanup on error doesn't match init ordering",
   "description": "Cross-file analysis: In init_standalone_lora() at line 91-128, the init order is: lichen_lora_l2_init() -\u003e set_rx_callback() -\u003e lichen_lora_l2_start(). On error after start() (line 106-108), the cleanup at lines 126-127 calls stop() then deinit(). However, if the error occurs between start() success and the eui64 check (line 105-108), the callback is still registered. The cleanup does stop() which clears the callback (lora_l2.c:583-584), so this is actually handled correctly. However, comparing to lichen_l2.c's fail_late_init cleanup which explicitly clears callback before link_ctx cleanup, main.c relies on stop() doing this implicitly. This coupling is fragile - if stop() ever changes to not clear the callback, main.c would have a dangling callback. Suggest adding explicit callback clear for clarity: lichen_lora_l2_set_rx_callback(NULL, NULL) before stop().",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "improvement",
   "assignee": "Mark Atwood",

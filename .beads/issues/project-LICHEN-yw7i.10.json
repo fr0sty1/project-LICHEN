@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yw7i.10",
   "title": "Empty struct lichen_l2_ctx could be removed",
   "description": "lichen_l2.c:326-328 defines empty struct lichen_l2_ctx with comment 'all state is static'. This is required by NET_DEVICE_INIT but the comment could be promoted to clarify this is a Zephyr API requirement, not a design choice. Consider: 'Required by NET_DEVICE_INIT; actual state is module-static'.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

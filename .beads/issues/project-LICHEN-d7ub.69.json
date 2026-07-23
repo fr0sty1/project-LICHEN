@@ -3,7 +3,7 @@
   "title": "crash_info.c + lichen_l2.c: no crash_info hooks in lichen_l2.c",
   "description": "Cross-file interaction gap: crash_info.c provides crash telemetry but lichen_l2.c has no calls to crash_info_store().\n\nlora_l2.c:490 calls crash_info_store(CRASH_DRIVER_OVERFLOW, ...) for driver overflow.\n\nlichen_l2.c has no crash_info_store() calls even though it has critical failure paths:\n- Line 1879: 'RX returned oversized packet' - silently returns\n- Line 962-974: TX frame build failed - returns error but no crash log\n- Various NULL checks that LOG_ERR but don't record to crash_info\n\nFor debugging field failures, having lichen_l2.c failures recorded in retained RAM would help diagnose issues after watchdog reset.\n\nP3: Not a correctness bug, but operational gap. Consider adding crash_info_store() for critical lichen_l2.c failures like:\n- lichen_link_rx returning oversized output\n- peer table corruption (line 703)\n- rx_mutex timeout (line 1252)",
   "notes": "Implemented narrow crash_info_store hooks in lichen_l2.c for peer table inconsistency, TX frame build failure, zero/oversized TX frame returns, RX mutex timeout during disable, and oversized RX output. Focused object compile was attempted but is blocked by an unrelated concurrent d7ub.16 EUI-64 copy edit in lichen_l2_enable(): ret is undeclared at lichen_lora_l2_copy_eui64(eui64_copy). Leaving open until compile can be rerun after that blocker is resolved.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

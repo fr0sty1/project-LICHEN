@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.17",
   "title": "lichen_l2_send and lichen_l2_input: buffer sizes assume no IPv6 extension headers",
   "description": "In lichen_l2.c lines 57-61, tx_ipv6_buf and rx_ipv6_buf are sized as LICHEN_L2_MTU + IPV6_BASE_HDR_LEN (240 bytes). The comment at lines 50-55 acknowledges this assumes no extension headers. If a packet with extension headers (e.g., Hop-by-Hop, OSCORE) arrives, it may exceed 240 bytes pre-compression and be rejected or truncated. This is documented in lichen_l2.h:38-39 but the failure mode is silent packet drop. When OSCORE is added (mentioned in spec), this will cause hard-to-debug packet loss. Consider: explicit size check with LOG_WRN naming extension headers as the likely cause, or bump buffers.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

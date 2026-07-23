@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.50",
   "title": "good: coap/codec zero-copy CoapPacket design",
   "description": "codec.rs:83-94 CoapPacket\u003c'a\u003e is zero-copy - it borrows the underlying buffer and provides views into token/options/payload without allocation. Excellent for embedded use.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

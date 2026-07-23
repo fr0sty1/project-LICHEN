@@ -3,7 +3,7 @@
   "title": "Implement SCHC compression in Python",
   "description": "Python implementation of RFC 8724 SCHC. Implement rules 0-4 from spec Appendix A. Compression and decompression. ACK-on-Error fragmentation. Generate test vectors for each rule.",
   "notes": "SCHC engine + fragmentation + whole-packet rules 0/1/3/4 + packet\u003c-\u003efield extraction all done (schc/: codec,context,fragment,reassembly,headers,rules). Real IPv6+UDP+CoAP and RPL DIO/DAO packets compress/decompress end-to-end to exact bytes (03f). Only remaining vs 'rules 0-4': rule 2 (whole-packet ICMPv6 Echo) — the ICMPv6-only building block exists (ICMPV6_ECHO_RULE) but not yet a whole-packet IPv6+ICMPv6-echo profile. Variable-length CoAP token now handled (carried as tail).",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

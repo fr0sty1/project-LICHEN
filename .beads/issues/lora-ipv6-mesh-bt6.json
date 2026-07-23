@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-bt6",
   "title": "Integration test: node mobility",
   "description": "Test: two nodes A and B, initially 100m apart (good link). A transmits, B receives. Move B to 5000m via REST API. A transmits, B cannot receive (out of range or very weak). Move B back to 200m. A transmits, B receives again. Verify RSSI changes match distance.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

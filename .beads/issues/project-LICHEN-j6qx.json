@@ -2,7 +2,7 @@
   "id": "project-LICHEN-j6qx",
   "title": "task",
   "description": "resources.py:400 - bytes.fromhex(from_hex) accepts any valid hex string regardless of length. A 4-byte or 32-byte hex value will pass validation and be stored as the 'from' field, but the field semantically represents an 8-byte EUI-64. Failure scenario: client sends PUT /sos with {\"from\": \"aabb\"} (2 bytes); state shows {\"from\": \"aabb\"} instead of expected 16-char hex; downstream code expecting 8-byte EUI-64 may misbehave or display incorrectly.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

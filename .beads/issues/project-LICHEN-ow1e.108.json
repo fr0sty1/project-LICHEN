@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.108",
   "title": "node/stack: receive() allocates Vec on every call",
   "description": "In stack.rs:355, let mut ipv6 = vec![0u8; 256]; allocates on every receive, then immediately truncates. Consider reusing a buffer owned by Stack (rx_ipv6_buf field) to avoid repeated allocations in a receive loop.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

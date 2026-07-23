@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.73",
   "title": "[lora_l2.c:398-409] k_thread_create cannot fail but k_thread_name_set can",
   "description": "Gap found: Thread creation error handling not verified.\n\nWhy this was missed: Round 1 covered thread abort, not creation.\n\nThe actual bug: Lines 401-404 call k_thread_create() with comment 'k_thread_create() returns the thread pointer passed in (first arg). It cannot fail at runtime - thread/stack resources are sized at build time.'\n\nThis is correct - k_thread_create cannot fail because it uses statically allocated thread and stack.\n\nLines 406-409 check k_thread_name_set() return and log warning on failure. This is defensive coding since thread naming is optional.\n\nHowever, the thread is created with priority RX_THREAD_PRIORITY (CONFIG value). If this priority is invalid for the kernel configuration, behavior is undefined. The Kconfig should validate the priority range.\n\nVerified thread creation correct. Priority 4 - Kconfig validation note.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

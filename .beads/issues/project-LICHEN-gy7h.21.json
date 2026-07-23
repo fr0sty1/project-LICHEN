@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.21",
   "title": "lora_l2_stop join timeout logic could use named constants",
   "description": "lora_l2.c:362-371 uses magic numbers 100 and RX_TIMEOUT_MS for join timeouts:\n```c\nint join_ret = k_thread_join(\u0026rx_thread_data, K_MSEC(100));\nif (join_ret == -EAGAIN) {\n    join_ret = k_thread_join(\u0026rx_thread_data, K_MSEC(RX_TIMEOUT_MS));\n```\n\nThe comment at 357-361 explains the rationale (100ms for common case, then RX_TIMEOUT_MS for blocked-in-lora_recv case), but the 100 appears unexplained in the code itself.\n\nWhat goes wrong: Someone tuning timeouts might not understand why 100ms was chosen or that it relates to 'not blocked in lora_recv'.\n\nSuggested:\n```c\n#define RX_THREAD_QUICK_JOIN_MS 100  /* Thread not blocked in lora_recv */\n\nint join_ret = k_thread_join(\u0026rx_thread_data, K_MSEC(RX_THREAD_QUICK_JOIN_MS));\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

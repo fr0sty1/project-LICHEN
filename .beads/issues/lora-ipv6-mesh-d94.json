@@ -3,7 +3,7 @@
   "title": "Set up GitHub Actions CI",
   "description": "Create .github/workflows/ with: Rust build/test/clippy/fmt, Zephyr build for all target boards, test vector validation. CI should run on push and PR.",
   "notes": "Python CI implemented in .github/workflows/ci.yml (ruff + pytest matrix py3.11/3.12) via 1ow. Remaining for d94: Rust build/clippy/fmt and Zephyr board builds + test-vector validation jobs — deferred until those codebases exist (no rust/ or zephyr/ trees yet).",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Frost",

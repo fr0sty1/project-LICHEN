@@ -2,7 +2,7 @@
   "id": "project-LICHEN-jglg",
   "title": "Compliance: lichen/l2/lichen_l2.c TOFU",
   "description": "Policy: 06-security.md §8.6. File: lichen/subsys/lichen/l2/lichen_l2.c. Status: VIOLATION. lichen_peer_add() silently updates existing peer pubkey (line 750) without detecting/rejecting key change. Spec requires: reject key change and alert. Fix needed: compare existing-\u003epubkey with new pubkey, reject if different.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.39",
   "title": "EDHOC signature verification in process_message_2 is incomplete",
   "description": "**Location:** python/src/lichen/crypto/edhoc.py:314-323\n\n**Bug:** The initiator's `process_message_2()` parses `Signature_or_MAC_2` from the plaintext but never actually verifies it against the peer's public key. The comment on line 319-322 says 'simplified verification' and the MAC_2 computation is deferred.\n\n**Trigger:** A man-in-the-middle attacker intercepts Message 2 and provides a different G_Y (their own ephemeral key), allowing them to compute the shared secret and forge the rest of the handshake.\n\n**Bad behavior:** EDHOC completes successfully with an attacker instead of the intended responder. The attacker can then decrypt and forge all subsequent OSCORE-protected traffic.\n\n**Risk:** This is a critical authentication bypass. The EDHOC handshake provides no authentication of the responder in the current implementation.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

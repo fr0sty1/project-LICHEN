@@ -2,7 +2,7 @@
   "id": "project-LICHEN-sfen",
   "title": "Rust: OSCORE replay window constant WINDOW_SIZE defined but not used consistently",
   "description": "In rust/lichen-oscore/src/lib.rs, check_replay() uses WINDOW_SIZE constant (32) but this constant is not defined at module level - it's only a local const in the function. The constant should be promoted to module level for consistency and documentation.\n\nAdditionally, the replay_window field is a u32 bitfield, which can only track 32 sequence numbers. If WINDOW_SIZE is changed, the bitfield size must also change. This coupling is not documented or enforced.\n\nLocation: rust/lichen-oscore/src/lib.rs:403-427\nRisk: Confusion if someone changes WINDOW_SIZE without understanding the u32 constraint.\nFix: Define WINDOW_SIZE at module level with a comment explaining the u32 coupling.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

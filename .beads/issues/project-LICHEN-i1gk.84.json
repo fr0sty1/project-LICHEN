@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.84",
   "title": "[lichen_l2.c:1537-1550] SECURITY: CRC32 fallback when has_link_key=false provides no authentication",
   "description": "Security finding: When link_ctx.has_link_key is false, rx_link_key_ptr is NULL, and lichen_link_rx() falls back to CRC32 verification (lines 1537-1543).\n\nAttack scenario:\n1. Current code always has has_link_key=false (no link key provisioning)\n2. Frames with 4-byte MIC are verified with CRC32 only\n3. CRC32 provides integrity (detects corruption) but NOT authentication\n4. Attacker can craft valid CRC32 frames that pass verification\n\nImpact: Currently mitigated because peer_table is empty so all frames fail at signature check first. However:\n- If a peer is added with a pubkey\n- And no link_key is provisioned\n- Frames would authenticate via signature but use CRC32 for MIC\n- An attacker observing a valid signed frame could replay it (if replay window allows)\n\nThe comment correctly notes this (lines 1539-1544) but does not warn that this is the CURRENT PRODUCTION STATE.\n\nMitigation:\n1. Provision link_key alongside peer_pubkey in lichen_peer_add()\n2. Add LOG_WRN when processing frame without link_key\n3. Consider requiring link_key for production builds (BUILD_ASSERT)",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

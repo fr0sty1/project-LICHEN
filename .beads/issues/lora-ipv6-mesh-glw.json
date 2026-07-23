@@ -3,7 +3,7 @@
   "title": "Border router daemon (lichend)",
   "description": "Linux daemon that implements border router functions.\n\nResponsibilities:\n- RPL DODAG root (send DIOs, process DAOs)\n- IPv6 ND proxy (advertise prefixes to mesh)\n- Route management (add/remove routes for mesh nodes)\n- Interface with kernel routing table\n- SLIP interface to LoRa puck\n\nImplementation:\n- Rust (tokio async runtime)\n- Netlink for kernel route manipulation\n- SLIP framing over serial\n- Config file (TOML) for prefixes, interfaces, upstream\n- Systemd socket activation\n\nConfig example:\n```toml\n[mesh]\ninterface = \"/dev/ttyUSB0\"\nbaud = 115200\n\n[ipv6]\nprefix = \"fd00:lichen:1::/48\"\nupstream = \"eth0\"\n\n[rpl]\ninstance_id = 1\nmode = \"non-storing\"\n```\n\nLogging via tracing, journal integration.",
   "notes": "lichend daemon skeleton: slip.rs (RFC 1055 framing, tested), config.rs (TOML), gateway.rs (route table, mesh/upstream handlers), bin/lichend.rs (clap CLI, tokio main, sim+serial modes). RPL DODAG root logic and Netlink route install are stubs pending lichen-node RPL layer.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Frost",

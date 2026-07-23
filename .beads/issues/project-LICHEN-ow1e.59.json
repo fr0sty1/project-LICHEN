@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.59",
   "title": "rpl/routing: rebuild_routes() is O(N * depth) per DAO",
   "description": "In routing.rs:340-347, every incoming DAO triggers a full rebuild of all routes. assemble_path() walks up to MAX_CHAIN (64) hops per target. For N targets, this is O(N * depth) per DAO. Consider incremental updates: only rebuild routes that include the newly-announced target or its ancestors. Add comment noting the quadratic worst-case.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

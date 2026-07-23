@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1iml",
   "title": "RoutingTable.add_route allows empty path after conversion",
   "description": "File: python/src/lichen/rpl/routing.py:86-91\n\nThe add_route() method checks if path is empty but after conversion, which doesn't catch all edge cases:\n\n```python\ndef add_route(\n    self, target: IPv6Address | str, path: list[IPv6Address | str]\n) -\u003e None:\n    if not path:\n        raise RoutingError(\"route path must not be empty\")\n    self._routes[to_ipv6(target)] = [to_ipv6(a) for a in path]\n```\n\nThe check is correct for empty lists, but doesn't validate that:\n1. path elements are valid (to_ipv6 could raise on invalid strings)\n2. target is in the path (the path should end at target)\n\nWhile these may be caller responsibilities, the function could provide better validation:\n\n```python\nconverted = [to_ipv6(a) for a in path]\nif converted[-1] != to_ipv6(target):\n    raise RoutingError(\"path must end at target\")\n```\n\nThis is a lower-severity issue but could help catch misuse early.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

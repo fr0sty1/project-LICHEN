@@ -2,7 +2,7 @@
   "id": "project-LICHEN-f5zc",
   "title": "Compliance: rust/lichen-embassy/src/sim.rs polling",
   "description": "Policy: No-polling. Status: COMPLIANT (578k). Converted to push-based RX_ENTER/RX_PACKET/RX_TIMEOUT. Verify no poll loops remain.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

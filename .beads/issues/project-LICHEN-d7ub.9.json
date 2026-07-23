@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.9",
   "title": "lichen_l2.c:735 lichen_peer_remove NULL check redundant with nonnull",
   "description": "Contract violation: lichen_peer_remove() - Same issue as peer_add: __attribute__((nonnull)) at line 93-94 of header combined with NULL check at line 738. The nonnull attribute may cause compiler to optimize away the defensive check. HOW to fix: Remove __attribute__((nonnull)) from header to keep defensive NULL checking.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

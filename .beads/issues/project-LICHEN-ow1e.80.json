@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.80",
   "title": "codec.py: needs_value condition duplicated across files",
   "description": "src/lichen/schc/codec.py:137-141 has a complex condition:\n    needs_value = fd.mo in (MO.EQUAL, MO.MSB, MO.MATCH_MAPPING) or fd.cda in (CDA.VALUE_SENT, CDA.LSB, CDA.MAPPING_SENT)\n\nSame pattern appears in context.py:31-35. Should be a method on FieldDescriptor: fd.requires_value().",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

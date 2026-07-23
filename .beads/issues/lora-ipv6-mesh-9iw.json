@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-9iw",
   "title": "No CONTRIBUTING.md guide for open source contributors",
   "description": "**Ease of Contribution**\n\nStandard open source practice includes a CONTRIBUTING.md explaining:\n1. How to set up the development environment\n2. Code style expectations (ruff config exists but isn't documented)\n3. How to run tests\n4. PR process and review expectations\n5. Issue triage labels/priorities\n6. Architecture overview for newcomers\n\nThe README has basic setup commands but a dedicated CONTRIBUTING.md would:\n- Be discoverable (GitHub surfaces it in the PR template)\n- Separate contributor docs from user docs\n- Set expectations about code quality\n\nShould include:\n- `pip install -e '.[dev]'` workflow\n- Pre-commit hooks recommendation\n- mypy --strict requirement\n- Test coverage expectations\n\nFiles: CONTRIBUTING.md (new)",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Frost",

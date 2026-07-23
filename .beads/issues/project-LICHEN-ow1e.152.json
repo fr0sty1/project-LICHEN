@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.152",
   "title": "Good: IPv6 packet parsing is clean and RFC-compliant",
   "description": "src/lichen/ipv6/packet.py and udp.py are well-implemented:\n- Clean dataclass design with from_bytes/to_bytes symmetry\n- Proper validation with actionable error messages\n- Correct pseudo-header checksum calculation (RFC 768, 8200)\n- Clear separation of header vs extension headers vs payload\n- Explicit Fragment header rejection (LICHEN uses SCHC)\n\nWorth defending against simplification attempts.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

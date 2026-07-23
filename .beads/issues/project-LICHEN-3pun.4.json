@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3pun.4",
   "title": "lichen_lora_l2_get_eui64(): return value contract unclear on error",
   "description": "**Location:** firmware/bridge-zephyr/subsys/lichen/lora_l2.c:644\n\n**Contract issue:** The function returns NULL when not initialized, but:\n1. The header documentation says 'valid after init' without explicitly stating NULL is returned on error\n2. Callers must check return value for NULL, but this isn't documented in the header\n\n**Current behavior:**\n```c\nconst uint8_t *lichen_lora_l2_get_eui64(void)\n{\n    if (!atomic_get(\u0026lora_state.initialized)) {\n        LOG_ERR(\"LoRa L2 not initialized\");\n        return NULL;\n    }\n    return lora_state.eui64;\n}\n```\n\n**Callers that check correctly:**\n- main.c:105 - checks for NULL\n- lichen_l2.c:847 - checks for NULL\n- lichen_l2.c:655 - checks for NULL\n\n**Impact (P2):** All current callers handle NULL correctly. Documentation gap only.\n\n**Recommendation:** Update header to explicitly document:\n```c\n/**\n * @return Pointer to 8-byte EUI-64 (valid after init), or NULL if not initialized\n */\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

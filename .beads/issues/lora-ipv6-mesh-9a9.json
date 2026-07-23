@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-9a9",
   "title": "Schnorr signature implementation",
   "description": "Implement truncated Schnorr signatures per spec section 8.4.\n\nAlgorithm (48 bytes total):\n1. Generate nonce: r = H(priv || msg) mod L\n2. Compute R = r * G\n3. Compute e = H(R || pub || msg), truncate to 16 bytes (e₁₂₈)\n4. Compute s = r + e * priv mod L (32 bytes)\n5. Signature = e₁₂₈ || s (48 bytes)\n\nVerification:\n1. Compute R' = s * G - e * pub\n2. Compute e' = H(R' || pub || msg), truncate to 16 bytes\n3. Verify e' == e₁₂₈\n\nImplementation:\n- Use PyNaCl for Ed25519 primitives\n- Derive X25519 from Ed25519 for ECDH (EDHOC later)\n- Constant-time comparison for verification\n\nFunctions:\n- sign(private_key, message) -\u003e bytes (48)\n- verify(public_key, message, signature) -\u003e bool\n- keypair_generate() -\u003e (private, public)\n\nTest vectors from spec draft.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

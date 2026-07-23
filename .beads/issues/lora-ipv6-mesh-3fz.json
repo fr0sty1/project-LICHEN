@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-3fz",
   "title": "Protocol encoding functions lack input validation",
   "description": "encode_tx_done, encode_rx, encode_rx_ok, encode_err accept any int but pack to fixed-width. Values outside range silently wrap/truncate. Add range validation and raise ProtocolError. Affects: airtime_us (uint32), timeout_ms (uint32), rssi/snr (int16), error code (uint8).",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Frost",

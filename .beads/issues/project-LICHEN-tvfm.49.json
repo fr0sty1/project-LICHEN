@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.49",
   "title": "[lora_l2.c:169] generate_eui64 sets U/L bit but clears multicast - EUI-64 semantics unclear",
   "description": "Gap found: EUI-64 bit manipulation not fully analyzed.\n\nWhy this was missed: generate_eui64 was reviewed for hwid_len only, not bit operations.\n\nThe actual bug: Line 169 does 'eui64[0] = (eui64[0] | 0x02) \u0026 0xFE'. This sets bit 1 (U/L = locally administered) and clears bit 0 (multicast = unicast). The comment (lines 167-168) explains 'Set U/L bit, clear multicast bit'. However:\n\n1. For EUI-64, setting U/L bit means 'locally administered' - correct for a hash-derived address\n2. The hash output from SHA-256 already has random bits; forcing U/L and clearing multicast is correct\n\nThe subtle issue: if the hash happens to produce 0xFF in the first byte, after the operation we get (0xFF | 0x02) \u0026 0xFE = 0xFE. But if hash produces 0x00, we get (0x00 | 0x02) \u0026 0xFE = 0x02. Both are valid but the resulting address space is slightly constrained. This is intentional and correct. Priority 4 - verified correct, documentation note only.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

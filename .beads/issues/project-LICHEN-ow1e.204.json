@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.204",
   "title": "Codereview pass 2: WINDOW_SIZE constant shadowed and inconsistent",
   "description": "In lichen-oscore/src/lib.rs, the replay window functions use inconsistent references to window size:\n\n1. Line 61: pub const WINDOW_SIZE: u32 = 32; (module-level)\n2. Line 343: const WINDOW_SIZE: u32 = 32; (local in is_replay_candidate, shadows module-level)\n3. Line 377: if shift \u003e= 32 { (hardcoded literal in update_replay_window)\n\nAll three should reference the single module-level constant. Current code works but is a maintenance hazard - changing the module constant won't affect the others.\n\nFix: Remove the local const on line 343, use WINDOW_SIZE on line 377.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

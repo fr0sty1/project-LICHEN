@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kpt8",
   "title": "Parity: schc (Rust/Zephyr/Python)",
   "description": "Policy: three-impl parity. Module: schc. Rust: complete (2011 LoC). Zephyr: complete (1489 LoC). Python: complete (1479 LoC). Gap: none - full parity across all three implementations.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

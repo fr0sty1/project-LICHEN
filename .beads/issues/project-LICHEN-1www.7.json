@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.7",
   "title": "Missing net_pkt_cursor_init error check",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:292\n\nnet_pkt_cursor_init() is called but its return value is not checked. The function can fail if pkt is NULL or malformed.\n\nWhat goes wrong: If cursor_init fails silently, the subsequent net_pkt_read() operates on an uninitialized cursor, potentially reading garbage or crashing.\n\nNote: Looking at Zephyr source, net_pkt_cursor_init() returns void in current versions, so this may be a non-issue depending on Zephyr version. Verify against target Zephyr version.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

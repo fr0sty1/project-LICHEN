@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.51",
   "title": "lichen_l2_send net_pkt_unref on success may double-free if caller also unrefs",
   "description": "In lichen_l2.c lichen_l2_send() lines 218-222:\n\n    /*\n     * Per Zephyr net_l2 contract: when L2 returns 0, it took ownership\n     * of the packet and must free it.\n     */\n    net_pkt_unref(pkt);\n    return 0;\n\nThe comment correctly states the Zephyr L2 contract. However, if a future maintainer doesn't understand this contract and adds an unref at a call site, or if the L2 contract changes in a Zephyr version upgrade, this could cause double-free.\n\nThe code is currently correct. This is a documentation/footgun issue:\n1. The contract is only documented in this one comment\n2. A contributor modifying lichen_l2_send() error paths might add cleanup code that unrefs on success\n3. The asymmetry (error paths don't unref, success path does) is non-obvious\n\nConsider: Adding a header comment to lichen_l2_send() declaration in lichen_l2.h explaining the ownership semantics.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c lines 218-222",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

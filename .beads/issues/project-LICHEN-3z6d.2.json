@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3z6d.2",
   "title": "Missing #[non_exhaustive] on SeqExhausted error struct",
   "description": "Location: rust/lichen-oscore/src/seqnum.rs:17\nIssue: SeqExhausted is a public unit struct. If fields are added later, it breaks callers.\nImpact: Low (unit struct, unlikely to gain fields), but good practice for public error types.\nFix: Add #[non_exhaustive] attribute to SeqExhausted.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

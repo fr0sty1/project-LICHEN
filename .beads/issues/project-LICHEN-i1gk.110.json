@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.110",
   "title": "[lichen_l2.c:519-528] Multiple peers matching signature - first match wins but could be wrong",
   "description": "Final pass: This was missed because reviewers focused on timing side-channels, not the correctness of multiple matches.\n\nRoot cause: The constant-time iteration at lines 519-528:\n  if (ret == 0) {\n      /* Signature verified - record but don't return yet. */\n      if (found_idx \u003c 0) {\n          found_idx = (int)i;\n          found_ret = 0;\n      }\n      continue;  // Continue checking remaining peers\n  }\n\nIf multiple peers' public keys produce valid signatures for the same frame:\n1. The first matching peer (lowest index) is recorded\n2. Later matching peers are ignored\n\nThis could happen if:\n- Two peers have the same Ed25519 keypair (configuration error)\n- A cryptographic collision occurs (astronomically unlikely with Ed25519)\n\nThe comment at line 523 says 'record but don't return yet' - implying only one match is expected. But the code doesn't validate this assumption.\n\nImpact: If two peers share a keypair, packets from either are attributed to the first one in peer_table. The last_seen timestamp is updated for the wrong peer, affecting LRU eviction decisions. Packets are delivered correctly but peer attribution is wrong.\n\nFix: Either:\n1. Document that duplicate keypairs cause undefined peer attribution\n2. Log a warning if multiple peers match\n3. Reject frames with multiple matching signatures as ambiguous",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

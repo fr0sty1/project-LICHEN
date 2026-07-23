@@ -2,7 +2,7 @@
   "id": "project-LICHEN-s3n3",
   "title": "Fix gateway native_sim build Kconfig module loading",
   "description": "A narrow verification build for lichen/apps/gateway with board native_sim aborts during Kconfig before C compilation. CONFIG_LICHEN, CONFIG_LICHEN_OSCORE, CONFIG_LICHEN_IPV6, CONFIG_LICHEN_LORA_L2, and CONFIG_LICHEN_L2 are reported as undefined even when retrying west build with ZEPHYR_EXTRA_MODULES pointed at the local lichen module. Investigate module registration/Kconfig loading for gateway native_sim so OSCORE and related subsystem builds can be verified.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

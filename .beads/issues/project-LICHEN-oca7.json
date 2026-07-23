@@ -2,7 +2,7 @@
   "id": "project-LICHEN-oca7",
   "title": "task",
   "description": "resources.py:509-511 - render_post() stores the same body dict reference in both _inbox (via deliver()) and _sent. Any mutation of either dict would corrupt both copies. Failure scenario: future code that adds status tracking to sent messages would inadvertently modify inbox messages. Fix: make a copy before storing in _sent.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

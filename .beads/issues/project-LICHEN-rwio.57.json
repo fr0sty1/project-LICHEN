@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.57",
   "title": "ipv6_addr.h in6_addr redefinition may conflict with system headers",
   "description": "In ipv6_addr.h lines 35-47:\n\n    #if defined(CONFIG_NET_IPV6) \u0026\u0026 defined(__ZEPHYR__)\n    #include \u003czephyr/net/net_ip.h\u003e\n    #else\n    struct in6_addr {\n        uint8_t s6_addr[16];\n    };\n    #endif\n\nWhen building without CONFIG_NET_IPV6 or outside Zephyr, the code defines its own struct in6_addr. This can conflict if:\n\n1. A POSIX system header (\u003cnetinet/in.h\u003e) is included before ipv6_addr.h\n2. Another library defines struct in6_addr\n\nTrigger: Building for a host-side test or simulation that includes POSIX networking headers.\n\nBad behavior: Compiler error 'redefinition of struct in6_addr' or silent ABI mismatch if definitions differ.\n\nConsider:\n- Using a LICHEN-prefixed name (struct lichen_in6_addr) in the fallback\n- Adding include guards to detect prior definition\n- Documenting the conflict potential\n\nLocation: firmware/bridge-zephyr/subsys/lichen/ipv6_addr.h lines 35-47",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

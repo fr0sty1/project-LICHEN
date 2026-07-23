@@ -2,7 +2,7 @@
   "id": "project-LICHEN-w0s3",
   "title": "Python tests: DodagState tests use IPv6Address but topology_from_states returns strings",
   "description": "In python/tests/rpl/test_visualize.py, the test test_topology_and_ranks_from_states() was updated to use IPv6Address for the root_addr. The assertion 'assert topo[\"child\"] == str(root_addr)' correctly converts to string. However, this highlights that topology_from_states() returns strings while DodagState.preferred_parent is now IPv6Address. The type mismatch is handled but may be confusing - consider whether Topology should use IPv6Address consistently.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

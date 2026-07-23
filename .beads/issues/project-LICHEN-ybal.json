@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal",
   "title": "Review: bridge-zephyr 2026-06-26",
   "notes": "Review confidence: 25% chance of missed bug.\nLeast confident areas: Zephyr net_pkt lifecycle (ownership semantics), k_thread/k_mutex edge cases, LoRa driver timing constraints.\nWould raise confidence if: ran with ASan/UBSan under load, traced packet ownership through actual TX/RX cycles.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-zt3c.10",
   "title": "Unified Ed25519 identity for LICHEN + Yggdrasil address derivation",
   "description": "Implement key derivation: use single Ed25519 keypair for link signatures, OSCORE, humanaddr, and Yggdrasil IPv6 address (SHA512-based per Yggdrasil spec). Update lichen-link, lichen-core::addr, tests. Reject separate keys.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "created_at": "2026-07-22T15:08:05.763571721Z",

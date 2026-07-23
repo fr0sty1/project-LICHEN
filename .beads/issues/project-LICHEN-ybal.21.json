@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.21",
   "title": "Good: Buffer sizing rationale with OSCORE forward-pointer",
   "description": "The comment at lichen_l2.c:44-56 explains buffer sizing (MTU + 40 for IPv6 base header), acknowledges the limitation (no extension headers), and explicitly notes that OSCORE support will require revisiting buffer sizes. This prevents future developers from cargo-culting the buffer size without understanding why.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:44-56",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

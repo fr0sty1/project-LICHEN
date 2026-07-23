@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.130",
   "title": "lichen-oscore protect/unprotect return heapless::Vec while other codecs take output buffer parameter",
   "description": "SCHC, CoAP, SenML, and Link codec functions take an output buffer:\n- compress(packet, out: \u0026mut [u8]) -\u003e Result\u003cusize, SchcError\u003e\n- CoapBuilder::new(out: \u0026mut [u8], ...) -\u003e Result\u003cSelf, CoapError\u003e\n- encode(records, out: \u0026mut [u8]) -\u003e Result\u003cusize, CborError\u003e\n- LichenFrame::write_to(\u0026self, buf: \u0026mut [u8]) -\u003e Result\u003cusize, FrameError\u003e\n\nBut lichen-oscore/src/lib.rs returns owned heapless::Vec:\n  pub fn protect_request(\u0026mut self, ...) -\u003e Result\u003c(heapless::Vec\u003cu8, 280\u003e, heapless::Vec\u003cu8, 16\u003e), OscoreError\u003e\n\nWhat goes wrong: Callers cannot reuse existing buffers for OSCORE operations, forcing allocation of fixed-size heapless::Vec on every call. In embedded contexts this may cause stack pressure. The API is harder to compose with the rest of the stack which uses \u0026mut [u8] output buffers.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

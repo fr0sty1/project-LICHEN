@@ -2,7 +2,7 @@
   "id": "project-LICHEN-51ez",
   "title": "Compliance: python/announce/processor.py TOFU",
   "description": "Policy: 06-security.md §8.6. File: python/src/lichen/announce/processor.py. Status: COMPLIANT. First contact pins pubkey (line 214), subsequent contacts reject key changes (lines 182-194), unpin() for rotation (line 274-281).",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

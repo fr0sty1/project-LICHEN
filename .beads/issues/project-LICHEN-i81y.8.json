@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i81y.8",
   "title": "oscore_ctx_create succeeds before oscore_init and can be wiped by later init",
   "description": "API contract review finding. Public header lichen/subsys/lichen/oscore/include/lichen/oscore.h:195 documents oscore_ctx_create() as creating a context, while oscore_init() at lines 187-193 says it must be called before other OSCORE functions. The implementation in lichen/subsys/lichen/oscore/oscore.c:470-613 never checks s_initialized before allocating from s_contexts. If a caller skips oscore_init(), oscore_ctx_create() can return OSCORE_OK with an active context; a later oscore_init() then memset()s s_contexts, s_seq_initialized, and replay state at oscore.c:452-463, silently destroying the returned context. Impact: lifecycle bugs become latent use-after-free/stale-pointer behavior and lost key state instead of a clear initialization error. Fix direction: either make oscore_ctx_create() call oscore_init() internally or reject with OSCORE_ERR_INVALID_PARAM/NO_CONTEXT until s_initialized is true, and document the chosen behavior.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

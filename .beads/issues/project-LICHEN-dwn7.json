@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dwn7",
   "title": "task",
   "description": "python/src/lichen/coap/schc_channel.py:95-98. Malformed SCHC crashes.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

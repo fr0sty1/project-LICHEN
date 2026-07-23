@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.9",
   "title": "[lora_l2.c:560-631] lichen_lora_l2_stop: return 0 on idempotent paths but doc says 'always returns 0'",
   "description": "Contract violation: postcondition/documentation\n\n**Issue:** The docstring says 'Always returns 0' but the function can return -ECANCELED on line 627 when thread abort occurs.\n\n**Header doc (lora_l2.h:142):**\n```\n * @return Always returns 0 (stop is idempotent and cannot fail)\n```\n\n**Implementation:**\n```c\n// line 626-627\nlora_transition(LORA_ABORTED);\nret = -ECANCELED;\n...\nreturn ret;  // Can be -ECANCELED\n```\n\n**Impact:** Callers trusting the doc that stop() cannot fail will not check return value and miss detecting the ABORTED state requiring reinit.\n\n**Fix:** Update header documentation to reflect that -ECANCELED is returned when forced abort occurs.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

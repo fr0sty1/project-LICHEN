@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.132",
   "title": "NodeHandler uses internal gradient_table._entries attribute",
   "description": "**Location:** python/src/lichen/interface/handler.py:165\n\n**Risk:** The `get_mesh_state()` method directly accesses `self.node.gradient_table._entries.values()`, a private attribute. This creates a coupling that will break if GradientTable's implementation changes.\n\n**Trigger:** Refactor GradientTable to use a different internal structure.\n\n**Bad behavior:** TypeError or AttributeError in NodeHandler.get_mesh_state().\n\n**Maintainer burden:** Contributors may not realize this dependency exists. The TODO comment (line 163-164) acknowledges this.\n\n**Fix:** Add a public iteration method to GradientTable (e.g., `def entries(self) -\u003e Iterable[GradientEntry]`).",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-gds",
   "title": "RPL DAO handling and route advertisement",
   "description": "Implement DAO processing for non-storing mode.\n\nDAO sending (non-root nodes):\n- Triggered by: joining DODAG, parent change, new child\n- Send to DODAG root (not parent in non-storing mode)\n- Contains: my prefix as target, parent as transit\n- DAO-ACK expected if K flag set\n\nDAO receiving (root):\n- Parse target and transit info options\n- Update routing table\n- Send DAO-ACK if requested\n\nDAO triggering:\n- DAO timer after joining\n- Immediate on topology change\n- Periodic refresh\n\nClass DaoManager:\n- schedule_dao() -\u003e None\n- send_dao() -\u003e None\n- process_dao(dao, src) -\u003e None (root only)\n- send_dao_ack(dao, status) -\u003e None\n\nTest: 5-node line topology, verify root has routes to all.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

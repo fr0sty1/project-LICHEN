@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.263",
   "title": "Python EDHOC: signature verification does not occur in message_2 handler",
   "description": "File: python/src/lichen/crypto/edhoc.py\nLines: 324-344\n\nSECURITY: The new signature verification code for Message 2 was added but the VerifyKey.verify() call is incorrect for detached signatures. PyNaCl's VerifyKey.verify(msg, sig) expects the signature to be prepended to the message internally, not passed separately. For Ed25519 detached signature verification with PyNaCl, you need to use the nacl.signing module differently.\n\nThe correct pattern is either:\n1. verify_key.verify(signature_2 + m_2) - passing the combined signed message\n2. Or use cryptography library's Ed25519PublicKey.verify(signature, data)\n\nCurrent code will likely raise BadSignatureError even for valid signatures, or may accept invalid ones depending on how the library handles the mismatch.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

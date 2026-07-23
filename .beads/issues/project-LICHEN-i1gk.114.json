@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.114",
   "title": "[lichen_l2.c:636-638] peer_add memcpy does not validate slot index before use",
   "description": "Final pass: This was missed because reviewers focused on the empty slot search and eviction, not the slot use.\n\nRoot cause: At lines 619-633, peer_add searches for a slot:\n  if (slot \u003c 0) {\n      slot = peer_find_oldest_locked();\n      if (slot \u003c 0) {\n          /* Should not happen: table full but no oldest entry found */\n          LOG_ERR(...);\n          k_mutex_unlock(\u0026rx_mutex);\n          return -ENOSPC;\n      }\n      ...\n  }\n\nThen at lines 635-638:\n  memcpy(peer_table[slot].eui64, eui64, LICHEN_EUI64_LEN);\n  memcpy(peer_table[slot].pubkey, pubkey, LICHEN_L2_PUBKEY_LEN);\n  peer_table[slot].last_seen = k_uptime_get();\n  peer_table[slot].active = true;\n\nThe slot index is used without validating it's within bounds. peer_find_oldest_locked returns -1 on error (handled above) or an index from 0 to CONFIG_LICHEN_LINK_MAX_NEIGHBORS-1.\n\nHowever, peer_find_oldest_locked at line 440 casts i to int:\n  oldest_idx = (int)i;\n\nIf CONFIG_LICHEN_LINK_MAX_NEIGHBORS were set to a value larger than INT_MAX (impossible via Kconfig which limits to 64), the cast would overflow.\n\nActually, Kconfig limits MAX_NEIGHBORS to 64, so slot is always 0-63. No bounds issue.\n\nBut wait - the cast at line 607:\n  slot = (int)i;\n\nSame pattern. size_t i is cast to int slot. If i \u003e= INT_MAX, slot would be negative or wrong. But i is bounded by CONFIG_LICHEN_LINK_MAX_NEIGHBORS (max 64).\n\nNo bug here - Kconfig bounds prevent the issue.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

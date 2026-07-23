@@ -3,7 +3,7 @@
   "title": "Compliance: rust/lichen-link/src/keys.rs key storage",
   "description": "Policy: 06-security.md §15.2. File: rust/lichen-link/src/keys.rs. Status: COMPLIANT. PrivateKey and Seed types use ZeroizeOnDrop, Debug output is REDACTED. Never persisted directly per documentation.",
   "notes": "Links to epic: echd (Security Compliance Audit)",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

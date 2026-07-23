@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.26",
   "title": "deinit reinitializes mutex that may still be held - undefined behavior",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:402-465 (lichen_lora_l2_deinit)\n\nBug: The function calls k_mutex_init(\u0026lora_mutex) at line 461 to reinitialize the mutex after a forced thread abort. However k_thread_join() timeout is only 10ms with fallback to proceed anyway. Reinitializing a mutex while another thread might still be waiting on it or holding it is undefined behavior.\n\nThe comment acknowledges the mutex may be left locked by the aborted thread but reinitializing it is not a safe recovery path.\n\nImpact: If RX thread was aborted while holding a mutex and then deinit() runs, subsequent mutex operations may fail unpredictably.\n\nFix: Document that forced abort is a terminal state requiring power cycle, not just deinit/reinit. Or use a completely separate mutex instance for the new start cycle.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

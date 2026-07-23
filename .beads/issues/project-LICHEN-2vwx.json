@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2vwx",
   "title": "BLE transport: data race on nus_tx_notify_enabled global",
   "description": "File: lichen/subsys/lichen/transport/ble_ipsp_transport.c\nLines: 309, 314, 460\n\nThe global variable nus_tx_notify_enabled is:\n- Written in nus_ccc_cfg_changed() callback (line 314) without any synchronization\n- Read in lichen_ble_slip_send() at line 460 without synchronization\n\nThis is a data race. While the variable is a bool and writes may be atomic on many platforms, this is undefined behavior per C standard.\n\nFix: Either protect with transport_state.lock mutex, use an atomic type, or document platform assumptions.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

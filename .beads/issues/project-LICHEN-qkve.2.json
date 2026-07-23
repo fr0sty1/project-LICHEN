@@ -2,7 +2,7 @@
   "id": "project-LICHEN-qkve.2",
   "title": "Rust announce scheduler (periodic TX)",
   "description": "Port the announce scheduler from Python to Rust.\n\nPython reference: python/src/lichen/announce/scheduler.py (303 LoC)\n\nRequired functionality:\n- Periodic announce transmission (spec 9.4: 300s interval)\n- Random jitter (0-30s) to prevent collision\n- Sequence number management (16-bit, wrapping)\n- Initial delay (let node discover peers first)\n- Manual trigger support\n- Persistence callback for seq_num\n\nThis is the TX path that generates and sends announces.\n",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

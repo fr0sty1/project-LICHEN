@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-6yu",
   "title": "Spec: Define group membership protocol",
   "description": "Groups extensively documented for messaging/encryption but no join/leave protocol. Missing: membership synchronization, authorization model, key distribution mechanism (currently 'out-of-band'). Need concrete protocol for group CRUD operations and member management.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

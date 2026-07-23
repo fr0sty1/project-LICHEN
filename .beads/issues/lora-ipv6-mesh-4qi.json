@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-4qi",
   "title": "Inconsistent dict mutation patterns: del vs pop",
   "description": "**Code Style / Consistency**\n\nThe codebase uses both `del dict[key]` and `dict.pop(key, None)` inconsistently:\n\napi.py:154-155 uses del:\n```python\ndel self._simulations[sim_id]\ndel self._chaos_engines[sim_id]\n```\n\nBut simulation.py:120-124 and elsewhere use pop:\n```python\nnode = self._nodes.pop(node_id, None)\nself._pending_rx_timeouts.pop(node_id, None)\n```\n\nGuidelines:\n- `del dict[key]` - when key MUST exist (raises KeyError if not)\n- `dict.pop(key, None)` - when key might not exist\n\nIn api.py:154-155, the keys were already validated to exist, so `del` is correct but inconsistent with the rest of the codebase.\n\nRecommendation: Standardize on `pop(key, None)` for defensive programming, or use `del` with explicit prior validation comments.\n\nFiles: api.py, simulation.py, server.py, node_server.py",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "assignee": "Mark Frost",

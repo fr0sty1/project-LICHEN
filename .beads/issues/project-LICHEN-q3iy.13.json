@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.13",
   "title": "LICHEN_LORA_FRAME_OVERHEAD derivation comment is confusing",
   "description": "In lora_l2.h:69-71, the constant is defined as:\n\n```c\n#define LICHEN_LORA_FRAME_OVERHEAD   55  /* 57 raw - 2 margin = 5 hdr + 4 MIC + 48 sig - 2 */\n```\n\nThe comment arithmetic is confusing:\n- \"57 raw - 2 margin\" suggests 57 is the baseline\n- \"5 hdr + 4 MIC + 48 sig\" = 57, which checks out\n- But then \"-2\" is applied, yielding 55\n\nHowever, the derivation in the docstring above (lines 46-67) explains the 2-byte margin differently: it is reserve space for SCHC rule ID and future address fields.\n\nWhat goes wrong: The inline comment arithmetic is trying to show two things at once. A reader has to reconcile \"57 raw - 2\" with \"5+4+48 - 2\".\n\nSuggested fix: Simplify the inline comment to just reference the derivation above:\n```c\n#define LICHEN_LORA_FRAME_OVERHEAD   55  /* See derivation in docstring above */\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

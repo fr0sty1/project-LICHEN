@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ogtm",
   "title": "Frame length field allows 0-byte body which violates minimum",
   "description": "File: python/src/lichen/link/frame.py:156-166\n\nThe from_bytes parsing checks:\n\n    if len(data) \u003c 1:\n        raise FrameError('frame is empty')\n    length = data[0]\n    body = data[1:]\n    if len(body) != length:\n        raise FrameError(...)\n    if length \u003c 4:\n        raise FrameError(f'frame body too short: {length} bytes')\n\nA frame with data = b'\\x00' would:\n1. Pass 'len(data) \u003c 1' check (length is 1)\n2. Set length = 0\n3. Set body = b'' (empty)\n4. Pass 'len(body) != length' check (0 == 0)\n5. Fail 'length \u003c 4' check\n\nSo this is correctly handled. But what about length = 1, 2, or 3?\n\ndata = b'\\x01\\x00': length=1, body=b'\\x00', len(body)==length, then fails length\u003c4.\n\nThis is correct. No bug here, just verifying the edge cases are handled.\n\nActually, this is NOT a bug. Closing/withdrawing this finding.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

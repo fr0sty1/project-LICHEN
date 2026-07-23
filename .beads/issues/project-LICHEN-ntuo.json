@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ntuo",
   "title": "task",
   "description": "node_server.py:354-391 - When _handle_rx receives packet early and breaks out of loop, the RxTimeoutEvent scheduled by start_receive() remains in queue. Although guarded by state check, causes event queue pollution with stale events over many RX operations. Not a crash, but wastes memory and processing.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

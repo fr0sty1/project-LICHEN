@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0l7d",
   "title": "announce.h: _Nonnull on meta parameter conflicts with NULL handling in implementation",
   "description": "File: lichen/subsys/lichen/routing/include/lichen/routing/announce.h\nLine: 69\n\nThe header declares:\n    int lichen_announce_ingest_authenticated(\n        const uint8_t *_Nonnull data, size_t len,\n        const struct lichen_announce_rx_meta *_Nonnull meta);\n\nBut the implementation in announce.c lines 252-257 explicitly handles NULL meta:\n\n    if (meta == NULL) {\n        default_meta.observed_uptime_s = k_uptime_get_32() / 1000U;\n        meta = \u0026default_meta;\n    }\n\nThe _Nonnull annotation tells callers and static analyzers that NULL is not allowed, but the implementation accepts and handles NULL. This is:\n1. API contract violation (header lies about requirements)\n2. May cause caller warnings/errors for passing NULL when it's actually valid\n3. Static analysis tools will not catch missing NULL checks in callers\n\nEither remove _Nonnull from the header, or remove the NULL handling from the implementation and require callers to always provide metadata.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

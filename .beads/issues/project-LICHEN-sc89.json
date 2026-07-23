@@ -2,7 +2,7 @@
   "id": "project-LICHEN-sc89",
   "title": "task",
   "description": "rust/lichen-ipv6/src/lib.rs:459-471,503-515,553-576 - All heapless::Vec operations use 'let _ = pkt.push()' or 'let _ = pkt.extend_from_slice()', discarding errors. For Icmpv6Echo::build() (Vec\u003cu8, 128\u003e), if data exceeds 120 bytes (128 - 8 header bytes), extend_from_slice fails silently and packet is truncated. The checksum is then computed over truncated data, creating a 'valid' but incomplete packet. Similarly handle_icmpv6 can truncate responses. Fix: either return Result to propagate errors, or check capacity before extending and truncate intentionally with a documented maximum.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

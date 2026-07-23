@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.44",
   "title": "coap/block: using InvalidOptionDelta error for out-of-order blocks is semantically wrong",
   "description": "In block.rs:342-345, CoapError::InvalidOptionDelta is returned for 'out of order block' which is a protocol error, not an option encoding error. Consider adding a dedicated error variant like BlockOutOfOrder.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

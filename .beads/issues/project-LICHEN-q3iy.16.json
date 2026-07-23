@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.16",
   "title": "lichen_l2.c net_pkt_get_len return type is size_t but compared with sizeof",
   "description": "## Location\nfirmware/bridge-zephyr/subsys/lichen/lichen_l2.c:324-329\n\n## Finding\n```c\nsize_t pkt_len = net_pkt_get_len(pkt);\nif (pkt_len \u003e sizeof(tx_ipv6_buf)) {\n    LOG_ERR(\"Packet too large: %zu \u003e %zu\", pkt_len, sizeof(tx_ipv6_buf));\n    return -EMSGSIZE;\n}\n```\n\nThis is actually CORRECT code. The comparison is between two `size_t` values.\n\n**Not an issue** - marking this as a non-finding for documentation purposes.\n\nActually, let me verify the buffer sizing more carefully. `tx_ipv6_buf` is `LICHEN_L2_MTU + IPV6_BASE_HDR_LEN` = 200 + 40 = 240 bytes. The IPv6 stack should not send packets larger than LICHEN_L2_MTU (200), and 200 + 40 = 240 bytes is the theoretical max including header.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

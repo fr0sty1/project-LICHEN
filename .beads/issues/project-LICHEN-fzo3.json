@@ -2,7 +2,7 @@
   "id": "project-LICHEN-fzo3",
   "title": "Audit packet queuing for bufferbloat risks",
   "description": "LoRa mesh bufferbloat: small queues in bytes = large latency in time. Audit: (1) Where do TX packets queue while waiting for channel? (2) Where do forwarded packets buffer? (3) Is there backpressure to senders? (4) Are stale packets dropped? (5) Is there prioritization (control vs data)? See spec/appendix-bufferbloat.md for design rationale. Dave Täht memorial in spec/99-acknowledgments.md.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

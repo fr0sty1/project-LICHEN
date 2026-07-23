@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9nrr.25",
   "title": "puck: silence non-native unused state warnings",
   "description": "Why this exists: while validating project-LICHEN-9nrr.22, west build -b t_echo/nrf52840 lichen/apps/puck now links, but still emits pre-existing warnings when CONFIG_LICHEN_NATIVE is disabled: s_iid is defined but not used, and last_info_ms is unused in main(). What needs to be done: gate or move these variables so non-native builds are warning-clean without changing native status/reporting behavior. Verify at least t_echo/nrf52840 puck build and a native-enabled puck build or equivalent config. As a code-generation/fix Bead, run two review passes before closing.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

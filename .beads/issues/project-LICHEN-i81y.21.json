@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i81y.21",
   "title": "Add Zephyr CoAP client test target",
   "description": "The LICHEN Zephyr CoAP client subsystem has no dedicated test app or compile target that exercises lichen/subsys/lichen/coap/coap_client.c. Add a narrow test/build target for lichen_coap_request parameter validation and timeout range handling so fixes like project-LICHEN-i81y.13 can be verified locally.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.68",
   "title": "Unnecessary .clone() in test code",
   "description": "Several .clone() calls in test code exist only to satisfy borrow checker in test setups:\n\n**lichen-link/src/link_layer.rs:**\n- Line 607: `ll_bob.add_peer(alice_peer.clone())`\n- Line 661: `ll_bob.add_peer(new_alice_peer.clone())`\n\n**lichen-oscore/src/edhoc.rs:**\n- Line 234: `self.state.msg1 = msg1.clone()`\n- Line 388: `let mut ciphertext_3 = plaintext_3.clone()`\n\nWhile test code is less critical, these indicate potential API improvements (e.g., `add_peer` could take `\u0026PeerIdentity` and clone internally if needed).",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

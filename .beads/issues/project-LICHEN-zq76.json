@@ -2,7 +2,7 @@
   "id": "project-LICHEN-zq76",
   "title": "Gateway nRF52840 build blocked by OSCORE deps",
   "description": "After fixing project-LICHEN-hhub, west build -p always -b nrf52840dk/nrf52840 lichen/apps/gateway -d build_gateway_hhub_check gets past the zephyr,uart-pipe failure and then stops in LICHEN OSCORE sources. Exact blockers: lichen/subsys/lichen/oscore/aes_ccm.c and hkdf.c reference undeclared TC_CRYPTO_SUCCESS, and lichen/subsys/lichen/oscore/oscore.c fails to include \u003czcbor_encode.h\u003e. Decide whether gateway prj.conf/module Kconfig should enable/select the missing TinyCrypt/ZCBOR symbols or whether the OSCORE code should use the Zephyr 3.7 TinyCrypt return constants/includes differently.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.77",
   "title": "lora_l2.c:296 constant-time all-zeros hwid check leaks timing via early return",
   "description": "Completeness check: Round 1-2 missed timing side-channel in hwid validation.\n\nWHAT: generate_eui64() checks if hwid is all-zeros:\n```c\nbool all_zeros = true;\nfor (ssize_t i = 0; i \u003c hwid_len; i++) {\n    if (hwid[i] != 0) {\n        all_zeros = false;\n        break;  // \u003c-- Early exit leaks information\n    }\n}\n```\n\nWHY BUG: The early break means the loop time depends on WHERE the first non-zero byte appears. An attacker with precise timing measurements could determine the position of the first non-zero byte in the hardware ID.\n\nIMPACT: Very low. The hwid is read from hardware and not secret, but this pattern could be copied elsewhere for secret data. More importantly, this is in security-sensitive code (identity generation) and sets a poor example.\n\nSECURITY PRINCIPLE: Security-critical code should use constant-time patterns even when the data isn't strictly secret, to prevent accidental information leakage and establish good habits.\n\nFIX: Use constant-time pattern:\n```c\nuint8_t nonzero = 0;\nfor (ssize_t i = 0; i \u003c hwid_len; i++) {\n    nonzero |= hwid[i];\n}\nif (nonzero == 0) {\n    // all zeros\n}\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.27",
   "title": "main.c LED error pattern undocumented for field debugging",
   "description": "main.c:129-137 blinks LED 3 times on USB failure:\n```c\nfor (int i = 0; i \u003c 3; i++) {\n    gpio_pin_set_dt(\u0026led, 1);\n    k_sleep(K_MSEC(100));\n    ...\n}\n```\n\nWhat goes wrong: A field technician seeing the blink pattern has no way to know what it means without source code access. If additional error patterns are added later, distinguishing them becomes guesswork.\n\nSuggested: Add a comment block at the top of main.c documenting LED patterns:\n```c\n/*\n * LED diagnostic patterns:\n * - 3 rapid blinks (100ms each): USB CDC initialization failed\n * - Solid on during init: normal startup\n * - Off after init: ready\n */\n```\n\nThis creates a single reference point for all patterns.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

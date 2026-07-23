@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-r45",
   "title": "Propagation can_decode uses \u003e instead of \u003e= for sensitivity threshold",
   "description": "propagation.py:152 uses rx_power \u003e sensitivity_dbm. A signal exactly at sensitivity threshold is NOT decodable. But sensitivity represents minimum decodable power, so \u003e= is correct. Also affects max_range which solves for equality. Fix: change \u003e to \u003e=",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

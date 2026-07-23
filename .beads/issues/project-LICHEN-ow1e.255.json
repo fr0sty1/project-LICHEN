@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.255",
   "title": "[CR] meshcore_adapter.c: compat_valid_utf8 is complex and should have unit tests",
   "description": "File: lichen/apps/gateway/src/meshcore_adapter.c:70-130\n\nIssue: The compat_valid_utf8() function is a hand-rolled UTF-8 validator spanning 60+ lines. While it appears correct (covers all valid UTF-8 byte sequences including surrogate rejection), complex validation code like this needs dedicated unit tests.\n\nThe function handles:\n- 1-byte ASCII (0x00-0x7F)\n- 2-byte sequences (0xC2-0xDF lead byte)\n- 3-byte sequences with overlong rejection (0xE0 special case)\n- 3-byte sequences with surrogate rejection (0xED special case)\n- 4-byte sequences with overlong/out-of-range rejection (0xF0, 0xF4 special cases)\n\nRisk: Edge cases in UTF-8 validation are notoriously tricky. Missing tests could allow malformed UTF-8 through or reject valid sequences.\n\nFix: Add unit tests covering:\n1. Valid 1/2/3/4 byte sequences\n2. Overlong encodings (should reject)\n3. Surrogate pairs (should reject)\n4. Invalid continuation bytes\n5. Truncated sequences",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

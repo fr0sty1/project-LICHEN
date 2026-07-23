@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.44",
   "title": "[lichen_util.h:66-79] secure_zero word-aligned path has subtle aliasing concern",
   "description": "Gap found: secure_zero implementation not fully analyzed in Round 1.\n\nWhy this was missed: Round 1 found NULL return issue but not the algorithm.\n\nThe actual bug: Lines 66-79 implement word-aligned zeroing. The cast (uintptr_t)p on line 66 checks alignment, but the while loop (73-79) uses __builtin_memcpy to a volatile pointer. The pattern is:\n1. Cast volatile uint8_t* to void* for memcpy destination\n2. memcpy writes zero_word\n3. Read-back via volatile to prevent optimization\n\nThe concern: The memcpy destination is (void*)p where p is volatile uint8_t*. Casting away volatile is implementation-defined behavior per C standard. While __builtin_memcpy likely treats the destination as volatile due to the subsequent read-back, a very aggressive optimizer could theoretically reorder or elide the memcpy since the destination type no longer carries volatile. The read-back forces observable behavior but occurs after the write. Consider using volatile_memcpy or explicit volatile stores. Priority 3 because current compilers respect this pattern.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -3,7 +3,7 @@
   "title": "bridge-rust: replace spawner.spawn().unwrap() with error handling",
   "description": "firmware/bridge-rust/src/main.rs:91 has spawner.spawn(radio_task().unwrap()). Task spawn failure will panic. Handle gracefully.",
   "notes": "Development firmware uses panic_probe. Task spawn failure is rare but possible. For production: log error and continue without radio task if spawn fails.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-mwpg",
   "title": "Rust: AddrMode addr_len() uses static tuple instead of match - correctness depends on enum discriminant order",
   "description": "In python/src/lichen/link/frame.py:38-44, AddrMode.addr_len property uses tuple indexing:\n\n    _ADDR_LEN_TABLE: tuple[int, ...] = (0, 2, 8, 0)  # indexed by AddrMode value\n\nThe enum values are explicitly defined as NONE=0, SHORT=1, EXTENDED=2, ELIDED=3, so the tuple indices match correctly.\n\nHowever, there's no compile-time or test-time assertion ensuring this remains true. If someone adds a new AddrMode variant or changes the values, the lookup table may become incorrect.\n\nLocation: python/src/lichen/link/frame.py:38-45\nRisk: Low - values are stable spec-defined constants.\nFix: Consider adding a test that asserts len(_ADDR_LEN_TABLE) \u003e= max(AddrMode) + 1.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

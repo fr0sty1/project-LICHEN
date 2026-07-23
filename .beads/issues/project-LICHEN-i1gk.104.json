@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.104",
   "title": "[lichen_util.h:87-96] secure_zero word loop terminates early if len drops below sizeof(unsigned long)",
   "description": "Final pass: This was missed because reviewers focused on the alignment pre-loop, not the word loop termination condition.\n\nRoot cause: The word-aligned zeroing loop at lines 94-97:\n  while (len \u003e= sizeof(unsigned long)) {\n      *wp++ = 0;\n      len -= sizeof(unsigned long);\n  }\n\nAfter this loop, len contains only the remainder bytes (0 to sizeof(unsigned long)-1). This is correct.\n\nHowever, the byte alignment pre-loop at lines 87-90 decrements len:\n  while (len \u003e 0 \u0026\u0026 ((uintptr_t)p \u0026 (sizeof(unsigned long) - 1)) != 0) {\n      *p++ = 0;\n      len--;\n  }\n\nIf the original len was exactly 32 and required 4 bytes of alignment, after alignment len=28. The word loop writes 28/8=3 words (24 bytes) with remainder 4. Total: 4+24+4=32. Correct.\n\nActually analyzing this more carefully - this is correct behavior. The pre-loop handles initial alignment, word loop handles bulk, and post-loop handles remainder. The logic is sound.\n\nCANCELING - this is not a bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

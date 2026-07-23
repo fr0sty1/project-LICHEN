@@ -2,7 +2,7 @@
   "id": "project-LICHEN-p27h",
   "title": "task",
   "description": "rust/lichen-cli/src/commands.rs:218-223 - The 'key pin' and 'key unpin' commands print success messages (\"pinned\", \"unpinned\") but don't actually make any network call or persist any state. Users believe they've secured a key relationship when nothing happened. This can lead to security assumptions being violated - a user thinks they pinned a peer's key to prevent rotation, but the pin was never applied.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.61",
   "title": "[lichen_l2/lora_l2] enable true path races with concurrent disable",
   "description": "Cross-file race condition: lichen_l2_enable(true) has a TOCTOU race with concurrent lichen_l2_enable(false).\n\nRace scenario:\n1. Thread A calls lichen_l2_enable(true)\n2. Thread A acquires tx_mutex then rx_mutex (lines 695-696)\n3. Thread A reinitializes link_ctx, sets link_ctx_initialized=1 (line 717)\n4. Thread A releases both mutexes (lines 720-721)\n5. Thread B calls lichen_l2_enable(false) - acquires mutexes, sets link_ctx_initialized=0, calls cleanup\n6. Thread A continues at line 728 - re-registers RX callback\n7. Thread A calls lichen_lora_l2_start()\n8. RX thread starts with link_ctx_initialized=0\n\nThe problem: Thread A's enable path releases mutexes between initializing link_ctx (lines 695-721) and starting the RX thread (line 729). A concurrent disable can sneak in and undo the initialization.\n\nThe start() call will succeed (it doesn't check link_ctx_initialized), but the RX thread will drop all frames at line 1109 ('RX before link_ctx initialized').\n\nLocation: lichen_l2.c:673-748\n\nImpact: Silent packet loss - interface appears to start successfully but RX doesn't work.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

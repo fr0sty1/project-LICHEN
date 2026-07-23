@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dq6n.7",
   "title": "[lora_l2.c:483-487] Thread join in deinit may return other errors besides EAGAIN",
   "description": "In lichen_lora_l2_deinit(), the code only checks for -EAGAIN from k_thread_join():\n\n```c\nint join_ret = k_thread_join(\u0026rx_thread_data, K_MSEC(DEINIT_JOIN_TIMEOUT_MS));\nif (join_ret == -EAGAIN) {\n    LOG_WRN(\"RX thread join timed out...\");\n}\n```\n\nPer Zephyr documentation, k_thread_join() can also return:\n- -EBUSY: Thread is actively running and not in a terminable state\n- -EDEADLK: Attempting to join self or circular deadlock\n- -ESRCH: Thread doesn't exist\n\nThese errors are silently ignored, which could mask serious issues during recovery.\n\nImpact: P2 - during error recovery, silently ignoring errors could hide serious issues. The deinit path is already in degraded mode (aborted flag set), so additional logging would help debugging.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

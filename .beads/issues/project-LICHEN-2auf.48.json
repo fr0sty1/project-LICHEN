@@ -4,7 +4,7 @@
   "description": "Recover atomic sender-sequence exhaustion and structurally parse inner CoAP options instead of searching for 0xff.",
   "acceptance_criteria": "No sequence wraps or nonce reuse; embedded 0xff option values work; malformed/truncated extended options fail closed; OSCORE/node tests, clippy, and three reviews pass.",
   "notes": "Implemented on /Volumes/Attic/Opencode/opencode/lichen-sim-registration branch integration/oscore-recovery. Two-file patch adds structural inner CoAP parsing, checked 40-bit sequence/replay state, terminal use-once exhaustion, canonical PIV and OSCORE option parsing, RFC nonce construction, request KID/ID Context binding, and literal response nonce vectors. Final hashes: lib.rs 7ee6fe37a44856587ca81dc3ed6b662c3338269ab34fd5b81af6e4649f955d52; seqnum.rs 8a897452475e9e1c5ff9456a8cd63dcc52943b4ea0974b6b7f0c405d66db2396. Gates pass: default 33 tests, release 33, all-features 37, no-default 33, no-default library Clippy, git diff --check. All-feature Clippy remains blocked by pre-existing edhoc.rs warnings. Remaining blocker .48.2: remove Clone, persistent/restored sequence ownership, and ordinary no-PIV response one-shot lifecycle. No AWS required.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-f2ej",
   "title": "task",
   "description": "node_server.py:373 - In _handle_rx(), after calling maybe_advance_time() which may complete a pending TX, we check elapsed time and break if timed out. But we don't re-check get_rx_result() after advancing time. Failure scenario: TX completes exactly at timeout, packet is available but we exit loop without checking it.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

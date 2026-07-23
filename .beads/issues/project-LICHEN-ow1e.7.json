@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.7",
   "title": "mypy: 16 arg-type errors in schc/headers.py and interface/handler.py",
   "description": "16 arg-type errors where int|None passed to functions expecting int:\n- src/lichen/schc/headers.py: lines 81-83 (IPv6Header constructor), 159 (UdpDatagram), 261-267, 298-301, 350-358\n- src/lichen/interface/handler.py: lines 93, 113, 127, 197, 209\n- src/lichen/rpl/dao.py: line 190\n\nFix: Add None checks before passing values, or update type hints if None is actually valid.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

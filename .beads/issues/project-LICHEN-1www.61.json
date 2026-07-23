@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.61",
   "title": "struct in6_addr fallback definition may conflict with system headers",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/ipv6_addr.h:43-65 (struct in6_addr detection and fallback)\n\nRisk: The detection logic checks various header guards (IN6ADDR_ANY_INIT, _NETINET_IN_H, etc.) to determine if struct in6_addr is already defined. If a new platform uses a different guard or includes the system header after ipv6_addr.h, the fallback definition at line 62-64 conflicts.\n\nThe comment acknowledges this: If this conflicts with your platform struct in6_addr, define LICHEN_HAVE_IN6_ADDR=1 before including this header.\n\nPattern generating user issue reports: New platform port includes system header after ipv6_addr.h, gets struct redefinition error.\n\nSuggested fix: The current approach (checking common guards + user override) is reasonable, but could be improved by:\n1. Using a typedef to a uniquely-named struct internally: struct lichen_in6_addr { uint8_t s6_addr[16]; }; typedef struct lichen_in6_addr lichen_in6_addr_t;\n2. Then conditionally typedef struct in6_addr lichen_in6_addr_t or define lichen_in6_addr_t as the custom struct\n3. All internal code uses lichen_in6_addr_t\n\nThis eliminates the possibility of struct redefinition.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.110",
   "title": "node/stack: UDP header built inline with magic offsets",
   "description": "In stack.rs:262-282, IPv6/UDP headers are built manually with magic offsets (40, 42, 44, etc.). The IPv6 header uses Ipv6Header::write_to, but UDP header is built inline. Consider a UdpHeader::write_to or named constants for UDP header offsets.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

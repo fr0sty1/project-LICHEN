@@ -3,7 +3,7 @@
   "title": "Contain Zephyr fuel-gauge sign warnings",
   "description": "Boot failure discovered by project-LICHEN-m5m1.5. hal.power_providers fails on Native64 and QEMU because pinned Zephyr 3.7 fuel_gauge.h compares int loop indices with size_t under -Werror=sign-compare. Add a narrowly scoped compatibility treatment around the external header or carry an explicit upstream patch; do not disable warnings-as-errors globally or alter licenses.",
   "acceptance_criteria": "1. LICHEN warnings remain errors. 2. Only the known external Zephyr header diagnostics are contained or corrected. 3. HAL power-provider firmware boots and passes on Native64 and QEMU. 4. No license/SPDX identifier is changed. 5. Three independent review passes complete.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

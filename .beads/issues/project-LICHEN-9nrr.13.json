@@ -3,7 +3,7 @@
   "title": "gateway: implement or explicitly disable RPL signalling",
   "description": "Feature-completeness gap found during Zephyr firmware status audit. The gateway app initializes enough RPL state to act as mesh coordinator, but comments say RPL signalling is deferred. That means the firmware is not yet a complete RPL border/root participant even though the RPL subsystem exists. Evidence: lichen/apps/gateway/src/main.c:439 says gateway is root/coordinator and RPL signalling is deferred until C RPL integration is wired. Acceptance: either wire gateway startup to emit/process the required RPL control traffic for its intended role using lichen/subsys/lichen/rpl, with tests or a documented integration scenario, or explicitly gate/advertise the app as non-RPL-capable so users do not mistake it for a complete mesh root.",
   "acceptance_criteria": "After implementation, run the relevant tests/builds and then complete two separate code-review passes before closing. Each review pass should inspect the produced code against this Bead's acceptance criteria and file follow-up Beads for any discovered issues.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.59",
   "title": "[ipv6_addr.h:68-91] struct in6_addr fallback detection misses some platforms",
   "description": "Round 2 gap analysis: Missed because header detection logic is complex.\n\nAt lines 68-91, the fallback struct in6_addr detection cascade checks various guards. However:\n\n1. Line 74-76 checks for several BSD/Linux guards but misses some:\n   - __NetBSD__ platforms may use different guards\n   - Cygwin/MinGW may have different conventions\n\n2. The detection relies on preprocessor guards being defined BEFORE this header is included. If ipv6_addr.h is included first (before netinet/in.h), the fallback definition is used, then including netinet/in.h later causes 'redefinition of struct in6_addr'.\n\nThe header comment at lines 82-86 acknowledges this and suggests LICHEN_HAVE_IN6_ADDR override, which is the correct escape hatch.\n\nNot a bug per se - the header is defensive and provides an override. But the detection could be more robust with additional platform checks.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "feature",
   "assignee": "Mark Atwood",

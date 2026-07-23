@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9nrr.9",
   "title": "python: use OpenSCHC for SCHC implementation",
   "description": "User-requested implementation change. Replace or wrap the Python SCHC implementation with OpenSCHC where it can satisfy LICHEN's existing public API and test vectors. OpenSCHC is the upstream Python SCHC implementation (MIT licensed) and should be preferred over maintaining hand-rolled Python SCHC internals. Acceptance: add an explicit Python dependency on OpenSCHC or a pinned Git source if PyPI is insufficient; adapt lichen.schc compress/decompress and packet wrapper APIs without breaking callers; preserve LICHEN test-vector output exactly or document/file any incompatible rule-model gap; keep fragmentation/reassembly behavior covered by existing tests or clearly isolate any pieces still local.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

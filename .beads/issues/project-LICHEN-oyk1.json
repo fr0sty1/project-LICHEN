@@ -2,7 +2,7 @@
   "id": "project-LICHEN-oyk1",
   "title": "Rust lichen-ipv6: TooShort and BufferTooSmall moved from lichen-core",
   "description": "In rust/lichen-ipv6/src/lib.rs, TooShort and BufferTooSmall error types were added. In rust/lichen-core/src/error.rs, these types are now re-exported from lichen-ipv6. This creates a circular dependency risk: lichen-core now depends on lichen-ipv6 for error types, but other lichen-* crates may expect these from lichen-core. Verify the dependency graph is correct and there are no cycles.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

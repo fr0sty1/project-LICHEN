@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.92",
   "title": "[main.c:105-109] get_eui64 failure path misses lichen_lora_l2_deinit call",
   "description": "Completeness: Cleanup ordering category.\n\nIn init_standalone_lora() at lines 105-109:\n\n\nThe cleanup label at line 125-128:\n\n\nThis is correct - stop() then deinit() is the proper sequence.\n\nBUT: get_eui64() returns NULL only when state == LORA_UNINIT (line 936-939). But at line 105, we've already called init() (line 91) and start() (line 99). So state is LORA_RUNNING, and get_eui64() should never return NULL unless there's a race.\n\nIf get_eui64() somehow returned NULL despite being in RUNNING state, that indicates a serious bug. The current error handling is correct but doesn't distinguish 'expected failure' from 'should be impossible'.\n\nConsider adding a more specific error message or assertion for this case.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "feature",
   "assignee": "Mark Atwood",

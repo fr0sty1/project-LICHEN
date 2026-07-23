@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2pye",
   "title": "SecureDatagramChannel._unprotect Direction handling inconsistent",
   "description": "File: python/src/lichen/coap/secure.py:362-365\n\nAfter unprotecting a message, the code sets Direction.OUTGOING to allow encoding:\n```python\n# aiocoap's encode() requires direction == OUTGOING.\n# Set it for encoding purposes...\nunprotected_msg.direction = Direction.OUTGOING\n```\n\nThis is semantically wrong - the message is incoming, not outgoing. The comment acknowledges this is a workaround for aiocoap's encode() requirements.\n\nHowever, if the upper layer checks direction (e.g., for logging or routing decisions), it will incorrectly see OUTGOING for an incoming message.\n\nThe root cause is encoding a message that should be passed as-is. Consider whether re-encoding is necessary, or add a flag to distinguish 'direction set for encoding' from actual direction.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

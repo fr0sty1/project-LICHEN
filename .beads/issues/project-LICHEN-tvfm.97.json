@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.97",
   "title": "[lichen_l2.c:203-204] tx_ipv6_buf and tx_frame_buf sizes assume no IPv6 extension headers",
   "description": "Category not checked: Buffer sizing assumptions vs protocol reality\n\nBug found: tx_ipv6_buf is sized as LICHEN_L2_MTU + IPV6_BASE_HDR_LEN (200 + 40 = 240 bytes). The comment at lines 191-201 documents this limitation but doesn't guard against it.\n\nIf IPv6 extension headers are present (Hop-by-Hop, Routing, Destination, OSCORE, etc.), the packet can exceed 240 bytes before SCHC compression. The code at line 552-554 rejects packets \u003e sizeof(tx_ipv6_buf), but the error message says 'Packet too large' without indicating the extension header limitation.\n\nMore critically: Zephyr's IPv6 stack CAN send packets with extension headers. The MTU is 200 bytes, but that's the payload after IPv6 header - a packet with a 40-byte base header + 8-byte routing header + 192-byte payload = 240 bytes would fit the MTU but exceed the buffer.\n\nImpact: P3 - Silent packet drops with confusing error when using extension headers, which the FIXME(OSCORE) hints will be needed.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

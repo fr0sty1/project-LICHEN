@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.101",
   "title": "[lichen_l2.c:70] lichen_schc_init never called - SCHC module uninitialized",
   "description": "Final pass: This was missed because reviewers focused on link_ctx and replay_table initialization, not SCHC.\n\nRoot cause: The code comment at line 70 lists lichen_schc_init() as a required symbol from schc.h, but this function is never called anywhere in the codebase. The SCHC compression/decompression used by lichen_link_tx/rx relies on the SCHC state being initialized.\n\nSearching for calls:\n- grep -rn 'lichen_schc_init' subsys/lichen/*.c  (no hits outside comments)\n- lichen_l2_iface_init() calls lichen_link_init() and lichen_replay_table_init() but not lichen_schc_init()\n\nImpact: If SCHC requires initialization state (e.g., compiled rules, context), decompression may fail silently or use uninitialized data. Need to verify whether lichen_schc_init() exists and what state it initializes.\n\nFix: Either call lichen_schc_init() in iface_init path, or document if SCHC is stateless and the comment is stale.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.56",
   "title": "[lichen_l2] iface_init fail path mutex ordering differs from enable path",
   "description": "Cross-file potential deadlock: The fail_late_init cleanup path in lichen_l2_iface_init() only acquires rx_mutex (line 1030), while lichen_l2_enable() acquires tx_mutex THEN rx_mutex (lines 695-696 for enable, 778-779 for disable).\n\nCurrent safety: During iface_init, the interface is not yet operational - no concurrent TX should be possible since lichen_iface is only set at line 975, and the RX callback is only registered at line 978. So there's no practical race.\n\nFuture hazard: If code is refactored to allow early TX (e.g., during boot for neighbor discovery), the inconsistent lock ordering could cause ABBA deadlock between:\n- fail_late_init path: rx_mutex only\n- concurrent TX: tx_mutex only (or tx_mutex then rx_mutex if refactored)\n\nLocation: lichen_l2.c:1028-1034 (fail_late_init) vs lines 695-696, 778-779 (enable)\n\nRecommendation: For consistency, fail_late_init should acquire tx_mutex then rx_mutex, matching lichen_l2_enable(). Even if currently safe, consistent lock ordering prevents future bugs.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

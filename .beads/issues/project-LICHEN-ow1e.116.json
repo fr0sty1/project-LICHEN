@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.116",
   "title": "Inconsistent Cargo feature defaults: lichen-schc defaults to std, lichen-meshtastic defaults to alloc",
   "description": "Most crates in the workspace have:\n  [features]\n  default = []\n\nBut two crates differ:\n\nlichen-schc/Cargo.toml:\n  default = [\"std\"]\n\nlichen-meshtastic/Cargo.toml:\n  default = [\"alloc\"]\n\nWhat goes wrong: Users adding these crates as dependencies may not realize std or alloc is enabled by default. For embedded no_std builds, lichen-schc requires explicit default-features = false while other crates don't. This inconsistency in the workspace makes Cargo.toml setup error-prone.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

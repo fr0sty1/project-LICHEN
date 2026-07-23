@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.11",
   "title": "[main.c:128] ambiguous return value on goto cleanup path",
   "description": "At line 128, when goto cleanup is reached (eui64 == NULL), the return is '(ret \u003c 0) ? ret : -ENODATA'. But ret is never set to negative before the goto at line 108. ret is only set by init/start calls (lines 91, 99), not by get_eui64. So this will always return -ENODATA, making the ternary redundant. Fix: simplify to 'return -ENODATA;' or set ret = -ENODATA before goto.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

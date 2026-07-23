@@ -2,7 +2,7 @@
   "id": "project-LICHEN-sumj",
   "title": "task",
   "description": "aprs_is.rs:228 and aprs_is.rs:346 - The callsign parameter is interpolated directly into APRS-IS protocol messages without sanitization. If callsign contains CR/LF characters, an attacker can inject arbitrary APRS-IS commands or forge packets from other callsigns. Failure scenario: User passes callsign 'W1ABC\\r\\nW2FAKE\u003eAPRS:!0000.00N/00000.00W-' which injects a spoofed position packet. Fix: Validate callsign contains only uppercase A-Z, digits 0-9, and hyphen; reject or escape CR/LF/special characters.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.209",
   "title": "Codereview pass 3: Remove shadowed WINDOW_SIZE constant",
   "description": "Minor: is_replay_candidate() at line 342 re-declares `const WINDOW_SIZE: u32 = 32;` which shadows the module-level `pub const WINDOW_SIZE: u32 = 32;` at line 61.\n\n**Fix:** Remove the local declaration and use the module-level constant instead.\n\n**Location:** rust/lichen-oscore/src/lib.rs line 342",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "assignee": "Mark Atwood",

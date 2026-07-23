@@ -4,7 +4,7 @@
   "description": "Review of 2auf.35 found lichen_link_tx returns EPROTONOSUPPORT whenever a legacy link key is loaded, disabling production TX, while rewritten C tests only assert that early failure. It also found lichen_link_copy_identity locks reads but lichen_link_load_key writes key state without that lock. Remove the false encryption inference, restore successful signed TX/RX/tamper/replay/buffer tests, and synchronize key publication/copying without holding locks during expensive derivation.",
   "acceptance_criteria": "Loading retained legacy key state does not disable TX; signed C TX/RX succeeds; tamper/replay/buffer failure paths are independently tested; key publication and identity copy use the same lock with no torn identity; focused C and Zephyr tests plus three reviews pass.",
   "notes": "Implementation committed in b4ebb84af. Host C frame, Schnorr-48, and replay suites pass. Direct authenticated RX now rejects unsigned frames and has a Zephyr regression. Closure remains blocked on project-LICHEN-2auf.35.6 Linux Zephyr gates; AWS profile personal requires interactive aws login.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

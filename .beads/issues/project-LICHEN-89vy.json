@@ -2,7 +2,7 @@
   "id": "project-LICHEN-89vy",
   "title": "task",
   "description": "python/src/lichen/rpl/dodag.py:123 - The version comparison 'dio.version \u003e self.version' uses simple integer comparison, but RFC 6550 Section 7.2 requires lollipop counter comparison for DODAGVersionNumber. After 256 version increments (byte wraparound from 255 to 0), nodes will incorrectly reject valid newer versions (e.g., version 5 vs 250) or accept stale versions. Failure scenario: Long-running network increments version past 255; new version 5 is rejected by nodes holding version 250 because 5 \u003c 250 in simple comparison.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

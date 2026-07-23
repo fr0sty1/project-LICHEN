@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.40",
   "title": "lichen_l2.c:1003 send calls net_pkt_unref but ownership transfer unclear",
   "description": "Contract documentation: lichen_l2_send() - Comments at lines 996-1002 explain ownership transfer on success. But if send() is interrupted (thread abort) between line 980 (lichen_lora_l2_tx success) and line 1003 (net_pkt_unref), the packet leaks. This is unlikely (no yield point between TX and unref) but theoretically possible with k_thread_abort(). WHY: Memory leak on abort. HOW to fix: Document this as a known limitation of thread abort, or use atomic packet ownership tracking. Very low priority.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

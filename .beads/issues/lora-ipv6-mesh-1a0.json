@@ -3,7 +3,7 @@
   "title": "Integrate aiocoap for CoAP",
   "description": "Use aiocoap library for CoAP client/server. Integrate with LICHEN stack (SCHC compression, link layer). Implement basic resources: /.well-known/core, /status. Test request/response over simulated multi-hop mesh.",
   "notes": "aiocoap transport binding DONE (coap/transport.py LichenTransport, schc_channel.py SCHC-compressing channel, resources.py /.well-known/core+/status+/neighbors+/config), tested over an in-memory loopback. REMAINING: wire CoAP through SCHC + the Node's Router for multi-hop mesh delivery (new follow-up lora_ipv6_mesh-eo8). node.send() currently calls the link layer directly.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

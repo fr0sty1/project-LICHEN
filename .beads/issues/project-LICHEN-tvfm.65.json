@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.65",
   "title": "[lora_l2.c:94-107] lora_state struct field alignment may waste memory",
   "description": "Gap found: Struct layout efficiency not reviewed.\n\nWhy this was missed: Memory layout optimization not in scope for Round 1.\n\nThe actual bug: The lora_state struct (lines 94-107) has fields in this order:\n- const struct device *lora_dev (pointer, 4 or 8 bytes)\n- atomic_t running, initialized, aborted, deiniting (4 x int typically)\n- uint8_t eui64[8]\n- lichen_lora_rx_cb_t rx_callback (function pointer)\n- void *rx_callback_user_data (pointer)\n\nOn 64-bit platforms with 8-byte pointer alignment:\n- lora_dev: 8 bytes\n- 4 atomic_t: 16 bytes total\n- eui64: 8 bytes\n- padding: 0 bytes (already aligned)\n- rx_callback: 8 bytes\n- rx_callback_user_data: 8 bytes\n\nTotal: 48 bytes (optimal)\n\nOn 32-bit platforms:\n- lora_dev: 4 bytes\n- 4 atomic_t: 16 bytes\n- eui64: 8 bytes\n- rx_callback: 4 bytes\n- rx_callback_user_data: 4 bytes\n\nTotal: 36 bytes (optimal)\n\nActually, the layout is efficient. Priority 4 - verified optimal.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

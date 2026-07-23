@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dq6n.8",
   "title": "[lichen_l2.c:660-661] get_eui64 return value not NULL-checked before use",
   "description": "In lichen_l2_enable() when re-enabling, lichen_lora_l2_get_eui64() could return NULL if LoRa L2 was deinitialized during the enable/disable cycle:\n\n```c\nconst uint8_t *eui64 = lichen_lora_l2_get_eui64();\nif (eui64 == NULL) {\n    LOG_ERR(\"Cannot re-init link_ctx: LoRa L2 not initialized\");\n    k_mutex_unlock(\u0026rx_mutex);\n    k_mutex_unlock(\u0026tx_mutex);\n    return -ENODEV;\n}\n```\n\nThis check IS present. Code is correct.\n\nHowever, at line 671, lichen_link_init() is called with eui64 which has been validated. No issue here. Closing.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

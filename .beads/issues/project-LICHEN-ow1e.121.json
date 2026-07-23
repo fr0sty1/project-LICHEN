@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.121",
   "title": "NeighborTable evicts oldest entry without considering link quality",
   "description": "In rust/lichen-node/src/routing.rs:80-94, when the neighbor table is full, the oldest entry by last_seen_ms is evicted. This may evict a high-quality parent candidate in favor of a newly-seen poor-quality neighbor. In RPL, this could cause route flapping: good parent ages out, poor parent added, poor parent evicted, good parent re-added. Consider: evict by composite score (age + ETX), or don't evict if existing entry has better ETX than incoming.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

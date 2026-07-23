@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.85",
   "title": "[Kconfig:41-45] CONFIG_LICHEN_LORA_L2_RX_PRIORITY missing range constraint",
   "description": "Critic: Kconfig validation gap. What: CONFIG_LICHEN_LORA_L2_RX_PRIORITY has no 'range' constraint to validate against NUM_PREEMPT_PRIORITIES. Default 7 is reasonable but arbitrary values accepted. Why it matters: Invalid priority values could cause assertion failure in k_thread_create() or undefined scheduling behavior. Comment claims Kconfig validates via range but no range present. Fix: Add 'range 0 NUM_PREEMPT_PRIORITIES'.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

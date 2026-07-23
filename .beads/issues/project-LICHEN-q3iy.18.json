@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.18",
   "title": "lichen_l2.c: lichen_l2_send does not validate iface parameter",
   "description": "## Location\nfirmware/bridge-zephyr/subsys/lichen/lichen_l2.c:302\n\n## Issue\nlichen_l2_send() validates pkt for NULL (line 307-310) but does not validate iface:\n\n```c\nstatic int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)\n{\n    int ret;\n\n    /* Validate pkt parameter (project-LICHEN-1www.22) */\n    if (pkt == NULL) {\n        LOG_ERR(\"TX rejected: pkt is NULL\");\n        return -EINVAL;\n    }\n    // ... no iface validation\n```\n\nMeanwhile, lichen_l2_recv() and lichen_l2_enable() both validate iface for NULL with explicit issue references (project-LICHEN-1www.25).\n\n## What goes wrong\n- Inconsistent validation policy across L2 callbacks\n- If Zephyr ever calls send() with NULL iface (unlikely but possible during teardown), undefined behavior\n- Pattern suggests iface validation was considered important (added to recv/enable) but missed for send\n\n## Fix\nEither:\n1. Add iface NULL validation to match recv/enable, or\n2. Add a comment explaining why send does not validate iface (e.g., caller guarantee)",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.20",
   "title": "ipv6_addr.h in6_addr detection may false-negative on unusual platforms",
   "description": "Location: ipv6_addr.h:43-62\n\n**What goes wrong:** The detection logic checks several guard macros (_NETINET_IN_H, _NETINET_IN_H_, etc.) but these are not standardized. A platform could define struct in6_addr via a different header that uses an unlisted guard macro. The code would then define a duplicate struct in6_addr, causing compile error.\n\n**Impact:** Build breaks on unlisted platforms. User must manually define LICHEN_HAVE_IN6_ADDR=1.\n\n**Mitigation already present:** LICHEN_HAVE_IN6_ADDR override exists and is documented. The comment at line 35-41 explains the detection strategy. This is acceptable but worth noting as a footgun.\n\nActually, this is more of a known limitation than a bug. The code handles it reasonably with the override. Retracting as not meeting the threshold.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.36",
   "title": "good: schc/fragment.rs FragmentSender zero-copy design",
   "description": "fragment.rs FragmentSender (lines 244-362) stores only a reference to the payload and computes fragment metadata on demand. The tile() method returns borrowed slices from the original payload. The MIC is computed eagerly (correctly, as it's needed for the All-1 fragment), but everything else is lazy. This is good memory efficiency for no_std embedded targets.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

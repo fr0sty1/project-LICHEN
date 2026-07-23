@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.28",
   "title": "hwid buffer undersized for some MCUs",
   "description": "In lora_l2.c generate_eui64(), the hwid buffer is 16 bytes, but some MCUs have larger hardware IDs.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:84\n\nCode:\n- Line 84: uint8_t hwid[16];\n- Line 87: hwinfo_get_device_id(hwid, sizeof(hwid));\n\nWhat goes wrong: hwinfo_get_device_id() returns the number of bytes available or -errno. If a future MCU has \u003e16 byte hwid, the function truncates silently - it copies up to sizeof(hwid) bytes and returns the truncated count. Two MCUs with hwids that differ only after byte 16 would hash to identical EUI-64s.\n\nCurrent Zephyr-supported MCUs:\n- STM32: 12 bytes\n- nRF52: 8 bytes  \n- ESP32: 6 bytes\n- All fit in 16 bytes\n\nThis is a latent bug that would only manifest on future hardware. The SHA-256 hash would still produce a valid EUI-64, but collision probability increases if entropy is truncated.\n\nFix: Increase buffer to 32 bytes (Zephyr's HWINFO_DEVID_MAX_LEN is 16, but better to be defensive), or add a static_assert that sizeof(hwid) \u003e= expected max.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.64",
   "title": "[cross-file] lichen_l2_input can allocate net_pkt while holding rx_mutex causing priority inversion",
   "description": "Interaction: lichen_l2.c:lichen_l2_input \u003c-\u003e Zephyr net_pkt pool\n\nBug: In lichen_l2_input() (lines 1656-1832), rx_mutex is acquired at line 1656 and held until line 1832. During this time, at line 1806-1808, net_pkt_rx_alloc_with_buffer() is called with a timeout.\n\nIf the net_pkt pool is exhausted:\n1. RX thread blocks up to CONFIG_LICHEN_L2_RX_ALLOC_TIMEOUT_MS (default 50ms)\n2. During this time, rx_mutex is held\n3. Any other thread trying to acquire rx_mutex blocks\n4. This includes lichen_peer_add/remove, lichen_l2_enable disable path\n\nThe code comment at line 1793-1804 acknowledges memory pressure but doesn't address the mutex hold duration.\n\nWorse: the TX path also needs rx_mutex on enable/disable. If TX thread is waiting for lichen_l2_enable(false) which needs rx_mutex, but RX thread is blocked in alloc, and the net_pkt pool is waiting for TX to free packets, we have priority inversion or potential deadlock.\n\nTrigger:\n1. Net buf pool near exhaustion\n2. RX frame arrives, RX thread enters lichen_l2_input\n3. RX thread acquires rx_mutex (line 1656)\n4. RX thread processes frame successfully\n5. RX thread calls net_pkt_rx_alloc_with_buffer (line 1806)\n6. Alloc blocks waiting for pool\n7. Meanwhile, network stack tries to disable interface\n8. lichen_l2_enable(false) tries to acquire tx_mutex then rx_mutex\n9. tx_mutex acquired, rx_mutex blocks\n10. If network stack holds resources needed to free net_pkts, deadlock",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

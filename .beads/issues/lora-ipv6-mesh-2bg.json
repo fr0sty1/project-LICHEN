@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-2bg",
   "title": "Implement simulator main entry point",
   "description": "Create python/src/lichen/sim/server.py (main module). SimulatorServer class: __init__(node_port=4444, api_port=4445), async start(), async stop(). Starts both TCP node server and HTTP REST API. Manages SimulationRegistry (dict of active simulations). CLI entry point: python -m lichen.sim --node-port 4444 --api-port 4445 --log-level INFO. Graceful shutdown on SIGINT/SIGTERM. Structlog for logging.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.32",
   "title": "[lora_l2.c:54-60] state_names array and LORA_STATE_COUNT coupling is fragile",
   "description": "The state_names array at lines 54-60 uses designated initializers matching the enum values. If someone adds a new enum value between existing ones or reorders the enum, the array would have gaps or mismatches. The valid_transitions matrix at lines 63-70 has the same issue. Consider adding a BUILD_ASSERT that ARRAY_SIZE(state_names) == LORA_STATE_COUNT to catch mismatches at compile time.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

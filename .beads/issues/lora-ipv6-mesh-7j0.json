@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-7j0",
   "title": "LOADng route error handling (RERR)",
   "description": "Implement LOADng route error handling per spec section 9.7.\n\nLink failure detection:\n- TX failure (no ACK at link layer) triggers RERR\n- Only if route was being used (not stale)\n\nRERR generation:\n- Create RERR with unreachable destination\n- Send toward affected sources (nodes that were using this route)\n\nRERR processing:\n- Invalidate cached routes through broken link\n- Propagate RERR if I had downstream users of this route\n\nRouteError class:\n- on_link_failure(next_hop) -\u003e None\n- process_rerr(rerr_msg) -\u003e None\n\nTrack active flows to know who to notify on failure.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

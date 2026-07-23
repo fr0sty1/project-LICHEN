@@ -3,7 +3,7 @@
   "title": "Decide R1 non-Neo display and possible LR1121 support boundary",
   "description": "Why this exists: Zephyr feasibility research found possible Muzi Base/R1 display SH1107 and possible LR1121 variant questions, while the R1 Neo MVP path is SX1262/no-screen. What needs to be done: decide whether non-Neo R1 display/LR1121 support is in MVP or documented unsupported. Acceptance criteria: R1 MVP docs and board targets do not imply unsupported display or LR1121 functionality; separate driver work exists if included.",
   "notes": "Completed no-hardware support-boundary decision for Muzi Works R1 family docs. Updated docs/firmware-board-capability-matrix.md to state the first-party target is specifically r1_neo_nrf52840 / Muzi Works R1 Neo; original/non-Neo R1 variants, SH1107 display variants, and LR1121 radio variants are unsupported for MVP unless separate board/driver tasks add explicit devicetree, Kconfig, and build/test evidence. Added a target-matrix unsupported row and implementation note forbidding aliasing non-Neo R1 hardware to R1 Neo without separate hardware facts, compatible string, and app overlays. Updated spec/10-implementation.md recommended first device from generic Muzi Works R1 to Muzi Works R1 Neo (r1_neo_nrf52840), with non-Neo display/LR1121 exclusion. Checks: git diff --check PASS. No EC2 build required: docs/spec-only change. Final codereviews: Plato no P0/P1/P2; Zeno no P0/P1/P2, residual note that SX1262/LR1121 wording is framed as unsupported/unknown; Darwin no P0/P1/P2 and cross-checked R1 Neo DTS/app config consistency with SX1262 only and CONFIG_LICHEN_HAS_DISPLAY=n.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

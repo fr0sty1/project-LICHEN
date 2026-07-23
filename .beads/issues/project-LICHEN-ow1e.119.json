@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.119",
   "title": "good: node/dispatch const fn builder for compile-time dispatch table",
   "description": "In dispatch.rs:6-30, 187-229, the const fn builder pattern for Resource and Dispatcher places the dispatch table in .rodata with zero runtime cost. The module docstring clearly explains why this matters for embedded.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

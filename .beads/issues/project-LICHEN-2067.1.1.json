@@ -3,7 +3,7 @@
   "title": "Fix bridge-zephyr duplicate LICHEN source linkage under west workspace",
   "description": "Discovered while validating project-LICHEN-2067.1. firmware/bridge-zephyr now configures build-epoch metadata correctly, but a qemu_x86 build in the current west workspace fails at link because the app directly compiles firmware/bridge-zephyr/subsys/lichen/{crash_info,lichen_util,ipv6_addr}.c while the modern LICHEN module also links lichen/subsys/lichen/l2 objects with the same symbols. Evidence command on EC2 i-04d7dc29208da05dd: SOURCE_DATE_EPOCH=1717777777 west build -p always -b qemu_x86 -d build/bridge_source_epoch_nomodule firmware/bridge-zephyr; configure succeeded and .config had CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX=1717777777 and CONFIG_LICHEN_TIME_BUILD_EPOCH_SOURCE_DATE_EPOCH=y, then link failed with multiple definitions for crash_info_store, log_const_crash_info, lichen_sha256, lichen_eui64_to_iid, lichen_make_link_local, and related IPv6 helpers. Decide whether bridge-zephyr should stop vendoring those sources, disable the modern module sources for this app, or retire the legacy bridge entrypoint.",
   "notes": "EC2 cleanup completed after closure: sync and sudo umount /mnt/lichen-zephyr ran on i-0099fd91458caba77; detached vol-0875d0df8bdf82a58 and waited until available; terminated i-0099fd91458caba77; deleted temporary security group sg-0f15c0a8c71679e6d; final volume state available with no attachments.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

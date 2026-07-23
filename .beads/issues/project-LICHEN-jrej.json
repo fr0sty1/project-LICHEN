@@ -2,7 +2,7 @@
   "id": "project-LICHEN-jrej",
   "title": "Application layer protocol implementation",
   "description": "Implement the application layer protocols defined in spec/07-transport-app.md. Port-based dispatch, compact CoT encoding, SCHC Rule 2 for MQTT-SN, gateway translations. All software-only work against the spec.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

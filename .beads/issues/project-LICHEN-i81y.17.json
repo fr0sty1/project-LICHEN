@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i81y.17",
   "title": "OSCORE plaintext size symbol is used without a shared Kconfig definition",
   "description": "lichen/subsys/lichen/oscore/coap_oscore.c:149 allocates ciphertext with CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX, but lichen/subsys/lichen/oscore/Kconfig:19-35 defines only MAX_CONTEXTS, REPLAY_WINDOW, and LOG_LEVEL. lichen/subsys/lichen/oscore/oscore.c:145-147 has a private fallback #define for CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX, but that fallback is local to oscore.c and does not cover coap_oscore.c.\\n\\nImpact: enabling CONFIG_LICHEN_OSCORE compiles both oscore.c and coap_oscore.c from lichen/subsys/lichen/oscore/CMakeLists.txt:8-12, but one translation unit can see the fallback while the other sees an undefined Kconfig symbol. Define LICHEN_OSCORE_PLAINTEXT_MAX in Kconfig or move the default to a shared OSCORE internal header so all OSCORE sources share one contract.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

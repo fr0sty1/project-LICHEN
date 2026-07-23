@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.102",
   "title": "[main.c:117-119] init_standalone_lora late failure doesn't clean up RX callback",
   "description": "Category not checked: Cleanup completeness on error paths\n\nBug found: In init_standalone_lora():\n1. Line 97: lichen_lora_l2_set_rx_callback(lora_rx_handler, NULL) - registers callback\n2. Line 99-103: lichen_lora_l2_start() called\n3. Line 106-109: if get_eui64 fails, calls lichen_lora_l2_stop() \n\nThe issue: lichen_lora_l2_stop() clears the callback (lora_l2.c:434-435), so this is actually fine for the eui64 failure case.\n\nBut there's another path:\n- Line 117-119: if lichen_log_link_local_from_eui64() fails, we return ret without stopping LoRa.\n\nSo after a late failure in IPv6 address logging, LoRa is still running with the RX callback registered. This is inconsistent with the eui64-failure path.\n\nImpact: P4 - Inconsistent cleanup: LoRa continues running after IPv6 address logging failure.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

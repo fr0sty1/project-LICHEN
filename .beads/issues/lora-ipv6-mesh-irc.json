@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-irc",
   "title": "SimulatorServer uses fragile monkey-patching for API integration",
   "description": "server.py replaces self._api.create_simulation and delete_simulation at runtime with wrapped versions. Uses type: ignore comments. Hard to understand, test, maintain. Refactor to use composition: have server handle routes directly and delegate, or use proper hooks/callbacks.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

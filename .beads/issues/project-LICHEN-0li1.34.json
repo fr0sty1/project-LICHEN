@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.34",
   "title": "[lichen_l2.c:580] last_seen update on match creates timing side-channel",
   "description": "What: peer_try_all_pubkeys() updates peer_table[found_idx].last_seen = k_uptime_get() on finding a match. This happens after the constant-time iteration completes, so it doesn't leak the match index via iteration timing.\n\nHowever, the k_uptime_get() call and peer_table write DO happen only on success. If an attacker can measure total function execution time, they can distinguish 'matched some peer' from 'matched no peer' - but this information is also leaked by the return value (-LICHEN_EAUTH vs 0).\n\nNot a bug - the timing side-channel comment (lines 519-535) addresses iteration order, and the final update doesn't leak WHICH peer matched.\n\nClosing as not-a-bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

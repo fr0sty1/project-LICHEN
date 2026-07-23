@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ygnk",
   "title": "[policy] TOFU key management compliance",
   "description": "Policy: spec/06-security.md §8.6. REQUIRED: Trust On First Use. First contact with peer stores their pubkey. Subsequent contacts verify against stored key. Key rotation requires explicit user action. When executing: grep for peer key storage/verification, create compliance bead per code section.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

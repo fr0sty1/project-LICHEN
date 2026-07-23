@@ -2,7 +2,7 @@
   "id": "project-LICHEN-efj0.6",
   "title": "Rust logging: add structured logging to lichen-link library",
   "description": "rust/lichen-link has no logging. Add tracing (for std) or defmt (for no_std) instrumentation for frame parsing errors, signature verification failures, and replay detection. Use feature flags to compile out for size-constrained targets.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

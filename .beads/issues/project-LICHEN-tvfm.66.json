@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.66",
   "title": "[lichen_l2] peer_table active flag not zeroed on startup",
   "description": "State machine bug: The peer_table[] static array's active flags are never explicitly initialized to false. They rely on BSS zero-initialization.\n\nWhile C guarantees static variables are zero-initialized, the peer_table contains pointers to pubkeys and eui64s. If the BSS initialization is ever skipped (e.g., warm restart on some bootloaders), stale peer entries with active=true could persist.\n\nFurthermore, after lichen_l2_enable(false), the peer_table is cleared (lines 791-795). But after lichen_l2_enable(true), there's no re-zeroing if link_ctx was already initialized.\n\nLocation: lichen_l2.c:244 (static declaration), lines 791-795 (cleanup in disable)\n\nRecommendation: Add explicit zeroing of peer_table in lichen_l2_iface_init() before any operations, or in lichen_link_init() call path.\n\nPriority: P3 - defense-in-depth, BSS init is reliable on most platforms.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

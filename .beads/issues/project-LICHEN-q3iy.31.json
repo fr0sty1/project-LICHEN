@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.31",
   "title": "Log level policy is documented and consistently applied",
   "description": "lichen_l2.c:47-58 documents the log level policy:\n\n```c\n/*\n * Log level policy:\n *   LOG_ERR: Initialization failures, resource exhaustion, programming errors\n *            (NULL params), conditions that prevent operation.\n *   LOG_WRN: Transient conditions that drop a single packet but do not indicate\n *            system failure - e.g., RX during early startup, frame auth failure,\n *            oversized frame. These are expected in normal mesh operation...\n *   LOG_INF: State transitions, initialization success, configuration summary.\n *   LOG_DBG: Per-packet tracing, detailed state.\n */\n```\n\nThis policy is then followed consistently:\n- NULL parameter errors use LOG_ERR\n- Packet drops (frame too short, auth failure) use LOG_WRN\n- Init success and enable/disable use LOG_INF\n- Per-packet tracing uses LOG_DBG\n\nHaving an explicit policy prevents log spam from normal mesh conditions (which include authentication failures from misconfigured peers) while ensuring serious errors are visible.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

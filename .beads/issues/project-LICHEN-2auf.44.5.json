@@ -3,7 +3,7 @@
   "title": "Implement DAO Path Sequence groups",
   "description": "Implement RFC 6550 Sections 9.2.1 and 9.4 in Rust RPL: maintain Path Sequence per owned target/transit relationship; increment on lifetime, no-Path, and parent-list changes; parse one-or-more Target options followed by one-or-more Transit options as ordered groups; use associated Path Sequence rather than DAOSequence for per-target freshness; atomically reject malformed/cyclic updates before mutation.",
   "acceptance_criteria": "Literal RFC-shaped tests cover multiple targets/transits, malformed ordering, stale/fresh per-target Path Sequence, restart/bootstrap DAOSequence, parent changes, lifetime refresh, no-Path, cycle rejection before state mutation, and route rebuild; RPL tests/Clippy and three reviews pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

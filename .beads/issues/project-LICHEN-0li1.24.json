@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.24",
   "title": "[lora_l2.c:639] lichen_lora_l2_stop documented as 'always returns 0' but can return -ECANCELED",
   "description": "Contract: Header documentation (lora_l2.h:151) states 'Always returns 0 (stop is idempotent and cannot fail)'.\nViolation: The implementation (line 715) returns -ECANCELED when the RX thread had to be forcibly aborted. This contradicts the documented contract.\nImpact: Medium - Callers relying on documented behavior may not check return value. The enable() path (lichen_l2.c:1101) does check for -ECANCELED, showing the documented contract is wrong.\nMitigation: Update lora_l2.h documentation to reflect actual return values: '@return 0 on graceful stop, -ECANCELED if thread was forcibly aborted'.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

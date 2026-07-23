@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-vn0z",
   "title": "SenML sensor profiles — standard names and units",
   "description": "Implement lichen/senml/profiles.py: helper functions for standard LICHEN sensor profiles. Needs: location(lat, lon, alt) -\u003e list[SenmlRecord] with unit 'deg'/'m'; battery(voltage_v, pct) -\u003e list[SenmlRecord] with unit 'V'/'%EL'; temperature(celsius) -\u003e SenmlRecord unit 'Cel'; humidity(pct) -\u003e SenmlRecord unit '%RH'; pressure(pa) -\u003e SenmlRecord unit 'Pa'. Each returns properly named SenML records ready to pack.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "owner": "mark.frost@gmail.com",

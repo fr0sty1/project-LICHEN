@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.22",
   "title": "Well-done: Mutex ordering documentation in lichen_l2_enable",
   "description": "lichen_l2.c:355-372 explicitly documents mutex lock order (tx_mutex first, then rx_mutex) with a rationale comment. This is critical for deadlock avoidance in code that acquires multiple locks. The comment 'Lock order: tx_mutex first to avoid deadlock (consistent ordering)' is precisely the information a future maintainer needs. Keep this comment even if code around it changes.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

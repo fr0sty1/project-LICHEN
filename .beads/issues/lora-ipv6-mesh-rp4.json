@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-rp4",
   "title": "Unified gradient table",
   "description": "Implement unified gradient table per spec section 11.\n\nGradientEntry dataclass:\n- destination: IID or IPv6Address\n- next_hop: link-local address\n- hop_count: int\n- seq_num: int\n- source: 'announce' | 'rrep' | 'data'\n- expires: timestamp\n\nGradientTable class:\n- lookup(dst) -\u003e GradientEntry | None\n- update(entry) -\u003e None\n- expire_old() -\u003e None\n- __len__() -\u003e int\n\nEntry priority: announce/rrep \u003e data\nSame priority: prefer lower hop_count\n\nPopulated by:\n- Announce processing (section 9)\n- RREP processing (section 10)\n- Passive learning from forwarded data\n\nMax entries: 64 (configurable). LRU eviction.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

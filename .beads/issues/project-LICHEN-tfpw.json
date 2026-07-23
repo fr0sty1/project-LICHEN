@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tfpw",
   "title": "task",
   "description": "rust/lichen-oscore/src/edhoc.rs:117,700. heapless::Vec\u003cu8,32\u003e cannot hold ~100 bytes needed for PLAINTEXT_2; handshake cannot complete.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

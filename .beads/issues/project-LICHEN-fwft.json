@@ -2,7 +2,7 @@
   "id": "project-LICHEN-fwft",
   "title": "task",
   "description": "edhoc.rs:676-679 vs 385-391 - Initiator and Responder compute different context_2 for MAC_2 derivation.\n\nResponder (line 676-679):\n  context_2 = CRED_R (34 bytes total)\n\nInitiator (line 385-391):  \n  context_2 = ID_CRED_R || CRED_R (68 bytes total)\n\nThis causes MAC_2 to differ between parties, so Signature_2 verification will ALWAYS fail, making EDHOC handshake impossible. No integration test catches this because only unit tests exist for message creation, not full roundtrip.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

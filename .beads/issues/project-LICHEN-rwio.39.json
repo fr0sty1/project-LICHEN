@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.39",
   "title": "lichen_iface static pointer written once, read without mutex",
   "description": "The static struct net_if *lichen_iface in lichen_l2.c is written in lichen_l2_iface_init() (line 404) and read in lora_rx_callback() (line 352) without synchronization.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:88, 352, 404\n\nThe code has an extensive comment (lines 76-87) explaining why this is safe:\n- Pointer is set exactly once in init\n- Never cleared\n- net_if has device lifetime\n- RX callback registration happens AFTER the pointer is set (line 407)\n\nWhat goes wrong: The safety relies on the ordering guarantee that set_rx_callback() (line 407) happens after lichen_iface assignment (line 404). If a future refactor moves callback registration earlier, the RX callback could read a NULL or stale pointer.\n\nThe comment explicitly warns against clearing the pointer, which is good. However, the write-read ordering is not enforced by the compiler - it relies on statement ordering and Zephyr's callback registration semantics.\n\nOptions:\n1. Accept current design (comment documents the invariant)\n2. Use atomic_ptr_set/get for defense in depth\n3. Add static_assert or runtime check\n\nFiling as P2 since the invariant is well-documented and current code is correct.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

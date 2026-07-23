@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q9y1",
   "title": "task",
   "description": "rust/lichen-node/src/secure.rs:134-155. Panics if path exceeds ~60 bytes.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

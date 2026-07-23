@@ -3,7 +3,7 @@
   "title": "zephyr: promote SCHC bitstream helpers into generic module",
   "description": "Follow-up from project-LICHEN-9nrr.11 review. The generic SCHC module provides profile dispatch, but reusable MSB-first bit writer/reader helpers still live privately in lichen/subsys/lichen/schc/schc.c. Move or wrap those helpers under lichen/subsys/schc so future non-LICHEN profiles can implement RFC 8724 residue handling without copying LICHEN-private code. Preserve existing LICHEN SCHC test vectors and avoid changing LICHEN rule IDs or packet output.",
   "notes": "Implemented generic SCHC bitstream helpers under lichen/subsys/schc: added schc/bitstream.h and bitstream.c with MSB-first writer/reader functions, updated the generic SCHC library build, and switched lichen/subsys/lichen/schc/schc.c to use schc_bit_writer/schc_bit_reader instead of private local helpers. Added bitstream source to the standalone SCHC vector build and added generic Zephyr ztests for unaligned field round-trip and 128-bit byte read/write. Tests run: standalone SCHC vector test 12/12 passed; west build qemu_x86 lichen/tests/schc_generic passed; generic SCHC QEMU run passed 6/6 and printed PROJECT EXECUTION SUCCESSFUL before timeout cleanup; west build qemu_x86 lichen/tests/link_crypto passed; link_crypto QEMU run passed 2/2 and printed PROJECT EXECUTION SUCCESSFUL before timeout cleanup; git diff --check passed for SCHC files. Review pass 1 finding: LICHEN SCHC README needed to mention generic bitstream helpers; fixed. Review pass 2 findings: no further issues. Follow-ups created: none for this Bead; generic fragmentation remains tracked by project-LICHEN-9nrr.31.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

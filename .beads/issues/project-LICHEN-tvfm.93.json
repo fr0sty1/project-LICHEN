@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.93",
   "title": "[lichen_l2.c:1028-1034] fail_late_init cleanup does not clear lichen_iface",
   "description": "Gap found: Late init failure cleanup not complete.\n\nWhy this was missed: Cleanup path analyzed but lichen_iface handling noted as intentional.\n\nThe actual bug: The fail_late_init label (lines 1028-1035) cleans up after late initialization failure. The comment at line 1015 says 'NOTE: Do NOT clear lichen_iface here - it has a set-once invariant'.\n\nHowever, this creates a state where:\n- lichen_iface is set (line 975)\n- iface_init_failed is set (line 1035)\n- link_ctx_initialized is 0 (line 1031)\n\nIf a subsequent initialization attempt is made (shouldn't happen, but if main calls lichen_l2_iface_init manually), the check at line 970-974 would fail:\n  if (lichen_iface != NULL) {\n      LOG_ERR('lichen_iface already set (set-once invariant violated)');\n      atomic_set(\u0026iface_init_failed, 1);\n      return;\n  }\n\nSo the failure state is permanent - no recovery without reboot.\n\nThis may be intentional (fail-safe), but the error message 'set-once invariant violated' is misleading in the late-init-failure case - the invariant wasn't violated, init just failed.\n\nPriority 4 - error message clarity.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

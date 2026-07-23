@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.9",
   "title": "mypy: 15 list-item errors (int|None in list expecting int)",
   "description": "15 list-item errors in src/lichen/schc/headers.py where int|None values are used in bytes() constructors:\n- Lines 154, 261, 264, 265, 298, 299, 356, 358\n\nThese are in reconstruct_ipv6() and reconstruct_udp() functions building packet bytes. Fix: Add assertions or explicit None checks before constructing byte arrays.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rkuc",
   "title": "task",
   "description": "edhoc.rs:140 and lib.rs:649 - CBOR text string encoding uses (0x60 | len) which only works for lengths 0-23. Longer strings need 0x78 followed by length byte. Current code is safe (labels are all short), but adding a label \u003e 23 chars would produce invalid CBOR silently. Should add length check or use proper multi-byte encoding.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "assignee": "Mark Atwood",

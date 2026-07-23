@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.106",
   "title": "[lora_l2.h:70-71] LICHEN_LORA_FRAME_OVERHEAD includes signature but signature is conditional",
   "description": "Category not checked: Protocol framing assumptions\n\nBug found: LICHEN_LORA_FRAME_OVERHEAD is defined as 55 bytes, which includes 48 bytes for Schnorr-48 signature. However, looking at the wire format:\n\nFrom lichen_l2.c line 594-596:\n  /* NULL dst_eui64 = broadcast (no destination address in frame header) */\n  ret = lichen_link_tx(\u0026link_ctx, tx_ipv6_buf, pkt_len, NULL,\n                       tx_frame_buf, \u0026frame_len);\n\nThe lichen_link_tx() function applies signature only if ctx-\u003ehas_key is true. From link_ctx.h (external), has_key indicates whether the signing key is provisioned.\n\nIf no signing key is provisioned:\n- Actual overhead = 5 (header) + 4 (MIC) = 9 bytes\n- MTU could be 255 - 9 = 246 bytes, not 200\n\nBut LICHEN_LORA_MTU is defined as 200 regardless of signing key presence. This is conservative (safe) but wastes 46 bytes of payload capacity when no signing key is set.\n\nThe code always reserves space for signature even when not used.\n\nImpact: P4 - 46 bytes of wasted MTU when signing is disabled (conservative, not a bug).",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

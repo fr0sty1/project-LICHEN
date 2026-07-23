@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.40",
   "title": "ipv6_addr.h struct in6_addr detection cascade is complex but necessary",
   "description": "ipv6_addr.h lines 41-65 have a multi-branch preprocessor cascade to detect if struct in6_addr is already defined:\n\n```c\n#if defined(LICHEN_HAVE_IN6_ADDR) \u0026\u0026 LICHEN_HAVE_IN6_ADDR\n/* User says in6_addr is already defined - trust them */\n#elif defined(IN6ADDR_ANY_INIT)\n/* System header already provides struct in6_addr */\n#elif defined(CONFIG_NET_IPV6) \u0026\u0026 defined(__ZEPHYR__)\n#include \u003czephyr/net/net_ip.h\u003e\n#elif defined(_NETINET_IN_H) || defined(_NETINET_IN_H_) || defined(_NETINET6_IN6_H) || \\\n      defined(__NETINET_IN_H__) || defined(ZEPHYR_INCLUDE_POSIX_NETINET_IN_H_)\n/* System header already provides struct in6_addr */\n#else\nstruct in6_addr { uint8_t s6_addr[16]; };\n#endif\n```\n\nThis is correct and necessary for portability across Zephyr, POSIX, and bare-metal. The inline comments explain each branch.\n\nWhat goes wrong: A reader unfamiliar with C portability patterns may not understand why this is needed. The header comment (lines 32-40) explains the strategy but is easy to miss.\n\nImprovement: Add a block comment before the cascade explaining the problem being solved: 'struct in6_addr may be defined by system headers, Zephyr, or not at all. We detect which case applies to avoid redefinition errors.'",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

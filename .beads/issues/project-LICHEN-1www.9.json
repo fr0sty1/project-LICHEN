@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.9",
   "title": "Good: BUILD_ASSERT for compile-time invariant enforcement",
   "description": "Multiple well-placed BUILD_ASSERT statements catch configuration drift at compile time rather than runtime:\n\n1. lichen_l2.c:33-34 - MTU consistency between L2 and LoRa layers\n2. lichen_l2.c:71-74 - Requires CONFIG_LICHEN_LINK for production (no raw mode accidents)\n3. lichen_l2.c:109-116 - LICHEN_MIN_FRAME_LEN derivation is self-documenting\n4. lichen_l2.c:144-145, 152-153 - Frame overhead constants validated against component sizes\n5. lora_l2.c:49-51 - LoRa devicetree alias existence check\n6. ipv6_addr.c:162-167 - Buffer size sufficiency for IPv6 string formatting\n\nWhat goes right: Configuration errors fail the build with actionable messages instead of producing silent runtime corruption. These assertions document the derivation of magic numbers and catch drift when upstream constants change.\n\nWorth defending: If someone suggests removing these as verbose, they prevent classes of bugs that are extremely hard to debug at runtime (MTU mismatches cause silent packet loss, wrong frame sizes cause memory corruption).",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

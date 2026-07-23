@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.57",
   "title": "Replay window accepts first packet unconditionally, no epoch check",
   "description": "In rust/lichen-link/src/replay.rs:85-91, the first packet to arrive is always accepted regardless of its sequence number. Combined with the link_layer.rs receive path, if an attacker captures an old frame with epoch=5,seqnum=1000, then the victim reboots (clearing replay state), the attacker can replay that frame. The replay window stores (pubkey,epoch) pairs but doesn't persist across reboots. This is spec-compliant but a footgun for deployments without persistent storage. Document this or add an init method that takes last-known epoch.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

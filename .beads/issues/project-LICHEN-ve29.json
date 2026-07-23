@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ve29",
   "title": "Verify Zephyr sx126x driver compatibility with SX1262.cs",
   "description": "The magic SX1262.cs peripheral intercepts key opcodes but ignores many config commands. Verify the real Zephyr sx126x_standalone.c driver works with it. Test: build for T-Echo target, run in Renode, confirm TX/RX works. Document any missing opcodes that need handling.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

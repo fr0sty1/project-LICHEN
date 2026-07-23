@@ -3,7 +3,7 @@
   "title": "link: implement encrypted frame payload handling",
   "description": "Feature-completeness gap found during Zephyr firmware status audit. Link-layer RX explicitly rejects encrypted frames because link-layer encryption is not implemented yet. The protocol architecture calls for link security in addition to OSCORE, so firmware is not security feature-complete. Evidence: lichen/subsys/lichen/link/lichen_link_rx.c:183 states link-layer encryption is not implemented and encrypted frames are not passed to SCHC; TX comments also describe MIC fallback behavior but not encryption. Acceptance: implement link-layer encryption/decryption for the agreed frame format using vetted crypto, keep OSCORE ordering intact, reject unauthenticated/tampered encrypted frames, add test vectors or unit tests for encrypted RX/TX paths, and ensure insecure CRC32 fallback remains opt-in and clearly non-production.",
   "acceptance_criteria": "After implementation, run the relevant tests/builds and then complete two separate code-review passes before closing. Each review pass should inspect the produced code against this Bead's acceptance criteria and file follow-up Beads for any discovered issues.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

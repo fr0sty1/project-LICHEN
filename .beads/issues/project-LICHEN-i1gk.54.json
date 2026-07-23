@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.54",
   "title": "[ipv6_addr.c:277-279] ll_addr_out zeroed on NULL eui64 but not on other errors",
   "description": "Round 2 gap analysis: Missed because error handling looked consistent at first glance.\n\nIn lichen_log_link_local_from_eui64 lines 277-300, the ll_addr_out is zeroed on failure for the NULL eui64 case (lines 278-280), eui64_to_iid failure (lines 287-290), and make_link_local failure (lines 295-299). However, if lichen_ipv6_addr_to_str fails at lines 302-306, the function continues and returns 0 (success) without zeroing ll_addr_out.\n\nActually reading more carefully - line 302-306 is a LOG_WRN case where the address IS valid, just couldn't be formatted as string. The function returns success (line 314) and copies ll_addr to ll_addr_out (lines 310-312). This is correct behavior.\n\nThe code is actually correct - not a bug. Closing as false positive.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

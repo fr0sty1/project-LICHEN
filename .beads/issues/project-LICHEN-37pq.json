@@ -2,7 +2,7 @@
   "id": "project-LICHEN-37pq",
   "title": "coap_msg.c: zcbor state backtracking uses incorrect pattern",
   "description": "File: lichen/subsys/lichen/coap/coap_msg.c\nLines: 469-476 and 780-787\n\nThe CBOR decoding uses an unusual backtracking pattern:\n```c\n} else {\n    /* Skip unknown key-value pair */\n    (void)zcbor_pop_error(zsd);\n    *zsd = key_state;\n    if (!zcbor_any_skip(zsd, NULL) ||\n        !zcbor_any_skip(zsd, NULL)) {\n        goto bad_request;\n    }\n}\n```\n\nProblems:\n1. zcbor_pop_error() is called unconditionally even if there's no error state\n2. State is restored to key_state but key has already been decoded, so zcbor_any_skip skips the key again (double skip)\n3. This leaves the decoder in incorrect position\n\nThe intent seems to be: skip the unknown key-value pair. But the implementation reads the key, then if unknown, restores state and skips key+value. This is fragile and may misparse complex CBOR.\n\nCategory: CORRECTNESS - parsing logic error",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

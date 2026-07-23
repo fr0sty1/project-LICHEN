@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dq6n.25",
   "title": "[lichen_l2.c:716-721] peer_table not cleared on disable",
   "description": "Critic: During lichen_l2_enable(false), link_ctx is cleaned up and replay_table is reinitialized, but peer_table is NOT cleared. This means registered peers persist across disable/enable cycles. Security concern: if a peer's key rotates or is compromised, the old entry remains valid until explicitly removed. Either document this as intentional behavior, or clear peer_table during disable for defense-in-depth.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

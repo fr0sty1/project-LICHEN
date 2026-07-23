@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.25",
   "title": "lichen_l2.c: fail_late_init label used for single failure path",
   "description": "Location: lichen_l2.c:468-494\n\nlichen_l2_iface_init() has a goto fail_late_init target, but only one call site uses it (line 469, after lichen_log_link_local_from_eui64 fails). Earlier failures return directly.\n\nWhat goes wrong: The goto pattern suggests multiple cleanup paths might use this label, but only one does. A reader may scan for other 'goto fail_late_init' uses and find none, wondering if code was deleted or if this is over-engineering for a single error case.\n\nSuggested fix: Either inline the cleanup at the single failure point (it's only ~10 lines), or add a comment at the label: /* Common cleanup for failures after RX callback registration */.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

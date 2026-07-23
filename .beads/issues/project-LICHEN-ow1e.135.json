@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.135",
   "title": "board_intake.py: Dict returns should use dataclass for type safety",
   "description": "Functions in board_intake.py return `list[dict[str, Any]]` with fixed schemas that would benefit from dataclasses:\n\n**Locations:**\n- `find_unresolved_questions()` (line 443): returns dicts with keys: id, kind, question, sources\n- `build_zephyr_port_checklist()` (line 622): returns dicts with keys: id, title, evidence_required, status\n- `build_follow_up_beads()` (line 647): returns dicts with keys: title, description, labels, blocked_by_hardware_validation\n\n**Recommended fix:**\n```python\n@dataclass(frozen=True)\nclass UnresolvedQuestion:\n    id: str\n    kind: QuestionKind\n    question: str\n    sources: list[SourceRef]\n\n@dataclass(frozen=True)\nclass ChecklistItem:\n    id: str\n    title: str\n    evidence_required: list[str]\n    status: ChecklistStatus\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.11",
   "title": "Good: Secure memory handling with secure_zero and explicit cleanup paths",
   "description": "Consistent secure memory handling pattern throughout the codebase:\n\n1. lichen_util.h:35-59 - secure_zero() uses volatile pointer + compiler_barrier() to prevent optimization-away. Word-aligned writes for larger buffers balance security with mutex hold time.\n\n2. lora_l2.c:143-147 - generate_eui64() zeros hwid and hash buffers on all paths via cleanup label.\n\n3. ipv6_addr.c:101-103 - pubkey_to_iid() zeros intermediate hash buffer.\n\n4. lichen_l2.c:722-723, 732-733 - RX path zeros local key copy (rx_link_key) before any exit path.\n\n5. lichen_l2.c:397 - enable path zeros link_ctx before re-init to clear any stale key material.\n\nWhat goes right: Key material and intermediate cryptographic state are wiped on all code paths. The secure_zero() implementation is correct - volatile forces writes, compiler_barrier() prevents LTO removal. Comments reference specific issue IDs explaining each cleanup.\n\nWorth defending: This pattern should not be simplified to plain memset(). The volatile+barrier combination is the minimum required to guarantee zeroing actually happens.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.253",
   "title": "MeshCore UTF-8 validation: off-by-one in 4-byte sequence check",
   "description": "File: lichen/apps/gateway/src/meshcore_adapter.c\nLine: 138-159\n\nThe UTF-8 validation for 4-byte sequences checks 'i + 3U \u003e= payload_len' which should be 'i + 3U \u003e payload_len' (strictly greater). The current check rejects valid 4-byte sequences at the exact end of the payload. Same off-by-one appears in several branches.\n\nExample: if payload_len=4 and i=0, check 'i + 3U \u003e= payload_len' equals '3 \u003e= 4' which is false, so it passes. But 'i + 3U' being index 3 for payload_len 4 is valid (indices 0,1,2,3). The bug is in the 2-byte case: 'i + 1U \u003e= payload_len' for len=2, i=0 gives '1 \u003e= 2' = false. But for 3-byte: 'i + 2U \u003e= payload_len' for len=3, i=0 gives '2 \u003e= 3' = false - correct. Actually, reviewing again: the issue is the pattern is inconsistent. Lines 109, 124-126 use '\u003e=' but need to access indices i+1 or i+2. For i+1 access, need len \u003e i+1, which is i+1 \u003c len, equivalent to i + 1 \u003e= len being the rejection condition. This is actually correct. False positive - no bug here.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

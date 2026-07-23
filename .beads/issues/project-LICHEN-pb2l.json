@@ -2,7 +2,7 @@
   "id": "project-LICHEN-pb2l",
   "title": "task",
   "description": "schc.c:485-489 - When bitmap_bits == 63, the condition 'if (bitmap_bits \u003c 63)' causes the masking to be skipped. This leaves bit 63 potentially containing garbage from the input data. While current code never accesses bit 63 (FCN values iterate 0-62), this is technically incorrect and could cause issues if bitmaps are compared directly. Fix: change condition to 'if (bitmap_bits \u003e 0)' or remove condition entirely since bitmap_bits \u003c= 63 is already validated.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "assignee": "Mark Atwood",

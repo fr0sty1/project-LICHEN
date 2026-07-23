@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.26",
   "title": "Public error enums missing #[non_exhaustive]",
   "description": "30 public error enums across the codebase lack `#[non_exhaustive]`.\n\nAdding new variants would be a breaking change for downstream crates matching on these enums.\n\nFiles containing pub enum ...Error:\n- lichen-link/src/frame.rs (FrameError)\n- lichen-link/src/link_layer.rs (LinkRxError)\n- lichen-oscore/src/lib.rs (OscoreError)\n- lichen-oscore/src/edhoc.rs (EdhocError)\n- lichen-node/src/stack.rs (TxError, RxError)\n- lichen-node/src/secure.rs (SecureError)\n- lichen-node/src/port_dispatch.rs (DispatchError)\n- lichen-hal/src/lib.rs (RadioError, DisplayError)\n- lichen-meshtastic/src/gatt.rs (GattError)\n- lichen-schc/src/fragment.rs (FragmentError)\n- lichen-schc/src/codec.rs (SchcError)\n- lichen-gateway/src/slip.rs (SlipError)\n- lichen-gateway/src/aprs_is.rs (AprsError)\n- lichen-gateway/src/config.rs (ConfigError)\n- lichen-ipv6/src/lib.rs (Ipv6Error)\n- lichen-core/src/tx_queue.rs (TxQueueError)\n- lichen-coap/src/codec.rs (CoapError)\n- lichen-core/src/announce.rs (AnnounceError)\n- lichen-core/src/udp.rs (UdpError)\n- lichen-core/src/loadng.rs (LoadngError)\n- lichen-kiss/src/bridge.rs (BridgeError)\n- lichen-kiss/src/framing.rs (KissError)\n- lichen-core/src/compact_cot.rs (DecodeError, EncodeError)\n- lichen-senml/src/cbor.rs (CborError)\n- lichen-core/src/ipv6.rs (Ipv6Error)\n- lichen-rpl/src/message.rs (RplError)\n- lichen-sim/src/client.rs (SimError)",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

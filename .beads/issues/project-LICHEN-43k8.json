@@ -2,7 +2,7 @@
   "id": "project-LICHEN-43k8",
   "title": "task",
   "description": "python/src/lichen/crypto/edhoc.py:301-302 - Missing length validation for responder's ephemeral public key:\n\n```python\nself._g_y = g_y_ciphertext_2[:X25519_KEY_LEN]  # No check that len \u003e= 32\nciphertext_2 = g_y_ciphertext_2[X25519_KEY_LEN:]\n```\n\nFailure scenario: Malicious responder sends truncated G_Y (e.g., 16 bytes). Code slices without checking, then crypto_scalarmult raises ValueError with confusing message. While this fails closed (no security bypass), it's a correctness bug - protocol should validate message structure before processing.\n\nFix: Add `if len(g_y_ciphertext_2) \u003c X25519_KEY_LEN: raise ValueError('Message 2 G_Y too short')` before slicing.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

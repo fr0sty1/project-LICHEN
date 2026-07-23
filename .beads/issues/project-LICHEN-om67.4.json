@@ -2,7 +2,7 @@
   "id": "project-LICHEN-om67.4",
   "title": "Rust/Zephyr: Missing gradient table",
   "description": "Python has gradient.py (181 LoC) providing GradientTable for unified route lookup. Neither Rust nor Zephyr have equivalent. Required for hybrid router integration. Reference: python/src/lichen/gradient.py",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

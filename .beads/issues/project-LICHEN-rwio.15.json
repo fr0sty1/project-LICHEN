@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.15",
   "title": "Compiler may optimize away memset() of hash buffer in generate_eui64()",
   "description": "In lora_l2.c:119, memset(hash, 0, sizeof(hash)) is used to clear the SHA-256 intermediate hash buffer. This memset may be optimized away by the compiler because 'hash' is a local variable that is never read after the memset. The C standard allows dead-store elimination. On GCC/Clang this happens at -O2 and above.\n\nImpact: The 32-byte SHA-256 hash remains in stack memory after generate_eui64() returns. While not directly a secret (it's derived from hardware ID, not a cryptographic key), compiler behavior should be deterministic in security-adjacent code.\n\nFix: Use explicit_bzero() (POSIX), memset_s() (C11 Annex K), or Zephyr's secure_memzero() (if available). Alternatively, a volatile pointer cast: *(volatile uint8_t*)\u0026hash[0] = 0; ... or a barrier-based approach.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:119",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

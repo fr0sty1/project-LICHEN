@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.27",
   "title": "[lora_l2.c:259] ssize_t to int cast on error path",
   "description": "What: generate_eui64() stores hwinfo_get_device_id() return (ssize_t) in hwid_len, then casts to int for logging and return:\n```c\nssize_t hwid_len;\nhwid_len = hwinfo_get_device_id(hwid, sizeof(hwid));\nif (hwid_len \u003c 0) {\n    LOG_ERR(\"...\", (int)hwid_len);  // cast\n    ret = (int)hwid_len;  // cast\n}\n```\n\nWhy it matters: On platforms where ssize_t is larger than int (e.g., 64-bit), large negative error codes could be truncated. However:\n1. Zephyr hwinfo returns standard errno codes (small negative integers)\n2. LICHEN targets 32-bit ARM where int == ssize_t size\n3. Error codes fit in int on all platforms\n\nThis is a theoretical portability concern, not a practical bug.\n\nEvidence: Line 264 cast (int)hwid_len",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

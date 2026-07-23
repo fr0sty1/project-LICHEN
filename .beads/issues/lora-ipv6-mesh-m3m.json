@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-m3m",
   "title": "Implement DutyCycleTracker",
   "description": "Create python/src/lichen/sim/duty_cycle.py. DutyCycleTracker class: __init__(limit_percent=1.0, window_seconds=3600). Methods: record_tx(airtime_us, time_us), can_transmit(airtime_us, time_us) -\u003e bool, get_usage(time_us) -\u003e float (0.0-1.0). Sliding window: track TX times, drop entries older than window. EU 868MHz limit: 1% duty cycle. Integration: TCP server checks before allowing TX, returns TX_FAIL if exceeded. Unit tests for boundary conditions.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

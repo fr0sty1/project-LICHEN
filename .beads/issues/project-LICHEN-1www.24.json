@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.24",
   "title": "TX mutex held across lora_send() blocks RX callback snapshotting",
   "description": "lora_l2.c:lichen_lora_l2_tx() does NOT hold lora_mutex during lora_send(), which is correct (see comment at lines 479-493). However, lichen_l2.c:lichen_l2_send() holds tx_mutex across the entire lora_send() call via:\n\n  k_mutex_lock(\u0026tx_mutex, K_FOREVER);  // line 289\n  ... linearize, compress, build frame ...\n  ret = lichen_lora_l2_tx(tx_frame_buf, frame_len);  // line 334\n  k_mutex_unlock(\u0026tx_mutex);  // line 340\n\nThe lora_send() at SF10/255 bytes takes ~500ms airtime. During this period:\n- tx_mutex is held\n- lichen_l2_enable(false) at line 440 acquires tx_mutex before cleanup\n\nThis means disabling the interface while a TX is in progress blocks for up to 500ms. This is acceptable but should be documented.\n\nWhat goes wrong: Not a correctness bug, but the lock duration may surprise callers expecting lichen_l2_enable(false) to return promptly. A future caller might add timeout handling that masks the real cause.\n\nNo code change needed - add a comment noting the expected hold time.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3pun.2",
   "title": "lichen_sha256(): no runtime check on output buffer size",
   "description": "**Location:** firmware/bridge-zephyr/subsys/lichen/lichen_util.c:11\n\n**Contract violation:** The lichen_sha256() function documents that output buffer MUST be \u003e= TC_SHA256_DIGEST_SIZE (32 bytes), but this is only documented, not enforced at runtime. The array parameter syntax `output[TC_SHA256_DIGEST_SIZE]` decays to a pointer and provides no bounds checking.\n\n**Impact (P2):** Buffer overflow if caller provides undersized buffer. However, the documentation is clear and all current callers (lichen_pubkey_to_iid, generate_eui64) use correctly-sized buffers.\n\n**Recommendation:** Either:\n1. Accept this as a documentation-only contract (current state, reasonable for embedded)\n2. Add a separate size parameter for runtime validation\n3. Leave as-is with SECURITY comment (already present in header)\n\nThe current documentation is explicit about the risk. This is a P2 documentation gap rather than a P0 bug since all callers are correct.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

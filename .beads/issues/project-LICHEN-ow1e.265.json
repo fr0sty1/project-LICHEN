@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.265",
   "title": "[CR] SCHC codec: MQTT-SN rule uses same address compression as CoAP but different port field",
   "description": "File: rust/lichen-schc/src/codec.rs:432-478\n\nObservation: The MQTT-SN rule (rule 5) duplicates the address compression logic from the CoAP rules. This is correct but could be refactored to share the common address compression/decompression code.\n\nCurrent code has:\n- compress_mqtt_sn: copies address handling from compress_coap\n- decompress_mqtt_sn: copies address handling from decompress_coap\n\nIdiomatic improvement: Extract shared address compression helpers to reduce duplication.\n\nLow priority since the code is correct and well-tested.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

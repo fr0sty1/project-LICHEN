@@ -2,7 +2,7 @@
   "id": "project-LICHEN-04cy",
   "title": "NeighborSolicitation::from_bytes parses wrong offset for target",
   "description": "File: rust/lichen-ipv6/src/lib.rs:538-550\n\nThe from_bytes() function expects:\n```rust\n// After type/code/checksum: 4 reserved + 16 target\nif buf.len() \u003c 20 {\n    return Err(TooShort::new(20, buf.len()).into());\n}\nlet mut target = [0u8; 16];\ntarget.copy_from_slice(\u0026buf[4..20]);\n```\n\nBut looking at how it's called in handle_icmpv6:\n```rust\nlet body = \u0026icmpv6_payload[ICMPV6_HEADER_LEN..];  // Skip type/code/checksum (4 bytes)\n// ...\nlet ns = NeighborSolicitation::from_bytes(body)?;\n```\n\nSo 'body' already has type/code/checksum stripped. The NS format after those 4 bytes is:\n- 4 bytes reserved\n- 16 bytes target address\n\nThis means buf[4..20] is correct (4 reserved + 16 target starting at offset 4).\n\nWait, this is actually correct. The comment says 'After type/code/checksum: 4 reserved + 16 target', and the function receives data that already has type/code/checksum stripped.\n\nLet me re-verify... Actually this is correct. Canceling this bead.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

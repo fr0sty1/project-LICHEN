@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-017",
   "title": "Implement Simulation class",
   "description": "Create python/src/lichen/sim/simulation.py. Simulation class: id (str), nodes (dict[str, SimNode]), medium (Medium), event_queue (EventQueue), current_time_us (int), time_mode enum (BARRIER_SYNC, REALTIME). Methods: add_node(id, x, y, z) -\u003e SimNode, remove_node(id), get_node(id), advance_to(time_us), process_next_event(), maybe_advance_time() for barrier sync (advances when all nodes in RX_WAIT). Barrier sync: deterministic, waits for all nodes to block before advancing. Realtime: advances with wall clock.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

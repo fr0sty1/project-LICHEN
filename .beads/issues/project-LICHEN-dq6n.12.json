@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dq6n.12",
   "title": "[lora_l2.c:437-456] Double join timeout may exceed caller expectations",
   "description": "In lichen_lora_l2_stop(), the join logic waits up to RX_THREAD_QUICK_JOIN_MS + RX_TIMEOUT_MS before aborting:\n\n```c\nint join_ret = k_thread_join(\u0026rx_thread_data, K_MSEC(RX_THREAD_QUICK_JOIN_MS));\nif (join_ret == -EAGAIN) {\n    join_ret = k_thread_join(\u0026rx_thread_data, K_MSEC(RX_TIMEOUT_MS));\n    if (join_ret == -EAGAIN) {\n        LOG_WRN(\"RX thread join timed out after %dms...\",\n                RX_THREAD_QUICK_JOIN_MS + RX_TIMEOUT_MS);\n        k_thread_abort(\u0026rx_thread_data);\n        k_thread_join(\u0026rx_thread_data, K_FOREVER);\n        ...\n    }\n}\n```\n\nWith defaults: RX_THREAD_QUICK_JOIN_MS (100) + RX_TIMEOUT_MS (typically 1000-5000ms) = 1.1 to 5.1 seconds total worst case.\n\nThis is documented in the header's docstring ('Blocks until RX thread exits'), but the actual maximum block time is:\n- Best case: instant (thread already exited)\n- Typical case: \u003c100ms (exits between lora_recv calls)\n- Worst case: RX_THREAD_QUICK_JOIN_MS + RX_TIMEOUT_MS + abort time\n\nImpact: P3 - documentation/expectations issue. The behavior is correct for the semantics, but callers may not expect multi-second blocks on stop().",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kmxm.4",
   "title": "lichen_native_init is not idempotent and can spawn duplicate RX threads",
   "description": "Why this issue exists: lichen_native_init always overwrites global callback state and creates a new native_rx thread, with no initialized guard. Repeated init calls create multiple threads consuming the same UART message queue and racing on global callback state. What needs to be done: add an initialization guard, return 0 on repeated init with the same callback, and define behavior for callback replacement.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

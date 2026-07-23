@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.96",
   "title": "[Kconfig:61-67] LICHEN_LORA_FREQUENCY has no range constraint",
   "description": "Category not checked: Build configuration validation\n\nBug found: CONFIG_LICHEN_LORA_FREQUENCY has no 'range' constraint in Kconfig. Contrast with CONFIG_LICHEN_LORA_TX_POWER which has 'range 0 22'.\n\nValid LoRa frequencies are hardware-constrained (typically 137-1020MHz for SX127x, 150-960MHz for SX126x). A user could configure 0 or 4GHz which would silently fail at runtime.\n\nThe comment says 'Must comply with regional regulations' but provides no compile-time bounds checking. At minimum, the common ISM bands should be constrained: range 137000000 1020000000 (broad) or tighter regional defaults.\n\nImpact: P4 - Runtime failure with confusing error message instead of build-time validation.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

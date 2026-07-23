@@ -2,7 +2,7 @@
   "id": "project-LICHEN-578k",
   "title": "Convert lichen-embassy sim.rs to push-based RX",
   "description": "Convert rust/lichen-embassy/src/sim.rs from poll-based RX (0x20/0x21/0x23 loop) to push-based RX (RX_ENTER 0x24, block for RX_PACKET 0x27 or RX_TIMEOUT 0x28). Mirrors SX1262.cs conversion.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

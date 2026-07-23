@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-4e8",
   "title": "Pending events not purged on node removal",
   "description": "**Correctness Issue**\n\nWhen Simulation.remove_node() is called, the node's pending events (TxEndEvent, RxTimeoutEvent) remain in the EventQueue. When those events fire, _handle_tx_end and _handle_rx_timeout check if the node exists and skip gracefully, but:\n\n1. Events accumulate unnecessarily in the queue\n2. Time advancement calculations consider these orphan events\n3. In long-running simulations with churn, this is a memory leak\n\nThe fix is to either:\n- Filter events when processing (currently done, but wasteful)\n- Add EventQueue.remove_for_node(node_id) and call it in remove_node()\n- Use soft references or a cancelled flag on events\n\nFiles: simulation.py:111-124, events.py",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.12",
   "title": "lora_l2.c:979 lichen_lora_l2_tx missing state re-check after mutex",
   "description": "Contract violation: lichen_lora_l2_tx() - State is checked at line 1032-1040 without mutex, then tx_buf_mutex acquired at line 1054, but state is NOT re-checked after mutex acquisition. If state transitions to DEINITING between check and mutex lock (TOCTOU), tx proceeds but deinit() blocks waiting on tx_buf_mutex. This is documented as acceptable at lines 1019-1030, but the function could return earlier if state changed to STOPPED/DEINITING before mutex lock. WHY this matters: TX that starts while state is transitioning wastes airtime. HOW to fix: Re-check state after acquiring mutex and return -ENETDOWN if no longer RUNNING.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

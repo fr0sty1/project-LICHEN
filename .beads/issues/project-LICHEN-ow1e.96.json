@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.96",
   "title": "edhoc.py: imports inside functions (hmac, io) called multiple times",
   "description": "src/lichen/crypto/edhoc.py has imports inside functions:\n- Line 87: 'import hmac' inside _hkdf_extract()\n- Line 181: 'import io' inside _decode_cbor_sequence()\n\nThese functions are called multiple times per EDHOC session. Move imports to module level.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

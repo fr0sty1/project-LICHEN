@@ -3,7 +3,7 @@
   "title": "Rename/gate Python legacy CBOR native interface surfaces",
   "description": "Decision follow-up from project-LICHEN-py4c.1.18. The Python legacy CBOR protocol remains in python/src/lichen/interface for prototype compatibility, but new LCI work must not treat it as the native app contract. Add explicit legacy_cbor naming/aliases or deprecation shims where appropriate, keep existing compatibility imports working, and update docs/tests so lichen-native-client remains IPv6+CoAP LCI while lichen.interface is clearly legacy CBOR only.",
   "acceptance_criteria": "No-hardware Python tests cover legacy compatibility imports, any new legacy_cbor aliases/deprecations, packaging docs, and contract text. Existing python/tests/interface/* and native LCI client tests still pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

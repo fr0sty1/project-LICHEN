@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.60",
   "title": "lichen_l2_send returns negative errno but net_pkt ownership unclear on partial failure",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:266-354 (lichen_l2_send)\n\nBug: The function comment at lines 262-265 states ownership semantics: on success (return 0) this function takes ownership and calls net_pkt_unref(); on error (return \u003c 0) caller retains ownership.\n\nHowever, examining the code:\n- Line 293 linearizes packet into tx_ipv6_buf (reads pkt)\n- Line 322 calls lichen_link_tx() (uses tx_ipv6_buf, does not touch pkt)\n- Line 334 calls lichen_lora_l2_tx() (sends frame, does not touch pkt)\n- Line 352 calls net_pkt_unref(pkt) only on success\n\nThe concern: if lichen_lora_l2_tx() at line 334 partially succeeds (e.g., sends data to radio but radio driver times out), what happens?\n\nActually, examining the code more carefully:\n1. All error returns before line 352 do NOT call net_pkt_unref()\n2. Only line 352 unrefs, which is after success return from lichen_lora_l2_tx()\n\nThis matches the documented contract: caller retains ownership on any error. The lora_l2_tx function either fully succeeds or returns error - there is no partial success that would leave unclear ownership.\n\nClosing as not a bug - the ownership semantics are correct.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

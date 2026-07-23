@@ -2,7 +2,7 @@
   "id": "project-LICHEN-qgmx",
   "title": "task",
   "description": "python/src/lichen/interface/framing.py:183-186. Frame lost when FEND at index 0.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.53",
   "title": "GOOD: RX thread uses K_MSEC timeout on lora_recv instead of blocking forever",
   "description": "lora_l2.c lines 149-150: lora_recv() is called with K_MSEC(RX_TIMEOUT_MS) timeout, not K_FOREVER. This allows the thread to periodically check atomic_get(\u0026running) and exit cleanly when stop() is called. Without a timeout, the thread would block indefinitely and require abort() for shutdown.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.15",
   "title": "lora_l2.c:1103 set_rx_callback precondition check is weak",
   "description": "Contract violation: lichen_lora_l2_set_rx_callback() - Only checks for UNINIT state at line 1105. Does not check for ABORTED or DEINITING states where mutex may be corrupted or state is transitioning. WHY: Setting callback in ABORTED state could leave callback registered in corrupted state. HOW to fix: Reject callback registration if needs_reinit() returns true or if state is DEINITING, returning -ECANCELED or -EBUSY respectively.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

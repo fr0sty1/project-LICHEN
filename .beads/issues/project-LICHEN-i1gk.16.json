@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.16",
   "title": "[lichen_util.h:93] cast through uintptr_t may cause alignment issues on strict platforms",
   "description": "At line 93, the code casts through uintptr_t to get a word-aligned pointer: 'volatile unsigned long *wp = (volatile unsigned long *)(uintptr_t)p'. While p is aligned at this point due to the loop at lines 87-90, the cast through uintptr_t loses the volatile qualifier temporarily. The final result is volatile, but intermediate casts could theoretically allow optimization. More concerning: if sizeof(unsigned long) is 8 on 64-bit but the alignment loop only aligns to 4 bytes (if uintptr_t alignment differs), this could cause unaligned access. The code assumes sizeof(unsigned long) == alignment requirement, which is typically true but not guaranteed.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

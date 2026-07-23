@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-o9l",
   "title": "Spec: Define OTA firmware update mechanism",
   "description": "No firmware update mechanism specified. Critical for IoT security — devices need patches. Consider: CoAP block-wise transfer for images, SUIT manifest (RFC 9019), secure boot verification, rollback protection. This is essential for production deployment.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "feature",
   "assignee": "Mark Frost",

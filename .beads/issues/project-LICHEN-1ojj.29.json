@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.29",
   "title": "net_pkt ownership semantics documented at each transfer point",
   "description": "lichen_l2.c documents net_pkt ownership at every transition:\n\n1. Line 197-203 (lichen_l2_send): 'Per Zephyr net_l2 contract: when L2 returns 0, it took ownership of the packet and must free it.'\n\n2. Lines 497-503 (lichen_l2_input): 'On success: net_recv_data takes ownership. We MUST NOT access or unref pkt after this point. On failure: We retain ownership and must unref pkt.'\n\n3. Line 511: 'pkt ownership transferred to network stack - do not access'\n\nZephyr's net_pkt ownership rules are subtle and error-prone (double-free or leak). These comments prevent bugs. If someone suggests removing them as 'obvious', push back: they're only obvious to someone who has memorized Zephyr's net_l2 contract.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

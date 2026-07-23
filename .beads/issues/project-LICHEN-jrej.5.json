@@ -2,7 +2,7 @@
   "id": "project-LICHEN-jrej.5",
   "title": "Gateway: compact CoT to XML expansion",
   "description": "Expand compact binary CoT to full CoT XML for ATAK interop. PLI to \u003cevent\u003e\u003cpoint\u003e\u003cdetail\u003e structure, chat to GeoChat, team bytes to __group. Software-only: pure transformation, test with vectors.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

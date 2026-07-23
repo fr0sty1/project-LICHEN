@@ -3,7 +3,7 @@
   "title": "Exhaustive Review: bridge-zephyr 2026-06-27",
   "description": "Multi-pass exhaustive code review of all Zephyr C code in firmware/bridge-zephyr",
   "notes": "## Exhaustive Review Convergence Report\n\n**Rounds to converge:** 4\n- Round 1: 34 findings (by-file, pattern, dataflow, contract)\n- Round 2: 32 findings (gap analysis, cross-file interactions)\n- Round 3: 5 findings (Kconfig, build config)\n- Round 4: 0 findings (CONVERGED)\n\n**Total unique findings:** 70\n- P1 (Must fix): 3\n- P2 (Should fix): 20\n- P3 (Worth fixing): 45\n- P4 (Polish): 2\n\n**Confidence:** 85% that a follow-up review finds 0 new P0-P1 bugs\n\n**Least confident areas:**\n1. External lichen_link_rx.c code (6 findings) - not in firmware/bridge-zephyr, may have more issues\n2. Replay table / peer table synchronization - complex state interactions\n3. Mutex recovery paths - intentional UB for best-effort recovery\n\n**Well-covered areas:**\n- State machine transitions\n- Error handling paths\n- Buffer validation\n- Thread safety / lock ordering\n- Build configuration\n- Memory safety (no dynamic allocation)",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

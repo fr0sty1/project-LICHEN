@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.36",
   "title": "usb_enable return not fully checked in main.c",
   "description": "main.c:80-86: usb_enable() is called and if ret != 0, an error is logged but execution continues.\n\nWhat goes wrong: If USB CDC fails to initialize, the log output itself may not be visible (since console goes through USB). The 'USB CDC ready' message at line 85 won't appear, but neither will the error message at line 82.\n\nThe code then sleeps 1 second and continues. If USB fails, the user sees nothing and has no indication the device is running.\n\nThis is particularly confusing for boards where UART is also available - the user might be looking at UART while USB initialization fails silently.\n\nFix: Consider toggling an LED pattern on USB failure, or outputting to UART fallback if available.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

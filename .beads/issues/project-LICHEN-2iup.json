@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2iup",
   "title": "coap_keys.c: decode_key_put_cbor skips non-string values without advancing position",
   "description": "File: lichen/subsys/lichen/coap/coap_keys.c\nLines: 790-796\n\nWhen decoding PUT payload, non-string value types are skipped incorrectly:\n```c\n} else {\n    /* Skip other types */\n    continue;\n}\n```\n\nThis 'continue' skips to the next map iteration WITHOUT advancing 'pos' past the value. The parser position stays at the value byte, causing the next key decode to read garbage.\n\nExample: if payload contains {\"extra\": 42, \"pubkey\": \"...\"}, the integer 42 is not skipped properly, corrupting subsequent parsing.\n\nShould call a zcbor_any_skip equivalent or manually advance pos based on the CBOR type.\n\nCategory: CORRECTNESS - parsing logic error",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

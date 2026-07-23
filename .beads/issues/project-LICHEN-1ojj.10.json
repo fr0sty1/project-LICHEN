@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.10",
   "title": "generate_eui64: random fallback produces unstable identity across reboots",
   "description": "In lora_l2.c:generate_eui64() lines 98-101, if hwinfo_get_device_id() fails, the code falls back to sys_rand_get() for the EUI-64. This produces a different identity on every reboot, which breaks IPv6 NDP, routing state, and any peer tracking. The LOG_WRN at line 101 fires but the system continues operation. For mesh networking, an unstable EUI-64 is a silent failure - neighbors will see a 'new' node each reboot. Consider: refuse to start without stable identity, or persist a random EUI-64 to flash on first boot.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

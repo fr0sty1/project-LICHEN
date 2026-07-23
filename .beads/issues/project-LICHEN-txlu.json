@@ -3,7 +3,7 @@
   "title": "task",
   "description": "Policy: appendix-c-safety.md §Compiler Hardening. Add -Wall -Wextra -Werror -Wformat=2 -Wformat-security -Wshadow -Wconversion -fstack-protector-strong to top-level CMake. Verify all C files compile clean.",
   "notes": "Work complete: compiler hardening flags added to lichen/zephyr/CMakeLists.txt via zephyr_compile_options(). Ready to close once parent epic mahy is resolved.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

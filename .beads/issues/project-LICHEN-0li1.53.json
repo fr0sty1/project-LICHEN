@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.53",
   "title": "[cross-file] peer_table and replay_table have different eviction policies creating stale windows",
   "description": "Interaction: lichen_l2.c:peer_table \u003c-\u003e lichen_l2.c:replay_table\n\nBug: peer_table uses LRU eviction based on last_seen timestamp (peer_find_oldest_locked, line 456-468). replay_table uses LRU based on access_counter (replay.h:51). These are separate LRU orderings that can diverge.\n\nWhen a peer is evicted from peer_table (lichen_peer_add line 676), its replay window is NOT automatically removed. The replay window for the evicted peer's EUI-64 persists in replay_table.\n\nConsequences:\n1. If the same peer reconnects with a new EDHOC handshake, they get a fresh peer_table entry but their old replay window persists. This replay window has stale last_seq that may reject legitimate new frames.\n\n2. The evicted peer's replay window occupies a slot, potentially causing a different peer's window to be evicted.\n\nThe only place replay is explicitly cleared for a peer is lichen_peer_remove() (line 738). But peer eviction in lichen_peer_add() does NOT call lichen_replay_remove().\n\nTrigger:\n1. Peer A, B, ... up to MAX_NEIGHBORS all added\n2. Peer X added, evicting peer A via LRU\n3. Peer A's replay window still in replay_table\n4. Peer A reconnects, added via lichen_peer_add (finds empty slot or evicts another)\n5. Peer A's new session has seqnum starting at 0\n6. But replay_table has A's old window with last_seq=50000\n7. Peer A's frames rejected as replay until seqnum exceeds old window",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

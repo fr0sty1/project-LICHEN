@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.88",
   "title": "[lora_l2.c:291-326] lichen_lora_l2_init does not clear rx_callback_user_data",
   "description": "Gap found: init() state clearing incomplete.\n\nWhy this was missed: Round 1 noted callback not cleared but not user_data.\n\nThe actual bug: In lichen_lora_l2_init() (lines 287-327):\n- Line 304: atomic_set(\u0026lora_state.running, 0)\n- Line 305: atomic_set(\u0026lora_state.aborted, 0)\n- Line 306: rx_callback = NULL\n\nMissing: rx_callback_user_data is not cleared. If init() is called after stop() without deinit(), stale user_data could be paired with new callback.\n\nActually, reviewing the sequence:\n1. stop() clears both callback and user_data (lines 434-435)\n2. deinit() clears both (lines 590-591)\n3. init() only clears callback (line 306)\n\nThis is inconsistent. init() should clear user_data too for symmetry:\n  lora_state.rx_callback_user_data = NULL;\n\nPriority 3 - stale pointer could cause issues if callback set without user_data.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

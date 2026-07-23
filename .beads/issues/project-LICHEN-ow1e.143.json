@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.143",
   "title": "SCHC uses compress/decompress while other codecs use encode/decode or from_bytes/write_to",
   "description": "Naming conventions across codec crates:\n\nlichen-schc/src/codec.rs:\n  pub fn compress(packet, out) -\u003e Result\u003cusize, SchcError\u003e\n  pub fn decompress(data, out) -\u003e Result\u003cusize, SchcError\u003e\n\nlichen-senml/src/cbor.rs:\n  pub fn encode(records, out) -\u003e Result\u003cusize, CborError\u003e\n  pub fn decode(data, buf) -\u003e Result\u003cusize, CborError\u003e\n\nlichen-coap, lichen-link, lichen-rpl all use:\n  Type::from_bytes(data) -\u003e Result\u003cSelf, Error\u003e\n  type.write_to(out) -\u003e Result\u003cusize, Error\u003e\n\nThe SCHC naming is intentional (matches RFC 8724 terminology) but differs from the codebase convention.\n\nWhat goes wrong: Minor discoverability issue. Users searching for 'encode' or 'decode' functions won't find SCHC's compression. Not critical since the RFC terminology is correct, but worth documenting the rationale in the module docstring.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

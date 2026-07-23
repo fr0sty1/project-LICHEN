@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1dbh",
   "title": "coap_status.c: neighbors_get negative return not properly handled",
   "description": "File: lichen/subsys/lichen/coap/coap_status.c\nLines: 558-560\n\nWhen neighbors_get callback returns negative error, count is set to 0:\n```c\ncount = s_config.neighbors_get(neighbors, ARRAY_SIZE(neighbors));\nif (count \u003c 0) {\n    LOG_WRN(\"neighbors_get callback failed: %d\", count);\n    count = 0;\n}\n```\n\nThis silently converts errors to empty responses. For debugging and error propagation, it would be better to return an error response (5.00 Internal Server Error) when the callback fails, rather than returning an empty but successful response.\n\nSame pattern in routes_get at lines 656-659.\n\nCategory: API MISUSE - error handling",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

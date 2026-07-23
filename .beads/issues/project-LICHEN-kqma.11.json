@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kqma.11",
   "title": "Route EDHOC post-KDF failure returns through secret wipe cleanup",
   "description": "Trigger: malformed or unauthenticated EDHOC messages after PRKs/session material have been derived. lichen/subsys/lichen/edhoc/edhoc.c has direct returns after derivation, including signature length checks at lines 584/587, KDF/signature failures at 606/616/649/666/688, responder KDF/encoding failures at 918/934/1046/1092, and Signature_3 failure at 1102. Impact: these paths bypass err_wipe, leaving eph_sk and PRK/session material in the context after failed authentication or malformed input. Convert post-KDF returns to set ret and goto err_wipe, and deduplicate the repeated signature_2 length check.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

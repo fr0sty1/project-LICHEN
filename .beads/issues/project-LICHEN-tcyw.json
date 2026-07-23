@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tcyw",
   "title": "task",
   "description": "python/src/lichen/sim/chaos.py:133-141. 50% loss becomes ~0% effective.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

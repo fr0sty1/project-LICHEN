@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.233",
   "title": "Codereview pass 2: Consider auto-update of min_epoch on epoch advance",
   "description": "Currently, set_min_epoch must be called explicitly after boot. Consider automatically updating min_epoch in check_and_update when a frame with a higher epoch is accepted (i.e., min_epoch = max(min_epoch, accepted_epoch)). This would provide rolling protection without requiring the caller to track and persist each peer's epoch separately. Trade-off: adds state mutation and complexity. Current approach is simpler and explicit. Location: rust/lichen-link/src/link_layer.rs:222-224",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

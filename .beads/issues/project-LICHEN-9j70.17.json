@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.17",
   "title": "lichen_l2.h/lora_l2.h: MTU constant duplicated with comment explaining why",
   "description": "Locations: lichen_l2.h:49, lora_l2.h:57\n\nLICHEN_L2_MTU (200) is defined in lichen_l2.h with a comment: 'Must match LICHEN_LORA_MTU in lora_l2.h. Duplication note: We duplicate rather than include lora_l2.h to avoid forcing consumers of lichen_l2.h to pull in LoRa driver types.'\n\nlora_l2.h computes LICHEN_LORA_MTU as (255 - 55) = 200.\n\nWhat goes wrong: The values currently match, but nothing enforces this. If someone changes LICHEN_LORA_FRAME_OVERHEAD, the mismatch will cause silent packet truncation or rejection. The 'must match' comment is documentation, not enforcement.\n\nSuggested fix: In lichen_l2.c, add: BUILD_ASSERT(LICHEN_L2_MTU == LICHEN_LORA_MTU, 'MTU mismatch between L2 layers'). This file already includes both headers.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

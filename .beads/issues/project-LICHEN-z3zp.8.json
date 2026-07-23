@@ -2,7 +2,7 @@
   "id": "project-LICHEN-z3zp.8",
   "title": "Concurrent OSCORE unprotect can accept the same replayed request twice",
   "description": "oscore_unprotect_request() checks replay_check_acceptable() under the mutex, releases the mutex for decryption, then reacquires it and calls replay_update_window(). replay_update_window() returns true even when another thread already marked the same sequence while this thread was decrypting, and the caller ignores the return value. Trigger: two RX/workqueue contexts process the same authentic OSCORE request concurrently. Bad behavior: both calls can return OSCORE_OK and deliver the same request to the application, violating OSCORE replay protection and enabling duplicated non-idempotent CoAP operations. Locations: lichen/subsys/lichen/oscore/oscore.c:1328-1349 and :1380-1387.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

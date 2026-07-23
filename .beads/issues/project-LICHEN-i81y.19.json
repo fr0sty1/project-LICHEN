@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i81y.19",
   "title": "Gateway Zephyr build references missing firmware bridge subsys path",
   "description": "While validating project-LICHEN-i81y.11, west build -p always -b nrf52840dk/nrf52840 lichen/apps/gateway -d build_gateway_i81y11 failed during CMake configure. lichen/zephyr/CMakeLists.txt calls add_subdirectory on ../../../firmware/bridge-zephyr/subsys, but that directory is absent in the current workspace. This prevents the gateway app from reaching compilation for BLE UART checks.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

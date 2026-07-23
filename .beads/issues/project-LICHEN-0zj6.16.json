@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-0zj6.16",
   "title": "Missing size_t cast in snprintf truncation check",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

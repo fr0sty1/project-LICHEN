@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-vf8",
   "title": "Use of assert for runtime checks - can be disabled with -O",
   "description": "**Idiomatic Python / Correctness**\n\nMultiple files use `assert` for runtime validation:\n- pcap.py:91 - `assert self._file is not None`\n- pcap.py:110 - `assert self._file is not None`\n- sim_client.py:262 - `assert self._stream is not None`\n- sim_client.py:282 - `assert self._stream is not None`\n- sim_client.py:311 - `assert self._stream is not None`\n\nPython's `assert` statements are removed when running with `python -O` (optimize). These are actual runtime checks needed for correctness, not debugging aids.\n\nFix: Replace with explicit `if x is None: raise ValueError(...)` or use a helper like:\n```python\ndef _require_file(self) -\u003e BinaryIO:\n    if self._file is None:\n        raise ValueError('PcapngWriter is closed')\n    return self._file\n```\n\nFiles: pcap.py, sim_client.py",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

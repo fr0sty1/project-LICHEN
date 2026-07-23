@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.104",
   "title": "LOADng route discovery typestate transition debug_asserts are compile-time-dead code",
   "description": "In rust/lichen-core/src/loadng.rs, e.g. line 231: debug_assert!(RouteDiscoveryState::Idle.can_transition_to(RouteDiscoveryState::Searching)). This assertion uses const values and const fn, so it's evaluated at compile time. If the transition table is wrong, this fires at compile time, not runtime. But the code structure suggests it's a runtime check. A contributor might add a runtime condition guarded by this pattern, not realizing it only works for const inputs. Either remove (it's a comment, not a check) or use runtime state if dynamic transitions are intended.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

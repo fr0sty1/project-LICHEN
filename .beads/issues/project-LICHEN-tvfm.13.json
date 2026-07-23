@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.13",
   "title": "[main.c:117-119] init_standalone_lora calls lichen_lora_l2_stop on late failure but not cleanup link state",
   "description": "In init_standalone_lora() lines 105-119, if lichen_lora_l2_get_eui64() returns NULL after start(), the code calls lichen_lora_l2_stop() to clean up. However, this leaves any state initialized by lichen_lora_l2_start() (like the LoRa radio config) in an inconsistent state. The function returns -ENODATA but the module is now in 'stopped but initialized' state. A subsequent retry would call init() again which is idempotent, but the radio may be in an unexpected configuration. Consider calling lichen_lora_l2_deinit() for full cleanup.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

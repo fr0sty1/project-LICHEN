@@ -2,7 +2,7 @@
   "id": "project-LICHEN-z38x.3",
   "title": "lora_l2.c: replace 'unknown state' panics with ABORTED transition",
   "description": "Replace k_panic() in start() and deinit() for unknown state with graceful handling.\n\nLocations: lines 541, 730\n\nCurrent:\n  default:\n      LOG_ERR(\"Unknown state: %d\", state);\n      k_panic();\n\nTarget:\n  default:\n      LOG_ERR(\"lora_l2: unknown state (%d), forcing ABORTED\", state);\n      atomic_set(\u0026current_state, LORA_ABORTED);\n      return -EINVAL;",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

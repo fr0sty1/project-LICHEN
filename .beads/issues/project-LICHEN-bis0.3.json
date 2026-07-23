@@ -2,7 +2,7 @@
   "id": "project-LICHEN-bis0.3",
   "title": "Python: Add queue latency metrics to simulator",
   "description": "Add queue_stats tracking to Python simulator/node:\n\n1. Track packet timestamps on enqueue\n2. Calculate latency on dequeue\n3. Separate drop counters (deadline vs full)\n4. Expose via node status or diagnostics\n\nFields per spec:\n- packets_queued\n- packets_dropped_deadline  \n- packets_dropped_full\n- max_latency_ms\n- avg_latency_ms\n\nReference: spec/appendix-bufferbloat.md lines 138-152",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

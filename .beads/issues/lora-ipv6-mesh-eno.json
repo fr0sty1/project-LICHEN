@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-eno",
   "title": "Replay protection with sliding window",
   "description": "Implement replay protection per spec section 4.4.\n\nState per sender (IID):\n- last_epoch: u8\n- last_seqnum: u16\n- window: 32-bit bitmap for recent seqnums\n\nAlgorithm:\n1. Extract epoch and seqnum from frame\n2. If epoch \u003c last_epoch: reject (old epoch)\n3. If epoch \u003e last_epoch: accept, reset window, update state\n4. If epoch == last_epoch:\n   a. If seqnum \u003c= last_seqnum - 32: reject (too old)\n   b. If seqnum in window: reject (replay)\n   c. If seqnum \u003e last_seqnum: accept, slide window\n   d. Else: accept, mark in window\n\nClass ReplayProtector:\n- check(sender_iid, epoch, seqnum) -\u003e bool\n- update(sender_iid, epoch, seqnum) -\u003e None\n- get_next_seqnum(my_iid) -\u003e (epoch, seqnum)\n- persist() / load() for epoch persistence\n\nUnit tests for all edge cases: wrap, old epoch, replay, window edges.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Frost",

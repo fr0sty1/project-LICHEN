@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.69",
   "title": "[lichen_l2/lora_l2] callback registered before link_ctx fully initialized",
   "description": "Cross-file race condition: In lichen_l2_iface_init(), the RX callback is registered (line 978) BEFORE link_ctx_initialized is set to 1 (line 991).\n\nRace scenario:\n1. lichen_l2_iface_init() calls lichen_link_init() at line 959\n2. Callback registered at line 978\n3. LoRa packet arrives\n4. RX thread invokes lora_rx_callback()\n5. lora_rx_callback checks lichen_iface (set at line 975) - OK\n6. lichen_l2_input checks link_ctx_initialized - still 0!\n7. Frame dropped with 'RX before link_ctx initialized' warning\n\nThe window is small (between lines 978 and 991), but during this window:\n- Callback is registered\n- lichen_iface is set\n- link_ctx IS initialized (line 959)\n- But link_ctx_initialized flag is NOT yet set\n\nThe comment at line 987-991 says 'Set AFTER RX callback registration so the flag truthfully indicates that the full initialization sequence is complete' - but this creates a window where valid frames are dropped.\n\nLocation: lichen_l2.c:978-991\n\nRecommendation: Set link_ctx_initialized=1 BEFORE registering the callback. The 'truthful indication' is less important than not dropping valid frames.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

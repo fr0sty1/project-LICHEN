@@ -3,7 +3,7 @@
   "title": "task",
   "description": "Policy: appendix-c-safety.md. Add CONFIG_ASAN and CONFIG_UBSAN to native_sim test configs. Verify all tests pass.",
   "notes": "Partial: sanitizers.conf exists with CONFIG_ASAN=y and CONFIG_UBSAN=y, but (1) file is untracked, (2) not referenced in any testcase.yaml via extra_conf_files, and (3) tests not verified to pass with sanitizers. Need to wire sanitizers.conf into native_sim tests and run verification.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

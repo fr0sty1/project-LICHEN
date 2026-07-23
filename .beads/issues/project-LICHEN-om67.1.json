@@ -2,7 +2,7 @@
   "id": "project-LICHEN-om67.1",
   "title": "Rust: Missing unified hybrid Router abstraction (spec 7.2)",
   "description": "Python has Router class (599 LoC) combining address classification, gradient lookup, RPL/LOADng/GPSR routing decisions, pending packet queue, and DTN buffer. Rust has individual protocol implementations (announce.rs, loadng.rs, rpl/) but no unified orchestration layer. Reference: python/src/lichen/routing/router.py",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

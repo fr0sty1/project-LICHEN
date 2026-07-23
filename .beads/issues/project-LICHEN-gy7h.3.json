@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.3",
   "title": "Well-done: BUILD_ASSERT for MTU consistency",
   "description": "The BUILD_ASSERT in lichen_l2.c:33-34 that validates LICHEN_L2_MTU == LICHEN_LORA_MTU is genuinely valuable. MTU mismatches between layers cause hard-to-debug issues: one layer accepts packets the other rejects, resulting in silent drops or cryptic EMSGSIZE errors with no obvious root cause. Catching this at compile time eliminates an entire class of runtime bugs. Worth keeping even if someone suggests simplifying by removing the redundant constant.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

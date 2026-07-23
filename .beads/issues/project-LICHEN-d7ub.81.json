@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.81",
   "title": "Kconfig:68 LICHEN_LORA_FREQUENCY range 150-960 MHz too permissive",
   "description": "Completeness check: Round 1-2 missed Kconfig validation gaps.\n\nWHAT: LICHEN_LORA_FREQUENCY has range 150000000-960000000 Hz:\n```\nconfig LICHEN_LORA_FREQUENCY\n    int \"LoRa frequency in Hz\"\n    default 915000000\n    range 150000000 960000000\n```\n\nWHY BUG: This range is far too permissive:\n1. LoRa chips have specific frequency ranges (e.g., SX1276: 137-175 MHz, 410-525 MHz, 862-1020 MHz)\n2. ISM bands have regulatory limits (433 MHz, 868 MHz, 915 MHz are main bands)\n3. A user could configure 200 MHz which most LoRa chips can't transmit on\n4. Even within chip range, frequencies between bands (e.g., 600 MHz) are illegal to transmit\n\nIMPACT: User misconfiguration could:\n1. Silently fail to transmit (chip rejects frequency)\n2. Transmit on illegal frequency (regulatory violation)\n3. Damage hardware if frequency is outside safe range\n\nFIX:\n1. Add runtime validation in lichen_lora_l2_start() against known bands\n2. Or: Split into band selection + channel offset for safer configuration\n3. Or: Add BUILD_ASSERT or runtime warning for frequencies outside known ISM bands\n4. At minimum: Document that the user is responsible for regulatory compliance",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

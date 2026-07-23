@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wj86",
   "title": "SCHC: Integer overflow in CoAP option parsing causes incorrect OSCORE detection",
   "description": "File: lichen/subsys/lichen/schc/schc.c\nLines: 350-360 (delta), 368-378 (length)\n\nIn coap_has_oscore_option(), the delta and length variables are declared as uint8_t, but CoAP extended option delta/length values can exceed 255:\n\n1. When delta==13: delta = coap[offset] + 13; can be up to 268 (255+13), truncating to 12\n2. When delta==14: delta = read_be16(...) + 269; can be up to 65804, truncating to just the low 8 bits\n3. Same issues for the length variable at lines 368-378\n\nImpact:\n- Incorrect option number accumulation (option_number += delta uses truncated value)\n- Wrong offset advancement (offset += length uses truncated value)\n- Could parse into middle of option values as if they were headers\n- False positive/negative OSCORE detection causing wrong compression rule selection\n- Packets compressed with rule 0/1 instead of 5/6 (or vice versa) will fail to decompress\n\nFix: Change delta and length from uint8_t to uint16_t (or size_t for length since it's used in offset arithmetic).\n\nCode:\n```c\nuint8_t delta = (byte \u003e\u003e 4) \u0026 0x0F;  // Should be uint16_t\nuint8_t length = byte \u0026 0x0F;        // Should be uint16_t or size_t\n...\ndelta = read_be16(\u0026coap[offset]) + 269;  // Truncates to 8 bits!\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

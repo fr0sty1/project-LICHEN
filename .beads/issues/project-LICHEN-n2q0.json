@@ -2,7 +2,7 @@
   "id": "project-LICHEN-n2q0",
   "title": "task",
   "description": "compact_cot.py:781 - alt_dm=int(alt_m * 10) can overflow int16 range (-32768 to 32767) for altitudes above 3276.7m or below -3276.8m. struct.pack('\u003eh', alt_dm) then raises 'struct.error: short format requires SHRT_MIN \u003c= number \u003c= SHRT_MAX'. Failure scenario: Aircraft or high-altitude position at 5000m HAE causes compress_cot_xml() to raise unhelpful struct.error instead of clear validation error. Should clamp to valid range or raise ValueError with clear message.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

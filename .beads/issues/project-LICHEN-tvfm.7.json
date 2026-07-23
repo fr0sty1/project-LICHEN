@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.7",
   "title": "[lichen_l2.c:381] lichen_peer_add missing array size validation",
   "description": "Function: lichen_peer_add. Contract violation: The function signature uses const uint8_t eui64[8] and const uint8_t pubkey[32], but array parameters decay to pointers in C - there is no compile-time validation that callers pass arrays of the correct size. The runtime NULL checks are present but cannot detect undersized buffers. Consider using static analysis attributes (__attribute__((nonnull))) or documenting the size requirement prominently. Priority 3 because buffer sizes are correct at all current call sites.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

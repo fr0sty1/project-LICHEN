@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.42",
   "title": "rx_callback user_data update order allows mismatched callback invocation",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:523-534 (lichen_lora_l2_set_rx_callback)\n\nRisk: The function updates rx_callback_user_data before rx_callback (lines 531-532). While both are under mutex, the RX thread snapshots both under mutex at lines 219-222. However, the update order creates a subtle issue:\n\nIf a caller does:\n  set_rx_callback(new_cb, new_data);\n  \nAnd the RX thread is between line 220 and 221 (has snapshotted cb but not cb_user_data), it will call the OLD callback with OLD user_data, which is fine.\n\nBut the comment says this is to ensure atomic update - it would be clearer to note that the mutex ensures atomicity, not the order. The current order is actually safe, but a contributor might think the order matters and change it to callback-first, which would still be safe due to mutex but might confuse readers.\n\nPattern contributors may misunderstand: Thinking the write order provides atomicity rather than the mutex.\n\nSuggested fix: Clarify in comment that mutex provides atomicity; write order is arbitrary.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

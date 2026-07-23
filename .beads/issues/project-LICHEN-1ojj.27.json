@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.27",
   "title": "Clean idempotent init pattern in LoRa L2",
   "description": "lora_l2.c:161-195 (lichen_lora_l2_init) implements idempotent initialization correctly:\n- Check-under-mutex pattern prevents TOCTOU race\n- Comment explains why (prevents EUI-64 regeneration on double-init)\n- SECURITY comment notes the race condition being prevented\n\nThis pattern is worth defending because:\n1. Both main.c and NET_DEVICE_INIT can call init\n2. Naive check-then-lock would allow two threads to both pass and generate different EUI-64s\n3. The comment makes the invariant explicit\n\nIf someone suggests 'simplifying' by removing the mutex or moving the check outside the lock, push back with the documented race condition.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

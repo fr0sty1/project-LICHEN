@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.13",
   "title": "ipv6_addr.c: snprintf truncation check is unreachable dead code",
   "description": "In lichen_ipv6_addr_to_str() (ipv6_addr.c:145-148), the truncation check '(size_t)ret \u003e= buflen' can never trigger. The function already returns -EINVAL if buflen \u003c LICHEN_IPV6_ADDR_STR_LEN (line 115), and the format produces exactly 39 characters + null. The LOG_WRN and -ENOSPC return are unreachable.\n\nWhat goes wrong: Code that can never execute is confusing to readers who wonder 'when does this fire?' The docstring even says 'should not occur', confirming it's defensive boilerplate that will never be tested.\n\nFix: Remove the truncation check entirely, or document it as 'defense-in-depth paranoia, never expected to fire' so readers don't spend time analyzing it.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/ipv6_addr.c:145-148",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

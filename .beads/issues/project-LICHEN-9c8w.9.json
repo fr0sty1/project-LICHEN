@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9c8w.9",
   "title": "ipv6_addr.c: add subsystem prefix and normalize",
   "description": "Normalize ipv6_addr.c logging to match style guide.\n\nCurrent:\n  LOG_ERR(\"eui64_to_iid: NULL pointer\");\n  LOG_ERR(\"pubkey_to_iid: SHA-256 failed\");\n  LOG_ERR(\"ULA prefix must be in fd00::/8, got %02x\");\n\nTarget:\n  LOG_ERR(\"ipv6_addr: eui64_to_iid failed (NULL input)\");\n  LOG_ERR(\"ipv6_addr: pubkey_to_iid failed (SHA-256 error)\");\n  LOG_ERR(\"ipv6_addr: invalid ULA prefix (%02x, expected fd00::/8)\");\n\nAlso: host-side LOG_* macros at top of file need review.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

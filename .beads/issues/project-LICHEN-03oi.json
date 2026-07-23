@@ -2,7 +2,7 @@
   "id": "project-LICHEN-03oi",
   "title": "on_route_discovered: updates gradient but doesn't verify route validity",
   "description": "File: python/src/lichen/routing/router.py:610-625\n\n```python\ndef on_route_discovered(\n    self, dst: IPv6Address, next_hop: IPv6Address, now_ms: int\n) -\u003e list[PendingPacket]:\n    \"\"\"Called when LOADng discovers a route.\"\"\"\n    pending = self.get_pending(dst)\n    self.clear_pending(dst)\n    # NOTE: Does not verify next_hop is valid or reachable\n    # NOTE: Does not update gradient_table with discovered route\n    return pending\n```\n\nWHY IT'S A BUG:\n1. Method name suggests it handles route discovery, but it only manages the pending queue\n2. The discovered route (next_hop) is passed in but never stored or used\n3. Caller must separately update gradient_table - this is not documented\n4. If gradient_table is not updated, subsequent lookups will fail and re-trigger discovery\n\nIMPACT: \n- Confusing API - name suggests route handling but only manages queue\n- Risk of discovery loop if caller forgets to update gradient_table\n- next_hop parameter is unused (dead code)\n\nFIX: Either:\n1. Rename to 'release_pending_for' and remove unused next_hop parameter\n2. Or actually update the gradient_table:\n```python\ndef on_route_discovered(...):\n    self.gradient_table.update(GradientEntry(\n        destination=dst, next_hop=next_hop, ...\n    ))\n    pending = self.get_pending(dst)\n    self.clear_pending(dst)\n    return pending\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

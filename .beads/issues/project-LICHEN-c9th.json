@@ -2,7 +2,7 @@
   "id": "project-LICHEN-c9th",
   "title": "task",
   "description": "Add a dedicated SCHC rule in schc.c for OSCORE-protected CoAP packets. The OSCORE Object-Security option appears as a CoAP option that needs specialized compression handling.\n\nWire format of OSCORE-protected CoAP:\n- Standard CoAP header (4 bytes)\n- Object-Security option with kid_context, partial_iv, sender_id\n- Encrypted CoAP payload\n\nThe rule must be added to both C and Python implementations to maintain interoperability:\n- lichen/subsys/lichen/schc/schc.c\n- python/src/lichen/schc/rules.py\n\nReference: spec/06-security.md section 8.7 - OSCORE overhead is 8-13 bytes\n\nParent: project-LICHEN-r6fu.2",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.3",
   "title": "[lora_l2.c:134] hwid_len check could allow negative values as size_t",
   "description": "In generate_eui64() at line 134-144, hwid_len is ssize_t. The check 'hwid_len \u003c= 0' handles negative returns correctly, but on line 141 the cast '(size_t)hwid_len \u003e sizeof(hwid)' is redundant since we already validated hwid_len \u003c= 0. If hwinfo_get_device_id() returns 0 (empty hwid), the code proceeds to hash an empty buffer. While SHA-256 of empty input is well-defined, an empty hardware ID may indicate a hardware issue that should be flagged more explicitly. The LOG_ERR on line 138 ('No hardware ID available') won't fire since 0 \u003e 0 is false - it should check hwid_len \u003c 1.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-z38x.1",
   "title": "lora_l2.c: replace state machine panics with error returns",
   "description": "Replace k_panic() in lora_transition() and lora_transition_from() with error returns.\n\nLocations: lines 94, 100, 120, 125\n\nCurrent:\n  if (new_state \u003e= LORA_STATE_COUNT) {\n      LOG_ERR(\"Invalid state: %d\", new_state);\n      k_panic();\n  }\n\nTarget:\n  if (new_state \u003e= LORA_STATE_COUNT) {\n      LOG_ERR(\"lora_l2: invalid state (%d), forcing ABORTED\", new_state);\n      atomic_set(\u0026current_state, LORA_ABORTED);\n      return -EINVAL;\n  }\n\nUpdate function signatures:\n- lora_transition() currently returns 0 always; change to return -EINVAL on error\n- Callers must check return value",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

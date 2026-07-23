@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dq6n.6",
   "title": "[lichen_l2.c:865] memcpy uses sizeof(iface_link_addr) not LICHEN_L2_ADDR_LEN",
   "description": "In lichen_l2_iface_init(), the memcpy copies using sizeof(iface_link_addr):\n\n```c\nmemcpy(iface_link_addr, eui64, sizeof(iface_link_addr));\n```\n\nWhile this currently works (iface_link_addr is declared as uint8_t[LICHEN_L2_ADDR_LEN]), it creates a fragile coupling. If iface_link_addr's declaration ever changes to a pointer or different size, this will silently break.\n\nThe BUILD_ASSERT at line 42 ensures LICHEN_L2_ADDR_LEN == LICHEN_LORA_L2_ADDR_LEN, but doesn't guard against sizeof(iface_link_addr) drifting.\n\nRecommendation: Use LICHEN_L2_ADDR_LEN explicitly to match the net_if_set_link_addr() call on line 868.\n\nImpact: P3 code quality - currently works due to array declaration, but fragile.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

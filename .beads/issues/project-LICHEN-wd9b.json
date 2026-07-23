@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wd9b",
   "title": "EDHOC: __ASSERT used for crypto validation - silent failures in production",
   "description": "SECURITY: Crypto operation return values are validated only with __ASSERT, which compiles to nothing in release builds (CONFIG_ASSERT=n).\n\nAffected lines in edhoc.c:\n- Lines 77, 80, 83: sha256_hash() - tc_sha256_* return values\n- Lines 97, 100, 103, 106: hmac_sha256() - tc_hmac_* return values  \n- Lines 147, 150, 154, 158, 161, 164: hkdf_expand() - tc_hmac_* return values\n\nIf any crypto operation fails in production, the function continues with uninitialized or corrupted output, potentially:\n1. Using uninitialized memory as cryptographic keys\n2. Producing predictable/weak keys\n3. Causing authentication bypass\n\nFix: Replace __ASSERT with proper error checking that returns error codes. Crypto failures should propagate up to callers.\n\nFile: lichen/subsys/lichen/edhoc/edhoc.c:77-164",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

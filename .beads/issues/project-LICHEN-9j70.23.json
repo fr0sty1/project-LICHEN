@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.23",
   "title": "lichen_l2_input RX buffer size mismatch with TX buffer comment",
   "description": "lichen_l2.c:62-66: tx_ipv6_buf and rx_ipv6_buf are both sized to LICHEN_L2_MTU + IPV6_BASE_HDR_LEN = 240 bytes.\n\nBut in lichen_l2_input() at line 595-600 (HAVE_LICHEN_LINK=0 path), the check is 'len \u003e sizeof(rx_ipv6_buf)' where len is the raw LoRa frame size (up to 255 bytes from MAX_LORA_FRAME).\n\nWhat goes wrong: A raw 255-byte LoRa frame would overflow the 240-byte rx_ipv6_buf in the non-LICHEN_LINK path.\n\nWait - re-checking: the HAVE_LICHEN_LINK=0 path copies raw LoRa frame as if it were IPv6. If len=255, that exceeds sizeof(rx_ipv6_buf)=240, but the check at line 595 catches this and returns with LOG_WRN.\n\nSo this is actually handled correctly. But the buffer sizing rationale (MTU + base header = 240) doesn't account for the raw mode where LoRa frames up to 255 bytes might arrive.\n\nActually this is a design tension, not a bug. The raw mode is explicitly for testing, and oversized packets are logged and dropped. The sizing is correct for the normal LICHEN_LINK path.\n\nCancel - not a bug, just a design note.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

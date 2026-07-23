@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3ook.2",
   "title": "Configure OpenCode workstation",
   "description": "Mount the prepared Zephyr EBS volume, install OpenCode and required host tooling without copying secret tokens, and update the repository checkout to origin/wip/checkpoint-20260715.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

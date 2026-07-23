@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.81",
   "title": "[lichen_l2.c:596] lichen_link_tx dst_eui64=NULL hardcoded for broadcast",
   "description": "Gap found: TX destination addressing not reviewed.\n\nWhy this was missed: Round 1 focused on error paths, not broadcast assumption.\n\nThe actual bug: Line 596 calls lichen_link_tx() with NULL for dst_eui64:\n  lichen_link_tx(\u0026link_ctx, tx_ipv6_buf, pkt_len, NULL, tx_frame_buf, \u0026frame_len)\n\nThe comment says 'NULL dst_eui64 = broadcast (no destination address in frame header)'.\n\nThis means LICHEN ALWAYS sends broadcast frames. There's no support for:\n- Unicast to specific peer (would save airtime in multi-hop scenarios)\n- Directed addressing (needed for certain RPL modes)\n\nThis is a design limitation, not a bug. The IPv6 destination address IS in the packet (after SCHC decompression), but the L2 frame itself is always broadcast.\n\nFor a mesh network this is actually correct - you want all neighbors to hear the frame for routing purposes. But the code has no way to do L2 unicast if needed.\n\nPriority 4 - design documentation, current behavior is intentional.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

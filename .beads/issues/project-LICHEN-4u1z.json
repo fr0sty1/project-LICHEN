@@ -2,7 +2,7 @@
   "id": "project-LICHEN-4u1z",
   "title": "task",
   "description": "rust/lichen-embassy/src/stm32wl.rs:16 - Imports lora_phy::RadioError and sx126x::InterfaceVariant which are private in lora-phy 3.0.1. Code fails to compile with --features stm32wl. Should use lora_phy::mod_params::RadioError and lora_phy::mod_traits::InterfaceVariant instead.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

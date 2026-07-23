@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.55",
   "title": "lichen_l2_input injects packet after releasing rx_mutex - potential use-after-free of rx_ipv6_buf",
   "description": "In lichen_l2.c lichen_l2_input() lines 538-558:\n\n    k_mutex_unlock(\u0026rx_mutex);           // Line 538\n\n    ret = net_recv_data(iface, pkt);     // Line 549 - uses pkt containing data from rx_ipv6_buf\n    if (ret \u003c 0) {\n        net_pkt_unref(pkt);\n        return;\n    }\n\nThe mutex is released BEFORE net_recv_data() is called. The pkt was created by net_pkt_write(pkt, rx_ipv6_buf, ipv6_len) at line 530, which COPIES the data into the packet's internal buffers.\n\n**This is actually safe** because net_pkt_write copies the data - the pkt does not reference rx_ipv6_buf after the write. However:\n\n1. The code pattern (unlock then use data that was in the protected buffer) is error-prone\n2. A future refactor using zero-copy semantics (passing rx_ipv6_buf pointer to net_pkt) would introduce use-after-free\n3. The safety depends on net_pkt_write's copy semantics, which isn't documented here\n\n**Verify**: Confirm net_pkt_write() copies data rather than taking a reference. If it copies, this is a code clarity issue only. If it takes a reference, this is a P0 correctness bug.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c lines 530-558",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

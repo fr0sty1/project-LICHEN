@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3pun.9",
   "title": "lichen_l2_iface_init(): no NULL check on iface parameter",
   "description": "**Location:** firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:832\n\n**Contract issue:** The function does not validate that `iface` is non-NULL before using it. While Zephyr's NET_DEVICE_INIT guarantees a valid iface, the public function signature doesn't enforce this.\n\n**Code:**\n```c\nvoid lichen_l2_iface_init(struct net_if *iface)\n{\n    int ret;\n    LOG_INF(\"Initializing LICHEN L2 interface\");\n    // ... uses iface at line 862, 895\n}\n```\n\n**Impact (P2):** If called with NULL iface (only possible via direct call, not through NET_DEVICE_INIT):\n- net_if_set_link_addr(iface, ...) would dereference NULL (line 862)\n- lichen_iface = iface would store NULL, causing later lora_rx_callback to fail gracefully\n\n**Mitigations:**\n1. NET_DEVICE_INIT always provides valid iface\n2. Direct calls outside Zephyr's net stack are not expected\n3. lora_rx_callback already checks `lichen_iface == NULL`\n\n**Recommendation:** Add defensive NULL check for robustness:\n```c\nif (iface == NULL) {\n    LOG_ERR(\"lichen_l2_iface_init: iface is NULL\");\n    atomic_set(\u0026iface_init_failed, 1);\n    return;\n}\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

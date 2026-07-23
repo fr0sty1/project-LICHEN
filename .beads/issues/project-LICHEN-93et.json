@@ -2,7 +2,7 @@
   "id": "project-LICHEN-93et",
   "title": "task",
   "description": "sim_client.py:107-134 - If TCP connection succeeds but registration fails (MSG_ERR or unexpected response), the stream is left open. The socket leaks because SimRadioError is raised without closing self._stream first. Fix: wrap the registration exchange in try/finally or explicitly close on error paths.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

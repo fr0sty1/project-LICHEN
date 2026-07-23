@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.9",
   "title": "Defensive link_key copy in RX path adds overhead",
   "description": "lichen_l2.c:435-439 copies 16 bytes of link_key on every RX, with a comment explaining it guards against a future refactor moving cleanup outside the mutex. The current code is safe (cleanup holds both mutexes).\n\nWhat goes wrong as-is: 16 bytes copied on every packet for a hypothetical future bug. The comment is honest about this being defensive.\n\nOpinion: The mutex discipline is already correct. The copy adds cognitive overhead ('why is this copying?') and runtime cost. If cleanup ever moves, the person moving it should understand the invariant (it's documented at the mutex block). Removing the copy and relying on the documented mutex discipline would be simpler. Tag: opinion.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

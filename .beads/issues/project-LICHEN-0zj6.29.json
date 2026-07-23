@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0zj6.29",
   "title": "Fragile struct in6_addr redefinition detection in ipv6_addr.h",
   "description": "Location: ipv6_addr.h:43-56. Detection of existing in6_addr relies on checking preprocessor guards: _NETINET_IN_H, _NETINET_IN_H_, _NETINET6_IN6_H, __NETINET_IN_H__, ZEPHYR_INCLUDE_POSIX_NETINET_IN_H_. This list is incomplete (misses musl, bionic, newlib variants) and will break silently if a new libc is used. On redefinition, compiler may error or silently use wrong struct. Consider using __has_include or a configure-time check instead.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

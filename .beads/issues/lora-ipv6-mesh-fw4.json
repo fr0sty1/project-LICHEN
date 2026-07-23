@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-fw4",
   "title": "Implement link layer frame format",
   "description": "Per spec section 4: Length(1B) + LLSec(1B) + SeqNum(2B) + DstAddr(2-8B) + Payload + MIC(4-8B). Implement encoding/decoding in both Rust and C. Create test vectors.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.15",
   "title": "ipv6_addr_to_str uses snprintf but doesn't document uncompressed format choice",
   "description": "ipv6_addr.c:184-194 formats IPv6 addresses as uncompressed hex (fe80:0000:0000:...). The header (ipv6_addr.h:67-71) documents this, but the implementation doesn't explain WHY this format was chosen over RFC 5952 compressed form.\n\nWhat goes wrong: Someone might 'fix' it to use the shorter compressed format, breaking log parsing or display assumptions elsewhere in the system.\n\nSuggested addition to implementation:\n```c\n/* \n * Uncompressed format chosen for:\n * 1. Deterministic output (same address = same string)\n * 2. Simpler parsing (no :: expansion needed)\n * 3. Consistent log line lengths\n */\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

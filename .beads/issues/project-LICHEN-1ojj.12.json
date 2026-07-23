@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.12",
   "title": "lichen_lora_l2_get_eui64: returns pointer to static mutable data without const enforcement",
   "description": "In lora_l2.h line 129, lichen_lora_l2_get_eui64() returns 'const uint8_t *' pointing to lora_state.eui64 (lora_l2.c line 328). The const is advisory - callers can cast it away. The EUI-64 is used as the interface's link address (lichen_l2.c copies it to iface_link_addr at line 352 to avoid this). However, any caller that mutates the returned pointer corrupts the node's identity. This is a footgun for contributors: the API looks like a getter but returning a pointer to internal state invites misuse. Consider: return by value (8 bytes) or document the aliasing hazard prominently.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

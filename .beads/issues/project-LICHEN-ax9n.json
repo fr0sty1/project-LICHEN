@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ax9n",
   "title": "task",
   "description": "rust/lichen-oscore/src/lib.rs:369. Attacker can block legitimate packets by sending forged packets with same seq.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

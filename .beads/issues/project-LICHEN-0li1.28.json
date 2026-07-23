@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.28",
   "title": "[lichen_l2.c:506] peer_try_all_pubkeys modifies ctx then restores on error - complex state management",
   "description": "Contract: peer_try_all_pubkeys should return ctx in known state on all paths.\nViolation: The function saves ctx-\u003epeer_pubkey and ctx-\u003epeer_eui64 (lines 514-515), modifies them during iteration (lines 544-545), and restores on error (lines 570-573, 592-594). On success, it re-sets them to the matched peer's values (lines 583-584). This modify-then-restore pattern is correct but complex.\nImpact: The comment (lines 481-489) correctly explains why this is safe (ctx is stack-local, caller holds rx_mutex). However, if ctx is ever passed from external state or if locking discipline changes, the pattern becomes unsafe.\nMitigation: The comments are adequate. Consider refactoring to return matched peer info separately rather than modifying ctx, for cleaner contract.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-sfk",
   "title": "Link layer module is empty stub - confusing for contributors",
   "description": "**Documentation / Ease of Contribution**\n\nThe link layer module exists but is empty:\n- `src/lichen/link/__init__.py` - just a docstring\n- `tests/link/__init__.py` - just a docstring 'Link layer tests.'\n\nThis is confusing for new contributors:\n1. Is this intentional placeholder for future work?\n2. Was it forgotten?\n3. Should tests go here?\n\nEither:\n- Add a clear TODO comment with issue reference explaining the plan\n- Remove the module until it's ready (avoids confusion)\n- Add a minimal implementation or at least define the interfaces\n\nReference: The spec has full link layer design (frame format, signatures, replay protection) that should eventually live here.\n\nFiles: src/lichen/link/__init__.py, tests/link/__init__.py",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

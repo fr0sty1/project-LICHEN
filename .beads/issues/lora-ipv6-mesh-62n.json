@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-62n",
   "title": "LOADng route cache implementation",
   "description": "Implement LOADng route cache per spec section 9.6.\n\nRoute Entry:\n- destination: IPv6 address\n- next_hop: IPv6 address (link-local)\n- hop_count: int\n- metric: int\n- seq_num: int\n- valid_until: timestamp\n\nRouteCache class:\n- lookup(destination) -\u003e RouteEntry | None\n- add(entry) -\u003e None\n- remove(destination) -\u003e None\n- refresh(destination) -\u003e None (extend validity)\n- expire_old() -\u003e None\n\nParameters from appendix-loadng.md:\n- ROUTE_CACHE_SIZE: 32\n- ROUTE_TIMEOUT: 300 sec\n- ROUTE_REFRESH: 60 sec\n\nLRU eviction when cache full.\nUnit tests for lookup, expiry, eviction.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

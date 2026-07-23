@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-7xg",
   "title": "Phase 0: Python Prototype + Simulation",
   "description": "Build Python prototype with simulated wireless to validate protocol design before embedded implementation. Exit criteria: multi-node simulation runs, SCHC compression validated, RPL DODAG forms, CoAP messaging works end-to-end over simulated LoRa links.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",

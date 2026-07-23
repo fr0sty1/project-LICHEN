@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i81y.2",
   "title": "rpl/routing.c public APIs crash on NULL buffers",
   "description": "Trigger: several public RPL routing APIs omit NULL checks on pointer arguments that their headers describe as buffers or mandatory inputs. Examples: lichen_rpl_srh_write() checks srh but not buf, then writes buf[0] at routing.c:115 when len is large enough; lichen_rpl_srh_parse() checks srh but not data, then reads data[0] at routing.c:139; lichen_rpl_dao_manager_build_dao() checks len first but not dm/parent_addr/buf, then dereferences dm at routing.c:323 and parent_addr at routing.c:357; lichen_rpl_dao_manager_process_dao() dereferences dm at routing.c:581 before validating it; lichen_rpl_routing_table_expire() dereferences rt at routing.c:647 without a NULL guard.\\n\\nImpact: a caller error or fuzz harness exercising these exported parsers/managers with NULL plus non-short lengths crashes instead of returning LICHEN_RPL_ERR_INVALID/false. Because these are LICHEN-owned protocol entry points used around hostile DAO/SRH data, the inconsistent validation is a maintainer/security risk and an easy pattern for contributors to copy.\\n\\nRelevant refs: lichen/subsys/lichen/rpl/routing.c:97, lichen/subsys/lichen/rpl/routing.c:129, lichen/subsys/lichen/rpl/routing.c:311, lichen/subsys/lichen/rpl/routing.c:577, lichen/subsys/lichen/rpl/routing.c:641.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-v62",
   "title": "Spec: Complete position privacy model",
   "description": "'group' privacy mode says 'query requires auth' but no mechanism defined. Beacons still reveal presence to passive eavesdroppers. Group membership undefined. Need: auth protocol for position queries, beacon encryption option, group membership definition.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

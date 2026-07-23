@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.199",
   "title": "Codereview pass 1: TcpServer init - closure captures handler correctly",
   "description": "Pass 1 reviewed the fix for TcpServer initialization:\n\n**Finding: Fix is correct**\n\nThe fix properly addresses the type: ignore issue by:\n1. Moving _handle_client to a local closure that captures handler and connections\n2. Creating the asyncio.Server first via start_server()\n3. Passing the real server to TcpServer constructor\n\nThe closure approach is idiomatic Python for this async server pattern. The connections list is shared by reference between the closure and the TcpServer instance, ensuring proper tracking.\n\nNo bugs found in this pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

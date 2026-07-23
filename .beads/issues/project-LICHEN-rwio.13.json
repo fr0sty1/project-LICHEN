@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.13",
   "title": "iface_init_failed is not protected by mutex",
   "description": "The static bool iface_init_failed in lichen_l2.c is written in lichen_l2_iface_init() and read in lichen_l2_send() and lichen_l2_enable() without mutex protection.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:100-101, 141, 233\n\nCode flow:\n- Line 100: static bool iface_init_failed (no volatile, no atomic)\n- Line 371, 379: iface_init_failed = true (write)\n- Line 141: if (iface_init_failed) (read in lichen_l2_send)\n- Line 233: if (iface_init_failed) (read in lichen_l2_enable)\n\nWhat goes wrong: On weakly-ordered architectures (ARM Cortex-M), the store to iface_init_failed may not be visible to other threads/cores before the function returns. A concurrent lichen_l2_send() call during initialization could see iface_init_failed=false despite init having failed.\n\nIn practice, Zephyr's network stack serializes interface initialization and sends don't happen until the interface is up. However, the pattern is unsound and could break under future refactoring.\n\nFix: Use atomic_t (like link_ctx_initialized) or document that initialization is single-threaded by design.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

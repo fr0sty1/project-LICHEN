@@ -3,7 +3,7 @@
   "title": "Reject replay counter final wrap",
   "description": "Python ReplayWindow modular comparison accepts (epoch=0, seq=0) immediately after (255,65535) as diff=1 under the same peer key. Reject complete 24-bit wrap and require key rotation/new replay state; add terminal-boundary and stale replay tests. Audit C/Rust replay windows for equivalent behavior.",
   "notes": "Implementation complete in integration/wip-recovery-20260716 dirty atomic migration worktree. Python/Rust/C now use finite epoch ordering, reject same-epoch and terminal wrap, enforce the normative 32-slot window, isolate replay state by authenticated public key, and C fails closed at replay-table capacity. Added host C replay tests and synchronized specs. Validation: Python 64 focused tests; Rust lichen-link 71 unit + 3 vectors + doctest and strict Clippy; C replay CTest; diff clean. Current-worktree convergence review no findings. Must commit atomically with project-LICHEN-2auf.35.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

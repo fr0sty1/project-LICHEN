@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3u3v",
   "title": "announce.c: schnorr48_sign return value may not follow expected semantics",
   "description": "File: lichen/subsys/lichen/routing/announce.c  \nLines: 540-547\n\nIn build_announce_frame():\n\n    ret = schnorr48_sign(sched.link_ctx-\u003eed25519_sk,\n                         sched.link_ctx-\u003eed25519_pk,\n                         signed_data, signed_len, signature);\n\n    k_mutex_unlock(\u0026sched.mutex);\n\n    if (ret \u003c 0) {\n        return ret;\n    }\n\nThe mutex is unlocked BEFORE checking the return value. If schnorr48_sign fails:\n1. Mutex is unlocked (correct)\n2. Error is returned (correct)\n\nBut if schnorr48_sign returns 0 on success (common convention), the code path continues. However, if schnorr48_sign returns positive on success (number of bytes), the error check 'ret \u003c 0' still works.\n\nThe concern: if schnorr48_sign can fail in a way that corrupts state while holding the mutex, the state would be corrupted before the mutex release. Should verify schnorr48_sign's failure modes don't leave the scheduler in an inconsistent state.\n\nAlso: the 'signature' buffer is written but not zeroed on failure, potentially leaking partial signature data (minor info leak).",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

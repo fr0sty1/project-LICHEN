@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7bf",
   "title": "task",
   "description": "rust/lichen-cli/src/commands.rs:287,301,311. ep=foo\u0026evil=true injects params.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

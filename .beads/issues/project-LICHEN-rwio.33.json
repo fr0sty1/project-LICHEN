@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.33",
   "title": "EUI-64 bytes logged in plaintext via LOG_INF",
   "description": "In lora_l2.c:125-127, the full EUI-64 is logged via LOG_INF:\nLOG_INF(\"EUI-64: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\", ...)\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:125-127\n\nThe EUI-64 is derived from SHA-256(hardware_id) and serves as the node's link-layer identity. While not a cryptographic secret per se, logging the full EUI-64 exposes device tracking information. Combined with the link-local address log at lichen_l2.c:417, an attacker with log access can correlate physical devices across deployments.\n\nImpact: Device identity leaked to logs. In constrained deployments where logs are centralized or accessible to attackers, this enables device fingerprinting and tracking.\n\nRecommendation: Either reduce log level to LOG_DBG, truncate to last 4 bytes, or remove entirely. The information is useful for debugging but should not appear in production logs.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

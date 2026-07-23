@@ -2,7 +2,7 @@
   "id": "project-LICHEN-xe5r",
   "title": "KissBridge::set_epoch has no validation of epoch value",
   "description": "File: rust/lichen-kiss/src/bridge.rs\nLine: 185-187\n\nThe `set_epoch` method allows setting any epoch value (0-255) with no validation:\n\n```rust\npub fn set_epoch(\u0026mut self, epoch: u8) {\n    self.default_epoch = epoch;\n}\n```\n\nImpact: Unlike `with_epoch` which has at least a debug_assert, this method has NO validation. A caller could set epoch to any value including 0-127, violating spec section 4.4 requirements for replay protection.\n\nFix: Add validation (at minimum matching `with_epoch`'s debug_assert, but preferably a proper assert or Result return)",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

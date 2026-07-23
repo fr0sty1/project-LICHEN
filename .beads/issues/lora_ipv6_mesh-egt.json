@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-egt",
   "title": "lichen-rpl: DIO/DAO/DIS wire codec + TLV option parser",
   "description": "New lichen-rpl crate. messages.rs implements DIO (24-byte base + TLV options) and DAO (20-byte base with DODAGID + TLV options) codec matching the Python messages.py/dao.py wire format exactly. Parses/encodes RPL Target (type 5), Transit Information (type 6), DODAG Configuration (type 4). Tests use hand-computed vectors.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Frost",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ot1m",
   "title": "OSCORE Context: WINDOW_SIZE constant referenced but not defined in scope",
   "description": "In rust/lichen-oscore/src/lib.rs check_replay(), the code references 'WINDOW_SIZE' constant in the comparison 'if shift \u003e= WINDOW_SIZE'. However, WINDOW_SIZE is defined as a local const inside the function ('const WINDOW_SIZE: u32 = 32;' was removed in the diff). Need to verify that WINDOW_SIZE is still defined somewhere accessible. If it was removed, this is a compilation error. Looking at the diff, it appears the local const was removed but the variable is still used.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

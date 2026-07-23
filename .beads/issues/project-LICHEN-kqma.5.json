@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kqma.5",
   "title": "Fix BLE UART connection ref race",
   "description": "Trigger: ble_uart_send_slip() reads s_conn at lichen/apps/gateway/src/ble_uart.c:252, then on_disconnected() can run and bt_conn_unref()/NULL the global before line 257 calls bt_conn_ref(conn). Impact: TX during disconnect can take a reference on a freed Bluetooth connection object, causing a use-after-free or invalid refcount operation. Protect s_conn with a mutex/atomic lifetime protocol or otherwise acquire the reference in a disconnect-safe critical section.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

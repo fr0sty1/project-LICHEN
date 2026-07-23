@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.218",
   "title": "Codereview pass 1: MIC verification - compute_mic lacks input validation",
   "description": "**Location:** python/src/lichen/link/link_layer.py:78-96\n\n**Finding:** compute_mic() does not validate that sender_pubkey is exactly 32 bytes. If a truncated or extended key is passed, HMAC will silently produce a different (wrong) MIC.\n\n**Consequence:** A bug in caller code passing the wrong key length would produce frames that peers reject (fail-closed, not fail-open), but the error would be hard to debug since HMAC doesn't validate key length.\n\n**Recommendation:** Add: `if len(sender_pubkey) != 32: raise ValueError('sender_pubkey must be 32 bytes')`",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

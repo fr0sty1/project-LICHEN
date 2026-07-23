@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.4",
   "title": "crash_info.c:63 count may not be zeroed on first clean boot",
   "description": "In crash_info_check_and_clear(), when crash_info.magic != CRASH_MAGIC (line 60-63), count is zeroed. However, if __noinit RAM contains garbage that happens to match CRASH_MAGIC (unlikely but possible), the code at line 51-59 will log the garbage values and clear reason/location/extra, but NOT reset count.\n\nAfter the if-block completes, count retains whatever garbage value was in __noinit RAM. This is very unlikely (1 in 2^32 chance) but violates the invariant that count should be meaningful.\n\nSEVERITY: P3 - extremely unlikely, but when it occurs, the count value will be wrong.\n\nFIX: In the true branch (magic == CRASH_MAGIC), after logging, also clear count if we want count to represent 'crashes since last clear':\n```c\nif (crash_info.magic == CRASH_MAGIC) {\n    LOG_WRN(...);\n    crash_info.magic = 0;\n    crash_info.reason = CRASH_NONE;\n    crash_info.location = 0;\n    crash_info.extra = 0;\n    crash_info.count = 0;  // Also reset count\n} else {\n    crash_info.count = 0;\n}\n```\n\nOr clarify if count is meant to persist across clears (accumulate across warm resets).",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

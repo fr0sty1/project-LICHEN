@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.178",
   "title": "good: cli/commands zeroizes secrets properly",
   "description": "commands.rs:173-196 key generation uses zeroize on both raw bytes and hex string - proper secret handling.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-aa0f",
   "title": "DodagState hysteresis: verify the refactored logic is equivalent",
   "description": "In python/src/lichen/rpl/dodag.py select_parent(), the hysteresis logic was refactored from nested if statements to a functional style using .filter(). The original logic was: 'if best_cost \u003e current_cost - threshold: keep current'. The new logic is: 'improvement = current_cost - best_cost; if improvement \u003c threshold: keep current'. These are mathematically equivalent (improvement \u003c threshold == best_cost \u003e current_cost - threshold), but verify this change doesn't alter behavior. The test test_does_not_switch_without_meaningful_improvement should catch regressions.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

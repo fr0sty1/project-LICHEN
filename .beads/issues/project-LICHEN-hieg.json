@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hieg",
   "title": "announce: encode_coords could produce out-of-range values with floating point edge cases",
   "description": "File: python/src/lichen/announce/coords.py:59-66\n\nThe encode_coords function uses round() which can produce boundary values:\n\n```python\nlat_raw = int(round(lat * _SCALE))  # _SCALE = 10_000_000\nlon_raw = int(round(lon * _SCALE))\n\nif not (_LAT_E7_MIN \u003c= lat_raw \u003c= _LAT_E7_MAX):  # -900000000 to +900000000\n    raise ValueError(...)\n```\n\nFloating point representation of 90.0 could have rounding issues. For example:\n- If lat = 89.999999999 (just under 90)\n- lat * _SCALE = 899999999.9999999... \n- round() = 900000000 (exactly max)\n- This passes validation\n\nBut consider lat = 90.00000001 (just over 90):\n- First check: _LAT_MIN \u003c= 90.00000001 \u003c= _LAT_MAX passes (90 \u003c= 90.00000001 is True in first check??)\n\nActually wait, let me re-check:\n```python\nif not (_LAT_MIN \u003c= lat \u003c= _LAT_MAX):  # -90 \u003c= lat \u003c= 90\n```\n\nIf lat = 90.00000001:\n- -90 \u003c= 90.00000001 is True\n- 90.00000001 \u003c= 90 is False  \n- The combined check is False\n- 'not False' = True, so we raise ValueError\n\nThe pre-rounding check catches this. This is actually correct. NOT a bug.\n\nCANCELLING this bead.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

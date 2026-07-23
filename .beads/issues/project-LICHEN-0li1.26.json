@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.26",
   "title": "[ipv6_addr.c:48] lichen_eui64_to_iid no bounds check on iid output buffer",
   "description": "Contract: lichen_eui64_to_iid writes 8 bytes to iid parameter.\nViolation: No runtime validation that iid points to at least 8 bytes. The memcpy (line 67) writes exactly 8 bytes. If caller passes smaller buffer, undefined behavior.\nImpact: Same as other array decay issues - relies on caller discipline. All current callers use correctly-sized buffers (local arrays of size 8).\nMitigation: Language limitation. Document prominently or add explicit length parameter.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -3,7 +3,7 @@
   "title": "Implement /msg resource handlers per LCI spec",
   "description": "Implement /msg/inbox, /msg/sent, /msg/ack CoAP resources per LCI spec 17.5.7. POST to /msg/sent queues outbound message, GET /msg/inbox retrieves inbound (with Observe for push), POST /msg/ack acknowledges receipt. CBOR format with destination, payload, timestamp, status.",
   "acceptance_criteria": "Messages can be sent via POST, received via GET/Observe, acknowledged; round-trip test with 2 nodes",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "grinder",

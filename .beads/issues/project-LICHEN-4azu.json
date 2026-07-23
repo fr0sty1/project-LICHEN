@@ -2,7 +2,7 @@
   "id": "project-LICHEN-4azu",
   "title": "app_identity: No peer table eviction policy leads to permanent lockout",
   "description": "File: lichen/subsys/lichen/app_identity/app_identity.c\n\nWhen CONFIG_LICHEN_APP_IDENTITY_MAX_PEERS (default 8, max 32) slots are filled, find_free_peer_locked returns -ENOMEM and new peers cannot be added. Combined with the missing removal API (bead project-LICHEN-aiq3), this can lead to:\n\n1. First 8 peers fill the table\n2. New legitimate peers cannot be added, forever\n3. Even if old peers go offline, they occupy slots permanently\n\nIn a mesh network where nodes come and go, this creates a 'first N peers win' scenario. Legitimate nodes that join later are locked out.\n\nThis is especially problematic for:\n- Border routers that should track many peers\n- Nodes in networks with churn\n- Recovery after network partitions\n\nSuggested mitigations:\n1. Add peer removal API (separate bead)\n2. Implement LRU eviction (evict least-recently-heard peer)\n3. Implement TTL eviction (evict peers not heard for X time)\n4. Prioritize peers with verified keys over unverified\n\nPriority P2 because it's a denial-of-service on peer learning, not a security vulnerability.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

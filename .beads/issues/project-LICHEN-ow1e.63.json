@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.63",
   "title": "LinkLayer peer table O(n) scan on every RX, potential DoS with many peers",
   "description": "In rust/lichen-link/src/link_layer.rs:350-367, receive_frame tries every peer's pubkey until one verifies: O(n) Schnorr verify operations per frame. If n=100 peers, every frame costs 100 signature verifications. A flood of frames from unknown senders (or frames that fail MIC before signature check) will DoS the node. This pattern is documented in comments but a contributor adding more peers won't realize the cost. Consider: index by sender IID from frame header before verifying, or document the expected peer count limit prominently.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

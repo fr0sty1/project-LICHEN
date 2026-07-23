@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3pun.12",
   "title": "lora_l2.c:554: lichen_lora_l2_tx() does not reject zero-length transmissions",
   "description": "**Location:** lora_l2.c:554-564\n\n**Issue:** The function validates that data is not NULL and that len is not greater than MAX_PHY_PAYLOAD, but does not check for len == 0.\n\n**Current code:**\n```c\nif (data == NULL) {\n    LOG_ERR(\"TX data pointer is NULL\");\n    return -EINVAL;\n}\n\nif (len \u003e LICHEN_LORA_MAX_PHY_PAYLOAD) {\n    LOG_ERR(\"Packet too large: %zu (max %d)\", len, LICHEN_LORA_MAX_PHY_PAYLOAD);\n    return -EMSGSIZE;\n}\n```\n\n**Problem:** A zero-length transmission:\n1. Wastes radio airtime (sends preamble + header with no payload)\n2. Cannot produce a valid LICHEN frame (LICHEN_MIN_FRAME_LEN = 9 bytes)\n3. May confuse the radio driver (implementation-dependent behavior)\n\n**Fix:** Add explicit check: `if (len == 0) return -EINVAL;` after the NULL check.\n\n**Severity:** P2 - The function will succeed but produce invalid/useless output. Defense-in-depth issue.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

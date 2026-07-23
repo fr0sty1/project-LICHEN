@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-b4f",
   "title": "Implement event queue system",
   "description": "Create python/src/lichen/sim/events.py. Priority queue sorted by time. Event base class with time field. Subclasses: TxStartEvent, TxEndEvent, RxTimeoutEvent. EventQueue class: push(event), pop() -\u003e Event, peek() -\u003e Event | None, is_empty() -\u003e bool. All times in microseconds (int). Unit tests for ordering, ties broken by insertion order.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

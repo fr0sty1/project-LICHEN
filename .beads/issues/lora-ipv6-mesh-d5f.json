@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-d5f",
   "title": "Implement propagation model",
   "description": "Create python/src/lichen/sim/propagation.py. Log-distance path loss: PL = PL₀ + 10·n·log₁₀(d/d₀). Default PL₀=-127.41dBm at d₀=1m for 915MHz. Configurable exponent n (2.0=free space, 2.7=urban, 3.5=indoor).\n\nSF sensitivity thresholds from LoRaSim (Bor et al., 2016, 'Do LoRa Low-Power Wide-Area Networks Scale?'):\n  SF7: -123 dBm, SF8: -126 dBm, SF9: -129 dBm, SF10: -132 dBm, SF11: -134.5 dBm, SF12: -137 dBm\n  (at 125kHz BW)\n\nCapture effect threshold: 6 dB (stronger signal wins if delta \u003e= 6dB, per LoRaSim).\n\nWe use SF10 fixed, so threshold is -132 dBm.\n\nClass PropagationModel with:\n- path_loss(distance_m) -\u003e float (dB)\n- snr(tx_power_dbm, distance_m, noise_floor_dbm) -\u003e float\n- can_decode(snr) -\u003e bool (snr \u003e sensitivity - noise_floor)\n\nUnit tests with known distances. Cite LoRaSim paper in docstring.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-8nc",
   "title": "Spec: Add congestion control for CoAP",
   "description": "No congestion control specified. CoAP CON retries over duty-cycle-limited links can cause: cascading retry storms, EU 868MHz duty cycle violations, network collapse under load. Need: adaptive retry backoff, duty cycle awareness, load shedding policy.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

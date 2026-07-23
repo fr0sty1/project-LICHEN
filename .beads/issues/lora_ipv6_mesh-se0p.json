@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-se0p",
   "title": "Phase 8: Presence/heartbeat CoAP resource (/presence)",
   "description": "Add an observable /presence CoAP resource to the Python node. Each node broadcasts a CBOR heartbeat (node EUI-64, timestamp, RPL rank) on a slow trickle schedule. Observers see the live table of reachable peers. This is the foundation all other Phase 8 features depend on — you can't message someone you don't know exists.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "feature",
   "owner": "mark.frost@gmail.com",

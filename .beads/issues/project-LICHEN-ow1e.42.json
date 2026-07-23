@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.42",
   "title": "Simulator REST API has no authentication",
   "description": "**Locations:**\n- python/src/lichen/sim/server.py:30-45 (security note in docstring)\n- python/src/lichen/sim/api.py (entire module)\n\n**Risk:** The simulator REST API allows full control over simulations: creating/deleting nodes, applying chaos rules (dropping packets, partitioning networks), and advancing time. There is no authentication or authorization.\n\n**Documented mitigation:** The docstring and CLI help say to only bind to 127.0.0.1. However, `--bind-address` accepts any value including 0.0.0.0, and users may do this for Docker/VM access.\n\n**Maintainer burden:** When users expose the API and get their simulations disrupted, they'll file issues. Adding at least a simple API key or warning when binding to non-localhost would reduce support burden.\n\n**Current state:** Security note exists in docstring (line 40-44) and CLI help (line 315-318), but no runtime enforcement prevents binding to public interfaces.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

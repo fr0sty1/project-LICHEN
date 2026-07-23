@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.32",
   "title": "ipv6_addr.c:48 lichen_eui64_to_iid allows aliased pointers",
   "description": "Contract violation: lichen_eui64_to_iid() - If eui64 and iid point to the same buffer (aliased), the XOR at line 68 reads from already-modified data. memcpy at line 67 copies eui64 to iid, then line 68 XORs iid[0]. If eui64==iid, the XOR is correct (data already in place). Actually this works correctly for aliased pointers. No bug - memcpy(dst,src,n) where dst==src is implementation-defined but commonly safe for n\u003c=8. No issue.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

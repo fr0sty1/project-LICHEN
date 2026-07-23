@@ -2,7 +2,7 @@
   "id": "project-LICHEN-qcmi",
   "title": "Replay window bit masking has edge case at boundary",
   "description": "File: rust/lichen-oscore/src/lib.rs\nLines: 661-664\n\nIn is_replay(), when diff equals exactly WINDOW_SIZE (32):\n```rust\nlet diff = recipient_seq_val - seq_val;\nif diff \u003e= WINDOW_SIZE {\n    return true; // Too old\n}\nlet mask = 1u32 \u003c\u003c diff;\n```\n\nThis is CORRECT - the check at line 658 ensures diff \u003c 32 before the shift. However, there's a related issue in update_replay_window:\n\nLines 676-679:\n```rust\nlet shift = seq_val - recipient_seq_val;\nif shift \u003e= WINDOW_SIZE {\n    self.replay_window = 0;\n} else {\n    self.replay_window \u003c\u003c= shift;\n}\n```\n\nWhen shift == WINDOW_SIZE, window is zeroed which is correct. But when shift == 31, we shift left by 31 bits, losing bit 31. Then we OR with 1, setting bit 0. This means the packet at recipient_seq_val (31 positions ago) is now at bit 31, which is preserved.\n\nActually on further analysis this is correct - the window tracks the last WINDOW_SIZE packets relative to the current highest. No bug here.\n\nClosing as not-a-bug after deeper analysis.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

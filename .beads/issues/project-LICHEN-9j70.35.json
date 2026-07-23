@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.35",
   "title": "LICHEN_LINK_KEY_LEN used without including header that defines it",
   "description": "lichen_l2.c:561: uint8_t rx_link_key[LICHEN_LINK_KEY_LEN];\n\nThe comment says 'from \u003clichen/link_ctx.h\u003e' but the include at line 32 is conditional on CONFIG_LICHEN_LINK. The entire block (lines 528-592) is also guarded by #if HAVE_LICHEN_LINK.\n\nSo this is correct - the constant is only used when the header is included.\n\nHowever, the code pattern of using a constant from a conditionally-included header is fragile. A refactor could move the rx_link_key declaration outside the HAVE_LICHEN_LINK block, causing a cryptic compile error.\n\nFix: Add a comment near the include noting which symbols are required from it, or use a local #define as a compile-time alias that fails clearly if the header isn't included.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

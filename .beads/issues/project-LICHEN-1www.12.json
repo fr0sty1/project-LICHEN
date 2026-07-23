@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.12",
   "title": "k_mutex_init not checked for errors in deinit",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:461\n\nk_mutex_init() return value is not checked. Per Zephyr documentation, k_mutex_init() returns 0 on success.\n\nWhat goes wrong: If mutex reinitialization fails (unlikely but possible on some RTOS configurations), subsequent lora_mutex operations would use an invalid mutex object, causing undefined behavior or deadlocks.\n\nThe comment above acknowledges this is best-effort recovery, but checking the return would allow logging the failure.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

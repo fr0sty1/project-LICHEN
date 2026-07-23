@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.45",
   "title": "[lora_l2.c:403-406 vs lichen_l2.c:1504] callback invocation order: mutex release before callback violates ordering",
   "description": "Cross-file analysis: In lora_l2.c rx_thread (lines 403-409), the callback is invoked AFTER releasing lora_mutex. The callback eventually reaches lichen_l2_input() which acquires rx_mutex. This is correct. However, there's a subtle cross-module lock ordering issue: if lichen_l2_input() ever needs to call back into lora_l2.c functions while holding rx_mutex (e.g., to send a response), and those functions acquire lora_mutex, we'd have: Thread A (RX): lora_mutex -\u003e release -\u003e rx_mutex. Thread B (TX): tx_mutex -\u003e lora_l2_tx -\u003e (no lora_mutex needed per current code). Currently safe because lora_l2_tx() doesn't acquire lora_mutex (line 864 shows tx_buf_mutex only), but the pattern is fragile. Document the cross-module lock independence as an invariant.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "docs",
   "assignee": "Mark Atwood",

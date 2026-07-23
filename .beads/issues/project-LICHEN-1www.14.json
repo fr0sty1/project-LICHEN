@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.14",
   "title": "net_if_set_link_addr return value unchecked",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:588\n\nnet_if_set_link_addr() is called but return value is not checked. The function can fail if the interface is not in a valid state.\n\nWhat goes wrong: If link address setting fails, the interface has no valid link-layer address. Subsequent IPv6 operations that depend on the link address (neighbor discovery, link-local address derivation) would malfunction or use uninitialized data.\n\nThe function should check the return and set iface_init_failed on error.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

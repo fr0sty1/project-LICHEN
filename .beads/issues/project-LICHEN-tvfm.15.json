@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.15",
   "title": "[lora_l2.c:713] lichen_lora_l2_get_eui64 returns alias with no thread safety",
   "description": "Function: lichen_lora_l2_get_eui64. Contract violation: Returns a pointer to internal state (lora_state.eui64) without mutex protection. The header documents this (line 176: 'The returned pointer aliases internal state. Do NOT modify. Contents are stable after init() completes.'). However, if deinit() is called while a caller holds the pointer, the eui64 buffer could be reused. Since eui64 is not zeroed in deinit() and init() only writes it once (idempotent), this is safe in practice. Priority 3 - design note for future maintainers.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "issue",
   "assignee": "Mark Atwood",

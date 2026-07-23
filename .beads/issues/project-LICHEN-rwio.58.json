@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.58",
   "title": "No upper bound check on 'len' in non-LICHEN_LINK path of lichen_l2_input()",
   "description": "In lichen_l2.c:510-516 (the #else path when HAVE_LICHEN_LINK is 0), received data length is checked against rx_ipv6_buf size:\n\nif (len \u003e sizeof(rx_ipv6_buf)) {\n    LOG_WRN(\"Packet too large: %zu\", len);\n    k_mutex_unlock(\u0026rx_mutex);\n    return;\n}\nmemcpy(rx_ipv6_buf, data, len);\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:510-516\n\nThe check exists, but note that rx_ipv6_buf is sized as LICHEN_L2_MTU + IPV6_BASE_HDR_LEN = 240 bytes. The LoRa radio can return up to 255 bytes (lora_recv buffer in rx_thread is 256). The existing bounds check is correct and prevents overflow.\n\nThis finding is NOT a bug - documenting that the bounds check exists and is correct. No issue filed.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

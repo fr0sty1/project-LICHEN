@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.14",
   "title": "lora_l2.c hwinfo_get_device_id returns ssize_t, compared with size_t",
   "description": "## Location\nfirmware/bridge-zephyr/subsys/lichen/lora_l2.c:131, 138\n\n## Finding\n```c\nssize_t hwid_len;\nhwid_len = hwinfo_get_device_id(hwid, sizeof(hwid));\nif (hwid_len \u003c= 0) { ... }\nif ((size_t)hwid_len \u003e sizeof(hwid)) { ... }\n```\n\nThe comparison `(size_t)hwid_len \u003e sizeof(hwid)` is safe here because the `\u003c= 0` check above ensures `hwid_len` is positive before the cast. However, the cast is performed on a potentially negative value if hwinfo_get_device_id returns a negative error code that somehow passed the first check (would require a bug in the conditional).\n\n## What goes wrong\nIn the current code, nothing goes wrong - the logic is correct. However, the pattern is fragile:\n1. If someone refactors and changes the `\u003c= 0` to `\u003c 0`, negative zero (-0.0 converted) could slip through\n2. The cast obscures the type mismatch that a compiler might otherwise warn about\n\n## Recommendation\nMake the bounds check explicit with the original type:\n```c\nif (hwid_len \u003c 0 || (size_t)hwid_len \u003e sizeof(hwid)) {\n    ...\n}\n```\nOr use a local `size_t hwid_len_unsigned = (size_t)hwid_len;` after validation.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

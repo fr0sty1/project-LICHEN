@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.157",
   "title": "Schnorr signature s=0 rejection may be overly strict",
   "description": "**Location:** python/src/lichen/crypto/schnorr48.py:138-140\n\n**Risk:** The verify function rejects signatures where `s == 0` (line 139). While `s == 0` is mathematically valid only in degenerate cases, rejecting it without logging may cause confusion when debugging interop issues.\n\n**Context:** The rejection of `s == 0` is correct for security (it indicates the nonce was zero, which should never happen with deterministic nonce derivation). However, `s \u003e= L` rejection (line 139) catches non-canonical scalars.\n\n**Maintainer burden:** If a buggy implementation sends non-canonical signatures, users will get silent verification failures with no hint about why.\n\n**Suggestion:** Log at DEBUG level when rejecting for `s == 0` or `s \u003e= L` to aid debugging.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

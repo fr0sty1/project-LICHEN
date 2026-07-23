@@ -2,7 +2,7 @@
   "id": "project-LICHEN-5g8t.3",
   "title": "TX queue observability API",
   "description": "Expose TX queue state: depth by priority level, total bytes queued, estimated drain time at current duty budget, oldest queued packet age. API for firmware consumers and TUI. Software-only: queue introspection.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

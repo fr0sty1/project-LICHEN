@@ -3,7 +3,7 @@
   "title": "Define LICHEN fragmentation profile",
   "description": "Make the SCHC draft authoritative for RFC 8724 ACK-on-Error: allocate directional RuleIDs; confirm M=1,N=6,T=0; choose WINDOW_SIZE, L2 word/padding, tile size, final-tile strategy, RCS placement/input, ACK timing/C/bitmap compression, retry limits, abort behavior, and capacity consistent with constrained C state.",
   "acceptance_criteria": "Normative spec has no implementation ambiguity; all selected values have RFC citations and explicit wire diagrams.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

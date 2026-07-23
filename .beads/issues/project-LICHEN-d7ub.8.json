@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.8",
   "title": "lichen_l2.c:610 lichen_peer_add NULL check redundant with nonnull attr",
   "description": "Contract violation: lichen_peer_add() - Function has __attribute__((nonnull)) but also does explicit NULL check at line 621. The nonnull attribute allows compiler to assume pointers are never NULL and potentially optimize away the check. WHY this is a bug: The check may be silently removed by the compiler, then -EINVAL is never returned despite being documented. HOW to fix: Either remove nonnull attribute (defensive coding style) or remove the NULL check (trust callers style). Recommend removing nonnull to keep defensive check.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

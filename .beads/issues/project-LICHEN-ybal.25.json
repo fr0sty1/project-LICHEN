@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.25",
   "title": "Good: Callback+user_data atomicity via mutex",
   "description": "In lichen_lora_l2_set_rx_callback() (lora_l2.c:279-290), the callback and user_data are updated under mutex with explicit comment explaining why: the RX thread reads both fields, so they must be updated together to avoid invoking a callback with mismatched user_data.\n\nThis catches a subtle race that atomics alone couldn't fix (two separate atomic writes are not atomic as a pair).\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:279-290",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

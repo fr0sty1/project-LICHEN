@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.224",
   "title": "Codereview pass 1: MIC verification - PLACEHOLDER_MIC export allows misuse",
   "description": "**Location:** python/src/lichen/link/link_layer.py:52-54\n\n**Finding:** PLACEHOLDER_MIC is exported (used in tests) with only a comment warning. A future developer might accidentally use it in production code.\n\n**Consequence:** Frames with placeholder MIC would be rejected by receivers, but the error would be silent on the sender side.\n\n**Options:**\n1. Keep as-is (current approach - comment warning is sufficient)\n2. Move to a _test_utils module\n3. Prefix with underscore: _PLACEHOLDER_MIC\n\n**Recommendation:** Option 1 is fine - the test imports it explicitly and the SECURITY comment is clear. No action needed, but document this choice.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -3,7 +3,7 @@
   "title": "task",
   "description": "Policy: appendix-c-safety.md. Create spec/test-vectors/schnorr48.json. Load in Python, Rust, C tests for cross-validation.",
   "notes": "Partial: schnorr48.json not created. spec/test-vectors/ contains only frame.json. Still need to create schnorr48.json and integrate into Python, Rust, and C test suites.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

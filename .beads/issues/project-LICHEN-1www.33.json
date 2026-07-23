@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.33",
   "title": "lichen_l2_enable re-init path lacks mutex acquisition order comment",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:380-402 (lichen_l2_enable enable path) and lines 440-445 (disable path)\n\nRisk: Both paths acquire tx_mutex then rx_mutex (correct ordering), but a contributor adding new code might not notice this invariant. The comment at line 383 mentions lock order for deadlock avoidance, but:\n1. The ordering rule is not documented in the header file\n2. A maintainer adding a third mutex or changing the L2 input path might introduce deadlock\n\nPattern a contributor will copy incorrectly: Adding mutex acquisition in new code without following the established tx_mutex-before-rx_mutex order.\n\nSuggested fix: Add a module-level comment block defining the lock ordering invariant at the top of the file where tx_mutex and rx_mutex are defined (around lines 176-180).",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

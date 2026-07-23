@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.58",
   "title": "Good: l2_payload.py is minimal and correct",
   "description": "src/lichen/l2_payload.py demonstrates good simplicity:\n- Single responsibility: dispatch byte classification\n- No unnecessary abstractions\n- Enum for type safety\n- Clear, short functions with obvious implementations\n- Well-named (classify_l2_payload, wrap_schc_payload)\n\nExample of 'boring code that works' - the right level of abstraction.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

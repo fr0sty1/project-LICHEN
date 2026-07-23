@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ifdw",
   "title": "python: declare aiocoap OSCORE filelock dependency",
   "description": "Why this exists: while validating project-LICHEN-1ox2, importing lichen.crypto.oscore through aiocoap.oscore failed in a fresh project venv with ModuleNotFoundError: No module named 'filelock'. Installing python[dev] did not provide filelock even though aiocoap.oscore imports it during normal package import. What needs to be done: decide whether filelock should be declared as a direct Python dependency or the crypto import path should avoid importing aiocoap.oscore unless OSCORE is used, then update dependency metadata/tests accordingly.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

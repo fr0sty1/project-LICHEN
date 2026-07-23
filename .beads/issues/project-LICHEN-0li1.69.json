@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.69",
   "title": "[lichen_l2.c:1475-1480] Double iface_init detection conflates failure recovery with invariant violation",
   "description": "Gap: The lichen_iface != NULL check conflates two different error conditions into one message.\n\nWhat: Lines 1475-1480 check if lichen_iface is already set. The error message says 'init requires reboot after failure' but the same check fires for true double-init attempts (programming error) and recovery attempts after a partial failure.\n\nWhy it matters: An operator or developer seeing this error cannot tell if the system is in a recoverable state (just retry later) or requires a reboot. The error message should distinguish between 'previously set successfully' (requires reboot per invariant) vs 'previously set but init failed' (same outcome, but different diagnosis). Consider adding state to distinguish these cases.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

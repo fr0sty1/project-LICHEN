@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.14",
   "title": "GOOD: lichen_iface invariant (never cleared) with explicit documentation",
   "description": "lichen_l2.c lines 79-88: The comment explicitly states the invariant (lichen_iface is set once, never cleared), explains why (races with lora_rx_callback), and warns maintainers not to clear it in lichen_l2_enable(false). This is a 'bus factor' comment - without it, a reasonable person would 'clean up' by clearing the pointer and introduce a crash.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

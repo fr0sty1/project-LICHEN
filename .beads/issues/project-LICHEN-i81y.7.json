@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i81y.7",
   "title": "Good: DAO route assembly uses bounded O(1) loop detection",
   "description": "Good decision: lichen/subsys/lichen/rpl/routing.c uses a bounded open-addressed visited_set for DAO path assembly. Lines 36-42 define VISITED_BUCKETS with power-of-two and max-hop static asserts, lines 70-93 implement check-and-add with table-full treated as a loop, and lines 448-453 document why assemble_path() is O(E * H) instead of drifting toward O(E * H^2). This is worth preserving if someone suggests simplifying back to nested scans: the current design keeps route rebuild cost bounded without dynamic allocation and has clear failure behavior for loops or overlong chains.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

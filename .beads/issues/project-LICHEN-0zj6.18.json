@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0zj6.18",
   "title": "lichen_l2.c:527-529 comment explains defensive copy but is verbose",
   "description": "The comment block at lichen_l2.c:521-529 explaining why rx_link_key is copied rather than pointer-captured is accurate but verbose (9 lines). The code pattern (copy + local pointer) is idiomatic for key material handling. Trim to: '/* SECURITY: Copy key to stack to survive hypothetical cleanup reordering. */'",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

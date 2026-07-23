@@ -3,7 +3,7 @@
   "title": "Implement /keys resource handlers per LCI spec",
   "description": "Implement /keys CoAP resource per LCI spec 17.5.5. GET /keys lists peer IIDs, GET /keys/{iid} returns peer pubkey, PUT adds/updates peer key, DELETE removes peer. Keys stored in Zephyr settings or secure storage. Access control: require authentication for write operations.",
   "acceptance_criteria": "coap-client can list, read, add, delete peer keys; unauthorized PUT/DELETE rejected",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "grinder",

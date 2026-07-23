@@ -2,7 +2,7 @@
   "id": "project-LICHEN-cz5d",
   "title": "task",
   "description": "lichen/drivers/gnss/gnss_ag3335.c:211-224. Resource leak.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

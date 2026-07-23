@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-rap",
   "title": "IPv6 packet parsing and building",
   "description": "Implement IPv6 packet construction and parsing.\n\nIPv6Header dataclass:\n- version (always 6)\n- traffic_class\n- flow_label\n- payload_length\n- next_header\n- hop_limit\n- src_addr (16 bytes)\n- dst_addr (16 bytes)\n\nMethods:\n- IPv6Header.to_bytes() -\u003e bytes (40)\n- IPv6Header.from_bytes(data) -\u003e IPv6Header\n- IPv6Packet (header + extension headers + payload)\n\nExtension header support:\n- Hop-by-Hop Options (RPL uses this)\n- Routing Header (source routing)\n- Fragment Header (if needed, probably not with SCHC)\n\nUse ipaddress module for address handling.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Frost",

@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-fgk",
   "title": "test_integration::test_out_of_range_no_receive hangs (RX timeout never fires in BARRIER_SYNC)",
   "description": "In BARRIER_SYNC time mode, SimRadio.receive(timeout_ms) waits for a simulation-time RxTimeoutEvent. When the receiving node is out of range, no RX/timeout event is ever scheduled to advance simulation time, so the receive() await blocks forever and pytest hangs. Reproduce: PYTHONPATH=/tmp/pylibs:src python3 -m pytest tests/sim/test_integration.py::TestTwoNodeTxRx::test_out_of_range_no_receive (hangs; needs timeout/-x). test_api/test_server/test_node_server all pass individually. Likely fix: RX timeout must be driven by wall-clock or the sim must schedule a timeout event even with no matching transmission. Pre-existing on main; unrelated to ipv6 work.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Frost",

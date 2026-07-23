@@ -2,7 +2,7 @@
   "id": "project-LICHEN-buiu",
   "title": "Python link_layer.py: Domain separation vulnerability - _build_signable_data lacks dst_addr length prefix",
   "description": "File: python/src/lichen/link/link_layer.py\nLines: 239-244\n\nThe _build_signable_data method constructs the signed message as:\n\n    return (\n        bytes([epoch])\n        + seqnum.to_bytes(2, \"big\")\n        + dst_addr\n        + payload\n    )\n\nWithout a length prefix for dst_addr, the same hash is produced for different (dst_addr, payload) combinations when addr_mode changes:\n\n- Frame A: addr_mode=EUI64, dst_addr=0x0102030405060708, payload=0x0A0B\n- Frame B: addr_mode=BROADCAST, payload=0x01020304050607080A0B\n\nBoth produce identical signed messages: epoch || seqnum || 0x0102030405060708 || 0x0A0B\n\nThis is the same vulnerability as project-LICHEN-917q (Rust) and project-LICHEN-j7rk (C).\n\nFix: Add len(dst_addr) as a prefix byte:\n    return (\n        bytes([epoch])\n        + seqnum.to_bytes(2, \"big\")\n        + bytes([len(dst_addr)])\n        + dst_addr\n        + payload\n    )",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

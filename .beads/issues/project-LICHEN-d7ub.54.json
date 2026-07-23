@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.54",
   "title": "lora_l2.c + lichen_l2.c: EUI-64 pointer aliasing across module boundary",
   "description": "Cross-file interaction bug extending project-LICHEN-d7ub.16: lichen_lora_l2_get_eui64() returns internal pointer without mutex, and lichen_l2.c uses it unsafely.\n\nlora_l2.c:1141-1148 returns \u0026lora_data.eui64 without holding lora_mutex.\nlichen_l2.c:1487-1500 calls get_eui64() and copies to iface_link_addr.\nlichen_l2.c:1070 calls get_eui64() during enable path.\n\nRACE WINDOW in enable path (not present at iface_init time):\n1. Thread A: lichen_l2_enable(true) at line 1070 calls get_eui64()\n2. Thread A: Gets valid pointer\n3. Thread B: calls lichen_lora_l2_deinit() transitioning to UNINIT\n4. Thread B: lora_l2.c zeros lora_data.eui64 at line 941\n5. Thread A: memcpy at line 1079 copies partially zeroed data\n\nAt iface_init time this is safe (runs before any other thread). But enable() can race with deinit() from another thread. The early needs_reinit() check at line 1034 doesn't protect against concurrent deinit that starts AFTER the check.\n\nFIX: Copy EUI-64 under lora_mutex protection, either by changing get_eui64() API (as .16 suggests) or by adding post-copy validation in lichen_l2.c that the module didn't transition to UNINIT.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

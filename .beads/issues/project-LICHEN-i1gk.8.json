@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.8",
   "title": "[lora_l2.c:246] hwid_len bounds check order issue",
   "description": "At line 246, the code checks if (size_t)hwid_len \u003e sizeof(hwid), but this happens AFTER the hwinfo_get_device_id() call at line 232. If the driver returns a value larger than sizeof(hwid) due to a bug, buffer overflow has already occurred. The check is too late to prevent corruption. The sizeof(hwid) parameter passed to hwinfo_get_device_id() should be the defense, but the check suggests distrust of the driver. Consider: this check is defensive and the real protection is the sizeof(hwid) limit passed to the function.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

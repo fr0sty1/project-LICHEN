@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-nk9j",
   "title": "PCAP capture support in Python simulator",
   "description": "Add a --pcap=FILE option to the Python LoRa simulator that writes captured frames in libpcap format (DLT_USER0). Lets Wireshark open the file and apply the LICHEN Lua dissector. Pure Python using struct, no libpcap dependency.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "owner": "mark.frost@gmail.com",

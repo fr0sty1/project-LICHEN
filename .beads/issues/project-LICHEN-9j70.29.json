@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.29",
   "title": "LORA_DEV macro expands to DEVICE_DT_GET with no existence check",
   "description": "lora_l2.c:46: #define LORA_DEV DEVICE_DT_GET(DT_ALIAS(lora0))\n\nIf lora0 alias doesn't exist in devicetree, this produces a compile error. But the error message is cryptic (something about undefined symbol).\n\nWhat goes wrong: A user building for a board without lora0 alias gets a linker error like 'undefined reference to __device_dts_ord_XX' with no indication that the problem is a missing LoRa device in devicetree.\n\nFix: Use DT_NODE_EXISTS(DT_ALIAS(lora0)) guard or BUILD_ASSERT with clear message. Example pattern from Zephyr samples:\n  BUILD_ASSERT(DT_NODE_EXISTS(DT_ALIAS(lora0)), \"LoRa device alias 'lora0' not defined in devicetree\");",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

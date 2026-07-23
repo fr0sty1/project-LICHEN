@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.14",
   "title": "mypy: 5 attr-defined errors (undefined/misspelled attributes)",
   "description": "5 attr-defined errors:\n- src/lichen/interface/handler.py:175 - GradientEntry has no attribute 'sequence'\n- src/lichen/interface/handler.py:176 - GradientEntry has no attribute 'expires_at' (maybe 'expires'?)\n- src/lichen/rpl/messages.py:318 - 'type' has no attribute 'from_bytes'\n- src/lichen/loadng/messages.py:173 - 'type' has no attribute 'from_bytes'\n- src/lichen/interface/kiss/bridge.py:22 - L2_DISPATCH_ROUTING not explicitly exported\n\nThese indicate actual bugs or API mismatches. Fix: Correct attribute names or update class definitions.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

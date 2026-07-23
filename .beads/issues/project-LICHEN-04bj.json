@@ -2,7 +2,7 @@
   "id": "project-LICHEN-04bj",
   "title": "SenML codec has unused _UNSET sentinel variable",
   "description": "File: python/src/lichen/senml/codec.py\nLine: 50\n\nThe `_UNSET` sentinel object is defined with a comment explaining its purpose:\n  # Sentinel so we can distinguish 'not set' from 0 / False / ''\n  _UNSET = object()\n\nHowever, this sentinel is never used anywhere in the module. The code uses `None` to represent 'not set' throughout:\n- SenmlRecord fields default to None\n- to_cbor_map() skips fields where val is None\n- from_cbor_map() only sets kwargs for fields present in CBOR\n\nImpact: Dead code that adds confusion. The comment suggests a design intent (distinguishing None from falsy values) that was never implemented.\n\nFix: Remove the unused _UNSET definition and comment, OR implement the original design intent if it was meaningful.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

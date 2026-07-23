@@ -2,7 +2,7 @@
   "id": "project-LICHEN-b0yy",
   "title": "task",
   "description": "Policy: appendix-c-safety.md. Create .clang-tidy config with bugprone/cert checks. Add CI step to run on all C files.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

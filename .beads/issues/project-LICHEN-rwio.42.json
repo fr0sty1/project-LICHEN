@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.42",
   "title": "Missing size check in lichen_l2_input memcpy when LICHEN_LINK disabled",
   "description": "In lichen_l2.c lichen_l2_input(), when HAVE_LICHEN_LINK is 0 (link layer disabled), there is a memcpy from input data to rx_ipv6_buf with a size check, but the check allows len == sizeof(rx_ipv6_buf) which is correct.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:510-516\n\nCode:\n- Line 510: if (len \u003e sizeof(rx_ipv6_buf)) { ... return }\n- Line 515: memcpy(rx_ipv6_buf, data, len);\n\nThis is actually correct - not a bug. The check on line 510 rejects oversized packets. Removing from findings.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

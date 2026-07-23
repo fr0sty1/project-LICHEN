@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dujw",
   "title": "task",
   "description": "Implement EDHOC (RFC 9528) key establishment for deriving OSCORE security contexts between peers.\n\nEDHOC protocol (from spec section 8.8):\n- 3-message handshake (~200 bytes total)\n- Uses Ed25519 keys from link layer (derive X25519 for DH)\n- Cipher suite 0: AES-CCM-16-64-128 + SHA-256 + X25519 + Ed25519\n- Export OSCORE master secret and salt via edhoc_exporter()\n\nImplementation components:\n1. EDHOC initiator state machine\n2. EDHOC responder state machine\n3. Message transport over CoAP (POST to /.well-known/edhoc)\n4. Key derivation: Ed25519 seed -\u003e X25519 keypair\n5. Context export: prk_out -\u003e OSCORE master_secret + master_salt\n\nUse uoscore-uedhoc library (modules/lib/uoscore-uedhoc/):\n- edhoc_initiator_run() / edhoc_responder_run()\n- prk_out2exporter() + edhoc_exporter()\n\nTrigger conditions (from spec 8.8):\n- Lazy: on first OSCORE-protected request to a peer without context\n- Explicit: POST to /.well-known/edhoc\n- Periodic: re-run every 24 hours or on SSN exhaustion\n\nParent: project-LICHEN-r6fu.2",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

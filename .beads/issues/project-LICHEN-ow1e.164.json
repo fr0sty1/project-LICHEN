@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.164",
   "title": "haversine formula can produce NaN for antipodal points",
   "description": "**Location:** python/src/lichen/routing/router.py:531-542\n\n**Bug:** The haversine formula computes `math.sqrt(a)` where `a` can slightly exceed 1.0 due to floating-point rounding errors for nearly-antipodal points, causing `math.asin()` to return NaN.\n\n**Trigger:** Two points nearly on opposite sides of Earth (e.g., (0, 0) and (0.0000001, 180)).\n\n**Bad behavior:** `_haversine()` returns NaN, which propagates through GPSR routing decisions, potentially causing no neighbor to be selected (all distances compare as 'not less than' NaN).\n\n**Fix:** Clamp `a` to [0.0, 1.0] before taking sqrt, or use the more numerically stable vincenty formula.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

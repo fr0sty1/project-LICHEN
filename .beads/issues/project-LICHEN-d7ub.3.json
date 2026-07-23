@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.3",
   "title": "lichen_l2.c:1141 get_eui64 returns aliased internal state",
   "description": "Contract violation: lichen_lora_l2_get_eui64() - Returns pointer to internal state without mutex protection. The header documents thread safety concerns but the race window between state check and returning pointer allows concurrent deinit() to zero the backing memory while caller holds the pointer. HOW to fix: Return a copy to caller-provided buffer, or document that caller MUST hold application-level synchronization.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

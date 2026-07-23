@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.28",
   "title": "[lichen_l2.c:1070] lichen_l2_input len=0 logged at DBG not WRN",
   "description": "Function: lichen_l2_input. Precondition handling: Empty frame (len=0) is logged at LOG_DBG (line 1087-1088) while other invalid frames are LOG_DBG or LOG_WRN. The comment says 'Reject empty frames before taking mutex' which is correct. However, an empty frame from a LoRa driver is unusual - it might indicate a driver bug. Consider LOG_WRN for len=0 to make it more visible in logs. The LOG_DBG for len \u003c LICHEN_MIN_FRAME_LEN (line 1091) is also potentially too quiet. Priority 3 - log level preference, not functional bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "issue",
   "assignee": "Mark Atwood",

@@ -3,7 +3,7 @@
   "title": "bridge-stm32wl: replace 4 expect() calls with error handling",
   "description": "firmware/bridge-stm32wl/src/main.rs has 4 expect() calls during LoRa init (lines 171, 189, 206, 245). These will panic the device if init fails. Replace with proper error handling - either return Result from init or enter a recoverable error state with LED indication.",
   "notes": "Development firmware uses panic_probe for debug info on panic. Init failures genuinely should stop the device. For production: add LED error patterns and optional watchdog recovery. Lower priority than library panics.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-0zj6.20",
   "title": "Data race: lichen_iface written and read without synchronization",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

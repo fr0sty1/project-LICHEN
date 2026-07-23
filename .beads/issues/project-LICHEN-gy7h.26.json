@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.26",
   "title": "lichen_l2_send uses tx_ipv6_buf size check before mutex but copies after mutex",
   "description": "Location: lichen_l2.c:221-237\n\n**What goes wrong:** The size check at line 223 compares pkt_len against sizeof(tx_ipv6_buf), but this happens BEFORE acquiring tx_mutex at line 228. If two threads call lichen_l2_send() with packets that individually fit but together would interleave in the buffer, the first thread's check passes, then the second thread's check passes, then both try to copy into tx_ipv6_buf.\n\nActually no - each thread acquires the mutex before copying. The size check is just an early-out optimization. Once the mutex is held, only one thread can be in the copy section. The buffer is only used by the thread holding the mutex.\n\nNot a bug - mutex protects the copy operation. Retracting.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

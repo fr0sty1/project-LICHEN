@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.25",
   "title": "lichen_l2.c:133 cleanup returns wrong error code on EUI-64 null",
   "description": "In main.c init_standalone_lora() at lines 110-133:\n```c\neui64 = lichen_lora_l2_get_eui64();\nif (eui64 == NULL) {\n    LOG_ERR(\"main: failed to get EUI-64\");\n    goto cleanup;\n}\n...\ncleanup:\n    lichen_lora_l2_stop();\n    lichen_lora_l2_deinit();\n    return (ret \u003c 0) ? ret : -ENODATA;\n```\n\nWhen eui64 is NULL, we goto cleanup. At this point, ret is 0 (from successful lichen_lora_l2_start at line 104). So the function returns -ENODATA.\n\nThis is actually correct behavior - -ENODATA is an appropriate error when EUI-64 is not available. The '(ret \u003c 0) ? ret : -ENODATA' pattern ensures that if we jumped to cleanup from an earlier error (where ret \u003c 0), we preserve that error code; otherwise we return -ENODATA.\n\nNO BUG - the logic is correct.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "note",
   "assignee": "Mark Atwood",

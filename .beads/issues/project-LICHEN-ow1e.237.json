@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.237",
   "title": "neighbor_monitor.rs: evict_stale uses retain() which is O(n) per call",
   "description": "NeighborTxLog::evict_stale() uses Vec::retain() which is O(n) for the timestamp list. This is called on every record_rx() and check_neighbor_duty() call. For high-traffic neighbors this could add up. Consider using a ring buffer with explicit head/tail tracking for O(1) eviction.\n\nFile: rust/lichen-core/src/neighbor_monitor.rs lines 58-61",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

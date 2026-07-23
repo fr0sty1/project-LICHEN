@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.11",
   "title": "[lichen_util.h:74] secure_zero memcpy volatile cast may not prevent optimization",
   "description": "In secure_zero() line 74, __builtin_memcpy is used to write zero words, followed by a volatile read-back on line 76 to prevent optimization. However, the read-back only reads one byte '*(volatile uint8_t *)p' rather than the entire word that was written. A sufficiently smart compiler might realize that only the first byte needs to be preserved and optimize away stores to the other bytes. Consider reading back the full word or using volatile for all writes. The current approach is likely safe in practice but not formally guaranteed.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

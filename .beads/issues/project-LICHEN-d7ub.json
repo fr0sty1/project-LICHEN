@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub",
   "title": "Exhaustive Review: Zephyr C code 2026-06-28",
   "notes": "## Convergence Report\n\n**Rounds to converge:** 5\n- Round 1: 22 issues (4 strategies: file, pattern, dataflow, contract)\n- Round 2: 10 issues (gaps + interactions)\n- Round 3: 13 issues (completeness critic)\n- Round 4: 2 issues (final sweep)\n- Round 5: 0 issues (convergence confirmed)\n\n**Total unique findings:** 47 open\n- P0 (critical): 0\n- P1 (correctness): 1\n- P2 (possible bug): 12\n- P3 (minor/polish): 34\n\n**Closed as duplicates:** 4\n\n**Confidence:** 90% that a follow-up review finds 0 new P0-P1 bugs.\n\n**Least confident areas:**\n1. External dependencies (lichen_link_rx, SCHC, TinyCrypt) - not audited\n2. Constant-time iteration buffer corruption (.85) - depends on lichen_link_rx behavior\n3. State machine ABORTED race (.55) - complex multi-module interaction\n4. EUI-64 pointer aliasing (.54) - narrow race window but real\n\n**Most common bug patterns:**\n1. State machine transitions not using CAS (lora_transition vs lora_transition_from)\n2. Cross-module pointer aliasing without proper synchronization\n3. Missing defensive checks on error/cleanup paths\n4. Inconsistent validation between TX and RX paths",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

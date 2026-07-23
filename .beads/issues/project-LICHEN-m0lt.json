@@ -2,7 +2,7 @@
   "id": "project-LICHEN-m0lt",
   "title": "Trickle timer integer overflow in transmit_time calculation",
   "description": "File: rust/lichen-rpl/src/trickle.rs\nLines: 113-116\n\nThe transmit_time calculation does not handle integer overflow:\n```rust\nlet half = self.interval / 2;\nlet offset = if half \u003e 0 { rand_offset % half } else { 0 };\nself.transmit_time = now + half + offset;\n```\n\nImpact: If 'now' is close to u32::MAX (approximately 49 days of milliseconds), adding half + offset will cause integer overflow, wrapping around to a small value. This would result in:\n1. transmit_time appearing to be in the distant past\n2. Immediate DIO transmission instead of waiting\n3. Potential flooding of the network with DIOs\n4. Trickle algorithm correctness violation\n\nFor long-running embedded systems (\u003e49 days uptime), this is a real concern.\n\nFix: Use saturating_add or implement proper time wrapping semantics:\n```rust\nself.transmit_time = now.saturating_add(half).saturating_add(offset);\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.46",
   "title": "[ipv6_addr.h:64-87] in6_addr fallback detection cascade has false positive risk",
   "description": "Gap found: ipv6_addr.h struct detection not reviewed.\n\nWhy this was missed: Header preprocessing complexity not analyzed.\n\nThe actual bug: The detection cascade (lines 64-87) tries to determine if struct in6_addr is already defined. The checks include _SYS_SOCKET_H (line 72) which indicates socket.h was included, but socket.h doesn't necessarily define in6_addr - that's in netinet/in.h. If socket.h is included without netinet/in.h, the fallback is skipped but in6_addr is undefined, causing compile errors. Similarly, _STRUCT_IN6_ADDR on macOS (line 72) is specific to the internal implementation and may change. The fallback mechanism could be simplified: just check for IN6ADDR_ANY_INIT which is reliably defined alongside struct in6_addr on all POSIX systems.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

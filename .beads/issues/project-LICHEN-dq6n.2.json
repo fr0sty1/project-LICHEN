@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dq6n.2",
   "title": "[lora_l2.c:644-645] Callback set before user_data creates race window",
   "description": "In lichen_lora_l2_set_rx_callback(), user_data is set BEFORE the callback pointer:\n\n```c\nk_mutex_lock(\u0026lora_mutex, K_FOREVER);\nlora_state.rx_callback_user_data = user_data;\nlora_state.rx_callback = cb;\nk_mutex_unlock(\u0026lora_mutex);\n```\n\nWhile both writes happen under mutex, the rx_thread reads both atomically:\n```c\nk_mutex_lock(\u0026lora_mutex, K_FOREVER);\nlichen_lora_rx_cb_t cb = lora_state.rx_callback;\nvoid *cb_user_data = lora_state.rx_callback_user_data;\nk_mutex_unlock(\u0026lora_mutex);\n```\n\nSince both reader and writer hold the mutex, this is actually safe. The mutex provides atomicity. However, the order SHOULD be callback first, user_data second, because if the callback were set first without mutex protection, a reader could invoke the new callback with stale user_data.\n\nCurrently protected by mutex, so this is a code quality issue (P3) - the order is confusing but correct. Setting user_data first then callback is actually the safer pattern IF there were no mutex (callback NULL check would fail), so the current code is defensive. Marking as no action needed.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

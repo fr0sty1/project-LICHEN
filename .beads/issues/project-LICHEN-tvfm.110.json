@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.110",
   "title": "[lora_l2.c:66-67] static rx_thread_data and rx_stack preclude multiple instances",
   "description": "Category not checked: Module instantiation assumptions\n\nBug found: lora_l2.c uses static global state:\n- Line 65: static K_THREAD_STACK_DEFINE(rx_stack, ...)\n- Line 66: static struct k_thread rx_thread_data\n- Line 69: static K_MUTEX_DEFINE(lora_mutex)\n- Line 74: static K_MUTEX_DEFINE(tx_buf_mutex)\n- Line 81: static uint8_t tx_buf[...]\n- Line 94-107: static struct { ... } lora_state\n\nThis design allows only ONE LoRa radio instance per system. If a board has multiple LoRa radios (rare but possible with expansion boards), only one can be used.\n\nThe LORA_DEV macro at line 62 hardcodes DT_ALIAS(lora0) - there's no lora1 support.\n\nThis is a deliberate design choice (single-radio assumption) but undocumented. A future user trying to add multi-radio support would need to refactor all static state into per-instance structures.\n\nImpact: P4 - Architectural limitation, not a bug but undocumented constraint.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

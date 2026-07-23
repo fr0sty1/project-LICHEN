@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-mfir",
   "title": "lichen-cli calls several CoAP paths the firmware doesn't expose (/presence /location /sos /rd)",
   "description": "Surfaced while mapping the client stack for 7an. Beyond the now-fixed messaging bug (3b28ffd5: /messages-\u003e/msg/inbox, text-\u003ebody), lichen-cli still calls CoAP resources with no firmware handler:\n- 'presence' -\u003e GET /presence (commands.rs) : firmware has no /presence; presence/neighbors live at /status/neighbors (and legacy /neighbors).\n- 'position show' -\u003e GET /location : firmware exposes /sensors/location (SenML) per spec 12-apps §18.2 and gateway /inbound/location; no bare /location.\n- 'sos activate|cancel|status' -\u003e GET/PUT/DELETE /sos : no firmware /sos resource exists at all.\n- 'rd list|register|delete' -\u003e /rd (CoAP RFC 9176 Resource Directory) : no firmware /rd resource.\n- 'neighbors' -\u003e GET /neighbors : works but is the legacy duplicate of /status/neighbors.\n\nEach needs the same treatment as the messaging fix: verify the real firmware resource + payload (or confirm the feature is unimplemented on the node and gate/remove the subcommand), then route it through shared lichen-client types + paths. Position sharing in particular should get a shared lichen-client Position/SenML type (spec §18.2: lat/lon/alt/speed/heading, application/senml+cbor) consumed by both CLI and TUI (TUI has its own GeoPos in map.rs).",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

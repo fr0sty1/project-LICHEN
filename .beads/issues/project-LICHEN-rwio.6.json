@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.6",
   "title": "GOOD: Lock-free atomic check in lichen_lora_l2_tx avoids 500ms mutex starvation",
   "description": "lora_l2.c lines 326-339: TX uses atomic_get(running) without the mutex because lora_send() blocks for ~500ms at SF10/255B. Holding lora_mutex would starve the RX thread's callback pointer snapshot. The code correctly documents why this is safe (atomic read + driver-internal serialization). This is not 'cutting corners' - it's deliberate avoidance of a real deadlock risk.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

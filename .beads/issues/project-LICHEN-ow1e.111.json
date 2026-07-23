@@ -3,7 +3,7 @@
   "title": "RPL and routing code uses raw [u8; 16] where Ipv6Addr newtype should be used",
   "description": "lichen-ipv6 defines Addr([u8; 16]) and lichen-core re-exports it as Ipv6Addr. However, routing code uses raw arrays:\n\nlichen-rpl/src/routing.rs:\n- RoutingTable keyed by [u8; 16]\n- SourceRoutingHeader stores Vec\u003c[u8; 16]\u003e\n- RouteEntry has target: [u8; 16]\n\nlichen-node/src/routing.rs:\n- Neighbor { addr: [u8; 16], ... }\n- NeighborTable uses [u8; 16] keys\n- Router stores HashMap\u003c[u8; 16], ...\u003e\n\nlichen-gateway/src/gateway.rs:\n- mesh_to_upstream returns Vec\u003cu8\u003e containing raw IPv6\n\nWhat goes wrong: Without the newtype, callers can accidentally pass NodeId bytes (8 bytes) where IPv6 addresses (16 bytes) are expected, or mix up address types. The Ipv6Addr methods (is_link_local, is_multicast, iid) are unavailable on raw arrays.",
   "notes": "Preparatory work completed: lichen-ipv6::Addr exists and is re-exported as lichen_core::addr::Ipv6Addr. Remaining work: replace ~30 [u8;16] usages with Ipv6Addr in lichen-rpl/routing.rs and lichen-node/routing.rs, update tests. The Addr type has Copy+Hash so it works as HashMap key.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1cz5",
   "title": "AddrMode.addr_len: lookup table is fragile if enum values change",
   "description": "In python/src/lichen/link/frame.py, AddrMode.addr_len was changed from a dict lookup to a tuple lookup '_ADDR_LEN_TABLE[self]'. This assumes AddrMode enum values are 0, 1, 2, 3 in order. If enum values are changed or reordered, the tuple indexing will break silently or raise IndexError. Consider keeping the dict-based approach or adding a static assertion that enum values match expected indices.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

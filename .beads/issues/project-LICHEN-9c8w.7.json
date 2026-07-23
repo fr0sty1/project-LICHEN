@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9c8w.7",
   "title": "Audit LOG_WRN vs LOG_DBG for cosmetic failures",
   "description": "Downgrade LOG_WRN to LOG_DBG for non-actionable cosmetic issues.\n\nCandidates:\n  LOG_WRN(\"Failed to set thread name: %d\");  // cosmetic, no impact\n  LOG_INF(\"tick\");                           // noise, remove or LOG_DBG\n\nCriteria:\n- LOG_WRN: operator should investigate or take action\n- LOG_DBG: developer debugging info only",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

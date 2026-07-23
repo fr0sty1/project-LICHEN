@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-euj",
   "title": "Back-to-back transmits from one node self-collide (no airtime enforcement)",
   "description": "In the SimRadio/node_server model, a node can start a second transmission while its first is still in flight (TxEndEvent not yet fired, sim time not advanced), so both transmissions are simultaneously active in the medium and collide at receivers. Repro: tests/sim/test_integration.py::TestChaosMonkeyOperations::test_partition_rule_blocks_cross_group — a1 transmits to a2 (received OK), then immediately transmits to b1; both a1 transmissions overlap at b1 -\u003e collision -\u003e b1 receives nothing. A real half-duplex radio cannot transmit twice at once. Likely fix: _handle_tx should advance sim time by the airtime (or block until the node's TxEndEvent) so a node is busy for its transmission duration. Separate from fgk (the RX-timeout deadlock, now fixed). CI deselects this one test pending the fix.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Frost",

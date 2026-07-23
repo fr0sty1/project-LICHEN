@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0f9f",
   "title": "Create Codex codereview command from Claude command",
   "description": "Find the existing Claude /codereview command and add an equivalent Codex /codereview command, reusing the original content as much as possible.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

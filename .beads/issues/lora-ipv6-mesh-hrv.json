@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-hrv",
   "title": "Implement DODAG visualization for simulation harness",
   "description": "Add visualization capabilities to show DODAG formation and routing paths in the simulation. Should provide methods to track and visualize the routing tree structure as it evolves during simulation.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

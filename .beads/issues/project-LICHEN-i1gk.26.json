@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.26",
   "title": "[lora_l2.c:225-301] generate_eui64: error path returns unspecified value in callers",
   "description": "Contract violation: postcondition - error propagation gap\n\n**Issue:** generate_eui64() properly zeros eui64 output on error (line 298) and returns negative errno. However, in lichen_lora_l2_init() (line 444-448), on failure, lora_data.eui64 contains zeros but the caller's use of lichen_lora_l2_get_eui64() could return this zeroed array.\n\nWait - checking the code again:\n```c\n// Line 444-448\nret = generate_eui64(lora_data.eui64);\nif (ret \u003c 0) {\n    LOG_ERR(...);\n    goto out;  // Does NOT transition to STOPPED, stays UNINIT\n}\n```\n\n**Assessment:** This is actually correct. On failure, state stays UNINIT, and lichen_lora_l2_get_eui64() (line 936-940) returns NULL when state is UNINIT.\n\n**No fix needed** - error handling is correct.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

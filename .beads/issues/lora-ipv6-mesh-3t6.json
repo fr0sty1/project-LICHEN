@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-3t6",
   "title": "Spec: Address 16-bit sequence number wrapping",
   "description": "16-bit SeqNum with 32-entry window is weak. High-traffic nodes wrap in ~65K packets. After wrap, delayed replays become possible. Need: (1) specify behavior on wrap, (2) add epoch counter or timestamp component, (3) define state recovery after reboot. Consider 32-bit SeqNum or hybrid approach.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

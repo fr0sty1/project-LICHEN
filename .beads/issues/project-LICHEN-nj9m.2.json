@@ -2,7 +2,7 @@
   "id": "project-LICHEN-nj9m.2",
   "title": "Migrate EC2 scripts to personal AWS",
   "description": "Update four EC2 scripts to personal profile, us-west-2 regional resources, us-west-2c cache AZ, and copied EBS ID; validate shell syntax and stale-reference removal.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

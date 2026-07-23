@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0k9a",
   "title": "Compliance: Python link_layer.py replay protection",
   "description": "Policy: 02-physical-link.md §4.4. File: python/src/lichen/link/link_layer.py. Status: COMPLIANT. Line 137 initializes epoch to random.randint(128, 255) per spec. Replay window uses 24-bit logical counter (epoch\u003c\u003c16|seqnum) correctly rejecting old epochs.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

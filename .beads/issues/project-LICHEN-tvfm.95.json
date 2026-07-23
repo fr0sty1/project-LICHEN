@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.95",
   "title": "[lora_l2.c:70-71] LICHEN_LORA_FRAME_OVERHEAD arithmetic comment is wrong",
   "description": "Category not checked: Arithmetic derivation correctness\n\nBug found: Comment says '5 (header) + 4 (MIC) + 48 (signature) - 2 (margin) = 55' but:\n5 + 4 + 48 - 2 = 55 is correct BUT the comment formatting suggests subtraction when -2 is actually an addition to the margin.\n\nThe real issue: The comment says 'Rounding down to 55 provides 2 bytes margin' but 5+4+48 = 57, and 255-57 = 198, not 200. To get MTU=200, overhead should be 55, meaning margin is +2 bytes (rounding UP from 57), not 'rounding down'.\n\nThe current value (55) gives MTU=200 which is correct. But the derivation explanation is misleading - we are allocating 2 FEWER bytes to overhead than strictly needed (55 vs 57), not 'rounding down'.\n\nImpact: Documentation confusion, could lead to incorrect changes if someone trusts the comment.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

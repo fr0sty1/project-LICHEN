@@ -2,7 +2,7 @@
   "id": "project-LICHEN-n0vz",
   "title": "Compliance: python/l2_payload.py dispatch byte",
   "description": "Policy: 02-physical-link.md §4.1. File: python/src/lichen/l2_payload.py. Status: COMPLIANT. Lines 32-36 explicitly check payload[0] == L2_DISPATCH_SCHC (0x14) and payload[0] == L2_DISPATCH_ROUTING (0x15) before classifying payload type.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

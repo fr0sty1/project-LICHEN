@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.2",
   "title": "ruff format: 122 files need formatting",
   "description": "122 files across src/ and tests/ need ruff formatting. Run: cd python \u0026\u0026 ruff format src/ tests/",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

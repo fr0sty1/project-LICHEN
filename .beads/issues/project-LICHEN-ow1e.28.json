@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.28",
   "title": "Node._relay_seen set grows unbounded, clears entire history at 128",
   "description": "**Location:** python/src/lichen/node.py:386-389, 477-479\n\n**Bug:** The `_relay_seen` set grows until it hits 128 entries, then clears entirely. This creates a window where immediately-after-clear, all previously-seen packets look fresh again, potentially causing relay loops.\n\n**Trigger:** High-traffic mesh with \u003e128 unique payloads in a short window, or an attacker who intentionally floods 128 unique packets then replays one from before the clear.\n\n**Bad behavior:** After the set clears, a packet that was previously relayed (and should be suppressed as duplicate) gets relayed again, potentially causing broadcast storms or routing loops.\n\n**Fix:** Use an LRU cache that evicts oldest entries one at a time rather than bulk-clearing, or use a time-based expiration.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

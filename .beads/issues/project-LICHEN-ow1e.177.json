@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.177",
   "title": "good: ipv6 checksum implementations correctly handle edge cases",
   "description": "ipv6/lib.rs:517-604 icmpv6_checksum and udp_checksum correctly implement RFC 4443/768. UDP checksum of 0 transmitted as 0xFFFF per RFC 768 (598-600). handle_icmpv6 (624-685) handles ping and neighbor solicitation.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

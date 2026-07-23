@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ajsn.2",
   "title": "Test uses hand-computed oracle, not encoder",
   "description": "test_signature_present_but_payload_too_short constructs bytes.fromhex manually with documented byte layout, not via LichenFrame.to_bytes(). This is correct test design - the oracle is independent of the code under test.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

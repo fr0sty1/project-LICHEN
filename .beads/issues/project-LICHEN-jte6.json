@@ -2,7 +2,7 @@
   "id": "project-LICHEN-jte6",
   "title": "encode_record map entry count can be wrong if validation rejects late",
   "description": "File: lichen/subsys/lichen/senml/senml.c\nLines: 175-189\n\nCATEGORY: CORRECTNESS\n\nThe encode_record() function calculates the number of map entries BEFORE validation:\n\n  size_t entries = 1; /* value always present */\n  if (is_first \u0026\u0026 pack-\u003ebase_name != NULL) entries++;\n  if (is_first \u0026\u0026 pack-\u003ehas_base_time) entries++;\n  if (rec-\u003ename != NULL) entries++;\n  if (rec-\u003eunit != NULL) entries++;\n  if (rec-\u003ehas_time) entries++;\n\n  if ((is_first \u0026\u0026 validate_name(pack-\u003ebase_name) \u003c 0) ||\n      validate_name(rec-\u003ename) \u003c 0 ||\n      validate_unit(rec-\u003eunit) \u003c 0) {\n      return -EMSGSIZE;\n  }\n\n  if (!zcbor_map_start_encode(state, entries)) {\n\nThe validation at lines 182-186 returns -EMSGSIZE but this is after entries were counted assuming strings are valid. This is actually OK since validation returns before encoding starts.\n\nHowever, there's a deeper issue: if base_name is non-NULL but ONLY contains whitespace/invalid chars (passes length check), and if RFC 8428 naming rules were ever enforced, the count would be committed but encoding might fail.\n\nActually, reviewing more carefully - this path returns error before encoding, so map is never started. This is not a bug.\n\nRetracting this issue - let me find a real one instead.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.14",
   "title": "Complete debug toggle test isolation",
   "description": "Ensure the module-level simulation debug toggle is restored even when the integration test fails, and cover instance/global isolation without relying on private fields. Keep tests deterministic and warning/lint clean.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

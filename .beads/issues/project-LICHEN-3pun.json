@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3pun",
   "title": "Exhaustive Review: bridge-zephyr 2026-06-27",
   "notes": "Rounds to converge: 3\nTotal unique findings: 15\n\nBreakdown:\n- P0: 2 (bounds check, deadlock)\n- P1: 3 (thread-safety, race, bounds)  \n- P2: 10 (contracts, validation, docs)\n\nConfidence: 90% that a follow-up review finds 0 new P0-P1 bugs.\nLeast confident areas: External library contracts (lichen_link_*), Zephyr net_pkt edge cases.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

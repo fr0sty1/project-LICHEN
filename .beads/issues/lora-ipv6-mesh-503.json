@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-503",
   "title": "Integration test: two-node TX/RX",
   "description": "Create tests/sim/test_integration.py. Test: start simulator server, connect two SimRadio clients (nodes A and B at 100m apart), A transmits, B receives with correct RSSI/SNR. Verify: packet delivered, RSSI matches propagation model, airtime correct. Use pytest-asyncio. Fixture to start/stop simulator server.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

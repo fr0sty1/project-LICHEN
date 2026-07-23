@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.28",
   "title": "lichen_l2_iface_init sets lichen_iface before checking lichen_log_link_local_from_eui64",
   "description": "lichen_l2.c:461-467: The code sets lichen_iface = iface at line 461, then calls lichen_log_link_local_from_eui64() at line 467. If logging fails, goto fail_late_init clears the callback but does NOT clear lichen_iface (per the invariant comment).\n\nWhat goes wrong: After fail_late_init, lichen_iface is non-NULL and iface_init_failed is set. The lora_rx_callback at line 392 checks both conditions:\n\n    if (lichen_iface == NULL || atomic_get(\u0026iface_init_failed))\n\nThis correctly rejects the packet. So the logic is sound.\n\nHowever, the invariant comment at line 85-88 says 'Set once, never cleared'. But what if iface_init is called twice? Zephyr shouldn't do this, but if it did, lichen_iface would be overwritten. There's no guard.\n\nActually, NET_DEVICE_INIT creates the net_if statically and init is called once. This is a theoretical concern, not a real bug.\n\nCancel - the existing guards are sufficient.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

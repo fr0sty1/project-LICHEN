@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yw7i.25",
   "title": "Good: Local storage for link-layer address avoids const-cast UB",
   "description": "lichen_l2.c:109-114 and :426-432 copy EUI-64 to iface_link_addr rather than casting away const from lichen_lora_l2_get_eui64(). Comment explains Zephyr stores the pointer directly and might write to it. This defensive copy prevents UB.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

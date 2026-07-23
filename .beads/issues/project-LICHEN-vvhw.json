@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vvhw",
   "title": "task",
   "description": "Policy: appendix-c-safety.md. Add __counted_by(len) to all flexible array members. Enables compile-time bounds checking in Clang 18+.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

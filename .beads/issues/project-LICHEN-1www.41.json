@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.41",
   "title": "LICHEN_MIN_FRAME_LEN validation incomplete",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:81-116\n\nLICHEN_MIN_FRAME_LEN = 9 is validated via BUILD_ASSERT against component sizes defined locally. However, these local constants (LICHEN_FRAME_LENGTH_FIELD etc.) are duplicates of values that should come from a shared header.\n\nWhat goes wrong: If the actual frame format changes in link.h, the local constants here wont update, and the BUILD_ASSERT will still pass with stale values. The validation provides false confidence.\n\nBetter: Reference the authoritative constants from link.h (e.g., LICHEN_FRAME_HDR_LEN if defined) rather than defining local copies.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

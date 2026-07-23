@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-0nz",
   "title": "lichen-rpl: Non-Storing routing table + DAO manager",
   "description": "routing.rs + dao manager: port of Python routing.py + dao.py. Root receives DAOs, extracts RPL Target + Transit Information options, builds parent_map, assembles chain target-\u003eparent-\u003e...-\u003eroot, installs source route in RoutingTable. DAO sender side builds the DAO to send. Tests: 4-node tree → root has routes; source route to deep node is correct.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "mark.frost@gmail.com",

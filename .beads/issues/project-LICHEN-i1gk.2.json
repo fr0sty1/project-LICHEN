@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.2",
   "title": "[lichen_l2.c:693] secure_zero logs eui64 after zeroing",
   "description": "In lichen_peer_remove(), the LOG_INF on line 693 logs the eui64 address, but secure_zero(entry-\u003eeui64) was already called on line 691. This logs all zeros instead of the actual removed peer address. Fix: either log BEFORE zeroing, or copy the eui64 to a local variable first.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

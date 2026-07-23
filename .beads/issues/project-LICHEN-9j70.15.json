@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.15",
   "title": "Good: secure_zero() uses volatile pointer and memory barrier",
   "description": "Location: lichen_util.h:24-31\n\nThe secure_zero() implementation is correct:\n1. volatile uint8_t *p prevents the compiler from eliding the stores\n2. __asm__ __volatile__('' ::: 'memory') prevents LTO from removing the function and ensures ordering\n\nWhy this is good: memset() on dead buffers is commonly optimized away. Many 'secure memset' implementations miss the LTO case or use compiler-specific pragmas. This portable approach (volatile + barrier) will survive aggressive optimization without relying on __attribute__((noinline)) or similar. Worth preserving if someone suggests 'just use memset'.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-apnl",
   "title": "SosResource does not validate timestamp type",
   "description": "File: python/src/lichen/coap/resources.py:435-456\n\nThe render_put method extracts 't' from CBOR payload but does not validate it is numeric:\n```python\nt = body.get('t')\n...\nself.activate(eui64, t if t is not None else 0.0)\n```\n\nIf a malicious client sends {'t': 'not-a-number'}, the string is stored as self._t and later serialized via _state_payload(). This violates the API contract (t: float) and could cause type errors in consumers expecting numeric timestamps.\n\nFix: Add type validation before calling activate:\n```python\nif t is not None and not isinstance(t, (int, float)):\n    return Message(code=aiocoap.BAD_REQUEST)\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

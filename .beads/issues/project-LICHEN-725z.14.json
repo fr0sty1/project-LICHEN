@@ -2,7 +2,7 @@
   "id": "project-LICHEN-725z.14",
   "title": "Thread abort in lora_l2_stop is silent data loss path",
   "description": "lora_l2.c:340-348 — When k_thread_join times out, thread is forcibly aborted. LOG_WRN is only indication. Operators may not realize packets may have been lost.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-s4n",
   "title": "Implement SimRadio client",
   "description": "Create python/src/lichen/radio/sim_client.py. SimRadio class implementing Radio protocol. __init__(host, port, sim_id, node_id, position). async connect(): open TCP, send REGISTER, await OK. async transmit(payload) -\u003e bool: send TX, await TX_DONE/TX_FAIL. async receive(timeout_ms) -\u003e tuple | None: send RX, await RX_OK/RX_TIMEOUT. async get_time() -\u003e int: send TIME, await TIME_OK. async close(): close TCP connection. Context manager support (__aenter__, __aexit__). Reconnection logic on disconnect. Unit tests using mock TCP server.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

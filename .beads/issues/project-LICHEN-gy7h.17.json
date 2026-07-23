@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.17",
   "title": "lichen_sha256 does not validate input pointer",
   "description": "Location: lichen_util.c:11-24\n\n**What goes wrong:** lichen_sha256() passes input directly to tc_sha256_update() without NULL check. If caller passes NULL input with inlen \u003e 0, TinyCrypt will dereference NULL. The tc_sha256_update() function may not have its own NULL check (implementation-dependent).\n\n**Impact:** Crash on NULL input instead of clean -EINVAL return.\n\n**Fix:** Add NULL check at function entry: if (input == NULL \u0026\u0026 inlen \u003e 0) return -EINVAL.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.56",
   "title": "[lichen_l2.c:1698-1703] rx_link_key not zeroed on non-auth error paths",
   "description": "Gap: The rx_link_key local buffer is only zeroed on the success path and auth failure, not on all error paths.\n\nWhat: Lines 1698-1703 copy link_key for use during RX. Lines 1746-1747 zero it on auth failure, and line 1774 zeros it on success. But if validation fails earlier (lines 1751-1757 oversized packet check), the function returns without zeroing rx_link_key.\n\nWhy it matters: The 16-byte key material remains on the stack after the function returns. While stack memory will be overwritten by subsequent calls, defense-in-depth suggests zeroing key material on ALL exit paths. This is inconsistent with other paths in the same function.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

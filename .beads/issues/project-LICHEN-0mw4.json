@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0mw4",
   "title": "EDHOC: LOG_ERR may expose sensitive state in log output",
   "description": "SECURITY: Error logging may expose sensitive protocol state information.\n\nLocations:\n- Line 326: LOG_ERR('CSPRNG unavailable for X25519 key generation')\n- Line 403: LOG_ERR('CSPRNG unavailable for C_I generation')\n- Line 461: LOG_ERR('msg1 length %zu exceeds buffer %zu', *msg1_len, ...)\n- Line 533: LOG_ERR('Rejected all-zero X25519 shared secret from message_2')\n- Line 620: LOG_ERR('Signature_2 verification failed')\n- Line 795: LOG_ERR('CSPRNG unavailable for C_R generation')\n- Line 844: LOG_ERR('Unsupported EDHOC method: %d...')\n- Line 854: LOG_ERR('Unsupported EDHOC suite: %d...')\n- Line 893: LOG_ERR('Rejected all-zero X25519 shared secret from message_1')\n- Line 1069: LOG_ERR('AEAD decryption failed')\n- Line 1117: LOG_ERR('Signature_3 verification failed')\n\nThe 'all-zero shared secret' messages reveal that peer sent small-order point (attack indicator).\nThe 'Signature verification failed' messages confirm authentication was attempted.\n\nIn a deployed system, these logs could:\n1. Help attacker enumerate valid/invalid keys\n2. Confirm successful manipulation of protocol messages\n3. Leak protocol state for timing attacks\n\nImpact: Information disclosure in logs. Severity depends on log accessibility.\n\nFix: Consider using LOG_WRN or reducing detail level. For production, authentication failures should use generic 'authentication failed' without specifics.\n\nFile: lichen/subsys/lichen/edhoc/edhoc.c:326,403,461,533,620,795,844,854,893,1069,1117",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

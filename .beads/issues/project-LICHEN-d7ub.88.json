@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.88",
   "title": "Fix bridge SX1262 overlay TCXO properties for Zephyr binding",
   "description": "LoRa-enabled bridge builds using existing nRF52840 overlays fail during devicetree generation because the overlays use SX1262 TCXO properties not declared by the local semtech,sx1262 binding. Observed failures: boards/rak4631_nrf52840.overlay uses tcxo-power-gpios; boards/heltec_t114.overlay uses tcxo-wakeup-time. Reconcile the overlays and/or binding so LoRa-enabled bridge builds configure cleanly.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

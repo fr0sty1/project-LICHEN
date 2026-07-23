@@ -3,7 +3,7 @@
   "title": "Resolve complex git merge conflicts from multiple worker branches (worker11, worker8, worker2)",
   "description": "Current working tree has 78 conflict markers across 15+ files including spec/, coap, senml, rpl, rust crates, test vectors, .beads/events JSONL files. Merge from origin/integration/worker11-20260722 has mixed in older worker conflicts. Ambiguous how to reconcile generated beads events without data loss or breaking tracking. Prioritize coap/senml/rpl/spec but scope limits to \u003c3 files without epic. Create human judgment bead for how to proceed with merge resolution and which conflicts to take from which side. Do not edit .beads files manually.",
   "notes": "Commit: bbbe6b973. Human judgment bead uxzk closed with merge strategy: prefer latest on core files (test vectors, specs, coap/senml/rpl), avoid manual .beads edits. Current state clean on worker6.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

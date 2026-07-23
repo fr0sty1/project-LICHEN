@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.51",
   "title": "[lichen_l2.c:204-208] rx_ipv6_buf not protected during net_pkt_write after mutex release",
   "description": "Gap found: RX buffer protection timing not analyzed.\n\nWhy this was missed: Mutex scope in lichen_l2_input reviewed but not buffer usage after release.\n\nThe actual bug: In lichen_l2_input(), rx_ipv6_buf is filled under rx_mutex (lines 1163-1166), then the mutex is released at line 1223, and THEN net_pkt_write() is called at line 1215. Wait - looking again, the mutex is released at 1223 which is AFTER net_pkt_write at 1215. The actual sequence:\n\n1. Lock rx_mutex (1101)\n2. Fill rx_ipv6_buf (1163-1166)\n3. Allocate net_pkt (1205-1208)\n4. net_pkt_write from rx_ipv6_buf (1215)\n5. Unlock rx_mutex (1223)\n6. net_recv_data (1234)\n\nThis is correct - buffer is protected during use. However, the allocation at 1205 can block for CONFIG_LICHEN_L2_RX_ALLOC_TIMEOUT_MS while holding the mutex, preventing concurrent RX processing. This was partially noted in Round 1 (project-LICHEN-tvfm.38) but the blocking-while-holding-mutex aspect wasn't explicit. Priority 4 - design choice, not bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.202",
   "title": "Codereview pass 2: TcpServer init - list sharing semantics",
   "description": "Pass 2 reviewed list sharing behavior:\n\n**Finding: Acceptable design**\n\nThe connections list is passed to TcpServer by reference, not copied. This means:\n- The closure and TcpServer share the same list object\n- Modifications in the closure (append/remove) are visible in TcpServer\n- Modifications via TcpServer.close() (clear) are visible to the closure\n\nThis is intentional and correct for connection tracking. The alternative (copying the list) would break connection management.\n\nThe TcpServer dataclass has default_factory=list for connections, but this only applies when serve() does not pass an explicit connections argument. Since serve() always passes the shared list, this works correctly.\n\nNo bugs found in this pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

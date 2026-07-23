@@ -2,7 +2,7 @@
   "id": "project-LICHEN-5zjl",
   "title": "Python EDHOC: Signature_2 verification uses wrong verify() signature",
   "description": "In python/src/lichen/crypto/edhoc.py line 342, the code calls verify_key.verify(m_2, signature_2). However, nacl.signing.VerifyKey.verify() expects the signature to be prepended to the message, not as a separate argument. The correct usage is verify_key.verify(signature_2 + m_2) or verify_key.verify(smessage) where smessage is the signed message containing the signature prefix. The current code will always raise BadSignatureError.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "Mark Atwood",

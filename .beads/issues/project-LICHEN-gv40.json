@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gv40",
   "title": "task",
   "description": "lichen/subsys/lichen/link/lichen_link_rx.c:427 - lichen_schc_decompress() writes to caller's out_ipv6 buffer at line 427, but commit_replay() is called later at line 439. If replay is detected, out_ipv6 already contains authenticated-but-replayed data. This is inconsistent with lichen_link_rx_payload() which correctly copies to caller's buffer only after replay check passes (line 374 is after line 366). Failure scenario: caller calls lichen_link_rx(), ignores error return code (a caller bug), reads out_ipv6 - gets content from a replayed packet. The output buffer should be wiped on replay detection for defense-in-depth, or decompression should be deferred until after replay check.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

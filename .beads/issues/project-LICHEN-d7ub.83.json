@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.83",
   "title": "lichen_util.h:87 secure_zero alignment loop may read past valid pointer",
   "description": "Completeness check: Round 1-2 missed potential alignment loop issue in secure_zero.\n\nWHAT: secure_zero() aligns to word boundary before word-sized writes:\n```c\nif (len \u003e= 32) {\n    /* Align to word boundary first using byte writes */\n    while (len \u003e 0 \u0026\u0026 ((uintptr_t)p \u0026 (sizeof(unsigned long) - 1)) != 0) {\n        *p++ = 0;\n        len--;\n    }\n```\n\nThe pointer arithmetic is correct, but:\n\nWHY CONCERN: The inner while loop condition depends on pointer alignment check. On standard platforms this is safe, but:\n\n1. If sizeof(unsigned long) is not a power of 2 (unusual but possible on some DSPs), the bitmask check is wrong\n2. The code assumes unsigned long is the optimal word size - on some architectures (ARM with unaligned access penalties), uint32_t might be better\n3. No BUILD_ASSERT that sizeof(unsigned long) is a power of 2\n\nIMPACT: On exotic platforms, the alignment check could be incorrect, causing unaligned word writes and potential performance issues or crashes on strict-alignment architectures.\n\nFIX:\n1. Add BUILD_ASSERT(IS_POWER_OF_TWO(sizeof(unsigned long)))\n2. Or: Use uint32_t explicitly for embedded targets\n3. Or: Document platform requirements",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-5tsv",
   "title": "task",
   "description": "rust/lichen-node/src/routing.rs:85 - Eviction uses raw timestamp comparison (*t) which fails after u32 wraparound (~49 days). Entry A at last_seen_ms=0xFFFFFF00 (old) vs Entry B at 0x00000100 (recent post-wrap): B gets evicted despite being newer. Fix: use now_ms.wrapping_sub(*t) like prune() does at line 111.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

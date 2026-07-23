@@ -2,7 +2,7 @@
   "id": "project-LICHEN-c7w4",
   "title": "task",
   "description": "lichen/subsys/lichen/link/link_ctx.c. Mutex leak.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

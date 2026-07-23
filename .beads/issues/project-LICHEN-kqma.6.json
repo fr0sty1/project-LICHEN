@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kqma.6",
   "title": "Reject oversize LR1110 RX packets instead of truncating",
   "description": "Trigger: LR1110 receives a payload longer than the caller-provided lora_recv() buffer. lichen/drivers/lora/lr1110/lr1110.c:363 uses MIN(rx_payload_length, size), reads only that many bytes, and returns success. Impact: upper layers receive a syntactically successful but truncated radio frame, which can be parsed as corrupted LICHEN data instead of being dropped. Match the loopback/sim driver behavior: if rx_payload_length \u003e size, return -EMSGSIZE and avoid delivering partial frames.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

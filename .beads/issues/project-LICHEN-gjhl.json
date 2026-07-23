@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gjhl",
   "title": "Fix t_echo gateway SLIP/SERIAL Kconfig conflict",
   "description": "While verifying project-LICHEN-0low, west build -p always -b t_echo/nrf52840 lichen/apps/gateway -d build_gateway_0low_techo_check aborted during Kconfig. CONFIG_SLIP=y selects UART_PIPE and UART_INTERRUPT_DRIVEN, but the t_echo board config leaves SERIAL=n, so Zephyr treats the warnings as fatal before compilation. Decide whether the BLE gateway variant should disable SLIP like generic nrf52840dk, or enable SERIAL/UART support for wired SLIP.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

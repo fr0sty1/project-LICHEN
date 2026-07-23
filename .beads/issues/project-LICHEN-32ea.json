@@ -2,7 +2,7 @@
   "id": "project-LICHEN-32ea",
   "title": "gatt.py (meshtastic): write_to_radio discards trailing bytes after message",
   "description": "File: python/src/lichen/interface/meshtastic/gatt.py\nLines: 175-181\n\nWhen a complete message is received, any trailing bytes in the buffer are discarded:\n```python\ndata = bytes(self._write_buffer[: self._write_expected_len])\nself._write_buffer.clear()  # BUG: discards trailing bytes\n```\n\nIf a BLE write contains the end of one message and the start of the next, the start of the next message is lost.\n\nScenario:\n1. App sends 100-byte message split across two BLE writes\n2. First write: header (4 bytes) + 50 bytes of payload\n3. Second write: remaining 50 bytes + header for next message + partial next payload\n4. After processing first message, the next message's header/payload is discarded\n\nImpact: Message loss when BLE MTU allows multiple messages in a single write, or when app batches multiple messages quickly. Silent data corruption.\n\nFix: After extracting the message, preserve remaining bytes:\n```python\nremaining = bytes(self._write_buffer[self._write_expected_len:])\nself._write_buffer.clear()\nself._write_buffer.extend(remaining)\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

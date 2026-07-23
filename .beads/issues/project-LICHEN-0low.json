@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0low",
   "title": "nRF52840 gateway build lacks lora0 devicetree alias",
   "description": "After fixing project-LICHEN-zq76, the requested build command gets past OSCORE compilation and stops later in firmware/bridge-zephyr/subsys/lichen/lora_l2.c. nrf52840dk/nrf52840 has no devicetree alias lora0, triggering BUILD_ASSERT(DT_NODE_EXISTS(DT_ALIAS(lora0))) and DEVICE_DT_GET(DT_ALIAS(lora0)) failures. Decide whether this board needs a LoRa overlay/alias, a different validation board, or conditional L2 enablement for boards without LoRa hardware.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

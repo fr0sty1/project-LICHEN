@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.38",
   "title": "Vec param where slice would suffice in routing APIs",
   "description": "Several functions take owned Vec where \u0026[T] would work:\n\n- lichen-rpl/src/routing.rs:120 `pub fn fresh(path: Vec\u003c[u8; 16]\u003e)`\n- lichen-rpl/src/routing.rs:147 `pub fn refresh(\u0026mut self, path: Vec\u003c[u8; 16]\u003e)`\n- lichen-rpl/src/routing.rs:179 `pub fn add_route(\u0026mut self, target: [u8; 16], path: Vec\u003c[u8; 16]\u003e)`\n\nThese force callers to allocate even when the path data is already available. Consider accepting `\u0026[[u8; 16]]` and cloning internally if storage is needed.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.146",
   "title": "router.py: queue.pop(0) is O(n), should use deque",
   "description": "src/lichen/routing/router.py:317 uses list.pop(0) for oldest packet which is O(n). Using a deque with popleft() is O(1).\n\nSeverity: Low (queue size bounded to 3 by max_pending_per_dest), but the pattern sets a bad example.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

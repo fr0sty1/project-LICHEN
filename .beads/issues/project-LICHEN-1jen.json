@@ -3,7 +3,7 @@
   "title": "SX1262.cs: send RX_EXIT on SetStandby",
   "description": "Send RX_EXIT to sim when firmware leaves RX mode via SetStandby (0x80) or SetTx (0x83). Do not send RX_EXIT after receiving RX_PACKET/RX_TIMEOUT since sim already transitioned node out of RX_WAIT. Track rxMode state and only send if currently in RX mode.",
   "acceptance_criteria": "SetStandby/SetTx while in RX mode sends RX_EXIT; sim node state transitions to IDLE",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "grinder",

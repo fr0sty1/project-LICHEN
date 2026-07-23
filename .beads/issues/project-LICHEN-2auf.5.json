@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.5",
   "title": "Complete simulation debug toggle API",
   "description": "The inherited debug test imports enable_debug, disable_debug, and is_debug_enabled and expects Simulation._debug_enabled, but simulation.py provides none. Implement the documented module-level toggle plus Simulation instance enable_debug/disable_debug methods and initialize the per-instance flag. Preserve existing logger.debug behavior and add no unrelated logging framework.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

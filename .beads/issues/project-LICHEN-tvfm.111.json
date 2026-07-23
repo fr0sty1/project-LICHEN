@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.111",
   "title": "[lichen_l2.c:959-960] lichen_link_init called without prior lichen_link_cleanup",
   "description": "Category not checked: Init/reinit symmetry\n\nBug found: In lichen_l2_iface_init() line 959:\n  lichen_link_init(\u0026link_ctx, eui64);\n\nThis is called without first calling lichen_link_cleanup(). For initial boot, link_ctx is zero-initialized (static storage), so this is fine.\n\nBut if lichen_l2_iface_init() were ever called twice (which the invariant check at lines 970-974 attempts to prevent), the second call would re-init without cleanup.\n\nThe check at lines 970-974 catches the case where lichen_iface is already set, but that's AFTER the lichen_link_init() call. So if something goes wrong between lines 959 and 970, we've already re-initialized link_ctx without cleanup.\n\nActually, looking more carefully: if lichen_iface != NULL at line 970, we set iface_init_failed and return. But we already called lichen_link_init() at line 959. The prior link_ctx state is lost without cleanup.\n\nImpact: P4 - In edge case of double iface_init, link_ctx is re-initialized without cleanup (but this path shouldn't happen in practice).",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-om67.2",
   "title": "Zephyr: Missing LOADng implementation entirely",
   "description": "Python has loadng/ (633 LoC: cache.py, discovery.py, error.py, messages.py). Rust has loadng.rs (636 LoC) with codec + discovery state machine. Zephyr has no LOADng implementation at all. Reference: python/src/lichen/loadng/, rust/lichen-core/src/loadng.rs",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

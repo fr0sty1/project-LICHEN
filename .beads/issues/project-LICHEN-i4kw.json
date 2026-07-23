@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i4kw",
   "title": "task",
   "description": "edhoc.rs:655-660 - process_message_1 takes the ephemeral secret for DH computation then puts it back (line 660). This allows the same G_Y to be reused if process_message_1 is called multiple times, violating RFC 9528's ephemeral key freshness requirement. After DH computation, the ephemeral secret should be consumed (not restored) to ensure each handshake uses a fresh ephemeral.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

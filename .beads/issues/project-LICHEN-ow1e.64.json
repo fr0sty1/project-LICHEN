@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.64",
   "title": "good: rpl/message.rs SAFETY comments on try_into().unwrap()",
   "description": "In message.rs:88-90, 152-155, 321-323, SAFETY comments explain why try_into().unwrap() is safe. This pattern is consistent throughout the file and documents why the unwrap won't panic. Worth preserving.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

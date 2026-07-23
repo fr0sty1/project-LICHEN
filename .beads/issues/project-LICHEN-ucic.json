@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ucic",
   "title": "Compliance: C replay.c replay protection",
   "description": "Policy: 02-physical-link.md §4.4. File: lichen/subsys/lichen/link/replay.c. Status: COMPLIANT. Uses 24-bit logical counter (epoch\u003c\u003c16|seqnum) at line 56-58. Half-space arithmetic (lines 94-101) handles 24-bit wrap. Old epochs rejected when counter falls below 64-slot window.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

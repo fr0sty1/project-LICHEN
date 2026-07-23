@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hkxo",
   "title": "Compliance: lichen/subsys/lichen/link/lichen_link_rx.c link signatures",
   "description": "Policy: 06-security.md §8.3-8.5. File: lichen/subsys/lichen/link/lichen_link_rx.c. Status: COMPLIANT (conditional). RX path (authenticate_inner_payload L223-345): When parsed.signature_present, verifies with schnorr48_verify_frame() at L273-278, returns -LICHEN_EAUTH on failure. Also verifies MIC (L311) and commits to replay table (L382-388). Note: Verification requires ctx-\u003epeer_pubkey to be set.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.10",
   "title": "Well-done: EUI-64 generation via SHA-256 of full hwid",
   "description": "lora_l2.c:87-138 hashes the full hardware ID to produce EUI-64 rather than using raw bytes. The comment explains why: MCU-specific layouts vary (STM32 has shared bytes 0-3, ESP32 is only 6 bytes, nRF52 is 8 bytes). Hashing distributes entropy uniformly regardless of source layout. The SECURITY comments are accurate about collision resistance and preimage resistance. This is a case where the abstraction provides real value.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

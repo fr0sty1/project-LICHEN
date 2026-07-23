@@ -2,7 +2,7 @@
   "id": "project-LICHEN-nb95",
   "title": "Statistics counters lack atomic operations on multi-word updates",
   "description": "File: lichen/subsys/lichen/app_interface/app_interface.c\n\nThe statistics structure contains multiple uint32_t counters. While individual increments are protected by the mutex (lines 222-229, etc.), the copy_stats function (lines 608-619) performs a structure copy under the mutex:\n\n  int lichen_app_interface_copy_stats(struct lichen_app_interface_stats *stats)\n  {\n      if (stats == NULL) {\n          return -EINVAL;\n      }\n      k_mutex_lock(\u0026s_mutex, K_FOREVER);\n      *stats = s_stats;\n      k_mutex_unlock(\u0026s_mutex);\n      return 0;\n  }\n\nThis is correct for consistency. However, the test_reset function (lines 622-630) does not reset the test hook variables atomically with the stats reset:\n\n  void lichen_app_interface_test_reset(void)\n  {\n      k_mutex_lock(\u0026s_mutex, K_FOREVER);\n      memset(s_sinks, 0, sizeof(s_sinks));\n      memset(\u0026s_stats, 0, sizeof(s_stats));\n      s_test_next_location_submit_ret = 0;\n      s_test_next_clear_network_ret = 0;\n      k_mutex_unlock(\u0026s_mutex);\n  }\n\nThis is actually fine since all operations are under the same mutex. No bug here - closing as false positive.\n\nActually, the code is correct. The mutex protects all operations properly.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

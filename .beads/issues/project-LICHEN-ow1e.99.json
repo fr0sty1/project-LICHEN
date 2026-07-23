@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.99",
   "title": "Gateway tests use .expect() where .unwrap() suffices",
   "description": "lichen-gateway/src/gateway.rs:117-148 tests use:\n```rust\nlet schc = gw.upstream_to_mesh(packet).expect(\"compress failed\");\nlet recovered = gw.mesh_to_upstream(\u0026schc).expect(\"decompress failed\");\n```\n\nIn test code, .unwrap() is idiomatic; .expect() with generic messages adds noise without improving diagnostics (test failures show the line number anyway). Either use .unwrap() or provide test-specific context.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

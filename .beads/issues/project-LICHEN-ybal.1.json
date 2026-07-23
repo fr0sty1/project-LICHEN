@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.1",
   "title": "lichen_lora_l2_init TOCTOU: double-init race loses idempotency",
   "description": "File: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:140-163\n\nThe init check uses atomic_get() before setting initialized, but another thread could pass the same check before the first completes setup:\n\nThread A: atomic_get() returns 0, proceeds\nThread B: atomic_get() returns 0, proceeds  \nThread A: generate_eui64(), sets initialized=1\nThread B: generate_eui64() overwrites eui64 with different random value\n\nTrigger: Two threads call init() concurrently (e.g., main.c and NET_DEVICE_INIT callback).\n\nBad behavior: EUI-64 silently changes mid-setup; link-local address derived before/after may differ.\n\nFix: Use atomic_cas or hold lora_mutex across the entire init sequence.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

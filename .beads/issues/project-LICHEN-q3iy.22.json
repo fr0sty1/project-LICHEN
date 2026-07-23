@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.22",
   "title": "Thread safety model is well-documented and consistent",
   "description": "The lora_l2.c threading model demonstrates careful design:\n\n**Clear ownership rules (lines 84-103):**\n- Atomic fields for fast-path checks without mutex\n- Mutex-protected fields with explicit documentation\n- Callback + user_data always updated as a pair\n\n**Lock ordering documented (lichen_l2.c:436-439):**\n- tx_mutex before rx_mutex, consistently\n- Comment references issue tracker for audit trail\n\n**Callback snapshot pattern (lora_l2.c:258-265):**\n```c\nk_mutex_lock(\u0026lora_mutex, K_FOREVER);\nlichen_lora_rx_cb_t cb = lora_state.rx_callback;\nvoid *cb_user_data = lora_state.rx_callback_user_data;\nk_mutex_unlock(\u0026lora_mutex);\n\nif (cb) {\n    cb(rx_buf, ret, rssi, snr, cb_user_data);\n}\n```\nSnapshots callback pointer pair under lock, then invokes without lock. Prevents deadlock if callback tries to modify registration.\n\n**Stop-then-join with cleanup ordering (lora_l2.c:399-444):**\n- Clears callback before signaling exit\n- Releases mutex before join to allow in-flight TX to complete\n- Documents that any in-flight callback will still run (and that is OK)\n\nThis is production-quality concurrency design worth preserving.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

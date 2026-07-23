@@ -2,7 +2,7 @@
   "id": "project-LICHEN-t7sl",
   "title": "Compliance: BLE GATT queue (rust/lichen-meshtastic/src/gatt.rs)",
   "description": "Policy: spec/appendix-bufferbloat.md sections 1,2,4,5. Current: bounded (8 msg), returns QueueFull. Missing: time-based expiry (§2), priority (§3). Fix: add deadline field to queued messages, drop expired on dequeue.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

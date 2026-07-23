@@ -3,7 +3,7 @@
   "title": "Wire LICHEN inbound events into Meshtastic adapter",
   "description": "Why this exists: project-LICHEN-t2hn.8 now has an adapter text-emission primitive, but the gateway does not yet consume real LICHEN-native/L2 message or status events and pass them to the Meshtastic BLE adapter. What needs to be done: define the no-hardware event source seam, connect incoming LICHEN message/status events to lichen_meshtastic_adapter_emit_* APIs, preserve BLE session/queue behavior, and add qemu/native_sim tests or a simulator harness proving the gateway path.",
   "notes": "No-hardware scope complete as of project-LICHEN-t2hn.8.2.1. Gateway now has production CoAP/local inbound source resources /inbound/text and /inbound/status under CONFIG_LORA_LICHEN_MESHTASTIC_BLE, which invoke gateway_inbound_emit_text/status and the Meshtastic gateway adapter emit wrappers. qemu_x86 meshtastic_gateway_adapter now proves text/status CoAP handler -\u003e inbound facade -\u003e adapter -\u003e fake BLE FromRadio, including invalid-payload Bad Request behavior. Production Meshtastic-enabled qemu gateway build compiles inbound_coap.c, inbound_events.c, ble_meshtastic.c, and meshtastic_adapter.c together. Evidence is recorded on project-LICHEN-t2hn.8.2.1; implementation commit 90e7c24d and closure commit 0e0d19bf pushed. Remaining hardware validation for RF-originated events and real app/phone behavior is split to project-LICHEN-t2hn.8.2.2; no-hardware URI dispatch follow-up is project-LICHEN-t2hn.8.2.1.1.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "Mark Atwood",

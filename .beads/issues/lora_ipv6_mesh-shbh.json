@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-shbh",
   "title": "Multi-peer pinning is unaffordable on nRF52840: constant-time all-peers Schnorr verify keeps radio un-armed",
   "description": "peer_try_all_pubkeys verifies EVERY demodulated frame against ALL pinned peers (constant-time, no early exit even after a match). On the 64 MHz nRF52840 each Schnorr-48 verify is slow, and the LoRa RX thread does not re-arm lora_recv() during processing - so every ambient frame makes the radio deaf for N_peers verifies. Measured on the bench 2026-07-17: T-Echo with 1 pinned peer in 3-node RF = 6/14 CoAP round trips; with 2 pinned peers = 0/24 (both directions healthy at L2, responses simply never demodulated). Gateway (ESP32-S3 @ 240 MHz) handles 2 peers fine. Related: 3 ACTIVE nodes at SF10 exceed the ALOHA airtime budget (~45% offered load with the deaf T1000-E retransmitting every cycle + its responses) - see conf comments in lichen/apps/*/boards/. Options: (a) allow early-exit iteration in dev mode (timing side-channel is a non-issue for INSECURE bench provisioning), (b) cheap pre-filter before verify (e.g. try the peer whose window/last-seen matches first - still verify-all on miss), (c) re-arm the radio before verification (queue frames, verify out of RX path - needs RAM), (d) CSMA/backoff + duty limits for airtime. The multi-peer dev provisioning feature itself works and stays; the confs pin single peers on nRF52840 until this is addressed.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Frost",

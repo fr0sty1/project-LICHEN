@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yw7i.27",
   "title": "Duplicate MTU constants may drift: LICHEN_LORA_MTU vs LICHEN_L2_MTU",
   "description": "Locations:\n- firmware/bridge-zephyr/subsys/lichen/lora_l2.h line 54: LICHEN_LORA_MTU = 200\n- firmware/bridge-zephyr/subsys/lichen/lichen_l2.h line 45: LICHEN_L2_MTU = 200\n\nThese constants are currently identical but represent different abstraction layers:\n- LICHEN_LORA_MTU: LoRa-level effective payload (after compression, before framing)\n- LICHEN_L2_MTU: IPv6-level MTU exposed to Zephyr net stack\n\nWhat breaks: If a contributor changes one without the other, the layers will have mismatched expectations. The L2 layer uses LICHEN_L2_MTU for buffer sizing, but LICHEN_LORA_MTU documents the actual LoRa constraint. A change to the LoRa framing overhead would require updating LICHEN_LORA_MTU, but LICHEN_L2_MTU (which is derived from it) might be forgotten.\n\nSuggested fix: Either:\n1. Make LICHEN_L2_MTU derive from LICHEN_LORA_MTU (e.g., `#define LICHEN_L2_MTU LICHEN_LORA_MTU`)\n2. Add a comment cross-referencing both constants\n3. Add a static_assert ensuring they remain equal if that's the intent",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

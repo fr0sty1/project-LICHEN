@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.77",
   "title": "[lichen_l2.c:1308] SECURITY: link_ctx initialized without Ed25519 keypair - TX unsigned",
   "description": "Security finding: lichen_link_init() is called but lichen_link_load_key()/lichen_link_generate_key() is never called anywhere in bridge-zephyr.\n\nAttack scenario: TX frames are sent without Schnorr-48 signatures because ctx-\u003ehas_key == false. This is documented (line 827-828: 'signature if has_key') but never addressed. Receivers expecting signed frames will reject these.\n\nImpact: Currently benign since RX also has no peer keys provisioned, but creates an insecure default configuration where:\n1. TX has no authentication (no signature)\n2. Anyone can forge frames claiming to be this node\n\nThis is noted in comments (line 280: 'peer_pubkey=NULL', line 1543: 'Once EDHOC handshake completes...') but EDHOC is not implemented.\n\nMitigation: Either:\n1. Add a provisioning API to load keypairs (preferred for security)\n2. Call lichen_link_generate_key() during init (temporary self-signed mode)\n3. Document this as a known limitation with BUILD_ASSERT or LOG_WRN at startup",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

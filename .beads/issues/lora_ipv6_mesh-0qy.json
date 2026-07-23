@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-0qy",
   "title": "Open the tracker-reconciliation PR",
   "description": "Branch chore/tracker-reconciliation is pushed and clean (diff = only RECONCILIATION.md, based on current main). PR could not be opened automatically: no gh CLI and no API token in the sandbox (the SSH deploy key only authenticates git push, not the GitHub API). To finish: click https://github.com/fr0sty1/project-LICHEN/compare/main...chore/tracker-reconciliation?expand=1 OR provide a GITHUB_TOKEN / install+auth gh and an agent can POST it. Issue-state changes are already live on main; the PR only adds the audit report.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "chore",
   "owner": "mark.frost@gmail.com",

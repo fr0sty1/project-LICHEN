@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yk9m",
   "title": "task",
   "description": "python/src/lichen/interface/kiss/framing.py:237-239 - _try_extract_frame calls itself recursively when a KissError is caught. Malformed input with many consecutive invalid frame-like byte sequences could cause stack overflow. Failure scenario: attacker sends buffer with 1000+ sequences that each decode to invalid KISS frames, causing RecursionError.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-6wl0",
   "title": "task",
   "description": "rust/lichen-ipv6/src/lib.rs:719 - verify_icmpv6_checksum() passes local_addr as the destination, but should use ip_header.dst. When a packet is sent to a multicast address (e.g., Neighbor Solicitation to ff02::1:ffXX:XXXX), the checksum was computed using that multicast address. Verifying with local_addr (the unicast address) will cause valid checksums to be rejected. Fix: change line 719 from 'verify_icmpv6_checksum(\u0026ip_header.src, local_addr, icmpv6_payload)' to 'verify_icmpv6_checksum(\u0026ip_header.src, \u0026ip_header.dst, icmpv6_payload)'",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

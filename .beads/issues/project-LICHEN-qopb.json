@@ -3,7 +3,7 @@
   "title": "task",
   "description": "Rust lichen-schc has codec.rs, fragment.rs, rules.rs but is missing headers and context modules that Python has (headers.py ~526 lines, context.py ~95 lines). These handle IPv6/UDP header compression rules and compression context state.",
   "notes": "Implemented headers.rs and context.rs - equivalent Rust implementations of Python SCHC header compression modules",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

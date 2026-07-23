@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.57",
   "title": "[lora_l2.c:91-109] lora_transition unconditionally forces ABORTED on invalid transition",
   "description": "Gap: Invalid state transitions force ABORTED state even when the caller might handle the error gracefully.\n\nWhat: Lines 91-109 define lora_transition() which forces ABORTED state on any invalid transition. This is a fail-safe design, but it means programming errors (calling start() twice, etc.) permanently require deinit/init cycle even when the operation could simply fail with an error.\n\nWhy it matters: While fail-safe is appropriate for hardware failures, programming errors that cause invalid transitions could be handled more gracefully. For example, calling start() when already running should just return -EALREADY without corrupting state. The current design conflates 'unexpected state' with 'hardware fault'.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

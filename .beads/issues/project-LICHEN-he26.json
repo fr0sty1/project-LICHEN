@@ -2,7 +2,7 @@
   "id": "project-LICHEN-he26",
   "title": "Rust lichen-core duty_cycle.rs: usage_permille truncates to u16",
   "description": "In rust/lichen-core/src/duty_cycle.rs, usage_permille() computes '((used as u64) * 1000 / WINDOW_MS) as u16'. If used exceeds ~65535 * 3600000 / 1000 = ~235 million ms (65 hours), this would overflow u16. In practice impossible since WINDOW_MS is 1 hour and used \u003c= 3600000ms, but the function could return values \u003e 1000 for over-limit usage, and u16 can hold up to 65535 permille (6553.5%). This is actually fine - just documenting for clarity.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

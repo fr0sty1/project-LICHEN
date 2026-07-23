@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kqma.7",
   "title": "Bound-check RPL SRH address count before encoding",
   "description": "Trigger: caller passes srh-\u003enum_addresses \u003e LICHEN_RPL_MAX_HOPS to lichen_rpl_srh_write() with a large enough output buffer. lichen/subsys/lichen/rpl/routing.c:119 iterates num_addresses and reads srh-\u003eaddresses[i] without bounding it to the fixed array capacity. Impact: the encoder reads past srh-\u003eaddresses and can leak adjacent stack/struct memory into an emitted source-routing header. Reject counts above LICHEN_RPL_MAX_HOPS before computing needed length or encoding.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

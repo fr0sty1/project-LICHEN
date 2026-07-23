@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9nrr.27",
   "title": "edhoc: fix hkdf_expand missing return warning",
   "description": "EDHOC compile checks for project-LICHEN-9nrr.24 exposed an existing warning in lichen/subsys/lichen/edhoc/edhoc.c: hkdf_expand() can reach the end of a non-void function. Reproduce with: west build -b qemu_x86 lichen/tests/oscore -d build/lichen_edhoc_config_qemu --pristine=always -- -DCONFIG_LICHEN_EDHOC=y. Fix the control flow and add/adjust focused EDHOC coverage if practical.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

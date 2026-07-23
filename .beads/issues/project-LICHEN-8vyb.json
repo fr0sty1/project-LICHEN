@@ -2,7 +2,7 @@
   "id": "project-LICHEN-8vyb",
   "title": "slip.rs: unbounded RX buffer allows DoS via memory exhaustion",
   "description": "File: rust/lichen-gateway/src/slip.rs\nLine: 301\n\nThe rx_buffer in SlipFramer grows without bound when receiving data. If a malicious or faulty sender transmits a continuous stream without any FEND delimiter, the buffer will grow until memory is exhausted.\n\nCurrent code at line 301:\n```rust\nSlipDecodeResult::Byte(b) =\u003e {\n    self.rx_buffer.push(b);\n    None\n}\n```\n\nThe initial capacity is 2048 bytes (line 150), but there is no maximum limit enforced.\n\nImpact: Denial of service via memory exhaustion. An attacker on the mesh network or a faulty serial device could cause the gateway daemon to crash.\n\nFix: Add a maximum buffer size constant and truncate/reset the frame when exceeded:\n```rust\nconst RX_BUFFER_MAX: usize = 4096; // or match MTU\n\nSlipDecodeResult::Byte(b) =\u003e {\n    if self.rx_buffer.len() \u003e= RX_BUFFER_MAX {\n        // Frame too large - discard and reset\n        self.rx_buffer.clear();\n        self.rx_in_escape = false;\n        None\n    } else {\n        self.rx_buffer.push(b);\n        None\n    }\n}\n```\n\nTags: security, memory, dos, gateway",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

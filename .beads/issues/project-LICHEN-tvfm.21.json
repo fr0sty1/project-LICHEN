@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.21",
   "title": "[lora_l2.c:479] lichen_lora_l2_deinit state inconsistency window",
   "description": "Function: lichen_lora_l2_deinit. Contract violation: Between lines 540 (atomic_set initialized=0) and 612 (atomic_set deiniting=0), the module is in an inconsistent state: initialized is false but cleanup is ongoing. A racing init() call would pass the deiniting check (line 490) but fail at line 298 (already initialized check). The atomic_cas at line 490 prevents concurrent deinit, but the state machine has a brief window where initialized=0 but deiniting=1 could confuse callers checking lichen_lora_l2_is_running() or get_eui64(). Priority 3 - edge case with correct behavior but subtle semantics.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "issue",
   "assignee": "Mark Atwood",

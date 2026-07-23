@@ -4,7 +4,7 @@
   "description": "EDHOC now zeroizes stored and raw transient secrets, but upstream HKDF/HMAC and AES-CCM expanded internal state does not expose complete wiping in the current dependency versions/features. Evaluate supported zeroize features or scoped wrapper/dependency upgrades so PRK and key-schedule state is erased on success and all errors without unsafe code.",
   "acceptance_criteria": "Dependency source/feature audit identifies every secret-bearing schedule; supported zeroize features are enabled or dependency upgrades/wrappers provide ZeroizeOnDrop; no unsafe post-drop tests; host and Cortex-M checks pass; any unavoidable compiler-copy limitation is documented precisely; three security reviews pass.",
   "notes": "Enabled aes/zeroize and sha2/zeroize, which propagate to digest/block-buffer and wipe retained AES-CCM schedules plus SHA/HMAC/HKDF owned state on Drop. Pending Message 2/3 plaintext now wipes on Drop. Compile-time Aes128/Sha256 ZeroizeOnDrop assertions, host/no_std tests, strict Clippy, both Cortex-M targets, feature-tree audit, and three hash-bound reviews pass. HMAC 0.13/HKDF 0.13 private call-local arrays and compiler copies are the documented unavoidable boundary; tracked in project-LICHEN-lx0j because local crypto replacement is forbidden.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

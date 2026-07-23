@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i81y.3",
   "title": "SCHC decompression stages packet bodies in 512-byte stack buffers",
   "description": "Efficiency finding: lichen/subsys/lichen/schc/schc.c uses fixed 512-byte stack buffers while reconstructing packets: coap_buf at lines 747-799, icmp_buf at lines 855-899, icmp_buf at lines 963-1002, and icmp_buf at lines 1064-1099. Each path copies the reconstructed transport body into the scratch buffer, computes the checksum, then copies the same bytes into out. On constrained Zephyr targets, especially STM32WL-class stacks, this burns 512 bytes of stack per decompress call and adds an avoidable body copy in the RX hot path. Rewrite by bounds-checking total first, writing the UDP/ICMP body directly into out, computing the checksum over that final body with the checksum field zeroed, then filling the checksum bytes in place. That removes the scratch buffer and one memcpy without making the control flow more complex.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

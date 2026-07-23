@@ -2,7 +2,7 @@
   "id": "project-LICHEN-t9bi",
   "title": "task",
   "description": "router.py:596 - The _haversine function uses math.asin(math.sqrt(a)) where a is calculated as the sum of squared sine terms. Due to floating-point precision errors, a can exceed 1.0 by a tiny amount for near-antipodal points. When sqrt(a) \u003e 1.0, math.asin() raises ValueError('expected a number in range from -1 up to 1'). This crashes GPSR forwarding.\n\nFailure scenario: Two nodes at near-antipodal positions (e.g., (0,0) and (0,179.9999...)) where floating-point errors push a slightly above 1.0.\n\nFix: Clamp the argument to asin: c = 2 * math.asin(min(1.0, math.sqrt(a)))",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

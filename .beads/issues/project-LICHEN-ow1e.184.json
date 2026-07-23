@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.184",
   "title": "Codereview pass 1: Python OSCORE seqnum - implementation correct",
   "description": "Review of sender_sequence_number overflow fix in python/src/lichen/crypto/oscore.py:\n\n**Findings:**\n- Correctly imports MAX_SEQNO (2^40-1) and ContextUnavailable from aiocoap.oscore\n- Check placement (before increment) matches RFC 8613 and aiocoap reference\n- Exception type matches aiocoap's convention for exhausted contexts\n- SECURITY comment explains the RFC requirement appropriately\n- Now calls post_seqnoincrease() after increment, matching aiocoap behavior\n\n**Status:** No defects found in pass 1.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

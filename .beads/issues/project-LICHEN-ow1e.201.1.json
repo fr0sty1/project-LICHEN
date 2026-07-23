@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.201.1",
   "title": "ruff format: 2 files need reformatting",
   "description": "codec.py and headers.py would be reformatted by ruff format. Run 'ruff format' to fix.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

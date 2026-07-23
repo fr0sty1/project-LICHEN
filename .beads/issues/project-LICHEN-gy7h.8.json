@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.8",
   "title": "Well-done: k_panic on lora_recv buffer overflow",
   "description": "lora_l2.c:197-201 panics when lora_recv returns more than the buffer size. The comment explains why continuing would be worse: stack corruption has ALREADY occurred, the return address may be corrupted, and continuing risks exploiting the corrupted state. This is the correct defensive posture for a driver bug that already caused memory corruption. Don't soften this to a LOG_ERR + continue.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

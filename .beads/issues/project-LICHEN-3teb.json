@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3teb",
   "title": "task",
   "description": "commands.rs:272-273 - PositionAction::Broadcast prints '(not yet implemented)' but returns Ok(()), making it indistinguishable from success to callers. Should either return an error or be removed from the CLI.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

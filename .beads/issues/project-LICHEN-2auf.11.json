@@ -3,7 +3,7 @@
   "title": "Repair C link framing edge cases",
   "description": "Fix C link defects found after protocol alignment: signed+encrypted TX omits the 48-byte signature, reserved MIC-length encodings are accepted, elided address mode is rejected despite the spec, and public Schnorr API changes need compatibility/migration handling. Add focused C tests and document Linux/EC2 verification.",
   "notes": "Implemented and locally checked. Signed+encrypted TX now emits encrypted payload plus CCM tag followed by 48-byte Schnorr MIC, with final LENGTH/LLSec covered by the signature; RX reverses this layout. C frame parser/writer reject reserved MIC-length codes and accept elided zero-byte addresses. Migrated Schnorr frame API callers without compatibility wrappers because no old repository callers remain. Focused link_crypto tests cover signed+encrypted layout, elided addressing, and reserved MIC lengths. Local tx_queue C build/test: 17/17 passed. Zephyr link_crypto native_sim build/run was not available in the macOS worktree and is documented as required EC2 verification in docs/zephyr-ec2-clean-worktree.md.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

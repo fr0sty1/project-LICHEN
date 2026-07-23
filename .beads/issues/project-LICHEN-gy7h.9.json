@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.9",
   "title": "LICHEN_LORA_FRAME_OVERHEAD constant is manually calculated and may drift",
   "description": "Location: lora_l2.h:56\n\n**What goes wrong:** The comment says overhead is \"10 + 48 - margin rounded\" = 55 bytes, but doesn't reference the actual link layer constants. If schnorr48.h or frame.c change signature or frame format sizes, this constant silently drifts, causing silent truncation or oversized frames.\n\n**Impact:** New contributors will update one constant but not the other. The MTU mismatch BUILD_ASSERT in lichen_l2.c catches L2_MTU vs LORA_MTU drift, but not the FRAME_OVERHEAD derivation going stale.\n\n**Fix:** Either derive LICHEN_LORA_FRAME_OVERHEAD from the actual constants (lichen_link_frame_overhead() or equivalent compile-time macro), or add a BUILD_ASSERT that validates the overhead against actual frame format sizes.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

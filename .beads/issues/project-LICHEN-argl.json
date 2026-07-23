@@ -2,7 +2,7 @@
   "id": "project-LICHEN-argl",
   "title": "Add CoAP client API validation tests",
   "description": "project-LICHEN-i81y.4 fixed NULL payload/nonzero length validation in coap_client.c, but there is no existing CoAP ztest suite to extend within that scoped fix. Add focused tests for lichen_coap_request() and lichen_coap_post_cbor() invalid parameter handling, including payload == NULL with payload_len \u003e 0.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

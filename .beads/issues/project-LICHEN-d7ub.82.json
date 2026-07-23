@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.82",
   "title": "lora_l2.c:656 lora_modem_config .tx field semantics underdocumented",
   "description": "Completeness check: Round 1-2 missed potential radio configuration issue.\n\nWHAT: The lora_modem_config structure sets .tx = true:\n```c\nstruct lora_modem_config config = {\n    ...\n    .tx = true,  /* Initial state only - see note above */\n};\n```\n\nThe comment explains this is 'initial state only' and the driver handles mode switching.\n\nWHY CONCERN: The comment at lines 645-654 makes assumptions about Zephyr's LoRa driver behavior:\n1. 'lora_send() configures TX mode before transmission'\n2. 'lora_recv() configures RX mode before listening'\n3. 'Some drivers use this hint to initialize PA/LNA configuration'\n\nThese assumptions are based on typical implementations, but:\n1. No verification that ALL Zephyr LoRa drivers follow this pattern\n2. Third-party LoRa drivers may behave differently\n3. If a driver DOESN'T auto-switch, first lora_recv() could fail\n\nIMPACT: Potential silent failure on non-standard LoRa drivers. The RX thread would call lora_recv() on a radio stuck in TX mode, causing timeout or unexpected behavior.\n\nFIX:\n1. Add a runtime check: after config, explicitly put radio in RX mode\n2. Or: Document tested driver compatibility\n3. Or: Add defensive lora_recv() timeout handling that reconfigures radio",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

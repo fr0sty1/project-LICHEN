@@ -2,7 +2,7 @@
   "id": "project-LICHEN-zkbg",
   "title": "task",
   "description": "python/src/lichen/crypto/edhoc.py - Multiple CBOR sequence decoding sites lack bounds checks:\n- Lines 297-299 (process_message_2): Assumes items has \u003e= 2 elements\n- Lines 506-511 (process_message_1): Assumes items has \u003e= 4 elements  \n- Lines 593-595 (process_message_3): Assumes pt3_items has \u003e= 2 elements\n- Line 301: No length check on g_y_ciphertext_2 before slicing\n\nFailure scenario: Attacker sends malformed EDHOC message with truncated CBOR sequence, causes IndexError crash. While the protocol fails closed (no security bypass), error messages are unhelpful and could enable DoS.\n\nFix: Add explicit length checks before array indexing, raise ValueError with descriptive message.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

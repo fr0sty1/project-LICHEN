@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.24",
   "title": "Add Rust elided destination builder support",
   "description": "Rust lichen-link public TX builder maps empty destinations only to AddrMode::None, while the protocol and Python/C APIs support ELIDED. Add an explicit address-mode path or clearly reject unsupported elided TX with a documented API contract and tests.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.99",
   "title": "[lichen_l2.c:1205-1207] net_pkt_rx_alloc failure leaks no resources but repeated failures not tracked",
   "description": "Category not checked: Repeated resource exhaustion patterns\n\nBug found: When net_pkt_rx_alloc_with_buffer() fails (line 1208), we log an error and return. This is correct for a single failure, but:\n\n1. No backoff on repeated allocation failures\n2. No counter/metric to track allocation failure rate\n3. No hysteresis to detect sustained memory pressure\n\nIf the system is under memory pressure, every received packet will:\n- Acquire rx_mutex\n- Attempt allocation (block for CONFIG_LICHEN_L2_RX_ALLOC_TIMEOUT_MS=50ms)\n- Fail and release mutex\n- Repeat for next packet\n\nAt LoRa data rates (~980 bps at SF10), this is unlikely to cause CPU starvation, but the 50ms timeout per packet * packet rate could cause cascading latency issues.\n\nImpact: P4 - Under memory pressure, RX path blocks 50ms per packet with no adaptive backoff.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

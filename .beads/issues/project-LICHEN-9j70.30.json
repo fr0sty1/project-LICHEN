@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.30",
   "title": "RX_TIMEOUT_MS of 5000ms may starve other work",
   "description": "lora_l2.c:42: #define RX_TIMEOUT_MS 5000\n\nThe RX thread blocks in lora_recv for up to 5 seconds per iteration. During this time, the running flag is not checked (it's only checked at loop top).\n\nWhat goes wrong: lichen_lora_l2_stop() sets running=0 and joins the thread. If the thread is blocked in lora_recv, stop waits up to 5.1 seconds (100ms + 5000ms join timeouts).\n\nThis is documented and handled (abort after timeout), but 5 seconds is long for a stop operation. A user calling disable/enable in quick succession may see unexpected delays.\n\nFix: Consider shorter RX timeout (500-1000ms) with the understanding that more loop iterations means more running-flag checks. Or expose via Kconfig. The current 5s is reasonable for battery savings but poor for responsiveness.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

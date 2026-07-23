@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.1",
   "title": "Audit inherited worktree and Beads",
   "description": "Compare the interrupted workflow journal, current Git diff, generated artifacts, and Beads statuses. Produce a precise inventory of completed fixes, pending fixes, conflicts, and files requiring validation. Do not modify source files.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

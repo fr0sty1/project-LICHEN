@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.31",
   "title": "HAVE_LICHEN_LINK vs CONFIG_LICHEN_LINK: two names for the same concept",
   "description": "lichen_l2.c uses two different names for the same condition:\n\nLine 50-57:\n```c\n#if defined(CONFIG_LICHEN_LINK)\n#include \u003clichen/link.h\u003e\n...\n#define HAVE_LICHEN_LINK 1\n#else\n#define HAVE_LICHEN_LINK 0\n#endif\n```\n\nThen all subsequent guards use HAVE_LICHEN_LINK (lines 71, 183, 302, 372, 428, 591, 615, 632, 668, 734).\n\nThe indirection exists because CONFIG_LICHEN_LINK comes from Kconfig and is either defined or not, while HAVE_LICHEN_LINK is always defined (to 0 or 1), enabling '#if HAVE_LICHEN_LINK' syntax that reads more naturally.\n\nWhat goes wrong: Two names for one concept increases cognitive load. A reader seeing HAVE_LICHEN_LINK must trace back to understand its source.\n\nRewrite: Use 'IS_ENABLED(CONFIG_LICHEN_LINK)' from \u003czephyr/sys/util.h\u003e which provides the same 0/1 semantics as HAVE_LICHEN_LINK but uses the canonical Kconfig name. The code would become:\n```c\n#if IS_ENABLED(CONFIG_LICHEN_LINK)\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

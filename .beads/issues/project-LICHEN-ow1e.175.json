@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.175",
   "title": "good: senml/cbor.rs handles all major types for forward compatibility",
   "description": "cbor.rs:257-328 skip_one handles all CBOR major types enabling forward-compatibility with unknown keys. enc_head (42-63) handles compact encoding correctly.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

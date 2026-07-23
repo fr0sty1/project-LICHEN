@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.73",
   "title": "[main.c:192-213] fatal error loop has no watchdog interaction",
   "description": "Completeness: System integration category.\n\nIn main.c (lines 192-213), when standalone LoRa init fails, the code enters an infinite loop blinking an LED or sleeping forever.\n\nIf CONFIG_WATCHDOG is enabled elsewhere in the system, this infinite loop will trigger a watchdog reset because:\n1. The loop never calls any watchdog feed/kick function\n2. k_sleep() does not automatically feed the watchdog\n\nThis may be intentional (watchdog reset as recovery mechanism), but it's undocumented. If unintentional, the system will repeatedly reset attempting the same failing init.\n\nOptions:\n1. Document that watchdog is expected to reset the device\n2. Explicitly disable watchdog before entering error loop\n3. Feed watchdog in the loop if the intent is to stay in error state",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

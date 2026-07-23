@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.1",
   "title": "MTU constants not enforced at compile time",
   "description": "lichen_l2.h:49 defines LICHEN_L2_MTU = 200 with comment 'Must match LICHEN_LORA_MTU in lora_l2.h'. lora_l2.h:57 computes LICHEN_LORA_MTU = 255 - 55 = 200. No compile-time assertion links them.\n\nWhat goes wrong: If either constant changes independently (e.g., frame overhead increases), one layer rejects packets the other accepts. Silent packet loss or -EMSGSIZE errors with no obvious root cause.\n\nFix: Add BUILD_ASSERT(LICHEN_L2_MTU == LICHEN_LORA_MTU) in lichen_l2.c after including both headers.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

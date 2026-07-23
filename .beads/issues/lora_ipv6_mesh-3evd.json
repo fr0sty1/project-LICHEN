@@ -3,7 +3,7 @@
   "title": "Zephyr gateway: BLE UART interface",
   "description": "Add a BLE GATT UART service to the gateway firmware as a phone-friendly alternative to wired serial SLIP. Implement the Nordic UART Service (NUS) profile: two characteristics, TX and RX, each 20-byte MTU extendable via BT_GATT_ATT_MTU. Frame IPv6 packets over BLE UART using the same SLIP encoding as the wired interface so the client stack is identical regardless of transport. The nucleo_wl55jc board does not have a BLE radio — gate this behind CONFIG_LORA_LICHEN_BLE and plan to enable it on an nRF52840 dongle.",
   "acceptance_criteria": "BLE UART characteristic is discoverable; a connected client can send SLIP-framed packets to the mesh and receive responses; compiles on native_sim without BLE hardware",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "feature",
   "owner": "mark.frost@gmail.com",

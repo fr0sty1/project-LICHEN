@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-b8g",
   "title": "Phase 10: Tooling \u0026 Polish",
   "description": "lichen-craft CLI, Wireshark dissector, network simulator, web dashboard. Exit criteria: all tools functional, documentation complete, example applications working.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",

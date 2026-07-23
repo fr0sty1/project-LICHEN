@@ -2,7 +2,7 @@
   "id": "project-LICHEN-28hj",
   "title": "routing.c: SRH parser ignores CmprI/CmprE compression fields",
   "description": "File: lichen/subsys/lichen/rpl/routing.c:115-154\n\nlichen_rpl_srh_parse() ignores the CmprI (data[2]) and CmprE (data[3]) compression fields from RFC 6554 Section 3. The parser assumes all addresses are uncompressed (16 bytes each) based on the check at line 130:\n\n```c\nsize_t addr_bytes = len - 6;\nif (addr_bytes % 16 != 0) {\n    return LICHEN_RPL_ERR_TOO_SHORT;\n}\n```\n\nIf a received SRH uses address compression (CmprI or CmprE \u003e 0), the parser will:\n1. Miscompute the number of addresses\n2. Parse wrong byte boundaries for each address\n3. Return incorrect routing information\n\nImpact:\n- Packets with compressed SRHs would be misrouted\n- No memory safety issue (just incorrect address values)\n- Low risk in LICHEN's closed ecosystem where root generates SRHs with CmprI=CmprE=0\n\nFix: Validate compression fields are zero, reject if not:\n```c\nif (data[2] != 0 || data[3] != 0) {\n    return LICHEN_RPL_ERR_BAD_RT;  /* Compression not supported */\n}\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

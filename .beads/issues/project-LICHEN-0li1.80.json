@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.80",
   "title": "[cross-file] crash_info_store called without mutex from aborted state transition",
   "description": "Interaction: lora_l2.c:rx_thread \u003c-\u003e crash_info.c:crash_info_store\n\nBug: In lora_l2.c rx_thread() at lines 444-448:\n  LOG_ERR(...);\n  crash_info_store(CRASH_DRIVER_OVERFLOW, __LINE__, (uint32_t)ret);\n  atomic_set(\u0026current_state, LORA_ABORTED);\n  break;\n\ncrash_info_store() is called from the RX thread context. Round 1 filed project-LICHEN-0li1.22 noting crash_info_store has no mutex protection.\n\nThe cross-file issue: crash_info_store() at crash_info.c:18 writes to static global crash_info. If another thread (main, or a second abort path) calls crash_info_store concurrently, data race occurs.\n\nBut more specifically: the crash_info_check_and_clear() at main.c:138 is called at boot before any threads are running, so that's safe. crash_info_store() is only called from rx_thread overflow detection.\n\nThe race would require two overflow events in quick succession, which is unlikely but possible if the driver is broken.\n\nThis is essentially the same as 0li1.22. Not filing duplicate.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

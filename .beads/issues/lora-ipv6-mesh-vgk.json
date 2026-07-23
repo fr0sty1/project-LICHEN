@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-vgk",
   "title": "Implement Zephyr native_sim radio driver for simulator",
   "description": "Create a Zephyr radio driver for native_sim target that connects to our LoRa simulator over TCP.\n\nThis allows running the full Zephyr LICHEN stack (SCHC, RPL, CoAP) as a Linux process, with radio operations handled by our simulator.\n\nImplementation:\n1. Create drivers/lora/lora_sim.c - Zephyr LoRa driver\n2. Implement Zephyr LoRa API (lora_config, lora_send, lora_recv)\n3. TCP client connecting to simulator port 4444\n4. Wire protocol: same binary protocol as Python SimRadio client\n5. Kconfig options: CONFIG_LORA_SIM, CONFIG_LORA_SIM_HOST, CONFIG_LORA_SIM_PORT\n\nDriver behavior:\n- On init: TCP connect, send REGISTER with node_id from devicetree/Kconfig\n- lora_send(): encode TX message, block until TX_DONE/TX_FAIL\n- lora_recv(): encode RX message with timeout, block until RX_OK/RX_TIMEOUT\n- On deinit: close TCP connection\n\nBenefits:\n- Native speed (no QEMU)\n- Full debugging (gdb, valgrind, asan, coverage)\n- CI-friendly (Linux binary)\n- Same simulator as Python/Rust implementations\n\nDepends on simulator being operational and wire protocol finalized.\n\nReference: Zephyr LoRa API - https://docs.zephyrproject.org/latest/hardware/peripherals/lora.html",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Frost",

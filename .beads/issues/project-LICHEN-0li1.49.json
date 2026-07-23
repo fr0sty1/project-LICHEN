@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.49",
   "title": "[ipv6_addr.c:75] Hash buffer not explicitly sized to TC_SHA256_DIGEST_SIZE",
   "description": "Gap: lichen_pubkey_to_iid declares its hash buffer size but relies on TC_SHA256_DIGEST_SIZE being 32.\n\nWhat: Line 75 declares 'uint8_t hash[TC_SHA256_DIGEST_SIZE];' but there is no compile-time assertion that TC_SHA256_DIGEST_SIZE == 32. While lichen_util.c has this BUILD_ASSERT, ipv6_addr.c compiles independently (especially in host tests) and could silently break if TC_SHA256_DIGEST_SIZE changed.\n\nWhy it matters: Host-side unit tests may use different TinyCrypt headers. If the constant drifted, memcpy(iid, hash, 8) could read from a buffer of unexpected size. The build would succeed but produce incorrect IIDs. Add BUILD_ASSERT(TC_SHA256_DIGEST_SIZE == 32) in ipv6_addr.c.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

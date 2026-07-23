@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ar5y",
   "title": "task",
   "description": "python/src/lichen/announce/scheduler.py:243. ValueError on low jitter.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

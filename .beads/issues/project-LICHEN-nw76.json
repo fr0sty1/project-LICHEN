@@ -2,7 +2,7 @@
   "id": "project-LICHEN-nw76",
   "title": "task",
   "description": "rust/lichen-kiss/src/framing.rs:514-518. Truncates without error.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

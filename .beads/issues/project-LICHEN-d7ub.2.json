@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.2",
   "title": "lichen_l2.c:591 LRU evicted peer can still be logged after secure_zero",
   "description": "In lichen_peer_add() at lines 715-717, the LOG_INF for LRU eviction logs peer_table[slot].eui64[6] and [7]. However, at this point secure_zero has NOT been called yet on this slot (it's only clearing the replay window via lichen_replay_remove). The logging IS correct.\n\nActually, reviewing more carefully - the secure_zero doesn't happen in this path. The eviction path reuses the slot immediately by overwriting with new peer data (lines 720-723). This is fine.\n\nWITHDRAWN - no bug here.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "note",
   "assignee": "Mark Atwood",

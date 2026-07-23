@@ -3,7 +3,7 @@
   "title": "Fix RPL rank and counter semantics",
   "description": "Resolve review findings in the recovered RPL hardening: compare DAGRank rather than raw Rank for parent admissibility; treat MaxRankIncrease=0 as disabled; reject ranks below ROOT_RANK; support RFC circular-counter wrap 127-\u003e0 for DIO/DAO comparison and generation; reject local RPLInstanceID encodings with the embedded D bit set.",
   "acceptance_criteria": "RFC-derived literal boundary tests cover DAGRank equality, MaxRankIncrease zero, sub-root rank rejection, 127-\u003e0 comparison and DAO generation, and invalid 0xC0..0xFF local instance values in parse/write paths; RPL tests and Clippy pass; three reviews pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

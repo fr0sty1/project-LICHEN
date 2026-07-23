@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0b16",
   "title": "SLIP decode() and StreamDecoder have inconsistent error handling semantics",
   "description": "File: python/src/lichen/slip/codec.py\nLines: 78-79 vs 107\n\nThe two decoding interfaces handle invalid escape sequences differently:\n\n1. decode() (line 78-79): Raises ValueError\n```python\nelse:\n    raise ValueError(f\"SLIP: invalid escape byte 0x{nxt:02x}\")\n```\n\n2. StreamDecoder.feed() (line 107): Silently drops the byte\n```python\n# else: invalid escape — silently drop (best-effort on lossy links)\n```\n\nThis creates confusion for users:\n- Same input produces different behavior depending on which API is used\n- No way for StreamDecoder users to know corruption occurred\n- The 'best-effort' rationale is not documented in the API\n\nEither:\n1. Both should follow RFC 1055 (pass byte through as-is)\n2. StreamDecoder should optionally report errors via callback\n3. Document the difference clearly in docstrings\n\nAdditionally, issue project-LICHEN-16vy notes that StreamDecoder's behavior violates RFC 1055.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

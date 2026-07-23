@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.15",
   "title": "Good: Defensive state machine with iface_init_failed flag",
   "description": "lichen_l2.c uses an atomic flag to prevent operating on half-initialized state:\n\n1. lichen_l2.c:205-215 - Declaration with SECURITY comment explaining purpose\n2. lichen_l2.c:271-274 - lichen_l2_send() rejects TX if init failed\n3. lichen_l2.c:364-367 - lichen_l2_enable() rejects enable if init failed  \n4. lichen_l2.c:534 - lora_rx_callback() checks both lichen_iface==NULL and iface_init_failed\n5. lichen_l2.c:568-569, 576-577, 636 - Set flag at each failure point in lichen_l2_iface_init()\n\nWhat goes right: The system fails safely rather than attempting partial operation. Multiple independent checks at TX, RX, and enable paths mean that even if one check is bypassed, others will catch it. The atomic_t ensures no torn reads.\n\nWorth defending: This is not over-engineering. Half-initialized network interfaces cause silent packet loss that is extremely difficult to debug - the system appears to work but traffic vanishes.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.13",
   "title": "Good: Documented lock ordering prevents deadlock",
   "description": "lichen_l2.c explicitly documents and follows consistent mutex acquisition order:\n\n1. lichen_l2.c:383-384, 440-441 - Comment states 'Lock order: tx_mutex first to match disable path and avoid deadlock' and both enable/disable paths follow this.\n\n2. lichen_l2.c:411-422 - Detailed comment explains why cleanup is safe after lichen_lora_l2_stop(): callback cleared before thread signal, thread join waits for in-flight, mutex acquisition after join catches any remaining.\n\n3. lichen_l2.c:694-700 - Copy of link_key into local buffer rather than holding pointer, with comment explaining this eliminates lifetime dependency if cleanup timing changes.\n\nWhat goes right: The deadlock-prevention strategy is documented in code comments, not just in developer heads. Anyone modifying the locking will see the constraint. The defensive key copy goes beyond what's currently necessary to prevent future refactoring from creating use-after-free.\n\nWorth defending: These comments should not be removed as 'obvious'. Lock ordering bugs are notoriously hard to reproduce and debug.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

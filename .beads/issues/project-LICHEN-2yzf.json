@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2yzf",
   "title": "RplOption.to_bytes() doesn't validate type range",
   "description": "File: python/src/lichen/rpl/messages.py:73-80\n\nThe RplOption.to_bytes() method doesn't validate that the option type fits in a single byte. If type \u003e 255, the bytes() call will raise an OverflowError at runtime.\n\nCurrent code:\n```python\ndef to_bytes(self) -\u003e bytes:\n    if self.type == RplOptionType.PAD1:\n        if self.data:\n            raise RplError(\"Pad1 option carries no data\")\n        return b\"\\x00\"\n    if len(self.data) \u003e 0xFF:\n        raise RplError(f\"option data too long: {len(self.data)} bytes\")\n    return bytes([self.type, len(self.data)]) + self.data  # type not validated\n```\n\nWhile RplOptionType enum values are all \u003c 256, the type field accepts any int. An RplOption created with type=256 would fail with an unclear error from bytes().\n\nFix: Add explicit validation:\n```python\nif not 0 \u003c= self.type \u003c= 255:\n    raise RplError(f\"option type out of range: {self.type}\")\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

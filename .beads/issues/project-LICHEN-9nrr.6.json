@@ -3,7 +3,7 @@
   "title": "native: log_subscribe parser assumes positional/simple map fields",
   "description": "Follow-up review finding for CBOR map/list ordering assumptions. lichen_native_handle_rx() parses log_subscribe by starting after the map header, reading one-byte keys, and skipping exactly one byte for every non-key-1 value. The spec defines log_subscribe as a CBOR map with optional key 2 (uint) and key 3 ([* tstr]), and maps are unordered. If key 3 or any non-simple extension appears before key 1, the one-byte skip desynchronizes and the enable bool can be missed or misread. This should not be fixed by growing another ad hoc CBOR skipper: Zephyr zcbor is already present in the project and EDHOC uses the decoder. Evidence: lichen/lib/native/native.c:626-647; spec/lichen-native/08-logging.md:22-27 and :51-56; lichen/subsys/lichen/edhoc/edhoc.c includes zcbor_decode.h. Acceptance: replace the ad hoc loop with decoder-backed map parsing that locates key 1 independent of field order and handles/ignores optional key 2/key 3 and extension fields safely; add regression cases with key 3 before key 1 and key 1 after extension fields.",
   "acceptance_criteria": "After implementation, run the relevant tests/builds and then complete two separate code-review passes before closing. Each review pass should inspect the produced code against this Bead's acceptance criteria and file follow-up Beads for any discovered issues.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

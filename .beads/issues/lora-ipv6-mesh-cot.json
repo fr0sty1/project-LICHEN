@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-cot",
   "title": "pynacl dependency unused - premature optimization",
   "description": "**Dependencies / Bloat**\n\npyproject.toml includes `pynacl\u003e=1.5` as a core dependency, but:\n- No imports of nacl/pynacl anywhere in src/lichen/\n- Link layer (which would use crypto) is a stub\n- This adds a C extension dependency for no benefit\n\npynacl requires libsodium which:\n- Increases install complexity\n- May need compilation on some platforms\n- Adds security surface area\n\nEither:\n- Remove pynacl until link layer is implemented\n- Move to optional dependencies: `[crypto]`\n- Add a comment explaining the intended use\n\nNote: cbor2 is similarly unused currently (no CBOR encoding in simulator), but it's pure Python so less impactful.\n\nFiles: pyproject.toml",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

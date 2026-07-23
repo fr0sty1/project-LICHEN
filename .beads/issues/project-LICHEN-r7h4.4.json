@@ -2,7 +2,7 @@
   "id": "project-LICHEN-r7h4.4",
   "title": "Renode board definition: RAK4631",
   "description": "Renode board for RAK4631 (nRF52840 + SX1262). DTS overlay, board.cmake, renode.conf. Simpler than T-Echo (no EPD/GPS). Good reference board for nRF52 Meshtastic users.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

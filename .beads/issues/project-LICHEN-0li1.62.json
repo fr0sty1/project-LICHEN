@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.62",
   "title": "[cross-file] EUI-64 derivation inconsistency between lora_l2 and lichen_link_rx",
   "description": "Interaction: lora_l2.c:generate_eui64 \u003c-\u003e lichen_link_rx.c\n\nBug: Two different EUI-64 derivation methods:\n1. lora_l2.c: SHA-256(hwid)[0:8], then U/L=1, I/G=0\n2. lichen_link_rx.c: SHA-256(pubkey)[0:8], raw (no bit manipulation)\n\nLocal EUI-64 has U/L=1. Remote peer EUI-64 from pubkey has raw bits.\nIf both methods applied to same device, results differ.\nDocumentation gap, potential interop issue.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

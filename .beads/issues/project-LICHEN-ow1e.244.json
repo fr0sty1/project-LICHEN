@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.244",
   "title": "tx_queue.rs: sequence counter wrapping could cause priority inversion",
   "description": "TxQueue uses a u32 sequence counter that wraps via wrapping_add(). When the counter wraps around, older items (with high sequence numbers like 0xFFFFFFFF) will compare as 'newer' than recent items (with low sequence numbers like 0x00000001), causing priority inversion within the same priority level.\n\nAt 1 packet/second this takes ~136 years to wrap, so this is extremely unlikely in practice, but the theoretical bug exists. Consider using saturating_add() and clearing the queue when approaching saturation, or document the limitation.\n\nFile: rust/lichen-core/src/tx_queue.rs lines 176-177",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

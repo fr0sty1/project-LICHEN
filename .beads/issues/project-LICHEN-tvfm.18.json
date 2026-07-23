@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.18",
   "title": "[lichen_util.c:11] lichen_sha256 output buffer size not runtime checked",
   "description": "Function: lichen_sha256. Contract violation: The output parameter is declared as 'uint8_t output[TC_SHA256_DIGEST_SIZE]' but this decays to pointer with no compile-time size enforcement. The header comment (lichen_util.h:93-96) explicitly warns: 'SECURITY: The output buffer MUST be at least TC_SHA256_DIGEST_SIZE (32) bytes... Passing a smaller buffer causes undefined behavior (buffer overflow).' No runtime check exists. Adding a 'size_t output_len' parameter would enable runtime validation but changes the API. Priority 2 because buffer overflow in crypto code is security-critical.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

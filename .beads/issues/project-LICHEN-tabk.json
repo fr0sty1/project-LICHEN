@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tabk",
   "title": "task",
   "description": "rust/lichen-link/src/link_layer.rs:330-338 - build_frame() accepts a dst_addr parameter but always sets addr_mode to AddrMode::None. This causes:\n1. The dst_addr bytes are written to the frame (in write_to)\n2. The LLSec byte indicates addr_mode=None (0 address bytes expected)\n3. On parse, the receiver reads addr_mode=None and interprets dst_addr bytes as payload\n4. Signature verification fails because signable data was computed with different dst_addr\n\nFailure scenario: Any call to build_frame() with non-empty dst_addr produces an invalid frame that cannot be verified by the receiver. Currently only works for broadcast (empty dst_addr).\n\nFix: Either derive addr_mode from dst_addr.len() or accept addr_mode as a parameter.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

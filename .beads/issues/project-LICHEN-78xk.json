@@ -2,7 +2,7 @@
   "id": "project-LICHEN-78xk",
   "title": "decode_pli: unreachable!() could panic on refactoring",
   "description": "In rust/lichen-core/src/compact_cot.rs, decode_pli() uses unreachable!() for non-PLI subtypes. Currently safe due to call-site constraints in decode(), but fragile if refactored. Should return Err or use debug_assert to document the invariant.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

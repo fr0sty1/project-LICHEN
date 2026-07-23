@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9nrr.21",
   "title": "puck: rak4631 overlay references undefined lora0",
   "description": "Discovered while validating project-LICHEN-9nrr.3. west build -b rak4631/nrf52840 lichen/apps/puck -d build/puck_rak4631 --pristine=always fails during devicetree generation before app compilation: lichen/apps/puck/boards/rak4631_nrf52840.overlay references node label lora0 at line 24, but the board devicetree does not define that label in this workspace. Scope: update the RAK4631 puck overlay to bind the configured LoRa radio using the board's actual SPI/SX12xx node label or add the missing node, preserving intended SX12xx radio behavior. Acceptance: west build -b rak4631/nrf52840 lichen/apps/puck configures and compiles; devicetree chosen/alias usage is documented or follows nearby board patterns; no unrelated puck behavior changes.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

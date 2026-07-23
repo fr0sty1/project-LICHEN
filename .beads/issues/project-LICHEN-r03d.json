@@ -2,7 +2,7 @@
   "id": "project-LICHEN-r03d",
   "title": "task",
   "description": "lichen/subsys/lichen/link/link_ctx.c:324-326. Key material persists.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

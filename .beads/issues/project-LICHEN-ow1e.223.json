@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.223",
   "title": "Codereview pass 1: MIC covers LLSec byte but signature excludes it - intentional divergence",
   "description": "**Location:** python/src/lichen/link/link_layer.py:57-75 vs 200-232\n\n**Observation:** _compute_mic_data() includes LLSec byte in MIC coverage (line 71), but _build_signable_data() explicitly excludes LLSec from signature (documented at lines 219-221).\n\n**Analysis:** This is intentional and correct:\n- Signature authenticates the sender (covers immutable security-relevant data)\n- MIC protects integrity (covers wire format including flags)\n\nThe signature doesn't need LLSec because it authenticates via the pubkey. The MIC needs it to detect flag corruption.\n\n**Worth defending:** Don't 'unify' these two functions - they serve different security purposes.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

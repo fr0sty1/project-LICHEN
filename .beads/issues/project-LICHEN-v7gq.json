@@ -2,7 +2,7 @@
   "id": "project-LICHEN-v7gq",
   "title": "rust: fix lichen-link identity test needless borrow clippy lint",
   "description": "Why this exists: while validating project-LICHEN-usa6, cargo clippy -p lichen-link --features std,schnorr --all-targets -- -D warnings -A clippy::manual_is_multiple_of failed on pre-existing test code in rust/lichen-link/src/identity.rs:85, where Sha256::digest(\u0026[0u8; 32]) triggers clippy::needless_borrows_for_generic_args under the active Rust toolchain. What needs to be done: update the identity test digest call to avoid the needless borrow, then rerun lichen-link clippy with -D warnings.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

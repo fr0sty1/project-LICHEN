@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.18",
   "title": "schc/codec: BitWriter.write() loop has non-obvious bit-reversal",
   "description": "In codec.rs:82-94, BitWriter::write() iterates bits in reverse order using 'for i in (0..nbits).rev()'. While this is correct for MSB-first network bit order, the loop logic requires careful reading. Add brief comment explaining the reversal: 'Reverse order because network bit order is MSB-first but we index from LSB.'",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

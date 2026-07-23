@@ -2,7 +2,7 @@
   "id": "project-LICHEN-z38x.2",
   "title": "lora_l2.c: replace driver overflow panic with crash info + watchdog",
   "description": "Replace k_panic() at line 437 (driver buffer overflow) with crash info storage.\n\nCurrent:\n  if (ret \u003e (int)sizeof(rx_buf)) {\n      LOG_ERR(\"CRITICAL: lora_recv returned %d \u003e buffer\");\n      k_panic();\n  }\n\nThis case is special: if the driver returned more bytes than buffer size, stack corruption may have already occurred. But panicking still makes the device unresponsive.\n\nTarget:\n  if (ret \u003e (int)sizeof(rx_buf)) {\n      LOG_ERR(\"lora_l2: driver overflow (%d \u003e %d)\", ret, sizeof(rx_buf));\n      store_crash_info(CRASH_DRIVER_OVERFLOW, __LINE__, ret);\n      atomic_set(\u0026current_state, LORA_ABORTED);\n      return;  // Let watchdog reset us\n  }\n\nRequires: crash_info retained RAM infrastructure (separate task).",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

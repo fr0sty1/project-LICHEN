@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.62",
   "title": "[lichen_l2.c:863-873] NET_DEVICE_INIT priority could race with other init",
   "description": "Gap found: Device initialization order not reviewed.\n\nWhy this was missed: Zephyr initialization framework interaction not examined.\n\nThe actual bug: NET_DEVICE_INIT at lines 863-873 uses CONFIG_KERNEL_INIT_PRIORITY_DEFAULT for initialization priority. This determines when lichen_l2_iface_init() runs relative to other initializations.\n\nPotential issues:\n1. If LoRa driver (lora0) initializes at a later priority, lichen_lora_l2_init() could fail\n2. If hwinfo driver initializes later, generate_eui64() could fail\n3. If tinycrypt initializes later, lichen_sha256() could fail\n\nZephyr typically initializes drivers before application code, and CONFIG_KERNEL_INIT_PRIORITY_DEFAULT is correct for network interfaces. The code handles failures gracefully (sets iface_init_failed).\n\nVerified correct ordering for standard Zephyr configurations. Priority 4 - platform-specific concern for custom boards.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

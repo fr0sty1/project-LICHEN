@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.20",
   "title": "ipv6_addr.c: ULA prefix check is stricter than RFC 4193 (fd00::/8 vs fc00::/7)",
   "description": "## Location\nfirmware/bridge-zephyr/subsys/lichen/ipv6_addr.c:145\n\n## Issue\nlichen_make_ula() rejects prefixes that are not in fd00::/8:\n\n```c\n/* Check prefix is in fd00::/8 */\nif (prefix[0] != 0xfd) {\n    LOG_ERR(\"ULA prefix must be in fd00::/8, got %02x\", prefix[0]);\n    return -EINVAL;\n}\n```\n\nRFC 4193 defines Unique Local Addresses as fc00::/7, which includes both fc00::/8 and fd00::/8. The fc00::/8 range is reserved for future use but is technically part of the ULA space. Some implementations may use fc00::/8 prefixes.\n\n## What goes wrong\n- Prefixes in fc00::/8 are rejected even though they are valid ULAs per RFC 4193\n- A future RFC may assign meaning to fc00::/8, breaking interop with nodes using those prefixes\n- Error message says fd00::/8 which is technically correct for current IANA guidance but inconsistent with RFC language\n\n## Fix\nEither:\n1. Widen the check to accept fc00::/7: if ((prefix[0] \u0026 0xFE) != 0xFC)\n2. Add a comment explaining LICHEN intentionally restricts to fd00::/8 per current IANA guidance and the python implementation behavior",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

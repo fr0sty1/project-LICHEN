@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yw7i.18",
   "title": "lichen_iface pointer safety invariant needs design doc",
   "description": "lichen_l2.c:79-89 has a detailed comment explaining why lichen_iface is never cleared. This is critical invariant but spread across 10 lines of comment. Consider: (1) reference a design doc, or (2) use WRITE_ONCE/READ_ONCE macros that make the intent structural rather than documented.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

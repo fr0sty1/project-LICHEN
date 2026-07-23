@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-32x",
   "title": "RPL routing table and forwarding",
   "description": "Implement RPL routing table for non-storing mode.\n\nNon-storing mode:\n- Only root has full routing table\n- Other nodes just know their parent\n- Downward traffic uses source routing (Routing Header)\n\nRouting table (at root):\n- Target prefix -\u003e next hop, via path\n- Built from DAO messages\n- DAO contains: target prefix, transit info (parent chain)\n\nForwarding logic:\n- Upward (toward root): send to preferred parent\n- Downward (from root): insert source routing header, send to first hop\n- At intermediate: pop next hop from routing header, forward\n\nClass RoutingTable:\n- add_route(target, path) -\u003e None\n- remove_route(target) -\u003e None  \n- lookup(target) -\u003e path | None\n- build_source_route(target) -\u003e list[IPv6Address]\n\nSource Routing Header (SRH):\n- Type 3 routing header\n- Segments left counter\n- List of addresses to visit",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

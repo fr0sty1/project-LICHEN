@@ -2,7 +2,7 @@
   "id": "project-LICHEN-om67",
   "title": "Parity: routing (Rust/Zephyr/Python)",
   "description": "Policy: three-impl parity. Module: routing. Rust: partial (routing.rs in lichen-rpl). Zephyr: partial (announce.c only). Python: complete (610 LoC hybrid router). Gap: Rust/Zephyr lack unified hybrid routing abstraction combining RPL/Announce/LOADng tiers. Python is reference implementation.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

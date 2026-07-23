@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.103",
   "title": "Rust schnorr verify uses non-constant-time challenge compare",
   "description": "In schnorr.rs line 121: e_check[..16] == e_received uses standard array equality. While the challenge is public data in the signature, constant-time comparison is still best practice. Use subtle::ConstantTimeEq. Low exploitability due to LoRa latency but violates hygiene.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

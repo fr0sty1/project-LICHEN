@@ -2,7 +2,7 @@
   "id": "project-LICHEN-z3zp.10",
   "title": "RPL DODAG and Trickle public helpers dereference NULL state pointers",
   "description": "Several public helpers document or imply non-NULL state but do not validate it before dereferencing. Triggers: caller invokes lichen_rpl_dodag_select_parent(NULL), lichen_rpl_dodag_remove_parent(NULL, addr), lichen_rpl_dodag_parent_count(NULL), lichen_trickle_fire_transmit(NULL), lichen_trickle_expire(NULL), lichen_trickle_reset(NULL), or lichen_trickle_next_event(NULL, out). Bad behavior: a caller error crashes the node instead of failing cleanly, unlike neighboring APIs that return or no-op on NULL. Locations: lichen/subsys/lichen/rpl/dodag.c:205-264, :350-365; lichen/subsys/lichen/rpl/trickle.c:87-123.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.4",
   "title": "[lora_l2.c:112] atomic_cas then valid_transitions check is racy",
   "description": "In lora_transition_from(), the function first does atomic_cas() to atomically swap the state, then validates the transition with valid_transitions[expected][new_state]. The check happens AFTER the swap, so if the transition is invalid, the state has ALREADY been changed. While this panics (so the invalid state is never used), it means the state machine is momentarily in an invalid state. Fix: check valid_transitions BEFORE atomic_cas, or restructure to validate within the atomic operation.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

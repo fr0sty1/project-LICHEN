@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.149",
   "title": "Public functions in rpl/routing.py missing return type annotations",
   "description": "Four public functions in `src/lichen/rpl/routing.py` are missing return type annotations:\n\n- Line 87: `DownwardRoutingTable.add_route()` - returns `None`\n- Line 101: `DownwardRoutingTable.build_source_route()` - returns `list[IPv6Address] | None`\n- Line 119: `insert_source_route()` - returns `tuple[IPv6Packet, IPv6Address]`\n- Line 155: `advance_source_route()` - returns `tuple[IPv6Packet, IPv6Address | None]`",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

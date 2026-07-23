@@ -2,7 +2,7 @@
   "id": "project-LICHEN-07fr",
   "title": "MessageSubscription.close() may raise during cleanup if subscription already errored",
   "description": "File: python/src/lichen/client/lci.py, lines 88-90\n\nThe MessageSubscription.close() method delegates directly to the underlying subscription:\n\n```python\nasync def close(self) -\u003e None:\n    '''Cancel the inbox Observe relationship.'''\n    await self._subscription.close()\n```\n\nIssue: If the underlying subscription is in an error state (e.g., aiocoap observation failed), calling close() may raise an exception. The caller, trying to clean up after an error, gets a second exception.\n\nExample scenario:\n```python\nsubscription = await client.observe_inbox()\ntry:\n    async for messages in subscription.messages():\n        ...  # Network error here raises LciClientError\nexcept LciClientError:\n    await subscription.close()  # This may also raise!\n```\n\nImpact: Error handling code may fail unexpectedly, complicating cleanup.\n\nFix: Make close() idempotent and exception-safe:\n```python\nasync def close(self) -\u003e None:\n    try:\n        await self._subscription.close()\n    except Exception:\n        pass  # Already closed or errored\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

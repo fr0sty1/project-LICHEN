@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yxev",
   "title": "task",
   "description": "python/src/lichen/gateway/compact_cot.py:807-811. Team Blue vs blue lookup.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

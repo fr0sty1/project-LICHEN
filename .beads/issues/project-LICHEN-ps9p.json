@@ -3,7 +3,7 @@
   "title": "Create reusable EC2 EBS Zephyr builder cache volume",
   "description": "Build a single-AZ EBS volume prepopulated with Zephyr build dependencies, toolchains/caches, and project workspace support so future EC2 Zephyr builds can attach it instead of reinstalling from scratch. Document the volume ID, AZ, mount path, and AWS/SSH console workflow in AGENTS.md so agents know to use it.",
   "acceptance_criteria": "Create and validate an EBS volume in one AZ with Zephyr builder dependencies/cache content; verify it can be attached and mounted on EC2; update AGENTS.md with exact usage details including volume ID/AZ/mount path and boot observation via SSH/AWS API; close the Bead when complete.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

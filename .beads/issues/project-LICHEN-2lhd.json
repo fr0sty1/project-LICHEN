@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2lhd",
   "title": "expire_pending: confusing cutoff calculation could miss packets",
   "description": "File: python/src/lichen/routing/router.py:575, 582\n\nThe expire_pending method uses a cutoff time and keeps packets with queued_at_ms \u003e cutoff:\n\n```python\ncutoff = now_ms - timeout_ms\n...\nself.pending_queue[dst] = deque(p for p in queue if p.queued_at_ms \u003e cutoff)\n```\n\nExample: now_ms=1000, timeout_ms=100, cutoff=900\nPackets with queued_at_ms \u003e 900 are KEPT (i.e., packets younger than 100ms).\n\nWHY IT'S A BUG: The logic is correct but uses inconsistent comparison semantics compared to expire_old() at line 273:\n- expire_old: keeps packets where `deadline_ms \u003e now_ms` (deadline in future)\n- expire_pending: keeps packets where `queued_at_ms \u003e cutoff` (queued recently)\n\nThe semantic difference (deadline vs age) with same comparison operator (\u003e) is confusing and error-prone.\n\nAlso, if timestamps can wrap (unlikely with milliseconds but possible with uint32 on embedded), the subtraction could underflow.\n\nIMPACT: Maintenance burden; future changes could introduce bugs from misunderstanding the logic. Potential issues with timestamp wrap on constrained implementations.\n\nFIX: Use consistent semantics - either:\n1. Store a deadline_ms on PendingPacket like ForwardingEntry does, or\n2. Add a comment explaining the age-based vs deadline-based semantics",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

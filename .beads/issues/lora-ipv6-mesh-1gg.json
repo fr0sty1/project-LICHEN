@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-1gg",
   "title": "SimRadio lacks concurrent operation protection",
   "description": "No synchronization in SimRadio class. Concurrent transmit()/receive() calls interleave _send/_recv, corrupting request/response matching. Either add asyncio.Lock, document not-thread-safe, or serialize operations.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Frost",

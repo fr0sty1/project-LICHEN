@@ -2,7 +2,7 @@
   "id": "project-LICHEN-5tv6",
   "title": "DodagState.process_dio: No validation of neighbor_id type before use",
   "description": "In python/src/lichen/rpl/dodag.py, the neighbor_id parameter changed from str to IPv6Address. However, the function has no runtime validation that the passed value is actually an IPv6Address. If a caller passes a string (legacy code), the dict lookup self.parents.get(neighbor_id) would fail silently (different hash). Consider adding explicit type checking or using to_ipv6() coercion like other modules.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

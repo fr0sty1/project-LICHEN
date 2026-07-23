@@ -2,7 +2,7 @@
   "id": "project-LICHEN-95jk",
   "title": "dispatch_supported switch has no break after return",
   "description": "File: lichen/subsys/lichen/meshcore/adapter.c\nLines: 953-1041 (dispatch_supported)\n\nThis is NOT a bug, but a style observation for documentation.\n\nThe switch statement uses return directly without break:\n```c\nswitch (view-\u003etype) {\ncase LICHEN_MESHCORE_CMD_APP_START:\n    return view-\u003epayload_len \u003e= 7U ?\n        enqueue_self_info(adapter) :\n        enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);\ncase LICHEN_MESHCORE_CMD_DEVICE_QUERY:\n    // ...\n```\n\nWhile this is correct C (return exits the function), some static analyzers and code review tools flag missing break statements. The consistent use of return-only (no breaks) is intentional but could be documented with a comment.\n\nNot a bug - closing as wontfix. The pattern is consistently used throughout.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

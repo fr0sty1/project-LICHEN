@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.21",
   "title": "[lichen_util.h:93] Pointer cast may violate strict aliasing",
   "description": "What: secure_zero() casts a volatile uint8_t* to volatile unsigned long* via uintptr_t:\n```c\nvolatile unsigned long *wp = (volatile unsigned long *)(uintptr_t)p;\n```\n\nWhy it matters: C strict aliasing rules state that accessing an object through an incompatible pointer type is undefined behavior. The comment claims this is safe because 'writing zeros through any pointer type is well-defined', but the C standard does not make this exception.\n\nHowever:\n1. The pointer is volatile, which may provide additional guarantees on embedded compilers\n2. The target is being zeroed, so the value doesn't matter\n3. ARM compilers typically don't exploit strict aliasing for volatile pointers\n4. The code has been tested on target platforms\n\nThis is a theoretical concern for strict standards compliance, not a practical bug on embedded Cortex-M targets.\n\nEvidence: Lines 85-100 in lichen_util.h",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

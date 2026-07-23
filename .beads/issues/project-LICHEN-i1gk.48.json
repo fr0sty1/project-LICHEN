@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.48",
   "title": "[lichen_l2.c:980-991 vs lora_l2.c:583-584] callback re-registration assumes stop() behavior",
   "description": "Cross-file analysis: In lichen_l2_enable() at line 980-991, the code re-registers the RX callback before calling start(), with rollback on failure. This design assumes that stop() in lora_l2.c clears the callback (line 583-584). The dependency is implicit - if stop() ever changes to NOT clear the callback, the re-registration would overwrite an existing valid callback. The comment at line 978-980 documents this, but the coupling is fragile. Consider: (1) having lichen_l2_enable() check if callback is already set before registration, or (2) making the callback clearing an explicit part of stop()'s documented contract in lora_l2.h. Currently the only documentation is in the source comment, not the header.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "improvement",
   "assignee": "Mark Atwood",

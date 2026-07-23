@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.86",
   "title": "lichen_l2.c:1877 RX path missing minimum IPv6 packet size check",
   "description": "**WHAT:** The RX path in lichen_l2_input() validates ipv6_len is not \u003e sizeof(rx_ipv6_buf) at line 1878, but does NOT check for minimum valid IPv6 packet size.\n\n**WHY BUG:** After peer_try_all_pubkeys() returns success, ipv6_len could be:\n- 0 (empty decompression result)\n- 1-39 bytes (smaller than IPv6 base header)\n\nThe code proceeds to:\n1. Allocate net_pkt with ipv6_len=0 (may succeed with minimal allocation)\n2. net_pkt_write() with 0 or undersized data\n3. net_recv_data() injects malformed packet into IPv6 stack\n\nThe TX path has an equivalent check at line 905: `if (pkt_len \u003c IPV6_BASE_HDR_LEN)`. The RX path is missing this symmetry.\n\n**IMPACT:** A maliciously crafted LICHEN frame that decompresses to \u003c 40 bytes could inject malformed data into the IPv6 stack. The IPv6 stack likely rejects it, but:\n1. Wasted packet allocation/processing\n2. Potential for triggering edge cases in IPv6 stack's short-packet handling\n3. Asymmetry with TX path validation\n\n**FIX:**\nAdd after line 1883:\n```c\nif (ipv6_len \u003c IPV6_BASE_HDR_LEN) {\n    LOG_WRN(\"lichen_l2: RX packet too small for IPv6 (%zu bytes)\", ipv6_len);\n    secure_zero(rx_link_key, sizeof(rx_link_key));\n    k_mutex_unlock(\u0026rx_mutex);\n    return;\n}\n```",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

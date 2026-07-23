@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wnnz",
   "title": "Fix T-Echo gateway link undefined symbols after SLIP Kconfig fix",
   "description": "After fixing project-LICHEN-gjhl, west build -p always -b t_echo/nrf52840 lichen/apps/gateway -d build_gateway_gjhl_techo_check passes Kconfig and compilation reaches link, then fails in zephyr_pre0.elf with undefined reference to build_link_nonce from lichen/subsys/lichen/link/lichen_link_rx.c:98 and undefined reference to z_impl_hwinfo_get_device_id from firmware/bridge-zephyr/subsys/lichen/lichen_l2.c via generated zephyr/syscalls/hwinfo.h:36. Investigate the missing link nonce helper export/source inclusion and the hwinfo driver/Kconfig dependency for this gateway build.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

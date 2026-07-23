@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.33",
   "title": "NET_L2_MULTICAST flag may be incorrect for LoRa",
   "description": "lichen_l2.c:333: lichen_l2_flags() returns NET_L2_MULTICAST.\n\nThe comment says 'LICHEN is a broadcast medium (all nodes hear all transmissions)'. But NET_L2_MULTICAST tells Zephyr that the L2 supports multicast, not that it's a broadcast medium.\n\nWhat goes wrong: Zephyr's IPv6 stack may enable multicast features (MLD snooping, multicast routing) that don't make sense for LoRa. Or it may skip broadcast-specific optimizations.\n\nThe correct flag depends on Zephyr's exact semantics:\n- NET_L2_MULTICAST: L2 can deliver multicast frames\n- No flag: L2 requires software multicast emulation\n\nLoRa is inherently broadcast - all receivers hear all transmissions. The question is whether NET_L2_MULTICAST correctly describes this.\n\nFix: Verify against Zephyr networking docs that NET_L2_MULTICAST is the right flag. Consider NET_L2_MULTICAST_SKIP_JOIN_SOLICIT_NODE if available.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

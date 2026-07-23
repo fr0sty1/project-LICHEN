@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.42",
   "title": "[ipv6_addr.c:239-249] snprintf format uses lowercase hex but LICHEN may expect uppercase",
   "description": "Round 2 gap analysis: Missed because formatting consistency wasn't checked.\n\nIn lichen_ipv6_addr_to_str at lines 239-249:\n```c\nint ret = snprintf(buf, buflen,\n         \"%02x%02x:%02x%02x:%02x%02x:%02x%02x:\"\n         \"%02x%02x:%02x%02x:%02x%02x:%02x%02x\",\n         addr-\u003es6_addr[0], addr-\u003es6_addr[1], ...\n```\n\nThe format uses lowercase hex (%02x) which produces 'fe80:0000:...' format. The header comment in ipv6_addr.h line 97-99 says 'uncompressed lowercase hex format' so this is intentional and documented.\n\nHowever, RFC 5952 section 4.3 recommends lowercase, so this is actually correct. Not a bug, just confirming the code matches the documentation.\n\nNo issue - code is correct per RFC 5952.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "feature",
   "assignee": "Mark Atwood",

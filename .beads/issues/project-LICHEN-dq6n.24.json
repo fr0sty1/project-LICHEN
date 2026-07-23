@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dq6n.24",
   "title": "[lichen_util.h:62] secure_zero strict aliasing violation",
   "description": "Critic: Line 62 casts 'volatile uint8_t *p' to 'volatile unsigned long *' and dereferences it. This violates C strict aliasing rules (uint8_t and unsigned long are incompatible types). While functionally correct when the buffer was originally an unsigned long array, it is UB when zeroing a struct or char array. Fix: use memcpy to store the zero value, or use 'char *' which is allowed to alias any type, or compile with -fno-strict-aliasing.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

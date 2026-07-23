@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-zwz",
   "title": "SimulatorServer monkey-patches API methods - fragile pattern",
   "description": "**Code Quality / Maintainer Burden**\n\nIn server.py:74-94, the SimulatorServer wraps API methods via direct assignment:\n```python\noriginal_create = self._api.create_simulation\nasync def wrapped_create(request: Request) -\u003e JSONResponse:\n    # ... \nself._api.create_simulation = wrapped_create  # type: ignore[method-assign]\n```\n\nProblems:\n1. Fragile: if SimulatorAPI changes its method signature, this breaks silently\n2. The `type: ignore` comments show mypy doesn't like this\n3. Hard for contributors to understand the actual flow\n4. Breaks introspection and testing of the original methods\n\nBetter patterns:\n- SimulatorAPI accepts a callback/hook for sim creation\n- SimulatorServer subclasses SimulatorAPI\n- Dependency injection via constructor parameter\n- Use signals/events pattern\n\nFiles: server.py:74-94",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

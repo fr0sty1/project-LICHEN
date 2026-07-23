@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.8",
   "title": "Function parameter NULL-safety documented but not enforced",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lora_l2.h:157\n\nlichen_lora_l2_get_eui64() docstring warns \"Do NOT modify\" but returns const uint8_t*. The const is correct but there is no runtime protection.\n\nAlso: lichen_lora_l2_set_rx_callback (line 523-534 in lora_l2.c) does not validate that cb is actually callable when non-NULL. If a caller passes a garbage pointer, it will be invoked in rx_thread.\n\nWhat goes wrong: A corrupted callback pointer would crash in rx_thread context. While this is caller error, defensive NULL check before invocation is cheap and aids debugging.\n\nNote: This is defense-in-depth, not a direct bug. Current code correctly updates both fields atomically under mutex.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

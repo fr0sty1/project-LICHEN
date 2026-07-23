@@ -2,7 +2,7 @@
   "id": "project-LICHEN-usa6",
   "title": "State machine verification: Rust lichen-link",
   "description": "Add state machine verification to link layer.\n\nLink layer states:\n- Frame processing state\n- Peer state (unknown, authenticating, authenticated)\n- Replay window state\n\nFiles: rust/lichen-link/src/*.rs if exists, else skip\n\nUse typestate for peer authentication state.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

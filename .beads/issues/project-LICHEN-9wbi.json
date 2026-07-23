@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9wbi",
   "title": "dodag.rs: select_parent hysteresis ignores current parent admissibility",
   "description": "File: rust/lichen-rpl/src/dodag.rs:261-270\n\nIn select_parent(), the hysteresis logic compares the current parent's cost against the best admissible candidate but doesn't verify that the current parent itself is still admissible.\n\nThe code at lines 261-270:\n```rust\nlet (chosen_addr, chosen_cost) = match self.preferred_parent {\n    Some(cur_addr) if cur_addr != best_addr =\u003e {\n        // Check if current parent still exists and improvement is below threshold.\n        self.parents\n            .get(\u0026cur_addr)\n            .map(|cur| cur.path_cost(mhri))\n            .filter(|\u0026cur_cost| best_cost \u003e cur_cost.saturating_sub(threshold))\n            .map_or((best_addr, best_cost), |cur_cost| (cur_addr, cur_cost))\n    }\n    _ =\u003e (best_addr, best_cost),\n};\n```\n\nIf the current parent's rank increased (e.g., from a DIO with higher rank), it could become inadmissible (path_cost \u003e lowest_rank + max_rank_increase) while still being in the parent HashMap. The hysteresis check would still prefer staying with it if the improvement doesn't exceed threshold.\n\nThis violates RFC 6550 Section 8.2.2.4: 'A node MUST NOT increase its own rank beyond a ceiling value DAGMaxRankIncrease + cur_min_path_cost'.\n\nFix: Add admissible() check before applying hysteresis:\n```rust\n.get(\u0026cur_addr)\n.filter(|cur| self.admissible(cur))\n.map(|cur| cur.path_cost(mhri))\n```\n\nNote: This is the same bug that was fixed in the C port (lichen/subsys/lichen/rpl/dodag.c).",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

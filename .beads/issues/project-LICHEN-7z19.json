@@ -2,7 +2,7 @@
   "id": "project-LICHEN-7z19",
   "title": "Compliance: lichen-oscore lib.rs OSCORE",
   "description": "Policy: 06-security.md §8.7. File: rust/lichen-oscore/src/lib.rs. Status: COMPLIANT. Pure-Rust OSCORE implementation with AES-CCM-16-64-128, HKDF-SHA256, replay window, sequence number exhaustion check, and zeroize on drop.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

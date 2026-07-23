@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.109",
   "title": "Interface module deprecation warning fires on import",
   "description": "**Location:** python/src/lichen/interface/__init__.py:17-24\n\n**Risk:** The deprecation warning fires unconditionally when the module is imported, even if the caller is just checking what's available or using the module transitively. This is noisy and trains users to ignore warnings.\n\n**Trigger:** `import lichen.interface` or `from lichen.interface import something`\n\n**Bad behavior:** Warning appears even if the user never calls any deprecated functions. Users will set LICHEN_LEGACY_CBOR=1 globally just to silence the warning, defeating the purpose.\n\n**Better pattern:** Use `warnings.warn()` in the deprecated functions themselves (which they already do), not at module import time. The import-time warning is redundant.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

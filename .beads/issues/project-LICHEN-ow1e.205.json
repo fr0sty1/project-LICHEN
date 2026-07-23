@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.205",
   "title": "Codereview pass 3: TcpServer init - removed dead code",
   "description": "Pass 3 reviewed the method removal:\n\n**Finding: Cleanup is appropriate**\n\nThe _handle_client method was removed from TcpServer class because:\n1. It was only used by serve() function\n2. The fix moved this logic to a local closure\n3. No other code references TcpServer._handle_client\n\nVerified via grep that no external code calls _handle_client. The method was private (underscore prefix) so this is not a breaking API change.\n\nThe fix follows the codebase guideline: 'Remove imports/variables/functions that YOUR changes made unused.'\n\nNo bugs found in this pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

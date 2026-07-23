@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.23",
   "title": "[lichen_l2.c:1407-1416] fail_late_init path does not clear peer_table",
   "description": "In the fail_late_init cleanup path (lines 1407-1416), the code sets iface_init_failed, clears RX callback, and calls lichen_link_cleanup(), but does NOT clear peer_table. Compare with the disable path at lines 1071-1075 which explicitly zeros peer_table with secure_zero. If init fails after peers were added (unlikely but possible if peer_add is called from another thread during init), the stale peer entries would persist. Security: peer pubkeys should be cleared on init failure.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.191",
   "title": "Codereview pass 1: MockRng SAFETY comment justifies data races rather than ruling them out",
   "description": "Location: rust/lichen-embassy/src/mock.rs:146-151\n\nThe SAFETY comment claims data races are 'acceptable' rather than establishing they cannot occur. Rust's UB rules don't have an 'acceptable data race' exception - a data race on static mut is UB regardless of consequence severity.\n\nBetter justification would be:\n- Assert single-threaded usage is enforced (e.g., #[cfg(not(test))] compile_error on multi-threaded test frameworks)\n- Or use AtomicU64 with Relaxed ordering (zero overhead on most platforms)\n- Or acknowledge UB risk explicitly: 'SAFETY: We accept potential UB from data races because...'\n\nCurrent comment reads as if 'acceptable outcome' justifies unsafe, which sets a bad pattern.\n\nPriority: P3 - The risk is real but low (test-only code, single-threaded in practice). The comment exists and mostly explains the reasoning.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

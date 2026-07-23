@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tsoe",
   "title": "Parity: oscore (Rust/Zephyr/Python)",
   "description": "Policy: three-impl parity. Module: oscore. Rust: complete (1888 LoC). Zephyr: complete (2794 LoC). Python: partial (1214 LoC in crypto/). Gap: Python OSCORE is in crypto module, not standalone oscore module. May lack full replay protection and context management found in Rust/Zephyr.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

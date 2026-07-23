@@ -2,7 +2,7 @@
   "id": "project-LICHEN-8uws",
   "title": "Compliance: coap_client.c OSCORE",
   "description": "Policy: 06-security.md §8.7. File: lichen/subsys/lichen/coap/coap_client.c. Status: VIOLATION. CoAP client sends unprotected payloads without OSCORE. Per §8.7 recommendation: Use OSCORE for all CoAP traffic. Needs integration with oscore/coap_oscore.c or mandatory OSCORE wrapper.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

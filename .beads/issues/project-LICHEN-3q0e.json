@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3q0e",
   "title": "task",
   "description": "python/src/lichen/ipv6/icmpv6.py:122-151. \u003e0xFFFF causes OverflowError.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

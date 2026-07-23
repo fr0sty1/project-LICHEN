@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.10",
   "title": "mypy: 10 union-attr errors (accessing attrs on possibly-None)",
   "description": "10 union-attr errors accessing attributes on potentially None values:\n- src/lichen/interface/serial.py: lines 84-87, 116, 166 (self._serial may be None)\n- src/lichen/interface/kiss/serial.py: lines 87-90, 114, 156 (same pattern)\n\nFix: Add None checks or use 'if self._serial is not None' guards before method calls.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

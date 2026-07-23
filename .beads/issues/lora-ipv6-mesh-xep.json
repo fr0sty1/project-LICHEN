@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-xep",
   "title": "Implement complete metrics collection for simulation harness",
   "description": "Complete the metrics collection implementation to track transmission starts, successful receptions, collisions, latency statistics, delivery rates, and collision rates. Should integrate with existing Simulation class and provide methods to retrieve metrics.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

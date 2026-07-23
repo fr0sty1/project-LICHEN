@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-i4l",
   "title": "Trickle timer implementation",
   "description": "Implement Trickle algorithm per RFC 6206.\n\nUsed by RPL to control DIO transmission rate.\n\nParameters:\n- Imin: minimum interval (e.g., 1 second)\n- Imax: max doublings (e.g., 16 -\u003e max interval 65536 seconds)\n- k: redundancy constant (e.g., 10)\n\nState:\n- I: current interval\n- t: time within interval to transmit\n- c: consistency counter\n\nAlgorithm:\n1. On interval start: c = 0, pick t random in [I/2, I)\n2. On consistent transmission heard: c += 1\n3. At time t: if c \u003c k, transmit\n4. At interval end: I = min(2*I, Imax * Imin)\n5. On inconsistency: I = Imin, reset\n\nClass TrickleTimer:\n- __init__(imin, imax, k)\n- start() -\u003e None\n- heard_consistent() -\u003e None\n- reset() -\u003e None (on inconsistency)\n- async wait_to_transmit() -\u003e bool (should transmit?)\n\nUses asyncio timers.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

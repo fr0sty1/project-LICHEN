@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.56",
   "title": "[lichen_l2.c:889-890 vs net_pkt lifecycle] tx send owns pkt but frame_len check returns without unref",
   "description": "Cross-file analysis: In lichen_l2_send(), the ownership contract (line 758) says 'on success return 0, L2 takes ownership'. At line 855-859, if frame_len validation fails after lichen_link_tx() returned, the function returns -EOVERFLOW WITHOUT calling net_pkt_unref(). This violates the contract: returning an error means caller retains ownership, which is correct. However, the linearization at line 812-818 already extracted data from pkt into tx_ipv6_buf, so the packet is still valid. The issue is the frame_len check should never fail (lichen_link_tx sets frame_len within buffer bounds), so this is defensive code. But if it DID fail, returning without unref is correct per contract. Not a bug - the ownership contract is followed. Close as not-a-bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "not-a-bug",
   "assignee": "Mark Atwood",

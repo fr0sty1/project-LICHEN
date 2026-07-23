@@ -3,7 +3,7 @@
   "title": "Add Nucleo Renode radio linkage",
   "description": "Discovered by project-LICHEN-m5m1.8. Canonical gateway Nucleo WL55JC fails at link because lichen_hal_lora_device_get references missing Renode radio device __device_dts_ord_87. Canonical puck Nucleo additionally lacks CONFIG_LICHEN_COAP and required an ad hoc audit override before reaching the same radio-link failure. Correct the puck board/app configuration and align the Nucleo Renode overlay/device model with the LICHEN radio abstraction so both full apps build canonically and can be runtime-tested.",
   "acceptance_criteria": "1. Canonical gateway and puck nucleo_wl55jc builds, without command-line config overrides, compile and link without missing CoAP headers or undefined device ordinals. 2. The puck CoAP dependency is enforced in Kconfig or board configuration. 3. Renode runs reach each app late runtime oracle and independent radio/protocol effect. 4. Exact commands, artifact hashes, and logs are retained. 5. Physical Nucleo behavior is not regressed.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.49",
   "title": "lichen_l2_input holds rx_mutex across net_pkt_alloc which may block",
   "description": "lichen_l2.c lines 445-538: rx_mutex is held from line 445 until line 538, spanning net_pkt_rx_alloc_with_buffer() (line 520) and net_pkt_write() (line 530). Both may block waiting for memory. This could delay other RX processing if multiple packets arrive rapidly.\n\nHowever: LoRa at SF10 has ~100ms minimum packet time, so packet bursts are unlikely. The mutex protects rx_ipv6_buf which is shared. Would need double-buffering to improve, which adds complexity.\n\nVerdict: Acceptable for current LoRa data rates. Flag for reconsideration if moving to faster radios.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.18",
   "title": "lora_l2.c:91 TOCTOU in lora_transition",
   "description": "Grep pattern: atomic_get followed by atomic_set without CAS. The lora_transition() function reads the current state with atomic_get() at line 91, then validates and sets with atomic_set() at line 106. Between the read and set, another thread could change the state, causing the validation to be performed on stale data. While this is documented as acceptable (the code handles races by forcing ABORTED), the transition could briefly allow an invalid state if two threads race. Consider using atomic_cas() for the actual transition after validation, similar to lora_transition_from(). However, this is P2 because the code already has lora_transition_from() for critical paths and the worst case is an ABORTED state which is recoverable.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

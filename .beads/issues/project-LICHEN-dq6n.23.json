@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dq6n.23",
   "title": "[lichen_l2.c:249-250] atomic_set/get comment falsely claims memory ordering",
   "description": "Critic: Comment states 'atomic_set() provides release semantics' and 'atomic_get() provides acquire semantics' but Zephyr's atomic_t operations do NOT guarantee memory ordering. On weakly-ordered architectures (ARM), the compiler or CPU could reorder stores to link_ctx AFTER atomic_set(\u0026link_ctx_initialized, 1), causing races. Either add explicit barriers or use atomic_set_explicit() with memory_order_release.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.150",
   "title": "Good: replay.py has clean O(1) bitmap window implementation",
   "description": "src/lichen/link/replay.py replay window implementation is clean:\n- O(1) bitmap operations for dedup\n- Well-documented window semantics\n- Clear edge case handling\n\nNo findings worth filing.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

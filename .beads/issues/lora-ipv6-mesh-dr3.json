@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-dr3",
   "title": "PcapngWriter leaks file handle on init failure",
   "description": "pcap.py __init__ opens file then calls _write_section_header_block() and _write_interface_description_block(). If either raises, file handle leaks. Wrap in try/except/finally or defer open to __enter__.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Frost",

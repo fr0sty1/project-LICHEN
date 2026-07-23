@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.5",
   "title": "[lichen_l2.c:632-633] net_pkt_unref after successful send assumes pkt is valid",
   "description": "In lichen_l2_send() at line 632-633, net_pkt_unref(pkt) is called after successful TX to transfer ownership per the L2 contract. However, if the net_pkt was corrupted during the send path (e.g., by a buggy LoRa driver modifying the frags chain), this unref could crash. While this is unlikely given Zephyr's net_pkt API guarantees, a defensive check like 'if (pkt != NULL)' before unref would prevent null deref if a future refactor introduces a bug where pkt is set to NULL in the error path. Low priority since current code is correct.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

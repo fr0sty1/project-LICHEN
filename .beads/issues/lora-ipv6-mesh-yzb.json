@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-yzb",
   "title": "IPv6 address handling and IID derivation",
   "description": "Implement IPv6 address handling per spec section 7.\n\nAddress types:\n- Link-local: fe80::/10 + IID\n- ULA: fd00::/8 + network prefix + IID (when DODAG root present)\n- GUA: 2000::/3 + prefix + IID (when border router present)\n\nIID derivation from EUI-64:\n- Insert ff:fe in middle\n- Flip universal/local bit\n\nClasses:\n- Identity: holds EUI-64, derives IID, generates addresses\n- AddressManager: tracks current addresses by scope\n\nFunctions:\n- eui64_to_iid(eui64) -\u003e bytes (8)\n- make_link_local(iid) -\u003e IPv6Address\n- make_ula(prefix, iid) -\u003e IPv6Address\n\nIntegration with SCHC address compression.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Frost",

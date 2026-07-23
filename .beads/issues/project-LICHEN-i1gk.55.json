@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.55",
   "title": "[lichen_l2.c:1453 vs lora_l2.c:634-800] reinit_after_abort precondition check is incomplete",
   "description": "Cross-file analysis: lichen_l2_reinit_after_abort() at line 1453 checks lichen_lora_l2_is_running() to verify preconditions. However, the function's documented precondition (line 1432-1434) is that 'lora_l2 module is in DEINITING state'. is_running() only checks for RUNNING state, so DEINITING returns false (correct), but STOPPED also returns false. This means if someone mistakenly calls reinit_after_abort() when the module is STOPPED (not DEINITING), the check passes and the mutex is reinitialized while potentially still valid. The check should verify the caller is specifically in DEINITING state, not just 'not running'. Since is_running() and needs_reinit() are the only state query APIs, and DEINITING is an internal transitional state, this requires either: (1) adding a new API is_deiniting(), or (2) accepting the weaker precondition check. Option 2 is reasonable if the function is truly internal-only, but the k_panic on violation suggests strong preconditions are expected.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

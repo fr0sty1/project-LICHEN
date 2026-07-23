@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.30",
   "title": "[lichen_l2.c:1221-1417] lichen_l2_iface_init: no return value to signal initialization failure",
   "description": "Contract violation: postcondition - void return with no error signal\n\n**Issue:** lichen_l2_iface_init() is a void function (required by Zephyr net_if_api.init signature) but can fail at multiple points. It sets iface_init_failed atomic on failure, but Zephyr doesn't check this. The interface will appear 'up' to Zephyr even though L2 operations will fail.\n\n**Documentation at lines 1215-1218 acknowledges this:**\n```\n * @note Zephyr's net_if_api.init callback signature is void(*)(struct net_if*),\n * so errors cannot be returned to the caller. Instead, on any failure this\n * function sets the iface_init_failed atomic flag...\n```\n\n**Assessment:** This is a Zephyr API constraint, not a code defect. The code correctly mitigates by:\n1. Setting iface_init_failed flag\n2. All L2 operations check this flag and fail gracefully\n\n**No fix needed** - the design correctly handles Zephyr's void return constraint.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

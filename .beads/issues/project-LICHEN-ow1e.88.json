@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.88",
   "title": "good: core/error.rs actionable error types with expected vs actual",
   "description": "In error.rs:13-95, TooShort and BufferTooSmall carry expected vs actual sizes, making errors immediately actionable without hunting through code. This pattern is consistently used across all parsing modules.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

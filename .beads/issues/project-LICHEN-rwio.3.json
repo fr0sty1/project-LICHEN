@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.3",
   "title": "lichen_pubkey_to_iid() leaks SHA-256 state on error paths",
   "description": "In ipv6_addr.c lichen_pubkey_to_iid(), the tc_sha256_state_struct is stack-allocated (line 57). If tc_sha256_init, tc_sha256_update, or tc_sha256_final fails (lines 60-71), the function returns early without zeroing sha_state or hash[].\n\nSame pattern as generate_eui64() - cryptographic state should be zeroed on all exit paths for defense-in-depth.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/ipv6_addr.c lines 57-71",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

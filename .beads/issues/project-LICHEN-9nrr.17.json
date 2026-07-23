@@ -3,7 +3,7 @@
   "title": "link: decouple AES-CCM helper from OSCORE CoAP module",
   "description": "Why this exists: link-layer encrypted frames call lichen_aes_ccm_encrypt/decrypt from lichen/subsys/lichen/oscore/aes_ccm.c, so tests or builds that need link AES-CCM currently enable CONFIG_LICHEN_OSCORE and indirectly pull coap_oscore.c plus Zephyr CoAP server dependencies. This coupling showed up while validating project-LICHEN-9nrr.16 on EC2. What needs to be done: move or expose the AES-CCM helper through a neutral crypto/common module or otherwise make CONFIG_LICHEN_LINK link-key support select/build only the AES-CCM helper and TinyCrypt dependencies it needs, without requiring the full OSCORE CoAP module. Preserve existing OSCORE behavior and link encrypted frame behavior.",
   "acceptance_criteria": "A link_crypto-style build can enable LICHEN_LINK with link-key AES-CCM support without enabling the full OSCORE CoAP wrapper solely for AES-CCM symbols. Existing OSCORE tests/builds still pass. After implementation and tests, complete two separate code-review passes before closing; file follow-up Beads for any discovered issues.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

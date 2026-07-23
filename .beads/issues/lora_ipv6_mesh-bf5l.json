@@ -3,7 +3,7 @@
   "title": "Zephyr gateway: SLIP bridge + CoAP server wiring",
   "description": "Implement the gateway firmware body in lichen/apps/gateway/src/main.c. Current state: the file just logs and returns. Needed: (1) initialise the LoRa radio driver and SCHC context, (2) start the SLIP bridge over the console UART using Zephyr net_slip or a custom driver so a host PC gets a SLIP network interface to the mesh, (3) start the CoAP server with the LICHEN resources (/status, /neighbors, /config, /.well-known/core), (4) initialise as RPL DODAG root so mesh nodes can join. The native_sim build should compile and the CI check should still pass.",
   "acceptance_criteria": "native_sim build compiles cleanly in CI; main.c starts radio + SLIP + CoAP + RPL without panicking on native_sim",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Frost",

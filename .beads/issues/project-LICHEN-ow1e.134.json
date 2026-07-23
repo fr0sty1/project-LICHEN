@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.134",
   "title": "RPL modules use .expect() for state machine transitions",
   "description": "Several RPL modules use .expect() for state transitions:\n\n**lichen-rpl/src/trickle.rs:97:**\n```rust\n.expect(\"stopped or active Trickle timer can begin an interval\");\n```\n\n**lichen-rpl/src/dodag.rs:281,306,340:**\n```rust\n.expect(\"DODAG version adoption cannot demote a root\");\n.expect(\"joined DODAG can return to unjoined\");\n.expect(\"non-root DODAG can join through a selected parent\");\n```\n\n**lichen-rpl/src/routing.rs:184:**\n```rust\n.expect(\"fresh or stale route entry can refresh\");\n```\n\nThese encode state machine invariants as expects. Consider:\n1. Using debug_assert! if these are programmer-error checks\n2. Returning Result if callers should handle violations\n3. Making impossible states unrepresentable via type design",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

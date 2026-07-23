@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.1",
   "title": "lichen_l2_send: returns 0 after unref but IPv6 stack may access pkt",
   "description": "In lichen_l2.c:lichen_l2_send(), the function calls net_pkt_unref(pkt) on line 202 and then returns 0 on line 203. According to the Zephyr net_l2 contract (documented in comment at lines 197-201), returning 0 means L2 took ownership and freed the packet. However, if Zephyr's IPv6 stack ever reads any field of pkt between the return and its own handling of the return value, the pkt may already be freed (dangling pointer). In practice this is likely safe due to Zephyr's implementation, but the code ordering creates a window for use-after-free if Zephyr internals change.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-grdj",
   "title": "task",
   "description": "sim_client.py:346-349 - When receiving an oversized message (\u003eMAX_MESSAGE_LENGTH), we read the 4-byte length header but NOT the body, then raise ProtocolError without closing the stream. If the caller catches the exception, subsequent reads will start mid-message, causing protocol desync. The stream should be closed/invalidated after any ProtocolError to prevent silent corruption.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3z6d.4",
   "title": "Context derives Clone, leaking key material via implicit copy",
   "description": "Location: rust/lichen-oscore/src/lib.rs:110\nIssue: Context contains master_secret, sender_key, recipient_key (all key material) and derives Clone. This allows callers to clone security contexts, duplicating key material in memory. The clone won't be zeroized when the original is dropped.\nImpact: Key material may persist longer in memory than intended.\nFix: Remove Clone derive, or document explicitly that cloned contexts must also be properly dropped.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

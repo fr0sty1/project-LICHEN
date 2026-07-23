@@ -5,7 +5,7 @@
   "design": "Mutable sender/replay state must have one owner. Shared tasks use synchronization around one Context, not copies. Persistence must fail closed rather than silently restarting at zero.",
   "acceptance_criteria": "Context cannot be cloned; validated restoration survives restart without nonce reuse; repeated no-PIV response protection rejects; Observe/multiple-response behavior has an explicit safe API; lichen-node exposes exhaustion/context-rotation status; tests demonstrate unique nonces and failure modes; no_std/all-feature tests, Clippy, and three security reviews pass.",
   "notes": "Partial safeguards implemented on integration/oscore-recovery after d8f842b0d: Context no longer Clone; bounded ordinary-response one-shot tracking; restored contexts disable no-PIV responses; explicit notification replay API; requester KID binding; validated sender-state restore; distinct node ContextExhausted; reservation callback runs before transmission and failures stop send. Gates pass: OSCORE all-feature 54 tests, no-default 40 tests, node std 124 tests, library Clippy, diff check. Final hashes before commit: lib.rs f82ff345db8402579b937106f432467f19fe13e3b78ea0020af1867f7fbf5f11; secure.rs d15970c0daa2cdd64f33a01e23b20d3f01521309bb6cf07245e269e7354ff4b6. Remaining P0/P1 architecture is child .48.2.1: blind reservation callback is not CAS across owners; public protect methods bypass persistence; Context::new cannot prove keys fresh; SecureStack mutable stack permits plaintext bypass. Keep .48.2 open.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

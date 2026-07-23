@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hi56",
   "title": "Assert statements used for type checking - will be stripped in optimized mode",
   "description": "File: python/src/lichen/gateway/compact_cot.py\nLines: 376, 430\n\nThe XML expansion functions use assert for type validation:\n```python\ndef _expand_pli_to_xml(...):\n    assert isinstance(cot.payload, PliPayload)  # Line 376\n    \ndef _expand_chat_to_xml(...):\n    assert isinstance(cot.payload, ChatPayload)  # Line 430\n```\n\nWhen Python runs with -O (optimize) or PYTHONOPTIMIZE=1, all assert statements are removed. This means:\n1. Type check is skipped entirely\n2. Subsequent code will fail with confusing AttributeError\n3. Security-relevant validation is bypassed\n\nFix: Replace assert with explicit checks that raise appropriate exceptions:\n```python\ndef _expand_pli_to_xml(...):\n    if not isinstance(cot.payload, PliPayload):\n        raise TypeError(f'Expected PliPayload, got {type(cot.payload).__name__}')\n    pli = cot.payload\n```\n\nNote: This is especially important for gateway code that processes external input.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

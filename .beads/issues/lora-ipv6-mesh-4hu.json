@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-4hu",
   "title": "Implement Medium class",
   "description": "Create python/src/lichen/sim/medium.py. Tracks active transmissions. Methods: start_tx(node_id, payload, tx_power) -\u003e Transmission, get_rx_candidates(node_id, position, time) -\u003e list of (Transmission, rssi, snr). Uses PropagationModel for path loss. Collision detection: find overlapping TXs. Capture effect: if strongest signal is 6+ dB above second strongest, it wins; otherwise all colliding packets lost. Configurable noise_floor_dbm (default -120). Unit tests for: single TX delivery, collision with both lost, capture effect winner.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

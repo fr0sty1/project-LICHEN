@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.5",
   "title": "mypy: 11 import-not-found errors (textual missing)",
   "description": "11 import-not-found errors for textual module:\n- src/lichen/tui/app.py (5 imports)\n- src/lichen/tui/native.py (6 imports)\n\nFix: Install textual in dev dependencies or add it to optional[tui] extras, or add # type: ignore[import-not-found] if TUI is optional.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

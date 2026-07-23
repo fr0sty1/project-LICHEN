@@ -2,7 +2,7 @@
   "id": "project-LICHEN-6h5g.2",
   "title": "Renode board definition: LilyGO T-Deck",
   "description": "Renode board for T-Deck (ESP32-S3 + SX1262 + LCD + keyboard). LCD/keyboard as simple stubs (log output, scripted input). Focus on MCU + LoRa path for mesh testing.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

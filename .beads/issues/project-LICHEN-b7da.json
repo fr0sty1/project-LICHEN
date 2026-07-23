@@ -2,7 +2,7 @@
   "id": "project-LICHEN-b7da",
   "title": "task",
   "description": "lichen/subsys/lichen/meshtastic/codec.c:620. Negative tx_power corrupted.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

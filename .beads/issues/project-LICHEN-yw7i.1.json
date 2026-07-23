@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yw7i.1",
   "title": "Good: secure_zero prevents optimizer elimination",
   "description": "lichen_util.h:secure_zero() uses volatile pointer to prevent the compiler from optimizing away the zeroing of sensitive data. This is the correct, portable pattern for Zephyr (which lacks explicit_bzero). Worth defending if someone suggests replacing with memset.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

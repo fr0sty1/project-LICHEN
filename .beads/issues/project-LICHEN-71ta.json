@@ -2,7 +2,7 @@
   "id": "project-LICHEN-71ta",
   "title": "senml_encode_location allows NaN/Inf lat/lon without validation",
   "description": "File: lichen/subsys/lichen/senml/senml.c\nLines: 308-339, specifically 321-329\n\nCATEGORY: CORRECTNESS / PROTOCOL\n\nsenml_encode_location() accepts float lat and lon parameters but doesn't validate them:\n\n  ret = senml_add_float(\u0026pack, 'lat', 'deg', lat);\n  ret = senml_add_float(\u0026pack, 'lon', 'deg', lon);\n\nIf lat or lon is NaN or Infinity, the function will encode these invalid values. WGS84 coordinates have valid ranges:\n  - Latitude: -90.0 to +90.0\n  - Longitude: -180.0 to +180.0\n\nEncoding NaN or Inf violates the semantics of geographic coordinates even though CBOR can represent them.\n\nThe alt parameter IS validated (line 331):\n  if (!isnan(alt)) { ... }\n\nBut this only skips NaN altitude, it doesn't reject NaN - the inconsistency suggests lat/lon should also be validated.\n\nIMPACT:\n- Invalid location data propagates to receivers\n- Receivers may crash or produce undefined behavior\n- GPS fix failures (NaN) silently become encoded as 'valid' data\n\nFIX: Add validation:\n  if (isnan(lat) || isnan(lon) || isinf(lat) || isinf(lon)) {\n      return -EINVAL;\n  }\n  if (lat \u003c -90.0f || lat \u003e 90.0f || lon \u003c -180.0f || lon \u003e 180.0f) {\n      return -ERANGE;\n  }",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

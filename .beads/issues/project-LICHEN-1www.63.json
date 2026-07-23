@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.63",
   "title": "RX alloc timeout Kconfig default may cause packet drops on memory-constrained devices",
   "description": "Location: \n- firmware/bridge-zephyr/subsys/lichen/Kconfig:89-105 (CONFIG_LICHEN_L2_RX_ALLOC_TIMEOUT_MS)\n- firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:750-753 (net_pkt_rx_alloc_with_buffer)\n\nRisk: The default timeout is 10ms with comment explaining tradeoffs. However:\n\n1. The comment says For LoRa low data rate, 10ms is reasonable but LoRa data rate is 300 bps at SF10 so packets arrive slowly. A 10ms wait is actually very short relative to the ~6.8s frame time\n2. On memory-constrained devices running multiple protocols, net_pkt buffers may be temporarily exhausted by bursts from other interfaces\n3. The comment suggests 0 for K_NO_WAIT but does not explain when this is appropriate\n\nPattern generating user issue reports: User on STM32L0 with minimal RAM sees sporadic packet drops, does not realize allocation timeout is the cause.\n\nSuggested fix: \n1. Increase default to 50-100ms (still tiny relative to LoRa timing)\n2. Add Kconfig help text explaining symptoms of too-short timeout (Failed to allocate RX packet log messages)\n3. Document in CLAUDE.md or README that this is a common tuning point for memory-constrained boards",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

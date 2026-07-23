@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2j7b",
   "title": "_Nonnull data parameter allows NULL when len is 0",
   "description": "File: lichen/subsys/lichen/meshcore/include/lichen/meshcore/adapter.h\nLine: 155-157\n\nFile: lichen/subsys/lichen/meshcore/adapter.c\nLine: 1113-1120\n\nThe header declares data as _Nonnull:\n```c\nint lichen_meshcore_adapter_feed_stream(\n    struct lichen_meshcore_adapter *_Nonnull adapter,\n    const uint8_t *_Nonnull data, size_t len);\n```\n\nBut the implementation allows NULL when len is 0:\n```c\nif (adapter == NULL || (data == NULL \u0026\u0026 len \u003e 0U)) {\n    return -EINVAL;\n}\n```\n\nThis is inconsistent with the _Nonnull annotation. Either:\n1. The annotation should be _Nullable (or removed)\n2. The check should be `data == NULL` unconditionally",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

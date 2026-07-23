@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.55",
   "title": "Error path in lichen_l2_input logs 'RX before link_ctx initialized' at WRN level",
   "description": "lichen_l2.c lines 674-678:\n\n```c\nif (!atomic_get(\u0026link_ctx_initialized)) {\n    LOG_WRN(\"RX before link_ctx initialized - dropping frame\");\n    k_mutex_unlock(\u0026rx_mutex);\n    return;\n}\n```\n\nThe comment at lines 670-673 says 'This shouldn't happen in normal operation' but the log level is WRN. If it truly shouldn't happen, it should arguably be LOG_ERR to make it stand out in logs.\n\nConversely, if it's a recoverable timing window during startup, the comment should explain when this can legitimately occur and why WRN (not ERR) is appropriate.\n\nWhat goes wrong: Ambiguity about whether this condition is expected or indicates a bug.\n\nImprovement: Either change to LOG_ERR('BUG: RX before link_ctx initialized') or add to the comment: 'This can occur during early startup if a packet arrives between lichen_lora_l2_start() and lichen_l2_iface_init() completing. The packet is safely dropped.'",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

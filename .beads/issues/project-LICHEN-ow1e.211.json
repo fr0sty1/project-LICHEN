@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.211",
   "title": "Codereview pass 1: DutyCycleTracker no protection against time going backwards",
   "description": "rust/lichen-core/src/duty_cycle.rs - If now_ms passed to any method is less than a previous call (clock rollback, wrap, or test error), behavior is undefined: records with future timestamps won't be evicted and budget calculations will be wrong. Consider either documenting this requirement prominently or adding a debug_assert!(now_ms \u003e= self.last_now) guard.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wg5w",
   "title": "Fix gateway native_sim Kconfig dependency warnings after module load",
   "description": "After project-LICHEN-s3n3 fixed LICHEN module Kconfig loading, west build -b native_sim lichen/apps/gateway -d build_gateway_check -- -DZEPHYR_EXTRA_MODULES=/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen advances past undefined CONFIG_LICHEN symbols but still aborts during Kconfig warnings. CONFIG_LICHEN_L2=y is forced to n because LICHEN_LINK is not enabled, and native_sim SLIP/TAP settings also warn because NET_QEMU_SLIP/SERIAL-related dependencies are not satisfied. Decide the intended native_sim gateway config and update app/board Kconfig settings separately from module metadata.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

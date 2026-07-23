@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.176",
   "title": "good: meshtastic/address.rs has clean newtype and bidirectional mapping",
   "description": "address.rs:28-75 MeshtasticNodeId newtype with conversions and Display is well-designed. AddressMapper (119-184) handles bidirectional mapping with proper invalidation when pubkeys change. iid_from_pubkey (186-198) correctly clears U/L bit.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

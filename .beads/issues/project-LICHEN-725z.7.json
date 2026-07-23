@@ -2,7 +2,7 @@
   "id": "project-LICHEN-725z.7",
   "title": "struct in6_addr fallback risks ODR violation on new platforms",
   "description": "ipv6_addr.h:47-64 — Multi-guard detection (IN6ADDR_ANY_INIT, _NETINET_IN_H, etc) is fragile. New platforms with different guards cause 'redefinition' errors. Comment acknowledges but no tooling help.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

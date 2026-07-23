@@ -3,7 +3,7 @@
   "title": "task",
   "description": "Policy: appendix-c-safety.md. Create spec/test-vectors/frame.json. Load in Python, Rust, C tests for cross-validation.",
   "notes": "Partial: frame.json created at spec/test-vectors/frame.json, but cross-validation tests not yet implemented in Python, Rust, or C. Tests need to load and use this file.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

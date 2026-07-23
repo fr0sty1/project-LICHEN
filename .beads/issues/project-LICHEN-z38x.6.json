@@ -2,7 +2,7 @@
   "id": "project-LICHEN-z38x.6",
   "title": "Add retained RAM crash info infrastructure",
   "description": "Add infrastructure for storing crash info in retained RAM that survives watchdog reset.\n\nImplementation:\n1. Add retained RAM section to linker script (board-specific)\n2. Create crash_info struct:\n   __retained static struct {\n       uint32_t magic;      // Validity check\n       uint32_t reason;     // Crash reason enum\n       uint32_t location;   // __LINE__ or address\n       uint32_t extra;      // Context-specific data\n       uint32_t count;      // Crash count since power-on\n   } crash_info;\n\n3. Add store_crash_info() helper\n4. On boot, check magic and log previous crash if valid\n5. Clear after logging\n\nBoards to support:\n- STM32WL (olimex_lora_stm32wl_devkit)\n- nRF52840 (future)\n\nThis enables post-mortem debugging without stopping the device.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -3,7 +3,7 @@
   "title": "Fix BLE IPSP test firmware compilation",
   "description": "Boot failure discovered by project-LICHEN-m5m1.5. ble_ipsp_transport cannot compile under -Werror due to nested-comment text '/diag/raw/*', a Zephyr 3.7 before-hook signature lacking void *fixture, and an uninitialized oversized test buffer. Fix all three without weakening warnings or changing transport behavior.",
   "acceptance_criteria": "1. Doxygen text no longer forms nested comment syntax. 2. ZTEST before hook matches Zephyr 3.7 signature. 3. Oversized buffer has independent deterministic contents. 4. Native64 firmware boots and all BLE IPSP ztests pass. 5. Three independent review passes complete.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

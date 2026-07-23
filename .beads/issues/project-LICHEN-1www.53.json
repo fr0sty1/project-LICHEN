@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.53",
   "title": "ipv6_addr_to_str snprintf truncation not detected on exact fit",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/ipv6_addr.c:169-211 (lichen_ipv6_addr_to_str)\n\nBug: The function checks if snprintf returns \u003c 0 (encoding error) but does not check for truncation. snprintf returns the number of characters that WOULD have been written, not counting the null terminator. If buflen is exactly 40 (LICHEN_IPV6_ADDR_STR_LEN), and the format produces exactly 39 characters + null, ret will be 39, which is \u003e= 0 but the output is correct.\n\nHowever, if buflen were 39 (less than required), snprintf would return 39 (needed chars), ret would be \u003e= 0, and the function would return 0 (success) even though the output was truncated.\n\nThe precondition check at line 176 catches buflen \u003c LICHEN_IPV6_ADDR_STR_LEN, so in practice truncation cannot occur. But the snprintf return value check at line 202 is incomplete by snprintf semantics.\n\nImpact: Low - precondition prevents the truncation case. But defensive coding would check ret \u003e= buflen for truncation.\n\nFix: Add after line 202: if ((size_t)ret \u003e= buflen) { LOG_ERR(...); return -ENOSPC; }",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

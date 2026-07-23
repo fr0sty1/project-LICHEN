@@ -4,7 +4,7 @@
   "description": "Discovered while reviewing project-LICHEN-2auf.44.8: NeighborTable eviction and pruning compare u32 wrapping ages without a documented half-range observation bound. After sufficiently long gaps or a full clock cycle, relative age is ambiguous and the wrong neighbor may be evicted. Define the monotonic-time/lifetime contract or extend timestamps, then add boundary tests around 2^31 and complete-wrap gaps.",
   "acceptance_criteria": "Neighbor age ordering has an explicit enforceable uptime/gap contract or extended timestamp; eviction/pruning tests cover wrap, half-range ambiguity, and long-idle resumption; node tests and three reviews pass.",
   "notes": "Completed monotonic u64 recovery. Router now owns one high-water millisecond epoch across DIO (including rejected input), DAO, route lookup, pruning, and Trickle wrappers; direct timer/DAO bypass fields are private. DAO receipt uses floor seconds for existing-route expiry and ceiling seconds for new lifetime start; bounded DaoManager processing atomically rejects only finite unrepresentable deadlines while accepting infinite routes and withdrawals. Trickle deadlines/events use u64, stop on clock exhaustion, and consistency counting saturates. Final validation: cargo test -p lichen-node --features std (157 unit, doctests 1 passed/1 ignored); cargo test -p lichen-rpl --all-features (97 unit + 5 integration); strict scoped Clippy for both crates; rustfmt checks; git diff --check. Final three independent reviews reported no correctness findings. Follow-up production scheduler integration is project-LICHEN-2auf.44.11.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

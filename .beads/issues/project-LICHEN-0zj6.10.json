@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-0zj6.10",
   "title": "LICHEN_LINK_KEY_LEN used without include/definition in lichen_l2.c",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

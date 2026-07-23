@@ -2,7 +2,7 @@
   "id": "project-LICHEN-mjlj",
   "title": "observed_uptime_from_age_seconds can return negative values",
   "description": "File: lichen/subsys/lichen/app_interface/hal_bridge.c:187-196\n\nThe function calculates observed uptime as: now_ms - age_ms\n\n  static int64_t observed_uptime_from_age_seconds(uint32_t age_seconds)\n  {\n      const int64_t now_ms = bridge_now_ms();\n      ...\n      const int64_t age_ms = bounded_age_seconds * 1000;\n      return now_ms - age_ms;\n  }\n\nIf age_seconds * 1000 \u003e k_uptime_get(), this returns a negative value. Example:\n- System uptime: 50 seconds (50000 ms)\n- age_seconds: 100 (100000 ms)\n- Result: -50000 ms (negative uptime!)\n\nThis negative value is then assigned at lines 356-358 and 446-448:\n  sample.observed_uptime_ms_valid = true;\n  sample.observed_uptime_ms = observed_uptime_from_age_seconds(app-\u003eage_seconds);\n\nDownstream HAL code may not expect negative uptime values, causing undefined behavior or incorrect time calculations.\n\nFix: Clamp to 0 if the result would be negative, or validate age_seconds against current uptime before accepting.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

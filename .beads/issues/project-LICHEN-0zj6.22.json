@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0zj6.22",
   "title": "rx_thread error backoff masks persistent hardware failures",
   "description": "Location: lora_l2.c:182-186. On lora_recv error (not EAGAIN), code sleeps 1s then retries indefinitely. If radio hardware fails permanently, this loops forever at 1Hz without escalating (no counter, no LOG_ERR upgrade, no device disable). In a deployed mesh node, this silently drops all RX without indication. Consider: error counter, escalate log level after N failures, or disable interface after persistent failure.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

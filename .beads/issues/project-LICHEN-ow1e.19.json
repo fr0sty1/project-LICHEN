@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.19",
   "title": "mypy: 4 untyped-decorator errors in tui/app.py",
   "description": "4 untyped-decorator errors in src/lichen/tui/app.py:\n- Lines 329, 360, 409, 451 - decorators making functions _connect_to_sim, _disconnect, _transmit, _receive untyped\n\nThese are Textual decorators without type hints. Fix: Add # type: ignore[misc] or provide local type stubs for Textual decorators.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

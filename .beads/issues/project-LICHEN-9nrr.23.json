@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9nrr.23",
   "title": "gateway: make qemu_x86 build avoid LoRa lora0 alias requirement",
   "description": "Why this exists: while verifying project-LICHEN-9nrr.17, west build -b qemu_x86 lichen/apps/gateway compiled the OSCORE CoAP wrapper but then failed because the gateway QEMU configuration enables LICHEN_LORA_L2/LICHEN_L2 paths that require a devicetree alias lora0, which qemu_x86 does not provide. What needs to be done: add a qemu_x86-specific gateway config/overlay choice or Kconfig guard so gateway host/QEMU builds either use a simulated/non-LoRa ingress path or disable LoRa L2, while hardware boards with a real lora0 keep the existing path. Verify the gateway build on qemu_x86 and at least one hardware LoRa board. As a code-generation/fix Bead, run two review passes before closing.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

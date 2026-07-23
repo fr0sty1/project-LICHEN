@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3hb7",
   "title": "Unbounded memory growth in _tx_start_times dict",
   "description": "## Location\npython/src/lichen/sim/metrics.py:127\n\n## Description\nThe _tx_start_times dictionary stores the start time of every transmission and is never pruned. Unlike _delivered which serves as a deduplication set, this dict stores actual timing data needed for latency computation. The reset() method exists but is only called between simulation runs, not during a run.\n\n## Failure Scenario\nA long-running simulation with continuous transmissions (e.g., 24-hour stress test with 1000 nodes transmitting every second) accumulates 86.4 million entries in _tx_start_times. Each entry is (str key ~36 bytes + int value 28 bytes), consuming multiple GB of memory and eventually causing OOM.\n\n## Category\nsafety",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

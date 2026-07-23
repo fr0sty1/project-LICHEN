@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.39",
   "title": "lora_l2.c:267 hash_input buffer may be uninitialized past hwid_len",
   "description": "In generate_eui64() at lines 267-314:\n```c\nuint8_t hash_input[EUI64_DOMAIN_PREFIX_LEN + sizeof(hwid)];\n\nhwid_len = hwinfo_get_device_id(hwid, sizeof(hwid));\n// ... validation ...\n\nmemcpy(hash_input, EUI64_DOMAIN_PREFIX, EUI64_DOMAIN_PREFIX_LEN);\nmemcpy(hash_input + EUI64_DOMAIN_PREFIX_LEN, hwid, (size_t)hwid_len);\nret = lichen_sha256(hash_input, EUI64_DOMAIN_PREFIX_LEN + (size_t)hwid_len, hash);\n```\n\nhash_input is sized for EUI64_DOMAIN_PREFIX_LEN + sizeof(hwid) = 15 + 32 = 47 bytes.\n\nBut only EUI64_DOMAIN_PREFIX_LEN + hwid_len bytes are initialized. If hwid_len \u003c sizeof(hwid), the remaining bytes in hash_input are uninitialized.\n\nThe SHA-256 hash is computed over exactly (EUI64_DOMAIN_PREFIX_LEN + hwid_len) bytes, so the uninitialized bytes are never read by lichen_sha256().\n\nAdditionally, secure_zero(hash_input, sizeof(hash_input)) at line 355 clears the entire buffer, including uninitialized bytes. This is fine - clearing uninitialized data is harmless.\n\nNO BUG - the hash only reads initialized data.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "note",
   "assignee": "Mark Atwood",

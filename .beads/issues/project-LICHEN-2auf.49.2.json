@@ -3,7 +3,7 @@
   "title": "Poison failed EDHOC sessions",
   "description": "EDHOC processing errors after DH retain PRKs and retryable state; create_message_1 can reuse invalid/zeroized ephemeral state; injected RNG constructors use infallible fill_bytes and may panic on hardware entropy failure. Make failures immediately zeroize and permanently poison the session, guard all lifecycle methods, and use fallible entropy APIs.",
   "acceptance_criteria": "Every post-DH parser/authentication error zeroizes stored/transient secrets and prevents retry/export; create_message_1 rejects completed/failed/zeroized state; try_fill_bytes entropy failure returns an explicit error without panic or partial object; host/Cortex-M tests and three reviews pass.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

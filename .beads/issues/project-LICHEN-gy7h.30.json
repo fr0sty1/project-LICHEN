@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.30",
   "title": "RX thread error backoff resets consecutive_errors counter on -EAGAIN but not on ret==0",
   "description": "Location: lora_l2.c:163-183\n\n**What goes wrong:** The RX loop handles three cases:\n1. ret \u003c 0 \u0026\u0026 ret == -EAGAIN: resets consecutive_errors (line 166), continue\n2. ret \u003c 0 \u0026\u0026 ret != -EAGAIN: increments consecutive_errors, sleeps 1s, continue\n3. ret == 0: continue (empty packet) - does NOT reset consecutive_errors\n4. ret \u003e 0: resets consecutive_errors at line 179\n\nIf the radio alternates between errors and empty packets (ret==0), the consecutive_errors counter never resets, eventually triggering the hardware warning spuriously.\n\n**Trigger:** Radio returning empty packets interspersed with transient errors.\n\n**Fix:** Reset consecutive_errors on ret==0 as well, or document that empty packets don't count as successful receives.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

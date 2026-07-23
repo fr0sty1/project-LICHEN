@@ -2,7 +2,7 @@
   "id": "project-LICHEN-s6tx",
   "title": "Compliance: C link_ctx.c replay protection",
   "description": "Policy: 02-physical-link.md §4.4. File: lichen/subsys/lichen/link/link_ctx.c. Status: COMPLIANT. Lines 67-84 initialize epoch to 128+(rand\u00260x7F) giving [128,255]. Uses sys_csrand_get on Zephyr, getentropy on POSIX. Security note for ESP32 weak RNG documented.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

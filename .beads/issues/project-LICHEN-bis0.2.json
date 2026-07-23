@@ -2,7 +2,7 @@
   "id": "project-LICHEN-bis0.2",
   "title": "C: Add /status/queues CoAP endpoint",
   "description": "Add queue metrics CoAP endpoint to gateway app:\n\n1. Create queue_stats struct per spec/appendix-bufferbloat.md:\n   - packets_queued\n   - packets_dropped_deadline\n   - packets_dropped_full\n   - max_latency_ms\n   - avg_latency_ms\n\n2. Add /status/queues CoAP resource (like existing /status)\n3. Encode stats as CBOR\n4. Make observable if appropriate\n\nFiles: lichen/apps/gateway/src/ (status_cbor.c, main.c)\nReference: spec/appendix-bufferbloat.md lines 138-152",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

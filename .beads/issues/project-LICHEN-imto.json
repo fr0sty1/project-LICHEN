@@ -2,7 +2,7 @@
   "id": "project-LICHEN-imto",
   "title": "Fix gnss_emul test for native_sim/native/64",
   "description": "gnss_emul/src/main.c has two issues on native_sim/native/64: (1) pm_device_runtime_is_enabled undefined - likely needs CONFIG_PM_DEVICE_RUNTIME, (2) DT_ALIAS(gnss) not found - needs overlay or Kconfig for native_sim.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

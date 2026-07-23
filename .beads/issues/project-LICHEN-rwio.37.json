@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.37",
   "title": "lora_l2.c generate_eui64 clears only hash buffer, not sha_state",
   "description": "lora_l2.c line 119: memset(hash, 0, ...) clears the output hash, but sha_state remains on stack with internal state. TC_SHA256_STATE_STRUCT contains intermediate hash values. For consistency with security comments elsewhere, should clear sha_state too.\n\nRewrite: Add memset(\u0026sha_state, 0, sizeof(sha_state)) after line 119.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

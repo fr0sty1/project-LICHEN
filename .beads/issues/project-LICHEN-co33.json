@@ -2,7 +2,7 @@
   "id": "project-LICHEN-co33",
   "title": "XML parsing vulnerable to entity expansion attacks",
   "description": "File: python/src/lichen/gateway/compact_cot.py\nLine: 687\n\nThe parse_cot_xml() function uses xml.etree.ElementTree.fromstring() to parse potentially untrusted XML from external ATAK systems. While Python's ElementTree doesn't expand external entities, it IS vulnerable to:\n\n1. Billion Laughs attack (exponential entity expansion)\n2. Quadratic Blowup attack (polynomial memory consumption)\n\nBoth can cause denial of service by exhausting memory.\n\nFix: Use defusedxml.ElementTree instead:\n```python\nfrom defusedxml.ElementTree import fromstring\n```\n\nOr configure a safe parser:\n```python\nfrom xml.etree.ElementTree import XMLParser, fromstring\nparser = XMLParser()\nparser.entity = {}  # Disable entity expansion\n```\n\nSeverity: High - Gateway receives XML from external ATAK clients over the network.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

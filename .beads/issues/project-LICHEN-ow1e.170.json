@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.170",
   "title": "tui/coap: Uri-Path delta encoding is non-obvious",
   "description": "In coap.rs:44-49, the delta = 11 - prev tracking for Uri-Path option encoding works but is non-obvious. Add comment: 'delta is 11 for first segment, 0 for subsequent'",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

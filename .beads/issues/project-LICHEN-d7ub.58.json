@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.58",
   "title": "lora_l2.c + crash_info.c: crash_info_store does not influence state machine",
   "description": "Cross-file interaction issue: crash_info_store() called from lora_l2.c:490 but lora state machine proceeds independently.\n\nlora_l2.c:488-492:\n  LOG_ERR('lora_l2: recv overflow (%d \u003e %d)', ret, sizeof(rx_buf));\n  crash_info_store(CRASH_DRIVER_OVERFLOW, __LINE__, ret);\n  atomic_set(\u0026current_state, LORA_ABORTED);\n  break;\n\ncrash_info_store() at crash_info.c:18-47 writes to retained RAM but has no return value and cannot signal failure.\n\nThis is INTENTIONAL - crash_info is best-effort telemetry. But the cross-file contract is undocumented: lora_l2.c expects crash_info_store to succeed silently, and crash_info.c makes no guarantees.\n\nIf crash_info retained RAM is corrupted (magic never valid), crash_info_store continues without error. This is acceptable design but should be documented.\n\nFIX: Add comment in lora_l2.c:490 noting crash_info_store is best-effort and does not affect recovery path.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

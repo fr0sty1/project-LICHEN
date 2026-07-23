@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kgsy",
   "title": "SourceRoutingHeader from_bytes: misleading TooShort error message",
   "description": "In rust/lichen-rpl/src/routing.rs SourceRoutingHeader::from_bytes(), when addr_bytes.len() is not a multiple of 16, the TooShort error is computed as 'data.len() + (16 - addr_bytes.len() % 16)' which gives a confusing 'expected' value. For example, if data is 10 bytes (6 header + 4 addr bytes), the error says expected 10 + 12 = 22, but the real issue is that 4 addr bytes isn't a valid multiple of 16. The error message is technically not wrong but misleading.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

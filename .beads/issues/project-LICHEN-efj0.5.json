@@ -2,7 +2,7 @@
   "id": "project-LICHEN-efj0.5",
   "title": "lichen-link: frame.rs AddrMode::from_u8 unwrap for consistency",
   "description": "rust/lichen-link/src/frame.rs:233 uses unwrap() on AddrMode::from_u8. While technically safe (value is masked to 0-3), it should use ok_or() pattern for consistency with MicLength::from_u8 on line 235-236.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

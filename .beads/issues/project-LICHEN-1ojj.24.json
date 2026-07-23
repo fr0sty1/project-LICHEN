@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.24",
   "title": "Strong SECURITY/architectural comments throughout",
   "description": "Multiple files demonstrate excellent commenting practice worth defending:\n\n1. lora_l2.c:66-76 (generate_eui64): Explains SHA-256 rationale with MCU-specific hwid layout examples (STM32 lot/wafer, ESP32 MAC length, nRF52). Justifies hashing rather than truncating.\n\n2. lichen_l2.c:79-87 (lichen_iface): Documents thread-safety invariant with issue reference (project-LICHEN-ybal.4), explains why pointer is never cleared, ties to Zephyr's interface model.\n\n3. lichen_l2.c:222-242 (lichen_l2_enable): Documents lock ordering to prevent deadlock, explains SECURITY risk if cleanup moves outside mutex scope.\n\n4. ipv6_addr.c:51-56, ipv6_addr.h:73-75 (pubkey_to_iid): SECURITY prefix explains why SHA-256 hash rather than raw pubkey bytes, references RFC 7343 and Python implementation.\n\nThese comments capture bus-factor knowledge that would otherwise be lost. If someone suggests 'simplifying' by removing them, push back.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

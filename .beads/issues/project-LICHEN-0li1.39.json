@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.39",
   "title": "[ipv6_addr.c:219] lichen_ipv6_addr_to_str does not null-terminate on all error paths",
   "description": "Contract: lichen_ipv6_addr_to_str should produce valid C string or indicate error.\nViolation: On snprintf encoding failure (line 253), buf[0] is set to '\\0' only if buflen \u003e 0 (lines 254-255). Same for truncation case (line 263 returns error but no explicit null-term). The initial buflen \u003c LICHEN_IPV6_ADDR_STR_LEN check (lines 226-230) does null-terminate.\nImpact: Low - snprintf encoding failures are rare. If buflen \u003e 0, snprintf guarantees null-termination even on truncation. The explicit buf[0] = '\\0' on lines 227-229 and 254-255 is defensive but not needed since snprintf already null-terminates.\nMitigation: The code is actually correct - snprintf null-terminates. The explicit zeroing is defensive redundancy.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

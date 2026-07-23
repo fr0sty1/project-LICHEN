@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.248",
   "title": "Rust RPL routing: error pattern mismatch in test",
   "description": "File: rust/lichen-rpl/src/routing.rs\nLine: 474\n\nTest uses 'matches!(err, Err(RplError::BufferTooSmall(_)))' but the original code returned Err(RplError::BufferTooSmall) without wrapped payload. The fix changed the error to wrap BufferTooSmall struct, requiring the test pattern to match. This is a P3 because it's test-only and the actual behavior is improved (more structured error info).",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

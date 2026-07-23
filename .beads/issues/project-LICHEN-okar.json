@@ -3,7 +3,7 @@
   "title": "Persist authenticated board provision epoch metadata",
   "description": "Why this exists: the HAL time provider can accept an authenticated board provision epoch and use it as a stricter epoch floor, but no durable board identity/settings path currently stores, authenticates or integrity-checks, loads, replaces, or clears that provision epoch. What needs to be done: design and implement a no-hardware persistent provision-epoch metadata path tied to board identity/settings; feed valid values into lichen_hal_time_provision_epoch_set(); reject and diagnose missing, zero, malformed, unauthenticated, earlier-than-build, or beyond-lead values; support administrative replacement/clear recovery; validate with native_sim/qemu tests. Physical board flash validation, if needed, must be split separately.",
   "notes": "Design input from 2026-07-03: firmware build-time stamps and authenticated board provision/build metadata can provide the epoch floor for GNSS/time sanity before lock; keep them as freshness floors with diagnostics for below-floor samples, not as authoritative wall clocks.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

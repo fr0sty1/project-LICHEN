@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kakh",
   "title": "Compliance: python/src/lichen/radio/sim_client.py polling",
   "description": "Policy: No-polling. Status: COMPLIANT (dpdn). Converted to push-based RX. Verify no poll loops remain.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

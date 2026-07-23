@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gy7h.6",
   "title": "generate_eui64 uses ret uninitialized on success path",
   "description": "Location: lora_l2.c:87-138\n\n**What goes wrong:** The function initializes `ret = 0` but then only sets it on the error path (line 111). On the success path, the code jumps to cleanup (line 133) with ret still 0, which is correct. However, if lichen_sha256() succeeds (returns 0), the goto cleanup at line 113 is NOT taken - the code falls through. But if you trace carefully: line 109 calls lichen_sha256 which returns 0 on success, and ret is assigned that value. Then ret != 0 is false, so line 113 goto is not taken. The code is actually correct but the flow is confusing.\n\nActually on re-reading this is NOT a bug - lichen_sha256 returns 0 on success which is assigned to ret, so ret=0 on success. Withdrawing this finding.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

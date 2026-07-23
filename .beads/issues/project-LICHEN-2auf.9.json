@@ -3,7 +3,7 @@
   "title": "Align Python link signing with protocol framing",
   "description": "Independent review found Python link_layer.py signing/framing does not match the link draft or the Rust/C implementations: signable data omits length/LLSec fields and signatures are appended as payload with placeholder MIC framing. Confirm the normative wire format and implement cross-implementation-compatible signing with independent vectors/tests.",
   "notes": "Compatibility decision: the normative contract is LENGTH || LLSec || EPO || SEQ || DST || PLD; S=1 places the full 48-byte Schnorr signature in MIC. MicLength remains 4/8-byte MIC selection only for S=0. Updated Python, Rust, C, draft, and vectors/tests. Verified: uv run pytest tests/link -q (145 passed, 4 skipped); cargo test -p lichen-link (32 tests passed including shared vectors); git diff --check passed. Zephyr C tests were not run locally: no configured CMake build directory; Linux/EC2 west build and link_crypto/schnorr48 Twister verification remain required.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

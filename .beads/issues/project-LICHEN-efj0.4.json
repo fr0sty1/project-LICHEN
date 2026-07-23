@@ -2,7 +2,7 @@
   "id": "project-LICHEN-efj0.4",
   "title": "lichen-link: link_layer.rs build_frame expect() should return Result",
   "description": "rust/lichen-link/src/link_layer.rs:215 uses expect('buffer too small'). If caller provides undersized buffer, this panics. Should return Result\u003cusize, BufferTooSmall\u003e instead.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

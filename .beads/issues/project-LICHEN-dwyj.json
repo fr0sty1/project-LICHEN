@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dwyj",
   "title": "MessagesResource unbounded sent storage",
   "description": "File: python/src/lichen/coap/resources.py:564-566\n\nThe MessagesResource inbox is bounded to _MESSAGES_MAX (100), but sent messages are never pruned:\n```python\nself._sent[msg_id] = copy.deepcopy(body)\nif msg_id not in self._sent_order:\n    self._sent_order.append(msg_id)\n```\n\nOver time, self._sent and self._sent_order grow without bound, causing memory exhaustion on constrained nodes.\n\nFix: Apply the same _MESSAGES_MAX limit to sent messages, or add a separate configurable limit.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

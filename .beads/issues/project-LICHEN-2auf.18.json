@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.18",
   "title": "Clean strict-mypy debug tests",
   "description": "Fix strict-mypy issues in inherited debug tests: annotate the fixture and module-level integration test, and avoid invalid type narrowing around mutable node state without weakening runtime assertions.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

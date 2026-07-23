@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.214",
   "title": "Codereview pass 3: Frame validation",
   "description": "Crypto + Efficiency + Elegance review:\n\nCrypto (review-crypto.md):\n- Validation at protocol boundary (from_bytes receives untrusted bytes) - correct\n- Length validated before any indexing/slicing - correct\n- No panic reachable from malformed input - FrameError raised instead\n\nEfficiency:\n- No unnecessary allocations\n- Validation is O(1)\n\nElegance:\n- _SIGNATURE_LENGTH constant duplicates link_layer.py's SIGNATURE_LENGTH, but this is deliberate module isolation (frame.py is self-contained)\n- SECURITY comment explains intent, not just what\n\nTest quality:\n- test_signature_present_but_payload_too_short uses hand-computed hex oracle, independent of encoder",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

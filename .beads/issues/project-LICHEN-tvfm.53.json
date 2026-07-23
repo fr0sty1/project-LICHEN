@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.53",
   "title": "[lichen_l2.c:298-307] peer_find_locked iterates full table even after finding match",
   "description": "Gap found: Peer table search efficiency not analyzed.\n\nWhy this was missed: Focus was on peer_try_all_pubkeys, not peer_find_locked.\n\nThe actual bug: In peer_find_locked() (lines 298-307), the loop iterates through all CONFIG_LICHEN_LINK_MAX_NEIGHBORS entries. It returns immediately when a match is found (line 303), so this is actually efficient - it short-circuits on first match.\n\nWait, reviewing more carefully: the loop structure is correct. The return inside the if statement causes early exit. This is NOT a bug.\n\nHowever, the related function peer_try_all_pubkeys (already flagged in Round 1) has the same pattern but with expensive signature verification. peer_find_locked is O(n) memcmp which is fast. \n\nClosing this as a non-issue after review.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

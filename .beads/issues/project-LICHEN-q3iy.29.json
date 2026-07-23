@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.29",
   "title": "lichen_l2.c lichen_l2_send does not check pkt for NULL before net_pkt_get_len",
   "description": "In lichen_l2.c:324, net_pkt_get_len(pkt) is called, but the NULL check for pkt happens at line 307, before the LoRa running check at line 318. If someone adds code between lines 307-324, they might inadvertently access pkt before the NULL check. The current code is safe, but consider moving net_pkt_get_len closer to its validation or adding an assertion.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

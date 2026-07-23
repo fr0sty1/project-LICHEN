@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-45t",
   "title": "Phase 9: Border Router",
   "description": "Full 6LBR connecting mesh to internet. Exit criteria: internet host can ping mesh node, mesh node can reach internet, Resource Directory operational.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",

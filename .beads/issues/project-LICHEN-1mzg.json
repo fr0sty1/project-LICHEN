@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1mzg",
   "title": "Compliance: Rust bridge.rs replay protection",
   "description": "Policy: 02-physical-link.md §4.4. File: rust/lichen-kiss/src/bridge.rs. Status: VIOLATION. Lines 126-136 default epoch to 0 instead of random [128,255]. Comment says caller must set it, but spec requires init, not deferred. Fix: initialize default_epoch with rand [128,255] in constructor.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

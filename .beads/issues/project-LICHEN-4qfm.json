@@ -2,7 +2,7 @@
   "id": "project-LICHEN-4qfm",
   "title": "TUI raw_events tuple grows unbounded causing memory leak",
   "description": "File: python/src/lichen/tui/native.py\nLine: 2371-2377\n\nIn _raw_rx_loop(), each raw RX event is appended to the raw_events tuple:\n  raw_events=self.diagnostics.raw_events + (event,)\n\nThis tuple grows indefinitely as long as the observer is running. While the display only shows the last 3 events (line 702), the full history is retained in memory.\n\nImpact: Memory consumption grows linearly with events received. In long-running sessions with active raw RX diagnostics, this could exhaust available memory.\n\nFix: Trim the tuple to a bounded size, e.g.:\n  raw_events=(self.diagnostics.raw_events + (event,))[-100:]",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

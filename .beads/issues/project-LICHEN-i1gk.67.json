@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.67",
   "title": "[lichen_l2.c:1024-1078 CRITICAL] disable path deadlocks if stop() aborts thread while it holds rx_mutex",
   "description": "Cross-file analysis: CRITICAL DEADLOCK BUG. lichen_l2_enable(state=false) at line 1024 calls lichen_lora_l2_stop(). If stop() has to abort the RX thread (lines 615-624 in lora_l2.c), it returns -ECANCELED. The disable path ignores this return value and proceeds to line 1043 where it tries to acquire rx_mutex with K_FOREVER. If the RX thread was aborted while holding rx_mutex (during lichen_l2_input callback at line 1504), the mutex is still locked by a dead thread. Attempting to acquire it causes permanent deadlock. The stop() failure return value IS captured (line 1024: int ret = stop()), but the code continues unconditionally to cleanup (line 1029-1078) regardless of ret value. The cleanup REQUIRES rx_mutex acquisition at line 1044. FIX: Check if ret == -ECANCELED before acquiring rx_mutex, and if so, call lichen_lora_l2_deinit() which reinitializes rx_mutex via lichen_l2_reinit_after_abort().",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

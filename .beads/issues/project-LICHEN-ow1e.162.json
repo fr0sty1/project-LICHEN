@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.162",
   "title": "lichen-core re-exports lichen_ipv6::Addr as Ipv6Addr but underlying type is still named Addr",
   "description": "lichen-ipv6/src/lib.rs exports:\n  pub struct Addr(pub [u8; 16]);\n\nlichen-core/src/addr.rs re-exports as:\n  pub use lichen_ipv6::Addr as Ipv6Addr;\n\nUsers of lichen-core see Ipv6Addr, but:\n- Error messages may show 'Addr' not 'Ipv6Addr'\n- Rustdoc links to lichen_ipv6::Addr  \n- IDE autocomplete may show both names\n- lichen-ipv6 docs call it 'Addr' while lichen-core docs call it 'Ipv6Addr'\n\nWhat goes wrong: Documentation and error messages are inconsistent. The dual naming creates confusion about whether Addr and Ipv6Addr are the same type. Consider renaming the type to Ipv6Addr at the source.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

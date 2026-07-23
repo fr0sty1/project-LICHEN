@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tm3a",
   "title": "Keys pinned without MIC verification due to stub",
   "description": "File: python/src/lichen/link/link_layer.py:478-480\n\nKey pinning happens after MIC verification:\n\n    if not _verify_mic_stub(frame):\n        ...\n    self._pinned_keys[sender.iid] = sender.pubkey\n\nBut _verify_mic_stub() always returns True (lines 61-81). This means keys are pinned without any MIC verification. An attacker could:\n\n1. Send a frame with a forged sender identity\n2. Frame passes signature check (using a different valid key pair)\n3. MIC stub returns True\n4. Attacker's key is pinned for victim's IID\n5. Real peer's frames are now rejected as 'KEY CHANGE DETECTED'\n\nThis is a key-pinning poisoning attack. The SECURITY comment at line 479 is misleading - it says 'after MIC verification succeeds' but MIC verification is a no-op.\n\nFix: Remove key pinning until MIC verification is implemented, or add a warning that key pinning is disabled.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

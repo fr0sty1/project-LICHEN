@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.154",
   "title": "LOADng seq_num wraps at 16 bits without coordinating with gradient table",
   "description": "**Location:** python/src/lichen/loadng/discovery.py:85\n\n**Bug:** The `originate_rreq()` method wraps `_own_seq` at 16 bits (`\u0026 0xFFFF`). When seq_num wraps from 65535 to 0, existing gradient entries with higher seq_nums will be considered 'fresher' than new entries with seq_num near 0.\n\n**Trigger:** Node sends 65536+ RREQs over its lifetime.\n\n**Bad behavior:** After wrap, the gradient table's `_rank()` comparison will prefer old stale routes (seq_num 65000) over new routes (seq_num 100), because `65000 \u003e 100`.\n\n**Pattern:** Sequence number wrap-around needs either: (1) epoch coordination (like link-layer does), or (2) time-based expiration that ensures old entries are gone before wrap, or (3) RFC 1982 serial number arithmetic.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

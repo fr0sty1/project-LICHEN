@@ -2,7 +2,7 @@
   "id": "project-LICHEN-xatc",
   "title": "Compliance: lichen/subsys/lichen/link/lichen_link_tx.c link signatures",
   "description": "Policy: 06-security.md §8.3-8.5. File: lichen/subsys/lichen/link/lichen_link_tx.c. Status: COMPLIANT (conditional). TX path (lichen_link_tx L31-275): When ctx-\u003ehas_key is set, signs with schnorr48_sign_frame() at L122-126 before transmission, appends 48-byte signature to payload, sets signature present bit (L185-187). Note: Signing only occurs if ctx-\u003ehas_key is true; callers must ensure key is loaded.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

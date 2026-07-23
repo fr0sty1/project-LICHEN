@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.40",
   "title": "[main.c:70] lora_rx_handler ignores data parameter",
   "description": "Function: lora_rx_handler (static, standalone mode only). Contract: The function receives data pointer and length but explicitly ignores data with ARG_UNUSED(data) at line 74. The log at line 77 says 'not processed'. This is intentional for the standalone test mode but means no actual packet handling occurs. If someone expects standalone mode to work, this would be confusing. Consider at least hex-dumping the first few bytes for debugging. Priority 3 - intentional placeholder, not a bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "issue",
   "assignee": "Mark Atwood",

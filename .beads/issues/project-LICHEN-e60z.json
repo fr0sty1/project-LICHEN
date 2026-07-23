@@ -3,7 +3,7 @@
   "title": "Prevent Rust link tuple reuse",
   "description": "Rust signed link transmission wraps LinkSeqNum after 65536 frames while production NodeStack does not advance or exhaust the epoch, allowing repeated (epoch, seqnum) signing tuples and replay rejection. Implement bounded 24-bit tuple allocation or enforced key rotation/exhaustion with tests.",
   "notes": "Implementation complete in integration/wip-recovery-20260716 dirty atomic migration worktree. Stack now allocates epoch+sequence atomically, advances epoch on rollover, emits terminal tuple once, latches SequenceExhausted, removes component/reset/raw-signer APIs, and routes both production sends through the allocator. Validation: lichen-node 124 tests plus doctests; strict library Clippy; rustfmt/diff clean; current-filesystem reviews no allocator findings. Must commit atomically with project-LICHEN-2auf.35.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

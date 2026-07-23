@@ -3,7 +3,7 @@
   "title": "Research: KISS protocol requirements for LICHEN integration",
   "description": "Research KISS framing for LICHEN: (1) review KISS spec (ARRL/TAPR), frame format, escape sequences, command types; (2) survey how other projects use KISS (Direwolf, kissattach, APRSdroid); (3) decide payload type: raw IPv6 packets (like SLIP but with KISS framing), raw LICHEN link frames, or both via port numbers; (4) identify which KISS commands matter (Data, TxDelay, SetHardware, Return); (5) document expected use cases (gateway, debugging, packet injection, APRS bridge).",
   "acceptance_criteria": "Design doc with: KISS frame format for LICHEN, payload type decision, supported commands, use case coverage",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "grinder",

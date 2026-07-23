@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ce9h",
   "title": "task",
   "description": "Implement key derivation from Ed25519 link-layer keys to X25519 ECDH keys for EDHOC.\n\nPer spec section 8.8:\nx25519_private = SHA-512(ed25519_seed)[0:32]\nx25519_public  = X25519(x25519_private, basepoint)\n\nThis allows reusing the existing Ed25519 keypair for EDHOC key agreement without storing additional keys.\n\nReferences:\n- RFC 8032 (Ed25519)\n- RFC 7748 (X25519)\n- spec/06-security.md section 8.8\n\nParent: project-LICHEN-dujw (EDHOC subsystem)",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

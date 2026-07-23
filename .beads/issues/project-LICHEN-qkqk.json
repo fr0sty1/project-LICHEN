@@ -2,7 +2,7 @@
   "id": "project-LICHEN-qkqk",
   "title": "task",
   "description": "rust/lichen-schc/src/fragment.rs:120-122. CRC32 of empty = 0, incorrectly rejected.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

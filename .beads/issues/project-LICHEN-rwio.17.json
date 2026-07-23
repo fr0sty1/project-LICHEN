@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.17",
   "title": "GOOD: EUI-64 generation uses SHA-256 to mix MCU-specific hwid layouts uniformly",
   "description": "lora_l2.c lines 66-81, 82-130: The comment explains why raw hwid bytes are hashed: STM32 has 12 bytes with shared lot/wafer prefix, ESP32 has only 6 bytes, nRF52 has 8. Hashing ensures collision resistance regardless of MCU. The code then clears the hash buffer (line 119) and sets U/L + clears multicast bits correctly. This is a thoughtful design decision that would be easy to 'simplify' incorrectly.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

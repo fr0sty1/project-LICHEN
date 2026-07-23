@@ -2,7 +2,7 @@
   "id": "project-LICHEN-00t3",
   "title": "No bounds check on latitude_e7/longitude_e7 values",
   "description": "File: lichen/subsys/lichen/app_interface/hal_bridge.c:343-346\n\n  .latitude_e7_valid = app-\u003elatitude_e7_valid,\n  .latitude_e7 = app-\u003elatitude_e7,\n  .longitude_e7_valid = app-\u003elongitude_e7_valid,\n  .longitude_e7 = app-\u003elongitude_e7,\n\nGeographic coordinates are passed through without validation. Valid ranges:\n- latitude_e7: -900000000 to 900000000 (representing -90.0 to 90.0 degrees)\n- longitude_e7: -1800000000 to 1800000000 (representing -180.0 to 180.0 degrees)\n\nInvalid values could cause:\n- Incorrect distance calculations\n- Map rendering failures\n- Security issues if coordinates are used for geofencing\n\nThe app-\u003e*_valid flags indicate presence but not correctness. Consider adding range validation before submitting to HAL.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

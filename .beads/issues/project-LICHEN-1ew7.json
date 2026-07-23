@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ew7",
   "title": "stack.rs: send_coap_raw passes payload slice with confusing variable name",
   "description": "File: rust/lichen-node/src/stack.rs:345-354\n\nThe variable `l2_payload_len` is named as if it's a length (usize), but it's actually a slice (\u0026[u8]):\n\n```rust\nlet mut l2_payload = [0u8; 201];\nlet l2_payload_len = wrap_schc_payload(\u0026schc[..schc_len], \u0026mut l2_payload)?;  // Returns \u0026[u8]\n\nlet wire_len = self\n    .link\n    .build_frame(self.epoch, seqnum, \u0026[], l2_payload_len, \u0026mut wire)\n```\n\nThis is confusing and could lead to bugs during refactoring if someone assumes it's a usize length.\n\nFix: Rename to `l2_payload` or `l2_payload_slice` to match its actual type.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.65",
   "title": "[main.c:142-149] LED GPIO error handling logs but continues - LED state undefined",
   "description": "Gap: If gpio_pin_configure_dt fails, led_configured stays false but led_set will be no-op, not indicating the failure mode.\n\nWhat: Lines 142-149 configure the LED GPIO. On failure (ret \u003c 0), an error is logged but led_configured remains false. Subsequent led_set(1) calls are no-ops. The user sees no LED indication because the LED simply doesn't work.\n\nWhy it matters: If the LED is the primary error indicator (lines 168-178 use LED for USB failure, lines 198-208 for LoRa failure), a GPIO config failure silently removes all visual feedback. The user would see no LED activity and might assume the device is off or dead. Consider falling back to LOG messages or adding a distinct error state.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.105",
   "title": "[main.c:132-134] ret variable overwritten by LED operations before USB error path",
   "description": "Final pass: This was missed because the existing finding about ret initialization focused on the unrelated code path, not the specific LED interaction.\n\nRoot cause: At lines 132-147:\n  int main(void) {\n      int ret = 0;\n      ...\n      #if defined(HAS_LED)\n      if (gpio_is_ready_dt(\u0026led)) {\n          ret = gpio_pin_configure_dt(\u0026led, GPIO_OUTPUT_ACTIVE);  // line 141\n          if (ret \u003c 0) {\n              LOG_ERR(...);\n          } else {\n              led_configured = true;\n              led_set(1);\n          }\n      }\n      #endif\n      #if defined(CONFIG_USB_DEVICE_STACK)\n      ret = usb_enable(NULL);  // line 152\n\nThe variable 'ret' is reused between LED initialization and USB initialization. If gpio_pin_configure_dt fails (ret \u003c 0), the error is logged but ret is not reset. However, this doesn't actually affect the USB path because ret is immediately overwritten by usb_enable().\n\nActually, this is fine - ret is overwritten before use. Let me look for a real bug.",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

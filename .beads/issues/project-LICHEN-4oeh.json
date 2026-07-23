@@ -2,7 +2,7 @@
   "id": "project-LICHEN-4oeh",
   "title": "Wire up replay table in lichen_l2_input()",
   "description": "The RX path in lichen_l2.c passes replay=NULL to lichen_link_rx(), which disables replay protection entirely. The replay table infrastructure already exists in replay.h (struct lichen_replay_table, lichen_replay_get(), etc.).\n\nRequired work:\n1. Allocate static lichen_replay_table in lichen_l2.c\n2. Initialize it in lichen_l2_iface_init()\n3. Pass pointer to lichen_link_rx() instead of NULL\n4. Consider cleanup in lichen_l2_enable(false) path\n\nNote: Per replay.h warning comment, replay windows should only be allocated for authenticated peers to prevent replay window poisoning attacks. This depends on project-LICHEN-j70n (peer table implementation).\n\nSee SECURITY comment in lichen_l2.c around line 798.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

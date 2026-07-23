@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.112",
   "title": "[lichen_l2.c:249-252] atomic_t memory ordering comment warns about multi-core but code may run on multi-core",
   "description": "Category not checked: Memory ordering on multi-core systems\n\nBug found: The comment at lines 249-252 says:\n'Note: Zephyr's atomic_set()/atomic_get() do NOT provide memory ordering\nguarantees. On single-core Cortex-M this is acceptable since stores are\nnaturally ordered. Multi-core would require explicit barriers.'\n\nHowever, Zephyr supports multi-core systems (nRF53 with dual cores, ESP32-S3 with dual cores). The comment acknowledges the issue but the code provides no solution.\n\nIf this code runs on a multi-core system:\n1. Core 0 calls atomic_set(\u0026link_ctx_initialized, 1) after filling link_ctx\n2. Core 1 reads atomic_get(\u0026link_ctx_initialized) == 1\n3. Core 1 accesses link_ctx fields\n4. WITHOUT a memory barrier, Core 1 may see stale values in link_ctx due to cache coherency delays\n\nThe Zephyr docs for atomic operations say they are 'not memory barriers by themselves'. For multi-core safety, __sync_synchronize() or similar would be needed.\n\nImpact: P3 - Potential data race on multi-core Zephyr targets.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

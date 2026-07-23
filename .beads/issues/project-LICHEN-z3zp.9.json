@@ -2,7 +2,7 @@
   "id": "project-LICHEN-z3zp.9",
   "title": "RPL message codecs miss NULL checks on public buffer parameters",
   "description": "Several public RPL codec functions validate only one pointer, then dereference the other public buffer/struct parameter. Triggers: parse helpers called with data=NULL and a nonzero len; write helpers called with buf=NULL and sufficient len; iterator helpers called with it=NULL/out=NULL. Bad behavior: caller mistakes or malformed boundary plumbing crash instead of returning LICHEN_RPL_ERR_INVALID. Locations: lichen/subsys/lichen/rpl/messages.c:29-49 (dio_parse data), :54-75 (dio_write buf), :96-121 (dao_parse data), :129-148 (dao_write buf), :188-204 (dodag_config_parse cfg/data), :209-228 (dodag_config_write cfg/buf), :235-264 (target_parse data), :269-288 (target_write target/buf), :295-309 (transit_info_parse data), :314-328 (transit_info_write ti/buf), and :335-365 (opt iterator it/out/data).",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

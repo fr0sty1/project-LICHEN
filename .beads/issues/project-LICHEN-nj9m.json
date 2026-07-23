@@ -2,7 +2,7 @@
   "id": "project-LICHEN-nj9m",
   "title": "Migrate EC2 tooling to personal AWS",
   "description": "Update LICHEN project documentation and EC2 scripts from retired account 921772462201/us-east-2/old EBS to personal account 210337117346, profile personal, us-west-2/us-west-2c, and vol-0a95eee8d1d8461eb.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

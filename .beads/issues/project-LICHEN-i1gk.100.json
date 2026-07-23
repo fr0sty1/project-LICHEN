@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.100",
   "title": "[lichen_l2.c:507-543] SECURITY: O(n) signature verification per frame enables DoS",
   "description": "Security finding: peer_try_all_pubkeys() iterates ALL peers for EVERY received frame.\n\nAnalysis:\n1. For each RX frame, loop runs CONFIG_LICHEN_LINK_MAX_NEIGHBORS times (default 16)\n2. Each iteration calls lichen_link_rx() which includes Schnorr-48 verify\n3. Schnorr-48 verify is computationally expensive (scalar mult on Ed25519)\n4. Malformed frames still traverse full loop before failing\n\nAttack scenario:\n1. Attacker floods malformed frames at maximum LoRa rate\n2. Each frame causes 16 Schnorr-48 verifications before rejection\n3. CPU is saturated processing malicious frames\n4. Legitimate frames are dropped due to queue overflow\n\nAt SF10 BW125:\n- ~6.8s per 255-byte frame on air\n- Attacker limited by channel capacity, not verification speed\n- But shorter frames (header only) transmit faster\n\nImpact: P2 - limited by LoRa data rate. At SF10, attack throughput is low.\n\nMitigation:\n1. Parse frame ONCE, extract signature, verify against all pubkeys\n   (Current code redundantly parses for each pubkey)\n2. Add rate limiting per source EUI-64\n3. Use bloom filter for quick rejection of unknown sources\n4. Accept as acceptable risk given LoRa throughput limits",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

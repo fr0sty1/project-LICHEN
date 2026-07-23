@@ -2,7 +2,7 @@
   "id": "project-LICHEN-blk6",
   "title": "Compliance: rust/lichen-link/src/schnorr.rs Schnorr48 implementation",
   "description": "Policy: 06-security.md §8.3. File: rust/lichen-link/src/schnorr.rs. Status: COMPLIANT. Implements Schnorr48 per spec: sign() (L47-81) produces 48-byte e[16]||s[32] signature using deterministic nonce (SHA-512). verify() (L98-138) performs R' recovery, constant-time comparison, rejects identity/low-order/non-canonical points. sign_frame()/verify_frame() helpers correctly build signable data: epoch||seqnum||dst_addr||payload.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

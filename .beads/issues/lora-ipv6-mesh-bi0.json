@@ -2,7 +2,7 @@
   "id": "lora-ipv6-mesh-bi0",
   "title": "Phase 7: SenML Sensors",
   "description": "RFC 8428 SenML for all sensor data. Exit criteria: all sensor profiles implemented, observable resources work, position beaconing works.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",

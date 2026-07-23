@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.15",
   "title": "lichen_l2.c: const cast discards qualifier",
   "description": "firmware/bridge-zephyr/subsys/lichen/lichen_l2.c line 315 casts const uint8_t* to uint8_t* when calling net_if_set_link_addr:\n\n  net_if_set_link_addr(iface, (uint8_t *)eui64, LICHEN_L2_ADDR_LEN, NET_LINK_UNKNOWN);\n\neui64 points to static storage in lora_state.eui64 (lora_l2.c line 55). The cast discards const and hands Zephyr a non-const pointer. If net_if_set_link_addr or any code using the stored pointer writes through it, behavior is undefined.\n\nFix: Either (a) make lichen_lora_l2_get_eui64() return non-const and document that the returned pointer is to mutable storage, or (b) copy eui64 to a local buffer before passing to net_if_set_link_addr.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

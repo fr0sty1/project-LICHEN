@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0zj6.27",
   "title": "TOCTOU race in lichen_l2_enable re-initialization",
   "description": "Location: lichen_l2.c:266-274. The check-then-init pattern for link_ctx is not atomic: if (atomic_get) then lichen_link_init + atomic_set. Two concurrent enable(true) calls could both pass the check and double-init link_ctx. This likely works today if lichen_link_init is idempotent, but violates the stated TOCTOU-prevention intent in lora_l2_init() comments. Should hold tx_mutex during the check-init-set sequence, or document that lichen_l2_enable is not thread-safe.",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

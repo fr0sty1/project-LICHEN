@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gp84",
   "title": "Missing collision detection in callback RX path",
   "description": "## Location\npython/src/lichen/sim/simulation.py:781\n\n## Description\nWhen _get_rx_result_internal returns None (no successful reception), it does not check if len(candidates) \u003e= 2 to record collisions like get_rx_result does at lines 847-864. Collisions that occur during callback-based RX mode are silently dropped and never recorded in self._metrics.record_collision() or logged.\n\n## Failure Scenario\nTwo nodes A and B transmit simultaneously. Node C receives via enter_rx_mode/deliver_pending_packets. Both signals collide at C (resolve_reception returns None with 2 candidates). The collision is NOT recorded: simulation.metrics.collisions stays 0, collision_rate stays 0.0, no 'collision' log entry is written. Test suite relying on collision metrics will pass incorrectly.\n\n## Category\ncorrectness",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

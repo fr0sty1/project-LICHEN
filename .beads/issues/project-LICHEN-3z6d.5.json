@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3z6d.5",
   "title": "Well-designed seqnum fix: checked_add + Result API",
   "description": "Location: rust/lichen-oscore/src/seqnum.rs:68-70, 83-88\nWhat: The fix properly uses checked_add() and returns Result\u003cSelf, SeqExhausted\u003e instead of the previous wrapping_add() with debug_assert. The From\u003cSeqExhausted\u003e for OscoreError conversion integrates cleanly with ?.\nWhy it's good: This is the right design - silent wrap-around is a security violation, so the API forces callers to handle exhaustion. SECURITY comments document the invariant.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

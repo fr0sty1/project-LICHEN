@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.243",
   "title": "[CR] Python EDHOC: verify_key.verify() uses wrong signature format for nacl",
   "description": "File: python/src/lichen/crypto/edhoc.py:340-343\n\nAfter verification: The nacl VerifyKey.verify() API DOES accept (message, signature) as separate parameters:\n    verify(smessage, signature=None, ...)\n    'If an unsigned message is given for smessage then the detached signature must be provided.'\n\nThe code verify_key.verify(m_2, signature_2) is CORRECT.\n\nClosing as non-issue.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.5",
   "title": "lichen_link_strerror missing newline cases",
   "description": "Location: firmware/bridge-zephyr/subsys/lichen/lichen_util.h:99-131\n\nSeveral errno values used in the codebase are not covered by lichen_link_strerror():\n- ENODATA (used in main.c:89)\n- ESPC (suggested for truncation handling)\n\nWhat goes wrong: When these error codes are passed to lichen_link_strerror(), they return \"unknown error\" rather than a descriptive string. This reduces debuggability.\n\nNote: The existing code documents covered errors in the docstring, but the docstring should stay in sync with actual usage.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

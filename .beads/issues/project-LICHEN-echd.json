@@ -2,7 +2,7 @@
   "id": "project-LICHEN-echd",
   "title": "[policy] Key storage compliance",
   "description": "Policy: spec/06-security.md §15.2. MUST: Private keys in secure storage (hardware secure element, encrypted flash, or OS keychain). MUST NOT: hardcode keys, log keys, transmit plaintext keys. When executing: grep for key storage/loading in all implementations, create compliance bead per code section.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "Mark Atwood",

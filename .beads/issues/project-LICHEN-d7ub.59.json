@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d7ub.59",
   "title": "lora_l2.c + lichen_l2.c: init ordering dependency undocumented",
   "description": "Cross-file interaction issue: lichen_l2_iface_init() depends on lichen_lora_l2_init() being called first.\n\nlichen_l2.c:1473 calls lichen_lora_l2_init()\nlichen_l2.c:1487 calls lichen_lora_l2_get_eui64() which returns NULL if not initialized\n\nThe dependency chain is:\n1. NET_DEVICE_INIT runs lichen_l2_iface_init\n2. Which calls lichen_lora_l2_init (lora_l2.c:546)\n3. Which generates EUI-64 and transitions UNINIT-\u003eSTOPPED\n4. Then lichen_l2.c can call get_eui64()\n\nThis ordering is currently enforced by lichen_l2_iface_init calling init() first. But:\n\nFRAGILITY: If someone calls lichen_lora_l2_start() from main() before NET_DEVICE_INIT runs (wrong init priority), start() will fail with -EINVAL because state==UNINIT.\n\nThe init priority (CONFIG_KERNEL_INIT_PRIORITY_DEFAULT) should be documented as depending on lora0 device being ready. Comment at line 1389-1395 mentions this but is vague about failure mode.\n\nFIX: Add BUILD_ASSERT or runtime check that lichen_lora_l2_init is called before any lichen_l2 operation, with clear error message.",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
