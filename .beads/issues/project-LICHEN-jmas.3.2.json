@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-jmas.3.2",
+  "title": "Update comments and constants in lichen/subsys/lichen/link/",
+  "description": "Update link.h, link_ctx.c, Kconfig to reference exact spec sections for guard=100ms, slot calc via hash(EUI64^epoch)",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:26:36.326358975Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:26:36.326358975Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-jmas.3.2",
+      "depends_on_id": "project-LICHEN-jmas.3",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:26:36.466965861Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
