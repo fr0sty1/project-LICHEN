@@ -2,15 +2,15 @@
   "id": "project-LICHEN-2rk5",
   "title": "[merge-conflict] worktree-worker19: xiao_s3_wio_sx1262.conf",
   "notes": "Commit: e81958e15",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:26:11.292175277Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:01:34.698004566Z",
+  "updated_at": "2026-07-23T02:01:36.979585735Z",
   "started_at": "2026-07-23T02:00:23.972551501Z",
-  "lease_expires_at": "2026-07-23T02:05:23.972551501Z",
-  "heartbeat_at": "2026-07-23T02:00:23.972551501Z"
+  "closed_at": "2026-07-23T02:01:36.979585735Z",
+  "close_reason": "Updated xiao_s3_wio_sx1262.conf with merge conflict resolution comment for project-LICHEN-2rk5 / worktree-worker19. Standardized RETIRED note. Commit e81958e15. No markers remain."
 }
