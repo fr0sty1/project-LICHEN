@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-3kvj",
+  "title": "[spec-compliance] duplicate content_format in lichen-node/dispatch.rs",
+  "description": "lichen-node/src/dispatch.rs:44-50 still duplicates APPLICATION_SENML_CBOR=112 and others from lichen_coap::option::content_format and lichen_core::constants (canonical source per spec/README.md and constants.toml). Commit 78368c1aa removed only the CBOR clash but left duplication. Violates \"single source of truth for constants\" in spec/07-transport-app.md and constants.toml. Should import and use shared constants exclusively. See explore review for details.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T16:28:43.331120442Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T16:28:43.331120442Z"
+}
