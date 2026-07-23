@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import struct
 from typing import Final
+from .tdma import hash_32
 
 # Message type constants
 MSG_OK: Final[int] = 0x00
@@ -538,3 +539,11 @@ def get_message_payload(data: bytes) -> bytes:
     if not data:
         raise ProtocolError("Empty message")
     return data[1:]
+
+
+def hop_channel(sfn: int, eui64: bytes, num_channels: int = 8, epoch: int = 0) -> int:
+    """Deterministic synchronized hop per spec/02a-coordinated-capacity.md:120-125 using hash_32(test/vectors/generate.py:30) as oracle."""
+    data = eui64 + ((sfn + epoch) & 0xffffffff).to_bytes(4, "little")
+    h = hash_32(data)
+    n = max(num_channels, 3)
+    return 1 + (h % n)
