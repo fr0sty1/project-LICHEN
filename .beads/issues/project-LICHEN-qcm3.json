@@ -1,16 +1,18 @@
 {
   "id": "project-LICHEN-qcm3",
   "title": "[merge-conflict] integration/worker12-20260722: sim_client.py",
-  "labels": ["defer-boardconfig"],
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:31:46.218814838Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:37:46.820897243Z",
+  "updated_at": "2026-07-23T04:54:17.186697204Z",
   "started_at": "2026-07-22T23:37:46.820897243Z",
-  "lease_expires_at": "2026-07-22T23:42:46.820897243Z",
-  "heartbeat_at": "2026-07-22T23:37:46.820897243Z"
+  "lease_expires_at": "2026-07-23T04:59:17.186697204Z",
+  "heartbeat_at": "2026-07-23T04:54:17.186697204Z",
+  "labels": [
+    "defer-boardconfig"
+  ]
 }
