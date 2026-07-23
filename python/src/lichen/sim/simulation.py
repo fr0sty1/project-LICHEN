@@ -602,8 +602,8 @@ class Simulation:
 
         This is the core TX logic, called either immediately from
         start_transmission() or later via TxStartDelayedEvent.
-        Integrates synchronized hopping by using provided channel from
-        node's hop_schedule/SFN or current_channel.
+        Integrates synchronized hopping (CCP-12) by using provided channel from
+        node's hop_schedule/SFN or current_channel (CCP-9 rx_channel rendezvous separate).
 
         Args:
             node_id: ID of the transmitting node.
