@@ -106,7 +106,10 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 		size_t opt_len = sizeof(opts);
 		plain_len = sizeof(plain);
 		int r = coap_oscore_unprotect_request(ctx, request, &orig_code, opts, &opt_len, plain, &plain_len, piv, &piv_len);
-		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_BAD_REQUEST;
+		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_UNAUTHORIZED;
+		if (orig_code != COAP_METHOD_POST) {
+			return COAP_RESPONSE_CODE_NOT_ALLOWED;
+		}
 		payload = plain;
 		payload_len = (uint16_t)plain_len;
 	} else {
@@ -123,7 +126,7 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 	uint32_t now_ms = k_uptime_get_32();
 	uint8_t iid7 = sender_iid[7];
 	k_mutex_lock(&s_rate_mutex, K_FOREVER);
-	if (s_last_deaddrop[iid7] && (now_ms - s_last_deaddrop[iid7] < CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS)) {
+		if (s_last_deaddrop[iid7] && (now_ms - s_last_deaddrop[iid7] < CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS)) {
 		k_mutex_unlock(&s_rate_mutex);
 		if (is_protected && ctx != NULL) {
 			return deaddrop_oscore_respond(resource, request, addr, addr_len, ctx, piv, piv_len, COAP_RESPONSE_CODE_TOO_MANY_REQUESTS);
@@ -230,7 +233,7 @@ static int confessions_post(struct coap_resource *resource, struct coap_packet *
 	k_mutex_lock(&s_rate_mutex, K_FOREVER);
 	if (s_last_confession[iid7] && (now_ms - s_last_confession[iid7] < CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS)) {
 		k_mutex_unlock(&s_rate_mutex);
-		if (is_protected && ctx != NULL && piv_len > 0) {
+		if (is_protected && ctx != NULL) {
 			return deaddrop_oscore_respond(resource, request, addr, addr_len, ctx, piv, piv_len, COAP_RESPONSE_CODE_TOO_MANY_REQUESTS);
 		}
 		return COAP_RESPONSE_CODE_TOO_MANY_REQUESTS;
@@ -238,7 +241,7 @@ static int confessions_post(struct coap_resource *resource, struct coap_packet *
 	s_last_confession[iid7] = now_ms;
 	k_mutex_unlock(&s_rate_mutex);
 	uint8_t resp_code = COAP_RESPONSE_CODE_CHANGED;
-	if (is_protected && ctx != NULL && piv_len > 0) {
+	if (is_protected && ctx != NULL) {
 		return deaddrop_oscore_respond(resource, request, addr, addr_len, ctx, piv, piv_len, resp_code);
 	}
 	return lichen_coap_respond(resource, request, addr, addr_len, resp_code, 0, NULL, 0);
