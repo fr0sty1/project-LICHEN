@@ -9,10 +9,10 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:16:47.280996062Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:19:33.618767258Z",
-  "started_at": "2026-07-23T05:19:33.618767258Z",
-  "lease_expires_at": "2026-07-23T05:24:33.618767258Z",
-  "heartbeat_at": "2026-07-23T05:19:33.618767258Z",
+  "updated_at": "2026-07-23T05:21:00.898770769Z",
+  "started_at": "2026-07-23T05:21:00.898770769Z",
+  "lease_expires_at": "2026-07-23T05:26:00.898770769Z",
+  "heartbeat_at": "2026-07-23T05:21:00.898770769Z",
   "labels": [
     "defer-external"
   ],
