@@ -274,13 +274,10 @@ impl DodagState {
         if !link_etx.is_finite() || link_etx < 1.0 {
             return DioOutcome::Rejected;
         }
-        if dio.rpl_instance_id != self.rpl_instance_id {
-            return;
-        }
-        // A same-version foreign DODAG cannot establish membership. A newer
-        // foreign version is handled below as an explicit DODAG adoption.
-        if dio.dodag_id != self.dodag_id && !version_is_newer(dio.version, self.version) {
-            return;
+        if dio.rpl_instance_id != self.rpl_instance_id
+            || (dio.dodag_id != self.dodag_id && !version_is_newer(dio.version, self.version))
+        {
+            return DioOutcome::Rejected;
         }
 
         let newer_version = version_is_newer(dio.version, self.version);

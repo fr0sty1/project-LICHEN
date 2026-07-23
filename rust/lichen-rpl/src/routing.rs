@@ -1414,7 +1414,7 @@ impl DaoManager {
     }
 
     /// Process a verified DAO received from an authenticated immediate sender.
-    /// Replay classification precedes Target/Transit authorization.
+    /// Sender-to-target authorization (per IPv6/IID identity rules) precedes replay and any route mutation.
     pub fn process_signature_verified<S: NonVolatile>(
         &mut self,
         verified: &SignatureVerifiedDao<'_>,
@@ -1465,19 +1465,6 @@ impl DaoManager {
         skip_dao_sequence_check: bool,
     ) -> Result<DaoProcessOutcome, DaoProcessError<S::Error>> {
         let sequence = verified.envelope.origin.origin_sequence;
-        let mut duplicate = false;
-        if let Some((hash, previous)) = self.origin_high_water.get(&verified.public_key) {
-            if sequence < *previous
-                || (sequence == *previous && *hash != verified.signed_dao_sha256)
-            {
-                return Err(DaoProcessError::Replay);
-            }
-            if sequence == *previous {
-                duplicate = true;
-            }
-        } else if self.origin_high_water.len() == MAX_DAO_ORIGINS {
-            return Err(DaoProcessError::RouteRejected);
-        }
 
         let dao = verified.envelope.dao.clone();
         if !Self::has_exact_origin_target(&dao, verified.envelope.unsigned_bytes, verified.origin) {
@@ -1495,6 +1482,20 @@ impl DaoManager {
             self.node_address,
             authenticated_sender_iid,
         ) {
+            return Err(DaoProcessError::RouteRejected);
+        }
+
+        let mut duplicate = false;
+        if let Some((hash, previous)) = self.origin_high_water.get(&verified.public_key) {
+            if sequence < *previous
+                || (sequence == *previous && *hash != verified.signed_dao_sha256)
+            {
+                return Err(DaoProcessError::Replay);
+            }
+            if sequence == *previous {
+                duplicate = true;
+            }
+        } else if self.origin_high_water.len() == MAX_DAO_ORIGINS {
             return Err(DaoProcessError::RouteRejected);
         }
         if duplicate
