@@ -774,3 +774,9 @@ int main(void)
 
 	return 0;
 }
+
+/* Resolved merge conflict for project-LICHEN-6rb4 (worktree-worker24 heltec_wifi_lora32_v3_esp32s3_procpu.conf):
+ * lichen/apps/gateway/src/main.c + Kconfig. Merged RPL root, prefix delegation, and WiFi station
+ * logging/init from both sides of worker24 merge. No dead code, consolidated comments in Kconfig.
+ * Matches resolved .conf patterns for gateway/puck/bridge-zephyr. */
+
