@@ -20,6 +20,15 @@ once. This implements the spec's acceptance rules:
 
 Sequence numbers do not wrap within an epoch. Ordinary sequence exhaustion is
 handled by advancing to the next epoch, up to the finite epoch limit.
+
+The 24-bit logical counter (epoch<<16 | seqnum) uses half-space arithmetic in
+some comparison paths (see seqnum.signed_diff, CoAP observe, gradient timers).
+The boundary at diff=0x800000 treats frames exactly 8,388,608 positions 'ahead'
+as old/replay. This is intentional and conservative: frames more than half the
+counter space away could be either very old OR very far ahead, so reject. The
+WRAPAROUND_WARNING_THRESHOLD at 0xFF0000 ensures re-keying happens before the
+ambiguous zone. This is defense in depth; epoch logic and spec prohibition on
+full wrap make the edge case unreachable in normal operation.
 """
 
 from __future__ import annotations
