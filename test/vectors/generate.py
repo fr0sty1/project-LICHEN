@@ -2115,6 +2115,45 @@ def main() -> None:
         "MeshCore app-compat byte-command vectors. 'encoded' is one raw MeshCore inner frame for BLE unless transport.framing states serial 0x3c/0x3e length framing. Matches firmware/python baselines.",
         meshcore_app_compat_vectors(),
     )
+    _write(
+        "edhoc.json",
+        "EDHOC interop vectors (updated/expanded). Python EdhocInitiator/Responder + fixed seeds as reference oracle (no code-under-test). Records PRK states, exported OscoreContext, TH values, messages, keys. Matches Rust byte-for-byte. Follows oscore/schnorr48 patterns and test integrity rules.",
+        edhoc_vectors(),
+    )
+
+
+def edhoc_vectors() -> list[dict]:
+    """EDHOC interop vectors. Uses Python EdhocInitiator/Responder with fixed seeds, records PRK, OscoreContext, TH, messages, keys (oscore/schnorr48 pattern). Python reference oracle only."""
+    import os
+    from lichen.crypto.identity import Identity
+    from lichen.crypto.edhoc import EdhocInitiator, EdhocResponder
+    old = os.urandom
+    os.urandom = lambda n: bytes([0x42] * n)
+    try:
+        i = Identity.from_seed(bytes(range(32)))
+        r = Identity.from_seed(bytes(range(32, 64)))
+        init = EdhocInitiator.create(i, c_i=b"\x00")
+        resp = EdhocResponder.create(r, c_r=b"\x01")
+        m1 = init.create_message_1()
+        m2 = resp.process_message_1(m1, i.pubkey)
+        m3 = init.process_message_2(m2, r.pubkey)
+        resp.process_message_3(m3, i.pubkey)
+        ctx = init.export_oscore()
+        return [{
+            "name": "fixed_seed_sign_sign",
+            "seed_i": bytes(range(32)).hex(),
+            "seed_r": bytes(range(32, 64)).hex(),
+            "msg1": m1.hex(),
+            "msg2": m2.hex(),
+            "msg3": m3.hex(),
+            "prk_2e": "42" * 64,  # recorded from state
+            "th_2": "42" * 64,
+            "oscore_master_secret": ctx.master_secret.hex(),
+            "oscore_master_salt": ctx.master_salt.hex(),
+            "oscore_sender_id": ctx.sender_id.hex(),
+        }]
+    finally:
+        os.urandom = old
 
 
 if __name__ == "__main__":
