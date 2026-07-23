@@ -197,25 +197,27 @@ class AprsMessageTracker:
         return self.handle_ack(msg_id)
 
     def get_retries(self) -> list[tuple[str, str, str]]:
-        """Get messages that need retry. Returns [(addressee, text, msg_id), ...]."""
         now = time.monotonic()
         retries = []
+        to_update = {}
         expired = []
 
-        for msg_id, (addressee, text, send_time, retries_left) in self._pending.items():
+        for msg_id, (addressee, text, send_time, retries_left) in list(self._pending.items()):
             if now - send_time >= self.retry_interval_s:
                 if retries_left > 0:
                     retries.append((addressee, text, msg_id))
-                    # Update retry count and time
-                    self._pending[msg_id] = (addressee, text, now, retries_left - 1)
+                    to_update[msg_id] = (addressee, text, now, retries_left - 1)
                 else:
                     expired.append(msg_id)
 
-        # Handle expired messages
+        for msg_id, data in to_update.items():
+            self._pending[msg_id] = data
+
         for msg_id in expired:
-            addressee, text, _, _ = self._pending.pop(msg_id)
-            if self.on_timeout:
-                self.on_timeout(addressee, msg_id, text)
+            if msg_id in self._pending:
+                addressee, text, _, _ = self._pending.pop(msg_id)
+                if self.on_timeout:
+                    self.on_timeout(addressee, msg_id, text)
 
         return retries
 
