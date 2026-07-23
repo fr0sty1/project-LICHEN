@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "Independent test vectors for CCP-9 rendezvous mechanisms from da2q multi-channel context (announce_rx_ch scheduling for known peers, CH0 control channel fallback for unknown peers, synchronized_hop_channel(CCP-12) override, announce channel field parse roundtrip in L2 payload). Mathematical oracles independent of impl per spec 02a-coordinated-capacity.md:CCP-9 and sim/medium.py rendezvous logic. format_version=2.",
+  "description": "Independent test vectors for CCP-9 rendezvous mechanisms from da2q multi-channel context (announce_rx_ch scheduling for known peers, CH0 control channel fallback for unknown peers, synchronized_hop_channel (CCP-12) override, announce channel field parse roundtrip in L2 payload). Mathematical oracles independent of impl per spec 02a-coordinated-capacity.md:CCP-9 and sim/medium.py rendezvous logic. format_version=2.",
   "vectors": [
     {
       "name": "announce_rendezvous_channel",

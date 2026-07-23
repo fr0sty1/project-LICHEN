@@ -1840,10 +1840,13 @@ def main() -> None:
         announce_coords_vectors(),
     )
     _write(
-        "ccp9_rendezvous.json",
-        "Independent CCP-9 rendezvous vectors using external hash_32/crc32 "
-        "oracle (hardcoded expected_channel=7 matching computation, not from "
-        "code-under-test). Fixes vector bug.",
+        "ccp9.json",
+        "Independent test vectors for CCP-9 rendezvous mechanisms from da2q "
+        "multi-channel context (announce_rx_ch scheduling for known peers, "
+        "CH0 control channel fallback for unknown peers, synchronized_hop_channel "
+        "(CCP-12) override, announce channel field parse roundtrip in L2 payload). "
+        "Mathematical oracles independent of impl per spec 02a-coordinated-capacity.md:CCP-9 "
+        "and sim/medium.py rendezvous logic. format_version=2.",
         ccp9_vectors(),
     )
     _write(
@@ -1863,6 +1866,19 @@ def main() -> None:
         "ccp15.json",
         "ccp15 vectors for SF EMA load_factor hash_32 congestion control with independent oracle.",
         ccp15_vectors(),
+    )
+    _write(
+        "ccp_load_balancing.json",
+        "Independent test vectors for TDMA slot assignment, guard time boundaries, "
+        "drift compensation and CCP-16 load balancing. Mathematical oracles independent "
+        "of implementation per spec.",
+        ccp_load_balancing_vectors(),
+    )
+    _write(
+        "ccp16.json",
+        "CCP-16 adaptive SF/load balancing and CCP-12/15 hopping vectors. Independent "
+        "mathematical oracles from spec/02a-coordinated-capacity.md.",
+        ccp16_vectors(),
     )
 
 
