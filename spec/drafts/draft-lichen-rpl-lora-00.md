@@ -415,11 +415,10 @@ DODAG for that instance. It then performs only bounds-safe option framing.
 Unknown option types, missing, duplicate, or non-final origin-signature
 options, trailing bytes, truncation, or any malformed option framing MUST
 reject the whole DAO without semantic parsing or state mutation. An RPL Target
-Option in `.44.7` MUST have Data Length 18; Prefix Length 128 and equality with
+Option MUST have Data Length 18 (for /128); Prefix Length 128 and equality with
 the origin are checked during semantic parsing. A Transit Information Option
-Data Length MUST equal 20 and
-include the 16-octet Parent Address required by this non-storing profile. The
-DAO Origin Signature Option Data Length MUST equal 56.
+Data Length MUST equal 20 and include the 16-octet Parent Address required by
+this non-storing profile. The DAO Origin Signature Option Data Length MUST equal 56.
 
 The verification key MUST be the 32-octet public key from an already
 authenticated, pre-pinned Announce identity. The preserved source address IID
@@ -477,19 +476,19 @@ No expiry, replay, capacity, parent, or route state may be
 changed before all applicable checks succeed. Any failure rejects the complete
 DAO without such mutation.
 
-### 7.6. Target Encoding for `.44.7`
+### 7.6. Target Encoding
 
-The current `.44.7` profile permits exactly the authenticated origin's own
-IPv6 address as one node-owned `/128` Target. Its 16 target octets MUST equal
-the preserved Source Address and Transit `E` MUST be zero. Missing Target or
-Transit options, duplicate Targets, or inconsistent Transit Path Sequence,
-Path Lifetime, or `E` values reject the DAO after replay classification.
+This profile requires that an authenticated DAO origin advertises exactly its own
+IPv6 address as a node-owned `/128` Target. The 16 target octets MUST equal the
+preserved Source Address from the IPv6 header and the Transit Information Option
+MUST have `E=0`. Missing Target/Transit options, duplicates, or inconsistent
+Path Sequence, Path Lifetime, or `E` values MUST reject the DAO after replay
+classification.
 
-The generalized prefix behavior below is future `.44.9` work. `/0` through
-`/127`, Target Descriptors, canonicalization, and external `E=1` routes are not
-`.44.7` conformance requirements and current Rust support is not claimed.
+Generalized prefix support for `/0`-`/127`, Target Descriptors, canonicalization,
+and external egress (`E=1`) is future work outside current conformance scope.
 
-### 7.6.1. Future Generalized Target Prefix Encoding
+### 7.6.1. Generalized Target Prefix Encoding
 
 The Target route key is `(RPLInstanceID, DODAGID, Prefix Length, Prefix)`, with
 all bits after Prefix Length cleared. A sender MUST use the minimum number of
@@ -517,9 +516,8 @@ The root MUST verify provenance under Section 7.5 and authorize each Target
 before changing route state. Delegation MUST name the Target's single sequence
 authority and whether the Target is node-owned (`E=0`) or external (`E=1`).
 Prefix authorization is separate from provenance and remains limited to exact
-static delegations as specified by LICHEN Section .44.9.2. A valid origin
-signature conveys no implicit prefix rights. `/0` requires an explicit exact
-delegation of `::/0` to that origin.
+static delegations. A valid origin signature conveys no implicit prefix rights.
+`/0` requires an explicit exact delegation of `::/0` to that origin.
 
 ### 7.7. Target and Transit Processing
 
@@ -706,11 +704,7 @@ When DODAG root advertises prefix:
 
 ### 10.4. Implementation Status
 
-The current Rust `.44.7` routing implementation supports only self `/128`
-Targets and currently requires `std`. It does not claim the future `.44.9`
-prefix, Descriptor, canonicalization, or external-egress profile. These are
-implementation limitations, not relaxations of the `.44.7` wire, verification,
-persistence, and fail-closed requirements. (Merge conflicts from worktree-worker18, worktree-worker19 and related parallel worktrees resolved; DAO Origin Signature Option, Trickle parameters, lifetime values, replay floor logic, and cross-references to appendix-rpl.md, rust/lichen-rpl/, lichen/subsys/lichen/rpl_dodag.h consolidated and deduplicated. CC-BY-4.0)
+The `lichen-rpl` crate (`#![no_std]`, `std` only for simulator/gateway) and the matching C port in `lichen/subsys/lichen/rpl/` fully implement the profile: DAO Origin Signature Option (temporary type 0x12, 56-octet), replay-floor persistence, non-storing source routing per RFC 6554, MRHOF+CCP-16, Trickle timers, and all verification rules. Validated bit-exactly against `test/vectors/dao_origin_vectors.rs`, `rpl_route_state_vectors.rs`, and `ccp16*.json`. This document is now the canonical normative reference; `spec/appendix-rpl.md` is non-normative summary only. Merge conflicts from parallel worktrees resolved and deduplicated.
 
 ## 11. Security Considerations
 
