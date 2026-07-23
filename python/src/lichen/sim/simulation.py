@@ -618,15 +618,15 @@ class Simulation:
             The transmission ID.
         """
         node = self._nodes.get(node_id)
-
+        if node is not None and not node.tdma_scheduler.is_tx_allowed(self._current_time_us):
+            return ""
         previous_tx_id = self._active_transmissions.get(node_id)
         if previous_tx_id is not None:
             self._medium.end_tx(previous_tx_id)
-
         if node is not None:
             node.state = NodeState.TX
             if channel != node.current_channel:
-                node.current_channel = channel  # update for synchronized hopping
+                node.current_channel = channel
         else:
             channel = synchronized_hop_channel(0)  # rendezvous default
 
