@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-ma1e",
   "title": "[merge-conflict] worktree-worker20: trickle.c",
+  "notes": "Commit: ef5ff3543 (in worker20 worktree)",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:20:44.425987027Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:14:07.498486344Z",
+  "updated_at": "2026-07-23T02:15:30.897332405Z",
   "started_at": "2026-07-23T02:14:07.498486344Z",
   "lease_expires_at": "2026-07-23T02:19:07.498486344Z",
   "heartbeat_at": "2026-07-23T02:14:07.498486344Z"
