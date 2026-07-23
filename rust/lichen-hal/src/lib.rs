@@ -1,9 +1,9 @@
 //! Hardware abstraction traits for LICHEN (Radio, Clock, Rng, NonVolatile, storage).
 //!
 //! UI section (Display, Input, Power, ButtonState etc.) removed as dead code
-//! per project-LICHEN-nafo (aligns with rf_health EMA/adaptive-SF minimalism,
-//! CCP-9 announce changes, and lichen-tui using ratatui instead). Only core
-//! radio traits remain. #![forbid(unsafe_code)] added to match core style from epic.
+//! per project-LICHEN-nafo (and project-LICHEN-bpu5 worker23 merge-conflict resolution).
+//! Aligns with rf_health EMA/adaptive-SF minimalism, CCP-9, lichen-tui/ratatui.
+//! Only core radio traits remain. #![forbid(unsafe_code)] matches core style.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![forbid(unsafe_code)]
