@@ -61,13 +61,15 @@ class TrickleTimer:
         self._begin_interval(now)
 
     def _begin_interval(self, now: int) -> None:
-        # RFC 6206 step 2: reset c, pick transmit time t uniformly in [I/2, I).
+        # RFC 6206 §4.2: t uniform in [I/2, I). Bias-free using (interval+1)//2
+        # + range = I - half (Worker23 fix project-LICHEN-verh). Matches Rust/C.
         self.interval_start = now
         self.counter = 0
         self._transmitted = False
         self._generation += 1
-        half = self.interval // 2
-        self.transmit_time = now + half + int(self._rng() * (self.interval - half))
+        half = (self.interval + 1) // 2
+        range_size = self.interval - half
+        self.transmit_time = now + half + int(self._rng() * range_size)
 
     @property
     def interval_end(self) -> int:
