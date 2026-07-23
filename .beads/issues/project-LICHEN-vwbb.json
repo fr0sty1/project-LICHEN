@@ -11,6 +11,6 @@
   "created_by": "AI Agent",
   "updated_at": "2026-07-23T02:25:17.001910694Z",
   "started_at": "2026-07-23T02:23:46.846615068Z",
-  "lease_expires_at": "2026-07-23T02:28:46.846615068Z",
-  "heartbeat_at": "2026-07-23T02:23:46.846615068Z"
+  "closed_at": "2026-07-23T02:25:19.215685993Z",
+  "close_reason": "Resolved merge conflict in heltec_wifi_lora32_v3_esp32s3_procpu.conf and related t_deck_esp32s3_procpu.conf by adopting canonical consolidated version with detailed L2/CoAP comments. Committed and pushed to worktree-worker19 branch."
 }
