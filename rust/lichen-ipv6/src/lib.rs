@@ -561,19 +561,19 @@ impl Icmpv6Echo {
 
         // ICMPv6 header: type, code, checksum (placeholder)
         // These pushes cannot fail - we checked capacity above
-        pkt.push(msg_type).unwrap();
-        pkt.push(0).unwrap(); // code
-        pkt.push(0).unwrap(); // checksum high (placeholder)
-        pkt.push(0).unwrap(); // checksum low
+        pkt.push(msg_type).expect("capacity pre-checked");
+        pkt.push(0).expect("capacity pre-checked"); // code
+        pkt.push(0).expect("capacity pre-checked"); // checksum high (placeholder)
+        pkt.push(0).expect("capacity pre-checked"); // checksum low
 
         // Echo header: id, seq
-        pkt.push((self.id >> 8) as u8).unwrap();
-        pkt.push(self.id as u8).unwrap();
-        pkt.push((self.seq >> 8) as u8).unwrap();
-        pkt.push(self.seq as u8).unwrap();
+        pkt.push((self.id >> 8) as u8).expect("capacity pre-checked");
+        pkt.push(self.id as u8).expect("capacity pre-checked");
+        pkt.push((self.seq >> 8) as u8).expect("capacity pre-checked");
+        pkt.push(self.seq as u8).expect("capacity pre-checked");
 
         // Data
-        pkt.extend_from_slice(data).unwrap();
+        pkt.extend_from_slice(data).expect("capacity pre-checked");
 
         // Compute checksum
         let checksum = icmpv6_checksum(src, dst, &pkt).expect("bounded echo request");
@@ -610,16 +610,16 @@ impl NeighborSolicitation {
         let mut pkt = Vec::new();
 
         // ICMPv6 header
-        pkt.push(icmpv6_type::NEIGHBOR_SOLICITATION).unwrap();
-        pkt.push(0).unwrap(); // code
-        pkt.push(0).unwrap(); // checksum
-        pkt.push(0).unwrap();
+        pkt.push(icmpv6_type::NEIGHBOR_SOLICITATION).expect("capacity pre-checked");
+        pkt.push(0).expect("capacity pre-checked"); // code
+        pkt.push(0).expect("capacity pre-checked"); // checksum
+        pkt.push(0).expect("capacity pre-checked");
 
         // Reserved (4 bytes)
-        pkt.extend_from_slice(&[0u8; 4]).unwrap();
+        pkt.extend_from_slice(&[0u8; 4]).expect("capacity pre-checked");
 
         // Target address (16 bytes)
-        pkt.extend_from_slice(&self.target.0).unwrap();
+        pkt.extend_from_slice(&self.target.0).expect("capacity pre-checked");
 
         // Compute checksum
         let checksum = icmpv6_checksum(src, dst, &pkt).expect("fixed-size solicitation");
@@ -662,10 +662,10 @@ impl NeighborAdvertisement {
         let mut pkt = Vec::new();
 
         // ICMPv6 header
-        pkt.push(icmpv6_type::NEIGHBOR_ADVERTISEMENT).unwrap();
-        pkt.push(0).unwrap(); // code
-        pkt.push(0).unwrap(); // checksum
-        pkt.push(0).unwrap();
+        pkt.push(icmpv6_type::NEIGHBOR_ADVERTISEMENT).expect("capacity pre-checked");
+        pkt.push(0).expect("capacity pre-checked"); // code
+        pkt.push(0).expect("capacity pre-checked"); // checksum
+        pkt.push(0).expect("capacity pre-checked");
 
         // Flags + reserved (4 bytes)
         let mut flags = 0u8;
@@ -678,11 +678,11 @@ impl NeighborAdvertisement {
         if self.override_flag {
             flags |= 0x20;
         }
-        pkt.push(flags).unwrap();
-        pkt.extend_from_slice(&[0u8; 3]).unwrap();
+        pkt.push(flags).expect("capacity pre-checked");
+        pkt.extend_from_slice(&[0u8; 3]).expect("capacity pre-checked");
 
         // Target address
-        pkt.extend_from_slice(&self.target.0).unwrap();
+        pkt.extend_from_slice(&self.target.0).expect("capacity pre-checked");
 
         // Compute checksum
         let checksum = icmpv6_checksum(src, dst, &pkt).expect("fixed-size advertisement");
