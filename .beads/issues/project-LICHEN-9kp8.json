@@ -2,15 +2,15 @@
   "id": "project-LICHEN-9kp8",
   "title": "[merge-conflict] worktree-worker18: rpl_trickle.h",
   "notes": "Commit: b0ccfed71",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:28:24.225937689Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:37:52.519190074Z",
+  "updated_at": "2026-07-23T00:37:54.832120177Z",
   "started_at": "2026-07-23T00:34:42.029095403Z",
-  "lease_expires_at": "2026-07-23T00:39:42.029095403Z",
-  "heartbeat_at": "2026-07-23T00:34:42.029095403Z"
+  "closed_at": "2026-07-23T00:37:54.832120177Z",
+  "close_reason": "Resolved merge conflict in rpl_trickle.h by syncing header documentation and implementation details with Rust reference and canonical version; also resolved ongoing main merge conflict in xiao_s3_wio_sx1262.overlay using standardized retired comment."
 }
