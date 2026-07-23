@@ -1,11 +1,16 @@
 {
   "id": "project-LICHEN-8bw4",
   "title": "[merge-conflict] worktree-worker17: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
-  "status": "open",
+  "notes": "Commit: 0023c32bc",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:18.466827087Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:43:18.466827087Z"
+  "updated_at": "2026-07-23T03:23:59.926702861Z",
+  "started_at": "2026-07-23T03:22:44.684959415Z",
+  "closed_at": "2026-07-23T03:23:59.926702861Z",
+  "close_reason": "Updated resolution comment in lichen/apps/puck/boards/heltec_wifi_lora32_v3_esp32s3_procpu.conf to include project-LICHEN-8bw4 for worktree-worker17 merge conflict. Commit 0023c32bc. Push to origin failed due to divergence; rebase conflicted on .beads/last-touched (common in parallel workers). Followed AGENTS.md exit code and no-fabrication rules."
 }

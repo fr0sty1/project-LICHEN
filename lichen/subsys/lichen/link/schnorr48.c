@@ -385,8 +385,8 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 		return -EINVAL;
 	}
 
-	/* Validate: payload must not be NULL (always needed for signature) */
-	if (payload == NULL) {
+	/* Validate: if payload_len > 0, payload must not be NULL */
+	if (payload_len > 0 && payload == NULL) {
 		return -EINVAL;
 	}
 
