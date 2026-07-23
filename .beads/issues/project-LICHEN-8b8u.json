@@ -2,15 +2,15 @@
   "id": "project-LICHEN-8b8u",
   "title": "[cross-impl] IID derivation diverges between Rust and Python/C",
   "description": "Rust (lichen-link/src/identity.rs:24) uses keyed hash_32 twice per project-LICHEN-swvz update. Python (crypto/identity.py:138: sha256(pubkey).digest()[:8]) and C (lichen/subsys/lichen/l2/ipv6_addr.c:90: lichen_sha256 + memcpy first 8 bytes) both follow SHA-256(pubkey)[:8] + clear U/L bit. spec/03-addressing.md:15-16 specifies the SHA-256 method as source of truth. Breaks human_address, IPv6 IID consistency, and interop. Test vectors for addresses will fail across langs.",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T21:19:29.088734245Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:15:54.829300949Z",
+  "updated_at": "2026-07-23T05:14:47.689776701Z",
   "started_at": "2026-07-22T21:28:41.500596395Z",
-  "closed_at": "2026-07-23T05:15:54.829300949Z",
-  "close_reason": "Decomposed into subtasks (8b8u.1-4) for C human_address impl, tests, audit, and cross-lang verification. Original Rust hash_32 IID bug resolved previously."
+  "lease_expires_at": "2026-07-23T05:19:47.689776701Z",
+  "heartbeat_at": "2026-07-23T05:14:47.689776701Z"
 }
