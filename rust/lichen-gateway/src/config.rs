@@ -25,6 +25,9 @@ pub struct MeshConfig {
     /// TCP address of the lichen-sim server (used when `interface = "sim"`).
     #[serde(default)]
     pub sim_addr: Option<String>,
+    /// HAT type for RAK2287/SX1302 concentrator (e.g. "rak2287" enables direct multi-channel RX/TX).
+    #[serde(default)]
+    pub hat: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -118,6 +121,7 @@ impl Config {
                 interface: "sim".to_string(),
                 baud: 115_200,
                 sim_addr: Some("127.0.0.1:4444".to_string()),
+                hat: None,
             },
             ipv6: Ipv6Config {
                 prefix: "0202::/16".to_string(),

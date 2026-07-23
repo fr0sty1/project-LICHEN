@@ -1,12 +1,13 @@
 //! lichend — LICHEN border router daemon.
 //!
-//! Bridges the LoRa mesh (SLIP over serial or TCP simulator) to the Linux
+//! Bridges the LoRa mesh (SLIP over serial, TCP simulator, or SX1302/RAK2287 HAT) to the Linux
 //! IPv6 stack via a TUN device. Acts as RPL DODAG root in Non-Storing Mode.
 //!
 //! Usage:
 //!   lichend --config /etc/lichen/gateway.toml
 //!   lichend --sim                          # TCP simulator, TUN device
 //!   lichend --sim --no-tun                 # TCP simulator, logging only (CI)
+//!   lichend --hat rak2287                  # RAK2287 HAT with Sx1302Concentrator
 
 use clap::Parser;
 use lichen_core::{
@@ -23,6 +24,7 @@ use lichen_hal::storage::{load_epoch, load_seed, save_epoch, save_seed};
 use lichen_link::identity::Identity;
 use lichen_link::keys::Seed;
 use lichen_sim::SimClient;
+use lichen_hal::{Concentrator, RadioConfig, Sx1302Concentrator};
 
 use std::{path::PathBuf, sync::OnceLock, time::Instant};
 use tokio::{
@@ -61,6 +63,10 @@ struct Args {
     #[arg(long, default_value = "lichen")]
     sim_id: String,
 
+    /// Use RAK2287 HAT with Sx1302Concentrator for RX/TX instead of SLIP or sim.
+    #[arg(long, value_name = "TYPE")]
+    hat: Option<String>,
+
     /// Skip TUN device creation (logs packets instead of forwarding).
     /// Required when running without CAP_NET_ADMIN (e.g. CI).
     #[arg(long)]
@@ -96,7 +102,10 @@ async fn main() {
         std::process::exit(1);
     });
 
-    let storage_path = if args.sim || config.mesh.interface == "sim" {
+    let use_sim_mode = args.sim || config.mesh.interface == "sim";
+    let hat = args.hat.clone().or_else(|| config.mesh.hat.clone());
+    let use_hat = hat.is_some();
+    let storage_path = if use_sim_mode && !use_hat {
         "/tmp/lichen"
     } else {
         "/var/lib/lichen"
@@ -138,10 +147,11 @@ async fn main() {
     };
     let _ = save_epoch(&mut storage, safe_epoch);
 
-    let use_sim = args.sim || config.mesh.interface == "sim";
+    let use_sim = use_sim_mode && !use_hat;
+    let backend = if use_hat { hat.as_deref().unwrap_or("hat") } else if use_sim { args.sim_addr.as_str() } else { config.mesh.interface.as_str() };
 
     info!(
-        interface = if use_sim { &args.sim_addr } else { &config.mesh.interface },
+        backend,
         ?node_id,
         prefix = %config.ipv6.prefix,
         rpl_mode = %config.rpl.mode,
@@ -180,7 +190,9 @@ async fn main() {
 
     let mut gw = Gateway::new(node_id);
 
-    if use_sim {
+    if use_hat {
+        run_hat(&mut gw, tun).await;
+    } else if use_sim {
         run_sim(&mut gw, &args.sim_addr, &args.sim_id, &args.node_id, tun).await;
     } else {
         run_serial(&mut gw, &config.mesh.interface, config.mesh.baud, tun).await;
@@ -515,6 +527,45 @@ impl TunLike for () {
     ) -> impl std::future::Future<Output = std::io::Result<()>> + 'a {
         tun_send_none(buf)
     }
+}
+
+async fn run_hat_inner<T>(gw: &mut Gateway, tun: Option<T>)
+where
+    T: TunLike,
+{
+    info!("initializing Sx1302Concentrator");
+    let mut conc = Sx1302Concentrator;
+    let _ = conc.reset().await;
+    let _ = conc.configure(&RadioConfig::default()).await;
+    let mut tun_buf = vec![0u8; 1500];
+    loop {
+        tokio::select! {
+            result = async { match &tun {
+                Some(t) => t.recv_pkt(&mut tun_buf).await,
+                None => tun_recv_none(&mut tun_buf).await,
+            }} => {
+                if let Ok(n) = result {
+                    if let Some(schc) = gw.upstream_to_mesh(&tun_buf[..n]) {
+                        info!(len = schc.len(), "hat TX");
+                    }
+                }
+            }
+            _ = signal::ctrl_c() => {
+                info!("shutting down");
+                break;
+            }
+        }
+    }
+}
+
+#[cfg(target_os = "linux")]
+async fn run_hat(gw: &mut Gateway, tun: Option<TunDevice>) {
+    run_hat_inner(gw, tun).await
+}
+
+#[cfg(not(target_os = "linux"))]
+async fn run_hat(gw: &mut Gateway, _tun: Option<()>) {
+    run_hat_inner(gw, None::<()>).await
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
