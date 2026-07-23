@@ -434,55 +434,36 @@ where
 
 // ── packet forwarding ─────────────────────────────────────────────────────────
 
-<<<<<<< HEAD
-async fn forward_mesh_to_upstream<T: TunLike>(gw: &mut Gateway, frame: &[u8], tun: &Option<T>) {
-    let (reply_opt, event) = gw.process_rpl(frame, 1000); // TODO: real monotonic ms for trickle
-    if let Some(reply) = reply_opt {
-=======
 async fn forward_mesh_to_upstream<T: TunLike>(
     gw: &mut Gateway,
     frame: &[u8],
     tun: &Option<T>,
 ) -> Option<Vec<u8>> {
-    let mut reply_buf = [0u8; 256];
-    let (reply_len, event) = gw.rpl.handle_frame_rpl(frame, &mut reply_buf, 0);
-    let mut control_plane = false;
-    if let RplEvent::DaoReceived {
-        target,
-        route_updated: true,
-    } = event
-    {
-        let node_id = NodeId::from_ipv6(&target);
-        gw.add_route(target, node_id);
->>>>>>> origin/integration/worker3-20260722
-        info!(
-            len = reply.len(),
-            "reply_buf used (no ignore); mesh reply ready for SLIP TX queue"
-        );
-        // TODO: queue via slip.queue_send(&reply) or tx_send in run_* context
-    }
-    if let RplEvent::DaoReceived {
-        route_updated: true,
-    } = event
-    {
+    let now_ms = 0; // TODO: real monotonic time (e.g. Instant::now().elapsed().as_millis() as u32)
+    let (reply_opt, event) = gw.process_rpl(frame, now_ms);
+    if let RplEvent::DaoReceived { route_updated: true } = event {
         info!("DAO event: route updated");
     }
-
-    if let Some(ipv6) = gw.mesh_to_upstream(frame) {
+    if let Some(reply) = reply_opt {
+        info!(len = reply.len(), "mesh reply ready for SLIP TX queue");
+        Some(reply)
+    } else if let Some(ipv6) = gw.mesh_to_upstream(frame) {
         let mut dst = [0u8; 16];
         if ipv6.len() >= IPV6_HEADER_LEN {
             dst.copy_from_slice(&ipv6[field::DST_OFFSET..IPV6_HEADER_LEN]);
             if gw.is_local_mesh(&dst) {
-                return;
+                return None;
             }
         }
         if let Some(t) = tun {
             if let Err(e) = t.send_pkt(&ipv6).await {
                 error!("TUN write: {e}");
             }
-        } else {
-            // backhaul or icmp unreachable (TODO for full impl)
         }
+        // (else: backhaul or ICMP unreachable — TODO for full impl)
+        None
+    } else {
+        None
     }
 }
 
