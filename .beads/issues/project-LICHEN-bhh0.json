@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-bhh0",
   "title": "[merge-conflict] worktree-worker18: t_deck_esp32s3_procpu.conf",
-  "notes": "Commit: 666adde1f",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:11:56.619560603Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:08:56.437056943Z",
+  "updated_at": "2026-07-23T03:07:35.254467461Z",
   "started_at": "2026-07-23T03:07:35.254467461Z",
-  "closed_at": "2026-07-23T03:08:56.437056943Z",
-  "close_reason": "Cleaned merge conflict resolution comment from t_deck_esp32s3_procpu.conf in worktree-worker18 to follow no-comments and no-dead-code rules. Matched canonical clean version from primary. Committed as 666adde1f and pushed."
+  "lease_expires_at": "2026-07-23T03:12:35.254467461Z",
+  "heartbeat_at": "2026-07-23T03:07:35.254467461Z"
 }
