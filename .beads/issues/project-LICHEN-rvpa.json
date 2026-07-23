@@ -1,16 +1,18 @@
 {
   "id": "project-LICHEN-rvpa",
   "title": "[merge-conflict] worktree-worker20: xiao_s3_wio_sx1262.conf",
-  "labels": ["defer-external"],
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:42:22.133948816Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:43:37.351887119Z",
+  "updated_at": "2026-07-23T04:42:45.520131325Z",
   "started_at": "2026-07-23T00:43:37.351887119Z",
-  "lease_expires_at": "2026-07-23T00:48:37.351887119Z",
-  "heartbeat_at": "2026-07-23T00:43:37.351887119Z"
+  "lease_expires_at": "2026-07-23T04:47:45.520131325Z",
+  "heartbeat_at": "2026-07-23T04:42:45.520131325Z",
+  "labels": [
+    "defer-external"
+  ]
 }
