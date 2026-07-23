@@ -128,6 +128,14 @@ function adaptive_sf_select(density, snr_ema, load_factor):  // critical-first p
 
 Per-SF SNR thresholds (normative): SF9: >8dB, SF10: any (baseline), SF11: >-5dB (with density/load), SF12: any (critical). Nodes MUST maintain per-neighbor EMA state, signal ASSIGNED_SF and metrics in DIO, RX on all SF. Pseudocode MUST be followed exactly and produce identical output to test/vectors/ccp*.json. Integrates with TDMA slot enforcement and SCHC. Cross-refs physical-link:3.4 table and link layer primitives.
 
+Boundary example for adaptive_sf_select (density=8 edge, matching time-provider delta style per 2a.2):
+
+```
+density = 8u, snr_ema = 0, load_factor = 0.8
+// high condition: density > 8 is false, but if OR with other, depends on exact; test vectors
+// use unsigned where applicable for consistency with SFN delta (current - last)
+```
+
 ## 2a.4. Time Synchronization
 
 Time sync provided by DODAG root via epoch in beacons/RPL options (see 2a.2 for time-provider, epoch_floor validation, SFN modulo/wrap independence). Nodes MUST maintain `epoch_floor`, `stratum`, `wall_clock_valid` (see `docs/firmware-time-provider.md`). Root time-provider is authoritative. Adopt lowest DODAG ID root. Drift > threshold triggers desync (2a.5). Integrates with `lichen_rpl_dodag_init()` and lichen_link.
