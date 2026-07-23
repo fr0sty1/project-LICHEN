@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-wpdn",
   "title": "[merge-conflict] worktree-worker19: lichend.rs",
-  "notes": "Commit: b6760be4d",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:59:37.78678284Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:00:03.071278936Z",
+  "updated_at": "2026-07-23T02:58:07.127480664Z",
   "started_at": "2026-07-23T02:58:07.127480664Z",
-  "closed_at": "2026-07-23T03:00:03.071278936Z",
-  "close_reason": "Updated forward_mesh_to_upstream in lichend.rs to log TUN send errors (adopted from worker19). Resolved merge conflict. Commit b6760be4d"
+  "lease_expires_at": "2026-07-23T03:03:07.127480664Z",
+  "heartbeat_at": "2026-07-23T02:58:07.127480664Z"
 }
