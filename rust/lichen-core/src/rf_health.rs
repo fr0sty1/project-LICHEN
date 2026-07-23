@@ -367,6 +367,7 @@ impl RfHealthMetrics {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::Value;
 
     #[test]
     fn new_metrics_are_zeroed() {
@@ -614,5 +615,29 @@ mod tests {
         let mut m = RfHealthMetrics::new();
         m.record_density(25);
         assert_eq!(m.adaptive_sf(), 12);
+    }
+
+    #[test]
+    fn ccp16_vectors_exercise_rf_health() {
+        let content = include_str!("../../../test/vectors/ccp16.json");
+        let doc: Value = serde_json::from_str(content).unwrap();
+        let vectors = doc.get("vectors").and_then(|v| v.as_array()).unwrap();
+        for v in vectors {
+            let input = v.get("input").unwrap_or(v);
+            let output = v.get("output").unwrap_or(v);
+            let density = input.get("density").and_then(|x| x.as_u64()).unwrap_or(0) as u8;
+            let snr = input.get("snr_db").or_else(|| input.get("snr_ema")).and_then(|x| x.as_i64()).unwrap_or(5) as i8;
+            let load_f = input.get("load_factor").and_then(|x| x.as_f64()).unwrap_or(0.0);
+            let load_fp = ((load_f * FP_SCALE as f64) as u32).min(FP_SCALE);
+            let mut m = RfHealthMetrics::new();
+            m.record_density(density);
+            m.record_rx(-70, snr);
+            m.record_load_factor(load_fp);
+            let sf = m.adaptive_sf();
+            let exp_sf = output.get("sf").and_then(|x| x.as_u64()).unwrap_or(10) as u8;
+            assert_eq!(sf, exp_sf);
+            let _ = m.should_rebalance();
+            let _ = m.packet_loss_rate_fp();
+        }
     }
 }
