@@ -174,12 +174,11 @@ bytes are present on the wire in this mode.
 ### 3.4. Source Address
 
 The frame format intentionally omits a source address field. The sender's
-identity is established by:
-
-1. The Schnorr signature in MIC (Section 4), whose verification key is the
-   sender's public key.
-2. The IPv6 source address in the SCHC-decompressed payload, which is
-   link-local and derived from the sender's EUI-64.
+immediate link identity is established by successful Schnorr signature
+verification with a provisioned trust-store key (Section 4). The selected
+trust-store record supplies the peer EUI-64. An IPv6 source address in the
+payload identifies the end-to-end network-layer origin and MUST NOT be used as
+the immediate signer identity.
 
 ## 4. Authentication
 
@@ -212,10 +211,14 @@ Unsigned frames SHOULD be limited to:
 
 ### 4.3. Key Lookup
 
-Receivers identify the signing key by the sender's link-local IPv6 address
-extracted from the SCHC-decompressed payload. The key material is maintained
-in a local trust store indexed by EUI-64. See the LICHEN security architecture
-for trust establishment procedures.
+Receivers MUST authenticate a frame before SCHC decompression or fragment
+reassembly. The key material is maintained in a local trust store indexed by
+peer EUI-64. A receiver identifies the signer by testing the provisioned
+candidate peer keys that are valid for the incoming radio/neighbor context;
+implementations MAY use authenticated neighbor metadata to narrow that set.
+Successful verification returns the trust-store peer identity used for replay
+state and SCHC fragmentation context lookup. Key selection MUST NOT depend on
+an IPv6 source address inside the protected payload.
 
 ## 5. Replay Protection
 

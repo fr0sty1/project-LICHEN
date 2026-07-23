@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+import zlib
 from pathlib import Path
 
 import pytest
@@ -26,7 +27,18 @@ from lichen.l2_payload import L2PayloadKind, classify_l2_payload, l2_payload_bod
 from lichen.link.frame import AddrMode, FrameError, LichenFrame, MicLength
 from lichen.rpl.dao import RplTarget, TransitInformation
 from lichen.rpl.messages import DAO, DIO, DIS, DAOAck, _parse_options
+from lichen.schc.fragment import (
+    MAX_PACKET_SIZE,
+    Ack,
+    Fragment,
+    FragmentError,
+    FragmentSender,
+    ack_request,
+    receiver_abort,
+    sender_abort,
+)
 from lichen.schc.headers import compress_packet, decompress_packet
+from lichen.schc.reassembly import FragmentReceiver
 
 VECTORS_DIR = Path(__file__).resolve().parents[2] / "test" / "vectors"
 
@@ -70,6 +82,7 @@ def test_vectors_directory_exists() -> None:
     "filename",
     [
         "schc_compression.json",
+        "schc_fragmentation.json",
         "l2_payload.json",
         "link_frame.json",
         "announce_coords.json",
@@ -93,6 +106,24 @@ def _schc_cases():
     doc = _load("schc_compression.json")
     assert doc["format_version"] == 1
     return [(v["name"], v) for v in doc["vectors"]]
+
+
+def _fragmentation_cases():
+    doc = _load("schc_fragmentation.json")
+    assert doc["format_version"] == 1
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+def _expand_vector_bytes(value: str | dict) -> bytes:
+    if isinstance(value, str):
+        return bytes.fromhex(value)
+    output = bytearray()
+    for part in value["parts"]:
+        if isinstance(part, str):
+            output.extend(bytes.fromhex(part))
+        else:
+            output.extend(bytes.fromhex(part["repeat_byte"]) * part["count"])
+    return bytes(output)
 
 
 def _frame_cases():
@@ -132,6 +163,220 @@ def test_schc_vector(name: str, vector: dict) -> None:
     assert compress_packet(packet) == compressed, f"compress drift: {name}"
     assert decompress_packet(compressed) == packet, f"decompress drift: {name}"
     assert compressed[0] == vector["rule_id"]
+
+
+def test_schc_fragmentation_vector_coverage() -> None:
+    cases = _fragmentation_cases()
+    assert len({name for name, _ in cases}) == len(cases)
+    assert {vector["category"] for _, vector in cases} == {
+        "recovery",
+        "retry_exhaustion",
+        "window_transition",
+        "controls",
+        "capacity",
+        "malformed",
+    }
+
+
+@pytest.mark.parametrize("name,vector", _fragmentation_cases())
+def test_schc_fragmentation_vector_integrity(name: str, vector: dict) -> None:
+    category = vector["category"]
+    if "packet" in vector:
+        packet = _expand_vector_bytes(vector["packet"])
+        assert len(packet) == vector["packet_length"], name
+        assert hashlib.sha256(packet).hexdigest() == vector["packet_sha256"], name
+        if "rcs" in vector:
+            assert (zlib.crc32(packet + b"\x00") & 0xFFFF_FFFF).to_bytes(4, "big").hex() == vector[
+                "rcs"
+            ], name
+
+    if category in ("recovery", "window_transition"):
+        fragment_names = {fragment["name"] for fragment in vector["fragments"]}
+        assert vector["loss"]["drop_fragment"] in fragment_names
+        assert vector.get("fragment_count", len(vector["fragments"])) >= len(vector["fragments"])
+        if category == "window_transition":
+            assert len(vector["fragments"]) == vector["fragment_count"]
+            assert [fragment["tile_ordinal"] for fragment in vector["fragments"]] == list(
+                range(vector["fragment_count"])
+            )
+        if "retransmission" in vector["loss"]:
+            dropped = next(
+                fragment
+                for fragment in vector["fragments"]
+                if fragment["name"] == vector["loss"]["drop_fragment"]
+            )
+            assert _expand_vector_bytes(vector["loss"]["retransmission"]) == _expand_vector_bytes(
+                dropped["wire"]
+            )
+        for fragment in vector["fragments"]:
+            wire = _expand_vector_bytes(fragment["wire"])
+            assert wire[0] == vector["rule_id"], fragment["name"]
+            assert wire[1] >> 7 == fragment["window"], fragment["name"]
+            assert (wire[1] >> 1) & 0x3F == fragment["fcn"], fragment["name"]
+            assert wire[-1] & 1 == 0, fragment["name"]
+            if fragment["kind"] in ("regular", "all0"):
+                assert len(wire) == 189, fragment["name"]
+            else:
+                assert 7 <= len(wire) <= 193, fragment["name"]
+
+        ack_failure = _expand_vector_bytes(vector["loss"]["ack_failure"])
+        ack_success = _expand_vector_bytes(vector["loss"]["ack_success"])
+        assert (ack_failure[1] >> 6) & 1 == 0
+        assert (ack_success[1] >> 6) & 1 == 1
+
+    if category == "controls":
+        control_sets = (
+            (0x78, vector["controls"]["rule_78"]),
+            (0x79, vector["controls"]["rule_79"]),
+        )
+        for rule, controls in control_sets:
+            for wire_hex in controls.values():
+                assert bytes.fromhex(wire_hex)[0] == rule
+            assert controls["sender_abort"] == f"{rule:02x}fe"
+            assert controls["receiver_abort"] == f"{rule:02x}ffff"
+
+    if category == "retry_exhaustion":
+        assert vector["attempts_before"] == 4
+        assert _expand_vector_bytes(vector["trigger"])[0] == vector["rule_id"]
+        expected_message = _expand_vector_bytes(vector["expected_message"])
+        assert expected_message[0] == vector["rule_id"]
+        assert expected_message.hex() in ("78fe", "78ffff")
+        assert vector["expect_status"] == "aborted"
+
+    if category == "malformed":
+        assert _expand_vector_bytes(vector["wire"])
+        assert vector["expect_error"]
+
+
+@pytest.mark.parametrize("name,vector", _fragmentation_cases())
+def test_schc_fragmentation_production_conformance(name: str, vector: dict) -> None:
+    category = vector["category"]
+    if category in ("recovery", "window_transition"):
+        packet = _expand_vector_bytes(vector["packet"])
+        sender = FragmentSender(packet, vector["rule_id"], MAX_PACKET_SIZE)
+        fragments = sender.all_fragments()
+        for expected in vector["fragments"]:
+            ordinal = expected["tile_ordinal"]
+            wire = _expand_vector_bytes(expected["wire"])
+            assert fragments[ordinal].to_bytes() == wire, f"{name}: {expected['name']}"
+            assert Fragment.from_bytes(wire) == fragments[ordinal]
+        sender.start()
+        failure = _expand_vector_bytes(vector["loss"]["ack_failure"])
+        expected_messages = [
+            _expand_vector_bytes(vector["loss"]["retransmission"]),
+            _expand_vector_bytes(vector["loss"]["ack_req"]),
+        ]
+        assert sender.handle_ack_bytes(failure) == expected_messages
+        receiver = FragmentReceiver(max_size=len(packet))
+        if category == "recovery":
+            result = None
+            for expected in vector["fragments"]:
+                result = receiver.receive_bytes(_expand_vector_bytes(expected["wire"]))
+            assert result is not None
+            assert result.response == _expand_vector_bytes(vector["loss"]["ack_success"])
+            assert result.reassembled == packet
+
+            receiver = FragmentReceiver(max_size=len(packet))
+            for expected in vector["fragments"]:
+                if expected["name"] != vector["loss"]["drop_fragment"]:
+                    result = receiver.receive_bytes(_expand_vector_bytes(expected["wire"]))
+            assert result is not None
+            assert result.response == failure
+            assert receiver.receive_bytes(expected_messages[0]).response is None
+            result = receiver.receive_bytes(_expand_vector_bytes(vector["loss"]["ack_req"]))
+            assert result.response == _expand_vector_bytes(vector["loss"]["ack_success"])
+            assert result.reassembled == packet
+        else:
+            result = None
+            for expected in vector["fragments"]:
+                if expected["name"] != vector["loss"]["drop_fragment"]:
+                    result = receiver.receive_bytes(_expand_vector_bytes(expected["wire"]))
+            assert result is not None
+            assert result.response == failure
+            assert receiver.receive_bytes(expected_messages[0]).response is None
+            result = receiver.receive_bytes(_expand_vector_bytes(vector["loss"]["ack_req"]))
+            assert result.response == _expand_vector_bytes(vector["loss"]["ack_success"])
+            assert result.reassembled == packet
+        return
+
+    if category == "controls":
+        control_sets = (
+            (0x78, vector["controls"]["rule_78"]),
+            (0x79, vector["controls"]["rule_79"]),
+        )
+        for rule, controls in control_sets:
+            assert Ack(rule, 0, complete=True).to_bytes() == bytes.fromhex(
+                controls["ack_success_w0"]
+            )
+            assert Ack(rule, 1, complete=True).to_bytes() == bytes.fromhex(
+                controls["ack_success_w1"]
+            )
+            assert ack_request(rule, 0) == bytes.fromhex(controls["ack_req_w0"])
+            assert ack_request(rule, 1) == bytes.fromhex(controls["ack_req_w1"])
+            assert sender_abort(rule) == bytes.fromhex(controls["sender_abort"])
+            assert receiver_abort(rule) == bytes.fromhex(controls["receiver_abort"])
+        return
+
+    if category == "retry_exhaustion":
+        if name == "sender_retry_exhaustion":
+            sender = FragmentSender(b"x", vector["rule_id"])
+            sender.start()
+            sender.attempts = vector["attempts_before"]
+            assert sender.timeout() == _expand_vector_bytes(vector["expected_message"])
+            assert sender.status == vector["expect_status"]
+        else:
+            receiver = FragmentReceiver()
+            receiver.attempts = vector["attempts_before"]
+            result = receiver.receive_bytes(_expand_vector_bytes(vector["trigger"]))
+            assert result.response == _expand_vector_bytes(vector["expected_message"])
+            assert result.aborted
+        return
+
+    if category == "capacity":
+        packet = _expand_vector_bytes(vector["packet"])
+        if vector["expect_status"] == "ok":
+            limit = max(1281, len(packet))
+            sender = FragmentSender(packet, receiver_limit=limit)
+            assert sender.fragment_count == vector["fragment_count"]
+            fragments = []
+            tiles = [packet[i : i + 187] for i in range(0, len(packet), 187)]
+            for ordinal, tile in enumerate(tiles):
+                final = ordinal == len(tiles) - 1
+                fragments.append(
+                    Fragment(
+                        0x78,
+                        ordinal // 63,
+                        63 if final else 62 - ordinal % 63,
+                        tile,
+                        bytes.fromhex(vector["rcs"]) if final else b"",
+                    )
+                )
+            receiver = FragmentReceiver() if len(packet) <= 1281 else FragmentReceiver(len(packet))
+            result = None
+            for fragment in fragments:
+                result = receiver.receive(fragment)
+            assert result is not None
+            expected_ack = bytes.fromhex("7840" if vector["fragment_count"] <= 63 else "78c0")
+            assert result.response == expected_ack
+            assert result.reassembled == packet
+        else:
+            with pytest.raises(FragmentError):
+                FragmentSender(packet, receiver_limit=MAX_PACKET_SIZE)
+        return
+
+    wire = _expand_vector_bytes(vector["wire"])
+    result = FragmentReceiver().receive_bytes(wire)
+    assert result.response == bytes.fromhex("78ffff")
+    assert result.aborted
+    if name == "unassigned_bitmap_bit":
+        with pytest.raises(FragmentError):
+            Ack.from_bytes(wire, assigned_fcns=vector["assigned_fcns"])
+    elif name.startswith("ack_success") or name == "malformed_control":
+        with pytest.raises(FragmentError):
+            Ack.from_bytes(wire)
+    else:
+        with pytest.raises(FragmentError):
+            Fragment.from_bytes(wire)
 
 
 @pytest.mark.parametrize("name,vector", _l2_payload_cases())
@@ -289,10 +534,10 @@ def _read_fields(data: bytes) -> list[tuple[int, int, object]]:
             value, offset = _read_varint(data, offset)
         elif wire_type == 2:
             length, offset = _read_varint(data, offset)
-            value = data[offset:offset + length]
+            value = data[offset : offset + length]
             offset += length
         elif wire_type == 5:
-            value = int.from_bytes(data[offset:offset + 4], "little")
+            value = int.from_bytes(data[offset : offset + 4], "little")
             offset += 4
         else:
             raise AssertionError(f"unsupported wire type {wire_type}")
@@ -441,10 +686,14 @@ def _assert_config_section(data: bytes, decoded: dict, expect: dict) -> None:
     assert len(fields) == 1
     section = expect["config_section"]
     canonical = {
-        name: {"section": name, "oneof_field": oneof, "fields": [
-            {"field": field, "wire_type": "varint", "value": value}
-            for field, value in expected_fields
-        ]}
+        name: {
+            "section": name,
+            "oneof_field": oneof,
+            "fields": [
+                {"field": field, "wire_type": "varint", "value": value}
+                for field, value in expected_fields
+            ],
+        }
         for name, oneof, expected_fields in CONFIG_SECTION_EXPECTATIONS
     }[section["section"]]
     assert {key: section[key] for key in ("section", "oneof_field", "fields")} == canonical
@@ -481,9 +730,9 @@ def _assert_config_sequence(expect: dict) -> None:
         oneof for _, oneof, _ in CONFIG_SECTION_EXPECTATIONS
     ]
     for section in expect["config_sections"]:
-        _assert_config_section(bytes.fromhex(section["payload"]), {"config": section}, {
-            "config_section": section
-        })
+        _assert_config_section(
+            bytes.fromhex(section["payload"]), {"config": section}, {"config_section": section}
+        )
 
 
 @pytest.mark.parametrize("name,vector", _meshtastic_cases())
@@ -961,12 +1210,14 @@ def test_rpl_messages_vector(name: str, vector: dict) -> None:
         fields = vector["fields"]
         if opt_type == 5:  # RPL Target
             from lichen.rpl.messages import RplOption
+
             opt = RplOption(5, encoded[2 : 2 + encoded[1]])
             target = RplTarget.from_option(opt)
             assert target.prefix_length == fields["prefix_length"], f"{name}: prefix_length"
             assert target.target == IPv6Address(fields["prefix"]), f"{name}: prefix"
         elif opt_type == 6:  # Transit Information
             from lichen.rpl.messages import RplOption
+
             opt = RplOption(6, encoded[2 : 2 + encoded[1]])
             ti = TransitInformation.from_option(opt)
             assert ti.path_control == fields["path_control"], f"{name}: path_control"

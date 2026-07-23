@@ -1,23 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-"""SCHC reassembly state machine — ACK-on-Error receiver (RFC 8724 section 8).
-
-Pairs with :class:`lichen.schc.fragment.FragmentSender`. :class:`FragmentReceiver`
-collects fragments for one datagram, emits an ACK (positional bitmap) at each
-window boundary and after the All-1 fragment, and reassembles once every tile is
-present and the CRC32 MIC verifies. Missing tiles produce a NACK bitmap that the
-sender turns into retransmissions; the MIC is the final correctness guard.
-
-:class:`ReassemblyManager` holds a bounded number of concurrent receivers keyed
-by sender, evicting the oldest on overflow (the wire fragment header carries no
-DTag, so datagrams are distinguished by transport key, not in-band tag).
-
-Times are caller-supplied integer milliseconds; nothing reads a wall clock.
-"""
+"""Bounded LICHEN SCHC ACK-on-Error reassembly."""
 
 from __future__ import annotations
 
-from collections import OrderedDict
 from collections.abc import Hashable
 from dataclasses import dataclass
 
@@ -29,13 +15,14 @@ DEFAULT_MAX_CONTEXTS = 4
 @dataclass
 class ReceiverResult:
     ack: Ack | None = None
+    response: bytes | None = None
     reassembled: bytes | None = None
     mic_ok: bool | None = None
     evicted: bool = False
 
 
 class FragmentReceiver:
-    """Reassembles a single datagram from ACK-on-Error fragments.
+    """One fixed-profile reassembly context."""
 
     Regular tiles are stored by their global index (window * window_size +
     position, position = window_size - 1 - FCN). The All-1 tile (the datagram's
@@ -60,12 +47,14 @@ class FragmentReceiver:
         self.reassembled: bytes | None = None
         self.done = False
 
-    def _abs_window(self, frag: Fragment) -> int:
-        """Map the 1-bit wire window to the monotonic absolute window number.
+    def _release(self) -> None:
+        self._tiles.clear()
+        self._all1 = None
+        self.done = True
 
-        SCHC ACK-on-Error uses a single W bit on the wire that alternates 0/1
-        as windows advance. Internally, _current_window is a monotonically
-        increasing counter (0, 1, 2, ...).
+    def _abort(self, rule_id: int) -> ReceiverResult:
+        self._release()
+        return ReceiverResult(response=receiver_abort(rule_id), aborted=True)
 
         To handle late retransmissions, out-of-order delivery, and duplicates
         correctly we scan backwards through older same-parity windows:
@@ -148,50 +137,63 @@ class FragmentReceiver:
             self._current_window = abs_window
 
         if frag.is_all_1:
-            self._all1_seen = True
-            self._all1_window = abs_window
-            self._all1_payload = frag.payload
-            self._mic = frag.mic
+            if self._all1 is not None and self._all1 != frag:
+                return self._abort(frag.rule_id)
+            if any(window > frag.window for window, _ in self._tiles) or (
+                (frag.window, 0) in self._tiles
+            ):
+                return self._abort(frag.rule_id)
+            if (
+                self._all1 is None
+                and sum(map(len, self._tiles.values())) + len(frag.payload) > self.max_size
+            ):
+                return self._abort(frag.rule_id)
+            self._all1 = frag
             return self._finalize()
-
-        pos = self.window_size - 1 - frag.fcn
-        idx = abs_window * self.window_size + pos
-        # SECURITY: Don't overwrite existing tiles. A corrupted retransmission
-        # from an older window (with different payload) could bypass the payload
-        # comparison in _abs_window() and be mapped to the current window. By
-        # refusing to overwrite, we prevent it from corrupting already-received
-        # data. If the existing tile is itself corrupt, MIC will fail and we'll
-        # NACK for retransmission.
-        if idx not in self._tiles:
-            self._tiles[idx] = frag.payload
-
-        if self._all1_seen:
-            return self._finalize()
-
-        if frag.is_all_0 or self._window_full(abs_window):
-            ack = Ack(
-                self._rule_id, abs_window % 2, self._window_bitmap(abs_window),
-                complete=False,
-            )
-            if self._window_full(abs_window):
-                self._completed_windows.add(abs_window)
-                self._current_window = abs_window + 1
-            return ReceiverResult(ack=ack)
+        if self._all1 is not None and (
+            frag.window > self._all1.window or (frag.window == self._all1.window and frag.fcn == 0)
+        ):
+            return self._abort(frag.rule_id)
+        key = (frag.window, frag.fcn)
+        existing = self._tiles.get(key)
+        if existing is not None:
+            if existing != frag.payload:
+                return self._abort(frag.rule_id)
+            return ReceiverResult()
+        retained = 0 if self._all1 is None else len(self._all1.payload)
+        if sum(map(len, self._tiles.values())) + retained + len(frag.payload) > self.max_size:
+            return self._abort(frag.rule_id)
+        self._tiles[key] = frag.payload
         return ReceiverResult()
 
-    def _finalize(self) -> ReceiverResult:
-        regular_indices = sorted(self._tiles)
-        contiguous = regular_indices == list(range(len(regular_indices)))
-        if not contiguous:
-            # Find first missing tile and NACK its window (may be earlier than all1_window)
-            present = set(regular_indices)
-            first_missing = 0
-            while first_missing in present:
-                first_missing += 1
-            gap_window = first_missing // self.window_size
-            bitmap = self._window_bitmap(gap_window)
-            nack = Ack(self._rule_id, gap_window % 2, bitmap, complete=False)
-            return ReceiverResult(ack=nack)
+    def receive_bytes(self, data: bytes) -> ReceiverResult:
+        if len(data) < 2:
+            raise FragmentError("fragmentation message too short")
+        rule_id = data[0]
+        if rule_id not in RULE_IDS:
+            raise FragmentError(f"unsupported fragmentation rule: {rule_id:#x}")
+        if data == sender_abort(rule_id):
+            self._release()
+            return ReceiverResult(aborted=True)
+        if data == receiver_abort(rule_id):
+            self._release()
+            return ReceiverResult(aborted=True)
+        window = data[1] >> 7
+        if data == ack_request(rule_id, window):
+            if self._rule_id is None:
+                self._rule_id = rule_id
+            elif self._rule_id != rule_id:
+                return self._abort(self._rule_id)
+            if self._all1 is not None:
+                return self._finalize()
+            window = 0
+            if self._tiles and all((0, fcn) in self._tiles for fcn in range(63)):
+                window = 1
+            return self._respond(Ack(rule_id, window, self._bitmap(window)))
+        try:
+            return self.receive(Fragment.from_bytes(data))
+        except FragmentError:
+            return self._abort(rule_id)
 
         data = b"".join(self._tiles[i] for i in regular_indices) + self._all1_payload
         if compute_mic(data) == self._mic:
@@ -216,18 +218,30 @@ class FragmentReceiver:
 
 
 class ReassemblyManager:
-    """Bounded set of concurrent reassembly contexts keyed by sender."""
+    """Bounded contexts keyed by ``(caller key, fragmentation Rule ID)``."""
 
     def __init__(
-        self, window_size: int, max_contexts: int = DEFAULT_MAX_CONTEXTS
+        self,
+        max_contexts: int = DEFAULT_MAX_CONTEXTS,
+        max_size: int = DEFAULT_RECEIVER_LIMIT,
     ) -> None:
         if not isinstance(window_size, int) or not 1 <= window_size <= MAX_WINDOW_SIZE:
             raise FragmentError(f"window_size must be integer 1..{MAX_WINDOW_SIZE}")
         if max_contexts <= 0:
             raise ValueError("max_contexts must be positive")
-        self.window_size = window_size
+        if not 1 <= max_size <= MAX_PACKET_SIZE:
+            raise ValueError("max_size out of range")
         self.max_contexts = max_contexts
-        self._contexts: OrderedDict[Hashable, FragmentReceiver] = OrderedDict()
+        self.max_size = max_size
+        self._contexts: dict[tuple[Hashable, int], FragmentReceiver] = {}
+
+    def _receiver(self, key: Hashable, rule_id: int) -> FragmentReceiver | None:
+        context_key = (key, rule_id)
+        receiver = self._contexts.get(context_key)
+        if receiver is None and len(self._contexts) < self.max_contexts:
+            receiver = FragmentReceiver(self.max_size)
+            self._contexts[context_key] = receiver
+        return receiver
 
     def receive(self, key: Hashable, frag: Fragment) -> ReceiverResult:
         receiver = self._contexts.get(key)
@@ -246,9 +260,47 @@ class ReassemblyManager:
             self._contexts.pop(key, None)
         return result
 
-    def drop(self, key: Hashable) -> None:
-        """Discard a reassembly context (e.g. on timeout)."""
-        self._contexts.pop(key, None)
+    def receive_bytes(self, key: Hashable, data: bytes) -> ReceiverResult:
+        if not data:
+            raise FragmentError("fragmentation message too short")
+        rule_id = data[0]
+        if rule_id not in RULE_IDS:
+            raise FragmentError(f"unsupported fragmentation rule: {rule_id:#x}")
+        context_key = (key, rule_id)
+        if len(data) < 2:
+            self._contexts.pop(context_key, None)
+            return ReceiverResult(response=receiver_abort(rule_id), aborted=True)
+        if data in (sender_abort(rule_id), receiver_abort(rule_id)):
+            receiver = self._contexts.pop(context_key, None)
+            if receiver is not None:
+                receiver.receive_bytes(data)
+            return ReceiverResult(aborted=True)
+        window = data[1] >> 7
+        is_ack_request = data == ack_request(rule_id, window)
+        if not is_ack_request:
+            try:
+                fragment = Fragment.from_bytes(data)
+            except FragmentError:
+                self._contexts.pop(context_key, None)
+                return ReceiverResult(response=receiver_abort(rule_id), aborted=True)
+        receiver = self._receiver(key, rule_id)
+        if receiver is None:
+            return ReceiverResult(response=receiver_abort(rule_id), aborted=True)
+        result = receiver.receive_bytes(data) if is_ack_request else receiver.receive(fragment)
+        if receiver.done:
+            self._contexts.pop((key, rule_id), None)
+        return result
+
+    def drop(self, key: Hashable, rule_id: int | None = None) -> None:
+        if rule_id is not None:
+            self._contexts.pop((key, rule_id), None)
+            return
+        for context_key in [context_key for context_key in self._contexts if context_key[0] == key]:
+            self._contexts.pop(context_key)
+
+    def expire(self, key: Hashable, rule_id: int) -> bytes | None:
+        receiver = self._contexts.pop((key, rule_id), None)
+        return None if receiver is None else receiver.expire()
 
     def __len__(self) -> int:
         return len(self._contexts)

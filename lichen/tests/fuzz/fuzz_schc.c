@@ -125,12 +125,6 @@ static void fuzz_reassembler(const uint8_t *data, size_t size)
 	if (size < 2) {
 		return;
 	}
-
-	/* Use first byte to select configuration parameters */
-	uint8_t config_byte = data[0];
-	const uint8_t *fragment = &data[1];
-	size_t fragment_len = size - 1;
-
 	uint8_t packet[FUZZ_REASSEMBLY_BUF_SIZE];
 	struct schc_reassembler reassembler;
 	struct schc_reassembler_config config = {
@@ -155,17 +149,119 @@ static void fuzz_reassembler(const uint8_t *data, size_t size)
 	if (ret != SCHC_OK) {
 		return;
 	}
+	uint8_t response[10];
+	uint8_t message[SCHC_FRAGMENT_MAX_MESSAGE_SIZE];
+	uint8_t rule_id = (data[0] & 1u) != 0u ?
+		SCHC_FRAGMENT_RULE_B_TO_A : SCHC_FRAGMENT_RULE_A_TO_B;
+	size_t offset = 1;
+	while (offset < size) {
+		uint8_t selector = data[offset++];
+		size_t remaining = size - offset;
+		size_t length = remaining < SCHC_FRAGMENT_MAX_MESSAGE_SIZE ? remaining :
+				SCHC_FRAGMENT_MAX_MESSAGE_SIZE;
+		if (length > 1u + selector % SCHC_FRAGMENT_MAX_MESSAGE_SIZE) {
+			length = 1u + selector % SCHC_FRAGMENT_MAX_MESSAGE_SIZE;
+		}
+		if (length == 0u) {
+			break;
+		}
+		struct schc_reassembly_result result;
 
-	/* Feed fragment to reassembler */
-	bool complete = false;
+		memcpy(message, &data[offset], length);
+		message[0] = rule_id;
+		(void)schc_reassembler_input(&reassembler, message, length,
+					     &result);
+		(void)schc_reassembler_next(&reassembler, response, sizeof(response),
+					    &result);
+		offset += length;
+	}
 
-	(void)schc_reassembler_input(&reassembler, fragment, fragment_len,
-				     &complete);
+	uint8_t tile[SCHC_FRAGMENT_TILE_SIZE];
+	for (size_t i = 0; i < sizeof(tile); i++) {
+		tile[i] = data[i % size];
+	}
+	struct schc_fragment fragment = {
+		.tile = tile,
+		.tile_len = sizeof(tile),
+		.rule_id = rule_id,
+		.window = data[1] & 1u,
+		.fcn = (uint8_t)(data[1] % 63u),
+	};
+	if (fragment.window == 1u && fragment.fcn == 0u) {
+		fragment.fcn = 1u;
+	}
+	int length = schc_fragment_encode(&fragment, message, sizeof(message));
+	if (length > 0) {
+		struct schc_reassembly_result result;
 
-	/* Exercise ACK generation */
-	struct schc_ack ack;
+		(void)schc_reassembler_input(&reassembler, message, (size_t)length, &result);
+		(void)schc_reassembler_input(&reassembler, message, (size_t)length, &result);
+		message[0] = rule_id == SCHC_FRAGMENT_RULE_A_TO_B ?
+			SCHC_FRAGMENT_RULE_B_TO_A : SCHC_FRAGMENT_RULE_A_TO_B;
+		(void)schc_reassembler_input(&reassembler, message, (size_t)length, &result);
+		message[0] = rule_id;
+		tile[0] ^= 1u;
+		length = schc_fragment_encode(&fragment, message, sizeof(message));
+		if (length > 0) {
+			(void)schc_reassembler_input(&reassembler, message, (size_t)length,
+						     &result);
+			(void)schc_reassembler_next(&reassembler, response, sizeof(response),
+						    &result);
+		}
+		fragment.window ^= 1u;
+		length = schc_fragment_encode(&fragment, message, sizeof(message));
+		if (length > 0) {
+			(void)schc_reassembler_input(&reassembler, message, (size_t)length,
+						     &result);
+			(void)schc_reassembler_input(&reassembler, message, (size_t)length,
+						     &result);
+		}
+	}
+	(void)schc_reassembler_expire(&reassembler);
+	struct schc_reassembly_result result;
+	(void)schc_reassembler_next(&reassembler, response, sizeof(response), &result);
+}
 
-	(void)schc_reassembler_ack(&reassembler, &ack);
+static void fuzz_sender_success(const uint8_t *data, size_t size)
+{
+	if (size == 0u) {
+		return;
+	}
+	uint8_t packet[SCHC_FRAGMENT_TILE_SIZE];
+	uint8_t reassembly[SCHC_FRAGMENT_TILE_SIZE];
+	uint8_t message[SCHC_FRAGMENT_MAX_MESSAGE_SIZE];
+	uint8_t response[10];
+	size_t packet_len = 1u + data[0] % SCHC_FRAGMENT_TILE_SIZE;
+	for (size_t i = 0; i < packet_len; i++) {
+		packet[i] = data[i % size];
+	}
+	struct schc_fragmenter sender;
+	struct schc_reassembler receiver;
+	struct schc_reassembly_result result;
+	if (schc_fragmenter_init(&sender, SCHC_FRAGMENT_RULE_A_TO_B, packet,
+				 packet_len, packet_len) != SCHC_OK ||
+	    schc_reassembler_init(&receiver, reassembly, sizeof(reassembly),
+				  packet_len) != SCHC_OK) {
+		return;
+	}
+	(void)schc_fragmenter_next(&sender, message, 1);
+	int length = schc_fragmenter_next(&sender, message, sizeof(message));
+	if (length <= 0) {
+		return;
+	}
+	(void)schc_fragmenter_timeout(&sender);
+	(void)schc_fragmenter_next(&sender, response, 1);
+	(void)schc_fragmenter_next(&sender, response, sizeof(response));
+	(void)schc_reassembler_input(&receiver, message, (size_t)length, &result);
+	(void)schc_reassembler_next(&receiver, response, 1, &result);
+	int response_len = schc_reassembler_next(&receiver, response,
+						 sizeof(response), &result);
+	if (response_len > 0) {
+		(void)schc_fragmenter_input(&sender, response, (size_t)response_len);
+	}
+	(void)schc_fragmenter_input(&sender, ((uint8_t[]){ 0x79, 0x40 }), 2);
+	(void)schc_fragmenter_next(&sender, message, sizeof(message));
+	(void)schc_fragmenter_timeout(&sender);
 }
 
 static void fuzz_ack_decode(const uint8_t *data, size_t size)
@@ -174,29 +270,12 @@ static void fuzz_ack_decode(const uint8_t *data, size_t size)
 		return;
 	}
 
-	/* Use first byte for config, rest for data */
-	uint8_t config_byte = data[0];
 	const uint8_t *ack_data = &data[1];
 	size_t ack_len = size - 1;
-
-	uint8_t dtag_bits = (uint8_t)(config_byte & 0x07);
-	uint8_t window_bits = (uint8_t)(((config_byte >> 3) & 0x07) + 1);
-	uint8_t bitmap_bits = (uint8_t)((config_byte >> 6) & 0x03);
-
-	/* Clamp to valid ranges */
-	if (window_bits > 7) {
-		window_bits = 7;
-	}
-	if (dtag_bits + window_bits > 8) {
-		dtag_bits = 0;
-	}
-	if (bitmap_bits > 63) {
-		bitmap_bits = 63;
-	}
-
 	struct schc_ack ack;
+	uint64_t assigned = (uint64_t)data[0] * UINT64_C(0x01010101010101);
 
-	(void)schc_ack_decode(&ack, dtag_bits, window_bits, bitmap_bits,
+	(void)schc_ack_decode(&ack, assigned, (data[0] & 1u) != 0u,
 			      ack_data, ack_len);
 }
 
@@ -207,7 +286,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	}
 
 	/* Use first byte to select which function to fuzz */
-	uint8_t selector = data[0] % 3;
+	uint8_t selector = data[0] % 4;
 	const uint8_t *payload = &data[1];
 	size_t payload_len = size > 0 ? size - 1 : 0;
 
@@ -220,6 +299,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 		break;
 	case 2:
 		fuzz_ack_decode(payload, payload_len);
+		break;
+	case 3:
+		fuzz_sender_success(payload, payload_len);
 		break;
 	}
 

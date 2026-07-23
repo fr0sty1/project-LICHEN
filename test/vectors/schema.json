@@ -40,6 +40,7 @@
       "items": {
         "oneOf": [
           {"$ref": "#/definitions/schc_vector"},
+          {"$ref": "#/definitions/schc_fragmentation_vector"},
           {"$ref": "#/definitions/l2_payload_vector"},
           {"$ref": "#/definitions/frame_vector"},
           {"$ref": "#/definitions/announce_coords_vector"},
@@ -230,6 +231,124 @@
         "compressed": {"$ref": "#/definitions/hex",
           "description": "SCHC output: leading rule-id byte + residue + tail."}
       }
+    },
+    "byte_part": {
+      "oneOf": [
+        {"$ref": "#/definitions/hex"},
+        {
+          "type": "object",
+          "required": ["repeat_byte", "count"],
+          "additionalProperties": false,
+          "properties": {
+            "repeat_byte": {"type": "string", "pattern": "^[0-9a-f]{2}$"},
+            "count": {"type": "integer", "minimum": 1, "maximum": 23563}
+          }
+        }
+      ]
+    },
+    "byte_value": {
+      "oneOf": [
+        {"$ref": "#/definitions/hex"},
+        {
+          "type": "object",
+          "required": ["parts"],
+          "additionalProperties": false,
+          "properties": {
+            "parts": {
+              "type": "array",
+              "minItems": 1,
+              "items": {"$ref": "#/definitions/byte_part"}
+            }
+          }
+        }
+      ]
+    },
+    "fragmentation_fragment": {
+      "type": "object",
+      "required": ["name", "kind", "window", "fcn", "tile_ordinal", "wire"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+        "kind": {"type": "string", "enum": ["regular", "all0", "all1"]},
+        "window": {"type": "integer", "minimum": 0, "maximum": 1},
+        "fcn": {"type": "integer", "minimum": 0, "maximum": 63},
+        "tile_ordinal": {"type": "integer", "minimum": 0, "maximum": 125},
+        "wire": {"$ref": "#/definitions/byte_value"}
+      },
+      "allOf": [
+        {"if": {"properties": {"kind": {"const": "regular"}}}, "then": {"properties": {"fcn": {"minimum": 1, "maximum": 62}}}},
+        {"if": {"properties": {"kind": {"const": "all0"}}}, "then": {"properties": {"window": {"const": 0}, "fcn": {"const": 0}}}},
+        {"if": {"properties": {"kind": {"const": "all1"}}}, "then": {"properties": {"fcn": {"const": 63}}}}
+      ]
+    },
+    "fragmentation_controls": {
+      "type": "object",
+      "required": ["ack_success_w0", "ack_success_w1", "ack_req_w0", "ack_req_w1", "sender_abort", "receiver_abort"],
+      "additionalProperties": false,
+      "properties": {
+        "ack_success_w0": {"$ref": "#/definitions/hex"},
+        "ack_success_w1": {"$ref": "#/definitions/hex"},
+        "ack_req_w0": {"$ref": "#/definitions/hex"},
+        "ack_req_w1": {"$ref": "#/definitions/hex"},
+        "sender_abort": {"$ref": "#/definitions/hex"},
+        "receiver_abort": {"$ref": "#/definitions/hex"}
+      }
+    },
+    "fragmentation_loss": {
+      "type": "object",
+      "required": ["drop_fragment", "ack_failure", "ack_req", "ack_success"],
+      "additionalProperties": false,
+      "properties": {
+        "drop_fragment": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+        "ack_failure": {"$ref": "#/definitions/byte_value"},
+        "retransmission": {"$ref": "#/definitions/byte_value"},
+        "ack_req": {"$ref": "#/definitions/byte_value"},
+        "ack_success": {"$ref": "#/definitions/byte_value"},
+        "corrupt_all1": {"$ref": "#/definitions/byte_value"},
+        "rcs_failure_ack": {"$ref": "#/definitions/byte_value"},
+        "next_sender_message": {"$ref": "#/definitions/byte_value"}
+      }
+    },
+    "schc_fragmentation_vector": {
+      "type": "object",
+      "required": ["name", "category", "provenance"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+        "category": {"type": "string", "enum": ["recovery", "window_transition", "controls", "retry_exhaustion", "capacity", "malformed"]},
+        "provenance": {"type": "string", "minLength": 1},
+        "rule_id": {"type": "integer", "enum": [120, 121]},
+        "packet": {"$ref": "#/definitions/byte_value"},
+        "packet_length": {"type": "integer", "minimum": 1, "maximum": 23563},
+        "packet_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "rcs": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
+        "fragment_count": {"type": "integer", "minimum": 0, "maximum": 126},
+        "fragments": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/fragmentation_fragment"}},
+        "loss": {"$ref": "#/definitions/fragmentation_loss"},
+        "controls": {
+          "type": "object",
+          "required": ["rule_78", "rule_79"],
+          "additionalProperties": false,
+          "properties": {
+            "rule_78": {"$ref": "#/definitions/fragmentation_controls"},
+            "rule_79": {"$ref": "#/definitions/fragmentation_controls"}
+          }
+        },
+        "attempts_before": {"type": "integer", "const": 4},
+        "trigger": {"$ref": "#/definitions/byte_value"},
+        "expected_message": {"$ref": "#/definitions/byte_value"},
+        "expect_status": {"type": "string", "enum": ["ok", "packet_too_large", "aborted"]},
+        "wire": {"$ref": "#/definitions/byte_value"},
+        "assigned_fcns": {"type": "array", "uniqueItems": true, "items": {"type": "integer", "minimum": 0, "maximum": 63}},
+        "expect_error": {"type": "string", "pattern": "^[a-z0-9_]+$"}
+      },
+      "allOf": [
+        {"if": {"properties": {"category": {"enum": ["recovery", "window_transition"]}}}, "then": {"required": ["rule_id", "packet", "packet_length", "packet_sha256", "rcs", "fragments", "loss"], "not": {"anyOf": [{"required": ["controls"]}, {"required": ["attempts_before"]}, {"required": ["trigger"]}, {"required": ["expected_message"]}, {"required": ["expect_status"]}, {"required": ["wire"]}, {"required": ["assigned_fcns"]}, {"required": ["expect_error"]}]}}},
+        {"if": {"properties": {"category": {"const": "controls"}}}, "then": {"required": ["controls"], "not": {"anyOf": [{"required": ["rule_id"]}, {"required": ["packet"]}, {"required": ["packet_length"]}, {"required": ["packet_sha256"]}, {"required": ["rcs"]}, {"required": ["fragment_count"]}, {"required": ["fragments"]}, {"required": ["loss"]}, {"required": ["attempts_before"]}, {"required": ["trigger"]}, {"required": ["expected_message"]}, {"required": ["expect_status"]}, {"required": ["wire"]}, {"required": ["assigned_fcns"]}, {"required": ["expect_error"]}]}}},
+        {"if": {"properties": {"category": {"const": "retry_exhaustion"}}}, "then": {"required": ["rule_id", "attempts_before", "trigger", "expected_message", "expect_status"], "not": {"anyOf": [{"required": ["packet"]}, {"required": ["packet_length"]}, {"required": ["packet_sha256"]}, {"required": ["rcs"]}, {"required": ["fragment_count"]}, {"required": ["fragments"]}, {"required": ["loss"]}, {"required": ["controls"]}, {"required": ["wire"]}, {"required": ["assigned_fcns"]}, {"required": ["expect_error"]}]}}},
+        {"if": {"properties": {"category": {"const": "capacity"}}}, "then": {"required": ["packet", "packet_length", "packet_sha256", "fragment_count", "expect_status"], "not": {"anyOf": [{"required": ["rule_id"]}, {"required": ["fragments"]}, {"required": ["loss"]}, {"required": ["controls"]}, {"required": ["attempts_before"]}, {"required": ["trigger"]}, {"required": ["expected_message"]}, {"required": ["wire"]}, {"required": ["assigned_fcns"]}, {"required": ["expect_error"]}]}}},
+        {"if": {"properties": {"category": {"const": "malformed"}}}, "then": {"required": ["wire", "expect_error"], "not": {"anyOf": [{"required": ["rule_id"]}, {"required": ["packet"]}, {"required": ["packet_length"]}, {"required": ["packet_sha256"]}, {"required": ["rcs"]}, {"required": ["fragment_count"]}, {"required": ["fragments"]}, {"required": ["loss"]}, {"required": ["controls"]}, {"required": ["attempts_before"]}, {"required": ["trigger"]}, {"required": ["expected_message"]}, {"required": ["expect_status"]}]}}}
+      ]
     },
     "announce_coords_vector": {
       "type": "object",

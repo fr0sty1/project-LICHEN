@@ -1,10 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-"""Tests for SCHC fragmentation — sender side (RFC 8724 section 8).
-
-Oracles: the canonical CRC-32 check value (crc32(b"123456789") = 0xCBF43926)
-for the MIC, and a hand-traced window/FCN schedule.
-"""
+"""Fixed-profile SCHC fragmentation codec and sender tests."""
 
 from __future__ import annotations
 
@@ -15,6 +11,7 @@ import pytest
 
 from lichen.schc.fragment import (
     ALL_1,
+    MAX_PACKET_SIZE,
     Ack,
     Fragment,
     FragmentError,
@@ -67,34 +64,46 @@ def test_window_and_fcn_schedule() -> None:
     assert all(f.mic == b"" for f in frags[:-1])
 
 
-def test_single_fragment_datagram() -> None:
-    sender = FragmentSender(payload=b"hi", rule_id=20, tile_size=10)
-    frags = sender.all_fragments()
-    assert len(frags) == 1
-    assert frags[0].is_all_1
-    assert frags[0].payload == b"hi"
+def test_window_transition_vector_fragments() -> None:
+    sender = FragmentSender(b"\xa5" * 11782, receiver_limit=MAX_PACKET_SIZE)
+    fragments = sender.all_fragments()
+
+    assert sender.fragment_count == 64
+    assert fragments[0].to_bytes() == bytes.fromhex("787d") + b"\x4b" * 186 + b"\x4a"
+    assert fragments[31].to_bytes() == bytes.fromhex("783f") + b"\x4b" * 186 + b"\x4a"
+    assert fragments[62].to_bytes() == bytes.fromhex("7801") + b"\x4b" * 186 + b"\x4a"
+    assert fragments[63].to_bytes() == bytes.fromhex("78ff0e4f91cb4a")
 
 
-def test_window_count_and_fragments_in_window() -> None:
-    sender = FragmentSender(payload=bytes(7), rule_id=20, tile_size=1, window_size=3)
-    assert sender.window_count == 3
-    assert len(sender.fragments_in_window(0)) == 3
-    assert len(sender.fragments_in_window(2)) == 1
+def test_rule_79_one_tile_data_path_literal() -> None:
+    wire = bytes.fromhex("797f4c7fc202f0")
+    sender = FragmentSender(b"x", rule_id=0x79)
+
+    assert wire[2:6] == bytes.fromhex("4c7fc202")
+    assert sender.start() == [wire]
+    assert Fragment.from_bytes(wire) == sender.all_fragments()[0]
+    assert sender.handle_ack_bytes(bytes.fromhex("7940")) == []
+    assert sender.status == "succeeded"
 
 
-def test_retransmit_missing_from_bitmap() -> None:
-    sender = FragmentSender(payload=bytes(range(6)), rule_id=20, tile_size=1, window_size=3)
-    # Window 0 has 3 fragments; bitmap says positions 0 and 2 received, 1 missing.
-    missing = sender.retransmit(0, [True, False, True])
-    assert len(missing) == 1
-    assert missing[0].fcn == 1  # position 1 -> FCN window_size-1-1 = 1
+def test_ack_and_control_vectors() -> None:
+    failure = bytes.fromhex("782000000000000000")
+    ack = Ack.from_bytes(failure, assigned_fcns=(62, 61, ALL_1))
+
+    assert ack.to_bytes() == failure
+    assert ack.bitmap[0] and not ack.bitmap[1] and ack.bitmap[-1]
+    assert Ack(0x78, 0, complete=True).to_bytes() == bytes.fromhex("7840")
+    assert Ack.from_bytes(bytes.fromhex("78c0")) == Ack(0x78, 1, complete=True)
+    assert ack_request(0x78, 0) == bytes.fromhex("7800")
+    assert ack_request(0x79, 1) == bytes.fromhex("7980")
+    assert sender_abort(0x78) == bytes.fromhex("78fe")
+    assert receiver_abort(0x79) == bytes.fromhex("79ffff")
 
 
-def test_retransmit_treats_short_bitmap_as_missing() -> None:
-    sender = FragmentSender(payload=bytes(range(3)), rule_id=20, tile_size=1, window_size=3)
-    missing = sender.retransmit(0, [True])  # only position 0 acked
-    # Position 1 -> FCN 1; position 2 is the datagram's last tile -> All-1 (63).
-    assert [f.fcn for f in missing] == [1, ALL_1]
+def test_all_zero_ack_bitmap_round_trip() -> None:
+    ack = Ack(0x78, 0, (False,) * 63)
+    assert ack.to_bytes() == bytes.fromhex("78000000000000000000")
+    assert Ack.from_bytes(ack.to_bytes()) == ack
 
 
 def test_ack_round_trip() -> None:
@@ -117,7 +126,11 @@ def test_ack_complete_flag() -> None:
 
 def test_invalid_sender_parameters() -> None:
     with pytest.raises(FragmentError):
-        FragmentSender(payload=b"x", rule_id=1, tile_size=0)
+        Fragment.from_bytes(wire)
+
+
+@pytest.mark.parametrize("wire", [bytes.fromhex("784000"), bytes.fromhex("78ff")])
+def test_malformed_ack_vectors(wire: bytes) -> None:
     with pytest.raises(FragmentError):
         FragmentSender(payload=b"x", rule_id=1, tile_size=1, window_size=0)
     with pytest.raises(FragmentError):

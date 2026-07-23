@@ -44,6 +44,12 @@ enum schc_error {
 	SCHC_ERR_INVALID_ARGUMENT = -6,
 	SCHC_ERR_DONE = -7,
 	SCHC_ERR_MIC_MISMATCH = -8,
+	SCHC_ERR_FRAGMENT_LENGTH = -9,
+	SCHC_ERR_FRAGMENT_PADDING = -10,
+	SCHC_ERR_FRAGMENT_FCN = -11,
+	SCHC_ERR_ACK_MALFORMED = -12,
+	SCHC_ERR_ACK_NONCANONICAL = -13,
+	SCHC_ERR_ACK_UNASSIGNED = -14,
 };
 
 struct schc_rule;
@@ -105,112 +111,173 @@ static inline int schc_rule_id(const uint8_t *data, size_t len)
 	return (len > 0) ? data[0] : -1;
 }
 
-enum schc_fragment_direction {
-	SCHC_FRAGMENT_UPLINK,
-	SCHC_FRAGMENT_DOWNLINK,
+#define SCHC_FRAGMENT_RULE_A_TO_B 0x78u
+#define SCHC_FRAGMENT_RULE_B_TO_A 0x79u
+#define SCHC_FRAGMENT_TILE_SIZE 187u
+#define SCHC_FRAGMENT_WINDOW_SIZE 63u
+#define SCHC_FRAGMENT_MAX_TILES 126u
+#define SCHC_FRAGMENT_MAX_PACKET_SIZE 23562u
+#define SCHC_FRAGMENT_DEFAULT_RECEIVER_LIMIT 1281u
+#define SCHC_FRAGMENT_MAX_ATTEMPTS 4u
+#define SCHC_FRAGMENT_MAX_MESSAGE_SIZE 193u
+
+enum schc_fragment_control {
+	SCHC_CONTROL_ACK_REQUEST,
+	SCHC_CONTROL_SENDER_ABORT,
+	SCHC_CONTROL_RECEIVER_ABORT,
 };
 
-enum schc_fragment_mode {
-	SCHC_FRAGMENT_NO_ACK,
-	SCHC_FRAGMENT_ACK_ALWAYS,
-	SCHC_FRAGMENT_ACK_ON_ERROR,
+enum schc_sender_status {
+	SCHC_SENDER_READY,
+	SCHC_SENDER_ACTIVE,
+	SCHC_SENDER_SUCCEEDED,
+	SCHC_SENDER_ABORTED,
 };
 
 #define SCHC_MAX_PACKET 1281
 
 struct schc_fragmenter_config {
 	uint8_t rule_id;
-	uint8_t dtag;
-	uint8_t dtag_bits;
-	uint8_t window_bits;
-	uint8_t fcn_bits;
-	size_t tile_size;
-	size_t mtu;
-	enum schc_fragment_direction direction;
-	enum schc_fragment_mode mode;
-};
-
-struct schc_fragmenter {
-	struct schc_fragmenter_config config;
-	const uint8_t *packet;
-	size_t packet_len;
-	size_t offset;
+	uint8_t window;
+	uint8_t fcn;
+	uint8_t rcs[4];
 };
 
 struct schc_ack {
-	uint8_t rule_id;
-	uint8_t dtag;
-	uint8_t dtag_bits;
-	uint8_t window;
-	uint8_t window_bits;
-	bool complete;
-	uint8_t bitmap_bits;
 	uint64_t bitmap;
+	uint8_t rule_id;
+	uint8_t window;
+	bool complete;
 };
 
-size_t schc_fragment_header_len(const struct schc_fragmenter_config *config);
-
 SCHC_WARN_UNUSED_RESULT
-int schc_fragmenter_init(struct schc_fragmenter *fragmenter,
-			 const struct schc_fragmenter_config *config,
-			 const uint8_t *packet, size_t packet_len);
-
-SCHC_WARN_UNUSED_RESULT
-int schc_fragmenter_next(struct schc_fragmenter *fragmenter,
+int schc_fragment_encode(const struct schc_fragment *fragment,
 			 uint8_t *out, size_t out_len);
 
 SCHC_WARN_UNUSED_RESULT
-int schc_fragmenter_retransmit(const struct schc_fragmenter *fragmenter,
-			       const struct schc_ack *ack,
-			       uint8_t *out, size_t out_len);
-
-size_t schc_ack_len(const struct schc_ack *ack);
+int schc_fragment_decode(struct schc_fragment *fragment,
+			 const uint8_t *data, size_t data_len,
+			 uint8_t *tile, size_t tile_len);
 
 SCHC_WARN_UNUSED_RESULT
 int schc_ack_encode(const struct schc_ack *ack, uint8_t *out, size_t out_len);
 
+/** assigned_bitmap uses FCN bit positions; pass false to decode without context. */
 SCHC_WARN_UNUSED_RESULT
-int schc_ack_decode(struct schc_ack *ack, uint8_t dtag_bits,
-		    uint8_t window_bits, uint8_t bitmap_bits,
-		    const uint8_t *data, size_t data_len);
+int schc_ack_decode(struct schc_ack *ack, uint64_t assigned_bitmap,
+		    bool check_assigned, const uint8_t *data, size_t data_len);
 
-struct schc_reassembler_config {
+SCHC_WARN_UNUSED_RESULT
+int schc_control_encode(enum schc_fragment_control control, uint8_t rule_id,
+			uint8_t window, uint8_t *out, size_t out_len);
+
+struct schc_fragmenter {
+	const uint8_t *packet;
+	size_t packet_len;
+	size_t fragment_count;
+	size_t next_fragment;
+	uint64_t missing;
 	uint8_t rule_id;
-	uint8_t dtag;
-	uint8_t dtag_bits;
-	uint8_t window_bits;
-	uint8_t fcn_bits;
-	size_t tile_size;
-	enum schc_fragment_mode mode;
+	uint8_t retransmit_window;
+	uint8_t retransmit_position;
+	uint8_t attempts;
+	uint8_t phase;
+	enum schc_sender_status status;
+};
+
+/**
+ * Initialize a sender that borrows packet storage.
+ *
+ * The packet pointer must remain valid and its bytes immutable until status is
+ * SCHC_SENDER_SUCCEEDED or SCHC_SENDER_ABORTED.
+ */
+SCHC_WARN_UNUSED_RESULT
+int schc_fragmenter_init(struct schc_fragmenter *fragmenter, uint8_t rule_id,
+			 const uint8_t *packet, size_t packet_len,
+			 size_t receiver_limit);
+
+/** Emit the next initial, retransmission, ACK REQ, or Sender-Abort message. */
+SCHC_WARN_UNUSED_RESULT
+int schc_fragmenter_next(struct schc_fragmenter *fragmenter,
+			 uint8_t *out, size_t out_len);
+
+/** Consume an ACK or Receiver-Abort. Ignored stale/wrong messages return 0. */
+SCHC_WARN_UNUSED_RESULT
+int schc_fragmenter_input(struct schc_fragmenter *fragmenter,
+			  const uint8_t *message, size_t message_len);
+
+/** Queue a final-window ACK REQ, or Sender-Abort after four attempts. */
+SCHC_WARN_UNUSED_RESULT
+int schc_fragmenter_timeout(struct schc_fragmenter *fragmenter);
+
+struct schc_reassembly_result {
+	size_t packet_len;
+	bool complete;
+	bool rcs_checked;
+	bool rcs_ok;
+	bool aborted;
 };
 
 struct schc_reassembler {
-	struct schc_reassembler_config config;
 	uint8_t *packet;
-	size_t packet_max_len;
-	size_t packet_len;
-	bool complete;
-	uint64_t received_tiles;
-	size_t received_tile_count;
-	size_t contiguous_tile_count;
-	uint8_t last_window;
+	size_t capacity;
+	size_t limit;
+	size_t final_len;
+	size_t final_staging;
+	size_t complete_len;
+	uint64_t bitmap[2];
+	uint8_t decode_tile[SCHC_FRAGMENT_TILE_SIZE];
+	uint8_t rcs[4];
+	struct schc_ack pending_ack;
+	uint8_t rule_id;
+	uint8_t final_window;
+	uint8_t attempts;
+	uint8_t pending;
+	bool active;
+	bool have_all1;
+	bool delivered;
 };
-
-size_t schc_reassembler_header_len(const struct schc_reassembler_config *config);
 
 SCHC_WARN_UNUSED_RESULT
 int schc_reassembler_init(struct schc_reassembler *reassembler,
-			  const struct schc_reassembler_config *config,
-			  uint8_t *packet, size_t packet_max_len);
+			  uint8_t *packet, size_t capacity, size_t limit);
 
+/**
+ * Process one Fragment, ACK REQ, or abort message and queue any response.
+ *
+ * Callers dispatch contexts by authenticated link and fragmentation Rule ID.
+ * Input for the opposite Rule ID is ignored without changing this context.
+ */
 SCHC_WARN_UNUSED_RESULT
 int schc_reassembler_input(struct schc_reassembler *reassembler,
-			   const uint8_t *fragment, size_t fragment_len,
-			   bool *complete);
+			   const uint8_t *message, size_t message_len,
+			   struct schc_reassembly_result *result);
 
+/**
+ * Write a queued ACK or Receiver-Abort. A short output leaves it queued and
+ * result noncomplete. Successful C=1 output reports completion in result.
+ */
 SCHC_WARN_UNUSED_RESULT
-int schc_reassembler_ack(const struct schc_reassembler *reassembler,
-			 struct schc_ack *ack);
+int schc_reassembler_next(struct schc_reassembler *reassembler,
+			  uint8_t *out, size_t out_len,
+			  struct schc_reassembly_result *result);
+
+/**
+ * Return a borrowed packet view only after its C=1 ACK was written.
+ *
+ * The view remains valid until an accepted, valid same-Rule-ID Fragment or
+ * ACK REQ starts a new T=0 context, schc_reassembler_release(), re-init, or a
+ * matching abort. Malformed and opposite-Rule-ID input does not invalidate it.
+ */
+SCHC_WARN_UNUSED_RESULT
+int schc_reassembler_packet(const struct schc_reassembler *reassembler,
+			    const uint8_t **packet, size_t *packet_len);
+
+/** Queue Receiver-Abort for an active incomplete transfer. */
+SCHC_WARN_UNUSED_RESULT
+int schc_reassembler_expire(struct schc_reassembler *reassembler);
+
+void schc_reassembler_release(struct schc_reassembler *reassembler);
 
 #ifdef __cplusplus
 }

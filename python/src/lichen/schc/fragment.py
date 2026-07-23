@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import zlib
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 
 N_FCN_BITS = 6
@@ -24,7 +24,7 @@ def compute_mic(payload: bytes) -> bytes:
     return zlib.crc32(payload).to_bytes(MIC_LENGTH, "big")
 
 
-@dataclass
+@dataclass(frozen=True)
 class Fragment:
     rule_id: int
     window: int
@@ -41,41 +41,56 @@ class Fragment:
         return self.fcn == 0
 
     def to_bytes(self) -> bytes:
-        if not 0 <= self.rule_id <= 0xFF:
-            raise FragmentError(f"rule_id out of range: {self.rule_id}")
-        if not 0 <= self.fcn <= ALL_1:
-            raise FragmentError(f"fcn out of range: {self.fcn}")
-        if self.window not in (0, 1):
-            raise FragmentError(f"window must be 0 or 1: {self.window}")
-        header = bytes(
-            [self.rule_id, ((self.window & 1) << _W_SHIFT) | (self.fcn & _FCN_MASK)]
-        )
+        _check_rule(self.rule_id)
+        if self.window not in (0, 1) or not 0 <= self.fcn <= ALL_1:
+            raise FragmentError("window or FCN out of range")
         if self.is_all_1:
             if len(self.mic) != MIC_LENGTH:
-                raise FragmentError("All-1 fragment requires a 4-byte MIC")
-            return header + self.mic + self.payload
-        return header + self.payload
+                raise FragmentError("All-1 requires a four-byte RCS")
+            if not 1 <= len(self.payload) <= TILE_SIZE:
+                raise FragmentError("All-1 final tile must contain 1..187 bytes")
+            content = self.mic + self.payload
+        else:
+            if len(self.payload) != TILE_SIZE:
+                raise FragmentError("Regular Fragment tile must contain 187 bytes")
+            if self.window == 1 and self.is_all_0:
+                raise FragmentError("the final tile must be carried in All-1")
+            if self.mic:
+                raise FragmentError("Regular Fragment cannot carry an RCS")
+            content = self.payload
+        body = (
+            ((self.window << 6) | self.fcn) << (8 * len(content)) | int.from_bytes(content)
+        ) << 1
+        return bytes([self.rule_id]) + body.to_bytes(len(content) + 1, "big")
 
     @classmethod
     def from_bytes(cls, data: bytes) -> Fragment:
         if len(data) < 2:
             raise FragmentError("fragment too short")
-        rule_id = data[0]
-        window = (data[1] >> _W_SHIFT) & 1
-        fcn = data[1] & _FCN_MASK
-        rest = data[2:]
+        _check_rule(data[0])
+        if data[-1] & 1:
+            raise FragmentError("non-zero end padding")
+        value = int.from_bytes(data[1:], "big") >> 1
+        content_len = len(data) - 2
+        header = value >> (8 * content_len)
+        window, fcn = header >> 6, header & 0x3F
+        content = (value & ((1 << (8 * content_len)) - 1)).to_bytes(content_len, "big")
         if fcn == ALL_1:
-            if len(rest) < MIC_LENGTH:
-                raise FragmentError("All-1 fragment missing MIC")
-            return cls(rule_id, window, fcn, rest[MIC_LENGTH:], rest[:MIC_LENGTH])
-        return cls(rule_id, window, fcn, rest)
+            if not 5 <= content_len <= MIC_LENGTH + TILE_SIZE:
+                raise FragmentError("All-1 requires an RCS and non-empty final tile")
+            return cls(data[0], window, fcn, content[MIC_LENGTH:], content[:MIC_LENGTH])
+        if len(data) != TILE_SIZE + 2:
+            raise FragmentError("Regular Fragment tile must contain 187 bytes")
+        if window == 1 and fcn == 0:
+            raise FragmentError("the final tile must be carried in All-1")
+        return cls(data[0], window, fcn, content)
 
 
-@dataclass
+@dataclass(frozen=True)
 class Ack:
     rule_id: int
     window: int
-    bitmap: tuple[bool, ...]
+    bitmap: tuple[bool, ...] = ()
     complete: bool = False
 
     def to_bytes(self) -> bytes:
@@ -120,10 +135,11 @@ class Ack:
 @dataclass
 class FragmentSender:
     payload: bytes
-    rule_id: int
-    tile_size: int
-    window_size: int = DEFAULT_WINDOW_SIZE
-    _fragments: list[Fragment] = field(default_factory=list, init=False)
+    rule_id: int = 0x78
+    receiver_limit: int = DEFAULT_RECEIVER_LIMIT
+    _fragments: list[Fragment] = field(init=False, repr=False)
+    attempts: int = field(default=0, init=False)
+    status: str = field(default="ready", init=False)
 
     def __post_init__(self) -> None:
         if not isinstance(self.tile_size, int) or self.tile_size <= 0:
@@ -161,7 +177,7 @@ class FragmentSender:
 
     @property
     def window_count(self) -> int:
-        return (self.fragment_count + self.window_size - 1) // self.window_size
+        return self._fragments[-1].window + 1
 
     def fragments_in_window(self, abs_window: int) -> list[Fragment]:
         start = abs_window * self.window_size

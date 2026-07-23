@@ -1,52 +1,18 @@
 #![no_main]
 
-use arbitrary::Arbitrary;
 use libfuzzer_sys::fuzz_target;
-use lichen_schc::fragment::{FragmentHeader, FragmentReassembler, FragmentSender};
+use lichen_schc::fragment::{Ack, Fragment, FragmentReceiver, DEFAULT_RECEIVER_LIMIT, TILE_SIZE};
 
-/// Structured fragment input
-#[derive(Arbitrary, Debug)]
-struct FragmentInput {
-    rule_id: u8,
-    window: u8,
-    fcn: u8,
-    payload: Vec<u8>,
-}
-
-fuzz_target!(|inputs: Vec<FragmentInput>| {
-    // Fuzz fragment reassembly with multiple fragments
-    // Tests the reassembler's handling of out-of-order, duplicate, and invalid fragments
-
-    if inputs.is_empty() || inputs.len() > 100 {
-        return;
-    }
-
-    // Create a reassembler and feed it fragments
-    let mut reassembler = FragmentReassembler::new(inputs[0].rule_id);
-
-    for input in &inputs {
-        if input.payload.len() > 200 {
-            continue;
+fuzz_target!(|data: &[u8]| {
+    let mut tile = [0u8; TILE_SIZE];
+    let _ = Fragment::from_bytes(data, &mut tile);
+    let _ = Ack::from_bytes(data);
+    let mut storage = [0u8; DEFAULT_RECEIVER_LIMIT];
+    let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
+    for message in data.split_inclusive(|byte| *byte == 0).take(TILE_SIZE) {
+        let _ = receiver.receive_bytes(message);
+        if receiver.is_done() {
+            break;
         }
-
-        // Build a fragment header
-        let header_byte = ((input.window & 0x01) << 6) | (input.fcn & 0x3F);
-
-        // Build fragment bytes
-        let mut fragment = vec![input.rule_id, header_byte];
-        fragment.extend_from_slice(&input.payload);
-
-        // Try to parse the fragment header
-        if let Ok(header) = FragmentHeader::parse(&fragment) {
-            // Feed to reassembler - should never panic
-            let _ = reassembler.receive(&fragment);
-        }
-    }
-
-    // Try to get the reassembled result
-    let _ = reassembler.is_complete();
-    if reassembler.is_complete() {
-        let mut output = [0u8; 2000];
-        let _ = reassembler.assemble(&mut output);
     }
 });

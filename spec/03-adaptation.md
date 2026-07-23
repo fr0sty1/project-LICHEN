@@ -62,7 +62,7 @@ Each rule specifies, for each header field:
 - **MO (Matching Operator):** equal, ignore, MSB(n), etc.
 - **CDA (Compression/Decompression Action):** not-sent, value-sent, LSB(n), etc.
 
-### 5.5. Default Rules
+### 5.5. Rule Registry
 
 Full canonical rules (including CoAP fields, OSCORE variants, RPL control messages, exact CDA/MO/TV, residue calculations) are defined in `spec/appendix-schc.md` and implemented in `rust/lichen-schc/src/rules.rs` and `python/src/lichen/schc/rules.py`. Rule Set Version 2.
 
@@ -94,9 +94,9 @@ Rule 3 for DIO (code=1), Rule 4 for DAO with D=1 (kd_flags bit 6 set, DODAGID pr
 | RPL.seq (or dtsn/gmop/rank for DIO) | - | ignore | value-sent |
 | RPL.dodagid | - | ignore | value-sent |
 
-**Compressed size: 2 bytes** (Rule ID + 2x 4-bit port residue)
+**Compressed size: 19 bytes** (Rule ID + Hop Limit + endpoint IIDs + ports)
 
-**Rule 1: Global IPv6 + UDP (internet-routable)**
+**Legacy Version 1 Rule 1: Global IPv6 + UDP**
 
 | Field | TV | MO | CDA |
 |-------|----|----|-----|
@@ -104,7 +104,7 @@ Rule 3 for DIO (code=1), Rule 4 for DAO with D=1 (kd_flags bit 6 set, DODAGID pr
 | IPv6.DstPrefix | 0 | ignore | value-sent (64 bits) |
 | (other fields as Rule 0) | | | |
 
-**Compressed size: 10 bytes** (includes full destination prefix)
+**Compressed size: 27 bytes** (Rule 0 fields plus full destination prefix)
 
 **Rule 7: IPv6 + UDP + MQTT-SN (port 10883)**
 
@@ -117,17 +117,17 @@ MQTT-SN uses port 10883 (outside CoAP range compressed by Rules 0/1). Rule 7 sup
 | IPv6.FlowLabel | 0 | equal | not-sent |
 | IPv6.PayloadLength | - | ignore | compute |
 | IPv6.NextHeader | 17 (UDP) | equal | not-sent |
-| IPv6.HopLimit | 64 | ignore | not-sent |
+| IPv6.HopLimit | - | ignore | value-sent |
 | IPv6.SrcPrefix | fe80::/64 | equal | not-sent |
-| IPv6.SrcIID | - | equal | not-sent (from L2) |
+| IPv6.SrcIID | - | ignore | value-sent (64 bits) |
 | IPv6.DstPrefix | fe80::/64 | equal | not-sent |
-| IPv6.DstIID | - | equal | not-sent (from L2) |
+| IPv6.DstIID | - | ignore | value-sent (64 bits) |
 | UDP.SrcPort | 10883 | equal | not-sent |
 | UDP.DstPort | 10883 | equal | not-sent |
 | UDP.Length | - | ignore | compute |
 | UDP.Checksum | - | ignore | compute |
 
-**Compressed size: 1 byte** (Rule ID only; both ports exactly match)
+**Compressed size: 18 bytes** (Rule ID + Hop Limit + endpoint IIDs)
 
 **Port Compression Note:**
 
@@ -138,21 +138,39 @@ NMEA (5687). See Section 9.1 for the complete port allocation.
 
 ### 5.6. Fragmentation
 
-Packets exceeding L2 MTU are fragmented per RFC 8724 Section 8:
+Packets exceeding L2 MTU are fragmented using the fixed ACK-on-Error profile
+defined in Section 5 of `draft-lichen-schc-lora-00`:
+
+The compression sublayer MUST zero-pad its compressed header through the next
+octet boundary before the byte-aligned payload, so fragmentation always receives
+an octet-aligned SCHC Packet.
 
 **Fragment Header:**
 ```
-+--------+--------+--------+
-| RuleID | W | FCN | (MIC) |
-+--------+--------+--------+
++--------+---+--------+----------------------+---------+
+| RuleID | W |  FCN   | RCS and/or tile bits | Padding |
++--------+---+--------+----------------------+---------+
+   8 bit  1b   6 bit        variable           variable
 ```
 
-- **W (Window):** 1-bit window indicator
-- **FCN (Fragment Counter):** 6 bits, counts down from N to 0
-- **MIC:** Message Integrity Check on final fragment
+- **Rule IDs:** 0x78 canonical endpoint A-to-B data, 0x79 B-to-A data
+- **W:** absolute window 0 or 1; no wrapping within a packet
+- **FCN:** regular tile indices 62 down to 0; 63 is All-1
+- **WINDOW_SIZE:** 63 tiles; maximum 126 tiles across two windows
+- **Tile size:** 187 bytes, except the non-empty final tile may be shorter
+- **RCS:** CRC-32/ISO-HDLC, carried before the final tile in All-1
+- **Packing:** MSB-first, bit-contiguous, with zero padding only at message end
 
-**ACK-on-Error mode** recommended for LoRa: receiver only sends NACK
-for missing fragments.
+The receiver sends no ACK for All-0. It MUST respond to All-1 or ACK REQ with
+C=1 after successful whole-packet verification, or C=0 plus the RFC 8724
+compressed received-tile bitmap. Bitmap 1 means received and 0 means missing.
+The initial All-1 plus at most three retries gives MAX_ACK_REQUESTS=4.
+
+Receivers MUST support 1281-byte SCHC Packets, allowing a 1280-byte IPv6 packet
+plus the uncompressed fallback Rule ID. Larger buffers are optional up
+to the 23,562-byte profile ceiling. With T=0, only one fragmented packet per
+signed link and data Rule ID may be active. Fragmentation is hop-by-hop;
+routers reassemble and decompress before IPv6 forwarding.
 
 ### 5.7. Rule Versioning and Interoperability
 
@@ -167,8 +185,9 @@ Version increments when rules are added, removed, or modified.
 | Version | Description |
 |---------|-------------|
 | 0 | Reserved (uncompressed fallback) |
-| 1 | Initial LICHEN release |
-| 2+ | Future versions |
+| 1 | Legacy experimental fragmentation formats; not interoperable |
+| 2 | RFC 8724 fragmentation profile defined in Section 5.6 |
+| 3+ | Future versions |
 
 **DIO Rule Version Option (Type TBD):** PIO proposal for RPL options (incl. potential PIO) at python/src/lichen/schc/rules.py:262, spec/drafts/draft-lichen-schc-lora-00.md:228 (table/calc) and 03-adaptation.md:184 (cross-ref 04-network.md:52 no-PIO in no-ULA model per 06-security.md:128).
 
@@ -199,9 +218,13 @@ Rule 255 packet:
 
 **When to use Rule 255:**
 - Decompression failure (unknown rule ID)
-- Version mismatch detected
+- Compression-rule version mismatch when the packet fits one link frame
 - Debugging / diagnostics
-- Communicating with legacy nodes
+- Communicating unfragmented packets with legacy nodes
+
+Rule 255 does not provide fragmentation compatibility. If the Rule 255 SCHC
+Packet exceeds one link frame, both peers MUST support the same fragmentation
+Rule Set Version or the packet cannot be sent.
 
 **Decompression Failure Handling:**
 
@@ -216,7 +239,7 @@ Rule 255 packet:
 Explicit version negotiation is NOT required. The DIO advertisement
 provides passive discovery. Nodes with mismatched versions:
 1. Cannot join the same DODAG (DIO filter)
-2. Can still communicate via Rule 255 (degraded performance)
+2. Can communicate unfragmented packets via Rule 255 (degraded performance)
 3. Should be upgraded to matching firmware
 
 **Backward Compatibility:**

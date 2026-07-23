@@ -7,21 +7,47 @@
 use lichen_schc::fragment::FragmentReceiver;
 use lichen_schc::fragment::{compute_mic, Ack, Fragment, FragmentSender, DEFAULT_WINDOW_SIZE};
 
-/// Test small payload fits in single fragment.
 #[test]
-fn single_fragment_payload() {
-    let payload = b"hello world";
-    let sender = FragmentSender::new(payload, 20, 50, DEFAULT_WINDOW_SIZE).unwrap();
+fn sender_receiver_literal_recovery() {
+    let mut packet = vec![0; 375];
+    packet[187..374].fill(0x11);
+    packet[374] = 0xa5;
+    let mut sender = FragmentSender::new(&packet, 0x78, DEFAULT_RECEIVER_LIMIT).unwrap();
+    sender.start().unwrap();
+    assert_eq!(sender.attempts(), 1);
 
-    assert_eq!(sender.fragment_count(), 1);
-    let frags: Vec<_> = sender.iter().collect();
-    assert_eq!(frags.len(), 1);
-    assert!(frags[0].is_all_1());
-    assert_eq!(frags[0].payload, payload.as_slice());
-    assert_eq!(frags[0].mic, compute_mic(payload));
+    let fragments: Vec<_> = sender.iter().collect();
+    let mut storage = [0u8; DEFAULT_RECEIVER_LIMIT];
+    let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
+    assert_eq!(receiver.receive(&fragments[0]).response, None);
+    let failure = receiver.receive(&fragments[2]);
+    assert_eq!(failure.mic_ok, Some(false));
+    let ReceiverResponse::Ack(ack) = failure.response.unwrap() else {
+        panic!("expected ACK")
+    };
+    let mut wire = [0u8; 193];
+    let length = ack.write_to(&mut wire).unwrap();
+    assert_eq!(&wire[..length], &[0x78, 0x20, 0, 0, 0, 0, 0, 0, 0]);
+
+    let mut output = sender.handle_ack(ack);
+    sender.write_next(&mut output, &mut wire).unwrap().unwrap();
+    assert_eq!(&wire[..2], &[0x78, 0x7a]);
+    let recovered = receiver.receive(&fragments[1]);
+    assert_eq!(recovered.response, None);
+    let length = sender.write_next(&mut output, &mut wire).unwrap().unwrap();
+    assert_eq!(&wire[..length], &[0x78, 0x00]);
+    assert_eq!(sender.write_next(&mut output, &mut wire).unwrap(), None);
+
+    let success = receiver.receive_bytes(&wire[..length]).unwrap();
+    assert_eq!(success.packet_len, Some(packet.len()));
+    assert_eq!(receiver.packet(), Some(packet.as_slice()));
+    let ReceiverResponse::Ack(ack) = success.response.unwrap() else {
+        panic!("expected ACK")
+    };
+    assert_eq!(sender.handle_ack(ack), SenderOutput::Success);
+    assert_eq!(sender.status(), SenderStatus::Succeeded);
 }
 
-/// Test multi-fragment payload within single window.
 #[test]
 fn multi_fragment_single_window() {
     let payload: Vec<u8> = (0u8..20).collect();
@@ -47,225 +73,221 @@ fn multi_fragment_single_window() {
     assert_eq!(frags[3].payload, &[15, 16, 17, 18, 19]);
 }
 
-/// Test multi-fragment payload spanning multiple windows.
 #[test]
-fn multi_window_fragmentation() {
-    let payload: Vec<u8> = (0u8..50).collect();
-    let tile_size = 5;
-    let window_size = 3; // Small window to force multiple windows
-    let sender = FragmentSender::new(&payload, 20, tile_size, window_size).unwrap();
-
-    assert_eq!(sender.fragment_count(), 10); // 50 bytes / 5 bytes per tile
-    assert_eq!(sender.window_count(), 4); // ceil(10 / 3) = 4 windows
-
-    let frags: Vec<_> = sender.iter().collect();
-    assert_eq!(frags.len(), 10);
-
-    // Check window bit alternates
-    assert_eq!(frags[0].window, 0); // Window 0
-    assert_eq!(frags[1].window, 0);
-    assert_eq!(frags[2].window, 0); // All-0 (FCN=0) at end of window 0
-    assert_eq!(frags[3].window, 1); // Window 1
-    assert_eq!(frags[4].window, 1);
-    assert_eq!(frags[5].window, 1);
-    assert_eq!(frags[6].window, 0); // Window 2 (wire bit = 0)
-    assert!(frags[9].is_all_1()); // Last fragment
+fn duplicate_regular_must_match() {
+    let packet = [0xa5; TILE_SIZE + 1];
+    let sender = FragmentSender::new(&packet, 0x78, DEFAULT_RECEIVER_LIMIT).unwrap();
+    let regular = sender.get_fragment(0).unwrap();
+    let mut storage = [0u8; DEFAULT_RECEIVER_LIMIT];
+    let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
+    assert!(!receiver.receive(&regular).aborted);
+    assert!(!receiver.receive(&regular).aborted);
+    let changed = [0x5a; TILE_SIZE];
+    let conflict = Fragment {
+        payload: &changed,
+        ..regular
+    };
+    assert!(receiver.receive(&conflict).aborted);
 }
 
-/// Test full sender -> receiver reassembly.
 #[test]
-fn sender_receiver_reassembly() {
-    let payload: Vec<u8> = (0u8..100).collect();
-    let tile_size = 10;
-    let window_size = 4;
-
-    let sender = FragmentSender::new(&payload, 20, tile_size, window_size).unwrap();
-    let mut receiver = FragmentReceiver::new(window_size);
-
-    let mut reassembled = None;
-    for frag in sender.iter() {
-        let result = receiver.receive(&frag);
-        if result.reassembled.is_some() {
-            reassembled = result.reassembled;
-        }
+fn retry_limits_emit_aborts() {
+    let packet = [0xa5; TILE_SIZE + 1];
+    let mut sender = FragmentSender::new(&packet, 0x78, DEFAULT_RECEIVER_LIMIT).unwrap();
+    sender.start().unwrap();
+    for _ in 1..MAX_ACK_REQUESTS {
+        let mut output = sender.timeout().unwrap();
+        let mut wire = [0u8; 3];
+        sender.write_next(&mut output, &mut wire).unwrap().unwrap();
     }
+    let mut output = sender.timeout().unwrap();
+    let mut wire = [0u8; 3];
+    let length = sender.write_next(&mut output, &mut wire).unwrap().unwrap();
+    assert_eq!(&wire[..length], &[0x78, 0xfe]);
+    assert_eq!(sender.status(), SenderStatus::Aborted);
 
-    assert!(reassembled.is_some(), "should reassemble");
-    assert_eq!(reassembled.as_deref(), Some(payload.as_slice()));
-}
-
-/// Test reassembly with out-of-order fragments.
-#[test]
-fn out_of_order_reassembly() {
-    let payload: Vec<u8> = (0u8..20).collect();
-    let tile_size = 5;
-    let sender = FragmentSender::new(&payload, 20, tile_size, DEFAULT_WINDOW_SIZE).unwrap();
-    let frags: Vec<_> = sender.iter().collect();
-
-    let mut receiver = FragmentReceiver::new(DEFAULT_WINDOW_SIZE);
-
-    // Receive in reverse order (except All-1 last)
-    let result = receiver.receive(&frags[2]);
-    assert!(result.reassembled.is_none());
-
-    let result = receiver.receive(&frags[1]);
-    assert!(result.reassembled.is_none());
-
-    let result = receiver.receive(&frags[0]);
-    assert!(result.reassembled.is_none());
-
-    // All-1 triggers reassembly
-    let result = receiver.receive(&frags[3]);
-    assert!(result.reassembled.is_some());
-    assert_eq!(result.reassembled.as_deref(), Some(payload.as_slice()));
-}
-
-/// Test ACK generation on All-0 (end of window).
-#[test]
-fn ack_on_all_0() {
-    let payload: Vec<u8> = (0u8..50).collect();
-    let tile_size = 5;
-    let window_size = 3;
-    let sender = FragmentSender::new(&payload, 20, tile_size, window_size).unwrap();
-    let frags: Vec<_> = sender.iter().collect();
-
-    let mut receiver = FragmentReceiver::new(window_size);
-
-    // Send first window
-    let result = receiver.receive(&frags[0]);
-    assert!(result.ack.is_none());
-
-    let result = receiver.receive(&frags[1]);
-    assert!(result.ack.is_none());
-
-    // All-0 (FCN=0) triggers ACK
-    let result = receiver.receive(&frags[2]);
-    assert!(result.ack.is_some());
-    let ack = result.ack.unwrap();
-    assert_eq!(ack.window, 0);
-    assert!(!ack.complete);
-
-    // Check bitmap shows all fragments received
-    assert!(ack.bitmap[0]);
-    assert!(ack.bitmap[1]);
-    assert!(ack.bitmap[2]);
-}
-
-/// Test retransmit iterator for missing fragments.
-#[test]
-fn retransmit_missing() {
-    let payload: Vec<u8> = (0u8..20).collect();
-    let tile_size = 5;
-    let sender = FragmentSender::new(&payload, 20, tile_size, DEFAULT_WINDOW_SIZE).unwrap();
-
-    // Bitmap showing fragments 0 and 2 received, 1 and 3 missing
-    let bitmap = [true, false, true, false];
-    let retransmit: Vec<_> = sender.retransmit(0, &bitmap).collect();
-
-    // Should retransmit fragments at positions 1 and 3
-    assert_eq!(retransmit.len(), 2);
-    assert_eq!(retransmit[0].payload, &[5, 6, 7, 8, 9]);
-    assert!(retransmit[1].is_all_1()); // position 3 is the All-1
-}
-
-/// Test fragment serialization round-trip.
-#[test]
-fn fragment_wire_roundtrip() {
-    let payload: Vec<u8> = (0u8..30).collect();
-    let sender = FragmentSender::new(&payload, 20, 10, DEFAULT_WINDOW_SIZE).unwrap();
-
-    for frag in sender.iter() {
-        let mut wire = [0u8; 64];
-        let n = frag.write_to(&mut wire).unwrap();
-
-        let restored = Fragment::from_bytes(&wire[..n]).unwrap();
-        assert_eq!(restored.rule_id, frag.rule_id);
-        assert_eq!(restored.window, frag.window);
-        assert_eq!(restored.fcn, frag.fcn);
-        assert_eq!(restored.payload, frag.payload);
-        if frag.is_all_1() {
-            assert_eq!(restored.mic, frag.mic);
-        }
+    let mut storage = [0u8; DEFAULT_RECEIVER_LIMIT];
+    let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
+    for _ in 0..MAX_ACK_REQUESTS {
+        assert!(!receiver.receive_bytes(&[0x78, 0x00]).unwrap().aborted);
     }
+    let result = receiver.receive_bytes(&[0x78, 0x00]).unwrap();
+    assert!(result.aborted);
+    let length = result.response.unwrap().write_to(&mut wire).unwrap();
+    assert_eq!(&wire[..length], &[0x78, 0xff, 0xff]);
 }
 
-/// Test ACK serialization round-trip.
 #[test]
-fn ack_wire_roundtrip() {
-    let bitmap = [true, false, true, true, false, true, false];
-    let ack = Ack::new(20, 1, &bitmap, false);
+fn malformed_codec_inputs_are_rejected() {
+    let mut tile = [0; TILE_SIZE];
+    assert!(Fragment::from_bytes(&[0x78, 0x7c, 0], &mut tile).is_err());
+    let regular_nonzero_padding = [0xff; TILE_SIZE + 2];
+    assert!(Fragment::from_bytes(&regular_nonzero_padding, &mut tile).is_err());
+    assert!(Ack::from_bytes(&[0x78, 0x40, 0]).is_err());
+    assert!(Ack::from_bytes_for(
+        &[0x78, 0x38, 0, 0, 0, 0, 0, 0, 0],
+        Some(0x6000_0000_0000_0001)
+    )
+    .is_err());
 
-    let mut wire = [0u8; 16];
-    let n = ack.write_to(&mut wire).unwrap();
-
-    let restored = Ack::from_bytes(&wire[..n]).unwrap();
-    assert_eq!(restored.rule_id, 20);
-    assert_eq!(restored.window, 1);
-    assert!(!restored.complete);
-    assert_eq!(restored.bitmap_len, 7);
-    assert_eq!(&restored.bitmap[..7], &bitmap);
-}
-
-/// Test MIC validation fails on corrupted payload.
-#[test]
-fn mic_validation_failure() {
-    let payload: Vec<u8> = (0u8..20).collect();
-    let sender = FragmentSender::new(&payload, 20, 5, DEFAULT_WINDOW_SIZE).unwrap();
-    let frags: Vec<_> = sender.iter().collect();
-
-    let mut receiver = FragmentReceiver::new(DEFAULT_WINDOW_SIZE);
-
-    // Receive first fragment normally
-    receiver.receive(&frags[0]);
-
-    // Receive corrupted second fragment
-    let corrupt_buf: &[u8] = &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF];
-    let corrupt_frag = Fragment {
-        rule_id: frags[1].rule_id,
-        window: frags[1].window,
-        fcn: frags[1].fcn,
-        payload: corrupt_buf,
+    let invalid = Fragment {
+        rule_id: 0x78,
+        window: 0,
+        fcn: 64,
+        payload: &tile,
         mic: [0; 4],
     };
-    receiver.receive(&corrupt_frag);
-
-    receiver.receive(&frags[2]);
-
-    // MIC check should fail when All-1 is received
-    let result = receiver.receive(&frags[3]);
-    // Either mic_ok is false, or reassembly failed
-    assert!(result.mic_ok == Some(false) || result.reassembled.is_none());
+    let mut storage = [0u8; DEFAULT_RECEIVER_LIMIT];
+    assert!(
+        FragmentReceiver::new(&mut storage)
+            .unwrap()
+            .receive(&invalid)
+            .aborted
+    );
 }
 
-/// Test empty payload.
 #[test]
-fn empty_payload() {
-    let payload: &[u8] = &[];
-    let sender = FragmentSender::new(payload, 20, 10, DEFAULT_WINDOW_SIZE).unwrap();
+fn sender_output_retries_after_small_buffer() {
+    let packet = [0xa5; TILE_SIZE + 1];
+    let mut wire = [0u8; TILE_SIZE + 2];
 
-    assert_eq!(sender.fragment_count(), 1);
-    let frags: Vec<_> = sender.iter().collect();
-    assert_eq!(frags.len(), 1);
-    assert!(frags[0].is_all_1());
-    assert!(frags[0].payload.is_empty());
-}
+    let mut sender = FragmentSender::new(&packet, 0x78, DEFAULT_RECEIVER_LIMIT).unwrap();
+    sender.start().unwrap();
+    let mut output = sender.handle_ack(Ack::new(0x78, 0, 1, false));
+    assert!(sender.write_next(&mut output, &mut [0u8; 1]).is_err());
+    let length = sender.write_next(&mut output, &mut wire).unwrap().unwrap();
+    assert_eq!(length, TILE_SIZE + 2);
+    assert_eq!(&wire[..2], &[0x78, 0x7d]);
+    assert!(sender.write_next(&mut output, &mut [0u8; 1]).is_err());
+    let length = sender.write_next(&mut output, &mut wire).unwrap().unwrap();
+    assert_eq!(&wire[..length], &[0x78, 0x00]);
 
-/// Test complete ACK on successful reassembly.
-#[test]
-fn complete_ack_on_success() {
-    let payload: Vec<u8> = (0u8..20).collect();
-    let sender = FragmentSender::new(&payload, 20, 5, DEFAULT_WINDOW_SIZE).unwrap();
-    let mut receiver = FragmentReceiver::new(DEFAULT_WINDOW_SIZE);
+    let mut sender = FragmentSender::new(&packet, 0x78, DEFAULT_RECEIVER_LIMIT).unwrap();
+    sender.start().unwrap();
+    let mut output = sender.timeout().unwrap();
+    assert!(sender.write_next(&mut output, &mut [0u8; 1]).is_err());
+    let length = sender.write_next(&mut output, &mut wire).unwrap().unwrap();
+    assert_eq!(&wire[..length], &[0x78, 0x00]);
 
-    let mut final_ack = None;
-    for frag in sender.iter() {
-        let result = receiver.receive(&frag);
-        if result.ack.is_some() {
-            final_ack = result.ack;
-        }
+    for _ in 2..MAX_ACK_REQUESTS {
+        sender.timeout().unwrap();
     }
+    let mut output = sender.timeout().unwrap();
+    assert!(sender.write_next(&mut output, &mut [0u8; 1]).is_err());
+    let length = sender.write_next(&mut output, &mut wire).unwrap().unwrap();
+    assert_eq!(&wire[..length], &[0x78, 0xfe]);
+}
 
-    assert!(final_ack.is_some());
-    let ack = final_ack.unwrap();
-    assert!(ack.complete, "ACK should have complete flag set on success");
+#[test]
+fn terminal_sender_invalidates_queued_output() {
+    let packet = [0xa5; TILE_SIZE + 1];
+    let mut sender = FragmentSender::new(&packet, 0x78, DEFAULT_RECEIVER_LIMIT).unwrap();
+    sender.start().unwrap();
+    let mut output = sender.handle_ack(Ack::new(0x78, 0, 1, false));
+    let mut abort = [0u8; 3];
+    let length = receiver_abort(0x78).write_to(&mut abort).unwrap();
+    assert_eq!(
+        sender.handle_ack_bytes(&abort[..length]).unwrap(),
+        SenderOutput::None
+    );
+    assert_eq!(sender.status(), SenderStatus::Aborted);
+    assert_eq!(
+        sender.write_next(&mut output, &mut [0u8; 193]).unwrap(),
+        None
+    );
+}
+
+#[test]
+fn ack_request_after_completion_starts_empty_context() {
+    let packet = [0xa5];
+    let sender = FragmentSender::new(&packet, 0x78, DEFAULT_RECEIVER_LIMIT).unwrap();
+    let mut storage = [0u8; DEFAULT_RECEIVER_LIMIT];
+    let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
+    assert_eq!(
+        receiver
+            .receive(&sender.get_fragment(0).unwrap())
+            .packet_len,
+        Some(1)
+    );
+    assert!(receiver.is_done());
+
+    let result = receiver.receive_bytes(&[0x78, 0x00]).unwrap();
+    assert_eq!(result.packet_len, None);
+    assert_eq!(receiver.packet(), None);
+    assert!(!receiver.is_done());
+    let mut wire = [0xff; 10];
+    let length = result.response.unwrap().write_to(&mut wire).unwrap();
+    assert_eq!(length, 10);
+    assert_eq!(&wire[..length], &[0x78, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+}
+
+#[test]
+fn missing_all0_still_requests_final_window_ack() {
+    let packet = vec![0u8; TILE_SIZE * 63 + 1];
+    let mut sender = FragmentSender::new(&packet, 0x78, packet.len()).unwrap();
+    sender.start().unwrap();
+    let mut output = sender.handle_ack(Ack::new(0x78, 0, u64::MAX << 1, false));
+    let mut wire = [0u8; TILE_SIZE + 2];
+
+    let length = sender.write_next(&mut output, &mut wire).unwrap().unwrap();
+    assert_eq!(length, TILE_SIZE + 2);
+    assert_eq!(&wire[..2], &[0x78, 0x00]);
+    let mut tile = [0u8; TILE_SIZE];
+    let fragment = Fragment::from_bytes(&wire[..length], &mut tile).unwrap();
+    assert_eq!((fragment.window, fragment.fcn), (0, 0));
+
+    let length = sender.write_next(&mut output, &mut wire).unwrap().unwrap();
+    assert_eq!(&wire[..length], &[0x78, 0x80]);
+    assert_eq!(sender.write_next(&mut output, &mut wire).unwrap(), None);
+}
+
+#[test]
+fn released_receiver_accepts_fresh_fragments() {
+    let first = [0xa5];
+    let second = [0x5a];
+    let first_sender = FragmentSender::new(&first, 0x78, DEFAULT_RECEIVER_LIMIT).unwrap();
+    let second_sender = FragmentSender::new(&second, 0x78, DEFAULT_RECEIVER_LIMIT).unwrap();
+    let mut storage = [0u8; DEFAULT_RECEIVER_LIMIT];
+    let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
+
+    assert_eq!(
+        receiver
+            .receive(&first_sender.get_fragment(0).unwrap())
+            .packet_len,
+        Some(1)
+    );
+    assert_eq!(receiver.packet(), Some(first.as_slice()));
+    assert_eq!(
+        receiver
+            .receive(&second_sender.get_fragment(0).unwrap())
+            .packet_len,
+        Some(1)
+    );
+    assert_eq!(receiver.packet(), Some(second.as_slice()));
+
+    assert!(receiver.expire().is_none());
+    let abort = [0x78, 0xfe];
+    assert!(receiver.receive_bytes(&abort).unwrap().aborted);
+    assert_eq!(
+        receiver
+            .receive(&first_sender.get_fragment(0).unwrap())
+            .packet_len,
+        Some(1)
+    );
+
+    let partial = [0u8; TILE_SIZE + 1];
+    let partial_sender = FragmentSender::new(&partial, 0x78, DEFAULT_RECEIVER_LIMIT).unwrap();
+    assert_eq!(
+        receiver
+            .receive(&partial_sender.get_fragment(0).unwrap())
+            .response,
+        None
+    );
+    assert!(receiver.expire().is_some());
+    assert_eq!(
+        receiver
+            .receive(&second_sender.get_fragment(0).unwrap())
+            .packet_len,
+        Some(1)
+    );
 }

@@ -12,14 +12,20 @@ from lichen.schc.codec import (
 from lichen.schc.context import NoMatchingRuleError, SchcContext, rule_matches
 from lichen.schc.fragment import (
     ALL_1,
+    DEFAULT_RECEIVER_LIMIT,
     DEFAULT_WINDOW_SIZE,
     MAX_WINDOW_SIZE,
     MIC_LENGTH,
+    TILE_SIZE,
+    WINDOW_SIZE,
     Ack,
     Fragment,
     FragmentError,
     FragmentSender,
+    ack_request,
     compute_mic,
+    receiver_abort,
+    sender_abort,
 )
 from lichen.schc.headers import (
     CoapUdpGlobalProfile,
@@ -57,6 +63,8 @@ __all__ = [
     "DEFAULT_WINDOW_SIZE",
     "MAX_WINDOW_SIZE",
     "MIC_LENGTH",
+    "TILE_SIZE",
+    "WINDOW_SIZE",
     "Ack",
     "CoapUdpGlobalProfile",
     "CoapUdpLinkLocalProfile",
@@ -82,10 +90,13 @@ __all__ = [
     "UDP_PORT_RULE",
     "compress",
     "compress_packet",
+    "ack_request",
     "compute_mic",
     "decompress",
     "decompress_packet",
     "residue_bit_length",
     "residue_byte_length",
+    "receiver_abort",
     "rule_matches",
+    "sender_abort",
 ]

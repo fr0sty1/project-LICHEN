@@ -52,6 +52,12 @@ long-range, low-power wireless communication. LoRa networks typically
 operate at low data rates (300 bps to 27 kbps) with small MTUs (50-250
 bytes depending on spreading factor).
 
+The fragmentation Rule IDs in this profile specifically target LICHEN's
+255-byte PHY frame and 193-byte signed-unicast SCHC envelope. A link mode that
+cannot carry a 193-byte SCHC envelope MUST NOT use Rule IDs 0x78 or 0x79.
+Fragmentation messages using these Rule IDs MUST use authenticated signed
+unicast link frames.
+
 SCHC (Static Context Header Compression), specified in RFC 8724, provides
 header compression and fragmentation for LPWAN technologies. This document
 defines a SCHC profile tailored for LoRa mesh networks running IPv6 with
@@ -59,10 +65,10 @@ CoAP application traffic.
 
 ### 1.1. Design Goals
 
-- **Aggressive compression:** Reduce IPv6+UDP+CoAP headers from 60+ bytes
-  to 6-12 bytes for common cases
+- **Bounded compression:** Preserve routable IPv6 endpoint identities while
+  reducing predictable header fields
 - **Efficient fragmentation:** Use ACK-on-Error mode to minimize overhead
-- **Mesh-friendly:** Support multi-hop routing without per-hop decompression
+- **Mesh-friendly:** Support hop-by-hop routing and Hop Limit processing
 - **Versioned rules:** Enable firmware updates without breaking interoperability
 
 ### 1.2. Relationship to Other Specifications
@@ -111,12 +117,16 @@ document are to be interpreted as described in RFC 2119.
 
 ### 3.2. Compression Point
 
-SCHC compression/decompression occurs at:
-- **Origin:** Compress before transmission
-- **Destination:** Decompress after reception
+SCHC compression and fragmentation operate hop-by-hop between adjacent signed
+link peers. The sender compresses an IPv6 packet and fragments the resulting
+SCHC Packet for the selected next hop. The receiving router authenticates and
+reassembles the fragments, decompresses the IPv6 packet, decrements Hop Limit,
+selects the next hop, and then recompresses and refragments it. The final
+destination performs the same receive processing before local IPv6 delivery.
 
-Intermediate routers (relays) forward compressed packets without
-decompression. This requires end-to-end rule synchronization.
+Relays MUST NOT forward opaque SCHC fragments unchanged. End-to-end
+confidentiality and integrity are provided by OSCORE or the application layer;
+SCHC fragmentation provides authenticated per-link delivery.
 
 ### 3.3. Context Provisioning
 
@@ -133,11 +143,13 @@ Dynamic rule negotiation is NOT supported in this profile.
 
 Rule IDs are 8 bits (1 byte):
 
-| Range | Usage |
+| Value | Usage |
 |-------|-------|
-| 0-127 | Compression rules |
-| 128-254 | Reserved for future use |
-| 255 | No compression (uncompressed fallback) |
+| 0x00-0x77 | Compression rules |
+| 0x78 | ACK-on-Error fragmentation, canonical endpoint A to B |
+| 0x79 | ACK-on-Error fragmentation, canonical endpoint B to A |
+| 0x7A-0xFE | Reserved for future use |
+| 0xFF | No compression (uncompressed fallback) |
 
 ### 4.2. Rule 0: Link-Local IPv6 + UDP + CoAP
 
@@ -252,40 +264,91 @@ See Appendix A and RFC 8824. CoAP compression (Version=1 not-sent, Type/MID/Toke
 | Parameter | Value | Rationale |
 |-----------|-------|-----------|
 | Mode | ACK-on-Error | Minimize ACK overhead |
-| FCN size | 6 bits | 63 fragments per window |
-| DTAG size | 0 bits | Single packet in flight |
-| Window size | 1 bit | 2 windows max |
-| Tile size | L2 MTU - header | Maximize per-fragment payload |
+| Rule ID size | 8 bits | Fixed LICHEN Rule ID width |
+| FCN size (N) | 6 bits | FCN values 62 through 0; 63 is All-1 |
+| DTAG size (T) | 0 bits | One fragmented packet per link and data Rule ID |
+| Window size field (M) | 1 bit | Absolute windows 0 and 1 only |
+| WINDOW_SIZE | 63 tiles | Maximum value permitted by N=6 |
+| L2 Word size | 8 bits | Octet-oriented LICHEN link |
+| Padding | Zero bits | Padding is appended only at the end of a message |
+| Regular tile size | 187 bytes | Fits the signed EUI-64 unicast envelope |
+| Final tile | 1-187 bytes in All-1 | One fixed tile-size policy |
+| RCS | CRC-32/ISO-HDLC, 32 bits | RFC 8724 integrity check |
 | Retransmission timer | 10 seconds | LoRa latency tolerance |
-| Max retries | 3 | Balance reliability/efficiency |
+| MAX_ACK_REQUESTS | 4 | Initial All-1 plus at most 3 retries |
 | Inactivity timer | 60 seconds | Clean up stale state |
+
+Rule ID 0x78 applies to canonical endpoint A-to-B data and Rule ID 0x79 applies
+to B-to-A data. Implementations MUST NOT create a SCHC Packet requiring more
+than two windows or 126 tiles.
+
+The 187-byte tile size is based on the most constrained normal LICHEN frame:
+a 255-byte signed EUI-64 unicast frame leaves 194 bytes for authenticated L2
+payload. The outer SCHC dispatch consumes one byte, leaving a 193-byte SCHC
+fragment envelope. A 15-bit fragment header, 32-bit RCS, 187-byte final tile,
+and one trailing padding bit exactly fill that envelope. All non-final tiles
+MUST be exactly 187 bytes. The final tile MUST be non-empty and MUST be carried
+only in All-1.
+
+Receivers MUST support reassembly of SCHC Packets up to 1281 bytes. This
+accommodates a 1280-byte IPv6 packet carried by the 0xFF uncompressed fallback
+Rule ID. Support
+for larger packets up to the encoding ceiling of 126 * 187 = 23,562 bytes is
+OPTIONAL and MAY use a statically configured buffer. A sender MUST NOT start a
+larger transfer unless it knows the receiver's reassembly limit. If the limit
+is unknown, the sender MUST assume 1281 bytes. Receiver limits larger than
+1281 bytes are established by static provisioning; this profile does not
+negotiate them. A receiver that cannot allocate
+the required context or buffer MUST send Receiver-Abort and release any partial
+state.
 
 ### 5.2. ACK-on-Error Mode
 
 In ACK-on-Error mode:
-1. Sender transmits all fragments without waiting for ACKs
-2. Receiver tracks received fragments via bitmap
-3. After final fragment, receiver sends ACK only if fragments missing
-4. Sender retransmits missing fragments
-5. Repeat until complete or max retries exceeded
+1. The sender transmits all Regular Fragments without waiting for ACKs.
+2. The sender transmits All-1, increments Attempts, starts the retransmission
+   timer, and listens for an ACK.
+3. The receiver responds to every All-1 or ACK REQ. It sends C=1 after a
+   successful RCS check, or C=0 for the lowest-numbered incomplete window.
+4. The sender retransmits tiles whose bitmap bits are zero, then sends ACK REQ
+   for the packet's final W unless the retransmission batch included All-1.
+5. Before any All-1 or ACK REQ transmission, the sender checks Attempts. If
+   Attempts equals MAX_ACK_REQUESTS, it sends Sender-Abort instead. Otherwise
+   it transmits the request and increments Attempts. This check applies after a
+   C=0 ACK as well as after timer expiry, so a fifth request is never sent.
+6. The receiver resets its inactivity timer for each valid message. On expiry,
+   resource exhaustion, or an unrecoverable protocol error, it sends
+   Receiver-Abort and releases its state.
 
 This minimizes overhead for the common case (no loss).
 ### 5.3. Fragment Format
 
+Fields are packed most-significant bit first and are bit-contiguous. Padding is
+not inserted between the header, RCS, and tile. Zero padding is appended only
+at the end to reach the next 8-bit L2 Word.
+
+The directional Rule ID requirement follows RFC 8724 Section 6. Tile, window,
+and bitmap choices follow Sections 8.2.2.1 through 8.2.2.3; RCS processing
+follows Section 8.2.3; message encodings follow Sections 8.3.1 through 8.3.5;
+ACK-on-Error timers, counters, and transitions follow Section 8.4.3; and
+end-only zero padding follows Section 9. Values fixed by this profile rather
+than RFC 8724 are the Rule IDs, field widths, WINDOW_SIZE, tile size, CRC
+parameters, timers, retry limit, and buffer limits listed in Section 5.1.
+
 **Regular Fragment:**
 ```
-+--------+---+--------+------------------+
-| RuleID | W |  FCN   |     Tile         |
-+--------+---+--------+------------------+
-   8 bit  1b   6 bit      variable
++--------+---+--------+------------------+---------+
+| RuleID | W |  FCN   |       Tile       | Padding |
++--------+---+--------+------------------+---------+
+   8 bit  1b   6 bit    187 bytes          1 bit
 ```
 
 **All-1 Fragment (final):**
 ```
-+--------+---+--------+--------+---------+
-| RuleID | W | 111111 |  RCS   |  Tile   |
-+--------+---+--------+--------+---------+
-   8 bit  1b   6 bit   32 bit   variable
++--------+---+--------+--------+--------------+---------+
+| RuleID | W | 111111 |  RCS   |  Final Tile  | Padding |
++--------+---+--------+--------+--------------+---------+
+   8 bit  1b   6 bit   32 bit    1-187 bytes     1 bit
 ```
 
 <<<<<<< HEAD
@@ -333,21 +396,56 @@ Rule Set Version (8-bit) advertised in DIO per spec/03-adaptation.md §5.7 (auth
 >>>>>>> origin/worktree-worker24
 
 ```
-+--------+---+--------+
-| RuleID | W | Bitmap |
-+--------+---+--------+
-   8 bit  1b  variable
++--------+---+---+-------------------+---------+
+| RuleID | W | C | Compressed Bitmap | Padding |
++--------+---+---+-------------------+---------+
+   8 bit  1b  1b       variable        variable
 ```
 
-Bitmap indicates missing fragments (1 = missing, 0 = received).
+The 63-bit bitmap is ordered from tile 62 at the left to tile 0 at the
+right. In the final window, the rightmost bit represents the final tile carried
+by All-1. A bit value of 1 means received; 0 means missing or invalid.
+
+In a short final window, Regular Fragments use FCNs 62 downward. Bitmap
+positions after the lowest assigned Regular FCN and before the rightmost
+All-1 position are unassigned and MUST be zero. The sender knows its tile
+assignment and MUST ignore zero bits at unassigned positions; it retransmits
+only assigned tiles whose bits are zero.
+
+C=1 indicates successful whole-packet RCS verification and carries no bitmap.
+C=0 carries the bitmap for W. Bitmap compression removes the maximal trailing
+run of 1 bits, then restores enough removed bits to end the ACK on an 8-bit L2
+Word boundary. A decoder restores omitted trailing bits as 1. An ACK for Rule
+ID 0x78 with W=1 and C=1 encodes as `78 c0`.
+
+ACK REQ uses the Fragment header with FCN=All-0 and no payload. Sender-Abort
+uses W=All-1 and FCN=All-1 with no RCS or tile. Receiver-Abort uses W=All-1,
+C=1, padding with ones to the next L2 Word, followed by one additional all-ones
+L2 Word. For Rule ID 0x78 these messages are `78 00` or `78 80` (ACK REQ for
+W=0 or W=1), `78 fe` (Sender-Abort), and `78 ff ff` (Receiver-Abort).
+
+After timeout or a retransmission batch, ACK REQ MUST carry the final W of the
+packet, not the window whose tiles were most recently retransmitted.
+
+On receiving Sender-Abort or Receiver-Abort, the recipient MUST stop the
+retransmission or inactivity timer, release the retained packet and reassembly
+state for that link and Rule ID, report failure to its caller, and MUST NOT send
+an ACK for the abort.
+
+If all assigned bitmap positions are 1 but the RCS fails, the receiver sends
+C=0 for the final window. Because this profile mandates that the final tile is
+in All-1, the sender cannot identify a repairable tile and MUST send
+Sender-Abort.
 
 ### 5.5. Maximum Packet Size
 
-With 63 fragments per window × 2 windows × ~200 bytes per fragment:
-- Maximum packet size: ~25 KB
-- Practical limit: ~12 KB (single window recommended)
+With 63 tiles per window, two windows, and 187-byte tiles:
+- Encoding ceiling: 23,562 bytes
+- Mandatory receiver support: 1281 bytes
+- Larger receiver limits: implementation-specific up to the encoding ceiling
 
-Packets exceeding this MUST be chunked at application layer.
+Packets exceeding the known receiver limit MUST be chunked at the application
+layer or rejected before fragmentation.
 
 ## 6. Implementation Considerations
 
@@ -356,10 +454,19 @@ Packets exceeding this MUST be chunked at application layer.
 | Component | RAM | Flash |
 |-----------|-----|-------|
 | Rule storage | ~500 bytes | ~2 KB |
-| Fragmentation state | ~200 bytes per packet | - |
-| Reassembly buffer | L2 MTU × 63 | - |
+| Sender state | ~64 bytes plus retained SCHC Packet | - |
+| Receiver state | ~64 bytes plus configured reassembly buffer | - |
+| Mandatory reassembly buffer | 1281 bytes per active context | - |
 
-Total: ~1-2 KB RAM, ~2-3 KB Flash
+Implementations MUST provide at least one active reassembly context. Additional
+contexts and buffers larger than 1281 bytes are optional. The peer key is the
+canonical ordered pair of local and peer EUI-64 identities established by link
+authentication, together with the data-direction fragmentation Rule ID. The
+sender EUI-64 comes from the trust-store record selected by signature
+verification; it is not read from a source address field in the link header.
+Allocation-free implementations MAY use statically configured context and
+packet-buffer pools. A transfer that exceeds available state receives
+Receiver-Abort.
 
 ### 6.2. Processing Requirements
 
