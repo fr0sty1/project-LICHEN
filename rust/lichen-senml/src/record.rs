@@ -26,13 +26,19 @@ pub struct Record<'a> {
     /// Base name, e.g. `"urn:dev:mac:0123456789abcdef:"`.
     #[cfg_attr(feature = "serde", serde(rename = "bn", skip_serializing_if = "Option::is_none", default))]
     pub base_name: Option<&'a str>,
-    /// Base time (Unix seconds, relative or absolute).
+    /// Base time (Unix seconds since 1970-01-01T00:00:00Z, absolute or relative)
+    /// and relative time offset. Both are `f64` (IEEE 754 binary64, 53-bit
+    /// mantissa). This exactly represents all integer Unix timestamps up to ~2^53
+    /// (~year 285,000,000); near present-day values (~1.7e9) the unit in the last
+    /// place is ~0.0002 s, providing ample sub-second precision for sensors.
+    /// Prefer a shared `base_time` + small relative `time` offsets for time
+    /// series to avoid precision loss on large absolutes. See RFC 8428 §4.3/§4.5.
     #[cfg_attr(feature = "serde", serde(rename = "bt", skip_serializing_if = "Option::is_none", default))]
     pub base_time: Option<f64>,
     /// Relative name appended to base_name, e.g. `"temp"`.
     #[cfg_attr(feature = "serde", serde(rename = "n", skip_serializing_if = "Option::is_none", default))]
     pub name: Option<&'a str>,
-    /// Relative time offset from base_time.
+    /// (see `base_time` documentation above)
     #[cfg_attr(feature = "serde", serde(rename = "t", skip_serializing_if = "Option::is_none", default))]
     pub time: Option<f64>,
     /// Numeric value.
