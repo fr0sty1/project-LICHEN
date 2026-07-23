@@ -33,3 +33,43 @@ int lichen_sha256(const uint8_t *input, size_t inlen,
     secure_zero(&state, sizeof(state));
     return ret;
 }
+
+int lichen_iid_to_human_address(const uint8_t *iid, char *buf, size_t buflen)
+{
+	if (iid == NULL || buf == NULL) {
+		return -EINVAL;
+	}
+	if (buflen < 16) {
+		if (buflen > 0) {
+			buf[0] = '\0';
+		}
+		return -EINVAL;
+	}
+	uint64_t n = 0;
+	for (int i = 0; i < 8; i++) {
+		n = (n << 8) | iid[i];
+	}
+	static const char alphabet[] = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+	char temp[13];
+	for (int i = 12; i >= 0; i--) {
+		temp[i] = alphabet[n % 32];
+		n /= 32;
+	}
+	buf[0] = temp[0];
+	buf[1] = temp[1];
+	buf[2] = temp[2];
+	buf[3] = temp[3];
+	buf[4] = '-';
+	buf[5] = temp[4];
+	buf[6] = temp[5];
+	buf[7] = temp[6];
+	buf[8] = temp[7];
+	buf[9] = '-';
+	buf[10] = temp[8];
+	buf[11] = temp[9];
+	buf[12] = temp[10];
+	buf[13] = temp[11];
+	buf[14] = temp[12];
+	buf[15] = '\0';
+	return 0;
+}
