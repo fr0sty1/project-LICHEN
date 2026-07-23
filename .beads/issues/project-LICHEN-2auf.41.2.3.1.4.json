@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-2auf.41.2.3.1.4",
+  "title": "Update schema, generators, validators and tests for new ICMPv6/UDP malformed vectors",
+  "description": "Extend schema.json if new expect_error codes added. Update generate*.py scripts, validation code in tests/, ensure Python/Rust/Zephyr tests consume the new vectors and verify dropping without crash/leak.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:27:42.224340065Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:27:42.224340065Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.41.2.3.1.4",
+      "depends_on_id": "project-LICHEN-2auf.41.2.3.1",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:27:42.365874073Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
