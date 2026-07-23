@@ -31,7 +31,7 @@ use hkdf::Hkdf;
 use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest, Sha256};
 use x25519_dalek::{PublicKey, StaticSecret};
-use zeroize::{Zeroize, ZeroizeOnDrop};
+use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 use rand_core::{CryptoRng, RngCore};
 
 /// AES-CCM for Suite 0.
@@ -313,12 +313,20 @@ fn export_context(
     sender_id: &[u8],
     recipient_id: &[u8],
 ) -> Result<Context, OscoreError> {
+    let prk_out_vec =
+        edhoc_kdf(prk, th, "7", th, 32).map_err(|_| OscoreError::KeyDerivation)?;
+    let mut prk_out = Zeroizing::new([0u8; 32]);
+    prk_out.copy_from_slice(&prk_out_vec);
+    let prk_exporter_vec =
+        edhoc_kdf(&prk_out, th, "10", b"", 32).map_err(|_| OscoreError::KeyDerivation)?;
+    let mut prk_exporter = Zeroizing::new([0u8; 32]);
+    prk_exporter.copy_from_slice(&prk_exporter_vec);
     let master_secret_vec =
-        edhoc_kdf(prk, th, "OSCORE_Master_Secret", &[], KEY_LEN).map_err(|_| OscoreError::KeyDerivation)?;
+        edhoc_kdf(&prk_exporter, th, "0", b"", KEY_LEN).map_err(|_| OscoreError::KeyDerivation)?;
     let mut master_secret = Zeroizing::new([0u8; KEY_LEN]);
     master_secret.copy_from_slice(&master_secret_vec);
     let master_salt_vec =
-        edhoc_kdf(prk, th, "OSCORE_Master_Salt", &[], 8).map_err(|_| OscoreError::KeyDerivation)?;
+        edhoc_kdf(&prk_exporter, th, "1", b"", 8).map_err(|_| OscoreError::KeyDerivation)?;
     let mut master_salt = Zeroizing::new([0u8; 8]);
     master_salt.copy_from_slice(&master_salt_vec);
     Context::new_fresh(
