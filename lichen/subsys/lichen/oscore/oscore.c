@@ -909,7 +909,7 @@ int oscore_ctx_check_freshness(const struct oscore_ctx *ctx,
 
 int oscore_ctx_persist_ssn(struct oscore_ctx *ctx)
 {
-	int ret = OSCORE_OK;
+	int ret;
 	oscore_nvm_write_cb write_cb;
 	uint32_t ssn;
 	uint8_t eui64_copy[OSCORE_EUI64_LEN];
@@ -935,13 +935,25 @@ int oscore_ctx_persist_ssn(struct oscore_ctx *ctx)
 		return OSCORE_OK;
 	}
 
-	ret = write_cb(eui64, ssn);
-	if (ret != 0) {
-		LOG_ERR("Failed to persist SSN to NVM: %d", ret);
-		return OSCORE_ERR_NVM_FAILED;
+	/* Retry logic (3 attempts with backoff) on NVM failure. Critical for
+	 * security: SSN persistence prevents nonce reuse on reboot (RFC 8613
+	 * Sections 7.2.1, 7.5). Failure after retries requires caller to bump
+	 * SSN safely before continuing.
+	 */
+	for (int attempt = 0; attempt < 3; attempt++) {
+		ret = write_cb(eui64, ssn);
+		if (ret == 0) {
+			return OSCORE_OK;
+		}
+		if (attempt < 2) {
+			LOG_WRN("NVM persist SSN failed (attempt %d/3, ret=%d), retrying after backoff",
+				attempt + 1, ret);
+			k_msleep(10 * (attempt + 1));
+		}
 	}
 
-	return OSCORE_OK;
+	LOG_ERR("Failed to persist SSN to NVM after 3 attempts: %d", ret);
+	return OSCORE_ERR_NVM_FAILED;
 }
 
 int oscore_ctx_get(const uint8_t *recipient_id,
