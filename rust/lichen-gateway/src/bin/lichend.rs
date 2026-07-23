@@ -31,7 +31,7 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     signal,
     sync::mpsc,
-    time::{sleep, Duration},
+    time::{interval, sleep, Duration},
 };
 use tracing::{error, info, warn};
 use tracing_subscriber::{fmt, EnvFilter};
@@ -308,9 +308,17 @@ where
     });
 
     let mut tun_buf = vec![0u8; 1500];
+    let mut maintenance = interval(Duration::from_millis(1000));
 
     loop {
         tokio::select! {
+            _ = maintenance.tick() => {
+                let now_ms = {
+                    let start = START_TIME.get_or_init(Instant::now);
+                    start.elapsed().as_millis() as u64
+                };
+                gw.maintain(now_ms);
+            }
             frame_opt = rx_recv.recv() => {
                 match frame_opt {
                     Some(frame) => {
@@ -407,9 +415,17 @@ where
     let mut rx_buf = vec![0u8; 1500];
     let mut tun_buf = vec![0u8; 1500];
     let mut tx_buf = vec![0u8; SLIP_TX_BUF_SIZE];
+    let mut maintenance = interval(Duration::from_millis(1000));
 
     loop {
         tokio::select! {
+            _ = maintenance.tick() => {
+                let now_ms = {
+                    let start = START_TIME.get_or_init(Instant::now);
+                    start.elapsed().as_millis() as u64
+                };
+                gw.maintain(now_ms);
+            }
             result = tty.read(&mut rx_buf) => {
                 match result {
                     Ok(0) => { info!("serial port closed"); break; }
@@ -547,8 +563,16 @@ where
     let _ = conc.reset().await;
     let _ = conc.configure(&RadioConfig::default()).await;
     let mut tun_buf = vec![0u8; 1500];
+    let mut maintenance = interval(Duration::from_millis(1000));
     loop {
         tokio::select! {
+            _ = maintenance.tick() => {
+                let now_ms = {
+                    let start = START_TIME.get_or_init(Instant::now);
+                    start.elapsed().as_millis() as u64
+                };
+                gw.maintain(now_ms);
+            }
             result = async { match &tun {
                 Some(t) => t.recv_pkt(&mut tun_buf).await,
                 None => tun_recv_none(&mut tun_buf).await,
