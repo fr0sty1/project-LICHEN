@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-2auf.36.3.3",
   "title": "Add explicit handling for missing jq and bd tooling in interop-status step",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:22:21.970138164Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:28:19.031910979Z",
+  "updated_at": "2026-07-23T05:30:41.524378229Z",
   "started_at": "2026-07-23T05:28:19.031910979Z",
-  "lease_expires_at": "2026-07-23T05:33:19.031910979Z",
-  "heartbeat_at": "2026-07-23T05:28:19.031910979Z",
+  "closed_at": "2026-07-23T05:30:41.524378229Z",
+  "close_reason": "Added explicit separate steps for jq install/check and bd creation with continue-on-error:true and if:failure() for robust handling of missing tooling. Updated error messages and set -euo pipefail. YAML validated. Tests via workflow parse OK.",
   "labels": [
     "defer-external"
   ],
