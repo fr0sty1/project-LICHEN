@@ -29,8 +29,8 @@ LICHEN uses a three-tier routing architecture optimized for different traffic pa
 
 ```
 def route_packet(dst):
-    if is_off_mesh(dst):
-        # External destination (GUA not in mesh, or unknown)
+    if is_02xx_off_mesh(dst):
+        # 02xx destination not in local mesh routes (use Yggdrasil via BR)
         return forward_to_rpl_parent()
 
     gradient = gradient_table.lookup(dst)
@@ -49,11 +49,11 @@ def route_packet(dst):
 | Address Type | Classification | Routing |
 |--------------|----------------|---------|
 | Link-local (fe80::/10) | Direct neighbor | Send to neighbor |
-| Primary (0200::/7 Yggdrasil-derived per 06-security) | Mesh peer (Ed25519) | Gradient or LOADng |
-| Other | Off-mesh | RPL to border router |
-| Unknown | Off-mesh | RPL to border router |
+| Primary (02xx::/7 Yggdrasil-derived per 06-security) | Local mesh peer | Gradient or LOADng |
+| Primary (02xx::/7) off-mesh | Yggdrasil-routable | RPL to border router |
+| Other/Unknown | Off-mesh | RPL to border router |
 
-Addresses derived from Ed25519 pubkey (see 06-security.md §8.5).
+Addresses are primary 02xx::/7 derived from Ed25519 pubkey (see 06-security.md §8.5 and 04-network.md §6.1). No ULA or GUA.
 
 ### 7.3. Conformance Requirements
 
@@ -143,8 +143,10 @@ See Appendix B for full RPL configuration.
 
 ### 8.5. Downward Routing
 
-Non-storing mode: the root source-routes downward packets to a mesh node or to
-an authorized egress that advertises a destination prefix.
+Non-storing mode: the root source-routes downward packets to a mesh node's
+primary 02xx address (or future authorized egress). All nodes self-derive their
+primary 02xx::/7 address per 04-network.md and 06-security.md; no ULA prefix is
+advertised by the root.
 
 Full multi-hop downward routing uses the end-to-end DAO Origin Signature
 Option in Section 8.6. A DAO that does not satisfy that profile MUST NOT create,
@@ -178,7 +180,8 @@ and future drafts may change it:
 ```
 
 Origin Sequence is an unsigned 64-bit integer in network byte order. Schnorr48
-is computed with the origin key over the 64-octet digest:
+is computed with the origin key over the 64-octet digest (origin IPv6 address
+MUST be the sender's primary 02xx address):
 
 ```
 SHA-512("LICHEN-DAO-ORIGIN-v1" || origin IPv6 address ||
@@ -187,7 +190,8 @@ SHA-512("LICHEN-DAO-ORIGIN-v1" || origin IPv6 address ||
 
 The domain is exactly the 20 ASCII octets shown, with no terminating NUL.
 Origin Sequence is included as its eight on-wire big-endian octets. The origin
-IPv6 address is the 16-octet IPv6 Source Address preserved end to end. The
+IPv6 address is the 16-octet primary 02xx Source Address preserved end to end.
+The
 effective DODAGID is the 16-octet DODAGID in a DAO with `D=1`, or the active
 DODAG's 16-octet DODAGID for the DAO's RPLInstanceID when `D=0`. The unsigned
 DAO bytes are the exact received bytes beginning with RPLInstanceID and ending
@@ -271,28 +275,32 @@ for the explicit post-crash reconciliation described above.
 ### 8.7. DAO Target for the Current Profile
 
 The current `.44.7` profile supports exactly one node-owned Target: the
-authenticated origin's own IPv6 address encoded as a `/128`. The Target Prefix
-Length MUST be 128, its 16 octets MUST equal the preserved DAO Source Address,
-and the Transit external (`E`) flag MUST be zero. Missing Target or Transit
-options, duplicate Targets, nonzero `E`, or inconsistent Path Sequence or Path
-Lifetime values across Transits MUST reject the DAO after replay classification
-and before route or replay-floor mutation.
+authenticated origin's own primary 02xx IPv6 address encoded as a `/128`. The
+Target Prefix Length MUST be 128, its 16 octets MUST equal the preserved DAO
+Source Address (which is the origin's primary 02xx address), and the Transit
+external (`E`) flag MUST be zero. Missing Target or Transit options, duplicate
+Targets, nonzero `E`, or inconsistent Path Sequence or Path Lifetime values
+across Transits MUST reject the DAO after replay classification and before route
+or replay-floor mutation.
 
 The generalized prefix model below is reserved for future `.44.9` work. It is
-not part of `.44.7` conformance, and current Rust support MUST NOT be inferred
-for `/0` through `/127`, Target Descriptors, prefix canonicalization, or external
-egress (`E=1`).
+not part of `.44.7` conformance, and current implementations MUST NOT infer
+support for prefix lengths other than /128, Target Descriptors, prefix
+canonicalization, or external egress (`E=1`). All current DAO Targets use the
+self-derived primary 02xx /128.
 
 ### 8.7.1. Future Generalized DAO Target Prefixes
 
 An RPL Target is identified by `(RPLInstanceID, DODAGID, Prefix Length,
-Prefix)`. The Prefix MUST have every bit after Prefix Length cleared. Target
-senders MUST use the minimum number of prefix octets and set reserved flags and
-unused prefix bits to zero. As required by RFC 6550, receivers MUST ignore
-reserved flags and bits beyond Prefix Length, then canonicalize the internal
-key. Receivers MUST reject truncated prefixes and prefix lengths greater than
-128 without mutating DAOSequence replay or routing state. Link-layer replay
-state is updated independently after link authentication.
+Prefix)`. In the no-ULA 02xx model, all nodes use self-derived primary 02xx
+addresses; prefix advertisement is not used for DODAG formation. The Prefix MUST
+have every bit after Prefix Length cleared. Target senders MUST use the minimum
+number of prefix octets and set reserved flags and unused prefix bits to zero.
+As required by RFC 6550, receivers MUST ignore reserved flags and bits beyond
+Prefix Length, then canonicalize the internal key. Receivers MUST reject
+truncated prefixes and prefix lengths greater than 128 without mutating
+DAOSequence replay or routing state. Link-layer replay state is updated
+independently after link authentication.
 
 The required boundary encodings are:
 
@@ -301,16 +309,16 @@ The required boundary encodings are:
 | `/0` | 0 | Canonical key is `::/0`; installation requires an exact `/0` delegation |
 | `/64` | 8 | Remaining 64 bits are zero in the canonical key |
 | `/127` | 16 | Sender sets the low bit of the final octet to zero; receiver ignores it |
-| `/128` | 16 | Exact IPv6 address |
+| `/128` | 16 | Exact primary 02xx IPv6 address |
 
 The authenticated DAO origin advertises every Target in that DAO and is the
 mesh egress for a prefix shorter than `/128`. A Target MAY be owned by that
 origin or MAY describe external reachability through it; external reachability
 MUST use the Transit Information `E` flag. A Target prefix is reachability
 information, not a hop address; its zero-filled canonical value MUST NOT be
-inserted into a source route. Forwarders MUST preserve the DAO IPv6 source and
-the ordered DAO content. They MUST NOT aggregate Targets from different
-origins into a newly originated DAO.
+inserted into a source route. Forwarders MUST preserve the DAO IPv6 source (the
+origin's primary 02xx address) and the ordered DAO content. They MUST NOT
+aggregate Targets from different origins into a newly originated DAO.
 
 The root MUST verify DAO provenance as specified in Section 8.6 and authorize
 every canonical Target against that origin before changing route state.
@@ -362,25 +370,24 @@ bits numerically. A candidate with no active Path Control bit MUST cause atomic
 DAO rejection. Candidates in the same subfield are ordered by the
 lexicographically smallest complete root-to-egress address sequence.
 
-### 8.9. Prefix Source Routing
+### 8.9. Prefix Source Routing (02xx Model)
 
-Let `D` be the actual destination and `E` the authenticated origin and egress
-for the selected Target. The root builds the strict mesh path to `E`, not to
-the canonical prefix value. Whenever the root source-routes a packet it did
-not originate, including traffic to an in-domain `/128`, it MUST use
-IPv6-in-IPv6 as specified by RFC 6554. Prefix routes also require tunneling
-because their mesh path terminates at `E` before `D`:
+Let `D` be the actual destination (primary 02xx) and `E` the authenticated
+origin and egress for the selected Target (typically the node owning that 02xx
+/128). The root builds the strict mesh path to `E`, not to a canonical prefix.
+Whenever the root source-routes a packet it did not originate, including
+traffic to an in-domain 02xx `/128`, it MUST use IPv6-in-IPv6 as specified by
+RFC 6554. Routes require tunneling because the mesh path terminates at `E`
+before final delivery to `D`:
 
-- The inner IPv6 destination remains `D`.
+- The inner IPv6 destination remains `D` (02xx address).
 - The outer IPv6 destination and RPL Source Routing Header describe only the
   strict path from the root to `E`.
-- `E` decapsulates only after verifying that the inner destination still
-  matches an authorized prefix delegated through `E`.
+- `E` decapsulates and forwards locally after verifying the inner destination
+  matches its authorized primary 02xx (or future delegated prefix).
 - The route MUST NOT be emitted if it is incomplete, cyclic, or over eight
   hops. After encapsulation and SCHC compression, datagrams larger than one
-  LoRa frame MUST use SCHC fragmentation as specified in Section 5. They are
-  rejected only when the complete compressed datagram cannot be represented by
-  the configured SCHC fragmentation rule or no fragmentation context exists.
+  LoRa frame MUST use SCHC fragmentation as specified in Section 5.
 - The root MUST decrement the inner Hop Limit by the initial `Segments Left`.
   When the root is forwarding rather than originating the inner packet, it
   MUST first apply the additional normal forwarding decrement. The initial
@@ -388,7 +395,8 @@ because their mesh path terminates at `E` before `D`:
   forwarding decrement.
 
 If the root is itself `E`, it routes the original packet through its egress
-without an RPL source-route tunnel.
+without an RPL source-route tunnel. All examples and logic use primary 02xx
+addresses consistently; no ULA or GUA assumptions.
 
 ---
 
