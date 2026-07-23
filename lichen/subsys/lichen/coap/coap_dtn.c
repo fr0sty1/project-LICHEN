@@ -161,10 +161,18 @@ static int deaddrop_get(struct coap_resource *resource, struct coap_packet *requ
 	if (s_provider == NULL || s_provider->retrieve == NULL) {
 		return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
 	}
+	const char *node = NULL;
+	struct coap_option qopts[4];
+	int qcnt = coap_find_options(request, COAP_OPTION_URI_QUERY, qopts, 4);
+	for (int i = 0; i < qcnt; i++) {
+		if (qopts[i].len > 5 && memcmp(qopts[i].value, "node=", 5) == 0) {
+			node = (const char *)qopts[i].value + 5;
+			break;
+		}
+	}
 	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
 	uint8_t buf[256];
-	uint16_t pending = lichen_dtn_pending_count(&s_dtn_buf);
-	int len = senml_encode_deaddrop(NULL, dtn_get_unix_time(), pending, buf, sizeof(buf));
+	int len = s_provider->retrieve(buf, sizeof(buf), node);
 	k_mutex_unlock(&s_dtn_buf_mutex);
 	if (len < 0) {
 		return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
