@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-et78.2",
+  "title": "Add full Non-Storing Mode MUST compliance checks to zephyr lichen/subsys/lichen/rpl",
+  "description": "Implement RFC2119 MUST validations for Non-Storing RPL mode, including DAO-ACK, S=1 flag handling in zephyr/lichen/subsys/lichen/rpl/",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:15:56.01658196Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:15:56.01658196Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-et78.2",
+      "depends_on_id": "project-LICHEN-et78",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:15:56.1492323Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
