@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-qsyy",
   "title": "[merge-conflict] worktree-worker19: xiao_s3_wio_sx1262.overlay",
-  "status": "in_progress",
+  "notes": "Commit: 30ee6c0",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:22:52.273306259Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:30:10.475494304Z",
+  "updated_at": "2026-07-23T02:31:12.262643632Z",
   "started_at": "2026-07-23T02:30:10.475494304Z",
-  "lease_expires_at": "2026-07-23T02:35:10.475494304Z",
-  "heartbeat_at": "2026-07-23T02:30:10.475494304Z"
+  "closed_at": "2026-07-23T02:31:12.262643632Z",
+  "close_reason": "Cleaned dead merge-conflict resolution meta-comment from xiao_s3_wio_sx1262.overlay per no-dead-code rule (removed s2tx reference). Matched pattern from prior similar beads (jlr1, 7x4w). Verified with git status/diff. Commit 30ee6c0 pushed to integration/worker6-20260722."
 }
