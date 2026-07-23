@@ -285,29 +285,21 @@ jobs:
     steps:
       - name: Install tooling
         run: sudo apt-get update -q && sudo apt-get install -y jq
-      - name: Require every interop job to succeed
+      - name: Report and validate interop job statuses
         env:
           RESULTS: ${{ toJSON(needs) }}
         run: |
-          # Handle cases where bd or tooling (jq) is missing
-          if ! command -v jq >/dev/null 2>&1; then
-            echo "jq tooling missing - installing..."
-            sudo apt-get update -qq
-            sudo apt-get install -y jq
-          fi
+          echo "Interop job statuses:"
+          jq -r 'to_entries[] | "  \(.key): \(.value.result)"' <<<"$RESULTS"
           if ! jq -e 'all(.[]; .result == "success")' <<<"$RESULTS" >/dev/null; then
-            echo "FAILURE: Not all interop jobs succeeded:"
-            echo "Failed jobs:"
-            jq -r 'to_entries[] | select(.value.result != "success") | "  \(.key): \(.value.result)"' <<<"$RESULTS"
-            echo "Full JSON:"
-            jq . <<<"$RESULTS"
+            echo "FAILURE: Not all interop jobs succeeded (see statuses above)."
             if [[ "${{ github.ref }}" == 'refs/heads/main' ]]; then
-              echo "Creating tracking bead (bd may be missing)..."
+              echo "Creating tracking bead..."
               bd create "Interop status failure: dependent job failed" \
                 --type=bug \
-                --priority=P1 \
+                --priority=1 \
                 --body="interop-status job failed. See workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-Jobs: frame-parser-interop, multinode-simulator, vector-compatibility, wire-format-python-to-rust, announce-interop" || echo "bd unavailable (expected in minimal runners); failure reported by job status."
+See job status list above for specific failed jobs." || echo "bd unavailable (expected in minimal runners); failure reported by job status."
             fi
             exit 1
           fi
