@@ -16,6 +16,7 @@
 
 /// Fixed-point scale factor (2^16 = 65536).
 const FP_SCALE: i32 = 1 << 16;
+const EMA_ALPHA_SHIFT: u32 = 2;
 
 /// RF health metrics aggregator for CCP-15 interference mitigation.
 ///
@@ -144,17 +145,11 @@ impl RssiStats {
         if self.count == 0 {
             self.avg_fp = rssi_fp;
         } else {
-<<<<<<< HEAD
-            // EMA: avg = avg + alpha * (sample - avg); alpha=1/4 via EMA_ALPHA_SHIFT
+            // EMA: avg = avg + alpha * (sample - avg); alpha=1/4 = (diff >> 2)
             // per CCP-15 for faster response to interference (da2q.15.2.1)
-            let diff = rssi_fp - self.avg_fp;
-            // Multiply then shift to maintain precision; alpha=1/4 for faster
-            // response to intermittent interference (CCP-15)
-            self.avg_fp += diff >> 2; // alpha = 1/4
-=======
+            // Uses saturating arithmetic for no_std robustness.
             let diff = rssi_fp.saturating_sub(self.avg_fp);
             self.avg_fp = self.avg_fp.saturating_add(diff >> EMA_ALPHA_SHIFT);
->>>>>>> origin/integration/worker3-20260722
         }
         self.count = self.count.saturating_add(1);
     }
@@ -234,17 +229,11 @@ impl SnrStats {
         if self.count == 0 {
             self.avg_fp = snr_fp;
         } else {
-<<<<<<< HEAD
-            // EMA: avg = avg + alpha * (sample - avg); alpha=1/4 via EMA_ALPHA_SHIFT
+            // EMA: avg = avg + alpha * (sample - avg); alpha=1/4 = (diff >> 2)
             // per CCP-15 for faster response to interference (da2q.15.2.1)
-            let diff = snr_fp - self.avg_fp;
-            // alpha=1/4 for faster response to intermittent interference (CCP-15
-            // from da2q multi-channel context: quicker adaptation to busy channels)
-            self.avg_fp += diff >> 2; // alpha = 1/4
-=======
+            // Uses saturating arithmetic for no_std robustness.
             let diff = snr_fp.saturating_sub(self.avg_fp);
             self.avg_fp = self.avg_fp.saturating_add(diff >> EMA_ALPHA_SHIFT);
->>>>>>> origin/integration/worker3-20260722
         }
         self.count = self.count.saturating_add(1);
     }
