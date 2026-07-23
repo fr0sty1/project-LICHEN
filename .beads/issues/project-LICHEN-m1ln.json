@@ -2,6 +2,7 @@
   "id": "project-LICHEN-m1ln",
   "title": "[cross-impl] DIO reserved byte handling inconsistent",
   "description": "Python (python/src/lichen/rpl/messages.py:169) now enforces data[7]==0 per RFC 6550 §6.3 in DIO.from_bytes (raises RplError). Rust (rust/lichen-rpl/src/message.rs:116-119 Dio::from_bytes skips index 7, takes dodag_id from 8..24) and Zephyr C (lichen/subsys/lichen/rpl/messages.c:48-49 lichen_rpl_dio_parse reads flags[6], dodag[8..] ignores byte 7). All set byte 7=0 on tx (consistent). Different rejection behavior on non-zero reserved. Reviewed commits 2ff4962dd (Python RPL), cbf216397 (Zephyr COAP merge), and bd metadata. Other commits were bead auto-updates with no code impact.",
+  "notes": "Commit: 65ced09e1",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:48:46.554720365Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:32:17.740560656Z",
+  "updated_at": "2026-07-23T03:35:38.709778062Z",
   "started_at": "2026-07-23T03:32:17.740560656Z",
   "lease_expires_at": "2026-07-23T03:37:17.740560656Z",
   "heartbeat_at": "2026-07-23T03:32:17.740560656Z"
