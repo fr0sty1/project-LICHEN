@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-mkv1",
+  "title": "[security] Non-constant-time comparison of X25519 shared secret in EDHOC",
+  "description": "rust/lichen-oscore/src/edhoc.rs:635 and 1071: `if g_xy.as_bytes() == \u0026[0; KEY_LEN_32]` uses non-CT == (short-circuit memcmp). Use subtle::ConstantTimeEq instead. Timing oracle on DH result before HKDF-Extract. P0. See also zeroization intent at drop(g_xy).",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:12:37.517942429Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:12:37.517942429Z"
+}
