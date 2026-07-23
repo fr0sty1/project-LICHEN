@@ -2,15 +2,15 @@
   "id": "project-LICHEN-6n7i",
   "title": "[merge-conflict] worktree-worker16: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: c967d64ea",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:52:01.166005Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:18:01.897730126Z",
+  "updated_at": "2026-07-23T03:18:06.400953156Z",
   "started_at": "2026-07-23T03:15:26.008714142Z",
-  "lease_expires_at": "2026-07-23T03:20:26.008714142Z",
-  "heartbeat_at": "2026-07-23T03:15:26.008714142Z"
+  "closed_at": "2026-07-23T03:18:06.400953156Z",
+  "close_reason": "Cleaned dead 'Resolved merge conflict' comment from lichen/apps/puck/boards/heltec_wifi_lora32_v3_esp32s3_procpu.conf (and synced related heltec/xiao configs and spec in rebase attempt) per no-dead-code rule and canonical main version. Removed all resolution notes/duplicates. Commit c967d64ea. Also resolved similar in gateway, xiao, rpl spec during process."
 }
