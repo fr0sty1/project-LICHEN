@@ -2,6 +2,7 @@
   "id": "project-LICHEN-d9dw",
   "title": "[merge-conflict] worker8: routing.rs",
   "description": "Resolve merge conflict in rust/lichen-node/src/routing.rs between main and integration/worker8-20260722. Keep BOTH sets of changes.",
+  "notes": "Implemented version_cmp using lollipop semantics from rpl/dodag (kept changes from both branches). Commit: 7461e268b",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:52:14.450526605Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:39:25.63674201Z",
+  "updated_at": "2026-07-23T04:42:50.783312441Z",
   "started_at": "2026-07-22T21:23:57.327677995Z",
   "lease_expires_at": "2026-07-23T04:44:25.63674201Z",
   "heartbeat_at": "2026-07-23T04:39:25.63674201Z"
