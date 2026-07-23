@@ -335,7 +335,8 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
                         warn!("failed to send announce seq={}", seq);
                     }
                 }
-                let _ = success; // Silence unused warning when diagnostics are disabled
+                #[cfg(not(any(feature = "defmt", feature = "log")))]
+                let _ = success;
             }
             Err(_e) => {
                 #[cfg(any(feature = "defmt", feature = "log"))]
