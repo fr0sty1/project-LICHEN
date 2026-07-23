@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-6mij.2.1.2",
+  "title": "Add OSCORE is_protected check, ctx lookup, and coap_oscore_unprotect_request to msg_inbox_post",
+  "description": "If CONFIG_LICHEN_COAP_SERVER_OSCORE and request is OSCORE protected, lookup ctx by peer EUI64, unprotect to get original payload and code. Fail closed with UNAUTHORIZED or BAD_REQUEST. Update payload handling accordingly. See deaddrop_post pattern and coap_oscore.h.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:30:41.193181765Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:30:41.193181765Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-6mij.2.1.2",
+      "depends_on_id": "project-LICHEN-6mij.2.1",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:30:41.335751857Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
