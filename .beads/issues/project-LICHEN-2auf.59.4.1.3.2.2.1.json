@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.59.4.1.3.2.2.1",
   "title": "Setup clean EBS worktree for BLE ingress native_posix validation",
   "description": "Use tools/zephyr-clean-worktree.sh to create isolated worktree per AGENTS.md and parent bead requirements. Verify setup.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
