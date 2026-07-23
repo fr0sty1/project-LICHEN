@@ -2,15 +2,15 @@
   "id": "project-LICHEN-6w15",
   "title": "[merge-conflict] worktree-worker20: rpl_trickle.h",
   "notes": "Commit: be18ac135",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:42:23.175503604Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:58:18.876720044Z",
+  "updated_at": "2026-07-23T01:58:23.262207939Z",
   "started_at": "2026-07-23T01:56:25.834060585Z",
-  "lease_expires_at": "2026-07-23T02:01:25.834060585Z",
-  "heartbeat_at": "2026-07-23T01:56:25.834060585Z"
+  "closed_at": "2026-07-23T01:58:23.262207939Z",
+  "close_reason": "Resolved remaining merge conflict markers in hal.c (fuel_gauge diagnostics for clang+gcc), hal/Kconfig (PoE depends), and bridge.rs (IPv6 tunnel and test comments from worker20/23/24). Chose comprehensive versions matching Rust trickle reset logic and test vectors. grep confirms no more conflict markers. Commit be18ac135"
 }
