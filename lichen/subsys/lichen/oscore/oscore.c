@@ -1582,6 +1582,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 
 	ret = oscore_ctx_persist_ssn(ctx);
 	if (ret == OSCORE_ERR_NVM_FAILED) {
+		ret = OSCORE_ERR_NVM_FAILED;
 		goto nvm_failed;
 	}
 	ret = OSCORE_OK;
