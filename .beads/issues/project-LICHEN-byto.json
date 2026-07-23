@@ -3,15 +3,15 @@
   "title": "Statistics counters can wrap without detection",
   "description": "File: lichen/subsys/lichen/meshcore/adapter.c\nLines: 1080, 1129, etc.\n\nAll statistics counters in lichen_meshcore_adapter_stats are uint32_t:\n```c\nstruct lichen_meshcore_adapter_stats {\n    uint32_t raw_count;\n    uint32_t stream_frame_count;\n    uint32_t supported_count;\n    ...\n};\n```\n\nThese counters are incremented without overflow detection:\n- Line 1080: adapter-\u003estats.raw_count++;\n- Line 1129: adapter-\u003estats.malformed_count++;\n- etc.\n\nOn a long-running system processing many messages, counters could wrap (at ~4 billion), making statistics misleading. For example, malformed_count wrapping from UINT32_MAX to 0 would hide a high error rate.\n\nThis is low severity for most use cases, but consider:\n1. Using uint64_t for counters\n2. Adding overflow flags\n3. Documenting the wrap behavior",
   "notes": "Changed uint32_t stats counters to uint64_t (prevents wrap on long-running nodes). Edited lichen/subsys/lichen/meshcore/include/lichen/meshcore/adapter.h. Commit: 15ef829ef",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:46:47.875644Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:24:22.503178716Z",
+  "updated_at": "2026-07-23T04:24:24.894770986Z",
   "started_at": "2026-07-23T04:22:44.838830752Z",
-  "lease_expires_at": "2026-07-23T04:27:44.838830752Z",
-  "heartbeat_at": "2026-07-23T04:22:44.838830752Z"
+  "closed_at": "2026-07-23T04:24:24.894770986Z",
+  "close_reason": "Changed all counters in lichen_meshcore_adapter_stats from uint32_t to uint64_t to prevent wraparound without detection. Verified with meshcore_adapter test assertions. Commit 15ef829ef"
 }
