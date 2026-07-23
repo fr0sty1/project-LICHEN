@@ -2,15 +2,15 @@
   "id": "project-LICHEN-zxns",
   "title": "[merge-conflict] worktree-worker21: xiao_s3_wio_sx1262.overlay",
   "notes": "Commit: e415dcf41",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:49:53.570311281Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:34:01.713083031Z",
+  "updated_at": "2026-07-23T03:34:06.337216146Z",
   "started_at": "2026-07-23T03:31:20.471257Z",
-  "lease_expires_at": "2026-07-23T03:36:20.471257Z",
-  "heartbeat_at": "2026-07-23T03:31:20.471257Z"
+  "closed_at": "2026-07-23T03:34:06.337216146Z",
+  "close_reason": "Resolved merge conflict in xiao_s3_wio_sx1262.overlay by standardizing retired board comment and removing resolution markers per AGENTS.md. Updated in worker2 branch."
 }
