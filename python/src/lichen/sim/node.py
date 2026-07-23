@@ -39,8 +39,7 @@ class SimNode:
     """State for a single simulated node in the LICHEN mesh.
 
     Tracks position, radio state, connection status, and synchronized
-    hopping state (current_channel for CCP-12/TDMA, hop_schedule based on SFN/time;
-    rx_channel from Announce for CCP-9 da2q rendezvous).
+    hopping state (current_channel and hop_schedule computed via synchronized_hop_channel(sfn, seed) for CCP-12).
     Position is mutable to support node mobility scenarios.
     """
 
@@ -53,6 +52,7 @@ class SimNode:
     rx_callbacks: RxCallbacks | None = field(repr=False)
     metrics: NodeMetrics = field(repr=False)
     current_channel: int = 0
+    seed: int = 0
     hop_schedule: tuple[int, ...] = field(default_factory=tuple, repr=False)
     tdma_scheduler: TDMAScheduler = field(repr=False, default_factory=TDMAScheduler)
     _state_machine: StateMachine[NodeState] = field(init=False, repr=False)
@@ -69,6 +69,7 @@ class SimNode:
         rx_callbacks: RxCallbacks | None = None,
         metrics: NodeMetrics | None = None,
         current_channel: int = 0,
+        seed: int = 0,
         hop_schedule: tuple[int, ...] | None = None,
         tdma_scheduler: TDMAScheduler | None = None,
     ) -> None:
@@ -81,6 +82,7 @@ class SimNode:
         self.rx_callbacks = rx_callbacks
         self.metrics = metrics if metrics is not None else NodeMetrics()
         self.current_channel = current_channel
+        self.seed = seed
         self.hop_schedule = tuple(hop_schedule) if hop_schedule is not None else ()
         self.tdma_scheduler = tdma_scheduler if tdma_scheduler is not None else TDMAScheduler()
         self._state_machine = StateMachine(
@@ -129,10 +131,11 @@ class SimNode:
         return self.connected
 
     def synchronized_hop_channel(self) -> int:
-        """Compute current hop channel from hop_schedule tuple using SFN for CCP-12.
-        Matches ccp16-hop.json vectors. spec/02a-coordinated-capacity.md:120
-        """
-        if not self.hop_schedule:
-            return self.current_channel
         sfn = self.tdma_scheduler.clock.sfn
-        return self.hop_schedule[sfn % len(self.hop_schedule)]
+        from lichen.sim.protocol import hop_channel
+        eui64 = getattr(self.tdma_scheduler, "eui64", bytes(8))
+        ch = hop_channel(sfn, eui64)
+        self.current_channel = ch
+        if not self.hop_schedule:
+            self.hop_schedule = tuple(hop_channel(i, eui64) for i in range(16))
+        return ch
