@@ -174,7 +174,6 @@ pub type GeoCoords = (f64, f64);
 ///   "stale" signals.
 /// - Policy: if `heard_consistent >= 2`, treat as alive regardless of age.
 ///   Threshold=2 provides early hysteresis without waiting for full k.
-/// - Used by `NeighborTable::prune_with_removed` and `is_likely_alive`.
 /// - Zero-sized struct for future policy extensibility (e.g. configurable k).
 #[derive(Clone, Copy, Debug, Default)]
 pub struct TrickleAwareNeighborLiveness;
@@ -189,46 +188,13 @@ impl TrickleAwareNeighborLiveness {
 /// TrickleSafeLivenessPolicy trait.
 ///
 /// Determines neighbor liveness in a Trickle-safe manner to prevent premature
-/// eviction of suppressed neighbors in dense networks (per bead and parent
-/// issue project-LICHEN-2auf.44.11.7.*).
-///
-/// **Design (from existing struct docs, RFC 6206, RPL RFC 6550 §6.5.1):**
-/// - Factors in TrickleTimer::counter (heard_consistent from heard_consistent()).
-/// - RFC 6206 §4.2: counter >= k suppresses DIO tx (default k=10); dense mesh
-///   means long periods without tx from a live neighbor.
-/// - RPL neighbor table must not timeout participating nodes prematurely.
-/// - Policy: alive if age <= max_age OR heard_consistent >= 2 (hysteresis;
-///   threshold=2 avoids waiting for full k).
-/// - Used by NeighborTable::prune_with_removed, is_likely_alive, prune_neighbors_at.
-/// - Enables extensibility (configurable thresholds, alternative policies,
-///   no-std, test mocks).
-///
-/// Tests: neighbor_table_prune_stale, router_joins_on_dio and other routing
-/// tests exercise the liveness via prune/is_likely_alive. All must continue
-/// to pass after full refactor.
-///
-/// Places needing update in full refactor (but not done here per bead):
-/// - NeighborTable::prune_with_removed (add policy: impl TrickleSafeLivenessPolicy
-///   param or generic P: TrickleSafeLivenessPolicy + use policy.is_alive(...) 
-///   instead of direct struct call; update is_stale calc to pass last_seen_ms,
-///   now, max_age, heard_consistent)
-/// - NeighborTable::prune (update wrapper to pass default policy)
-/// - NeighborTable::is_likely_alive (update to use policy)
-/// - Router::prune_neighbors_at (pass TrickleAwareNeighborLiveness or default()
-///   and the heard_consistent = self.trickle.counter )
-/// - Router::maintain, prune_neighbors, and test helpers
-/// - Re-exports in lichen-node/src/lib.rs
-/// - Any integration tests or other uses of NeighborTable
-/// - Update docs/comments referencing the old struct directly.
+/// eviction of suppressed neighbors in dense networks.
 pub trait TrickleSafeLivenessPolicy {
     /// Returns whether the neighbor should be considered alive.
     fn is_alive(&self, last_seen_ms: u64, now_ms: u64, max_age_ms: u64, heard_consistent: u32) -> bool;
 }
 
 /// Default implementation delegates to the existing TrickleAware logic.
-/// (This satisfies the bead requirement for trait + default impl. Full wiring
-/// in prune_*/is_likely_alive left for follow-up beads which this one forbids
-/// creating.)
 impl TrickleSafeLivenessPolicy for TrickleAwareNeighborLiveness {
     fn is_alive(&self, last_seen_ms: u64, now_ms: u64, max_age_ms: u64, heard_consistent: u32) -> bool {
         let age_ms = now_ms.saturating_sub(last_seen_ms);
@@ -371,11 +337,13 @@ impl NeighborTable {
     }
 
     pub fn prune(&mut self, now_ms: u64, max_age_ms: u64) {
-        self.prune_with_removed(now_ms, max_age_ms, 0, |_| {});
+        let policy = TrickleAwareNeighborLiveness::default();
+        self.prune_with_removed(&policy, now_ms, max_age_ms, 0, |_| {});
     }
 
-    fn prune_with_removed(
+    fn prune_with_removed<P: TrickleSafeLivenessPolicy>(
         &mut self,
+        policy: &P,
         now_ms: u64,
         max_age_ms: u64,
         heard_consistent: u32,
@@ -385,8 +353,12 @@ impl NeighborTable {
         self.last_now_ms = now_ms;
         for slot in self.entries.iter_mut() {
             let is_stale = slot.as_ref().map_or(false, |neighbor| {
-                let age = now_ms.saturating_sub(neighbor.last_seen_ms);
-                !TrickleAwareNeighborLiveness::is_alive(age, max_age_ms, heard_consistent)
+                !policy.is_alive(
+                    neighbor.last_seen_ms,
+                    now_ms,
+                    max_age_ms,
+                    heard_consistent,
+                )
             });
             if is_stale {
                 let neighbor = slot.take().expect("stale slot contains a neighbor");
@@ -403,14 +375,20 @@ impl NeighborTable {
         self.entries.iter().filter(|e| e.is_some()).count()
     }
 
-    pub fn is_likely_alive(&self, addr: &[u8; 16], now_ms: u64, max_age_ms: u64, heard_consistent: u32) -> bool {
+    pub fn is_likely_alive<P: TrickleSafeLivenessPolicy>(
+        &self,
+        policy: &P,
+        addr: &[u8; 16],
+        now_ms: u64,
+        max_age_ms: u64,
+        heard_consistent: u32,
+    ) -> bool {
         self.entries
             .iter()
             .flatten()
             .find(|n| n.addr == *addr)
             .map_or(false, |n| {
-                let age = now_ms.saturating_sub(n.last_seen_ms);
-                TrickleAwareNeighborLiveness::is_alive(age, max_age_ms, heard_consistent)
+                policy.is_alive(n.last_seen_ms, now_ms, max_age_ms, heard_consistent)
             })
     }
 }
@@ -1021,19 +999,21 @@ impl Router {
 
     /// Remove stale neighbors and their corresponding DODAG parent candidates.
     ///
-    /// Uses `TrickleAwareNeighborLiveness` policy (see its docs for RFC 6206
-    /// suppression-aware logic using `trickle.counter`).
-    /// Times use the same monotonic `u64` millisecond timeline as DIO processing.
+    /// Uses `TrickleSafeLivenessPolicy` (default `TrickleAwareNeighborLiveness` for
+    /// RFC 6206 suppression-aware logic using `trickle.counter`). Eviction only
+    /// after policy confirmation. Times use monotonic `u64` ms timeline.
     pub fn prune_neighbors(&mut self, now_ms: u64, max_age_ms: u64) -> bool {
+        let policy = TrickleAwareNeighborLiveness::default();
         let now_ms = self.observe_now(now_ms);
-        self.prune_neighbors_at(now_ms, max_age_ms).1
+        self.prune_neighbors_at(&policy, now_ms, max_age_ms).1
     }
 
     pub fn maintain(&mut self, now_ms: u64, neighbor_timeout_ms: u64) -> RplMaintenanceOutcome {
         let now_ms = self.observe_now(now_ms);
         let routes_expired = self.dao_manager.expire_routes(now_ms / 1_000);
+        let policy = TrickleAwareNeighborLiveness::default();
         let (neighbors_pruned, topology_changed) =
-            self.prune_neighbors_at(now_ms, neighbor_timeout_ms);
+            self.prune_neighbors_at(&policy, now_ms, neighbor_timeout_ms);
         RplMaintenanceOutcome {
             routes_expired,
             neighbors_pruned,
@@ -1041,7 +1021,13 @@ impl Router {
         }
     }
 
-    fn prune_neighbors_at(&mut self, now_ms: u64, max_age_ms: u64) -> (bool, bool) {
+    fn prune_neighbors_at<P: TrickleSafeLivenessPolicy>(
+        &mut self,
+        policy: &P,
+        now_ms: u64,
+        max_age_ms: u64,
+    ) -> (bool, bool) {
+        let now_ms = self.observe_now(now_ms);
         let was_joined = self.dodag.is_joined();
         let old_parent = self.dodag.preferred_parent;
         let old_rank = self.dodag.rank;
@@ -1049,7 +1035,7 @@ impl Router {
         let mut removed = [[0u8; 16]; MAX_NEIGHBORS];
         let mut removed_len = 0;
         self.neighbors
-            .prune_with_removed(now_ms, max_age_ms, heard_consistent, |addr| {
+            .prune_with_removed(policy, now_ms, max_age_ms, heard_consistent, |addr| {
                 removed[removed_len] = addr;
                 removed_len += 1;
             });
