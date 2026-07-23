@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.59.4.1.3.2.2.4",
   "title": "Test and validate BLE ingress functionality on native_posix build",
   "description": "Run the built native_posix binary with appropriate test harness for BLE ingress paths. Capture runtime logs, verify no regressions excluding link layer.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
