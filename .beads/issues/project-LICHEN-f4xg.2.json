@@ -1,14 +1,18 @@
 {
   "id": "project-LICHEN-f4xg.2",
-  "title": "Use defined option numbers and constants in lichen-oscore",
-  "description": "Audit and replace any magic numbers for OSCORE option (9), ID/context IDs, or RFC 8613 values with proper constants from lichen-coap::option or lichen-oscore. Align with RFCs and spec/07-transport-app.md. Add tests if missing.",
-  "status": "open",
+  "title": "[oscore] Replace magic numbers with constants per RFC8613 and spec",
+  "description": "Audit and update rust/oscore (or lichen-coap/oscore integration) for OSCORE option numbers, ID context, etc. Ensure no hardcoded values; align with spec/07-transport-app.md and test/vectors/oscore.json. Reference project-LICHEN-f4xg and project-LICHEN-s3t5.",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:14:22.459231216Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:14:22.459231216Z",
+  "updated_at": "2026-07-23T05:43:54.264021234Z",
+  "started_at": "2026-07-23T05:43:54.264021234Z",
+  "lease_expires_at": "2026-07-23T05:48:54.264021234Z",
+  "heartbeat_at": "2026-07-23T05:43:54.264021234Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-f4xg.2",
