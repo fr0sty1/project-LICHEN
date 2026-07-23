@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-gw1a",
   "title": "[merge-conflict] worktree-worker21: xiao_s3_wio_sx1262.conf",
-  "notes": "Commit: 6512eaa35 (worker21 xiao_s3_wio_sx1262.conf cleaned of dead resolution meta-comment per no-dead-code rule; matches canonical main version)",
+  "notes": "Commit: 1116c9e2e (cleaned dead resolution meta-comments from both xiao_s3_wio_sx1262.conf and .overlay in worktree-worker21 per no-dead-code and AGENTS.md; standardized RETIRED comment to match main and matrix. Amended commit for both files.)",
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:52:04.129542967Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:37:59.926469467Z",
+  "updated_at": "2026-07-23T03:38:17.226129004Z",
   "started_at": "2026-07-23T03:37:06.978424196Z",
   "closed_at": "2026-07-23T03:37:59.926469467Z",
   "close_reason": "Cleaned dead merge-conflict resolution meta-comment (lines referencing previous beads and consolidation note) from xiao_s3_wio_sx1262.conf in worktree-worker21. Updated to canonical RETIRED/BLOCKED comment matching main tree and matrix doc. Committed 6512eaa35. Push to origin blocked by extensive divergence (many other conflicts in rebase); see related beads for those. Follows no-dead-code, no-comments-unless-asked, and thoroughness rules. Verified file now matches main version exactly."
