@@ -706,7 +706,10 @@ static int neighbors_get(struct coap_resource *resource,
 				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
 	}
 	if (count > (int)ARRAY_SIZE(neighbors)) {
-		count = (int)ARRAY_SIZE(neighbors);
+		LOG_ERR("neighbors_get returned too many entries: %d > %zu",
+			count, ARRAY_SIZE(neighbors));
+		return coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
 	}
 
 	len = lichen_coap_encode_neighbors_cbor(cbor_buf, sizeof(cbor_buf),
@@ -807,7 +810,10 @@ static int routes_get(struct coap_resource *resource,
 				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
 	}
 	if (count > (int)ARRAY_SIZE(routes)) {
-		count = (int)ARRAY_SIZE(routes);
+		LOG_ERR("routes_get returned too many entries: %d > %zu",
+			count, ARRAY_SIZE(routes));
+		return coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
 	}
 
 	len = lichen_coap_encode_routes_cbor(cbor_buf, sizeof(cbor_buf),
