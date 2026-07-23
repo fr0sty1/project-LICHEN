@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-6b1k",
   "title": "[merge-conflict] worktree-worker20: coap_keys.c",
-  "status": "in_progress",
+  "notes": "Commit: 2a771d55a",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:45:32.058938583Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:36:52.608099716Z",
+  "updated_at": "2026-07-23T03:40:55.831360341Z",
   "started_at": "2026-07-23T03:36:52.608099716Z",
-  "lease_expires_at": "2026-07-23T03:41:52.608099716Z",
-  "heartbeat_at": "2026-07-23T03:36:52.608099716Z"
+  "closed_at": "2026-07-23T03:40:55.831360341Z",
+  "close_reason": "Resolved merge conflict in coap_keys.c by adopting zcbor-based decoder and lichen_coap_respond wrapper for consistency with coap subsystem and spec 17.5.5; verified against test vectors and LCI examples"
 }
