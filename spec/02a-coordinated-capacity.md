@@ -162,11 +162,16 @@ A CCP-capable node is always in exactly one of these states:
 
 ## References
 
-- `test/vectors/ccp16.json` (authoritative for all MUST-match behavior)
+### Normative References
+
+- [RFC 2119] Bradner, S., "Key words for use in RFCs to Indicate Requirement Levels", BCP 14, RFC 2119, DOI 10.17487/RFC2119, March 1997, <https://www.rfc-editor.org/info/rfc2119>.
+
+- `test/vectors/ccp16.json` (authoritative for all MUST-match behavior; all arbitrary constants justified in Appendix A of appendix-design-rationale.md or parameterized via beacon/Kconfig)
+
 - `spec/drafts/draft-lichen-rpl-lora-00.md`
 - `spec/drafts/draft-lichen-schc-lora-00.md`
 - `spec/appendix-design-rationale.md`
-- `lichen/subsys/lichen/link*` (for `lichen_link_set_slot`, `tdma_tx_allowed`)
+- `lichen/subsys/lichen/link*` (for `lichen_link_set_slot()`, `tdma_tx_allowed()`)
 - `docs/firmware-time-provider.md`
 
 [← Previous](02-physical-link.md) | [Index](README.md) | [Next →](03-adaptation.md)
