@@ -11,8 +11,8 @@
   "created_by": "ec2-user",
   "updated_at": "2026-07-23T05:12:58.703465098Z",
   "started_at": "2026-07-22T16:15:52.961889149Z",
-  "lease_expires_at": "2026-07-23T06:05:33.921164051Z",
-  "heartbeat_at": "2026-07-23T06:00:33.921164051Z",
+  "closed_at": "2026-07-23T06:06:49.494380959Z",
+  "close_reason": "Extended medium.py with density_estimate, SNR-based SF selection in start_tx, synchronized_hop_channel helper; added TDMA is_tx_allowed check in simulation.py _do_start_transmission. Updated imports and logic for CCP-16 parity with Rust/Zephyr. Tests pass under full env.",
   "labels": [
     "codereview",
     "ccp",
