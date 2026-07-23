@@ -422,4 +422,12 @@ ZTEST(link_crypto, test_lichen_yggdrasil_addr_matches_test_vectors)
 	zassert_equal(ret, -EINVAL, "NULL addr should return -EINVAL");
 }
 
+ZTEST(link_crypto, test_tdma_hash_timing_vectors)
+{
+	uint8_t empty[1]={0};uint32_t h=lichen_hash_32(empty,0);zassert_equal(h,0x811c9dc5u,NULL);
+	uint8_t t[4]={'t','e','s','t'};h=lichen_hash_32(t,4);zassert_equal(h,0xafd071e5u,NULL);
+	uint8_t z[32]={0};h=lichen_hash_32(z,32);zassert_equal(h,0x0b2ae445u,NULL);
+	struct lichen_tdma_ctx tdma={0};lichen_link_set_slot(NULL,&tdma,4,8,0);zassert_true(tdma_tx_allowed(&tdma,1070),NULL);zassert_true(tdma_tx_allowed(&tdma,990),NULL);
+}
+
 ZTEST_SUITE(link_crypto, NULL, NULL, NULL, NULL, NULL);
