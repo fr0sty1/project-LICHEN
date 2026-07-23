@@ -14,6 +14,7 @@ from ipaddress import IPv6Address
 
 from lichen.announce.coords import decode_congestion, decode_coords
 from lichen.announce.messages import (
+    MAX_ANNOUNCE_HOPS,
     AnnounceMessage,
 )
 from lichen.crypto.identity import PeerIdentity, _pubkey_to_iid
@@ -127,6 +128,18 @@ class AnnounceProcessor:
                 accepted=False,
                 should_relay=False,
                 reject_reason=AnnounceRejectReason.STALE_SEQNUM,
+            )
+
+        if announce.hop_count > MAX_ANNOUNCE_HOPS:
+            logger.warning(
+                "announce hop limit exceeded: originator=%s hops=%d",
+                iid.hex(),
+                announce.hop_count,
+            )
+            return AnnounceResult(
+                accepted=False,
+                should_relay=False,
+                reject_reason=AnnounceRejectReason.HOP_LIMIT_EXCEEDED,
             )
 
         destination = self.address_builder(iid)
