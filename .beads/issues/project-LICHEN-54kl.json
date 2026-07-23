@@ -2,15 +2,15 @@
   "id": "project-LICHEN-54kl",
   "title": "[merge-conflict] worktree-worker24: xiao_s3_wio_sx1262.conf",
   "notes": "Commit: 0b0cf7925",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:42:24.787335505Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:02:23.457895009Z",
+  "updated_at": "2026-07-23T02:02:26.108986452Z",
   "started_at": "2026-07-23T02:01:03.242368532Z",
-  "lease_expires_at": "2026-07-23T02:06:03.242368532Z",
-  "heartbeat_at": "2026-07-23T02:01:03.242368532Z"
+  "closed_at": "2026-07-23T02:02:26.108986452Z",
+  "close_reason": "Updated xiao_s3_wio_sx1262.conf with consolidated RETIRED/BLOCKED comment and resolved merge conflict note referencing worker24 and this bead. Matches pattern from parallel worktrees. Commit 0b0cf7925 pushed to main."
 }
