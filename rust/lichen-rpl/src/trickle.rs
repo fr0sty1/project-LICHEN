@@ -162,9 +162,9 @@ impl TrickleTimer {
         self.begin_interval(now, rand_offset)
     }
 
-    /// Handle an inconsistency: if I > Imin set I = Imin and restart per RFC 6206 §4.2 rule 6.
-    ///
-    /// Starts if stopped; no-op if I == Imin and running.
+    /// Handle an inconsistency per RFC 6206 §4.2 rule 6: if Stopped or
+    /// interval > imin, set I=imin and restart. No-op if at imin and running.
+    /// State proxy for cross-impl (cf. C interval==0, Python generation==0).
     pub fn reset(&mut self, now: u64, rand_offset: u32) {
         self.try_reset(now, rand_offset)
             .expect("invalid trickle timer transition");

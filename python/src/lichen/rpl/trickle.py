@@ -87,8 +87,12 @@ class TrickleTimer:
         self._begin_interval(now)
 
     def reset(self, now: int) -> None:
-        """Handle inconsistency: if not started or I > Imin set I=Imin
-        and restart (RFC 6206 §4.2 rule 6). No-op if already at Imin.
+        """Handle inconsistency per RFC 6206 §4.2 rule 6.
+
+        If not yet started (_generation==0) or interval > imin, reset to
+        imin and begin new interval. No-op at steady-state imin. Uses
+        generation sentinel for async safety; interval check aligned with
+        Rust/C for cross-impl determinism.
         """
         if self._generation == 0 or self.interval > self.imin:
             self.interval = self.imin
