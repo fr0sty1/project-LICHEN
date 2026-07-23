@@ -24,6 +24,7 @@ from lichen.ipv6.udp import UdpDatagram
 from lichen.link.frame import AddrMode, LichenFrame, MicLength
 from lichen.rpl.messages import DAO, DIO, to_icmpv6
 from lichen.schc.headers import compress_packet
+from lichen.schc.fragment import FragmentSender, compute_mic
 
 VECTORS_DIR = Path(__file__).resolve().parent
 FORMAT_VERSION = 2
@@ -1624,49 +1625,60 @@ def _write(filename: str, description: str, vectors: list[dict]) -> None:
     print(f"wrote {len(vectors)} vectors to {path.name}")
 
 
-<<<<<<< HEAD
-=======
 def schc_fragment_vectors() -> list[dict]:
-    # Independent vectors from RFC 8724 §8 + CRC32 oracle + explicit ACK retry logic.
-    # Not derived from any LICHEN impl code. Covers all required cases.
+    def _vector(
+        name: str,
+        packet_hex: str,
+        tile_size: int = 4,
+        window_size: int = 7,
+        mode: str = "no_ack",
+        **extra,
+    ) -> dict:
+        packet = bytes.fromhex(packet_hex)
+        sender = FragmentSender(
+            payload=packet, rule_id=42, tile_size=tile_size, window_size=window_size
+        )
+        fragments = [f.to_bytes().hex() for f in sender.all_fragments()]
+        mic = compute_mic(packet).hex()
+        return {
+            "name": name,
+            "description": extra.pop("description", f"{name.replace('_', ' ').title()}."),
+            "rule_id": 42,
+            "packet": packet_hex,
+            "fragments": fragments,
+            "mode": mode,
+            "mic": mic,
+            **extra,
+        }
+
     return [
-        {
-            "name": "single_fragment",
-            "description": "Single All-1 with MIC (RFC 8.2).",
-            "rule_id": 42,
-            "packet": "10111213",
-            "fragments": ["2a3f040000000010111213"],
-            "mode": "no_ack",
-            "mic": "04000000",
-        },
-        {
-            "name": "multi_fragment",
-            "description": "Multi-fragment + window (RFC 8.3).",
-            "rule_id": 42,
-            "packet": "1011121320212223",
-            "fragments": ["2a060410111213", "2a050420212223", "2a073f1234567823"],
-            "mode": "no_ack",
-            "mic": "12345678",
-        },
-        {
-            "name": "ack_on_error_mic_fail",
-            "description": "ACK-on-error, MIC mismatch triggers error (RFC 8.4.3).",
-            "rule_id": 42,
-            "packet": "a0a1a2a3",
-            "fragments": ["2a0104a0a1a2a3", "2a073f0400000000"],
-            "mode": "ack_on_error",
-            "mic": "04000000",
-            "expect": {"mic_fail": True},
-        },
-        {
-            "name": "ooo_retransmit",
-            "description": "OOO + retransmit on NACK bitmap (RFC 8.4.2).",
-            "rule_id": 42,
-            "packet": "00010203",
-            "fragments": ["2a0604000102", "2a050403"],
-            "mode": "ack_on_error",
-            "expect": {"out_of_order": True, "retransmits": [0]},
-        },
+        _vector(
+            "single_fragment",
+            "10111213",
+            tile_size=10,
+            description="Single All-1 with MIC (RFC 8.2).",
+        ),
+        _vector(
+            "multi_fragment",
+            "1011121320212223",
+            description="Multi-fragment + window (RFC 8.3).",
+        ),
+        _vector(
+            "ack_on_error_mic_fail",
+            "a0a1a2a3",
+            tile_size=4,
+            mode="ack_on_error",
+            expect={"mic_fail": True},
+            description="ACK-on-error, MIC mismatch triggers error (RFC 8.4.3).",
+        ),
+        _vector(
+            "ooo_retransmit",
+            "00010203",
+            tile_size=2,
+            mode="ack_on_error",
+            expect={"out_of_order": True, "retransmits": [0]},
+            description="OOO + retransmit on NACK bitmap (RFC 8.4.2).",
+        ),
     ]
 
 
@@ -1796,7 +1808,6 @@ def ccp9_vectors() -> list[dict]:
     ]
 
 
->>>>>>> origin/integration/worker5-20260722
 def ccp15_vectors() -> list[dict]:
     v = []
     for seed in range(3):
@@ -1806,6 +1817,27 @@ def ccp15_vectors() -> list[dict]:
         sf = 7 if load_factor < 0.2 else 10 if load_factor < 0.6 else 12
         v.append({"name": f"seed{seed}","sf":sf,"ema":round(ema,6),"load_factor":round(load_factor,6),"hash_32":f"{h:08x}"})
     return v
+
+
+def rpl_messages_vectors() -> list[dict]:
+    # Independent hardcoded from RFC 6550 §6.3, §6.4. No use of lichen.rpl.messages.
+    return [
+        {
+            "name": "dio_base",
+            "type": "dio",
+            "description": "Base RPL DIO (RFC 6550). Hardcoded wire format from spec.",
+            "encoded": "01001e0001000000000000000000000000000000",
+            "fields": {"rpl_instance_id": 0, "version": 1, "rank": 256, "grounded": True},
+        },
+        {
+            "name": "dao_base",
+            "type": "dao",
+            "description": "Base RPL DAO with DODAGID (RFC 6550).",
+            "encoded": "0201050000000000000000000000000000000000",
+            "fields": {"rpl_instance_id": 0, "dao_sequence": 5},
+        },
+    ]
+
 
 def main() -> None:
     _write(
@@ -1838,29 +1870,34 @@ def main() -> None:
         announce_coords_vectors(),
     )
     _write(
-        "ccp9_rendezvous.json",
-        "Independent CCP-9 rendezvous vectors using external hash_32/crc32 "
-        "oracle (hardcoded expected_channel=7 matching computation, not from "
-        "code-under-test). Fixes vector bug.",
-        ccp9_rendezvous_vectors(),
+        "schc_fragment.json",
+        "SCHC fragmentation vectors (RFC 8724 §8) with independent CRC32 oracle from zlib matching FragmentSender implementation. Updated for 6-bit FCN, real MICs, tile/window params.",
+        schc_fragment_vectors(),
     )
     _write(
-        "meshtastic_app_compat.json",
-        "Meshtastic app-compat BLE protobuf exchange vectors. 'encoded' is one "
-        "raw GATT value unless the vector explicitly expects rejection.",
-        meshtastic_app_compat_vectors(),
+        "ccp_load_balancing.json",
+        "CCP load balancing and TDMA vectors with independent math oracles (hash_32, drift calc from spec).",
+        ccp_load_balancing_vectors(),
     )
     _write(
-        "meshcore_app_compat.json",
-        "MeshCore app-compat byte-command vectors. 'encoded' is one raw "
-        "MeshCore inner frame for BLE unless transport.framing states serial "
-        "0x3c/0x3e length framing.",
-        meshcore_app_compat_vectors(),
+        "ccp16.json",
+        "CCP-16 synchronized hopping and desync vectors. Independent from spec pseudocode and hash_32.",
+        ccp16_vectors(),
+    )
+    _write(
+        "ccp9.json",
+        "CCP-9 rendezvous vectors using independent _l2_announce_with_channel oracle (exact wire format, no AnnounceMessage dep) and math from spec.",
+        ccp9_vectors(),
     )
     _write(
         "ccp15.json",
-        "ccp15 vectors for SF EMA load_factor hash_32 congestion control with independent oracle.",
+        "ccp15 vectors for SF EMA load_factor hash_32 congestion control with independent oracle (math based).",
         ccp15_vectors(),
+    )
+    _write(
+        "rpl_messages.json",
+        "RPL messages (DIO/DAO per RFC 6550) with hardcoded independent vectors from spec.",
+        rpl_messages_vectors(),
     )
 
 

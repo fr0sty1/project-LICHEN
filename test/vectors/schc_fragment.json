@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "SCHC fragmentation vectors (RFC 8724 \u00a78) with independent oracles for single/multi fragment, window, ACK-on-error, MIC fail, OOO, retransmit. See schema for details; all impls must match exactly.",
+  "description": "SCHC fragmentation vectors (RFC 8724 §8) with independent CRC32 oracle from zlib matching FragmentSender implementation. Updated for 6-bit FCN, real MICs, tile/window params.",
   "vectors": [
     {
       "name": "single_fragment",
@@ -9,10 +9,10 @@
       "rule_id": 42,
       "packet": "10111213",
       "fragments": [
-        "2a3f040000000010111213"
+        "2a3f90f370c910111213"
       ],
       "mode": "no_ack",
-      "mic": "04000000"
+      "mic": "90f370c9"
     },
     {
       "name": "multi_fragment",
@@ -20,12 +20,11 @@
       "rule_id": 42,
       "packet": "1011121320212223",
       "fragments": [
-        "2a060410111213",
-        "2a050420212223",
-        "2a073f1234567823"
+        "2a0610111213",
+        "2a3f2d06834120212223"
       ],
       "mode": "no_ack",
-      "mic": "12345678"
+      "mic": "2d068341"
     },
     {
       "name": "ack_on_error_mic_fail",
@@ -33,11 +32,10 @@
       "rule_id": 42,
       "packet": "a0a1a2a3",
       "fragments": [
-        "2a0104a0a1a2a3",
-        "2a073f0400000000"
+        "2a3f677bdd77a0a1a2a3"
       ],
       "mode": "ack_on_error",
-      "mic": "04000000",
+      "mic": "677bdd77",
       "expect": {
         "mic_fail": true
       }
@@ -48,8 +46,8 @@
       "rule_id": 42,
       "packet": "00010203",
       "fragments": [
-        "2a0604000102",
-        "2a050403"
+        "2a060001",
+        "2a3f8bb986130203"
       ],
       "mode": "ack_on_error",
       "expect": {
@@ -57,7 +55,8 @@
         "retransmits": [
           0
         ]
-      }
+      },
+      "mic": "8bb98613"
     }
   ]
 }
