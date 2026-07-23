@@ -31,10 +31,9 @@ fn main() -> Result<()> {
         println!("cargo:rerun-if-changed={}", proto);
     }
 
-    prost_build::Config::new().out_dir("src/").compile_protos(
-        &proto_files,
-        &[proto_dir],
-    )?;
+    prost_build::Config::new()
+        .out_dir("src/")
+        .compile_protos(&proto_files, &[proto_dir])?;
 
     Ok(())
 }

@@ -16,7 +16,6 @@ pub fn iid_from_pubkey(pubkey: &PublicKey) -> [u8; 8] {
     iid_from_pubkey_bytes(pubkey.as_bytes())
 }
 
-
 /// Derive a link-local IID from raw public key bytes (SHA-256 truncation).
 fn iid_from_pubkey_bytes(pubkey: &[u8; 32]) -> [u8; 8] {
     let digest = Sha256::digest(pubkey);
