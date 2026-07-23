@@ -543,6 +543,9 @@ int lichen_coap_request(const struct lichen_coap_request *req)
 #endif
 
 	/* Send request using snapshotted socket */
+	atomic_set(&ctx->timeout_ref_held, 1);
+	request_ctx_get(ctx);
+	k_work_schedule(&ctx->timeout_work, safe_fallback_timeout(timeout_ms));
 	ret = coap_client_req(&s_client, sock,
 			      (const struct sockaddr *)&req->addr,
 			      &client_req, NULL);
@@ -550,23 +553,11 @@ int lichen_coap_request(const struct lichen_coap_request *req)
 		LOG_WRN("CoAP request failed: %d", ret);
 		if (atomic_set(&ctx->completed, 1) == 0) {
 			request_ctx_cancel_coap_slot(ctx);
+			request_ctx_cancel_timeout_sync(ctx);
 			request_ctx_put(ctx);
 		}
 		request_ctx_put(ctx);
 		return LICHEN_COAP_ERR_SEND_FAILED;
-	}
-
-	/*
-	 * Use 2x the request timeout to allow Zephyr's CoAP layer to handle
-	 * normal timeouts; this catches cases where the callback never fires.
-	 */
-	if (atomic_get(&ctx->completed) == 0) {
-		request_ctx_get(ctx);
-		atomic_set(&ctx->timeout_ref_held, 1);
-		k_work_schedule(&ctx->timeout_work, safe_fallback_timeout(timeout_ms));
-		if (atomic_get(&ctx->completed) != 0) {
-			request_ctx_cancel_timeout_sync(ctx);
-		}
 	}
 
 	request_ctx_put(ctx);
