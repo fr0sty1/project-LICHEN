@@ -2,15 +2,15 @@
   "id": "project-LICHEN-1e99",
   "title": "[merge-conflict] worktree-worker19: xiao_s3_wio_sx1262.overlay",
   "notes": "Commit: 1b386f2 (standardized xiao_s3_wio_sx1262 overlay+conf retirement comment in worker19 to match canonical in project-LICHEN)",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:16:17.299791651Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:19:07.281078604Z",
+  "updated_at": "2026-07-23T00:19:10.650981619Z",
   "started_at": "2026-07-23T00:17:19.499207371Z",
-  "lease_expires_at": "2026-07-23T00:22:19.499207371Z",
-  "heartbeat_at": "2026-07-23T00:17:19.499207371Z"
+  "closed_at": "2026-07-23T00:19:10.650981619Z",
+  "close_reason": "Standardized BLOCKED/RETIRED comment header in xiao_s3_wio_sx1262.{overlay,conf} in worktree-worker19 to match canonical version from project-LICHEN (updated per matrix doc and 2u26 epic). Resolved associated merge divergence. Commit 1b386f2. Also observed many other unresolved merge markers across the worktree but kept changes in scope to the bead title."
 }
