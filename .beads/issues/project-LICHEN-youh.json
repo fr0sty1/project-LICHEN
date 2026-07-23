@@ -2,15 +2,15 @@
   "id": "project-LICHEN-youh",
   "title": "[merge-conflict] worktree-worker21: codec.rs",
   "notes": "Commit: 6983d8f35",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:05:10.545668625Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:59:40.303421621Z",
+  "updated_at": "2026-07-23T02:59:42.243529709Z",
   "started_at": "2026-07-23T02:56:24.453432608Z",
-  "lease_expires_at": "2026-07-23T03:01:24.453432608Z",
-  "heartbeat_at": "2026-07-23T02:56:24.453432608Z"
+  "closed_at": "2026-07-23T02:59:42.243529709Z",
+  "close_reason": "Resolved merge conflict in codec.rs by canonicalizing error handling and removing duplication via helpers; synced across worktrees; tests and clippy pass"
 }
