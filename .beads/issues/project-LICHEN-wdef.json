@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-wdef",
   "title": "[merge-conflict] worktree-worker18: messages.py",
+  "notes": "Commit: 2a60f566e",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,8 +9,8 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:10:49.717037945Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:29:05.561722942Z",
-  "started_at": "2026-07-23T03:29:05.561722942Z",
-  "lease_expires_at": "2026-07-23T03:34:05.561722942Z",
-  "heartbeat_at": "2026-07-23T03:29:05.561722942Z"
+  "updated_at": "2026-07-23T03:30:33.045193212Z",
+  "started_at": "2026-07-23T03:28:38.242792146Z",
+  "lease_expires_at": "2026-07-23T03:33:38.242792146Z",
+  "heartbeat_at": "2026-07-23T03:28:38.242792146Z"
 }
