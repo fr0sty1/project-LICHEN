@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-viwj",
   "title": "[merge-conflict] worktree-worker20: t_deck_esp32s3_procpu.conf",
-  "notes": "Commit: eb05c1040",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:28:25.96530036Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:49:02.52299534Z",
+  "updated_at": "2026-07-23T02:45:53.854507692Z",
   "started_at": "2026-07-23T02:45:53.854507692Z",
-  "closed_at": "2026-07-23T02:49:02.52299534Z",
-  "close_reason": "Closed"
+  "lease_expires_at": "2026-07-23T02:50:53.854507692Z",
+  "heartbeat_at": "2026-07-23T02:45:53.854507692Z"
 }
