@@ -299,13 +299,11 @@ impl<const N: usize> Dispatcher<N> {
 
 /// Well-known core resource (RFC 6690 discovery).
 pub fn handle_well_known_core(_req: &Request) -> Response {
-    // ponytail: minimal discovery, just report we exist
     Response::content(b"</sensors>,</config>")
 }
 
 /// Example sensors resource handler.
 pub fn handle_sensors_get(_req: &Request) -> Response {
-    // ponytail: return static placeholder until actual sensor reading
     Response::content(b"{\"temp\":25.0,\"humidity\":50}")
 }
 
@@ -318,7 +316,6 @@ pub fn handle_config_put(req: &Request) -> Response {
     if req.payload.is_empty() {
         return Response::bad_request();
     }
-    // ponytail: would parse and apply config here
     Response::changed()
 }
 
