@@ -1,11 +1,12 @@
 {
   "id": "project-LICHEN-snrm",
   "title": "[merge-conflict] worktree-worker24: analyze-hetero-fleet.py",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
-  "owner": "agent@lichen-project.dev",
+  "owner": "AI Agent",
   "created_at": "2026-07-23T00:43:31.354772272Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:43:31.354772272Z"
+  "updated_at": "2026-07-23T02:25:00Z",
+  "claimed_at": "2026-07-23T02:25:00Z"
 }
