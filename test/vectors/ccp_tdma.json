@@ -23,9 +23,9 @@
       "slot_start_ms": 1000,
       "current_ms": 1070,
       "slot_duration_ms": 250,
-      "guard_ms": 50,
+      "guard_ms": 100,
       "expected_in_guard": false,
-      "expected_tx_window_start": 1050,
+      "expected_tx_window_start": 1100,
       "description": "Inside data slot, after guard"
     },
     {
@@ -33,7 +33,7 @@
       "slot_start_ms": 1000,
       "current_ms": 990,
       "slot_duration_ms": 250,
-      "guard_ms": 50,
+      "guard_ms": 100,
       "expected_in_guard": true,
       "description": "Pre-slot guard period"
     },

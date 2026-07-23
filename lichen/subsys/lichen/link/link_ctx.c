@@ -611,3 +611,13 @@ bool tdma_tx_allowed(const struct lichen_tdma_ctx *tdma, uint32_t now_ms)
 	uint32_t g = LICHEN_TDMA_GUARD_MS;
 	return (slot_start - g <= now_ms) && (now_ms <= slot_start + d + g);
 }
+
+uint32_t lichen_hash_32(const uint8_t *data, size_t len)
+{
+	uint32_t hash = 0x811c9dc5u;
+	for (size_t i = 0; i < len; i++) {
+		hash ^= (uint32_t)data[i];
+		hash = hash * 0x01000193u;
+	}
+	return hash;
+}
