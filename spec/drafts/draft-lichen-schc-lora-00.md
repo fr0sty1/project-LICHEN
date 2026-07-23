@@ -351,25 +351,14 @@ parameters, timers, retry limit, and buffer limits listed in Section 5.1.
    8 bit  1b   6 bit   32 bit    1-187 bytes     1 bit
 ```
 
-<<<<<<< HEAD
 Rule 255 is REQUIRED as fallback for unknown packets, rule version mismatches, or uncompressed frames. It ensures interoperability.
 
-RPL options (per RFC 6550 §6.7) are compressed using MATCH_MAPPING on Option Type with 2-bit index via MAPPING_SENT CDA. Prioritized mapping for common DIO options (Pad1, PadN, PIO, DAG Metric Container). Full rule set, field descriptors, and matching logic are defined in spec/03-adaptation.md §5.7, appendix-schc.md, rust/lichen-schc/src/rules.rs, and constants.toml. CoAP compression per RFC 8824 is supported in rules 0/1/5/6 where applicable.
+RPL options (per RFC 6550 §6.7) are compressed using MATCH_MAPPING on Option Type. Prioritized mapping for common DIO options (Pad1, PadN, PIO, DAG Metric Container). Full rule set, field descriptors, matching logic, and CoAP compression (RFC 8824 where applicable) are defined in spec/03-adaptation.md §5.7, appendix-schc.md, rust/lichen-schc/src/rules.rs, constants.toml, and test/vectors/schc_compression.json (independent bit-exact oracle for Rust/C/Python interop). All implementations MUST match these vectors exactly.
 
-See test/vectors/schc_compression.json for the independent bit-exact oracle covering all rules, fragmentation, and interop between Rust, C/Zephyr, and Python implementations. All implementations MUST match these vectors exactly.
-=======
-Rule 255 is REQUIRED for unknown packets, version mismatches, or as fallback. It ensures interoperability during rule set transitions. CoAP header compression (RFC 8824) is OPTIONAL.
-
-RPL options compression uses MATCH_MAPPING on Type field (see rust/lichen-schc/src/rules.rs, appendix-schc.md, test/vectors/schc_compression.json). Full rule set and mapping table in appendix-schc.md and test vectors (canonical oracle for all implementations).
-
-**Parameters (current constants):** See constants.toml, lichen-schc, and test/vectors/schc*.json for normative values (m=1, n=6, RCS=CRC-32, timeouts, etc.). All impls MUST match vectors exactly. (Merge conflicts from worker5 resolved; duplicates removed; test vector xrefs added. CC-BY-4.0)
->>>>>>> origin/worktree-worker24
+**Parameters:** See constants.toml and test vectors for normative values (m=1, n=6, RCS=CRC-32, etc.).
 
 - **W:** Window bit (alternates 0/1)
 - **FCN:** Fragment Counter (63 down to 0, then All-1)
-### 5.4. ACK Format and Operation
-
-<<<<<<< HEAD
 ### 5.4. ACK Format and Operation
 
 ACK:
@@ -384,16 +373,7 @@ Bitmap uses MSB-first (1=missing). Sender uses windowed FCN countdown (m=1, n=6 
 
 ## 6. Rule Versioning and DIO Advertisement
 
-Rule Set Version (8-bit) is advertised by DODAG roots in RPL DIOs (see spec/03-adaptation.md §5.7 for authoritative definition; this draft provides LoRa context only). Version 1 is initial; future versions increment on rule changes. Rule 255 fallback REQUIRED for mismatches. DIO option carries version to prevent rule desynchronization.
-
-See test/vectors/schc_compression.json for full validation of rules 0-7, 255, CoAP/OSCORE/RPL compression, and fragmentation scenarios. These vectors are the independent oracle for all implementations.
-=======
-ACK: RuleID(8) + control(8) + n(8) + bitmap (MSB-first, 1=missing). Sender uses FCN countdown per window, sends All-1 with RCS (CRC-32). Receiver uses bitmap for NACKs, verifies RCS on reassembly. Parameters (m=1, n=6, timeouts 10s/60s, etc.) per constants.toml and lichen-schc. Max practical ~12KB; chunk larger packets at application layer. 
-
-## 6. Rule Versioning
-
-Rule Set Version (8-bit) advertised in DIO per spec/03-adaptation.md §5.7 (authoritative). Version 1 initial release. DODAG roots advertise in DIOs. Full details, rule tables (0-7, 255), mapping, and bit-exact test vectors in appendix-schc.md, rust/lichen-schc/src/rules.rs, test/vectors/schc_compression.json and schc_fragment.json. All implementations (Rust, C, Python) MUST produce identical output to these independent oracles. (Merge conflicts and notes from worker5 resolved; test vector xrefs and interop requirements consolidated. CC-BY-4.0)
->>>>>>> origin/worktree-worker24
+Rule Set Version (8-bit) is advertised by DODAG roots in RPL DIOs per spec/03-adaptation.md §5.7 (authoritative; this draft provides LoRa-specific context only). Version 1 is initial; increment on rule changes. Rule 255 fallback REQUIRED. DIO option prevents desynchronization. Full details, rule tables (0-7, 255), mappings, CoAP/OSCORE/RPL compression, fragmentation, and bit-exact test vectors (independent oracle) in appendix-schc.md, rust/lichen-schc/src/rules.rs, constants.toml, test/vectors/schc*.json. All implementations MUST match exactly.
 
 ```
 +--------+---+---+-------------------+---------+
@@ -543,13 +523,7 @@ Future versions of this document may request:
 
 ## Appendix A. SCHC Rule Set (Version 1)
 
-<<<<<<< HEAD
-Rule Set Version 1 is defined in spec/03-adaptation.md §5.7 (authoritative), with LoRa-specific context here. Full field descriptors, matching operators (MATCH_MAPPING etc.), CDA, and constants are in rust/lichen-schc/src/rules.rs, lichen/subsys/lichen/schc/, constants.toml, and appendix-schc.md. Avoids duplication per I-D practice.
-
-Example rules (normative values in test vectors):
-=======
-Complete SCHC rules, Field Descriptors, constants, test vectors, and implementation details are maintained in `spec/appendix-schc.md` (canonical reference), `constants.toml`, `rust/lichen-schc/src/rules.rs`, `lichen/subsys/lichen/schc/`, and `test/vectors/schc_compression.json` / `schc_fragment.json`. Rule 255 REQUIRED for fallback. All implementations MUST match these bit-exact oracles for interop. Rule versioning via DIO per spec/03-adaptation.md §5.7. This document avoids duplicating the full table per I-D best practices. CoAP/OSCORE rules follow RFC 8824/8613.
->>>>>>> origin/worktree-worker24
+Rule Set Version 1 is defined in spec/03-adaptation.md §5.7 (authoritative), with LoRa-specific context and examples here. Full field descriptors, matching operators (MATCH_MAPPING etc.), CDA, constants, and rule tables are maintained in spec/appendix-schc.md (canonical), rust/lichen-schc/src/rules.rs, lichen/subsys/lichen/schc/, constants.toml, and test/vectors/schc*.json. Avoids duplication per I-D practice. Rule 255 REQUIRED for fallback. All implementations MUST match the bit-exact test vectors exactly for interop.
 
 | Rule ID | Name | Primary Use | Compressed Size |
 |---------|------|-------------|-----------------|
@@ -557,17 +531,11 @@ Complete SCHC rules, Field Descriptors, constants, test vectors, and implementat
 | 1-7 | Various (GLOBAL_COAP, ICMP, RPL_DIO/DAO, OSCORE, MQTT-SN) | As named | 3-40+ bytes |
 | 255 | UNCOMPRESSED | Fallback for mismatches | Full header |
 
-<<<<<<< HEAD
-Rule versioning advertised in DIOs. CoAP per RFC 8824; OSCORE treats as opaque. RPL options use prioritized mapping.
+Rule versioning advertised in DIOs. CoAP per RFC 8824; OSCORE treated as opaque payload. RPL options use prioritized MATCH_MAPPING.
 
 ## Appendix B. Test Vectors and Oracles
 
-Canonical independent oracles are in `test/vectors/schc_compression.json` (compression) and `test/vectors/schc_fragment.json` (ACK-on-Error, retransmits, RCS validation, out-of-order). All implementations MUST match these bit-exactly for interoperability. Human-readable examples and additional validation in spec/appendix-schc.md and test/vectors/README.md. No code-under-test derivation; external oracles from generate.py.
-
-See draft-lichen-rpl-lora-00 for integration with capability DIO option carrying SF metrics.
-=======
-See `test/vectors/schc*.json`, `test/vectors/README.md`, `test/vectors/generate.py` for canonical validation. **All Rust, C, and Python implementations MUST produce identical output.** (Merge conflicts from worker5 and worker8 resolved; inline table and TODOs removed; test vector xrefs and interop requirements consolidated. CC-BY-4.0)
->>>>>>> origin/worktree-worker24
+Canonical independent oracles are in `test/vectors/schc_compression.json`, `schc_fragment.json` (covering compression, ACK-on-Error, retransmits, RCS, out-of-order, interop). All Rust, C/Zephyr, and Python implementations MUST match these bit-exactly. Additional details in spec/appendix-schc.md, test/vectors/README.md, and generate.py (no code-under-test as oracle). See draft-lichen-rpl-lora-00.md for SF metrics integration via capability DIO option.
 
 ## Authors' Address
 
