@@ -4,7 +4,7 @@
 //! other crate in the stack. Canonical values are derived from `constants.toml`
 //! at the repo root.
 
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![forbid(unsafe_code)]
 
 pub mod addr;
@@ -18,7 +18,6 @@ pub mod icmpv6;
 pub mod ipv6;
 pub mod l2_payload;
 pub mod loadng;
-pub mod neighbor_monitor;
 pub mod rf_health;
 pub mod tx_queue;
 pub mod udp;

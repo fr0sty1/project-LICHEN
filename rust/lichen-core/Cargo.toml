@@ -16,7 +16,7 @@ log = ["dep:log"]
 # Logging backends (optional, feature-gated)
 defmt = { version = "0.3", optional = true }
 log = { version = "0.4", default-features = false, optional = true }
-heapless = "0.8"
+heapless = { version = "0.8", default-features = false }
 lichen-ipv6 = { path = "../lichen-ipv6", default-features = false }
 sha2 = { version = "0.11.0", default-features = false, features = ["zeroize"] }
 
