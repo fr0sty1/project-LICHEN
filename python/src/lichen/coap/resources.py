@@ -462,7 +462,9 @@ class SenMLSensorsResource(resource.ObservableResource):
 
     def __init__(self) -> None:
         super().__init__()
+        from lichen.senml.codec import pack  # noqa: PLC0415
         self._records: list[Any] = []
+        self._payload: bytes = pack([])
 
     def update(self, records: list[Any]) -> None:
         """Replace the current readings and notify all observers.
@@ -477,10 +479,7 @@ class SenMLSensorsResource(resource.ObservableResource):
         self.updated_state()
 
     async def render_get(self, request: Message) -> Message:
-        from lichen.senml.codec import pack
-
-        payload = getattr(self, "_payload", pack([]))
-        msg = Message(code=CONTENT, payload=payload)
+        msg = Message(code=CONTENT, payload=self._payload)
         msg.opt.content_format = SENML_CBOR
         return msg
 
@@ -499,6 +498,8 @@ class SenMLLocationResource(resource.ObservableResource):
 
     def __init__(self) -> None:
         super().__init__()
+        from lichen.senml.codec import pack  # noqa: PLC0415
+        self._payload: bytes = pack([])
 
     def update(self, lat: float, lon: float, alt: float | None = None) -> None:
         """Set the current position and notify all observers.
@@ -515,10 +516,7 @@ class SenMLLocationResource(resource.ObservableResource):
         self.updated_state()
 
     async def render_get(self, request: Message) -> Message:
-        from lichen.senml.codec import pack
-
-        payload = getattr(self, "_payload", pack([]))
-        msg = Message(code=CONTENT, payload=payload)
+        msg = Message(code=CONTENT, payload=self._payload)
         msg.opt.content_format = SENML_CBOR
         return msg
 
@@ -532,9 +530,10 @@ class SenMLMetricsResource(resource.ObservableResource):
     """
 
     def __init__(self) -> None:
-        """Initialize with empty payload."""
+        """Initialize with empty SenML pack."""
         super().__init__()
-        self._payload: bytes = b""
+        from lichen.senml.codec import pack  # noqa: PLC0415
+        self._payload: bytes = pack([])
 
     def update(
         self,
@@ -559,9 +558,7 @@ class SenMLMetricsResource(resource.ObservableResource):
         self.updated_state()
 
     async def render_get(self, request: Message) -> Message:  # noqa: D102,ARG002
-        from lichen.senml.codec import pack  # noqa: PLC0415
-        payload = getattr(self, "_payload", pack([]))
-        msg = Message(code=CONTENT, payload=payload)
+        msg = Message(code=CONTENT, payload=self._payload)
         msg.opt.content_format = SENML_CBOR
         return msg
 
