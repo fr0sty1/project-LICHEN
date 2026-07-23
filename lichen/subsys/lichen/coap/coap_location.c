@@ -22,13 +22,19 @@ static void build_base_name(char *out, size_t out_len)
 {
 	uint8_t eui[8];
 
-	if (lichen_lora_l2_copy_eui64(eui) != 0) {
+	if (out_len == 0 || lichen_lora_l2_copy_eui64(eui) != 0) {
+		if (out_len > 0) {
+			out[0] = '\0';
+		}
+		return;
+	}
+	int ret = snprintf(out, out_len,
+		 "urn:dev:mac:%02x%02x%02x%02x%02x%02x%02x%02x:", eui[0], eui[1],
+		 eui[2], eui[3], eui[4], eui[5], eui[6], eui[7]);
+	if (ret < 0 || (size_t)ret >= out_len) {
 		out[0] = '\0';
 		return;
 	}
-	snprintf(out, out_len,
-		 "urn:dev:mac:%02x%02x%02x%02x%02x%02x%02x%02x:", eui[0], eui[1],
-		 eui[2], eui[3], eui[4], eui[5], eui[6], eui[7]);
 }
 
 static int sensors_location_get(struct coap_resource *resource,
