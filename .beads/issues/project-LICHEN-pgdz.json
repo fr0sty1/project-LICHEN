@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-pgdz",
   "title": "[merge-conflict] worktree-worker17: Kconfig",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:41:03.382493729Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:41:03.382493729Z"
+  "updated_at": "2026-07-23T03:26:27.037169928Z",
+  "started_at": "2026-07-23T03:26:27.037169928Z",
+  "lease_expires_at": "2026-07-23T03:31:27.037169928Z",
+  "heartbeat_at": "2026-07-23T03:26:27.037169928Z"
 }
