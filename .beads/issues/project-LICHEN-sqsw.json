@@ -2,15 +2,15 @@
   "id": "project-LICHEN-sqsw",
   "title": "[merge-conflict] worktree-worker24: heltec_wireless_tracker.conf",
   "notes": "Commit: 8fbf2095f",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:40:00.915720053Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:19:07.586401201Z",
+  "updated_at": "2026-07-23T04:19:10.911991487Z",
   "started_at": "2026-07-23T04:17:48.884338895Z",
-  "lease_expires_at": "2026-07-23T04:22:48.884338895Z",
-  "heartbeat_at": "2026-07-23T04:17:48.884338895Z"
+  "closed_at": "2026-07-23T04:19:10.911991487Z",
+  "close_reason": "Standardized STALE comment in heltec_wireless_tracker.conf per project-LICHEN-2u26.4, firmware-board-capability-matrix.md, and no-dead-code rule. Matched canonical phrasing from vision master fragments. Commit 8fbf2095f (push blocked by large rebase divergence in worktree-worker1 branch)"
 }
