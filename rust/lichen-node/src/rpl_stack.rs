@@ -522,11 +522,17 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                         RxError::RadioPacketTooLarge,
                     )));
                 }
-                let outcome = self
+                let process_result = self
                     .process_received(&wire[..packet.len], packet, post_await_ms)
                     .await
-                    .map_err(RplRuntimeReceiveError::Receive)?;
-                Some(outcome)
+                    .map_err(RplRuntimeReceiveError::Receive);
+                match process_result {
+                    Ok(outcome) => Some(outcome),
+                    Err(e) => {
+                        let _ = runtime.complete_receive(&mut self.rpl, action, post_await_ms);
+                        return Err(e);
+                    }
+                }
             }
             Ok(None) => None,
             Err(_) => {
