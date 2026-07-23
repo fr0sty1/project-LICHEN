@@ -483,11 +483,14 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
     }
 
     /// Advance an executor-neutral runtime using this stack as the single owner.
+    ///
+    /// Returns `Err(RplRuntimeActionError::PollWithPending)` if a prior poll's
+    /// action remains uncompleted. This enforces single-generation runtime binding.
     pub fn runtime_poll(
         &mut self,
         runtime: &mut RplRuntime,
         observed_now_ms: u64,
-    ) -> RplRuntimePoll {
+    ) -> Result<RplRuntimePoll, RplRuntimeActionError> {
         self.routing_now_ms = self.routing_now_ms.max(observed_now_ms);
         runtime.poll(&mut self.rpl, observed_now_ms)
     }
@@ -1849,8 +1852,14 @@ mod tests {
     async fn runtime_receive_uses_planned_timeout_and_post_await_clock() {
         let (mut root, radio) = runtime_root();
         let mut runtime = RplRuntime::new(RplRuntimeConfig::default(), 0);
-        let action = root.runtime_poll(&mut runtime, 0).action;
+        let poll = root.runtime_poll(&mut runtime, 0).unwrap();
+        let action = poll.action;
         assert_eq!(action, RplRuntimeAction::Receive { timeout_ms: 1_000 });
+
+        assert!(matches!(
+            root.runtime_poll(&mut runtime, 10),
+            Err(RplRuntimeActionError::PollWithPending)
+        ));
 
         let completion = root
             .runtime_receive(&mut runtime, action, || 1_000)
@@ -1883,7 +1892,7 @@ mod tests {
         let (mut root, radio) = runtime_root();
         root.trickle_start(0, 0);
         let mut runtime = RplRuntime::new(RplRuntimeConfig::default(), 0);
-        let transmit = root.runtime_poll(&mut runtime, 4).action;
+        let transmit = root.runtime_poll(&mut runtime, 4).unwrap().action;
         assert_eq!(transmit, RplRuntimeAction::TrickleTransmit);
         assert_eq!(
             root.runtime_complete_trickle_transmit(&mut runtime, transmit, 4)
@@ -1898,12 +1907,12 @@ mod tests {
             AddrMode::None
         );
 
-        let expire = root.runtime_poll(&mut runtime, 8).action;
+        let expire = root.runtime_poll(&mut runtime, 8).unwrap().action;
         assert_eq!(expire, RplRuntimeAction::TrickleExpire);
         root.runtime_complete_trickle_expire(&mut runtime, expire, 8, 0)
             .unwrap();
         assert_eq!(
-            root.runtime_poll(&mut runtime, 8).action,
+            root.runtime_poll(&mut runtime, 8).unwrap().action,
             RplRuntimeAction::Receive { timeout_ms: 8 }
         );
 
@@ -1913,7 +1922,7 @@ mod tests {
             suppressed.rpl.router.trickle_consistent();
         }
         let mut runtime = RplRuntime::new(RplRuntimeConfig::default(), 0);
-        let action = suppressed.runtime_poll(&mut runtime, 4).action;
+        let action = suppressed.runtime_poll(&mut runtime, 4).unwrap().action;
         assert_eq!(
             suppressed
                 .runtime_complete_trickle_transmit(&mut runtime, action, 4)
