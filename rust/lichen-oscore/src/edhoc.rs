@@ -484,7 +484,11 @@ pub struct EdhocInitiator {
 
 /// Initiator protocol state.
 ///
-/// Contains PRK secrets that must be zeroized on drop.
+/// PRK derivation chain per python/src/lichen/crypto/edhoc.py:
+/// PRK_2e = HKDF-Extract(salt=TH_2, IKM=G_XY)
+/// PRK_3e2m = PRK_2e for Suite 0 SIGN_SIGN (needed for MAC_2)
+/// PRK_4e3m = PRK_3e2m (needed for MAC_3 and OSCORE export)
+/// All must be zeroized on drop.
 #[derive(Zeroize, ZeroizeOnDrop)]
 struct InitiatorState {
     #[zeroize(skip)]
@@ -688,10 +692,10 @@ impl EdhocInitiator {
             }
             self.state.th_2 = transcript_2(&self.state.g_y, &self.state.msg1)?;
 
-            // PRK_2e = HKDF-Extract(TH_2, G_XY)
-            self.state
-                .prk_2e
-                .copy_from_slice(&hkdf_extract(&self.state.th_2, g_xy.as_bytes())[..]);
+            // PRK_2e = HKDF-Extract(salt=TH_2, IKM=G_XY)
+            let prk_2e_z = hkdf_extract(&self.state.th_2, g_xy.as_bytes());
+            self.state.prk_2e.copy_from_slice(&*prk_2e_z);
+            drop(prk_2e_z);
             drop(g_xy);
 
             // Decrypt CIPHERTEXT_2 with KEYSTREAM_2
@@ -702,7 +706,7 @@ impl EdhocInitiator {
                 plaintext_2.push_err(b ^ keystream_2[i])?;
             }
 
-            // PRK_3e2m = PRK_2e for SIGN_SIGN method
+            // PRK_3e2m = PRK_2e for Suite 0 SIGN_SIGN (needed for MAC_2)
             self.state.prk_3e2m = self.state.prk_2e;
 
             let pt2 = plaintext_2.as_slice();
@@ -779,6 +783,7 @@ impl EdhocInitiator {
             self.state.c_r = pending.c_r.clone();
             self.state.th_3 = transcript_3(&self.state.th_2, &pending.plaintext, peer.credential)?;
 
+            // PRK_4e3m = PRK_3e2m for SIGN_SIGN (needed for MAC_3 and OSCORE export)
             self.state.prk_4e3m = self.state.prk_3e2m;
 
             let mut credential_i = heapless::Vec::<u8, 80>::new();
@@ -827,97 +832,7 @@ impl EdhocInitiator {
         if result.is_err() {
             self.poison();
         }
-        th_3_input.extend_err(ciphertext_2)?;
-        // ID_CRED_R as CBOR bstr (pubkey)
-        th_3_input.push_err(0x58)?;
-        th_3_input.push_err(32)?;
-        th_3_input.extend_err(peer_pubkey)?;
-        self.state.th_3 = compute_th(&th_3_input);
-
-        // PRK_4e3m = PRK_3e2m for SIGN_SIGN
-        self.state.prk_4e3m = self.state.prk_3e2m;
-
-        // Create Message 3
-        // PLAINTEXT_3 = (ID_CRED_I, Signature_3)
-
-        // Build M_3 for signature
-        let mut m_3 = heapless::Vec::<u8, 128>::new();
-        // CBOR array header (simplified)
-        m_3.push_err(0x83)?; // array of 3
-                             // ID_CRED_I (pubkey)
-        m_3.push_err(0x58)?;
-        m_3.push_err(32)?;
-        m_3.extend_err(self.pubkey.as_bytes())?;
-        // TH_3
-        m_3.push_err(0x58)?;
-        m_3.push_err(32)?;
-        m_3.extend_err(&self.state.th_3)?;
-        // CRED_I (pubkey)
-        m_3.push_err(0x58)?;
-        m_3.push_err(32)?;
-        m_3.extend_err(self.pubkey.as_bytes())?;
-
-        let signature_3 = self.signing_key.sign(&m_3);
-
-        // PLAINTEXT_3 = ID_CRED_I || Signature_3 as CBOR
-        // Built directly into ciphertext_3 buffer to avoid clone
-        let mut ciphertext_3 = heapless::Vec::<u8, 128>::new();
-        // ID_CRED_I
-        ciphertext_3.push_err(0x58)?;
-        ciphertext_3.push_err(32)?;
-        ciphertext_3.extend_err(self.pubkey.as_bytes())?;
-        // Signature_3
-        ciphertext_3.push_err(0x58)?;
-        ciphertext_3.push_err(64)?;
-        ciphertext_3.extend_err(&signature_3.to_bytes())?;
-
-        // K_3 and IV_3 for AEAD
-        let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", &[], KEY_LEN)?;
-        let iv_3 = edhoc_kdf(
-            &self.state.prk_3e2m,
-            &self.state.th_3,
-            "IV_3",
-            &[],
-            NONCE_LEN,
-        )?;
-
-        // A_3 (AAD) - simplified Encrypt0 structure
-        let mut a_3 = heapless::Vec::<u8, 64>::new();
-        a_3.push_err(0x83)?; // array of 3
-        a_3.push_err(0x68)?; // tstr "Encrypt0"
-        a_3.extend_err(b"Encrypt0")?;
-        a_3.push_err(0x40)?; // empty bstr
-        a_3.push_err(0x58)?; // bstr TH_3
-        a_3.push_err(32)?;
-        a_3.extend_err(&self.state.th_3)?;
-
-        // Encrypt in place (PLAINTEXT_3 -> CIPHERTEXT_3)
-        let cipher = AesCcm::new_from_slice(&k_3).map_err(|_| EdhocError::InvalidState)?;
-        let mut nonce = [0u8; NONCE_LEN];
-        nonce.copy_from_slice(&iv_3);
-        let tag = cipher
-            .encrypt_in_place_detached((&nonce).into(), &a_3, &mut ciphertext_3)
-            .map_err(|_| EdhocError::InvalidState)?;
-        ciphertext_3.extend_err(&tag)?;
-
-        // TH_4 = H(TH_3, CIPHERTEXT_3)
-        let mut th_4_input = heapless::Vec::<u8, 192>::new();
-        th_4_input.push_err(0x58)?;
-        th_4_input.push_err(32)?;
-        th_4_input.extend_err(&self.state.th_3)?;
-        if ciphertext_3.len() <= 23 {
-            th_4_input.push_err(0x40 | ciphertext_3.len() as u8)?;
-        } else {
-            th_4_input.push_err(0x58)?;
-            th_4_input.push_err(ciphertext_3.len() as u8)?;
-        }
-        th_4_input.extend_err(&ciphertext_3)?;
-        self.state.th_4 = compute_th(&th_4_input);
-
-        // Mark handshake as completed - export_oscore now safe to call
-        self.state.completed = true;
-
-        Ok(ciphertext_3)
+        result
     }
 
     /// Export OSCORE security context.
@@ -965,7 +880,11 @@ pub struct EdhocResponder {
 
 /// Responder protocol state.
 ///
-/// Contains PRK secrets that must be zeroized on drop.
+/// PRK derivation chain per python/src/lichen/crypto/edhoc.py:
+/// PRK_2e = HKDF-Extract(salt=TH_2, IKM=G_XY)
+/// PRK_3e2m = PRK_2e for Suite 0 SIGN_SIGN (needed for MAC_2)
+/// PRK_4e3m = PRK_3e2m (needed for MAC_3 and OSCORE export)
+/// All must be zeroized on drop.
 #[derive(Zeroize, ZeroizeOnDrop)]
 struct ResponderState {
     #[zeroize(skip)]
@@ -1124,13 +1043,13 @@ impl EdhocResponder {
             }
             self.state.th_2 = transcript_2(self.eph_public.as_bytes(), msg1)?;
 
-            // PRK_2e = HKDF-Extract(TH_2, G_XY)
-            self.state
-                .prk_2e
-                .copy_from_slice(&hkdf_extract(&self.state.th_2, g_xy.as_bytes())[..]);
+            // PRK_2e = HKDF-Extract(salt=TH_2, IKM=G_XY)
+            let prk_2e_z = hkdf_extract(&self.state.th_2, g_xy.as_bytes());
+            self.state.prk_2e.copy_from_slice(&*prk_2e_z);
+            drop(prk_2e_z);
             drop(g_xy);
 
-            // PRK_3e2m = PRK_2e for SIGN_SIGN
+            // PRK_3e2m = PRK_2e for Suite 0 SIGN_SIGN (needed for MAC_2)
             self.state.prk_3e2m = self.state.prk_2e;
 
         let mut context_2 = heapless::Vec::<u8, 128>::new();
@@ -1299,6 +1218,7 @@ impl EdhocResponder {
             );
             let peer_verifying_key = strong_verifying_key(peer.public_key)?;
 
+            // PRK_4e3m = PRK_3e2m for SIGN_SIGN (needed for MAC_3 and OSCORE export)
             self.state.prk_4e3m = self.state.prk_3e2m;
             let context_3 = build_context_3(
                 pending.id_cred.as_bytes(),
@@ -1326,41 +1246,7 @@ impl EdhocResponder {
         if result.is_err() {
             self.poison();
         }
-
-        let sig_start = 2 + 32 + 2;
-        let sig_bytes = &plaintext_3[sig_start..sig_start + 64];
-        let signature = Signature::from_bytes(
-            sig_bytes
-                .try_into()
-                .map_err(|_| EdhocError::InvalidMessage)?,
-        );
-
-        // Build M_3 for verification
-        let mut m_3 = heapless::Vec::<u8, 128>::new();
-        m_3.push_err(0x83)?;
-        m_3.push_err(0x58)?;
-        m_3.push_err(32)?;
-        m_3.extend_err(peer_pubkey)?;
-        m_3.push_err(0x58)?;
-        m_3.push_err(32)?;
-        m_3.extend_err(&self.state.th_3)?;
-        m_3.push_err(0x58)?;
-        m_3.push_err(32)?;
-        m_3.extend_err(peer_pubkey)?;
-
-        peer_verifying_key
-            .verify(&m_3, &signature)
-            .map_err(|_| EdhocError::SignatureVerification)?;
-
-        // PRK_4e3m = PRK_3e2m for SIGN_SIGN
-        self.state.prk_4e3m = self.state.prk_3e2m;
-
-        self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3, self.pubkey.as_bytes())?;
-
-        // Mark handshake as completed - export_oscore now safe to call
-        self.state.completed = true;
-
-        Ok(())
+        result
     }
 
     /// Export OSCORE security context.
