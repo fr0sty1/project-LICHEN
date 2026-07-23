@@ -5,9 +5,8 @@
  * @file trickle.c
  * @brief Trickle timer (RFC 6206) implementation matching pseudocode in §4.2.
  *
- * Aligned reset() guard with Rust and Python (project-LICHEN-67ca).
- * Ported from rust/lichen-rpl/src/trickle.rs with consistent init edge case.
- * Resolved merge conflict from worktree-worker1 (project-LICHEN-otzx).
+ * Reset guard aligned for cross-impl determinism (project-LICHEN-vsph).
+ * Used by lichen_rpl_dodag for DIO pacing per LICHEN RPL profile.
  */
 
 #include <lichen/rpl_trickle.h>
