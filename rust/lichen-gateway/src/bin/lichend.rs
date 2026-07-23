@@ -437,10 +437,7 @@ async fn forward_mesh_to_upstream<T: TunLike>(
     frame: &[u8],
     tun: &Option<T>,
 ) -> Option<Vec<u8>> {
-    let (reply_opt, event) = gw.process_rpl(frame, 0u64);
-    if let RplEvent::DaoReceived { route_updated: true } = event {
-        info!("DAO event: route updated");
-    }
+    let (reply_opt, _event) = gw.process_rpl(frame, 0);
     if let Some(reply) = reply_opt {
         info!(len = reply.len(), "mesh reply ready for SLIP TX queue");
         Some(reply)
