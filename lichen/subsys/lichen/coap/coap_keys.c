@@ -40,7 +40,7 @@ LOG_MODULE_REGISTER(lichen_coap_keys, CONFIG_LICHEN_COAP_KEYS_LOG_LEVEL);
 #ifndef CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES
 #define CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES 16
 #endif
-BUILD_ASSERT(CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES <= 16, "CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES >16 risks stack overflow in encode_keys_list_cbor");
+BUILD_ASSERT(CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES <= 16, "CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES >16 risks stack overflow in encode_keys_list_cbor [p0wq]");
 
 /* CBOR content-format code */
 #define CBOR_CONTENT_FORMAT 60
@@ -452,7 +452,7 @@ int lichen_key_store_put(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN],
 	slot = find_free_slot_locked();
 	if (slot < 0) {
 		k_mutex_unlock(&s_mutex);
-		return -ENOMEM;
+		return -ENOSPC;
 	}
 
 	memcpy(s_keys[slot].iid, iid, LICHEN_KEY_IID_LEN);
