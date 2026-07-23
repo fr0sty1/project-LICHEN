@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-6kof",
   "title": "[merge-conflict] worktree-worker18: coap_keys.c",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:54:12.80847153Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:54:12.80847153Z"
+  "updated_at": "2026-07-23T03:16:27.497490823Z",
+  "started_at": "2026-07-23T03:16:27.497490823Z",
+  "lease_expires_at": "2026-07-23T03:21:27.497490823Z",
+  "heartbeat_at": "2026-07-23T03:16:27.497490823Z"
 }

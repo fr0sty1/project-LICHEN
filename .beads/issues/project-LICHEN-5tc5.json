@@ -2,15 +2,15 @@
   "id": "project-LICHEN-5tc5",
   "title": "[merge-conflict] worktree-worker24: bridge.rs",
   "notes": "Commit: 3569195f4 (worker24 bridge.rs synced to canonical with resolution note)",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:59:41.889390482Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:16:23.584235993Z",
+  "updated_at": "2026-07-23T03:16:27.580659374Z",
   "started_at": "2026-07-23T03:14:33.632119897Z",
-  "lease_expires_at": "2026-07-23T03:19:33.632119897Z",
-  "heartbeat_at": "2026-07-23T03:14:33.632119897Z"
+  "closed_at": "2026-07-23T03:16:27.580659374Z",
+  "close_reason": "Updated rust/lichen-kiss/src/bridge.rs in worktree-worker24 to canonical version with SPDX, SECURITY epoch validation, payload checks, full test coverage for ports and bounds. Added explicit merge resolution comment referencing this bead. File now matches main. git commit in worker24 worktree, pushed."
 }
