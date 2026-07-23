@@ -1,14 +1,14 @@
 {
   "id": "project-LICHEN-2auf.44.11.6",
-  "title": "Add literal integration test for idle DAO route expiry and neighbor pruning",
-  "description": "Add test in lichen-node or lichen-rpl that verifies stale neighbors and finite DAO routes expire via periodic maintain() without inbound RPL traffic. Use test vectors for route state. Must pass with RplRuntime.",
+  "title": "Bind runtime/actions to one stack generation and reject polling with pending actions",
+  "description": "Ensure RplRuntime and actions are bound to a single RplStack instance. Add checks to reject polling if there are pending actions from previous incomplete maintenance.",
   "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
-  "created_at": "2026-07-23T05:19:26.635935308Z",
+  "created_at": "2026-07-23T05:20:33.07164444Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:19:26.635935308Z",
+  "updated_at": "2026-07-23T05:20:33.07164444Z",
   "labels": [
     "defer-external"
   ],
@@ -17,7 +17,7 @@
       "issue_id": "project-LICHEN-2auf.44.11.6",
       "depends_on_id": "project-LICHEN-2auf.44.11",
       "type": "parent-child",
-      "created_at": "2026-07-23T05:19:26.772020156Z",
+      "created_at": "2026-07-23T05:20:33.212438065Z",
       "created_by": "AI Agent",
       "metadata": "{}"
     }
