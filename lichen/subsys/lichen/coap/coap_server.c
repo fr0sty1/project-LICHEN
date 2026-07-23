@@ -12,7 +12,7 @@
  * - /status - Node status (GET)
  * - /config - Node configuration (GET/PUT)
  * - /neighbors - Neighbor table (GET)
- * - /key - Public key (GET)
+ * - /keys - Peer key store (GET/PUT/DELETE, per LCI spec; see coap_keys.c)
  * - /msg/inbox - Messages (GET/POST)
  * - /deaddrop - DTN dead drop (POST, GET?recipient=...) when enabled
  * - /confessions - Anonymous board (POST/GET, rate-limited RAM-only, per project-LICHEN-2nnd.4.2)
@@ -259,69 +259,6 @@ COAP_RESOURCE_DEFINE(lichen_neighbors, lichen_coap_server, {
 	.path = neighbors_path,
 	.user_data = &((struct coap_core_metadata) {
 		.attributes = neighbors_attrs,
-	}),
-});
-
-/*
- * /key resource - GET returns public key as CBOR
- */
-static int key_get(struct coap_resource *resource,
-		   struct coap_packet *request,
-		   struct sockaddr *addr, socklen_t addr_len)
-{
-	uint8_t pubkey[32];
-	/* CBOR map with fingerprint and pubkey: 1 (map) + 12 + 17 (fingerprint)
-	 * + 7 + 34 (pubkey) = 71 bytes encoded below.
-	 */
-	uint8_t payload[72];
-	int ret;
-	size_t idx = 0;
-
-	if (s_handlers.key == NULL) {
-		return COAP_RESPONSE_CODE_NOT_FOUND;
-	}
-
-	ret = s_handlers.key(pubkey);
-	if (ret < 0) {
-		LOG_ERR("Key callback failed: %d", ret);
-		return COAP_RESPONSE_CODE_INTERNAL_ERROR;
-	}
-
-	payload[idx++] = 0xA2;
-	payload[idx++] = 0x6B;
-	memcpy(&payload[idx], "fingerprint", 11);
-	idx += 11;
-	payload[idx++] = 0x70;
-	static const char hex[] = "0123456789abcdef";
-	for (int i = 0; i < 8; i++) {
-		payload[idx++] = hex[(pubkey[i] >> 4) & 0xF];
-		payload[idx++] = hex[pubkey[i] & 0xF];
-	}
-	payload[idx++] = 0x66;
-	memcpy(&payload[idx], "pubkey", 6);
-	idx += 6;
-	payload[idx++] = 0x58;
-	payload[idx++] = 0x20;
-	memcpy(&payload[idx], pubkey, 32);
-	idx += 32;
-
-	ret = lichen_coap_respond(resource, request, addr, addr_len,
-			      COAP_RESPONSE_CODE_CONTENT, CBOR_CONTENT_FORMAT, payload, idx);
-	return ret < 0 ? ret : 0;
-}
-
-static const char * const key_path[] = { "key", NULL };
-static const char * const key_attrs[] = {
-	"rt=\"lichen.key\"",
-	"ct=\"60\"",
-	NULL,
-};
-
-COAP_RESOURCE_DEFINE(lichen_key, lichen_coap_server, {
-	.get = key_get,
-	.path = key_path,
-	.user_data = &((struct coap_core_metadata) {
-		.attributes = key_attrs,
 	}),
 });
 
