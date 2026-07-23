@@ -2,15 +2,15 @@
   "id": "project-LICHEN-onb8",
   "title": "[merge-conflict] worktree-worker1: trickle.rs",
   "notes": "Fixed u32::MAX overflow in begin_interval half-calc (merge conflict residue from worker1/jufb; aligned with C bitwise impl). Commit: 7ab0e435d",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:53:07.430074142Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:45:57.242956484Z",
+  "updated_at": "2026-07-23T04:46:00.624527797Z",
   "started_at": "2026-07-22T23:56:55.413965014Z",
-  "lease_expires_at": "2026-07-23T04:47:51.646358997Z",
-  "heartbeat_at": "2026-07-23T04:42:51.646358997Z"
+  "closed_at": "2026-07-23T04:46:00.624527797Z",
+  "close_reason": "Resolved u32 overflow in TrickleTimer::begin_interval half-interval calculation by adopting bitwise formula from C impl (safe at MAX, bias-free). Updated comments. Tests pass (equivalent for all prior cases; fixes P1 bug from parallel worktree merge conflict). Commit 7ab0e435d"
 }
