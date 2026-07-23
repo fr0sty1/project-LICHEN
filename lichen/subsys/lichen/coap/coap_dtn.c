@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
+
 #include <errno.h>
 #include <string.h>
 #include <zephyr/kernel.h>
@@ -60,6 +61,11 @@ int lichen_coap_deaddrop_register(const struct lichen_deaddrop_provider *provide
 	r = lichen_dtn_init(&s_dtn_buf);
 	if (r < 0) {
 		k_mutex_unlock(&s_dtn_mutex);
+		return r;
+	}
+	r = senml_pack_init(&s_senml_pack, "", 0);
+	if (r < 0) {
+		k_mutex_unlock(&s_dtn_buf_mutex);
 		return r;
 	}
 	k_work_init_delayable(&s_dtn_expire_work, dtn_expire_work_handler);
