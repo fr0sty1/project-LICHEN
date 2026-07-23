@@ -103,10 +103,7 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 		uint8_t plain[512];
 		size_t plain_len = sizeof(plain);
 		int r = coap_oscore_unprotect_request(ctx, request, &orig_code, opts, &opt_len, plain, &plain_len, piv, &piv_len);
-		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_UNAUTHORIZED;
-		if (orig_code != COAP_METHOD_POST) {
-			return COAP_RESPONSE_CODE_NOT_ALLOWED;
-		}
+		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_BAD_REQUEST;
 		payload = plain;
 		payload_len = (uint16_t)plain_len;
 	} else {
@@ -121,7 +118,7 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 		return COAP_RESPONSE_CODE_UNAUTHORIZED;
 	}
 	uint32_t now_ms = k_uptime_get_32();
-	uint8_t iid7 = peer_eui64[7];
+	uint8_t iid7 = sender_iid[7];
 	k_mutex_lock(&s_rate_mutex, K_FOREVER);
 	if (s_last_deaddrop[iid7] && (now_ms - s_last_deaddrop[iid7] < CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS)) {
 		k_mutex_unlock(&s_rate_mutex);
