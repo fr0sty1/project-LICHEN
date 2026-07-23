@@ -19,7 +19,9 @@ Threading model: Concurrent send() via per-entry TxReservations; TX serialized b
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import os
 import random
 import secrets
 from collections import OrderedDict
@@ -200,7 +202,6 @@ class LinkLayer:
     )
     cad_enabled: bool = field(default=True)
     tx_queue: TxQueue = field(default_factory=TxQueue)
-    _tx_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
     persist_path: str | None = field(default=None, repr=False)
     # ponytail: random epoch in [128,255] for reboot resilience without flash.
     # Half-space arithmetic treats upper-half counters as "ahead" of lower-half.
@@ -245,7 +246,7 @@ class LinkLayer:
 
         # Advance for next call
         if epoch == 0xFF and seqnum == 0xFFFF:
-            self._sequence_exhausted = True
+            self._exhausted = True
         elif seqnum == 0xFFFF:
             # Why wrap handling: seqnum is 16-bit, epoch is 8-bit
             # Together they form a 24-bit monotonic counter
@@ -434,6 +435,9 @@ class LinkLayer:
 
         If we complete CAD_MAX_BACKOFF_EXPONENT attempts and still busy,
         that's one cycle. After CAD_MAX_CYCLES full cycles, give up.
+
+        Note: radio.cad() False now documented as clear (timeout conflated per
+        P4 design in project-LICHEN-b4pw); treats timeout as clear for TX.
 
         Returns:
             True if channel became clear, False after max retries.
@@ -709,14 +713,14 @@ class LinkLayer:
             raise ValueError(f"epoch out of range: {epoch}")
         if not 0 <= seqnum <= 0xFFFF:
             raise ValueError(f"seqnum out of range: {seqnum}")
-        if self._sequence_exhausted:
+        if self._exhausted:
             raise OverflowError("link-layer sequence exhausted; rotate identity key")
         if self._sequence_started:
             raise RuntimeError("link-layer sequence cannot be reset after use")
         self._epoch = epoch
         self._seqnum = seqnum
         if epoch == 0xFF and seqnum == 0xFFFF:
-            self._sequence_exhausted = True
+            self._exhausted = True
             raise OverflowError("link-layer sequence exhausted; rotate identity key")
         logger.info("sequence set to epoch=%d seqnum=%d", epoch, seqnum)
 
@@ -726,6 +730,29 @@ class LinkLayer:
         Returns:
             (epoch, seqnum) tuple.
         """
-        if self._sequence_exhausted:
+        if self._exhausted:
             raise OverflowError("link-layer sequence exhausted; rotate identity key")
         return self._epoch, self._seqnum
+
+    def _load_persisted_state(self) -> None:
+        if self.persist_path is None:
+            return
+        path = self.persist_path
+        if not os.path.exists(path):
+            return
+        try:
+            with open(path) as f:
+                data = json.load(f)
+            self.set_sequence(data.get("epoch", 0), data.get("seqnum", 0))
+        except Exception:
+            pass
+
+    def _save_persisted_state(self) -> None:
+        if self.persist_path is None:
+            return
+        try:
+            data = {"epoch": self._epoch, "seqnum": self._seqnum}
+            with open(self.persist_path, "w") as f:
+                json.dump(data, f)
+        except Exception:
+            pass
