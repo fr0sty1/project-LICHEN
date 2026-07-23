@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-6mij.2.1.1",
+  "title": "Extract peer EUI64/IID from sockaddr in msg_inbox_post handler",
+  "description": "Add code to derive peer_eui64 from IPv6 link-local address in msg_inbox_post similar to deaddrop_post and confessions_post. Use for oscore_ctx_get_by_eui64.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:30:37.220312283Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:30:37.220312283Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-6mij.2.1.1",
+      "depends_on_id": "project-LICHEN-6mij.2.1",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:30:37.361435936Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
