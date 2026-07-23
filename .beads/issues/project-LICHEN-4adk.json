@@ -2,6 +2,7 @@
   "id": "project-LICHEN-4adk",
   "title": "bridge.py: _is_l2_routing_payload is defined but never used",
   "description": "File: python/src/lichen/interface/kiss/bridge.py\nLines: 377-382\n\nThe function _is_l2_routing_payload is defined but never called anywhere in the file:\n\n```python\ndef _is_l2_routing_payload(payload: bytes) -\u003e bool:\n    return (\n        len(payload) \u003e 1\n        and payload[0] == L2_DISPATCH_ROUTING\n        and payload[1] == L2_ROUTING_TYPE_ANNOUNCE\n    )\n```\n\nThis is dead code. It imports L2_DISPATCH_ROUTING and L2_ROUTING_TYPE_ANNOUNCE from lichen.l2_payload but never uses them.\n\nImpact: Unused code increases maintenance burden. Either this should be integrated into the RX path (to filter/handle routing messages specially), or removed.\n\nFix: Either:\n1. Integrate into _on_link_rx() to handle L2 routing payloads appropriately\n2. Or remove the function and the associated import",
+  "notes": "Commit: 7e57bdf",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:19:03.927225Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:04:13.561688209Z",
+  "updated_at": "2026-07-23T04:06:58.375312394Z",
   "started_at": "2026-07-23T04:04:13.561688209Z",
   "lease_expires_at": "2026-07-23T04:09:13.561688209Z",
   "heartbeat_at": "2026-07-23T04:04:13.561688209Z"
