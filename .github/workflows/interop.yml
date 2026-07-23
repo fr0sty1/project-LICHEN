@@ -285,31 +285,10 @@ jobs:
     steps:
       - name: Install tooling
         run: sudo apt-get update -q && sudo apt-get install -y jq
-
       - name: Require every interop job to succeed
         env:
           RESULTS: ${{ toJSON(needs) }}
         run: |
-          set -euo pipefail
-          if ! command -v jq >/dev/null 2>&1; then
-            echo "ERROR: jq not found after install step"
-            exit 1
-          fi
-          if ! jq -e 'all(.[]; .result == "success")' <<<"$RESULTS" >/dev/null 2>&1; then
-            echo "FAILURE: Not all interop jobs succeeded:"
-            jq . <<<"$RESULTS"
-            echo ""
-            echo "See individual job logs above for details."
-            exit 1
-          fi
-          echo "All interop jobs succeeded."
-
-      - name: Create tracking bead (on main failure)
-        if: failure() && github.ref == 'refs/heads/main'
-        run: |
-          echo "Creating tracking bead for interop failure..."
-          bd create "Interop status failure: dependent job failed" \
-            --type=bug \
-            --priority=1 \
-            --body="interop-status job failed. See workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}. Jobs: frame-parser-interop, multinode-simulator, vector-compatibility, wire-format-python-to-rust, announce-interop. See .github/workflows/interop.yml for details." || echo "bd unavailable (expected in minimal runners); failure reported by job status."
-        continue-on-error: true
+          echo "Interop job results:"
+          jq . <<<"$RESULTS" || true
+          jq -e 'all(.[]; .result == "success")' <<<"$RESULTS"
