@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-yqxs",
+  "title": "[cross-impl] Rust TrickleSafeLiveness diverges from Zephyr/C neighbor pruning",
+  "description": "The commit 6596ea225 added TrickleSafeLiveness in rust/lichen-node/src/routing.rs:173 (10s grace period before TimeoutLiveness) and switched prune_with_removed. No equivalent logic found in lichen/subsys/lichen/rpl* or oscore.c neighbor handling or Python simulator. Same liveness algorithm must produce identical neighbor table behavior across Python/Rust/Zephyr impls to avoid routing divergence. Test vectors or shared policy needed. References RPL Trickle timers in spec.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T14:22:47.835405972Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T14:22:47.835405972Z"
+}
