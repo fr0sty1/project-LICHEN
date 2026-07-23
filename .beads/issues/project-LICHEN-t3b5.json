@@ -2,15 +2,15 @@
   "id": "project-LICHEN-t3b5",
   "title": "[merge-conflict] integration/worker14-20260722: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: f23585f",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:39:10.178754802Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:44:05.578861459Z",
+  "updated_at": "2026-07-23T01:44:09.401598331Z",
   "started_at": "2026-07-23T01:42:10.477712349Z",
-  "lease_expires_at": "2026-07-23T01:47:10.477712349Z",
-  "heartbeat_at": "2026-07-23T01:42:10.477712349Z"
+  "closed_at": "2026-07-23T01:44:09.401598331Z",
+  "close_reason": "Resolved all merge conflict markers in lichen/apps/*/boards/heltec_wifi_lora32_v3_esp32s3_procpu.conf (puck+gateway); consolidated comments from worker18/19/2/14/23 branches referencing project-LICHEN-qfh1/verh/t3b5; no duplicates, follows board config conventions; git commit f23585f"
 }
