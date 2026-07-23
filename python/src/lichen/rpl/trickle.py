@@ -66,7 +66,7 @@ class TrickleTimer:
         self.counter = 0
         self._transmitted = False
         self._generation += 1
-        half = (self.interval + 1) // 2
+        half = self.interval // 2
         self.transmit_time = now + half + int(self._rng() * (self.interval - half))
 
     @property
@@ -93,11 +93,7 @@ class TrickleTimer:
         self._begin_interval(now)
 
     def reset(self, now: int) -> None:
-<<<<<<< HEAD
-        if self.interval != self.imin or (self.interval_start == 0 and self.transmit_time == 0):
-=======
         if self._generation == 0 or self.interval != self.imin:
->>>>>>> origin/worktree-worker1
             self.interval = self.imin
             self._begin_interval(now)
 
