@@ -487,7 +487,7 @@ cryptographically derived from the Ed25519 public key (section 6.2 in Network La
 
 - Root election uses lowest IID (pubkey-derived, section 6.1 in 04-network.md).
   Rotation would destabilize DODAG.
-- Short-address assignment uses `hash_32(EUI-64 bytes, 8)` (crc32_ieee per `02a-coordinated-capacity.md:119`; see DAD retry note+strategy in `02-physical-link.md:215` addressing hash_32(EUI-64,0) collision risk via seed mixing). Signature/replay caches keyed on stable IID.
+- Short-address assignment uses `hash_32(EUI-64 bytes, 8)` (FNV-1a32 per updated `02a-coordinated-capacity.md`; see DAD retry note+strategy in `02-physical-link.md:215` addressing hash_32(EUI-64,0) collision risk via seed mixing). Signature/replay caches keyed on stable IID.
    Rotation causes constant DAD churn and cache invalidation on LoRa.
 - All security bindings (TOFU pinning, OSCORE, Schnorr signatures) rely on
   the deterministic key-to-address mapping.

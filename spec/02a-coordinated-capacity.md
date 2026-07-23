@@ -41,7 +41,7 @@ Slot ID MUST be computed as:
 
 Multi-byte integers are unsigned big-endian. Flags bits: 0=scheduled mode, 1=CSMA rendezvous, 2=concurrent CH0 RX, 3=GNSS-PPS, 4-7 reserved (zero). `Setup Window` bounds retune/readiness/CAD. `Occupied Time` bounds data+ACK. `Guard` is separation between occupied envelopes. `RX Chains` is simultaneous receive count (1 for typical single-radio). `Channel Mask` bit 0 = CH0. Receivers compute local intersection. See test/vectors/ccp*.json for format validation.
 
-using `crc32_ieee` (see appendix-design-rationale.md and lichen/subsys/schc/schc.c). The XOR with epoch ensures time-varying slots to prevent persistent collisions. All implementations MUST match ccp16.json vectors exactly. This integrates with `lichen_rpl_dodag_init()`.
+using `fnv1a32` (lichen_hash_32 primitive, basis 0x811c9dc5; see lichen-core/src/lib.rs, spec/appendix-design-rationale.md). The XOR with epoch ensures time-varying slots to prevent persistent collisions. All implementations MUST match ccp*.json vectors exactly. This integrates with `lichen_rpl_dodag_init()`.
 
 For SFN (superframe number, a u32 epoch counter) wrap-around, all nodes MUST compute using unsigned 32-bit arithmetic (modulo 0x100000000). The time-provider (see `docs/firmware-time-provider.md`) is the canonical source: SFN/epoch updates MUST pass epoch_floor validation, set `wall_clock_valid`, and respect stratum before adoption. RPL version changes or desync MUST reset SFN relative to the new root per the FSM in Section 2a.5.
 

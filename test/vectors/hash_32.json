@@ -1,31 +1,31 @@
 {
   "format_version": 2,
-  "description": "Test vectors for keyed hash_32 using key b\"LICHEN\" (0x4c494348454e) as initializer. Matches Rust identity.rs, C lora_ping packet_hash and link_ctx tuple_crc, per spec 02a-coordinated-capacity.md and epic project-LICHEN-pgzj (v2 schema). Independent Python zlib.crc32 oracle only. All implementations must produce identical output.",
+  "description": "Test vectors for lichen_hash_32 FNV-1a32 primitive (basis=0x811c9dc5, for each byte h=(h^b)*0x01000193 mod 2^32). Canonical for IID, TDMA slots, CCP channel/hop/load_factor selection per spec/02a-coordinated-capacity.md §2a.3 and test/vectors/ccp*.json. Matches Rust lichen-core::lichen_hash_32, lichen-link::identity::hash_32, Python _hash_32 exactly. Independent oracle (not derived from impl). Fixes cross-impl inconsistency (project-LICHEN-eirg). All impls MUST match.",
   "vectors": [
     {
       "name": "empty",
       "input": "",
-      "output": "0x77f9adf0",
-      "description": "hash_32(b\"\") = 0x77f9adf0"
+      "output": "0x811c9dc5",
+      "description": "hash_32(b\"\") = 0x811c9dc5"
     },
     {
       "name": "test_string",
       "input": "test",
-      "output": "0x84a618f3",
-      "description": "hash_32(b\"test\") = 0x84a618f3"
+      "output": "0xafd071e5",
+      "description": "hash_32(b\"test\") = 0xafd071e5"
     },
     {
       "name": "zero_pubkey",
       "input_hex": "0000000000000000000000000000000000000000000000000000000000000000",
-      "output": "0x922b4f72",
-      "description": "hash_32(0x00*32)"
+      "output": "0x0b2ae445",
+      "description": "hash_32(0x00*32) = 0x0b2ae445"
     },
     {
       "name": "iid_derivation_zero",
       "pubkey_hex": "0000000000000000000000000000000000000000000000000000000000000000",
-      "iid": "902b4f721b9ce444",
-      "human_address": "90AT-FE8D-SSS24",
-      "description": "Updated IID = hash_32(pubkey)[0:4] + hash_32(pubkey+0x01)[0:4] with U/L bit cleared"
+      "iid": "092ae445d885570c",
+      "human_address": "0JAQ-48QC-8ANRC",
+      "description": "IID = hash_32(pubkey)[0:4] + hash_32(pubkey+0x01)[0:4] (BE, U/L bit cleared per RFC 4291)"
     }
   ]
 }
