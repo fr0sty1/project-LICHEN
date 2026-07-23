@@ -206,4 +206,6 @@ static inline const char *lichen_link_strerror(int err)
     }
 }
 
+int lichen_iid_to_human_address(const uint8_t *iid, char *buf, size_t buflen);
+
 #endif /* LICHEN_UTIL_H */
