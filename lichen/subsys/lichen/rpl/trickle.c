@@ -121,13 +121,11 @@ void lichen_trickle_reset(struct lichen_trickle *t,
 	if (t == NULL) {
 		return;
 	}
-<<<<<<< HEAD
-	if (t->interval != t->imin || (t->interval_start == 0 && t->transmit_time == 0)) {
-=======
 
-	/* RFC 6206 section 4.2: no-op if already at imin */
-	if (t->transmit_time == 0 || t->interval != t->imin) {
->>>>>>> origin/worktree-worker1
+	/* RFC 6206 §4.2 no-op if already at imin; start if stopped (matches
+	 * Rust TrickleState::Stopped and cross-impl test reset_from_stopped_starts_timer).
+	 */
+	if (t->interval != t->imin || (t->interval_start == 0 && t->transmit_time == 0)) {
 		t->interval = t->imin;
 		begin_interval(t, now, rand_offset);
 	}

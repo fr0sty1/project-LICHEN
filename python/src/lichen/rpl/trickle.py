@@ -93,11 +93,10 @@ class TrickleTimer:
         self._begin_interval(now)
 
     def reset(self, now: int) -> None:
-<<<<<<< HEAD
-        if self.interval != self.imin or (self.interval_start == 0 and self.transmit_time == 0):
-=======
+        """RFC 6206 §4.2: no-op if already at imin; start if initial/stopped
+        (matches Rust and C cross-impl behavior).
+        """
         if self._generation == 0 or self.interval != self.imin:
->>>>>>> origin/worktree-worker1
             self.interval = self.imin
             self._begin_interval(now)
 
