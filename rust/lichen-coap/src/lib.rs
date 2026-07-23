@@ -6,6 +6,7 @@
 //! header-compressed via SCHC before transmission over the link layer.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![forbid(unsafe_code)]
 
 pub mod block;
 pub mod codec;
