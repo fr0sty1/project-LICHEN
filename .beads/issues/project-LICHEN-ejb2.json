@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-ejb2",
   "title": "[merge-conflict] worktree-worker19: Kconfig.defconfig",
-  "notes": "Commit: 35b596d",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:20.85149086Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:30:17.445030341Z",
+  "updated_at": "2026-07-23T03:26:28.911991567Z",
   "started_at": "2026-07-23T03:26:28.911991567Z",
-  "closed_at": "2026-07-23T03:30:17.445030341Z",
-  "close_reason": "Reconciled Kconfig changes from worker19 worktree into puck/prj.conf (CONFIG_CRC=y) and resolved related beads/last-touched merge conflict during integration. Matches pattern from project-LICHEN-syn6 and project-LICHEN-48xu."
+  "lease_expires_at": "2026-07-23T03:31:28.911991567Z",
+  "heartbeat_at": "2026-07-23T03:26:28.911991567Z"
 }
