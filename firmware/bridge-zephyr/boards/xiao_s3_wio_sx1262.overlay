@@ -1,26 +1,21 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
-# SPDX-FileCopyrightText: The contributors to the LICHEN project
 /*
-<<<<<<< HEAD
- * RETIRED/BLOCKED per project-LICHEN-2u26.10, project-LICHEN-80ju, project-LICHEN-irj9, project-LICHEN-7qaj (m5m1.8 bridge audit / project-LICHEN-2u26): Seeed XIAO ESP32-S3 + Wio-SX1262 bridge overlay.
- * No canonical Zephyr board or composite shield mapping (seeed_xiao_esp32s3 + Wio-SX1262 shield not in tree/upstream); xiao_s3_wio_sx1262 not a valid -b target.
- * Classified FAIL in bridge audit (m5m1.8). Support removed. Use heltec_wifi_lora32_v3_esp32s3_procpu (or t1000_e) as proxy. Follows tbeam_supreme pattern (project-LICHEN-w8rd).
- * Fragment, DT fragment, and pin map retained for reference only. See docs/firmware-board-capability-matrix.md.
+ * BLOCKED/RETIRED: Seeed XIAO ESP32-S3 + Wio-SX1262 bridge overlay
+ * (project-LICHEN-2u26.10 / project-LICHEN-2u26 / m5m1.8)
  *
- * Original pin map (for reference):
-=======
- * RETIRED per project-LICHEN-2u26.10, project-LICHEN-80ju, project-LICHEN-irj9 (m5m1.8 bridge audit / project-LICHEN-2u26): Seeed XIAO ESP32-S3 + Wio-SX1262.
- * No canonical Zephyr board target or composite shield defined. xiao_s3_wio_sx1262 is not a valid -b target.
- * Classified FAIL; support removed. Use heltec_wifi_lora32_v3/esp32s3/procpu (or t1000_e) as proxy instead.
- * Pin map and DT retained for reference only. See docs/firmware-board-capability-matrix.md.
+ * No canonical Zephyr board/composite (seeed_xiao_esp32s3 + Wio-SX1262
+ * shield not in tree or upstream; xiao_s3_wio_sx1262 not a valid -b target).
+ * Closest proxies: heltec_wifi_lora32_v3/esp32s3/procpu.
+ * Classified FAIL (no canonical board) in bridge audit; orphaned fragment.
+ * Do not present as supported. Follows tbeam_supreme pattern (w8rd).
+ * Pin map retained for reference only.
  *
- * Original pinout (for reference):
->>>>>>> origin/worktree-worker1
+ * Original:
  * ESP32-S3 + SX1262 LoRa (via B2B connector)
  * SX1262 SPI: SCK=GPIO7, MISO=GPIO8, MOSI=GPIO9, NSS=GPIO41
  * Control: RESET=GPIO42, BUSY=GPIO40, DIO1=GPIO39
  * LED: GPIO21 yellow active-low
  */
+
 
 #include <zephyr/dt-bindings/pinctrl/esp32s3-pinctrl.h>
 
