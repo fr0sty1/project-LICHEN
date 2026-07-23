@@ -16,7 +16,7 @@ from __future__ import annotations
 import logging
 import math
 import time
-from collections import deque
+from collections import OrderedDict, deque
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from ipaddress import IPv6Address, IPv6Network
@@ -160,7 +160,7 @@ class ForwardingBuffer:
         max_sources: Maximum unique sources to track.
         max_per_source: Maximum packets buffered per source.
         _buffer: Dict mapping source IID to deque of ForwardingEntry.
-        _source_order: List of source IIDs in LRU order (oldest first).
+        _source_order: OrderedDict[bytes, None] tracking LRU order (front=oldest).
         packets_accepted: Count of packets accepted.
         packets_backpressure: Count of packets rejected due to backpressure.
         packets_expired: Count of packets dropped due to deadline.
@@ -171,7 +171,9 @@ class ForwardingBuffer:
     _buffer: dict[bytes, deque[ForwardingEntry]] = field(
         default_factory=dict, repr=False
     )
-    _source_order: list[bytes] = field(default_factory=list, repr=False)
+    _source_order: OrderedDict[bytes, None] = field(
+        default_factory=OrderedDict, repr=False
+    )
     # Statistics
     packets_accepted: int = 0
     packets_backpressure: int = 0
@@ -226,8 +228,8 @@ class ForwardingBuffer:
         # New source - check if we need to evict
         result = ForwardingResult.ACCEPTED
         if len(self._buffer) >= self.max_sources:
-            oldest_iid = self._source_order.pop(0)
-            evicted_count = len(self._buffer.pop(oldest_iid))
+            oldest_iid, _ = self._source_order.popitem(last=False)
+            evicted_count = len(self._buffer.pop(oldest_iid, deque()))
             self.packets_evicted += evicted_count
             logger.debug(
                 "forwarding buffer evicting source %s (%d packets)",
@@ -237,7 +239,7 @@ class ForwardingBuffer:
             result = ForwardingResult.EVICTED
 
         self._buffer[source_iid] = deque([entry])
-        self._source_order.append(source_iid)
+        self._touch_source(source_iid)
         self.packets_accepted += 1
         return result
 
@@ -259,7 +261,7 @@ class ForwardingBuffer:
         # Clean up empty queues
         if not queue:
             del self._buffer[source_iid]
-            self._source_order.remove(source_iid)
+            self._source_order.pop(source_iid, None)
 
         return entry
 
@@ -297,7 +299,7 @@ class ForwardingBuffer:
         # Clean up empty sources
         for source_iid in empty_sources:
             del self._buffer[source_iid]
-            self._source_order.remove(source_iid)
+            self._source_order.pop(source_iid, None)
 
         if expired_count > 0:
             self.packets_expired += expired_count
@@ -332,10 +334,9 @@ class ForwardingBuffer:
         }
 
     def _touch_source(self, source_iid: bytes) -> None:
-        """Move source to end of LRU order (most recently used)."""
-        if source_iid in self._source_order:
-            self._source_order.remove(source_iid)
-        self._source_order.append(source_iid)
+        """Move source to MRU position using OrderedDict (matches GradientTable idiom)."""
+        self._source_order[source_iid] = None
+        self._source_order.move_to_end(source_iid)
 
 
 @dataclass
