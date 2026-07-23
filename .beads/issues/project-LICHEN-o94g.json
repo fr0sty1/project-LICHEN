@@ -11,6 +11,6 @@
   "created_by": "AI Agent",
   "updated_at": "2026-07-23T02:35:28.30679114Z",
   "started_at": "2026-07-23T02:33:57.64502534Z",
-  "lease_expires_at": "2026-07-23T02:38:57.64502534Z",
-  "heartbeat_at": "2026-07-23T02:33:57.64502534Z"
+  "closed_at": "2026-07-23T02:35:30.950423498Z",
+  "close_reason": "Updated heltec_wifi_lora32_v3_esp32s3_procpu.conf in worker17 worktree with SPDX headers, consolidated comment referencing this bead, and matching canonical style from main. Committed as 0e8d52064 and force-with-lease pushed to origin/worktree-worker17."
 }
