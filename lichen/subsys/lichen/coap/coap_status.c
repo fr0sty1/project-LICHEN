@@ -68,35 +68,43 @@ static inline bool cbor_check_space(struct cbor_ctx *ctx, size_t n)
 	return true;
 }
 
-static void cbor_put_map_header(struct cbor_ctx *ctx, uint8_t count)
+static void cbor_put_map_header(struct cbor_ctx *ctx, size_t count)
 {
+	if (count > 255) {
+		ctx->overflow = true;
+		return;
+	}
 	if (count < 24U) {
 		if (!cbor_check_space(ctx, 1)) {
 			return;
 		}
-		ctx->buf[ctx->off++] = CBOR_MAP_BASE | count;
+		ctx->buf[ctx->off++] = CBOR_MAP_BASE | (uint8_t)count;
 	} else {
 		if (!cbor_check_space(ctx, 2)) {
 			return;
 		}
 		ctx->buf[ctx->off++] = 0xb8;
-		ctx->buf[ctx->off++] = count;
+		ctx->buf[ctx->off++] = (uint8_t)count;
 	}
 }
 
-static void cbor_put_array_header(struct cbor_ctx *ctx, uint8_t count)
+static void cbor_put_array_header(struct cbor_ctx *ctx, size_t count)
 {
+	if (count > 255) {
+		ctx->overflow = true;
+		return;
+	}
 	if (count < 24U) {
 		if (!cbor_check_space(ctx, 1)) {
 			return;
 		}
-		ctx->buf[ctx->off++] = CBOR_ARRAY_BASE | count;
+		ctx->buf[ctx->off++] = CBOR_ARRAY_BASE | (uint8_t)count;
 	} else {
 		if (!cbor_check_space(ctx, 2)) {
 			return;
 		}
 		ctx->buf[ctx->off++] = 0x98;
-		ctx->buf[ctx->off++] = count;
+		ctx->buf[ctx->off++] = (uint8_t)count;
 	}
 }
 
