@@ -2,15 +2,15 @@
   "id": "project-LICHEN-b7l3",
   "title": "[merge-conflict] worktree-worker24: xiao_s3_wio_sx1262.conf",
   "notes": "Commit: 942b173e4",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:38:03.26573697Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:42:00.17534848Z",
+  "updated_at": "2026-07-23T00:42:02.750289737Z",
   "started_at": "2026-07-23T00:40:12.390334811Z",
-  "lease_expires_at": "2026-07-23T00:45:12.390334811Z",
-  "heartbeat_at": "2026-07-23T00:40:12.390334811Z"
+  "closed_at": "2026-07-23T00:42:02.750289737Z",
+  "close_reason": "Standardized RETIRED comment in xiao_s3_wio_sx1262.conf and .overlay to include all audit beads (2u26.10,80ju,irj9,7qaj) and match matrix + tbeam_supreme pattern. Resolved divergent versions from parallel worker merges. Edits in worker24 and main. Commit 942b173e4"
 }
