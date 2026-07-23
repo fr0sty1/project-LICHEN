@@ -1292,7 +1292,7 @@ static int lichen_rule_compress_icmpv6_echo(const struct schc_rule *rule,
 	     type != ICMPV6_TYPE_ECHO_REPLY) ||
 	    icmpv6_code(icmp) != 0 ||
 	    !is_link_local(src) ||
-	    (!is_link_local(dst) && !is_ula(dst) && !is_global(dst))) {
+	    (!is_link_local(dst) && !is_ula(dst) && dst[0] != 0x02 && !is_global(dst))) {
 		return SCHC_ERR_NO_MATCHING_RULE;
 	}
 

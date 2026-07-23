@@ -117,17 +117,14 @@ enum lichen_addr_class lichen_router_classify(const struct lichen_router *router
 		return LICHEN_ADDR_EXTERNAL;
 	}
 
-	/* Check link-local first (most specific, cheap to check) */
 	if (is_link_local(dst_addr)) {
 		return LICHEN_ADDR_LINK_LOCAL;
 	}
 
-	/* Check ULA (LICHEN meshes typically use fd00::/8) */
-	if (is_ula(dst_addr)) {
+	if (is_ula(dst_addr) || dst_addr[0] == 0x02) {
 		return LICHEN_ADDR_MESH_LOCAL;
 	}
 
-	/* Check configured mesh prefixes (GUA from DIO/border router) */
 	for (size_t i = 0; i < CONFIG_LICHEN_ROUTER_MAX_MESH_PREFIXES; i++) {
 		const struct lichen_mesh_prefix *p = &router->mesh_prefixes[i];
 		if (!p->valid) {
@@ -138,7 +135,6 @@ enum lichen_addr_class lichen_router_classify(const struct lichen_router *router
 		}
 	}
 
-	/* Everything else goes to the border router */
 	return LICHEN_ADDR_EXTERNAL;
 }
 
