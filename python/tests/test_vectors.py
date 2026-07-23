@@ -220,7 +220,7 @@ def test_meshcore_app_compat_vectors_match_generator() -> None:
 def _ccp15_cases():
     doc = _load("ccp16.json")
     assert doc["format_version"] == 2
-    return [(v["name"], v) for v in doc["vectors"]]
+    return [(v.get("name") or v.get("description", "unnamed"), v) for v in doc["vectors"]]
 
 
 @pytest.mark.parametrize("name,vector", _ccp15_cases())
