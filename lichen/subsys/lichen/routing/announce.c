@@ -230,9 +230,6 @@ int lichen_announce_parse(const uint8_t *data, size_t len,
 	if (data[0] != LICHEN_ANNOUNCE_TYPE) {
 		return -EPROTONOSUPPORT;
 	}
-	if (data[1] != 0U) {
-		return -EINVAL;
-	}
 	if (data[2] > LICHEN_ANNOUNCE_MAX_HOPS) {
 		return -EINVAL;
 	}
@@ -242,13 +239,13 @@ int lichen_announce_parse(const uint8_t *data, size_t len,
 
 	announce->flags = data[1];
 	announce->hop_count = data[2];
-	announce->rx_channel = data[3];
-	announce->wire_seq_num = ((uint16_t)data[4] << 8) | data[5];
+	announce->rx_channel = data[1];
+	announce->wire_seq_num = ((uint16_t)data[3] << 8) | data[4];
 	announce->seq_num = announce->wire_seq_num;
 	announce->seq_stale = false;
-	announce->originator_iid = &data[6];
-	announce->pubkey = &data[14];
-	announce->signature = &data[46];
+	announce->originator_iid = &data[5];
+	announce->pubkey = &data[13];
+	announce->signature = &data[45];
 	announce->app_data = &data[LICHEN_ANNOUNCE_MIN_LEN];
 	announce->app_data_len = len - LICHEN_ANNOUNCE_MIN_LEN;
 	return 0;
@@ -571,8 +568,9 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 
 	k_mutex_unlock(&sched.mutex);
 
-	/* Build frame: dispatch || type || flags || hop_count || rx_channel ||
-	 * seq || iid || pubkey || signature || app_data (MIN_LEN=94 per CCP-9) */
+	/* Build frame: dispatch || type || rx_channel (flags byte) || hop_count ||
+	 * seq_num(2) || iid || pubkey || signature || app_data.
+	 * Matches CCP-9 test vector (15 01 <channel> 00 <seq> ...), MIN_LEN=93. */
 	size_t frame_len = 1U + LICHEN_ANNOUNCE_MIN_LEN + app_data_len_snapshot;
 
 	if (buf_len < frame_len) {
@@ -582,12 +580,10 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 
 	buf[pos++] = L2_ROUTING_DISPATCH;
 	buf[pos++] = LICHEN_ANNOUNCE_TYPE;
-	buf[pos++] = 0U; /* flags: reserved */
+	buf[pos++] = channel_snapshot; /* rx_channel in flags position per CCP-9 */
 	buf[pos++] = 0U; /* hop_count: 0 since we're the originator */
-	buf[pos++] = channel_snapshot; /* rx_channel for CCP-9 rendezvous binding */
 	buf[pos++] = (uint8_t)(seq >> 8);
 	buf[pos++] = (uint8_t)seq;
-	buf[pos++] = 0U;
 	memcpy(&buf[pos], iid, LICHEN_ANNOUNCE_IID_LEN);
 	pos += LICHEN_ANNOUNCE_IID_LEN;
 	/* SECURITY: Use pubkey copy from signed_data (captured under lock) rather

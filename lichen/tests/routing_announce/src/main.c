@@ -66,6 +66,7 @@ static void build_coords(uint8_t app_data[9], int32_t lat_e7, int32_t lon_e7)
 
 static size_t build_signed_announce(uint8_t *buf, size_t cap,
 				    const uint8_t seed[32], uint16_t seq_num,
+				    uint8_t rx_channel,
 				    const uint8_t *app_data, size_t app_data_len)
 {
 	uint8_t privkey[32];
@@ -78,13 +79,13 @@ static size_t build_signed_announce(uint8_t *buf, size_t cap,
 	zassert_true(sizeof(signed_data) >= 43U + app_data_len);
 
 	schnorr48_derive_keypair(seed, privkey, pubkey);
-	pubkey_to_iid(pubkey, &buf[6]);
+	pubkey_to_iid(pubkey, &buf[5]);
 
-	memcpy(&signed_data[0], &buf[6], 8U);
+	memcpy(&signed_data[0], &buf[5], 8U);
 	memcpy(&signed_data[8], pubkey, sizeof(pubkey));
 	signed_data[40] = (uint8_t)(seq_num >> 8);
 	signed_data[41] = (uint8_t)seq_num;
-	signed_data[42] = 0U; /* rx_channel */
+	signed_data[42] = rx_channel;
 	if (app_data_len > 0U) {
 		memcpy(&signed_data[43], app_data, app_data_len);
 	}
@@ -93,13 +94,12 @@ static size_t build_signed_announce(uint8_t *buf, size_t cap,
 				  signature));
 
 	buf[0] = LICHEN_ANNOUNCE_TYPE;
-	buf[1] = 0U;
-	buf[2] = 0U;
-	buf[3] = 0U; /* rx_channel */
-	buf[4] = (uint8_t)(seq_num >> 8);
-	buf[5] = (uint8_t)seq_num;
-	memcpy(&buf[14], pubkey, sizeof(pubkey));
-	memcpy(&buf[46], signature, sizeof(signature));
+	buf[1] = rx_channel; /* rx_channel reuses flags byte per CCP-9 test vector */
+	buf[2] = 0U; /* hop_count */
+	buf[3] = (uint8_t)(seq_num >> 8);
+	buf[4] = (uint8_t)seq_num;
+	memcpy(&buf[13], pubkey, sizeof(pubkey));
+	memcpy(&buf[45], signature, sizeof(signature));
 	if (app_data_len > 0U) {
 		memcpy(&buf[LICHEN_ANNOUNCE_MIN_LEN], app_data, app_data_len);
 	}
@@ -140,7 +140,7 @@ ZTEST(routing_announce, test_parse_accepts_minimal_and_app_data)
 
 	build_coords(app_data, 476062000, -1223321000);
 	len = build_signed_announce(announce, sizeof(announce), seed_a, 0x1234U,
-				    app_data, sizeof(app_data));
+				    0U /* rx_channel */, app_data, sizeof(app_data));
 
 	zassert_ok(lichen_announce_parse(announce, len, &view));
 	zassert_equal(view.flags, 0U);
@@ -149,9 +149,9 @@ ZTEST(routing_announce, test_parse_accepts_minimal_and_app_data)
 	zassert_equal(view.wire_seq_num, 0x1234U);
 	zassert_equal(view.seq_num, 0x1234U);
 	zassert_false(view.seq_stale);
-	zassert_mem_equal(view.originator_iid, &announce[6], 8U);
-	zassert_mem_equal(view.pubkey, &announce[14], 32U);
-	zassert_mem_equal(view.signature, &announce[46], 48U);
+	zassert_mem_equal(view.originator_iid, &announce[5], 8U);
+	zassert_mem_equal(view.pubkey, &announce[13], 32U);
+	zassert_mem_equal(view.signature, &announce[45], 48U);
 	zassert_mem_equal(view.app_data, app_data, sizeof(app_data));
 	zassert_equal(view.app_data_len, sizeof(app_data));
 }
@@ -176,10 +176,10 @@ ZTEST(routing_announce, test_ingest_invokes_observer_with_meta_and_extended_seq)
 							      &state));
 
 	len = build_signed_announce(announce, sizeof(announce), seed_a, 0xffffU,
-				    app_data, sizeof(app_data));
+				    0U /* rx_channel */, app_data, sizeof(app_data));
 	zassert_ok(lichen_announce_ingest_authenticated(announce, len, &meta));
 	len = build_signed_announce(announce, sizeof(announce), seed_a, 0U,
-				    app_data, sizeof(app_data));
+				    0U /* rx_channel */, app_data, sizeof(app_data));
 	zassert_ok(lichen_announce_ingest_authenticated(announce, len, &meta));
 
 	zassert_equal(state.calls, 2U);
@@ -211,7 +211,7 @@ ZTEST(routing_announce, test_ingest_invokes_multiple_observers)
 							      &second));
 
 	len = build_signed_announce(announce, sizeof(announce), seed_a, 3U,
-				    app_data, sizeof(app_data));
+				    0U /* rx_channel */, app_data, sizeof(app_data));
 	zassert_ok(lichen_announce_ingest_authenticated(announce, len, NULL));
 
 	zassert_equal(first.calls, 1U);
@@ -233,7 +233,7 @@ ZTEST(routing_announce, test_ingest_rejects_stale_seq_and_bad_pubkey_pin)
 							      &state));
 
 	len = build_signed_announce(announce, sizeof(announce), seed_a, 10U,
-				    app_data, sizeof(app_data));
+				    0U /* rx_channel */, app_data, sizeof(app_data));
 	zassert_ok(lichen_announce_ingest_authenticated(announce, len, NULL));
 	memcpy(pinned_iid, &announce[5], sizeof(pinned_iid));
 	zassert_equal(lichen_announce_ingest_authenticated(announce, len, NULL),
@@ -241,7 +241,7 @@ ZTEST(routing_announce, test_ingest_rejects_stale_seq_and_bad_pubkey_pin)
 	zassert_equal(state.calls, 1U);
 
 	len = build_signed_announce(announce, sizeof(announce), seed_b, 11U,
-				    app_data, sizeof(app_data));
+				    0U /* rx_channel */, app_data, sizeof(app_data));
 	memcpy(&announce[5], pinned_iid, sizeof(pinned_iid));
 	zassert_equal(lichen_announce_ingest_authenticated(announce, len, NULL),
 		      -EACCES);
@@ -265,13 +265,13 @@ ZTEST(routing_announce, test_stale_seq_requires_reset_aware_observer)
 		LICHEN_ANNOUNCE_OBSERVER_F_ALLOW_SEQ_RESET));
 
 	len = build_signed_announce(announce, sizeof(announce), seed_a, 10U,
-				    app_data, sizeof(app_data));
+				    0U /* rx_channel */, app_data, sizeof(app_data));
 	zassert_ok(lichen_announce_ingest_authenticated(announce, len, NULL));
 	zassert_equal(normal.calls, 1U);
 	zassert_equal(reset_aware.calls, 1U);
 
 	len = build_signed_announce(announce, sizeof(announce), seed_a, 1U,
-				    app_data, sizeof(app_data));
+				    0U /* rx_channel */, app_data, sizeof(app_data));
 	zassert_ok(lichen_announce_ingest_authenticated(announce, len, NULL));
 	zassert_equal(normal.calls, 1U);
 	zassert_equal(reset_aware.calls, 2U);
@@ -292,7 +292,7 @@ ZTEST(routing_announce, test_l2_payload_requires_routing_dispatch)
 	zassert_ok(lichen_announce_register_app_data_observer(capture_callback,
 							      &state));
 	len = build_signed_announce(announce, sizeof(announce), seed_a, 1U,
-				    app_data, sizeof(app_data));
+				    0U /* rx_channel */, app_data, sizeof(app_data));
 	wrapped[0] = LICHEN_L2_DISPATCH_ROUTING;
 	memcpy(&wrapped[1], announce, len);
 
@@ -313,7 +313,7 @@ ZTEST(routing_announce, test_callback_failure_allows_same_seq_retry)
 	zassert_ok(lichen_announce_register_app_data_observer(capture_callback,
 							      &state));
 	len = build_signed_announce(announce, sizeof(announce), seed_a, 7U,
-				    app_data, sizeof(app_data));
+				    0U /* rx_channel */, app_data, sizeof(app_data));
 
 	zassert_equal(lichen_announce_ingest_authenticated(announce, len, NULL),
 		      -EINVAL);

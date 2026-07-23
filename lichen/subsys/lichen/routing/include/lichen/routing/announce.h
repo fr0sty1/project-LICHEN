@@ -26,7 +26,7 @@ extern "C" {
 #endif
 
 #define LICHEN_ANNOUNCE_TYPE 0x01U
-#define LICHEN_ANNOUNCE_MIN_LEN 94U
+#define LICHEN_ANNOUNCE_MIN_LEN 93U
 #define LICHEN_ANNOUNCE_MAX_HOPS 15U
 #define LICHEN_ANNOUNCE_IID_LEN 8U
 #define LICHEN_ANNOUNCE_PUBKEY_LEN 32U
@@ -46,7 +46,6 @@ struct lichen_announce_view {
 	uint8_t hop_count;
 	uint8_t rx_channel;
 	uint16_t wire_seq_num;
-	uint8_t rx_channel;
 	uint32_t seq_num;
 	bool seq_stale;
 	const uint8_t *_Nonnull originator_iid;
