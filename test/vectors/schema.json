@@ -1,70 +1,109 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LICHEN test vector file",
-  "description": "Combined envelope from parallel worker branches (incl. worker8) for all LICHEN test vector files. Supports object with format_version enum[1,2] (v2 preferred, const=2 in most files), per-family docs (dedicated ccp15_document, ccp_load_balancing_document etc.), bare array root (for ccp16-desync.json), strict required fields, additionalProperties:false, oneOf/allOf for per-vector variants to enforce independent oracles/test integrity only. See README.md.",
+  "description": "Combined envelope from parallel worker branches (incl. worker8,worker20,worker23; resolved project-LICHEN-9r55 merge-conflict in worktree-worker20: schema.json) for all LICHEN test vector files. Supports object with format_version enum[1,2] (v2 preferred, const=2 in most files), per-family docs (dedicated ccp15_document, ccp_load_balancing_document, rpl_route_state_document, dao_origin_signature_document etc.), bare array root (for ccp16-desync.json), strict required fields, additionalProperties:false, oneOf/allOf for per-vector variants to enforce independent oracles/test integrity only. See README.md.",
   "oneOf": [
     {
       "type": "object",
       "required": ["format_version", "description", "vectors"],
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "format_version": {"type": "integer", "enum": [1, 2]},
         "description": {"type": "string"},
         "$schema": {"type": "string"},
+        "name": {"type": "string"},
+        "spec": {"type": "string"},
+        "vector_type": {"type": "string", "enum": ["rpl_route_state", "dao_origin_signature"]},
+        "oracle": {"type": "object"},
+        "oracle_provenance": {"type": "object"},
+        "sequence_relations": {"type": "array"},
+        "tx_sequence_transitions": {"type": "array"},
+        "route_hop_boundaries": {"type": "array"},
         "vectors": {
           "type": "array",
           "minItems": 1,
-            "items": {
-              "anyOf": [
-                {"$ref": "#/definitions/schc_vector"},
-                {"$ref": "#/definitions/schc_fragmentation_vector"},
-                {"$ref": "#/definitions/l2_payload_vector"},
-                {"$ref": "#/definitions/frame_vector"},
-                {"$ref": "#/definitions/announce_coords_vector"},
-                {"$ref": "#/definitions/meshtastic_app_compat_vector"},
-                {"$ref": "#/definitions/meshcore_app_compat_vector"},
-                {"$ref": "#/definitions/oscore_vector"},
-                {"$ref": "#/definitions/rpl_messages_vector"},
-                {"$ref": "#/definitions/ccp13_vector"},
-                {"$ref": "#/definitions/ccp15_vector"},
-                {"$ref": "#/definitions/ccp_vector"},
-                {"$ref": "#/definitions/compact_cot_vector"},
-                {"$ref": "#/definitions/schnorr48_vector"},
-                {"$ref": "#/definitions/hash_32_vector"},
-                {"$ref": "#/definitions/ccp_load_balancing_vector"}
-              ]
-            }
+          "items": {
+            "anyOf": [
+              {"$ref": "#/definitions/schc_vector"},
+              {"$ref": "#/definitions/schc_fragmentation_vector"},
+              {"$ref": "#/definitions/l2_payload_vector"},
+              {"$ref": "#/definitions/frame_vector"},
+              {"$ref": "#/definitions/announce_coords_vector"},
+              {"$ref": "#/definitions/meshtastic_app_compat_vector"},
+              {"$ref": "#/definitions/meshcore_app_compat_vector"},
+              {"$ref": "#/definitions/oscore_vector"},
+              {"$ref": "#/definitions/rpl_messages_vector"},
+              {"$ref": "#/definitions/rpl_route_state_vector"},
+              {"$ref": "#/definitions/dao_origin_signature_vector"},
+              {"$ref": "#/definitions/ccp13_vector"},
+              {"$ref": "#/definitions/ccp15_vector"},
+              {"$ref": "#/definitions/ccp_vector"},
+              {"$ref": "#/definitions/compact_cot_vector"},
+              {"$ref": "#/definitions/schnorr48_vector"},
+              {"$ref": "#/definitions/hash_32_vector"},
+              {"$ref": "#/definitions/ccp_load_balancing_vector"}
+            ]
           }
         }
       },
-      {
-        "type": "array",
-        "minItems": 1,
-        "items": {
-          "anyOf": [
-            {"$ref": "#/definitions/schc_vector"},
-            {"$ref": "#/definitions/schc_fragmentation_vector"},
-            {"$ref": "#/definitions/l2_payload_vector"},
-            {"$ref": "#/definitions/frame_vector"},
-
-           {"$ref": "#/definitions/announce_coords_vector"},
-           {"$ref": "#/definitions/meshtastic_app_compat_vector"},
-           {"$ref": "#/definitions/meshcore_app_compat_vector"},
-           {"$ref": "#/definitions/oscore_vector"},
-           {"$ref": "#/definitions/rpl_messages_vector"},
-           {"$ref": "#/definitions/ccp13_vector"},
-           {"$ref": "#/definitions/ccp15_vector"},
-           {"$ref": "#/definitions/ccp_vector"},
-           {"$ref": "#/definitions/compact_cot_vector"},
-           {"$ref": "#/definitions/schnorr48_vector"},
-           {"$ref": "#/definitions/hash_32_vector"},
-           {"$ref": "#/definitions/ccp_load_balancing_vector"}
-          ]
+      "allOf": [
+        {
+          "if": {
+            "properties": {"vector_type": {"const": "dao_origin_signature"}},
+            "required": ["vector_type"]
+          },
+          "then": {
+            "required": ["oracle_provenance"]
+          }
         },
-        "description": "v2 bare array root (used by ccp16-desync.json for desync test vectors)"
-      }
-    ],
-   "definitions": {
+        {
+          "if": {
+            "required": ["oracle_provenance"]
+          },
+          "then": {
+            "required": ["vector_type"]
+          }
+        },
+        {
+          "if": {
+            "properties": {"vector_type": {"const": "rpl_route_state"}},
+            "required": ["vector_type"]
+          },
+          "then": {
+            "required": ["oracle", "sequence_relations"]
+          }
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "anyOf": [
+          {"$ref": "#/definitions/schc_vector"},
+          {"$ref": "#/definitions/schc_fragmentation_vector"},
+          {"$ref": "#/definitions/l2_payload_vector"},
+          {"$ref": "#/definitions/frame_vector"},
+          {"$ref": "#/definitions/announce_coords_vector"},
+          {"$ref": "#/definitions/meshtastic_app_compat_vector"},
+          {"$ref": "#/definitions/meshcore_app_compat_vector"},
+          {"$ref": "#/definitions/oscore_vector"},
+          {"$ref": "#/definitions/rpl_messages_vector"},
+          {"$ref": "#/definitions/rpl_route_state_vector"},
+          {"$ref": "#/definitions/dao_origin_signature_vector"},
+          {"$ref": "#/definitions/ccp13_vector"},
+          {"$ref": "#/definitions/ccp15_vector"},
+          {"$ref": "#/definitions/ccp_vector"},
+          {"$ref": "#/definitions/compact_cot_vector"},
+          {"$ref": "#/definitions/schnorr48_vector"},
+          {"$ref": "#/definitions/hash_32_vector"},
+          {"$ref": "#/definitions/ccp_load_balancing_vector"}
+        ]
+      },
+      "description": "v2 bare array root (used by ccp16-desync.json for desync test vectors)"
+    }
+  ],
+  "definitions": {
     "document_base": {
       "type": "object",
       "required": ["format_version", "description", "vectors"],
@@ -1103,6 +1142,95 @@
         "signature": {"$ref": "#/definitions/hex"},
         "valid": {"type": "boolean"}
       }
+    },
+    "rpl_route_state_vector": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "dao_hex": {"$ref": "#/definitions/hex"},
+        "dao_sequence": {"type": "integer"},
+        "flags": {"type": "integer"},
+        "reserved": {"type": "integer"},
+        "before": {"type": "object"},
+        "expected": {"type": "object"},
+        "coverage": {"type": "string"}
+      }
+    },
+    "dao_origin_signature_vector": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "coverage": {"type": "string"},
+        "signing_seed": {"$ref": "#/definitions/hex"},
+        "public_key": {"$ref": "#/definitions/hex"},
+        "source_ipv6": {"$ref": "#/definitions/hex"},
+        "effective_instance_id": {"type": "integer"},
+        "active_dodag_id": {"$ref": "#/definitions/hex"},
+        "effective_dodag_id": {"$ref": "#/definitions/hex"},
+        "sequence": {"type": "integer"},
+        "unsigned_dao": {"$ref": "#/definitions/hex"},
+        "digest": {"$ref": "#/definitions/hex"},
+        "signature_option": {"$ref": "#/definitions/hex"},
+        "option_offset": {"type": "integer"},
+        "signed_dao": {"$ref": "#/definitions/hex"},
+        "key_available": {"type": "boolean"},
+        "prior": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "object"}
+          ]
+        },
+        "expected": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "accepted": {"type": "boolean"},
+            "decision_stage": {"type": "string"},
+            "envelope_valid": {"type": "boolean"},
+            "reason": {"type": "string"},
+            "replay_persisted": {"type": "boolean"},
+            "route_changed": {"type": "boolean"},
+            "signature_valid": {"type": "boolean"}
+          }
+        }
+      }
+    },
+    "rpl_route_state_document": {
+      "allOf": [
+        {"$ref": "#/definitions/document_base"},
+        {
+          "properties": {
+            "vector_type": {"const": "rpl_route_state"},
+            "oracle": {"type": "object"},
+            "sequence_relations": {"type": "array"},
+            "tx_sequence_transitions": {"type": "array"},
+            "route_hop_boundaries": {"type": "array"},
+            "vectors": {
+              "items": {"$ref": "#/definitions/rpl_route_state_vector"}
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "dao_origin_signature_document": {
+      "allOf": [
+        {"$ref": "#/definitions/document_base"},
+        {
+          "properties": {
+            "vector_type": {"const": "dao_origin_signature"},
+            "oracle_provenance": {"type": "object"},
+            "vectors": {
+              "items": {"$ref": "#/definitions/dao_origin_signature_vector"}
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
     }
   }
 }
