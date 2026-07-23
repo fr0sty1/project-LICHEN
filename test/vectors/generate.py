@@ -1854,9 +1854,11 @@ def ccp12_synchronized_hop_vectors() -> list[dict]:
             "sfn": 12345678,
             "rx_channel": 3,
             "next_rendezvous_us": 1000000,
-            "description": "Beacon/DIO rendezvous announcement format per spec/02a-coordinated-capacity.md.",
-        },
-    ]
+            "expected_channel": 3,
+            "description": "Beacon/DIO rendezvous uses rx_channel preference (CCP-12 over pure hash for known peers).",
+        }
+    )
+    return vectors
 
 
 def ccp9_vectors() -> list[dict]:

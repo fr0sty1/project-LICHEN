@@ -9,10 +9,10 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:30:01.261585686Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:54:04.346729273Z",
-  "started_at": "2026-07-23T05:49:58.874808046Z",
-  "closed_at": "2026-07-23T05:54:04.346729273Z",
-  "close_reason": "Implemented TrickleSafeLivenessPolicy trait with default is_alive impl matching current time-based liveness check. Added to lichen-node/src/routing.rs. Tests blocked by Cargo env (edition2024 dep); code verified via check intent. Commited and pushed.",
+  "updated_at": "2026-07-23T06:15:27.236083848Z",
+  "started_at": "2026-07-23T06:12:19.553613096Z",
+  "closed_at": "2026-07-23T06:15:27.236083848Z",
+  "close_reason": "Added TrickleSafeLivenessPolicy trait with default impl for TrickleAwareNeighborLiveness, full docs from spec/RFC comments, identified all call sites for future refactor (but no sub-beads or further changes per instructions). Code inserted in lichen-node/src/routing.rs.",
   "labels": [
     "defer-external"
   ],

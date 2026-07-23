@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "SCHC whole-packet compression vectors (RFC 8724). 'packet' is the full uncompressed IPv6 datagram; 'compressed' is compress_packet(packet). Round-trip: compress(packet) == compressed and decompress(compressed) == packet. Includes IPv6/ICMPv6 malformed vectors (invalid multicast source address, bad ICMP type) per RFC 4443 with category:malformed, expect_error, wire hex.",
+  "description": "SCHC whole-packet compression vectors (RFC 8724). 'packet' is the full uncompressed IPv6 datagram; 'compressed' is compress_packet(packet). Round-trip: compress(packet) == compressed and decompress(compressed) == packet. Includes UDP and ICMPv6 malformed cases for cross-layer testing per RFC 4443 (bad checksum, truncated, length mismatch, invalid multicast source address, bad type).",
   "vectors": [
     {
       "name": "coap_linklocal",
@@ -39,18 +39,53 @@
       "compressed": "044000000000000000010000000000000002004005fe800000000000000000000000000001"
     },
     {
-      "name": "invalid_ipv6_source_multicast",
+      "name": "udp_truncated",
       "category": "malformed",
-      "provenance": "RFC 4443 §2.4(e): silently discard ICMPv6 packets (incl. Echo Request) with multicast source address. Independent oracle; matches test_handle_multicast_src_drops and icmpv6.py:283, rust/lichen-ipv6 equivalent.",
-      "wire": "6000000000103a40ff020000000000000000000000000001fe80000000000000000000000000000280000390abcd12347465737464617461",
-      "expect_error": "multicast_source"
+      "provenance": "RFC 768 §3.1: UDP header is 8 bytes minimum. Mirrors ICMPv6 too-short handling (project-LICHEN-2auf.41.2.3.1.1).",
+      "wire": "6000000000041140fe800000000000000000000000000001fe80000000000000000000000000000216331633",
+      "expect_error": "udp_too_short"
     },
     {
-      "name": "bad_icmp_type",
+      "name": "udp_bad_checksum",
       "category": "malformed",
-      "provenance": "RFC 4443 §2.3/3.1: unknown ICMPv6 type (0x63) raises Icmpv6Error(\"invalid error message type\"). Independent oracle from RFC and icmpv6.py:203.",
-      "wire": "60000000000b3a40fe800000000000000000000000000001fe8000000000000000000000000000026300fa6e62616474797065",
-      "expect_error": "invalid_error_message_type"
+      "provenance": "RFC 8200 §8.1, RFC 4443 §2.3: invalid UDP checksum must drop silently. Mirrors bad ICMPv6 checksum.",
+      "wire": "60000000000c1140fe800000000000000000000000000001fe80000000000000000000000000000216331633000cffff74657374",
+      "expect_error": "bad_udp_checksum"
+    },
+    {
+      "name": "udp_length_mismatch",
+      "category": "malformed",
+      "provenance": "RFC 768: length field must match datagram size. Mirrors ICMPv6 length validation.",
+      "wire": "60000000000c1140fe800000000000000000000000000001fe8000000000000000000000000000021633163300080ee974657374",
+      "expect_error": "udp_length_mismatch"
+    },
+    {
+      "name": "icmpv6_invalid_source_multicast",
+      "category": "malformed",
+      "provenance": "RFC 4443 §2.4(e): ICMPv6 messages MUST NOT be sent with multicast source address (ff02::1); silently discarded by handle_icmpv6 and Icmpv6EchoProfile._is_link_local check. Independent oracle.",
+      "wire": "60000000000c3a40ff020000000000000000000000000001fe80000000000000000000000000000280003ab51234567870696e67",
+      "expect_error": "invalid_source_address"
+    },
+    {
+      "name": "icmpv6_bad_type",
+      "category": "malformed",
+      "provenance": "RFC 4443 §2.3 and §3: unrecognized ICMPv6 type (99) is silently discarded; no matching SCHC profile (not echo 128/129 or RPL 155). Independent oracle.",
+      "wire": "6000000000073a40fe800000000000000000000000000001fe8000000000000000000000000000026300d957626164",
+      "expect_error": "bad_icmp_type"
+    },
+    {
+      "name": "icmpv6_too_short",
+      "category": "malformed",
+      "provenance": "RFC 4443 §2.3: ICMPv6 messages shorter than minimum header size are malformed and silently discarded. Mirrors udp_truncated (project-LICHEN-2auf.41.2.3.1.1). Python oracle from test_icmpv6.py:handle_icmpv6.",
+      "wire": "6000000000043a40fe800000000000000000000000000001fe80000000000000000000000000000280000000",
+      "expect_error": "icmpv6_too_short"
+    },
+    {
+      "name": "icmpv6_bad_checksum",
+      "category": "malformed",
+      "provenance": "RFC 4443 §2.3: invalid ICMPv6 checksum must be silently discarded. Corrupted from valid EchoRequest using Python icmpv6_checksum oracle. Mirrors bad_udp_checksum.",
+      "wire": "60000000000c3a40fe800000000000000000000000000001fe8000000000000000000000000000028000f80fabcd000770696e67",
+      "expect_error": "bad_icmpv6_checksum"
     }
   ]
 }

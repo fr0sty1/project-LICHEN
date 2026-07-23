@@ -247,18 +247,58 @@ fn hkdf_extract(salt: &[u8], ikm: &[u8]) -> Zeroizing<[u8; 32]> {
     Zeroizing::new(prk.into())
 }
 
+/// EDHOC-KDF (RFC 9528 Section 4.1.2).
+///
+/// EDHOC-KDF(PRK, TH, label, context, length) = HKDF-Expand(PRK, info, length)
+/// where info = (length, TH, label, context) as a CBOR sequence.
 fn edhoc_kdf(
     prk: &[u8; 32],
-    th: &[u8],
+    th: &[u8; 32],
     label: &str,
     context: &[u8],
     length: usize,
 ) -> Result<heapless::Vec<u8, 128>, EdhocError> {
     let mut info = heapless::Vec::<u8, 128>::new();
-    encode_uint(&mut info, length)?;
-    encode_bstr(&mut info, th)?;
-    encode_tstr(&mut info, label)?;
-    encode_bstr(&mut info, context)?;
+
+    if length <= 23 {
+        info.push_err(length as u8)?;
+    } else {
+        info.push_err(0x18)?;
+        info.push_err(length as u8)?;
+    }
+
+    // TH as bstr(32)
+    info.push_err(0x58)?;
+    info.push_err(32)?;
+    info.extend_err(th)?;
+
+    // label as tstr
+    let label_bytes = label.as_bytes();
+    if label_bytes.len() > 255 {
+        return Err(EdhocError::BufferTooSmall);
+    }
+    if label_bytes.len() <= 23 {
+        info.push_err(0x60 | label_bytes.len() as u8)?;
+    } else {
+        info.push_err(0x78)?;
+        info.push_err(label_bytes.len() as u8)?;
+    }
+    info.extend_err(label_bytes)?;
+
+    // context as bstr
+    if context.is_empty() {
+        info.push_err(0x40)?;
+    } else if context.len() <= 23 {
+        info.push_err(0x40 | context.len() as u8)?;
+        info.extend_err(context)?;
+    } else if context.len() <= 255 {
+        info.push_err(0x58)?;
+        info.push_err(context.len() as u8)?;
+        info.extend_err(context)?;
+    } else {
+        return Err(EdhocError::BufferTooSmall);
+    }
+
     let hk = Hkdf::<Sha256>::from_prk(prk).map_err(|_| EdhocError::KeyDerivation)?;
     let mut okm = heapless::Vec::<u8, 128>::new();
     okm.resize(length, 0)
@@ -748,7 +788,7 @@ impl EdhocInitiator {
 
             // Decrypt CIPHERTEXT_2 with KEYSTREAM_2
             let keystream_2 =
-                edhoc_kdf(&self.state.prk_2e, &self.state.th_2, "KEYSTREAM_2", b"", ciphertext_2.len())?;
+                edhoc_kdf(&self.state.prk_2e, &self.state.th_2, "KEYSTREAM_2", &[], ciphertext_2.len())?;
             let mut plaintext_2 = SecretVec::<128>::new();
             for (i, &b) in ciphertext_2.iter().enumerate() {
                 plaintext_2.push_err(b ^ keystream_2[i])?;
@@ -844,8 +884,8 @@ impl EdhocInitiator {
             self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3, &credential_i)?;
 
             // K_3 and IV_3 for AEAD
-            let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", b"", KEY_LEN)?;
-            let iv_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "IV_3", b"", NONCE_LEN)?;
+            let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", &[], KEY_LEN)?;
+            let iv_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "IV_3", &[], NONCE_LEN)?;
 
             let mut a_3 = heapless::Vec::<u8, 64>::new();
             a_3.push_err(0x83)?;
@@ -1127,7 +1167,7 @@ impl EdhocResponder {
 
             // Encrypt with KEYSTREAM_2
             let keystream_2 =
-                edhoc_kdf(&self.state.prk_2e, &self.state.th_2, "KEYSTREAM_2", b"", plaintext_2.len())?;
+                edhoc_kdf(&self.state.prk_2e, &self.state.th_2, "KEYSTREAM_2", &[], plaintext_2.len())?;
             let mut ciphertext_2 = heapless::Vec::<u8, 128>::new();
             for (i, &b) in plaintext_2.iter().enumerate() {
                 ciphertext_2.push_err(b ^ keystream_2[i])?;
@@ -1187,8 +1227,8 @@ impl EdhocResponder {
             }
 
             // K_3 and IV_3 for AEAD decryption
-            let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", b"", KEY_LEN)?;
-            let iv_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "IV_3", b"", NONCE_LEN)?;
+            let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", &[], KEY_LEN)?;
+            let iv_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "IV_3", &[], NONCE_LEN)?;
 
             // A_3 (AAD)
             let mut a_3 = heapless::Vec::<u8, 64>::new();
@@ -1595,7 +1635,7 @@ mod tests {
 
         let prk_out = hex!("77da318df09d26aa4cc69be602930750c32b5551d7a053d52000265d3c180eac");
         assert_eq!(
-            edhoc_kdf(&prk_2e, &th_4, "7", &[], 32).unwrap().as_slice(),
+            edhoc_kdf(&prk_2e, &th_4, "PRK_out", &[], 32).unwrap().as_slice(),
             prk_out
         );
         let prk_exporter = hex!("a0ef8465a68d81f448c85ea6118170d1f65fa03ef4277250b74a599b3353ab02");

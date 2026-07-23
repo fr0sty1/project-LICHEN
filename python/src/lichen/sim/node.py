@@ -143,10 +143,9 @@ class SimNode:
         """
         return self.connected
 
-    def synchronized_hop_channel(self, sfn: int | None = None) -> int:
-        """Compute current hop channel from node's hop_schedule tuple for CCP-12.
-        Matches test vectors in ccp16-hop.json. Uses independent oracle.
-        Reference spec/02a-coordinated-capacity.md. No dead code.
+    def get_hop_channel(self, sfn: int | None = None) -> int:
+        """Derive hop channel from hop_schedule+SFN (CCP-12) or current_channel.
+        Matches spec/02a-coordinated-capacity.md:120, ccp16-hop.json:7.
         """
         if sfn is None:
             sfn = self.tdma_scheduler.clock.sfn

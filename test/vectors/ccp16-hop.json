@@ -17,9 +17,18 @@
       "sfn": 1,
       "seed": 42,
       "num_channels": 16,
-      "expected_channel": 5,
-      "hash_32": 926423932,
-      "description": "Example rendezvous channel selection per CCP-12 using real hash_32."
+      "expected_channel": 12,
+      "hash_output": "0x37381b7c",
+      "description": "SFN increment with different seed via hash_32(EUI||SFN) % nch (FNV basis 0x811c9dc5, CCP-12). Cross-impl test vectors."
+    },
+    {
+      "name": "hop_sfn4294967295_8ch",
+      "sfn": 4294967295,
+      "seed": 42,
+      "num_channels": 8,
+      "expected_channel": 1,
+      "hash_output": "0x211a6929",
+      "description": "SFN wraparound edge case via hash_32(EUI||SFN) % nch (FNV basis 0x811c9dc5, CCP-12). Cross-impl test vectors."
     },
     {
       "name": "density_high_ch0",
@@ -45,7 +54,8 @@
       "sfn": 12345678,
       "rx_channel": 3,
       "next_rendezvous_us": 1000000,
-      "description": "Beacon/DIO rendezvous announcement format per spec/02a-coordinated-capacity.md."
+      "expected_channel": 3,
+      "description": "Beacon/DIO rendezvous uses rx_channel preference (CCP-12 over pure hash for known peers)."
     }
   ]
 }
