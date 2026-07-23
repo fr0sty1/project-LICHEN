@@ -2,15 +2,15 @@
   "id": "project-LICHEN-dind",
   "title": "[merge-conflict] worktree-worker23: xiao_s3_wio_sx1262.conf",
   "notes": "Commit: 0ad8ac6b3",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:42:23.581928175Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:52:18.714069138Z",
+  "updated_at": "2026-07-23T01:52:21.106451807Z",
   "started_at": "2026-07-23T01:51:20.18331287Z",
-  "lease_expires_at": "2026-07-23T01:56:20.18331287Z",
-  "heartbeat_at": "2026-07-23T01:51:20.18331287Z"
+  "closed_at": "2026-07-23T01:52:21.106451807Z",
+  "close_reason": "Standardized retirement comment in worker23 worktree xiao_s3_wio_sx1262.conf to match canonical version from project-LICHEN-2u26 audit. Updated merge conflict resolution note to reference project-LICHEN-dind. Committed and pushed to worktree-worker23 branch."
 }
