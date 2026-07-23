@@ -2,15 +2,15 @@
   "id": "project-LICHEN-rmyv",
   "title": "[merge-conflict] worktree-worker23: coap_status.c",
   "notes": "Commit: 4cd6adce6",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:19:37.523280436Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:18:52.269098254Z",
+  "updated_at": "2026-07-23T02:18:54.841442233Z",
   "started_at": "2026-07-23T02:16:06.073546575Z",
-  "lease_expires_at": "2026-07-23T02:21:06.073546575Z",
-  "heartbeat_at": "2026-07-23T02:16:06.073546575Z"
+  "closed_at": "2026-07-23T02:18:54.841442233Z",
+  "close_reason": "Cleaned duplicate includes and dead mutex from merge conflict in coap_status.c; fixed map_count=5 and time_fields=2 for correct CBOR; resolved related board conf merge conflict. Commit 4cd6adce6. All codereview issues from parallel workers addressed per NO LAZINESS rule."
 }
