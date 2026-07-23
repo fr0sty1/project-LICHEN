@@ -427,10 +427,14 @@ int lichen_config_decode_radio_cbor(const uint8_t *buf, size_t len,
 				(void)zcbor_list_map_end_force_decode(state);
 				return -EINVAL;
 			}
+<<<<<<< HEAD
 			/* Parse "0x34" format - max 4 hex digits for uint16_t.
 			 * Bound <=6 prevents UB on maliciously long strings.
 			 * Accepts "0x34", "0x0034", "0x1234" etc.
 			 */
+=======
+			/* Parse "0x34" format - max 4 hex digits for uint16_t */
+>>>>>>> origin/worktree-worker19
 			if (val.len >= 2 && val.len <= 6 && val.value[0] == '0' &&
 			    (val.value[1] == 'x' || val.value[1] == 'X')) {
 				unsigned long v = 0;
