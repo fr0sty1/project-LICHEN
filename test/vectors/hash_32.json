@@ -1,6 +1,6 @@
 {
   "format_version": 2,
-  "description": "Test vectors for lichen_hash_32 FNV-1a32 primitive (basis=0x811c9dc5, for each byte h=(h^b)*0x01000193 mod 2^32). Canonical for IID, TDMA slots, CCP channel/hop/load_factor selection per spec/02a-coordinated-capacity.md §2a.3 and test/vectors/ccp*.json. Matches Rust lichen-core::lichen_hash_32, lichen-link::identity::hash_32, Python _hash_32 exactly. Independent oracle (not derived from impl). Fixes cross-impl inconsistency (project-LICHEN-eirg). All impls MUST match.",
+  "description": "Test vectors for lichen_hash_32 FNV-1a32 primitive (basis=0x811c9dc5, for each byte h=(h^b)*0x01000193 mod 2^32). Used for TDMA slots, CCP channel/hop/load_factor selection per spec/02a-coordinated-capacity.md §2a.3 and test/vectors/ccp*.json. Matches Rust lichen-core::lichen_hash_32, Python _hash_32 exactly. IID now uses independent SHA-256 (project-LICHEN-iqxx). Independent oracle. All impls MUST match.",
   "vectors": [
     {
       "name": "empty",
@@ -19,13 +19,6 @@
       "input_hex": "0000000000000000000000000000000000000000000000000000000000000000",
       "output": "0x0b2ae445",
       "description": "hash_32(0x00*32) = 0x0b2ae445"
-    },
-    {
-      "name": "iid_derivation_zero",
-      "pubkey_hex": "0000000000000000000000000000000000000000000000000000000000000000",
-      "iid": "092ae445d885570c",
-      "human_address": "0JAQ-48QC-8ANRC",
-      "description": "IID = hash_32(pubkey)[0:4] + hash_32(pubkey+0x01)[0:4] (BE, U/L bit cleared per RFC 4291)"
     }
   ]
 }
