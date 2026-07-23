@@ -49,7 +49,7 @@ config LICHEN_COAP_SERVER
 	default y
 	help
 	  Enable LICHEN CoAP server for responding to requests from mesh nodes.
-	  Exposes LCI resources: /status, /config, /neighbors, /key, /msg/inbox,
+	  Exposes LCI resources: /status, /config, /neighbors, /keys, /msg/inbox,
 	  and /.well-known/core for resource discovery.
 
 config LICHEN_COAP_SERVER_STANDALONE
@@ -60,7 +60,8 @@ config LICHEN_COAP_SERVER_STANDALONE
 	help
 	  Compile the subsystem-owned COAP_SERVICE (lichen_coap_server) from
 	  coap_server.c, which registers its own /status, /config, /neighbors,
-	  /key and /msg/inbox resources.
+	  /msg/inbox resources. The /keys resource is provided by the
+	  LICHEN_COAP_KEYS module (coap_keys.c).
 
 	  Keep this off in applications that define their own CoAP service
 	  and use the per-resource handler modules (LICHEN_COAP_STATUS,

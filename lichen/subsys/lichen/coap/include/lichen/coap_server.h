@@ -9,7 +9,7 @@
  * - /status - Node status (GET)
  * - /config - Node configuration (GET/PUT)
  * - /neighbors - Neighbor table (GET)
- * - /key - Public key (GET)
+ * - /keys - Peer key store (GET/PUT/DELETE via coap_keys module)
  * - /msg/inbox - Messages (GET/POST)
  * - /deaddrop - Dead drop DTN (POST/GET with ?recipient query)
  * - /.well-known/core - Resource discovery (GET)
@@ -113,17 +113,6 @@ typedef int (*lichen_coap_config_put_cb)(const uint8_t *_Nonnull payload,
 typedef int (*lichen_coap_neighbors_cb)(uint8_t *_Nonnull buf, size_t buf_len);
 
 /**
- * @brief Public key provider callback
- *
- * Called when /key GET is accessed. Implementation should return
- * the node's public key.
- *
- * @param[out] pubkey Buffer to write 32-byte public key
- * @return 0 on success, negative error code on failure
- */
-typedef int (*lichen_coap_key_cb)(uint8_t pubkey[32]);
-
-/**
  * @brief Message inbox provider callback
  *
  * Called when /msg/inbox GET is accessed.
@@ -173,7 +162,6 @@ struct lichen_coap_server_handlers {
 	lichen_coap_config_get_cb config_get; /**< /config GET */
 	lichen_coap_config_put_cb config_put; /**< /config PUT */
 	lichen_coap_neighbors_cb neighbors;   /**< /neighbors GET */
-	lichen_coap_key_cb key;               /**< /key GET */
 	lichen_coap_msg_get_cb msg_get;       /**< /msg/inbox GET */
 	lichen_coap_msg_post_cb msg_post;     /**< /msg/inbox POST */
 	lichen_coap_deaddrop_cb deaddrop;
