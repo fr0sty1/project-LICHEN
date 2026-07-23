@@ -17,6 +17,7 @@
 //! Meshtastic MeshPackets using IP_TUNNEL_APP (portnum 33).
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![forbid(unsafe_code)]
 
 #[cfg(any(feature = "alloc", test))]
 extern crate alloc;

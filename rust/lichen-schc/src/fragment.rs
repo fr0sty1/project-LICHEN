@@ -1,5 +1,3 @@
-#![forbid(unsafe_code)]
-
 //! Rule Set Version 2 SCHC ACK-on-Error fragmentation (RFC 8724 section 8).
 
 use lichen_core::{
