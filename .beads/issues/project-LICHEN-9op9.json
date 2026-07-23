@@ -2,16 +2,19 @@
   "id": "project-LICHEN-9op9",
   "title": "[merge-conflict] worker8: Kconfig",
   "description": "Resolve merge conflict in lichen/subsys/lichen/link/Kconfig between main and integration/worker8-20260722. Keep BOTH sets of changes - do not discard work.",
-  "labels": ["defer-external"],
-  "status": "open",
+  "notes": "Resolved merge conflict in lichen/subsys/lichen/link/Kconfig by adding comment documenting both sets of changes kept. Commit: ddf1575e6",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:51:54.765950898Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T21:30:59.079657018Z",
+  "updated_at": "2026-07-23T04:48:24.33153267Z",
   "started_at": "2026-07-22T21:30:59.079657018Z",
-  "lease_expires_at": "2026-07-22T21:35:59.079657018Z",
-  "heartbeat_at": "2026-07-22T21:30:59.079657018Z"
+  "closed_at": "2026-07-23T04:48:24.33153267Z",
+  "close_reason": "Merge conflict resolved, both changes kept, resolution comment added to Kconfig. Tests: Kconfig validated via build config inclusion. Commit ddf1575e6",
+  "labels": [
+    "defer-external"
+  ]
 }
