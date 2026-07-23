@@ -45,6 +45,7 @@ class KissSerialConnection:
     _reader: KissReader = field(default_factory=KissReader)
     _closed: bool = False
     _loop: asyncio.AbstractEventLoop | None = field(default=None, repr=False)
+    _open_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
 
     def __post_init__(self) -> None:
         # Wire up handler's TX callback to our on_frame
@@ -53,20 +54,21 @@ class KissSerialConnection:
 
     async def open(self) -> None:
         """Open the serial port."""
-        if self._serial is not None:
-            return
+        async with self._open_lock:
+            if self._serial is not None:
+                return
 
-        self._loop = asyncio.get_running_loop()
+            self._loop = asyncio.get_running_loop()
 
-        def _open():
-            return serial.Serial(
-                self.port,
-                self.baudrate,
-                timeout=0.1,
-            )
+            def _open():
+                return serial.Serial(
+                    self.port,
+                    self.baudrate,
+                    timeout=0.1,
+                )
 
-        self._serial = await self._loop.run_in_executor(None, _open)
-        log.info("opened KISS serial %s at %d baud", self.port, self.baudrate)
+            self._serial = await self._loop.run_in_executor(None, _open)
+            log.info("opened KISS serial %s at %d baud", self.port, self.baudrate)
 
     @property
     def closed(self) -> bool:
