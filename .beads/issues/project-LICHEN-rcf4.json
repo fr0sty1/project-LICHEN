@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-rcf4",
+  "title": "[cross-impl] senml_pack_init omits bt=0 despite test vectors",
+  "description": "Zephyr lichen/subsys/lichen/senml/senml.c:80 only sets has_base_time if (base_time \u003e 0). Tests in lichen/tests/senml/main.c:122 use base_time=0 and expect VEC_TEMP_SIMPLE (includes 0x22/0 for bt, map size a4). Python/src/lichen/senml/codec.py and Rust/lichen-senml/src/cbor.rs include bt=0. Violates cross-impl consistency for same SenML encoding algorithm per spec/appendix-senml.md and test/vectors/. CBOR bytes differ. Reviewed last 20 commits (31da356b5..a138b09b0): senml.c fix (33617d47e) and gateway.rs (c9406dea5) plus bd merges. This is the primary cross-impl divergence found.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:05:19.902857949Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:05:19.902857949Z"
+}
