@@ -1,16 +1,16 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "Independent test vectors for CCP-12 synchronized hopping sequence and channel selection using hash_32 FNV-1a32 primitive (basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123). Oracle is external FNV computation matching Rust/Python/C lichen_hash_32. Covers SFN wraparound, rendezvous. Matches spec/02a-coordinated-capacity.md. Computed independently using external arithmetic (no LICHEN code oracle). Follows test vector discipline per RustCrypto workflow.",
+  "description": "CCP-12 synchronized hop vectors matching spec/02a:120 SelectChannel pseudocode using shared hash_32(FNV). Independent oracle per test integrity rules. Includes SFN wrap, multi-channel (8/16), rendezvous, density fallback. Covers ccp16-hop.json.",
   "vectors": [
     {
       "name": "hop_sfn0_8ch",
       "sfn": 0,
       "seed": 0,
       "num_channels": 8,
-      "expected_channel": 7,
+      "expected_channel": 6,
       "hash_32": 2166136261,
-      "description": "SFN=0 selects channel via hash_32(0) % 8 (FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123). Independent oracle."
+      "description": "SFN=0 selects channel via hash_32 per spec 02a:120 SelectChannel pseudocode + hash_32. Independent oracle."
     },
     {
       "name": "hop_sfn1_16ch",
@@ -20,6 +20,25 @@
       "expected_channel": 5,
       "hash_32": 926423932,
       "description": "Example rendezvous channel selection per CCP-12 using real hash_32."
+    },
+    {
+      "name": "density_high_ch0",
+      "sfn": 0,
+      "seed": 0,
+      "num_channels": 8,
+      "density": 9,
+      "expected_channel": 0,
+      "hash_32": 2166136261,
+      "description": "Density>8 returns 0 per SelectChannel pseudocode line 1."
+    },
+    {
+      "name": "sfn_wrap",
+      "sfn": 4294967295,
+      "seed": 0,
+      "num_channels": 8,
+      "expected_channel": 2,
+      "hash_32": 555378985,
+      "description": "SFN wraparound per spec Now() u32 mod and SelectChannel."
     },
     {
       "name": "rendezvous_beacon_announce",

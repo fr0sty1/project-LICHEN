@@ -1809,13 +1809,7 @@ def ccp16_vectors() -> list[dict]:
     ]
 
 
-def ccp16_hop_vectors() -> list[dict]:
-    """Independent test vectors for CCP-12 synchronized hopping and channel
-    selection. Uses real lichen_hash_32 / _hop_hash with FNV-1a32 (basis
-    0x811c9dc5 per spec/02a-coordinated-capacity.md:123). External arithmetic
-    oracle, no computed-via or placeholder strings. Matches ccp16-hop.json
-    regeneration per wlgu.2.3.2.
-    """
+def ccp12_synchronized_hop_vectors() -> list[dict]:
     eui = bytes.fromhex("0011223344556677")
     return [
         {
@@ -1823,9 +1817,9 @@ def ccp16_hop_vectors() -> list[dict]:
             "sfn": 0,
             "seed": 0,
             "num_channels": 8,
-            "expected_channel": 7,
+            "expected_channel": 6,
             "hash_32": hash_32(b""),
-            "description": "SFN=0 selects channel via hash_32(0) % 8 (FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123). Independent oracle.",
+            "description": "SFN=0 selects channel via hash_32 per spec 02a:120 SelectChannel pseudocode + hash_32. Independent oracle.",
         },
         {
             "name": "hop_sfn1_16ch",
@@ -1835,6 +1829,25 @@ def ccp16_hop_vectors() -> list[dict]:
             "expected_channel": 5,
             "hash_32": _hop_hash(eui, 1),
             "description": "Example rendezvous channel selection per CCP-12 using real hash_32.",
+        },
+        {
+            "name": "density_high_ch0",
+            "sfn": 0,
+            "seed": 0,
+            "num_channels": 8,
+            "density": 9,
+            "expected_channel": 0,
+            "hash_32": hash_32(b""),
+            "description": "Density>8 returns 0 per SelectChannel pseudocode line 1.",
+        },
+        {
+            "name": "sfn_wrap",
+            "sfn": 0xffffffff,
+            "seed": 0,
+            "num_channels": 8,
+            "expected_channel": 2,
+            "hash_32": _hop_hash(eui, 0xffffffff),
+            "description": "SFN wraparound per spec Now() u32 mod and SelectChannel.",
         },
         {
             "name": "rendezvous_beacon_announce",
@@ -2077,8 +2090,8 @@ def main() -> None:
     )
     _write(
         "ccp16-hop.json",
-        "Independent test vectors for CCP-12 synchronized hopping sequence and channel selection using hash_32 FNV-1a32 primitive (basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123). Oracle is external FNV computation matching Rust/Python/C lichen_hash_32. Covers SFN wraparound, rendezvous. Matches spec/02a-coordinated-capacity.md. Computed independently using external arithmetic (no LICHEN code oracle). Follows test vector discipline per RustCrypto workflow.",
-        ccp16_hop_vectors(),
+        "CCP-12 synchronized hop vectors matching spec/02a:120 SelectChannel pseudocode using shared hash_32(FNV). Independent oracle per test integrity rules. Includes SFN wrap, multi-channel (8/16), rendezvous, density fallback. Covers ccp16-hop.json.",
+        ccp12_synchronized_hop_vectors(),
     )
     _write(
         "ccp9.json",
