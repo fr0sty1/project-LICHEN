@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import IntEnum
 from ipaddress import IPv6Address
+from typing import Union
 
 from lichen.ipv6.icmpv6 import Icmpv6Message
 
@@ -329,7 +330,7 @@ class DAOAck:
         )
 
 
-RplMessage = DIS | DIO | DAO | DAOAck
+RplMessage = Union[DIS, DIO, DAO, DAOAck]
 
 _CODE_BY_TYPE = {
     DIS: RplCode.DIS,
