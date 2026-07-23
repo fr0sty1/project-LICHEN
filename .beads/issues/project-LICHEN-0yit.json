@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-0yit",
   "title": "[merge-conflict] worktree-worker20: messages.py",
-  "status": "in_progress",
+  "notes": "Commit: 0ceecc4",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:47:38.270351197Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:38:45.191745683Z",
+  "updated_at": "2026-07-23T03:41:49.768963619Z",
   "started_at": "2026-07-23T03:38:45.191745683Z",
-  "lease_expires_at": "2026-07-23T03:43:45.191745683Z",
-  "heartbeat_at": "2026-07-23T03:38:45.191745683Z"
+  "closed_at": "2026-07-23T03:41:49.768963619Z",
+  "close_reason": "Fixed import ordering, removed duplicate Union import, updated to modern | union syntax and added type hint to match project conventions; ruff and relevant tests now pass. Commit 0ceecc4"
 }
