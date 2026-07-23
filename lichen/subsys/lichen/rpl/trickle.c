@@ -111,7 +111,10 @@ void lichen_trickle_reset(struct lichen_trickle *t,
 	if (t == NULL) {
 		return;
 	}
-	if (t->transmit_time == 0 || t->interval > t->imin) {
+	/* interval == 0 is sentinel for "not yet started" (set in init).
+	 * Matches Rust/Python proxies for cross-impl determinism on
+	 * edge cases (time=0, init, u32 wrap). See rpl_trickle.h. */
+	if (t->interval == 0 || t->interval > t->imin) {
 		t->interval = t->imin;
 		begin_interval(t, now, rand_offset);
 	}

@@ -153,9 +153,10 @@ void lichen_trickle_expire(struct lichen_trickle *_Nonnull t,
 			   uint32_t rand_offset);
 
 /**
- * @brief Handle inconsistency: if I > Imin set I=Imin and restart (RFC 6206 §4.2 rule 6).
- *
- * Starts if stopped; no-op if already at Imin and running.
+ * @brief Handle inconsistency per RFC 6206 §4.2 rule 6: if not yet started
+ * (interval == 0) or I > Imin, set I = Imin and restart timer.
+ * No-op if already at Imin and running. Uses interval==0 sentinel for
+ * cross-impl consistency (Rust uses state==Stopped, Python _generation==0).
  *
  * @pre t must be non-NULL and initialized via lichen_trickle_init()
  * @param t           Timer
