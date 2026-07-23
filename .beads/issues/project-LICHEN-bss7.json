@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-bss7",
   "title": "[merge-conflict] worktree-worker18: main.c",
+  "notes": "Commit: 6c9bd9f2e",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:20.053076323Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:33:56.278451839Z",
+  "updated_at": "2026-07-23T03:38:16.908523276Z",
   "started_at": "2026-07-23T03:33:56.278451839Z",
   "lease_expires_at": "2026-07-23T03:38:56.278451839Z",
   "heartbeat_at": "2026-07-23T03:33:56.278451839Z"
