@@ -779,9 +779,6 @@ class Simulation:
             if result is not None:
                 payload, rssi, snr, tx_id, source_node_id = result
                 on_packet = node.rx_callbacks[0]
-
-<<<<<<< HEAD
-=======
                 self._metrics.record_reception(node_id, tx_id, self._current_time_us)
                 rx_log = {
                     "sim_id": self._id,
@@ -800,7 +797,6 @@ class Simulation:
                         event_queue_len=len(self._event_queue),
                     )
 
->>>>>>> origin/worktree-worker24
                 self._observers.notify(
                     "on_rx_success",
                     sim_id=self._id,

@@ -35,17 +35,12 @@ static void begin_interval(struct lichen_trickle *t,
 	t->counter = 0;
 	t->transmitted = false;
 
-<<<<<<< HEAD
 	/* Per RFC 6206 §4.2: t uniform in [I/2, I). Use (interval+1)/2 to avoid
-	 * off-by-one bias in integer division; range = I - half. Worker23 fix. */
+	 * off-by-one bias in integer division; range = I - half. Worker23 fix
+	 * (project-LICHEN-verh). */
 	uint32_t half = (t->interval + 1u) / 2u;
 	uint32_t range = t->interval - half;
 	uint32_t offset = (range > 0) ? (rand_offset % range) : 0;
-=======
-	uint32_t half = t->interval / 2;
-	/* transmit_time is uniform in [now + half, now + interval) */
-	uint32_t offset = (half > 0) ? (rand_offset % half) : 0;
->>>>>>> origin/worktree-worker18
 	t->transmit_time = sat_add_u32(sat_add_u32(now, half), offset);
 }
 

@@ -153,19 +153,13 @@ void lichen_trickle_expire(struct lichen_trickle *_Nonnull t,
 			   uint32_t rand_offset);
 
 /**
-	 * @brief Handle an inconsistency: shrink to imin and restart (RFC 6206 step 6).
+ * @brief Handle an inconsistency: shrink to imin and restart (RFC 6206 step 6).
  *
-<<<<<<< HEAD
  * No-op if already at imin and running (transmit_time != 0 && interval == imin).
  * Starts new interval at Imin if stopped (transmit_time==0) or if interval != imin
  * (per RFC 6206 §4.2). Matches Rust TrickleTimer::try_reset, the
  * reset_from_stopped_starts_timer test, and worker1 variant. Consistent with
- * project-LICHEN-p00p Imin guard in init().
-=======
- * Starts if stopped (transmit_time==0) or interval != imin; no-op if already
- * at imin and running (RFC 6206 §4.2). Matches Rust TrickleTimer::try_reset
- * and reset_from_stopped_starts_timer test.
->>>>>>> origin/worktree-worker18
+ * project-LICHEN-p00p Imin guard in init(). Updated per project-LICHEN-verh.
  *
  * @pre t must be non-NULL and initialized via lichen_trickle_init()
  * @param t           Timer

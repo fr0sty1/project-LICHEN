@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, ClassVar
 
 
 @dataclass
@@ -34,13 +34,8 @@ class NodeMetrics:
 
     # Maximum entries in packet_hashes_sent and packet_hashes_received.
     # Prevents unbounded memory growth in long-running simulations.
-<<<<<<< HEAD
-    _PACKET_HASH_SET_MAX_SIZE: int = field(default=10000, repr=False)
-    _MAX_ERRORS: int = field(default=1000, repr=False)
-=======
     _PACKET_HASH_SET_MAX_SIZE: ClassVar[int] = 10000
     _MAX_ERRORS: ClassVar[int] = 1000
->>>>>>> origin/worktree-worker24
 
     tx_count: int = 0
     rx_count: int = 0
