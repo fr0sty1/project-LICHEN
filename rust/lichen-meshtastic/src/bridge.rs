@@ -188,6 +188,7 @@ impl MeshtasticBridge {
                     return Err(BridgeError::InvalidPacket);
                 }
 
+                // Extract src/dst from IPv6 header (bytes 8-23 src, 24-39 dst)
                 let src_bytes: [u8; 16] = data.payload[8..24]
                     .try_into()
                     .map_err(|_| BridgeError::InvalidPacket)?;

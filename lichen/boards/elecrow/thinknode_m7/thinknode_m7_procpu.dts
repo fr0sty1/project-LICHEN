@@ -4,7 +4,7 @@
  *
  * Elecrow ThinkNode M7 PoE — ESP32-S3 + LR1110 + SI3402 PoE PD (PG on GPIO21). Ethernet RMII/PHY (LAN8720?) uncertain; WiFi preferred for border-router per spec. See HUMAN bead project-LICHEN-500k for pinout confirmation.
  *
- * Pin mapping (Meshtastic cross-check + schematics): LR1110 SPI2 SCK=9/MOSI=10/MISO=11/CS=8, RESET=12, BUSY=13, DIO9=14. PoE power-good GPIO21. Update for Kconfig_LICHEN_POE.
+ * Pin mapping (Meshtastic cross-check + schematics): LR1110 SPI2 SCK=9/MOSI=10/MISO=11/CS=8, RESET=12, BUSY=13, DIO9=14. PoE power-good GPIO21.
  */
  /dts-v1/;
 

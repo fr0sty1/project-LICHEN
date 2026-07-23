@@ -351,7 +351,6 @@ int lichen_key_pubkey_to_iid(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN
 #endif
 }
 
-
 /* --------------------------------------------------------------------------
  * Key store implementation
  * -------------------------------------------------------------------------- */

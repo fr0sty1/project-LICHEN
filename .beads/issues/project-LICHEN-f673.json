@@ -1,11 +1,16 @@
 {
   "id": "project-LICHEN-f673",
   "title": "[merge-conflict] worktree-worker1: coap_config.c",
-  "status": "open",
+  "notes": "Commit: dc8549aa0",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:20:39.288142176Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:20:39.288142176Z"
+  "updated_at": "2026-07-23T00:28:06.640431738Z",
+  "started_at": "2026-07-23T00:26:03.077824085Z",
+  "closed_at": "2026-07-23T00:28:06.640431738Z",
+  "close_reason": "Merged mutex for thread-safety in provider register/get, aligned KEY_PRIMARY + ygg field with header and worker1 implementation, updated sync_word parsing comment and bounds, fixed identity encoding to prevent struct member error"
 }

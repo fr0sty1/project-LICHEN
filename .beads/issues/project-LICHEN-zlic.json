@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-zlic",
   "title": "[merge-conflict] worktree-worker20: rf_health.rs",
-  "status": "in_progress",
+  "notes": "Commit: 8a0c78e15 - resolved rf_health.rs merge conflict (removed duplicate EMA comments matching worker20 conventions and no-comments policy)",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:18:27.371289176Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:25:02.71061584Z",
+  "updated_at": "2026-07-23T00:27:37.083760536Z",
   "started_at": "2026-07-23T00:25:02.71061584Z",
-  "lease_expires_at": "2026-07-23T00:30:02.71061584Z",
-  "heartbeat_at": "2026-07-23T00:25:02.71061584Z"
+  "closed_at": "2026-07-23T00:27:37.083760536Z",
+  "close_reason": "Fixed merge conflict in rust/lichen-core/src/rf_health.rs: removed conflicting EMA update comments; code now clean with saturating fixed-point EMA per CCP-15. Commit 8a0c78e15. Other conflicts in coap/ left for their respective beads."
 }

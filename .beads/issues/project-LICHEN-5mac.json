@@ -1,11 +1,16 @@
 {
   "id": "project-LICHEN-5mac",
   "title": "[merge-conflict] worktree-worker19: coap_keys.c",
-  "status": "open",
+  "notes": "Commit: 5713a2926",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:19:35.228372157Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:19:35.228372157Z"
+  "updated_at": "2026-07-23T00:27:28.002622227Z",
+  "started_at": "2026-07-23T00:25:32.708004916Z",
+  "closed_at": "2026-07-23T00:27:28.002622227Z",
+  "close_reason": "Closed"
 }

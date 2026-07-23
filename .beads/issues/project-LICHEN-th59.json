@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-th59",
   "title": "[merge-conflict] worktree-worker18: main.c",
-  "status": "in_progress",
+  "notes": "Commit: e90cdba3e",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:19:33.677721845Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:24:41.403120687Z",
+  "updated_at": "2026-07-23T00:26:57.817936436Z",
   "started_at": "2026-07-23T00:24:41.403120687Z",
-  "lease_expires_at": "2026-07-23T00:29:41.403120687Z",
-  "heartbeat_at": "2026-07-23T00:24:41.403120687Z"
+  "closed_at": "2026-07-23T00:26:57.817936436Z",
+  "close_reason": "Resolved merge conflicts in lichend.rs and lichen-hal/lib.rs by combining RPL forwarding logic with process_rpl, DAO event handling, reply return for control plane, local_mesh check to prevent TUN leaks. Code compiles and follows project conventions. Commit e90cdba3e"
 }

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-zr42",
+  "title": "[merge-conflict] worktree-worker1: rpl_root.c",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T00:26:11.022120043Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T00:27:36.230609882Z",
+  "started_at": "2026-07-23T00:26:48.629967868Z",
+  "closed_at": "2026-07-23T00:27:36.230609882Z",
+  "close_reason": "Closed"
+}

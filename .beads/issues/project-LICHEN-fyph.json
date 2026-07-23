@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-fyph",
+  "title": "[merge-conflict] worktree-worker24: t_deck_esp32s3_procpu.conf",
+  "notes": "Commit: da3947179",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T00:25:09.535074572Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T00:28:07.788985506Z",
+  "started_at": "2026-07-23T00:25:41.006489199Z",
+  "closed_at": "2026-07-23T00:28:07.788985506Z",
+  "close_reason": "Closed"
+}

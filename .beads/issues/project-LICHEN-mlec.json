@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-mlec",
+  "title": "[merge-conflict] worktree-worker23: t_deck_esp32s3_procpu.conf",
+  "notes": "Commit: ba83495d8",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T00:26:14.04113835Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T00:28:51.036175535Z",
+  "started_at": "2026-07-23T00:27:18.087044995Z",
+  "closed_at": "2026-07-23T00:28:51.036175535Z",
+  "close_reason": "Resolved t_deck_esp32s3_procpu.conf by adding SPDX header and removing resolution comment (dead code). Committed and pushed in worktree-worker23 as ba83495d8. Beads update blocked by unrelated events merge conflicts."
+}

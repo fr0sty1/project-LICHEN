@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-6wgk",
+  "title": "[merge-conflict] worktree-worker19: rpl_root.c",
+  "notes": "Commit: e527ea12f",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T00:26:12.107555755Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T00:28:55.669784857Z",
+  "started_at": "2026-07-23T00:27:24.971257516Z",
+  "closed_at": "2026-07-23T00:28:55.669784857Z",
+  "close_reason": "Closed"
+}

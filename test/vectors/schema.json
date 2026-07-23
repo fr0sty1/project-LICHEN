@@ -26,7 +26,8 @@
               {"$ref": "#/definitions/rpl_messages_vector"},
               {"$ref": "#/definitions/ccp13_vector"},
               {"$ref": "#/definitions/ccp15_vector"},
-              {"$ref": "#/definitions/ccp_vector"}
+              {"$ref": "#/definitions/ccp_vector"},
+              {"$ref": "#/definitions/compact_cot_vector"}
             ]
           }
         }
@@ -735,7 +736,7 @@
     "ccp13_vector": {
       "type": "object",
       "required": ["name", "description"],
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "name": {"type": "string"},
         "description": {"type": "string"},
@@ -745,38 +746,45 @@
         "expected_remaining_ms": {"type": "integer", "minimum": 0},
         "expected_usage_permille": {"type": "integer", "minimum": 0, "maximum": 1000},
         "notes": {"type": "string"},
+        "now_ms": {"type": "integer"},
+        "remaining_ms": {"type": "integer"},
+        "usage_permille": {"type": "integer"},
+        "can_transmit": {"type": "boolean"},
+        "can_transmit_100ms": {"type": "boolean"},
+        "duration_ms": {"type": "integer"},
+        "next_available_ms": {"type": "integer"},
+        "txs": {
+          "type": "array",
+          "items": {"type": "object"}
+        }
+      }
+    },
+    "compact_cot_vector": {
+      "type": "object",
+      "required": ["name", "description", "binary_hex", "decoded_fields"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
         "binary_hex": {"$ref": "#/definitions/hex"},
         "decoded_fields": {
           "type": "object",
-          "additionalProperties": true,
-          "properties": {
-            "subtype": {"type": "integer"},
-            "subtype_name": {"type": "string"},
-            "latitude_microdegrees": {"type": "integer"},
-            "longitude_microdegrees": {"type": "integer"},
-            "altitude_decimeters": {"type": "integer"},
-            "course_centidegrees": {"type": "integer"},
-            "speed_cm_s": {"type": "integer"},
-            "team": {"type": "integer"},
-            "team_name": {"type": "string"},
-            "role": {"type": "integer"},
-            "expected_hash": {"type": "integer", "description": "hash_32(SFN, key) per spec/02a-coordinated-capacity.md §2a.7.1 (FNV-1a32 primitive, matches C lichen_hash_32 and Python _hash_32)"}
-          }
+          "additionalProperties": true
         }
       }
     },
     "ccp_vector": {
       "type": "object",
-      "required": ["description"],
+      "required": ["name", "description"],
       "additionalProperties": true,
       "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
         "type": {
           "type": "string",
           "enum": ["slot_selection", "load_balancing", "density_estimation", "desync"],
           "description": "CCP-16 vector type (added for schema completeness per codereview)"
         },
-        "description": {"type": "string"},
-        "name": {"type": "string"},
         "rssi_dbm": {"type": "number", "minimum": -140, "maximum": 0},
         "per": {"type": "number", "minimum": 0, "maximum": 1},
         "snr_samples": {
@@ -784,6 +792,12 @@
           "items": {"type": "number"}
         },
         "hash_32_example": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
+        "eui64_hex": {"$ref": "#/definitions/hex"},
+        "t": {"type": "integer"},
+        "epoch": {"type": "integer"},
+        "expected_hash": {"type": "integer"},
+        "expected_channel": {"type": "integer"},
+        "n_channels": {"type": "integer"},
         "security_review": {
           "type": "string",
           "description": "Pass 2 security: no injection or crypto issues in CCP-16 vectors (project-LICHEN-ray3)"

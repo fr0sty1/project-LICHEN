@@ -206,6 +206,7 @@ mod tests {
             Announce::from_bytes(&wire),
             Err(AnnounceError::InvalidChannel(16))
         );
+
         let builder = AnnounceBuilder {
             originator_iid: &[0; 8],
             pubkey: &[0; 32],

@@ -1,11 +1,16 @@
 {
   "id": "project-LICHEN-5r0m",
   "title": "[merge-conflict] worktree-worker23: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
-  "status": "open",
+  "notes": "Commit: 4591007",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:19:36.72922489Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:19:36.72922489Z"
+  "updated_at": "2026-07-23T00:27:15.970368121Z",
+  "started_at": "2026-07-23T00:25:30.212765459Z",
+  "closed_at": "2026-07-23T00:27:15.970368121Z",
+  "close_reason": "Cleaned heltec_wifi_lora32_v3_esp32s3_procpu.conf files: added SPDX headers, consolidated configs from worker23 resolution (larger stacks, WiFi_MGMT, battery, heap tuning), removed duplicate lines and resolved-merge notes per AGENTS.md. Updated puck to full-L2 path. Commit 4591007"
 }

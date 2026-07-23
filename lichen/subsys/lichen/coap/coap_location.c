@@ -1,18 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 
-/**
- * @file coap_location.c
- * @brief LICHEN CoAP position resource (spec 12-apps.md §18.2.2).
- *
- * Serves GET /sensors/location as a SenML pack (application/senml+cbor,
- * RFC 8428) describing the node's current position, when a valid fix is
- * available. The base name identifies the node by its EUI-64
- * (urn:dev:mac:<eui64>:) so a client can attribute the reading.
- *
- * Returns 4.04 Not Found when the node has no valid latitude/longitude fix.
- */
-
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -25,20 +13,13 @@
 #include <lichen/hal.h>
 #include <lichen/senml.h>
 #include <lichen/coap_server.h>
-
-#include "lora_l2.h"
+#include <lichen/lora_l2.h>
 
 LOG_MODULE_REGISTER(lichen_coap_location, CONFIG_LICHEN_COAP_LOCATION_LOG_LEVEL);
 
 #define LOCATION_SENML_MAX 128
-
-/* "urn:dev:mac:" + 16 hex + ":" + NUL */
 #define BASE_NAME_MAX 32
 
-
-
-/* Fill `out` with the node's SenML base name, or an empty string if the
- * EUI-64 is not yet available (a valid pack can still omit the base name). */
 static void build_base_name(char *out, size_t out_len)
 {
 	uint8_t eui[8];

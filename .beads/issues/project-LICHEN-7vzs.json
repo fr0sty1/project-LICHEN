@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-7vzs",
   "title": "[merge-conflict] worktree-worker23: draft-lichen-rpl-lora-00.md",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:18:28.444176193Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:18:28.444176193Z"
+  "updated_at": "2026-07-23T00:26:07.587730642Z",
+  "started_at": "2026-07-23T00:26:07.587730642Z",
+  "lease_expires_at": "2026-07-23T00:31:07.587730642Z",
+  "heartbeat_at": "2026-07-23T00:26:07.587730642Z"
 }

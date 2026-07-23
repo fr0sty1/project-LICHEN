@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-irj9",
+  "title": "[merge-conflict] worktree-worker23: xiao_s3_wio_sx1262.conf",
+  "notes": "Commit: bfae06d10",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T00:25:07.843772044Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T00:29:14.964153286Z",
+  "started_at": "2026-07-23T00:26:58.364647131Z",
+  "closed_at": "2026-07-23T00:29:14.964153286Z",
+  "close_reason": "standardized retirement comment in xiao_s3_wio_sx1262.conf and .overlay; resolved merge conflict"
+}

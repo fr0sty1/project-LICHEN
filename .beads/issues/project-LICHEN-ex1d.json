@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-ex1d",
   "title": "[merge-conflict] worktree-worker19: coap_config.c",
-  "status": "in_progress",
+  "notes": "Commit: 563a886",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:19:35.014310023Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:24:34.487235448Z",
+  "updated_at": "2026-07-23T00:26:26.537734776Z",
   "started_at": "2026-07-23T00:24:34.487235448Z",
-  "lease_expires_at": "2026-07-23T00:29:34.487235448Z",
-  "heartbeat_at": "2026-07-23T00:24:34.487235448Z"
+  "closed_at": "2026-07-23T00:26:26.537734776Z",
+  "close_reason": "Fixed merge conflict in coap_config.c by aligning address key names and struct field (ula-\u003eygg, KEY_ULA-\u003eKEY_PRIMARY to match spec/11-lci.md and header)"
 }

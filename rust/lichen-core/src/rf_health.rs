@@ -19,6 +19,10 @@ const FP_SCALE: i32 = 1 << 16;
 /// EMA alpha = 1/4 (>> 2) for accelerated response to interference per CCP-15.
 const EMA_ALPHA_SHIFT: u32 = 2;
 
+/// EMA shift for alpha = 1/4 (>>2). Per CCP-15 for rapid interference response
+/// in da2q multi-channel context. Saturating arithmetic prevents overflow.
+const EMA_ALPHA_SHIFT: i32 = 2;
+
 /// RF health metrics aggregator for CCP-15 interference mitigation.
 ///
 /// Tracks packet counts, TX failures (including channel busy for interference
