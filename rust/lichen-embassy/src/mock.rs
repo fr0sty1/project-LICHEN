@@ -95,10 +95,7 @@ impl lichen_hal::Radio for MockRadio {
         self.config = *config;
     }
 
-    async fn configure_channels(
-        &mut self,
-        _channels: &[ChannelConfig],
-    ) -> Result<(), Self::Error> {
+    async fn configure_channels(&mut self, _channels: &[ChannelConfig]) -> Result<(), Self::Error> {
         Ok(())
     }
 }

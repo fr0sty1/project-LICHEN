@@ -1130,9 +1130,17 @@ mod std_ext {
                 let parity = frag.window as usize;
                 let current_parity = self.current_window % 2;
                 let mut older = if parity == current_parity {
-                    if self.current_window >= 2 { self.current_window - 2 } else { 0 }
+                    if self.current_window >= 2 {
+                        self.current_window - 2
+                    } else {
+                        0
+                    }
                 } else {
-                    if self.current_window >= 1 { self.current_window - 1 } else { 0 }
+                    if self.current_window >= 1 {
+                        self.current_window - 1
+                    } else {
+                        0
+                    }
                 };
                 while older > 0 {
                     if !self.completed_windows.contains(&older) {

@@ -179,8 +179,8 @@ mod tests {
         // Verifies from_ipv6 correctly reverses the U/L bit flip on IID per spec.
         let node = NodeId([0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77]);
         let addr = Ipv6Addr([
-            0xfe, 0x80, 0, 0, 0, 0, 0, 0,
-            0x02, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, // U/L bit flipped in IID
+            0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0x02, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66,
+            0x77, // U/L bit flipped in IID
         ]);
         assert_eq!(NodeId::from_ipv6(addr), node);
         assert_eq!(node.link_local_addr(), addr); // full roundtrip

@@ -49,7 +49,8 @@ fn lollipop_cmp(a: u8, b: u8) -> Option<core::cmp::Ordering> {
 
 #[cfg(feature = "std")]
 fn version_is_newer(new_ver: u8, old_ver: u8) -> bool {
-    (new_ver, old_ver) == (0, 127) || lollipop_cmp(new_ver, old_ver) == Some(core::cmp::Ordering::Greater)
+    (new_ver, old_ver) == (0, 127)
+        || lollipop_cmp(new_ver, old_ver) == Some(core::cmp::Ordering::Greater)
 }
 
 #[cfg(feature = "std")]
