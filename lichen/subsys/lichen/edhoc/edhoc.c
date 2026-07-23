@@ -295,6 +295,42 @@ static int edhoc_kdf(const uint8_t prk[32],
 	return ret;
 }
 
+/* EDHOC exporter KDF using integer labels (7,10,0,1) to exactly match
+ * Python edhoc.py _edhoc_kdf with int labels for OSCORE derivation per
+ * RFC 9528 Section 7.2.1 and project-LICHEN-uk36 series.
+ */
+static int edhoc_export_kdf(const uint8_t prk[32],
+			    const uint8_t th[32],
+			    uint32_t label,
+			    const uint8_t *context, size_t context_len,
+			    uint8_t *out, size_t out_len)
+{
+	uint8_t info[CBOR_BUF_SIZE];
+	size_t info_len = 0;
+	int ret;
+
+	ZCBOR_STATE_E(zse, 0, info, sizeof(info), 0);
+
+	if (!zcbor_uint32_put(zse, (uint32_t)out_len)) {
+		return -EINVAL;
+	}
+	if (!zcbor_bstr_encode_ptr(zse, th, 32)) {
+		return -EINVAL;
+	}
+	if (!zcbor_uint32_put(zse, label)) {
+		return -EINVAL;
+	}
+	if (!zcbor_bstr_encode_ptr(zse, context, context_len)) {
+		return -EINVAL;
+	}
+
+	info_len = zse->payload - info;
+
+	ret = hkdf_expand(prk, info, info_len, out, out_len);
+	crypto_wipe(info, sizeof(info));
+	return ret;
+}
+
 /*
  * Build COSE Sig_structure per RFC 9052 Section 4.4.
  * Sig_structure = ["Signature1", body_protected, external_aad, payload]
@@ -919,6 +955,8 @@ int edhoc_initiator_export_oscore(struct edhoc_initiator *ctx,
 				  struct edhoc_oscore_ctx *oscore)
 {
 	int ret = 0;
+	uint8_t prk_out[32] = {0};
+	uint8_t prk_exporter[32] = {0};
 
 	if (ctx == NULL || oscore == NULL) {
 		return -EINVAL;
@@ -927,14 +965,23 @@ int edhoc_initiator_export_oscore(struct edhoc_initiator *ctx,
 		return -EBUSY;
 	}
 
-	ret = edhoc_kdf(ctx->prk_4e3m, ctx->th_4, "OSCORE_Master_Secret",
-			NULL, 0, oscore->master_secret, 16);
+	ret = edhoc_export_kdf(ctx->prk_4e3m, ctx->th_4, 7,
+			       ctx->th_4, 32, prk_out, 32);
 	if (ret != 0) {
 		goto wipe;
 	}
-
-	ret = edhoc_kdf(ctx->prk_4e3m, ctx->th_4, "OSCORE_Master_Salt",
-			NULL, 0, oscore->master_salt, 8);
+	ret = edhoc_export_kdf(prk_out, ctx->th_4, 10,
+			       NULL, 0, prk_exporter, 32);
+	if (ret != 0) {
+		goto wipe;
+	}
+	ret = edhoc_export_kdf(prk_exporter, ctx->th_4, 0,
+			       NULL, 0, oscore->master_secret, 16);
+	if (ret != 0) {
+		goto wipe;
+	}
+	ret = edhoc_export_kdf(prk_exporter, ctx->th_4, 1,
+			       NULL, 0, oscore->master_salt, 8);
 	if (ret != 0) {
 		goto wipe;
 	}
@@ -944,11 +991,13 @@ int edhoc_initiator_export_oscore(struct edhoc_initiator *ctx,
 	memcpy(oscore->recipient_id, ctx->c_r, ctx->c_r_len);
 	oscore->recipient_id_len = ctx->c_r_len;
 
+	ctx->state = EDHOC_STATE_EXPORTED;
+
 	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
 	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
 	crypto_wipe(ctx->prk_4e3m, sizeof(ctx->prk_4e3m));
-
-	ctx->state = EDHOC_STATE_EXPORTED;
+	crypto_wipe(prk_out, sizeof(prk_out));
+	crypto_wipe(prk_exporter, sizeof(prk_exporter));
 
 	return 0;
 
@@ -956,6 +1005,8 @@ wipe:
 	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
 	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
 	crypto_wipe(ctx->prk_4e3m, sizeof(ctx->prk_4e3m));
+	crypto_wipe(prk_out, sizeof(prk_out));
+	crypto_wipe(prk_exporter, sizeof(prk_exporter));
 	return ret;
 }
 
@@ -1406,6 +1457,8 @@ int edhoc_responder_export_oscore(struct edhoc_responder *ctx,
 				  struct edhoc_oscore_ctx *oscore)
 {
 	int ret = 0;
+	uint8_t prk_out[32] = {0};
+	uint8_t prk_exporter[32] = {0};
 
 	if (ctx == NULL || oscore == NULL) {
 		return -EINVAL;
@@ -1414,14 +1467,23 @@ int edhoc_responder_export_oscore(struct edhoc_responder *ctx,
 		return -EBUSY;
 	}
 
-	ret = edhoc_kdf(ctx->prk_4e3m, ctx->th_4, "OSCORE_Master_Secret",
-			NULL, 0, oscore->master_secret, 16);
+	ret = edhoc_export_kdf(ctx->prk_4e3m, ctx->th_4, 7,
+			       ctx->th_4, 32, prk_out, 32);
 	if (ret != 0) {
 		goto wipe;
 	}
-
-	ret = edhoc_kdf(ctx->prk_4e3m, ctx->th_4, "OSCORE_Master_Salt",
-			NULL, 0, oscore->master_salt, 8);
+	ret = edhoc_export_kdf(prk_out, ctx->th_4, 10,
+			       NULL, 0, prk_exporter, 32);
+	if (ret != 0) {
+		goto wipe;
+	}
+	ret = edhoc_export_kdf(prk_exporter, ctx->th_4, 0,
+			       NULL, 0, oscore->master_secret, 16);
+	if (ret != 0) {
+		goto wipe;
+	}
+	ret = edhoc_export_kdf(prk_exporter, ctx->th_4, 1,
+			       NULL, 0, oscore->master_salt, 8);
 	if (ret != 0) {
 		goto wipe;
 	}
@@ -1431,11 +1493,13 @@ int edhoc_responder_export_oscore(struct edhoc_responder *ctx,
 	memcpy(oscore->recipient_id, ctx->c_i, ctx->c_i_len);
 	oscore->recipient_id_len = ctx->c_i_len;
 
+	ctx->state = EDHOC_STATE_EXPORTED;
+
 	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
 	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
 	crypto_wipe(ctx->prk_4e3m, sizeof(ctx->prk_4e3m));
-
-	ctx->state = EDHOC_STATE_EXPORTED;
+	crypto_wipe(prk_out, sizeof(prk_out));
+	crypto_wipe(prk_exporter, sizeof(prk_exporter));
 
 	return 0;
 
@@ -1443,6 +1507,8 @@ wipe:
 	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
 	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
 	crypto_wipe(ctx->prk_4e3m, sizeof(ctx->prk_4e3m));
+	crypto_wipe(prk_out, sizeof(prk_out));
+	crypto_wipe(prk_exporter, sizeof(prk_exporter));
 	return ret;
 }
 
