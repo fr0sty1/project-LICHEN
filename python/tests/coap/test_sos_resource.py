@@ -9,7 +9,7 @@ import asyncio
 import aiocoap
 import cbor2
 import pytest
-from aiocoap import DELETE, GET, PUT, Message
+from aiocoap import DELETE, GET, POST, Message
 
 from lichen.coap.resources import SosResource, StaticNodeInfo, build_site
 from lichen.coap.transport import InMemoryNetwork, create_lichen_context
@@ -101,7 +101,7 @@ class TestSosGet:
 
 
 # ---------------------------------------------------------------------------
-# PUT / DELETE
+# POST / DELETE
 # ---------------------------------------------------------------------------
 
 
@@ -111,7 +111,7 @@ class TestSosPutDelete:
         try:
             body = cbor2.dumps({"from": _EUI.hex(), "t": _T0})
             resp = await client.request(
-                Message(code=PUT, uri="coap://srv/sos",
+                Message(code=POST, uri="coap://srv/sos",
                         payload=body, content_format=60)
             ).response
             assert resp.code == aiocoap.CHANGED
@@ -125,7 +125,7 @@ class TestSosPutDelete:
         client, server, sos = await _setup()
         try:
             resp = await client.request(
-                Message(code=PUT, uri="coap://srv/sos", payload=b"")
+                Message(code=POST, uri="coap://srv/sos", payload=b"")
             ).response
             assert resp.code == aiocoap.BAD_REQUEST
             assert sos._active is False
@@ -138,7 +138,7 @@ class TestSosPutDelete:
         try:
             # b"\xa5\x01" is a truncated CBOR map (declares 5 entries, body cut short)
             resp = await client.request(
-                Message(code=PUT, uri="coap://srv/sos", payload=b"\xa5\x01")
+                Message(code=POST, uri="coap://srv/sos", payload=b"\xa5\x01")
             ).response
             assert resp.code == aiocoap.BAD_REQUEST
         finally:
@@ -152,7 +152,7 @@ class TestSosPutDelete:
             # "from" as integer instead of hex string
             body = cbor2.dumps({"from": 12345, "t": _T0})
             resp = await client.request(
-                Message(code=PUT, uri="coap://srv/sos",
+                Message(code=POST, uri="coap://srv/sos",
                         payload=body, content_format=60)
             ).response
             assert resp.code == aiocoap.BAD_REQUEST
@@ -168,7 +168,7 @@ class TestSosPutDelete:
             # "t" as string instead of numeric
             body = cbor2.dumps({"from": _EUI.hex(), "t": "not-a-number"})
             resp = await client.request(
-                Message(code=PUT, uri="coap://srv/sos",
+                Message(code=POST, uri="coap://srv/sos",
                         payload=body, content_format=60)
             ).response
             assert resp.code == aiocoap.BAD_REQUEST
@@ -281,7 +281,7 @@ class TestSosObserve:
             obs_iter = req.observation.__aiter__()
             body = cbor2.dumps({"from": _EUI.hex(), "t": _T0})
             await client.request(
-                Message(code=PUT, uri="coap://srv/sos",
+                Message(code=POST, uri="coap://srv/sos",
                         payload=body, content_format=60)
             ).response
             note = await asyncio.wait_for(obs_iter.__anext__(), timeout=5.0)

@@ -17,8 +17,8 @@ from lichen.coap.transport import InMemoryNetwork, create_lichen_context
 # ---------------------------------------------------------------------------
 
 _LINKS = [
-    {"href": "/sensors", "rt": "lichen.sensors"},
-    {"href": "/status",  "rt": "lichen.status"},
+    {"href": "/sensors", "rt": "senml"},
+    {"href": "/status",  "rt": "status"},
 ]
 
 
@@ -172,7 +172,7 @@ class TestRdPost:
         [
             [1],
             [{}],
-            [{"rt": "lichen.sensors"}],
+            [{"rt": "senml"}],
             [{"href": ""}],
             [{"href": "relative"}],
             [{"href": "/trailing/"}],
