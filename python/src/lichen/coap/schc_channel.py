@@ -21,6 +21,7 @@ import asyncio
 import logging
 from collections.abc import Callable
 from ipaddress import IPv6Address
+from typing import Any
 
 from lichen.coap.transport import (
     DatagramChannel,
@@ -83,6 +84,7 @@ class SchcChannel(DatagramChannel):
         resolve: HostResolver = IPv6Address,
         src_port: int = DEFAULT_COAP_PORT,
         dst_port: int = DEFAULT_COAP_PORT,
+        metrics: Any | None = None,
     ) -> None:
         self._inner: DatagramChannel | None = inner
         self._endpoint_policy = inner.endpoint_policy
@@ -92,6 +94,7 @@ class SchcChannel(DatagramChannel):
         self._local = unscoped_ipv6(resolve(local.host))
         self._src_port = local.port
         self._dst_port = dst_port
+        self._metrics: Any | None = metrics
         self._receiver: ReceiveCallback | None = None
         self._closed = False
         self._teardown_started = False
@@ -137,11 +140,26 @@ class SchcChannel(DatagramChannel):
             raw = decompress_packet(data)
             packet = IPv6Packet.from_bytes(raw)
             if packet.header.next_header != NextHeader.UDP:
+                logger.info(
+                    "SchcChannel: dropped non-UDP IPv6 from %s", source
+                )
+                if self._metrics is not None:
+                    self._metrics.record_error("dropped non-UDP IPv6")
                 return
             udp = UdpDatagram.from_bytes(packet.payload)
             if packet.header.dst_addr.packed != self._local.packed:
+                logger.info(
+                    "SchcChannel: dropped IPv6 for wrong dst from %s", source
+                )
+                if self._metrics is not None:
+                    self._metrics.record_error("dropped wrong destination")
                 return
             if udp.dst_port != self._src_port or udp.checksum == 0:
+                logger.info(
+                    "SchcChannel: dropped invalid UDP: bad port/checksum from %s", source
+                )
+                if self._metrics is not None:
+                    self._metrics.record_error("dropped invalid UDP: bad port or checksum")
                 return
             if (
                 udp_checksum(
@@ -151,14 +169,22 @@ class SchcChannel(DatagramChannel):
                 )
                 != 0
             ):
+                logger.warning("SchcChannel: dropped invalid UDP: bad checksum from %s", source)
+                if self._metrics is not None:
+                    self._metrics.record_error("dropped invalid UDP: bad checksum")
                 return
             coap = udp.payload
             source_endpoint = parse_channel_endpoint(source)
             if unscoped_ipv6(self._resolve(source_endpoint.host)) != packet.header.src_addr:
+                logger.warning("SchcChannel: dropped mismatched source address from %s", source)
+                if self._metrics is not None:
+                    self._metrics.record_error("dropped mismatched source")
                 return
             source = Endpoint(source_endpoint.host, udp.src_port).authority
         except Exception as exc:
             logger.warning("SchcChannel: failed to decompress/unwrap packet: %s", exc)
+            if self._metrics is not None:
+                self._metrics.record_error(f"decompress unwrap failed: {type(exc).__name__}")
             return
         if self._receiver is not None:
             self._receiver(coap, source)
