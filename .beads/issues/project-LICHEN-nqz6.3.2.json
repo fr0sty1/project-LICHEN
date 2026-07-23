@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-nqz6.3.2",
+  "title": "Update TOFU, trust model, and key binding sections in spec/06-security.md for 02xx/Yggdrasil single-key model",
+  "description": "Revise sections 8.7 Key Management, TOFU baseline (8.7.1), BR-Provisioned, DANE/PKIX to consistently reference unified Ed25519 derivation binding key to both IID and 02xx address. Remove any ULA/GUA mentions. Ensure emphasis on single key for all purposes (signatures, OSCORE via EDHOC/X25519, addressing). Cross-reference 04-network.md and test/vectors/yggdrasil-derivation.json.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:14:56.99877447Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:14:56.99877447Z",
+  "labels": [
+    "addressing",
+    "spec",
+    "yggdrasil"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-nqz6.3.2",
+      "depends_on_id": "project-LICHEN-nqz6.3",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:14:57.131283855Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
