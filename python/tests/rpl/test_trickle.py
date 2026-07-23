@@ -20,7 +20,13 @@ def _timer(rng_value: float = 0.0, *, imin: int = 100, imax: int = 4, k: int = 2
 
 def test_max_interval_is_imin_shifted_by_doublings() -> None:
     t = TrickleTimer(100, 4, 2)
-    assert t.max_interval == 100 << 4  # 1600
+    assert t.max_interval == 1600
+    t2 = TrickleTimer(1000, 31, 10)
+    assert t2.max_interval == (1 << 32) - 1
+    t3 = TrickleTimer(1000, 32, 10)
+    assert t3.max_interval == (1 << 32) - 1
+    t4 = TrickleTimer(1000, 0, 10)
+    assert t4.max_interval == 1000
 
 
 def test_start_sets_first_interval_and_transmit_time() -> None:
