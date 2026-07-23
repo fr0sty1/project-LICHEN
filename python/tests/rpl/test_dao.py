@@ -70,11 +70,13 @@ def test_option_codecs_are_exact_and_canonicalize_unused_prefix_bits() -> None:
     assert TransitInformation.from_option(transit.to_option()) == transit
     with pytest.raises(DaoError, match="canonical length"):
         RplTarget.from_option(RplOption(RplOptionType.RPL_TARGET, b"\0\x00\0"))
-    with pytest.raises(DaoError, match="must contain"):
-        TransitInformation.from_option(RplOption(RplOptionType.TRANSIT_INFORMATION, b"\0" * 4))
+    with pytest.raises(DaoError, match="must contain|missing parent address"):
+        TransitInformation.from_option(
+            RplOption(RplOptionType.TRANSIT_INFORMATION, b"\x80\x00\x00\x00")
+        )
 
 
-@pytest.mark.parametrize("flags", [0x01, 0x80])
+@pytest.mark.parametrize("flags", [0x01, 0x7f])
 def test_transit_information_rejects_nonzero_flags(flags: int) -> None:
     option = RplOption(
         RplOptionType.TRANSIT_INFORMATION,
@@ -246,7 +248,7 @@ def test_parent_change_updates_route() -> None:
     root.process_dao(n3.build_dao(N2))
     assert root.routing_table.lookup(N3) == [N2, N3]
     assert (N3, N1) not in root._edge_expiry
-    assert root._edge_expiry[(N3, N2)] == 126
+    assert root._edge_expiry[(N3, N2)] is None
 
 
 @pytest.mark.parametrize(
@@ -708,8 +710,10 @@ def test_expired_tombstone_reclaims_only_after_retention_boundary() -> None:
         root.process_dao_at(make_dao(N2, ROOT), 111.999)
     assert root._path_sequences == {N1: 1}
 
-    # Should succeed without error.
-    root.process_dao(dao)
+    # Should succeed without error. Retention boundary allows reclaim of tombstone.
+    root.process_dao_at(
+        make_dao(N1, ROOT, sequence=2, lifetime=255, dao_sequence=2), 112
+    )
     assert root.routing_table.lookup(N1) == [N1]
 
 

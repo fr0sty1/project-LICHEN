@@ -327,12 +327,20 @@ class DaoManager:
     def _apply_dao_at(self, dao: DAO, now_seconds: float) -> DaoOutcome:
         if not self.is_root:
             raise DaoError("process_dao is only valid on the root")
+        # SECURITY: RFC 6550 Section 9.5 requires filtering DAOs by RPL Instance ID.
+        # Accepting DAOs from a different instance could corrupt the routing table.
         if dao.rpl_instance_id != self.rpl_instance_id:
-            raise DaoError(f"DAO instance ID {dao.rpl_instance_id} != {self.rpl_instance_id}")
+            raise DaoError(
+                f"DAO instance ID {dao.rpl_instance_id} != {self.rpl_instance_id}",
+                reason="instance_mismatch",
+            )
         if dao.flags != 0 or dao.reserved != 0:
             raise DaoError("DAO reserved base fields must be zero", reason="malformed_group")
         if self.dodag_id is not None and dao.dodag_id is not None and dao.dodag_id != self.dodag_id:
-            raise DaoError("DAO DODAGID does not match the active DODAG")
+            raise DaoError(
+                f"DAO DODAGID {dao.dodag_id} != {self.dodag_id}",
+                reason="dodag_mismatch",
+            )
 
         updates = self._extract_updates(dao)
         incoming: dict[IPv6Address, tuple[_Candidate, ...]] = {}
