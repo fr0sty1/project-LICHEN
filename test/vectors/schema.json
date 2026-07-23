@@ -883,7 +883,7 @@
       "type": "object",
       "required": ["name"],
       "additionalProperties": false,
-      "description": "RPL control message (RFC 6550) parse/generate vector. Supports malformed ICMPv6 cases with wire/expect_error per project-LICHEN-2auf.41.2.3.1.1 (checksum_failure, truncation).",
+      "description": "RPL control message (RFC 6550) parse/generate vector. Supports malformed ICMPv6/UDP cases with wire/expect_error per project-LICHEN-2auf.41.2.3.1 (checksum_failure, truncation).",
       "properties": {
         "name": {"type": "string"},
         "type": {
