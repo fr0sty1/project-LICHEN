@@ -2,15 +2,17 @@
   "id": "project-LICHEN-k9if",
   "title": "[merge-conflict] integration/worker12-20260722: Kconfig",
   "notes": "Commit: 2bb3c38ae",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:31:44.78891996Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:46:59.836846545Z",
+  "updated_at": "2026-07-23T04:25:55.892080958Z",
   "started_at": "2026-07-23T03:42:40.786474276Z",
   "closed_at": "2026-07-23T03:46:59.836846545Z",
-  "close_reason": "Resolved merge conflict in lichen/apps/gateway/boards/t_deck_esp32s3_procpu.conf Kconfig comment and cleaned test_vectors.py format_version assertions + schema.json + schc_fragmentation.json for v2 consistency. Removed conflict markers, fixed indentation, consolidated comments per no-dead-code. Ruff clean. (project-LICHEN-k9if)"
+  "close_reason": "Resolved merge conflict in lichen/apps/gateway/boards/t_deck_esp32s3_procpu.conf Kconfig comment and cleaned test_vectors.py format_version assertions + schema.json + schc_fragmentation.json for v2 consistency. Removed conflict markers, fixed indentation, consolidated comments per no-dead-code. Ruff clean. (project-LICHEN-k9if)",
+  "lease_expires_at": "2026-07-23T04:30:55.892080958Z",
+  "heartbeat_at": "2026-07-23T04:25:55.892080958Z"
 }
