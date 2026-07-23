@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-kudc.5",
+  "title": "Rust lichen-core/lichen-rpl: update CCP-16 TDMA, load balancing, metrics, CBOR to match spec/02a tables and vectors",
+  "description": "Review and fix Rust implementations in rust/lichen-core, lichen-rpl, lichen-node for conformance to spec/02a-coordinated-capacity.md sections on TDMA slots/hash, adaptive_sf_select, density/load metrics, desync FSM, CBOR signaling. Ensure test vectors in ccp16.json, ccp_tdma.json, ccp_load_balancing.json all pass. Check thresholds per spec tables.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:22:37.34342503Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:22:37.34342503Z",
+  "labels": [
+    "ccp",
+    "conformance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-kudc.5",
+      "depends_on_id": "project-LICHEN-kudc",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:22:37.487069775Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
