@@ -1,16 +1,18 @@
 {
   "id": "project-LICHEN-12y0",
   "title": "[merge-conflict] worktree-worker20: Kconfig",
-  "labels": ["defer-external"],
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:21.266642305Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:29:27.913855879Z",
+  "updated_at": "2026-07-23T05:09:32.983998989Z",
   "started_at": "2026-07-23T03:29:27.913855879Z",
-  "lease_expires_at": "2026-07-23T03:34:27.913855879Z",
-  "heartbeat_at": "2026-07-23T03:29:27.913855879Z"
+  "lease_expires_at": "2026-07-23T05:14:32.983998989Z",
+  "heartbeat_at": "2026-07-23T05:09:32.983998989Z",
+  "labels": [
+    "defer-external"
+  ]
 }
