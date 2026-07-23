@@ -201,6 +201,13 @@ class TestGattServiceRxNotify:
         assert len(chunks) == 4
         assert b"".join(chunks) == data
 
+    def test_send_frame_sync_empty(self, service):
+        service.on_connect(mtu=10)
+        chunks = service.send_frame_sync(b"")
+
+        assert chunks == [b""]
+        assert b"".join(chunks) == b""
+
 
 class TestGattServiceConfig:
     def test_config_commands_work(self, service, handler):
