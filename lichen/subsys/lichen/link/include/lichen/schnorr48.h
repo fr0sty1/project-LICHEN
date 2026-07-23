@@ -173,6 +173,8 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 			   const uint8_t *_Nonnull sig,
 			   const uint8_t *_Nonnull pubkey);
 
+bool schnorr48_pubkey_valid(const uint8_t *_Nonnull pubkey);
+
 #ifdef __cplusplus
 }
 #endif
