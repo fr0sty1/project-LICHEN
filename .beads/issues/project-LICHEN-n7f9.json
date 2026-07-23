@@ -3,15 +3,15 @@
   "title": "SchcContext.compress raises NoMatchingRuleError but codec.compress raises SchcError",
   "description": "File: python/src/lichen/schc/context.py:72-75 and codec.py:139-140\n\nThere's inconsistent exception handling between the two compression APIs:\n\nSchcContext.compress() at context.py:72-75:\n  rule = self.select_rule(fields)\n  if rule is None:\n      raise NoMatchingRuleError('no SCHC rule matches the given fields')\n  return compress(rule, fields)\n\ncodec.compress() at codec.py:139-140:\n  if fd.requires_value():\n      raise SchcError(f'{fd.field_id}: missing required field value')\n\nIf SchcContext.compress() is called with fields that match a rule's MO but are missing a required value for the CDA, the inner compress() raises SchcError, not NoMatchingRuleError.\n\nCallers catching only NoMatchingRuleError would not catch SchcError from missing field values.\n\nSimilarly, SchcContext.decompress() raises NoMatchingRuleError for empty packets, but codec.decompress() raises SchcError for the same condition.\n\nFix: Document which exceptions can be raised from each API, or make SchcError a subclass of NoMatchingRuleError (or vice versa) for consistent handling.\n\nCategory: API MISUSE",
   "notes": "Commit: 3c0ccdb2a",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:29:54.644289Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:13:46.664471423Z",
+  "updated_at": "2026-07-23T04:13:49.255948767Z",
   "started_at": "2026-07-23T04:11:04.226272461Z",
-  "lease_expires_at": "2026-07-23T04:16:04.226272461Z",
-  "heartbeat_at": "2026-07-23T04:11:04.226272461Z"
+  "closed_at": "2026-07-23T04:13:49.255948767Z",
+  "close_reason": "Made NoMatchingRuleError subclass of SchcError for consistent exception hierarchy across SchcContext and codec APIs. Updated import. Tests and linters pass. Commit 3c0ccdb2a"
 }
