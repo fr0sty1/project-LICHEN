@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-m6tx",
   "title": "[merge-conflict] worktree-worker17: hal.c",
-  "notes": "Commit: d5a4d270d",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:16:15.733108488Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:04:00.858963277Z",
+  "updated_at": "2026-07-23T04:00:19.997594912Z",
   "started_at": "2026-07-23T04:00:19.997594912Z",
-  "closed_at": "2026-07-23T04:04:00.858963277Z",
-  "close_reason": "Removed stale duplicate duty_cycle implementation from lichen/lib/hal/hal.c (old unprefixed API superseded by lichen_duty_cycle_* in subsys/lichen/hal/hal.c per HAL contract and test vectors). Resolved merge conflict source across worker trees. Verified no references or build impact."
+  "lease_expires_at": "2026-07-23T04:05:19.997594912Z",
+  "heartbeat_at": "2026-07-23T04:00:19.997594912Z"
 }
