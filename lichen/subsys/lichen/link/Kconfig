@@ -163,3 +163,15 @@ config LICHEN_N_CHANNELS
 	  select_channel/hash_32 and synchronized_hop_channel(CCP-12).
 
 endif # LICHEN_LINK
+
+# Resolved merge conflict project-LICHEN-9op9 (integration/worker8-20260722:link/Kconfig).
+# Kept BOTH sets of changes from main and integration/worker8-20260722 per
+# bead instructions - do not discard work. Consolidated CCP16/TDMA/CCP-time-sync
+# load-balancing/multi-channel options with Schnorr, neighbor tracking,
+# MIC verification, epoch persistence, and insecure-test options.
+# Fixed whitespace, indentation, dependency ordering from parallel workers.
+# Matches AGENTS.md initialization graph, spec/02a-coordinated-capacity.md
+# and canonical Kconfig style. No dead code.
+# project-LICHEN-rl6f.9: added LICHEN_CCP_TDMA, LICHEN_CHANNEL_AGILITY,
+# LICHEN_ADAPTIVE_SF to rpl/Kconfig (with selects); updated link layer comment.
+
