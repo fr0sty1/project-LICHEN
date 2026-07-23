@@ -315,13 +315,8 @@ class EdhocInitiator:
     def create(
         cls, identity: Identity, c_i: bytes | None = None, method: Method = Method.SIGN_SIGN
     ) -> EdhocInitiator:
-        """Create an EDHOC initiator with fresh ephemeral keys.
-
-        Note: For SIGN_SIGN mode, we generate fresh ephemeral X25519 keys
-        per-session rather than using Identity.x25519_*. The identity's
-        Ed25519 keys are used only for signatures. Static-DH modes would
-        use Identity.x25519_private for the DH exchange.
-        """
+        if method is not Method.SIGN_SIGN:
+            raise ValueError("only EDHOC SIGN_SIGN is supported")
         if c_i is None:
             c_i = os.urandom(1)
         eph_sk, eph_pk = _x25519_keypair()
@@ -374,79 +369,8 @@ class EdhocInitiator:
         Raises:
             ValueError: If message validation fails.
         """
-        # Decode message_2 = (G_Y || CIPHERTEXT_2, C_R) as CBOR sequence
-        # First item: bstr containing G_Y (32 bytes) concatenated with CIPHERTEXT_2
-        # Second item: C_R (connection identifier)
-        items = _decode_cbor_sequence(msg2)
-        if len(items) < 2:
-            raise ValueError(f"Malformed message_2: expected 2 CBOR items, got {len(items)}")
-        g_y_ciphertext_2 = items[0]
-        c_r_raw = items[1]
-
-        if len(g_y_ciphertext_2) < X25519_KEY_LEN:
-            raise ValueError(
-                f"Message 2 too short: G_Y requires {X25519_KEY_LEN} bytes, "
-                f"got {len(g_y_ciphertext_2)}"
-            )
-        self._g_y = g_y_ciphertext_2[:X25519_KEY_LEN]
-        ciphertext_2 = g_y_ciphertext_2[X25519_KEY_LEN:]
-        self._c_r = _decode_connection_id(c_r_raw)
-
-        # Compute shared secret
-        g_xy = _x25519_shared_secret(self._eph_sk, self._g_y)
-
-        # TH_2 = H(G_Y, H(message_1))
-        h_msg1 = _compute_th(self._msg1)
-        th_2_input = self._g_y + h_msg1
-        self._th_2 = _compute_th(th_2_input)
-
-        # PRK_2e = HKDF-Extract(salt=TH_2, IKM=G_XY)
-        self._prk_2e = _hkdf_extract(self._th_2, g_xy)
-
-        # Derive KEYSTREAM_2 and decrypt CIPHERTEXT_2
-        keystream_2 = _edhoc_kdf(
-            self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(ciphertext_2)
-        )
-        plaintext_2 = bytes(a ^ b for a, b in zip(ciphertext_2, keystream_2))
-
-        # PLAINTEXT_2 = (ID_CRED_R, Signature_or_MAC_2, ?EAD_2)
-        # For SIGN_SIGN, ID_CRED_R is bstr (pubkey), followed by Signature_2
-        pt2_items = _decode_cbor_sequence(plaintext_2)
-        if len(pt2_items) < 2:
-            raise ValueError(
-                f"Malformed PLAINTEXT_2: expected at least 2 CBOR items, got {len(pt2_items)}"
-            )
-
-        id_cred_r = pt2_items[0]
-        if id_cred_r != peer_pubkey:
-            raise ValueError("ID_CRED_R mismatch")
-        signature_2 = pt2_items[1]
-
-        if id_cred_r != peer_pubkey:
-            raise ValueError("ID_CRED_R mismatch")
-
-        # PRK_3e2m = PRK_2e for Suite 0 SIGN_SIGN (needed for MAC_2)
-        self._prk_3e2m = self._prk_2e
-
-        # SECURITY: Verify Signature_2 from responder per RFC 9528 Section 4.3.2
-        # For SIGN_SIGN: Signature_2 = Sign(SK_R, M_2)
-        cred_r = peer_pubkey  # CRED_R = pubkey for simplified case
-
-        # Recompute MAC_2
-        context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
-        mac_2 = _edhoc_kdf(self._prk_3e2m, self._th_2, "MAC_2", context_2, EDHOC_MAC_LEN)
-
-        # M_2 = ["Signature1", << ID_CRED_R >>, TH_2, << CRED_R, ?EAD_2 >>, MAC_2]
-        m_2 = cbor2.dumps([
-            "Signature1",
-            cbor2.dumps(id_cred_r),
-            self._th_2,
-            cbor2.dumps(cred_r),
-            mac_2,
-        ])
-        verify_key = VerifyKey(peer_pubkey)
+        self._require_state(_InitiatorState.WAIT_MESSAGE_2, "process_message_2")
         try:
-            peer_key = _validate_bytes(peer_pubkey, "peer public key", ED25519_SIG_LEN // 2)
             items = _decode_cbor_sequence(msg2)
             if len(items) != 2:
                 raise ValueError(f"Malformed message_2: expected 2 CBOR items, got {len(items)}")
@@ -458,14 +382,18 @@ class EdhocInitiator:
             c_r = _validate_connection_id(items[1], "C_R")
             if c_r == self._c_i:
                 raise ValueError("C_R must differ from C_I")
-
+            self._g_y = g_y
+            self._c_r = c_r
             g_xy = _x25519_shared_secret(self._eph_sk, g_y)
-            th_2 = _compute_th(g_y + _compute_th(self._msg1))
-            prk_2e = _hkdf_extract(th_2, g_xy)
-            keystream_2 = _edhoc_kdf(prk_2e, th_2, "KEYSTREAM_2", b"", len(ciphertext_2))
-            plaintext_2 = bytes(
-                a ^ b for a, b in zip(ciphertext_2, keystream_2, strict=True)
+            h_msg1 = _compute_th(self._msg1)
+            th_2_input = g_y + h_msg1
+            self._th_2 = _compute_th(th_2_input)
+            self._prk_2e = _hkdf_extract(self._th_2, g_xy)
+            self._prk_3e2m = self._prk_2e
+            keystream_2 = _edhoc_kdf(
+                self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(ciphertext_2)
             )
+            plaintext_2 = bytes(a ^ b for a, b in zip(ciphertext_2, keystream_2, strict=True))
             pt2_items = _decode_cbor_sequence(plaintext_2)
             if len(pt2_items) != 2:
                 raise ValueError(
@@ -473,88 +401,53 @@ class EdhocInitiator:
                 )
             id_cred_r = _validate_bytes(pt2_items[0], "ID_CRED_R", ED25519_SIG_LEN // 2)
             signature_2 = _validate_bytes(pt2_items[1], "Signature_2", ED25519_SIG_LEN)
-            if id_cred_r != peer_key:
+            if id_cred_r != peer_pubkey:
                 raise ValueError("ID_CRED_R does not match the authenticated peer")
-
-            prk_3e2m = prk_2e
-            context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(peer_key)
-            mac_2 = _edhoc_kdf(prk_3e2m, th_2, "MAC_2", context_2, EDHOC_MAC_LEN)
-            m_2 = cbor2.dumps(
-                ["Signature1", cbor2.dumps(id_cred_r), th_2, cbor2.dumps(peer_key), mac_2]
+            cred_r = peer_pubkey
+            context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
+            mac_2 = _edhoc_kdf(self._prk_3e2m, self._th_2, "MAC_2", context_2, EDHOC_MAC_LEN)
+            m_2 = cbor2.dumps([
+                "Signature1",
+                cbor2.dumps(id_cred_r),
+                self._th_2,
+                cbor2.dumps(cred_r),
+                mac_2,
+            ])
+            VerifyKey(peer_pubkey).verify(m_2, signature_2)
+            th_3_input = (
+                cbor2.dumps(self._th_2)
+                + cbor2.dumps(ciphertext_2)
+                + cbor2.dumps(id_cred_r)
             )
-            try:
-                VerifyKey(peer_key).verify(m_2, signature_2)
-            except Exception as exc:
-                raise ValueError("Signature_2 verification failed") from exc
-
-            th_3 = _compute_th(
-                cbor2.dumps(th_2) + cbor2.dumps(ciphertext_2) + cbor2.dumps(id_cred_r)
-            )
-            prk_4e3m = prk_3e2m
+            self._th_3 = _compute_th(th_3_input)
+            self._prk_4e3m = self._prk_3e2m
             id_cred_i = _validate_bytes(
                 self.identity.pubkey, "local credential", ED25519_SIG_LEN // 2
             )
             context_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(id_cred_i)
-            mac_3 = _edhoc_kdf(prk_4e3m, th_3, "MAC_3", context_3, EDHOC_MAC_LEN)
-            m_3 = cbor2.dumps(
-                ["Signature1", cbor2.dumps(id_cred_i), th_3, cbor2.dumps(id_cred_i), mac_3]
-            )
+            mac_3 = _edhoc_kdf(self._prk_4e3m, self._th_3, "MAC_3", context_3, EDHOC_MAC_LEN)
+            m_3 = cbor2.dumps([
+                "Signature1",
+                cbor2.dumps(id_cred_i),
+                self._th_3,
+                cbor2.dumps(id_cred_i),
+                mac_3,
+            ])
             signature_3 = SigningKey(self.identity.seed).sign(m_3).signature
             plaintext_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(signature_3)
-            k_3 = _edhoc_kdf(prk_3e2m, th_3, "K_3", b"", CCM_KEY_LEN)
-            iv_3 = _edhoc_kdf(prk_3e2m, th_3, "IV_3", b"", CCM_NONCE_LEN)
-            a_3 = cbor2.dumps(["Encrypt0", b"", th_3])
+            k_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "K_3", b"", CCM_KEY_LEN)
+            iv_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "IV_3", b"", CCM_NONCE_LEN)
+            a_3 = cbor2.dumps(["Encrypt0", b"", self._th_3])
             ciphertext_3 = _aead_encrypt(k_3, iv_3, a_3, plaintext_3)
-            th_4 = _compute_th(cbor2.dumps(th_3) + cbor2.dumps(ciphertext_3))
+            th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(ciphertext_3)
+            self._th_4 = _compute_th(th_4_input)
         except Exception as exc:
             self._fail()
             if isinstance(exc, ValueError):
                 raise
             raise ValueError("Message 2 processing failed") from exc
 
-        # Create Message 3
-        # CIPHERTEXT_3 contains ID_CRED_I and Signature_3
-
-        # ID_CRED_I - our credential identifier (simplified: just pubkey)
-        id_cred_i = self.identity.pubkey
-        cred_i = self.identity.pubkey  # CRED_I = pubkey for simplified case
-
-        # Compute MAC_3 per RFC 9528 Section 4.4.2
-        # MAC_3 = EDHOC-KDF(PRK_4e3m, TH_3, "MAC_3", context_3, mac_length_3)
-        # context_3 = << ID_CRED_I, CRED_I, ?EAD_3 >>
-        context_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(cred_i)
-        mac_3 = _edhoc_kdf(self._prk_4e3m, self._th_3, "MAC_3", context_3, EDHOC_MAC_LEN)
-
-        # Compute Signature_3 per RFC 9528 Section 4.4.2 (COSE Sig_structure)
-        # M_3 = ["Signature1", << ID_CRED_I >>, TH_3, << CRED_I, ?EAD_3 >>, MAC_3]
-        m_3 = cbor2.dumps([
-            "Signature1",
-            cbor2.dumps(id_cred_i),  # << ID_CRED_I >> bstr-wrapped
-            self._th_3,
-            cbor2.dumps(cred_i),     # << CRED_I >> bstr-wrapped
-            mac_3,
-        ])
-        signing_key = SigningKey(self.identity.seed)
-        signature_3 = signing_key.sign(m_3).signature
-
-        # PLAINTEXT_3 = (ID_CRED_I, Signature_3, ?EAD_3)
-        plaintext_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(signature_3)
-
-        # K_3 and IV_3 for AEAD
-        k_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "K_3", b"", CCM_KEY_LEN)
-        iv_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "IV_3", b"", CCM_NONCE_LEN)
-
-        # A_3 = ["Encrypt0", h'', TH_3] - TH_3 only to match Rust lichen-oscore, RFC trace vectors,
-        # and transcript binding for OSCORE export interop.
-        a_3 = cbor2.dumps(["Encrypt0", b"", self._th_3])
-
-        ciphertext_3 = _aead_encrypt(k_3, iv_3, a_3, plaintext_3)
-
-        # TH_4 = H(TH_3, CIPHERTEXT_3)
-        th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(ciphertext_3)
-        self._th_4 = _compute_th(th_4_input)
-
-        # message_3 = CIPHERTEXT_3
+        self._state = _InitiatorState.COMPLETE
         return ciphertext_3
 
     def export_oscore(self, oscore_salt_len: int = 8, oscore_key_len: int = 16) -> OscoreContext:
@@ -645,13 +538,8 @@ class EdhocResponder:
     def create(
         cls, identity: Identity, c_r: bytes | None = None, method: Method = Method.SIGN_SIGN
     ) -> EdhocResponder:
-        """Create an EDHOC responder with fresh ephemeral keys.
-
-        Note: For SIGN_SIGN mode, we generate fresh ephemeral X25519 keys
-        per-session rather than using Identity.x25519_*. The identity's
-        Ed25519 keys are used only for signatures. Static-DH modes would
-        use Identity.x25519_private for the DH exchange.
-        """
+        if method is not Method.SIGN_SIGN:
+            raise ValueError("only EDHOC SIGN_SIGN is supported")
         if c_r is None:
             c_r = os.urandom(1)
         eph_sk, eph_pk = _x25519_keypair()
@@ -684,126 +572,65 @@ class EdhocResponder:
                 raise ValueError(
                     f"Malformed message_1: expected 4 or 5 CBOR items, got {len(items)}"
                 )
-            expected_method_corr = self.method * 4 + 1
-            if type(items[0]) is not int or items[0] != expected_method_corr:
-                raise ValueError(f"Unsupported METHOD_CORR: {items[0]!r}")
-            if type(items[1]) is not int or items[1] != SUITE_0:
-                raise ValueError(f"Unsupported cipher suite: {items[1]!r}")
+            method_corr = items[0]
+            received_method = method_corr // 4
+            corr = method_corr % 4
+            if received_method != self.method:
+                raise ValueError(
+                    f"Method mismatch: initiator sent method={received_method}, "
+                    f"responder expects method={self.method}"
+                )
+            if corr not in (0, 1, 2, 3):
+                raise ValueError(f"Invalid corr value: {corr}")
+            if items[1] != SUITE_0:
+                raise ValueError(f"Unsupported cipher suite: {items[1]}")
             g_x = _validate_bytes(items[2], "G_X", X25519_KEY_LEN)
-            c_i = _validate_connection_id(items[3], "C_I")
+            c_i = _decode_connection_id(items[3])
             if len(items) == 5:
                 _validate_bytes(items[4], "EAD_1")
             preferred_c_r = _validate_connection_id(self.c_r, "C_R")
-            c_r = _select_responder_connection_id(preferred_c_r, c_i)
-            self.c_r = c_r
-            self._c_r = c_r
-
+            self.c_r = _select_responder_connection_id(preferred_c_r, c_i)
+            self._c_r = self.c_r
+            self._g_x = g_x
+            self._c_i = c_i
             g_xy = _x25519_shared_secret(self._eph_sk, g_x)
-            th_2 = _compute_th(self._eph_pk + _compute_th(message_1))
-            prk_2e = _hkdf_extract(th_2, g_xy)
-            prk_3e2m = prk_2e
-            id_cred_r = _validate_bytes(
-                self.identity.pubkey, "local credential", ED25519_SIG_LEN // 2
-            )
-            context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(id_cred_r)
-            mac_2 = _edhoc_kdf(prk_3e2m, th_2, "MAC_2", context_2, EDHOC_MAC_LEN)
-            m_2 = cbor2.dumps(
-                ["Signature1", cbor2.dumps(id_cred_r), th_2, cbor2.dumps(id_cred_r), mac_2]
-            )
+            h_msg1 = _compute_th(message_1)
+            th_2_input = self._eph_pk + h_msg1
+            self._th_2 = _compute_th(th_2_input)
+            self._prk_2e = _hkdf_extract(self._th_2, g_xy)
+            self._prk_3e2m = self._prk_2e
+            id_cred_r = self.identity.pubkey
+            cred_r = self.identity.pubkey
+            context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
+            mac_2 = _edhoc_kdf(self._prk_3e2m, self._th_2, "MAC_2", context_2, EDHOC_MAC_LEN)
+            m_2 = cbor2.dumps([
+                "Signature1",
+                cbor2.dumps(id_cred_r),
+                self._th_2,
+                cbor2.dumps(cred_r),
+                mac_2,
+            ])
             signature_2 = SigningKey(self.identity.seed).sign(m_2).signature
             plaintext_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(signature_2)
-            keystream_2 = _edhoc_kdf(prk_2e, th_2, "KEYSTREAM_2", b"", len(plaintext_2))
-            ciphertext_2 = bytes(
-                a ^ b for a, b in zip(plaintext_2, keystream_2, strict=True)
+            keystream_2 = _edhoc_kdf(
+                self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(plaintext_2)
             )
-            th_3 = _compute_th(
-                cbor2.dumps(th_2) + cbor2.dumps(ciphertext_2) + cbor2.dumps(id_cred_r)
+            ciphertext_2 = bytes(a ^ b for a, b in zip(plaintext_2, keystream_2, strict=True))
+            th_3_input = (
+                cbor2.dumps(self._th_2)
+                + cbor2.dumps(ciphertext_2)
+                + cbor2.dumps(id_cred_r)
             )
-            msg2 = cbor2.dumps(self._eph_pk + ciphertext_2) + _encode_connection_id(c_r)
+            self._th_3 = _compute_th(th_3_input)
+            g_y_ciphertext_2 = self._eph_pk + ciphertext_2
+            msg2 = cbor2.dumps(g_y_ciphertext_2) + _encode_connection_id(self.c_r)
         except Exception as exc:
             self._fail()
             if isinstance(exc, ValueError):
                 raise
             raise ValueError("Message 1 processing failed") from exc
 
-        # Extract and validate METHOD from METHOD_CORR
-        # METHOD_CORR = method * 4 + corr (RFC 9528 Section 3.2, project-LICHEN-g7mt)
-        method_corr = items[0]
-        received_method = method_corr // 4
-        corr = method_corr % 4
-        if received_method != self.method:
-            raise ValueError(
-                f"Method mismatch: initiator sent method={received_method}, "
-                f"responder expects method={self.method}"
-            )
-        if corr not in (0, 1, 2, 3):
-            raise ValueError(f"Invalid corr value: {corr}")
-
-        suites_i = items[1]
-        self._g_x = items[2]
-        self._c_i = _decode_connection_id(items[3])
-
-        # Select non-colliding C_R (updates public c_r for test interop)
-        self.c_r = _select_responder_connection_id(
-            _validate_connection_id(self.c_r, "C_R"), self._c_i
-        )
-
-        # Verify suite is supported
-        if suites_i != SUITE_0:
-            raise ValueError(f"Unsupported cipher suite: {suites_i}")
-
-        # Compute shared secret
-        g_xy = _x25519_shared_secret(self._eph_sk, self._g_x)
-
-        # TH_2 = H(G_Y, H(message_1))
-        h_msg1 = _compute_th(msg1)
-        th_2_input = self._eph_pk + h_msg1
-        self._th_2 = _compute_th(th_2_input)
-
-        # PRK_2e = HKDF-Extract(salt=TH_2, IKM=G_XY)
-        self._prk_2e = _hkdf_extract(self._th_2, g_xy)
-
-        # PRK_3e2m = PRK_2e for SIGN_SIGN
-        self._prk_3e2m = self._prk_2e
-
-        # Create PLAINTEXT_2 = (ID_CRED_R, Signature_or_MAC_2, ?EAD_2)
-        id_cred_r = self.identity.pubkey
-        cred_r = self.identity.pubkey  # CRED_R = pubkey for simplified case
-
-        # Compute MAC_2 per RFC 9528 Section 4.3.2
-        # MAC_2 = EDHOC-KDF(PRK_3e2m, TH_2, "MAC_2", context_2, mac_length_2)
-        # context_2 = << ID_CRED_R, CRED_R, ?EAD_2 >>
-        context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
-        mac_2 = _edhoc_kdf(self._prk_3e2m, self._th_2, "MAC_2", context_2, EDHOC_MAC_LEN)
-
-        # Compute Signature_2 per RFC 9528 Section 4.3.2 (COSE Sig_structure)
-        # M_2 = ["Signature1", << ID_CRED_R >>, TH_2, << CRED_R, ?EAD_2 >>, MAC_2]
-        m_2 = cbor2.dumps([
-            "Signature1",
-            cbor2.dumps(id_cred_r),
-            self._th_2,
-            cbor2.dumps(cred_r),
-            mac_2,
-        ])
-        signing_key = SigningKey(self.identity.seed)
-        signature_2 = signing_key.sign(m_2).signature
-
-        plaintext_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(signature_2)
-
-        # KEYSTREAM_2 for XOR encryption
-        keystream_2 = _edhoc_kdf(
-            self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(plaintext_2)
-        )
-        ciphertext_2 = bytes(a ^ b for a, b in zip(plaintext_2, keystream_2))
-
-        # TH_3 = H(TH_2, CIPHERTEXT_2, ID_CRED_R)
-        th_3_input = cbor2.dumps(self._th_2) + cbor2.dumps(ciphertext_2) + cbor2.dumps(id_cred_r)
-        self._th_3 = _compute_th(th_3_input)
-
-        # message_2 = (G_Y || CIPHERTEXT_2, C_R)
-        g_y_ciphertext_2 = self._eph_pk + ciphertext_2
-        msg2 = cbor2.dumps(g_y_ciphertext_2) + _encode_connection_id(self.c_r)
-
+        self._state = _ResponderState.WAIT_MESSAGE_3
         return msg2
 
     def process_message_3(self, msg3: bytes, peer_pubkey: bytes) -> None:
@@ -816,53 +643,9 @@ class EdhocResponder:
         Raises:
             ValueError: If signature verification fails.
         """
-        ciphertext_3 = msg3
-
-        # K_3 and IV_3 for AEAD decryption
-        k_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "K_3", b"", CCM_KEY_LEN)
-        iv_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "IV_3", b"", CCM_NONCE_LEN)
-
-        # A_3 = ["Encrypt0", h'', TH_3] per RFC 9528 §4.4.2 and Rust reference.
-        # Using TH_3 only for AAD ensures transcript binding and interop with test vectors.
-        a_3 = cbor2.dumps(["Encrypt0", b"", self._th_3])
-
-        plaintext_3 = _aead_decrypt(k_3, iv_3, a_3, ciphertext_3)
-
-        # Parse PLAINTEXT_3 = (ID_CRED_I, Signature_3, ?EAD_3)
-        pt3_items = _decode_cbor_sequence(plaintext_3)
-        if len(pt3_items) < 2:
-            raise ValueError(
-                f"Malformed PLAINTEXT_3: expected at least 2 CBOR items, got {len(pt3_items)}"
-            )
-        id_cred_i = pt3_items[0]
-        if id_cred_i != peer_pubkey:
-            raise ValueError("ID_CRED_I mismatch")
-        signature_3 = pt3_items[1]
-
-        if id_cred_i != peer_pubkey:
-            raise ValueError("ID_CRED_I mismatch")
-
-        # PRK_4e3m = PRK_3e2m for SIGN_SIGN (needed for MAC_3)
-        self._prk_4e3m = self._prk_3e2m
-
-        # Verify Signature_3 per RFC 9528 Section 4.4.2
-        cred_i = peer_pubkey  # CRED_I = pubkey for simplified case
-
-        # Recompute MAC_3
-        context_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(cred_i)
-        mac_3 = _edhoc_kdf(self._prk_4e3m, self._th_3, "MAC_3", context_3, EDHOC_MAC_LEN)
-
-        # M_3 = ["Signature1", << ID_CRED_I >>, TH_3, << CRED_I, ?EAD_3 >>, MAC_3]
-        m_3 = cbor2.dumps([
-            "Signature1",
-            cbor2.dumps(id_cred_i),
-            self._th_3,
-            cbor2.dumps(cred_i),
-            mac_3,
-        ])
-        verify_key = VerifyKey(peer_pubkey)
+        self._require_state(_ResponderState.WAIT_MESSAGE_3, "process_message_3")
         try:
-            peer_key = _validate_bytes(peer_pubkey, "peer public key", ED25519_SIG_LEN // 2)
+            _validate_bytes(peer_pubkey, "peer public key", ED25519_SIG_LEN // 2)
             ciphertext_3 = _validate_bytes(msg3, "CIPHERTEXT_3")
             if len(ciphertext_3) <= CCM_TAG_LEN:
                 raise ValueError("CIPHERTEXT_3 is too short")
@@ -877,27 +660,27 @@ class EdhocResponder:
                 )
             id_cred_i = _validate_bytes(pt3_items[0], "ID_CRED_I", ED25519_SIG_LEN // 2)
             signature_3 = _validate_bytes(pt3_items[1], "Signature_3", ED25519_SIG_LEN)
-            if id_cred_i != peer_key:
+            if id_cred_i != peer_pubkey:
                 raise ValueError("ID_CRED_I does not match the authenticated peer")
-            prk_4e3m = self._prk_3e2m
-            context_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(peer_key)
-            mac_3 = _edhoc_kdf(prk_4e3m, self._th_3, "MAC_3", context_3, EDHOC_MAC_LEN)
-            m_3 = cbor2.dumps(
-                ["Signature1", cbor2.dumps(id_cred_i), self._th_3, cbor2.dumps(peer_key), mac_3]
-            )
-            try:
-                VerifyKey(peer_key).verify(m_3, signature_3)
-            except Exception as exc:
-                raise ValueError("Signature_3 verification failed") from exc
-            th_4 = _compute_th(cbor2.dumps(self._th_3) + cbor2.dumps(ciphertext_3))
+            self._prk_4e3m = self._prk_3e2m
+            context_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(peer_pubkey)
+            mac_3 = _edhoc_kdf(self._prk_4e3m, self._th_3, "MAC_3", context_3, EDHOC_MAC_LEN)
+            m_3 = cbor2.dumps([
+                "Signature1",
+                cbor2.dumps(id_cred_i),
+                self._th_3,
+                cbor2.dumps(peer_pubkey),
+                mac_3,
+            ])
+            VerifyKey(peer_pubkey).verify(m_3, signature_3)
+            th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(ciphertext_3)
+            self._th_4 = _compute_th(th_4_input)
         except Exception as exc:
             self._fail()
             if isinstance(exc, ValueError):
                 raise
             raise ValueError("Message 3 processing failed") from exc
 
-        self._prk_4e3m = prk_4e3m
-        self._th_4 = th_4
         self._state = _ResponderState.COMPLETE
 
     def export_oscore(self, oscore_salt_len: int = 8, oscore_key_len: int = 16) -> OscoreContext:
