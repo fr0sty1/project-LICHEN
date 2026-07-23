@@ -6,9 +6,6 @@
  * Classified FAIL in bridge audit (m5m1.8). Support removed. Use heltec_wifi_lora32_v3_esp32s3_procpu (or t1000_e) as proxy. Follows tbeam_supreme pattern (project-LICHEN-w8rd).
  * Fragment, DT fragment, and pin map retained for reference only. See docs/firmware-board-capability-matrix.md.
  *
- * Resolved merge conflict for project-LICHEN-6j8k (worktree-worker19), project-LICHEN-s2tx/rpc8 (worktree-worker19), project-LICHEN-pzlk (worker18), project-LICHEN-xnwv/ohl2/8djo/t6un (worker23), project-LICHEN-jmk8, project-LICHEN-znqu (worker24), project-LICHEN-dxzk (worktree-worker20), project-LICHEN-y2do (worker3), project-LICHEN-43jm (worker18), project-LICHEN-nktv (worktree-worker21), project-LICHEN-josf (worktree-worker21), project-LICHEN-zxns: xiao_s3_wio_sx1262.overlay (and .conf).
- * Consolidated parallel worker updates to retired board fragment; standardized SPDX header and comment. Matches xiao_s3_wio_sx1262.conf, heltec_wifi_lora32_v3_esp32s3_procpu.conf and t_deck_esp32s3_procpu.conf patterns. No duplicate resolution markers or dead code per AGENTS.md.
- *
  * Original pin map (for reference):
  * ESP32-S3 + SX1262 LoRa (via B2B connector)
  * SX1262 SPI: SCK=GPIO7, MISO=GPIO8, MOSI=GPIO9, NSS=GPIO41
