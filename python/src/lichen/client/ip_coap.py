@@ -200,6 +200,8 @@ class AiocoapResourceSubscription(ResourceSubscription):
                 if self._should_accept(response):
                     yield _coap_result(response)
         except Exception as exc:
+            with suppress(Exception):
+                await self.close()
             raise CoapTransportError(f"{self._method} {self._path} observe failed: {exc}") from exc
 
     async def _next_observation_or_close(self, iterator: Any) -> Message | None:
