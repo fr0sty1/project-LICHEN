@@ -1,27 +1,21 @@
 //! Announce message codec (spec section 9.2 + CCP-9).
 //!
-//! Wire format (CCP-9 rendezvous per test vectors):
+//! Wire format (CCP-9 rendezvous per test vectors and independent oracle):
 //! ```text
 //! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//! | Type=0x01 | rx_channel (flags byte) | Hop Cnt | Seq Num (2B) |
+//! | Type=0x01 | Flags | Hop Cnt | Seq Num (2B) | IID (8B) | Pubkey (32B) |
 //! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//! |                    Originator IID (8 bytes)                   |
-//! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//! |                    Public Key (32 bytes)                      |
-//! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//! |                    Signature (48 bytes)                       |
-//! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//! | Optional: App Data (variable)                                 |
+//! | Signature (48B) | rx_channel | Optional App Data (variable) |
 //! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 //! ```
 //!
-//! FIXED_LENGTH=93 (type to end of signature). rx_channel reuses flags byte at offset 1, signed after seq per CCP-9.
+//! FIXED_LENGTH=94 (type to rx_channel). rx_channel at byte offset 93 per _l2_announce_with_channel oracle and Python messages.py. Signed after seq per CCP-9. Do not use impl as oracle.
 
 /// Announce message type identifier.
 pub const ANNOUNCE_TYPE: u8 = 0x01;
 pub const SIGNATURE_LENGTH: usize = 48;
 pub const MAX_ANNOUNCE_HOPS: u8 = 15;
-const FIXED_LENGTH: usize = 93;
+const FIXED_LENGTH: usize = 94;
 use crate::error::{BufferTooSmall, TooShort};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
@@ -75,7 +69,8 @@ impl<'a> Announce<'a> {
         if data[0] != ANNOUNCE_TYPE {
             return Err(AnnounceError::WrongType(data[0]));
         }
-        let rx_channel = data[1];
+        let flags = data[1];
+        let rx_channel = data[93];
         if rx_channel >= 8 {
             return Err(AnnounceError::InvalidChannel(rx_channel));
         }
@@ -83,14 +78,14 @@ impl<'a> Announce<'a> {
         let pubkey = data[13..45].try_into().unwrap();
         let signature = data[45..93].try_into().unwrap();
         Ok(Self {
-            flags: rx_channel,
+            flags,
             hop_count: data[2],
             seq_num: u16::from_be_bytes([data[3], data[4]]),
             rx_channel,
             originator_iid,
             pubkey,
             signature,
-            app_data: &data[93..],
+            app_data: &data[94..],
         })
     }
     pub fn signed_data_len(&self) -> usize {
@@ -133,13 +128,14 @@ impl<'a> AnnounceBuilder<'a> {
             return Err(BufferTooSmall::new(total, out.len()).into());
         }
         out[0] = ANNOUNCE_TYPE;
-        out[1] = self.rx_channel;
+        out[1] = self.flags;
         out[2] = self.hop_count;
         out[3..5].copy_from_slice(&self.seq_num.to_be_bytes());
         out[5..13].copy_from_slice(self.originator_iid);
         out[13..45].copy_from_slice(self.pubkey);
         out[45..93].copy_from_slice(self.signature);
-        out[93..total].copy_from_slice(self.app_data);
+        out[93] = self.rx_channel;
+        out[94..total].copy_from_slice(self.app_data);
         Ok(total)
     }
 }
@@ -147,15 +143,16 @@ impl<'a> AnnounceBuilder<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn make_announce() -> [u8; 93] {
-        let mut buf = [0u8; 93];
+    fn make_announce() -> [u8; 94] {
+        let mut buf = [0u8; 94];
         buf[0] = ANNOUNCE_TYPE;
-        buf[1] = 2;
+        buf[1] = 0; // flags
         buf[2] = 3;
         buf[3] = 0x12;
         buf[4] = 0x34;
         buf[5] = 0x02;
         buf[12] = 0x01;
+        buf[93] = 2; // rx_channel per independent oracle
         buf
     }
     #[test]
@@ -165,6 +162,7 @@ mod tests {
         assert_eq!(ann.hop_count, 3);
         assert_eq!(ann.seq_num, 0x1234);
         assert_eq!(ann.rx_channel, 2);
+        assert_eq!(ann.flags, 0);
         assert_eq!(ann.originator_iid[0], 0x02);
         assert!(ann.app_data.is_empty());
         let builder = AnnounceBuilder {
@@ -177,16 +175,16 @@ mod tests {
             app_data: ann.app_data,
             flags: ann.flags,
         };
-        let mut out = [0u8; 93];
+        let mut out = [0u8; 94];
         let n = builder.write_to(&mut out).unwrap();
-        assert_eq!(n, 93);
+        assert_eq!(n, 94);
         assert_eq!(&out[..], &wire[..]);
     }
     #[test]
     fn too_short() {
         assert_eq!(
-            Announce::from_bytes(&[0u8; 92]),
-            Err(AnnounceError::TooShort(TooShort::new(FIXED_LENGTH, 92)))
+            Announce::from_bytes(&[0u8; 93]),
+            Err(AnnounceError::TooShort(TooShort::new(FIXED_LENGTH, 93)))
         );
     }
     #[test]
@@ -201,7 +199,7 @@ mod tests {
     #[test]
     fn invalid_channel() {
         let mut wire = make_announce();
-        wire[1] = 16;
+        wire[93] = 16;
         assert_eq!(
             Announce::from_bytes(&wire),
             Err(AnnounceError::InvalidChannel(16))
