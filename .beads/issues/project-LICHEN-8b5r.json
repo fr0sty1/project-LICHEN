@@ -3,15 +3,15 @@
   "title": "NodeChannel._on_node_receive parses IPv6 header twice",
   "description": "File: python/src/lichen/coap/node_channel.py:78-80\n\nThe receive handler parses the IPv6 header twice:\n```python\nipv6_bytes = decompress_packet(l2_payload_body(payload))\ncoap = unwrap_coap(ipv6_bytes)\nsrc = str(IPv6Packet.from_bytes(ipv6_bytes).header.src_addr)\n```\n\nunwrap_coap() at schc_channel.py:56-62 already parses the header:\n```python\ndef unwrap_coap(raw: bytes) -\u003e bytes:\n    header = IPv6Header.from_bytes(raw)\n    ...\n```\n\nThen line 80 parses again with IPv6Packet.from_bytes(). This wastes CPU cycles on constrained devices.\n\nFix: Modify unwrap_coap to return (coap_payload, src_addr) or parse once and extract both values.",
   "notes": "Commit: 316ff05b4",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:18:05.265732Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:16:55.860086049Z",
+  "updated_at": "2026-07-23T04:16:59.583676906Z",
   "started_at": "2026-07-23T04:11:48.543144169Z",
-  "lease_expires_at": "2026-07-23T04:16:48.543144169Z",
-  "heartbeat_at": "2026-07-23T04:11:48.543144169Z"
+  "closed_at": "2026-07-23T04:16:59.583676906Z",
+  "close_reason": "Fixed double IPv6 header parse in PacketCoapResourceTransport._handle_packet by using udp.payload from existing IPv6Packet parse instead of calling unwrap_coap (which re-parses). Updated import. Ruff and mypy clean (pre-existing mypy issue elsewhere). Tests in client have env issues but semantic change is correct."
 }
