@@ -2,15 +2,15 @@
   "id": "project-LICHEN-rc9t",
   "title": "[merge-conflict] worktree-worker20: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: 9f561b944",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:27:19.472068764Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:36:00.077071276Z",
+  "updated_at": "2026-07-23T00:36:21.614945038Z",
   "started_at": "2026-07-23T00:33:48.065036379Z",
-  "lease_expires_at": "2026-07-23T00:38:48.065036379Z",
-  "heartbeat_at": "2026-07-23T00:33:48.065036379Z"
+  "closed_at": "2026-07-23T00:36:21.614945038Z",
+  "close_reason": "Fixed heltec puck board config to full L2/CoAP path resolving the merge conflict across worker branches. Updated with SPDX, consolidated comment referencing this bead, explicit L2/CoAP/LICHEN_L2 settings, dev provisioning, SenML, battery support. Committed as 9f561b9 and pushed to integration/worker5-20260722."
 }
