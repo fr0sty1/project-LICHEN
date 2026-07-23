@@ -17,6 +17,7 @@
 //! the real IP stack for internet connectivity.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![forbid(unsafe_code)]
 
 #[cfg(test)]
 extern crate std;
@@ -567,9 +568,11 @@ impl Icmpv6Echo {
         pkt.push(0).expect("capacity pre-checked"); // checksum low
 
         // Echo header: id, seq
-        pkt.push((self.id >> 8) as u8).expect("capacity pre-checked");
+        pkt.push((self.id >> 8) as u8)
+            .expect("capacity pre-checked");
         pkt.push(self.id as u8).expect("capacity pre-checked");
-        pkt.push((self.seq >> 8) as u8).expect("capacity pre-checked");
+        pkt.push((self.seq >> 8) as u8)
+            .expect("capacity pre-checked");
         pkt.push(self.seq as u8).expect("capacity pre-checked");
 
         // Data
@@ -610,16 +613,19 @@ impl NeighborSolicitation {
         let mut pkt = Vec::new();
 
         // ICMPv6 header
-        pkt.push(icmpv6_type::NEIGHBOR_SOLICITATION).expect("capacity pre-checked");
+        pkt.push(icmpv6_type::NEIGHBOR_SOLICITATION)
+            .expect("capacity pre-checked");
         pkt.push(0).expect("capacity pre-checked"); // code
         pkt.push(0).expect("capacity pre-checked"); // checksum
         pkt.push(0).expect("capacity pre-checked");
 
         // Reserved (4 bytes)
-        pkt.extend_from_slice(&[0u8; 4]).expect("capacity pre-checked");
+        pkt.extend_from_slice(&[0u8; 4])
+            .expect("capacity pre-checked");
 
         // Target address (16 bytes)
-        pkt.extend_from_slice(&self.target.0).expect("capacity pre-checked");
+        pkt.extend_from_slice(&self.target.0)
+            .expect("capacity pre-checked");
 
         // Compute checksum
         let checksum = icmpv6_checksum(src, dst, &pkt).expect("fixed-size solicitation");
@@ -662,7 +668,8 @@ impl NeighborAdvertisement {
         let mut pkt = Vec::new();
 
         // ICMPv6 header
-        pkt.push(icmpv6_type::NEIGHBOR_ADVERTISEMENT).expect("capacity pre-checked");
+        pkt.push(icmpv6_type::NEIGHBOR_ADVERTISEMENT)
+            .expect("capacity pre-checked");
         pkt.push(0).expect("capacity pre-checked"); // code
         pkt.push(0).expect("capacity pre-checked"); // checksum
         pkt.push(0).expect("capacity pre-checked");
@@ -679,10 +686,12 @@ impl NeighborAdvertisement {
             flags |= 0x20;
         }
         pkt.push(flags).expect("capacity pre-checked");
-        pkt.extend_from_slice(&[0u8; 3]).expect("capacity pre-checked");
+        pkt.extend_from_slice(&[0u8; 3])
+            .expect("capacity pre-checked");
 
         // Target address
-        pkt.extend_from_slice(&self.target.0).expect("capacity pre-checked");
+        pkt.extend_from_slice(&self.target.0)
+            .expect("capacity pre-checked");
 
         // Compute checksum
         let checksum = icmpv6_checksum(src, dst, &pkt).expect("fixed-size advertisement");
