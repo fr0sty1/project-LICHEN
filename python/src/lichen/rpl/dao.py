@@ -35,7 +35,13 @@ class RplTarget:
     target: IPv6Address
     prefix_length: int = 128
 
+    def __post_init__(self) -> None:
+        if not (0 <= self.prefix_length <= 128):
+            raise DaoError(f"prefix_length must be between 0 and 128, got {self.prefix_length}")
+
     def to_option(self) -> RplOption:
+        if not (0 <= self.prefix_length <= 128):
+            raise DaoError(f"prefix_length must be between 0 and 128, got {self.prefix_length}")
         nbytes = (self.prefix_length + 7) // 8
         data = bytes([0, self.prefix_length]) + self.target.packed[:nbytes]
         return RplOption(RplOptionType.RPL_TARGET, data)
@@ -47,6 +53,8 @@ class RplTarget:
         if len(opt.data) < 2:
             raise DaoError("RPL Target option too short")
         prefix_length = opt.data[1]
+        if not (0 <= prefix_length <= 128):
+            raise DaoError(f"prefix_length must be between 0 and 128, got {prefix_length}")
         nbytes = (prefix_length + 7) // 8
         prefix = opt.data[2 : 2 + nbytes]
         if len(prefix) != nbytes:
@@ -145,6 +153,10 @@ class DaoManager:
         if dao.rpl_instance_id != self.rpl_instance_id:
             raise DaoError(
                 f"DAO instance ID {dao.rpl_instance_id} != {self.rpl_instance_id}"
+            )
+        if self.dodag_id is not None and dao.dodag_id != self.dodag_id:
+            raise DaoError(
+                f"DAO DODAG ID {dao.dodag_id} != {self.dodag_id}"
             )
 
         target, parent = self._extract_edge(dao)
