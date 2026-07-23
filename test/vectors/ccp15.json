@@ -1,11 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-<<<<<<< HEAD
   "description": "ccp15 vectors for SF EMA load_factor hash_32 congestion control with independent oracle (math based).",
-=======
-  "description": "CCP15 load factor vectors with independent oracle.",
->>>>>>> origin/worktree-worker23
   "vectors": [
     {
       "name": "seed0",

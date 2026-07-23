@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-1fcx",
   "title": "[merge-conflict] worktree-worker20: t_deck_esp32s3_procpu.conf",
-  "status": "in_progress",
+  "notes": "Commit: 79c159e82",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:11:58.674236528Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:14:34.055315459Z",
+  "updated_at": "2026-07-23T00:15:47.932980749Z",
   "started_at": "2026-07-23T00:14:34.055315459Z",
-  "lease_expires_at": "2026-07-23T00:19:34.055315459Z",
-  "heartbeat_at": "2026-07-23T00:14:34.055315459Z"
+  "closed_at": "2026-07-23T00:15:47.932980749Z",
+  "close_reason": "Updated t_deck_esp32s3_procpu.conf in lichen/apps/gateway/boards/ with resolved merge conflict version from worker20 including WiFi 6LBR, stack tuning, NVS epoch, and bench configs. Verified via git commit 79c159e82. Commit pushed."
 }

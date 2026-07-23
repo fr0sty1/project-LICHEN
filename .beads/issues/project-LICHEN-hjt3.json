@@ -2,6 +2,7 @@
   "id": "project-LICHEN-hjt3",
   "title": "Clean up merge conflicts in coordinated capacity and related specs",
   "description": "Consolidate merge conflicts from multiple worker branches in spec/02a-coordinated-capacity.md, draft-lichen-rpl-lora-00.md, draft-lichen-schc-lora-00.md, 03-addressing.md, sales-playbook.md into coherent normative text. Include spelled-out pseudocode for select_channel/adaptive_sf_select/now(), CH0 control rules, capability DIO, CCP-9 da2q, density/EMA/load, test vector xrefs. Remove conflicts, duplicates, notes. Consistent with independent oracles. Keep CC-BY-4.0. Summarize resolved sections.",
+  "notes": "Commit: 91b92a83c. Specs cleaned: coordinated capacity pseudocode (spelled-out select_channel, adaptive_sf_select, now, EMA, density/load, CH0, capability DIO, CCP-9 da2q, test xrefs to ccp16.json), related drafts and addressing/sales-playbook. All conflicts resolved, normative text consolidated, duplicates/notes removed, CC-BY-4.0 preserved, summarized resolutions.",
   "status": "in_progress",
   "priority": 0,
   "issue_type": "epic",
@@ -9,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:55:30.345933857Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:13:41.381046843Z",
+  "updated_at": "2026-07-23T00:16:04.727336636Z",
   "started_at": "2026-07-23T00:13:41.381046843Z",
   "lease_expires_at": "2026-07-23T00:18:41.381046843Z",
   "heartbeat_at": "2026-07-23T00:13:41.381046843Z"

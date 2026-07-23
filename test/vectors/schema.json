@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LICHEN test vector file",
-  "description": "Envelope shared by all LICHEN vector files. Supports object envelope with format_version (1 or 2) or v2 bare array root of vectors (for ccp16-desync.json and similar). Each file holds a list of vectors of one kind; see the per-vector definitions. Combined to support all vector types (including ccp15_vector and ccp_vector), descriptions, format_version handling, bare array support, and all definitions from both sides without losing functionality.",
+  "description": "v2-only JSON Schema (draft-07) for LICHEN test vector files. Each file is either an object with format_version=2, description, and vectors array (one kind per file) or a bare array root (e.g. ccp16-desync.json). Per-vector definitions enforce independent oracles and cross-implementation determinism. See README.md for usage.",
   "oneOf": [
     {
       "type": "object",
@@ -744,36 +744,7 @@
         "tx_ms": {"type": "integer", "minimum": 0},
         "expected_remaining_ms": {"type": "integer", "minimum": 0},
         "expected_usage_permille": {"type": "integer", "minimum": 0, "maximum": 1000},
-<<<<<<< HEAD
-<<<<<<< HEAD
         "notes": {"type": "string"}
-=======
-=======
->>>>>>> origin/worktree-worker23
-        "notes": {"type": "string"},
-        "binary_hex": {"$ref": "#/definitions/hex"},
-        "decoded_fields": {
-          "type": "object",
-          "additionalProperties": true,
-          "properties": {
-            "subtype": {"type": "integer"},
-            "subtype_name": {"type": "string"},
-            "latitude_microdegrees": {"type": "integer"},
-            "longitude_microdegrees": {"type": "integer"},
-            "altitude_decimeters": {"type": "integer"},
-            "course_centidegrees": {"type": "integer"},
-            "speed_cm_s": {"type": "integer"},
-            "team": {"type": "integer"},
-            "team_name": {"type": "string"},
-            "role": {"type": "integer"},
-            "expected_hash": {"type": "integer", "description": "hash_32(SFN, key) per spec/02a-coordinated-capacity.md §2a.7.1 (FNV-1a32 primitive, matches C lichen_hash_32 and Python _hash_32)"},
-            "hash_32": {"type": "integer"}
-          }
-        }
-<<<<<<< HEAD
->>>>>>> origin/worktree-worker16
-=======
->>>>>>> origin/worktree-worker23
       }
     },
     "ccp_vector": {
@@ -795,34 +766,10 @@
           "items": {"type": "number"}
         },
         "hash_32_example": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
->>>>>>> origin/worktree-worker23
         "security_review": {
           "type": "string",
           "description": "Pass 2 security: no injection or crypto issues in CCP-16 vectors (project-LICHEN-ray3)"
         },
-<<<<<<< HEAD
-        "announce": {
-          "type": "object",
-          "properties": {
-            "channel": {"type": "integer"},
-            "flags": {"type": "integer"},
-            "seq": {"type": "integer"}
-          }
-        },
-        "hash_32": {"type": "integer"},
->>>>>>> origin/worktree-worker16
-=======
-        "decoded_fields": {
-          "type": "object",
-          "additionalProperties": true,
-          "description": "Unified decoded fields including expected_hash for CCP vectors"
-        },
-        "expected_hash": {"type": "integer", "description": "Independent oracle hash value per spec"},
->>>>>>> origin/worktree-worker23
         "input": {
           "type": "object",
           "properties": {

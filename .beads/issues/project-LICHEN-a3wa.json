@@ -3,15 +3,15 @@
   "title": "Resolve merge conflicts in test vector generator and schema",
   "description": "Resolve all merge conflict markers in test/vectors/generate.py and schema.json. Incorporate new vector functions, update main to generate all JSONs, clean schema, remove dead code, ensure ruff compatible and independent oracles. Verify by running generator.",
   "notes": "Commit: 06f962f6d",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 0,
   "issue_type": "epic",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:57:59.918580102Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:15:11.873636179Z",
+  "updated_at": "2026-07-23T00:15:14.13607978Z",
   "started_at": "2026-07-23T00:11:16.979807687Z",
-  "lease_expires_at": "2026-07-23T00:16:16.979807687Z",
-  "heartbeat_at": "2026-07-23T00:11:16.979807687Z"
+  "closed_at": "2026-07-23T00:15:14.13607978Z",
+  "close_reason": "Resolved all merge conflicts in generate.py and schema.json; incorporated schc_fragment, ccp_load_balancing, ccp16, ccp9_rendezvous vectors with independent oracles; updated main() to generate additional JSONs; cleaned schema; generator runs successfully and regenerates vectors. Verified with PYTHONPATH=python/src python3 test/vectors/generate.py"
 }

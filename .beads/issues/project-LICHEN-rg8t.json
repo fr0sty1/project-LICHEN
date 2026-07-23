@@ -2,15 +2,16 @@
   "id": "project-LICHEN-rg8t",
   "title": "[security] Weak/Forgeable CRC32 MIC fallback in link layer (P0)",
   "description": "lichen/subsys/lichen/link/lichen_link_rx.c:verify_mic() and lichen_l2.c accept CRC32 \"MIC\" when !has_link_key or CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC=y. CRC32 is trivial to forge (no auth). Enables frame injection, spoofing, bypass of Schnorr-48. Dev configs and no-key paths deploy this in prod. See Kconfig warnings, replay.c comments, spec/06-security.md. Matches \"weak MIC (e.g. CRC32 in prod)\". Impact: full link-layer compromise. discovered-from:project-LICHEN-lw4f",
-  "status": "in_progress",
+  "notes": "Commit: 9897483",
+  "status": "closed",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:00:42.420887735Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:11:24.871727123Z",
+  "updated_at": "2026-07-23T00:15:53.953333303Z",
   "started_at": "2026-07-23T00:11:24.871727123Z",
-  "lease_expires_at": "2026-07-23T00:16:24.871727123Z",
-  "heartbeat_at": "2026-07-23T00:11:24.871727123Z"
+  "closed_at": "2026-07-23T00:15:53.953333303Z",
+  "close_reason": "Fixed by removing insecure CRC32 MIC config and fallback; enforced mandatory Schnorr-48 signatures on all frames in TX/RX; updated all comments, Kconfig, board configs, and docs. Commit 9897483"
 }

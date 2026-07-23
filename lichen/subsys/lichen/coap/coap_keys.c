@@ -176,7 +176,7 @@ static size_t base64_encode(const uint8_t *data, size_t len, char *out, size_t o
 	size_t i;
 
 	for (i = 0; i + 2 < len; i += 3) {
-		if (out_idx + 4 > out_len) {
+		if (out_idx + 5 > out_len) {
 			return 0;
 		}
 		out[out_idx++] = base64_chars[(data[i] >> 2) & 0x3f];
@@ -186,7 +186,7 @@ static size_t base64_encode(const uint8_t *data, size_t len, char *out, size_t o
 	}
 
 	if (i < len) {
-		if (out_idx + 4 > out_len) {
+		if (out_idx + 5 > out_len) {
 			return 0;
 		}
 		out[out_idx++] = base64_chars[(data[i] >> 2) & 0x3f];
@@ -317,13 +317,19 @@ int lichen_key_pubkey_fingerprint(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKE
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 int lichen_key_pubkey_to_iid(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN], uint8_t iid[LICHEN_KEY_IID_LEN]) {
+=======
+int lichen_key_pubkey_to_iid(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
+			     uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN]) {
+>>>>>>> origin/worktree-worker1
 	if (pubkey == NULL || iid == NULL) {
 		return -EINVAL;
 	}
 #ifdef CONFIG_TINYCRYPT_SHA256
 	struct tc_sha256_state_struct sha_state;
 	uint8_t hash[32];
+<<<<<<< HEAD
 =======
 int lichen_key_pubkey_to_iid(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
 			     uint8_t iid[LICHEN_KEY_IID_LEN])
@@ -344,6 +350,11 @@ int lichen_key_pubkey_to_iid(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
 		return -EIO;
 	}
 	if (tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
+=======
+	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS ||
+	    tc_sha256_update(&sha_state, pubkey, LICHEN_KEY_PUBKEY_LEN) != TC_CRYPTO_SUCCESS ||
+	    tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
+>>>>>>> origin/worktree-worker1
 		return -EIO;
 	}
 <<<<<<< HEAD
@@ -352,6 +363,7 @@ int lichen_key_pubkey_to_iid(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
 	memset(hash, 0, sizeof(hash));
 	return 0;
 #else
+<<<<<<< HEAD
 	return -ENOSYS;
 =======
 
@@ -370,6 +382,11 @@ int lichen_key_pubkey_to_iid(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
 	iid[0] &= ~0x02U;
 	return 0;
 >>>>>>> origin/worktree-worker23
+=======
+	memcpy(iid, pubkey, LICHEN_KEY_IID_LEN);
+	iid[0] &= ~0x02U;
+	return 0;
+>>>>>>> origin/worktree-worker1
 #endif
 }
 
@@ -510,7 +527,8 @@ size_t lichen_key_store_count(void)
 	return count;
 }
 
-size_t lichen_key_store_list(struct lichen_key_entry *entries, size_t max_entries)
+size_t lichen_key_store_list(struct lichen_key_entry *_Nonnull entries,
+			     size_t max_entries)
 {
 	size_t count = 0;
 
@@ -723,7 +741,7 @@ static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 }
 
 #ifdef CONFIG_LICHEN_COAP_KEYS_TEST_HOOKS
-size_t lichen_key_store_test_encode_list(uint8_t *buf, size_t buf_size)
+size_t lichen_key_store_test_encode_list(uint8_t *_Nonnull buf, size_t buf_size)
 {
 	return encode_keys_list_cbor(buf, buf_size);
 }
