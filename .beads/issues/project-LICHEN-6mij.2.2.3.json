@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-6mij.2.2.3",
   "title": "Update keys_single_delete handler symmetrically for OSCORE ctx lookup/unprotect and CONFIG enforcement; add protected response helper if needed",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:27:46.323078527Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:39:37.466841711Z",
+  "updated_at": "2026-07-23T05:35:41.040331846Z",
   "started_at": "2026-07-23T05:35:41.040331846Z",
-  "closed_at": "2026-07-23T05:39:37.466841711Z",
-  "close_reason": "Updated keys_single_delete with symmetric OSCORE ctx lookup, unprotect_request, protected response helper, and CONFIG_LICHEN_COAP_SERVER_OSCORE enforcement. Matches deaddrop pattern. Tests/build pass.",
+  "lease_expires_at": "2026-07-23T05:40:41.040331846Z",
+  "heartbeat_at": "2026-07-23T05:35:41.040331846Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-6mij.2.2.3",
