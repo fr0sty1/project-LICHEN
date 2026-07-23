@@ -2,15 +2,15 @@
   "id": "project-LICHEN-sow6",
   "title": "[merge-conflict] worktree-worker21: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: 87d1b873a",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:49:53.767819432Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:14:05.888569375Z",
+  "updated_at": "2026-07-23T03:14:09.657807281Z",
   "started_at": "2026-07-23T03:13:19.688690624Z",
-  "lease_expires_at": "2026-07-23T03:18:19.688690624Z",
-  "heartbeat_at": "2026-07-23T03:13:19.688690624Z"
+  "closed_at": "2026-07-23T03:14:09.657807281Z",
+  "close_reason": "Updated resolution comment in lichen/apps/puck/boards/heltec_wifi_lora32_v3_esp32s3_procpu.conf to include project-LICHEN-sow6 (worktree-worker21). Consolidated with prior mnv4 changes for this worker. Committed 87d1b87 and pushed to integration/worker11-20260722. No conflict markers remain. Matches pattern from project-LICHEN-mnv4."
 }
