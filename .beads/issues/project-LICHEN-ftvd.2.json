@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-ftvd.2",
+  "title": "Update firmware-board-capability-matrix.md for xiao_s3 consistency",
+  "description": "Ensure the retirement note in docs/firmware-board-capability-matrix.md:58 accurately reflects current state of xiao_s3_wio_sx1262 fragments in bridge-zephyr/boards/ and all worktrees. Cross-reference the m5m1.8 audit.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:17:45.451670487Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:17:45.451670487Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ftvd.2",
+      "depends_on_id": "project-LICHEN-ftvd",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:17:45.586612335Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
