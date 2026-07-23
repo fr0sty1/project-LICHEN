@@ -1510,7 +1510,7 @@ int lichen_schc_compress(const uint8_t *packet, size_t pkt_len,
 	int ret;
 
 	if (packet == NULL) {
-		return SCHC_ERR_TOO_SHORT;
+		return SCHC_ERR_INVALID_ARGUMENT;
 	}
 
 	if (out == NULL) {
