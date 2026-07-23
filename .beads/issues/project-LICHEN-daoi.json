@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-daoi",
+  "title": "Align announce codec formats (core + python messages)",
+  "description": "Ensure wire format, signed_data (with rx_channel at signed offset 42), from_bytes/to_bytes, error handling exactly match spec 05-routing.md:9.2, CCP-9 in 02a, test/vectors/*announce*.json independent oracles from generate.py. Remove all comments, TODOs, merge artifacts. Ensure no_std.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T02:30:55.240438568Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T02:30:55.240438568Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-daoi",
+      "depends_on_id": "project-LICHEN-ha9s",
+      "type": "discovered-from",
+      "created_at": "2026-07-23T02:30:55.372673457Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
