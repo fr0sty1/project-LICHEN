@@ -2,15 +2,15 @@
   "id": "project-LICHEN-faeg",
   "title": "[merge-conflict] worktree-worker20: lib.rs",
   "notes": "Commit: 1c6bc779f",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:59:38.925887298Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:55:57.999193262Z",
+  "updated_at": "2026-07-23T02:56:00.368419493Z",
   "started_at": "2026-07-23T02:51:46.834781864Z",
-  "lease_expires_at": "2026-07-23T02:56:46.834781864Z",
-  "heartbeat_at": "2026-07-23T02:51:46.834781864Z"
+  "closed_at": "2026-07-23T02:56:00.368419493Z",
+  "close_reason": "Reconciled lichen-core::lichen_hash_32 and cleaned lichen-hal by removing dead UI traits to match reviewed canonical version from integration branch; committed 1c6bc779f and pushed to worktree-worker20"
 }
