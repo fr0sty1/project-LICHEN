@@ -14,6 +14,9 @@ within the suppression window), drop it; otherwise record a reverse route and
 rebroadcast with the hop limit decremented. RREP handling (spec 10.4-10.5):
 install a forward gradient toward the sought node and forward the RREP along the
 reverse route until it reaches the original requester.
+
+Known limitation (project-LICHEN-f9mx): RrepResult.forward_next_hop may be
+stale by transmission time due to cache mutations.
 """
 
 from __future__ import annotations
@@ -44,7 +47,15 @@ class RreqResult:
 
 @dataclass
 class RrepResult:
-    """Outcome of processing an RREP."""
+    """Outcome of processing an RREP.
+
+    Note (project-LICHEN-f9mx): forward_next_hop is a snapshot from
+    cache.lookup() at the time of process_rrep(). Between return and
+    caller transmission, the cache may have been mutated by expire_old(),
+    RERR processing, or concurrent updates. This is a known limitation
+    of the side-effect-free design (trades atomicity for testability).
+    Callers should re-validate routes before use where possible.
+    """
 
     delivered: bool = False
     forward: RREP | None = None
@@ -157,7 +168,7 @@ class LoadngRouter:
         # Forward gradient toward the sought node (the RREP's originator).
         # Only install if no existing gradient or this RREP has newer seq_num.
         existing = self.gradient.lookup(rrep.originator, now)
-        if existing is None or _seq_is_newer(rrep.seq_num, existing.seq_num):
+        if existing is None or _is_seq_fresher(existing.seq_num, rrep.seq_num):
             self.gradient.update(
                 GradientEntry(
                     destination=rrep.originator,
@@ -184,6 +195,7 @@ class LoadngRouter:
             return RrepResult(delivered=True)
 
         # Forward along the reverse route toward the original requester.
+        # See RrepResult docstring for staleness note (project-LICHEN-f9mx).
         reverse = self.cache.lookup(rrep.destination, now)
         if reverse is None:
             return RrepResult(dropped=True)
