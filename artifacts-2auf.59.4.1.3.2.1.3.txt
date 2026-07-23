@@ -1,0 +1,64 @@
+=== Artifact manifest for bead project-LICHEN-2auf.59.4.1.3.2.1.3 ===
+Generated: 2026-07-23 22:15 UTC (validation run), manifest written 2026-07-23
+Purpose: evidence capture — full logs, exit codes, test results, SHA256 sums
+         for the MeshCore BLE native_sim/native/64 clean-worktree validation
+Worktree: /mnt/lichen-zephyr/work/project-LICHEN-mcble-213-evidence
+Created via: tools/zephyr-clean-worktree.sh create project-LICHEN-mcble-213-evidence origin/main
+Source ref: origin/main = 1b8878780b66372882e144db9a2ca9ce939235b4 (clean, 0 lichen/ paths modified)
+Host: ip-172-31-5-236.us-west-2.compute.internal (aarch64, Amazon Linux 2023, Linux 6.1.176)
+West: v1.5.0, Python 3.9.25, Zephyr v3.7.0, Zephyr SDK 0.16.8
+Outdir: twister-out-meshcore-ble (not committed, per docs/zephyr-ec2-clean-worktree.md)
+
+Command:
+  west twister \
+    -T lichen/tests/meshcore_codec \
+    -T lichen/tests/meshcore_adapter \
+    -T lichen/tests/meshcore_ble \
+    -T lichen/tests/meshcore_gateway_adapter \
+    -T lichen/tests/app_interface \
+    -p native_sim/native/64 \
+    --inline-logs \
+    --outdir twister-out-meshcore-ble \
+    --extra-args ZEPHYR_EXTRA_MODULES=$PWD/lichen
+
+Exit codes:
+  west twister:                                    1 (all 7 suites error at cmake/Kconfig stage)
+  tools/zephyr-clean-worktree.sh verify-twister:   0 (LICHEN module isolation verified for all 7 suite build dirs)
+
+Test results (twister.json, run_date 2026-07-23T22:15:21+00:00, Zephyr v3.7.0):
+  net.lichen.meshcore_codec                         error   9/9 testcases
+  net.lichen.meshcore_adapter                       error  32/32 testcases
+  net.lichen.meshcore_adapter.identity              error  32/32 testcases
+  net.lichen.meshcore_ble                           error  10/10 testcases
+  net.lichen.meshcore_gateway_adapter               error  26/26 testcases
+  net.lichen.meshcore_gateway_adapter.settings_nvs  error  26/26 testcases
+  net.lichen.app_interface                          error  24/24 testcases
+  TOTAL: 159 testcases, 0 passed, 0 failed, 159 error, 0 skipped
+
+Failure signature (all 7 suites identical): Kconfig "Dependency loop" through
+UART_INTERRUPT_DRIVEN / UART_MCUMGR / MODEM select chains; cmake
+kconfig.cmake:389 "command failed with return code: 1". No compilation was
+reached. Build fix is tracked by open sibling bead
+project-LICHEN-2auf.59.4.1.3.2.1.2 (MeshCore BLE ingress test builds).
+
+Binaries:
+  zephyr.elf / zephyr.exe: NOT PRODUCED for any suite (cmake-stage failure;
+  verified absent under twister-out-meshcore-ble/native_sim_native_64/*/)
+
+=== SHA256 of captured logs and reports ===
+dd7cf6a630d9ef5fcb72a828e174fe4575634ef5285c6b2c2d6ff4728a607368  validation-2auf.59.4.1.3.2.1.3.log (master log; committed as build-logs-2auf.59.4.1.3.2.1.3.log)
+a200f4a49f3d0b27f203228ec11d420ddcdcc0301d2243d3d5d16f68a0f56c1c  twister-out-meshcore-ble/twister.log
+523ef126512d49e284104ee1eabb03c6bb721ce0222338177b381428089bcbff  twister-out-meshcore-ble/twister.json
+b3c5a16cb20fec5e676defed455b35a02bb13a36e3e8b3707e7b112af2080a04  twister-out-meshcore-ble/testplan.json
+8de3da0274b9df96a8977409b286c90b594bc59293f68995ec342cab42387bab  twister-out-meshcore-ble/twister.xml
+5a7c6a25501b33cf052b8f1ba3cc861cecc97ebe9d9d2ded4b3651003cbda78d  twister-out-meshcore-ble/twister_report.xml
+16ce5d2ef61f9e7d746207cd07ced31daaed5d94cb17d0567db39115d891221b  twister-out-meshcore-ble/twister_suite_report.xml
+
+=== SHA256 of per-suite build logs (cmake/Kconfig failure detail) ===
+1b7ae586f6997b5e8745a9cd85d42bc8189bcedd607562c8713de9971b0e2067  native_sim_native_64/net.lichen.app_interface/build.log
+81c927b0f50cfb5cf6b85cbb53996f7718371beb3e87e954187ff047e062d892  native_sim_native_64/net.lichen.meshcore_adapter.identity/build.log
+ab72f962223781158e24d498f29c82913c7e3cdecde3313fbc815f695b59f482  native_sim_native_64/net.lichen.meshcore_adapter/build.log
+2b373517f6a71884828917c1bacd2e9ac5001bfcdadea14eb99676f9f09af4b2  native_sim_native_64/net.lichen.meshcore_ble/build.log
+9e78f593821116d2b1828c9a76b40a74986f0a29bb87347b7cddc757cceb91b1  native_sim_native_64/net.lichen.meshcore_codec/build.log
+a8654f37a03496ac5b4b0ddf973117e626910e83c3555b5540991f3e96c35541  native_sim_native_64/net.lichen.meshcore_gateway_adapter.settings_nvs/build.log
+17caca6c64e9b19dbf68c0789520bf976343d11c9a748bf7bb0d5108f3b402cd  native_sim_native_64/net.lichen.meshcore_gateway_adapter/build.log
