@@ -107,4 +107,36 @@ config LICHEN_RPL_LOG_LEVEL
 	  Log level for LICHEN RPL:
 	  0=off, 1=error, 2=warning, 3=info, 4=debug
 
+config LICHEN_CCP_TDMA
+	bool "CCP-1 TDMA time slots with RPL"
+	default y
+	depends on LICHEN_RPL
+	select LICHEN_TDMA
+	select LICHEN_CCP_TIME_SYNC
+	help
+	  Enable TDMA integration for CCP-1 (coordinated capacity planning).
+	  Adds support for slot assignment, beacon sync, and tdma_tx_allowed()
+	  checks coordinated with RPL DODAG and DIO options. See
+	  spec/02a-coordinated-capacity.md and AGENTS.md init graph.
+	  Must be enabled before closing da2q.16.6.
+
+config LICHEN_CHANNEL_AGILITY
+	bool "Channel agility / rendezvous (CCP-1/12)"
+	default y
+	depends on LICHEN_RPL
+	select LICHEN_MULTI_CHANNEL_ENABLED
+	help
+	  Enable frequency/channel agility and rendezvous per CCP-1. Uses
+	  control channel CH0 for RPL traffic, hash-based selection for data
+	  channels, synchronized via SFN from RPL beacons/DIOs.
+
+config LICHEN_ADAPTIVE_SF
+	bool "Adaptive spreading factor (CCP-16)"
+	default y
+	depends on LICHEN_RPL
+	select LICHEN_ADAPTIVE_SF_ENABLED
+	help
+	  Enable adaptive SF selection using per-neighbor SNR EMA and density
+	  from RPL metrics (CCP-16). Integrates with LICHEN_LINK_CCP16_LOAD_BALANCING.
+
 endif # LICHEN_RPL
