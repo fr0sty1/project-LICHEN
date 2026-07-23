@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-c1eh.1",
+  "title": "coap_dtn.c: add #include \u003cstring.h\u003e for memcpy in deaddrop_post",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:14:06.329287149Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:14:06.329287149Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-c1eh.1",
+      "depends_on_id": "project-LICHEN-c1eh",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:14:06.464085435Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
