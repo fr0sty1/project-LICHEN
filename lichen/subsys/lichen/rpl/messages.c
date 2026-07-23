@@ -96,6 +96,16 @@ const uint8_t *lichen_rpl_dio_options(const uint8_t *data, size_t len)
 /** DAO base without DODAGID (D=0) is 4 bytes */
 #define DAO_BASE_NO_DODAGID  4
 
+/* Provisional LICHEN DAO Origin Signature Option (type 0x12) per
+ * draft-lichen-rpl-lora-00.md §7.5. MUST be exactly one terminal option
+ * with Data Length=56 (8B origin_sequence + 48B Schnorr48). Used for
+ * replay floor (high-water seq + signed-DAO digest), idempotent detection
+ * (§7.3), and DAO-ACK gating. Root MUST persist floor before success ACK
+ * for newly-accepted ack_requested DAOs. Exact transcript for digest.
+ * Matches Rust. Reference project-LICHEN-et78.2 */
+#define LICHEN_RPL_OPT_DAO_ORIGIN_SIGNATURE 0x12
+#define LICHEN_RPL_DAO_ORIGIN_SIGNATURE_DATA_LEN 56
+
 int lichen_rpl_dao_parse(struct lichen_rpl_dao *dao,
 			 const uint8_t *data, size_t len)
 {
