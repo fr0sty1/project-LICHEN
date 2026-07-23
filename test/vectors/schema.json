@@ -744,9 +744,6 @@
         "tx_ms": {"type": "integer", "minimum": 0},
         "expected_remaining_ms": {"type": "integer", "minimum": 0},
         "expected_usage_permille": {"type": "integer", "minimum": 0, "maximum": 1000},
-<<<<<<< HEAD
-        "notes": {"type": "string"}
-=======
         "notes": {"type": "string"},
         "binary_hex": {"$ref": "#/definitions/hex"},
         "decoded_fields": {
@@ -767,7 +764,6 @@
             "hash_32": {"type": "integer"}
           }
         }
->>>>>>> origin/worktree-worker16
       }
     },
     "ccp_vector": {
@@ -789,8 +785,6 @@
           "items": {"type": "number"}
         },
         "hash_32_example": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
-<<<<<<< HEAD
-=======
         "security_review": {
           "type": "string",
           "description": "Pass 2 security: no injection or crypto issues in CCP-16 vectors (project-LICHEN-ray3)"
@@ -804,7 +798,6 @@
           }
         },
         "hash_32": {"type": "integer"},
->>>>>>> origin/worktree-worker16
         "input": {
           "type": "object",
           "properties": {
