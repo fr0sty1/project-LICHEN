@@ -435,19 +435,16 @@ ZTEST(link_crypto, test_tdma_matches_ccp_tdma_vectors)
 
 	/* Timing windows (guard=100ms, slot_duration=250ms per spec) */
 	struct lichen_tdma_ctx tdma = {0};
-	tdma.superframe = 0;
-	tdma.slot = 4;  /* 4*250 == 1000 slot_start_ms */
-	tdma.n_slots = 8;
-	tdma.slot_duration = 250;
+	zassert_equal(0, lichen_tdma_init(&tdma, &lctx));
+	zassert_equal(2, tdma.slot);
+	zassert_equal(8, tdma.n_slots);
+	zassert_equal(250, tdma.slot_duration);
+	zassert_false(tdma.synced);
 	tdma.synced = true;
-
-	zassert_true(tdma_tx_allowed(&tdma, 1070),
-		     "guard_boundary_inside current=1070 tx allowed");
-	zassert_true(tdma_tx_allowed(&tdma, 990),
-		     "guard_boundary_pre_guard current=990 in window");
-	/* drift_compensation vector covered by Rust/Python oracles and spec */
-
-	zassert_true(true, "ccp_tdma.json vectors validated for hash+timing");
+	tdma.slot = 4;
+	zassert_true(tdma_tx_allowed(&tdma, 1070));
+	zassert_true(tdma_tx_allowed(&tdma, 990));
+	zassert_true(tdma_tx_allowed(&tdma, 1000));
 }
 
 ZTEST(link_crypto, test_lichen_pubkey_to_human_address_matches_node_address_vectors)
