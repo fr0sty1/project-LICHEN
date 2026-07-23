@@ -9,9 +9,9 @@
 
 CCP-16 defines mechanisms for coordinated capacity management in LICHEN LoRa meshes including TDMA slot assignment, channel agility, adaptive SF selection, time synchronization, and hash-based selection. CCP-14 specifies Gateway Multi-RX for simultaneous reception across channels (control + data), increasing capacity per da2q multi-channel context. 
 
-All implementations MUST produce identical behavior to test vectors in `test/vectors/ccp16.json`:
-- vectors[0-2]: TDMA slot, SF, channel, tx_allowed per CCP-16 (see 2a.2, 2a.3)
-- vectors[3+]: CCP-14 Gateway Multi-RX scheduling, concurrent RX validation, capacity metrics (independent oracle: reference FNV-1a + Semtech SX126x airtime tables + multi-channel sim from external Python oracle, not LICHEN impl).
+All implementations MUST produce identical behavior to test vectors in `test/vectors/ccp16.json`, `ccp_tdma.json`, `link_frame.json`, and `l2_payload.json`:
+- TDMA beacon byte layout, CDDL, SCHC rule 0x08, slot/hash, SFN wrap, join flows, epoch/num_slots per 2a.2
+- vectors for CCP-16/14 slot, SF, channel, tx_allowed, Multi-RX, capacity metrics (independent oracle: FNV-1a + SX126x airtime + multi-channel sim).
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119].
 
@@ -19,7 +19,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 1. Abstract
 2. 2a.1. Overview
-3. 2a.2. Channel Agility (TDMA Slots and Hash Selection per draft-lichen-tdma)
+3. 2a.2. TDMA Beacon Format, Slots, Hash Selection, and Join (SCHC 0x08, CDDL, byte layout)
 4. CCP-4. Regional Channel Plans
 5. 2a.3. Channel Agility and Adaptive SF
 6. 2a.4. Time Synchronization
@@ -35,13 +35,46 @@ Nodes compute their slot using a deterministic hash of (EUI64 XOR epoch) modulo 
 
 ## 2a.2. TDMA Slots and Hash Selection
 
-The root advertises `epoch` (u32) and `num_slots` (default 8) in an extended RPL configuration option.
+The root advertises `epoch` (u32) and `num_slots` (default 8) via SCHC Rule ID 0x08 (TDMA_BEACON) on CH0 (see draft-lichen-schc-lora-00 and appendix-schc.md). 
 
-Slot ID MUST be computed as:
+**TDMA Beacon Format (exact, normative for interop):**
 
-Multi-byte integers are unsigned big-endian. Flags bits: 0=scheduled mode, 1=CSMA rendezvous, 2=concurrent CH0 RX, 3=GNSS-PPS, 4-7 reserved (zero). `Setup Window` bounds retune/readiness/CAD. `Occupied Time` bounds data+ACK. `Guard` is separation between occupied envelopes. `RX Chains` is simultaneous receive count (1 for typical single-radio). `Channel Mask` bit 0 = CH0. Receivers compute local intersection. See test/vectors/ccp*.json for format validation.
+Multi-byte integers unsigned big-endian (network order). Full byte layout:
 
-using `fnv1a32` (lichen_hash_32 primitive, basis 0x811c9dc5; see lichen-core/src/lib.rs, spec/appendix-design-rationale.md). The XOR with epoch ensures time-varying slots to prevent persistent collisions. All implementations MUST match ccp*.json vectors exactly. This integrates with `lichen_rpl_dodag_init()`.
+| Offset | Bytes | Field          | Description |
+|--------|-------|----------------|-------------|
+| 0      | 4     | epoch          | u32 BE for slot hash and SFN base |
+| 4      | 1     | num_slots      | u8 (default 8); hash modulus |
+| 5      | 4     | sfn            | u32 BE superframe number |
+| 9      | 4     | timestamp      | u32 BE for epoch_floor validation |
+| 13     | 1     | flags          | bits 0=scheduled, 1=CSMA, 2=CH0-RX, 3=GNSS-PPS, 4-7=0 |
+| 14     | 1     | rx_chains      | u8 (1 for single-radio) |
+| 15     | 2     | setup_window   | u16 ms (retune/CAD) |
+| 17     | 2     | occupied_time  | u16 ms (data+ACK) |
+| 19     | 1     | guard          | u8 ms (default 100) |
+| 20     | 4     | channel_mask   | u32 (bit 0=CH0); local intersection computed |
+| 24+    | var   | cbor_options   | density, slot_map, etc. |
+
+**CDDL (RFC 8610) for CBOR options tail:**
+
+```cddl
+tdma-beacon = {
+    epoch: uint .size 4,
+    num_slots: uint .size 1,
+    sfn: uint .size 4,
+    timestamp: uint .size 4,
+    flags: uint .size 1,
+    rx_chains: uint .size 1,
+    setup_window: uint .size 2,
+    occupied_time: uint .size 2,
+    guard: uint .size 1,
+    channel_mask: uint .size 4,
+    ? density: uint .size 1,
+    * any
+}
+```
+
+Slot ID = fnv1a32(EUI64 XOR epoch) % num_slots (lichen_hash_32, basis 0x811c9dc5; see lichen-core/src/lib.rs, appendix-design-rationale.md). All impls MUST match `test/vectors/ccp_tdma.json`, `ccp16.json`, `link_frame.json`, `l2_payload.json` exactly. Integrates with `lichen_rpl_dodag_init()`, `lichen_link_set_slot()`, `tdma_tx_allowed()`.
 
 For SFN (superframe number, a u32 epoch counter) wrap-around, all nodes MUST compute using unsigned 32-bit arithmetic (modulo 0x100000000). The time-provider (see `docs/firmware-time-provider.md`) is the canonical source: SFN/epoch updates MUST pass epoch_floor validation, set `wall_clock_valid`, and respect stratum before adoption. RPL version changes or desync MUST reset SFN relative to the new root per the FSM in Section 2a.5.
 
@@ -55,7 +88,7 @@ current_sfn = 0x00000002u;
 delta = current_sfn - last_sfn;  /* = 3 in unsigned 32-bit arithmetic */
 ```
 
-This MUST be treated as advancement of 3 slots. Signed arithmetic would yield a large negative value, breaking desync detection and slot scheduling. Test vectors in ccp16.json MUST cover this and similar boundaries.
+This MUST be treated as advancement of 3 slots. Signed arithmetic would yield a large negative value, breaking desync detection and slot scheduling. Test vectors in ccp16.json and ccp_tdma.json MUST cover this and similar boundaries.
 
 A node MUST only transmit in its assigned slot. Slot duration = max_airtime(current_SF) + 100 ms guard. The link layer MUST enforce via `lichen_link_set_slot()` and `tdma_tx_allowed()` (see lichen/subsys/lichen/link implementation). This integrates with TDMA and SCHC compressed control traffic on CH0.
 
@@ -161,12 +194,12 @@ A CCP-capable node is always in exactly one of these states:
 | DRIFT | Clock may be drifting; watching | Hop with extended RX windows |
 | RECOVER | Clock is untrusted; seeking beacon | CH0 only; stopped hopping |
 
-(See full state diagram, timers T_DRIFT_WARN=30s, T_DRIFT_MAX=120s, T_GIVE_UP=600s, transitions, multi-root conflict resolution preferring higher epoch, GPS-capable nodes, SFN wraparound handling, and implementation notes in the detailed description. All transitions MUST match test vectors. Nodes in RECOVER MUST refrain from data TX until re-synchronized.)
+Join procedure: exact CoAP URI `POST coap://[fe80::/64%iface]/tdma/join` (SCHC rule 0, OSCORE after first beacon) or L2 frame dispatch `0x15` (per draft-lichen-link-01) with msg_type=`0x10` (join-request). Triggers DAO after sync. See test vectors for exact flows. (See full state diagram, timers T_DRIFT_WARN=30s, T_DRIFT_MAX=120s, T_GIVE_UP=600s, transitions, multi-root conflict resolution preferring higher epoch, GPS-capable nodes, SFN wraparound handling, and implementation notes in the detailed description. All transitions MUST match test vectors. Nodes in RECOVER MUST refrain from data TX until re-synchronized.)
 
 ## Implementation Status
 
-- Python simulator, Rust gateway, Zephyr `lichen/subsys/lichen` validate against `test/vectors/ccp16.json`.
-- Kconfig options for CCP16, TDMA_SLOTS, integration with RPL/SCHC/TDMA complete.
+- Python simulator, Rust gateway, Zephyr `lichen/subsys/lichen` validate against `test/vectors/ccp16.json`, `ccp_tdma.json`, `link_frame.json`, `l2_payload.json`.
+- Kconfig options for CCP16, TDMA_SLOTS, integration with RPL/SCHC/TDMA complete. SCHC Rule 0x08 for TDMA beacon implemented.
 - Adaptive SF, desync FSM, channel plans, Multi-RX gateway support implemented and tested.
 - All codereview passes closed. Capacity gains verified in simulation per independent oracles.
 
@@ -176,12 +209,14 @@ A CCP-capable node is always in exactly one of these states:
 
 - [RFC 2119] Bradner, S., "Key words for use in RFCs to Indicate Requirement Levels", BCP 14, RFC 2119, DOI 10.17487/RFC2119, March 1997, <https://www.rfc-editor.org/info/rfc2119>.
 
-- `test/vectors/ccp16.json` (authoritative for all MUST-match behavior; all arbitrary constants justified in Appendix A of appendix-design-rationale.md or parameterized via beacon/Kconfig)
+- `test/vectors/ccp16.json`, `ccp_tdma.json`, `link_frame.json`, `l2_payload.json` (authoritative for TDMA beacon format, CDDL, byte layout, slot/hash, join flows, SFN wrap; MUST match exactly)
 
 - `spec/drafts/draft-lichen-rpl-lora-00.md`
 - `spec/drafts/draft-lichen-schc-lora-00.md`
 - `spec/appendix-design-rationale.md`
+- `spec/appendix-schc.md` (Rule 0x08=TDMA_BEACON)
 - `lichen/subsys/lichen/link*` (for `lichen_link_set_slot()`, `tdma_tx_allowed()`)
 - `docs/firmware-time-provider.md`
+- `spec/drafts/draft-lichen-link-01.md` (L2 0x15 join frame)
 
 [← Previous](02-physical-link.md) | [Index](README.md) | [Next →](03-adaptation.md)
