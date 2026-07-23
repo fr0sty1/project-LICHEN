@@ -11,6 +11,7 @@
 #include <zephyr/sys/util.h>
 
 #include <lichen/app_identity/app_identity.h>
+#include <lichen/coap_keys.h>
 
 #ifndef ENOKEY
 #define ENOKEY ENOENT
@@ -33,12 +34,17 @@ static bool s_has_self;
 static struct peer_slot s_peers[CONFIG_LICHEN_APP_IDENTITY_MAX_PEERS];
 static K_MUTEX_DEFINE(s_mutex);
 
-static void eui64_to_iid(
-	const uint8_t eui64[_Nonnull LICHEN_APP_IDENTITY_EUI64_LEN],
+/*
+ * Derive IPv6 IID from Ed25519 public key per project-LICHEN-oxul,
+ * spec/03-addressing.md, and lichen_key_pubkey_to_iid() (SHA-256
+ * first 8 bytes with U/L bit cleared for locally-administered IID).
+ * This provides unified identity for LCI, mesh routing, and backbone.
+ */
+static void derive_iid(
+	const uint8_t pubkey[_Nonnull LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN],
 	uint8_t iid[_Nonnull LICHEN_APP_IDENTITY_EUI64_LEN])
 {
-	memcpy(iid, eui64, LICHEN_EUI64_LEN);
-	iid[0] ^= 0x02U;
+	(void)lichen_key_pubkey_to_iid(pubkey, iid);
 }
 
 static int copy_string(char *dst, size_t dst_len, const char *src)
@@ -128,7 +134,7 @@ int lichen_app_identity_set_self(
 	if (ret < 0) {
 		return ret;
 	}
-	eui64_to_iid(normalized.eui64, normalized.iid);
+	derive_iid(normalized.public_key, normalized.iid);
 
 	k_mutex_lock(&s_mutex, K_FOREVER);
 	s_self = normalized;
@@ -240,7 +246,7 @@ int lichen_app_identity_upsert_peer(
 	size_t len = strlen(peer->display_name);
 	memset(normalized.display_name + len + 1, 0,
 	       sizeof(normalized.display_name) - len - 1);
-	eui64_to_iid(normalized.eui64, normalized.iid);
+	derive_iid(normalized.public_key, normalized.iid);
 	s_peers[slot].peer = normalized;
 	s_peers[slot].used = true;
 	k_mutex_unlock(&s_mutex);
