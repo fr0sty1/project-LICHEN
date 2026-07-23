@@ -602,15 +602,16 @@ class Simulation:
 
         This is the core TX logic, called either immediately from
         start_transmission() or later via TxStartDelayedEvent.
-        Integrates synchronized hopping (CCP-12) by using provided channel from
-        node's hop_schedule/SFN or current_channel (CCP-9 rx_channel rendezvous separate).
+        Integrates synchronized hopping (CCP-12); RX derives independently
+        via get_hop_channel (enter_rx_mode:713, _get_rx_result_internal:812).
 
         Args:
             node_id: ID of the transmitting node.
             payload: Raw bytes to transmit.
             tx_power_dbm: Transmit power in dBm.
             position: Node position (x, y, z) in meters.
-            channel: Channel from synchronized hopping (overrides node.current_channel).
+            channel: Channel from synchronized hopping (overrides
+                node.current_channel where necessary).
 
         Returns:
             The transmission ID.
@@ -718,13 +719,17 @@ class Simulation:
         on_timeout: Callable[[], None],
         channel: int = 0,
     ) -> None:
+        """Enter RX mode. Derives via node.get_hop_channel for hop_schedule
+        (CCP-12 rendezvous node.py:132). Sets current_channel only if needed.
+        """
         node = self._nodes.get(node_id)
         if node is None:
             raise ValueError(f"Node '{node_id}' does not exist")
         if not node.connected:
             raise ValueError(f"Node '{node_id}' is not connected")
         node.state = NodeState.RX_WAIT
-        node.current_channel = channel
+        if not (node.hop_schedule and len(node.hop_schedule) > 0):
+            node.current_channel = channel
         node.rx_callbacks = (on_packet, on_timeout)
         timeout_time_us = self._current_time_us + timeout_us
         self._pending_rx_timeouts[node_id] = timeout_time_us
@@ -796,7 +801,9 @@ class Simulation:
 
 
     def _get_rx_result_internal(self, node_id: str) -> tuple[bytes, int, int, str, str] | None:
-        """Unified core RX logic and side effects for both paths.
+        """Unified core RX logic. Uses node.get_hop_channel (node.py:132)
+        for medium channel when hop_schedule present (CCP-12 per
+        ccp16-hop.json spec/02a-coordinated-capacity.md:120). Preserves oracles.
 
         - Medium candidates + chaos + latency filter + resolve_reception.
         - Collision: idempotent record_collision + log + observer (once).
@@ -804,18 +811,20 @@ class Simulation:
           log (with debug fields) + on_rx_success observer.
         - Returns full 5-tuple on success or None. No node state change
           (callback path cleans up; polling path remains idempotent).
-        - Preserves all test oracles (independent metrics counts, log counts,
-          observer events, cross-impl vectors).
         """
         node = self._nodes.get(node_id)
         if node is None:
             return None
 
+        if node.hop_schedule and len(node.hop_schedule) > 0:
+            channel = node.get_hop_channel()
+        else:
+            channel = node.current_channel
         candidates = self._medium.get_rx_candidates(
             rx_node_id=node_id,
             rx_position=node.position,
             time_us=self._current_time_us,
-            channel=node.current_channel,
+            channel=channel,
             rx_frequency_hz=None,
         )
 
