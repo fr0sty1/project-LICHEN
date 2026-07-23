@@ -340,6 +340,45 @@ fn compute_th(input: &[u8]) -> [u8; 32] {
     Sha256::digest(input).into()
 }
 
+fn append_cbor_bstr(v: &mut heapless::Vec<u8, 192>, data: &[u8]) -> Result<(), EdhocError> {
+    let len = data.len();
+    if len <= 23 {
+        v.push_err(0x40 | len as u8)?;
+    } else if len <= 0xff {
+        v.push_err(0x58)?;
+        v.push_err(len as u8)?;
+    } else {
+        v.push_err(0x59)?;
+        v.push_err((len >> 8) as u8)?;
+        v.push_err((len & 0xff) as u8)?;
+    }
+    v.extend_err(data)?;
+    Ok(())
+}
+
+fn transcript_2(g_y: &[u8; 32], msg1: &[u8]) -> Result<[u8; 32], EdhocError> {
+    let h = compute_th(msg1);
+    let mut input = heapless::Vec::<u8, 192>::new();
+    append_cbor_bstr(&mut input, g_y)?;
+    append_cbor_bstr(&mut input, &h)?;
+    Ok(compute_th(&input))
+}
+
+fn transcript_3(th_2: &[u8; 32], msg2_part: &[u8], cred: &[u8]) -> Result<[u8; 32], EdhocError> {
+    let mut input = heapless::Vec::<u8, 192>::new();
+    append_cbor_bstr(&mut input, th_2)?;
+    append_cbor_bstr(&mut input, msg2_part)?;
+    append_cbor_bstr(&mut input, cred)?;
+    Ok(compute_th(&input))
+}
+
+fn transcript_4(th_3: &[u8; 32], msg3_part: &[u8], _cred: &[u8]) -> Result<[u8; 32], EdhocError> {
+    let mut input = heapless::Vec::<u8, 192>::new();
+    append_cbor_bstr(&mut input, th_3)?;
+    append_cbor_bstr(&mut input, msg3_part)?;
+    Ok(compute_th(&input))
+}
+
 /// Parse SUITES_I from CBOR per RFC 9528 Section 3.3.2.
 ///
 /// SUITES_I can be either:
@@ -852,19 +891,7 @@ impl EdhocInitiator {
             .map_err(|_| EdhocError::InvalidState)?;
         ciphertext_3.extend_err(&tag)?;
 
-        // TH_4 = H(TH_3, CIPHERTEXT_3)
-        let mut th_4_input = heapless::Vec::<u8, 192>::new();
-        th_4_input.push_err(0x58)?;
-        th_4_input.push_err(32)?;
-        th_4_input.extend_err(&self.state.th_3)?;
-        if ciphertext_3.len() <= 23 {
-            th_4_input.push_err(0x40 | ciphertext_3.len() as u8)?;
-        } else {
-            th_4_input.push_err(0x58)?;
-            th_4_input.push_err(ciphertext_3.len() as u8)?;
-        }
-        th_4_input.extend_err(&ciphertext_3)?;
-        self.state.th_4 = compute_th(&th_4_input);
+        self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3, self.pubkey.as_bytes())?;
 
         // Mark handshake as completed - export_oscore now safe to call
         self.state.completed = true;
@@ -1298,19 +1325,7 @@ impl EdhocResponder {
         // PRK_4e3m = PRK_3e2m for SIGN_SIGN
         self.state.prk_4e3m = self.state.prk_3e2m;
 
-        // TH_4 = H(TH_3, CIPHERTEXT_3)
-        let mut th_4_input = heapless::Vec::<u8, 192>::new();
-        th_4_input.push_err(0x58)?;
-        th_4_input.push_err(32)?;
-        th_4_input.extend_err(&self.state.th_3)?;
-        if ciphertext_3.len() <= 23 {
-            th_4_input.push_err(0x40 | ciphertext_3.len() as u8)?;
-        } else {
-            th_4_input.push_err(0x58)?;
-            th_4_input.push_err(ciphertext_3.len() as u8)?;
-        }
-        th_4_input.extend_err(ciphertext_3)?;
-        self.state.th_4 = compute_th(&th_4_input);
+        self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3, self.pubkey.as_bytes())?;
 
         // Mark handshake as completed - export_oscore now safe to call
         self.state.completed = true;
