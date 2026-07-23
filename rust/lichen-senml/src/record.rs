@@ -1,6 +1,8 @@
 //! SenML record type (RFC 8428 §4).
 
 use crate::cbor::{self, CborError};
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 /// A single SenML record.
 ///
@@ -17,23 +19,33 @@ use crate::cbor::{self, CborError};
 ///
 /// For batch operations on multiple records, use [`cbor::encode`] and
 /// [`cbor::decode`] directly, which avoid repeated array framing overhead.
+/// JSON support (via `serde` feature) produces RFC 8428 SenML-JSON.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Record<'a> {
     /// Base name, e.g. `"urn:dev:mac:0123456789abcdef:"`.
+    #[cfg_attr(feature = "serde", serde(rename = "bn", skip_serializing_if = "Option::is_none", default))]
     pub base_name: Option<&'a str>,
     /// Base time (Unix seconds, relative or absolute).
+    #[cfg_attr(feature = "serde", serde(rename = "bt", skip_serializing_if = "Option::is_none", default))]
     pub base_time: Option<f64>,
     /// Relative name appended to base_name, e.g. `"temp"`.
+    #[cfg_attr(feature = "serde", serde(rename = "n", skip_serializing_if = "Option::is_none", default))]
     pub name: Option<&'a str>,
     /// Relative time offset from base_time.
+    #[cfg_attr(feature = "serde", serde(rename = "t", skip_serializing_if = "Option::is_none", default))]
     pub time: Option<f64>,
     /// Numeric value.
+    #[cfg_attr(feature = "serde", serde(rename = "v", skip_serializing_if = "Option::is_none", default))]
     pub value: Option<f64>,
     /// String value.
+    #[cfg_attr(feature = "serde", serde(rename = "vs", skip_serializing_if = "Option::is_none", default))]
     pub string_value: Option<&'a str>,
     /// Boolean value.
+    #[cfg_attr(feature = "serde", serde(rename = "vb", skip_serializing_if = "Option::is_none", default))]
     pub bool_value: Option<bool>,
     /// Unit, e.g. `"Cel"` for Celsius.
+    #[cfg_attr(feature = "serde", serde(rename = "u", skip_serializing_if = "Option::is_none", default))]
     pub unit: Option<&'a str>,
 }
 
