@@ -1,5 +1,4 @@
-//! Gateway state and packet forwarding. Propagates CCP-9/15/EMA/rf_health
-//! alignments, FNV-1a32, and dead-code removal from epic l3j5 (project-LICHEN-nafo).
+//! Gateway state and packet forwarding.
 
 #![forbid(unsafe_code)]
 
@@ -11,15 +10,11 @@ use lichen_core::l2_payload::{
 };
 use lichen_node::{RplEvent, RplNode, stack::add_rpl_source_route};
 use lichen_schc::codec::{compress, decompress, SchcError};
-use std::collections::HashMap;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 #[derive(Debug)]
 pub struct Gateway {
     rpl_node: RplNode,
-    /// Routes installed in the kernel routing table.
-    /// Key: mesh IPv6 address (16 bytes, network order); Value: nexthop EUI-64.
-    routes: HashMap<[u8; 16], NodeId>,
 }
 
 impl Gateway {
@@ -27,7 +22,6 @@ impl Gateway {
         info!(?node_id, "gateway initialising");
         Self {
             rpl_node: RplNode::new_root(node_id),
-            routes: HashMap::new(),
         }
     }
 
@@ -98,17 +92,11 @@ impl Gateway {
         }
     }
 
-    /// Record that `node_id` is reachable via `addr`.
-    pub fn add_route(&mut self, addr: [u8; 16], node_id: NodeId) {
-        self.routes.insert(addr, node_id);
-    }
-
     pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
         if dst[0] == 0x00 && dst[1] == 0x64 && dst[2] == 0xff && dst[3] == 0x9b {
             return false;
         }
-        self.routes.contains_key(dst)
-            || (dst[0] == 0xfe && dst[1] == 0x80)
+        (dst[0] == 0xfe && dst[1] == 0x80)
             || dst[0] == 0xfd
             || self.rpl_node.router.lookup_route(dst).is_some()
     }
