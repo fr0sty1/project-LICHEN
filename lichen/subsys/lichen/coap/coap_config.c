@@ -48,7 +48,7 @@ LOG_MODULE_REGISTER(lichen_coap_config, CONFIG_LICHEN_COAP_CONFIG_LOG_LEVEL);
 #define KEY_PUBKEY_FINGERPRINT "pubkey_fingerprint"
 #define KEY_ADDRS "addrs"
 #define KEY_LINK_LOCAL "link_local"
-#define KEY_ULA "ula"
+#define KEY_YGG "ygg"
 #define KEY_GUA "gua"
 
 /* Role string constants */
@@ -68,20 +68,26 @@ LOG_MODULE_REGISTER(lichen_coap_config, CONFIG_LICHEN_COAP_CONFIG_LOG_LEVEL);
 
 /* Provider registration */
 static const struct lichen_config_provider *s_provider;
+static K_MUTEX_DEFINE(s_provider_mutex);
 
 int lichen_coap_config_register(const struct lichen_config_provider *provider)
 {
 	if (provider == NULL) {
 		return -EINVAL;
 	}
+	k_mutex_lock(&s_provider_mutex, K_FOREVER);
 	s_provider = provider;
+	k_mutex_unlock(&s_provider_mutex);
 	LOG_INF("Config provider registered");
 	return 0;
 }
 
 const struct lichen_config_provider *lichen_coap_config_provider_get(void)
 {
-	return s_provider;
+	k_mutex_lock(&s_provider_mutex, K_FOREVER);
+	const struct lichen_config_provider *p = s_provider;
+	k_mutex_unlock(&s_provider_mutex);
+	return p;
 }
 
 /* CBOR encoding helpers - use zcbor_tstr_put_term for keys since they are
@@ -556,7 +562,7 @@ size_t lichen_config_encode_identity_cbor(uint8_t *buf, size_t buf_size,
 		}
 	}
 
-	/* "addrs": { "link_local": "...", "ula": "...", "gua": null } */
+	/* "addrs": { "link_local": "...", "ygg": "...", "gua": null } */
 	if (!zcbor_tstr_put_lit(state, KEY_ADDRS) ||
 	    !zcbor_map_start_encode(state, 3)) {
 		return 0;
@@ -566,12 +572,12 @@ size_t lichen_config_encode_identity_cbor(uint8_t *buf, size_t buf_size,
 		return 0;
 	}
 
-	if (identity->ula[0] != '\0') {
-		if (!put_tstr_kv(state, KEY_ULA, identity->ula)) {
+	if (identity->ygg[0] != '\0') {
+		if (!put_tstr_kv(state, KEY_YGG, identity->ygg)) {
 			return 0;
 		}
 	} else {
-		if (!zcbor_tstr_put_lit(state, KEY_ULA) ||
+		if (!zcbor_tstr_put_lit(state, KEY_YGG) ||
 		    !zcbor_nil_put(state, NULL)) {
 			return 0;
 		}

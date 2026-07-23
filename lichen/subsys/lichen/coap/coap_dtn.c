@@ -18,7 +18,6 @@ static const struct lichen_deaddrop_provider *s_provider;
 static struct lichen_dtn_buffer s_dtn_buf;
 static struct senml_pack s_senml_pack;
 static K_MUTEX_DEFINE(s_dtn_buf_mutex);
-static K_MUTEX_DEFINE(s_senml_pack_mutex);
 static struct k_work_delayable s_dtn_expire_work;
 static uint32_t s_last_deaddrop[16] = {0};
 
