@@ -178,60 +178,32 @@ typedef int (*oscore_nvm_write_cb)(const uint8_t *_Nullable eui64, uint32_t ssn)
 typedef int (*oscore_nvm_read_cb)(const uint8_t *_Nullable eui64, uint32_t *_Nonnull ssn);
 
 /**
- * @brief OSCORE security context
+ * @brief OSCORE security context (opaque)
  *
  * Contains the cryptographic material and state for one peer.
- * Each context has a sender context (for outgoing messages) and
- * a recipient context (for incoming messages).
+ * **This is an opaque type.** The full definition is private to oscore.c.
+ * Callers MUST treat `struct oscore_ctx *` as opaque and use ONLY the
+ * accessor functions. Direct member access is a P0 security violation.
  *
- * @warning INTERNAL STRUCTURE - DO NOT ACCESS FIELDS DIRECTLY
- *
- * This struct is defined in the public header only because C requires the
- * complete type for stack allocation patterns. Callers MUST treat this as
- * opaque and use only the provided API functions:
- *
- *   - oscore_ctx_create()       - Create and register a new context
- *   - oscore_ctx_free()         - Destroy a context (wipes key material)
- *   - oscore_ctx_get()          - Get pointer by recipient ID (for protect/unprotect)
- *   - oscore_ctx_get_sender_seq() / oscore_ctx_set_sender_seq() - Sequence persistence
+ * Available accessors (all thread-safe where required):
+ * - oscore_ctx_create(), oscore_ctx_create_with_eui64()
+ * - oscore_ctx_free()
+ * - oscore_ctx_get(), oscore_ctx_get_by_eui64()
+ * - oscore_ctx_set_peer_eui64()
+ * - oscore_ctx_set_sender_seq(), oscore_ctx_get_sender_seq()
+ * - oscore_ctx_get_seq_remaining(), oscore_ctx_check_freshness()
+ * - oscore_ctx_persist_ssn()
+ * - oscore_protect_request(), oscore_unprotect_request(), etc.
  *
  * Direct field access:
- *   - Bypasses mutex protection required for thread safety
- *   - Exposes key material that should remain in protected memory
- *   - Creates ABI coupling that prevents internal layout changes
+ *   - Bypasses mutex protection for thread safety and replay window
+ *   - Exposes master/derived keys (must stay protected)
+ *   - Creates ABI coupling preventing layout changes
  *
- * The struct layout is subject to change without notice. Code that accesses
- * fields directly will break.
+ * Layout subject to change without notice. Code accessing fields directly
+ * will no longer compile.
  */
-struct oscore_ctx {
-	/* Common context (shared) */
-	uint8_t master_secret[OSCORE_KEY_LEN]; /**< Master Secret */
-	uint8_t master_salt[8];                 /**< Master Salt (optional) */
-	uint8_t master_salt_len;                /**< Salt length (0-8) */
-	uint8_t common_iv[OSCORE_NONCE_LEN];    /**< Common IV */
-	uint8_t id_context[OSCORE_ID_CONTEXT_MAX_LEN]; /**< ID Context (optional) */
-	uint8_t id_context_len;                 /**< ID Context length */
-
-	/* Sender context */
-	uint8_t sender_id[OSCORE_ID_MAX_LEN];   /**< Sender ID */
-	uint8_t sender_id_len;                  /**< Sender ID length */
-	uint8_t sender_key[OSCORE_KEY_LEN];     /**< Sender Key */
-	uint32_t sender_seq;                    /**< Sender Sequence Number */
-
-	/* Recipient context */
-	uint8_t recipient_id[OSCORE_ID_MAX_LEN]; /**< Recipient ID */
-	uint8_t recipient_id_len;                /**< Recipient ID length */
-	uint8_t recipient_key[OSCORE_KEY_LEN];   /**< Recipient Key */
-	uint32_t recipient_seq;                  /**< Last received seq */
-	uint32_t replay_window;                  /**< Replay window bitmap */
-
-	/* Peer identity (optional EUI-64 for per-peer lookup) */
-	uint8_t peer_eui64[OSCORE_EUI64_LEN];   /**< Peer's EUI-64 address */
-	bool has_peer_eui64;                     /**< EUI-64 is set */
-
-	/* State */
-	bool active;                             /**< Context is in use */
-};
+struct oscore_ctx; /* opaque - full definition in oscore.c */
 
 /**
  * @brief OSCORE option value structure

@@ -22,6 +22,41 @@
 
 LOG_MODULE_REGISTER(oscore, CONFIG_LICHEN_OSCORE_LOG_LEVEL);
 
+/*
+ * Private definition of opaque struct oscore_ctx.
+ * This is the ONLY place where member access (ctx->xxx) is allowed.
+ * All other code MUST use the accessor functions only.
+ */
+struct oscore_ctx {
+	/* Common context (shared) */
+	uint8_t master_secret[OSCORE_KEY_LEN]; /**< Master Secret */
+	uint8_t master_salt[8];                 /**< Master Salt (optional) */
+	uint8_t master_salt_len;                /**< Salt length (0-8) */
+	uint8_t common_iv[OSCORE_NONCE_LEN];    /**< Common IV */
+	uint8_t id_context[OSCORE_ID_CONTEXT_MAX_LEN]; /**< ID Context (optional) */
+	uint8_t id_context_len;                 /**< ID Context length */
+
+	/* Sender context */
+	uint8_t sender_id[OSCORE_ID_MAX_LEN];   /**< Sender ID */
+	uint8_t sender_id_len;                  /**< Sender ID length */
+	uint8_t sender_key[OSCORE_KEY_LEN];     /**< Sender Key */
+	uint32_t sender_seq;                    /**< Sender Sequence Number */
+
+	/* Recipient context */
+	uint8_t recipient_id[OSCORE_ID_MAX_LEN]; /**< Recipient ID */
+	uint8_t recipient_id_len;                /**< Recipient ID length */
+	uint8_t recipient_key[OSCORE_KEY_LEN];   /**< Recipient Key */
+	uint32_t recipient_seq;                  /**< Last received seq */
+	uint32_t replay_window;                  /**< Replay window bitmap */
+
+	/* Peer identity (optional EUI-64 for per-peer lookup) */
+	uint8_t peer_eui64[OSCORE_EUI64_LEN];   /**< Peer's EUI-64 address */
+	bool has_peer_eui64;                     /**< EUI-64 is set */
+
+	/* State */
+	bool active;                             /**< Context is in use */
+};
+
 /* Context storage */
 static struct oscore_ctx s_contexts[CONFIG_LICHEN_OSCORE_MAX_CONTEXTS];
 static bool s_seq_initialized[CONFIG_LICHEN_OSCORE_MAX_CONTEXTS];
