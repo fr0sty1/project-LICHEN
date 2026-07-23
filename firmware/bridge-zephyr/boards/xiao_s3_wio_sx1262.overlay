@@ -15,6 +15,7 @@
 
 #include <zephyr/dt-bindings/pinctrl/esp32s3-pinctrl.h>
 
+
 / {
 	chosen {
 		zephyr,console = &usb_serial;
