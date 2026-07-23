@@ -5,7 +5,7 @@
   "vectors": [
     {
       "name": "tdma_slot_assignment_static_hash",
-      "description": "Static slot from EUI-64 hash_32(FNV-1a32) mod num_slots per TDMA spec (CCP-15.8.3, project-LICHEN-eirg).",
+      "description": "Static slot from EUI-64 hash_32(FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) mod num_slots per TDMA spec (CCP-15.8.3). Independent external arithmetic oracle.",
       "eui64_hex": "0011223344556677",
       "num_slots": 16,
       "expected_slot": 13

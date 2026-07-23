@@ -1,11 +1,11 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "CCP-16 synchronized hopping and desync vectors with now_ts and select_channel_timing test per project-LICHEN-rs2q. Uses input/output for ccp_vector schema.",
+  "description": "CCP-16 synchronized hopping and desync vectors with now_ts and select_channel_timing test. Uses hash_32(FNV-1a32, basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) with independent external arithmetic oracle (no LICHEN code). Matches input/output ccp_vector schema.",
   "vectors": [
     {
       "name": "synchronized_hop_channel_consistency",
-      "description": "synchronized_hop_channel(eui64=0x0011223344556677, t=4660, epoch=1) yields expected per CCP-12 pseudocode and hash_32 from ccp15. Receiver prediction matches sender.",
+      "description": "synchronized_hop_channel(eui64=0x0011223344556677, t=4660, epoch=1) yields expected per CCP-12 pseudocode and independent hash_32(FNV-1a32 basis 0x811c9dc5) oracle per spec/02a-coordinated-capacity.md:123. Receiver prediction matches sender.",
       "type": "slot_selection",
       "input": {
         "eui64": "0011223344556677",
@@ -45,7 +45,7 @@
     },
     {
       "name": "select_channel_timing_test",
-      "description": "select_channel_timing with now_ts near u32 wrap tests TDMA/SFN per project-LICHEN-rs2q.",
+      "description": "select_channel_timing with now_ts near u32 wrap tests TDMA/SFN per spec/02a-coordinated-capacity.md:123 and 09-packets-timing.md. Independent oracle.",
       "type": "slot_selection",
       "input": {
         "eui64": "0011223344556677",

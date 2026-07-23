@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "CCP-13 DutyCycleTracker vectors with independent math oracles for prune, proration, remaining_ms, usage_permille, can_transmit, next_available. Matches Rust, C hal test, and Python sim exactly.",
+  "description": "CCP-13 DutyCycleTracker vectors with independent math oracles for prune, proration, remaining_ms, usage_permille, can_transmit, next_available. Matches Rust, C, Python sim exactly. No code-under-test dependency.",
   "vectors": [
     {
       "name": "initial_full_budget",
