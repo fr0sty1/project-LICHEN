@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dp4j.5",
   "title": "Update test vectors and cross-impl tests for rx_channel",
   "description": "Update test/vectors/*.json, generate.py, python tests, rust tests, C tests, any interop tests to use rx_channel consistently. Update descriptions referencing last_announce_rx_channel or current_channel for CCP-9.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

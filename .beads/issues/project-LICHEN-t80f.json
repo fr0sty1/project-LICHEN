@@ -3,7 +3,7 @@
   "title": "API contract violation: get_stats returns NULL despite _Nonnull annotation",
   "description": "File: lichen/subsys/lichen/meshtastic/adapter.c:1915\nFile: lichen/subsys/lichen/meshtastic/include/lichen/meshtastic/adapter.h:292-294\n\nThe function lichen_meshtastic_adapter_get_stats is declared with _Nonnull return type:\n  const struct lichen_meshtastic_adapter_stats *_Nonnull lichen_meshtastic_adapter_get_stats(...)\n\nBut the implementation returns NULL when adapter is NULL:\n  return adapter == NULL ? NULL : \u0026adapter-\u003estats;\n\nThis violates the API contract. Callers relying on _Nonnull may not check for NULL.\n\nFix: Either remove the _Nonnull annotation or add an assertion/precondition check.",
   "notes": "Commit: fddc15358",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

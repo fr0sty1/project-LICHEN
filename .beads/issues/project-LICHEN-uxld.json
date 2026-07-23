@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-uxld",
   "title": "[codereview-pass3] spec/02a-coordinated-capacity.md lacks full IETF RFC2119 keyword usage consistency, explicit beacon frame format for TDMA fields (SFN, slot map, timestamp), and cross-reference to Schnorr signature on beacon per draft-lichen-schnorr; also add test vector examples for slot=hash(EUI64 ^ SFN) % N",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

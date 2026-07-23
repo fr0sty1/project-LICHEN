@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-diuz",
   "title": "codereview: missing yggdrasil config section in lichen-gateway",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3y1i.1",
   "title": "P0: responses from deaddrop_post not OSCORE-protected",
   "description": "coap_dtn.c: deaddrop_post uses coap_respond which builds plain CoAP response. After unprotect_request, responses should use coap_oscore_protect_response with the piv and ctx to encrypt response per RFC 8613 and coap_oscore.h. Same for error paths. discovered-from:project-LICHEN-3y1i #codereview",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "ec2-user",

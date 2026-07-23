@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yj45.1",
   "title": "Resolve merge conflicts in simulation.py",
   "description": "Clean up the two merge conflict sections in _deliver_pending_packets and _get_rx_result_internal. Unify RX metrics/logging between polling and push paths to avoid duplication (dead code). Ensure CCP-9 rendezvous (rx_frequency_hz=None, channel calc) and TDMA compatibility. Use independent oracles.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

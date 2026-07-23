@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rl6f.2",
   "title": "CCP-1 TDMA slots implementation in Zephyr link/rpl",
   "description": "Add TDMA slot management, channel agility, rendezvous logic per spec 02a. Use Kconfig. Follow codereview workflow.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

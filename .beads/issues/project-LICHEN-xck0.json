@@ -3,7 +3,7 @@
   "title": "Port number not validated in constructor (0, negative, or \u003e65535 accepted)",
   "description": "**File:** python/src/lichen/radio/sim_client.py\n**Lines:** 68-69\n\n**Issue:** The constructor accepts `port: int` without validation:\n```python\ndef __init__(\n    self,\n    host: str,\n    port: int,  # No validation\n    ...\n) -\u003e None:\n    ...\n    self._port = port\n```\n\n**Problem:** Invalid port numbers are accepted at construction:\n1. `port = -1`: anyio.connect_tcp will fail with an OS error\n2. `port = 0`: Might succeed but connect to an ephemeral port (wrong server)\n3. `port = 70000`: anyio.connect_tcp will fail with an OS error\n\nThe error only occurs when connect() is called, not at construction, and the error message will be a low-level OS error instead of a clear \"invalid port\" message.\n\n**Impact:** Invalid configurations are not detected early, leading to confusing errors at runtime.\n\n**Fix:** Validate port in constructor:\n```python\nif not (1 \u003c= port \u003c= 65535):\n    raise ValueError(f\"port must be in range 1-65535, got {port}\")\n```",
   "notes": "Port validation (1 \u003c= port \u003c= 65535) already implemented in constructor at lines 105-106 exactly as described. No additional changes needed. Fix was present prior to this bead.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

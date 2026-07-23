@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ml89",
   "title": "RERR error_code not validated before serialization",
   "description": "File: python/src/lichen/loadng/messages.py\nLines: 130-135\n\nThe `error_code` field in RERR.to_bytes() is serialized as `self.error_code \u0026 0xFF` without any validation.\n\nProblem: Negative or out-of-range error codes are silently truncated. This is inconsistent with seq_num validation elsewhere in the same file.\n\nFix: Add validation:\n```python\nif not 0 \u003c= self.error_code \u003c= 255:\n    raise LoadngError(f'error_code out of range: {self.error_code}')\n```",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

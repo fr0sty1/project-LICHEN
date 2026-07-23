@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wf0s",
   "title": "EdhocInitiator/EdhocResponder can be used after export_oscore without reset",
   "description": "File: rust/lichen-oscore/src/edhoc.rs\n\nAfter calling export_oscore(), the EdhocInitiator/EdhocResponder instances remain usable but in an inconsistent state:\n- Ephemeral secret is already consumed (eph_secret = None)\n- PRK values still exist in memory\n- Calling methods again could produce undefined behavior\n\nFor EdhocInitiator:\n- create_message_1() would work (doesn't use eph_secret)\n- process_message_2() would fail with InvalidState (eph_secret consumed)\n\nFor EdhocResponder:\n- process_message_1() would fail with InvalidState (eph_secret consumed)\n\nThe state machine is partially protected by eph_secret consumption, but:\n1. create_message_1 can be called multiple times before process_message_2\n2. export_oscore can be called multiple times (returns same context)\n\nImpact: Potential for confused state if callers don't understand the protocol flow.\n\nFix: Add explicit state enum (Created, Msg1Sent, Msg2Processed, Complete) and check state before each operation. Consider consuming self in export_oscore:\n```rust\npub fn export_oscore(self) -\u003e Result\u003cContext, OscoreError\u003e\n```",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

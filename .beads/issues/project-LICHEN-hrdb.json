@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hrdb",
   "title": "Silent data truncation in handle_icmpv6 echo reply",
   "description": "File: rust/lichen-ipv6/src/lib.rs:754-758\n\nWhen handling Echo Request, the code silently truncates data that exceeds MAX_ECHO_DATA:\n\n```rust\nlet truncated_data = if data.len() \u003e MAX_ECHO_DATA {\n    \u0026data[..MAX_ECHO_DATA]\n} else {\n    data\n};\n```\n\nWhile this is safe (no crash), it silently modifies the ping response without any indication. A diagnostic tool expecting the full echo data back would get corrupted results without knowing why.\n\nPer RFC 4443, Echo Reply 'Data' field MUST contain the same data as the Echo Request. Silent truncation violates this.\n\nOptions:\n1. Return an error instead of truncating\n2. Increase buffer size to accommodate typical ping sizes\n3. Add logging/metrics when truncation occurs\n4. Document this limitation clearly in the public API",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

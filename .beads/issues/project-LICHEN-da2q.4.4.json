@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.4.4",
   "title": "Vectors: multi-channel frequency allocation plans",
   "description": "Test vectors for CCP-4 channel plans from da2q context.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

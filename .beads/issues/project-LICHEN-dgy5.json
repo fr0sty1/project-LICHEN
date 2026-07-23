@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dgy5",
   "title": "[merge-conflict] worker8: 04-network.md",
   "description": "Resolve merge conflict in spec/04-network.md between main and integration/worker8-20260722. Keep BOTH sets of changes.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

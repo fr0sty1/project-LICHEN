@@ -2,7 +2,7 @@
   "id": "project-LICHEN-qiad",
   "title": "[kimi-review] 965566c: [SEVERITY: low] The matrix now contains two entries for boar",
   "description": "Commit: 965566ce\nMessage: ci: build Nucleo puck target\n\nFinding: [SEVERITY: low] The matrix now contains two entries for board `nucleo_wl55jc` (apps `gateway` and `puck`). If any downstream step (artifact upload names, cache keys, build directory naming, concurrency groups) keys only on `matrix.board` and not `matrix.app`, the two jobs will collide/overwrite each other. Verify naming includes the app.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

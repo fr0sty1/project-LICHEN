@@ -3,7 +3,7 @@
   "title": "Merge non-bd commits from workers 13-15 vs checkpoint-20260715 to main",
   "description": "For each worker13/14/15: 1. Identify new non-bd commits not in checkpoint-20260715. 2. Link commits to beads using grep/bd. 3. Cherry-pick to main, resolve ALL conflicts using -X theirs where possible. 4. Run 3 full codereview passes per AGENTS.md (fix ALL issues P0-P4, no bikeshedding). 5. Update beads with merge notes + new hash. 6. File any new beads discovered. Process in parallel where possible. Return concise summary per worker. Parent of worker-batch fixes.",
   "notes": "Merge cycle 2 complete for workers 2-8. No new non-bd code commits detected beyond prior merges. Updated notes for bd auto-commits in worker branches. New main hash: 9f5716663. All related beads updated with merge notes.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "AI Agent",

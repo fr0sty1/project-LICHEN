@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ny2e",
   "title": "Insufficient test coverage for packet_hash standardization and metrics",
   "description": "test_simulation_validation.py only superficially checks 'packet_hashes' in JSON (line 147); no assertions on hash length (32 chars), TX/RX hash matching, cross-Python/Rust consistency, or sim_client.py hashes. Metrics.py _PACKET_HASH_SET_MAX_SIZE field in dataclass (line 37) is misused as self._ (should be class const). Tests pass but don't detect the SHA256[:16] bugs. Flag as new issue from codereview.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

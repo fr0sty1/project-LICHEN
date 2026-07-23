@@ -2,7 +2,7 @@
   "id": "project-LICHEN-p2y5.6",
   "title": "Gateway: End-to-end border router test",
   "description": "## Goal\n\nValidate that a mesh node can reach the internet via gateway.\n\n## Test setup\n\n```\n[Internet host]\n      │\n   [Router]  ← Provides IPv6 prefix\n      │\n  [Gateway]  ← LICHEN border router\n      │\n    LoRa\n      │\n [Mesh node]\n```\n\n## Test cases\n\n### 1. Mesh node pings internet\n- Mesh node: ping6 2001:4860:4860::8888 (Google DNS)\n- Verify: ICMP echo reply received\n- Validates: outbound forwarding works\n\n### 2. Internet host pings mesh node\n- Internet host: ping6 \u003cmesh-node-gua\u003e\n- Verify: ICMP echo reply received\n- Validates: inbound forwarding + routing works\n\n### 3. Mesh node fetches HTTP\n- Mesh node: CoAP proxy request to http://example.com\n- Or: direct TCP if stack supports\n- Validates: TCP forwarding works\n\n### 4. Prefix delegation\n- Restart gateway\n- Verify: mesh node gets new address from delegated prefix\n- Validates: DHCPv6-PD integration\n\n### 5. Gateway failover (if multi-gateway)\n- Kill primary gateway\n- Verify: mesh node switches to secondary\n- Validates: multi-gateway works\n\n## Test environments\n\n### Simulation\n- Python simulator with mock backhaul\n- Verify forwarding logic\n\n### Renode\n- Simulated gateway + mesh node\n- Mock network for backhaul\n\n### Hardware\n- Real gateway (Heltec V3 or RPi)\n- Real mesh node\n- Real internet connectivity",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

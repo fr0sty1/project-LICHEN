@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-5dcv",
   "title": "[codereview-pass1-init] coap_dtn.c: lichen_coap_deaddrop_register init sequence does not lock s_dtn_mutex around lichen_dtn_init/senml_pack_init/expire_old; race on first handler call. Also k_mutex_init after K_MUTEX_DEFINE is redundant. P0 race/security. Tagged codereview",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

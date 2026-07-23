@@ -2,7 +2,7 @@
   "id": "project-LICHEN-79pj",
   "title": "Heltec V3: border router mode (WiFi backhaul)",
   "description": "Enable Heltec V3 as border router with WiFi backhaul. ESP32-S3 + SX1262 + WiFi. Implement: (1) WiFi station mode, (2) IPv6 prefix delegation from upstream, (3) RPL DODAG root, (4) NAT64/DNS64 or direct IPv6. Low power (~100mW), fits anywhere. Board files exist. $25.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "AI Agent",

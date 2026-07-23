@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ma4y",
   "title": "Consolidate 02a-coordinated-capacity.md with spelled-out pseudocode, CH0 rules, CCP-9 da2q, density/EMA",
   "description": "Resolve all merge conflicts in spec/02a-coordinated-capacity.md. Integrate select_channel, adaptive_sf_select, now() as spelled-out pseudocode. Include capability DIO, da2q rendezvous with signed rx_channel, EMA/load rules. Cross-ref test/vectors/ccp*.json as independent oracles. Remove markers, duplicates, notes. Ensure consistency.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

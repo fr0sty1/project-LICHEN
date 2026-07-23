@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ntfa",
   "title": "[codereview] spec TOC and reference inconsistencies",
   "description": "After fixing numbering duplication in draft-lichen-schc-lora-00.md TOC/references (9.1/9.2) and rule ID comment, review found: 1. References still use short form vs full citations in sibling drafts (schnorr:8.1, rpl:13.1). 2. Rule ID assignments now consistent in draft but still conflict with 03-adaptation.md:5.5 (which has Rule 2=MQTT-SN vs current Rule 7). Should consolidate canonical rules in one place (appendix-schc.md as source of truth) and update all references. This is P2 codereview finding from pass on TOC duplication fix. See project-LICHEN-6sn6.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

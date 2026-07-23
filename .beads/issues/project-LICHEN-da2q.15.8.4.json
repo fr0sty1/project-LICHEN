@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-da2q.15.8.4",
   "title": "codereview: pseudocode hash_32 fn and N_CHANNELS undefined; specify exact hash from link layer",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

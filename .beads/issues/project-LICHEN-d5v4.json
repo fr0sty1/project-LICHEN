@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d5v4",
   "title": "compute_mic uses zlib.crc32 without seed specification",
   "description": "File: python/src/lichen/schc/fragment.py:39-40\n\ncompute_mic() uses zlib.crc32() without specifying an initial CRC value:\n  def compute_mic(payload: bytes) -\u003e bytes:\n      return zlib.crc32(payload).to_bytes(MIC_LENGTH, 'big')\n\nRFC 8724 section 8.1 specifies the Reassembly Check Sequence (RCS) default as CRC32. However, there are multiple CRC32 variants with different polynomials and initial values.\n\nzlib.crc32() uses:\n- Polynomial: 0x04C11DB7 (IEEE 802.3)\n- Initial value: 0xFFFFFFFF\n- Final XOR: 0xFFFFFFFF\n\nThis matches the common CRC-32 (ISO 3309), which is likely what the spec intends, but should be explicitly documented for interoperability.\n\nAdditionally, for incremental CRC computation (if ever needed for large payloads), the second argument to zlib.crc32() would need to be managed.\n\nFix: Document the CRC32 variant being used and verify it matches interoperating implementations.\n\nCategory: PROTOCOL",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

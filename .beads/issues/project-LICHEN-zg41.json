@@ -2,7 +2,7 @@
   "id": "project-LICHEN-zg41",
   "title": "Signature not validated for expected length in from_bytes",
   "description": "File: python/src/lichen/loadng/messages.py\nLines: 71-82, 107-118, 138-146\n\nThe `from_bytes` methods extract the signature as the remaining bytes after the fixed header:\n```python\n# RREQ.from_bytes (line 81)\nsignature=data[36:]\n\n# RREP.from_bytes (line 117)  \nsignature=data[36:]\n\n# RERR.from_bytes (line 145)\nsignature=data[18:]\n```\n\nPer the module docstring (lines 14-16): 'The default unsigned signature is empty; a signed message carries 48 bytes.'\n\nProblem: There is no validation that the signature is either empty (0 bytes) or exactly SIGNATURE_LENGTH (48 bytes). Malformed messages with partial signatures (e.g., 20 bytes) are silently accepted.\n\nImpact:\n1. Invalid signatures are passed through without error\n2. Downstream signature verification may crash or behave unexpectedly\n3. Could be used to probe for implementation differences (security reconnaissance)\n\nFix: Add signature length validation:\n```python\nsignature = data[36:]\nif len(signature) not in (0, SIGNATURE_LENGTH):\n    raise LoadngError(f'invalid signature length: {len(signature)}, expected 0 or {SIGNATURE_LENGTH}')\n```",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

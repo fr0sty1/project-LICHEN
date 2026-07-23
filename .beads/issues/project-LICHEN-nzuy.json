@@ -2,7 +2,7 @@
   "id": "project-LICHEN-nzuy",
   "title": "UDP checksum validation in _handle_packet may reject valid IPv6 packets",
   "description": "File: python/src/lichen/client/packet_coap.py, lines 360-364\n\nThe packet handler validates UDP checksums:\n\n```python\nif udp.checksum == 0:\n    return\nif udp_checksum(parsed.header.src_addr, parsed.header.dst_addr, parsed.payload) != 0:\n    return\n```\n\nIssue 1: The check 'udp.checksum == 0' correctly rejects packets with no checksum (RFC 8200 requires UDP checksum for IPv6). However, the second check may have a subtle bug.\n\nIssue 2: The udp_checksum function is called with parsed.payload (the raw UDP datagram including header), but depending on implementation, a valid checksum computes to 0 OR 0xFFFF when the checksum field is included. If udp_checksum returns 0xFFFF for valid packets (RFC 1071 complement arithmetic), this check would incorrectly reject valid packets.\n\nAdditionally: The checksum is computed over the entire payload including the UDP header. If there's a length mismatch (UDP length field vs actual payload length), this could cause issues.\n\nImpact: Valid CoAP packets may be silently dropped if the checksum validation has edge cases.\n\nFix: Verify the udp_checksum implementation handles all cases correctly. Add logging when packets are dropped due to checksum failure to aid debugging.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

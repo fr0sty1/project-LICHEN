@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wfgw",
   "title": "fragment.rs: FragmentReceiver does not validate rule_id consistency across fragments",
   "description": "File: rust/lichen-schc/src/fragment.rs\nLines: 507-565 (FragmentReceiver::receive)\n\nCategory: PROTOCOL\n\nThe FragmentReceiver updates rule_id on every fragment received:\n```rust\npub fn receive(\u0026mut self, frag: \u0026Fragment\u003c'_\u003e) -\u003e ReceiverResult {\n    ...\n    self.rule_id = frag.rule_id;  // Line 515\n    ...\n}\n```\n\nIf fragments from different datagrams (with different rule_ids) are interleaved or mixed up, the receiver:\n1. Accepts them all into the same reassembly buffer\n2. Uses the last-seen rule_id for the ACK\n3. May produce a corrupt reassembled datagram\n\nPer RFC 8724 section 8.4.2, the receiver should maintain per-rule_id state or reject fragments with mismatched rule_ids.\n\nImpact: In multi-flow scenarios or under attack, mismatched fragments could be incorrectly reassembled, producing corrupt data that passes MIC check only by chance.\n\nFix: Either:\n1. Store the rule_id from the first fragment and reject subsequent fragments with different rule_ids\n2. Or maintain separate reassembly state per rule_id",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

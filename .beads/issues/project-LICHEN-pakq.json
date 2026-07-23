@@ -2,7 +2,7 @@
   "id": "project-LICHEN-pakq",
   "title": "project-LICHEN-w6e9: fix security issues in link layer and oscore",
   "description": "Implement the fixes for P0 security issues in key handling, replay protection, and MIC verification as discovered in project-LICHEN-lw4f. Break down into tasks for each finding.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "epic",
   "assignee": "AI Agent",

@@ -3,7 +3,7 @@
   "title": "Chat encoder silently encodes invalid team byte 0 when dest_team is None",
   "description": "File: python/src/lichen/gateway/compact_cot.py\nLine: 634\n\nWhen encoding a chat message with dest_type=TEAM:\n```python\nif chat.dest_type == DestType.TEAM:\n    parts.append(bytes([chat.dest_team or 0]))\n```\n\nIf chat.dest_team is None, this encodes team byte as 0. However, 0 is NOT a valid Team value (the Team enum starts at 1 with BLUE=0x01).\n\nThis creates an invalid message that:\n1. Will decode successfully but produce team_name='White' (fallback)\n2. Violates the protocol specification\n3. Masks a programming error (None team for TEAM dest_type)\n\nFix: Raise an error instead of silently using an invalid value:\n```python\nif chat.dest_type == DestType.TEAM:\n    if chat.dest_team is None:\n        raise ValueError('dest_team required when dest_type is TEAM')\n    parts.append(bytes([chat.dest_team]))\n```",
   "notes": "Commit: f6c66a634\n_encode_chat now raises ValueError if dest_type=TEAM and dest_team=None. Prevents invalid team byte 0. Updated _get_dest_uid and XML paths similarly if needed. P2 fixed.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

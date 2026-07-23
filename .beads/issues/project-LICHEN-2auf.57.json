@@ -3,7 +3,7 @@
   "title": "Harden T1000-E DFU port selection",
   "description": "Recover deterministic app/DFU serial-port selection, matching-device 1200-baud transition, explicit custom-port state, and ambiguity failures.",
   "acceptance_criteria": "Mocked zero/one/multiple and re-enumeration cases pass; direct DFU does not touch; app transition follows serial; bash syntax passes; one physical T1000-E flash succeeds.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

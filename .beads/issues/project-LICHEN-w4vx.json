@@ -2,7 +2,7 @@
   "id": "project-LICHEN-w4vx",
   "title": "SECURITY: No rate limiting on want_config requests",
   "description": "File: lichen/subsys/lichen/meshtastic/adapter.c:1788-1790\n\n  case LICHEN_MESHTASTIC_TO_RADIO_WANT_CONFIG_ID:\n      adapter-\u003estats.want_config_count++;\n      return dispatch_want_config(adapter, msg.value.want_config_id);\n\nA malicious client can spam want_config requests, causing the adapter to repeatedly:\n1. Snapshot the nodedb (CPU intensive with sorting)\n2. Encode multiple protobuf messages\n3. Enqueue many messages to the output queue\n\nThis is a denial-of-service vector. The want_config_count stat tracks this, but no limiting is enforced.\n\nConsider:\n1. Rate limiting want_config to once per N seconds\n2. Rejecting want_config if one is already in progress\n3. Documenting this as a known limitation for callers to handle\n\nSECURITY: Resource exhaustion attack via config request flood.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

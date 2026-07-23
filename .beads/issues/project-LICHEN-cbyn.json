@@ -2,7 +2,7 @@
   "id": "project-LICHEN-cbyn",
   "title": "[codereview-pass2] Kconfig addition for LICHEN_CCP_TIME_SYNC",
   "description": "No help text update in top level Kconfig or prj.conf examples. Add example in lichen/apps/puck/boards/*.conf. No security review of new time sync path yet.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

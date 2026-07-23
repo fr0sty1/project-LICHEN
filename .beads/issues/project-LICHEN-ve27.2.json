@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ve27.2",
   "title": "[codereview-pass2-security] TDMA rendezvous spec: beacon signature verification timing not specified (side-channel risk?), join rate limiting/PoW details vague, no mention of root key rotation or compromised root detection in drift/beacon path",
   "description": "spec/02a-coordinated-capacity.md:80-95, 140-150 - Security properties of TDMA sync must be analyzed per draft-lichen-security. Root beacon is single point of failure for time/auth. Discovered in security-focused review pass.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

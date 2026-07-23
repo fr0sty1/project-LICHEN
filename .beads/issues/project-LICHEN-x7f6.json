@@ -2,7 +2,7 @@
   "id": "project-LICHEN-x7f6",
   "title": "Icmpv6ErrorMessage type and code not validated before serialization",
   "description": "File: python/src/lichen/ipv6/icmpv6.py:183-204\n\nThe Icmpv6ErrorMessage class stores type and code fields but does not validate them in __post_init__ or to_message():\n\n```python\n@dataclass\nclass Icmpv6ErrorMessage:\n    type: int\n    code: int\n    invoking_packet: bytes\n    mtu: int = 0\n\n    def to_message(self) -\u003e Icmpv6Message:\n        rest = (\n            self.mtu.to_bytes(4, 'big')\n            if self.type == Icmpv6Type.PACKET_TOO_BIG\n            else bytes(4)\n        )\n        quoted = self.invoking_packet[:MAX_INVOKING_PACKET]\n        return Icmpv6Message(self.type, self.code, rest + quoted)\n```\n\nWhile the factory functions (make_dest_unreachable, make_time_exceeded, make_packet_too_big) use the correct enum values, nothing prevents direct instantiation with invalid type/code combinations:\n\n```python\n# This creates an invalid error message:\nmsg = Icmpv6ErrorMessage(type=255, code=99, invoking_packet=b'...')\n```\n\nThe validation only happens downstream in Icmpv6Message.to_bytes(), which checks 0-255 range but not semantic validity.\n\nImpact: Invalid ICMPv6 error messages could be constructed that don't conform to RFC 4443.\n\nFix: Add validation in __post_init__ to ensure type is a valid error type (1, 2, or 3) and code is valid for that type.\n\nTags: correctness, ipv6",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

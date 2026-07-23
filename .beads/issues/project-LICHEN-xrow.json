@@ -2,7 +2,7 @@
   "id": "project-LICHEN-xrow",
   "title": "DaoManager accepts DAO with mismatched dodag_id",
   "description": "File: python/src/lichen/rpl/dao.py:123-137\n\nThe process_dao() method doesn't validate that the DAO's dodag_id matches the DaoManager's configured dodag_id. A DAO with a D flag set but wrong DODAG ID is accepted.\n\nCurrent code shows no dodag_id validation:\n```python\ndef process_dao(self, dao: DAO) -\u003e DAOAck | None:\n    if not self.is_root:\n        raise DaoError(\"process_dao is only valid on the root\")\n    \n    target, parent = self._extract_edge(dao)  # No dodag_id check\n    self._parent_map[target] = parent\n```\n\nPer RFC 6550 Section 9.5, the root should validate the DODAG ID when the D flag is set in the DAO. Accepting DAOs from other DODAGs could corrupt the routing table.\n\nImpact: If multiple DODAGs exist on the network (different roots), a root could accept DAOs intended for a different DODAG, leading to:\n1. Incorrect routes being installed\n2. Routing loops between DODAGs\n3. Traffic blackholing",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

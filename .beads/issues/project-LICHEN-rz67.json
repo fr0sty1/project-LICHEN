@@ -3,7 +3,7 @@
   "title": "CoAP client uses fixed token preventing concurrent request matching",
   "description": "File: rust/lichen-coap/src/client.rs:81\n\nThe client uses a hardcoded token 'LICH' ([0x4c, 0x49, 0x43, 0x48]) for all requests:\n\n    let token = [0x4c, 0x49, 0x43, 0x48]; // 'LICH'\n\nRFC 7252 Section 5.3.1 requires tokens to be unique per outstanding request to match responses. If multiple concurrent requests are made, they will all have the same token, making it impossible to correctly match responses to their requests.\n\nImpact: Concurrent CoAP requests will receive incorrect responses, causing data corruption or application logic errors.\n\nFix: Generate unique tokens per request, e.g., using a counter or random bytes.",
   "notes": "Commit: 493d37ddd",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-4vzi",
   "title": "[codereview-pass2] Kconfig: missing select for rate limiting primitives or timer, potential security gap in rate limit impl not called out",
   "description": "lichen/subsys/lichen/coap/Kconfig:255 - Security review pass. Rate limit mentioned in task but no dependency on kernel timer or atomic counters. Could lead to bypass if not enforced in handler. P2 security.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-4qzg",
   "title": "Clean conflict markers in rust/lichen-gateway/src/gateway.rs and lichend.rs",
   "description": "Resolve nested merge conflicts preferring latest worker23+ consolidated code, remove all markers, no comments/TODOs/dead code, ensure consistent RplNode API.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

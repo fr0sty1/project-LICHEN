@@ -2,7 +2,7 @@
   "id": "project-LICHEN-h7t5.7.6.1.1",
   "title": "Re-evaluate BLE IPSP for ESP32-S3 local-client transport",
   "description": "Revisit BLE IPSP/6LoWPAN as a possible LICHEN local-client transport after there is concrete Zephyr ESP32-S3 evidence. Current T-Deck MVP selects LICHEN-specific BLE LCI with SLIP-framed IPv6 over GATT because the local pinned Zephyr v3.7.0 tree has removed IPSP network L2 support (CONFIG_NET_L2_BT no longer exists), lacks the upstream IPSP sample path, and the Zephyr latest documented IPSP sample evidence targets nRF52840dk/nrf52840, not ESP32-S3/T-Deck. Acceptance: collect current Zephyr ESP32-S3 IPSP build/runtime evidence, determine whether IPSP support must be restored or replaced in Zephyr, capture host Bluetooth 6LoWPAN tooling requirements, client-app impact, advertising/IPSS behavior, and a recommendation to implement, defer, or reject IPSP for T-Deck.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

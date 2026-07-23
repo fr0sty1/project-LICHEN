@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wimj",
   "title": "SenML codec allows multiple value fields violating RFC 8428",
   "description": "File: python/src/lichen/senml/codec.py\nLines: 117-128 (pack), 131-154 (unpack)\n\nRFC 8428 Section 4.5 states: 'There MUST be at most one of each field in a SenML Record, except for v* (all value fields) there MUST be at most one.'\n\nThe codec allows creating and accepting records with multiple value fields (v, vs, vb, vd) present simultaneously:\n- pack() serializes all value fields if set\n- unpack() accepts records with multiple value fields without error\n\nExample violation:\n  SenmlRecord(n='x', v=1.0, vs='hello', vb=True)  # packs successfully but violates spec\n\nThis causes:\n1. Non-compliant SenML packs sent to other implementations may be rejected\n2. Receiving such packs from malicious sources leads to undefined behavior (which value wins?)\n\nFix: Add validation in to_cbor_map() to raise if \u003e1 value field is set, and in from_cbor_map() to reject records with multiple values.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

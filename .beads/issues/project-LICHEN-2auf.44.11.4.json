@@ -4,7 +4,7 @@
   "description": "Choose and specify how the production border router durably admits DAO origin identities. Announce TOFU pinning alone is insufficient and automatic first-seen admission would create a new security policy. Define operator provisioning, trust upgrade/revocation, persistence, and failure behavior before lichend activates the RPL root.",
   "acceptance_criteria": "A reviewed policy identifies admission authority, durable record format, provisioning and revocation flows, restart behavior, and fail-closed handling; implementation-ready acceptance vectors are defined.",
   "notes": "HUMAN: DAO admission policy decision required before lichend RPL root (provisioning, durable records, revocation, fail-closed). Tagged per policy.\nHUMAN: needs policy decision on DAO admission before lichend RPL root. Do not implement.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

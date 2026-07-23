@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ngjj",
   "title": "Align announce codec formats (core + python messages)",
   "description": "Ensure wire format, signed_data (with rx_channel at signed offset 42), from_bytes/to_bytes, error handling exactly match spec 05-routing.md:9.2, CCP-9 in 02a, test/vectors/*announce*.json independent oracles from generate.py. Remove all comments, TODOs, merge artifacts. Add #![no_std] if missing.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

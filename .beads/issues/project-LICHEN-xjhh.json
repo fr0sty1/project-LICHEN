@@ -2,7 +2,7 @@
   "id": "project-LICHEN-xjhh",
   "title": "bridge.rs: Unknown routing error codes silently treated as success",
   "description": "File: rust/lichen-meshtastic/src/bridge.rs:78-98\n\nThe RoutingErrorCode::from(i32) implementation maps unknown values to RoutingErrorCode::None:\n\n```rust\nimpl From\u003ci32\u003e for RoutingErrorCode {\n    fn from(val: i32) -\u003e Self {\n        match val {\n            0 =\u003e Self::None,\n            ...\n            35 =\u003e Self::PkiUnknownPubkey,\n            _ =\u003e Self::None,  // BUG: Unknown codes treated as success\n        }\n    }\n}\n```\n\nIn process_incoming (line 227-235), this is used:\n```rust\nlet error_code = RoutingErrorCode::from(e);\nerror: if error_code == RoutingErrorCode::None {\n    None  // Treated as success!\n} else {\n    Some(error_code)\n},\n```\n\nIMPACT: If Meshtastic firmware adds new error codes (e.g., code 36), LICHEN would treat them as successful routing, potentially leading to incorrect behavior.\n\nFIX: Add an Unknown variant to RoutingErrorCode enum and handle it as an error condition in process_incoming.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

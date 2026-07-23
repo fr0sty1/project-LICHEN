@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-lkip",
   "title": "Firmware: implement spec §18.2 position resources (/sensors/location, /pos, /pos/cache) in SenML+CBOR",
   "description": "The Rust client now has a spec-faithful SenML Position codec (lichen-client pos.rs, commit ca03c292; spec 12-apps §18.2), and lichen-cli 'position show' targets /sensors/location. But NO firmware node exposes these resources yet — only the gateway's binary /inbound/location POST (inbound_coap.c, a versioned binary format, NOT SenML) exists. To make position sharing actually work end-to-end:\n- GET /sensors/location -\u003e application/senml+cbor {bn=urn:dev:mac:\u003ceui\u003e:, bt, lat/lon/alt/speed/heading} (§18.2.2)\n- PUT /pos (beacon, §18.2.1) + GET /pos/cache {positions:[{node,lat,lon,alt,ts,age_s}]} (CBOR, not SenML)\nZephyr has no SenML lib; the C side would need a small SenML+CBOR encoder (or reuse zcbor with the RFC 8428 integer labels bn=-2,bt=-3,n=0,u=1,v=2). Until this lands, the client position codec is validated by its own unit tests only (no live node). Consider whether to also expose the existing binary /inbound/location as a client op vs standardizing on SenML.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "owner": "mark.frost@gmail.com",

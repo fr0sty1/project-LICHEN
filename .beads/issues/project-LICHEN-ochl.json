@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ochl",
   "title": "[codereview-pass2] lichen_identity_ygg_addr_from_ed25519 lacks unit test and vector coverage",
   "description": "No test in lichen/tests or Zephyr Twister for the new function. Must add test matching Rust iid_from_pubkey and test/vectors/schnorr48.json or new ygg vector. discovered-from:project-LICHEN-quo6",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kkzp",
   "title": "Audit and clean RPL Trickle implementation",
   "description": "Audit rust/lichen-rpl/src/trickle.rs, lichen-rpl crate, lichen-node integration for RPL trickle. Remove all TODOs, worker comments, dead code. Ensure exact match to spec pseudocode, no_std compliant. Cross-check lichen-core, Python equivalents. Verify with cargo check/tests. Parallel subagents where possible. Final summary only.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "epic",
   "assignee": "AI Agent",

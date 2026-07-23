@@ -2,7 +2,7 @@
   "id": "project-LICHEN-520s",
   "title": "test_fail_next functions silently ignore positive error codes",
   "description": "File: lichen/subsys/lichen/app_interface/app_interface.c:632-644\n\n  void lichen_app_interface_test_fail_next_location_submit(int ret)\n  {\n      k_mutex_lock(\u0026s_mutex, K_FOREVER);\n      s_test_next_location_submit_ret = ret \u003c 0 ? ret : 0;  // ignores positive\n      k_mutex_unlock(\u0026s_mutex);\n  }\n\n  void lichen_app_interface_test_fail_next_clear_network(int ret)\n  {\n      k_mutex_lock(\u0026s_mutex, K_FOREVER);\n      s_test_next_clear_network_ret = ret \u003c 0 ? ret : 0;  // ignores positive\n      k_mutex_unlock(\u0026s_mutex);\n  }\n\nThese test helper functions silently convert positive error codes to 0. While positive values are not standard POSIX errors, some systems use positive values for specific conditions.\n\nIf a test accidentally passes a positive value:\n- Expected: function returns that value for test verification\n- Actual: function returns 0 (success), causing incorrect test behavior\n\nThe silent normalization makes debugging test failures harder. Either:\n1. Accept all non-zero values as errors\n2. Assert/log when a positive value is passed",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

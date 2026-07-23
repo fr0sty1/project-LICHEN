@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.16.1",
   "title": "Python: CCP-16 requirements from da2q context",
   "description": "Python implementation for CCP-16 Load Balancing requirements from da2q context.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -3,7 +3,7 @@
   "title": "Repair Zephyr convergence validation gates",
   "description": "Final convergence Twister at 9b3d7ba8 passed 39 scenarios but failed 9 inherited validation paths. Apply only mechanical corrections needed to validate selected frozen slices: add missing stdio includes in coap_server.c/coap_status.c; satisfy LICHEN_LINK TinyCrypt parent dependency; add test RNG to MeshCore gateway fixture; set Meshtastic gateway fixture payload to 200; repair BLE IPSP comment/hook/buffer diagnostics; initialize SLIP oversized buffer; scope Zephyr fuel-gauge sign-compare warning handling; and raise ping_l2 test stack without weakening canaries. Provenance: failures trace to selected fixed inputs 49632f11, 1dbe31a7, d8825d9f, a7735d31, cb6c04e3, 743040bd, 7b39bb48, and 4fe08efc. Do not alter protocol behavior or excluded SCHC work.",
   "acceptance_criteria": "Full native_sim/native/64 Twister suite passes with zero failures/errors and no unexpected skips; native gateway compiles through the corrected modules; no warnings are globally disabled; tracked diff contains only recorded validation corrections.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

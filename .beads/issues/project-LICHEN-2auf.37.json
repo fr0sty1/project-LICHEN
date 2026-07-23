@@ -3,7 +3,7 @@
   "title": "Improve SimRadio registration diagnostics",
   "description": "connect_registered currently maps simulator MSG_ERR responses to generic RadioError::Protocol and uses OS-default connect timeout plus a fixed 100ms handshake read timeout. Introduce an error representation that preserves server code/message without compromising no_std RadioError users, and explicit configurable connect/registration timeouts.",
   "acceptance_criteria": "Unknown simulation and duplicate-node errors retain server diagnostics; connection and registration timeouts are explicit and tested; malformed responses still report protocol errors; three reviews pass.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -3,7 +3,7 @@
   "title": "Test and validation for RAK2287 gateway",
   "description": "Add integration tests, Renode simulation if possible, interop with node-side LICHEN, packet capture validation. Update CI for gateway board.",
   "notes": "Commit: d45ef884a",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "AI Agent",

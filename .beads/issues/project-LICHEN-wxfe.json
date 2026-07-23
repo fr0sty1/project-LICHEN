@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wxfe",
   "title": "EDHOC: No validation of zcbor decoder state after parsing",
   "description": "CORRECTNESS: After CBOR parsing, decoder state is not checked for completeness or errors.\n\nLocations:\n- Lines 491-526 (parsing message_2)\n- Lines 835-887 (parsing message_1)\n- Lines 1075-1091 (parsing plaintext_3)\n\nAfter parsing expected fields, the code doesn't check:\n1. zcbor_payload_at_end() - whether all input was consumed\n2. zsd-\u003econstant_state-\u003eerror - for accumulated errors\n\nThis means:\n- Extra trailing data is silently ignored\n- Parser errors in multi-element sequences may be missed\n\nPer defense-in-depth, messages with unexpected trailing data should be rejected.\n\nFix: After parsing, validate:\nif (!zcbor_payload_at_end(zsd)) {\n    LOG_WRN('Trailing data in message');\n    return -EINVAL;  // or just warn\n}\n\nFile: lichen/subsys/lichen/edhoc/edhoc.c:491-526,835-887,1075-1091",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3skp",
   "title": "peer_lookup callback called with empty bytes hint is ambiguous",
   "description": "File: python/src/lichen/link/link_layer.py:562-565\n\nThe peer_lookup callback is called with empty bytes as a hint:\n\n    peer = self.peer_lookup(b'')\n    if peer is not None and verify(peer.pubkey, signable, signature):\n        return peer\n\nThe interface expects peer_lookup to return a peer for a given IID hint, but empty bytes is not a valid IID. The callback's behavior for b'' is undefined:\n- Could return None (intended)\n- Could return a default/first peer\n- Could raise an exception\n\nThe comment says 'we pass empty bytes as the hint since current frame format lacks sender IID' but this is a protocol design issue being papered over with undefined callback behavior.\n\nFix: Define explicit semantics for peer_lookup(b''), or add a separate method for 'try all peers' use case.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.16",
   "title": "CCP-16: Load Balancing",
   "description": "Coordinated Capacity Profile section detailing Load Balancing from da2q multi-channel coordination context.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "ec2-user",

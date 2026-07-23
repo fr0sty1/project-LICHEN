@@ -3,7 +3,7 @@
   "title": "Recover Python IPv6 and routing bounds",
   "description": "Recover ICMPv6/UDP ingress validation, LOADng wrap-aware freshness and bounds, GPSR coordinate safety, and RPL DAO/DODAG/source-route validation.",
   "acceptance_criteria": "Malformed sources/checksums/routes drop; sequence wrap vectors agree; invalid/stale coordinates never route; RPL vectors cover E flag and lollipop boundaries; focused tests and three reviews pass.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

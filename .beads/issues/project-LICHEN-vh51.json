@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vh51",
   "title": "API contract: out_id _Nonnull annotation violated",
   "description": "File: lichen/subsys/lichen/app_interface/include/lichen/app_interface/app_interface.h:220\nFile: lichen/subsys/lichen/app_interface/app_interface.c:86,107\n\nThe header declares out_id as _Nonnull:\n  int lichen_app_interface_register_sink(\n      const struct lichen_app_interface_sink *_Nonnull sink, uint8_t *_Nonnull out_id);\n\nBut the implementation treats it as nullable (lines 86-88, 107-108):\n  if (out_id != NULL) {\n      *out_id = i;\n  }\n\nThis violates the API contract. Either:\n1. Remove the _Nonnull annotation if NULL is intentionally allowed\n2. Remove the NULL checks and crash if NULL is passed (consistent with annotation)\n\nStatic analyzers and callers relying on nullability annotations may behave incorrectly.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

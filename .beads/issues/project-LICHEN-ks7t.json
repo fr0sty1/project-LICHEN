@@ -3,7 +3,7 @@
   "title": "meshcore_error_from_errno default case includes -ENOTSUP",
   "description": "File: lichen/subsys/lichen/meshcore/adapter.c\nLines: 420-443 (meshcore_error_from_errno)\n\n```c\nstatic uint8_t meshcore_error_from_errno(int err)\n{\n    switch (err) {\n    case -ENOENT:\n    case -ENODEV:\n    case -ENOTCONN:\n        return LICHEN_MESHCORE_ERR_NOT_FOUND;\n    // ... other cases ...\n    case -ENOTSUP:\n    case -ENOSYS:\n    default:\n        return LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD;\n    }\n}\n```\n\nThe default case includes -ENOTSUP and -ENOSYS explicitly, but they fall through to default anyway. While not a bug, this is misleading - it suggests -ENOTSUP and -ENOSYS need special handling, but they get the same result as any unknown error.\n\nMore concerning: positive errno values (if any callback mistakenly returns them without negation) would also map to UNSUPPORTED_CMD, potentially hiding bugs.\n\nConsider either:\n1. Remove -ENOTSUP/-ENOSYS from explicit cases (they match default)\n2. Add a case for err \u003e= 0 to detect callback bugs",
   "notes": "Fixed by removing redundant -ENOTSUP and -ENOSYS cases from switch in lichen/subsys/lichen/meshcore/adapter.c:454 (now default only). Behavior unchanged. Merge conflict in app_identity.c and test files prevents git commit per specified steps.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

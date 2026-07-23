@@ -2,7 +2,7 @@
   "id": "project-LICHEN-779u",
   "title": "valid_default_flood_name has inconsistent length check order",
   "description": "File: lichen/subsys/lichen/meshcore/adapter.c\nLines: 535-550 (valid_default_flood_name)\n\n```c\nstatic bool valid_default_flood_name(const uint8_t *payload)\n{\n    const uint8_t *nul = memchr(payload, 0,\n                    LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN);\n    size_t len;\n\n    if (nul == NULL || nul == payload) {\n        return false;\n    }\n\n    len = (size_t)(nul - payload);\n    if (len \u003e 30U) {  // Magic number - why 30 and not 31?\n        return false;\n    }\n    return valid_utf8_text(payload, len);\n}\n```\n\nIssues:\n1. Magic number 30 is used instead of a named constant. LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN is 31, but the check is len \u003e 30. This allows names up to 30 characters, leaving 1 byte for null terminator. Should be documented.\n\n2. The memchr searches for null in 31 bytes, finds it, then checks len \u003e 30. If the null is at exactly position 30 (31st byte), nul - payload = 30, and 30 \u003e 30 is false, so it passes. But the name is 30 chars + null = 31 bytes total, which fills the buffer exactly. This is probably correct but confusing.\n\nConsider using LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN - 1 instead of magic 30.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

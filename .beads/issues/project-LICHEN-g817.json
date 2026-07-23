@@ -2,7 +2,7 @@
   "id": "project-LICHEN-g817",
   "title": "Integrate duty cycle into lichen_lora_l2_tx and add CONFIG",
   "description": "Edit l2/Kconfig to add CONFIG_LICHEN_DUTY_CYCLE=y default. Add static tracker in lora_l2.c, init it, call before send in lichen_lora_l2_tx if enabled (use estimated airtime or record after). Return duty error if cannot transmit.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

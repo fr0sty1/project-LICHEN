@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wx9m",
   "title": "ble.rs: AppFrame silently drops payloads exceeding 512 bytes",
   "description": "file: rust/lichen-kiss/src/ble.rs\nlines: 115-123\n\nWhen frame.data exceeds the 512-byte heapless::Vec capacity, extend_from_slice fails and the frame is silently dropped:\n\n```rust\nlet mut data: heapless::Vec\u003cu8, 512\u003e = heapless::Vec::new();\nif data.extend_from_slice(frame.data).is_err() {\n    #[cfg(feature = \"log\")]\n    warn!(\"kiss_ble: try_get_app_frame payload too large ({} bytes)\", frame.data.len());\n    return None;\n}\n```\n\nProblems:\n1. Returns None (indistinguishable from no-data-available)\n2. Warning only logged if 'log' feature is enabled\n3. No way for caller to know a valid frame was received but dropped\n\nRelated to project-LICHEN-z2m3 (cannot distinguish no-data from parse-error) but this is specifically about oversized payload truncation.\n\nImpact: Large frames silently dropped, caller cannot distinguish from empty queue.\n\nFix: Return Result\u003cOption\u003cAppFrame\u003e, Error\u003e to surface capacity errors, or increase Vec capacity.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

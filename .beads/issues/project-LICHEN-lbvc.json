@@ -2,7 +2,7 @@
   "id": "project-LICHEN-lbvc",
   "title": "codereview pass 1 on ccp9 edit: nested helper fn",
   "description": "Finding: _l2_announce_with_channel nested inside ccp9_vectors() reduces reusability for other tests (e.g. l2_payload_vectors). Should be top-level helper like _announce_coords_encode. P2 readability. Tagged codereview. Also verify generated JSON after edit.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

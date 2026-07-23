@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2jco",
   "title": "app_identity: Redundant memset before struct copy in upsert_peer",
   "description": "File: lichen/subsys/lichen/app_identity/app_identity.c:224-225\n\nThe code performs:\n  memset(\u0026s_peers[slot].peer, 0, sizeof(s_peers[slot].peer));\n  s_peers[slot].peer = *peer;\n\nThe memset zeros the entire struct, then the struct assignment immediately overwrites every byte with data from *peer. The memset is completely redundant and wastes CPU cycles.\n\nThe subsequent copy_string call at line 226-228 sanitizes display_name by zero-padding after the NUL terminator, but that's a separate operation from the redundant memset.\n\nSuggested fix: Remove the memset at line 224.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "cleanup",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-231c",
   "title": "Python: include current_channel in AnnounceMessage.signed_data() and update tests for CCP-9 security binding",
   "description": "Update signed_data to explicitly document and test current_channel inclusion per codereview P2 finding. Ensure rx_channel/current_channel byte is signed to bind announced RX channel for announce-driven rendezvous (CCP-9). Update known vector test for new wire format (94 bytes). Add test for channel in signed_data. Security: prevents tampering with announced channel. --parent=project-LICHEN-3i18 --type=task --priority=1 --labels=codereview",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

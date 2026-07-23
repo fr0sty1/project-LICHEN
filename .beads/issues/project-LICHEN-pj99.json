@@ -2,7 +2,7 @@
   "id": "project-LICHEN-pj99",
   "title": "codereview-pass1 packet_hash standardization",
   "description": "Pass 1 of /codereview for telemetry/packet_hash changes (ed1870dd and related). Inspected: python/src/lichen/sim/*.py, rust/lichen-*/src/*.rs, lichen/samples/lora_ping/src/main.c, scripts/*.sh, scripts/analyze-hetero-fleet.py. Findings: 1. Inconsistent packet_hash formats - Python sim uses 32-char hex (SHA256 first 16 bytes .digest()[:16].hex()), fleet script and Rust use 16-char hex (hexdigest()[:16] or fullhex[:16]), Zephyr uses 8-char CRC32. Analyzer may fail cross-impl matching due to this. 2. Remaining hexdigest[:16] in scripts/ec2-hetero-fleet.sh:410 (and old bead descriptions). 3. Rust uses [u8;16] for storage but logs 8-byte hex. 4. No common packet_hash helper function. 5. Pytest fails collection on 36 test files due to dataclass errors in metrics/node (unexpected keyword, likely from field or init=False changes). Tests do not pass. 6. Beads for telemetry (project-LICHEN-3frz etc) should reference standardized 32-char SHA256 prefix. Tagged with codereview. This bead left open per instructions.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "AI Agent",

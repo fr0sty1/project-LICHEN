@@ -2,7 +2,7 @@
   "id": "project-LICHEN-mbyv",
   "title": "receive() returns None for all validation failures without distinction",
   "description": "File: python/src/lichen/link/link_layer.py:383-494\n\nThe receive() method returns None for many different failure modes:\n- Line 411: Radio timeout (expected, not an error)\n- Line 420: Malformed frame\n- Line 428: Unsigned frame rejected by policy\n- Line 436: Payload too short for signature\n- Line 454: Unknown sender or bad signature\n- Line 469: Key change detected (SECURITY ALERT)\n- Line 475: MIC verification failed\n- Line 494: Replay detected\n\nCallers cannot distinguish between:\n1. Normal timeout (no traffic)\n2. Malformed/corrupted frames (hardware issue?)\n3. Security violations (attack in progress?)\n\nThe logger.warning() calls provide detail, but programmatic callers need to:\n- Count security violations for alerting\n- Distinguish timeout from rejection for protocol state machines\n- Detect key-change attacks\n\nConsider: Return an enum/error type instead of None, or at least distinguish timeout (None) from rejection (specific error).",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

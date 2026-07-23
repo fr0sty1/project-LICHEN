@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-1fgq",
   "title": "codereview-pass1: LICHEN_TDMA_Slot lacks padding/alignment for Zephyr ARM targets; add BUILD_ASSERT(sizeof(struct LICHEN_TDMA_Slot) == 20)",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

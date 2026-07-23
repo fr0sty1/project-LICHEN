@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wloi",
   "title": "Profile build methods may fail on COMPUTE fields returned as None",
   "description": "File: python/src/lichen/schc/headers.py\n\nThe decompress() function returns dict[str, int | None], where None indicates COMPUTE fields that must be recomputed. However, the profile build() methods access fields without checking for None:\n\n_CoapUdpProfile.build() line 233:\n  b0 = (1 \u003c\u003c 6) | ((fields['CoAP.type'] \u0026 0x3) \u003c\u003c 4) | (fields['CoAP.tkl'] \u0026 0x0F)\n\nIf any accessed field is None, this raises TypeError: unsupported operand type(s) for \u0026: 'NoneType' and 'int'.\n\nWhile current rules don't use COMPUTE for these specific fields (they use VALUE_SENT), the type signature allows None, and future rule changes could break this silently.\n\nSimilarly affected:\n- _ipv6_header() line 165: fields['IPv6.hop_limit']\n- RplDioProfile._build_base()\n- RplDaoProfile._build_base()\n- Icmpv6EchoProfile.build()\n\nFix: Either assert that these fields are not None, or document that build() requires non-None values for non-COMPUTE fields.\n\nCategory: API MISUSE",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

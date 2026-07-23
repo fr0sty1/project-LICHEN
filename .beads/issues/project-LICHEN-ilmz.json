@@ -3,7 +3,7 @@
   "title": "DodagConfig::from_bytes ignores A-flag and PCS fields",
   "description": "file: rust/lichen-rpl/src/message.rs\nline: 243-256\n\nPer RFC 6550 Section 6.7.6, the DODAG Configuration Option has:\n- data[0] bits 0-2: Path Control Size (PCS)\n- data[0] bit 4: Authentication Enabled (A)\n\nThe from_bytes parser skips data[0] entirely and starts reading from data[1]:\n\n```rust\nOk(Self {\n    dio_int_doublings: data[1],  // Skips data[0]\n    ...\n})\n```\n\nThe struct lacks fields for A-flag and PCS. While LICHEN may not use authentication, ignoring PCS affects path control interpretation in source routing.\n\nFix: Add a_flag: bool and pcs: u8 fields to DodagConfig and parse from data[0].",
   "notes": "Commit: 5775e7a51",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

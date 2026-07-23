@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.3.5",
   "title": "Vectors: operating class parameter definitions and lookup tables",
   "description": "Create test vectors for operating class in CCP-3 from da2q.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dtj5",
   "title": "CCP-9 codereview: should current_channel be in signed_data()?",
   "description": "Finding P2: Uncertainty if current_channel should be part of signed_data for security (prevents tampering with rendezvous channel). Per spec 9.2 and da2q, decide and implement. If yes, add to signed_data and update test vectors. Tagged codereview.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

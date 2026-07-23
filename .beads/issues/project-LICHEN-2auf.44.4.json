@@ -3,7 +3,7 @@
   "title": "Authorize RPL control senders",
   "description": "Resolve node-level review findings: reject foreign-instance/DODAG DIOs before neighbor-table mutation, and carry authenticated IPv6 sender identity into DAO processing so a peer cannot advertise another node's target or poison its replay state. Define the allowed target-to-sender relationship from existing IPv6/IID identity rules and fail closed before route mutation.",
   "acceptance_criteria": "Foreign DIO scope causes no neighbor mutation; spoofed DAO targets from another authenticated sender are rejected before replay/edge/route mutation; legitimate self-target and forwarding cases are explicitly tested against protocol identity rules; RPL/node tests and Clippy pass; three reviews pass.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

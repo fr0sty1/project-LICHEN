@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3msl",
   "title": "[merge-conflict] worker8: appendix-design-rationale.md",
   "description": "Resolve merge conflict in spec/appendix-design-rationale.md between main and integration/worker8-20260722. Keep BOTH sets of changes.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

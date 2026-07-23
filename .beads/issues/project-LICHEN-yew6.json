@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yew6",
   "title": "Field ID case inconsistency between building-block and whole-packet rules",
   "description": "File: python/src/lichen/schc/rules.py\n\nBuilding-block rules (rule IDs 64-66) use PascalCase field IDs, while whole-packet rules (rule IDs 0-6) use lowercase:\n\nCOAP_RULE (64): 'CoAP.Version', 'CoAP.Type', 'CoAP.TKL', 'CoAP.Code', 'CoAP.MID'\nLINK_LOCAL_COAP_RULE (0): 'CoAP.version', 'CoAP.type', 'CoAP.tkl', 'CoAP.code', 'CoAP.mid'\n\nUDP_PORT_RULE (65): 'UDP.SrcPort', 'UDP.DstPort'\n_udp_fields(): 'UDP.src_port', 'UDP.dst_port'\n\nICMPV6_ECHO_RULE (66): 'ICMPv6.Identifier', 'ICMPv6.Sequence'\n_icmpv6_echo_fields(): 'ICMPv6.identifier', 'ICMPv6.sequence'\n\nheaders.py parses packets using lowercase field names (matching rules 0-6). If someone attempts to use building-block rules (64-66) with the parsed field dicts, field lookups would fail silently (returning None or KeyError).\n\nFix: Standardize on one naming convention across all rules, or document that building-block rules use a different convention.\n\nCategory: API MISUSE",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

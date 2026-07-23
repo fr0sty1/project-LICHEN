@@ -2,7 +2,7 @@
   "id": "project-LICHEN-d4vf",
   "title": "[merge-conflict] worker8: t_echo_nrf52840.dts",
   "description": "Resolve merge conflict in lichen/boards/lilygo/t_echo/t_echo_nrf52840.dts between main and integration/worker8-20260722. Keep BOTH sets of changes - do not discard work.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

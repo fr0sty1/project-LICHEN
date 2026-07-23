@@ -3,7 +3,7 @@
   "title": "senml: core::error::Error impl requires nightly or recent stable",
   "description": "File: rust/lichen-senml/src/cbor.rs\nLines: 40-47\n\nThe CborError type implements core::error::Error:\n```rust\nimpl core::error::Error for CborError {\n    fn source(\u0026self) -\u003e Option\u003c\u0026(dyn core::error::Error + 'static)\u003e {\n```\n\ncore::error::Error was stabilized in Rust 1.81.0 (September 2024). Before that, no_std crates needed to either:\n1. Use the error_in_core feature flag (nightly)\n2. Depend on a compatibility crate\n3. Only implement std::error::Error behind a feature flag\n\nThe Cargo.toml shows no MSRV (minimum supported Rust version). If the project needs to support Rust \u003c 1.81, this implementation would fail to compile.\n\nImpact: Compilation failure on Rust \u003c 1.81.0\n\nFix: Either:\n1. Document MSRV \u003e= 1.81.0 in Cargo.toml: `rust-version = \"1.81\"`\n2. Gate the impl behind a feature flag for older Rust versions",
   "notes": "Commit: bc7652090",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

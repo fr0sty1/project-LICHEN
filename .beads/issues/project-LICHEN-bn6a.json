@@ -2,7 +2,7 @@
   "id": "project-LICHEN-bn6a",
   "title": "adapter.py: queue_from_radio uses MAX_QUEUE_SIZE but logs confusing message",
   "description": "File: python/src/lichen/interface/meshtastic/adapter.py\nLines: 264-291\n\nThe queue_from_radio function has inconsistent queue size constants:\n\n```python\nMAX_QUEUE_SIZE = 64  # Defined at module level\nMAX_TX_QUEUE = 8     # Also defined\n\ndef queue_from_radio(self, data: bytes) -\u003e bool:\n    with self._lock:\n        if not self.connected:\n            return False\n        queue_len = len(self.from_radio_queue)\n        if queue_len \u003e= MAX_QUEUE_SIZE:  # Uses 64\n            log.warning(\"FromRadio queue full (%d), rejecting message\", queue_len)\n            return False\n        if queue_len \u003e= QUEUE_WARN_THRESHOLD:  # 48\n            log.warning(\"FromRadio queue near capacity (%d/%d)\", queue_len, MAX_QUEUE_SIZE)\n```\n\nThe function logs MAX_QUEUE_SIZE (64) but elsewhere MAX_TX_QUEUE (8) is used for flow control. This is confusing - are there two different queues with different limits?\n\nAlso, the warning says 'near capacity' but then 'queue full' at the same threshold in different code paths.\n\nImpact: Confusing log messages; unclear relationship between MAX_QUEUE_SIZE and MAX_TX_QUEUE.\n\nFix: Clarify the relationship between these constants and ensure consistent naming/usage.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

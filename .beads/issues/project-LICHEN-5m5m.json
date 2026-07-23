@@ -2,7 +2,7 @@
   "id": "project-LICHEN-5m5m",
   "title": "FragmentReceiver accepts inconsistent rule_ids across fragments",
   "description": "File: python/src/lichen/schc/reassembly.py:121\n\nFragmentReceiver.receive() overwrites self._rule_id with each incoming fragment's rule_id without validation:\n  self._rule_id = frag.rule_id\n\nIf a sender sends fragments with different rule_ids within the same datagram (a protocol violation), the receiver silently accepts this and uses the last-seen rule_id for ACKs.\n\nThis could cause interoperability issues where ACKs reference the wrong rule.\n\nFix: Either validate that all fragments have the same rule_id, or capture the rule_id from the first fragment only.\n\nCategory: PROTOCOL",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

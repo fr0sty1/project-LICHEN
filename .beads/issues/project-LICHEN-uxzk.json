@@ -2,7 +2,7 @@
   "id": "project-LICHEN-uxzk",
   "title": "Human judgment required: how to resolve complex multi-worker git merge conflicts in project-LICHEN-tqv9",
   "description": "The bead project-LICHEN-tqv9 describes complex merge conflicts with 78 markers across 15+ files from worker11, worker8, worker2 branches. Bead instructs to create human judgment bead for how to proceed with merge resolution, which side to take for coap/senml/rpl/spec changes, and how to reconcile .beads/events without data loss. Current git state has no visible conflict markers but bd claim fails with 'cannot do a partial commit during a merge.' Do not edit .beads files. Provide guidance on resolution strategy. Prioritize preserving test vectors, specs, and core protocol impls.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "AI Agent",

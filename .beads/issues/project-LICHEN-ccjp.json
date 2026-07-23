@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ccjp",
   "title": "Router and ForwardingBuffer lack thread safety",
   "description": "File: python/src/lichen/routing/router.py (multiple methods)\n\nNeither Router nor ForwardingBuffer have any locking or synchronization primitives, but they manage mutable state that could be accessed from multiple contexts:\n\n1. ForwardingBuffer.try_buffer() modifies _buffer and _source_order (lines 191-225)\n2. ForwardingBuffer.expire_old() iterates and modifies _buffer (lines 268-283)\n3. Router.expire_pending() iterates and modifies pending_queue (lines 577-588)\n4. Router.dtn_buffer_message/dtn_retrieve_for modify dtn_buffer (lines 645-710)\n\nWHY IT'S A BUG: If used in an async or threaded context (common for network routers), concurrent calls could cause:\n- Race in try_buffer: two threads see same count, both add, exceed max\n- Race in expire_old: thread A iterating, thread B dequeuing same entry\n- Race in dtn methods: _dtn_buffer_bytes counter could become inconsistent\n\nIMPACT: Data corruption, incorrect buffer accounting, duplicate/lost packets in concurrent scenarios.\n\nFIX: Either document as 'single-threaded only' with prominent warnings, or add locking. Consider threading.Lock for critical sections or queue.Queue for producer/consumer patterns.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

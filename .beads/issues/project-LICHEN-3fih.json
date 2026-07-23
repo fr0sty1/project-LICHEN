@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3fih",
   "title": "[CODEREVIEW-PASS2] CCP-17 Zephyr capacity validation - security",
   "description": "lichen/subsys/lichen/coap/coap_status.c and coap_dtn.c: CBOR ctx overflow flag is set but some paths ignore return value of encode functions leading to partial CBOR or stack buffer issues. No bounds on snprintf in format_ipv6. Must add strict validation and error propagation for capacity. No comments. Follow Zephyr Kconfig for MAX sizes.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

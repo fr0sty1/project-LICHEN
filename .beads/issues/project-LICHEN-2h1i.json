@@ -3,7 +3,7 @@
   "title": "epic",
   "description": "## Vision\n500 LICHEN nodes at major hacker conferences to prove mesh networking works where Meshtastic fails.\n\n## Target Events\n- DEFCON (Las Vegas, August)\n- HOPE (NYC, July)  \n- CCC (Hamburg, December)\n\n## Hardware: T-Echo\n- nRF52840 + SX1262 + GPS + E-ink\n- Bulk price ~$45-55/unit with battery + case\n- 500 units = ~$25,000\n- Contact LilyGO directly for bulk pricing\n\n## Budget\n| Item | Cost |\n|------|------|\n| 500 T-Echo @ ~$50 | $25,000 |\n| Gateways, flashing jig, SDR | $1,600 |\n| Travel/booth (one event) | $3,000 |\n| **Total** | **~$30,000** |\n\n## Revenue Model\nSell nodes post-demo at $70-75/unit → $35-37.5k gross → $5-7.5k surplus\nOr: grant covers hardware, sales cover travel, surplus funds next event.\n\n## Grant Pitch\n\"Fund the first real-world stress test of open-source LoRa mesh at scale. 500 nodes, 3 major hacker conferences, all code/results public. Proves mesh networking works where Meshtastic fails. Hardware resale recoups 80%+ of costs.\"\n\n## Dependencies\n- PHY scalability work (TDMA, LR-FHSS, adaptive SF)\n- Demo apps\n- Bulk flash pipeline",
   "notes": "Executable steps from f2ga and 2h1i.9: 1. Develop sales script and pitch. 2. Select payment (Square, crypto, cash). 3. Pricing -85/unit with GPL. 4. Inventory tracking CLI/script. 5. Packaging design with GPL notice + QR to repo. 6. Post-event online sales via GitHub Sponsors. 7. Follow-up beads for logistics. Integrate codec fixes in parallel under 2auf.54 before closing.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

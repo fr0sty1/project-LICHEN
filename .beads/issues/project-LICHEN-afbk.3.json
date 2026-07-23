@@ -2,7 +2,7 @@
   "id": "project-LICHEN-afbk.3",
   "title": "Write RPi LoRa HAT border router deployment docs",
   "description": "Document hardware requirements, HAT wiring, OS image prep (Ubuntu/Raspberry Pi OS), installation, configuration, monitoring with Prometheus/Grafana, and OTA/update procedures. Include BOM and procurement notes.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "AI Agent",

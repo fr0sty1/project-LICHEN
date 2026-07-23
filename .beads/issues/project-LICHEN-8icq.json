@@ -2,7 +2,7 @@
   "id": "project-LICHEN-8icq",
   "title": "Analyze and plan lichen-hal extension for SX1302/SX1250 concentrator (reset/SPI/IRQ/GPS-PPS)",
   "description": "Analyze rust/lora-phy, lichen-hal, lichen-gateway, any SX1302/SX1250, SPI, IRQ, concentrator, packet_forwarder code. List relevant files, current status, what to add for HAL (reset, SPI, IRQ, GPS PPS). Suggest idiomatic no_std driver structure matching existing lora-phy (traits for Radio, Config). Identify test vectors or interop needs. Plan minimal changes for this bead (HAL only, no full forwarder). Flag memory/RTOS constraints for gateway. Scope: HAL traits only. See query for details. Acceptance: comprehensive report with file list, trait sketch, bead plan.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "AI Agent",

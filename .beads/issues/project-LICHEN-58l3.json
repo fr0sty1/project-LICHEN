@@ -2,7 +2,7 @@
   "id": "project-LICHEN-58l3",
   "title": "protocol.py: UnicodeDecodeError not wrapped as ProtocolError",
   "description": "File: python/src/lichen/sim/protocol.py\nLines: 146, 156, 688\n\ndecode_register and decode_err use .decode('utf-8') which can raise UnicodeDecodeError for invalid UTF-8 sequences:\n\n    sim_id = data[offset : offset + sim_id_len].decode('utf-8')\n    node_id = data[offset : offset + node_id_len].decode('utf-8')\n    msg = data[2 : 2 + msg_len].decode('utf-8')\n\nCallers (e.g., node_server.py line 269) only catch ProtocolError, not UnicodeDecodeError. A malicious client sending invalid UTF-8 causes an unhandled exception that bubbles up to the generic exception handler rather than returning a proper error response.\n\nFix: Wrap .decode() calls in try/except UnicodeDecodeError and re-raise as ProtocolError.\n\nImpact: Malformed messages cause unhandled exceptions instead of proper error responses.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

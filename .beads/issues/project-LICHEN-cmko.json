@@ -2,7 +2,7 @@
   "id": "project-LICHEN-cmko",
   "title": "[kimi-review] 1a81b18: [SEVERITY: low] Timestamp precision changed from 6 to 9 frac",
   "description": "Commit: 1a81b185b\nMessage: fix(schc): improve _abs_window for retransmit/reorder\n\nFinding: [SEVERITY: low] Timestamp precision changed from 6 to 9 fractional digits (`...30.000000000Z` vs prior `...35.809257Z`). If the beads tooling parses these timestamps expecting microseconds, the nanosecond format may cause parse issues elsewhere.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

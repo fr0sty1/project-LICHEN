@@ -2,7 +2,7 @@
   "id": "project-LICHEN-l1eb",
   "title": "Implement C DutyCycleTracker matching CCP-13 test vectors",
   "description": "Implement fixed-size (N=32) DutyCycleTracker in existing L2/HAL files matching Rust/Python and ccp13.json vectors. Add to lichen_l2_tx under CONFIG_LICHEN_DUTY_CYCLE. Add test to tests/hal/src/main.c. No new files, no comments, follow C conventions. Verify with vectors, run tests, do not weaken tests.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "AI Agent",

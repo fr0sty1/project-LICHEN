@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yz4p",
   "title": "GradientEntry installed without validating seq_num freshness",
   "description": "File: python/src/lichen/loadng/discovery.py\nLines: 150-160\n\nWhen processing an RREP, a GradientEntry is installed unconditionally:\n```python\nself.gradient.update(\n    GradientEntry(\n        destination=rrep.originator,\n        next_hop=from_neighbor,\n        hop_count=install_hops,\n        seq_num=rrep.seq_num,\n        source=GradientSource.RREP,\n        expires=now + GRADIENT_TIMEOUT_MS,\n    ),\n    now=now,\n)\n```\n\nProblem: The code does not check if an existing gradient entry has a higher (more recent) sequence number before overwriting. Per LOADng spec, sequence numbers should be compared to ensure only fresher routes are installed.\n\nImpact:\n1. A delayed RREP with an old seq_num can overwrite a fresher route\n2. An attacker could inject RREPs with low seq_nums to downgrade routes\n3. Out-of-order RREP processing leads to suboptimal routing\n\nNote: The GradientTable.update() method may perform this check internally. If so, this is not a bug. However, the discovery layer should not rely on implicit behavior.\n\nFix: Check seq_num before updating:\n```python\nexisting = self.gradient.lookup(rrep.originator, now)\nif existing is not None:\n    # Only update if new seq_num is greater (with wrap handling)\n    if not _is_seq_newer(rrep.seq_num, existing.seq_num):\n        pass  # Skip stale update\n        return RrepResult(...)  # Or handle appropriately\n```\n\nWhere _is_seq_newer handles 16-bit sequence number wrap-around comparison.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

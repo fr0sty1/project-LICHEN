@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-tcqw",
   "title": "P3: Extensive internal comments remain in coap_status.c despite update claim of removing non-SPDX comments; violates no-comment rule and Zephyr style",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "AI Agent",

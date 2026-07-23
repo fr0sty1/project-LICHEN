@@ -2,7 +2,7 @@
   "id": "project-LICHEN-lmmk",
   "title": "websocket.py: orphan asyncio tasks in broadcast",
   "description": "File: python/src/lichen/sim/websocket.py\nLines: 243-244\n\nWebSocketObserver._broadcast creates tasks via loop.create_task() that are never tracked:\n\n    loop.create_task(\n        self._manager.broadcast_to_sim(self._sim_id, event_type, data)\n    )\n\nWhile the RuntimeError for missing event loop is caught, exceptions from broadcast_to_sim (e.g., during client disconnection) go unhandled and produce warnings.\n\nImpact: Minor - noisy 'Task exception was never retrieved' warnings in logs.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

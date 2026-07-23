@@ -2,7 +2,7 @@
   "id": "project-LICHEN-jwsl.2",
   "title": "codereview pass 1: missing match arm for InvalidChannel in Display impl",
   "description": "AnnounceError::Display does not handle InvalidChannel variant. Will cause compile error. Add arm: InvalidChannel(c) =\u003e write!(f, \"invalid current_channel: {} (must be 0-7 per CCP-9)\", c),",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "created_at": "2026-07-22T17:27:53.691337111Z",

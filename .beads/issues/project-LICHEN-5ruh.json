@@ -2,7 +2,7 @@
   "id": "project-LICHEN-5ruh",
   "title": "[kimi-review] 55c464d: [SEVERITY: medium] The commit message claims the RAK2287 int",
   "description": "Commit: 55c464d46\nMessage: feat: break RAK2287 integration into sub-issues\n\nFinding: [SEVERITY: medium] The commit message claims the RAK2287 integration was \"broken into sub-issues,\" but the diff contains no issue data — only the `.beads/last-touched` pointer bump from `afbk.1.4` to `afbk.1.5`. If the beads issue database (e.g., `.beads/issues.jsonl` or equivalent) is meant to be version-controlled, the actual sub-issue definitions are missing from this commit and won't be reproducible from the repo. The pointer may now reference an issue (`afbk.1.5`) whose data was never committed.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

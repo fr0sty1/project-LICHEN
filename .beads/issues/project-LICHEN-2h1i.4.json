@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2h1i.4",
   "title": "task",
   "description": "## The Problem\nLICHEN will collapse at DEFCON density without PHY-level changes.\n\n300 nodes in mutual range:\n- 1 announce/sec\n- ~40% channel utilization just for routing\n- Hidden terminals cause collision cascades\n\n## Solutions (all work on existing hardware)\n\n### TDMA (priority 1)\n- Gateway broadcasts time beacon\n- Nodes sync to GPS or beacon\n- Assigned slots prevent collision\n- Pure software, works on all chips\n\n### Adaptive SF\n- Near nodes: SF7 (50ms airtime)\n- Far nodes: SF10 (500ms airtime)\n- 10x less channel time for nearby traffic\n\n### Multi-channel coordination\n- 8 channels available in US 915MHz\n- Coordinate via gateway assignment\n- 8x capacity if done right\n\n### LR-FHSS (SX1262 only)\n- Best collision resilience\n- Hardware support required\n- ~50% of Meshtastic devices support it\n\n### Boot storm mitigation\n- Listen 30-60 sec before TX\n- Scale initial delay by observed density\n- Prevents 300 nodes all announcing at once\n\n## What LICHEN already has\n- Announce duplicate suppression\n- Trickle DIO with suppression\n- Gradient routing (no discovery flood)\n\nThese help, but not enough for DEFCON scale.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

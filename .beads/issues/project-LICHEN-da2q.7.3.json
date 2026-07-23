@@ -3,7 +3,7 @@
   "title": "Zephyr impl: time synchronization for channel hopping",
   "description": "Zephyr implementation for CCP-7 synchronization requirements from da2q context.",
   "notes": "Starting Zephyr time sync impl for CCP-7 channel hopping. Following strict review loop: 3 codereview passes per chunk before closing. First exploring current time and link impl.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -3,7 +3,7 @@
   "title": "Python: channel param in radio TX/RX and link selector",
   "description": "Implement per the da2q.2 bead: add channel param to Python radio base and sim, channel selector in link layer using hash/rendezvous from ccp9 vectors. Update tests.",
   "notes": "Claimed. Research complete via explore subagent: 13 files identified. Starting with Radio base update per da2q.2 and ccp9. Will parallelize protocol/sim_client/link_selector next. Using hash_32 from vectors for selector.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "feature",
   "assignee": "AI Agent",

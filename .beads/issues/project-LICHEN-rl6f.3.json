@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rl6f.3",
   "title": "CCP-1.1: Define baseline compatibility requirements for TDMA and channel agility",
   "description": "Document what existing single-channel ALOHA nodes must do to interoperate with CCP-1 TDMA nodes. Include sync word, frame format compatibility, fallback behavior.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

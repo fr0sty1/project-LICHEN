@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vhxq",
   "title": "IPv6 payload_len field not validated against packet size",
   "description": "File: rust/lichen-ipv6/src/lib.rs:706-716\n\nIn parse_packet(), while there is a check that the buffer contains enough bytes for the claimed payload_len, there is no validation that payload_len is reasonable:\n\n```rust\npub fn parse_packet(buf: \u0026[u8]) -\u003e Result\u003c(Ipv6Header, \u0026[u8]), Ipv6Error\u003e {\n    let header = Ipv6Header::from_bytes(buf)?;\n    let payload_start = IPV6_HEADER_LEN;\n    let payload_end = payload_start + header.payload_len as usize;\n    \n    if buf.len() \u003c payload_end {\n        return Err(TooShort::new(payload_end, buf.len()).into());\n    }\n    \n    Ok((header, \u0026buf[payload_start..payload_end]))\n}\n```\n\nIssues:\n1. A packet with payload_len=0 is accepted (returns empty payload slice), which may or may not be valid depending on context\n2. If buf.len() \u003e payload_end, the trailing bytes are silently ignored - this could hide trailer bytes or buffer corruption\n3. payload_len could theoretically be used for amplification if an attacker crafts a packet claiming large payload but actual data is small\n\nConsider adding:\n- Warning or error if buf.len() != payload_end (unexpected trailing data)\n- Minimum payload length validation for specific protocols",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

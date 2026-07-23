@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tmaj",
   "title": "EdhocResource session lookup collision",
   "description": "File: python/src/lichen/coap/resources.py:892-895\n\nSECURITY: Session lookup finds first session matching peer_host, ignoring c_i:\n```python\nfor (host, _), session in list(self._sessions.items()):\n    if host == peer_host:\n        active_session = session\n        break\n```\n\nIf an attacker sends multiple concurrent EDHOC requests from the same host, the lookup may return the wrong session, causing Message 3 to be processed against a different session's state. This could lead to:\n1. Cryptographic state corruption\n2. Incorrect OSCORE context derivation\n3. Potential authentication bypass\n\nFix: Include c_i in the session key lookup, or extract c_i from incoming messages before lookup.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

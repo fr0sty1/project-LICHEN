@@ -2,7 +2,7 @@
   "id": "project-LICHEN-5ud5",
   "title": "[merge-conflict] worker8: node.rs",
   "description": "Resolve merge conflict in rust/lichen-node/src/node.rs between main and integration/worker8-20260722. Keep BOTH sets of changes.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

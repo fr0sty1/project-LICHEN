@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3ql9",
   "title": "[codereview-pass1] draft-lichen-schc-lora-00.md: RPL table update - verify sizes still match test vectors after doc change",
   "description": "spec/drafts/draft-lichen-schc-lora-00.md:304 - Updated notes reference MO=equal on Code but sizes in A.1 may need cross-check with schc_compression.json and rules.rs:117-160. Correctness pass. discovered-from:project-LICHEN-ahmj",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

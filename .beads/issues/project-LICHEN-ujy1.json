@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ujy1",
   "title": "codereview-pass1: to_bytes/from_bytes not updated for current_channel in wire format",
   "description": "After adding current_channel to signed_data(), the to_bytes() still omits it from serialization (channel not sent), from_bytes() does not parse it from data[93]. This will cause signature mismatch across impls (Python vs Rust/C). Also update FIXED_LENGTH and Announce struct in Rust/C. P2 security consistency. Tagged codereview. discovered-from:project-LICHEN-3i18",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

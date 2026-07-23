@@ -3,7 +3,7 @@
   "title": "Modernize fail-closed Renode CI",
   "description": "Separate from selector cleanup: update Renode CI to the validated Zephyr 3.7/Renode 1.16.1 environment, apply required overlays/configs, remove continue-on-error from required paths, and assert deterministic UART plus simulator effects.",
   "acceptance_criteria": "Required Renode builds/runs fail the workflow on error; canonical targets and pinned tooling are used; runtime jobs assert late UART markers and independent simulator TX; workflow syntax validates.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

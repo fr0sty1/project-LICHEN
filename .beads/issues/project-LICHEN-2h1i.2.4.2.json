@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2h1i.2.4.2",
   "title": "Implement C CoAP /deaddrop and /confessions handlers with OSCORE, rate limit, DTN storage",
   "description": "Follow coap_location.c pattern. Add to coap_server or new coap_apps.c. Integrate SenML for payloads. Ensure init order per subsystem graph. Add Kconfig option. 3 codereview passes required before close.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "feature",
   "assignee": "ec2-user",

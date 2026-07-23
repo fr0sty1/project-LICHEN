@@ -2,7 +2,7 @@
   "id": "project-LICHEN-oxww",
   "title": "[cross-impl] trickle half-interval bias for odd I",
   "description": "Python uses (interval+1)//2 for half in _begin_interval:line69; Rust/C use interval/2:line112 (rs), line38 (c). For I=5: Py transmits in [now+3,now+5), Rust/C in [now+2,now+4). RFC 6206 says [I/2,I); different distributions break test vector consistency across impls. See trickle.py:69, trickle.rs:112, trickle.c:38. Python comment claims RFC match but math differs from ports.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

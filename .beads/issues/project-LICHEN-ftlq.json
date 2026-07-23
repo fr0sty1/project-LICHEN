@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ftlq",
   "title": "[codereview-pass2-round2] draft-lichen-schc-lora-00.md - compress RPL options: current residue approach adds ~20-40B; propose specific SCHC rules for common options like Prefix Info (type 3) using match-mapping",
   "description": "spec/drafts/draft-lichen-schc-lora-00.md:340 - Note on future work good but should include concrete example or link to new bead for option compression rules to reduce size below current 40/53B. P1 engineering. discovered-from:project-LICHEN-ahmj",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "feature",
   "assignee": "ec2-user",

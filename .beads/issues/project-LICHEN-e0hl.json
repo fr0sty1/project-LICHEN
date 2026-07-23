@@ -2,7 +2,7 @@
   "id": "project-LICHEN-e0hl",
   "title": "codereview setup for gateway rpl integration",
   "description": "Setup for running codereview passes on lichen-gateway/rpl changes per task f05s 6pbg",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

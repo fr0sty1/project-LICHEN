@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-4kce",
   "title": "[codereview] Rust subagent: rules.rs population incomplete - FieldDescriptor arrays still need full match to Python _ipv6_header_fields, _coap_fields helpers and MQTT_SN rule",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

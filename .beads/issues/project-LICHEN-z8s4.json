@@ -2,7 +2,7 @@
   "id": "project-LICHEN-z8s4",
   "title": "EdhocInitiator and EdhocResponder expose private key material in Debug",
   "description": "File: rust/lichen-oscore/src/edhoc.rs\n\nThe EdhocInitiator and EdhocResponder structs do not implement Debug, but their internal state structs (InitiatorState, ResponderState) contain sensitive PRK values.\n\nLooking at lines 197-225 (InitiatorState) and 617-646 (ResponderState), these contain:\n- prk_2e, prk_3e2m, prk_4e3m (all 32-byte secrets)\n\nWhile these structs are private and derive Zeroize, they don't prevent debug printing in certain scenarios. Compare to Context (lib.rs:190-206) which explicitly redacts secrets in its Debug impl.\n\nIf logging/debugging inadvertently captures these structs, key material could leak.\n\nImpact: Potential secret leakage in logs or debug output.\n\nFix: Either add #[derive(Debug)] with custom impl that redacts secrets, or explicitly opt out with:\n```rust\nimpl core::fmt::Debug for InitiatorState {\n    fn fmt(\u0026self, f: \u0026mut core::fmt::Formatter\u003c'_\u003e) -\u003e core::fmt::Result {\n        f.debug_struct(\"InitiatorState\")\n            .field(\"prk_2e\", \u0026\"[REDACTED]\")\n            // ...\n            .finish()\n    }\n}\n```",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

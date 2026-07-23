@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-pilv",
   "title": "codereview pass 2: enum values should match test vector strings in ccp9-rendezvous.json; add comment with exact mapping",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

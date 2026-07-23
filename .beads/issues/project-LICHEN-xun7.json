@@ -2,7 +2,7 @@
   "id": "project-LICHEN-xun7",
   "title": "Add RAK2287/SX1302 multi-channel LoRa backend for lichen-gateway",
   "description": "Research and integrate Semtech SX1302/libloragw as new radio backend for border router to support true multi-channel reception. Map received LoRa payloads to LICHEN link layer frames (lichen-link). Support RAK2287 HAT on RPi. Break down into parallel sub-tasks for research, driver, integration, config, testing. See current lora-phy wrappers and sim patterns.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.13",
   "title": "CCP-13: Duty Cycle Management",
   "description": "Coordinated Capacity Profile section detailing Duty Cycle Management from da2q multi-channel coordination context.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-k5w2",
   "title": "[codereview] CCP-17 Zephyr coap_status.c map_count validation before CBOR header",
   "description": "lichen/subsys/lichen/coap/coap_status.c:271 - map_count calculated and header emitted before buffer capacity validation per CCP-17 and appendix-bufferbloat. Can lead to invalid CBOR with mismatched count if overflow in nested structures. Must validate upfront, return ENOBUFS. Tag: codereview",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

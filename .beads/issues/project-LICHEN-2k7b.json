@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2k7b",
   "title": "[kimi-review] bf54a79: [SEVERITY: high] The diff is empty — the commit contains no ",
   "description": "Commit: bf54a79aa\nMessage: fix(schc): bounds check tail in header build functions\n\nFinding: [SEVERITY: high] The diff is empty — the commit contains no actual code changes. The bounds-check fix described in the commit message does not appear to be included (likely an incomplete `git add`/staging problem). If this commit was intended to fix an out-of-bounds read/write in SCHC header build functions, the vulnerability presumably remains unfixed.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

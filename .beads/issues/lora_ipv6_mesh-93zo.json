@@ -2,7 +2,7 @@
   "id": "lora_ipv6_mesh-93zo",
   "title": "CI red on all fronts after upstream agent-fleet merge (ed1870dd)",
   "description": "Upstream main CI has been failing on every commit of the 49-commit agent-fleet series (latest run on ed1870dd: Python 3.11/3.12, Rust, Zephyr native_sim, and all 4 hardware targets red; only cppcheck green). Merged into feat/t1000e as b6eb0888. Known Zephyr breakage: subsys/lichen/coap/coap_server.c (new COAP_SERVICE_DEFINE(lichen_coap_server)) compiles by default under LICHEN_COAP via LICHEN_COAP_SERVER default y, but (a) no iterable section coap_resource_lichen_coap_server is registered anywhere -\u003e undefined _coap_resource_lichen_coap_server_list_start/end at link, and (b) its /config resource symbol lichen_config collides with coap_config.c's when CONFIG_LICHEN_COAP_CONFIG=y (gateway prj.conf). Python/Rust failure modes not yet triaged locally.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "owner": "mark.frost@gmail.com",

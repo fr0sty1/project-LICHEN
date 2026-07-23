@@ -2,7 +2,7 @@
   "id": "project-LICHEN-z9w7",
   "title": "[codereview-pass1-round2] draft-lichen-schc-lora-00.md:A.4 table - example fields should reference exact constants from lichen_core::constants or RFC 6550 codes",
   "description": "spec/drafts/draft-lichen-schc-lora-00.md:355 - Table uses descriptive names; add precise values (e.g. RPL type=155=0x9B, Code=1) and cross-ref to draft-lichen-rpl-lora-00.md:91. Correctness P2. discovered-from:project-LICHEN-ahmj",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

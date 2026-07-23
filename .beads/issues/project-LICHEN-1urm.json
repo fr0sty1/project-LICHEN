@@ -3,7 +3,7 @@
   "title": "[kimi-review] 074cc10: [SEVERITY: low] Metadata noise inconsistent with the fix cla",
   "description": "Commit: 074cc1067\nMessage: fix(coap): bound sync_word hex length in config parser\n\nFinding: [SEVERITY: low] Metadata noise inconsistent with the fix claim: assignee rewritten from \"Mark Atwood\" to \"AI",
   "notes": "Commit: ba3596ba2",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

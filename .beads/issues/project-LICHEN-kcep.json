@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kcep",
   "title": "Neighbor Advertisement missing Target Link-Layer Address option",
   "description": "File: rust/lichen-ipv6/src/lib.rs:562-598\n\nPer RFC 4861 Section 7.2.4, Neighbor Advertisement packets SHOULD include a Target Link-Layer Address (TLLA) option when sent in response to a unicast Neighbor Solicitation. The current NeighborAdvertisement::build() implementation creates a minimal 24-byte NA with no options.\n\nThis could cause interoperability issues with standard IPv6 implementations that use the TLLA to populate their neighbor cache. Without it, the recipient may not be able to resolve the link-layer address.\n\nConsider adding an optional `link_layer_addr: Option\u003c[u8; 8]\u003e` field and including the TLLA option (type=2, len=2, address) when present.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

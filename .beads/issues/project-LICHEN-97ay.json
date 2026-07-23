@@ -2,7 +2,7 @@
   "id": "project-LICHEN-97ay",
   "title": "Implement LR1110 driver gaps from research report",
   "description": "add full RX stats for deaf radio in lr1110.c, fix TCXO init sequence, improve IRQ latching and busy timeouts for nRF SPIM in both files, ensure lichen_radio_progress called, test vectors parity if possible. Only edit lr1110.c and lr1110_hal.c. Mimic style, no comments. Verify build. See t1000e-techo-lora-bringup-notes.md for research.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "AI Agent",

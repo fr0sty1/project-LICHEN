@@ -2,7 +2,7 @@
   "id": "project-LICHEN-06iw",
   "title": "test_metrics.py violates test integrity rules",
   "description": "Unit tests in python/tests/sim/test_metrics.py hardcode expected values (e.g. delivery_rate==1.5, collision_rate==2/3, specific latencies), directly access private attributes (_tx_start_times, _TX_START_TIMES_PRUNE_THRESHOLD), and use the Metrics implementation as its own oracle rather than independent test vectors, cross-impl validation, or reference path. This contravenes explicit test integrity rules. Recent addition with python sim metrics. P2 bug.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

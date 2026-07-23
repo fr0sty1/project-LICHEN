@@ -2,7 +2,7 @@
   "id": "project-LICHEN-57w2",
   "title": "[codereview-2] pragma portability in hal.c",
   "description": "Review pass 2 (portability/edge cases): Confirmed guards use project-standard __clang__ + __GNUC__ pattern. Edge case: non-GCC/non-clang compiler (e.g. IAR in some Zephyr ports) would skip pragma (correct, no error). No breakage to existing GCC suppression. Minor finding: duplicate pop logic could be refactored but P3 opinion only. Linked to project-LICHEN-3wmt",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

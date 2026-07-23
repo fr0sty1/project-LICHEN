@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-teyz",
   "title": "codereview-pass2: coap_status.c ENOBUFS vectors",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

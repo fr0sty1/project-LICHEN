@@ -2,7 +2,7 @@
   "id": "project-LICHEN-yvht",
   "title": "OsRng dependency may fail on some embedded targets",
   "description": "File: rust/lichen-oscore/src/edhoc.rs\nLines: 238, 654\n\nBoth EdhocInitiator::new and EdhocResponder::new use OsRng for ephemeral key generation:\n```rust\nlet eph_secret = StaticSecret::random_from_rng(rand_core::OsRng);\n```\n\nOsRng requires operating system entropy sources, which may not be available on:\n- Bare-metal embedded targets (no_std without OS)\n- Some RTOS environments without /dev/urandom equivalent\n- Early boot stages before entropy is available\n\nThe crate is marked #![cfg_attr(not(feature = \"std\"), no_std)] but the edhoc module uses OsRng unconditionally.\n\nImpact: EDHOC unusable on constrained embedded targets without OS entropy.\n\nFix: Either:\n1. Make EDHOC feature require std\n2. Accept an RNG parameter: `fn new\u003cR: CryptoRngCore\u003e(seed: [u8;32], c_i: u8, rng: \u0026mut R)`\n3. Accept pre-generated ephemeral keys",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

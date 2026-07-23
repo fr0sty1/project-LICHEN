@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i2uc",
   "title": "codereview-pass1: pseudocode at spec/02a-coordinated-capacity.md:45 uses non-pure syntax",
   "description": "Pseudocode references appendix C-style fnv1a32 with language-specific operators. Must convert to pure IETF-style pseudocode without 'or', '||', types, or Rust/Python keywords. Add definitions for select_channel() and now(). Update TOC, add full SF function in new subsection 2a.7 per 8gac. Language agnostic, IETF style, no dead code. Update appendix rationale for density vs SF10 baseline.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

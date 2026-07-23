@@ -2,7 +2,7 @@
   "id": "project-LICHEN-mmok",
   "title": "codereview-pass1: Kconfig DEADDROP rate limit",
   "description": "Added select TIMER and ATOMIC_OPERATIONS to LICHEN_COAP_DEADDROP. Verify if symbols exist in Zephyr Kconfig and if build passes. Potential new findings on symbol names or additional deps.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

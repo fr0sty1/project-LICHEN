@@ -2,7 +2,7 @@
   "id": "project-LICHEN-v5xh",
   "title": "EDHOC: A_3 external_aad missing CRED per RFC 9528 Section 4.4.2",
   "description": "PROTOCOL: A_3 AEAD additional data construction missing CRED, breaking RFC 9528 compliance.\n\nRFC 9528 Section 4.4.2 specifies:\n```\nA = [\"Encrypt0\", h'', TH_3 || CRED_I || ?EAD_3]\n```\n\nThe external_aad (3rd element) must be the concatenation of TH_3 and CRED_I.\n\nCurrent code (initiator lines 706-714, responder lines 1073-1084):\n```c\nzcbor_bstr_encode_ptr(zse_a3, ctx-\u003eth_3, 32)  // Only TH_3, missing CRED_I!\n```\n\nImpact:\n- EDHOC sessions will NOT interoperate with RFC-compliant implementations\n- The implementation currently works only because both initiator and responder have the same bug\n- External implementations will fail AEAD decryption of Message 3\n\nFix: Build external_aad as concatenation of TH_3 and CRED_I:\n```c\nuint8_t ext_aad[64];  // TH_3 (32) + CRED_I (32 for raw pubkey)\nmemcpy(ext_aad, ctx-\u003eth_3, 32);\nmemcpy(ext_aad + 32, ctx-\u003eed_pubkey, 32);  // CRED_I\nzcbor_bstr_encode_ptr(zse_a3, ext_aad, 64);\n```\n\nRelated: This supersedes/clarifies project-LICHEN-8idy which identified the structure but not the root cause.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

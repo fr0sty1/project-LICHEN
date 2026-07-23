@@ -2,7 +2,7 @@
   "id": "project-LICHEN-jhgy",
   "title": "Ack.from_bytes lacks maximum bitmap size validation",
   "description": "File: python/src/lichen/schc/fragment.py:129-131\n\nAck.from_bytes() reads bitmap size n from the packet without bounds checking:\n  n = data[2]\n  ...\n  required_bytes = (n + 7) // 8\n\nIf n is a large value (up to 255), required_bytes could be up to 32 bytes. While this is checked against len(body), a malicious or malformed ACK could claim a large bitmap, potentially causing:\n1. Allocation of larger-than-expected data structures\n2. The subsequent loop (lines 136-138) iterating up to 255 times\n\nPer SCHC spec with 6-bit FCN, max window_size is 62 (MAX_WINDOW_SIZE), so bitmap should never exceed ~62 bits. Values above this indicate a protocol violation.\n\nFix: Validate n against a maximum (e.g., 64 or MAX_WINDOW_SIZE+1):\n  if n \u003e MAX_BITMAP_SIZE:\n      raise FragmentError('bitmap size exceeds maximum')\n\nCategory: PROTOCOL",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

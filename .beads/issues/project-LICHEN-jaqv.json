@@ -3,7 +3,7 @@
   "title": "Validate Renode fleet SSH path",
   "description": "Discovered during project-LICHEN-m5m1.3. Three one-node fleet attempts on ami-0764d1b512e22671f failed before firmware transfer: ngrok TCP requires account verification; AWS-console ED25519 parsing was corrected; the final instance exposed no ED25519 key to ssh-keyscan despite generating one. Every attempt terminated its exact RunId instance and deleted its per-run SG. Diagnose host-key algorithm/reachability, validate reverse SSH simulation forwarding, and run the hardened fleet script end-to-end.",
   "acceptance_criteria": "1. Trusted AWS-console host-key verification succeeds without StrictHostKeyChecking=no. 2. One-node fleet transfers local firmware/model files and reverse-forwards simulator traffic. 3. Exact UART markers and positive simulator metrics pass. 4. Ambiguous-launch reconciliation and cleanup are exercised. 5. No unrelated AWS resources are touched.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

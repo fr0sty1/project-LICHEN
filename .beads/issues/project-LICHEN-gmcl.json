@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gmcl",
   "title": "codereview pass 1: project-LICHEN-lbvc nested helper fix",
   "description": "Fix nested helper fn in ccp9 edit by making it top-level private fn like _announce_coords_encode in test/vectors/generate.py. Update python/tests/test_vectors.py to test ccp9 vectors. No comments. Run 3 codereview passes after every edit chunk, file all findings as beads. Do not close bead until 3 clean passes. Then bd ready --limit 5",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "ec2-user",

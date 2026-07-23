@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.16.5",
   "title": "CCP-16.1: Spec update for load balancing",
   "description": "Add section to appropriate spec document detailing load balancing algorithm, metrics (channel utilization, queue depths, ETX), signaling in DIO/announce, and integration with multi-channel coordination. Reference da2q channel plan. Include test vectors if applicable. Acceptance: spec updated, linked from CCP-16.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

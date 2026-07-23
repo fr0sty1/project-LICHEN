@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3h0m",
   "title": "adapter.c pb_read_key allows invalid protobuf field numbers",
   "description": "File: lichen/subsys/lichen/meshtastic/adapter.c line 362-374\n\nThe protobuf spec (https://protobuf.dev/programming-guides/encoding/) limits field numbers to 1-536870911 (2^29 - 1). The `pb_read_key` function in adapter.c only rejects field numbers \u003e UINT32_MAX:\n\n```c\nif (ret \u003c 0 || (key \u003e\u003e 3) == 0U || (key \u003e\u003e 3) \u003e UINT32_MAX) {\n    return -EINVAL;\n}\n```\n\nThis allows field numbers 536870912-4294967295, which violate the protobuf spec.\n\nIn contrast, codec.c correctly validates against PB_MAX_FIELD_NUMBER (536870911ULL):\n```c\nif (field64 == 0U || field64 \u003e PB_MAX_FIELD_NUMBER) {\n    return -EINVAL;\n}\n```\n\nImpact: Messages with invalid field numbers are accepted instead of rejected. While these invalid fields would be skipped by the switch statements and handled by pb_skip_value, this is a spec violation that could cause interoperability issues with strict parsers.\n\nFix: Add the PB_MAX_FIELD_NUMBER constant to adapter.c and use it in pb_read_key, matching codec.c's implementation.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

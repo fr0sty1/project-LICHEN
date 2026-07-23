@@ -2,7 +2,7 @@
   "id": "project-LICHEN-iw00",
   "title": "LR1110: implement Zephyr LoRa driver",
   "description": "Implement Zephyr driver for Semtech LR1110 LoRa modem. Binding exists at lichen/dts/bindings/lora/semtech,lr1110.yaml. Implement: init, TX, RX, config. LR1110 uses different SPI command set than SX126x. Reference: Semtech LR1110 User Manual.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "AI Agent",

@@ -3,7 +3,7 @@
   "title": "KISS app interface to Zephyr firmware",
   "description": "Why this exists: KISS framing is a useful low-friction local serial interface for tools, gateways, and debugging, and Zephyr firmware should expose a clear KISS-compatible app path where appropriate. What needs to be done: define the KISS framing mode for LICHEN local client traffic, specify how framed payloads map to IPv6/CoAP packets or LICHEN control messages, implement Zephyr-side encode/decode and error handling, and preserve compatibility with existing KISS tooling where possible. Avoid inventing silent extensions that make standard KISS tools fail unpredictably. Acceptance criteria: KISS frame types and escaping rules are specified; serial/BLE transport binding is documented; invalid frame/error behavior is tested; round-trip tests cover CoAP/config/status or raw packet injection as selected; a standard tool smoke-test path is documented; two code-review passes are completed before closure.",
   "notes": "2026-07-10: Beginning scope breakdown. KISS is a framing protocol - need to decide what payloads it carries (IPv6? raw link frames? both?) and which KISS commands to support.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "feature",
   "assignee": "AI Agent",

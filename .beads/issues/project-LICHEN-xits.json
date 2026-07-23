@@ -2,7 +2,7 @@
   "id": "project-LICHEN-xits",
   "title": "Remove dead code, TODOs, worker comments from lichen-rpl and lichen-node",
   "description": "Scan lichen-rpl/, lichen-node/ for TODO, worker comments, dead code related to trickle/RPL. Remove all. Ensure no_std compliance everywhere.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

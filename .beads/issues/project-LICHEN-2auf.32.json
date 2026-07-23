@@ -3,7 +3,7 @@
   "title": "Run final cross-language quality gates",
   "description": "Run final Python suite, Rust tests/clippy, Zephyr native_sim/Twister tests, and three independent reviews for the new Rust, Zephyr, Renode, and fleet-runner changes.",
   "acceptance_criteria": "From clean local main plus committed recovery slices, run locked Python tests/Ruff/mypy, Rust fmt/tests/all-feature clippy, host C tests/sanitizers, full Zephyr Twister matrix on the EBS builder, production board builds, canonical vector regeneration, and three independent final reviews; zero unexpected skips, ignored failures, stale generated files, or dirty validation worktrees; record hashes/logs and do not push without explicit authorization.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",
