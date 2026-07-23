@@ -32,6 +32,24 @@
         "flags": 0,
         "dodag_id": "::"
       }
+    },
+    {
+      "name": "bad_icmpv6_checksum",
+      "type": "malformed",
+      "category": "malformed",
+      "description": "ICMPv6 Echo with corrupted checksum (RFC 4443 §2.3 requires silent discard on checksum failure).",
+      "wire": "60000000000c3a40fe800000000000000000000000000001fe8000000000000000000000000000028000070eabcd000770696e67",
+      "expect_error": "checksum_failure",
+      "provenance": "RFC 4443 + Python lichen.ipv6.icmpv6.verify_checksum (returns False); independent _internet_checksum oracle. Matches Rust verify_icmpv6_checksum."
+    },
+    {
+      "name": "short_icmpv6_packet",
+      "type": "malformed",
+      "category": "malformed",
+      "description": "Truncated ICMPv6 packet after IPv6 header (len < ICMPV6_HEADER_LEN).",
+      "wire": "60000000000c3a40fe800000000000000000000000000001fe8000000000000000000000000000028000",
+      "expect_error": "truncation",
+      "provenance": "RFC 4443 §2.3 + Python Icmpv6Message.from_bytes and Rust handle_icmpv6 (returns Ok(None) for short). Independent length checks."
     }
   ]
 }
