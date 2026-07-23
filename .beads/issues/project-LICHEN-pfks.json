@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-pfks",
   "title": "[merge-conflict] worktree-worker20: coap_status.c",
+  "notes": "Commit: b6e89437f",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:19:36.485461916Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:28:19.322727091Z",
+  "updated_at": "2026-07-23T02:29:43.017495141Z",
   "started_at": "2026-07-23T02:28:19.322727091Z",
   "lease_expires_at": "2026-07-23T02:33:19.322727091Z",
   "heartbeat_at": "2026-07-23T02:28:19.322727091Z"
