@@ -705,10 +705,11 @@ def _encode_chat(chat: ChatPayload) -> bytes:
             raise ValueError("dest_team required when dest_type is TEAM")
         parts.append(bytes([chat.dest_team]))
     elif chat.dest_type == DestType.DIRECT:
-        iid = chat.dest_iid or bytes(8)
-        if len(iid) != 8:
+        if chat.dest_iid is None:
+            raise ValueError("dest_iid required when dest_type is DIRECT")
+        if len(chat.dest_iid) != 8:
             raise ValueError("dest_iid must be exactly 8 bytes")
-        parts.append(iid)
+        parts.append(chat.dest_iid)
 
     parts.append(bytes([len(msg_bytes)]))
     parts.append(msg_bytes)
