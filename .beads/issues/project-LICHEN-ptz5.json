@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-ptz5",
   "title": "[merge-conflict] worktree-worker23: dao.py",
-  "notes": "Commit: aa1770dfa",
+  "notes": "Commit: ca5b501",
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:28:27.90929834Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:37:59.633342526Z",
+  "updated_at": "2026-07-23T00:38:37.018423726Z",
   "started_at": "2026-07-23T00:34:35.280175369Z",
   "closed_at": "2026-07-23T00:37:59.633342526Z",
   "close_reason": "Resolved merge conflicts in rf_health.rs (worker23 EMA changes), spec RPL-DAO/CCP-16 section, and related files; verified no remaining markers in edited files; committed and pushed"
