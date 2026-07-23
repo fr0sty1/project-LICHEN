@@ -104,7 +104,7 @@ def _schc_cases():
 
 def _fragmentation_cases():
     doc = _load("schc_fragmentation.json")
-    assert doc["format_version"] in (1, 2)
+    assert doc["format_version"] == 2
     return [(v["name"], v) for v in doc["vectors"]]
 
 
