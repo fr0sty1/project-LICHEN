@@ -542,7 +542,6 @@ mod tests {
             signature: &sig,
             app_data: &[],
             flags: 0,
-            rx_channel: 0,
         };
         let mut buf = [0u8; 256];
         let len = builder.write_to(&mut buf).unwrap();
