@@ -2,11 +2,15 @@
   "id": "project-LICHEN-40gy",
   "title": "[security] broken Context::new() in OSCORE key handling",
   "description": "rust/lichen-oscore/src/lib.rs:386-451 (Context::new): references undefined variables (id_context_value, id_context, sender_state, restored, active, context_id, sender_seq). Incomplete struct init and key derivation (lines 414-436, 444-448). Affects master_secret/salt handling, key derivation via HKDF, ContextId, replay state for all OSCORE contexts. Critical for EDHOC-derived keys, nonce generation, replay protection. Touched in integration/oscore-recovery merge (42ba8eedd, one of last 20 commits). Also check edhoc.rs for related key export issues. Violates zeroize, constant-time, and RFC 8613 requirements.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T01:17:37.688312886Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:17:37.688312886Z"
+  "updated_at": "2026-07-23T02:06:34.312647095Z",
+  "started_at": "2026-07-23T02:06:34.312647095Z",
+  "lease_expires_at": "2026-07-23T02:11:34.312647095Z",
+  "heartbeat_at": "2026-07-23T02:06:34.312647095Z"
 }
