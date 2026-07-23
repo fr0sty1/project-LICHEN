@@ -230,7 +230,7 @@ int lichen_announce_parse(const uint8_t *data, size_t len,
 	if (data[0] != LICHEN_ANNOUNCE_TYPE) {
 		return -EPROTONOSUPPORT;
 	}
-	if (data[1] != 0U) {
+	if (data[1] >= 8U) {
 		return -EINVAL;
 	}
 	if (data[2] > LICHEN_ANNOUNCE_MAX_HOPS) {
@@ -242,13 +242,13 @@ int lichen_announce_parse(const uint8_t *data, size_t len,
 
 	announce->flags = data[1];
 	announce->hop_count = data[2];
-	announce->rx_channel = data[3];
-	announce->wire_seq_num = ((uint16_t)data[4] << 8) | data[5];
+	announce->rx_channel = data[1];
+	announce->wire_seq_num = ((uint16_t)data[3] << 8) | data[4];
 	announce->seq_num = announce->wire_seq_num;
 	announce->seq_stale = false;
-	announce->originator_iid = &data[6];
-	announce->pubkey = &data[14];
-	announce->signature = &data[46];
+	announce->originator_iid = &data[5];
+	announce->pubkey = &data[13];
+	announce->signature = &data[45];
 	announce->app_data = &data[LICHEN_ANNOUNCE_MIN_LEN];
 	announce->app_data_len = len - LICHEN_ANNOUNCE_MIN_LEN;
 	return 0;
@@ -451,8 +451,8 @@ LOG_MODULE_REGISTER(announce_sched, LOG_LEVEL_INF);
 /* Maximum app data that fits in an announce (see ANNOUNCE_APP_DATA_MAX_LEN) */
 #define SCHED_APP_DATA_MAX_LEN (ANNOUNCE_SIGNED_MAX_LEN - ANNOUNCE_SIGNED_PREFIX_LEN)
 
-/* Announce frame buffer: dispatch + type + flags + hop_count + seq_num +
- * iid + pubkey + signature + app_data */
+/* Announce frame buffer: dispatch(0x15) + type(0x01) + flags(rx_channel) + hop(0) +
+ * seq(2) + iid(8) + pubkey(32) + sig(48) + app_data (93 + app) */
 #define ANNOUNCE_FRAME_MAX_LEN (1U + LICHEN_ANNOUNCE_MIN_LEN + SCHED_APP_DATA_MAX_LEN)
 
 struct announce_scheduler {
@@ -578,8 +578,9 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 
 	k_mutex_unlock(&sched.mutex);
 
-	/* Build frame: dispatch || type || flags || hop_count || rx_channel ||
-	 * seq || iid || pubkey || signature || app_data (MIN_LEN=94 per CCP-9) */
+	/* Build frame: dispatch(0x15) || type(0x01) || rx_channel(flags) || hop(0) ||
+	 * seq(2B) || iid(8) || pubkey(32) || sig(48) || [app_data]
+	 * (MIN_LEN=93 per CCP-9 + dispatch; matches ccp9.json oracle) */
 	size_t frame_len = 1U + LICHEN_ANNOUNCE_MIN_LEN + app_data_len_snapshot;
 
 	if (buf_len < frame_len) {
@@ -589,12 +590,10 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 
 	buf[pos++] = L2_ROUTING_DISPATCH;
 	buf[pos++] = LICHEN_ANNOUNCE_TYPE;
-	buf[pos++] = 0U; /* flags: reserved */
-	buf[pos++] = 0U; /* hop_count: 0 since we're the originator */
-	buf[pos++] = channel_snapshot; /* rx_channel for CCP-9 rendezvous binding */
+	buf[pos++] = channel_snapshot; /* flags = rx_channel (0-7) per CCP-9 */
+	buf[pos++] = 0U; /* hop_count: 0 since originator */
 	buf[pos++] = (uint8_t)(seq >> 8);
 	buf[pos++] = (uint8_t)seq;
-	buf[pos++] = 0U;
 	memcpy(&buf[pos], iid, LICHEN_ANNOUNCE_IID_LEN);
 	pos += LICHEN_ANNOUNCE_IID_LEN;
 	/* SECURITY: Use pubkey copy from signed_data (captured under lock) rather

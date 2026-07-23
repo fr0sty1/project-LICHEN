@@ -2,29 +2,14 @@
 //!
 //! Wire format (L2 routing dispatch 0x15 + announce per CCP-9 independent oracle):
 //! ```text
-<<<<<<< HEAD
-//! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//! | Type=0x01 | Flags | Hop Cnt | Seq Num (2B) | IID[0] ...     |
-//! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//! |                    Originator IID (8 bytes)                   |
-//! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//! |                    Public Key (32 bytes)                      |
-//! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//! |                    Signature (48 bytes)                       |
-//! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//! | rx_channel (u8) | Optional: App Data (variable)         |
-//! +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+//! 0x15 (L2 dispatch) | 0x01 (type) | rx_channel (flags 0-7) | hop (0) | seq (2B) |
+//! IID (8) | pubkey (32) | sig (48) | [app_data]
 //! ```
 //!
-//! Total: 94 bytes minimum. rx_channel at byte 93, signed per CCP-9.
-=======
-//! 0x15 (L2 dispatch) | 0x01 (type) | rx_channel (flags) | hop (0) | seq (2B) | IID (8) | pubkey (32) | sig (48) | [app_data]
-//! ```
-//!
-//! rx_channel (0-7) packed in flags byte (offset 1 of announce) and signed (CCP-9) to
-//! prevent tampering. Matches _l2_announce_with_channel oracle in generate.py exactly.
-//! Total fixed: 94 bytes (dispatch+93).
->>>>>>> origin/worktree-worker24
+//! rx_channel packed in flags byte at offset 1 of announce body (after dispatch).
+//! Signed at offset 42 in signed_data (IID+pubkey+seq+rx_channel+app_data) per CCP-9
+//! to prevent tampering. Matches test/vectors/ccp9.json and generate.py oracle exactly.
+//! Fixed body length 93 bytes (total L2 payload 94 bytes with dispatch).
 
 /// Announce message type identifier.
 pub const ANNOUNCE_TYPE: u8 = 0x01;
@@ -108,16 +93,7 @@ impl<'a> Announce<'a> {
         if data[0] != ANNOUNCE_TYPE {
             return Err(AnnounceError::WrongType(data[0]));
         }
-<<<<<<< HEAD
-
-        // ponytail: unwrap safe, bounds checked above
-        let originator_iid = data[5..13].try_into().unwrap();
-        let pubkey = data[13..45].try_into().unwrap();
-        let signature = data[45..93].try_into().unwrap();
-        let rx_channel = data[93];
-=======
         let rx_channel = data[1];
->>>>>>> origin/worktree-worker24
         if rx_channel >= 8 {
             return Err(AnnounceError::InvalidChannel(rx_channel));
         }
@@ -271,19 +247,12 @@ mod tests {
     #[test]
     fn invalid_channel() {
         let mut wire = make_announce();
-<<<<<<< HEAD
-        wire[1] = 16;
-=======
         wire[1] = 16; // rx_channel/flags >=8
->>>>>>> origin/worktree-worker24
         assert_eq!(
             Announce::from_bytes(&wire),
             Err(AnnounceError::InvalidChannel(16))
         );
-<<<<<<< HEAD
-=======
 
->>>>>>> origin/worktree-worker24
         let builder = AnnounceBuilder {
             originator_iid: &[0; 8],
             pubkey: &[0; 32],
@@ -300,6 +269,7 @@ mod tests {
             Err(AnnounceError::InvalidChannel(9))
         );
     }
+
 
     #[test]
     fn should_relay() {

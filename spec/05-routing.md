@@ -401,39 +401,43 @@ Announce routing provides zero-latency peer-to-peer paths for active mesh partic
 
 **Key insight:** Most peer-to-peer traffic is between nodes that are actively participating in the mesh. These nodes announce regularly. No discovery needed.
 
-### 9.2. Announce Message
+### 9.2. Announce Message (CCP-9 updated)
 
-Nodes broadcast announces periodically inside the L2 routing/control namespace.
-The authenticated link payload is `0x15 || announce`, where `0x15` is the L2
-routing/control dispatch byte and the announce bytes begin with Type `0x01`.
-Receivers MUST NOT treat an unwrapped link payload beginning with `0x01` as an
-announce because SCHC global CoAP also uses rule ID `0x01`.
+Nodes broadcast announces periodically inside the L2 routing/control namespace
+(dispatch `0x15`). The announce body begins with Type=`0x01`. The full L2
+payload is `0x15 || 0x01 || rx_channel(flags) || hop || seq(2B) || ...`.
+
+Receivers MUST NOT treat an unwrapped payload beginning with `0x01` as announce
+(SCHC CoAP rule ID collision). See test/vectors/ccp9.json for canonical wire
+format.
 
 ```
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-| Type=ANN  | Flags     | Hop Count   | Seq Num               |
+| Type=0x01 | rx_ch (flags) | Hop Count | Seq Num (BE)          |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                    Originator IID (8 bytes)                   |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                    Public Key (32 bytes)                      |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                    Signature (48 bytes)                       |
+|                    Signature (48 bytes Schnorr48)             |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                    Optional: App Data (variable)              |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-Total: ~92 bytes minimum.
+Fixed body: 93 bytes (1+1+1+2+8+32+48); total L2 payload 94 bytes with dispatch.
+rx_channel (0-7) in flags byte enables CCP-9 da2q rendezvous (receiver schedules
+next unicast on announced channel). **MUST** be bound in signature.
 
 **Fields:**
-- **Type:** Announce message identifier
-- **Flags:** Reserved
-- **Hop Count:** Incremented at each relay
-- **Seq Num:** Monotonic, detects duplicates and freshness
-- **Originator IID:** 8-byte Interface Identifier of announcer
-- **Public Key:** Ed25519 public key (32 bytes)
-- **Signature:** Schnorr signature over (IID, pubkey, seq, app_data)
-- **App Data:** Optional application data (node name, capabilities, etc.)
+- **Type:** `0x01` = announce
+- **rx_channel (flags byte):** 0-7 for next-rx channel (CCP-9); prevents tampering
+- **Hop Count:** Incremented by relays (NOT signed)
+- **Seq Num:** Monotonic u16 for freshness/dupe detection
+- **Originator IID:** 8-byte IID
+- **Public Key:** Ed25519 (32B)
+- **Signature:** Schnorr48 over (IID || pubkey || seq || rx_channel || app_data)
+- **App Data:** Optional (coords, name, capabilities per SenML etc.)
 
 ### 9.3. Announce Processing
 
