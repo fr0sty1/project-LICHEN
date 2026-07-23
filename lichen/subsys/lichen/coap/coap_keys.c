@@ -666,9 +666,12 @@ static size_t encode_iso8601_timestamp(uint32_t unix_time, char *buf, size_t buf
 	uint8_t min = (secs % 3600) / 60;
 	uint8_t sec = secs % 60;
 
-	snprintf(buf, buf_len, "%04u-%02u-%02uT%02u:%02u:%02uZ",
+	int pr = snprintf(buf, buf_len, "%04u-%02u-%02uT%02u:%02u:%02uZ",
 		 year, month, day, hour, min, sec);
-	return strlen(buf);
+	if (pr < 0 || (size_t)pr >= buf_len) {
+		return 0;
+	}
+	return (size_t)pr;
 }
 
 static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
