@@ -606,7 +606,7 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 	memcpy(&buf[pos], signature, LICHEN_ANNOUNCE_SIGNATURE_LEN);
 	pos += LICHEN_ANNOUNCE_SIGNATURE_LEN;
 	memset(signature, 0, sizeof(signature));
-	if (app_data_len_snapshot > 0) {
+		if (app_data_len_snapshot > 0) {
 		/* SECURITY: Copy from signed_data (captured under lock) rather than
 		 * re-reading sched.app_data. This ensures consistency: the app_data
 		 * in the frame matches exactly what was signed, and we use the same
@@ -616,6 +616,7 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 		pos += app_data_len_snapshot;
 	}
 
+	memset(signed_data, 0, sizeof(signed_data));
 	*out_len = pos;
 	return 0;
 }

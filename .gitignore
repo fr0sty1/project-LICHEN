@@ -31,3 +31,6 @@ rust/target/
 .cache/
 lichen/build/
 **/build/
+
+build-*/
+

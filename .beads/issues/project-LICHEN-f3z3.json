@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-f3z3",
+  "title": "SLIP transport: stats access without synchronization",
+  "description": "File: lichen/subsys/lichen/transport/slip_transport.c\nLines: 572-589\n\nUnlike kiss_transport which uses stats_mutex, slip_transport accesses stats without any synchronization:\n\n1. slip_transport_get_stats() (line 572-582) reads ctx-\u003estats\n2. slip_transport_reset_stats() (line 584-589) writes ctx-\u003estats  \n3. Various callbacks/threads modify stats (lines 244, 294-296, 299, 315, etc.)\n\nThe RX thread modifies stats from slip_dispatch_packet() while the main thread may call get_stats() or reset_stats(). This is a data race.\n\nThe issue is structural - there is a tx_mutex defined (line 60) but no stats_mutex.\n\nFix: Add a stats_mutex and protect all stats reads/writes, or document that stats are best-effort.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:53:38.145301Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-13T04:47:30.543812Z",
+  "closed_at": "2026-07-13T04:47:30.543812Z",
+  "close_reason": "Closed",
+  "notes": "Fixed with stats_mutex synchronization in slip_transport.c (see commit 57c611c5d). Attribution and closure by Mark Atwood on 2026-07-13 preserved. Addresses kimi-review attribution rewrite finding (project-LICHEN-nsjv)."
+}
