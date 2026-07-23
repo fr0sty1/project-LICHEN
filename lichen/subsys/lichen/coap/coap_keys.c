@@ -359,6 +359,15 @@ int lichen_key_pubkey_to_iid(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN
 
 }
 
+static int key_ct_compare(const uint8_t *a, const uint8_t *b, size_t len)
+{
+	volatile uint8_t diff = 0U;
+	for (size_t i = 0; i < len; i++) {
+		diff |= a[i] ^ b[i];
+	}
+	return diff;
+}
+
 /* --------------------------------------------------------------------------
  * Key store implementation
  * -------------------------------------------------------------------------- */
@@ -367,7 +376,7 @@ static int find_key_locked(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN])
 {
 	for (int i = 0; i < CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES; i++) {
 		if (s_keys[i].valid &&
-		    memcmp(s_keys[i].iid, iid, LICHEN_KEY_IID_LEN) == 0) {
+		    key_ct_compare(s_keys[i].iid, iid, LICHEN_KEY_IID_LEN) == 0) {
 			return i;
 		}
 	}
@@ -409,7 +418,7 @@ int lichen_key_store_put(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN],
 		 * SECURITY: TOFU key pinning - existing keys cannot have their
 		 * pubkey changed. Reject if pubkey differs.
 		 */
-		if (memcmp(s_keys[slot].pubkey, pubkey, LICHEN_KEY_PUBKEY_LEN) != 0) {
+		if (key_ct_compare(s_keys[slot].pubkey, pubkey, LICHEN_KEY_PUBKEY_LEN) != 0) {
 			k_mutex_unlock(&s_mutex);
 			LOG_WRN("Key update rejected: pubkey mismatch (TOFU violation)");
 			return -EEXIST;
