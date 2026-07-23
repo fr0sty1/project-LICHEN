@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-2auf.59.4.3",
+  "title": "Validate BLE and SLIP transport integration rows",
+  "description": "Execute declared BLE, SLIP LCI scenarios from clean EBS Zephyr worktree on supported native/QEMU targets. Record full provenance (base commit, patch SHA, west manifest, Zephyr version, exact west build/run commands with env, exit codes, log+artifact hashes). No skips, no .35.6 duplication, strict clean-worktree checks. Use approved AWS_PROFILE=personal builder in us-west-2c with vol-0a95eee8d1d8461eb only.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:15:02.473990341Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:15:02.473990341Z",
+  "labels": [
+    "aws",
+    "validation"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.59.4.3",
+      "depends_on_id": "project-LICHEN-2auf.59.4",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:15:02.605169614Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
