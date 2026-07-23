@@ -155,7 +155,7 @@ Rule IDs are 8 bits (1 byte):
 
 Most common case for intra-mesh traffic.
 
-**Rule Definition:** (matches spec/03-adaptation.md:5.5 and appendix-schc.md)
+**Rule Definition:** (matches spec/03-adaptation.md:5.5, appendix-schc.md:A.3 CoAP fields, and rust/lichen-schc/src/rules.rs:LINK_LOCAL_COAP_RULE)
 
 | Field | TV | MO | CDA |
 |-------|----|----|-----|
@@ -173,14 +173,19 @@ Most common case for intra-mesh traffic.
 | UDP.DstPort | 5683 | MSB(12) | LSB(4) |
 | UDP.Length | - | ignore | compute |
 | UDP.Checksum | - | ignore | compute |
+| CoAP.Version | 1 | equal | not-sent |
+| CoAP.Type | - | ignore | value-sent |
+| CoAP.TKL | - | ignore | value-sent |
+| CoAP.Code | - | ignore | value-sent |
+| CoAP.MID | - | ignore | value-sent |
 
-**Compressed size:** 4-6 bytes (Rule ID + 4-bit port residues)
+**Compressed size:** 4-8 bytes (Rule ID + port residues + packed CoAP fields; token/options/payload as tail)
 
 ### 4.3. Rule 1: Global IPv6 + UDP + CoAP
 
 For traffic using ULA or GUA addresses.
 
-**Rule Definition:** (aligned with appendix-schc.md and 03-adaptation.md:5.5)
+**Rule Definition:** (aligned with appendix-schc.md:A.3, 03-adaptation.md:5.5, and rust/lichen-schc/src/rules.rs:GLOBAL_COAP_RULE)
 
 | Field | TV | MO | CDA |
 |-------|----|----|-----|
@@ -198,14 +203,19 @@ For traffic using ULA or GUA addresses.
 | UDP.DstPort | 5683 | MSB(12) | LSB(4) |
 | UDP.Length | - | ignore | compute |
 | UDP.Checksum | - | ignore | compute |
+| CoAP.Version | 1 | equal | not-sent |
+| CoAP.Type | - | ignore | value-sent |
+| CoAP.TKL | - | ignore | value-sent |
+| CoAP.Code | - | ignore | value-sent |
+| CoAP.MID | - | ignore | value-sent |
 
-**Compressed size:** 12-14 bytes
+**Compressed size:** 12-16 bytes (Rule ID + address/port/CoAP residues)
 
 ### 4.4. Rule 2: ICMPv6 Echo
 
 For diagnostic and reachability testing.
 
-**Rule Definition:** (matches `ICMPV6_ECHO_RULE` in `rust/lichen-schc/src/rules.rs:462`; see appendix-schc.md)
+**Rule Definition:** (matches `ICMPV6_ECHO_RULE` in `rust/lichen-schc/src/rules.rs:503`; see appendix-schc.md and rules.rs:257 for full ICMPv6 echo fields. Distinct from Rule 7: MQTT-SN.)
 
 | Field | TV | MO | CDA |
 |-------|----|----|-----|
@@ -222,8 +232,10 @@ For diagnostic and reachability testing.
 | ICMPv6.Type | - | ignore | value-sent |
 | ICMPv6.Code | 0 | equal | not-sent |
 | ICMPv6.Checksum | - | ignore | compute |
+| ICMPv6.Identifier | - | ignore | value-sent |
+| ICMPv6.Sequence | - | ignore | value-sent |
 
-**Compressed size:** ~20 bytes residue + data tail (optimized per rules.rs:237 and codec.rs:331; aligns with appendix-schc.md:14)
+**Compressed size:** ~20 bytes residue + data tail (echo id/seq value-sent; payload as tail)
 
 ### 4.5. Rule 3: RPL DIO (link-local)
 
@@ -268,7 +280,7 @@ When no rule matches, version mismatch, or for interoperability. All implementat
 
 ### 4.10. CoAP Compression Details
 
-See Appendix A and RFC 8824. CoAP compression (Version=1 not-sent, Type/MID/Token value-sent) is used in Rules 0/1/5/6/7. OPTIONAL for non-CoAP traffic.
+See appendix-schc.md:A.3, RFC 8824, and the CoAP fields in Rules 0/1/5/6 above. Version=1 is not-sent; Type/TKL/Code/MID are value-sent (token and options travel in tail after MID). Used in Rules 0/1/5/6/7. OPTIONAL for non-CoAP traffic (e.g. ICMP, RPL, MQTT-SN use their own rules).
 
 ## 5. Fragmentation Profile
 
