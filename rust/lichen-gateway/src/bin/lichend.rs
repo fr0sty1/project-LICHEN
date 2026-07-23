@@ -439,29 +439,39 @@ async fn forward_mesh_to_upstream<T: TunLike>(
     frame: &[u8],
     tun: &Option<T>,
 ) -> Option<Vec<u8>> {
-    let (reply_opt, event) = gw.process_rpl(frame, 1000);
-    if let RplEvent::DaoReceived { route_updated: true } = event {
+    let mut reply_buf = [0u8; 256];
+    let (reply_len, event) = gw.rpl.handle_frame_rpl(frame, &mut reply_buf, 0);
+    if let RplEvent::DaoReceived {
+        target,
+        route_updated: true,
+    } = event
+    {
+        let node_id = NodeId::from_ipv6(&target);
+        gw.add_route(target, node_id);
         info!("DAO event: route updated");
     }
-    if let Some(reply) = reply_opt {
+    if reply_len > 0 {
+        let reply = reply_buf[..reply_len].to_vec();
         info!(len = reply.len(), "mesh reply ready for SLIP TX queue");
-        return Some(reply);
-    }
-    if let Some(ipv6) = gw.mesh_to_upstream(frame) {
-        let mut dst = [0u8; 16];
-        if ipv6.len() >= 40 {
-            dst.copy_from_slice(&ipv6[24..40]);
-            if gw.is_local_mesh(&dst) {
-                return None;
+        // TODO: queue via slip.queue_send
+        Some(reply)
+    } else {
+        if let Some(ipv6) = gw.mesh_to_upstream(frame) {
+            let mut dst = [0u8; 16];
+            if ipv6.len() >= IPV6_HEADER_LEN {
+                dst.copy_from_slice(&ipv6[field::DST_OFFSET..IPV6_HEADER_LEN]);
+                if gw.is_local_mesh(&dst) {
+                    return None;
+                }
+            }
+            if let Some(t) = tun {
+                if let Err(e) = t.send_pkt(&ipv6).await {
+                    error!("TUN write: {e}");
+                }
             }
         }
-        if let Some(t) = tun {
-            if let Err(e) = t.send_pkt(&ipv6).await {
-                error!("TUN write: {e}");
-            }
-        }
+        None
     }
-    None
 }
 
 // ── TunLike trait (abstracts TunDevice vs. no-op placeholder) ─────────────────

@@ -17,6 +17,7 @@ use heapless::Vec;
 use lichen_core::addr::Ipv6Addr;
 
 /// Maximum payload size for IPv6 tunnel packets.
+
 /// Meshtastic Data payload is limited to ~237 bytes.
 pub const MAX_TUNNEL_PAYLOAD: usize = 237;
 
@@ -181,6 +182,8 @@ impl MeshtasticBridge {
 
         match portnum {
             PortNum::IpTunnelApp => {
+                // Raw IPv6 packet encapsulated; version check + extract src/dst from IPv6 header
+                // (bytes 8-23 src, 24-39 dst per worker5/8 patterns)
                 if data.payload.len() < 40 || (data.payload[0] >> 4) != 6 {
                     return Err(BridgeError::InvalidPacket);
                 }
@@ -461,7 +464,7 @@ mod tests {
         assert!(bridge.mapper_mut().learn_mapping(dst_node, &pubkey));
 
         let mut ipv6_data = [0u8; 48];
-        ipv6_data[0] = 0x60;
+        ipv6_data[0] = 0x60; // Version 6, destination address set at offset 24 to match mapper
         let dst_addr = bridge.mapper().meshtastic_to_ipv6(dst_node);
         ipv6_data[24..40].copy_from_slice(&dst_addr.0);
 

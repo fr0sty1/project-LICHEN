@@ -139,11 +139,14 @@ pub trait Radio {
     /// Apply radio configuration.
     fn configure(&mut self, config: &RadioConfig);
 
+    /// Configure multiple channels for concentrator mode (SX1302 gateways).
     fn configure_channels(
         &mut self,
         channels: &[ChannelConfig],
     ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
 
+    /// Returns current RX channel for multi-channel gateways (SX1302).
+    /// Defaults to 0 to mimic single-channel SX126x behavior.
     fn current_channel(&self) -> u8 {
         0
     }

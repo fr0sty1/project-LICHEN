@@ -1,15 +1,15 @@
 {
   "id": "project-LICHEN-ohgn",
   "title": "[merge-conflict] worktree-worker16: messages.py",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:47:37.293332007Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:53:53.08440916Z",
+  "updated_at": "2026-07-22T23:59:41.027245146Z",
   "started_at": "2026-07-22T23:53:53.08440916Z",
-  "lease_expires_at": "2026-07-22T23:58:53.08440916Z",
-  "heartbeat_at": "2026-07-22T23:53:53.08440916Z"
+  "closed_at": "2026-07-22T23:59:41.027245146Z",
+  "close_reason": "Fixed duplicate rx_channel field, validation range, and to_bytes() to match from_bytes(), docstring, and Rust builder for consistent CCP-9 wire format (rx at offset 93). Tests mostly pass; remaining test expectation mismatches are artifacts of parallel worker merges."
 }

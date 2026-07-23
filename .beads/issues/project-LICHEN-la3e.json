@@ -2,15 +2,15 @@
   "id": "project-LICHEN-la3e",
   "title": "[merge-conflict] worktree-worker1: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: ca250c5d9",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:55:18.477558787Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:57:29.780185212Z",
+  "updated_at": "2026-07-22T23:59:31.879737332Z",
   "started_at": "2026-07-22T23:56:45.670760107Z",
-  "lease_expires_at": "2026-07-23T00:01:45.670760107Z",
-  "heartbeat_at": "2026-07-22T23:56:45.670760107Z"
+  "closed_at": "2026-07-22T23:59:31.879737332Z",
+  "close_reason": "Resolved heltec config sync in worker1 worktree and updated puck board config with battery support. Pushed commit ca250c5"
 }
