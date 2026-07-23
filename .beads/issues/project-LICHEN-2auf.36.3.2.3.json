@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-2auf.36.3.2.3",
   "title": "Handle git index.lock and rebase conflicts on .beads after interop workflow edits",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:27:12.418121751Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:27:12.418121751Z",
+  "updated_at": "2026-07-23T06:01:45.232448355Z",
+  "started_at": "2026-07-23T06:01:45.232448355Z",
+  "lease_expires_at": "2026-07-23T06:06:45.232448355Z",
+  "heartbeat_at": "2026-07-23T06:01:45.232448355Z",
   "labels": [
     "defer-external"
   ],

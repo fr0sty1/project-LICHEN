@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-6zuc",
+  "title": "[spec-compliance] rpl_messages.json omits RFC-mandated malformed ICMPv6/UDP checksum and truncation test vectors",
+  "description": "The update in 331e1304b removed bad_icmpv6_checksum, short_icmpv6_packet, bad_udp_checksum, short_udp_packet vectors from test/vectors/rpl_messages.json and simplified test_rpl_messages_vector(). These test MUST silent discard (RFC 4443 §2.3, RFC 8200 §8.1) on checksum_failure and truncation handling. Spec references these RFCs for RPL/ICMPv6/UDP (see spec/appendix-rpl.md, 04-network.md, 09-packets-timing.md). Violates test vector discipline and coverage for error paths. Code in python/tests/test_vectors.py:1137+ and lichen/subsys now untested for these cases. Priority 1 per reviewer focus on MUST violations.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T06:01:35.921440259Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T06:01:35.921440259Z"
+}
