@@ -2,15 +2,15 @@
   "id": "project-LICHEN-cwia",
   "title": "[merge-conflict] worktree-worker18: dao.py",
   "notes": "Commit: 7bce2dbe6",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:21:48.699188144Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:17:59.268009051Z",
+  "updated_at": "2026-07-23T02:18:01.96104739Z",
   "started_at": "2026-07-23T02:17:27.916679362Z",
-  "lease_expires_at": "2026-07-23T02:22:27.916679362Z",
-  "heartbeat_at": "2026-07-23T02:17:27.916679362Z"
+  "closed_at": "2026-07-23T02:18:01.96104739Z",
+  "close_reason": "Updated dao.py in worktree-worker18 to resolve merge conflict with current implementation"
 }
