@@ -23,6 +23,9 @@ APP_DATA_TYPE_DTN_EXPIRY = 0x03
 # App data type for DTN pending destinations (spec 9.8)
 APP_DATA_TYPE_DTN_PENDING = 0x04
 
+# Header type for opportunistic forwarder list (spec 9.9)
+HEADER_TYPE_OPPORTUNISTIC = 0x05
+
 # Resolution: 1e-7 degrees per LSB, matching firmware/HAL e7 coordinates.
 _SCALE = 10_000_000
 _LAT_MIN = -90
@@ -211,3 +214,69 @@ def decode_dtn_pending(app_data: bytes) -> list[bytes] | None:
     return None
 
 
+# --- Opportunistic forwarding (spec 9.9) ---
+
+
+MAX_OPPORTUNISTIC_CANDIDATES = 4
+OPPORTUNISTIC_SLOT_TIME_MS = 100
+
+
+def encode_opportunistic_forwarders(iids: list[bytes]) -> bytes:
+    """Encode opportunistic forwarder candidate IIDs.
+
+    Args:
+        iids: List of 8-byte IIDs, ranked best-first (max 4).
+
+    Returns:
+        Variable bytes: type(1) + count(1) + iids(8*count)
+
+    Raises:
+        ValueError: If any IID is not 8 bytes or count > 4.
+    """
+    if len(iids) > MAX_OPPORTUNISTIC_CANDIDATES:
+        raise ValueError(f"too many forwarders: {len(iids)} (max {MAX_OPPORTUNISTIC_CANDIDATES})")
+    for i, iid in enumerate(iids):
+        if len(iid) != 8:
+            raise ValueError(f"IID {i} has length {len(iid)}, expected 8")
+    return bytes([HEADER_TYPE_OPPORTUNISTIC, len(iids)]) + b"".join(iids)
+
+
+def decode_opportunistic_forwarders(data: bytes) -> list[bytes] | None:
+    """Decode opportunistic forwarder list from header. Scans for type in concatenated data.
+
+    Args:
+        data: Raw header bytes.
+
+    Returns:
+        List of 8-byte IIDs (ranked best-first), or None if not opportunistic.
+    """
+    i = 0
+    while i + 2 <= len(data):
+        if data[i] == HEADER_TYPE_OPPORTUNISTIC:
+            count = data[i + 1]
+            if count > MAX_OPPORTUNISTIC_CANDIDATES:
+                return None
+            expected_len = 2 + count * 8
+            if len(data) < i + expected_len:
+                return None
+            iids = []
+            for j in range(count):
+                start = i + 2 + j * 8
+                iids.append(data[start : start + 8])
+            return iids
+        i += 1
+    return None
+
+
+def opportunistic_wait_time_ms(rank: int) -> int:
+    """Calculate wait time for opportunistic forwarding based on rank.
+
+    Rank 0 forwards immediately. Higher ranks wait longer.
+
+    Args:
+        rank: Forwarder rank (0 = best).
+
+    Returns:
+        Wait time in milliseconds.
+    """
+    return rank * OPPORTUNISTIC_SLOT_TIME_MS
