@@ -2,15 +2,15 @@
   "id": "project-LICHEN-ahrf",
   "title": "[merge-conflict] worktree-worker18: coap_status.c",
   "notes": "Commit: 0dcd29e55",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:57:28.659324503Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:41:47.983913068Z",
+  "updated_at": "2026-07-23T04:41:51.377603397Z",
   "started_at": "2026-07-23T00:02:02.661781956Z",
-  "lease_expires_at": "2026-07-23T04:44:30.854647442Z",
-  "heartbeat_at": "2026-07-23T04:39:30.854647442Z"
+  "closed_at": "2026-07-23T04:41:51.377603397Z",
+  "close_reason": "Added size_t + \u003e255 overflow checks + explicit uint8_t casts to cbor_put_map_header/array_header in coap_status.c to fix implicit conversion warnings and CCP-17 robustness (merge conflict from worker18 resolved); rebased, committed 0dcd29e55, pushed. Verified no compile issues in context."
 }
