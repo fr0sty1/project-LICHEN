@@ -2,15 +2,15 @@
   "id": "project-LICHEN-urd7",
   "title": "[merge-conflict] worktree-worker20: xiao_s3_wio_sx1262.conf",
   "notes": "Commit: b905d81",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:52:03.503524413Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:12:50.165601958Z",
+  "updated_at": "2026-07-23T03:12:54.669628011Z",
   "started_at": "2026-07-23T03:12:01.942439116Z",
-  "lease_expires_at": "2026-07-23T03:17:01.942439116Z",
-  "heartbeat_at": "2026-07-23T03:12:01.942439116Z"
+  "closed_at": "2026-07-23T03:12:54.669628011Z",
+  "close_reason": "Removed dead merge-conflict resolution meta-comment from xiao_s3_wio_sx1262.conf in worktree-worker20 (lines referencing multiple prior beads); standardized to canonical RETIRED/BLOCKED comment matching main tree and matrix doc. No other changes. Verified clean git status. Commit b905d81"
 }
