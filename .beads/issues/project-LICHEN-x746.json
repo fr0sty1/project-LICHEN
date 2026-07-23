@@ -2,15 +2,15 @@
   "id": "project-LICHEN-x746",
   "title": "[merge-conflict] worktree-worker18: xiao_s3_wio_sx1262.conf",
   "notes": "Commit: 3de0c983d",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:52:02.222685024Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:09:32.283461996Z",
+  "updated_at": "2026-07-23T03:09:35.454986372Z",
   "started_at": "2026-07-23T03:07:27.637284847Z",
-  "lease_expires_at": "2026-07-23T03:12:27.637284847Z",
-  "heartbeat_at": "2026-07-23T03:07:27.637284847Z"
+  "closed_at": "2026-07-23T03:09:35.454986372Z",
+  "close_reason": "Cleaned dead merge-conflict resolution meta-comment from xiao_s3_wio_sx1262.conf and overlay in worker18+main (removed accumulating bead list); standardized retired comment per AGENTS.md no-dead-code. Also synced worker18. Commit 3de0c983d"
 }
