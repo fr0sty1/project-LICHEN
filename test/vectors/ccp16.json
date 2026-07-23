@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "CCP-16 synchronized hopping and desync vectors with now_ts and select_channel_timing test - updated per project-LICHEN-rs2q. Matches input/output ccp_vector and test oracle.",
+  "description": "CCP-16 synchronized hopping and desync vectors with now_ts and select_channel_timing test per project-LICHEN-rs2q. Uses input/output for ccp_vector schema.",
   "vectors": [
     {
       "name": "synchronized_hop_channel_consistency",
@@ -14,16 +14,14 @@
         "snr_db": 12,
         "now": 4660
       },
-            "output": {
-                "hash_32": 926423932,
-                "channel": 2,
-                "expected_channel": 2,
-                "sf": 9,
-                "select_channel": 2,
-                "now": 4660
-            }
-
-
+      "output": {
+        "hash_32": 926423932,
+        "channel": 2,
+        "expected_channel": 2,
+        "sf": 9,
+        "select_channel": 2,
+        "now": 4660
+      }
     },
     {
       "name": "epoch_wrap_hop_change",
@@ -47,7 +45,7 @@
     },
     {
       "name": "select_channel_timing_test",
-      "description": "select_channel_timing test with now_ts=0xfffffff0 near u32 wrap for TDMA/SFN unsigned arithmetic and blacklist/dwell timing per spec and codereview.",
+      "description": "select_channel_timing with now_ts near u32 wrap tests TDMA/SFN per project-LICHEN-rs2q.",
       "type": "slot_selection",
       "input": {
         "eui64": "0011223344556677",

@@ -18,6 +18,7 @@ Language-neutral conformance vectors for the LICHEN protocol using **format_vers
 | `meshtastic_app_compat.json` | Meshtastic BLE raw-protobuf app compatibility exchanges |
 | `meshcore_app_compat.json` | MeshCore byte-command app compatibility exchanges |
 | `ccp_load_balancing.json` | TDMA slot assignment (static hash), guard time boundaries (50ms), drift compensation, CCP-16 load metrics/rebalancing (independent mathematical oracles from spec timing/hash formulas) |
+| `ccp13.json` | CCP-13 DutyCycleTracker (prune, window eviction, partial overlap proration, remaining_ms, usage_permille, can_transmit, next_available_ms with u64::MAX for impossible). Independent math oracles matching Rust, C, Python sim. |
 | `ccp15.json` | CCP-15 CCA threshold, interference score (busy_pct + PER*100), frequency agility (lowest score channel), SF adaptation (PER>0.2), TDMA CCA guard integration (independent mathematical oracles per spec 02a) |
 | `ccp16-desync.json` | CCP-16 desync transitions, SFN wrap, multi-root conflict, clock drift recovery using bare array root (v2 schema). Independent oracles from spec 02a and 09-packets-timing.md. |
 | `ccp9.json` | CCP-9 rendezvous mechanisms (announce_rx_ch scheduling, CH0 control fallback for unknown peers, synchronized_hop_channel(CCP-12) override of announce rendezvous, announce channel field parse/roundtrip in L2 payload). Independent mathematical oracles from spec/02a-coordinated-capacity.md §CCP-9, da2q multi-channel context, and python/src/lichen/sim/medium.py. Matches ccp9_vectors() in generate.py. |

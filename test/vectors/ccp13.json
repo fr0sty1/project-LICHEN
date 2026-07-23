@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "Independent test vectors for CCP-13 Duty Cycle Management (DutyCycleTracker). Covers remaining_ms, usage_permille, next_tx_available_ms, record_tx eviction, window boundaries, partial overlap proration, custom permille limits, impossible durations, buffer-full behavior. Mathematical oracles independent of impl; matches rust/lichen-core/src/duty_cycle.rs:154 and python/tests/sim/test_duty_cycle.py. format_version=2.",
+  "description": "CCP-13 DutyCycleTracker vectors with independent math oracles for prune, proration, remaining_ms, usage_permille, can_transmit, next_available. Matches Rust, C hal test, and Python sim exactly.",
   "vectors": [
     {
       "name": "initial_full_budget",
