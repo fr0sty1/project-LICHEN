@@ -15,6 +15,7 @@ use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
     L2_ROUTING_TYPE_ANNOUNCE,
 };
+use lichen_core::rf_health::RfHealthMetrics;
 use lichen_hal::RadioConfig;
 use lichen_hal::{NonVolatile, Radio};
 use lichen_ipv6::{icmpv6_checksum, Addr, Ipv6Header};
@@ -333,6 +334,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         let rpl = RplNode {
             node: Node::new(stack.node_id()),
             router: Router::new(local_rpl_addr, dodag_id),
+            rf_health: RfHealthMetrics::new(),
         };
         Ok(Self {
             stack,
@@ -369,6 +371,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         let rpl = RplNode {
             node: Node::new(stack.node_id()),
             router: Router::new(local_rpl_addr, dodag_id),
+            rf_health: RfHealthMetrics::new(),
         };
         Ok(Self {
             stack,
@@ -406,6 +409,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             rpl: RplNode {
                 node: Node::new(stack.node_id()),
                 router,
+                rf_health: RfHealthMetrics::new(),
             },
             stack,
             announces,
@@ -451,6 +455,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             rpl: RplNode {
                 node: Node::new(stack.node_id()),
                 router,
+                rf_health: RfHealthMetrics::new(),
             },
             stack,
             announces,
@@ -2022,7 +2027,7 @@ mod tests {
     }
 
     fn signed_announce(identity: &Identity, sequence: u16) -> Vec<u8> {
-        let rx_channel = 0;
+        let rx_channel = 3;
         let mut signed = Vec::new();
         signed.extend_from_slice(&identity.iid);
         signed.extend_from_slice(identity.pubkey.as_bytes());

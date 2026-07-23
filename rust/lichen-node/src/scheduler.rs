@@ -40,13 +40,10 @@ pub const DEFAULT_JITTER_MS: u64 = 30_000;
 /// Announce scheduler configuration.
 #[derive(Debug, Clone)]
 pub struct SchedulerConfig {
-    /// Time between announces in milliseconds.
     pub interval_ms: u64,
-    /// Maximum random jitter to add in milliseconds.
     pub jitter_ms: u64,
-    /// Delay before first announce in milliseconds.
-    /// If 0, randomized at runtime (1-30 seconds) to prevent thundering herd.
     pub initial_delay_ms: u64,
+    pub rx_channel: u8,
 }
 
 impl Default for SchedulerConfig {
@@ -54,7 +51,8 @@ impl Default for SchedulerConfig {
         Self {
             interval_ms: DEFAULT_INTERVAL_MS,
             jitter_ms: DEFAULT_JITTER_MS,
-            initial_delay_ms: 0, // Randomized at runtime
+            initial_delay_ms: 0,
+            rx_channel: 0,
         }
     }
 }
@@ -221,6 +219,9 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
     ///
     /// Returns the number of bytes written to the output buffer.
     pub fn build_announce(&self, out: &mut [u8]) -> Result<usize, SchedulerError> {
+        if self.config.rx_channel >= 8 {
+            return Err(SchedulerError::InvalidChannel);
+        }
         let seq = self.increment_seq();
 
         let signed_data_len = 8 + 32 + 2 + 1 + self.app_data.len();
@@ -228,7 +229,7 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
         signed_data[..8].copy_from_slice(&self.identity.iid);
         signed_data[8..40].copy_from_slice(self.identity.pubkey.as_bytes());
         signed_data[40..42].copy_from_slice(&seq.to_be_bytes());
-        signed_data[42] = 0;
+        signed_data[42] = self.config.rx_channel;
         signed_data[43..].copy_from_slice(&self.app_data);
 
         let signature = sign(&self.identity.privkey, &self.identity.pubkey, &signed_data);
@@ -238,7 +239,7 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
             pubkey: self.identity.pubkey.as_bytes(),
             seq_num: seq,
             hop_count: 0,
-            rx_channel: 0,
+            rx_channel: self.config.rx_channel,
             signature: &signature,
             app_data: &self.app_data,
         };
@@ -530,6 +531,7 @@ mod tests {
                 interval_ms: 50,
                 jitter_ms: 0,
                 initial_delay_ms: 1,
+                rx_channel: 0,
             },
         );
 
