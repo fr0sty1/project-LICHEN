@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-g6ix",
+  "title": "[memsafety] oscore.c: dangling cleanup_protect_request label after refactor",
+  "description": "Commit 7baadd563 refactored oscore_protect_request error paths (lichen/subsys/lichen/oscore/oscore.c:1555 etc) to use common_wipe for sensitive buffer clearing (nonce/piv/plaintext/seq) but left early param/ctx/seq checks (lines ~1493,1500,1515,1523,1532) still using goto cleanup_protect_request which no longer exists. This breaks compilation and risks incomplete wipes on error paths (potential sensitive data leak). Missing bounds checks not found but control flow affects memsafety guarantees. Reviewed last 20 commits; only this one touched C code relevant to memsafety (oscore crypto buffers, memcpy with checks present but label bug). No strcpy/sprintf/overflows in changes. Other commits were .beads/ metadata or non-C.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T14:19:29.824652271Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T14:19:29.824652271Z"
+}
