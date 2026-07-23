@@ -2,15 +2,11 @@
   "id": "project-LICHEN-hj1r",
   "title": "Clean dead merge-resolution comments from xiao_s3_wio_sx1262.conf/.overlay in worker17+worker19 worktrees",
   "description": "Replace polluted RETIRED comment blocks containing '# Resolved merge conflict for ...' (dead code per AGENTS.md) with canonical clean version from project-LICHEN-2u26.10. Update both .conf and .overlay. Matches worker12 canonical. --parent=project-LICHEN-ftvd.4",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
-  "issue_type": "epic",
-  "assignee": "AI Agent",
+  "issue_type": "task",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:21:38.232990268Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:23:29.090105093Z",
-  "started_at": "2026-07-23T05:22:29.750748071Z",
-  "closed_at": "2026-07-23T05:23:29.090105093Z",
-  "close_reason": "Decomposed into subtasks hj1r.1 and hj1r.2"
+  "updated_at": "2026-07-23T05:21:38.232990268Z"
 }
