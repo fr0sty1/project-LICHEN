@@ -16,8 +16,7 @@
 
 /// Fixed-point scale factor (2^16 = 65536).
 const FP_SCALE: i32 = 1 << 16;
-
-/// RF health metrics aggregator for CCP-15 interference mitigation.
+const EMA_ALPHA_SHIFT: u32 = 2;
 ///
 /// Tracks packet counts, TX failures (including channel busy for interference
 /// detection), and accelerated signal quality statistics (EMA alpha=1/4 per
@@ -144,10 +143,8 @@ impl RssiStats {
         if self.count == 0 {
             self.avg_fp = rssi_fp;
         } else {
-            // EMA: avg = avg + alpha * (sample - avg); alpha=1/4 per CCP-15
-            // for faster response to interference (da2q.15.2.1)
-            let diff = rssi_fp - self.avg_fp;
-            self.avg_fp += diff >> 2; // alpha = 1/4
+            let diff = rssi_fp.saturating_sub(self.avg_fp);
+            self.avg_fp = self.avg_fp.saturating_add(diff >> EMA_ALPHA_SHIFT);
         }
         self.count = self.count.saturating_add(1);
     }
@@ -227,10 +224,8 @@ impl SnrStats {
         if self.count == 0 {
             self.avg_fp = snr_fp;
         } else {
-            // EMA: avg = avg + alpha * (sample - avg); alpha=1/4 per CCP-15
-            // for faster response to interference (da2q.15.2.1)
-            let diff = snr_fp - self.avg_fp;
-            self.avg_fp += diff >> 2; // alpha = 1/4
+            let diff = snr_fp.saturating_sub(self.avg_fp);
+            self.avg_fp = self.avg_fp.saturating_add(diff >> EMA_ALPHA_SHIFT);
         }
         self.count = self.count.saturating_add(1);
     }
@@ -285,12 +280,6 @@ impl PacketLossRate {
             return Self { rate_fp: 0 };
         }
 
-        // loss_rate = (failures / tx) * 100
-        // In fixed-point: (failures * 100 * 2^16) / tx
-        // To avoid overflow: (failures * 100) << 16 / tx
-        // But failures * 100 could overflow for large values, so:
-        // (failures << 16) / tx * 100, but this loses precision
-        // Better: use u64 intermediate
         let numerator = (tx_failures as u64) * 100 * (FP_SCALE as u64);
         let rate = (numerator / (packets_tx as u64)) as u32;
 
@@ -314,13 +303,8 @@ impl PacketLossRate {
         self.rate_fp
     }
 
-    /// Get the loss rate as permille (0-1000) for finer granularity.
-    ///
-    /// This provides 0.1% resolution without floating point.
     #[inline]
     pub fn as_permille(&self) -> u16 {
-        // (rate_fp * 10) >> 16, but rate_fp is already in percent
-        // So we need (rate_fp * 10) >> 16
         let permille = ((self.rate_fp as u64) * 10) >> 16;
         if permille > 1000 {
             1000
@@ -412,12 +396,7 @@ mod tests {
         stats.update(-80);
         assert_eq!(stats.avg(), Some(-80));
 
-        // Second sample: EMA with alpha=1/4 (CCP-15 interference mitigation
-        // from da2q: faster response to changing RF conditions like channel
-        // busy/interference in multi-channel coordination)
-        // new_avg = -80 + (1/4)*(-60 - (-80)) = -80 + 5 = -75
         stats.update(-60);
-        // The avg should move toward -60 faster than before
         let avg = stats.avg().unwrap();
         assert!(avg > -80 && avg <= -75, "avg was {}", avg);
     }
@@ -492,17 +471,17 @@ mod tests {
     fn packet_loss_fractional() {
         let mut m = RfHealthMetrics::new();
         m.packets_tx = 1000;
-        m.tx_failures = 5; // 0.5%
+        m.tx_failures = 5;
         let loss = m.packet_loss_rate_fp();
-        assert_eq!(loss.as_percent(), 0); // Truncated
-        assert_eq!(loss.as_permille(), 5); // 0.5% = 5 permille
+        assert_eq!(loss.as_percent(), 0);
+        assert_eq!(loss.as_permille(), 5);
     }
 
     #[test]
     fn packet_loss_large_numbers() {
         let mut m = RfHealthMetrics::new();
         m.packets_tx = 1_000_000;
-        m.tx_failures = 100_000; // 10%
+        m.tx_failures = 100_000;
         let loss = m.packet_loss_rate_fp();
         assert_eq!(loss.as_percent(), 10);
         assert_eq!(loss.as_permille(), 100);
@@ -530,11 +509,10 @@ mod tests {
     #[test]
     fn rssi_negative_values() {
         let mut stats = RssiStats::new();
-        stats.update(-120); // Very weak signal
-        stats.update(-30); // Strong signal
+        stats.update(-120);
+        stats.update(-30);
         assert_eq!(stats.min, -120);
         assert_eq!(stats.max, -30);
-        // Average should be between -120 and -30
         let avg = stats.avg().unwrap();
         assert!((-120..=-30).contains(&avg), "avg was {}", avg);
     }
@@ -542,22 +520,19 @@ mod tests {
     #[test]
     fn snr_negative_values() {
         let mut stats = SnrStats::new();
-        stats.update(-10); // Poor SNR
-        stats.update(20); // Good SNR
+        stats.update(-10);
+        stats.update(20);
         assert_eq!(stats.min, -10);
         assert_eq!(stats.max, 20);
     }
 
     #[test]
     fn ema_convergence() {
-        // EMA (alpha=1/4) should converge toward repeated values
         let mut stats = RssiStats::new();
         stats.update(-80);
-        // Feed many samples of -60
         for _ in 0..100 {
             stats.update(-60);
         }
-        // With alpha=1/4 reaches -61 or -60 after 100 samples
         let avg = stats.avg().unwrap();
         assert!((-61..=-60).contains(&avg), "avg was {}", avg);
     }
