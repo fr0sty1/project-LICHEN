@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vhvj.2.4",
   "title": "Update medium.py rendezvous to use computed hop channel from SFN/EUI; remove dead code",
   "description": "Ensure get_rx_candidates, detect_activity, and start_tx in medium.py use synchronized hop channel computed from SFN/time/EUI (via hop_schedule or helper). Align with CCP-12. Eliminate any unused channel logic or dead code. Update tests if needed. Reference test vectors.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

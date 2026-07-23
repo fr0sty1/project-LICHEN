@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-8b8u.4.3",
   "title": "C: implement test harness for lichen_pubkey_to_human_address against node_address.json vectors (new test)",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

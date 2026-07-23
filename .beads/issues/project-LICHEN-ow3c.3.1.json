@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow3c.3.1",
   "title": "Update oscore_ctx_set_sender_seq to call NVM write_cb before setting initialized flag",
   "description": "Modify oscore_ctx_set_sender_seq() similar to persist_ssn logic: copy values under lock, call write_cb outside lock if registered, only set s_seq_initialized on successful write (or no callback). Return OSCORE_ERR_NVM_FAILED on write error. Update function docs.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

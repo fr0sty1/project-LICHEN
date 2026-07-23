@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-2j8r.2",
   "title": "Ensure both worker8 and main changes to deaddrop_post OSCORE handling are preserved in coap_dtn.c",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

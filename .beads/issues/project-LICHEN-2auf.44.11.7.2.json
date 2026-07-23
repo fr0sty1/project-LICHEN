@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.44.11.7.2",
   "title": "Refactor prune_neighbors_at to consult liveness policy before applying 10s eviction",
   "description": "Modify prune_with_removed and prune_neighbors_at in routing.rs to use the new Trickle-safe liveness policy. Eviction must only occur after confirming via policy AND exceeding 10s timeout. Preserve existing trickle reset on topology change.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-20am",
   "title": "[spec-compliance] LLSec parsing incomplete MICLength discard",
   "description": "lichen/subsys/lichen/link/frame.c:LLSec parsing does not fully enforce MUST discard for MicLength 0b010–0b111 per draft-lichen-link-01.md §3.2. Only \u003eLICHEN_MIC_64 check. Cross-ref link.h, test/vectors/. See project-LICHEN-s3t5",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "AI Agent",

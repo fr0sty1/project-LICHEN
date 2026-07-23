@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hnyw.4.2",
   "title": "Add #![forbid(unsafe_code)] to all no_std public crates where missing",
   "description": "Per coding guidelines, ensure lichen-core, lichen-link, lichen-schc, lichen-ipv6, lichen-rpl, lichen-senml, lichen-oscore, lichen-coap etc. have #![forbid(unsafe_code)] at crate root (except FFI). Check for any unsafe blocks.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

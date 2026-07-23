@@ -3,7 +3,7 @@
   "title": "[codereview-P1 pass2] ccp16_vectors hash_32 and test update: struct import minimal, computation in literal works for generator JSON, pytest passes. Minor: eui64 string parsed? Not yet but vector uses int(1). No correctness issues. P4 opinion: move hash_32 to shared test util.",
   "description": "Pass 2 focused on test integrity and minimal change. Confirms expected values now derived from oracle not placeholders. Schema and regeneration clean. No P0-P2.",
   "notes": "Commit: 2f9ede884",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "assignee": "AI Agent",

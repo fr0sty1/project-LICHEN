@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.44.11.10",
   "title": "Refactor Gateway to use authenticated RplStack root",
   "description": "Update lichen-gateway/src/gateway.rs to instantiate and use RplStack instead of bare RplNode for root. Integrate with durable storage, admission policy, and single-owner runtime pattern. Avoid bare SCHC into RPL.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

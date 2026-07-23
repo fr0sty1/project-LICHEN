@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ibrx",
   "title": "Implement DutyCycleTracker logic in hal.c matching ccp13.json vectors",
   "description": "Implement prune, total_tx, remaining, usage, can_transmit with fixed N=32 array, static funcs, prorate boundary, independent of test. Verify math matches Rust total_tx_in_window and evict_stale.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

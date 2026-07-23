@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow3c.1.3.4.2.2.2.3",
   "title": "Update all error paths in oscore_protect_request to integrate with nvm_failed label",
   "description": "Review and update the ~6 goto cleanup_protect_request calls (buffer too small, encrypt fail, option build fail, etc.) to ensure proper ret setting and that NVM failure is handled distinctly via the new nvm_failed path. Add comments on security. See oscore.c:1462,1471,1484 etc. and parent project-LICHEN-ow3c.1.3.4.2.2.2.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

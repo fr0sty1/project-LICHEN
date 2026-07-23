@@ -2,7 +2,7 @@
   "id": "project-LICHEN-zizg",
   "title": "PacketDatagramChannel._read_packets swallows StopAsyncIteration incorrectly",
   "description": "File: python/src/lichen/client/packet_coap.py, lines 344-346\n\nThe _read_packets method iterates over packets without handling exceptions:\n\n```python\nasync def _read_packets(self) -\u003e None:\n    async for packet in self._packet_transport.packets():\n        self._handle_packet(packet)\n```\n\nIssue 1: If _handle_packet raises an exception, _read_packets terminates silently (the task just ends) and no more packets are processed. The caller has no way to detect this failure.\n\nIssue 2: If packets() raises any exception (not StopAsyncIteration), the reader task dies without notifying anyone. The channel appears open but stops receiving.\n\nImpact: A single malformed packet that causes an unhandled exception in _handle_packet (e.g., from code outside the try/except) will break the entire channel silently.\n\nFix: Wrap the loop body in try/except and log errors, or notify the channel owner:\n```python\nasync def _read_packets(self) -\u003e None:\n    try:\n        async for packet in self._packet_transport.packets():\n            try:\n                self._handle_packet(packet)\n            except Exception:\n                logger.exception('unhandled error in _handle_packet')\n    except Exception:\n        logger.exception('packet reader failed')\n        self.close()\n```",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

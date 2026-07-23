@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wf4j",
   "title": "[cross-impl] Trickle reset condition inconsistent (Python != vs Rust/C \u003e)",
   "description": "After commit 5e72e6b03 aligned C (lichen/subsys/lichen/rpl/trickle.c:114) and Rust (rust/lichen-rpl/src/trickle.rs:178) reset() to `if stopped or interval \u003e imin`, Python (python/src/lichen/rpl/trickle.py:90) still uses `if _generation==0 or interval != imin`. RFC 6206 rule 6 says reset if I \u003e Imin. This can cause divergent behavior on edge cases (interval \u003c imin, initial state, generation proxy vs explicit state). Matches comments in rpl_trickle.h:156 but not Python reference impl. Test vectors and sim tests may not catch interop timing diffs. See lichen_rpl_dodag and trickle tests.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

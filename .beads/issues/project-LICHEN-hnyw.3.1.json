@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hnyw.3.1",
   "title": "Update rf_health.rs: remove dead code, perfect ccp15/ccp16 vector match for EMA/load_factor/density/adaptive_sf",
   "description": "Ensure RfHealthMetrics::adaptive_sf, should_rebalance, EMA updates, load_factor recording exactly match test/vectors/ccp*.json and spec/02a-coordinated-capacity.md pseudocode/table. Eliminate any unused methods/fields. Add test using full ccp16 vectors.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

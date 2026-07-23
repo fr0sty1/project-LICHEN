@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ijsr",
   "title": "[security] inconsistent Schnorr48 verification between Rust/C impls",
   "description": "Rust version (lichen-link/src/schnorr.rs:111-124) performs defense-in-depth: canonical bytes check for s, ZERO check, is_identity, is_torsion_free on pubkey. C version (lichen/subsys/lichen/link/schnorr48.c:426-432,443) only checks nonzero s (non-ct branch) and relies on monocypher recover_r. No equivalent pubkey validation. Violates \"all impls MUST produce identical output for test vectors\" and misses timing/DoS protections. Last touched in 39c26b888 (merge conflict cleanup in schnorr48.c). Affects MIC verification and link auth. See also link_ctx key handling and rx path in lichen_link_rx.c:139.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "AI Agent",

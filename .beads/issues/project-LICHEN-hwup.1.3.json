@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hwup.1.3",
   "title": "Add TX queue integration to Gateway for proper downward packet buffering and RPL SRH handling",
   "description": "Gateway must integrate with TX queue/forward buffer like lichen-node to handle cases where SRH insertion or transmission is delayed. Reference parent codereview finding.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

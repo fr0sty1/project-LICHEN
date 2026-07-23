@@ -3,7 +3,7 @@
   "title": "mapping_bits returns 0 for single-element mapping, losing field identity",
   "description": "File: python/src/lichen/schc/rules.py:76-80\n\nFieldDescriptor.mapping_bits() computes:\n  return (len(self.mapping) - 1).bit_length()\n\nFor a 1-element mapping, this returns 0 bits. While technically correct (only one possible value needs no encoding), this means:\n1. The field contributes nothing to the residue\n2. On decompression, reader.read(0) returns 0, and mapping[0] is used\n\nHowever, this is semantically equivalent to NOT_SENT with the single value as target_value, but uses MAPPING_SENT/MATCH_MAPPING unnecessarily.\n\nMore importantly, if a rule is changed from a 2-element mapping to a 1-element mapping, the residue format changes (1 bit to 0 bits), breaking compatibility with any peer using the old rule version.\n\nThis is a design consideration rather than a bug, but worth documenting: single-element mappings should probably use NOT_SENT instead of MAPPING_SENT.\n\nCategory: PROTOCOL",
   "notes": "Commit: 0cf3a94",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

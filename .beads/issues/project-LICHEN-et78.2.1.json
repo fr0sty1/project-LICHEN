@@ -2,7 +2,7 @@
   "id": "project-LICHEN-et78.2.1",
   "title": "Fix undefined variables and copy-paste errors in lichen_rpl_dao_manager_expire()",
   "description": "The expire function in routing.c has references to undefined 'e' variable instead of 'snapshot'. Fix all such errors to make Non-Storing route expiration correct. Reference project-LICHEN-et78.2",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

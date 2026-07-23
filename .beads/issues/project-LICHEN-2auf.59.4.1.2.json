@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.59.4.1.2",
   "title": "Build and runtime-validate MeshCore adapter/codec tests on native_sim",
   "description": "Execute west build -b native_sim and twister for lichen/tests/meshcore_* excluding link rows. Capture full command output, exit codes, test logs, artifact hashes. Verify non-link rows only. Record all provenance.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-vhvj.1.2.2",
   "title": "Update Node class in python/src/lichen/sim/node.py to compute hop_schedule and current_channel using synchronized_hop_channel based on sfn/seed",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

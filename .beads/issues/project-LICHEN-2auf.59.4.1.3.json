@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.59.4.1.3",
   "title": "Validate MeshCore on native_posix and 64-bit targets with full logging",
   "description": "Run builds/tests for native and native_sim/native/64 targets focusing on MeshCore non-link integration rows (adapter, codec, ble ingress etc). Capture commands, exits, full logs, SHA256 hashes of outputs. Exclude all .35.6 scopes. Use clean EBS only.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow3c.1.3.3.2",
   "title": "Update buffer check and AAD/encrypt/option build error gotos to use new common_wipe path",
   "description": "Change the 4 buffer/AAD/encrypt/option goto cleanup_protect_request (lines ~1462,1471,1484,1492,1501,1518 approx) to set appropriate ret and goto the common wipe label first (ensuring wipe always before SSN handling). Do not set NVM error here.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

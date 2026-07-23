@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-hnyw.2.1",
   "title": "Fix dynamic rx_channel in SchedulerConfig, build_announce, and rpl_stack per CCP-9 vectors (offset 1/42 matching generate.py)",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

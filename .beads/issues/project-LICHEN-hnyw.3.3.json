@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hnyw.3.3",
   "title": "Integrate EMA/load_factor/density into lichen-gateway and RPL DIO signaling",
   "description": "Add RfHealthMetrics to Gateway/RplNode state. Update process_rpl, announce, DIO generation to include density, EMA-derived SF, load_factor per CCP-16 and spec/02a-coordinated-capacity.md. Use lichen-core::rf_health. Ensure metrics updated from received packets. No dead code.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

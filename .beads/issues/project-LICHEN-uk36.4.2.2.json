@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-uk36.4.2.2",
   "title": "Update edhoc_*_export_oscore to match Python derivation, ID assignment, and PRK wipe sequence exactly",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

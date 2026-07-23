@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow3c.2.2",
   "title": "Implement safe SSN bump on NVM persist failure to prevent nonce reuse",
   "description": "In oscore_ctx_persist_ssn or error path, on final NVM failure after retries, re-acquire mutex and advance ctx-\u003esender_seq by safety margin (e.g. +1024 or to next rotation boundary). Ensure no reuse on reboot. Update per RFC 8613 7.2. Add comment with rationale.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

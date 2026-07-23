@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vhvj.4.1",
   "title": "Update medium.py to import and use synchronized_hop_channel for rendezvous hop channel computation",
   "description": "Replace comments referencing synchronized_hop_channel with actual call. Ensure get_rx_candidates and detect_activity use the computed hop channel correctly per CCP-12.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

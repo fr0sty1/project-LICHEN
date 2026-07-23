@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hnyw.4.3",
   "title": "Fix cargo fmt, clippy, and no_std+heapless compliance across Rust workspace",
   "description": "Run cargo fmt --all, cargo clippy --all-features --all-targets -- -D warnings on workspace. Fix all warnings. Ensure heapless used instead of alloc where possible for embedded crates. Update Cargo.toml features as needed.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

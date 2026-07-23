@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-hnyw.2.2",
   "title": "Update lichen-rpl and lichen-schc tests to fully cover CCP-9 vectors, rx_channel non-zero cases, and generate.py oracle matching",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

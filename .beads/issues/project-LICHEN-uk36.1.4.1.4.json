@@ -2,7 +2,7 @@
   "id": "project-LICHEN-uk36.1.4.1.4",
   "title": "Update test vectors and rfc9529_signature_trace_vectors test after transcript fixes",
   "description": "Update expected values in the test at bottom of edhoc.rs (~1550+) if needed to match new transcript functions and Python reference. Ensure all asserts pass. Follow test integrity rules - no contrived values.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

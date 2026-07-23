@@ -2,7 +2,7 @@
   "id": "project-LICHEN-f4xg",
   "title": "[spec-compliance] CoAP/OSCORE/SenML magic numbers and LCI deviation",
   "description": "rust/coap, oscore and zephyr coap paths use magic numbers instead of constants per spec/07-transport-app.md, 11-lci.md, appendix-senml.md and RFCs. LCI proxying deviates from §17. See project-LICHEN-s3t5",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "AI Agent",

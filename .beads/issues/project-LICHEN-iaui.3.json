@@ -2,7 +2,7 @@
   "id": "project-LICHEN-iaui.3",
   "title": "Audit and fix EDHOC context key material exposure and long-term seed storage",
   "description": "EDHOC contexts hold ed_seed long-term. Make contexts opaque if possible, ensure secure zeroing on all paths and in free functions. No long-term storage of seeds post-derivation. P0 security. Parent of project-LICHEN-iaui",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

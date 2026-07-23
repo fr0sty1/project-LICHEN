@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dski",
   "title": "[spec-compliance] python schc fragment RULE_IDS includes invalid 0x2a",
   "description": "Spec draft-lichen-schc-lora-00.md:4.1 and appendix-schc.md + constants.toml[schc.rule_id] specify frag rules ONLY 0x78 (A-\u003eB), 0x79 (B-\u003eA); 0x00-0x77 reserved for compression. python/src/lichen/schc/fragment.py:14 has RULE_IDS=(0x2a,0x78,0x79); _check_rule(), reassembly.py:272,355 accept 0x2a for ACK/abort/fragments (0x2a seen in meshcore/cmd but not SCHC frag). Violates MUST for exact rule ID semantics. MIC fix in 2baec8afb aligned compute_mic(payload + b\"\\0\") to RFC8724 but left this. KConfig commits (a82425bf8 etc) had no constant/MUST violations. bd auto-commits and merges not relevant to spec/code. Reviewed all 20 commits via git log.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

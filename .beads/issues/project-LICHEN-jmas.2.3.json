@@ -2,7 +2,7 @@
   "id": "project-LICHEN-jmas.2.3",
   "title": "Update lichen_tdma_init(), lichen_link_set_slot() and tdma_tx_allowed() to use computed slot from EUI64+epoch",
   "description": "Integrate lichen_tdma_compute_slot in lichen_tdma_init using ctx-\u003eeui64 and current epoch. Update structs if needed. Ensure tdma_tx_allowed respects hash-based slot. Cross-ref AGENTS.md init order. Match spec exactly.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

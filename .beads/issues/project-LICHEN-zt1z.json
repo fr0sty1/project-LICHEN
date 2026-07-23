@@ -2,7 +2,7 @@
   "id": "project-LICHEN-zt1z",
   "title": "Overly broad exception handling in packet parsing silently swallows bugs",
   "description": "File: python/src/lichen/client/packet_coap.py, lines 348-370\n\nThe _handle_packet method catches all exceptions:\n\n```python\ndef _handle_packet(self, packet: bytes) -\u003e None:\n    ...\n    try:\n        parsed = IPv6Packet.from_bytes(packet)\n        ...\n        coap = unwrap_coap(packet)\n    except Exception:\n        logger.debug('failed to parse packet', exc_info=True)\n        return\n```\n\nWhile it's correct to handle malformed packets gracefully, catching bare Exception also swallows:\n- TypeError from programming errors\n- AttributeError from API misuse  \n- KeyError from dict access bugs\n- Any other bugs in the parsing code\n\nImpact: Real bugs in the packet handling code could be silently ignored, making debugging difficult.\n\nFix: Catch specific exceptions like ValueError, struct.error, or create a custom PacketParseError.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

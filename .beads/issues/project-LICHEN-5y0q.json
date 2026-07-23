@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-5y0q",
   "title": "link tx scheduling does not use SLOT_DURATION_MS for deadline calculation in tx_queue_push",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

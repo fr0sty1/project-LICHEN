@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hnyw.3.4",
   "title": "Add integration test for ccp9/ccp16 vectors using updated rf_health in gateway/meshtastic",
   "description": "Create or update test that loads ccp16.json / ccp15.json vectors, exercises RfHealthMetrics::adaptive_sf, record_*, should_rebalance across lichen-gateway and lichen-meshtastic paths. Verify exact match to expected SF/EMA/load_factor. Run as part of cargo test.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

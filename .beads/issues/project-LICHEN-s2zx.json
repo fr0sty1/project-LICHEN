@@ -2,7 +2,7 @@
   "id": "project-LICHEN-s2zx",
   "title": "[security] non-constant-time pubkey comparison in coap_keys.c TOFU",
   "description": "In lichen/subsys/lichen/coap/coap_keys.c:412, lichen_key_store_put() uses regular memcmp() on 32-byte pubkey for TOFU pinning check. This creates a timing side-channel. Project already has public_key_ct_compare() in replay.c:27-36 for exactly this purpose (constant-time XOR diff). Also affects find_key_locked() on IIDs at line 370. Matches reviewer focus on key handling + crypto timing. OSCORE/EDHOC/Schnorr/MIC not directly touched in last 20 commits (mostly bd auto-commits + one CBOR fix in coap_keys). No obvious issues in Schnorr48 verify or OSCORE ctx from quick scan of recent merges.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "AI Agent",

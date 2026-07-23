@@ -2,7 +2,7 @@
   "id": "project-LICHEN-uk36.3.2.3",
   "title": "Fix transcript_2/3/4, TH computations, context builders, AAD, and update tests for Python interop",
   "description": "Implement missing transcript_* helpers, replace manual CBOR builders for TH_2/3/4 (~782,855,1302), update build_context_*, signature structures, AAD for AEAD to match edhoc.py exactly. Update rfc9529 test vectors and add interop test. Consolidate duplicated code in process_message_2/3.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

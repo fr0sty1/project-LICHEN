@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.44.11.7.1",
   "title": "Define Trickle-suppression-safe neighbor liveness policy",
   "description": "Implement a policy (likely method on NeighborTable or new struct) that determines if a neighbor is still alive considering Trickle suppression (heard_consistent increments counter preventing transmits). Must be safe against premature eviction in dense networks where DIOs are suppressed.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

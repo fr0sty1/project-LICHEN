@@ -2,7 +2,7 @@
   "id": "project-LICHEN-p838",
   "title": "Inefficient rebuild_routes on single edge deletion",
   "description": "File: lichen/subsys/lichen/rpl/routing.c:598-604\n\nWhen a single edge is deleted (lifetime=0 DAO), the code calls `rebuild_routes()` which iterates ALL edges and rebuilds ALL routes:\n\n```c\nif (lifetime == 0) {\n    ...\n    (void)rebuild_routes(dm);  // Rebuilds ALL routes\n    return false;\n}\n```\n\nFor small networks (E \u003c= 32 routes), this is acceptable. But for larger deployments, deleting one edge triggers O(E * H) work where H = LICHEN_RPL_MAX_HOPS.\n\nThe code comment at line 507-519 acknowledges this and suggests incremental updates. For now, the full rebuild ensures correctness but could be optimized if performance becomes an issue.\n\nThis is documentation/future-optimization, not a correctness bug.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "improvement",
   "assignee": "AI Agent",

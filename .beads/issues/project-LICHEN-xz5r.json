@@ -2,7 +2,7 @@
   "id": "project-LICHEN-xz5r",
   "title": "edhoc: METHOD_CORR hardcodes corr=1 (CoAP only)",
   "description": "File: python/src/lichen/crypto/edhoc.py\nLines: 259-260\n\nThe create_message_1 method hardcodes correlation value 1:\n\n```python\n# METHOD_CORR: method * 4 + corr (corr=1 for CoAP)\nmethod_corr = self.method * 4 + 1\n```\n\nPer RFC 9528, correlation values are:\n- 0: Neither responder nor initiator correlate\n- 1: Responder correlates (CoAP)\n- 2: Initiator correlates  \n- 3: Both correlate\n\nHardcoding corr=1 means this implementation only works correctly with CoAP transport. Using it with other transports (TCP, OSCORE-direct) will produce incorrect METHOD_CORR values.\n\nThe comment acknowledges this ('ponytail: corr always 1 for our CoAP transport') but this should be a parameter, not hardcoded.\n\nImpact: Protocol non-compliance for non-CoAP transports.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

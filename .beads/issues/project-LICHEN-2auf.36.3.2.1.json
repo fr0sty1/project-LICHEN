@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-2auf.36.3.2.1",
   "title": "Update interop-status jq to list specific failed jobs with status",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

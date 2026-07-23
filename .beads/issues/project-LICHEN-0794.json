@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-0794",
   "title": "codereview-pass-1 final-clean: opinion/P4 - consider adding explicit SenML SCHC rule example in draft if used in apps (per appendix-senml.md)",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "assignee": "AI Agent",

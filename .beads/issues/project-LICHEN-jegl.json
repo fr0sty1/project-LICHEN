@@ -2,7 +2,7 @@
   "id": "project-LICHEN-jegl",
   "title": "codereview: handle_frame_rpl docstring outdated for new DaoReceived variant",
   "description": "The fn doc at node.rs:251 mentions return (reply_len, rpl_event) but not updated for new field. P4 docs. discovered-from:project-LICHEN-yufp",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "assignee": "AI Agent",

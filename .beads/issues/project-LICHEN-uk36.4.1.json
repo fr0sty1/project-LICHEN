@@ -2,7 +2,7 @@
   "id": "project-LICHEN-uk36.4.1",
   "title": "Audit and align PRK derivation in lichen-oscore EDHOC with python/src/lichen/crypto/edhoc.py and test/vectors/edhoc.json",
   "description": "Compare HKDF-Extract calls, salt handling, and PRK computation between Rust and Python. Update to produce identical outputs for all test vectors.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

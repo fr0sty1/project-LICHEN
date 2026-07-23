@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.44.11.1.7",
   "title": "Update pruning to process just-received packet with post-await timestamp before prune on timeout/error",
   "description": "Modify the receive/maintenance path so that a packet received just before await uses the post-await timestamp for pruning decisions. Preserve correct behavior on timeout and error paths. Add literal fake-clock tests for exact boundary behavior. Part of single-owner RPL runtime.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

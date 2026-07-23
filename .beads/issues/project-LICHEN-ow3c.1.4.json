@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow3c.1.4",
   "title": "Add/update tests for NVM persistence failure in oscore_protect_request and SSN handling",
   "description": "Extend lichen/tests/oscore/src/main.c and test_persist_ssn to cover the new error path for OSCORE_ERR_NVM_FAILED from protect_request. Ensure test vectors and reboot/nonce safety scenarios are validated. Update python reference if needed.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

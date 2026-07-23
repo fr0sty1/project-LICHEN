@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vhvj.2.3.3.1",
   "title": "Add synchronized_hop_channel method to SimNode or Simulation using hop_schedule and current SFN/time",
   "description": "Implement computation of current hop channel from node's hop_schedule tuple for CCP-12. Match test vectors in ccp16-hop.json. Use independent oracle. No dead code. Reference spec/02a-coordinated-capacity.md",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

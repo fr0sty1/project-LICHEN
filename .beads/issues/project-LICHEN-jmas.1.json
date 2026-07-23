@@ -2,7 +2,7 @@
   "id": "project-LICHEN-jmas.1",
   "title": "Update TDMA guard time constants to spec default 100ms",
   "description": "Change GUARD_TIME_MS, LICHEN_TDMA_GUARD_MS from 50 to 100 in lichen/subsys/lichen/link/include/lichen/link.h to match TDMA beacon guard field default and slot duration formula in spec/02a-coordinated-capacity.md:92. Update all references in tdma_tx_allowed().",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

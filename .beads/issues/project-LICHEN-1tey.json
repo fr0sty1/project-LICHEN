@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1tey",
   "title": "No DIS (DODAG Information Solicitation) support for network discovery",
   "description": "File: lichen/subsys/lichen/rpl\n\nRFC 6550 Section 6.2 defines DIS messages for soliciting DIO messages from neighbors. This is useful for:\n1. Faster network joining when a node boots\n2. Probing network state after connectivity loss\n3. Requesting updated routing information\n\nCurrent implementation:\n- LICHEN_RPL_CODE_DIS is defined (value 0)\n- No DIS message structure or codec exists\n- No DIS handling in the DODAG state machine\n\nImpact: Nodes must passively wait for periodic DIOs, which with Trickle's exponential backoff could mean long delays (up to Imax) before joining or recovering.\n\nSuggested fix:\n1. Define DIS message structure (minimal: flags + reserved, optional: solicited information option)\n2. Add DIS transmit function to trigger DIO responses\n3. Add DIS receive handler that triggers DIO transmission",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "improvement",
   "assignee": "AI Agent",

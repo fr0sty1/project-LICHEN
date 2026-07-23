@@ -2,7 +2,7 @@
   "id": "project-LICHEN-lug0.1",
   "title": "Add is_local_mesh dst classification via RPL routing_table.lookup in Gateway forward_mesh_to_upstream",
   "description": "Per spec/05-routing.md:7.2, classify incoming mesh packets using RPL RoutingTable or router.lookup_route to determine if dst is local_mesh. Branch logic before TUN tunneling. Update Gateway struct if needed. Part of project-LICHEN-lug0.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

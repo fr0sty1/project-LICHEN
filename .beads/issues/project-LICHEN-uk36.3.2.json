@@ -2,7 +2,7 @@
   "id": "project-LICHEN-uk36.3.2",
   "title": "Fix all edhoc_kdf callsites and transcript_*/TH computation in edhoc.rs",
   "description": "Update calls at ~638-752, 827+, 1094+, 1169+ etc to new KDF(prk, th, label_str, context, len). Ensure transcript_2/3/4 and TH_2/TH_3/TH_4 exactly match Python reference in edhoc.py for interop. Lines in rust/lichen-oscore/src/edhoc.rs.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.44.11.7.2.2",
   "title": "Refactor NeighborTable::prune_with_removed to accept and consult LivenessPolicy",
   "description": "Change prune_with_removed to take a policy: impl LivenessPolicy, only evict if !policy.is_alive(last_seen, now, timeout). Update prune() wrapper. Preserve removed callback. Update all call sites and tests in routing.rs.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

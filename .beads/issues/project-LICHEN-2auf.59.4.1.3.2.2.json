@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.59.4.1.3.2.2",
   "title": "Build and test BLE ingress on native_posix with full logging",
   "description": "Run west build for native_posix target focusing on BLE ingress paths (excluding link .35.6). Capture full build logs, exit codes, artifacts. Compute SHA256s.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

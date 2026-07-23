@@ -2,7 +2,7 @@
   "id": "project-LICHEN-zc2p",
   "title": "[codereview-pass3] All clean: rate limit uses CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS, storage uses lichen_dtn_* API and Kconfig, GET handler added, comments/LOGs removed, no dead code",
   "description": "lichen/subsys/lichen/coap/coap_dtn.c - passes after fixes. No P0/P1 left. discovered-from:project-LICHEN-fnj7",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "assignee": "AI Agent",

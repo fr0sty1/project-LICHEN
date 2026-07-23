@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ftvd.4.2",
   "title": "Synchronize firmware-board-capability-matrix.md retirement note for xiao_s3_wio_sx1262 across all worker worktrees",
   "description": "Ensure matrix.md BLOCKED note for xiao_s3_wio_sx1262 references only canonical beads (2u26.10 etc.) without dead merge notes. Check worker18 and remaining workers for consistency with main canonical version.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

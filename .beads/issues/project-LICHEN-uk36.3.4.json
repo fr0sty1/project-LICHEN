@@ -2,7 +2,7 @@
   "id": "project-LICHEN-uk36.3.4",
   "title": "Add/update EDHOC test vectors and interop tests for TH/KDF matching Python",
   "description": "Ensure tests in edhoc.rs (around line 1559+) and any integration tests verify TH_2/TH_3/TH_4 and KDF outputs match python test vectors. Add to test/vectors/ if missing. Part of project-LICHEN-uk36.3.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-743w",
   "title": "[codereview-pass3-final] spec/02a-coordinated-capacity.md: fully clean. 3 passes with no open P0-P2 findings. Pure pseudocode complete, all functions defined with xrefs, vectors updated and normative. Close all codereview beads.",
   "description": "Final pass confirms convergence per review loop. No bugs in SF selection, TDMA now()/select_channel, consistency rules, or rationale. All P0-P2 fixed across chunks.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "AI Agent",

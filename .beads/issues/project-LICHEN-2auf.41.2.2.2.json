@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.41.2.2.2",
   "title": "Update SchcChannel._on_inner to explicitly drop on UDP/IPv6 validation failures with logging/metrics",
   "description": "In python/src/lichen/coap/schc_channel.py:_on_inner, replace silent returns with explicit validation steps, logger.info/warning for drops (e.g. 'dropped invalid UDP: bad checksum'), record_error via metrics if available. Align with RFC 8200/768 and parent recovery.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

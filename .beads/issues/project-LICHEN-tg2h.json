@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tg2h",
   "title": "[epic] Extract Renode STM32WL SubGHz peripheral as standalone project",
   "description": "Phase 3: Add STM32WL SubGHz peripheral to renode-lora-peripherals monorepo.\n\nSCOPE:\n1. Add peripherals/stm32wl-subghz/ with LichenSubGHz.cs\n2. Add STM32WL_PWR.cs and STM32WL_RCC.cs stubs\n3. Add boards/nucleo-wl55jc/ platform definition\n4. Example: Zephyr lora_send sample transmits\n5. CI: Nucleo-WL55JC boots and TX works\n\nPARALLEL TO: 94ju (different chip family, no dependency)\n\nDELIVERABLE: STM32WL devs can test LoRa firmware in Renode\n\nACCEPTANCE: Zephyr lora_send runs in Renode on Nucleo-WL55JC",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "epic",
   "assignee": "AI Agent",

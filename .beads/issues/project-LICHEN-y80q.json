@@ -2,7 +2,7 @@
   "id": "project-LICHEN-y80q",
   "title": "Fix transcript_2, transcript_3, transcript_4 functions and callsites in lichen-oscore/src/edhoc.rs",
   "description": "Update transcript hash computation helpers to produce outputs matching python/src/lichen/crypto/edhoc.py per RFC 9528 and updated edhoc_kdf. Fix any TH_2/TH_3/TH_4 computation bugs from uk36.1 changes. Reference test/vectors/ and test integrity rules (independent oracle from Python impl). --parent=project-LICHEN-uk36.1.4",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",

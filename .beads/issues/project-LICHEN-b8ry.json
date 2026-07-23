@@ -2,7 +2,7 @@
   "id": "project-LICHEN-b8ry",
   "title": "DodagConfig::from_bytes reads data[10] but field is reserved",
   "description": "File: rust/lichen-rpl/src/message.rs\nLines: 243-256\n\nIn DodagConfig::from_bytes(), the code reads def_lifetime from data[11], skipping data[10] (reserved). However, the code structure is slightly misleading and the field mapping could be error-prone:\n\n```rust\npub fn from_bytes(data: \u0026[u8]) -\u003e Result\u003cSelf, RplError\u003e {\n    // ...\n    Ok(Self {\n        dio_int_doublings: data[1],\n        dio_int_min: data[2],\n        dio_redundancy_const: data[3],\n        max_rank_increase: u16::from_be_bytes([data[4], data[5]]),\n        min_hop_rank_increase: u16::from_be_bytes([data[6], data[7]]),\n        ocp: u16::from_be_bytes([data[8], data[9]]),\n        def_lifetime: data[11],  // data[10] is reserved, skipped\n        lifetime_unit: u16::from_be_bytes([data[12], data[13]]),\n    })\n}\n```\n\nWhile this is technically correct per RFC 6550 Section 6.7.6, comparing with write_to shows an asymmetry:\n- from_bytes skips data[0] (A/PCS flags) but doesn't document this\n- from_bytes skips data[10] (reserved) \n\nThis is more of a code clarity issue than a functional bug, but the inconsistency could lead to maintenance errors.\n\nSeverity: P4 - cosmetic/clarity issue, not a functional bug.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "AI Agent",

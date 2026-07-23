@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow3c.1.1",
   "title": "Add oscore_ctx_persist_ssn call on success path of oscore_protect_request",
   "description": "After successful encryption, AAD, option build in oscore_protect_request (oscore.c), call oscore_ctx_persist_ssn(ctx) before returning OSCORE_OK. Update ret handling and move cleanup accordingly. Reference oscore.c:1490-1520.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",
