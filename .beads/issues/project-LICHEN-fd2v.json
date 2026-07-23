@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-fd2v",
   "title": "[merge-conflict] worktree-worker23: t_deck_esp32s3_procpu.conf",
+  "notes": "Commit: 0c5b8e5",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:33:50.202878753Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:08:57.099724989Z",
+  "updated_at": "2026-07-23T02:13:36.498197179Z",
   "started_at": "2026-07-23T02:08:57.099724989Z",
   "lease_expires_at": "2026-07-23T02:13:57.099724989Z",
   "heartbeat_at": "2026-07-23T02:08:57.099724989Z"
