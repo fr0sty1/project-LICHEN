@@ -21,6 +21,8 @@ Usage::
 
 from __future__ import annotations
 
+import math
+
 from lichen.senml.codec import SenmlRecord
 
 # ---------------------------------------------------------------------------
@@ -32,6 +34,13 @@ def location(
     lat: float, lon: float, alt: float | None = None, speed: float | None = None
 ) -> list[SenmlRecord]:
     """Geographic position per spec appendix-senml (u=lat/lon)."""
+    for name, val in [("lat", lat), ("lon", lon), ("alt", alt), ("speed", speed)]:
+        if val is not None and (math.isnan(val) or math.isinf(val)):
+            raise ValueError(f"{name} {val} is NaN or Inf")
+    if not (-90.0 <= lat <= 90.0):
+        raise ValueError(f"lat {lat} out of range [-90, 90]")
+    if not (-180.0 <= lon <= 180.0):
+        raise ValueError(f"lon {lon} out of range [-180, 180]")
     records = [
         SenmlRecord(n="lat", u="lat", v=lat),
         SenmlRecord(n="lon", u="lon", v=lon),
@@ -63,6 +72,31 @@ def battery(voltage_v: float | None = None, percent: float | None = None) -> lis
         records.append(SenmlRecord(n="voltage", u="V", v=voltage_v))
     if percent is not None:
         records.append(SenmlRecord(n="battery", u="%", v=percent))
+    return records
+
+
+def metrics(
+    rssi: float | None = None,
+    nodecount: int | None = None,
+    packets_per_sec: float | None = None,
+    battery: float | None = None,
+    collision_rate: float | None = None,
+) -> list[SenmlRecord]:
+    """Telemetry and battery metrics.
+
+    Matches SenMLMetricsResource.update(). Battery uses unit "%" per IANA registry.
+    """
+    records = []
+    if rssi is not None:
+        records.append(SenmlRecord(n="rssi", u="dBm", v=rssi))
+    if nodecount is not None:
+        records.append(SenmlRecord(n="nodecount", v=nodecount))
+    if packets_per_sec is not None:
+        records.append(SenmlRecord(n="pps", u="1/s", v=packets_per_sec))
+    if battery is not None:
+        records.append(SenmlRecord(n="battery", u="%", v=battery))
+    if collision_rate is not None:
+        records.append(SenmlRecord(n="collision-rate", u="%", v=collision_rate))
     return records
 
 
