@@ -9,7 +9,7 @@ use lichen_core::ipv6::field;
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
-use lichen_node::{RplEvent, RplNode};
+use lichen_node::{RplEvent, RplNode, stack::add_rpl_source_route};
 use lichen_schc::codec::{compress, decompress, SchcError};
 use std::collections::HashMap;
 use tracing::{error, info, warn};
@@ -128,7 +128,38 @@ impl Gateway {
     }
 
     pub fn mesh_to_mesh(&self, ipv6: &[u8]) -> Option<Vec<u8>> {
-        Some(ipv6.to_vec())
+        if ipv6.len() < 40 || ipv6[0] >> 4 != 6 {
+            warn!(len = ipv6.len(), "mesh_to_mesh: not IPv6");
+            return None;
+        }
+        let mut dst = [0u8; 16];
+        dst.copy_from_slice(&ipv6[field::DST_OFFSET..field::DST_OFFSET + 16]);
+        let route = match self.rpl_node.router.lookup_route(&dst) {
+            Some(r) => r,
+            None => return Some(ipv6.to_vec()),
+        };
+        let mut routed = vec![0u8; ipv6.len() + 140];
+        let to_compress = if route.len() > 1 {
+            match add_rpl_source_route(ipv6, route, &mut routed) {
+                Ok(len) => &routed[..len],
+                Err(_) => return None,
+            }
+        } else {
+            ipv6
+        };
+        let mut out = vec![0u8; to_compress.len() + 3];
+        out[0] = L2_DISPATCH_SCHC;
+        match compress(to_compress, &mut out[1..]) {
+            Ok(n) => {
+                out.truncate(n + 1);
+                info!(compressed_len = n + 1, "mesh → mesh");
+                Some(out)
+            }
+            Err(e) => {
+                warn!("SCHC compress mesh_to_mesh: {e:?}");
+                None
+            }
+        }
     }
 }
 

@@ -538,7 +538,7 @@ impl<R: Radio> Stack<R> {
     }
 }
 
-pub(crate) fn add_rpl_source_route(
+pub fn add_rpl_source_route(
     ipv6: &[u8],
     route: &[[u8; 16]],
     out: &mut [u8],
