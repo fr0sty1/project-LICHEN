@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-ow3c.2.3",
+  "title": "Robustify NVM callbacks and registration for parameter validation and failure handling",
+  "description": "Add NULL checks, input validation in mock and real callbacks if applicable. Make oscore_nvm_register_callbacks thread-safe and idempotent. Ensure callbacks cannot cause SSN reuse or memory issues. Update registration in oscore.c:510+.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:30:32.561223947Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:30:32.561223947Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow3c.2.3",
+      "depends_on_id": "project-LICHEN-ow3c.2",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:30:32.70209033Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
