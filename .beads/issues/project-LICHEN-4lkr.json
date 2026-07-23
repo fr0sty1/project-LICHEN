@@ -2,15 +2,15 @@
   "id": "project-LICHEN-4lkr",
   "title": "[merge-conflict] worktree-worker24: messages.py",
   "notes": "Commit: a6af42a34",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:10:52.953227775Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:35:05.484297313Z",
+  "updated_at": "2026-07-23T03:35:08.283736622Z",
   "started_at": "2026-07-23T03:31:30.402915178Z",
-  "lease_expires_at": "2026-07-23T03:36:30.402915178Z",
-  "heartbeat_at": "2026-07-23T03:31:30.402915178Z"
+  "closed_at": "2026-07-23T03:35:08.283736622Z",
+  "close_reason": "Fixed rx_channel handling in to_bytes() of AnnounceMessage to ensure consistency with signed_data(), from_bytes(), and spec wire format (byte 1 = rx_channel). Updated docstring, verified with pytest (30/30 passed), ruff lint clean. Commit a6af42a34."
 }
