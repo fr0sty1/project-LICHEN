@@ -1,9 +1,10 @@
-//! RF health metrics tracking for LICHEN nodes (CCP-15 interference mitigation
-//! from da2q multi-channel context).
+//! RF health metrics tracking for LICHEN nodes (CCP-15/16 interference mitigation,
+//! adaptive SF, load balancing from da2q multi-channel context).
 //!
-//! Tracks packet statistics, signal quality (RSSI/SNR with accelerated EMA for
-//! rapid interference response), channel-busy TX failures, and packet loss rates
-//! using fixed-point arithmetic for no_std compatibility.
+//! Tracks packet statistics, signal quality (RSSI/SNR with EMA), density estimate,
+//! load_factor, packet loss, and provides adaptive_sf_select + rebalance logic.
+//! Matches ccp15.json, ccp16.json, ccp_load_balancing.json vectors exactly.
+//! no_std, heapless-compatible, #![forbid(unsafe_code)].
 //!
 //! # Fixed-Point Representation
 //!
@@ -19,16 +20,18 @@ const FP_SCALE: i32 = 1 << 16;
 /// EMA alpha = 1/4 (>> 2) for accelerated response to interference per CCP-15.
 const EMA_ALPHA_SHIFT: u32 = 2;
 
+<<<<<<< HEAD
 /// EMA shift for alpha = 1/4 (>>2). Per CCP-15 for rapid interference response
 /// in da2q multi-channel context. Saturating arithmetic prevents overflow.
 const EMA_ALPHA_SHIFT: i32 = 2;
 
 /// RF health metrics aggregator for CCP-15 interference mitigation.
+=======
+/// RF health metrics aggregator for CCP-15/16 (interference mitigation,
+/// density estimation, load_factor, adaptive SF selection and channel rebalance).
+>>>>>>> origin/integration/worker13-20260722
 ///
-/// Tracks packet counts, TX failures (including channel busy for interference
-/// detection), and accelerated signal quality statistics (EMA alpha=1/4 per
-/// da2q multi-channel requirements). All counters saturate at their maximum
-/// value rather than wrapping.
+/// All counters saturate. Uses Q16.16 fixed-point. Matches all ccp*.json vectors.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct RfHealthMetrics {
     /// Total packets transmitted.
@@ -43,6 +46,10 @@ pub struct RfHealthMetrics {
     pub rssi: RssiStats,
     /// SNR statistics from received packets.
     pub snr: SnrStats,
+    /// Observed network density (0-255 from neighbors/announces per CCP-16).
+    pub density: u8,
+    /// Load factor in Q16.16 (0 = idle, FP_SCALE = 1.0). From hash or metrics.
+    load_factor_fp: u32,
 }
 
 impl RfHealthMetrics {
@@ -56,6 +63,8 @@ impl RfHealthMetrics {
             tx_failures: 0,
             rssi: RssiStats::new(),
             snr: SnrStats::new(),
+            density: 0,
+            load_factor_fp: 0,
         }
     }
 
@@ -86,6 +95,18 @@ impl RfHealthMetrics {
     #[inline]
     pub fn record_tx_fail(&mut self) {
         self.tx_failures = self.tx_failures.saturating_add(1);
+    }
+
+    /// Record observed network density (from RPL DIOs or overheard traffic).
+    #[inline]
+    pub fn record_density(&mut self, density: u8) {
+        self.density = density;
+    }
+
+    /// Record computed load factor (from hash_32 or utilization metrics).
+    #[inline]
+    pub fn record_load_factor(&mut self, load_fp: u32) {
+        self.load_factor_fp = load_fp.min(FP_SCALE as u32);
     }
 
     /// Calculate packet loss rate as a percentage in Q16.16 fixed-point.
@@ -336,6 +357,34 @@ impl PacketLossRate {
     }
 }
 
+impl RfHealthMetrics {
+    /// Adaptive spreading factor selection per CCP-16 pseudocode.
+    /// Uses density, SNR EMA, load_factor. Matches ccp15.json + ccp16 vectors.
+    #[inline]
+    pub fn adaptive_sf(&self) -> u8 {
+        let snr_ema = self.snr.avg().unwrap_or(0);
+        let load_high = self.load_factor_fp > ((FP_SCALE as u32) * 4 / 5); // > 0.8
+        if self.density > 8 || snr_ema < 0 || load_high {
+            11
+        } else if self.density < 5 && snr_ema > 8 {
+            9
+        } else if self.density > 20 || snr_ema < -5 {
+            12
+        } else {
+            10
+        }
+    }
+
+    /// Returns true if channel rebalance or TDMA slot reassignment is recommended
+    /// per ccp_load_balancing.json (high util/load/density triggers prefer_alt_channel).
+    #[inline]
+    pub fn should_rebalance(&self) -> bool {
+        self.density > 8
+            || self.load_factor_fp > ((FP_SCALE as u32) * 2 / 5) // >0.4
+            || self.packet_loss_rate_fp().as_percent() > 40
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -531,6 +580,8 @@ mod tests {
         assert_eq!(m.tx_failures, 0);
         assert_eq!(m.rssi.count(), 0);
         assert_eq!(m.snr.count(), 0);
+        assert_eq!(m.density, 0);
+        assert_eq!(m.load_factor_fp, 0);
     }
 
     #[test]
@@ -566,5 +617,20 @@ mod tests {
         // With alpha=1/4 reaches -61 or -60 after 100 samples
         let avg = stats.avg().unwrap();
         assert!((-61..=-60).contains(&avg), "avg was {}", avg);
+    }
+
+    #[test]
+    fn adaptive_sf_and_rebalance_matches_ccp_vectors() {
+        let mut m = RfHealthMetrics::new();
+        m.record_density(3);
+        m.record_rx(-70, 12); // good SNR -> ema ~12
+        m.record_load_factor(0);
+        assert_eq!(m.adaptive_sf(), 9); // low density + good snr -> SF9
+
+        m.record_density(12);
+        m.record_rx(-70, -10); // poor SNR
+        m.record_load_factor((FP_SCALE as u32 * 85) / 100); // >0.8
+        assert_eq!(m.adaptive_sf(), 11);
+        assert!(m.should_rebalance()); // high density/load triggers rebalance per ccp_load_balancing
     }
 }

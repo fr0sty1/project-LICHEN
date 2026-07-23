@@ -6,7 +6,6 @@ config HEAP_MEM_POOL_ADD_SIZE_BOARD
 	default 65535 if WIFI && BT
 	default 51200 if WIFI
 	default 40960 if BT
-<<<<<<< HEAD
 	default 8192
 
 config LICHEN_HAS_DISPLAY

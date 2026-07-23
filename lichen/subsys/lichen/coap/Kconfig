@@ -212,6 +212,7 @@ config LICHEN_COAP_KEYS
 	depends on LICHEN_COAP_KEYS
 	default 16
 	range 4 16
+<<<<<<< HEAD
 	help
 	  Maximum number of peer keys to store (capped at 16 by CBOR
 	  encoder stack usage and BUILD_ASSERT in coap_keys.c; see
@@ -219,6 +220,12 @@ config LICHEN_COAP_KEYS
 	  ~57-80 bytes of RAM.
 
 	config LICHEN_COAP_KEYS_LOG_LEVEL
+=======
+ 	help
+ 	  Maximum number of peer keys to store (capped at 16 by CBOR
+ 	  encoder stack usage and BUILD_ASSERT in coap_keys.c; see
+ 	  encode_keys_list_cbor). Each entry requires ~80 bytes of RAM.
+>>>>>>> origin/integration/worker13-20260722
 
 	int "CoAP keys log level"
 	depends on LICHEN_COAP_KEYS

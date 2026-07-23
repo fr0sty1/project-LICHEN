@@ -792,16 +792,31 @@
           "items": {"type": "number"}
         },
         "hash_32_example": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
+<<<<<<< HEAD
         "eui64_hex": {"$ref": "#/definitions/hex"},
         "t": {"type": "integer"},
         "epoch": {"type": "integer"},
         "expected_hash": {"type": "integer"},
         "expected_channel": {"type": "integer"},
         "n_channels": {"type": "integer"},
+=======
+>>>>>>> origin/integration/worker13-20260722
         "security_review": {
           "type": "string",
           "description": "Pass 2 security: no injection or crypto issues in CCP-16 vectors (project-LICHEN-ray3)"
         },
+<<<<<<< HEAD
+=======
+        "announce": {
+          "type": "object",
+          "properties": {
+            "channel": {"type": "integer"},
+            "flags": {"type": "integer"},
+            "seq": {"type": "integer"}
+          }
+        },
+        "hash_32": {"type": "integer"},
+>>>>>>> origin/integration/worker13-20260722
         "input": {
           "type": "object",
           "properties": {

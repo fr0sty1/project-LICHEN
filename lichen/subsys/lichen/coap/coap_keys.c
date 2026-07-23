@@ -269,6 +269,36 @@ static int base64_decode(const char *in, size_t in_len, uint8_t *out, size_t out
 	return (int)out_idx;
 }
 
+<<<<<<< HEAD
+=======
+int lichen_key_pubkey_to_iid(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
+			     uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN])
+{
+	if (pubkey == NULL || iid == NULL) {
+		return -EINVAL;
+	}
+
+#ifdef CONFIG_TINYCRYPT_SHA256
+	struct tc_sha256_state_struct sha_state;
+	uint8_t hash[32];
+
+	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS ||
+	    tc_sha256_update(&sha_state, pubkey, LICHEN_KEY_PUBKEY_LEN) != TC_CRYPTO_SUCCESS ||
+	    tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
+		return -EIO;
+	}
+
+	memcpy(iid, hash, LICHEN_KEY_IID_LEN);
+	iid[0] &= ~0x02U;
+	memset(hash, 0, sizeof(hash));  /* clear sensitive intermediate from stack */
+	return 0;
+#else
+	/* Kconfig forces TINYCRYPT_SHA256; this path is unreachable */
+	return -ENOSYS;
+#endif
+}
+
+>>>>>>> origin/integration/worker13-20260722
 int lichen_key_pubkey_fingerprint(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
 				  char *_Nonnull buf, size_t buf_len)
 {
@@ -280,19 +310,16 @@ int lichen_key_pubkey_fingerprint(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKE
 	struct tc_sha256_state_struct sha_state;
 	uint8_t hash[32];
 
-	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS) {
-		return -EIO;
-	}
-	if (tc_sha256_update(&sha_state, pubkey, LICHEN_KEY_PUBKEY_LEN) != TC_CRYPTO_SUCCESS) {
-		return -EIO;
-	}
-	if (tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
+	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS ||
+	    tc_sha256_update(&sha_state, pubkey, LICHEN_KEY_PUBKEY_LEN) != TC_CRYPTO_SUCCESS ||
+	    tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
 		return -EIO;
 	}
 
-	/* Format: "SHA256:<base64>" */
 	memcpy(buf, "SHA256:", 7);
 	size_t b64_len = base64_encode(hash, sizeof(hash), buf + 7, buf_len - 7);
+
+	memset(hash, 0, sizeof(hash));
 
 	if (b64_len == 0) {
 		return -ENOMEM;
@@ -300,7 +327,6 @@ int lichen_key_pubkey_fingerprint(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKE
 
 	return 7 + (int)b64_len;
 #else
-	/* Fallback: truncated hex of pubkey (not a real fingerprint) */
 	memcpy(buf, "SHA256:", 7);
 	size_t pos = 7;
 
@@ -316,6 +342,7 @@ int lichen_key_pubkey_fingerprint(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKE
 #endif
 }
 
+<<<<<<< HEAD
 int lichen_key_pubkey_to_iid(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
 			     uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN])
 {
@@ -351,6 +378,8 @@ int lichen_key_pubkey_to_iid(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN
 #endif
 }
 
+=======
+>>>>>>> origin/integration/worker13-20260722
 /* --------------------------------------------------------------------------
  * Key store implementation
  * -------------------------------------------------------------------------- */
