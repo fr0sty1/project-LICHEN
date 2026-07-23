@@ -812,7 +812,8 @@ static int decode_key_put_cbor(const uint8_t *payload, size_t payload_len,
 			return -EINVAL;
 		}
 
-		if (key.len == 6 && memcmp(key.value, "pubkey", 6) == 0) {
+		if (key.len == sizeof(KEY_PUBKEY) - 1 &&
+		    memcmp(key.value, KEY_PUBKEY, key.len) == 0) {
 			struct zcbor_string val;
 			if (!zcbor_tstr_decode(state, &val) || val.len == 0) {
 				(void)zcbor_list_map_end_force_decode(state);
@@ -825,7 +826,8 @@ static int decode_key_put_cbor(const uint8_t *payload, size_t payload_len,
 				return -EINVAL;
 			}
 			has_pubkey = true;
-		} else if (key.len == 5 && memcmp(key.value, "trust", 5) == 0) {
+		} else if (key.len == sizeof(KEY_TRUST) - 1 &&
+			   memcmp(key.value, KEY_TRUST, key.len) == 0) {
 			struct zcbor_string val;
 			if (!zcbor_tstr_decode(state, &val) || val.len == 0) {
 				(void)zcbor_list_map_end_force_decode(state);
