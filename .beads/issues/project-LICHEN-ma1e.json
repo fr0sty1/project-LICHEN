@@ -2,15 +2,15 @@
   "id": "project-LICHEN-ma1e",
   "title": "[merge-conflict] worktree-worker20: trickle.c",
   "notes": "Commit: ef5ff3543 (in worker20 worktree)",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:20:44.425987027Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:15:30.897332405Z",
+  "updated_at": "2026-07-23T02:15:33.293064384Z",
   "started_at": "2026-07-23T02:14:07.498486344Z",
-  "lease_expires_at": "2026-07-23T02:19:07.498486344Z",
-  "heartbeat_at": "2026-07-23T02:14:07.498486344Z"
+  "closed_at": "2026-07-23T02:15:33.293064384Z",
+  "close_reason": "Updated trickle.c and rpl_trickle.h in worker20 worktree to latest bias-free half-interval calc, NULL guards, reset guard (transmit_time==0 check), and docs matching Rust/Python/main (project-LICHEN-67ca, project-LICHEN-verh). Verified via git commit ef5ff3543."
 }
