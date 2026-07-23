@@ -420,7 +420,12 @@ class LciClient:
                 content_format=content_format,
             )
         except Exception as exc:
-            return CoapResult(code="0.00", payload={"error": str(exc)})
+            # Sentinel code="0.00" (see CoapResult.is_transport_error and model.py:65).
+            # Preserves exception type (addresses lost type info).
+            return CoapResult(
+                code="0.00",
+                payload={"error": str(exc), "type": type(exc).__name__},
+            )
 
     async def _get_payload(self, path: str) -> Any:
         result = await self._request("GET", path)
