@@ -2,15 +2,15 @@
   "id": "project-LICHEN-hayg",
   "title": "[merge-conflict] worktree-worker18: 02a-coordinated-capacity.md",
   "notes": "Commit: f62dd5ed5",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:40:10.494652055Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:03:40.085111399Z",
+  "updated_at": "2026-07-23T02:03:42.440759426Z",
   "started_at": "2026-07-23T02:01:52.85702229Z",
-  "lease_expires_at": "2026-07-23T02:06:52.85702229Z",
-  "heartbeat_at": "2026-07-23T02:01:52.85702229Z"
+  "closed_at": "2026-07-23T02:03:42.440759426Z",
+  "close_reason": "Closed"
 }
