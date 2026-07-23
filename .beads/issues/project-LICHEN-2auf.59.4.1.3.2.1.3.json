@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.59.4.1.3.2.1.3",
   "title": "Capture full logs, exit codes, artifacts SHA256 and document EC2 validation workflow",
   "description": "For all validation runs on clean worktree, record complete command output, test results, SHA256 sums of binaries and logs. Update AGENTS.md or add to docs/ if needed with exact reproducible steps for MeshCore BLE.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
