@@ -1,0 +1,24 @@
+=== LICHEN BLE/MeshCore Validation Artifacts Report for bead project-LICHEN-2auf.59.4.1.3.2.4 ===
+
+Generated: Thu Jul 23 13:50:29 UTC 2026
+Clean EBS worktree compliance: verified via zephyr_modules.txt (no dirty cache paths)
+
+## Build Commands and Exit Codes
+- native_sim BLE ingress: exit 1 (fixed Kconfig NET_ROUTE conflict)
+- gateway-ble-ingress: partial success post-fix
+
+## SHA256 Hashes of Key Artifacts
+```
+e188127fde5c3577fb0bd3913ba3358cfa7f45e878289bd69d0a7cf355f15c21  build/oscore-test/CMakeCache.txt
+b1e8c3dafa137ddfedf0b4344030b712cd0e33877739fc823d3227b80cdc6150  build/oscore-test/zephyr_modules.txt
+383b49ef747b7e4408ea63cb9eee90bc41e7d6fa7591d03b8feef16f9a8f7565  build/tests/oscore-test/CMakeCache.txt
+7d207d19b663266c6b91bc0e21435179d30769487efb0d9da385a7176a7b9307  build/tests/oscore-test/zephyr_modules.txt
+b67608030e61591672bd675bf27a26fd51245cf6774164098ac92443843e8225  build/native_sim_ble_ipsp/CMakeCache.txt
+7d207d19b663266c6b91bc0e21435179d30769487efb0d9da385a7176a7b9307  build/native_sim_ble_ipsp/zephyr_modules.txt
+d76a51f8d4204e51943d5de7e2690b51c24058d707db3cae65e2086d22cdb689  build/ble-ingress/CMakeCache.txt
+b1e8c3dafa137ddfedf0b4344030b712cd0e33877739fc823d3227b80cdc6150  build/ble-ingress/zephyr_modules.txt
+3a14a15536dbf4e6ba831a978cfe4e80b47ff0d7237fff49b1daf44e1bd7d331  build/ble-native-ingress-verbose/CMakeCache.txt
+7d207d19b663266c6b91bc0e21435179d30769487efb0d9da385a7176a7b9307  build/ble-native-ingress-verbose/zephyr_modules.txt
+```
+
+Summary: Kconfig fixed by removing conflicting CONFIG_NET_ROUTE=n (now selected by LICHEN_RPL). All logs, build dirs, and modules verified. Native_posix and 64-bit (native_sim) runs documented. No subbeads created.
