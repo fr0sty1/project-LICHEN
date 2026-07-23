@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-aaz8",
+  "title": "[spec-compliance] dio_int_min=3 instead of 12 in RPL DODAG config",
+  "description": "lichen/subsys/lichen/rpl/messages.c:257 sets cfg-\u003edio_int_min = 3 (encoding Imin=8ms). But spec/05-routing.md:129, appendix-rpl.md, constants.toml, Kconfig default and trickle.c use Imin=4096ms=2^12. Per RFC 6550 §6.7.6 dio_int_min is the exponent. On-wire DIOs will mismatch runtime Trickle params, violating MUST/SHOULD for consistent config. See explore task ses_073931f7fffe3CmC6eVVkumFWa for full analysis. Fixes needed in lichen_rpl_dodag_config_init() and tests.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T00:44:35.913340867Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T00:44:35.913340867Z"
+}
