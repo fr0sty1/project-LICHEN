@@ -374,7 +374,7 @@ int lichen_config_decode_radio_cbor(const uint8_t *buf, size_t len,
 		if (key.len == sizeof(KEY_FREQ_MHZ) - 1 &&
 		    memcmp(key.value, KEY_FREQ_MHZ, key.len) == 0) {
 			double val;
-			if (!zcbor_float64_decode(state, &val) || val <= 0 || val > 4294967.295) {
+			if (!zcbor_float64_decode(state, &val) || val <= 0 || val > 4294.967295) {
 				(void)zcbor_list_map_end_force_decode(state);
 				return -EINVAL;
 			}
