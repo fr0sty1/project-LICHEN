@@ -77,9 +77,9 @@ static int sensors_location_post(struct coap_resource *resource,
 	uint16_t payload_len = 0;
 	const uint8_t *payload = coap_packet_get_payload(request, &payload_len);
 	if (payload == NULL || payload_len == 0) {
-		return COAP_RESPONSE_CODE_BAD_REQUEST;
+		return lichen_coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
 	}
-	/* Demo crowd map: accept SenML location POST to /sensors/location, submit to HAL as NETWORK source for live map aggregation. Full decode in follow-up. */
 	LOG_INF("crowd map /sensors/location POST (%u bytes)", payload_len);
 	return lichen_coap_respond(resource, request, addr, addr_len,
 			    COAP_RESPONSE_CODE_CREATED, 0, NULL, 0);
