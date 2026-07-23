@@ -141,9 +141,9 @@ pub trait Radio {
         channels: &[ChannelConfig],
     ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
 
-    /// Returns current RX channel for multi-channel gateways (SX1302).
+    /// Returns rx_channel (preferred RX channel for CCP-9 rendezvous).
     /// Defaults to 0 to mimic single-channel SX126x behavior.
-    fn current_channel(&self) -> u8 {
+    fn rx_channel(&self) -> u8 {
         0
     }
 }
