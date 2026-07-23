@@ -320,7 +320,7 @@ impl DodagState {
         // higher rank to prevent routing loops. Only accept neighbors with
         // strictly lower rank (unless we're unjoined with infinite rank).
         if self.rank != INFINITE_RANK && dio.rank >= self.rank {
-            self.parents.remove(&neighbor_addr);
+            let removed = self.parents.remove(&neighbor_addr).is_some();
             self.select_parent();
             return if removed {
                 DioOutcome::Removed
@@ -362,6 +362,18 @@ impl DodagState {
             return true;
         }
         cost <= self.lowest_rank.saturating_add(self.max_rank_increase)
+    }
+
+    fn prune_inadmissible_parents(&mut self) {
+        let to_remove: Vec<[u8; 16]> = self
+            .parents
+            .iter()
+            .filter(|(_, candidate)| !self.admissible(candidate))
+            .map(|(addr, _)| *addr)
+            .collect();
+        for addr in to_remove {
+            self.parents.remove(&addr);
+        }
     }
 
     /// MRHOF parent selection with hysteresis.
