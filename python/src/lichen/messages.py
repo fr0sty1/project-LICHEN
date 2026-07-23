@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import IntEnum
 from ipaddress import IPv6Address
+from typing import Type, cast
 
 from lichen.ipv6.icmpv6 import Icmpv6Message
 
@@ -180,7 +181,7 @@ class RERR:
 LoadngMessage = RREQ | RREP | RERR
 
 _CODE_BY_TYPE = {RREQ: LoadngCode.RREQ, RREP: LoadngCode.RREP, RERR: LoadngCode.RERR}
-_CLASS_BY_CODE: dict[LoadngCode, type[LoadngMessage]] = {
+_CLASS_BY_CODE: dict[LoadngCode, Type[LoadngMessage]] = {
     LoadngCode.RREQ: RREQ,
     LoadngCode.RREP: RREP,
     LoadngCode.RERR: RERR,
@@ -204,4 +205,4 @@ def from_icmpv6(msg: Icmpv6Message) -> LoadngMessage:
         cls = _CLASS_BY_CODE[LoadngCode(msg.code)]
     except (ValueError, KeyError) as exc:
         raise LoadngError(f"unsupported LOADng code: {msg.code}") from exc
-    return cls.from_bytes(msg.body)
+    return cast(LoadngMessage, cls.from_bytes(msg.body))

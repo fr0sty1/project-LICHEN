@@ -35,6 +35,9 @@ pub enum CoapError {
     InvalidOptionLength,
     /// Option runs past end of message.
     TruncatedOption,
+    /// Payload marker (0xFF) present but followed by zero-length payload
+    /// (RFC 7252 §4.1: MUST treat as malformed).
+    InvalidPayloadMarker,
     /// Output buffer too small.
     BufferTooSmall(BufferTooSmall),
     /// Invalid Block option value.
@@ -58,6 +61,9 @@ impl core::fmt::Display for CoapError {
             Self::InvalidOptionDelta => write!(f, "invalid option delta 15"),
             Self::InvalidOptionLength => write!(f, "invalid option length 15"),
             Self::TruncatedOption => write!(f, "option runs past end of message"),
+            Self::InvalidPayloadMarker => {
+                write!(f, "payload marker followed by zero-length payload")
+            }
             Self::BufferTooSmall(e) => write!(f, "CoAP {}", e),
             Self::InvalidBlockOption => write!(f, "invalid Block option value"),
             Self::UintOptionTooLong => write!(f, "uint option value too long (>4 bytes)"),
@@ -127,11 +133,11 @@ impl<'a> CoapPacket<'a> {
 
         let (options_end, payload_start) = match find_payload_marker(&data[options_start..])? {
             Some(off) => {
-                let ps = options_start + off + 1;
-                if ps == data.len() {
-                    return Err(TooShort::new(1, 0).into());
+                let payload_start = options_start + off + 1;
+                if payload_start == data.len() {
+                    return Err(CoapError::InvalidPayloadMarker);
                 }
-                (options_start + off, ps)
+                (options_start + off, payload_start)
             }
             None => (data.len(), data.len()),
         };
@@ -765,6 +771,17 @@ mod tests {
             CoapPacket::from_bytes(&[0x40, 0x01]),
             Err(CoapError::TooShort(_))
         ));
+    }
+
+    #[test]
+    fn invalid_payload_marker() {
+        // Payload marker (0xFF) with no bytes after it per RFC 7252 §4.1
+        // MUST be rejected as malformed.
+        let data = [0x40, 0x01, 0x00, 0x01, 0xFF];
+        assert_eq!(
+            CoapPacket::from_bytes(&data),
+            Err(CoapError::InvalidPayloadMarker)
+        );
     }
 
     #[test]
