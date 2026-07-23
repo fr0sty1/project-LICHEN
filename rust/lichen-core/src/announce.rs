@@ -201,17 +201,10 @@ mod tests {
     #[test]
     fn invalid_channel() {
         let mut wire = make_announce();
-<<<<<<< HEAD
         wire[1] = 16;
         assert_eq!(
             Announce::from_bytes(&wire),
             Err(AnnounceError::InvalidChannel(16))
-=======
-        wire[93] = 8;
-        assert_eq!(
-            Announce::from_bytes(&wire),
-            Err(AnnounceError::InvalidChannel(8))
->>>>>>> origin/integration/worker13-20260722
         );
 
         let builder = AnnounceBuilder {
@@ -228,15 +221,6 @@ mod tests {
         assert_eq!(
             builder.write_to(&mut out),
             Err(AnnounceError::InvalidChannel(9))
-        );
-    }
-    #[test]
-    fn invalid_channel() {
-        let mut wire = make_announce();
-        wire[1] = 0x10; // channel = 16 invalid
-        assert_eq!(
-            Announce::from_bytes(&wire),
-            Err(AnnounceError::InvalidChannel(16))
         );
     }
 
