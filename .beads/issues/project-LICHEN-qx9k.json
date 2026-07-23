@@ -2,15 +2,15 @@
   "id": "project-LICHEN-qx9k",
   "title": "[merge-conflict] worktree-worker24: xiao_s3_wio_sx1262.conf",
   "notes": "Commit: 11da3f7ae",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:05:11.61296693Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:13:58.280186689Z",
+  "updated_at": "2026-07-23T03:14:03.05680575Z",
   "started_at": "2026-07-23T03:12:56.43306049Z",
-  "lease_expires_at": "2026-07-23T03:17:56.43306049Z",
-  "heartbeat_at": "2026-07-23T03:12:56.43306049Z"
+  "closed_at": "2026-07-23T03:14:03.05680575Z",
+  "close_reason": "Standardized RETIRED/BLOCKED comment in xiao_s3_wio_sx1262.conf (and overlay for consistency) in worktree-worker24 to include project-LICHEN-aciz per m5m1.8 audit and matrix.md. Synced to canonical version from main, resolved parallel-edit divergence. No merge markers or dead code left. Commit 11da3f7ae pushed to worktree-worker24 branch. Follows no-dead-code and all-prior-beads patterns."
 }
