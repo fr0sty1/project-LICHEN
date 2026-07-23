@@ -13,15 +13,14 @@
  * LED: GPIO21 yellow active-low
  */
 
-
 #include <zephyr/dt-bindings/pinctrl/esp32s3-pinctrl.h>
-
 
 / {
 	chosen {
 		zephyr,console = &usb_serial;
 		zephyr,shell-uart = &usb_serial;
 	};
+
 
 	aliases {
 		led0 = &yellow_led;
