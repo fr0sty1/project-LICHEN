@@ -99,11 +99,17 @@ def _skip_field(data: bytes, offset: int, wire_type: int) -> int:
         _, new_offset = _decode_varint(data, offset)
         return new_offset
     elif wire_type == WIRE_FIXED64:
+        if offset + 8 > len(data):
+            raise ProtoError("truncated fixed64")
         return offset + 8
     elif wire_type == WIRE_LEN_DELIM:
         length, new_offset = _decode_varint(data, offset)
+        if new_offset + length > len(data):
+            raise ProtoError("truncated length-delimited")
         return new_offset + length
     elif wire_type == WIRE_FIXED32:
+        if offset + 4 > len(data):
+            raise ProtoError("truncated fixed32")
         return offset + 4
     else:
         raise ProtoError(f"unknown wire type {wire_type}")
