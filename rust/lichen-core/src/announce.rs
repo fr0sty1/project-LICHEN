@@ -1,3 +1,4 @@
+use crate::constants::L2_DISPATCH_ROUTING;
 use crate::error::{BufferTooSmall, TooShort};
 
 pub const ANNOUNCE_TYPE: u8 = 0x01;
@@ -60,6 +61,14 @@ pub struct Announce<'a> {
 
 impl<'a> Announce<'a> {
     pub fn from_bytes(data: &'a [u8]) -> Result<Self, AnnounceError> {
+        let data = if !data.is_empty() && data[0] == L2_DISPATCH_ROUTING {
+            if data.len() < FIXED_LENGTH + 1 {
+                return Err(TooShort::new(FIXED_LENGTH + 1, data.len()).into());
+            }
+            &data[1..]
+        } else {
+            data
+        };
         if data.len() < FIXED_LENGTH {
             return Err(TooShort::new(FIXED_LENGTH, data.len()).into());
         }
