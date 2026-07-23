@@ -2,6 +2,7 @@
   "id": "project-LICHEN-y7pc",
   "title": "Missing __all__ export for DecodeError exception class",
   "description": "File: python/src/lichen/gateway/__init__.py\nLines: 5-14, 16-25\n\nThe __init__.py exports CompactCotType, DestType, Team, and several functions, but omits DecodeError:\n```python\nfrom .compact_cot import (\n    CompactCotType,\n    DestType,\n    Team,\n    compress_cot_xml,\n    decode_compact_cot,\n    encode_compact_cot,\n    expand_cot_to_xml,\n    parse_cot_xml,\n)\n```\n\nImpact:\n1. Callers cannot catch DecodeError without importing from the submodule:\n```python\n# This doesn't work:\nfrom lichen.gateway import decode_compact_cot, DecodeError\n\n# Must use:\nfrom lichen.gateway.compact_cot import DecodeError\n```\n\n2. Breaks the principle of least surprise for the public API\n3. Users may catch generic Exception instead, masking bugs\n\nFix: Add DecodeError to the imports and __all__:\n```python\nfrom .compact_cot import (\n    ...\n    DecodeError,\n)\n\n__all__ = [\n    ...\n    'DecodeError',\n]\n```",
+  "notes": "Commit: 0a954dbfb",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:18:11.852162Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T03:45:24.22558933Z",
+  "updated_at": "2026-07-23T03:46:35.851193698Z",
   "started_at": "2026-07-23T03:45:24.22558933Z",
   "lease_expires_at": "2026-07-23T03:50:24.22558933Z",
   "heartbeat_at": "2026-07-23T03:45:24.22558933Z"
