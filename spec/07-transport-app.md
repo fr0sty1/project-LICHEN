@@ -53,7 +53,7 @@ forwarding traffic to external networks.
 | Mesh Port | External Translation |
 |-----------|---------------------|
 | 5681 (Compact CoT) | CoT XML over TCP 8087 |
-| 5682 (SenML) | CoAP with Content-Format 110 |
+| 5682 (SenML) | CoAP with Content-Format 112 (application/senml+cbor) |
 | 5685 (Cayenne) | LoRaWAN application server |
 | 5686 (APRS-IS) | APRS-IS TCP or AX.25 RF |
 | 5687 (NMEA) | Serial NMEA or CoAP/SenML |
