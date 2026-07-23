@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-f4xg.1.2",
+  "title": "[coap] Replace magic numbers and duplicate const in client.rs",
+  "description": "Remove local CONTENT_FORMAT_CBOR=60, use lichen_coap::option::content_format::CBOR and MessageCode::CONTENT.0 instead of 0x45 in tests. Replace 0x60 header with named constant. Reference project-LICHEN-f4xg.1",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:24:40.380832901Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:24:40.380832901Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-f4xg.1.2",
+      "depends_on_id": "project-LICHEN-f4xg.1",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:24:40.518621925Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
