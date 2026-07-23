@@ -721,6 +721,81 @@ mod tests {
         assert_eq!(dao.dodag_id[0], 0xfd);
     }
 
+    #[test]
+    fn dao_origin_signature_codec_and_envelope_are_exact() {
+        let signature = [0x5a; 48];
+        let mut option = [0u8; DAO_ORIGIN_SIGNATURE_LEN];
+        assert_eq!(
+            DaoOriginSignature::write_to(0x0102_0304_0506_0708, &signature, &mut option).unwrap(),
+            58
+        );
+        assert_eq!(&option[..10], &[0x12, 56, 1, 2, 3, 4, 5, 6, 7, 8]);
+        let mut wire = [0u8; 62];
+        wire[..4].copy_from_slice(&[0, 0, 0, 7]);
+        wire[4..].copy_from_slice(&option);
+        let envelope = SignedDaoEnvelope::from_bytes(&wire).unwrap();
+        assert_eq!(envelope.unsigned_bytes, &[0, 0, 0, 7]);
+        assert_eq!(envelope.origin.origin_sequence, 0x0102_0304_0506_0708);
+        assert_eq!(envelope.origin.signature, &signature);
+    }
+
+    #[test]
+    fn dao_origin_signature_must_be_unique_terminal_and_complete() {
+        let mut valid = [0u8; 62];
+        valid[..4].copy_from_slice(&[0, 0, 0, 1]);
+        DaoOriginSignature::write_to(1, &[7; 48], &mut valid[4..]).unwrap();
+        assert!(SignedDaoEnvelope::from_bytes(&valid[..4]).is_err());
+        assert!(SignedDaoEnvelope::from_bytes(&valid[..61]).is_err());
+
+        let mut trailing = [0u8; 63];
+        trailing[..62].copy_from_slice(&valid);
+        assert!(SignedDaoEnvelope::from_bytes(&trailing).is_err());
+
+        let mut duplicate = [0u8; 120];
+        duplicate[..62].copy_from_slice(&valid);
+        duplicate[62..].copy_from_slice(&valid[4..]);
+        assert!(SignedDaoEnvelope::from_bytes(&duplicate).is_err());
+
+        let mut zero = valid;
+        zero[6..14].fill(0);
+        assert!(SignedDaoEnvelope::from_bytes(&zero).is_err());
+    }
+
+    #[test]
+    fn signed_dao_checks_base_and_frames_supported_option_kinds() {
+        let target = RplTarget {
+            prefix_len: 128,
+            prefix: [0x44; 16],
+        };
+        let mut wire = [0u8; 82];
+        wire[..4].copy_from_slice(&[0, 0, 0, 1]);
+        target.write_to(&mut wire[4..24]).unwrap();
+        DaoOriginSignature::write_to(1, &[7; 48], &mut wire[24..]).unwrap();
+        assert!(SignedDaoEnvelope::from_bytes(&wire).is_ok());
+
+        let mut flags = wire;
+        flags[1] = 1;
+        assert!(matches!(
+            SignedDaoEnvelope::from_bytes(&flags),
+            Err(DaoEnvelopeError::Rpl(RplError::InvalidOption))
+        ));
+        let mut reserved = wire;
+        reserved[2] = 1;
+        assert!(matches!(
+            SignedDaoEnvelope::from_bytes(&reserved),
+            Err(DaoEnvelopeError::Rpl(RplError::InvalidOption))
+        ));
+        let mut prefix = wire;
+        prefix[7] = 64;
+        assert!(SignedDaoEnvelope::from_bytes(&prefix).is_ok());
+
+        let mut descriptor = [0u8; 68];
+        descriptor[..4].copy_from_slice(&[0, 0, 0, 1]);
+        descriptor[4..10].copy_from_slice(&[OPT_RPL_TARGET_DESCRIPTOR, 4, 0, 0, 0, 1]);
+        DaoOriginSignature::write_to(1, &[7; 48], &mut descriptor[10..]).unwrap();
+        assert!(SignedDaoEnvelope::from_bytes(&descriptor).is_ok());
+    }
+
     // ── RPL Target option ─────────────────────────────────────────────────────
 
     #[test]

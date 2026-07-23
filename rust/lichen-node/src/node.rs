@@ -3,7 +3,7 @@
 use lichen_core::constants::L2_DISPATCH_SCHC;
 #[cfg(feature = "std")]
 use lichen_core::constants::RPL_ICMPV6_TYPE;
-#[cfg(all(feature = "std", test))]
+#[cfg(feature = "std")]
 use lichen_core::constants::RPL_INSTANCE_ID;
 #[cfg(feature = "std")]
 use lichen_core::constants::RPL_INSTANCE_ID;

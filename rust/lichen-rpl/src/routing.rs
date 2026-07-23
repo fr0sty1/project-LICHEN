@@ -18,6 +18,18 @@ use crate::message::{
     Dao, DaoEnvelopeError, OptionIter, RplError, RplTarget, SignedDaoEnvelope, TransitInfo,
     OPT_RPL_TARGET, OPT_RPL_TARGET_DESCRIPTOR, OPT_TRANSIT_INFO,
 };
+#[cfg(feature = "std")]
+use lichen_hal::{
+    storage::{
+        open_redundant, provision_redundant, update_redundant, RedundantOpenError,
+        RedundantProvisionError, RedundantUpdateError, RedundantValue,
+    },
+    NonVolatile,
+};
+#[cfg(feature = "std")]
+use lichen_link::{identity::iid_from_pubkey, keys::PublicKey, schnorr};
+#[cfg(feature = "std")]
+use sha2::{Digest, Sha256, Sha512};
 
 #[cfg(feature = "std")]
 const LOLLIPOP_CIRCULAR_BIT: u8 = 128;
