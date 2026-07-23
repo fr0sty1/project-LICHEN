@@ -1,0 +1,200 @@
+-- west build: making build dir /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-ingress-verbose pristine
+cmake version 3.30.0 is OK; minimum version is 3.13.1
+Running CMake: /mnt/lichen-zephyr/venv/bin/cmake -DBINARY_DIR=/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-ingress-verbose -DSOURCE_DIR=/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway -P /mnt/lichen-zephyr/work/zephyr/cmake/pristine.cmake
+-- west build: generating a build system
+cmake version 3.30.0 is OK; minimum version is 3.13.1
+Running CMake: /mnt/lichen-zephyr/venv/bin/cmake -DWEST_PYTHON=/mnt/lichen-zephyr/venv/bin/python3 -B/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-ingress-verbose -GNinja -DBOARD=native_sim -DOVERLAY_CONFIG=boards/native_posix_ble_ingress.overlay -DEXTRA_CONF_FILE=boards/native_posix_ble_ingress.conf -DZEPHYR_EXTRA_MODULES=/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen -DLICHEN_RELEASE_EPOCH_UNIX=1784787569 -S/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway
+Loading Zephyr default modules (Zephyr base).
+-- Application: /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway
+-- CMake version: 3.30.0
+-- Found Python3: /mnt/lichen-zephyr/venv/bin/python3 (found suitable version "3.9.25", minimum required is "3.8") found components: Interpreter
+-- Cache files will be written to: /home/ec2-user/.cache/zephyr
+-- Zephyr version: 3.7.0 (/mnt/lichen-zephyr/work/zephyr)
+-- Found west (found suitable version "1.5.0", minimum required is "0.14.0")
+-- Board: native_sim, qualifiers: native
+-- Found host-tools: zephyr 0.16.8 (/mnt/lichen-zephyr/zephyr-sdk-0.16.8)
+-- Found toolchain: host (gcc/ld)
+-- Found Dtc: /mnt/lichen-zephyr/zephyr-sdk-0.16.8/sysroots/aarch64-pokysdk-linux/usr/bin/dtc (found suitable version "1.6.0", minimum required is "1.4.6")
+-- Found BOARD.dts: /mnt/lichen-zephyr/work/zephyr/boards/native/native_sim/native_sim.dts
+-- Found devicetree overlay: /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_sim.overlay
+-- Generated zephyr.dts: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-ingress-verbose/zephyr/zephyr.dts
+-- Generated devicetree_generated.h: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-ingress-verbose/zephyr/include/generated/zephyr/devicetree_generated.h
+-- Including generated dts.cmake file: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-ingress-verbose/zephyr/dts.cmake
+Parsing /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/Kconfig
+/mnt/lichen-zephyr/work/zephyr/scripts/kconfig/kconfig.py: Dependency loop
+===============
+
+CRC (defined at lib/crc/Kconfig:4), with definition...
+
+config CRC
+	bool "Cyclic redundancy check (CRC) Support"
+	help
+	  Enable use of CRC.
+
+(select-related dependencies: (LICHEN_LINK && LICHEN && LICHEN) || (CANOPENNODE && CAN && !CAN_FD_MODE && 0) || (ADC_LMP90XXX && (DT_HAS_TI_LMP90077_ENABLED || DT_HAS_TI_LMP90078_ENABLED || DT_HAS_TI_LMP90079_ENABLED || DT_HAS_TI_LMP90080_ENABLED || DT_HAS_TI_LMP90097_ENABLED || DT_HAS_TI_LMP90098_ENABLED || DT_HAS_TI_LMP90099_ENABLED || DT_HAS_TI_LMP90100_ENABLED) && ADC) || (BT_H4_NXP_CTLR && BT_H4 && DT_HAS_NXP_BT_HCI_UART_ENABLED && BT_HCI && BT_DRIVERS) || (CAN_MCP251XFD && DT_HAS_MICROCHIP_MCP251XFD_ENABLED && CAN) || (IEEE802154_CC13XX_CC26XX && DT_HAS_TI_CC13XX_CC26XX_IEEE802154_ENABLED && IEEE802154) || (NET_PPP && NET_L2_PPP && NET_NATIVE && NET_DRIVERS) || (SPI_SDHC && DT_HAS_ZEPHYR_SDHC_SPI_SLOT_ENABLED && SDHC) || (DHT20_CRC && DHT20 && SENSOR) || (SGP40 && DT_HAS_SENSIRION_SGP40_ENABLED && SENSOR) || (SHT3XD && DT_HAS_SENSIRION_SHT3XD_ENABLED && SENSOR) || (SHT4X && DT_HAS_SENSIRION_SHT4X_ENABLED && SENSOR) || (SHTCX && DT_HAS_SENSIRION_SHTCX_ENABLED && SENSOR) || (SI7055 && DT_HAS_SILABS_SI7055_ENABLED && SENSOR) || (TMAG5170_CRC && TMAG5170 && SENSOR) || W1 || (FCB && FLASH_MAP) || (NVS && FLASH) || (MCUMGR_GRP_FS_CHECKSUM_IEEE_CRC32 && MCUMGR_GRP_FS_CHECKSUM_HASH && MCUMGR_GRP_FS && MCUMGR) || OSDP || MODBUS || (MODEM_CMUX && MODEM_MODULES) || (MODEM_PPP && NET_L2_PPP && MODEM_MODULES) || (DNS_RESOLVER && NET_NATIVE && NETWORKING) || (LWM2M_SHELL && LWM2M && NETWORKING))
+
+(imply-related dependencies: (LICHEN_LINK && LICHEN && LICHEN) || (CANOPENNODE && CAN && !CAN_FD_MODE && 0) || (ADC_LMP90XXX && (DT_HAS_TI_LMP90077_ENABLED || DT_HAS_TI_LMP90078_ENABLED || DT_HAS_TI_LMP90079_ENABLED || DT_HAS_TI_LMP90080_ENABLED || DT_HAS_TI_LMP90097_ENABLED || DT_HAS_TI_LMP90098_ENABLED || DT_HAS_TI_LMP90099_ENABLED || DT_HAS_TI_LMP90100_ENABLED) && ADC) || (BT_H4_NXP_CTLR && BT_H4 && DT_HAS_NXP_BT_HCI_UART_ENABLED && BT_HCI && BT_DRIVERS) || (CAN_MCP251XFD && DT_HAS_MICROCHIP_MCP251XFD_ENABLED && CAN) || (IEEE802154_CC13XX_CC26XX && DT_HAS_TI_CC13XX_CC26XX_IEEE802154_ENABLED && IEEE802154) || (NET_PPP && NET_L2_PPP && NET_NATIVE && NET_DRIVERS) || (SPI_SDHC && DT_HAS_ZEPHYR_SDHC_SPI_SLOT_ENABLED && SDHC) || (DHT20_CRC && DHT20 && SENSOR) || (SGP40 && DT_HAS_SENSIRION_SGP40_ENABLED && SENSOR) || (SHT3XD && DT_HAS_SENSIRION_SHT3XD_ENABLED && SENSOR) || (SHT4X && DT_HAS_SENSIRION_SHT4X_ENABLED && SENSOR) || (SHTCX && DT_HAS_SENSIRION_SHTCX_ENABLED && SENSOR) || (SI7055 && DT_HAS_SILABS_SI7055_ENABLED && SENSOR) || (TMAG5170_CRC && TMAG5170 && SENSOR) || W1 || (FCB && FLASH_MAP) || (NVS && FLASH) || (MCUMGR_GRP_FS_CHECKSUM_IEEE_CRC32 && MCUMGR_GRP_FS_CHECKSUM_HASH && MCUMGR_GRP_FS && MCUMGR) || OSDP || MODBUS || (MODEM_CMUX && MODEM_MODULES) || (MODEM_PPP && NET_L2_PPP && MODEM_MODULES) || (DNS_RESOLVER && NET_NATIVE && NETWORKING) || (LWM2M_SHELL && LWM2M && NETWORKING))
+
+...depends on MCUMGR_GRP_FS (defined at subsys/mgmt/mcumgr/grp/fs_mgmt/Kconfig:15), with definition...
+
+menuconfig MCUMGR_GRP_FS
+	bool "MCUmgr handlers for file management"
+	select MCUMGR_SMP_CBOR_MIN_DECODING_LEVEL_2
+	depends on FILE_SYSTEM && MCUMGR
+	help
+	  Enables MCUmgr handlers for file management
+	  
+	  This option allows MCUmgr clients to access anything in the
+	  file system, including application-stored secrets like
+	  private keys. Use of this feature in production without adequate
+	  protection mechanisms is strongly discouraged (applications can
+	  enable MCUMGR_GRP_FS_FILE_ACCESS_HOOK and register to receive
+	  callbacks when file access is attempted, which they can then filter,
+	  allow, deny or rewrite paths).
+
+...depends on MCUMGR (defined at subsys/mgmt/mcumgr/Kconfig:5), with definition...
+
+menuconfig MCUMGR
+	bool "mcumgr Support"
+	depends on NET_BUF && ZCBOR
+	help
+	  This option enables the mcumgr management library.
+
+...depends on ZCBOR (defined at modules/zcbor/Kconfig:7, modules/zcbor/Kconfig:7, modules/zcbor/Kconfig:7), with definition...
+
+config ZCBOR
+	bool "zcbor CBOR library"
+	depends on ZEPHYR_ZCBOR_MODULE
+	help
+	  zcbor CBOR encoder/decoder library
+
+config ZCBOR
+	bool "zcbor CBOR library"
+	depends on ZEPHYR_ZCBOR_MODULE
+	help
+	  zcbor CBOR encoder/decoder library
+
+config ZCBOR
+	bool "zcbor CBOR library"
+	depends on ZEPHYR_ZCBOR_MODULE && 0
+	help
+	  zcbor CBOR encoder/decoder library
+
+(select-related dependencies: (LICHEN_COAP_CONFIG && LICHEN_COAP_SERVER && LICHEN_COAP && LICHEN) || (LICHEN_COAP_MSG && LICHEN_COAP_SERVER && LICHEN_COAP && LICHEN) || (LICHEN_COAP_KEYS && LICHEN_COAP_SERVER && LICHEN_SLIP_TRANSPORT && LICHEN_COAP && LICHEN) || (LICHEN_COAP_DEADDROP && LICHEN_COAP_SERVER && LICHEN_OSCORE && LICHEN_DTN && LICHEN_COAP && LICHEN) || (LICHEN_OSCORE && LICHEN && LICHEN) || (LICHEN_SENML && LICHEN && LICHEN))
+
+(imply-related dependencies: (LICHEN_COAP_CONFIG && LICHEN_COAP_SERVER && LICHEN_COAP && LICHEN) || (LICHEN_COAP_MSG && LICHEN_COAP_SERVER && LICHEN_COAP && LICHEN) || (LICHEN_COAP_KEYS && LICHEN_COAP_SERVER && LICHEN_SLIP_TRANSPORT && LICHEN_COAP && LICHEN) || (LICHEN_COAP_DEADDROP && LICHEN_COAP_SERVER && LICHEN_OSCORE && LICHEN_DTN && LICHEN_COAP && LICHEN) || (LICHEN_OSCORE && LICHEN && LICHEN) || (LICHEN_SENML && LICHEN && LICHEN))
+
+...depends on LICHEN_COAP_KEYS (defined at /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/zephyr/../subsys/lichen/coap/Kconfig:186), with definition...
+
+config LICHEN_COAP_KEYS
+	bool "LCI /keys resource handlers"
+	select COAP_URI_WILDCARD
+	select ZCBOR
+	select TINYCRYPT_SHA256
+	depends on LICHEN_COAP_SERVER && LICHEN_SLIP_TRANSPORT && LICHEN_COAP && LICHEN
+	help
+	  Enable CoAP server resources for key store management per LCI spec
+	  section 17.5.5:
+	  - GET /keys - list peer IIDs with pubkey fingerprints, trust level
+	  - GET /keys/{iid} - get specific peer's full pubkey
+	  - PUT /keys/{iid} - add/update peer key (requires local admin)
+	  - DELETE /keys/{iid} - remove peer (requires local admin)
+	  
+	  Keys are stored in memory. TOFU key pinning is enforced: once a key
+	  is learned for an IID, it cannot be changed without explicit removal.
+	  
+	  SECURITY: Write operations require local admin access (loopback or
+	  BLE LCI interface).
+
+(select-related dependencies: LICHEN_COAP_CONFIG && LICHEN_COAP_SERVER && LICHEN_COAP && LICHEN)
+
+...depends on LICHEN_SLIP_TRANSPORT (defined at /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/zephyr/../subsys/lichen/transport/Kconfig:10), with definition...
+
+menuconfig LICHEN_SLIP_TRANSPORT
+	bool "SLIP transport for LCI (Serial/USB)"
+	depends on LICHEN && SERIAL && RING_BUFFER && NET_L2_DUMMY && NET_IPV6 && LICHEN
+	help
+	  Enable SLIP transport binding for the Local Client Interface (LCI).
+	  Provides IPv6/CoAP connectivity over UART or USB-CDC using RFC 1055
+	  SLIP framing.
+	  
+	  This allows standard SLIP tools (slattach, tunslip6) to communicate
+	  with the mesh node using any CoAP client.
+	  
+	  Per LCI spec 17.3.1:
+	  - Framing: END=0xC0, ESC=0xDB, ESC_END=0xDC, ESC_ESC=0xDD
+	  - Node address: fe80::1
+	  - Client address: fe80::2
+	  - Recommended baud: 115200 or higher
+
+...depends on RING_BUFFER (defined at lib/utils/Kconfig:12), with definition...
+
+config RING_BUFFER
+	bool "Ring buffers"
+	help
+	  Enable usage of ring buffers. This is similar to kernel FIFOs but ring
+	  buffers manage their own buffer memory and can store arbitrary data.
+	  For optimal performance, use buffer sizes that are a power of 2.
+
+(select-related dependencies: (IPM_CONSOLE_RECEIVER && CONSOLE) || (ENTROPY_CC13XX_CC26XX_RNG && DT_HAS_TI_CC13XX_CC26XX_TRNG_ENABLED && ENTROPY_GENERATOR) || (ESPI_NPCX_PERIPHERAL_DEBUG_PORT_80_MULTI_BYTE && (SOC_SERIES_NPCX9 || SOC_SERIES_NPCX4) && ESPI_PERIPHERAL_DEBUG_PORT_80 && ESPI) || (MODEM_RECEIVER && SERIAL_SUPPORT_INTERRUPT && MODEM) || (MODEM_IFACE_UART && MODEM_CONTEXT && MODEM) || (MODEM_CELLULAR && (DT_HAS_QUECTEL_BG95_ENABLED || DT_HAS_SIMCOM_SIM7080_ENABLED || DT_HAS_U_BLOX_SARA_R4_ENABLED || DT_HAS_U_BLOX_SARA_R5_ENABLED || DT_HAS_SWIR_HL7800_ENABLED || DT_HAS_TELIT_ME910G1_ENABLED || DT_HAS_QUECTEL_EG25_G_ENABLED || DT_HAS_NORDIC_NRF91_SLM_ENABLED || DT_HAS_SQN_GM02S_ENABLED) && MODEM) || (NET_PPP && NET_L2_PPP && NET_NATIVE && NET_DRIVERS) || (UART_BT && BT_ZEPHYR_NUS && DT_HAS_ZEPHYR_NUS_UART_ENABLED && SERIAL) || (SERIAL_TEST && (UART_INTERRUPT_DRIVEN || UART_ASYNC_API) && DT_HAS_VND_SERIAL_ENABLED && SERIAL) || (UART_EMUL && DT_HAS_ZEPHYR_UART_EMUL_ENABLED && SERIAL) || OSDP || (MODEM_CHAT && MODEM_MODULES) || (MODEM_CMUX && MODEM_MODULES) || (MODEM_PPP && NET_L2_PPP && MODEM_MODULES) || (MODEM_UBX && MODEM_MODULES) || (MODEM_BACKEND_UART && (UART_INTERRUPT_DRIVEN || UART_ASYNC_API) && MODEM_MODULES) || (OPENTHREAD_COPROCESSOR && NET_L2_OPENTHREAD && NETWORKING) || (SHELL_BACKEND_SERIAL && SHELL_BACKENDS && SHELL) || (SHELL_HISTORY && SHELL) || (TEST_BUSY_SIM && !XOSHIRO_RANDOM_GENERATOR && TEST) || (TRACING_SYNC && <choice>) || (TRACING_ASYNC && <choice>) || (USB_CDC_ACM && SERIAL && DT_HAS_ZEPHYR_CDC_ACM_UART_ENABLED && USB_DEVICE_STACK) || (USBD_CDC_ACM_CLASS && SERIAL && DT_HAS_ZEPHYR_CDC_ACM_UART_ENABLED && USB_DEVICE_STACK_NEXT))
+
+...depends on UART_INTERRUPT_DRIVEN (defined at boards/shields/sparkfun_carrier_asset_tracker/Kconfig.defconfig:9, boards/shields/sparkfun_sara_r4/Kconfig.defconfig:24, boards/shields/wnc_m14a2a/Kconfig.defconfig:17, soc/quicklogic/eos_s3/Kconfig.defconfig:14, drivers/serial/Kconfig:72), with definition...
+
+config UART_INTERRUPT_DRIVEN
+	bool
+	default y
+	depends on SHIELD_SPARKFUN_CARRIER_ASSET_TRACKER
+
+config UART_INTERRUPT_DRIVEN
+	bool
+	default y
+	depends on NETWORKING && SHIELD_SPARKFUN_SARA_R4
+
+config UART_INTERRUPT_DRIVEN
+	bool
+	default y
+	depends on NETWORKING && SHIELD_WNC_M14A2A
+
+config UART_INTERRUPT_DRIVEN
+	bool
+	default y
+	depends on SERIAL && SOC_EOS_S3
+
+config UART_INTERRUPT_DRIVEN
+	bool "UART Interrupt support"
+	depends on SERIAL_SUPPORT_INTERRUPT && SERIAL
+	help
+	  This option enables interrupt support for UART allowing console
+	  input and other UART based drivers.
+
+(select-related dependencies: (PM && SOC_SERIES_EFR32BG22) || (PM && SERIAL_SUPPORT_INTERRUPT && SOC_SERIES_EFR32MG24) || (BT_UART && BT_HCI && BT_DRIVERS) || (CONSOLE_HANDLER && UART_CONSOLE && SERIAL_SUPPORT_INTERRUPT && CONSOLE) || (UART_MCUMGR && CONSOLE) || (MODEM_RECEIVER && SERIAL_SUPPORT_INTERRUPT && MODEM) || (MODEM_IFACE_UART_INTERRUPT && SERIAL_SUPPORT_INTERRUPT && <choice MODEM_IFACE_UART_BACKEND>) || (SLIP && NET_NATIVE && NET_DRIVERS) || (UART_PIPE && SERIAL) || (UART_BT && BT_ZEPHYR_NUS && DT_HAS_ZEPHYR_NUS_UART_ENABLED && SERIAL) || (UART_SMARTBOND && PM_DEVICE && DT_HAS_RENESAS_SMARTBOND_UART_ENABLED && SERIAL) || (OPENTHREAD_COPROCESSOR && NET_L2_OPENTHREAD && NETWORKING) || (NET_SLIP_TAP && NET_QEMU_SLIP && NET_NATIVE && NETWORKING) || (SHELL_BACKEND_SERIAL_API_INTERRUPT_DRIVEN && SERIAL_SUPPORT_INTERRUPT && <choice SHELL_BACKEND_SERIAL_API>) || (TRACING_HANDLE_HOST_CMD && TRACING_BACKEND_UART && TRACING) || (USB_CDC_ACM && SERIAL && DT_HAS_ZEPHYR_CDC_ACM_UART_ENABLED && USB_DEVICE_STACK) || (USBD_CDC_ACM_CLASS && SERIAL && DT_HAS_ZEPHYR_CDC_ACM_UART_ENABLED && USB_DEVICE_STACK_NEXT))
+
+(imply-related dependencies: (PM && SOC_SERIES_EFR32BG22) || (PM && SERIAL_SUPPORT_INTERRUPT && SOC_SERIES_EFR32MG24) || (BT_UART && BT_HCI && BT_DRIVERS) || (CONSOLE_HANDLER && UART_CONSOLE && SERIAL_SUPPORT_INTERRUPT && CONSOLE) || (UART_MCUMGR && CONSOLE) || (MODEM_RECEIVER && SERIAL_SUPPORT_INTERRUPT && MODEM) || (MODEM_IFACE_UART_INTERRUPT && SERIAL_SUPPORT_INTERRUPT && <choice MODEM_IFACE_UART_BACKEND>) || (SLIP && NET_NATIVE && NET_DRIVERS) || (UART_PIPE && SERIAL) || (UART_BT && BT_ZEPHYR_NUS && DT_HAS_ZEPHYR_NUS_UART_ENABLED && SERIAL) || (UART_SMARTBOND && PM_DEVICE && DT_HAS_RENESAS_SMARTBOND_UART_ENABLED && SERIAL) || (OPENTHREAD_COPROCESSOR && NET_L2_OPENTHREAD && NETWORKING) || (NET_SLIP_TAP && NET_QEMU_SLIP && NET_NATIVE && NETWORKING) || (SHELL_BACKEND_SERIAL_API_INTERRUPT_DRIVEN && SERIAL_SUPPORT_INTERRUPT && <choice SHELL_BACKEND_SERIAL_API>) || (TRACING_HANDLE_HOST_CMD && TRACING_BACKEND_UART && TRACING) || (USB_CDC_ACM && SERIAL && DT_HAS_ZEPHYR_CDC_ACM_UART_ENABLED && USB_DEVICE_STACK) || (USBD_CDC_ACM_CLASS && SERIAL && DT_HAS_ZEPHYR_CDC_ACM_UART_ENABLED && USB_DEVICE_STACK_NEXT))
+
+...depends on UART_MCUMGR (defined at drivers/console/Kconfig:205), with definition...
+
+config UART_MCUMGR
+	bool "Mcumgr UART driver"
+	select UART_INTERRUPT_DRIVEN
+	depends on CONSOLE
+	help
+	  Enable the mcumgr UART driver. This driver allows the application to
+	  communicate over UART using the mcumgr protocol for image upgrade and
+	  device management. The driver doesn't inspect received data (as
+	  contrary to console UART driver) and all aspects of received protocol
+	  data are handled by an application provided callback.
+
+(select-related dependencies: MCUMGR_TRANSPORT_UART && CONSOLE && BASE64 && CRC && MCUMGR)
+
+...depends again on CRC (defined at lib/crc/Kconfig:4)
+CMake Error at /mnt/lichen-zephyr/work/zephyr/cmake/modules/kconfig.cmake:389 (message):
+  command failed with return code: 1
+Call Stack (most recent call first):
+  /mnt/lichen-zephyr/work/zephyr/cmake/modules/zephyr_default.cmake:132 (include)
+  /mnt/lichen-zephyr/work/zephyr/share/zephyr-package/cmake/ZephyrConfig.cmake:66 (include)
+  /mnt/lichen-zephyr/work/zephyr/share/zephyr-package/cmake/ZephyrConfig.cmake:92 (include_boilerplate)
+  CMakeLists.txt:4 (find_package)
+
+
+-- Configuring incomplete, errors occurred!
+FATAL ERROR: command exited with status 1: /mnt/lichen-zephyr/venv/bin/cmake -DWEST_PYTHON=/mnt/lichen-zephyr/venv/bin/python3 -B/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-ingress-verbose -GNinja -DBOARD=native_sim -DOVERLAY_CONFIG=boards/native_posix_ble_ingress.overlay -DEXTRA_CONF_FILE=boards/native_posix_ble_ingress.conf -DZEPHYR_EXTRA_MODULES=/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen -DLICHEN_RELEASE_EPOCH_UNIX=1784787569 -S/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway
