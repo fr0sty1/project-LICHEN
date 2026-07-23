@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "LICHEN link-layer frame vectors (spec section 4). 'fields' are the frame inputs; 'encoded' is LichenFrame(**fields).to_bytes().",
+  "description": "LICHEN link-layer frame vectors (spec section 4). Complete frames are at most 255 bytes (LENGTH at most 254). 'fields' are the frame inputs; 'encoded' is LichenFrame(**fields).to_bytes().",
   "vectors": [
     {
       "name": "broadcast_min",
@@ -36,8 +36,8 @@
       "encoded": "0801102030abcd6869"
     },
     {
-      "name": "extended_addr_selector1",
-      "description": "64-bit address, compatibility MIC selector 1",
+      "name": "extended_addr_mic64",
+      "description": "64-bit address, 64-bit MIC",
       "fields": {
         "epoch": 255,
         "seqnum": 65535,
