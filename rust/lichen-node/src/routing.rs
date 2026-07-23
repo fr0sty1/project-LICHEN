@@ -160,6 +160,14 @@ pub type LinkEtx = f32;
 /// Geographic coordinates (latitude, longitude) in decimal degrees.
 pub type GeoCoords = (f64, f64);
 
+pub trait TrickleSafeLivenessPolicy {
+    fn is_alive(&self, last_seen: u64, now: u64, timeout: u64) -> bool {
+        now.saturating_sub(last_seen) <= timeout
+    }
+}
+
+impl TrickleSafeLivenessPolicy for () {}
+
 /// Neighbor entry with link quality tracking and optional coordinates.
 #[derive(Clone, Debug)]
 pub struct Neighbor {
