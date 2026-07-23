@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
 /*
  * STALE/RETIRED per project-LICHEN-2u26.10: no canonical Zephyr composite board+shield target for Seeed XIAO ESP32-S3 + Wio-SX1262.
  * Fragment retired per 2u26 audit and matrix. Classified FAIL in m5m1.8 bridge audit.
