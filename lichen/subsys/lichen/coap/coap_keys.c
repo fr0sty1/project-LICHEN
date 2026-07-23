@@ -732,11 +732,7 @@ static int decode_key_put_cbor(const uint8_t *payload, size_t payload_len,
 			       uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
 			       enum lichen_key_trust *_Nonnull trust)
 {
-<<<<<<< HEAD
-	if (payload == NULL || payload_len == 0 || trust == NULL) {
-=======
 	if (payload == NULL || pubkey == NULL || trust == NULL || payload_len < 5) {
->>>>>>> 5daf4c1e1 (project-LICHEN-jr2k: fix)
 		return -EINVAL;
 	}
 
