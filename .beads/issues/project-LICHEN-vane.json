@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-vane",
   "title": "[merge-conflict] worktree-worker20: xiao_s3_wio_sx1262.conf",
-  "status": "in_progress",
+  "notes": "Commit: 6840d36 (force-with-lease to resolve divergence after cleaning 8 files of dead merge-resolution comments)",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:16:18.188311348Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:04:18.608689347Z",
+  "updated_at": "2026-07-23T03:07:49.792631337Z",
   "started_at": "2026-07-23T03:04:18.608689347Z",
-  "lease_expires_at": "2026-07-23T03:09:18.608689347Z",
-  "heartbeat_at": "2026-07-23T03:04:18.608689347Z"
+  "closed_at": "2026-07-23T03:07:23.157442224Z",
+  "close_reason": "Cleaned dead merge-conflict resolution comments (the root cause of repeated worktree-worker20 conflicts) from 8 files; matched canonical STALE/RETIRED patterns; grep confirms no remaining 'Resolved merge conflict' markers in source; aligns with no-dead-code rule and prior beads (2u26 audit). Verified clean git status post-edit."
 }
