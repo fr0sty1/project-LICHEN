@@ -42,6 +42,7 @@ import itertools
 import math
 import string
 import time
+import weakref
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol
@@ -323,7 +324,7 @@ class _ReadResource(resource.Resource):
 class StatusResource(_ReadResource):
     """``/status`` — node status (uptime, rank, parent, battery, ...)."""
 
-    rt = "lichen.status"
+    rt = "status"
 
     async def render_get(self, request: Message) -> Message:
         return _cbor_response(self.node_info.get_status())
@@ -332,7 +333,7 @@ class StatusResource(_ReadResource):
 class NeighborsResource(_ReadResource):
     """``/neighbors`` — the neighbour table."""
 
-    rt = "lichen.neighbors"
+    rt = "status"
 
     async def render_get(self, request: Message) -> Message:
         return _cbor_response(self.node_info.get_neighbors())
@@ -350,7 +351,7 @@ class ConfigResource(_ReadResource):
     authentication. For testing without OSCORE, explicitly enable writes.
     """
 
-    rt = "lichen.config"
+    rt = "config"
 
     def __init__(self, node_info: NodeInfo, *, allow_writes: bool = False) -> None:
         """Create a config resource.
@@ -662,14 +663,14 @@ class PresenceResource(resource.ObservableResource):
 
 
 class SosResource(resource.ObservableResource):
-    """Observable ``/sos`` — emergency beacon (PUT to activate, DELETE to cancel).
+    """Observable ``/sos`` — emergency (POST per spec/12-apps.md §18.4).
 
     State is a CBOR map::
 
         {"active": true, "from": "<hex-eui64>", "t": <float>}  # active
         {"active": false, "from": null, "t": null}              # idle
 
-    **PUT** activates SOS with CBOR ``{"from": "<hex>", "t": <number>}``.
+    **POST** activates with ``{"type":"sos", "node":..., "ts":...}`` (or legacy {"from","t"}).
     **DELETE** cancels.  **GET** and **Observe** expose the current state to all
     subscribers so neighbouring nodes can relay/escalate the alert.
 
@@ -712,17 +713,21 @@ class SosResource(resource.ObservableResource):
         msg.opt.content_format = CBOR
         return msg
 
-    async def render_put(self, request: Message) -> Message:
+    async def render_post(self, request: Message) -> Message:
         if not request.payload:
             return Message(code=aiocoap.BAD_REQUEST)
         try:
             body = _decode_single_cbor(request.payload)
         except Exception:
             return Message(code=aiocoap.BAD_REQUEST)
-        if not isinstance(body, dict) or "from" not in body or "t" not in body:
+        if not isinstance(body, dict):
             return Message(code=aiocoap.BAD_REQUEST)
-        from_hex = body["from"]
-        timestamp = body["t"]
+        from_hex = body.get("from") or body.get("node")
+        timestamp = body.get("t") or body.get("ts")
+        if "type" in body and body["type"] != "sos":
+            pass  # support other types per spec in future
+        if from_hex is None or timestamp is None:
+            return Message(code=aiocoap.BAD_REQUEST)
         if (
             not isinstance(from_hex, str)
             or len(from_hex) != 16
@@ -779,11 +784,11 @@ class RollcallResource(resource.ObservableResource):
         return {"rt": "rollcall", "ct": str(int(CBOR)), "obs": None}
 
     async def render_post(self, request: Message) -> Message:
-        """POST /rollcall to initiate a roll call."""
+        """POST /rollcall to initiate a roll call (spec/12-apps.md:18.6)."""
         if not request.payload:
             return Message(code=aiocoap.BAD_REQUEST)
         try:
-            data = cbor2.loads(request.payload)
+            data = _decode_single_cbor(request.payload)
         except Exception:
             return Message(code=aiocoap.BAD_REQUEST)
         if not isinstance(data, dict) or "id" not in data:
@@ -806,10 +811,6 @@ class RollcallResource(resource.ObservableResource):
             roll_id = request.opt.uri_path[-1]
         if roll_id and roll_id in self._rollcalls:
             data = dict(self._rollcalls[roll_id])
-            # Use SenML for position in conference demo
-            from lichen.senml.codec import pack
-            from lichen.senml.profiles import location
-            data["position"] = pack(location(37.7749, -122.4194, 10.0))
             payload = cbor2.dumps(data)
         else:
             payload = cbor2.dumps({"rollcalls": list(self._rollcalls.values())})
@@ -819,6 +820,7 @@ class RollcallResource(resource.ObservableResource):
 
 
 _MESSAGES_MAX = 100  # maximum inbox depth
+_MESSAGE_ID_MAX = (1 << 64) - 1  # u64 bound for LCI message IDs (spec 17.5.7)
 
 
 class MessagesResource(resource.ObservableResource):
@@ -855,6 +857,7 @@ class MessagesResource(resource.ObservableResource):
         self._sent_order: list[str] = []
         self._legacy_aliases: list[LegacyMessagesAliasResource] = []
         self._next_id = 1
+        self._sent_detail_registrar: Callable[[str, dict[str, Any]], None] | None = None
 
     def get_link_description(self) -> dict[str, Any]:
         return {"rt": "msg.inbox", "ct": str(int(CBOR)), "obs": None}
@@ -886,6 +889,12 @@ class MessagesResource(resource.ObservableResource):
     def register_legacy_alias(self, alias: LegacyMessagesAliasResource) -> None:
         """Register a legacy observable alias that mirrors inbox updates."""
         self._legacy_aliases.append(alias)
+
+    def set_sent_detail_registrar(
+        self, registrar: Callable[[str, dict[str, Any]], None] | None
+    ) -> None:
+        """Register callback for per-message sent detail resources (used by build_site)."""
+        self._sent_detail_registrar = registrar
 
     async def render_get(self, request: Message) -> Message:
         msg = Message(code=CONTENT, payload=cbor2.dumps({"messages": self._inbox}))
@@ -1246,12 +1255,15 @@ class _RdRegistrationResource(resource.Resource):
 
 
 class KeyResource(resource.Resource):
-    """GET /key — returns this node's public key and fingerprint as CBOR.
+    """GET /keys (rt="keystore" per spec/11-lci.md).
 
     Response map keys:
     - ``"fingerprint"``: hex string of the first 8 bytes of the public key.
     - ``"pubkey"``: raw 32-byte public key.
     """
+
+    def get_link_description(self) -> dict[str, Any]:
+        return {"rt": "keystore", "ct": str(int(CBOR))}
 
     def __init__(self, pubkey: bytes) -> None:
         super().__init__()
@@ -1517,7 +1529,9 @@ class EdhocResource(resource.Resource):
         responder = EdhocResponder.create(self._identity)
         msg2 = responder.process_message_1(msg1, peer_pubkey)
         c_i = responder._c_i
-        self._sessions[(peer_host, c_i)] = {
+        deadline = self._monotonic() + self._session_lifetime
+        session_key = (peer_host, c_i)
+        session = {
             "responder": responder,
             "peer_pubkey": peer_pubkey,
             "expected_generation": expected_generation,
@@ -1716,6 +1730,7 @@ def build_site(
     rollcall_resource: RollcallResource | None = None,
     resource_directory: bool = False,
     edhoc_resource: EdhocResource | None = None,
+    endpoint_policy: EndpointPolicy | None = None,
     config_allow_writes: bool = False,
 ) -> resource.Site:
     """Build an aiocoap Site exposing the LICHEN node resources.
@@ -1748,7 +1763,7 @@ def build_site(
     if messages_resource is not None:
 
         def register_sent_detail(msg_id: str, message: dict[str, Any]) -> None:
-            site.add_resource(["msg", "sent", msg_id], SentMessageDetailResource(message))
+            pass  # handled by SentMessageDetailsResource (PathCapable)
 
         messages_resource.set_sent_detail_registrar(register_sent_detail)
         legacy_messages = LegacyMessagesAliasResource(messages_resource)
@@ -1772,7 +1787,7 @@ def build_site(
             ResourceDirectoryResource(site, route_remover=remove_rd_registration),
         )
     if pubkey is not None:
-        site.add_resource(["key"], KeyResource(pubkey))
+        site.add_resource(["keys"], KeyResource(pubkey))
     if edhoc_resource is not None:
         if endpoint_policy is not None:
             edhoc_resource.bind_endpoint_policy(endpoint_policy)
