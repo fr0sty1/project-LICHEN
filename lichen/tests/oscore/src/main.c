@@ -21,16 +21,19 @@ static const uint8_t peer_eui64_2[OSCORE_EUI64_LEN] = {
 	0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88
 };
 
-/* NVM mock storage */
 static uint8_t mock_nvm_eui64[OSCORE_EUI64_LEN];
 static uint32_t mock_nvm_ssn;
 static bool mock_nvm_has_data;
 static int mock_nvm_write_count;
 static int mock_nvm_read_count;
+static bool mock_nvm_write_fails;
 
 static int mock_nvm_write(const uint8_t *eui64, uint32_t ssn)
 {
 	mock_nvm_write_count++;
+	if (mock_nvm_write_fails) {
+		return -1;
+	}
 	if (eui64 != NULL) {
 		memcpy(mock_nvm_eui64, eui64, OSCORE_EUI64_LEN);
 	}
@@ -59,6 +62,13 @@ static void mock_nvm_reset(void)
 	mock_nvm_has_data = false;
 	mock_nvm_write_count = 0;
 	mock_nvm_read_count = 0;
+	mock_nvm_write_fails = false;
+}
+
+static void mock_nvm_set_write_fail(bool fail)
+{
+	mock_nvm_write_fails = fail;
+	mock_nvm_write_count = 0;
 }
 
 static void *oscore_ctx_setup(void)
@@ -231,11 +241,8 @@ ZTEST(oscore_ctx, test_nvm_persistence_write)
 		      OSCORE_OK);
 	zassert_not_null(ctx);
 
-	/* Set SSN and persist */
 	zassert_equal(oscore_ctx_set_sender_seq(ctx, 12345), OSCORE_OK);
-	zassert_equal(oscore_ctx_persist_ssn(ctx), OSCORE_OK);
 
-	/* Verify NVM was written */
 	zassert_equal(mock_nvm_write_count, 1);
 	zassert_equal(mock_nvm_ssn, 12345U);
 	zassert_mem_equal(mock_nvm_eui64, peer_eui64_1, OSCORE_EUI64_LEN);
@@ -249,14 +256,12 @@ ZTEST(oscore_ctx, test_nvm_persistence_restore)
 	struct oscore_ctx *ctx = NULL;
 	uint32_t restored_ssn;
 
-	/* Pre-populate NVM with stored SSN */
 	memcpy(mock_nvm_eui64, peer_eui64_1, OSCORE_EUI64_LEN);
 	mock_nvm_ssn = 54321;
 	mock_nvm_has_data = true;
 
 	oscore_nvm_register_callbacks(mock_nvm_write, mock_nvm_read);
 
-	/* Create context - should restore SSN from NVM */
 	zassert_equal(oscore_ctx_create_with_eui64(master_secret, NULL, 0,
 						   sender_id, sizeof(sender_id),
 						   recipient_id, sizeof(recipient_id),
@@ -264,12 +269,43 @@ ZTEST(oscore_ctx, test_nvm_persistence_restore)
 		      OSCORE_OK);
 	zassert_not_null(ctx);
 
-	/* Verify SSN was restored */
 	zassert_equal(mock_nvm_read_count, 1);
 	zassert_equal(oscore_ctx_get_sender_seq(ctx, &restored_ssn), OSCORE_OK);
 	zassert_equal(restored_ssn, 54321U);
 
 	oscore_ctx_free(ctx);
+	oscore_nvm_register_callbacks(NULL, NULL);
+}
+
+ZTEST(oscore_ctx, test_nvm_set_sender_seq_failure)
+{
+	struct oscore_ctx *ctx = NULL;
+	uint8_t ciphertext[32];
+	size_t ct_len = sizeof(ciphertext);
+	uint8_t oscore_opt[32];
+	size_t opt_len = sizeof(oscore_opt);
+
+	oscore_nvm_register_callbacks(mock_nvm_write, mock_nvm_read);
+
+	zassert_equal(oscore_ctx_create_with_eui64(master_secret, NULL, 0,
+						   sender_id, sizeof(sender_id),
+						   recipient_id, sizeof(recipient_id),
+						   peer_eui64_1, &ctx),
+		      OSCORE_OK);
+	zassert_not_null(ctx);
+
+	mock_nvm_set_write_fail(true);
+
+	zassert_equal(oscore_ctx_set_sender_seq(ctx, 12345), OSCORE_ERR_NVM_FAILED);
+	zassert_equal(mock_nvm_write_count, 1);
+
+	zassert_equal(oscore_protect_request(ctx, 0x01, NULL, 0, NULL, 0,
+					     ciphertext, &ct_len,
+					     oscore_opt, &opt_len),
+		      OSCORE_ERR_INVALID_PARAM);
+
+	oscore_ctx_free(ctx);
+	mock_nvm_set_write_fail(false);
 	oscore_nvm_register_callbacks(NULL, NULL);
 }
 
