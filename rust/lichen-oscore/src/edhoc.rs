@@ -258,12 +258,17 @@ fn edhoc_kdf(
 
     if length <= 23 {
         info.push_err(length as u8)?;
-    } else {
+    } else if length <= 0xff {
         info.push_err(0x18)?;
         info.push_err(length as u8)?;
+    } else if length <= 0xffff {
+        info.push_err(0x19)?;
+        info.push_err((length >> 8) as u8)?;
+        info.push_err((length & 0xff) as u8)?;
+    } else {
+        return Err(EdhocError::BufferTooSmall);
     }
 
-    // TH as CBOR bstr
     if th.len() > 255 {
         return Err(EdhocError::BufferTooSmall);
     }
@@ -275,7 +280,6 @@ fn edhoc_kdf(
     }
     info.extend_err(th)?;
 
-    // label as CBOR tstr
     let label_bytes = label.as_bytes();
     if label_bytes.len() > 255 {
         return Err(EdhocError::BufferTooSmall);
@@ -283,19 +287,22 @@ fn edhoc_kdf(
     if label_bytes.len() <= 23 {
         info.push_err(0x60 | label_bytes.len() as u8)?;
     } else {
-        info.push_err(0x18)?;
-        info.push_err(label)?;
+        info.push_err(0x78)?;
+        info.push_err(label_bytes.len() as u8)?;
     }
+    info.extend_err(label_bytes)?;
 
     if context.is_empty() {
         info.push_err(0x40)?;
     } else if context.len() <= 23 {
         info.push_err(0x40 | context.len() as u8)?;
         info.extend_err(context)?;
-    } else {
+    } else if context.len() <= 0xff {
         info.push_err(0x58)?;
         info.push_err(context.len() as u8)?;
         info.extend_err(context)?;
+    } else {
+        return Err(EdhocError::BufferTooSmall);
     }
 
     let hk = Hkdf::<Sha256>::from_prk(prk).map_err(|_| EdhocError::KeyDerivation)?;
@@ -1482,7 +1489,7 @@ mod tests {
 
         let prk_2e = hex!("d584ac2e5dad5a77d14b53ebe72ef1d5daa8860d399373bf2c240afa7ba804da");
         let keystream_2 = hex!(
-            "fd3e7c3f2d6bee643d3c9d2f2847035d73e2ecb0f8db5cd1c6854e24896af21188b2c4344e689ec2984283d9fbc69ce1c5db10dcfff24df9a49a04a94058277bc7fa9ad6c6b194ab328b445eb080490cd786"
+            "bbcacc62ed972f736871540c7ec7885ec4c1f20b2f8d354631c26b355306f8545bdc6a9c52b6b11a40bf8f464e78cc1e57def5ea7a941e430fce2716b3bf404d07c506955548ad688e37924b054c8535ae1f"
         );
         assert_eq!(
             edhoc_kdf(&prk_2e, &th_2, "KEYSTREAM_2", &[], 82).unwrap().as_slice(),
