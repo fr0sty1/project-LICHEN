@@ -49,12 +49,11 @@ def route_packet(dst):
 | Address Type | Classification | Routing |
 |--------------|----------------|---------|
 | Link-local (fe80::/10) | Direct neighbor | Send to neighbor |
-| ULA (fd00::/8) in mesh prefix | Mesh peer (Ed25519 per 06-security) | Gradient or LOADng |
-| GUA in mesh prefix | Mesh peer | Gradient or LOADng |
-| Other GUA | Off-mesh | RPL to border router |
+| Primary (0200::/7 Yggdrasil-derived per 06-security) | Mesh peer (Ed25519) | Gradient or LOADng |
+| Other | Off-mesh | RPL to border router |
 | Unknown | Off-mesh | RPL to border router |
 
-Addresses derived from Ed25519 pubkey (see 06-security.md §6.1).
+Addresses derived from Ed25519 pubkey (see 06-security.md §8.5).
 
 ### 7.3. Conformance Requirements
 
