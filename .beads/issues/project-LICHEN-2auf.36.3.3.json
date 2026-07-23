@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-2auf.36.3.3",
+  "title": "Add explicit handling for missing jq and bd tooling in interop-status step",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:22:21.970138164Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:22:21.970138164Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.36.3.3",
+      "depends_on_id": "project-LICHEN-2auf.36.3",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:22:22.105503737Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
