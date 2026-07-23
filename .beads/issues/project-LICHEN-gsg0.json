@@ -2,15 +2,15 @@
   "id": "project-LICHEN-gsg0",
   "title": "[merge-conflict] integration/worker15-20260722: xiao_s3_wio_sx1262.overlay",
   "notes": "Commit: 4ad2fb58b",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:36:56.056996078Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:06:32.732036071Z",
+  "updated_at": "2026-07-23T02:06:35.045582979Z",
   "started_at": "2026-07-23T02:05:19.301502664Z",
-  "lease_expires_at": "2026-07-23T02:10:19.301502664Z",
-  "heartbeat_at": "2026-07-23T02:05:19.301502664Z"
+  "closed_at": "2026-07-23T02:06:35.045582979Z",
+  "close_reason": "Resolved merge conflict in xiao_s3_wio_sx1262.overlay by updating retirement note with this bead and worker15 integration. Comment standardized to match companion .conf file. No conflict markers remained. Pushed to integration/worker11-20260722."
 }
