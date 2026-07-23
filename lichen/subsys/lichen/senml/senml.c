@@ -405,17 +405,17 @@ int senml_encode_battery(const char *base_name, uint64_t base_time,
 	}
 
 	/* Use "%" for battery percentage (not %RH which is relative humidity) */
-	ret = senml_add_float(&pack, "pct", "%", (float)percent);
+	ret = senml_add_float(&pack, SENML_BATTERY_PCT, SENML_BATTERY_UNIT_PCT, (float)percent);
 	if (ret < 0) {
 		return ret;
 	}
 
-	ret = senml_add_float(&pack, "mv", "mV", (float)mv);
+	ret = senml_add_float(&pack, SENML_BATTERY_MV, SENML_BATTERY_UNIT_MV, (float)mv);
 	if (ret < 0) {
 		return ret;
 	}
 
-	ret = senml_add_bool(&pack, "charging", charging);
+	ret = senml_add_bool(&pack, SENML_BATTERY_CHARGING, charging);
 	if (ret < 0) {
 		return ret;
 	}
@@ -435,7 +435,7 @@ int senml_encode_temperature(const char *base_name, uint64_t base_time,
 		return ret;
 	}
 
-	ret = senml_add_float(&pack, "temp", "Cel", temp_c);
+	ret = senml_add_float(&pack, SENML_TELEMETRY_TEMP, SENML_TELEMETRY_UNIT_CEL, temp_c);
 	if (ret < 0) {
 		return ret;
 	}
@@ -455,7 +455,7 @@ int senml_encode_deaddrop(const char *base_name, uint64_t base_time,
 		return ret;
 	}
 
-	ret = senml_add_float(&pack, "pending", NULL, (float)pending);
+	ret = senml_add_float(&pack, SENML_DEADDROP_PENDING, NULL, (float)pending);
 	if (ret < 0) {
 		return ret;
 	}

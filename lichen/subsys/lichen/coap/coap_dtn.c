@@ -177,7 +177,7 @@ static int deaddrop_get(struct coap_resource *resource, struct coap_packet *requ
 	if (len < 0) {
 		return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
 	}
-	return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_CONTENT, 112, buf, (size_t)len);
+	return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_CONTENT, SENML_CBOR_CONTENT_FORMAT, buf, (size_t)len);
 }
 
 static int confessions_get(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len) {
@@ -189,7 +189,7 @@ static int confessions_get(struct coap_resource *resource, struct coap_packet *r
 	if (len < 0) {
 		return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
 	}
-	return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_CONTENT, 112, buf, (size_t)len);
+	return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_CONTENT, SENML_CBOR_CONTENT_FORMAT, buf, (size_t)len);
 }
 
 static int confessions_post(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len) {

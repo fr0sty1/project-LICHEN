@@ -69,6 +69,7 @@ extern "C" {
 #define SENML_BATTERY_UNIT_MV "mV"
 #define SENML_TELEMETRY_TEMP "temp"
 #define SENML_TELEMETRY_UNIT_CEL "Cel"
+#define SENML_DEADDROP_PENDING "pending"
 #define SENML_MAX_RECORDS 16
 
 /** Maximum name string length */
