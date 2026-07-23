@@ -151,6 +151,7 @@ static int deaddrop_get(struct coap_resource *resource, struct coap_packet *requ
 	int len = senml_encode_deaddrop(NULL, dtn_get_unix_time(), pending, buf, sizeof(buf));
 	k_mutex_unlock(&s_dtn_buf_mutex);
 	if (len < 0) return COAP_RESPONSE_CODE_INTERNAL_ERROR;
+<<<<<<< HEAD
 	return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_CONTENT, 112, buf, (size_t)len);
 =======
 	senml_pack_init(&s_senml_pack, NULL, 0);
@@ -184,6 +185,9 @@ static int confessions_post(struct coap_resource *resource, struct coap_packet *
 	k_mutex_unlock(&s_dtn_mutex);
 	return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_CHANGED, NULL, 0);
 >>>>>>> origin/integration/worker2-20260722
+=======
+	return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_CONTENT, SENML_CBOR_CONTENT_FORMAT, buf, (size_t)len);
+>>>>>>> origin/integration/worker14-20260722
 }
 
 static const char * const deaddrop_path[] = { "deaddrop", NULL };

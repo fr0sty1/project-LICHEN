@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-xeeg",
   "title": "[merge-conflict] worktree-worker19: Kconfig.defconfig",
-  "status": "in_progress",
+  "notes": "Commit: 9a31e2274",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:28:25.092893863Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:37:20.388010456Z",
+  "updated_at": "2026-07-23T00:39:35.743663081Z",
   "started_at": "2026-07-23T00:37:20.388010456Z",
-  "lease_expires_at": "2026-07-23T00:42:20.388010456Z",
-  "heartbeat_at": "2026-07-23T00:37:20.388010456Z"
+  "closed_at": "2026-07-23T00:39:35.743663081Z",
+  "close_reason": "Resolved merge conflict in lichen/boards/lilygo/t_deck/Kconfig.defconfig by consolidating LICHEN_HAS_DISPLAY selects, adding LVGL heap tuning, using INPUT_LILYGO_TDECK_KEYBOARD driver, cleaned related bridge overlay and t_deck conf comments. Also resolved multiple unmerged paths in main merge. Commit 9a31e2274 pushed to main."
 }

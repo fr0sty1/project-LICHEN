@@ -2,16 +2,27 @@
   "id": "project-LICHEN-lw4f",
   "title": "Security Review: OSCORE EDHOC Schnorr MIC key handling crypto timing (last 20 commits)",
   "description": "Perform focused security review on recent commits for OSCORE, EDHOC, Schnorr signatures, MIC verification, key handling, and constant-time crypto. Create P0 bugs for any issues found. Follow AGENTS.md security reviewer instructions. Part of review-myoss loop.",
+<<<<<<< HEAD
   "notes": "Commit: cb381f2a4 - Security review complete, no new P0-P2 issues in OSCORE/EDHOC/Schnorr/MIC/key/crypto-timing after auditing recent fixes. All constant-time, wipe, and error-path practices verified compliant.",
   "status": "closed",
+=======
+  "status": "in_progress",
+>>>>>>> origin/integration/worker14-20260722
   "priority": 0,
   "issue_type": "epic",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:58:30.546438541Z",
   "created_by": "AI Agent",
+<<<<<<< HEAD
   "updated_at": "2026-07-23T00:04:40.257822121Z",
   "started_at": "2026-07-23T00:02:45.658184376Z",
   "closed_at": "2026-07-23T00:04:40.257822121Z",
   "close_reason": "Security review of last 20 commits complete. No new P0 issues in OSCORE, EDHOC, Schnorr, MIC, key handling or crypto timing. All prior findings addressed with volatile results, crypto_wipe, constant-time compares, and no secret logging. Commit cb381f2a4"
+=======
+  "updated_at": "2026-07-23T00:02:45.658184376Z",
+  "started_at": "2026-07-23T00:02:45.658184376Z",
+  "lease_expires_at": "2026-07-23T00:07:45.658184376Z",
+  "heartbeat_at": "2026-07-23T00:02:45.658184376Z"
+>>>>>>> origin/integration/worker14-20260722
 }

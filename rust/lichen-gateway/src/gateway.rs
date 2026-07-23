@@ -118,19 +118,13 @@ impl Gateway {
         self.routes.insert(addr, node_id);
     }
 
-<<<<<<< HEAD
     pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
         self.routes.contains_key(dst)
             || (dst[0] == 0xfe && dst[1] == 0x80)
-<<<<<<< HEAD
-=======
             || dst[0] == 0xfd
->>>>>>> origin/worktree-worker24
             || self.rpl_node.router.lookup_route(dst).is_some()
     }
 
-    /// Process RPL control messages from mesh frames. Returns (reply, event).
-    /// Used by root to handle DAOs for route updates and trickle timing.
     pub fn process_rpl(&mut self, frame: &[u8], now_ms: u32) -> (Option<Vec<u8>>, RplEvent) {
         let mut reply = vec![0u8; 512];
         let (reply_len, event) = self.rpl_node.handle_frame_rpl(frame, &mut reply, now_ms);
@@ -141,33 +135,10 @@ impl Gateway {
             None
         };
         (reply_opt, event)
-<<<<<<< HEAD
-=======
-    /// Process RPL control frames from the mesh. Returns (reply_len, event).
-    /// `reply_len > 0` means a control-plane reply (e.g. echo, future DIO) was
-    /// written to the buffer and should be queued for transmission.
-    pub fn handle_frame_rpl(
-        &mut self,
-        l2_payload: &[u8],
-        reply: &mut [u8],
-        now_ms: u32,
-    ) -> (usize, RplEvent) {
-        self.rpl.handle_frame_rpl(l2_payload, reply, now_ms)
-    }
-
-    /// Returns true if the IPv6 destination is local to our mesh (link-local,
-    /// ULA, or in our routing table). Prevents echoing local traffic to TUN.
-    pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
-        self.routes.contains_key(dst)
-            || (dst[0] == 0xfe && dst[1] == 0x80) // fe80:: link-local
-            || dst[0] == 0xfd // fd00:: ULA
->>>>>>> origin/worktree-worker20
-=======
     }
 
     pub fn mesh_to_mesh(&self, ipv6: &[u8]) -> Option<Vec<u8>> {
         Some(ipv6.to_vec())
->>>>>>> origin/worktree-worker24
     }
 }
 

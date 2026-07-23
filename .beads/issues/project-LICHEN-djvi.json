@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-djvi",
   "title": "[merge-conflict] worktree-worker24: simulation.py",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:29:31.873158581Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:29:31.873158581Z"
+  "updated_at": "2026-07-23T00:39:17.74867397Z",
+  "started_at": "2026-07-23T00:39:17.74867397Z",
+  "lease_expires_at": "2026-07-23T00:44:17.74867397Z",
+  "heartbeat_at": "2026-07-23T00:39:17.74867397Z"
 }

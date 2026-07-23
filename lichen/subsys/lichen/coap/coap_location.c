@@ -67,7 +67,7 @@ static int sensors_location_get(struct coap_resource *resource,
 	}
 
 	return lichen_coap_respond(resource, request, addr, addr_len,
-			    COAP_RESPONSE_CODE_CONTENT, 112, senml, (size_t)len);
+			    COAP_RESPONSE_CODE_CONTENT, SENML_CBOR_CONTENT_FORMAT, senml, (size_t)len);
 }
 
 static int sensors_location_post(struct coap_resource *resource,

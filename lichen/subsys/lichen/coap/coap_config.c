@@ -578,13 +578,8 @@ size_t lichen_config_encode_identity_cbor(uint8_t *buf, size_t buf_size,
 		return 0;
 	}
 
-<<<<<<< HEAD
-	if (identity->ygg[0] != '\0') {
-		if (!put_tstr_kv(state, KEY_PRIMARY, identity->ygg)) {
-=======
 	if (identity->primary[0] != '\0') {
 		if (!put_tstr_kv(state, KEY_PRIMARY, identity->primary)) {
->>>>>>> origin/worktree-worker24
 			return 0;
 		}
 	} else {

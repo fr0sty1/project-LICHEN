@@ -3,6 +3,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 {"id":"019f8ac6-6bff-776a-a401-9ffad225a2b5","issue_id":"project-LICHEN-d2rn","event_type":"created","actor":"ec2-user","old_value":"","new_value":"","created_at":"2026-07-22T17:01:27.423488756Z"}
 {"id":"019f8ac6-6c03-73e9-876a-4cdc74523872","issue_id":"project-LICHEN-d2rn","event_type":"label_added","actor":"ec2-user","comment":"Added label: codereview","created_at":"2026-07-22T17:01:27.427257225Z"}
 {"id":"019f8ac7-42b5-704e-8b7a-32c2eb88493e","issue_id":"project-LICHEN-d2rn","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"Fixed by adding full normative section, pseudocode, test vector cross-refs and updating generate.py mention","created_at":"2026-07-22T17:02:22.389020741Z"}
@@ -26,3 +27,8 @@
 {"id":"019f8ac6-6c03-73e9-876a-4cdc74523872","issue_id":"project-LICHEN-d2rn","event_type":"label_added","actor":"ec2-user","comment":"Added label: codereview","created_at":"2026-07-22T17:01:27.427257225Z"}
 {"id":"019f8ac7-42b5-704e-8b7a-32c2eb88493e","issue_id":"project-LICHEN-d2rn","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"Fixed by adding full normative section, pseudocode, test vector cross-refs and updating generate.py mention","created_at":"2026-07-22T17:02:22.389020741Z"}
 >>>>>>> origin/worktree-worker18
+=======
+{"id":"019f8ac6-6bff-776a-a401-9ffad225a2b5","issue_id":"project-LICHEN-d2rn","event_type":"created","actor":"ec2-user","old_value":"","new_value":"","created_at":"2026-07-22T17:01:27.423488756Z"}
+{"id":"019f8ac6-6c03-73e9-876a-4cdc74523872","issue_id":"project-LICHEN-d2rn","event_type":"label_added","actor":"ec2-user","comment":"Added label: codereview","created_at":"2026-07-22T17:01:27.427257225Z"}
+{"id":"019f8ac7-42b5-704e-8b7a-32c2eb88493e","issue_id":"project-LICHEN-d2rn","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"Fixed by adding full normative section, pseudocode, test vector cross-refs and updating generate.py mention","created_at":"2026-07-22T17:02:22.389020741Z"}
+>>>>>>> origin/integration/worker14-20260722
