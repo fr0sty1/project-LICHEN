@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-ftvd",
   "title": "[merge-conflict] worktree-worker18: xiao_s3_wio_sx1262.overlay",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:33:47.212156773Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:30:12.498446097Z",
+  "updated_at": "2026-07-23T05:28:57.730655728Z",
   "started_at": "2026-07-23T00:43:05.998102918Z",
-  "closed_at": "2026-07-23T05:30:12.498446097Z",
-  "close_reason": "Decomposed into subtasks ftvd.1-ftvd.4 (merge conflict in worker18 xiao_s3_wio_sx1262.overlay and related board retirement cleanup)",
+  "lease_expires_at": "2026-07-23T05:33:57.730655728Z",
+  "heartbeat_at": "2026-07-23T05:28:57.730655728Z",
   "labels": [
     "defer-external"
   ]
