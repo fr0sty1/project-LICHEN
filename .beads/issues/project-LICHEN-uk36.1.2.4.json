@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-uk36.1.2.4",
   "title": "Update EdhocResponder callsites and tests for new edhoc_kdf signature",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:25:10.518929594Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T06:03:14.541876456Z",
+  "updated_at": "2026-07-23T06:09:55.638114482Z",
   "started_at": "2026-07-23T06:03:14.541876456Z",
-  "lease_expires_at": "2026-07-23T06:08:14.541876456Z",
-  "heartbeat_at": "2026-07-23T06:03:14.541876456Z",
+  "closed_at": "2026-07-23T06:09:55.638114482Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-uk36.1.2.4",
