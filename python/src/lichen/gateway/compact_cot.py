@@ -31,7 +31,8 @@ PLI_TOTAL_SIZE = 17  # Including subtype byte
 # int16 range for altitude in decimeters (-3276.8m to +3276.7m)
 INT16_MIN = -32768
 INT16_MAX = 32767
-UINT16_MAX = 65535  # Max speed in cm/s (655.35 m/s)
+UINT16_MAX = 65535  # Max speed cm/s (655.35 m/s); 0xFFFF often invalid sentinel
+MAX_PLAUSIBLE_SPEED_M_S = 100.0  # ~360km/h; implausible for ground units
 
 
 # -- Enums --
@@ -205,7 +206,7 @@ class PliPayload:
     lon_microdeg: int  # int32 microdegrees
     alt_dm: int  # int16 decimeters
     course_cdeg: int  # uint16 centidegrees (0-35999)
-    speed_cm_s: int  # uint16 cm/s
+    speed_cm_s: int  # uint16 cm/s; 0xFFFF may indicate sensor invalid/no-fix
     team: int  # uint8
     role: int  # uint8
 
@@ -231,7 +232,9 @@ class PliPayload:
 
     @property
     def speed_m_s(self) -> float:
-        """Speed in m/s."""
+        """Speed in m/s. 0xFFFF sentinel treated as 0 (no valid fix)."""
+        if self.speed_cm_s == UINT16_MAX:
+            return 0.0
         return self.speed_cm_s / 100.0
 
     @property
@@ -325,6 +328,16 @@ def _decode_pli(subtype: CompactCotType, data: bytes) -> CompactCot:
         raise DecodeError(f"Latitude {lat} out of range [-90000000, 90000000]")
     if not (-180_000_000 <= lon <= 180_000_000):
         raise DecodeError(f"Longitude {lon} out of range [-180000000, 180000000]")
+
+    # Course 0-359.99deg; speed 0xFFFF commonly signals invalid sensor reading
+    if not (0 <= course <= 35999):
+        raise DecodeError(f"Course {course} out of range [0, 35999]")
+    if speed > int(MAX_PLAUSIBLE_SPEED_M_S * 100):
+        warnings.warn(
+            f"Implausible speed {speed}cm/s ({speed/100.0:.1f}m/s) in PLI "
+            f"from mesh (0xFFFF may indicate sensor error/no GPS fix)",
+            stacklevel=2,
+        )
 
     payload = PliPayload(
         lat_microdeg=lat,
@@ -833,6 +846,13 @@ def _parse_xml_pli(root: Element, subtype: CompactCotType) -> CompactCot:
                     raise ValueError(f"Speed value {speed_m_s} is not a finite number")
                 if speed_m_s < 0:
                     raise ValueError(f"Speed {speed_m_s} cannot be negative")
+                if speed_m_s > MAX_PLAUSIBLE_SPEED_M_S:
+                    warnings.warn(
+                        f"Implausible speed {speed_m_s:.1f} m/s from CoT XML "
+                        f"(clamped; 0xFFFF sentinel may indicate sensor error)",
+                        stacklevel=3,
+                    )
+                    speed_m_s = MAX_PLAUSIBLE_SPEED_M_S
 
     # Extract team/role from <__group> element
     team_val = Team.BLUE
@@ -849,7 +869,8 @@ def _parse_xml_pli(root: Element, subtype: CompactCotType) -> CompactCot:
 
     # Clamp altitude to int16 range (-3276.8m to +3276.7m)
     alt_dm = max(INT16_MIN, min(INT16_MAX, int(alt_m * 10)))
-    # Clamp speed to uint16 range (0 to 655.35 m/s)
+    # Clamp speed to uint16 range (0-65535 cm/s). Implausible values (>100m/s)
+    # warned and clamped above per project-LICHEN-z4zm (0xFFFF sentinel).
     speed_cm_s = min(UINT16_MAX, max(0, int(speed_m_s * 100)))
 
     pli = PliPayload(
