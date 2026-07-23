@@ -1,16 +1,16 @@
 {
   "id": "project-LICHEN-6870",
   "title": "[merge-conflict] integration/worker7-20260722: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
-  "notes": "Commit: 33a0c71ce",
-  "status": "closed",
+  "notes": "Commit: 5ca7868f9",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:52:30.382365162Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:23:27.935153852Z",
-  "started_at": "2026-07-23T03:21:59.14222125Z",
-  "closed_at": "2026-07-23T03:23:27.935153852Z",
-  "close_reason": "Cleaned dead merge-conflict resolution comments from heltec_wifi_lora32_v3_esp32s3_procpu.conf (puck) and coap_keys.c per no-dead-code rule and AGENTS.md. Removed lengthy lists of prior beads and worker7 references. Matches canonical style of t_deck_esp32s3_procpu.conf. Commit 33a0c71ce. Push blocked by divergence; rebase had beads conflict."
+  "updated_at": "2026-07-23T03:23:24.796155899Z",
+  "started_at": "2026-07-23T03:22:40.29300145Z",
+  "lease_expires_at": "2026-07-23T03:27:40.29300145Z",
+  "heartbeat_at": "2026-07-23T03:22:40.29300145Z"
 }
