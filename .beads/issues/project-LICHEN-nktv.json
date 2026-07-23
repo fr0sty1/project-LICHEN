@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-nktv",
   "title": "[merge-conflict] worktree-worker21: xiao_s3_wio_sx1262.conf",
-  "notes": "Commit: e40216290 (standardized retired board fragment in worktree-worker21 xiao_s3_wio_sx1262.conf with SPDX + canonical RETIRED/BLOCKED comment per 2u26.10 and matrix; added this bead to resolved list)",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:05:09.930254994Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:48:22.237932724Z",
+  "updated_at": "2026-07-23T02:46:46.910170441Z",
   "started_at": "2026-07-23T02:46:46.910170441Z",
-  "closed_at": "2026-07-23T02:48:22.237932724Z",
-  "close_reason": "Standardized xiao_s3_wio_sx1262.conf in worktree-worker21 to canonical retired SPDX+comment matching main (added nktv to resolved list). Local commit e40216290. Push to origin blocked by divergence (many other conflicts in rebase); user can run git pull --rebase \u0026\u0026 git push in project-LICHEN-worker21 if desired. Follows no-dead-code and merge-conflict resolution pattern from peer beads."
+  "lease_expires_at": "2026-07-23T02:51:46.910170441Z",
+  "heartbeat_at": "2026-07-23T02:46:46.910170441Z"
 }
