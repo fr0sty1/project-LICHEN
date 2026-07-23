@@ -2,15 +2,15 @@
   "id": "project-LICHEN-4jfn",
   "title": "[merge-conflict] worktree-worker17: xiao_s3_wio_sx1262.conf",
   "notes": "Commit: e6062e4da",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:52:01.58902741Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:59:37.415611417Z",
+  "updated_at": "2026-07-23T03:59:40.402015841Z",
   "started_at": "2026-07-23T03:58:27.374113588Z",
-  "lease_expires_at": "2026-07-23T04:03:27.374113588Z",
-  "heartbeat_at": "2026-07-23T03:58:27.374113588Z"
+  "closed_at": "2026-07-23T03:59:40.402015841Z",
+  "close_reason": "Updated xiao_s3_wio_sx1262.conf with consolidated merge conflict resolution comment including project-LICHEN-4jfn (worktree-worker17). Standardized retired board fragment per AGENTS.md. No dead code or duplicate markers. Commit e6062e4da"
 }
