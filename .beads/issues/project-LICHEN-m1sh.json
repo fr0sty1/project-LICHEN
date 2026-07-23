@@ -2,15 +2,15 @@
   "id": "project-LICHEN-m1sh",
   "title": "[merge-conflict] worktree-worker20: t_deck_esp32s3_procpu.conf",
   "notes": "Commit: 6a31b4fc2",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:25:07.388919089Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:09:42.55670916Z",
+  "updated_at": "2026-07-23T02:09:45.050837916Z",
   "started_at": "2026-07-23T02:06:21.927120899Z",
-  "lease_expires_at": "2026-07-23T02:11:21.927120899Z",
-  "heartbeat_at": "2026-07-23T02:06:21.927120899Z"
+  "closed_at": "2026-07-23T02:09:45.050837916Z",
+  "close_reason": "Merge conflicts resolved across Rust components (edhoc tests, announce CCP-9 wire format, rf_health EMA comments, routing lookup doc, meshtastic IPv6 tunnel parser). t_deck_esp32s3_procpu.conf resolution comment consolidated. Code cleaned, tests preserved."
 }
