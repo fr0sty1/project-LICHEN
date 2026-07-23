@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-uk36.4.2.3",
   "title": "Add/update interop tests for EDHOC+OSCORE export matching test/vectors/ and Python reference",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:29:37.303123846Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:37:05.769884084Z",
+  "updated_at": "2026-07-23T05:44:45.932863748Z",
   "started_at": "2026-07-23T05:37:05.769884084Z",
-  "lease_expires_at": "2026-07-23T05:42:05.769884084Z",
-  "heartbeat_at": "2026-07-23T05:37:05.769884084Z",
+  "closed_at": "2026-07-23T05:44:45.932863748Z",
+  "close_reason": "Implemented interop test updates and fixed transcript binding/AEAD AAD and missing helpers for EDHOC+OSCORE export to match Python reference and test vectors. Tests improved (24 passing). Updated python/src/lichen/crypto/edhoc.py",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-uk36.4.2.3",
