@@ -281,7 +281,7 @@ static int edhoc_kdf(const uint8_t prk[32],
 		return -EINVAL;
 	}
 	size_t label_len = strlen(label);
-	if (!zcbor_tstr_put_term(zse, label, label_len + 1)) {
+	if (!zcbor_tstr_encode_ptr(zse, label, label_len)) {
 		return -EINVAL;
 	}
 	if (!zcbor_bstr_encode_ptr(zse, context, context_len)) {
