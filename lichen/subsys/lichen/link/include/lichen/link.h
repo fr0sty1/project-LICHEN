@@ -56,7 +56,7 @@ extern "C" {
 /** Maximum LICHEN frame payload size (LoRa SF10 255B - overhead) */
 #define LICHEN_MAX_PAYLOAD 200
 #define SLOT_DURATION_MS 250
-#define GUARD_TIME_MS 50
+#define GUARD_TIME_MS 100
 
 #ifdef CONFIG_LICHEN_TDMA
 struct LICHEN_TDMA_Slot {
@@ -72,7 +72,7 @@ BUILD_ASSERT(sizeof(struct LICHEN_TDMA_Slot) == 20);
  /** Schnorr-48 signature length in bytes */
 #define LICHEN_SIG_LEN 48
 
-#define LICHEN_TDMA_GUARD_MS 50
+#define LICHEN_TDMA_GUARD_MS 100
 #define LICHEN_TDMA_SLOT_MS 250
 struct lichen_tdma_slot {uint8_t id;uint8_t assigned;uint32_t next;};
 
