@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-fipy",
+  "title": "[cross-impl] EDHOC/Rust vs Zephyr Schnorr48/Ed25519 signature length mismatch",
+  "description": "Reviewed commits 37ed82cc4 (python/sim/node.py hopping sync), 97aa0c30e (rust ipv6/rpl/senml: added forbid(unsafe_code), packet fmt), 402298f95 (rust/lichen-oscore/edhoc.rs: CBOR length prefix fixes for kdf, test vector update). Python reference uses schnorr48.py per test/vectors/schnorr48.json + draft-lichen-schnorr-00.md. Rust EDHOC still uses 64B ed25519_dalek::Signature while Zephyr/C uses 48B Schnorr48 (see lichen/subsys/lichen/link/schnorr48.c and open bead eyqx). Different behavior for same auth algorithm breaks interop, OSCORE key derivation after EDHOC, test vectors. Matches focus on implementation consistency.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T14:55:39.874488974Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T14:55:39.874488974Z"
+}
