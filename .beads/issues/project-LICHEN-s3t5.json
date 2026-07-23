@@ -2,7 +2,7 @@
   "id": "project-LICHEN-s3t5",
   "title": "Spec Compliance Review of Recent Commits",
   "description": "Review last 20 commits for MUST/SHOULD violations per RFC2119, deviations from spec in spec/ directory, and incorrect constants. Focus on lichen protocol implementation in rust/ and zephyr/. Create [spec-compliance] bug beads for any issues found. Priority 0 for this epic.",
-  "notes": "Created spec-compliance beads: project-LICHEN-20am, project-LICHEN-nkcv, project-LICHEN-jmas, project-LICHEN-et78, project-LICHEN-f4xg, project-LICHEN-s020 from review of last 20 commits. No tests run as review-only. Follow-up fixes in those beads.",
+  "notes": "Commit: fe5db5582 (spec compliance review completed, 6 new P0 bug beads created)",
   "status": "in_progress",
   "priority": 0,
   "issue_type": "epic",
@@ -10,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T04:41:25.064581601Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:59:07.865901714Z",
+  "updated_at": "2026-07-23T04:59:19.874078413Z",
   "started_at": "2026-07-23T04:57:21.421350048Z",
   "lease_expires_at": "2026-07-23T05:02:21.421350048Z",
   "heartbeat_at": "2026-07-23T04:57:21.421350048Z"
