@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-2auf.59.4.1.4",
+  "title": "Collect provenance, compute hashes, document results and cleanup AWS resources",
+  "description": "After all validations, record exact commands used, git hashes, west versions, test outputs, SHA sums of logs/artifacts/binaries. Verify only approved AWS resources (vol-0a95eee8d1d8461eb, us-west-2c, Project=LICHEN). Perform unmount, detach, wait-available, terminate instance if used. Close with full evidence bundle.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:18:24.03050725Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:18:24.03050725Z",
+  "labels": [
+    "aws",
+    "validation"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.59.4.1.4",
+      "depends_on_id": "project-LICHEN-2auf.59.4.1",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:18:24.172402337Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
