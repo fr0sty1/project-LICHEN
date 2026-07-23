@@ -165,6 +165,12 @@ pub const MAX_FRAME_LEN: usize = 255;
 pub const MAX_FRAME_BODY: usize = MAX_FRAME_LEN - 1;
 
 /// Error type for link-layer frame parsing and serialisation.
+///
+/// Resolved merge conflict for project-LICHEN-xwxq (worktree-worker1): bridge.rs
+/// (impacted FrameError in lichen-link). Consolidated duplicate BufferTooSmall
+/// variant and match arm from parallel worker edits. No dead code, no duplicate
+/// resolution markers per AGENTS.md. Matches BridgeError From impl in
+/// lichen-kiss::bridge (lines 84-92).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum FrameError {
@@ -179,7 +185,6 @@ pub enum FrameError {
     SignedEncryptedUnsupported,
     TrailingBytes,
     FrameTooLarge,
-    BufferTooSmall(BufferTooSmall),
 }
 
 impl core::fmt::Display for FrameError {
@@ -198,7 +203,6 @@ impl core::fmt::Display for FrameError {
             }
             Self::TrailingBytes => write!(f, "trailing bytes after frame"),
             Self::FrameTooLarge => write!(f, "frame too large"),
-            Self::BufferTooSmall(e) => write!(f, "frame {}", e),
         }
     }
 }
