@@ -105,14 +105,22 @@ class Icmpv6Message:
 
     @classmethod
     def from_bytes(cls, data: bytes) -> Icmpv6Message:
-        """Parse type/code/body (the checksum is not verified here)."""
+        """Parse type/code/body (the checksum is not verified here).
+
+        Explicit length check per RFC 4443 §2.3; malformed short messages
+        raise Icmpv6Error.
+        """
         if len(data) < 4:
             raise Icmpv6Error(f"ICMPv6 message too short: {len(data)} bytes")
         return cls(type=data[0], code=data[1], body=data[4:])
 
     @staticmethod
     def verify_checksum(src: IPv6Address, dst: IPv6Address, data: bytes) -> bool:
-        """Check the checksum of a received ICMPv6 message."""
+        """Check the checksum of a received ICMPv6 message.
+
+        Per RFC 4443 §2.3, this MUST precede all other processing; returns
+        False (silent drop) for too-short or invalid checksum.
+        """
         if len(data) < 4:
             return False
         return icmpv6_checksum(src, dst, data) == 0
@@ -252,23 +260,25 @@ def handle_icmpv6(
 ) -> IPv6Packet | None:
     """Process an inbound ICMPv6 packet, returning a reply if one is due.
 
-    Only Echo Requests produce a reply (an Echo Reply with the source and
-    destination swapped). Replies and error messages are consumed without a
-    response. Per RFC 4443 section 2.3, messages with invalid checksums are
-    silently discarded.
+    Restores explicit bounds checks for packet length, malformed source
+    addresses (no unspecified or multicast sources for Echo Requests per
+    RFC 4443 §§2.3, 2.4(e), 4.2), and ensures checksum verification precedes
+    all processing. Malformed packets are dropped silently (or with metrics
+    in callers).
 
-    Args:
-        packet: The inbound IPv6 packet carrying ICMPv6.
-        local_addr: A unicast address to use as the source when replying to
-            multicast Echo Requests. Per RFC 4443 section 4.2, replies to
-            multicast destinations MUST use a unicast source. If the destination
-            is multicast and no local_addr is provided, the packet is dropped.
+    Only Echo Requests produce a reply. Replies and error messages are
+    consumed without response.
     """
     if packet.header.next_header != ICMPV6_NEXT_HEADER:
         raise Icmpv6Error("packet does not carry ICMPv6")
 
-    # SECURITY: RFC 4443 section 2.3 requires checksum verification before
-    # processing. Silently discard packets with invalid checksums.
+    # Explicit bounds check for ICMPv6 packet length.
+    if len(packet.payload) < 4:
+        return None
+
+    # SECURITY: RFC 4443 §2.3 requires checksum verification BEFORE any
+    # other processing (type/code parse, source checks, echo parsing).
+    # Malformed checksum -> silent drop.
     if not Icmpv6Message.verify_checksum(
         packet.header.src_addr, packet.header.dst_addr, packet.payload
     ):
@@ -278,8 +288,8 @@ def handle_icmpv6(
     if msg.type != Icmpv6Type.ECHO_REQUEST:
         return None
 
-    # SECURITY: RFC 4443 section 2.4(e) - do not send ICMPv6 messages to
-    # the unspecified address or any multicast address.
+    # SECURITY: RFC 4443 §2.4(e), §4.2: silently drop Echo Requests with
+    # unspecified or multicast source address.
     if packet.header.src_addr.is_unspecified or packet.header.src_addr.is_multicast:
         return None
 
@@ -287,7 +297,7 @@ def handle_icmpv6(
     reply = EchoReply(request.identifier, request.sequence, request.data)
 
     # Reply from the pinged address back to the requester.
-    # RFC 4443 section 4.2: If the request was sent to a multicast address,
+    # RFC 4443 §4.2: If the request was sent to a multicast address,
     # the source of the reply MUST be a unicast address.
     dst_addr = packet.header.dst_addr
     if dst_addr.is_multicast:
