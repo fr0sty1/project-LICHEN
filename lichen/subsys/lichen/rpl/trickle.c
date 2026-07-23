@@ -35,9 +35,9 @@ static void begin_interval(struct lichen_trickle *t,
 	t->counter = 0;
 	t->transmitted = false;
 
-	uint32_t half = t->interval / 2;
-	/* transmit_time is uniform in [now + half, now + interval) */
-	uint32_t offset = (half > 0) ? (rand_offset % half) : 0;
+	uint32_t half = (t->interval + 1) / 2;
+	uint32_t range = t->interval - half;
+	uint32_t offset = (range > 0) ? (rand_offset % range) : 0;
 	t->transmit_time = sat_add_u32(sat_add_u32(now, half), offset);
 }
 
