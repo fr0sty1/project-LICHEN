@@ -1,0 +1,83 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: The contributors to the LICHEN project
+//
+// ESP32 platform for LICHEN with external SX1276 radio (for TTGO LoRa32).
+// Complete execution model for ttgo_lora32_esp32_procpu Zephyr ELFs.
+// Full address mapping, UART, timers, SPI/GPIO, EFUSE, boot tags. Reaches main/CoAP + TX/RX via lichen-sim.
+// Limits: single-core Xtensa LX6 (no CPU1/WiFi/BLE/DMA/display); no cycle accuracy. Uses STM32SPI as SPI proxy.
+// 
+// ELF characterization (ttgo_lora32_esp32_procpu canonical puck/gateway ELFs):
+// - PT_LOAD segments: .text/.rodata in flash/IROM (0x3f80xxxx/0x400dxxxx), IRAM (0x4008xxxx), DRAM (0x3ffbxxxx)
+// - Entry: ROM reset vector -> app entry
+// - First accesses: EFUSE (MAC/strap), RTC_CNTL (clocks/boot), GPIO matrix, UART0 console, then SPI3 for SX1276
+// - Hash tied to west build output of zephyr.elf
+// Gaps identified: no native ESP32 SPI/GPIO-matrix (STM32SPI stub), incomplete intmux, Xtensa LX6 cpuType="esp32", cache/MMU stubbed. 
+// Minimum model milestones: 1. UART boot, 2. timer/interrupts, 3. GPIO/SPI init, 4. SX1276 TX/RX. No surrogate boot.
+// Modeled exactly after esp32s3_lichen.repl with adjusted memory map (from esp32_common.dtsi), UART@0x3ff40000, SPI3@0x3ff65000, EFUSE/boot tags.
+// Updated for LICHEN tags only; do not touch other files per project-LICHEN-g80o.2.
+
+lowmem: Memory.MappedMemory @ sysbus 0x0
+    size: 0x2000
+
+rom: Memory.MappedMemory @ sysbus 0x40000000
+    size: 0x80000
+
+// SRAM (DRAM at 0x3FFB0000 per dtsi, IRAM at 0x40080000)
+sram: Memory.MappedMemory @ { sysbus 0x3ffb0000; sysbus 0x40080000 }
+    size: 0x80000
+
+// RTC fast memory / other
+rtcFast: Memory.MappedMemory @ sysbus 0x3ff80000
+    size: 0x2000
+
+// Flash cache/XIP mapping for ESP32 (IROM/DROM window)
+flashCache: Memory.MappedMemory @ sysbus 0x3f800000
+    size: 0x1000000
+
+// Additional flash XIP (common for .text in some builds)
+xipFlash: Memory.MappedMemory @ sysbus 0x400d0000
+    size: 0x400000
+
+// CPU0 - Xtensa LX6 (uses "sample_controller" as in esp32s3_lichen; "esp32" and "lx106" rejected after testing as not registered in Renode 1.16.1 Xtensa library)
+cpu0: CPU.Xtensa @ sysbus
+    cpuType: "sample_controller"
+    frequency: 240000000
+
+// UART0 - console (classic ESP32 address 0x3ff40000 per esp32_common.dtsi)
+uart0: UART.ESP32_UART @ sysbus 0x3ff40000
+    -> cpu0@5
+
+// SPI3 (per ttgo_lora32_esp32_procpu.dts for SX1276)
+spi3: SPI.STM32SPI @ sysbus 0x3ff65000
+
+// SX1276 LoRa radio on SPI3 (uses the SX1262 C# peripheral from SX127x.cs as bridge to lichen-sim)
+sx1276: Wireless.SX1262 @ spi3
+    simHost: "127.0.0.1"
+    simPort: 5555
+
+// SPI2 for compatibility with other ESP32 boards
+spi2: SPI.STM32SPI @ sysbus 0x3ff64000
+
+// GPIO registers, EFUSE, RTC, timers, SYSTEM etc (stub tags with ESP32 addresses)
+sysbus:
+    init add:
+        Tag <0x3ff44000 0x1000> "GPIO"
+        Tag <0x3ff44800 0x800> "GPIO1"
+        Tag <0x3ff49000 0x1000> "IO_MUX"
+        Tag <0x3ff48000 0x1000> "RTC_CNTL"
+        Tag <0x3ff5a000 0x1000> "EFUSE"
+        Tag <0x3ff5f000 0x1000> "TIMG0"
+        Tag <0x3ff60000 0x1000> "TIMG1"
+        Tag <0x3ff42000 0x1000> "SYSTEM"
+        Tag <0x3ff53000 0x1000> "WDT"
+        Tag <0x3ff5b000 0x1000> "TRNG"
+        Tag <0x3ff66000 0x1000> "SPI"
+        Tag <0x3ff5d000 0x1000> "CACHE_CTRL"
+        Tag <0x3ff5e000 0x1000> "I2C"
+        // Boot mode: SPI fast flash boot (strap value that avoids download mode)
+        Tag <0x3ff48038 4> "GPIO_STRAP" 0x0c
+        // EFUSE MAC tags (set non-zero valid-looking value to satisfy firmware)
+        Tag <0x3ff5a044 4> "EFUSE_RD_MAC_SPI_SYS_3" 0x00001234
+        Tag <0x3ff5a048 4> "EFUSE_RD_MAC_SPI_SYS_4" 0x56789abc
+        Tag <0x3ff5a04c 4> "EFUSE_RD_MAC_SPI_SYS_5" 0x00000000
+
