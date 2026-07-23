@@ -568,12 +568,10 @@ class EdhocInitiator:
         """
         self._require_state(_InitiatorState.COMPLETE, "export_oscore")
         try:
-            master_secret = _edhoc_kdf(
-                self._prk_4e3m, self._th_4, "OSCORE_Master_Secret", b"", oscore_key_len
-            )
-            master_salt = _edhoc_kdf(
-                self._prk_4e3m, self._th_4, "OSCORE_Master_Salt", b"", oscore_salt_len
-            )
+            prk_out = _edhoc_kdf(self._prk_4e3m, self._th_4, 7, self._th_4, 32)
+            prk_exporter = _edhoc_kdf(prk_out, self._th_4, 10, b"", 32)
+            master_secret = _edhoc_kdf(prk_exporter, self._th_4, 0, b"", oscore_key_len)
+            master_salt = _edhoc_kdf(prk_exporter, self._th_4, 1, b"", oscore_salt_len)
             context = OscoreContext(master_secret, master_salt, self._c_i, self._c_r)
         except Exception:
             self._fail()
@@ -909,12 +907,10 @@ class EdhocResponder:
         """
         self._require_state(_ResponderState.COMPLETE, "export_oscore")
         try:
-            master_secret = _edhoc_kdf(
-                self._prk_4e3m, self._th_4, "OSCORE_Master_Secret", b"", oscore_key_len
-            )
-            master_salt = _edhoc_kdf(
-                self._prk_4e3m, self._th_4, "OSCORE_Master_Salt", b"", oscore_salt_len
-            )
+            prk_out = _edhoc_kdf(self._prk_4e3m, self._th_4, 7, self._th_4, 32)
+            prk_exporter = _edhoc_kdf(prk_out, self._th_4, 10, b"", 32)
+            master_secret = _edhoc_kdf(prk_exporter, self._th_4, 0, b"", oscore_key_len)
+            master_salt = _edhoc_kdf(prk_exporter, self._th_4, 1, b"", oscore_salt_len)
             context = OscoreContext(master_secret, master_salt, self._c_r, self._c_i)
         except Exception:
             self._fail()

@@ -283,10 +283,9 @@ fn edhoc_kdf(
     if label_bytes.len() <= 23 {
         info.push_err(0x60 | label_bytes.len() as u8)?;
     } else {
-        info.push_err(0x78)?;
-        info.push_err(label_bytes.len() as u8)?;
+        info.push_err(0x18)?;
+        info.push_err(label)?;
     }
-    info.extend_err(label_bytes)?;
 
     if context.is_empty() {
         info.push_err(0x40)?;
@@ -1060,7 +1059,7 @@ impl EdhocResponder {
         let mac_2 = edhoc_kdf(
             &self.state.prk_3e2m,
             &self.state.th_2,
-            "MAC_2",
+            2,
             &context_2,
             8,
         )?;
