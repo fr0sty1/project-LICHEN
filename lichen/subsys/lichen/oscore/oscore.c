@@ -499,6 +499,8 @@ int oscore_init(void)
 	memset(s_contexts, 0, sizeof(s_contexts));
 	memset(s_seq_initialized, 0, sizeof(s_seq_initialized));
 	memset(s_replay_pending, 0, sizeof(s_replay_pending));
+	s_nvm_write_cb = NULL;
+	s_nvm_read_cb = NULL;
 	s_initialized = true;
 	k_mutex_unlock(&s_ctx_mutex);
 
@@ -820,6 +822,22 @@ int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint32_t sender_seq)
 	if (idx < 0) {
 		k_mutex_unlock(&s_ctx_mutex);
 		return OSCORE_ERR_INVALID_PARAM;
+	}
+
+	if (!s_seq_initialized[idx] && s_nvm_read_cb != NULL) {
+		uint32_t nvm_ssn;
+		uint8_t eui64_copy[OSCORE_EUI64_LEN];
+		const uint8_t *eui64 = NULL;
+		if (ctx->has_peer_eui64) {
+			memcpy(eui64_copy, ctx->peer_eui64, OSCORE_EUI64_LEN);
+			eui64 = eui64_copy;
+		}
+		int rc = s_nvm_read_cb(eui64, &nvm_ssn);
+		if (rc == 0) {
+			sender_seq = nvm_ssn;
+		} else if (sender_seq == 0) {
+			sender_seq = 1;
+		}
 	}
 
 	ctx->sender_seq = sender_seq;

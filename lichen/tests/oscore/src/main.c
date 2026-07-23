@@ -332,7 +332,7 @@ ZTEST(oscore_ctx, test_nvm_read_failure_fallback_to_zero)
 					     oscore_opt, &oscore_opt_len),
 		      OSCORE_OK);
 	zassert_equal(oscore_ctx_get_sender_seq(ctx, &ssn), OSCORE_OK);
-	zassert_equal(ssn, 1U);
+	zassert_equal(ssn, 2U);
 	oscore_ctx_free(ctx);
 	oscore_nvm_register_callbacks(NULL, NULL);
 }
