@@ -14,6 +14,7 @@
 #include <lichen/coap_dtn.h>
 #include <lichen/coap_oscore.h>
 #include <lichen/oscore.h>
+#include <lichen/coap_oscore.h>
 #include <lichen/routing/dtn.h>
 #include <lichen/senml.h>
 #include <lichen/l2/ipv6_addr.h>
@@ -115,13 +116,34 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 	k_mutex_lock(&s_rate_mutex, K_FOREVER);
 	if (s_last_deaddrop[iid7] && (now_ms - s_last_deaddrop[iid7] < CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS)) {
 		k_mutex_unlock(&s_rate_mutex);
-		k_mutex_unlock(&s_dtn_buf_mutex);
 		return COAP_RESPONSE_CODE_TOO_MANY_REQUESTS;
 	}
 	s_last_deaddrop[iid7] = now_ms;
 	k_mutex_unlock(&s_rate_mutex);
+	const uint8_t *ct;
+	uint16_t ct_len = 0;
+	ct = coap_packet_get_payload(request, &ct_len);
+	if (!ct || ct_len == 0) return COAP_RESPONSE_CODE_BAD_REQUEST;
+	uint8_t plaintext[512];
+	size_t plaintext_len = sizeof(plaintext);
+	uint8_t oscore_opt[32];
+	size_t oscore_opt_len = sizeof(oscore_opt);
+	uint8_t code;
+	uint8_t opts[64];
+	size_t opts_len = sizeof(opts);
+	int ret = coap_oscore_get_option(request, oscore_opt, &oscore_opt_len);
+	if (ret == 0) {
+		ret = oscore_unprotect_request(ctx, oscore_opt, oscore_opt_len, ct, ct_len, &code, opts, &opts_len, plaintext, &plaintext_len);
+		if (ret != OSCORE_OK) return COAP_RESPONSE_CODE_BAD_REQUEST;
+	} else {
+		memcpy(plaintext, ct, ct_len);
+		plaintext_len = ct_len;
+	}
+	uint8_t dest_iid[8] = {0};
+	parse_recipient(plaintext, plaintext_len, dest_iid);
+	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
 	if (s_provider && s_provider->store) {
-		int r = s_provider->store(payload, payload_len);
+		int r = s_provider->store(plaintext, plaintext_len);
 		if (r < 0) {
 			k_mutex_unlock(&s_dtn_buf_mutex);
 			return COAP_RESPONSE_CODE_INTERNAL_ERROR;
@@ -129,7 +151,7 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 	}
 	uint32_t now = dtn_get_unix_time();
 	uint32_t expiry = now + LICHEN_DTN_DEFAULT_TTL_SEC;
-	bool ok = lichen_dtn_buffer_message(&s_dtn_buf, payload, payload_len, dest_iid, expiry, now, now_ms);
+	bool ok = lichen_dtn_buffer_message(&s_dtn_buf, plaintext, plaintext_len, dest_iid, expiry, now, now_ms);
 	k_mutex_unlock(&s_dtn_buf_mutex);
 	if (!ok) return COAP_RESPONSE_CODE_BAD_REQUEST;
 	return COAP_RESPONSE_CODE_CHANGED;
