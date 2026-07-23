@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-bwau",
+  "title": "[spec-compliance] OSCORE sequence number width inconsistent (C: uint32_t/32-bit vs Rust: 40-bit OscoreSeqNum)",
+  "description": "C implementation (oscore.c:43, oscore.h comments, test uses uint32_t ssn and UINT32_MAX exhaustion) uses 32-bit sequence numbers. Rust (lichen-oscore/src/seqnum.rs:32 uses (1\u003c\u003c40)-1, 40-bit Partial IV support per RFC 8613 §5.2). Violates \"All implementations MUST produce identical output for test vectors\" (test/vectors/oscore.json) and cross-impl consistency required by LICHEN spec (spec/10-implementation.md, AGENTS.md test integrity rules). Partial IV encoding and exhaustion/rekey logic will diverge for seq \u003e UINT32_MAX. See recent fixes in commits ad37f4d3f, 87f90bc7b, dd794057c. MUST align on single bit width (recommend 40-bit to match RFC PIV max and Rust).",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T13:45:15.53563246Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T13:45:15.53563246Z"
+}
