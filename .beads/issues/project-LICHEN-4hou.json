@@ -2,15 +2,15 @@
   "id": "project-LICHEN-4hou",
   "title": "[merge-conflict] worktree-worker24: dao.py",
   "notes": "Commit: 375b9836f",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:21:49.648350706Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:11:08.616562235Z",
+  "updated_at": "2026-07-23T02:11:11.763777622Z",
   "started_at": "2026-07-23T02:06:11.076331131Z",
-  "lease_expires_at": "2026-07-23T02:11:11.076331131Z",
-  "heartbeat_at": "2026-07-23T02:06:11.076331131Z"
+  "closed_at": "2026-07-23T02:11:11.763777622Z",
+  "close_reason": "Fixed undefined names (_TARGET_DESCRIPTOR, RoutingError, missing imports for json/time/Iterable/Path/Any/Callable, constants for freshness and route hops) after merge conflict between worker24 simple DAO and advanced vector-tested implementation. Ruff now passes. Updated worker7 branch."
 }
