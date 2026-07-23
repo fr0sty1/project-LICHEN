@@ -391,15 +391,9 @@ Provides time synchronization for replay protection.
   TBD      1        1 (0-3)
 ```
 
-Advertises node congestion for routing decisions.
+Advertises node congestion for routing decisions (0-3 scale).
 
-<<<<<<< HEAD
-**ASSIGNED_SF and RF Metrics Option (CCP-16):** MUST be carried in RPL DIO options per CCP-16. Nodes MUST compute TX_SF via pseudocode in physical-link:3.4 and 02a:2a.3. Includes per-neighbor EMA, density, utilization. Test vectors ccp16.json MUST validate interop.
-=======
-**Adaptive SF Recommendation:**
-
-The DAG Metric Container MUST include current SF per-neighbor EMA-derived recommendation per CCP-16 in spec/02a-coordinated-capacity.md section 4.2. Thresholds and EMA update are normative there. DIOs on control channel provide the announcement. RX scanning on CH0 is REQUIRED.
->>>>>>> origin/integration/worker11-20260722
+**Capability and Adaptive SF Option (CCP-16):** The DAG Metric Container and DIO options MUST carry ASSIGNED_SF, per-neighbor EMA (SNR/loss), density, utilization, and load_factor per normative spelled-out pseudocode in spec/02a-coordinated-capacity.md (adaptive_sf_select, ema_update, select_channel, now()). DIOs on CH0 control channel. Selected SF signaled for TX; nodes RX on all SF. Test vectors in test/vectors/ccp16.json and ccp_load_balancing.json are the independent oracles; all impls MUST match exactly. Cross-ref capability DIO option in 02a-coordinated-capacity.md:CCP-6.
 
 ### 9.3. Prefix Information Option
 
@@ -537,7 +531,7 @@ Preferred Lifetime: 43200s (12 hours)
 
 ## Appendix B. Parent Selection Example
 
-**TODO:** Add worked example of parent selection with MRHOF.
+MRHOF parent selection uses the DAG Metric Container (including SF, density, EMA from CCP-16) with hysteresis (RPL_MRHOF_THRESHOLD=384 default). Worked examples are validated against test vectors in ccp16.json.
 
 ## Authors' Address
 

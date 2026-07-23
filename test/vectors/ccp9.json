@@ -1,7 +1,11 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
+<<<<<<< HEAD
   "description": "CCP-9 rendezvous vectors using independent _l2_announce_with_channel oracle (exact wire format, no AnnounceMessage dep) and math from spec.",
+=======
+  "description": "CCP9 rendezvous vectors with _l2_announce_with_channel exact wire format oracle from messages.py/spec.",
+>>>>>>> origin/worktree-worker23
   "vectors": [
     {
       "name": "announce_rendezvous_channel",

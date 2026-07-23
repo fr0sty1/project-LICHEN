@@ -1,6 +1,7 @@
 {
+  "$schema": "./schema.json",
   "format_version": 2,
-  "description": "Meshtastic app-compat BLE protobuf exchange vectors. 'encoded' is one raw GATT value unless the vector explicitly expects rejection.",
+  "description": "Meshtastic app compat vectors.",
   "vectors": [
     {
       "name": "heartbeat_tolerated",

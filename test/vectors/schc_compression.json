@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "SCHC whole-packet compression vectors (RFC 8724). 'packet' is the full uncompressed IPv6 datagram; 'compressed' is compress_packet(packet). Round-trip: compress(packet) == compressed and decompress(compressed) == packet.",
+  "description": "SCHC whole-packet compression vectors (RFC 8724).",
   "vectors": [
     {
       "name": "coap_linklocal",

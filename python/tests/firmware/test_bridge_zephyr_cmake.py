@@ -29,6 +29,10 @@ BRIDGE_OBSOLETE_ALIAS_BOARD_FILES = (
     "lilygo_tdeck",
     "lilygo_techo",
     "seeed_t1000e",
+<<<<<<< HEAD
+=======
+    "heltec_vision_master_e290",
+>>>>>>> origin/worktree-worker23
 )
 
 

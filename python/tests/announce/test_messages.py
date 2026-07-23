@@ -180,17 +180,17 @@ class TestSignedData:
             originator_iid=b"\x01\x02\x03\x04\x05\x06\x07\x08",
             pubkey=b"\x00" * 32,
             seq_num=0x1234,
-            rx_channel=0x0a,
+            rx_channel=5,
         )
         signed = msg.signed_data()
         expected = (
             b"\x01\x02\x03\x04\x05\x06\x07\x08"
             + b"\x00" * 32
             + b"\x12\x34"
-            + b"\x0a"
+            + b"\x05"
         )
         assert signed == expected
-        assert signed[42] == 0x0a
+        assert signed[42] == 5
 
     def test_signed_data_includes_app_data(self):
         """signed_data() includes app_data."""
@@ -321,7 +321,7 @@ class TestSerialization:
             rx_channel=0,
         )
         wire = msg.to_bytes()
-        assert wire[4:6] == bytes([0xAB, 0xCD])
+        assert wire[3:5] == bytes([0xAB, 0xCD])
 
     def test_to_bytes_rejects_unsigned(self):
         msg = AnnounceMessage(
@@ -454,4 +454,4 @@ class TestKnownVectors:
 
         # rx_channel after signature per to_bytes/from_bytes (CCP-9)
         assert len(wire) == 94
-        assert wire[93] == 5
+        assert wire[93] == 7

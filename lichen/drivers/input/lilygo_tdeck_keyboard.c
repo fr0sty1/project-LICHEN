@@ -1,13 +1,18 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
+<<<<<<< HEAD
 
 #define DT_DRV_COMPAT lilygo_tdeck_keyboard
+=======
+>>>>>>> origin/worktree-worker23
 
 #include <zephyr/device.h>
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/input/input.h>
 #include <zephyr/kernel.h>
 #include <zephyr/sys/util.h>
+
+#define DT_DRV_COMPAT lilygo_tdeck_keyboard
 
 struct lilygo_tdeck_keyboard_config {
 	struct i2c_dt_spec i2c;
@@ -57,6 +62,7 @@ static int lilygo_tdeck_keyboard_init(const struct device *dev) {
 	if (!device_is_ready(config->i2c.bus)) {
 		return -ENODEV;
 	}
+	i2c_reg_write_byte_dt(&config->i2c, 0x01, 0xFF);
 	k_thread_create(&((struct lilygo_tdeck_keyboard_data *)dev->data)->thread, lilygo_tdeck_keyboard_stack, K_KERNEL_STACK_SIZEOF(lilygo_tdeck_keyboard_stack), lilygo_tdeck_keyboard_thread, (void *)dev, NULL, NULL, 6, 0, K_NO_WAIT);
 	return 0;
 }

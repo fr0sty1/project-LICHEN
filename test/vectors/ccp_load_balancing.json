@@ -1,7 +1,11 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
+<<<<<<< HEAD
   "description": "CCP load balancing and TDMA vectors with independent math oracles (hash_32, drift calc from spec).",
+=======
+  "description": "CCP load balancing/TDMA vectors with hash_32 oracle.",
+>>>>>>> origin/worktree-worker23
   "vectors": [
     {
       "name": "tdma_slot_assignment_static_hash",

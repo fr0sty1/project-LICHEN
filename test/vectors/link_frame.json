@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "LICHEN link-layer frame vectors (spec section 4). 'fields' are the frame inputs; 'encoded' is LichenFrame(**fields).to_bytes().",
+  "description": "LICHEN link-layer frame vectors (spec section 4).",
   "vectors": [
     {
       "name": "broadcast_min",

@@ -18,6 +18,13 @@ static struct lichen_dtn_buffer s_dtn_buf;
 static K_MUTEX_DEFINE(s_dtn_buf_mutex);
 static struct k_work_delayable s_dtn_expire_work;
 static uint32_t s_last_deaddrop[16] = {0};
+<<<<<<< HEAD
+=======
+		LOG_DBG("OSCORE path");
+	}
+	return coap_resource_send(resource, &resp, addr, addr_len, piv);
+}
+>>>>>>> origin/worktree-worker23
 
 static uint32_t dtn_get_unix_time(void) { return (uint32_t)(k_uptime_get() / 1000); }
 

@@ -1,6 +1,7 @@
 {
+  "$schema": "./schema.json",
   "format_version": 2,
-  "description": "Independent CCP-9 rendezvous vectors using external hash_32/crc32 oracle (hardcoded expected_channel=7 matching computation, not from code-under-test). Fixes vector bug.",
+  "description": "CCP-9 rendezvous vectors.",
   "vectors": [
     {
       "name": "hash_based_peer_rendezvous",

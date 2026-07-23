@@ -745,8 +745,11 @@
         "expected_remaining_ms": {"type": "integer", "minimum": 0},
         "expected_usage_permille": {"type": "integer", "minimum": 0, "maximum": 1000},
 <<<<<<< HEAD
+<<<<<<< HEAD
         "notes": {"type": "string"}
 =======
+=======
+>>>>>>> origin/worktree-worker23
         "notes": {"type": "string"},
         "binary_hex": {"$ref": "#/definitions/hex"},
         "decoded_fields": {
@@ -767,7 +770,10 @@
             "hash_32": {"type": "integer"}
           }
         }
+<<<<<<< HEAD
 >>>>>>> origin/worktree-worker16
+=======
+>>>>>>> origin/worktree-worker23
       }
     },
     "ccp_vector": {
@@ -790,11 +796,15 @@
         },
         "hash_32_example": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> origin/worktree-worker23
         "security_review": {
           "type": "string",
           "description": "Pass 2 security: no injection or crypto issues in CCP-16 vectors (project-LICHEN-ray3)"
         },
+<<<<<<< HEAD
         "announce": {
           "type": "object",
           "properties": {
@@ -805,6 +815,14 @@
         },
         "hash_32": {"type": "integer"},
 >>>>>>> origin/worktree-worker16
+=======
+        "decoded_fields": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Unified decoded fields including expected_hash for CCP vectors"
+        },
+        "expected_hash": {"type": "integer", "description": "Independent oracle hash value per spec"},
+>>>>>>> origin/worktree-worker23
         "input": {
           "type": "object",
           "properties": {

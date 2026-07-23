@@ -1,7 +1,11 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
+<<<<<<< HEAD
   "description": "SCHC fragmentation vectors (RFC 8724 \u00a78) with independent CRC32 oracle from zlib matching FragmentSender implementation. Updated for 6-bit FCN, real MICs, tile/window params.",
+=======
+  "description": "SCHC fragment vectors. Independent RFC 8724 oracles, no code-under-test.",
+>>>>>>> origin/worktree-worker23
   "vectors": [
     {
       "name": "single_fragment",

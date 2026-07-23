@@ -1,7 +1,11 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
+<<<<<<< HEAD
   "description": "CCP-16 synchronized hopping and desync vectors. Independent from spec pseudocode and hash_32.",
+=======
+  "description": "CCP16 synchronized hop vectors with expected_hash per spec.",
+>>>>>>> origin/worktree-worker23
   "vectors": [
     {
       "name": "synchronized_hop_channel_consistency",
