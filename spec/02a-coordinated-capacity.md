@@ -128,12 +128,17 @@ function adaptive_sf_select(density, snr_ema, load_factor):  // critical-first p
 
 Per-SF SNR thresholds (normative): SF9: >8dB, SF10: any (baseline), SF11: >-5dB (with density/load), SF12: any (critical). Nodes MUST maintain per-neighbor EMA state, signal ASSIGNED_SF and metrics in DIO, RX on all SF. Pseudocode MUST be followed exactly and produce identical output to test/vectors/ccp*.json. Fixed-point Q16.16 no_std example in appendix-design-rationale.md:7.6. Integrates with TDMA slot enforcement and SCHC. Cross-refs physical-link:3.4 table and link layer primitives.
 
-Boundary example for adaptive_sf_select (density=8 edge, matching time-provider delta style per 2a.2):
+Boundary example for adaptive_sf_select (density=8 edge case, matching SFN delta unsigned style per 2a.2):
 
 ```
-density = 8u, snr_ema = 0, load_factor = 0.8
-// high condition: density > 8 is false, but if OR with other, depends on exact; test vectors
-// use unsigned where applicable for consistency with SFN delta (current - last)
+uint32_t density = 8u;      // from beacon count, unsigned
+int16_t snr_ema = 0;
+float load_factor = 0.8f;
+
+// critical-first per pseudocode:
+IF (density > 20) OR (snr_ema < -5)  => false
+ELSE IF (density > 8) OR (snr_ema < 0) OR (load_factor > 0.8) => all false
+ELSE RETURN 10  // default baseline
 ```
 
 ## 2a.4. Time Synchronization
