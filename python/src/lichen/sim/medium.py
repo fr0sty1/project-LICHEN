@@ -15,7 +15,10 @@ from lichen.sim.propagation import (
     CAPTURE_THRESHOLD_DB,
     SENSITIVITY_DEFAULT,
     SENSITIVITY_LR_FHSS,
+    SENSITIVITY_SF9,
     SENSITIVITY_SF10,
+    SENSITIVITY_SF11,
+    SENSITIVITY_SF12,
     PropagationModel,
 )
 from lichen.sim.transmission import Transmission, airtime_us, lr_fhss_airtime_us
@@ -67,6 +70,7 @@ class Medium:
         """
         self.propagation = propagation if propagation is not None else PropagationModel()
         self.noise_floor_dbm = noise_floor_dbm
+        self.density_estimate = 0.0
         self._active_transmissions: list[Transmission] = []
         self._tx_positions: dict[str, tuple[float, float, float]] = {}
 
@@ -84,6 +88,13 @@ class Medium:
             duration_us = lr_fhss_airtime_us(len(payload))
         else:
             duration_us = airtime_us(len(payload))
+        snr_db = float((time_us % 1000) / 100 - 5)
+        if snr_db > 10:
+            sens = SENSITIVITY_SF9
+        elif snr_db > 0:
+            sens = SENSITIVITY_SF10
+        else:
+            sens = SENSITIVITY_SF11
         tx = Transmission(
             source_node_id=node_id,
             payload=payload,
@@ -95,6 +106,7 @@ class Medium:
         )
         self._active_transmissions.append(tx)
         self._tx_positions[tx.id] = position
+        self.density_estimate = len(self._active_transmissions) / 10.0
         return tx
 
     def end_tx(self, transmission_id: str) -> None:
@@ -289,3 +301,9 @@ class Medium:
                 return True
 
         return False
+
+def synchronized_hop_channel(eui64, time_us, epoch=0, density=1, snr_db=0.0):
+    h = 0x811c9dc5
+    for b in eui64 + epoch.to_bytes(4, "little"):
+        h = ((h ^ b) * 0x01000193) & 0xffffffff
+    return (h % (density + 7)) % 8
