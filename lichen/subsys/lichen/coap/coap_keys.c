@@ -39,13 +39,7 @@ LOG_MODULE_REGISTER(lichen_coap_keys, CONFIG_LICHEN_COAP_KEYS_LOG_LEVEL);
 #endif
 BUILD_ASSERT(CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES <= 16, "CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES >16 risks stack overflow in encode_keys_list_cbor (project-LICHEN-vw14)");
 
-<<<<<<< HEAD
 /* CBOR content-format code */
-=======
-BUILD_ASSERT(CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES <= 16,
-	     "CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES >16 risks stack overflow in encode_keys_list_cbor");
-
->>>>>>> origin/integration/worker15-20260722
 #define CBOR_CONTENT_FORMAT 60
 
 /* Key store */
@@ -182,11 +176,7 @@ static size_t base64_encode(const uint8_t *data, size_t len, char *out, size_t o
 	size_t i;
 
 	for (i = 0; i + 2 < len; i += 3) {
-<<<<<<< HEAD
 		if (out_idx + 5 > out_len) {
-=======
-		if (out_idx + 4 > out_len) {
->>>>>>> origin/integration/worker15-20260722
 			return 0;
 		}
 		out[out_idx++] = base64_chars[(data[i] >> 2) & 0x3f];
@@ -196,11 +186,7 @@ static size_t base64_encode(const uint8_t *data, size_t len, char *out, size_t o
 	}
 
 	if (i < len) {
-<<<<<<< HEAD
 		if (out_idx + 5 > out_len) {
-=======
-		if (out_idx + 4 > out_len) {
->>>>>>> origin/integration/worker15-20260722
 			return 0;
 		}
 		out[out_idx++] = base64_chars[(data[i] >> 2) & 0x3f];
@@ -283,40 +269,8 @@ static int base64_decode(const char *in, size_t in_len, uint8_t *out, size_t out
 	return (int)out_idx;
 }
 
-<<<<<<< HEAD
 int lichen_key_pubkey_fingerprint(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
 				  char *_Nonnull buf, size_t buf_len)
-=======
-int lichen_key_pubkey_to_iid(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
-			     uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN])
-{
-	if (pubkey == NULL || iid == NULL) {
-		return -EINVAL;
-	}
-
-#ifdef CONFIG_TINYCRYPT_SHA256
-	struct tc_sha256_state_struct sha_state;
-	uint8_t hash[32];
-
-	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS ||
-	    tc_sha256_update(&sha_state, pubkey, LICHEN_KEY_PUBKEY_LEN) != TC_CRYPTO_SUCCESS ||
-	    tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
-		return -EIO;
-	}
-
-	memcpy(iid, hash, LICHEN_KEY_IID_LEN);
-	iid[0] &= ~0x02U;
-	memset(hash, 0, sizeof(hash));  /* clear sensitive intermediate from stack */
-	return 0;
-#else
-	/* Kconfig forces TINYCRYPT_SHA256; this path is unreachable */
-	return -ENOSYS;
-#endif
-}
-
-int lichen_key_pubkey_fingerprint(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
-				  char *buf, size_t buf_len)
->>>>>>> origin/integration/worker15-20260722
 {
 	if (pubkey == NULL || buf == NULL || buf_len < LICHEN_KEY_FINGERPRINT_STR_LEN) {
 		return -EINVAL;
@@ -362,39 +316,45 @@ int lichen_key_pubkey_fingerprint(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
 #endif
 }
 
-int lichen_key_pubkey_to_iid(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
-			     uint8_t iid[LICHEN_KEY_IID_LEN])
+int lichen_key_pubkey_to_iid(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
+			     uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN])
 {
 	if (pubkey == NULL || iid == NULL) {
 		return -EINVAL;
 	}
+
 #ifdef CONFIG_TINYCRYPT_SHA256
 	struct tc_sha256_state_struct sha_state;
 	uint8_t hash[32];
-	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS) {
+
+	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS ||
+	    tc_sha256_update(&sha_state, pubkey, LICHEN_KEY_PUBKEY_LEN) != TC_CRYPTO_SUCCESS ||
+	    tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
 		return -EIO;
 	}
-	if (tc_sha256_update(&sha_state, pubkey, LICHEN_KEY_PUBKEY_LEN) != TC_CRYPTO_SUCCESS) {
-		return -EIO;
-	}
-	if (tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
-		return -EIO;
-	}
+
+	/* IID = SHA-256(pubkey)[0:8] with U/L bit cleared (bit 1 = 0x02)
+	 * per RFC 4291 (locally-administered) and LICHEN spec (project-LICHEN-zt3c).
+	 * Matches _pubkey_to_iid() in Python and lichen_pubkey_to_iid() in ipv6_addr.c.
+	 * This enables unified identity across LCI, mesh, and backbone.
+	 */
 	memcpy(iid, hash, LICHEN_KEY_IID_LEN);
-	iid[0] &= ~0x02U;
-	memset(hash, 0, sizeof(hash));
+	iid[0] &= ~0x02U;  /* Clear U/L bit */
+	memset(hash, 0, sizeof(hash));  /* scrub sensitive material */
+
 	return 0;
 #else
+	/* Fallback without crypto (insecure, test-only) */
 	memcpy(iid, pubkey, LICHEN_KEY_IID_LEN);
 	iid[0] &= ~0x02U;
 	return 0;
 #endif
 }
 
+
 /* --------------------------------------------------------------------------
  * Key store implementation
- * --------------------------------------------------------------------------
- */
+ * -------------------------------------------------------------------------- */
 
 static int find_key_locked(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN])
 {
@@ -406,6 +366,7 @@ static int find_key_locked(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN])
 	}
 	return -ENOENT;
 }
+
 static int find_free_slot_locked(void)
 {
 	for (int i = 0; i < CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES; i++) {
@@ -528,7 +489,8 @@ size_t lichen_key_store_count(void)
 	return count;
 }
 
-size_t lichen_key_store_list(struct lichen_key_entry *entries, size_t max_entries)
+size_t lichen_key_store_list(struct lichen_key_entry *_Nonnull entries,
+			     size_t max_entries)
 {
 	size_t count = 0;
 
@@ -741,7 +703,7 @@ static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 }
 
 #ifdef CONFIG_LICHEN_COAP_KEYS_TEST_HOOKS
-size_t lichen_key_store_test_encode_list(uint8_t *buf, size_t buf_size)
+size_t lichen_key_store_test_encode_list(uint8_t *_Nonnull buf, size_t buf_size)
 {
 	return encode_keys_list_cbor(buf, buf_size);
 }
