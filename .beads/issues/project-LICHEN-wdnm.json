@@ -2,6 +2,7 @@
   "id": "project-LICHEN-wdnm",
   "title": "oscore: MemorySecurityContext missing algorithm validation",
   "description": "File: python/src/lichen/crypto/oscore.py\nLines: 82-83\n\nThe constructor accesses algorithm and hashfun dictionaries without validation:\n\n```python\nself.alg_aead = algorithms[algorithm]\nself.hashfun = hashfunctions[hashfun]\n```\n\nIf an invalid algorithm ID or hashfun name is passed, this raises a cryptic KeyError instead of a clear ValueError with guidance on valid values.\n\nExample:\n```python\nMemorySecurityContext(..., algorithm=999)  # Raises: KeyError: 999\n```\n\nFix: Add validation with helpful error message listing valid algorithms/hashfunctions.",
+  "notes": "Commit: 5031146c0",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:17:15.979063Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T03:58:12.078030627Z",
+  "updated_at": "2026-07-23T04:00:24.662581331Z",
   "started_at": "2026-07-23T03:58:12.078030627Z",
   "lease_expires_at": "2026-07-23T04:03:12.078030627Z",
   "heartbeat_at": "2026-07-23T03:58:12.078030627Z"
