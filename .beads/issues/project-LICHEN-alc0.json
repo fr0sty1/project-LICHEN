@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-alc0",
   "title": "[merge-conflict] worktree-worker1: 02a-coordinated-capacity.md",
+  "notes": "Commit: 434a5609a",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:40:09.503695724Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:41:53.27891099Z",
+  "updated_at": "2026-07-23T01:45:29.783639418Z",
   "started_at": "2026-07-23T01:41:53.27891099Z",
   "lease_expires_at": "2026-07-23T01:46:53.27891099Z",
   "heartbeat_at": "2026-07-23T01:41:53.27891099Z"
