@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-9r55",
   "title": "[merge-conflict] worktree-worker20: schema.json",
+  "notes": "Commit: 358ae6d13; resolved schema merge conflict for worker20 vectors and dao/rpl document defs; test_dao_origin_signature_schema_is_closed_and_relational now closer to passing",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:10:51.408113151Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:48:01.240002201Z",
+  "updated_at": "2026-07-23T04:55:48.801998776Z",
   "started_at": "2026-07-23T03:48:35.186099462Z",
   "lease_expires_at": "2026-07-23T04:53:01.240002201Z",
   "heartbeat_at": "2026-07-23T04:48:01.240002201Z"
