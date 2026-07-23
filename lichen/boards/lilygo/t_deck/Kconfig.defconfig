@@ -7,16 +7,6 @@ config HEAP_MEM_POOL_ADD_SIZE_BOARD
 	default 51200 if WIFI
 	default 40960 if BT
 <<<<<<< HEAD
-	default 4096
-config I2C
-	default y
-config INPUT
-	default y
-config INPUT_GPIO_KEYS
-	default y
-config LV_Z
-	default y if LICHEN_HAS_DISPLAY
-=======
 	default 8192
 
 config LICHEN_HAS_DISPLAY
@@ -26,8 +16,11 @@ config LICHEN_HAS_DISPLAY
 	select ST7789V if DISPLAY
 	select INPUT
 	select GPIO_KEYS
+	select I2C
+	select INPUT_GPIO_KEYS
 
->>>>>>> origin/worktree-worker19
+config LV_Z
+	default y if LICHEN_HAS_DISPLAY
 endif # BOARD_T_DECK_ESP32S3_PROCPU
 
 if BOARD_T_DECK_ESP32S3_APPCPU
