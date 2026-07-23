@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-mczs",
   "title": "[merge-conflict] worktree-worker16: schema.json",
+  "notes": "Commit: 32654a269 (fixed schema.json indentation remnant from merge in ccp13_vector definition across worktrees)",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:18:25.155413284Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:51:55.213932189Z",
+  "updated_at": "2026-07-23T02:54:57.606550422Z",
   "started_at": "2026-07-23T02:51:55.213932189Z",
   "lease_expires_at": "2026-07-23T02:56:55.213932189Z",
   "heartbeat_at": "2026-07-23T02:51:55.213932189Z"
