@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-uk36.4.2.2",
   "title": "Update edhoc_*_export_oscore to match Python derivation, ID assignment, and PRK wipe sequence exactly",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:29:34.825131422Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T14:25:03.784680499Z",
+  "updated_at": "2026-07-23T14:29:15.630076595Z",
   "started_at": "2026-07-23T06:00:45.602779012Z",
-  "lease_expires_at": "2026-07-23T14:30:03.784680499Z",
-  "heartbeat_at": "2026-07-23T14:25:03.784680499Z",
+  "closed_at": "2026-07-23T14:29:15.630076595Z",
+  "close_reason": "Updated edhoc_initiator_export_oscore and edhoc_responder_export_oscore to use exact 4-step EDHOC exporter chain with integer labels 7/10/0/1 matching Python edhoc.py derivation. Added edhoc_export_kdf helper. Updated PRK wipe to occur after state=EXPORTED. IDs and sequence now exact match. Build verified.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-uk36.4.2.2",
