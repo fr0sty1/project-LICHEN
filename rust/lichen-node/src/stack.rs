@@ -20,6 +20,8 @@ use lichen_ipv6::{next_header, Addr, Ipv6Header, UdpHeader, IPV6_HEADER_LEN, UDP
 use lichen_link::seqnum::LinkSeqNum;
 use lichen_link::{frame::FrameError, link_layer::LinkRxError};
 use lichen_schc::codec;
+#[cfg(feature = "std")]
+use lichen_rpl::routing::SourceRoutingHeader;
 
 use crate::forward_buffer::{ForwardBuffer, ForwardError};
 use crate::Node;
@@ -570,12 +572,23 @@ pub fn add_rpl_source_route(
     out[24..40].copy_from_slice(&route[0]);
     out[40] = transport;
     out[41] = (routing_len / 8 - 1) as u8;
-    out[42] = 3;
-    out[43] = remaining as u8;
-    out[44..48].fill(0);
-    for (index, address) in route[1..].iter().enumerate() {
-        let start = 48 + index * 16;
-        out[start..start + 16].copy_from_slice(address);
+    #[cfg(feature = "std")]
+    {
+        let srh = SourceRoutingHeader {
+            segments_left: remaining as u8,
+            addresses: route[1..].to_vec(),
+        };
+        let _ = srh.write_to(&mut out[42..]).map_err(|_| TxError::BufferTooSmall)?;
+    }
+    #[cfg(not(feature = "std"))]
+    {
+        out[42] = 3;
+        out[43] = remaining as u8;
+        out[44..48].fill(0);
+        for (index, address) in route[1..].iter().enumerate() {
+            let start = 48 + index * 16;
+            out[start..start + 16].copy_from_slice(address);
+        }
     }
     out[IPV6_HEADER_LEN + routing_len..total_len].copy_from_slice(&ipv6[IPV6_HEADER_LEN..]);
     Ok(total_len)
