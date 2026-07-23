@@ -51,6 +51,7 @@ from generate import (  # noqa: E402
     l2_payload_vectors,
     meshcore_app_compat_vectors,
     meshtastic_app_compat_vectors,
+    _hop_hash,
 )
 from generate_rpl_route_state import build_document as build_route_state_document  # noqa: E402
 
@@ -487,9 +488,7 @@ def test_ccp16_sf_ema_load_factor_hash32_logic(desc: str, vector: dict) -> None:
     else:
         eui = bytes.fromhex(str(eui_hex).replace("0x", ""))
     epoch = i.get("epoch", 0)
-    # match generator oracle: eui + epoch.to_bytes(4, "little") per ccp16_vectors()
-    data = eui + epoch.to_bytes(4, "little")
-    h = hash_32(data)
+    h = _hop_hash(eui, epoch)
     assert h == o.get("hash_32", o.get("expected_hash", h))
     snr_ema = i.get("snr_ema", i.get("snr_db", 5.0))
     load_factor = i.get("load_factor", 0.0)

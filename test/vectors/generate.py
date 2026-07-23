@@ -34,6 +34,10 @@ def hash_32(data: bytes) -> int:
     return h
 
 
+def _hop_hash(eui: bytes, epoch: int) -> int:
+    return hash_32(eui + epoch.to_bytes(4, "little"))
+
+
 VECTORS_DIR = Path(__file__).resolve().parent
 FORMAT_VERSION = 2
 L2_DISPATCH_SCHC = 0x14
@@ -1740,11 +1744,6 @@ def _l2_announce_with_channel(channel: int) -> bytes:
 
 
 def ccp16_vectors() -> list[dict]:
-    def _h(data):
-        h = 0x811c9dc5
-        for b in data:
-            h = ((h ^ b) * 0x01000193) & 0xffffffff
-        return h
     eui = bytes.fromhex("0011223344556677")
     return [
         {
@@ -1759,7 +1758,7 @@ def ccp16_vectors() -> list[dict]:
                 "now": 4660
             },
             "output": {
-                "hash_32": _h(eui + (1).to_bytes(4, "little")),
+                "hash_32": _hop_hash(eui, 1),
                 "channel": 2,
                 "expected_channel": 2,
                 "sf": 9,
@@ -1779,7 +1778,7 @@ def ccp16_vectors() -> list[dict]:
                 "now": 100
             },
             "output": {
-                "hash_32": _h(eui + (0).to_bytes(4, "little")),
+                "hash_32": _hop_hash(eui, 0),
                 "channel": 2,
                 "expected_channel": 2,
                 "sf": 10,
@@ -1799,7 +1798,7 @@ def ccp16_vectors() -> list[dict]:
                 "now": 0xfffffff0
             },
             "output": {
-                "hash_32": _h(eui + (0).to_bytes(4, "little")),
+                "hash_32": _hop_hash(eui, 0),
                 "channel": 0,
                 "expected_channel": 0,
                 "sf": 11,
