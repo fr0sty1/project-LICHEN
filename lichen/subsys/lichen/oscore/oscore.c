@@ -995,13 +995,50 @@ int oscore_ctx_persist_ssn(struct oscore_ctx *ctx)
 		return OSCORE_OK;
 	}
 
-	ret = write_cb(eui64, ssn);
-	if (ret != 0) {
-		LOG_ERR("Failed to persist SSN to NVM: %d", ret);
-		return OSCORE_ERR_NVM_FAILED;
+	/* Retry up to 3 times with backoff on NVM write failure */
+	const int MAX_RETRIES = 3;
+	for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
+		ret = write_cb(eui64, ssn);
+		if (ret == 0) {
+			return OSCORE_OK;
+		}
+		LOG_WRN("NVM SSN persist attempt %d/%d failed: %d",
+			attempt + 1, MAX_RETRIES, ret);
+		if (attempt < MAX_RETRIES - 1) {
+			k_msleep(10 << attempt);  /* 10ms, 20ms, 40ms backoff */
+		}
 	}
 
-	return OSCORE_OK;
+	LOG_ERR("Failed to persist SSN to NVM after %d retries", MAX_RETRIES);
+
+	/* SECURITY: On final NVM failure after retries, re-acquire mutex and
+	 * advance ctx->sender_seq by safety margin. Ensures no nonce reuse
+	 * on reboot with stale NVM value (the SSN used for the just-sent
+	 * packet will not be reused). Per RFC 8613 Section 7.2. Matches
+	 * nvm_failed path in oscore_protect_request() which also syncs
+	 * initialized flag. See oscore.h:OSC ORE_SSN_SAFETY_MARGIN and
+	 * test_nvm_protect_request_failure.
+	 */
+	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+	int idx = ctx_get_index(ctx);
+	if (idx >= 0) {
+		uint32_t new_ssn = ctx->sender_seq;
+		if (ctx->sender_seq > OSCORE_SSN_MAX - OSCORE_SSN_SAFETY_MARGIN) {
+			new_ssn = OSCORE_SSN_MAX;
+			LOG_ERR("SSN near exhaustion after NVM failure - "
+				"key rotation required immediately");
+		} else {
+			new_ssn += OSCORE_SSN_SAFETY_MARGIN;
+			ctx->sender_seq = new_ssn;
+		}
+		s_seq_initialized[idx] = true;
+		LOG_WRN("Advanced sender_seq to %u (+%u safety margin) after "
+			"NVM failure to prevent nonce reuse on reboot. "
+			"(RFC 8613 7.2)", new_ssn, OSCORE_SSN_SAFETY_MARGIN);
+	}
+	k_mutex_unlock(&s_ctx_mutex);
+
+	return OSCORE_ERR_NVM_FAILED;
 }
 
 int oscore_ctx_get(const uint8_t *recipient_id,
@@ -1594,20 +1631,14 @@ common_wipe:
 	return ret;
 
 nvm_failed:
-	/* SECURITY: NVM failure ONLY on success path after SSN++ (under mutex
-	 * at ~1511), plaintext/AAD/encrypt/option-build all succeeded (~1591).
-	 * Ciphertext and oscore_opt are filled for caller, so SSN increment
-	 * is kept (no rollback) to prevent nonce reuse. Mutex-locked update
-	 * of s_seq_initialized ensures ! "not initialized" guard (~1497) on
-	 * next call (per test_nvm_protect_request_failure). Fixes
-	 * python-ano.41 (nonce reuse on reboot, RFC 8613 §7.2/§8.4).
-	 *
-	 * Buffer check, AAD/encrypt/option build error paths (~1529/1538/1552/
-	 * 1560/1569/1586) now set appropriate ret then goto common_wipe first
-	 * (ensuring wipe always before SSN handling in nvm_failed). Do not set
-	 * NVM error here. Early param/ctx/seq paths return directly. nvm_failed
-	 * is distinct for post-crypto persistence failure. Mutex serializes;
-	 * wipes clear sensitive data on all paths.
+	/* SECURITY: NVM failure on success path (after SSN++ under mutex,
+	 * full crypto/option-build succeeded). persist_ssn() already bumped
+	 * sender_seq by OSCORE_SSN_SAFETY_MARGIN on final failure after
+	 * its retries (see oscore_ctx_persist_ssn). Here we only sync
+	 * s_seq_initialized flag under mutex to avoid "not initialized"
+	 * error on next protect (per test). Ciphertext/oscore_opt are valid
+	 * for caller so packet can be sent. Prevents nonce reuse on reboot
+	 * per RFC 8613 §7.2. Wipes happen via common_wipe.
 	 */
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
 	ctx_idx = ctx_get_index(ctx);

@@ -367,30 +367,33 @@ ZTEST(oscore_ctx, test_nvm_protect_request_failure)
 	mock_nvm_write_count = 0; /* reset for this test's persist call */
 
 	/* protect_request does SSN++ (to 1001), full crypto/option build,
-	 * then persist_ssn fails -> returns OSCORE_ERR_NVM_FAILED.
-	 * nvm_failed path ensures state sync (initialized flag set).
+	 * then oscore_ctx_persist_ssn does 3 retries + final failure.
+	 * On failure, bumps sender_seq by OSCORE_SSN_SAFETY_MARGIN.
+	 * nvm_failed ensures initialized flag.
 	 */
 	zassert_equal(oscore_protect_request(ctx, 0x01, NULL, 0, NULL, 0,
 					     ciphertext, &ct_len,
 					     oscore_opt, &opt_len),
 		      OSCORE_ERR_NVM_FAILED);
-	zassert_equal(mock_nvm_write_count, 1);
+	zassert_equal(mock_nvm_write_count, 3);
 
-	/* SSN state correctness: incremented despite NVM failure (no rollback
-	 * since protected message was prepared; prevents nonce reuse on reboot)
+	/* SSN state correctness: incremented + safety bump on NVM failure
+	 * (no rollback since protected message was prepared; prevents
+	 * nonce reuse on reboot per RFC 8613 7.2)
 	 */
 	zassert_equal(oscore_ctx_get_sender_seq(ctx, &ssn), OSCORE_OK);
-	zassert_equal(ssn, 1001U);
+	zassert_equal(ssn, 1001U + OSCORE_SSN_SAFETY_MARGIN);
 
-	/* With mock fixed, subsequent protect succeeds (no INVALID_PARAM) */
+	/* With mock fixed, subsequent protect succeeds */
 	mock_nvm_set_write_fail(false);
 	ct_len = sizeof(ciphertext);
 	opt_len = sizeof(oscore_opt);
+	mock_nvm_write_count = 0; /* reset for success count */
 	zassert_equal(oscore_protect_request(ctx, 0x01, NULL, 0, NULL, 0,
 					     ciphertext, &ct_len,
 					     oscore_opt, &opt_len),
 		      OSCORE_OK);
-	zassert_equal(mock_nvm_write_count, 2);
+	zassert_equal(mock_nvm_write_count, 1);
 
 	oscore_ctx_free(ctx);
 	oscore_nvm_register_callbacks(NULL, NULL);
