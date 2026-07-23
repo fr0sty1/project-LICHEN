@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-2auf.44.11.1.6",
+  "title": "Implement Trickle-suppression-safe neighbor liveness policy before 10s eviction",
+  "description": "Add a neighbor liveness policy that respects Trickle suppression rules and does not evict neighbors before the configured 10s timeout. Integrate into the maintenance/prune logic. Update relevant tests for the new policy. Part of single-owner RPL runtime loop.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:16:14.049729503Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:16:14.049729503Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.11.1.6",
+      "depends_on_id": "project-LICHEN-2auf.44.11.1",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:16:14.186277257Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
