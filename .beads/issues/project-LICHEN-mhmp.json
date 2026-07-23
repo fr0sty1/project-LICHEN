@@ -1,16 +1,15 @@
 {
   "id": "project-LICHEN-mhmp",
   "title": "[merge-conflict] worktree-worker18: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
-  "notes": "Commit: f26f1d0fb (synced heltec_wifi_lora32_v3_esp32s3_procpu.conf puck board config in worktree-worker18 to consolidated clean canonical version from main, removing verbose merge-conflict resolution comment per AGENTS.md no-dead-code rule)",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:05:07.655090835Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:49:35.965616137Z",
+  "updated_at": "2026-07-23T02:48:06.824298018Z",
   "started_at": "2026-07-23T02:48:06.824298018Z",
-  "closed_at": "2026-07-23T02:49:35.965616137Z",
-  "close_reason": "Synced puck heltec_wifi_lora32_v3_esp32s3_procpu.conf in worktree-worker18 to clean canonical short version matching main (removed 12 lines of dead merge-conflict resolution comment listing workers/epics per no-dead-code rule). Verified git status clean before/after. Commit f26f1d0fb pushed to worktree-worker18. Matches pattern from similar beads (e.g. project-LICHEN-xyx1, project-LICHEN-b7o1)."
+  "lease_expires_at": "2026-07-23T02:53:06.824298018Z",
+  "heartbeat_at": "2026-07-23T02:48:06.824298018Z"
 }
