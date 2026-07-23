@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-gc87",
   "title": "[merge-conflict] worktree-worker19: Kconfig.defconfig",
+  "notes": "Commit: 6a8bb8003",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:27:18.822993986Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:22:19.938420631Z",
+  "updated_at": "2026-07-23T02:24:06.314360307Z",
   "started_at": "2026-07-23T02:22:19.938420631Z",
   "lease_expires_at": "2026-07-23T02:27:19.938420631Z",
   "heartbeat_at": "2026-07-23T02:22:19.938420631Z"
