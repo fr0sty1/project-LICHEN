@@ -2,7 +2,7 @@
   "id": "project-LICHEN-53iv",
   "title": "[spec-compliance] EDHOC uses 64B Ed25519 sig instead of Schnorr48",
   "description": "edhoc.h:49 defines EDHOC_ED25519_SIG_LEN=64; edhoc.c uses full Ed25519 (lines 749,832,1157,1341 etc) vs spec/06-security.md:328,373 (Schnorr variant preferred), draft-lichen-schnorr-00.md (48-byte e[16]||s[32]), and link layer mandate for Schnorr on RPL. lichen_link_rx.c uses Schnorr but EDHOC does not. BUILD_ASSERTs and recent edits in edhoc.c. Priority violation of bandwidth and signature spec.",
-  "notes": "Claimed. Investigating EDHOC vs Schnorr48 mismatch in C, Rust, Python impls per bead description. Will update all for full spec compliance and consistency with link layer.",
+  "notes": "C EDHOC now uses Schnorr48; fixing API mismatch in init funcs for corr param and adding BUILD_ASSERT per bead",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -10,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:16:00.750426497Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:45:01.423329901Z",
+  "updated_at": "2026-07-23T04:48:02.134376158Z",
   "started_at": "2026-07-22T23:22:57.12416994Z",
   "lease_expires_at": "2026-07-23T04:50:01.423329901Z",
   "heartbeat_at": "2026-07-23T04:45:01.423329901Z"
