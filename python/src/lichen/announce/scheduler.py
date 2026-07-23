@@ -65,11 +65,9 @@ class SchedulerConfig:
 
     interval_ms: int = DEFAULT_INTERVAL_MS
     jitter_ms: int = DEFAULT_JITTER_MS
-    # ponytail: initial delay randomized to prevent thundering herd on mass power-on
-    initial_delay_ms: int = 0  # Will be randomized at runtime if 0
+    initial_delay_ms: int = 0
 
     def __post_init__(self) -> None:
-        """Validate configuration values."""
         if self.interval_ms <= 0:
             raise ValueError(f"interval_ms must be > 0, got {self.interval_ms}")
         if self.jitter_ms < 0:
@@ -245,9 +243,6 @@ class AnnounceScheduler:
         """
         while self._running:
             try:
-                # Why initial delay: Let node receive announces from others first.
-                # Why randomize: Prevents a thundering herd on mass power-on.
-                self.config.validate()
                 initial_delay = self.config.initial_delay_ms
                 if initial_delay == 0:
                     initial_delay = random.randint(
@@ -263,12 +258,8 @@ class AnnounceScheduler:
 
         while self._running:
             try:
-                self.config.validate()
-                # Send announce
                 await self._send_announce()
 
-                # Wait with jitter
-                # Why jitter: Prevents all nodes announcing at the same time.
                 jitter = random.randint(0, self.config.jitter_ms)
                 delay = (self.config.interval_ms + jitter) / 1000
                 await asyncio.sleep(delay)
@@ -276,9 +267,7 @@ class AnnounceScheduler:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                # Why catch-all: Don't let one failure stop the loop.
                 logger.exception("error in announce loop: %s", e)
-                # Brief pause before retry
                 await asyncio.sleep(1)
 
     async def _send_announce(self) -> None:
