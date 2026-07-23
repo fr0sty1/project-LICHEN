@@ -67,7 +67,7 @@ class SourceRoutingHeader:
         addresses = [IPv6Address(addr_bytes[i : i + 16]) for i in range(0, len(addr_bytes), 16)]
         if len(addresses) > MAX_ROUTE_HOPS:
             raise RoutingError("source route exceeds maximum hop count")
-        if segments_left > len(addresses):
+        if not 0 <= segments_left <= len(addresses):
             raise RoutingError("segments_left exceeds address count")
         if segments_left == 0:
             addresses = []
