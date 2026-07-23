@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-2nob",
   "title": "[merge-conflict] worktree-worker18: coap_location.c",
-  "status": "in_progress",
+  "notes": "Commit: 067e7b86b",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:16:16.632652567Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:19:41.302326254Z",
+  "updated_at": "2026-07-23T00:22:14.070741148Z",
   "started_at": "2026-07-23T00:19:41.302326254Z",
-  "lease_expires_at": "2026-07-23T00:24:41.302326254Z",
-  "heartbeat_at": "2026-07-23T00:19:41.302326254Z"
+  "closed_at": "2026-07-23T00:22:14.070741148Z",
+  "close_reason": "Resolved merge conflict by adding SENML_CBOR_CONTENT_FORMAT constant to coap_server.h and updating coap_location.c + coap_dtn.c to use it consistently. Matches deaddrop usage and eliminates magic number. Verified no compile issues in context."
 }

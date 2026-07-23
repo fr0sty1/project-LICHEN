@@ -91,8 +91,6 @@ struct lichen_meshtastic_adapter_packet_info {
 	uint32_t portnum;
 	uint8_t to_eui64[8];
 	uint8_t to_iid[8];
-<<<<<<< HEAD
-=======
 	/*
 	 * payload points into payload_buf[] (a safe copy of the data from the
 	 * ToRadio buffer passed to process_raw/feed_stream). The buffer and
@@ -100,7 +98,6 @@ struct lichen_meshtastic_adapter_packet_info {
 	 * handle_location() callback. Callers may retain the pointer or copy
 	 * the data; strict lifetime discipline is no longer required.
 	 */
->>>>>>> origin/integration/worker9-20260722
 	const uint8_t *payload;
 	uint8_t payload_buf[LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX];
 	size_t payload_len;

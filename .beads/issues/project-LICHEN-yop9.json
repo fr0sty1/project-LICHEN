@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-yop9",
+  "title": "[cross-impl] schnorr48 frame signing uses inconsistent dst_addr_len prefix (Python vs Rust/Zephyr)",
+  "description": "Python link_layer.py:265-268 _build_signable_data omits the 1-byte dst_addr.len() prefix present in Rust lichen-link/src/schnorr.rs:202 (buf.push(dst_addr.len() as u8)) and C lichen/subsys/lichen/link/schnorr48.c:305-307 (header[header_len++] = (uint8_t)dst_addr_len). This causes different signable messages (and thus different signatures) for identical frame inputs. See explore agent analysis referencing spec/drafts/draft-lichen-schnorr-00.md:4.2, test/vectors/schnorr48.json, and recent schnorr fixes (7adbe0cf0, 31385b96e). All three must match exactly for cross-impl. Priority 1 as it breaks interop.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T00:21:51.79163636Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T00:21:51.79163636Z"
+}
