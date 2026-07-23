@@ -86,12 +86,32 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
     Unlike FilesystemSecurityContext, this stores all state in memory. Suitable
     for ephemeral sessions established via EDHOC.
 
+    Compatible with aiocoap==0.4.17 (pinned in pyproject.toml). Explicitly
+    declares interface elements from CanProtect/CanUnprotect/SecurityContextUtils
+    to prevent silent breakage on library updates.
+
     Attributes:
         sender_id: Our ID (from EDHOC connection ID).
         recipient_id: Peer's ID (from EDHOC connection ID).
         sender_sequence_number: Next outgoing sequence number.
         recipient_replay_window: Replay protection for incoming messages.
     """
+
+    is_signing = False
+    responses_send_kid = False
+    external_aad_is_group = False
+    authenticated_claims: list[str] = []
+    sender_key: bytes
+    recipient_key: bytes
+    common_iv: bytes
+
+    @property
+    def context_id(self) -> bytes | None:
+        return self.id_context
+
+    @property
+    def kid_context(self) -> bytes | None:
+        return self.id_context
 
     def __init__(
         self,
