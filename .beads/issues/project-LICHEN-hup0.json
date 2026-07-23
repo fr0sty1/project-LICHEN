@@ -2,15 +2,15 @@
   "id": "project-LICHEN-hup0",
   "title": "[merge-conflict] integration/worker9-20260722: reassembly.py",
   "notes": "Commit: 15ec74b27",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:23:09.570293443Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:44:39.427778625Z",
+  "updated_at": "2026-07-23T04:44:41.830545288Z",
   "started_at": "2026-07-23T02:08:28.058222484Z",
-  "lease_expires_at": "2026-07-23T04:42:47.863288376Z",
-  "heartbeat_at": "2026-07-23T04:37:47.863288376Z"
+  "closed_at": "2026-07-23T04:44:41.830545288Z",
+  "close_reason": "Fixed merge conflict artifacts in reassembly.py: corrected ACK construction for complete responses, added payload length validation for regular fragments, fixed rule ID validation in manager, updated max packet size, removed dead code, fixed type issues in _abs_window. All tests pass, mypy and ruff clean for the module."
 }
