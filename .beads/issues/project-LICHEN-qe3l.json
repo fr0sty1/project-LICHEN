@@ -17,22 +17,6 @@
       "created_at": "2026-07-23T02:42:54.029686905Z",
       "created_by": "AI Agent",
       "metadata": "{}"
-    },
-    {
-      "issue_id": "project-LICHEN-qe3l",
-      "depends_on_id": "project-LICHEN-ogmf",
-      "type": "blocks",
-      "created_at": "2026-07-23T02:42:54.159956165Z",
-      "created_by": "AI Agent",
-      "metadata": "{}"
-    },
-    {
-      "issue_id": "project-LICHEN-qe3l",
-      "depends_on_id": "project-LICHEN-mjga",
-      "type": "blocks",
-      "created_at": "2026-07-23T02:42:54.291868858Z",
-      "created_by": "AI Agent",
-      "metadata": "{}"
     }
   ]
 }
