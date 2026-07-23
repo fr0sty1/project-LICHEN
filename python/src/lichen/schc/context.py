@@ -14,7 +14,7 @@ fields, pick a rule, then call :func:`lichen.schc.codec.compress`.
 
 from __future__ import annotations
 
-from lichen.schc.codec import compress, decompress
+from lichen.schc.codec import SchcError, compress, decompress
 from lichen.schc.rules import (
     MO,
     RULE_ID_UNCOMPRESSED,
@@ -85,5 +85,5 @@ class SchcContext:
         return len(self._rules)
 
 
-class NoMatchingRuleError(Exception):
+class NoMatchingRuleError(SchcError):
     pass
