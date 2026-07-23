@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-9mnf",
   "title": "[merge-conflict] worktree-worker20: codec.rs",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:05:09.702904676Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:05:09.702904676Z"
+  "updated_at": "2026-07-23T02:49:58.004105901Z",
+  "started_at": "2026-07-23T02:49:58.004105901Z",
+  "lease_expires_at": "2026-07-23T02:54:58.004105901Z",
+  "heartbeat_at": "2026-07-23T02:49:58.004105901Z"
 }
