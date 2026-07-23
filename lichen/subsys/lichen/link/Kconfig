@@ -9,6 +9,7 @@ menuconfig LICHEN_LINK
 	select CRC
 	select LICHEN_CRYPTO_AES_CCM
 	select LICHEN_SCHC
+	select TINYCRYPT
 	select TINYCRYPT_SHA256
 	help
 	  Enable the LICHEN link layer with Schnorr-48 signatures
