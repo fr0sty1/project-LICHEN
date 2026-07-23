@@ -4,11 +4,12 @@ edition.workspace = true
 version.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "SenML (RFC 8428): record type and CBOR encode/decode stubs."
+description = "SenML (RFC 8428): record type, CBOR (112) and JSON (110) codecs."
 
 [features]
 default = []
 std = []
+serde = ["dep:serde"]
 # Logging: enable one or neither, not both
 defmt = ["dep:defmt", "lichen-core/defmt"]
 log = ["dep:log", "lichen-core/log"]
@@ -16,6 +17,7 @@ log = ["dep:log", "lichen-core/log"]
 [dependencies]
 lichen-core = { path = "../lichen-core" }
 
-# Logging backends (optional, feature-gated)
+# Logging and serialization backends (optional, feature-gated)
 defmt = { version = "0.3", optional = true }
 log = { version = "0.4", default-features = false, optional = true }
+serde = { version = "1.0", optional = true, features = ["derive"] }
