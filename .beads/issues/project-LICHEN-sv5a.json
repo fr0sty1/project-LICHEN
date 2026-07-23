@@ -3,15 +3,15 @@
   "title": "proto.py: _skip_field does not validate buffer bounds before access",
   "description": "File: python/src/lichen/interface/meshtastic/proto.py\nLines: 79-92\n\nThe _skip_field function increments offset without validating buffer bounds:\n\n```python\ndef _skip_field(data: bytes, offset: int, wire_type: int) -\u003e int:\n    if wire_type == WIRE_VARINT:\n        _, new_offset = _decode_varint(data, offset)  # OK, validates internally\n        return new_offset\n    elif wire_type == WIRE_FIXED64:\n        return offset + 8  # BUG: no check if offset+8 \u003e len(data)\n    elif wire_type == WIRE_LEN_DELIM:\n        length, new_offset = _decode_varint(data, offset)\n        return new_offset + length  # BUG: no check if new_offset+length \u003e len(data)\n    elif wire_type == WIRE_FIXED32:\n        return offset + 4  # BUG: no check if offset+4 \u003e len(data)\n```\n\nWhile callers' loops check `offset \u003c len(data)` before decoding the next tag, a truncated message can cause the offset to exceed the buffer length, and subsequent operations may read garbage memory or cause index errors.\n\nImpact: Malformed protobuf input could cause undefined behavior or crashes.\n\nFix: Add bounds checking:\n```python\nelif wire_type == WIRE_FIXED64:\n    if offset + 8 \u003e len(data):\n        raise ProtoError(\"truncated fixed64\")\n    return offset + 8\n```",
   "notes": "Commit: 1da4297e9",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:17:49.971835Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T03:56:54.472080897Z",
+  "updated_at": "2026-07-23T03:56:57.354984682Z",
   "started_at": "2026-07-23T03:56:02.582993697Z",
-  "lease_expires_at": "2026-07-23T04:01:02.582993697Z",
-  "heartbeat_at": "2026-07-23T03:56:02.582993697Z"
+  "closed_at": "2026-07-23T03:56:57.354984682Z",
+  "close_reason": "Closed"
 }

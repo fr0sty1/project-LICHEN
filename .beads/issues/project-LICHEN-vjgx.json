@@ -3,7 +3,7 @@
   "title": "_is_mesh_uri redundant bracket stripping",
   "description": "File: python/src/lichen/coap/resources.py:81-82\n\nThe mesh URI validation strips IPv6 brackets manually:\n```python\nif host.startswith('[') and host.endswith(']'):\n    host = host[1:-1]\n```\n\nBut urlparse().hostname already returns IPv6 addresses without brackets per RFC 3986. This code path is unreachable and adds dead code.\n\nExample: urlparse('coap://[fe80::1]/path').hostname returns 'fe80::1', not '[fe80::1]'.\n\nFix: Remove the redundant bracket stripping. If keeping for defensive coding, add a comment explaining why.",
   "notes": "Commit: c74a89e24",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
