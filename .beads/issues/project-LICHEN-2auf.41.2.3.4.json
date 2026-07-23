@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-2auf.41.2.3.4",
+  "title": "Add Zephyr/sim cross-implementation validation for malformed drops",
+  "description": "Update or add tests in lichen/tests/, python/tests/sim/test_*.py, test_cross_impl_interop.py to verify Zephyr/C ingress validation drops the new malformed ICMPv6/UDP cases identically to Python/Rust reference. Check ble_ingress.c validate_ipv6_packet, native paths, fuzz tests. Ensure no crash/leak to upper layers, update metrics if present. Run relevant Twister/native_sim tests.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:25:47.832260824Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:25:47.832260824Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.41.2.3.4",
+      "depends_on_id": "project-LICHEN-2auf.41.2.3",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:25:47.973981979Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
