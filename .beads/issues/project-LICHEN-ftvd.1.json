@@ -1,14 +1,14 @@
 {
   "id": "project-LICHEN-ftvd.1",
-  "title": "Resolve merge conflict markers in xiao_s3_wio_sx1262.overlay across worktrees",
-  "description": "Check all worktrees (especially worker18) for lingering merge conflict markers (\u003c\u003c\u003c\u003c\u003c\u003c\u003c, =======, \u003e\u003e\u003e\u003e\u003e\u003e\u003e) in the xiao_s3_wio_sx1262 files and clean them up consistently with the retirement note from project-LICHEN-2u26.10.",
+  "title": "Reconcile xiao_s3_wio_sx1262.overlay in worktree-worker18 with main retired comment",
+  "description": "Ensure the overlay file in worker18 branch matches the current main version with RETIRED/BLOCKED note from project-LICHEN-2u26.10 and no-dead-code cleanup from 44ku.",
   "status": "open",
-  "priority": 1,
+  "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
-  "created_at": "2026-07-23T05:17:42.759680297Z",
+  "created_at": "2026-07-23T05:29:59.434548068Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:17:42.759680297Z",
+  "updated_at": "2026-07-23T05:29:59.434548068Z",
   "labels": [
     "defer-external"
   ],
@@ -17,7 +17,7 @@
       "issue_id": "project-LICHEN-ftvd.1",
       "depends_on_id": "project-LICHEN-ftvd",
       "type": "parent-child",
-      "created_at": "2026-07-23T05:17:42.895334389Z",
+      "created_at": "2026-07-23T05:29:59.572834629Z",
       "created_by": "AI Agent",
       "metadata": "{}"
     }
