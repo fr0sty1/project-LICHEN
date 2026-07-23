@@ -2,15 +2,15 @@
   "id": "project-LICHEN-cob1",
   "title": "[merge-conflict] worktree-worker24: Kconfig",
   "notes": "Commit: 671bf7807",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:40:01.289380002Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:11:53.994056096Z",
+  "updated_at": "2026-07-23T04:12:00.61575087Z",
   "started_at": "2026-07-23T04:08:45.432563197Z",
-  "lease_expires_at": "2026-07-23T04:13:45.432563197Z",
-  "heartbeat_at": "2026-07-23T04:08:45.432563197Z"
+  "closed_at": "2026-07-23T04:12:00.61575087Z",
+  "close_reason": "Cleaned malformed indentation on rsource lines and removed obsolete project-LICHEN-zrh2.2 bead reference (dead code) from lichen/subsys/lichen/Kconfig in worktree-worker24. Matched canonical main version. Commit 671bf7807. Verified with git diff and build prep."
 }
