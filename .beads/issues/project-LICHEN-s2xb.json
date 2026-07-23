@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-s2xb",
+  "title": "[cross-impl] Audit SCHC Python vs C rule application, CDA bit ordering, and fragmentation state machine",
+  "description": "Python (python/src/lichen/schc/*.py) and C (lichen/subsys/lichen/schc/schc.c + link integration) both target same pre-provisioned rules and test/vectors/schc*.json but lack explicit cross-language byte-for-byte interop harness. Potential subtle differences in: rule priority/selection, CDA (LSB/MSB on variable fields), residue padding/alignment, fragmentation RCS computation, ACK bitmap handling, error paths, L2 dispatch in l2_payload.py vs frame.c. Add interop test (Python drives C via FFI or runs both and compares) or expand Zephyr tests to assert exact match on all vectors. Critical for Phase 2 SCHC consistency.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T13:38:13.993384366Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T13:38:13.993384366Z"
+}
