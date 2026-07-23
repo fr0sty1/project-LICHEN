@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-chw5",
   "title": "Research SX1302/libloragw integration options for Rust lichen-gateway",
-  "notes": "Commit: 6e4ca8e98",
+  "notes": "Research summary: Preferred integration is Semtech UDP packet forwarder protocol (matches existing test vectors for RAK2287). Alternatives: FFI+bindgen to libloragw C lib (build with cc crate), pure-Rust spidev/gpio driver, or existing Rust crates (none mature). Update lichen-hal Concentrator impl and lichen-gateway config to support \"rak2287\" via UDP listener on 1700/1701. HAL traits already designed for it (configure_channels, current_channel, Concentrator trait). No code changes yet - this is research bead. Next: driver impl in subtask.",
   "status": "closed",
   "priority": 1,
   "issue_type": "task",
@@ -9,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T04:44:25.591461791Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:00:47.407557212Z",
+  "updated_at": "2026-07-23T05:05:17.430822219Z",
   "started_at": "2026-07-23T04:59:40.72524831Z",
   "lease_expires_at": "2026-07-23T05:04:40.72524831Z",
   "heartbeat_at": "2026-07-23T04:59:40.72524831Z",
