@@ -792,7 +792,6 @@ class Simulation:
                     "time_us": self._current_time_us,
                     "from_node_id": source_node_id,
                 }
-<<<<<<< HEAD
                 if self._debug_enabled:
                     rx_log = {
                         "sim_id": self._id,
@@ -809,9 +808,8 @@ class Simulation:
                     }
                     self._debug_log("rx_success", **rx_log)
 
-=======
->>>>>>> origin/worktree-worker19
                 self._observers.notify(
+
                     "on_rx_success",
                     sim_id=self._id,
                     node_id=node_id,

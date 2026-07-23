@@ -1,11 +1,16 @@
 {
   "id": "project-LICHEN-pmm0",
   "title": "[merge-conflict] worktree-worker19: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
-  "status": "open",
+  "notes": "Commit: 0e872c7c4",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:43:27.544825617Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:43:27.544825617Z"
+  "updated_at": "2026-07-23T02:00:11.548556639Z",
+  "started_at": "2026-07-23T01:57:42.547688667Z",
+  "closed_at": "2026-07-23T02:00:11.548556639Z",
+  "close_reason": "Resolved merge conflicts in heltec_wifi_lora32_v3_esp32s3_procpu.conf (deduplicated Kconfig, updated consolidated comment referencing pmm0/worker19), test/vectors/*.py/json (removed markers, merged schemas/vectors), and simulation.py (unified RX metrics/observers/debug logging). Cleaned duplicates per AGENTS.md. Verified with git status and builds."
 }
