@@ -1,0 +1,94 @@
+/mnt/lichen-zephyr/work/zephyr/scripts/pylib/twister/twisterlib/environment.py:9: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+INFO    - Using Ninja..
+INFO    - Zephyr version: v3.7.0
+INFO    - Using 'zephyr' toolchain.
+INFO    - Building initial testsuite list...
+INFO    - Writing JSON report build/twister-app-interface-59-4/testplan.json
+INFO    - JOBS: 16
+INFO    - Adding tasks to the queue...
+INFO    - Added initial list of jobs to queue
+ERROR   - Cmake build failure: /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/tests/app_interface for native_sim/native/64
+ERROR   - native_sim/native/64      net.lichen.app_interface                            ERROR : Cmake build failure
+INFO    - /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-app-interface-59-4/native_sim_native_64/net.lichen.app_interface/build.log
+ERROR   - Loading Zephyr default modules (Zephyr base).
+-- Application: /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/tests/app_interface
+-- CMake version: 3.30.0
+-- Found Python3: /mnt/lichen-zephyr/venv/bin/python (found suitable version "3.9.25", minimum required is "3.8") found components: Interpreter
+-- Cache files will be written to: /home/ec2-user/.cache/zephyr
+-- Zephyr version: 3.7.0 (/mnt/lichen-zephyr/work/zephyr)
+-- Found west (found suitable version "1.5.0", minimum required is "0.14.0")
+-- Board: native_sim, qualifiers: native/64
+-- Found host-tools: zephyr 0.16.8 (/mnt/lichen-zephyr/zephyr-sdk-0.16.8)
+-- Found toolchain: host (gcc/ld)
+-- Found Dtc: /mnt/lichen-zephyr/zephyr-sdk-0.16.8/sysroots/aarch64-pokysdk-linux/usr/bin/dtc (found suitable version "1.6.0", minimum required is "1.4.6")
+-- Found BOARD.dts: /mnt/lichen-zephyr/work/zephyr/boards/native/native_sim/native_sim_64.dts
+-- Generated zephyr.dts: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-app-interface-59-4/native_sim_native_64/net.lichen.app_interface/zephyr/zephyr.dts
+-- Generated devicetree_generated.h: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-app-interface-59-4/native_sim_native_64/net.lichen.app_interface/zephyr/include/generated/zephyr/devicetree_generated.h
+-- Including generated dts.cmake file: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-app-interface-59-4/native_sim_native_64/net.lichen.app_interface/zephyr/dts.cmake
+
+warning: STACK_CANARIES (defined at kernel/Kconfig:872) was assigned the value 'y' but got the value
+'n'. Check these unsatisfied dependencies: (ENTROPY_GENERATOR || TEST_RANDOM_GENERATOR) (=n). See
+http://docs.zephyrproject.org/latest/kconfig.html#CONFIG_STACK_CANARIES and/or look up
+STACK_CANARIES in the menuconfig/guiconfig interface. The Application Development Primer, Setting
+Configuration Values, and Kconfig - Tips and Best Practices sections of the manual might be helpful
+too.
+
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/tests/app_interface/prj.conf:7: warning: attempt to assign the value 'y' to the undefined symbol LICHEN
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/tests/app_interface/prj.conf:8: warning: attempt to assign the value 'y' to the undefined symbol LICHEN_HAL
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/tests/app_interface/prj.conf:9: warning: attempt to assign the value 'y' to the undefined symbol LICHEN_APP_INTERFACE
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/tests/app_interface/prj.conf:10: warning: attempt to assign the value 'y' to the undefined symbol LICHEN_APP_INTERFACE_TEST_HOOKS
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/tests/app_interface/prj.conf:11: warning: attempt to assign the value '2' to the undefined symbol LICHEN_APP_INTERFACE_MAX_SUBSCRIBERS
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/tests/app_interface/prj.conf:12: warning: attempt to assign the value '8' to the undefined symbol LICHEN_APP_INTERFACE_MAX_PAYLOAD
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/tests/app_interface/prj.conf:13: warning: attempt to assign the value 'n' to the undefined symbol LICHEN_IPV6
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/tests/app_interface/prj.conf:14: warning: attempt to assign the value 'n' to the undefined symbol LICHEN_LORA_L2
+
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/tests/app_interface/prj.conf:15: warning: attempt to assign the value 'n' to the undefined symbol LICHEN_L2
+Parsing /mnt/lichen-zephyr/work/zephyr/Kconfig
+Loaded configuration '/mnt/lichen-zephyr/work/zephyr/boards/native/native_sim/native_sim_64_defconfig'
+Merged configuration '/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/tests/app_interface/prj.conf'
+Merged configuration '/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-app-interface-59-4/native_sim_native_64/net.lichen.app_interface/zephyr/misc/generated/extra_kconfig_options.conf'
+
+error: Aborting due to Kconfig warnings
+
+CMake Error at /mnt/lichen-zephyr/work/zephyr/cmake/modules/kconfig.cmake:389 (message):
+  command failed with return code: 1
+Call Stack (most recent call first):
+  /mnt/lichen-zephyr/work/zephyr/cmake/modules/zephyr_default.cmake:132 (include)
+  /mnt/lichen-zephyr/work/zephyr/share/zephyr-package/cmake/ZephyrConfig.cmake:66 (include)
+  /mnt/lichen-zephyr/work/zephyr/share/zephyr-package/cmake/ZephyrConfig.cmake:92 (include_boilerplate)
+  CMakeLists.txt:5 (find_package)
+
+
+-- Configuring incomplete, errors occurred!
+
+INFO    - /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-app-interface-59-4/native_sim_native_64/net.lichen.app_interface/build.log
+INFO    - Total complete:    1/   1  100%  skipped:    0, failed:    0, error:    1
+INFO    - 1 test scenarios (1 test instances) selected, 0 configurations skipped (0 by static filter, 0 at runtime).
+INFO    - 0 of 1 test configurations passed (0.00%), 0 failed, 1 errored, 0 skipped with 0 warnings in 3.21 seconds
+INFO    - In total 24 test cases were executed, 0 skipped on 1 out of total 2 platforms (50.00%)
+INFO    - 0 test configurations executed on platforms, 1 test configurations were only built.
+INFO    - Saving reports...
+INFO    - Writing JSON report /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-app-interface-59-4/twister.json
+INFO    - Writing xunit report /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-app-interface-59-4/twister.xml...
+INFO    - Writing xunit report /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-app-interface-59-4/twister_report.xml...
+INFO    - -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+INFO    - The following issues were found (showing the top 10 items):
+INFO    - 1) net.lichen.app_interface on native_sim/native/64 error (Cmake build failure)
+INFO    - 
+INFO    - To rerun the tests, call twister using the following commandline:
+INFO    - west twister -p <PLATFORM> -s <TEST ID>, for example:
+INFO    - 
+INFO    - west twister -p native_sim/native/64 -s net.lichen.app_interface
+INFO    - or with west:
+INFO    - west build -p -b native_sim/native/64 ../project-LICHEN-worker1/lichen/tests/app_interface -T net.lichen.app_interface
+INFO    - -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+INFO    - Run completed

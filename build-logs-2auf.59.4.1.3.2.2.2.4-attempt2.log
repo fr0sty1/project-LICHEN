@@ -1,0 +1,66 @@
+-- west build: generating a build system
+Loading Zephyr default modules (Zephyr base).
+-- Application: /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway
+-- CMake version: 3.30.0
+-- Found Python3: /mnt/lichen-zephyr/venv/bin/python3 (found suitable version "3.9.25", minimum required is "3.8") found components: Interpreter
+-- Cache files will be written to: /home/ec2-user/.cache/zephyr
+-- Zephyr version: 3.7.0 (/mnt/lichen-zephyr/work/zephyr)
+-- Found west (found suitable version "1.5.0", minimum required is "0.14.0")
+-- Board: native_sim, qualifiers: native
+-- Found host-tools: zephyr 0.16.8 (/mnt/lichen-zephyr/zephyr-sdk-0.16.8)
+-- Found toolchain: host (gcc/ld)
+-- Found Dtc: /mnt/lichen-zephyr/zephyr-sdk-0.16.8/sysroots/aarch64-pokysdk-linux/usr/bin/dtc (found suitable version "1.6.0", minimum required is "1.4.6")
+-- Found BOARD.dts: /mnt/lichen-zephyr/work/zephyr/boards/native/native_sim/native_sim.dts
+-- Found devicetree overlay: /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_sim.overlay
+-- Generated zephyr.dts: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-2/zephyr/zephyr.dts
+-- Generated devicetree_generated.h: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-2/zephyr/include/generated/zephyr/devicetree_generated.h
+-- Including generated dts.cmake file: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-2/zephyr/dts.cmake
+Parsing /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/Kconfig
+/mnt/lichen-zephyr/work/zephyr/scripts/kconfig/kconfig.py: Dependency loop
+===============
+
+LICHEN_LINK_CCP16_LOAD_BALANCING (defined at /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/zephyr/../subsys/lichen/link/Kconfig:103), with definition...
+
+config LICHEN_LINK_CCP16_LOAD_BALANCING
+	bool "CCP16 density-aware load balancing"
+	select LICHEN_SCHC
+	select LICHEN_LINK_EPOCH_PERSIST
+	depends on LICHEN_RPL && LICHEN_LINK_EPOCH_PERSIST && LICHEN_LINK && LICHEN
+	help
+	  Enable CCP-16 coordinated load balancing for high-density
+	  (DEFCON-scale) deployments. References density tracking, adaptive
+	  SF thresholds, and channel utilization from
+	  spec/appendix-design-rationale.md. Explicitly selects SCHC and
+	  link epoch features required for TDMA/multi-channel operation.
+
+...depends on LICHEN_LINK_EPOCH_PERSIST (defined at /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/zephyr/../subsys/lichen/link/Kconfig:79), with definition...
+
+config LICHEN_LINK_EPOCH_PERSIST
+	bool "Persist the link TX epoch across reboots"
+	depends on SETTINGS && LICHEN_LINK && LICHEN
+	help
+	  Persist the link-layer TX epoch to the settings subsystem and
+	  advance it by one on every boot. This keeps a rebooted node's
+	  (epoch, seqnum) counter monotonically ahead of what its peers
+	  remember in their replay windows, so frames sent after a reboot
+	  are not rejected as replays.
+	  
+	  Without this, link_ctx picks a random epoch in [128,255] at boot,
+	  which is lower than the peer's remembered epoch ~50% of the time
+	  and causes one-way replay deafness until both nodes reset together
+	  (lora_ipv6_mesh-3uhb). Costs one small settings write per boot.
+
+(select-related dependencies: LICHEN_LINK_CCP16_LOAD_BALANCING && LICHEN_RPL && LICHEN_LINK_EPOCH_PERSIST && LICHEN_LINK && LICHEN)
+
+...depends again on LICHEN_LINK_CCP16_LOAD_BALANCING (defined at /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/zephyr/../subsys/lichen/link/Kconfig:103)
+CMake Error at /mnt/lichen-zephyr/work/zephyr/cmake/modules/kconfig.cmake:389 (message):
+  command failed with return code: 1
+Call Stack (most recent call first):
+  /mnt/lichen-zephyr/work/zephyr/cmake/modules/zephyr_default.cmake:132 (include)
+  /mnt/lichen-zephyr/work/zephyr/share/zephyr-package/cmake/ZephyrConfig.cmake:66 (include)
+  /mnt/lichen-zephyr/work/zephyr/share/zephyr-package/cmake/ZephyrConfig.cmake:92 (include_boilerplate)
+  CMakeLists.txt:4 (find_package)
+
+
+-- Configuring incomplete, errors occurred!
+FATAL ERROR: command exited with status 1: /mnt/lichen-zephyr/venv/bin/cmake -DWEST_PYTHON=/mnt/lichen-zephyr/venv/bin/python3 -B/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-2 -GNinja -DBOARD=native_sim -DOVERLAY_CONFIG=boards/native_posix_ble_ingress.overlay -DEXTRA_CONF_FILE=boards/native_posix_ble_ingress.conf -DZEPHYR_EXTRA_MODULES=/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen -DLICHEN_RELEASE_EPOCH_UNIX=1722470400 -S/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway

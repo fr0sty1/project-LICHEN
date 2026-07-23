@@ -1,0 +1,104 @@
+-- west build: generating a build system
+Loading Zephyr default modules (Zephyr base).
+-- Application: /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway
+-- CMake version: 3.30.0
+-- Found Python3: /mnt/lichen-zephyr/venv/bin/python3 (found suitable version "3.9.25", minimum required is "3.8") found components: Interpreter
+-- Cache files will be written to: /home/ec2-user/.cache/zephyr
+-- Zephyr version: 3.7.0 (/mnt/lichen-zephyr/work/zephyr)
+-- Found west (found suitable version "1.5.0", minimum required is "0.14.0")
+-- Board: native_sim, qualifiers: native/64
+-- Found host-tools: zephyr 0.16.8 (/mnt/lichen-zephyr/zephyr-sdk-0.16.8)
+-- Found toolchain: host (gcc/ld)
+-- Found Dtc: /mnt/lichen-zephyr/zephyr-sdk-0.16.8/sysroots/aarch64-pokysdk-linux/usr/bin/dtc (found suitable version "1.6.0", minimum required is "1.4.6")
+-- Found BOARD.dts: /mnt/lichen-zephyr/work/zephyr/boards/native/native_sim/native_sim_64.dts
+-- Found devicetree overlay: boards/native_posix_ble_ingress.overlay
+-- Generated zephyr.dts: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final5/zephyr/zephyr.dts
+-- Generated devicetree_generated.h: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final5/zephyr/include/generated/zephyr/devicetree_generated.h
+-- Including generated dts.cmake file: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final5/zephyr/dts.cmake
+Parsing /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/Kconfig
+Loaded configuration '/mnt/lichen-zephyr/work/zephyr/boards/native/native_sim/native_sim_64_defconfig'
+Merged configuration '/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/prj.conf'
+Merged configuration '/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_sim_native_64.conf'
+Merged configuration '/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/boards/native_posix_ble_ingress.conf'
+Merged configuration '/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final5/lichen/build_epoch.conf'
+Configuration saved to '/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final5/zephyr/.config'
+Kconfig header saved to '/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final5/zephyr/include/generated/zephyr/autoconf.h'
+-- Found GnuLd: /usr/bin/ld.bfd (found version "")
+-- The C compiler identification is GNU 11.5.0
+-- The CXX compiler identification is GNU 11.5.0
+-- The ASM compiler identification is GNU
+-- Found assembler: /usr/bin/gcc
+CMake Warning at /mnt/lichen-zephyr/work/zephyr/CMakeLists.txt:915 (message):
+  No SOURCES given to Zephyr library: drivers__net
+
+  Excluding target from build.
+
+
+CMake Warning at /mnt/lichen-zephyr/work/zephyr/CMakeLists.txt:915 (message):
+  No SOURCES given to Zephyr library: drivers__spi
+
+  Excluding target from build.
+
+
+CMake Warning at /mnt/lichen-zephyr/work/zephyr/CMakeLists.txt:915 (message):
+  No SOURCES given to Zephyr library: lichen_native
+
+  Excluding target from build.
+
+
+CMake Warning at /mnt/lichen-zephyr/work/zephyr/CMakeLists.txt:2094 (message):
+  __ASSERT() statements are globally ENABLED
+
+
+-- Configuring done (3.3s)
+-- Generating done (0.1s)
+-- Build files have been written to: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final5
+-- west build: building application
+[1/187] Preparing syscall dependency handling
+
+[2/187] Generating include/generated/zephyr/version.h
+-- Zephyr version: 3.7.0 (/mnt/lichen-zephyr/work/zephyr), build: v3.7.0
+[3/187] Generating misc/generated/syscalls_subdirs.trigger
+[4/187] Generating misc/generated/syscalls.json, misc/generated/struct_tags.json
+[5/187] Generating include/generated/zephyr/syscall_dispatch.c, include/generated/zephyr/syscall_list.h
+[6/187] Generating include/generated/zephyr/driver-validation.h
+[7/187] Generating include/generated/zephyr/kobj-types-enum.h, include/generated/zephyr/otype-to-str.h, include/generated/zephyr/otype-to-size.h
+[8/187] Building C object zephyr/CMakeFiles/offsets.dir/arch/posix/core/offsets/offsets.c.obj
+[9/187] Generating include/generated/zephyr/offsets.h
+[10/187] Building C object CMakeFiles/app.dir/src/config_apply.c.obj
+[11/187] Building C object zephyr/CMakeFiles/zephyr.dir/lib/os/sem.c.obj
+[12/187] Building C object CMakeFiles/app.dir/src/ble_uart.c.obj
+FAILED: [code=1] CMakeFiles/app.dir/src/ble_uart.c.obj 
+/usr/bin/gcc -DKERNEL -DK_HEAP_MEM_POOL_SIZE=0 -DZCBOR_ASSERTS -D__ZEPHYR__=1 -I/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final5/zephyr/include/generated/zephyr -I/mnt/lichen-zephyr/work/zephyr/include -I/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final5/zephyr/include/generated -I/mnt/lichen-zephyr/work/zephyr/soc/native/inf_clock -I/mnt/lichen-zephyr/work/zephyr/boards/native/native_sim -I/mnt/lichen-zephyr/work/zephyr/scripts/native_simulator/common/src/include -I/mnt/lichen-zephyr/work/zephyr/scripts/native_simulator/native/src/include -I/mnt/lichen-zephyr/work/zephyr/subsys/bluetooth -I/mnt/lichen-zephyr/work/zephyr/subsys/net/l2 -I/mnt/lichen-zephyr/work/zephyr/subsys/net/lib/coap/. -I/mnt/lichen-zephyr/work/modules/crypto/tinycrypt/lib/include -I/mnt/lichen-zephyr/work/modules/lib/zcbor/include -I/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/app_interface/../hal/include -I/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/app_interface/include -I/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/hal/include -fno-strict-aliasing -fstack-protector-all -mstack-protector-guard=global -Os -imacros /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final5/zephyr/include/generated/zephyr/autoconf.h -fno-common -g -gdwarf-4 -fdiagnostics-color=always -Wall -Wformat -Wformat-security -Wno-format-zero-length -Wdouble-promotion -Wno-pointer-sign -Wpointer-arith -Wexpansion-to-defined -Wno-unused-but-set-variable -Werror=implicit-int -fno-pic -fno-pie -fno-asynchronous-unwind-tables -fno-reorder-functions --param=min-pagesize=0 -fno-defer-pop -fmacro-prefix-map=/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway=CMAKE_SOURCE_DIR -fmacro-prefix-map=/mnt/lichen-zephyr/work/zephyr=ZEPHYR_BASE -fmacro-prefix-map=/mnt/lichen-zephyr/work=WEST_TOPDIR -ffunction-sections -fdata-sections -fPIC -fvisibility=hidden -fno-freestanding -std=c11 -MD -MT CMakeFiles/app.dir/src/ble_uart.c.obj -MF CMakeFiles/app.dir/src/ble_uart.c.obj.d -o CMakeFiles/app.dir/src/ble_uart.c.obj -c /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/src/ble_uart.c
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/src/ble_uart.c:30:10: fatal error: lichen/transport/slip_transport.h: No such file or directory
+   30 | #include <lichen/transport/slip_transport.h>
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+[13/187] Building C object CMakeFiles/app.dir/src/inbound_events.c.obj
+[14/187] Building C object zephyr/CMakeFiles/zephyr.dir/lib/os/printk.c.obj
+[15/187] Building C object zephyr/CMakeFiles/zephyr.dir/lib/os/thread_entry.c.obj
+[16/187] Building C object CMakeFiles/app.dir/src/ble_ingress.c.obj
+[17/187] Building C object CMakeFiles/app.dir/src/config_cbor.c.obj
+[18/187] Building C object CMakeFiles/app.dir/src/ble_lci_netif.c.obj
+[19/187] Building C object CMakeFiles/app.dir/src/inbound_coap.c.obj
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/src/inbound_coap.c: In function ‘gateway_inbound_location_post’:
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/src/inbound_coap.c:233:49: warning: passing argument 4 of ‘inbound_location_read_u32’ from incompatible pointer type [-Wincompatible-pointer-types]
+  233 |                                                 &location.fix_time_unix);
+      |                                                 ^~~~~~~~~~~~~~~~~~~~~~~
+      |                                                 |
+      |                                                 int64_t * {aka long int *}
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/apps/gateway/src/inbound_coap.c:127:48: note: expected ‘uint32_t *’ {aka ‘unsigned int *’} but argument is of type ‘int64_t *’ {aka ‘long int *’}
+  127 |                                      uint32_t *out)
+      |                                      ~~~~~~~~~~^~~
+[20/187] Building C object zephyr/CMakeFiles/zephyr.dir/lib/os/cbprintf.c.obj
+[21/187] Building C object CMakeFiles/app.dir/src/status_cbor.c.obj
+[22/187] Building C object zephyr/CMakeFiles/zephyr.dir/lib/os/assert.c.obj
+[23/187] Building C object CMakeFiles/app.dir/src/network_location.c.obj
+[24/187] Building C object CMakeFiles/app.dir/src/main.c.obj
+[25/187] Building C object zephyr/CMakeFiles/zephyr.dir/lib/os/fdtable.c.obj
+[26/187] Building C object CMakeFiles/app.dir/src/ble_app_owner.c.obj
+[27/187] Building C object zephyr/CMakeFiles/zephyr.dir/lib/heap/heap.c.obj
+[28/187] Building C object zephyr/CMakeFiles/zephyr.dir/lib/os/cbprintf_complete.c.obj
+[29/187] Building C object zephyr/CMakeFiles/zephyr.dir/lib/os/cbprintf_packaged.c.obj
+ninja: build stopped: subcommand failed.
+FATAL ERROR: command exited with status 1: /mnt/lichen-zephyr/venv/bin/cmake --build /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/ble-native-posix-ingress-59-4-final5

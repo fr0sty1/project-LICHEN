@@ -1,0 +1,259 @@
+/mnt/lichen-zephyr/work/zephyr/scripts/pylib/twister/twisterlib/environment.py:9: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+INFO    - Using Ninja..
+INFO    - Zephyr version: v3.7.0
+INFO    - Using 'zephyr' toolchain.
+INFO    - Building initial testsuite list...
+INFO    - Writing JSON report build/twister-app-interface-59-4-final/testplan.json
+INFO    - JOBS: 16
+INFO    - Adding tasks to the queue...
+INFO    - Added initial list of jobs to queue
+ERROR   - native_sim/native/64      net.lichen.app_interface                            ERROR : Build failure
+INFO    - /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-app-interface-59-4-final/native_sim_native_64/net.lichen.app_interface/build.log
+ERROR   - Loading Zephyr default modules (Zephyr base).
+-- Application: /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/tests/app_interface
+-- CMake version: 3.30.0
+-- Found Python3: /mnt/lichen-zephyr/venv/bin/python (found suitable version "3.9.25", minimum required is "3.8") found components: Interpreter
+-- Cache files will be written to: /home/ec2-user/.cache/zephyr
+-- Zephyr version: 3.7.0 (/mnt/lichen-zephyr/work/zephyr)
+-- Found west (found suitable version "1.5.0", minimum required is "0.14.0")
+-- Board: native_sim, qualifiers: native/64
+-- Found host-tools: zephyr 0.16.8 (/mnt/lichen-zephyr/zephyr-sdk-0.16.8)
+-- Found toolchain: host (gcc/ld)
+-- Found Dtc: /mnt/lichen-zephyr/zephyr-sdk-0.16.8/sysroots/aarch64-pokysdk-linux/usr/bin/dtc (found suitable version "1.6.0", minimum required is "1.4.6")
+-- Found BOARD.dts: /mnt/lichen-zephyr/work/zephyr/boards/native/native_sim/native_sim_64.dts
+-- Generated zephyr.dts: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-app-interface-59-4-final/native_sim_native_64/net.lichen.app_interface/zephyr/zephyr.dts
+-- Generated devicetree_generated.h: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-app-interface-59-4-final/native_sim_native_64/net.lichen.app_interface/zephyr/include/generated/zephyr/devicetree_generated.h
+-- Including generated dts.cmake file: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-app-interface-59-4-final/native_sim_native_64/net.lichen.app_interface/zephyr/dts.cmake
+
+warning: STACK_CANARIES (defined at kernel/Kconfig:872) was assigned the value 'y' but got the value
+'n'. Check these unsatisfied dependencies: (ENTROPY_GENERATOR || TEST_RANDOM_GENERATOR) (=n). See
+http://docs.zephyrproject.org/latest/kconfig.html#CONFIG_STACK_CANARIES and/or look up
+STACK_CANARIES in the menuconfig/guiconfig interface. The Application Development Primer, Setting
+Configuration Values, and Kconfig - Tips and Best Practices sections of the manual might be helpful
+too.
+
+Parsing /mnt/lichen-zephyr/work/zephyr/Kconfig
+Loaded configuration '/mnt/lichen-zephyr/work/zephyr/boards/native/native_sim/native_sim_64_defconfig'
+Merged configuration '/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/tests/app_interface/prj.conf'
+Merged configuration '/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-app-interface-59-4-final/native_sim_native_64/net.lichen.app_interface/zephyr/misc/generated/extra_kconfig_options.conf'
+Configuration saved to '/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-app-interface-59-4-final/native_sim_native_64/net.lichen.app_interface/zephyr/.config'
+Kconfig header saved to '/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-app-interface-59-4-final/native_sim_native_64/net.lichen.app_interface/zephyr/include/generated/zephyr/autoconf.h'
+-- Found GnuLd: /usr/bin/ld.bfd (found version "")
+-- The C compiler identification is GNU 11.5.0
+-- The CXX compiler identification is GNU 11.5.0
+-- The ASM compiler identification is GNU
+-- Found assembler: /usr/bin/gcc
+CMake Warning at /mnt/lichen-zephyr/work/zephyr/CMakeLists.txt:915 (message):
+  No SOURCES given to Zephyr library: lichen_native
+
+  Excluding target from build.
+
+
+-- Configuring done (3.2s)
+-- Generating done (0.1s)
+-- Build files have been written to: /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-app-interface-59-4-final/native_sim_native_64/net.lichen.app_interface
+ninja: Jobserver mode detected:  -j16 --jobserver-auth=7,8
+ninja: warning: Jobserver 'pipe' mode detected, a pool that implements 'fifo' mode would be more reliable!
+[1/102] Preparing syscall dependency handling
+
+[2/102] Generating include/generated/zephyr/version.h
+-- Zephyr version: 3.7.0 (/mnt/lichen-zephyr/work/zephyr), build: v3.7.0
+[3/102] Generating misc/generated/syscalls_subdirs.trigger
+[4/102] Generating misc/generated/syscalls.json, misc/generated/struct_tags.json
+[5/102] Generating include/generated/zephyr/syscall_dispatch.c, include/generated/zephyr/syscall_list.h
+[6/102] Generating include/generated/zephyr/driver-validation.h
+[7/102] Generating include/generated/zephyr/kobj-types-enum.h, include/generated/zephyr/otype-to-str.h, include/generated/zephyr/otype-to-size.h
+[8/102] Building C object zephyr/CMakeFiles/offsets.dir/arch/posix/core/offsets/offsets.c.obj
+[9/102] Generating include/generated/zephyr/offsets.h
+[10/102] Building C object zephyr/CMakeFiles/zephyr.dir/lib/utils/dec.c.obj
+[11/102] Building C object zephyr/CMakeFiles/zephyr.dir/misc/generated/configs.c.obj
+[12/102] Building C object zephyr/CMakeFiles/zephyr.dir/lib/utils/timeutil.c.obj
+[13/102] Building C object zephyr/CMakeFiles/zephyr.dir/lib/os/cbprintf.c.obj
+[14/102] Building C object zephyr/CMakeFiles/zephyr.dir/lib/os/thread_entry.c.obj
+[15/102] Building C object zephyr/CMakeFiles/zephyr.dir/lib/os/printk.c.obj
+[16/102] Building C object zephyr/CMakeFiles/zephyr.dir/lib/os/sem.c.obj
+[17/102] Building C object zephyr/CMakeFiles/zephyr.dir/lib/os/assert.c.obj
+[18/102] Building C object zephyr/CMakeFiles/zephyr.dir/lib/utils/hex.c.obj
+[19/102] Building C object zephyr/CMakeFiles/zephyr.dir/subsys/tracing/tracing_none.c.obj
+[20/102] Building C object zephyr/CMakeFiles/zephyr.dir/subsys/logging/log_cache.c.obj
+[21/102] Generating linker_zephyr_pre0.cmd
+[22/102] Building C object zephyr/arch/arch/posix/core/CMakeFiles/arch__posix__core.dir/cpuhalt.c.obj
+[23/102] Building C object zephyr/arch/arch/posix/core/CMakeFiles/arch__posix__core.dir/irq.c.obj
+[24/102] Building C object zephyr/arch/arch/posix/core/CMakeFiles/arch__posix__core.dir/fatal.c.obj
+[25/102] Building C object zephyr/CMakeFiles/zephyr.dir/lib/utils/rb.c.obj
+[26/102] Building C object zephyr/CMakeFiles/zephyr.dir/lib/heap/heap.c.obj
+[27/102] Building C object zephyr/CMakeFiles/zephyr.dir/subsys/logging/backends/log_backend_native_posix.c.obj
+[28/102] Building C object zephyr/CMakeFiles/zephyr.dir/subsys/logging/log_msg.c.obj
+[29/102] Building C object zephyr/CMakeFiles/zephyr.dir/subsys/logging/log_core.c.obj
+[30/102] Building C object zephyr/soc/soc/native/CMakeFiles/soc__native__inf_clock.dir/native_tasks.c.obj
+[31/102] Building C object zephyr/arch/arch/posix/core/CMakeFiles/arch__posix__core.dir/posix_core_nsi.c.obj
+[32/102] Building C object zephyr/CMakeFiles/zephyr.dir/lib/os/cbprintf_complete.c.obj
+[33/102] Building C object zephyr/boards/native/native_sim/CMakeFiles/boards__native__native_sim.dir/cmdline.c.obj
+[34/102] Building C object zephyr/boards/native/native_sim/CMakeFiles/boards__native__native_sim.dir/misc.c.obj
+[35/102] Building C object zephyr/arch/arch/posix/core/CMakeFiles/arch__posix__core.dir/swap.c.obj
+[36/102] Building C object zephyr/CMakeFiles/zephyr.dir/lib/os/cbprintf_packaged.c.obj
+[37/102] Building C object zephyr/arch/arch/posix/core/CMakeFiles/arch__posix__core.dir/thread.c.obj
+[38/102] Building C object zephyr/CMakeFiles/zephyr.dir/subsys/logging/log_output.c.obj
+[39/102] Building C object zephyr/CMakeFiles/zephyr.dir/subsys/logging/log_mgmt.c.obj
+[40/102] Building C object zephyr/boards/native/native_sim/CMakeFiles/boards__native__native_sim.dir/posix_arch_if.c.obj
+[41/102] Building C object zephyr/boards/native/native_sim/CMakeFiles/boards__native__native_sim.dir/nsi_if.c.obj
+[42/102] Building C object zephyr/boards/native/native_sim/CMakeFiles/boards__native__native_sim.dir/cpu_wait.c.obj
+[43/102] Building C object zephyr/soc/soc/native/CMakeFiles/soc__native__inf_clock.dir/soc.c.obj
+[44/102] Building C object zephyr/drivers/console/CMakeFiles/drivers__console.dir/posix_arch_console.c.obj
+[45/102] Building C object zephyr/drivers/timer/CMakeFiles/drivers__timer.dir/sys_clock_init.c.obj
+[46/102] Building C object zephyr/subsys/testsuite/ztest/CMakeFiles/subsys__testsuite__ztest.dir/src/ztest_rules.c.obj
+[47/102] Building C object zephyr/drivers/timer/CMakeFiles/drivers__timer.dir/native_posix_timer.c.obj
+[48/102] Building C object zephyr/boards/native/native_sim/CMakeFiles/boards__native__native_sim.dir/irq_handler.c.obj
+[49/102] Building C object zephyr/CMakeFiles/zephyr.dir/lib/utils/bitarray.c.obj
+[50/102] Building C object zephyr/subsys/testsuite/ztest/CMakeFiles/subsys__testsuite__ztest.dir/src/ztest_error_hook.c.obj
+[51/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/main_weak.c.obj
+[52/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/init_static.c.obj
+[53/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/banner.c.obj
+[54/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/busy_wait.c.obj
+[55/102] Building C object zephyr/subsys/testsuite/ztest/CMakeFiles/subsys__testsuite__ztest.dir/src/ztest_posix.c.obj
+[56/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/device.c.obj
+[57/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/version.c.obj
+[58/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/errno.c.obj
+[59/102] Building C object modules/lichen/subsys/lichen/app_interface/CMakeFiles/..__project-LICHEN-worker1__lichen__subsys__lichen__app_interface.dir/hal_bridge.c.obj
+In file included from /mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/atomic.h:18,
+                 from /mnt/lichen-zephyr/work/zephyr/include/zephyr/kernel_includes.h:25,
+                 from /mnt/lichen-zephyr/work/zephyr/include/zephyr/kernel.h:17,
+                 from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/app_interface/hal_bridge.c:8:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/util.h: In function ‘bcd2bin’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/util.h:577:35: warning: conversion from ‘int’ to ‘uint8_t’ {aka ‘unsigned char’} may change value [-Wconversion]
+  577 |         return ((10 * (bcd >> 4)) + (bcd & 0x0F));
+      |                ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~
+[60/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/float.c.obj
+[61/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/fatal.c.obj
+[62/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/idle.c.obj
+[63/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/kheap.c.obj
+[64/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/init.c.obj
+[65/102] Building C object zephyr/subsys/testsuite/ztest/CMakeFiles/subsys__testsuite__ztest.dir/src/ztest.c.obj
+[66/102] Building C object modules/lichen/subsys/lichen/app_interface/CMakeFiles/..__project-LICHEN-worker1__lichen__subsys__lichen__app_interface.dir/app_interface.c.obj
+In file included from /mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/atomic.h:18,
+                 from /mnt/lichen-zephyr/work/zephyr/include/zephyr/kernel_includes.h:25,
+                 from /mnt/lichen-zephyr/work/zephyr/include/zephyr/kernel.h:17,
+                 from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/app_interface/app_interface.c:10:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/util.h: In function ‘bcd2bin’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/util.h:577:35: warning: conversion from ‘int’ to ‘uint8_t’ {aka ‘unsigned char’} may change value [-Wconversion]
+  577 |         return ((10 * (bcd >> 4)) + (bcd & 0x0F));
+      |                ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~
+[67/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/mem_slab.c.obj
+[68/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/sem.c.obj
+[69/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/system_work_q.c.obj
+[70/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/stack.c.obj
+[71/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/mailbox.c.obj
+[72/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/msg_q.c.obj
+[73/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/priority_queues.c.obj
+[74/102] Building C object CMakeFiles/app.dir/src/main.c.obj
+FAILED: [code=1] CMakeFiles/app.dir/src/main.c.obj 
+/usr/bin/gcc -DKERNEL -DK_HEAP_MEM_POOL_SIZE=0 -DTC_RUNID=3f8662f4702cb2cfd8541ba235f1e054 -D__ZEPHYR__=1 -I/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-app-interface-59-4-final/native_sim_native_64/net.lichen.app_interface/zephyr/include/generated/zephyr -I/mnt/lichen-zephyr/work/zephyr/include -I/mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-app-interface-59-4-final/native_sim_native_64/net.lichen.app_interface/zephyr/include/generated -I/mnt/lichen-zephyr/work/zephyr/soc/native/inf_clock -I/mnt/lichen-zephyr/work/zephyr/boards/native/native_sim -I/mnt/lichen-zephyr/work/zephyr/scripts/native_simulator/common/src/include -I/mnt/lichen-zephyr/work/zephyr/scripts/native_simulator/native/src/include -I/mnt/lichen-zephyr/work/zephyr/subsys/testsuite/include -I/mnt/lichen-zephyr/work/zephyr/subsys/testsuite/coverage -I/mnt/lichen-zephyr/work/zephyr/subsys/testsuite/ztest/include -I/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/app_interface/../hal/include -I/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/app_interface/include -I/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/hal/include -fno-strict-aliasing -Werror -Os -imacros /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-app-interface-59-4-final/native_sim_native_64/net.lichen.app_interface/zephyr/include/generated/zephyr/autoconf.h -fno-common -g -gdwarf-4 -fdiagnostics-color=always -Wall -Wformat -Wformat-security -Wno-format-zero-length -Wdouble-promotion -Wno-pointer-sign -Wpointer-arith -Wexpansion-to-defined -Wno-unused-but-set-variable -Werror=implicit-int -fno-pic -fno-pie -fno-asynchronous-unwind-tables -fno-reorder-functions --param=min-pagesize=0 -fno-defer-pop -fmacro-prefix-map=/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/tests/app_interface=CMAKE_SOURCE_DIR -fmacro-prefix-map=/mnt/lichen-zephyr/work/zephyr=ZEPHYR_BASE -fmacro-prefix-map=/mnt/lichen-zephyr/work=WEST_TOPDIR -ffunction-sections -fdata-sections -fPIC -fvisibility=hidden -fno-freestanding -std=c11 -MD -MT CMakeFiles/app.dir/src/main.c.obj -MF CMakeFiles/app.dir/src/main.c.obj.d -o CMakeFiles/app.dir/src/main.c.obj -c /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/tests/app_interface/src/main.c
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/tests/app_interface/src/main.c: In function ‘get_status_sink’:
+/mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/tests/app_interface/src/main.c:125:22: error: implicit declaration of function ‘strnlen’; did you mean ‘strlen’? [-Werror=implicit-function-declaration]
+  125 |         size_t len = strnlen("test", sizeof(status->role) - 1);
+      |                      ^~~~~~~
+      |                      strlen
+cc1: all warnings being treated as errors
+[75/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/queue.c.obj
+[76/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/condvar.c.obj
+[77/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/mutex.c.obj
+[78/102] Building C object zephyr/CMakeFiles/zephyr_pre0.dir/misc/empty_file.c.obj
+[79/102] Linking C static library zephyr/libzephyr.a
+[80/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/spinlock_validate.c.obj
+[81/102] Building C object modules/lichen/subsys/lichen/hal/CMakeFiles/..__project-LICHEN-worker1__lichen__subsys__lichen__hal.dir/hal.c.obj
+In file included from /mnt/lichen-zephyr/work/zephyr/include/zephyr/devicetree.h:26,
+                 from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/hal/hal.c:8:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/util.h: In function ‘bcd2bin’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/sys/util.h:577:35: warning: conversion from ‘int’ to ‘uint8_t’ {aka ‘unsigned char’} may change value [-Wconversion]
+  577 |         return ((10 * (bcd >> 4)) + (bcd & 0x0F));
+      |                ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~
+In file included from /mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:30,
+                 from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/hal/hal.c:13:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/rtio/rtio.h: In function ‘z_impl_rtio_cqe_copy_out’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/rtio/rtio.h:1396:16: warning: conversion from ‘size_t’ {aka ‘long unsigned int’} to ‘int’ may change value [-Wconversion]
+ 1396 |         return copied;
+      |                ^~~~~~
+In file included from /mnt/lichen-zephyr/work/project-LICHEN-worker1/lichen/subsys/lichen/hal/hal.c:13:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h: In function ‘sensor_ms2_to_g’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1157:51: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1157 |                 return (micro_ms2 + SENSOR_G / 2) / SENSOR_G;
+      |                                                   ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1159:51: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1159 |                 return (micro_ms2 - SENSOR_G / 2) / SENSOR_G;
+      |                                                   ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h: In function ‘sensor_g_to_ms2’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1171:21: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1171 |         ms2->val1 = ((int64_t)g * SENSOR_G) / 1000000LL;
+      |                     ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1172:21: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1172 |         ms2->val2 = ((int64_t)g * SENSOR_G) % 1000000LL;
+      |                     ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h: In function ‘sensor_ms2_to_ug’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1187:40: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1187 |         return (micro_ms2 * 1000000LL) / SENSOR_G;
+      |                                        ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h: In function ‘sensor_ug_to_ms2’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1198:21: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1198 |         ms2->val1 = ((int64_t)ug * SENSOR_G / 1000000LL) / 1000000LL;
+      |                     ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1199:21: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1199 |         ms2->val2 = ((int64_t)ug * SENSOR_G / 1000000LL) % 1000000LL;
+      |                     ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h: In function ‘sensor_rad_to_degrees’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1214:62: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1214 |                 return (micro_rad_s * 180LL + SENSOR_PI / 2) / SENSOR_PI;
+      |                                                              ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1216:62: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1216 |                 return (micro_rad_s * 180LL - SENSOR_PI / 2) / SENSOR_PI;
+      |                                                              ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h: In function ‘sensor_degrees_to_rad’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1228:21: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1228 |         rad->val1 = ((int64_t)d * SENSOR_PI / 180LL) / 1000000LL;
+      |                     ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1229:21: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1229 |         rad->val2 = ((int64_t)d * SENSOR_PI / 180LL) % 1000000LL;
+      |                     ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h: In function ‘sensor_rad_to_10udegrees’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1247:49: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1247 |         return (micro_rad_s * 180LL * 100000LL) / SENSOR_PI;
+      |                                                 ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h: In function ‘sensor_10udegrees_to_rad’:
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1258:21: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1258 |         rad->val1 = ((int64_t)d * SENSOR_PI / 180LL / 100000LL) / 1000000LL;
+      |                     ^
+/mnt/lichen-zephyr/work/zephyr/include/zephyr/drivers/sensor.h:1259:21: warning: conversion from ‘long long int’ to ‘int32_t’ {aka ‘int’} may change value [-Wconversion]
+ 1259 |         rad->val2 = ((int64_t)d * SENSOR_PI / 180LL / 100000LL) % 1000000LL;
+      |                     ^
+[82/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/timeslicing.c.obj
+[83/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/thread.c.obj
+[84/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/mempool.c.obj
+[85/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/dynamic_disabled.c.obj
+[86/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/timer.c.obj
+[87/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/timeout.c.obj
+[88/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/work.c.obj
+[89/102] Building C object zephyr/kernel/CMakeFiles/kernel.dir/sched.c.obj
+ninja: build stopped: subcommand failed.
+
+INFO    - /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-app-interface-59-4-final/native_sim_native_64/net.lichen.app_interface/build.log
+INFO    - Total complete:    1/   1  100%  skipped:    0, failed:    0, error:    1
+INFO    - 1 test scenarios (1 test instances) selected, 0 configurations skipped (0 by static filter, 0 at runtime).
+INFO    - 0 of 1 test configurations passed (0.00%), 0 failed, 1 errored, 0 skipped with 0 warnings in 4.95 seconds
+INFO    - In total 24 test cases were executed, 0 skipped on 1 out of total 2 platforms (50.00%)
+INFO    - 0 test configurations executed on platforms, 1 test configurations were only built.
+INFO    - Saving reports...
+INFO    - Writing JSON report /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-app-interface-59-4-final/twister.json
+INFO    - Writing xunit report /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-app-interface-59-4-final/twister.xml...
+INFO    - Writing xunit report /mnt/lichen-zephyr/work/project-LICHEN-worker1/build/twister-app-interface-59-4-final/twister_report.xml...
+INFO    - -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+INFO    - The following issues were found (showing the top 10 items):
+INFO    - 1) net.lichen.app_interface on native_sim/native/64 error (Build failure)
+INFO    - 
+INFO    - To rerun the tests, call twister using the following commandline:
+INFO    - west twister -p <PLATFORM> -s <TEST ID>, for example:
+INFO    - 
+INFO    - west twister -p native_sim/native/64 -s net.lichen.app_interface
+INFO    - or with west:
+INFO    - west build -p -b native_sim/native/64 ../project-LICHEN-worker1/lichen/tests/app_interface -T net.lichen.app_interface
+INFO    - -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+INFO    - Run completed
