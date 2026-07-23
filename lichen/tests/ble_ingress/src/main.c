@@ -168,8 +168,14 @@ ZTEST(ble_ingress, test_rejects_malformed_ipv6)
 {
 	uint8_t bad_version[NET_IPV6H_LEN] = { 0x40 };
 	uint8_t bad_length[NET_IPV6H_LEN] = { 0x60 };
+	uint8_t short_udp[48] = { 0x60, 0x00, 0x00, 0x00, 0x00, 0x00, 17, 64 };
+	uint8_t short_icmp[44] = { 0x60, 0x00, 0x00, 0x00, 0x00, 0x04, 58, 64 };
+	uint8_t bad_udp_len[48] = { 0x60, 0x00, 0x00, 0x00, 0x00, 0x08, 17, 64 };
 
 	bad_length[5] = 1u;
+	/* short_udp has payload_len=0 < UDP 8 */
+	/* short_icmp has payload_len=4 but test for <4 case covered by logic */
+	/* bad_udp_len has UDP length field set to invalid */
 
 	zassert_equal(ble_ingress_ipv6(s_test_ctx.iface, NULL, sizeof(bad_version)),
 		      -EINVAL, "null packet should be rejected");
@@ -177,6 +183,10 @@ ZTEST(ble_ingress, test_rejects_malformed_ipv6)
 		      -EPROTONOSUPPORT, "non-IPv6 packet should be rejected");
 	zassert_equal(ble_ingress_ipv6(s_test_ctx.iface, bad_length, sizeof(bad_length)),
 		      -EINVAL, "payload length mismatch should be rejected");
+	zassert_equal(ble_ingress_ipv6(s_test_ctx.iface, short_udp, 40),
+		      -EMSGSIZE, "short UDP packet should be rejected");
+	zassert_equal(ble_ingress_ipv6(s_test_ctx.iface, short_icmp, 44),
+		      -EMSGSIZE, "short ICMPv6 packet should be rejected");
 	zassert_equal(ble_ingress_ipv6(NULL, s_echo_request, sizeof(s_echo_request)),
 		      -ENODEV, "missing interface should be rejected");
 }

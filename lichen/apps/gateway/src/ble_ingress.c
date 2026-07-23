@@ -36,6 +36,7 @@ static int validate_ipv6_packet(const uint8_t *ipv6, size_t len)
 {
 	uint16_t payload_len;
 	size_t expected_len;
+	uint8_t nexthdr;
 
 	if (ipv6 == NULL) {
 		LOG_WRN("BLE ingress rejected null IPv6 packet");
@@ -63,6 +64,26 @@ static int validate_ipv6_packet(const uint8_t *ipv6, size_t len)
 		LOG_WRN("BLE ingress rejected IPv6 packet: payload length %u implies %zu B, got %zu B",
 			payload_len, expected_len, len);
 		return -EINVAL;
+	}
+
+	nexthdr = ipv6[6];
+	if (nexthdr == IPPROTO_UDP) {
+		if (payload_len < 8) {
+			LOG_WRN("BLE ingress rejected short UDP packet: payload %u < 8", payload_len);
+			return -EMSGSIZE;
+		}
+		if (len >= IPV6_MIN_PACKET_LEN + 8) {
+			uint16_t udp_len = sys_get_be16(&ipv6[IPV6_MIN_PACKET_LEN + 4]);
+			if (udp_len < 8 || udp_len > payload_len) {
+				LOG_WRN("BLE ingress rejected malformed UDP length %u (payload %u)", udp_len, payload_len);
+				return -EINVAL;
+			}
+		}
+	} else if (nexthdr == IPPROTO_ICMPV6) {
+		if (payload_len < 4) {
+			LOG_WRN("BLE ingress rejected short ICMPv6 packet: payload %u < 4", payload_len);
+			return -EMSGSIZE;
+		}
 	}
 
 	return 0;
