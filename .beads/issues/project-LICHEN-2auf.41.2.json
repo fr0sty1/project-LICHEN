@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-2auf.41.2",
+  "title": "Restore LOADng wrap-aware sequence freshness and bounds checks",
+  "description": "Implement sequence number wrap detection using modular arithmetic for freshness (as in test_cache.py). Validate seq bounds (0-65535), reject out-of-range or stale sequences per spec. Add test vectors for wraparound cases.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:21:37.370537904Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:21:37.370537904Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.41.2",
+      "depends_on_id": "project-LICHEN-2auf.41",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:21:37.508166893Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
