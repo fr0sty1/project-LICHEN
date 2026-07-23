@@ -23,6 +23,7 @@
 #include <zephyr/net/coap_service.h>
 #include <zephyr/net/net_if.h>
 #include <zephyr/net/net_ip.h>
+#include <zcbor_decode.h>
 
 #include <lichen/coap_keys.h>
 #include <lichen/transport/slip_transport.h>
@@ -746,14 +747,6 @@ static size_t encode_key_single_cbor(const struct lichen_key_entry *entry,
 	return off;
 }
 
-/* --------------------------------------------------------------------------
- * CBOR payload decoding for PUT
- * -------------------------------------------------------------------------- */
-
-/*
- * Minimal CBOR decoder for PUT /keys/{iid} payload.
- * Expected format: { "pubkey": "<base64>", "trust": "<trust>" }
- */
 static int decode_key_put_cbor(const uint8_t *payload, size_t payload_len,
 			       uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
 			       enum lichen_key_trust *_Nonnull trust)
@@ -762,173 +755,52 @@ static int decode_key_put_cbor(const uint8_t *payload, size_t payload_len,
 		return -EINVAL;
 	}
 
-	/*
-	 * Parse CBOR map header (major type 5).
-	 * CBOR encoding for maps:
-	 *   0xa0-0xb7: Small map with 0-23 items (count in lower 5 bits)
-	 *   0xb8 NN:   Map with 1-byte length (up to 255 items)
-	 *   0xb9 NNNN: Map with 2-byte length (big-endian)
-	 *   0xba NNNNNNNN: Map with 4-byte length (big-endian)
-	 *   0xbf:      Indefinite-length map (not supported - requires break code)
-	 *
-	 * For key management, we limit map_count to 32 entries max.
-	 */
-	uint8_t first_byte = payload[0];
-	uint8_t major_type = first_byte >> 5;
-	uint8_t additional_info = first_byte & 0x1f;
-	size_t map_count;
-	size_t pos;
+	ZCBOR_STATE_D(state, 4, payload, payload_len, 1, 0);
 
-	if (major_type != 5) {
-		/* Not a map */
+	if (!zcbor_map_start_decode(state)) {
 		return -EINVAL;
 	}
 
-	if (additional_info < 24) {
-		/* Small map: count is in lower 5 bits */
-		map_count = additional_info;
-		pos = 1;
-	} else if (additional_info == 24 && payload_len > 1) {
-		/* 1-byte length */
-		map_count = payload[1];
-		pos = 2;
-	} else if (additional_info == 25 && payload_len > 2) {
-		/* 2-byte length (big-endian) */
-		map_count = ((size_t)payload[1] << 8) | payload[2];
-		pos = 3;
-	} else if (additional_info == 26 && payload_len > 4) {
-		/* 4-byte length (big-endian) */
-		map_count = ((size_t)payload[1] << 24) | ((size_t)payload[2] << 16) |
-			    ((size_t)payload[3] << 8) | payload[4];
-		pos = 5;
-	} else {
-		/* 8-byte length (27), indefinite-length (31), or reserved: not supported */
-		return -EINVAL;
-	}
-
-	/* Sanity check: key management payloads should not have huge maps */
-	if (map_count > 32) {
-		return -EINVAL;
-	}
 	bool has_pubkey = false;
-	bool has_trust = false;
+	*trust = LICHEN_KEY_TRUST_VERIFIED;
 
-	*trust = LICHEN_KEY_TRUST_VERIFIED; /* default for manual add */
+	while (!zcbor_array_at_end(state)) {
+		struct zcbor_string key;
 
-	for (size_t i = 0; i < map_count && pos < payload_len; i++) {
-		/* Read key (text string) */
-		uint8_t key_type = payload[pos];
-		size_t key_len;
-		const char *key_str;
-
-		if ((key_type & 0xe0) == 0x60) {
-			key_len = key_type & 0x1f;
-			pos++;
-		} else if (key_type == 0x78 && pos + 1 < payload_len) {
-			key_len = payload[pos + 1];
-			pos += 2;
-		} else {
+		if (!zcbor_tstr_decode(state, &key)) {
+			(void)zcbor_list_map_end_force_decode(state);
 			return -EINVAL;
 		}
 
-		if (pos + key_len > payload_len) {
-			return -EINVAL;
-		}
-		key_str = (const char *)&payload[pos];
-		pos += key_len;
-
-		/* Bounds check before reading value type */
-		if (pos >= payload_len) {
-			return -EINVAL;
-		}
-
-		/* Read value */
-		uint8_t val_type = payload[pos];
-		size_t val_len;
-		const uint8_t *val_data;
-
-		if ((val_type & 0xe0) == 0x60) {
-			/* Text string */
-			val_len = val_type & 0x1f;
-			pos++;
-		} else if (val_type == 0x78 && pos + 1 < payload_len) {
-			val_len = payload[pos + 1];
-			pos += 2;
-		} else {
-			/* Skip other CBOR types by advancing pos past the value */
-			uint8_t major = (val_type >> 5) & 0x07;
-			uint8_t info = val_type & 0x1f;
-
-			pos++; /* advance past the initial byte */
-
-			if (major == 0 || major == 1) {
-				/* Unsigned or negative integer */
-				if (info < 24) {
-					/* value is inline, no extra bytes */
-				} else if (info == 24) {
-					pos += 1;
-				} else if (info == 25) {
-					pos += 2;
-				} else if (info == 26) {
-					pos += 4;
-				} else if (info == 27) {
-					pos += 8;
-				} else {
-					return -EINVAL;
-				}
-			} else if (major == 2) {
-				/* Byte string - skip header + data */
-				size_t bstr_len;
-
-				if (info < 24) {
-					bstr_len = info;
-				} else if (info == 24 && pos < payload_len) {
-					bstr_len = payload[pos];
-					pos++;
-				} else {
-					return -EINVAL;
-				}
-				pos += bstr_len;
-			} else if (major == 7) {
-				/* Simple values: false(20), true(21), null(22), undefined(23) */
-				if (info < 24) {
-					/* value is inline, no extra bytes */
-				} else {
-					return -EINVAL;
-				}
-			} else {
-				/* Arrays, maps, tags - not expected in key PUT payload */
+		if (key.len == 6 && memcmp(key.value, "pubkey", 6) == 0) {
+			struct zcbor_string val;
+			if (!zcbor_tstr_decode(state, &val) || val.len == 0) {
+				(void)zcbor_list_map_end_force_decode(state);
 				return -EINVAL;
 			}
-
-			if (pos > payload_len) {
-				return -EINVAL;
-			}
-			continue;
-		}
-
-		if (pos + val_len > payload_len) {
-			return -EINVAL;
-		}
-		val_data = &payload[pos];
-		pos += val_len;
-
-		/* Process known keys */
-		if (key_len == 6 && memcmp(key_str, "pubkey", 6) == 0) {
-			/* Decode base64 pubkey */
-			int dec_len = base64_decode((const char *)val_data, val_len,
+			int dec_len = base64_decode((const char *)val.value, val.len,
 						    pubkey, LICHEN_KEY_PUBKEY_LEN);
 			if (dec_len != LICHEN_KEY_PUBKEY_LEN) {
+				(void)zcbor_list_map_end_force_decode(state);
 				return -EINVAL;
 			}
 			has_pubkey = true;
-		} else if (key_len == 5 && memcmp(key_str, "trust", 5) == 0) {
-			*trust = str_to_trust((const char *)val_data, val_len);
-			has_trust = true;
+		} else if (key.len == 5 && memcmp(key.value, "trust", 5) == 0) {
+			struct zcbor_string val;
+			if (!zcbor_tstr_decode(state, &val) || val.len == 0) {
+				(void)zcbor_list_map_end_force_decode(state);
+				return -EINVAL;
+			}
+			*trust = str_to_trust((const char *)val.value, val.len);
+		} else {
+			if (!zcbor_any_skip(state, NULL)) {
+				(void)zcbor_list_map_end_force_decode(state);
+				return -EINVAL;
+			}
 		}
 	}
 
-	if (!has_pubkey) {
+	if (!zcbor_map_end_decode(state) || !has_pubkey) {
 		return -EINVAL;
 	}
 
