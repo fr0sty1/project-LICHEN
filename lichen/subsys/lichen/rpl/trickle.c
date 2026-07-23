@@ -99,6 +99,9 @@ void lichen_trickle_reset(struct lichen_trickle *t,
 			  uint32_t now,
 			  uint32_t rand_offset)
 {
+	if (t == NULL) {
+		return;
+	}
 	if (t->transmit_time == 0 || t->interval != t->imin) {
 		t->interval = t->imin;
 		begin_interval(t, now, rand_offset);
