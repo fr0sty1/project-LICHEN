@@ -67,3 +67,27 @@ git -C /mnt/lichen-zephyr/work/project-LICHEN worktree remove --force \
 ```
 
 Do not commit `twister-out/` or other generated build directories.
+
+## Native/64-bit MeshCore BLE + BLE Ingress Validation (project-LICHEN-2auf.59.4.1.3.2.1)
+
+For non-link MeshCore rows and BLE ingress on native_sim/native/64 (64-bit) with full logging:
+
+```bash
+. /mnt/lichen-zephyr/env.sh
+cd /mnt/lichen-zephyr/work/project-LICHEN
+tools/zephyr-clean-worktree.sh create project-LICHEN-meshcore-ble-validate origin/main
+cd /mnt/lichen-zephyr/work/project-LICHEN-meshcore-ble-validate
+# git apply patch if validating uncommitted changes
+west twister \
+  -T lichen/tests/ble_ingress \
+  -T lichen/tests/meshcore_ble \
+  -T lichen/tests/meshcore_adapter \
+  -T lichen/tests/meshcore_codec \
+  -p native_sim/native/64 \
+  --inline-logs \
+  --outdir twister-out-meshcore-ble-validation \
+  --extra-args ZEPHYR_EXTRA_MODULES=$PWD/lichen
+tools/zephyr-clean-worktree.sh verify-twister "$PWD" twister-out-meshcore-ble-validation
+```
+
+Use the same pattern for native_posix if supported. Always verify clean worktree resolution. Do not commit generated outputs.
