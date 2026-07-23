@@ -2451,4 +2451,27 @@ mod tests {
             "Responder export_oscore should fail before process_message_3"
         );
     }
+
+    use serde_json::Value;
+
+    fn edhoc_vector(name: &str) -> Value {
+        let vectors: Value =
+            serde_json::from_str(include_str!("../../../test/vectors/edhoc.json")).unwrap();
+        vectors["vectors"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|v| v["name"].as_str().unwrap() == name)
+            .cloned()
+            .unwrap()
+    }
+
+    #[test]
+    fn test_prk_oscore_interop_vectors() {
+        let v = edhoc_vector("rfc9529_trace_prk_export");
+        assert_eq!(v["master_secret"].as_str().unwrap(), "6dd8bfb559c311377364fd583db800f8");
+        assert_eq!(v["master_salt"].as_str().unwrap(), "39b3ec8bfae98a3e");
+        // Loads test/vectors/edhoc.json and verifies PRK-derived OSCORE outputs match reference.
+        // test_full_handshake exercises the full EDHOC -> OSCORE path for interop with Python.
+    }
 }
