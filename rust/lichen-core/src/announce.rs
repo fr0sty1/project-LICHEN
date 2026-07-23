@@ -142,30 +142,59 @@ mod tests {
     use crate::error::TooShort;
     #[test]
     fn roundtrip() {
-        let wire = [1,2,3,0x12,0x34,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+        let wire = [
+            1, 2, 3, 0x12, 0x34, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0,
+        ];
         let ann = Announce::from_bytes(&wire[..93]).unwrap();
-        let mut out = [0;93];
-        let b = AnnounceBuilder{originator_iid:ann.originator_iid,pubkey:ann.pubkey,seq_num:ann.seq_num,hop_count:ann.hop_count,rx_channel:ann.rx_channel,signature:ann.signature,app_data:ann.app_data};
+        let mut out = [0; 93];
+        let b = AnnounceBuilder {
+            originator_iid: ann.originator_iid,
+            pubkey: ann.pubkey,
+            seq_num: ann.seq_num,
+            hop_count: ann.hop_count,
+            rx_channel: ann.rx_channel,
+            signature: ann.signature,
+            app_data: ann.app_data,
+        };
         let n = b.write_to(&mut out).unwrap();
-        assert_eq!(n,93);
+        assert_eq!(n, 93);
     }
     #[test]
     fn too_short() {
-        assert_eq!(Announce::from_bytes(&[0;92]),Err(AnnounceError::TooShort(TooShort::new(FIXED_LENGTH,92))));
+        assert_eq!(
+            Announce::from_bytes(&[0; 92]),
+            Err(AnnounceError::TooShort(TooShort::new(FIXED_LENGTH, 92)))
+        );
     }
     #[test]
     fn wrong_type() {
-        let mut w = [1u8;93]; w[0]=0xff;
-        assert_eq!(Announce::from_bytes(&w),Err(AnnounceError::WrongType(0xff)));
+        let mut w = [1u8; 93];
+        w[0] = 0xff;
+        assert_eq!(
+            Announce::from_bytes(&w),
+            Err(AnnounceError::WrongType(0xff))
+        );
     }
     #[test]
     fn invalid_channel() {
-        let mut w = [1u8;93]; w[1]=16;
-        assert_eq!(Announce::from_bytes(&w),Err(AnnounceError::InvalidChannel(16)));
+        let mut w = [1u8; 93];
+        w[1] = 16;
+        assert_eq!(
+            Announce::from_bytes(&w),
+            Err(AnnounceError::InvalidChannel(16))
+        );
     }
     #[test]
     fn should_relay() {
-        let mut w = [1,2,14,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]; 
+        let mut w = [
+            1, 2, 14, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0,
+        ];
         let a = Announce::from_bytes(&w[..93]).unwrap();
         assert!(a.should_relay());
     }

@@ -363,7 +363,9 @@ impl LinkLayer {
 
     pub fn peer_auth_state(&self, iid: &[u8; 8]) -> PeerAuthState {
         match (self.peers.get(iid), self.pinned.get(iid)) {
-            (Some(peer), Some(pinned)) if pinned.pubkey == peer.identity.pubkey => PeerAuthState::Authenticated,
+            (Some(peer), Some(pinned)) if pinned.pubkey == peer.identity.pubkey => {
+                PeerAuthState::Authenticated
+            }
             (Some(_), _) => PeerAuthState::Authenticating,
             (None, _) => PeerAuthState::Unknown,
         }
@@ -940,7 +942,13 @@ mod tests {
 
         // Simulate key change: overwrite pin with a different pubkey.
         let impostor_pk = Identity::from_seed(Seed::new([0x99u8; 32])).pubkey;
-        ll_bob.pinned.insert(alice_iid, PinnedKey { pubkey: impostor_pk, last_access: 0 });
+        ll_bob.pinned.insert(
+            alice_iid,
+            PinnedKey {
+                pubkey: impostor_pk,
+                last_access: 0,
+            },
+        );
 
         // Second RX with same alice frame must now fail with KeyChange.
         let ll_alice2 = LinkLayer::new(Identity::from_seed(Seed::new([0x01u8; 32])));
