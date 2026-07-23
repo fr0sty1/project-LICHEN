@@ -23,7 +23,6 @@ The default unsigned signature is empty; a signed message carries 48 bytes.
 from dataclasses import dataclass, field
 from enum import IntEnum
 from ipaddress import IPv6Address
-from typing import Union
 
 from lichen.ipv6.icmpv6 import Icmpv6Message
 
