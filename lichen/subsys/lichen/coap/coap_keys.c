@@ -11,10 +11,6 @@
  * SECURITY: Write operations (PUT/DELETE) require local admin access.
  * The access check verifies the request comes from a local client
  * (loopback or SLIP LCI interface only - NOT the LoRa mesh interface).
- *
- * Resolved merge conflict for project-LICHEN-1a45 (integration/worker7-20260722):
- * coap_keys.c. Aligned CBOR map decoding idiom and IID comments with LICHEN spec
- * and other coap/*.c files.
  */
 
 #include <errno.h>
