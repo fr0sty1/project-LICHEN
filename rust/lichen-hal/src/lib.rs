@@ -259,11 +259,11 @@ impl Concentrator for Sx1302Concentrator {
     }
 
     async fn irq_status(&mut self) -> Result<u32, Self::Error> {
-        Ok(0)
+        Ok(1)  // simulate pending packet for RX
     }
 
     fn pps_timestamp(&self) -> Option<u64> {
-        None
+        Some(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_micros() as u64)
     }
 
     async fn configure(&mut self, _config: &RadioConfig) -> Result<(), Self::Error> {
