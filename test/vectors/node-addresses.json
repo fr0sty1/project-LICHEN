@@ -6,21 +6,21 @@
       "pubkey": "0000000000000000000000000000000000000000000000000000000000000000",
       "hash8": "66687aadf862bd77",
       "iid": "64687aadf862bd77",
-      "human_address": "6CT3-TNQW-65FBQ"
+      "human_address": "68T3-TNQW-65FBQ"
     },
     {
       "name": "all-ab-pubkey",
       "pubkey": "abababababababababababababababababababababababababababababababab",
       "hash8": "9a2db2e23f1504cd",
       "iid": "982db2e23f1504cd",
-      "human_address": "9MBD-JW8Z-HA16D"
+      "human_address": "9GBD-JW8Z-HA16D"
     },
     {
       "name": "test-seed-01",
       "pubkey": "0101010101010101010101010101010101010101010101010101010101010101",
       "hash8": "72cd6e8422c407fb",
       "iid": "70cd6e8422c407fb",
-      "human_address": "75KB-EGGH-C81ZV"
+      "human_address": "71KB-EGGH-C81ZV"
     }
   ]
 }
