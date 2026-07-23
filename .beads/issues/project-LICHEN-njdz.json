@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-njdz",
+  "title": "Update edhoc_kdf usage and ensure interop with updated transcript hashes across lichen-oscore",
+  "description": "Review and align edhoc_kdf calls with Python _edhoc_kdf after transcript fixes. Verify against test/vectors/edhoc*.json if present. Ensure no breaking changes to OSCORE export. --parent=project-LICHEN-y80q",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:29:04.874035559Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:29:04.874035559Z"
+}
