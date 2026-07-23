@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 
 from lichen.sim.metrics import NodeMetrics
-from lichen.sim.tdma import TDMAScheduler
+from lichen.sim.tdma import hash_32, TDMAScheduler
 from lichen.state_machine import StateMachine
 
 # Type alias for RX callbacks: (on_packet, on_timeout)
@@ -54,6 +54,7 @@ class SimNode:
     metrics: NodeMetrics = field(repr=False)
     current_channel: int = 0
     hop_schedule: tuple[int, ...] = field(default_factory=tuple, repr=False)
+    seed: int = 0
     tdma_scheduler: TDMAScheduler = field(repr=False, default_factory=TDMAScheduler)
     _state_machine: StateMachine[NodeState] = field(init=False, repr=False)
 
@@ -71,6 +72,9 @@ class SimNode:
         current_channel: int = 0,
         hop_schedule: tuple[int, ...] | None = None,
         tdma_scheduler: TDMAScheduler | None = None,
+        seed: int = 0,
+        sfn: int = 0,
+        num_channels: int = 8,
     ) -> None:
         self.id = id
         self.position = position
@@ -80,9 +84,16 @@ class SimNode:
         self.last_seen_time_us = last_seen_time_us
         self.rx_callbacks = rx_callbacks
         self.metrics = metrics if metrics is not None else NodeMetrics()
+        self.seed = seed
         self.current_channel = current_channel
         self.hop_schedule = tuple(hop_schedule) if hop_schedule is not None else ()
         self.tdma_scheduler = tdma_scheduler if tdma_scheduler is not None else TDMAScheduler()
+        data = seed.to_bytes(8, "big") + ((sfn) & 0xffffffff).to_bytes(4, "little")
+        h = hash_32(data)
+        n = max(num_channels, 3)
+        if current_channel == 0:
+            self.current_channel = 1 + (h % n)
+        self.hop_schedule = tuple(1 + (hash_32(seed.to_bytes(8, "big") + (((sfn + i) & 0xffffffff).to_bytes(4, "little"))) % n) for i in range(8))
         self._state_machine = StateMachine(
             initial=state,
             transitions=NODE_STATE_TRANSITIONS,
