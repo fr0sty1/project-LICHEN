@@ -109,9 +109,10 @@ impl TrickleTimer {
         self.interval_start = now;
         self.counter = 0;
         self.transmitted = false;
-        let half = self.interval / 2;
-        // transmit_time is uniform in [now + half, now + interval)
-        let offset = if half > 0 { rand_offset % half } else { 0 };
+        let half = self.interval.saturating_add(1) / 2;
+        let range = self.interval.saturating_sub(half);
+        // transmit_time uniform in [now + half, now + interval) per RFC 6206 §4.2
+        let offset = if range > 0 { rand_offset % range } else { 0 };
         self.transmit_time = now.saturating_add(half).saturating_add(offset);
         self.transition_to(TrickleState::WaitingTransmit)
     }
