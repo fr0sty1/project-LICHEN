@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-lug0.2.2.1",
+  "title": "Update imports in gateway.rs to use lichen_rpl::routing::SourceRoutingHeader",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:27:46.006240411Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:27:46.006240411Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-lug0.2.2.1",
+      "depends_on_id": "project-LICHEN-lug0.2.2",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:27:46.148282884Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
