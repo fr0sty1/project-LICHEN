@@ -393,7 +393,11 @@ Provides time synchronization for replay protection.
 
 Advertises node congestion for routing decisions (0-3 scale).
 
+<<<<<<< HEAD
 **Capability and Adaptive SF Option (CCP-16):** The DAG Metric Container and DIO options MUST carry ASSIGNED_SF, per-neighbor EMA (SNR/loss), density, utilization, and load_factor per normative spelled-out pseudocode in spec/02a-coordinated-capacity.md (adaptive_sf_select, ema_update, select_channel, now()). DIOs on CH0 control channel. Selected SF signaled for TX; nodes RX on all SF. Test vectors in test/vectors/ccp16.json and ccp_load_balancing.json are the independent oracles; all impls MUST match exactly. Cross-ref capability DIO option in 02a-coordinated-capacity.md:CCP-6.
+=======
+**Adaptive SF Recommendation / ASSIGNED_SF and RF Metrics Option (CCP-16):** The DAG Metric Container in DIOs MUST include the current per-neighbor EMA-derived SF recommendation, density, utilization, RSSI, PER and SNR samples per CCP-16 (see `spec/02a-coordinated-capacity.md` section 4.2 for normative thresholds, EMA update, and pseudocode). Nodes MUST compute TX_SF via the pseudocode in physical-link:3.4 and 02a:2a.3. DIOs on the control channel provide the announcement; RX scanning on CH0 is REQUIRED. Test vectors in `test/vectors/ccp16.json` (independent oracles) MUST validate interop across implementations.
+>>>>>>> origin/integration/worker11-20260722
 
 ### 9.3. Prefix Information Option
 

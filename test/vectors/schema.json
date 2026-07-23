@@ -734,8 +734,8 @@
     },
     "ccp13_vector": {
       "type": "object",
-      "required": ["name", "description", "limit_permille", "window_ms", "expected_remaining_ms"],
-      "additionalProperties": false,
+      "required": ["name", "description"],
+      "additionalProperties": true,
       "properties": {
         "name": {"type": "string"},
         "description": {"type": "string"},
@@ -744,7 +744,29 @@
         "tx_ms": {"type": "integer", "minimum": 0},
         "expected_remaining_ms": {"type": "integer", "minimum": 0},
         "expected_usage_permille": {"type": "integer", "minimum": 0, "maximum": 1000},
+<<<<<<< HEAD
         "notes": {"type": "string"}
+=======
+        "notes": {"type": "string"},
+        "binary_hex": {"$ref": "#/definitions/hex"},
+        "decoded_fields": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "subtype": {"type": "integer"},
+            "subtype_name": {"type": "string"},
+            "latitude_microdegrees": {"type": "integer"},
+            "longitude_microdegrees": {"type": "integer"},
+            "altitude_decimeters": {"type": "integer"},
+            "course_centidegrees": {"type": "integer"},
+            "speed_cm_s": {"type": "integer"},
+            "team": {"type": "integer"},
+            "team_name": {"type": "string"},
+            "role": {"type": "integer"},
+            "expected_hash": {"type": "integer", "description": "hash_32(SFN, key) per spec/02a-coordinated-capacity.md §2a.7.1 (FNV-1a32 primitive, matches C lichen_hash_32 and Python _hash_32)"}
+          }
+        }
+>>>>>>> origin/integration/worker11-20260722
       }
     },
     "ccp_vector": {
