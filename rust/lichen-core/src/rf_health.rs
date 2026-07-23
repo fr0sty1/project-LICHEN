@@ -16,6 +16,7 @@
 
 /// Fixed-point scale factor (2^16 = 65536).
 const FP_SCALE: i32 = 1 << 16;
+const EMA_ALPHA_SHIFT: i32 = 2;
 
 /// RF health metrics aggregator for CCP-15 interference mitigation.
 ///
@@ -143,12 +144,8 @@ impl RssiStats {
         if self.count == 0 {
             self.avg_fp = rssi_fp;
         } else {
-            // EMA: avg = avg + alpha * (sample - avg)
-            // In fixed-point: avg = avg + (alpha * (sample - avg)) >> 16
-            let diff = rssi_fp - self.avg_fp;
-            // Multiply then shift to maintain precision; alpha=1/4 for faster
-            // response to intermittent interference (CCP-15)
-            self.avg_fp += diff >> 2; // alpha = 1/4
+            let diff = rssi_fp.saturating_sub(self.avg_fp);
+            self.avg_fp = self.avg_fp.saturating_add(diff >> EMA_ALPHA_SHIFT);
         }
         self.count = self.count.saturating_add(1);
     }
@@ -161,8 +158,7 @@ impl RssiStats {
         if self.count == 0 {
             None
         } else {
-            // Convert from Q16.16 to integer (truncate toward negative infinity)
-            Some((self.avg_fp >> 16) as i16)
+            Some(((self.avg_fp + (1 << 15)) >> 16) as i16)
         }
     }
 
@@ -228,11 +224,8 @@ impl SnrStats {
         if self.count == 0 {
             self.avg_fp = snr_fp;
         } else {
-            // EMA: avg = avg + alpha * (sample - avg)
-            let diff = snr_fp - self.avg_fp;
-            // alpha=1/4 for faster response to intermittent interference (CCP-15
-            // from da2q multi-channel context: quicker adaptation to busy channels)
-            self.avg_fp += diff >> 2; // alpha = 1/4
+            let diff = snr_fp.saturating_sub(self.avg_fp);
+            self.avg_fp = self.avg_fp.saturating_add(diff >> EMA_ALPHA_SHIFT);
         }
         self.count = self.count.saturating_add(1);
     }
@@ -245,7 +238,7 @@ impl SnrStats {
         if self.count == 0 {
             None
         } else {
-            Some((self.avg_fp >> 16) as i8)
+            Some(((self.avg_fp + (1 << 15)) >> 16) as i8)
         }
     }
 
@@ -553,19 +546,12 @@ mod tests {
 
     #[test]
     fn ema_convergence() {
-        // EMA should converge toward repeated values
         let mut stats = RssiStats::new();
         stats.update(-80);
-        // Feed many samples of -60
         for _ in 0..100 {
             stats.update(-60);
         }
-        // Should be very close to -60 now
         let avg = stats.avg().unwrap();
-        assert!(
-            (-62..=-60).contains(&avg),
-            "avg was {} after convergence",
-            avg
-        );
+        assert!((-61..=-60).contains(&avg), "avg was {}", avg);
     }
 }
