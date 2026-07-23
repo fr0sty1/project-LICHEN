@@ -1,17 +1,16 @@
 {
   "id": "project-LICHEN-frdz",
   "title": "Define TDMA rendezvous and sync in spec (beacon format, drift compensation, join procedure)",
-  "notes": "Commit: 8f8cd3e45",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",
   "created_at": "2026-07-22T16:15:49.720805051Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-23T04:56:01.962882944Z",
+  "updated_at": "2026-07-23T04:55:03.191447971Z",
   "started_at": "2026-07-22T16:16:53.839189531Z",
-  "closed_at": "2026-07-23T04:56:01.962882944Z",
-  "close_reason": "Defined beacon format, rendezvous mechanisms (scheduled/hash/announce), drift compensation linear formula matching ccp_tdma.json, and join FSM procedure with cross-refs to link.h, AGENTS.md init order, and test vectors in spec/02a-tdma.md. Updated from high-level to normative IETF-style spec. Commit 8f8cd3e45",
+  "lease_expires_at": "2026-07-23T05:00:03.191447971Z",
+  "heartbeat_at": "2026-07-23T04:55:03.191447971Z",
   "labels": [
     "defer-external"
   ]
