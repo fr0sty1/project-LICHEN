@@ -144,8 +144,8 @@ class AnnounceScheduler:
             originator_iid=self.identity.iid,
             pubkey=self.identity.pubkey,
             seq_num=seq,
-            hop_count=0,  # We're the originator
-            rx_channel=0,  # CCP-9: control channel until hopping implemented
+            hop_count=0,
+            current_channel=0,
             app_data=self.app_data,
         )
 
@@ -162,7 +162,7 @@ class AnnounceScheduler:
             pubkey=msg.pubkey,
             seq_num=msg.seq_num,
             hop_count=msg.hop_count,
-            rx_channel=msg.rx_channel,
+            current_channel=msg.current_channel,
             signature=signature,
             app_data=msg.app_data,
         )
