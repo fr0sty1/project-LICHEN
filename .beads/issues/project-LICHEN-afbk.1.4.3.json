@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-afbk.1.4.3",
+  "title": "Add TX support and full packet flow for hat mode",
+  "description": "Extend run_hat_inner to support TX from upstream_to_mesh/gateway, handle concentrator TX queue. Update forward functions if needed for concentrator backend. Add basic test vectors or integration test.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:18:53.816551732Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:18:53.816551732Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-afbk.1.4.3",
+      "depends_on_id": "project-LICHEN-afbk.1.4",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:18:53.949662033Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
