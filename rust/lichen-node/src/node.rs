@@ -2,11 +2,7 @@
 
 use lichen_core::constants::L2_DISPATCH_SCHC;
 #[cfg(feature = "std")]
-use lichen_core::constants::RPL_ICMPV6_TYPE;
-#[cfg(feature = "std")]
-use lichen_core::constants::RPL_INSTANCE_ID;
-#[cfg(feature = "std")]
-use lichen_core::constants::RPL_INSTANCE_ID;
+use lichen_core::constants::{RPL_ICMPV6_TYPE, RPL_INSTANCE_ID};
 #[cfg(feature = "std")]
 use lichen_core::icmpv6::hdr_field;
 use lichen_core::icmpv6::{echo_field, ICMPV6_HEADER_LEN};
