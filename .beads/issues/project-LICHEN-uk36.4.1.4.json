@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-uk36.4.1.4",
+  "title": "Add/update interop test verifying PRK and OSCORE outputs match test/vectors/edhoc.json across Rust/Python",
+  "description": "Implement or fix test_full_handshake or similar in edhoc.rs tests to load vectors from test/vectors/edhoc.json (or create it if missing), run Python reference, compare PRK_*, master_secret, master_salt byte-for-byte. Ensure no_std compatible where possible.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:28:52.889510737Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:28:52.889510737Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-uk36.4.1.4",
+      "depends_on_id": "project-LICHEN-uk36.4.1",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:28:53.032636895Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
