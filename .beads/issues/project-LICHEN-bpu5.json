@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-bpu5",
   "title": "[merge-conflict] worktree-worker23: lib.rs",
+  "notes": "Commit: 3044d1bb7",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:59:40.762799134Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:54:11.806996731Z",
+  "updated_at": "2026-07-23T04:57:36.159986337Z",
   "started_at": "2026-07-23T00:06:06.835913148Z",
   "lease_expires_at": "2026-07-23T04:59:11.806996731Z",
   "heartbeat_at": "2026-07-23T04:54:11.806996731Z",
