@@ -2,15 +2,15 @@
   "id": "project-LICHEN-t6ao",
   "title": "[merge-conflict] worktree-worker19: xiao_s3_wio_sx1262.conf",
   "notes": "Commit: 067faa2",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:34:53.454716384Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T00:41:11.371265323Z",
+  "updated_at": "2026-07-23T00:41:14.220726953Z",
   "started_at": "2026-07-23T00:39:40.4564043Z",
-  "lease_expires_at": "2026-07-23T00:44:40.4564043Z",
-  "heartbeat_at": "2026-07-23T00:39:40.4564043Z"
+  "closed_at": "2026-07-23T00:41:14.220726953Z",
+  "close_reason": "Fixed merge conflict in xiao_s3_wio_sx1262.conf by consolidating retirement note with SPDX header and references to related audit beads. Updated comment to match canonical form from worker19 worktree."
 }
