@@ -2,15 +2,15 @@
   "id": "project-LICHEN-nr5n",
   "title": "[merge-conflict] worktree-worker24: t_deck_esp32s3_procpu.conf",
   "notes": "Commit: 64e7950",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:30:37.354668138Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:59:26.62660518Z",
+  "updated_at": "2026-07-23T01:59:28.820243748Z",
   "started_at": "2026-07-23T01:57:30.961844956Z",
-  "lease_expires_at": "2026-07-23T02:02:30.961844956Z",
-  "heartbeat_at": "2026-07-23T01:57:30.961844956Z"
+  "closed_at": "2026-07-23T01:59:28.820243748Z",
+  "close_reason": "Resolved t_deck_esp32s3_procpu.conf merge conflict by standardizing SPDX headers, resolution comments, and content across puck, gateway, and bridge configs in worktree-worker24 to match main. Updated 5 files. Commit 64e7950 pushed to worktree-worker24 branch."
 }
