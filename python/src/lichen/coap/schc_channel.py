@@ -50,6 +50,8 @@ def wrap_coap(
 ) -> bytes:
     """Frame CoAP bytes as an IPv6 + UDP datagram."""
     udp = UdpDatagram(src_port, dst_port, coap).to_bytes(src, dst)
+    if len(udp) > 0xFFFF:
+        raise ValueError(f"UDP datagram too large for IPv6: {len(udp)} > 65535 bytes")
     header = IPv6Header(
         src_addr=src,
         dst_addr=dst,
