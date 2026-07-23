@@ -2,15 +2,15 @@
   "id": "project-LICHEN-jvx5",
   "title": "[merge-conflict] worktree-worker20: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: a51b6fc97",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:21.46063059Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:29:38.312931088Z",
+  "updated_at": "2026-07-23T04:29:41.214367841Z",
   "started_at": "2026-07-23T04:28:14.006022712Z",
-  "lease_expires_at": "2026-07-23T04:33:14.006022712Z",
-  "heartbeat_at": "2026-07-23T04:28:14.006022712Z"
+  "closed_at": "2026-07-23T04:29:41.214367841Z",
+  "close_reason": "Resolved merge conflict by syncing heltec_wifi_lora32_v3_esp32s3_procpu.conf in project-LICHEN-worker20 to canonical documented version from main; test_vectors.py updated and committed with project-LICHEN-jvx5: fix at 63a0ea37f (notes used prior commit a51b6fc97 per instructions)"
 }
