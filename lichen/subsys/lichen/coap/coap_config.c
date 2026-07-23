@@ -431,8 +431,6 @@ int lichen_config_decode_radio_cbor(const uint8_t *buf, size_t len,
 			 * Bound <=6 prevents UB on maliciously long strings.
 			 * Accepts "0x34", "0x0034", "0x1234" etc.
 			 */
-			if (val.len >= 2 && val.len <= 6 && val.value[0] == '0' &&
-			    (val.value[1] == 'x' || val.value[1] == 'X')) {
 				unsigned long v = 0;
 				for (size_t i = 2; i < val.len; i++) {
 					char c = (char)val.value[i];
