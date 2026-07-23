@@ -113,13 +113,14 @@ All node identity derives from a single Ed25519 keypair. This unifies:
 
 1. Generate Ed25519 keypair (32-byte priv, 32-byte pub)
 2. hash = SHA-256(pubkey) (32 bytes, no truncation beyond IID)
-3. IID = hash[0:8]; IID[0] |= 0x02 (u-bit set per Yggdrasil/RFC4291 for 02xx::/7 interop; exact mapping in appendix and test/vectors/schnorr48.json)
-4. Address = fe80::/10 for link-local or 0200::/7 || IID for global (Yggdrasil-compatible)
+3. IID = hash[0:8]; IID[0] &= 0b11111101 (U/L bit cleared per RFC 4291; see 04-network.md:6.2)
+4. Yggdrasil address = 0x02 || SHA-512(pubkey)[0:7] || IID (lower 64 bits MUST match IID for cryptographic binding per 8.7; prevents substitution attacks)
 5. Link pubkey = the Ed25519 pubkey
-6. TOFU pins the (IID, PubKey) tuple
-(Appendix A updated with bit positions, hash steps, and vectors for exact interop.)
+6. TOFU pins the (IID, 02xx address, PubKey) tuple (unified single-key derivation)
 
-This eliminates ULA entirely. The 02xx address is used for all routable traffic. Link-local fe80::/10 is reserved exclusively for control traffic (see 04-network.md). See test/vectors/ for canonical derivation examples. Reference implementation in python/src/lichen/crypto/ and rust/lichen-link/.
+See normative derivation in §8.7 (MUST match test/vectors/yggdrasil-derivation.json exactly), python/src/lichen/crypto/identity.py:116, rust/lichen-link/src/identity.rs:27 and :40. Single Ed25519 keypair for signatures, OSCORE (via X25519 from seed), IID, and Yggdrasil 02xx routing. This eliminates ULA/GUA entirely (see 04-network.md). Link-local fe80::/10 reserved for control only.
+
+This unifies all identity material from one 32-byte seed.
 
 **Benefits:**
 - No key/address mismatch attacks
@@ -143,13 +144,13 @@ high-security deployments, enable per-hop verification (costs CPU, not bytes).
 ### 8.7. Key Management
 
 
-A single 32-byte seed produces all material for signatures, X25519 (EDHOC), stable IID, and primary 02xx address. Supports simplified no-ULA model (fe80::IID + 02xx::/7 Yggdrasil primary address only) per 04-network.md:12, 05-routing.md. Matches test/vectors/yggdrasil.json + schnorr48.json; see `python/src/lichen/crypto/identity.py:59` (from_seed), `rust/lichen-link/src/identity.rs:70` (Identity::from_seed), schnorr48.py:100.
+A single 32-byte seed produces all material for signatures (Schnorr48), X25519 (for EDHOC/OSCORE), stable IID, and primary 02xx Yggdrasil address. Single key for all purposes. Supports simplified no-ULA model (fe80::IID + 02xx::/7 primary only) per 04-network.md §6.1, 05-routing.md. Matches test/vectors/yggdrasil-derivation.json exactly; see `python/src/lichen/crypto/identity.py:60` (from_seed), `rust/lichen-link/src/identity.rs:100` (Identity::from_seed).
 
 **Normative Derivation (MUST match test vectors exactly):**
 
 1. **Keypair**: `privkey, pubkey = derive_keypair(seed)` per draft-lichen-schnorr-00.md:97 (h=SHA-512(seed); privkey=clamp(h[0:32]); pubkey=basepoint_mult). Matches schnorr48.py:107 and Rust exactly.
 2. **IID**: `hash=SHA-256(pubkey); iid=hash[0:8]; iid[0] &= 0b1111_1101` (U/L bit clear per RFC 4291). See 04-network.md:53, identity.rs:22.
-3. **02xx Address**: `addr=[0x02] + SHA-512(pubkey)[0:7] + IID` (MUST: lower 64 bits == IID to bind key to address and prevent substitution; upper from SHA-512(pubkey) for Yggdrasil 0200::/7 dispersion). No ULA. See identity.rs:34 (yggdrasil_addr_from_pubkey), test/vectors/yggdrasil.json.
+3. **02xx Address**: `addr=[0x02] + SHA-512(pubkey)[0:7] + IID` (MUST: lower 64 bits == IID to bind key to address and prevent substitution attacks; upper 7 bytes from SHA-512(pubkey) for Yggdrasil 0200::/7 dispersion). No ULA. See identity.rs:40 (yggdrasil_addr_from_pubkey), test/vectors/yggdrasil-derivation.json.
  4. **X25519**: `x25519_priv=clamp(SHA-512(seed)[0:32])` per RFC 7748 §5 for EDHOC static DH (see 8.9). Matches Python identity.py:109, standards/crypto.md:79.
 
 
