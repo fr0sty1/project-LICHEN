@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-kzdy",
   "title": "[merge-conflict] worktree-worker23: coap_config.c",
+  "notes": "Commit: c2e9553bd",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:19:37.122645983Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:13:17.363428726Z",
+  "updated_at": "2026-07-23T02:15:02.835417278Z",
   "started_at": "2026-07-23T02:13:17.363428726Z",
   "lease_expires_at": "2026-07-23T02:18:17.363428726Z",
   "heartbeat_at": "2026-07-23T02:13:17.363428726Z"
