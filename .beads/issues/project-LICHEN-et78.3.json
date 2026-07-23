@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-et78.3",
+  "title": "Implement Trickle timer and MRHOF MUST checks in RPL modules",
+  "description": "Add RFC2119 compliance for Trickle parameters, MRHOF objective function, and related timers in both rust/lichen-rpl and zephyr rpl code per spec/05-routing.md",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:16:00.263406054Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:16:00.263406054Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-et78.3",
+      "depends_on_id": "project-LICHEN-et78",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:16:00.395104446Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
