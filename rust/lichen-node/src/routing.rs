@@ -160,6 +160,32 @@ pub type LinkEtx = f32;
 /// Geographic coordinates (latitude, longitude) in decimal degrees.
 pub type GeoCoords = (f64, f64);
 
+/// Trickle-aware neighbor liveness policy.
+///
+/// Factors in `TrickleTimer::counter` (from `heard_consistent()`) to avoid
+/// premature eviction of suppressed neighbors in dense networks.
+///
+/// **Design (RFC 6206 & RPL considerations):**
+/// - RFC 6206 §4.2 (Trickle rules): `counter` increments on consistent DIOs;
+///   when `counter >= k` (default k=10), transmissions are suppressed (rule 4).
+///   In dense meshes, a neighbor may go long periods without transmitting DIOs.
+/// - RPL RFC 6550 §6.5.1 (Neighbor Table): Neighbors must not be timed out
+///   prematurely if participating in the DODAG. Suppression creates false
+///   "stale" signals.
+/// - Policy: if `heard_consistent >= 2`, treat as alive regardless of age.
+///   Threshold=2 provides early hysteresis without waiting for full k.
+/// - Used by `NeighborTable::prune_with_removed` and `is_likely_alive`.
+/// - Zero-sized struct for future policy extensibility (e.g. configurable k).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct TrickleAwareNeighborLiveness;
+
+impl TrickleAwareNeighborLiveness {
+    /// Returns whether neighbor at `age_ms` should be considered alive.
+    pub const fn is_alive(age_ms: u64, max_age_ms: u64, heard_consistent: u32) -> bool {
+        age_ms <= max_age_ms || heard_consistent >= 2
+    }
+}
+
 /// Neighbor entry with link quality tracking and optional coordinates.
 #[derive(Clone, Debug)]
 pub struct Neighbor {
@@ -310,7 +336,7 @@ impl NeighborTable {
         for slot in self.entries.iter_mut() {
             let is_stale = slot.as_ref().map_or(false, |neighbor| {
                 let age = now_ms.saturating_sub(neighbor.last_seen_ms);
-                age > max_age_ms && heard_consistent < 2
+                !TrickleAwareNeighborLiveness::is_alive(age, max_age_ms, heard_consistent)
             });
             if is_stale {
                 let neighbor = slot.take().expect("stale slot contains a neighbor");
@@ -334,7 +360,7 @@ impl NeighborTable {
             .find(|n| n.addr == *addr)
             .map_or(false, |n| {
                 let age = now_ms.saturating_sub(n.last_seen_ms);
-                age <= max_age_ms || heard_consistent >= 2
+                TrickleAwareNeighborLiveness::is_alive(age, max_age_ms, heard_consistent)
             })
     }
 }
@@ -944,6 +970,9 @@ impl Router {
     }
 
     /// Remove stale neighbors and their corresponding DODAG parent candidates.
+    ///
+    /// Uses `TrickleAwareNeighborLiveness` policy (see its docs for RFC 6206
+    /// suppression-aware logic using `trickle.counter`).
     /// Times use the same monotonic `u64` millisecond timeline as DIO processing.
     pub fn prune_neighbors(&mut self, now_ms: u64, max_age_ms: u64) -> bool {
         let now_ms = self.observe_now(now_ms);
