@@ -19,9 +19,11 @@ import struct
 import uuid
 import warnings
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import IntEnum
 from xml.etree.ElementTree import Element, SubElement, tostring
+
+UTC = timezone.utc
 
 # -- Constants --
 
