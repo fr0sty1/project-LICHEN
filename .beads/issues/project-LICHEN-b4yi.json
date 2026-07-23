@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-b4yi",
   "title": "Kconfig for LICHEN_GATEWAY_PREFIX_DELEGATION and WiFi station",
+  "notes": "Commit: 4c0b9dc09",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T22:42:09.714219266Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:43:14.034792984Z",
+  "updated_at": "2026-07-23T04:45:28.148207142Z",
   "started_at": "2026-07-22T23:08:02.439550837Z",
   "lease_expires_at": "2026-07-23T04:48:14.034792984Z",
   "heartbeat_at": "2026-07-23T04:43:14.034792984Z",
