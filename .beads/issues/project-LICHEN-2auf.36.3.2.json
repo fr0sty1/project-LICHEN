@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-2auf.36.3.2",
   "title": "Change interop-status if-condition to always() and update jq for clear failure reporting",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:22:21.940306156Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:22:21.940306156Z",
+  "updated_at": "2026-07-23T05:24:57.485864595Z",
+  "started_at": "2026-07-23T05:24:57.485864595Z",
+  "lease_expires_at": "2026-07-23T05:29:57.485864595Z",
+  "heartbeat_at": "2026-07-23T05:24:57.485864595Z",
   "labels": [
     "defer-external"
   ],
