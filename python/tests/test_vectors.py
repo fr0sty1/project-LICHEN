@@ -53,6 +53,7 @@ from generate import (  # noqa: E402
     _hop_hash,
     announce_coords_vectors,
     ccp9_vectors,
+    edhoc_vectors,
     frame_vectors,
     l2_payload_vectors,
     meshcore_app_compat_vectors,
@@ -501,6 +502,11 @@ def test_meshtastic_app_compat_vectors_match_generator() -> None:
 def test_meshcore_app_compat_vectors_match_generator() -> None:
     doc = _load("meshcore_app_compat.json")
     assert doc["vectors"] == meshcore_app_compat_vectors()
+
+
+def test_edhoc_vectors_match_generator() -> None:
+    doc = _load("edhoc.json")
+    assert doc["vectors"] == edhoc_vectors()
 
 
 def test_ccp9_vectors_match_generator() -> None:
