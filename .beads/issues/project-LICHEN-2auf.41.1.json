@@ -1,18 +1,14 @@
 {
   "id": "project-LICHEN-2auf.41.1",
-  "title": "Implement LOADng wrap-aware freshness and bounds",
-  "description": "Add sequence number wrap handling for freshness checks and bounds validation in LOADng routing. Ensure test vectors agree on wrap behavior.",
-  "status": "closed",
+  "title": "Recover ICMPv6/UDP ingress validation and checksum bounds",
+  "description": "Ensure malformed IPv6 sources, bad UDP checksums, invalid ICMPv6 types/codes, and out-of-bounds fields are dropped on ingress in Python stack. Add focused test vectors. Update acceptance to cover drop behavior.",
+  "status": "open",
   "priority": 1,
-  "issue_type": "bug",
-  "assignee": "AI Agent",
+  "issue_type": "task",
   "owner": "agent@lichen-project.dev",
-  "created_at": "2026-07-23T05:14:03.850334173Z",
+  "created_at": "2026-07-23T05:21:33.993860675Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:17:45.059164198Z",
-  "started_at": "2026-07-23T05:15:17.044734826Z",
-  "closed_at": "2026-07-23T05:17:45.059164198Z",
-  "close_reason": "Decomposed into subtasks",
+  "updated_at": "2026-07-23T05:21:33.993860675Z",
   "labels": [
     "defer-external"
   ],
@@ -21,7 +17,7 @@
       "issue_id": "project-LICHEN-2auf.41.1",
       "depends_on_id": "project-LICHEN-2auf.41",
       "type": "parent-child",
-      "created_at": "2026-07-23T05:14:03.991384217Z",
+      "created_at": "2026-07-23T05:21:34.128300025Z",
       "created_by": "AI Agent",
       "metadata": "{}"
     }

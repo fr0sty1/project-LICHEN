@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.36.3",
   "title": "Expand interop-status needs and fix failure reporting logic",
   "description": "Update interop-status job to depend on ALL interop jobs including frame-parser-interop, multinode-simulator, wire-format-python-to-rust. Fix the jq check and if-condition so that any failure in dependent jobs causes the workflow to fail clearly. Handle cases where bd or tooling is missing.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

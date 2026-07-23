@@ -247,10 +247,14 @@ fn hkdf_extract(salt: &[u8], ikm: &[u8]) -> Zeroizing<[u8; 32]> {
     Zeroizing::new(prk.into())
 }
 
+/// EDHOC-KDF (RFC 9528 Section 4.1.2).
+///
+/// EDHOC-KDF(PRK, TH, label, context, length) = HKDF-Expand(PRK, info, length)
+/// where info = (length, TH, label, context) as CBOR sequence.
 fn edhoc_kdf(
     prk: &[u8; 32],
     th: &[u8],
-    label: &str,
+    label: u8,
     context: &[u8],
     length: usize,
 ) -> Result<heapless::Vec<u8, 128>, EdhocError> {
@@ -298,8 +302,9 @@ fn edhoc_kdf(
         info.extend_err(context)?;
     }
 
+    // HKDF-Expand
     let hk = Hkdf::<Sha256>::from_prk(prk).map_err(|_| EdhocError::KeyDerivation)?;
-    let mut okm = SecretVec::<128>::new();
+    let mut okm = heapless::Vec::<u8, 128>::new();
     okm.resize(length, 0)
         .map_err(|_| EdhocError::BufferTooSmall)?;
     hk.expand(&info, &mut okm)

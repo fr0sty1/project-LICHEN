@@ -1,14 +1,14 @@
 {
   "id": "project-LICHEN-ftvd.3",
-  "title": "Verify heltec_wifi_lora32_v3_esp32s3_procpu proxy builds for xiao_s3 replacement",
-  "description": "Test that using -b heltec_wifi_lora32_v3_esp32s3_procpu with appropriate overlays successfully proxies the retired xiao_s3_wio_sx1262 target without build errors. Update any bridge-zephyr configs if needed.",
+  "title": "Update firmware-board-capability-matrix.md to reflect xiao_s3_wio_sx1262 retirement status",
+  "description": "Ensure the matrix document accurately reflects the BLOCKED/RETIRED status and proxy recommendation for Seeed XIAO ESP32-S3 + Wio-SX1262.",
   "status": "open",
-  "priority": 2,
+  "priority": 3,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
-  "created_at": "2026-07-23T05:17:48.248744526Z",
+  "created_at": "2026-07-23T05:30:03.436697387Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T05:17:48.248744526Z",
+  "updated_at": "2026-07-23T05:30:03.436697387Z",
   "labels": [
     "defer-external"
   ],
@@ -17,7 +17,7 @@
       "issue_id": "project-LICHEN-ftvd.3",
       "depends_on_id": "project-LICHEN-ftvd",
       "type": "parent-child",
-      "created_at": "2026-07-23T05:17:48.384109276Z",
+      "created_at": "2026-07-23T05:30:03.576238431Z",
       "created_by": "AI Agent",
       "metadata": "{}"
     }

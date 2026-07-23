@@ -608,7 +608,7 @@ bool tdma_tx_allowed(const struct lichen_tdma_ctx *tdma, uint32_t now_ms)
 	if (tdma == NULL || !tdma->synced) return true;
 	uint32_t d = tdma->slot_duration;
 	uint32_t slot_start = tdma->superframe * (uint32_t)tdma->n_slots * d + (uint32_t)tdma->slot * d;
-	uint32_t g = 50;
+	uint32_t g = LICHEN_TDMA_GUARD_MS;
 	return (slot_start - g <= now_ms) && (now_ms <= slot_start + d + g);
 }
 

@@ -4,10 +4,9 @@
   "description": "Restore bounds checking for malformed sources, checksums in ICMPv6 and UDP ingress paths. Ensure malformed packets are dropped. Add focused tests.",
   "status": "closed",
   "priority": 1,
-  "issue_type": "bug",
-  "assignee": "AI Agent",
+  "issue_type": "task",
   "owner": "agent@lichen-project.dev",
-  "created_at": "2026-07-23T05:14:03.854462976Z",
+  "created_at": "2026-07-23T05:21:37.370537904Z",
   "created_by": "AI Agent",
   "updated_at": "2026-07-23T05:20:37.844837791Z",
   "started_at": "2026-07-23T05:19:13.466774423Z",
@@ -21,7 +20,7 @@
       "issue_id": "project-LICHEN-2auf.41.2",
       "depends_on_id": "project-LICHEN-2auf.41",
       "type": "parent-child",
-      "created_at": "2026-07-23T05:14:03.991786985Z",
+      "created_at": "2026-07-23T05:21:37.508166893Z",
       "created_by": "AI Agent",
       "metadata": "{}"
     }

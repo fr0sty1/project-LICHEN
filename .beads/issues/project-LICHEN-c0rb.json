@@ -4,7 +4,7 @@
   "description": "Define compute_th-based functions that produce identical output to Python _compute_th(th_input) using proper CBOR encoding for TH_2 = H(G_Y || H(msg1)), TH_3 = H(CBOR(TH_2) || CBOR(CIPHERTEXT_2) || CBOR(ID_CRED_R)), TH_4 = H(CBOR(TH_3) || CBOR(CIPHERTEXT_3)). Use test vectors from test/vectors/. --parent=project-LICHEN-y80q",
   "status": "closed",
   "priority": 0,
-  "issue_type": "epic",
+  "issue_type": "task",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:28:55.673426594Z",

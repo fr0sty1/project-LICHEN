@@ -7,7 +7,7 @@
   "issue_type": "task",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
-  "created_at": "2026-07-23T05:17:51.512458616Z",
+  "created_at": "2026-07-23T05:30:03.835569074Z",
   "created_by": "AI Agent",
   "updated_at": "2026-07-23T05:21:54.268377278Z",
   "started_at": "2026-07-23T05:20:52.393650017Z",
@@ -21,7 +21,7 @@
       "issue_id": "project-LICHEN-ftvd.4",
       "depends_on_id": "project-LICHEN-ftvd",
       "type": "parent-child",
-      "created_at": "2026-07-23T05:17:51.647227257Z",
+      "created_at": "2026-07-23T05:30:03.972608313Z",
       "created_by": "AI Agent",
       "metadata": "{}"
     }
