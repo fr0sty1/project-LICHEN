@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-v4vh",
   "title": "[merge-conflict] worktree-worker20: generate.py",
+  "notes": "Commit: 3de63b4bb",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:18:27.79265743Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:21:11.262265871Z",
+  "updated_at": "2026-07-23T02:23:17.31863915Z",
   "started_at": "2026-07-23T02:21:11.262265871Z",
   "lease_expires_at": "2026-07-23T02:26:11.262265871Z",
   "heartbeat_at": "2026-07-23T02:21:11.262265871Z"
