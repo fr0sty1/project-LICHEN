@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-vwbb.4",
+  "title": "Audit all ESP32-S3 board .conf files for merge artifacts post-vwbb",
+  "description": "Scan lichen/apps/*/boards/*esp32s3*.conf, firmware/bridge-zephyr/boards/* and any other board configs for leftover \u003c\u003c\u003c === \u003e\u003e\u003e merge markers, inconsistent SPDX headers, or divergent LICHEN_L2/CoAP comments. Ensure all follow the canonical consolidated style from the vwbb resolution. Update Kconfig.defconfig if impacted.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:16:31.140479065Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:16:31.140479065Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-vwbb.4",
+      "depends_on_id": "project-LICHEN-vwbb",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:16:31.276057023Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
