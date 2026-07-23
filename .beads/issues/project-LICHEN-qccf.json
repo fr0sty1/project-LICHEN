@@ -2,6 +2,7 @@
   "id": "project-LICHEN-qccf",
   "title": "codec.rs: compress() falls through to uncompressed for mixed address types",
   "description": "File: rust/lichen-schc/src/codec.rs  \nLines: 841-848 (compress function)\n\nCategory: PROTOCOL\n\nThe compress function only applies CoAP rules when BOTH addresses are the same type:\n```rust\nif is_link_local(src) \u0026\u0026 is_link_local(dst) {\n    // Rule 0\n} else if is_global(src) \u0026\u0026 is_global(dst) {\n    // Rule 1\n}\n```\n\nIf a packet has mixed addressing (e.g., src=link-local, dst=global, or src=global, dst=link-local), it falls through to uncompressed (rule 255), even though these are valid IPv6 packets that could be handled.\n\nSimilarly, ULA addresses (fc00::/7) don't match either is_link_local() or is_global(), so they always fall back to uncompressed.\n\nImpact: \n1. Legitimate IPv6 traffic with mixed address scopes gets no compression\n2. ULA (Unique Local Address) networks get no compression benefit\n3. Border router traffic (link-local to global) wastes airtime\n\nThis may be intentional (rules 0-1 are defined for same-type addressing), but should be documented.",
+  "notes": "Commit: 30da84ac7",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:40:50.813904Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-23T04:04:25.66800316Z",
+  "updated_at": "2026-07-23T04:07:22.887159211Z",
   "started_at": "2026-07-23T04:04:25.66800316Z",
   "lease_expires_at": "2026-07-23T04:09:25.66800316Z",
   "heartbeat_at": "2026-07-23T04:04:25.66800316Z"
