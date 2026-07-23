@@ -26,7 +26,27 @@ static struct senml_pack s_senml_pack;
 static K_MUTEX_DEFINE(s_dtn_buf_mutex);
 static K_MUTEX_DEFINE(s_senml_pack_mutex);
 static struct k_work_delayable s_dtn_expire_work;
-static uint32_t s_last_deaddrop[16] = {0};
+static uint32_t s_last_deaddrop[256] = {0};
+static uint32_t s_last_confession[256] = {0};
+static K_MUTEX_DEFINE(s_rate_mutex);
+
+static bool parse_recipient(const uint8_t *payload, size_t len, uint8_t dest_iid[8]) {
+	if (!payload || len == 0) return false;
+	ZCBOR_STATE_D(zsd, 8, payload, len, 1, 0);
+	if (!zcbor_map_start_decode(zsd)) return false;
+	while (!zcbor_map_end_decode(zsd)) {
+		struct zcbor_string key;
+		if (zcbor_tstr_decode(zsd, &key, 1) && key.len == 1 && key.value[0] == 'r') {
+			struct zcbor_string val;
+			if (zcbor_bstr_decode(zsd, &val) && val.len >= 8) {
+				memcpy(dest_iid, val.value, 8);
+				return true;
+			}
+		} else if (!zcbor_any_skip(zsd, NULL)) break;
+	}
+	zcbor_map_end_force_decode(zsd);
+	return false;
+}
 
 static uint32_t dtn_get_unix_time(void) { return (uint32_t)(k_uptime_get() / 1000); }
 
@@ -61,17 +81,28 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 		const struct sockaddr_in6 *in6 = (const struct sockaddr_in6 *)addr;
 		idx = in6->sin6_addr.s6_addr[15];
 	}
-	if (now - s_last_deaddrop[idx] < CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS) {
-		k_mutex_unlock(&s_dtn_buf_mutex);
+	uint32_t now_ms = k_uptime_get_32();
+	int idx = get_rate_idx(addr, addr_len);
+	k_mutex_lock(&s_rate_mutex, K_FOREVER);
+	if (s_last_deaddrop[idx] && (now_ms - s_last_deaddrop[idx] < CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS)) {
+		k_mutex_unlock(&s_rate_mutex);
 		return COAP_RESPONSE_CODE_TOO_MANY_REQUESTS;
 	}
-	s_last_deaddrop[idx] = now;
-	uint16_t payload_len = 0;
-	const uint8_t *payload = coap_packet_get_payload(request, &payload_len);
-	if (payload == NULL || payload_len == 0) { k_mutex_unlock(&s_dtn_buf_mutex); return COAP_RESPONSE_CODE_BAD_REQUEST; }
-	int r = s_provider->store(payload, payload_len);
-	k_mutex_unlock(&s_dtn_buf_mutex);
-	if (r < 0) return COAP_RESPONSE_CODE_INTERNAL_ERROR;
+	s_last_deaddrop[idx] = now_ms;
+	k_mutex_unlock(&s_rate_mutex);
+	k_mutex_lock(&s_dtn_mutex, K_FOREVER);
+	if (s_provider && s_provider->store) {
+		int r = s_provider->store(payload, payload_len);
+		if (r < 0) {
+			k_mutex_unlock(&s_dtn_mutex);
+			return COAP_RESPONSE_CODE_INTERNAL_ERROR;
+		}
+	}
+	uint32_t now = dtn_get_unix_time();
+	uint32_t expiry = now + LICHEN_DTN_DEFAULT_TTL_SEC;
+	bool ok = lichen_dtn_buffer_message(&s_dtn_buf, payload, payload_len, dest_iid, expiry, now, now_ms);
+	k_mutex_unlock(&s_dtn_mutex);
+	if (!ok) return COAP_RESPONSE_CODE_BAD_REQUEST;
 	return COAP_RESPONSE_CODE_CHANGED;
 }
 
@@ -84,6 +115,29 @@ static int deaddrop_get(struct coap_resource *resource, struct coap_packet *requ
 	k_mutex_unlock(&s_dtn_buf_mutex);
 	if (len < 0) return COAP_RESPONSE_CODE_INTERNAL_ERROR;
 	return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_CONTENT, 112, buf, (size_t)len);
+}
+
+static int confessions_get(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len) {
+	uint8_t buf[64];
+	struct senml_pack pack;
+	senml_pack_init(&pack, NULL, dtn_get_unix_time());
+	senml_add_float(&pack, SENML_KEY_CONFESSIONS, NULL, 0.0f);
+	int len = senml_encode_cbor(&pack, buf, sizeof(buf));
+	if (len < 0) return COAP_RESPONSE_CODE_INTERNAL_ERROR;
+	return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_CONTENT, 112, buf, (size_t)len);
+}
+
+static int confessions_post(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len) {
+	uint32_t now_ms = k_uptime_get_32();
+	int idx = get_rate_idx(addr, addr_len);
+	k_mutex_lock(&s_rate_mutex, K_FOREVER);
+	if (s_last_confession[idx] && (now_ms - s_last_confession[idx] < CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS)) {
+		k_mutex_unlock(&s_rate_mutex);
+		return COAP_RESPONSE_CODE_TOO_MANY_REQUESTS;
+	}
+	s_last_confession[idx] = now_ms;
+	k_mutex_unlock(&s_rate_mutex);
+	return COAP_RESPONSE_CODE_CHANGED;
 }
 
 static const char * const deaddrop_path[] = { "deaddrop", NULL };
