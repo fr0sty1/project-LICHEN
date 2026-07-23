@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-2auf.44.11.7.2.1",
+  "title": "Add TrickleSafeLivenessPolicy trait and default impl in routing.rs",
+  "description": "Define a policy that decides liveness based on Trickle state to avoid premature eviction that would violate suppression rules. Include is_alive method taking neighbor last_seen, now, timeout.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:30:01.261585686Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:30:01.261585686Z",
+  "labels": [
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.11.7.2.1",
+      "depends_on_id": "project-LICHEN-2auf.44.11.7.2",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:30:01.410251515Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
