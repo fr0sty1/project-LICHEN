@@ -576,7 +576,6 @@ static bool channel_body_has_secret(const uint8_t *payload)
 
 static int preflight_tx_slots(struct lichen_meshcore_adapter *adapter,
 			      uint32_t needed);
-static uint8_t meshcore_error_from_errno(int err);
 
 static int persist_settings_or_error(
 	struct lichen_meshcore_adapter *adapter,
