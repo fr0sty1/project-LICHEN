@@ -3,52 +3,38 @@
 
 # 3. Addressing
 
-Human-readable node addresses provide short, memorable identifiers bound to each node's cryptographic identity.
+LICHEN nodes have a stable cryptographic identity based on an Ed25519 keypair. Human-readable node addresses provide short, memorable, collision-resistant identifiers bound to that key.
 
 ## 3.1. Human-Readable Node Address Format
 
-**Format:** 13 uppercase Crockford base32 characters with dashes every 4 characters (XXXX-XXXX-XXXXX).
+**Format:** 13 uppercase characters from Crockford's Base32 alphabet (`0123456789ABCDEFGHJKMNPQRSTVWXYZ`, no I/L/O/U), grouped `XXXX-XXXX-XXXXX`.
 
-**Alphabet:** `0123456789ABCDEFGHJKMNPQRSTVWXYZ` (excludes I, L, O, U for reduced visual confusion).
+**Derivation (MUST be identical across all implementations; see test vectors):**
 
-**Derivation:**
+1. Ed25519 public key (32 bytes)
+2. SHA-256 of pubkey (32-byte digest)
+3. First 8 bytes as 64-bit IID (clear U/L bit: `iid[0] &= 0b11111101` per RFC 4291)
+4. Encode 64-bit value as Crockford Base32 (13 chars, big-endian, no padding)
+5. Insert dashes after characters 4 and 8
 
-```
-Ed25519 pubkey (32 bytes)
-         |
-     SHA-256 (32 bytes)
-         |
-    first 8 bytes (64 bits)
-         |
-   Crockford base32 (13 chars)
-         |
-   insert dashes -> "KCVN-MRPX-QWERT"
-```
+**Example:** `KCVN-MRPX-QWERT`
 
-The same SHA-256 hash is used for IPv6 IID derivation (first 8 bytes with U/L bit cleared per RFC 4291).
+This binds the address to the pubkey used for link signatures and OSCORE. The IID is used for IPv6 link-local (fe80::/10) and ULA addresses. Same hash ensures cryptographic binding.
 
-This ensures the human address, IID, and public key are cryptographically bound.
+## 3.2. Collision Resistance and Usage
 
-## 3.2. Collision Resistance
+Collision probability is acceptable up to ~5 billion nodes (~0.5 expected collisions). On first contact, exchange full pubkey; TOFU pins the binding. Collisions resolved by context, GPS, or full key verification (DANE/PKIX optional upgrades).
 
-See oxul analysis: acceptable collision probability even at 5B nodes (~0.5 expected collisions).
+Usage:
+- Primary identifier in UIs, voice ("node kilo charlie..."), LCI/CoAP
+- RPL announces and routing use derived IID/short address
 
-On collision, disambiguate via full pubkey verification on first contact (TOFU + DANE/PKIX optional).
+## 3.3. Test Vectors and Integration
 
-## 3.3. Usage
+See `test/vectors/node-addresses.json` for canonical vectors. All Rust, C, Python implementations MUST match exactly (pubkey <-> human address <-> IID round-trip).
 
-- UI displays (TUI, apps): primary identifier
-- Voice/radio: "node kilo charlie victor november"
-- LCI and CoAP resources for lookup
-- Test vectors in test/vectors/node-addresses.json MUST be matched by all implementations
-
-## 3.4. Test Vectors
-
-See `test/vectors/node-addresses.json` for canonical examples that Rust, C, and Python implementations must match exactly.
-
-Cross-reference with IID in spec/04-network.md section 12 and lichen_pubkey_to_iid / human_address_from_pubkey.
-
-Update to spec/README.md TOC and cross references in 04-network.md to point to this document for full addressing design.
+Cross-references: spec/04-network.md §12 (IPv6 construction), lichen_pubkey_to_iid(), human_address_from_pubkey(), updates to README.md TOC, 04-network.md, 06-security.md, 08-nodes.md.
 
 ---
 [← Previous](02-physical-link.md) | [Index](README.md) | [Next →](04-network.md)
+
