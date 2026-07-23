@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-mn4f",
   "title": "[merge-conflict] integration/worker4-20260722: transport.py",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:36:14.418655502Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:36:14.418655502Z"
+  "updated_at": "2026-07-23T03:38:06.578877867Z",
+  "started_at": "2026-07-23T03:38:06.578877867Z",
+  "lease_expires_at": "2026-07-23T03:43:06.578877867Z",
+  "heartbeat_at": "2026-07-23T03:38:06.578877867Z"
 }
