@@ -32,7 +32,6 @@ from lichen.sim.events import (
 from lichen.sim.medium import Medium
 from lichen.sim.metrics import Metrics
 from lichen.sim.node import NodeState, SimNode
-from lichen.sim.tdma import synchronized_hop_channel
 
 if TYPE_CHECKING:
     from lichen.sim.chaos import ChaosEngine
@@ -730,22 +729,19 @@ class Simulation:
         on_timeout: Callable[[], None],
         channel: int = 0,
     ) -> None:
-<<<<<<< HEAD
         """Enter RX mode. Derives via node.synchronized_hop_channel for hop_schedule
-        (CCP-12 rendezvous node.py:131). Sets current_channel only if needed.
-=======
-        """Enter RX mode. Derives via node.get_hop_channel for hop_schedule
-        (CCP-12 rendezvous node.py:132). Sets current_channel only if needed.
->>>>>>> df5c7ae74079fac89e80ed25859acca760128d34
+        (CCP-12 rendezvous node.py:146). Sets current_channel only if needed.
         """
         node = self._nodes.get(node_id)
         if node is None:
             raise ValueError(f"Node '{node_id}' does not exist")
         if not node.connected:
             raise ValueError(f"Node '{node_id}' is not connected")
-        if channel == 0:
-            # Use synchronized_hop_channel for TX/RX rendezvous per CCP-12
-            channel = synchronized_hop_channel(0)
+        if node.hop_schedule and len(node.hop_schedule) > 0:
+            current_sfn = node.tdma_scheduler.clock.sfn
+            channel = node.synchronized_hop_channel(current_sfn)
+        elif channel == 0:
+            channel = node.current_channel
         node.state = NodeState.RX_WAIT
         if not (node.hop_schedule and len(node.hop_schedule) > 0):
             node.current_channel = channel
@@ -820,11 +816,7 @@ class Simulation:
 
 
     def _get_rx_result_internal(self, node_id: str) -> tuple[bytes, int, int, str, str] | None:
-<<<<<<< HEAD
-        """Unified core RX logic. Uses node.synchronized_hop_channel (node.py:131)
-=======
-        """Unified core RX logic. Uses node.get_hop_channel (node.py:132)
->>>>>>> df5c7ae74079fac89e80ed25859acca760128d34
+        """Unified core RX logic. Uses node.synchronized_hop_channel (node.py:146)
         for medium channel when hop_schedule present (CCP-12 per
         ccp16-hop.json spec/02a-coordinated-capacity.md:120). Preserves oracles.
 
@@ -840,11 +832,7 @@ class Simulation:
             return None
 
         if node.hop_schedule and len(node.hop_schedule) > 0:
-<<<<<<< HEAD
             channel = node.synchronized_hop_channel()
-=======
-            channel = node.get_hop_channel()
->>>>>>> df5c7ae74079fac89e80ed25859acca760128d34
         else:
             channel = node.current_channel
         candidates = self._medium.get_rx_candidates(

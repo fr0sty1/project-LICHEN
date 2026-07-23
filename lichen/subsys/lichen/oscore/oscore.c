@@ -1623,22 +1623,14 @@ cleanup_protect_request:
 	return ret;
 
 nvm_failed:
-	/* SECURITY ANALYSIS (project-LICHEN-ow3c.1.2 + uosj):
-	 * Per RFC 8613 §7.2, §7.5, Appendix D.4: AES-CCM requires unique
-	 * (key, nonce) pairs; SSN must be monotonic and never repeat.
-	 * python-ano.41: NVM failure + reboot = nonce reuse risk.
-	 * oscore_ctx_persist_ssn copies SSN under mutex then calls callback.
-	 *
-	 * Conditional rollback (if (ctx->sender_seq == seq + 1)) under
-	 * re-acquired mutex chosen:
-	 * - Prevents SSN regression under concurrency (fixes uosj).
-	 * - Allows retry of exact SSN/nonce on transient NVM fail.
-	 * - Exact match to persisted NVM on reboot.
-	 * Rejected unconditional rollback (current before this fix, allows
-	 * backward SSN on concurrent protect_request). Rejected safe-advance
-	 * (risks memory/NVM desync on reboot causing reuse of "skipped" SSNs).
-	 * Early error paths bypass this. See persist_ssn, atomic block,
-	 * oscore.h docs.
+	/* After common wipe in cleanup_protect_request, this dedicated
+	 * nvm_failed path locks mutex to safely handle sender_seq.
+	 * SECURITY: SSN MUST NOT be left incremented on NVM failure -
+	 * would allow AES-CCM nonce reuse attack vector on reboot
+	 * (RFC 8613 7.2, oscore.c:1524). Rollback to pre-increment value
+	 * (conditional on no concurrent update) prevents reuse while
+	 * preserving monotonicity. See project-LICHEN-ow3c.1.3.3.1,
+	 * persist_ssn, and oscore.h for full rationale.
 	 */
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
 	ctx_idx = ctx_get_index(ctx);
