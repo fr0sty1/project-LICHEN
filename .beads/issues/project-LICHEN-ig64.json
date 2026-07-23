@@ -2,6 +2,7 @@
   "id": "project-LICHEN-ig64",
   "title": "[security] non-constant-time prk_4e3m zero-check in Edhoc*::export_oscore",
   "description": "In rust/lichen-oscore/src/edhoc.rs:884 and 1338 (from e98111628), `if !self.state.completed || self.state.prk_4e3m.iter().all(|\u0026b| b == 0)` uses short-circuiting all() which has data-dependent runtime (early exit on first non-zero). Violates constant-time discipline for key-state checks before OSCORE key export. Alternative: use constant-time all-zero test (e.g. from subtle or manual xor-fold). Also affects key handling post-EDHOC. See focus on crypto timing, OSCORE, key handling.",
+  "notes": "Commit: 5d99637c8",
   "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T04:10:06.200923737Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:14:37.617425731Z",
+  "updated_at": "2026-07-23T04:16:16.114962221Z",
   "started_at": "2026-07-23T04:14:37.617425731Z",
   "lease_expires_at": "2026-07-23T04:19:37.617425731Z",
   "heartbeat_at": "2026-07-23T04:14:37.617425731Z"
