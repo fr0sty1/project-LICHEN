@@ -1,17 +1,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 /*
- * STALE/RETIRED per project-LICHEN-2u26.10: no canonical Zephyr composite board+shield target for Seeed XIAO ESP32-S3 + Wio-SX1262.
- * Fragment retired per 2u26 audit and matrix. Classified FAIL in m5m1.8 bridge audit.
- * Use heltec_wifi_lora32_v3/esp32s3/procpu proxy instead. Do not present as supported target.
- * See docs/firmware-board-capability-matrix.md and closed epic project-LICHEN-2u26.
- * Pin map and DT retained for reference only.
+ * RETIRED: Seeed XIAO ESP32-S3 + Wio-SX1262 (per project-LICHEN-2u26.10, 80ju, irj9, m5m1.8 audit).
+ * No canonical Zephyr board+shield target. Classified FAIL; use heltec_wifi_lora32_v3_esp32s3_procpu proxy.
+ * DT and pin map retained for reference only. See docs/firmware-board-capability-matrix.md.
  *
- * Original pinout (for reference):
- * ESP32-S3 + SX1262 LoRa (via B2B connector)
+ * Original pinout (B2B connector):
  * SX1262 SPI: SCK=GPIO7, MISO=GPIO8, MOSI=GPIO9, NSS=GPIO41
  * Control: RESET=GPIO42, BUSY=GPIO40, DIO1=GPIO39
- * LED: GPIO21 yellow active-low
+ * LED: GPIO21 (yellow, active-low)
  */
 
 #include <zephyr/dt-bindings/pinctrl/esp32s3-pinctrl.h>
