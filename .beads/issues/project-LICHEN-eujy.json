@@ -2,17 +2,15 @@
   "id": "project-LICHEN-eujy",
   "title": "[merge-conflict] integration/worker8-20260722: Kconfig",
   "notes": "Commit: b3a2f2884",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:29:37.42973408Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T04:01:09.620433388Z",
+  "updated_at": "2026-07-23T04:01:12.401566876Z",
   "started_at": "2026-07-23T03:46:03.593672649Z",
-  "closed_at": "2026-07-23T03:48:43.898475565Z",
-  "close_reason": "Fixed Kconfig indentation from merge conflict in integration/worker8-20260722 across 5 files (de-indented config statements for consistent parsing and style). Commit 7a5f508e3. Build/Kconfig now clean.",
-  "lease_expires_at": "2026-07-23T04:04:33.31699547Z",
-  "heartbeat_at": "2026-07-23T03:59:33.31699547Z"
+  "closed_at": "2026-07-23T04:01:12.401566876Z",
+  "close_reason": "Fixed Kconfig indentation from merge conflict. De-indented config statements in 5 files for consistent style and parsing. Build now clean. Updated for current worker branch."
 }
