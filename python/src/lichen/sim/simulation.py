@@ -60,8 +60,8 @@ def is_debug_enabled() -> bool:
 class TimeMode(Enum):
     """Time advancement mode for the simulation."""
 
-    BARRIER_SYNC = auto()  # Deterministic, waits for all nodes to block
-    REALTIME = auto()  # Advances with wall clock
+    BARRIER_SYNC = auto()
+    REALTIME = auto()
 
 
 class Simulation:
