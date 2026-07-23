@@ -129,11 +129,11 @@ impl<'a> CoapPacket<'a> {
 
         let (options_end, payload_start) = match find_payload_marker(&data[options_start..])? {
             Some(off) => {
-                let ps = options_start + off + 1;
-                if ps == data.len() {
-                    return Err(TooShort::new(1, 0).into());
+                let payload_start = options_start + off + 1;
+                if payload_start == data.len() {
+                    return Err(CoapError::InvalidPayloadMarker);
                 }
-                (options_start + off, ps)
+                (options_start + off, payload_start)
             }
             None => (data.len(), data.len()),
         };
