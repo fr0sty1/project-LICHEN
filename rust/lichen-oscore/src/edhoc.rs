@@ -332,6 +332,23 @@ fn compute_th(input: &[u8]) -> [u8; 32] {
     Sha256::digest(input).into()
 }
 
+/// TH_2 per RFC 9528: H(CBOR-bstr(G_Y) || CBOR-bstr(H(message_1)))
+/// Matches Python edhoc.py, test vectors, and rfc9529_signature_trace_vectors.
+fn transcript_2(g_y: &[u8], msg1: &[u8]) -> Result<[u8; 32], EdhocError> {
+    if g_y.len() != 32 {
+        return Err(EdhocError::InvalidMessage);
+    }
+    let h_msg1 = compute_th(msg1);
+    let mut input = [0u8; 68];
+    input[0] = 0x58;
+    input[1] = 32;
+    input[2..34].copy_from_slice(g_y);
+    input[34] = 0x58;
+    input[35] = 32;
+    input[36..68].copy_from_slice(&h_msg1);
+    Ok(compute_th(&input))
+}
+
 /// Parse SUITES_I from CBOR per RFC 9528 Section 3.3.2.
 ///
 /// SUITES_I can be either:
