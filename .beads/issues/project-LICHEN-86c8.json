@@ -2,15 +2,15 @@
   "id": "project-LICHEN-86c8",
   "title": "[merge-conflict] integration/worker11-20260722: generate.py",
   "notes": "Commit: 0bd94161f",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:18:17.198739112Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:38:51.363387629Z",
+  "updated_at": "2026-07-23T02:38:54.317009433Z",
   "started_at": "2026-07-23T02:31:47.560362551Z",
-  "lease_expires_at": "2026-07-23T02:36:47.560362551Z",
-  "heartbeat_at": "2026-07-23T02:31:47.560362551Z"
+  "closed_at": "2026-07-23T02:38:54.317009433Z",
+  "close_reason": "Fixed merge-induced NameErrors and missing imports in schc/headers.py, link/frame.py, schc/fragment.py; updated generate.py to include missing compat vector writes and fixed tile_size support; regenerated all test vectors; tests now pass generator"
 }
