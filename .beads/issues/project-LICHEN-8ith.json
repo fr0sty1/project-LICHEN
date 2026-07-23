@@ -2,15 +2,15 @@
   "id": "project-LICHEN-8ith",
   "title": "[merge-conflict] worktree-worker18: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: c6a3ad2",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:27:17.346723086Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:29:18.552507926Z",
+  "updated_at": "2026-07-23T02:29:21.011037013Z",
   "started_at": "2026-07-23T02:28:21.262479928Z",
-  "lease_expires_at": "2026-07-23T02:33:21.262479928Z",
-  "heartbeat_at": "2026-07-23T02:28:21.262479928Z"
+  "closed_at": "2026-07-23T02:29:21.011037013Z",
+  "close_reason": "Added resolved merge conflict comment to firmware/bridge-zephyr/boards/heltec_wifi_lora32_v3_esp32s3_procpu.conf in worktree-worker18 and committed/pushed c6a3ad2"
 }
