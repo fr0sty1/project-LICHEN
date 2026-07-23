@@ -235,20 +235,15 @@ fn hkdf_extract(salt: &[u8], ikm: &[u8]) -> Zeroizing<[u8; 32]> {
     Zeroizing::new(prk.into())
 }
 
-/// EDHOC-KDF (RFC 9528 Section 4.1.2).
-///
-/// EDHOC-KDF(PRK, label, context, length) = HKDF-Expand(PRK, info, length)
-/// where info = (label, context, length) as a CBOR sequence.
 fn edhoc_kdf(
     prk: &[u8; 32],
-    label: u8,
+    th: &[u8],
+    label: &str,
     context: &[u8],
     length: usize,
 ) -> Result<heapless::Vec<u8, 128>, EdhocError> {
-    // Build info: CBOR sequence of (length, TH, label, context)
     let mut info = heapless::Vec::<u8, 128>::new();
 
-    // length as CBOR uint
     if length <= 23 {
         info.push_err(length as u8)?;
     } else {
@@ -279,9 +274,8 @@ fn edhoc_kdf(
     }
     info.extend_err(label_bytes)?;
 
-    // context as CBOR bstr
     if context.is_empty() {
-        info.push_err(0x40)?; // empty bstr
+        info.push_err(0x40)?;
     } else if context.len() <= 23 {
         info.push_err(0x40 | context.len() as u8)?;
         info.extend_err(context)?;
@@ -291,15 +285,13 @@ fn edhoc_kdf(
         info.extend_err(context)?;
     }
 
-    // HKDF-Expand
-    // SECURITY: Propagate errors instead of panicking in crypto code path
     let hk = Hkdf::<Sha256>::from_prk(prk).map_err(|_| EdhocError::KeyDerivation)?;
-    let mut okm = SecretVec::new();
+    let mut okm = SecretVec::<128>::new();
     okm.resize(length, 0)
         .map_err(|_| EdhocError::BufferTooSmall)?;
     hk.expand(&info, &mut okm)
         .map_err(|_| EdhocError::KeyDerivation)?;
-    Ok(okm)
+    Ok(okm.0)
 }
 
 fn export_context(
