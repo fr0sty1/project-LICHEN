@@ -2,15 +2,15 @@
   "id": "project-LICHEN-nwna",
   "title": "[merge-conflict] worktree-worker19: rpl_trickle.h",
   "notes": "Commit: bd046cc66",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:42:21.873463483Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T02:03:35.226018703Z",
+  "updated_at": "2026-07-23T02:03:38.468347968Z",
   "started_at": "2026-07-23T02:01:42.173374872Z",
-  "lease_expires_at": "2026-07-23T02:06:42.173374872Z",
-  "heartbeat_at": "2026-07-23T02:01:42.173374872Z"
+  "closed_at": "2026-07-23T02:03:38.468347968Z",
+  "close_reason": "Closed"
 }
