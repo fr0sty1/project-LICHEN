@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-kvx4",
   "title": "[merge-conflict] integration/worker14-20260722: lib.rs",
+  "notes": "Commit: 44254d7",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:59:30.873678673Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T03:00:20.737598628Z",
+  "updated_at": "2026-07-23T03:03:34.103872428Z",
   "started_at": "2026-07-23T03:00:20.737598628Z",
   "lease_expires_at": "2026-07-23T03:05:20.737598628Z",
   "heartbeat_at": "2026-07-23T03:00:20.737598628Z"
