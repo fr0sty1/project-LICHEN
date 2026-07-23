@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-gdgn",
   "title": "[merge-conflict] worktree-worker24: t_deck_esp32s3_procpu.conf",
-  "notes": "Commit: 745885b",
+  "notes": "Commit: 7c648d0",
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:32:45.044394375Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:44:32.595747787Z",
+  "updated_at": "2026-07-23T01:45:09.94263318Z",
   "started_at": "2026-07-23T01:41:27.035217333Z",
   "closed_at": "2026-07-23T01:44:32.595747787Z",
   "close_reason": "Cleaned merge conflict markers and resolution comments in t_deck_esp32s3_procpu.conf (puck, bridge, gateway), resolved Kconfig and main.c conflicts from worker24 by consolidating configs/logs, removed duplicates. Verified no markers remain in edited files. Commit 745885b"
