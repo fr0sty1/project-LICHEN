@@ -196,6 +196,32 @@ mod tests {
         );
     }
     #[test]
+    fn rx_channel_nonzero_vector_cases() {
+        for &ch in &[0u8, 2, 3, 5, 7] {
+            let mut w = [0u8; 93];
+            w[0] = 1;
+            w[1] = ch;
+            let ann = Announce::from_bytes(&w).unwrap();
+            assert_eq!(ann.rx_channel, ch);
+            let mut signed = [0u8; 50];
+            let _ = ann.write_signed_data(&mut signed).unwrap();
+            assert_eq!(signed[42], ch);
+            let mut out = [0u8; 100];
+            let b = AnnounceBuilder {
+                originator_iid: &[0; 8],
+                pubkey: &[0; 32],
+                seq_num: 0,
+                hop_count: 0,
+                rx_channel: ch,
+                signature: &[0; 48],
+                app_data: &[],
+            };
+            let n = b.write_to(&mut out).unwrap();
+            assert_eq!(out[1], ch);
+            assert_eq!(n, 93);
+        }
+    }
+    #[test]
     fn should_relay() {
         let mut w = [
             1, 2, 14, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,

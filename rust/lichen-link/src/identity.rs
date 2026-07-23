@@ -4,7 +4,7 @@ extern crate alloc;
 
 use crate::keys::{PrivateKey, PublicKey, Seed};
 use crate::schnorr::derive_keypair;
-use lichen_core::addr::ygg_addr_from_pubkey;
+use lichen_core::{addr::ygg_addr_from_pubkey, lichen_hash_32};
 use sha2::{Digest, Sha256};
 
 /// Derive a link-local IID from an Ed25519 public key.
@@ -16,13 +16,6 @@ pub fn iid_from_pubkey(pubkey: &PublicKey) -> [u8; 8] {
     iid_from_pubkey_bytes(pubkey.as_bytes())
 }
 
-pub fn hash_32(data: &[u8]) -> u32 {
-    let mut h = 0x811c9dc5u32;
-    for &b in data {
-        h = (h ^ (b as u32)).wrapping_mul(0x01000193) & 0xffff_ffff;
-    }
-    h
-}
 
 /// Derive a link-local IID from raw public key bytes (SHA-256 truncation).
 fn iid_from_pubkey_bytes(pubkey: &[u8; 32]) -> [u8; 8] {
@@ -123,11 +116,9 @@ mod tests {
 
     #[test]
     fn hash_32_fnv1a32() {
-        // Exact match to Python _hash_32, Rust lichen-core::lichen_hash_32.
-        // FNV-1a32 (basis 0x811c9dc5, prime 0x01000193). Matches all vectors.
-        assert_eq!(hash_32(b""), 0x811c9dc5);
-        assert_eq!(hash_32(b"test"), 0xafd071e5);
-        assert_eq!(hash_32(&[0u8; 32]), 0x0b2ae445);
+        assert_eq!(lichen_hash_32(b""), 0x811c9dc5);
+        assert_eq!(lichen_hash_32(b"test"), 0xafd071e5);
+        assert_eq!(lichen_hash_32(&[0u8; 32]), 0x0b2ae445);
     }
 
     #[test]
