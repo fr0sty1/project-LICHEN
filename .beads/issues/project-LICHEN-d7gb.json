@@ -2,15 +2,15 @@
   "id": "project-LICHEN-d7gb",
   "title": "[merge-conflict] worktree-worker23: t_deck_esp32s3_procpu.conf",
   "notes": "Commit: a4230db25",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T00:42:24.082957412Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-23T01:55:01.955024089Z",
+  "updated_at": "2026-07-23T01:55:05.299796875Z",
   "started_at": "2026-07-23T01:53:54.913177708Z",
-  "lease_expires_at": "2026-07-23T01:58:54.913177708Z",
-  "heartbeat_at": "2026-07-23T01:53:54.913177708Z"
+  "closed_at": "2026-07-23T01:55:05.299796875Z",
+  "close_reason": "Removed dead merge-conflict resolution comments from t_deck_esp32s3_procpu.conf files in puck, gateway, and bridge-zephyr (per No Dead Code rule). Standardized clean SPDX+config format. Committed as a4230db25 and pushed."
 }
