@@ -112,16 +112,7 @@ All node identity derives from **a single Ed25519 keypair**. This unifies link-l
 4. X25519 priv = clamp(SHA-512(seed)[0:32]) for OSCORE/EDHOC.
 5. TOFU pins pubkey to derived IID/02xx (cryptographically enforced).
 
-1. Generate Ed25519 keypair (32-byte priv, 32-byte pub)
-2. hash = SHA-256(pubkey) (32 bytes, no truncation beyond IID)
-3. IID = hash[0:8]; IID[0] &= 0b11111101 (U/L bit cleared per RFC 4291; see 04-network.md:6.2)
-4. Yggdrasil address = 0x02 || SHA-512(pubkey)[0:7] || IID (lower 64 bits MUST match IID for cryptographic binding per 8.7; prevents substitution attacks)
-5. Link pubkey = the Ed25519 pubkey
-6. TOFU pins the (IID, 02xx address, PubKey) tuple (unified single-key derivation)
-
-See normative derivation in §8.7 (MUST match test/vectors/yggdrasil-derivation.json exactly), python/src/lichen/crypto/identity.py:116, rust/lichen-link/src/identity.rs:27 and :40. Single Ed25519 keypair for signatures, OSCORE (via X25519 from seed), IID, and Yggdrasil 02xx routing. This eliminates ULA/GUA entirely (see 04-network.md). Link-local fe80::/10 reserved for control only.
-
-This unifies all identity material from one 32-byte seed.
+Link-local `fe80::/10` for control only. 02xx::/7 primary for all routable traffic (mesh + Yggdrasil interop). See test vectors for exact byte/bit positions and oracles. This binds signatures, OSCORE, addressing into one key, eliminating mismatch attacks.
 
 **Benefits:**
 - Cryptographic binding across all uses (no key/address divergence)
