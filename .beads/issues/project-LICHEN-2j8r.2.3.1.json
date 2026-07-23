@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-2j8r.2.3.1",
+  "title": "coap_dtn.c: fix piv/ctx capture in deaddrop_post store error path",
+  "description": "Ensure store error path correctly uses piv/ctx from unprotect for OSCORE protected error response via deaddrop_oscore_respond. Verify no buffer overwrite or ctx NULL cases. Align with main's unprotect logic.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-23T05:25:52.772449386Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-23T05:25:52.772449386Z",
+  "labels": [
+    "defer-boardconfig"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2j8r.2.3.1",
+      "depends_on_id": "project-LICHEN-2j8r.2.3",
+      "type": "parent-child",
+      "created_at": "2026-07-23T05:25:52.913360479Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
