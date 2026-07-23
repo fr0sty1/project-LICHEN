@@ -96,9 +96,9 @@ impl RplRuntime {
     }
 
     /// Observe the clock once, run due maintenance, and return the next loop action.
-    pub fn poll(&mut self, node: &mut RplNode, observed_now_ms: u64) -> RplRuntimePoll {
+    pub fn poll(&mut self, node: &mut RplNode, observed_now_ms: u64) -> Result<RplRuntimePoll, RplRuntimeActionError> {
         if self.pending_action.is_some() {
-            panic!("RplRuntime::poll called with pending action; complete prior action first to bind actions to one stack/runtime generation and enforce single-owner loop");
+            return Err(RplRuntimeActionError::PollWithPending);
         }
         let (now_ms, maintenance) = self.observe(node, observed_now_ms);
         let action = self.next_action(node, now_ms);
