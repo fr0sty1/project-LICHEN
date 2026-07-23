@@ -268,6 +268,11 @@ async def test_ble_transport_reconnect_resets_packet_queue() -> None:
     assert await asyncio.wait_for(anext(packets), timeout=1.0) == b"fresh"
 
 
+def test_ble_transport_rejects_negative_reconnect_attempts() -> None:
+    with pytest.raises(ValueError, match="reconnect_attempts must be non-negative"):
+        BlePacketTransport("AA:BB", reconnect_attempts=-1)
+
+
 async def test_ble_transport_raises_on_send_before_connect() -> None:
     transport = BlePacketTransport(
         "AA:BB", client_factory=lambda _a, _c: FakeBleClient("AA:BB")
