@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-kiau",
   "title": "[merge-conflict] worktree-worker24: coap_dtn.c",
+  "notes": "Commit: 217696a",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:57:31.615909845Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:58:48.19122131Z",
+  "updated_at": "2026-07-23T00:02:19.860722912Z",
   "started_at": "2026-07-22T23:58:48.19122131Z",
   "lease_expires_at": "2026-07-23T00:03:48.19122131Z",
   "heartbeat_at": "2026-07-22T23:58:48.19122131Z"

@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-swrp",
+  "title": "NA response sent with hop_limit=64 instead of 255",
+  "description": "File: rust/lichen-ipv6/src/lib.rs:791\n\nWhen responding to Neighbor Solicitation, the code creates the IPv6 header with default hop_limit=64:\n\n```rust\nlet reply_ip = Ipv6Header::new(next_header::ICMPV6, *local_addr, ip_header.src);\n```\n\nBut Ipv6Header::new() sets hop_limit to 64:\n\n```rust\npub fn new(next_header: u8, src: Addr, dst: Addr) -\u003e Self {\n    Self {\n        // ...\n        hop_limit: 64,  // Wrong for NDP!\n        // ...\n    }\n}\n```\n\nPer RFC 4861 Section 4.4 (Neighbor Advertisement):\n- IP Fields: Hop Limit 255\n\nAnd Section 7.1.2:\n- If the source of the solicitation is the unspecified address, the node MUST [...] with an IP Hop Limit of 255.\n\nImpact: Receiving nodes that correctly validate hop_limit=255 will reject our NA responses. This breaks interoperability with RFC-compliant NDP implementations.\n\nFix: After creating the header, set hop_limit to 255:\n```rust\nlet mut reply_ip = Ipv6Header::new(next_header::ICMPV6, *local_addr, ip_header.src);\nreply_ip.hop_limit = 255;\n```\n\nAlso applies to Echo Reply at line 761 (though RFC 4443 allows any hop limit for Echo Reply, 64 is fine there).",
+  "notes": "Commit: 509f2ce956a9091e17872dca2ccf2dd6ff6364d2\nFixed hop_limit in handle_icmpv6 for both Echo Reply and Neighbor Advertisement responses. Resolved merge conflict in spec as side effect to enable commit. Tests and clippy pass. Created follow-up bead project-LICHEN-d2rn for test assertions. Ran 3 review passes (fmt/clippy/security/idioms); filed related findings via beads.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T17:14:38.353413Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-22T20:11:07.561455255Z",
+  "started_at": "2026-07-22T20:07:49.41955239Z",
+  "closed_at": "2026-07-22T20:11:07.561455255Z",
+  "close_reason": "Fixed hop_limit=255 for NDP NA responses (and Echo for consistency). Commit 509f2ce956a9091e17872dca2ccf2dd6ff6364d2 recorded. Tests pass, clippy clean. Related validation and test improvements filed as follow-ups."
+}

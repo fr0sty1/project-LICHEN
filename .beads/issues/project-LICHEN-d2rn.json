@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-d2rn",
+  "title": "Add hop_limit assertion to IPv6 reply tests",
+  "description": "The test_handle_ping and test_ipv6_header_roundtrip do not assert that replies use hop_limit=255 for NDP and control messages. Add assertions after parsing to verify per RFCs. Link to project-LICHEN-swrp as discovered-from. --type=task --priority=3 --deps discovered-from:project-LICHEN-swrp",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T20:09:36.97249294Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T20:10:01.942349143Z",
+  "started_at": "2026-07-22T20:10:01.942349143Z",
+  "lease_expires_at": "2026-07-22T20:15:01.942349143Z",
+  "heartbeat_at": "2026-07-22T20:10:01.942349143Z"
+}

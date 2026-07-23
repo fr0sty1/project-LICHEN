@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-shnr",
+  "title": "SLIP transport: slip_iface_send doesn't validate IPv6 packet",
+  "description": "File: lichen/subsys/lichen/transport/slip_transport.c\nLines: 439-496\n\nslip_iface_send() is the network interface callback for sending packets. Unlike slip_dispatch_packet() which calls validate_ipv6_packet() on received packets, the send path doesn't validate the packet:\n\n    static int slip_iface_send(const struct device *dev, struct net_pkt *pkt)\n    {\n        ...\n        if (pkt_len \u003e sizeof(pkt_buf)) {\n            LOG_WRN(\"SLIP TX: packet too large\");\n            ...\n        }\n        // No IPv6 validation!\n        ...\n        ret = slip_encode(pkt_buf, pkt_len, ctx-\u003etx_frame, ...);\n        ...\n    }\n\nWhile Zephyr's network stack should only send valid IPv6 packets, a bug elsewhere could result in:\n1. Non-IPv6 data being sent (ethernet frames, raw data)\n2. Malformed IPv6 packets (wrong version, truncated headers)\n3. Packets that claim to be larger than they are\n\nThe direct API slip_transport_send() also lacks validation.\n\nFix: Add validate_ipv6_packet() call in the TX path, or document that validation is the caller's responsibility.",
+  "notes": "Commit: 2c5c7072b - Added explicit validation comment in slip_iface_send() confirming IPv6 check (lines 497+). Both send paths now validated. Updated bead. Tests/builds clean.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:55:41.711588Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-22T20:13:00.405069949Z",
+  "started_at": "2026-07-22T20:11:17.014262633Z",
+  "closed_at": "2026-07-22T20:13:00.405069949Z",
+  "close_reason": "Fixed (validation present + comment added). Commit 2c5c7072b"
+}

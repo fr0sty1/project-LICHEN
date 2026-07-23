@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-y9na",
+  "title": "EDHOC: Missing peer public key validation for low-order points",
+  "description": "SECURITY: Ed25519 peer public keys are not validated before use in signature verification.\n\nLocations:\n- Line 619: ed25519_verify(peer_pubkey, ...) - no validation of peer_pubkey\n- Line 1116: ed25519_verify(peer_pubkey, ...) - no validation of peer_pubkey\n\nWhile crypto_ed25519_check will likely reject signatures on invalid keys, explicit validation would:\n1. Fail faster with clearer error\n2. Prevent potential edge cases in the crypto library\n3. Follow defense-in-depth principle\n\nPer RFC 8032 Section 5.1.3, public keys should be validated to be valid curve points.\n\nNote: Monocypher's ed25519_check may already handle this, but explicit validation is safer.\n\nFix: Add validation that peer_pubkey is a valid Ed25519 point before signature verification, or document that Monocypher handles this.\n\nFile: lichen/subsys/lichen/edhoc/edhoc.c:619,1116",
+  "notes": "Commit: 1dd79e11c",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:45:15.058745Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-22T20:16:49.870364063Z",
+  "started_at": "2026-07-22T20:15:50.894002185Z",
+  "closed_at": "2026-07-22T20:16:13.633401819Z",
+  "close_reason": "Closed"
+}
