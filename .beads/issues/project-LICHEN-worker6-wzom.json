@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-wzom",
+  "title": "[review] project-LICHEN-worker6-1rnj: missed third \u0026bitmap -\u003e bitmap at line 1280",
+  "description": "The diff in fragment.rs changed two of three Ack::new call sites from \u0026bitmap to bitmap (lines 1237, 1252), but missed the third at line 1280 in the success path of finalize(). Ack::new takes u64, not \u0026u64, so this is a compile error. Fix: change \u0026bitmap to bitmap at line 1280.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:55:07.291722026Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:55:07.291722026Z"
+}
