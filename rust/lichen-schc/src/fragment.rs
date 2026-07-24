@@ -194,43 +194,6 @@ impl<'a> Fragment<'a> {
                 mic: [0u8; MIC_LENGTH],
             })
         }
-        let window = data[1] >> 7;
-        let fcn = (data[1] >> 1) & 0x3f;
-        let content_len = data.len() - 2;
-        let content_offset = if fcn == ALL_1_FCN { MIC_LENGTH } else { 0 };
-        if fcn == ALL_1_FCN {
-            if !(MIC_LENGTH + 1..=MIC_LENGTH + TILE_SIZE).contains(&content_len) {
-                return Err(FragmentError::InvalidTileLength);
-            }
-        } else {
-            if data.len() != TILE_SIZE + 2 {
-                return Err(FragmentError::InvalidTileLength);
-            }
-            if window == 1 && fcn == 0 {
-                return Err(FragmentError::InvalidFcn);
-            }
-        }
-        let payload_len = content_len - content_offset;
-        if out.len() < payload_len {
-            return Err(BufferTooSmall::new(payload_len, out.len()).into());
-        }
-        for (i, byte) in out[..payload_len].iter_mut().enumerate() {
-            let wire = 1 + content_offset + i;
-            *byte = (data[wire] << 7) | (data[wire + 1] >> 1);
-        }
-        let mut mic = [0; MIC_LENGTH];
-        if fcn == ALL_1_FCN {
-            for i in 0..MIC_LENGTH {
-                mic[i] = (data[1 + i] << 7) | (data[2 + i] >> 1);
-            }
-        }
-        Ok(Self {
-            rule_id: data[0],
-            window,
-            fcn,
-            payload: &out[..payload_len],
-            mic,
-        })
     }
 }
 
