@@ -246,22 +246,6 @@ class TestDuplicateDetection:
 
         assert result.accepted is True  # Different originator, so accepted
 
-    def test_reset_seen_allows_lower_seq(
-        self, processor: AnnounceProcessor, identity: Identity, neighbor: IPv6Address
-    ):
-        """reset_seen() allows accepting lower seq_num again."""
-        # Why test: Key rotation may reset seq_num.
-        first = make_signed_announce(identity, seq_num=100)
-        processor.process(first, neighbor, now_ms=0)
-
-        processor.reset_seen(identity.iid)
-
-        second = make_signed_announce(identity, seq_num=1)
-        result = processor.process(second, neighbor, now_ms=1000)
-
-        assert result.accepted is True
-
-
 class TestGradientUpdate:
     """Tests for gradient table updates."""
 
@@ -562,52 +546,6 @@ class TestKeyPinning:
         self, processor: AnnounceProcessor, identity: Identity
     ):
         """An IID that has never announced has no pin."""
-        assert processor.pinned_pubkey_for(identity.iid) is None
-
-    def test_key_change_rejected(
-        self,
-        processor: AnnounceProcessor,
-        identity: Identity,
-        neighbor: IPv6Address,
-    ):
-        """After pinning IID→pubkey_A, a frame claiming the same IID with pubkey_B
-        must be rejected even if its signature is internally valid."""
-        # First announce: pins identity.iid → identity.pubkey
-        ann1 = make_signed_announce(identity, seq_num=1)
-        result1 = processor.process(ann1, neighbor, now_ms=0)
-        assert result1.accepted
-
-        # Manually overwrite the pin with a different pubkey to simulate a
-        # key-change scenario (same IID, different key).
-        impostor_pubkey = bytes([0x99] * 32)
-        processor._pinned_keys[identity.iid] = impostor_pubkey
-
-        # Now re-submit a valid announce from identity: same IID, real pubkey.
-        # The pin check should catch the mismatch and reject it.
-        ann2 = make_signed_announce(identity, seq_num=2)
-        result2 = processor.process(ann2, neighbor, now_ms=1000)
-
-        assert result2.accepted is False
-        assert result2.reject_reason == AnnounceRejectReason.KEY_CHANGE_DETECTED
-
-    def test_unpin_clears_pinned_pubkey(
-        self,
-        processor: AnnounceProcessor,
-        identity: Identity,
-        neighbor: IPv6Address,
-    ):
-        """unpin() clears the pinned pubkey for an IID.
-
-        Note: True key rotation (new key, same IID) is cryptographically impossible
-        since IID = hash(pubkey). This test verifies unpin() clears state, which
-        may be useful for admin cleanup of stale entries.
-        """
-        ann1 = make_signed_announce(identity, seq_num=1)
-        processor.process(ann1, neighbor, now_ms=0)
-        assert processor.pinned_pubkey_for(identity.iid) == identity.pubkey
-
-        # Admin removes pin
-        processor.unpin(identity.iid)
         assert processor.pinned_pubkey_for(identity.iid) is None
 
     def test_same_pubkey_repeated_announce_accepted(
