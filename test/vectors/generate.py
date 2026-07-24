@@ -15,6 +15,7 @@ implementation drifts from the committed files.
 from __future__ import annotations
 
 import json
+import struct
 from ipaddress import IPv6Address
 from pathlib import Path
 
@@ -1856,9 +1857,8 @@ def ccp12_synchronized_hop_vectors() -> list[dict]:
             "next_rendezvous_us": 1000000,
             "expected_channel": 3,
             "description": "Beacon/DIO rendezvous uses rx_channel preference (CCP-12 over pure hash for known peers).",
-        }
-    )
-    return vectors
+        },
+    ]
 
 
 def ccp9_vectors() -> list[dict]:

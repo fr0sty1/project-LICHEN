@@ -19,7 +19,7 @@
       "load_factor": 0.618034,
       "hash_32": "9e3779b9",
       "interference_score": 0.396312,
-      "backoff_jitter_ms": 92
+      "backoff_jitter_ms": 15
     },
     {
       "name": "seed2",
@@ -28,7 +28,7 @@
       "load_factor": 0.236068,
       "hash_32": "3c6ef372",
       "interference_score": 0.295957,
-      "backoff_jitter_ms": 11
+      "backoff_jitter_ms": 73
     },
     {
       "name": "high_interference",
