@@ -53,6 +53,8 @@ pub mod scheduler;
 #[cfg(feature = "std")]
 pub mod secure;
 #[cfg(feature = "std")]
+pub mod secure_dispatch;
+#[cfg(feature = "std")]
 pub mod stack;
 #[cfg(feature = "std")]
 pub mod tdma_scheduler;
@@ -78,7 +80,9 @@ pub use port_dispatch::{
 };
 #[cfg(feature = "std")]
 pub use routing::{DtnBuffer, DtnMessage, RouteTarget, Router, DTN_BUFFER_MAX_BYTES};
-pub use routing::{Neighbor, NeighborTable, TrickleAwareNeighborLiveness, TrickleSafeLivenessPolicy};
+pub use routing::{
+    Neighbor, NeighborTable, TrickleAwareNeighborLiveness, TrickleSafeLivenessPolicy,
+};
 // SECURITY: SecureStack is the primary export for CoAP traffic per spec section 8.7.
 // Use Stack (PlaintextStack) only for ICMPv6, diagnostics, or testing.
 #[cfg(feature = "std")]
