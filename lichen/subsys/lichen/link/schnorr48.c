@@ -137,8 +137,6 @@ bool schnorr48_verify(const uint8_t *pubkey,
 		      const uint8_t *msg, size_t msg_len,
 		      const uint8_t *sig, size_t sig_len)
 {
-	const uint8_t *e_received = sig;
-	const uint8_t *s = sig + 16;
 	uint8_t e_extended[32];
 	uint8_t R_prime[32];
 	uint8_t e_hash[64];
@@ -148,6 +146,9 @@ bool schnorr48_verify(const uint8_t *pubkey,
 	if (sig_len < SCHNORR48_SIG_LEN) {
 		return false;
 	}
+
+	const uint8_t *e_received = sig;
+	const uint8_t *s = sig + 16;
 
 	/*
 	 * Validate: if msg_len > 0, msg must not be NULL.
