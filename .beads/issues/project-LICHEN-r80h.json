@@ -2,7 +2,7 @@
   "id": "project-LICHEN-r80h",
   "title": "codereview pass 2: select_channel fn and now() undefined in pseudocode",
   "description": "The updated pseudocode calls select_channel(ctx, metrics, now()) but no definition provided (only comment). now() also undefined. Link layer TDMA uses specific timing from lichen_tdma_init and SFN. Must add full pseudocode for select_channel to make normative. Also cross-ref to draft-lichen-tdma. P2. Also update vectors to include hash output test.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

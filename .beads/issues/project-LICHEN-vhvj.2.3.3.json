@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vhvj.2.3.3",
   "title": "Update RX methods (enter_rx_mode, _get_rx_result_internal) and node_server for synchronized hop channel",
   "description": "Update rx channel selection in simulation.py and node_server.py to derive from node's hop_schedule via synchronized_hop_channel for CCP-12 rendezvous instead of always setting current_channel. Ensure medium.get_rx_candidates uses correct channel. No dead code.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

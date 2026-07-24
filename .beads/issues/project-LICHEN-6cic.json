@@ -2,7 +2,11 @@
   "id": "project-LICHEN-6cic",
   "title": "missing declaration for lichen_coordination_negotiate in link_ctx.h",
   "description": "Function implemented in link_ctx.c but no prototype in include/lichen/link_ctx.h. Will cause compile warning or error if used from other modules. Tag: codereview",
+<<<<<<< Updated upstream
   "status": "in_progress",
+=======
+  "status": "open",
+>>>>>>> Stashed changes
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

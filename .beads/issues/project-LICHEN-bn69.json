@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-bn69",
   "title": "codereview: draft-lichen-schc-lora-00.md:4.4 table should reference exact RFC sections for each option type (6550.6.7, 4861.4.6.2)",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-uugv",
   "title": "[codereview-pass1.4 correctness] rf_health.rs: SnrStats::update still uses hardcoded \u003e\u003e3 after Rssi change",
   "description": "Inconsistency between RSSI and SNR EMA. Must update SnrStats similarly and its comments. This would cause different convergence rates. file: rust/lichen-core/src/rf_health.rs:225",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",
