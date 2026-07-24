@@ -367,7 +367,7 @@ class _RplProfile(PacketProfile):
             return False
         if header.payload_length < _ICMPV6_HEADER + self.base_length:
             return False
-        if not (_is_routable(int(header.src_addr)) and _is_routable(int(header.dst_addr))):
+        if not (_is_link_local(int(header.src_addr)) and _is_link_local(int(header.dst_addr))):
             return False
         icmpv6 = raw[HEADER_LENGTH:]
         if icmpv6_checksum(header.src_addr, header.dst_addr, icmpv6):
