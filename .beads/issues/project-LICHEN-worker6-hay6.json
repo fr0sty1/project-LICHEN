@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-hay6",
   "title": "[review] project-LICHEN-worker6-p19p: C_R missing from TH_2 computation (RFC 9528 Section 4.1)",
   "description": "RFC 9528 Section 4.1 requires TH_2 = H(CBOR(G_Y), CBOR(C_R), CBOR(H(message_1))) for EDHOC Method 3 (and all methods where responder sends message_2). Both Python (edhoc.py lines 389, 598) and Rust (edhoc.rs lines 415, 782, 1137) compute TH_2 as H(CBOR(G_Y), CBOR(H(message_1))) — omitting C_R entirely. The `transcript_2()` function signature only takes `g_y` and `msg1`, not `c_r`. This weakens transcript hash binding by not including the responder's connection identifier. Same bug exists in both EdhocInitiator.process_message_2() and EdhocResponder.process_message_1().",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:37:33.145077901Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:53:05.061550809Z",
-  "started_at": "2026-07-24T19:53:05.061550809Z",
-  "lease_expires_at": "2026-07-24T19:58:05.061550809Z",
-  "heartbeat_at": "2026-07-24T19:53:05.061550809Z"
+  "updated_at": "2026-07-24T20:21:36.46728537Z",
+  "started_at": "2026-07-24T19:53:05.061550809Z"
 }
