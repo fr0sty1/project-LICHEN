@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-3zc3",
   "title": "[review] project-LICHEN-worker6-p6n9: Rust transcript_2 uses raw concat instead of CBOR sequence",
   "description": "The Rust `transcript_2` function in `rust/lichen-oscore/src/edhoc.rs:414` uses raw byte concatenation for TH_2 input (`g_y || h_msg1`) instead of CBOR sequence encoding (`CBOR(g_y) || CBOR(h_msg1)`).\n\n**Evidence from RFC 9529 Section 2.2 test vectors:**\n\n- G_Y raw: `dc88d2d51da5ed67fc4616356bc8ca74ef9ebe8b387e623a360ba480b9b29d1c`\n- H(message_1) raw: `c165d6a99d1bcafaac8dbf2b352a6f7d71a30b439c9d64d349a23848038ed16b`\n\n| Method | TH_2 result |\n|--------|-------------|\n| Raw concat (Rust) | `c1d8c6ee4eeb1672d7fcbb44f8d811419739b79b852fce03f527eacdaf6633c4` |\n| CBOR sequence (spec) | `c6405c154c567466ab1df20369500e540e9f14bd3a796a0652cae66c9061688d` |\n| RFC 9529 expected | `c6405c154c567466ab1df20369500e540e9f14bd3a796a0652cae66c9061688d` |\n\nCBOR sequence matches the RFC test vector. Raw concatenation does not.\n\n**Fix needed in Rust:** `transcript_2` should CBOR-encode each element (using `encode_bstr`) instead of raw `extend_err`. The Python implementation was fixed in commit 803878c9a4, so the two implementations are now out of sync — only Rust has this bug.\n\n**Note:** The doc comment at line 414 says 'raw concatenation, per RFC 9528 Appendix C.1.1 test vectors' — this is incorrect; the RFC 9529 test vectors confirm CBOR sequence encoding.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T20:10:08.937800061Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T20:12:54.86394858Z",
-  "started_at": "2026-07-24T20:10:23.189072726Z",
-  "lease_expires_at": "2026-07-24T20:17:54.86394858Z",
-  "heartbeat_at": "2026-07-24T20:12:54.86394858Z"
+  "updated_at": "2026-07-24T20:21:27.791139542Z",
+  "started_at": "2026-07-24T20:10:23.189072726Z"
 }
