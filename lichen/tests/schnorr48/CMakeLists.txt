@@ -10,6 +10,7 @@ project(schnorr48_test C)
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/lichen/link/include
   ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/lichen/crypto
+  ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 # Build test executable
