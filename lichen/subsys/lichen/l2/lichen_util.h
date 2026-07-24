@@ -136,7 +136,8 @@ uint32_t lichen_hash_32(const uint8_t *data, size_t len);
  *
  * Covered error codes:
  *   POSIX: EINVAL, ENOMEM, EMSGSIZE, EOVERFLOW, EALREADY, EIO, ENODEV,
- *          ENETDOWN, EBUSY, EAGAIN, ECANCELED, ENODATA, ESRCH, ENOBUFS
+ *          ENETDOWN, EBUSY, EAGAIN, ECANCELED, ENODATA, ESRCH, ENOBUFS,
+ *          ETIMEDOUT, ENOSPC
  *   LICHEN: LICHEN_EAUTH
  *
  * @param err Negative error code from lichen_link_tx/rx
@@ -198,6 +199,14 @@ static inline const char *lichen_link_strerror(int err)
 #ifdef ENOBUFS
     case -ENOBUFS:
         return "no buffer space";
+#endif
+#ifdef ETIMEDOUT
+    case -ETIMEDOUT:
+        return "operation timed out";
+#endif
+#ifdef ENOSPC
+    case -ENOSPC:
+        return "no space left on device";
 #endif
 /* LICHEN_EAUTH only exists when CONFIG_LICHEN_LINK is enabled (see top of file) */
 #if HAVE_LICHEN_ERRNO
