@@ -342,7 +342,7 @@ class SimNodeApp(App[None]):
 
         log.write(f"[{color}][{timestamp}] {escape(message)}[/{color}]")
 
-    @work(exclusive=True, group="connect")
+    @work(exclusive=True, group="connect")  # type: ignore[untyped-decorator]
     async def _connect_to_sim(self) -> None:
         """Connect to the simulator server (async worker)."""
         self._log_event("info", f"Connecting to {self._host}:{self._port}...")
@@ -381,7 +381,7 @@ class SimNodeApp(App[None]):
                     await self._radio.close()
             self._radio = None
 
-    @work(exclusive=True, group="connect")
+    @work(exclusive=True, group="connect")  # type: ignore[untyped-decorator]
     async def _disconnect(self) -> None:
         """Disconnect from the simulator (async worker)."""
         if self._radio is None:
@@ -428,7 +428,7 @@ class SimNodeApp(App[None]):
         self._transmit(payload)
         tx_input.value = ""
 
-    @work(exclusive=True, group="tx")
+    @work(exclusive=True, group="tx")  # type: ignore[untyped-decorator]
     async def _transmit(self, payload: bytes) -> None:
         """Transmit a payload (async worker).
 
@@ -470,7 +470,7 @@ class SimNodeApp(App[None]):
 
         self._receive(timeout_ms)
 
-    @work(exclusive=True, group="rx")
+    @work(exclusive=True, group="rx")  # type: ignore[untyped-decorator]
     async def _receive(self, timeout_ms: int) -> None:
         """Receive a packet (async worker).
 
