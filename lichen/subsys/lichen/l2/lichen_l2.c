@@ -135,6 +135,7 @@ STATS_SECT_DECL(lichen_l2rx_stats) lichen_l2rx_stats;
 #include <lichen/link_ctx.h>
 #include <lichen/replay.h>
 #include <lichen/schc.h>
+#include <lichen/schnorr48.h>
 #define HAVE_LICHEN_LINK 1
 #else
 #define HAVE_LICHEN_LINK 0
@@ -610,7 +611,6 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 				uint8_t src_eui64[8])
 {
 	int ret;
-	size_t saved_out_len = *out_len;
 	const uint8_t *saved_peer_pubkey = ctx->peer_pubkey;
 	const uint8_t *saved_peer_eui64 = ctx->peer_eui64;
 	struct lichen_frame parsed;
@@ -628,6 +628,15 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 	if (!parsed.signature_present) {
 		return -LICHEN_EAUTH;
 	}
+
+	/*
+	 * PERFORMANCE: Parse frame once, verify signature against all peers.
+	 * Previously called lichen_link_rx() per peer, which re-parsed the frame
+	 * and re-extracted the auth payload for each iteration (O(n) frame
+	 * parsing). Now uses the pre-parsed frame to call schnorr48_verify_frame()
+	 * directly per peer. Full authentication (SCHC decompress, replay check)
+	 * runs only once for the matching peer. (project-LICHEN-i1gk.100)
+	 */
 
 	/*
 	 * SECURITY: Constant-time peer iteration to prevent timing side-channel.
@@ -653,13 +662,19 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 			continue;
 		}
 
-		ctx->peer_pubkey = peer_table[i].pubkey;
-		ctx->peer_eui64 = peer_table[i].eui64;
-		*out_len = saved_out_len;
+		if (!schnorr48_pubkey_valid(peer_table[i].pubkey)) {
+			continue;
+		}
 
-		ret = lichen_link_rx(ctx, replay, frame, frame_len,
-				     out_ipv6, out_len, src_eui64);
-		if (ret == 0) {
+		int verify_result = schnorr48_verify_frame(
+			frame[0], frame[1],
+			parsed.epoch, parsed.seqnum,
+			parsed.dst_addr, parsed.dst_addr_len,
+			parsed.payload, parsed.payload_len,
+			parsed.mic,
+			peer_table[i].pubkey);
+
+		if (verify_result == 1) {
 			found_idx = (int)i;
 #ifdef CONFIG_LICHEN_L2_DEV_PROVISIONING
 			break;
@@ -667,28 +682,24 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 			continue;
 #endif
 		}
-
-		if (ret != -LICHEN_EAUTH) {
-			ctx->peer_pubkey = saved_peer_pubkey;
-			ctx->peer_eui64 = saved_peer_eui64;
-			*out_len = saved_out_len;
-			return ret;
-		}
 	}
 
 	if (found_idx >= 0) {
 		ctx->peer_pubkey = peer_table[found_idx].pubkey;
 		ctx->peer_eui64 = peer_table[found_idx].eui64;
-		*out_len = saved_out_len;
-		/* Final call skips replay commit (already done in probe path) to
-		 * avoid duplicate replay_check failure. Fixes double-update and
-		 * pre-auth mutation for project-LICHEN-bbti. */
-		ret = lichen_link_rx(ctx, NULL, frame, frame_len,
+		/*
+		 * Call lichen_link_rx() for the matching peer to handle full
+		 * authentication (frame re-parse, inner payload extraction,
+		 * MIC verify, SCHC decompress, replay check/commit).
+		 * This runs exactly once, not O(n). Replay is checked here
+		 * (not in the probe loop above) so the duplicate-replay-commit
+		 * workaround from project-LICHEN-bbti is no longer needed.
+		 */
+		ret = lichen_link_rx(ctx, replay, frame, frame_len,
 				     out_ipv6, out_len, src_eui64);
 		if (ret < 0) {
 			ctx->peer_pubkey = saved_peer_pubkey;
 			ctx->peer_eui64 = saved_peer_eui64;
-			*out_len = saved_out_len;
 			return ret;
 		}
 
@@ -700,7 +711,6 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 
 	ctx->peer_pubkey = saved_peer_pubkey;
 	ctx->peer_eui64 = saved_peer_eui64;
-	*out_len = saved_out_len;
 	return -LICHEN_EAUTH;
 }
 #endif /* HAVE_LICHEN_LINK */
