@@ -893,8 +893,8 @@ int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint32_t sender_seq)
 
 /**
  * @note Unlike oscore_ctx_set_sender_seq(), this function works on any
- *       oscore_ctx pointer including copies from oscore_ctx_lookup().
- *       The mutex protects only the read operation, not pointer validity.
+ *       oscore_ctx pointer. The mutex protects only the read operation,
+ *       not pointer validity.
  */
 int oscore_ctx_get_sender_seq(const struct oscore_ctx *ctx, uint32_t *sender_seq)
 {
