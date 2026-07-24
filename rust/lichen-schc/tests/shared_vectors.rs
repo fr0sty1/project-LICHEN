@@ -18,18 +18,10 @@ struct VectorFile {
 #[derive(Deserialize)]
 struct SchcVector {
     name: String,
-    #[serde(default)]
+    description: Option<String>,
     rule_id: u8,
-    #[serde(default)]
-    description: String,
-    #[serde(default)]
     packet: String,
-    #[serde(default)]
     compressed: String,
-    #[serde(default)]
-    category: String,
-    #[serde(default)]
-    expect_error: String,
 }
 
 fn hex_decode(s: &str) -> Vec<u8> {
@@ -60,11 +52,6 @@ fn test_schc_compression_vectors() {
     let mut failures = Vec::new();
 
     for vector in &vectors.vectors {
-        // Skip malformed/category vectors that use wire/expect_error instead of packet/compressed
-        if !vector.category.is_empty() || !vector.expect_error.is_empty() {
-            continue;
-        }
-
         let packet = hex_decode(&vector.packet);
         let compressed = hex_decode(&vector.compressed);
 
@@ -151,8 +138,9 @@ fn test_schc_compression_vectors() {
         }
 
         println!(
-            "Vector '{}' (rule {}): {} -> {} bytes ({}% reduction)",
+            "Vector '{}' ({}; rule {}): {} -> {} bytes ({}% reduction)",
             vector.name,
+            vector.description.as_deref().unwrap_or(""),
             vector.rule_id,
             packet.len(),
             compressed.len(),
@@ -185,12 +173,9 @@ fn test_schc_rule_coverage() {
     let content = fs::read_to_string(&vectors_path).unwrap();
     let vectors: VectorFile = serde_json::from_str(&content).unwrap();
 
-    // Track which rules have vectors (skip malformed vectors with no rule_id)
+    // Track which rules have vectors
     let mut rules_seen = std::collections::HashSet::new();
     for v in &vectors.vectors {
-        if !v.category.is_empty() || !v.expect_error.is_empty() {
-            continue;
-        }
         rules_seen.insert(v.rule_id);
     }
 
@@ -217,7 +202,7 @@ fn test_schc_fragment_vectors() {
     let content = fs::read_to_string(&vectors_path).expect("Failed to read fragment vectors");
     let doc: serde_json::Value = serde_json::from_str(&content).expect("Failed to parse JSON");
 
-    assert_eq!(doc["format_version"], 2, "Unexpected vector format version");
+    assert_eq!(doc["format_version"], 1, "Unexpected vector format version");
 
     let vectors = doc["vectors"].as_array().unwrap();
     assert!(!vectors.is_empty(), "No fragment vectors");

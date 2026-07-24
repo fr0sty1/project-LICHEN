@@ -145,10 +145,9 @@ fn hex_to_bytes(hex: &str) -> Vec<u8> {
 fn hex_to_array<const N: usize>(hex: &str) -> [u8; N] {
     let bytes = hex_to_bytes(hex);
     let len = bytes.len();
-    bytes.try_into().expect(&format!(
-        "hex_to_array: expected {} bytes, got {}",
-        N, len
-    ))
+    bytes
+        .try_into()
+        .expect(&format!("hex_to_array: expected {} bytes, got {}", N, len))
 }
 
 #[test]
@@ -179,11 +178,15 @@ fn test_request_protection_vectors() {
         let payload = hex_to_bytes(&pt.payload);
         let mut store = TestStore::existing(0);
         for _ in 0..v.sender_seq.unwrap() {
-            ctx.reserve_sender(&mut store).unwrap().protect_request(1, &[], &[]).unwrap();
+            ctx.reserve_sender(&mut store)
+                .unwrap()
+                .protect_request(1, &[], &[])
+                .unwrap();
         }
 
         let (ciphertext, oscore_opt) = ctx
-            .reserve_sender(&mut store).unwrap()
+            .reserve_sender(&mut store)
+            .unwrap()
             .protect_request(pt.code, &options, &payload)
             .unwrap_or_else(|_| panic!("protect_request failed for {}", v.name));
         let expected = v.expected.as_ref().unwrap();
@@ -233,7 +236,10 @@ fn test_response_protection_vectors() {
         .unwrap();
         let mut store = TestStore::existing(0);
         for _ in 0..v.sender_seq.unwrap() {
-            ctx.reserve_sender(&mut store).unwrap().protect_request(1, &[], &[]).unwrap();
+            ctx.reserve_sender(&mut store)
+                .unwrap()
+                .protect_request(1, &[], &[])
+                .unwrap();
         }
 
         let (ciphertext, oscore_opt) = ctx
@@ -412,10 +418,7 @@ fn malformed_oscore_options_are_rejected_without_keys() {
 
 #[test]
 fn test_edhoc_interop_vectors() {
-    let path = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../test/vectors/edhoc.json"
-    );
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../test/vectors/edhoc.json");
     let content = fs::read_to_string(path).expect("Failed to read edhoc.json");
     let doc: serde_json::Value =
         serde_json::from_str(&content).expect("Failed to parse edhoc.json");

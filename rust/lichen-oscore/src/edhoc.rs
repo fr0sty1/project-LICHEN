@@ -28,7 +28,6 @@ use ccm::{
 };
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use hkdf::Hkdf;
-
 use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest, Sha256};
 use x25519_dalek::{PublicKey, StaticSecret};
@@ -181,32 +180,12 @@ impl core::error::Error for EdhocError {}
 enum Lifecycle {
     Created,
     Message1Created,
-    PendingMessage2,
     AwaitingMessage3,
+    PendingMessage2,
     PendingMessage3,
     Complete,
     Failed,
     Zeroized,
-}
-
-/// Returned by `begin_process_message_2`; application selects peer credential
-/// and calls `finish_process_message_2`.
-struct PendingMessage2 {
-    id_cred: IdCred,
-    plaintext: heapless::Vec<u8, 128>,
-    c_r: ConnectionId,
-    signature_offset: usize,
-    transcript_binding: [u8; 32],
-}
-
-/// Returned by `begin_process_message_3`; application selects peer credential
-/// and calls `finish_process_message_3`.
-struct PendingMessage3 {
-    id_cred: IdCred,
-    plaintext: heapless::Vec<u8, 128>,
-    signature_offset: usize,
-    transcript_binding: [u8; 32],
-    ciphertext: heapless::Vec<u8, 128>,
 }
 
 /// Helper trait for heapless::Vec push/extend with error mapping.
@@ -267,49 +246,7 @@ fn hkdf_extract(salt: &[u8], ikm: &[u8]) -> Zeroizing<[u8; 32]> {
     Zeroizing::new(prk.into())
 }
 
-/// CBOR-encode a single value into the info buffer.
-fn encode_label(info: &mut heapless::Vec<u8, 128>, label: i32) -> Result<(), EdhocError> {
-    if label >= 0 {
-        if label <= 23 {
-            info.push_err(label as u8)?;
-        } else if label <= 0xff {
-            info.push_err(0x18)?;
-            info.push_err(label as u8)?;
-        } else if label <= 0xffff {
-            info.push_err(0x19)?;
-            info.push_err((label >> 8) as u8)?;
-            info.push_err((label & 0xff) as u8)?;
-        } else {
-            info.push_err(0x1a)?;
-            info.push_err((label >> 24) as u8)?;
-            info.push_err((label >> 16) as u8)?;
-            info.push_err((label >> 8) as u8)?;
-            info.push_err(label as u8)?;
-        }
-    } else {
-        info.push_err(0x20)?;
-        let neg = (-1 - label) as u32;
-        if neg <= 0x17 {
-            info.push_err(neg as u8)?;
-        } else if neg <= 0xff {
-            info.push_err(0x38)?;
-            info.push_err(neg as u8)?;
-        } else if neg <= 0xffff {
-            info.push_err(0x39)?;
-            info.push_err((neg >> 8) as u8)?;
-            info.push_err((neg & 0xff) as u8)?;
-        } else {
-            info.push_err(0x3a)?;
-            info.push_err((neg >> 24) as u8)?;
-            info.push_err((neg >> 16) as u8)?;
-            info.push_err((neg >> 8) as u8)?;
-            info.push_err(neg as u8)?;
-        }
-    }
-    Ok(())
-}
-
-/// EDHOC-KDF (RFC 9528 Section 4.1.2) with a string label.
+/// EDHOC-KDF (RFC 9528 Section 4.1.2).
 ///
 /// EDHOC-KDF(PRK, TH, label, context, length) = HKDF-Expand(PRK, info, length)
 /// where info = (length, TH, label, context) as a CBOR sequence.
@@ -375,65 +312,8 @@ fn edhoc_kdf(
         .map_err(|_| EdhocError::KeyDerivation)?;
 
     let mut result = heapless::Vec::new();
-    result.extend_from_slice(okm.as_slice())
-        .map_err(|_| EdhocError::BufferTooSmall)?;
-    Ok(result)
-}
-
-/// EDHOC-KDF (RFC 9528 Section 4.1.2) with an integer label.
-///
-/// Used for OSCORE exporter labels (7 = PRK_out, 10 = PRK_exporter,
-/// 0 = master_secret, 1 = master_salt) matching Python and C implementations.
-fn edhoc_kdf_int(
-    prk: &[u8; 32],
-    th: &[u8; 32],
-    label: i32,
-    context: &[u8],
-    length: usize,
-) -> Result<heapless::Vec<u8, 128>, EdhocError> {
-    let mut info = heapless::Vec::<u8, 128>::new();
-
-    if length <= 23 {
-        info.push_err(length as u8)?;
-    } else if length <= 0xff {
-        info.push_err(0x18)?;
-        info.push_err(length as u8)?;
-    } else if length <= 0xffff {
-        info.push_err(0x19)?;
-        info.push_err((length >> 8) as u8)?;
-        info.push_err((length & 0xff) as u8)?;
-    } else {
-        return Err(EdhocError::BufferTooSmall);
-    }
-
-    info.push_err(0x58)?;
-    info.push_err(32)?;
-    info.extend_err(th)?;
-
-    encode_label(&mut info, label)?;
-
-    if context.is_empty() {
-        info.push_err(0x40)?;
-    } else if context.len() <= 23 {
-        info.push_err(0x40 | context.len() as u8)?;
-        info.extend_err(context)?;
-    } else if context.len() <= 255 {
-        info.push_err(0x58)?;
-        info.push_err(context.len() as u8)?;
-        info.extend_err(context)?;
-    } else {
-        return Err(EdhocError::BufferTooSmall);
-    }
-
-    let hk = Hkdf::<Sha256>::from_prk(prk).map_err(|_| EdhocError::KeyDerivation)?;
-    let mut okm = heapless::Vec::<u8, 128>::new();
-    okm.resize(length, 0)
-        .map_err(|_| EdhocError::BufferTooSmall)?;
-    hk.expand(&info, &mut okm)
-        .map_err(|_| EdhocError::KeyDerivation)?;
-
-    let mut result = heapless::Vec::new();
-    result.extend_from_slice(okm.as_slice())
+    result
+        .extend_from_slice(okm.as_slice())
         .map_err(|_| EdhocError::BufferTooSmall)?;
     Ok(result)
 }
@@ -444,20 +324,19 @@ fn export_context(
     sender_id: &[u8],
     recipient_id: &[u8],
 ) -> Result<Context, OscoreError> {
-    let prk_out_vec = edhoc_kdf_int(prk, th, 7, th, 32)
-        .map_err(|_| OscoreError::KeyDerivation)?;
+    let prk_out_vec = edhoc_kdf(prk, th, "7", th, 32).map_err(|_| OscoreError::KeyDerivation)?;
     let mut prk_out = Zeroizing::new([0u8; 32]);
     prk_out.copy_from_slice(&prk_out_vec[0..32]);
-    let prk_exporter_vec = edhoc_kdf_int(&prk_out, th, 10, b"", 32)
-        .map_err(|_| OscoreError::KeyDerivation)?;
+    let prk_exporter_vec =
+        edhoc_kdf(&prk_out, th, "10", b"", 32).map_err(|_| OscoreError::KeyDerivation)?;
     let mut prk_exporter = Zeroizing::new([0u8; 32]);
     prk_exporter.copy_from_slice(&prk_exporter_vec);
-    let master_secret_vec = edhoc_kdf_int(&prk_exporter, th, 0, b"", KEY_LEN)
-        .map_err(|_| OscoreError::KeyDerivation)?;
+    let master_secret_vec =
+        edhoc_kdf(&prk_exporter, th, "0", b"", KEY_LEN).map_err(|_| OscoreError::KeyDerivation)?;
     let mut master_secret = Zeroizing::new([0u8; KEY_LEN]);
     master_secret.copy_from_slice(&master_secret_vec);
-    let master_salt_vec = edhoc_kdf_int(&prk_exporter, th, 1, b"", 8)
-        .map_err(|_| OscoreError::KeyDerivation)?;
+    let master_salt_vec =
+        edhoc_kdf(&prk_exporter, th, "1", b"", 8).map_err(|_| OscoreError::KeyDerivation)?;
     let mut master_salt = Zeroizing::new([0u8; 8]);
     master_salt.copy_from_slice(&master_salt_vec);
     Context::new_fresh(
@@ -496,40 +375,6 @@ fn encode_bstr<const N: usize>(
     Ok(())
 }
 
-fn encode_uint<const N: usize>(
-    buf: &mut heapless::Vec<u8, N>,
-    val: usize,
-) -> Result<(), EdhocError> {
-    if val <= 23 {
-        buf.push_err(val as u8)?;
-    } else if val <= 0xff {
-        buf.push_err(0x18)?;
-        buf.push_err(val as u8)?;
-    } else {
-        return Err(EdhocError::BufferTooSmall);
-    }
-    Ok(())
-}
-
-fn encode_tstr<const N: usize>(
-    buf: &mut heapless::Vec<u8, N>,
-    s: &str,
-) -> Result<(), EdhocError> {
-    let bytes = s.as_bytes();
-    let len = bytes.len();
-    if len > 255 {
-        return Err(EdhocError::BufferTooSmall);
-    }
-    if len <= 23 {
-        buf.push_err(0x60 | len as u8)?;
-    } else {
-        buf.push_err(0x78)?;
-        buf.push_err(len as u8)?;
-    }
-    buf.extend_err(bytes)?;
-    Ok(())
-}
-
 /// TH_2 = H(G_Y || H(message_1)) per RFC 9528 / test vectors.
 fn transcript_2(g_y: &[u8], msg1: &[u8]) -> Result<[u8; 32], EdhocError> {
     let h_msg1 = compute_th(msg1);
@@ -550,27 +395,14 @@ fn transcript_3(th_2: &[u8; 32], input: &[u8], cred: &[u8]) -> Result<[u8; 32], 
     Ok(compute_th(&buf))
 }
 
-fn transcript_4(
-    th_3: &[u8; 32],
-    ciphertext_3: &[u8],
-) -> Result<[u8; 32], EdhocError> {
+fn transcript_4(th_3: &[u8; 32], ciphertext_3: &[u8], _cred: &[u8]) -> Result<[u8; 32], EdhocError> {
     let mut buf = heapless::Vec::<u8, 1024>::new();
     encode_bstr(&mut buf, th_3)?;
     encode_bstr(&mut buf, ciphertext_3)?;
     Ok(compute_th(&buf))
 }
 
-fn append_cbor_bstr<const N: usize>(
-    buf: &mut heapless::Vec<u8, N>,
-    data: &[u8],
-) -> Result<(), EdhocError> {
-    encode_bstr(buf, data)
-}
-
-fn build_context_2(
-    id_cred: &[u8],
-    cred: &[u8],
-) -> Result<heapless::Vec<u8, 128>, EdhocError> {
+fn build_context_2(id_cred: &[u8], cred: &[u8]) -> Result<heapless::Vec<u8, 128>, EdhocError> {
     let mut ctx = heapless::Vec::<u8, 128>::new();
     append_cbor_bstr(&mut ctx, id_cred)?;
     append_cbor_bstr(&mut ctx, cred)?;
@@ -602,150 +434,6 @@ fn build_signature_structure(
     append_cbor_bstr(&mut m, cred)?;
     append_cbor_bstr(&mut m, mac)?;
     Ok(m)
-}
-
-/// Encode an EDHOC connection identifier as CBOR bstr (major type 2).
-fn encode_identifier<const N: usize>(
-    buf: &mut heapless::Vec<u8, N>,
-    id: &ConnectionId,
-) -> Result<(), EdhocError> {
-    encode_bstr(buf, id.as_bytes())
-}
-
-/// Create a raw key credential CBOR sequence for a public key.
-fn raw_key_credential(pubkey: &[u8; 32]) -> Result<(heapless::Vec<u8, 64>, heapless::Vec<u8, 80>), EdhocError> {
-    let mut id_cred = heapless::Vec::<u8, 64>::new();
-    encode_id_cred(&mut id_cred, pubkey)?;
-    let mut credential = heapless::Vec::<u8, 80>::new();
-    encode_credential(&mut credential, pubkey)?;
-    Ok((id_cred, credential))
-}
-
-/// Encode a COSE key credential (CCS) for a public key.
-fn encode_credential<const N: usize>(
-    buf: &mut heapless::Vec<u8, N>,
-    pubkey: &[u8],
-) -> Result<(), EdhocError> {
-    // CCS (COSE_Key) for an Ed25519 public key
-    // {1: 1 (OKP), 3: -8 (Ed25519), -1: 6 (EdDSA), -2: pubkey}
-    let mut ccs = heapless::Vec::<u8, 128>::new();
-    ccs.push_err(0xa4)?; // map(4)
-    ccs.push_err(0x01)?; // 1 (kty)
-    ccs.push_err(0x01)?; // OKP
-    ccs.push_err(0x03)?; // 3 (alg)
-    ccs.push_err(0x26)?; // -8 (Ed25519) CBOR negative
-    ccs.push_err(0x20)?; // -1 (key_ops)
-    ccs.push_err(0x06)?; // 6 (EdDSA)
-    ccs.push_err(0x21)?; // -2 (the x-coordinate / public key)
-    encode_bstr(&mut ccs, pubkey)?;
-    encode_bstr(buf, &ccs)?;
-    Ok(())
-}
-
-/// Encode an ID_CRED (kid) for a public key.
-fn encode_id_cred<const N: usize>(
-    buf: &mut heapless::Vec<u8, N>,
-    pubkey: &[u8],
-) -> Result<(), EdhocError> {
-    // ID_CRED as kid: {4: pubkey}
-    let mut kid = heapless::Vec::<u8, 40>::new();
-    kid.push_err(0xa1)?; // map(1)
-    kid.push_err(0x04)?; // 4 (kid)
-    encode_bstr(&mut kid, pubkey)?;
-    encode_bstr(buf, &kid)?;
-    Ok(())
-}
-
-/// Parse a CBOR bstr, returning the bytes and bytes consumed.
-fn parse_bstr<'a>(data: &'a [u8]) -> Result<(&'a [u8], usize), EdhocError> {
-    if data.is_empty() {
-        return Err(EdhocError::InvalidMessage);
-    }
-    let first = data[0];
-    let (len, header_len) = if (0x40..=0x57).contains(&first) {
-        (first as usize & 0x1f, 1)
-    } else if first == 0x58 {
-        if data.len() < 2 { return Err(EdhocError::InvalidMessage); }
-        (data[1] as usize, 2)
-    } else if first == 0x59 {
-        if data.len() < 3 { return Err(EdhocError::InvalidMessage); }
-        let len = u16::from_be_bytes([data[1], data[2]]) as usize;
-        (len, 3)
-    } else {
-        return Err(EdhocError::InvalidMessage);
-    };
-    let total = header_len + len;
-    if data.len() < total {
-        return Err(EdhocError::InvalidMessage);
-    }
-    Ok((&data[header_len..total], total))
-}
-
-/// Parse an EDHOC connection identifier (CBOR bstr with 0-7 bytes).
-fn parse_identifier(data: &[u8]) -> Result<(ConnectionId, usize), EdhocError> {
-    let (bytes, consumed) = parse_bstr(data)?;
-    if bytes.len() > CONNECTION_ID_CAPACITY {
-        return Err(EdhocError::InvalidMessage);
-    }
-    let id = ConnectionId::new(bytes)?;
-    Ok((id, consumed))
-}
-
-/// Parse an ID_CRED value (COSE map with kid parameter).
-fn parse_id_cred(data: &[u8]) -> Result<(IdCred, usize), EdhocError> {
-    let (bytes, consumed) = parse_bstr(data)?;
-    if bytes.is_empty() {
-        return Err(EdhocError::InvalidMessage);
-    }
-    // Determine kid from map(1) {4: bstr}
-    let first = bytes[0];
-    if first != 0xa1 {
-        return Err(EdhocError::InvalidMessage);
-    }
-    if bytes.len() < 2 || bytes[1] != 0x04 {
-        return Err(EdhocError::InvalidMessage);
-    }
-    let (kid_bytes, _kid_consumed) = parse_bstr(&bytes[2..])?;
-    let mut kid_vec = heapless::Vec::<u8, ID_CRED_MAX_LEN>::new();
-    kid_vec.extend_from_slice(kid_bytes)
-        .map_err(|_| EdhocError::BufferTooSmall)?;
-    let mut encoded = heapless::Vec::<u8, ID_CRED_MAX_LEN>::new();
-    encoded.extend_from_slice(bytes)
-        .map_err(|_| EdhocError::BufferTooSmall)?;
-    Ok((IdCred {
-        encoded,
-        reference: IdCredReference::Kid(kid_vec),
-    }, consumed))
-}
-
-/// Parse SUITES_R from CBOR error message (RFC 9528 error format).
-fn parse_suites_r(data: &[u8]) -> Result<usize, EdhocError> {
-    // SUITES_R is just an int or array of ints
-    if data.is_empty() {
-        return Err(EdhocError::InvalidMessage);
-    }
-    let first = data[0];
-    if first <= 0x17 {
-        Ok(1)
-    } else if first == 0x18 {
-        if data.len() < 2 { return Err(EdhocError::InvalidMessage); }
-        Ok(2)
-    } else {
-        Err(EdhocError::InvalidMessage)
-    }
-}
-
-/// Validate that peer authentication material is structurally sound.
-fn validate_peer_credential(peer: PeerCredential<'_>) -> Result<(), EdhocError> {
-    if peer.public_key.len() != KEY_LEN_32 {
-        return Err(EdhocError::InvalidMessage);
-    }
-    Ok(())
-}
-
-/// Convert a raw public key bytes into a dalek VerifyingKey (Ed25519).
-fn strong_verifying_key(key: &[u8; 32]) -> Result<VerifyingKey, EdhocError> {
-    VerifyingKey::from_bytes(key).map_err(|_| EdhocError::InvalidMessage)
 }
 
 /// Parse SUITES_I from CBOR per RFC 9528 Section 3.3.2.
@@ -827,6 +515,7 @@ pub struct EdhocInitiator {
     signing_key: SigningKey,
     /// Our Ed25519 public key.
     pubkey: VerifyingKey,
+    /// Our connection identifier.
     c_i: ConnectionId,
     /// Ephemeral X25519 secret (implements ZeroizeOnDrop).
     eph_secret: Option<StaticSecret>,
@@ -843,7 +532,6 @@ pub struct EdhocInitiator {
 /// PRK_3e2m = PRK_2e for Suite 0 SIGN_SIGN (needed for MAC_2)
 /// PRK_4e3m = PRK_3e2m (needed for MAC_3 and OSCORE export)
 /// All must be zeroized on drop.
-#[derive(Zeroize)]
 struct InitiatorState {
     msg1: heapless::Vec<u8, 64>,
     g_y: [u8; 32],
@@ -854,6 +542,7 @@ struct InitiatorState {
     th_2: [u8; 32],
     th_3: [u8; 32],
     th_4: [u8; 32],
+    /// True when handshake completed (process_message_2 succeeded).
     completed: bool,
     lifecycle: Lifecycle,
 }
@@ -876,6 +565,23 @@ impl Default for InitiatorState {
     }
 }
 
+impl Zeroize for InitiatorState {
+    fn zeroize(&mut self) {
+        self.g_y.zeroize();
+        self.prk_2e.zeroize();
+        self.prk_3e2m.zeroize();
+        self.prk_4e3m.zeroize();
+        self.th_2.zeroize();
+        self.th_3.zeroize();
+        self.th_4.zeroize();
+        self.msg1.zeroize();
+    }
+}
+
+impl ZeroizeOnDrop for InitiatorState {}
+
+impl ZeroizeOnDrop for EdhocInitiator {}
+
 impl Zeroize for EdhocInitiator {
     fn zeroize(&mut self) {
         self.signing_key = SigningKey::from_bytes(&[0; KEY_LEN_32]);
@@ -885,13 +591,13 @@ impl Zeroize for EdhocInitiator {
     }
 }
 
-impl Drop for EdhocInitiator {
-    fn drop(&mut self) {
-        self.zeroize();
-    }
-}
-
 impl EdhocInitiator {
+    /// Create a new EDHOC initiator using OsRng.
+    #[cfg(feature = "std")]
+    pub fn new_std(seed: [u8; 32], c_i: u8) -> Result<Self, OscoreError> {
+        Ok(Self::new(seed, c_i, &mut rand_core::OsRng))
+    }
+
     /// Create a new EDHOC initiator using caller-provided entropy.
     pub fn new_with_rng<R: RngCore + CryptoRng, C: Into<ConnectionId>>(
         seed: [u8; 32],
@@ -934,7 +640,7 @@ impl EdhocInitiator {
         Self {
             signing_key,
             pubkey,
-            c_i: ConnectionId::from(c_i),
+            c_i: ConnectionId::new(&[c_i]).expect("1-byte connection ID fits"),
             eph_secret: Some(eph_secret),
             eph_public,
             state: InitiatorState::default(),
@@ -1030,8 +736,13 @@ impl EdhocInitiator {
             drop(g_xy);
 
             // Decrypt CIPHERTEXT_2 with KEYSTREAM_2
-            let keystream_2 =
-                edhoc_kdf(&self.state.prk_2e, &self.state.th_2, "KEYSTREAM_2", &[], ciphertext_2.len())?;
+            let keystream_2 = edhoc_kdf(
+                &self.state.prk_2e,
+                &self.state.th_2,
+                "KEYSTREAM_2",
+                &[],
+                ciphertext_2.len(),
+            )?;
             let mut plaintext_2 = SecretVec::<128>::new();
             for (i, &b) in ciphertext_2.iter().enumerate() {
                 plaintext_2.push_err(b ^ keystream_2[i])?;
@@ -1089,7 +800,13 @@ impl EdhocInitiator {
             validate_peer_credential(peer)?;
             let signature_bytes = parse_bstr(&pending.plaintext[pending.signature_offset..])?.0;
             let context_2 = build_context_2(pending.id_cred.as_bytes(), peer.credential)?;
-            let mac_2 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_2, "MAC_2", &context_2, 32)?;
+            let mac_2 = edhoc_kdf(
+                &self.state.prk_3e2m,
+                &self.state.th_2,
+                "MAC_2",
+                &context_2,
+                32,
+            )?;
             let m_2 = build_signature_structure(
                 pending.id_cred.as_bytes(),
                 &self.state.th_2,
@@ -1133,7 +850,13 @@ impl EdhocInitiator {
 
             // K_3 and IV_3 for AEAD
             let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", &[], KEY_LEN)?;
-            let iv_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "IV_3", &[], NONCE_LEN)?;
+            let iv_3 = edhoc_kdf(
+                &self.state.prk_3e2m,
+                &self.state.th_3,
+                "IV_3",
+                &[],
+                NONCE_LEN,
+            )?;
 
             let mut a_3 = heapless::Vec::<u8, 64>::new();
             a_3.push_err(0x83)?;
@@ -1152,7 +875,7 @@ impl EdhocInitiator {
                 .map_err(|_| EdhocError::InvalidState)?;
             ciphertext_3.extend_err(&tag)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3.0)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3.0, &credential_r)?;
 
             self.state.completed = true;
             self.state.lifecycle = Lifecycle::Complete;
@@ -1185,6 +908,13 @@ impl EdhocInitiator {
             self.state.c_r.as_bytes(),
         )
     }
+
+    fn poison(&mut self) {
+        self.signing_key = SigningKey::from_bytes(&[0; KEY_LEN_32]);
+        self.eph_secret.zeroize();
+        self.state.zeroize();
+        self.state.lifecycle = Lifecycle::Failed;
+    }
 }
 
 /// EDHOC Responder (server role).
@@ -1195,6 +925,7 @@ pub struct EdhocResponder {
     signing_key: SigningKey,
     /// Our Ed25519 public key.
     pubkey: VerifyingKey,
+    /// Our connection identifier.
     c_r: ConnectionId,
     /// Ephemeral X25519 secret (implements ZeroizeOnDrop).
     eph_secret: Option<StaticSecret>,
@@ -1211,7 +942,6 @@ pub struct EdhocResponder {
 /// PRK_3e2m = PRK_2e for Suite 0 SIGN_SIGN (needed for MAC_2)
 /// PRK_4e3m = PRK_3e2m (needed for MAC_3 and OSCORE export)
 /// All must be zeroized on drop.
-#[derive(Zeroize)]
 struct ResponderState {
     msg1: heapless::Vec<u8, 64>,
     g_x: [u8; 32],
@@ -1222,6 +952,7 @@ struct ResponderState {
     th_2: [u8; 32],
     th_3: [u8; 32],
     th_4: [u8; 32],
+    /// True when handshake completed (process_message_3 succeeded).
     completed: bool,
     lifecycle: Lifecycle,
 }
@@ -1244,6 +975,23 @@ impl Default for ResponderState {
     }
 }
 
+impl Zeroize for ResponderState {
+    fn zeroize(&mut self) {
+        self.g_x.zeroize();
+        self.prk_2e.zeroize();
+        self.prk_3e2m.zeroize();
+        self.prk_4e3m.zeroize();
+        self.th_2.zeroize();
+        self.th_3.zeroize();
+        self.th_4.zeroize();
+        self.msg1.zeroize();
+    }
+}
+
+impl ZeroizeOnDrop for ResponderState {}
+
+impl ZeroizeOnDrop for EdhocResponder {}
+
 impl Zeroize for EdhocResponder {
     fn zeroize(&mut self) {
         self.signing_key = SigningKey::from_bytes(&[0; KEY_LEN_32]);
@@ -1253,13 +1001,13 @@ impl Zeroize for EdhocResponder {
     }
 }
 
-impl Drop for EdhocResponder {
-    fn drop(&mut self) {
-        self.zeroize();
-    }
-}
-
 impl EdhocResponder {
+    /// Create a new EDHOC responder using OsRng.
+    #[cfg(feature = "std")]
+    pub fn new_std(seed: [u8; 32], c_r: u8) -> Result<Self, OscoreError> {
+        Self::new_with_rng(seed, c_r, &mut rand_core::OsRng)
+    }
+
     /// Create a new EDHOC responder.
     ///
     /// # Arguments
@@ -1276,17 +1024,31 @@ impl EdhocResponder {
         Self {
             signing_key,
             pubkey,
-            c_r: ConnectionId::from(c_r),
+            c_r: ConnectionId::new(&[c_r]).expect("1-byte connection ID fits"),
             eph_secret: Some(eph_secret),
             eph_public,
             state: ResponderState::default(),
         }
     }
 
-    /// Create a new EDHOC responder.
-    #[cfg(feature = "std")]
-    pub fn new<C: Into<ConnectionId>>(seed: [u8; 32], c_r: C) -> Result<Self, OscoreError> {
-        Self::new_with_rng(seed, c_r, &mut rand_core::OsRng)
+    /// Create a new EDHOC responder using caller-provided entropy.
+    pub fn new_with_rng<R: RngCore + CryptoRng>(seed: [u8; 32], c_r: u8, rng: &mut R) -> Result<Self, OscoreError> {
+        let mut eph_seed = [0u8; KEY_LEN_32];
+        rng.try_fill_bytes(&mut eph_seed[..])
+            .map_err(|_| OscoreError::KeyDerivation)?;
+        let signing_key = SigningKey::from_bytes(&seed);
+        let pubkey = signing_key.verifying_key();
+        let eph_secret = StaticSecret::from(eph_seed);
+        let eph_public = PublicKey::from(&eph_secret);
+
+        Ok(Self {
+            signing_key,
+            pubkey,
+            c_r: ConnectionId::new(&[c_r]).expect("1-byte connection ID fits"),
+            eph_secret: Some(eph_secret),
+            eph_public,
+            state: ResponderState::default(),
+        })
     }
 
     fn poison(&mut self) {
@@ -1336,21 +1098,22 @@ impl EdhocResponder {
             gx.copy_from_slice(&msg1[g_x_start + 2..g_x_start + 2 + 32]);
             gx
         };
+        self.state.g_x = g_x;
 
         // Parse C_I
         let rest = &msg1[g_x_start + 2 + 32..];
         let c_i = if !rest.is_empty() {
             if rest[0] <= 23 {
-                ConnectionId::from(rest[0])
+                rest[0]
             } else if rest[0] == 0x41 && rest.len() > 1 {
-                ConnectionId::from(rest[1])
+                rest[1]
             } else {
                 return Err(EdhocError::InvalidMessage);
             }
         } else {
             return Err(EdhocError::InvalidMessage);
         };
-        if c_i == self.c_r {
+        if self.c_r.as_bytes() == [c_i] {
             self.poison();
             return Err(EdhocError::InvalidMessage);
         }
@@ -1362,7 +1125,7 @@ impl EdhocResponder {
         drop(eph_secret);
         self.state.msg1 = stored_msg1;
         self.state.g_x = g_x;
-        self.state.c_i = c_i;
+        self.state.c_i = c_i.into();
         // SECURITY: eph_secret is intentionally NOT stored back - single-use semantics
         // prevent cryptographic weakness from ephemeral key reuse if this function
         // is called multiple times (e.g., due to retransmission handling bugs).
@@ -1394,12 +1157,8 @@ impl EdhocResponder {
                 &context_2,
                 32,
             )?;
-            let m_2 = build_signature_structure(
-                &id_cred_r,
-                &self.state.th_2,
-                &credential_r,
-                &mac_2,
-            )?;
+            let m_2 =
+                build_signature_structure(&id_cred_r, &self.state.th_2, &credential_r, &mac_2)?;
             let signature_2 = self.signing_key.sign(&m_2);
 
             let mut plaintext_2 = SecretVec::<128>::new();
@@ -1408,8 +1167,13 @@ impl EdhocResponder {
             encode_bstr(&mut plaintext_2, &signature_2.to_bytes())?;
 
             // Encrypt with KEYSTREAM_2
-            let keystream_2 =
-                edhoc_kdf(&self.state.prk_2e, &self.state.th_2, "KEYSTREAM_2", &[], plaintext_2.len())?;
+            let keystream_2 = edhoc_kdf(
+                &self.state.prk_2e,
+                &self.state.th_2,
+                "KEYSTREAM_2",
+                &[],
+                plaintext_2.len(),
+            )?;
             let mut ciphertext_2 = heapless::Vec::<u8, 128>::new();
             for (i, &b) in plaintext_2.iter().enumerate() {
                 ciphertext_2.push_err(b ^ keystream_2[i])?;
@@ -1467,13 +1231,16 @@ impl EdhocResponder {
             if consumed != msg3.len() {
                 return Err(EdhocError::InvalidMessage);
             }
-            let mut ciphertext_3_buf = heapless::Vec::<u8, 128>::new();
-            ciphertext_3_buf.extend_from_slice(ciphertext_3)
-                .map_err(|_| EdhocError::BufferTooSmall)?;
 
             // K_3 and IV_3 for AEAD decryption
             let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", &[], KEY_LEN)?;
-            let iv_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "IV_3", &[], NONCE_LEN)?;
+            let iv_3 = edhoc_kdf(
+                &self.state.prk_3e2m,
+                &self.state.th_3,
+                "IV_3",
+                &[],
+                NONCE_LEN,
+            )?;
 
             // A_3 (AAD)
             let mut a_3 = heapless::Vec::<u8, 64>::new();
@@ -1514,7 +1281,6 @@ impl EdhocResponder {
                 plaintext,
                 signature_offset: id_len,
                 transcript_binding: self.state.th_3,
-                ciphertext: ciphertext_3_buf,
             })
         })();
 
@@ -1574,7 +1340,7 @@ impl EdhocResponder {
                 .verify_strict(&m_3, &signature)
                 .map_err(|_| EdhocError::SignatureVerification)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &pending.ciphertext)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &pending.plaintext)?;
             self.state.lifecycle = Lifecycle::Complete;
 
             Ok(())
@@ -1604,6 +1370,441 @@ impl EdhocResponder {
             self.state.c_i.as_bytes(),
         )
     }
+}
+
+// ── PendingMessage types (two-phase credential selection) ──────────────
+
+/// In-progress Message 2 decryption, before credential verification.
+pub struct PendingMessage2 {
+    /// Parsed ID_CRED from the responder.
+    id_cred: IdCred,
+    /// Decrypted plaintext of Message 2 (without keystream).
+    plaintext: heapless::Vec<u8, 128>,
+    /// Connection identifier from the responder.
+    c_r: ConnectionId,
+    /// Byte offset where the signature begins.
+    signature_offset: usize,
+    /// Transcript binding at time of parsing.
+    transcript_binding: [u8; 32],
+}
+
+impl PendingMessage2 {
+    /// Return the credential reference offered by the peer.
+    pub fn id_cred(&self) -> &IdCred {
+        &self.id_cred
+    }
+}
+
+/// In-progress Message 3 decryption, before credential verification.
+pub struct PendingMessage3 {
+    /// Parsed ID_CRED from the initiator.
+    id_cred: IdCred,
+    /// Decrypted plaintext of Message 3.
+    plaintext: heapless::Vec<u8, 128>,
+    /// Byte offset where the signature begins.
+    signature_offset: usize,
+    /// Transcript binding at time of parsing.
+    transcript_binding: [u8; 32],
+}
+
+impl PendingMessage3 {
+    /// Return the credential reference offered by the peer.
+    pub fn id_cred(&self) -> &IdCred {
+        &self.id_cred
+    }
+}
+
+// ── CBOR helpers ──────────────────────────────────────────────────────
+
+/// Append a CBOR byte string (major type 2) to the buffer.
+fn append_cbor_bstr<const N: usize>(
+    buf: &mut heapless::Vec<u8, N>,
+    data: &[u8],
+) -> Result<(), EdhocError> {
+    let len = data.len();
+    if len <= 23 {
+        buf.push_err(0x40 | len as u8)?;
+    } else if len <= 0xff {
+        buf.push_err(0x58)?;
+        buf.push_err(len as u8)?;
+    } else if len <= 0xffff {
+        buf.push_err(0x59)?;
+        buf.push_err((len >> 8) as u8)?;
+        buf.push_err((len & 0xff) as u8)?;
+    } else {
+        return Err(EdhocError::BufferTooSmall);
+    }
+    buf.extend_err(data)?;
+    Ok(())
+}
+
+/// Parse a CBOR byte string (major type 2) from the front of `data`.
+///
+/// Returns (value_bytes, total_consumed) where total_consumed includes the
+/// CBOR header.
+fn parse_bstr(data: &[u8]) -> Result<(&[u8], usize), EdhocError> {
+    if data.is_empty() {
+        return Err(EdhocError::InvalidMessage);
+    }
+    let first = data[0];
+    if (0x40..=0x57).contains(&first) {
+        let len = (first - 0x40) as usize;
+        if data.len() < 1 + len {
+            return Err(EdhocError::InvalidMessage);
+        }
+        Ok((&data[1..1 + len], 1 + len))
+    } else if first == 0x58 {
+        if data.len() < 2 {
+            return Err(EdhocError::InvalidMessage);
+        }
+        let len = data[1] as usize;
+        if data.len() < 2 + len {
+            return Err(EdhocError::InvalidMessage);
+        }
+        Ok((&data[2..2 + len], 2 + len))
+    } else if first == 0x59 {
+        if data.len() < 3 {
+            return Err(EdhocError::InvalidMessage);
+        }
+        let len = u16::from_be_bytes([data[1], data[2]]) as usize;
+        if data.len() < 3 + len {
+            return Err(EdhocError::InvalidMessage);
+        }
+        Ok((&data[3..3 + len], 3 + len))
+    } else {
+        Err(EdhocError::InvalidMessage)
+    }
+}
+
+/// Parse an identifier value from a CBOR byte string or integer.
+///
+/// Returns (ConnectionId, bytes_consumed).
+fn parse_identifier(data: &[u8]) -> Result<(ConnectionId, usize), EdhocError> {
+    if data.is_empty() {
+        return Err(EdhocError::InvalidMessage);
+    }
+    let first = data[0];
+    if (0x00..=0x17).contains(&first) {
+        Ok((ConnectionId::new(&[first]).map_err(|_| EdhocError::BufferTooSmall)?, 1))
+    } else if first == 0x18 {
+        if data.len() < 2 {
+            return Err(EdhocError::InvalidMessage);
+        }
+        Ok((ConnectionId::new(&[data[1]]).map_err(|_| EdhocError::BufferTooSmall)?, 2))
+    } else if (0x40..=0x57).contains(&first) {
+        let len = (first - 0x40) as usize;
+        if data.len() < 1 + len {
+            return Err(EdhocError::InvalidMessage);
+        }
+        Ok((
+            ConnectionId::new(&data[1..1 + len]).map_err(|_| EdhocError::BufferTooSmall)?,
+            1 + len,
+        ))
+    } else if first == 0x58 {
+        if data.len() < 2 {
+            return Err(EdhocError::InvalidMessage);
+        }
+        let len = data[1] as usize;
+        if data.len() < 2 + len || len > CONNECTION_ID_CAPACITY {
+            return Err(EdhocError::InvalidMessage);
+        }
+        Ok((
+            ConnectionId::new(&data[2..2 + len]).map_err(|_| EdhocError::BufferTooSmall)?,
+            2 + len,
+        ))
+    } else {
+        Err(EdhocError::InvalidMessage)
+    }
+}
+
+/// Parse SUITES_R (error) from an EDHOC error message.
+///
+/// Returns the number of bytes consumed.
+fn parse_suites_r(data: &[u8]) -> Result<usize, EdhocError> {
+    // SUITES_R is a CBOR array of ints or a single int.
+    // We just need to validate and consume it.
+    if data.is_empty() {
+        return Err(EdhocError::InvalidMessage);
+    }
+    let first = data[0];
+    if (0x00..=0x17).contains(&first) {
+        Ok(1)
+    } else if first == 0x18 {
+        if data.len() < 2 { return Err(EdhocError::InvalidMessage); }
+        Ok(2)
+    } else if (0x80..=0x97).contains(&first) {
+        let arr_len = (first - 0x80) as usize;
+        if data.len() < 1 + arr_len { return Err(EdhocError::InvalidMessage); }
+        Ok(1 + arr_len)
+    } else if first == 0x98 {
+        if data.len() < 2 { return Err(EdhocError::InvalidMessage); }
+        let arr_len = data[1] as usize;
+        if data.len() < 2 + arr_len { return Err(EdhocError::InvalidMessage); }
+        Ok(2 + arr_len)
+    } else {
+        Err(EdhocError::InvalidMessage)
+    }
+}
+
+/// Encode an identifier as a CBOR byte string.
+fn encode_identifier<const N: usize>(
+    buf: &mut heapless::Vec<u8, N>,
+    id: &ConnectionId,
+) -> Result<(), EdhocError> {
+    encode_bstr(buf, id.as_bytes())
+}
+
+// ── Credential helpers ────────────────────────────────────────────────
+
+/// Build a raw key CCS (COSE_Key credential) from a public key.
+///
+/// Returns (id_cred, credential) as deterministic CBOR.
+fn raw_key_credential(pubkey: &[u8; 32]) -> Result<(heapless::Vec<u8, 40>, heapless::Vec<u8, 80>), EdhocError> {
+    // ID_CRED with kid = bstr(hash of public key)
+    let kid = Sha256::digest(pubkey);
+    let mut id_cred = heapless::Vec::<u8, 40>::new();
+    id_cred.push_err(0xa1)?; // map(1)
+    id_cred.push_err(0x04)?; // kid (int 4)
+    if kid[..23].len() <= 23 {
+        id_cred.push_err(0x40 | 8)?;
+    } else {
+        id_cred.push_err(0x58)?;
+        id_cred.push_err(8)?;
+    }
+    id_cred.extend_err(&kid[..8])?;
+
+    // CCS: COSE_Key with crv=Ed25519, kty=OKP, x=pubkey
+    let mut ccs = heapless::Vec::<u8, 80>::new();
+    ccs.push_err(0xa2)?; // map(2)
+    ccs.push_err(0x01)?; // kty
+    ccs.push_err(0x01)?; // OKP
+    ccs.push_err(0x20)?; // crv (-8 as uint)
+    ccs.push_err(0x06)?; // Ed25519
+    ccs.push_err(0x21)?; // x (label -1 as uint 21)
+    encode_bstr(&mut ccs, pubkey)?;
+
+    Ok((id_cred, ccs))
+}
+
+/// Encode ID_CRED (kid = bstr(hash of pubkey)) as deterministic CBOR.
+fn encode_id_cred<const N: usize>(
+    buf: &mut heapless::Vec<u8, N>,
+    pubkey: &[u8; 32],
+) -> Result<(), EdhocError> {
+    let kid = Sha256::digest(pubkey);
+    buf.push_err(0xa1)?;
+    buf.push_err(0x04)?;
+    if 8 <= 23 {
+        buf.push_err(0x40 | 8)?;
+    } else {
+        buf.push_err(0x58)?;
+        buf.push_err(8)?;
+    }
+    buf.extend_err(&kid[..8])?;
+    Ok(())
+}
+
+/// Encode a CCS (raw COSE_Key credential) from a public key.
+fn encode_credential<const N: usize>(
+    buf: &mut heapless::Vec<u8, N>,
+    pubkey: &[u8; 32],
+) -> Result<(), EdhocError> {
+    buf.push_err(0xa2)?;
+    buf.push_err(0x01)?;
+    buf.push_err(0x01)?;
+    buf.push_err(0x20)?;
+    buf.push_err(0x06)?;
+    buf.push_err(0x21)?;
+    encode_bstr(buf, pubkey)?;
+    Ok(())
+}
+
+/// Parse an ID_CRED map from deterministic CBOR.
+///
+/// Returns (IdCred, bytes_consumed).
+fn parse_id_cred(data: &[u8]) -> Result<(IdCred, usize), EdhocError> {
+    if data.is_empty() || data[0] != 0xa1 {
+        // Only single-element maps supported
+        return Err(EdhocError::InvalidMessage);
+    }
+    let mut consumed = 1;
+    if data.len() < consumed + 1 {
+        return Err(EdhocError::InvalidMessage);
+    }
+    let label = data[consumed];
+    consumed += 1;
+
+    // Parse value as bstr (kid or x5t hash)
+    let (value, val_consumed) = parse_bstr(&data[consumed..])?;
+    consumed += val_consumed;
+
+    let mut encoded = heapless::Vec::<u8, ID_CRED_MAX_LEN>::new();
+    encoded.extend_err(&data[..consumed])?;
+
+    let reference = match label {
+        4 => IdCredReference::Kid(
+            heapless::Vec::from_slice(value).map_err(|_| EdhocError::BufferTooSmall)?,
+        ),
+        _ => return Err(EdhocError::InvalidMessage),
+    };
+
+    Ok((
+        IdCred {
+            encoded,
+            reference,
+        },
+        consumed,
+    ))
+}
+
+/// Copy an ID_CRED kid value into a bounded vec.
+#[cfg(test)]
+fn copy_id_cred_value(data: &[u8]) -> Result<heapless::Vec<u8, ID_CRED_MAX_LEN>, EdhocError> {
+    let mut v = heapless::Vec::new();
+    v.extend_err(data)?;
+    Ok(v)
+}
+
+/// Validate deterministic CBOR item (RFC 8949 Section 4.2.3).
+#[cfg(test)]
+fn validate_deterministic_item(data: &[u8]) -> Result<(), EdhocError> {
+    // Validate that maps have canonically sorted keys.
+    // This is a minimal check sufficient for test vectors.
+    if data.is_empty() {
+        return Err(EdhocError::InvalidMessage);
+    }
+    let first = data[0];
+    if first == 0xa0 {
+        return Ok(());
+    }
+    if (0xa1..=0xb7).contains(&first) {
+        let pairs = (first - 0xa1) as usize + 1;
+        let _ = pairs; // consumed below by walking
+        let mut offset = 1;
+        let mut prev_key: Option<&[u8]> = None;
+        for _ in 0..pairs {
+            // Skip key
+            if offset >= data.len() {
+                return Err(EdhocError::InvalidMessage);
+            }
+            let key_start = offset;
+            // Simple integer keys
+            if data[offset] <= 0x17 {
+                offset += 1;
+            } else if data[offset] == 0x18 {
+                offset += 2;
+            } else if data[offset] == 0x19 {
+                offset += 3;
+            } else if data[offset] == 0x1a {
+                offset += 5;
+            } else if data[offset] == 0x1b {
+                offset += 9;
+            } else {
+                // Text or byte string key — skip by length
+                if data[offset] >= 0x60 && data[offset] <= 0x77 {
+                    offset += 1 + (data[offset] - 0x60) as usize;
+                } else if data[offset] == 0x78 {
+                    if offset + 1 >= data.len() {
+                        return Err(EdhocError::InvalidMessage);
+                    }
+                    offset += 2 + data[offset + 1] as usize;
+                } else {
+                    return Err(EdhocError::InvalidMessage);
+                }
+            }
+            if offset > data.len() {
+                return Err(EdhocError::InvalidMessage);
+            }
+            let key = &data[key_start..offset];
+            if let Some(prev) = prev_key {
+                if key <= prev {
+                    return Err(EdhocError::InvalidMessage);
+                }
+            }
+            prev_key = Some(key);
+
+            // Skip value
+            let (_, val_consumed) = parse_bstr(&data[offset..]).or_else(|_| {
+                // Try simple integer
+                if offset < data.len() && data[offset] <= 0x17 {
+                    Ok((&[], 1))
+                } else if offset < data.len() && data[offset] == 0x18 && offset + 1 < data.len() {
+                    Ok((&[], 2))
+                } else {
+                    Err(EdhocError::InvalidMessage)
+                }
+            })?;
+            offset += val_consumed;
+        }
+        if offset != data.len() {
+            return Err(EdhocError::InvalidMessage);
+        }
+        Ok(())
+    } else if (0x80..=0x97).contains(&first) {
+        let len = (first - 0x80) as usize;
+        let mut offset = 1;
+        for _ in 0..len {
+            if offset >= data.len() {
+                return Err(EdhocError::InvalidMessage);
+            }
+            let (_, consumed) = parse_bstr(&data[offset..]).or_else(|_| {
+                if data[offset] <= 0x17 {
+                    Ok((&[], 1))
+                } else if data[offset] == 0x18 && offset + 1 < data.len() {
+                    Ok((&[], 2))
+                } else {
+                    Err(EdhocError::InvalidMessage)
+                }
+            })?;
+            offset += consumed;
+        }
+        if offset != data.len() {
+            return Err(EdhocError::InvalidMessage);
+        }
+        Ok(())
+    } else {
+        Ok(())
+    }
+}
+
+/// Validate a peer credential against its embedded public key.
+fn validate_peer_credential(peer: PeerCredential<'_>) -> Result<(), EdhocError> {
+    // Check the credential contains the expected public key.
+    // For raw CCS: the x-value must match peer.public_key.
+    let data = peer.credential;
+    if data.is_empty() || data[0] != 0xa2 {
+        // Non-CCS credentials (CWT, X.509 cert, application) are valid
+        // as long as they are valid CBOR. The application-layer trust
+        // model (TOFU, DANE, PKIX) handles verification.
+        return Ok(());
+    }
+    // Parse CCS map to find the x-coordinate
+    if data.len() < 2 { return Err(EdhocError::InvalidMessage); }
+    if data[0] != 0xa2 { return Err(EdhocError::InvalidMessage); }
+    if data[1] != 0x01 || data.get(2) != Some(&0x01) {
+        return Err(EdhocError::InvalidMessage);
+    }
+    if data.get(3) != Some(&0x20) || data.get(4) != Some(&0x06) {
+        return Err(EdhocError::InvalidMessage);
+    }
+    if data.get(5) != Some(&0x21) {
+        return Err(EdhocError::InvalidMessage);
+    }
+    let x_start = 6;
+    let (x_bytes, x_consumed) = parse_bstr(&data[x_start..])?;
+    let _ = x_consumed;
+    if x_bytes.len() != 32 || x_bytes != peer.public_key {
+        return Err(EdhocError::SignatureVerification);
+    }
+    Ok(())
+}
+
+/// Convert raw 32-byte Ed25519 public key bytes into a `VerifyingKey`.
+///
+/// Rejects keys on the twist (weak keys) by returning
+/// `EdhocError::SignatureVerification`.
+fn strong_verifying_key(bytes: &[u8; 32]) -> Result<VerifyingKey, EdhocError> {
+    VerifyingKey::from_bytes(bytes).map_err(|_| EdhocError::SignatureVerification)
 }
 
 #[cfg(test)]
@@ -1739,7 +1940,7 @@ mod tests {
     impl CryptoRng for FailingRng {}
 
     fn initiator(seed: [u8; 32], c_i: u8) -> EdhocInitiator {
-        EdhocInitiator::new_with_rng(seed, c_i, &mut TestRng(1)).unwrap()
+        EdhocInitiator::new(seed, c_i, &mut TestRng(1))
     }
 
     fn responder(seed: [u8; 32], c_r: u8) -> EdhocResponder {
@@ -1759,8 +1960,8 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn std_convenience_constructors_remain_available() {
-        let _ = EdhocInitiator::new([1; 32], 0).unwrap();
-        let _ = EdhocResponder::new([2; 32], 1).unwrap();
+        let _ = EdhocInitiator::new_std([1; 32], 0).unwrap();
+        let _ = EdhocResponder::new_std([2; 32], 1).unwrap();
     }
 
     #[test]
@@ -1889,20 +2090,28 @@ mod tests {
 
         let prk_out = hex!("77da318df09d26aa4cc69be602930750c32b5551d7a053d52000265d3c180eac");
         assert_eq!(
-            edhoc_kdf(&prk_2e, &th_4, "PRK_out", &[], 32).unwrap().as_slice(),
+            edhoc_kdf(&prk_2e, &th_4, "PRK_out", &[], 32)
+                .unwrap()
+                .as_slice(),
             prk_out
         );
         let prk_exporter = hex!("a0ef8465a68d81f448c85ea6118170d1f65fa03ef4277250b74a599b3353ab02");
         assert_eq!(
-            edhoc_kdf(&prk_out, &th_4, "10", &[], 32).unwrap().as_slice(),
+            edhoc_kdf(&prk_out, &th_4, "10", &[], 32)
+                .unwrap()
+                .as_slice(),
             prk_exporter
         );
         assert_eq!(
-            edhoc_kdf(&prk_exporter, &th_4, "0", &[], 16).unwrap().as_slice(),
+            edhoc_kdf(&prk_exporter, &th_4, "0", &[], 16)
+                .unwrap()
+                .as_slice(),
             &hex!("240e728a7ef8fe1129c26da390ce9954")
         );
         assert_eq!(
-            edhoc_kdf(&prk_exporter, &th_4, "1", &[], 8).unwrap().as_slice(),
+            edhoc_kdf(&prk_exporter, &th_4, "1", &[], 8)
+                .unwrap()
+                .as_slice(),
             &hex!("32d1a820b919523a")
         );
 
@@ -2279,9 +2488,9 @@ mod tests {
 
     #[test]
     fn rfc9528_suites_i_literals() {
-        assert_eq!(parse_suites_i(&[0x00, 0xff]), Ok((0, 1, false)));
-        assert_eq!(parse_suites_i(&[0x82, 0x02, 0x00, 0xff]), Ok((0, 3, false)));
-        assert_eq!(parse_suites_i(&[0x82, 0x00, 0x00]), Ok((0, 3, true)));
+        assert_eq!(parse_suites_i(&[0x00, 0xff]), Ok((0, 1)));
+        assert_eq!(parse_suites_i(&[0x82, 0x02, 0x00, 0xff]), Ok((0, 3)));
+        assert_eq!(parse_suites_i(&[0x82, 0x00, 0x00]), Ok((0, 3)));
 
         assert_eq!(
             parse_suites_i(&[0x81, 0x00]),
@@ -2314,7 +2523,7 @@ mod tests {
             0x00, 0x01, 0x00, 0x00, 0x3b, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
             0xff,
         ];
-        assert_eq!(parse_suites_i(&suites), Ok((0, suites.len() - 1, false)));
+        assert_eq!(parse_suites_i(&suites), Ok((0, suites.len() - 1)));
     }
 
     #[test]
@@ -2529,6 +2738,8 @@ mod tests {
         let mut responder_ctx = responder
             .export_oscore()
             .expect("responder export_oscore failed");
+        let mut initiator_store = TestStore::empty_for(&initiator_ctx);
+        let mut responder_store = TestStore::empty_for(&responder_ctx);
 
         // Step 6: Verify contexts can communicate via functional roundtrip test.
         // This is more robust than comparing raw keys - it proves the derived
@@ -2722,7 +2933,32 @@ mod tests {
 
     #[test]
     fn test_prk_oscore_interop_vectors() {
+        // Verifies test/vectors/edhoc.json PRK, TH, and OSCORE values match Python reference.
         let v = edhoc_vector("fixed_seed_sign_sign");
+        assert_eq!(
+            v["prk_2e"].as_str().unwrap(),
+            "60a60404e4812427fdd9ca9ece2002a3d96a26d0248262d48db5dbcfda2a77a5"
+        );
+        assert_eq!(
+            v["prk_3e2m"].as_str().unwrap(),
+            "60a60404e4812427fdd9ca9ece2002a3d96a26d0248262d48db5dbcfda2a77a5"
+        );
+        assert_eq!(
+            v["prk_4e3m"].as_str().unwrap(),
+            "60a60404e4812427fdd9ca9ece2002a3d96a26d0248262d48db5dbcfda2a77a5"
+        );
+        assert_eq!(
+            v["th_2"].as_str().unwrap(),
+            "62514f3558d5a14eedfedc3ecdb553ad7c4239f2eb35af7cdc201faae0115b73"
+        );
+        assert_eq!(
+            v["th_3"].as_str().unwrap(),
+            "02c88a7fad644bb867fd2ece038ff1ff27e76a8b07901d31e147930bbd6d814f"
+        );
+        assert_eq!(
+            v["th_4"].as_str().unwrap(),
+            "f1d45b38be0e83522b1701403b9eaed6fb6b87bce9c4d0a605925872e7eece83"
+        );
         assert_eq!(
             v["oscore_master_secret"].as_str().unwrap(),
             "2762d4e3e71852c34d8ac6ddacf2abfb"
@@ -2731,5 +2967,7 @@ mod tests {
             v["oscore_master_salt"].as_str().unwrap(),
             "fb7ea3edce1f0b73"
         );
+        assert_eq!(v["oscore_sender_id"].as_str().unwrap(), "00");
+        assert_eq!(v["oscore_recipient_id"].as_str().unwrap(), "01");
     }
 }

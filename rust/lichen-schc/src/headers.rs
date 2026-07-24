@@ -270,11 +270,11 @@ fn write_ipv6_header(
     payload_len: u16,
     next_header: u8,
     hop_limit: u8,
-    flow: (u8, u32),
+    traffic_class: u8,
+    flow_label: u32,
     src: &[u8; 16],
     dst: &[u8; 16],
 ) {
-    let (traffic_class, flow_label) = flow;
     out[0] = 0x60 | ((traffic_class >> 4) & 0x0F);
     out[1] = ((traffic_class & 0x0F) << 4) | ((flow_label >> 16) as u8 & 0x0F);
     out[2] = (flow_label >> 8) as u8;
@@ -467,7 +467,8 @@ fn build_coap_udp(
         udp_len,
         NEXT_HEADER_UDP,
         hop_limit,
-        (traffic_class, flow_label),
+        traffic_class,
+        flow_label,
         &src,
         &dst,
     );
@@ -667,7 +668,8 @@ impl PacketProfile for Icmpv6EchoProfile {
             icmp_len as u16,
             NEXT_HEADER_ICMPV6,
             hop_limit,
-            (traffic_class, flow_label),
+            traffic_class,
+        flow_label,
             &src,
             &dst,
         );
@@ -840,7 +842,8 @@ impl PacketProfile for RplDioProfile {
             icmp_len as u16,
             NEXT_HEADER_ICMPV6,
             hop_limit,
-            (traffic_class, flow_label),
+            traffic_class,
+        flow_label,
             &src,
             &dst,
         );
@@ -918,7 +921,7 @@ impl PacketProfile for RplDaoProfile {
         );
 
         parsed.add_field("RPL.instance", rpl[0] as u128);
-        parsed.add_field("RPL.kd_flags", rpl[1] as u128);
+        parsed.add_field("RPL.flags", rpl[1] as u128);
         parsed.add_field("RPL.reserved", rpl[2] as u128);
         parsed.add_field("RPL.seq", rpl[3] as u128);
 
@@ -950,7 +953,7 @@ impl PacketProfile for RplDaoProfile {
         let flow_label = get("IPv6.flow_label").unwrap_or(0) as u32;
 
         let instance = get("RPL.instance")? as u8;
-        let kd_flags = get("RPL.kd_flags")? as u8;
+        let flags = get("RPL.flags")? as u8;
         let reserved = get("RPL.reserved").unwrap_or(0) as u8;
         let seq = get("RPL.seq")? as u8;
         let dodagid = get("RPL.dodagid")?;
@@ -978,7 +981,7 @@ impl PacketProfile for RplDaoProfile {
         icmp_buf[2] = 0;
         icmp_buf[3] = 0;
         icmp_buf[4] = instance;
-        icmp_buf[5] = kd_flags;
+        icmp_buf[5] = flags;
         icmp_buf[6] = reserved;
         icmp_buf[7] = seq;
         icmp_buf[8..24].copy_from_slice(&dodagid.to_be_bytes());
@@ -991,7 +994,8 @@ impl PacketProfile for RplDaoProfile {
             icmp_len as u16,
             NEXT_HEADER_ICMPV6,
             hop_limit,
-            (traffic_class, flow_label),
+            traffic_class,
+        flow_label,
             &src,
             &dst,
         );
@@ -1120,7 +1124,7 @@ mod tests {
         let parsed = profile.parse(&packet).unwrap();
         assert_eq!(parsed.get("ICMPv6.type"), Some(155));
         assert_eq!(parsed.get("ICMPv6.code"), Some(2));
-        assert_eq!(parsed.get("RPL.kd_flags"), Some(0x40));
+        assert_eq!(parsed.get("RPL.flags"), Some(0x40));
         assert_eq!(parsed.get("RPL.seq"), Some(5));
     }
 
