@@ -1900,6 +1900,10 @@ def ccp9_vectors() -> list[dict]:
     ]
 
 def ccp15_vectors() -> list[dict]:
+    """CCP-15 vectors: 3 randomized seed vectors (seed0-seed2) plus 6 edge-case vectors
+    (high_interference, moderate_interference, low_interference, full_interference,
+    zero_interference, noisy_interference) for SF, EMA, load_factor, hash_32,
+    interference_score, and backoff_jitter."""
     v = []
     for seed in range(3):
         h = (seed * 0x9e3779b9) & 0xffffffff
@@ -2130,7 +2134,7 @@ def main() -> None:
     )
     _write(
         "ccp15.json",
-        "ccp15 vectors for SF EMA load_factor hash_32(FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) congestion control, interference score, and backoff jitter. Interference score formula: 0.5*ema + 0.3*load_factor + 0.2*(1.0 - sf/12.0). Backoff jitter: hash_32(sf|ema|load_factor|'jitter') % 100 ms. Cross-ref test/vectors/ccp-interference.json for additional interference patterns under spec/02a-coordinated-capacity.md. Independent external arithmetic oracle (math based, no code under test).",
+        "ccp15 vectors for SF EMA load_factor hash_32(FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) congestion control, interference score, and backoff jitter. Interference score formula: 0.5*ema + 0.3*load_factor + 0.2*(1.0 - sf/12.0). Backoff jitter: hash_32(sf|ema|load_factor|'jitter') % 100 ms. Includes 3 seed vectors (seed0-seed2) and 6 edge-case vectors (high_interference, moderate_interference, low_interference, full_interference, zero_interference, noisy_interference). Cross-ref test/vectors/ccp-interference.json for additional interference patterns under spec/02a-coordinated-capacity.md. Independent external arithmetic oracle (math based, no code under test).",
         ccp15_vectors(),
     )
     _write(
