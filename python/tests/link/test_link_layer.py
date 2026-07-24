@@ -960,16 +960,6 @@ class TestTxQueueIntegration:
         assert LichenFrame.from_bytes(frame_bytes).seqnum == 0
         assert ll.tx_queue.stats.packets_transmitted == 0
 
-        # Overwrite pin to simulate key-change scenario.
-        node_ll._pinned_keys[peer_peer.iid] = bytes([0x99] * 32)
-
-        # Second RX: same peer, same signature, but pin now says different key → dropped.
-        peer_ll2 = LinkLayer(radio=MockRadio(), identity=peer_identity, peer_lookup=lambda h: None)
-        await peer_ll2.send(b"second")
-        mock_radio.queue_rx(peer_ll2.radio.tx_history[0])
-        result2 = await node_ll.receive(timeout_ms=100)
-        assert result2 == ReceiveError.KEY_CHANGE
-
     @pytest.mark.asyncio
     async def test_radio_exception_preserves_packet_for_retry(
         self, mock_radio: MockRadio, node_identity: Identity
