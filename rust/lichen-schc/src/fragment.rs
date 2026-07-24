@@ -1062,14 +1062,25 @@ mod std_ext {
 
     use super::*;
 
+    fn bitmap_to_u64(bitmap: &[bool], window_size: usize) -> u64 {
+        bitmap.iter().enumerate().fold(0u64, |acc, (p, &received)| {
+            if received {
+                acc | (1u64 << (window_size - 1 - p))
+            } else {
+                acc
+            }
+        })
+    }
+
     impl<'a> FragmentSender<'a> {
-        /// Collect all fragments into a Vec (convenience for tests and sim).
         pub fn all_fragments(&self) -> Vec<Fragment<'a>> {
             self.iter().collect()
         }
 
         pub fn fragments_in_window_vec(&self, abs_window: usize) -> Vec<Fragment<'a>> {
-            self.fragments_in_window(abs_window).collect()
+            self.iter()
+                .filter(|frag| frag.window as usize == abs_window)
+                .collect()
         }
     }
 
@@ -1077,7 +1088,7 @@ mod std_ext {
     #[derive(Debug)]
     pub struct FragmentReceiver {
         window_size: usize,
-        rule_id: Option<u8>,
+        rule_id: u8,
         tiles: HashMap<usize, Vec<u8>>,
         current_window: usize,
         completed_windows: HashSet<usize>,
@@ -1229,7 +1240,7 @@ mod std_ext {
                     ack: Some(Ack::new(
                         self.rule_id,
                         (abs_window % 2) as u8,
-                        &bitmap,
+                        bitmap_to_u64(&bitmap, self.window_size),
                         false,
                     )),
                     reassembled: None,
@@ -1245,7 +1256,12 @@ mod std_ext {
 
         fn finalize(&mut self) -> ReceiverResult {
             let bitmap = self.window_bitmap(self.all1_window);
-            let nack = Ack::new(self.rule_id, (self.all1_window % 2) as u8, &bitmap, false);
+            let nack = Ack::new(
+                self.rule_id,
+                (self.all1_window % 2) as u8,
+                bitmap_to_u64(&bitmap, self.window_size),
+                false,
+            );
 
             // O(n) contiguity check: if we have n tiles and max index is n-1,
             // all indices 0..n must be present (HashMap keys are unique).
@@ -1272,7 +1288,7 @@ mod std_ext {
                     ack: Some(Ack::new(
                         self.rule_id,
                         (self.all1_window % 2) as u8,
-                        &bitmap,
+                        bitmap_to_u64(&bitmap, self.window_size),
                         true,
                     )),
                     reassembled: Some(data),
