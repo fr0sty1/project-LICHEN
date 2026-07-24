@@ -479,12 +479,6 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         &self.rpl
     }
 
-    /// Mutable RPL node access (test only).
-    #[cfg(test)]
-    pub fn rpl_node_mut(&mut self) -> &mut RplNode {
-        &mut self.rpl
-    }
-
     /// Current generation of this stack instance. RplRuntime bindings are tied to
     /// this value; reprovision or reset increments it to invalidate stale runtimes.
     pub fn generation(&self) -> u64 {
@@ -542,7 +536,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             Ok(Some(packet)) => {
                 if packet.len > wire.len() {
                     let (now_ms, _maintenance) = runtime
-                        .complete_receive(&mut self.rpl, action, post_await_ms)
+                        .complete_receive(&mut self.rpl, action, post_await_ms, self.generation)
                         .map_err(RplRuntimeReceiveError::Action)?;
                     self.routing_now_ms = self.routing_now_ms.max(now_ms);
                     return Err(RplRuntimeReceiveError::Receive(RplReceiveError::Receive(
@@ -556,10 +550,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                 match process_result {
                     Ok(outcome) => Some(outcome),
                     Err(e) => {
-                        let (now_ms, _maintenance) = runtime
-                            .complete_receive(&mut self.rpl, action, post_await_ms)
-                            .map_err(RplRuntimeReceiveError::Action)?;
-                        self.routing_now_ms = self.routing_now_ms.max(now_ms);
+                        let _ = runtime.complete_receive(&mut self.rpl, action, post_await_ms, self.generation);
                         return Err(e);
                     }
                 }
@@ -567,7 +558,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             Ok(None) => None,
             Err(_) => {
                 let (now_ms, _maintenance) = runtime
-                    .complete_receive(&mut self.rpl, action, post_await_ms)
+                    .complete_receive(&mut self.rpl, action, post_await_ms, self.generation)
                     .map_err(RplRuntimeReceiveError::Action)?;
                 self.routing_now_ms = self.routing_now_ms.max(now_ms);
                 return Err(RplRuntimeReceiveError::Receive(RplReceiveError::Receive(
@@ -576,7 +567,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             }
         };
         let (now_ms, maintenance) = runtime
-            .complete_receive(&mut self.rpl, action, post_await_ms)
+            .complete_receive(&mut self.rpl, action, post_await_ms, self.generation)
             .map_err(RplRuntimeReceiveError::Action)?;
         self.routing_now_ms = self.routing_now_ms.max(now_ms);
         Ok(RplRuntimeReceiveOutcome {
@@ -617,13 +608,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
     ) -> Result<Option<RplMaintenanceOutcome>, RplRuntimeTrickleError> {
         self.routing_now_ms = self.routing_now_ms.max(observed_now_ms);
         runtime
-            .complete_trickle_expire(
-                &mut self.rpl,
-                action,
-                observed_now_ms,
-                rand_offset,
-                self.generation,
-            )
+            .complete_trickle_expire(&mut self.rpl, action, observed_now_ms, rand_offset, self.generation)
             .map_err(RplRuntimeTrickleError::Action)
     }
 
@@ -1272,6 +1257,16 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                 false
             };
             self.announces = staged_announces;
+            if let Some(evicted) = result.evicted_iid {
+                if let Some(position) = self
+                    .bootstrap_peers
+                    .iter()
+                    .position(|tracked| *tracked == evicted)
+                {
+                    self.bootstrap_peers.remove(position);
+                    self.stack.link().forget_peer(&evicted);
+                }
+            }
             if peer.iid == frame.sender.iid {
                 let announce_peer_is_new = matches!(
                     self.stack.link().peer_auth_state(&peer.iid),
@@ -1340,29 +1335,6 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                     &mut self.storage,
                     now_ms,
                 );
-                if outcome == DaoHandlingOutcome::Applied {
-                    if let Ok(parsed) = lichen_rpl::message::Dao::from_bytes(dao) {
-                        if parsed.ack_requested {
-                            let mut ack_body = [0u8; 20];
-                            ack_body[0] = parsed.rpl_instance_id;
-                            ack_body[1] = 0x80;
-                            ack_body[2] = parsed.dao_sequence;
-                            ack_body[3] = 0;
-                            ack_body[4..20].copy_from_slice(&self.rpl.router.dodag_id());
-                            if let Some(ack_packet) = rpl_ipv6_packet(
-                                self.local_rpl_addr,
-                                source,
-                                rpl_code::DAO_ACK,
-                                &ack_body,
-                            ) {
-                                let _ = self
-                                    .stack
-                                    .send_ipv6_to(&ack_packet, &ipv6_eui64(source))
-                                    .await;
-                            }
-                        }
-                    }
-                }
                 Ok(RplReceiveOutcome::Dao(outcome))
             }
             RplEvent::DaoForwarded { next_hop } => {

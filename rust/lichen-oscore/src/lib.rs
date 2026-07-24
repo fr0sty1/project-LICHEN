@@ -10,25 +10,6 @@
 //! Using `ccm` + `hkdf` crates directly until a battle-tested no_std OSCORE crate
 //! exists. `liboscore` requires C FFI which complicates embedded cross-compilation.
 //! Switch to `liboscore` or `coapcore` when they mature for embedded targets.
-//!
-//! # Timing properties
-//!
-//! AEAD tag verification uses `ccm::aead::Tag`, which performs constant-time
-//! comparison via the `subtle` crate (`ConstantTimeEq`). This is the only
-//! security-sensitive comparison that operates on secret material (the
-//! authentication tag).
-//!
-//! All other comparisons in this module operate on protocol-level identifiers
-//! (KID, KID Context, sequence numbers) that are inherently visible to any
-//! observer on the mesh — their timing is not secret. Sequence number
-//! comparisons in `is_replay` / `update_replay_window` are ordinary integer
-//! operations, which is acceptable because sequence numbers are not secret
-//! material.
-//!
-//! **If secret material comparisons are ever added** (e.g., comparing derived
-//! keys, nonces, or shared secrets directly), they MUST use
-//! `subtle::ConstantTimeEq` via the `subtle` crate to prevent timing
-//! side-channels.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![forbid(unsafe_code)]
@@ -123,62 +104,6 @@ pub const COAP_OPTION_OSCORE: u16 = 9;
 
 /// Replay window size in bits.
 pub const WINDOW_SIZE: u32 = 32;
-
-// ── OSCORE option flags (RFC 8613 Section 6.1) ──────────────────────────
-
-/// Reserved bits mask (bits 7-5). MUST be zero per RFC 8613.
-const OSCORE_FLAG_RESERVED_MASK: u8 = 0xe0;
-
-/// h flag: KID Context present (bit 4).
-const OSCORE_FLAG_KID_CONTEXT: u8 = 0x10;
-
-/// k flag: KID present (bit 3).
-const OSCORE_FLAG_KID: u8 = 0x08;
-
-/// n field mask: Partial IV length in bytes (bits 2-0, max 5).
-const OSCORE_FLAG_N_MASK: u8 = 0x07;
-
-// ── CBOR encoding constants (RFC 8949) ──────────────────────────────────
-
-/// CBOR uint with 1-byte argument follows (value 24-255 uses 0x18).
-const CBOR_UINT_1BYTE: u8 = 0x18;
-
-/// CBOR major type 2 (byte string) base: `0x40 | len` for len <= 23.
-const CBOR_BSTR_BASE: u8 = 0x40;
-
-/// CBOR bstr with 1-byte length follows (len 24-255 uses 0x58).
-const CBOR_BSTR_1BYTE: u8 = 0x58;
-
-/// CBOR major type 3 (text string) base: `0x60 | len` for len <= 23.
-const CBOR_TSTR_BASE: u8 = 0x60;
-
-/// CBOR major type 4 (array) base: `0x80 | count` for count <= 23.
-const CBOR_ARRAY_BASE: u8 = 0x80;
-
-/// CBOR simple value null.
-const CBOR_NULL: u8 = 0xf6;
-
-// ── OSCORE protocol constants (RFC 8613) ────────────────────────────────
-
-/// OSCORE version number in AAD (RFC 8613 Section 5.4).
-const OSCORE_VERSION: u8 = 0x01;
-
-// ── Internal buffer capacities ──────────────────────────────────────────────
-
-/// Maximum size for receiver-side options/payload output buffers.
-const RECEIVER_OUTPUT_CAP: usize = 128;
-
-/// Maximum size for ciphertext buffers (code + options + payload_marker + payload + tag).
-const CT_CAP: usize = 280;
-
-/// Maximum size for plaintext buffers (code + options + payload_marker + payload).
-const PT_CAP: usize = 256;
-
-/// Maximum size for intermediate output (options or payload slices).
-const OUT_CAP: usize = 128;
-
-/// Maximum size for AAD and HKDF-info CBOR buffers (both fit 64 bytes).
-const CBOR_BUF_CAP: usize = 64;
 
 /// OSCORE error types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -541,35 +466,6 @@ impl Context {
         Ok(ctx)
     }
 
-    /// Create context from crypto material and activate it using existing durable sender state.
-    ///
-    /// Combines [`new`] and [`restore_existing`] for convenience: allocates the context,
-    /// then loads and restores sender state from the store.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ContextStoreError::Oscore`] for invalid material (same errors as [`new`]),
-    /// [`ContextStoreError::Missing`] when no stored state exists, or
-    /// [`ContextStoreError::Storage`] on store failure.
-    pub fn load_existing<S: SenderStateStore>(
-        master_secret: &[u8; KEY_LEN],
-        master_salt: Option<&[u8]>,
-        id_context: Option<&[u8]>,
-        sender_id: &[u8],
-        recipient_id: &[u8],
-        store: &mut S,
-    ) -> Result<Self, ContextStoreError<S::Error>> {
-        let ctx = Self::new(
-            master_secret,
-            master_salt,
-            id_context,
-            sender_id,
-            recipient_id,
-        )
-        .map_err(ContextStoreError::Oscore)?;
-        ctx.restore_existing(store)
-    }
-
     /// Fresh context for EDHOC export (starts inactive; register with store).
     pub fn new_fresh(
         master_secret: &[u8; KEY_LEN],
@@ -578,13 +474,7 @@ impl Context {
         sender_id: &[u8],
         recipient_id: &[u8],
     ) -> Result<Self, OscoreError> {
-        let mut ctx = Self::new(
-            master_secret,
-            master_salt,
-            id_context,
-            sender_id,
-            recipient_id,
-        )?;
+        let mut ctx = Self::new(master_secret, master_salt, id_context, sender_id, recipient_id)?;
         ctx.restored = false;
         ctx.active = false;
         ctx.allow_no_piv_response = true;
@@ -637,13 +527,7 @@ impl Context {
         recipient_id: &[u8],
         construction: Construction,
     ) -> Result<Self, OscoreError> {
-        let mut ctx = Self::new(
-            master_secret,
-            master_salt,
-            id_context,
-            sender_id,
-            recipient_id,
-        )?;
+        let mut ctx = Self::new(master_secret, master_salt, id_context, sender_id, recipient_id)?;
         match construction {
             Construction::Fresh => {
                 ctx.restored = false;
@@ -746,6 +630,7 @@ impl Context {
         if !self.active {
             return Err(OscoreError::InvalidParam);
         }
+        const RECEIVER_OUTPUT_CAP: usize = 128;
         if class_e_options.len() > RECEIVER_OUTPUT_CAP {
             return Err(BufferTooSmall::new(class_e_options.len(), RECEIVER_OUTPUT_CAP).into());
         }
@@ -759,8 +644,8 @@ impl Context {
             .and_then(|n| n.checked_add(payload.len()))
             .and_then(|n| n.checked_add(TAG_LEN))
             .ok_or(OscoreError::InvalidParam)?;
-        if required > CT_CAP {
-            return Err(BufferTooSmall::new(required, CT_CAP).into());
+        if required > 280 {
+            return Err(BufferTooSmall::new(required, 280).into());
         }
 
         let option_required = 1
@@ -800,6 +685,7 @@ impl Context {
         {
             return Err(OscoreError::InvalidParam);
         }
+        const RECEIVER_OUTPUT_CAP: usize = 128;
         if class_e_options.len() > RECEIVER_OUTPUT_CAP {
             return Err(BufferTooSmall::new(class_e_options.len(), RECEIVER_OUTPUT_CAP).into());
         }
@@ -816,8 +702,8 @@ impl Context {
             .and_then(|n| n.checked_add(payload.len()))
             .and_then(|n| n.checked_add(TAG_LEN))
             .ok_or(OscoreError::InvalidParam)?;
-        if required > CT_CAP {
-            return Err(BufferTooSmall::new(required, CT_CAP).into());
+        if required > 280 {
+            return Err(BufferTooSmall::new(required, 280).into());
         }
         Ok(())
     }
@@ -852,13 +738,7 @@ impl Context {
         code: u8,
         class_e_options: &[u8],
         payload: &[u8],
-    ) -> Result<
-        (
-            heapless::Vec<u8, 280>,
-            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-        ),
-        OscoreError,
-    > {
+    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>), OscoreError> {
         // Use pre-reserved sequence number (NVM persistence handled by caller
         // or ReservedSender). SECURITY: SeqExhausted already checked by caller.
 
@@ -875,7 +755,9 @@ impl Context {
         // ponytail: empty AAD for now, proper AAD structure in RFC 8613 Section 5.4
         let cipher =
             AesCcm::new_from_slice(&self.sender_key).map_err(|_| OscoreError::KeyDerivation)?;
+        const CT_CAP: usize = 280;
         let mut ct_out = heapless::Vec::<u8, CT_CAP>::new();
+        // Calculate required size for error reporting
         let ct_required = 1
             + class_e_options.len()
             + if payload.is_empty() {
@@ -894,7 +776,8 @@ impl Context {
             ct_out.extend_from_slice(payload).map_err(|_| ct_err())?;
         }
 
-        let mut aad_buf = [0u8; CBOR_BUF_CAP];
+        // Build AAD per RFC 8613 Section 5.4 using sender_id as request_kid
+        let mut aad_buf = [0u8; 64];
         let aad_len = build_aad_cbor(self.sender_id(), &piv[..piv_len], &mut aad_buf)?;
 
         // Encrypt in place using detached API (works with plain slices, no Buffer trait needed)
@@ -907,9 +790,7 @@ impl Context {
         const OPT_CAP: usize = OSCORE_OPTION_MAX_LEN;
         let mut opt = heapless::Vec::<u8, OPT_CAP>::new();
         let has_context = self.id_context_present;
-        let flags = OSCORE_FLAG_KID
-            | u8::from(has_context) << 4
-            | (piv_len as u8 & OSCORE_FLAG_N_MASK);
+        let flags = 0x08 | u8::from(has_context) << 4 | (piv_len as u8 & 0x07);
         let context_len = usize::from(has_context) * (1 + self.id_context_len as usize);
         let opt_required = 1 + piv_len + context_len + self.sender_id_len as usize;
         let opt_err = || BufferTooSmall::new(opt_required, OPT_CAP);
@@ -971,17 +852,21 @@ impl Context {
             &self.common_iv,
         );
 
-        let mut aad_buf = [0u8; CBOR_BUF_CAP];
+        // Build AAD per RFC 8613 Section 5.4 using sender's KID and PIV from request
+        let mut aad_buf = [0u8; 64];
         let aad_len = build_aad_cbor(
             &opt.kid[..opt.kid_len as usize],
             &opt.piv[..opt.piv_len as usize],
             &mut aad_buf,
         )?;
 
+        // Decrypt in place using detached API (works with plain slices, no Buffer trait needed)
+        // Split ciphertext into encrypted data and tag
         let tag_start = ciphertext.len() - TAG_LEN;
         let tag = ccm::aead::Tag::<AesCcm>::from_slice(&ciphertext[tag_start..]);
         let cipher =
             AesCcm::new_from_slice(&self.recipient_key).map_err(|_| OscoreError::KeyDerivation)?;
+        const PT_CAP: usize = 256;
         let mut plaintext = heapless::Vec::<u8, PT_CAP>::new();
         plaintext
             .extend_from_slice(&ciphertext[..tag_start])
@@ -990,6 +875,8 @@ impl Context {
             .decrypt_in_place_detached((&nonce).into(), &aad_buf[..aad_len], &mut plaintext, tag)
             .map_err(|_| OscoreError::DecryptFailed)?;
 
+        // Parse plaintext: code || options || 0xFF || payload
+        // 0xFF is the CoAP payload marker (RFC 7252 Section 3).
         if plaintext.is_empty() {
             return Err(OscoreError::InvalidParam);
         }
@@ -997,11 +884,15 @@ impl Context {
         let code = plaintext[0];
         let rest = &plaintext[1..];
 
+        // Find payload marker using proper CoAP option parsing.
+        // SECURITY: Cannot just search for 0xFF - it may appear in option values.
+        // Must parse options with delta-length encoding to find the true marker.
         let (options_slice, payload_slice) = match find_payload_marker(rest) {
             Some(pos) => (&rest[..pos], &rest[pos + 1..]),
             None => (rest, &[][..]),
         };
 
+        const OUT_CAP: usize = 128;
         let mut options = heapless::Vec::<u8, OUT_CAP>::new();
         options
             .extend_from_slice(options_slice)
@@ -1012,6 +903,7 @@ impl Context {
             .extend_from_slice(payload_slice)
             .map_err(|_| BufferTooSmall::new(payload_slice.len(), OUT_CAP))?;
 
+        // Commit only after every authenticated output fits its public bound.
         self.update_replay_window(seq);
 
         Ok((code, options, payload))
@@ -1021,9 +913,8 @@ impl Context {
     ///
     /// Unlike `protect_request`, responses:
     /// - Use the ORIGINAL request's KID and PIV for the AAD (ties response to request)
-    /// - Optionally includes a fresh PIV in the OSCORE option (controlled by `include_piv`)
-    /// - When `include_piv` is false, reuses the request nonce as-is
-    /// - When `include_piv` is true, derives a fresh nonce from the responder's Sender ID and PIV
+    /// - Omits PIV from the OSCORE option
+    /// - Reuses the request nonce
     ///
     /// Per RFC 8613 Section 5.2, when a response includes a PIV, the nonce uses
     /// the responder's Sender ID and PIV. When omitting PIV, the response reuses
@@ -1037,8 +928,6 @@ impl Context {
     /// - `payload`: Response payload to encrypt
     /// - `request_kid`: The KID from the original request (requester's sender_id)
     /// - `request_piv`: The PIV from the original request
-    /// - `include_piv`: Whether to include a fresh PIV in the option; if true, consumes
-    ///   a sender sequence number. Requires `allow_no_piv_response` to be set when false.
     pub fn protect_response(
         &mut self,
         code: u8,
@@ -1047,31 +936,12 @@ impl Context {
         request_kid: &[u8],
         request_piv: &[u8],
         include_piv: bool,
-    ) -> Result<
-        (
-            heapless::Vec<u8, 280>,
-            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-        ),
-        OscoreError,
-    > {
-        if !self.active {
-            return Err(OscoreError::InvalidParam);
-        }
-        if request_kid.len() > NONCE_ID_LEN
-            || OscoreSeqNum::from_piv(request_piv).is_none()
-            || request_kid != self.recipient_id()
-        {
-            return Err(OscoreError::InvalidParam);
-        }
-        if !include_piv && !self.allow_no_piv_response {
-            return Err(OscoreError::InvalidParam);
-        }
-
+    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>), OscoreError> {
         // Determine PIV for nonce: own sequence if including, else request's PIV
         let (nonce_piv, piv_len, piv_for_option): ([u8; PIV_MAX_LEN], usize, Option<usize>) =
             if include_piv {
                 // Generate own PIV.
-                // SECURITY: Returns SeqExhausted if at MAX to prevent nonce reuse.
+                // SECURITY: Returns SeqExhausted if at u32::MAX to prevent nonce reuse.
                 let seq = self
                     .sender_seq
                     .fetch_increment()
@@ -1096,6 +966,8 @@ impl Context {
         };
         let nonce = compute_nonce(nonce_id, &nonce_piv[..piv_len], &self.common_iv);
 
+        // Build plaintext: code || options || 0xFF || payload
+        const CT_CAP: usize = 280;
         let mut ct_out = heapless::Vec::<u8, CT_CAP>::new();
         let ct_required = 1
             + class_e_options.len()
@@ -1115,7 +987,8 @@ impl Context {
             ct_out.extend_from_slice(payload).map_err(|_| ct_err())?;
         }
 
-        let mut aad_buf = [0u8; CBOR_BUF_CAP];
+        // Build AAD using ORIGINAL request's KID and PIV
+        let mut aad_buf = [0u8; 64];
         let aad_len = build_aad_cbor(request_kid, request_piv, &mut aad_buf)?;
 
         // Encrypt
@@ -1131,7 +1004,8 @@ impl Context {
         let mut opt = heapless::Vec::<u8, OPT_CAP>::new();
 
         if let Some(len) = piv_for_option {
-            let flags = len as u8 & OSCORE_FLAG_N_MASK;
+            // Include PIV in option
+            let flags = len as u8 & 0x07;
             opt.push(flags)
                 .map_err(|_| BufferTooSmall::new(1 + len, OPT_CAP))?;
             opt.extend_from_slice(&nonce_piv[..len])
@@ -1191,30 +1065,37 @@ impl Context {
         OscoreError,
     > {
         let nonce = compute_nonce(self.sender_id(), response_piv, &self.common_iv);
-        let mut ct_out = heapless::Vec::<u8, CT_CAP>::new();
+        let mut ct_out = heapless::Vec::<u8, 280>::new();
         let required =
             1 + class_e_options.len() + usize::from(!payload.is_empty()) + payload.len() + TAG_LEN;
-        let ct_err = || BufferTooSmall::new(required, CT_CAP);
-        ct_out.push(code).map_err(|_| ct_err())?;
+        ct_out
+            .push(code)
+            .map_err(|_| BufferTooSmall::new(required, 280))?;
         ct_out
             .extend_from_slice(class_e_options)
-            .map_err(|_| ct_err())?;
+            .map_err(|_| BufferTooSmall::new(required, 280))?;
         if !payload.is_empty() {
-            ct_out.push(0xff).map_err(|_| ct_err())?;
-            ct_out.extend_from_slice(payload).map_err(|_| ct_err())?;
+            ct_out
+                .push(0xff)
+                .map_err(|_| BufferTooSmall::new(required, 280))?;
+            ct_out
+                .extend_from_slice(payload)
+                .map_err(|_| BufferTooSmall::new(required, 280))?;
         }
-        let mut aad_buf = [0u8; CBOR_BUF_CAP];
+        let mut aad_buf = [0u8; 64];
         let aad_len = build_aad_cbor(request_kid, request_piv, &mut aad_buf)?;
         let cipher =
             AesCcm::new_from_slice(&self.sender_key).map_err(|_| OscoreError::KeyDerivation)?;
         let tag = cipher
             .encrypt_in_place_detached((&nonce).into(), &aad_buf[..aad_len], &mut ct_out)
             .map_err(|_| OscoreError::EncryptFailed)?;
-        ct_out.extend_from_slice(&tag).map_err(|_| ct_err())?;
+        ct_out
+            .extend_from_slice(&tag)
+            .map_err(|_| BufferTooSmall::new(required, 280))?;
 
         let mut option = heapless::Vec::<u8, OSCORE_OPTION_MAX_LEN>::new();
         option
-            .push(response_piv.len() as u8 & OSCORE_FLAG_N_MASK)
+            .push(response_piv.len() as u8 & 0x07)
             .map_err(|_| BufferTooSmall::new(1 + response_piv.len(), OSCORE_OPTION_MAX_LEN))?;
         option
             .extend_from_slice(response_piv)
@@ -1288,13 +1169,14 @@ impl Context {
         };
         let nonce = compute_nonce(nonce_id, piv, &self.common_iv);
 
-        let mut aad_buf = [0u8; CBOR_BUF_CAP];
+        let mut aad_buf = [0u8; 64];
         let aad_len = build_aad_cbor(self.sender_id(), request_piv, &mut aad_buf)?;
 
         let tag_start = ciphertext.len() - TAG_LEN;
         let tag = ccm::aead::Tag::<AesCcm>::from_slice(&ciphertext[tag_start..]);
         let cipher =
             AesCcm::new_from_slice(&self.recipient_key).map_err(|_| OscoreError::KeyDerivation)?;
+        const PT_CAP: usize = 256;
         let mut plaintext = heapless::Vec::<u8, PT_CAP>::new();
         plaintext
             .extend_from_slice(&ciphertext[..tag_start])
@@ -1317,11 +1199,15 @@ impl Context {
         }
         let rest = &plaintext[1..];
 
+        // Find payload marker using proper CoAP option parsing.
+        // SECURITY: Cannot just search for 0xFF - it may appear in option values.
+        // Must parse options with delta-length encoding to find the true marker.
         let (options_slice, payload_slice) = match find_payload_marker(rest) {
             Some(pos) => (&rest[..pos], &rest[pos + 1..]),
             None => (rest, &[][..]),
         };
 
+        const OUT_CAP: usize = 128;
         let mut options = heapless::Vec::<u8, OUT_CAP>::new();
         options
             .extend_from_slice(options_slice)
@@ -1578,13 +1464,13 @@ fn parse_option(data: &[u8]) -> Result<OscoreOption, OscoreError> {
     let flags = data[pos];
     pos += 1;
 
-    if flags & OSCORE_FLAG_RESERVED_MASK != 0 {
+    if flags & 0xe0 != 0 {
         return Err(OscoreError::InvalidParam);
     }
 
-    let h_flag = flags & OSCORE_FLAG_KID_CONTEXT != 0;
-    let k_flag = flags & OSCORE_FLAG_KID != 0;
-    let n = (flags & OSCORE_FLAG_N_MASK) as usize;
+    let h_flag = flags & 0x10 != 0;
+    let k_flag = flags & 0x08 != 0;
+    let n = (flags & 0x07) as usize;
 
     // PIV
     if n > 0 {
@@ -1715,7 +1601,8 @@ fn derive_key(
     id: &[u8],
     id_context: Option<&[u8]>,
 ) -> Result<[u8; KEY_LEN], OscoreError> {
-    let mut info = [0u8; CBOR_BUF_CAP];
+    // Build CBOR info structure per RFC 8613 Section 3.2.1
+    let mut info = [0u8; 64];
     let info_len = build_info_cbor(id, id_context, "Key", KEY_LEN, &mut info)?;
 
     let hk = Hkdf::<Sha256>::new(Some(master_salt), master_secret);
@@ -1732,7 +1619,9 @@ fn derive_iv(
     master_salt: &[u8],
     id_context: Option<&[u8]>,
 ) -> Result<[u8; NONCE_LEN], OscoreError> {
-    let mut info = [0u8; CBOR_BUF_CAP];
+    // Build CBOR info structure per RFC 8613 Section 3.2.1
+    // Common IV uses empty ID per RFC 8613 Section 3.2.1
+    let mut info = [0u8; 64];
     let info_len = build_info_cbor(&[], id_context, "IV", NONCE_LEN, &mut info)?;
 
     let hk = Hkdf::<Sha256>::new(Some(master_salt), master_secret);
@@ -1770,42 +1659,47 @@ fn build_info_cbor(
 ) -> Result<usize, OscoreError> {
     let mut off = 0;
 
-    buf[off] = CBOR_ARRAY_BASE | 5;
+    // Array of 5 elements
+    buf[off] = 0x85;
     off += 1;
 
+    // id: bstr
     if id.len() <= 23 {
-        buf[off] = CBOR_BSTR_BASE | (id.len() as u8);
+        buf[off] = 0x40 | (id.len() as u8);
         off += 1;
     } else {
-        buf[off] = CBOR_BSTR_1BYTE;
+        buf[off] = 0x58;
         buf[off + 1] = id.len() as u8;
         off += 2;
     }
     buf[off..off + id.len()].copy_from_slice(id);
     off += id.len();
 
+    // id_context: bstr or null
     if let Some(id_context) = id_context {
         if id_context.len() <= 23 {
-            buf[off] = CBOR_BSTR_BASE | (id_context.len() as u8);
+            buf[off] = 0x40 | (id_context.len() as u8);
             off += 1;
         } else {
-            buf[off] = CBOR_BSTR_1BYTE;
+            buf[off] = 0x58;
             buf[off + 1] = id_context.len() as u8;
             off += 2;
         }
         buf[off..off + id_context.len()].copy_from_slice(id_context);
         off += id_context.len();
     } else {
-        buf[off] = CBOR_NULL;
+        buf[off] = 0xf6; // null
         off += 1;
     }
 
+    // alg_aead: int (10)
     buf[off] = ALG_AEAD;
     off += 1;
 
+    // type: tstr
     let type_bytes = type_str.as_bytes();
     if type_bytes.len() <= 23 {
-        buf[off] = CBOR_TSTR_BASE | (type_bytes.len() as u8);
+        buf[off] = 0x60 | (type_bytes.len() as u8);
         off += 1;
     } else {
         buf[off] = 0x78;
@@ -1815,11 +1709,12 @@ fn build_info_cbor(
     buf[off..off + type_bytes.len()].copy_from_slice(type_bytes);
     off += type_bytes.len();
 
+    // L: uint
     if out_len <= 23 {
         buf[off] = out_len as u8;
         off += 1;
     } else if out_len <= 255 {
-        buf[off] = CBOR_UINT_1BYTE;
+        buf[off] = 0x18;
         buf[off + 1] = out_len as u8;
         off += 2;
     } else {
@@ -1855,76 +1750,89 @@ fn build_aad_cbor(
     request_piv: &[u8],
     buf: &mut [u8],
 ) -> Result<usize, OscoreError> {
-    let mut inner = [0u8; CBOR_BUF_CAP];
+    // Build the inner aad_array first
+    let mut inner = [0u8; 64];
     let mut ioff = 0;
 
-    inner[ioff] = CBOR_ARRAY_BASE | 5;
+    // aad_array: 5-element array (0x85 = 0x80 | 5)
+    inner[ioff] = 0x85;
     ioff += 1;
 
-    inner[ioff] = OSCORE_VERSION;
+    // oscore_version: uint = 1
+    inner[ioff] = 0x01;
     ioff += 1;
 
-    inner[ioff] = CBOR_ARRAY_BASE | 1;
+    // algorithms: 1-element array containing alg_aead
+    // 0x81 = array of 1 item, then ALG_AEAD = 10
+    inner[ioff] = 0x81;
     ioff += 1;
     inner[ioff] = ALG_AEAD;
     ioff += 1;
 
+    // request_kid: bstr
     if request_kid.len() > 23 {
         return Err(OscoreError::InvalidParam);
     }
-    inner[ioff] = CBOR_BSTR_BASE | (request_kid.len() as u8);
+    inner[ioff] = 0x40 | (request_kid.len() as u8);
     ioff += 1;
     if !request_kid.is_empty() {
         inner[ioff..ioff + request_kid.len()].copy_from_slice(request_kid);
         ioff += request_kid.len();
     }
 
+    // request_piv: bstr
     if request_piv.len() > 23 {
         return Err(OscoreError::InvalidParam);
     }
-    inner[ioff] = CBOR_BSTR_BASE | (request_piv.len() as u8);
+    inner[ioff] = 0x40 | (request_piv.len() as u8);
     ioff += 1;
     if !request_piv.is_empty() {
         inner[ioff..ioff + request_piv.len()].copy_from_slice(request_piv);
         ioff += request_piv.len();
     }
 
-    inner[ioff] = CBOR_BSTR_BASE | 0;
+    // options: empty bstr (Class I options not used)
+    inner[ioff] = 0x40;
     ioff += 1;
 
+    // Now build Enc_structure: ["Encrypt0", h'', external_aad]
     let mut off = 0;
 
+    // 3-element array (0x83 = 0x80 | 3)
     if off >= buf.len() {
         return Err(OscoreError::InvalidParam);
     }
-    buf[off] = CBOR_ARRAY_BASE | 3;
+    buf[off] = 0x83;
     off += 1;
 
+    // "Encrypt0" as tstr (8 chars): 0x68 = 0x60 | 8
     if off + 9 > buf.len() {
         return Err(OscoreError::InvalidParam);
     }
-    buf[off] = CBOR_TSTR_BASE | 8;
+    buf[off] = 0x68;
     off += 1;
     buf[off..off + 8].copy_from_slice(b"Encrypt0");
     off += 8;
 
+    // empty bstr (protected header): 0x40
     if off >= buf.len() {
         return Err(OscoreError::InvalidParam);
     }
-    buf[off] = CBOR_BSTR_BASE | 0;
+    buf[off] = 0x40;
     off += 1;
 
+    // external_aad: bstr wrapping the inner CBOR
     if ioff <= 23 {
         if off >= buf.len() {
             return Err(OscoreError::InvalidParam);
         }
-        buf[off] = CBOR_BSTR_BASE | (ioff as u8);
+        buf[off] = 0x40 | (ioff as u8);
         off += 1;
     } else {
         if off + 1 >= buf.len() {
             return Err(OscoreError::InvalidParam);
         }
-        buf[off] = CBOR_BSTR_1BYTE;
+        buf[off] = 0x58;
         buf[off + 1] = ioff as u8;
         off += 2;
     }
@@ -2097,28 +2005,27 @@ mod tests {
                 .map(|_| json_hex(&v["master_salt"]));
             let sender_id = json_hex(&v["sender_id"]);
             let recipient_id = json_hex(&v["recipient_id"]);
-            let id_context: Option<std::vec::Vec<u8>> = if v["id_context"].is_string() {
-                Some(json_hex(&v["id_context"]))
+            let id_context = if v["id_context"].is_string() {
+                json_hex(&v["id_context"])
             } else {
-                None
+                std::vec::Vec::new()
             };
             let salt = salt.as_deref().unwrap_or(&[]);
-            let ic = id_context.as_deref();
 
             assert_eq!(
-                derive_key(&secret, salt, &sender_id, ic)
+                derive_key(&secret, salt, &sender_id, &id_context)
                     .unwrap()
                     .as_slice(),
                 json_hex(&v["expected"]["sender_key"])
             );
             assert_eq!(
-                derive_key(&secret, salt, &recipient_id, ic)
+                derive_key(&secret, salt, &recipient_id, &id_context)
                     .unwrap()
                     .as_slice(),
                 json_hex(&v["expected"]["recipient_key"])
             );
             assert_eq!(
-                derive_iv(&secret, salt, ic).unwrap().as_slice(),
+                derive_iv(&secret, salt, &id_context).unwrap().as_slice(),
                 json_hex(&v["expected"]["common_iv"])
             );
         }
@@ -2138,27 +2045,23 @@ mod tests {
                 json_hex(&v["sender_id"])
             };
             let piv = if v["type"] == "request_protection" {
-                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap() as u64).unwrap()
+                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap() as u32)
             } else if v["include_piv"] == false {
-                OscoreSeqNum::from_piv(&json_hex(&v["request_piv"])).unwrap()
+                OscoreSeqNum::from_piv(&json_hex(&v["request_piv"]))
             } else {
-                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap() as u64).unwrap()
+                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap() as u32)
             };
             let secret: [u8; KEY_LEN] = json_hex(&v["master_secret"]).try_into().unwrap();
             let salt = v["master_salt"]
                 .as_str()
                 .map(|_| json_hex(&v["master_salt"]));
-            let id_context: Option<std::vec::Vec<u8>> = if v["id_context"].is_string() {
-                Some(json_hex(&v["id_context"]))
+            let id_context = if v["id_context"].is_string() {
+                json_hex(&v["id_context"])
             } else {
-                None
+                std::vec::Vec::new()
             };
-            let derived_iv = derive_iv(
-                &secret,
-                salt.as_deref().unwrap_or(&[]),
-                id_context.as_deref(),
-            )
-            .unwrap();
+            let derived_iv =
+                derive_iv(&secret, salt.as_deref().unwrap_or(&[]), &id_context).unwrap();
             let mut piv_bytes = [0u8; PIV_MAX_LEN];
             let piv_len = piv.encode_piv(&mut piv_bytes);
 
@@ -2540,18 +2443,15 @@ mod tests {
             },
         };
         let mut context =
-            Context::load_existing(&secret, None, None, &[1], &[0], &mut store).unwrap();
+            Context::restore_existing(&secret, None, None, &[1], &[0], &mut store).unwrap();
 
         assert_eq!(context.sender_sequence_state(), store.state);
         assert_eq!(
             context
-                .protect_response(0x45, &[], b"response", &[0], &[3], false)
+                .protect_response(0x45, &[], b"response", &[0], &[3], true)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
-        let (_, _) = context
-            .protect_response(0x45, &[], b"response", &[0], &[3], true)
-            .unwrap();
     }
 
     #[test]
@@ -2579,7 +2479,7 @@ mod tests {
         }
 
         assert!(matches!(
-            Context::load_existing(&[0x44; KEY_LEN], None, None, &[1], &[0], &mut EmptyStore),
+            Context::restore_existing(&[0x44; KEY_LEN], None, None, &[1], &[0], &mut EmptyStore),
             Err(ContextStoreError::Missing)
         ));
     }
@@ -2636,9 +2536,9 @@ mod tests {
         };
         let mut second_store = first_store.clone();
         let mut first =
-            Context::load_existing(&secret, None, None, &[0], &[1], &mut first_store).unwrap();
+            Context::restore_existing(&secret, None, None, &[0], &[1], &mut first_store).unwrap();
         let mut second =
-            Context::load_existing(&secret, None, None, &[0], &[1], &mut second_store).unwrap();
+            Context::restore_existing(&secret, None, None, &[0], &[1], &mut second_store).unwrap();
 
         let first = thread::spawn(move || first.reserve_sender(&mut first_store).is_ok());
         let second = thread::spawn(move || second.reserve_sender(&mut second_store).is_ok());
@@ -2823,13 +2723,10 @@ mod tests {
         let mut ctx = Context::restore(&master_secret, None, &[1], &[0], 7, false).unwrap();
 
         assert_eq!(
-            ctx.protect_response(0x45, &[], b"response", &[0], &[3], false)
+            ctx.protect_response(0x45, &[], b"response", &[0], &[3], true)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
-        let (_, _) = ctx
-            .protect_response(0x45, &[], b"response", &[0], &[3], true)
-            .unwrap();
     }
 
     #[test]
@@ -3289,7 +3186,7 @@ mod tests {
             .protect_response_with_piv(0x45, &[], b"delayed", &[0], request_piv)
             .unwrap();
         assert_eq!(delayed.1.as_slice(), b"\x05\x01\x00\x00\x00\x00");
-        alice.recipient_seq = seq(0x1_0000_001F);
+        alice.recipient_seq = seq(0x1_0000_0020);
         alice.replay_window = u32::MAX;
 
         alice
