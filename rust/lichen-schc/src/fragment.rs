@@ -267,7 +267,7 @@ impl Ack {
         let trailing = (self.bitmap & BITMAP_MASK).trailing_ones() as usize;
         let kept = WINDOW_SIZE - trailing;
         for position in 0..kept {
-            if self.bitmap & (1u64 << (62 - (WINDOW_SIZE - 1 - position))) != 0 {
+            if self.bitmap & (1u64 << (WINDOW_SIZE - 1 - position)) != 0 {
                 let byte_offset = 3 + position / 8;
                 let bit_offset = 7 - position % 8;
                 out[byte_offset] |= 1 << bit_offset;
@@ -939,7 +939,7 @@ impl<'a> FragmentReceiver<'a> {
             self.done = true;
             result
         } else {
-            self.respond_with_mic_failure(Ack::new(rule_id, self.all1_window, bitmap | 1, false))
+            self.respond_with_mic_failure(Ack::new(rule_id, self.all1_window, BITMAP_MASK, false))
         }
     }
 
