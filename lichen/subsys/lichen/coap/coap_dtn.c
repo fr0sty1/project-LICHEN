@@ -20,6 +20,8 @@
 
 LOG_MODULE_REGISTER(lichen_coap_dtn, CONFIG_LICHEN_COAP_DTN_LOG_LEVEL);
 
+#define DEADDROP_QUERY_OPTS_MAX 8
+
 static const struct lichen_deaddrop_provider *s_provider;
 static struct lichen_dtn_buffer s_dtn_buf;
 static K_MUTEX_DEFINE(s_dtn_buf_mutex);
@@ -91,16 +93,19 @@ static int deaddrop_oscore_respond(struct coap_resource *resource,
 				   struct coap_packet *request,
 				   struct sockaddr *addr, socklen_t addr_len,
 				   struct oscore_ctx *ctx, const uint8_t *piv,
-				   size_t piv_len, uint8_t code)
+				   size_t piv_len, uint8_t code,
+				   uint16_t content_format,
+				   const uint8_t *payload, size_t payload_len)
 {
 	uint8_t buf[256];
 	struct coap_packet resp;
 	int ret = coap_oscore_protect_response(ctx, piv, piv_len, request,
-					       code, NULL, 0, &resp, buf,
-					       sizeof(buf));
+					       code, payload, payload_len,
+					       &resp, buf, sizeof(buf));
 	if (ret < 0) {
 		return lichen_coap_respond(resource, request, addr, addr_len,
-					   code, 0, NULL, 0);
+					   code, content_format, payload,
+					   payload_len);
 	}
 	ret = coap_resource_send(resource, &resp, addr, addr_len, NULL);
 	return ret;
@@ -181,7 +186,8 @@ static int deaddrop_post(struct coap_resource *resource,
 			return deaddrop_oscore_respond(resource, request, addr,
 						       addr_len, ctx, piv,
 						       piv_len,
-						       COAP_RESPONSE_CODE_TOO_MANY_REQUESTS);
+						       COAP_RESPONSE_CODE_TOO_MANY_REQUESTS,
+						       0, NULL, 0);
 		}
 #endif
 		return COAP_RESPONSE_CODE_TOO_MANY_REQUESTS;
@@ -199,7 +205,8 @@ static int deaddrop_post(struct coap_resource *resource,
 							       request, addr,
 							       addr_len, ctx,
 							       piv, piv_len,
-							       COAP_RESPONSE_CODE_INTERNAL_ERROR);
+							       COAP_RESPONSE_CODE_INTERNAL_ERROR,
+							       0, NULL, 0);
 			}
 #endif
 			return lichen_coap_respond(resource, request, addr,
@@ -219,11 +226,52 @@ static int deaddrop_post(struct coap_resource *resource,
 	if (is_protected && ctx != NULL) {
 		return deaddrop_oscore_respond(resource, request, addr,
 					       addr_len, ctx, piv, piv_len,
-					       resp_code);
+					       resp_code, 0, NULL, 0);
 	}
 #endif
 	return lichen_coap_respond(resource, request, addr, addr_len,
 				   resp_code, 0, NULL, 0);
+}
+
+static int parse_deaddrop_query(struct coap_packet *request,
+				char *node, size_t node_max,
+				char *type, size_t type_max,
+				uint32_t *after_unix)
+{
+	struct coap_option qopts[DEADDROP_QUERY_OPTS_MAX];
+	int qcnt = coap_find_options(request, COAP_OPTION_URI_QUERY, qopts,
+				     DEADDROP_QUERY_OPTS_MAX);
+	for (int i = 0; i < qcnt; i++) {
+		if (qopts[i].len > 5 &&
+		    memcmp(qopts[i].value, "node=", 5) == 0) {
+			size_t vlen = qopts[i].len - 5;
+			if (vlen < node_max) {
+				memcpy(node, qopts[i].value + 5, vlen);
+				node[vlen] = '\0';
+			}
+		} else if (qopts[i].len > 5 &&
+			   memcmp(qopts[i].value, "type=", 5) == 0) {
+			size_t vlen = qopts[i].len - 5;
+			if (vlen < type_max) {
+				memcpy(type, qopts[i].value + 5, vlen);
+				type[vlen] = '\0';
+			}
+		} else if (qopts[i].len > 6 &&
+			   memcmp(qopts[i].value, "after=", 6) == 0) {
+			char buf[16];
+			size_t vlen = qopts[i].len - 6;
+			if (vlen < sizeof(buf)) {
+				memcpy(buf, qopts[i].value + 6, vlen);
+				buf[vlen] = '\0';
+				char *end = NULL;
+				unsigned long val = strtoul(buf, &end, 10);
+				if (end != buf && val <= UINT32_MAX) {
+					*after_unix = (uint32_t)val;
+				}
+			}
+		}
+	}
+	return qcnt;
 }
 
 static int deaddrop_get(struct coap_resource *resource,
@@ -234,35 +282,112 @@ static int deaddrop_get(struct coap_resource *resource,
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
 	}
-	const char *node = NULL;
-	struct coap_option qopts[4];
-	int qcnt = coap_find_options(request, COAP_OPTION_URI_QUERY, qopts, 4);
-	for (int i = 0; i < qcnt; i++) {
-		if (qopts[i].len > 5 &&
-		    memcmp(qopts[i].value, "node=", 5) == 0) {
-			node = (const char *)qopts[i].value + 5;
-			break;
+	uint8_t peer_eui64[8] = {0};
+	if (addr_len >= sizeof(struct sockaddr_in6) &&
+	    addr->sa_family == AF_INET6) {
+		const struct sockaddr_in6 *in6 =
+			(const struct sockaddr_in6 *)addr;
+		memcpy(peer_eui64, &in6->sin6_addr.s6_addr[8], 8);
+		lichen_eui64_to_iid(peer_eui64, peer_eui64);
+	}
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+	struct oscore_ctx *ctx = NULL;
+	uint8_t piv[OSCORE_PIV_MAX_LEN];
+	size_t piv_len = 0;
+	bool is_protected = coap_oscore_is_protected(request);
+	if (is_protected) {
+		if (oscore_ctx_get_by_eui64(peer_eui64, &ctx) != OSCORE_OK ||
+		    ctx == NULL) {
+			return coap_oscore_send_unauthorized(resource, request,
+							     addr, addr_len);
+		}
+		uint8_t orig_code;
+		uint8_t opts[32];
+		size_t opt_len = sizeof(opts);
+		uint8_t plain[64];
+		size_t plain_len = sizeof(plain);
+		int r = coap_oscore_unprotect_request(ctx, request, &orig_code,
+						      opts, &opt_len, plain,
+						      &plain_len, piv,
+						      &piv_len);
+		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_UNAUTHORIZED;
+		if (orig_code != COAP_METHOD_GET) {
+			return COAP_RESPONSE_CODE_NOT_ALLOWED;
 		}
 	}
+#endif
+	char node[64] = {0};
+	char type[32] = {0};
+	uint32_t after_unix = 0;
+	parse_deaddrop_query(request, node, sizeof(node),
+			     type, sizeof(type), &after_unix);
+	uint8_t raw_buf[CONFIG_LICHEN_DTN_MAX_PACKET_SIZE];
 	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
-	uint8_t buf[256];
-	int len = s_provider->retrieve(buf, sizeof(buf), node);
+	int raw_len = s_provider->retrieve(raw_buf, sizeof(raw_buf),
+					   node[0] ? node : NULL);
+	uint16_t pending = lichen_dtn_len(&s_dtn_buf);
 	k_mutex_unlock(&s_dtn_buf_mutex);
-	if (len < 0) {
+	if (raw_len < 0) {
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+		if (is_protected && ctx != NULL) {
+			return deaddrop_oscore_respond(resource, request, addr,
+						       addr_len, ctx, piv,
+						       piv_len,
+						       COAP_RESPONSE_CODE_INTERNAL_ERROR,
+						       0, NULL, 0);
+		}
+#endif
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL,
 				    0);
 	}
-	if ((size_t)len > sizeof(buf)) {
+	if ((size_t)raw_len > sizeof(raw_buf)) {
 		LOG_ERR("deaddrop retrieve returned %d > %zu bytes",
-			len, sizeof(buf));
+			raw_len, sizeof(raw_buf));
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+		if (is_protected && ctx != NULL) {
+			return deaddrop_oscore_respond(resource, request, addr,
+						       addr_len, ctx, piv,
+						       piv_len,
+						       COAP_RESPONSE_CODE_INTERNAL_ERROR,
+						       0, NULL, 0);
+		}
+#endif
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL,
 				    0);
 	}
+	uint8_t resp_buf[LICHEN_COAP_SERVER_MAX_PAYLOAD];
+	int resp_len = senml_encode_deaddrop(NULL, dtn_get_unix_time(),
+					     pending, resp_buf,
+					     sizeof(resp_buf));
+	if (resp_len < 0) {
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+		if (is_protected && ctx != NULL) {
+			return deaddrop_oscore_respond(resource, request, addr,
+						       addr_len, ctx, piv,
+						       piv_len,
+						       COAP_RESPONSE_CODE_INTERNAL_ERROR,
+						       0, NULL, 0);
+		}
+#endif
+		return lichen_coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL,
+				    0);
+	}
+#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+	if (is_protected && ctx != NULL) {
+		return deaddrop_oscore_respond(resource, request, addr,
+					       addr_len, ctx, piv, piv_len,
+					       COAP_RESPONSE_CODE_CONTENT,
+					       SENML_CBOR_CONTENT_FORMAT,
+					       resp_buf, (size_t)resp_len);
+	}
+#endif
 	return lichen_coap_respond(resource, request, addr, addr_len,
 			    COAP_RESPONSE_CODE_CONTENT,
-			    SENML_CBOR_CONTENT_FORMAT, buf, (size_t)len);
+			    SENML_CBOR_CONTENT_FORMAT, resp_buf,
+			    (size_t)resp_len);
 }
 
 static int confessions_get(struct coap_resource *resource,
@@ -343,7 +468,8 @@ static int confessions_post(struct coap_resource *resource,
 			return deaddrop_oscore_respond(resource, request, addr,
 						       addr_len, ctx, piv,
 						       piv_len,
-						       COAP_RESPONSE_CODE_TOO_MANY_REQUESTS);
+						       COAP_RESPONSE_CODE_TOO_MANY_REQUESTS,
+						       0, NULL, 0);
 		}
 #endif
 		return COAP_RESPONSE_CODE_TOO_MANY_REQUESTS;
@@ -355,7 +481,7 @@ static int confessions_post(struct coap_resource *resource,
 	if (is_protected && ctx != NULL) {
 		return deaddrop_oscore_respond(resource, request, addr,
 					       addr_len, ctx, piv, piv_len,
-					       resp_code);
+					       resp_code, 0, NULL, 0);
 	}
 #endif
 	return lichen_coap_respond(resource, request, addr, addr_len,
