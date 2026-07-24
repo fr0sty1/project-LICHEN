@@ -2345,19 +2345,7 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 * - Unsigned or Schnorr-48 frame validation
 	 * - SCHC decompression
 	 *
-	 * SECURITY: Copy link_key into a local buffer rather than capturing a
-	 * pointer to link_ctx.link_key. This ensures rx_ctx remains valid even
-	 * if a future refactor moves lichen_link_cleanup() outside the rx_mutex.
-	 * The current code is safe (cleanup holds both mutexes), but copying
-	 * eliminates a subtle lifetime dependency that could cause use-after-free
-	 * if cleanup timing changes. 16-byte copy is cheap. (project-LICHEN-ybal.7)
-	 *
-	 * INVARIANT: has_link_key is only set by key provisioning functions that
-	 * also write valid key material to link_key. If this invariant is violated,
-	 * MIC verification will fail (not silently accept).
-	 *
-	 * The retained link key is copied for API compatibility but current frames
-	 * are either unsigned or authenticated by Schnorr-48.
+	 * SECURITY: Copy key to stack to survive hypothetical cleanup reordering.
 	 */
 	uint8_t rx_link_key[LICHEN_LINK_KEY_LEN];
 	const uint8_t *rx_link_key_ptr = NULL;
