@@ -30,7 +30,7 @@ from ipaddress import IPv6Address
 
 from lichen.ipv6.icmpv6 import icmpv6_checksum
 from lichen.ipv6.packet import HEADER_LENGTH, IPv6Header, NextHeader, PacketError
-from lichen.ipv6.udp import UDP_HEADER_LENGTH, UDP_NEXT_HEADER, UdpDatagram, udp_checksum
+from lichen.ipv6.udp import UDP_HEADER_LENGTH, UDP_NEXT_HEADER, UdpDatagram, UdpError, udp_checksum
 from lichen.schc.codec import SchcError, compress, decompress, residue_byte_length
 from lichen.schc.rules import (
     GLOBAL_COAP_RULE,

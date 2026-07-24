@@ -652,11 +652,19 @@ class DaoManager:
                     )
             for target, descriptor in targets:
                 for transit in transits.values():
+                    parent = transit.parent_address
+                    if parent is None:
+                        if dao.dodag_id is None:
+                            raise DaoError(
+                                "Transit without parent address and no DODAG ID",
+                                reason="malformed_group",
+                            )
+                        parent = dao.dodag_id
                     updates.append(
                         _Update(
                             target,
                             _Candidate(
-                                transit.parent_address,
+                                parent,
                                 transit.path_control,
                                 transit.path_lifetime,
                                 transit.external,
@@ -704,13 +712,21 @@ class DaoManager:
                 in_transits = True
                 descriptor_allowed = False
                 parsed_transit = TransitInformation.from_option(opt)
-                existing = transits.get(parsed_transit.parent_address)
+                transit_parent = parsed_transit.parent_address
+                if transit_parent is None:
+                    if dao.dodag_id is None:
+                        raise DaoError(
+                            "Transit without parent address and no DODAG ID",
+                            reason="malformed_group",
+                        )
+                    transit_parent = dao.dodag_id
+                existing = transits.get(transit_parent)
                 if existing is not None and existing != parsed_transit:
                     raise DaoError(
                         "conflicting duplicate Transit candidate",
                         reason="inconsistent_group",
                     )
-                transits[parsed_transit.parent_address] = parsed_transit
+                transits[transit_parent] = parsed_transit
             else:
                 raise DaoError("unsupported DAO option", reason="malformed_group")
         if targets or transits:
