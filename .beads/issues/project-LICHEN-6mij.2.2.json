@@ -1,17 +1,13 @@
 {
   "id": "project-LICHEN-6mij.2.2",
   "title": "Update /keys PUT and DELETE handlers for OSCORE ctx lookup, unprotect, and CONFIG_LICHEN_COAP_SERVER_OSCORE",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "task",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:21:13.73043072Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T16:04:46.551130141Z",
-  "started_at": "2026-07-24T16:04:46.551130141Z",
-  "lease_expires_at": "2026-07-24T16:09:46.551130141Z",
-  "heartbeat_at": "2026-07-24T16:04:46.551130141Z",
+  "updated_at": "2026-07-23T05:21:13.73043072Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-6mij.2.2",
