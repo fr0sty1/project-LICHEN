@@ -10,10 +10,10 @@ from contextlib import suppress
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-import aiocoap
+import aiocoap  # type: ignore[import-untyped]  # no official stubs
 import cbor2
 from aiocoap import Message
-from aiocoap.numbers import ContentFormat
+from aiocoap.numbers import ContentFormat  # type: ignore[import-untyped]
 
 from lichen.client.lci import ResourceSubscription, ResourceTransport
 from lichen.client.model import CoapResult
