@@ -28,10 +28,18 @@ pub enum OptionNumber {
 
 /// Content-Format numbers used in LICHEN (RFC 7252 §12.3 + RFC 8428).
 pub mod content_format {
-    /// `application/cbor` — used for SenML-CBOR (RFC 7049).
-    pub const CBOR: u16 = 60;
-    /// `application/senml+cbor` — SenML records (RFC 8428).
-    pub const SENML_CBOR: u16 = 112;
+    /// `text/plain; charset=utf-8`.
+    pub const TEXT_PLAIN: u16 = 0;
+    /// `application/link-format` (RFC 6690).
+    pub const APPLICATION_LINK_FORMAT: u16 = 40;
     /// `application/octet-stream`.
     pub const OCTET_STREAM: u16 = 42;
+    /// `application/json`.
+    pub const APPLICATION_JSON: u16 = 50;
+    /// `application/cbor` — used for SenML-CBOR (RFC 7049).
+    pub const CBOR: u16 = 60;
+    /// `application/senml+json` (RFC 8428).
+    pub const APPLICATION_SENML_JSON: u16 = 110;
+    /// `application/senml+cbor` — SenML records (RFC 8428).
+    pub const SENML_CBOR: u16 = 112;
 }
