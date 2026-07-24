@@ -592,8 +592,14 @@ class Node:
         delay_ms = random.randint(min_delay_ms, max_delay_ms)
 
         async def _delayed_send() -> bool:
-            await asyncio.sleep(delay_ms / 1000)
-            return await self.link.send(wrap_routing_payload(data), channel=0)
+            try:
+                await asyncio.sleep(delay_ms / 1000)
+                return await self.link.send(wrap_routing_payload(data), channel=0)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("scheduled send failed (delay=%dms)", delay_ms)
+                raise
 
         return asyncio.create_task(
             _delayed_send(),
