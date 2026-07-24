@@ -8,7 +8,7 @@ import asyncio
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import suppress
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any, Protocol, Self
 
 import aiocoap
 import cbor2
@@ -173,6 +173,14 @@ class AiocoapResourceSubscription(ResourceSubscription):
         if cancel is not None:
             with suppress(AssertionError):
                 cancel()
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(
+        self, exc_type: object, exc_val: object, exc_tb: object
+    ) -> None:
+        await self.close()
 
     def _should_accept(self, msg: Message) -> bool:
         seq = msg.opt.observe

@@ -11,7 +11,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import suppress
 from dataclasses import dataclass
 from ipaddress import IPv6Address
-from typing import Any, TypeVar
+from typing import Any, Self, TypeVar
 
 from lichen.client.ip_coap import AiocoapResourceTransport, CoapTransportError, IpCoapConfig
 from lichen.client.lci import ResourceSubscription, ResourceTransport
@@ -251,6 +251,14 @@ class PacketCoapResourceSubscription(ResourceSubscription):
 
     async def close(self) -> None:
         await self._inner.close()
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(
+        self, exc_type: object, exc_val: object, exc_tb: object
+    ) -> None:
+        await self.close()
 
     async def _results(self) -> AsyncIterator[CoapResult]:
         iterator = self._inner.results()
