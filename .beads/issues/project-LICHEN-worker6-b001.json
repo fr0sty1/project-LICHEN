@@ -2,15 +2,15 @@
   "id": "project-LICHEN-worker6-b001",
   "title": "[review] project-LICHEN-worker6-p19p: responder transcript_4 uses plaintext instead of ciphertext (RFC 9528 violation)",
   "description": "In rust/lichen-oscore/src/edhoc.rs:1343, the responder-side `finish_process_message_3` calls `transcript_4(\u0026self.state.th_3, \u0026pending.plaintext, peer.credential)` with 3 arguments, but `transcript_4` (line 434) only takes 2: `(th_3: \u0026[u8; 32], ciphertext_3: \u0026[u8])`.\n\nPer RFC 9528 Section 7.4, TH_4 = H(TH_3 || CIPHERTEXT_3), not PLAINTEXT_3. The initiator side (line 915) correctly uses `transcript_4(\u0026self.state.th_3, \u0026ciphertext_3.0)`.\n\nThe commit under review fixed the corresponding test call (line 1633) from `transcript_4(\u0026th_3, \u0026plaintext_3, \u0026credential_i)` to `transcript_4(\u0026th_3, \u0026ciphertext_3)`, but the production code on line 1343 was not fixed.\n\nTo fix: the received CIPHERTEXT_3 (not PLAINTEXT_3) must be used. This likely requires storing the raw ciphertext in `PendingMessage3` since `finish_process_message_3` only has access to `pending.plaintext`.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:33:07.788911432Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T20:28:02.802153694Z",
+  "updated_at": "2026-07-24T20:42:21.582013202Z",
   "started_at": "2026-07-24T19:43:10.960833582Z",
-  "lease_expires_at": "2026-07-24T20:33:02.802153694Z",
-  "heartbeat_at": "2026-07-24T20:28:02.802153694Z"
+  "closed_at": "2026-07-24T20:42:21.582013202Z",
+  "close_reason": "Closed"
 }
