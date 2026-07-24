@@ -144,8 +144,8 @@ impl<'a> Fragment<'a> {
             return Err(FragmentError::InvalidFcn);
         }
 
-        let content_len = self.payload.len() + if self.is_all_1() { MIC_LENGTH } else { 0 };
-        let needed = content_len + 2;
+        let content_len = if self.is_all_1() { MIC_LENGTH } else { 0 } + self.payload.len();
+        let needed = content_len + 3;
         if out.len() < needed {
             return Err(BufferTooSmall::new(needed, out.len()).into());
         }
@@ -1300,9 +1300,9 @@ mod tests {
             payload: &tile,
             mic: [0; MIC_LENGTH],
         };
-        let mut wire = [0xff; TILE_SIZE + 2];
+        let mut wire = [0xff; TILE_SIZE + 3];
         assert_eq!(fragment.write_to(&mut wire), Ok(wire.len()));
-        assert_eq!(&wire[..2], &[0x78, 0x7c]);
+        assert_eq!(&wire[..2], &[0x78, 0x3e]);
         assert!(wire[2..].iter().all(|&byte| byte == 0));
     }
 

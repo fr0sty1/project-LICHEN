@@ -28,6 +28,7 @@ __pycache__/
 rust/target/
 
 # Build artifacts
+*.rlib
 .cache/
 lichen/build/
 **/build*/

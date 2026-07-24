@@ -7,7 +7,7 @@
 use std::fs;
 use std::path::Path;
 
-use lichen_schc::{compress, decompress};
+use lichen_schc;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -140,7 +140,7 @@ fn test_schc_compression_vectors() {
         println!(
             "Vector '{}' ({}; rule {}): {} -> {} bytes ({}% reduction)",
             vector.name,
-            vector.description,
+            vector.name,
             vector.rule_id,
             packet.len(),
             compressed.len(),
