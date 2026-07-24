@@ -1641,7 +1641,7 @@ fn raw_key_credential(pubkey: &[u8; 32]) -> Result<(heapless::Vec<u8, 40>, heapl
 
     // CCS: COSE_Key with crv=Ed25519, kty=OKP, x=pubkey
     let mut ccs = heapless::Vec::<u8, 80>::new();
-    ccs.push_err(0xa2)?; // map(2)
+    ccs.push_err(0xa3)?; // map(3)
     ccs.push_err(0x01)?; // kty
     ccs.push_err(0x01)?; // OKP
     ccs.push_err(0x20)?; // crv (-8 as uint)
@@ -1675,7 +1675,7 @@ fn encode_credential<const N: usize>(
     buf: &mut heapless::Vec<u8, N>,
     pubkey: &[u8; 32],
 ) -> Result<(), EdhocError> {
-    buf.push_err(0xa2)?;
+    buf.push_err(0xa3)?;
     buf.push_err(0x01)?;
     buf.push_err(0x01)?;
     buf.push_err(0x20)?;
