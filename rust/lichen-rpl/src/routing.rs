@@ -923,6 +923,72 @@ const DEFAULT_LIFETIME_UNIT_SECONDS: u64 = 60;
 #[cfg(feature = "std")]
 const FRESHNESS_TOMBSTONE_RETENTION_SECONDS: u64 = 60 * 60;
 
+#[cfg(feature = "std")]
+pub const ANNOUNCE_TYPE: u8 = 0x01;
+#[cfg(feature = "std")]
+pub const MAX_ANNOUNCE_HOPS: u8 = 15;
+
+#[cfg(feature = "std")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AnnounceRelayAction {
+    Send { hop_count: u8 },
+    Suppress,
+}
+
+#[cfg(feature = "std")]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AnnounceState {
+    local_seq: u16,
+    last_relay_map: std::collections::HashMap<[u8; 8], u16>,
+}
+
+#[cfg(feature = "std")]
+impl AnnounceState {
+    pub fn new() -> Self {
+        Self {
+            local_seq: 0,
+            last_relay_map: std::collections::HashMap::new(),
+        }
+    }
+
+    pub fn local_seq(&self) -> u16 {
+        self.local_seq
+    }
+
+    pub fn bump_local_seq(&mut self) -> u16 {
+        self.local_seq = self.local_seq.wrapping_add(1);
+        self.local_seq
+    }
+
+    pub fn should_relay(
+        &mut self,
+        originator_iid: &[u8; 8],
+        seq_num: u16,
+        hop_count: u8,
+    ) -> AnnounceRelayAction {
+        if hop_count >= MAX_ANNOUNCE_HOPS {
+            return AnnounceRelayAction::Suppress;
+        }
+        if let Some(&last_seq) = self.last_relay_map.get(originator_iid) {
+            let seq_gt = |a: u16, b: u16| -> bool {
+                a != b && a.wrapping_sub(b) < 1 << 15
+            };
+            if !seq_gt(seq_num, last_seq) {
+                return AnnounceRelayAction::Suppress;
+            }
+        }
+        let relay_hop = hop_count + 1;
+        self.last_relay_map.insert(*originator_iid, seq_num);
+        AnnounceRelayAction::Send { hop_count: relay_hop }
+    }
+}
+
+impl Default for AnnounceState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 // ── Source Routing Header (RFC 6554) ─────────────────────────────────────────
 
 /// RFC 6554 Source Routing Header, routing type 3 (uncompressed).
@@ -1435,6 +1501,7 @@ impl DaoManager {
         rx_state: &mut DaoRxState,
         storage: &mut S,
         timing: DaoProcessTiming,
+        dao_admission: &DaoAdmissionState,
     ) -> Result<DaoProcessOutcome, DaoProcessError<S::Error>> {
         self.process_signature_verified_inner(
             verified,
@@ -1443,6 +1510,7 @@ impl DaoManager {
             storage,
             timing,
             true,
+            dao_admission,
         )
     }
 
@@ -1457,6 +1525,7 @@ impl DaoManager {
         rx_state: &mut DaoRxState,
         storage: &mut S,
         timing: DaoProcessTiming,
+        dao_admission: &DaoAdmissionState,
     ) -> Result<DaoProcessOutcome, DaoProcessError<S::Error>> {
         self.process_signature_verified_inner(
             verified,
@@ -1465,6 +1534,7 @@ impl DaoManager {
             storage,
             timing,
             false,
+            dao_admission,
         )
     }
 
@@ -1476,7 +1546,11 @@ impl DaoManager {
         storage: &mut S,
         timing: DaoProcessTiming,
         skip_dao_sequence_check: bool,
+        dao_admission: &DaoAdmissionState,
     ) -> Result<DaoProcessOutcome, DaoProcessError<S::Error>> {
+        if !dao_admission.contains(&verified.public_key) {
+            return Err(DaoProcessError::NotAdmitted);
+        }
         let sequence = verified.envelope.origin.origin_sequence;
 
         let dao = verified.envelope.dao.clone();
@@ -2652,6 +2726,16 @@ mod tests {
         (unsigned, origin)
     }
 
+    fn admit_test_key(
+        storage: &mut MemStorage,
+        identity: &Identity,
+    ) -> DaoAdmissionState {
+        let mut admissions =
+            DaoAdmissionState::provision(storage, ll(1), 0, dodag_id()).unwrap();
+        admissions.admit(storage, *identity.pubkey.as_bytes()).unwrap();
+        admissions
+    }
+
     fn process_verified_grouped(
         root: &mut DaoManager,
         state: &mut DaoRxState,
@@ -2661,6 +2745,7 @@ mod tests {
         origin: [u8; 16],
         now_seconds: u64,
     ) -> Result<DaoProcessOutcome, DaoProcessError<lichen_hal::storage::mem::MemStorageError>> {
+        let admissions = admit_test_key(storage, identity);
         let verified = SignatureVerifiedDao::verify_signature(
             wire,
             origin,
@@ -2679,6 +2764,7 @@ mod tests {
                 lifetime_unit_seconds: 1,
                 max_deadline_seconds: u64::MAX,
             },
+            &admissions,
         )
     }
 
@@ -4319,19 +4405,21 @@ mod tests {
         let mut storage = MemStorage::new();
         let (mut root, mut state) =
             DaoManager::provision_root(&mut storage, ll(1), 0, dodag_id()).unwrap();
+        let admissions = admit_test_key(&mut storage, &identity);
         storage.fail_next_write();
         assert!(matches!(
-            root.process_signature_verified(
-                &verified,
-                verified.origin_iid(),
-                &mut state,
-                &mut storage,
-                DaoProcessTiming {
-                    now_seconds: 0,
-                    lifetime_unit_seconds: 60,
-                    max_deadline_seconds: u64::MAX,
-                },
-            ),
+                root.process_signature_verified(
+                    &verified,
+                    verified.origin_iid(),
+                    &mut state,
+                    &mut storage,
+                    DaoProcessTiming {
+                        now_seconds: 0,
+                        lifetime_unit_seconds: 60,
+                        max_deadline_seconds: u64::MAX,
+                    },
+                    &admissions,
+                ),
             Err(DaoProcessError::Persistence(_))
         ));
         assert!(root.origin_high_water().is_empty());
@@ -4393,6 +4481,43 @@ mod tests {
     }
 
     #[test]
+    fn unadmitted_key_is_rejected_before_route_mutation() {
+        let identity = Identity::from_seed(Seed::new([0x42; 32]));
+        let (wire, origin) = verified_dao(&identity, 1, ll(1));
+        let verified = SignatureVerifiedDao::verify_signature(
+            &wire,
+            origin,
+            0,
+            dodag_id(),
+            Some(identity.pubkey),
+        )
+        .unwrap();
+        let mut storage = MemStorage::new();
+        let (mut root, mut state) =
+            DaoManager::provision_root(&mut storage, ll(1), 0, dodag_id()).unwrap();
+        let mut admissions =
+            DaoAdmissionState::provision(&mut storage, ll(1), 0, dodag_id()).unwrap();
+        assert_eq!(admissions.len(), 0);
+        assert_eq!(
+            root.process_signature_verified(
+                &verified,
+                verified.origin_iid(),
+                &mut state,
+                &mut storage,
+                DaoProcessTiming {
+                    now_seconds: 0,
+                    lifetime_unit_seconds: 60,
+                    max_deadline_seconds: u64::MAX,
+                },
+                &admissions,
+            ),
+            Err(DaoProcessError::NotAdmitted)
+        );
+        assert!(root.origin_high_water().is_empty());
+        assert!(root.routing_table().lookup(&origin).is_none());
+    }
+
+    #[test]
     fn fresh_authenticated_sequence_persists_unchanged_path_snapshot() {
         let identity = Identity::from_seed(Seed::new([0x33; 32]));
         let (first_wire, origin) = verified_dao(&identity, 1, ll(1));
@@ -4431,6 +4556,7 @@ mod tests {
         let mut storage = MemStorage::new();
         let (mut root, mut state) =
             DaoManager::provision_root(&mut storage, ll(1), 0, dodag_id()).unwrap();
+        let admissions = admit_test_key(&mut storage, &identity);
         let timing = DaoProcessTiming {
             now_seconds: 0,
             lifetime_unit_seconds: 60,
@@ -4444,6 +4570,7 @@ mod tests {
                 &mut state,
                 &mut storage,
                 timing,
+                &admissions,
             ),
             Ok(DaoProcessOutcome::Applied)
         );
@@ -4455,6 +4582,7 @@ mod tests {
                 &mut state,
                 &mut storage,
                 timing,
+                &admissions,
             ),
             Ok(DaoProcessOutcome::Applied)
         );
@@ -4666,6 +4794,7 @@ mod tests {
         .unwrap();
         let mut storage = MemStorage::new();
         let (_, state) = DaoManager::provision_root(&mut storage, ll(1), 0, dodag_id()).unwrap();
+        let admissions = admit_test_key(&mut storage, &identity);
 
         let mut table = HashMap::new();
         table.insert(
@@ -4699,7 +4828,8 @@ mod tests {
                     now_seconds: 0,
                     lifetime_unit_seconds: 60,
                     max_deadline_seconds: u64::MAX,
-                }
+                },
+                &admissions,
             ),
             Ok(DaoProcessOutcome::Duplicate)
         );
@@ -4758,6 +4888,7 @@ mod tests {
         let mut storage = MemStorage::new();
         let (mut root, mut state) =
             DaoManager::provision_root(&mut storage, ll(1), 0, dodag_id()).unwrap();
+        let admissions = admit_test_key(&mut storage, &identity);
         let timing = DaoProcessTiming {
             now_seconds: 0,
             lifetime_unit_seconds: 60,
@@ -4771,6 +4902,7 @@ mod tests {
                 &mut state,
                 &mut storage,
                 timing,
+                &admissions,
             ),
             Ok(DaoProcessOutcome::Applied)
         );
@@ -4808,6 +4940,7 @@ mod tests {
                 &mut state,
                 &mut storage,
                 timing,
+                &admissions,
             ),
             Err(DaoProcessError::RouteRejected)
         );
@@ -4818,6 +4951,7 @@ mod tests {
                 &mut state,
                 &mut storage,
                 timing,
+                &admissions,
             ),
             Err(DaoProcessError::RouteRejected)
         );
@@ -4846,6 +4980,7 @@ mod tests {
         let mut storage = MemStorage::new();
         let (mut root, mut state) =
             DaoManager::provision_root(&mut storage, ll(1), 0, dodag_id()).unwrap();
+        let admissions = admit_test_key(&mut storage, &origin_identity);
         let before_a = storage.raw(DAO_RX_KEYS[0]).map(<[u8]>::to_vec);
         let before_b = storage.raw(DAO_RX_KEYS[1]).map(<[u8]>::to_vec);
         let timing = DaoProcessTiming {
@@ -4861,6 +4996,7 @@ mod tests {
                 &mut state,
                 &mut storage,
                 timing,
+                &admissions,
             ),
             Err(DaoProcessError::RouteRejected)
         );
@@ -4885,6 +5021,7 @@ mod tests {
                 &mut state,
                 &mut storage,
                 timing,
+                &admissions,
             ),
             Ok(DaoProcessOutcome::Applied)
         );
@@ -5014,6 +5151,7 @@ mod tests {
         let mut storage = MemStorage::new();
         let (mut first, mut first_state) =
             DaoManager::provision_root(&mut storage, ll(1), 0, dodag_id()).unwrap();
+        let admissions = admit_test_key(&mut storage, &identity);
         let (mut stale, mut stale_state) =
             DaoManager::open_root(&storage, ll(1), 0, dodag_id()).unwrap();
         let timing = DaoProcessTiming {
@@ -5029,6 +5167,7 @@ mod tests {
                 &mut first_state,
                 &mut storage,
                 timing,
+                &admissions,
             ),
             Ok(DaoProcessOutcome::Applied)
         );
@@ -5039,6 +5178,7 @@ mod tests {
                 &mut stale_state,
                 &mut storage,
                 timing,
+                &admissions,
             ),
             Err(DaoProcessError::Stale)
         );
@@ -5063,6 +5203,7 @@ mod tests {
         let mut storage = MemStorage::new();
         let (mut root, mut state) =
             DaoManager::provision_root(&mut storage, ll(1), 0, dodag_id()).unwrap();
+        let admissions = admit_test_key(&mut storage, &identity);
         let timing = DaoProcessTiming {
             now_seconds: 0,
             lifetime_unit_seconds: 60,
@@ -5075,6 +5216,7 @@ mod tests {
                 &mut state,
                 &mut storage,
                 timing,
+                &admissions,
             ),
             Ok(DaoProcessOutcome::Applied)
         );
@@ -5112,6 +5254,7 @@ mod tests {
                 &mut state,
                 &mut storage,
                 timing,
+                &admissions,
             ),
             Err(DaoProcessError::RouteRejected)
         );
@@ -5156,6 +5299,7 @@ mod tests {
         let mut storage = MemStorage::new();
         let (mut root, mut state) =
             DaoManager::provision_root(&mut storage, ll(1), 0, dodag_id()).unwrap();
+        let admissions = admit_test_key(&mut storage, &identity);
         let timing = DaoProcessTiming {
             now_seconds: 0,
             lifetime_unit_seconds: 60,
@@ -5168,6 +5312,7 @@ mod tests {
                 &mut state,
                 &mut storage,
                 timing,
+                &admissions,
             ),
             Ok(DaoProcessOutcome::Applied)
         );
@@ -5198,6 +5343,7 @@ mod tests {
                 &mut state,
                 &mut storage,
                 timing,
+                &admissions,
             ),
             Err(DaoProcessError::Replay)
         );
@@ -5233,6 +5379,7 @@ mod tests {
         let mut storage = MemStorage::new();
         let (mut root, mut state) =
             DaoManager::provision_root(&mut storage, ll(1), 0, dodag_id()).unwrap();
+        let admissions = admit_test_key(&mut storage, &identity);
         assert_eq!(
             root.process_signature_verified(
                 &verified,
@@ -5244,6 +5391,7 @@ mod tests {
                     lifetime_unit_seconds: 1,
                     max_deadline_seconds: u64::MAX,
                 },
+                &admissions,
             ),
             Ok(DaoProcessOutcome::Applied)
         );
@@ -5270,6 +5418,7 @@ mod tests {
                     lifetime_unit_seconds: 1,
                     max_deadline_seconds: u64::MAX,
                 },
+                &admissions,
             ),
             Err(DaoProcessError::Replay)
         );
@@ -5283,6 +5432,7 @@ mod tests {
             })
             .collect();
         let other = Identity::from_seed(Seed::new([0x34; 32]));
+        admissions.admit(&mut storage, *other.pubkey.as_bytes()).unwrap();
         let (other_wire, other_origin) = verified_dao(&other, 1, ll(1));
         let other_verified = SignatureVerifiedDao::verify_signature(
             &other_wire,
@@ -5303,6 +5453,7 @@ mod tests {
                     lifetime_unit_seconds: 1,
                     max_deadline_seconds: u64::MAX,
                 },
+                &admissions,
             ),
             Err(DaoProcessError::RouteRejected)
         );
@@ -5357,5 +5508,69 @@ mod tests {
             Err(DaoPersistentOpenError::Corrupt)
         ));
         assert!(DaoManager::provision_root(&mut storage, node, 0, dodag).is_err());
+    }
+
+    #[test]
+    fn is_rpl_multicast_matches_ff02_1a() {
+        assert!(crate::dodag::is_rpl_multicast(&crate::dodag::ALL_RPL_NODES));
+        assert!(!crate::dodag::is_rpl_multicast(&[0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x1b]));
+        assert!(!crate::dodag::is_rpl_multicast(&[0; 16]));
+    }
+
+    #[test]
+    fn announce_state_local_seq_wraps() {
+        let mut state = AnnounceState::new();
+        assert_eq!(state.local_seq(), 0);
+        assert_eq!(state.bump_local_seq(), 1);
+        assert_eq!(state.local_seq(), 1);
+        assert_eq!(state.bump_local_seq(), 2);
+    }
+
+    #[test]
+    fn announce_relay_respects_hop_limit() {
+        let mut state = AnnounceState::new();
+        let iid = [0x01; 8];
+        assert_eq!(
+            state.should_relay(&iid, 1, MAX_ANNOUNCE_HOPS),
+            AnnounceRelayAction::Suppress
+        );
+        assert_eq!(
+            state.should_relay(&iid, 1, MAX_ANNOUNCE_HOPS - 1),
+            AnnounceRelayAction::Send { hop_count: MAX_ANNOUNCE_HOPS }
+        );
+    }
+
+    #[test]
+    fn announce_relay_suppresses_stale_sequence() {
+        let mut state = AnnounceState::new();
+        let iid = [0x01; 8];
+        assert_eq!(
+            state.should_relay(&iid, 10, 0),
+            AnnounceRelayAction::Send { hop_count: 1 }
+        );
+        assert_eq!(
+            state.should_relay(&iid, 9, 0),
+            AnnounceRelayAction::Suppress
+        );
+        assert_eq!(
+            state.should_relay(&iid, 10, 0),
+            AnnounceRelayAction::Suppress
+        );
+        assert_eq!(
+            state.should_relay(&iid, 11, 0),
+            AnnounceRelayAction::Send { hop_count: 1 }
+        );
+    }
+
+    #[test]
+    fn announce_relay_is_side_effect_free_on_routing_state() {
+        let mut root = DaoManager::as_root(ll(1), 0, dodag_id());
+        let before_origins = root.origin_high_water().len();
+        let before_routes = root.routing_table().routes.len();
+        let mut state = AnnounceState::new();
+        let iid = [0x02; 8];
+        let _ = state.should_relay(&iid, 1, 0);
+        assert_eq!(root.origin_high_water().len(), before_origins);
+        assert_eq!(root.routing_table().routes.len(), before_routes);
     }
 }
