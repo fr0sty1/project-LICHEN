@@ -1477,8 +1477,29 @@ impl DaoManager {
         skip_dao_sequence_check: bool,
     ) -> Result<DaoProcessOutcome, DaoProcessError<S::Error>> {
         let sequence = verified.envelope.origin.origin_sequence;
-
+        let original_key = verified.public_key;
         let dao = verified.envelope.dao.clone();
+
+        // Step 4 (RFC 6550 §8.6 order): per-key replay classification MUST precede
+        // semantic parsing (step 5). A structurally-valid lower sequence or
+        // same-sequence-different-bytes is rejected as replay before route
+        // semantics are considered.
+        let mut duplicate = false;
+        if let Some((hash, previous)) = self.origin_high_water.get(&original_key) {
+            if sequence < *previous
+                || (sequence == *previous && *hash != verified.signed_dao_sha256)
+            {
+                return Err(DaoProcessError::Replay);
+            }
+            if sequence == *previous {
+                duplicate = true;
+            }
+        } else if self.origin_high_water.len() == MAX_DAO_ORIGINS {
+            return Err(DaoProcessError::RouteRejected);
+        }
+
+        // Step 5-6: semantic parsing and exact /128 origin-target validation.
+        // Must follow replay classification per spec §8.6 processing order.
         if !Self::has_exact_origin_target(&dao, verified.envelope.unsigned_bytes, verified.origin) {
             return Err(DaoProcessError::RouteRejected);
         }
@@ -1497,19 +1518,6 @@ impl DaoManager {
             return Err(DaoProcessError::RouteRejected);
         }
 
-        let mut duplicate = false;
-        if let Some((hash, previous)) = self.origin_high_water.get(&verified.public_key) {
-            if sequence < *previous
-                || (sequence == *previous && *hash != verified.signed_dao_sha256)
-            {
-                return Err(DaoProcessError::Replay);
-            }
-            if sequence == *previous {
-                duplicate = true;
-            }
-        } else if self.origin_high_water.len() == MAX_DAO_ORIGINS {
-            return Err(DaoProcessError::RouteRejected);
-        }
         if duplicate
             && updates[..update_count]
                 .iter()
