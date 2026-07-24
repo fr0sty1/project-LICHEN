@@ -2,15 +2,15 @@
   "id": "project-LICHEN-worker6-f3pc",
   "title": "[review] project-LICHEN-worker6-q4fj: duplicate subtle key in lichen-oscore/Cargo.toml blocks workspace compilation",
   "description": "Duplicate dependency entry 'subtle' on lines 24 and 32 of rust/lichen-oscore/Cargo.toml causes 'error: duplicate key' from Cargo, blocking all workspace-level cargo commands (check, build, test, clippy). Remove the duplicate at line 32. Discovered during code review of commit 79ae4ab.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:24:22.874680964Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T22:09:04.930882425Z",
+  "updated_at": "2026-07-24T22:09:16.976399386Z",
   "started_at": "2026-07-24T22:09:04.930882425Z",
-  "lease_expires_at": "2026-07-24T22:14:04.930882425Z",
-  "heartbeat_at": "2026-07-24T22:09:04.930882425Z"
+  "closed_at": "2026-07-24T22:09:16.976399386Z",
+  "close_reason": "Verified incorrect"
 }
