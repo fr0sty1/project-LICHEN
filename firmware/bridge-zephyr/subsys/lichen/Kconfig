@@ -63,6 +63,30 @@ config LICHEN_LORA_L2
 	  interface path; standalone LoRa mode is disabled because it could
 	  receive frames without parsing, SCHC decompression, or IPv6 ingress.
 
+config LICHEN_LORA_STRICT_RECOVERY
+	bool "Strict thread-abort recovery (reboot instead of UB)"
+	depends on LICHEN_LORA_L2
+	default n
+	help
+	  When the RX thread is forcibly aborted (e.g., stop() timeout),
+	  lichen_lora_l2_deinit() must reinitialize mutexes that the dead
+	  thread may have held. Reinitializing a held mutex is undefined
+	  behavior per POSIX and Zephyr semantics.
+
+	  When disabled (default): deinit() proceeds with the UB reinit,
+	  logging an error. This allows module restart without a full
+	  system reboot, at the cost of potential silent corruption if
+	  the mutex was held at abort time.
+
+	  When enabled: deinit() calls k_sys_reboot() instead of
+	  performing the UB reinit. This provides guaranteed correct
+	  recovery at the cost of a full system reset. Use this in
+	  production deployments where silent data corruption is
+	  unacceptable.
+
+	  See lichen_lora_l2_deinit() in lora_l2.c for the full
+	  security analysis.
+
 config LICHEN_LORA_L2_LOG_LEVEL
 	int "LICHEN LoRa L2 log level"
 	depends on LICHEN_LORA_L2

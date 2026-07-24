@@ -2132,7 +2132,7 @@ def main() -> None:
     )
     _write(
         "ccp15.json",
-        "ccp15 vectors for SF EMA load_factor hash_32(FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) congestion control with independent external arithmetic oracle (math based, no code under test).",
+        "ccp15 vectors for SF EMA load_factor hash_32(FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) congestion control with independent external arithmetic oracle (math based, no code under test). Includes density_estimate_high (Density>8 triggers CH0 fallback) and sf_selection_low_density_capacity (adaptive SF with low density, good SNR) vectors.",
         ccp15_vectors(),
     )
     _write(

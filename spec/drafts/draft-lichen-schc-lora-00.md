@@ -274,9 +274,72 @@ IPv6 + UDP to port 10883 (exact). Matches `RULE_MQTT_SN`. See appendix-schc.md a
 
 ### 4.8. Rules 5-6: OSCORE-protected CoAP
 
-Rule 5 (link-local) and Rule 6 (global) reuse base fields from Rules 0/1 plus OSCORE option. Encrypted payload as tail. Matches `LINK_LOCAL_OSCORE_RULE` / `GLOBAL_OSCORE_RULE`.
+OSCORE-protected CoAP (RFC 8613) reuses the same compression scheme as regular
+CoAP (Rules 0/1) but with distinct Rule IDs for explicit identification of
+secured traffic, future OSCORE-specific compression optimizations, and
+interoperability markers for security auditing. The OSCORE Object-Security
+option (Option 9) and encrypted payload travel verbatim in the tail.
 
-**Compressed size:** ~6-14 bytes residue + OSCORE tail (per appendix-schc.md)
+**Rule 5: Link-local IPv6 + UDP + OSCORE-protected CoAP**
+
+Matches `LINK_LOCAL_OSCORE_RULE`.
+
+| Field | TV | MO | CDA |
+|-------|----|----|-----|
+| IPv6.Version | 6 | equal | not-sent |
+| IPv6.TrafficClass | 0 | equal | not-sent |
+| IPv6.FlowLabel | 0 | equal | not-sent |
+| IPv6.PayloadLength | - | ignore | compute |
+| IPv6.NextHeader | 17 | equal | not-sent |
+| IPv6.HopLimit | - | ignore | value-sent |
+| IPv6.SrcPrefix | fe80::/64 | equal | not-sent |
+| IPv6.SrcIID | - | equal | not-sent (L2 derived) |
+| IPv6.DstPrefix | fe80::/64 | equal | not-sent |
+| IPv6.DstIID | - | equal | not-sent (L2 derived) |
+| UDP.SrcPort | 5683 | MSB(12) | LSB(4) |
+| UDP.DstPort | 5683 | MSB(12) | LSB(4) |
+| UDP.Length | - | ignore | compute |
+| UDP.Checksum | - | ignore | compute |
+| CoAP.Version | 1 | equal | not-sent |
+| CoAP.Type | - | ignore | value-sent |
+| CoAP.TKL | - | ignore | value-sent |
+| CoAP.Code | - | ignore | value-sent |
+| CoAP.MID | - | ignore | value-sent |
+
+**Compressed size:** ~4-6 bytes residue + OSCORE tail
+
+**Rule 6: Global IPv6 + UDP + OSCORE-protected CoAP**
+
+Matches `GLOBAL_OSCORE_RULE`.
+
+| Field | TV | MO | CDA |
+|-------|----|----|-----|
+| IPv6.Version | 6 | equal | not-sent |
+| IPv6.TrafficClass | 0 | equal | not-sent |
+| IPv6.FlowLabel | 0 | equal | not-sent |
+| IPv6.PayloadLength | - | ignore | compute |
+| IPv6.NextHeader | 17 | equal | not-sent |
+| IPv6.HopLimit | - | ignore | value-sent |
+| IPv6.SrcPrefix | mesh_prefix/64 | equal | not-sent |
+| IPv6.SrcIID | - | equal | not-sent (L2 derived) |
+| IPv6.DstPrefix | - | ignore | value-sent (64 bits) |
+| IPv6.DstIID | - | ignore | value-sent (64 bits) |
+| UDP.SrcPort | 5683 | MSB(12) | LSB(4) |
+| UDP.DstPort | 5683 | MSB(12) | LSB(4) |
+| UDP.Length | - | ignore | compute |
+| UDP.Checksum | - | ignore | compute |
+| CoAP.Version | 1 | equal | not-sent |
+| CoAP.Type | - | ignore | value-sent |
+| CoAP.TKL | - | ignore | value-sent |
+| CoAP.Code | - | ignore | value-sent |
+| CoAP.MID | - | ignore | value-sent |
+
+**Compressed size:** ~12-14 bytes residue + OSCORE tail
+
+The profile checks that the UDP checksum is valid and that the CoAP payload
+contains the OSCORE Option (Option 9) before matching. Plain CoAP packets
+without OSCORE MUST NOT match Rules 5/6. OSCORE-protected packets MUST NOT
+match Rules 0/1.
 
 ### 4.9. Rule 255: No Compression (Fallback)
 

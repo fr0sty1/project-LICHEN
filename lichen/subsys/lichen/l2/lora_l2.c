@@ -101,24 +101,27 @@ static atomic_t current_state = ATOMIC_INIT(LORA_UNINIT);
  */
 static int lora_transition(enum lora_state new_state)
 {
-    enum lora_state old_state = atomic_get(&current_state);
-
     if (new_state >= LORA_STATE_COUNT) {
         LOG_ERR("lora_l2: invalid state (%d), forcing ABORTED", new_state);
         atomic_set(&current_state, LORA_ABORTED);
         return -EINVAL;
     }
 
-    if (!valid_transitions[old_state][new_state]) {
-        LOG_ERR("lora_l2: invalid transition %s -> %s, forcing ABORTED",
-                state_names[old_state], state_names[new_state]);
-        atomic_set(&current_state, LORA_ABORTED);
-        return -EINVAL;
-    }
+    while (1) {
+        enum lora_state old_state = atomic_get(&current_state);
 
-    atomic_set(&current_state, new_state);
-    LOG_DBG("lora_l2: state %s -> %s", state_names[old_state], state_names[new_state]);
-    return 0;
+        if (!valid_transitions[old_state][new_state]) {
+            LOG_ERR("lora_l2: invalid transition %s -> %s, forcing ABORTED",
+                    state_names[old_state], state_names[new_state]);
+            atomic_set(&current_state, LORA_ABORTED);
+            return -EINVAL;
+        }
+
+        if (atomic_cas(&current_state, old_state, new_state)) {
+            LOG_DBG("lora_l2: state %s -> %s", state_names[old_state], state_names[new_state]);
+            return 0;
+        }
+    }
 }
 
 /**

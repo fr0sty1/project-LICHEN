@@ -34,6 +34,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/random/random.h>
 #include <zephyr/drivers/hwinfo.h>
+#include <zephyr/sys/reboot.h>
 
 #include "lichen_util.h"
 
@@ -88,24 +89,27 @@ static atomic_t current_state = ATOMIC_INIT(LORA_UNINIT);
  */
 static int lora_transition(enum lora_state new_state)
 {
-    enum lora_state old_state = atomic_get(&current_state);
-
     if (new_state >= LORA_STATE_COUNT) {
         LOG_ERR("lora_l2: invalid state (%d), forcing ABORTED", new_state);
         atomic_set(&current_state, LORA_ABORTED);
         return -EINVAL;
     }
 
-    if (!valid_transitions[old_state][new_state]) {
-        LOG_ERR("lora_l2: invalid transition %s -> %s, forcing ABORTED",
-                state_names[old_state], state_names[new_state]);
-        atomic_set(&current_state, LORA_ABORTED);
-        return -EINVAL;
-    }
+    while (1) {
+        enum lora_state old_state = atomic_get(&current_state);
 
-    atomic_set(&current_state, new_state);
-    LOG_DBG("lora_l2: state %s -> %s", state_names[old_state], state_names[new_state]);
-    return 0;
+        if (!valid_transitions[old_state][new_state]) {
+            LOG_ERR("lora_l2: invalid transition %s -> %s, forcing ABORTED",
+                    state_names[old_state], state_names[new_state]);
+            atomic_set(&current_state, LORA_ABORTED);
+            return -EINVAL;
+        }
+
+        if (atomic_cas(&current_state, old_state, new_state)) {
+            LOG_DBG("lora_l2: state %s -> %s", state_names[old_state], state_names[new_state]);
+            return 0;
+        }
+    }
 }
 
 /**
@@ -929,7 +933,16 @@ int lichen_lora_l2_deinit(void)
         LOG_ERR("lora_l2: lora_mutex held during deinit (trylock=%d), "
                 "reinit is UB - consider k_sys_reboot for guaranteed recovery",
                 trylock_ret);
+
+#if defined(CONFIG_LICHEN_LORA_STRICT_RECOVERY)
+        LOG_WRN("lora_l2: CONFIG_LICHEN_LORA_STRICT_RECOVERY enabled, rebooting");
+        k_sys_reboot(K_SYS_REBOOT_COLD);
+        /* k_sys_reboot does not return; if it does, spin forever */
+        while (1) { k_cpu_idle(); }
+#endif
     }
+
+    LOG_WRN("lora_l2: reinitializing lora_mutex (UB if mutex was held by aborted thread)");
     int mutex_ret = k_mutex_init(&lora_mutex);
     if (mutex_ret != 0) {
         /* k_mutex_init() should not fail in kernel mode, but log if it does.
