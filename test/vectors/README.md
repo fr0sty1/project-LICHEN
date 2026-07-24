@@ -22,6 +22,7 @@ Language-neutral conformance vectors for the LICHEN protocol using **format_vers
 | `ccp15.json` | CCP-15 CCA threshold, interference score (busy_pct + PER*100), frequency agility (lowest score channel), SF adaptation (PER>0.2), TDMA CCA guard integration (independent mathematical oracles per spec 02a) |
 | `ccp16-desync.json` | CCP-16 desync transitions, SFN wrap, multi-root conflict, clock drift recovery using bare array root (v2 schema). Independent oracles from spec 02a and 09-packets-timing.md. |
 | `ccp9.json` | CCP-9 rendezvous mechanisms (rx_channel scheduling, CH0 control fallback for unknown peers, synchronized_hop_channel(CCP-12) override of announce rendezvous, announce channel field parse/roundtrip in L2 payload). Independent mathematical oracles from spec/02a-coordinated-capacity.md §CCP-9, da2q multi-channel context, and python/src/lichen/sim/medium.py. Matches ccp9_vectors() in generate.py. |
+| `ccp9-rendezvous.json` | CCP-9 da2q rendezvous mechanisms: hash-based peer rendezvous (FNV-1a over sfn+peer_eui64), scheduled rendezvous from beacon/DIO assignment, announce-driven rendezvous (rx_channel from last Announce), and control channel (CH0) fallback. Independent oracle aligned with spec 02a.3. |
 | `deaddrop.json` | /deaddrop DTN store-and-forward (POST/GET, OSCORE-wrapped, SenML payloads). Independent RFC 7252/8613/8428 oracles aligned with oscore.json. No code-under-test oracle.
 
 All byte strings are lowercase hex (possibly empty). Schema validation and independent oracles used in tests.
