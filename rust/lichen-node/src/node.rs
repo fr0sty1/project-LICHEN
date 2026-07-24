@@ -83,7 +83,6 @@ pub enum DaoHandlingOutcome {
     Exhausted,
     Corrupt,
     RouteRejected,
-    NotAdmitted,
 }
 
 /// Top-level node state.
@@ -145,6 +144,24 @@ impl Node {
     pub fn handle_ipv6(&self, ipv6: &[u8], reply: &mut [u8]) -> usize {
         let n = ipv6.len();
         if n < IPV6_HEADER_LEN || ipv6[0] >> 4 != IPV6_VERSION {
+            return 0;
+        }
+
+        // RFC 4291 §2.7: Source MUST NOT be multicast.
+        // RFC 4443 §2.2: Unspecified source MUST NOT be used for upper-layer protocols.
+        let src_first = ipv6[field::SRC_OFFSET];
+        if src_first == 0xff {
+            return 0;
+        }
+        // Check for unspecified source (::) — all 16 bytes must be zero.
+        let mut all_zero = true;
+        for &b in &ipv6[field::SRC_OFFSET..field::DST_OFFSET] {
+            if b != 0 {
+                all_zero = false;
+                break;
+            }
+        }
+        if all_zero {
             return 0;
         }
 
@@ -269,20 +286,6 @@ impl Node {
 
 #[cfg(feature = "std")]
 impl RplNode {
-    /// Create a new root RPL node (DODAG root / border router).
-    ///
-    /// Uses memory-backed persistent storage for DAO replay state. Prefer
-    /// [`RplNode::provision_root`] for production use with durable storage.
-    pub fn new_root(node_id: NodeId) -> Self {
-        let mut storage = lichen_hal::storage::mem::MemStorage::new();
-        let (router, _state) = Router::provision_root(&mut storage, node_id.link_local_addr().0)
-            .expect("default root DODAG config is valid");
-        Self {
-            node: Node::new(node_id),
-            router,
-        }
-    }
-
     /// Create a new RPL-enabled node.
     #[cfg(test)]
     pub(crate) fn new(node_id: NodeId, dodag_id: [u8; 16]) -> Self {
@@ -389,7 +392,6 @@ impl RplNode {
             Err(DaoProcessError::Exhausted) => DaoHandlingOutcome::Exhausted,
             Err(DaoProcessError::Corrupt) => DaoHandlingOutcome::Corrupt,
             Err(DaoProcessError::RouteRejected) => DaoHandlingOutcome::RouteRejected,
-            Err(DaoProcessError::NotAdmitted) => DaoHandlingOutcome::NotAdmitted,
         }
     }
 
@@ -398,7 +400,9 @@ impl RplNode {
     /// `sender_iid` is the identity established by link-layer signature verification.
     ///
     /// Returns `(output_len, rpl_event)`. For [`RplEvent::DaoForwarded`], send
-    /// the output bytes to `next_hop`; otherwise a nonzero output is a reply.
+    /// the output bytes to `next_hop`; for [`RplEvent::DaoReceived`], the
+    /// caller may inspect `route_updated` to decide whether to update its
+    /// routing table; otherwise a nonzero output is a reply.
     pub fn handle_frame_rpl(
         &mut self,
         l2_payload: &[u8],
@@ -533,7 +537,7 @@ impl RplNode {
                             return (0, RplEvent::None);
                         }
                         if self.router.is_root() {
-                            return (0, RplEvent::DaoReceived);
+                            return (0, RplEvent::DaoReceived { route_updated: false });
                         }
                         let Some(advertised_parents) =
                             crate::routing::dao_parents_for_source(dao_bytes, &sender_addr)
@@ -609,12 +613,6 @@ impl RplNode {
         &self.router
     }
 
-    /// Mutable router access (test only).
-    #[cfg(test)]
-    pub fn router_mut(&mut self) -> &mut Router {
-        &mut self.router
-    }
-
     /// Check if this node is the DODAG root.
     pub fn is_root(&self) -> bool {
         self.router.is_root()
@@ -631,6 +629,7 @@ impl RplNode {
     }
 
     /// Run DAO-route and neighbor maintenance from one monotonic observation.
+    /// Uses [`TrickleAwareNeighborLiveness`] to respect Trickle suppression.
     pub fn maintain(&mut self, now_ms: u64, neighbor_timeout_ms: u64) -> RplMaintenanceOutcome {
         self.router.maintain(now_ms, neighbor_timeout_ms)
     }
@@ -699,7 +698,17 @@ pub(crate) fn valid_ipv6_envelope(ipv6: &[u8]) -> bool {
         return false;
     }
     let payload_len = usize::from(u16::from_be_bytes([ipv6[4], ipv6[5]]));
-    IPV6_HEADER_LEN.checked_add(payload_len) == Some(ipv6.len())
+    if IPV6_HEADER_LEN.checked_add(payload_len) != Some(ipv6.len()) {
+        return false;
+    }
+    // RFC 4291 §2.7: Source address MUST NOT be multicast.
+    // RFC 4443 §2.2: Unspecified source MUST NOT be used for upper-layer protocols.
+    let src = Addr(
+        ipv6[field::SRC_OFFSET..field::DST_OFFSET]
+            .try_into()
+            .unwrap(),
+    );
+    !src.is_multicast() && src != Addr::UNSPECIFIED
 }
 
 #[cfg(feature = "std")]
@@ -1016,7 +1025,7 @@ mod tests {
         let mut output = [0u8; 260];
         assert_eq!(
             root.handle_frame_rpl(&parent_packet, parent_identity.iid, &mut output, 0),
-            (0, RplEvent::DaoReceived)
+            (0, RplEvent::DaoReceived { route_updated: false })
         );
         assert_eq!(
             root.handle_dao(
@@ -1085,7 +1094,7 @@ mod tests {
                 &mut [0u8; 260],
                 0,
             ),
-            (0, RplEvent::DaoReceived)
+            (0, RplEvent::DaoReceived { route_updated: false })
         );
         assert!(root.router.lookup_route(&leaf_addr).is_none());
 
@@ -1241,7 +1250,7 @@ mod tests {
                 &mut [0u8; 260],
                 1_999,
             ),
-            (0, RplEvent::DaoReceived)
+            (0, RplEvent::DaoReceived { route_updated: false })
         );
         assert!(root.router.lookup_route_at(&first_addr, 2_999).is_none());
         assert_eq!(
@@ -1251,7 +1260,7 @@ mod tests {
                 &mut [0u8; 260],
                 2_999,
             ),
-            (0, RplEvent::DaoReceived)
+            (0, RplEvent::DaoReceived { route_updated: false })
         );
         assert!(root.router.lookup_route(&first_addr).is_none());
         assert!(root.router.lookup_route_at(&first_addr, 3_000).is_none());
@@ -1484,19 +1493,13 @@ mod tests {
         assert_eq!(RplEvent::DisReceived, RplEvent::DisReceived);
 
         let dio_inc = RplEvent::DioReceived { inconsistent: true };
-        let dio_cons = RplEvent::DioReceived {
-            inconsistent: false,
-        };
+        let dio_cons = RplEvent::DioReceived { inconsistent: false };
         assert_eq!(dio_inc, dio_inc);
         assert_ne!(dio_inc, dio_cons);
         assert_ne!(dio_inc, RplEvent::None);
 
-        let dao_up = RplEvent::DaoReceived {
-            route_updated: true,
-        };
-        let dao_no = RplEvent::DaoReceived {
-            route_updated: false,
-        };
+        let dao_up = RplEvent::DaoReceived { route_updated: true };
+        let dao_no = RplEvent::DaoReceived { route_updated: false };
         assert_eq!(dao_up, dao_up);
         assert_ne!(dao_up, dao_no);
 

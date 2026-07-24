@@ -21,7 +21,7 @@ import pytest
 
 from lichen.crypto.identity import Identity, PeerIdentity
 from lichen.crypto.schnorr48 import sign
-from lichen.link.frame import AddrMode, LichenFrame
+from lichen.link.frame import AddrMode, FrameError, LichenFrame
 from lichen.link.link_layer import (
     PLACEHOLDER_MIC,
     ReceiveError,
@@ -271,7 +271,7 @@ class TestLinkLayerTx:
         assert frames[1].seqnum == 0
 
     @pytest.mark.asyncio
-    async def test_signing_failure_consumes_tuple(
+    async def test_signing_failure_does_not_consume_tuple(
         self, link_layer: LinkLayer, monkeypatch: pytest.MonkeyPatch
     ):
         class SigningError(Exception):
@@ -283,9 +283,8 @@ class TestLinkLayerTx:
         monkeypatch.setattr("lichen.link.link_layer.sign", fail_sign)
         with pytest.raises(SigningError):
             await link_layer.send(b"payload")
-        assert link_layer.get_sequence() == (0, 1)
-        with pytest.raises(RuntimeError, match="cannot be reset after use"):
-            link_layer.set_sequence(0, 0)
+        assert link_layer.get_sequence() == (0, 0)
+        assert link_layer._sequence_started is False
 
     @pytest.mark.asyncio
     async def test_terminal_tuple_is_used_once_then_exhausts(
@@ -436,9 +435,10 @@ class TestLinkLayerRx:
 
         # Build valid signed frame
         signable = (
-            bytes([0x38, 0x20, 0])
-            + (0).to_bytes(2, "big")  # seqnum
-            + b""  # dst_addr
+            bytes([0x38, 0x20, 0])       # length(56), llsec(S=1|NONE), epoch(0)
+            + (0).to_bytes(2, "big")     # seqnum
+            + bytes([0])                 # dst_addr_len
+            + b""                        # dst_addr
             + payload
         )
         signature = sign(peer_identity.privkey, peer_identity.pubkey, signable)
@@ -537,6 +537,43 @@ class TestLinkLayerRoundTrip:
         assert isinstance(result, RxFrame)
         assert result.frame.payload == original_payload
         assert result.sender.pubkey == peer_identity.pubkey
+
+    @pytest.mark.asyncio
+    async def test_key_change_detection(
+        self,
+        mock_radio: MockRadio,
+        node_identity: Identity,
+        peer_identity: Identity,
+    ):
+        """Overwriting pinned key then receiving from same peer yields KEY_CHANGE."""
+        peer_radio = MockRadio()
+
+        def peer_lookup(hint: bytes) -> PeerIdentity | None:
+            return PeerIdentity.from_pubkey(peer_identity.pubkey)
+
+        node_ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=peer_lookup,
+        )
+
+        peer_ll = LinkLayer(
+            radio=peer_radio,
+            identity=peer_identity,
+            peer_lookup=lambda h: None,
+        )
+
+        await peer_ll.send(b"first")
+        mock_radio.queue_rx(peer_radio.tx_history[0])
+        result = await node_ll.receive(timeout_ms=100)
+        assert isinstance(result, RxFrame)
+
+        node_ll._pinned_keys[peer_identity.iid] = bytes([0x99] * 32)
+
+        await peer_ll.send(b"second")
+        mock_radio.queue_rx(peer_radio.tx_history[0])
+        result2 = await node_ll.receive(timeout_ms=100)
+        assert result2 == ReceiveError.KEY_CHANGE
 
 
 class TestSequenceManagement:
@@ -924,16 +961,6 @@ class TestTxQueueIntegration:
         assert priority == Priority.ACK
         assert LichenFrame.from_bytes(frame_bytes).seqnum == 0
         assert ll.tx_queue.stats.packets_transmitted == 0
-
-        # Overwrite pin to simulate key-change scenario.
-        node_ll._pinned_keys[peer_peer.iid] = bytes([0x99] * 32)
-
-        # Second RX: same peer, same signature, but pin now says different key → dropped.
-        peer_ll2 = LinkLayer(radio=MockRadio(), identity=peer_identity, peer_lookup=lambda h: None)
-        await peer_ll2.send(b"second")
-        mock_radio.queue_rx(peer_ll2.radio.tx_history[0])
-        result2 = await node_ll.receive(timeout_ms=100)
-        assert result2 == ReceiveError.KEY_CHANGE
 
     @pytest.mark.asyncio
     async def test_radio_exception_preserves_packet_for_retry(

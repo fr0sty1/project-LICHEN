@@ -5,6 +5,8 @@ extern crate alloc;
 use crate::keys::{PrivateKey, PublicKey, Seed};
 use crate::schnorr::derive_keypair;
 use lichen_core::addr::ygg_addr_from_pubkey;
+#[cfg(test)]
+use lichen_core::lichen_hash_32;
 use sha2::{Digest, Sha256};
 
 /// Derive a link-local IID from an Ed25519 public key.
@@ -16,6 +18,7 @@ pub fn iid_from_pubkey(pubkey: &PublicKey) -> [u8; 8] {
     iid_from_pubkey_bytes(pubkey.as_bytes())
 }
 
+
 /// Derive a link-local IID from raw public key bytes (SHA-256 truncation).
 fn iid_from_pubkey_bytes(pubkey: &[u8; 32]) -> [u8; 8] {
     let digest = Sha256::digest(pubkey);
@@ -26,6 +29,7 @@ fn iid_from_pubkey_bytes(pubkey: &[u8; 32]) -> [u8; 8] {
 }
 
 /// Human-readable Crockford Base32 node address from pubkey (spec 03-addressing).
+
 pub fn human_address_from_pubkey(pubkey: &PublicKey) -> [u8; 15] {
     let iid = iid_from_pubkey(pubkey);
     human_address_from_iid(&iid)
@@ -107,7 +111,6 @@ impl PeerIdentity {
 mod tests {
     use super::*;
     use crate::test_utils::from_hex;
-    use lichen_core::lichen_hash_32;
 
     fn arr32(v: &[u8]) -> [u8; 32] {
         v.try_into().unwrap()

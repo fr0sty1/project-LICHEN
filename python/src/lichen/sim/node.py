@@ -86,6 +86,7 @@ class SimNode:
         self.metrics = metrics if metrics is not None else NodeMetrics()
         self.seed = seed
         self.current_channel = current_channel
+        self.seed = seed
         self.hop_schedule = tuple(hop_schedule) if hop_schedule is not None else ()
         self.tdma_scheduler = tdma_scheduler if tdma_scheduler is not None else TDMAScheduler()
         data = seed.to_bytes(8, "big") + ((sfn) & 0xffffffff).to_bytes(4, "little")
@@ -150,5 +151,9 @@ class SimNode:
         return self.current_channel
 
     def synchronized_hop_channel(self, sfn: int | None = None) -> int:
-        """Alias for get_hop_channel, used by simulation.py for CCP-12 rendezvous."""
+        """Alias for get_hop_channel (CCP-12 synchronized hopping).
+
+        Wires synchronized_hop_channel calls from simulation.py (lines 568,
+        630, 742, 832) into the existing hop schedule + SFN derivation.
+        """
         return self.get_hop_channel(sfn)

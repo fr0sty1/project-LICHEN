@@ -86,6 +86,26 @@ static int validate_ipv6_packet(const uint8_t *ipv6, size_t len)
 		}
 	}
 
+	/* RFC 4291 §2.7: Source address MUST NOT be multicast. */
+	if (ipv6[8] == 0xff) {
+		LOG_WRN("BLE ingress rejected multicast source");
+		return -EINVAL;
+	}
+	/* RFC 4443 §2.2: Unspecified source not valid for upper-layer protocols. */
+	{
+		bool all_zero = true;
+		for (int i = 8; i < 24; i++) {
+			if (ipv6[i] != 0) {
+				all_zero = false;
+				break;
+			}
+		}
+		if (all_zero) {
+			LOG_WRN("BLE ingress rejected unspecified source");
+			return -EINVAL;
+		}
+	}
+
 	return 0;
 }
 

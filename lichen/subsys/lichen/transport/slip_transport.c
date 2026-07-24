@@ -152,6 +152,26 @@ static int validate_ipv6_packet(const uint8_t *pkt, size_t len)
 		return -EINVAL;
 	}
 
+	/* RFC 4291 §2.7: Source address MUST NOT be multicast. */
+	if (pkt[8] == 0xff) {
+		LOG_WRN("SLIP RX: multicast source dropped");
+		return -EINVAL;
+	}
+	/* RFC 4443 §2.2: Unspecified source not valid for upper-layer protocols. */
+	{
+		bool all_zero = true;
+		for (int i = 8; i < 24; i++) {
+			if (pkt[i] != 0) {
+				all_zero = false;
+				break;
+			}
+		}
+		if (all_zero) {
+			LOG_WRN("SLIP RX: unspecified source dropped");
+			return -EINVAL;
+		}
+	}
+
 	return 0;
 }
 
@@ -506,6 +526,16 @@ static int slip_iface_send(const struct device *dev, struct net_pkt *pkt)
 		return ret;
 	}
 
+	ret = validate_ipv6_packet(pkt_buf, pkt_len);
+	if (ret < 0) {
+		LOG_WRN("SLIP TX: invalid IPv6 packet: %d", ret);
+		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
+		ctx->stats.tx_errors++;
+		k_mutex_unlock(&ctx->stats_mutex);
+		k_mutex_unlock(&ctx->tx_mutex);
+		return ret;
+	}
+
 	ret = slip_encode(pkt_buf, pkt_len, ctx->tx_frame, sizeof(ctx->tx_frame),
 			  &frame_len);
 	if (ret < 0) {
@@ -589,6 +619,13 @@ int slip_transport_send(const uint8_t *ipv6, size_t len)
 	}
 	if (!ctx->initialized) {
 		return -ENODEV;
+	}
+
+	if (len > 0) {
+		ret = validate_ipv6_packet(ipv6, len);
+		if (ret < 0) {
+			return ret;
+		}
 	}
 
 	k_mutex_lock(&ctx->tx_mutex, K_FOREVER);

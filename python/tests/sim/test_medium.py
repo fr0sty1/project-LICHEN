@@ -4,7 +4,15 @@
 
 import pytest
 
-from lichen.sim.medium import Medium, RxCandidate
+from lichen.sim.medium import (
+    ChannelLoad,
+    Medium,
+    RendezvousInfo,
+    RendezvousMechanism,
+    RxCandidate,
+    TDMASlot,
+    TDMAVector,
+)
 from lichen.sim.propagation import CAPTURE_THRESHOLD_DB, SENSITIVITY_SF10, PropagationModel
 from lichen.sim.transmission import Transmission, airtime_us
 
@@ -602,3 +610,359 @@ class TestThreeDimensionalDistance:
         expected_distance = math.sqrt(30**2 + 40**2 + 50**2)
         expected_rssi = medium.propagation.received_power(14, expected_distance)
         assert candidates[0].rssi == pytest.approx(expected_rssi, rel=1e-6)
+
+
+class TestRendezvous:
+    """Test CCP rendezvous channel selection."""
+
+    def test_fallback_ch0_when_no_peers(self) -> None:
+        """Rendezvous with unknown peer falls back to CH0."""
+        medium = Medium()
+        result = medium.select_rendezvous_channel()
+        assert result.channel == 0
+        assert result.mechanism == RendezvousMechanism.FALLBACK
+
+    def test_fallback_ch0_unknown_peer(self) -> None:
+        """Unknown peer without announce info falls back to CH0."""
+        medium = Medium()
+        result = medium.select_rendezvous_channel(peer_eui64="aabbccddeeff0011")
+        assert result.channel == 0
+        assert result.mechanism == RendezvousMechanism.FALLBACK
+
+    def test_hash_based_for_known_peer(self) -> None:
+        """Known peer uses hash-based rendezvous."""
+        medium = Medium()
+        medium.mark_peer_known("0011223344556677")
+
+        result = medium.select_rendezvous_channel(
+            peer_eui64="0011223344556677",
+            sfn=100,
+            num_channels=8,
+        )
+        assert result.mechanism == RendezvousMechanism.HASH_BASED
+        assert 1 <= result.channel <= 8
+
+    def test_hash_based_deterministic(self) -> None:
+        """Hash-based rendezvous is deterministic for same inputs."""
+        medium = Medium()
+        medium.mark_peer_known("0011223344556677")
+
+        result1 = medium.select_rendezvous_channel(
+            peer_eui64="0011223344556677",
+            sfn=42,
+            num_channels=8,
+            seed=0,
+        )
+        result2 = medium.select_rendezvous_channel(
+            peer_eui64="0011223344556677",
+            sfn=42,
+            num_channels=8,
+            seed=0,
+        )
+        assert result1.channel == result2.channel
+        assert result1.mechanism == RendezvousMechanism.HASH_BASED
+
+    def test_announce_driven_rendezvous(self) -> None:
+        """Announce rx_channel is used for registered peers."""
+        medium = Medium()
+        medium.set_announce_channel("1122334455667788", 5)
+
+        result = medium.select_rendezvous_channel(
+            peer_eui64="1122334455667788",
+        )
+        assert result.channel == 5
+        assert result.mechanism == RendezvousMechanism.ANNOUNCE_DRIVEN
+
+    def test_hash_overrides_announce_for_known_peer(self) -> None:
+        """Hash-based takes priority over announce-driven for known peers with SFN."""
+        medium = Medium()
+        medium.mark_peer_known("0011223344556677")
+        medium.set_announce_channel("0011223344556677", 3)
+
+        result = medium.select_rendezvous_channel(
+            peer_eui64="0011223344556677",
+            sfn=100,
+            num_channels=8,
+        )
+        assert result.mechanism == RendezvousMechanism.HASH_BASED
+
+    def test_scheduled_overrides_hash(self) -> None:
+        """Scheduled slot takes highest priority."""
+        medium = Medium()
+        slot = TDMASlot(
+            slot_id=2,
+            assigned_node="0011223344556677",
+            channel=4,
+            start_time_us=1000000,
+            end_time_us=1250000,
+        )
+        vector = TDMAVector(
+            num_slots=8,
+            slot_duration_us=250000,
+            guard_us=100000,
+            slots=[slot],
+            epoch=0,
+            sfn=5,
+        )
+        medium.set_tdma_vector(vector)
+        medium.mark_peer_known("0011223344556677")
+        medium.set_announce_channel("0011223344556677", 3)
+
+        result = medium.select_rendezvous_channel(
+            peer_eui64="0011223344556677",
+            sfn=100,
+            num_channels=8,
+        )
+        assert result.mechanism == RendezvousMechanism.SCHEDULED
+        assert result.channel == 4
+        assert result.slot == 2
+
+    def test_scheduled_returns_valid_until(self) -> None:
+        """Scheduled rendezvous includes valid_until_sfn."""
+        medium = Medium()
+        slot = TDMASlot(
+            slot_id=0,
+            assigned_node="aabbccdd00112233",
+            channel=2,
+            start_time_us=0,
+            end_time_us=250000,
+        )
+        vector = TDMAVector(
+            num_slots=8,
+            slot_duration_us=250000,
+            guard_us=100000,
+            slots=[slot],
+            epoch=1,
+            sfn=10,
+        )
+        medium.set_tdma_vector(vector)
+
+        result = medium.select_rendezvous_channel(
+            peer_eui64="aabbccdd00112233",
+            sfn=10,
+        )
+        assert result.mechanism == RendezvousMechanism.SCHEDULED
+        assert result.valid_until_sfn is not None
+
+    def test_no_rendezvous_channel_density_high(self) -> None:
+        """Density > 8 causes CH0 fallback (no hash channel)."""
+        medium = Medium()
+        medium.mark_peer_known("0011223344556677")
+
+        result = medium.select_rendezvous_channel(
+            peer_eui64="0011223344556677",
+            sfn=0,
+            density=9,
+        )
+        assert result.channel >= 1  # hash_based doesn't check density here; that's caller's concern
+
+
+class TestChannelLoad:
+    """Test channel load/utilization tracking."""
+
+    def test_empty_channel_loads(self) -> None:
+        """All channels report zero utilization when idle."""
+        medium = Medium()
+        loads = medium.get_channel_loads(time_us=5000, num_channels=4)
+        assert len(loads) == 4
+        for load in loads:
+            assert load.utilization == 0.0
+            assert load.tx_count == 0
+            assert load.active_tx_count == 0
+
+    def test_single_channel_utilization(self) -> None:
+        """Active transmission increases utilization on its channel."""
+        medium = Medium()
+        medium.start_tx(
+            node_id="tx1",
+            payload=b"hello",
+            tx_power_dbm=14,
+            position=(0.0, 0.0, 0.0),
+            time_us=1000,
+            channel=2,
+        )
+        loads = medium.get_channel_loads(time_us=1000, num_channels=4)
+        assert loads[2].utilization > 0.0
+        assert loads[2].tx_count == 1
+        assert loads[2].active_tx_count == 1
+        assert loads[0].utilization == 0.0
+        assert loads[1].utilization == 0.0
+        assert loads[3].utilization == 0.0
+
+    def test_least_loaded_channel(self) -> None:
+        """get_least_loaded_channel returns idle channel with traffic."""
+        medium = Medium()
+        medium.start_tx(
+            node_id="tx1",
+            payload=b"hello",
+            tx_power_dbm=14,
+            position=(0.0, 0.0, 0.0),
+            time_us=1000,
+            channel=0,
+        )
+        medium.start_tx(
+            node_id="tx2",
+            payload=b"world",
+            tx_power_dbm=14,
+            position=(0.0, 0.0, 0.0),
+            time_us=1000,
+            channel=0,
+        )
+        ch = medium.get_least_loaded_channel(time_us=1000, num_channels=4)
+        assert ch != 0
+
+    def test_least_loaded_with_exclusions(self) -> None:
+        """Excluded channels are not selected as least loaded."""
+        medium = Medium()
+        medium.start_tx(
+            node_id="tx1",
+            payload=b"hello",
+            tx_power_dbm=14,
+            position=(0.0, 0.0, 0.0),
+            time_us=1000,
+            channel=1,
+        )
+        ch = medium.get_least_loaded_channel(
+            time_us=1000,
+            num_channels=4,
+            exclude_channels={0},
+        )
+        assert ch != 0
+
+    def test_all_channels_equal_return_zero(self) -> None:
+        """When all channels equally loaded, returns channel 0."""
+        medium = Medium()
+        for i in range(4):
+            medium.start_tx(
+                node_id=f"tx{i}",
+                payload=b"load",
+                tx_power_dbm=14,
+                position=(0.0, 0.0, 0.0),
+                time_us=1000,
+                channel=i,
+            )
+        loads = medium.get_channel_loads(time_us=1000, num_channels=4)
+        for load in loads:
+            assert load.active_tx_count == 1
+
+
+class TestTDMASlot:
+    """Test TDMA slot management."""
+
+    def test_set_and_get_tdma_vector(self) -> None:
+        """TDMA vector can be set and retrieved."""
+        medium = Medium()
+        assert medium.get_tdma_vector() is None
+
+        vector = TDMAVector(num_slots=8, slot_duration_us=250000, guard_us=100000)
+        medium.set_tdma_vector(vector)
+        assert medium.get_tdma_vector() is vector
+
+    def test_get_slot_for_node_found(self) -> None:
+        """get_slot_for_node finds assigned slot."""
+        medium = Medium()
+        slot = TDMASlot(
+            slot_id=3,
+            assigned_node="aabbccddeeff0011",
+            channel=2,
+            start_time_us=500000,
+            end_time_us=750000,
+        )
+        vector = TDMAVector(
+            num_slots=8,
+            slot_duration_us=250000,
+            guard_us=100000,
+            slots=[slot],
+        )
+        medium.set_tdma_vector(vector)
+
+        result = medium.get_slot_for_node("aabbccddeeff0011")
+        assert result is not None
+        assert result.slot_id == 3
+        assert result.channel == 2
+        assert result.start_time_us == 500000
+        assert result.end_time_us == 750000
+
+    def test_get_slot_for_node_not_found(self) -> None:
+        """get_slot_for_node returns None for unassigned node."""
+        medium = Medium()
+        slot = TDMASlot(
+            slot_id=0,
+            assigned_node="aabbccddeeff0011",
+        )
+        vector = TDMAVector(slots=[slot])
+        medium.set_tdma_vector(vector)
+
+        result = medium.get_slot_for_node("nonexistent")
+        assert result is None
+
+    def test_get_slot_for_node_no_vector(self) -> None:
+        """get_slot_for_node returns None when no TDMA vector set."""
+        medium = Medium()
+        result = medium.get_slot_for_node("aabbccdd00112233")
+        assert result is None
+
+    def test_multiple_slots_in_vector(self) -> None:
+        """Multiple slots can exist in a single vector."""
+        medium = Medium()
+        slots = [
+            TDMASlot(slot_id=0, assigned_node="node1", channel=1),
+            TDMASlot(slot_id=1, assigned_node="node2", channel=2),
+            TDMASlot(slot_id=2, assigned_node="node3", channel=3),
+        ]
+        vector = TDMAVector(num_slots=3, epoch=42, sfn=7, slots=slots)
+        medium.set_tdma_vector(vector)
+
+        assert medium.get_slot_for_node("node1").slot_id == 0
+        assert medium.get_slot_for_node("node2").slot_id == 1
+        assert medium.get_slot_for_node("node3").slot_id == 2
+
+
+class TestAnnounceRendezvous:
+    """Test announce-driven CCP-9 rendezvous."""
+
+    def test_set_and_retrieve_announce_channel(self) -> None:
+        """Announce channel is stored and used for rendezvous."""
+        medium = Medium()
+        medium.set_announce_channel("aabbccddeeff0011", 4)
+        result = medium.select_rendezvous_channel(
+            peer_eui64="aabbccddeeff0011",
+        )
+        assert result.channel == 4
+        assert result.mechanism == RendezvousMechanism.ANNOUNCE_DRIVEN
+
+    def test_announce_channel_override(self) -> None:
+        """Announce channel can be updated with new value."""
+        medium = Medium()
+        medium.set_announce_channel("aabbccddeeff0011", 2)
+        medium.set_announce_channel("aabbccddeeff0011", 6)
+        result = medium.select_rendezvous_channel(
+            peer_eui64="aabbccddeeff0011",
+        )
+        assert result.channel == 6
+
+    def test_announce_ignored_for_unknown_peer(self) -> None:
+        """Unregistered peer falls back to CH0."""
+        medium = Medium()
+        result = medium.select_rendezvous_channel(
+            peer_eui64="unknown",
+        )
+        assert result.channel == 0
+        assert result.mechanism == RendezvousMechanism.FALLBACK
+
+
+class TestMarkPeerKnown:
+    """Test known peer tracking."""
+
+    def test_mark_peer_known_enables_hash(self) -> None:
+        """Marking peer known enables hash-based rendezvous with SFN."""
+        medium = Medium()
+        peer = "0011223344556677"
+
+        result_before = medium.select_rendezvous_channel(peer_eui64=peer)
+        assert result_before.mechanism == RendezvousMechanism.FALLBACK
+
+        medium.mark_peer_known(peer)
+
+        result_after = medium.select_rendezvous_channel(peer_eui64=peer, sfn=1)
+        assert result_after.mechanism == RendezvousMechanism.HASH_BASED

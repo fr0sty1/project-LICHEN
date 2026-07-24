@@ -748,9 +748,7 @@ class Simulation:
         node.rx_callbacks = (on_packet, on_timeout)
         timeout_time_us = self._current_time_us + timeout_us
         self._pending_rx_timeouts[node_id] = timeout_time_us
-        timeout_event = RxTimeoutEvent(
-            time_us=timeout_time_us, node_id=node_id
-        )
+        timeout_event = RxTimeoutEvent(time_us=timeout_time_us, node_id=node_id)
         self._event_queue.push(timeout_event)
         self._debug_log(
             "enter_rx_mode",
@@ -814,7 +812,6 @@ class Simulation:
 
         return delivered
 
-
     def _get_rx_result_internal(self, node_id: str) -> tuple[bytes, int, int, str, str] | None:
         """Unified core RX logic. Uses node.synchronized_hop_channel (node.py:146)
         for medium channel when hop_schedule present (CCP-12 per
@@ -840,7 +837,6 @@ class Simulation:
             rx_position=node.position,
             time_us=self._current_time_us,
             channel=channel,
-            rx_frequency_hz=None,
         )
 
         # Apply chaos rules to filter/modify candidates

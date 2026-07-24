@@ -479,12 +479,6 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         &self.rpl
     }
 
-    /// Mutable RPL node access (test only).
-    #[cfg(test)]
-    pub fn rpl_node_mut(&mut self) -> &mut RplNode {
-        &mut self.rpl
-    }
-
     /// Current generation of this stack instance. RplRuntime bindings are tied to
     /// this value; reprovision or reset increments it to invalidate stale runtimes.
     pub fn generation(&self) -> u64 {
@@ -497,6 +491,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
 
     /// Run DAO-route and neighbor maintenance from one monotonic observation.
     ///
+    /// Uses [`TrickleAwareNeighborLiveness`] to respect Trickle suppression.
     /// This is an advanced caller-clock API. Production single-owner loops should
     /// use [`Self::runtime_poll`] so clock clamping and cadence remain centralized.
     pub fn maintain(&mut self, now_ms: u64, neighbor_timeout_ms: u64) -> RplMaintenanceOutcome {
@@ -537,7 +532,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             Ok(Some(packet)) => {
                 if packet.len > wire.len() {
                     let (now_ms, _maintenance) = runtime
-                        .complete_receive(&mut self.rpl, action, post_await_ms, self.generation)
+                        .complete_receive(&mut self.rpl, action, post_await_ms)
                         .map_err(RplRuntimeReceiveError::Action)?;
                     self.routing_now_ms = self.routing_now_ms.max(now_ms);
                     return Err(RplRuntimeReceiveError::Receive(RplReceiveError::Receive(
@@ -551,7 +546,10 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                 match process_result {
                     Ok(outcome) => Some(outcome),
                     Err(e) => {
-                        let _ = runtime.complete_receive(&mut self.rpl, action, post_await_ms, self.generation);
+                        let (now_ms, _maintenance) = runtime
+                            .complete_receive(&mut self.rpl, action, post_await_ms)
+                            .map_err(RplRuntimeReceiveError::Action)?;
+                        self.routing_now_ms = self.routing_now_ms.max(now_ms);
                         return Err(e);
                     }
                 }
@@ -559,7 +557,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             Ok(None) => None,
             Err(_) => {
                 let (now_ms, _maintenance) = runtime
-                    .complete_receive(&mut self.rpl, action, post_await_ms, self.generation)
+                    .complete_receive(&mut self.rpl, action, post_await_ms)
                     .map_err(RplRuntimeReceiveError::Action)?;
                 self.routing_now_ms = self.routing_now_ms.max(now_ms);
                 return Err(RplRuntimeReceiveError::Receive(RplReceiveError::Receive(
@@ -568,7 +566,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             }
         };
         let (now_ms, maintenance) = runtime
-            .complete_receive(&mut self.rpl, action, post_await_ms, self.generation)
+            .complete_receive(&mut self.rpl, action, post_await_ms)
             .map_err(RplRuntimeReceiveError::Action)?;
         self.routing_now_ms = self.routing_now_ms.max(now_ms);
         Ok(RplRuntimeReceiveOutcome {
@@ -609,13 +607,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
     ) -> Result<Option<RplMaintenanceOutcome>, RplRuntimeTrickleError> {
         self.routing_now_ms = self.routing_now_ms.max(observed_now_ms);
         runtime
-            .complete_trickle_expire(
-                &mut self.rpl,
-                action,
-                observed_now_ms,
-                rand_offset,
-                self.generation,
-            )
+            .complete_trickle_expire(&mut self.rpl, action, observed_now_ms, rand_offset, self.generation)
             .map_err(RplRuntimeTrickleError::Action)
     }
 

@@ -1480,12 +1480,14 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 
 	if (ctx == NULL || ciphertext == NULL || ciphertext_len == NULL ||
 	    oscore_opt == NULL || oscore_opt_len == NULL) {
-		return OSCORE_ERR_INVALID_PARAM;
+		ret = OSCORE_ERR_INVALID_PARAM;
+		goto common_wipe;
 	}
 
 	if ((options_len > 0 && options == NULL) ||
 	    (payload_len > 0 && payload == NULL)) {
-		return OSCORE_ERR_INVALID_PARAM;
+		ret = OSCORE_ERR_INVALID_PARAM;
+		goto common_wipe;
 	}
 
 	/*
@@ -1500,21 +1502,24 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	if (ctx_idx < 0) {
 		k_mutex_unlock(&s_ctx_mutex);
 		LOG_ERR("OSCORE context not in storage array");
-		return OSCORE_ERR_INVALID_PARAM;
+		ret = OSCORE_ERR_INVALID_PARAM;
+		goto common_wipe;
 	}
 
 	/* Require sender_seq to be explicitly initialized before first use */
 	if (!s_seq_initialized[ctx_idx]) {
 		k_mutex_unlock(&s_ctx_mutex);
 		LOG_ERR("OSCORE sender_seq not initialized - call oscore_ctx_set_sender_seq()");
-		return OSCORE_ERR_INVALID_PARAM;
+		ret = OSCORE_ERR_INVALID_PARAM;
+		goto common_wipe;
 	}
 
 	/* Check for sender sequence number exhaustion before use */
 	if (ctx->sender_seq == UINT32_MAX) {
 		k_mutex_unlock(&s_ctx_mutex);
 		LOG_ERR("OSCORE sender sequence exhausted - key rotation required");
-		return OSCORE_ERR_SEQ_EXHAUSTED;
+		ret = OSCORE_ERR_SEQ_EXHAUSTED;
+		goto common_wipe;
 	}
 
 	/* Get and increment sender sequence number atomically */
@@ -1542,9 +1547,10 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	 *
 	 * Class 2 - post-transmittable NVM failure (persist_ssn failing
 	 * after ciphertext and OSCORE option are fully built and returned
-	 * to the caller): goes to the distinct nvm_failed path, which takes
-	 * extra measures (safety-margin SSN bump inside persist_ssn,
-	 * s_seq_initialized sync) because the packet may still be sent.
+	 * to the caller): goes to the distinct nvm_failed path, which
+	 * conditionally rolls back sender_seq to the pre-increment value
+	 * (if no concurrent increment occurred) and sets s_seq_initialized
+	 * to maintain nonce uniqueness on reboot per RFC 8613 §7.2.
 	 */
 
 	/*
@@ -1638,7 +1644,7 @@ common_wipe:
 	return ret;
 
 nvm_failed:
-	/* After common_wipe, this dedicated
+	/* After common wipe in cleanup_protect_request, this dedicated
 	 * nvm_failed path locks mutex to safely handle sender_seq.
 	 * SECURITY: SSN MUST NOT be left incremented on NVM failure -
 	 * would allow AES-CCM nonce reuse attack vector on reboot

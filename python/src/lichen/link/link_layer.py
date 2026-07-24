@@ -288,24 +288,19 @@ class LinkLayer:
         """
         if self._exhausted:
             logger.error("tuple space exhausted; key rotation required before further TX")
-            # Fail closed per e220
-            raise RuntimeError("link tuple exhaustion")
+            raise OverflowError("link-layer sequence exhausted; rotate identity key")
 
         epoch, seqnum = self._epoch, self._seqnum
         self._sequence_started = True
 
-        # Advance for next call
         if epoch == 0xFF and seqnum == 0xFFFF:
             self._exhausted = True
-        elif seqnum == 0xFFFF:
-            # Why wrap handling: seqnum is 16-bit, epoch is 8-bit
-            # Together they form a 24-bit monotonic counter
-            self._seqnum = 0
-            self._epoch += 1
-            logger.debug("epoch wrapped to %d", self._epoch)
-            if self._epoch == 0:
-                self._exhausted = True
-                logger.warning("24-bit tuple space exhausted; will trigger rotation on next load")
+        else:
+            self._seqnum += 1
+            if self._seqnum > 0xFFFF:
+                self._seqnum = 0
+                self._epoch += 1
+                logger.debug("epoch wrapped to %d", self._epoch)
 
         self._save_persisted_state()
         return epoch, seqnum
@@ -393,15 +388,18 @@ class LinkLayer:
                 f"requires {expected_len} bytes"
             )
 
-        # Peek at current sequence numbers without consuming
-        # Why peek first: If push() raises QueueFullError, we don't want to
-        # waste a sequence number. Only consume after successful push.
         epoch, seqnum = self._epoch, self._seqnum
 
+        # Validate frame body size before signing: body ≤ MAX_FRAME_BODY (254)
+        body_len = 4 + len(dst_addr) + len(payload) + SIGNATURE_LENGTH
+        if body_len > 254:
+            raise FrameError(
+                f"frame body is {body_len} bytes, exceeds 254"
+            )
+
         llsec = int(addr_mode) | (1 << 5)
-        frame_length = 4 + len(dst_addr) + len(payload) + SIGNATURE_LENGTH
         signable = self._build_signable_data(
-            epoch, seqnum, dst_addr, payload, frame_length, llsec
+            epoch, seqnum, dst_addr, payload, body_len, llsec
         )
         signature = sign(self.identity.privkey, self.identity.pubkey, signable)
 
@@ -438,7 +436,11 @@ class LinkLayer:
         )
         assert reservation is not None, "push with reservation failed"
 
-        # Push succeeded - now consume the sequence number
+        # Push succeeded - consume the sequence number
+        # Note: seqnum is NOT consumed if sign() raises (no gap from failed
+        # signing) since sign() is called before any state mutation. If push()
+        # raises QueueFullError the seqnum IS consumed (gap) because the frame
+        # was already built with that seqnum; reuse would cause replay confusion.
         self._next_seqnum()
 
         # Drain (serialized via _tx_lock); our reservation will be completed when transmitted

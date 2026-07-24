@@ -88,12 +88,9 @@ async fn main(spawner: Spawner) {
     info!("LICHEN bridge (Rust) starting...");
 
     // Spawn radio task
-    match radio_task() {
-        Ok(token) => spawner.spawn(token),
-        Err(e) => {
-            error!("Failed to spawn radio_task: {:?}", defmt::Debug2Format(&e));
-            // Continue without radio - USB echo still works
-        }
+    if let Err(e) = spawner.spawn(radio_task()) {
+        error!("Failed to spawn radio_task: {}", defmt::Debug2Format(&e));
+        // Continue without radio - USB echo still works
     }
 
     // LED for status (Arduino pin 35 = P1.03)

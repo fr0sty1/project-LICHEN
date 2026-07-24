@@ -241,6 +241,7 @@ int lichen_announce_parse(const uint8_t *data, size_t len,
 		return -EMSGSIZE;
 	}
 
+	announce->flags = data[1];
 	announce->hop_count = data[2];
 	announce->rx_channel = data[1];
 	announce->wire_seq_num = ((uint16_t)data[3] << 8) | data[4];
@@ -296,7 +297,7 @@ int lichen_announce_ingest_authenticated(
 		return ret;
 	}
 	if (!schnorr48_verify(announce.pubkey, signed_data, signed_data_len,
-			      announce.signature)) {
+			      announce.signature, SCHNORR48_SIG_LEN)) {
 		return -EACCES;
 	}
 
@@ -456,11 +457,14 @@ LOG_MODULE_REGISTER(announce_sched, LOG_LEVEL_INF);
 
 struct announce_scheduler {
 	bool running;
-	bool dodag_joined;
 	uint16_t seq_num;
 	struct k_work_delayable work;
 	struct k_work_delayable dodag_loss_work;
 	struct k_mutex mutex;
+
+	/* DODAG state for dynamic interval selection */
+	bool dodag_joined;
+	bool gateway_centric;
 
 	/* Configuration (copied at start) */
 	struct lichen_link_ctx *link_ctx;
@@ -655,71 +659,26 @@ static int send_announce(void)
 	return ret;
 }
 
-static void dodag_loss_resume_handler(struct k_work *work);
+static uint32_t get_current_interval_locked(void)
+{
+	if (sched.dodag_joined && sched.gateway_centric) {
+		return CONFIG_LICHEN_ANNOUNCE_INTERVAL_GATEWAY;
+	}
+	return CONFIG_LICHEN_ANNOUNCE_INTERVAL_NORMAL;
+}
 
 static void schedule_next(void)
 {
 	k_mutex_lock(&sched.mutex, K_FOREVER);
-	uint32_t interval_ms = CONFIG_LICHEN_ANNOUNCE_INTERVAL_MS;
+	uint32_t interval_ms = get_current_interval_locked();
+	k_mutex_unlock(&sched.mutex);
+
 	uint32_t jitter_ms = random_range(0, CONFIG_LICHEN_ANNOUNCE_JITTER_MS);
 	uint32_t delay_ms = interval_ms + jitter_ms;
-
-	/* SECURITY: Read dodag_joined under lock to make a single atomic decision
-	 * about the announce interval. If dodag_joined is set, the announce interval
-	 * is suppressed (longer delay) because the DODAG provides routing info.
-	 * The dodag_loss_resume_handler will clear dodag_joined and trigger a
-	 * schedule_next() with the normal interval when the loss timer expires. */
-	if (sched.dodag_joined) {
-		delay_ms += CONFIG_LICHEN_DODAG_LOSS_RESUME_TIMEOUT_MS;
-	}
-	k_mutex_unlock(&sched.mutex);
 
 	k_work_schedule(&sched.work, K_MSEC(delay_ms));
 	LOG_DBG("next announce in %u ms (interval=%u, jitter=%u)",
 		delay_ms, interval_ms, jitter_ms);
-}
-
-static void dodag_loss_resume_handler(struct k_work *work)
-{
-	ARG_UNUSED(work);
-
-	k_mutex_lock(&sched.mutex, K_FOREVER);
-	bool was_joined = sched.dodag_joined;
-	sched.dodag_joined = false;
-	k_mutex_unlock(&sched.mutex);
-
-	if (was_joined) {
-		LOG_INF("DODAG loss timer expired, reverting to normal announce interval");
-	}
-	schedule_next();
-}
-
-void lichen_announce_sched_set_dodag_state(bool joined)
-{
-	k_mutex_lock(&sched.mutex, K_FOREVER);
-	bool prev = sched.dodag_joined;
-	sched.dodag_joined = joined;
-	if (joined && !prev) {
-		/* Just joined: cancel any pending loss-resume timer */
-		(void)k_work_cancel_delayable(&sched.dodag_loss_work);
-	}
-	k_mutex_unlock(&sched.mutex);
-
-	if (joined && !prev) {
-		LOG_DBG("DODAG joined, announce interval suppressed");
-	} else if (!joined && prev) {
-		/* Just left: schedule loss-resume timer */
-		uint32_t timeout_ms = CONFIG_LICHEN_DODAG_LOSS_RESUME_TIMEOUT_MS;
-
-		if (timeout_ms > 0) {
-			k_work_schedule(&sched.dodag_loss_work, K_MSEC(timeout_ms));
-			LOG_INF("DODAG left, loss-resume timer for %u ms", timeout_ms);
-		} else {
-			LOG_INF("DODAG left, immediate reversion (timeout=0)");
-			(void)k_work_cancel_delayable(&sched.dodag_loss_work);
-			dodag_loss_resume_handler(&sched.dodag_loss_work);
-		}
-	}
 }
 
 static void sched_work_handler(struct k_work *work)
@@ -727,16 +686,70 @@ static void sched_work_handler(struct k_work *work)
 	ARG_UNUSED(work);
 
 	k_mutex_lock(&sched.mutex, K_FOREVER);
+	bool running = sched.running;
 
-	if (!sched.running) {
-		k_mutex_unlock(&sched.mutex);
+	k_mutex_unlock(&sched.mutex);
+
+	if (!running) {
 		return;
 	}
 
 	(void)send_announce();
 	schedule_next();
+}
 
+static void dodag_loss_resume_handler(struct k_work *work)
+{
+	ARG_UNUSED(work);
+
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+	bool running = sched.running;
+	bool joined = sched.dodag_joined;
+
+	if (running && !joined) {
+		LOG_INF("DODAG loss resume timeout: reverting to normal announce interval");
+	}
 	k_mutex_unlock(&sched.mutex);
+
+	if (running) {
+		schedule_next();
+	}
+}
+
+void lichen_announce_sched_set_dodag_state(bool joined, bool gateway_centric)
+{
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+	if (!sched.running) {
+		k_mutex_unlock(&sched.mutex);
+		return;
+	}
+
+	bool prev_gateway = sched.dodag_joined && sched.gateway_centric;
+	sched.dodag_joined = joined;
+	sched.gateway_centric = joined ? gateway_centric : false;
+	bool new_gateway = sched.dodag_joined && sched.gateway_centric;
+
+	if (prev_gateway != new_gateway) {
+		LOG_INF("DODAG state change: joined=%d gateway=%d, rescheduling announce",
+			joined, gateway_centric);
+		k_mutex_unlock(&sched.mutex);
+
+		/* Reschedule with new interval immediately */
+		(void)k_work_cancel_delayable(&sched.work);
+		schedule_next();
+	} else {
+		k_mutex_unlock(&sched.mutex);
+	}
+
+	/* Schedule or cancel DODAG loss resume timer */
+	if (!joined) {
+		uint32_t delay_s = CONFIG_LICHEN_DODAG_LOSS_RESUME_TIMEOUT;
+		if (delay_s > 0) {
+			k_work_schedule(&sched.dodag_loss_work, K_SECONDS(delay_s));
+		}
+	} else {
+		(void)k_work_cancel_delayable(&sched.dodag_loss_work);
+	}
 }
 
 int lichen_announce_sched_start(
@@ -797,6 +810,7 @@ void lichen_announce_sched_stop(void)
 	k_mutex_unlock(&sched.mutex);
 
 	(void)k_work_cancel_delayable(&sched.work);
+	(void)k_work_cancel_delayable(&sched.dodag_loss_work);
 	LOG_INF("announce scheduler stopped");
 }
 
@@ -830,17 +844,6 @@ uint16_t lichen_announce_sched_get_seq(void)
 	return seq;
 }
 
-uint8_t lichen_announce_sched_get_channel(void)
-{
-	uint8_t ch;
-
-	k_mutex_lock(&sched.mutex, K_FOREVER);
-	ch = sched.rx_channel;
-	k_mutex_unlock(&sched.mutex);
-
-	return ch;
-}
-
 int lichen_announce_sched_send_now(void)
 {
 	k_mutex_lock(&sched.mutex, K_FOREVER);
@@ -851,24 +854,6 @@ int lichen_announce_sched_send_now(void)
 	k_mutex_unlock(&sched.mutex);
 
 	return send_announce();
-}
-
-uint8_t lichen_announce_sched_get_rx_channel(void)
-{
-	uint8_t ch;
-
-	k_mutex_lock(&sched.mutex, K_FOREVER);
-	ch = sched.rx_channel;
-	k_mutex_unlock(&sched.mutex);
-
-	return ch;
-}
-
-void lichen_announce_sched_set_rx_channel(uint8_t rx_channel)
-{
-	k_mutex_lock(&sched.mutex, K_FOREVER);
-	sched.rx_channel = (rx_channel >= 8U) ? 0U : rx_channel;
-	k_mutex_unlock(&sched.mutex);
 }
 
 int lichen_announce_sched_set_app_data(const uint8_t *app_data, size_t app_data_len)

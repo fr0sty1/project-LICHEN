@@ -341,24 +341,26 @@ impl BlockReceiver {
         }
 
         let block_size = block.size();
-        if data.len() > block_size || (block.more && data.len() != block_size) {
+        if (self.data_len > 0 && block_size > self.block_size)
+            || data.len() > block_size
+            || (block.more && data.len() != block_size)
+        {
             return Err(CoapError::InvalidBlockOption);
         }
 
-        let block_offset = block.offset();
-        if block_offset < self.data_len {
+        let offset = block.offset();
+        if offset != self.data_len {
             return Err(CoapError::BlockOutOfOrder);
         }
-        if block_offset > self.data_len {
-            return Err(CoapError::BlockOutOfOrder);
-        }
-        let needed = self.data_len + data.len();
+        let offset = self.data_len;
+        let needed = offset + data.len();
         if needed > Self::MAX_PAYLOAD {
             return Err(BufferTooSmall::new(needed, Self::MAX_PAYLOAD).into());
         }
 
-        self.data[self.data_len..self.data_len + data.len()].copy_from_slice(data);
+        self.data[offset..offset + data.len()].copy_from_slice(data);
         self.data_len = needed;
+        self.block_size = block_size;
         self.expected_block = block.num + 1;
 
         if !block.more {
@@ -557,24 +559,26 @@ mod tests {
     }
 
     #[test]
-    fn receiver_handles_mid_transfer_szx_change() {
-        // Mid-transfer szx change should not cause gaps.
+    fn receiver_handles_mid_transfer_szx_reduction() {
+        // RFC 7959: server may reduce SZX mid-transfer (NUM rescales).
         // Receiver tracks cumulative bytes, not block_num * block_size.
-        let mut receiver = BlockReceiver::new(64);
+        let mut receiver = BlockReceiver::new(128); // szx=3
 
-        let block0 = BlockOption::new(0, true, 3).unwrap();
+        let block0 = BlockOption::new(0, true, 3).unwrap(); // szx=3 (128 bytes)
         assert!(!receiver.receive_block(block0, &[1u8; 128]).unwrap());
 
-        // Block 1 arrives with szx=3 (128 bytes) - sender changed szx mid-transfer.
-        // Without fix: offset = 1 * 128 = 128, leaving 64-byte gap.
-        // With fix: offset = data_len = 128, no gap.
-        let block1 = BlockOption::new(1, false, 3).unwrap();
-        assert!(receiver.receive_block(block1, &[2u8; 64]).unwrap());
+        // RFC 7959 Figure 4: reducing 128-byte blocks to 64 bytes rescales NUM.
+        let block2 = BlockOption::new(2, true, 2).unwrap(); // szx=2 (64 bytes)
+        assert!(!receiver.receive_block(block2, &[2u8; 64]).unwrap());
+
+        let block3 = BlockOption::new(3, false, 2).unwrap();
+        assert!(receiver.receive_block(block3, &[3u8; 32]).unwrap());
 
         let payload = receiver.payload();
-        assert_eq!(payload.len(), 192);
+        assert_eq!(payload.len(), 224);
         assert!(payload[..128].iter().all(|&b| b == 1));
         assert!(payload[128..192].iter().all(|&b| b == 2));
+        assert!(payload[192..].iter().all(|&b| b == 3));
     }
 
     #[test]
@@ -629,8 +633,8 @@ mod tests {
     }
 
     #[test]
-    fn receiver_accepts_initial_szx_increase() {
-        // Server may use larger block size than receiver initially requested.
+    fn receiver_accepts_initial_szx_larger_than_preferred() {
+        // Server may choose any SZX for the first block (RFC 7959 §4).
         let mut receiver = BlockReceiver::new(64);
         let larger = BlockOption::new(0, false, 3).unwrap();
 
@@ -639,9 +643,7 @@ mod tests {
     }
 
     #[test]
-    fn receiver_accepts_mid_transfer_szx_increase() {
-        // Server may increase block size mid-transfer. Block numbers are
-        // recalculated at the new SZX: block 1 at szx=3 covers bytes 128..256.
+    fn receiver_rejects_mid_transfer_szx_increase() {
         let mut receiver = BlockReceiver::new(128);
         let block0 = BlockOption::new(0, true, 2).unwrap();
         let block1 = BlockOption::new(1, true, 2).unwrap();
@@ -649,13 +651,13 @@ mod tests {
         receiver.receive_block(block1, &[2u8; 64]).unwrap();
 
         let larger = BlockOption::new(1, false, 3).unwrap();
-        assert!(receiver.receive_block(larger, &[3u8; 128]).unwrap());
-        assert!(receiver.is_complete());
-        let payload = receiver.payload();
-        assert_eq!(payload.len(), 256);
-        assert!(payload[..64].iter().all(|&b| b == 1));
-        assert!(payload[64..128].iter().all(|&b| b == 2));
-        assert!(payload[128..256].iter().all(|&b| b == 3));
+        assert_eq!(
+            receiver.receive_block(larger, &[3u8; 128]),
+            Err(CoapError::InvalidBlockOption)
+        );
+        assert_eq!(receiver.payload().len(), 128);
+        assert_eq!(receiver.next_request_block().num, 2);
+        assert_eq!(receiver.next_request_block().size(), 64);
     }
 
     #[test]

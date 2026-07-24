@@ -1,14 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 
-/**
- * @file coap_status.c
- * @brief LCI /status resource handlers (RFC 7641 Observable)
- *
- * Implements /status, /status/neighbors, /status/routes per LCI spec 17.5.3.
- * CCP-17 capacity validation for CBOR encoders (BUILD_ASSERT + runtime checks).
- */
-
 #include <errno.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -41,6 +33,10 @@ BUILD_ASSERT(CONFIG_LICHEN_COAP_STATUS_MAX_NEIGHBORS <= 16U,
 	     "CONFIG_LICHEN_COAP_STATUS_MAX_NEIGHBORS exceeds CBOR array header + buffer");
 BUILD_ASSERT(CONFIG_LICHEN_COAP_STATUS_MAX_ROUTES <= 16U,
 	     "CONFIG_LICHEN_COAP_STATUS_MAX_ROUTES exceeds CBOR array header + buffer");
+BUILD_ASSERT(CONFIG_LICHEN_COAP_STATUS_MAX_TXQ <= 255U,
+	     "CONFIG_LICHEN_COAP_STATUS_MAX_TXQ exceeds uint8_t range");
+BUILD_ASSERT(CONFIG_LICHEN_COAP_STATUS_MAX_FWD <= 255U,
+	     "CONFIG_LICHEN_COAP_STATUS_MAX_FWD exceeds uint8_t range");
 BUILD_ASSERT(LICHEN_COAP_STATUS_CBOR_MAX_SIZE <= CONFIG_COAP_SERVER_MESSAGE_SIZE,
 	     "LICHEN_COAP_STATUS_CBOR_MAX_SIZE must fit in CONFIG_COAP_SERVER_MESSAGE_SIZE");
 BUILD_ASSERT(LICHEN_COAP_NEIGHBORS_CBOR_MAX_SIZE <= CONFIG_COAP_SERVER_MESSAGE_SIZE,
@@ -305,7 +301,6 @@ static const char *trust_level_str(enum lichen_coap_trust_level trust)
 	cbor_put_key(&ctx, "uptime_s");
 	cbor_put_uint(&ctx, status->uptime_s);
 
-
 	if (status->battery_pct_valid) {
 		cbor_put_key(&ctx, "battery_pct");
 		cbor_put_uint(&ctx, status->battery_pct);
@@ -567,6 +562,17 @@ static int status_get(struct coap_resource *resource,
 					   COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
 	}
 
+	if (status.txq_used > CONFIG_LICHEN_COAP_STATUS_MAX_TXQ) {
+		LOG_ERR("txq_used %u exceeds MAX_TXQ %u", status.txq_used,
+			CONFIG_LICHEN_COAP_STATUS_MAX_TXQ);
+		status.txq_used = CONFIG_LICHEN_COAP_STATUS_MAX_TXQ;
+	}
+	if (status.fwd_used > CONFIG_LICHEN_COAP_STATUS_MAX_FWD) {
+		LOG_ERR("fwd_used %u exceeds MAX_FWD %u", status.fwd_used,
+			CONFIG_LICHEN_COAP_STATUS_MAX_FWD);
+		status.fwd_used = CONFIG_LICHEN_COAP_STATUS_MAX_FWD;
+	}
+
 	len = lichen_coap_encode_status_cbor(cbor_buf, sizeof(cbor_buf), &status);
 	if (len == 0) {
 		return lichen_coap_respond(resource, request, addr, addr_len,
@@ -594,6 +600,17 @@ static void status_notify(struct coap_resource *resource,
 	r = s_config.status_get(&status);
 	if (r < 0) {
 		return;
+	}
+
+	if (status.txq_used > CONFIG_LICHEN_COAP_STATUS_MAX_TXQ) {
+		LOG_ERR("txq_used %u exceeds MAX_TXQ %u", status.txq_used,
+			CONFIG_LICHEN_COAP_STATUS_MAX_TXQ);
+		status.txq_used = CONFIG_LICHEN_COAP_STATUS_MAX_TXQ;
+	}
+	if (status.fwd_used > CONFIG_LICHEN_COAP_STATUS_MAX_FWD) {
+		LOG_ERR("fwd_used %u exceeds MAX_FWD %u", status.fwd_used,
+			CONFIG_LICHEN_COAP_STATUS_MAX_FWD);
+		status.fwd_used = CONFIG_LICHEN_COAP_STATUS_MAX_FWD;
 	}
 
 	cbor_len = lichen_coap_encode_status_cbor(cbor_buf, sizeof(cbor_buf), &status);

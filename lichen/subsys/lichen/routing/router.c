@@ -12,12 +12,6 @@
 #include <errno.h>
 #include <string.h>
 
-/* Link-local prefix: fe80::/10 - inline check in is_link_local() */
-#define LINK_LOCAL_PREFIX_LEN 10
-
-/* ULA prefix: fd00::/8 - inline check in is_ula() */
-#define ULA_PREFIX_LEN 8
-
 /**
  * Check if an IPv6 address matches a prefix.
  */

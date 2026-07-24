@@ -14,7 +14,8 @@ MIC_LENGTH = 4
 RULE_IDS = (0x2a, 0x78, 0x79)
 TILE_SIZE = 187
 MAX_PACKET_SIZE = 16384
-DEFAULT_RECEIVER_LIMIT = 1281
+MAX_SCHC_PACKET = 1281
+DEFAULT_RECEIVER_LIMIT = MAX_SCHC_PACKET
 MAX_ACK_REQUESTS = 4
 WINDOW_SIZE = 63
 
@@ -172,6 +173,9 @@ class Ack:
                 raise FragmentError("malformed C=1 ACK or control")
             return cls(data[0], window, (), True)
         bit_count = len(data[1:]) * 8 - 2
+        max_bytes = (2 + WINDOW_SIZE + 7) // 8
+        if len(data[1:]) > max_bytes:
+            raise FragmentError("ACK bitmap size exceeds SCHC maximum window size")
         raw = int.from_bytes(data[1:], "big") & ((1 << bit_count) - 1)
         if bit_count >= WINDOW_SIZE:
             padding = bit_count - WINDOW_SIZE

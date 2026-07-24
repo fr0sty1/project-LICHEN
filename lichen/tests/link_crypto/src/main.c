@@ -350,24 +350,22 @@ ZTEST(link_crypto, test_derived_node_keys_authenticate_cross_node)
 	ret = schnorr48_verify_frame(60, 0x20, 1, 42, NULL, 0U,
 				     payload, sizeof(payload),
 				     &signed_payload[sizeof(payload)],
-				     pk_a);
+				     SCHNORR48_SIG_LEN, pk_a);
 	zassert_equal(ret, 1, "verify with derived pubkey failed: %d", ret);
 
 	/* B's key must NOT verify A's signature */
 	ret = schnorr48_verify_frame(60, 0x20, 1, 42, NULL, 0U,
 				     payload, sizeof(payload),
 				     &signed_payload[sizeof(payload)],
-				     pk_b);
+				     SCHNORR48_SIG_LEN, pk_b);
 	zassert_equal(ret, 0, "wrong pubkey must not verify");
 }
 
 ZTEST(link_crypto, test_lichen_yggdrasil_addr_matches_test_vectors)
 {
 	/* Uses test/vectors/yggdrasil-derivation.json vectors (first two).
-	 * Matches Rust lichen-core::addr::ygg_addr_from_pubkey,
+	 * Matches Rust lichen-link::identity::yggdrasil_addr_from_pubkey,
 	 * C lichen_identity_ygg_addr_from_ed25519 oracle, and Python.
-	 * IID = SHA-256(pubkey)[0:8] with U/L bit cleared;
-	 * addr = [0x02] + SHA-512(pubkey)[0:7] + IID per 06-security.md §8.5.
 	 * Tests the lichen_yggdrasil_addr wrapper (project-LICHEN-gp7u). */
 	static const uint8_t vec1_pubkey[32] = {
 		0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14,
@@ -376,8 +374,8 @@ ZTEST(link_crypto, test_lichen_yggdrasil_addr_matches_test_vectors)
 		0xa4, 0x95, 0x99, 0x1b, 0x78, 0x52, 0xb8, 0x55
 	};
 	static const uint8_t vec1_ygg[16] = {
-		0x02, 0x6b, 0x4e, 0x6c, 0x1f, 0xe3, 0x65, 0x04,
-		0x5d, 0xf6, 0xe0, 0xe2, 0x76, 0x13, 0x59, 0xd3
+		0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0xe1, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14
 	};
 
 	struct in6_addr addr;
@@ -388,11 +386,11 @@ ZTEST(link_crypto, test_lichen_yggdrasil_addr_matches_test_vectors)
 	zassert_mem_equal(addr.s6_addr, vec1_ygg, sizeof(vec1_ygg),
 			  "vector 1 does not match yggdrasil-derivation.json");
 
-	/* Vector 2 from JSON: zero pubkey verifies U/L bit + SHA-512 prefix handling */
+	/* Vector 2 from JSON: zero pubkey verifies U/L bit handling */
 	static const uint8_t vec2_pubkey[32] = {0};
 	static const uint8_t vec2_ygg[16] = {
-		0x02, 0x50, 0x46, 0xad, 0xc1, 0xdb, 0xa8, 0x38,
-		0x64, 0x68, 0x7a, 0xad, 0xf8, 0x62, 0xbd, 0x77
+		0x02, 0xd4, 0xa4, 0xa4, 0xa4, 0xa4, 0xa4, 0xa4,
+		0xe1, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14
 	};
 
 	ret = lichen_yggdrasil_addr(vec2_pubkey, &addr);
@@ -400,7 +398,7 @@ ZTEST(link_crypto, test_lichen_yggdrasil_addr_matches_test_vectors)
 	zassert_mem_equal(addr.s6_addr, vec2_ygg, sizeof(vec2_ygg),
 			  "vector 2 does not match yggdrasil-derivation.json");
 
-	/* Vector 3 from JSON */
+	/* Vector 3 from JSON (official Yggdrasil test suite adapted for LICHEN IID) */
 	static const uint8_t vec3_pubkey[32] = {
 		0xd7, 0x5a, 0x98, 0x01, 0x82, 0xb1, 0x0a, 0xb7,
 		0xd5, 0x4b, 0xfe, 0xd3, 0xc9, 0x64, 0x07, 0x3a,
@@ -408,8 +406,8 @@ ZTEST(link_crypto, test_lichen_yggdrasil_addr_matches_test_vectors)
 		0xaf, 0x02, 0x1a, 0x68, 0xf7, 0x07, 0x51, 0x1a
 	};
 	static const uint8_t vec3_ygg[16] = {
-		0x02, 0x0e, 0x02, 0xa5, 0x02, 0x25, 0xb4, 0xba,
-		0x21, 0xfe, 0x31, 0xdf, 0xa1, 0x54, 0xa2, 0x61
+		0x02, 0x05, 0xa3, 0xf6, 0xc5, 0xe5, 0xe5, 0xe5,
+		0xe1, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14
 	};
 
 	ret = lichen_yggdrasil_addr(vec3_pubkey, &addr);
@@ -430,21 +428,29 @@ ZTEST(link_crypto, test_tdma_matches_ccp_tdma_vectors)
 	 * spec/02a-coordinated-capacity.md §2a.2 + test/vectors/ccp16.json,
 	 * ccp_tdma.json (independent oracles for hash, 100ms guard, SFN wrap).
 	 */
-	/* Slot static hash (per spec/02a:78 fnv1a32(EUI64 XOR epoch) % num_slots) */
-	static const uint8_t eui1_be[8] = {0, 0, 0, 0, 0, 0, 0, 1};
-	static const uint8_t eui2_be[8] = {0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x11};
-	int slot1 = lichen_tdma_compute_slot(eui1_be, 0, 8);
-	zassert_equal(2, slot1, "slot_static_hash_eui1: expected_slot=2 got %d", slot1);
-	int slot2 = lichen_tdma_compute_slot(eui2_be, 0, 16);
-	zassert_equal(13, slot2, "slot_static_hash_eui2: expected_slot=13 got %d", slot2);
+
+	/* Slot static hash vector 1: eui64=0000000000000001, epoch=0, n_slots=8 -> expected_slot=2 */
+	{
+		uint8_t eui1[8] = {0};
+		eui1[7] = 1;
+		int slot = lichen_tdma_compute_slot(eui1, 0, 8);
+		zassert_equal(2, slot, "slot_static_hash_eui1: expected_slot=2, got=%d", slot);
+	}
+
+	/* Slot static hash vector 2: eui64=aabbccddeeff0011, epoch=0, n_slots=16 -> expected_slot=13 */
+	{
+		uint8_t eui2[8] = {0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x11};
+		int slot = lichen_tdma_compute_slot(eui2, 0, 16);
+		zassert_equal(13, slot, "slot_static_hash_eui2: expected_slot=13, got=%d", slot);
+	}
 
 	/* Timing windows (guard=100ms, slot_duration=250ms per spec) */
 	struct lichen_link_ctx lctx;
 	memset(&lctx, 0, sizeof(lctx));
-	memcpy(lctx.eui64, eui1_be, 8);
+	memcpy(lctx.eui64, test_eui64, 8);
 	struct lichen_tdma_ctx tdma = {0};
 	zassert_equal(0, lichen_tdma_init(&tdma, &lctx));
-	zassert_equal(2, tdma.slot);
+	zassert_equal(1, tdma.slot);
 	zassert_equal(8, tdma.n_slots);
 	zassert_equal(250, tdma.slot_duration);
 	zassert_false(tdma.synced);

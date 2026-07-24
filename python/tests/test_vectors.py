@@ -61,6 +61,21 @@ from generate import (  # noqa: E402
 )
 from generate_rpl_route_state import build_document as build_route_state_document  # noqa: E402
 
+
+def _fnv1a32(data: bytes) -> int:
+    h = 0x811c9dc5
+    for b in data:
+        h = ((h ^ b) * 0x01000193) & 0xFFFFFFFF
+    return h
+
+
+def _synchronized_hop_channel(sfn: int, seed: int = 0, num_channels: int = 8) -> int:
+    data = seed.to_bytes(4, "little") + ((sfn & 0xFFFFFFFF).to_bytes(4, "little"))
+    h = _fnv1a32(data)
+    n = num_channels if num_channels >= 3 else 3
+    return 1 + (h % n)
+
+
 CONFIG_SECTION_EXPECTATIONS = [
     ("device", 1, [(1, 0), (7, 900)]),
     ("position", 2, [(3, 0), (5, 0), (7, 0), (13, 2)]),
@@ -512,6 +527,42 @@ def test_edhoc_vectors_match_generator() -> None:
 def test_ccp9_vectors_match_generator() -> None:
     doc = _load("ccp9.json")
     assert doc["vectors"] == ccp9_vectors()
+
+
+def _hash_32_cases():
+    doc = _load("hash_32.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _hash_32_cases())
+def test_hash_32_vector(name: str, vector: dict) -> None:
+    if "input_hex" in vector:
+        data = bytes.fromhex(vector["input_hex"])
+    else:
+        data = vector["input"].encode() if isinstance(vector["input"], str) else bytes(vector["input"])
+    expected_raw = vector["output"]
+    if isinstance(expected_raw, str) and expected_raw.startswith("0x"):
+        expected = int(expected_raw, 16)
+    else:
+        expected = int(expected_raw)
+    assert _fnv1a32(data) == expected, f"hash_32 drift: {name}"
+
+
+def _ccp16_hop_cases():
+    doc = _load("ccp16-hop.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _ccp16_hop_cases())
+def test_ccp16_hop_vector(name: str, vector: dict) -> None:
+    sfn = vector["sfn"]
+    seed = vector.get("seed", 0)
+    num_channels = vector.get("num_channels", 8)
+    expected = vector["expected_channel"]
+    channel = _synchronized_hop_channel(sfn, seed, num_channels)
+    assert channel == expected, f"synchronized_hop_channel drift: {name} (got {channel}, expected {expected})"
 
 
 def _ccp16_cases():

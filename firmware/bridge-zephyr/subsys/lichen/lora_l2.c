@@ -485,9 +485,9 @@ static void rx_thread(void *arg1, void *arg2, void *arg3)
          * 4. This is a driver bug that needs immediate attention, not silent handling
          */
         /* lora_recv() returns int: negative errno on error, byte count on success.
-         * sizeof(rx_buf) is size_t. Cast sizeof to int for comparison since
-         * LICHEN_LORA_MAX_PHY_PAYLOAD (255) fits safely in int. */
-        if (ret > (int)sizeof(rx_buf)) {
+         * At this point ret > 0 (we checked ret < 0 and ret == 0 above), so cast
+         * ret to size_t for a type-safe comparison against sizeof(rx_buf). */
+        if ((size_t)ret > sizeof(rx_buf)) {
             /*
              * Driver returned more bytes than buffer size - corruption likely.
              * Store crash info for post-mortem, transition to ABORTED, and
@@ -1129,12 +1129,14 @@ int lichen_lora_l2_set_rx_callback(lichen_lora_rx_cb_t cb, void *user_data)
 
     /*
      * Use mutex to ensure atomic update of callback + user_data pair.
-     * The RX thread reads both fields, so they must be updated together
-     * to avoid invoking a callback with mismatched user_data.
+     * The RX thread reads both fields under the same mutex (lines 526-529),
+     * so the pair is always consistent. The mutex provides atomicity;
+     * the write order of the two fields is arbitrary.
      *
-     * Order matters: user_data MUST be set before callback. If the callback
-     * pointer is read non-NULL, user_data must already be valid. This order
-     * is safe even for lock-free reads (though we use mutex here).
+     * Ownership: caller retains ownership of user_data. This module stores
+     * the pointer and passes it back on invocation, but never frees it.
+     * Callers should clean up their user_data before calling stop() or
+     * deinit() if the memory would otherwise be orphaned.
      */
     k_mutex_lock(&lora_mutex, K_FOREVER);
     lora_data.rx_callback_user_data = user_data;

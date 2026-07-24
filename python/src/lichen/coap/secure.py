@@ -279,7 +279,9 @@ def _sqlite_host_values_semantically_equal(
     if len(left) != 12 or len(right) != 12:
         return False
     blob_indexes = {0, 1, 2, 3, 4, 8, 9, 10}
-    for index, (left_value, right_value) in enumerate(zip(left, right, strict=True)):
+    if len(left) != len(right):
+        return False
+    for index, (left_value, right_value) in enumerate(zip(left, right)):
         if index == 5:
             if left_value is None or right_value is None:
                 if left_value is not right_value:
@@ -1468,6 +1470,8 @@ class SecureDatagramChannel(DatagramChannel):
         peer_resolver: Resolver for peer public keys.
     """
 
+    _MAX_PENDING_OUTBOUND = 4096
+
     _STORE_METHODS = (
         "check_process",
         "get_sync",
@@ -1736,6 +1740,8 @@ class SecureDatagramChannel(DatagramChannel):
         correlation = None
         locally_originated = message.code.is_request()
         if locally_originated:
+            if len(self._pending_outbound) >= self._MAX_PENDING_OUTBOUND:
+                return None
             correlation = _RequestCorrelation(
                 None, observe=message.opt.observe == 0
             )
@@ -2121,6 +2127,8 @@ class SecureDatagramChannel(DatagramChannel):
             ):
                 correlation = cached.correlation
             else:
+                if len(self._pending_outbound) >= self._MAX_PENDING_OUTBOUND:
+                    return None
                 correlation = _RequestCorrelation(
                     None, observe=message.opt.observe == 0
                 )
