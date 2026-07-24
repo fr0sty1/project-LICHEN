@@ -232,6 +232,11 @@ static int deaddrop_post(struct coap_resource *resource,
 		if (orig_code != COAP_METHOD_POST) {
 			return COAP_RESPONSE_CODE_NOT_ALLOWED;
 		}
+		if (plain_len > sizeof(plain)) {
+			LOG_ERR("OSCORE decrypted payload %zu exceeds plain buffer %zu",
+				plain_len, sizeof(plain));
+			return COAP_RESPONSE_CODE_INTERNAL_ERROR;
+		}
 		payload = plain;
 		payload_len = (uint16_t)plain_len;
 	} else {
@@ -345,6 +350,13 @@ static int deaddrop_get(struct coap_resource *resource,
 	int len = s_provider->retrieve(buf, sizeof(buf), node);
 	k_mutex_unlock(&s_dtn_buf_mutex);
 	if (len < 0) {
+		return lichen_coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL,
+				    0);
+	}
+	if ((size_t)len > sizeof(buf)) {
+		LOG_ERR("deaddrop retrieve returned %d > %zu bytes",
+			len, sizeof(buf));
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL,
 				    0);
