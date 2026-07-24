@@ -3,7 +3,8 @@
 extern crate alloc;
 
 use crate::keys::{PrivateKey, PublicKey, Seed};
-use crate::schnorr::derive_keypair;
+use crate::schnorr::{clamp, derive_keypair};
+use curve25519_dalek::MontgomeryPoint;
 use lichen_core::{addr::ygg_addr_from_pubkey, lichen_hash_32};
 use sha2::{Digest, Sha512};
 
@@ -77,6 +78,23 @@ impl Identity {
             iid,
             ygg_addr,
         }
+    }
+
+    /// Derive X25519 private key from the Ed25519 seed per spec 8.8.
+    ///
+    /// `x25519_private = clamp(SHA-512(seed)[0:32])` per RFC 7748 §5.
+    /// This is byte-identical to the Ed25519 private scalar (same
+    /// derivation), but interpreted on the Montgomery curve for ECDH.
+    pub fn x25519_private(&self) -> [u8; 32] {
+        let hash = Sha512::digest(self.seed.as_bytes());
+        clamp(hash[..32].try_into().unwrap())
+    }
+
+    /// Derive X25519 public key from the Ed25519 seed per spec 8.8.
+    ///
+    /// `x25519_public = X25519(x25519_private, basepoint)`
+    pub fn x25519_public(&self) -> [u8; 32] {
+        MontgomeryPoint::mul_base_clamped(self.x25519_private()).to_bytes()
     }
 }
 
@@ -167,6 +185,50 @@ mod tests {
         );
         // deterministic
         assert_eq!(direct, ygg_addr_from_pubkey(id.pubkey.as_bytes()));
+    }
+
+    #[test]
+    fn x25519_private_matches_python_zero_seed() {
+        let seed = Seed::new([0u8; 32]);
+        let id = Identity::from_seed(seed);
+        let expected = arr32(&from_hex(
+            "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156",
+        ));
+        assert_eq!(id.x25519_private(), expected);
+    }
+
+    #[test]
+    fn x25519_private_equals_ed25519_privkey() {
+        // Both derive via clamp(SHA-512(seed)[0:32])
+        let seed = Seed::new([0xabu8; 32]);
+        let id = Identity::from_seed(seed);
+        assert_eq!(id.x25519_private(), *id.privkey.as_bytes());
+    }
+
+    #[test]
+    fn x25519_public_matches_python_zero_seed() {
+        let seed = Seed::new([0u8; 32]);
+        let id = Identity::from_seed(seed);
+        let expected = arr32(&from_hex(
+            "5bf55c73b82ebe22be80f3430667af570fae2556a6415e6b30d4065300aa947d",
+        ));
+        assert_eq!(id.x25519_public(), expected);
+    }
+
+    #[test]
+    fn x25519_public_is_deterministic() {
+        let seed = Seed::new([0x42u8; 32]);
+        let id = Identity::from_seed(seed);
+        assert_eq!(id.x25519_public(), id.x25519_public());
+    }
+
+    #[test]
+    fn x25519_public_differs_from_ed25519_pubkey() {
+        // Same seed → same private scalar, but different curve interpretation
+        // produces different public keys.
+        let seed = Seed::new([0x01u8; 32]);
+        let id = Identity::from_seed(seed);
+        assert_ne!(id.x25519_public(), *id.pubkey.as_bytes());
     }
 
     #[test]
