@@ -329,7 +329,7 @@ impl Ack {
         bitmap &= BITMAP_MASK;
         let trailing = (bitmap & BITMAP_MASK).trailing_ones() as usize;
         let n = WINDOW_SIZE - trailing;
-        if n > MAX_WINDOW_SIZE {
+        if n > WINDOW_SIZE {
             return Err(FragmentError::MalformedAck);
         }
         let remaining = if n <= 6 { 0 } else { n - 6 };
