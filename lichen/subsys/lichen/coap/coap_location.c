@@ -15,7 +15,7 @@
 
 LOG_MODULE_REGISTER(lichen_coap_location, CONFIG_LICHEN_COAP_LOCATION_LOG_LEVEL);
 
-#define LOCATION_SENML_MAX 128
+#define LOCATION_SENML_MAX 192
 #define BASE_NAME_MAX 32
 
 static void build_base_name(char *out, size_t out_len)
@@ -47,6 +47,10 @@ static int sensors_location_get(struct coap_resource *resource,
 	float lat;
 	float lon;
 	float alt;
+	float speed;
+	float heading;
+	float hacc;
+	float vacc;
 	uint64_t base_time;
 	int len;
 
@@ -59,15 +63,21 @@ static int sensors_location_get(struct coap_resource *resource,
 	lat = (float)snap.latitude_e7 / 1e7f;
 	lon = (float)snap.longitude_e7 / 1e7f;
 	alt = snap.altitude_m_valid ? (float)snap.altitude_m : NAN;
+	/* speed, heading: not yet in HAL snapshot; always NAN */
+	speed = NAN;
+	heading = NAN;
+	hacc = snap.horizontal_accuracy_mm_valid ? (float)snap.horizontal_accuracy_mm / 1000.0f : NAN;
+	vacc = snap.vertical_accuracy_mm_valid ? (float)snap.vertical_accuracy_mm / 1000.0f : NAN;
 	base_time = snap.fix_time_unix_valid ? snap.fix_time_unix : 0U;
 
 	build_base_name(base_name, sizeof(base_name));
 
-	len = senml_encode_location(base_name[0] != '\0' ? base_name : NULL,
-				    base_time, lat, lon, alt, senml,
-				    sizeof(senml));
+	len = senml_encode_location_full(base_name[0] != '\0' ? base_name : NULL,
+					 base_time, lat, lon, alt,
+					 speed, heading, hacc, vacc,
+					 senml, sizeof(senml));
 	if (len < 0) {
-		LOG_ERR("senml_encode_location failed: %d", len);
+		LOG_ERR("senml_encode_location_full failed: %d", len);
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
 	}

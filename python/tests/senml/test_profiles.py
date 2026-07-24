@@ -45,6 +45,29 @@ class TestLocation:
         assert records[2].u == "m/s"
         assert records[2].v == pytest.approx(5.5)
 
+    def test_with_heading(self) -> None:
+        records = location(48.2049, 16.3710, heading=45.0)
+        assert len(records) == 3
+        assert records[2].n == "heading"
+        assert records[2].u == "deg"
+        assert records[2].v == pytest.approx(45.0)
+
+    def test_with_hacc_vacc(self) -> None:
+        records = location(48.2049, 16.3710, hacc=5.0, vacc=10.0)
+        assert len(records) == 4
+        assert records[2].n == "hacc"
+        assert records[2].u == "m"
+        assert records[2].v == pytest.approx(5.0)
+        assert records[3].n == "vacc"
+        assert records[3].u == "m"
+        assert records[3].v == pytest.approx(10.0)
+
+    def test_all_location_fields(self) -> None:
+        records = location(48.2049, 16.3710, alt=158.0, speed=5.5, heading=45.0, hacc=2.5, vacc=5.0)
+        assert len(records) == 7
+        names = [r.n for r in records]
+        assert names == ["lat", "lon", "alt", "speed", "heading", "hacc", "vacc"]
+
     def test_without_altitude(self) -> None:
         assert len(location(0.0, 0.0)) == 2
 
