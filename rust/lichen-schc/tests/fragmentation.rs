@@ -119,10 +119,9 @@ fn retry_limits_emit_aborts() {
 
 #[test]
 fn malformed_codec_inputs_are_rejected() {
-    let mut tile = [0; TILE_SIZE];
-    assert!(Fragment::from_bytes(&[0x78, 0x7c, 0], &mut tile).is_err());
+    assert!(Fragment::from_bytes(&[0x78, 0x7c, 0]).is_err());
     let regular_nonzero_padding = [0xff; TILE_SIZE + 2];
-    assert!(Fragment::from_bytes(&regular_nonzero_padding, &mut tile).is_err());
+    assert!(Fragment::from_bytes(&regular_nonzero_padding).is_err());
     assert!(Ack::from_bytes(&[0x78, 0x40, 0]).is_err());
     assert!(Ack::from_bytes_for(
         &[0x78, 0x38, 0, 0, 0, 0, 0, 0, 0],
@@ -232,8 +231,7 @@ fn missing_all0_still_requests_final_window_ack() {
     let length = sender.write_next(&mut output, &mut wire).unwrap().unwrap();
     assert_eq!(length, TILE_SIZE + 2);
     assert_eq!(&wire[..2], &[0x78, 0x00]);
-    let mut tile = [0u8; TILE_SIZE];
-    let fragment = Fragment::from_bytes(&wire[..length], &mut tile).unwrap();
+    let fragment = Fragment::from_bytes(&wire[..length]).unwrap();
     assert_eq!((fragment.window, fragment.fcn), (0, 0));
 
     let length = sender.write_next(&mut output, &mut wire).unwrap().unwrap();

@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 N_FCN_BITS = 6
 ALL_1 = (1 << N_FCN_BITS) - 1
 MAX_WINDOW_SIZE = ALL_1 - 1
-DEFAULT_WINDOW_SIZE = 7
+DEFAULT_WINDOW_SIZE = 63
 MIC_LENGTH = 4
 RULE_IDS = (0x2a, 0x78, 0x79)
 TILE_SIZE = 187
