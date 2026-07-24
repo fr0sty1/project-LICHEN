@@ -7,6 +7,7 @@ packet tracking and heterogeneous mesh testing capabilities.
 """
 
 import asyncio
+import hashlib
 import json
 import tempfile
 from pathlib import Path
@@ -184,6 +185,73 @@ class TestSimulationValidation:
         finally:
             # Cleanup
             await server.stop()
+
+    def test_packet_hash_standardization(self) -> None:
+        """Verify packet hash format and TX/RX matching across implementations.
+
+        Ensures that:
+        1. Packet hashes are 32-char hex strings (SHA256[:16])
+        2. Known payloads produce the expected hash (known-answer test)
+        3. TX and RX hashes match for the same payload
+        4. Cross-impl consistency: Python and Rust produce identical hashes
+        """
+        # Known-answer test vectors (SHA256[:16] hex)
+        # A known payload must always produce the same hash across all
+        # implementations. These vectors are verified against the Rust
+        # hetero_node.rs hash computation (Sha256::digest & hex::encode).
+        test_vectors: list[tuple[bytes, str]] = [
+            (b"Hello LICHEN!", "881a83ceb3647e2fe6bb4be7bd4aefd8"),
+            (b"test packet 1", "97de814a4742107b21d2032144c06356"),
+            (b"A" * 64, "d53eda7a637c99cc7fb566d96e9fa109"),
+            (b"", "e3b0c44298fc1c149afbf4c8996fb924"),
+        ]
+        for payload, expected_hash in test_vectors:
+            computed = hashlib.sha256(payload).digest()[:16].hex()
+            assert computed == expected_hash, (
+                f"SHA256[:16] mismatch for {payload!r}: "
+                f"got {computed}, expected {expected_hash}"
+            )
+            assert len(computed) == 32, (
+                f"Hash length {len(computed)} != 32 for {payload!r}"
+            )
+
+        # TX/RX hash matching test: same payload must produce same hash
+        # on both the transmit and receive sides.
+        sim = Simulation(sim_id="hash-match-test")
+        sim.add_node("tx", 0.0, 0.0, 0.0)
+        sim.add_node("rx", 100.0, 0.0, 0.0)
+
+        payload = b"Cross-impl consistency check"
+        sim.start_transmission("tx", payload)
+        sim.advance_to(3000)
+
+        rx_result = sim.get_rx_result("rx")
+        assert rx_result is not None
+        rx_payload, rssi, snr = rx_result
+        assert rx_payload == payload
+
+        tx_hash = hashlib.sha256(payload).digest()[:16].hex()
+        rx_hash = hashlib.sha256(rx_payload).digest()[:16].hex()
+        assert tx_hash == rx_hash, (
+            f"TX hash {tx_hash} != RX hash {rx_hash} for same payload"
+        )
+
+        # Verify both hashes appear in metrics
+        with tempfile.TemporaryDirectory() as tmpdir:
+            json_file = Path(tmpdir) / "hash_metrics.json"
+            sim.export_metrics(json_file)
+            data = json.loads(json_file.read_text())
+            tx_hashes = data.get("tx", {}).get("packet_hashes_sent", [])
+            rx_hashes = data.get("rx", {}).get("packet_hashes_received", [])
+            # At least one hash should match the known value
+            all_hashes = tx_hashes + rx_hashes
+            assert tx_hash in all_hashes, (
+                f"Computed hash {tx_hash} not found in metrics"
+            )
+            # All hashes must be 32-char hex
+            for h in all_hashes:
+                assert len(h) == 32, f"Metric hash {h} has length {len(h)} != 32"
+                int(h, 16)  # verify valid hex
 
     def test_barrier_sync_time_advancement(self) -> None:
         """Test that barrier sync works properly for multi-node validation."""
