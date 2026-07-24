@@ -1900,7 +1900,7 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 * arrives during early startup before lichen_l2_iface_init() completes.
 	 */
 	if (!atomic_get(&link_ctx_initialized)) {
-		LOG_WRN("lichen_l2: RX before link_ctx initialized, dropping");
+		LOG_ERR("lichen_l2: BUG: RX before link_ctx initialized, dropping");
 		k_mutex_unlock(&rx_mutex);
 		return;
 	}
