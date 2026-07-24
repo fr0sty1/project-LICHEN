@@ -707,7 +707,7 @@ class SosResource(resource.ObservableResource):  # type: ignore[misc]  # aiocoap
         msg.opt.content_format = CBOR
         return msg
 
-    async def render_post(self, request: Message) -> Message:
+    async def render_put(self, request: Message) -> Message:
         if not request.payload:
             return Message(code=aiocoap.BAD_REQUEST)
         try:
