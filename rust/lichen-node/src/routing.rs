@@ -984,6 +984,12 @@ impl Router {
         self.lookup_route(dst)
     }
 
+    /// Seed a route for testing.
+    #[cfg(test)]
+    pub fn add_test_route(&mut self, target: [u8; 16], path: &[[u8; 16]]) -> bool {
+        self.dao_manager.add_test_route(target, path)
+    }
+
     /// Check trickle timer and return pending event.
     pub fn poll_trickle(&self) -> TrickleEvent {
         self.trickle.next_event()

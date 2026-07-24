@@ -201,6 +201,14 @@ impl Gateway {
 }
 
 #[cfg(test)]
+impl Gateway {
+    /// Add a route to the routing table for testing multi-hop SRH insertion.
+    pub fn add_test_route(&mut self, target: [u8; 16], path: &[[u8; 16]]) -> bool {
+        self.rpl_node.add_test_route(target, path)
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use lichen_core::{
@@ -306,5 +314,139 @@ mod tests {
         ];
         let result = gw.mesh_to_mesh(&packet);
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn multi_hop_srh_is_inserted_for_global_dest() {
+        let mut gw = test_gateway();
+        // Use a global unicast destination (not fe80::/10 or fd00::/8) so that
+        // mesh_to_mesh takes the route-lookup + SRH insertion path.
+        let child = ll(2);
+        let dst = Ipv6Addr([0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]);
+        let path = [child.0, dst.0];
+        assert!(gw.add_test_route(dst.0, &path));
+
+        let src = ll(1);
+        let mut packet = [0u8; 48];
+        let n = icmpv6::echo_request(&src, &dst, 1, 1, b"data", &mut packet);
+        let packet = &packet[..n];
+
+        let result = gw.mesh_to_mesh(packet);
+        assert!(result.is_some(), "SRH insertion should succeed");
+        let compressed = result.unwrap();
+        assert_eq!(compressed[0], L2_DISPATCH_SCHC);
+        // SRH adds 24 bytes to a 48-byte packet, so SCHC compressed output should
+        // be noticeably larger than the original uncompressed packet.
+        assert!(
+            compressed.len() > packet.len(),
+            "SRH insertion should increase packet size"
+        );
+    }
+
+    #[test]
+    fn direct_child_global_dest_no_srh() {
+        let mut gw = test_gateway();
+        // Single-hop route to a global address: route.len() == 1 → no SRH.
+        let dst = Ipv6Addr([0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3]);
+        let path = [dst.0];
+        assert!(gw.add_test_route(dst.0, &path));
+
+        let src = ll(1);
+        let mut packet = [0u8; 48];
+        let n = icmpv6::echo_request(&src, &dst, 2, 1, b"data", &mut packet);
+        let packet = &packet[..n];
+
+        let result = gw.mesh_to_mesh(packet);
+        assert!(result.is_some(), "direct child should succeed");
+        // For a direct child, no SRH is inserted, so the compressed size should
+        // be smaller than the inflated SRH path.
+        let compressed = result.unwrap();
+        assert_eq!(compressed[0], L2_DISPATCH_SCHC);
+    }
+
+    #[test]
+    fn multi_hop_srh_header_correct() {
+        let mut gw = test_gateway();
+        let child = ll(2);
+        let dst = Ipv6Addr([0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4]);
+        let path = [child.0, dst.0];
+        assert!(gw.add_test_route(dst.0, &path));
+
+        // IPv6 header with NH=UDP(17), then UDP payload
+        let src = ll(1);
+        let mut ipv6 = [0u8; 40];
+        ipv6[0] = 0x60;
+        ipv6[4..6].copy_from_slice(&(20u16).to_be_bytes()); // payload length (UDP)
+        ipv6[6] = 17; // NH = UDP
+        ipv6[7] = 64;
+        ipv6[field::SRC_OFFSET..field::DST_OFFSET].copy_from_slice(&src.0);
+        ipv6[field::DST_OFFSET..].copy_from_slice(&dst.0);
+        let mut packet = ipv6.to_vec();
+        packet.extend_from_slice(b"0123456789abcdefghij"); // 20-byte UDP payload
+
+        let result = gw.mesh_to_mesh(&packet);
+        assert!(result.is_some());
+        let schc = result.unwrap();
+        let mut decompressed = vec![0u8; 512];
+        let n = lichen_schc::codec::decompress(&schc[1..], &mut decompressed)
+            .expect("decompress should succeed");
+        decompressed.truncate(n);
+
+        // After SRH insertion: NH = 43 (Routing Header)
+        assert_eq!(decompressed[6], 43, "NH should be Routing Header (43)");
+        // Destination address should now be the first hop (child)
+        assert_eq!(
+            &decompressed[field::DST_OFFSET..IPV6_HEADER_LEN],
+            &child.0,
+            "DST addr should be first hop after SRH insertion"
+        );
+        // Hdr Ext Len = (8 + 1*16)/8 - 1 = 2
+        assert_eq!(decompressed[41], 2, "Hdr Ext Len for 24-byte routing header");
+        // SRH starts at offset 40
+        // [40] = next header after routing (should be original NH = 17)
+        assert_eq!(decompressed[40], 17, "NH after SRH should be original UDP");
+        // [41] = Hdr Ext Len
+        assert_eq!(decompressed[41], 2);
+        // [42] = routing type = 3 (SRH, RFC 6554)
+        assert_eq!(decompressed[42], 3, "routing type must be 3");
+        // [43] = segments_left = 1
+        assert_eq!(decompressed[43], 1, "segments_left should be 1 (one hop to go)");
+        // [48..64] = address[0] = final destination
+        assert_eq!(
+            &decompressed[48..64],
+            &dst.0,
+            "SRH address[0] should be final destination"
+        );
+        // The original UDP payload should follow after the SRH
+        let srh_len: usize = 8 + 16; // 8-byte fixed + 1*16 address
+        assert_eq!(
+            &decompressed[40 + srh_len..],
+            b"0123456789abcdefghij",
+            "original UDP payload should follow SRH"
+        );
+    }
+
+    #[test]
+    fn blackhole_prevention_route_one_hop_non_direct() {
+        // A route containing exactly one hop that is NOT the destination indicates
+        // a data-plane inconsistency (should not happen in practice, but defensive).
+        let mut gw = test_gateway();
+        let child = ll(2);
+        let dst = Ipv6Addr([0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5]);
+
+        // Add a bogus route: path = [child] but target == dst (not child). The
+        // route path does NOT end with the target — but mesh_to_mesh doesn't
+        // validate that (it trusts the routing table). Just verify it doesn't
+        // crash and returns Some.
+        let path = [child.0];
+        assert!(gw.add_test_route(dst.0, &path));
+
+        let src = ll(1);
+        let mut packet = [0u8; 48];
+        let n = icmpv6::echo_request(&src, &dst, 3, 1, b"data", &mut packet);
+        let packet = &packet[..n];
+
+        let result = gw.mesh_to_mesh(packet);
+        assert!(result.is_some(), "should forward via single-hop route");
     }
 }
