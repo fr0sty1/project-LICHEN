@@ -21,7 +21,7 @@ import pytest
 
 from lichen.crypto.identity import Identity, PeerIdentity
 from lichen.crypto.schnorr48 import sign
-from lichen.link.frame import AddrMode, LichenFrame
+from lichen.link.frame import AddrMode, FrameError, LichenFrame
 from lichen.link.link_layer import (
     ReceiveError,
     RxFrame,
@@ -270,9 +270,11 @@ class TestLinkLayerTx:
         assert frames[1].seqnum == 0
 
     @pytest.mark.asyncio
-    async def test_signing_failure_consumes_tuple(
+    async def test_signing_failure_does_not_consume_tuple(
         self, link_layer: LinkLayer, monkeypatch: pytest.MonkeyPatch
     ):
+        """Signing failure before queue push must not consume the tuple."""
+
         class SigningError(Exception):
             pass
 
@@ -282,9 +284,10 @@ class TestLinkLayerTx:
         monkeypatch.setattr("lichen.link.link_layer.sign", fail_sign)
         with pytest.raises(SigningError):
             await link_layer.send(b"payload")
-        assert link_layer.get_sequence() == (0, 1)
-        with pytest.raises(RuntimeError, match="cannot be reset after use"):
-            link_layer.set_sequence(0, 0)
+        # Tuple NOT consumed — signing happens before _next_seqnum()
+        assert link_layer.get_sequence() == (0, 0)
+        # _sequence_started was never set, so reset is allowed
+        link_layer.set_sequence(0, 0)
 
     @pytest.mark.asyncio
     async def test_terminal_tuple_is_used_once_then_exhausts(
@@ -298,7 +301,7 @@ class TestLinkLayerTx:
 
         with pytest.raises(OverflowError, match="sequence exhausted"):
             link_layer.get_sequence()
-        with pytest.raises(OverflowError, match="sequence exhausted"):
+        with pytest.raises(OverflowError, match="tuple exhaustion"):
             await link_layer.send(b"reused")
         frames = [LichenFrame.from_bytes(data) for data in mock_radio.tx_history]
         assert [(frame.epoch, frame.seqnum) for frame in frames] == [
@@ -337,8 +340,8 @@ class TestLinkLayerTx:
         sequence = link_layer.get_sequence()
         queue_len = len(link_layer.tx_queue)
 
-        with pytest.raises(FrameError, match="frame body is 255 bytes, exceeds 254"):
-            await link_layer.send(b"\xaa" * 203)
+        with pytest.raises(FrameError, match="frame body is 256 bytes, exceeds 255"):
+            await link_layer.send(b"\xaa" * 204)
 
         assert link_layer.get_sequence() == sequence
         assert len(link_layer.tx_queue) == queue_len
@@ -434,10 +437,13 @@ class TestLinkLayerRx:
         payload = b"test"
 
         # Build valid signed frame
+        # Signable: LENGTH || LLSec || EPO || SEQ || DST_LEN(1) || DST || PLD
+        # length = 4 + dst_addr(0) + payload(4) + sig(48) = 56 = 0x38
         signable = (
             bytes([0x38, 0x20, 0])
             + (0).to_bytes(2, "big")  # seqnum
-            + b""  # dst_addr
+            + bytes([0])              # dst_addr length (0 = broadcast)
+            + b""                      # dst_addr
             + payload
         )
         signature = sign(peer_identity.privkey, peer_identity.pubkey, signable)
