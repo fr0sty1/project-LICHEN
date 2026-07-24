@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-11wp",
+  "title": "[review] project-LICHEN-6mij: Clean consolidation with silent semantic change",
+  "description": "Code review of b012f03:\n\n**Verification:** The commit correctly consolidates three identical '*_oscore_respond' static functions (in coap_dtn.c, coap_keys.c, coap_server.c) into one shared 'lichen_coap_oscore_respond' in coap_oscore.c, removing ~126 lines of duplicated code while adding the shared function.\n\n**Semantic change (acceptable, not a bug):** The old duplicated functions fell back to calling 'lichen_coap_respond' with the **intended response code** in plaintext when OSCORE protection failed (i.e., they sent the real error code unprotected). The new consolidated function falls back to an **unprotected 5.00 Internal Server Error**. This is documented in the header Doxygen: 'Falls back to an unprotected 5.00 response on protect failure.' From a security perspective this is arguably better (no information leak). No regression.\n\n**Correctness:**\n- All callers correctly pass the same arguments they did to the old static functions\n- The guard conditions (is_protected \u0026\u0026 ctx != NULL \u0026\u0026 piv_len \u003e 0) are correct\n- piv_len initialization in keys_single_delete (line 1181, sizeof(piv)=OSCORE_PIV_MAX_LEN) is safe because the guard checks ctx != NULL\n- Duplicate includes in coap_keys.c correctly removed\n- New function builds a proper CoAP error response (with token, type, message ID copied from request) instead of calling lichen_coap_respond\n\n**No bugs found.**\n\nIt is left as an observation that the old fallback leaked the true response code in plaintext; the new 5.00-only fallback is a strict improvement.\n\nNo beads filed — clean commit.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:54:31.77755011Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:54:31.77755011Z"
+}
