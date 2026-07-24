@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-7of9",
   "title": "[review] project-LICHEN-worker6-l9ck: fragment.rs from_bytes signature change broke integration tests",
   "description": "The from_bytes signature was changed from `(data: \u0026'a [u8]) -\u003e Result\u003cSelf\u003e` to `(data: \u0026'a [u8], out: \u0026'a mut [u8]) -\u003e Result\u003cSelf\u003e`. The implementation in fragment.rs and the FragmentReceiver caller were updated, but 6 call sites in two test files were not updated:\n\ntests/fragmentation.rs:\n- Line 110: `Fragment::from_bytes(\u0026[0x78, 0x7c, 0])` — malformed input check\n- Line 112: `Fragment::from_bytes(\u0026regular_nonzero_padding)` — nonzero padding check\n- Line 221: `Fragment::from_bytes(\u0026wire[..length])` — sender round-trip\n\ntests/fragmentation_vectors.rs:\n- Line 210: `Fragment::from_bytes(\u0026wire)` — round-trip check\n- Line 236: `Fragment::from_bytes(\u0026wire)` — retransmission test\n- Line 373: `Fragment::from_bytes(\u0026wire)` — invalid wire test\n\nResult: `cargo test -p lichen-schc` fails with E0061 at all 6 locations.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:19:54.263730961Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T18:20:06.500229518Z"
+  "updated_at": "2026-07-24T18:24:21.64729712Z",
+  "started_at": "2026-07-24T18:24:21.64729712Z",
+  "lease_expires_at": "2026-07-24T18:29:21.64729712Z",
+  "heartbeat_at": "2026-07-24T18:24:21.64729712Z"
 }
