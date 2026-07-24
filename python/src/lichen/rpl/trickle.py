@@ -70,8 +70,13 @@ class TrickleTimer:
         return self.interval_start + self.interval
 
     def heard_consistent(self) -> None:
-        """Record a consistent transmission (RFC 6206 step 3)."""
-        self.counter += 1
+        """Record a consistent transmission (RFC 6206 step 3).
+
+        Counter uses saturating increment to match Rust/C behavior and
+        prevent wraparound from causing spurious transmits.
+        """
+        if self.counter < (1 << 32) - 1:
+            self.counter += 1
 
     def should_transmit(self) -> bool:
         """Whether a transmission is due at ``t`` (c < k, RFC 6206 step 4)."""

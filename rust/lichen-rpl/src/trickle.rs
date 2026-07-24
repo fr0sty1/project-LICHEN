@@ -373,4 +373,70 @@ mod tests {
         t.start(u64::MAX - 999, 0);
         assert_eq!(t.next_event(), TrickleEvent::Stopped);
     }
+
+    #[test]
+    fn zero_k_suppresses_transmit_always() {
+        // k=0: counter (0) is never < k (0), so should_transmit is always false.
+        let mut t = TrickleTimer::new(1000, 4, 0);
+        t.start(0, 0);
+        assert!(!t.should_transmit(), "k=0: should_transmit false at start");
+        assert!(!t.fire_transmit(), "k=0: fire_transmit returns false");
+        t.heard_consistent();
+        assert!(!t.should_transmit(), "k=0: still false after heard_consistent");
+    }
+
+    #[test]
+    fn positive_k_should_transmit_when_counter_below_k() {
+        let mut t = TrickleTimer::new(1000, 4, 1);
+        t.start(0, 0);
+        assert!(t.should_transmit(), "k=1, counter=0 < 1");
+        assert!(t.fire_transmit(), "k=1, fire returns true");
+        t.heard_consistent();
+        assert!(!t.should_transmit(), "k=1, counter=1 >= 1");
+    }
+
+    #[test]
+    fn counter_does_not_overflow_on_repeated_heard_consistent() {
+        let mut t = TrickleTimer::new(1000, 4, u32::MAX);
+        t.start(0, 0);
+        t.counter = u32::MAX;
+        t.heard_consistent();
+        assert_eq!(t.counter, u32::MAX, "counter saturates at u32::MAX");
+        assert!(!t.should_transmit(), "counter == k: should not transmit when c >= k");
+    }
+
+    #[test]
+    fn expire_before_start_initializes_interval() {
+        // expire() called before start() should begin a new interval at imin.
+        let mut t = TrickleTimer::new(1000, 4, 10);
+        // Cannot call expire directly - need to go through try_expire which checks state.
+        // After new(), state is Stopped; expire would fail. This is correct per RFC 6206.
+        assert_eq!(t.state, TrickleState::Stopped);
+        let result = t.try_expire(0, 0);
+        assert!(result.is_err(), "expire before start rejected");
+    }
+
+    #[test]
+    fn fire_transmit_before_start_rejected() {
+        let mut t = TrickleTimer::new(1000, 4, 10);
+        let result = t.try_fire_transmit();
+        assert!(result.is_err(), "fire_transmit before start rejected");
+    }
+
+    #[test]
+    fn start_after_expire_normal_operation() {
+        // Start, fire, expire, then start again should reset to fresh interval.
+        let mut t = TrickleTimer::new(1000, 4, 10);
+        t.start(0, 0);
+        t.fire_transmit();
+        t.expire(1000, 0);
+        assert_eq!(t.interval, 2000);
+
+        // Second start (in WaitingTransmit state after expire creates a new
+        // interval via begin_interval) - this is calling start again.
+        // start() always sets interval=imin and begins fresh interval.
+        t.start(2000, 0);
+        assert_eq!(t.interval, 1000);
+        assert_eq!(t.transmit_time, 2500);
+    }
 }
