@@ -213,6 +213,33 @@ int coap_oscore_protect_response(struct oscore_ctx *ctx,
 	return 0;
 }
 
+int lichen_coap_oscore_respond(struct coap_resource *resource,
+			       struct coap_packet *request,
+			       struct sockaddr *addr, socklen_t addr_len,
+			       struct oscore_ctx *ctx,
+			       const uint8_t *piv, size_t piv_len,
+			       uint8_t code)
+{
+	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+	struct coap_packet resp;
+	int ret = coap_oscore_protect_response(ctx, piv, piv_len, request, code,
+					       NULL, 0, &resp, buf, sizeof(buf));
+	if (ret < 0) {
+		uint8_t errbuf[32];
+		struct coap_packet err_resp;
+		uint8_t token[COAP_TOKEN_MAX_LEN];
+		uint8_t tkl = coap_header_get_token(request, token);
+		uint8_t type = (coap_header_get_type(request) == COAP_TYPE_CON)
+			       ? COAP_TYPE_ACK : COAP_TYPE_NON_CON;
+		(void)coap_packet_init(&err_resp, errbuf, (uint16_t)sizeof(errbuf),
+				       COAP_VERSION_1, type, tkl, token,
+				       COAP_RESPONSE_CODE_INTERNAL_ERROR,
+				       coap_header_get_id(request));
+		return coap_resource_send(resource, &err_resp, addr, addr_len, NULL);
+	}
+	return coap_resource_send(resource, &resp, addr, addr_len, NULL);
+}
+
 int coap_oscore_send_unauthorized(struct coap_resource *resource,
 				  struct coap_packet *request,
 				  struct sockaddr *addr, socklen_t addr_len)

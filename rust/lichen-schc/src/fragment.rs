@@ -10,18 +10,18 @@ pub const FRAGMENT_N: u8 = 6;
 pub const FRAGMENT_T: u8 = 0;
 pub const ALL_1_FCN: u8 = (1 << FRAGMENT_N) - 1;
 pub const MIC_LENGTH: usize = 4;
+pub const TILE_SIZE: usize = 11;
+pub const WINDOW_SIZE: usize = 64;
+pub const BITMAP_MASK: u64 = 0xFFFFFFFFFFFFFFFF;
+pub const MAX_PACKET_SIZE: usize = 2048;
 pub const DEFAULT_WINDOW_SIZE: usize = 32;
 pub const MAX_WINDOW_SIZE: usize = 62;
 pub const RETRANSMISSION_TIMEOUT_S: u32 = 10;
-pub const MAX_ACK_REQUESTS: u32 = 3;
+pub const MAX_ACK_REQUESTS: u8 = 3;
 pub const INACTIVITY_TIMEOUT_S: u32 = 60;
-
-pub const TILE_SIZE: usize = 32;
-pub const WINDOW_SIZE: usize = 63;
-pub const BITMAP_MASK: u64 = (1u64 << WINDOW_SIZE) - 1;
-pub const MAX_PACKET_SIZE: usize = SCHC_MAX_DECOMPRESSED;
-pub const RULE_ID_A_TO_B: u8 = 0;
-pub const RULE_ID_B_TO_A: u8 = 1;
+pub const RETRANSMIT_TIMER_INTERVAL_MS: u64 = 250;
+pub const RULE_ID_A_TO_B: u8 = 0x78;
+pub const RULE_ID_B_TO_A: u8 = 0x79;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
@@ -88,7 +88,7 @@ impl From<BufferTooSmall> for FragmentError {
 }
 
 fn check_rule(rule_id: u8) -> Result<(), FragmentError> {
-    if rule_id < 128 {
+    if rule_id == RULE_ID_A_TO_B || rule_id == RULE_ID_B_TO_A {
         Ok(())
     } else {
         Err(FragmentError::UnsupportedRule)
@@ -154,9 +154,9 @@ impl<'a> Fragment<'a> {
             return Err(BufferTooSmall::new(needed, out.len()).into());
         }
         out[..needed].fill(0);
+        let mut index = 0usize;
         out[0] = self.rule_id;
-        out[1] = ((self.window & 1) << 7) | ((self.fcn & ((1 << FRAGMENT_N) - 1)) << 1);
-        let mut index = 0;
+        out[1] = ((self.window & 1) << FRAGMENT_N) | (self.fcn & ((1 << FRAGMENT_N) - 1));
         if self.is_all_1() {
             for byte in self.mic {
                 out[1 + index] |= byte >> 7;
@@ -172,27 +172,32 @@ impl<'a> Fragment<'a> {
         Ok(needed)
     }
 
-    pub fn from_bytes(data: &[u8], out: &'a mut [u8]) -> Result<Self, FragmentError> {
+    pub fn from_bytes(
+        data: &'a [u8],
+        tile: &'a mut [u8; TILE_SIZE],
+    ) -> Result<Self, FragmentError> {
         if data.len() < 2 {
             return Err(TooShort::new(2, data.len()).into());
         }
         let rule_id = data[0];
-        let window = (data[1] >> 7) & 1;
-        let fcn = (data[1] >> 1) & ((1 << FRAGMENT_N) - 1);
+        let window = (data[1] >> FRAGMENT_N) & 1;
+        let fcn = data[1] & ((1 << FRAGMENT_N) - 1);
         let content_len = data.len() - 2;
         let content_offset = if fcn == ALL_1_FCN { MIC_LENGTH } else { 0 };
-        let payload_len = content_len - content_offset;
         if fcn == ALL_1_FCN {
             if !(MIC_LENGTH + 1..=MIC_LENGTH + TILE_SIZE).contains(&content_len) {
                 return Err(FragmentError::InvalidTileLength);
             }
-        } else if data.len() != TILE_SIZE + 2 || (window == 1 && fcn == 0) {
-            return Err(FragmentError::InvalidTileLength);
+        } else {
+            if data.len() != TILE_SIZE + 2 {
+                return Err(FragmentError::InvalidTileLength);
+            }
+            if window == 1 && fcn == 0 {
+                return Err(FragmentError::InvalidFcn);
+            }
         }
-        if out.len() < payload_len {
-            return Err(BufferTooSmall::new(payload_len, out.len()).into());
-        }
-        for (i, byte) in out[..payload_len].iter_mut().enumerate() {
+        let payload_len = content_len - content_offset;
+        for (i, byte) in tile[..payload_len].iter_mut().enumerate() {
             let wire = 1 + content_offset + i;
             *byte = (data[wire] << 7) | (data[wire + 1] >> 1);
         }
@@ -206,7 +211,7 @@ impl<'a> Fragment<'a> {
             rule_id,
             window,
             fcn,
-            payload: &out[..payload_len],
+            payload: &tile[..payload_len],
             mic,
         })
     }
@@ -249,22 +254,27 @@ impl Ack {
         }
 
         let trailing = (self.bitmap & BITMAP_MASK).trailing_ones() as usize;
-        let n = (WINDOW_SIZE - trailing) as u8;
-        let body_bytes = n as usize / 8 + usize::from(n as usize % 8 != 0);
+        let n = WINDOW_SIZE - trailing;
+        let body_bytes = n.div_ceil(8);
         let needed = 3 + body_bytes;
         if out.len() < needed {
             return Err(BufferTooSmall::new(needed, out.len()).into());
         }
-        out[..needed].fill(0);
         out[0] = self.rule_id;
-        out[1] = ((self.window & 1) << FRAGMENT_N) | (if self.complete { 1 } else { 0 });
-        out[2] = n;
-        for bit in 0..n as usize {
-            let bm_bit = WINDOW_SIZE - 1 - bit;
-            let val = ((self.bitmap >> bm_bit) & 1) as u8;
-            let byte_idx = 3 + bit / 8;
-            let bit_idx = 7 - (bit % 8);
-            out[byte_idx] |= val << bit_idx;
+        out[1] = self.window << 7;
+        out[2] = n as u8;
+        for byte_idx in 0..body_bytes {
+            let mut byte = 0u8;
+            for bit in 0..8 {
+                let pos = byte_idx * 8 + bit;
+                if pos >= n {
+                    break;
+                }
+                if self.bitmap & (1u64 << (62 - pos)) != 0 {
+                    byte |= 1 << (7 - bit);
+                }
+            }
+            out[3 + byte_idx] = byte;
         }
         Ok(needed)
     }
@@ -277,57 +287,48 @@ impl Ack {
         if data.len() < 2 {
             return Err(TooShort::new(2, data.len()).into());
         }
-        if data.len() == 2 {
-            if data[1] & 0x40 == 0 {
-                return Err(TooShort::new(3, data.len()).into());
+        let rule_id = data[0];
+        let window = (data[1] >> 7) & 1;
+        let complete = (data[1] & 0x40) != 0;
+        if complete {
+            if data.len() > 2 {
+                return Err(FragmentError::MalformedAck);
             }
-            let rule_id = data[0];
-            let window = (data[1] >> 7) & 1;
             let ack = Self::new(rule_id, window, 0, true);
-            let mut canonical = [0u8; 2];
+            let mut canonical = [0u8; 11];
             let length = ack.write_to(&mut canonical)?;
             if &canonical[..length] != data {
                 return Err(FragmentError::NonCanonicalAck);
             }
+            if assigned.is_some_and(|mask| ack.bitmap & !mask & BITMAP_MASK != 0) {
+                return Err(FragmentError::UnassignedBitmapBit);
+            }
             return Ok(ack);
         }
-        let _rule_id = data[0];
-        let window = (data[1] >> FRAGMENT_N) & 1;
-        let _complete = (data[1] & 0x01) != 0;
+        if data.len() < 3 {
+            return Err(TooShort::new(3, data.len()).into());
+        }
         let n = data[2] as usize;
+        if n > WINDOW_SIZE {
+            return Err(FragmentError::MalformedAck);
+        }
         let body_bytes = n.div_ceil(8);
         let required = 3 + body_bytes;
         if data.len() < required {
             return Err(TooShort::new(required, data.len()).into());
         }
-        let body = &data[3..];
-        if n > MAX_WINDOW_SIZE {
-            return Err(FragmentError::MalformedAck);
-        }
-        let bit_count = n;
         let mut bitmap = 0u64;
-        if bit_count >= WINDOW_SIZE {
-            let padding = bit_count - WINDOW_SIZE;
-            if padding > 7 || (0..padding).any(|i| get_bit(body, WINDOW_SIZE + i)) {
-                return Err(FragmentError::MalformedAck);
-            }
-            for position in 0..WINDOW_SIZE {
-                if get_bit(body, position) {
-                    bitmap |= 1u64 << (62 - position);
-                }
-            }
-        } else {
-            for position in 0..bit_count {
-                if get_bit(body, position) {
-                    bitmap |= 1u64 << (62 - position);
-                }
-            }
-            for position in bit_count..WINDOW_SIZE {
-                bitmap |= 1u64 << (62 - position);
+        for i in 0..n {
+            let byte = data[3 + i / 8];
+            if (byte >> (7 - i % 8)) & 1 != 0 {
+                bitmap |= 1u64 << (62 - i);
             }
         }
-        let ack = Self::new(data[0], window, bitmap, false);
-        let mut canonical = [0u8; 10];
+        for i in n..WINDOW_SIZE {
+            bitmap |= 1u64 << (62 - i);
+        }
+        let ack = Self::new(rule_id, window, bitmap, false);
+        let mut canonical = [0u8; 11];
         let length = ack.write_to(&mut canonical)?;
         if &canonical[..length] != data {
             return Err(FragmentError::NonCanonicalAck);
@@ -339,14 +340,12 @@ impl Ack {
     }
 }
 
-fn set_bit(bytes: &mut [u8], bit: usize, value: bool) {
-    if value {
-        bytes[bit / 8] |= 1 << (7 - bit % 8);
-    }
-}
-
-fn get_bit(bytes: &[u8], bit: usize) -> bool {
-    bytes[bit / 8] & (1 << (7 - bit % 8)) != 0
+pub fn bitmap_to_u64(bitmap: &[bool]) -> u64 {
+    bitmap
+        .iter()
+        .enumerate()
+        .filter(|(_, &set)| set)
+        .fold(0u64, |acc, (i, _)| acc | (1u64 << (62 - i)))
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -415,6 +414,7 @@ pub enum SenderOutput {
     },
 }
 
+#[derive(Debug)]
 pub struct FragmentSender<'a> {
     payload: &'a [u8],
     pub rule_id: u8,
@@ -422,17 +422,6 @@ pub struct FragmentSender<'a> {
     mic: [u8; MIC_LENGTH],
     attempts: u8,
     status: SenderStatus,
-}
-
-impl<'a> core::fmt::Debug for FragmentSender<'a> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("FragmentSender")
-            .field("rule_id", &self.rule_id)
-            .field("count", &self.count)
-            .field("attempts", &self.attempts)
-            .field("status", &self.status)
-            .finish()
-    }
 }
 
 impl<'a> FragmentSender<'a> {
@@ -451,10 +440,11 @@ impl<'a> FragmentSender<'a> {
         if payload.len() > SCHC_MAX_DECOMPRESSED {
             return Err(BufferTooSmall::new(SCHC_MAX_DECOMPRESSED, payload.len()).into());
         }
+        let count = payload.len().div_ceil(TILE_SIZE);
         Ok(FragmentSender {
             payload,
             rule_id,
-            count: payload.len().div_ceil(TILE_SIZE),
+            count,
             mic: compute_mic(payload),
             attempts: 0,
             status: SenderStatus::Ready,
@@ -573,7 +563,7 @@ impl<'a> FragmentSender<'a> {
             }
             return SenderOutput::None;
         }
-        if u32::from(self.attempts) >= MAX_ACK_REQUESTS {
+        if self.attempts >= MAX_ACK_REQUESTS {
             return self.abort_output();
         }
         self.attempts += 1;
@@ -590,7 +580,7 @@ impl<'a> FragmentSender<'a> {
         if self.status != SenderStatus::Active {
             return Err(FragmentError::InvalidState);
         }
-        if u32::from(self.attempts) >= MAX_ACK_REQUESTS {
+        if self.attempts >= MAX_ACK_REQUESTS {
             return Ok(self.abort_output());
         }
         self.attempts += 1;
@@ -960,7 +950,7 @@ impl<'a> FragmentReceiver<'a> {
     }
 
     fn respond(&mut self, ack: Ack) -> ReceiverResult {
-        if u32::from(self.attempts) >= MAX_ACK_REQUESTS {
+        if self.attempts >= MAX_ACK_REQUESTS {
             return self.abort(ack.rule_id);
         }
         self.attempts += 1;
@@ -1062,20 +1052,19 @@ mod std_ext {
 
     use super::*;
 
-    fn vec_bool_to_bitmap(bits: &[bool]) -> u64 {
-        let mut bitmap = 0u64;
-        for (p, &received) in bits.iter().enumerate() {
-            if received && p < WINDOW_SIZE {
-                bitmap |= 1u64 << (WINDOW_SIZE - 1 - p);
-            }
-        }
-        bitmap
-    }
-
     impl<'a> FragmentSender<'a> {
         /// Collect all fragments into a Vec (convenience for tests and sim).
         pub fn all_fragments(&self) -> Vec<Fragment<'a>> {
             self.iter().collect()
+        }
+
+        pub fn fragments_in_window_vec(&self, abs_window: usize) -> Vec<Fragment<'a>> {
+            self.iter()
+                .filter(|f| {
+                    let w = (abs_window % 2) as u8;
+                    f.window == w
+                })
+                .collect()
         }
     }
 
@@ -1233,9 +1222,9 @@ mod std_ext {
                 }
                 return ReceiverResult {
                     ack: Some(Ack::new(
-                        self.rule_id.expect("rule_id not set"),
+                        self.rule_id.unwrap_or(RULE_ID_A_TO_B),
                         (abs_window % 2) as u8,
-                        vec_bool_to_bitmap(&bitmap),
+                        bitmap_to_u64(&bitmap),
                         false,
                     )),
                     reassembled: None,
@@ -1250,8 +1239,9 @@ mod std_ext {
         }
 
         fn finalize(&mut self) -> ReceiverResult {
+            let rule_id = self.rule_id.unwrap_or(RULE_ID_A_TO_B);
             let bitmap = self.window_bitmap(self.all1_window);
-            let nack = Ack::new(self.rule_id.expect("rule_id not set"), (self.all1_window % 2) as u8, vec_bool_to_bitmap(&bitmap), false);
+            let nack = Ack::new(rule_id, (self.all1_window % 2) as u8, bitmap_to_u64(&bitmap), false);
 
             // O(n) contiguity check: if we have n tiles and max index is n-1,
             // all indices 0..n must be present (HashMap keys are unique).
@@ -1276,9 +1266,9 @@ mod std_ext {
                 self.reassembled = Some(data.clone());
                 ReceiverResult {
                     ack: Some(Ack::new(
-                        self.rule_id.expect("rule_id not set"),
+                        rule_id,
                         (self.all1_window % 2) as u8,
-                        vec_bool_to_bitmap(&bitmap),
+                        bitmap_to_u64(&bitmap),
                         true,
                     )),
                     reassembled: Some(data),
@@ -1310,7 +1300,7 @@ mod tests {
     fn literal_regular_fragment() {
         let tile = [0u8; TILE_SIZE];
         let fragment = Fragment {
-            rule_id: RULE_ID_A_TO_B,
+            rule_id: 0x78,
             window: 0,
             fcn: 62,
             payload: &tile,
@@ -1318,19 +1308,19 @@ mod tests {
         };
         let mut wire = [0xff; TILE_SIZE + 2];
         assert_eq!(fragment.write_to(&mut wire), Ok(wire.len()));
-        assert_eq!(&wire[..2], &[RULE_ID_A_TO_B, 0x7c]);
+        assert_eq!(&wire[..2], &[0x78, 0x7c]);
         assert!(wire[2..].iter().all(|&byte| byte == 0));
     }
 
     #[test]
     fn literal_ack_and_controls() {
-        let ack = Ack::new(RULE_ID_A_TO_B, 1, 0, true);
+        let ack = Ack::new(0x78, 1, 0, true);
         let mut wire = [0; 10];
         assert_eq!(ack.write_to(&mut wire), Ok(2));
-        assert_eq!(&wire[..2], &[RULE_ID_A_TO_B, 0xc0]);
-        assert_eq!(sender_abort(RULE_ID_A_TO_B).write_to(&mut wire), Ok(2));
-        assert_eq!(&wire[..2], &[RULE_ID_A_TO_B, 0xfe]);
-        assert_eq!(receiver_abort(RULE_ID_A_TO_B).write_to(&mut wire), Ok(3));
-        assert_eq!(&wire[..3], &[RULE_ID_A_TO_B, 0xff, 0xff]);
+        assert_eq!(&wire[..2], &[0x78, 0xc0]);
+        assert_eq!(sender_abort(0x78).write_to(&mut wire), Ok(2));
+        assert_eq!(&wire[..2], &[0x78, 0xfe]);
+        assert_eq!(receiver_abort(0x78).write_to(&mut wire), Ok(3));
+        assert_eq!(&wire[..3], &[0x78, 0xff, 0xff]);
     }
 }

@@ -24,7 +24,10 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Record<'a> {
     /// Base name, e.g. `"urn:dev:mac:0123456789abcdef:"`.
-    #[cfg_attr(feature = "serde", serde(rename = "bn", skip_serializing_if = "Option::is_none", default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "bn", skip_serializing_if = "Option::is_none", default)
+    )]
     pub base_name: Option<&'a str>,
     /// Base time (Unix seconds since 1970-01-01T00:00:00Z, absolute or relative)
     /// and relative time offset. Both are `f64` (IEEE 754 binary64, 53-bit
@@ -33,25 +36,46 @@ pub struct Record<'a> {
     /// place is ~0.0002 s, providing ample sub-second precision for sensors.
     /// Prefer a shared `base_time` + small relative `time` offsets for time
     /// series to avoid precision loss on large absolutes. See RFC 8428 §4.3/§4.5.
-    #[cfg_attr(feature = "serde", serde(rename = "bt", skip_serializing_if = "Option::is_none", default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "bt", skip_serializing_if = "Option::is_none", default)
+    )]
     pub base_time: Option<f64>,
     /// Relative name appended to base_name, e.g. `"temp"`.
-    #[cfg_attr(feature = "serde", serde(rename = "n", skip_serializing_if = "Option::is_none", default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "n", skip_serializing_if = "Option::is_none", default)
+    )]
     pub name: Option<&'a str>,
     /// (see `base_time` documentation above)
-    #[cfg_attr(feature = "serde", serde(rename = "t", skip_serializing_if = "Option::is_none", default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "t", skip_serializing_if = "Option::is_none", default)
+    )]
     pub time: Option<f64>,
     /// Numeric value.
-    #[cfg_attr(feature = "serde", serde(rename = "v", skip_serializing_if = "Option::is_none", default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "v", skip_serializing_if = "Option::is_none", default)
+    )]
     pub value: Option<f64>,
     /// String value.
-    #[cfg_attr(feature = "serde", serde(rename = "vs", skip_serializing_if = "Option::is_none", default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "vs", skip_serializing_if = "Option::is_none", default)
+    )]
     pub string_value: Option<&'a str>,
     /// Boolean value.
-    #[cfg_attr(feature = "serde", serde(rename = "vb", skip_serializing_if = "Option::is_none", default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "vb", skip_serializing_if = "Option::is_none", default)
+    )]
     pub bool_value: Option<bool>,
     /// Unit, e.g. `"Cel"` for Celsius.
-    #[cfg_attr(feature = "serde", serde(rename = "u", skip_serializing_if = "Option::is_none", default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "u", skip_serializing_if = "Option::is_none", default)
+    )]
     pub unit: Option<&'a str>,
 }
 

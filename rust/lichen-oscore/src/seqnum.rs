@@ -179,7 +179,6 @@ mod tests {
 
         let mut seq_mut = OscoreSeqNum::new(OscoreSeqNum::MAX).unwrap();
         assert!(seq_mut.fetch_increment().is_none());
-        // Value unchanged after failed increment
         assert_eq!(seq_mut.get(), OscoreSeqNum::MAX);
     }
 

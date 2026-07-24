@@ -116,28 +116,6 @@ static int send_ack(struct coap_resource *resource,
 	return lichen_coap_respond(resource, request, addr, addr_len, code, 0, NULL, 0);
 }
 
-#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
-static int msg_inbox_oscore_respond(struct coap_resource *resource,
-				    struct coap_packet *request,
-				    struct sockaddr *addr, socklen_t addr_len,
-				    struct oscore_ctx *ctx,
-				    const uint8_t *piv, size_t piv_len,
-				    uint8_t code)
-{
-	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
-	struct coap_packet resp;
-	int ret = coap_oscore_protect_response(ctx, piv, piv_len, request, code,
-					       NULL, 0, &resp, buf, sizeof(buf));
-	if (ret < 0) {
-		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
-	}
-	ret = coap_resource_send(resource, &resp, addr, addr_len, NULL);
-	return ret;
-}
-#endif
-
-
 /*
  * /status resource - GET returns node status as CBOR
  */
@@ -386,7 +364,7 @@ static int msg_inbox_post(struct coap_resource *resource,
 		LOG_ERR("Message POST callback failed: %d", ret);
 #ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
 		if (is_protected && ctx != NULL && piv_len > 0) {
-			return msg_inbox_oscore_respond(resource, request, addr, addr_len, ctx, piv, piv_len, COAP_RESPONSE_CODE_BAD_REQUEST);
+			return lichen_coap_oscore_respond(resource, request, addr, addr_len, ctx, piv, piv_len, COAP_RESPONSE_CODE_BAD_REQUEST);
 		}
 #endif
 		return COAP_RESPONSE_CODE_BAD_REQUEST;
@@ -394,7 +372,7 @@ static int msg_inbox_post(struct coap_resource *resource,
 
 #ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
 	if (is_protected && ctx != NULL && piv_len > 0) {
-		return msg_inbox_oscore_respond(resource, request, addr, addr_len, ctx, piv, piv_len, COAP_RESPONSE_CODE_CREATED);
+		return lichen_coap_oscore_respond(resource, request, addr, addr_len, ctx, piv, piv_len, COAP_RESPONSE_CODE_CREATED);
 	}
 #endif
 
