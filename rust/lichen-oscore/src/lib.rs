@@ -2839,9 +2839,8 @@ mod tests {
 
         let (attacker_ciphertext, attacker_option) =
             attacker.protect_request(0x02, &[], b"fake").unwrap();
-        let (legitimate_ciphertext, legitimate_option) = legitimate
-            .protect_request(0x02, &[], b"real")
-            .unwrap();
+        let (legitimate_ciphertext, legitimate_option) =
+            legitimate.protect_request(0x02, &[], b"real").unwrap();
 
         assert!(matches!(
             recipient.unprotect_request(&attacker_option, &attacker_ciphertext),
