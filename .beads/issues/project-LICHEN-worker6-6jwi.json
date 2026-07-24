@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-6jwi",
+  "title": "[review] project-LICHEN-worker6-69p2: check_rule removed from Fragment::from_bytes",
+  "description": "The old `Fragment::from_bytes` called `check_rule(data[0])?` to validate that the rule ID is one of `RULE_ID_A_TO_B` (120) or `RULE_ID_B_TO_A` (121). The new implementation has no rule ID validation at all - any `data[0]` value is silently accepted, including unsupported or invalid rule IDs.\n\n`check_rule` is still defined (line ~90) but never called from `from_bytes`. This also applies to `Ack::from_bytes_for` which similarly no longer validates the rule ID.\n\nAffected file: `rust/lichen-schc/src/fragment.rs` lines 167-197.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:55:41.617822435Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:55:41.617822435Z"
+}
