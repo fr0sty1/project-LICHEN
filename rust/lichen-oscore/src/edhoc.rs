@@ -30,7 +30,6 @@ use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use hkdf::Hkdf;
 use hmac::{Hmac, Mac};
 use rand_core::{CryptoRng, RngCore};
-use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest, Sha256};
 use x25519_dalek::{PublicKey, StaticSecret};
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
@@ -431,13 +430,16 @@ fn transcript_3(th_2: &[u8; 32], input: &[u8], cred: &[u8]) -> Result<[u8; 32], 
     Ok(compute_th(&buf))
 }
 
+/// TH_4 = H(CBOR(TH_3) || CBOR(plaintext) || CBOR(cred)) per RFC 9528 / test vectors.
 fn transcript_4(
     th_3: &[u8; 32],
-    ciphertext_3: &[u8],
+    plaintext: &[u8],
+    cred: &[u8],
 ) -> Result<[u8; 32], EdhocError> {
     let mut buf = heapless::Vec::<u8, 1024>::new();
     encode_bstr(&mut buf, th_3)?;
-    encode_bstr(&mut buf, ciphertext_3)?;
+    encode_bstr(&mut buf, plaintext)?;
+    encode_bstr(&mut buf, cred)?;
     Ok(compute_th(&buf))
 }
 
@@ -465,43 +467,6 @@ fn build_signature_structure(id_cred: &[u8], th: &[u8; 32], cred: &[u8], mac: &[
     encode_bstr(&mut buf, cred)?;
     encode_bstr(&mut buf, mac)?;
     Ok(buf)
-}
-
-fn build_context_2(
-    id_cred: &[u8],
-    cred: &[u8],
-) -> Result<heapless::Vec<u8, 128>, EdhocError> {
-    let mut ctx = heapless::Vec::<u8, 128>::new();
-    append_cbor_bstr(&mut ctx, id_cred)?;
-    append_cbor_bstr(&mut ctx, cred)?;
-    Ok(ctx)
-}
-
-fn build_context_3(
-    id_cred: &[u8],
-    _th: &[u8; 32],
-    cred: &[u8],
-) -> Result<heapless::Vec<u8, 128>, EdhocError> {
-    let mut ctx = heapless::Vec::<u8, 128>::new();
-    append_cbor_bstr(&mut ctx, id_cred)?;
-    append_cbor_bstr(&mut ctx, cred)?;
-    Ok(ctx)
-}
-
-fn build_signature_structure(
-    id_cred: &[u8],
-    th: &[u8; 32],
-    cred: &[u8],
-    mac: &[u8],
-) -> Result<heapless::Vec<u8, 128>, EdhocError> {
-    let mut m = heapless::Vec::<u8, 128>::new();
-    m.push_err(0x85)?;
-    m.extend_err(b"\x6bSignature1")?;
-    append_cbor_bstr(&mut m, id_cred)?;
-    append_cbor_bstr(&mut m, th)?;
-    append_cbor_bstr(&mut m, cred)?;
-    append_cbor_bstr(&mut m, mac)?;
-    Ok(m)
 }
 
 /// Parse SUITES_I from CBOR per RFC 9528 Section 3.3.2.
@@ -848,7 +813,7 @@ impl EdhocInitiator {
         let result = (|| {
             validate_peer_credential(peer)?;
             let signature_bytes = parse_bstr(&pending.plaintext[pending.signature_offset..])?.0;
-            let context_2 = build_context_2(pending.id_cred.as_bytes(), peer.credential)?;
+            let context_2 = build_context_2(&pending.c_r, pending.id_cred.as_bytes(), &self.state.th_2, peer.credential)?;
             let mac_2 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_2, "MAC_2", &context_2, 32)?;
             let m_2 = build_signature_structure(
                 pending.id_cred.as_bytes(),
@@ -887,9 +852,9 @@ impl EdhocInitiator {
             let m_3 =
                 build_signature_structure(&id_cred_i, &self.state.th_3, &credential_i, &mac_3)?;
             let signature_3 = self.signing_key.sign(&m_3);
-            let mut ciphertext_3 = SecretVec::<128>::new();
-            encode_bstr(&mut ciphertext_3, self.pubkey.as_bytes())?;
-            encode_bstr(&mut ciphertext_3, &signature_3.to_bytes())?;
+            let mut plaintext_3 = heapless::Vec::<u8, 80>::new();
+            encode_bstr(&mut plaintext_3, self.pubkey.as_bytes())?;
+            encode_bstr(&mut plaintext_3, &signature_3.to_bytes())?;
 
             // K_3 and IV_3 for AEAD
             let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", &[], KEY_LEN)?;
@@ -904,6 +869,8 @@ impl EdhocInitiator {
             a_3.push_err(32)?;
             a_3.extend_err(&self.state.th_3)?;
 
+            let mut ciphertext_3 = SecretVec::<128>::new();
+            ciphertext_3.extend_err(&plaintext_3)?;
             let cipher = AesCcm::new_from_slice(&k_3).map_err(|_| EdhocError::InvalidState)?;
             let mut nonce = Zeroizing::new([0u8; NONCE_LEN]);
             nonce.copy_from_slice(&iv_3);
@@ -912,7 +879,7 @@ impl EdhocInitiator {
                 .map_err(|_| EdhocError::InvalidState)?;
             ciphertext_3.extend_err(&tag)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3.0)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &plaintext_3, &credential_i)?;
 
             self.state.completed = true;
             self.state.lifecycle = Lifecycle::Complete;
