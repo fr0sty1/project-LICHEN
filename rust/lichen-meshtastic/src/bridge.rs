@@ -119,6 +119,11 @@ pub enum IncomingResult {
         request_id: u32,
         error: Option<RoutingErrorCode>,
     },
+    /// Incoming RouteRequest that needs handling.
+    RouteRequest {
+        request_id: u32,
+        from: MeshtasticNodeId,
+    },
     /// Other port number, passthrough.
     OtherPort {
         portnum: PortNum,
@@ -262,9 +267,9 @@ impl MeshtasticBridge {
                             })
                         }
                         Some(routing::Variant::RouteRequest(id)) => {
-                            Ok(IncomingResult::RoutingResponse {
+                            Ok(IncomingResult::RouteRequest {
                                 request_id: id,
-                                error: None,
+                                from: from_node,
                             })
                         }
                         _ => Ok(IncomingResult::RoutingResponse {

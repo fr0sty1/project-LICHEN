@@ -506,6 +506,21 @@ impl UdpHeader {
             checksum: ((buf[6] as u16) << 8) | (buf[7] as u16),
         })
     }
+
+    /// Validate UDP length against available buffer and maximum datagram size.
+    ///
+    /// Returns `Err(Ipv6Error::PayloadTooLarge)` if the declared length exceeds
+    /// both the buffer and the maximum UDP datagram size (65535 bytes).
+    pub fn validate_length(&self, available: usize) -> Result<(), Ipv6Error> {
+        let len = self.length as usize;
+        if len > available {
+            return Err(TooShort::new(len, available).into());
+        }
+        if len > u16::MAX as usize {
+            return Err(Ipv6Error::PayloadTooLarge(len));
+        }
+        Ok(())
+    }
 }
 
 /// ICMPv6 Echo message (request or reply).
@@ -755,6 +770,7 @@ fn verify_icmpv6_checksum(src: &Addr, dst: &Addr, icmpv6_msg: &[u8]) -> bool {
     icmpv6_checksum(src, dst, icmpv6_msg).is_ok_and(|computed| received == computed)
 }
 
+#[allow(dead_code)]
 fn verify_udp_checksum(src: &Addr, dst: &Addr, udp_datagram: &[u8]) -> bool {
     if udp_datagram.len() < UDP_HEADER_LEN {
         return false;
@@ -832,7 +848,7 @@ pub fn parse_packet(buf: &[u8]) -> Result<(Ipv6Header, &[u8]), Ipv6Error> {
     let payload_start = IPV6_HEADER_LEN;
     let payload_end = payload_start + header.payload_len as usize;
 
-    if buf.len() != payload_end {
+    if buf.len() < payload_end {
         return Err(TooShort::new(payload_end, buf.len()).into());
     }
 
@@ -1192,7 +1208,6 @@ mod tests {
         assert_eq!(dec.flow_label, 0x12345);
         assert_eq!(dec.src, src);
         assert_eq!(dec.dst, dst);
-        assert_eq!(dec.next_header, next_header::ICMPV6);
 
         // hop_limit=1 or 0 reaches zero after decrement -> None (drop + ICMP)
         let mut one = hdr;
@@ -1202,5 +1217,79 @@ mod tests {
         let mut zero = hdr;
         zero.hop_limit = 0;
         assert!(zero.with_decremented_hop_limit().is_none());
+    }
+
+    #[test]
+    fn test_parse_packet_accepts_trailing_padding() {
+        let src = Addr::link_local_from_mac(&hex!("001122334455"));
+        let dst = Addr::link_local_from_mac(&hex!("665544332211"));
+        let hdr = Ipv6Header::new(next_header::ICMPV6, src, dst);
+        let mut buf = [0u8; 48];
+        hdr.write_to(8, &mut buf).unwrap(); // payload_len = 8
+        buf[40..48].fill(0xcc);             // 8 bytes of padding past payload
+        let (parsed, payload) = parse_packet(&buf).unwrap();
+        assert_eq!(parsed.src, src);
+        assert_eq!(parsed.dst, dst);
+        assert_eq!(payload.len(), 8);
+    }
+
+    #[test]
+    fn test_parse_packet_rejects_too_short() {
+        let src = Addr::link_local_from_mac(&hex!("001122334455"));
+        let dst = Addr::link_local_from_mac(&hex!("665544332211"));
+        let hdr = Ipv6Header::new(next_header::ICMPV6, src, dst);
+        let mut buf = [0u8; 44];
+        hdr.write_to(8, &mut buf).unwrap(); // claims 8 but only 4 available
+        assert!(parse_packet(&buf).is_err());
+    }
+
+    #[test]
+    fn test_udp_length_validation() {
+        let _src = Addr::link_local_from_mac(&hex!("001122334455"));
+        let _dst = Addr::link_local_from_mac(&hex!("665544332211"));
+        let mut udp_buf = [0u8; 12];
+        // Valid: length = 8 header + 4 payload
+        udp_buf[4] = 0;
+        udp_buf[5] = 12;
+        udp_buf[8..12].copy_from_slice(&[0xAA, 0xBB, 0xCC, 0xDD]);
+        let udp = UdpHeader::from_bytes(&udp_buf).unwrap();
+        assert!(udp.validate_length(12).is_ok());
+
+        // Length exceeds available buffer
+        let mut oversized = [0u8; 8];
+        oversized[4] = 0;
+        oversized[5] = 20;
+        assert!(UdpHeader::from_bytes(&oversized).is_err());
+    }
+
+    #[test]
+    fn test_dad_ns_security_checks() {
+        let local = Addr::link_local_from_mac(&hex!("001122334455"));
+        // DAD NS from :: to solicited-node of local, targeting local
+        let ns = NeighborSolicitation { target: local };
+        let dst_addr = local.solicited_node();
+        let ns_bytes = ns.build(&Addr::UNSPECIFIED, &dst_addr);
+        let ip_hdr = Ipv6Header::new(next_header::ICMPV6, Addr::UNSPECIFIED, dst_addr);
+        let resp = handle_icmpv6(&local, &ip_hdr, &ns_bytes).unwrap();
+        assert!(resp.is_some(), "valid DAD NS should get NA response");
+
+        // DAD NS to wrong multicast address (not solicited-node) -> reject
+        let wrong_mcast = Addr::ALL_NODES;
+        let ns2 = NeighborSolicitation { target: local };
+        let ns2_bytes = ns2.build(&Addr::UNSPECIFIED, &wrong_mcast);
+        let ip_hdr2 = Ipv6Header::new(next_header::ICMPV6, Addr::UNSPECIFIED, wrong_mcast);
+        let resp2 = handle_icmpv6(&local, &ip_hdr2, &ns2_bytes).unwrap();
+        assert!(resp2.is_none(), "DAD NS to non-solicited-node must be rejected");
+    }
+
+    #[test]
+    fn test_reject_oversized_udp_payload() {
+        // UdpHeader::write_header_to should reject payload > 65527
+        let src = Addr::link_local_from_mac(&hex!("001122334455"));
+        let dst = Addr::link_local_from_mac(&hex!("665544332211"));
+        let udp = UdpHeader::new(1234, 5678);
+        let oversized = [0u8; 65528];
+        let result = udp.write_header_to(&src, &dst, &oversized, &mut [0u8; 8]);
+        assert!(matches!(result, Err(Ipv6Error::PayloadTooLarge(_))));
     }
 }

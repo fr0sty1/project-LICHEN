@@ -210,7 +210,7 @@ impl<const MTU: usize> MeshtasticGattService<MTU> {
     /// Returns `Some(data)` when a complete message is ready.
     pub fn write_to_radio(&mut self, chunk: &[u8]) -> Result<Option<&[u8]>, GattError> {
         if self.write_expected_len.is_some() {
-            self.clear_write_buffer();
+            return self.write_to_radio_continue(chunk);
         }
         if self.write_expected_len.is_none() {
             // Meshtastic uses a 4-byte little-endian length prefix
@@ -283,13 +283,6 @@ impl<const MTU: usize> MeshtasticGattService<MTU> {
                     .extend_from_slice(&chunk[4..])
                     .map_err(|_| GattError::BufferOverflow)?;
             }
-        } else {
-            // Continue accumulating chunks
-            if !chunk.is_empty() {
-                self.write_buffer
-                    .extend_from_slice(chunk)
-                    .map_err(|_| GattError::BufferOverflow)?;
-            }
         }
 
         // Check if we have a complete message
@@ -300,6 +293,24 @@ impl<const MTU: usize> MeshtasticGattService<MTU> {
             }
         }
 
+        Ok(None)
+    }
+
+    /// Continue an in-progress chunked write (write_expected_len is Some).
+    ///
+    /// Extends the write buffer with the incoming chunk and returns the
+    /// complete message once enough bytes have been accumulated.
+    fn write_to_radio_continue(&mut self, chunk: &[u8]) -> Result<Option<&[u8]>, GattError> {
+        if !chunk.is_empty() {
+            self.write_buffer
+                .extend_from_slice(chunk)
+                .map_err(|_| GattError::BufferOverflow)?;
+        }
+        if let Some(expected) = self.write_expected_len {
+            if self.write_buffer.len() >= expected as usize {
+                return Ok(Some(&self.write_buffer[..expected as usize]));
+            }
+        }
         Ok(None)
     }
 
