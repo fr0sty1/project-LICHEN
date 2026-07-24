@@ -2,10 +2,17 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """LICHEN link layer.
 
-Frame format, signatures, replay protection, link-layer security, and TX queue.
+Frame format, signatures, replay protection, link-layer security, TX queue,
+and operating class definitions (CCP-3/CCP-4).
 """
 
 from lichen.link.frame import AddrMode, FrameError, LichenFrame, MicLength
+from lichen.link.op_class import (
+    OPERATING_CLASS_TABLE,
+    OperatingClass,
+    OperatingClassParams,
+    lookup_operating_class,
+)
 from lichen.link.replay import (
     WINDOW_SIZE,
     ReplayProtector,
@@ -28,6 +35,9 @@ __all__ = [
     "DEADLINE_ACK_MS",
     "DEADLINE_APP_MS",
     "DEADLINE_ROUTING_MS",
+    "OPERATING_CLASS_TABLE",
+    "OperatingClass",
+    "OperatingClassParams",
     "Priority",
     "QueueFullError",
     "TX_QUEUE_CAPACITY",
@@ -42,4 +52,5 @@ __all__ = [
     "ReplayProtector",
     "ReplayWindow",
     "logical_counter",
+    "lookup_operating_class",
 ]
