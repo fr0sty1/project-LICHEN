@@ -575,7 +575,7 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 		return;
 	}
 
-	seq_lock(ctx);
+	int locked = seq_lock(ctx);
 
 	secure_wipe(ctx->ed25519_sk, LICHEN_SK_LEN);
 	secure_wipe(ctx->link_key, LICHEN_LINK_KEY_LEN);
@@ -588,10 +588,12 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 	ctx->tx_seq = 0;
 	ctx->nonce_exhausted = false;
 
-	(void)seq_unlock(ctx);
+	if (locked == 0) {
+		(void)seq_unlock(ctx);
 #ifndef __ZEPHYR__
-	pthread_mutex_destroy(&ctx->seq_lock);
+		pthread_mutex_destroy(&ctx->seq_lock);
 #endif
+	}
 }
 
 int lichen_link_channel_select(const uint8_t eui64[LICHEN_EUI64_LEN],
