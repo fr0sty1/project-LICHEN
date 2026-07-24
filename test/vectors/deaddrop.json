@@ -21,6 +21,21 @@
       }
     },
     {
+      "name": "post_submission_string_payload",
+      "type": "post_submission",
+      "description": "POST /deaddrop with string-typed SenML message value. RFC 8428 SenML-CBOR with vs field (value string). Oracle: pyca/cryptography CBOR encoding of SenML [{n: 'content', vs: 'alert'}], aligns with senml_add_string code path in lichen/subsys/lichen/senml/senml.c:172.",
+      "recipient": "msg-node",
+      "ciphertext": "4502000102030405",
+      "ttl": 86400,
+      "encoded": "4402000183deaddropc0",
+      "senml_payload": "81a2616e67636f6e74656e7462767365616c657274",
+      "expected": {
+        "response_code": 69,
+        "num_pending": 0,
+        "oscore_option": "0910"
+      }
+    },
+    {
       "name": "pickup_with_pending",
       "type": "pickup",
       "description": "GET /deaddrop?node=abc123 returning list of pending encrypted messages. Uses SenML profile for status. Oracle from RFC 8428 example 1 adapted for dead drop list.",
