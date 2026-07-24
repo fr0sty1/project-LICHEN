@@ -752,6 +752,60 @@ void lichen_announce_sched_set_dodag_state(bool joined, bool gateway_centric)
 	}
 }
 
+static void dodag_loss_resume_handler(struct k_work *work)
+{
+	ARG_UNUSED(work);
+
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+	bool running = sched.running;
+	bool joined = sched.dodag_joined;
+
+	if (running && !joined) {
+		LOG_INF("DODAG loss resume timeout: reverting to normal announce interval");
+	}
+	k_mutex_unlock(&sched.mutex);
+
+	if (running) {
+		schedule_next();
+	}
+}
+
+void lichen_announce_sched_set_dodag_state(bool joined, bool gateway_centric)
+{
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+	if (!sched.running) {
+		k_mutex_unlock(&sched.mutex);
+		return;
+	}
+
+	bool prev_gateway = sched.dodag_joined && sched.gateway_centric;
+	sched.dodag_joined = joined;
+	sched.gateway_centric = joined ? gateway_centric : false;
+	bool new_gateway = sched.dodag_joined && sched.gateway_centric;
+
+	if (prev_gateway != new_gateway) {
+		LOG_INF("DODAG state change: joined=%d gateway=%d, rescheduling announce",
+			joined, gateway_centric);
+		k_mutex_unlock(&sched.mutex);
+
+		/* Reschedule with new interval immediately */
+		(void)k_work_cancel_delayable(&sched.work);
+		schedule_next();
+	} else {
+		k_mutex_unlock(&sched.mutex);
+	}
+
+	/* Schedule or cancel DODAG loss resume timer */
+	if (!joined) {
+		uint32_t delay_s = CONFIG_LICHEN_DODAG_LOSS_RESUME_TIMEOUT;
+		if (delay_s > 0) {
+			k_work_schedule(&sched.dodag_loss_work, K_SECONDS(delay_s));
+		}
+	} else {
+		(void)k_work_cancel_delayable(&sched.dodag_loss_work);
+	}
+}
+
 int lichen_announce_sched_start(
 	const struct lichen_announce_sched_config *config)
 {
