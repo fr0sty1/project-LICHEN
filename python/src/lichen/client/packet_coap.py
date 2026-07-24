@@ -28,7 +28,7 @@ from lichen.coap.transport import (
     unscoped_ipv6,
 )
 from lichen.ipv6.packet import IPv6Packet, NextHeader, PacketError
-from lichen.ipv6.udp import UdpDatagram, UdpError, udp_checksum
+from lichen.ipv6.udp import UdpDatagram, UdpError
 
 logger = logging.getLogger(__name__)
 _SEND_SCOPE: contextvars.ContextVar[Any] = contextvars.ContextVar(
@@ -470,9 +470,10 @@ class PacketDatagramChannel(DatagramChannel):
             udp = UdpDatagram.from_bytes(parsed.payload)
             if udp.dst_port != self._src_port:
                 return
-            if udp.checksum == 0:
-                return
-            if udp_checksum(parsed.header.src_addr, parsed.header.dst_addr, parsed.payload) != 0:
+            if not UdpDatagram.verify_checksum(
+                parsed.header.src_addr, parsed.header.dst_addr, parsed.payload
+            ):
+                logger.debug("dropping packet: invalid UDP checksum")
                 return
             source = self.normalize_endpoint(
                 Endpoint(str(parsed.header.src_addr), udp.src_port)
