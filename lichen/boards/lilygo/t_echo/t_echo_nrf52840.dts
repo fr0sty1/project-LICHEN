@@ -147,7 +147,8 @@
  * GDEW0154M10 e-ink display on SPI2 — disabled by default.
  * Enable via app overlay for applications that use the display.
  * Follows t_deck/heltec patterns exactly (chosen zephyr,display + status
- * = "okay" in overlay). Node label mimics tdeck_display style.
+ * = "okay" in overlay). Node label mimics tdeck_display style
+ * (t_echo_display).
  */
 &spi2 {
 	compatible = "nordic,nrf-spim";
@@ -159,8 +160,8 @@
 	pinctrl-1 = <&spi2_sleep>;
 	pinctrl-names = "default", "sleep";
 
-		eink0: uc81xx@0 {
-		compatible = "ultrachip,uc81xx";
+		t_echo_display: uc8176@0 {
+		compatible = "ultrachip,uc8176";
 		reg = <0>;
 		status = "disabled";
 		dc-gpios = <&gpio0 28 GPIO_ACTIVE_HIGH>;
