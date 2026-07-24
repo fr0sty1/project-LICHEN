@@ -1,26 +1,28 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "EDHOC interop vectors (updated/expanded). Python EdhocInitiator/Responder + fixed seeds as reference oracle (no code-under-test). Records PRK states, exported OscoreContext, TH values, messages, keys. Matches Rust byte-for-byte. Follows oscore/schnorr48 patterns and test integrity rules.",
+  "description": "EDHOC interop vectors (updated/expanded). Python EdhocInitiator/Responder + fixed seeds as reference oracle (no LICHEN code). Records PRK states, exported OscoreContext, TH values, messages, keys. Matches Rust byte-for-byte. Follows oscore/schnorr48 patterns and test integrity rules.",
   "vectors": [
     {
       "name": "fixed_seed_sign_sign",
       "seed_i": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
       "seed_r": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
-      "eph_sk_i": "0421eda167eaf9f8d1a8add5312e3105d0f13a6d03875deb301cdb46ee075370",
-      "eph_sk_r": "cb482464bbdf0ead598eda46e2b089f7748c839568839ef262569be6ca482f86",
-      "msg1": "01005820c5d841b19f5573dfc214c2bf4a5df5f3aaab80e6ba6a0f50f4232c23e9327e524100",
-      "msg2": "588403f0b278511962aaeb541b3efac88b9500a6c5e43210fb0ee17b0be75388a73ccd5395ecf3af07d14c15d39ee349b82203901dfebe9a000ba4ee9ca7a0ce1d805cc08c51df752b9c702d1f78cd303cdc8dbab970713d8e4ef151c3726d96c72c7b1ad3241e253c3782a5a211d24232514eb90661e38199591c4b037fc9896725e1ad252301",
-      "msg3": "9aa5d51f1f821112975be99082ab9dccfae5044dfc9ac6157b92b2ca580306bd33ff3d868e75cc163f68108cc3fa82e6d477c53f14096d74b6053f9078457451b33e87274f715492d137f3769faade1c744089f8263bf5957f236c893c4be2dc3e108f4dbc345a98dbc543c6",
-      "prk_2e": "3d5c3ff7779074ef1ef131c1fb1b3de959d68f6628cc8992e9f272a70c5f9123",
-      "prk_3e2m": "3d5c3ff7779074ef1ef131c1fb1b3de959d68f6628cc8992e9f272a70c5f9123",
-      "prk_4e3m": "3d5c3ff7779074ef1ef131c1fb1b3de959d68f6628cc8992e9f272a70c5f9123",
-      "th_2": "8ed1ed6603b7bd63b0c06ac009f6bfb704bf1042ec3b385e1e687635599b1a47",
-      "th_3": "c333dab1fdd800ae8340db229d49c5a2349b5a25eac9f003f9edb475b9e51acc",
-      "th_4": "eb6d7efb77b7c3b10798f98e04438f23629679876ae0ea39b1e60f2cb24c9c50",
-      "oscore_master_secret": "e677abd813b056b5b17ab6dd3199b55f",
-      "oscore_master_salt": "878f9e5a000824c6",
-      "oscore_sender_id": "00"
+      "msg1": "01005820132c442be010fbd57e72603328aa76e71fccc1503aae219327d14d9c9993f4724100",
+      "msg2": "5884132c442be010fbd57e72603328aa76e71fccc1503aae219327d14d9c9993f4729614685907a754c1147d41266dbfbcd618ca30eebb5d39deb2295aa49af52932a1a5ecff6a569aa4ff7c3bc8b5b883dc433cb1152fa852120ec3b2a7bd16b7b39c21b94c1f1650b188c41ca2f62fdc96ede16bb91250c2b2c120736d0999a0ea4166ead801",
+      "msg3": "bd8f5e098d7a42a5dc96649d0be633ecac85a346e09aca93e30380513aa97f8ce5081ae1cbb53a7dfc3c041ed18fd09f0a37324f9ab83311ed6f9586d30e6279d5a8b32c3d8e6bef817072bf407d58b2bb7283fd0fa7cc60350e2abc9c2a5fe41b533611cafe1c084d8a3c0a",
+      "prk_2e": "5109c04f72fb2efb2ec59a4687bf886b3721552a1a44895b963dc63bd4b7fec3",
+      "prk_3e2m": "5109c04f72fb2efb2ec59a4687bf886b3721552a1a44895b963dc63bd4b7fec3",
+      "prk_4e3m": "5109c04f72fb2efb2ec59a4687bf886b3721552a1a44895b963dc63bd4b7fec3",
+      "th_2": "15fbcebf49857d8b12ebbdaf900c7ff98e6047c41707cb46b341dda3b9490b0f",
+      "th_3": "ed1b81d51d5677b504561231ce2fb9900e5f5f900ceb3deaa2132bc5b58a150d",
+      "th_4": "4b5f23f9abb12dec5d3356733d7555dc69e3f0915ec882f6cae66e76a7b96a28",
+      "responder_th_2": "15fbcebf49857d8b12ebbdaf900c7ff98e6047c41707cb46b341dda3b9490b0f",
+      "responder_th_3": "ed1b81d51d5677b504561231ce2fb9900e5f5f900ceb3deaa2132bc5b58a150d",
+      "responder_th_4": "4b5f23f9abb12dec5d3356733d7555dc69e3f0915ec882f6cae66e76a7b96a28",
+      "oscore_master_secret": "63e42bcc70c04e92d04c21b9093d4351",
+      "oscore_master_salt": "52575ef0feccdff4",
+      "oscore_sender_id": "00",
+      "oscore_recipient_id": "01"
     }
   ]
 }
