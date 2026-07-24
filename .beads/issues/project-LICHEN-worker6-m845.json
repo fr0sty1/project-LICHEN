@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-m845",
+  "title": "[rereview] project-LICHEN-dk3c.5: config param in lichen_rpl_dodag_process_dio is _Nullable and unreachable via C — gateway_centric never propagates",
+  "description": "The new config parameter in lichen_rpl_dodag_process_dio (dodag.c:276) is _Nullable. The gateway_centric propagation at dodag.c:314-317 only fires if config != NULL, but there are zero C callers of this function. Even when wired up, if callers pass NULL (common for optional), the gateway_centric flag stays false forever, preventing the announce scheduler from ever entering gateway-centric mode.\\n\\nFile: lichen/subsys/lichen/rpl/dodag.c:314-317\\nSeverity: P1",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T05:37:28.306942648Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T05:37:28.306942648Z"
+}
