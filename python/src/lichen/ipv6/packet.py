@@ -218,14 +218,26 @@ class IPv6Packet:
         return header.to_bytes() + ext_bytes + self.payload
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> IPv6Packet:
-        """Parse a full packet, walking any extension-header chain."""
+    def from_bytes(cls, data: bytes, strict: bool = False) -> IPv6Packet:
+        """Parse a full packet, walking any extension-header chain.
+
+        Args:
+            data: Raw bytes to parse.
+            strict: If True, raise :class:`PacketError` when *data* contains
+                trailing bytes beyond the parsed packet. Defaults to False for
+                compatibility with padded buffers and similar use cases.
+        """
         header = IPv6Header.from_bytes(data)
-        body = data[HEADER_LENGTH : HEADER_LENGTH + header.payload_length]
+        end = HEADER_LENGTH + header.payload_length
+        body = data[HEADER_LENGTH:end]
         if len(body) != header.payload_length:
             raise PacketError(
                 f"payload_length says {header.payload_length} but "
                 f"{len(body)} bytes present"
+            )
+        if strict and len(data) > end:
+            raise PacketError(
+                f"{len(data) - end} trailing byte(s) after packet"
             )
 
         ext_headers: list[ExtensionHeader] = []

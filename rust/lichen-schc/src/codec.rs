@@ -291,6 +291,95 @@ fn ensure_ipv6(packet: &[u8]) -> Result<(), SchcError> {
 }
 
 /// Rule 0 (link-local) and Rule 1 (global): IPv6 + UDP + CoAP.
+/// Write SCHC-compressed address fields into `w`.
+///
+/// Encodes one bit of address mode (0 = link-local IID, 1 = full 128-bit),
+/// then the address(es). Rule 0 (link-local CoAP) is implicitly link-local;
+/// Rule 1 (global CoAP) uses a mode bit to cover both cases.
+fn write_compressed_addrs(
+    w: &mut BitWriter,
+    rule_id: u8,
+    src: &[u8; 16],
+    dst: &[u8; 16],
+) -> Result<(), SchcError> {
+    if rule_id == RULE_LINK_LOCAL_COAP {
+        let src_iid = u64::from_be_bytes(src[8..16].try_into().unwrap());
+        let dst_iid = u64::from_be_bytes(dst[8..16].try_into().unwrap());
+        w.write(src_iid as u128, 64)?;
+        w.write(dst_iid as u128, 64)?;
+    } else {
+        let src_int = u128::from_be_bytes(*src);
+        let dst_int = u128::from_be_bytes(*dst);
+        w.write(src_int, 128)?;
+        w.write(dst_int, 128)?;
+    }
+    Ok(())
+}
+
+/// Write SCHC-compressed address fields with a leading address-mode bit.
+///
+/// Writes 1-bit mode (0 = link-local IID, 1 = full 128-bit), then the addresses.
+fn write_compressed_addrs_with_mode(
+    w: &mut BitWriter,
+    src: &[u8; 16],
+    dst: &[u8; 16],
+) -> Result<(), SchcError> {
+    if is_link_local(src) && is_link_local(dst) {
+        let src_iid = u64::from_be_bytes(src[8..16].try_into().unwrap());
+        let dst_iid = u64::from_be_bytes(dst[8..16].try_into().unwrap());
+        w.write(0, 1)?;
+        w.write(src_iid as u128, 64)?;
+        w.write(dst_iid as u128, 64)?;
+    } else {
+        let src_int = u128::from_be_bytes(*src);
+        let dst_int = u128::from_be_bytes(*dst);
+        w.write(1, 1)?;
+        w.write(src_int, 128)?;
+        w.write(dst_int, 128)?;
+    }
+    Ok(())
+}
+
+/// Read SCHC-compressed address fields, returning `(src, dst)` as 16-byte arrays.
+///
+/// `rule_id` determines whether addresses are link-local (IID only) or full 128-bit.
+fn read_compressed_addrs(r: &mut BitReader, rule_id: u8) -> Result<([u8; 16], [u8; 16]), SchcError> {
+    if rule_id == RULE_LINK_LOCAL_COAP {
+        let src_iid = r.read(64)?;
+        let dst_iid = r.read(64)?;
+        Ok((
+            (LINK_LOCAL_PREFIX | src_iid).to_be_bytes(),
+            (LINK_LOCAL_PREFIX | dst_iid).to_be_bytes(),
+        ))
+    } else {
+        let src_int = r.read(128)?;
+        let dst_int = r.read(128)?;
+        Ok((src_int.to_be_bytes(), dst_int.to_be_bytes()))
+    }
+}
+
+/// Read SCHC-compressed address fields prefixed by a 1-bit address-mode, returning
+/// `(src, dst)` as 16-byte arrays.
+fn read_compressed_addrs_with_mode(r: &mut BitReader) -> Result<([u8; 16], [u8; 16]), SchcError> {
+    let addr_mode = r.read(1)? as u8;
+    let (src, dst) = if addr_mode == 0 {
+        let src_iid = r.read(64)?;
+        let dst_iid = r.read(64)?;
+        (
+            (LINK_LOCAL_PREFIX | src_iid).to_be_bytes(),
+            (LINK_LOCAL_PREFIX | dst_iid).to_be_bytes(),
+        )
+    } else {
+        let src_int = r.read(128)?;
+        let dst_int = r.read(128)?;
+        (src_int.to_be_bytes(), dst_int.to_be_bytes())
+    };
+    if (addr_mode == 0) != (is_link_local(&src) && is_link_local(&dst)) {
+        return Err(SchcError::NoMatchingRule);
+    }
+    Ok((src, dst))
+}
+
 fn compress_coap(packet: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, SchcError> {
     ensure_ipv6(packet)?;
     if packet.len() < 40 + 8 + 4 {
@@ -298,8 +387,8 @@ fn compress_coap(packet: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     }
     // IPv6 header fields (see layout comment above)
     let hop_limit = packet[7];
-    let src = &packet[8..24];
-    let dst = &packet[24..40];
+    let src: &[u8; 16] = packet[8..24].try_into().unwrap();
+    let dst: &[u8; 16] = packet[24..40].try_into().unwrap();
     // UDP header starts immediately after IPv6
     let udp = &packet[40..];
     let src_port = u16::from_be_bytes([udp[0], udp[1]]);
@@ -318,18 +407,7 @@ fn compress_coap(packet: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
 
     let mut w = BitWriter::new(&mut out[1..]);
     w.write(hop_limit as u128, 8)?;
-
-    if rule_id == RULE_LINK_LOCAL_COAP {
-        let src_iid = u64::from_be_bytes(src[8..16].try_into().unwrap());
-        let dst_iid = u64::from_be_bytes(dst[8..16].try_into().unwrap());
-        w.write(src_iid as u128, 64)?;
-        w.write(dst_iid as u128, 64)?;
-    } else {
-        let src_int = u128::from_be_bytes(src.try_into().unwrap());
-        let dst_int = u128::from_be_bytes(dst.try_into().unwrap());
-        w.write(src_int, 128)?;
-        w.write(dst_int, 128)?;
-    }
+    write_compressed_addrs(&mut w, rule_id, src, dst)?;
 
     w.write(src_port as u128, 16)?;
     w.write(dst_port as u128, 16)?;
@@ -497,8 +575,8 @@ fn compress_mqtt_sn(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     }
     // IPv6 header fields
     let hop_limit = packet[7];
-    let src = &packet[8..24];
-    let dst = &packet[24..40];
+    let src: &[u8; 16] = packet[8..24].try_into().unwrap();
+    let dst: &[u8; 16] = packet[24..40].try_into().unwrap();
     // UDP header starts immediately after IPv6
     let udp = &packet[40..];
     let src_port = u16::from_be_bytes([udp[0], udp[1]]);
@@ -527,21 +605,7 @@ fn compress_mqtt_sn(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
 
     let mut w = BitWriter::new(&mut out[1..]);
     w.write(hop_limit as u128, 8)?;
-
-    // Address compression: same logic as CoAP rules
-    if is_link_local(src) && is_link_local(dst) {
-        let src_iid = u64::from_be_bytes(src[8..16].try_into().unwrap());
-        let dst_iid = u64::from_be_bytes(dst[8..16].try_into().unwrap());
-        w.write(0, 1)?; // Address mode: 0 = link-local
-        w.write(src_iid as u128, 64)?;
-        w.write(dst_iid as u128, 64)?;
-    } else {
-        let src_int = u128::from_be_bytes(src.try_into().unwrap());
-        let dst_int = u128::from_be_bytes(dst.try_into().unwrap());
-        w.write(1, 1)?; // Address mode: 1 = full
-        w.write(src_int, 128)?;
-        w.write(dst_int, 128)?;
-    }
+    write_compressed_addrs_with_mode(&mut w, src, dst)?;
 
     // Direction bit and other port
     w.write(direction as u128, 1)?;
@@ -563,14 +627,7 @@ fn decompress_coap(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     let mut r = BitReader::new(&data[1..]);
 
     let hop_limit = r.read(8)? as u8;
-
-    let (src_int, dst_int) = if rule_id == RULE_LINK_LOCAL_COAP {
-        let src_iid = r.read(64)?;
-        let dst_iid = r.read(64)?;
-        (LINK_LOCAL_PREFIX | src_iid, LINK_LOCAL_PREFIX | dst_iid)
-    } else {
-        (r.read(128)?, r.read(128)?)
-    };
+    let (src, dst) = read_compressed_addrs(&mut r, rule_id)?;
 
     let src_port = r.read(16)? as u16;
     let dst_port = r.read(16)? as u16;
@@ -581,8 +638,6 @@ fn decompress_coap(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
 
     let tail = &data[1 + r.residue_byte_end()..];
 
-    let src = src_int.to_be_bytes();
-    let dst = dst_int.to_be_bytes();
     let coap_b0 = (1u8 << 6) | ((coap_type & 0x3) << 4) | (coap_tkl & 0x0F);
     let coap_len = 4 + tail.len();
     let total_udp = 8usize.saturating_add(coap_len);
@@ -791,24 +846,7 @@ fn decompress_mqtt_sn(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize,
     let mut r = BitReader::new(&data[1..]);
 
     let hop_limit = r.read(8)? as u8;
-    let addr_mode = r.read(1)? as u8;
-
-    let (src, dst) = if addr_mode == 0 {
-        let src_iid = r.read(64)?;
-        let dst_iid = r.read(64)?;
-        (
-            (LINK_LOCAL_PREFIX | src_iid).to_be_bytes(),
-            (LINK_LOCAL_PREFIX | dst_iid).to_be_bytes(),
-        )
-    } else {
-        let src_int = r.read(128)?;
-        let dst_int = r.read(128)?;
-        (src_int.to_be_bytes(), dst_int.to_be_bytes())
-    };
-
-    if (addr_mode == 0) != (is_link_local(&src) && is_link_local(&dst)) {
-        return Err(SchcError::NoMatchingRule);
-    }
+    let (src, dst) = read_compressed_addrs_with_mode(&mut r)?;
 
     let direction = r.read(1)? as u8;
     let other_port = r.read(16)? as u16;

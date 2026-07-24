@@ -206,6 +206,10 @@ class LichenFrame:
         signature_present = bool(llsec & _SIGNATURE_BIT)
         if signature_present and llsec & _ENCRYPTED_BIT:
             raise FrameError("signed and encrypted frames are unsupported")
+        # SECURITY: Reject frames where signature_present is set but the frame
+        # body is too short for the 48-byte Schnorr signature. An attacker could
+        # set the signature bit without appending a signature, hoping the parser
+        # reads past the buffer (over-read) or misinterprets payload bytes as MIC.
         mic_len = _SIGNATURE_LENGTH if signature_present else 0
         if length < offset + addr_len + mic_len:
             raise FrameError("frame too short for declared address/MIC sizes")

@@ -110,7 +110,7 @@ class RenodeServer:
         node.tx_power_dbm = self._tx_power_dbm
 
         self._server = await asyncio.start_server(self._accept_connection, host, port)
-        actual_port = self._server.sockets[0].getsockname()[1]
+        actual_port = int(self._server.sockets[0].getsockname()[1])
         logger.info(
             "Renode server for %s listening on %s:%d",
             self._node_id, host, actual_port

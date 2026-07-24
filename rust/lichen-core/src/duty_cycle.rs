@@ -234,8 +234,9 @@ impl<const N: usize> DutyCycleTracker<N> {
             freed = freed.saturating_add(record.duration_ms);
             if freed >= needed {
                 // This record aging out frees enough budget.
-                // It ages out when: record.timestamp_ms + WINDOW_MS
-                return record.timestamp_ms.saturating_add(WINDOW_MS);
+                // It ages out when: record.timestamp_ms + record.duration_ms + WINDOW_MS
+                let tx_end = record.timestamp_ms.saturating_add(record.duration_ms as u64);
+                return tx_end.saturating_add(WINDOW_MS);
             }
         }
 
@@ -360,9 +361,10 @@ mod tests {
         // Can't transmit now
         assert!(!tracker.can_transmit(1000, 200));
 
-        // Should have to wait until the first record ages out
+        // Should have to wait until the first record ages out.
+        // The record at t=0 with duration=max_tx ages out at max_tx + WINDOW_MS
         let next = tracker.next_tx_available_ms(1000, 200);
-        assert_eq!(next, WINDOW_MS); // Original TX at 0 ages out at WINDOW_MS
+        assert_eq!(next, max_tx as u64 + WINDOW_MS);
     }
 
     #[test]
