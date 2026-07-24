@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-i0wt",
+  "title": "[review] project-LICHEN-worker6-svpz: test_key_change_detection uses tx_history[0] twice, queues duplicate frame",
+  "description": "File: python/tests/link/test_link_layer.py:574\n\nIn test_key_change_detection, after peer_ll.send(b\"second\"), peer_radio.tx_history is [frame1, frame2], but the test accesses peer_radio.tx_history[0] which returns frame1 again. The node receives a duplicate of frame1 instead of the new frame2.\n\nThe test passes by accident because KEY_CHANGE detection (link_layer.py:562-563) runs before REPLAY detection (link_layer.py:593). If these checks were ever reordered, or if someone added an early REPLAY return for efficiency, the test would silently start testing the wrong thing — or fail altogether since it would hit REPLAY before KEY_CHANGE.\n\nFix: use peer_radio.tx_history[-1] on line 574 to retrieve the most recent transmit (the second frame). This ensures the test validates that a genuinely new frame from the same peer triggers KEY_CHANGE, not just a duplicate of the first frame.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:56:10.640723207Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:56:10.640723207Z"
+}
