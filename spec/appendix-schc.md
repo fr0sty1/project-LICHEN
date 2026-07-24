@@ -12,8 +12,8 @@ See draft-lichen-schc-lora-00.md §4 for rules, §5 for fragmentation (M=1 N=6 T
 | 0 | Link-local IPv6 + UDP + CoAP | 4-6 bytes | MSB(64) IIDs; ports MSB(12)/LSB(4) for CoAP/SenML range |
 | 1 | Mesh-local IPv6 + UDP + CoAP | ~26 bytes + tail | MSB(64)/LSB(64) IID-only for addresses matching /64 prefix |
 | 2 | ICMPv6 Echo | 3 bytes | Type 128/129, Code=0 not-sent |
-| 3 | RPL DIO (link-local) | 8 bytes | ICMPv6 type=155/code=0 + options |
-| 4 | RPL DAO (routable ULA source for multi-hop) | 6 bytes | Multi-hop source preservation |
+| 3 | RPL DIO (link-local) | ~12-20 bytes | ICMPv6 type=155/code=1 + options |
+| 4 | RPL DAO (routable ULA source for multi-hop) | ~10-18 bytes | ICMPv6 type=155/code=2 (DODAGID present) |
 | 5 | Link-local IPv6 + UDP + OSCORE | ~6 bytes residue | + OSCORE tail |
 | 6 | Global IPv6 + UDP + OSCORE | ~14 bytes residue | + OSCORE tail |
 | 7 | MQTT-SN (port 10883) | ~6 bytes | Exact port match |
@@ -51,7 +51,7 @@ No deviid/port-MSB optimizations yet. Hop limit value-sent. Exact descriptors an
 
 ## A.4. RPL Compression (Rules 3 and 4)
 
-Rules 3/4 compress base fields (IPv6+ICMPv6+RPL base) to ~8B (DIO)/~6B (DAO). Options use MATCH_MAPPING on Type field (prioritized list of common TLVs) + per-type descriptors. For PIO (type=3, common for prefix ads):
+Rules 3/4 compress base fields (IPv6+ICMPv6+RPL base) to ~12-20B (DIO)/~10-18B (DAO) including compressed options. Options use MATCH_MAPPING on Type field (prioritized list of common TLVs) + per-type descriptors. For PIO (type=3, common for prefix ads):
 
 | Field | TV | MO | CDA | Notes |
 |-------|----|----|-----|-------|
@@ -62,7 +62,7 @@ Rules 3/4 compress base fields (IPv6+ICMPv6+RPL base) to ~8B (DIO)/~6B (DAO). Op
 | PIO.Lifetime | - | ignore | value-sent | Valid/preferred lifetimes |
 | PIO.Prefix | - | msb(64) | lsb(64) | Compressible IID |
 
-This reduces typical options overhead from 20-40B (verbatim tail) to 8-15B. See `rust/lichen-schc/src/rules.rs`, `python/src/lichen/schc/rules.py:324`, test vectors, and RFC 8724 §10 for TLV patterns. Full rules in constants.toml and schc_compression.json.
+This reduces typical options overhead from 20-40B (verbatim tail) to 8-15B. See `rust/lichen-schc/src/rules.rs`, `python/src/lichen/schc/rules.py:324`, and `test/vectors/schc_compression.json` (`rpl_dio`, `rpl_dao` entries) for exact compressed representations. Full rules in constants.toml and RFC 8724 §10 for TLV patterns.
 
 Pad1 uses simple equal/not-sent as before.
 
