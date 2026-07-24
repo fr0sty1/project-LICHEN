@@ -3,6 +3,7 @@
 
 #include <zephyr/ztest.h>
 #include <string.h>
+#include <limits.h>
 
 #include <lichen/oscore.h>
 
@@ -22,13 +23,13 @@ static const uint8_t peer_eui64_2[OSCORE_EUI64_LEN] = {
 };
 
 static uint8_t mock_nvm_eui64[OSCORE_EUI64_LEN];
-static uint32_t mock_nvm_ssn;
+static uint64_t mock_nvm_ssn;
 static bool mock_nvm_has_data;
 static int mock_nvm_write_count;
 static int mock_nvm_read_count;
 static bool mock_nvm_write_fails;
 
-static int mock_nvm_write(const uint8_t *eui64, uint32_t ssn)
+static int mock_nvm_write(const uint8_t *eui64, uint64_t ssn)
 {
 	mock_nvm_write_count++;
 	if (mock_nvm_write_fails) {
@@ -42,7 +43,7 @@ static int mock_nvm_write(const uint8_t *eui64, uint32_t ssn)
 	return 0;
 }
 
-static int mock_nvm_read(const uint8_t *eui64, uint32_t *ssn)
+static int mock_nvm_read(const uint8_t *eui64, uint64_t *ssn)
 {
 	mock_nvm_read_count++;
 	if (ssn == NULL) {
@@ -199,7 +200,7 @@ ZTEST(oscore_ctx, test_check_freshness_critical_near_exhaustion)
 	zassert_not_null(ctx);
 
 	/* Set SSN near exhaustion */
-	zassert_equal(oscore_ctx_set_sender_seq(ctx, UINT32_MAX - 5000), OSCORE_OK);
+	zassert_equal(oscore_ctx_set_sender_seq(ctx, OSCORE_SSN_MAX - 5000), OSCORE_OK);
 
 	/* Should report critical */
 	zassert_equal(oscore_ctx_check_freshness(ctx, &status), OSCORE_OK);
@@ -221,7 +222,7 @@ ZTEST(oscore_ctx, test_check_freshness_exhausted_returns_error)
 	zassert_not_null(ctx);
 
 	/* Set SSN to max */
-	zassert_equal(oscore_ctx_set_sender_seq(ctx, UINT32_MAX), OSCORE_OK);
+	zassert_equal(oscore_ctx_set_sender_seq(ctx, OSCORE_SSN_MAX), OSCORE_OK);
 
 	/* Should return error for exhausted context */
 	zassert_equal(oscore_ctx_check_freshness(ctx, &status),
@@ -257,7 +258,7 @@ ZTEST(oscore_ctx, test_nvm_persistence_write)
 ZTEST(oscore_ctx, test_nvm_persistence_restore)
 {
 	struct oscore_ctx *ctx = NULL;
-	uint32_t restored_ssn;
+	uint64_t restored_ssn;
 
 	memcpy(mock_nvm_eui64, peer_eui64_1, OSCORE_EUI64_LEN);
 	mock_nvm_ssn = 54321;
@@ -345,7 +346,7 @@ ZTEST(oscore_ctx, test_nvm_protect_request_nvm_failure)
 	size_t ct_len = sizeof(ciphertext);
 	uint8_t oscore_opt[32];
 	size_t opt_len = sizeof(oscore_opt);
-	uint32_t ssn;
+	uint64_t ssn;
 	oscore_nvm_register_callbacks(mock_nvm_write, mock_nvm_read);
 	zassert_equal(oscore_ctx_create_with_eui64(master_secret, NULL, 0, sender_id, sizeof(sender_id), recipient_id, sizeof(recipient_id), peer_eui64_1, &ctx), OSCORE_OK);
 	zassert_not_null(ctx);
