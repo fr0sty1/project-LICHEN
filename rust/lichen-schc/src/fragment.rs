@@ -304,19 +304,31 @@ impl Ack {
             return Err(TooShort::new(2, data.len()).into());
         }
         let rule_id = data[0];
+        if data.len() == 2 && (data[1] & 0x40) != 0 {
+            if (data[1] & 0x3F) != 0 {
+                return Err(FragmentError::MalformedAck);
+            }
+            let window = (data[1] >> 7) & 1;
+            let ack = Self::new(rule_id, window, 0, true);
+            let mut canonical = [0u8; 2];
+            let length = ack.write_to(&mut canonical)?;
+            if &canonical[..length] != data {
+                return Err(FragmentError::NonCanonicalAck);
+            }
+            if assigned.is_some_and(|mask| 0 & !mask & BITMAP_MASK != 0) {
+                return Err(FragmentError::UnassignedBitmapBit);
+            }
+            return Ok(ack);
+        }
+        if data.len() < 3 {
+            return Err(TooShort::new(3, data.len()).into());
+        }
         let window = (data[1] >> FRAGMENT_N) & 1;
-        let complete = (data[1] & 0x01) != 0;
         let n = data[2] as usize;
         let body_bytes = n.div_ceil(8);
         let required = 3 + body_bytes;
         if data.len() < required {
             return Err(TooShort::new(required, data.len()).into());
-        }
-        let body = &data[3..];
-        let mut bitmap = [false; MAX_WINDOW_SIZE];
-        for i in 0..n.min(MAX_WINDOW_SIZE) {
-            let byte = body[i / 8];
-            bitmap[i] = (byte >> (7 - (i % 8))) & 1 != 0;
         }
         let bit_count = (data.len() - 1) * 8 - 2;
         let mut bitmap = 0u64;
@@ -340,7 +352,7 @@ impl Ack {
                 bitmap |= 1u64 << (62 - position);
             }
         }
-        let ack = Self::new(data[0], window, bitmap, false);
+        let ack = Self::new(rule_id, window, bitmap, false);
         let mut canonical = [0u8; 10];
         let length = ack.write_to(&mut canonical)?;
         if &canonical[..length] != data {
