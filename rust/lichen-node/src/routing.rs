@@ -334,6 +334,7 @@ impl NeighborTable {
         }
     }
 
+    #[cfg(feature = "std")]
     pub fn prune(&mut self, now_ms: u64, max_age_ms: u64) {
         let policy = TrickleAwareNeighborLiveness::default();
         self.prune_with_removed(&policy, now_ms, max_age_ms, 0, |_| {});
