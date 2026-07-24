@@ -178,6 +178,7 @@ impl<'a> Fragment<'a> {
         if data.len() < 2 {
             return Err(TooShort::new(2, data.len()).into());
         }
+        check_rule(data[0])?;
         let rule_id = data[0];
         let window = (data[1] >> 7) & 1;
         let fcn = (data[1] >> 1) & ((1 << FRAGMENT_N) - 1);
