@@ -268,6 +268,20 @@ impl Node {
 
 #[cfg(feature = "std")]
 impl RplNode {
+    /// Create a new root RPL node (DODAG root / border router).
+    ///
+    /// Uses memory-backed persistent storage for DAO replay state. Prefer
+    /// [`RplNode::provision_root`] for production use with durable storage.
+    pub fn new_root(node_id: NodeId) -> Self {
+        let mut storage = lichen_hal::storage::mem::MemStorage::new();
+        let (router, _state) = Router::provision_root(&mut storage, node_id.link_local_addr().0)
+            .expect("default root DODAG config is valid");
+        Self {
+            node: Node::new(node_id),
+            router,
+        }
+    }
+
     /// Create a new RPL-enabled node.
     #[cfg(test)]
     pub(crate) fn new(node_id: NodeId, dodag_id: [u8; 16]) -> Self {
@@ -1467,13 +1481,19 @@ mod tests {
         assert_eq!(RplEvent::DisReceived, RplEvent::DisReceived);
 
         let dio_inc = RplEvent::DioReceived { inconsistent: true };
-        let dio_cons = RplEvent::DioReceived { inconsistent: false };
+        let dio_cons = RplEvent::DioReceived {
+            inconsistent: false,
+        };
         assert_eq!(dio_inc, dio_inc);
         assert_ne!(dio_inc, dio_cons);
         assert_ne!(dio_inc, RplEvent::None);
 
-        let dao_up = RplEvent::DaoReceived { route_updated: true };
-        let dao_no = RplEvent::DaoReceived { route_updated: false };
+        let dao_up = RplEvent::DaoReceived {
+            route_updated: true,
+        };
+        let dao_no = RplEvent::DaoReceived {
+            route_updated: false,
+        };
         assert_eq!(dao_up, dao_up);
         assert_ne!(dao_up, dao_no);
 

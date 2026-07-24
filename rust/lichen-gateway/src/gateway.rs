@@ -10,9 +10,9 @@ use lichen_core::l2_payload::{
 };
 use lichen_node::{
     runtime::{RplRuntime, RplRuntimeConfig},
+    stack::add_rpl_source_route,
     RplEvent, RplNode,
 };
-use lichen_rpl::routing::SourceRoutingHeader;
 use lichen_schc::codec::{compress, decompress, SchcError};
 use tracing::{error, info, warn};
 
@@ -140,6 +140,22 @@ impl Gateway {
         let _ = self.runtime.poll(&mut self.rpl_node, now_ms);
     }
 
+    /// Route a packet for a destination that is part of the local RPL mesh.
+    ///
+    /// Implements RFC 6554 source routing for Non-Storing Mode with two paths:
+    ///
+    ///   **Root-originated /128 host route** — insert an SRH directly into the
+    ///   IPv6 header (swap destination with first hop, list remaining hops in
+    ///   the Routing header).
+    ///
+    ///   **Everything else** (upstream/internet-originated traffic, prefix
+    ///   routes shorter than /128) — IPv6-in-IPv6 encapsulation per
+    ///   `draft-lichen-rpl-lora-00` §7.4 / RFC 6554 §4.1: the original packet
+    ///   is preserved as an inner payload; an outer IPv6+SRH header routes to
+    ///   `E`, the last node in the path.
+    ///
+    /// Link-local and ULA destinations are forwarded verbatim without a route
+    /// lookup.
     pub fn mesh_to_mesh(&self, ipv6: &[u8]) -> Option<Vec<u8>> {
         if ipv6.len() < 40 || ipv6[0] >> 4 != 6 {
             warn!(len = ipv6.len(), "mesh_to_mesh: not IPv6");
@@ -154,34 +170,47 @@ impl Gateway {
                 Some(r) => r,
                 None => return None,
             };
-            if route.len() > 1 {
-                let srh = match SourceRoutingHeader::from_route(route) {
-                    Ok(s) => s,
-                    Err(_) => return None,
-                };
-                let num_addrs = srh.addresses.len();
-                let routing_len = 8 + 16 * num_addrs;
-                let total_len = ipv6.len() + routing_len;
-                let mut routed = vec![0u8; total_len];
-                routed[..40].copy_from_slice(&ipv6[..40]);
-                let payload_len = u16::from_be_bytes([ipv6[4], ipv6[5]]) as usize + routing_len;
-                let routed_payload_len = match u16::try_from(payload_len) {
-                    Ok(p) => p,
-                    Err(_) => return None,
-                };
-                routed[4..6].copy_from_slice(&routed_payload_len.to_be_bytes());
-                let transport = ipv6[6];
-                routed[6] = 43;
-                routed[24..40].copy_from_slice(&route[0]);
-                routed[40] = transport;
-                routed[41] = (routing_len / 8 - 1) as u8;
-                if srh.write_to(&mut routed[42..]).is_err() {
-                    return None;
-                }
-                routed[40 + routing_len..].copy_from_slice(&ipv6[40..]);
-                routed
-            } else {
+            if route.len() == 1 {
                 ipv6.to_vec()
+            } else {
+                let root_addr = self.rpl_node.node().node_id.link_local_addr().0;
+                let is_root_origin = ipv6[8..24] == root_addr;
+                let is_host_route = route.last() == Some(&dst);
+                if is_root_origin && is_host_route {
+                    let routing_len = 8 + 16 * (route.len() - 1);
+                    let total_len = ipv6.len() + routing_len;
+                    let mut routed = vec![0u8; total_len];
+                    if add_rpl_source_route(ipv6, route, &mut routed).is_err() {
+                        return None;
+                    }
+                    routed
+                } else {
+                    let num_addrs = route.len() - 1;
+                    let routing_len = 8 + 16 * num_addrs;
+                    let outer_payload = routing_len + ipv6.len();
+                    let outer_payload_u16 = u16::try_from(outer_payload).ok()?;
+                    let outer_hdr = 40 + routing_len;
+                    let mut outer = vec![0u8; outer_hdr];
+                    outer[0] = 0x60;
+                    outer[4..6].copy_from_slice(&outer_payload_u16.to_be_bytes());
+                    outer[6] = 43;
+                    outer[7] = 64;
+                    outer[8..24].copy_from_slice(&root_addr);
+                    outer[24..40].copy_from_slice(&route[0]);
+                    outer[40] = 41;
+                    outer[41] = (routing_len / 8 - 1) as u8;
+                    outer[42] = 3;
+                    outer[43] = num_addrs as u8;
+                    outer[44..48].fill(0);
+                    for (i, addr) in route[1..].iter().enumerate() {
+                        let start = 48 + i * 16;
+                        outer[start..start + 16].copy_from_slice(addr);
+                    }
+                    let mut encapsulated = Vec::with_capacity(outer_hdr + ipv6.len());
+                    encapsulated.extend_from_slice(&outer);
+                    encapsulated.extend_from_slice(ipv6);
+                    encapsulated
+                }
             }
         };
         let mut out = vec![0u8; to_compress.len() + 20];
