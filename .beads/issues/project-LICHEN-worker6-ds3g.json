@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-ds3g",
   "title": "[review] project-LICHEN-worker6-r05h: .tmp_check/test.rs temp file mistakenly committed",
   "description": "Commit 592dfa85 adds .tmp_check/test.rs which is a temporary/scratch file with broken code:\n- function transcript_4 is declared with 2 parameters (a, b) but called with 3 arguments (\u0026a, \u0026b, \u0026c)\n- The file is in .tmp_check/ which is clearly a temporary test directory\n- Temp/scratch files should not be committed to the repository\n- This file has no purpose in the codebase and should be removed",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T20:10:17.18208068Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T20:10:53.503781564Z",
-  "started_at": "2026-07-24T20:10:53.503781564Z",
-  "lease_expires_at": "2026-07-24T20:15:53.503781564Z",
-  "heartbeat_at": "2026-07-24T20:10:53.503781564Z"
+  "updated_at": "2026-07-24T20:21:33.919248751Z",
+  "started_at": "2026-07-24T20:10:53.503781564Z"
 }
