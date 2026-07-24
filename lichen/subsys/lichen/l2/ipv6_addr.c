@@ -82,49 +82,16 @@ int lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid)
         return -EINVAL;
     }
 
-    /*
-     * SECURITY: Use SHA-256 hash of pubkey rather than raw bytes.
-     * Raw Ed25519 public key bytes have structure that could leak
-     * information. This matches RFC 7343 (ORCHID) approach and the
-     * Python implementation in lichen/crypto/identity.py.
-     */
     ret = lichen_sha256(pubkey, LICHEN_ED25519_PUBKEY_LEN, hash);
     if (ret != 0) {
         LOG_ERR("pubkey_to_iid failed (SHA-256 error %d)", ret);
         goto cleanup;
     }
 
-    /*
-     * SECURITY: Using first 64 bits of SHA-256 for IID derivation.
-     * This is safe for identifier derivation (not key material) because:
-     * 1. Birthday collision requires 2^32 attempts (4B devices) for 50% collision
-     * 2. Preimage resistance remains at 2^64 (sufficient for device identity)
-     *
-     * Note: While inspired by RFC 7343 (ORCHID), this is NOT a compliant ORCHID.
-     * ORCHIDs have additional structure (specific prefix, hash-index bits) that
-     * we omit. Our derivation is simpler: SHA-256(pubkey) -> first 8 bytes ->
-     * clear U/L bit. This is valid for LICHEN's internal IID generation.
-     */
     memcpy(iid, hash, 8);
-
-    /*
-     * IID semantics (RFC 4291 section 2.5.1):
-     * - Bit 1 (U/L): 0=local, 1=universal
-     *
-     * For pubkey-derived IIDs, clear U/L bit to mark as locally-administered
-     * since they are not derived from a universally-administered MAC address.
-     *
-     * This differs from lichen_eui64_to_iid() which flips (XORs) the U/L bit.
-     * The reason: EUI-64 starts with a universal MAC (U/L=1), so RFC 4291
-     * requires flipping it. Pubkey-derived IIDs start from hash output with
-     * no inherent U/L semantics, so we simply clear the bit to indicate
-     * "locally-administered" status. The Python implementation in
-     * lichen/crypto/identity.py uses the same approach (clear, not flip).
-     */
-    iid[0] &= ~UL_BIT;  /* Clear U/L bit */
+    iid[0] &= ~UL_BIT;
 
 cleanup:
-    /* SECURITY: Zero hash on all paths (sha_state zeroed by helper) */
     secure_zero(hash, sizeof(hash));
     return ret;
 }

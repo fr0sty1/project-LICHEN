@@ -64,6 +64,7 @@ impl core::error::Error for RplError {
 // ── Option type bytes ─────────────────────────────────────────────────────────
 
 pub const OPT_PAD1: u8 = 0;
+pub const OPT_PADN: u8 = 1;
 pub const OPT_DODAG_CONFIG: u8 = 4;
 pub const OPT_RPL_TARGET: u8 = 5;
 pub const OPT_TRANSIT_INFO: u8 = 6;
@@ -172,8 +173,6 @@ pub struct Dao {
 
 impl Dao {
     pub const BASE_LEN: usize = 20; // for D=1 (common case)
-    pub const MIN_BASE_LEN: usize = 4; // for D=0
-    pub const DODAG_BASE_LEN: usize = 20; // for D=1 (alias for clarity)
 
     pub fn from_bytes(data: &[u8]) -> Result<Self, RplError> {
         if data.len() < 4 {
@@ -189,7 +188,8 @@ impl Dao {
             // SAFETY: length check ensures data.len() >= 20; 4..20 is 16 bytes
             Some(data[4..20].try_into().unwrap())
         } else {
-            None // D=0 elides DODAGID per RFC 6550 §6.4.2; use context DODAG
+            // D=0 elides DODAGID per RFC 6550 §6.4.2; caller uses context DODAG
+            None
         };
         Ok(Self {
             rpl_instance_id: data[0],
@@ -204,7 +204,11 @@ impl Dao {
         if self.rpl_instance_id & 0x80 != 0 && self.dodag_id.is_none() {
             return Err(RplError::InvalidOption);
         }
-        let base_len = if self.dodag_id.is_some() { 20 } else { 4 };
+        let base_len = if self.dodag_id.is_some() {
+            20
+        } else {
+            4
+        };
         if out.len() < base_len {
             return Err(BufferTooSmall::new(base_len, out.len()).into());
         }
@@ -279,7 +283,6 @@ pub struct SignedDaoEnvelope<'a> {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-#[non_exhaustive]
 pub enum DaoEnvelopeError {
     Rpl(RplError),
     MissingSignature,
@@ -335,7 +338,7 @@ impl<'a> SignedDaoEnvelope<'a> {
                     return Err(DaoEnvelopeError::NonTerminalSignature);
                 }
                 match data[pos] {
-                    OPT_PADN => {}
+                    OPT_PADN if data[pos + 1] > 0 => {}
                     OPT_RPL_TARGET if data[pos + 1] as usize == 18 => {}
                     OPT_TRANSIT_INFO if data[pos + 1] as usize == TransitInfo::DATA_LEN => {}
                     OPT_RPL_TARGET_DESCRIPTOR if data[pos + 1] as usize == 4 => {}
@@ -718,7 +721,7 @@ mod tests {
         assert_eq!(dao.rpl_instance_id, 0);
         assert!(!dao.ack_requested);
         assert_eq!(dao.dao_sequence, 5);
-        assert_eq!(dao.dodag_id.unwrap()[0], 0xfd);
+        assert_eq!(dao.dodag_id, Some([0xfd, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]));
     }
 
     #[test]
