@@ -35,7 +35,7 @@ use crate::node::{
     claims_rpl_ipv6, is_rpl_ipv6, rpl_code, valid_ipv6_envelope, valid_rpl_ipv6,
     DaoHandlingOutcome, Node, RplEvent, RplNode,
 };
-use crate::routing::{DaoRxState, Router, TrickleSafeLivenessPolicy};
+use crate::routing::{DaoRxState, Router};
 use crate::runtime::{RplRuntime, RplRuntimeAction, RplRuntimeActionError, RplRuntimePoll};
 use crate::secure::{
     secure_datagram_from_received, ReceivedSecureDatagram, RequestCorrelation, SecureError,
@@ -491,16 +491,12 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
 
     /// Run DAO-route and neighbor maintenance from one monotonic observation.
     ///
+    /// Uses [`TrickleAwareNeighborLiveness`] to respect Trickle suppression.
     /// This is an advanced caller-clock API. Production single-owner loops should
     /// use [`Self::runtime_poll`] so clock clamping and cadence remain centralized.
-    pub fn maintain<P: TrickleSafeLivenessPolicy>(
-        &mut self,
-        now_ms: u64,
-        neighbor_timeout_ms: u64,
-        policy: &P,
-    ) -> RplMaintenanceOutcome {
+    pub fn maintain(&mut self, now_ms: u64, neighbor_timeout_ms: u64) -> RplMaintenanceOutcome {
         self.routing_now_ms = self.routing_now_ms.max(now_ms);
-        self.rpl.maintain(now_ms, neighbor_timeout_ms, policy)
+        self.rpl.maintain(now_ms, neighbor_timeout_ms)
     }
 
     /// Advance an executor-neutral runtime using this stack as the single owner.

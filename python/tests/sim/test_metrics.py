@@ -116,8 +116,8 @@ class TestMetricsUnit:
 
     def test_tx_start_times_pruned_after_threshold(self) -> None:
         m = Metrics()
-        threshold = Metrics.TX_START_TIMES_PRUNE_THRESHOLD
-        max_age = Metrics.TX_START_TIMES_MAX_AGE_US
+        threshold = Metrics._TX_START_TIMES_PRUNE_THRESHOLD
+        max_age = Metrics._TX_START_TIMES_MAX_AGE_US
 
         for i in range(threshold + 1):
             m.record_transmission_start(f"old_tx_{i}", i * 1000)
@@ -134,7 +134,7 @@ class TestMetricsUnit:
 
     def test_tx_start_times_recent_not_pruned(self) -> None:
         m = Metrics()
-        threshold = Metrics.TX_START_TIMES_PRUNE_THRESHOLD
+        threshold = Metrics._TX_START_TIMES_PRUNE_THRESHOLD
         base_time = 1_000_000_000_000
 
         for i in range(threshold + 10):
