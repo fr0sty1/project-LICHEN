@@ -955,8 +955,9 @@ impl Context {
     ///
     /// Unlike `protect_request`, responses:
     /// - Use the ORIGINAL request's KID and PIV for the AAD (ties response to request)
-    /// - Omits PIV from the OSCORE option
-    /// - Reuses the request nonce
+    /// - Optionally includes a fresh PIV in the OSCORE option (controlled by `include_piv`)
+    /// - When `include_piv` is false, reuses the request nonce as-is
+    /// - When `include_piv` is true, derives a fresh nonce from the responder's Sender ID and PIV
     ///
     /// Per RFC 8613 Section 5.2, when a response includes a PIV, the nonce uses
     /// the responder's Sender ID and PIV. When omitting PIV, the response reuses
@@ -970,6 +971,8 @@ impl Context {
     /// - `payload`: Response payload to encrypt
     /// - `request_kid`: The KID from the original request (requester's sender_id)
     /// - `request_piv`: The PIV from the original request
+    /// - `include_piv`: Whether to include a fresh PIV in the option; if true, consumes
+    ///   a sender sequence number. Requires `allow_no_piv_response` to be set when false.
     pub fn protect_response(
         &mut self,
         code: u8,
@@ -996,7 +999,7 @@ impl Context {
         let (nonce_piv, piv_len, piv_for_option): ([u8; PIV_MAX_LEN], usize, Option<usize>) =
             if include_piv {
                 // Generate own PIV.
-                // SECURITY: Returns SeqExhausted if at u32::MAX to prevent nonce reuse.
+                // SECURITY: Returns SeqExhausted if at MAX to prevent nonce reuse.
                 let seq = self
                     .sender_seq
                     .fetch_increment()

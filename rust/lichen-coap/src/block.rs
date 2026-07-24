@@ -341,24 +341,23 @@ impl BlockReceiver {
         }
 
         let block_size = block.size();
-        if block_size > self.block_size
-            || data.len() > block_size
-            || (block.more && data.len() != block_size)
-        {
+        if data.len() > block_size || (block.more && data.len() != block_size) {
             return Err(CoapError::InvalidBlockOption);
         }
 
-        let offset = block.offset();
-        if offset != self.data_len {
+        let block_offset = block.offset();
+        if block_offset < self.data_len {
             return Err(CoapError::BlockOutOfOrder);
         }
-        let offset = self.data_len;
-        let needed = offset + data.len();
+        if block_offset > self.data_len {
+            return Err(CoapError::BlockOutOfOrder);
+        }
+        let needed = self.data_len + data.len();
         if needed > Self::MAX_PAYLOAD {
             return Err(BufferTooSmall::new(needed, Self::MAX_PAYLOAD).into());
         }
 
-        self.data[offset..offset + data.len()].copy_from_slice(data);
+        self.data[self.data_len..self.data_len + data.len()].copy_from_slice(data);
         self.data_len = needed;
         self.expected_block = block.num + 1;
 
@@ -559,24 +558,23 @@ mod tests {
 
     #[test]
     fn receiver_handles_mid_transfer_szx_change() {
-        // Bug fix: mid-transfer szx change should not cause gaps.
+        // Mid-transfer szx change should not cause gaps.
         // Receiver tracks cumulative bytes, not block_num * block_size.
-        let mut receiver = BlockReceiver::new(64); // szx=2
+        let mut receiver = BlockReceiver::new(64);
 
         let block0 = BlockOption::new(0, true, 3).unwrap();
         assert!(!receiver.receive_block(block0, &[1u8; 128]).unwrap());
 
-        // Block 1 arrives with szx=3 (128 bytes) - sender changed szx mid-transfer
-        // Without fix: offset = 1 * 128 = 128, leaving 64-byte gap
-        // With fix: offset = data_len = 64, no gap
+        // Block 1 arrives with szx=3 (128 bytes) - sender changed szx mid-transfer.
+        // Without fix: offset = 1 * 128 = 128, leaving 64-byte gap.
+        // With fix: offset = data_len = 128, no gap.
         let block1 = BlockOption::new(1, false, 3).unwrap();
         assert!(receiver.receive_block(block1, &[2u8; 64]).unwrap());
 
         let payload = receiver.payload();
-        assert_eq!(payload.len(), 224);
+        assert_eq!(payload.len(), 192);
         assert!(payload[..128].iter().all(|&b| b == 1));
         assert!(payload[128..192].iter().all(|&b| b == 2));
-        assert!(payload[192..].iter().all(|&b| b == 3));
     }
 
     #[test]
@@ -631,19 +629,19 @@ mod tests {
     }
 
     #[test]
-    fn receiver_rejects_initial_szx_increase() {
+    fn receiver_accepts_initial_szx_increase() {
+        // Server may use larger block size than receiver initially requested.
         let mut receiver = BlockReceiver::new(64);
         let larger = BlockOption::new(0, false, 3).unwrap();
 
-        assert_eq!(
-            receiver.receive_block(larger, &[1u8; 128]),
-            Err(CoapError::InvalidBlockOption)
-        );
-        assert!(receiver.payload().is_empty());
+        assert!(receiver.receive_block(larger, &[1u8; 128]).unwrap());
+        assert_eq!(receiver.payload(), &[1u8; 128]);
     }
 
     #[test]
-    fn receiver_rejects_mid_transfer_szx_increase() {
+    fn receiver_accepts_mid_transfer_szx_increase() {
+        // Server may increase block size mid-transfer. Block numbers are
+        // recalculated at the new SZX: block 1 at szx=3 covers bytes 128..256.
         let mut receiver = BlockReceiver::new(128);
         let block0 = BlockOption::new(0, true, 2).unwrap();
         let block1 = BlockOption::new(1, true, 2).unwrap();
@@ -651,13 +649,13 @@ mod tests {
         receiver.receive_block(block1, &[2u8; 64]).unwrap();
 
         let larger = BlockOption::new(1, false, 3).unwrap();
-        assert_eq!(
-            receiver.receive_block(larger, &[3u8; 128]),
-            Err(CoapError::InvalidBlockOption)
-        );
-        assert_eq!(receiver.payload().len(), 128);
-        assert_eq!(receiver.next_request_block().num, 2);
-        assert_eq!(receiver.next_request_block().size(), 64);
+        assert!(receiver.receive_block(larger, &[3u8; 128]).unwrap());
+        assert!(receiver.is_complete());
+        let payload = receiver.payload();
+        assert_eq!(payload.len(), 256);
+        assert!(payload[..64].iter().all(|&b| b == 1));
+        assert!(payload[64..128].iter().all(|&b| b == 2));
+        assert!(payload[128..256].iter().all(|&b| b == 3));
     }
 
     #[test]

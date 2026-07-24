@@ -49,7 +49,7 @@ impl OscoreSeqNum {
 
     /// Increment by one, returning the new value.
     ///
-    /// Returns `None` if the sequence number is at `u32::MAX` (would overflow).
+    /// Returns `None` if the sequence number is at `MAX` (would overflow).
     /// SECURITY: Callers must handle `None` by renegotiating the security context
     /// to prevent nonce reuse, which would compromise AES-CCM confidentiality.
     #[inline]
@@ -66,7 +66,7 @@ impl OscoreSeqNum {
     /// Useful for the sender path where you want to use the current
     /// sequence number and advance to the next.
     ///
-    /// Returns `None` if the sequence number is at `u32::MAX` (would overflow).
+    /// Returns `None` if the sequence number is at `MAX` (would overflow).
     /// SECURITY: Callers must handle `None` by renegotiating the security context
     /// to prevent nonce reuse, which would compromise AES-CCM confidentiality.
     #[inline]
