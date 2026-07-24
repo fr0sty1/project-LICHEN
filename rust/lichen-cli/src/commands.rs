@@ -200,13 +200,28 @@ pub async fn key(node: SocketAddr, action: KeyAction, fmt: &OutputFormat) -> Cmd
                         .open(&path)?;
                     writeln!(file, "{}", *seed_hex)?;
                 }
-                #[cfg(not(unix))]
+                #[cfg(windows)]
+                {
+                    use std::fs::OpenOptions;
+                    use std::io::Write;
+                    use std::os::windows::fs::OpenOptionsExt;
+
+                    // Restrict access: owner-only read/write, no sharing
+                    // Windows DACL manipulation requires FFI beyond OpenOptionsExt
+                    // but share_mode(0) prevents concurrent readers
+                    let mut file = OpenOptions::new()
+                        .write(true)
+                        .create(true)
+                        .truncate(true)
+                        .share_mode(0)
+                        .open(&path)?;
+                    writeln!(file, "{}", *seed_hex)?;
+                }
+                #[cfg(not(any(unix, windows)))]
                 {
                     use std::fs::File;
                     use std::io::Write;
 
-                    // SECURITY: Use writeln! instead of format! to avoid creating
-                    // a temporary String that would leak seed material in memory
                     let mut file = File::create(&path)?;
                     writeln!(file, "{}", *seed_hex)?;
                     eprintln!(
