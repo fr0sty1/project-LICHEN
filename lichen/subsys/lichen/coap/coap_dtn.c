@@ -135,15 +135,37 @@ static int deaddrop_post(struct coap_resource *resource,
 			return coap_oscore_send_unauthorized(resource, request,
 							     addr, addr_len);
 		}
+		uint8_t oscore_opt[32];
+		size_t oscore_opt_len = sizeof(oscore_opt);
+		int r = coap_oscore_get_option(request, oscore_opt,
+					       &oscore_opt_len);
+		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_UNAUTHORIZED;
+		struct oscore_option opt;
+		r = oscore_option_parse(oscore_opt, oscore_opt_len, &opt);
+		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_UNAUTHORIZED;
+		if (opt.has_piv && opt.piv_len > 0) {
+			if (piv_len < opt.piv_len) {
+				return COAP_RESPONSE_CODE_INTERNAL_ERROR;
+			}
+			memcpy(piv, opt.piv, opt.piv_len);
+			piv_len = opt.piv_len;
+		} else {
+			piv_len = 0;
+		}
+		const uint8_t *ct;
+		uint16_t ct_len;
+		ct = coap_packet_get_payload(request, &ct_len);
+		if (ct == NULL || ct_len == 0) {
+			return COAP_RESPONSE_CODE_BAD_REQUEST;
+		}
 		uint8_t orig_code;
 		uint8_t opts[32];
 		size_t opt_len = sizeof(opts);
 		uint8_t plain[512];
 		size_t plain_len = sizeof(plain);
-		int r = coap_oscore_unprotect_request(ctx, request, &orig_code,
-						      opts, &opt_len, plain,
-						      &plain_len, piv,
-						      &piv_len);
+		r = oscore_unprotect_request(ctx, oscore_opt, oscore_opt_len,
+					     ct, ct_len, &orig_code, opts,
+					     &opt_len, plain, &plain_len);
 		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_UNAUTHORIZED;
 		if (orig_code != COAP_METHOD_POST) {
 			return COAP_RESPONSE_CODE_NOT_ALLOWED;
@@ -286,7 +308,7 @@ static int confessions_post(struct coap_resource *resource,
 	}
 	const uint8_t *payload;
 	uint16_t payload_len = 0;
-#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
+	#ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
 	struct oscore_ctx *ctx = NULL;
 	uint8_t piv[OSCORE_PIV_MAX_LEN];
 	size_t piv_len = sizeof(piv);
@@ -297,15 +319,37 @@ static int confessions_post(struct coap_resource *resource,
 			return coap_oscore_send_unauthorized(resource, request,
 							     addr, addr_len);
 		}
+		uint8_t oscore_opt[32];
+		size_t oscore_opt_len = sizeof(oscore_opt);
+		int r = coap_oscore_get_option(request, oscore_opt,
+					       &oscore_opt_len);
+		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_BAD_REQUEST;
+		struct oscore_option opt;
+		r = oscore_option_parse(oscore_opt, oscore_opt_len, &opt);
+		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_BAD_REQUEST;
+		if (opt.has_piv && opt.piv_len > 0) {
+			if (piv_len < opt.piv_len) {
+				return COAP_RESPONSE_CODE_INTERNAL_ERROR;
+			}
+			memcpy(piv, opt.piv, opt.piv_len);
+			piv_len = opt.piv_len;
+		} else {
+			piv_len = 0;
+		}
+		const uint8_t *ct;
+		uint16_t ct_len;
+		ct = coap_packet_get_payload(request, &ct_len);
+		if (ct == NULL || ct_len == 0) {
+			return COAP_RESPONSE_CODE_BAD_REQUEST;
+		}
 		uint8_t orig_code;
 		uint8_t opts[32];
 		size_t opt_len = sizeof(opts);
 		uint8_t plain[64];
 		size_t plain_len = sizeof(plain);
-		int r = coap_oscore_unprotect_request(ctx, request, &orig_code,
-						      opts, &opt_len, plain,
-						      &plain_len, piv,
-						      &piv_len);
+		r = oscore_unprotect_request(ctx, oscore_opt, oscore_opt_len,
+					     ct, ct_len, &orig_code, opts,
+					     &opt_len, plain, &plain_len);
 		if (r != OSCORE_OK) return COAP_RESPONSE_CODE_BAD_REQUEST;
 		if (orig_code != COAP_METHOD_POST) {
 			return COAP_RESPONSE_CODE_NOT_ALLOWED;
