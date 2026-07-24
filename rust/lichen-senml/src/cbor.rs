@@ -246,6 +246,7 @@ fn dec_head(data: &[u8], pos: usize) -> Result<(u8, u64, usize), CborError> {
             let v = u16::from_be_bytes([data[pos + 1], data[pos + 2]]);
             Ok((major, v as u64, 3))
         }
+        26 | 27 => Err(CborError::NotImplemented),
         _ => Err(CborError::InvalidInput),
     }
 }
