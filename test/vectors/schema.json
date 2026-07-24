@@ -42,7 +42,9 @@
               {"$ref": "#/definitions/schnorr48_vector"},
               {"$ref": "#/definitions/hash_32_vector"},
               {"$ref": "#/definitions/ccp_load_balancing_vector"},
-              {"$ref": "#/definitions/ipv6_malformed_vector"}
+              {"$ref": "#/definitions/ipv6_malformed_vector"},
+              {"$ref": "#/definitions/deaddrop_vector"},
+              {"$ref": "#/definitions/confessions_vector"}
             ]
           }
         }
@@ -98,7 +100,9 @@
           {"$ref": "#/definitions/compact_cot_vector"},
           {"$ref": "#/definitions/schnorr48_vector"},
           {"$ref": "#/definitions/hash_32_vector"},
-          {"$ref": "#/definitions/ccp_load_balancing_vector"}
+          {"$ref": "#/definitions/ccp_load_balancing_vector"},
+          {"$ref": "#/definitions/deaddrop_vector"},
+          {"$ref": "#/definitions/confessions_vector"}
         ]
       },
       "description": "v2 bare array root (used by ccp16-desync.json for desync test vectors)"
@@ -236,6 +240,30 @@
           "properties": {
             "vectors": {
               "items": {"$ref": "#/definitions/ccp_load_balancing_vector"}
+            }
+          }
+        }
+      ]
+    },
+    "deaddrop_document": {
+      "allOf": [
+        {"$ref": "#/definitions/document_base"},
+        {
+          "properties": {
+            "vectors": {
+              "items": {"$ref": "#/definitions/deaddrop_vector"}
+            }
+          }
+        }
+      ]
+    },
+    "confessions_document": {
+      "allOf": [
+        {"$ref": "#/definitions/document_base"},
+        {
+          "properties": {
+            "vectors": {
+              "items": {"$ref": "#/definitions/confessions_vector"}
             }
           }
         }
@@ -1151,6 +1179,60 @@
         "etx": {"type": "number", "minimum": 0},
         "score": {"type": "number"},
         "action": {"type": "string"}
+      }
+    },
+    "deaddrop_vector": {
+      "type": "object",
+      "required": ["name", "type", "encoded"],
+      "additionalProperties": false,
+      "description": "Test vector for /deaddrop store-and-forward CoAP resource. Validates POST submissions, GET pickups, OSCORE-wrapped payloads, and rejection cases.",
+      "properties": {
+        "name": {"type": "string"},
+        "type": {
+          "type": "string",
+          "enum": ["post_submission", "pickup", "oscore_wrapped", "rejection"]
+        },
+        "description": {"type": "string"},
+        "recipient": {"type": "string"},
+        "ciphertext": {"$ref": "#/definitions/hex"},
+        "ttl": {"type": "integer", "minimum": 0},
+        "encoded": {"$ref": "#/definitions/hex"},
+        "senml_payload": {"$ref": "#/definitions/hex"},
+        "expected": {
+          "type": "object",
+          "properties": {
+            "response_code": {"type": "integer", "minimum": 0, "maximum": 255},
+            "num_pending": {"type": "integer", "minimum": 0},
+            "oscore_option": {"$ref": "#/definitions/hex"}
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "confessions_vector": {
+      "type": "object",
+      "required": ["name", "type", "encoded"],
+      "additionalProperties": false,
+      "description": "Test vector for /confessions anonymous board CoAP resource. Validates POST submissions, GET retrieval, SenML payloads, and rejection cases.",
+      "properties": {
+        "name": {"type": "string"},
+        "type": {
+          "type": "string",
+          "enum": ["post_submission", "get", "senml_wrapped", "rejection"]
+        },
+        "description": {"type": "string"},
+        "payload": {"$ref": "#/definitions/hex"},
+        "encoded": {"$ref": "#/definitions/hex"},
+        "senml_payload": {"$ref": "#/definitions/hex"},
+        "expected": {
+          "type": "object",
+          "properties": {
+            "response_code": {"type": "integer", "minimum": 0, "maximum": 255},
+            "content_format": {"type": "integer"},
+            "oscore_option": {"$ref": "#/definitions/hex"}
+          },
+          "additionalProperties": false
+        }
       }
     },
     "schnorr48_vector": {

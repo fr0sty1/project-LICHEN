@@ -1,4 +1,5 @@
 """Integration test: CoAP request/response through SCHC-compressed Node routing (eo8).
+Also tests /deaddrop and /confessions resource payload formats.
 
 Tests that the full stack — SCHC compression, gradient routing, Schnorr-signed link
 layer, relay forwarding — delivers CoAP datagrams between non-adjacent nodes.
@@ -19,7 +20,7 @@ from ipaddress import IPv6Address
 
 import aiocoap
 import pytest
-from aiocoap import GET, Message, resource
+from aiocoap import GET, POST, Message, resource
 
 from lichen.coap.node_channel import NodeChannel
 from lichen.coap.transport import create_lichen_context
@@ -122,6 +123,59 @@ def _seed_gradient(
 
 
 @pytest.mark.asyncio
+@pytest.mark.asyncio
+async def test_deaddrop_payload_format() -> None:
+    """Verify deaddrop vectors produce parseable CoAP frames and SenML payloads."""
+    import json
+    from pathlib import Path
+    from lichen.senml.codec import unpack as senml_unpack
+
+    path = Path(__file__).resolve().parents[2] / "test" / "vectors" / "deaddrop.json"
+    doc = json.loads(path.read_text())
+    assert len(doc["vectors"]) == 4
+
+    for v in doc["vectors"]:
+        encoded = bytes.fromhex(v["encoded"])
+        assert len(encoded) >= 4
+        assert encoded[0] & 0xC0 == 0x40, f"{v['name']}: not CoAP v1"
+        code = encoded[1]
+        if v["type"] in ("post_submission", "oscore_wrapped"):
+            assert code == POST, f"{v['name']}: expected POST"
+        elif v["type"] == "pickup":
+            assert code == GET, f"{v['name']}: expected GET"
+        if v.get("senml_payload"):
+            records = senml_unpack(bytes.fromhex(v["senml_payload"]))
+            assert len(records) >= 1, f"{v['name']}: empty SenML"
+
+
+@pytest.mark.asyncio
+async def test_confessions_payload_format() -> None:
+    """Verify confessions vectors produce parseable CoAP frames and SenML payloads."""
+    import json
+    from pathlib import Path
+    from lichen.senml.codec import unpack as senml_unpack
+
+    path = Path(__file__).resolve().parents[2] / "test" / "vectors" / "confessions.json"
+    doc = json.loads(path.read_text())
+    assert len(doc["vectors"]) == 4
+
+    for v in doc["vectors"]:
+        encoded = bytes.fromhex(v["encoded"])
+        assert len(encoded) >= 4
+        assert encoded[0] & 0xC0 == 0x40, f"{v['name']}: not CoAP v1"
+        code = encoded[1]
+        if v["type"] == "post_submission":
+            assert code == POST, f"{v['name']}: expected POST"
+        elif v["type"] == "get":
+            assert code == GET, f"{v['name']}: expected GET"
+        if v.get("senml_payload"):
+            records = senml_unpack(bytes.fromhex(v["senml_payload"]))
+            assert len(records) >= 1, f"{v['name']}: empty SenML"
+        if v.get("payload"):
+            payload_bytes = bytes.fromhex(v["payload"])
+            assert len(payload_bytes) >= 1, f"{v['name']}: empty payload"
+
+
 async def test_coap_get_via_relay() -> None:
     """CoAP GET from A to C is relayed through B and a response returns to A."""
     id_a = Identity.from_seed(bytes(32))

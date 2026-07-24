@@ -1,0 +1,51 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "confessions",
+  "description": "Independent test vectors for /confessions anonymous board CoAP resource (LCI). Derived exclusively from RFC 7252 CoAP examples, RFC 8613 OSCORE (cross-referenced from oscore.json), and RFC 8428 SenML. No LICHEN implementation used as oracle. Validates POST submissions with plain text and SenML, GET retrieval with SenML counts, and rate limit rejection cases. (v2 schema)",
+  "spec": "https://www.rfc-editor.org/rfc/rfc7252 (CoAP), spec/12-apps.md §18.2 and project-LICHEN-2nnd.4.2",
+  "vectors": [
+    {
+      "name": "get_empty",
+      "type": "get",
+      "description": "GET /confessions returning zero pending count. Uses SenML profile. Oracle from RFC 8428 example 1 adapted for confessions count.",
+      "encoded": "40010001bb636f6e66657373696f6e73",
+      "senml_payload": "",
+      "expected": {
+        "response_code": 69,
+        "content_format": 112
+      }
+    },
+    {
+      "name": "post_text_submission",
+      "type": "post_submission",
+      "description": "POST /confessions with plain text message. Accepts text/plain (Content-Format 0) and returns 2.04 Changed. Independent CoAP construction per RFC 7252 §5.8.1.",
+      "payload": "48656c6c6f206d65736821",
+      "encoded": "40020001bb636f6e66657373696f6e73ff48656c6c6f206d65736821",
+      "senml_payload": "",
+      "expected": {
+        "response_code": 68
+      }
+    },
+    {
+      "name": "post_senml_submission",
+      "type": "post_submission",
+      "description": "POST /confessions with SenML-encoded message payload. Uses vs:string content type. Oracle from RFC 8428 adapted for string values.",
+      "payload": "82a221781d75726e3a6465763a6d61633a303130323033303430353036303730383a22fb41d954fc40000000a2006b636f6e66657373696f6e73036b48656c6c6f206d65736821",
+      "encoded": "40020001bb636f6e66657373696f6e73ff82a221781d75726e3a6465763a6d61633a303130323033303430353036303730383a22fb41d954fc40000000a2006b636f6e66657373696f6e73036b48656c6c6f206d65736821",
+      "expected": {
+        "response_code": 68
+      }
+    },
+    {
+      "name": "rate_limit_rejection",
+      "type": "rejection",
+      "description": "POST /confessions rejected due to rate limit (5.03). Independent from spec bufferbloat appendix and RFC 7252 error responses. No code oracle.",
+      "payload": "48656c6c6f20776f726c6421",
+      "encoded": "40020001bb636f6e66657373696f6e73ff48656c6c6f20776f726c6421",
+      "expected": {
+        "response_code": 163
+      }
+    }
+  ]
+}

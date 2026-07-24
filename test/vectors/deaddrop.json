@@ -12,8 +12,8 @@
       "recipient": "node1234",
       "ciphertext": "4502000102030405",
       "ttl": 86400,
-      "encoded": "4402000183deaddropc0",
-      "senml_payload": "a16674656d70666532332e35",
+      "encoded": "4102000501b86465616464726f70ffa16172480102030405060708",
+      "senml_payload": "81a3006474656d70016343656c02fb4037800000000000",
       "expected": {
         "response_code": 69,
         "num_pending": 0,
@@ -27,7 +27,7 @@
       "recipient": "abc123",
       "ciphertext": "",
       "ttl": 0,
-      "encoded": "44010001deaddrop",
+      "encoded": "4101000301b86465616464726f704b6e6f64653d616263313233",
       "senml_payload": "",
       "expected": {
         "response_code": 69,
@@ -41,8 +41,8 @@
       "recipient": "eui-abcdef12345678",
       "ciphertext": "f0910ed7295e6ad4b54fc793154302ff",
       "ttl": 3600,
-      "encoded": "44020001deaddropc0",
-      "senml_payload": "a26e62746d323032362d30372d32326e6c6174fb4047a5c28f5c28f6",
+      "encoded": "4102000601b86465616464726f70ffa1617248abcdef12345678",
+      "senml_payload": "81a200686465616464726f700201",
       "expected": {
         "response_code": 69,
         "oscore_option": "0910"
@@ -55,7 +55,7 @@
       "recipient": "flooder123",
       "ciphertext": "deadbeefcafe",
       "ttl": 86400,
-      "encoded": "44020001deaddrop",
+      "encoded": "4102000401b86465616464726f70",
       "expected": {
         "response_code": 163,
         "num_pending": 0

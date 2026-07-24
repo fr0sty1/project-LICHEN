@@ -93,6 +93,8 @@ def test_vectors_directory_exists() -> None:
         "ccp9.json",
         "l2_payload.json",
         "ipv6_malformed.json",
+        "deaddrop.json",
+        "confessions.json",
     ],
 )
 def test_vector_file_schema(filename: str) -> None:
@@ -1123,6 +1125,54 @@ def test_dao_origin_signature_coverage_and_dodag_rules() -> None:
                 _dao_structure(bytes.fromhex(vector["signed_dao"]))[1],
                 bytes.fromhex(vector["source_ipv6"]),
             ) is None
+
+
+def _deaddrop_cases():
+    doc = _load("deaddrop.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+def _confessions_cases():
+    doc = _load("confessions.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _deaddrop_cases())
+def test_deaddrop_vector(name: str, vector: dict) -> None:
+    encoded = bytes.fromhex(vector["encoded"])
+    assert len(encoded) >= 4, f"{name}: too short"
+    assert encoded[0] & 0xC0 == 0x40, f"{name}: not CoAP v1"
+    if vector.get("senml_payload"):
+        senml = bytes.fromhex(vector["senml_payload"])
+        from lichen.senml.codec import unpack as senml_unpack
+        records = senml_unpack(senml)
+        assert len(records) >= 1, f"{name}: empty SenML"
+    if vector.get("ciphertext"):
+        ct = bytes.fromhex(vector["ciphertext"])
+        assert len(ct) > 0, f"{name}: empty ciphertext"
+    expected = vector.get("expected", {})
+    if "response_code" in expected:
+        assert 0 <= expected["response_code"] <= 255
+
+
+@pytest.mark.parametrize("name,vector", _confessions_cases())
+def test_confessions_vector(name: str, vector: dict) -> None:
+    encoded = bytes.fromhex(vector["encoded"])
+    assert len(encoded) >= 4, f"{name}: too short"
+    assert encoded[0] & 0xC0 == 0x40, f"{name}: not CoAP v1"
+    if vector.get("senml_payload"):
+        senml = bytes.fromhex(vector["senml_payload"])
+        from lichen.senml.codec import unpack as senml_unpack
+        records = senml_unpack(senml)
+        assert len(records) >= 1, f"{name}: empty SenML"
+    if vector.get("payload"):
+        payload = bytes.fromhex(vector["payload"])
+        assert len(payload) > 0, f"{name}: empty payload"
+    expected = vector.get("expected", {})
+    if "response_code" in expected:
+        assert 0 <= expected["response_code"] <= 255
 
 
 def test_dao_origin_signature_schema_is_closed_and_relational() -> None:
