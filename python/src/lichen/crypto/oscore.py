@@ -154,8 +154,7 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
             )
         if hashfun not in hashfunctions:
             raise ValueError(
-                f"unknown hashfun {hashfun!r}. "
-                f"Valid values: {sorted(hashfunctions.keys())}"
+                f"unknown hashfun {hashfun!r}. Valid values: {sorted(hashfunctions.keys())}"
             )
         if isinstance(algorithm, int):
             matching_algorithms = [
@@ -170,8 +169,7 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
         else:
             if algorithm not in algorithms:
                 raise ValueError(
-                    f"unknown algorithm {algorithm!r}. "
-                    f"Valid: {sorted(algorithms.keys())}"
+                    f"unknown algorithm {algorithm!r}. Valid: {sorted(algorithms.keys())}"
                 )
             self.alg_aead = algorithms[algorithm]
         algorithm_id = int(self.alg_aead.value)

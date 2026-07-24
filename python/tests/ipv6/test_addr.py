@@ -48,9 +48,7 @@ def test_eui64_to_iid_rejects_wrong_length() -> None:
 
 def test_mac48_to_eui64_inserts_fffe_without_flip() -> None:
     mac = bytes([0x00, 0x11, 0x22, 0x33, 0x44, 0x55])
-    assert mac48_to_eui64(mac) == bytes(
-        [0x00, 0x11, 0x22, 0xFF, 0xFE, 0x33, 0x44, 0x55]
-    )
+    assert mac48_to_eui64(mac) == bytes([0x00, 0x11, 0x22, 0xFF, 0xFE, 0x33, 0x44, 0x55])
 
 
 def test_mac48_to_iid_full_chain() -> None:
@@ -68,13 +66,9 @@ def test_mac48_to_eui64_rejects_wrong_length() -> None:
 def test_short_addr_to_iid() -> None:
     # RFC 4944 section 6: IID = 0000:00FF:FE00:XXXX (short addr in low bytes)
     # 0x0000_00FF_FE00_0000 | 0x0001 = 0x0000_00FF_FE00_0001
-    assert short_addr_to_iid(0x0001) == bytes(
-        [0x00, 0x00, 0x00, 0xFF, 0xFE, 0x00, 0x00, 0x01]
-    )
+    assert short_addr_to_iid(0x0001) == bytes([0x00, 0x00, 0x00, 0xFF, 0xFE, 0x00, 0x00, 0x01])
     # Additional test vector: 0xABCD should give 0000:00FF:FE00:ABCD
-    assert short_addr_to_iid(0xABCD) == bytes(
-        [0x00, 0x00, 0x00, 0xFF, 0xFE, 0x00, 0xAB, 0xCD]
-    )
+    assert short_addr_to_iid(0xABCD) == bytes([0x00, 0x00, 0x00, 0xFF, 0xFE, 0x00, 0xAB, 0xCD])
 
 
 def test_short_addr_to_iid_rejects_out_of_range() -> None:
@@ -95,9 +89,7 @@ def test_make_ula_matches_spec_example() -> None:
     prefix = IPv6Network("fd12:3456:789a:0001::/64")
     # Note: ULA support deprecated per 04-network.md (primary 02xx only); test
     # retained for legacy prefix handling during transition.
-    assert make_ula(prefix, SPEC_IID) == IPv6Address(
-        "fd12:3456:789a:1:1234:5678:9abc:def0"
-    )
+    assert make_ula(prefix, SPEC_IID) == IPv6Address("fd12:3456:789a:1:1234:5678:9abc:def0")
 
 
 def test_make_ula_rejects_non_ula_prefix() -> None:
@@ -112,9 +104,7 @@ def test_make_ula_rejects_non_64_prefix() -> None:
 
 def test_make_gua_matches_spec_example() -> None:
     prefix = IPv6Network("2001:db8:1234:1::/64")
-    assert make_gua(prefix, SPEC_IID) == IPv6Address(
-        "2001:db8:1234:1:1234:5678:9abc:def0"
-    )
+    assert make_gua(prefix, SPEC_IID) == IPv6Address("2001:db8:1234:1:1234:5678:9abc:def0")
 
 
 def test_make_gua_rejects_non_gua_prefix() -> None:

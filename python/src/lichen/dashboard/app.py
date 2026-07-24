@@ -66,6 +66,7 @@ async def _fetch(path: str) -> Any:
 # HTML rendering helpers
 # ---------------------------------------------------------------------------
 
+
 def _esc(v: Any) -> str:
     return html.escape(str(v))
 
@@ -102,6 +103,7 @@ def _render_list(data: Any, empty_msg: str) -> str:
 # ---------------------------------------------------------------------------
 # Route handlers
 # ---------------------------------------------------------------------------
+
 
 async def index(request: Request) -> HTMLResponse:
     node_display = _node_addr.replace("coap://", "")
@@ -143,8 +145,15 @@ async def partial_location(request: Request) -> HTMLResponse:
 async def partial_mesh_stats(request: Request) -> HTMLResponse:
     """Mock live stats for 500-node conference mesh demo."""
     # TODO: aggregate CoAP from gateways for real topology/packet data.
-    stats = {"nodes": "500/500", "pps": 1243, "loss": "0.3%", "hops": 2.4, "gws": 4, "tdma": "98.7%"}
-    html = f'''<div style="font-size:1.1em;line-height:1.8">
+    stats = {
+        "nodes": "500/500",
+        "pps": 1243,
+        "loss": "0.3%",
+        "hops": 2.4,
+        "gws": 4,
+        "tdma": "98.7%",
+    }
+    html = f"""<div style="font-size:1.1em;line-height:1.8">
 <div><strong>Nodes:</strong> {stats["nodes"]}</div>
 <div><strong>PPS:</strong> {stats["pps"]}</div>
 <div><strong>Loss:</strong> {stats["loss"]}</div>
@@ -154,7 +163,7 @@ async def partial_mesh_stats(request: Request) -> HTMLResponse:
 <div style="margin-top:1rem;font-size:0.8em;color:#58a6ff">Live • 4 gateways</div>
 </div><div style="margin-top:1rem;height:120px;background:#161b22;border:1px solid #30363d;border-radius:4px;position:relative">
 <div style="position:absolute;bottom:10px;left:10px;font-size:0.7em;color:#58a6ff">Converged, no collisions</div>
-</div>'''
+</div>"""
     return HTMLResponse(html)
 
 
@@ -396,6 +405,7 @@ _PAGE_HTML = """\
 # ---------------------------------------------------------------------------
 # CLI entry point
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     import argparse

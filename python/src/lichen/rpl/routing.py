@@ -91,9 +91,7 @@ class RoutingTable:
 
     _routes: dict[IPv6Address, list[IPv6Address]] = field(default_factory=dict)
 
-    def add_route(
-        self, target: IPv6Address | str, path: Sequence[IPv6Address | str]
-    ) -> None:
+    def add_route(self, target: IPv6Address | str, path: Sequence[IPv6Address | str]) -> None:
         if not path:
             raise RoutingError("route path must not be empty")
         if len(path) > MAX_ROUTE_HOPS:
@@ -113,9 +111,7 @@ class RoutingTable:
     def routes(self) -> dict[IPv6Address, list[IPv6Address]]:
         return dict(self._routes)
 
-    def replace_routes(
-        self, routes: dict[IPv6Address, list[IPv6Address]]
-    ) -> None:
+    def replace_routes(self, routes: dict[IPv6Address, list[IPv6Address]]) -> None:
         self.clear()
         for target, path in routes.items():
             self.add_route(target, path)

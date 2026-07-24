@@ -151,9 +151,7 @@ class FragmentReceiver:
             return self._abort(ack.rule_id)
         self.attempts += 1
         response = ack.to_bytes()
-        result = ReceiverResult(
-            ack=ack, response=response, reassembled=packet, mic_ok=mic_ok
-        )
+        result = ReceiverResult(ack=ack, response=response, reassembled=packet, mic_ok=mic_ok)
         if ack.complete:
             self._release()
         return result

@@ -357,9 +357,7 @@ class ReplayProtector(Protocol):
     - Python: lichen.link.replay.ReplayProtector
     """
 
-    def check_and_update(
-        self, sender: bytes | str | int, epoch: int, seqnum: int
-    ) -> bool:
+    def check_and_update(self, sender: bytes | str | int, epoch: int, seqnum: int) -> bool:
         """Validate and record a frame from sender.
 
         Creates a new window for first-seen senders.

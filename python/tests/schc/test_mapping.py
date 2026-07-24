@@ -12,18 +12,13 @@ from lichen.schc.rules import CDA, MO, FieldDescriptor, Rule
 MAPPING = (10, 20, 30, 40)
 MAP_RULE = Rule(
     rule_id=70,
-    fields=(
-        FieldDescriptor(
-            "M", 8, MO.MATCH_MAPPING, CDA.MAPPING_SENT, mapping=MAPPING
-        ),
-    ),
+    fields=(FieldDescriptor("M", 8, MO.MATCH_MAPPING, CDA.MAPPING_SENT, mapping=MAPPING),),
 )
 
 
 def test_mapping_bits_is_ceil_log2() -> None:
     def bits(n: int) -> int:
-        fd = FieldDescriptor("x", 8, MO.MATCH_MAPPING, CDA.MAPPING_SENT,
-                             mapping=tuple(range(n)))
+        fd = FieldDescriptor("x", 8, MO.MATCH_MAPPING, CDA.MAPPING_SENT, mapping=tuple(range(n)))
         return fd.mapping_bits()
 
     assert [bits(n) for n in (2, 3, 4, 5)] == [1, 2, 2, 3]
@@ -55,11 +50,7 @@ def test_decompress_rejects_out_of_range_index() -> None:
     # 3-entry mapping uses 2 bits; index 3 is invalid.
     rule = Rule(
         rule_id=72,
-        fields=(
-            FieldDescriptor(
-                "M", 8, MO.MATCH_MAPPING, CDA.MAPPING_SENT, mapping=(10, 20, 30)
-            ),
-        ),
+        fields=(FieldDescriptor("M", 8, MO.MATCH_MAPPING, CDA.MAPPING_SENT, mapping=(10, 20, 30)),),
     )
     # Residue byte 0xC0 = 0b11_000000 -> index 3.
     with pytest.raises(SchcError):

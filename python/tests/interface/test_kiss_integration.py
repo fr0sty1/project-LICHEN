@@ -193,8 +193,7 @@ class TestFuzz:
             # Garbage that avoids FEND (0xC0) - realistic for line noise
             # ponytail: KISS has no checksum, garbage with FEND creates spurious frames
             garbage = bytes(
-                rng.choice([b for b in range(256) if b != FEND])
-                for _ in range(rng.randint(0, 100))
+                rng.choice([b for b in range(256) if b != FEND]) for _ in range(rng.randint(0, 100))
             )
             reader.feed(garbage)
 

@@ -197,9 +197,7 @@ class LinkLayer:
     # peer_lookup_all: For brute-force sender identification when no hint available.
     # NOTE: O(n) verification is unavoidable without sender IID in frame format.
     # Protocol-level fix needed: add sender IID to header extension.
-    peer_lookup_all: Callable[[], list[PeerIdentity]] | None = field(
-        default=None, repr=False
-    )
+    peer_lookup_all: Callable[[], list[PeerIdentity]] | None = field(default=None, repr=False)
     cad_enabled: bool = field(default=True)
     tx_queue: TxQueue = field(default_factory=TxQueue)
     persist_path: str | None = field(default=None, repr=False)
@@ -209,12 +207,9 @@ class LinkLayer:
     _epoch: int = field(default_factory=lambda: secrets.randbelow(128) + 128, repr=False)
     _seqnum: int = field(default=0, repr=False)
     _exhausted: bool = field(default=False, repr=False)
-    _pinned_keys: OrderedDict[bytes, bytes] = field(
-        default_factory=OrderedDict, repr=False
-    )
+    _pinned_keys: OrderedDict[bytes, bytes] = field(default_factory=OrderedDict, repr=False)
     _tx_lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False, repr=False)
     _sequence_started: bool = field(default=False, init=False, repr=False)
-
 
     def __post_init__(self) -> None:
         # Why validate: Catch misconfiguration early
@@ -347,9 +342,7 @@ class LinkLayer:
 
         llsec = int(addr_mode) | (1 << 5)
         frame_length = 4 + len(dst_addr) + len(payload) + SIGNATURE_LENGTH
-        signable = self._build_signable_data(
-            epoch, seqnum, dst_addr, payload, frame_length, llsec
-        )
+        signable = self._build_signable_data(epoch, seqnum, dst_addr, payload, frame_length, llsec)
         signature = sign(self.identity.privkey, self.identity.pubkey, signable)
 
         frame = LichenFrame(
@@ -401,8 +394,7 @@ class LinkLayer:
                 break  # Queue empty
             if self.cad_enabled and not await self._wait_for_clear_channel():
                 logger.warning(
-                    "TX deferred: channel busy after %d backoff cycles, "
-                    "%d packets remain queued",
+                    "TX deferred: channel busy after %d backoff cycles, %d packets remain queued",
                     CAD_MAX_CYCLES,
                     len(self.tx_queue),
                 )
@@ -588,9 +580,7 @@ class LinkLayer:
         # Step 5: Replay protection
         # Why use pubkey as sender ID: It's the unique identifier for a node.
         # IID has a (tiny) collision risk; pubkey is definitive.
-        if not self.replay_protector.check_and_update(
-            sender.pubkey, frame.epoch, frame.seqnum
-        ):
+        if not self.replay_protector.check_and_update(sender.pubkey, frame.epoch, frame.seqnum):
             logger.warning(
                 "RX replay detected: epoch=%d seqnum=%d sender=%s",
                 frame.epoch,

@@ -98,7 +98,7 @@ class TestGattServiceConnect:
 
     def test_connect_clears_reader(self, service):
         # Feed partial data
-        service._reader.feed(b"\xC0\x00partial")
+        service._reader.feed(b"\xc0\x00partial")
         service.on_connect()
         # Reader should be cleared
         assert len(list(service._reader)) == 0

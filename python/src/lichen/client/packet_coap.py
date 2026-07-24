@@ -56,9 +56,7 @@ class PacketCoapConfig:
     @property
     def local_endpoint(self) -> str:
         """Return the local endpoint identity presented to aiocoap."""
-        return parse_channel_endpoint(
-            self.local_host, default_port=self.src_port
-        ).authority
+        return parse_channel_endpoint(self.local_host, default_port=self.src_port).authority
 
 
 class PacketCoapResourceTransport(ResourceTransport):

@@ -103,9 +103,7 @@ class LoadngRouter:
         self._mark_seen(rreq, now)
         return rreq
 
-    def process_rreq(
-        self, rreq: RREQ, from_neighbor: IPv6Address | str, now: int
-    ) -> RreqResult:
+    def process_rreq(self, rreq: RREQ, from_neighbor: IPv6Address | str, now: int) -> RreqResult:
         from_neighbor = to_ipv6(from_neighbor)
         if rreq.originator == self.node_address:
             return RreqResult(suppressed=True)  # echo of our own RREQ
@@ -159,9 +157,7 @@ class LoadngRouter:
 
         return RreqResult()  # hop limit exhausted -> dropped
 
-    def process_rrep(
-        self, rrep: RREP, from_neighbor: IPv6Address | str, now: int
-    ) -> RrepResult:
+    def process_rrep(self, rrep: RREP, from_neighbor: IPv6Address | str, now: int) -> RrepResult:
         from_neighbor = to_ipv6(from_neighbor)
         install_hops = rrep.hop_count + 1
 

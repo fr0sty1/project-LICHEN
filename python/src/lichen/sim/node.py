@@ -92,11 +92,18 @@ class SimNode:
         self.tdma_scheduler = tdma_scheduler if tdma_scheduler is not None else TDMAScheduler()
         self.channel_plan = channel_plan if channel_plan is not None else US915
         n = max(self.channel_plan.num_channels, 3)
-        data = seed.to_bytes(8, "big") + ((sfn) & 0xffffffff).to_bytes(4, "little")
+        data = seed.to_bytes(8, "big") + ((sfn) & 0xFFFFFFFF).to_bytes(4, "little")
         h = hash_32(data)
         if current_channel == 0:
             self.current_channel = 1 + (h % n)
-        self.hop_schedule = tuple(1 + (hash_32(seed.to_bytes(8, "big") + (((sfn + i) & 0xffffffff).to_bytes(4, "little"))) % n) for i in range(n))
+        self.hop_schedule = tuple(
+            1
+            + (
+                hash_32(seed.to_bytes(8, "big") + (((sfn + i) & 0xFFFFFFFF).to_bytes(4, "little")))
+                % n
+            )
+            for i in range(n)
+        )
         self._state_machine = StateMachine(
             initial=state,
             transitions=NODE_STATE_TRANSITIONS,

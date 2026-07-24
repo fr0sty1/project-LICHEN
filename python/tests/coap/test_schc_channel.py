@@ -164,9 +164,7 @@ def test_channel_rejects_invalid_udp_packets(invalid: str, monkeypatch) -> None:
         )
         packet = header.to_bytes() + b"x"
     else:
-        packet_bytes = bytearray(
-            wrap_coap(IPv6Address(CLI), IPv6Address(SRV), b"coap")
-        )
+        packet_bytes = bytearray(wrap_coap(IPv6Address(CLI), IPv6Address(SRV), b"coap"))
         if invalid == "zero-checksum":
             packet_bytes[46:48] = b"\x00\x00"
         else:
@@ -263,6 +261,7 @@ async def test_shutdown_continues_after_receiver_detach_failure_once() -> None:
     assert inner.shutdown_calls == 1
     assert channel._inner is None
 
+
 def test_channel_round_trips_through_peer() -> None:
     # Two SchcChannels over a shared capture: what one compresses, the other
     # decompresses back to the original CoAP bytes.
@@ -290,14 +289,10 @@ async def test_coap_request_over_schc_channel() -> None:
 
     site.add_resource(["test"], _Hello())
 
-    server = await create_lichen_context(
-        SchcChannel(net.channel(SRV), SRV), SRV, site=site
-    )
+    server = await create_lichen_context(SchcChannel(net.channel(SRV), SRV), SRV, site=site)
     client = await create_lichen_context(SchcChannel(net.channel(CLI), CLI), CLI)
     try:
-        resp = await client.request(
-            Message(code=GET, uri=f"coap://[{SRV}]/test")
-        ).response
+        resp = await client.request(Message(code=GET, uri=f"coap://[{SRV}]/test")).response
         assert resp.payload == b"hi"
         assert resp.code == aiocoap.CONTENT
     finally:

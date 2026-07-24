@@ -123,9 +123,7 @@ class LichenFrame:
             )
         expected_mic_len = _SIGNATURE_LENGTH if self.signature_present else 0
         if len(self.mic) != expected_mic_len:
-            raise FrameError(
-                f"mic is {len(self.mic)} bytes but {expected_mic_len} are required"
-            )
+            raise FrameError(f"mic is {len(self.mic)} bytes but {expected_mic_len} are required")
 
     def llsec_byte(self) -> int:
         """Compute the LLSec flags byte."""
@@ -147,9 +145,7 @@ class LichenFrame:
         self._validate()
         body_len = 4 + len(self.dst_addr) + len(self.payload) + len(self.mic)
         if body_len > MAX_FRAME_BODY:
-            raise FrameError(
-                f"frame body is {body_len} bytes, exceeds {MAX_FRAME_BODY}"
-            )
+            raise FrameError(f"frame body is {body_len} bytes, exceeds {MAX_FRAME_BODY}")
         body = (
             bytes([self.llsec_byte(), self.epoch])
             + self.seqnum.to_bytes(2, "big")
@@ -170,14 +166,10 @@ class LichenFrame:
         if len(data) < 1:
             raise FrameError("frame is empty")
         if len(data) > MAX_FRAME_BODY + 1:
-            raise FrameError(
-                f"frame is {len(data)} bytes, exceeds {MAX_FRAME_BODY + 1}"
-            )
+            raise FrameError(f"frame is {len(data)} bytes, exceeds {MAX_FRAME_BODY + 1}")
         length = data[0]
         if length > MAX_FRAME_BODY:
-            raise FrameError(
-                f"frame body is {length} bytes, exceeds {MAX_FRAME_BODY}"
-            )
+            raise FrameError(f"frame body is {length} bytes, exceeds {MAX_FRAME_BODY}")
         received_body_len = len(data) - 1
         if received_body_len != length:
             raise FrameError(

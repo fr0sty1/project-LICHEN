@@ -101,15 +101,11 @@ class TestWebSocketManager:
         await manager.disconnect(client.id)
         assert manager.get_client_count() == 0
 
-    async def test_disconnect_nonexistent_is_safe(
-        self, manager: WebSocketManager
-    ) -> None:
+    async def test_disconnect_nonexistent_is_safe(self, manager: WebSocketManager) -> None:
         """disconnect() on unknown client is no-op."""
         await manager.disconnect("nonexistent")  # Should not raise
 
-    async def test_broadcast_to_sim_sends_to_subscribed(
-        self, manager: WebSocketManager
-    ) -> None:
+    async def test_broadcast_to_sim_sends_to_subscribed(self, manager: WebSocketManager) -> None:
         """broadcast_to_sim sends to clients subscribed to that sim."""
         ws1 = AsyncMock()
         ws1.accept = AsyncMock()
@@ -136,9 +132,7 @@ class TestWebSocketManager:
         assert data["event"] == "tx_start"
         assert data["node_id"] == "n1"
 
-    async def test_broadcast_respects_subscriptions(
-        self, manager: WebSocketManager
-    ) -> None:
+    async def test_broadcast_respects_subscriptions(self, manager: WebSocketManager) -> None:
         """broadcast only sends to clients subscribed to that event type."""
         ws1 = AsyncMock()
         ws1.accept = AsyncMock()
@@ -163,9 +157,7 @@ class TestWebSocketManager:
         ws1.send_text.assert_not_called()
         ws2.send_text.assert_called_once()
 
-    async def test_broadcast_removes_dead_clients(
-        self, manager: WebSocketManager
-    ) -> None:
+    async def test_broadcast_removes_dead_clients(self, manager: WebSocketManager) -> None:
         """broadcast removes clients that fail to receive."""
         ws_good = AsyncMock()
         ws_good.accept = AsyncMock()
@@ -198,16 +190,12 @@ class TestWebSocketManager:
         assert result is True
         mock_websocket.send_json.assert_called_once_with({"msg": "hello"})
 
-    async def test_send_to_client_unknown_returns_false(
-        self, manager: WebSocketManager
-    ) -> None:
+    async def test_send_to_client_unknown_returns_false(self, manager: WebSocketManager) -> None:
         """send_to_client returns False for unknown client."""
         result = await manager.send_to_client("unknown", {"msg": "hello"})
         assert result is False
 
-    async def test_get_client_count(
-        self, manager: WebSocketManager
-    ) -> None:
+    async def test_get_client_count(self, manager: WebSocketManager) -> None:
         """get_client_count returns correct counts."""
         ws1 = AsyncMock()
         ws1.accept = AsyncMock()
@@ -236,9 +224,7 @@ class TestWebSocketObserver:
     def manager(self) -> WebSocketManager:
         return WebSocketManager()
 
-    def test_observer_has_all_event_methods(
-        self, manager: WebSocketManager
-    ) -> None:
+    def test_observer_has_all_event_methods(self, manager: WebSocketManager) -> None:
         """Observer implements all expected event methods."""
         observer = WebSocketObserver(manager, "sim1")
 
@@ -251,9 +237,7 @@ class TestWebSocketObserver:
         assert callable(observer.on_node_added)
         assert callable(observer.on_node_removed)
 
-    async def test_observer_broadcasts_via_manager(
-        self, manager: WebSocketManager
-    ) -> None:
+    async def test_observer_broadcasts_via_manager(self, manager: WebSocketManager) -> None:
         """Observer broadcasts events through the manager."""
         ws = AsyncMock()
         ws.accept = AsyncMock()
@@ -283,9 +267,7 @@ class TestWebSocketObserver:
         assert sent["node_id"] == "n1"
         assert sent["tx_id"] == "t1"
 
-    def test_observer_handles_no_event_loop(
-        self, manager: WebSocketManager
-    ) -> None:
+    def test_observer_handles_no_event_loop(self, manager: WebSocketManager) -> None:
         """Observer handles case where no event loop is running."""
         observer = WebSocketObserver(manager, "sim1")
 

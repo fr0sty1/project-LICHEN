@@ -40,9 +40,7 @@ def rule_matches(rule: Rule, fields: dict[str, int]) -> bool:
             shift = fd.length_bits - fd.mo_arg
             if (value >> shift) != (fd.target_value >> shift):
                 return False
-        if fd.mo == MO.MATCH_MAPPING and (
-            fd.mapping is None or value not in fd.mapping
-        ):
+        if fd.mo == MO.MATCH_MAPPING and (fd.mapping is None or value not in fd.mapping):
             return False
     return True
 

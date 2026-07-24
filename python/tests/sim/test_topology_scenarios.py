@@ -109,11 +109,10 @@ class TestSparseNetwork:
         identity_a = make_identity(0)
         announce_a = build_announce_bytes(identity_a)
 
-        async with SimRadio(
-            "127.0.0.1", port, "topology-test", "sparse-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", port, "topology-test", "sparse-b", (2000.0, 0.0, 0.0)
-        ) as radio_b:
+        async with (
+            SimRadio("127.0.0.1", port, "topology-test", "sparse-a", (0.0, 0.0, 0.0)) as radio_a,
+            SimRadio("127.0.0.1", port, "topology-test", "sparse-b", (2000.0, 0.0, 0.0)) as radio_b,
+        ):
             await radio_a.transmit(announce_a)
             result = await radio_b.receive(500)
 
@@ -134,11 +133,10 @@ class TestSparseNetwork:
         announce_a = build_announce_bytes(identity_a)
 
         # 50km is well beyond LoRa SF10 max range (~15km with good conditions)
-        async with SimRadio(
-            "127.0.0.1", port, "topology-test", "far-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", port, "topology-test", "far-b", (50000.0, 0.0, 0.0)
-        ) as radio_b:
+        async with (
+            SimRadio("127.0.0.1", port, "topology-test", "far-a", (0.0, 0.0, 0.0)) as radio_a,
+            SimRadio("127.0.0.1", port, "topology-test", "far-b", (50000.0, 0.0, 0.0)) as radio_b,
+        ):
             await radio_a.transmit(announce_a)
             result = await radio_b.receive(200)
 
@@ -159,11 +157,10 @@ class TestSparseNetwork:
         app_data = encode_coords(0.0135, 0.0)  # ~1500m east
         announce_b = build_announce_bytes(identity_b, app_data=app_data)
 
-        async with SimRadio(
-            "127.0.0.1", port, "topology-test", "coord-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", port, "topology-test", "coord-b", (1500.0, 0.0, 0.0)
-        ) as radio_b:
+        async with (
+            SimRadio("127.0.0.1", port, "topology-test", "coord-a", (0.0, 0.0, 0.0)) as radio_a,
+            SimRadio("127.0.0.1", port, "topology-test", "coord-b", (1500.0, 0.0, 0.0)) as radio_b,
+        ):
             # B announces
             await radio_b.transmit(announce_b)
             result = await radio_a.receive(200)
@@ -192,11 +189,10 @@ class TestSparseNetwork:
         announce_a = build_announce_bytes(identity_a)
 
         # C is 100km away - completely isolated
-        async with SimRadio(
-            "127.0.0.1", port, "topology-test", "iso-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", port, "topology-test", "iso-c", (100000.0, 0.0, 0.0)
-        ) as radio_c:
+        async with (
+            SimRadio("127.0.0.1", port, "topology-test", "iso-a", (0.0, 0.0, 0.0)) as radio_a,
+            SimRadio("127.0.0.1", port, "topology-test", "iso-c", (100000.0, 0.0, 0.0)) as radio_c,
+        ):
             await radio_a.transmit(announce_a)
             result = await radio_c.receive(200)
 
@@ -223,15 +219,12 @@ class TestRingTopology:
         identity_0 = make_identity(0)
         announce_0 = build_announce_bytes(identity_0)
 
-        async with SimRadio(
-            "127.0.0.1", port, "topology-test", "ring-0", (0.0, 0.0, 0.0)
-        ) as radio_0, SimRadio(
-            "127.0.0.1", port, "topology-test", "ring-1", (100.0, 0.0, 0.0)
-        ) as radio_1, SimRadio(
-            "127.0.0.1", port, "topology-test", "ring-2", (100.0, 100.0, 0.0)
-        ) as _radio_2, SimRadio(
-            "127.0.0.1", port, "topology-test", "ring-3", (0.0, 100.0, 0.0)
-        ) as radio_3:
+        async with (
+            SimRadio("127.0.0.1", port, "topology-test", "ring-0", (0.0, 0.0, 0.0)) as radio_0,
+            SimRadio("127.0.0.1", port, "topology-test", "ring-1", (100.0, 0.0, 0.0)) as radio_1,
+            SimRadio("127.0.0.1", port, "topology-test", "ring-2", (100.0, 100.0, 0.0)) as _radio_2,
+            SimRadio("127.0.0.1", port, "topology-test", "ring-3", (0.0, 100.0, 0.0)) as radio_3,
+        ):
             # Node 0 announces
             await radio_0.transmit(announce_0)
 
@@ -260,17 +253,16 @@ class TestRingTopology:
         gradient_1 = GradientTable(max_entries=64)
         gradient_3 = GradientTable(max_entries=64)
 
-        async with SimRadio(
-            "127.0.0.1", port, "topology-test", "sq-0", (0.0, 0.0, 0.0)
-        ) as radio_0, SimRadio(
-            "127.0.0.1", port, "topology-test", "sq-1", (100.0, 0.0, 0.0)
-        ) as radio_1, SimRadio(
-            "127.0.0.1", port, "topology-test", "sq-3", (0.0, 100.0, 0.0)
-        ) as radio_3:
+        async with (
+            SimRadio("127.0.0.1", port, "topology-test", "sq-0", (0.0, 0.0, 0.0)) as radio_0,
+            SimRadio("127.0.0.1", port, "topology-test", "sq-1", (100.0, 0.0, 0.0)) as radio_1,
+            SimRadio("127.0.0.1", port, "topology-test", "sq-3", (0.0, 100.0, 0.0)) as radio_3,
+        ):
             await radio_0.transmit(announce_0)
 
             # Check neighbors build gradients
             import time
+
             now_ms = int(time.time() * 1000)
             for radio, gradient in [(radio_1, gradient_1), (radio_3, gradient_3)]:
                 result = await radio.receive(100)
@@ -312,25 +304,17 @@ class TestDenseCrowd:
         identities = [make_identity(i) for i in range(9)]
         announces = [build_announce_bytes(id) for id in identities]
 
-        async with SimRadio(
-            "127.0.0.1", port, "topology-test", "d-0", (0.0, 0.0, 0.0)
-        ) as r0, SimRadio(
-            "127.0.0.1", port, "topology-test", "d-1", (20.0, 0.0, 0.0)
-        ) as r1, SimRadio(
-            "127.0.0.1", port, "topology-test", "d-2", (40.0, 0.0, 0.0)
-        ) as r2, SimRadio(
-            "127.0.0.1", port, "topology-test", "d-3", (0.0, 20.0, 0.0)
-        ) as r3, SimRadio(
-            "127.0.0.1", port, "topology-test", "d-4", (20.0, 20.0, 0.0)
-        ) as r4, SimRadio(
-            "127.0.0.1", port, "topology-test", "d-5", (40.0, 20.0, 0.0)
-        ) as r5, SimRadio(
-            "127.0.0.1", port, "topology-test", "d-6", (0.0, 40.0, 0.0)
-        ) as r6, SimRadio(
-            "127.0.0.1", port, "topology-test", "d-7", (20.0, 40.0, 0.0)
-        ) as r7, SimRadio(
-            "127.0.0.1", port, "topology-test", "d-8", (40.0, 40.0, 0.0)
-        ) as r8:
+        async with (
+            SimRadio("127.0.0.1", port, "topology-test", "d-0", (0.0, 0.0, 0.0)) as r0,
+            SimRadio("127.0.0.1", port, "topology-test", "d-1", (20.0, 0.0, 0.0)) as r1,
+            SimRadio("127.0.0.1", port, "topology-test", "d-2", (40.0, 0.0, 0.0)) as r2,
+            SimRadio("127.0.0.1", port, "topology-test", "d-3", (0.0, 20.0, 0.0)) as r3,
+            SimRadio("127.0.0.1", port, "topology-test", "d-4", (20.0, 20.0, 0.0)) as r4,
+            SimRadio("127.0.0.1", port, "topology-test", "d-5", (40.0, 20.0, 0.0)) as r5,
+            SimRadio("127.0.0.1", port, "topology-test", "d-6", (0.0, 40.0, 0.0)) as r6,
+            SimRadio("127.0.0.1", port, "topology-test", "d-7", (20.0, 40.0, 0.0)) as r7,
+            SimRadio("127.0.0.1", port, "topology-test", "d-8", (40.0, 40.0, 0.0)) as r8,
+        ):
             senders = [r0, r1, r2, r3, r5, r6, r7, r8]  # r4 is receiver
 
             # All 8 transmit simultaneously - causes collision (no capture)
@@ -356,13 +340,11 @@ class TestDenseCrowd:
         announce_0 = build_announce_bytes(identity_0)
 
         # 3 nodes: transmitter, close receiver, far receiver
-        async with SimRadio(
-            "127.0.0.1", port, "topology-test", "tx", (0.0, 0.0, 0.0)
-        ) as tx, SimRadio(
-            "127.0.0.1", port, "topology-test", "rx-close", (30.0, 0.0, 0.0)
-        ) as rx_close, SimRadio(
-            "127.0.0.1", port, "topology-test", "rx-far", (100.0, 0.0, 0.0)
-        ) as rx_far:
+        async with (
+            SimRadio("127.0.0.1", port, "topology-test", "tx", (0.0, 0.0, 0.0)) as tx,
+            SimRadio("127.0.0.1", port, "topology-test", "rx-close", (30.0, 0.0, 0.0)) as rx_close,
+            SimRadio("127.0.0.1", port, "topology-test", "rx-far", (100.0, 0.0, 0.0)) as rx_far,
+        ):
             # Single TX - both receivers should get it
             await tx.transmit(announce_0)
 
@@ -396,11 +378,12 @@ class TestPartitionedGroups:
         announce_a = build_announce_bytes(identity_a)
 
         # 50km is well beyond LoRa SF10 max range
-        async with SimRadio(
-            "127.0.0.1", port, "topology-test", "cluster-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", port, "topology-test", "cluster-b", (50000.0, 0.0, 0.0)
-        ) as radio_b:
+        async with (
+            SimRadio("127.0.0.1", port, "topology-test", "cluster-a", (0.0, 0.0, 0.0)) as radio_a,
+            SimRadio(
+                "127.0.0.1", port, "topology-test", "cluster-b", (50000.0, 0.0, 0.0)
+            ) as radio_b,
+        ):
             await radio_a.transmit(announce_a)
             result = await radio_b.receive(100)
 
@@ -421,13 +404,13 @@ class TestPartitionedGroups:
         announce_ferry = build_announce_bytes(identity_ferry)
 
         # Clusters at 0 and 50km (isolated), ferry starts near A
-        async with SimRadio(
-            "127.0.0.1", port, "topology-test", "ferry-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", port, "topology-test", "ferry-f", (50.0, 0.0, 0.0)
-        ) as radio_ferry, SimRadio(
-            "127.0.0.1", port, "topology-test", "ferry-b", (50000.0, 0.0, 0.0)
-        ) as radio_b:
+        async with (
+            SimRadio("127.0.0.1", port, "topology-test", "ferry-a", (0.0, 0.0, 0.0)) as radio_a,
+            SimRadio(
+                "127.0.0.1", port, "topology-test", "ferry-f", (50.0, 0.0, 0.0)
+            ) as radio_ferry,
+            SimRadio("127.0.0.1", port, "topology-test", "ferry-b", (50000.0, 0.0, 0.0)) as radio_b,
+        ):
             # Ferry near A receives A's announce
             await radio_a.transmit(announce_a)
             result = await radio_ferry.receive(100)
@@ -469,15 +452,12 @@ class TestRandomMesh:
         identity_0 = make_identity(0)
         announce_0 = build_announce_bytes(identity_0)
 
-        async with SimRadio(
-            "127.0.0.1", port, "topology-test", "rnd-0", (*positions[0], 0.0)
-        ) as r0, SimRadio(
-            "127.0.0.1", port, "topology-test", "rnd-1", (*positions[1], 0.0)
-        ) as r1, SimRadio(
-            "127.0.0.1", port, "topology-test", "rnd-2", (*positions[2], 0.0)
-        ) as r2, SimRadio(
-            "127.0.0.1", port, "topology-test", "rnd-3", (*positions[3], 0.0)
-        ) as r3:
+        async with (
+            SimRadio("127.0.0.1", port, "topology-test", "rnd-0", (*positions[0], 0.0)) as r0,
+            SimRadio("127.0.0.1", port, "topology-test", "rnd-1", (*positions[1], 0.0)) as r1,
+            SimRadio("127.0.0.1", port, "topology-test", "rnd-2", (*positions[2], 0.0)) as r2,
+            SimRadio("127.0.0.1", port, "topology-test", "rnd-3", (*positions[3], 0.0)) as r3,
+        ):
             # Node 0 announces
             await r0.transmit(announce_0)
 
@@ -518,17 +498,13 @@ class TestScaleModerate:
         announce_5 = build_announce_bytes(identity_5)
 
         # Position (1,1) = (80, 80), neighbors at (0,1), (2,1), (1,0), (1,2)
-        async with SimRadio(
-            "127.0.0.1", port, "topology-test", "g16-5", (80.0, 80.0, 0.0)
-        ) as r5, SimRadio(
-            "127.0.0.1", port, "topology-test", "g16-1", (80.0, 0.0, 0.0)
-        ) as r1, SimRadio(
-            "127.0.0.1", port, "topology-test", "g16-9", (80.0, 160.0, 0.0)
-        ) as r9, SimRadio(
-            "127.0.0.1", port, "topology-test", "g16-4", (0.0, 80.0, 0.0)
-        ) as r4, SimRadio(
-            "127.0.0.1", port, "topology-test", "g16-6", (160.0, 80.0, 0.0)
-        ) as r6:
+        async with (
+            SimRadio("127.0.0.1", port, "topology-test", "g16-5", (80.0, 80.0, 0.0)) as r5,
+            SimRadio("127.0.0.1", port, "topology-test", "g16-1", (80.0, 0.0, 0.0)) as r1,
+            SimRadio("127.0.0.1", port, "topology-test", "g16-9", (80.0, 160.0, 0.0)) as r9,
+            SimRadio("127.0.0.1", port, "topology-test", "g16-4", (0.0, 80.0, 0.0)) as r4,
+            SimRadio("127.0.0.1", port, "topology-test", "g16-6", (160.0, 80.0, 0.0)) as r6,
+        ):
             # Node 5 announces
             await r5.transmit(announce_5)
 
@@ -554,11 +530,10 @@ class TestScaleModerate:
         announce_0 = build_announce_bytes(identity_0)
         gradient = GradientTable(max_entries=64)
 
-        async with SimRadio(
-            "127.0.0.1", port, "topology-test", "tx", (0.0, 0.0, 0.0)
-        ) as tx, SimRadio(
-            "127.0.0.1", port, "topology-test", "rx", (50.0, 0.0, 0.0)
-        ) as rx:
+        async with (
+            SimRadio("127.0.0.1", port, "topology-test", "tx", (0.0, 0.0, 0.0)) as tx,
+            SimRadio("127.0.0.1", port, "topology-test", "rx", (50.0, 0.0, 0.0)) as rx,
+        ):
             await tx.transmit(announce_0)
             result = await rx.receive(100)
             assert result is not None
@@ -567,6 +542,7 @@ class TestScaleModerate:
             assert announce is not None
 
             import time
+
             now_ms = int(time.time() * 1000)
             addr = build_address(announce.originator_iid)
             entry = GradientEntry(

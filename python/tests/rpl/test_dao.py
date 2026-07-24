@@ -76,7 +76,7 @@ def test_option_codecs_are_exact_and_canonicalize_unused_prefix_bits() -> None:
         )
 
 
-@pytest.mark.parametrize("flags", [0x01, 0x7f])
+@pytest.mark.parametrize("flags", [0x01, 0x7F])
 def test_transit_information_rejects_nonzero_flags(flags: int) -> None:
     option = RplOption(
         RplOptionType.TRANSIT_INFORMATION,
@@ -711,9 +711,7 @@ def test_expired_tombstone_reclaims_only_after_retention_boundary() -> None:
     assert root._path_sequences == {N1: 1}
 
     # Should succeed without error. Retention boundary allows reclaim of tombstone.
-    root.process_dao_at(
-        make_dao(N1, ROOT, sequence=2, lifetime=255, dao_sequence=2), 112
-    )
+    root.process_dao_at(make_dao(N1, ROOT, sequence=2, lifetime=255, dao_sequence=2), 112)
     assert root.routing_table.lookup(N1) == [N1]
 
 

@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-"""Tests for announce processor.
-"""
+"""Tests for announce processor."""
 
 from ipaddress import IPv6Address
 
@@ -73,6 +72,7 @@ def neighbor() -> IPv6Address:
 @pytest.fixture
 def processor() -> AnnounceProcessor:
     """An announce processor with empty gradient table."""
+
     # Why simple address_builder: Tests don't care about prefix.
     # Just prepend a fixed prefix to the IID.
     def build_address(iid: bytes) -> IPv6Address:
@@ -558,9 +558,7 @@ class TestKeyPinning:
         processor.process(announce, neighbor, now_ms=0)
         assert processor.pinned_pubkey_for(identity.iid) == identity.pubkey
 
-    def test_not_pinned_before_any_announce(
-        self, processor: AnnounceProcessor, identity: Identity
-    ):
+    def test_not_pinned_before_any_announce(self, processor: AnnounceProcessor, identity: Identity):
         """An IID that has never announced has no pin."""
         assert processor.pinned_pubkey_for(identity.iid) is None
 

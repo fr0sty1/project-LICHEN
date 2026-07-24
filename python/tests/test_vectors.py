@@ -108,7 +108,6 @@ def _schc_cases():
     return [(v["name"], v) for v in doc["vectors"] if v.get("category") != "malformed"]
 
 
-
 def _fragmentation_cases():
     doc = _load("schc_fragmentation.json")
     assert doc["format_version"] == 2
@@ -944,7 +943,7 @@ def _dao_structure(wire: bytes) -> tuple[str | None, list[tuple[int, bytes]], in
         end = offset + 2 + length
         if end > len(wire):
             return "truncated", options, origin_offset
-        data = wire[offset + 2:end]
+        data = wire[offset + 2 : end]
         if option_type == 0x12:
             if length != 56:
                 return "bad_option_length", options, origin_offset
@@ -1104,14 +1103,33 @@ def test_dao_origin_signature_coverage_and_dodag_rules() -> None:
     coverage = {vector["coverage"] for vector in vectors}
     assert len(vectors) == len(coverage) == 50
     assert {
-        "d1", "d0_effective_dodag", "identical_retransmission", "reconcile_after_crash",
-        "replay_target_mismatch", "replay_malformed_semantics", "replay_structural",
-        "missing_signature", "zero_sequence", "bad_option_length", "truncated_option",
-        "malformed_base", "truncated_dodag", "unsupported_flags", "nonzero_reserved",
-        "d1_active_dodag_mismatch", "missing_target", "missing_transit", "duplicate_target",
-        "inconsistent_transit_sequence", "inconsistent_transit_lifetime",
-        "unsupported_transit_e", "cross_prefix_equal", "cross_prefix_lower",
-        "fresh_cross_prefix_target", "multiple_distinct_targets", "replay_non128_target",
+        "d1",
+        "d0_effective_dodag",
+        "identical_retransmission",
+        "reconcile_after_crash",
+        "replay_target_mismatch",
+        "replay_malformed_semantics",
+        "replay_structural",
+        "missing_signature",
+        "zero_sequence",
+        "bad_option_length",
+        "truncated_option",
+        "malformed_base",
+        "truncated_dodag",
+        "unsupported_flags",
+        "nonzero_reserved",
+        "d1_active_dodag_mismatch",
+        "missing_target",
+        "missing_transit",
+        "duplicate_target",
+        "inconsistent_transit_sequence",
+        "inconsistent_transit_lifetime",
+        "unsupported_transit_e",
+        "cross_prefix_equal",
+        "cross_prefix_lower",
+        "fresh_cross_prefix_target",
+        "multiple_distinct_targets",
+        "replay_non128_target",
         "context_malformed_option",
     } <= coverage
     for vector in vectors:
@@ -1119,10 +1137,13 @@ def test_dao_origin_signature_coverage_and_dodag_rules() -> None:
         if len(unsigned) >= 20 and unsigned[1] & 0x40:
             assert unsigned[4:20].hex() == vector["effective_dodag_id"]
         if vector["expected"]["reason"] == "accepted":
-            assert _dao_semantics(
-                _dao_structure(bytes.fromhex(vector["signed_dao"]))[1],
-                bytes.fromhex(vector["source_ipv6"]),
-            ) is None
+            assert (
+                _dao_semantics(
+                    _dao_structure(bytes.fromhex(vector["signed_dao"]))[1],
+                    bytes.fromhex(vector["source_ipv6"]),
+                )
+                is None
+            )
 
 
 def test_dao_origin_signature_schema_is_closed_and_relational() -> None:

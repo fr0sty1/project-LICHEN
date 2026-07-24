@@ -28,27 +28,13 @@ LOW_ORDER_POINTS: frozenset[bytes] = frozenset(
         bytes.fromhex(
             "0100000000000000000000000000000000000000000000000000000000000000"
         ),  # identity
-        bytes.fromhex(
-            "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-        ),
-        bytes.fromhex(
-            "0000000000000000000000000000000000000000000000000000000000000080"
-        ),
-        bytes.fromhex(
-            "edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f"
-        ),
-        bytes.fromhex(
-            "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05"
-        ),
-        bytes.fromhex(
-            "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a"
-        ),
-        bytes.fromhex(
-            "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa"
-        ),
-        bytes.fromhex(
-            "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc85"
-        ),
+        bytes.fromhex("ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
+        bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000080"),
+        bytes.fromhex("edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f"),
+        bytes.fromhex("26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05"),
+        bytes.fromhex("c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a"),
+        bytes.fromhex("c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa"),
+        bytes.fromhex("26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc85"),
     ]
 )
 
@@ -138,7 +124,7 @@ def sign(privkey: bytes, pubkey: bytes, msg: bytes) -> bytes:
     e_full_hash = sha512(R + pubkey + msg).digest()
     e = e_full_hash[:16]  # truncated challenge
     # Use truncated value as scalar (must match verification)
-    e_scalar = _scalar_from_bytes(e + b'\x00' * 16)
+    e_scalar = _scalar_from_bytes(e + b"\x00" * 16)
 
     # 4. Response: s = (r + e_scalar * privkey) mod L
     priv_scalar = _scalar_from_bytes(privkey)
@@ -178,7 +164,7 @@ def verify(pubkey: bytes, msg: bytes, sig: bytes) -> bool:
         return False
 
     # 2. Extend e to scalar (pad with zeros)
-    e_extended = e_received + b'\x00' * 16
+    e_extended = e_received + b"\x00" * 16
     e_scalar = _scalar_from_bytes(e_extended)
 
     # 3. Recover commitment: R' = s*B - e*pubkey

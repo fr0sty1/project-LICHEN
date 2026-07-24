@@ -15,9 +15,9 @@ from dataclasses import dataclass
 
 
 def hash_32(data: bytes) -> int:
-    h = 0x811c9dc5
+    h = 0x811C9DC5
     for b in data:
-        h = ((h ^ b) * 0x01000193) & 0xffffffff
+        h = ((h ^ b) * 0x01000193) & 0xFFFFFFFF
     return h
 
 
@@ -45,8 +45,7 @@ class ChannelPlan:
     def frequency(self, channel_index: int) -> int:
         if channel_index < 0 or channel_index >= len(self.channels):
             raise ValueError(
-                f"channel index {channel_index} out of range "
-                f"[0, {len(self.channels)})"
+                f"channel index {channel_index} out of range [0, {len(self.channels)})"
             )
         return self.channels[channel_index].frequency_hz
 
@@ -172,13 +171,10 @@ KR920: ChannelPlan = ChannelPlan(
 )
 
 REGIONAL_PLANS: dict[int, ChannelPlan] = {
-    p.plan_id: p
-    for p in (EU868, US915, AU915, CN470, AS923, IN865, KR920)
+    p.plan_id: p for p in (EU868, US915, AU915, CN470, AS923, IN865, KR920)
 }
 
-REGIONAL_PLANS_BY_NAME: dict[str, ChannelPlan] = {
-    p.name: p for p in REGIONAL_PLANS.values()
-}
+REGIONAL_PLANS_BY_NAME: dict[str, ChannelPlan] = {p.name: p for p in REGIONAL_PLANS.values()}
 
 
 def get_plan(plan_id: int) -> ChannelPlan:

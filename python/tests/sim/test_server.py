@@ -236,9 +236,7 @@ class TestSimulatorServerAPI:
         await server.stop()
 
     @pytest.fixture
-    async def client(
-        self, server: SimulatorServer
-    ) -> AsyncGenerator[AsyncClient, None]:
+    async def client(self, server: SimulatorServer) -> AsyncGenerator[AsyncClient, None]:
         """Create an async test client for the API."""
         assert server._api is not None
         app = server._api.create_app()
@@ -283,9 +281,7 @@ class TestSimulatorServerAPI:
         assert "api-sim" not in server._node_servers
 
     @pytest.mark.asyncio
-    async def test_api_node_management(
-        self, server: SimulatorServer, client: AsyncClient
-    ) -> None:
+    async def test_api_node_management(self, server: SimulatorServer, client: AsyncClient) -> None:
         """Nodes can be managed via API."""
         await client.post("/sim", json={"id": "api-sim"})
 

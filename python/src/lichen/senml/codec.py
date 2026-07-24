@@ -49,8 +49,18 @@ _LABEL_TO_FIELD: dict[int, str] = {
 _FIELD_TO_LABEL: dict[str, int] = {v: k for k, v in _LABEL_TO_FIELD.items()}
 
 _FIELD_TYPES: dict[str, str] = {
-    "bn": "str", "n": "str", "bu": "str", "u": "str", "vs": "str",
-    "bt": "num", "bv": "num", "bs": "num", "v": "num", "s": "num", "t": "num", "ut": "num",
+    "bn": "str",
+    "n": "str",
+    "bu": "str",
+    "u": "str",
+    "vs": "str",
+    "bt": "num",
+    "bv": "num",
+    "bs": "num",
+    "v": "num",
+    "s": "num",
+    "t": "num",
+    "ut": "num",
     "bver": "int",
     "vb": "bool",
     "vd": "bytes",
@@ -71,32 +81,22 @@ def _validate_field_type(name: str, value: object) -> None:
 
     if expected == "str":
         if not isinstance(value, str):
-            raise ValueError(
-                f"SenML field '{name}' must be a string, got {type(value).__name__}"
-            )
+            raise ValueError(f"SenML field '{name}' must be a string, got {type(value).__name__}")
     elif expected == "num":
         if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
-            raise ValueError(
-                f"SenML field '{name}' must be a number, got {type(value).__name__}"
-            )
+            raise ValueError(f"SenML field '{name}' must be a number, got {type(value).__name__}")
         if not isfinite(value):
             raise ValueError(f"SenML field '{name}' must be finite, got {value}")
     elif expected == "int":
         if isinstance(value, bool) or not isinstance(value, int) or isinstance(value, float):
-            raise ValueError(
-                f"SenML field '{name}' must be an integer, got {type(value).__name__}"
-            )
+            raise ValueError(f"SenML field '{name}' must be an integer, got {type(value).__name__}")
         if name == "bver" and not (1 <= value <= 10):
             raise ValueError(f"SenML bver must be in range [1, 10], got {value}")
     elif expected == "bool":
         if not isinstance(value, bool):
-            raise ValueError(
-                f"SenML field '{name}' must be a boolean, got {type(value).__name__}"
-            )
+            raise ValueError(f"SenML field '{name}' must be a boolean, got {type(value).__name__}")
     elif expected == "bytes" and not isinstance(value, bytes):
-        raise ValueError(
-            f"SenML field '{name}' must be bytes, got {type(value).__name__}"
-        )
+        raise ValueError(f"SenML field '{name}' must be bytes, got {type(value).__name__}")
 
     if name == "bver" and (not isinstance(value, int) or not (1 <= value <= 10)):
         raise ValueError(
@@ -149,9 +149,7 @@ class SenmlRecord:
     def to_cbor_map(self) -> dict[int, Any]:
         """Serialise to a dict with numeric CBOR keys (omits None fields)."""
         value_count = sum(
-            1
-            for f in fields(self)
-            if f.name in _VALUE_FIELDS and getattr(self, f.name) is not None
+            1 for f in fields(self) if f.name in _VALUE_FIELDS and getattr(self, f.name) is not None
         )
         if value_count > 1:
             raise ValueError("SenML record must have at most one value field")

@@ -403,11 +403,14 @@ class TestOpportunisticTransmission:
 
         data = encode_opportunistic_forwarders(forwarder_iids)
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "opportunistic-test", "tx", (0.0, 0.0, 0.0)
-        ) as radio_tx, SimRadio(
-            "127.0.0.1", node_port, "opportunistic-test", "rx", (50.0, 0.0, 0.0)
-        ) as radio_rx:
+        async with (
+            SimRadio(
+                "127.0.0.1", node_port, "opportunistic-test", "tx", (0.0, 0.0, 0.0)
+            ) as radio_tx,
+            SimRadio(
+                "127.0.0.1", node_port, "opportunistic-test", "rx", (50.0, 0.0, 0.0)
+            ) as radio_rx,
+        ):
             tx_success = await radio_tx.transmit(data)
             assert tx_success, "transmit must succeed"
 
@@ -484,15 +487,12 @@ class TestOpportunisticSimulationIntegration:
         pos_b = (0.0, 50.0, 0.0)
         pos_c = (50.0, 50.0, 0.0)
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "opportunistic-test", "node-s", pos_s
-        ) as radio_s, SimRadio(
-            "127.0.0.1", node_port, "opportunistic-test", "node-a", pos_a
-        ) as radio_a, SimRadio(
-            "127.0.0.1", node_port, "opportunistic-test", "node-b", pos_b
-        ) as _radio_b, SimRadio(
-            "127.0.0.1", node_port, "opportunistic-test", "node-c", pos_c
-        ) as _radio_c:
+        async with (
+            SimRadio("127.0.0.1", node_port, "opportunistic-test", "node-s", pos_s) as radio_s,
+            SimRadio("127.0.0.1", node_port, "opportunistic-test", "node-a", pos_a) as radio_a,
+            SimRadio("127.0.0.1", node_port, "opportunistic-test", "node-b", pos_b) as _radio_b,
+            SimRadio("127.0.0.1", node_port, "opportunistic-test", "node-c", pos_c) as _radio_c,
+        ):
             # S broadcasts with forwarder list
             tx_success = await radio_s.transmit(forwarder_data)
             assert tx_success, "S must transmit"

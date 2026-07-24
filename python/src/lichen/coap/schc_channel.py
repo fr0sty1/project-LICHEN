@@ -67,9 +67,7 @@ def unwrap_coap(raw: bytes) -> bytes:
     header = IPv6Header.from_bytes(raw)
     if header.next_header != NextHeader.UDP:
         raise ValueError("not a UDP datagram")
-    udp = UdpDatagram.from_bytes(
-        raw[HEADER_LENGTH : HEADER_LENGTH + header.payload_length]
-    )
+    udp = UdpDatagram.from_bytes(raw[HEADER_LENGTH : HEADER_LENGTH + header.payload_length])
     return udp.payload
 
 
@@ -140,24 +138,18 @@ class SchcChannel(DatagramChannel):
             raw = decompress_packet(data)
             packet = IPv6Packet.from_bytes(raw)
             if packet.header.next_header != NextHeader.UDP:
-                logger.info(
-                    "SchcChannel: dropped non-UDP IPv6 from %s", source
-                )
+                logger.info("SchcChannel: dropped non-UDP IPv6 from %s", source)
                 if self._metrics is not None:
                     self._metrics.record_error("dropped non-UDP IPv6")
                 return
             udp = UdpDatagram.from_bytes(packet.payload)
             if packet.header.dst_addr.packed != self._local.packed:
-                logger.info(
-                    "SchcChannel: dropped IPv6 for wrong dst from %s", source
-                )
+                logger.info("SchcChannel: dropped IPv6 for wrong dst from %s", source)
                 if self._metrics is not None:
                     self._metrics.record_error("dropped wrong destination")
                 return
             if udp.dst_port != self._src_port or udp.checksum == 0:
-                logger.info(
-                    "SchcChannel: dropped invalid UDP: bad port/checksum from %s", source
-                )
+                logger.info("SchcChannel: dropped invalid UDP: bad port/checksum from %s", source)
                 if self._metrics is not None:
                     self._metrics.record_error("dropped invalid UDP: bad port or checksum")
                 return

@@ -274,9 +274,7 @@ def test_ble_transport_rejects_negative_reconnect_attempts() -> None:
 
 
 async def test_ble_transport_raises_on_send_before_connect() -> None:
-    transport = BlePacketTransport(
-        "AA:BB", client_factory=lambda _a, _c: FakeBleClient("AA:BB")
-    )
+    transport = BlePacketTransport("AA:BB", client_factory=lambda _a, _c: FakeBleClient("AA:BB"))
 
     with pytest.raises(BleTransportError, match="not connected"):
         await transport.send_packet(b"packet")
@@ -295,9 +293,7 @@ async def test_ble_transport_reports_connect_failures() -> None:
 
 async def test_ble_transport_disconnects_when_notify_subscription_fails() -> None:
     client = FakeBleClient("AA:BB", fail_notify=True)
-    transport = BlePacketTransport(
-        "AA:BB", client_factory=lambda _a, _c: client, timeout_s=0.1
-    )
+    transport = BlePacketTransport("AA:BB", client_factory=lambda _a, _c: client, timeout_s=0.1)
 
     with pytest.raises(BleTransportError, match="connect failed"):
         await transport.connect()
@@ -308,9 +304,7 @@ async def test_ble_transport_disconnects_when_notify_subscription_fails() -> Non
 
 async def test_ble_transport_wraps_write_failures() -> None:
     client = FakeBleClient("AA:BB", fail_write=True)
-    transport = BlePacketTransport(
-        "AA:BB", client_factory=lambda _a, _c: client, timeout_s=0.1
-    )
+    transport = BlePacketTransport("AA:BB", client_factory=lambda _a, _c: client, timeout_s=0.1)
 
     await transport.connect()
 
@@ -326,9 +320,7 @@ async def test_ble_transport_rejects_bad_lci_metadata_lengths() -> None:
             LICHEN_LCI_PROFILE.capabilities_uuid or "": b"\x01\x00\x00\x00",
         },
     )
-    transport = BlePacketTransport(
-        "AA:BB", client_factory=lambda _a, _c: client, timeout_s=0.1
-    )
+    transport = BlePacketTransport("AA:BB", client_factory=lambda _a, _c: client, timeout_s=0.1)
 
     with pytest.raises(BleTransportError, match="protocol version must be two octets"):
         await transport.connect()
@@ -345,9 +337,7 @@ async def test_ble_transport_rejects_bad_lci_capabilities_length() -> None:
             LICHEN_LCI_PROFILE.capabilities_uuid or "": b"\x01\x00\x00",
         },
     )
-    transport = BlePacketTransport(
-        "AA:BB", client_factory=lambda _a, _c: client, timeout_s=0.1
-    )
+    transport = BlePacketTransport("AA:BB", client_factory=lambda _a, _c: client, timeout_s=0.1)
 
     with pytest.raises(BleTransportError, match="capabilities must be four octets"):
         await transport.connect()

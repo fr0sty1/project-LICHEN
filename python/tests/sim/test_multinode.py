@@ -114,11 +114,14 @@ class TestLineTopology:
         announce_bytes = announce_a.to_bytes()
 
         # Create two nodes: A at origin, B at 50m
-        async with SimRadio(
-            "127.0.0.1", node_port, "multinode-test", "node-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", node_port, "multinode-test", "node-b", (50.0, 0.0, 0.0)
-        ) as radio_b:
+        async with (
+            SimRadio(
+                "127.0.0.1", node_port, "multinode-test", "node-a", (0.0, 0.0, 0.0)
+            ) as radio_a,
+            SimRadio(
+                "127.0.0.1", node_port, "multinode-test", "node-b", (50.0, 0.0, 0.0)
+            ) as radio_b,
+        ):
             # A transmits announce
             tx_success = await radio_a.transmit(announce_bytes)
             assert tx_success is True
@@ -176,11 +179,14 @@ class TestLineTopology:
             address_builder=build_address_from_iid,
         )
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "multinode-test", "node-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", node_port, "multinode-test", "node-b", (50.0, 0.0, 0.0)
-        ) as radio_b:
+        async with (
+            SimRadio(
+                "127.0.0.1", node_port, "multinode-test", "node-a", (0.0, 0.0, 0.0)
+            ) as radio_a,
+            SimRadio(
+                "127.0.0.1", node_port, "multinode-test", "node-b", (50.0, 0.0, 0.0)
+            ) as radio_b,
+        ):
             # A transmits announce
             await radio_a.transmit(announce_bytes)
 
@@ -193,9 +199,7 @@ class TestLineTopology:
             received_announce = AnnounceMessage.from_bytes(rx_data)
             from_neighbor = build_address_from_iid(identity_a.iid)
 
-            process_result = processor_b.process(
-                received_announce, from_neighbor, now_ms=1000
-            )
+            process_result = processor_b.process(received_announce, from_neighbor, now_ms=1000)
 
             assert process_result.accepted is True
             assert process_result.peer is not None
@@ -231,9 +235,7 @@ class TestLineTopology:
         # Connect all 5 nodes
         radios: list[SimRadio] = []
         for node_id, pos in zip(node_ids, positions, strict=False):
-            radio = SimRadio(
-                "127.0.0.1", node_port, "multinode-test", node_id, pos
-            )
+            radio = SimRadio("127.0.0.1", node_port, "multinode-test", node_id, pos)
             await radio.connect()
             radios.append(radio)
 
@@ -310,13 +312,17 @@ class TestLineTopology:
 
         # Nodes: A(0m), B(50m), C(100m)
         # Note: B is the relay
-        async with SimRadio(
-            "127.0.0.1", node_port, "multinode-test", "node-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", node_port, "multinode-test", "node-b", (50.0, 0.0, 0.0)
-        ) as radio_b, SimRadio(
-            "127.0.0.1", node_port, "multinode-test", "node-c", (100.0, 0.0, 0.0)
-        ) as radio_c:
+        async with (
+            SimRadio(
+                "127.0.0.1", node_port, "multinode-test", "node-a", (0.0, 0.0, 0.0)
+            ) as radio_a,
+            SimRadio(
+                "127.0.0.1", node_port, "multinode-test", "node-b", (50.0, 0.0, 0.0)
+            ) as radio_b,
+            SimRadio(
+                "127.0.0.1", node_port, "multinode-test", "node-c", (100.0, 0.0, 0.0)
+            ) as radio_c,
+        ):
             # A transmits original announce
             await radio_a.transmit(original_bytes)
 
@@ -328,9 +334,7 @@ class TestLineTopology:
 
             # B processes and decides to relay
             from_neighbor = build_address_from_iid(identity_a.iid)
-            process_result = processor_b.process(
-                received_announce, from_neighbor, now_ms=1000
-            )
+            process_result = processor_b.process(received_announce, from_neighbor, now_ms=1000)
             assert process_result.accepted is True
             assert process_result.should_relay is True
 
@@ -394,11 +398,14 @@ class TestGradientConvergence:
         )
         announce_a_bytes = scheduler_a.build_announce().to_bytes()
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "multinode-test", "node-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", node_port, "multinode-test", "node-b", (50.0, 0.0, 0.0)
-        ) as radio_b:
+        async with (
+            SimRadio(
+                "127.0.0.1", node_port, "multinode-test", "node-a", (0.0, 0.0, 0.0)
+            ) as radio_a,
+            SimRadio(
+                "127.0.0.1", node_port, "multinode-test", "node-b", (50.0, 0.0, 0.0)
+            ) as radio_b,
+        ):
             now_ms = 1000
 
             # A announces, B receives
@@ -451,11 +458,10 @@ class TestGradientConvergence:
         )
         announce_a_bytes = scheduler_a.build_announce().to_bytes()
 
-        async with SimRadio(
-            "127.0.0.1", port_ab, "test-ab", "node-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", port_ab, "test-ab", "node-b", (50.0, 0.0, 0.0)
-        ) as radio_b:
+        async with (
+            SimRadio("127.0.0.1", port_ab, "test-ab", "node-a", (0.0, 0.0, 0.0)) as radio_a,
+            SimRadio("127.0.0.1", port_ab, "test-ab", "node-b", (50.0, 0.0, 0.0)) as radio_b,
+        ):
             await radio_a.transmit(announce_a_bytes)
             result = await radio_b.receive(1000)
             assert result is not None
@@ -486,11 +492,10 @@ class TestGradientConvergence:
         )
         announce_b_bytes = scheduler_b.build_announce().to_bytes()
 
-        async with SimRadio(
-            "127.0.0.1", port_ba, "test-ba", "node-a", (0.0, 0.0, 0.0)
-        ) as radio_a2, SimRadio(
-            "127.0.0.1", port_ba, "test-ba", "node-b", (50.0, 0.0, 0.0)
-        ) as radio_b2:
+        async with (
+            SimRadio("127.0.0.1", port_ba, "test-ba", "node-a", (0.0, 0.0, 0.0)) as radio_a2,
+            SimRadio("127.0.0.1", port_ba, "test-ba", "node-b", (50.0, 0.0, 0.0)) as radio_b2,
+        ):
             await radio_b2.transmit(announce_b_bytes)
             result = await radio_a2.receive(1000)
             assert result is not None
@@ -542,11 +547,14 @@ class TestEndToEndRouting:
             address_builder=build_address_from_iid,
         )
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "multinode-test", "node-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", node_port, "multinode-test", "node-b", (50.0, 0.0, 0.0)
-        ) as radio_b:
+        async with (
+            SimRadio(
+                "127.0.0.1", node_port, "multinode-test", "node-a", (0.0, 0.0, 0.0)
+            ) as radio_a,
+            SimRadio(
+                "127.0.0.1", node_port, "multinode-test", "node-b", (50.0, 0.0, 0.0)
+            ) as radio_b,
+        ):
             # A transmits announce
             await radio_a.transmit(announce_a.to_bytes())
 
@@ -593,11 +601,10 @@ class TestKnownVectors:
         announce = scheduler.build_announce()
         original_bytes = announce.to_bytes()
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "multinode-test", "tx", (0.0, 0.0, 0.0)
-        ) as radio_tx, SimRadio(
-            "127.0.0.1", node_port, "multinode-test", "rx", (10.0, 0.0, 0.0)
-        ) as radio_rx:
+        async with (
+            SimRadio("127.0.0.1", node_port, "multinode-test", "tx", (0.0, 0.0, 0.0)) as radio_tx,
+            SimRadio("127.0.0.1", node_port, "multinode-test", "rx", (10.0, 0.0, 0.0)) as radio_rx,
+        ):
             await radio_tx.transmit(original_bytes)
             result = await radio_rx.receive(1000)
 

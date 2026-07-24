@@ -386,8 +386,10 @@ class DaoManager:
                             "equal Path Sequence changed candidate snapshot",
                             reason="equal_sequence_mutation",
                         )
-                    if not changed and target not in parents and any(
-                        candidate.path_lifetime != 0 for candidate in snapshot
+                    if (
+                        not changed
+                        and target not in parents
+                        and any(candidate.path_lifetime != 0 for candidate in snapshot)
                     ):
                         reason = "equal_expired_no_revival"
                     continue

@@ -54,7 +54,7 @@ class AddressClass(Enum):
 
     LINK_LOCAL = auto()  # fe80::/10 - direct neighbor
     MESH_LOCAL = auto()  # ULA or mesh GUA - peer in mesh
-    EXTERNAL = auto()    # Other GUA or unknown - route via border router
+    EXTERNAL = auto()  # Other GUA or unknown - route via border router
 
 
 class RouteDecision(Enum):
@@ -64,9 +64,9 @@ class RouteDecision(Enum):
     decision may require additional state (queued packet, discovery request).
     """
 
-    FORWARD = auto()      # Forward to next_hop now
-    QUEUE = auto()        # Queue pending LOADng discovery
-    DROP = auto()         # No route, cannot discover (unjoined, etc.)
+    FORWARD = auto()  # Forward to next_hop now
+    QUEUE = auto()  # Queue pending LOADng discovery
+    DROP = auto()  # No route, cannot discover (unjoined, etc.)
     DELIVER_LOCAL = auto()  # Packet is for this node
 
 
@@ -77,9 +77,9 @@ class ForwardingResult(Enum):
     different failure modes (backpressure vs eviction).
     """
 
-    ACCEPTED = auto()      # Packet buffered successfully
+    ACCEPTED = auto()  # Packet buffered successfully
     BACKPRESSURE = auto()  # Source at per-source limit, send NACK upstream
-    EVICTED = auto()       # Accepted, but evicted oldest from different source
+    EVICTED = auto()  # Accepted, but evicted oldest from different source
 
 
 @dataclass
@@ -168,12 +168,8 @@ class ForwardingBuffer:
 
     max_sources: int = MAX_FORWARDING_SOURCES
     max_per_source: int = MAX_PACKETS_PER_SOURCE
-    _buffer: dict[bytes, deque[ForwardingEntry]] = field(
-        default_factory=dict, repr=False
-    )
-    _source_order: OrderedDict[bytes, None] = field(
-        default_factory=OrderedDict, repr=False
-    )
+    _buffer: dict[bytes, deque[ForwardingEntry]] = field(default_factory=dict, repr=False)
+    _source_order: OrderedDict[bytes, None] = field(default_factory=OrderedDict, repr=False)
     # Statistics
     packets_accepted: int = 0
     packets_backpressure: int = 0
@@ -287,9 +283,7 @@ class ForwardingBuffer:
         for source_iid, queue in self._buffer.items():
             original_len = len(queue)
             # Keep only packets not past deadline
-            self._buffer[source_iid] = deque(
-                e for e in queue if e.deadline_ms > now_ms
-            )
+            self._buffer[source_iid] = deque(e for e in queue if e.deadline_ms > now_ms)
             expired = original_len - len(self._buffer[source_iid])
             expired_count += expired
 
@@ -384,9 +378,7 @@ class Router:
     dodag: DodagState | None = None
     loadng: LoadngRouter | None = None
     mesh_prefixes: set[IPv6Network] = field(default_factory=set)
-    pending_queue: dict[IPv6Address, deque[PendingPacket]] = field(
-        default_factory=dict, repr=False
-    )
+    pending_queue: dict[IPv6Address, deque[PendingPacket]] = field(default_factory=dict, repr=False)
     max_pending_per_dest: int = 3
     max_pending_destinations: int = MAX_PENDING_DESTINATIONS
     max_neighbors: int = MAX_NEIGHBORS
@@ -396,9 +388,7 @@ class Router:
     neighbor_coords: dict[IPv6Address, tuple[float, float]] = field(
         default_factory=dict, repr=False
     )
-    neighbor_queue_depth: dict[IPv6Address, int] = field(
-        default_factory=dict, repr=False
-    )
+    neighbor_queue_depth: dict[IPv6Address, int] = field(default_factory=dict, repr=False)
     dtn_buffer: deque[DtnMessage] = field(default_factory=deque, repr=False)
     dtn_buffer_max_bytes: int = 65536
     _dtn_buffer_bytes: int = field(default=0, repr=False)
@@ -480,9 +470,7 @@ class Router:
         # External: route via RPL parent
         return self._route_external()
 
-    def _route_link_local(
-        self, dst: IPv6Address
-    ) -> tuple[RouteDecision, IPv6Address | None]:
+    def _route_link_local(self, dst: IPv6Address) -> tuple[RouteDecision, IPv6Address | None]:
         """Route to a link-local address (direct neighbor).
 
         Why no lookup: Link-local addresses are by definition one hop away.
@@ -507,8 +495,9 @@ class Router:
         entry = self.gradient_table.lookup(dst, now=now_ms)
 
         if entry is not None:
-            logger.debug("gradient found for %s: via %s, %d hops",
-                        dst, entry.next_hop, entry.hop_count)
+            logger.debug(
+                "gradient found for %s: via %s, %d hops", dst, entry.next_hop, entry.hop_count
+            )
             return RouteDecision.FORWARD, entry.next_hop
 
         # Why check loadng: If LOADng isn't configured, try GPSR fallback.
@@ -625,9 +614,7 @@ class Router:
         for dst in list(self.pending_queue.keys()):
             queue = self.pending_queue[dst]
             original_len = len(queue)
-            self.pending_queue[dst] = deque(
-                p for p in queue if p.queued_at_ms > cutoff
-            )
+            self.pending_queue[dst] = deque(p for p in queue if p.queued_at_ms > cutoff)
             queue = self.pending_queue[dst]
             expired_count += original_len - len(queue)
 
@@ -676,9 +663,7 @@ class Router:
         logger.debug("releasing %d pending packets for %s", len(pending), dst)
         return pending
 
-    def update_neighbor_coords(
-        self, neighbor: IPv6Address, coords: tuple[float, float]
-    ) -> bool:
+    def update_neighbor_coords(self, neighbor: IPv6Address, coords: tuple[float, float]) -> bool:
         """Update coords for a neighbor (from their announce).
 
         Validates coordinates before storing. Invalid coordinates
@@ -689,16 +674,13 @@ class Router:
         """
         lat, lon = coords
         if not _validate_coords(lat, lon):
-            logger.warning("rejecting invalid coords for neighbor %s: (%s, %s)",
-                          neighbor, lat, lon)
+            logger.warning("rejecting invalid coords for neighbor %s: (%s, %s)", neighbor, lat, lon)
             return False
         self.neighbor_coords[neighbor] = coords
         self._touch_neighbor(neighbor)
         return True
 
-    def update_neighbor_queue_depth(
-        self, neighbor: IPv6Address, depth: int
-    ) -> None:
+    def update_neighbor_queue_depth(self, neighbor: IPv6Address, depth: int) -> None:
         """Update queue depth for a neighbor (from their announce, spec 11.4)."""
         self.neighbor_queue_depth[neighbor] = depth
         self._touch_neighbor(neighbor)
@@ -745,8 +727,9 @@ class Router:
             raise RoutingError(f"destination_iid must be 8 bytes, got {len(destination_iid)}")
         now_unix = int(time.time())
         if expiry_unix <= now_unix:
-            logger.debug("dtn: rejecting expired message (expiry=%d, now=%d)",
-                        expiry_unix, now_unix)
+            logger.debug(
+                "dtn: rejecting expired message (expiry=%d, now=%d)", expiry_unix, now_unix
+            )
             return False
         if expiry_unix > now_unix + MAX_DTN_TTL_SECONDS:
             logger.warning("dtn: rejecting message with excessive TTL")
@@ -761,16 +744,23 @@ class Router:
 
         # Reject messages that exceed the maximum buffer size
         if msg.size() > self.dtn_buffer_max_bytes:
-            logger.debug("dtn: rejecting oversized message (size=%d, max=%d)",
-                        msg.size(), self.dtn_buffer_max_bytes)
+            logger.debug(
+                "dtn: rejecting oversized message (size=%d, max=%d)",
+                msg.size(),
+                self.dtn_buffer_max_bytes,
+            )
             return False
 
         # Evict oldest messages until we have space
         self._dtn_evict_if_needed(msg.size())
         self.dtn_buffer.append(msg)
         self._dtn_buffer_bytes += msg.size()
-        logger.debug("dtn: buffered message for %s, expiry=%d, buffer_size=%d",
-                    destination_iid.hex(), expiry_unix, len(self.dtn_buffer))
+        logger.debug(
+            "dtn: buffered message for %s, expiry=%d, buffer_size=%d",
+            destination_iid.hex(),
+            expiry_unix,
+            len(self.dtn_buffer),
+        )
         return True
 
     def dtn_get_pending_iids(self) -> list[bytes]:
@@ -799,8 +789,7 @@ class Router:
                 remaining.append(msg)
         self.dtn_buffer = remaining
         self._dtn_buffer_bytes -= bytes_reduced
-        logger.debug("dtn: retrieved %d messages for %s",
-                    len(matching), destination_iid.hex())
+        logger.debug("dtn: retrieved %d messages for %s", len(matching), destination_iid.hex())
         return matching
 
     def dtn_expire_old(self) -> int:
@@ -838,13 +827,10 @@ class Router:
             oldest = self.dtn_buffer.popleft()  # oldest-first eviction (O(1))
             self._dtn_buffer_bytes -= oldest.size()
             evicted += 1
-            logger.debug("dtn: evicted message for %s to make room",
-                        oldest.destination_iid.hex())
+            logger.debug("dtn: evicted message for %s to make room", oldest.destination_iid.hex())
         return evicted
 
-    def gpsr_forward(
-        self, dst_coords: tuple[float, float] | None
-    ) -> IPv6Address | None:
+    def gpsr_forward(self, dst_coords: tuple[float, float] | None) -> IPv6Address | None:
         """GPSR greedy forwarding: find neighbor closest to destination (spec 9.7).
 
         Args:
@@ -895,8 +881,9 @@ class Router:
                 best_neighbor = neighbor
 
         if best_neighbor is not None:
-            logger.debug("gpsr: forwarding to %s (%.1fm closer)",
-                        best_neighbor, my_dist - best_dist)
+            logger.debug(
+                "gpsr: forwarding to %s (%.1fm closer)", best_neighbor, my_dist - best_dist
+            )
         else:
             logger.debug("gpsr: local minimum, no progress possible")
 

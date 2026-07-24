@@ -492,7 +492,7 @@ class SimNodeApp(App[None]):
                 self._log_event(
                     "rx",
                     f"RX: {format_payload(payload)} ({len(payload)} bytes, "
-                    f"RSSI={rssi}dBm, SNR={snr}dB)"
+                    f"RSSI={rssi}dBm, SNR={snr}dB)",
                 )
 
             await self._update_sim_time()

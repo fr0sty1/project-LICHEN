@@ -171,8 +171,7 @@ class AddressMapper:
         existing_pubkey = self._peers.get(iid)
         if existing_pubkey is not None and existing_pubkey != pubkey:
             logger.warning(
-                "TOFU violation: pubkey mismatch for IID %s "
-                "(pinned=%s..., got=%s...) - rejecting",
+                "TOFU violation: pubkey mismatch for IID %s (pinned=%s..., got=%s...) - rejecting",
                 iid.hex(),
                 existing_pubkey.hex()[:16],
                 pubkey.hex()[:16],

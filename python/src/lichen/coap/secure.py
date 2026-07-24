@@ -263,8 +263,7 @@ def _host_records_semantically_equal(left: _HostRecord, right: _HostRecord) -> b
     return (
         left.context.peer_pubkey == right.context.peer_pubkey
         and left.context.generation == right.context.generation
-        and left.context.oscore.export_parameters()
-        == right.context.oscore.export_parameters()
+        and left.context.oscore.export_parameters() == right.context.oscore.export_parameters()
         and left.context.oscore.sender_sequence_number
         == right.context.oscore.sender_sequence_number
         and left.context.oscore.export_replay_window()
@@ -272,9 +271,7 @@ def _host_records_semantically_equal(left: _HostRecord, right: _HostRecord) -> b
     )
 
 
-def _sqlite_host_values_semantically_equal(
-    left: tuple[Any, ...], right: tuple[Any, ...]
-) -> bool:
+def _sqlite_host_values_semantically_equal(left: tuple[Any, ...], right: tuple[Any, ...]) -> bool:
     """Compare persisted host rows by reconstructed security meaning."""
     if len(left) != 12 or len(right) != 12:
         return False
@@ -566,9 +563,7 @@ class InMemoryOscoreContextStore:
         for old_key, record in self._records.items():
             key = policy.normalize(old_key).authority
             existing = staged.get(key)
-            if existing is not None and not _host_records_semantically_equal(
-                existing[1], record
-            ):
+            if existing is not None and not _host_records_semantically_equal(existing[1], record):
                 raise PeerKeyConflictError(
                     f"endpoint aliases normalize to conflicting record {key}"
                 )
@@ -1043,6 +1038,7 @@ class SqliteOscoreContextStore:
     ) -> SequenceReservation:
         if count <= 0:
             raise ValueError("reservation count must be positive")
+
         def worker() -> SequenceReservation:
             with self._thread_lock, self._connect() as connection:
                 connection.execute("BEGIN IMMEDIATE")
@@ -1154,8 +1150,7 @@ class SqliteOscoreContextStore:
                     key = policy.normalize(host).authority
                     if key in normalized and normalized[key] != value:
                         raise PeerKeyConflictError(
-                            f"TOFU violation: peer aliases normalize to {key} "
-                            "with different keys"
+                            f"TOFU violation: peer aliases normalize to {key} with different keys"
                         )
                     normalized[key] = value
                 additions: list[tuple[str, bytes]] = []
@@ -1164,9 +1159,7 @@ class SqliteOscoreContextStore:
                         "SELECT peer_pubkey FROM oscore_hosts WHERE host = ?", (key,)
                     ).fetchone()
                     if row is not None and bytes(row[0]) != value:
-                        raise PeerKeyConflictError(
-                            f"TOFU violation: peer {key} key changed"
-                        )
+                        raise PeerKeyConflictError(f"TOFU violation: peer {key} key changed")
                     if row is None:
                         additions.append((key, value))
                 for key, value in additions:
@@ -1356,10 +1349,7 @@ class TofuPeerResolver(EdhocPeerResolver):
             and self._pending_context_store is not context_store
         ):
             raise ValueError("TOFU resolver is pending migration to a different context store")
-        if (
-            self._endpoint_policy is not None
-            and self._endpoint_policy != policy
-        ):
+        if self._endpoint_policy is not None and self._endpoint_policy != policy:
             raise ValueError("TOFU resolver is already bound to a different endpoint policy")
 
         if (
@@ -1593,9 +1583,7 @@ class SecureDatagramChannel(DatagramChannel):
                 for pending_key, correlation in self._pending_outbound.items()
                 if pending_key[0] != key
             }
-            for con_key in [
-                con_key for con_key in self._protected_cons if con_key[0] == key
-            ]:
+            for con_key in [con_key for con_key in self._protected_cons if con_key[0] == key]:
                 self._protected_cons.pop(con_key, None)
         if context is not None:
             self._active_peer_contexts[key] = context
@@ -1633,16 +1621,12 @@ class SecureDatagramChannel(DatagramChannel):
 
     def _abandon_peer_admissions(self, peer: str) -> None:
         context = self._active_peer_contexts.get(peer)
-        for message_id, (admission_peer, operation) in tuple(
-            self._message_admissions.items()
-        ):
+        for message_id, (admission_peer, operation) in tuple(self._message_admissions.items()):
             if admission_peer == peer:
                 self._message_admissions.pop(message_id, None)
                 self._finish_send_operation(peer, context, operation)
 
-    def _track_task(
-        self, coroutine: Any, on_done: Callable[[], None] | None = None
-    ) -> None:
+    def _track_task(self, coroutine: Any, on_done: Callable[[], None] | None = None) -> None:
         task = asyncio.get_running_loop().create_task(coroutine)
         self._tasks.add(task)
 
@@ -1736,9 +1720,7 @@ class SecureDatagramChannel(DatagramChannel):
         correlation = None
         locally_originated = message.code.is_request()
         if locally_originated:
-            correlation = _RequestCorrelation(
-                None, observe=message.opt.observe == 0
-            )
+            correlation = _RequestCorrelation(None, observe=message.opt.observe == 0)
             self._pending_outbound[(key, message.token)] = correlation
         elif message.code.is_response():
             context = self._active_peer_contexts.get(key)
@@ -1767,9 +1749,7 @@ class SecureDatagramChannel(DatagramChannel):
                 operation.finished = True
                 operation.correlation.pending_sends -= 1
             return
-        self._finish_send_operation(
-            key, self._active_peer_contexts.get(key), operation
-        )
+        self._finish_send_operation(key, self._active_peer_contexts.get(key), operation)
 
     def request_interest_ended(
         self,
@@ -1826,14 +1806,10 @@ class SecureDatagramChannel(DatagramChannel):
         correlation.cancellation_deadline = asyncio.get_running_loop().time() + delay
         correlation.cancellation_timer = self._schedule_cancellation_expiry(
             delay,
-            lambda: self._expire_cancelled_observation(
-                key, context.generation, token, correlation
-            ),
+            lambda: self._expire_cancelled_observation(key, context.generation, token, correlation),
         )
 
-    def response_completed(
-        self, peer: str, token: bytes, lifecycle_id: object | None
-    ) -> None:
+    def response_completed(self, peer: str, token: bytes, lifecycle_id: object | None) -> None:
         context = self._active_peer_contexts.get(self._endpoint_key(peer))
         if context is None:
             return
@@ -1954,9 +1930,7 @@ class SecureDatagramChannel(DatagramChannel):
         result = await self._unprotect_datagram(msg, source)
         return None if result is None else result.data
 
-    async def _unprotect_datagram(
-        self, msg: Message, source: str
-    ) -> _UnprotectedDatagram | None:
+    async def _unprotect_datagram(self, msg: Message, source: str) -> _UnprotectedDatagram | None:
         """Unprotect and stage correlation state for synchronous dispatch."""
         key = self._endpoint_key(source)
         lock = self._peer_locks.setdefault(key, asyncio.Lock())
@@ -2080,9 +2054,7 @@ class SecureDatagramChannel(DatagramChannel):
             and operation.locally_originated
             and not operation.correlation.interested
         ):
-            self._finish_send_operation(
-                key, self._active_peer_contexts.get(key), operation
-            )
+            self._finish_send_operation(key, self._active_peer_contexts.get(key), operation)
             return
         self._schedule_send(data, dest, key, operation)
 
@@ -2100,19 +2072,13 @@ class SecureDatagramChannel(DatagramChannel):
             ),
         )
 
-    def _prepare_send_operation(
-        self, data: bytes, dest: str, key: str
-    ) -> _SendOperation | None:
+    def _prepare_send_operation(self, data: bytes, dest: str, key: str) -> _SendOperation | None:
         try:
             message = Message.decode(data, LichenRemote(dest))
         except Exception:
             return None
         if message.code.is_request():
-            cached = (
-                self._protected_cons.get((key, message.mid))
-                if message.mtype is CON
-                else None
-            )
+            cached = self._protected_cons.get((key, message.mid)) if message.mtype is CON else None
             if (
                 cached is not None
                 and cached.locally_originated
@@ -2121,9 +2087,7 @@ class SecureDatagramChannel(DatagramChannel):
             ):
                 correlation = cached.correlation
             else:
-                correlation = _RequestCorrelation(
-                    None, observe=message.opt.observe == 0
-                )
+                correlation = _RequestCorrelation(None, observe=message.opt.observe == 0)
                 self._pending_outbound[(key, message.token)] = correlation
             if message.mtype is CON:
                 self._stage_con(key, message, data, correlation, True)
@@ -2230,9 +2194,7 @@ class SecureDatagramChannel(DatagramChannel):
                     raise RuntimeError("context lost after establishment")
 
                 if operation is not None:
-                    correlations = self._correlations(
-                        peer_ctx, operation.locally_originated
-                    )
+                    correlations = self._correlations(peer_ctx, operation.locally_originated)
                     current = correlations.get(operation.token)
                     if operation.locally_originated:
                         pending = self._pending_outbound.get((key, operation.token))
@@ -2254,8 +2216,7 @@ class SecureDatagramChannel(DatagramChannel):
                         cached.locally_originated
                         and cached.correlation is not None
                         and cached.correlation.interested
-                        and self._pending_outbound.get((key, cached.token))
-                        is cached.correlation
+                        and self._pending_outbound.get((key, cached.token)) is cached.correlation
                     ):
                         peer_ctx.outbound_requests[cached.token] = cached.correlation
                         self._pending_outbound.pop((key, cached.token), None)
@@ -2264,9 +2225,7 @@ class SecureDatagramChannel(DatagramChannel):
                     if cached.correlation is not None:
                         cached.correlation.con_mids.discard(msg.mid)
                         if not cached.locally_originated:
-                            self._retire_inbound_if_done(
-                                peer_ctx, cached.token, cached.correlation
-                            )
+                            self._retire_inbound_if_done(peer_ctx, cached.token, cached.correlation)
                     self._protected_cons.pop(con_key, None)
 
                 if not peer_ctx.oscore.has_reserved_sender_sequence:

@@ -48,6 +48,7 @@ class TestSynthesizePosition:
     @pytest.mark.skipif(not HAS_CBOR, reason="cbor2 not installed")
     def test_cbor_position(self):
         import cbor2
+
         data = cbor2.dumps({"lat": 37.7749, "lon": -122.4194})
         result = synthesize_aprs(data)
         assert result is not None
@@ -64,11 +65,13 @@ class TestSynthesizeWeather:
         assert b"t072" in result.aprs_payload
 
     def test_full_weather(self):
-        data = json.dumps({
-            "temp": 20,
-            "humidity": 65,
-            "pressure": 1013.25,
-        }).encode()
+        data = json.dumps(
+            {
+                "temp": 20,
+                "humidity": 65,
+                "pressure": 1013.25,
+            }
+        ).encode()
         result = synthesize_aprs(data)
         assert result is not None
         assert result.data_type == AprsDataType.WEATHER
@@ -83,22 +86,26 @@ class TestSynthesizeWeather:
         assert b"h00" in result.aprs_payload  # 100% encoded as 00
 
     def test_with_wind(self):
-        data = json.dumps({
-            "temp": 18,
-            "wind_speed": 5.0,  # m/s
-            "wind_dir": 270,
-        }).encode()
+        data = json.dumps(
+            {
+                "temp": 18,
+                "wind_speed": 5.0,  # m/s
+                "wind_dir": 270,
+            }
+        ).encode()
         result = synthesize_aprs(data)
         assert result is not None
         assert b"270/" in result.aprs_payload  # wind direction
         assert b"/011" in result.aprs_payload  # ~11 mph
 
     def test_weather_with_position(self):
-        data = json.dumps({
-            "lat": 37.0,
-            "lon": -122.0,
-            "temp": 20,
-        }).encode()
+        data = json.dumps(
+            {
+                "lat": 37.0,
+                "lon": -122.0,
+                "temp": 20,
+            }
+        ).encode()
         result = synthesize_aprs(data)
         assert result is not None
         assert result.data_type == AprsDataType.WEATHER
@@ -116,6 +123,7 @@ class TestSynthesizeWeather:
     @pytest.mark.skipif(not HAS_CBOR, reason="cbor2 not installed")
     def test_cbor_weather(self):
         import cbor2
+
         data = cbor2.dumps({"temp": 25, "rh": 50})
         result = synthesize_aprs(data)
         assert result is not None
@@ -166,6 +174,7 @@ class TestSynthesizeTelemetry:
     @pytest.mark.skipif(not HAS_CBOR, reason="cbor2 not installed")
     def test_cbor_telemetry(self):
         import cbor2
+
         data = cbor2.dumps([10, 20, 30, 40, 50])
         result = synthesize_aprs(data)
         assert result is not None
@@ -228,6 +237,7 @@ class TestFormatWeather:
         assert "t-22" in result
         # Verify field is exactly 3 chars
         import re
+
         match = re.search(r"t(...)", result)
         assert match is not None
         assert len(match.group(1)) == 3
@@ -257,12 +267,14 @@ class TestPriorityOrder:
 
     def test_weather_with_position_is_weather(self):
         # Has both weather and position keys
-        data = json.dumps({
-            "lat": 37.0,
-            "lon": -122.0,
-            "temp": 20,
-            "humidity": 65,
-        }).encode()
+        data = json.dumps(
+            {
+                "lat": 37.0,
+                "lon": -122.0,
+                "temp": 20,
+                "humidity": 65,
+            }
+        ).encode()
         result = synthesize_aprs(data)
         assert result is not None
         # Should be detected as weather, not position

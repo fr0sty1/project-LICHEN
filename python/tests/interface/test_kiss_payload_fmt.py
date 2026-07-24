@@ -44,7 +44,7 @@ class TestFormatPayloadJson:
         assert "23.5" in result
 
     def test_json_array(self):
-        data = b'[1, 2, 3]'
+        data = b"[1, 2, 3]"
         result = format_payload(data)
         # Valid UTF-8 text is returned as-is, or parsed as JSON
         assert "1" in result and "2" in result and "3" in result
@@ -60,6 +60,7 @@ class TestFormatPayloadJson:
 class TestFormatPayloadCbor:
     def test_cbor_map(self):
         import cbor2
+
         data = cbor2.dumps({"temp": 25, "name": "sensor1"})
         result = format_payload(data)
         assert "temp" in result
@@ -67,6 +68,7 @@ class TestFormatPayloadCbor:
 
     def test_cbor_array(self):
         import cbor2
+
         data = cbor2.dumps([1, 2, 3, 4, 5])
         result = format_payload(data)
         assert "1" in result

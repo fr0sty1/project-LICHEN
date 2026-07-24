@@ -185,9 +185,7 @@ class NodeServer:
                     peer,
                     msg_type,
                 )
-                await write_message(
-                    writer, encode_err(2, "First message must be REGISTER")
-                )
+                await write_message(writer, encode_err(2, "First message must be REGISTER"))
                 return
 
             node_id = await self._handle_register(data, writer)
@@ -219,9 +217,7 @@ class NodeServer:
                 elif msg_type == MSG_CAD:
                     await self._handle_cad(node_id, data, writer)
                 else:
-                    logger.warning(
-                        "Unknown message type 0x%02x from node %s", msg_type, node_id
-                    )
+                    logger.warning("Unknown message type 0x%02x from node %s", msg_type, node_id)
                     await write_message(
                         writer, encode_err(3, f"Unknown message type: 0x{msg_type:02x}")
                     )
@@ -284,9 +280,7 @@ class NodeServer:
             return None
 
         # Create duty cycle tracker
-        self._duty_trackers[node_id] = DutyCycleTracker(
-            limit_percent=self._duty_cycle_limit
-        )
+        self._duty_trackers[node_id] = DutyCycleTracker(limit_percent=self._duty_cycle_limit)
 
         # Track connection
         self._connections[node_id] = writer
@@ -298,7 +292,12 @@ class NodeServer:
         await write_message(writer, encode_ok())
         return node_id
 
-    async def _handle_tx(self,node_id: str,data: bytes,writer: asyncio.StreamWriter,) -> None:
+    async def _handle_tx(
+        self,
+        node_id: str,
+        data: bytes,
+        writer: asyncio.StreamWriter,
+    ) -> None:
         try:
             payload = get_message_payload(data)
             tx_payload, ch = decode_tx(payload)
@@ -322,11 +321,18 @@ class NodeServer:
         if tracker is not None:
             tracker.record_tx(tx_airtime_us, current_time_us)
         if self._pcap_writer is not None:
-            self._pcap_writer.write_packet(timestamp_us=current_time_us,data=tx_payload,src_node=node_id)
+            self._pcap_writer.write_packet(
+                timestamp_us=current_time_us, data=tx_payload, src_node=node_id
+            )
         logger.debug("TX from %s: %d bytes, airtime %d us", node_id, len(tx_payload), tx_airtime_us)
         await write_message(writer, encode_tx_done(tx_airtime_us))
 
-    async def _handle_rx_enter(self,node_id: str,data: bytes,writer: asyncio.StreamWriter,) -> None:
+    async def _handle_rx_enter(
+        self,
+        node_id: str,
+        data: bytes,
+        writer: asyncio.StreamWriter,
+    ) -> None:
         try:
             payload = get_message_payload(data)
             timeout_us, ch = decode_rx_enter(payload)
@@ -336,16 +342,17 @@ class NodeServer:
             return
         rx_result: list[tuple[bytes, int, int] | None] = [None]
         rx_done = asyncio.Event()
+
         def on_packet(pkt_payload: bytes, rssi: int, snr: int) -> None:
             rx_result[0] = (pkt_payload, rssi, snr)
             rx_done.set()
+
         def on_timeout() -> None:
             rx_done.set()
+
         entered = False
         try:
-            self._simulation.enter_rx_mode(
-                node_id, timeout_us, on_packet, on_timeout, channel=ch
-            )
+            self._simulation.enter_rx_mode(node_id, timeout_us, on_packet, on_timeout, channel=ch)
             entered = True
         except ValueError as e:
             logger.error("Failed to enter RX mode for %s: %s", node_id, e)
@@ -396,7 +403,12 @@ class NodeServer:
         logger.debug("TIME query: %d us", time_us)
         await write_message(writer, encode_time_ok(time_us))
 
-    async def _handle_cad(self,node_id: str,data: bytes,writer: asyncio.StreamWriter,) -> None:
+    async def _handle_cad(
+        self,
+        node_id: str,
+        data: bytes,
+        writer: asyncio.StreamWriter,
+    ) -> None:
         try:
             payload = get_message_payload(data)
             _, ch = decode_cad(payload)
@@ -468,9 +480,7 @@ async def start_node_server(
         >>> server.close()
         >>> await server.wait_closed()
     """
-    node_server = NodeServer(
-        simulation, pcap_writer=pcap_writer, duty_cycle_limit=duty_cycle_limit
-    )
+    node_server = NodeServer(simulation, pcap_writer=pcap_writer, duty_cycle_limit=duty_cycle_limit)
 
     server = await asyncio.start_server(
         node_server.handle_connection,

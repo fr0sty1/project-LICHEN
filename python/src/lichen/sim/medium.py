@@ -125,9 +125,7 @@ class Medium:
             List of active Transmission objects.
         """
         return [
-            tx
-            for tx in self._active_transmissions
-            if tx.start_time_us <= time_us < tx.end_time_us
+            tx for tx in self._active_transmissions if tx.start_time_us <= time_us < tx.end_time_us
         ]
 
     def get_rx_candidates(
@@ -159,11 +157,7 @@ class Medium:
             List of RxCandidate objects for decodable transmissions.
         """
         candidates: list[RxCandidate] = []
-        active = [
-            tx
-            for tx in self.get_active_transmissions(time_us)
-            if tx.channel == channel
-        ]
+        active = [tx for tx in self.get_active_transmissions(time_us) if tx.channel == channel]
 
         for tx in active:
             if tx.source_node_id == rx_node_id:
@@ -188,15 +182,10 @@ class Medium:
             snr = rssi - self.noise_floor_dbm
             is_lr_fhss = tx.phy_mode == "lr_fhss"
             sensitivity = SENSITIVITY_LR_FHSS if is_lr_fhss else SENSITIVITY_SF10
-            if self.propagation.can_decode(
-                tx.tx_power_dbm, distance, sensitivity_dbm=sensitivity
-            ):
+            if self.propagation.can_decode(tx.tx_power_dbm, distance, sensitivity_dbm=sensitivity):
                 candidates.append(
-                    RxCandidate(
-                        transmission=tx, rssi=rssi, snr=snr, is_lr_fhss=is_lr_fhss
-                    )
+                    RxCandidate(transmission=tx, rssi=rssi, snr=snr, is_lr_fhss=is_lr_fhss)
                 )
-
 
         return candidates
 
@@ -266,11 +255,7 @@ class Medium:
         Returns:
             True if channel activity is detected, False otherwise.
         """
-        active = [
-            tx
-            for tx in self.get_active_transmissions(time_us)
-            if tx.channel == channel
-        ]
+        active = [tx for tx in self.get_active_transmissions(time_us) if tx.channel == channel]
 
         for tx in active:
             if rx_frequency_hz is not None and tx.frequency_hz != rx_frequency_hz:

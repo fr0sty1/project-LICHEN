@@ -406,18 +406,18 @@ class EdhocInitiator:
             cred_r = peer_pubkey
             context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
             mac_2 = _edhoc_kdf(self._prk_3e2m, self._th_2, "MAC_2", context_2, EDHOC_MAC_LEN)
-            m_2 = cbor2.dumps([
-                "Signature1",
-                cbor2.dumps(id_cred_r),
-                self._th_2,
-                cbor2.dumps(cred_r),
-                mac_2,
-            ])
+            m_2 = cbor2.dumps(
+                [
+                    "Signature1",
+                    cbor2.dumps(id_cred_r),
+                    self._th_2,
+                    cbor2.dumps(cred_r),
+                    mac_2,
+                ]
+            )
             VerifyKey(peer_pubkey).verify(m_2, signature_2)
             th_3_input = (
-                cbor2.dumps(self._th_2)
-                + cbor2.dumps(ciphertext_2)
-                + cbor2.dumps(id_cred_r)
+                cbor2.dumps(self._th_2) + cbor2.dumps(ciphertext_2) + cbor2.dumps(id_cred_r)
             )
             self._th_3 = _compute_th(th_3_input)
             self._prk_4e3m = self._prk_3e2m
@@ -426,13 +426,15 @@ class EdhocInitiator:
             )
             context_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(id_cred_i)
             mac_3 = _edhoc_kdf(self._prk_4e3m, self._th_3, "MAC_3", context_3, EDHOC_MAC_LEN)
-            m_3 = cbor2.dumps([
-                "Signature1",
-                cbor2.dumps(id_cred_i),
-                self._th_3,
-                cbor2.dumps(id_cred_i),
-                mac_3,
-            ])
+            m_3 = cbor2.dumps(
+                [
+                    "Signature1",
+                    cbor2.dumps(id_cred_i),
+                    self._th_3,
+                    cbor2.dumps(id_cred_i),
+                    mac_3,
+                ]
+            )
             signature_3 = SigningKey(self.identity.seed).sign(m_3).signature
             plaintext_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(signature_3)
             k_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "K_3", b"", CCM_KEY_LEN)
@@ -603,23 +605,21 @@ class EdhocResponder:
             cred_r = self.identity.pubkey
             context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
             mac_2 = _edhoc_kdf(self._prk_3e2m, self._th_2, "MAC_2", context_2, EDHOC_MAC_LEN)
-            m_2 = cbor2.dumps([
-                "Signature1",
-                cbor2.dumps(id_cred_r),
-                self._th_2,
-                cbor2.dumps(cred_r),
-                mac_2,
-            ])
+            m_2 = cbor2.dumps(
+                [
+                    "Signature1",
+                    cbor2.dumps(id_cred_r),
+                    self._th_2,
+                    cbor2.dumps(cred_r),
+                    mac_2,
+                ]
+            )
             signature_2 = SigningKey(self.identity.seed).sign(m_2).signature
             plaintext_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(signature_2)
-            keystream_2 = _edhoc_kdf(
-                self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(plaintext_2)
-            )
+            keystream_2 = _edhoc_kdf(self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(plaintext_2))
             ciphertext_2 = bytes(a ^ b for a, b in zip(plaintext_2, keystream_2, strict=True))
             th_3_input = (
-                cbor2.dumps(self._th_2)
-                + cbor2.dumps(ciphertext_2)
-                + cbor2.dumps(id_cred_r)
+                cbor2.dumps(self._th_2) + cbor2.dumps(ciphertext_2) + cbor2.dumps(id_cred_r)
             )
             self._th_3 = _compute_th(th_3_input)
             g_y_ciphertext_2 = self._eph_pk + ciphertext_2
@@ -665,13 +665,15 @@ class EdhocResponder:
             self._prk_4e3m = self._prk_3e2m
             context_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(peer_pubkey)
             mac_3 = _edhoc_kdf(self._prk_4e3m, self._th_3, "MAC_3", context_3, EDHOC_MAC_LEN)
-            m_3 = cbor2.dumps([
-                "Signature1",
-                cbor2.dumps(id_cred_i),
-                self._th_3,
-                cbor2.dumps(peer_pubkey),
-                mac_3,
-            ])
+            m_3 = cbor2.dumps(
+                [
+                    "Signature1",
+                    cbor2.dumps(id_cred_i),
+                    self._th_3,
+                    cbor2.dumps(peer_pubkey),
+                    mac_3,
+                ]
+            )
             VerifyKey(peer_pubkey).verify(m_3, signature_3)
             th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(ciphertext_3)
             self._th_4 = _compute_th(th_4_input)

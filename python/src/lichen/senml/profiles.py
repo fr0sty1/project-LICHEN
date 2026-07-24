@@ -127,7 +127,7 @@ def humidity(percent_rh: float) -> SenmlRecord:
         A single SenML record.
     """
     if not (0.0 <= percent_rh <= 100.0):
-        raise ValueError(f'percent_rh {percent_rh} out of range [0, 100]')
+        raise ValueError(f"percent_rh {percent_rh} out of range [0, 100]")
     return SenmlRecord(n="rel-humidity", u="%RH", v=percent_rh)
 
 
@@ -207,5 +207,5 @@ def voc_index(index: float) -> SenmlRecord:
         A single SenML record named "voc-index".
     """
     if not (1.0 <= index <= 500.0):
-        raise ValueError(f'VOC index {index} out of range [1, 500]')
+        raise ValueError(f"VOC index {index} out of range [1, 500]")
     return SenmlRecord(n="voc-index", v=index)

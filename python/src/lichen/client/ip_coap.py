@@ -181,7 +181,7 @@ class AiocoapResourceSubscription(ResourceSubscription):
         if self._last_seq is None:
             self._last_seq = seq
             return True
-        diff = (seq - self._last_seq) & 0xffffff
+        diff = (seq - self._last_seq) & 0xFFFFFF
         if 0 < diff < 0x800000:
             self._last_seq = seq
             return True

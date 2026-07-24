@@ -59,14 +59,10 @@ def test_lower_priority_does_not_replace_higher() -> None:
 def test_fresher_seq_num_wins_within_same_priority() -> None:
     table = GradientTable()
     table.update(_entry(source=GradientSource.RREP, seq_num=1, next_hop=HOP_A))
-    assert table.update(
-        _entry(source=GradientSource.RREP, seq_num=2, next_hop=HOP_B)
-    ) is True
+    assert table.update(_entry(source=GradientSource.RREP, seq_num=2, next_hop=HOP_B)) is True
     assert table.lookup(DEST).next_hop == HOP_B
     # Older seq is rejected.
-    assert table.update(
-        _entry(source=GradientSource.RREP, seq_num=1, next_hop=HOP_A)
-    ) is False
+    assert table.update(_entry(source=GradientSource.RREP, seq_num=1, next_hop=HOP_A)) is False
 
 
 def test_lower_hop_count_wins_at_equal_priority_and_seq() -> None:

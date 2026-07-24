@@ -206,18 +206,14 @@ class NativeSimProcess:
             self.process.send_signal(signal.SIGTERM)
             try:
                 await asyncio.wait_for(
-                    asyncio.get_event_loop().run_in_executor(
-                        None, self.process.wait
-                    ),
+                    asyncio.get_event_loop().run_in_executor(None, self.process.wait),
                     timeout=5.0,
                 )
             except TimeoutError:
                 self.process.kill()
                 with contextlib.suppress(TimeoutError):
                     await asyncio.wait_for(
-                        asyncio.get_event_loop().run_in_executor(
-                            None, self.process.wait
-                        ),
+                        asyncio.get_event_loop().run_in_executor(None, self.process.wait),
                         timeout=2.0,
                     )
 
@@ -274,9 +270,7 @@ class SlipCoapClient:
             "See architecture notes in module docstring."
         )
 
-    async def put(
-        self, path: str, payload: dict[str, Any], timeout: float = COAP_TIMEOUT
-    ) -> bool:
+    async def put(self, path: str, payload: dict[str, Any], timeout: float = COAP_TIMEOUT) -> bool:
         """Send a CoAP PUT request with CBOR payload.
 
         Args:

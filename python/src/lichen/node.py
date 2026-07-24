@@ -353,9 +353,7 @@ class Node:
         if task is not None and task.done():
             task.result()
 
-    async def _cleanup_started(
-        self, *, adapter: bool, scheduler: bool
-    ) -> BaseException | None:
+    async def _cleanup_started(self, *, adapter: bool, scheduler: bool) -> BaseException | None:
         error: BaseException | None = None
         if adapter and self._meshtastic_adapter is not None:
             try:
@@ -393,7 +391,11 @@ class Node:
                 if rx is not None and not isinstance(rx, ReceiveError):
                     await self._process_received(rx)
                 elif isinstance(rx, ReceiveError):
-                    if rx in (ReceiveError.KEY_CHANGE, ReceiveError.REPLAY, ReceiveError.MIC_FAILED):
+                    if rx in (
+                        ReceiveError.KEY_CHANGE,
+                        ReceiveError.REPLAY,
+                        ReceiveError.MIC_FAILED,
+                    ):
                         logger.warning("link RX security event: %s", rx)
                     else:
                         logger.debug("link RX rejected: %s", rx)
@@ -413,11 +415,7 @@ class Node:
         kind = classify_l2_payload(payload)
         body = l2_payload_body(payload)
 
-        if (
-            kind == L2PayloadKind.ROUTING
-            and len(body) > 0
-            and body[0] == L2_ROUTING_TYPE_ANNOUNCE
-        ):
+        if kind == L2PayloadKind.ROUTING and len(body) > 0 and body[0] == L2_ROUTING_TYPE_ANNOUNCE:
             await self._process_announce(body, rx.sender, rx.rssi_dbm)
             return
 
@@ -452,9 +450,7 @@ class Node:
                     self._relay_seen.popitem(last=False)
             await self.link.send(payload)
 
-    async def _process_announce(
-        self, payload: bytes, sender: PeerIdentity, rssi_dbm: int
-    ) -> None:
+    async def _process_announce(self, payload: bytes, sender: PeerIdentity, rssi_dbm: int) -> None:
         """Process an announce message.
 
         Why async: May need to relay the announce.
@@ -644,10 +640,12 @@ class Node:
         neighbors = []
         for iid in self.peer_db:
             addr = IPv6Address(b"\xfe\x80\x00\x00\x00\x00\x00\x00" + iid)
-            neighbors.append({
-                "addr": str(addr),
-                "rssi": -100,  # ponytail: no per-peer RSSI tracking yet
-            })
+            neighbors.append(
+                {
+                    "addr": str(addr),
+                    "rssi": -100,  # ponytail: no per-peer RSSI tracking yet
+                }
+            )
         return neighbors
 
     def get_config(self) -> dict[str, int]:

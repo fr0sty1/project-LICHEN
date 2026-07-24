@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-"""Announce scheduler for periodic transmission (spec section 9.4).
-"""
+"""Announce scheduler for periodic transmission (spec section 9.4)."""
 
 from __future__ import annotations
 
@@ -76,9 +75,7 @@ class AnnounceScheduler:
     _task: asyncio.Task[None] | None = field(default=None, init=False, repr=False)
 
     # Callbacks for persistence (optional)
-    _on_seq_change: Callable[[int], None] | None = field(
-        default=None, init=False, repr=False
-    )
+    _on_seq_change: Callable[[int], None] | None = field(default=None, init=False, repr=False)
 
     def set_seq_num(self, seq_num: int) -> None:
         """Set the sequence number (for persistence restore).
@@ -226,9 +223,7 @@ class AnnounceScheduler:
             try:
                 initial_delay = self.config.initial_delay_ms
                 if initial_delay == 0:
-                    initial_delay = random.randint(
-                        1000, max(1000, self.config.jitter_ms)
-                    )
+                    initial_delay = random.randint(1000, max(1000, self.config.jitter_ms))
                 await asyncio.sleep(initial_delay / 1000)
                 break
             except asyncio.CancelledError:

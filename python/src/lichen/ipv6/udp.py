@@ -32,9 +32,7 @@ def _internet_checksum(data: bytes) -> int:
     return (~total) & 0xFFFF
 
 
-def udp_checksum(
-    src: IPv6Address, dst: IPv6Address, header_and_payload: bytes
-) -> int:
+def udp_checksum(src: IPv6Address, dst: IPv6Address, header_and_payload: bytes) -> int:
     """Checksum over the IPv6 pseudo-header and the UDP datagram."""
     pseudo = (
         src.packed

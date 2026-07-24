@@ -79,9 +79,7 @@ class TestScheduledSendDelay:
     """Tests that scheduled_send delays transmission."""
 
     @pytest.mark.asyncio
-    async def test_scheduled_send_delays_transmission(
-        self, node: Node, radio: MockRadio
-    ):
+    async def test_scheduled_send_delays_transmission(self, node: Node, radio: MockRadio):
         """scheduled_send() waits before sending."""
         data = b"test_data"
         delay_ms = 25
@@ -136,9 +134,7 @@ class TestConfigDefaults:
     """Tests that scheduled_send uses config defaults."""
 
     @pytest.mark.asyncio
-    async def test_scheduled_send_uses_config_defaults(
-        self, identity: Identity, radio: MockRadio
-    ):
+    async def test_scheduled_send_uses_config_defaults(self, identity: Identity, radio: MockRadio):
         """Uses rreq_jitter_min/max_ms from config when not overridden."""
         config = NodeConfig(
             receive_timeout_ms=100,
@@ -171,9 +167,7 @@ class TestCustomDelays:
     """Tests that scheduled_send accepts custom delay parameters."""
 
     @pytest.mark.asyncio
-    async def test_scheduled_send_accepts_custom_delays(
-        self, node: Node, radio: MockRadio
-    ):
+    async def test_scheduled_send_accepts_custom_delays(self, node: Node, radio: MockRadio):
         """Can override min/max delay per call."""
         data = b"test_data"
 

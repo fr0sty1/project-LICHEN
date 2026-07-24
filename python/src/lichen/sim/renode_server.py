@@ -111,10 +111,7 @@ class RenodeServer:
 
         self._server = await asyncio.start_server(self._accept_connection, host, port)
         actual_port = self._server.sockets[0].getsockname()[1]
-        logger.info(
-            "Renode server for %s listening on %s:%d",
-            self._node_id, host, actual_port
-        )
+        logger.info("Renode server for %s listening on %s:%d", self._node_id, host, actual_port)
 
         # Start simulation driver task
         self._sim_driver_task = asyncio.create_task(self._simulation_driver())
@@ -237,18 +234,14 @@ class RenodeServer:
             return
 
         try:
-            self._simulation.start_transmission(
-                self._node_id, tx_payload, channel=ch
-            )
+            self._simulation.start_transmission(self._node_id, tx_payload, channel=ch)
         except ValueError as e:
             logger.error("TX failed: %s", e)
             await _write_message(writer, encode_tx_fail())
             return
 
         tx_airtime = airtime_us(len(tx_payload))
-        logger.debug(
-            "Renode TX: %d bytes, airtime %d us, ch=%d", len(tx_payload), tx_airtime, ch
-        )
+        logger.debug("Renode TX: %d bytes, airtime %d us, ch=%d", len(tx_payload), tx_airtime, ch)
         await _write_message(writer, encode_tx_done(tx_airtime))
 
     def _handle_rx_enter(self, data: bytes, writer: asyncio.StreamWriter) -> None:
@@ -262,9 +255,7 @@ class RenodeServer:
         self._simulation.enter_rx_mode(
             self._node_id,
             timeout_us,
-            lambda payload, rssi, snr: self._on_rx_packet(
-                writer, payload, rssi, snr
-            ),
+            lambda payload, rssi, snr: self._on_rx_packet(writer, payload, rssi, snr),
             lambda: self._on_rx_timeout(writer),
             channel=ch,
         )
@@ -287,9 +278,7 @@ class RenodeServer:
             raise RuntimeError("No Renode client connected")
         await _write_message(self._writer, data)
 
-    async def _push_to_writer(
-        self, writer: asyncio.StreamWriter, data: bytes
-    ) -> None:
+    async def _push_to_writer(self, writer: asyncio.StreamWriter, data: bytes) -> None:
         """Push data only if writer still owns the active connection."""
         if self._writer is writer:
             await _write_message(writer, data)
@@ -309,9 +298,7 @@ class RenodeServer:
                 return
             exc = t.exception()
             if exc is not None:
-                logger.debug(
-                    "Background task failed for %s: %s", self._node_id, exc
-                )
+                logger.debug("Background task failed for %s: %s", self._node_id, exc)
 
         task.add_done_callback(on_done)
 

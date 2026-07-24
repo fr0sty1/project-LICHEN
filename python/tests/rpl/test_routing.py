@@ -168,13 +168,9 @@ def test_advance_without_srh_returns_none() -> None:
 
 
 def test_insert_source_route_validates_expected_destination() -> None:
-    packet = IPv6Packet(
-        header=IPv6Header(ROOT, DEST, NextHeader.UDP), payload=b"x"
-    )
+    packet = IPv6Packet(header=IPv6Header(ROOT, DEST, NextHeader.UDP), payload=b"x")
     # Path ends with DEST, matches expected_destination - should succeed
-    routed, first_hop = insert_source_route(
-        packet, [A, B, DEST], expected_destination=DEST
-    )
+    routed, first_hop = insert_source_route(packet, [A, B, DEST], expected_destination=DEST)
     assert first_hop == A
     assert routed.header.dst_addr == A
 

@@ -378,9 +378,7 @@ def main() -> None:
 
     # Configure structlog
     structlog.configure(
-        wrapper_class=structlog.make_filtering_bound_logger(
-            getattr(logging, args.log_level)
-        ),
+        wrapper_class=structlog.make_filtering_bound_logger(getattr(logging, args.log_level)),
     )
 
     # Also configure standard logging for uvicorn

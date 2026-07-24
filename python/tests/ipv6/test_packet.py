@@ -30,8 +30,10 @@ def test_header_to_bytes_known_vector() -> None:
         bytes([0x60, 0x00, 0x00, 0x00])  # version 6, tc 0, flow 0
         + bytes([0x00, 0x00])  # payload length 0
         + bytes([0x3A, 0x40])  # next header 58 (ICMPv6), hop limit 64
-        + bytes(15) + bytes([0x01])  # ::1
-        + bytes(15) + bytes([0x02])  # ::2
+        + bytes(15)
+        + bytes([0x01])  # ::1
+        + bytes(15)
+        + bytes([0x02])  # ::2
     )
     assert hdr.to_bytes() == expected
     assert len(hdr.to_bytes()) == HEADER_LENGTH
@@ -166,9 +168,7 @@ def test_packet_rejects_oversized_payload() -> None:
     )
     with pytest.raises(PacketError):
         pkt.to_bytes()
-    ext = ExtensionHeader(
-        header_type=NextHeader.HOP_BY_HOP, data=b"\x00" * 6
-    )
+    ext = ExtensionHeader(header_type=NextHeader.HOP_BY_HOP, data=b"\x00" * 6)
     pkt = IPv6Packet(
         header=IPv6Header("::1", "::2", NextHeader.UDP),
         payload=b"x" * 65530,

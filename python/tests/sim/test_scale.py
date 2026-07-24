@@ -99,7 +99,9 @@ class TestMeshScale:
         assert node_port is not None
 
         n_nodes = min(SCALE_NODES, SCALE_CAP)  # Cap for this test (configurable, no hardcoded)
-        random.seed(42)  # reproducibility for conference/dense mesh stress (exercises radio/medium/chaos)
+        random.seed(
+            42
+        )  # reproducibility for conference/dense mesh stress (exercises radio/medium/chaos)
 
         # Exercise full stack + chaos (fixes bypass in conference test per project-LICHEN-1jvr)
         if sim.chaos_engine is not None:
@@ -141,10 +143,10 @@ class TestMeshScale:
             print(f"\nLinear topology: {n_nodes} nodes")
             print(f"  Setup: {setup_time:.3f}s")
             print(f"  Propagation: {propagation_time:.3f}s")
-            print(f"  Received: {received}/{n_nodes - 1} ({100*received/(n_nodes-1):.1f}%)")
+            print(f"  Received: {received}/{n_nodes - 1} ({100 * received / (n_nodes - 1):.1f}%)")
 
             # With 50m spacing, all nodes should be in range (LoRa range > 1km)
-            assert received > (n_nodes - 1) * 0.8, f"Too few receivers: {received}/{n_nodes-1}"
+            assert received > (n_nodes - 1) * 0.8, f"Too few receivers: {received}/{n_nodes - 1}"
 
         finally:
             for radio in radios:
@@ -163,6 +165,7 @@ class TestMeshScale:
         assert node_port is not None
 
         import math
+
         grid_size = int(math.sqrt(min(SCALE_NODES, SCALE_CAP)))
         n_nodes = grid_size * grid_size
 
@@ -206,10 +209,10 @@ class TestMeshScale:
             print(f"\nGrid topology: {grid_size}x{grid_size} = {n_nodes} nodes")
             print(f"  Setup: {setup_time:.3f}s")
             print(f"  Propagation: {propagation_time:.3f}s")
-            print(f"  Received: {received}/{n_nodes - 1} ({100*received/(n_nodes-1):.1f}%)")
+            print(f"  Received: {received}/{n_nodes - 1} ({100 * received / (n_nodes - 1):.1f}%)")
 
             # Grid should have very high reception (center can reach all)
-            assert received > (n_nodes - 1) * 0.9, f"Too few receivers: {received}/{n_nodes-1}"
+            assert received > (n_nodes - 1) * 0.9, f"Too few receivers: {received}/{n_nodes - 1}"
 
         finally:
             for radio in radios:
@@ -230,11 +233,10 @@ class TestMeshScale:
         n_messages = min(SCALE_MESSAGES, SCALE_CAP * 2)  # parameterized, was hardcoded 200
 
         # Two nodes: TX and RX
-        async with SimRadio(
-            "127.0.0.1", node_port, "scale-test", "tx-node", (0.0, 0.0, 0.0)
-        ) as radio_tx, SimRadio(
-            "127.0.0.1", node_port, "scale-test", "rx-node", (50.0, 0.0, 0.0)
-        ) as radio_rx:
+        async with (
+            SimRadio("127.0.0.1", node_port, "scale-test", "tx-node", (0.0, 0.0, 0.0)) as radio_tx,
+            SimRadio("127.0.0.1", node_port, "scale-test", "rx-node", (50.0, 0.0, 0.0)) as radio_rx,
+        ):
             # Send messages as fast as possible
             start = time.time()
             for i in range(n_messages):
@@ -278,7 +280,9 @@ class TestAnnounceFlood:
         node_port = server.get_node_server_port("scale-test")
         assert node_port is not None
 
-        n_nodes = min(SCALE_NODES // 2, int(SCALE_CAP * 0.2))  # parameterized, was hardcoded 20 (roaming/kill style)
+        n_nodes = min(
+            SCALE_NODES // 2, int(SCALE_CAP * 0.2)
+        )  # parameterized, was hardcoded 20 (roaming/kill style)
 
         # Setup nodes
         radios = []
@@ -309,9 +313,7 @@ class TestAnnounceFlood:
             # All nodes announce concurrently
             start = time.time()
             announces = [s.build_announce().to_bytes() for s in schedulers]
-            await asyncio.gather(*[
-                radios[i].transmit(announces[i]) for i in range(n_nodes)
-            ])
+            await asyncio.gather(*[radios[i].transmit(announces[i]) for i in range(n_nodes)])
             tx_time = time.time() - start
 
             # Each node tries to receive

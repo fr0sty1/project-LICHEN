@@ -11,7 +11,7 @@ ALL_1 = (1 << N_FCN_BITS) - 1
 MAX_WINDOW_SIZE = ALL_1 - 1
 DEFAULT_WINDOW_SIZE = 7
 MIC_LENGTH = 4
-RULE_IDS = (0x2a, 0x78, 0x79)
+RULE_IDS = (0x2A, 0x78, 0x79)
 TILE_SIZE = 187
 MAX_PACKET_SIZE = 16384
 DEFAULT_RECEIVER_LIMIT = 1281
@@ -225,9 +225,7 @@ class FragmentSender:
             pos = i % self.window_size
             is_last = i == n - 1
             fcn = ALL_1 if is_last else (self.window_size - 1 - pos)
-            frags.append(
-                Fragment(self.rule_id, wire_window, fcn, tile, mic if is_last else b"")
-            )
+            frags.append(Fragment(self.rule_id, wire_window, fcn, tile, mic if is_last else b""))
         return frags
 
     def all_fragments(self) -> list[Fragment]:
@@ -245,12 +243,10 @@ class FragmentSender:
         start = abs_window * self.window_size
         return self._fragments[start : start + self.window_size]
 
-    def retransmit(
-        self, abs_window: int, bitmap: Sequence[bool]
-    ) -> list[Fragment]:
+    def retransmit(self, abs_window: int, bitmap: Sequence[bool]) -> list[Fragment]:
         window_frags = self.fragments_in_window(abs_window)
         if len(bitmap) > len(window_frags):
-            bitmap = bitmap[:len(window_frags)]
+            bitmap = bitmap[: len(window_frags)]
         missing: list[Fragment] = []
         for pos, frag in enumerate(window_frags):
             if pos >= len(bitmap) or not bitmap[pos]:

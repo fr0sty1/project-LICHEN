@@ -35,9 +35,7 @@ class NextHeader(IntEnum):
 
 # Extension headers that share the common "next_header / hdr_ext_len / data"
 # layout where the total length is (hdr_ext_len + 1) * 8 octets (RFC 8200 4).
-_TLV_EXT_HEADERS = frozenset(
-    {NextHeader.HOP_BY_HOP, NextHeader.ROUTING, NextHeader.DEST_OPTIONS}
-)
+_TLV_EXT_HEADERS = frozenset({NextHeader.HOP_BY_HOP, NextHeader.ROUTING, NextHeader.DEST_OPTIONS})
 
 
 class PacketError(Exception):
@@ -99,9 +97,7 @@ class IPv6Header:
     def to_bytes(self) -> bytes:
         """Serialize to the 40-byte on-wire header."""
         self._validate()
-        first_word = (
-            (self.version << 28) | (self.traffic_class << 20) | self.flow_label
-        )
+        first_word = (self.version << 28) | (self.traffic_class << 20) | self.flow_label
         return (
             first_word.to_bytes(4, "big")
             + self.payload_length.to_bytes(2, "big")
@@ -114,9 +110,7 @@ class IPv6Header:
     def from_bytes(cls, data: bytes) -> IPv6Header:
         """Parse a 40-byte header from the start of ``data``."""
         if len(data) < HEADER_LENGTH:
-            raise PacketError(
-                f"need {HEADER_LENGTH} bytes for header, got {len(data)}"
-            )
+            raise PacketError(f"need {HEADER_LENGTH} bytes for header, got {len(data)}")
         first_word = int.from_bytes(data[0:4], "big")
         version = first_word >> 28
         if version != 6:
@@ -206,9 +200,7 @@ class IPv6Packet:
                 f"{len(self.payload)} payload = {total_payload} > 65535"
             )
         wire_next_header = (
-            self.extension_headers[0].header_type
-            if self.extension_headers
-            else upper
+            self.extension_headers[0].header_type if self.extension_headers else upper
         )
         header = replace(
             self.header,
@@ -224,8 +216,7 @@ class IPv6Packet:
         body = data[HEADER_LENGTH : HEADER_LENGTH + header.payload_length]
         if len(body) != header.payload_length:
             raise PacketError(
-                f"payload_length says {header.payload_length} but "
-                f"{len(body)} bytes present"
+                f"payload_length says {header.payload_length} but {len(body)} bytes present"
             )
 
         ext_headers: list[ExtensionHeader] = []

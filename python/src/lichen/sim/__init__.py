@@ -40,7 +40,13 @@ from lichen.sim.propagation import (
     PropagationModel,
 )
 from lichen.sim.renode_server import RenodeServer, start_renode_server
-from lichen.sim.tdma import SuperframeClock, TDMAScheduler, TDMAState, hash_32, synchronized_hop_channel
+from lichen.sim.tdma import (
+    SuperframeClock,
+    TDMAScheduler,
+    TDMAState,
+    hash_32,
+    synchronized_hop_channel,
+)
 
 __all__ = [
     "AS923",
