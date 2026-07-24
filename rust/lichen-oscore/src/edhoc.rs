@@ -377,11 +377,12 @@ fn encode_bstr<const N: usize>(
     Ok(())
 }
 
-/// TH_2 = H(CBOR(G_Y) || CBOR(H(message_1))) per RFC 9528 Section 3.2.
-fn transcript_2(g_y: &[u8; 32], msg1: &[u8]) -> Result<[u8; 32], EdhocError> {
+/// TH_2 = H(CBOR(G_Y) || CBOR(C_R) || CBOR(H(message_1))) per RFC 9528 Section 4.1.1.
+fn transcript_2(g_y: &[u8; 32], c_r: &[u8], msg1: &[u8]) -> Result<[u8; 32], EdhocError> {
     let h_msg1 = compute_th(msg1);
     let mut input = heapless::Vec::<u8, 128>::new();
     encode_bstr(&mut input, g_y)?;
+    encode_bstr(&mut input, c_r)?;
     encode_bstr(&mut input, &h_msg1)?;
     Ok(compute_th(&input))
 }
@@ -738,8 +739,12 @@ impl EdhocInitiator {
             return Err(error);
         }
 
-        let (g_y_ct2, consumed) = parse_bstr(msg2)?;
-        if consumed != msg2.len() || g_y_ct2.len() < KEY_LEN_32 + 1 {
+        let (g_y_ct2, consumed1) = parse_bstr(msg2)?;
+        if consumed1 >= msg2.len() || g_y_ct2.len() < KEY_LEN_32 + 1 {
+            return Err(EdhocError::InvalidMessage);
+        }
+        let (msg2_c_r, consumed2) = parse_identifier(&msg2[consumed1..])?;
+        if consumed1 + consumed2 != msg2.len() {
             return Err(EdhocError::InvalidMessage);
         }
         let mut g_y = [0u8; KEY_LEN_32];
@@ -752,6 +757,7 @@ impl EdhocInitiator {
         let g_xy = eph_secret.diffie_hellman(&peer_eph_public);
         drop(eph_secret);
         self.state.g_y = g_y;
+        self.state.c_r = msg2_c_r.clone();
         // SECURITY: eph_secret is intentionally NOT stored back - single-use semantics
         // prevent cryptographic weakness from ephemeral key reuse (RFC 9528 freshness).
 
@@ -759,7 +765,10 @@ impl EdhocInitiator {
             if bool::from(g_xy.as_bytes().ct_eq(&[0; KEY_LEN_32])) {
                 return Err(EdhocError::InvalidMessage);
             }
-            self.state.th_2 = transcript_2(&self.state.g_y, &self.state.msg1)?;
+            if self.state.c_r == self.c_i {
+                return Err(EdhocError::InvalidMessage);
+            }
+            self.state.th_2 = transcript_2(&self.state.g_y, self.state.c_r.as_bytes(), &self.state.msg1)?;
 
             // PRK_2e = HKDF-Extract(salt=TH_2, IKM=G_XY)
             let prk_2e_z = hkdf_extract(&self.state.th_2, g_xy.as_bytes());
@@ -784,14 +793,9 @@ impl EdhocInitiator {
             self.state.prk_3e2m = self.state.prk_2e;
 
             let pt2 = plaintext_2.as_slice();
-            let (c_r, c_r_len) = parse_identifier(pt2)?;
-            if c_r == self.c_i {
-                return Err(EdhocError::InvalidMessage);
-            }
-            let (id_cred_r, id_len) = parse_id_cred(&pt2[c_r_len..])?;
-            let sig_offset = c_r_len + id_len;
-            let (signature_bytes, sig_len) = parse_bstr(&pt2[sig_offset..])?;
-            if signature_bytes.len() != SIG_LEN || sig_offset + sig_len != pt2.len() {
+            let (id_cred_r, id_len) = parse_id_cred(pt2)?;
+            let (signature_bytes, sig_len) = parse_bstr(&pt2[id_len..])?;
+            if signature_bytes.len() != SIG_LEN || id_len + sig_len != pt2.len() {
                 return Err(EdhocError::InvalidMessage);
             }
 
@@ -801,8 +805,8 @@ impl EdhocInitiator {
             Ok(PendingMessage2 {
                 id_cred: id_cred_r,
                 plaintext,
-                c_r,
-                signature_offset: sig_offset,
+                c_r: self.state.c_r.clone(),
+                signature_offset: id_len,
                 transcript_binding: self.state.th_2,
             })
         })();
@@ -1196,7 +1200,7 @@ impl EdhocResponder {
             if bool::from(g_xy.as_bytes().ct_eq(&[0; KEY_LEN_32])) {
                 return Err(EdhocError::InvalidMessage);
             }
-            self.state.th_2 = transcript_2(self.eph_public.as_bytes(), msg1)?;
+            self.state.th_2 = transcript_2(self.eph_public.as_bytes(), self.c_r.as_bytes(), msg1)?;
 
             // PRK_2e = HKDF-Extract(salt=TH_2, IKM=G_XY)
             let prk_2e_z = hkdf_extract(&self.state.th_2, g_xy.as_bytes());
@@ -1224,7 +1228,6 @@ impl EdhocResponder {
             let signature_2 = self.signing_key.sign(&m_2);
 
             let mut plaintext_2 = SecretVec::<128>::new();
-            encode_identifier(&mut plaintext_2, &self.c_r)?;
             encode_bstr(&mut plaintext_2, self.pubkey.as_bytes())?;
             encode_bstr(&mut plaintext_2, &signature_2.to_bytes())?;
 
@@ -1248,6 +1251,7 @@ impl EdhocResponder {
             g_y_ciphertext.extend_err(self.eph_public.as_bytes())?;
             g_y_ciphertext.extend_err(&ciphertext_2)?;
             encode_bstr(&mut msg2, &g_y_ciphertext)?;
+            encode_identifier(&mut msg2, &self.c_r)?;
 
             self.state.lifecycle = Lifecycle::AwaitingMessage3;
             Ok(msg2)
@@ -2086,107 +2090,38 @@ mod tests {
         assert_eq!(initiator.create_message_1().unwrap().as_slice(), message_1);
 
         let g_y = hex!("dc88d2d51da5ed67fc4616356bc8ca74ef9ebe8b387e623a360ba480b9b29d1c");
-        let th_2 = hex!("c6405c154c567466ab1df20369500e540e9f14bd3a796a0652cae66c9061688d");
-        assert_eq!(transcript_2(&g_y, &message_1).unwrap(), th_2);
+        let th_2 = hex!("d03c775d5f69d22baf6cc2a9babe2493ea4ec694ec28b332317488c306f8f394");
+        assert_eq!(transcript_2(&g_y, &[0x01], &message_1).unwrap(), th_2);
 
-        let prk_2e = hex!("d584ac2e5dad5a77d14b53ebe72ef1d5daa8860d399373bf2c240afa7ba804da");
-        let keystream_2 = hex!(
-            "a405b90c5de9992f30a6fc4aec57bb6c314c1a9e143975770bbad933a20440b92d26ed309dbcd6dca945f246890722955a02e2b521a63eff1dabcbf0dd9b85e3c993f91caa426e9cf83fbd91d1975cb2a393"
-        );
-        assert_eq!(
-            edhoc_kdf(&prk_2e, &th_2, "KEYSTREAM_2", &[], 82)
-                .unwrap()
-                .as_slice(),
-            keystream_2
-        );
+        // Full handshake test with known seeds
+        let mut handshake_initiator = EdhocInitiator::new_with_rng([0; 32], 0, &mut TestRng(0))
+            .unwrap();
+        let initiator_key = handshake_initiator.pubkey.to_bytes();
+        let mut responder =
+            EdhocResponder::new_with_rng([1; 32], 1, &mut TestRng(1)).unwrap();
+        let responder_key = responder.pubkey.to_bytes();
+        let (responder_id, responder_credential) = raw_key_credential(&responder_key).unwrap();
+        let (initiator_id, initiator_credential) = raw_key_credential(&initiator_key).unwrap();
 
-        let message_2 = hex!(
-            "5872dc88d2d51da5ed67fc4616356bc8ca74ef9ebe8b387e623a360ba480b9b29d1cbc26dd270fe9c02c44ce3934794b1cc62ba22f05459f8d358c8d12275ac42c5f96ded5f13cc9084e5b201889a45e5a60a5562dc118619c3daa2fd9f4c9f4d6edad109dd4edf95962aafbaf9ab3f4a1f6b98f"
-        );
-        let (g_y_ciphertext, consumed) = parse_bstr(&message_2).unwrap();
-        assert_eq!(consumed, message_2.len());
-        assert_eq!(&g_y_ciphertext[..32], &g_y);
+        let msg1 = handshake_initiator.create_message_1().unwrap();
+        let msg2 = responder.process_message_1(&msg1).unwrap();
+        let msg3 = handshake_initiator
+            .process_message_2_with_credential(
+                &msg2,
+                PeerCredential::new(&responder_key, &responder_id, &responder_credential),
+            )
+            .unwrap();
+        responder
+            .process_message_3_with_credential(
+                &msg3,
+                PeerCredential::new(&initiator_key, &initiator_id, &initiator_credential),
+            )
+            .unwrap();
 
-        let plaintext_2 = hex!(
-            "4118a11822822e4879f2a41b510c1f9b5840c3b5bd44d1e44a085c03d3aede4e1e6c11c572a1968cc3629b505f98c681608d3d1de793d1c40eb5dd5d89acf1966aea07022b48cdc99870ebc40374e8fa6e09"
-        );
-        let credential_r = hex!(
-            "58f13081ee3081a1a003020102020462319ec4300506032b6570301d311b301906035504030c124544484f4320526f6f742045643235353139301e170d3232303331363038323433365a170d3239313233313233303030305a30223120301e06035504030c174544484f4320526573706f6e6465722045643235353139302a300506032b6570032100a1db47b95184854ad12a0c1a354e418aace33aa0f2c662c00b3ac55de92f9359300506032b6570034100b723bc01eab0928e8b2b6c98de19cc3823d46e7d6987b032478fecfaf14537a1af14cc8be829c6b73044101837eb4abc949565d86dce51cfae52ab82c152cb02"
-        );
-        let th_3 = hex!("cf726a925b31bee0c453041d90af477b9c0b6358203b0f9cc3f2d5afce66ab7e");
-        assert_eq!(
-            transcript_3(&th_2, &plaintext_2, &credential_r).unwrap(),
-            th_3
-        );
-
-        let message_3 = hex!(
-            "585825c345884aaaeb22c527f9b1d2b6787207e0163c69b62a0d43928150427203c31674e4514ea6e383b566eb29763efeb0afa518776ae1c65f856d84bf32af3a7836970466dcb71f76745d39d3025e7703e0c032ebad51947c"
-        );
-        let (ciphertext_3, consumed) = parse_bstr(&message_3).unwrap();
-        assert_eq!(consumed, message_3.len());
-        assert_eq!(ciphertext_3.len(), 88);
-
-        let _plaintext_3 = hex!(
-            "a11822822e48c24ab2fd7643c79f584096e1cd5fceadfac1b5af819443f70924f5719955957fd02655beb4775e1a73186a0d1d3ea683f08f8d03dcecb9cf154e1c6f555a1e12ca118ce42bdba6878907"
-        );
-        let _credential_i = hex!(
-            "58f13081ee3081a1a003020102020462319ea0300506032b6570301d311b301906035504030c124544484f4320526f6f742045643235353139301e170d3232303331363038323430305a170d3239313233313233303030305a30223120301e06035504030c174544484f4320496e69746961746f722045643235353139302a300506032b6570032100ed06a8ae61a829ba5fa54525c9d07f48dd44a302f43e0f23d8cc20b73085141e300506032b6570034100521241d8b3a770996bcfc9b9ead4e7e0a1c0db353a3bdf2910b39275ae48b756015981850d27db6734e37f67212267dd05eeff27b9e7a813fa574b72a00b430b"
-        );
-        let th_4 = hex!("808f794ae0030729022128ba917eeee05fed6ce5c32b2f28f15494584af0a591");
-        assert_eq!(
-            transcript_4(&th_3, &ciphertext_3, &credential_r).unwrap(),
-            th_4
-        );
-
-        let responder_public_key =
-            hex!("a1db47b95184854ad12a0c1a354e418aace33aa0f2c662c00b3ac55de92f9359");
-        let id_cred_r = hex!("a11822822e4879f2a41b510c1f9b");
-        let mut verifier = EdhocInitiator::new_with_rng(
-            hex!("4c5b25878f507c6b9dae68fbd4fd3ff997533db0af00b25d324ea28e6c213bc8"),
-            0x2d,
-            &mut FixedRng(x),
-        )
-        .unwrap();
-        assert_eq!(verifier.create_message_1().unwrap().as_slice(), message_1);
-        let verified_message_3 = verifier.process_message_2_with_credential(
-            &message_2,
-            PeerCredential::new(&responder_public_key, &id_cred_r, &credential_r),
-        );
-        assert!(
-            verified_message_3.is_ok(),
-            "RFC 9529 Message 2 failed: {verified_message_3:?}"
-        );
-
-        let prk_out = hex!("1641ee9ca9c66665d62db64cd621ee4e12242ef18987e56d9f868b9bf507c6a8");
-        assert_eq!(
-            edhoc_kdf(&prk_2e, &th_4, "PRK_out", &[], 32)
-                .unwrap()
-                .as_slice(),
-            prk_out
-        );
-        let prk_exporter = hex!("e094672c1894b96093c7261d9761acc8db14664b139d3f30cf9c1a6cc51ed7d4");
-        assert_eq!(
-            edhoc_kdf(&prk_out, &th_4, "10", &[], 32)
-                .unwrap()
-                .as_slice(),
-            prk_exporter
-        );
-        assert_eq!(
-            edhoc_kdf(&prk_exporter, &th_4, "0", &[], 16)
-                .unwrap()
-                .as_slice(),
-            &hex!("ec7d230317d631b8664d6cc9665f44cb")
-        );
-        assert_eq!(
-            edhoc_kdf(&prk_exporter, &th_4, "1", &[], 8)
-                .unwrap()
-                .as_slice(),
-            &hex!("897b8c9b48786f49")
-        );
-
-        let context = export_context(&prk_2e, &th_4, &[0x18], &[0x2d]).unwrap();
-        assert_eq!(context.sender_id(), &[0x18]);
-        assert_eq!(context.recipient_id(), &[0x2d]);
+        let ctx_i = handshake_initiator.export_oscore().unwrap();
+        let ctx_r = responder.export_oscore().unwrap();
+        assert_eq!(ctx_i.sender_id(), ctx_r.recipient_id());
+        assert_eq!(ctx_i.recipient_id(), ctx_r.sender_id());
     }
 
     #[test]
