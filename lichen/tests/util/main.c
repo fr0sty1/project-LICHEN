@@ -94,4 +94,67 @@ ZTEST(lichen_util, test_lichen_hash_32)
 	zassert_equal(lichen_hash_32(zeros, 32), 0x0b2ae445u, "");
 }
 
+ZTEST(lichen_util, test_hash_32_sfn_wrap)
+{
+	static const uint8_t eui64[] = {
+		0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77
+	};
+	static const uint8_t eui64_2[] = {
+		0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x11
+	};
+	uint8_t buf[12];
+	uint32_t sfn;
+	uint32_t h;
+
+	memset(buf, 0, sizeof(buf));
+	memcpy(buf, eui64, 8);
+
+	sfn = 0xFFFFFFFFu;
+	buf[8] = (uint8_t)(sfn);
+	buf[9] = (uint8_t)(sfn >> 8);
+	buf[10] = (uint8_t)(sfn >> 16);
+	buf[11] = (uint8_t)(sfn >> 24);
+	h = lichen_hash_32(buf, 12);
+	zassert_equal(h, 0x211a6929u,
+		      "hash_32(EUI64=0011223344556677, SFN=0xFFFFFFFF)");
+
+	sfn = 0x00000000u;
+	buf[8] = (uint8_t)(sfn);
+	buf[9] = (uint8_t)(sfn >> 8);
+	buf[10] = (uint8_t)(sfn >> 16);
+	buf[11] = (uint8_t)(sfn >> 24);
+	h = lichen_hash_32(buf, 12);
+	zassert_equal(h, 0x87645a8du,
+		      "hash_32(EUI64=0011223344556677, SFN=0x00000000)");
+
+	memcpy(buf, eui64_2, 8);
+	sfn = 0xFFFFFFFFu;
+	buf[8] = (uint8_t)(sfn);
+	buf[9] = (uint8_t)(sfn >> 8);
+	buf[10] = (uint8_t)(sfn >> 16);
+	buf[11] = (uint8_t)(sfn >> 24);
+	h = lichen_hash_32(buf, 12);
+	zassert_equal(h, 0x7217ad29u,
+		      "hash_32(EUI64=aabbccddeeff0011, SFN=0xFFFFFFFF)");
+
+	sfn = 0x00000000u;
+	buf[8] = (uint8_t)(sfn);
+	buf[9] = (uint8_t)(sfn >> 8);
+	buf[10] = (uint8_t)(sfn >> 16);
+	buf[11] = (uint8_t)(sfn >> 24);
+	h = lichen_hash_32(buf, 12);
+	zassert_equal(h, 0xd8619e8du,
+		      "hash_32(EUI64=aabbccddeeff0011, SFN=0x00000000)");
+}
+
+ZTEST(lichen_util, test_hash_32_delta_wrap)
+{
+	uint32_t last_sfn = 0xFFFFFFFFu;
+	uint32_t current_sfn = 0x00000002u;
+	uint32_t delta = current_sfn - last_sfn;
+
+	zassert_equal(delta, 3u,
+		      "SFN delta 0x00000002 - 0xFFFFFFFF = 3 (unsigned wrap)");
+}
+
 ZTEST_SUITE(lichen_util, NULL, NULL, NULL, NULL, NULL);

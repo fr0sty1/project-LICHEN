@@ -144,7 +144,6 @@ ZTEST(routing_announce, test_parse_accepts_minimal_and_app_data)
 				    0U, app_data, sizeof(app_data));
 
 	zassert_ok(lichen_announce_parse(announce, len, &view));
-	zassert_equal(view.flags, 0U);
 	zassert_equal(view.hop_count, 0U);
 	zassert_equal(view.rx_channel, 0U);
 	zassert_equal(view.wire_seq_num, 0x1234U);

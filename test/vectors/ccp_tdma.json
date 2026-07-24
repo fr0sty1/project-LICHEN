@@ -1,6 +1,6 @@
 {
   "format_version": 2,
-  "description": "Independent test vectors for TDMA slot assignment using hash_32(eui64 + epoch) % N per spec/02a-coordinated-capacity.md, guard time boundaries, and drift compensation. Matches Python TDMAScheduler, Rust TdmaScheduler::slot_for, ccp16-hop.json. Independent oracle. Cross-validation with Rust/C.",
+  "description": "Independent test vectors for TDMA slot assignment using hash_32(FNV-1a32, basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) with independent external arithmetic oracle (no LICHEN code). Includes guard time boundaries, drift compensation.",
   "vectors": [
     {
       "name": "slot_static_hash_eui1",

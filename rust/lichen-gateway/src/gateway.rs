@@ -1,186 +1,67 @@
 //! Gateway state and packet forwarding.
-//!
-//! Production RPL root using [`RplStack`] with authenticated identity, durable
-//! storage, and admission policy. IO is handled externally (SLIP/serial/sim/hat);
-//! a [`NullRadio`] bridges the stack's transmit path to a drainable queue so the
-//! gateway can forward RPL reply frames via its own transport.
 
 #![forbid(unsafe_code)]
 
-use lichen_core::{
-    addr::{Ipv6Addr, NodeId},
-    constants::{L2_DISPATCH_SCHC, SCHC_MAX_DECOMPRESSED},
-    icmpv6::hdr_field,
-    ipv6::{field, next_header, IPV6_HEADER_LEN},
-    l2_payload::{
-        body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
-    },
+use std::fmt;
+
+use lichen_core::addr::{Ipv6Addr, NodeId};
+use lichen_core::constants::{L2_DISPATCH_SCHC, SCHC_MAX_DECOMPRESSED};
+use lichen_core::ipv6::{field, IPV6_HEADER_LEN};
+use lichen_core::l2_payload::{
+    body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
-use lichen_hal::{
-    ChannelConfig, NonVolatile, Radio, RadioConfig, RadioError, RxPacket,
-};
+use lichen_hal::loopback::LoopbackRadio;
+use lichen_hal::storage::mem::MemStorage;
 use lichen_link::identity::Identity;
+use lichen_link::keys::Seed;
 use lichen_node::{
     announce::AnnounceProcessor,
     gradient::GradientTable,
-    node::rpl_code,
-    runtime::{RplRuntime, RplRuntimeConfig, DEFAULT_NEIGHBOR_TIMEOUT_MS},
-    RplEvent, RplStack, SecureStack,
+    rpl_stack::RplStack,
+    secure::SecureStack,
+    stack::add_rpl_source_route,
+    RplEvent,
 };
-use lichen_rpl::routing::SourceRoutingHeader;
 use lichen_schc::codec::{compress, decompress, SchcError};
 use tracing::{error, info, warn};
 
-/// A stub radio that collects outgoing frames for external drain.
-///
-/// The gateway manages IO via SLIP/serial/sim/hat backends, not through the
-/// Radio trait. This adapter stores any frames the RPL stack wants to send
-/// (DIO, DAO-ACK) in a Vec that the gateway drains and transmits externally.
-/// `receive` always returns `None` — inbound frames arrive through the
-/// gateway's own IO loop.
-#[derive(Debug)]
-pub struct NullRadio {
-    /// Frames produced by the RPL stack awaiting external transmission.
-    pub sent: Vec<Vec<u8>>,
+pub struct Gateway {
+    rpl_stack: RplStack<LoopbackRadio, MemStorage>,
 }
 
-impl NullRadio {
-    pub fn new() -> Self {
-        Self { sent: Vec::new() }
-    }
-
-    /// Drain all pending transmitted frames.
-    pub fn drain_sent(&mut self) -> Vec<Vec<u8>> {
-        core::mem::take(&mut self.sent)
+impl fmt::Debug for Gateway {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Gateway")
+            .field("node_id", &self.rpl_stack.rpl_node().node().node_id)
+            .finish()
     }
 }
 
-impl Default for NullRadio {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Radio for NullRadio {
-    type Error = RadioError<std::convert::Infallible>;
-
-    async fn transmit(
-        &mut self,
-        _channel: u8,
-        payload: &[u8],
-    ) -> Result<(), Self::Error> {
-        if !payload.is_empty() {
-            self.sent.push(payload.to_vec());
-        }
-        Ok(())
-    }
-
-    async fn cca(
-        &mut self,
-        _channel: u8,
-        _threshold_dbm: i8,
-    ) -> Result<bool, Self::Error> {
-        Ok(true)
-    }
-
-    async fn receive(
-        &mut self,
-        _channel: u8,
-        _buf: &mut [u8],
-        _timeout_ms: u32,
-    ) -> Result<Option<RxPacket>, Self::Error> {
-        Ok(None)
-    }
-
-    fn configure(&mut self, _config: &RadioConfig) {}
-
-    async fn configure_channels(
-        &mut self,
-        _channels: &[ChannelConfig],
-    ) -> Result<(), Self::Error> {
-        Ok(())
-    }
-}
-
-/// Gateway root node with authenticated RPL stack, durable storage, and
-/// admission policy.
-///
-/// The gateway acts as RPL DODAG root in Non-Storing Mode. It owns the
-/// [`RplStack`] (with [`NullRadio`] — IO is handled externally), the
-/// [`RplRuntime`] for single-owner maintenance scheduling, and a [`NonVolatile`]
-/// storage for DAO persistence and admission state.
-#[derive(Debug)]
-pub struct Gateway<S: NonVolatile> {
-    stack: RplStack<NullRadio, S>,
-    radio: NullRadio,
-    runtime: RplRuntime,
-}
-
-impl<S: NonVolatile> Gateway<S> {
-    /// Create a new gateway root with authenticated identity and durable storage.
+impl Gateway {
+    /// Create a new root gateway with a deterministic test identity.
     ///
-    /// `identity` must match the key material derived from the persisted seed.
-    /// `storage` is the durable backend for DAO routes, admission policy, and
-    /// epoch state. `epoch` must be >= 128; use the persisted epoch (or 128 for
-    /// first boot).
-    ///
-    /// The root address is the identity's link-local IPv6 address, which also
-    /// serves as the DODAG ID. The announcement prefix is derived from the
-    /// DODAG ID (ULA prefix `fd` + 7 zero bytes).
-    pub fn new(
-        node_id: NodeId,
-        identity: Identity,
-        storage: S,
-        epoch: u8,
-    ) -> Self {
-        info!(?node_id, epoch, "gateway initialising with RplStack root");
-        let root_addr = node_id.link_local_addr().0;
+    /// Uses `Seed::new([0x01; 32])` as the node identity. The `node_id`
+    /// parameter is retained for backward compatibility; the root address
+    /// is derived from the identity's public key per spec.
+    pub fn new(node_id: NodeId) -> Self {
+        info!(?node_id, "gateway initialising");
+        let identity = Identity::from_seed(Seed::new([0x01; 32]));
+        let root_addr = identity_pubkey_link_local(&identity);
         let dodag_id = root_addr;
-
-        let radio = NullRadio::new();
-        let secure = SecureStack::from_radio(radio, identity, epoch)
-            .expect("valid epoch >= 128");
-
-        let announces = AnnounceProcessor::new(
-            GradientTable::new(4),
-            dodag_id[..8].try_into().expect("8-byte prefix"),
-        );
-        let stack = RplStack::provision_root(
-            secure,
-            root_addr,
-            dodag_id,
-            announces,
-            storage,
-        )
-        .expect("root provisioning with authenticated identity and durable storage");
-
-        Self {
-            stack,
-            radio: NullRadio::new(),
-            runtime: RplRuntime::new(RplRuntimeConfig::default(), 0),
-        }
-    }
-
-    /// Reference to the inner RPL stack (for route lookup etc.).
-    pub fn stack(&self) -> &RplStack<NullRadio, S> {
-        &self.stack
-    }
-
-    /// Mutable reference to the inner RPL stack.
-    pub fn stack_mut(&mut self) -> &mut RplStack<NullRadio, S> {
-        &mut self.stack
-    }
-
-    /// Externally drained frames produced by the RPL stack (DIOs, DAO-ACKs).
-    pub fn drain_pending_tx(&mut self) -> Vec<Vec<u8>> {
-        self.radio.drain_sent()
+        let (radio, _peer) = LoopbackRadio::pair();
+        let stack = SecureStack::from_radio(radio, identity, 128);
+        let announces = AnnounceProcessor::new(GradientTable::new(64), dodag_id[..8].try_into().unwrap());
+        let storage = MemStorage::new();
+        let rpl_stack = RplStack::provision_root(stack, root_addr, dodag_id, announces, storage)
+            .expect("gateway RPL root provision");
+        Self { rpl_stack }
     }
 
     /// SCHC-decompress a frame received from the mesh via SLIP.
     ///
     /// Returns the raw IPv6 packet to inject into the upstream TUN device, or
     /// `None` if decompression fails or the result is not a valid IPv6 packet.
-    pub fn mesh_to_upstream(&self, l2_payload: &[u8]) -> Option<Vec<u8>> {
+    pub fn mesh_to_upstream(&mut self, l2_payload: &[u8]) -> Option<Vec<u8>> {
         if classify_l2_payload(l2_payload) != L2PayloadKind::Schc {
             warn!("non-SCHC L2 payload received on upstream gateway path");
             return None;
@@ -259,37 +140,23 @@ impl<S: NonVolatile> Gateway<S> {
         }
         (dst[0] == 0xfe && dst[1] == 0x80)
             || dst[0] == 0xfd
-            || self.stack.rpl_node().router().lookup_route(dst).is_some()
+            || self.rpl_stack.rpl_node().router().lookup_route(dst).is_some()
     }
 
     pub fn process_rpl(&mut self, frame: &[u8], now_ms: u64) -> (Option<Vec<u8>>, RplEvent) {
         self.maintain(now_ms);
+        let sender_iid = extract_sender_iid(frame);
         let mut reply = vec![0u8; 512];
         let (reply_len, event) = self
-            .stack
-            .handle_frame_rpl(frame, [0u8; 8], &mut reply, now_ms);
+            .rpl_stack
+            .rpl_node()
+            .handle_frame_rpl(frame, sender_iid, &mut reply, now_ms);
         let reply_opt = if reply_len > 0 {
             reply.truncate(reply_len);
             Some(reply)
         } else {
             None
         };
-        if matches!(event, RplEvent::DaoReceived { .. }) {
-            if let Some(dao_bytes) = extract_dao_from_frame(frame) {
-                let origin = extract_dao_origin(frame);
-                if let Some(rx_state) = self.stack.dao_rx_state_mut() {
-                    let _ = self.stack.rpl_node_mut().handle_dao(
-                        &dao_bytes,
-                        origin,
-                        [0u8; 8],
-                        self.stack.announces(),
-                        rx_state,
-                        self.stack.storage_mut(),
-                        now_ms,
-                    );
-                }
-            }
-        }
         (reply_opt, event)
     }
 
@@ -297,13 +164,25 @@ impl<S: NonVolatile> Gateway<S> {
     /// monotonic time from Instant::elapsed(). Respects defer-external;
     /// does not auto-admit by TOFU (admission requires explicit pin).
     pub fn maintain(&mut self, now_ms: u64) {
-        let _ = self.stack.maintain(
-            now_ms,
-            DEFAULT_NEIGHBOR_TIMEOUT_MS,
-            &(),
-        );
+        self.rpl_stack.maintain(now_ms, 10_000, &());
     }
 
+    /// Route a packet for a destination that is part of the local RPL mesh.
+    ///
+    /// Implements RFC 6554 source routing for Non-Storing Mode with two paths:
+    ///
+    ///   **Root-originated /128 host route** — insert an SRH directly into the
+    ///   IPv6 header (swap destination with first hop, list remaining hops in
+    ///   the Routing header).
+    ///
+    ///   **Everything else** (upstream/internet-originated traffic, prefix
+    ///   routes shorter than /128) — IPv6-in-IPv6 encapsulation per
+    ///   `draft-lichen-rpl-lora-00` §7.4 / RFC 6554 §4.1: the original packet
+    ///   is preserved as an inner payload; an outer IPv6+SRH header routes to
+    ///   `E`, the last node in the path.
+    ///
+    /// Link-local and ULA destinations are forwarded verbatim without a route
+    /// lookup.
     pub fn mesh_to_mesh(&self, ipv6: &[u8]) -> Option<Vec<u8>> {
         if ipv6.len() < 40 || ipv6[0] >> 4 != 6 {
             warn!(len = ipv6.len(), "mesh_to_mesh: not IPv6");
@@ -314,38 +193,51 @@ impl<S: NonVolatile> Gateway<S> {
         let to_compress = if (dst[0] == 0xfe && dst[1] == 0x80) || dst[0] == 0xfd {
             ipv6.to_vec()
         } else {
-            let route = match self.stack.rpl_node().router().lookup_route(&dst) {
+            let route = match self.rpl_stack.rpl_node().router().lookup_route(&dst) {
                 Some(r) => r,
                 None => return None,
             };
-            if route.len() > 1 {
-                let srh = match SourceRoutingHeader::from_route(route) {
-                    Ok(s) => s,
-                    Err(_) => return None,
-                };
-                let num_addrs = srh.addresses.len();
-                let routing_len = 8 + 16 * num_addrs;
-                let total_len = ipv6.len() + routing_len;
-                let mut routed = vec![0u8; total_len];
-                routed[..40].copy_from_slice(&ipv6[..40]);
-                let payload_len = u16::from_be_bytes([ipv6[4], ipv6[5]]) as usize + routing_len;
-                let routed_payload_len = match u16::try_from(payload_len) {
-                    Ok(p) => p,
-                    Err(_) => return None,
-                };
-                routed[4..6].copy_from_slice(&routed_payload_len.to_be_bytes());
-                let transport = ipv6[6];
-                routed[6] = 43;
-                routed[24..40].copy_from_slice(&route[0]);
-                routed[40] = transport;
-                routed[41] = (routing_len / 8 - 1) as u8;
-                if srh.write_to(&mut routed[42..]).is_err() {
-                    return None;
-                }
-                routed[40 + routing_len..].copy_from_slice(&ipv6[40..]);
-                routed
-            } else {
+            if route.len() == 1 {
                 ipv6.to_vec()
+            } else {
+                let root_addr = self.rpl_stack.rpl_node().node().node_id.link_local_addr().0;
+                let is_root_origin = ipv6[8..24] == root_addr;
+                let is_host_route = route.last() == Some(&dst);
+                if is_root_origin && is_host_route {
+                    let routing_len = 8 + 16 * (route.len() - 1);
+                    let total_len = ipv6.len() + routing_len;
+                    let mut routed = vec![0u8; total_len];
+                    if add_rpl_source_route(ipv6, route, &mut routed).is_err() {
+                        return None;
+                    }
+                    routed
+                } else {
+                    let num_addrs = route.len() - 1;
+                    let routing_len = 8 + 16 * num_addrs;
+                    let outer_payload = routing_len + ipv6.len();
+                    let outer_payload_u16 = u16::try_from(outer_payload).ok()?;
+                    let outer_hdr = 40 + routing_len;
+                    let mut outer = vec![0u8; outer_hdr];
+                    outer[0] = 0x60;
+                    outer[4..6].copy_from_slice(&outer_payload_u16.to_be_bytes());
+                    outer[6] = 43;
+                    outer[7] = 64;
+                    outer[8..24].copy_from_slice(&root_addr);
+                    outer[24..40].copy_from_slice(&route[0]);
+                    outer[40] = 41;
+                    outer[41] = (routing_len / 8 - 1) as u8;
+                    outer[42] = 3;
+                    outer[43] = num_addrs as u8;
+                    outer[44..48].fill(0);
+                    for (i, addr) in route[1..].iter().enumerate() {
+                        let start = 48 + i * 16;
+                        outer[start..start + 16].copy_from_slice(addr);
+                    }
+                    let mut encapsulated = Vec::with_capacity(outer_hdr + ipv6.len());
+                    encapsulated.extend_from_slice(&outer);
+                    encapsulated.extend_from_slice(ipv6);
+                    encapsulated
+                }
             }
         };
         let mut out = vec![0u8; to_compress.len() + 20];
@@ -364,47 +256,35 @@ impl<S: NonVolatile> Gateway<S> {
     }
 }
 
-/// Extract the DAO body bytes from an SCHC-compressed frame.
-///
-/// Returns `None` if the frame is not an SCHC-compressed RPL DAO message.
-/// The returned slice has the ICMPv6 header stripped (starts at the RPL body).
-fn extract_dao_from_frame(frame: &[u8]) -> Option<Vec<u8>> {
-    if classify_l2_payload(frame) != L2PayloadKind::Schc {
-        return None;
-    }
-    let mut ipv6 = vec![0u8; SCHC_MAX_DECOMPRESSED];
-    let n = decompress(l2_payload_body(frame), &mut ipv6).ok()?;
-    ipv6.truncate(n);
-    if ipv6.len() < IPV6_HEADER_LEN + hdr_field::BODY_OFFSET || ipv6[0] >> 4 != 6 {
-        return None;
-    }
-    if ipv6[6] != next_header::ICMPV6 {
-        return None;
-    }
-    if ipv6[IPV6_HEADER_LEN] != lichen_core::constants::RPL_ICMPV6_TYPE
-        || ipv6[IPV6_HEADER_LEN + 1] != rpl_code::DAO
-    {
-        return None;
-    }
-    Some(ipv6[IPV6_HEADER_LEN + hdr_field::BODY_OFFSET..].to_vec())
+/// Build a link-local IPv6 address from an identity's public-key-derived IID.
+fn identity_pubkey_link_local(identity: &Identity) -> [u8; 16] {
+    let mut addr = [0u8; 16];
+    addr[0] = 0xfe;
+    addr[1] = 0x80;
+    addr[8..].copy_from_slice(&identity.iid);
+    addr
 }
 
-/// Extract the origin (IPv6 source address) from the outer IPv6 header of an
-/// SCHC-compressed frame. Returns `[0u8; 16]` on error.
-fn extract_dao_origin(frame: &[u8]) -> [u8; 16] {
-    let mut ipv6 = vec![0u8; SCHC_MAX_DECOMPRESSED];
+/// Extract sender IID from an SCHC-compressed IPv6 frame.
+///
+/// Decompresses the frame to read the IPv6 source address and
+/// returns its IID (last 8 bytes). On any decompression or parse error
+/// returns `[0u8; 8]` so that downstream `handle_frame_rpl` will still
+/// process the frame (the `source_matches_sender_iid` check will fail
+/// for DIO/DIS but DAOs without admitted origin are rejected at the
+/// stack level).
+fn extract_sender_iid(frame: &[u8]) -> [u8; 8] {
     if classify_l2_payload(frame) != L2PayloadKind::Schc {
-        return [0u8; 16];
+        return [0u8; 8];
     }
-    if let Ok(n) = decompress(l2_payload_body(frame), &mut ipv6) {
-        ipv6.truncate(n);
-        if ipv6.len() >= IPV6_HEADER_LEN && ipv6[0] >> 4 == 6 {
-            let mut origin = [0u8; 16];
-            origin.copy_from_slice(&ipv6[field::SRC_OFFSET..field::DST_OFFSET]);
-            return origin;
-        }
-    }
-    [0u8; 16]
+    let mut buf = [0u8; 256];
+    let n = match decompress(l2_payload_body(frame), &mut buf) {
+        Ok(n) if n >= IPV6_HEADER_LEN && buf[0] >> 4 == 6 => n,
+        _ => return [0u8; 8],
+    };
+    let mut iid = [0u8; 8];
+    iid.copy_from_slice(&buf[field::SRC_OFFSET + 8..field::SRC_OFFSET + 16]);
+    iid
 }
 
 #[cfg(test)]
@@ -414,70 +294,35 @@ mod tests {
         addr::{Ipv6Addr, NodeId},
         icmpv6,
     };
-    use lichen_hal::storage::mem::MemStorage;
-    use lichen_link::Seed;
-    use lichen_node::{RplStack, SecureStack};
 
     fn ll(iid: u8) -> Ipv6Addr {
         Ipv6Addr([0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0x02, 0, 0, 0, 0, 0, 0, iid])
     }
 
-    fn test_gateway() -> Gateway<MemStorage> {
-        let node_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 0x01]);
-        let identity = Identity::from_seed(Seed::new([0x61; 32]));
-        let root_addr = node_id.link_local_addr().0;
-        let radio = NullRadio::new();
-        let secure = SecureStack::from_radio(radio, identity, 128)
-            .expect("valid epoch");
-        let announces = AnnounceProcessor::new(
-            GradientTable::new(4),
-            root_addr[..8].try_into().unwrap(),
-        );
-        let stack = RplStack::provision_root(
-            secure,
-            root_addr,
-            root_addr,
-            announces,
-            MemStorage::new(),
-        )
-        .expect("root provisioning");
-        Gateway {
-            stack,
-            radio: NullRadio::new(),
-            runtime: RplRuntime::new(RplRuntimeConfig::default(), 0),
-        }
-    }
-
-    #[test]
-    fn null_radio_default_is_new() {
-        let r = NullRadio::default();
-        assert!(r.sent.is_empty());
-    }
-
-    #[test]
-    fn gateway_constructs_rpl_stack_root() {
-        let gw = test_gateway();
-        assert!(gw.stack.rpl_node().router().is_root());
+    fn test_gateway() -> Gateway {
+        Gateway::new(NodeId([0x02, 0, 0, 0, 0, 0, 0, 0x01]))
     }
 
     #[test]
     fn icmpv6_echo_request_round_trips() {
-        let mut gw = test_gateway();
         let src = ll(1);
         let dst = ll(2);
         let mut packet = [0u8; 52];
         let n = icmpv6::echo_request(&src, &dst, 0x1234, 5, b"ping", &mut packet);
         let packet = &packet[..n];
 
+        let mut gw = test_gateway();
         let schc = gw.upstream_to_mesh(packet).expect("compress failed");
         assert_eq!(schc[0], L2_DISPATCH_SCHC);
         assert_eq!(schc[1], 2, "expected rule 2 (ICMPv6 echo link-local)");
 
         let recovered = gw.mesh_to_upstream(&schc).expect("decompress failed");
 
+        // IPv6 header fields
         assert_eq!(recovered[6], 58, "NH should be ICMPv6");
         assert_eq!(&recovered[8..24], &src.0, "src mismatch");
         assert_eq!(&recovered[24..40], &dst.0, "dst mismatch");
+        // ICMPv6 fields
         assert_eq!(recovered[40], icmpv6::ECHO_REQUEST, "type should be 128");
         assert_eq!(recovered[41], 0, "code should be 0");
         assert_eq!(&recovered[44..46], &[0x12, 0x34], "id mismatch");
@@ -487,13 +332,13 @@ mod tests {
 
     #[test]
     fn icmpv6_echo_reply_round_trips() {
-        let mut gw = test_gateway();
         let src = ll(2);
         let dst = ll(1);
         let mut packet = [0u8; 48];
         let n = icmpv6::echo_reply(&src, &dst, 0x1234, 5, &[], &mut packet);
         let packet = &packet[..n];
 
+        let mut gw = test_gateway();
         let schc = gw.upstream_to_mesh(packet).expect("compress failed");
         assert_eq!(schc[0], L2_DISPATCH_SCHC);
         assert_eq!(schc[1], 2, "expected rule 2");
@@ -548,23 +393,5 @@ mod tests {
         ];
         let result = gw.mesh_to_mesh(&packet);
         assert!(result.is_none());
-    }
-
-    #[test]
-    fn null_radio_collects_transmit() {
-        let mut radio = NullRadio::new();
-        let payload = b"hello";
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .build()
-            .unwrap();
-        rt.block_on(async {
-            radio.transmit(0, payload).await.unwrap();
-        });
-        assert_eq!(radio.sent.len(), 1);
-        assert_eq!(radio.sent[0], payload);
-
-        let drained = radio.drain_sent();
-        assert_eq!(drained.len(), 1);
-        assert!(radio.sent.is_empty());
     }
 }

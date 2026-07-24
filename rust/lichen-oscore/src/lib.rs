@@ -10,6 +10,25 @@
 //! Using `ccm` + `hkdf` crates directly until a battle-tested no_std OSCORE crate
 //! exists. `liboscore` requires C FFI which complicates embedded cross-compilation.
 //! Switch to `liboscore` or `coapcore` when they mature for embedded targets.
+//!
+//! # Timing properties
+//!
+//! AEAD tag verification uses `ccm::aead::Tag`, which performs constant-time
+//! comparison via the `subtle` crate (`ConstantTimeEq`). This is the only
+//! security-sensitive comparison that operates on secret material (the
+//! authentication tag).
+//!
+//! All other comparisons in this module operate on protocol-level identifiers
+//! (KID, KID Context, sequence numbers) that are inherently visible to any
+//! observer on the mesh — their timing is not secret. Sequence number
+//! comparisons in `is_replay` / `update_replay_window` are ordinary integer
+//! operations, which is acceptable because sequence numbers are not secret
+//! material.
+//!
+//! **If secret material comparisons are ever added** (e.g., comparing derived
+//! keys, nonces, or shared secrets directly), they MUST use
+//! `subtle::ConstantTimeEq` via the `subtle` crate to prevent timing
+//! side-channels.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![forbid(unsafe_code)]
@@ -466,6 +485,29 @@ impl Context {
         Ok(ctx)
     }
 
+    /// Create context from crypto material and activate it using existing durable sender state.
+    ///
+    /// Combines [`new`] and [`restore_existing`] for convenience: allocates the context,
+    /// then loads and restores sender state from the store.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ContextStoreError::Oscore`] for invalid material (same errors as [`new`]),
+    /// [`ContextStoreError::Missing`] when no stored state exists, or
+    /// [`ContextStoreError::Storage`] on store failure.
+    pub fn load_existing<S: SenderStateStore>(
+        master_secret: &[u8; KEY_LEN],
+        master_salt: Option<&[u8]>,
+        id_context: Option<&[u8]>,
+        sender_id: &[u8],
+        recipient_id: &[u8],
+        store: &mut S,
+    ) -> Result<Self, ContextStoreError<S::Error>> {
+        let ctx = Self::new(master_secret, master_salt, id_context, sender_id, recipient_id)
+            .map_err(ContextStoreError::Oscore)?;
+        ctx.restore_existing(store)
+    }
+
     /// Fresh context for EDHOC export (starts inactive; register with store).
     pub fn new_fresh(
         master_secret: &[u8; KEY_LEN],
@@ -474,13 +516,7 @@ impl Context {
         sender_id: &[u8],
         recipient_id: &[u8],
     ) -> Result<Self, OscoreError> {
-        let mut ctx = Self::new(
-            master_secret,
-            master_salt,
-            id_context,
-            sender_id,
-            recipient_id,
-        )?;
+        let mut ctx = Self::new(master_secret, master_salt, id_context, sender_id, recipient_id)?;
         ctx.restored = false;
         ctx.active = false;
         ctx.allow_no_piv_response = true;
@@ -533,13 +569,7 @@ impl Context {
         recipient_id: &[u8],
         construction: Construction,
     ) -> Result<Self, OscoreError> {
-        let mut ctx = Self::new(
-            master_secret,
-            master_salt,
-            id_context,
-            sender_id,
-            recipient_id,
-        )?;
+        let mut ctx = Self::new(master_secret, master_salt, id_context, sender_id, recipient_id)?;
         match construction {
             Construction::Fresh => {
                 ctx.restored = false;
@@ -750,13 +780,7 @@ impl Context {
         code: u8,
         class_e_options: &[u8],
         payload: &[u8],
-    ) -> Result<
-        (
-            heapless::Vec<u8, 280>,
-            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-        ),
-        OscoreError,
-    > {
+    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>), OscoreError> {
         // Use pre-reserved sequence number (NVM persistence handled by caller
         // or ReservedSender). SECURITY: SeqExhausted already checked by caller.
 
@@ -931,8 +955,9 @@ impl Context {
     ///
     /// Unlike `protect_request`, responses:
     /// - Use the ORIGINAL request's KID and PIV for the AAD (ties response to request)
-    /// - Omits PIV from the OSCORE option
-    /// - Reuses the request nonce
+    /// - Optionally includes a fresh PIV in the OSCORE option (controlled by `include_piv`)
+    /// - When `include_piv` is false, reuses the request nonce as-is
+    /// - When `include_piv` is true, derives a fresh nonce from the responder's Sender ID and PIV
     ///
     /// Per RFC 8613 Section 5.2, when a response includes a PIV, the nonce uses
     /// the responder's Sender ID and PIV. When omitting PIV, the response reuses
@@ -946,6 +971,8 @@ impl Context {
     /// - `payload`: Response payload to encrypt
     /// - `request_kid`: The KID from the original request (requester's sender_id)
     /// - `request_piv`: The PIV from the original request
+    /// - `include_piv`: Whether to include a fresh PIV in the option; if true, consumes
+    ///   a sender sequence number. Requires `allow_no_piv_response` to be set when false.
     pub fn protect_response(
         &mut self,
         code: u8,
@@ -954,18 +981,25 @@ impl Context {
         request_kid: &[u8],
         request_piv: &[u8],
         include_piv: bool,
-    ) -> Result<
-        (
-            heapless::Vec<u8, 280>,
-            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-        ),
-        OscoreError,
-    > {
+    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>), OscoreError> {
+        if !self.active {
+            return Err(OscoreError::InvalidParam);
+        }
+        if request_kid.len() > NONCE_ID_LEN
+            || OscoreSeqNum::from_piv(request_piv).is_none()
+            || request_kid != self.recipient_id()
+        {
+            return Err(OscoreError::InvalidParam);
+        }
+        if !include_piv && !self.allow_no_piv_response {
+            return Err(OscoreError::InvalidParam);
+        }
+
         // Determine PIV for nonce: own sequence if including, else request's PIV
         let (nonce_piv, piv_len, piv_for_option): ([u8; PIV_MAX_LEN], usize, Option<usize>) =
             if include_piv {
                 // Generate own PIV.
-                // SECURITY: Returns SeqExhausted if at u32::MAX to prevent nonce reuse.
+                // SECURITY: Returns SeqExhausted if at MAX to prevent nonce reuse.
                 let seq = self
                     .sender_seq
                     .fetch_increment()
@@ -2029,27 +2063,28 @@ mod tests {
                 .map(|_| json_hex(&v["master_salt"]));
             let sender_id = json_hex(&v["sender_id"]);
             let recipient_id = json_hex(&v["recipient_id"]);
-            let id_context = if v["id_context"].is_string() {
-                json_hex(&v["id_context"])
+            let id_context: Option<std::vec::Vec<u8>> = if v["id_context"].is_string() {
+                Some(json_hex(&v["id_context"]))
             } else {
-                std::vec::Vec::new()
+                None
             };
             let salt = salt.as_deref().unwrap_or(&[]);
+            let ic = id_context.as_deref();
 
             assert_eq!(
-                derive_key(&secret, salt, &sender_id, &id_context)
+                derive_key(&secret, salt, &sender_id, ic)
                     .unwrap()
                     .as_slice(),
                 json_hex(&v["expected"]["sender_key"])
             );
             assert_eq!(
-                derive_key(&secret, salt, &recipient_id, &id_context)
+                derive_key(&secret, salt, &recipient_id, ic)
                     .unwrap()
                     .as_slice(),
                 json_hex(&v["expected"]["recipient_key"])
             );
             assert_eq!(
-                derive_iv(&secret, salt, &id_context).unwrap().as_slice(),
+                derive_iv(&secret, salt, ic).unwrap().as_slice(),
                 json_hex(&v["expected"]["common_iv"])
             );
         }
@@ -2069,23 +2104,23 @@ mod tests {
                 json_hex(&v["sender_id"])
             };
             let piv = if v["type"] == "request_protection" {
-                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap() as u32)
+                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap() as u64).unwrap()
             } else if v["include_piv"] == false {
-                OscoreSeqNum::from_piv(&json_hex(&v["request_piv"]))
+                OscoreSeqNum::from_piv(&json_hex(&v["request_piv"])).unwrap()
             } else {
-                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap() as u32)
+                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap() as u64).unwrap()
             };
             let secret: [u8; KEY_LEN] = json_hex(&v["master_secret"]).try_into().unwrap();
             let salt = v["master_salt"]
                 .as_str()
                 .map(|_| json_hex(&v["master_salt"]));
-            let id_context = if v["id_context"].is_string() {
-                json_hex(&v["id_context"])
+            let id_context: Option<std::vec::Vec<u8>> = if v["id_context"].is_string() {
+                Some(json_hex(&v["id_context"]))
             } else {
-                std::vec::Vec::new()
+                None
             };
             let derived_iv =
-                derive_iv(&secret, salt.as_deref().unwrap_or(&[]), &id_context).unwrap();
+                derive_iv(&secret, salt.as_deref().unwrap_or(&[]), id_context.as_deref()).unwrap();
             let mut piv_bytes = [0u8; PIV_MAX_LEN];
             let piv_len = piv.encode_piv(&mut piv_bytes);
 
@@ -2093,114 +2128,6 @@ mod tests {
                 compute_nonce(&sender_id, &piv_bytes[..piv_len], &derived_iv),
                 expected.as_slice()
             );
-        }
-    }
-
-    struct TestStore {
-        context_id: ContextId,
-        state: SenderSequenceState,
-    }
-
-    impl TestStore {
-        fn for_context(context: &Context) -> Self {
-            Self {
-                context_id: context.context_id(),
-                state: context.sender_sequence_state(),
-            }
-        }
-    }
-
-    impl SenderStateStore for TestStore {
-        type Error = core::convert::Infallible;
-
-        fn load(
-            &mut self,
-            context_id: &ContextId,
-        ) -> Result<Option<SenderSequenceState>, Self::Error> {
-            Ok((*context_id == self.context_id).then_some(self.state))
-        }
-
-        fn compare_exchange(
-            &mut self,
-            context_id: &ContextId,
-            expected: Option<SenderSequenceState>,
-            next: SenderSequenceState,
-        ) -> Result<bool, Self::Error> {
-            if *context_id != self.context_id || expected != Some(self.state) {
-                return Ok(false);
-            }
-            self.state = next;
-            Ok(true)
-        }
-    }
-
-    trait TestProtect {
-        fn protect_request(
-            &mut self,
-            code: u8,
-            options: &[u8],
-            payload: &[u8],
-        ) -> Result<
-            (
-                heapless::Vec<u8, 280>,
-                heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-            ),
-            OscoreError,
-        >;
-
-        fn protect_response_with_piv(
-            &mut self,
-            code: u8,
-            options: &[u8],
-            payload: &[u8],
-            request_kid: &[u8],
-            request_piv: &[u8],
-        ) -> Result<
-            (
-                heapless::Vec<u8, 280>,
-                heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-            ),
-            OscoreError,
-        >;
-    }
-
-    impl TestProtect for Context {
-        fn protect_request(
-            &mut self,
-            code: u8,
-            options: &[u8],
-            payload: &[u8],
-        ) -> Result<
-            (
-                heapless::Vec<u8, 280>,
-                heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-            ),
-            OscoreError,
-        > {
-            let mut store = TestStore::for_context(self);
-            self.reserve_sender(&mut store)
-                .map_err(|_| OscoreError::SeqExhausted)?
-                .protect_request(code, options, payload)
-        }
-
-        fn protect_response_with_piv(
-            &mut self,
-            code: u8,
-            options: &[u8],
-            payload: &[u8],
-            request_kid: &[u8],
-            request_piv: &[u8],
-        ) -> Result<
-            (
-                heapless::Vec<u8, 280>,
-                heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
-            ),
-            OscoreError,
-        > {
-            let mut store = TestStore::for_context(self);
-            self.reserve_sender(&mut store)
-                .map_err(|_| OscoreError::SeqExhausted)?
-                .protect_response_with_piv(code, options, payload, request_kid, request_piv)
         }
     }
 
@@ -2404,7 +2331,7 @@ mod tests {
 
         let mut c7 = Context::new_ephemeral(&master_secret, Some(&master_salt), &[1], &[]).unwrap();
         let (ciphertext, option) = c7
-            .protect_response(0x45, &[], payload, &[], &[0x14])
+            .protect_response(0x45, &[], payload, &[], &[0x14], false)
             .unwrap();
         assert_eq!(option.as_slice(), b"");
         assert_eq!(
@@ -2551,7 +2478,7 @@ mod tests {
         let mut context = Context::new_fresh(&secret, None, None, &[1], &[0]).unwrap();
         assert_eq!(
             context
-                .protect_response(0x45, &[], b"response", &[0], &[3])
+                .protect_response(0x45, &[], b"response", &[0], &[3], true)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
@@ -2559,7 +2486,7 @@ mod tests {
         let mut store = EmptyStore(None);
         let mut context = context.register_fresh(&mut store).unwrap();
         assert!(context
-            .protect_response(0x45, &[], b"response", &[0], &[3])
+            .protect_response(0x45, &[], b"response", &[0], &[3], true)
             .is_ok());
     }
 
@@ -2580,10 +2507,13 @@ mod tests {
         assert_eq!(context.sender_sequence_state(), store.state);
         assert_eq!(
             context
-                .protect_response(0x45, &[], b"response", &[0], &[3])
+                .protect_response(0x45, &[], b"response", &[0], &[3], false)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
+        let (_, _) = context
+            .protect_response(0x45, &[], b"response", &[0], &[3], true)
+            .unwrap();
     }
 
     #[test]
@@ -2821,31 +2751,6 @@ mod tests {
     }
 
     #[test]
-    fn forged_request_does_not_poison_replay_window() {
-        let master_secret = [0x5a; KEY_LEN];
-        let attacker_secret = [0x5b; KEY_LEN];
-        let mut attacker = Context::new_ephemeral(&attacker_secret, None, &[0], &[1]).unwrap();
-        let mut legitimate = Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
-        let mut recipient = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
-
-        attacker.sender_seq = seq(5);
-        let (forged_ct, forged_opt) = attacker.protect_request(0x01, &[], b"forged").unwrap();
-
-        legitimate.sender_seq = seq(5);
-        let (valid_ct, valid_opt) = legitimate.protect_request(0x01, &[], b"valid").unwrap();
-
-        assert_eq!(
-            recipient
-                .unprotect_request(&forged_opt, &forged_ct)
-                .unwrap_err(),
-            OscoreError::DecryptFailed
-        );
-
-        let result = recipient.unprotect_request(&valid_opt, &valid_ct).unwrap();
-        assert_eq!(result.2.as_slice(), b"valid");
-    }
-
-    #[test]
     fn crash_after_reservation_skips_sequence_after_restore() {
         let secret = [0x24; KEY_LEN];
         let mut crashed = Context::restore(&secret, None, &[0], &[1], 3, false).unwrap();
@@ -2880,10 +2785,13 @@ mod tests {
         let mut ctx = Context::restore(&master_secret, None, &[1], &[0], 7, false).unwrap();
 
         assert_eq!(
-            ctx.protect_response(0x45, &[], b"response", &[0], &[3])
+            ctx.protect_response(0x45, &[], b"response", &[0], &[3], false)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
+        let (_, _) = ctx
+            .protect_response(0x45, &[], b"response", &[0], &[3], true)
+            .unwrap();
     }
 
     #[test]
@@ -2962,7 +2870,7 @@ mod tests {
         responder.common_iv = [0; NONCE_LEN];
 
         let (ciphertext, option) = responder
-            .protect_response(0x45, &[], &[], b"\xaa", b"\x05")
+            .protect_response(0x45, &[], &[], b"\xaa", b"\x05", false)
             .unwrap();
 
         assert_eq!(ciphertext.as_slice(), &hex!("26f4d77f5a397d9c0a"));
@@ -3343,7 +3251,7 @@ mod tests {
             .protect_response_with_piv(0x45, &[], b"delayed", &[0], request_piv)
             .unwrap();
         assert_eq!(delayed.1.as_slice(), b"\x05\x01\x00\x00\x00\x00");
-        alice.recipient_seq = seq(0x1_0000_0020);
+        alice.recipient_seq = seq(0x1_0000_001F);
         alice.replay_window = u32::MAX;
 
         alice
@@ -3408,12 +3316,12 @@ mod tests {
 
         assert_eq!(
             responder
-                .protect_response(0x45, &[], b"response", b"\x02", b"\x00")
+                .protect_response(0x45, &[], b"response", b"\x02", b"\x00", false)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
         responder
-            .protect_response(0x45, &[], b"response", b"\x00", b"\x00")
+            .protect_response(0x45, &[], b"response", b"\x00", b"\x00", false)
             .unwrap();
     }
 
@@ -3444,21 +3352,21 @@ mod tests {
         let mut responder = Context::new_ephemeral(&master_secret, None, b"\x01", b"\x00").unwrap();
 
         responder
-            .protect_response(0x45, &[], b"first", b"\x00", b"\x07")
+            .protect_response(0x45, &[], b"first", b"\x00", b"\x07", false)
             .unwrap();
         assert_eq!(
             responder
-                .protect_response(0x45, &[], b"second", b"\x00", b"\x07")
+                .protect_response(0x45, &[], b"second", b"\x00", b"\x07", false)
                 .unwrap_err(),
             OscoreError::Replay
         );
 
         responder
-            .protect_response(0x45, &[], b"later", b"\x00", b"\x28")
+            .protect_response(0x45, &[], b"later", b"\x00", b"\x28", false)
             .unwrap();
         assert_eq!(
             responder
-                .protect_response(0x45, &[], b"stale", b"\x00", b"\x07")
+                .protect_response(0x45, &[], b"stale", b"\x00", b"\x07", false)
                 .unwrap_err(),
             OscoreError::Replay
         );

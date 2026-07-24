@@ -26,27 +26,16 @@ use lichen_core::announce::AnnounceBuilder;
 use lichen_link::identity::Identity;
 use lichen_link::schnorr::sign;
 
-#[cfg(all(feature = "defmt", not(feature = "log")))]
+#[cfg(feature = "defmt")]
 use defmt::{info, warn};
-#[cfg(feature = "log")]
+#[cfg(all(feature = "log", not(feature = "defmt")))]
 use log::{info, warn};
 
 /// Default announce interval in milliseconds (spec 9.4: 5 minutes).
 pub const DEFAULT_INTERVAL_MS: u64 = 300_000;
 
-/// Gateway-centric announce interval in milliseconds (30 minutes).
-pub const GATEWAY_INTERVAL_MS: u64 = 1_800_000;
-
-/// DODAG loss resume timeout in milliseconds (60 seconds).
-/// Within this period after leaving a gateway-centric DODAG,
-/// the node resumes the normal announce interval.
-pub const DODAG_LOSS_RESUME_TIMEOUT_MS: u64 = 60_000;
-
 /// Default maximum jitter in milliseconds (spec 9.4: 0-30 seconds).
 pub const DEFAULT_JITTER_MS: u64 = 30_000;
-
-/// Default RX channel announced for rendezvous (CCP-9).
-pub const DEFAULT_CHANNEL: u8 = 0;
 
 /// Announce scheduler configuration.
 #[derive(Debug, Clone)]
@@ -70,7 +59,6 @@ impl Default for SchedulerConfig {
 
 /// Error returned by scheduler operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[non_exhaustive]
 pub enum SchedulerError {
     /// Scheduler is not running.
     NotRunning,
@@ -116,8 +104,6 @@ pub type SeqChangeCallback = Box<dyn Fn(u16) + Send + Sync>;
 struct SchedulerState {
     /// Current sequence number (atomic for safe concurrent access).
     seq_num: AtomicU16,
-    /// Current announce interval in milliseconds (dynamically adjustable).
-    current_interval_ms: AtomicU64,
     /// Whether the scheduler is running.
     running: AtomicBool,
 }
@@ -151,7 +137,6 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
             app_data: Vec::new(),
             state: Arc::new(SchedulerState {
                 seq_num: AtomicU16::new(0),
-                current_interval_ms: AtomicU64::new(DEFAULT_INTERVAL_MS),
                 running: AtomicBool::new(false),
             }),
             on_seq_change: None,
@@ -167,7 +152,6 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
             app_data: Vec::new(),
             state: Arc::new(SchedulerState {
                 seq_num: AtomicU16::new(0),
-                current_interval_ms: AtomicU64::new(config.interval_ms),
                 running: AtomicBool::new(false),
             }),
             on_seq_change: None,
@@ -202,63 +186,17 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
         self.app_data = data;
     }
 
-    /// Get the current RX channel announced for rendezvous (CCP-9).
+    /// Set the current rx_channel for future announces (CCP-9 rendezvous).
     ///
-    /// Why exposed: LCI and processor query this to know what channel
-    /// we're advertising as our preferred RX for announce-driven
-    /// rendezvous pinning.
-    pub fn current_channel(&self) -> u8 {
+    /// Changes take effect on the next announce transmission.
+    /// Values >= 8 are clamped to 0.
+    pub fn set_rx_channel(&mut self, channel: u8) {
+        self.config.rx_channel = if channel < 8 { channel } else { 0 };
+    }
+
+    /// Get the current rx_channel announced in scheduler's announces (CCP-9).
+    pub fn rx_channel(&self) -> u8 {
         self.config.rx_channel
-    }
-
-    /// Set the RX channel to announce for rendezvous (CCP-9).
-    ///
-    /// Why exposed: CCP channel-selection logic (density-aware, hash-based,
-    /// or gateway-assigned) and LCI updates this at runtime. The next
-    /// announce transmission will advertise the new channel.
-    ///
-    /// # Errors
-    ///
-    /// Returns `SchedulerError::InvalidChannel` if channel >= 8.
-    pub fn set_channel(&mut self, channel: u8) -> Result<(), SchedulerError> {
-        if channel >= 8 {
-            return Err(SchedulerError::InvalidChannel);
-        }
-        self.config.rx_channel = channel;
-        Ok(())
-    }
-
-    /// Get the current announce interval in milliseconds.
-    pub fn current_interval_ms(&self) -> u64 {
-        self.state.current_interval_ms.load(Ordering::SeqCst)
-    }
-
-    /// Update the announce interval based on gateway-centric state.
-    ///
-    /// When `gateway_centric` is true, the interval is set to
-    /// `GATEWAY_INTERVAL_MS` (30 minutes). Otherwise, it reverts to
-    /// the configured `interval_ms` (5 minutes by default).
-    ///
-    /// Returns the new interval in milliseconds.
-    pub fn set_gateway_centric(&self, gateway_centric: bool) -> u64 {
-        let new_interval = if gateway_centric {
-            GATEWAY_INTERVAL_MS
-        } else {
-            self.config.interval_ms
-        };
-        self.state
-            .current_interval_ms
-            .store(new_interval, Ordering::SeqCst);
-        #[cfg(any(feature = "defmt", feature = "log"))]
-        if gateway_centric {
-            info!(
-                "announce interval set to {} ms (gateway-centric mode)",
-                new_interval
-            );
-        } else {
-            info!("announce interval set to {} ms (normal mode)", new_interval);
-        }
-        new_interval
     }
 
     /// Whether the scheduler is currently running.
@@ -388,11 +326,8 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
 
             // Wait with jitter
             // Why jitter: Prevents all nodes announcing at the same time.
-            // Why atomic load: Allows external code to adjust the interval
-            // (e.g. gateway-centric suppression) without stopping the loop.
             let jitter = random_range(0, self.config.jitter_ms);
-            let interval = self.state.current_interval_ms.load(Ordering::SeqCst);
-            let delay = interval + jitter;
+            let delay = self.config.interval_ms + jitter;
             tokio::time::sleep(Duration::from_millis(delay)).await;
         }
     }

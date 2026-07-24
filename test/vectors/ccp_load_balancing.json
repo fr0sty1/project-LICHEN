@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "CCP load balancing and TDMA vectors with independent math oracles (hash_32, drift calc from spec).",
+  "description": "CCP load balancing and TDMA vectors using hash_32(FNV-1a32, basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) with independent external arithmetic oracle (no LICHEN code).",
   "vectors": [
     {
       "name": "tdma_slot_assignment_static_hash",

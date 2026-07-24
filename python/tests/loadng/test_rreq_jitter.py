@@ -129,6 +129,22 @@ class TestScheduledSendDelay:
         assert elapsed_ms < 20
         assert len(radio.tx_history) == 1
 
+    @pytest.mark.asyncio
+    async def test_scheduled_send_exception_propagates(self, node: Node):
+        """Exception from link.send() propagates to the caller."""
+        data = b"test_data"
+
+        async def failing_send(*args: object, **kwargs: object) -> bool:
+            msg = "link send failed"
+            raise RuntimeError(msg)
+
+        with patch("lichen.node.random.randint", return_value=0):
+            node.link.send = failing_send  # type: ignore[method-assign]
+            task = node.scheduled_send(data)
+
+        with pytest.raises(RuntimeError, match="link send failed"):
+            await task
+
 
 class TestConfigDefaults:
     """Tests that scheduled_send uses config defaults."""

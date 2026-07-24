@@ -42,6 +42,7 @@ pub struct AnnounceResult {
     pub peer: Option<PeerIdentity>,
     pub congestion: Option<u8>,
     pub evicted_iid: Option<[u8; 8]>,
+    pub rx_channel: u8,
 }
 
 impl AnnounceResult {
@@ -53,6 +54,7 @@ impl AnnounceResult {
             peer: None,
             congestion: None,
             evicted_iid: None,
+            rx_channel: 0,
         }
     }
 
@@ -61,6 +63,7 @@ impl AnnounceResult {
         peer: PeerIdentity,
         congestion: Option<u8>,
         evicted_iid: Option<[u8; 8]>,
+        rx_channel: u8,
     ) -> Self {
         Self {
             accepted: true,
@@ -69,6 +72,7 @@ impl AnnounceResult {
             peer: Some(peer),
             congestion,
             evicted_iid,
+            rx_channel,
         }
     }
 }
@@ -199,7 +203,7 @@ impl AnnounceProcessor {
         let should_relay = announce.should_relay();
 
         let peer = PeerIdentity::from_pubkey(pubkey);
-        AnnounceResult::accepted(should_relay, peer, congestion, evicted_iid)
+        AnnounceResult::accepted(should_relay, peer, congestion, evicted_iid, announce.rx_channel)
     }
 
     pub fn reset_seen(&mut self, iid: &[u8; 8]) {

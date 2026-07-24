@@ -241,7 +241,6 @@ int lichen_announce_parse(const uint8_t *data, size_t len,
 		return -EMSGSIZE;
 	}
 
-	announce->flags = data[1];
 	announce->hop_count = data[2];
 	announce->rx_channel = data[1];
 	announce->wire_seq_num = ((uint16_t)data[3] << 8) | data[4];
@@ -919,6 +918,24 @@ int lichen_announce_sched_send_now(void)
 	k_mutex_unlock(&sched.mutex);
 
 	return send_announce();
+}
+
+uint8_t lichen_announce_sched_get_rx_channel(void)
+{
+	uint8_t ch;
+
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+	ch = sched.rx_channel;
+	k_mutex_unlock(&sched.mutex);
+
+	return ch;
+}
+
+void lichen_announce_sched_set_rx_channel(uint8_t rx_channel)
+{
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+	sched.rx_channel = (rx_channel >= 8U) ? 0U : rx_channel;
+	k_mutex_unlock(&sched.mutex);
 }
 
 int lichen_announce_sched_set_app_data(const uint8_t *app_data, size_t app_data_len)

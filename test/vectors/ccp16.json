@@ -85,7 +85,7 @@
     },
     {
       "name": "select_channel_sf12_low_snr",
-      "description": "snr<-5 triggers sf=12. Channel computed via hash (density<=8 so non-zero).",
+      "description": "snr<-5 triggers sf=12. Channel via hash (density<=8 so non-zero).",
       "type": "slot_selection",
       "input": {
         "eui64": "0011223344556677",
