@@ -1599,8 +1599,13 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		 * Re-register RX callback before starting.
 		 * lichen_lora_l2_stop() clears the callback (lora_l2.c:324-325),
 		 * so we must re-register it on enable. (project-LICHEN-yw7i.28)
+		 * 
+		 * Skip if already running to avoid unnecessary work on repeated
+		 * enable(true) calls (project-LICHEN-d7ub.66).
 		 */
-		ret = lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);
+		if (!lichen_lora_l2_is_running()) {
+			ret = lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);
+		}
 		if (ret != 0) {
 			LOG_ERR("lichen_l2: failed to set RX callback (%d)", ret);
 #if HAVE_LICHEN_LINK
