@@ -742,7 +742,7 @@ class SosResource(resource.ObservableResource):
         ):
             return Message(code=aiocoap.BAD_REQUEST)
         self.activate(bytes.fromhex(from_hex), timestamp)
-        return Message(code=aiocoap.CHANGED)
+        return Message(code=aiocoap.CREATED)
 
     async def render_delete(self, request: Message) -> Message:
         self.cancel()
