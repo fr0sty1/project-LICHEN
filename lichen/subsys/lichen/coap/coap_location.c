@@ -10,6 +10,7 @@
 
 #include <lichen/hal.h>
 #include <lichen/senml.h>
+#include <lichen/coap_oscore.h>
 #include <lichen/coap_server.h>
 #include <lichen/lora_l2.h>
 
@@ -90,18 +91,32 @@ static int sensors_location_post(struct coap_resource *resource,
 				struct coap_packet *request,
 				struct sockaddr *addr, socklen_t addr_len)
 {
-	uint16_t payload_len = 0;
-	const uint8_t *payload = coap_packet_get_payload(request, &payload_len);
-	if (!lichen_coap_is_local_admin(addr, addr_len)) {
-		return lichen_coap_respond(resource, request, addr, addr_len, COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
+	struct coap_oscore_unprotect_result oscore;
+	int ret;
+
+	ret = coap_oscore_unprotect_resource_request(resource, request, addr,
+						     addr_len, COAP_METHOD_POST,
+						     &oscore);
+	if (ret != 0) {
+		return ret;
 	}
-	if (payload == NULL || payload_len == 0) {
-		return lichen_coap_respond(resource, request, addr, addr_len,
-				    COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
+	if (!oscore.is_protected &&
+	    !lichen_coap_is_local_admin(addr, addr_len)) {
+		return coap_oscore_respond_resource(resource, request, addr,
+						    addr_len, &oscore,
+						    COAP_RESPONSE_CODE_UNAUTHORIZED,
+						    0, NULL, 0);
 	}
-	LOG_INF("crowd map /sensors/location POST (%u bytes)", payload_len);
-	return lichen_coap_respond(resource, request, addr, addr_len,
-			    COAP_RESPONSE_CODE_CREATED, 0, NULL, 0);
+	if (oscore.payload == NULL || oscore.payload_len == 0) {
+		return coap_oscore_respond_resource(resource, request, addr,
+						    addr_len, &oscore,
+						    COAP_RESPONSE_CODE_BAD_REQUEST,
+						    0, NULL, 0);
+	}
+	LOG_INF("crowd map /sensors/location POST (%u bytes)", oscore.payload_len);
+	return coap_oscore_respond_resource(resource, request, addr, addr_len,
+					    &oscore, COAP_RESPONSE_CODE_CREATED,
+					    0, NULL, 0);
 }
 
 static const char *const sensors_location_path[] = { "sensors", "location",

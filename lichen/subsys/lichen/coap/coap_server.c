@@ -105,21 +105,6 @@ int lichen_coap_respond(struct coap_resource *resource,
 }
 
 /*
- * Helper to send a simple ACK with a response code.
- * Uses the common respond path (payload=NULL for empty ACK).
- */
-static int send_ack(struct coap_resource *resource,
-		    struct coap_packet *request,
-		    struct sockaddr *addr, socklen_t addr_len,
-		    uint8_t code)
-{
-	return lichen_coap_respond(resource, request, addr, addr_len, code, 0, NULL, 0);
-}
-
-
-
-
-/*
  * /status resource - GET returns node status as CBOR
  */
 static int status_get(struct coap_resource *resource,
@@ -188,32 +173,46 @@ static int config_put(struct coap_resource *resource,
 		      struct coap_packet *request,
 		      struct sockaddr *addr, socklen_t addr_len)
 {
-	const uint8_t *payload;
-	uint16_t payload_len;
+	struct coap_oscore_unprotect_result oscore;
 	int ret;
 
 	if (s_handlers.config_put == NULL) {
 		return COAP_RESPONSE_CODE_NOT_FOUND;
 	}
 
-	if (!lichen_coap_is_local_admin(addr, addr_len)) {
-		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_UNAUTHORIZED, 0, NULL, 0);
+	ret = coap_oscore_unprotect_resource_request(resource, request, addr,
+						     addr_len, COAP_METHOD_PUT,
+						     &oscore);
+	if (ret != 0) {
+		return ret;
+	}
+	if (!oscore.is_protected &&
+	    !lichen_coap_is_local_admin(addr, addr_len)) {
+		return coap_oscore_respond_resource(resource, request, addr,
+						    addr_len, &oscore,
+						    COAP_RESPONSE_CODE_UNAUTHORIZED,
+						    0, NULL, 0);
 	}
 
-	payload = coap_packet_get_payload(request, &payload_len);
-	if (payload == NULL || payload_len == 0) {
-		return COAP_RESPONSE_CODE_BAD_REQUEST;
+	if (oscore.payload == NULL || oscore.payload_len == 0) {
+		return coap_oscore_respond_resource(resource, request, addr,
+						    addr_len, &oscore,
+						    COAP_RESPONSE_CODE_BAD_REQUEST,
+						    0, NULL, 0);
 	}
 
-	ret = s_handlers.config_put(payload, payload_len);
+	ret = s_handlers.config_put(oscore.payload, oscore.payload_len);
 	if (ret < 0) {
 		LOG_ERR("Config PUT callback failed: %d", ret);
-		return COAP_RESPONSE_CODE_BAD_REQUEST;
+		return coap_oscore_respond_resource(resource, request, addr,
+						    addr_len, &oscore,
+						    COAP_RESPONSE_CODE_BAD_REQUEST,
+						    0, NULL, 0);
 	}
 
-	return send_ack(resource, request, addr, addr_len,
-			COAP_RESPONSE_CODE_CHANGED);
+	return coap_oscore_respond_resource(resource, request, addr, addr_len,
+					    &oscore, COAP_RESPONSE_CODE_CHANGED,
+					    0, NULL, 0);
 }
 
 static const char * const config_path[] = { "config", NULL };
