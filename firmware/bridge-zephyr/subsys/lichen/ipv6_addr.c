@@ -71,6 +71,21 @@ int lichen_eui64_to_iid(const uint8_t *eui64, uint8_t *iid)
     return 0;
 }
 
+/*
+ * SECURITY: Compile-time assertion that SHA-256 digest size is exactly 32 bytes.
+ * lichen_pubkey_to_iid() creates a hash buffer of TC_SHA256_DIGEST_SIZE and copies
+ * the first 8 bytes as an IID. If TC_SHA256_DIGEST_SIZE were ever != 32, the
+ * buffer sizing and memcpy would silently produce wrong results.
+ * This check mirrors the BUILD_ASSERT in lichen_util.c but lives here so that
+ * ipv6_addr.c is self-verifying when compiled independently (e.g., host tests).
+ */
+#if defined(__ZEPHYR__) || defined(BUILD_ASSERT)
+BUILD_ASSERT(TC_SHA256_DIGEST_SIZE == 32,
+	     "TC_SHA256_DIGEST_SIZE must be 32 (SHA-256 digest size)");
+#else
+typedef char _tc_sha256_digest_check[(TC_SHA256_DIGEST_SIZE == 32) ? 1 : -1];
+#endif
+
 int lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid)
 {
     int ret;
