@@ -873,7 +873,18 @@ int lichen_lora_l2_stop(void)
             LOG_WRN("lora_l2: RX thread join timed out after %d ms, aborting",
                     RX_THREAD_QUICK_JOIN_MS + RX_TIMEOUT_MS);
             k_thread_abort(&rx_thread_data);
-            k_thread_join(&rx_thread_data, K_FOREVER);
+            join_ret = k_thread_join(&rx_thread_data, K_MSEC(100));
+            if (join_ret != 0) {
+                /*
+                 * Thread struct should be joinable immediately after abort,
+                 * but if the driver ignores the abort (e.g., stuck in DMA
+                 * wait), even 100 ms is not enough. The system is in an
+                 * unrecoverable state.
+                 */
+                LOG_ERR("lora_l2: RX thread join still failing after abort "
+                        "(ret=%d), system unrecoverable", join_ret);
+                k_panic();
+            }
             /*
              * Mark module as requiring re-initialization. k_thread_abort()
              * may have terminated the thread while it held lora_mutex or
