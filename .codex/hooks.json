@@ -35,17 +35,6 @@
         ],
         "matcher": "startup|resume|clear"
       }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "command": "bd codex-hook UserPromptSubmit",
-            "statusMessage": "Refreshing Beads context",
-            "type": "command"
-          }
-        ]
-      }
     ]
   }
 }
