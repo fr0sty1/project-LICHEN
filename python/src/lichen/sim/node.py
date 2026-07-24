@@ -87,10 +87,17 @@ class SimNode:
         self.seed = seed
         self.current_channel = current_channel
         self.tdma_scheduler = tdma_scheduler if tdma_scheduler is not None else TDMAScheduler()
-        if hop_schedule is not None:
-            self.hop_schedule = tuple(hop_schedule)
-        else:
-            self.hop_schedule = self._populate_hop_schedule(seed, sfn, num_channels)
+        n = max(num_channels, 3)
+        if current_channel == 0:
+            data = seed.to_bytes(4, "little") + ((sfn) & 0xffffffff).to_bytes(4, "little")
+            h = hash_32(data)
+            self.current_channel = 1 + (h % n)
+        self.hop_schedule = tuple(
+            1 + (hash_32(
+                seed.to_bytes(4, "little") + (((sfn + i) & 0xffffffff).to_bytes(4, "little"))
+            ) % n)
+            for i in range(8)
+        )
         self._state_machine = StateMachine(
             initial=state,
             transitions=NODE_STATE_TRANSITIONS,
@@ -135,14 +142,6 @@ class SimNode:
             True if the node is connected, False otherwise.
         """
         return self.connected
-
-    @staticmethod
-    def _populate_hop_schedule(seed: int, sfn: int, num_channels: int = 8) -> tuple[int, ...]:
-        n = max(num_channels, 3)
-        return tuple(
-            1 + (hash_32(seed.to_bytes(8, "big") + (((sfn + i) & 0xffffffff).to_bytes(4, "little"))) % n)
-            for i in range(8)
-        )
 
     def synchronized_hop_channel(self, sfn: int | None = None) -> int:
         """Derive hop channel from hop_schedule+SFN (CCP-12) or current_channel.

@@ -544,9 +544,11 @@ def get_message_payload(data: bytes) -> bytes:
     return data[1:]
 
 
-def hop_channel(sfn: int, eui64: bytes, num_channels: int = 8, epoch: int = 0) -> int:
-    """Deterministic synchronized hop per spec/02a-coordinated-capacity.md:120-125 using hash_32(test/vectors/generate.py:30) as oracle."""
-    data = eui64 + ((sfn + epoch) & 0xffffffff).to_bytes(4, "little")
+def hop_channel(sfn: int, seed: int = 0, num_channels: int = 8) -> int:
+    """Deterministic synchronized hop matching synchronized_hop_channel(seed, sfn, num_channels) from tdma.py.
+    Uses hash_32(seed_4byte_LE + sfn_4byte_LE) % max(num_channels, 3) + 1 per CCP-12 test vectors.
+    """
+    data = seed.to_bytes(4, "little") + ((sfn & 0xffffffff).to_bytes(4, "little"))
     h = hash_32(data)
     n = max(num_channels, 3)
     return 1 + (h % n)

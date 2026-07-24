@@ -552,6 +552,36 @@ def test_ccp16_sf_ema_load_factor_hash32_logic(desc: str, vector: dict) -> None:
     assert now == o.get("now", now)
 
 
+def _ccp16_hop_cases():
+    doc = _load("ccp16-hop.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _ccp16_hop_cases())
+def test_ccp16_hop_vectors(name: str, vector: dict) -> None:
+    from lichen.sim.tdma import synchronized_hop_channel
+
+    if vector.get("rx_channel") is not None:
+        assert vector["expected_channel"] == vector["rx_channel"], \
+            f"{name}: rx_channel override mismatch"
+        return
+    if vector.get("density", 0) > 8:
+        assert vector["expected_channel"] == 0, \
+            f"{name}: density>8 should give channel 0"
+        return
+    sfn = vector["sfn"]
+    seed = vector.get("seed", 0)
+    num_channels = vector.get("num_channels", 8)
+    computed = synchronized_hop_channel(sfn, seed, num_channels)
+    assert computed == vector["expected_channel"], \
+        f"{name}: channel {computed} != expected {vector['expected_channel']}"
+    data = seed.to_bytes(4, "little") + ((sfn & 0xFFFFFFFF).to_bytes(4, "little"))
+    h = hash_32(data)
+    assert h == vector["hash_32"], \
+        f"{name}: hash_32 {h} != vector {vector['hash_32']}"
+
+
 def _read_varint(data: bytes, offset: int) -> tuple[int, int]:
     value = 0
     shift = 0

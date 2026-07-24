@@ -182,7 +182,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn secure_dispatch_deaddrop_post_roundtrip() {
+    async fn secure_dispatch_deaddrop_get_roundtrip() {
         let alice_id = Identity::from_seed(Seed::new([0x31; 32]));
         let bob_id = Identity::from_seed(Seed::new([0x32; 32]));
         let (radio_a, radio_b) = LoopbackRadio::pair();
@@ -246,6 +246,97 @@ mod tests {
                 &bob_id.iid,
                 &["deaddrop"],
                 &[0xAA],
+                &mut alice_store,
+            )
+            .await
+            .unwrap();
+
+        // Bob receives and dispatches through secure dispatch
+        let received = bob.receive_secure_datagram(1000).await.unwrap().unwrap();
+        let dispatcher = default_dispatcher();
+        let outcome = dispatch_secure(&mut bob, &mut bob_store, &received, &dispatcher)
+            .await
+            .unwrap();
+        assert!(matches!(outcome, SecureDispatchOutcome::Handled));
+
+        // Alice should get a response
+        let response = alice.receive_secure_datagram(1000).await.unwrap().unwrap();
+        let decrypted = alice
+            .decrypt_response(&response, &mut alice_correlation)
+            .await
+            .unwrap();
+        assert!(matches!(
+            decrypted,
+            crate::secure::SecureResponse::Decrypted { code, .. }
+            if code == MessageCode::CONTENT
+        ));
+    }
+
+    #[tokio::test]
+    async fn secure_dispatch_confessions_get_roundtrip() {
+        let alice_id = Identity::from_seed(Seed::new([0x41; 32]));
+        let bob_id = Identity::from_seed(Seed::new([0x42; 32]));
+        let (radio_a, radio_b) = LoopbackRadio::pair();
+
+        let mut alice_stack = Stack::new(radio_a, alice_id.clone(), 128, 0);
+        alice_stack.add_peer(PeerIdentity::from_pubkey(bob_id.pubkey));
+        let mut bob_stack = Stack::new(radio_b, bob_id.clone(), 128, 0);
+        bob_stack.add_peer(PeerIdentity::from_pubkey(alice_id.pubkey));
+
+        let mut alice = SecureStack::new(alice_stack);
+        let mut bob = SecureStack::new(bob_stack);
+
+        let master_secret = [0xAB; 16];
+        let mut alice_store = SimpleStore {
+            record: None,
+            existing: SenderSequenceState {
+                next_sequence: 0,
+                exhausted: false,
+            },
+            fail: false,
+        };
+        let mut bob_store = SimpleStore {
+            record: None,
+            existing: SenderSequenceState {
+                next_sequence: 0,
+                exhausted: false,
+            },
+            fail: false,
+        };
+
+        let alice_ctx = OscoreContext::load_existing(
+            &master_secret,
+            None,
+            None,
+            &alice_id.iid[..1],
+            &bob_id.iid[..1],
+            &mut alice_store,
+        )
+        .unwrap();
+        let bob_ctx = OscoreContext::load_existing(
+            &master_secret,
+            None,
+            None,
+            &bob_id.iid[..1],
+            &alice_id.iid[..1],
+            &mut bob_store,
+        )
+        .unwrap();
+
+        alice
+            .register_fresh_context(bob_id.iid, alice_ctx, &mut alice_store)
+            .unwrap();
+        bob.register_fresh_context(alice_id.iid, bob_ctx, &mut bob_store)
+            .unwrap();
+
+        // Alice sends an encrypted GET to /confessions
+        let bob_addr = bob.local_addr();
+        let mut alice_correlation = alice
+            .send_secure_get(
+                &bob_addr,
+                &bob_id.iid,
+                &["confessions"],
+                &[0xBB],
                 &mut alice_store,
             )
             .await

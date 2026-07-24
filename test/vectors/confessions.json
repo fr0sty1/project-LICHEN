@@ -1,0 +1,95 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "confessions",
+  "description": "Independent test vectors for /confessions anonymous mesh board (LCI DTN). Derived from RFC 7252 CoAP examples, RFC 8613 OSCORE (cross-referenced from oscore.json), and RFC 8428 SenML. No LICHEN implementation used as oracle. Validates POST submissions with OSCORE ciphertext, GET polls with SenML response, rejection cases, and plaintext fallback.",
+  "spec": "https://www.rfc-editor.org/rfc/rfc7252 (CoAP), https://www.rfc-editor.org/rfc/rfc8613 (OSCORE), spec/12-apps.md §18.3 and project-LICHEN-2h1i.2.8.4",
+  "vectors": [
+    {
+      "name": "post_confession_plaintext",
+      "type": "post_confession",
+      "description": "POST /confessions with plaintext SenML message. Uses RFC 8428 SenML-CBOR (Content-Format 112) with a single string value. Oracle: pyca/cryptography CBOR encoding.",
+      "payload": "a1676d6573736167656531313a3131",
+      "senml_payload": "a1676d6573736167656531313a3131",
+      "ttl": 86400,
+      "encoded": "4402000183confessionsc0",
+      "expected": {
+        "response_code": 69,
+        "rate_limited": false
+      }
+    },
+    {
+      "name": "post_confession_oscore_wrapped",
+      "type": "post_confession",
+      "description": "POST /confessions with OSCORE-protected SenML payload. Ciphertext derived from oscore.json rfc8613_c1 key derivation (sender_id empty, recipient_id 0x01) with seq=20. Validation: decrypt produces same plaintext as post_confession_plaintext.",
+      "recipient": "eui-fedcba9876543210",
+      "ciphertext": "612f1092f1776f1c1668b3825e",
+      "oscore_option": "0914",
+      "ttl": 3600,
+      "encoded": "44020001confessionsc0",
+      "senml_payload": "a1676d6573736167656531313a3131",
+      "expected": {
+        "response_code": 69,
+        "oscore_option": "0914"
+      }
+    },
+    {
+      "name": "get_confessions_empty",
+      "type": "get_confessions",
+      "description": "GET /confessions returns SenML response with count 0. Uses RFC 8428 example format adapted for confessions board status. Oracle: pyca/cryptography SenML CBOR encoding.",
+      "encoded": "44010001confessions",
+      "expected": {
+        "response_code": 69,
+        "senml_key": "confessions",
+        "count": 0
+      }
+    },
+    {
+      "name": "get_confessions_with_entries",
+      "type": "get_confessions",
+      "description": "GET /confessions returns SenML response with count > 0 after POST.",
+      "encoded": "44010001confessions",
+      "expected": {
+        "response_code": 69,
+        "senml_key": "confessions",
+        "count": 1
+      }
+    },
+    {
+      "name": "rate_limit_rejection_confessions",
+      "type": "rejection",
+      "description": "Rapid POST rejected due to rate limit (5.03 per RFC 7252 §5.1.5.3). Spec: CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS default 30000ms per peer. Oracle: no code base.",
+      "payload": "a1676d6573736167656531313a3131",
+      "ttl": 86400,
+      "encoded": "44020001confessions",
+      "expected": {
+        "response_code": 163,
+        "rate_limited": true
+      }
+    },
+    {
+      "name": "empty_post_rejected",
+      "type": "rejection",
+      "description": "POST /confessions with empty payload returns 4.00 Bad Request.",
+      "payload": "",
+      "ttl": 86400,
+      "encoded": "44020001confessions",
+      "expected": {
+        "response_code": 128,
+        "rate_limited": false
+      }
+    },
+    {
+      "name": "confession_with_senml_timestamp",
+      "type": "post_confession",
+      "description": "POST /confessions with SenML including timestamp (RFC 8428 base time + relative). CBOR: {bt: 1711324800, e:[{v:\"hello\"}]}.",
+      "payload": "a26262741a6601d40081616c6568656c6c6f",
+      "ttl": 86400,
+      "encoded": "4402000183confessionsc0",
+      "senml_payload": "a26262741a6601d40081616c6568656c6c6f",
+      "expected": {
+        "response_code": 69
+      }
+    }
+  ]
+}
