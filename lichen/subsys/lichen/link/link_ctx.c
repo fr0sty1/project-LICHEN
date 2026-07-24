@@ -583,14 +583,17 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 #endif
 }
 
-int lichen_tdma_init(struct lichen_tdma_slot *_Nonnull s)
+int lichen_tdma_init(struct lichen_tdma_ctx *_Nonnull tdma, const struct lichen_link_ctx *_Nonnull ctx)
 {
-	if (s == NULL) {
+	(void)ctx;
+	if (tdma == NULL) {
 		return -EINVAL;
 	}
-	s->id = 0;
-	s->assigned = 0;
-	s->next = 0;
+	tdma->superframe = 0;
+	tdma->slot = 0;
+	tdma->n_slots = 0;
+	tdma->slot_duration = 0;
+	tdma->synced = false;
 	return 0;
 }
 int lichen_link_set_slot(struct lichen_link_ctx *ctx, struct lichen_tdma_ctx *tdma, uint8_t slot_id, uint8_t n_slots, uint32_t sfn)
