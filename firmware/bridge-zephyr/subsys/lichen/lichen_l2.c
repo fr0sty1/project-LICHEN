@@ -1343,6 +1343,7 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		for (size_t i = 0; i < CONFIG_LICHEN_LINK_MAX_NEIGHBORS; i++) {
 			secure_zero(peer_table[i].pubkey, sizeof(peer_table[i].pubkey));
 			secure_zero(peer_table[i].eui64, sizeof(peer_table[i].eui64));
+			peer_table[i].last_seen = 0;
 			peer_table[i].active = false;
 		}
 		k_mutex_unlock(&rx_mutex);
