@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-xy4c",
   "title": "[review] project-LICHEN-worker6-ojt7: fragments_in_window_vec calls renamed method fragments_in_window",
   "description": "In rust/lichen-schc/src/fragment.rs (std_ext module, line 1014):\nfragments_in_window_vec() helper calls self.fragments_in_window(abs_window).collect() but the method was renamed. The helper itself IS the renamed version, creating a recursive/infinite loop at worst, or simply calling a method that no longer exists.\n\nFix: change the implementation to use the actual underlying iterator/logic that fragments_in_window used to provide.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:32:55.199355094Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T18:32:55.199355094Z"
+  "updated_at": "2026-07-24T18:55:08.493209071Z",
+  "started_at": "2026-07-24T18:55:08.493209071Z",
+  "lease_expires_at": "2026-07-24T19:00:08.493209071Z",
+  "heartbeat_at": "2026-07-24T18:55:08.493209071Z"
 }
