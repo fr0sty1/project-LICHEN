@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-k53h",
   "title": "[review] project-LICHEN-worker6-z22y: responder uses plaintext instead of ciphertext for TH_4",
   "description": "In verify_message_3 (edhoc.rs:1345), the responder computes TH_4 from `pending.plaintext` (the decrypted message_3) instead of the ciphertext. Per RFC 9528, TH_4 = H(TH_3, CIPHERTEXT_3). Using plaintext produces a different hash than the initiator computes, breaking OSCORE context derivation.\n\n**Fix needed:**\n1. Add a `ciphertext` field to `PendingMessage3` struct (or store raw msg3)\n2. Pass the raw ciphertext (not `pending.plaintext`) to `transcript_4` in `finish_process_message_3`\n3. Add interop test verifying initiator and responder derive the same TH_4",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:15:20.335010497Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T18:15:20.335010497Z"
+  "updated_at": "2026-07-24T18:24:23.836058256Z",
+  "started_at": "2026-07-24T18:24:23.836058256Z",
+  "lease_expires_at": "2026-07-24T18:29:23.836058256Z",
+  "heartbeat_at": "2026-07-24T18:24:23.836058256Z"
 }
