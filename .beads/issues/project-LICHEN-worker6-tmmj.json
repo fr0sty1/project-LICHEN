@@ -2,12 +2,15 @@
   "id": "project-LICHEN-worker6-tmmj",
   "title": "[review] project-LICHEN-worker6-dztx: rfc9529_signature_trace_vectors test passes 3 args to transcript_4 (now takes 2)",
   "description": "## Location\\n\\n`rust/lichen-oscore/src/edhoc.rs:1691`\\n\\n## Problem\\n\\nCommit cc2b1533db changed `transcript_4` to take only 2 parameters (`th_3` and `ciphertext_3`) — dropping the `cred` parameter. The test `rfc9529_signature_trace_vectors` at line 1691 was NOT updated and still calls:\\n```rust\\ntranscript_4(\u0026th_3, \u0026plaintext_3, \u0026credential_i).unwrap()\\n```\\n\\nThis is a build-breaking compile error (E0061: wrong number of arguments) when tests are compiled.\\n\\n## Additional spec issue\\n\\nThe test expects `th_4 = ad002457080da9a5e7a942030ca302f5cc9f77ba8124a49ba560d168b5b6f26d` which is computed as H(TH_3, PLAINTEXT_3, CRED_I) per RFC 9529 §3.1 and RFC 9528 §4.1.3. The new `transcript_4` computes H(TH_3, CIPHERTEXT_3) without CRED_I. Even after fixing the arg count, the expected value won't match.\\n\\nRFC 9528 §4.1.3 states: TH_4 = H(TH_3, PLAINTEXT_3, CRED_I). Both the bead `project-LICHEN-worker6-61fd` (which claimed CRED_I shouldn't be included) and this commit (which removed it AND switched to CIPHERTEXT_3) deviate from the RFC.\\n\\n## Fix needed\\n\\n1. Restore `cred` parameter to `transcript_4` to compute H(TH_3, PLAINTEXT_3, CRED_I)\\n2. Update the responder path to pass `pending.plaintext` (PLAINTEXT_3) not `pending.ciphertext_3` (CIPHERTEXT_3)\\n3. Update line 1691 test to match\\n\\nAlternatively, if CIPHERTEXT_3 without CRED_I is a deliberate deviation, update the expected `th_4` value in the test and document the spec deviation.\\n\\nDiscovered-from: project-LICHEN-worker6-dztx",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:46:22.886653299Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:15:26.478694616Z",
-  "started_at": "2026-07-24T17:49:53.525081084Z"
+  "updated_at": "2026-07-24T19:19:20.64854648Z",
+  "started_at": "2026-07-24T17:49:53.525081084Z",
+  "lease_expires_at": "2026-07-24T19:24:20.64854648Z",
+  "heartbeat_at": "2026-07-24T19:19:20.64854648Z"
 }
