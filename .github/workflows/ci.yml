@@ -249,7 +249,7 @@ jobs:
       matrix:
         include:
           # nRF52840 boards (ARM Cortex-M4F)
-          - board: rak4631_nrf52840
+          - board: rak4631/nrf52840
             app: puck
             extra-conf: ""
           # Hardware-model-v2 name; "t_echo_nrf52840" is not a valid board
