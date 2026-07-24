@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wlgu.2.3.4",
   "title": "Verify regeneration with pytest test_vectors.py and update validation if needed",
   "description": "After generator run, execute PYTHONPATH=python/src python -m pytest python/tests/test_vectors.py -q --tb=no to confirm all ccp vectors pass schema, hash matches, no placeholders. Fix any test integrity issues without weakening tests. Close when bd ready empty for this epic.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

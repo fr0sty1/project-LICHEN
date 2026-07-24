@@ -3,7 +3,7 @@
   "title": "Add test vectors and Python/Rust tests for /deaddrop and /confessions payloads, OSCORE E2E, SenML encoding",
   "description": "Extend test/vectors/ with new JSON for these resources. Update Python test_node_coap_integration.py and Rust tests. Must pass dual-impl cross validation. Fix all failures.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",
