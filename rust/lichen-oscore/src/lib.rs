@@ -1014,6 +1014,9 @@ impl Context {
                 &piv[..piv_len],
             )
         } else {
+            if !self.active {
+                return Err(OscoreError::InvalidParam);
+            }
             if !self.allow_no_piv_response {
                 return Err(OscoreError::InvalidParam);
             }

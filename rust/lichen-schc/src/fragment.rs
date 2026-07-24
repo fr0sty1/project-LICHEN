@@ -19,6 +19,7 @@ pub const MAX_PACKET_SIZE: usize = 2 * WINDOW_SIZE * TILE_SIZE;
 pub const RULE_ID_A_TO_B: u8 = 0x78;
 pub const RULE_ID_B_TO_A: u8 = 0x79;
 pub const BITMAP_MASK: u64 = (1u64 << WINDOW_SIZE) - 1;
+pub const DEFAULT_RECEIVER_LIMIT: usize = 1281;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
@@ -1055,7 +1056,7 @@ mod std_ext {
 
     /// Reassembles a single datagram from ACK-on-Error fragments.
     #[derive(Debug)]
-    pub struct FragmentReceiver {
+    pub struct StdFragmentReceiver {
         window_size: usize,
         rule_id: Option<u8>,
         tiles: HashMap<usize, Vec<u8>>,
@@ -1070,15 +1071,15 @@ mod std_ext {
     }
 
     #[derive(Clone, Debug, PartialEq, Eq)]
-    pub struct ReceiverResult {
+    pub struct StdReceiverResult {
         pub ack: Option<Ack>,
         pub reassembled: Option<Vec<u8>>,
         pub mic_ok: Option<bool>,
     }
 
-    impl FragmentReceiver {
+    impl StdFragmentReceiver {
         pub fn new(window_size: usize) -> Self {
-            FragmentReceiver {
+            StdFragmentReceiver {
                 window_size,
                 rule_id: None,
                 tiles: HashMap::new(),
@@ -1145,9 +1146,9 @@ mod std_ext {
             (0..self.window_size).all(|p| self.tiles.contains_key(&(base + p)))
         }
 
-        pub fn receive(&mut self, frag: &Fragment<'_>) -> ReceiverResult {
+        pub fn receive(&mut self, frag: &Fragment<'_>) -> StdReceiverResult {
             if self.done {
-                return ReceiverResult {
+                return StdReceiverResult {
                     ack: None,
                     reassembled: None,
                     mic_ok: None,
@@ -1156,7 +1157,7 @@ mod std_ext {
             if self.rule_id.is_none() {
                 self.rule_id = Some(frag.rule_id);
             } else if self.rule_id != Some(frag.rule_id) {
-                return ReceiverResult {
+                return StdReceiverResult {
                     ack: None,
                     reassembled: None,
                     mic_ok: None,
@@ -1164,7 +1165,7 @@ mod std_ext {
             }
             let abs_window = self.abs_window(frag);
             if self.completed_windows.contains(&abs_window) {
-                return ReceiverResult {
+                return StdReceiverResult {
                     ack: None,
                     reassembled: None,
                     mic_ok: None,
@@ -1183,7 +1184,7 @@ mod std_ext {
             }
 
             if frag.fcn as usize >= self.window_size {
-                return ReceiverResult {
+                return StdReceiverResult {
                     ack: None,
                     reassembled: None,
                     mic_ok: None,
@@ -1210,7 +1211,7 @@ mod std_ext {
                     self.completed_windows.insert(abs_window);
                     self.current_window = abs_window + 1;
                 }
-                return ReceiverResult {
+                return StdReceiverResult {
                     ack: Some(Ack::new(
                         self.rule_id.unwrap(),
                         (abs_window % 2) as u8,
@@ -1221,14 +1222,14 @@ mod std_ext {
                     mic_ok: None,
                 };
             }
-            ReceiverResult {
+            StdReceiverResult {
                 ack: None,
                 reassembled: None,
                 mic_ok: None,
             }
         }
 
-        fn finalize(&mut self) -> ReceiverResult {
+        fn finalize(&mut self) -> StdReceiverResult {
             let bitmap_vec = self.window_bitmap(self.all1_window);
             let bitmap: u64 = bitmap_vec
                 .iter()
@@ -1243,7 +1244,7 @@ mod std_ext {
             let n = self.tiles.len();
             let contiguous = n > 0 && self.tiles.keys().max() == Some(&(n - 1));
             if !contiguous {
-                return ReceiverResult {
+                return StdReceiverResult {
                     ack: Some(nack),
                     reassembled: None,
                     mic_ok: None,
@@ -1259,7 +1260,7 @@ mod std_ext {
             if compute_mic(&data) == self.mic {
                 self.done = true;
                 self.reassembled = Some(data.clone());
-                ReceiverResult {
+                StdReceiverResult {
                     ack: Some(Ack::new(
                         rule_id,
                         (self.all1_window % 2) as u8,
@@ -1270,7 +1271,7 @@ mod std_ext {
                     mic_ok: Some(true),
                 }
             } else {
-                ReceiverResult {
+                StdReceiverResult {
                     ack: Some(nack),
                     reassembled: None,
                     mic_ok: Some(false),
