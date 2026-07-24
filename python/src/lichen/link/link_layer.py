@@ -36,6 +36,12 @@ from ..constants import (
     CAD_SLOT_MS,
     LORA_CAD_TIMEOUT_MS,
 )
+from ..constants import (
+    CAD_MAX_BACKOFF_EXPONENT,
+    CAD_MAX_CYCLES,
+    CAD_SLOT_MS,
+    LORA_CAD_TIMEOUT_MS,
+)
 from ..crypto.identity import Identity, PeerIdentity
 from ..crypto.schnorr48 import sign, verify
 from ..gradient import MAX_ENTRIES
@@ -67,6 +73,13 @@ _key_pin_warned = False
 # Why reject: Encryption is not implemented. Frames claiming to be encrypted
 # cannot be decrypted, so accepting them would misinterpret the payload.
 _encrypted_frame_warned = False
+
+
+def _fnv1a_32(data: bytes) -> int:
+    h = 0x811c9dc5
+    for b in data:
+        h = ((h ^ b) * 0x01000193) & 0xffffffff
+    return h
 
 
 def _verify_mic_stub(frame: LichenFrame) -> bool:
@@ -227,6 +240,43 @@ class LinkLayer:
         if self.persist_path is not None:
             self._load_persisted_state()
 
+    def select_channel(
+        self,
+        dst_addr: bytes = b"",
+        peer_rx_channel: int | None = None,
+        known_peer: bool = False,
+        sfn: int = 0,
+        num_channels: int = 8,
+    ) -> int:
+        """Select TX channel per CCP-9 rendezvous logic.
+
+        Priority:
+        1. Known peer with synchronized hop: hop_channel via hash_32(IID, SFN)
+        2. Known peer with announced rx_channel: use that channel
+        3. Unknown peer: control channel CH0
+
+        Args:
+            dst_addr: Destination address (IID or empty for broadcast).
+            peer_rx_channel: Peer's announced rx_channel (from Announce).
+            known_peer: True if peer is known (has sent Announce).
+            sfn: Current superframe number for synchronized hopping.
+            num_channels: Number of data channels (default 8).
+
+        Returns:
+            Channel number (0 for control, 1..num_channels for data).
+        """
+        if known_peer and len(dst_addr) == 8:
+            data = dst_addr + sfn.to_bytes(4, "little")
+            h = _fnv1a_32(data)
+            n = max(num_channels, 3)
+            hop_ch = 1 + (h % n)
+            return hop_ch
+
+        if known_peer and peer_rx_channel is not None:
+            return peer_rx_channel
+
+        return 0
+
     def _next_seqnum(self) -> tuple[int, int]:
         """Get next (epoch, seqnum) pair and advance the counter.
 
@@ -301,10 +351,11 @@ class LinkLayer:
         addr_mode: AddrMode = AddrMode.NONE,
         priority: Priority = Priority.BULK,
         deadline_ms: int | None = None,
+        channel: int = 0,
     ) -> bool:
         """Queue and transmit one frame while serializing TX state."""
         async with self._tx_lock:
-            return await self._send_locked(payload, dst_addr, addr_mode, priority, deadline_ms)
+            return await self._send_locked(payload, dst_addr, addr_mode, priority, deadline_ms, channel)
 
     async def _send_locked(
         self,
@@ -313,6 +364,7 @@ class LinkLayer:
         addr_mode: AddrMode = AddrMode.NONE,
         priority: Priority = Priority.BULK,
         deadline_ms: int | None = None,
+        channel: int = 0,
     ) -> bool:
         """Build, enqueue, and drain while the TX lock is held.
 
@@ -326,6 +378,7 @@ class LinkLayer:
             priority: Queue priority (ROUTING, ACK, URGENT, or BULK).
             deadline_ms: Absolute deadline in ms. If None, uses default
                          for the priority level.
+            channel: Radio channel for transmission (CCP-9 rendezvous).
 
         Raises:
             QueueFullError: If queue is full and cannot preempt lower priority.
@@ -380,6 +433,7 @@ class LinkLayer:
             frame_bytes,
             priority=priority,
             deadline_ms=deadline_ms,
+            channel=channel,
             return_reservation=True,
         )
         assert reservation is not None, "push with reservation failed"
@@ -399,18 +453,19 @@ class LinkLayer:
             self.tx_queue.expire_stale()
             if len(self.tx_queue) == 0:
                 break  # Queue empty
-            if self.cad_enabled and not await self._wait_for_clear_channel():
-                logger.warning(
-                    "TX deferred: channel busy after %d backoff cycles, "
-                    "%d packets remain queued",
-                    CAD_MAX_CYCLES,
-                    len(self.tx_queue),
-                )
-                break
             entry = self.tx_queue.reserve()
             if entry is None:
                 break
-            if await self.radio.transmit(entry.data):
+            if self.cad_enabled and not await self._wait_for_clear_channel(channel=entry.channel):
+                logger.warning(
+                    "TX deferred: channel busy after %d backoff cycles, "
+                    "%d packets remain queued on ch%d",
+                    CAD_MAX_CYCLES,
+                    len(self.tx_queue),
+                    entry.channel,
+                )
+                break
+            if await self.radio.transmit(entry.data, channel=entry.channel):
                 transmitted_any = True
                 logger.debug(
                     "TX success, %d packets remain queued",
@@ -423,7 +478,7 @@ class LinkLayer:
                 break
         return transmitted_any
 
-    async def _wait_for_clear_channel(self) -> bool:
+    async def _wait_for_clear_channel(self, channel: int = 0) -> bool:
         """Perform CAD with exponential backoff until channel is clear.
 
         Algorithm: For each cycle, attempt CAD with increasing backoff.
@@ -439,6 +494,9 @@ class LinkLayer:
         Note: radio.cad() False now documented as clear (timeout conflated per
         P4 design in project-LICHEN-b4pw); treats timeout as clear for TX.
 
+        Args:
+            channel: Radio channel to check (CCP-9 rendezvous).
+
         Returns:
             True if channel became clear, False after max retries.
         """
@@ -446,7 +504,7 @@ class LinkLayer:
 
         for cycle in range(CAD_MAX_CYCLES):
             for attempt in range(CAD_MAX_BACKOFF_EXPONENT + 1):
-                channel_busy = await self.radio.cad(LORA_CAD_TIMEOUT_MS)
+                channel_busy = await self.radio.cad(LORA_CAD_TIMEOUT_MS, channel=channel)
 
                 if not channel_busy:
                     logger.debug(
@@ -475,7 +533,7 @@ class LinkLayer:
 
         return False
 
-    async def receive(self, timeout_ms: int) -> RxFrame | ReceiveError | None:
+    async def receive(self, timeout_ms: int, channel: int = 0) -> RxFrame | ReceiveError | None:
         """Receive and validate a frame.
 
         Why async: Radio reception blocks until a packet arrives or timeout.
@@ -489,13 +547,14 @@ class LinkLayer:
 
         Args:
             timeout_ms: Maximum time to wait for a frame, in milliseconds.
+            channel: Radio channel to listen on (CCP-9 rendezvous).
 
         Returns:
             RxFrame on success, ReceiveError on validation failure, None on timeout.
             problem where all failures collapsed to None; callers can now
             distinguish security events from malformed frames from timeouts.
         """
-        result = await self.radio.receive(timeout_ms)
+        result = await self.radio.receive(timeout_ms, channel=channel)
         if result is None:
             return None
 

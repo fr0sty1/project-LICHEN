@@ -100,6 +100,7 @@ class TxQueueEntry:
         priority: Packet priority (lower = more urgent).
         deadline_ms: Absolute timestamp (ms since epoch) when packet expires.
         enqueue_time_ms: When packet was queued (for latency stats).
+        channel: Radio channel for transmission (CCP-9 rendezvous).
         reservation: Optional reservation for the send() caller to await.
     """
 
@@ -107,6 +108,7 @@ class TxQueueEntry:
     priority: Priority
     deadline_ms: int
     enqueue_time_ms: int
+    channel: int = 0
     reservation: TxReservation | None = field(default=None, repr=False)
 
 
@@ -212,6 +214,7 @@ class TxQueue:
         data: bytes,
         priority: Priority = Priority.BULK,
         deadline_ms: int | None = None,
+        channel: int = 0,
         return_reservation: bool = False,
     ) -> TxReservation | None:
         """Add a packet to the queue.
@@ -255,6 +258,7 @@ class TxQueue:
             priority=priority,
             deadline_ms=deadline_ms,
             enqueue_time_ms=now,
+            channel=channel,
             reservation=reservation,
         )
 

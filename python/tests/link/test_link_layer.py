@@ -54,7 +54,7 @@ class MockRadio:
         self.cad_started: asyncio.Event | None = None
         self.cad_release: asyncio.Event | None = None
 
-    async def transmit(self, payload: bytes) -> bool:
+    async def transmit(self, payload: bytes, channel: int = 0) -> bool:
         """Record transmitted frames."""
         self.active_transmits += 1
         self.max_active_transmits = max(self.max_active_transmits, self.active_transmits)
@@ -77,7 +77,7 @@ class MockRadio:
         finally:
             self.active_transmits -= 1
 
-    async def receive(self, timeout_ms: int) -> tuple[bytes, int, int] | None:
+    async def receive(self, timeout_ms: int, channel: int = 0) -> tuple[bytes, int, int] | None:
         """Return next queued frame or None."""
         if self.rx_queue:
             return self.rx_queue.pop(0)
@@ -87,7 +87,7 @@ class MockRadio:
         """No-op for mock."""
         pass
 
-    async def cad(self, timeout_ms: int) -> bool:
+    async def cad(self, timeout_ms: int, channel: int = 0) -> bool:
         """Return configured CAD result (default: channel clear)."""
         if self.cad_started is not None:
             self.cad_started.set()

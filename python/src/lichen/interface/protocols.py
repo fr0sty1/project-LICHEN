@@ -42,22 +42,24 @@ class RadioDriver(Protocol):
     - Python: lichen.radio.base.Radio (existing, should migrate to this)
     """
 
-    async def transmit(self, payload: bytes) -> bool:
+    async def transmit(self, payload: bytes, channel: int = 0) -> bool:
         """Transmit a payload over the radio.
 
         Args:
             payload: Raw bytes to transmit (max 255 for LoRa).
+            channel: Radio channel index (CCP-9 rendezvous).
 
         Returns:
             True if transmission succeeded, False on hardware error.
         """
         ...
 
-    async def receive(self, timeout_ms: int) -> tuple[bytes, int, int] | None:
+    async def receive(self, timeout_ms: int, channel: int = 0) -> tuple[bytes, int, int] | None:
         """Receive a payload with timeout.
 
         Args:
             timeout_ms: Maximum wait time in milliseconds.
+            channel: Radio channel index (CCP-9 rendezvous).
 
         Returns:
             Tuple of (payload, rssi_dbm, snr_db) on success,
@@ -74,13 +76,14 @@ class RadioDriver(Protocol):
         """
         ...
 
-    async def cad(self, timeout_ms: int) -> bool:
+    async def cad(self, timeout_ms: int, channel: int = 0) -> bool:
         """Perform Channel Activity Detection.
 
         Listen briefly for LoRa preamble activity. Used for CSMA/CA.
 
         Args:
             timeout_ms: Maximum CAD duration.
+            channel: Radio channel index (CCP-9 rendezvous).
 
         Returns:
             True if channel activity detected, False if clear.
