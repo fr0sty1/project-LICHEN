@@ -232,7 +232,7 @@ class DodagState:
         current = self.parents.get(self.preferred_parent) if self.preferred_parent else None
         if current is not None and current.neighbor_id != best.neighbor_id:
             current_cost = current.path_cost(self.min_hop_rank_increase)
-            # Hysteresis: stick with current unless improvement exceeds threshold (RFC 6550 s3.6).
+            # Hysteresis: stick with current unless improvement reaches threshold (RFC 6550 s3.6).
             improvement = current_cost - best_cost
             if improvement < self.parent_switch_threshold:
                 best, best_cost = current, current_cost
