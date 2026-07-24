@@ -2,7 +2,7 @@
   "id": "project-LICHEN-worker6-cubc",
   "title": "[rereview] project-LICHEN-ow1e.208: test does not compile — wrong key replay window test is dead code",
   "description": "The test  added in commit 1444000dc calls  with 3 arguments, but the   (lib.rs:1398) takes 5 arguments (code, options, payload, ct_out, opt_out) plus . The destructuring  expects  tuples from the result, but the actual return type is  (ciphertext and option byte lengths).\n\nThe same mismatch applies to  which takes 5 arguments (self, oscope_option, ciphertext, options_out, payload_out) but is called with only 2 in the test.\n\nThis test cannot compile and has never executed. The claimed invariant (wrong key does not poison replay window) is not actually tested. Fix the test by providing output buffers and using the same pattern as every other test in the file (e.g., lines 2961, 3006, etc.).\n\nFile: rust/lichen-oscore/src/lib.rs (the test at approximately line 2799)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",

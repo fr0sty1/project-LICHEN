@@ -2,7 +2,7 @@
   "id": "project-LICHEN-worker6-odfj",
   "title": "[rereview] project-LICHEN-a4n2.3: sequence number burned on TX queue backpressure",
   "description": "In lichen_link_tx() at lichen/subsys/lichen/link/lichen_link_tx.c:124, the sequence number (epoch/seqnum) is allocated via lichen_link_next_tx() BEFORE the tx_queue_push at line 174. If the push fails (e.g., -ENOBUFS when queue full), the goto cleanup path returns the error but the nonce is already consumed. This means:\n\n1. The sequence number is permanently skipped — it was reserved but never transmitted.\n2. Under sustained backpressure (queue full), sequence numbers burn at the same rate as TX attempts.\n3. After 65536 wasted sequence numbers, the epoch wraps, which may trigger replay protection issues on peers seeing a gap.\n\nImpact: Under normal conditions (queue rarely full), this is negligible. Under sustained backpressure (DoS or network congestion), the epoch could exhaust prematurely or sequence gaps could trigger spurious replay warnings.\n\nFix: Move the nonce allocation to AFTER the tx_queue_push succeeds, or add a tx_queue_rewind/rollback mechanism. Note that the nonce is needed for signing (line 134), so the push-vs-nonce ordering is architecturally coupled — fix requires separating frame construction from queue insertion, or making push failure return the nonce to a free pool.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",

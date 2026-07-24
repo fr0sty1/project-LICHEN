@@ -3,7 +3,7 @@
   "title": "native: hello advertises send_message support even when handlers drop it",
   "description": "Code review finding from unreviewed Zephyr/C paths. lichen_native_send_hello() always advertises LN_TYPE_SEND_MESSAGE as supported, but the default native handler does not implement it, the gateway uses the default handler, and the puck handler intercepts send_message only to log that LoRa TX is not implemented. A host can therefore believe host-to-device mesh sends are supported and then have messages silently ignored. Evidence: native.c:407-415 includes LN_TYPE_SEND_MESSAGE in the advertised supported array; native.c:619-654 only handles HELLO and LOG_SUBSCRIBE; lichen/apps/gateway/src/main.c:421 passes lichen_native_handle_rx directly; lichen/apps/puck/src/main.c:88-91 logs not implemented for LN_TYPE_SEND_MESSAGE. Acceptance: either implement send_message routing/TX for each app that advertises it or make advertised capabilities app-specific so unsupported message types are omitted.",
   "acceptance_criteria": "After implementation, run the relevant tests/builds and then complete two separate code-review passes before closing. Each review pass should inspect the produced code against this Bead's acceptance criteria and file follow-up Beads for any discovered issues.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

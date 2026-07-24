@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vhvj.1.4",
   "title": "Add unit test for hash_32 and synchronized_hop_channel using ccp16-hop.json and hash_32.json vectors",
   "description": "In python tests (likely test_sim.py or dedicated test file). Load JSON vectors, assert exact match for all cases including SFN wraparound. Follow test vector discipline: independent oracle.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

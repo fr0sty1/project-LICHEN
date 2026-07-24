@@ -2,7 +2,7 @@
   "id": "project-LICHEN-f4xg.4",
   "title": "[LCI] Fix proxying deviation from spec §17 in Zephyr/Rust",
   "description": "Update LCI proxy behavior in lichen/subsys/lichen/coap/ and rust/lichen-client or gateway to exactly match Local Client Interface spec in spec/11-lci.md §17. Remove deviations. Reference project-LICHEN-f4xg and project-LICHEN-s3t5.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

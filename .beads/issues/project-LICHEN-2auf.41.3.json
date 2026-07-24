@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.41.3",
   "title": "Implement GPSR coordinate safety validation",
   "description": "Ensure invalid/stale/null-island/out-of-range coordinates are never used for routing in gpsr_forward() and update_neighbor_coords(). Reject NaN/inf, enforce ranges, add epsilon for (0,0). Update tests in test_coords.py and sim gpsr tests. Never route on bad coords.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
