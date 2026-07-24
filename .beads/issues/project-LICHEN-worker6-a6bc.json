@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-a6bc",
+  "title": "[rereview] project-LICHEN-i1gk.102: lichen_link_tx() writes *out_len before tx_queue_push can fail",
+  "description": "In lichen/subsys/lichen/link/lichen_link_tx.c:160, *out_len = off is written BEFORE the tx_queue_push() call at line 177-183. If tx_queue_push() fails (returns \u003c 0), the function goes to cleanup and returns an error, but *out_len has already been written with the (now-unreliable) frame length.\n\nCurrently this is not a runtime bug because the caller (lichen_l2_send_inner) checks ret \u003c 0 before using frame_len. But it violates output-parameter conventions and is a time bomb if:\n- The caller's error-check ordering changes\n- Someone reads *out_len on the error path in the caller\n\nFix: Move *out_len = off to after tx_queue_push succeeds, or add *out_len = 0 on the tx_queue_push error path before goto cleanup.\n\nFile: lichen/subsys/lichen/link/lichen_link_tx.c",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T05:37:55.957393482Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T05:37:55.957393482Z"
+}
