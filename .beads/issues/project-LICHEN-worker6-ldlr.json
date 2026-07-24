@@ -2,15 +2,11 @@
   "id": "project-LICHEN-worker6-ldlr",
   "title": "[review] project-LICHEN-636h.3: encode_inbox_cbor buffer overrun (P1)",
   "description": "File: lichen/subsys/lichen/coap/coap_msg.c:664\n\nThe guard `off + 100 \u003c buf_size` in encode_inbox_cbor is insufficient for entries with body_len close to LICHEN_MSG_MAX_BODY_LEN (200). A single message entry can produce up to ~275 bytes of CBOR (map header + 4 keys + IPv6 addr up to 39 chars + body up to 200 chars + 2 timestamps), but the guard only reserves 100 bytes per entry, allowing off to advance past buf_size before the next check triggers truncation.\n\nImpact: Out-of-bounds write to the stack-allocated cbor_buf[512] buffer.\n\nFix: Either replace the heuristic guard with a precise computation (e.g., check off + max_per_entry \u003c buf_size) or pre-compute serialized size per entry before writing.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T16:00:14.25874888Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T16:07:30.335129766Z",
-  "started_at": "2026-07-24T16:07:30.335129766Z",
-  "lease_expires_at": "2026-07-24T16:12:30.335129766Z",
-  "heartbeat_at": "2026-07-24T16:07:30.335129766Z"
+  "updated_at": "2026-07-24T16:00:14.25874888Z"
 }
