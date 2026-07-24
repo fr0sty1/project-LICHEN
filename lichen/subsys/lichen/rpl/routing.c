@@ -1031,13 +1031,13 @@ int lichen_rpl_dao_manager_expire(struct lichen_rpl_dao_manager *dm,
 			continue;
 		}
 
-		uint32_t max_age = (uint32_t)e->path_lifetime * lifetime_unit;
+		uint32_t max_age = (uint32_t)lifetime * lifetime_unit;
 		/* Use signed comparison for 32-bit timestamp wraparound safety.
 		 * Deadline is when entry should expire; entry is expired if
 		 * now is at or past the deadline. Works for wraparound within ~24 days. */
-		uint32_t deadline = e->last_updated + max_age;
+		uint32_t deadline = snapshot->last_updated + max_age;
 		if ((int32_t)(now - deadline) >= 0) {
-			e->valid = false;
+			snapshot->valid = false;
 			expired++;
 		}
 	}
