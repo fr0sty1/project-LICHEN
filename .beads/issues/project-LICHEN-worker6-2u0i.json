@@ -2,11 +2,13 @@
   "id": "project-LICHEN-worker6-2u0i",
   "title": "[review] project-LICHEN-worker6-4n5v: multi_fragment_single_window test broken by hardcoded TILE_SIZE/WINDOW_SIZE",
   "description": "Severity: P1 (will fail at runtime)\n\nThe `multi_fragment_single_window` test at `tests/fragmentation.rs:58` was written for the old 4-argument `FragmentSender::new(payload, rule_id, tile_size, window_size)` API where `tile_size=5` and `window_size=7` would produce specific fragment counts and FCN values.\n\nThe new 3-argument API `FragmentSender::new(payload, rule_id, receiver_limit)` always uses hardcoded `TILE_SIZE=32` and `WINDOW_SIZE=63`. The test creates a sender with `FragmentSender::new(\u0026payload, 20, 7)` but:\n\n1. The local variable `tile_size = 5` (line 60) is now **unused**\n2. `fragment_count()` would return `20.div_ceil(32) = 1`, **not 4**\n3. `window_count()` would return 1, matching expectation\n4. Fragment FCN values would be ALL_1 (63), **not 6, 5, 4**\n5. Payload assertions would fail since the entire 20 bytes go into one fragment\n\n**Fix:** Either rewrite the test to match the new `TILE_SIZE=32`/`WINDOW_SIZE=63` behavior, or restore configurable tile_size/window_size via a builder or separate parameter.\n\n**File:** `rust/lichen-schc/tests/fragmentation.rs`, lines 58-79.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:59:32.296092217Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T17:59:32.296092217Z"
+  "updated_at": "2026-07-24T20:28:03.421128389Z",
+  "closed_at": "2026-07-24T20:28:03.421128389Z",
+  "close_reason": "Superseded by project-LICHEN-worker6-50qb"
 }
