@@ -24,6 +24,8 @@ pub enum CborError {
     MultipleValues,
     /// Resolved name too long (RFC 8428 §4.2).
     NameTooLong,
+    /// Non-finite float value (NaN or infinity) — RFC 8428 decoded numeric policy.
+    NonFiniteValue,
 }
 
 impl From<BufferTooSmall> for CborError {
@@ -40,6 +42,7 @@ impl core::fmt::Display for CborError {
             Self::NotImplemented => write!(f, "CBOR feature not implemented"),
             Self::MultipleValues => write!(f, "multiple value fields set (RFC 8428 violation)"),
             Self::NameTooLong => write!(f, "resolved name too long (RFC 8428 §4.2)"),
+            Self::NonFiniteValue => write!(f, "non-finite float value rejected"),
         }
     }
 }
@@ -118,6 +121,9 @@ fn enc_text(out: &mut [u8], pos: usize, s: &str) -> Result<usize, CborError> {
 }
 
 fn enc_f64(out: &mut [u8], pos: usize, f: f64) -> Result<usize, CborError> {
+    if !f.is_finite() {
+        return Err(CborError::NonFiniteValue);
+    }
     let needed = pos + 9;
     if needed > out.len() {
         return Err(BufferTooSmall::new(needed, out.len()).into());
@@ -246,7 +252,6 @@ fn dec_head(data: &[u8], pos: usize) -> Result<(u8, u64, usize), CborError> {
             let v = u16::from_be_bytes([data[pos + 1], data[pos + 2]]);
             Ok((major, v as u64, 3))
         }
-        26 | 27 => Err(CborError::NotImplemented),
         _ => Err(CborError::InvalidInput),
     }
 }
@@ -291,41 +296,6 @@ fn dec_text(data: &[u8], pos: usize) -> Result<(&str, usize), CborError> {
 /// Convert IEEE 754 half-precision (binary16) bits to f64.
 ///
 /// Half-precision format: 1 sign bit, 5 exponent bits (bias 15), 10 mantissa bits.
-fn f32_to_f64(bits: u32) -> f64 {
-    let sign = (bits >> 31) & 1;
-    let exp = (bits >> 23) & 0xff;
-    let mant = bits & 0x7fffff;
-
-    let val = match exp {
-        0 => {
-            if mant == 0 {
-                0.0
-            } else {
-                (mant as f64) / 8388608.0
-            }
-        }
-        255 => {
-            if mant == 0 {
-                f64::INFINITY
-            } else {
-                // Preserve NaN payload: shift f32 23-bit mantissa to f64 52-bit
-                let f64_bits = ((sign as u64) << 63)
-                    | (0x7ffu64 << 52)
-                    | ((mant as u64) << 29);
-                f64::from_bits(f64_bits)
-            }
-        }
-        _ => {
-            let f64_exp = ((exp as i32) - 127 + 1023) as u64;
-            let f64_mant = (mant as u64) << 29;
-            let f64_bits = ((sign as u64) << 63) | (f64_exp << 52) | f64_mant;
-            f64::from_bits(f64_bits)
-        }
-    };
-
-    val
-}
-
 fn f16_to_f64(bits: u16) -> f64 {
     let sign = (bits >> 15) & 1;
     let exp = (bits >> 10) & 0x1f;
@@ -367,7 +337,7 @@ fn dec_f64(data: &[u8], pos: usize) -> Result<(f64, usize), CborError> {
         return Err(CborError::InvalidInput);
     }
     let major = data[pos] >> 5;
-    match data[pos] {
+    let (val, adv) = match data[pos] {
         0xfb => {
             if pos + 9 > data.len() {
                 return Err(CborError::InvalidInput);
@@ -382,15 +352,14 @@ fn dec_f64(data: &[u8], pos: usize) -> Result<(f64, usize), CborError> {
                 data[pos + 7],
                 data[pos + 8],
             ];
-            Ok((f64::from_bits(u64::from_be_bytes(b)), 9))
+            (f64::from_bits(u64::from_be_bytes(b)), 9)
         }
         0xfa => {
             if pos + 5 > data.len() {
                 return Err(CborError::InvalidInput);
             }
-            let b = u32::from_be_bytes([data[pos + 1], data[pos + 2], data[pos + 3], data[pos + 4]]);
-            let f = f32_to_f64(b);
-            Ok((f, 5))
+            let b = [data[pos + 1], data[pos + 2], data[pos + 3], data[pos + 4]];
+            (f32::from_bits(u32::from_be_bytes(b)) as f64, 5)
         }
         0xf9 => {
             // Half-precision float (16-bit)
@@ -398,15 +367,20 @@ fn dec_f64(data: &[u8], pos: usize) -> Result<(f64, usize), CborError> {
                 return Err(CborError::InvalidInput);
             }
             let bits = u16::from_be_bytes([data[pos + 1], data[pos + 2]]);
-            Ok((f16_to_f64(bits), 3))
+            (f16_to_f64(bits), 3)
         }
         // RFC 8428 Section 4.3: numeric values can be CBOR integers
         _ if major == 0 || major == 1 => {
             let (i, adv) = dec_int(data, pos)?;
-            Ok((i as f64, adv))
+            // Integers are always finite; no need to check is_finite.
+            return Ok((i as f64, adv));
         }
-        _ => Err(CborError::InvalidInput),
+        _ => return Err(CborError::InvalidInput),
+    };
+    if !val.is_finite() {
+        return Err(CborError::NonFiniteValue);
     }
+    Ok((val, adv))
 }
 
 fn dec_bool(data: &[u8], pos: usize) -> Result<(bool, usize), CborError> {
@@ -1016,19 +990,17 @@ mod tests {
     }
 
     #[test]
-    fn dec_f64_half_precision_infinity() {
+    fn dec_f64_half_precision_infinity_rejected() {
         // 0x7c00 = +Infinity in half-precision
         let data = [0xf9, 0x7c, 0x00];
-        let (val, _) = dec_f64(&data, 0).unwrap();
-        assert!(val.is_infinite() && val.is_sign_positive());
+        assert_eq!(dec_f64(&data, 0), Err(CborError::NonFiniteValue));
     }
 
     #[test]
-    fn dec_f64_half_precision_nan() {
+    fn dec_f64_half_precision_nan_rejected() {
         // 0x7e00 = NaN in half-precision
         let data = [0xf9, 0x7e, 0x00];
-        let (val, _) = dec_f64(&data, 0).unwrap();
-        assert!(val.is_nan());
+        assert_eq!(dec_f64(&data, 0), Err(CborError::NonFiniteValue));
     }
 
     #[test]
@@ -1093,5 +1065,84 @@ mod tests {
         }];
         let mut buf = [0u8; 512];
         assert_eq!(encode(&records, &mut buf), Err(CborError::NameTooLong));
+    }
+
+    #[test]
+    fn encode_rejects_nan_value() {
+        let records = [Record {
+            name: Some("test"),
+            value: Some(f64::NAN),
+            ..Record::empty()
+        }];
+        let mut buf = [0u8; 64];
+        assert_eq!(encode(&records, &mut buf), Err(CborError::NonFiniteValue));
+    }
+
+    #[test]
+    fn encode_rejects_inf_value() {
+        let records = [Record {
+            name: Some("test"),
+            value: Some(f64::INFINITY),
+            ..Record::empty()
+        }];
+        let mut buf = [0u8; 64];
+        assert_eq!(encode(&records, &mut buf), Err(CborError::NonFiniteValue));
+    }
+
+    #[test]
+    fn encode_rejects_neg_inf_value() {
+        let records = [Record {
+            name: Some("test"),
+            value: Some(f64::NEG_INFINITY),
+            ..Record::empty()
+        }];
+        let mut buf = [0u8; 64];
+        assert_eq!(encode(&records, &mut buf), Err(CborError::NonFiniteValue));
+    }
+
+    #[test]
+    fn encode_rejects_nan_base_time() {
+        let records = [Record {
+            base_time: Some(f64::NAN),
+            ..Record::empty()
+        }];
+        let mut buf = [0u8; 64];
+        assert_eq!(encode(&records, &mut buf), Err(CborError::NonFiniteValue));
+    }
+
+    #[test]
+    fn encode_rejects_inf_time() {
+        let records = [Record {
+            name: Some("test"),
+            value: Some(1.0),
+            time: Some(f64::INFINITY),
+            ..Record::empty()
+        }];
+        let mut buf = [0u8; 64];
+        assert_eq!(encode(&records, &mut buf), Err(CborError::NonFiniteValue));
+    }
+
+    #[test]
+    fn decode_rejects_nan_float16_value() {
+        // Independent literal CBOR: array(1) map(1) key=2 (v) f16(NaN=0x7e00)
+        let data = [0x81, 0xa1, 0x02, 0xf9, 0x7e, 0x00];
+        let mut buf = [Record::empty()];
+        assert_eq!(decode(&data, &mut buf), Err(CborError::NonFiniteValue));
+    }
+
+    #[test]
+    fn decode_rejects_inf_float32_value() {
+        // Independent literal CBOR: array(1) map(1) key=2 (v) f32(+inf=0x7f800000)
+        let data = [0x81, 0xa1, 0x02, 0xfa, 0x7f, 0x80, 0x00, 0x00];
+        let mut buf = [Record::empty()];
+        assert_eq!(decode(&data, &mut buf), Err(CborError::NonFiniteValue));
+    }
+
+    #[test]
+    fn decode_rejects_nan_float64_value() {
+        // Independent literal CBOR: array(1) map(1) key=2 (v) f64(NaN)
+        let data = [0x81, 0xa1, 0x02, 0xfb, 0x7f, 0xf8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+        let mut buf = [Record::empty()];
+        assert_eq!(decode(&data, &mut buf), Err(CborError::NonFiniteValue));
     }
 }

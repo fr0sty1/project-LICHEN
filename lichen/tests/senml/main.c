@@ -396,6 +396,74 @@ static int test_null_name_rejected(void)
 	return 1;
 }
 
+static int test_add_float_rejects_nan(void)
+{
+	struct senml_pack pack;
+	int ret;
+
+	ret = senml_pack_init(&pack, NULL, 0);
+	ASSERT_EQ(ret, 0, "senml_pack_init");
+
+	ret = senml_add_float(&pack, "test", NULL, NAN);
+	ASSERT_EQ(ret, -EINVAL, "NaN value rejected by senml_add_float");
+	ASSERT_EQ(pack.record_count, 0, "rejected NaN not counted");
+
+	return 1;
+}
+
+static int test_add_float_rejects_inf(void)
+{
+	struct senml_pack pack;
+	int ret;
+
+	ret = senml_pack_init(&pack, NULL, 0);
+	ASSERT_EQ(ret, 0, "senml_pack_init");
+
+	ret = senml_add_float(&pack, "test", NULL, INFINITY);
+	ASSERT_EQ(ret, -EINVAL, "+Inf value rejected by senml_add_float");
+	ASSERT_EQ(pack.record_count, 0, "rejected +Inf not counted");
+
+	ret = senml_add_float(&pack, "test", NULL, -INFINITY);
+	ASSERT_EQ(ret, -EINVAL, "-Inf value rejected by senml_add_float");
+	ASSERT_EQ(pack.record_count, 0, "rejected -Inf not counted");
+
+	return 1;
+}
+
+static int test_add_float_t_rejects_nan(void)
+{
+	struct senml_pack pack;
+	int ret;
+
+	ret = senml_pack_init(&pack, NULL, 0);
+	ASSERT_EQ(ret, 0, "senml_pack_init");
+
+	ret = senml_add_float_t(&pack, "test", NULL, NAN, 1);
+	ASSERT_EQ(ret, -EINVAL, "NaN value rejected by senml_add_float_t");
+	ASSERT_EQ(pack.record_count, 0, "rejected NaN not counted");
+
+	return 1;
+}
+
+static int test_add_float_t_rejects_inf(void)
+{
+	struct senml_pack pack;
+	int ret;
+
+	ret = senml_pack_init(&pack, NULL, 0);
+	ASSERT_EQ(ret, 0, "senml_pack_init");
+
+	ret = senml_add_float_t(&pack, "test", NULL, INFINITY, 1);
+	ASSERT_EQ(ret, -EINVAL, "+Inf value rejected by senml_add_float_t");
+	ASSERT_EQ(pack.record_count, 0, "rejected +Inf not counted");
+
+	ret = senml_add_float_t(&pack, "test", NULL, -INFINITY, 1);
+	ASSERT_EQ(ret, -EINVAL, "-Inf value rejected by senml_add_float_t");
+	ASSERT_EQ(pack.record_count, 0, "rejected -Inf not counted");
+
+	return 1;
+}
+
 /* ─── test runner ─────────────────────────────────────────────────────────── */
 
 #define RUN_TEST(fn) do { \
@@ -427,6 +495,10 @@ int main(void)
 	RUN_TEST(test_location_rejects_out_of_range_lon);
 	RUN_TEST(test_location_valid_coordinates);
 	RUN_TEST(test_null_name_rejected);
+	RUN_TEST(test_add_float_rejects_nan);
+	RUN_TEST(test_add_float_rejects_inf);
+	RUN_TEST(test_add_float_t_rejects_nan);
+	RUN_TEST(test_add_float_t_rejects_inf);
 
 	printf("\n%d/%d tests passed\n", tests_passed, tests_run);
 

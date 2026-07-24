@@ -98,6 +98,10 @@ int senml_add_float(struct senml_pack *pack,
 		return -EMSGSIZE;
 	}
 
+	if (isnan(value) || isinf(value)) {
+		return -EINVAL;
+	}
+
 	if (pack->record_count >= SENML_MAX_RECORDS) {
 		return -ENOMEM;
 	}
@@ -125,6 +129,10 @@ int senml_add_float_t(struct senml_pack *pack,
 
 	if (validate_name(name) < 0 || validate_unit(unit) < 0) {
 		return -EMSGSIZE;
+	}
+
+	if (isnan(value) || isinf(value)) {
+		return -EINVAL;
 	}
 
 	if (pack->record_count >= SENML_MAX_RECORDS) {
