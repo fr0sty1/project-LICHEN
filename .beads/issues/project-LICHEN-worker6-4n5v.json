@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-4n5v",
   "title": "[review] project-LICHEN-worker6-0tde: lichen-schc crate has 57 compilation errors -- missing constants and undefined variables",
   "description": "The lichen-schc crate does not compile at HEAD (137da91). 57 errors including:\n\n1. Missing constant definitions: TILE_SIZE, BITMAP_MASK, WINDOW_SIZE, MAX_PACKET_SIZE, RULE_ID_A_TO_B, RULE_ID_B_TO_A — used extensively throughout fragment.rs but never defined or imported.\n\n2. Undefined variables in Ack::write_to (fragment.rs:259-260): `n` and `body_bytes` are used but not in scope, making the non-complete ACK encoding path unreachable/corrupt.\n\n3. Type mismatch: self.attempts (u8) compared against MAX_ACK_REQUESTS (u32) at lines 556, 573, 943.\n\n4. Missing Debug impl for FragmentSender (needed by RetransmitIter derive).\n\n5. headers.rs: write_ipv6_header now takes (u8, u32) tuple for flow, but 4 call sites still pass traffic_class and flow_label as separate args.\n\n6. match statement at fragment.rs:84 uses RULE_ID_A_TO_B | RULE_ID_B_TO_A as patterns that are shadowed by ident bindings (E0408).\n\nThese are pre-existing issues not introduced by the current commit, but the commit does not fix them.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:35:32.984868717Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:19:21.785429213Z",
-  "started_at": "2026-07-24T19:19:21.785429213Z",
-  "lease_expires_at": "2026-07-24T19:24:21.785429213Z",
-  "heartbeat_at": "2026-07-24T19:19:21.785429213Z"
+  "updated_at": "2026-07-24T20:20:36.919734146Z",
+  "started_at": "2026-07-24T19:19:21.785429213Z"
 }
