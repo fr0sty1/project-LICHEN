@@ -8,8 +8,8 @@ from dataclasses import dataclass, field
 
 N_FCN_BITS = 6
 ALL_1 = (1 << N_FCN_BITS) - 1
-MAX_WINDOW_SIZE = ALL_1 - 1
-DEFAULT_WINDOW_SIZE = 7
+MAX_WINDOW_SIZE = ALL_1
+DEFAULT_WINDOW_SIZE = MAX_WINDOW_SIZE
 MIC_LENGTH = 4
 RULE_IDS = (0x2A, 0x78, 0x79)
 TILE_SIZE = 187
@@ -252,3 +252,26 @@ class FragmentSender:
             if pos >= len(bitmap) or not bitmap[pos]:
                 missing.append(frag)
         return missing
+
+    def start(self) -> list[bytes]:
+        """Start transmission: return all fragments as wire bytes."""
+        self.attempts = 0
+        self.status = "transmitting"
+        return [f.to_bytes() for f in self._fragments]
+
+    def handle_ack_bytes(self, data: bytes) -> list[bytes]:
+        ack = Ack.from_bytes(data)
+        if ack.complete:
+            self.status = "succeeded"
+            return []
+        missing = self.retransmit(self._fragments[-1].window, ack.bitmap)
+        response: list[bytes] = [f.to_bytes() for f in missing]
+        response.append(ack_request(self.rule_id, self._fragments[-1].window))
+        return response
+
+    def timeout(self) -> bytes:
+        self.attempts += 1
+        if self.attempts >= MAX_ACK_REQUESTS:
+            self.status = "aborted"
+            return sender_abort(self.rule_id)
+        return ack_request(self.rule_id, self._fragments[-1].window)

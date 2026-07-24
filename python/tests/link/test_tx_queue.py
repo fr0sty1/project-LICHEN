@@ -16,6 +16,8 @@ Test categories:
 5. Backpressure: QueueFullError raised when appropriate
 """
 
+import asyncio
+
 import pytest
 
 from lichen.link.tx_queue import (
@@ -523,3 +525,233 @@ class TestEdgeCases:
             TxQueue(capacity=0)
         with pytest.raises(ValueError):
             TxQueue(capacity=-1)
+
+
+class TestReserveComplete:
+    """Tests for TxQueue.reserve() and TxQueue.complete()."""
+
+    def test_reserve_returns_front_entry(self):
+        q = TxQueue()
+        q.push(b"first", priority=Priority.ROUTING)
+        q.push(b"second", priority=Priority.BULK)
+
+        entry = q.reserve()
+        assert entry is not None
+        assert entry.data == b"first"
+        assert entry.priority == Priority.ROUTING
+        assert len(q) == 2
+
+    def test_reserve_empty_returns_none(self):
+        q = TxQueue()
+        assert q.reserve() is None
+
+    def test_complete_success_removes_entry(self):
+        q = TxQueue()
+        q.push(b"packet", priority=Priority.URGENT)
+
+        entry = q.reserve()
+        assert entry is not None
+
+        q.complete(entry, success=True)
+        assert len(q) == 0
+        assert q.stats.packets_transmitted == 1
+
+    def test_complete_success_updates_latency_stats(self):
+        clock = FakeClock(0)
+        q = TxQueue(clock=clock)
+        q.push(b"latency_test", priority=Priority.ACK)
+        clock.advance(50)
+
+        entry = q.reserve()
+        assert entry is not None
+
+        q.complete(entry, success=True)
+        assert q.stats.max_latency_ms >= 50
+        assert q.stats.avg_latency_ms > 0
+
+    def test_complete_failure_requeues_entry(self):
+        clock = FakeClock(100)
+        q = TxQueue(clock=clock)
+        q.push(b"retry", priority=Priority.ROUTING, deadline_ms=1000)
+
+        entry = q.reserve()
+        assert entry is not None
+        original_deadline = entry.deadline_ms
+
+        clock.advance(200)
+        q.complete(entry, success=False)
+        assert len(q) == 1
+        assert q.stats.packets_transmitted == 0
+        assert entry.deadline_ms == original_deadline
+
+    def test_complete_failure_preserves_original_deadline(self):
+        clock = FakeClock(0)
+        q = TxQueue(clock=clock)
+        q.push(b"deadline_check", priority=Priority.ACK, deadline_ms=500)
+
+        entry = q.reserve()
+        assert entry is not None
+
+        clock.advance(300)
+        q.complete(entry, success=False)
+        clock.advance(300)
+
+        assert q.pop() is None
+        assert q.stats.packets_dropped_deadline == 1
+
+    def test_reserve_then_complete_success_multiple(self):
+        q = TxQueue()
+        q.push(b"a", priority=Priority.ROUTING)
+        q.push(b"b", priority=Priority.ACK)
+        q.push(b"c", priority=Priority.BULK)
+
+        e1 = q.reserve()
+        assert e1 is not None and e1.data == b"a"
+        q.complete(e1, success=True)
+
+        e2 = q.reserve()
+        assert e2 is not None and e2.data == b"b"
+        q.complete(e2, success=True)
+
+        e3 = q.reserve()
+        assert e3 is not None and e3.data == b"c"
+        q.complete(e3, success=True)
+
+        assert q.stats.packets_transmitted == 3
+        assert len(q) == 0
+
+    def test_reserve_after_complete_failure_returns_same_entry(self):
+        q = TxQueue()
+        q.push(b"sticky", priority=Priority.URGENT)
+
+        e1 = q.reserve()
+        q.complete(e1, success=False)
+
+        e2 = q.reserve()
+        assert e2 is e1
+
+    def test_reservation_future_is_set_on_success(self):
+        q = TxQueue()
+        res = q.push(b"awaitable", return_reservation=True)
+        assert res is not None
+
+        entry = q.reserve()
+        q.complete(entry, success=True)
+
+        assert res._future.done()
+        assert res._future.result() is True
+
+    def test_reservation_future_is_set_on_failure(self):
+        q = TxQueue()
+        res = q.push(b"fail_me", return_reservation=True)
+        assert res is not None
+
+        entry = q.reserve()
+        q.complete(entry, success=False)
+
+        assert res._future.done()
+        assert res._future.result() is False
+
+    @pytest.mark.asyncio
+    async def test_reservation_wait_returns_true_on_success(self):
+        q = TxQueue()
+        res = q.push(b"async_ok", return_reservation=True)
+        assert res is not None
+
+        entry = q.reserve()
+        q.complete(entry, success=True)
+
+        assert await res.wait() is True
+
+    @pytest.mark.asyncio
+    async def test_reservation_wait_returns_false_on_failure(self):
+        q = TxQueue()
+        res = q.push(b"async_fail", return_reservation=True)
+        assert res is not None
+
+        entry = q.reserve()
+        q.complete(entry, success=False)
+
+        assert await res.wait() is False
+
+    @pytest.mark.asyncio
+    async def test_concurrent_reserve_complete_round_robin(self):
+        q = TxQueue(capacity=10)
+        for i in range(10):
+            q.push(f"p{i}".encode(), priority=Priority.BULK)
+
+        lock = asyncio.Lock()
+
+        async def worker(n: int) -> int:
+            async with lock:
+                entry = q.reserve()
+                if entry is None:
+                    return 0
+                await asyncio.sleep(0)
+                q.complete(entry, success=True)
+                return 1
+
+        tasks = [asyncio.create_task(worker(i)) for i in range(10)]
+        results = await asyncio.gather(*tasks)
+        assert sum(results) == 10
+        assert q.stats.packets_transmitted == 10
+
+    @pytest.mark.asyncio
+    async def test_cancelled_reservation_does_not_corrupt_queue(self):
+        q = TxQueue()
+        q.push(b"cancel_me", priority=Priority.ACK)
+        q.push(b"survivor", priority=Priority.BULK)
+
+        async def reserve_and_cancel():
+            entry = q.reserve()
+            assert entry is not None
+            await asyncio.sleep(0)
+            q.complete(entry, success=False)
+
+        task = asyncio.create_task(reserve_and_cancel())
+        await task
+        assert len(q) == 2
+
+        e = q.reserve()
+        assert e is not None
+        assert e.data == b"cancel_me"
+        q.complete(e, success=True)
+        assert q.stats.packets_transmitted == 1
+
+    @pytest.mark.asyncio
+    async def test_concurrent_reserve_complete_mixed_success_failure(self):
+        clock = FakeClock(0)
+        q = TxQueue(capacity=6, clock=clock)
+        for i in range(6):
+            q.push(f"p{i}".encode(), priority=Priority.BULK, deadline_ms=10000)
+
+        lock = asyncio.Lock()
+
+        async def mixed_worker(idx: int) -> bool:
+            async with lock:
+                entry = q.reserve()
+                if entry is None:
+                    return False
+                await asyncio.sleep(0)
+                success = idx % 2 == 0
+                q.complete(entry, success=success)
+                return success
+
+        tasks = [asyncio.create_task(mixed_worker(i)) for i in range(6)]
+        results = await asyncio.gather(*tasks)
+        successes = sum(results)
+        assert successes == 3
+        assert q.stats.packets_transmitted == 3
+        remaining = len(q)
+        assert remaining == 3
+
+    @pytest.mark.asyncio
+    async def test_complete_non_head_entry_logs_warning(self, caplog):
+        q = TxQueue()
+        q.push(b"first", priority=Priority.ROUTING)
+        q.push(b"second", priority=Priority.BULK)
+
+        e2 = q._entries[1]
+        q.complete(e2, success=True)
+
+        assert "complete(success) but entry not head of queue" in caplog.text
