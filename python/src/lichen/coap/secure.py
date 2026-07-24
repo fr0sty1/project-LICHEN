@@ -2072,6 +2072,10 @@ class SecureDatagramChannel(DatagramChannel):
                 if unprotected_msg.remote is None:
                     unprotected_msg.remote = msg.remote
                 unprotected_msg.token = msg.token
+                # aiocoap encode() requires direction == OUTGOING. This is
+                # semantically INCOMING but the Message object with direction
+                # is never returned to callers — we return bytes (encoded).
+                # The direction leak is contained within this method.
                 unprotected_msg.direction = Direction.OUTGOING
 
                 encoded = cast(bytes, unprotected_msg.encode())

@@ -299,8 +299,12 @@ static const char *trust_level_str(enum lichen_coap_trust_level trust)
 
 	cbor_ctx_init(&ctx, buf, buf_size);
 
-	uint16_t map_count = 5U + (status->battery_pct_valid ? 1U : 0U)
+	uint8_t map_count = 5U + (status->battery_pct_valid ? 1U : 0U)
 		    + (status->battery_mv_valid ? 1U : 0U);
+	if (map_count > 255) {
+		ctx.overflow = true;
+		return 0;
+	}
 	cbor_put_map_header(&ctx, map_count);
 	cbor_put_key(&ctx, "uptime_s");
 	cbor_put_uint(&ctx, status->uptime_s);
