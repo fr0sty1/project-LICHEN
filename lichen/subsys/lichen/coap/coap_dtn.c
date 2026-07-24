@@ -327,27 +327,51 @@ static int deaddrop_post(struct coap_resource *resource,
 				   resp_code, 0, NULL, 0);
 }
 
+static uint16_t count_pending_for(const struct lichen_dtn_buffer *buf,
+				  const uint8_t iid[8])
+{
+	uint16_t count = 0;
+	for (int i = 0; i < CONFIG_LICHEN_DTN_MAX_MESSAGES; i++) {
+		if (buf->messages[i].valid &&
+		    memcmp(buf->messages[i].destination_iid, iid, 8) == 0) {
+			count++;
+		}
+	}
+	return count;
+}
+
 static int deaddrop_get(struct coap_resource *resource,
 			struct coap_packet *request,
 			struct sockaddr *addr, socklen_t addr_len)
 {
-	if (s_provider == NULL || s_provider->retrieve == NULL) {
+	if (s_provider == NULL) {
 		return lichen_coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
 	}
-	const char *node = NULL;
+	uint8_t dest_iid[8] = {0};
+	bool has_node = false;
 	struct coap_option qopts[4];
 	int qcnt = coap_find_options(request, COAP_OPTION_URI_QUERY, qopts, 4);
 	for (int i = 0; i < qcnt; i++) {
 		if (qopts[i].len > 5 &&
 		    memcmp(qopts[i].value, "node=", 5) == 0) {
-			node = (const char *)qopts[i].value + 5;
+			size_t node_len = qopts[i].len - 5;
+			if (node_len >= 8) {
+				memcpy(dest_iid, qopts[i].value + 5, 8);
+				has_node = true;
+			}
 			break;
 		}
 	}
+	if (!has_node) {
+		return lichen_coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
+	}
 	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
+	uint16_t pending = count_pending_for(&s_dtn_buf, dest_iid);
 	uint8_t buf[256];
-	int len = s_provider->retrieve(buf, sizeof(buf), node);
+	int len = senml_encode_deaddrop(NULL, dtn_get_unix_time(), pending,
+					buf, sizeof(buf));
 	k_mutex_unlock(&s_dtn_buf_mutex);
 	if (len < 0) {
 		return lichen_coap_respond(resource, request, addr, addr_len,
