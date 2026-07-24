@@ -66,11 +66,23 @@ impl NodeId {
     }
 }
 
-pub fn ygg_addr_from_pubkey(pubkey: &[u8; 32]) -> [u8; 16] {
+/// Derive the IID (Interface Identifier) from an Ed25519 public key.
+///
+/// Uses SHA-512 truncation and clears the U/L bit per RFC 4291 §2.5.1.
+/// This is the single canonical implementation; all callers MUST use it
+/// to ensure cross-implementation consistency.
+/// Re-exported via lichen-link::iid_from_pubkey for convenience.
+pub fn iid_from_pubkey_bytes(pubkey: &[u8; 32]) -> [u8; 8] {
     let hash512 = Sha512::digest(pubkey);
     let mut iid = [0u8; 8];
     iid.copy_from_slice(&hash512[0..8]);
     iid[0] &= 0b1111_1101;
+    iid
+}
+
+pub fn ygg_addr_from_pubkey(pubkey: &[u8; 32]) -> [u8; 16] {
+    let iid = iid_from_pubkey_bytes(pubkey);
+    let hash512 = Sha512::digest(pubkey);
     let mut addr = [0u8; 16];
     addr[0] = 0x02;
     addr[1..8].copy_from_slice(&hash512[0..7]);

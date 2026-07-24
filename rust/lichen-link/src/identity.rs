@@ -5,15 +5,14 @@ extern crate alloc;
 use crate::keys::{PrivateKey, PublicKey, Seed};
 use crate::schnorr::{clamp, derive_keypair};
 use curve25519_dalek::MontgomeryPoint;
-use lichen_core::{addr::ygg_addr_from_pubkey, lichen_hash_32};
+use lichen_core::{
+    addr::{iid_from_pubkey_bytes, ygg_addr_from_pubkey},
+    lichen_hash_32,
+};
 use sha2::{Digest, Sha512};
 
 pub fn iid_from_pubkey(pubkey: &PublicKey) -> [u8; 8] {
-    let digest = Sha512::digest(pubkey.as_bytes());
-    let mut iid = [0u8; 8];
-    iid.copy_from_slice(&digest[0..8]);
-    iid[0] &= 0b1111_1101;
-    iid
+    iid_from_pubkey_bytes(pubkey.as_bytes())
 }
 
 /// Human-readable Crockford Base32 node address from pubkey (spec 03-addressing).
