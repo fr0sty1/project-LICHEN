@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-m1hx",
+  "title": "[review] project-LICHEN-worker6-edrt: C_R compact int/bstr encoding mismatch in TH_2",
+  "description": "The fix adds missing C_R to TH_2_input using cbor2.dumps(c_r), which is correct per RFC 9528. However, `_validate_connection_id` normalizes compact ints (values -24..23) to single bytes, and `cbor2.dumps(bytes)` always encodes as bstr. If C_R is a compact int on the wire (via `_encode_connection_id`), TH_2 uses bstr encoding instead of matching the wire encoding. Both initiator and responder make the same error so they agree, but this violates RFC 9528's requirement that C_R in TH_2_input uses the same CBOR encoding as appears in message_2. Fix: either store the original CBOR type alongside the normalized value, or re-derive the wire encoding when constructing TH_2_input.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:35:34.571507752Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:35:34.571507752Z"
+}
