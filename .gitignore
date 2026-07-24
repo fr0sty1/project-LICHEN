@@ -34,6 +34,7 @@ rust/target/
 
 # Build artifacts
 .cache/
+.tmp_check/
 lichen/build/
 **/build*/
 build_*/
