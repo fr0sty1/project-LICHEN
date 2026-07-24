@@ -916,13 +916,10 @@ impl Context {
         let code = plaintext[0];
         let rest = &plaintext[1..];
 
-        // Find payload marker using proper CoAP option parsing.
-        // SECURITY: Cannot just search for 0xFF - it may appear in option values.
-        // Must parse options with delta-length encoding to find the true marker.
-        let (options_slice, payload_slice) = match find_payload_marker(rest) {
-            Some(pos) => (&rest[..pos], &rest[pos + 1..]),
-            None => (rest, &[][..]),
-        };
+        // Parse and validate inner CoAP options.
+        // SECURITY: Must validate option encoding to reject malformed inputs
+        // that could otherwise bypass length checks.
+        let (options_slice, payload_slice) = parse_inner_body(rest)?;
 
         if options_out.len() < options_slice.len() {
             return Err(BufferTooSmall::new(options_slice.len(), options_out.len()).into());
@@ -1219,15 +1216,10 @@ impl Context {
             request_piv
         };
 
-        let response_seq = if opt.piv_len > 0 {
-            let seq = OscoreSeqNum::from_piv(piv).ok_or(OscoreError::InvalidParam)?;
-            if self.is_replay(seq) {
-                return Err(OscoreError::Replay);
-            }
-            Some(seq)
-        } else {
-            None
-        };
+        // Validate and decode PIV from response if present.
+        if opt.piv_len > 0 {
+            OscoreSeqNum::from_piv(piv).ok_or(OscoreError::InvalidParam)?;
+        }
 
         let nonce_id = if opt.piv_len > 0 {
             self.recipient_id()
@@ -1251,10 +1243,6 @@ impl Context {
             .decrypt_in_place_detached((&nonce).into(), &aad_buf[..aad_len], &mut plaintext, tag)
             .map_err(|_| OscoreError::DecryptFailed)?;
 
-        if let Some(seq) = response_seq {
-            self.update_replay_window(seq);
-        }
-
         let plaintext = &plaintext;
         if plaintext.is_empty() {
             return Err(OscoreError::InvalidParam);
@@ -1266,13 +1254,8 @@ impl Context {
         }
         let rest = &plaintext[1..];
 
-        // Find payload marker using proper CoAP option parsing.
-        // SECURITY: Cannot just search for 0xFF - it may appear in option values.
-        // Must parse options with delta-length encoding to find the true marker.
-        let (options_slice, payload_slice) = match find_payload_marker(rest) {
-            Some(pos) => (&rest[..pos], &rest[pos + 1..]),
-            None => (rest, &[][..]),
-        };
+        // Parse and validate inner CoAP options.
+        let (options_slice, payload_slice) = parse_inner_body(rest)?;
 
         let options_len = options_slice.len();
         let payload_len = payload_slice.len();
