@@ -120,7 +120,9 @@ static inline void secure_zero(void *ptr, size_t len)
  * @param input Input data (may be NULL if inlen is 0)
  * @param inlen Input length in bytes
  * @param output Output buffer, must be >= 32 bytes (not bounds-checked at runtime)
- * @return 0 on success, -EINVAL if output is NULL or input is NULL with inlen > 0
+ * @return 0 on success, -EINVAL if output is NULL or input is NULL with inlen > 0,
+ *         -EIO if SHA-256 init fails, -EMSGSIZE if SHA-256 update fails,
+ *         -EBADMSG if SHA-256 final fails
  */
 int lichen_sha256(const uint8_t *input, size_t inlen,
                   uint8_t output[TC_SHA256_DIGEST_SIZE]);
