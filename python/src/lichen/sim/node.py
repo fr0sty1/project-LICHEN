@@ -9,6 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
+from lichen.channel_plan import ChannelPlan, US915
 from lichen.sim.metrics import NodeMetrics
 from lichen.sim.tdma import TDMAScheduler, hash_32
 from lichen.state_machine import StateMachine
@@ -53,10 +54,9 @@ class SimNode:
     rx_callbacks: RxCallbacks | None = field(repr=False)
     metrics: NodeMetrics = field(repr=False)
     current_channel: int = 0
-    seed: int = 0
     hop_schedule: tuple[int, ...] = field(default_factory=tuple, repr=False)
-    seed: int = 0
     tdma_scheduler: TDMAScheduler = field(repr=False, default_factory=TDMAScheduler)
+    channel_plan: ChannelPlan = field(default_factory=lambda: US915)
     _state_machine: StateMachine[NodeState] = field(init=False, repr=False)
 
     def __init__(
@@ -74,9 +74,9 @@ class SimNode:
         seed: int = 0,
         hop_schedule: tuple[int, ...] | None = None,
         tdma_scheduler: TDMAScheduler | None = None,
-        seed: int = 0,
         sfn: int = 0,
         num_channels: int = 8,
+        channel_plan: ChannelPlan | None = None,
     ) -> None:
         self.id = id
         self.position = position
@@ -88,15 +88,15 @@ class SimNode:
         self.metrics = metrics if metrics is not None else NodeMetrics()
         self.seed = seed
         self.current_channel = current_channel
-        self.seed = seed
         self.hop_schedule = tuple(hop_schedule) if hop_schedule is not None else ()
         self.tdma_scheduler = tdma_scheduler if tdma_scheduler is not None else TDMAScheduler()
+        self.channel_plan = channel_plan if channel_plan is not None else US915
+        n = max(self.channel_plan.num_channels, 3)
         data = seed.to_bytes(8, "big") + ((sfn) & 0xffffffff).to_bytes(4, "little")
         h = hash_32(data)
-        n = max(num_channels, 3)
         if current_channel == 0:
             self.current_channel = 1 + (h % n)
-        self.hop_schedule = tuple(1 + (hash_32(seed.to_bytes(8, "big") + (((sfn + i) & 0xffffffff).to_bytes(4, "little"))) % n) for i in range(8))
+        self.hop_schedule = tuple(1 + (hash_32(seed.to_bytes(8, "big") + (((sfn + i) & 0xffffffff).to_bytes(4, "little"))) % n) for i in range(n))
         self._state_machine = StateMachine(
             initial=state,
             transitions=NODE_STATE_TRANSITIONS,
