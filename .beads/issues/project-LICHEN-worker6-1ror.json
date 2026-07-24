@@ -2,12 +2,15 @@
   "id": "project-LICHEN-worker6-1ror",
   "title": "[review] project-LICHEN-worker6-k1jp: initiator uses ciphertext instead of plaintext in transcript_4",
   "description": "In `EdhocInitiator::process_message_2_with_credential` (line ~918), `transcript_4` is called with `\u0026ciphertext_3.0` — the **ciphertext** — after `encrypt_in_place_detached` at line 914 has already replaced the plaintext in-place.\n\n**Impact**: P0 correctness bug. Initiator and responder compute different TH_4 values, which means they derive different OSCORE keys. The EDHOC handshake completes successfully (signature verification passes, which uses TH_3, not TH_4), but all subsequent encrypted communication via the derived OSCORE context will fail.\n\n**Evidence**:\n- Test at line 1637 passes `plaintext_3` (not ciphertext) to `transcript_4` and asserts expected `th_4`\n- Responder at line 1347 correctly passes `pending.plaintext` (decrypted plaintext)\n- Initiator at line 918 incorrectly passes `ciphertext_3.0` (encrypted + tag appended)\n\n**Fix**: Save the plaintext (data_3 = CBOR(bstr(pubkey) || bstr(signature))) before the `encrypt_in_place_detached` call at line 914, then pass the saved plaintext to `transcript_4` at line 918.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:34:36.489901665Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:15:15.36592947Z",
-  "started_at": "2026-07-24T17:37:59.414417787Z"
+  "updated_at": "2026-07-24T19:19:22.599943886Z",
+  "started_at": "2026-07-24T17:37:59.414417787Z",
+  "lease_expires_at": "2026-07-24T19:24:22.599943886Z",
+  "heartbeat_at": "2026-07-24T19:19:22.599943886Z"
 }

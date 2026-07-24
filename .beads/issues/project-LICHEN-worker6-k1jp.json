@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-k1jp",
   "title": "[review] project-LICHEN-worker6-y42j: transcript_4 ignores credential parameter, violating EDHOC RFC 9528 TH_4 computation",
   "description": "## Summary\n`transcript_4()` at `rust/lichen-oscore/src/edhoc.rs:398` accepts the credential as parameter `_cred` but does NOT include it in the hash computation. Per EDHOC RFC 9528 Section 6.4, TH_4 MUST be computed as H(TH_3, CIPHERTEXT_3, ID_CRED_I). The credential is currently silently discarded.\n\n## Evidence\n```rust\nfn transcript_4(th_3: \u0026[u8; 32], ciphertext_3: \u0026[u8], _cred: \u0026[u8]) -\u003e Result\u003c[u8; 32], EdhocError\u003e {\n    let mut buf = heapless::Vec::\u003cu8, 1024\u003e::new();\n    encode_bstr(\u0026mut buf, th_3)?;\n    encode_bstr(\u0026mut buf, ciphertext_3)?;\n    Ok(compute_th(\u0026buf))\n}\n```\n\nCompare with `transcript_3` which correctly includes `cred`:\n```rust\nfn transcript_3(th_2: \u0026[u8; 32], input: \u0026[u8], cred: \u0026[u8]) -\u003e Result\u003c[u8; 32], EdhocError\u003e {\n    let mut buf = heapless::Vec::\u003cu8, 1024\u003e::new();\n    encode_bstr(\u0026mut buf, th_2)?;\n    encode_bstr(\u0026mut buf, input)?;\n    encode_bstr(\u0026mut buf, cred)?;\n    Ok(compute_th(\u0026buf))\n}\n```\n\n## Impact\nBoth initiator and responder TH_4 are computed incorrectly — the credential of the message_3 sender (ID_CRED_I) is not part of the hash. This means the transcript hash does not bind the identity used in the handshake, violating the protocol's authentication guarantees.\n\n## Fix\nAdd `encode_bstr(\u0026mut buf, cred)?;` before `Ok(compute_th(\u0026buf))` and rename `_cred` to `cred`.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T17:21:58.105906583Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T17:21:58.105906583Z"
+  "updated_at": "2026-07-24T19:19:22.639603123Z",
+  "started_at": "2026-07-24T19:19:22.639603123Z",
+  "lease_expires_at": "2026-07-24T19:24:22.639603123Z",
+  "heartbeat_at": "2026-07-24T19:19:22.639603123Z"
 }
