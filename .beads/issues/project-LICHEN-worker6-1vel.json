@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-1vel",
+  "title": "[review] project-LICHEN-6mij: CONFIG_COAP_SERVER_MESSAGE_SIZE in shared OSCORE respond function",
+  "description": "lichen_coap_oscore_respond() moved from static functions in CoAP-server-compiled files to coap_oscore.c (compiled under LICHEN_OSCORE). It uses CONFIG_COAP_SERVER_MESSAGE_SIZE as a stack buffer size. LICHEN_OSCORE Kconfig does not depend on COAP_SERVER, so this symbol may be undefined (0) when OSCORE is used without CoAP server (e.g., client-only mode).\n\nAffected file: lichen/subsys/lichen/oscore/coap_oscore.c:223\n\nFixes:\n(a) Guard the function with #ifdef CONFIG_COAP_SERVER, or\n(b) Replace with CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX, or\n(c) Add 'depends on COAP_SERVER' to LICHEN_OSCORE Kconfig (trade-off: forces CoAP server for any OSCORE use)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:57:14.768010298Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:57:14.768010298Z"
+}
