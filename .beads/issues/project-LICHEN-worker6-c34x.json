@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-c34x",
+  "title": "[rereview] project-LICHEN-zt3c.13: stale ULA/GUA ref in spec/03-adaptation.md:71 (Rule 1)",
+  "description": "Commit e9528d8e5 updated Rule 4's description on spec/03-adaptation.md:74 from 'routable ULA source' to 'routable 02xx source' but missed Rule 1 on line 71, which still reads 'ULA/GUA with /64 prefix MSB match'. Should be '02xx with /64 prefix MSB match' or similar. The commit touched this file (diff shows the Rule 4 change) but the Rule 1 reference was overlooked.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T14:14:19.028559507Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T14:14:19.028559507Z"
+}
