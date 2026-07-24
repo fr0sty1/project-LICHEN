@@ -480,21 +480,26 @@ fn transcript_4(
 fn build_context_2(
     id_cred: &[u8],
     cred: &[u8],
+    c_r: &[u8],
+    th_2: &[u8; 32],
 ) -> Result<heapless::Vec<u8, 128>, EdhocError> {
     let mut ctx = heapless::Vec::<u8, 128>::new();
     append_cbor_bstr(&mut ctx, id_cred)?;
     append_cbor_bstr(&mut ctx, cred)?;
+    append_cbor_bstr(&mut ctx, th_2.as_slice())?;
+    append_cbor_bstr(&mut ctx, c_r)?;
     Ok(ctx)
 }
 
 fn build_context_3(
     id_cred: &[u8],
-    _th: &[u8; 32],
+    th: &[u8; 32],
     cred: &[u8],
 ) -> Result<heapless::Vec<u8, 128>, EdhocError> {
     let mut ctx = heapless::Vec::<u8, 128>::new();
     append_cbor_bstr(&mut ctx, id_cred)?;
     append_cbor_bstr(&mut ctx, cred)?;
+    append_cbor_bstr(&mut ctx, th.as_slice())?;
     Ok(ctx)
 }
 
@@ -864,7 +869,12 @@ impl EdhocInitiator {
         let result = (|| {
             validate_peer_credential(peer)?;
             let signature_bytes = parse_bstr(&pending.plaintext[pending.signature_offset..])?.0;
-            let context_2 = build_context_2(pending.id_cred.as_bytes(), peer.credential)?;
+            let context_2 = build_context_2(
+                pending.id_cred.as_bytes(),
+                peer.credential,
+                pending.c_r.as_bytes(),
+                &pending.transcript_binding,
+            )?;
             let mac_2 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_2, "MAC_2", &context_2, 32)?;
             let m_2 = build_signature_structure(
                 pending.id_cred.as_bytes(),
@@ -1158,7 +1168,12 @@ impl EdhocResponder {
             encode_id_cred(&mut id_cred_r, self.pubkey.as_bytes())?;
             let mut credential_r = heapless::Vec::<u8, 80>::new();
             encode_credential(&mut credential_r, self.pubkey.as_bytes())?;
-            let context_2 = build_context_2(&id_cred_r, &credential_r)?;
+            let context_2 = build_context_2(
+                &id_cred_r,
+                &credential_r,
+                self.c_r.as_bytes(),
+                &self.state.th_2,
+            )?;
             let mac_2 = edhoc_kdf(
                 &self.state.prk_3e2m,
                 &self.state.th_2,
