@@ -2,12 +2,15 @@
   "id": "project-LICHEN-worker6-x783",
   "title": "[review] worker6-tkjl: duplicate senml_encode_location_full declaration in senml.h",
   "description": "Commit be583f03 adds a second declaration of senml_encode_location_full at lichen/subsys/lichen/senml/include/lichen/senml.h:279, duplicating the existing declaration at line 254. The new declaration adds LICHEN_WARN_UNUSED_RESULT and doxygen comments, but having both will cause a compile error (redefinition of function). Fix: add the WARN_UNUSED_RESULT attribute and doxygen to the existing declaration at line 254, and remove the duplicate at line 279. File: lichen/subsys/lichen/senml/include/lichen/senml.h",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:56:39.936780256Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T20:29:46.022775557Z",
-  "started_at": "2026-07-24T18:57:30.841129997Z"
+  "updated_at": "2026-07-24T20:29:55.012407931Z",
+  "started_at": "2026-07-24T18:57:30.841129997Z",
+  "lease_expires_at": "2026-07-24T20:34:55.012407931Z",
+  "heartbeat_at": "2026-07-24T20:29:55.012407931Z"
 }
