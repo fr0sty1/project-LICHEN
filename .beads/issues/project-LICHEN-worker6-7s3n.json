@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-7s3n",
   "title": "[review] project-LICHEN-worker6-wa51: EDHOC TH_4 uses id_cred_i instead of full credential CRED_I",
   "description": "The TH_3 fix correctly switched from `id_cred_r` → `cred_r` (full credential), but TH_4 construction still uses `id_cred_i` at both locations:\n\n1. `python/src/lichen/crypto/edhoc.py:459` (initiator `_create_message_3`):\n   `cbor2.dumps(id_cred_i)` — should use full credential CRED_I per RFC 9528 Section 5.4.2\n\n2. `python/src/lichen/crypto/edhoc.py:705` (responder `_process_message_3`):\n   `cbor2.dumps(id_cred_i)` — same issue\n\nRFC 9528 defines TH_4 = H(TH_3, PLAINTEXT_3, CRED_I), where CRED_I is the full credential CBOR item (CCS or CWT), not ID_CRED_I (kid, x5t, or CCS). The TH_3 fix correctly adopted `cred_r` for the responder credential; TH_4 should do the same for the initiator credential.\n\nIf this implementation uses CCS/RPK where ID_CRED_I = CRED_I by design, please document that explicitly. Otherwise, the full credential must be looked up and used here.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:42:46.948160737Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:45:43.607856278Z",
-  "started_at": "2026-07-24T19:45:43.607856278Z",
-  "lease_expires_at": "2026-07-24T19:50:43.607856278Z",
-  "heartbeat_at": "2026-07-24T19:45:43.607856278Z"
+  "updated_at": "2026-07-24T20:21:30.357948266Z",
+  "started_at": "2026-07-24T19:45:43.607856278Z"
 }
