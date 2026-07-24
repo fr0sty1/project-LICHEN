@@ -8,10 +8,10 @@
   "assignee": "ec2-user",
   "created_at": "2026-07-22T15:11:00.398962955Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:19:17.474265895Z",
+  "updated_at": "2026-07-24T10:30:00.000000000Z",
   "started_at": "2026-07-22T15:11:55.973577847Z",
-  "closed_at": "2026-07-22T15:19:17.474265895Z",
-  "close_reason": "mesh\u003c-\u003eYggdrasil forwarding implemented preferring RPL local then Yggdrasil TUN. Updated rpl_routing, router classify/route, hybrid.rs. 3 codereview passes (beads 3ano,ydtk,cyag) completed with no P0/P1. Tests pass. Mimic style, no comments added.",
+  "closed_at": "2026-07-24T10:30:00.000000000Z",
+  "close_reason": "VERIFIED_FIXED: Gateway (Rust) forward_mesh_to_upstream/upstream_to_mesh with is_local_mesh Yggdrasil check. Node hybrid.rs classify/route separates Yggdrasil as External, routes via RPL parent. C router.c classify now returns LICHEN_ADDR_YGGDRASIL for 0x02 prefix, YGGDRASIL case tries gradient/LOADng first then falls through to route_external(). CI build verified.",
   "labels": [
     "gateway",
     "global",

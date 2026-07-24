@@ -121,8 +121,12 @@ enum lichen_addr_class lichen_router_classify(const struct lichen_router *router
 		return LICHEN_ADDR_LINK_LOCAL;
 	}
 
-	if (is_ula(dst_addr) || dst_addr[0] == 0x02) {
+	if (is_ula(dst_addr)) {
 		return LICHEN_ADDR_MESH_LOCAL;
+	}
+
+	if (dst_addr[0] == 0x02) {
+		return LICHEN_ADDR_YGGDRASIL;
 	}
 
 	for (size_t i = 0; i < CONFIG_LICHEN_ROUTER_MAX_MESH_PREFIXES; i++) {
@@ -247,7 +251,23 @@ int lichen_router_route(struct lichen_router *router,
 	case LICHEN_ADDR_MESH_LOCAL:
 		return route_mesh_local(router, iid, now_ms, result);
 
-	case LICHEN_ADDR_YGGDRASIL:
+	case LICHEN_ADDR_YGGDRASIL: {
+		/* Local mesh first: gradient + LOADng, then Yggdrasil fallback via BR */
+		struct lichen_gradient_entry *ge =
+			lichen_gradient_lookup(&router->gradient_table, iid, now_ms);
+		if (ge != NULL) {
+			result->decision = LICHEN_ROUTE_FORWARD;
+			memcpy(result->next_hop, ge->next_hop, 16);
+			return 0;
+		}
+		if (router->loadng.discover != NULL) {
+			int ret = router->loadng.discover(router->loadng.user_data, iid);
+			if (ret == 0) {
+				result->decision = LICHEN_ROUTE_QUEUE;
+				return 0;
+			}
+		}
+	}
 	case LICHEN_ADDR_EXTERNAL:
 		return route_external(router, result);
 	default:
