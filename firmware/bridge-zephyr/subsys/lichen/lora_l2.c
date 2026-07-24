@@ -1150,6 +1150,11 @@ int lichen_lora_l2_set_rx_callback(lichen_lora_rx_cb_t cb, void *user_data)
      * Order matters: user_data MUST be set before callback. If the callback
      * pointer is read non-NULL, user_data must already be valid. This order
      * is safe even for lock-free reads (though we use mutex here).
+     *
+     * Ownership: caller retains ownership of user_data. This module stores
+     * the pointer and passes it back on invocation, but never frees it.
+     * Callers should clean up their user_data before calling stop() or
+     * deinit() if the memory would otherwise be orphaned.
      */
     k_mutex_lock(&lora_mutex, K_FOREVER);
     lora_data.rx_callback_user_data = user_data;
