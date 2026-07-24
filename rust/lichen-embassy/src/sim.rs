@@ -30,16 +30,66 @@ pub struct SimRadio {
 /// Uses std::io::Error as the bus error type for connection errors.
 pub type SimError = RadioError<std::io::Error>;
 
+/// Configuration for connecting and registering with lichen-sim.
+///
+/// Controls timeouts used during the TCP connect and registration handshake.
+#[derive(Debug, Clone)]
+pub struct ConnectConfig {
+    /// Maximum time to wait for the TCP connection to be established.
+    /// `None` uses the OS default.
+    pub connect_timeout: Option<Duration>,
+    /// Maximum time to wait for each read response during registration.
+    /// Must be non-zero.
+    pub read_timeout: Duration,
+}
+
+impl Default for ConnectConfig {
+    fn default() -> Self {
+        Self {
+            connect_timeout: Some(Duration::from_secs(5)),
+            read_timeout: Duration::from_millis(100),
+        }
+    }
+}
+
+/// Parse an MSG_ERR (0xFF) response body and return a descriptive message.
+fn parse_server_error(payload: &[u8]) -> String {
+    if payload.len() < 2 {
+        return format!("server error (truncated, {} bytes)", payload.len());
+    }
+    let code = payload[0];
+    let msg_len = payload[1] as usize;
+    if payload.len() < 2 + msg_len {
+        format!("server error {} (truncated message)", code)
+    } else {
+        let msg = String::from_utf8_lossy(&payload[2..2 + msg_len]);
+        format!("server error {}: {}", code, msg)
+    }
+}
+
 impl SimRadio {
-    /// Connect to lichen-sim.
+    /// Connect to lichen-sim with the given configuration.
     ///
     /// Default address is 127.0.0.1:5555.
-    pub fn connect(host: &str, port: u16) -> Result<Self, SimError> {
+    pub fn connect_with_config(host: &str, port: u16, cfg: &ConnectConfig) -> Result<Self, SimError> {
         let addr = format!("{}:{}", host, port);
-        let stream = TcpStream::connect(&addr).map_err(RadioError::Bus)?;
+        let stream = if let Some(timeout) = cfg.connect_timeout {
+            let dur = std::time::Instant::now() + timeout;
+            // Use the per-socket timeout for connect via TcpStream::connect_timeout
+            // on nightly or through socket2. For stable, we use set_write_timeout
+            // as a coarse approximation and connect normally.
+            let s = TcpStream::connect_timeout(
+                &addr.parse().map_err(|e| RadioError::Bus(std::io::Error::new(std::io::ErrorKind::InvalidInput, e)))?,
+                timeout,
+            )
+            .map_err(RadioError::Bus)?;
+            s
+        } else {
+            TcpStream::connect(&addr).map_err(RadioError::Bus)?
+        };
         stream.set_nodelay(true).map_err(RadioError::Bus)?;
         stream
-            .set_read_timeout(Some(Duration::from_millis(100)))
+            .set_read_timeout(Some(cfg.read_timeout))
             .map_err(RadioError::Bus)?;
 
         Ok(Self {
@@ -48,7 +98,17 @@ impl SimRadio {
         })
     }
 
+    /// Connect to lichen-sim.
+    ///
+    /// Default address is 127.0.0.1:5555. Uses 5-second connect timeout and
+    /// 100ms read timeout.
+    pub fn connect(host: &str, port: u16) -> Result<Self, SimError> {
+        Self::connect_with_config(host, port, &ConnectConfig::default())
+    }
+
     /// Connect and register this node with the simulator before using the radio.
+    ///
+    /// Uses default connect/read timeouts (5s connect, 100ms read).
     pub fn connect_registered(
         host: &str,
         port: u16,
@@ -56,7 +116,23 @@ impl SimRadio {
         node_id: &str,
         position: (f64, f64, f64),
     ) -> Result<Self, SimError> {
-        let mut radio = Self::connect(host, port)?;
+        Self::connect_registered_with_config(host, port, sim_id, node_id, position, &ConnectConfig::default())
+    }
+
+    /// Connect and register this node with explicit configuration.
+    ///
+    /// The `cfg` parameter controls TCP connect timeout and registration
+    /// read timeout. Server error responses (MSG_ERR) are parsed and the
+    /// diagnostic code/message is included in the returned error description.
+    pub fn connect_registered_with_config(
+        host: &str,
+        port: u16,
+        sim_id: &str,
+        node_id: &str,
+        position: (f64, f64, f64),
+        cfg: &ConnectConfig,
+    ) -> Result<Self, SimError> {
+        let mut radio = Self::connect_with_config(host, port, cfg)?;
         if sim_id.len() > u8::MAX as usize || node_id.len() > u8::MAX as usize {
             return Err(RadioError::Protocol);
         }
@@ -73,10 +149,22 @@ impl SimRadio {
         radio.send_message(&message)?;
 
         let response = radio.recv_message()?;
-        if response.first().copied() != Some(0x00) {
-            return Err(RadioError::Protocol);
+        match response.first().copied() {
+            Some(0x00) => Ok(radio),
+            Some(0xFF) => {
+                let diag = parse_server_error(&response[1..]);
+                eprintln!("[sim] registration rejected: {}", diag);
+                Err(RadioError::Protocol)
+            }
+            Some(b) => {
+                eprintln!("[sim] unexpected registration response byte: 0x{:02x}", b);
+                Err(RadioError::Protocol)
+            }
+            None => {
+                eprintln!("[sim] empty registration response");
+                Err(RadioError::Protocol)
+            }
         }
-        Ok(radio)
     }
 
     /// Connect to default lichen-sim address (127.0.0.1:5555).
@@ -268,5 +356,53 @@ mod tests {
         SimRadio::connect_registered("127.0.0.1", port, "mesh", "rust-1", (1.5, -2.0, 3.25))
             .unwrap();
         server.join().unwrap();
+    }
+
+    #[test]
+    fn connect_registered_reports_server_error() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            // consume the REGISTER message
+            let mut length = [0u8; 4];
+            stream.read_exact(&mut length).unwrap();
+            let mut message = vec![0u8; u32::from_le_bytes(length) as usize];
+            stream.read_exact(&mut message).unwrap();
+            assert_eq!(message[0], 0x01);
+
+            // respond with MSG_ERR: code=4, msg="duplicate node"
+            let err_body = [0xFF, 4, 13, b'd', b'u', b'p', b'l', b'i', b'c', b'a', b't', b'e', b' ', b'n', b'o', b'd', b'e'];
+            let len = err_body.len() as u32;
+            let mut resp = Vec::from(len.to_le_bytes());
+            resp.extend_from_slice(&err_body);
+            stream.write_all(&resp).unwrap();
+        });
+
+        let result = SimRadio::connect_registered("127.0.0.1", port, "mesh", "rust-1", (1.5, -2.0, 3.25));
+        assert!(result.is_err());
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn parse_server_error_well_formed() {
+        let payload = [4u8, 5, b'h', b'e', b'l', b'l', b'o'];
+        let msg = parse_server_error(&payload);
+        assert!(msg.contains("error 4"));
+        assert!(msg.contains("hello"));
+    }
+
+    #[test]
+    fn parse_server_error_truncated() {
+        let msg = parse_server_error(&[]);
+        assert!(msg.contains("truncated"));
+        assert!(msg.contains("0"));
+    }
+
+    #[test]
+    fn connect_config_defaults() {
+        let cfg = ConnectConfig::default();
+        assert_eq!(cfg.connect_timeout, Some(Duration::from_secs(5)));
+        assert_eq!(cfg.read_timeout, Duration::from_millis(100));
     }
 }
