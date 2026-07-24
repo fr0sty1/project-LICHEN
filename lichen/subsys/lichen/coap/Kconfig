@@ -147,6 +147,26 @@ config LICHEN_COAP_STATUS_MAX_ROUTES
 	  Maximum number of route entries returned in a single
 	  /status/routes response.
 
+config LICHEN_COAP_STATUS_MAX_TXQ
+	int "Maximum transmit queue entries reported in /status"
+	depends on LICHEN_COAP_STATUS
+	default 4
+	range 1 255
+	help
+	  Maximum number of transmit queue entries reported in the capacity
+	  section of /status. The callback's txq_used field is clamped to
+	  this value before encoding.
+
+config LICHEN_COAP_STATUS_MAX_FWD
+	int "Maximum forwarding queue entries reported in /status"
+	depends on LICHEN_COAP_STATUS
+	default 8
+	range 1 255
+	help
+	  Maximum number of forwarding queue entries reported in the capacity
+	  section of /status. The callback's fwd_used field is clamped to
+	  this value before encoding.
+
 config LICHEN_COAP_STATUS_LOG_LEVEL
 	int "CoAP status log level"
 	depends on LICHEN_COAP_STATUS

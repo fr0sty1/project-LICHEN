@@ -41,6 +41,10 @@ BUILD_ASSERT(CONFIG_LICHEN_COAP_STATUS_MAX_NEIGHBORS <= 16U,
 	     "CONFIG_LICHEN_COAP_STATUS_MAX_NEIGHBORS exceeds CBOR array header + buffer");
 BUILD_ASSERT(CONFIG_LICHEN_COAP_STATUS_MAX_ROUTES <= 16U,
 	     "CONFIG_LICHEN_COAP_STATUS_MAX_ROUTES exceeds CBOR array header + buffer");
+BUILD_ASSERT(CONFIG_LICHEN_COAP_STATUS_MAX_TXQ <= 255U,
+	     "CONFIG_LICHEN_COAP_STATUS_MAX_TXQ exceeds uint8_t range");
+BUILD_ASSERT(CONFIG_LICHEN_COAP_STATUS_MAX_FWD <= 255U,
+	     "CONFIG_LICHEN_COAP_STATUS_MAX_FWD exceeds uint8_t range");
 BUILD_ASSERT(LICHEN_COAP_STATUS_CBOR_MAX_SIZE <= CONFIG_COAP_SERVER_MESSAGE_SIZE,
 	     "LICHEN_COAP_STATUS_CBOR_MAX_SIZE must fit in CONFIG_COAP_SERVER_MESSAGE_SIZE");
 BUILD_ASSERT(LICHEN_COAP_NEIGHBORS_CBOR_MAX_SIZE <= CONFIG_COAP_SERVER_MESSAGE_SIZE,
@@ -567,6 +571,17 @@ static int status_get(struct coap_resource *resource,
 					   COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
 	}
 
+	if (status.txq_used > CONFIG_LICHEN_COAP_STATUS_MAX_TXQ) {
+		LOG_ERR("txq_used %u exceeds MAX_TXQ %u", status.txq_used,
+			CONFIG_LICHEN_COAP_STATUS_MAX_TXQ);
+		status.txq_used = CONFIG_LICHEN_COAP_STATUS_MAX_TXQ;
+	}
+	if (status.fwd_used > CONFIG_LICHEN_COAP_STATUS_MAX_FWD) {
+		LOG_ERR("fwd_used %u exceeds MAX_FWD %u", status.fwd_used,
+			CONFIG_LICHEN_COAP_STATUS_MAX_FWD);
+		status.fwd_used = CONFIG_LICHEN_COAP_STATUS_MAX_FWD;
+	}
+
 	len = lichen_coap_encode_status_cbor(cbor_buf, sizeof(cbor_buf), &status);
 	if (len == 0) {
 		return lichen_coap_respond(resource, request, addr, addr_len,
@@ -594,6 +609,13 @@ static void status_notify(struct coap_resource *resource,
 	r = s_config.status_get(&status);
 	if (r < 0) {
 		return;
+	}
+
+	if (status.txq_used > CONFIG_LICHEN_COAP_STATUS_MAX_TXQ) {
+		status.txq_used = CONFIG_LICHEN_COAP_STATUS_MAX_TXQ;
+	}
+	if (status.fwd_used > CONFIG_LICHEN_COAP_STATUS_MAX_FWD) {
+		status.fwd_used = CONFIG_LICHEN_COAP_STATUS_MAX_FWD;
 	}
 
 	cbor_len = lichen_coap_encode_status_cbor(cbor_buf, sizeof(cbor_buf), &status);
