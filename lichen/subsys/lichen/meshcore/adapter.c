@@ -136,6 +136,9 @@ static bool copy_self_identity(struct lichen_app_identity_self *identity)
 }
 #endif
 
+static int preflight_tx_slots(struct lichen_meshcore_adapter *adapter,
+			      uint32_t needed);
+
 static int enqueue_contacts_empty(struct lichen_meshcore_adapter *adapter)
 {
 	uint8_t start[5] = { LICHEN_MESHCORE_RESP_CONTACTS_START };
@@ -552,10 +555,19 @@ static bool valid_name_text(const uint8_t *payload, size_t payload_len)
 	return true;
 }
 
+static size_t safe_strnlen(const char *s, size_t maxlen)
+{
+	size_t n = 0U;
+	while (n < maxlen && s[n] != '\0') {
+		n++;
+	}
+	return n;
+}
+
 static bool valid_default_flood_name(const uint8_t *payload)
 {
-	size_t len = strnlen((const char *)payload,
-			     LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN);
+	size_t len = safe_strnlen((const char *)payload,
+				  LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN);
 	if (len == 0U || len == LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN) {
 		return false;
 	}
@@ -572,9 +584,6 @@ static bool channel_body_has_secret(const uint8_t *payload)
 	}
 	return false;
 }
-
-static int preflight_tx_slots(struct lichen_meshcore_adapter *adapter,
-			      uint32_t needed);
 
 static int persist_settings_or_error(
 	struct lichen_meshcore_adapter *adapter,
