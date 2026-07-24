@@ -31,7 +31,7 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     signal,
     sync::mpsc,
-    time::{interval, sleep, Duration, MissedTickBehavior},
+    time::{interval, sleep, Duration},
 };
 use tracing::{error, info, warn};
 use tracing_subscriber::{fmt, EnvFilter};
@@ -482,8 +482,11 @@ async fn forward_mesh_to_upstream<T: TunLike>(
         start.elapsed().as_millis() as u64
     };
     let (reply_opt, event) = gw.process_rpl(frame, now_ms);
-    if matches!(event, RplEvent::DaoReceived { .. }) {
-        info!("DAO processed; mesh routes may have been updated");
+    if let RplEvent::DaoReceived {
+        route_updated: true,
+    } = event
+    {
+        info!("DAO event: route updated");
     }
     if let Some(reply) = reply_opt {
         info!(len = reply.len(), "mesh reply ready for SLIP TX queue");
@@ -559,14 +562,9 @@ where
     let mut conc = Sx1302Concentrator;
     let _ = conc.reset().await;
     let _ = conc.configure(&RadioConfig::default()).await;
-    if let Err(e) = conc.start().await {
-        warn!("concentrator start: {:?}", e);
-    }
     let mut tun_buf = vec![0u8; 1500];
-    let mut rx_buf = vec![0u8; 255];
     let mut tx_queue: VecDeque<Vec<u8>> = VecDeque::new();
     let mut maintenance = interval(Duration::from_millis(1000));
-    maintenance.set_missed_tick_behavior(MissedTickBehavior::Skip);
     loop {
         tokio::select! {
             _ = maintenance.tick() => {
@@ -575,18 +573,6 @@ where
                     start.elapsed().as_millis() as u64
                 };
                 gw.maintain(now_ms);
-            }
-            result = conc.receive(&mut rx_buf) => {
-                match result {
-                    Ok(Some(rxpkt)) => {
-                        info!(len = rxpkt.len, rssi = ?rxpkt.rssi, snr = ?rxpkt.snr, "hat RX");
-                        if let Some(reply) = forward_mesh_to_upstream(gw, &rx_buf[..rxpkt.len], &tun).await {
-                            tx_queue.push_back(reply);
-                        }
-                    }
-                    Ok(None) => {}
-                    Err(e) => warn!("concentrator receive: {:?}", e),
-                }
             }
             result = async { match &tun {
                 Some(t) => t.recv_pkt(&mut tun_buf).await,
@@ -611,9 +597,6 @@ where
                 info!(len = payload.len(), "hat TX");
             }
         }
-    }
-    if let Err(e) = conc.stop().await {
-        warn!("concentrator stop: {:?}", e);
     }
 }
 

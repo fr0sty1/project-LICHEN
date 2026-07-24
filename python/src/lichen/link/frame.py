@@ -41,8 +41,13 @@ class AddrMode(IntEnum):
         return _ADDR_LEN_TABLE[self]
 
 
-# Lookup table for AddrMode.addr_len (avoids dict creation on each access).
-_ADDR_LEN_TABLE: tuple[int, ...] = (0, 2, 8, 0)  # indexed by AddrMode value
+# Lookup table for AddrMode.addr_len (dict is robust against enum value changes).
+_ADDR_LEN_TABLE: dict[AddrMode, int] = {
+    AddrMode.NONE: 0,
+    AddrMode.SHORT: 2,
+    AddrMode.EXTENDED: 8,
+    AddrMode.ELIDED: 0,
+}
 
 
 class MicLength(IntEnum):
