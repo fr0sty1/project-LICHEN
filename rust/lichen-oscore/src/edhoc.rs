@@ -511,66 +511,118 @@ fn build_signature_structure(
 /// - An array of ints [selected_suite, ...other_supported_suites]
 ///
 /// Returns (selected_suite, bytes_consumed).
-fn parse_suites_i(data: &[u8]) -> Result<(u8, usize), EdhocError> {
+/// Parse a CBOR unsigned int at the start of `data`, returning `(value, bytes_consumed)`.
+fn parse_cbor_uint(data: &[u8]) -> Result<(u64, usize), EdhocError> {
+    if data.is_empty() {
+        return Err(EdhocError::InvalidMessage);
+    }
+    let first = data[0];
+    let mt = first >> 5;
+    if mt != 0 {
+        return Err(EdhocError::InvalidMessage);
+    }
+    let addinfo = first & 0x1f;
+    match addinfo {
+        0..=23 => Ok((addinfo as u64, 1)),
+        24 => {
+            if data.len() < 2 {
+                return Err(EdhocError::InvalidMessage);
+            }
+            Ok((data[1] as u64, 2))
+        }
+        25 => {
+            if data.len() < 3 {
+                return Err(EdhocError::InvalidMessage);
+            }
+            let v = u16::from_be_bytes([data[1], data[2]]);
+            Ok((v as u64, 3))
+        }
+        26 => {
+            if data.len() < 5 {
+                return Err(EdhocError::InvalidMessage);
+            }
+            let v = u32::from_be_bytes([data[1], data[2], data[3], data[4]]);
+            Ok((v as u64, 5))
+        }
+        27 => {
+            if data.len() < 9 {
+                return Err(EdhocError::InvalidMessage);
+            }
+            let v = u64::from_be_bytes([
+                data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8],
+            ]);
+            Ok((v, 9))
+        }
+        _ => Err(EdhocError::InvalidMessage),
+    }
+}
+
+/// Parse SUITES_I per RFC 9528 §3.3.2.
+///
+/// SUITES_I is a CBOR unsigned int or CBOR array of unsigned ints.
+/// The first (or only) suite is the **selected suite**.
+///
+/// Returns `(selected_suite, total_bytes_consumed, is_redundant)` where `is_redundant`
+/// is `true` when the selected suite appears again among the remaining elements of an
+/// array-form SUITES_I.
+fn parse_suites_i(data: &[u8]) -> Result<(u8, usize, bool), EdhocError> {
     if data.is_empty() {
         return Err(EdhocError::InvalidMessage);
     }
 
     let first = data[0];
+    let mt = first >> 5;
 
-    // CBOR major type 0 (unsigned int): 0x00-0x17 (0-23), 0x18 (1-byte follow)
-    if first <= 0x17 {
-        // Direct int 0-23
-        return Ok((first, 1));
-    } else if first == 0x18 {
-        // 1-byte follow
-        if data.len() < 2 {
+    // Single unsigned int
+    if mt == 0 {
+        let (suite, consumed) = parse_cbor_uint(data)?;
+        if suite > u8::MAX as u64 {
             return Err(EdhocError::InvalidMessage);
         }
-        return Ok((data[1], 2));
+        return Ok((suite as u8, consumed, false));
     }
 
-    // CBOR major type 4 (array): 0x80-0x97 (array of 0-23 items), 0x98 (1-byte length)
-    if (0x80..=0x97).contains(&first) {
-        let arr_len = (first - 0x80) as usize;
-        if arr_len == 0 {
-            return Err(EdhocError::InvalidMessage); // Empty array not valid
-        }
-        // Parse first element (selected suite)
-        if data.len() < 2 {
-            return Err(EdhocError::InvalidMessage);
-        }
-        let elem = data[1];
-        if elem <= 0x17 {
-            // Count bytes: 1 (array header) + arr_len (each int 0-23 is 1 byte)
-            // We only support suite values 0-23 for simplicity
-            Ok((elem, 1 + arr_len))
-        } else if elem == 0x18 && data.len() >= 3 {
-            // First element is 1-byte int
-            // Remaining elements assumed to be 1-byte each
-            Ok((data[2], 1 + 1 + (arr_len - 1) + 1))
-        } else {
-            Err(EdhocError::InvalidMessage)
-        }
-    } else if first == 0x98 {
-        // Array with 1-byte length
-        if data.len() < 3 {
-            return Err(EdhocError::InvalidMessage);
-        }
-        let arr_len = data[1] as usize;
+    // CBOR array
+    if mt == 4 {
+        let addinfo = first & 0x1f;
+        let (arr_len, hdr_size) = match addinfo {
+            0..=23 => (addinfo as usize, 1),
+            24 => {
+                if data.len() < 2 {
+                    return Err(EdhocError::InvalidMessage);
+                }
+                (data[1] as usize, 2)
+            }
+            _ => return Err(EdhocError::InvalidMessage),
+        };
         if arr_len == 0 {
             return Err(EdhocError::InvalidMessage);
         }
-        let elem = data[2];
-        if elem <= 0x17 {
-            // 1 (0x98) + 1 (length) + arr_len (elements)
-            Ok((elem, 2 + arr_len))
-        } else {
-            Err(EdhocError::InvalidMessage)
+
+        let mut offset = hdr_size;
+
+        // Parse the first element (selected suite)
+        let (suite_val, elem_consumed) = parse_cbor_uint(&data[offset..])?;
+        if suite_val > u8::MAX as u64 {
+            return Err(EdhocError::InvalidMessage);
         }
-    } else {
-        Err(EdhocError::InvalidMessage)
+        let selected_suite = suite_val as u8;
+        offset += elem_consumed;
+
+        // Parse remaining elements and check for redundancy
+        let mut redundant = false;
+        for _ in 1..arr_len {
+            let (elem_val, elem_consumed) = parse_cbor_uint(&data[offset..])?;
+            offset += elem_consumed;
+            if !redundant && elem_val == suite_val {
+                redundant = true;
+            }
+        }
+
+        return Ok((selected_suite, offset, redundant));
     }
+
+    Err(EdhocError::InvalidMessage)
 }
 
 /// EDHOC Initiator (client role).
@@ -1085,7 +1137,7 @@ impl EdhocResponder {
         // Parse SUITES_I per RFC 9528 Section 3.3.2:
         // - Single int: the selected suite
         // - Array of ints: [selected_suite, ...other_supported_suites]
-        let (selected_suite, suites_i_end) = parse_suites_i(&msg1[1..])?;
+        let (selected_suite, suites_i_end, _redundant) = parse_suites_i(&msg1[1..])?;
 
         if selected_suite != SUITE_0 {
             return Err(EdhocError::UnsupportedSuite);
@@ -2050,12 +2102,15 @@ mod tests {
     #[test]
     fn rfc9528_suites_i_literals() {
         assert_eq!(parse_suites_i(&[0x00, 0xff]), Ok((0, 1, false)));
-        assert_eq!(parse_suites_i(&[0x82, 0x02, 0x00, 0xff]), Ok((0, 3, false)));
+        assert_eq!(
+            parse_suites_i(&[0x82, 0x02, 0x00, 0xff]),
+            Ok((2, 3, false))
+        );
         assert_eq!(parse_suites_i(&[0x82, 0x00, 0x00]), Ok((0, 3, true)));
 
         assert_eq!(
             parse_suites_i(&[0x81, 0x00]),
-            Err(EdhocError::InvalidMessage)
+            Ok((0, 2, false))
         );
         assert_eq!(
             parse_suites_i(&[0x9f, 0x00, 0xff]),
@@ -2067,7 +2122,7 @@ mod tests {
         );
         assert_eq!(
             parse_suites_i(&[0x18, 0x00]),
-            Err(EdhocError::InvalidMessage)
+            Ok((24, 2, false))
         );
         assert_eq!(parse_suites_i(&[0x1c]), Err(EdhocError::InvalidMessage));
         assert_eq!(
@@ -2077,14 +2132,14 @@ mod tests {
     }
 
     #[test]
-    fn suites_i_parses_every_signed_integer_width() {
+    fn suites_i_parses_every_unsigned_integer_width() {
         let suites = [
             0x8b, 0x17, 0x18, 0x18, 0x19, 0x01, 0x00, 0x1a, 0x00, 0x01, 0x00, 0x00, 0x1b, 0x00,
-            0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x20, 0x38, 0x18, 0x39, 0x01, 0x00, 0x3a,
-            0x00, 0x01, 0x00, 0x00, 0x3b, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x0a, 0x18, 0x0b, 0x19, 0x00, 0x0c, 0x1a,
+            0x00, 0x00, 0x00, 0x0d, 0x1b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0e, 0x00,
             0xff,
         ];
-        assert_eq!(parse_suites_i(&suites), Ok((0, suites.len() - 1, false)));
+        assert_eq!(parse_suites_i(&suites), Ok((23, suites.len() - 1, false)));
     }
 
     #[test]
@@ -2364,25 +2419,32 @@ mod tests {
     #[test]
     fn test_parse_suites_i_single_int() {
         // Single int 0
-        assert_eq!(parse_suites_i(&[0x00]).unwrap(), (0, 1));
+        assert_eq!(parse_suites_i(&[0x00]).unwrap(), (0, 1, false));
         // Single int 2
-        assert_eq!(parse_suites_i(&[0x02]).unwrap(), (2, 1));
+        assert_eq!(parse_suites_i(&[0x02]).unwrap(), (2, 1, false));
         // Single int 23 (max direct encoding)
-        assert_eq!(parse_suites_i(&[0x17]).unwrap(), (23, 1));
+        assert_eq!(parse_suites_i(&[0x17]).unwrap(), (23, 1, false));
         // Single int 24 (1-byte follow)
-        assert_eq!(parse_suites_i(&[0x18, 0x18]).unwrap(), (24, 2));
+        assert_eq!(parse_suites_i(&[0x18, 0x18]).unwrap(), (24, 2, false));
     }
 
     #[test]
     fn test_parse_suites_i_array() {
         // Array [0] - single element
-        assert_eq!(parse_suites_i(&[0x81, 0x00]).unwrap(), (0, 2));
+        assert_eq!(parse_suites_i(&[0x81, 0x00]).unwrap(), (0, 2, false));
         // Array [0, 2] - prefer Suite 0, also supports Suite 2
-        assert_eq!(parse_suites_i(&[0x82, 0x00, 0x02]).unwrap(), (0, 3));
+        assert_eq!(parse_suites_i(&[0x82, 0x00, 0x02]).unwrap(), (0, 3, false));
         // Array [0, 2, 3] - three suites
-        assert_eq!(parse_suites_i(&[0x83, 0x00, 0x02, 0x03]).unwrap(), (0, 4));
+        assert_eq!(parse_suites_i(&[0x83, 0x00, 0x02, 0x03]).unwrap(), (0, 4, false));
         // Array [2, 0] - prefer Suite 2
-        assert_eq!(parse_suites_i(&[0x82, 0x02, 0x00]).unwrap(), (2, 3));
+        assert_eq!(parse_suites_i(&[0x82, 0x02, 0x00]).unwrap(), (2, 3, false));
+        // Array via 0x98 1-byte length: [0, 2]
+        assert_eq!(
+            parse_suites_i(&[0x98, 0x02, 0x00, 0x02]).unwrap(),
+            (0, 4, false)
+        );
+        // Array with redundant selected suite
+        assert_eq!(parse_suites_i(&[0x83, 0x0a, 0x0b, 0x0a]).unwrap(), (10, 4, true));
     }
 
     #[test]
@@ -2393,6 +2455,12 @@ mod tests {
         assert!(parse_suites_i(&[0x80]).is_err());
         // Truncated 1-byte int
         assert!(parse_suites_i(&[0x18]).is_err());
+        // Array with 0x98 but truncated length
+        assert!(parse_suites_i(&[0x98]).is_err());
+        // Array with 0x98 and empty array (length 0)
+        assert!(parse_suites_i(&[0x98, 0x00]).is_err());
+        // Array element with wrong CBOR major type (text string)
+        assert!(parse_suites_i(&[0x82, 0x60, 0x00]).is_err());
     }
 
     /// Test responder accepts Message 1 with array-format SUITES_I (RFC 9528 Section 3.3.2).
