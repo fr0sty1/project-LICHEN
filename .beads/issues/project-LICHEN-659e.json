@@ -2,7 +2,7 @@
   "id": "project-LICHEN-659e",
   "title": "Audit Rust lichen-link/src/schnorr.rs scalar mult / verify / CT eq",
   "description": "Locate dalek scalar ops, verify fn, ConstantTimeEq usage. Verify no secret-dependent branches or variable-time reductions. Cross-check with C impl and test vectors. Suggest any CT improvements.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

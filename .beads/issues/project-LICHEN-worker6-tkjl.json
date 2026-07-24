@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-tkjl",
   "title": "[review] project-LICHEN-worker6-jdu2: libnull.rlib tracked as build artifact at repo root",
   "description": "Commit 23d0bb18d5 (project-LICHEN-2auf.52: fix) includes libnull.rlib, a compiled .rlib archive tracked at the repo root. Build artifacts must never be in version control.\n- The new rust/.gitignore (HEAD) covers rust/*.rlib but not root-level *.rlib\n- Remove libnull.rlib from git tracking\n- Add *.rlib to root .gitignore or, if no root .gitignore exists, consider whether libnull.rlib should have been in rust/ or removed entirely",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:36:50.776050755Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T18:36:50.776050755Z"
+  "updated_at": "2026-07-24T18:54:39.128727607Z",
+  "started_at": "2026-07-24T18:54:39.128727607Z",
+  "lease_expires_at": "2026-07-24T18:59:39.128727607Z",
+  "heartbeat_at": "2026-07-24T18:54:39.128727607Z"
 }

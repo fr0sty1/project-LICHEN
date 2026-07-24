@@ -2,7 +2,7 @@
   "id": "project-LICHEN-w9dm",
   "title": "spec/02a-coordinated-capacity.md: Appendix A section should include full test vector list per parent bead project-LICHEN-5mh9",
   "description": "The Appendix A mention is brief; expand cross-refs to include ccp-interference.json details and independent oracle requirement as in overview section. Tagged codereview. Discovered-from:project-LICHEN-5mh9.1",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

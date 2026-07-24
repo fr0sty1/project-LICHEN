@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3i18",
   "title": "codereview: current_channel not included in signed_data() for CCP-9 announce",
   "description": "P2 finding from project-LICHEN-dtj5. The Python AnnounceMessage.signed_data() omits current_channel despite CCP-9 rendezvous using it for peer rx_channel pinning and select_rendezvous_channel. Tampering possible if not signed. Per spec 9.2 security model and da2q. Decision: MUST include to bind announced channel to authenticated signer. Rust/C equivalents also miss it. Tagged codereview.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",
