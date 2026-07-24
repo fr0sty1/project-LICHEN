@@ -2797,6 +2797,33 @@ mod tests {
     }
 
     #[test]
+    fn wrong_key_does_not_poison_replay_window() {
+        let secret = [0xbe; KEY_LEN];
+        let attacker_secret = [0xef; KEY_LEN];
+        let mut legitimate = Context::new_ephemeral(&secret, None, &[0], &[1]).unwrap();
+        let mut attacker = Context::new_ephemeral(&attacker_secret, None, &[0], &[1]).unwrap();
+        let mut recipient = Context::new_ephemeral(&secret, None, &[1], &[0]).unwrap();
+
+        let (attacker_ciphertext, attacker_option) =
+            attacker.protect_request(0x02, &[], b"fake").unwrap();
+        let (legitimate_ciphertext, legitimate_option) = legitimate
+            .protect_request(0x02, &[], b"real")
+            .unwrap();
+
+        assert!(matches!(
+            recipient.unprotect_request(&attacker_option, &attacker_ciphertext),
+            Err(OscoreError::DecryptFailed)
+        ));
+        assert_eq!(
+            recipient
+                .unprotect_request(&legitimate_option, &legitimate_ciphertext)
+                .unwrap()
+                .2,
+            b"real"
+        );
+    }
+
+    #[test]
     fn crash_after_reservation_skips_sequence_after_restore() {
         let secret = [0x24; KEY_LEN];
         let mut crashed = Context::restore(&secret, None, &[0], &[1], 3, false).unwrap();
