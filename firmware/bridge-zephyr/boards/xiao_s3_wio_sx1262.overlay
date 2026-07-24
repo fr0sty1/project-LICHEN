@@ -1,7 +1,15 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 /*
- * RETIRED/BLOCKED per project-LICHEN-2u26.10 (m5m1.8 bridge audit, project-LICHEN-p70q/worktree-worker18): Seeed XIAO ESP32-S3 + Wio-SX1262 has no canonical Zephyr board target. xiao_s3_wio_sx1262 invalid -b target. Classified FAIL; support removed. Use heltec_wifi_lora32_v3_esp32s3_procpu proxy. Fragment retained for reference only. See docs/firmware-board-capability-matrix.md.
+ * BLOCKED/RETIRED: Seeed XIAO ESP32-S3 + Wio-SX1262 bridge overlay
+ * (project-LICHEN-2u26.10 / project-LICHEN-2u26 / m5m1.8)
+ *
+ * No canonical Zephyr board/composite (seeed_xiao_esp32s3 + Wio-SX1262
+ * shield not in tree or upstream; xiao_s3_wio_sx1262 not a valid -b target).
+ * Closest proxies: heltec_wifi_lora32_v3/esp32s3/procpu.
+ * Classified FAIL (no canonical board) in bridge audit; orphaned fragment.
+ * Do not present as supported. Follows tbeam_supreme pattern (w8rd).
+ * Pin map retained for reference only.
  *
  * Original pin map (for reference):
  * ESP32-S3 + SX1262 LoRa (via B2B connector)
