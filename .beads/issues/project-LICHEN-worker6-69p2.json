@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-69p2",
   "title": "[review] project-LICHEN-worker6-x0i0: fuzz target not updated for Fragment::from_bytes API change",
   "description": "Commit 2d43956 changed Fragment::from_bytes from from_bytes(data, \u0026mut tile) to from_bytes(data), removing the tile buffer parameter. The fuzz target at rust/lichen-schc/fuzz/fuzz_targets/fuzz_fragment.rs line 9 still calls Fragment::from_bytes(data, \u0026mut tile) with the old 2-arg signature. This causes a compilation error: mismatched types / wrong number of arguments.",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:25:28.717953426Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T18:51:02.474421757Z",
-  "closed_at": "2026-07-24T18:51:02.474421757Z",
-  "close_reason": "Closed"
+  "updated_at": "2026-07-24T18:51:05.852923347Z",
+  "started_at": "2026-07-24T18:51:05.852923347Z",
+  "lease_expires_at": "2026-07-24T18:56:05.852923347Z",
+  "heartbeat_at": "2026-07-24T18:51:05.852923347Z"
 }

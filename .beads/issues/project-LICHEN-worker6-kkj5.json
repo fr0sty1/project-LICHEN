@@ -2,15 +2,11 @@
   "id": "project-LICHEN-worker6-kkj5",
   "title": "[review] project-LICHEN-worker6-voln: TH_4 uses CRED_I instead of CRED_R, violates RFC 9528 §3.5",
   "description": "## Summary\nCommit `4ae77fb` changed `TH_4` computation in three places, all incorrectly substituting `CRED_I` (initiator credential) for `CRED_R` (responder credential), in violation of EDHOC RFC 9528 §3.5 which specifies `TH_4 = H(TH_3, PLAINTEXT_4, CRED_R)`.\n\n## Bugs\n\n### 1. Initiator `prepare_message_3` (line 926)\n- **Before:** `transcript_4(\u0026self.state.th_3, \u0026plaintext_3, peer.credential)?` — `peer.credential` = CRED_R from message_2 ✓\n- **After:** `transcript_4(\u0026self.state.th_3, \u0026plaintext_3, \u0026credential_i)?` — `credential_i` = CRED_I from initiator own credential ✗\n\n### 2. Responder `process_message_3` (lines 1355-1356)\n- **Before:** reconstructed `credential_r` from `self.pubkey.as_bytes()` → CRED_R ✓\n- **After:** `transcript_4(\u0026self.state.th_3, \u0026pending.plaintext, peer.credential)?` — `peer.credential` = CRED_I parsed from message_3 ✗\n\n### 3. Test vector `rfc9529_signature_trace_vectors` (line 1644-1648)\n- **Before:** `transcript_4(\u0026th_3, \u0026plaintext_3, \u0026credential_r).unwrap(), th_4` with `th_4 = 0xad002457...` ✓\n- **After:** `transcript_4(\u0026th_3, \u0026plaintext_3, \u0026credential_i).unwrap(), th_4` with `th_4 = 0x815d14a1...` ✗\n- The new `th_4` value was derived from the broken computation with `credential_i` rather than being the correct RFC 9529 test vector value. The test now validates the buggy code against itself.\n\n## Impact\n- **Interop failure:** Nodes using this code will produce different `TH_4` values than compliant EDHOC implementations, breaking OSCORE key derivation and the entire handshake.\n- **Test integrity violation:** The test vector was changed to match the broken code rather than independently verifying correctness against the RFC.\n\n## Fix\nRevert all three changes to use CRED_R:\n- Initiator: restore `peer.credential`\n- Responder: restore `credential_r` reconstruction from `self.pubkey.as_bytes()`\n- Test: restore `credential_r` and original `th_4` value `0xad002457...`",
-  "status": "in_progress",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:29:10.610792709Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T18:51:01.135280135Z",
-  "started_at": "2026-07-24T18:51:01.135280135Z",
-  "lease_expires_at": "2026-07-24T18:56:01.135280135Z",
-  "heartbeat_at": "2026-07-24T18:51:01.135280135Z"
+  "updated_at": "2026-07-24T18:29:10.610792709Z"
 }
