@@ -1101,7 +1101,7 @@ mod std_ext {
         pub fn new(window_size: usize) -> Self {
             FragmentReceiver {
                 window_size,
-                rule_id: 0,
+                rule_id: None,
                 tiles: HashMap::new(),
                 current_window: 0,
                 completed_windows: HashSet::new(),
@@ -1174,9 +1174,9 @@ mod std_ext {
                     mic_ok: None,
                 };
             }
-            if self.rule_id == 0 {
-                self.rule_id = frag.rule_id;
-            } else if self.rule_id != frag.rule_id {
+            if self.rule_id.is_none() {
+                self.rule_id = Some(frag.rule_id);
+            } else if self.rule_id != Some(frag.rule_id) {
                 return ReceiverResult {
                     ack: None,
                     reassembled: None,
@@ -1228,7 +1228,7 @@ mod std_ext {
                 }
                 return ReceiverResult {
                     ack: Some(Ack::new(
-                        self.rule_id,
+                        self.rule_id.unwrap_or(0),
                         (abs_window % 2) as u8,
                         &bitmap,
                         false,
@@ -1246,7 +1246,7 @@ mod std_ext {
 
         fn finalize(&mut self) -> ReceiverResult {
             let bitmap = self.window_bitmap(self.all1_window);
-            let nack = Ack::new(self.rule_id, (self.all1_window % 2) as u8, &bitmap, false);
+            let nack = Ack::new(self.rule_id.unwrap_or(0), (self.all1_window % 2) as u8, &bitmap, false);
 
             // O(n) contiguity check: if we have n tiles and max index is n-1,
             // all indices 0..n must be present (HashMap keys are unique).
@@ -1271,7 +1271,7 @@ mod std_ext {
                 self.reassembled = Some(data.clone());
                 ReceiverResult {
                     ack: Some(Ack::new(
-                        self.rule_id,
+                        self.rule_id.unwrap_or(0),
                         (self.all1_window % 2) as u8,
                         &bitmap,
                         true,
