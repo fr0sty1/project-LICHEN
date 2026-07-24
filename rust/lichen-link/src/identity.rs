@@ -184,11 +184,22 @@ mod tests {
 
     #[test]
     fn human_address_from_pubkey_matches_test_vectors() {
-        let pk0 = PublicKey::new([0u8; 32]);
-        assert_eq!(human_address_from_pubkey(&pk0), *b"68T3-TNQW-65FBQ");
-        let pk1 = PublicKey::new([1u8; 32]);
-        assert_eq!(human_address_from_pubkey(&pk1), *b"71KB-EGGH-C81ZV");
-        let pk4 = PublicKey::new([4u8; 32]);
-        assert_eq!(human_address_from_pubkey(&pk4), *b"9TKX-PHWZ-1VB42");
+        // All 10 vectors from test/vectors/node_address.json
+        let vectors: [([u8; 32], &[u8; 15]); 10] = [
+            ([0u8; 32], b"68T3-TNQW-65FBQ"),
+            ([1u8; 32], b"71KB-EGGH-C81ZV"),
+            ([2u8; 32], b"7B1V-VPGE-KJETZ"),
+            ([3u8; 32], b"692N-5RNW-ZPC7K"),
+            ([4u8; 32], b"9TKX-PHWZ-1VB42"),
+            ([5u8; 32], b"FGJE-PECJ-ZNKR4"),
+            ([6u8; 32], b"EG0G-8DBB-A3RBB"),
+            ([7u8; 32], b"4KC3-FHS7-3MXRN"),
+            ([8u8; 32], b"2AY6-CZ1J-5PB8X"),
+            ([9u8; 32], b"8R36-1F82-98B64"),
+        ];
+        for (pk_bytes, expected) in &vectors {
+            let pk = PublicKey::new(*pk_bytes);
+            assert_eq!(&human_address_from_pubkey(&pk), expected);
+        }
     }
 }

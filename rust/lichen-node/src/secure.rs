@@ -331,11 +331,12 @@ impl<R: Radio> SecureStack<R> {
         radio: R,
         identity: lichen_link::identity::Identity,
         epoch: u8,
+        seq: u16,
     ) -> Result<Self, SecureError> {
         if epoch < 128 {
             return Err(SecureError::InvalidEpoch);
         }
-        Ok(Self::new(Stack::new(radio, identity, epoch)))
+        Ok(Self::new(Stack::new(radio, identity, epoch, seq)))
     }
 
     /// Atomically register and install a newly established OSCORE context.
@@ -1186,13 +1187,18 @@ mod tests {
     impl Radio for RecordingRadio {
         type Error = Infallible;
 
-        async fn transmit(&mut self, _payload: &[u8]) -> Result<(), Self::Error> {
+        async fn transmit(&mut self, _channel: u8, _payload: &[u8]) -> Result<(), Self::Error> {
             self.events.lock().unwrap().push("transmit");
             Ok(())
         }
 
+        async fn cca(&mut self, _channel: u8, _threshold_dbm: i8) -> Result<bool, Self::Error> {
+            Ok(true)
+        }
+
         async fn receive(
             &mut self,
+            _channel: u8,
             _buf: &mut [u8],
             _timeout_ms: u32,
         ) -> Result<Option<RxPacket>, Self::Error> {
@@ -1205,7 +1211,7 @@ mod tests {
     impl Radio for SwitchableRadio {
         type Error = ();
 
-        async fn transmit(&mut self, _payload: &[u8]) -> Result<(), Self::Error> {
+        async fn transmit(&mut self, _channel: u8, _payload: &[u8]) -> Result<(), Self::Error> {
             if self.fail.load(Ordering::Relaxed) {
                 Err(())
             } else {
@@ -1213,8 +1219,13 @@ mod tests {
             }
         }
 
+        async fn cca(&mut self, _channel: u8, _threshold_dbm: i8) -> Result<bool, Self::Error> {
+            Ok(true)
+        }
+
         async fn receive(
             &mut self,
+            _channel: u8,
             _buf: &mut [u8],
             _timeout_ms: u32,
         ) -> Result<Option<RxPacket>, Self::Error> {
@@ -1241,13 +1252,13 @@ mod tests {
         let (invalid_radio, _) = LoopbackRadio::pair();
         let invalid_identity = Identity::from_seed(Seed::new([0x71; 32]));
         assert!(matches!(
-            SecureStack::from_radio(invalid_radio, invalid_identity, 127),
+            SecureStack::from_radio(invalid_radio, invalid_identity, 127, 0),
             Err(SecureError::InvalidEpoch)
         ));
 
         let (valid_radio, _) = LoopbackRadio::pair();
         let valid_identity = Identity::from_seed(Seed::new([0x72; 32]));
-        assert!(SecureStack::from_radio(valid_radio, valid_identity, 128).is_ok());
+        assert!(SecureStack::from_radio(valid_radio, valid_identity, 128, 0).is_ok());
     }
 
     #[tokio::test]
@@ -1260,7 +1271,7 @@ mod tests {
         let radio = RecordingRadio {
             events: Arc::clone(&events),
         };
-        let mut stack = Stack::new_default_epoch(radio, alice_id);
+        let mut stack = Stack::new(radio, alice_id, 128, 0);
         stack.add_peer(PeerIdentity::from_pubkey(bob_id.pubkey));
         let mut secure = SecureStack::new(stack);
         let mut store = RecordingStore {
@@ -1506,8 +1517,8 @@ mod tests {
         let bob_id = Identity::from_seed(Seed::new([0x22; 32]));
         let alice_peer = PeerIdentity::from_pubkey(alice_id.pubkey);
         let (radio_a, radio_b) = LoopbackRadio::pair();
-        let mut alice = Stack::new_default_epoch(radio_a, alice_id);
-        let mut bob = SecureStack::from_radio(radio_b, bob_id, 128).unwrap();
+        let mut alice = Stack::new(radio_a, alice_id, 128, 0);
+        let mut bob = SecureStack::from_radio(radio_b, bob_id, 128, 0).unwrap();
         bob.add_peer(alice_peer);
 
         let empty_ack = [0x60, 0x00, 0x12, 0x34];
@@ -1595,8 +1606,8 @@ mod tests {
         let peer_identity = Identity::from_seed(Seed::new([0x32; 32]));
         let peer_iid = peer_identity.iid;
         let (radio, peer_radio) = LoopbackRadio::pair();
-        let mut secure = SecureStack::new(Stack::new_default_epoch(radio, identity));
-        let mut peer_stack = Stack::new_default_epoch(peer_radio, peer_identity);
+        let mut secure = SecureStack::new(Stack::new(radio, identity, 128, 0));
+        let mut peer_stack = Stack::new(peer_radio, peer_identity, 128, 0);
         peer_stack.add_peer(PeerIdentity::from_pubkey(identity_pubkey));
         let events = Arc::new(Mutex::new(Vec::new()));
         let mut store = RecordingStore {
@@ -1749,7 +1760,7 @@ mod tests {
         let radio = SwitchableRadio {
             fail: Arc::clone(&fail),
         };
-        let mut secure = SecureStack::new(Stack::new_default_epoch(radio, identity));
+        let mut secure = SecureStack::new(Stack::new(radio, identity, 128, 0));
         let events = Arc::new(Mutex::new(Vec::new()));
         let mut client_store = RecordingStore {
             record: None,
@@ -1864,7 +1875,7 @@ mod tests {
     async fn explicit_piv_nonconfirmable_response_completes_correlation() {
         let identity = Identity::from_seed(Seed::new([0x41; 32]));
         let (radio, _) = LoopbackRadio::pair();
-        let mut secure = SecureStack::new(Stack::new_default_epoch(radio, identity));
+        let mut secure = SecureStack::new(Stack::new(radio, identity, 128, 0));
         let secret = [0x42; 16];
         let peer_iid = [0x43; 8];
         let events = Arc::new(Mutex::new(Vec::new()));

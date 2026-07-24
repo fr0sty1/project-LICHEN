@@ -596,6 +596,7 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 	}
 }
 
+#ifdef CONFIG_LICHEN_LINK_CCP16_LOAD_BALANCING
 int lichen_link_channel_select(const uint8_t eui64[LICHEN_EUI64_LEN],
 			       uint32_t epoch,
 			       uint8_t density,
@@ -631,6 +632,36 @@ int lichen_link_channel_select(const uint8_t eui64[LICHEN_EUI64_LEN],
 	*channel = 1 + (uint8_t)(hash % n);
 	return 0;
 }
+#else
+int lichen_link_channel_select(const uint8_t eui64[LICHEN_EUI64_LEN],
+			       uint32_t epoch,
+			       uint8_t density,
+			       uint8_t num_channels,
+			       uint8_t *channel)
+{
+	uint8_t data[12];
+	uint32_t hash;
+	uint8_t n;
+
+	(void)density;
+
+	if (eui64 == NULL || channel == NULL) {
+		return -EINVAL;
+	}
+
+	memcpy(&data[0], eui64, LICHEN_EUI64_LEN);
+	data[8] = (uint8_t)(epoch & 0xff);
+	data[9] = (uint8_t)((epoch >> 8) & 0xff);
+	data[10] = (uint8_t)((epoch >> 16) & 0xff);
+	data[11] = (uint8_t)((epoch >> 24) & 0xff);
+
+	hash = lichen_hash_32(data, sizeof(data));
+
+	n = (num_channels < 3) ? 3 : num_channels;
+	*channel = 1 + (uint8_t)(hash % n);
+	return 0;
+}
+#endif
 
 int lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots)
 {

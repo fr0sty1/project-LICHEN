@@ -20,7 +20,7 @@ from hashlib import sha512
 import pytest
 from nacl.bindings import crypto_scalarmult, crypto_scalarmult_base
 
-from lichen.crypto.identity import Identity, PeerIdentity, _pubkey_to_iid
+from lichen.crypto.identity import Identity, PeerIdentity, _pubkey_to_iid, iid_to_human_address
 from lichen.crypto.schnorr48 import clamp
 
 
@@ -337,3 +337,60 @@ class TestKnownVectors:
 
         # Cross-check: public key should be scalarmult_base of private key
         assert ident.x25519_public == crypto_scalarmult_base(ident.x25519_private)
+
+
+class TestHumanAddressVectors:
+    """Validate against canonical test/vectors/node_address.json (10 vectors).
+
+    Each vector specifies (pubkey_hex, iid_hex, expected_human_address).
+    The iid is SHA-256(pubkey)[:8] with U/L bit cleared.
+    The human_address is Crockford Base32 of the IID, formatted XXXX-XXXX-XXXXX.
+    """
+
+    VECTORS = [
+        ("0000000000000000000000000000000000000000000000000000000000000000",
+         "64687aadf862bd77", "68T3-TNQW-65FBQ"),
+        ("0101010101010101010101010101010101010101010101010101010101010101",
+         "70cd6e8422c407fb", "71KB-EGGH-C81ZV"),
+        ("0202020202020202020202020202020202020202020202020202020202020202",
+         "75877bb41d393b5f", "7B1V-VPGE-KJETZ"),
+        ("0303030303030303030303030303030303030303030303030303030303030303",
+         "648aa5c579fb30f3", "692N-5RNW-ZPC7K"),
+        ("0404040404040404040404040404040404040404040404040404040404040404",
+         "9d4fb68f3e1dac82", "9TKX-PHWZ-1VB42"),
+        ("0505050505050505050505050505050505050505050505050505050505050505",
+         "f849d67325facf04", "FGJE-PECJ-ZNKR4"),
+        ("0606060606060606060606060606060606060606060606060606060606060606",
+         "e802086ad6a1e16b", "EG0G-8DBB-A3RBB"),
+        ("0707070707070707070707070707070707070707070707070707070707070707",
+         "49b06f8e4e3a7715", "4KC3-FHS7-3MXRN"),
+        ("0808080808080808080808080808080808080808080808080808080808080808",
+         "2578ccf8645b2d1d", "2AY6-CZ1J-5PB8X"),
+        ("0909090909090909090909090909090909090909090909090909090909090909",
+         "8c0cc17a04942cc4", "8R36-1F82-98B64"),
+    ]
+
+    def test_pubkey_to_iid_matches_vectors(self):
+        for pubkey_hex, iid_hex, _ in self.VECTORS:
+            pubkey = bytes.fromhex(pubkey_hex)
+            expected_iid = bytes.fromhex(iid_hex)
+            actual = _pubkey_to_iid(pubkey)
+            assert actual == expected_iid, (
+                f"pubkey {pubkey_hex}: expected iid {iid_hex}, got {actual.hex()}"
+            )
+
+    def test_human_address_via_peer_identity(self):
+        for pubkey_hex, _, expected in self.VECTORS:
+            pubkey = bytes.fromhex(pubkey_hex)
+            peer = PeerIdentity.from_pubkey(pubkey)
+            assert peer.human_address == expected, (
+                f"pubkey {pubkey_hex}: expected {expected}, got {peer.human_address}"
+            )
+
+    def test_iid_to_human_address_direct(self):
+        for _, iid_hex, expected in self.VECTORS:
+            iid = bytes.fromhex(iid_hex)
+            actual = iid_to_human_address(iid)
+            assert actual == expected, (
+                f"iid {iid_hex}: expected {expected}, got {actual}"
+            )

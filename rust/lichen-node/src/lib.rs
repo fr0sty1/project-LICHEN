@@ -60,6 +60,8 @@ pub mod stack;
 pub mod tdma_scheduler;
 
 #[cfg(feature = "std")]
+pub use rpl_stack::RplStack;
+#[cfg(feature = "std")]
 pub use announce::{
     seq_gt, AnnounceProcessor, AnnounceRejectReason, AnnounceResult, MAX_TRACKED_ORIGINATORS,
 };

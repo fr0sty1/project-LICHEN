@@ -601,4 +601,184 @@ int oscore_unprotect_response(struct oscore_ctx *_Nonnull ctx,
 }
 #endif
 
+/**
+ * @defgroup oscore_group OSCORE Group Communication (RFC 9203)
+ *
+ * Group OSCORE extends per-peer OSCORE to enable encrypted group
+ * communication. All group members share the same master secret and
+ * common IV. Each member has their own sender/recipient ID pair,
+ * derived from their position (index) in the group.
+ *
+ * Group contexts have a trust level that indicates how the group
+ * key was established (direct provisioning, key agreement, etc.).
+ *
+ * SECURITY: Group keys provide confidentiality within the group but
+ * do NOT provide sender authentication (any group member can encrypt
+ * as any other). For authenticated group communication, pair with
+ * link-layer Ed25519 signatures or per-message signing.
+ */
+
+/**
+ * @brief Maximum group name length
+ */
+#define OSCORE_GROUP_NAME_MAX_LEN 16
+
+/**
+ * @brief Maximum group members
+ */
+#define OSCORE_GROUP_MAX_MEMBERS 32
+
+/**
+ * @brief Group key trust levels
+ */
+enum oscore_group_trust {
+	OSCORE_GROUP_TRUST_UNKNOWN = 0,
+	OSCORE_GROUP_TRUST_PROVISIONED, /**< Directly provisioned (out-of-band) */
+	OSCORE_GROUP_TRUST_ESTABLISHED, /**< Established via key agreement */
+	OSCORE_GROUP_TRUST_VERIFIED,    /**< Verified group membership */
+};
+
+/**
+ * @brief OSCORE group context (opaque)
+ *
+ * Full definition is private to oscore.c. Follows the same opaque
+ * pattern as struct oscore_ctx for security (key isolation).
+ */
+struct oscore_group_ctx;
+
+/**
+ * @brief Create a new OSCORE group context.
+ *
+ * All group members share the same master_secret. Each member's
+ * sender and recipient IDs are derived from group_member_index
+ * (member 0 uses IDs [0]/[1], member 1 uses [2]/[3], etc.).
+ *
+ * This simplifies key management: distribute the master_secret,
+ * and each member computes their own per-member context from
+ * their index.
+ *
+ * @param[in]  group_name        Group name string (for lookup, NULL for anonymous)
+ * @param[in]  master_secret     16-byte group master secret
+ * @param[in]  group_member_index Index of this member (0..OSCORE_GROUP_MAX_MEMBERS-1)
+ * @param[in]  trust             Group key trust level
+ * @param[out] ctx_out           Output group context pointer
+ * @return 0 on success, negative error code on failure
+ */
+int oscore_group_ctx_create(const char *_Nullable group_name,
+			    const uint8_t *_Nonnull master_secret,
+			    uint8_t group_member_index,
+			    enum oscore_group_trust trust,
+			    struct oscore_group_ctx *_Nullable *_Nonnull ctx_out);
+
+/**
+ * @brief Get an individual OSCORE security context from a group context.
+ *
+ * Each group member needs a per-peer OSCORE context for send/receive
+ * within the group. This extracts the member's derived context from
+ * the group context.
+ *
+ * @param[in]  group_ctx Group context
+ * @param[out] out_ctx   Output individual context pointer
+ * @return 0 on success, negative error code on failure
+ */
+int oscore_group_ctx_get_member_ctx(struct oscore_group_ctx *_Nonnull group_ctx,
+				    struct oscore_ctx *_Nullable *_Nonnull out_ctx);
+
+/**
+ * @brief Get a group context by name.
+ *
+ * @param[in]  group_name Group name string
+ * @param[out] ctx_out    Output group context pointer
+ * @return 0 on success, OSCORE_ERR_NO_CONTEXT if not found
+ */
+int oscore_group_ctx_get_by_name(const char *_Nonnull group_name,
+				 struct oscore_group_ctx *_Nullable *_Nonnull ctx_out);
+
+/**
+ * @brief Get group trust level.
+ *
+ * @param[in]  group_ctx Group context
+ * @param[out] trust     Output trust level
+ * @return 0 on success, negative error code on failure
+ */
+int oscore_group_ctx_get_trust(const struct oscore_group_ctx *_Nonnull group_ctx,
+			       enum oscore_group_trust *_Nonnull trust);
+
+/**
+ * @brief Set group trust level.
+ *
+ * SECURITY: Trust can only be escalated (UNKNOWN < PROVISIONED <
+ * ESTABLISHED < VERIFIED). Downgrading returns an error.
+ *
+ * @param[in] group_ctx Group context
+ * @param[in] trust     New trust level
+ * @return 0 on success, -EPERM if downgrade attempted
+ */
+int oscore_group_ctx_set_trust(struct oscore_group_ctx *_Nonnull group_ctx,
+			       enum oscore_group_trust trust);
+
+/**
+ * @brief Free an OSCORE group context.
+ *
+ * Also frees the associated per-member OSCORE contexts.
+ *
+ * @param[in] ctx Group context to free
+ */
+void oscore_group_ctx_free(struct oscore_group_ctx *_Nullable ctx);
+
+/**
+ * @brief Get number of group contexts.
+ *
+ * @return Number of active group contexts
+ */
+size_t oscore_group_ctx_count(void);
+
+/**
+ * @brief Derive an OSCORE master secret from a peer public key.
+ *
+ * Uses HKDF-SHA256 with domain separation:
+ *   info = "LICHEN-OSCORE-peer-key" || iid
+ *   master_secret = HKDF-Expand(HKDF-Extract(salt=0, IKM=pubkey), info, 16)
+ *
+ * This enables E2E encryption for resources like dead drops and
+ * confessions where the communicating parties share public keys
+ * via TOFU but have not run EDHOC.
+ *
+ * @param[in]  peer_pubkey    32-byte Ed25519 public key
+ * @param[in]  peer_iid       8-byte peer IID
+ * @param[out] master_secret  16-byte output master secret
+ * @return 0 on success, negative error code on failure
+ */
+int oscore_derive_master_secret_from_peer_key(
+	const uint8_t peer_pubkey[_Nonnull 32],
+	const uint8_t peer_iid[_Nonnull 8],
+	uint8_t master_secret[_Nonnull OSCORE_KEY_LEN]);
+
+/**
+ * @brief Create an OSCORE context derived from a peer's public key.
+ *
+ * Combines oscore_derive_master_secret_from_peer_key() and
+ * oscore_ctx_create_with_eui64() for convenience. The derived
+ * master_secret is wiped after key derivation.
+ *
+ * @param[in]  peer_pubkey    32-byte Ed25519 public key
+ * @param[in]  peer_eui64     8-byte peer EUI-64
+ * @param[in]  sender_id      Sender ID
+ * @param[in]  sender_id_len  Sender ID length
+ * @param[in]  recipient_id   Recipient ID
+ * @param[in]  recipient_id_len Recipient ID length
+ * @param[out] ctx            Output context pointer
+ * @return 0 on success, negative error code on failure
+ */
+int oscore_ctx_create_from_peer_key(
+	const uint8_t peer_pubkey[_Nonnull 32],
+	const uint8_t peer_eui64[_Nonnull 8],
+	const uint8_t *_Nonnull sender_id, size_t sender_id_len,
+	const uint8_t *_Nonnull recipient_id, size_t recipient_id_len,
+	struct oscore_ctx *_Nullable *_Nonnull ctx);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* LICHEN_OSCORE_H_ */

@@ -269,15 +269,16 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
  */
 void lichen_l2_reinit_after_abort(void);
 
-#if defined(CONFIG_LICHEN_ADAPTIVE_SF_ENABLED)
+#if defined(CONFIG_LICHEN_ADAPTIVE_SF_ENABLED) || defined(CONFIG_LICHEN_MULTI_CHANNEL_ENABLED)
 /**
- * @brief Set gradient table for per-neighbor adaptive SF tracking.
+ * @brief Set gradient table for per-neighbor tracking (SF + channel).
  *
  * The routing layer calls this during init to register the gradient table
- * so the L2 RX path can feed SNR samples for per-neighbor SF selection
- * (CCP-16). May be called once or updated if the table is reallocated.
+ * so the L2 path can feed SNR samples for per-neighbor SF selection
+ * (CCP-16) and look up announced RX channels for rendezvous (CCP-9).
+ * May be called once or updated if the table is reallocated.
  *
- * @param table Gradient table for per-neighbor SF tracking, or NULL to clear.
+ * @param table Gradient table for per-neighbor tracking, or NULL to clear.
  */
 void lichen_l2_set_gradient_table(struct lichen_gradient_table *table);
 #endif

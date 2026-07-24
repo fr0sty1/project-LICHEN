@@ -12,7 +12,6 @@ use std::vec::Vec;
 
 use lichen_core::addr::NodeId;
 use lichen_core::constants::{L2_DISPATCH_SCHC, PORT_COAP};
-use lichen_core::ipv6::field;
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
@@ -107,8 +106,6 @@ pub enum RxError {
     InvalidSourceRoute,
     /// IPv6 Hop Limit was exhausted while forwarding.
     HopLimitExceeded,
-    /// IPv6 source address is invalid (multicast or unspecified).
-    InvalidSourceAddress,
     /// Timeout waiting for frame.
     Timeout,
 }
@@ -124,7 +121,6 @@ impl core::fmt::Display for RxError {
             Self::MalformedSecureCoap => write!(f, "malformed secure CoAP"),
             Self::InvalidSourceRoute => write!(f, "invalid RPL source route"),
             Self::HopLimitExceeded => write!(f, "IPv6 Hop Limit exceeded"),
-            Self::InvalidSourceAddress => write!(f, "invalid IPv6 source address (multicast or unspecified)"),
             Self::Timeout => write!(f, "receive timeout"),
         }
     }
@@ -174,6 +170,8 @@ pub struct Stack<R: Radio> {
     message_id: u16,
     /// Forwarding buffer with per-source backpressure (spec appendix-bufferbloat.md).
     forward_buffer: ForwardBuffer,
+    /// CCP-15: Operating channel for TX/RX.
+    channel: u8,
 }
 
 #[cfg(feature = "std")]
@@ -196,6 +194,7 @@ impl<R: Radio> Stack<R> {
         eui64[0] ^= 0x02;
         let node_id = NodeId(eui64);
         Self {
+            channel: radio.rx_channel(),
             radio,
             link: lichen_link::link_layer::LinkLayer::new(identity),
             node: Node::new(node_id),
@@ -311,13 +310,21 @@ impl<R: Radio> Stack<R> {
             .link
             .build_frame(self.epoch, seqnum, &[], l2_data, &mut wire)
             .map_err(|e| match e {
-                FrameError::BufferTooSmall(_) => TxError::BufferTooSmall,
+                FrameError::BufferTooSmall => TxError::BufferTooSmall,
                 _ => TxError::FrameEncode,
             })?;
 
-        // Radio TX
+        // Radio TX (CCP-15: CCA before transmit)
+        if !self
+            .radio
+            .cca(self.channel, -80)
+            .await
+            .map_err(|_| TxError::RadioTx)?
+        {
+            return Err(TxError::RadioTx);
+        }
         self.radio
-            .transmit(0, &wire[..wire_len])
+            .transmit(self.channel, &wire[..wire_len])
             .await
             .map_err(|_| TxError::RadioTx)?;
 
@@ -377,12 +384,21 @@ impl<R: Radio> Stack<R> {
             .link
             .build_frame(self.epoch, seqnum, &[], l2_payload, &mut wire)
             .map_err(|e| match e {
-                FrameError::BufferTooSmall(_) => TxError::BufferTooSmall,
+                FrameError::BufferTooSmall => TxError::BufferTooSmall,
                 _ => TxError::FrameEncode,
             })?;
 
+        // CCP-15: CCA before transmit
+        if !self
+            .radio
+            .cca(self.channel, -80)
+            .await
+            .map_err(|_| TxError::RadioTx)?
+        {
+            return Err(TxError::RadioTx);
+        }
         self.radio
-            .transmit(0, &wire[..wire_len])
+            .transmit(self.channel, &wire[..wire_len])
             .await
             .map_err(|_| TxError::RadioTx)?;
 
@@ -396,7 +412,7 @@ impl<R: Radio> Stack<R> {
         let mut buf = [0u8; MAX_FRAME_SIZE];
         let rx = self
             .radio
-            .receive(&mut buf, timeout_ms)
+            .receive(self.channel, &mut buf, timeout_ms)
             .await
             .map_err(|_| RxError::RadioRx)?;
 
@@ -418,26 +434,6 @@ impl<R: Radio> Stack<R> {
         let n = codec::decompress(l2_payload_body(&l2.payload), &mut ipv6)
             .map_err(|_| RxError::SchcDecompress)?;
         ipv6.truncate(n);
-
-        // RFC 4291 §2.7: Source MUST NOT be multicast.
-        // RFC 4443 §2.2: Unspecified source MUST NOT be used for upper-layer protocols.
-        if ipv6.len() >= IPV6_HEADER_LEN {
-            let src_first = ipv6[field::SRC_OFFSET];
-            if src_first == 0xff {
-                return Err(RxError::InvalidSourceAddress);
-            }
-            // Check for unspecified source (::)
-            let mut all_zero = true;
-            for &b in &ipv6[field::SRC_OFFSET..field::DST_OFFSET] {
-                if b != 0 {
-                    all_zero = false;
-                    break;
-                }
-            }
-            if all_zero {
-                return Err(RxError::InvalidSourceAddress);
-            }
-        }
 
         Ok(Some(ReceivedIpv6 {
             ipv6,
@@ -607,9 +603,7 @@ pub fn add_rpl_source_route(
     #[cfg(feature = "std")]
     {
         let srh = SourceRoutingHeader::from_route(route).map_err(|_| TxError::NoRoute)?;
-        let _ = srh
-            .write_to(&mut out[42..])
-            .map_err(|_| TxError::BufferTooSmall)?;
+        let _ = srh.write_to(&mut out[42..]).map_err(|_| TxError::BufferTooSmall)?;
     }
     #[cfg(not(feature = "std"))]
     {
@@ -645,15 +639,15 @@ mod tests {
     // Per spec section 8.7, all CoAP traffic MUST use OSCORE encryption.
     // The plaintext Stack is only for ICMPv6 and diagnostics.
 
-    fn test_stack(epoch: u8) -> Stack<LoopbackRadio> {
+    fn test_stack(epoch: u8, seq: u16) -> Stack<LoopbackRadio> {
         let identity = Identity::from_seed(Seed::new([0x01; 32]));
         let (radio, _) = LoopbackRadio::pair();
-        Stack::new(radio, identity, epoch)
+        Stack::new(radio, identity, epoch, seq)
     }
 
     #[test]
     fn link_tuple_rollover_advances_epoch() {
-        let mut stack = test_stack(128);
+        let mut stack = test_stack(128, 0);
         stack.seqnum = LinkSeqNum::new(u16::MAX);
 
         assert_eq!(
@@ -665,7 +659,7 @@ mod tests {
 
     #[test]
     fn terminal_link_tuple_is_allocated_once() {
-        let mut stack = test_stack(u8::MAX);
+        let mut stack = test_stack(u8::MAX, 0);
         stack.seqnum = LinkSeqNum::new(u16::MAX);
 
         assert_eq!(
@@ -728,7 +722,7 @@ mod tests {
 
     #[tokio::test]
     async fn raw_coap_rejects_payload_beyond_ipv6_buffer() {
-        let mut stack = test_stack(128);
+        let mut stack = test_stack(128, 0);
         let dst = stack.local_addr();
         let coap = [0u8; 209];
 

@@ -2,6 +2,7 @@
 
 import asyncio
 from dataclasses import dataclass, field
+from typing import Optional
 from unittest.mock import MagicMock
 
 import pytest
@@ -69,7 +70,7 @@ class MockLinkLayer:
         self.sent_frames.append((payload, dst_addr))
         return True
 
-    async def receive(self, timeout_ms: int) -> MockRxFrame | None:
+    async def receive(self, timeout_ms: int) -> Optional[MockRxFrame]:
         try:
             return await asyncio.wait_for(self.rx_queue.get(), timeout=timeout_ms / 1000)
         except TimeoutError:
@@ -528,6 +529,111 @@ class TestBridgeAprsRx:
         payload = ax25.payload.decode("utf-8")
 
         assert "rej123" in payload
+
+
+class TestBridgeBackgroundTasks:
+    """Tests for bridge _create_background_task concurrency and cancellation."""
+
+    @pytest.mark.asyncio
+    async def test_multiple_background_tasks_run_concurrently(self, bridge, mock_link_layer):
+        calls = []
+        original_send = mock_link_layer.send
+
+        async def tracking_send(payload, dst_addr=b"", **kw):
+            await asyncio.sleep(0.01)
+            calls.append((payload, dst_addr))
+            return True
+
+        mock_link_layer.send = tracking_send
+
+        bridge.handler.on_tx_frame(PORT_RAW, b"frame1")
+        bridge.handler.on_tx_frame(PORT_RAW, b"frame2")
+        await asyncio.sleep(0.05)
+
+        assert len(calls) == 2
+        assert calls[0][0] == b"frame1"
+        assert calls[1][0] == b"frame2"
+        mock_link_layer.send = original_send
+
+    @pytest.mark.asyncio
+    async def test_background_task_error_does_not_crash_bridge(self, bridge, mock_link_layer):
+        send_attempts = []
+        original_send = mock_link_layer.send
+
+        async def failing_send(payload, dst_addr=b"", **kw):
+            send_attempts.append(payload)
+            raise RuntimeError("simulated TX failure")
+
+        mock_link_layer.send = failing_send
+
+        bridge.handler.on_tx_frame(PORT_RAW, b"crash_me")
+        await asyncio.sleep(0.05)
+
+        assert b"crash_me" in send_attempts
+        assert bridge._running is False
+        mock_link_layer.send = original_send
+
+    @pytest.mark.asyncio
+    async def test_background_tasks_cleanup_on_stop(self, bridge, mock_link_layer):
+        release = asyncio.Event()
+
+        async def slow_send(payload, dst_addr=b"", **kw):
+            await release.wait()
+            return True
+
+        mock_link_layer.send = slow_send
+
+        bridge.handler.on_tx_frame(PORT_RAW, b"slow_frame")
+        await asyncio.sleep(0.01)
+
+        assert len(bridge._background_tasks) == 1
+
+        release.set()
+        await asyncio.sleep(0.01)
+
+        assert len(bridge._background_tasks) == 0
+
+    @pytest.mark.asyncio
+    async def test_concurrent_tx_frames_all_sent(self, bridge, mock_link_layer):
+        sent = []
+
+        async def collect(payload, dst_addr=b"", **kw):
+            sent.append(payload)
+            return True
+
+        mock_link_layer.send = collect
+
+        n = 10
+        for i in range(n):
+            bridge.handler.on_tx_frame(PORT_RAW, f"frame{i}".encode())
+        await asyncio.sleep(0.1)
+
+        assert len(sent) == n
+        assert len(bridge._background_tasks) == 0
+
+    @pytest.mark.asyncio
+    async def test_ax25_background_tasks_do_not_race(self, bridge, mock_link_layer, mock_peer):
+        bridge.add_peer(mock_peer)
+        dst_call_str = iid_to_callsign(mock_peer.iid)
+
+        calls = []
+
+        async def record(payload, dst_addr=b"", **kw):
+            calls.append((payload, dst_addr))
+            return True
+
+        mock_link_layer.send = record
+
+        from lichen.interface.kiss.aprs import create_message
+
+        for i in range(5):
+            aprs_msg = create_message(dst_call_str, f"msg{i}", str(i))
+            ax25_frame = ax25_encode("LTEST", dst_call_str, aprs_msg.encode())
+            bridge.handler.on_tx_frame(PORT_AX25, ax25_frame)
+        await asyncio.sleep(0.1)
+
+        assert len(calls) == 5
+        assert len(bridge._background_tasks) == 0
 
 
 class TestBridgeAprsAckFlow:

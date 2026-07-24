@@ -19,6 +19,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/types.h>
 #include <stdbool.h>
 
 #ifdef __cplusplus
@@ -206,41 +207,47 @@ void lichen_coap_status_neighbors_notify(void);
 /**
  * @brief Encode node status to CBOR
  *
+ * CCP-17: returns negative errno on capacity exceed.
+ *
  * @param[out] buf Output buffer
  * @param[in]  buf_size Buffer size
  * @param[in]  status Status to encode
- * @return Encoded byte count, or 0 on error
+ * @return Encoded byte count on success, -ENOBUFS if buffer too small
  */
-size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
-				      const struct lichen_coap_node_status *status);
+ssize_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
+				       const struct lichen_coap_node_status *status);
 
 /**
  * @brief Encode neighbor table to CBOR
+ *
+ * CCP-17: validates count fits buffer before encoding.
  *
  * @param[out] buf Output buffer
  * @param[in]  buf_size Buffer size
  * @param[in]  neighbors Array of neighbors
  * @param[in]  count Number of neighbors
- * @return Encoded byte count, or 0 on error
+ * @return Encoded byte count on success, -ENOBUFS if count exceeds buffer capacity
  */
-size_t lichen_coap_encode_neighbors_cbor(uint8_t *buf, size_t buf_size,
-					 const struct lichen_coap_neighbor *neighbors,
-					 size_t count);
+ssize_t lichen_coap_encode_neighbors_cbor(uint8_t *buf, size_t buf_size,
+					  const struct lichen_coap_neighbor *neighbors,
+					  size_t count);
 
 /**
  * @brief Encode routing table to CBOR
+ *
+ * CCP-17: validates route count fits buffer before encoding.
  *
  * @param[out] buf Output buffer
  * @param[in]  buf_size Buffer size
  * @param[in]  routes Array of routes
  * @param[in]  count Number of routes
  * @param[in]  default_route Default route next-hop (16 bytes, or NULL)
- * @return Encoded byte count, or 0 on error
+ * @return Encoded byte count on success, -ENOBUFS if count exceeds buffer capacity
  */
-size_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
-				      const struct lichen_coap_route *routes,
-				      size_t count,
-				      const uint8_t *default_route);
+ssize_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
+				       const struct lichen_coap_route *routes,
+				       size_t count,
+				       const uint8_t *default_route);
 
 /**
  * @brief Shared helper to format IPv6 address to string
