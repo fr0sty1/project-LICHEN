@@ -243,7 +243,9 @@ pub static OPERATING_CLASS_TABLE: &[OperatingClassParams] = &[
 ];
 
 pub fn lookup_operating_class(class_id: u8) -> Option<&'static OperatingClassParams> {
-    OPERATING_CLASS_TABLE.iter().find(|p| p.class_id == class_id)
+    OPERATING_CLASS_TABLE
+        .iter()
+        .find(|p| p.class_id == class_id)
 }
 
 impl RadioConfig {
@@ -375,11 +377,16 @@ impl Concentrator for Sx1302Concentrator {
     }
 
     async fn irq_status(&mut self) -> Result<u32, Self::Error> {
-        Ok(1)  // simulate pending packet for RX
+        Ok(1) // simulate pending packet for RX
     }
 
     fn pps_timestamp(&self) -> Option<u64> {
-        Some(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_micros() as u64)
+        Some(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_micros() as u64,
+        )
     }
 
     async fn configure(&mut self, _config: &RadioConfig) -> Result<(), Self::Error> {

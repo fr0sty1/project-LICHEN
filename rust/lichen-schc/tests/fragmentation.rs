@@ -119,7 +119,7 @@ fn retry_limits_emit_aborts() {
 
 #[test]
 fn malformed_codec_inputs_are_rejected() {
-    let mut tile = [0; TILE_SIZE];
+    let mut tile = [0u8; TILE_SIZE];
     assert!(Fragment::from_bytes(&[0x78, 0x7c, 0], &mut tile).is_err());
     let regular_nonzero_padding = [0xff; TILE_SIZE + 2];
     assert!(Fragment::from_bytes(&regular_nonzero_padding, &mut tile).is_err());

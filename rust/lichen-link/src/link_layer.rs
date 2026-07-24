@@ -297,6 +297,7 @@ struct TrackedPeer {
 #[derive(Debug, Clone)]
 struct PinnedKey {
     pubkey: PublicKey,
+    #[allow(dead_code)]
     last_access: u64,
 }
 
@@ -391,28 +392,14 @@ impl LinkLayer {
 
     /// Atomically remove a peer's configured key, pin, and replay window.
     pub fn forget_peer(&mut self, iid: &[u8; 8]) {
-        let peer_key = self.peers.remove(iid).map(|peer| peer.pubkey);
-        let pinned_key = self.pinned.remove(iid);
+        let peer_key = self.peers.remove(iid).map(|peer| peer.identity.pubkey);
+        let pinned_pubkey = self.pinned.remove(iid).map(|pk| pk.pubkey);
         if let Some(key) = peer_key {
             self.replay.reset_peer(&key);
         }
-        if let Some(key) = pinned_key {
-            if Some(key) != peer_key {
-                self.replay.reset_peer(&key);
-            }
-        }
-    }
-
-    /// Atomically remove a peer's configured key, pin, and replay window.
-    pub fn forget_peer(&mut self, iid: &[u8; 8]) {
-        let peer_key = self.peers.remove(iid).map(|peer| peer.pubkey);
-        let pinned_key = self.pinned.remove(iid);
-        if let Some(key) = peer_key {
-            self.replay.reset_peer(&key);
-        }
-        if let Some(key) = pinned_key {
-            if Some(key) != peer_key {
-                self.replay.reset_peer(&key);
+        if let Some(pk) = pinned_pubkey {
+            if peer_key != Some(pk) {
+                self.replay.reset_peer(&pk);
             }
         }
     }

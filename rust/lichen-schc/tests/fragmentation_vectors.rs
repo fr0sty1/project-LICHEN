@@ -143,7 +143,7 @@ fn write_response(response: ReceiverResponse) -> Vec<u8> {
 #[test]
 fn shared_vectors_drive_production_implementations() {
     let document: Document = serde_json::from_str(VECTORS_JSON).expect("invalid vector JSON");
-    assert_eq!(document.format_version, 1);
+    assert_eq!(document.format_version, 2);
     assert!(!document.description.is_empty());
     let mut categories = BTreeSet::new();
 
@@ -360,7 +360,6 @@ fn exercise_malformed(vector: &Vector) {
         .as_ref()
         .is_some_and(|error| !error.is_empty()));
     let wire = expand(vector.wire.as_ref().unwrap());
-    let mut tile = [0u8; TILE_SIZE];
     match vector.name.as_str() {
         "ack_success_extra_octet" | "malformed_control" => {
             assert!(Ack::from_bytes(&wire).is_err());
@@ -376,6 +375,9 @@ fn exercise_malformed(vector: &Vector) {
                 });
             assert!(Ack::from_bytes_for(&wire, Some(mask)).is_err());
         }
-        _ => assert!(Fragment::from_bytes(&wire, &mut tile).is_err()),
+        _ => {
+            let mut tile = [0u8; TILE_SIZE];
+            assert!(Fragment::from_bytes(&wire, &mut tile).is_err());
+        }
     }
 }

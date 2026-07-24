@@ -95,7 +95,9 @@ fn read_parsed_update<S: NonVolatile>(
         RedundantOpenError::Storage(error) => RedundantUpdateError::Storage(error),
         _ => RedundantUpdateError::Corrupt,
     })?;
-    let Some(r) = raw else { return Ok((false, None)) };
+    let Some(r) = raw else {
+        return Ok((false, None));
+    };
     let parsed = parse_slot(r, &magic).map(|(g, p)| (g, p.len()));
     Ok((true, parsed))
 }
@@ -314,13 +316,16 @@ pub fn save_seqnum<S: NonVolatile>(storage: &mut S, seqnum: u16) -> Result<(), S
 /// Load peer count from storage.
 pub fn load_peer_count<S: NonVolatile>(storage: &S) -> Result<usize, S::Error> {
     let mut buf = [0u8; 1];
-    Ok(storage.read(keys::PEER_COUNT, &mut buf).map_or(0, |n| {
-        if n == 1 {
-            buf[0] as usize
-        } else {
-            0
-        }
-    }))
+    Ok(storage.read(keys::PEER_COUNT, &mut buf).map_or(
+        0,
+        |n| {
+            if n == 1 {
+                buf[0] as usize
+            } else {
+                0
+            }
+        },
+    ))
 }
 
 /// Load a peer pubkey from storage.

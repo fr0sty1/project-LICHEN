@@ -503,8 +503,14 @@ impl Context {
         recipient_id: &[u8],
         store: &mut S,
     ) -> Result<Self, ContextStoreError<S::Error>> {
-        let ctx = Self::new(master_secret, master_salt, id_context, sender_id, recipient_id)
-            .map_err(ContextStoreError::Oscore)?;
+        let ctx = Self::new(
+            master_secret,
+            master_salt,
+            id_context,
+            sender_id,
+            recipient_id,
+        )
+        .map_err(ContextStoreError::Oscore)?;
         ctx.restore_existing(store)
     }
 
@@ -516,7 +522,13 @@ impl Context {
         sender_id: &[u8],
         recipient_id: &[u8],
     ) -> Result<Self, OscoreError> {
-        let mut ctx = Self::new(master_secret, master_salt, id_context, sender_id, recipient_id)?;
+        let mut ctx = Self::new(
+            master_secret,
+            master_salt,
+            id_context,
+            sender_id,
+            recipient_id,
+        )?;
         ctx.restored = false;
         ctx.active = false;
         ctx.allow_no_piv_response = true;
@@ -569,7 +581,13 @@ impl Context {
         recipient_id: &[u8],
         construction: Construction,
     ) -> Result<Self, OscoreError> {
-        let mut ctx = Self::new(master_secret, master_salt, id_context, sender_id, recipient_id)?;
+        let mut ctx = Self::new(
+            master_secret,
+            master_salt,
+            id_context,
+            sender_id,
+            recipient_id,
+        )?;
         match construction {
             Construction::Fresh => {
                 ctx.restored = false;
@@ -780,7 +798,13 @@ impl Context {
         code: u8,
         class_e_options: &[u8],
         payload: &[u8],
-    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>), OscoreError> {
+    ) -> Result<
+        (
+            heapless::Vec<u8, 280>,
+            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
+        ),
+        OscoreError,
+    > {
         // Use pre-reserved sequence number (NVM persistence handled by caller
         // or ReservedSender). SECURITY: SeqExhausted already checked by caller.
 
@@ -981,7 +1005,13 @@ impl Context {
         request_kid: &[u8],
         request_piv: &[u8],
         include_piv: bool,
-    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>), OscoreError> {
+    ) -> Result<
+        (
+            heapless::Vec<u8, 280>,
+            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
+        ),
+        OscoreError,
+    > {
         if !self.active {
             return Err(OscoreError::InvalidParam);
         }
@@ -2119,8 +2149,12 @@ mod tests {
             } else {
                 None
             };
-            let derived_iv =
-                derive_iv(&secret, salt.as_deref().unwrap_or(&[]), id_context.as_deref()).unwrap();
+            let derived_iv = derive_iv(
+                &secret,
+                salt.as_deref().unwrap_or(&[]),
+                id_context.as_deref(),
+            )
+            .unwrap();
             let mut piv_bytes = [0u8; PIV_MAX_LEN];
             let piv_len = piv.encode_piv(&mut piv_bytes);
 

@@ -155,10 +155,6 @@ fn is_link_local(addr: &[u8]) -> bool {
     addr.len() == 16 && addr[0] == 0xFE && (addr[1] & 0xC0) == 0x80
 }
 
-fn is_global(addr: &[u8]) -> bool {
-    addr.len() == 16 && (addr[0] >> 5) == 0b001
-}
-
 // ─── checksum helpers (no_std) ───────────────────────────────────────────────
 
 fn oc_add(a: u32, b: u32) -> u32 {
