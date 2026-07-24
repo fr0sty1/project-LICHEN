@@ -2,11 +2,13 @@
   "id": "project-LICHEN-worker6-cvw1",
   "title": "[review] project-LICHEN-worker6-p19p: compilation error in lichen-schc headers.rs",
   "description": "## Bug\n\nThe commit 87f27c9 changed `write_ipv6_header` signature to accept `(traffic_class, flow_label)` as a tuple `flow: (u8, u32)`, and updated 3 of 4 call sites. The 4th call site at `headers.rs:989` was missed, causing compilation failure:\n\n```\nerror[E0061]: function takes 7 arguments but 8 arguments were supplied\n   --\u003e lichen-schc/src/headers.rs:989:9\n```\n\n### Fix applied\nWrapped `traffic_class, flow_label` in parentheses at the remaining call site.\n\n### Severity\nP0 — cannot compile the crate.",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:37:29.585833802Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:37:29.585833802Z"
+  "updated_at": "2026-07-24T19:37:41.193538546Z",
+  "closed_at": "2026-07-24T19:37:41.193538546Z",
+  "close_reason": "Fixed: wrapped traffic_class, flow_label in tuple at headers.rs:994"
 }
