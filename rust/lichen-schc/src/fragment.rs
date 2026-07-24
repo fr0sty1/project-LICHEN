@@ -5,6 +5,9 @@ use lichen_core::{
     error::{BufferTooSmall, TooShort},
 };
 
+pub const RULE_ID_A_TO_B: u8 = 120;
+pub const RULE_ID_B_TO_A: u8 = 121;
+
 pub const FRAGMENT_M: u8 = 1;
 pub const FRAGMENT_N: u8 = 6;
 pub const FRAGMENT_T: u8 = 0;
@@ -81,7 +84,7 @@ impl From<BufferTooSmall> for FragmentError {
 }
 
 fn check_rule(rule_id: u8) -> Result<(), FragmentError> {
-    if matches!(rule_id, RULE_ID_A_TO_B | RULE_ID_B_TO_A) {
+    if rule_id == RULE_ID_A_TO_B || rule_id == RULE_ID_B_TO_A {
         Ok(())
     } else {
         Err(FragmentError::UnsupportedRule)
