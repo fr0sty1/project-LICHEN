@@ -55,7 +55,6 @@ class SimNode:
     current_channel: int = 0
     seed: int = 0
     hop_schedule: tuple[int, ...] = field(default_factory=tuple, repr=False)
-    seed: int = 0
     tdma_scheduler: TDMAScheduler = field(repr=False, default_factory=TDMAScheduler)
     _state_machine: StateMachine[NodeState] = field(init=False, repr=False)
 
@@ -74,7 +73,6 @@ class SimNode:
         seed: int = 0,
         hop_schedule: tuple[int, ...] | None = None,
         tdma_scheduler: TDMAScheduler | None = None,
-        seed: int = 0,
         sfn: int = 0,
         num_channels: int = 8,
     ) -> None:
