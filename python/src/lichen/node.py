@@ -116,6 +116,7 @@ class NodeConfig:
     pending_timeout_ms: int = 5_000
     rreq_jitter_min_ms: int = 0
     rreq_jitter_max_ms: int = 100
+    persist_path: str | None = None
 
 
 @dataclass
@@ -191,6 +192,7 @@ class Node:
             identity=self.identity,
             peer_lookup=self._peer_lookup,
             peer_lookup_all=lambda: list(self.peer_db.values()),
+            persist_path=self.config.persist_path,
         )
 
         self.router = Router(
