@@ -435,9 +435,7 @@ fn transcript_4(th_3: &[u8; 32], ciphertext_3: &[u8]) -> Result<[u8; 32], EdhocE
 }
 
 fn build_context_2(
-    _c_r: &ConnectionId,
     id_cred: &[u8],
-    _th: &[u8; 32],
     cred: &[u8],
 ) -> Result<heapless::Vec<u8, 128>, EdhocError> {
     let mut buf = heapless::Vec::<u8, 128>::new();
@@ -448,7 +446,6 @@ fn build_context_2(
 
 fn build_context_3(
     id_cred: &[u8],
-    _th: &[u8; 32],
     cred: &[u8],
 ) -> Result<heapless::Vec<u8, 128>, EdhocError> {
     let mut buf = heapless::Vec::<u8, 128>::new();
@@ -644,6 +641,7 @@ impl PendingMessage2 {
 pub struct PendingMessage3 {
     id_cred: IdCred,
     plaintext: heapless::Vec<u8, 128>,
+    ciphertext_3: heapless::Vec<u8, 128>,
     signature_offset: usize,
     transcript_binding: [u8; 32],
 }
@@ -857,7 +855,7 @@ impl EdhocInitiator {
         let result = (|| {
             validate_peer_credential(peer)?;
             let signature_bytes = parse_bstr(&pending.plaintext[pending.signature_offset..])?.0;
-            let context_2 = build_context_2(pending.id_cred.as_bytes(), peer.credential)?;
+            let context_2 = build_context_BOGUS(pending.id_cred.as_bytes(), peer.credential)?;
             let mac_2 = edhoc_kdf(
                 &self.state.prk_3e2m,
                 &self.state.th_2,
@@ -891,7 +889,7 @@ impl EdhocInitiator {
             encode_credential(&mut credential_i, self.pubkey.as_bytes())?;
             let mut id_cred_i = heapless::Vec::<u8, 40>::new();
             encode_id_cred(&mut id_cred_i, self.pubkey.as_bytes())?;
-            let context_3 = build_context_3(&id_cred_i, &self.state.th_3, &credential_i)?;
+            let context_3 = build_context_3(&id_cred_i, &credential_i)?;
             let mac_3 = edhoc_kdf(
                 &self.state.prk_4e3m,
                 &self.state.th_3,
@@ -1207,12 +1205,7 @@ impl EdhocResponder {
             encode_id_cred(&mut id_cred_r, self.pubkey.as_bytes())?;
             let mut credential_r = heapless::Vec::<u8, 80>::new();
             encode_credential(&mut credential_r, self.pubkey.as_bytes())?;
-            let context_2 = build_context_2(
-                &ConnectionId::new(&[self.c_r]).map_err(|_| EdhocError::BufferTooSmall)?,
-                &id_cred_r,
-                &self.state.th_2,
-                &credential_r,
-            )?;
+            let context_2 = build_context_2(&id_cred_r, &credential_r)?;
             let mac_2 = edhoc_kdf(
                 &self.state.prk_3e2m,
                 &self.state.th_2,
@@ -1338,10 +1331,13 @@ impl EdhocResponder {
 
             let mut plaintext = heapless::Vec::new();
             plaintext.extend_err(&plaintext_3)?;
+            let mut ciphertext_stored = heapless::Vec::new();
+            ciphertext_stored.extend_err(ciphertext_3)?;
             self.state.lifecycle = Lifecycle::PendingMessage3;
             Ok(PendingMessage3 {
                 id_cred: id_cred_i,
                 plaintext,
+                ciphertext_3: ciphertext_stored,
                 signature_offset: id_len,
                 transcript_binding: self.state.th_3,
             })
@@ -1382,7 +1378,6 @@ impl EdhocResponder {
             self.state.prk_4e3m = self.state.prk_3e2m;
             let context_3 = build_context_3(
                 pending.id_cred.as_bytes(),
-                &self.state.th_3,
                 peer.credential,
             )?;
             let mac_3 = edhoc_kdf(
@@ -1403,7 +1398,7 @@ impl EdhocResponder {
                 .verify_strict(&m_3, &signature)
                 .map_err(|_| EdhocError::SignatureVerification)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &pending.plaintext, peer.credential)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &pending.ciphertext_3)?;
             self.state.lifecycle = Lifecycle::Complete;
 
             Ok(())
