@@ -987,11 +987,11 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 
 #if HAVE_LICHEN_LINK
 	/*
-	 * Use lichen_link_tx() to build the complete frame with proper MIC.
-	 * This handles:
+	 * Use lichen_link_tx() to build the complete frame with Schnorr-48
+	 * integrity protection. This handles:
 	 * - SCHC compression
-	 * - Schnorr-48 signature if has_key
-	 * - AES-CCM-64 MIC if has_link_key, else CRC32 fallback
+	 * - Schnorr-48 signature (always applied when has_key is set)
+	 * - Returns -ENOKEY if has_key is not set (no unsigned frames)
 	 */
 	size_t frame_len = 0;
 	/*
