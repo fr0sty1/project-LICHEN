@@ -392,6 +392,13 @@ fn encode_uint<const N: usize>(
     Ok(())
 }
 
+fn encode_credential<const N: usize>(
+    buf: &mut heapless::Vec<u8, N>,
+    key: &[u8],
+) -> Result<(), EdhocError> {
+    encode_bstr(buf, key)
+}
+
 fn encode_tstr<const N: usize>(
     buf: &mut heapless::Vec<u8, N>,
     s: &str,
@@ -433,12 +440,12 @@ fn transcript_3(th_2: &[u8; 32], input: &[u8], cred: &[u8]) -> Result<[u8; 32], 
 
 fn transcript_4(
     th_3: &[u8; 32],
-    ciphertext_3: &[u8],
+    plaintext_3: &[u8],
     cred: &[u8],
 ) -> Result<[u8; 32], EdhocError> {
     let mut buf = heapless::Vec::<u8, 1024>::new();
     encode_bstr(&mut buf, th_3)?;
-    encode_bstr(&mut buf, ciphertext_3)?;
+    encode_bstr(&mut buf, plaintext_3)?;
     encode_bstr(&mut buf, cred)?;
     Ok(compute_th(&buf))
 }
@@ -916,7 +923,7 @@ impl EdhocInitiator {
                 .map_err(|_| EdhocError::InvalidState)?;
             ciphertext_3.extend_err(&tag)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &plaintext_3, &credential_i)?;
+            self.state.th_4 = transcript_4(&self.state.th_3, &plaintext_3, peer.credential)?;
 
             self.state.completed = true;
             self.state.lifecycle = Lifecycle::Complete;
@@ -1345,7 +1352,11 @@ impl EdhocResponder {
                 .verify_strict(&m_3, &signature)
                 .map_err(|_| EdhocError::SignatureVerification)?;
 
-            self.state.th_4 = transcript_4(&self.state.th_3, &pending.plaintext, peer.credential)?;
+            self.state.th_4 = {
+                let mut credential_r = heapless::Vec::<u8, 80>::new();
+                encode_credential(&mut credential_r, self.pubkey.as_bytes())?;
+                transcript_4(&self.state.th_3, &pending.plaintext, &credential_r)?
+            };
             self.state.lifecycle = Lifecycle::Complete;
 
             Ok(())
@@ -1635,7 +1646,7 @@ mod tests {
         );
         let th_4 = hex!("ad002457080da9a5e7a942030ca302f5cc9f77ba8124a49ba560d168b5b6f26d");
         assert_eq!(
-            transcript_4(&th_3, &plaintext_3, &credential_i).unwrap(),
+            transcript_4(&th_3, &plaintext_3, &credential_r).unwrap(),
             th_4
         );
 
