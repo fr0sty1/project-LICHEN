@@ -673,6 +673,11 @@ int lichen_lora_l2_init(void)
     lora_data.rx_callback = NULL;
     lora_data.rx_callback_user_data = NULL;
     lora_data.cca_enabled = IS_ENABLED(CONFIG_LICHEN_LORA_CCA);
+    if (lora_data.cca_enabled) {
+        LOG_DBG("lora_l2: CCA enabled, threshold %d dBm, timeout %d ms",
+                CONFIG_LICHEN_LORA_CCA_THRESHOLD_DBM,
+                CONFIG_LICHEN_LORA_CCA_TIMEOUT_MS);
+    }
     lora_data.rx_channel = 0;
 #if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
     lichen_duty_cycle_init(&lora_data.duty, LICHEN_DUTY_CYCLE_DEFAULT_PERMILLE);
@@ -1102,6 +1107,23 @@ int lichen_lora_l2_deinit(void)
 }
 
 
+bool lichen_lora_perform_cca(uint32_t timeout_ms)
+{
+    if (lora_data.lora_dev == NULL) {
+        return false;
+    }
+
+    bool busy = false;
+    int ret = lora_cad(lora_data.lora_dev, K_MSEC(timeout_ms), &busy);
+    if (ret < 0) {
+        if (ret != -ENOSYS) {
+            LOG_WRN("lora_l2: CCA failed (%d), treating as clear", ret);
+        }
+        return true;
+    }
+    return !busy;
+}
+
 int lichen_lora_l2_tx(const uint8_t *data, size_t len, uint8_t channel)
 {
     if (data == NULL) {
@@ -1274,31 +1296,14 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len, uint8_t channel)
         return -EBUSY;
     }
 
-    /* Explicit runtime read of LICHEN_LORA_CCA_ENABLE state (lora_data.cca_enabled)
-     * before lora_cad() per project-LICHEN-525f. Mutex held during CAD.
-     * Busy abort path has single unlocks per mutex, returns -EBUSY correctly
-     * (verified via native_sim). Legacy lora_perform_cca block removed to
-     * eliminate duplicate abort paths and compile-time CONFIG dependency.
-     * firmware/bridge-zephyr legacy copy remains out of scope for this fix.
-     */
-    bool cca_enabled = lora_data.cca_enabled;  /* explicit runtime read */
-    if (cca_enabled) {
-        bool busy = false;
-        int cad_ret = lora_cad(lora_data.lora_dev,
-                               K_MSEC(CONFIG_LICHEN_LORA_CCA_TIMEOUT_MS),
-                               &busy);
-        if (cad_ret < 0) {
-            if (cad_ret != -ENOSYS) {
-                LOG_WRN("lora_l2: CAD failed (%d), proceeding with TX", cad_ret);
-            }
-        } else if (busy) {
-            LOG_INF("lora_l2: CCA detected busy channel, aborting TX");
-            k_mutex_unlock(&modem_mutex);
-            atomic_dec(&tx_pending);
-            secure_zero(tx_buf, sizeof(tx_buf));
-            k_mutex_unlock(&tx_buf_mutex);
-            return -EBUSY;
-        }
+    /* CCP-15 CCA: check channel before TX. Mutex held during CAD. */
+    if (lora_data.cca_enabled && !lichen_lora_perform_cca(CONFIG_LICHEN_LORA_CCA_TIMEOUT_MS)) {
+        LOG_INF("lora_l2: CCA detected busy channel, aborting TX");
+        k_mutex_unlock(&modem_mutex);
+        atomic_dec(&tx_pending);
+        secure_zero(tx_buf, sizeof(tx_buf));
+        k_mutex_unlock(&tx_buf_mutex);
+        return -EBUSY;
     }
 
     ret = lora_send(lora_data.lora_dev, tx_buf, (uint32_t)pop_len);
