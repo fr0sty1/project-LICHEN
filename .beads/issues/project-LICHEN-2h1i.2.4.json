@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2h1i.2.4",
   "title": "Flesh out Dead Drop: CoAP /deaddrop for store-forward, OSCORE E2E encryption, DTN pickup/push, e-ink notification UI",
   "labels": ["defer-external"],
-  "status": "in_progress",
+  "status": "closed",
   "priority": 2,
   "issue_type": "feature",
   "assignee": "ec2-user",
