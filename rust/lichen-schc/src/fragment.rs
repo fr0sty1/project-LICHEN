@@ -15,7 +15,7 @@ pub const RETRANSMISSION_TIMEOUT_S: u32 = 10;
 pub const MAX_ACK_REQUESTS: u8 = 4;
 pub const INACTIVITY_TIMEOUT_S: u32 = 60;
 pub const TILE_SIZE: usize = 187;
-pub const MAX_PACKET_SIZE: usize = 16384;
+pub const MAX_PACKET_SIZE: usize = 2 * WINDOW_SIZE * TILE_SIZE;
 pub const RULE_ID_A_TO_B: u8 = 0x78;
 pub const RULE_ID_B_TO_A: u8 = 0x79;
 pub const BITMAP_MASK: u64 = (1u64 << WINDOW_SIZE) - 1;
@@ -285,7 +285,11 @@ impl Ack {
         let complete = (data[1] & 0x40) != 0;
         let bit_count = (data.len() - 1) * 8 - 2;
         let mut bitmap = 0u64;
-        if bit_count >= WINDOW_SIZE {
+        if complete {
+            if bit_count > 7 {
+                return Err(FragmentError::MalformedAck);
+            }
+        } else if bit_count >= WINDOW_SIZE {
             let padding = bit_count - WINDOW_SIZE;
             if padding > 7 || (0..padding).any(|i| get_bit(&data[1..], 2 + WINDOW_SIZE + i)) {
                 return Err(FragmentError::MalformedAck);
@@ -305,7 +309,7 @@ impl Ack {
                 bitmap |= 1u64 << (62 - position);
             }
         }
-        let ack = Self::new(data[0], window, bitmap, false);
+        let ack = Self::new(data[0], window, bitmap, complete);
         let mut canonical = [0u8; 10];
         let length = ack.write_to(&mut canonical)?;
         if &canonical[..length] != data {

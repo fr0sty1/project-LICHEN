@@ -953,16 +953,20 @@ impl Context {
         Ok((code, options, payload))
     }
 
-    /// Protect (encrypt) an OSCORE response without a PIV.
+    /// Protect (encrypt) an OSCORE response.
     ///
-    /// This implements the PIV-omitted response pattern from RFC 8613 Section 5.2:
-    /// the response reuses the request's nonce, so no new sender sequence is
-    /// consumed. Only one such response per request context is allowed.
+    /// When `include_piv` is false, this implements the PIV-omitted response
+    /// pattern from RFC 8613 Section 5.2: the response reuses the request's
+    /// nonce, so no new sender sequence is consumed. Only one such response
+    /// per request context is allowed. This requires
+    /// [`allow_no_piv_response`](Self::allow_no_piv_response).
     ///
-    /// For responses that must include their own PIV, use
+    /// When `include_piv` is true, the responder includes its own PIV in the
+    /// response as permitted by RFC 8613 Section 5.2. This consumes a sender
+    /// sequence number and works on restored contexts that prohibit no-PIV
+    /// responses. For durable sender state (crash safety), use
     /// [`reserve_sender`](Self::reserve_sender) followed by
-    /// [`ReservedSender::protect_response_with_piv`], which integrates with the
-    /// durable [`SenderStateStore`] protocol required by RFC 8613.
+    /// [`ReservedSender::protect_response_with_piv`] instead.
     ///
     /// Returns (ciphertext, oscore_option_value).
     ///
@@ -972,6 +976,8 @@ impl Context {
     /// - `payload`: Response payload to encrypt
     /// - `request_kid`: The KID from the original request (requester's sender_id)
     /// - `request_piv`: The PIV from the original request
+    /// - `include_piv`: Whether to include a fresh responder PIV (true) or
+    ///   reuse the request nonce (false)
     pub fn protect_response(
         &mut self,
         code: u8,
@@ -979,60 +985,90 @@ impl Context {
         payload: &[u8],
         request_kid: &[u8],
         request_piv: &[u8],
+        include_piv: bool,
     ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>), OscoreError> {
-        if !self.allow_no_piv_response {
-            return Err(OscoreError::InvalidParam);
-        }
-        if self.no_piv_response_used {
-            return Err(OscoreError::InvalidParam);
-        }
-        if request_kid.len() > NONCE_ID_LEN
-            || OscoreSeqNum::from_piv(request_piv).is_none()
-            || request_kid != self.recipient_id()
-        {
-            return Err(OscoreError::InvalidParam);
-        }
-        self.no_piv_response_used = true;
-
-        let mut piv = [0u8; PIV_MAX_LEN];
-        piv[..request_piv.len()].copy_from_slice(request_piv);
-
-        let nonce = compute_nonce(request_kid, &piv[..request_piv.len()], &self.common_iv);
-
-        let mut ct_out = heapless::Vec::<u8, CT_CAP>::new();
-        let ct_required = 1
-            + class_e_options.len()
-            + if payload.is_empty() {
-                0
-            } else {
-                1 + payload.len()
+        if include_piv {
+            if !self.active || self.sender_seq_exhausted {
+                return Err(OscoreError::InvalidParam);
             }
-            + TAG_LEN;
-        let ct_err = || BufferTooSmall::new(ct_required, CT_CAP);
-        ct_out.push(code).map_err(|_| ct_err())?;
-        ct_out
-            .extend_from_slice(class_e_options)
-            .map_err(|_| ct_err())?;
-        if !payload.is_empty() {
-            ct_out.push(0xFF).map_err(|_| ct_err())?;
-            ct_out.extend_from_slice(payload).map_err(|_| ct_err())?;
+            if request_kid != self.recipient_id()
+                || OscoreSeqNum::from_piv(request_piv).is_none()
+            {
+                return Err(OscoreError::InvalidParam);
+            }
+            let seq = self.sender_seq;
+            match self.sender_seq.next() {
+                Some(next) => self.sender_seq = next,
+                None => {
+                    self.sender_seq = OscoreSeqNum::MAX;
+                    self.sender_seq_exhausted = true;
+                    return Err(OscoreError::SeqExhausted);
+                }
+            }
+            let mut piv = [0u8; PIV_MAX_LEN];
+            let piv_len = seq.encode_piv(&mut piv);
+            self.protect_response_with_piv_inner(
+                code,
+                class_e_options,
+                payload,
+                request_kid,
+                request_piv,
+                &piv[..piv_len],
+            )
+        } else {
+            if !self.allow_no_piv_response {
+                return Err(OscoreError::InvalidParam);
+            }
+            if self.no_piv_response_used {
+                return Err(OscoreError::InvalidParam);
+            }
+            if request_kid.len() > NONCE_ID_LEN
+                || OscoreSeqNum::from_piv(request_piv).is_none()
+                || request_kid != self.recipient_id()
+            {
+                return Err(OscoreError::InvalidParam);
+            }
+            self.no_piv_response_used = true;
+
+            let mut piv = [0u8; PIV_MAX_LEN];
+            piv[..request_piv.len()].copy_from_slice(request_piv);
+
+            let nonce = compute_nonce(request_kid, &piv[..request_piv.len()], &self.common_iv);
+
+            let mut ct_out = heapless::Vec::<u8, CT_CAP>::new();
+            let ct_required = 1
+                + class_e_options.len()
+                + if payload.is_empty() {
+                    0
+                } else {
+                    1 + payload.len()
+                }
+                + TAG_LEN;
+            let ct_err = || BufferTooSmall::new(ct_required, CT_CAP);
+            ct_out.push(code).map_err(|_| ct_err())?;
+            ct_out
+                .extend_from_slice(class_e_options)
+                .map_err(|_| ct_err())?;
+            if !payload.is_empty() {
+                ct_out.push(0xFF).map_err(|_| ct_err())?;
+                ct_out.extend_from_slice(payload).map_err(|_| ct_err())?;
+            }
+
+            let mut aad_buf = [0u8; CBOR_BUF_CAP];
+            let aad_len = build_aad_cbor(request_kid, request_piv, &mut aad_buf)?;
+
+            let cipher =
+                AesCcm::new_from_slice(&self.sender_key).map_err(|_| OscoreError::KeyDerivation)?;
+            let tag = cipher
+                .encrypt_in_place_detached((&nonce).into(), &aad_buf[..aad_len], &mut ct_out)
+                .map_err(|_| OscoreError::EncryptFailed)?;
+            ct_out.extend_from_slice(&tag).map_err(|_| ct_err())?;
+
+            // No PIV in OSCORE option for this path
+            let opt = heapless::Vec::<u8, OSCORE_OPTION_MAX_LEN>::new();
+
+            Ok((ct_out, opt))
         }
-
-        let mut aad_buf = [0u8; CBOR_BUF_CAP];
-        let aad_len = build_aad_cbor(request_kid, request_piv, &mut aad_buf)?;
-
-        // Encrypt
-        let cipher =
-            AesCcm::new_from_slice(&self.sender_key).map_err(|_| OscoreError::KeyDerivation)?;
-        let tag = cipher
-            .encrypt_in_place_detached((&nonce).into(), &aad_buf[..aad_len], &mut ct_out)
-            .map_err(|_| OscoreError::EncryptFailed)?;
-        ct_out.extend_from_slice(&tag).map_err(|_| ct_err())?;
-
-        // No PIV in OSCORE option for this path
-        let opt = heapless::Vec::<u8, OSCORE_OPTION_MAX_LEN>::new();
-
-        Ok((ct_out, opt))
     }
 
     fn protect_response_with_reserved_piv(
