@@ -5,8 +5,13 @@
 import pytest
 
 from lichen.sim.medium import Medium, RxCandidate
-from lichen.sim.propagation import CAPTURE_THRESHOLD_DB, SENSITIVITY_SF10, PropagationModel
-from lichen.sim.transmission import Transmission, airtime_us
+from lichen.sim.propagation import (
+    CAPTURE_THRESHOLD_DB,
+    SENSITIVITY_LR_FHSS,
+    SENSITIVITY_SF10,
+    PropagationModel,
+)
+from lichen.sim.transmission import Transmission, airtime_us, lr_fhss_airtime_us
 
 
 class TestMediumBasics:
@@ -602,3 +607,179 @@ class TestThreeDimensionalDistance:
         expected_distance = math.sqrt(30**2 + 40**2 + 50**2)
         expected_rssi = medium.propagation.received_power(14, expected_distance)
         assert candidates[0].rssi == pytest.approx(expected_rssi, rel=1e-6)
+
+
+class TestLrFhssMedium:
+    """Test LR-FHSS behavior in the medium."""
+
+    def test_start_tx_with_lr_fhss_phy_mode(self) -> None:
+        medium = Medium()
+        tx = medium.start_tx(
+            node_id="node1",
+            payload=b"test",
+            tx_power_dbm=14,
+            position=(0.0, 0.0, 0.0),
+            time_us=1000,
+            phy_mode="lr_fhss",
+        )
+        assert tx.phy_mode == "lr_fhss"
+
+    def test_lr_fhss_airtime_double_lora(self) -> None:
+        medium = Medium()
+        payload = b"test payload"
+        start_time = 1000
+        tx = medium.start_tx(
+            node_id="node1",
+            payload=payload,
+            tx_power_dbm=14,
+            position=(0.0, 0.0, 0.0),
+            time_us=start_time,
+            phy_mode="lr_fhss",
+        )
+        lora_duration = airtime_us(len(payload))
+        assert tx.end_time_us == start_time + lora_duration * 2
+
+    def test_lr_fhss_candidate_rssi(self) -> None:
+        medium = Medium()
+        tx = medium.start_tx(
+            node_id="tx_node",
+            payload=b"hello",
+            tx_power_dbm=14,
+            position=(0.0, 0.0, 0.0),
+            time_us=1000,
+            phy_mode="lr_fhss",
+        )
+        candidates = medium.get_rx_candidates(
+            rx_node_id="rx_node",
+            rx_position=(100.0, 0.0, 0.0),
+            time_us=tx.start_time_us + 1000,
+        )
+        assert len(candidates) == 1
+        assert candidates[0].is_lr_fhss is True
+
+    def test_lr_fhss_uses_lr_fhss_sensitivity(self) -> None:
+        medium = Medium()
+        tx = medium.start_tx(
+            node_id="tx_node",
+            payload=b"hello",
+            tx_power_dbm=14,
+            position=(0.0, 0.0, 0.0),
+            time_us=1000,
+            phy_mode="lr_fhss",
+        )
+        # Max range for LR-FHSS (better sensitivity) is greater than for SF10
+        lr_fhss_max = medium.propagation.max_range(14, sensitivity_dbm=SENSITIVITY_LR_FHSS)
+        sf10_max = medium.propagation.max_range(14, sensitivity_dbm=SENSITIVITY_SF10)
+        assert lr_fhss_max > sf10_max
+
+        # At a distance where SF10 fails but LR-FHSS works, candidate should appear
+        test_distance = (sf10_max + lr_fhss_max) / 2
+        # Need to create a new tx at that distance to get meaningful test
+        medium2 = Medium()
+        medium2.start_tx(
+            node_id="tx_node",
+            payload=b"hello",
+            tx_power_dbm=14,
+            position=(0.0, 0.0, 0.0),
+            time_us=1000,
+            phy_mode="lr_fhss",
+        )
+        candidates = medium2.get_rx_candidates(
+            rx_node_id="rx_node",
+            rx_position=(test_distance, 0.0, 0.0),
+            time_us=1000 + 100,
+        )
+        assert len(candidates) == 1
+
+    def test_lr_fhss_fragment_collision_recovery(self) -> None:
+        medium = Medium()
+
+        tx_strong = medium.start_tx(
+            node_id="tx_strong",
+            payload=b"strong",
+            tx_power_dbm=14,
+            position=(50.0, 0.0, 0.0),
+            time_us=1000,
+            phy_mode="lr_fhss",
+        )
+        # 2 weaker interferers at the same distance
+        medium.start_tx(
+            node_id="tx_int1",
+            payload=b"interfere1",
+            tx_power_dbm=14,
+            position=(0.0, 200.0, 0.0),
+            time_us=1000,
+            phy_mode="lora",
+        )
+        medium.start_tx(
+            node_id="tx_int2",
+            payload=b"interfere2",
+            tx_power_dbm=14,
+            position=(0.0, -200.0, 0.0),
+            time_us=1000,
+            phy_mode="lora",
+        )
+
+        candidates = medium.get_rx_candidates(
+            rx_node_id="rx_node",
+            rx_position=(0.0, 0.0, 0.0),
+            time_us=1000 + 100,
+        )
+        # Strong (close, LR-FHSS) and both interferers should be candidates
+        assert len(candidates) == 3
+
+        # LR-FHSS fragment recovery: strongest wins with ≤4 interferers
+        result = medium.resolve_reception(candidates)
+        assert result is tx_strong
+
+    def test_lr_fhss_collision_too_many_interferers(self) -> None:
+        medium = Medium()
+
+        tx_strong = medium.start_tx(
+            node_id="tx_strong",
+            payload=b"strong",
+            tx_power_dbm=14,
+            position=(50.0, 0.0, 0.0),
+            time_us=1000,
+            phy_mode="lr_fhss",
+        )
+        # 5 interferers — too many for fragment recovery
+        for i in range(5):
+            medium.start_tx(
+                node_id=f"tx_int{i}",
+                payload=b"interfere",
+                tx_power_dbm=14,
+                position=(0.0, 200.0 + i * 50, 0.0),
+                time_us=1000,
+                phy_mode="lora",
+            )
+
+        candidates = medium.get_rx_candidates(
+            rx_node_id="rx_node",
+            rx_position=(0.0, 0.0, 0.0),
+            time_us=1000 + 100,
+        )
+        assert len(candidates) == 6
+
+        # Too many interferers — collision, no winner
+        result = medium.resolve_reception(candidates)
+        assert result is None
+
+    def test_lr_fhss_self_transmission_excluded(self) -> None:
+        medium = Medium()
+
+        tx = medium.start_tx(
+            node_id="node1",
+            payload=b"hello",
+            tx_power_dbm=14,
+            position=(0.0, 0.0, 0.0),
+            time_us=1000,
+            phy_mode="lr_fhss",
+        )
+
+        candidates = medium.get_rx_candidates(
+            rx_node_id="node1",
+            rx_position=(0.0, 0.0, 0.0),
+            time_us=tx.start_time_us + 100,
+        )
+        assert len(candidates) == 0

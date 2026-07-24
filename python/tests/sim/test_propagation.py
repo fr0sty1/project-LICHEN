@@ -9,6 +9,7 @@ from lichen.sim.propagation import (
     PATH_LOSS_FREE_SPACE,
     PATH_LOSS_INDOOR,
     PATH_LOSS_URBAN,
+    SENSITIVITY_LR_FHSS,
     SENSITIVITY_SF7,
     SENSITIVITY_SF10,
     SENSITIVITY_SF12,
@@ -269,3 +270,25 @@ class TestInitialization:
         model = PropagationModel(n=2.0, d0_m=5.0)
         assert model.n == 2.0
         assert model.d0_m == 5.0
+
+
+class TestLrFhssSensitivity:
+    """Test LR-FHSS sensitivity constants."""
+
+    def test_lr_fhss_sensitivity_defined(self) -> None:
+        assert SENSITIVITY_LR_FHSS == -137.0
+
+    def test_lr_fhss_equal_to_sf12(self) -> None:
+        assert SENSITIVITY_LR_FHSS == SENSITIVITY_SF12
+
+    def test_lr_fhss_longer_range_than_sf10(self) -> None:
+        model = PropagationModel(pl0_dbm=32.44, n=PATH_LOSS_URBAN)
+        lr_fhss_range = model.max_range(14.0, sensitivity_dbm=SENSITIVITY_LR_FHSS)
+        sf10_range = model.max_range(14.0, sensitivity_dbm=SENSITIVITY_SF10)
+        assert lr_fhss_range > sf10_range
+
+    def test_lr_fhss_decode_at_sf12_boundary(self) -> None:
+        model = PropagationModel(pl0_dbm=32.44, n=PATH_LOSS_URBAN)
+        rx_at_sf12_limit = model.received_power(14.0, model.max_range(14.0, sensitivity_dbm=SENSITIVITY_SF12))
+        assert rx_at_sf12_limit >= SENSITIVITY_SF12
+        assert rx_at_sf12_limit >= SENSITIVITY_LR_FHSS
