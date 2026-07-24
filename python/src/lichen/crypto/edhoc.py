@@ -412,7 +412,7 @@ class EdhocInitiator:
             if id_cred_r != peer_pubkey:
                 raise ValueError("ID_CRED_R does not match the authenticated peer")
             cred_r = peer_pubkey
-            context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
+            context_2 = _encode_connection_id(c_r) + cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
             mac_2 = _edhoc_kdf(self._prk_3e2m, self._th_2, "MAC_2", context_2, EDHOC_MAC_LEN)
             m_2 = cbor2.dumps([
                 "Signature1",
@@ -610,7 +610,7 @@ class EdhocResponder:
             self._prk_3e2m = self._prk_2e
             id_cred_r = self.identity.pubkey
             cred_r = self.identity.pubkey
-            context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
+            context_2 = _encode_connection_id(self._c_r) + cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
             mac_2 = _edhoc_kdf(self._prk_3e2m, self._th_2, "MAC_2", context_2, EDHOC_MAC_LEN)
             m_2 = cbor2.dumps([
                 "Signature1",

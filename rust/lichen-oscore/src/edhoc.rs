@@ -404,8 +404,13 @@ fn transcript_4(th_3: &[u8; 32], plaintext_3: &[u8]) -> Result<[u8; 32], EdhocEr
     Ok(compute_th(&buf))
 }
 
-fn build_context_2(id_cred: &[u8], cred: &[u8]) -> Result<heapless::Vec<u8, 128>, EdhocError> {
+fn build_context_2(
+    c_r: &ConnectionId,
+    id_cred: &[u8],
+    cred: &[u8],
+) -> Result<heapless::Vec<u8, 128>, EdhocError> {
     let mut ctx = heapless::Vec::<u8, 128>::new();
+    encode_identifier(&mut ctx, c_r)?;
     append_cbor_bstr(&mut ctx, id_cred)?;
     append_cbor_bstr(&mut ctx, cred)?;
     Ok(ctx)
@@ -832,7 +837,8 @@ impl EdhocInitiator {
         let result = (|| {
             validate_peer_credential(peer)?;
             let signature_bytes = parse_bstr(&pending.plaintext[pending.signature_offset..])?.0;
-            let context_2 = build_context_2(pending.id_cred.as_bytes(), peer.credential)?;
+            let context_2 =
+                build_context_2(&pending.c_r, pending.id_cred.as_bytes(), peer.credential)?;
             let mac_2 = edhoc_kdf(
                 &self.state.prk_3e2m,
                 &self.state.th_2,
@@ -1217,7 +1223,7 @@ impl EdhocResponder {
             encode_id_cred(&mut id_cred_r, self.pubkey.as_bytes())?;
             let mut credential_r = heapless::Vec::<u8, 80>::new();
             encode_credential(&mut credential_r, self.pubkey.as_bytes())?;
-            let context_2 = build_context_2(&id_cred_r, &credential_r)?;
+            let context_2 = build_context_2(&self.c_r, &id_cred_r, &credential_r)?;
             let mac_2 = edhoc_kdf(
                 &self.state.prk_3e2m,
                 &self.state.th_2,
