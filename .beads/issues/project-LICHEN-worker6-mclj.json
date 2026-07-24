@@ -2,15 +2,11 @@
   "id": "project-LICHEN-worker6-mclj",
   "title": "[review] project-LICHEN-iaui.3: Rust lichen-link shared_vectors.rs missing 'crypto' field — compile error",
   "description": "**Severity: CRITICAL — Build failure**\n\n`rust/lichen-link/tests/shared_vectors.rs:89` accesses `vector.crypto` but the `LinkFrameVector` struct (lines 19-26) has no `crypto` field. This causes a compilation error when the `schnorr` feature is enabled:\n\n```\nerror[E0609]: no field `crypto` on type `\u0026LinkFrameVector`\n  --\u003e lichen-link/tests/shared_vectors.rs:89:39\n```\n\n**Fix:** Add a `crypto: Option\u003cCryptoEntry\u003e` field (or similar) to `LinkFrameVector` with `#[serde(default)]`, or remove the dead `#[cfg(feature = \"schnorr\")]` block.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T15:59:58.777607242Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T16:07:30.750597118Z",
-  "started_at": "2026-07-24T16:07:30.750597118Z",
-  "lease_expires_at": "2026-07-24T16:12:30.750597118Z",
-  "heartbeat_at": "2026-07-24T16:07:30.750597118Z"
+  "updated_at": "2026-07-24T15:59:58.777607242Z"
 }

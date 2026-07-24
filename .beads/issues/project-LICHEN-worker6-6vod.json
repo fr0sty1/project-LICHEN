@@ -2,15 +2,11 @@
   "id": "project-LICHEN-worker6-6vod",
   "title": "[review] project-LICHEN-5pe7: stale build artifact 'payload' committed",
   "description": "An empty file named 'payload' (no extension, no content) was added in this commit. This appears to be a stale build artifact (likely from a build process or debug session) and should not be in the repository. Remove the file and add to .gitignore if needed.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T16:00:39.782722455Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T16:07:12.015017218Z",
-  "started_at": "2026-07-24T16:07:12.015017218Z",
-  "lease_expires_at": "2026-07-24T16:12:12.015017218Z",
-  "heartbeat_at": "2026-07-24T16:07:12.015017218Z"
+  "updated_at": "2026-07-24T16:00:39.782722455Z"
 }
