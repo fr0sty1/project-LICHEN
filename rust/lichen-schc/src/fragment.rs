@@ -1068,7 +1068,9 @@ mod std_ext {
         }
 
         pub fn fragments_in_window_vec(&self, abs_window: usize) -> Vec<Fragment<'a>> {
-            self.fragments_in_window(abs_window).collect()
+            self.iter()
+                .filter(|fragment| fragment.window as usize == abs_window)
+                .collect()
         }
     }
 
