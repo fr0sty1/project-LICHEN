@@ -6,7 +6,7 @@ use std::fmt;
 
 use lichen_core::addr::{Ipv6Addr, NodeId};
 use lichen_core::constants::{L2_DISPATCH_SCHC, SCHC_MAX_DECOMPRESSED};
-use lichen_core::ipv6::field;
+use lichen_core::ipv6::{field, IPV6_HEADER_LEN};
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
@@ -145,11 +145,12 @@ impl Gateway {
 
     pub fn process_rpl(&mut self, frame: &[u8], now_ms: u64) -> (Option<Vec<u8>>, RplEvent) {
         self.maintain(now_ms);
+        let sender_iid = extract_sender_iid(frame);
         let mut reply = vec![0u8; 512];
         let (reply_len, event) = self
             .rpl_stack
             .rpl_node()
-            .handle_frame_rpl(frame, [0u8; 8], &mut reply, now_ms);
+            .handle_frame_rpl(frame, sender_iid, &mut reply, now_ms);
         let reply_opt = if reply_len > 0 {
             reply.truncate(reply_len);
             Some(reply)
@@ -262,6 +263,28 @@ fn identity_pubkey_link_local(identity: &Identity) -> [u8; 16] {
     addr[1] = 0x80;
     addr[8..].copy_from_slice(&identity.iid);
     addr
+}
+
+/// Extract sender IID from an SCHC-compressed IPv6 frame.
+///
+/// Decompresses the frame to read the IPv6 source address and
+/// returns its IID (last 8 bytes). On any decompression or parse error
+/// returns `[0u8; 8]` so that downstream `handle_frame_rpl` will still
+/// process the frame (the `source_matches_sender_iid` check will fail
+/// for DIO/DIS but DAOs without admitted origin are rejected at the
+/// stack level).
+fn extract_sender_iid(frame: &[u8]) -> [u8; 8] {
+    if classify_l2_payload(frame) != L2PayloadKind::Schc {
+        return [0u8; 8];
+    }
+    let mut buf = [0u8; 256];
+    let n = match decompress(l2_payload_body(frame), &mut buf) {
+        Ok(n) if n >= IPV6_HEADER_LEN && buf[0] >> 4 == 6 => n,
+        _ => return [0u8; 8],
+    };
+    let mut iid = [0u8; 8];
+    iid.copy_from_slice(&buf[field::SRC_OFFSET + 8..field::SRC_OFFSET + 16]);
+    iid
 }
 
 #[cfg(test)]
