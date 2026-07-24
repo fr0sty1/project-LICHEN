@@ -122,13 +122,14 @@ static int test_coap_linklocal(void)
 static int test_coap_global(void)
 {
 	return round_trip(
-		/* IPv6 + UDP + CoAP global packet */
-		"600000000013114020010db8000000000000000000000001"
-		"20010db800000000000000000000000216331633001"
-		"3ca6c40011234ff737461747573",
-		/* Expected compressed */
-		"014020010db800000000000000000000000120010db8000000"
-		"00000000000000000216331633000448d0ff737461747573",
+		/* IPv6 + UDP + CoAP global (ULA fd00::/64) */
+		"6000000000131140"
+		"fd000000000000000000000000000001"
+		"fd000000000000000000000000000002"
+		"1633163300132bdd40011234ff737461747573",
+		/* Expected compressed (IIDs only) */
+		"014000000000000000010000000000000002"
+		"1633163340011234ff737461747573",
 		1 /* SCHC_RULE_GLOBAL_COAP */
 	);
 }
@@ -192,13 +193,15 @@ static int test_oscore_linklocal(void)
 static int test_oscore_global(void)
 {
 	return round_trip(
-		/* IPv6 + UDP + OSCORE-protected CoAP global (rule 6) */
-		"600000000016114020010db8000000000000000000000001"
-		"20010db8000000000000000000000002163316330016f30a42"
+		/* IPv6 + UDP + OSCORE-protected CoAP global (rule 6, ULA fd00::/64) */
+		"6000000000161140"
+		"fd000000000000000000000000000001"
+		"fd000000000000000000000000000002"
+		"163316330016f30a42"
 		"0112340001920900ffdeadbeef",
-		/* Expected compressed */
-		"064020010db800000000000000000000000120010db8000000"
-		"00000000000000000216331633080448d00001920900ffdeadbeef",
+		/* Expected compressed (IIDs only) */
+		"064000000000000000010000000000000002"
+		"16331633080448d00001920900ffdeadbeef",
 		6 /* SCHC_RULE_GLOBAL_OSCORE */
 	);
 }
@@ -266,9 +269,9 @@ static int test_truncated_coap_linklocal(void)
 
 static int test_truncated_coap_global(void)
 {
-	/* Rule 1 (global CoAP) needs at least 42 bytes (1 rule + 41 residue).
+	/* Rule 1 (global CoAP) needs at least 26 bytes (1 rule + 25 residue).
 	 * Verify truncated packets are rejected with SCHC_ERR_TOO_SHORT. */
-	uint8_t data[41] = { 1 }; /* rule_id=1, plus 40 bytes (1 short) */
+	uint8_t data[25] = { 1 }; /* rule_id=1, plus 24 bytes (1 short) */
 	uint8_t out[64];
 
 	int ret = lichen_schc_decompress(data, sizeof(data), out, sizeof(out));

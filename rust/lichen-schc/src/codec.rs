@@ -29,6 +29,10 @@ use lichen_core::ipv6::{field, IPV6_HEADER_LEN};
 /// See RFC 4291 Section 2.5.6: Link-Local addresses have the format fe80::<IID>/10.
 const LINK_LOCAL_PREFIX: u128 = 0xFE80_0000_0000_0000_u128 << 64;
 
+/// IPv6 ULA mesh prefix (fd00::/64) for global/mesh-local address compression.
+/// Nodes within the same DODAG share this prefix for MSB(64)/LSB(64) matching.
+const GLOBAL_PREFIX: u128 = 0xFD00_0000_0000_0000_u128 << 64;
+
 /// Error returned by compression/decompression.
 #[derive(Debug, PartialEq, Eq)]
 #[non_exhaustive]
@@ -320,17 +324,10 @@ fn compress_coap(packet: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     let mut w = BitWriter::new(&mut out[1..]);
     w.write(hop_limit as u128, 8)?;
 
-    if rule_id == RULE_LINK_LOCAL_COAP {
-        let src_iid = u64::from_be_bytes(src[8..16].try_into().unwrap());
-        let dst_iid = u64::from_be_bytes(dst[8..16].try_into().unwrap());
-        w.write(src_iid as u128, 64)?;
-        w.write(dst_iid as u128, 64)?;
-    } else {
-        let src_int = u128::from_be_bytes(src.try_into().unwrap());
-        let dst_int = u128::from_be_bytes(dst.try_into().unwrap());
-        w.write(src_int, 128)?;
-        w.write(dst_int, 128)?;
-    }
+    let src_iid = u64::from_be_bytes(src[8..16].try_into().unwrap());
+    let dst_iid = u64::from_be_bytes(dst[8..16].try_into().unwrap());
+    w.write(src_iid as u128, 64)?;
+    w.write(dst_iid as u128, 64)?;
 
     w.write(src_port as u128, 16)?;
     w.write(dst_port as u128, 16)?;
@@ -565,13 +562,15 @@ fn decompress_coap(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
 
     let hop_limit = r.read(8)? as u8;
 
-    let (src_int, dst_int) = if rule_id == RULE_LINK_LOCAL_COAP {
-        let src_iid = r.read(64)?;
-        let dst_iid = r.read(64)?;
-        (LINK_LOCAL_PREFIX | src_iid, LINK_LOCAL_PREFIX | dst_iid)
+    let src_iid = r.read(64)?;
+    let dst_iid = r.read(64)?;
+    let prefix = if rule_id == RULE_LINK_LOCAL_COAP {
+        LINK_LOCAL_PREFIX
     } else {
-        (r.read(128)?, r.read(128)?)
+        GLOBAL_PREFIX
     };
+    let src_int = prefix | src_iid;
+    let dst_int = prefix | dst_iid;
 
     let src_port = r.read(16)? as u16;
     let dst_port = r.read(16)? as u16;
@@ -1095,11 +1094,12 @@ mod tests {
     #[test]
     fn vector_coap_global() {
         round_trip(
-            "600000000013114020010db8000000000000000000000001\
-             20010db800000000000000000000000216331633001\
-             3ca6c40011234ff737461747573",
-            "014020010db800000000000000000000000120010db8000000\
-             00000000000000000216331633000448d0ff737461747573",
+            "6000000000131140\
+             fd000000000000000000000000000001\
+             fd000000000000000000000000000002\
+             1633163300132bdd40011234ff737461747573",
+            "014000000000000000010000000000000002\
+             1633163340011234ff737461747573",
             1,
         );
     }

@@ -798,16 +798,9 @@ static int compress_coap(const uint8_t *packet, size_t pkt_len,
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
 
-	if (rule_id == SCHC_RULE_LINK_LOCAL_COAP || rule_id == SCHC_RULE_LINK_LOCAL_OSCORE) {
-		if (schc_bit_writer_write128(&w, &src[8], 64) < 0 ||
-		    schc_bit_writer_write128(&w, &dst[8], 64) < 0) {
-			return SCHC_ERR_BUFFER_TOO_SMALL;
-		}
-	} else {
-		if (schc_bit_writer_write128(&w, src, 128) < 0 ||
-		    schc_bit_writer_write128(&w, dst, 128) < 0) {
-			return SCHC_ERR_BUFFER_TOO_SMALL;
-		}
+	if (schc_bit_writer_write128(&w, &src[8], 64) < 0 ||
+	    schc_bit_writer_write128(&w, &dst[8], 64) < 0) {
+		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
 
 	if (schc_bit_writer_write(&w, src_port, 16) < 0 ||
@@ -956,7 +949,7 @@ static int decompress_coap(const uint8_t *data, size_t data_len,
 	/*
 	 * Minimum residue size (excluding rule ID byte):
 	 * - Rule 0 (link-local): 8 + 64 + 64 + 16 + 16 + 2 + 4 + 8 + 16 = 198 bits = 25 bytes
-	 * - Rule 1 (global):     8 + 128 + 128 + 16 + 16 + 2 + 4 + 8 + 16 = 326 bits = 41 bytes
+	 * - Rule 1 (global):     8 + 64 + 64 + 16 + 16 + 2 + 4 + 8 + 16 = 198 bits = 25 bytes
 	 */
 	size_t min_residue = 25;
 	if (data_len < 1 + min_residue) {
@@ -973,22 +966,21 @@ static int decompress_coap(const uint8_t *data, size_t data_len,
 
 	uint8_t src[16], dst[16];
 
+	memset(src, 0, 16);
+	memset(dst, 0, 16);
 	if (rule_id == SCHC_RULE_LINK_LOCAL_COAP || rule_id == SCHC_RULE_LINK_LOCAL_OSCORE) {
-		memset(src, 0, 16);
-		memset(dst, 0, 16);
 		src[0] = 0xFE;
 		src[1] = 0x80;
 		dst[0] = 0xFE;
 		dst[1] = 0x80;
-		if (schc_bit_reader_read_bytes(&r, 64, &src[8], 8) < 0 ||
-		    schc_bit_reader_read_bytes(&r, 64, &dst[8], 8) < 0) {
-			return SCHC_ERR_TOO_SHORT;
-		}
 	} else {
-		if (schc_bit_reader_read_bytes(&r, 128, src, 16) < 0 ||
-		    schc_bit_reader_read_bytes(&r, 128, dst, 16) < 0) {
-			return SCHC_ERR_TOO_SHORT;
-		}
+		/* ULA mesh prefix fd00::/64 */
+		src[0] = 0xFD;
+		dst[0] = 0xFD;
+	}
+	if (schc_bit_reader_read_bytes(&r, 64, &src[8], 8) < 0 ||
+	    schc_bit_reader_read_bytes(&r, 64, &dst[8], 8) < 0) {
+		return SCHC_ERR_TOO_SHORT;
 	}
 
 	uint64_t src_port, dst_port, coap_type, coap_tkl, coap_code, coap_mid;

@@ -17,8 +17,8 @@ from lichen.schc.headers import compress_packet, decompress_packet
 
 LL_SRC = IPv6Address("fe80::1")
 LL_DST = IPv6Address("fe80::2")
-G_SRC = IPv6Address("0202:db8::1")  # 02xx Yggdrasil primary global
-G_DST = IPv6Address("0202:db8::2")
+G_SRC = IPv6Address("fd00::1")  # ULA mesh prefix
+G_DST = IPv6Address("fd00::2")
 
 
 def _coap_fixed(code: int = 1, mid: int = 0x1234) -> bytes:
