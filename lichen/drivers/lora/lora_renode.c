@@ -254,11 +254,28 @@ static int lora_renode_cad(const struct device *dev, k_timeout_t timeout,
 	return 0;
 }
 
+static int lora_renode_send_async(const struct device *dev, uint8_t *data,
+				  uint32_t data_len, struct k_poll_signal *async)
+{
+	ARG_UNUSED(async);
+	return lora_renode_send(dev, data, data_len);
+}
+
+static int lora_renode_recv_async(const struct device *dev, lora_recv_cb cb)
+{
+	ARG_UNUSED(dev);
+	ARG_UNUSED(cb);
+	return -ENOTSUP;
+}
+
 static const struct lora_driver_api lora_renode_api = {
-	.config = lora_renode_config,
-	.send   = lora_renode_send,
-	.recv   = lora_renode_recv,
-	.cad    = lora_renode_cad,
+	.config     = lora_renode_config,
+	.send       = lora_renode_send,
+	.send_async = lora_renode_send_async,
+	.recv       = lora_renode_recv,
+	.recv_async = lora_renode_recv_async,
+	.test_cw    = NULL,
+	.cad        = lora_renode_cad,
 };
 
 #define LORA_RENODE_DEFINE(inst)					\
