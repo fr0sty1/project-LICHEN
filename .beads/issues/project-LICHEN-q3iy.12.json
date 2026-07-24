@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.12",
   "title": "lora_l2.c consecutive_errors counter can overflow on persistent hardware failure",
   "description": "## Location\nfirmware/bridge-zephyr/subsys/lichen/lora_l2.c:215-221\n\n## Finding\nThe `consecutive_errors` counter is an `int` that increments on each LoRa RX error:\n```c\nconsecutive_errors++;\nif (consecutive_errors \u003e 0 \u0026\u0026 consecutive_errors % RX_ERROR_WARN_THRESHOLD == 0) {\n    LOG_WRN(\"LoRa RX: %d consecutive errors - check hardware\", consecutive_errors);\n}\n```\n\nIf the radio enters a persistent failure state (hardware fault, antenna disconnected), this counter will eventually overflow. After INT_MAX iterations (~2B), the counter wraps to negative values, causing the modulo check to stop triggering warnings.\n\n## What goes wrong\nIn a persistent hardware failure scenario (unlikely but possible), the warning messages stop appearing after ~2 billion errors (~68 years at 1 error/second with 1s backoff). This is extremely unlikely in practice.\n\nMore realistically: the `consecutive_errors % RX_ERROR_WARN_THRESHOLD == 0` check will produce unexpected behavior around INT_MAX due to signed overflow being undefined behavior in C.\n\n## Recommendation\nUse unsigned int, or cap the counter at a maximum value:\n```c\nif (consecutive_errors \u003c INT_MAX) {\n    consecutive_errors++;\n}\n```\nOr use `uint32_t` to make overflow behavior well-defined (wraps at 4B).",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

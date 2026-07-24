@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.171",
   "title": "kiss/ble: try_get_app_frame silently swallows errors",
   "description": "In ble.rs:102-109, try_get_app_frame chains ok()?? which silently swallows errors. Consider logging or returning Result for debuggability.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

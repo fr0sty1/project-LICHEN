@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.75",
   "title": "[lora_l2.c:517] lora_config stack-local struct passed by pointer without lifetime check",
   "description": "Completeness: API contract verification category.\n\nAt line 517-525, a stack-local struct lora_modem_config is created and passed to lora_config():\n\n\nThe comment at line 498-500 states: 'Stack-local struct is safe: lora_config() copies the values (see sx12xx_lora_config memcpy, rylr_config field reads) and does not retain a pointer.'\n\nHowever, this claim is driver-specific:\n- sx12xx: confirmed to copy\n- rylr: confirmed to copy\n- Other drivers (sx127x, llcc68, etc.): not verified\n\nIf a new LoRa driver retains the config pointer for later async use, this would be use-after-free.\n\nFix: Make lora_modem_config static or module-global to eliminate lifetime concern, or add Kconfig validation that only known-safe drivers are used.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

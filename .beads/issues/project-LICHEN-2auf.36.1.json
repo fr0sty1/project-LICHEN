@@ -3,7 +3,7 @@
   "title": "Run authoritative interop workflow on Ubuntu",
   "description": "Execute the recovered interop workflow on GitHub-hosted Ubuntu 22.04 or an equivalent Linux runner after the one-file fail-closed change lands. No AWS is required.",
   "acceptance_criteria": "frame-parser interop runs 2/2 without skips; multinode and announce jobs pass; vector regeneration is no-op; Rust shared_vectors runs two tests; Zephyr link_crypto runs on native_sim/native/64 without continue-on-error; deliberately failed dependency makes Interop Status fail; actionlint passes; retain workflow URL/logs.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

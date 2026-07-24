@@ -2,7 +2,7 @@
   "id": "project-LICHEN-diuz",
   "title": "codereview: missing yggdrasil config section in lichen-gateway",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

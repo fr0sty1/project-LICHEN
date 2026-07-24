@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i1gk.76",
   "title": "[lichen_l2.c:482-565] peer_try_all_pubkeys iteration order is not randomized",
   "description": "Completeness: Side-channel analysis category.\n\npeer_try_all_pubkeys() at lines 482-565 iterates through peer_table in array index order (for size_t i = 0; i \u003c CONFIG_LICHEN_LINK_MAX_NEIGHBORS; i++).\n\nThe function has a constant-time claim (line 493-502) to prevent timing side-channels. However:\n1. Peers are tried in deterministic order (index 0, 1, 2, ...)\n2. Even with full iteration, cache timing may differ based on which index matched\n3. The peer at index 0 has its verification performed first every time\n\nWhile the function continues checking all peers after finding a match (constant iteration count), the cache/memory access pattern reveals the matching peer's table position through microarchitectural side channels.\n\nFor security-critical deployments, consider randomizing iteration start index (e.g., start = random % count, wrap around) to make position correlation harder.\n\nThis is P4 because the existing mitigation (full iteration) is likely sufficient for the threat model.",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "feature",
   "assignee": "Mark Atwood",

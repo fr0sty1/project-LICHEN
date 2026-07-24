@@ -2,7 +2,7 @@
   "id": "project-LICHEN-a2i8",
   "title": "[spec-compliance] EDHOC KDF labels use strings instead of integers",
   "description": "rust/lichen-oscore/src/edhoc.rs:328-340 uses string labels \"7\",\"10\" etc for edhoc_kdf (CBOR tstr) but RFC 9528 §4.1.2 + spec/06-security.md:347-349 + Python ref + test vectors require integer labels (0x07 etc). Breaks OSCORE key derivation. See explore task ses_07076286effeyM9Bu5Zr6pa6rl",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",

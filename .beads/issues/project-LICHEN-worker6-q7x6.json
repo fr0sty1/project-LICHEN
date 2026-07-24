@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-q7x6",
+  "title": "[review] project-LICHEN-6mij.2.4: coap_oscore_authorize_mutating leaks piv_len on unprotect failure",
+  "description": "In coap_oscore.c:287-290, when coap_oscore_unprotect_request fails, ctx_out and piv_len_out are set to the context and ppiv_len, but piv_out is not written (ppiv_len calculated by size_t ppiv_len = OSCORE_PIV_MAX_LEN but may not have been filled by unprotect). The caller may use uninitialized piv data. Additionally, on line 282, ppiv_len is initialized to OSCORE_PIV_MAX_LEN (might be larger than OSCORE_PIV_MAX_LEN — the #define is already the max) but piv_out buffer is expected to be 'at least OSCORE_PIV_MAX_LEN bytes' per doc. If unprotect fails without writing piv_out, piv_out is not touched, so piv_len_out != 0 but piv is uninitialized.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:57:29.175951887Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:57:29.175951887Z"
+}

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.55",
   "title": "[lichen_l2.c:838-841] lichen_l2_ctx struct empty but required by NET_DEVICE_INIT",
   "description": "Gap found: L2 context type pattern not reviewed.\n\nWhy this was missed: Boilerplate struct considered trivial.\n\nThe actual bug: Lines 838-841 define an empty struct lichen_l2_ctx which is required by NET_DEVICE_INIT. The comment says 'Required by NET_DEVICE_INIT; actual state is module-static'. This is correct but:\n\n1. The empty struct wastes 1 byte per interface (C requires structs to have non-zero size)\n2. If future refactoring needs per-interface state, the pattern of using module-static vars will need to change\n3. Zephyr's NET_L2_GET_CTX_TYPE_* macro (line 844) ties the context type to the L2 name\n\nThis is a design pattern observation, not a bug. The current approach works for single-interface LICHEN deployments. Multi-interface would require rethinking the static state model. Priority 4 - architecture note.",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

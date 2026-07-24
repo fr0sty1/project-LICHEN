@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.258",
   "title": "router.py: dtn_buffer rebuild creates new deque from generator on every expire/retrieve",
   "description": "In Router.dtn_expire() and dtn_retrieve_for(), the dtn_buffer is rebuilt by creating a new deque from a generator expression. This is O(n) and allocates a new deque each time. For frequently called expiry checks this adds up. Consider using deque.remove() for single-item removal or maintaining a separate index for efficient lookup.\n\nFile: python/src/lichen/routing/router.py lines 468-475",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-k0sl",
   "title": "[codereview-2] spec/02-physical-link.md CCP-16: inconsistent RFC2119 usage, undefined norm functions, imprecise measurement methods, missing thresholds table, bead ID formatting",
   "description": "Second independent codereview pass on the updated CCP-16 section. Findings: lacks MUST/SHOULD keywords for requirements; normalization not defined (e.g. util_norm = util/100); channel util measurement method vague (prefer TX-time based over RSSI for accuracy); no explicit thresholds table; uses `backticks` for bead unlike other specs; add reference to 04-network or 01-architecture. Tagged codereview. Discovered-from project-LICHEN-da2q.16.5",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "created_at": "2026-07-22T16:15:12.004932808Z",

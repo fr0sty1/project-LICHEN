@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-3iwu",
+  "title": "[review] project-LICHEN-iaui.3: EdhocResponder::new Ok(Self) with Self return type",
+  "description": "In rust/lichen-oscore/src/edhoc.rs line 1034, EdhocResponder::new declares return type -\u003e Self but the body returns Ok(Self { ... }) which should be type Result\u003cSelf, _\u003e. This compiles on rustc 1.96.1 but is fragile; a compiler upgrade or different feature set could reject it. The sibling EdhocInitiator::new at line 687 has the same pattern but returns Self body (no Ok wrapper). Fix the return type or the body to be consistent.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:57:00.040922695Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:57:00.040922695Z"
+}

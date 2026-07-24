@@ -2,7 +2,7 @@
   "id": "project-LICHEN-m7ii",
   "title": "_str_or_none converts bytes to repr string instead of decoding",
   "description": "File: python/src/lichen/client/lci.py, lines 755-758\n\nThe _str_or_none helper converts any non-None value to string:\n\n```python\ndef _str_or_none(value: Any) -\u003e str | None:\n    if value is None:\n        return None\n    return str(value)\n```\n\nProblem: If value is bytes, str(bytes_value) produces a repr like \"b'hello'\" instead of decoding it:\n\n```python\n\u003e\u003e\u003e str(b'hello')\n\"b'hello'\"  # NOT 'hello'\n```\n\nThis affects fields like 'body' in MessageRecord where CBOR might return bytes for text content.\n\nImpact: Message bodies or other string fields could display as \"b'...'\" in the UI instead of the actual decoded text.\n\nFix: Add explicit bytes handling:\n```python\ndef _str_or_none(value: Any) -\u003e str | None:\n    if value is None:\n        return None\n    if isinstance(value, bytes):\n        return value.decode('utf-8', errors='replace')\n    return str(value)\n```",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

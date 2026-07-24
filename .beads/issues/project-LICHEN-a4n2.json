@@ -3,7 +3,7 @@
   "title": "Implement: TX queue with priority (all implementations)",
   "description": "Policy: spec/appendix-bufferbloat.md §3 TX Queue. Currently MISSING in Rust/Zephyr/Python. Implement: 4 packets max, 4 priority levels (0=routing, 1=ACK, 2=urgent, 3=bulk), deadline expiry, preemption.",
   "notes": "Audit complete. TX queue state:\n\n**Rust**: Partial implementation in rust/lichen-core/src/tx_queue.rs - has priority queue but wrong capacity (32 vs spec 4), no deadline expiry, no preemption.\n\n**Python**: Missing entirely - link_layer.py sends directly to radio.\n\n**C/Zephyr**: Missing entirely - lichen_link_tx.c has no queue.\n\nFiled sub-beads:\n- a4n2.1: Rust fixes (capacity, deadline, preemption)\n- a4n2.2: Python implementation\n- a4n2.3: C/Zephyr implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-s269",
   "title": "Create Comprehensive Simulation Validation Test Suite",
   "description": "Create Comprehensive Simulation Validation Test Suite - Create and implement complete simulation validation test suite covering core simulation components, cross-platform capability, metrics export, and distributed testing scenarios. The test suite should validate that all key simulation functionalities work correctly before hardware testing. This work supports the broader Epic: Complete Simulation Infrastructure Enhancement Epic.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

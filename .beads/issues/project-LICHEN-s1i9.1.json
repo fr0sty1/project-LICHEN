@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-s1i9.1",
   "title": "draft-lichen-schc-lora-00.md: add missing CoAP fields to Rule 0 and Rule 1 tables per COAP_FIELDS in rules.rs and _coap_fields in rules.py; update compressed-size notes",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

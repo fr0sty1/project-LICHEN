@@ -3,7 +3,7 @@
   "title": "Reject oversized raw CoAP payload safely",
   "description": "Rust Stack::send_coap_raw can slice beyond its fixed 256-byte IPv6 buffer for payloads over the supported bound, panicking instead of returning TxError. Preflight exact capacity and add boundary tests.",
   "notes": "Completed in e1b52012a. Added subtraction-first 208-byte IPv6/UDP payload preflight before casts, indexing, compression, or tuple allocation; 209-byte regression verifies BufferTooSmall and unchanged tuple state. Validation: targeted test, all 125 node tests plus doctests, touched-file rustfmt, package-only strict Clippy, diff check, and three scoped reviews.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

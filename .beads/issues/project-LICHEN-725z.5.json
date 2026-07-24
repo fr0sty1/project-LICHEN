@@ -2,7 +2,7 @@
   "id": "project-LICHEN-725z.5",
   "title": "Missing minimum frame length validation before lichen_link_rx",
   "description": "lichen_l2.c:556 — Only len==0 rejected (line 502-505). Frames of 1-2 bytes passed to lichen_link_rx() which may cause OOB reads parsing header fields if it doesn't validate internally.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

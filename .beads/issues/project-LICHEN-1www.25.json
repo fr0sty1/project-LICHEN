@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1www.25",
   "title": "lichen_l2_recv and lichen_l2_enable missing iface NULL check",
   "description": "Locations:\n- firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:241 (lichen_l2_recv)\n- firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:359 (lichen_l2_enable)\n- firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:454 (lichen_l2_flags)\n\nThese L2 callbacks receive iface parameter from Zephyr but mark it ARG_UNUSED without NULL check. lichen_l2_input() at line 646-649 does check iface for NULL.\n\nWhat goes wrong: Inconsistent NULL checking - some paths check, others dont. If Zephyr misbehaves, some callbacks would crash while others would handle gracefully. All L2 callbacks should have consistent NULL checking policy.\n\nLow severity since Zephyr guarantees non-NULL iface, but consistency matters for code review.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

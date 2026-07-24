@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-qvfq",
+  "title": "[review] project-LICHEN-5pe7: misleading nvm_failed comment",
+  "description": "The comment at line 1614 of `lichen/subsys/lichen/oscore/oscore.c` says \"After common wipe in common_wipe\" but nvm_failed does NOT go through common_wipe first — it executes its mutex/rollback logic while stack variables are still live, then `goto common_wipe` for wiping. The comment should say \"Before common wipe\" or be reworded for clarity. Functionally correct (no security issue), just a documentation inaccuracy.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:59:17.081171076Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:59:17.081171076Z"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-u7yo",
+  "title": "[review] project-LICHEN-6mij: keys_single_delete uses LICHEN_COAP_SERVER_MAX_PAYLOAD plain buffer for method that has no payload",
+  "description": "keys_single_delete at coap_keys.c:1086 allocates `uint8_t plain[LICHEN_COAP_SERVER_MAX_PAYLOAD]` for authorize_mutating, but DELETE requests have no payload. The old code used 16 bytes. This wastes stack (~1KB). Fix: use a small buffer (16-32 bytes) or a shared minimal buffer for zero-payload methods.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:57:13.076574305Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:57:13.076574305Z"
+}

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q3iy.1",
   "title": "secure_zero() word-aligned optimization has redundant alignment check",
   "description": "## Location\nfirmware/bridge-zephyr/subsys/lichen/lichen_util.h:51-52\n\n## Issue\nThe word-aligned optimization in `secure_zero()` has a redundant alignment check inside the bulk-write loop:\n\n```c\nwhile (len \u003e= 32) {\n    /* Align to word boundary first */\n    while (len \u003e 0 \u0026\u0026 ((uintptr_t)p \u0026 (sizeof(unsigned long) - 1)) != 0) {\n        *p++ = 0;\n        len--;\n    }\n    /* Word-sized writes for the bulk (only if properly aligned) */\n    while (len \u003e= sizeof(unsigned long) \u0026\u0026\n           ((uintptr_t)p \u0026 (sizeof(unsigned long) - 1)) == 0) {  // \u003c-- redundant\n        *(volatile unsigned long *)p = 0;\n        ...\n```\n\nAfter the first while loop completes, `p` is guaranteed to be word-aligned (or `len` is 0). The alignment check in line 51-52 is always true (or the loop is never entered due to `len` check), wasting cycles on every iteration of the inner loop.\n\n## What goes wrong\n- Minor CPU waste on every call with len \u003e= 32 (not a security bug, but suboptimal)\n- Pattern may be copied by contributors to other security-critical paths where performance matters more\n- Creates confusion about whether the alignment guarantee from the first loop is trusted\n\n## Fix\nRemove the redundant alignment check from the bulk-write while condition:\n```c\nwhile (len \u003e= sizeof(unsigned long)) {\n    *(volatile unsigned long *)p = 0;\n    ...\n```",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

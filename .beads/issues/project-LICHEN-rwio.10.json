@@ -2,7 +2,7 @@
   "id": "project-LICHEN-rwio.10",
   "title": "GOOD: Defensive key copy in lichen_l2_input prevents use-after-free on refactor",
   "description": "lichen_l2.c lines 471-481: RX path copies link_key into a local buffer rather than taking a pointer to link_ctx.link_key. Currently safe because cleanup holds rx_mutex, but the copy eliminates a subtle lifetime dependency that would cause UAF if cleanup moved outside the mutex. 16-byte copy is cheap insurance. Worth defending.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "decision",
   "assignee": "Mark Atwood",

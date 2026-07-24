@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.260",
   "title": "gpsr_forward: NaN/inf check added but missing test coverage",
   "description": "Router.gpsr_forward() now validates that dst_coords are not NaN/inf and are within valid lat/lon ranges. Good defensive coding, but no test exercises these edge cases. Add tests for:\n- dst_coords = (float('nan'), 0.0)\n- dst_coords = (float('inf'), 0.0)\n- dst_coords = (91.0, 0.0) # invalid latitude\n\nFile: python/src/lichen/routing/router.py lines 505-512",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

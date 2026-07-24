@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wjn3",
   "title": "codereview: Kconfig addition for CCA",
   "description": "First codereview pass after Kconfig chunk: 1. Default=y for CCA_ENABLE may break existing configs without radio CAD support (LR1110 vs sim). 2. Missing select for LICHEN_LORA_CCA in LICHEN_LORA_L2. 3. Help text mentions link layer but no changes there yet. 4. Range for timeout should consider radio-specific CAD times (project-LICHEN-da2q.15.7).",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

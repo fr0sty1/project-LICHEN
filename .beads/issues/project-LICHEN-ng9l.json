@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ng9l",
   "title": "Compliance: lichen/app_identity/app_identity.c TOFU",
   "description": "Policy: 06-security.md §8.6. File: lichen/subsys/lichen/app_identity/app_identity.c. Status: VIOLATION. lichen_app_identity_upsert_peer_key() silently updates peer pubkey (line 234-236) without TOFU enforcement. Spec requires: pin on first contact, reject changes. Fix: add key change detection before upsert.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

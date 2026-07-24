@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.30",
   "title": "[lora_l2.c:184] rx_thread does not check aborted state in loop",
   "description": "Function: rx_thread (static). Thread safety: The RX thread loop condition (line 218) only checks 'atomic_get(\u0026lora_state.running)'. If the module enters aborted state (lora_state.aborted = 1) but running is not cleared, the thread continues. In practice, stop() sets running=0 before or after setting aborted=1, so this is a non-issue. But checking aborted in the loop condition would make the thread exit faster when abort is signaled. Priority 3 - theoretical race, not a practical bug.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "issue",
   "assignee": "Mark Atwood",

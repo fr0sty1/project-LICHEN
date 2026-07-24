@@ -2,7 +2,7 @@
   "id": "project-LICHEN-3pun.8",
   "title": "lichen_peer_add(): -EEXIST return semantics unclear",
   "description": "**Location:** firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:372\n\n**Contract issue:** The header documents:\n```\n@return 0 on success\n        -EINVAL if eui64 or pubkey is NULL\n        -ENOSPC if peer table is full\n        -EEXIST if peer already exists (pubkey updated)\n```\n\nThe -EEXIST case is unusual: the operation SUCCEEDS (pubkey is updated) but returns an error code. This conflates success-with-update with actual failure.\n\n**Code:**\n```c\nif (existing != NULL) {\n    memcpy(existing-\u003epubkey, pubkey, LICHEN_L2_PUBKEY_LEN);\n    LOG_INF(\"Peer updated: ...\");\n    k_mutex_unlock(\u0026rx_mutex);\n    return -EEXIST;  /* Updated, not added */\n}\n```\n\n**Impact (P2):** Callers checking `ret \u003c 0` will treat successful updates as failures. However:\n1. The documentation is explicit about the semantics\n2. Callers who care can check for -EEXIST specifically\n\n**Recommendation:**\n1. Consider returning 0 on success (whether add or update) and adding an output parameter to indicate update-vs-add, OR\n2. Use a positive return value (1 = updated, 0 = added) to distinguish without signaling failure, OR\n3. Leave as-is with clear documentation (current state)\n\nThis is a design choice more than a bug - the current behavior is documented.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

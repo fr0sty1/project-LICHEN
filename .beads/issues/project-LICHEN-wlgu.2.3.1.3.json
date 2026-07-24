@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wlgu.2.3.1.3",
   "title": "Update ccp16-hop.json description and remove all placeholder strings after regeneration",
   "description": "Ensure description references correct spec line, FNV basis 0x811c9dc5, independent oracle from hash_32.json, little-endian epoch concat, no 'computed via' or project-LICHEN-eirg/vhvj legacy refs. Match style of ccp16.json and hash_32.json.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

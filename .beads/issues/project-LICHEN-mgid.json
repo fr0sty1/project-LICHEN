@@ -2,7 +2,7 @@
   "id": "project-LICHEN-mgid",
   "title": "LciClient.send_message catches bare Exception for transport errors",
   "description": "File: python/src/lichen/client/lci.py, lines 235-246\n\nThe send_message method catches Exception broadly:\n\n```python\ntry:\n    result = await self._transport.request(\n        'POST',\n        path,\n        payload=payload,\n        content_format=CBOR_CONTENT_FORMAT,\n    )\nexcept Exception as exc:\n    return SendResult(\n        state=DeliveryState.TRANSPORT_ERROR,\n        detail=str(exc),\n    )\n```\n\nIssue: This catches ALL exceptions including:\n- KeyboardInterrupt (via BaseException -\u003e Exception inheritance is wrong, but asyncio.CancelledError is caught)\n- SystemExit\n- MemoryError\n- Programming bugs (AttributeError, TypeError, etc.)\n\nThese are then silently converted to a TRANSPORT_ERROR result with no stack trace.\n\nImpact: Bugs in the transport layer are masked as transport errors. Debugging becomes difficult because the original exception type is lost.\n\nFix: Catch specific transport exceptions:\n```python\nexcept (CoapTransportError, OSError, asyncio.TimeoutError) as exc:\n    return SendResult(\n        state=DeliveryState.TRANSPORT_ERROR,\n        detail=str(exc),\n    )\n# Let other exceptions propagate\n```",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",

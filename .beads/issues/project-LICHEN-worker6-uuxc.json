@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-uuxc",
+  "title": "[review] project-LICHEN-6mij.2.4: confessions_post not refactored to use coap_oscore_auth_mutating",
+  "description": "confessions_post in coap_dtn.c still duplicates the full OSCORE unprotect logic inline (lines 240-283), while deaddrop_post and msg_inbox_post were refactored to use the new coap_oscore_auth_mutating helper. This means confessions_post has its own stack-allocated plain buffer (64 bytes, line 266) with the same use-after-free pattern, and it uses a different error-return convention (direct positive code) than the refactored handlers (double-negated).\n\nLocation: lichen/subsys/lichen/coap/coap_dtn.c:240-283 and coap_oscore.c:249 (the refactored helper).",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:56:59.149264001Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:56:59.149264001Z"
+}

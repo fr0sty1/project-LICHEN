@@ -2,7 +2,7 @@
   "id": "project-LICHEN-afbk.1.4.4",
   "title": "Update docs and config for full RAK2287 hat integration",
   "description": "Update docs/rpi-lora-hat-border-router-deployment.md with current hat usage, systemd service updates, Prometheus metrics for concentrator. Refine config.toml example. Ensure --hat rak2287 works end-to-end per test bead.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

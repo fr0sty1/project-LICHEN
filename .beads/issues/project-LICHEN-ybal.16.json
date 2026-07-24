@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ybal.16",
   "title": "net_if_set_link_addr cast discards const - silent UB if Zephyr writes to it",
   "description": "File: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:315\n\nnet_if_set_link_addr(iface, (uint8_t *)eui64, ...) casts away const from the EUI-64 pointer returned by lichen_lora_l2_get_eui64().\n\nThe EUI-64 is stored in static lora_state.eui64. If Zephyr's net_if code ever writes to this buffer (to set a user-requested address, for example), it would corrupt lora_state.eui64 without any warning.\n\nTrigger: Future Zephyr API change allows setting link address through net_if.\n\nBad behavior: Lora_state.eui64 silently corrupted; subsequent calls to lichen_lora_l2_get_eui64() return modified value.\n\nFix: Copy EUI-64 to a local buffer before passing to net_if_set_link_addr, or add a SECURITY comment acknowledging the const-discard is intentional and safe given current Zephyr API.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

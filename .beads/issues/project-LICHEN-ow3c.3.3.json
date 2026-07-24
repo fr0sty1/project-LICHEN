@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow3c.3.3",
   "title": "Address comments on critical use of oscore_ctx_set_sender_seq before oscore_protect_request and EDHOC export paths",
   "description": "Update code comments in oscore.c:663, protect_request check at 1428, and any EDHOC integration points. Ensure after EDHOC export_oscore, the resulting oscore_ctx_create path properly chains to set_sender_seq with NVM-restored or safe-bumped value. Add reboot safety notes per parent epic.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

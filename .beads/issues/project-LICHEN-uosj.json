@@ -2,7 +2,7 @@
   "id": "project-LICHEN-uosj",
   "title": "[security] OSCORE nvm_failed rollback may allow SSN reuse under concurrency",
   "description": "In oscore_protect_request (lichen/subsys/lichen/oscore/oscore.c:1627), the nvm_failed path re-locks mutex and sets ctx-\u003esender_seq = seq (pre-increment value). With the increment/unlock happening before AES-CCM encrypt+persist (lines 1515-1591), concurrent threads or multiple failures can cause SSN to move backwards. This violates strict monotonicity expected for replay protection and nonce uniqueness (RFC 8613 §7.2, Appendix D.4). The security comment acknowledges tradeoffs but does not address concurrent access fully. Potential for nonce reuse on reboot or replay acceptance. Recommend safe-advance to next power-of-2 boundary or per-context sequence window.",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",

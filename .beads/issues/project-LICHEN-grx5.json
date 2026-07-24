@@ -3,7 +3,7 @@
   "title": "Ensure schnorr48.c + Rust lichen-core fully implements constant-time MUST from draft-lichen-schnorr-00.md:5.3",
   "description": "Spec: 'Implementations MUST use constant-time operations for: Scalar multiplication, Signature comparison'. Verify in frame signing (lichen_link_tx.c:124, schnorr48_verify_frame:469 crypto_verify16) and batch support. No violation found but audit required post-recent link changes.",
   "notes": "Commit: f474bd33f - audit confirms full constant-time compliance in schnorr48.c:468 (crypto_verify16), lichen_link_tx.c:128 (sign_frame), Rust schnorr.rs:144 (ct_eq), Monocypher/Dalek libs; no changes needed post-vu0r alignment; batch support via spec 5.4 remains optional",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "AI Agent",

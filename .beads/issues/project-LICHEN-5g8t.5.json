@@ -2,7 +2,7 @@
   "id": "project-LICHEN-5g8t.5",
   "title": "TUI: duty cycle and TX queue tab",
   "description": "New TUI tab showing: own duty cycle usage (bar graph, % used, time until budget refill), TX queue depth by priority, estimated drain time. Live updating. Depends on firmware APIs from 5g8t.1 and 5g8t.3.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

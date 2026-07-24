@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-56l4",
+  "title": "[rereview] project-LICHEN-a4n2.3: nonce consumed before tx_queue_push, not recovered on push failure",
+  "description": "Commit 1a774fce5 adds a tx_queue_push in lichen_link_tx() (lichen_link_tx.c:171-181) AFTER the nonce is allocated by lichen_link_next_tx() (line 124). If the queue push fails (e.g., queue full, clock failure), the function returns an error but the nonce (epoch/seqnum pair) is already consumed and cannot be recovered.\n\nImpact:\n- Each failed push creates a permanent gap in the sequence number space\n- Accelerates nonce exhaustion (max 256*65536 = ~16M frames total)\n- Sequence number gaps may trigger warning/investigation from peers monitoring for replay or missed frames\n- Frame was fully built and signed with this nonce, then discarded\n\nFix: Move nonce allocation to after the queue push, or make the nonce allocatable (rollback) when the push fails. Currently no mechanism exists to 'return' a nonce.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T14:15:28.870673951Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T14:15:28.870673951Z"
+}

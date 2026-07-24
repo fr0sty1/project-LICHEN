@@ -3,7 +3,7 @@
   "title": "[codereview-pass3] Kconfig: new DEADDROP option should depend on LICHEN_DTN_STORAGE if it exists; also update default in board configs not done yet. Robustness pass.",
   "description": "lichen/subsys/lichen/coap/Kconfig:1-270 - Third review pass. No DTN storage module yet, so dependency chain incomplete. Will cause build failures in puck app until CMake and board confs updated. P2 robustness. Discovered-from:project-LICHEN-2h1i.2.4.2",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

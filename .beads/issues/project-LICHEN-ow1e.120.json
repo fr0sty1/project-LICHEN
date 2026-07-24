@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.120",
   "title": "router.py: DTN buffer size computed O(n) on every eviction check",
   "description": "src/lichen/routing/router.py:484-486 _dtn_buffer_size() recomputes sum of all message sizes on every eviction check. Called in a while loop by _dtn_evict_if_needed.\n\nFix: Maintain a running _dtn_buffer_bytes counter, incrementing on add and decrementing on remove. Converts O(n*k) to O(k) where k is evictions per insert.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

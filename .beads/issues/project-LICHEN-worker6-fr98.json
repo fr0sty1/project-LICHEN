@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-fr98",
+  "title": "[review] project-LICHEN-6mij.2.4: authorize_mutating hardcodes OSCORE_PIV_MAX_LEN instead of using input piv_len_out",
+  "description": "In coap_oscore_authorize_mutating (coap_oscore.c:282), the function creates a local variable  instead of reading the caller-provided  value (which represents the actual buffer size allocated for piv_out). After coap_oscore_unprotect_request completes,  overwrites the output.\n\nThe comment in coap_oscore.h line 168 says 'piv_out: Request PIV buffer (must be at least OSCORE_PIV_MAX_LEN bytes)', so all current callers comply. However, this is a fragile API — if someone passes a smaller buffer and sets *piv_len_out accordingly, the function will overflow piv_out by writing up to OSCORE_PIV_MAX_LEN bytes, and then report the wrong actual length via *piv_len_out.\n\nFix: Use  as the initial ppiv_len so the function respects the caller's buffer capacity. This aligns with the convention used by coap_oscore_unprotect_request which accepts request_piv_len as an in/out parameter.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:59:02.613769997Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:59:02.613769997Z"
+}

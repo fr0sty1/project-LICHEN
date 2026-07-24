@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9j70.7",
   "title": "lichen_l2_enable re-init path assumes lora_l2 was initialized",
   "description": "lichen_l2.c:265-275: When re-enabling after disable, lichen_l2_enable() calls lichen_lora_l2_get_eui64() which returns NULL if lora_l2 was never initialized (or init failed).\n\nThe code handles NULL at line 266-269, but the error message 'Failed to get EUI-64 for link_ctx re-init' doesn't indicate the actual problem (lora_l2 not initialized).\n\nWhat goes wrong: User sees 'Failed to get EUI-64 for link_ctx re-init' when the real issue is that the underlying LoRa layer failed to initialize. Confusing diagnostic that will generate support requests.\n\nThe enable path then calls lichen_lora_l2_start() at line 283, which WILL check initialized and return -EINVAL with 'LoRa L2 not initialized' log. So the actual error is eventually surfaced, but after a misleading earlier message.\n\nFix: Either (1) check lichen_lora_l2_is_running() || atomic_get(\u0026lora_state.initialized) explicitly, or (2) improve the error message to suggest checking LoRa initialization.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

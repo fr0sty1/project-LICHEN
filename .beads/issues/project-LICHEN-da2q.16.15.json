@@ -2,7 +2,7 @@
   "id": "project-LICHEN-da2q.16.15",
   "title": "CCP-16: Define load balancing algorithm (TDMA, adaptive SF, density-aware)",
   "description": "Draft detailed spec for TDMA slot allocation, SF adaptation based on SNR/density, multi-channel assignment. Include test vectors. Must be approved before code impl.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "ec2-user",

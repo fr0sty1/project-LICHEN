@@ -2,7 +2,7 @@
   "id": "project-LICHEN-t670",
   "title": "Response handlers don't check minimum message length before decoding",
   "description": "**File:** python/src/lichen/radio/sim_client.py\n**Lines:** 172, 208, 211, 239, 270\n\n**Issue:** After receiving a message and checking its type, the code slices response[1:] and passes it to decode functions without verifying the response has sufficient length:\n\n```python\n# Line 172\nmsg_type = get_message_type(response)\n...\nelif msg_type == MSG_ERR:\n    code, err_msg = decode_err(response[1:])  # What if response is 1 byte?\n\n# Line 211\npayload, rssi, snr = decode_rx_packet(response[1:])  # Needs multiple bytes\n```\n\n**Problem:** If the server sends a malformed message with correct type byte but insufficient payload:\n1. `get_message_type(response)` succeeds (only needs 1 byte)\n2. `decode_*(response[1:])` receives an empty or too-short buffer\n3. The decode function will raise an exception (struct.unpack error, index error, etc.)\n4. This exception propagates as an unhelpful low-level error instead of a clear \"malformed message\" error\n\n**Impact:** Malformed server responses cause confusing exceptions instead of clear protocol errors. A malicious or buggy server could trigger unhandled exceptions.\n\n**Fix:** Either:\n1. Add length checks before calling decode functions\n2. Or wrap decode calls in try/except and convert to ProtocolError with clear message",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

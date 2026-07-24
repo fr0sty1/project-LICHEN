@@ -2,7 +2,7 @@
   "id": "project-LICHEN-1ojj.23",
   "title": "Missing zeroization of SHA-256 hash buffer in lora_l2.c",
   "description": "In generate_eui64() at lora_l2.c:88-93, the local hash[32] buffer holds SHA-256(hwid). After memcpy(eui64, hash, 8), the remaining 24 bytes of hash are never zeroized.\n\nImpact: While the hardware ID is not a cryptographic secret, leaving hash digests on the stack is a bad pattern. More critically, the same function pattern is used elsewhere with actual secrets (ipv6_addr.c with pubkey hashes). Inconsistent zeroization practices lead to developers copying the wrong pattern.\n\nFix: Add explicit_bzero(hash, sizeof(hash)) after the memcpy.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:96 (after memcpy)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

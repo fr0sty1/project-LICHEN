@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ydtk.1",
   "title": "Fix gateway is_local_mesh to use router classify/route preference",
   "description": "Update Gateway::is_local_mesh and related forwarding to use the RPL Router's classify_address or route method instead of ad-hoc checks. Ensure preference for local RPL routes before TUN forwarding per previous zt3c.17 implementation.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

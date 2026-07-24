@@ -2,7 +2,7 @@
   "id": "project-LICHEN-q5xf",
   "title": "TX_FAIL silently returns without logging",
   "description": "## Location\npython/src/lichen/radio/sim_client.py:188\n\n## Description\nWhen transmit() receives MSG_TX_FAIL, it returns False without any log entry. In contrast, MSG_TX_DONE is logged at line 180-186 with full packet details (node_id, len, hex, packet_hash). This asymmetry means TX failures are invisible in logs, breaking log-based analysis and debugging. Operators would see TX events for successful transmissions but have no telemetry for failed ones, making it difficult to diagnose radio issues or track failure rates.\n\n## Failure Scenario\nA node experiences intermittent TX failures due to channel contention or radio hardware issues. The operator analyzes logs to debug the problem but sees only successful TX events. The failures are invisible because TX_FAIL returns False without logging. The operator cannot determine failure rate, timing, or correlation with other events. To trigger: any condition that causes the simulator to respond with MSG_TX_FAIL (e.g., channel busy during transmission attempt).\n\n## Category\nlogging",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

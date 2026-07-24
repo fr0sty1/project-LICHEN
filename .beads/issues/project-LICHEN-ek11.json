@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ek11",
   "title": "[merge-conflict] worktree-worker23: coap_status.c",
   "notes": "Resolved coap_status.c merge conflict using worker23 version with full CCP-17 CBOR capacity checks and documentation",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

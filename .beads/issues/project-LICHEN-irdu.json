@@ -2,7 +2,7 @@
   "id": "project-LICHEN-irdu",
   "title": "task",
   "description": "rust/lichen-gateway/src/slip.rs:201. Packet lost if buffer too small.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

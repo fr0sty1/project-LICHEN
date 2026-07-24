@@ -3,7 +3,7 @@
   "title": "[codereview-pass1-clean] No findings after Kconfig+struct+init updates; follows AGENTS.md graph exactly",
   "description": "All previous codereview issues fixed. Struct in link.h, Kconfig with select and help, node_init example updated with ifdef and call after link_init before oscore. Priority 4 opinion only. Tag codereview.",
   "notes": "Commit: a6c5e6bfb",
-  "status": "closed",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "assignee": "AI Agent",

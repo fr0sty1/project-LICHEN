@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.262",
   "title": "[CR] DodagState Python vs Rust: hysteresis comparison direction differs",
   "description": "File: python/src/lichen/rpl/dodag.py:156-158 vs rust/lichen-rpl/src/dodag.rs:231\n\nPython:\n    improvement = current_cost - best_cost\n    if improvement \u003c self.parent_switch_threshold:\n        best, best_cost = current, current_cost\n\nRust:\n    .filter(|\u0026cur_cost| best_cost \u003e cur_cost.saturating_sub(threshold))\n    .map_or((best_addr, best_cost), |cur_cost| (cur_addr, cur_cost))\n\nBoth implement the same logic but expressed differently:\n- Python: stick with current if improvement \u003c threshold\n- Rust: stick with current if best_cost \u003e cur_cost - threshold\n\nThese are mathematically equivalent:\n- Python: current_cost - best_cost \u003c threshold =\u003e best_cost \u003e current_cost - threshold\n- Rust: best_cost \u003e cur_cost.saturating_sub(threshold)\n\nWait - there's a subtle difference: saturating_sub vs regular subtraction. If threshold \u003e cur_cost, Python would have negative improvement, Rust would have 0.\n\nExample: cur_cost=100, threshold=150, best_cost=50\n- Python: improvement = 100 - 50 = 50. 50 \u003c 150? Yes, stick with current.\n- Rust: cur_cost.saturating_sub(threshold) = 0. best_cost \u003e 0? Yes (50 \u003e 0), stick with current.\n\nSame result. The saturating_sub handles potential underflow in Rust u16 vs Python unlimited int.\n\nThis is NOT a bug - the implementations are equivalent. Closing.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

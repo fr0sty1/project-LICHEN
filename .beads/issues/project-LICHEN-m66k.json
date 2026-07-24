@@ -2,7 +2,7 @@
   "id": "project-LICHEN-m66k",
   "title": "task",
   "description": "chaos.py:147 - LossRule caches loss decisions per tx_id in _loss_cache dict to ensure consistent behavior on repeated polls. But this cache is never cleared. Over long simulations with many transmissions, memory grows unboundedly. Failure: Memory exhaustion in long-running simulations.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

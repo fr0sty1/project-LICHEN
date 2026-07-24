@@ -4,7 +4,7 @@
   "description": "LICHEN requires the complete redundant candidate set for one Target and Path Sequence to be packed into one atomic DAO. Align Rust with that profile: equal Path Sequence is exact idempotent replay only; reject later candidate additions, existing-candidate mutation, lifetime/Path Control refresh, stale withdrawal, and ambiguous updates.",
   "acceptance_criteria": "A newer Path Sequence atomically installs the complete grouped candidate set; equal Path Sequence accepts only an exact idempotent copy; parent/lifetime/Path Control changes require a newer sequence; stale, expiry, withdrawal, replay, and capacity tests pass in all implementations.",
   "notes": "Completed cross-implementation DAO atomic snapshot semantics in Rust, Python, and Zephyr C. Final corpus has 47 independently generated/validated vectors, including protected grouped tombstone reclamation and strict reserved-base/unsupported-option rejection. Gates: Rust lichen-rpl 149 tests, lichen-node 188 tests, no-default checks and Clippy; Python RPL/vector 307 passed with known blocked signed_encrypted link vector deselected, Ruff and strict MyPy on changed modules; Zephyr native_sim/native/64 18/18; generated fixture and git diff checks clean. Three fresh independent final reviews found no actionable P0-P4 defects. Residual: hardware/TSAN not run; authenticated C ingress remains separately blocked by project-LICHEN-2auf.44.9.10.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

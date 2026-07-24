@@ -3,7 +3,7 @@
   "title": "Incomplete vector type coverage in schema.json",
   "description": "oneOf in vectors.items only defines schc_vector, l2_payload_vector, frame_vector, announce_coords_vector, meshtastic_app_compat_vector, meshcore_app_compat_vector, oscore_vector, rpl_messages_vector, ccp_tdma_vector, ccp15_vector, ccp_load_balancing_vector. But test/vectors/ contains compact_cot.json (uses binary_hex/decoded_fields), node_address.json, yggdrasil.json, schnorr48.json (top-level name/spec not format_version), oscore.json partially. Schema test in python/tests/test_vectors.py only covers subset. New ccp* defs are minimal placeholders. P2 test coverage gap per coding guidelines.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

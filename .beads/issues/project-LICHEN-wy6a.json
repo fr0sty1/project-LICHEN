@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wy6a",
   "title": "announce: app_data TLV decoding cannot handle multiple concatenated types",
   "description": "Files: python/src/lichen/announce/coords.py, python/src/lichen/announce/processor.py:233-234\n\nThe app_data decode functions (decode_coords, decode_congestion, decode_dtn_expiry, decode_dtn_pending) only check if the FIRST byte matches their type code:\n\n```python\ndef decode_coords(app_data: bytes) -\u003e tuple[float, float] | None:\n    if app_data[0] != APP_DATA_TYPE_COORDS:\n        return None  # Only checks first byte\n```\n\nIn processor.py, both decoders are called on the same app_data:\n\n```python\ncoords = decode_coords(announce.app_data)\ncongestion = decode_congestion(announce.app_data)\n```\n\nProblem: If app_data contains coords (9 bytes) followed by congestion (2 bytes), only coords will be decoded. The congestion decoder sees 0x01 (COORDS type) as the first byte and returns None.\n\nEither:\n1. The protocol design should document that app_data can only contain ONE type at a time, OR\n2. The decode functions need to scan through app_data looking for their type (requires TLV with length field), OR  \n3. A composite decode function that parses all TLVs at once\n\nCurrent behavior silently drops data if multiple types are concatenated.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",

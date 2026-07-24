@@ -3,7 +3,7 @@
   "title": "Dead Drop docs/UI notes",
   "description": "Update spec/12-apps.md and 11-lci.md for /deaddrop CoAP resource, rate limits, OSCORE, SenML payload format. Include UI notes for client apps.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-uprm",
   "title": "Parity: senml (Rust/Zephyr/Python)",
   "description": "Policy: three-impl parity. Module: senml. Rust: complete (763 LoC). Zephyr: complete (602 LoC). Python: complete (349 LoC). Gap: none - full parity across all three implementations.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

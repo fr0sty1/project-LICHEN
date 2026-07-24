@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.118",
   "title": "Python EDHOC secrets stored without zeroing",
   "description": "In python/src/lichen/crypto/edhoc.py, EdhocInitiator and EdhocResponder store ephemeral private key (_eph_sk) and PRK secrets as plain bytes fields without zeroing on cleanup. Unlike Identity class which uses bytearray for wipe(), EDHOC classes have no wipe method. Add wipe() with bytearray storage for secrets. Affects confidentiality.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",

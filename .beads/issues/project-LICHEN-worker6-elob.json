@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-elob",
+  "title": "[review] project-LICHEN-6mij.2.4: coap_location.c::sensors_location_post not refactored for OSCORE",
+  "description": "sensors_location_post at coap_location.c:85 uses bare lichen_coap_is_local_admin() without refactoring to coap_oscore_authorize_mutating(). This prevents OSCORE-authenticated mesh peers from posting location updates.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:57:25.130039808Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:57:25.130039808Z"
+}

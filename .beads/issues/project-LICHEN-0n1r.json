@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0n1r",
   "title": "codereview-pass3: coap_dtn.c does not integrate SenML for payloads as required by parent; storage is raw memcpy without senml_encode/decode",
   "description": "P2 correctness: Parent requires SenML for payloads. Use senml_encode_* functions for DTN data. Current storage ignores SenML. discovered-from:project-LICHEN-88rm",
-  "status": "closed",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

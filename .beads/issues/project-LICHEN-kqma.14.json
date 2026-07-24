@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kqma.14",
   "title": "Validate CoAP request path before joining URI components",
   "description": "Trigger: public lichen_coap_request() is called with req-\u003epath == NULL. lichen/subsys/lichen/coap/coap_client.c:244 dereferences req-\u003epath in the join loop, while wrapper APIs validate path before building requests. Impact: direct users of the public request API can crash the node with malformed parameters instead of receiving LICHEN_COAP_ERR_INVALID_PARAM. Validate req-\u003epath before allocation/path joining and document the required NULL-terminated component array contract.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

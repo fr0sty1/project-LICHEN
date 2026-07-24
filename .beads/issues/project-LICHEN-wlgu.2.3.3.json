@@ -2,7 +2,7 @@
   "id": "project-LICHEN-wlgu.2.3.3",
   "title": "Update descriptions in ccp*.json and hash_32.json to match reconciled FNV hash_32",
   "description": "Remove all 'computed via', placeholder strings, outdated project-LICHEN-eirg/vhvj refs. Use exact phrasing from ccp16.json/ccp15.json for consistency (FNV-1a32 basis 0x811c9dc5, matches lichen_hash_32 in lichen-core:28 and Python hash_32:30, independent oracle per test vector discipline). Update ccp16-hop.json:3 and similar. Run generator after.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

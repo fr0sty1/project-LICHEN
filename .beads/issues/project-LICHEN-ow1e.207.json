@@ -2,7 +2,7 @@
   "id": "project-LICHEN-ow1e.207",
   "title": "Codereview pass 3: Add test for replay window poisoning prevention",
   "description": "The OSCORE replay window fix correctly splits check from update, but no test verifies the poisoning attack is blocked.\n\n**Missing test scenario:**\n1. Create sender and recipient contexts\n2. Sender produces valid packet with seq=5\n3. Forge a bad packet with seq=5 (wrong tag) and call unprotect_request - should fail DecryptFailed\n4. Verify recipient's replay window did NOT advance (seq 5 not marked as seen)\n5. Now process the legitimate seq=5 packet - it should succeed, proving the forged packet didn't poison the window\n\n**Location:** rust/lichen-oscore/src/lib.rs in the tests module\n\n**Why it matters:** The current test_replay_window() uses check_replay() which bypasses the production code path entirely. A regression that moved update_replay_window() before the decrypt would not be caught.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

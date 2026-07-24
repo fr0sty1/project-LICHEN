@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.44.11.7.3",
   "title": "Update tests for Trickle-suppression-safe neighbor liveness",
   "description": "Extend runtime_prunes_neighbor_only_after_literal_timeout and add new tests in routing.rs and runtime.rs that simulate Trickle suppression (multiple heard_consistent) and verify neighbors are not evicted prematurely before 10s + policy check.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

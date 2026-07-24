@@ -6,7 +6,7 @@
   "acceptance_criteria": "All direct prerequisite beads are closed and their source/patch/tool/command/log/artifact evidence is referenced. On ami-0764d1b512e22671f, the exact requested topology runs in account 210337117346/us-west-2 with strict telemetry proving per-node and per-implementation TX/RX plus every required cross-implementation packet-hash reception pair; all processes and analyzer exit zero. Retain exact commands/exits, RunId/tags/instance IDs, provenance hashes, raw logs and final report hash. No skipped prerequisite, matrix reduction, aggregate-only assertion, retry-hidden failure, or cleanup failure passes. Fleet never uses vol-0a95eee8d1d8461eb; ownership-checked termination/wait is mandatory, and any accidental attachment requires explicit unmount, detach, and wait-volume-available before failure cleanup is complete.",
   "notes": "Preserved original objective: once source fixes and quality gates are green, run the Python/Rust/Zephyr heterogeneous fleet, collect telemetry, analyze the reception matrix, and file interop failures as Beads. This final bead must remain blocked until every prerequisite row and the full .30 scenario pass.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",

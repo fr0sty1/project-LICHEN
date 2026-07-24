@@ -3,7 +3,7 @@
   "title": "[merge-conflict] worker8: Kconfig",
   "description": "Resolve merge conflict in lichen/subsys/lichen/meshcore/Kconfig between main and integration/worker8-20260722. Keep BOTH sets of changes.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",

@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-7mc5",
   "title": "codereview-pass2: update test/vectors/ccp16.json and ccp15.json to validate new crc32_ieee based channel/slot computation for CCP-15.8.3; ensure Python/Rust/Zephyr oracles match",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

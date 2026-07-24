@@ -2,7 +2,7 @@
   "id": "project-LICHEN-tvfm.70",
   "title": "[lora_l2.h:87-89] rx_cb_t callback signature exposes internal snr/rssi types",
   "description": "Gap found: API type safety in header not reviewed.\n\nWhy this was missed: Header API design patterns not systematically checked.\n\nThe actual bug: The lichen_lora_rx_cb_t typedef (lines 87-89) uses int16_t rssi and int8_t snr. These match Zephyr's lora_recv() output types, but:\n\n1. The callback is part of the public API (exported in header)\n2. If Zephyr changes lora_recv's rssi/snr types, this typedef would need updating\n3. Callers may expect different types (e.g., float for SNR)\n\nThis is a minor API stability concern, not a bug. The current types are correct and match Zephyr's convention. The header comment should note that these types match Zephyr's lora API.\n\nPriority 4 - API documentation.",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -3,7 +3,7 @@
   "title": "CCP-1.3: Channel agility and frequency hopping mechanisms",
   "description": "Specify pseudo-random channel selection, blacklist management, coordination via DIO or dedicated CoAP resource. Ensure compatibility with LoRa regulatory duty cycle limits.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

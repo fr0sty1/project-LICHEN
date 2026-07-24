@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-0atl",
   "title": "codereview-pass2: Kconfig capacity MAX sizes missing for CBOR buffers",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T16:01:18.779008921Z",

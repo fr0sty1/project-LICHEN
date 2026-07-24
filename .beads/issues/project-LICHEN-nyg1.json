@@ -3,7 +3,7 @@
   "title": "Dead Drop test vectors \u0026 SenML",
   "description": "Add independent-oracle test vectors for /deaddrop store-forward in test/vectors/. Use known vectors from RFCs or external oracles. Align with oscore.json and schc_compression.json. No code under test as oracle.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

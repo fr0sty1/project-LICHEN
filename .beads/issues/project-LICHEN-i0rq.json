@@ -2,7 +2,7 @@
   "id": "project-LICHEN-i0rq",
   "title": "task",
   "description": "python/src/lichen/routing/router.py:445-447. No size limit check.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

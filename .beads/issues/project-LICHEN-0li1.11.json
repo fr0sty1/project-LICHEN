@@ -2,7 +2,7 @@
   "id": "project-LICHEN-0li1.11",
   "title": "[lichen_l2.c:702] lichen_peer_remove no check for UNINIT state",
   "description": "Contract: lichen_peer_remove should reject operations when module is not initialized.\nViolation: Unlike lichen_peer_add() which checks lichen_lora_l2_get_eui64() == NULL (line 641) to detect UNINIT state, lichen_peer_remove() only checks needs_reinit() (line 718) but not UNINIT. A call to peer_remove() before init() would acquire rx_mutex and search peer_table, which is harmless but inconsistent with peer_add() contract.\nImpact: Low - the operation would return -ENOENT since peer_table is empty/uninitialized before init. However, contract inconsistency between sibling functions is a code smell.\nMitigation: Add the same UNINIT check as peer_add() for contract symmetry.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hlif.2",
   "title": "Enhance Metrics and add NodeState monitoring for Renode/Zephyr sim",
   "description": "Extend Metrics class with Renode-specific counters (bridge messages, protocol errors), add system state snapshot method to Simulation for debugging node states, pending events, active transmissions. Ensure zero overhead when not in debug.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

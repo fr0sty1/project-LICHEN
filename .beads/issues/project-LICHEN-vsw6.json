@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-vsw6",
   "title": "Implement per-neighbor SF tracking and SNR EMA in Zephyr link/RPL (lichen_link_ctx, rpl_dodag, update_sf)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

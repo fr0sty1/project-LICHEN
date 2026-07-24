@@ -2,7 +2,7 @@
   "id": "project-LICHEN-2auf.17",
   "title": "Deduplicate callback collision telemetry",
   "description": "Callback/direct RX collision metrics are deduplicated but collision logs and observer callbacks repeat on every poll for the same collision. Deduplicate the side effects with the same collision identity and add a regression test.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

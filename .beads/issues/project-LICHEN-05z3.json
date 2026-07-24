@@ -2,7 +2,7 @@
   "id": "project-LICHEN-05z3",
   "title": "task",
   "description": "reassembly.py:61-72 - The _abs_window() method cannot distinguish between a delayed retransmission from an earlier window and a fragment from a future window when both have the same W bit value. The W bit alternates 0/1, so window 0 and window 2 both have W=0. If the receiver is at _current_window=2 and receives a delayed fragment from window 0, it will be classified as window 2 and stored at the wrong global index (e.g., overwriting tile 6 with tile 0's data).\n\nFailure scenario:\n1. Receiver completes windows 0 and 1, _current_window=2\n2. A very delayed duplicate/retransmission from window 0 (W=0) finally arrives\n3. _abs_window() returns 2 (since frag.window=0 == _current_window%2=0)\n4. The tile is stored at abs_window*window_size+pos, overwriting correct window 2 data\n5. Reassembly produces corrupted output or MIC verification fails silently\n\nThis is possible in lossy networks where packets can be significantly delayed. The protocol uses a 1-bit W field which fundamentally cannot distinguish windows differing by multiples of 2. A fix would need to track which windows have been completed and reject stale fragments, or use sequence-based detection.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",

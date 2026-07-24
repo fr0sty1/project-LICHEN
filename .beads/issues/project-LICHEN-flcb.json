@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-flcb",
   "title": "Add human-readable node address definition and test vectors to spec/03-addressing.md",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

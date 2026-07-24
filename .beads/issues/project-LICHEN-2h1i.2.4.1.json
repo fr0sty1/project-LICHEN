@@ -3,7 +3,7 @@
   "title": "Update spec for /deaddrop and /confessions CoAP resources",
   "description": "Add detailed protocol, OSCORE E2E, SenML/CBOR payloads, DTN store-forward, rate limiting, no-log, e-ink UI flow to spec/12-apps.md or new section. Define test vectors. Follow IETF style.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

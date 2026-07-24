@@ -2,7 +2,7 @@
   "id": "project-LICHEN-9c8w.8",
   "title": "Abbreviate peer EUI-64 in LOG_INF/LOG_DBG",
   "description": "Reduce privacy exposure by abbreviating peer addresses.\n\nCurrent (exposes full peer identity):\n  LOG_INF(\"Peer added: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\");\n  LOG_DBG(\"Frame verified by peer %02x:%02x:...\");\n\nTarget:\n  LOG_INF(\"lichen_l2: peer added ..%02x:%02x\", eui[6], eui[7]);\n  LOG_DBG(\"lichen_l2: RX auth ok (peer ..%02x:%02x)\", eui[6], eui[7]);\n\nException: local node's own EUI-64 at startup is OK to log fully.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",

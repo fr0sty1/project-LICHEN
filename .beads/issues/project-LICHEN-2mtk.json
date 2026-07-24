@@ -5,7 +5,7 @@
   "design": "1. Reproduce with the exact previously validated Renode 1.16.1 ARM64 harness and capture Renode stdout, monitor state, UART backend existence, and CPU PC/SP. 2. Validate the uploaded ELF independently: program headers, _vector_start, initial SP, reset PC, flash offset, and that the remote ELF hash matches the local build. 3. Run a minimal Renode boot script with no SX1262 or simulator dependency, explicit PC/SP, CPU performance, and a known UART; prove a Zephyr boot banner before adding radio wiring. 4. Compare the minimal script against the current script one command at a time, especially platform include, LoadELF, vector setup, start order, UART backend, and DEVICEID tags. 5. Add a temporary machine-readable pre-radio boot marker only if Renode proves the CPU executes but logs are not routed; remove diagnostic-only code after root cause. 6. Reintroduce SX1262 and lichen-sim, then verify Zephyr TX/RX and lichen.telemetry.v1 events. Acceptance requires a 20s three-way run with Zephyr UART output, nonzero Zephyr TX/RX, packet hashes, and analyzer identification. Rejected approach: changing radio or telemetry logic before proving CPU execution, because current evidence shows no application output at all.",
   "notes": "Found and fixed stale reset PC: current ELF entry/reset vector is 0x35f1d while runner default was 0x35d81. Updated scripts/ec2-hetero-fleet.sh. Local Renode 1.16.1-equivalent one-node probe now emits *** Booting Zephyr OS build v3.7.0 *** to UART. EC2 three-way acceptance run still pending.",
   "labels": ["defer-external"],
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-lug0.2.3",
   "title": "Add unit test for local_mesh SRH insertion using test vectors from test/vectors/rpl_route_state.json in lichen-gateway",
   "description": "Create or extend tests in gateway.rs or dedicated test to verify SourceRoutingHeader is correctly inserted for local_mesh destinations using DAO routes. Ensure matches Python reference and C interop.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",

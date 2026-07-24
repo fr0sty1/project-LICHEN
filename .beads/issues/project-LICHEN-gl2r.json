@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gl2r",
   "title": "[codereview-P3] Duplicate DAD retry note removed from 06-security.md but cross-ref in note should point to exact section",
   "description": "After edit, the note in 02-physical-link.md references 06-security.md but we removed the duplicate note there. Update cross-reference or consolidate note in physical-link only. Also, update any TOC or other cross-refs in spec/README.md if DAD section changed. discovered-from:mmw1 b6zw",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "created_at": "2026-07-22T16:45:46.132351141Z",
