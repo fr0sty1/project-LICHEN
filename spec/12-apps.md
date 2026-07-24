@@ -1254,7 +1254,7 @@ Eviction: expired first, then oldest. No dynamic allocation; static buffers per 
   {"n": "lat", "u": "lat", "v": 37.7749},
   {"n": "lon", "u": "lon", "v": -122.4194},
   {"n": "ttl", "v": 86400},
-  {"n": "signature", "vs": "base64-truncated-schnorr-optional"}
+  {"n": "signature", "vs": "<base64-truncated-schnorr>"}
 ]
 ```
 
@@ -1315,7 +1315,7 @@ Anonymous, ephemeral messaging board with strong privacy guarantees. No sender i
   {"n": "lon", "u": "lon", "v": -122.4194},
   {"n": "anonymous", "v": 1},
   {"n": "ttl", "v": 43200},
-  {"n": "signature", "vs": "base64-truncated-schnorr-optional"}
+  {"n": "signature", "vs": "<base64-truncated-schnorr>"}
 ]
 ```
 

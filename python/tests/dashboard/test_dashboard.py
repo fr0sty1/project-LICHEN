@@ -179,22 +179,136 @@ class TestIndexCards:
         resp = await client.get("/")
         assert "/partial/location" in resp.text
 
+    async def test_confessions_card_in_page(self, client: AsyncClient) -> None:
+        resp = await client.get("/")
+        assert "/partial/confessions" in resp.text
+
+    async def test_deaddrop_card_in_page(self, client: AsyncClient) -> None:
+        resp = await client.get("/")
+        assert "/partial/deaddrop" in resp.text
+
+    async def test_crowd_map_card_in_page(self, client: AsyncClient) -> None:
+        resp = await client.get("/")
+        assert "/partial/crowd-map" in resp.text
+
+    async def test_telemetry_card_in_page(self, client: AsyncClient) -> None:
+        resp = await client.get("/")
+        assert "/partial/telemetry" in resp.text
+
     async def test_polling_targets_are_served_locally(self, client: AsyncClient) -> None:
         resp = await client.get("/")
         targets = sorted(set(re.findall(r'hx-get="([^"]+)"', resp.text)))
         assert targets == [
+            "/partial/confessions",
+            "/partial/crowd-map",
+            "/partial/deaddrop",
             "/partial/location",
+            "/partial/mesh-stats",
             "/partial/messages",
             "/partial/neighbors",
             "/partial/presence",
             "/partial/sensors",
             "/partial/status",
+            "/partial/telemetry",
         ]
 
         for target in targets:
             with _mock_fetch([]):
                 partial = await client.get(target)
             assert partial.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Partial: Confessions
+# ---------------------------------------------------------------------------
+
+
+class TestPartialConfessions:
+    async def test_empty(self, client: AsyncClient) -> None:
+        with _mock_fetch([]):
+            resp = await client.get("/partial/confessions")
+        assert "No confessions" in resp.text
+
+    async def test_list_of_dicts(self, client: AsyncClient) -> None:
+        with _mock_fetch([{"text": "hello mesh", "t": 1234}]):
+            resp = await client.get("/partial/confessions")
+        assert "hello mesh" in resp.text
+
+    async def test_unreachable(self, client: AsyncClient) -> None:
+        with _mock_fetch(None):
+            resp = await client.get("/partial/confessions")
+        assert "Unreachable" in resp.text
+
+
+# ---------------------------------------------------------------------------
+# Partial: Dead Drops
+# ---------------------------------------------------------------------------
+
+
+class TestPartialDeaddrop:
+    async def test_empty(self, client: AsyncClient) -> None:
+        with _mock_fetch([]):
+            resp = await client.get("/partial/deaddrop")
+        assert "No dead drops" in resp.text
+
+    async def test_list_of_dicts(self, client: AsyncClient) -> None:
+        with _mock_fetch([{"dest": "00:11:22:33:44:55:66:77", "size": 128, "expiry": 1700000000}]):
+            resp = await client.get("/partial/deaddrop")
+        assert "00:11:22:33:44:55:66:77" in resp.text
+        assert "128B" in resp.text
+
+    async def test_unreachable(self, client: AsyncClient) -> None:
+        with _mock_fetch(None):
+            resp = await client.get("/partial/deaddrop")
+        assert "Unreachable" in resp.text
+
+
+# ---------------------------------------------------------------------------
+# Partial: Crowd Map
+# ---------------------------------------------------------------------------
+
+
+class TestPartialCrowdMap:
+    async def test_with_position(self, client: AsyncClient) -> None:
+        with _mock_fetch([["lat", 37.7749], ["lon", -122.4194]]):
+            resp = await client.get("/partial/crowd-map")
+        assert "37.7749" in resp.text
+        assert "-122.4194" in resp.text
+        assert "crowd-map-inner" in resp.text
+
+    async def test_empty(self, client: AsyncClient) -> None:
+        with _mock_fetch([]):
+            resp = await client.get("/partial/crowd-map")
+        assert "No position" in resp.text
+
+    async def test_unreachable(self, client: AsyncClient) -> None:
+        with _mock_fetch(None):
+            resp = await client.get("/partial/crowd-map")
+        assert "Unreachable" in resp.text
+
+
+# ---------------------------------------------------------------------------
+# Partial: Telemetry
+# ---------------------------------------------------------------------------
+
+
+class TestPartialTelemetry:
+    async def test_empty(self, client: AsyncClient) -> None:
+        with _mock_fetch([]):
+            resp = await client.get("/partial/telemetry")
+        assert "No telemetry" in resp.text
+
+    async def test_with_senml_list(self, client: AsyncClient) -> None:
+        with _mock_fetch([["temperature", 23.4, "Cel"], ["humidity", 61.0, "%RH"]]):
+            resp = await client.get("/partial/telemetry")
+        assert "temperature" in resp.text
+        assert "23.4" in resp.text
+        assert "canvas" in resp.text
+
+    async def test_unreachable(self, client: AsyncClient) -> None:
+        with _mock_fetch(None):
+            resp = await client.get("/partial/telemetry")
+        assert "Unreachable" in resp.text
 
 
 # ---------------------------------------------------------------------------
