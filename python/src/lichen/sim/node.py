@@ -149,3 +149,11 @@ class SimNode:
         if self.hop_schedule and len(self.hop_schedule) > 0:
             return self.hop_schedule[sfn % len(self.hop_schedule)]
         return self.current_channel
+
+    def synchronized_hop_channel(self, sfn: int | None = None) -> int:
+        """Alias for get_hop_channel (CCP-12 synchronized hopping).
+
+        Wires synchronized_hop_channel calls from simulation.py (lines 568,
+        630, 742, 832) into the existing hop schedule + SFN derivation.
+        """
+        return self.get_hop_channel(sfn)
