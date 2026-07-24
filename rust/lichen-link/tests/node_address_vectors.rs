@@ -60,8 +60,7 @@ fn test_node_address_vectors() {
     );
 
     let content = fs::read_to_string(&vectors_path).expect("Failed to read vectors file");
-    let vf: VectorFile =
-        serde_json::from_str(&content).expect("Failed to parse node_address.json");
+    let vf: VectorFile = serde_json::from_str(&content).expect("Failed to parse node_address.json");
 
     let mut failures = Vec::new();
 
