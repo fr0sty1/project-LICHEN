@@ -662,6 +662,7 @@ impl EdhocInitiator {
     /// * `c_i` - Connection identifier (1 byte)
     /// * `rng` - RNG implementing RngCore + CryptoRng for ephemeral key
     pub fn new<R: RngCore + CryptoRng>(seed: [u8; 32], c_i: u8, rng: &mut R) -> Self {
+        let seed = Zeroizing::new(seed);
         let signing_key = SigningKey::from_bytes(&seed);
         let pubkey = signing_key.verifying_key();
 
@@ -1077,6 +1078,7 @@ impl EdhocResponder {
     /// * `c_r` - Connection identifier (1 byte)
     /// * `rng` - RNG implementing RngCore + CryptoRng for ephemeral key
     pub fn new<R: RngCore + CryptoRng>(seed: [u8; 32], c_r: u8, rng: &mut R) -> Self {
+        let seed = Zeroizing::new(seed);
         let signing_key = SigningKey::from_bytes(&seed);
         let pubkey = signing_key.verifying_key();
 
