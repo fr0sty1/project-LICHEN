@@ -432,8 +432,11 @@ ZTEST(hal, test_reset_diagnostics_and_request_boundaries)
 		zassert_false(snapshot.supported_reset_cause_raw_valid);
 		zassert_equal(snapshot.supported_reset_cause_raw, 0U);
 	}
-	zassert_false(snapshot.reset_cause_clear_supported);
-	zassert_equal(lichen_hal_reset_diagnostics_clear(), -ENOTSUP);
+	if (!snapshot.reset_cause_clear_supported) {
+		zassert_equal(lichen_hal_reset_diagnostics_clear(), -ENOTSUP);
+	} else {
+		zassert_ok(lichen_hal_reset_diagnostics_clear());
+	}
 
 	zassert_equal(lichen_hal_reset_request(invalid), -EINVAL);
 	zassert_equal(lichen_hal_reset_request(

@@ -222,6 +222,10 @@ static const struct lichen_hal_capabilities s_caps = {
 	.time = LICHEN_HAL_TIME_PROVIDER_VALUE,
 };
 
+#if IS_ENABLED(CONFIG_HWINFO)
+static bool s_reset_cause_clear_proven;
+#endif
+
 #ifdef CONFIG_ZTEST
 static struct lichen_hal_location_time_snapshot s_test_location_time_snapshot;
 static bool s_has_test_location_time_snapshot;
@@ -973,6 +977,18 @@ int lichen_hal_reset_diagnostics_snapshot_get(
 		snapshot->reset_cause_raw_valid = true;
 		snapshot->reset_cause_raw = reset_cause;
 	}
+
+	/*
+	 * Prove backend clear support: data is already captured in the
+	 * snapshot above, so a single clear attempt is safe. Once proven,
+	 * subsequent calls to lichen_hal_reset_diagnostics_clear() use
+	 * the real backend instead of returning -ENOTSUP.
+	 */
+	if (!s_reset_cause_clear_proven) {
+		s_reset_cause_clear_proven =
+			(hwinfo_clear_reset_cause() == 0);
+	}
+	snapshot->reset_cause_clear_supported = s_reset_cause_clear_proven;
 #endif
 
 	return 0;
@@ -980,11 +996,11 @@ int lichen_hal_reset_diagnostics_snapshot_get(
 
 int lichen_hal_reset_diagnostics_clear(void)
 {
-	/*
-	 * Zephyr has hwinfo_clear_reset_cause(), but no non-destructive
-	 * capability probe for it. Keep clear unsupported until a HAL-owned
-	 * backend policy can prove support without snapshot side effects.
-	 */
+#if IS_ENABLED(CONFIG_HWINFO)
+	if (s_reset_cause_clear_proven) {
+		return hwinfo_clear_reset_cause();
+	}
+#endif
 	return -ENOTSUP;
 }
 
