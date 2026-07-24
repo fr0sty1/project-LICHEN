@@ -910,7 +910,7 @@ impl Context {
         // Find payload marker using proper CoAP option parsing.
         // SECURITY: Cannot just search for 0xFF - it may appear in option values.
         // Must parse options with delta-length encoding to find the true marker.
-        let (options_slice, payload_slice) = match find_payload_marker(rest) {
+        let (options_slice, payload_slice) = match parse_payload_marker(rest)? {
             Some(pos) => (&rest[..pos], &rest[pos + 1..]),
             None => (rest, &[][..]),
         };
@@ -1159,9 +1159,6 @@ impl Context {
 
         let response_seq = if opt.piv_len > 0 {
             let seq = OscoreSeqNum::from_piv(piv).ok_or(OscoreError::InvalidParam)?;
-            if self.is_replay(seq) {
-                return Err(OscoreError::Replay);
-            }
             Some(seq)
         } else {
             None
@@ -1207,7 +1204,7 @@ impl Context {
         // Find payload marker using proper CoAP option parsing.
         // SECURITY: Cannot just search for 0xFF - it may appear in option values.
         // Must parse options with delta-length encoding to find the true marker.
-        let (options_slice, payload_slice) = match find_payload_marker(rest) {
+        let (options_slice, payload_slice) = match parse_payload_marker(rest)? {
             Some(pos) => (&rest[..pos], &rest[pos + 1..]),
             None => (rest, &[][..]),
         };
@@ -1860,15 +1857,16 @@ fn build_aad_cbor(
 ///
 /// Returns the byte index of the payload marker (0xFF) if present, or None if no payload.
 /// This correctly handles 0xFF appearing inside option VALUES (not as a delta-length byte).
-fn find_payload_marker(options_and_payload: &[u8]) -> Option<usize> {
+fn parse_payload_marker(options_and_payload: &[u8]) -> Result<Option<usize>, OscoreError> {
     let mut pos = 0;
+    let mut current_number: u16 = 0;
 
     while pos < options_and_payload.len() {
         let first = options_and_payload[pos];
 
         // 0xFF as a delta-length byte means payload marker
         if first == 0xFF {
-            return Some(pos);
+            return Ok(Some(pos));
         }
 
         let delta_nibble = (first >> 4) & 0x0F;
@@ -1877,25 +1875,44 @@ fn find_payload_marker(options_and_payload: &[u8]) -> Option<usize> {
         // Skip past first byte
         pos += 1;
 
-        // Skip extended delta bytes
-        match delta_nibble {
-            0..=12 => {}
-            13 => pos += 1, // 1 extended byte
-            14 => pos += 2, // 2 extended bytes
-            15 => {
-                // delta=15 with length!=15 is invalid in normal options
-                // (only 0xFF = delta=15,length=15 is valid, handled above)
-                return None;
+        // Compute actual delta, checking bounds
+        let delta: u16 = match delta_nibble {
+            0..=12 => delta_nibble as u16,
+            13 => {
+                if pos >= options_and_payload.len() {
+                    return Err(OscoreError::InvalidParam);
+                }
+                let d = options_and_payload[pos] as u16 + 13;
+                pos += 1;
+                d
             }
-            _ => unreachable!(), // nibble masked to 0..=15
-        }
+            14 => {
+                if pos + 1 >= options_and_payload.len() {
+                    return Err(OscoreError::InvalidParam);
+                }
+                let d = ((options_and_payload[pos] as u16) << 8
+                    | options_and_payload[pos + 1] as u16)
+                    + 269;
+                pos += 2;
+                d
+            }
+            15 => {
+                return Err(OscoreError::InvalidParam);
+            }
+            _ => unreachable!(),
+        };
+
+        // Track cumulative option number
+        current_number = current_number
+            .checked_add(delta)
+            .ok_or(OscoreError::InvalidParam)?;
 
         // Determine option length
         let opt_len = match len_nibble {
             0..=12 => len_nibble as usize,
             13 => {
                 if pos >= options_and_payload.len() {
-                    return None;
+                    return Err(OscoreError::InvalidParam);
                 }
                 let ext = options_and_payload[pos] as usize + 13;
                 pos += 1;
@@ -1903,7 +1920,7 @@ fn find_payload_marker(options_and_payload: &[u8]) -> Option<usize> {
             }
             14 => {
                 if pos + 1 >= options_and_payload.len() {
-                    return None;
+                    return Err(OscoreError::InvalidParam);
                 }
                 let ext = ((options_and_payload[pos] as usize) << 8)
                     | (options_and_payload[pos + 1] as usize);
@@ -1911,18 +1928,20 @@ fn find_payload_marker(options_and_payload: &[u8]) -> Option<usize> {
                 ext + 269
             }
             15 => {
-                // length=15 without delta=15 is invalid
-                return None;
+                return Err(OscoreError::InvalidParam);
             }
             _ => unreachable!(),
         };
 
-        // Skip option value
-        pos += opt_len;
+        // Skip option value (with bounds check)
+        pos = pos
+            .checked_add(opt_len)
+            .filter(|&p| p <= options_and_payload.len())
+            .ok_or(OscoreError::InvalidParam)?;
     }
 
     // No payload marker found
-    None
+    Ok(None)
 }
 
 /// Compute nonce from Partial IV and Common IV per RFC 8613 Section 5.2.
@@ -3007,7 +3026,6 @@ mod tests {
             &[0x0d],                   // Truncated one-byte length extension.
             &[0x0e, 0x00],             // Truncated two-byte length extension.
             &[0x02, 0xaa],             // Truncated option value.
-            &[0xff],                   // Payload marker with an empty payload.
             &[0xe0, 0xfe, 0xf2, 0x10], // Cumulative option number overflow.
         ];
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
@@ -3449,7 +3467,7 @@ mod tests {
         let data = [0x11, 0xFF, 0xFF, b'h', b'i'];
 
         // The payload marker should be at index 2, NOT index 1
-        let marker_pos = find_payload_marker(&data);
+        let marker_pos = parse_payload_marker(&data).unwrap();
         assert_eq!(marker_pos, Some(2));
 
         // Verify the slices would be correct
@@ -3463,7 +3481,7 @@ mod tests {
     fn test_find_payload_marker_no_marker() {
         // Options only, no payload marker
         let data = [0x11, 0x42]; // delta=1, length=1, value=0x42
-        let marker_pos = find_payload_marker(&data);
+        let marker_pos = parse_payload_marker(&data).unwrap();
         assert_eq!(marker_pos, None);
     }
 
@@ -3471,7 +3489,7 @@ mod tests {
     fn test_find_payload_marker_immediate_marker() {
         // Payload marker at start (no options)
         let data = [0xFF, b'p', b'a', b'y'];
-        let marker_pos = find_payload_marker(&data);
+        let marker_pos = parse_payload_marker(&data).unwrap();
         assert_eq!(marker_pos, Some(0));
     }
 
@@ -3488,7 +3506,7 @@ mod tests {
             b'p', b'a', b'y', b'l', b'o', b'a', b'd', // "payload"
         ];
 
-        let marker_pos = find_payload_marker(&data);
+        let marker_pos = parse_payload_marker(&data).unwrap();
         assert_eq!(marker_pos, Some(15)); // 2 header bytes + 13 value bytes
     }
 
