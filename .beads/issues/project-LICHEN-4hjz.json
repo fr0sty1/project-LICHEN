@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-4hjz",
   "title": "codereview-pass2: format_ipv6 snprintf return value ignored, potential truncation/stack issues",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "created_at": "2026-07-22T16:01:21.955765909Z",

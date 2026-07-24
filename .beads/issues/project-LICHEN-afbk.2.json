@@ -3,7 +3,7 @@
   "title": "Add systemd service and WireGuard config for RPi border router",
   "description": "Create systemd unit for the mesh-gateway binary, with environment for LoRa HAT, WireGuard tunnel setup, Prometheus metrics endpoint, and SSH hardening. Include install script and example config.",
   "notes": "Commit: 7433f579a",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "AI Agent",

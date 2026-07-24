@@ -3,7 +3,7 @@
   "title": "Make heterogeneous fleet evidence fail closed",
   "description": "Discovered during project-LICHEN-m5m1.3 review. scripts/ec2-hetero-fleet.sh still backgrounds unchecked EC2/Renode work, suppresses remote collection failures, allows nonfatal analyzer failure, binds the simulator directly, and can infer cross-implementation success from aggregate log text rather than pairwise evidence. Rust artifact rebuild logic is also mtime/source-mutation based. Harden before using this runner as boot or interop evidence.",
   "acceptance_criteria": "1. Every requested local/remote node process and expected log is checked. 2. Simulator connectivity works through authenticated transport. 3. Analyzer failure is fatal and pairwise cross-implementation evidence is required. 4. Rust builds from the current locked checkout without source mutation or silently reducing requested nodes. 5. AWS cleanup is verified.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

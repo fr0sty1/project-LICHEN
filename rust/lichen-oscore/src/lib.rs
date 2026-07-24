@@ -986,7 +986,10 @@ impl Context {
         if self.no_piv_response_used {
             return Err(OscoreError::InvalidParam);
         }
-        if request_piv.is_empty() || request_piv.len() > PIV_MAX_LEN {
+        if request_kid.len() > NONCE_ID_LEN
+            || OscoreSeqNum::from_piv(request_piv).is_none()
+            || request_kid != self.recipient_id()
+        {
             return Err(OscoreError::InvalidParam);
         }
         self.no_piv_response_used = true;

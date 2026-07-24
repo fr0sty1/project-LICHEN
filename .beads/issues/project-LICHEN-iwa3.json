@@ -3,7 +3,7 @@
   "title": "Silent truncation of payload length corrupts wire protocol",
   "description": "## Location\nrust/lichen-embassy/src/sim.rs:96\n\n## Description\nCasting payload.len() to u16 silently truncates lengths greater than 65535. The full payload bytes are still written on line 97 via extend_from_slice(payload), but the 2-byte length field contains only the truncated value. The receiver will read the truncated length, consume that many bytes as payload, then attempt to parse rssi/snr at an incorrect offset in the remaining bytes, causing protocol corruption.\n\n## Failure Scenario\nCaller passes a payload of 70000 bytes. Line 96 truncates length to 4464 (70000 mod 65536). Line 97 sends all 70000 bytes. Server reads length=4464, consumes 4464 bytes as payload, then interprets bytes 4465-4468 as rssi/snr (which are actually payload bytes), returning garbage signal metrics and corrupting the frame.\n\n## Category\ncorrectness",
   "notes": "Commit: 6e7c4e3",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

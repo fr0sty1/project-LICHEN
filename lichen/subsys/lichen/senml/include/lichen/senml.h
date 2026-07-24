@@ -257,6 +257,32 @@ int senml_encode_location_full(const char *_Nullable base_name, uint64_t base_ti
 			       float hacc, float vacc,
 			       uint8_t *_Nonnull buf, size_t buflen);
 /**
+ * @brief Encode full location as SenML, including optional fields.
+ *
+ * Optional fields (alt, speed, heading, hacc, vacc) are included only when
+ * not NaN. Pass NAN to omit a field.
+ *
+ * @param[in]  base_name  Base name or NULL
+ * @param[in]  base_time  Unix timestamp (0 valid for epoch)
+ * @param[in]  lat        Latitude (WGS84 degrees)
+ * @param[in]  lon        Longitude (WGS84 degrees)
+ * @param[in]  alt        Altitude (meters) or NAN to omit
+ * @param[in]  speed      Ground speed (m/s) or NAN to omit
+ * @param[in]  heading    Heading (degrees, 0=N) or NAN to omit
+ * @param[in]  hacc       Horizontal accuracy (meters) or NAN to omit
+ * @param[in]  vacc       Vertical accuracy (meters) or NAN to omit
+ * @param[out] buf        Output buffer
+ * @param[in]  buflen     Buffer size
+ * @return Bytes written, or negative error code
+ */
+LICHEN_WARN_UNUSED_RESULT
+int senml_encode_location_full(const char *_Nullable base_name, uint64_t base_time,
+			       float lat, float lon, float alt,
+			       float speed, float heading,
+			       float hacc, float vacc,
+			       uint8_t *_Nonnull buf, size_t buflen);
+
+/**
  * @brief Encode battery status as SenML.
  *
  * @param[in]  base_name  Base name or NULL

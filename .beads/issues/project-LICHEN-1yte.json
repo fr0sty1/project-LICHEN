@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-1yte",
   "title": "codereview: draft-lichen-schc-lora-00.md:4.4 mapping table order should follow frequency of use in DIOs (PIO before DAGMC); update rules.rs line ref is outdated per current code",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "created_at": "2026-07-22T15:09:17.239275984Z",

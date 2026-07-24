@@ -3,7 +3,7 @@
   "title": "ForwardingEntry/Buffer: no validation of source_iid length",
   "description": "File: python/src/lichen/routing/router.py:89, 167\n\nForwardingEntry stores `source_iid: bytes` and ForwardingBuffer.try_buffer accepts it without validation:\n\n```python\n@dataclass\nclass ForwardingEntry:\n    source_iid: bytes  # No length check\n    ...\n\ndef try_buffer(self, ..., source_iid: bytes, ...):\n    # No validation that len(source_iid) == 8\n```\n\nWHY IT'S A BUG: IPv6 Interface Identifiers are exactly 8 bytes. Accepting arbitrary-length bytes could cause:\n1. Dict key collisions if truncated IIDs are used elsewhere\n2. Inconsistent behavior when comparing/logging IIDs\n3. Memory waste with oversized IIDs\n\nSimilarly for DtnMessage.destination_iid at line 124.\n\nIMPACT: Protocol non-compliance; potential for key collision attacks if an attacker can inject IIDs of varying lengths that hash to same bucket.\n\nFIX: Add validation in __post_init__ or at entry points:\n```python\nif len(source_iid) != 8:\n    raise ValueError(f\"source_iid must be 8 bytes, got {len(source_iid)}\")\n```",
   "notes": "Commit: dffdeb0bd (resolved IID validation + merge conflict in router.py)",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",

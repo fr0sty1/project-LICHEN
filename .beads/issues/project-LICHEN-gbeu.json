@@ -2,7 +2,7 @@
   "id": "project-LICHEN-gbeu",
   "title": "Audit C schnorr48.c + Monocypher scalar mult / verify / comparisons",
   "description": "Locate all relevant code, check vs spec 5.3, identify any memcmp/vartime/secret branches. Suggest fixes with libsodium-style CT primitives.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",
