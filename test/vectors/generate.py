@@ -1857,8 +1857,7 @@ def ccp12_synchronized_hop_vectors() -> list[dict]:
             "expected_channel": 3,
             "description": "Beacon/DIO rendezvous uses rx_channel preference (CCP-12 over pure hash for known peers).",
         }
-    )
-    return vectors
+    ]
 
 
 def ccp9_vectors() -> list[dict]:
@@ -2153,6 +2152,8 @@ def edhoc_vectors() -> list[dict]:
         m2 = resp.process_message_1(m1, i.pubkey)
         m3 = init.process_message_2(m2, r.pubkey)
         resp.process_message_3(m3, i.pubkey)
+        prk_2e = init._prk_2e.hex()
+        th_2 = init._th_2.hex()
         ctx = init.export_oscore()
         return [{
             "name": "fixed_seed_sign_sign",
@@ -2161,8 +2162,8 @@ def edhoc_vectors() -> list[dict]:
             "msg1": m1.hex(),
             "msg2": m2.hex(),
             "msg3": m3.hex(),
-            "prk_2e": "42" * 64,  # recorded from state
-            "th_2": "42" * 64,
+            "prk_2e": prk_2e,
+            "th_2": th_2,
             "oscore_master_secret": ctx.master_secret.hex(),
             "oscore_master_salt": ctx.master_salt.hex(),
             "oscore_sender_id": ctx.sender_id.hex(),
