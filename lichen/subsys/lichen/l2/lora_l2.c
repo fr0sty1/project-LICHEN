@@ -813,6 +813,14 @@ int lichen_lora_l2_stop(void)
 {
     int ret = 0;
 
+    /*
+     * Fast-path check without mutex: if already not RUNNING, return 0 early.
+     * This is intentionally idempotent — concurrent stop() calls are safe.
+     * If two threads race in, one will do the work (clear callback, transition),
+     * the other will hit the double-check below and return 0. Both return 0;
+     * the caller cannot distinguish which one did the work, but the contract
+     * only guarantees the post-state (STOPPED) and that rx_callback is NULL.
+     */
     if (lora_get_state() != LORA_RUNNING) {
         return 0;  /* Not running, nothing to stop */
     }
