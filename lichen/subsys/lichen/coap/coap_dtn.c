@@ -24,8 +24,20 @@ static const struct lichen_deaddrop_provider *s_provider;
 static struct lichen_dtn_buffer s_dtn_buf;
 static struct k_mutex s_dtn_buf_mutex;
 static struct k_work_delayable s_dtn_expire_work;
-static uint32_t s_last_deaddrop[256] = {0};
-static uint32_t s_last_confession[256] = {0};
+static uint32_t s_last_deaddrop[256];
+static uint32_t s_last_confession[256];
+
+static uint8_t hash_from_iid(const uint8_t iid[8])
+{
+	uint32_t h = 2166136261u;
+	for (int i = 0; i < 8; i++) {
+		h ^= iid[i];
+		h *= 16777619u;
+	}
+	return (uint8_t)(h >> 24) ^ (uint8_t)(h >> 16) ^
+	       (uint8_t)(h >> 8) ^ (uint8_t)h;
+}
+
 static struct k_mutex s_rate_mutex;
 
 static bool parse_recipient(const uint8_t *payload, size_t len,
@@ -165,10 +177,10 @@ static int deaddrop_post(struct coap_resource *resource,
 	if (!payload || payload_len == 0) return COAP_RESPONSE_CODE_BAD_REQUEST;
 	parse_recipient(payload, payload_len, dest_iid);
 	uint32_t now_ms = k_uptime_get_32();
-	uint8_t iid7 = peer_eui64[7];
+	uint8_t h = hash_from_iid(peer_eui64);
 	k_mutex_lock(&s_rate_mutex, K_FOREVER);
-	if (s_last_deaddrop[iid7] &&
-	    (now_ms - s_last_deaddrop[iid7] <
+	if (s_last_deaddrop[h] &&
+	    (now_ms - s_last_deaddrop[h] <
 	     CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS)) {
 		k_mutex_unlock(&s_rate_mutex);
 #ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
@@ -181,7 +193,7 @@ static int deaddrop_post(struct coap_resource *resource,
 #endif
 		return COAP_RESPONSE_CODE_TOO_MANY_REQUESTS;
 	}
-	s_last_deaddrop[iid7] = now_ms;
+	s_last_deaddrop[h] = now_ms;
 	k_mutex_unlock(&s_rate_mutex);
 	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
 	if (s_provider && s_provider->store) {
@@ -320,10 +332,10 @@ static int confessions_post(struct coap_resource *resource,
 #endif
 	if (!payload || payload_len == 0) return COAP_RESPONSE_CODE_BAD_REQUEST;
 	uint32_t now_ms = k_uptime_get_32();
-	uint8_t iid7 = peer_eui64[7];
+	uint8_t h = hash_from_iid(peer_eui64);
 	k_mutex_lock(&s_rate_mutex, K_FOREVER);
-	if (s_last_confession[iid7] &&
-	    (now_ms - s_last_confession[iid7] <
+	if (s_last_confession[h] &&
+	    (now_ms - s_last_confession[h] <
 	     CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS)) {
 		k_mutex_unlock(&s_rate_mutex);
 #ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
@@ -336,7 +348,7 @@ static int confessions_post(struct coap_resource *resource,
 #endif
 		return COAP_RESPONSE_CODE_TOO_MANY_REQUESTS;
 	}
-	s_last_confession[iid7] = now_ms;
+	s_last_confession[h] = now_ms;
 	k_mutex_unlock(&s_rate_mutex);
 	uint8_t resp_code = COAP_RESPONSE_CODE_CHANGED;
 #ifdef CONFIG_LICHEN_COAP_SERVER_OSCORE
