@@ -36,6 +36,7 @@ struct lichen_app_identity_self {
 	uint8_t eui64[LICHEN_APP_IDENTITY_EUI64_LEN];
 	uint8_t iid[LICHEN_APP_IDENTITY_EUI64_LEN];
 	uint8_t public_key[LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN];
+	uint8_t ygg_addr[16];
 	char display_name[LICHEN_APP_IDENTITY_DISPLAY_MAX];
 	char firmware_name[LICHEN_APP_IDENTITY_FIRMWARE_MAX];
 	bool has_public_key;
@@ -45,6 +46,7 @@ struct lichen_app_identity_peer {
 	uint8_t eui64[LICHEN_APP_IDENTITY_EUI64_LEN];
 	uint8_t iid[LICHEN_APP_IDENTITY_EUI64_LEN];
 	uint8_t public_key[LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN];
+	uint8_t ygg_addr[16];
 	char display_name[LICHEN_APP_IDENTITY_DISPLAY_MAX];
 	uint32_t last_heard_seconds_ago;
 	int16_t rssi_dbm;

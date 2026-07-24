@@ -13,6 +13,11 @@
 #include <string.h>
 #include <stdbool.h>
 
+#ifdef __ZEPHYR__
+#include <tinycrypt/sha256.h>
+#include <tinycrypt/constants.h>
+#endif
+
 #ifdef CONFIG_NVS
 #include <zephyr/device.h>
 #include <zephyr/fs/nvs.h>
@@ -130,6 +135,7 @@ static int restore_tuple(struct lichen_link_ctx *ctx)
 	memcpy(ctx->eui64, t.eui64, sizeof(ctx->eui64));
 	memcpy(ctx->ed25519_sk, t.ed25519_sk, sizeof(ctx->ed25519_sk));
 	memcpy(ctx->ed25519_pk, t.ed25519_pk, sizeof(ctx->ed25519_pk));
+	(void)lichen_identity_ygg_addr_from_ed25519(ctx->ed25519_pk, ctx->ygg_addr);
 	ctx->epoch = t.epoch;
 	ctx->tx_seq = t.tx_seq;
 	ctx->has_key = true;
@@ -185,6 +191,7 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
 	memcpy(ctx->eui64, eui64, LICHEN_EUI64_LEN);
 	memset(ctx->ed25519_sk, 0, LICHEN_SK_LEN);
 	memset(ctx->ed25519_pk, 0, LICHEN_PK_LEN);
+	memset(ctx->ygg_addr, 0, sizeof(ctx->ygg_addr));
 	memset(ctx->link_key, 0, LICHEN_LINK_KEY_LEN);
 	ctx->has_key = false;
 	ctx->has_link_key = false;
@@ -270,6 +277,7 @@ int lichen_link_load_key(struct lichen_link_ctx *ctx,
 	}
 	memcpy(ctx->ed25519_sk, new_sk, LICHEN_SK_LEN);
 	memcpy(ctx->ed25519_pk, new_pk, LICHEN_PK_LEN);
+	lichen_identity_ygg_addr_from_ed25519(ctx->ed25519_pk, ctx->ygg_addr);
 	ctx->has_key = true;
 	ctx->epoch = new_epoch;
 	ctx->tx_seq = 0;
@@ -515,6 +523,7 @@ static int seq_unlock(struct lichen_link_ctx *ctx)
 int lichen_link_copy_identity(const struct lichen_link_ctx *ctx,
 			      uint8_t eui64[LICHEN_EUI64_LEN],
 			      uint8_t pk[LICHEN_PK_LEN],
+			      uint8_t ygg_addr[16],
 			      bool *has_key)
 {
 	if (ctx == NULL) {
@@ -553,6 +562,9 @@ int lichen_link_copy_identity(const struct lichen_link_ctx *ctx,
 	if (pk != NULL) {
 		memcpy(pk, ctx->ed25519_pk, LICHEN_PK_LEN);
 	}
+	if (ygg_addr != NULL) {
+		memcpy(ygg_addr, ctx->ygg_addr, 16);
+	}
 
 	(void)seq_unlock(mutable_ctx);
 	return 0;
@@ -570,6 +582,7 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 	secure_wipe(ctx->link_key, LICHEN_LINK_KEY_LEN);
 
 	memset(ctx->ed25519_pk, 0, LICHEN_PK_LEN);
+	memset(ctx->ygg_addr, 0, sizeof(ctx->ygg_addr));
 	ctx->has_key = false;
 	ctx->has_link_key = false;
 
@@ -581,6 +594,53 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 #ifndef __ZEPHYR__
 	pthread_mutex_destroy(&ctx->seq_lock);
 #endif
+}
+
+int lichen_identity_ygg_addr_from_ed25519(const uint8_t *pubkey,
+					  uint8_t ygg_addr[16])
+{
+	if (pubkey == NULL || ygg_addr == NULL) {
+		return -EINVAL;
+	}
+
+	memset(ygg_addr, 0, 16);
+	ygg_addr[0] = 0x02;
+
+#ifdef CONFIG_LICHEN_CRYPTO_MONOCYPHER
+	{
+		uint8_t hash64[64];
+		uint8_t iid[8];
+
+		crypto_sha512(pubkey, 32, hash64);
+
+#ifdef __ZEPHYR__
+		{
+			struct tc_sha256_state_struct sha_state;
+			uint8_t sha256[TC_SHA256_DIGEST_SIZE];
+			if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS ||
+			    tc_sha256_update(&sha_state, pubkey, 32) != TC_CRYPTO_SUCCESS ||
+			    tc_sha256_final(sha256, &sha_state) != TC_CRYPTO_SUCCESS) {
+				crypto_wipe(hash64, sizeof(hash64));
+				crypto_wipe(sha256, sizeof(sha256));
+				return -EIO;
+			}
+			memcpy(iid, sha256, 8);
+			crypto_wipe(sha256, sizeof(sha256));
+		}
+#else
+		memset(iid, 0, sizeof(iid));
+#endif
+		iid[0] &= 0xFD;
+
+		memcpy(ygg_addr + 1, hash64, 7);
+		memcpy(ygg_addr + 8, iid, 8);
+
+		crypto_wipe(hash64, sizeof(hash64));
+		crypto_wipe(iid, sizeof(iid));
+	}
+#endif
+
+	return 0;
 }
 
 int lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots)

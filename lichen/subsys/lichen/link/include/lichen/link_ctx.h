@@ -65,6 +65,7 @@ struct lichen_link_ctx {
 	uint8_t eui64[LICHEN_EUI64_LEN]; /**< Node's EUI-64 address */
 	uint8_t ed25519_sk[LICHEN_SK_LEN]; /**< Ed25519 secret key (clamped) */
 	uint8_t ed25519_pk[LICHEN_PK_LEN]; /**< Ed25519 public key */
+	uint8_t ygg_addr[16]; /**< Yggdrasil 0200::/7 address derived from Ed25519 public key */
 	uint8_t link_key[LICHEN_LINK_KEY_LEN]; /**< Retained legacy link key */
 	uint8_t epoch;    /**< Current epoch (key rotation counter) */
 	uint16_t tx_seq;  /**< TX sequence counter */
@@ -83,6 +84,7 @@ struct lichen_link_keypair_snapshot {
 	uint8_t eui64[LICHEN_EUI64_LEN];
 	uint8_t sk[LICHEN_SK_LEN];
 	uint8_t pk[LICHEN_PK_LEN];
+	uint8_t ygg_addr[16];
 };
 
 /**
@@ -308,6 +310,7 @@ void lichen_link_cleanup(struct lichen_link_ctx *_Nullable ctx);
 int lichen_link_copy_identity(const struct lichen_link_ctx *_Nonnull ctx,
 			      uint8_t eui64[_Nullable LICHEN_EUI64_LEN],
 			      uint8_t pk[_Nullable LICHEN_PK_LEN],
+			      uint8_t ygg_addr[_Nullable 16],
 			      bool *_Nullable has_key);
 
 /**
