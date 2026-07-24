@@ -651,4 +651,63 @@ int lichen_coordination_negotiate(struct lichen_link_ctx *ctx)
 }
 #endif /* CONFIG_LICHEN_LINK_COORDINATION */
 
+uint8_t lichen_select_channel(const uint8_t eui64[8], uint32_t epoch,
+			      uint8_t density, uint8_t n_channels)
+{
+	uint8_t data[12];
+
+	if (density > 8) {
+		return 0;
+	}
+
+	memcpy(data, eui64, 8);
+	data[8] = (uint8_t)(epoch & 0xff);
+	data[9] = (uint8_t)((epoch >> 8) & 0xff);
+	data[10] = (uint8_t)((epoch >> 16) & 0xff);
+	data[11] = (uint8_t)((epoch >> 24) & 0xff);
+
+	uint32_t h = lichen_hash_32(data, 12);
+	uint8_t n = (n_channels < 3) ? 3 : n_channels;
+
+	return (uint8_t)(1 + (h % n));
+}
+
+uint8_t lichen_adaptive_sf_select(uint8_t assigned_sf, int8_t snr_ema,
+				  uint8_t density, uint16_t utilization,
+				  uint16_t loss_rate_ema, bool *tx_allowed)
+{
+	uint8_t sf = (assigned_sf == 0) ? 10 : assigned_sf;
+
+	if (density > 10 || utilization > 150) {
+		if (sf <= 10) {
+			sf += 2;
+		} else {
+			sf = 12;
+		}
+	}
+
+	if (snr_ema > 8 && density < 5) {
+		if (sf > 7) {
+			sf -= 1;
+		}
+	}
+
+	if (loss_rate_ema > 2500 || utilization > 200) {
+		if (sf < 12) {
+			sf += 1;
+		}
+		if (utilization > 200) {
+			if (tx_allowed != NULL) {
+				*tx_allowed = false;
+			}
+			return sf;
+		}
+	}
+
+	if (tx_allowed != NULL) {
+		*tx_allowed = true;
+	}
+	return sf;
+}
+
 

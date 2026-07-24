@@ -338,6 +338,14 @@ bool tdma_tx_allowed(const struct lichen_tdma_ctx *tdma, uint32_t now_ms);
 uint32_t lichen_hash_32(const uint8_t *data, size_t len);
 uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots);
 
+uint8_t lichen_select_channel(const uint8_t eui64[8], uint32_t epoch, uint8_t density, uint8_t n_channels);
+uint8_t lichen_adaptive_sf_select(uint8_t assigned_sf, int8_t snr_ema, uint8_t density, uint16_t utilization, uint16_t loss_rate_ema, bool *tx_allowed);
+
+static inline int32_t lichen_ema_update_i32(int32_t avg, int32_t sample)
+{
+	return avg + ((sample - avg) >> 2);
+}
+
 #ifdef __cplusplus
 }
 #endif
