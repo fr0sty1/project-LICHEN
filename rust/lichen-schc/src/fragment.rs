@@ -16,7 +16,9 @@ pub const MIC_LENGTH: usize = 4;
 pub const DEFAULT_WINDOW_SIZE: usize = 32;
 pub const MAX_WINDOW_SIZE: usize = 62;
 pub const WINDOW_SIZE: usize = 63;
+pub const TILE_SIZE: usize = 187;
 pub const BITMAP_MASK: u64 = (1u64 << 63) - 1;
+pub const MAX_PACKET_SIZE: usize = 16384;
 pub const RETRANSMISSION_TIMEOUT_S: u32 = 10;
 pub const MAX_ACK_REQUESTS: u32 = 3;
 pub const INACTIVITY_TIMEOUT_S: u32 = 60;
@@ -259,9 +261,7 @@ impl Ack {
         if data.len() < 2 {
             return Err(TooShort::new(2, data.len()).into());
         }
-        let rule_id = data[0];
         let window = (data[1] >> FRAGMENT_N) & 1;
-        let complete = (data[1] & 0x01) != 0;
         let n = data[2] as usize;
         if n > WINDOW_SIZE {
             return Err(FragmentError::MalformedAck);
@@ -367,6 +367,7 @@ pub enum SenderOutput {
     },
 }
 
+#[derive(Debug)]
 pub struct FragmentSender<'a> {
     payload: &'a [u8],
     pub rule_id: u8,
@@ -393,16 +394,11 @@ impl<'a> FragmentSender<'a> {
             return Err(BufferTooSmall::new(SCHC_MAX_DECOMPRESSED, payload.len()).into());
         }
         let mic = compute_mic(payload);
-        let count = if payload.is_empty() {
-            1
-        } else {
-            payload.len().div_ceil(tile_size)
-        };
         Ok(FragmentSender {
             payload,
             rule_id,
             count: payload.len().div_ceil(TILE_SIZE),
-            mic: compute_mic(payload),
+            mic,
             attempts: 0,
             status: SenderStatus::Ready,
         })
@@ -520,7 +516,7 @@ impl<'a> FragmentSender<'a> {
             }
             return SenderOutput::None;
         }
-        if self.attempts >= MAX_ACK_REQUESTS {
+        if u32::from(self.attempts) >= MAX_ACK_REQUESTS {
             return self.abort_output();
         }
         self.attempts += 1;
@@ -537,7 +533,7 @@ impl<'a> FragmentSender<'a> {
         if self.status != SenderStatus::Active {
             return Err(FragmentError::InvalidState);
         }
-        if self.attempts >= MAX_ACK_REQUESTS {
+        if u32::from(self.attempts) >= MAX_ACK_REQUESTS {
             return Ok(self.abort_output());
         }
         self.attempts += 1;
@@ -906,7 +902,7 @@ impl<'a> FragmentReceiver<'a> {
     }
 
     fn respond(&mut self, ack: Ack) -> ReceiverResult {
-        if self.attempts >= MAX_ACK_REQUESTS {
+        if u32::from(self.attempts) >= MAX_ACK_REQUESTS {
             return self.abort(ack.rule_id);
         }
         self.attempts += 1;
