@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-gv0g",
+  "title": "[review] lora_ipv6_mesh-mkk4: rust/target/ build artifacts committed",
+  "description": "Commit d83cbc5 includes three build artifacts under rust/target/debug/ that should not be version-controlled:\\n\\n- rust/target/debug/deps/lichen_gateway-f1ce66f1c4497e73.d (depfile)\\n- rust/target/debug/incremental/lichen_gateway-22bf9b6an4f75/s-hkp20uavb7-14gy7hh-working/dep-graph.part.bin (incremental cache)\\n- rust/target/debug/incremental/lichen_gateway-22bf9b6an4f75/s-hkp20uavb7-14gy7hh.lock (incremental lock)\\n\\nThese are Rust compilation artifacts that pollute the repo and can cause merge conflicts and bloat. The rust/target/ directory should be in .gitignore. The files need to be removed from the index (git rm --cached).\\n\\nThe SosResource import fix in this commit is correct and should be retained.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:59:18.632246057Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:59:18.632246057Z"
+}
