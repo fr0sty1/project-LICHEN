@@ -47,12 +47,14 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		return -EINVAL;
 	}
 
-	if (IS_ENABLED(CONFIG_LICHEN_TDMA)) {
+#if defined(CONFIG_LICHEN_TDMA)
+	{
 		struct lichen_tdma_ctx tdma = {0};
 		if (!tdma_tx_allowed(&tdma, 0)) {
 			return -EBUSY;
 		}
 	}
+#endif
 
 	if (!ctx->has_key) {
 		return -ENOKEY;
