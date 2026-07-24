@@ -646,22 +646,21 @@ def _parse_xml_chat(root: ET.Element) -> CompactCot:
     if chat_elem is not None:
         chat_group = chat_elem.get("chatroom")
         if chat_group:
-            # Check if it's a direct message (hex IID = 16 hex chars = 8 bytes)
-            if len(chat_group) == 16:
+            # Check team names first to avoid ambiguity with 16-char hex names
+            # Handle both "Blue" and "Team Blue" formats (roundtrip)
+            team_name = chat_group.lower()
+            if team_name.startswith("team "):
+                team_name = team_name[5:]
+            team = TEAM_BY_NAME.get(team_name)
+            if team:
+                dest = ChatDest.to_team(team)
+            elif len(chat_group) == 16:
+                # Direct message: hex IID = 16 hex chars = 8 bytes
                 try:
                     iid = bytes.fromhex(chat_group)
                     dest = ChatDest.direct(iid)
                 except ValueError:
-                    pass  # Not valid hex, fall through to team lookup
-            if dest.dest_type == DestType.BROADCAST:
-                # Not a direct message, check for team destination
-                # Handle both "Blue" and "Team Blue" formats (roundtrip)
-                team_name = chat_group.lower()
-                if team_name.startswith("team "):
-                    team_name = team_name[5:]
-                team = TEAM_BY_NAME.get(team_name)
-                if team:
-                    dest = ChatDest.to_team(team)
+                    pass  # Not valid hex, leave as broadcast
 
     return (CotSubtype.CHAT, ChatPayload(dest=dest, message=message))
 
