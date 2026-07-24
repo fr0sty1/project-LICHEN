@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "RPL messages (DIO/DAO per RFC 6550) with hardcoded independent vectors from spec.",
+  "description": "RPL messages (DIO/DAO per RFC 6550) with hardcoded independent vectors from spec. Includes malformed IPv6+ICMPv6/UDP test cases for checksum_failure and truncation.",
   "vectors": [
     {
       "name": "dio_base",
@@ -24,6 +24,42 @@
         "rpl_instance_id": 0,
         "dao_sequence": 5
       }
+    },
+    {
+      "name": "bad_icmpv6_checksum",
+      "type": "malformed",
+      "category": "malformed",
+      "description": "ICMPv6 Echo with corrupted checksum (RFC 4443 §2.3 requires silent discard on checksum failure).",
+      "wire": "60000000000c3a40fe800000000000000000000000000001fe8000000000000000000000000000028000070eabcd000770696e67",
+      "expect_error": "checksum_failure",
+      "provenance": "RFC 4443 + Python lichen.ipv6.icmpv6.verify_checksum (returns False); independent _internet_checksum oracle. Matches Rust verify_icmpv6_checksum."
+    },
+    {
+      "name": "short_icmpv6_packet",
+      "type": "malformed",
+      "category": "malformed",
+      "description": "Truncated ICMPv6 packet after IPv6 header (len < ICMPV6_HEADER_LEN).",
+      "wire": "60000000000c3a40fe800000000000000000000000000001fe8000000000000000000000000000028000",
+      "expect_error": "truncation",
+      "provenance": "RFC 4443 §2.3 + Python Icmpv6Message.from_bytes and Rust handle_icmpv6 (returns Ok(None) for short). Independent length checks."
+    },
+    {
+      "name": "bad_udp_checksum",
+      "type": "malformed",
+      "category": "malformed",
+      "description": "UDP datagram with corrupted checksum (RFC 8200 §8.1 requires silent discard on checksum failure).",
+      "wire": "6000000000131140fe800000000000000000000000000001fe800000000000000000000000000002163316330013000040011234ff737461747573",
+      "expect_error": "checksum_failure",
+      "provenance": "RFC 8200 + Python lichen.ipv6.udp.UdpDatagram.verify_checksum (returns False); independent _internet_checksum oracle. Matches Rust verify_udp_checksum."
+    },
+    {
+      "name": "short_udp_packet",
+      "type": "malformed",
+      "category": "malformed",
+      "description": "Truncated UDP packet after IPv6 header (len < UDP_HEADER_LENGTH).",
+      "wire": "6000000000081140fe800000000000000000000000000001fe8000000000000000000000000000021633",
+      "expect_error": "truncation",
+      "provenance": "RFC 768/RFC 8200 + Python UdpDatagram.from_bytes (raises on short) and Rust equivalent. Independent length checks. Cross-layer consistency with ICMP."
     }
   ]
 }
