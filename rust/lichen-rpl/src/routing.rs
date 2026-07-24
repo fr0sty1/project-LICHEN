@@ -1583,7 +1583,7 @@ impl DaoManager {
                 duplicate = true;
             }
         } else if self.origin_high_water.len() == MAX_DAO_ORIGINS {
-            return Err(DaoProcessError::RouteRejected);
+            return Err(DaoProcessError::NotAdmitted);
         }
         if duplicate
             && updates[..update_count]

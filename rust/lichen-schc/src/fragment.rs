@@ -422,8 +422,8 @@ impl<'a> FragmentSender<'a> {
         if payload.is_empty() {
             return Err(FragmentError::EmptyPacket);
         }
-        if payload.len() > SCHC_MAX_DECOMPRESSED {
-            return Err(BufferTooSmall::new(SCHC_MAX_DECOMPRESSED, payload.len()).into());
+        if payload.len() > MAX_PACKET_SIZE {
+            return Err(BufferTooSmall::new(MAX_PACKET_SIZE, payload.len()).into());
         }
         Ok(FragmentSender {
             payload,
