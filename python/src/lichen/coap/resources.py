@@ -1437,7 +1437,7 @@ class EdhocResource(resource.Resource):
     @staticmethod
     def _edhoc_response(payload: bytes) -> Message:
         response = Message(code=CHANGED, payload=payload)
-        response.opt.content_format = ContentFormat(65535)
+        response.opt.content_format = ContentFormat(60)  # application/edhoc per RFC 9528
         return response
 
     async def render_post(self, request: Message) -> Message:
