@@ -24,11 +24,11 @@ struct LinkFrameVector {
     #[serde(default)]
     expect: Option<serde_json::Value>,
     #[serde(default)]
-    crypto: Option<CryptoVector>,
+    crypto: Option<CryptoFields>,
 }
 
 #[derive(Deserialize)]
-struct CryptoVector {
+struct CryptoFields {
     seed: String,
     private_key: String,
     public_key: String,

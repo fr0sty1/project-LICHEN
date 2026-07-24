@@ -603,11 +603,9 @@ mod tests {
             encryption: Encryption::Plaintext,
         };
         let mut small_buf = [0u8; 5];
-        let result = frame.write_to(&mut small_buf);
-        assert!(
-            matches!(result, Err(FrameError::BufferTooSmall(_))),
-            "expected BufferTooSmall, got {:?}",
-            result
+        assert_eq!(
+            frame.write_to(&mut small_buf),
+            Err(FrameError::BufferTooSmall(BufferTooSmall::new(9, 5)))
         );
 
         let large_payload = vec![0u8; 260];
