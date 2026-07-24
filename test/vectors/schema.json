@@ -1044,7 +1044,7 @@
             },
             "now": {
               "type": "integer",
-              "description": "now() u32 timestamp for TDMA cross-reference and monotonicity test"
+              "description": "now() u32 timestamp for TDMA cross-reference and monotonicity test. Validated against epoch_floor from beacon ts per spec/09-packets-timing.md:261. Init order: lichen_link_load_key() before lichen_tdma_init() per AGENTS.md subsystem init graph."
             },
             "select_channel": {
               "type": "integer",

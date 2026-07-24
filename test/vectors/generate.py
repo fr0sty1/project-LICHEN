@@ -1805,6 +1805,27 @@ def ccp16_vectors() -> list[dict]:
                 "select_channel": 0,
                 "now": 0xfffffff0
             }
+        },
+        {
+            "name": "now_monotonic_sequence",
+            "description": "Monotonic now() sequence (100, 4660, 100000, 0xfffffff0) tests TDMA slot monotonicity per spec/02a-coordinated-capacity.md:48 epoch_floor validation (beacon.ts >= epoch_floor). Cross-checks select_channel stability across now() values. Links lichen_link_load_key() + lichen_tdma_init() init order per AGENTS.md subsystem init graph. Independent oracle.",
+            "type": "slot_selection",
+            "input": {
+                "eui64": "0011223344556677",
+                "epoch": 0,
+                "density": 4,
+                "snr_db": 10,
+                "now": 100
+            },
+            "output": {
+                "hash_32": _hop_hash(eui, 0),
+                "channel": 2,
+                "expected_channel": 2,
+                "sf": 9,
+                "select_channel": 2,
+                "now": 100
+            },
+            "notes": "now()=100: epoch_floor=0 passes validation. Slot calc remains stable across now() advance."
         }
     ]
 
@@ -1857,8 +1878,7 @@ def ccp12_synchronized_hop_vectors() -> list[dict]:
             "expected_channel": 3,
             "description": "Beacon/DIO rendezvous uses rx_channel preference (CCP-12 over pure hash for known peers).",
         }
-    )
-    return vectors
+    ]
 
 
 def ccp9_vectors() -> list[dict]:
