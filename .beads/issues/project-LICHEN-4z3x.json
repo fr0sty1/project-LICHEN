@@ -2,7 +2,7 @@
   "id": "project-LICHEN-4z3x",
   "title": "codereview-P1 pass1: MAX_TX_MS calc chunk",
   "description": "Reviewed MAX_TX_MS removal and max_tx_ms pub fn. No P0 security issues. P2: tests still reference removed const - will address in validation chunk. Density constants followed (3/8 thresholds unchanged). Formula clear, no HUMAN needed. 1/3 clean.",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

@@ -2,7 +2,7 @@
   "id": "project-LICHEN-hwx9.7",
   "title": "Define SCHC ACK-on-Error profile parameters (M=1 N=6 T=0, RuleIDs, timers, bitmap, MIC, RCS)",
   "description": "Update spec/drafts/draft-lichen-schc-lora-00.md and appendix-schc.md with authoritative params from RFC 8724 adapted for LICHEN LoRa. Include exact bit fields, directional rules, windowing, ACK encoding, retransmit logic, capacity. Add to constants in Rust, C, Python. Link to vectors bead. Must be reviewed before impl migration.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

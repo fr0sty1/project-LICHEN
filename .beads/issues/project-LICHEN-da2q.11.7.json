@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-da2q.11.7",
   "title": "Codereview P2: select_channel pseudocode does not update table of contents or add CCP-11 section header",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",

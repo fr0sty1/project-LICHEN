@@ -4,7 +4,7 @@
   "description": "Discovered by project-LICHEN-m5m1.8 runtime audit. Existing nRF Renode models execute lora_ping but full apps fail late: bridge T-Echo stalls after L2 RX thread startup; bridge RAK4631 polls unimplemented USBD EVENTCAUSE with no UART; gateway T-Echo stalls during Bluetooth LMP initialization before CoAP AUTOSTART; puck RAK4631 stalls after LICHEN puck starting before CoAP status traffic. Diagnose model/firmware boundary and make each declared full-app backend reach its existing late runtime oracle without weakening startup behavior.",
   "acceptance_criteria": "1. Bridge T-Echo and RAK4631 reach main ready and an independent L2/radio effect. 2. Gateway T-Echo reaches CoAP AUTOSTART and an independent protocol/radio effect. 3. Puck RAK4631 emits its late CoAP status marker and independent TX. 4. Exact canonical build/run commands, artifact hashes, and logs are retained. 5. No test or runtime oracle is weakened.",
   "notes": "T-Echo/RAK/T1000 now reach CoAP AUTOSTART + telemetry post-USBD/BLE model wiring. Renode tests and hetero fleet validated.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

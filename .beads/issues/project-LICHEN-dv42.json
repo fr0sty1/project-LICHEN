@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dv42",
   "title": "Python 3.9+ union type hints break on older Python",
   "description": "visualize.py:21 uses dict[str, str | None] causing TypeError on import in generate.py and tests. Add from __future__ import annotations to all type-hint files or use Dict/Optional. discovered-from:project-LICHEN-77u0",
-  "status": "closed",
+  "status": "open",
   "priority": 0,
   "issue_type": "bug",
   "assignee": "ec2-user",

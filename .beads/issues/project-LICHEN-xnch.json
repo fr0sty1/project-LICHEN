@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-xnch",
   "title": "[codereview-pass1.1 correctness] spec/02a-coordinated-capacity.md: pseudocode uses undefined estimate_density() and hash_collision_risk()",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "ec2-user",

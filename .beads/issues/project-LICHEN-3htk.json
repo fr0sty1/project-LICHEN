@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-3htk",
   "title": "Vague reference to 'section 4.4 in Physical and Link Layers' in 06-security.md:15.3; update to precise 02-physical-link.md:4.4 and cross-check with link draft",
-  "status": "closed",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "created_at": "2026-07-22T16:50:38.07890394Z",

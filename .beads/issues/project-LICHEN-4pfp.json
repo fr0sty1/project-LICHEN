@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-4pfp",
   "title": "codereview: coap_dtn.c TTL array added but no expiry check in deaddrop_post or cleanup logic (P2 correctness)",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "ec2-user",

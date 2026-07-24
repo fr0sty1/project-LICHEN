@@ -1,7 +1,11 @@
 {
   "id": "project-LICHEN-ozy0",
   "title": "medium.py: add full CCP rendezvous, load balancing, TDMA vector support",
+<<<<<<< Updated upstream
   "status": "in_progress",
+=======
+  "status": "open",
+>>>>>>> Stashed changes
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

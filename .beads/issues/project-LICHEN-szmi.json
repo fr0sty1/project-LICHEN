@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-szmi",
   "title": "[codereview-pass2] Missing independent test vectors in test/vectors/ for TDMA slot assignment, guard time boundaries, and drift compensation; current ccp_load_balancing.json is insufficient per spec reference",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "assignee": "ec2-user",
