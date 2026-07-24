@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-toic",
+  "title": "[rereview] project-LICHEN-d7ub.71: lichen_sha256(NULL,0) test incompatible with strict NULL rejection",
+  "description": "Commit 3fb8e3815 changes lichen_sha256 to reject NULL input unconditionally (input == NULL -\u003e -EINVAL), but the existing test at lichen/tests/util/main.c:29 calls lichen_sha256(NULL, 0, output) and expects 0 (success). This test will fail under the new contract.\n\nFix options:\n1. Update the test to call with valid pointer + inlen=0 instead of NULL+0: \n2. Or update the test to expect -EINVAL (if the new behavior is intentional)\n\nAlso: the  block is dead code when input is NULL (already rejected) and unnecessary when input is non-NULL (tc_sha256_update ignores data pointer when data_length==0). Consider removing it for clarity.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T05:43:49.722948414Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T05:43:49.722948414Z"
+}
