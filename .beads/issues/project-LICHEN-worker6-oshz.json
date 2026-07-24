@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-oshz",
+  "title": "[review] project-LICHEN-6mij.2.4: confessions_post not migrated to coap_oscore_auth_mutating helper",
+  "description": "P2 consistency — `deaddrop_post` and `msg_inbox_post` were refactored to use the new `coap_oscore_auth_mutating()` helper in `coap_oscore.c`, but `confessions_post` at `coap_dtn.c:238-314` still uses the old inline OSCORE pattern with duplicated unprotected-path logic, #ifdef guards, and manual `is_protected` tracking.\n\nThis means:\n1. Code duplication — two OSCORE auth patterns to maintain\n2. Missing local-admin enforcement — the old pattern allows any unprotected request (no is_local_admin check)\n3. Inconsistent error handling — the old pattern returns COAP_RESPONSE_CODE_BAD_REQUEST for unprotect failure (line 272) vs the correct UNAUTHORIZED\n\n**Fix:** Refactor `confessions_post` to use `coap_oscore_auth_mutating()` like the other two handlers. Note that since `confessions_post` was NOT migrated, it also has the local-admin bypass bug (no-is_local_admin check for unprotected requests).\n\n**Affected:**\n- `lichen/subsys/lichen/coap/coap_dtn.c:238-314`",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:55:24.757264855Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:55:24.757264855Z"
+}
