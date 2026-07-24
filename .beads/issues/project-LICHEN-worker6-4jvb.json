@@ -2,15 +2,12 @@
   "id": "project-LICHEN-worker6-4jvb",
   "title": "protect_response no-PIV path missing active check - fresh contexts bypass registration",
   "description": "In the protect_response method (lib.rs:996-1011), the no-PIV path (include_piv=false) does not check self.active. Fresh (unregistered) contexts with allow_no_piv_response=true can protect responses without going through register_fresh, bypassing the invariant that only active contexts may encrypt.\n\nThis is visible in the failing test 'fresh_context_activates_only_after_atomic_registration' which expects OscoreError::InvalidParam from an unregistered context but now gets Ok.\n\nFix: Add an active check in the no-PIV path, e.g. if !self.active { return Err(OscoreError::InvalidParam); }\n\nAdditionally, the test 'response_without_piv_requires_requester_identity' fails with a similar issue - no-PIV responses succeed without proper requester identity validation.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T18:19:13.859460584Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T20:16:57.300301779Z",
-  "started_at": "2026-07-24T18:24:22.744478587Z",
-  "lease_expires_at": "2026-07-24T20:21:57.300301779Z",
-  "heartbeat_at": "2026-07-24T20:16:57.300301779Z"
+  "updated_at": "2026-07-24T21:04:21.117965261Z",
+  "started_at": "2026-07-24T18:24:22.744478587Z"
 }
