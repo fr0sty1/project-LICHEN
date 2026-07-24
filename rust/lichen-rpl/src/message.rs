@@ -363,6 +363,7 @@ pub const DODAG_CONFIG_DATA_LEN: usize = 14;
 pub struct DodagConfig {
     pub pcs: u8,
     pub a_flag: bool,
+    pub gateway_centric: bool,
     pub min_hop_rank_increase: u16,
     pub max_rank_increase: u16,
     pub ocp: u16,
@@ -378,6 +379,7 @@ impl Default for DodagConfig {
         Self {
             pcs: 0,
             a_flag: false,
+            gateway_centric: false,
             min_hop_rank_increase: 256,
             max_rank_increase: 2048,
             ocp: 1,
@@ -398,12 +400,14 @@ impl DodagConfig {
         let flags = data[0];
         let pcs = flags & 0x07;
         let a_flag = (flags & 0x10) != 0;
+        let gateway_centric = (flags & 0x80) != 0;
         if data[10] != 0 {
             return Err(RplError::InvalidOption); // reserved field per RFC 6550 §6.7.6
         }
         Ok(Self {
             pcs,
             a_flag,
+            gateway_centric,
             dio_int_doublings: data[1],
             dio_int_min: data[2],
             dio_redundancy_const: data[3],
@@ -423,7 +427,9 @@ impl DodagConfig {
         }
         out[0] = OPT_DODAG_CONFIG;
         out[1] = DODAG_CONFIG_DATA_LEN as u8;
-        let flags = ((self.a_flag as u8) << 4) | (self.pcs & 0x07);
+        let flags = ((self.gateway_centric as u8) << 7)
+            | ((self.a_flag as u8) << 4)
+            | (self.pcs & 0x07);
         out[2] = flags;
         out[3] = self.dio_int_doublings;
         out[4] = self.dio_int_min;
@@ -865,9 +871,24 @@ mod tests {
         let decoded = DodagConfig::from_bytes(&buf[2..n]).unwrap();
         assert_eq!(decoded.pcs, 0);
         assert!(!decoded.a_flag);
+        assert!(!decoded.gateway_centric);
         assert_eq!(decoded.min_hop_rank_increase, 256);
         assert_eq!(decoded.max_rank_increase, 2048);
         assert_eq!(decoded.ocp, 1);
+    }
+
+    #[test]
+    fn dodag_config_gateway_centric_roundtrip() {
+        let mut cfg = DodagConfig::default();
+        cfg.gateway_centric = true;
+        let mut buf = [0u8; 20];
+        let n = cfg.write_to(&mut buf).unwrap();
+        assert_eq!(buf[2] & 0x80, 0x80);
+
+        let decoded = DodagConfig::from_bytes(&buf[2..n]).unwrap();
+        assert!(decoded.gateway_centric);
+        assert!(!decoded.a_flag);
+        assert_eq!(decoded.min_hop_rank_increase, 256);
     }
 
     #[test]
