@@ -240,7 +240,7 @@ Node uses link-local for control + single primary 02xx for everything else. Cons
 16-bit mode via `Addr Mode` value `1` (see `02-physical-link.md:215`).
 
 Assignment methods (no central authority required):
-1. **Derived from IID (Ed25519-derived):** `hash_32(EUI-64, 0)` truncated to 16 bits via FNV-1a32 (consistent with `02a-coordinated-capacity.md` CCP-15.8.3 and `test/vectors/hash_32.json`); DAD retry uses seed mixing per `02-physical-link.md:172`
+1. **Derived from IID (Ed25519-derived):** `crc32_ieee(EUI-64, key=0x4c494348454e)` truncated to 16 bits (CRC32-IEEE with initial value derived from ASCII "LICHEN"); DAD retry uses seed mixing per `02-physical-link.md:172`
 2. **Self-assigned + DAD:** Pick random, verify uniqueness via DAD
 3. **DODAG root assignment:** Root allocates from pool (optional optimisation)
 
