@@ -470,3 +470,75 @@ int senml_encode_deaddrop(const char *base_name, uint64_t base_time,
 
 	return senml_encode_cbor(&pack, buf, buflen);
 }
+
+int senml_encode_location_full(const char *base_name, uint64_t base_time,
+			       float lat, float lon, float alt,
+			       float speed, float heading,
+			       float hacc, float vacc,
+			       uint8_t *buf, size_t buflen)
+{
+	struct senml_pack pack;
+	int ret;
+
+	/* Validate lat/lon are finite (not NaN or Inf) */
+	if (isnan(lat) || isnan(lon) || isinf(lat) || isinf(lon)) {
+		return -EINVAL;
+	}
+
+	/* Validate WGS84 coordinate ranges */
+	if (lat < -90.0f || lat > 90.0f || lon < -180.0f || lon > 180.0f) {
+		return -ERANGE;
+	}
+
+	ret = senml_pack_init(&pack, base_name, base_time);
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = senml_add_float(&pack, SENML_LOCATION_LAT, SENML_LOCATION_LAT, lat);
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = senml_add_float(&pack, SENML_LOCATION_LON, SENML_LOCATION_LON, lon);
+	if (ret < 0) {
+		return ret;
+	}
+
+	if (!isnan(alt)) {
+		ret = senml_add_float(&pack, SENML_LOCATION_ALT, SENML_LOCATION_UNIT_M, alt);
+		if (ret < 0) {
+			return ret;
+		}
+	}
+
+	if (!isnan(speed)) {
+		ret = senml_add_float(&pack, SENML_LOCATION_SPEED, SENML_LOCATION_UNIT_MS, speed);
+		if (ret < 0) {
+			return ret;
+		}
+	}
+
+	if (!isnan(heading)) {
+		ret = senml_add_float(&pack, SENML_LOCATION_HEADING, SENML_LOCATION_UNIT_DEG, heading);
+		if (ret < 0) {
+			return ret;
+		}
+	}
+
+	if (!isnan(hacc)) {
+		ret = senml_add_float(&pack, SENML_LOCATION_HACC, SENML_LOCATION_UNIT_M, hacc);
+		if (ret < 0) {
+			return ret;
+		}
+	}
+
+	if (!isnan(vacc)) {
+		ret = senml_add_float(&pack, SENML_LOCATION_VACC, SENML_LOCATION_UNIT_M, vacc);
+		if (ret < 0) {
+			return ret;
+		}
+	}
+
+	return senml_encode_cbor(&pack, buf, buflen);
+}

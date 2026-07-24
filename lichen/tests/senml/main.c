@@ -364,6 +364,77 @@ static int test_location_valid_coordinates(void)
 	return 1;
 }
 
+static int test_location_full_encodes_all_fields(void)
+{
+	uint8_t buf[256];
+	int ret;
+
+	ret = senml_encode_location_full(NULL, 0,
+					 37.7749f, -122.4194f, 10.5f,
+					 1.2f, 45.0f, 5.0f, 10.0f,
+					 buf, sizeof(buf));
+	ASSERT_EQ(ret > 0, 1, "full location with all fields encodes successfully");
+	return 1;
+}
+
+static int test_location_full_omit_optional_fields(void)
+{
+	uint8_t buf[256];
+	int ret;
+
+	/* Omit all optional fields by passing NAN */
+	ret = senml_encode_location_full(NULL, 0,
+					 37.7749f, -122.4194f, NAN,
+					 NAN, NAN, NAN, NAN,
+					 buf, sizeof(buf));
+	ASSERT_EQ(ret > 0, 1, "full location with all optional NAN encodes successfully");
+	return 1;
+}
+
+static int test_location_full_rejects_nan_lat(void)
+{
+	uint8_t buf[128];
+	int ret;
+
+	ret = senml_encode_location_full(NULL, 0, NAN, -122.0f, 0,
+					 NAN, NAN, NAN, NAN, buf, sizeof(buf));
+	ASSERT_EQ(ret, -EINVAL, "full location with NaN latitude rejected");
+	return 1;
+}
+
+static int test_location_full_rejects_nan_lon(void)
+{
+	uint8_t buf[128];
+	int ret;
+
+	ret = senml_encode_location_full(NULL, 0, 37.0f, NAN, 0,
+					 NAN, NAN, NAN, NAN, buf, sizeof(buf));
+	ASSERT_EQ(ret, -EINVAL, "full location with NaN longitude rejected");
+	return 1;
+}
+
+static int test_location_full_rejects_inf_lat(void)
+{
+	uint8_t buf[128];
+	int ret;
+
+	ret = senml_encode_location_full(NULL, 0, INFINITY, -122.0f, 0,
+					 NAN, NAN, NAN, NAN, buf, sizeof(buf));
+	ASSERT_EQ(ret, -EINVAL, "full location with Inf latitude rejected");
+	return 1;
+}
+
+static int test_location_full_rejects_out_of_range_lat(void)
+{
+	uint8_t buf[128];
+	int ret;
+
+	ret = senml_encode_location_full(NULL, 0, 91.0f, -122.0f, 0,
+					 NAN, NAN, NAN, NAN, buf, sizeof(buf));
+	ASSERT_EQ(ret, -ERANGE, "full location with latitude > 90 rejected");
+	return 1;
+}
+
 static int test_null_name_rejected(void)
 {
 	struct senml_pack pack;
@@ -494,6 +565,12 @@ int main(void)
 	RUN_TEST(test_location_rejects_out_of_range_lat);
 	RUN_TEST(test_location_rejects_out_of_range_lon);
 	RUN_TEST(test_location_valid_coordinates);
+	RUN_TEST(test_location_full_encodes_all_fields);
+	RUN_TEST(test_location_full_omit_optional_fields);
+	RUN_TEST(test_location_full_rejects_nan_lat);
+	RUN_TEST(test_location_full_rejects_nan_lon);
+	RUN_TEST(test_location_full_rejects_inf_lat);
+	RUN_TEST(test_location_full_rejects_out_of_range_lat);
 	RUN_TEST(test_null_name_rejected);
 	RUN_TEST(test_add_float_rejects_nan);
 	RUN_TEST(test_add_float_rejects_inf);

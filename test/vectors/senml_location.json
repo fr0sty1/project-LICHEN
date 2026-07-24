@@ -1,0 +1,65 @@
+{
+  "description": "SenML location profile test vectors per spec appendix-senml F.3",
+  "vectors": [
+    {
+      "id": "senml-location-full",
+      "description": "Full location with all fields",
+      "fields": {
+        "bn": "urn:dev:mac:0011223344556677:",
+        "bt": 1716742800,
+        "lat": 37.774929,
+        "lon": -122.419416,
+        "alt": 10.5,
+        "hacc": 5.0,
+        "vacc": 10.0,
+        "speed": 1.2,
+        "heading": 45.0
+      },
+      "cbor_hex": "88a221781d75726e3a6465763a6d61633a303031313232333334343535363637373a221a66536a90a300636c617401636c617402fb4042e330df9bdc6aa300636c6f6e01636c6f6e02fbc05e9ad7b634dad3a30063616c7401616d02fb4025000000000000a30065737065656401636d2f7302fb3ff3333333333333a3006768656164696e67016364656702fb4046800000000000a300646861636301616d02fb4014000000000000a300647661636301616d02fb4024000000000000"
+    },
+    {
+      "id": "senml-location-minimal",
+      "description": "Minimal location (lat, lon only, no base)",
+      "fields": {
+        "lat": 37.774929,
+        "lon": -122.419416
+      },
+      "cbor_hex": "82a300636c617401636c617402fb4042e330df9bdc6aa300636c6f6e01636c6f6e02fbc05e9ad7b634dad3"
+    },
+    {
+      "id": "senml-location-lat-lon-alt",
+      "description": "Location with lat, lon, alt (no base)",
+      "fields": {
+        "lat": 48.2049,
+        "lon": 16.371,
+        "alt": 158.0
+      },
+      "cbor_hex": "83a300636c617401636c617402fb40481a3a29c779a7a300636c6f6e01636c6f6e02fb40305ef9db22d0e5a30063616c7401616d02fb4063c00000000000"
+    },
+    {
+      "id": "senml-location-with-base",
+      "description": "Location with base name and time",
+      "fields": {
+        "bn": "urn:dev:mac:aabbccdd00112233:",
+        "bt": 1700000000,
+        "lat": -33.8688,
+        "lon": -70.6693,
+        "alt": 520.0
+      },
+      "cbor_hex": "84a221781d75726e3a6465763a6d61633a616162626363646430303131323233333a221a6553f100a300636c617401636c617402fbc040ef34d6a161e5a300636c6f6e01636c6f6e02fbc051aad5cfaacd9fa30063616c7401616d02fb4080400000000000"
+    },
+    {
+      "id": "senml-location-accuracy-only",
+      "description": "Location with accuracy fields but no alt/speed/heading",
+      "fields": {
+        "bn": "urn:dev:mac:0011223344556677:",
+        "bt": 1716742800,
+        "lat": 37.774929,
+        "lon": -122.419416,
+        "hacc": 2.5,
+        "vacc": 5.0
+      },
+      "cbor_hex": "85a221781d75726e3a6465763a6d61633a303031313232333334343535363637373a221a66536a90a300636c617401636c617402fb4042e330df9bdc6aa300636c6f6e01636c6f6e02fbc05e9ad7b634dad3a300646861636301616d02fb4004000000000000a300647661636301616d02fb4014000000000000"
+    }
+  ]
+}
