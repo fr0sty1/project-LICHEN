@@ -132,8 +132,9 @@ int lichen_sha256(const uint8_t *input, size_t inlen,
  * meaningful log messages instead of raw error numbers.
  *
  * Covered error codes:
- *   POSIX: EINVAL, ENOMEM, EMSGSIZE, EOVERFLOW, EALREADY, EIO, ENODEV,
- *          ENETDOWN, EBUSY, EAGAIN, ECANCELED, ENODATA, ESRCH, ENOBUFS
+ *   POSIX: EACCES, EINVAL, ENOMEM, EMSGSIZE, EOVERFLOW, EALREADY, EIO, ENODEV,
+ *          ENETDOWN, EBUSY, EAGAIN, ECANCELED, ENODATA, ENOENT, ENOSPC,
+ *          ENOTSUP, ESRCH, ENOBUFS
  *   LICHEN: LICHEN_EAUTH
  *
  * @param err Negative error code from lichen_link_tx/rx
@@ -195,6 +196,22 @@ static inline const char *lichen_link_strerror(int err)
 #ifdef ENOBUFS
     case -ENOBUFS:
         return "no buffer space";
+#endif
+#ifdef EACCES
+    case -EACCES:
+        return "permission denied";
+#endif
+#ifdef ENOSPC
+    case -ENOSPC:
+        return "buffer full or peer table inconsistent";
+#endif
+#ifdef ENOTSUP
+    case -ENOTSUP:
+        return "operation not supported";
+#endif
+#ifdef ENOENT
+    case -ENOENT:
+        return "peer not found";
 #endif
 /* LICHEN_EAUTH only exists when CONFIG_LICHEN_LINK is enabled (see top of file) */
 #if HAVE_LICHEN_ERRNO
