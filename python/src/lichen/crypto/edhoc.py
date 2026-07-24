@@ -189,7 +189,7 @@ def _encode_connection_id(c_x: bytes) -> bytes:
         val = c_x[0]
         if val <= 23:
             return cbor2.dumps(val)
-        if val >= 232:  # -24 in two's complement
+        if val >= 232:
             return cbor2.dumps(val - 256)
     return cbor2.dumps(c_x)
 
