@@ -1043,7 +1043,11 @@ mod std_ext {
         }
 
         pub fn fragments_in_window_vec(&self, abs_window: usize) -> Vec<Fragment<'a>> {
-            self.fragments_in_window_vec(abs_window)
+            let start_idx = abs_window * WINDOW_SIZE;
+            let end_idx = ((abs_window + 1) * WINDOW_SIZE).min(self.count);
+            (start_idx..end_idx)
+                .filter_map(|i| self.get_fragment(i))
+                .collect()
         }
     }
 
