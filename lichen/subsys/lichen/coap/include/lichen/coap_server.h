@@ -31,19 +31,7 @@
 #include <zephyr/net/coap.h>
 #include <zephyr/net/net_ip.h>
 #include <zephyr/net/socket.h>
-
-/* Nullability annotations for pointer safety */
-#ifndef __has_feature
-#define __has_feature(x) 0
-#endif
-#if !defined(__clang__) || !__has_feature(nullability)
-#ifndef _Nonnull
-#define _Nonnull
-#endif
-#ifndef _Nullable
-#define _Nullable
-#endif
-#endif
+#include <lichen/compiler.h>
 
 #ifdef __cplusplus
 extern "C" {
