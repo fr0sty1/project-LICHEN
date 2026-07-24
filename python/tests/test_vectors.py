@@ -544,7 +544,7 @@ def test_ccp16_sf_ema_load_factor_hash32_logic(desc: str, vector: dict) -> None:
     else:
         sf = 10
     assert sf == o.get("sf", 10)
-    n = i.get("n_channels", 3)
+    n = max(i.get("n_channels", 3), 3)
     ch = 0 if i["density"] > 8 else (1 + (h % n))
     assert ch == o.get("select_channel", o.get("expected_channel", o.get("channel", ch)))
     assert ch == o.get("channel", ch)

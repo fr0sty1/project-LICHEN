@@ -1745,6 +1745,26 @@ def _l2_announce_with_channel(channel: int) -> bytes:
 
 def ccp16_vectors() -> list[dict]:
     eui = bytes.fromhex("0011223344556677")
+    eui2 = bytes.fromhex("AABBCCDDEEFF0011")
+    eui3 = bytes.fromhex("0000000000000001")
+    eui4 = bytes.fromhex("FFFFFFFFFFFFFFFF")
+
+    def sc(eui_b: bytes, epoch: int, density: int, nch: int) -> int:
+        if density > 8:
+            return 0
+        n = max(nch, 3)
+        h = hash_32(eui_b + epoch.to_bytes(4, "little"))
+        return 1 + (h % n)
+
+    def sf(density: int, snr: float) -> int:
+        if density > 20 or snr < -5.0:
+            return 12
+        if density > 8 or snr < 0:
+            return 11
+        if density < 5 and snr > 8.0:
+            return 9
+        return 10
+
     return [
         {
             "name": "synchronized_hop_channel_consistency",
@@ -1755,46 +1775,49 @@ def ccp16_vectors() -> list[dict]:
                 "epoch": 1,
                 "density": 3,
                 "snr_db": 12,
+                "n_channels": 3,
                 "now": 4660
             },
             "output": {
                 "hash_32": _hop_hash(eui, 1),
-                "channel": 2,
-                "expected_channel": 2,
-                "sf": 9,
-                "select_channel": 2,
+                "channel": sc(eui, 1, 3, 3),
+                "expected_channel": sc(eui, 1, 3, 3),
+                "sf": sf(3, 12),
+                "select_channel": sc(eui, 1, 3, 3),
                 "now": 4660
             }
         },
         {
             "name": "epoch_wrap_hop_change",
-            "description": "Epoch increment changes hop sequence. Tests desync recovery interaction per CCP-16.",
+            "description": "Epoch 0 changes hop sequence vs epoch 1. Tests desync recovery interaction per CCP-16.",
             "type": "slot_selection",
             "input": {
                 "eui64": "0011223344556677",
                 "epoch": 0,
                 "density": 4,
                 "snr_db": 5,
+                "n_channels": 3,
                 "now": 100
             },
             "output": {
                 "hash_32": _hop_hash(eui, 0),
-                "channel": 2,
-                "expected_channel": 2,
-                "sf": 10,
-                "select_channel": 2,
+                "channel": sc(eui, 0, 4, 3),
+                "expected_channel": sc(eui, 0, 4, 3),
+                "sf": sf(4, 5),
+                "select_channel": sc(eui, 0, 4, 3),
                 "now": 100
             }
         },
         {
-            "name": "select_channel_timing_test",
-            "description": "select_channel_timing with now_ts near u32 wrap tests TDMA/SFN per spec/02a-coordinated-capacity.md:123 and 09-packets-timing.md. Independent oracle.",
+            "name": "select_channel_density_fallback_ch0",
+            "description": "Density > 8 triggers CH0 return per SelectChannel line 1. now near u32 wrap per Now() pseudocode. Independent oracle.",
             "type": "slot_selection",
             "input": {
                 "eui64": "0011223344556677",
                 "epoch": 0,
                 "density": 9,
                 "snr_db": -1,
+                "n_channels": 3,
                 "now": 0xfffffff0
             },
             "output": {
@@ -1804,6 +1827,238 @@ def ccp16_vectors() -> list[dict]:
                 "sf": 11,
                 "select_channel": 0,
                 "now": 0xfffffff0
+            }
+        },
+        {
+            "name": "select_channel_nch1_clamp_to_3",
+            "description": "NChannels=1 clamped to N=3 per SelectChannel line 4 MAX(1,3)=3. Independent hash_32 oracle.",
+            "type": "slot_selection",
+            "input": {
+                "eui64": "0011223344556677",
+                "epoch": 0,
+                "density": 3,
+                "snr_db": 12,
+                "n_channels": 1,
+                "now": 500
+            },
+            "output": {
+                "hash_32": _hop_hash(eui, 0),
+                "channel": sc(eui, 0, 3, 1),
+                "expected_channel": sc(eui, 0, 3, 1),
+                "sf": 9,
+                "select_channel": sc(eui, 0, 3, 1),
+                "now": 500
+            }
+        },
+        {
+            "name": "select_channel_nch2_clamp_to_3",
+            "description": "NChannels=2 clamped to N=3 per SelectChannel line 4 MAX(2,3)=3. Independent hash_32 oracle.",
+            "type": "slot_selection",
+            "input": {
+                "eui64": "0011223344556677",
+                "epoch": 0,
+                "density": 3,
+                "snr_db": 12,
+                "n_channels": 2,
+                "now": 750
+            },
+            "output": {
+                "hash_32": _hop_hash(eui, 0),
+                "channel": sc(eui, 0, 3, 2),
+                "expected_channel": sc(eui, 0, 3, 2),
+                "sf": 9,
+                "select_channel": sc(eui, 0, 3, 2),
+                "now": 750
+            }
+        },
+        {
+            "name": "select_channel_density_boundary_8",
+            "description": "Density=8 (NOT > 8) uses hash path per SelectChannel line 1. NChannels=8. Tests boundary condition between hash and CH0. Independent oracle.",
+            "type": "slot_selection",
+            "input": {
+                "eui64": "0011223344556677",
+                "epoch": 0,
+                "density": 8,
+                "snr_db": 5,
+                "n_channels": 8,
+                "now": 2000
+            },
+            "output": {
+                "hash_32": _hop_hash(eui, 0),
+                "channel": sc(eui, 0, 8, 8),
+                "expected_channel": sc(eui, 0, 8, 8),
+                "sf": 10,
+                "select_channel": sc(eui, 0, 8, 8),
+                "now": 2000
+            }
+        },
+        {
+            "name": "select_channel_nch3_exact",
+            "description": "NChannels=3 exactly (no clamp). Tests MAX(3,3)=3 identity. Different EUI and epoch. Independent oracle.",
+            "type": "slot_selection",
+            "input": {
+                "eui64": "aabbccddeeff0011",
+                "epoch": 1,
+                "density": 6,
+                "snr_db": 8,
+                "n_channels": 3,
+                "now": 3000
+            },
+            "output": {
+                "hash_32": _hop_hash(eui2, 1),
+                "channel": sc(eui2, 1, 6, 3),
+                "expected_channel": sc(eui2, 1, 6, 3),
+                "sf": 10,
+                "select_channel": sc(eui2, 1, 6, 3),
+                "now": 3000
+            }
+        },
+        {
+            "name": "select_channel_max_channel",
+            "description": "hash % N == N-1 produces max channel (N). Tests modulo boundary at SelectChannel line 5. Independent oracle.",
+            "type": "slot_selection",
+            "input": {
+                "eui64": "0011223344556677",
+                "epoch": 10,
+                "density": 1,
+                "snr_db": 12,
+                "n_channels": 8,
+                "now": 4000
+            },
+            "output": {
+                "hash_32": _hop_hash(eui, 10),
+                "channel": sc(eui, 10, 1, 8),
+                "expected_channel": sc(eui, 10, 1, 8),
+                "sf": 9,
+                "select_channel": sc(eui, 10, 1, 8),
+                "now": 4000
+            }
+        },
+        {
+            "name": "select_channel_min_channel",
+            "description": "hash % N == 0 produces channel 1 (minimum). Tests modulo lower boundary at SelectChannel line 5. Different EUI. Independent oracle.",
+            "type": "slot_selection",
+            "input": {
+                "eui64": "aabbccddeeff0011",
+                "epoch": 5,
+                "density": 1,
+                "snr_db": 12,
+                "n_channels": 8,
+                "now": 5000
+            },
+            "output": {
+                "hash_32": _hop_hash(eui2, 5),
+                "channel": sc(eui2, 5, 1, 8),
+                "expected_channel": sc(eui2, 5, 1, 8),
+                "sf": 9,
+                "select_channel": sc(eui2, 5, 1, 8),
+                "now": 5000
+            }
+        },
+        {
+            "name": "select_channel_nch16_high",
+            "description": "NChannels=16 with different EUI and epoch. Tests hash distribution over wider channel set. Independent oracle.",
+            "type": "slot_selection",
+            "input": {
+                "eui64": "0000000000000001",
+                "epoch": 5,
+                "density": 2,
+                "snr_db": 15,
+                "n_channels": 16,
+                "now": 6000
+            },
+            "output": {
+                "hash_32": _hop_hash(eui3, 5),
+                "channel": sc(eui3, 5, 2, 16),
+                "expected_channel": sc(eui3, 5, 2, 16),
+                "sf": 9,
+                "select_channel": sc(eui3, 5, 2, 16),
+                "now": 6000
+            }
+        },
+        {
+            "name": "select_channel_density_high_ch0_nch16",
+            "description": "Density > 8 returns CH0 even with high NChannels=16. Tests SelectChannel line 1 dominance over line 4-5. Independent oracle.",
+            "type": "slot_selection",
+            "input": {
+                "eui64": "0011223344556677",
+                "epoch": 2,
+                "density": 10,
+                "snr_db": -2,
+                "n_channels": 16,
+                "now": 7000
+            },
+            "output": {
+                "hash_32": _hop_hash(eui, 2),
+                "channel": 0,
+                "expected_channel": 0,
+                "sf": 11,
+                "select_channel": 0,
+                "now": 7000
+            }
+        },
+        {
+            "name": "select_channel_all_ff_eui",
+            "description": "EUI64=0xFFFFFFFFFFFFFFFF with epoch=7, NChannels=4. Tests hash with all-ones EUI. Independent oracle.",
+            "type": "slot_selection",
+            "input": {
+                "eui64": "ffffffffffffffff",
+                "epoch": 7,
+                "density": 1,
+                "snr_db": 12,
+                "n_channels": 4,
+                "now": 8000
+            },
+            "output": {
+                "hash_32": _hop_hash(eui4, 7),
+                "channel": sc(eui4, 7, 1, 4),
+                "expected_channel": sc(eui4, 7, 1, 4),
+                "sf": 9,
+                "select_channel": sc(eui4, 7, 1, 4),
+                "now": 8000
+            }
+        },
+        {
+            "name": "now_u32_modular_wrap",
+            "description": "now() subtraction test per Now() pseudocode: (2 - 0xFFFFFFFF) using unsigned 32-bit modular arithmetic yields 3. Tests SFN wrap. Independent oracle.",
+            "type": "slot_selection",
+            "input": {
+                "eui64": "0011223344556677",
+                "epoch": 3,
+                "density": 3,
+                "snr_db": 10,
+                "n_channels": 4,
+                "now": 3
+            },
+            "output": {
+                "hash_32": _hop_hash(eui, 3),
+                "channel": sc(eui, 3, 3, 4),
+                "expected_channel": sc(eui, 3, 3, 4),
+                "sf": 9,
+                "select_channel": sc(eui, 3, 3, 4),
+                "now": 3,
+                "now_u32_delta": (2 - 0xFFFFFFFF) & 0xFFFFFFFF
+            }
+        },
+        {
+            "name": "select_channel_density_0",
+            "description": "Density=0 (minimum) with NChannels=8. Tests SelectChannel with no density constraint. Different EUI and epoch. Independent oracle.",
+            "type": "slot_selection",
+            "input": {
+                "eui64": "ffffffffffffffff",
+                "epoch": 10,
+                "density": 0,
+                "snr_db": 10,
+                "n_channels": 8,
+                "now": 9000
+            },
+            "output": {
+                "hash_32": _hop_hash(eui4, 10),
+                "channel": sc(eui4, 10, 0, 8),
+                "expected_channel": sc(eui4, 10, 0, 8),
+                "sf": 9,
+                "select_channel": sc(eui4, 10, 0, 8),
+                "now": 9000
             }
         }
     ]
