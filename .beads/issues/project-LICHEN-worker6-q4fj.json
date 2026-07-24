@@ -2,11 +2,13 @@
   "id": "project-LICHEN-worker6-q4fj",
   "title": "[review] project-LICHEN-2auf.44.7.1: lichen-node node.rs missing NotAdmitted handling for DaoProcessError",
   "description": "## Location\n`rust/lichen-node/src/node.rs:369-377` and `rust/lichen-node/src/node.rs:72-86`\n\n## Problem\n`DaoProcessError` gained a `NotAdmitted` variant in `lichen-rpl` but the `lichen-node` crate was not updated:\n\n1. The exhaustive match in `handle_verified_dao()` (lines 369-377) maps `DaoProcessError` variants to `DaoHandlingOutcome` but has no arm for `NotAdmitted`.\n2. The `DaoHandlingOutcome` enum (lines 72-86) has no `NotAdmitted` variant.\n\n## Impact\nCompilation failure — Rust requires exhaustive matching. When `process_signature_verified` returns `Err(DaoProcessError::NotAdmitted)`, it propagates through `process_signature_verified_dao_from_at_ms` (via `?` operator) and reaches the match in `handle_verified_dao`.\n\n## Fix\n1. Add `NotAdmitted` variant to `DaoHandlingOutcome` enum\n2. Add `Err(DaoProcessError::NotAdmitted) =\u003e DaoHandlingOutcome::NotAdmitted` arm to the match at line 376\n3. Update any consumers of `DaoHandlingOutcome` that exhaustively match on it (e.g. `rpl_stack.rs:1312-1315`)",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T16:57:05.320790284Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T16:57:05.320790284Z"
+  "updated_at": "2026-07-24T17:14:45.919874693Z",
+  "closed_at": "2026-07-24T17:14:45.919874693Z",
+  "close_reason": "Closed"
 }
