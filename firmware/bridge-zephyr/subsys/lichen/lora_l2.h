@@ -164,6 +164,16 @@ int lichen_lora_l2_stop(void);
  * Required after a forced thread abort in stop() before the module can be
  * restarted. Must be called when the module is stopped (not running).
  *
+ * RECOVERY AFTER THREAD ABORT:
+ * If the RX thread was forcibly aborted (stop() returned -ECANCELED), deinit()
+ * reinitializes mutexes that may still be held by the dead thread. This is
+ * UNDEFINED BEHAVIOR per POSIX and Zephyr semantics and may corrupt kernel
+ * data or trigger assertion failures in debug builds.
+ *
+ * The only truly safe recovery from thread-abort is a full system reset
+ * (k_sys_reboot). When CONFIG_LICHEN_LORA_STRICT_RECOVERY is enabled,
+ * deinit() calls k_sys_reboot() instead of attempting the UB reinit path.
+ *
  * After deinit, lichen_lora_l2_init() must be called before any other
  * operations.
  *
