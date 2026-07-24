@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-h8b5",
+  "title": "[review] project-LICHEN-6mij.2.4: coap_oscore_auth_result struct has _Nonnull on pointer fields but can be zeroed",
+  "description": "In coap_oscore.h:124-130, struct coap_oscore_auth_result declares ctx and payload with _Nonnull annotations, but coap_oscore_auth_mutating() calls memset(result, 0, sizeof(*result)) at line 251 of coap_oscore.c, which sets ctx=NULL and payload=NULL. The _Nonnull annotation is a contract violation since the struct starts life zeroed and the non-OSCORE (local admin) path explicitly sets result-\u003ectx = NULL at line 301. This can cause UB if a caller dereferences ctx without checking for NULL first, or triggers compiler optimizations based on the _Nonnull assumption. Fix: remove _Nonnull from struct fields or initialize differently.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:57:19.734608741Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:57:19.734608741Z"
+}
