@@ -975,6 +975,9 @@ impl Context {
                 (piv, len, Some(len))
             } else {
                 // Reuse the request nonce (no new sequence generated).
+                if !self.allow_no_piv_response {
+                    return Err(OscoreError::InvalidParam);
+                }
                 if request_piv.is_empty() || request_piv.len() > PIV_MAX_LEN {
                     return Err(OscoreError::InvalidParam);
                 }
