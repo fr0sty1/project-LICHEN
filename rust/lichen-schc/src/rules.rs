@@ -407,6 +407,69 @@ const RPL_DIO_FIELDS: &[FieldDescriptor] = &[
     },
 ];
 
+/// RPL option type values common in DIO messages.
+const RPL_OPTION_TYPE_MAPPING: &[u128] = &[0, 3, 2, 5, 6, 7];
+
+/// PIO (Prefix Information Option) field descriptors for RPL DIO.
+///
+/// Uses MatchMapping on RPL.Option.Type, with PIO-specific sub-fields.
+const RPL_PIO_FIELDS: &[FieldDescriptor] = &[
+    FieldDescriptor {
+        field_id: "RPL.Option.Type",
+        length_bits: 8,
+        mo: Mo::MatchMapping,
+        cda: Cda::MappingSent,
+        target_value: 3,
+        mo_arg: None,
+        mapping: Some(RPL_OPTION_TYPE_MAPPING),
+    },
+    FieldDescriptor {
+        field_id: "RPL.Option.Length",
+        length_bits: 8,
+        mo: Mo::Equal,
+        cda: Cda::NotSent,
+        target_value: 30,
+        mo_arg: None,
+        mapping: None,
+    },
+    FieldDescriptor {
+        field_id: "PIO.Prefix Length",
+        length_bits: 8,
+        mo: Mo::Equal,
+        cda: Cda::NotSent,
+        target_value: 64,
+        mo_arg: None,
+        mapping: None,
+    },
+    FieldDescriptor {
+        field_id: "PIO.Flags",
+        length_bits: 8,
+        mo: Mo::Equal,
+        cda: Cda::NotSent,
+        target_value: 0xC0,
+        mo_arg: None,
+        mapping: None,
+    },
+    FieldDescriptor {
+        field_id: "PIO.Lifetime",
+        length_bits: 32,
+        mo: Mo::Ignore,
+        cda: Cda::ValueSent,
+        target_value: 0,
+        mo_arg: None,
+        mapping: None,
+    },
+    FieldDescriptor {
+        field_id: "PIO.Prefix",
+        length_bits: 128,
+        mo: Mo::Msb,
+        cda: Cda::Lsb,
+        target_value: 0xfe80_0000_0000_0000_0000_0000_0000_0000,
+        mo_arg: Some(64),
+        mapping: None,
+    },
+];
+
 const RPL_DAO_FIELDS: &[FieldDescriptor] = &[
     FieldDescriptor {
         field_id: "RPL.instance",
@@ -548,6 +611,12 @@ pub const RPL_DIO_RULE: Rule = Rule {
         RPL_DIO_FIELDS[5],
         RPL_DIO_FIELDS[6],
         RPL_DIO_FIELDS[7],
+        RPL_PIO_FIELDS[0],
+        RPL_PIO_FIELDS[1],
+        RPL_PIO_FIELDS[2],
+        RPL_PIO_FIELDS[3],
+        RPL_PIO_FIELDS[4],
+        RPL_PIO_FIELDS[5],
     ],
 };
 pub const RPL_DAO_RULE: Rule = Rule {
@@ -632,7 +701,7 @@ pub const MQTT_SN_RULE: Rule = Rule {
         IPV6_BASE[3],
         NEXT_UDP,
         IPV6_BASE[4],
-        GLOBAL_ADDR[0],  // use global (Ignore) to support both link-local and global addresses in one rule
+        GLOBAL_ADDR[0], // use global (Ignore) to support both link-local and global addresses in one rule
         GLOBAL_ADDR[1],
         UDP_FIELDS[0],
         UDP_FIELDS[1],

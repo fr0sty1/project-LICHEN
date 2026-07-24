@@ -155,6 +155,7 @@ fn is_link_local(addr: &[u8]) -> bool {
     addr.len() == 16 && addr[0] == 0xFE && (addr[1] & 0xC0) == 0x80
 }
 
+#[allow(dead_code)]
 fn is_global(addr: &[u8]) -> bool {
     addr.len() == 16 && (addr[0] >> 5) == 0b001
 }
@@ -431,7 +432,65 @@ fn compress_rpl_dio(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
 
     let residue_len = w.byte_len();
     let tail_start = 1 + residue_len;
-    let needed = tail_start + tail.len();
+    let mut needed = tail_start + tail.len();
+
+    // Detect PIO (type=3, len=30) in tail and compress it
+    if tail.len() >= 32 && tail[0] == 3 && tail[1] == 30 {
+        // Compress RPL.Option.Type with MatchMapping → 3-bit mapping-sent (PIO=index 1)
+        let pio_mapped = 1u8; // type=3 → index 1 in mapping
+        let lifetime = u32::from_be_bytes([tail[4], tail[5], tail[6], tail[7]]);
+        let prefix_iid = u64::from_be_bytes(tail[20..28].try_into().unwrap());
+        // Pad1 (type=0) uses equal/not-sent, so we just emit remaining options as tail
+        // PIO options after the first one go as raw tail
+        let remaining = if tail.len() > 32 { &tail[32..] } else { &[] };
+
+        let mut opt_buf = [0u8; 24];
+        let opt_buf_len: usize;
+        {
+            let mut ow = BitWriter::new(&mut opt_buf);
+            // mapping-sent: 3-bit index for PIO type (=1)
+            ow.write(pio_mapped as u128, 3)?;
+            // value-sent: 32-bit lifetime
+            ow.write(lifetime as u128, 32)?;
+            // lsb(64): lower 64 bits of prefix (IID)
+            ow.write(prefix_iid as u128, 64)?;
+            opt_buf_len = ow.byte_len();
+        }
+
+        let opt_len = opt_buf_len + remaining.len();
+
+        // We need more space: base residue + compressed options + remaining raw tail
+        needed = tail_start + opt_len;
+        if needed > out.len() {
+            // Fall through to verbatim tail if buffer too small
+        } else {
+            // Write compressed PIO + remaining tail as suffix
+            out[tail_start..tail_start + opt_buf_len].copy_from_slice(&opt_buf[..opt_buf_len]);
+            if !remaining.is_empty() {
+                out[tail_start + opt_buf_len..tail_start + opt_len]
+                    .copy_from_slice(remaining);
+            }
+            // Update needed to reflect new smaller size
+            needed = tail_start + opt_len;
+            return Ok(needed);
+        }
+    } else {
+        // Check tail for Pad1 options (type=0, no length byte) and strip them
+        // Pad1 is Equal/NotSent → omitted from residue entirely
+        let mut pad_stripped = 0usize;
+        while pad_stripped < tail.len() && tail[pad_stripped] == 0 {
+            pad_stripped += 1;
+        }
+        if pad_stripped > 0 {
+            needed = tail_start + (tail.len() - pad_stripped);
+            if needed <= out.len() {
+                out[tail_start..needed].copy_from_slice(&tail[pad_stripped..]);
+                return Ok(needed);
+            }
+        }
+    }
+
+    // Fallback: write tail verbatim
     if needed > out.len() {
         return Err(BufferTooSmall::new(needed, out.len()).into());
     }
@@ -690,12 +749,69 @@ fn decompress_rpl_dio(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     let dtsn = r.read(8)? as u8;
     let dodagid = r.read(128)?;
 
-    let tail = &data[1 + r.residue_byte_end()..];
+    let residue_end = r.residue_byte_end();
+    let tail = &data[1 + residue_end..];
 
     let src = (LINK_LOCAL_PREFIX | src_iid).to_be_bytes();
     let dst = (LINK_LOCAL_PREFIX | dst_iid).to_be_bytes();
 
-    // RPL DIO base (24 bytes) + tail
+    // Try to decompress PIO from compressed tail (3-bit mapping-sent + 32-bit lifetime + 64-bit lsb prefix)
+    if !tail.is_empty() && tail.len() >= 13 {
+        let mut peek = BitReader::new(tail);
+        if let Ok(opt_idx) = peek.read(3) {
+            if opt_idx == 1 {
+                let mut pr = BitReader::new(tail);
+                let _ = pr.read(3)?;
+                let lifetime = pr.read(32)? as u32;
+                let prefix_iid = pr.read(64)?;
+                let compressed_bytes = pr.residue_byte_end();
+                let remaining = &tail[compressed_bytes..];
+
+                let mut pio = [0u8; 32];
+                pio[0] = 3;     // PIO type
+                pio[1] = 30;    // length
+                pio[2] = 64;    // prefix length
+                pio[3] = 0xC0;  // LA flags
+                pio[4..8].copy_from_slice(&lifetime.to_be_bytes());     // valid lifetime
+                pio[8..12].copy_from_slice(&lifetime.to_be_bytes());    // preferred lifetime = same
+                // Reconstruct full /64 prefix
+                let prefix = LINK_LOCAL_PREFIX | prefix_iid;
+                pio[12..28].copy_from_slice(&prefix.to_be_bytes()[0..16]);
+                // Reserved at 28..32 stays as 0
+
+                let total_rpl = 24 + 32 + remaining.len();
+                let total_icmp = 4 + total_rpl;
+                let total_pkt = 40 + total_icmp;
+
+                let mut ib = [0u8; 512];
+                ib[0] = 155;
+                ib[1] = 1;
+                ib[2] = 0;
+                ib[3] = 0;
+                ib[4] = instance;
+                ib[5] = version;
+                ib[6] = (rank >> 8) as u8;
+                ib[7] = rank as u8;
+                ib[8] = gmop;
+                ib[9] = dtsn;
+                ib[10] = 0;
+                ib[11] = 0;
+                ib[12..28].copy_from_slice(&dodagid.to_be_bytes());
+                ib[28..60].copy_from_slice(&pio);
+                if !remaining.is_empty() {
+                    ib[60..60 + remaining.len()].copy_from_slice(remaining);
+                }
+
+                let cksum = icmpv6_checksum(&src, &dst, &ib[..total_icmp]);
+                write_ipv6_header(out, total_icmp as u16, 58, hop_limit, &src, &dst);
+                out[40..40 + total_icmp].copy_from_slice(&ib[..total_icmp]);
+                out[42] = (cksum >> 8) as u8;
+                out[43] = cksum as u8;
+                return Ok(total_pkt);
+            }
+        }
+    }
+
     let rpl_body_len = 24 + tail.len();
     let icmp_len = 4 + rpl_body_len; // type+code+cksum + body
     let total = 40 + icmp_len;

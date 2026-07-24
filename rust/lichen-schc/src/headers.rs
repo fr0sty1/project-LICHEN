@@ -463,15 +463,14 @@ fn build_coap_udp(
 
     // Write IPv6 header
     write_ipv6_header(
-        out,
-        udp_len,
-        NEXT_HEADER_UDP,
-        hop_limit,
-        traffic_class,
-        flow_label,
-        &src,
-        &dst,
-    );
+            out,
+            udp_len,
+            NEXT_HEADER_UDP,
+            hop_limit,
+            (traffic_class, flow_label),
+            &src,
+            &dst,
+        );
 
     // Write UDP header
     out[40..42].copy_from_slice(&src_port.to_be_bytes());
@@ -668,8 +667,7 @@ impl PacketProfile for Icmpv6EchoProfile {
             icmp_len as u16,
             NEXT_HEADER_ICMPV6,
             hop_limit,
-            traffic_class,
-            flow_label,
+            (traffic_class, flow_label),
             &src,
             &dst,
         );
@@ -769,6 +767,22 @@ impl PacketProfile for RplDioProfile {
         let dodagid = u128::from_be_bytes(rpl[8..24].try_into().unwrap());
         parsed.add_field("RPL.dodagid", dodagid);
 
+        // Parse RPL options from tail if present
+        if tail.len() >= 2 {
+            let opt_type = tail[0] as u128;
+            let opt_len = tail[1] as u128;
+            parsed.add_field("RPL.Option.Type", opt_type);
+            parsed.add_field("RPL.Option.Length", opt_len);
+            if opt_type == 3 && opt_len >= 30 && tail.len() >= 32 {
+                parsed.add_field("PIO.Prefix Length", tail[2] as u128);
+                parsed.add_field("PIO.Flags", tail[3] as u128);
+                let lifetime = u32::from_be_bytes([tail[4], tail[5], tail[6], tail[7]]);
+                parsed.add_field("PIO.Lifetime", lifetime as u128);
+                let prefix = u128::from_be_bytes(tail[8..24].try_into().unwrap());
+                parsed.add_field("PIO.Prefix", prefix);
+            }
+        }
+
         Ok(parsed)
     }
 
@@ -802,7 +816,19 @@ impl PacketProfile for RplDioProfile {
         let reserved = get("RPL.reserved").unwrap_or(0) as u8;
         let dodagid = get("RPL.dodagid")?;
 
-        let rpl_body_len = DIO_BASE + tail.len();
+        let opt_type = get("RPL.Option.Type").ok();
+        let _opt_len = get("RPL.Option.Length").ok();
+        let pio_prefix_len = get("PIO.Prefix Length").ok();
+        let pio_flags = get("PIO.Flags").ok();
+        let pio_lifetime = get("PIO.Lifetime").ok();
+        let pio_prefix = get("PIO.Prefix").ok();
+
+        let pio_tail_len: usize = if opt_type.is_some() && opt_type == Some(3) {
+            32
+        } else {
+            tail.len()
+        };
+        let rpl_body_len = DIO_BASE + pio_tail_len;
         let icmp_len = ICMPV6_HEADER + rpl_body_len;
         let total = IPV6_HEADER_LEN + icmp_len;
 
@@ -833,7 +859,19 @@ impl PacketProfile for RplDioProfile {
         icmp_buf[10] = flags;
         icmp_buf[11] = reserved;
         icmp_buf[12..28].copy_from_slice(&dodagid.to_be_bytes());
-        icmp_buf[28..28 + tail.len()].copy_from_slice(tail);
+
+        if pio_tail_len == 32 {
+            icmp_buf[28] = 3;
+            icmp_buf[29] = 30;
+            icmp_buf[30] = pio_prefix_len.unwrap_or(64) as u8;
+            icmp_buf[31] = pio_flags.unwrap_or(0xC0) as u8;
+            let lt = pio_lifetime.unwrap_or(0) as u32;
+            icmp_buf[32..36].copy_from_slice(&lt.to_be_bytes());
+            let pf = pio_prefix.unwrap_or(0);
+            icmp_buf[36..52].copy_from_slice(&pf.to_be_bytes());
+        } else {
+            icmp_buf[28..28 + tail.len()].copy_from_slice(tail);
+        }
 
         let cksum = icmpv6_checksum(&src, &dst, &icmp_buf[..icmp_len]);
 
@@ -842,8 +880,7 @@ impl PacketProfile for RplDioProfile {
             icmp_len as u16,
             NEXT_HEADER_ICMPV6,
             hop_limit,
-            traffic_class,
-            flow_label,
+            (traffic_class, flow_label),
             &src,
             &dst,
         );
@@ -994,8 +1031,7 @@ impl PacketProfile for RplDaoProfile {
             icmp_len as u16,
             NEXT_HEADER_ICMPV6,
             hop_limit,
-            traffic_class,
-            flow_label,
+            (traffic_class, flow_label),
             &src,
             &dst,
         );
