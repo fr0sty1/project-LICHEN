@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-f1zk",
+  "title": "[rereview] project-LICHEN-a4n2.3: tx_queue_destroy not called in lichen_link_cleanup",
+  "description": "lichen_link_cleanup() (link_ctx.c:572-597) destroys ctx-\u003eseq_lock on POSIX (line 594) but never calls tx_queue_destroy(\u0026ctx-\u003etx_queue). The tx_queue has its own pthread_mutex_t on POSIX, initialized by tx_queue_init(). On every link context cleanup (e.g., re-initialization in lichen_l2.c error paths), the queue's mutex is leaked.\n\nFix: add tx_queue_destroy(\u0026ctx-\u003etx_queue) to lichen_link_cleanup(), wrapped in #ifndef __ZEPHYR__ (matching the existing pattern for seq_lock destruction). The queue state (entries, stats) can be cleared via memset just as the existing code does for other struct fields.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T14:18:49.589338984Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T14:18:49.589338984Z"
+}
