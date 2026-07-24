@@ -34,6 +34,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/random/random.h>
 #include <zephyr/drivers/hwinfo.h>
+#include <zephyr/sys/reboot.h>
 
 #include "lichen_util.h"
 
@@ -927,7 +928,16 @@ int lichen_lora_l2_deinit(void)
         LOG_ERR("lora_l2: lora_mutex held during deinit (trylock=%d), "
                 "reinit is UB - consider k_sys_reboot for guaranteed recovery",
                 trylock_ret);
+
+#if defined(CONFIG_LICHEN_LORA_STRICT_RECOVERY)
+        LOG_WRN("lora_l2: CONFIG_LICHEN_LORA_STRICT_RECOVERY enabled, rebooting");
+        k_sys_reboot(K_SYS_REBOOT_COLD);
+        /* k_sys_reboot does not return; if it does, spin forever */
+        while (1) { k_cpu_idle(); }
+#endif
     }
+
+    LOG_WRN("lora_l2: reinitializing lora_mutex (UB if mutex was held by aborted thread)");
     int mutex_ret = k_mutex_init(&lora_mutex);
     if (mutex_ret != 0) {
         /* k_mutex_init() should not fail in kernel mode, but log if it does.

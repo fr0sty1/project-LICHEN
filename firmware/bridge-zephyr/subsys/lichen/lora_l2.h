@@ -167,6 +167,43 @@ int lichen_lora_l2_stop(void);
  * After deinit, lichen_lora_l2_init() must be called before any other
  * operations.
  *
+ * @section abort_recovery Abort Recovery and Mutex Reinitialization
+ *
+ * When stop() forcibly aborts the RX thread (k_thread_abort), the thread
+ * may have held internal mutexes (lora_mutex, tx_buf_mutex, and potentially
+ * lichen_l2's rx_mutex). Reinitializing a mutex while a dead thread still
+ * holds it is UNDEFINED BEHAVIOR per POSIX and Zephyr semantics. Possible
+ * failure modes include:
+ *
+ * - Silent kernel data structure corruption
+ * - Debug-build assertion failures (k_mutex_init on held mutex triggers OOPS)
+ * - Subsequent lock/unlock operations corrupting kernel state
+ * - Lock wait queues left in inconsistent state
+ *
+ * Despite this, deinit() proceeds with mutex reinitialization by default,
+ * because the alternative (refusing to deinit) leaves the module permanently
+ * unusable until the next full system reset. In practice, the mutex is held
+ * only briefly (for callback pointer snapshot), so most abort scenarios
+ * terminate the thread outside the critical section.
+ *
+ * @subsection strict_recovery Strict Recovery Mode
+ *
+ * If CONFIG_LICHEN_LORA_STRICT_RECOVERY=y, deinit() calls k_sys_reboot()
+ * instead of performing the UB mutex reinit. This is the only guaranteed-safe
+ * recovery path and is recommended for production deployments where silent
+ * corruption is unacceptable. The cost is a full system reset instead of
+ * a lightweight module restart.
+ *
+ * @subsection limitations Implementation Limitations
+ *
+ * - The trylock-before-reinit check is best-effort: a mutex held by a dead
+ *   thread will fail trylock, but the dead thread is not guaranteed to have
+ *   left the mutex in any particular state.
+ * - Even when trylock succeeds (mutex was free at check time), a concurrent
+ *   lock in the instant between unlock and reinit is theoretically possible
+ *   on SMP systems. In practice, deinit holds the DEINITING state exclusively.
+ * - The lichen_l2 rx_mutex (in lichen_l2.c) has the same UB caveats.
+ *
  * @return 0 on success
  * @return -EBUSY if module is still running (call stop() first)
  */
