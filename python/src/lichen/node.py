@@ -582,7 +582,11 @@ class Node:
 
         async def _delayed_send() -> bool:
             await asyncio.sleep(delay_ms / 1000)
-            return await self.link.send(wrap_routing_payload(data))
+            try:
+                return await self.link.send(wrap_routing_payload(data))
+            except Exception:
+                logger.exception("scheduled_send: link.send failed")
+                raise
 
         return asyncio.create_task(
             _delayed_send(),
