@@ -73,7 +73,7 @@ tdma-beacon = {
 }
 ```
 
-Slot ID = fnv1a32(EUI64 XOR epoch) % num_slots (lichen_hash_32, basis 0x811c9dc5; see lichen-core/src/lib.rs, appendix-design-rationale.md). All impls MUST match `test/vectors/ccp_tdma.json`, `ccp16.json`, `link_frame.json`, `l2_payload.json` exactly. Integrates with `lichen_rpl_dodag_init()`, `lichen_link_set_slot()`, `tdma_tx_allowed()`.
+Slot ID = fnv1a32(EUI64 XOR epoch) % num_slots (lichen_hash_32, basis 0x811c9dc5; see lichen-core/src/lib.rs:28, appendix-design-rationale.md). All impls MUST match `test/vectors/ccp_tdma.json`, `ccp16.json`, `link_frame.json`, `l2_payload.json` exactly. Integrates with `lichen_rpl_dodag_init()`, `lichen_link_set_slot()`, `tdma_tx_allowed()`.
 
 For SFN (superframe number, a u32 epoch counter) wrap-around, all nodes MUST compute using unsigned 32-bit arithmetic (modulo 0x100000000). The time-provider (see `docs/firmware-time-provider.md`) is the canonical source: SFN/epoch updates MUST pass epoch_floor validation, set `wall_clock_valid`, and respect stratum before adoption. RPL version changes or desync MUST reset SFN relative to the new root per the FSM in Section 2a.5.
 
@@ -89,7 +89,7 @@ delta = current_sfn - last_sfn;  /* = 3 in unsigned 32-bit arithmetic */
 
 This MUST be treated as advancement of 3 slots. Signed arithmetic would yield a large negative value, breaking desync detection and slot scheduling. Test vectors in ccp16.json and ccp_tdma.json MUST cover this and similar boundaries.
 
-A node MUST only transmit in its assigned slot. Slot duration = max_airtime(current_SF) + 100 ms guard. The link layer MUST enforce via `lichen_link_set_slot()` and `tdma_tx_allowed()` (see lichen/subsys/lichen/link implementation). This integrates with TDMA and SCHC compressed control traffic on CH0.
+A node MUST only transmit in its assigned slot. Slot duration = max_airtime(current_SF) + 100 ms guard. The link layer MUST enforce via `lichen_link_set_slot()` and `tdma_tx_allowed()` (see lichen/subsys/lichen/link/link_ctx.c:614,627). This integrates with TDMA and SCHC compressed control traffic on CH0.
 
 ## CCP-4. Regional Channel Plans
 
@@ -171,7 +171,7 @@ EMA_Update(Avg, Sample) = Avg + ((Sample - Avg) right-shift 2). Update per-neigh
 - `spec/drafts/draft-lichen-schc-lora-00.md`
 - `spec/appendix-design-rationale.md`
 - `spec/appendix-schc.md` (Rule 0x08=TDMA_BEACON)
-- `lichen/subsys/lichen/link*` (for `lichen_link_set_slot()`, `tdma_tx_allowed()`)
+- `lichen/subsys/lichen/link/link_ctx.c:614,627` (for `lichen_link_set_slot()`, `tdma_tx_allowed()`)
 - `docs/firmware-time-provider.md`
 - `spec/drafts/draft-lichen-link-01.md` (L2 0x15 join frame)
 
