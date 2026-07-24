@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-w1pp",
+  "title": "[review] project-LICHEN-6mij.2.4: coap_oscore_auth_mutating returns stack pointer in plain buffer via result-\u003epayload",
+  "description": "In coap_oscore.c:249, a stack-local uint8_t plain[CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX] is declared. At line 283, result-\u003epayload is set to this stack buffer, which goes out of scope when coap_oscore_auth_mutating returns. The callers in coap_dtn.c and coap_server.c then use auth.payload (a dangling stack pointer) after the function returns. This is use-after-return UB. The buffer must be static, caller-owned, or heap-allocated. For example, the response ciphertext at line 26 uses a static buffer. Same pattern needed here.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:57:21.825968559Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:57:21.825968559Z"
+}
