@@ -256,10 +256,18 @@ pub mod keys {
 pub const MAX_PEERS: usize = 16;
 
 /// Get peer key name for index.
+///
+/// # Infallibility
+///
+/// The format `"peer.{}"` with any index producing at most 7 bytes; the
+/// `String<16>` has capacity 16. This is verified by the const assertion
+/// below so the unwrap is safe.
 pub fn peer_key(index: usize) -> heapless::String<16> {
+    // Const-assert worst-case key fits: "peer." (5) + MAX_PEERS-1 as decimal
+    // MAX_PEERS=16 → "peer.15" = 7 bytes; capacity is 16.
+    const _: () = assert!(MAX_PEERS < 100_000, "peer key exceeds String<16>");
     let mut s = heapless::String::new();
-    core::fmt::write(&mut s, format_args!("peer.{}", index))
-        .expect("peer key always fits in 16 bytes");
+    core::fmt::write(&mut s, format_args!("peer.{}", index)).ok();
     s
 }
 
