@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-9elh",
+  "title": "[review] project-LICHEN-2auf.44.11.1.1: duplicate #[test] attribute at vectors.rs:408-409",
+  "description": "Line 408 has `#[test]` followed immediately by another `#[test]` on line 409 before `fn test_edhoc_interop_vectors()`. This triggers `warning: duplicated attribute` and is likely the result of a merge artifact or incomplete edit.\n\nFix: remove one of the duplicate `#[test]` attributes.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:49:28.075148366Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:49:28.075148366Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9elh",
+      "depends_on_id": "project-LICHEN-2auf.44.11.1.1",
+      "type": "discovered-from",
+      "created_at": "2026-07-24T16:49:28.223567391Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
