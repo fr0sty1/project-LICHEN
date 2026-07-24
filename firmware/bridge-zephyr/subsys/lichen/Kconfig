@@ -83,6 +83,7 @@ config LICHEN_LORA_L2_RX_PRIORITY
 	int "LICHEN LoRa L2 RX thread priority"
 	depends on LICHEN_LORA_L2
 	default 7
+	range 0 14
 	help
 	  Priority for the LoRa L2 RX thread. Lower numbers = higher priority.
 
