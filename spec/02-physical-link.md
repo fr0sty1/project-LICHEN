@@ -33,6 +33,10 @@ LoRa Chirp Spread Spectrum (CSS) as implemented by Semtech SX126x and SX127x.
 | CH0 (control) | Routing, control | Announces, DIO, DIS, DAO, beacons (TDMA) | All nodes MUST listen when idle |
 | CH1-N (data) | Application | App traffic only | Per-packet selection |
 
+**Primitives**
+
+- **N_CHANNELS**: Total number of channels in the regional channel plan (e.g., 8 for EU868). Defined by the active regional configuration; not a global constant.
+
 **Coordination Methods** (see CCP-9 in 02a-coordinated-capacity.md)
 
 - Hash-based (stateless): `data_ch = 1 + (hash(src_iid ^ dst_iid) mod (N_CHANNELS - 1))`
