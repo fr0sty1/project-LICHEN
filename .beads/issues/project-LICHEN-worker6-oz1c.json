@@ -2,12 +2,14 @@
   "id": "project-LICHEN-worker6-oz1c",
   "title": "[review] project-LICHEN-worker6-p0rc: _compute_th missing MAC_stub/EAD_stub prefix per RFC 9528 §3.4",
   "description": "Per RFC 9528 §3.4, the transcript hash TH(X) is defined as H(MAC_stub | EAD_stub | X) where MAC_stub = 0x07 and EAD_stub = 0x40. The _compute_th function in edhoc.py line 127 does  without prepending these two bytes, so all transcript hashes (TH_2, TH_3, TH_4) are non-conformant.\n\nThis affects every call to _compute_th — both initiator and responder sides, all message processing stages.\n\nFile: python/src/lichen/crypto/edhoc.py:125-127",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:42:54.916622631Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T20:21:02.973083272Z",
-  "started_at": "2026-07-24T19:43:05.899948863Z"
+  "updated_at": "2026-07-24T20:27:25.834413699Z",
+  "started_at": "2026-07-24T19:43:05.899948863Z",
+  "closed_at": "2026-07-24T20:27:25.834413699Z",
+  "close_reason": "Superseded by project-LICHEN-worker6-xj1q"
 }
