@@ -1154,12 +1154,9 @@ int lichen_lora_l2_set_rx_callback(lichen_lora_rx_cb_t cb, void *user_data)
 
     /*
      * Use mutex to ensure atomic update of callback + user_data pair.
-     * The RX thread reads both fields, so they must be updated together
-     * to avoid invoking a callback with mismatched user_data.
-     *
-     * Order matters: user_data MUST be set before callback. If the callback
-     * pointer is read non-NULL, user_data must already be valid. This order
-     * is safe even for lock-free reads (though we use mutex here).
+     * The RX thread reads both fields under the same mutex (lines 526-529),
+     * so the pair is always consistent. The mutex provides atomicity;
+     * the write order of the two fields is arbitrary.
      *
      * Ownership: caller retains ownership of user_data. This module stores
      * the pointer and passes it back on invocation, but never frees it.
