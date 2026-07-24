@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-d5gw",
+  "title": "[review] project-LICHEN-worker6-4tu6: dead struct lichen_tdma_slot after tdma_init signature change",
+  "description": "The commit 4680cdf changed lichen_tdma_init from taking struct lichen_tdma_slot to struct lichen_tdma_ctx. The old struct at link.h:77 is now orphaned with zero references in any .c file. Remove per NO DEAD CODE rule. Also note duplicate TDMA constants (SLOT_DURATION_MS/LICHEN_TDMA_SLOT_MS=250ms, GUARD_TIME_MS/LICHEN_TDMA_GUARD_MS=100ms) pre-existing at lines 58/76 and 59/75.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:41:44.855340325Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:41:44.855340325Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-d5gw",
+      "depends_on_id": "project-LICHEN-worker6-4tu6",
+      "type": "discovered-from",
+      "created_at": "2026-07-24T19:41:45.022152442Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
