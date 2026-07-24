@@ -265,6 +265,9 @@ BUILD_ASSERT(LICHEN_HWID_MAX_LEN >= LICHEN_EXPECTED_MAX_HWID_LEN,
 
 static int generate_eui64(uint8_t *eui64)
 {
+    if (eui64 == NULL) {
+        return -EINVAL;
+    }
     int ret = 0;
     uint8_t hwid[LICHEN_HWID_MAX_LEN];
     ssize_t hwid_len;
