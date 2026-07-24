@@ -20,11 +20,12 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 3. 2a.2. TDMA Beacon Format, Slots, Hash Selection, and Join (SCHC 0x08, CDDL, byte layout)
 4. 2a.3. Channel Agility (select_channel, now())
 5. 2a.4. Time Synchronization
-6. 2a.5. Desync Recovery State Machine
-7. 2a.6. Regional Channel Plans and CH0 Rules
-8. 2a.7. Adaptive Spreading Factor Selection (adaptive_sf_select)
-9. Implementation Status
-10. References
+6. 2a.5. Multi-Root Beacon Conflict Resolution
+7. 2a.6. Desync Recovery State Machine
+8. 2a.7. Regional Channel Plans and CH0 Rules
+9. 2a.8. Adaptive Spreading Factor Selection (adaptive_sf_select)
+10. Implementation Status
+11. References
 
 ## Overview
 
@@ -75,7 +76,7 @@ tdma-beacon = {
 
 Slot ID = fnv1a32(EUI64 XOR epoch) % num_slots (lichen_hash_32, basis 0x811c9dc5; see lichen-core/src/lib.rs, appendix-design-rationale.md). All impls MUST match `test/vectors/ccp_tdma.json`, `ccp16.json`, `link_frame.json`, `l2_payload.json`, `sfn-delta.json` exactly. Integrates with `lichen_rpl_dodag_init()`, `lichen_link_set_slot()`, `tdma_tx_allowed()`.
 
-For SFN (superframe number, a u32 epoch counter) wrap-around, all nodes MUST compute using unsigned 32-bit arithmetic (modulo 0x100000000). The time-provider (see `docs/firmware-time-provider.md`) is the canonical source: SFN/epoch updates MUST pass epoch_floor validation, set `wall_clock_valid`, and respect stratum before adoption. RPL version changes or desync MUST reset SFN relative to the new root per the FSM in Section 2a.5.
+For SFN (superframe number, a u32 epoch counter) wrap-around, all nodes MUST compute using unsigned 32-bit arithmetic (modulo 0x100000000). The time-provider (see `docs/firmware-time-provider.md`) is the canonical source: SFN/epoch updates MUST pass epoch_floor validation, set `wall_clock_valid`, and respect stratum before adoption. RPL version changes or desync MUST reset SFN relative to the new root per the FSM in Section 2a.6.
 
 Delta = (current_sfn - last_sfn) using uint32_t subtraction ensures correct wrap behavior. 
 
@@ -90,6 +91,54 @@ delta = current_sfn - last_sfn;  /* = 3 in unsigned 32-bit arithmetic */
 This MUST be treated as advancement of 3 slots. Signed arithmetic would yield a large negative value, breaking desync detection and slot scheduling. Test vectors in ccp16.json, ccp_tdma.json, and sfn-delta.json MUST cover this and similar boundaries.
 
 A node MUST only transmit in its assigned slot. Slot duration = max_airtime(current_SF) + 100 ms guard. The link layer MUST enforce via `lichen_link_set_slot()` and `tdma_tx_allowed()` (see lichen/subsys/lichen/link implementation). This integrates with TDMA and SCHC compressed control traffic on CH0.
+
+## 2a.5. Multi-Root Beacon Conflict Resolution
+
+When a node receives TDMA beacons from multiple candidate roots on CH0, it MUST apply the following selection criteria in order to resolve conflicts deterministically. All overlap comparisons (RSSI, SNR) MUST use the most recent valid measurement from each candidate.
+
+### 2a.5.1. Signature Verification
+
+Every TDMA beacon received on CH0 for a candidate root MUST carry a valid Schnorr48 Ed25519 signature (see draft-lichen-schnorr-00) over the beacon payload. The node MUST verify the signature against the root's public key before evaluating any selection criteria.
+
+If signature verification fails:
+- The received beacon MUST be discarded immediately.
+- The candidate root MUST NOT cause any state transition (no SFN adjustment, no slot reassignment, no timer reset, and no DODAG version update).
+- The failure MUST NOT alter the node's current sync state or time-provider binding.
+
+The node SHOULD log the signature failure for diagnostic purposes but MUST NOT retain the untrusted root in its candidate list.
+
+### 2a.5.2. Root Selection Criteria
+
+When signatures are valid, nodes MUST select a single root using the following ordered criteria:
+
+1. **RPL DODAG Preference** (MUST): The node MUST prefer the root advertising the lowest RPL DODAG Preference field value (lower = less preferred, per RFC 6550). If a root's DIO includes an explicit preference metric, it overrides any default.
+
+2. **Stratum** (MUST): The node MUST prefer the root with the lowest time-provider stratum value (see docs/firmware-time-provider.md). Roots sourcing time from GNSS or a trusted upstream NTP reference (stratum 0-1) MUST take precedence over roots with higher stratum values.
+
+3. **RSSI/SNR** (SHOULD): Between roots of equal DODAG Preference and stratum, the node SHOULD select the root with the highest combined RSSI and SNR (RSSI_EMA + SNR_EMA, with RSSI weighted 2:1 over SNR per EMA update).
+
+4. **EUI-64 Tiebreak** (MUST): If all above criteria are equal, the node MUST select the root with the numerically smaller link-local IID (last 8 bytes of the EUI-64, compared as unsigned big-endian integers).
+
+### 2a.5.3. Overlap Resolution
+
+Beacons from distinct roots that arrive within the same beacon window (setup_window + occupied_time + guard) constitute an overlap. When multiple valid beacons overlap in time:
+
+- If any beacon signature fails verification, the receiving node MUST discard that beacon and proceed as if it were not received.
+- The node MUST retain only the one candidate selected per Section 2a.5.2.
+- If the selected root differs from the node's current root, the node MUST NOT transition immediately; rather, it MUST defer the transition for a hold-off period of 3 superframes. If the new root remains preferred across the entire hold-off, the node MUST initiate desync and rejoin per Section 2a.6.
+- Discarded beacons from non-selected roots MUST NOT accumulate state or influence scheduling decisions.
+
+### 2a.5.4. RPL Version Change During Multi-Root Conflict
+
+When a node's current root increments the RPL DODAG Version Number (as signaled in DIO messages per RFC 6550) while other root candidates remain present:
+
+- The node MUST reset its superframe number (SFN) relative to the current root's new epoch.
+- If the version increment coincides with a multi-root conflict (i.e., another root becomes preferred per Section 2a.5.2), the node MUST first complete the version-handling steps below before evaluating the conflict:
+  1. Accept the new DODAG Version from the current root.
+  2. Reset any desync state that depended on the prior version.
+  3. Re-verify the current root's beacon signature upon the first beacon with the new version.
+  4. If signature verification fails for the new version, discard the current root and proceed to evaluate remaining candidates per Section 2a.5.2.
+- During the hold-off transition described in Section 2a.5.3, a version change from the selected root MUST reset the hold-off counter to zero and restart the 3-superframe hold-off period. If the selected root fails signature verification on the new version, the node MUST immediately evaluate remaining candidates.
 
 ## CCP-4. Regional Channel Plans
 

@@ -264,8 +264,8 @@ impl Ack {
     }
 
     pub fn from_bytes_for(data: &[u8], assigned: Option<u64>) -> Result<Self, FragmentError> {
-        if data.len() < 2 {
-            return Err(TooShort::new(2, data.len()).into());
+        if data.len() < 3 {
+            return Err(TooShort::new(3, data.len()).into());
         }
         let window = (data[1] >> FRAGMENT_N) & 1;
         let n = data[2] as usize;
@@ -781,7 +781,7 @@ impl<'a> FragmentReceiver<'a> {
             && fragment.window <= 1
             && fragment.fcn <= ALL_1_FCN
             && (fragment.is_all_1() || fragment.window == 0 || fragment.fcn != 0)
-            && (fragment.is_all_1() && (1..=TILE_SIZE).contains(&fragment.payload.len())
+            && (fragment.is_all_1() && (0..=TILE_SIZE).contains(&fragment.payload.len())
                 || !fragment.is_all_1()
                     && fragment.payload.len() == TILE_SIZE
                     && fragment.mic == [0; MIC_LENGTH]);

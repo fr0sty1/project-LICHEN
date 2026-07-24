@@ -1,6 +1,7 @@
-# ninja log v7
-1	51	1783902455280153504	CMakeFiles/schnorr48_test.dir/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/crypto/monocypher-ed25519.c.o	a730a0be4868c2f
-1	56	1783902455279863804	CMakeFiles/schnorr48_test.dir/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/link/schnorr48.c.o	be1926669a598c2d
-1	58	1783902455279628519	CMakeFiles/schnorr48_test.dir/main.c.o	7c7189cf6968ab1a
-1	96	1783902455280013508	CMakeFiles/schnorr48_test.dir/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/crypto/monocypher.c.o	f661707c58391bd5
-96	141	1783902455375093943	schnorr48_test	20313d91957bdd1b
+# ninja log v5
+0	24	1784906973540650551	CMakeFiles/schnorr48_test.dir/mnt/lichen-zephyr/work/project-LICHEN-worker6/lichen/subsys/lichen/link/frame.c.o	4f087be748b74576
+0	27	1784906973550650270	CMakeFiles/schnorr48_test.dir/mnt/lichen-zephyr/work/project-LICHEN-worker6/lichen/subsys/lichen/link/schnorr48.c.o	7f96d9d004c4c9b7
+1	35	1784906973560649990	CMakeFiles/schnorr48_test.dir/mnt/lichen-zephyr/work/project-LICHEN-worker6/lichen/subsys/lichen/crypto/monocypher-ed25519.c.o	dfbda1e8d5e2521a
+0	42	1784906973560649990	CMakeFiles/schnorr48_test.dir/main.c.o	82476f20d8218345
+0	193	1784906973710645787	CMakeFiles/schnorr48_test.dir/mnt/lichen-zephyr/work/project-LICHEN-worker6/lichen/subsys/lichen/crypto/monocypher.c.o	425e606e22c6b4c1
+193	208	1784906973730645227	schnorr48_test	f1200d4494985f7a
