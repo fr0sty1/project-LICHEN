@@ -2326,6 +2326,13 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	k_mutex_lock(&rx_mutex, K_FOREVER);
 
 #if HAVE_LICHEN_LINK
+	/* Guard against lora_l2 ABORTED setting rx_mutex for reinit mid-operation. */
+	if (lichen_lora_l2_needs_reinit()) {
+		LOG_ERR("lichen_l2: RX rejected (reinit required after abort)");
+		k_mutex_unlock(&rx_mutex);
+		return;
+	}
+
 	/*
 	 * Guard against access before initialization.
 	 * This shouldn't happen in normal operation, but could if a packet
