@@ -101,7 +101,7 @@ Resource: `/sensors/humidity`
 ```cbor
 [
   {"bn": "urn:dev:mac:0011223344556677:", "bt": 1716742800},
-  {"n": "rh", "u": "%RH", "v": 65.2}
+  {"n": "hum", "u": "%RH", "v": 65.2}
 ]
 ```
 
@@ -112,7 +112,7 @@ Resource: `/sensors/pressure`
 ```cbor
 [
   {"bn": "urn:dev:mac:0011223344556677:", "bt": 1716742800},
-  {"n": "press", "u": "Pa", "v": 101325}
+  {"n": "pressure", "u": "Pa", "v": 101325}
 ]
 ```
 
@@ -184,7 +184,7 @@ Resource: `/sensors`
   {"n": "lat", "u": "lat", "v": 37.774929},
   {"n": "lon", "u": "lon", "v": -122.419416},
   {"n": "temp", "u": "Cel", "v": 23.5},
-   {"n": "rh", "u": "%RH", "v": 65.2},
+   {"n": "hum", "u": "%RH", "v": 65.2},
    {"n": "batt/pct", "u": "%", "v": 87}
 ]
 

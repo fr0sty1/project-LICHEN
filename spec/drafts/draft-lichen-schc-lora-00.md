@@ -304,7 +304,7 @@ See appendix-schc.md:A.3, RFC 8824, and the CoAP fields in Rules 0/1/5/6 above. 
 | Final tile | 1-187 bytes in All-1 | One fixed tile-size policy |
 | RCS | CRC-32/ISO-HDLC, 32 bits | RFC 8724 integrity check |
 | Retransmission timer | 10 seconds | LoRa latency tolerance |
-| MAX_ACK_REQUESTS | 4 | Initial All-1 plus at most 3 retries |
+| MAX_ACK_REQUESTS | 3 | Initial All-1 plus at most 2 retries |
 | Inactivity timer | 60 seconds | Clean up stale state |
 
 Rule ID 0x78 applies to canonical endpoint A-to-B data and Rule ID 0x79 applies
