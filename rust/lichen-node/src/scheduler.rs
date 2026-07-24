@@ -199,6 +199,23 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
         self.config.rx_channel
     }
 
+    /// Set the RX channel to announce for rendezvous (CCP-9).
+    ///
+    /// Why exposed: CCP channel-selection logic (density-aware, hash-based,
+    /// or gateway-assigned) and LCI updates this at runtime. The next
+    /// announce transmission will advertise the new channel.
+    ///
+    /// # Errors
+    ///
+    /// Returns `SchedulerError::InvalidChannel` if channel >= 8.
+    pub fn set_channel(&mut self, channel: u8) -> Result<(), SchedulerError> {
+        if channel >= 8 {
+            return Err(SchedulerError::InvalidChannel);
+        }
+        self.config.rx_channel = channel;
+        Ok(())
+    }
+
     /// Whether the scheduler is currently running.
     pub fn is_running(&self) -> bool {
         self.state.running.load(Ordering::SeqCst)
