@@ -1427,10 +1427,10 @@ class EdhocResource(resource.Resource):
             return None
 
     def _peer_session(
-        self, peer_host: str
+        self, peer_host: str, c_i: bytes | None = None
     ) -> tuple[tuple[str, bytes], dict[str, Any]] | None:
         for key, session in self._sessions.items():
-            if key[0] == peer_host:
+            if key[0] == peer_host and (c_i is None or key[1] == c_i):
                 return key, session
         return None
 
@@ -1462,30 +1462,39 @@ class EdhocResource(resource.Resource):
 
         payload = request.payload
         self._expire_sessions()
-        active = self._peer_session(peer_host)
 
-        active_session = None
-        for (host, _), session in reversed(list(self._sessions.items())):
-            if host == peer_host:
-                active_session = session
-                break
+        c_i = self._message_1_connection_id(payload)
 
         try:
-            if active_session is None:
+            if c_i is not None:
                 # This is Message 1 - start new session
+                active = self._peer_session(peer_host, c_i)
+                if active is not None:
+                    # Duplicate Message 1 - return cached Message 2
+                    active_key, active_session = active
+                    if active_session.get("msg2") is not None:
+                        return self._edhoc_response(active_session["msg2"])
                 return await self._handle_message_1(peer_host, payload)
             else:
-                # This is Message 3 - complete handshake
+                # This is Message 3 - find matching session by host
+                active = self._peer_session(peer_host)
+                if active is None:
+                    return await self._handle_message_1(peer_host, payload)
+                active_key, active_session = active
                 return await self._handle_message_3(peer_host, payload, active_session)
         except _EdhocTransientError:
             return Message(code=SERVICE_UNAVAILABLE)
         except ValueError:
+            active = self._peer_session(peer_host)
             if active is not None:
-                self._remove_session(active[0], active[1], abort=True)
+                active_key, active_session = active
+                self._remove_session(active_key, active_session, abort=True)
             return Message(code=BAD_REQUEST)
         except Exception:
+            active = self._peer_session(peer_host)
             if active is not None:
-                self._remove_session(active[0], active[1], abort=True)
+                active_key, active_session = active
+                self._remove_session(active_key, active_session, abort=True)
             return Message(code=INTERNAL_SERVER_ERROR)
 
     async def _handle_message_1(self, peer_host: str, msg1: bytes) -> Message:
@@ -1525,13 +1534,13 @@ class EdhocResource(resource.Resource):
         if any(key[0] == peer_host for key in self._completing):
             return Message(code=SERVICE_UNAVAILABLE)
 
-        self._cleanup_session(peer_host)
         responder = EdhocResponder.create(self._identity)
         msg2 = responder.process_message_1(msg1, peer_pubkey)
         c_i = responder._c_i
         deadline = self._monotonic() + self._session_lifetime
         session_key = (peer_host, c_i)
         session = {
+            "key": session_key,
             "responder": responder,
             "peer_pubkey": peer_pubkey,
             "expected_generation": expected_generation,
