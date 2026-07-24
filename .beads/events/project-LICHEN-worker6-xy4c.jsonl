@@ -1,1 +1,2 @@
 {"id":"019f9566-e0a6-7535-ab10-00c5e99e2082","issue_id":"project-LICHEN-worker6-xy4c","event_type":"created","actor":"AI Agent","old_value":"","new_value":"","created_at":"2026-07-24T18:32:55.206342469Z"}
+{"id":"019f9587-0313-7199-b006-291810a177ff","issue_id":"project-LICHEN-worker6-xy4c","event_type":"closed","actor":"AI Agent","old_value":"","new_value":"Fixed: fragments_in_window_vec now uses inline iterator filter","created_at":"2026-07-24T19:08:01.171105499Z"}
