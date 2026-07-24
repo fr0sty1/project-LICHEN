@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-dgat",
+  "title": "[review] project-LICHEN-worker10: NotAdmitted variants are dead code — never constructed",
+  "description": "## Summary\n\nCommit 1ad4adcc added `NotAdmitted` variants to three locations:\n1. `DaoProcessError::NotAdmitted` in `rust/lichen-rpl/src/routing.rs:822`\n2. `DaoHandlingOutcome::NotAdmitted` in `rust/lichen-node/src/node.rs:86`\n3. Match arm in `handle_dao()` at `rust/lichen-node/src/node.rs:378`\n\n## Finding\n\n`DaoProcessError::NotAdmitted` is **never constructed** anywhere — zero instances across all 22 `DaoProcessError::\\*` construction sites in `lichen-rpl`. The match arm at `node.rs:378` is unreachable at runtime. The admission check is already performed correctly at a higher layer via `RplReceiveOutcome::DaoOriginNotAdmitted` in `rpl_stack.rs:1333`, which gates before `handle_dao()` is called.\n\n## Impact\n\n- `DaoHandlingOutcome::NotAdmitted` is a **public API variant** that will never be returned — misleading to callers who might match on it\n- The `DaoProcessError::NotAdmitted` variant suggests admission checking happens inside the DAO processing path, but it does not\n- Dead code increases maintenance burden and confuses future readers\n\n## Recommended Fix\n\nEither:\n- **A.** Remove `NotAdmitted` from all three locations (since admission is handled at a higher layer via `RplReceiveOutcome::DaoOriginNotAdmitted`), or\n- **B.** Wire the admission check into `process_signature_verified_inner` in `lichen-rpl/src/routing.rs` so the variant can actually be produced, and remove the higher-level admission gate in `rpl_stack.rs` to avoid duplicate checks",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:29:26.566070256Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:29:26.566070256Z"
+}

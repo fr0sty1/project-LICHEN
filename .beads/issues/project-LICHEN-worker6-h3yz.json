@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-h3yz",
+  "title": "[review] lora_ipv6_mesh-mkk4: SosResource discarded in bind_coap_udp, no app-layer control",
+  "description": "In python/src/lichen/coap/udp_server.py, the change creates SosResource() inline and passes it to build_site(), but the reference is never stored or returned. This means no application-layer code can:\n1. Call sos.retrigger() to pulse the periodic beacon every 30s (required per SosResource docstring)\n2. Call sos.activate() or sos.cancel() programmatically (e.g., from a hardware button)\n\nCoAP clients can still PUT/DELETE/GET/Observe over the wire, but host-side programmatic control is impossible. The test file test_sos_resource.py correctly holds the reference, but bind_coap_udp does not.\n\nFix: either return the SosResource alongside the aiocoap.Context, accept it as an optional parameter, or provide a way for callers to access it.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:04:37.542514404Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:04:37.542514404Z"
+}

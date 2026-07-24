@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-6nmv",
+  "title": "[review] project-LICHEN-2auf.44.11.1.1: EdhocResponder has duplicate constructor signatures (new and new_with_rng)",
+  "description": "`EdhocResponder` has two public constructors with identical signatures:\n```rust\npub fn new\u003cR: RngCore + CryptoRng\u003e(seed: [u8; 32], c_r: u8, rng: \u0026mut R) -\u003e Self\npub fn new_with_rng\u003cR: RngCore + CryptoRng\u003e(seed: [u8; 32], c_r: u8, rng: \u0026mut R) -\u003e Result\u003cSelf, OscoreError\u003e\n```\n\nBoth take `(seed, c_r, rng)` but `new` uses `StaticSecret::random_from_rng(rng)` while `new_with_rng` derives the ephemeral key from seed via `rng.try_fill_bytes`. Having two constructors with identical parameter lists but different return types and key derivation strategies is confusing and an API maintenance hazard. Callers cannot distinguish them by type signature alone.\n\nFix: eliminate one constructor (likely `new_with_rng`) or differentiate their signatures (e.g., make `new` the simple convenience that wraps `new_with_rng` and returns `Result`, matching the initiator pattern).",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:49:32.111074122Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:49:32.111074122Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-6nmv",
+      "depends_on_id": "project-LICHEN-2auf.44.11.1.1",
+      "type": "discovered-from",
+      "created_at": "2026-07-24T16:49:32.258555242Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}

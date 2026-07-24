@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-9att",
+  "title": "[review] project-LICHEN-2auf.44.7.1: Unbounded HashMap growth in AnnounceState last_relay_map",
+  "description": "## Problem\n\n`AnnounceState::last_relay_map` (`HashMap\u003c[u8; 8], u16\u003e`) grows without bound. Every new originator IID seen causes an insertion with no eviction. There is no time-based expiration, no capacity limit, and no pruning.\n\nIn a production mesh with hundreds of nodes, each sending periodic announcements, the map will grow to the number of distinct originators seen over the lifetime of the process.\n\n## Risk\n\n- **DoS vector**: An attacker flooding unique forged IIDs can exhaust memory\n- **Stale suppression**: A node that goes offline and restarts with a wrapped sequence may be permanently suppressed because its stale entry never expires\n- **Silent resource leak**: On memory-constrained devices (replaying with the std-simulator), this causes OOM without obvious cause\n\n## Evidence\n\nThe `should_relay` method inserts with no bound check:\n```rust\nself.last_relay_map.insert(*originator_iid, seq_num);\n```\n\nNo eviction path exists in `AnnounceState`. The `Default` impl provides an empty map, and the only mutation path is `should_relay` which only inserts.\n\n## Fix\n\nAdd an entry cap (e.g. 256 originators) with LRU eviction, or add time-based expiration requiring a clock parameter. For no_std compatibility (if this moves out of std-gated code later), a fixed-size array or `heapless::LinearMap` would be preferable.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:52:52.484743513Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:52:52.484743513Z"
+}

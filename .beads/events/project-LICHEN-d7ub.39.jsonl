@@ -1,0 +1,1 @@
+{"id":"019f92a1-4029-75d7-8de6-d732bd7ee026","issue_id":"project-LICHEN-d7ub.39","event_type":"closed","actor":"AI Agent","old_value":"","new_value":"No fix needed: hash_input uninitialized bytes are never read by lichen_sha256(). Only EUI64_DOMAIN_PREFIX_LEN + hwid_len bytes are hashed, which are fully initialized.","created_at":"2026-07-24T05:37:49.097383735Z"}

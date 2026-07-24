@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-63hm",
+  "title": "[review] project-LICHEN-worker6-0s59: Response replay protection removed from OSCORE begin_unprotect_response",
+  "description": "## Summary\nCommit ebeed300 removes the recipient replay window check (`is_replay`) and update (`update_replay_window`) from `begin_unprotect_response` in `rust/lichen-oscore/src/lib.rs`, allowing replay attacks against OSCORE responses.\n\n## Details\nIn `begin_unprotect_response` (lines ~1219-1222), the old code derived `response_seq` from the response's own PIV, checked `self.is_replay(seq)` for replay, and after successful decryption called `self.update_replay_window(seq)`. This was the server-side sender sequence number replay protection required by RFC 8613. The new code only validates the PIV decodes to a valid sequence number but performs no replay check.\n\nThe remaining `is_received_response_reuse(request_seq)` check at line 1209 only prevents the same response from being accepted twice for the same request PIV. An attacker can replay an old response (old server sender sequence number) against a new request with a different PIV and the old response will be accepted.\n\nAdditionally, `mark_response_used` at line 1305 is now dead code — never called anywhere.\n\n## Impact\nOn-path attacker can capture a valid OSCORE response and replay it later for a different request, bypassing replay protection. AES-CCM decryption succeeds because the response was validly encrypted.\n\n## Severity\nP1 — security vulnerability in cryptographic protocol implementation. The `parse_inner_body` replacement of `find_payload_marker` in the same commit is a correct improvement and should be kept.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:57:35.986277206Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:57:35.986277206Z"
+}

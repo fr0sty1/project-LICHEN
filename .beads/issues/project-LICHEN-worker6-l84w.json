@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-l84w",
+  "title": "[review] lora_ipv6_mesh-mkk4: SCHC OSCORE vectors removed but implementations remain",
+  "description": "test/vectors/schc_compression.json had OSCORE vectors (rules 5/6, oscore_linklocal + oscore_global) removed. But implementations still exist in: python/src/lichen/schc/headers.py (OscoreUdpLinkLocalProfile rule 5, OscoreUdpGlobalProfile rule 6), python/tests/schc/test_headers_rules.py (test_oscore_linklocal_rule5_round_trip, test_oscore_global_rule6_round_trip, test_oscore_preferred_over_plain_coap), and lichen/tests/schc/main.c (test_oscore_linklocal, test_oscore_global with inline hex matching the removed JSON vectors byte-for-byte). The C test_oscore_global also uses ULA fd00::/64 which the project has dropped. Inconsistent: either OSCORE SCHC rules are supported (keep vectors + implementations) or they arent (remove both).",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:48:47.995606685Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:48:47.995606685Z"
+}

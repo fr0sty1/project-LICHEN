@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-cgkg",
+  "title": "[review] project-LICHEN-worker6-zvp7: duplicate definitions break lichen-oscore test compilation",
+  "description": "## Duplicate definitions\n\nThe commit introduces multiple duplicate definitions that prevent `cargo test -p lichen-oscore --no-run` from compiling. There are 50+ errors.\n\n### Duplicates in `rust/lichen-oscore/tests/vectors.rs`\n- `context_at` defined twice (lines 105 and 126) — identical signature/body\n- `test_request_protection_vectors` defined twice (lines 175 and 430) — two different implementations, both named `#[test]`\n- `test_response_protection_vectors` defined twice (lines 225 and 492) — two different implementations, both named `#[test]`\n\n### Duplicates in `rust/lichen-oscore/src/lib.rs` test module  \n- `TestStore` defined twice (lines 2088 and 2196)\n- `TestProtect` trait defined twice (lines 2126 and 2234)\n- Conflicting `impl SenderStateStore for TestStore` and `impl TestProtect for Context`\n\n### API mismatch in first `test_request_protection_vectors` (line 188)\n- Line 188: `Context::new(\u0026master_secret, master_salt.as_deref(), None, \u0026sender_id, \u0026recipient_id)` — passes 5 args including `None` for id_context, but `Context::new` takes 4 args (id_context removed from signature)\n- Calls `ctx.protect_request(pt.code, \u0026options, \u0026payload)` (line 205) but Context no longer has a `protect_request` method — the API moved to the `reserve_sender(\u0026mut store)` pattern\n\n### Other errors from duplicate pollution\n- `Context::load_existing` referenced but not defined on Context\n- Mismatched types from shadowing\n\n### Root cause\nThe changes introduced two versions of each test — an old one using the removed `Context::new` + `protect_request` API and a new one using `context_at` + `reserve_sender`. The old versions need full removal, and the remaining code consolidated to a single, compiling version.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:56:03.306555446Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:56:03.306555446Z"
+}

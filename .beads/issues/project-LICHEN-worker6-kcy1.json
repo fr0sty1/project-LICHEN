@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-kcy1",
+  "title": "[review] project-LICHEN-2auf.44.11.1.1: duplicate #[test] attribute on test_edhoc_interop_vectors",
+  "description": "File `rust/lichen-oscore/tests/vectors.rs:408-409` has two consecutive `#[test]` attributes on the same function. This compiles but is redundant; likely a merge artifact or copy error.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:47:22.507014901Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:47:22.507014901Z"
+}

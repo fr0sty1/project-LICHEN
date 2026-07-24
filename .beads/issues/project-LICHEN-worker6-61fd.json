@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-61fd",
+  "title": "[review] project-LICHEN-worker6-k1jp: transcript_4 includes credential, breaking RFC 9528 compliance",
+  "description": "Commit 5ba5ca5 (project-LICHEN-worker6-k1jp: fix) adds a `cred` parameter to `transcript_4()` in rust/lichen-oscore/src/edhoc.rs:434 and includes it in the transcript hash computation alongside TH_3 and PLAINTEXT_3.\n\n**Problem:** Per RFC 9528 Section 3.7, TH_4 is defined as H(TH_3, PLAINTEXT_3) — it does NOT include any credential. Credentials are only bound in:\n- TH_2 = H(G_Y, H(message_1)) — no credential (per RFC 9528)\n- TH_3 = H(TH_2, PLAINTEXT_2, CRED_R) — includes CRED_R\n\nTH_4 must NOT include CRED_I. Adding credential to the TH_4 computation:\n1. Violates RFC 9528 Section 3.7\n2. Will cause MAC_3 verification and KDF derivation failures against standard EDHOC implementations\n3. Breaks interoperability with any RFC 9529-compliant test vectors\n\n**Call sites affected:**\n- Line 918: Initiator passes `credential_i` — incorrectly includes initiator's own credential in a hash that shouldn't contain it\n- Line 1347: Responder passes `peer.credential` — also incorrect per spec\n- Line 1637: Test uses `credential_i` — test vector must match RFC 9529 value computed WITHOUT credential\n\n**Fix:**\n1. Remove `cred` parameter from `transcript_4` signature\n2. Remove `encode_bstr(\u0026mut buf, cred)?;` from the function body\n3. Update all 3 call sites to pass only `th_3` and `ciphertext_3`\n4. Verify that `rfc9529_signature_trace_vectors` test passes with the RFC 9529 TH_4 value (`ad002457080da9a5e7a942030ca302f5cc9f77ba8124a49ba560d168b5b6f26d`)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:32:26.546141604Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:32:26.546141604Z"
+}

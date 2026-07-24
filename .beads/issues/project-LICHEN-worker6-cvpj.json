@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-cvpj",
+  "title": "[review] project-LICHEN-worker6-bkfv: decrypt_response_in_place uses find_payload_marker without validation; inconsistent with request path",
+  "description": "## Location\n`rust/lichen-oscore/src/lib.rs:1227` — `decrypt_response_in_place()`, the inner body parsing.\n\n## Problem\nThe request decryption path (`decrypt_request_in_place` at line 901) was upgraded to use `parse_inner_body()` which returns `Err(OscoreError::InvalidParam)` on malformed option body (truncated extended delta/length bytes, invalid encodings). The response decryption path still uses `find_payload_marker()` which returns `Option\u003cusize\u003e` — and its `None` case at line 1229 maps to `(rest, \u0026[][..])`, silently treating all remaining data as options even when the option body is truncated/malformed.\n\n```rust\n// Response path (line 1227) — uses find_payload_marker, no validation:\nlet (options_slice, payload_slice) = match find_payload_marker(rest) {\n    Some(pos) =\u003e (\u0026rest[..pos], \u0026rest[pos + 1..]),\n    None =\u003e (rest, \u0026[][..]),  // silent fallthrough on malformed input\n};\n\n// Request path (line 901) — uses parse_inner_body, validates:\nlet (options_slice, payload_slice) = parse_inner_body(rest)?;\n// Returns Err(OscoreError::InvalidParam) on malformed input\n```\n\n## Impact\n- Malformed response with truncated CoAP option body bypasses validation\n- Inconsistent parsing between request and response paths\n- `find_payload_marker` returns `None` on: truncated length bytes, delta=15 w/o payload marker, length=15 w/o delta=15 — all silently treated as \"all options, no payload\"\n\n## Fix\nReplace `find_payload_marker` usage at line 1227 with `parse_inner_body` for consistency with the request path. The response code at line 1219 already validates `code \u003e\u003e 5` in `2..=5` (CoAP response classes), so the parsing mismatch is the only gap.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:21:25.604073931Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:21:25.604073931Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-cvpj",
+      "depends_on_id": "project-LICHEN-worker6-bkfv",
+      "type": "discovered-from",
+      "created_at": "2026-07-24T17:21:25.750626167Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}

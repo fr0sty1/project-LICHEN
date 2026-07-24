@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-619x",
+  "title": "[review] project-LICHEN-worker6-ps69: SOS POST test asserts stale CHANGED code",
+  "description": "Commit c585073 changed `SosResource.render_post` to return `aiocoap.CREATED` (2.01) instead of `aiocoap.CHANGED` (2.04) to match spec §18.4.3 (which says `Response: 2.01 Created`). However, the corresponding test at `python/tests/coap/test_sos_resource.py:117` still asserts `resp.code == aiocoap.CHANGED`, so the test will fail.\n\nFix: update line 117 from `assert resp.code == aiocoap.CHANGED` to `assert resp.code == aiocoap.CREATED`.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:09:38.360054716Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:09:38.360054716Z"
+}

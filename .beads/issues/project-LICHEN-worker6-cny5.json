@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-cny5",
+  "title": "[review] project-LICHEN-worker6-9n2n: protect_response_with_reserved_piv missing mark_response_used",
+  "description": "The protect_response method (line 931) now correctly calls mark_response_used after generating a new response PIV. However, protect_response_with_reserved_piv (line 1026) also generates a response PIV but does NOT call mark_response_used. This means the response_window is not updated when using the durable reservation path (ReservedSender::protect_response_with_piv at line 1374). This is the same class of bug that this commit fixes for the non-persisted path. The mark_response_used call should be added to protect_response_with_reserved_piv to keep the response window accurate.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:29:03.326925636Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:29:03.326925636Z"
+}

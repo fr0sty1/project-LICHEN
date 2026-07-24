@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-kdcr",
+  "title": "[review] project-LICHEN-worker6-4n5v: Ack::from_bytes accepts n \u003e MAX_WINDOW_SIZE on ACKs with no trailing ones",
+  "description": "Severity: P2 (rejects valid ACK)\n\n`Ack::from_bytes_for` at `fragment.rs:347` checks `n \u003e MAX_WINDOW_SIZE` where `MAX_WINDOW_SIZE = 62` and `WINDOW_SIZE = 63`. When an ACK has no trailing ones (i.e. all 63 fragments in the window are missing), the sender computes `n = WINDOW_SIZE - trailing = 63 - 0 = 63`.\n\nThe receiver then rejects the valid `n=63` value as `FragmentError::MalformedAck` because `63 \u003e 62`.\n\nThe check should use `WINDOW_SIZE` not `MAX_WINDOW_SIZE` to match the valid range of the SCHC N field (6 bits, 0-63). The bitmap width is 63 (FCN 0-62), and n=63 signals \"all 63 bits present, none trailing.\"\n\n**Fix:** Change `n \u003e MAX_WINDOW_SIZE` to `n \u003e WINDOW_SIZE`.\n\n**File:** `rust/lichen-schc/src/fragment.rs`, line 347.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:59:38.492653886Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:59:38.492653886Z"
+}

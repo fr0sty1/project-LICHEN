@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-xsfy",
+  "title": "[review] project-LICHEN-worker6-1hbf: initiator passes CIPHERTEXT_3 instead of PLAINTEXT_3 to transcript_4",
+  "description": "In `EdhocInitiator::process_message_2`, `transcript_4` now correctly takes `(TH_3, PLAINTEXT_3, CRED_R)` per RFC 9528, but the initiator passes `\u0026ciphertext_3.0` which contains **ciphertext + tag** (encrypted in place at line 975 via `encrypt_in_place_detached`). The responder correctly passes `\u0026pending.plaintext` (decrypted plaintext). This causes TH_4 mismatch between initiator and responder, breaking OSCORE context derivation (which depends on TH_4).\n\nFix: save a copy of PLAINTEXT_3 (the bstr-encoded pubkey + signature) before the AEAD encrypts it in place, and pass that copy to `transcript_4`.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:24:58.286313787Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:25:16.475672024Z",
+  "started_at": "2026-07-24T18:25:16.475672024Z",
+  "lease_expires_at": "2026-07-24T18:30:16.475672024Z",
+  "heartbeat_at": "2026-07-24T18:25:16.475672024Z"
+}

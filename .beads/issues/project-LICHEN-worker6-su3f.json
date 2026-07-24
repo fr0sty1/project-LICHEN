@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-su3f",
+  "title": "[review] project-LICHEN-worker6-1hbf: initiator passes ciphertext instead of plaintext to transcript_4",
+  "description": "The initiator computes TH_4 over CIPHERTEXT_3 instead of PLAINTEXT_3 as required by EDHOC RFC 9528. At edhoc.rs:979, `ciphertext_3.0` contains ciphertext after `encrypt_in_place_detached`, but the transcript must be over plaintext. The responder side (line 1422) and unit test (line 1712) correctly use plaintext. This causes TH_4 mismatch between initiator and responder, which in turn corrupts OSCORE context derivation — peers will fail to communicate. Fix: save CIPHERTEXT_3 plaintext before AEAD encryption and pass that to transcript_4.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:23:55.999376509Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:24:20.546707567Z",
+  "started_at": "2026-07-24T18:24:20.546707567Z",
+  "lease_expires_at": "2026-07-24T18:29:20.546707567Z",
+  "heartbeat_at": "2026-07-24T18:24:20.546707567Z"
+}

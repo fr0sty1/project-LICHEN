@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-tz6v",
+  "title": "[review] project-LICHEN-worker6-k1jp: responder passes plaintext instead of CIPHERTEXT_3 to transcript_4",
+  "description": "In `EdhocInitiator::finish_process_message_3()` at edhoc.rs line ~1345, the responder calls `transcript_4(\u0026self.state.th_3, \u0026pending.plaintext, peer.credential)`. Per RFC 9528 §3.9, TH_4 = H(TH_3, CIPHERTEXT_3, CRED_I), where CIPHERTEXT_3 is the encrypted ciphertext from message_3 (not the decrypted plaintext). The initiator correctly passes `\u0026ciphertext_3.0` (the encrypted bytes). The responder decrypts message_3 and passes the decrypted output, causing a TH_4 mismatch between initiator and responder, which breaks OSCORE key derivation.\n\nThe fix: store the raw ciphertext from message_3 in `PendingMessage3` (or access it from `msg3` parameter before decryption) and pass that to `transcript_4` instead of `pending.plaintext`.\n\nThis is a pre-existing bug discovered during directory-level review of commit project-LICHEN-worker6-k1jp. The commit itself correctly adds the `cred` parameter to `transcript_4` and fixes the initiator side.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:29:56.661829673Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:29:56.661829673Z"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-ma46",
+  "title": "[review] project-LICHEN-worker6-ghdn: dead variables and dead computation in Ack::from_bytes_for and FragmentSender::new",
+  "description": "## Issues\n\n### 1. Dead variables in `Ack::from_bytes_for` (lines 304, 306)\n```rust\nlet _rule_id = data[0];                           // unused\nlet _complete = (data[1] \u0026 0x01) != 0;            // unused\n```\n- `_rule_id` is never used; `data[0]` is read again on line 341\n- `_complete` is never used; `complete` is hardcoded to `false` on line 341\n- The `complete` bit from the wire is silently ignored\n\n### 2. Dead computation in `FragmentSender::new` (lines 456-457)\n```rust\nlet _mic = compute_mic(payload);                  // computed and discarded\nlet _count = if payload.is_empty() {              // computed and discarded\n    1\n} else {\n    payload.len().div_ceil(TILE_SIZE)\n};\n```\n- `_mic` is recomputed at line 466\n- `_count` is recomputed at line 465 (with a simpler expression since `is_empty()` already checked)\n\n## Fix\nRemove the dead variables and redundant computations.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:30:24.700457807Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:30:24.700457807Z"
+}

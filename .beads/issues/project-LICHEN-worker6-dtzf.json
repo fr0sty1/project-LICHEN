@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-dtzf",
+  "title": "[review] project-LICHEN-worker6-9n2n: is_response_reuse is dead code — never called",
+  "description": "is_response_reuse at lib.rs:1249 is defined but has zero callers anywhere in the codebase. It checks the response_window for replay detection of sent responses, but since it's never invoked, response replay protection via the response_window is non-functional. This is likely why the missing mark_response_used call in protect_response went unnoticed — the check was never wired up. The function should either be wired into the unprotect/verify path or removed to avoid confusion.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:29:07.82831909Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:29:07.82831909Z"
+}

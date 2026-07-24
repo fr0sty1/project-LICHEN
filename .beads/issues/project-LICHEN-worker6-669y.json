@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-669y",
+  "title": "[review] project-LICHEN-worker6-2u0i: unused imports compute_mic and DEFAULT_WINDOW_SIZE in fragmentation test",
+  "description": "`rust/lichen-schc/tests/fragmentation.rs:8` imports `compute_mic` and `DEFAULT_WINDOW_SIZE` from `lichen_schc::fragment` but neither is used anywhere in this test file.\n\n`compute_mic` is only used in `fragmentation_vectors.rs`, and `DEFAULT_WINDOW_SIZE` is not used in any test in this file (the tests use `DEFAULT_RECEIVER_LIMIT`).\n\nFix: remove `compute_mic` and `DEFAULT_WINDOW_SIZE` from the import on line 8.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:29:26.274665877Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:29:26.274665877Z"
+}

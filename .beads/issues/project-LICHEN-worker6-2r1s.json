@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-2r1s",
+  "title": "[review] project-LICHEN-worker6-9n2n: mark_response_used missing for no-PIV response branch in protect_response",
+  "description": "## Location\n\nrust/lichen-oscore/src/lib.rs:931 — Context::protect_response()\n\n## Problem\n\nThe fix in 750484c correctly moved `mark_response_used` after encryption for the `include_piv` branch, but **removed** it entirely from the no-PIV (else) branch. The original code (before the too-early-mark bug) called `mark_response_used(request_seq)` in the no-PIV branch to track that the request PIV had been consumed for a response.\n\nAfter 750484c:\n- `include_piv = true`: `mark_response_used(seq)` called after encryption — CORRECT\n- `include_piv = false`: no `mark_response_used` call at all — MISSING\n\n## Impact\n\nIf a request replay somehow gets past request-side replay protection, the server will re-generate a no-PIV response using the same (nonce, key) pair, which is a nonce reuse that weakens AES-CCM security. The response_window was the defense-in-depth against this.\n\n## Fix\n\nAfter successful encryption in the no-PIV path, call `mark_response_used(request_seq)` where `request_seq` is parsed from `request_piv`. This requires threading `request_seq` through the if/else block (similar to how `sender_seq` is threaded for the include_piv branch).\n\n## Additional note\n\n`is_response_reuse()` (line 1249) is never called anywhere, making the entire `response_window` tracking an orphaned write. This is pre-existing and should be addressed separately — either wire it into a replay check or remove it.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:34:05.51100878Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:34:05.51100878Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-2r1s",
+      "depends_on_id": "project-LICHEN-worker6-9n2n",
+      "type": "discovered-from",
+      "created_at": "2026-07-24T17:34:05.656012623Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}

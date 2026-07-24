@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-iado",
+  "title": "[review] project-LICHEN-worker6-mbm7: window bit position mismatch in Ack write_to complete path",
+  "description": "In fragment.rs, Ack::write_to line 225: `out[1] = (self.window \u003c\u003c 7) | 0x40` puts window at bit 7, but Ack::from_bytes_for line 263: `(data[1] \u003e\u003e FRAGMENT_N) \u0026 1` reads window from bit 6 (FRAGMENT_N=6). A round-trip window=0-\u003eserialize-\u003edeserialize yields window=1 because 0x40 sets bit 6. The serialize path must use FRAGMENT_N consistently, or the deserialize path must handle bit 7 for complete ACKs.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:28:42.587974799Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:28:42.587974799Z"
+}

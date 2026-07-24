@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-cmd0",
+  "title": "[review] project-LICHEN-worker6-2u0i: multi_fragment_single_window uses arbitrary rule_id=20 and nonsensical receiver_limit=7",
+  "description": "The test at `rust/lichen-schc/tests/fragmentation.rs:60` passes `FragmentSender::new(\u0026payload, 20, 7)` where `rule_id=20` is inconsistent with all other tests in the file (which use `RULE_ID_A_TO_B = 0`) and `receiver_limit=7` makes no semantic sense for a 128-byte payload — the receiver can't reassemble 128 bytes in a 7-byte buffer. Other tests correctly use `DEFAULT_RECEIVER_LIMIT` or `packet.len()`.\n\nFix: Change to `FragmentSender::new(\u0026payload, RULE_ID_A_TO_B, DEFAULT_RECEIVER_LIMIT)` to match the rest of the test file.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:29:21.532451422Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:29:21.532451422Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-cmd0",
+      "depends_on_id": "project-LICHEN-worker6-2u0i",
+      "type": "discovered-from",
+      "created_at": "2026-07-24T18:29:21.683241338Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}

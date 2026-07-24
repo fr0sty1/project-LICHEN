@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-nks1",
+  "title": "[review] project-LICHEN-worker6-ygp9: integer underflow in Ack bitmap encoding/decoding when bitmap has no trailing ones",
+  "description": "## Location\n`rust/lichen-schc/src/fragment.rs` lines 273 and 323\n\n## Root Cause\nWhen an Ack has `bitmap=0` (no bits set), `trailing_ones() = 0`, so `n = WINDOW_SIZE - 0 = 64`. The encoding/decoding loop iterates `pos` from 0 to 63.\n\nAt `pos=63`, the expression `1u64 \u003c\u003c (62 - pos)` computes `62usize - 63usize`, which is an unsigned integer underflow:\n- **Debug builds**: panic (overflow)\n- **Release builds**: wraps to `usize::MAX`, then `1u64 \u003c\u003c usize::MAX` produces undefined/unexpected results\n\n## Reproducer\n```rust\n// This panics in debug builds\nlet ack = Ack::new(0x78, 0, 0, false);\nlet mut buf = [0u8; 20];\nack.write_to(\u0026mut buf).unwrap();\n```\n\n## Affected Code Paths\n1. **write_to (line 273)**: `if self.bitmap \u0026 (1u64 \u003c\u003c (62 - pos)) != 0` — loop iteration pos=63\n2. **from_bytes_for (line 323)**: `bitmap |= 1u64 \u003c\u003c (62 - i)` — loop iteration i=63 when n=64 from wire\n\n## Trigger Scenario\nA receiver has an empty window (received 0 fragments in window 0 for a particular rule). In `receive_ack_request`, `self.bitmaps[0] = 0`, so the ACK bitmap is all zeros. This ACK, when encoded via `write_to`, triggers the underflow.\n\n## Fix Direction\nGuard against pos/i \u003e= 63 (since only bits 62..0 are meaningful per the struct comment: \"Position 0 (FCN 62) is bit 62; position 62 (FCN 0 or All-1) is bit 0\"). Bit 63 is unused. Alternative: bound n to `min(WINDOW_SIZE, 63)` or use `wrapping_sub` with masking.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:03:25.023329197Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:03:25.023329197Z"
+}

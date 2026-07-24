@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-1z98",
+  "title": "[review] lora_ipv6_mesh-mkk4: SOS resource uses PUT instead of POST — spec non-compliance",
+  "description": "In `python/src/lichen/coap/resources.py`, `SosResource.render_post` was renamed to `render_put`, changing the CoAP method for SOS activation from POST to PUT.\n\nPer `spec/12-apps.md` line 609:\n```\nPOST coap://[ff02::1]/sos\n```\n\nThe spec consistently uses POST for SOS (also lines 613, 1229). Changing to PUT changes the HTTP method semantics and breaks spec compliance. The tests in `python/tests/coap/test_sos_resource.py` were also updated to use PUT, but they should use POST per the spec.\n\nThe change should be reverted: `render_put` → `render_post`, and the test imports/requests should use POST instead of PUT.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:47:25.095737609Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:47:25.095737609Z"
+}

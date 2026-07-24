@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-xevg",
+  "title": "[review] project-LICHEN-worker6-p4bl: stale comment in OscoreSeqNum::increment docs referencing u32::MAX instead of Self::MAX",
+  "description": "## Issue\n\nIn `rust/lichen-oscore/src/seqnum.rs`, the doc comments for `increment` (line 55) and `fetch_increment` (line 72) reference `u32::MAX`:\n\n```rust\n/// Returns `None` if the sequence number is at `u32::MAX` (would overflow).\n```\n\nBut `OscoreSeqNum` now uses a 40-bit `MAX` value `(1 \u003c\u003c 40) - 1`. The comment should say `Self::MAX` or \"the maximum 40-bit value.\"\n\n## Location\n\n`rust/lichen-oscore/src/seqnum.rs:55` and `:72`",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:15:33.041054297Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:15:33.041054297Z"
+}

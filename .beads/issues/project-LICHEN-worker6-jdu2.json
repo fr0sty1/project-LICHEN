@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-jdu2",
+  "title": "[review] project-LICHEN-worker6-mbm7: rust/librust_out.rlib committed as build artifact",
+  "description": "Commit 389bfca includes rust/librust_out.rlib, a compiled .rlib archive. Build artifacts must never be in version control. Remove the file and add *.rlib to .gitignore in rust/.",
+  "status": "in_progress",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "AI Agent",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:28:40.452220322Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:29:20.77137128Z",
+  "started_at": "2026-07-24T18:29:20.77137128Z",
+  "lease_expires_at": "2026-07-24T18:34:20.77137128Z",
+  "heartbeat_at": "2026-07-24T18:29:20.77137128Z"
+}

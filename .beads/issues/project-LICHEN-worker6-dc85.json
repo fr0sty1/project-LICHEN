@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-dc85",
+  "title": "[review] project-LICHEN-6mij: deaddrop_post extracts peer_eui64 twice (lines 97-109 and inside authorize_mutating)",
+  "description": "deaddrop_post at coap_dtn.c:97-109 extracts peer_eui64 from sockaddr for rate-limiting, then authorize_mutating at coap_oscore.c:263-267 extracts it again for OSCORE ctx lookup. The outer extraction could be passed into authorize_mutating or removed in favor of extracting only once. Not a bug, but redundant code.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:57:08.710685331Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:57:08.710685331Z"
+}

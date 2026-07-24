@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-5ilj",
+  "title": "[review] project-LICHEN-worker6-4n5v: test multi_fragment_single_window broken after tile_size removal",
+  "description": "## Severity: P1 (test break)\n\n`rust/lichen-schc/tests/fragmentation.rs` test `multi_fragment_single_window` (line 58) will fail:\n\n- `FragmentSender::new` signature changed from 4 params `(payload, rule_id, tile_size, receiver_limit)` to 3 params `(payload, rule_id, receiver_limit)`, removing the `tile_size` parameter.\n- `TILE_SIZE` is now a hardcoded constant (32) instead of per-sender configurable.\n- The test passes `tile_size=7` as `receiver_limit` (now the 3rd positional param) and the local `tile_size=5` variable is unused.\n- Assertions still expect the old behavior: `fragment_count() == 4` (based on 20 bytes ÷ 5 tile_size), but actual `fragment_count()` is `20.div_ceil(32) = 1`.\n- FCN expectations (`frags[0].fcn == 6`, etc.) are also based on window_size=7, which no longer exists.\n\n**Fix:** Rewrite the test to use TILE_SIZE=32 or add explicit tile_size/window_size as parameters to `FragmentSender::new`.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:56:30.975006607Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:56:30.975006607Z"
+}

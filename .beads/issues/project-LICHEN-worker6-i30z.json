@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-i30z",
+  "title": "[review] project-LICHEN-worker6-mbm7: 2-byte complete ACK window extracted from wrong bit position",
+  "description": "In the 2-byte complete ACK fix at fragment.rs:264-269, the window bit is extracted from bit 6 via (data[1] \u003e\u003e FRAGMENT_N) \u0026 1 where FRAGMENT_N=6. However, write_to encodes the 2-byte complete ACK with window at bit 7: (self.window \u003c\u003c 7) | 0x40. This means (data[1] \u003e\u003e 6) \u0026 1 will always yield 1 for 2-byte complete ACKs (since bit 6=0x40 is always set), regardless of actual window value. Fix: move window extraction into the 2-byte branch using (data[1] \u003e\u003e 7) \u0026 1, or restructure so the shared extraction applies only to bitmap ACKs.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:26:44.787458774Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:26:44.787458774Z"
+}

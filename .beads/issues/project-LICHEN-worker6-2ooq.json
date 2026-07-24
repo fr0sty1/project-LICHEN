@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-2ooq",
+  "title": "[review] project-LICHEN-6mij.2.4: deaddrop_oscore_respond prototype mismatch vs coap_oscore_protect_response signature for ctx",
+  "description": "In coap_dtn.c:90-107, deaddrop_oscore_respond() takes 'struct oscore_ctx *ctx' but coap_oscore_auth_result.ctx is declared '_Nonnull struct oscore_ctx *ctx'. However auth.ctx may be NULL on the local-admin path, and callers guard with 'if (auth.ctx != NULL)' before calling deaddrop_oscore_respond. This is handled correctly at the call sites, but the function itself does not null-check ctx before passing it to coap_oscore_protect_response. If a caller ever calls it without the guard, it will dereference NULL. Add a defensive NULL check or leave as-is with a note that callers must guard. Minor but worth flagging.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:57:33.415742255Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:57:33.415742255Z"
+}

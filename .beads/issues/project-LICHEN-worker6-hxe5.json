@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-hxe5",
+  "title": "[review] project-LICHEN-worker6-zvp7: transcript_4 _cred parameter silently ignored, confusing API",
+  "description": "After the fix, transcript_4 takes _cred: \u0026[u8] but never uses it. The call sites (lines 881, 1309, 1599) all pass credential data that is now silently discarded. For method 0 (SIGN_SIGN), this is correct behavior per RFC 9528 Section 4.1 (CRED_I should not be in TH_4), but the unused parameter and misleading argument-passing at call sites creates confusion. Either remove the parameter from the signature and update call sites, or document why it's kept for future method support.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:54:42.214508548Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:54:42.214508548Z"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-s6kq",
+  "title": "[review] project-LICHEN-worker6-1ror: EDHOC TH_4 test vector uses ciphertext, not plaintext",
+  "description": "## Found in code review of commit 5b527b2bff\n\n**Location:** `rust/lichen-oscore/src/edhoc.rs:1634`\n\n**Bug:** The standalone test for `transcript_4` at line 1634 computes TH_4 over `ciphertext_3` (the wire-format AES-CCM ciphertext parsed from message_3 bytes):\n\n```rust\nassert_eq!(\n    transcript_4(\u0026th_3, \u0026ciphertext_3).unwrap(),\n    th_4\n);\n```\n\nPer RFC 9528 Section 3.5, TH_4 = H(TH_3, PLAINTEXT_3), not H(TH_3, CIPHERTEXT_3). The `plaintext_3` variable already exists at line 1626 for this purpose.\n\n**Impact:** The test vector `th_4` at line 1632 (`ad002457080da9a5e7a942030ca302f5cc9f77ba8124a49ba560d168b5b6f26d`) was derived from the wrong computation. It needs to be recomputed using `plaintext_3`.\n\n**Fix needed:**\n1. Change line 1634 from `\u0026ciphertext_3` to `\u0026plaintext_3`\n2. Recompute the expected `th_4` hex value from the correct computation (H(CBOR(TH_3) || CBOR(PLAINTEXT_3))) using an independent oracle\n3. The initiator-side fix in this commit (using `data_3` plaintext instead of encrypted `ciphertext_3`) is correct and complementary",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:59:00.879100003Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:59:00.879100003Z"
+}

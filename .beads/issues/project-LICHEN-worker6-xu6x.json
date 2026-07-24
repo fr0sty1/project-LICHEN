@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-xu6x",
+  "title": "[review] project-LICHEN-worker6-l9ck: fragmentation_vectors.rs tests not updated for from_bytes API change",
+  "description": "Commit 37159329 changed Fragment::from_bytes(data, out) to accept 2 arguments (adding out: \u0026'a mut [u8]). But lichen-schc/tests/fragmentation_vectors.rs still calls from_bytes with 1 argument at 3 call sites:\n\n- Line 210: `let parsed = Fragment::from_bytes(\u0026wire).unwrap();`\n- Line 236: `let fragment = Fragment::from_bytes(\u0026wire).unwrap();`  \n- Line 373: `assert!(Fragment::from_bytes(\u0026wire).is_err());`\n\nThese need a scratch buffer added: `let mut scratch = [0u8; TILE_SIZE + MIC_LENGTH + 1];` and passed as second arg, matching the pattern used at fragment.rs:860.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:13:37.090451257Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:13:37.090451257Z"
+}

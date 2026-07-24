@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-44yb",
+  "title": "[review] project-LICHEN-worker6-9n2n: deferred mark_response_used after AEAD encrypt creates nonce reuse risk",
+  "description": "In protect_response() when include_piv=false, the change defers mark_response_used(request_seq) to AFTER aead_encrypt_in_place_detached succeeds. If encrypt_in_place_detached modifies ct_out in-place and then fails (or the subsequent extend_from_slice(\u0026tag) panics/fails), the sequence is NOT marked used but the buffer was already encrypted with the nonce. A retry with the same request_piv would pass is_response_reuse() and produce nonce reuse, which is cryptographically catastrophic for AES-CCM.\n\nThe old code called mark_response_used BEFORE the crypto operation, so a failed encrypt couldn't retry with the same sequence. The deferred pattern breaks this defense-in-depth.\n\nFix: move mark_response_used before aead_encrypt, or call it in a drop-guard / failure handler that ensures marking even on error paths.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:30:39.714212039Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:30:39.714212039Z"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-dhuo",
+  "title": "[review] project-LICHEN-worker6-1ror: transcript_4 parameter named ciphertext_3 but receives PLAINTEXT_3",
+  "description": "## Summary\nThe `transcript_4` function at `rust/lichen-oscore/src/edhoc.rs:542` has its second parameter named `ciphertext_3`, but per RFC 9528 Section 4.1, TH_4 = H(TH_3, PLAINTEXT_3, CRED_I). Both call sites (lines 1201 and 1631) pass PLAINTEXT_3. The parameter name `ciphertext_3` is misleading.\n\n## Severity\nP3 — readability/naming. No behavioral impact.\n\n## Fix\nRename parameter `ciphertext_3` to `plaintext_3` in the `transcript_4` function signature and its internal usage on line 547.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:05:44.685801943Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:05:44.685801943Z"
+}

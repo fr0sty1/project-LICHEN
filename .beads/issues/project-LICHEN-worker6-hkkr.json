@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-hkkr",
+  "title": "[review] project-LICHEN-worker6-eu0i: 10 test failures after API refactor",
+  "description": "After changing Context::restore_existing call sites from the old (broken) 6-arg form to Context::new().restore_existing() pattern, 10 tests fail:\n\n1. delayed_explicit_piv_ordinary_response_ignores_peer_replay_window\n2. dropped_pending_response_preserves_committed_window_across_large_jump\n3. fresh_context_activates_only_after_atomic_registration\n4. oversized_explicit_piv_response_does_not_poison_valid_retry\n5. public_unprotect_rejects_malformed_inner_options\n6. response_without_piv_is_one_shot_per_request\n7. response_without_piv_requires_requester_identity\n8. restored_context_rejects_response_without_piv - expects InvalidParam from protect_response(include_piv=true) but gets Ok\n9. supplied_material_restores_authoritative_state_and_disables_no_piv - same pattern as 8\n10. test_roundtrip_with_0xff_in_class_e_options - gets SeqExhausted because Context::new() creates inactive context (active=false), TestProtect::protect_request calls reserve_sender which returns Conflict, mapped to SeqExhausted\n\nThese tests apparently never ran against the pre-change code (the old call sites COULD NOT COMPILE - Context::restore_existing was already a 2-arg method, not a 6-arg associated function). The tests were written for an earlier API version. Need to either (a) fix tests to match current API, or (b) fix API to match test expectations, depending on which is correct.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:04:22.67379428Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:04:22.67379428Z"
+}

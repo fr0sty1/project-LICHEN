@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-1hbf",
+  "title": "[review] project-LICHEN-worker6-1ror: transcript_4 missing CRED_R per RFC 9528 method 0",
+  "description": "The code implements EDHOC method 0 (SIGN_SIGN), per line 578 comment and `METHOD = 0` at line 709. Per RFC 9528 §4.1, for method 0:\n\n```\nTH_4 = H(TH_3, PLAINTEXT_3, CRED_R)\n```\n\nBut the current `transcript_4` function (line 434) only hashes `H(TH_3, PLAINTEXT_3)`:\n\n```rust\nfn transcript_4(th_3: \u0026[u8; 32], ciphertext_3: \u0026[u8]) -\u003e Result\u003c[u8; 32], EdhocError\u003e {\n    let mut buf = heapless::Vec::\u003cu8, 1024\u003e::new();\n    encode_bstr(\u0026mut buf, th_3)?;\n    encode_bstr(\u0026mut buf, ciphertext_3)?;\n    Ok(compute_th(\u0026buf))\n}\n```\n\nThe `CRED_R` (responder credential, received in message_2) is missing from the hash. This affects:\n\n1. **Function definition (line 434)**: needs third parameter `cred_r: \u0026[u8]` with `encode_bstr(\u0026mut buf, cred_r)?;`\n2. **Parameter naming**: `ciphertext_3` should be `plaintext_3` — the spec uses PLAINTEXT_3, not CIPHERTEXT_3\n3. **Initiator call (line 917)**: needs to pass `peer.credential` (CRED_R received in msg2) as 3rd arg\n4. **Responder call (line 1345)**: already passes 3 args (correct intent!) but function sig is wrong\n5. **Test call (line 1635)**: passes `credential_i` which is CRED_I — may need to be CRED_R instead\n\nThe existing test vector at line 1633 (`th_4 = ad002457...`) was presumably generated from `H(th_3, PLAINTEXT_3)` without CRED_R and will need updating once the fix is applied.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:50:24.991898488Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:50:24.991898488Z"
+}

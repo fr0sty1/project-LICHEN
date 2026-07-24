@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-fmee",
+  "title": "[review] project-LICHEN-6mij.2.4: authorize_mutating passes plain_buf to unprotect even when NULL",
+  "description": "The doc comment for coap_oscore_authorize_mutating says 'plain_buf: Buffer for decrypted payload (may be NULL if no payload expected, e.g. DELETE)'. However, the implementation always passes plain_buf at line 285 to coap_oscore_unprotect_request, which dereferences it as uint8_t* payload in its function signature (with _Nonnull annotation actually). coap_oscore_unprotect_request passes this to memcpy (unprotect path) and/or writes to it.\n\nIf coap_oscore_authorize_mutating were ever called with plain_buf=NULL and an OSCORE-protected request with a payload, coap_oscore_unprotect_request would crash writing to NULL.\n\nFix: Either:\n1. Remove the 'may be NULL' claim from the doc and require non-NULL always (simplest, matches actual behavior)\n2. Guard the unprotect call: only call coap_oscore_unprotect_request if plain_buf != NULL and plain_buf_len \u003e 0\n\nAffected file: lichen/subsys/lichen/oscore/coap_oscore.c lines 242-309, and the header doc at coap_oscore.h lines 156-162.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:59:05.508591232Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:59:05.508591232Z"
+}

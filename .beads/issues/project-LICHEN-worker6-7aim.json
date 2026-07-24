@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-7aim",
+  "title": "[review] project-LICHEN-worker6-ps69: PUT /sos returns 2.01 Created — RFC 7252 violation",
+  "description": "## Summary\nThe commit 0b927168 changes the SOS resource response code from `aiocoap.CHANGED` (2.04) to `aiocoap.CREATED` (2.01) in `python/src/lichen/coap/resources.py:745`.\n\n## The Problem\n- **Spec says**: `POST /sos → 2.01 Created` (spec/12-apps.md §18.4.3, line 617)\n- **Code does**: `render_put()` — the endpoint is a PUT, not a POST\n- **RFC 7252 §5.8.3**: PUT on an existing resource SHOULD return 2.04 (Changed) or 2.00 (OK). 2.01 (Created) is for new resources created by the request and typically accompanied by Location-Path.\n\n## Reproduced\n```\n$ git show HEAD -- python/tests/coap/test_sos_resource.py\n# Changed CHANGED→CREATED assertion only — tests pass but semantically wrong for PUT.\n```\n\n## Correct Fix Options\n1. **Option A** (spec-aligned): Rename `render_put` → `render_post`, keep 2.01 Created. This matches the spec literally.\n2. **Option B** (method-aligned): Revert to 2.04 Changed, keep PUT. Idempotent PUT is arguably better for constrained networks.\n\nEither option is acceptable; the current state is inconsistent.\n\n## Affected Files\n- `python/src/lichen/coap/resources.py:745`\n- `python/tests/coap/test_sos_resource.py:117`\n- `python/tests/integration/test_lichen_hetero_lci.py` (all SOS client codepaths that PUT to /sos)\n\n## Severity\nP1 — spec compliance bug. Responses are visible to implementers using the Python reference for interop validation.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:01:09.828503734Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:01:09.828503734Z"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-8gak",
+  "title": "[review] project-LICHEN-worker6-rpj4: test_invalid_method_is_rejected_before_dh regex mismatch",
+  "description": "## Bug: test_invalid_method_is_rejected_before_dh regex mismatch\n\n**File:** `python/tests/crypto/test_edhoc.py:454`\n\n**Root cause:** After refactoring `process_message_1` to use `_validate_int` for METHOD_CORR and SUITES_I validation, the error message format changed. When METHOD_CORR is a valid integer but represents a mismatched method, the error message is now `\"Method mismatch: expected 0 got 1\"` instead of something containing `\"METHOD_CORR\"`.\n\n**Impact:** The test at line 454 uses `pytest.raises(ValueError, match=\"METHOD_CORR\")` which will NOT match the new error message. The test will fail with `AssertionError: Regex pattern did not match. Regex: 'METHOD_CORR' Input: 'Method mismatch: expected 0 got 1'`. This is currently masked by a pre-existing `NameError` for `edhoc_module` (line 451).\n\n**Fix needed:** Either:\n1. Update the test regex to match `\"Method mismatch\"` or `\"expected 0 got\"`, OR\n2. Update the error message in `edhoc.py` to include `\"METHOD_CORR\"` so the regex matches\n\n**Also:** The pre-existing `NameError: edhoc_module is not defined` at line 451 and 526 needs a separate fix (missing `import lichen.crypto.edhoc as edhoc_module`).",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:10:00.632910268Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:10:00.632910268Z"
+}

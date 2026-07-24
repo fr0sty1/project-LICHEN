@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-u6hb",
+  "title": "[review] project-LICHEN-worker6-ps69: unhandled bytes.fromhex ValueError in SosResource.render_post",
+  "description": "At resources.py:391, bytes.fromhex(from_hex) is called outside the try/except block. If a client sends valid CBOR with a non-hex \"from\" field (e.g., \"zzz\"), ValueError is unhandled → 500 Internal Server Error. Additionally, the isinstance(from_hex_, str) type guard was removed at line 386 — if body.get(\"from\") returns a non-string type (int, list), bytes.fromhex() raises TypeError.\n\nThe except clause at line 388 was also widened from except (ValueError, cbor2.CBORDecodeError) to bare except Exception, which swallows KeyboardInterrupt, SystemExit, and CancelledError.\n\nSecondary issues in the same method:\n- No EUI-64 length validation: valid hex of wrong length (e.g., 4 chars → 2 bytes) passes through\n- t field type not validated: non-numeric t values get stored and serialized, violating the \"t\": \u003cfloat\u003e contract",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:09:38.182295511Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:09:38.182295511Z"
+}

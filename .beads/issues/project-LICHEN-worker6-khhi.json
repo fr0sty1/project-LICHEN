@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-khhi",
+  "title": "[review] project-LICHEN-worker6-eu0i: TestProtect::protect_request maps all ReservationError variants to SeqExhausted",
+  "description": "In lib.rs tests, the TestProtect::protect_request impl does:\n```rust\nself.reserve_sender(\u0026mut store)\n    .map_err(|_| OscoreError::SeqExhausted)?\n    .protect_request(code, options, payload)\n```\nThis maps ALL ReservationError variants (Conflict, Storage, SequenceExhausted) to SeqExhausted. This masks the true error cause - e.g. when a context is inactive (active=false), reserve_sender returns Conflict, but the test sees SeqExhausted. This makes debugging test failures harder. Found in lib.rs ~line 2167.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:04:30.244514725Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:04:30.244514725Z"
+}

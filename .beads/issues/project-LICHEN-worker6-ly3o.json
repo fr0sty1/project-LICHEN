@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-ly3o",
+  "title": "[review] lora_ipv6_mesh-mkk4: rust/target/ build artifacts tracked by git",
+  "description": "Commit d83cbc5 adds 3 Rust build artifacts under `rust/target/debug/` (`.d` dep file, `dep-graph.part.bin`, `.lock` incremental file). The `rust/target/` directory is not in `.gitignore` and contains thousands of tracked build-output files (`rust/target/doc/`, `rust/target/debug/`). Build artifacts should never be committed - they are generated, platform-specific, and change with every build.\n\nFix: add `rust/target/` to `.gitignore` and remove tracked artifacts with `git rm -r --cached rust/target/`.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:55:52.643039616Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:55:52.643039616Z"
+}

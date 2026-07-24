@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-mw18",
+  "title": "[review] project-LICHEN-worker6-ygp9: pre-existing literal_regular_fragment test failure (Fragment, not Ack)",
+  "description": "The test `literal_regular_fragment` at fragment.rs:1300 expects wire bytes [0x78, 0x7c] but the Fragment::write_to encoding produces [0x78, 0x3e] when fcn=62, window=0, FRAGMENT_N=6. This failure was already present in the parent commit (cc2b1533db) and is not caused by this diff. The test likely needs updating to match the current encoding (the expected should be 0x3e, not 0x7c) or the encoding has a bug.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:07:00.800227555Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:07:00.800227555Z"
+}

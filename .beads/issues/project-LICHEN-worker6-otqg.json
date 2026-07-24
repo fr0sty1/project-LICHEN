@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-otqg",
+  "title": "[review] project-LICHEN-6mij.2.4: msg_inbox_post_respond uses static buffer (race condition)",
+  "description": "msg_inbox_post_respond at coap_server.c:311 uses static uint8_t resp_buf[CONFIG_COAP_SERVER_MESSAGE_SIZE]. A static buffer in the response path is unsafe for reentrant CoAP processing (multiple concurrent requests). CoAP stack can process multiple requests simultaneously.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:57:26.793721185Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:57:26.793721185Z"
+}

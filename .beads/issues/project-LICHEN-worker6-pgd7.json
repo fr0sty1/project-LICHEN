@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-pgd7",
+  "title": "[review] lora_ipv6_mesh-mkk4: SCHC Fragment::write_to big-path LSB carry corrupted",
+  "description": "In `rust/lichen-schc/src/fragment.rs` `Fragment::write_to` (line 204), the bit-shift loop for the \u003e7-byte content path has a logic error. After the shift loop copies byte 2's MSB into byte 1's LSB, the line `out[1] = (out[1] \u0026 0xfe) | carry;` clears byte 1's LSB (`\u0026 0xfe`) and replaces it with `carry` (which is byte 1's own shifted-out MSB, always 0 since header bit 7 is always 0). This corrupts the first content byte's MSB after round-trip. Example: header=0x3F, content[0]=0x80 produces wire bytes [0x7E, 0x00] instead of correct [0x7F, 0x00]. Fix: remove the spurious `out[1] = (out[1] \u0026 0xfe) | carry;` line. After the shift loop, out[1] already has the correct value.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:05:05.52381962Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:05:05.52381962Z"
+}

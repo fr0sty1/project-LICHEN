@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-9eor",
+  "title": "[review] project-LICHEN-worker6-1ror: missing end-to-end TH_4 assertion in interop test",
+  "description": "The EDHOC interop test at edhoc.rs:1651-1659 calls `process_message_2_with_credential` and checks it succeeds, but never asserts `initiator.state.th_4` equals the expected `th_4` test vector (line 1636). This gap allowed the TH_4-plaintext bug to go undetected: the test only validates `transcript_4()` as a standalone function, not the actual code path in `process_message_2_with_credential`.\n\nAdd `assert_eq!(verifier.state.th_4, th_4);` after the `verified_message_3.is_ok()` check. Similarly verify `responder.state.th_4` end-to-end on the responder side.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:49:59.536209285Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:49:59.536209285Z"
+}

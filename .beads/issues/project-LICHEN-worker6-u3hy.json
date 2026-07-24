@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-u3hy",
+  "title": "[review] project-LICHEN-6mij.2.4: _Nonnull annotation violated on ctx field",
+  "description": "struct coap_oscore_auth_result declares 'struct oscore_ctx *_Nonnull ctx;' but when the request is unprotected (local admin path), result-\u003ectx = NULL is set. Clang -fnullability will flag this. Callers already guard with if (auth.ctx != NULL), expecting nullable semantics.\n\nLocation: lichen/subsys/lichen/oscore/include/lichen/coap_oscore.h:125 (_Nonnull), coap_oscore.c:301 (NULL assignment).",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:56:57.184492095Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:56:57.184492095Z"
+}

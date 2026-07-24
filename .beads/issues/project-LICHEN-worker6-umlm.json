@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-umlm",
+  "title": "[review] project-LICHEN-2auf.44.11.1.1: EdhocInitiator::new test uses stale 2-arg unwrap call",
+  "description": "In edhoc.rs test std_convenience_constructors_remain_available at ~line 1847, the EdhocInitiator::new call still uses 2-arg .unwrap() form:\\n\\n  let _ = EdhocInitiator::new([1; 32], 0).unwrap();\\n\\nBut EdhocInitiator::new now takes 3 args (seed, c_i, rng) and returns Self (not Result). This test only compiles if there is still a cfg(feature=std) fallback, otherwise it breaks. The std_convenience_constructors test name is also misleading since constructors no longer require std.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:52:30.492821809Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:52:30.492821809Z"
+}

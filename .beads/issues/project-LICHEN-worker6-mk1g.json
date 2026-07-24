@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-mk1g",
+  "title": "[review] project-LICHEN-worker6-p4bl: hardcoded class E options in test_request_protection_vectors instead of reading from plaintext.options",
+  "description": "## Issue\n\nIn `tests/vectors.rs` line 336, the class E options are hardcoded:\n\n```rust\n\u0026hex_to_bytes(\"b3747631\"),\n```\n\nInstead of reading from the vector data:\n\n```rust\n\u0026hex_to_bytes(\u0026plaintext.options),\n```\n\nWhile C4, C5, C6 all happen to have the same options hex `b3747631`, any future request_protection vector added to `oscore.json` with different options would be tested with incorrect input.\n\n## Location\n\n`rust/lichen-oscore/tests/vectors.rs:336` in `test_request_protection_vectors`",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:15:15.450808623Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:15:15.450808623Z"
+}

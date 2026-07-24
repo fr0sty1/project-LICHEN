@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-tqun",
+  "title": "[review] project-LICHEN-worker6-oke1: fuzz target references undefined DEFAULT_RECEIVER_LIMIT",
+  "description": "The fuzz target at rust/lichen-schc/fuzz/fuzz_targets/fuzz_fragment.rs imports DEFAULT_RECEIVER_LIMIT from lichen_schc::fragment, but this constant is not defined anywhere in the crate. The fragment module (fragment.rs) has no definition or re-export of DEFAULT_RECEIVER_LIMIT. Both the fuzz target and tests/fragmentation.rs reference it, so this is a compile error in multiple files.\n\nAdditional note: The fragment.rs itself has 19 references to an undefined TILE_SIZE constant and 1 reference to an undefined tile_size variable (line 461), suggesting a broader refactoring-in-progress that hasn't been completed. But the scope of this commit (8dd65ab) is only the fuzz target, so the DEFAULT_RECEIVER_LIMIT issue is the review finding.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:25:35.564531052Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:25:35.564531052Z"
+}

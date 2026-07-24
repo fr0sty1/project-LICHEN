@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-pcbf",
+  "title": "[review] project-LICHEN-worker6-l9ck: transcript_4 parameter `ciphertext_3` should be `plaintext_3` per EDHOC spec",
+  "description": "The transcript_4 function parameter is named `ciphertext_3` but per EDHOC RFC 9528 Section 4.1.2, TH_4 = H(TH_3, PLAINTEXT_3). Both call sites (production and test) now correctly pass plaintext, but the parameter name is misleading and contradicts the spec. Rename to `plaintext_3`.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:10:19.321516479Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:10:19.321516479Z"
+}

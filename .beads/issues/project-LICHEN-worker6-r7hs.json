@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-r7hs",
+  "title": "[review] project-LICHEN-worker6-ps69: SosResource.render_post ignores cancel type",
+  "description": "spec/12-apps.md §18.4.3 defines `\"type\": \"cancel\"` to cancel a previous SOS alert (line 602). However, `SosResource.render_post()` (resources.py:727) always calls `self.activate()` regardless of type — even for cancel. The type field check at L727-728 just passes through for non-\"sos\" types instead of routing to `self.cancel()` for the cancel type.\n\nAdditionally, the module docstring at L27 says \"PUT activates SOS\" but the implementation uses POST — a minor documentation inconsistency.\n\nRepro: POST /sos with `{\"type\":\"cancel\",\"node\":\"0000000000000000\",\"ts\":1}` — should cancel but activates instead.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:13:52.682985395Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:13:52.682985395Z"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-5u1l",
+  "title": "[review] project-LICHEN-worker6-mbm7: binary build artifact committed (librust_out.rlib)",
+  "description": "The file rust/librust_out.rlib is a compiled Rust library artifact (binary file). It was committed in commit 389bfca. Binary build artifacts should not be tracked in git. Should be removed with git rm and added to .gitignore.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:26:46.258817597Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:26:46.258817597Z"
+}

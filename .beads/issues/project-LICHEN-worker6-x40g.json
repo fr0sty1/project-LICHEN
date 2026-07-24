@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-x40g",
+  "title": "[review] project-LICHEN-2auf.44.11.1.1: EdhocInitiator/EdhocResponder lost struct-level ZeroizeOnDrop",
+  "description": "The `#[derive(Zeroize, ZeroizeOnDrop)]` was removed from both `EdhocInitiator` (line ~894) and `EdhocResponder` (line ~1257). While `SigningKey` and `StaticSecret` implement `ZeroizeOnDrop` internally, the composite `state` field (`InitiatorState`/`ResponderState`) contains derived key material (`prk_2e`, `prk_3e2m`, `prk_4e3m` — 96 bytes of HKDF-derived secrets) that will not be zeroized when the parent struct is dropped.\n\nThe inner `InitiatorState` and `ResponderState` structs retain their own `#[derive(Zeroize, ZeroizeOnDrop)]`, but that only triggers when the state field itself is dropped — not when the parent struct is dropped. The `poison()` methods exist on both structs but are only called on explicit error paths, not on drop.\n\nA dropped `EdhocInitiator` after a successful handshake would leave 96 bytes of PRK material recoverable in memory.\n\nFix: restore `#[derive(Zeroize, ZeroizeOnDrop)]` on both structs, or implement explicit `Drop` that calls `zeroize()`.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:49:36.74406608Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:49:36.74406608Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-x40g",
+      "depends_on_id": "project-LICHEN-2auf.44.11.1.1",
+      "type": "discovered-from",
+      "created_at": "2026-07-24T16:49:36.88853876Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}

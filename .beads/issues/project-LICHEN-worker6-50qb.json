@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-50qb",
+  "title": "[review] project-LICHEN-worker6-2u0i: multi_fragment_single_window has invalid rule_id=20",
+  "description": "The test `multi_fragment_single_window` in `rust/lichen-schc/tests/fragmentation.rs:54` passes `rule_id = 20` to `FragmentSender::new()`.\n\n`FragmentSender::new()` calls `check_rule()` (`fragment.rs:446`, defined at `fragment.rs:91-97`) which rejects any value not equal to `RULE_ID_A_TO_B (0x78)` or `RULE_ID_B_TO_A (0x79)`. Passing `20` causes `UnsupportedRule` error, and `.unwrap()` panics.\n\nThe old code (HEAD~1) used 4 args (`FragmentSender::new(\u0026payload, 20, tile_size, 7)`) which would not compile since `new()` only accepts 3 args: `(payload, rule_id, receiver_limit)`. The fix correctly reduced to 3 args but used `20` as rule_id instead of a valid value like `0x78`.\n\nFix: change `20` to `0x78` on line 54.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:29:16.355703525Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:29:16.355703525Z"
+}

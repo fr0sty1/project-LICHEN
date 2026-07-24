@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-c50t",
+  "title": "[review] project-LICHEN-worker6-q4fj: DaoprocessError::NotAdmitted declared but never returned",
+  "description": "## Problem\n\nThe `DaoProcessError::NotAdmitted` variant was added to the enum in `rust/lichen-rpl/src/routing.rs:822` and a corresponding match arm was added in `rust/lichen-node/src/node.rs:378`, but **no code path in the RPL crate actually returns `Err(DaoProcessError::NotAdmitted)`**. The match arm in `node.rs` is dead code.\n\n## Root Cause\n\nIn `process_signature_verified_inner` (`routing.rs:1511-1512`), when `origin_high_water.len() == MAX_DAO_ORIGINS` and the origin is not already known, the code returns `DaoProcessError::RouteRejected`. This conflates two semantically distinct conditions:\n\n1. The route itself is invalid (malformed, unauthorized, etc.) — correctly `RouteRejected`\n2. The DAO origin set is at capacity and cannot admit new origins — should be `NotAdmitted`\n\n## Evidence\n\n- `DaoAdmissionState::admit()` (`routing.rs:705`) already returns `DaoAdmissionUpdateError::Capacity` for the parallel admission code path — this proves the concept exists in the domain model but hasn't been wired through\n- `routing.rs:1512` returns `RouteRejected` instead of `NotAdmitted`\n\n## Fix\n\nChange line 1512 of `rust/lichen-rpl/src/routing.rs` from:\n```rust\nreturn Err(DaoProcessError::RouteRejected);\n```\nto:\n```rust\nreturn Err(DaoProcessError::NotAdmitted);\n```\n\nThis properly distinguishes capacity exhaustion from route invalidity, and the caller in `node.rs` already handles it (the newly-added match arm becomes live).\n\n**Affected files:**\n- `rust/lichen-rpl/src/routing.rs:1512` — wrong error variant\n\n**Discovered from:** `project-LICHEN-worker6-q4fj` code review",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:24:50.058566383Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:24:50.058566383Z"
+}

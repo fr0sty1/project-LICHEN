@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-e0z7",
+  "title": "[review] project-LICHEN-worker6-gbxp: fragment.rs missing constants (TILE_SIZE, WINDOW_SIZE, BITMAP_MASK, RULE_ID_A/B) and from_bytes callers not updated -- build broken",
+  "description": "Commit c0143c8f78 (\"project-LICHEN-worker6-gbxp: fix\") correctly removes 7+1 bit packing from write_to to match from_bytes raw-byte semantics, fixing the round-trip bug. However:\n\n**P0: Missing constants (build-breaking)**\nThe following constants were present in the original baseline (d2ae3522dd) but were accidentally dropped in a prior refactoring chain and were NOT reintroduced by this fix:\n- `TILE_SIZE = 187` (used in write_to validation, from_bytes, tests)\n- `WINDOW_SIZE = 63` (used in bitmap computation)\n- `BITMAP_MASK = !(u64::MAX \u003c\u003c WINDOW_SIZE)` (used in ACK bitmap ops and overflow checks)\n- `RULE_ID_A_TO_B = 0x78` and `RULE_ID_B_TO_A = 0x79` (used in check_rule)\n- `MAX_PACKET_SIZE` (used in receiver logic)\n- `DEFAULT_RECEIVER_LIMIT` (used in receiver context)\n\nWithout these, `cargo test` produces 52 errors (unresolved names).\n\n**P0: from_bytes signature change breaks callers**\n`Fragment::from_bytes` changed from `(data: \u0026[u8], tile: \u0026mut [u8; TILE_SIZE])` to `(data: \u0026[u8])`. Test callers in:\n- `tests/fragmentation_vectors.rs` (lines 214, 241, 380)\n- `tests/fragmentation.rs` (lines 123, 125, 236)\n- `fuzz/fuzz_targets/fuzz_fragment.rs` (line 8)\nstill pass the old two-argument form.\n\n**P1: DEFAULT_WINDOW_SIZE changed from 63 to 32**\nOriginal had `DEFAULT_WINDOW_SIZE = 63` and `WINDOW_SIZE = 63` matching the spec (per Python reference). The current code has `DEFAULT_WINDOW_SIZE = 32` which is half of the spec value. If intentional, needs spec justification; if not, data loss risk.\n\n**P1: MAX_ACK_REQUESTS changed from u8=4 to u32=3**\nOriginal had `u8 = 4` matching the Python reference and spec §5.4. Current code has `u32 = 3`. Spec §5.1 says MAX_ACK_REQUESTS=3 while §5.4 says 4 — spec inconsistency, but the type change is suspect.\n\nFix needed: reintroduce all missing constants; update from_bytes callers to new signature; verify DEFAULT_WINDOW_SIZE and MAX_ACK_REQUESTS against spec/Python reference.\n\nDiscovered-from: project-LICHEN-worker6-gbxp",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:36:33.126978453Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:36:33.126978453Z"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-oytd",
+  "title": "[review] project-LICHEN-worker6-k1jp: edhoc initiator computes TH_4 from CIPHERTEXT_3 instead of PLAINTEXT_3",
+  "description": "The initiator at edhoc.rs:917 passes the encrypted CIPHERTEXT_3 (line 915: ciphertext_3.0 contains ciphertext + AEAD tag) to transcript_4(), but the spec and the responder (line 1345, which passes pending.plaintext = decrypted PLAINTEXT_3) both expect PLAINTEXT_3 as the TH_4 input. This causes initiator and responder to compute different TH_4 values, leading to OSCORE key derivation mismatch.\n\nRoot cause: encrypt_in_place_detached at line 913 overwrites the plaintext buffer. The plaintext is lost before TH_4 is computed.\n\nFix: save PLAINTEXT_3 before encryption (copy ciphertext_3 content before line 912), then pass the saved plaintext to transcript_4 at line 917.\n\nThe test at line 1635 correctly uses PLAINTEXT_3 but never validates the initiator's internal th_4 against the expected value — it uses pre-computed TH_4 directly for KDF assertions (lines 1660-1677), so the mismatch is untested.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:55:07.713145193Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:55:07.713145193Z"
+}

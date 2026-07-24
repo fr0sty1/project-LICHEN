@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-4hqw",
+  "title": "[review] project-LICHEN-6mij.2.4: dead code + stale whitespace + potential payload truncation",
+  "description": "Code review pass 3 of commit 02a8ee28fd (project-LICHEN-6mij.2.4: fix)\n\nIssues found:\n\n**1. Dead code — unused `peer_eui64` in `msg_inbox_post` (coap_server.c:347)**\nThe variable `peer_eui64[8]` is declared at line 347, zeroed, filled from sockaddr at lines 360-361, but never read afterward. This is dead code — the callers authorization via `coap_oscore_authorize_mutating` performs its own EUI64/IID extraction from the same sockaddr. The variable should be removed.\n\n**2. Stale blank lines (coap_keys.c:915-916)**\nThe removed `#endif` guard and `keys_oscore_respond` left behind two trailing blank lines at lines 915-916 after `lichen_coap_is_local_admin`. These should be cleaned up.\n\n**3. `plain[64]` in `confessions_post` silently truncates (coap_dtn.c:226) — pre-existing, not introduced**\nThe `plain` buffer is only 64 bytes while the OSCORE unprotect path will silently truncate larger payloads. This is a pre-existing issue (same buffer size in old code), but worth noting for a follow-up since confession payloads could be larger.\n\nAll three are correctness/quality issues, not security vulnerabilities. The refactoring to `coap_oscore_authorize_mutating` preserves existing authorization semantics correctly.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:59:49.539574102Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:59:49.539574102Z"
+}

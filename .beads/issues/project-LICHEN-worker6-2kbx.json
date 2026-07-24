@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-2kbx",
+  "title": "[review] project-LICHEN-worker6-ygp9: from_bytes_for bitmap uses 62-position but write_to uses 31-position",
+  "description": "In `fragment.rs`, `from_bytes_for` reads bitmap bits with `bitmap |= 1u64 \u003c\u003c (62 - position)` but `write_to` writes with `1u64 \u003c\u003c (WINDOW_SIZE - 1 - position)` (= `31 - position`). Since `BITMAP_MASK = (1 \u003c\u003c 32) - 1 = 0xFFFFFFFF`, bits at positions 62-32 are zeroed by `\u0026 BITMAP_MASK` in `new()`, causing the non-canonical check (`write_to` round-trip) to always fail for any ACK with bits set in positions 0-30. The `62 - position` should be `WINDOW_SIZE - 1 - position` (= `31 - position`) to match `write_to`. This is pre-existing; this commit only fixed W/C bit positions (bit 7/6) and complete ACK handling, which are correct.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:44:04.254493157Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:44:04.254493157Z"
+}

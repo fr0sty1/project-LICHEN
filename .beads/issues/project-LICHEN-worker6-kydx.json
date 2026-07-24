@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-kydx",
+  "title": "[review] project-LICHEN-worker6-1hbf: Python/Rust TH_4 CRED_R encoding mismatch — cross-implementation interop broken",
+  "description": "## P0: Cross-implementation TH_4 CRED_R encoding mismatch\n\n### Problem\nPython `edhoc.py` and Rust `edhoc.rs` encode CRED_R differently when computing TH_4, causing all derived OSCORE key material to diverge.\n\n### Python (wrong)\n- **Initiator** (`edhoc.py:450`): `cbor2.dumps(cred_r)` where `cred_r = peer_pubkey` (raw 32-byte Ed25519 pubkey) → just a CBOR bstr, NOT a CCS/COSE_Key\n- **Responder** (`edhoc.py:685`): `cbor2.dumps(self.identity.pubkey)` → same issue\n\n### Rust (correct)\n- **Initiator** (`edhoc.rs:912`): `peer.credential` → full CCS-encoded credential (COSE_Key for RPK, X.509 for cert chains)\n- **Responder** (`edhoc.rs:1411-1412`): `encode_credential(\u0026mut credential_r, self.pubkey.as_bytes())` → proper CCS\n\n### Impact\nTH_4 feeds into PRK_out → PRK_exporter → master_secret, master_salt. All derived OSCORE keys differ between implementations. **Python and Rust nodes cannot interoperate — this is a complete cross-implementation interop failure.**\n\n### Fix\nPython must encode CRED_R as a proper CCS (COSE_Key) matching Rust's encoding:\n```\n# Not: cbor2.dumps(peer_pubkey)\n# But: cbor2.dumps(ccs_cose_key_from_raw_pubkey(peer_pubkey))\n```\n\n### References\n- RFC 9528/9529 Section 4.5: `TH_4 = H(TH_3, PLAINTEXT_3, CRED_R)` where CRED_R is the full CCS credential\n- Project rule: All implementations MUST produce identical output for test vectors in `test/vectors/`",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:29:21.108297484Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:29:21.108297484Z"
+}

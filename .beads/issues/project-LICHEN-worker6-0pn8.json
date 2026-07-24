@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-0pn8",
+  "title": "[review] project-LICHEN-worker6-1hbf: Python initiator context_3 uses id_cred_i instead of cred_i for CRED_I",
+  "description": "## P1: Python initiator context_3 uses id_cred_i instead of cred_i for CRED_I (pre-existing)\n\n### Problem\n`edhoc.py:435`:\n```python\ncontext_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(id_cred_i)\n```\n\nPer RFC 9529, MAC_3 context should be:\n```\nMAC_3 = EDHOC_KDF(PRK_4e3m, TH_3, \"MAC_3\", \u003c\u003c ID_CRED_I, CRED_I \u003e\u003e, MAC_LENGTH)\n```\n\nSo `context_3` should be `cbor2.dumps(id_cred_i) + cbor2.dumps(cred_i)`.\n\n### Current behavior\nThis happens to work because for by-value-kid RPK, `id_cred_i == cred_i == pubkey`. But it is semantically wrong and would break if a non-by-value-kid credential format were used (different ID_CRED_I vs CRED_I).\n\n### Also affects\nThe M_3 signature structure (`edhoc.py:441`) has the same pattern:\n```python\nm_3 = cbor2.dumps([\"Signature1\", cbor2.dumps(id_cred_i), th_3, cbor2.dumps(id_cred_i), mac_3])\n```\nShould use `cred_i` not `id_cred_i` for the second credential position.\n\n### Not from this commit\nThis is pre-existing and not directly caused by the TH_4 fix, but should be addressed for spec compliance.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:29:28.682159651Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:29:28.682159651Z"
+}

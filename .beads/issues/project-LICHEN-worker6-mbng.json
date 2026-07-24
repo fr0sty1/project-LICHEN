@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-mbng",
+  "title": "[review] project-LICHEN-worker6-i98v: vectors.rs contains duplicate function definitions from incomplete code replacement",
+  "description": "Commit 9c95a86902 attempted to replace old test code in vectors.rs (old context_at using load_existing, old test_request_protection_vectors reading expected values from JSON, old test_response_protection_vectors using protect_response) with new code (new context_at using new()+restore_existing(), hardcoded independent oracle test vectors, unprotect_response). However, the replacement was not performed — instead, new code was appended after old code, leaving duplicate definitions:\n\n- context_at at lines 105 and 126\n- test_request_protection_vectors at lines 175 and 430\n- test_response_protection_vectors at lines 225 and 492\n\nAdditionally:\n- Expected struct still has oscore_option and ciphertext fields (lines 100-101) that the new code no longer uses, conflicting with new Expected at line 97\n- Vector struct still has include_piv field (line 73)\n- Old code references removed API (load_existing, ctx.protect_request() direct)\n\nResult: cargo check --test vectors -p lichen-oscore fails with 14 errors including E0428 duplicate definitions, E0599 missing API, E0061 wrong argument count, E0382 borrow after move.\n\nThe pre-existing broken test code in lib.rs (load_existing calls that never existed, protect_response with wrong arg count) is not caused by this commit but should be addressed separately.\n\nFix: Remove old code (lines approximately 1-425) and keep only the new replacement code. Also update Expected struct to match.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T17:01:39.131771975Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T17:01:39.131771975Z"
+}

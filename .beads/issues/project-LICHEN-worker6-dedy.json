@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-dedy",
+  "title": "[review] project-LICHEN-6mij: lichen_coap_oscore_respond doc says ctx may be NULL but annotation says _Nonnull",
+  "description": "The doxygen comment for lichen_coap_oscore_respond in coap_oscore.h:127 says '@param[in] ctx OSCORE security context (may be NULL)' but the declaration at line 136 annotates ctx as _Nonnull. The implementation doesn't handle NULL ctx — it passes it straight to coap_oscore_protect_response which also expects non-NULL. The doc and annotation are inconsistent.\n\nFix: update the doc to say '(must be non-NULL)' or remove the '(may be NULL)' qualifier.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:57:16.340700927Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:57:16.340700927Z"
+}

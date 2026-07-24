@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-s4ea",
+  "title": "[review] lora_ipv6_mesh-mkk4: rust/target/ build artifacts committed, .gitignore missing target/",
+  "description": "Commit d83cbc5 includes 3 build artifacts under rust/target/debug/:\n- rust/target/debug/deps/lichen_gateway-f1ce66f1c4497e73.d (dependency file)\n- rust/target/debug/incremental/lichen_gateway-22bf9b6an4f75/s-hkp20uavb7-14gy7hh-working/dep-graph.part.bin (4.2MB binary)\n- rust/target/debug/incremental/lichen_gateway-22bf9b6an4f75/s-hkp20uavb7-14gy7hh.lock (empty lockfile)\n\nRoot cause: .gitignore has no entry for rust/target/. These build artifacts should never be tracked.\n\nFix: add \"rust/target/\" to .gitignore and remove these files from the index (git rm --cached).",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T16:51:20.967290998Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T16:51:20.967290998Z"
+}
