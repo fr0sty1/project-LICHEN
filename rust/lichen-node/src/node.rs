@@ -20,7 +20,7 @@ use crate::port_dispatch::{dispatch_by_port, Dispatched, UdpDispatchError};
 const IPV6_VERSION: u8 = 6;
 
 #[cfg(feature = "std")]
-use crate::routing::{DioProcessOutcome, Router, RplMaintenanceOutcome, TrickleSafeLivenessPolicy};
+use crate::routing::{DioProcessOutcome, Router, RplMaintenanceOutcome};
 #[cfg(feature = "std")]
 use crate::{
     announce::AnnounceProcessor,
@@ -633,13 +633,9 @@ impl RplNode {
     }
 
     /// Run DAO-route and neighbor maintenance from one monotonic observation.
-    pub fn maintain<P: TrickleSafeLivenessPolicy>(
-        &mut self,
-        now_ms: u64,
-        neighbor_timeout_ms: u64,
-        policy: &P,
-    ) -> RplMaintenanceOutcome {
-        self.router.maintain(now_ms, neighbor_timeout_ms, policy)
+    /// Uses [`TrickleAwareNeighborLiveness`] to respect Trickle suppression.
+    pub fn maintain(&mut self, now_ms: u64, neighbor_timeout_ms: u64) -> RplMaintenanceOutcome {
+        self.router.maintain(now_ms, neighbor_timeout_ms)
     }
 
     /// Return the current Trickle deadline without advancing it.
