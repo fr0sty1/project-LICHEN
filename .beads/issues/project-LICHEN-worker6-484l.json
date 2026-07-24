@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-484l",
+  "title": "[review] project-LICHEN-worker6-tkjl: test vectors JSON stale — format_version mismatch",
+  "description": "P1: The test vectors JSON at `test/vectors/schc_fragmentation.json` still contains wire bytes in the old format (`0x7c`, `0x7a`, etc.) while the code now produces new-format wire bytes (`0x3e`, `0x3d`, etc.). \n\nThe `shared_vectors_drive_production_implementations` test in `fragmentation_vectors.rs` fails:\n\n\nThe code asserts `format_version: 2` and the JSON has `format_version: 2`, but the wire bytes in the JSON were never regenerated to match the new interleaved format. The JSON vectors must be regenerated from independent oracles and committed.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:09:40.465926418Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:09:40.465926418Z"
+}
