@@ -559,7 +559,8 @@ static int peer_find_oldest_locked(void)
 	int64_t oldest_time = INT64_MAX;
 
 	for (size_t i = 0; i < CONFIG_LICHEN_LINK_MAX_NEIGHBORS; i++) {
-		if (peer_table[i].active && peer_table[i].last_seen < oldest_time) {
+		if (peer_table[i].active && peer_table[i].last_seen != INT64_MAX
+		    && peer_table[i].last_seen < oldest_time) {
 			oldest_time = peer_table[i].last_seen;
 			oldest_idx = (int)i;
 		}
