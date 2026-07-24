@@ -18,8 +18,9 @@
 //! The verb choice signals that SCHC requires matching rules on both ends.
 
 use lichen_core::constants::{
-    PORT_MQTT_SN, RULE_GLOBAL_COAP, RULE_ICMPV6_ECHO, RULE_LINK_LOCAL_COAP, RULE_MQTT_SN,
-    RULE_RPL_DAO, RULE_RPL_DIO, RULE_UNCOMPRESSED, SCHC_MAX_DECOMPRESSED,
+    PORT_MQTT_SN, RULE_GLOBAL_COAP, RULE_GLOBAL_OSCORE, RULE_ICMPV6_ECHO, RULE_LINK_LOCAL_COAP,
+    RULE_LINK_LOCAL_OSCORE, RULE_MQTT_SN, RULE_RPL_DAO, RULE_RPL_DIO, RULE_UNCOMPRESSED,
+    SCHC_MAX_DECOMPRESSED,
 };
 use lichen_core::error::{BufferTooSmall, TooShort};
 
@@ -161,6 +162,102 @@ fn is_link_local(addr: &[u8]) -> bool {
 
 fn is_global(addr: &[u8]) -> bool {
     addr.len() == 16 && (addr[0] >> 5) == 0b001
+}
+
+/// Check if a CoAP packet has a valid OSCORE option (option number 9).
+///
+/// Scans CoAP options looking for the Object-Security option (RFC 8613).
+/// Returns true if a valid OSCORE option is found. Returns false if no
+/// OSCORE option is present, or if the CoAP framing is malformed.
+fn coap_has_oscore_option(coap: &[u8]) -> bool {
+    if coap.len() < 4 || coap[0] >> 6 != 1 {
+        return false;
+    }
+    let tkl = (coap[0] & 0x0F) as usize;
+    if tkl > 8 {
+        return false;
+    }
+    let hdr_len = 4 + tkl;
+    if coap.len() < hdr_len {
+        return false;
+    }
+    let mut offset = hdr_len;
+    let mut option_number: u16 = 0;
+    let mut oscore_found = false;
+
+    while offset < coap.len() {
+        let byte = coap[offset];
+
+        // Payload marker
+        if byte == 0xFF {
+            return oscore_found && offset + 1 < coap.len();
+        }
+
+        // Parse option delta
+        let mut delta = (byte >> 4) as u16;
+        let mut length = (byte & 0x0F) as usize;
+        offset += 1;
+
+        if delta == 13 {
+            if offset >= coap.len() {
+                return false;
+            }
+            delta = coap[offset] as u16 + 13;
+            offset += 1;
+        } else if delta == 14 {
+            if offset + 2 > coap.len() {
+                return false;
+            }
+            delta = u16::from_be_bytes([coap[offset], coap[offset + 1]]) + 269;
+            offset += 2;
+        } else if delta == 15 {
+            return false;
+        }
+
+        if length == 13 {
+            if offset >= coap.len() {
+                return false;
+            }
+            length = coap[offset] as usize + 13;
+            offset += 1;
+        } else if length == 14 {
+            if offset + 2 > coap.len() {
+                return false;
+            }
+            length = u16::from_be_bytes([coap[offset], coap[offset + 1]]) as usize + 269;
+            offset += 2;
+        } else if length == 15 {
+            return false;
+        }
+
+        option_number += delta;
+
+        if offset + length > coap.len() {
+            return false;
+        }
+
+        if option_number == 9 {
+            if oscore_found || length > 255 {
+                return false;
+            }
+            // Validate OSCORE option value (RFC 8613 flags)
+            if length > 0 {
+                let flags = coap[offset];
+                let partial_iv_len = (flags & 0x07) as usize;
+                if flags & 0xE0 != 0 || partial_iv_len > 5 || flags == 0 {
+                    return false;
+                }
+                if partial_iv_len > 1 && coap.get(offset + 1) == Some(&0) {
+                    return false;
+                }
+            }
+            oscore_found = true;
+        }
+
+        offset += length;
+    }
+
+    oscore_found
 }
 
 // ─── checksum helpers (no_std) ───────────────────────────────────────────────
@@ -566,7 +663,7 @@ fn decompress_coap(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
 
     let src_iid = r.read(64)?;
     let dst_iid = r.read(64)?;
-    let prefix = if rule_id == RULE_LINK_LOCAL_COAP {
+    let prefix = if rule_id == RULE_LINK_LOCAL_COAP || rule_id == RULE_LINK_LOCAL_OSCORE {
         LINK_LOCAL_PREFIX
     } else {
         GLOBAL_PREFIX
@@ -871,7 +968,8 @@ pub fn compress(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     let dst = &packet[24..40];
 
     if nh == 17 {
-        // UDP — try MQTT-SN (rule 5) first if port matches, then CoAP (rules 0/1)
+        // UDP — try MQTT-SN (rule 7) first if port matches, then OSCORE (rules 5/6),
+        // then CoAP (rules 0/1)
         if packet.len() >= 40 + 8 {
             let src_port = u16::from_be_bytes([packet[40], packet[41]]);
             let dst_port = u16::from_be_bytes([packet[42], packet[43]]);
@@ -881,13 +979,22 @@ pub fn compress(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
                 }
             }
         }
-        if is_link_local(src) && is_link_local(dst) {
-            if let Ok(n) = compress_coap(packet, out, RULE_LINK_LOCAL_COAP) {
-                return Ok(n);
+        // Check for OSCORE option before trying rules 0/1
+        if packet.len() >= 40 + 8 + 4 {
+            let coap = &packet[48..];
+            let has_oscore = coap_has_oscore_option(coap);
+            if is_link_local(src) && is_link_local(dst) {
+                let rule_id = if has_oscore { RULE_LINK_LOCAL_OSCORE } else { RULE_LINK_LOCAL_COAP };
+                if let Ok(n) = compress_coap(packet, out, rule_id) {
+                    return Ok(n);
+                }
             }
-        }
-        if let Ok(n) = compress_coap(packet, out, RULE_GLOBAL_COAP) {
-            return Ok(n);
+            if has_oscore || !(is_link_local(src) && is_link_local(dst)) {
+                let rule_id = if has_oscore { RULE_GLOBAL_OSCORE } else { RULE_GLOBAL_COAP };
+                if let Ok(n) = compress_coap(packet, out, rule_id) {
+                    return Ok(n);
+                }
+            }
         }
     } else if nh == 58 && packet.len() >= 40 + 4 {
         // ICMPv6
@@ -942,6 +1049,8 @@ pub fn decompress(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     match data[0] {
         RULE_LINK_LOCAL_COAP => decompress_coap(data, out, RULE_LINK_LOCAL_COAP),
         RULE_GLOBAL_COAP => decompress_coap(data, out, RULE_GLOBAL_COAP),
+        RULE_LINK_LOCAL_OSCORE => decompress_coap(data, out, RULE_LINK_LOCAL_OSCORE),
+        RULE_GLOBAL_OSCORE => decompress_coap(data, out, RULE_GLOBAL_OSCORE),
         RULE_ICMPV6_ECHO => decompress_icmpv6_echo(data, out),
         RULE_RPL_DIO => decompress_rpl_dio(data, out),
         RULE_RPL_DAO => decompress_rpl_dao(data, out),
