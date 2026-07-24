@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-w25c",
+  "title": "[rereview] project-LICHEN-dk3c.5: lichen_announce_sched_set_dodag_state has zero callers — dead code",
+  "description": "Function lichen_announce_sched_set_dodag_state (announce.c:719) is defined and exported but never called anywhere in the codebase. The gateway-centric announce interval suppression cannot function without a caller. Blocks the central architectural goal of this commit.\\n\\nFile: lichen/subsys/lichen/routing/announce.c:719\\nSeverity: P1",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T05:37:26.445521869Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T05:37:26.445521869Z"
+}
