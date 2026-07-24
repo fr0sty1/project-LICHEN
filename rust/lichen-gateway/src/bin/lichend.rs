@@ -563,7 +563,9 @@ where
     let _ = conc.reset().await;
     let _ = conc.configure(&RadioConfig::default()).await;
     let mut tun_buf = vec![0u8; 1500];
+    let mut rx_buf = vec![0u8; 255];
     let mut tx_queue: VecDeque<Vec<u8>> = VecDeque::new();
+    let mut maintenance = interval(Duration::from_millis(1000));
     loop {
         tokio::select! {
             _ = maintenance.tick() => {
@@ -589,11 +591,25 @@ where
                 break;
             }
         }
+        // TX: drain queued frames
         while let Some(payload) = tx_queue.pop_front() {
             if let Err(e) = conc.transmit(&payload).await {
                 warn!("concentrator transmit failed: {:?}", e);
             } else {
                 info!(len = payload.len(), "hat TX");
+            }
+        }
+        // RX: poll concentrator for incoming frames
+        match conc.receive(&mut rx_buf, 50).await {
+            Ok(Some((len, rssi, snr))) => {
+                info!(len, rssi, snr, "hat RX frame from concentrator");
+                if let Some(reply) = forward_mesh_to_upstream(gw, &rx_buf[..len], &tun).await {
+                    tx_queue.push_back(reply);
+                }
+            }
+            Ok(None) => {}
+            Err(e) => {
+                warn!("concentrator receive error: {:?}", e);
             }
         }
     }

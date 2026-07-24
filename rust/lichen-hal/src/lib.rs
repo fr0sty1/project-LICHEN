@@ -348,6 +348,15 @@ pub trait Concentrator {
         &mut self,
         payload: &[u8],
     ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
+    /// Receive a packet from any channel on the concentrator.
+    ///
+    /// Returns `Some((payload, rssi, snr))` on reception, `None` on timeout.
+    /// Buffer must be at least 255 bytes for max LoRa payload.
+    fn receive(
+        &mut self,
+        buf: &mut [u8],
+        timeout_ms: u32,
+    ) -> impl core::future::Future<Output = Result<Option<(usize, i16, i8)>, Self::Error>>;
 }
 
 #[cfg(feature = "std")]
@@ -379,6 +388,14 @@ impl Concentrator for Sx1302Concentrator {
 
     async fn transmit(&mut self, _payload: &[u8]) -> Result<(), Self::Error> {
         Ok(())
+    }
+
+    async fn receive(
+        &mut self,
+        _buf: &mut [u8],
+        _timeout_ms: u32,
+    ) -> Result<Option<(usize, i16, i8)>, Self::Error> {
+        Ok(None)
     }
 }
 
