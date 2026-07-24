@@ -991,8 +991,12 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 	 * - Schnorr-48 signature if has_key
 	 * - AES-CCM-64 MIC if has_link_key, else CRC32 fallback
 	 */
-	size_t frame_len = sizeof(tx_frame_buf);
+	size_t frame_len = 0;
 	/*
+	 * Zero-initialize frame_len so that if lichen_link_tx() returns an
+	 * error without writing frame_len, the frame_len == 0 check below
+	 * catches it (project-LICHEN-i1gk.102).
+	 *
 	 * NULL dst_eui64 = broadcast (no destination address in frame header).
 	 *
 	 * DESIGN DECISION: LICHEN always transmits broadcast frames at L2.
