@@ -166,36 +166,32 @@ pub trait Rng {
 #[cfg(feature = "rand")]
 use rand_core::{CryptoRng, RngCore};
 
-/// Newtype wrapper that bridges LICHEN's [`Rng`] to [`RngCore`] + [`CryptoRng`].
 #[cfg(feature = "rand")]
-pub struct RngWrapper<T: Rng>(pub T);
-
-#[cfg(feature = "rand")]
-impl<T: Rng> RngCore for RngWrapper<T> {
+impl<T: Rng + ?Sized> RngCore for T {
     fn next_u32(&mut self) -> u32 {
         let mut buf = [0u8; 4];
-        self.0.fill_bytes(&mut buf);
+        self.fill_bytes(&mut buf);
         u32::from_ne_bytes(buf)
     }
 
     fn next_u64(&mut self) -> u64 {
         let mut buf = [0u8; 8];
-        self.0.fill_bytes(&mut buf);
+        self.fill_bytes(&mut buf);
         u64::from_ne_bytes(buf)
     }
 
     fn fill_bytes(&mut self, dest: &mut [u8]) {
-        self.0.fill_bytes(dest);
+        <Self as Rng>::fill_bytes(self, dest);
     }
 
     fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_core::Error> {
-        self.0.fill_bytes(dest);
+        self.fill_bytes(dest);
         Ok(())
     }
 }
 
 #[cfg(feature = "rand")]
-impl<T: Rng> CryptoRng for RngWrapper<T> {}
+impl<T: Rng + ?Sized> CryptoRng for T {}
 
 /// Non-volatile storage for persistent state.
 ///
@@ -210,7 +206,7 @@ pub trait NonVolatile {
     ///
     /// Callers can detect truncation or size mismatch by comparing the returned
     /// `stored_len` against `buf.len()` and expected size (see `load_*` in storage.rs).
-    fn read(&self, key: &str, buf: &mut [u8]) -> Result<Option<usize>, Self::Error>;
+    fn read(&self, key: &str, buf: &mut [u8]) -> Option<usize>;
 
     /// Atomically and durably replace one value.
     ///
@@ -226,7 +222,12 @@ pub trait NonVolatile {
 // Device UI traits removed (dead code; superseded by ratatui in lichen-tui and
 // not wired to any HAL impl post-CCP-9/15/epic l3j5).
 
-/// Concentrator interface for RAK2287/SX130x multi-channel (reset, SPI, IRQ, PPS).
+/// Concentrator interface for RAK2287/SX130x multi-channel (reset, SPI, IRQ, PPS, RX).
+///
+/// Extends the base hardware control methods (`reset`, `spi_transfer`, `irq_status`,
+/// `pps_timestamp`) with lifecycle (`start`, `stop`) and packet I/O (`transmit`, `receive`).
+/// This is the trait that border-router (mesh-gateway) code consumes; each variant
+/// (Linux SPI, sim, SLIP loopback) provides its own impl.
 pub trait Concentrator {
     type Error;
     fn reset(&mut self) -> impl core::future::Future<Output = Result<(), Self::Error>>;
@@ -245,14 +246,25 @@ pub trait Concentrator {
         &mut self,
         payload: &[u8],
     ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
-
-    /// Receive a packet from the concentrator. Returns `Some((payload, rssi, snr))` on success,
-    /// `None` if no frame is pending. The timeout is used to bound waiting for IRQ.
+    /// Receive a packet from the concentrator hardware.
+    ///
+    /// Writes the received frame into `buf` and returns the number of bytes written
+    /// together with metadata (RSSI, SNR, timestamp). Returns `None` if no packet
+    /// is available (non-blocking or timeout).
     fn receive(
         &mut self,
         buf: &mut [u8],
-        timeout_ms: u32,
-    ) -> impl core::future::Future<Output = Result<Option<(usize, i16, i8)>, Self::Error>>;
+    ) -> impl core::future::Future<Output = Result<Option<RxPacket>, Self::Error>>;
+    /// Start the concentrator (enable RX path, lock PLL, allocate internal buffers).
+    /// Calling `start` on an already-started concentrator is a no-op.
+    fn start(
+        &mut self,
+    ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
+    /// Stop the concentrator (disable RX path, release internal buffers).
+    /// Calling `stop` on an already-stopped concentrator is a no-op.
+    fn stop(
+        &mut self,
+    ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
 }
 
 #[cfg(feature = "std")]
@@ -271,16 +283,11 @@ impl Concentrator for Sx1302Concentrator {
     }
 
     async fn irq_status(&mut self) -> Result<u32, Self::Error> {
-        Ok(1) // simulate pending packet for RX
+        Ok(1)  // simulate pending packet for RX
     }
 
     fn pps_timestamp(&self) -> Option<u64> {
-        Some(
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_micros() as u64,
-        )
+        Some(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_micros() as u64)
     }
 
     async fn configure(&mut self, _config: &RadioConfig) -> Result<(), Self::Error> {
@@ -291,16 +298,16 @@ impl Concentrator for Sx1302Concentrator {
         Ok(())
     }
 
-    async fn receive(
-        &mut self,
-        _buf: &mut [u8],
-        _timeout_ms: u32,
-    ) -> Result<Option<(usize, i16, i8)>, Self::Error> {
-        let irq = self.irq_status().await?;
-        if irq & 1 == 0 {
-            return Ok(None);
-        }
-        Ok(Some((0, -80, 5)))
+    async fn receive(&mut self, _buf: &mut [u8]) -> Result<Option<RxPacket>, Self::Error> {
+        Ok(None)
+    }
+
+    async fn start(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    async fn stop(&mut self) -> Result<(), Self::Error> {
+        Ok(())
     }
 }
 
