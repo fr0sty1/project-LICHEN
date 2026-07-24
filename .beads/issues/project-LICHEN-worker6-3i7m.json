@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-3i7m",
+  "title": "[review] worker6-tkjl: mass reopening of 261 beads issues without per-issue justification",
+  "description": "Commit be583f03 bulk-changes 261 beads issue files in .beads/issues/: 214 closed→open, 47 in_progress→open, with no per-issue rationale. Several reopened issues describe legitimately completed work (e.g., project-LICHEN-2auf.44.7.1 has close_reason 'Completed all eight requested Rust RPL security findings'). While this may be a corrective action for prior worker6-tkjl incorrect closures, the commit message 'fix' provides no justification and the bulk nature makes it impossible to audit. If this is a corrective revert, the commit message should explain what worker6-tkjl did wrong and why reopening all 261 issues is the correct fix. If not intentional, this is data corruption of the beads tracker.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:56:52.80822992Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:56:52.80822992Z"
+}

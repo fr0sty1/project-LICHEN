@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-iqs7",
+  "title": "[review] project-LICHEN-worker6-1rnj: std-only finalize passes \u0026u64 instead of u64 to Ack::new",
+  "description": "Commit 849d6049 changed `window_bitmap` from `Vec\u003cbool\u003e` to `u64` and updated two `Ack::new` call sites (lines 1237, 1253), but missed the third at line 1280 in `finalize()`.\n\nLine 1252: `let bitmap = self.window_bitmap(self.all1_window);` returns `u64`.\nLine 1253: `Ack::new(..., bitmap, false);` — correct.\nLine 1280: `Ack::new(..., \u0026bitmap, true);` — WRONG, passes `\u0026u64` instead of `u64`.\n\n```rust\nerror[E0308]: mismatched types\n    --\u003e lichen-schc/src/fragment.rs:1280:25\n     |\n1280 |                         \u0026bitmap,\n     |                         ^^^^^^^ expected `u64`, found `\u0026u64`\n```\n\nFix: change `\u0026bitmap` to `bitmap` on line 1280.\nThis only affects the `std` feature build path (cfg-extended `FragmentReceiver`).",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T18:57:08.577687206Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T18:57:08.577687206Z"
+}
