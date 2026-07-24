@@ -66,6 +66,7 @@ void crash_info_check_and_clear(void)
         crash_info.extra = 0;
     } else {
         /* First boot or power cycle: __noinit RAM contains garbage */
+        crash_info.magic = 0;
         crash_info.count = 0;
     }
 }
