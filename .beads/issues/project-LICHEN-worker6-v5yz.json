@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-v5yz",
+  "title": "[review] project-LICHEN-worker6-tkjl: SHA256 vector integrity check removed",
+  "description": "P2 regression: In `fragmentation_vectors.rs` (lines 153-155), the SHA-256 verification of test vector packet contents was replaced with no-op assignments:\n\nOld:\n```rust\nlet digest = Sha256::digest(expand(packet));\nlet expected = decode_hex(vector.packet_sha256.as_ref().unwrap());\nassert_eq!(\u0026digest[..], expected);\n```\n\nNew:\n```rust\nlet _data = expand(packet);\nlet _expected = vector.packet_sha256.as_ref().unwrap();\n```\n\nThis removes an important integrity check that ensures test vector JSON hasn't been corrupted. The sha2 import was also removed.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T19:09:42.857371207Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T19:09:42.857371207Z"
+}
