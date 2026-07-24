@@ -131,6 +131,9 @@ impl Gateway {
         if dst[0] == 0x00 && dst[1] == 0x64 && dst[2] == 0xff && dst[3] == 0x9b {
             return false;
         }
+        if (dst[0] & 0xfe) == 0x02 {
+            return self.rpl_node.router().lookup_route(dst).is_some();
+        }
         (dst[0] == 0xfe && dst[1] == 0x80)
             || dst[0] == 0xfd
             || self.rpl_node.router().lookup_route(dst).is_some()

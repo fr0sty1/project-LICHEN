@@ -285,6 +285,16 @@ impl Addr {
         self.0 == [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
     }
 
+    /// Check if this is a Yggdrasil address (02xx::/7).
+    ///
+    /// Per the LICHEN addressing model (spec §6.2, §7.2), 02xx::/7
+    /// covers both `02xx::/7` (top 7 bits = `0000 001`) for the
+    /// Yggdrasil-derived mesh prefix. These addresses MUST NOT be
+    /// classified as local mesh without explicit route state.
+    pub fn is_yggdrasil(&self) -> bool {
+        (self.0[0] & 0xfe) == 0x02
+    }
+
     /// Get raw bytes.
     pub fn as_bytes(&self) -> &[u8; 16] {
         &self.0
