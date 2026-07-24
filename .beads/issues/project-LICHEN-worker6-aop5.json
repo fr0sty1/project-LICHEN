@@ -2,11 +2,13 @@
   "id": "project-LICHEN-worker6-aop5",
   "title": "[rereview] project-LICHEN-a4n2.3: missing newline before tx_queue_destroy declaration",
   "description": "In tx_queue.c:447, the tx_queue_destroy function has no blank line separating it from tx_queue_clear (which ends at line 445). While functionally harmless, this is a minor style violation — every other function in the file has a blank-line separator. Readability issue only, no runtime impact.",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "chore",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T14:16:57.523841216Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T14:16:57.523841216Z"
+  "updated_at": "2026-07-24T14:17:00.75231859Z",
+  "closed_at": "2026-07-24T14:17:00.75231859Z",
+  "close_reason": "Bikeshedding — no engineering basis"
 }
