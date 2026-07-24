@@ -224,7 +224,8 @@ int lichen_router_route(struct lichen_router *router,
 			uint32_t now_ms,
 			struct lichen_route_result *result)
 {
-	if (router == NULL || dst_addr == NULL || result == NULL) {
+	if (router == NULL || dst_addr == NULL || dst_iid == NULL ||
+	    result == NULL) {
 		return -EINVAL;
 	}
 
@@ -238,14 +239,12 @@ int lichen_router_route(struct lichen_router *router,
 
 	enum lichen_addr_class addr_class = lichen_router_classify(router, dst_addr);
 
-	const uint8_t *iid = dst_iid ? dst_iid : &dst_addr[8];
-
 	switch (addr_class) {
 	case LICHEN_ADDR_LINK_LOCAL:
 		return route_link_local(dst_addr, result);
 
 	case LICHEN_ADDR_MESH_LOCAL:
-		return route_mesh_local(router, iid, now_ms, result);
+		return route_mesh_local(router, dst_iid, now_ms, result);
 
 	case LICHEN_ADDR_YGGDRASIL:
 	case LICHEN_ADDR_EXTERNAL:

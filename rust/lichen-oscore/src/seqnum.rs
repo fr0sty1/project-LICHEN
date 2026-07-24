@@ -174,20 +174,20 @@ mod tests {
 
     #[test]
     fn increment_at_max_returns_none() {
-        let seq = OscoreSeqNum::new(u32::MAX);
+        let seq = OscoreSeqNum::new(u64::from(u32::MAX)).unwrap();
         assert!(seq.increment().is_none());
 
-        let mut seq_mut = OscoreSeqNum::new(u32::MAX);
+        let mut seq_mut = OscoreSeqNum::new(u64::from(u32::MAX)).unwrap();
         assert!(seq_mut.fetch_increment().is_none());
         // Value unchanged after failed increment
-        assert_eq!(seq_mut.get(), u32::MAX);
+        assert_eq!(seq_mut.get(), u64::from(u32::MAX));
     }
 
     #[test]
     fn increment_near_max_succeeds() {
-        let seq = OscoreSeqNum::new(u32::MAX - 1);
+        let seq = OscoreSeqNum::new(u64::from(u32::MAX) - 1).unwrap();
         let next = seq.increment().expect("should succeed at MAX-1");
-        assert_eq!(next.get(), u32::MAX);
+        assert_eq!(next.get(), u64::from(u32::MAX));
     }
 
     #[test]

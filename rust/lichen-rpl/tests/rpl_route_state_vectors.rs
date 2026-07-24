@@ -136,7 +136,7 @@ fn route_dao(dao_sequence: u8, path_sequence: u8, target: [u8; 16], parent: [u8;
 
 fn dao_sequences_and_lifetime(wire: &[u8]) -> (u8, u8, u8) {
     let dao = Dao::from_bytes(wire).unwrap();
-    let transit = OptionIter::new(dao.options_tail(wire))
+    let transit = OptionIter::new(Dao::options_tail(wire))
         .map(Result::unwrap)
         .find(|option| option.opt_type == OPT_TRANSIT_INFO)
         .map(|option| TransitInfo::from_bytes(option.data).unwrap())

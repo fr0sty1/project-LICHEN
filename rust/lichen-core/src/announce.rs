@@ -150,18 +150,14 @@ mod tests {
     use crate::error::TooShort;
     #[test]
     fn roundtrip() {
-        let wire: [u8; 93] = {
-            let mut buf = [0u8; 93];
-            buf[0] = 1;
-            buf[1] = 2;
-            buf[2] = 3;
-            buf[3] = 0x12;
-            buf[4] = 0x34;
-            buf[5] = 2;
-            buf
-        };
+        let wire = [
+            1, 2, 3, 0x12, 0x34, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0,
+        ];
         let ann = Announce::from_bytes(&wire).unwrap();
-        let mut out = [0; 93];
+        let mut out = [0u8; 93];
         let b = AnnounceBuilder {
             originator_iid: ann.originator_iid,
             pubkey: ann.pubkey,
@@ -227,13 +223,13 @@ mod tests {
     }
     #[test]
     fn should_relay() {
-        let mut w = [
+        let w = [
             1, 2, 14, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0,
         ];
-        let a = Announce::from_bytes(&w[..93]).unwrap();
+        let a = Announce::from_bytes(&w).unwrap();
         assert!(a.should_relay());
     }
 }

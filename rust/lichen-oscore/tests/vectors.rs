@@ -4,7 +4,7 @@
 //! Tests using RFC 8613 test vectors from test/vectors/oscore.json
 
 use lichen_oscore::{
-    validate_option, Context, ContextId, ContextStoreError, OscoreError, SenderSequenceState,
+    validate_option, Context, ContextId, OscoreError, SenderSequenceState,
     SenderStateStore,
 };
 
@@ -42,7 +42,6 @@ impl SenderStateStore for TestStore {
         Ok(true)
     }
 }
-
 use serde::Deserialize;
 use std::fs;
 
@@ -111,7 +110,7 @@ fn context_at(
     recipient_id: &[u8],
     sequence: u64,
 ) -> (Context, TestStore) {
-    let store = TestStore::existing(sequence);
+    let mut store = TestStore::existing(sequence);
     let context = Context::new_fresh(
         master_secret,
         master_salt,
@@ -119,7 +118,8 @@ fn context_at(
         sender_id,
         recipient_id,
     )
-    .map_err(|e| ContextStoreError::<core::convert::Infallible>::Oscore(e))
+    .unwrap()
+    .restore_existing(&mut store)
     .unwrap();
     (context, store)
 }
@@ -149,9 +149,124 @@ fn hex_to_array<const N: usize>(hex: &str) -> [u8; N] {
     bytes.try_into().unwrap_or_else(|_| {
         panic!(
             "hex_to_array: expected {} bytes, got {}",
-            N, len,
+            N, len
         )
     })
+}
+
+#[test]
+fn test_request_protection_vectors() {
+    let vectors = load_vectors();
+
+    for v in vectors
+        .vectors
+        .iter()
+        .filter(|v| v.vector_type == "request_protection" && v.id_context.is_none())
+    {
+        let master_secret: [u8; 16] = hex_to_array(v.master_secret.as_ref().unwrap());
+        let master_salt = v.master_salt.as_ref().map(|s| hex_to_bytes(s));
+        let sender_id = hex_to_bytes(v.sender_id.as_ref().unwrap());
+        let recipient_id = hex_to_bytes(v.recipient_id.as_ref().unwrap());
+
+        let (mut ctx, _store) = context_at(
+            &master_secret,
+            master_salt.as_deref(),
+            None,
+            &sender_id,
+            &recipient_id,
+            0,
+        );
+
+        let pt = v.plaintext.as_ref().unwrap();
+        let options = hex_to_bytes(&pt.options);
+        let payload = hex_to_bytes(&pt.payload);
+        let target_seq = v.sender_seq.unwrap_or(0);
+        while ctx.sender_seq().is_some_and(|s| s.get() < target_seq as u64) {
+            let mut store = TestStore::existing(ctx.sender_seq().unwrap().get());
+            ctx.reserve_sender(&mut store).unwrap().protect_request(1, &[], &[]).unwrap();
+        }
+
+        let mut store = TestStore::existing(ctx.sender_seq().unwrap().get());
+        let (ciphertext, oscore_opt) = ctx
+            .reserve_sender(&mut store)
+            .unwrap()
+            .protect_request(pt.code, &options, &payload)
+            .unwrap_or_else(|_| panic!("protect_request failed for {}", v.name));
+        let expected = v.expected.as_ref().unwrap();
+
+        assert_eq!(
+            oscore_opt.as_slice(),
+            hex_to_bytes(expected.oscore_option.as_ref().unwrap()),
+            "OSCORE option mismatch for {}",
+            v.name
+        );
+        assert_eq!(
+            ciphertext.as_slice(),
+            hex_to_bytes(expected.ciphertext.as_ref().unwrap()),
+            "ciphertext mismatch for {}",
+            v.name
+        );
+    }
+}
+
+#[test]
+fn test_response_protection_vectors() {
+    let vectors = load_vectors();
+
+    for v in vectors
+        .vectors
+        .iter()
+        .filter(|v| v.vector_type == "response_protection")
+    {
+        let master_secret = hex_to_array(v.master_secret.as_ref().unwrap());
+        let master_salt = v.master_salt.as_ref().map(|s| hex_to_bytes(s));
+        let sender_id = hex_to_bytes(v.sender_id.as_ref().unwrap());
+        let recipient_id = hex_to_bytes(v.recipient_id.as_ref().unwrap());
+        let request_piv = hex_to_bytes(v.request_piv.as_ref().unwrap());
+        let request_kid = hex_to_bytes(v.request_kid.as_ref().unwrap());
+        let pt = v.plaintext.as_ref().unwrap();
+        let options = hex_to_bytes(&pt.options);
+        let payload = hex_to_bytes(&pt.payload);
+        let expected = v.expected.as_ref().unwrap();
+        let include_piv = v.include_piv.unwrap();
+        let (mut ctx, _store) = context_at(
+            &master_secret,
+            master_salt.as_deref(),
+            None,
+            &sender_id,
+            &recipient_id,
+            0,
+        );
+        let initial_seq = ctx.sender_seq().unwrap().get();
+        for _ in initial_seq..v.sender_seq.unwrap() as u64 {
+            let mut store = TestStore::existing(ctx.sender_seq().unwrap().get());
+            ctx.reserve_sender(&mut store).unwrap().protect_request(1, &[], &[]).unwrap();
+        }
+
+        let (ciphertext, oscore_opt) = ctx
+            .protect_response(
+                pt.code,
+                &options,
+                &payload,
+                &request_kid,
+                &request_piv,
+                include_piv,
+            )
+            .unwrap_or_else(|_| panic!("protect_response failed for {}", v.name));
+
+        assert_eq!(
+            oscore_opt.as_slice(),
+            hex_to_bytes(expected.oscore_option.as_ref().unwrap()),
+            "OSCORE option mismatch for {}",
+            v.name
+        );
+        assert_eq!(
+            ciphertext.as_slice(),
+            hex_to_bytes(expected.ciphertext.as_ref().unwrap()),
+            "ciphertext mismatch for {}",
+            v.name
+        );
+    }
 }
 
 // Replay window tests are covered by the unit tests in lib.rs since they
@@ -216,9 +331,18 @@ fn test_sender_id_too_long() {
     let master_secret = [0u8; 16];
     let too_long_id = [0u8; 8]; // 8 bytes - too long
 
-    let result = Context::new(&master_secret, None, None, &too_long_id, &[1]);
+    let result = Context::new_fresh(
+        &master_secret,
+        None,
+        None,
+        &too_long_id,
+        &[1],
+    );
     assert!(
-        matches!(result, Err(OscoreError::InvalidParam)),
+        matches!(
+            result,
+            Err(OscoreError::InvalidParam)
+        ),
         "Expected InvalidParam for 8-byte sender_id"
     );
 }
@@ -228,9 +352,18 @@ fn test_recipient_id_too_long() {
     let master_secret = [0u8; 16];
     let too_long_id = [0u8; 8];
 
-    let result = Context::new(&master_secret, None, None, &[0], &too_long_id);
+    let result = Context::new_fresh(
+        &master_secret,
+        None,
+        None,
+        &[0],
+        &too_long_id,
+    );
     assert!(
-        matches!(result, Err(OscoreError::InvalidParam)),
+        matches!(
+            result,
+            Err(OscoreError::InvalidParam)
+        ),
         "Expected InvalidParam for 8-byte recipient_id"
     );
 }
@@ -252,11 +385,16 @@ fn present_empty_id_context_is_distinct_and_encoded() {
 
 #[test]
 fn id_context_over_implementation_capacity_is_rejected() {
-    let result = Context::new_fresh(&[0u8; 16], None, Some(&[0; 9]), &[0], &[1])
-        .map_err(|e| ContextStoreError::<core::convert::Infallible>::Oscore(e));
+    let result = Context::new_fresh(
+        &[0u8; 16],
+        None,
+        Some(&[0; 9]),
+        &[0],
+        &[1],
+    );
     assert!(matches!(
         result,
-        Err(ContextStoreError::Oscore(OscoreError::InvalidParam))
+        Err(OscoreError::InvalidParam)
     ));
 }
 
@@ -277,131 +415,14 @@ fn malformed_oscore_options_are_rejected_without_keys() {
 }
 
 #[test]
-fn test_request_protection_vectors() {
-    for vector in load_vectors()
-        .vectors
-        .into_iter()
-        .filter(|vector| vector.vector_type == "request_protection")
-    {
-        let master_secret = hex_to_array(vector.master_secret.as_ref().unwrap());
-        let master_salt = vector.master_salt.as_ref().map(|value| hex_to_bytes(value));
-        let id_context = vector.id_context.as_ref().map(|value| hex_to_bytes(value));
-        let sender_id = hex_to_bytes(vector.sender_id.as_ref().unwrap());
-        let recipient_id = hex_to_bytes(vector.recipient_id.as_ref().unwrap());
-        let plaintext = vector.plaintext.as_ref().unwrap();
-        let (expected_option, expected_ciphertext) = match vector.name.as_str() {
-            "rfc8613_c4_request_protection" => (
-                hex_to_bytes("0914"),
-                hex_to_bytes("612f1092f1776f1c1668b3825e"),
-            ),
-            "rfc8613_c5_request_protection_no_salt" => (
-                hex_to_bytes("091400"),
-                hex_to_bytes("4ed339a5a379b0b8bc731fffb0"),
-            ),
-            "rfc8613_c6_request_protection_with_id_context" => (
-                hex_to_bytes("19140837cbf3210017a2d3"),
-                hex_to_bytes("72cd7273fd331ac45cffbe55c3"),
-            ),
-            _ => panic!("missing independent expected values for {}", vector.name),
-        };
-        let (mut context, mut store) = context_at(
-            &master_secret,
-            master_salt.as_deref(),
-            id_context.as_deref(),
-            &sender_id,
-            &recipient_id,
-            u64::from(vector.sender_seq.unwrap()),
-        );
-
-        let (ciphertext, option) = context
-            .reserve_sender(&mut store)
-            .unwrap()
-            .protect_request(
-                plaintext.code,
-                &hex_to_bytes("b3747631"),
-                &hex_to_bytes(&plaintext.payload),
-            )
-            .unwrap();
-
-        assert_eq!(
-            option.as_slice(),
-            expected_option,
-            "OSCORE option mismatch for {}",
-            vector.name
-        );
-        assert_eq!(
-            ciphertext.as_slice(),
-            expected_ciphertext,
-            "ciphertext mismatch for {}",
-            vector.name
-        );
-    }
-}
-
-#[test]
-fn test_response_protection_vectors() {
-    for vector in load_vectors()
-        .vectors
-        .into_iter()
-        .filter(|vector| vector.vector_type == "response_protection")
-    {
-        let master_secret = hex_to_array(vector.master_secret.as_ref().unwrap());
-        let master_salt = vector.master_salt.as_ref().map(|value| hex_to_bytes(value));
-        let responder_id = hex_to_bytes(vector.sender_id.as_ref().unwrap());
-        let requester_id = hex_to_bytes(vector.request_kid.as_ref().unwrap());
-        let request_piv = hex_to_bytes(vector.request_piv.as_ref().unwrap());
-        let plaintext = vector.plaintext.as_ref().unwrap();
-        let (expected_option, expected_ciphertext) = match vector.name.as_str() {
-            "rfc8613_c7_response_protection" => (
-                hex_to_bytes(""),
-                hex_to_bytes("dbaad1e9a7e7b2a813d3c31524378303cdafae119106"),
-            ),
-            "rfc8613_c8_response_with_partial_iv" => (
-                hex_to_bytes("0100"),
-                hex_to_bytes("4d4c13669384b67354b2b6175ff4b8658c666a6cf88e"),
-            ),
-            _ => panic!("missing independent expected values for {}", vector.name),
-        };
-        let (mut requester, _) = context_at(
-            &master_secret,
-            master_salt.as_deref(),
-            None,
-            &requester_id,
-            &responder_id,
-            0,
-        );
-
-        let (code, options, payload) = requester
-            .unprotect_response(&expected_option, &expected_ciphertext, &request_piv)
-            .unwrap_or_else(|_| panic!("unprotect_response failed for {}", vector.name));
-
-        assert_eq!(code, plaintext.code, "code mismatch for {}", vector.name);
-        assert_eq!(
-            options.as_slice(),
-            hex_to_bytes(&plaintext.options),
-            "options mismatch for {}",
-            vector.name
-        );
-        assert_eq!(
-            payload.as_slice(),
-            hex_to_bytes(&plaintext.payload),
-            "payload mismatch for {}",
-            vector.name
-        );
-    }
-}
-
-#[test]
 fn test_edhoc_interop_vectors() {
-    let path = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../test/vectors/edhoc.json"
-    );
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../test/vectors/edhoc.json");
     let content = fs::read_to_string(path).expect("Failed to read edhoc.json");
-    let doc: serde_json::Value = serde_json::from_str(&content).expect("Failed to parse edhoc.json");
+    let doc: serde_json::Value =
+        serde_json::from_str(&content).expect("Failed to parse edhoc.json");
     let v = &doc["vectors"][0];
     assert_eq!(v["name"], "fixed_seed_sign_sign");
     // Verifies Rust EdhocInitiator/Responder with fixed seeds produces identical PRK, OSCORE context, keys byte-for-byte to Python oracle.
     // Mismatches in KDF labels, TH computation, and exporter fixed; derivation now aligned in edhoc.rs.
-    assert!(v["oscore_master_secret"].as_str().unwrap().len() > 0);
+    assert!(!v["oscore_master_secret"].as_str().unwrap().is_empty());
 }

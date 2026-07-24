@@ -14,6 +14,9 @@
 use std::collections::HashMap;
 
 #[cfg(feature = "std")]
+use std::vec::Vec;
+
+#[cfg(feature = "std")]
 use core::cmp::Ordering;
 
 #[cfg(feature = "std")]

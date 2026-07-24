@@ -316,13 +316,16 @@ pub fn save_seqnum<S: NonVolatile>(storage: &mut S, seqnum: u16) -> Result<(), S
 /// Load peer count from storage.
 pub fn load_peer_count<S: NonVolatile>(storage: &S) -> Result<usize, S::Error> {
     let mut buf = [0u8; 1];
-    Ok(storage.read(keys::PEER_COUNT, &mut buf).map_or(0, |n| {
-        if n == 1 {
-            buf[0] as usize
-        } else {
-            0
-        }
-    }))
+    Ok(storage.read(keys::PEER_COUNT, &mut buf).map_or(
+        0,
+        |n| {
+            if n == 1 {
+                buf[0] as usize
+            } else {
+                0
+            }
+        },
+    ))
 }
 
 /// Load a peer pubkey from storage.
@@ -505,9 +508,11 @@ pub mod fs {
 
 #[cfg(test)]
 mod tests {
+    extern crate std;
     use super::*;
-    use fs::FileStorage;
-    use mem::MemStorage;
+    use super::mem::MemStorage;
+    #[cfg(feature = "std")]
+    use super::fs::FileStorage;
 
     #[test]
     fn seed_round_trip() {
@@ -696,6 +701,7 @@ mod tests {
         assert_eq!(storage.raw(keys[1]), Some(before_b.as_slice()));
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn file_storage_durable_and_preserves_on_failure() {
         let d = std::path::Path::new("/tmp/lichen-nv-test");
@@ -704,11 +710,11 @@ mod tests {
         let mut s = FileStorage::new(d).unwrap();
         let seed = Seed::new([0x22u8; 32]);
         save_seed(&mut s, &seed).unwrap();
-        assert_eq!(load_seed(&s), Some(seed.clone()));
+        assert_eq!(load_seed(&s).unwrap(), Some(seed.clone()));
         let s2 = FileStorage::new(d).unwrap();
-        assert_eq!(load_seed(&s2), Some(seed));
+        assert_eq!(load_seed(&s2).unwrap(), Some(seed));
         save_epoch(&mut s, 42).unwrap();
-        assert_eq!(load_epoch(&s), Some(42));
+        assert_eq!(load_epoch(&s).unwrap(), Some(42));
         let _ = std::fs::remove_dir_all(d);
     }
 }

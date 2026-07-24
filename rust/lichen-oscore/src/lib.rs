@@ -252,6 +252,7 @@ impl PendingResponse<'_> {
     }
 }
 
+#[allow(dead_code)]
 enum Construction {
     #[cfg(any(feature = "edhoc", test))]
     Fresh,
@@ -1271,6 +1272,7 @@ impl Context {
             .commit()
     }
 
+    #[allow(dead_code)]
     fn is_response_reuse(&self, seq: OscoreSeqNum) -> bool {
         if !self.response_window_initialized || seq.get() > self.response_seq.get() {
             return false;
@@ -1280,6 +1282,7 @@ impl Context {
         diff >= u64::from(WINDOW_SIZE) || self.response_window & (1 << diff as u32) != 0
     }
 
+    #[allow(dead_code)]
     fn mark_response_used(&mut self, seq: OscoreSeqNum) {
         if !self.response_window_initialized {
             self.response_seq = seq;
@@ -2045,20 +2048,25 @@ mod tests {
             };
             let salt = salt.as_deref().unwrap_or(&[]);
 
+            let ic = if id_context.is_empty() {
+                None
+            } else {
+                Some(id_context.as_slice())
+            };
             assert_eq!(
-                derive_key(&secret, salt, &sender_id, &id_context)
+                derive_key(&secret, salt, &sender_id, ic)
                     .unwrap()
                     .as_slice(),
                 json_hex(&v["expected"]["sender_key"])
             );
             assert_eq!(
-                derive_key(&secret, salt, &recipient_id, &id_context)
+                derive_key(&secret, salt, &recipient_id, ic)
                     .unwrap()
                     .as_slice(),
                 json_hex(&v["expected"]["recipient_key"])
             );
             assert_eq!(
-                derive_iv(&secret, salt, &id_context).unwrap().as_slice(),
+                derive_iv(&secret, salt, ic).unwrap().as_slice(),
                 json_hex(&v["expected"]["common_iv"])
             );
         }
@@ -2078,25 +2086,25 @@ mod tests {
                 json_hex(&v["sender_id"])
             };
             let piv = if v["type"] == "request_protection" {
-                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap() as u32)
+                Some(OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap()).unwrap())
             } else if v["include_piv"] == false {
                 OscoreSeqNum::from_piv(&json_hex(&v["request_piv"]))
             } else {
-                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap() as u32)
+                Some(OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap()).unwrap())
             };
             let secret: [u8; KEY_LEN] = json_hex(&v["master_secret"]).try_into().unwrap();
             let salt = v["master_salt"]
                 .as_str()
                 .map(|_| json_hex(&v["master_salt"]));
             let id_context = if v["id_context"].is_string() {
-                json_hex(&v["id_context"])
+                Some(json_hex(&v["id_context"]))
             } else {
-                std::vec::Vec::new()
+                None
             };
             let derived_iv =
-                derive_iv(&secret, salt.as_deref().unwrap_or(&[]), &id_context).unwrap();
+                derive_iv(&secret, salt.as_deref().unwrap_or(&[]), id_context.as_deref()).unwrap();
             let mut piv_bytes = [0u8; PIV_MAX_LEN];
-            let piv_len = piv.encode_piv(&mut piv_bytes);
+            let piv_len = piv.unwrap().encode_piv(&mut piv_bytes);
 
             assert_eq!(
                 compute_nonce(&sender_id, &piv_bytes[..piv_len], &derived_iv),
@@ -2305,7 +2313,7 @@ mod tests {
 
         let mut c7 = Context::new_ephemeral(&master_secret, Some(&master_salt), &[1], &[]).unwrap();
         let (ciphertext, option) = c7
-            .protect_response(0x45, &[], payload, &[], &[0x14])
+            .protect_response(0x45, &[], payload, &[], &[0x14], false)
             .unwrap();
         assert_eq!(option.as_slice(), b"");
         assert_eq!(
@@ -2452,7 +2460,7 @@ mod tests {
         let mut context = Context::new_fresh(&secret, None, None, &[1], &[0]).unwrap();
         assert_eq!(
             context
-                .protect_response(0x45, &[], b"response", &[0], &[3])
+                .protect_response(0x45, &[], b"response", &[0], &[3], false)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
@@ -2460,7 +2468,7 @@ mod tests {
         let mut store = EmptyStore(None);
         let mut context = context.register_fresh(&mut store).unwrap();
         assert!(context
-            .protect_response(0x45, &[], b"response", &[0], &[3])
+            .protect_response(0x45, &[], b"response", &[0], &[3], false)
             .is_ok());
     }
 
@@ -2475,13 +2483,15 @@ mod tests {
                 exhausted: false,
             },
         };
-        let mut context =
-            Context::load_existing(&secret, None, None, &[1], &[0], &mut store).unwrap();
+        let mut context = Context::new_fresh(&secret, None, None, &[1], &[0])
+            .unwrap()
+            .restore_existing(&mut store)
+            .unwrap();
 
         assert_eq!(context.sender_sequence_state(), store.state);
         assert_eq!(
             context
-                .protect_response(0x45, &[], b"response", &[0], &[3])
+                .protect_response(0x45, &[], b"response", &[0], &[3], false)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
@@ -2507,12 +2517,14 @@ mod tests {
                 _expected: Option<SenderSequenceState>,
                 _next: SenderSequenceState,
             ) -> Result<bool, Self::Error> {
-                panic!("load_existing must not write")
+                panic!("restore_existing must not write")
             }
         }
 
         assert!(matches!(
-            Context::load_existing(&[0x44; KEY_LEN], None, None, &[1], &[0], &mut EmptyStore),
+            Context::new_fresh(&[0x44; KEY_LEN], None, None, &[1], &[0])
+                .unwrap()
+                .restore_existing(&mut EmptyStore),
             Err(ContextStoreError::Missing)
         ));
     }
@@ -2568,10 +2580,14 @@ mod tests {
             barrier: Arc::clone(&barrier),
         };
         let mut second_store = first_store.clone();
-        let mut first =
-            Context::load_existing(&secret, None, None, &[0], &[1], &mut first_store).unwrap();
-        let mut second =
-            Context::load_existing(&secret, None, None, &[0], &[1], &mut second_store).unwrap();
+        let mut first = Context::new_fresh(&secret, None, None, &[0], &[1])
+            .unwrap()
+            .restore_existing(&mut first_store)
+            .unwrap();
+        let mut second = Context::new_fresh(&secret, None, None, &[0], &[1])
+            .unwrap()
+            .restore_existing(&mut second_store)
+            .unwrap();
 
         let first = thread::spawn(move || first.reserve_sender(&mut first_store).is_ok());
         let second = thread::spawn(move || second.reserve_sender(&mut second_store).is_ok());
@@ -2782,7 +2798,7 @@ mod tests {
         let mut ctx = Context::restore(&master_secret, None, &[1], &[0], 7, false).unwrap();
 
         assert_eq!(
-            ctx.protect_response(0x45, &[], b"response", &[0], &[3])
+            ctx.protect_response(0x45, &[], b"response", &[0], &[3], false)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
@@ -2864,7 +2880,7 @@ mod tests {
         responder.common_iv = [0; NONCE_LEN];
 
         let (ciphertext, option) = responder
-            .protect_response(0x45, &[], &[], b"\xaa", b"\x05")
+            .protect_response(0x45, &[], &[], b"\xaa", b"\x05", false)
             .unwrap();
 
         assert_eq!(ciphertext.as_slice(), &hex!("26f4d77f5a397d9c0a"));
@@ -3310,12 +3326,12 @@ mod tests {
 
         assert_eq!(
             responder
-                .protect_response(0x45, &[], b"response", b"\x02", b"\x00")
+                .protect_response(0x45, &[], b"response", b"\x02", b"\x00", false)
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
         responder
-            .protect_response(0x45, &[], b"response", b"\x00", b"\x00")
+            .protect_response(0x45, &[], b"response", b"\x00", b"\x00", false)
             .unwrap();
     }
 
@@ -3346,21 +3362,21 @@ mod tests {
         let mut responder = Context::new_ephemeral(&master_secret, None, b"\x01", b"\x00").unwrap();
 
         responder
-            .protect_response(0x45, &[], b"first", b"\x00", b"\x07")
+            .protect_response(0x45, &[], b"first", b"\x00", b"\x07", false)
             .unwrap();
         assert_eq!(
             responder
-                .protect_response(0x45, &[], b"second", b"\x00", b"\x07")
+                .protect_response(0x45, &[], b"second", b"\x00", b"\x07", false)
                 .unwrap_err(),
             OscoreError::Replay
         );
 
         responder
-            .protect_response(0x45, &[], b"later", b"\x00", b"\x28")
+            .protect_response(0x45, &[], b"later", b"\x00", b"\x28", false)
             .unwrap();
         assert_eq!(
             responder
-                .protect_response(0x45, &[], b"stale", b"\x00", b"\x07")
+                .protect_response(0x45, &[], b"stale", b"\x00", b"\x07", false)
                 .unwrap_err(),
             OscoreError::Replay
         );
