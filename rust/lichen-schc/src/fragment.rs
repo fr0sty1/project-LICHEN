@@ -20,7 +20,7 @@ pub const MIC_LENGTH: usize = 4;
 pub const DEFAULT_WINDOW_SIZE: usize = 32;
 pub const MAX_WINDOW_SIZE: usize = 62;
 pub const RETRANSMISSION_TIMEOUT_S: u32 = 10;
-pub const MAX_ACK_REQUESTS: u8 = 3;
+pub const MAX_ACK_REQUESTS: u8 = 4;
 pub const INACTIVITY_TIMEOUT_S: u32 = 60;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -194,6 +194,8 @@ impl<'a> Fragment<'a> {
             return Err(FragmentError::InvalidTileLength);
         } else if window == 1 && fcn == 0 {
             return Err(FragmentError::InvalidFcn);
+        } else if data.last().map_or(false, |b| b & 1 != 0) {
+            return Err(FragmentError::NonZeroPadding);
         }
         if out.len() < payload_len {
             return Err(BufferTooSmall::new(payload_len, out.len()).into());

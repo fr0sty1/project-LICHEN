@@ -202,7 +202,7 @@ fn test_schc_fragment_vectors() {
     let content = fs::read_to_string(&vectors_path).expect("Failed to read fragment vectors");
     let doc: serde_json::Value = serde_json::from_str(&content).expect("Failed to parse JSON");
 
-    assert_eq!(doc["format_version"], 1, "Unexpected vector format version");
+    assert_eq!(doc["format_version"], 2, "Unexpected vector format version");
 
     let vectors = doc["vectors"].as_array().unwrap();
     assert!(!vectors.is_empty(), "No fragment vectors");
