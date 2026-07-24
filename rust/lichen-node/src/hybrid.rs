@@ -361,15 +361,11 @@ impl HybridRouter {
     }
 
     /// Start a LOADng route discovery for a destination.
-    /// Returns the RREQ to broadcast.
-    pub fn start_discovery(&mut self, dst: [u8; 16], now_ms: u32) -> Rreq {
-        if let Some(discovery) = self
-            .active_discoveries
-            .iter_mut()
-            .find(|d| d.destination == dst)
-        {
-            discovery.sent_at_ms = now_ms;
-            return discovery.discovery.rreq();
+    /// Returns `Some(RREQ)` if a new discovery was initiated, or `None` if
+    /// discovery is already in progress (caller should not broadcast again).
+    pub fn start_discovery(&mut self, dst: [u8; 16], now_ms: u32) -> Option<Rreq> {
+        if self.active_discoveries.iter().any(|d| d.destination == dst) {
+            return None;
         }
 
         let seq = self.loadng_seq;
@@ -388,7 +384,7 @@ impl HybridRouter {
             sent_at_ms: now_ms,
         });
 
-        rreq
+        Some(rreq)
     }
 
     /// Handle LOADng RREP received. Installs gradient and returns pending packets.
