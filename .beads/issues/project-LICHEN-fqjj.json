@@ -1,7 +1,11 @@
 {
   "id": "project-LICHEN-fqjj",
   "title": "tdma.py: implement all CCP TDMA vectors with independent oracles",
+<<<<<<< HEAD
   "status": "in_progress",
+=======
+  "status": "open",
+>>>>>>> worker-2-20260724
   "priority": 1,
   "issue_type": "task",
   "assignee": "AI Agent",

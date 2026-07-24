@@ -2,7 +2,7 @@
   "id": "project-LICHEN-dk3c.5",
   "title": "Zephyr/C impl: Gateway-centric announce suppression",
   "description": "Implement gateway-centric announce suppression in Zephyr/C firmware.\n\n## Files to modify\n- lichen/subsys/lichen/ (locate announce and RPL code)\n\n## Changes\n1. Track DODAG parent state (already exists for RPL)\n2. Parse gateway-centric flag from DIO options\n3. Announce timer uses dynamic interval based on DODAG state\n4. On DODAG loss, schedule resume to normal interval\n\n## Kconfig\n- CONFIG_LICHEN_ANNOUNCE_INTERVAL_NORMAL=300\n- CONFIG_LICHEN_ANNOUNCE_INTERVAL_GATEWAY=1800\n- CONFIG_LICHEN_DODAG_LOSS_RESUME_TIMEOUT=60\n\n## State machine\nORPHAN (300s interval) -\u003e DODAG_JOINED (1800s interval) -\u003e ORPHAN (300s within 60s)",
-  "status": "closed",
+  "status": "open",
   "priority": 2,
   "issue_type": "feature",
   "owner": "me@mark.atwood.name",

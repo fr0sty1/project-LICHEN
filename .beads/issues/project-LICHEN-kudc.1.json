@@ -2,7 +2,7 @@
   "id": "project-LICHEN-kudc.1",
   "title": "Python: Review CCP-16 load balancing against spec/02a",
   "description": "Review python/ CCP-16 implementation against spec/02a-coordinated-capacity.md. Check: channel utilization metrics (40% threshold), queue depth handling (\u003e4 packets backpressure), ETX integration (\u003e4.0 threshold), CBOR signaling formats.",
-  "status": "closed",
+  "status": "open",
   "priority": 1,
   "issue_type": "task",
   "assignee": "ec2-user",

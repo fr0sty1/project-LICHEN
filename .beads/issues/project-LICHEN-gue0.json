@@ -1,7 +1,11 @@
 {
   "id": "project-LICHEN-gue0",
   "title": "Missing lichen_lora_perform_cca definition and Kconfig for CCA threshold",
+<<<<<<< HEAD
   "status": "in_progress",
+=======
+  "status": "open",
+>>>>>>> worker-2-20260724
   "priority": 0,
   "issue_type": "bug",
   "assignee": "AI Agent",
