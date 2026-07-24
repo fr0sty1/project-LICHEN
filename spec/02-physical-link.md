@@ -169,6 +169,48 @@ See child issue project-LICHEN-zd2d.2 for driver implementation.
 
 
 
+### 4.5. DAD Retry Strategy
+
+When Duplicate Address Detection (DAD) indicates a collision on a 16-bit short
+address derived via `hash_32(EUI-64, 0)` (FNV-1a32, basis `0x811c9dc5`, see
+`02a-coordinated-capacity.md:119` and `test/vectors/hash_32.json`), the node
+recomputes a candidate address using seed mixing rather than picking a random
+address, preserving deterministic derivation:
+
+```pseudocode
+fn derive_short_addr(eui64: [u8; 8]) -> u16
+    hash = fnv1a32(eui64, basis: 0x811C9DC5)
+    return hash & 0xFFFF
+
+fn derive_short_addr_with_seed(eui64: [u8; 8], seed: u32) -> u16
+    // XOR the seed into the last 4 bytes of EUI-64 before hashing.
+    // This produces a different but deterministic address per seed.
+    mixed: [u8; 8] = eui64
+    mixed[4..8] ^= seed.to_le_bytes()
+    hash = fnv1a32(mixed, basis: 0x811C9DC5)
+    return hash & 0xFFFF
+
+fn dad_retry(eui64: [u8; 8], existing_addrs: Set<u16>) -> Option<u16>
+    addr = derive_short_addr(eui64)
+    if addr not in existing_addrs:
+        return addr
+    // Collision — try seed values 1, 2, ..., 255.
+    for seed in 1..=255:
+        addr = derive_short_addr_with_seed(eui64, seed)
+        if addr not in existing_addrs:
+            return addr
+    // All 256 candidates exhausted; fall back to EUI-64 extended addressing.
+    return None
+```
+
+If all 256 candidates are exhausted (maximum 255 seed values per 16-bit
+address space), the node MUST fall back to 64-bit extended addressing mode
+(see `02-physical-link.md:270`). Implementations MUST match
+`test/vectors/hash_32.json` for the base `hash_32` function and
+`test/vectors/short_addr_dad.json` for the DAD retry sequence.
+
+---
+
 ## 4. Link Layer
 
 ### 4.1. Frame Format

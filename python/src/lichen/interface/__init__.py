@@ -6,6 +6,17 @@ Submodules:
 - protocols: Protocol classes defining cross-implementation contracts
 """
 
+from __future__ import annotations
+
+import warnings
+
+warnings.warn(
+    "lichen.interface submodules (kiss, meshtastic) are compatibility adapters. "
+    "New code should use the IPv6 + CoAP interface from spec/11-lci.md directly.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
 from lichen.interface import kiss, meshtastic, protocols
 from lichen.interface.protocols import (
     Clock,
