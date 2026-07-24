@@ -311,6 +311,51 @@ state, random initialization does not guarantee acceptance by receivers that
 retain replay state; key rotation is required when freshness cannot otherwise
 be established. No time synchronization is required.
 
+### 4.5. DAD Retry Strategy
+
+When Duplicate Address Detection (DAD) indicates a collision on a 16-bit short
+address derived via `hash_32(EUI-64, 0)` (the integer `0` is NOT a length or
+seed; the call is ambiguous — see `02a-coordinated-capacity.md:119` which
+defines `SelectChannel(EUI64, Epoch, Density, NChannels)` with `FNV1A32(data)`
+where `data = CONCAT(EUI64, Epoch)`, and the C API `lichen_hash_32(data, len)`
+at `link_ctx.c:632`), the node recomputes a candidate address using seed mixing
+rather than picking a random address, preserving deterministic derivation:
+
+```pseudocode
+fn derive_short_addr(eui64: [u8; 8]) -> u16
+    // FNV-1a32 with basis 0x811c9dc5; single-argument hash of raw bytes.
+    // This is NOT hash_32(eui64, 0) — the (data, len) API is for the
+    // C implementation only; the spec-level function accepts byte data.
+    hash = fnv1a32(eui64, basis: 0x811C9DC5)
+    return hash & 0xFFFF
+
+fn derive_short_addr_with_seed(eui64: [u8; 8], seed: u32) -> u16
+    // XOR the seed into the last 4 bytes of EUI-64 before hashing.
+    // This produces a different but deterministic address per seed.
+    mixed: [u8; 8] = eui64
+    mixed[4..8] ^= seed.to_le_bytes()
+    hash = fnv1a32(mixed, basis: 0x811C9DC5)
+    return hash & 0xFFFF
+
+fn dad_retry(eui64: [u8; 8], existing_addrs: Set<u16>) -> Option<u16>
+    addr = derive_short_addr(eui64)
+    if addr not in existing_addrs:
+        return addr
+    // Collision — try seed values 1, 2, ..., 255.
+    // The 0 in the original ambiguous call was misinterpreted as length;
+    // the actual first-try call uses NO seed (derive_short_addr above).
+    for seed in 1..=255:
+        addr = derive_short_addr_with_seed(eui64, seed)
+        if addr not in existing_addrs:
+            return addr
+    return None  // collision space exhausted (256/65536 ≈ 0.4%)
+```
+
+The retry strategy above replaces any earlier ambiguous `hash_32(EUI-64, N)`
+notation. All references to `hash_32` for short-address derivation MUST specify
+either the single-argument `fnv1a32(bytes)` form or the two-argument
+`fnv1a32(bytes, seed)` form with an explicit XOR-mixing convention.
+
 ---
 
 [← Previous: Architecture](01-architecture.md) | [Index](README.md) | [Next: Adaptation Layer →](03-adaptation.md)
