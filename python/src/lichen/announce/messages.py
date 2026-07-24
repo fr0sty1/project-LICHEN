@@ -16,6 +16,20 @@ class AnnounceError(Exception):
 
 @dataclass(frozen=True)
 class AnnounceMessage:
+    """LICHEN announce message.
+
+    Broadcast periodically by every node to advertise presence,
+    routing information, and capabilities.
+
+    Attributes:
+        originator_iid: 8-byte EUI-64-derived interface identifier.
+        pubkey: 32-byte Ed25519 public key for signature verification.
+        seq_num: Monotonically increasing sequence number (0-65535).
+        hop_count: Number of relays this announce has traversed (0-255).
+        rx_channel: RX channel (0-7) for CCP-9 peer rendezvous coordination.
+        signature: 48-byte Schnorr signature, or empty if unsigned.
+        app_data: Optional application-specific payload (variable length).
+    """
     originator_iid: bytes
     pubkey: bytes
     seq_num: int
