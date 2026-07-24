@@ -430,12 +430,10 @@ class TestLinkLayerRx:
         """receive rejects replayed frames (same epoch/seqnum)."""
         payload = b"test"
 
-        # Build valid signed frame
-        signable = (
-            bytes([0x38, 0x20, 0])
-            + (0).to_bytes(2, "big")  # seqnum
-            + b""  # dst_addr
-            + payload
+        # Build valid signed frame using _build_signable_data so the
+        # signable format stays in sync with the receive path.
+        signable = link_layer._build_signable_data(
+            epoch=0, seqnum=0, dst_addr=b"", payload=payload
         )
         signature = sign(peer_identity.privkey, peer_identity.pubkey, signable)
 
