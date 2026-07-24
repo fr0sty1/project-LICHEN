@@ -2323,6 +2323,19 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 
 #if IS_ENABLED(CONFIG_LICHEN_LINK)
 	/*
+	 * Guard: if lora_l2 entered ABORTED state between the callback snapshot
+	 * and this mutex acquisition, bail out now before touching link_ctx.
+	 * The ABORTED state requires a full deinit/init cycle; continuing into
+	 * lichen_link_rx() on potentially-corrupt state is unsafe.
+	 * (project-LICHEN-d7ub.68)
+	 */
+	if (lichen_lora_l2_needs_reinit()) {
+		LOG_ERR("lichen_l2: RX rejected (reinit required after abort)");
+		k_mutex_unlock(&rx_mutex);
+		return;
+	}
+
+	/*
 	 * Guard against access before initialization.
 	 * This shouldn't happen in normal operation, but could if a packet
 	 * arrives during early startup before lichen_l2_iface_init() completes.
