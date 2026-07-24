@@ -1,23 +1,18 @@
 //! RF health metrics tracking for LICHEN nodes (CCP-15/16 interference mitigation,
 //! adaptive SF, load balancing).
 //!
-//! Implements normative adaptive_sf_select from spec/02a-coordinated-capacity.md
-//! (critical conditions first per table and pseudocode). Matches ccp15.json,
+//! Implements normative AdaptiveSFSelect from spec/02a-coordinated-capacity.md
+//! §2a.7 pseudocode (steps 1-6) and thresholds table. Matches ccp15.json,
 //! ccp16.json vectors exactly for EMA, load_factor, density, adaptive_sf.
-//! Tracks packet statistics for loss, SNR with EMA (alpha=1/4), density,
-//! load_factor. Saturating counters, Q16.16 fixed point. no_std compatible,
-//! #![forbid(unsafe_code)]. Removed dead RSSI stats and dropped counter.
+//! Tracks per-neighbor EMA for SNR (alpha=1/4) and loss, plus aggregate
+//! counters for density, load_factor, utilization. Saturating counters,
+//! Q16.16 fixed point. no_std compatible, #![forbid(unsafe_code)].
+
+use heapless::Vec;
 
 const FP_SCALE: u32 = 1 << 16;
 const EMA_ALPHA_SHIFT: u32 = 2;
-const DENSITY_CRITICAL: u8 = 20;
-const DENSITY_HIGH: u8 = 8;
-const DENSITY_LOW: u8 = 5;
-const SNR_CRITICAL: i8 = -5;
-const SNR_POOR: i8 = 0;
-const SNR_GOOD: i8 = 8;
-const LOAD_HIGH: u32 = FP_SCALE * 4 / 5;
-const LOAD_REBALANCE: u32 = FP_SCALE * 2 / 5;
+pub const REBALANCE_LOSS_THRESHOLD: u32 = FP_SCALE / 4;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct RfHealthMetrics {
@@ -97,6 +92,172 @@ impl RfHealthMetrics {
     #[inline]
     pub fn reset(&mut self) {
         *self = Self::new();
+    }
+}
+
+/// Per-neighbor RF state for AdaptiveSFSelect.
+///
+/// Each neighbor has its own SNR EMA (alpha=1/4), loss EMA (alpha=1/4),
+/// and packet counts. Loss is tracked as an EMA of tx_failures/total,
+/// updated on each transmission attempt to/from this neighbor.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NeighborState {
+    /// SNR statistics (EMA with alpha=1/4).
+    pub snr: SnrStats,
+    /// Packet loss rate EMA in Q16.16 (0 = 0%, FP_SCALE = 100%).
+    loss_ema_fp: u32,
+    /// Total transmissions to/from this neighbor.
+    pub tx_count: u32,
+    /// Failed transmissions to/from this neighbor.
+    pub tx_fail_count: u32,
+    /// Whether loss_ema has been initialized (first sample).
+    loss_initialized: bool,
+}
+
+impl Default for NeighborState {
+    fn default() -> Self {
+        Self {
+            snr: SnrStats::new(),
+            loss_ema_fp: 0,
+            tx_count: 0,
+            tx_fail_count: 0,
+            loss_initialized: false,
+        }
+    }
+}
+
+impl NeighborState {
+    pub const fn new() -> Self {
+        Self {
+            snr: SnrStats::new(),
+            loss_ema_fp: 0,
+            tx_count: 0,
+            tx_fail_count: 0,
+            loss_initialized: false,
+        }
+    }
+
+    #[inline]
+    pub fn record_rx(&mut self, snr: i8) {
+        self.snr.update(snr);
+    }
+
+    #[inline]
+    pub fn record_tx_result(&mut self, success: bool) {
+        self.tx_count = self.tx_count.saturating_add(1);
+        if !success {
+            self.tx_fail_count = self.tx_fail_count.saturating_add(1);
+        }
+        let failure_ratio = if self.tx_count == 0 {
+            0u32
+        } else {
+            ((self.tx_fail_count as u64) << 16) / (self.tx_count as u64)
+        } as u32;
+        if !self.loss_initialized {
+            self.loss_ema_fp = failure_ratio;
+            self.loss_initialized = true;
+        } else {
+            let diff = if failure_ratio > self.loss_ema_fp {
+                failure_ratio - self.loss_ema_fp
+            } else {
+                self.loss_ema_fp - failure_ratio
+            };
+            if failure_ratio > self.loss_ema_fp {
+                self.loss_ema_fp = self.loss_ema_fp.saturating_add(diff >> EMA_ALPHA_SHIFT);
+            } else {
+                self.loss_ema_fp = self.loss_ema_fp.saturating_sub(diff >> EMA_ALPHA_SHIFT);
+            }
+        }
+    }
+
+    #[inline]
+    pub fn ema_loss_fp(&self) -> u32 {
+        if self.loss_initialized {
+            self.loss_ema_fp
+        } else {
+            0
+        }
+    }
+
+    #[inline]
+    pub fn ema_snr(&self) -> Option<i8> {
+        self.snr.avg()
+    }
+}
+
+/// Per-neighbor RF health table with fixed capacity for no_std.
+pub type NeighborRfTable = Vec<NeighborEntry, 32>;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NeighborEntry {
+    pub node_id: u32,
+    pub state: NeighborState,
+}
+
+impl RfHealthMetrics {
+    /// AdaptiveSFSelect per spec/02a-coordinated-capacity.md §2a.7 pseudocode.
+    ///
+    /// Matches the normative procedure exactly: AssignedSF, Neighbor.EMA_SNR,
+    /// Neighbor.EMA_Loss, Density, Utilization. Returns (SF, tx_allowed).
+    #[inline]
+    pub fn adaptive_sf_select(
+        assigned_sf: Option<u8>,
+        neighbor: &NeighborState,
+        density: u8,
+        utilization: u32,
+        _load_factor: u32,
+    ) -> (u8, bool) {
+        let mut sf = assigned_sf.unwrap_or(10);
+
+        if (density > 10) || (utilization > 150) {
+            sf = sf.saturating_add(2).min(12);
+        }
+
+        let ema_snr = neighbor.ema_snr().unwrap_or(0);
+        if (ema_snr > 8) && (density < 5) {
+            sf = sf.saturating_sub(1).max(7);
+        }
+
+        let ema_loss = neighbor.ema_loss_fp();
+        if (ema_loss > REBALANCE_LOSS_THRESHOLD) || (utilization > 200) {
+            sf = sf.saturating_add(1).min(12);
+            if utilization > 200 {
+                return (sf, false);
+            }
+        }
+
+        (sf, true)
+    }
+
+    /// Adaptive SF selection using aggregate metrics (simplified API for callers
+    /// without per-neighbor state). Uses table-based thresholds matching ccp16
+    /// test vectors.
+    ///
+    /// Prefer adaptive_sf_select() when per-neighbor state is available.
+    #[inline]
+    pub fn adaptive_sf(&self) -> u8 {
+        let snr_ema = self.snr.avg().unwrap_or(0);
+        let load_high = self.load_factor_fp > (FP_SCALE * 4 / 5);
+        if self.density > 20 || snr_ema < -5 {
+            12
+        } else if self.density > 8 || snr_ema < 0 || load_high {
+            11
+        } else if self.density < 5 && snr_ema > 8 {
+            9
+        } else {
+            10
+        }
+    }
+
+    /// Whether this node should rebalance channels, per spec table thresholds.
+    ///
+    /// Returns true if density > 8 (DENSITY_HIGH), load_factor > 0.4, or
+    /// packet loss rate > 25%.
+    #[inline]
+    pub fn should_rebalance(&self) -> bool {
+        self.density > 8
+            || self.load_factor_fp > (FP_SCALE * 2 / 5)
+            || self.packet_loss_rate_fp().as_fp() > REBALANCE_LOSS_THRESHOLD
     }
 }
 
