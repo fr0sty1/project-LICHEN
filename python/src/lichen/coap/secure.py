@@ -1900,6 +1900,65 @@ class SecureDatagramChannel(DatagramChannel):
     def _endpoint_key(self, endpoint: str | Endpoint) -> str:
         return self.normalize_endpoint(endpoint).authority
 
+    @staticmethod
+    def _has_oscore_option(data: bytes) -> bool:
+        """Check if a CoAP datagram contains an OSCORE option without full decode.
+
+        OSCORE is option number 9. In the CoAP option encoding, options are
+        delta-encoded: the option delta is the cumulative sum of previous
+        deltas. This method scans the option section (between the fixed header
+        and payload marker 0xFF) for cumulative delta == 9, stopping early
+        if the sum exceeds 9 or the payload marker is hit.
+
+        Returns False for any datagram shorter than the 4-byte CoAP header.
+        """
+        if len(data) < 4:
+            return False
+        token_len = data[0] & 0x0F
+        pos = 4 + token_len
+        cum_delta = 0
+        while pos < len(data):
+            if data[pos] == 0xFF:
+                break
+            # Extended option delta if needed (13, 14)
+            delta = data[pos] >> 4
+            if delta == 13:
+                if pos + 1 >= len(data):
+                    return False
+                delta = data[pos + 1] + 13
+                skip = 1
+            elif delta == 14:
+                if pos + 2 >= len(data):
+                    return False
+                delta = int.from_bytes(data[pos + 1:pos + 3], "big") + 269
+                skip = 2
+            elif delta == 15:
+                return False
+            else:
+                skip = 0
+            cum_delta += delta
+            if cum_delta == 9:
+                return True
+            if cum_delta > 9:
+                return False
+            # Advance past option delta/len and option value
+            option_len = data[pos] & 0x0F
+            if option_len == 13:
+                slice_len = data[pos + 1 + skip] + 13
+                skip_value = 1
+            elif option_len == 14:
+                slice_len = int.from_bytes(
+                    data[pos + 1 + skip:pos + 3 + skip], "big"
+                ) + 269
+                skip_value = 2
+            elif option_len == 15:
+                return False
+            else:
+                slice_len = option_len
+                skip_value = 0
+            pos += 1 + skip + skip_value + slice_len
+        return False
+
     def _on_datagram(self, data: bytes, source: str) -> None:
         """Handle an incoming datagram, unprotecting if OSCORE.
 
@@ -1915,32 +1974,39 @@ class SecureDatagramChannel(DatagramChannel):
         if self._closing:
             return
         try:
-            # Decode with a remote so aiocoap knows the source
             remote = LichenRemote(source)
-            msg = Message.decode(data, remote)
-            msg.direction = Direction.INCOMING
-            has_oscore = msg.opt.oscore is not None
+
+            # Fast-path: check for OSCORE marker before full decode
+            # CoAP OSCORE option is Elective (0) at option number 9.
+            # A minimal scan for option delta=9 before the payload marker
+            # avoids a full Message decode for non-OSCORE traffic.
+            has_oscore = self._has_oscore_option(data)
 
             if has_oscore:
+                # Full decode needed for OSCORE unprotection
+                msg = Message.decode(data, remote)
+                msg.direction = Direction.INCOMING
                 plaintext = await self._unprotect(msg, source)
                 if plaintext is not None and self._receiver is not None:
                     self._receiver(plaintext, source)
             elif source in self._edhoc_active_peers:
                 # EDHOC in progress with this peer - allow plaintext
-                # (EDHOC responses are not OSCORE-protected)
+                # (EDHOC responses are not OSCORE-protected).
+                # Dispatch raw bytes to EDHOC channel where LichenTransport
+                # will decode and route to the EDHOC CoAP context.
                 logger.debug("Allowing plaintext from %s (EDHOC in progress)", source)
-                # Dispatch to EDHOC channel for response matching
                 if self._edhoc_channel is not None:
                     self._edhoc_channel.dispatch(data, source)
-            elif msg.code is EMPTY and msg.mtype in (ACK, RST):
-                if self._receiver is not None:
+            else:
+                # Non-OSCORE path: decode just enough to classify the message
+                msg = Message.decode(data, remote)
+                if msg.code is EMPTY and msg.mtype in (ACK, RST):
+                    if self._receiver is not None:
+                        self._receiver(data, source)
+                elif self._require_oscore:
+                    logger.warning("Rejected plaintext message from %s (OSCORE required)", source)
+                elif self._receiver is not None:
                     self._receiver(data, source)
-            elif self._require_oscore:
-                # Plaintext not allowed
-                logger.warning("Rejected plaintext message from %s (OSCORE required)", source)
-            elif self._receiver is not None:
-                # Passthrough plaintext
-                self._receiver(data, source)
 
         except Exception as e:
             logger.debug("Failed to process datagram from %s: %s", source, e)
