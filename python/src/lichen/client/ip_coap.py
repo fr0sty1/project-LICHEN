@@ -67,27 +67,30 @@ class AiocoapResourceTransport(ResourceTransport):
         self._context = context
         self._owns_context = context is None
         self._context_factory = context_factory
+        self._lock = asyncio.Lock()
 
     async def connect(self) -> None:
         """Create an aiocoap client context when one was not injected."""
-        if self._context is not None:
-            return
-        if self._context_factory is not None:
-            self._context = await self._context_factory()
-        else:
-            self._context = await aiocoap.Context.create_client_context()
-        self._owns_context = True
+        async with self._lock:
+            if self._context is not None:
+                return
+            if self._context_factory is not None:
+                self._context = await self._context_factory()
+            else:
+                self._context = await aiocoap.Context.create_client_context()
+            self._owns_context = True
 
     async def close(self) -> None:
         """Shutdown an owned aiocoap context."""
-        if self._context is None:
-            return
-        ctx = self._context
-        owns = self._owns_context
-        self._context = None
-        self._owns_context = False
-        if owns:
-            await ctx.shutdown()
+        async with self._lock:
+            if self._context is None:
+                return
+            ctx = self._context
+            owns = self._owns_context
+            self._context = None
+            self._owns_context = False
+            if owns:
+                await ctx.shutdown()
 
     async def request(
         self,
