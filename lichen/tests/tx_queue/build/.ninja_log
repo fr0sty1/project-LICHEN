@@ -1,4 +1,0 @@
-# ninja log v7
-0	28	1784697569139793234	CMakeFiles/tx_queue_test.dir/mnt/lichen-zephyr/work/project-LICHEN-worker2/lichen/subsys/lichen/link/tx_queue.c.o	f0fa01ebfc287588
-0	42	1784697569139793234	CMakeFiles/tx_queue_test.dir/main.c.o	8150f5eefb51c58b
-42	55	1784697569179792462	tx_queue_test	702b1596681590ea
