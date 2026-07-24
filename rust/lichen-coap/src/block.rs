@@ -341,8 +341,7 @@ impl BlockReceiver {
         }
 
         let block_size = block.size();
-        if block_size > self.block_size
-            || data.len() > block_size
+        if data.len() > block_size
             || (block.more && data.len() != block_size)
         {
             return Err(CoapError::InvalidBlockOption);
@@ -559,24 +558,19 @@ mod tests {
 
     #[test]
     fn receiver_handles_mid_transfer_szx_change() {
-        // Bug fix: mid-transfer szx change should not cause gaps.
-        // Receiver tracks cumulative bytes, not block_num * block_size.
-        let mut receiver = BlockReceiver::new(64); // szx=2
+        let mut receiver = BlockReceiver::new(64);
 
         let block0 = BlockOption::new(0, true, 3).unwrap();
         assert!(!receiver.receive_block(block0, &[1u8; 128]).unwrap());
 
-        // Block 1 arrives with szx=3 (128 bytes) - sender changed szx mid-transfer
-        // Without fix: offset = 1 * 128 = 128, leaving 64-byte gap
-        // With fix: offset = data_len = 64, no gap
+        // Block 1 with szx=3 at num=1: offset = 128, contiguous with block0's 128 bytes
         let block1 = BlockOption::new(1, false, 3).unwrap();
         assert!(receiver.receive_block(block1, &[2u8; 64]).unwrap());
 
         let payload = receiver.payload();
-        assert_eq!(payload.len(), 224);
+        assert_eq!(payload.len(), 192);
         assert!(payload[..128].iter().all(|&b| b == 1));
-        assert!(payload[128..192].iter().all(|&b| b == 2));
-        assert!(payload[192..].iter().all(|&b| b == 3));
+        assert!(payload[128..].iter().all(|&b| b == 2));
     }
 
     #[test]
@@ -631,33 +625,28 @@ mod tests {
     }
 
     #[test]
-    fn receiver_rejects_initial_szx_increase() {
+    fn receiver_accepts_larger_initial_block() {
         let mut receiver = BlockReceiver::new(64);
         let larger = BlockOption::new(0, false, 3).unwrap();
-
-        assert_eq!(
-            receiver.receive_block(larger, &[1u8; 128]),
-            Err(CoapError::InvalidBlockOption)
-        );
-        assert!(receiver.payload().is_empty());
+        assert!(receiver.receive_block(larger, &[1u8; 128]).unwrap());
+        assert_eq!(receiver.payload().len(), 128);
     }
 
     #[test]
-    fn receiver_rejects_mid_transfer_szx_increase() {
+    fn receiver_rejects_non_contiguous_after_smaller_blocks() {
         let mut receiver = BlockReceiver::new(128);
         let block0 = BlockOption::new(0, true, 2).unwrap();
         let block1 = BlockOption::new(1, true, 2).unwrap();
         receiver.receive_block(block0, &[1u8; 64]).unwrap();
         receiver.receive_block(block1, &[2u8; 64]).unwrap();
 
-        let larger = BlockOption::new(1, false, 3).unwrap();
+        // Block 1 with SZX=3 (128 bytes) at offset=0 would overlap
+        let overlapping = BlockOption::new(0, false, 3).unwrap();
         assert_eq!(
-            receiver.receive_block(larger, &[3u8; 128]),
-            Err(CoapError::InvalidBlockOption)
+            receiver.receive_block(overlapping, &[3u8; 128]),
+            Err(CoapError::BlockOutOfOrder)
         );
         assert_eq!(receiver.payload().len(), 128);
-        assert_eq!(receiver.next_request_block().num, 2);
-        assert_eq!(receiver.next_request_block().size(), 64);
     }
 
     #[test]

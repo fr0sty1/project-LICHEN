@@ -17,7 +17,7 @@ use std::sync::{
 use tokio::net::UdpSocket;
 use tokio::time::{timeout, Duration};
 
-use crate::codec::{CoapBuilder, CoapPacket, ACK_HEADER, CON_GET_HEADER, PAYLOAD_MARKER};
+use crate::codec::{CoapBuilder, CoapPacket};
 use crate::message::{MessageCode, MessageType};
 use crate::option::content_format;
 
@@ -186,6 +186,7 @@ fn request_sequence() -> &'static AtomicU64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::codec::{ACK_HEADER, PAYLOAD_MARKER};
     use std::collections::HashSet;
     use std::sync::atomic::{AtomicU64, Ordering};
     use std::sync::Arc;

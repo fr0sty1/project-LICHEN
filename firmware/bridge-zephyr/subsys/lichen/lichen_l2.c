@@ -288,7 +288,8 @@ BUILD_ASSERT(LICHEN_FRAME_MIN_HEADER_SIZE == 9,
  * To support additional extension headers in the future:
  * 1. Add a dedicated SCHC rule in schc/rules.py for the specific extension
  * 2. Increase buffer sizes here (add extension header size)
- * 3. Potentially update LICHEN_L2_MTU in lora_l2.h
+ * 3. Potentially update LICHEN_L2_MTU in lichen_l2.h (and the BUILD_ASSERT
+ *    in lora_l2.h will flag any mismatch with LICHEN_LORA_MTU)
  *
  * OSCORE support (project-LICHEN-v1wq): Buffer sizing includes OSCORE_MAX_OVERHEAD.
  * Remaining integration work:

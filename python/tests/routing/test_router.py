@@ -464,7 +464,7 @@ class TestGPSRFallback:
     def test_gpsr_forward_selects_closest_neighbor(self, router: Router):
         """gpsr_forward returns neighbor closest to destination."""
         # Why test: Core GPSR algorithm - greedy forwarding.
-        router.node_coords = (0.0, 0.0)
+        router.node_coords = (0.01, 0.0)
         router.neighbor_coords = {
             IPv6Address("fe80::a"): (1.0, 0.0),  # 1 degree north
             IPv6Address("fe80::b"): (0.5, 0.0),  # 0.5 degrees north (closer)
