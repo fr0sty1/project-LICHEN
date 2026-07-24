@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-p19p",
   "title": "[review] project-LICHEN-worker6-5a2y: TH_2 test vectors stale after CBOR encoding fix",
   "description": "The recent fix (260dfcd) changed transcript_2() in edhoc.rs and edhoc.py to use CBOR bstr encoding instead of raw concatenation per RFC 9528 Section 3.2. However, the hardcoded test vector at edhoc.rs:1542 was computed using the OLD raw-concat method and is now wrong.\n\nOld (raw concat): c1d8c6ee4eeb1672d7fcbb44f8d811419739b79b852fce03f527eacdaf6633c4\nCorrect (CBOR bstr): c6405c154c567466ab1df20369500e540e9f14bd3a796a0652cae66c9061688d\n\nAll downstream test vectors at lines 1544-1590 (prk_2e, keystream_2, th_3, th_4, prk_out, prk_exporter, export_context) must also be recomputed since they depend on the corrected TH_2 value.\n\nAdditionally, the edhoc module currently has 84 compilation errors when built with --features edhoc (pre-existing from earlier restructuring), so the test cannot run to verify the fix. This is a separate issue.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:10:10.851734095Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:10:10.851734095Z",
+  "updated_at": "2026-07-24T19:35:54.868801769Z",
+  "closed_at": "2026-07-24T19:35:54.868801769Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-p19p",
