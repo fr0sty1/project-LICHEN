@@ -26,12 +26,12 @@ use ccm::{
     consts::{U13, U8},
     Ccm,
 };
-use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
+use lichen_link::keys::{PrivateKey, PublicKey, Seed};
 use hkdf::Hkdf;
 use hmac::{Hmac, Mac};
 use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest, Sha256};
-use x25519_dalek::{PublicKey, StaticSecret};
+use x25519_dalek::{PublicKey as X255PublicKey, StaticSecret};
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 /// AES-CCM for Suite 0.
@@ -40,8 +40,8 @@ type AesCcm = Ccm<Aes128, U8, U13>;
 /// X25519/Ed25519 key length.
 pub const KEY_LEN_32: usize = 32;
 
-/// Ed25519 signature length.
-pub const SIG_LEN: usize = 64;
+/// Schnorr48 signature length.
+pub const SIG_LEN: usize = 48;
 
 /// Suite 0 identifier.
 pub const SUITE_0: u8 = 0;
@@ -557,16 +557,16 @@ fn parse_suites_i(data: &[u8]) -> Result<(u8, usize), EdhocError> {
 /// EDHOC Initiator (client role).
 ///
 /// Implements EDHOC method 0 (SIGN_SIGN) with Suite 0.
-// SECURITY: SigningKey and StaticSecret must be zeroized on drop.
-// SigningKey and StaticSecret implement ZeroizeOnDrop themselves.
-#[derive(Zeroize, ZeroizeOnDrop)]
+// SECURITY: PrivateKey and StaticSecret must be zeroized on drop.
+// PrivateKey and StaticSecret implement ZeroizeOnDrop themselves.
+#[derive(ZeroizeOnDrop)]
 pub struct EdhocInitiator {
-    /// Our Ed25519 signing key (implements ZeroizeOnDrop).
+    /// Our Schnorr48 private key (implements ZeroizeOnDrop).
     #[zeroize(skip)]
-    signing_key: SigningKey,
-    /// Our Ed25519 public key.
+    private_key: PrivateKey,
+    /// Our Schnorr48 public key.
     #[zeroize(skip)]
-    pubkey: VerifyingKey,
+    pubkey: PublicKey,
     /// Our connection identifier.
     c_i: u8,
     /// Ephemeral X25519 secret (implements ZeroizeOnDrop).
@@ -574,7 +574,7 @@ pub struct EdhocInitiator {
     eph_secret: Option<StaticSecret>,
     /// Ephemeral X25519 public key.
     #[zeroize(skip)]
-    eph_public: PublicKey,
+    eph_public: X255PublicKey,
     /// Protocol state.
     state: InitiatorState,
 }
@@ -625,7 +625,7 @@ impl Default for InitiatorState {
 
 impl Zeroize for EdhocInitiator {
     fn zeroize(&mut self) {
-        self.signing_key = SigningKey::from_bytes(&[0; KEY_LEN_32]);
+        self.private_key = PrivateKey::new([0u8; KEY_LEN_32]);
         self.eph_secret.zeroize();
         self.state.zeroize();
         self.state.lifecycle = Lifecycle::Zeroized;
@@ -643,14 +643,13 @@ impl EdhocInitiator {
         let mut eph_seed = Zeroizing::new([0u8; KEY_LEN_32]);
         rng.try_fill_bytes(&mut eph_seed[..])
             .map_err(|_| OscoreError::KeyDerivation)?;
-        let signing_key = SigningKey::from_bytes(&seed);
-        let pubkey = signing_key.verifying_key();
+        let (private_key, pubkey) = lichen_link::schnorr::derive_keypair(&Seed::new(*seed));
         let eph_secret = StaticSecret::from(*eph_seed);
         eph_seed.zeroize();
-        let eph_public = PublicKey::from(&eph_secret);
+        let eph_public = X255PublicKey::from(&eph_secret);
 
         Ok(Self {
-            signing_key,
+            private_key,
             pubkey,
             c_i: c_i.into(),
             eph_secret: Some(eph_secret),
@@ -666,14 +665,12 @@ impl EdhocInitiator {
     /// * `c_i` - Connection identifier (1 byte)
     /// * `rng` - RNG implementing RngCore + CryptoRng for ephemeral key
     pub fn new<R: RngCore + CryptoRng>(seed: [u8; 32], c_i: u8, rng: &mut R) -> Self {
-        let signing_key = SigningKey::from_bytes(&seed);
-        let pubkey = signing_key.verifying_key();
-
+        let (private_key, pubkey) = lichen_link::schnorr::derive_keypair(&Seed::new(seed));
         let eph_secret = StaticSecret::random_from_rng(rng);
-        let eph_public = PublicKey::from(&eph_secret);
+        let eph_public = X255PublicKey::from(&eph_secret);
 
         Self {
-            signing_key,
+            private_key,
             pubkey,
             c_i,
             eph_secret: Some(eph_secret),
@@ -751,7 +748,7 @@ impl EdhocInitiator {
 
         // Compute shared secret G_XY (ephemeral key consumed - single use only)
         let eph_secret = self.eph_secret.take().ok_or(EdhocError::InvalidState)?;
-        let peer_eph_public = PublicKey::from(g_y);
+        let peer_eph_public = X255PublicKey::from(g_y);
         let g_xy = eph_secret.diffie_hellman(&peer_eph_public);
         drop(eph_secret);
         self.state.g_y = g_y;
@@ -837,15 +834,13 @@ impl EdhocInitiator {
                 peer.credential,
                 &mac_2,
             )?;
-            let peer_verifying_key = strong_verifying_key(peer.public_key)?;
-            let signature_2 = Signature::from_bytes(
-                signature_bytes
-                    .try_into()
-                    .map_err(|_| EdhocError::InvalidMessage)?,
-            );
-            peer_verifying_key
-                .verify_strict(&m_2, &signature_2)
-                .map_err(|_| EdhocError::SignatureVerification)?;
+            let peer_public_key = PublicKey::new(*peer.public_key);
+            let sig: [u8; 48] = signature_bytes
+                .try_into()
+                .map_err(|_| EdhocError::InvalidMessage)?;
+            if !lichen_link::schnorr::verify(&peer_public_key, &m_2, &sig) {
+                return Err(EdhocError::SignatureVerification);
+            }
 
             self.state.c_r = pending.c_r.clone();
             self.state.th_3 = transcript_3(&self.state.th_2, &pending.plaintext, peer.credential)?;
@@ -867,10 +862,10 @@ impl EdhocInitiator {
             )?;
             let m_3 =
                 build_signature_structure(&id_cred_i, &self.state.th_3, &credential_i, &mac_3)?;
-            let signature_3 = self.signing_key.sign(&m_3);
+            let signature_3 = lichen_link::schnorr::sign(&self.private_key, &self.pubkey, &m_3);
             let mut plaintext_3 = heapless::Vec::<u8, 80>::new();
             encode_bstr(&mut plaintext_3, self.pubkey.as_bytes())?;
-            encode_bstr(&mut plaintext_3, &signature_3.to_bytes())?;
+            encode_bstr(&mut plaintext_3, &signature_3)?;
 
             // K_3 and IV_3 for AEAD
             let k_3 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_3, "K_3", &[], KEY_LEN)?;
@@ -931,16 +926,16 @@ impl EdhocInitiator {
 }
 
 /// EDHOC Responder (server role).
-// SECURITY: SigningKey and StaticSecret must be zeroized on drop.
-// SigningKey and StaticSecret implement ZeroizeOnDrop themselves.
-#[derive(Zeroize, ZeroizeOnDrop)]
+// SECURITY: PrivateKey and StaticSecret must be zeroized on drop.
+// PrivateKey and StaticSecret implement ZeroizeOnDrop themselves.
+#[derive(ZeroizeOnDrop)]
 pub struct EdhocResponder {
-    /// Our Ed25519 signing key (implements ZeroizeOnDrop).
+    /// Our Schnorr48 private key (implements ZeroizeOnDrop).
     #[zeroize(skip)]
-    signing_key: SigningKey,
-    /// Our Ed25519 public key.
+    private_key: PrivateKey,
+    /// Our Schnorr48 public key.
     #[zeroize(skip)]
-    pubkey: VerifyingKey,
+    pubkey: PublicKey,
     /// Our connection identifier.
     c_r: u8,
     /// Ephemeral X25519 secret (implements ZeroizeOnDrop).
@@ -948,7 +943,7 @@ pub struct EdhocResponder {
     eph_secret: Option<StaticSecret>,
     /// Ephemeral X25519 public key.
     #[zeroize(skip)]
-    eph_public: PublicKey,
+    eph_public: X255PublicKey,
     /// Protocol state.
     state: ResponderState,
 }
@@ -999,7 +994,7 @@ impl Default for ResponderState {
 
 impl Zeroize for EdhocResponder {
     fn zeroize(&mut self) {
-        self.signing_key = SigningKey::from_bytes(&[0; KEY_LEN_32]);
+        self.private_key = PrivateKey::new([0u8; KEY_LEN_32]);
         self.eph_secret.zeroize();
         self.state.zeroize();
         self.state.lifecycle = Lifecycle::Zeroized;
@@ -1014,20 +1009,19 @@ impl EdhocResponder {
     /// * `c_r` - Connection identifier (1 byte)
     /// * `rng` - RNG implementing RngCore + CryptoRng for ephemeral key
     pub fn new<R: RngCore + CryptoRng>(seed: [u8; 32], c_r: u8, rng: &mut R) -> Self {
-        let signing_key = SigningKey::from_bytes(&seed);
-        let pubkey = signing_key.verifying_key();
+        let (private_key, pubkey) = lichen_link::schnorr::derive_keypair(&Seed::new(seed));
 
         let eph_secret = StaticSecret::random_from_rng(rng);
-        let eph_public = PublicKey::from(&eph_secret);
+        let eph_public = X255PublicKey::from(&eph_secret);
 
-        Ok(Self {
-            signing_key,
+        Self {
+            private_key,
             pubkey,
             c_r: c_r.into(),
             eph_secret: Some(eph_secret),
             eph_public,
             state: ResponderState::default(),
-        })
+        }
     }
 
     /// Create a new EDHOC responder.
@@ -1037,7 +1031,7 @@ impl EdhocResponder {
     }
 
     fn poison(&mut self) {
-        self.signing_key = SigningKey::from_bytes(&[0; KEY_LEN_32]);
+        self.private_key = PrivateKey::new([0u8; KEY_LEN_32]);
         self.eph_secret.zeroize();
         self.state.zeroize();
         self.state.lifecycle = Lifecycle::Failed;
@@ -1105,7 +1099,7 @@ impl EdhocResponder {
 
         // Compute shared secret (ephemeral key consumed - single use only)
         let eph_secret = self.eph_secret.take().ok_or(EdhocError::InvalidState)?;
-        let peer_eph_public = PublicKey::from(g_x);
+        let peer_eph_public = X255PublicKey::from(g_x);
         let g_xy = eph_secret.diffie_hellman(&peer_eph_public);
         drop(eph_secret);
         self.state.msg1 = stored_msg1;
@@ -1153,12 +1147,12 @@ impl EdhocResponder {
                 &credential_r,
                 &mac_2,
             )?;
-            let signature_2 = self.signing_key.sign(&m_2);
+            let signature_2 = lichen_link::schnorr::sign(&self.private_key, &self.pubkey, &m_2);
 
             let mut plaintext_2 = SecretVec::<128>::new();
             encode_identifier(&mut plaintext_2, &self.c_r)?;
             encode_bstr(&mut plaintext_2, self.pubkey.as_bytes())?;
-            encode_bstr(&mut plaintext_2, &signature_2.to_bytes())?;
+            encode_bstr(&mut plaintext_2, &signature_2)?;
 
             // Encrypt with KEYSTREAM_2
             let keystream_2 =
@@ -1294,12 +1288,7 @@ impl EdhocResponder {
         let result = (|| {
             validate_peer_credential(peer)?;
             let sig_bytes = parse_bstr(&pending.plaintext[pending.signature_offset..])?.0;
-            let signature = Signature::from_bytes(
-                sig_bytes
-                    .try_into()
-                    .map_err(|_| EdhocError::InvalidMessage)?,
-            );
-            let peer_verifying_key = strong_verifying_key(peer.public_key)?;
+            let peer_public_key = PublicKey::new(*peer.public_key);
 
             // PRK_4e3m = PRK_3e2m for SIGN_SIGN (needed for MAC_3 and OSCORE export)
             self.state.prk_4e3m = self.state.prk_3e2m;
@@ -1322,9 +1311,12 @@ impl EdhocResponder {
                 &mac_3,
             )?;
 
-            peer_verifying_key
-                .verify_strict(&m_3, &signature)
-                .map_err(|_| EdhocError::SignatureVerification)?;
+            let sig: [u8; 48] = sig_bytes
+                .try_into()
+                .map_err(|_| EdhocError::InvalidMessage)?;
+            if !lichen_link::schnorr::verify(&peer_public_key, &m_3, &sig) {
+                return Err(EdhocError::SignatureVerification);
+            }
 
             self.state.th_4 = transcript_4(&self.state.th_3, &pending.plaintext, peer.credential)?;
             self.state.lifecycle = Lifecycle::Complete;
@@ -1811,11 +1803,9 @@ mod tests {
     fn pending_messages_expose_id_cred_before_retryable_credential_selection() {
         let mut initiator = initiator([0x11; 32], 0);
         let mut responder = responder([0x22; 32], 1);
-        let initiator_key = initiator.pubkey.to_bytes();
-        let responder_key = responder.pubkey.to_bytes();
-        let wrong_key = SigningKey::from_bytes(&[0x33; 32])
-            .verifying_key()
-            .to_bytes();
+        let initiator_key = initiator.pubkey.into_bytes();
+        let responder_key = responder.pubkey.into_bytes();
+        let wrong_key = *lichen_link::schnorr::derive_keypair(&Seed::new([0x33; 32])).1.as_bytes();
         let (wrong_id, wrong_credential) = raw_key_credential(&wrong_key).unwrap();
         let (responder_id, responder_credential) = raw_key_credential(&responder_key).unwrap();
         let (initiator_id, initiator_credential) = raw_key_credential(&initiator_key).unwrap();
@@ -1866,7 +1856,7 @@ mod tests {
 
     #[test]
     fn credentials_accept_bounded_deterministic_cbor_forms() {
-        let public_key = SigningKey::from_bytes(&[7; 32]).verifying_key().to_bytes();
+        let public_key = *lichen_link::schnorr::derive_keypair(&Seed::new([7; 32])).1.as_bytes();
         let (id_cred, ccs) = raw_key_credential(&public_key).unwrap();
         let mut multi_claim_ccs = heapless::Vec::<u8, 96>::new();
         multi_claim_ccs
@@ -1924,7 +1914,7 @@ mod tests {
             Err(EdhocError::InvalidMessage)
         );
 
-        let public_key = SigningKey::from_bytes(&[7; 32]).verifying_key().to_bytes();
+        let public_key = *lichen_link::schnorr::derive_keypair(&Seed::new([7; 32])).1.as_bytes();
         let (id_cred, mut credential) = raw_key_credential(&public_key).unwrap();
         *credential.last_mut().unwrap() ^= 1;
         assert_eq!(
@@ -1944,7 +1934,7 @@ mod tests {
 
         let mut initiator = initiator([0x11; 32], 0);
         let mut responder = responder([0x22; 32], 1);
-        let responder_key = responder.pubkey.to_bytes();
+        let responder_key = responder.pubkey.into_bytes();
         let message_1 = initiator.create_message_1().unwrap();
         let message_2 = responder.process_message_1(&message_1).unwrap();
         let message_3 = initiator
@@ -1960,7 +1950,7 @@ mod tests {
             Err(EdhocError::SignatureVerification)
         );
         assert_eq!(responder.state.lifecycle, Lifecycle::Failed);
-        assert_eq!(responder.signing_key.to_bytes(), [0; 32]);
+        assert_eq!(*responder.private_key.as_bytes(), [0; 32]);
     }
 
     #[test]
@@ -1977,7 +1967,7 @@ mod tests {
 
         let mut initiator = initiator([0x33; 32], 1);
         let mut responder = responder([0x44; 32], 0);
-        let responder_key = responder.pubkey.to_bytes();
+        let responder_key = responder.pubkey.into_bytes();
         let message_1 = initiator.create_message_1().unwrap();
         let message_2 = responder.process_message_1(&message_1).unwrap();
         initiator.c_i = ConnectionId::from(0);
@@ -2023,7 +2013,7 @@ mod tests {
         let mut message_2 = responder.process_message_1(&message_1).unwrap();
         message_2.push(0).unwrap();
         assert_eq!(
-            initiator.process_message_2(&message_2, &responder.pubkey.to_bytes()),
+            initiator.process_message_2(&message_2, &responder.pubkey.into_bytes()),
             Err(EdhocError::InvalidMessage)
         );
         assert!(initiator.eph_secret.is_some());
@@ -2116,7 +2106,7 @@ mod tests {
     fn pre_dh_parse_failures_are_retryable() {
         let mut initiator = initiator([0x11; 32], 0);
         let mut responder = responder([0x22; 32], 1);
-        let responder_pubkey = responder.pubkey.to_bytes();
+        let responder_pubkey = responder.pubkey.into_bytes();
         let msg1 = initiator.create_message_1().unwrap();
 
         assert_eq!(
@@ -2142,9 +2132,7 @@ mod tests {
     #[test]
     fn initiator_post_dh_failure_wipes_and_poison_state() {
         let mut initiator = initiator([0x11; 32], 0);
-        let peer_key = SigningKey::from_bytes(&[0x22; 32])
-            .verifying_key()
-            .to_bytes();
+        let peer_key = *lichen_link::schnorr::derive_keypair(&Seed::new([0x22; 32])).1.as_bytes();
         initiator.create_message_1().unwrap();
         let mut msg2 = heapless::Vec::<u8, 40>::new();
         msg2.extend_from_slice(&[0x58, 33]).unwrap();
@@ -2157,7 +2145,7 @@ mod tests {
         );
         assert_eq!(initiator.state.lifecycle, Lifecycle::Failed);
         assert!(initiator.eph_secret.is_none());
-        assert_eq!(initiator.signing_key.to_bytes(), [0; KEY_LEN_32]);
+        assert_eq!(*initiator.private_key.as_bytes(), [0; KEY_LEN_32]);
         assert_eq!(initiator.state.prk_2e, [0; KEY_LEN_32]);
         assert_eq!(initiator.state.prk_3e2m, [0; KEY_LEN_32]);
         assert_eq!(initiator.state.prk_4e3m, [0; KEY_LEN_32]);
@@ -2204,12 +2192,12 @@ mod tests {
         responder.process_message_1(&msg1).unwrap();
 
         assert_eq!(
-            responder.process_message_3(&[0], &initiator.pubkey.to_bytes()),
+            responder.process_message_3(&[0], &initiator.pubkey.into_bytes()),
             Err(EdhocError::InvalidMessage)
         );
         assert_eq!(responder.state.lifecycle, Lifecycle::Failed);
         assert!(responder.eph_secret.is_none());
-        assert_eq!(responder.signing_key.to_bytes(), [0; KEY_LEN_32]);
+        assert_eq!(*responder.private_key.as_bytes(), [0; KEY_LEN_32]);
         assert_eq!(responder.state.prk_2e, [0; KEY_LEN_32]);
         assert_eq!(responder.state.prk_3e2m, [0; KEY_LEN_32]);
         assert_eq!(responder.state.prk_4e3m, [0; KEY_LEN_32]);
@@ -2221,7 +2209,7 @@ mod tests {
             Err(EdhocError::InvalidState)
         );
         assert_eq!(
-            responder.process_message_3(&[0], &initiator.pubkey.to_bytes()),
+            responder.process_message_3(&[0], &initiator.pubkey.into_bytes()),
             Err(EdhocError::InvalidState)
         );
     }
@@ -2237,8 +2225,8 @@ mod tests {
         let mut responder = EdhocResponder::new(responder_seed, 0x01, &mut rng);
 
         // Get public keys for verification
-        let initiator_pubkey = initiator.pubkey.to_bytes();
-        let responder_pubkey = responder.pubkey.to_bytes();
+        let initiator_pubkey = initiator.pubkey.into_bytes();
+        let responder_pubkey = responder.pubkey.into_bytes();
 
         // Step 1: Initiator creates Message 1
         let msg1 = initiator
