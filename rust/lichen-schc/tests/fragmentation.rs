@@ -5,7 +5,7 @@
 
 #[cfg(feature = "std")]
 use lichen_schc::fragment::FragmentReceiver;
-use lichen_schc::fragment::{compute_mic, Ack, Fragment, FragmentSender, DEFAULT_WINDOW_SIZE};
+use lichen_schc::fragment::{compute_mic, Ack, Fragment, FragmentSender, receiver_abort, DEFAULT_WINDOW_SIZE};
 
 #[test]
 fn sender_receiver_literal_recovery() {
