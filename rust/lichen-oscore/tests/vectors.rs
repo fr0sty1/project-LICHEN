@@ -112,14 +112,15 @@ fn context_at(
     sequence: u64,
 ) -> (Context, TestStore) {
     let store = TestStore::existing(sequence);
-    let context = Context::new_fresh(
+    let context = Context::restore(
         master_secret,
         master_salt,
         id_context,
         sender_id,
         recipient_id,
+        sequence,
+        false,
     )
-    .map_err(|e| ContextStoreError::<core::convert::Infallible>::Oscore(e))
     .unwrap();
     (context, store)
 }

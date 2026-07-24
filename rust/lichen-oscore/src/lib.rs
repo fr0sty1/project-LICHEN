@@ -512,16 +512,16 @@ impl Context {
     }
 
     /// Restore context from known sender state (tests/recovery).
-    #[cfg(test)]
     pub fn restore(
         master_secret: &[u8; KEY_LEN],
         master_salt: Option<&[u8]>,
+        id_context: Option<&[u8]>,
         sender_id: &[u8],
         recipient_id: &[u8],
         next_sequence: u64,
         exhausted: bool,
     ) -> Result<Self, OscoreError> {
-        let mut ctx = Self::new(master_secret, master_salt, None, sender_id, recipient_id)?;
+        let mut ctx = Self::new(master_secret, master_salt, id_context, sender_id, recipient_id)?;
         let state = SenderSequenceState {
             next_sequence,
             exhausted,
@@ -2322,7 +2322,7 @@ mod tests {
         );
 
         let mut c8 =
-            Context::restore(&master_secret, Some(&master_salt), &[1], &[], 0, false).unwrap();
+            Context::restore(&master_secret, Some(&master_salt), None, &[1], &[], 0, false).unwrap();
         let mut store = TestStore::for_context(&c8);
         let mut ct_buf8 = [0u8; 280];
         let mut opt_buf8 = [0u8; OSCORE_OPTION_MAX_LEN];
@@ -2341,7 +2341,7 @@ mod tests {
     #[test]
     fn restored_context_continues_at_reserved_sequence() {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
-        let mut ctx = Context::restore(&master_secret, None, &[0], &[1], 0x0102, false).unwrap();
+        let mut ctx = Context::restore(&master_secret, None, None, &[0], &[1], 0x0102, false).unwrap();
 
         let mut store = TestStore::for_context(&ctx);
         let mut ct_buf = [0u8; 280];
@@ -2367,8 +2367,8 @@ mod tests {
     #[test]
     fn restored_contexts_race_and_exactly_one_can_encrypt() {
         let secret = [0x42; KEY_LEN];
-        let mut first = Context::restore(&secret, None, &[0], &[1], 9, false).unwrap();
-        let mut second = Context::restore(&secret, None, &[0], &[1], 9, false).unwrap();
+        let mut first = Context::restore(&secret, None, None, &[0], &[1], 9, false).unwrap();
+        let mut second = Context::restore(&secret, None, None, &[0], &[1], 9, false).unwrap();
         let mut store = TestStore::for_context(&first);
 
         let mut ct_buf = [0u8; 280];
@@ -2745,7 +2745,7 @@ mod tests {
     #[test]
     fn crash_after_reservation_skips_sequence_after_restore() {
         let secret = [0x24; KEY_LEN];
-        let mut crashed = Context::restore(&secret, None, &[0], &[1], 3, false).unwrap();
+        let mut crashed = Context::restore(&secret, None, None, &[0], &[1], 3, false).unwrap();
         let mut store = TestStore::for_context(&crashed);
 
         {
@@ -2754,6 +2754,7 @@ mod tests {
 
         let mut restarted = Context::restore(
             &secret,
+            None,
             None,
             &[0],
             &[1],
@@ -2776,7 +2777,7 @@ mod tests {
     #[test]
     fn restored_context_rejects_response_without_piv() {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
-        let mut ctx = Context::restore(&master_secret, None, &[1], &[0], 7, false).unwrap();
+        let mut ctx = Context::restore(&master_secret, None, None, &[1], &[0], 7, false).unwrap();
 
         let mut ct_buf = [0u8; 280];
         let mut opt_buf = [0u8; OSCORE_OPTION_MAX_LEN];
@@ -2795,6 +2796,7 @@ mod tests {
             Context::restore(
                 &master_secret,
                 None,
+                None,
                 &[0],
                 &[1],
                 OscoreSeqNum::MAX + 1,
@@ -2804,7 +2806,7 @@ mod tests {
             OscoreError::InvalidParam
         );
         assert_eq!(
-            Context::restore(&master_secret, None, &[0], &[1], 7, true).unwrap_err(),
+            Context::restore(&master_secret, None, None, &[0], &[1], 7, true).unwrap_err(),
             OscoreError::InvalidParam
         );
     }
