@@ -140,6 +140,11 @@ class Ack:
             return bytes([self.rule_id, (self.window << 7) | 0x40])
         if len(self.bitmap) != WINDOW_SIZE:
             raise FragmentError("C=0 ACK requires a 63-bit bitmap")
+        # Bit layout: W(1) | C=0(1) | bitmap(up to 63) | padding(to byte-align)
+        # Trailing 1-bits are implicit and can be elided to save bytes.
+        # When trailing 1s exist, keep only the prefix + enough restored 1s
+        # to reach a byte boundary (C=0 occupies 2 bits, so padding targets
+        # (2 + kept) % 8 == 0).
         bits = list(self.bitmap)
         trailing = 0
         for bit in reversed(bits):
@@ -154,7 +159,8 @@ class Ack:
         else:
             encoded = bits
             padding = (-(2 + len(encoded))) % 8
-        value = self.window << 1  # W followed by C=0
+        # Pack: W-bit first, then C=0 bit, then encoded bitmap, then padding zeros.
+        value = self.window << 1
         for bit in encoded:
             value = (value << 1) | bit
         value <<= padding
