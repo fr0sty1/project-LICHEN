@@ -417,4 +417,78 @@ mod tests {
         let result = gw.mesh_to_mesh(&packet);
         assert!(result.is_none());
     }
+
+    #[test]
+    fn dao_route_makes_ygg_address_local() {
+        let gw = test_gateway();
+        let node_addr = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x42];
+
+        // No route yet — not local
+        assert!(!gw.rpl_stack.rpl_node().router().is_root());
+        assert!(!gw.is_local_mesh(&node_addr));
+
+        // Inject a DAO route
+        let root_addr = gw.rpl_stack.rpl_node().node().link_local_addr().0;
+        let path = [root_addr, node_addr];
+        gw.rpl_stack
+            .rpl_node_mut()
+            .router_mut()
+            .inject_route(node_addr, &path);
+
+        // Now the 02xx address is local mesh
+        assert!(gw.is_local_mesh(&node_addr));
+    }
+
+    #[test]
+    fn root_originated_downward_srh() {
+        let mut gw = test_gateway();
+        let root_addr = gw.rpl_stack.rpl_node().node().link_local_addr().0;
+        let node_addr = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x42];
+
+        // Inject DAO route: root → node_addr (single hop)
+        let path = [root_addr, node_addr];
+        gw.rpl_stack
+            .rpl_node_mut()
+            .router_mut()
+            .inject_route(node_addr, &path);
+
+        // Build IPv6 packet FROM root TO node_addr
+        let payload = b"hello";
+        let payload_len = payload.len() as u16;
+        let mut packet = vec![0u8; 40 + payload.len() as usize];
+        packet[0] = 0x60;
+        packet[4..6].copy_from_slice(&payload_len.to_be_bytes());
+        packet[6] = 17; // UDP NH
+        packet[7] = 64; // Hop limit
+        packet[8..24].copy_from_slice(&root_addr);
+        packet[24..40].copy_from_slice(&node_addr);
+        packet[40..].copy_from_slice(payload);
+
+        let result = gw.mesh_to_mesh(&packet);
+        assert!(result.is_some(), "expected SRH-compressed payload");
+        let compressed = result.unwrap();
+        assert_eq!(compressed[0], L2_DISPATCH_SCHC);
+
+        // Decompress and verify SRH was inserted
+        let mut decompressed = [0u8; lichen_core::constants::SCHC_MAX_DECOMPRESSED];
+        let n = lichen_schc::codec::decompress(&compressed[1..], &mut decompressed)
+            .expect("decompress should succeed");
+        assert!(n >= 40, "decompressed IPv6 packet");
+        assert_eq!(decompressed[6], 43, "NH should be Routing (SRH)");
+        assert_eq!(decompressed[24..40], path[0], "dst = first hop (root→node)");
+        assert_eq!(decompressed[40], 17, "inner NH should be UDP");
+        assert_eq!(
+            decompressed[42], 3,
+            "SRH routing type = 3 (RPL source route)"
+        );
+        // Last address in SRH should be the original destination
+        let addr_count = (decompressed[41] as usize + 1) * 8;
+        let srh_end = 40 + addr_count;
+        let last_addr_start = srh_end - 16;
+        assert_eq!(
+            &decompressed[last_addr_start..srh_end],
+            &node_addr,
+            "last SRH address = original dst"
+        );
+    }
 }

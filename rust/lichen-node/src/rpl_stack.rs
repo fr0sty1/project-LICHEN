@@ -479,6 +479,12 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         &self.rpl
     }
 
+    /// Mutable RPL node access (test only).
+    #[cfg(test)]
+    pub fn rpl_node_mut(&mut self) -> &mut RplNode {
+        &mut self.rpl
+    }
+
     /// Current generation of this stack instance. RplRuntime bindings are tied to
     /// this value; reprovision or reset increments it to invalidate stale runtimes.
     pub fn generation(&self) -> u64 {
