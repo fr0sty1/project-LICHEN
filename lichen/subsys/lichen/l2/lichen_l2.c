@@ -660,6 +660,10 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 		ret = lichen_link_rx(ctx, replay, frame, frame_len,
 				     out_ipv6, out_len, src_eui64);
 		if (ret == 0) {
+			if (found_idx >= 0) {
+				LOG_WRN("multiple peers verify same signature (idx %d and %zu) - duplicate keypair",
+					found_idx, i);
+			}
 			found_idx = (int)i;
 #ifdef CONFIG_LICHEN_L2_DEV_PROVISIONING
 			break;
