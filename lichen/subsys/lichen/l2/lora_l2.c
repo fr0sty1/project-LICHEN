@@ -185,6 +185,8 @@ static inline enum lora_state lora_get_state(void)
  * per-instance context structs, instance enumeration, RX thread ownership, and
  * API changes to accept an instance handle.
  */
+BUILD_ASSERT(DT_NODE_EXISTS(DT_ALIAS(lora0)),
+             "lora_l2 requires a 'lora0' devicetree alias for single-radio operation");
 
 /* RX thread and stack */
 static K_THREAD_STACK_DEFINE(rx_stack, RX_THREAD_STACK_SIZE);
@@ -785,7 +787,16 @@ int lichen_lora_l2_start(void)
         return ret;
     }
 
-    config.tx = true;              /* pass 2: program TX + airtime cache */
+    config.tx = true;              /* pass 2: program TX + airtime cache.
+                                    * TX-only fields (tx_power, tx=true) configure
+                                    * the sx12xx driver's shared TX/RX modem state.
+                                    * Half-duplex arbitration uses modem_mutex (TX
+                                    * acquires before lora_send(), RX before
+                                    * lora_recv()), not the driver's tx flag. The
+                                    * tx=true call is still required because
+                                    * lora_config() sets per-direction registers
+                                    * and the airtime/symbol-time cache used by
+                                    * lora_send() internally. */
     ret = lora_config(lora_data.lora_dev, &config);
     if (ret < 0) {
         LOG_ERR("lora_l2: TX config failed (%d)", ret);

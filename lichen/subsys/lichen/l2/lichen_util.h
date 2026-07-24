@@ -79,11 +79,13 @@ static inline void secure_zero(void *ptr, size_t len)
      *
      * No explicit read-back verification (project-LICHEN-tvfm.94):
      * The volatile qualifier on both word and byte writes is the security
-     * mechanism - it forces the stores to execute. Read-back would be belt-
-     * and-suspenders paranoia but adds code complexity and provides no
-     * additional protection beyond what volatile already guarantees. The
-     * compiler_barrier() at function end prevents LTO from removing any
-     * stores and ensures ordering relative to subsequent code.
+     * mechanism - it forces the stores to execute. This applies equally
+     * to the word-aligned path (the volatile unsigned long pointer) and
+     * the byte path. Read-back would be belt-and-suspenders paranoia but
+     * adds code complexity and provides no additional protection beyond
+     * what volatile already guarantees. The compiler_barrier() at function
+     * end prevents LTO from removing any stores and ensures ordering
+     * relative to subsequent code.
      */
     if (len >= 32) {
         /* Align to word boundary first using byte writes */

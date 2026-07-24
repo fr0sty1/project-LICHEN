@@ -67,6 +67,12 @@ extern "C" {
  *
  *   Result: 255 - 55 = 200 bytes nominal MTU for IPv6 payload
  *
+ * NOTE: LICHEN_LORA_FRAME_OVERHEAD always reserves space for the full
+ * signature (SCHNORR48_SIG_LEN) even when a frame omits the signature
+ * field (unsigned MIC = 0). This keeps the MTU static and independent
+ * of per-frame signing decisions. Unsigned frames simply leave the
+ * signature bytes unused.
+ *
  * If frame format or signature size changes, update these constants.
  */
 #define LICHEN_LORA_MAX_PHY_PAYLOAD 255
