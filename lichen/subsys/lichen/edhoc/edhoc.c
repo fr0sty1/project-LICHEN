@@ -736,6 +736,9 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	} else {
 		return -EINVAL;
 	}
+	if (!zcbor_payload_at_end(zsd) || zsd->constant_state->error) {
+		return -EINVAL;
+	}
 
 	/* Compute shared secret G_XY */
 	x25519_shared_secret(g_xy, ctx->eph_sk, ctx->g_y);
@@ -825,6 +828,10 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 		goto err_wipe;
 	}
 	if (signature_2.len != EDHOC_SIG_LEN) {
+		ret = -EINVAL;
+		goto err_wipe;
+	}
+	if (!zcbor_payload_at_end(zsd_pt2) || zsd_pt2->constant_state->error) {
 		ret = -EINVAL;
 		goto err_wipe;
 	}
