@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-p1pl",
+  "title": "[rereview] project-LICHEN-et78.2: build_dao_with_lifetime advances sequences before build_dao buffer check — test will fail",
+  "description": "In lichen/subsys/lichen/rpl/routing.c:461-462, lichen_rpl_dao_manager_build_dao_with_lifetime unconditionally increments dm-\u003edao_sequence and dm-\u003epath_sequence BEFORE calling build_dao (line 463). If build_dao returns ERR_BUF_SMALL (buffer too small), the sequences have already been advanced.\n\nThe test at lichen/tests/rpl_routing/src/main.c:311-315 asserts:\n  zassert_equal(tx_manager.dao_sequence, dao_sequence, \"failed update changed DAOSequence\");\n  zassert_equal(tx_manager.path_sequence, path_sequence, \"failed update changed Path Sequence\");\n\nThis test WILL FAIL because the sequences are unconditionally incremented before build_dao can reject the short buffer.\n\nFix: move the sequence increments to after build_dao succeeds (inside the  block on success).",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T05:37:39.837484615Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T05:37:39.837484615Z"
+}

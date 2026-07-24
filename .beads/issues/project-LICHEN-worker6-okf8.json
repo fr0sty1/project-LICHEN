@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-okf8",
+  "title": "[rereview] project-LICHEN-et78.2: extract_updates rejects all signed DAOs (0x12 → return false)",
+  "description": "In lichen/subsys/lichen/rpl/routing.c at commit afb5b11c3, extract_updates() handles DAO Origin Signature options (type 0x12) by returning false (line 629-631). The comment claims the signature was 'already verified by caller before we get here', but the caller process_dao() at line 935 passes the full signed dao_bytes to extract_updates without stripping the signature option first.\n\nPer draft-lichen-rpl-lora-00.md §7.3, all DAOs in Non-Storing Mode MUST carry a DAO Origin Signature option. Since extract_updates rejects any option type 0x12, ALL signed DAOs will be rejected with LICHEN_RPL_DAO_REJECTED, making Non-Storing Mode DAO processing completely broken.\n\nFix: either (a) skip 0x12 options in extract_updates (continue iteration) instead of returning false, or (b) have process_dao strip the signature option before calling extract_updates.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T05:37:42.425221283Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T05:37:42.425221283Z"
+}
