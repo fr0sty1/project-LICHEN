@@ -960,7 +960,7 @@ pub fn handle_icmpv6(
                 router: false,
                 solicited,
                 override_flag: true,
-                link_layer_addr: if solicited { link_layer_addr } else { None },
+                link_layer_addr,
             };
 
             let reply_icmp = na.build(local_addr, &reply_dst);

@@ -112,6 +112,7 @@ static int save_tuple(const struct lichen_link_ctx *ctx)
 	t.replay_counter = 0; /* TODO: integrate replay table snapshot if needed */
 	t.crc = tuple_crc(&t);
 	rc = nvs_write(&link_nvs_fs, LINK_TUPLE_NVS_ID, &t, sizeof(t));
+	secure_wipe(&t, sizeof(t));
 	return (rc == sizeof(t)) ? 0 : rc;
 }
 
@@ -123,9 +124,11 @@ static int restore_tuple(struct lichen_link_ctx *ctx)
 	struct link_persisted_tuple t;
 	rc = nvs_read(&link_nvs_fs, LINK_TUPLE_NVS_ID, &t, sizeof(t));
 	if (rc != sizeof(t)) {
+		secure_wipe(&t, sizeof(t));
 		return -ENOENT;
 	}
 	if (t.crc != tuple_crc(&t)) {
+		secure_wipe(&t, sizeof(t));
 		return -EBADMSG;
 	}
 	memcpy(ctx->eui64, t.eui64, sizeof(ctx->eui64));
@@ -136,6 +139,7 @@ static int restore_tuple(struct lichen_link_ctx *ctx)
 	ctx->has_key = true;
 	ctx->nonce_exhausted = t.nonce_exhausted;
 	/* replay counters restored via placeholder; full table in replay.c out of scope */
+	secure_wipe(&t, sizeof(t));
 	return 0;
 }
 #endif
