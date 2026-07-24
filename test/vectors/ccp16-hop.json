@@ -9,26 +9,26 @@
       "seed": 0,
       "num_channels": 8,
       "expected_channel": 6,
-      "hash_32": 2166136261,
-      "description": "SFN=0 selects channel via hash_32 per spec 02a:120 SelectChannel pseudocode + hash_32. Independent oracle."
+      "hash_32": 2615243109,
+      "description": "SFN=0 selects channel via hash_32(seed||sfn) per spec 02a:120 SelectChannel pseudocode + hash_32. Independent oracle."
     },
     {
       "name": "hop_sfn1_16ch",
       "sfn": 1,
       "seed": 42,
       "num_channels": 16,
-      "expected_channel": 12,
-      "hash_output": "0x37381b7c",
-      "description": "SFN increment with different seed via hash_32(EUI||SFN) % nch (FNV basis 0x811c9dc5, CCP-12). Cross-impl test vectors."
+      "expected_channel": 15,
+      "hash_32": 2645478846,
+      "description": "SFN=1, seed=42 selects channel via hash_32 per spec 02a:120. Independent oracle."
     },
     {
       "name": "hop_sfn4294967295_8ch",
       "sfn": 4294967295,
       "seed": 42,
       "num_channels": 8,
-      "expected_channel": 1,
-      "hash_output": "0x211a6929",
-      "description": "SFN wraparound edge case via hash_32(EUI||SFN) % nch (FNV basis 0x811c9dc5, CCP-12). Cross-impl test vectors."
+      "expected_channel": 4,
+      "hash_32": 697913707,
+      "description": "SFN wraparound with non-zero seed via hash_32 per spec 02a:120. Independent oracle."
     },
     {
       "name": "density_high_ch0",
@@ -37,7 +37,7 @@
       "num_channels": 8,
       "density": 9,
       "expected_channel": 0,
-      "hash_32": 2166136261,
+      "hash_32": 2615243109,
       "description": "Density>8 returns 0 per SelectChannel pseudocode line 1."
     },
     {
@@ -46,7 +46,7 @@
       "seed": 0,
       "num_channels": 8,
       "expected_channel": 2,
-      "hash_32": 555378985,
+      "hash_32": 3025216001,
       "description": "SFN wraparound per spec Now() u32 mod and SelectChannel."
     },
     {
