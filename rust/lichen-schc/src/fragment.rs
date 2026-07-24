@@ -13,15 +13,16 @@ pub const MIC_LENGTH: usize = 4;
 pub const DEFAULT_WINDOW_SIZE: usize = 32;
 pub const MAX_WINDOW_SIZE: usize = 62;
 pub const RETRANSMISSION_TIMEOUT_S: u32 = 10;
-pub const MAX_ACK_REQUESTS: u32 = 3;
+pub const MAX_ACK_REQUESTS: u8 = 3;
 pub const INACTIVITY_TIMEOUT_S: u32 = 60;
-pub const TILE_SIZE: usize = 4;
-pub const MAX_PACKET_SIZE: usize = 512;
-pub const DEFAULT_RECEIVER_LIMIT: usize = 512;
+
+pub const TILE_SIZE: usize = 187;
+pub const WINDOW_SIZE: usize = 63;
+pub const BITMAP_MASK: u64 = (1u64 << 63) - 1;
+pub const MAX_PACKET_SIZE: usize = 16384;
+pub const DEFAULT_RECEIVER_LIMIT: usize = 1281;
 pub const RULE_ID_A_TO_B: u8 = 0x78;
 pub const RULE_ID_B_TO_A: u8 = 0x79;
-pub const WINDOW_SIZE: usize = DEFAULT_WINDOW_SIZE;
-pub const BITMAP_MASK: u64 = (1u64 << (ALL_1_FCN)) - 1;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
@@ -153,44 +154,76 @@ impl<'a> Fragment<'a> {
         if out.len() < needed {
             return Err(BufferTooSmall::new(needed, out.len()).into());
         }
+        out[..needed].fill(0);
         out[0] = self.rule_id;
-        out[1] = ((self.window & 1) << FRAGMENT_N) | (self.fcn & ((1 << FRAGMENT_N) - 1));
+        out[1] = (self.window << 7) | (self.fcn << 1);
+        let mut index = 0;
         if self.is_all_1() {
-            out[2..2 + MIC_LENGTH].copy_from_slice(&self.mic);
-            out[2 + MIC_LENGTH..needed].copy_from_slice(self.payload);
-        } else {
-            out[2..needed].copy_from_slice(self.payload);
+            for byte in self.mic {
+                out[1 + index] |= byte >> 7;
+                out[2 + index] = byte << 1;
+                index += 1;
+            }
+        }
+        for &byte in self.payload {
+            out[1 + index] |= byte >> 7;
+            out[2 + index] = byte << 1;
+            index += 1;
         }
         Ok(needed)
     }
 
-    pub fn from_bytes(data: &'a [u8]) -> Result<Self, FragmentError> {
+    pub fn from_bytes(data: &[u8], out: &'a mut [u8]) -> Result<Fragment<'a>, FragmentError> {
         if data.len() < 2 {
             return Err(TooShort::new(2, data.len()).into());
         }
+        check_rule(data[0])?;
         let rule_id = data[0];
-        let window = (data[1] >> FRAGMENT_N) & 1;
-        let fcn = data[1] & ((1 << FRAGMENT_N) - 1);
-        let rest = &data[2..];
+        let window = data[1] >> 7;
+        let fcn = (data[1] >> 1) & ((1 << FRAGMENT_N) - 1);
+
         if fcn == ALL_1_FCN {
-            if rest.len() < MIC_LENGTH {
-                return Err(TooShort::new(2 + MIC_LENGTH, data.len()).into());
+            let rest_len = data.len() - 2;
+            if !(MIC_LENGTH + 1..=MIC_LENGTH + TILE_SIZE).contains(&rest_len) {
+                return Err(FragmentError::InvalidTileLength);
+            }
+            let payload_len = rest_len - MIC_LENGTH;
+            if out.len() < payload_len {
+                return Err(BufferTooSmall::new(payload_len, out.len()).into());
             }
             let mut mic = [0u8; MIC_LENGTH];
-            mic.copy_from_slice(&rest[..MIC_LENGTH]);
+            for i in 0..MIC_LENGTH {
+                mic[i] = ((data[1 + i] & 1) << 7) | (data[2 + i] >> 1);
+            }
+            for i in 0..payload_len {
+                let wire = 1 + MIC_LENGTH + i;
+                out[i] = ((data[wire] & 1) << 7) | (data[wire + 1] >> 1);
+            }
             Ok(Fragment {
                 rule_id,
                 window,
                 fcn,
-                payload: &rest[MIC_LENGTH..],
+                payload: &out[..payload_len],
                 mic,
             })
         } else {
+            if data.len() != TILE_SIZE + 2 {
+                return Err(FragmentError::InvalidTileLength);
+            }
+            if window == 1 && fcn == 0 {
+                return Err(FragmentError::InvalidFcn);
+            }
+            if out.len() < TILE_SIZE {
+                return Err(BufferTooSmall::new(TILE_SIZE, out.len()).into());
+            }
+            for i in 0..TILE_SIZE {
+                out[i] = ((data[1 + i] & 1) << 7) | (data[2 + i] >> 1);
+            }
             Ok(Fragment {
                 rule_id,
                 window,
                 fcn,
-                payload: rest,
+                payload: &out[..TILE_SIZE],
                 mic: [0u8; MIC_LENGTH],
             })
         }
@@ -234,27 +267,27 @@ impl Ack {
         }
 
         let trailing = (self.bitmap & BITMAP_MASK).trailing_ones() as usize;
-        let (kept, restored, padding) = if trailing > 0 {
-            let kept = WINDOW_SIZE - trailing;
-            (kept, (8 - ((2 + kept) % 8)) % 8, 0)
-        } else {
-            (WINDOW_SIZE, 0, 7)
-        };
-        let total_bits = 2 + kept + restored + padding;
-        let needed = 1 + total_bits / 8;
+        let n = WINDOW_SIZE - trailing;
+        let body_bytes = n.div_ceil(8);
+        let needed = 3 + body_bytes;
         if out.len() < needed {
             return Err(BufferTooSmall::new(needed, out.len()).into());
         }
-        out[..needed].fill(0);
         out[0] = self.rule_id;
-        out[1] = ((self.window & 1) << FRAGMENT_N) | (if self.complete { 1 } else { 0 });
-        let body_bytes = (kept + 7) / 8;
-        out[2] = kept as u8;
-        for b in out[3..3 + body_bytes].iter_mut() {
-            *b = 0;
-        }
-        for position in 0..restored {
-            set_bit(&mut out[1..needed], 2 + kept + position, true);
+        out[1] = self.window << 7;
+        out[2] = n as u8;
+        for byte_idx in 0..body_bytes {
+            let mut byte = 0u8;
+            for bit in 0..8 {
+                let pos = byte_idx * 8 + bit;
+                if pos >= n {
+                    break;
+                }
+                if self.bitmap & (1u64 << (62 - pos)) != 0 {
+                    byte |= 1 << (7 - bit);
+                }
+            }
+            out[3 + byte_idx] = byte;
         }
         Ok(needed)
     }
@@ -268,49 +301,35 @@ impl Ack {
             return Err(TooShort::new(2, data.len()).into());
         }
         let rule_id = data[0];
-        let window = (data[1] >> FRAGMENT_N) & 1;
-        if data.len() == 2 {
-            if (data[1] & 0x40) == 0 {
-                return Err(FragmentError::MalformedAck);
-            }
-            return Ok(Self::new(rule_id, window, 0, true));
+        let window = (data[1] >> 7) & 1;
+        let complete = (data[1] & 0x40) != 0;
+        if complete {
+            return Self::from_complete(rule_id, window, data, assigned);
+        }
+        if data.len() < 3 {
+            return Err(TooShort::new(3, data.len()).into());
         }
         let n = data[2] as usize;
+        if n > WINDOW_SIZE {
+            return Err(FragmentError::MalformedAck);
+        }
         let body_bytes = n.div_ceil(8);
         let required = 3 + body_bytes;
         if data.len() < required {
             return Err(TooShort::new(required, data.len()).into());
         }
-        let body = &data[3..];
-        let mut bitmap = [false; MAX_WINDOW_SIZE];
-        for i in 0..n.min(MAX_WINDOW_SIZE) {
-            let byte = body[i / 8];
-            bitmap[i] = (byte >> (7 - (i % 8))) & 1 != 0;
-        }
-        let bit_count = (data.len() - 1) * 8 - 2;
         let mut bitmap = 0u64;
-        if bit_count >= WINDOW_SIZE {
-            let padding = bit_count - WINDOW_SIZE;
-            if padding > 7 || (0..padding).any(|i| get_bit(&data[1..], 2 + WINDOW_SIZE + i)) {
-                return Err(FragmentError::MalformedAck);
-            }
-            for position in 0..WINDOW_SIZE {
-                if get_bit(&data[1..], 2 + position) {
-                    bitmap |= 1u64 << (62 - position);
-                }
-            }
-        } else {
-            for position in 0..bit_count {
-                if get_bit(&data[1..], 2 + position) {
-                    bitmap |= 1u64 << (62 - position);
-                }
-            }
-            for position in bit_count..WINDOW_SIZE {
-                bitmap |= 1u64 << (62 - position);
+        for i in 0..n {
+            let byte = data[3 + i / 8];
+            if (byte >> (7 - i % 8)) & 1 != 0 {
+                bitmap |= 1u64 << (62 - i);
             }
         }
-        let ack = Self::new(data[0], window, bitmap, false);
-        let mut canonical = [0u8; 10];
+        for i in n..WINDOW_SIZE {
+            bitmap |= 1u64 << (62 - i);
+        }
+        let ack = Self::new(rule_id, window, bitmap, false);
+        let mut canonical = [0u8; 11];
         let length = ack.write_to(&mut canonical)?;
         if &canonical[..length] != data {
             return Err(FragmentError::NonCanonicalAck);
@@ -320,16 +339,24 @@ impl Ack {
         }
         Ok(ack)
     }
-}
 
-fn set_bit(bytes: &mut [u8], bit: usize, value: bool) {
-    if value {
-        bytes[bit / 8] |= 1 << (7 - bit % 8);
+    fn from_complete(
+        rule_id: u8,
+        window: u8,
+        data: &[u8],
+        _assigned: Option<u64>,
+    ) -> Result<Self, FragmentError> {
+        if data.len() > 2 {
+            return Err(FragmentError::MalformedAck);
+        }
+        let ack = Self::new(rule_id, window, 0, true);
+        let mut canonical = [0u8; 11];
+        let length = ack.write_to(&mut canonical)?;
+        if &canonical[..length] != data {
+            return Err(FragmentError::NonCanonicalAck);
+        }
+        Ok(ack)
     }
-}
-
-fn get_bit(bytes: &[u8], bit: usize) -> bool {
-    bytes[bit / 8] & (1 << (7 - bit % 8)) != 0
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -546,7 +573,7 @@ impl<'a> FragmentSender<'a> {
             }
             return SenderOutput::None;
         }
-        if u32::from(self.attempts) >= MAX_ACK_REQUESTS {
+        if self.attempts >= MAX_ACK_REQUESTS {
             return self.abort_output();
         }
         self.attempts += 1;
@@ -563,7 +590,7 @@ impl<'a> FragmentSender<'a> {
         if self.status != SenderStatus::Active {
             return Err(FragmentError::InvalidState);
         }
-        if u32::from(self.attempts) >= MAX_ACK_REQUESTS {
+        if self.attempts >= MAX_ACK_REQUESTS {
             return Ok(self.abort_output());
         }
         self.attempts += 1;
@@ -773,7 +800,8 @@ impl<'a> FragmentReceiver<'a> {
             }
             return self.receive_ack_request(rule_id);
         }
-        match Fragment::from_bytes(data) {
+        let mut tile = [0u8; TILE_SIZE];
+        match Fragment::from_bytes(data, &mut tile) {
             Ok(fragment) => {
                 if self.done {
                     self.reset();
@@ -932,7 +960,7 @@ impl<'a> FragmentReceiver<'a> {
     }
 
     fn respond(&mut self, ack: Ack) -> ReceiverResult {
-        if u32::from(self.attempts) >= MAX_ACK_REQUESTS {
+        if self.attempts >= MAX_ACK_REQUESTS {
             return self.abort(ack.rule_id);
         }
         self.attempts += 1;
@@ -1072,7 +1100,7 @@ mod std_ext {
         pub fn new(window_size: usize) -> Self {
             FragmentReceiver {
                 window_size,
-                rule_id: None,
+                rule_id: 0,
                 tiles: HashMap::new(),
                 current_window: 0,
                 completed_windows: HashSet::new(),
@@ -1125,15 +1153,11 @@ mod std_ext {
             }
         }
 
-        fn window_bitmap(&self, abs_window: usize) -> u64 {
+        fn window_bitmap(&self, abs_window: usize) -> Vec<bool> {
             let base = abs_window * self.window_size;
-            let mut bitmap: u64 = 0;
-            for p in 0..self.window_size {
-                if self.tiles.contains_key(&(base + p)) {
-                    bitmap |= 1u64 << (self.window_size - 1 - p);
-                }
-            }
-            bitmap
+            (0..self.window_size)
+                .map(|p| self.tiles.contains_key(&(base + p)))
+                .collect()
         }
 
         fn window_full(&self, abs_window: usize) -> bool {
@@ -1149,9 +1173,9 @@ mod std_ext {
                     mic_ok: None,
                 };
             }
-            if self.rule_id.is_none() {
-                self.rule_id = Some(frag.rule_id);
-            } else if self.rule_id != Some(frag.rule_id) {
+            if self.rule_id == 0 {
+                self.rule_id = frag.rule_id;
+            } else if self.rule_id != frag.rule_id {
                 return ReceiverResult {
                     ack: None,
                     reassembled: None,
@@ -1203,9 +1227,9 @@ mod std_ext {
                 }
                 return ReceiverResult {
                     ack: Some(Ack::new(
-                        self.rule_id.unwrap_or(0),
+                        self.rule_id,
                         (abs_window % 2) as u8,
-                        bitmap,
+                        &bitmap,
                         false,
                     )),
                     reassembled: None,
@@ -1221,7 +1245,7 @@ mod std_ext {
 
         fn finalize(&mut self) -> ReceiverResult {
             let bitmap = self.window_bitmap(self.all1_window);
-            let nack = Ack::new(self.rule_id.unwrap_or(0), (self.all1_window % 2) as u8, bitmap, false);
+            let nack = Ack::new(self.rule_id, (self.all1_window % 2) as u8, &bitmap, false);
 
             // O(n) contiguity check: if we have n tiles and max index is n-1,
             // all indices 0..n must be present (HashMap keys are unique).
@@ -1246,7 +1270,7 @@ mod std_ext {
                 self.reassembled = Some(data.clone());
                 ReceiverResult {
                     ack: Some(Ack::new(
-                        self.rule_id.unwrap_or(0),
+                        self.rule_id,
                         (self.all1_window % 2) as u8,
                         &bitmap,
                         true,
