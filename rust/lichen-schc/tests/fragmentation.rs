@@ -56,27 +56,26 @@ fn sender_receiver_literal_recovery() {
 
 #[test]
 fn multi_fragment_single_window() {
-    let payload: Vec<u8> = (0u8..20).collect();
-    let tile_size = 5;
-    let sender = FragmentSender::new(&payload, 20, 7).unwrap(); // tile_size is 32 by default
+    let payload: Vec<u8> = (0u8..128).collect();
+    let sender = FragmentSender::new(&payload, 20, 7).unwrap();
 
-    assert_eq!(sender.fragment_count(), 4); // 20 bytes / 5 bytes per tile
+    assert_eq!(sender.fragment_count(), 4); // 128 bytes / 32 bytes per tile
     assert_eq!(sender.window_count(), 1);
 
     let frags: Vec<_> = sender.iter().collect();
     assert_eq!(frags.len(), 4);
 
-    // First fragments have descending FCN (for window_size=7)
-    assert_eq!(frags[0].fcn, 6); // 7-1-0 = 6
-    assert_eq!(frags[1].fcn, 5);
-    assert_eq!(frags[2].fcn, 4);
-    assert!(frags[3].is_all_1()); // Last fragment
+    // FCN values descend from 62 (WINDOW_SIZE - 1), last fragment is ALL_1
+    assert_eq!(frags[0].fcn, 62);
+    assert_eq!(frags[1].fcn, 61);
+    assert_eq!(frags[2].fcn, 60);
+    assert!(frags[3].is_all_1());
 
-    // Verify payloads
-    assert_eq!(frags[0].payload, &[0, 1, 2, 3, 4]);
-    assert_eq!(frags[1].payload, &[5, 6, 7, 8, 9]);
-    assert_eq!(frags[2].payload, &[10, 11, 12, 13, 14]);
-    assert_eq!(frags[3].payload, &[15, 16, 17, 18, 19]);
+    // Verify payloads (32 bytes each)
+    assert_eq!(frags[0].payload, &(0u8..32).collect::<Vec<_>>());
+    assert_eq!(frags[1].payload, &(32u8..64).collect::<Vec<_>>());
+    assert_eq!(frags[2].payload, &(64u8..96).collect::<Vec<_>>());
+    assert_eq!(frags[3].payload, &(96u8..128).collect::<Vec<_>>());
 }
 
 #[test]
