@@ -2,7 +2,7 @@
   "id": "project-LICHEN-vhvj.6",
   "title": "Add/update sim tests for hop sequence using ccp16-hop.json with independent oracle, tag codereview",
   "description": "Extend test_vectors.py or test_multinode.py / test_protocol.py to validate synchronized_hop_channel and rendezvous against ccp16-hop.json, ccp16.json, ccp9*.json using hash_32 oracle from generate.py (never derive from impl). Run pytest python/tests/sim/ after. Tag all with codereview. Fix any test integrity violations per AGENTS.md. No hardcoded mocks.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
