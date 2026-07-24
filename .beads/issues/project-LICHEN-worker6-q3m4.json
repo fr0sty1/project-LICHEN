@@ -2,12 +2,15 @@
   "id": "project-LICHEN-worker6-q3m4",
   "title": "[review] project-LICHEN-worker6-p6n9: protect_response refactor has 3 compile errors and 14 unupdated callers",
   "description": "This commit introduces three P0 compile errors in a single refactor of OSCORE protect_response().\n\n1. COMPILE ERROR: sender_seq.next() does not exist\n   File: rust/lichen-oscore/src/lib.rs line ~1000\n   Code calls self.sender_seq.next() but OscoreSeqNum (seqnum.rs) has no next() method\n   and does not implement Iterator. Available methods are increment() (returns an\n   Option of new value) and fetch_increment() (increments in place, returns old).\n\n2. COMPILE ERROR: Type mismatch OscoreSeqNum::MAX\n   File: rust/lichen-oscore/src/lib.rs line ~1003\n   MAX is const u64, but sender_seq field is OscoreSeqNum.\n   Must wrap: OscoreSeqNum::new(OscoreSeqNum::MAX).unwrap()\n\n3. COMPILE ERROR: API breaking change, 14 callers not updated\n   protect_response() now requires 6th arg (include_piv: bool), but callers pass 5:\n   - lib.rs tests: lines 2298, 2445, 2453, 2474, 2749, 2831, 3276, 3281,\n                   3312, 3316, 3322, 3326, 3364\n   - edhoc.rs: line 2300\n   lichen-node/src/secure.rs uses protect_response_with_piv (unaffected).\n   tests/vectors.rs uses only unprotect_response (unaffected).",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T19:26:01.797647077Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T20:21:05.513285973Z",
-  "started_at": "2026-07-24T19:28:01.256416006Z"
+  "updated_at": "2026-07-24T20:28:08.023805786Z",
+  "started_at": "2026-07-24T19:28:01.256416006Z",
+  "lease_expires_at": "2026-07-24T20:33:08.023805786Z",
+  "heartbeat_at": "2026-07-24T20:28:08.023805786Z"
 }
