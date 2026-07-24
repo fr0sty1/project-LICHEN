@@ -63,14 +63,14 @@ enum tx_queue_priority {
 	TX_PRIORITY_COUNT
 };
 
-/** Default deadline for routing control packets (ms) */
-#define TX_DEADLINE_ROUTING_MS   5000
+/** Default deadline for routing control packets (slots; each slot is 250ms) */
+#define TX_DEADLINE_ROUTING_SLOTS   20
 
-/** Default deadline for ACK packets (ms) */
-#define TX_DEADLINE_ACK_MS       10000
+/** Default deadline for ACK packets (slots; each slot is 250ms) */
+#define TX_DEADLINE_ACK_SLOTS       40
 
-/** Default deadline for application data packets (ms) */
-#define TX_DEADLINE_APP_MS       60000
+/** Default deadline for application data packets (slots; each slot is 250ms) */
+#define TX_DEADLINE_APP_SLOTS       240
 
 /**
  * @brief TX queue entry
@@ -146,9 +146,11 @@ int tx_queue_push(struct tx_queue *_Nonnull queue,
  * @brief Push a packet with default deadline based on priority.
  *
  * Convenience wrapper that sets deadline based on priority:
- *   - TX_PRIORITY_ROUTING: 5 seconds
- *   - TX_PRIORITY_ACK: 10 seconds
- *   - TX_PRIORITY_BULK/others: 60 seconds
+ *   - TX_PRIORITY_ROUTING: 20 slots (5s)
+ *   - TX_PRIORITY_ACK: 40 slots (10s)
+ *   - TX_PRIORITY_BULK/others: 240 slots (60s)
+ *
+ * Deadlines are expressed as multiples of SLOT_DURATION_MS.
  *
  * @param[in,out] queue    TX queue
  * @param[in]     data     Packet data

@@ -16,6 +16,10 @@
 #include <lichen/errno.h>
 #include <string.h>
 
+#ifndef SLOT_DURATION_MS
+#define SLOT_DURATION_MS 250 /* spec/02a-coordinated-capacity.md:2a.2 */
+#endif
+
 #ifdef CONFIG_TX_QUEUE_TEST_TIME
 static bool fail_test_time;
 #endif
@@ -305,13 +309,13 @@ int tx_queue_push_default_deadline(struct tx_queue *queue,
 
 	switch (priority) {
 	case TX_PRIORITY_ROUTING:
-		deadline_ms = now_ms + TX_DEADLINE_ROUTING_MS;
+		deadline_ms = now_ms + TX_DEADLINE_ROUTING_SLOTS * SLOT_DURATION_MS;
 		break;
 	case TX_PRIORITY_ACK:
-		deadline_ms = now_ms + TX_DEADLINE_ACK_MS;
+		deadline_ms = now_ms + TX_DEADLINE_ACK_SLOTS * SLOT_DURATION_MS;
 		break;
 	default:
-		deadline_ms = now_ms + TX_DEADLINE_APP_MS;
+		deadline_ms = now_ms + TX_DEADLINE_APP_SLOTS * SLOT_DURATION_MS;
 		break;
 	}
 
