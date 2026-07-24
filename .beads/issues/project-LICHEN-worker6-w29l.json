@@ -2,12 +2,15 @@
   "id": "project-LICHEN-worker6-w29l",
   "title": "[review] project-LICHEN-2auf.44.7.1: lichen-node routing.rs missing dao_admission parameter to process_signature_verified",
   "description": "## Location\n`rust/lichen-node/src/routing.rs:857`\n\n## Problem\n`process_signature_verified()` was modified in `lichen-rpl` to accept a 7th parameter `dao_admission: \u0026DaoAdmissionState`, but the call site in `lichen-node/src/routing.rs` at line 857 was not updated. The call passes only 6 arguments.\n\n## Impact\nCompilation failure across the workspace. `lichen-node` depends on `lichen-rpl` and the signature mismatch prevents building with `--features std`.\n\n## Fix\nAdd `dao_admission` argument to the `process_signature_verified` call in `lichen-node/src/routing.rs` line 857. The `lichen-node` crate likely needs its own `DaoAdmissionState` instance or access to one.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T16:56:58.389446009Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T20:56:08.889691853Z",
-  "started_at": "2026-07-24T19:19:31.957534387Z"
+  "updated_at": "2026-07-24T20:56:17.494341951Z",
+  "started_at": "2026-07-24T19:19:31.957534387Z",
+  "lease_expires_at": "2026-07-24T21:01:17.494341951Z",
+  "heartbeat_at": "2026-07-24T20:56:17.494341951Z"
 }
