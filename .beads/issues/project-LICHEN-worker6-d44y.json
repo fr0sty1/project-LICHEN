@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-d44y",
+  "title": "[rereview] project-LICHEN-dk3c.5: No range constraint on LICHEN_DODAG_LOSS_RESUME_TIMEOUT",
+  "description": "## Description\\n\\nThe Kconfig symbol  has no  directive. If a user sets it to , the  timer is never started () and the announce scheduler remains stuck at the GATEWAY interval permanently after DODAG loss.\\n\\n## Impact\\n- A misconfigured value silently breaks the loss-recovery mechanism\\n- Kconfig should constrain the value to prevent this\\n\\n## Files\\n-  (commit diff) - missing \\n-  - guards against 0 but Kconfig should too\\n\\n## Fix\\nAdd  to the Kconfig entry, or document that 0 = no resume timeout.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T05:38:55.399188295Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T05:38:55.399188295Z"
+}
