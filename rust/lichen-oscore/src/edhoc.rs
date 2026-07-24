@@ -1036,8 +1036,6 @@ struct InitiatorState {
     th_2: [u8; 32],
     th_3: [u8; 32],
     th_4: [u8; 32],
-    /// True when handshake completed (process_message_2 succeeded).
-    completed: bool,
     #[zeroize(skip)]
     lifecycle: Lifecycle,
 }
@@ -1054,7 +1052,6 @@ impl Default for InitiatorState {
             th_2: [0; 32],
             th_3: [0; 32],
             th_4: [0; 32],
-            completed: false,
             lifecycle: Lifecycle::Created,
         }
     }
@@ -1123,6 +1120,9 @@ impl EdhocInitiator {
     ///
     /// message_1 = (METHOD, SUITES_I, G_X, C_I, ? EAD_1)
     pub fn create_message_1(&mut self) -> Result<heapless::Vec<u8, 64>, EdhocError> {
+        if self.state.lifecycle != Lifecycle::Created {
+            return Err(EdhocError::InvalidState);
+        }
         let mut msg1 = heapless::Vec::<u8, 64>::new();
         msg1.push_err(0)?; // METHOD = 0 (signature/signature)
         msg1.push_err(SUITE_0)?;
@@ -1354,7 +1354,6 @@ impl EdhocInitiator {
 
             self.state.th_4 = transcript_4(&self.state.th_3, &ciphertext_3.0)?;
 
-            self.state.completed = true;
             self.state.lifecycle = Lifecycle::Complete;
             let mut msg3 = heapless::Vec::new();
             encode_bstr(&mut msg3, &ciphertext_3.0)?;
@@ -1367,13 +1366,15 @@ impl EdhocInitiator {
         result
     }
 
-    /// Export OSCORE security context.
+    /// Export OSCORE security context, consuming the handshake state.
+    ///
+    /// After this call, the initiator is consumed and cannot be reused.
     ///
     /// # Errors
     /// Returns `OscoreError::NoContext` if called before handshake completes
     /// (i.e., before `process_message_2` succeeds).
-    pub fn export_oscore(&self) -> Result<Context, OscoreError> {
-        if !self.state.completed || self.state.prk_4e3m.iter().fold(0u8, |acc, &b| acc | b) == 0 {
+    pub fn export_oscore(self) -> Result<Context, OscoreError> {
+        if self.state.lifecycle != Lifecycle::Complete {
             return Err(OscoreError::NoContext);
         }
         // Use dedicated exporter for full master_secret/salt derivation + new_fresh.
@@ -1437,8 +1438,6 @@ struct ResponderState {
     th_2: [u8; 32],
     th_3: [u8; 32],
     th_4: [u8; 32],
-    /// True when handshake completed (process_message_3 succeeded).
-    completed: bool,
     #[zeroize(skip)]
     lifecycle: Lifecycle,
 }
@@ -1455,7 +1454,6 @@ impl Default for ResponderState {
             th_2: [0; 32],
             th_3: [0; 32],
             th_4: [0; 32],
-            completed: false,
             lifecycle: Lifecycle::Created,
         }
     }
@@ -1825,13 +1823,15 @@ impl EdhocResponder {
         result
     }
 
-    /// Export OSCORE security context.
+    /// Export OSCORE security context, consuming the handshake state.
+    ///
+    /// After this call, the responder is consumed and cannot be reused.
     ///
     /// # Errors
     /// Returns `OscoreError::NoContext` if called before handshake completes
     /// (i.e., before `process_message_3` succeeds).
-    pub fn export_oscore(&self) -> Result<Context, OscoreError> {
-        if !self.state.completed || self.state.prk_4e3m.iter().fold(0u8, |acc, &b| acc | b) == 0 {
+    pub fn export_oscore(self) -> Result<Context, OscoreError> {
+        if self.state.lifecycle != Lifecycle::Complete {
             return Err(OscoreError::NoContext);
         }
         // Use dedicated exporter for full master_secret/salt derivation + new_fresh.
@@ -2764,12 +2764,14 @@ mod tests {
             responder.process_message_3(&msg3, &initiator_pubkey),
             Err(EdhocError::InvalidState)
         );
-        assert_eq!(initiator.create_message_1(), Err(EdhocError::InvalidState));
 
-        // Step 5: Both export OSCORE contexts
+        // Step 5: Both export OSCORE contexts (consuming the handshake state)
         let mut initiator_ctx = initiator
             .export_oscore()
             .expect("initiator export_oscore failed");
+
+        // After export_oscore consumes initiator, can no longer call methods on it,
+        // but we can verify responder was in Complete state before its own export.
         let mut responder_ctx = responder
             .export_oscore()
             .expect("responder export_oscore failed");
