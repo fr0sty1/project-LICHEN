@@ -50,7 +50,7 @@ static const uint8_t link_local_prefix[8] = {
 int lichen_eui64_to_iid(const uint8_t *eui64, uint8_t *iid)
 {
     if (eui64 == NULL || iid == NULL) {
-        LOG_ERR("eui64_to_iid failed (NULL input)");
+        LOG_ERR("ipv6_addr: eui64_to_iid failed (NULL input)");
         return -EINVAL;
     }
 
@@ -77,7 +77,7 @@ int lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid)
     uint8_t hash[TC_SHA256_DIGEST_SIZE];
 
     if (pubkey == NULL || iid == NULL) {
-        LOG_ERR("pubkey_to_iid failed (NULL input)");
+        LOG_ERR("ipv6_addr: pubkey_to_iid failed (NULL input)");
         return -EINVAL;
     }
 
@@ -89,7 +89,7 @@ int lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid)
      */
     ret = lichen_sha256(pubkey, LICHEN_ED25519_PUBKEY_LEN, hash);
     if (ret != 0) {
-        LOG_ERR("pubkey_to_iid failed (SHA-256 error %d)", ret);
+        LOG_ERR("ipv6_addr: pubkey_to_iid failed (SHA-256 error %d)", ret);
         goto cleanup;
     }
 
@@ -131,7 +131,7 @@ cleanup:
 int lichen_make_link_local(const uint8_t *iid, struct in6_addr *addr)
 {
     if (iid == NULL || addr == NULL) {
-        LOG_ERR("make_link_local failed (NULL input)");
+        LOG_ERR("ipv6_addr: make_link_local failed (NULL input)");
         return -EINVAL;
     }
 
@@ -145,7 +145,7 @@ int lichen_make_ula(const uint8_t *prefix, const uint8_t *iid,
                     struct in6_addr *addr)
 {
     if (prefix == NULL || iid == NULL || addr == NULL) {
-        LOG_ERR("make_ula failed (NULL input)");
+        LOG_ERR("ipv6_addr: make_ula failed (NULL input)");
         return -EINVAL;
     }
 
@@ -175,7 +175,7 @@ int lichen_make_ula(const uint8_t *prefix, const uint8_t *iid,
      * ensuring proper prefix selection.
      */
     if (prefix[0] != 0xfd) {
-        LOG_ERR("make_ula failed (invalid prefix %02x, expected fd00::/8)", prefix[0]);
+        LOG_ERR("ipv6_addr: make_ula failed (invalid prefix %02x, expected fd00::/8)", prefix[0]);
         return -EINVAL;
     }
 
@@ -188,13 +188,13 @@ int lichen_make_gua(const uint8_t *prefix, const uint8_t *iid,
                     struct in6_addr *addr)
 {
     if (prefix == NULL || iid == NULL || addr == NULL) {
-        LOG_ERR("make_gua failed (NULL input)");
+        LOG_ERR("ipv6_addr: make_gua failed (NULL input)");
         return -EINVAL;
     }
 
     /* Check prefix is in 2000::/3 (first 3 bits = 001) */
     if ((prefix[0] & 0xE0) != 0x20) {
-        LOG_ERR("make_gua failed (invalid prefix %02x, expected 2000::/3)", prefix[0]);
+        LOG_ERR("ipv6_addr: make_gua failed (invalid prefix %02x, expected 2000::/3)", prefix[0]);
         return -EINVAL;
     }
 
@@ -221,7 +221,7 @@ typedef char _ipv6_addr_str_len_check[(LICHEN_IPV6_ADDR_STR_LEN >= 40) ? 1 : -1]
 int lichen_ipv6_addr_to_str(const struct in6_addr *addr, char *buf, size_t buflen)
 {
     if (addr == NULL || buf == NULL) {
-        LOG_ERR("addr_to_str failed (NULL input)");
+        LOG_ERR("ipv6_addr: addr_to_str failed (NULL input)");
         return -EINVAL;
     }
 
@@ -261,7 +261,7 @@ int lichen_log_link_local_from_eui64(const uint8_t *eui64, struct in6_addr *ll_a
     char addr_str[LICHEN_IPV6_ADDR_STR_LEN];
 
     if (eui64 == NULL) {
-        LOG_ERR("log_link_local failed (NULL eui64)");
+        LOG_ERR("ipv6_addr: log_link_local failed (NULL eui64)");
         if (ll_addr_out != NULL) {
             memset(ll_addr_out, 0, sizeof(*ll_addr_out));
         }
@@ -270,7 +270,7 @@ int lichen_log_link_local_from_eui64(const uint8_t *eui64, struct in6_addr *ll_a
 
     ret = lichen_eui64_to_iid(eui64, iid);
     if (ret < 0) {
-        LOG_ERR("log_link_local failed (IID derivation error %d)", ret);
+        LOG_ERR("ipv6_addr: log_link_local failed (IID derivation error %d)", ret);
         if (ll_addr_out != NULL) {
             memset(ll_addr_out, 0, sizeof(*ll_addr_out));
         }
@@ -279,7 +279,7 @@ int lichen_log_link_local_from_eui64(const uint8_t *eui64, struct in6_addr *ll_a
 
     ret = lichen_make_link_local(iid, &ll_addr);
     if (ret < 0) {
-        LOG_ERR("log_link_local failed (make_link_local error %d)", ret);
+        LOG_ERR("ipv6_addr: log_link_local failed (make_link_local error %d)", ret);
         if (ll_addr_out != NULL) {
             memset(ll_addr_out, 0, sizeof(*ll_addr_out));
         }
@@ -288,10 +288,10 @@ int lichen_log_link_local_from_eui64(const uint8_t *eui64, struct in6_addr *ll_a
 
     ret = lichen_ipv6_addr_to_str(&ll_addr, addr_str, sizeof(addr_str));
     if (ret < 0) {
-        LOG_WRN("log_link_local warning (format error %d)", ret);
+        LOG_WRN("ipv6_addr: log_link_local warning (format error %d)", ret);
         /* Non-fatal - address is still valid, just can't log it */
     } else {
-        LOG_INF("link-local %s", addr_str);
+        LOG_INF("ipv6_addr: link-local %s", addr_str);
     }
 
     if (ll_addr_out != NULL) {
