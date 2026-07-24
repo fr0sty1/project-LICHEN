@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-qqhs",
+  "title": "[review] project-LICHEN-6mij: lichen_coap_oscore_respond fallback loses intended error code for deaddrop",
+  "description": "The shared function `lichen_coap_oscore_respond` (added in b012f03) always falls back to COAP_RESPONSE_CODE_INTERNAL_ERROR (5.00) when OSCORE protection fails.\n\nBefore this commit, the deaddrop handler's `deaddrop_oscore_respond` passed through the intended response code (e.g. TOO_MANY_REQUESTS, BAD_REQUEST) on protect failure. The new shared function discards the intended code and sends 5.00 instead.\n\nAffected file: lichen/subsys/lichen/oscore/coap_oscore.c:227-238\n\nOld behavior (deaddrop): send intended error code unencrypted\nNew behavior: always send 5.00\n\nFix: add the intended code param to the fallback path in lichen_coap_oscore_respond, or restore per-resource fallback behavior.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-24T15:55:25.283493231Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-24T15:55:25.283493231Z"
+}
